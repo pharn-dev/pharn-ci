@@ -25066,6 +25066,42 @@ function percentOf(covered, total) {
   return Math.min(Math.max(rounded, covered > 0 ? 0.01 : 0), covered < total ? 99.99 : 100);
 }
 
+// ../core/src/setup/summary.ts
+var KIND_TOOLS = {
+  "claude-md": ["claude-code"],
+  "claude-local-md": ["claude-code"],
+  "claude-settings": ["claude-code"],
+  "claude-settings-local": ["claude-code"],
+  "claude-skill": ["claude-code"],
+  "claude-hook": ["claude-code"],
+  "claude-agent": ["claude-code"],
+  "claude-command": ["claude-code"],
+  "agents-md": ["codex", "copilot", "cursor"],
+  "cursor-rules": ["cursor"],
+  "cursor-mcp": ["cursor", "mcp"],
+  "copilot-instructions": ["copilot"],
+  "copilot-instructions-scoped": ["copilot"],
+  "copilot-agents": ["copilot"],
+  "copilot-prompts": ["copilot"],
+  "vscode-mcp": ["copilot", "mcp"],
+  "codex-config": ["codex"],
+  "gemini-md": ["gemini"],
+  "windsurf-rules": ["windsurf"],
+  "cline-rules": ["cline"],
+  "mcp-config": ["mcp"]
+};
+function summarizeAgentSetup(files) {
+  const counts = /* @__PURE__ */ new Map();
+  for (const f of files) counts.set(f.kind, (counts.get(f.kind) ?? 0) + 1);
+  const byKind = {};
+  const tools = /* @__PURE__ */ new Set();
+  for (const [kind, count] of [...counts].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
+    byKind[kind] = count;
+    for (const tool of KIND_TOOLS[kind] ?? []) tools.add(tool);
+  }
+  return { byKind, tools: [...tools].sort() };
+}
+
 // ../core/src/report.ts
 function buildReport(input) {
   const messages = [];
@@ -25123,7 +25159,7 @@ function buildReport(input) {
       coverableLines: dc.coverableLines,
       files: dc.files
     },
-    agentSetup: { files: input.agentSetup.files },
+    agentSetup: { files: input.agentSetup.files, summary: summarizeAgentSetup(input.agentSetup.files) },
     messages
   };
 }
@@ -25137,29 +25173,62 @@ function formatNumber(n) {
 }
 
 // ../core/src/setup/scan.ts
-var DIR_KINDS = [
-  [".claude/skills/", "claude-skill"],
-  [".claude/hooks/", "claude-hook"],
-  [".claude/agents/", "claude-agent"],
-  [".claude/commands/", "claude-command"],
-  [".cursor/rules/", "cursor-rules"]
-];
-var EXACT_KINDS = /* @__PURE__ */ new Map([
-  [".claude/settings.json", "claude-settings"],
-  [".claude/settings.local.json", "claude-settings-local"],
-  [".cursorrules", "cursor-rules"],
-  [".github/copilot-instructions.md", "copilot-instructions"],
-  [".mcp.json", "mcp-config"]
-]);
-function classifySetupPath(path) {
-  const exact = EXACT_KINDS.get(path);
-  if (exact) return exact;
-  for (const [prefix, kind] of DIR_KINDS) {
-    if (path.startsWith(prefix) && path.length > prefix.length) return kind;
+function underNested(path, anchor) {
+  let from = 0;
+  for (; ; ) {
+    const i = path.indexOf(anchor, from);
+    if (i === -1) return false;
+    if ((i === 0 || path[i - 1] === "/") && path.length > i + anchor.length) return true;
+    from = i + 1;
   }
-  const base = path.slice(path.lastIndexOf("/") + 1);
-  if (base === "CLAUDE.md") return "claude-md";
-  if (base === "AGENTS.md") return "agents-md";
+}
+function isNestedFile(path, file) {
+  return path === file || path.endsWith(`/${file}`);
+}
+function underRoot(path, prefix) {
+  return path.startsWith(prefix) && path.length > prefix.length;
+}
+function baseName(path) {
+  return path.slice(path.lastIndexOf("/") + 1);
+}
+var INSTRUCTIONS_DIR = ".github/instructions/";
+var INSTRUCTIONS_SUFFIX = ".instructions.md";
+var SETUP_RULES = [
+  // Directory and full-path rules that also apply in nested directories.
+  { kind: "claude-settings", matches: (p) => isNestedFile(p, ".claude/settings.json") },
+  { kind: "claude-settings-local", matches: (p) => isNestedFile(p, ".claude/settings.local.json") },
+  { kind: "claude-skill", matches: (p) => underNested(p, ".claude/skills/") },
+  { kind: "claude-hook", matches: (p) => underNested(p, ".claude/hooks/") },
+  { kind: "claude-agent", matches: (p) => underNested(p, ".claude/agents/") },
+  { kind: "claude-command", matches: (p) => underNested(p, ".claude/commands/") },
+  { kind: "cursor-rules", matches: (p) => underNested(p, ".cursor/rules/") },
+  // Directory and full-path rules for the repo root only.
+  { kind: "cursor-rules", matches: (p) => p === ".cursorrules" },
+  { kind: "copilot-instructions", matches: (p) => p === ".github/copilot-instructions.md" },
+  {
+    kind: "copilot-instructions-scoped",
+    matches: (p) => p.startsWith(INSTRUCTIONS_DIR) && p.endsWith(INSTRUCTIONS_SUFFIX) && p.length > INSTRUCTIONS_DIR.length + INSTRUCTIONS_SUFFIX.length
+  },
+  { kind: "copilot-agents", matches: (p) => underRoot(p, ".github/agents/") },
+  { kind: "copilot-prompts", matches: (p) => underRoot(p, ".github/prompts/") },
+  { kind: "cursor-mcp", matches: (p) => p === ".cursor/mcp.json" },
+  { kind: "vscode-mcp", matches: (p) => p === ".vscode/mcp.json" },
+  { kind: "codex-config", matches: (p) => p === ".codex/config.toml" },
+  { kind: "windsurf-rules", matches: (p) => p === ".windsurfrules" },
+  { kind: "windsurf-rules", matches: (p) => underRoot(p, ".windsurf/rules/") },
+  { kind: "cline-rules", matches: (p) => p === ".clinerules" },
+  { kind: "cline-rules", matches: (p) => underRoot(p, ".clinerules/") },
+  // File-name rules: these files are hierarchical, so tools read them from any directory.
+  { kind: "claude-md", matches: (p) => baseName(p) === "CLAUDE.md" },
+  { kind: "claude-local-md", matches: (p) => baseName(p) === "CLAUDE.local.md" },
+  { kind: "agents-md", matches: (p) => baseName(p) === "AGENTS.md" },
+  { kind: "gemini-md", matches: (p) => baseName(p) === "GEMINI.md" },
+  { kind: "mcp-config", matches: (p) => baseName(p) === ".mcp.json" }
+];
+function classifySetupPath(path) {
+  for (const rule of SETUP_RULES) {
+    if (rule.matches(path)) return rule.kind;
+  }
   return null;
 }
 function scanAgentSetup(paths) {
@@ -25339,6 +25408,7 @@ function parseThreshold(value, label = "threshold") {
 
 // ../core/src/render/markdown.ts
 var VERDICT_ICON = { pass: "\u2705", warn: "\u26A0\uFE0F", fail: "\u274C" };
+var COLLAPSE_ABOVE = 25;
 var LEVEL_ICON = { info: "\u2139\uFE0F", warn: "\u26A0\uFE0F", error: "\u274C" };
 function renderMarkdown(report, options = {}) {
   const maxRows = options.maxRows ?? 50;
@@ -25370,10 +25440,15 @@ function renderMarkdown(report, options = {}) {
   if (setup.length === 0) {
     out.push("_No agent setup files found._", "");
   } else {
+    const { tools } = summarizeAgentSetup(setup);
+    out.push(`Agent setup: ${setup.length} ${setup.length === 1 ? "file" : "files"} \xB7 ${tools.join(", ")}`, "");
+    const collapse = setup.length > COLLAPSE_ABOVE;
+    if (collapse) out.push("<details>", `<summary>Show all ${setup.length} agent setup files</summary>`, "");
     out.push("| Path | Kind |", "| --- | --- |");
     for (const f of setup.slice(0, maxRows)) out.push(`| ${code(f.path)} | ${f.kind} |`);
     if (setup.length > maxRows) out.push(`| _\u2026and ${setup.length - maxRows} more files_ | |`);
     out.push("");
+    if (collapse) out.push("</details>", "");
   }
   if (report.messages.length > 0) {
     out.push("### Messages", "");

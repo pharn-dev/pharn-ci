@@ -59,9 +59,33 @@ pharn-ci runs in your CI on every pull request and reports:
 
 - **Diff coverage**: the share of lines **added** in the PR that your tests execute, with an
   optional threshold gate. It reads the lcov file your own test run already writes.
-- **Agent setup inventory**: which agent setup files the repo carries: `CLAUDE.md`, `AGENTS.md`,
-  `.claude/` settings, skills, hooks, agents and commands, `.cursor/rules`, `.cursorrules`,
-  `.github/copilot-instructions.md` and `.mcp.json`.
+- **Agent setup inventory**: which agent setup files the repo carries (`CLAUDE.md`, `AGENTS.md`,
+  `GEMINI.md`, `.claude/` files, Cursor, Copilot, Codex, Windsurf and Cline files, MCP configs; see
+  the table below), with a summary of how many there are and which tools they configure.
+
+| Kind                          | Matches                                                      | Tools                |
+| ----------------------------- | ------------------------------------------------------------ | -------------------- |
+| `claude-md`                   | `CLAUDE.md`, any directory                                   | claude-code          |
+| `claude-local-md`             | `CLAUDE.local.md`, any directory                             | claude-code          |
+| `agents-md`                   | `AGENTS.md`, any directory                                   | codex, copilot, cursor |
+| `gemini-md`                   | `GEMINI.md`, any directory                                   | gemini               |
+| `claude-settings`             | `.claude/settings.json`, any directory                       | claude-code          |
+| `claude-settings-local`       | `.claude/settings.local.json`, any directory                 | claude-code          |
+| `claude-skill`                | files under `.claude/skills/`, any directory                 | claude-code          |
+| `claude-hook`                 | files under `.claude/hooks/`, any directory                  | claude-code          |
+| `claude-agent`                | files under `.claude/agents/`, any directory                 | claude-code          |
+| `claude-command`              | files under `.claude/commands/`, any directory               | claude-code          |
+| `cursor-rules`                | files under `.cursor/rules/` (any directory), `.cursorrules` | cursor               |
+| `cursor-mcp`                  | `.cursor/mcp.json`, repo root                                | cursor, mcp          |
+| `copilot-instructions`        | `.github/copilot-instructions.md`                            | copilot              |
+| `copilot-instructions-scoped` | `.github/instructions/**/*.instructions.md`                  | copilot              |
+| `copilot-agents`              | files under `.github/agents/`                                | copilot              |
+| `copilot-prompts`             | files under `.github/prompts/`                               | copilot              |
+| `vscode-mcp`                  | `.vscode/mcp.json`, repo root                                | copilot, mcp         |
+| `codex-config`                | `.codex/config.toml`, repo root                              | codex                |
+| `windsurf-rules`              | `.windsurfrules`, files under `.windsurf/rules/`             | windsurf             |
+| `cline-rules`                 | `.clinerules` (file or directory)                            | cline                |
+| `mcp-config`                  | `.mcp.json`, any directory                                   | mcp                  |
 
 It is **AI-agnostic**: it looks at your code, tests and setup files, never at which tool wrote the
 code. Claude Code, Cursor, Copilot, Codex and hand-written changes are measured the same way.
@@ -160,6 +184,8 @@ flowchart LR
 > | `src/utils/new-name.ts` | 100% | 1/1 |  |
 >
 > ### Agent setup
+>
+> Agent setup: 3 files · claude-code, codex, copilot, cursor
 >
 > | Path | Kind |
 > | --- | --- |

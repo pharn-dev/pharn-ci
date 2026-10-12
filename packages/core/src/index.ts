@@ -30,6 +30,9 @@ export {
   type AgentSetupInventory,
   type AgentSetupKind,
   classifySetupPath,
+  SETUP_RULES,
+  type SetupRule,
   scanAgentSetup,
 } from "./setup/scan.js";
+export { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
 export { VERSION } from "./version.js";

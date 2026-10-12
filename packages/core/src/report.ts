@@ -1,5 +1,6 @@
 import type { DiffCoverageFile, DiffCoverageResult } from "./diffCoverage.js";
 import type { AgentSetupFile, AgentSetupInventory } from "./setup/scan.js";
+import { type AgentSetupSummary, summarizeAgentSetup } from "./setup/summary.js";
 
 /** TypeScript mirror of schema/report.v1.json. The schema is the source of truth. */
 export interface Report {
@@ -7,7 +8,7 @@ export interface Report {
   tool: { name: "pharn-ci"; version: string };
   verdict: Verdict;
   diffCoverage: ReportDiffCoverage | null;
-  agentSetup: { files: AgentSetupFile[] };
+  agentSetup: { files: AgentSetupFile[]; summary?: AgentSetupSummary };
   messages: Message[];
 }
 
@@ -116,7 +117,7 @@ export function buildReport(input: BuildReportInput): Report {
             coverableLines: dc.coverableLines,
             files: dc.files,
           },
-    agentSetup: { files: input.agentSetup.files },
+    agentSetup: { files: input.agentSetup.files, summary: summarizeAgentSetup(input.agentSetup.files) },
     messages,
   };
 }

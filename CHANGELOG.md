@@ -17,6 +17,12 @@ release is cut.
   optional, inclusive threshold gate (`threshold` input, `--threshold`, `coverage.threshold`).
 - Agent setup inventory: `CLAUDE.md`, `AGENTS.md`, `.claude/` settings, skills, hooks, agents and
   commands, `.cursor/rules`, `.cursorrules`, `.github/copilot-instructions.md`, `.mcp.json`.
+- Agent setup inventory: new kinds `claude-local-md`, `gemini-md`, `copilot-instructions-scoped`,
+  `copilot-agents`, `copilot-prompts`, `cursor-mcp`, `vscode-mcp`, `codex-config`, `windsurf-rules`
+  and `cline-rules`; `.mcp.json`, `.claude/` files and `.cursor/rules/` are now also found in nested
+  directories, and the more specific directory rule wins over a file-name rule.
+- Report v1: optional `agentSetup.summary` (counts per kind and the tools involved), and an
+  `Agent setup: N files · tools` line in the markdown, with the table collapsed above 25 files.
 - Report v1 (`schema/report.v1.json`), the stable JSON output, with message codes
   `DIFF_COVERAGE_BELOW_THRESHOLD`, `NO_COVERABLE_CHANGES`, `COVERAGE_FILE_MISSING`,
   `COVERAGE_FILE_EMPTY`, `DIFF_UNAVAILABLE` and `NO_AGENT_SETUP_FILES`.

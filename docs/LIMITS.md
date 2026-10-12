@@ -79,12 +79,22 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   does not validate their syntax, judge their content, or check them for prompt injection.
 - **Only tracked files are seen.** The list comes from `git ls-files`, so untracked or ignored
   files (a typical `.claude/settings.local.json`) are not listed.
-- **The kinds detected are fixed:** `CLAUDE.md` and `AGENTS.md` anywhere in the tree;
-  `.claude/settings.json`, `.claude/settings.local.json`, `.cursorrules`,
-  `.github/copilot-instructions.md` and `.mcp.json` at the root; and files under `.claude/skills/`,
-  `.claude/hooks/`, `.claude/agents/`, `.claude/commands/` and `.cursor/rules/`. Not detected yet,
-  among others: `CLAUDE.local.md`, `GEMINI.md`, `.github/instructions/`, `.vscode/mcp.json`,
-  `.cursor/mcp.json`, and nested `.mcp.json` or `.claude/` directories.
+- **The kinds detected are fixed (21):** `claude-md`, `claude-local-md`, `agents-md`, `gemini-md`,
+  `claude-settings`, `claude-settings-local`, `claude-skill`, `claude-hook`, `claude-agent`,
+  `claude-command`, `cursor-rules`, `cursor-mcp`, `copilot-instructions`,
+  `copilot-instructions-scoped`, `copilot-agents`, `copilot-prompts`, `vscode-mcp`, `codex-config`,
+  `windsurf-rules`, `cline-rules` and `mcp-config`.
+- **Nested directories:** `CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`, `GEMINI.md` and `.mcp.json`
+  match anywhere in the tree, as do `.claude/settings.json`, `.claude/settings.local.json` and
+  files under `.claude/skills/`, `.claude/hooks/`, `.claude/agents/`, `.claude/commands/` and
+  `.cursor/rules/`. Everything else matches at the repo root only: `.cursor/mcp.json`,
+  `.vscode/mcp.json`, `.codex/config.toml`, `.cursorrules`, `.windsurfrules`, `.windsurf/rules/`,
+  `.clinerules` and everything under `.github/`.
+- **Precedence:** a path is classified by the first matching rule, and rules tied to a directory
+  or full path come before the file-name rules. So `.claude/agents/CLAUDE.md` is a `claude-agent`,
+  not a `claude-md`.
+- **The summary is derived.** `agentSetup.summary` holds counts per kind and the tools those kinds
+  belong to, from a fixed list. It is computed from the file list and says nothing about content.
 
 ## 5. Security limits
 

@@ -36,6 +36,10 @@
           "description": "Agent setup files tracked in the repo, sorted by path.",
           "type": "array",
           "items": { "$ref": "#/$defs/agentSetupFile" }
+        },
+        "summary": {
+          "description": "Optional. Counts and tools derived from files; consumers can recompute it.",
+          "$ref": "#/$defs/agentSetupSummary"
         }
       }
     },
@@ -102,9 +106,28 @@
       "properties": {
         "path": { "type": "string", "minLength": 1 },
         "kind": {
-          "description": "Known kinds: claude-md, agents-md, claude-settings, claude-settings-local, claude-skill, claude-hook, claude-agent, claude-command, cursor-rules, copilot-instructions, mcp-config. New kinds may be added within v1; consumers must tolerate unknown kinds.",
+          "description": "Known kinds: claude-md, agents-md, claude-settings, claude-settings-local, claude-skill, claude-hook, claude-agent, claude-command, cursor-rules, copilot-instructions, mcp-config, claude-local-md, gemini-md, copilot-instructions-scoped, copilot-agents, copilot-prompts, cursor-mcp, vscode-mcp, codex-config, windsurf-rules, cline-rules. New kinds may be added within v1; consumers must tolerate unknown kinds.",
           "type": "string",
           "pattern": "^[a-z][a-z0-9-]*$"
+        }
+      }
+    },
+    "agentSetupSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["byKind", "tools"],
+      "properties": {
+        "byKind": {
+          "description": "Number of agent setup files per kind, derived from files. Lists only the kinds that are present.",
+          "type": "object",
+          "propertyNames": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "additionalProperties": { "type": "integer", "minimum": 1 }
+        },
+        "tools": {
+          "description": "Distinct agent tools that read the present kinds, derived from files and sorted. Drawn from a fixed list.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["claude-code", "cursor", "copilot", "codex", "gemini", "windsurf", "cline", "mcp"] }
         }
       }
     },

@@ -72,7 +72,25 @@
         "path": "packages/web/CLAUDE.md",
         "kind": "claude-md"
       }
-    ]
+    ],
+    "summary": {
+      "byKind": {
+        "agents-md": 1,
+        "claude-md": 2,
+        "claude-settings": 1,
+        "claude-skill": 1,
+        "copilot-instructions": 1,
+        "cursor-rules": 1,
+        "mcp-config": 1
+      },
+      "tools": [
+        "claude-code",
+        "codex",
+        "copilot",
+        "cursor",
+        "mcp"
+      ]
+    }
   },
   "messages": [
     {
