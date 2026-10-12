@@ -87,7 +87,7 @@ describe("golden: fixture diff + lcov -> Report v1", () => {
     expect(report.messages.map((m) => m.code)).toEqual(["NO_COVERABLE_CHANGES", "NO_AGENT_SETUP_FILES"]);
   });
 
-  it("warns when the diff is unavailable", () => {
+  it("fails when the diff is unavailable and a threshold is set", () => {
     const report = check({
       version: "0.1.0",
       coverage: { text: "", format: "lcov" },
@@ -96,6 +96,6 @@ describe("golden: fixture diff + lcov -> Report v1", () => {
       repoFiles,
     });
     expectValidReport(report);
-    expect(report.verdict).toBe("warn");
+    expect(report.verdict).toBe("fail");
   });
 });

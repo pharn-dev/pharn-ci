@@ -43,15 +43,18 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
 - **Percentages are rounded to two decimals** and compared after rounding, so the verdict agrees
   with the number shown. 100% and 0% are reserved for exactly all and exactly none covered.
 
-## 2. When the gate is soft
+## 2. When an input is missing
 
-- **`DIFF_UNAVAILABLE` is a warning, never a failure,** even with a threshold. It is reported when
-  there is no base to diff against (a push without a previous commit, or no `base-ref` outside a
-  pull request), when neither local git nor the GitHub API can produce the diff (for example a
-  shallow checkout and an API error), and when a `pull_request_target` run checked out the base
-  branch. Use `fetch-depth: 0` and a `pull_request` trigger and this does not happen in practice.
-- **A missing or empty coverage file fails only with a threshold.** `COVERAGE_FILE_MISSING` and
-  `COVERAGE_FILE_EMPTY` are errors when a threshold is set and warnings otherwise.
+- **A missing input fails only with a threshold.** `COVERAGE_FILE_MISSING`, `COVERAGE_FILE_EMPTY`,
+  `COVERAGE_FORMAT_UNSUPPORTED` and `DIFF_UNAVAILABLE` are errors, and the verdict is `fail`, when a
+  threshold is set (0 included): a gate that cannot measure fails closed. Without a threshold they
+  are warnings.
+- **`DIFF_UNAVAILABLE` has several causes.** It is reported when there is no base to diff against (a
+  push without a previous commit, or no `base-ref` outside a pull request), when neither local git
+  nor the GitHub API can produce the diff (for example a shallow checkout and an API error), when
+  the diff is over the size limit, and when a `pull_request_target` run checked out the base branch.
+  Use `fetch-depth: 0` (or let the GitHub API fallback fetch the diff) and a `pull_request` trigger
+  and this does not happen in practice.
 - **`fail-on-threshold: false` makes the step report, not gate.** The verdict and outputs are still
   set.
 

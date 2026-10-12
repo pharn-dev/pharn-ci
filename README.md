@@ -332,7 +332,6 @@ git.
   alters its test setup can produce a favorable one.
 - **Exclusions come from the PR.** The config and workflow a PR carries decide which of its files
   are left out of the measurement ([Excluding files](#excluding-files)).
-- **The gate is soft when the diff is unavailable.** `DIFF_UNAVAILABLE` warns instead of failing.
 
 ---
 

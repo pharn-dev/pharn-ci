@@ -13,6 +13,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- `DIFF_UNAVAILABLE` is now an error, and the verdict `fail`, when a threshold is set (a warning
+  without one), like a missing, empty or unrecognized coverage file. If a shallow checkout makes
+  the diff unavailable, use `actions/checkout` with `fetch-depth: 0` or rely on the GitHub API
+  fallback.
+
 ### Security
 
 ## [0.1.0] - YYYY-MM-DD
