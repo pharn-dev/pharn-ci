@@ -16,11 +16,14 @@ export const COMMENT_MARKER = "<!-- pharn-ci -->";
 export interface IssueComment {
   id: number;
   body?: string | null | undefined;
+  user?: { login: string } | null | undefined;
 }
 
 /** The slice of the GitHub API the action uses. */
 export interface GitHubApi {
   compareDiff(basehead: string): Promise<string>;
+  /** Login the token comments as, so only pharn-ci's own comment is ever updated. */
+  viewerLogin(): Promise<string>;
   listComments(issueNumber: number): Promise<IssueComment[]>;
   createComment(issueNumber: number, body: string): Promise<void>;
   updateComment(commentId: number, body: string): Promise<void>;
@@ -53,6 +56,10 @@ export interface ActionDeps {
 }
 
 const ZERO_SHA = /^0+$/;
+
+/** GitHub rejects comments over 65,536 characters; stay below that with room for the note. */
+export const MAX_COMMENT_LENGTH = 65_000;
+const TRUNCATED_NOTE = "\n\n_Truncated: the full report is in the job summary and report.json._\n";
 
 export async function run(deps: ActionDeps): Promise<Report | undefined> {
   try {
@@ -90,7 +97,8 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
 
   const checkInput: CheckInput = {
     version: VERSION,
-    coverage: coverageText === null ? { missingFile: coverageFile } : { text: coverageText, format },
+    coverage:
+      coverageText === null ? { missingFile: coverageFile } : { text: coverageText, format, file: coverageFile },
     diff: await getDiff(input("base-ref"), deps),
     repoRoot: deps.workspace,
     threshold,
@@ -109,7 +117,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     .writeSummary(markdown)
     .catch((err: unknown) => deps.warning(`could not write job summary: ${String(err)}`));
 
-  if (comment && pr) await upsertComment(deps, pr.number, `${COMMENT_MARKER}\n${markdown}`);
+  if (comment && pr) await upsertComment(deps, pr.number, fitComment(`${COMMENT_MARKER}\n${markdown}`));
 
   deps.info(`pharn-ci verdict: ${report.verdict}`);
   if (report.verdict === "fail" && failOnThreshold) {
@@ -121,6 +129,8 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
 
 /** Diff of the change under test: base...HEAD, from local git if possible, else the GitHub API. */
 async function getDiff(baseRefInput: string, deps: ActionDeps): Promise<CheckInput["diff"]> {
+  // A leading "-" would reach git as an option (e.g. --output=<file>), not a revision.
+  if (baseRefInput.startsWith("-")) throw new Error(`base-ref "${baseRefInput}" must not start with "-"`);
   const { context } = deps;
   const pr = context.payload.pull_request;
   const base =
@@ -131,6 +141,22 @@ async function getDiff(baseRefInput: string, deps: ActionDeps): Promise<CheckInp
 
   // pull_request checks out the merge commit (context.sha); pull_request_target checks out the base.
   const head = context.eventName === "pull_request_target" && pr ? pr.head.sha : context.sha;
+
+  // On pull_request_target the default checkout is the base branch, so a local base...HEAD diff is
+  // empty and would pass as NO_COVERABLE_CHANGES while measuring nothing of the PR.
+  if (context.eventName === "pull_request_target" && pr) {
+    const localHead = await deps.git(["rev-parse", "HEAD"]).then(
+      (out) => out.trim(),
+      () => null,
+    );
+    if (localHead !== null && localHead !== pr.head.sha) {
+      return {
+        unavailable:
+          "pull_request_target checks out the base branch, not the PR; check out the PR head " +
+          "(ref: github.event.pull_request.head.sha) to measure it",
+      };
+    }
+  }
 
   const localBase = await resolveLocal(base, deps);
   if (localBase) {
@@ -144,6 +170,7 @@ async function getDiff(baseRefInput: string, deps: ActionDeps): Promise<CheckInp
           "--find-renames",
           "--src-prefix=a/",
           "--dst-prefix=b/",
+          "--end-of-options",
           `${localBase}...HEAD`,
         ]),
       };
@@ -172,6 +199,14 @@ async function resolveLocal(base: string, deps: ActionDeps): Promise<string | nu
   return null;
 }
 
+/** Cut an over-long comment at a line break and point to the full report. */
+export function fitComment(body: string): string {
+  if (body.length <= MAX_COMMENT_LENGTH) return body;
+  const limit = MAX_COMMENT_LENGTH - TRUNCATED_NOTE.length;
+  const cut = body.lastIndexOf("\n", limit);
+  return `${body.slice(0, cut > 0 ? cut : limit)}${TRUNCATED_NOTE}`;
+}
+
 /** Create or update the one comment carrying COMMENT_MARKER. Never posts duplicates. */
 export async function upsertComment(
   deps: Pick<ActionDeps, "api" | "info" | "warning">,
@@ -179,8 +214,9 @@ export async function upsertComment(
   body: string,
 ) {
   try {
-    const comments = await deps.api.listComments(issueNumber);
-    const existing = comments.find((c) => c.body?.includes(COMMENT_MARKER));
+    const [comments, viewer] = await Promise.all([deps.api.listComments(issueNumber), deps.api.viewerLogin()]);
+    // Anyone can post a comment containing the marker; only update the one this token wrote.
+    const existing = comments.find((c) => c.user?.login === viewer && c.body?.startsWith(COMMENT_MARKER));
     if (existing) {
       await deps.api.updateComment(existing.id, body);
       deps.info(`updated pharn-ci comment ${existing.id}`);

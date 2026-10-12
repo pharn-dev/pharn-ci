@@ -46,6 +46,39 @@ describe("parseYamlSubset", () => {
   });
 });
 
+describe("parseYamlSubset on hostile input", () => {
+  // The config file comes from the PR, so parsing must stay linear. These inputs are generated, not
+  // stored in fixtures/: they are 100k characters of one repeated character. With the earlier
+  // quadratic regexes each took seconds to tens of seconds; linear parsing takes milliseconds.
+  const n = 100_000;
+
+  it.each([
+    ["a run of inner whitespace", `a: b${" ".repeat(n)}c\n`, `b${" ".repeat(n)}c`],
+    ["a long run of digits that is not a number", `a: ${"1".repeat(n)}x\n`, `${"1".repeat(n)}x`],
+    [
+      "a long number-like value with a dot",
+      `a: ${"1".repeat(n)}.${"2".repeat(n)}e\n`,
+      `${"1".repeat(n)}.${"2".repeat(n)}e`,
+    ],
+  ])("parses %s in linear time", (_label, text, value) => {
+    const start = performance.now();
+    expect(parseYamlSubset(text)).toEqual({ a: value });
+    expect(performance.now() - start).toBeLessThan(1000);
+  });
+
+  it("still reads numbers the same way", () => {
+    expect(parseYamlSubset("a: 1\nb: 1.\nc: .5\nd: -2.5e3\ne: +7\nf: 1.2.3\ng: e5\n")).toEqual({
+      a: 1,
+      b: 1,
+      c: 0.5,
+      d: -2500,
+      e: 7,
+      f: "1.2.3",
+      g: "e5",
+    });
+  });
+});
+
 describe("parseThreshold", () => {
   it("accepts numbers and numeric strings in range", () => {
     expect(parseThreshold("0")).toBe(0);

@@ -21,6 +21,15 @@ const api: GitHubApi = {
     // With the diff media type the response body is the raw diff text.
     return res.data as unknown as string;
   },
+  async viewerLogin() {
+    // Works for a personal or user token. The default GITHUB_TOKEN cannot read /user, and it
+    // comments as github-actions[bot].
+    try {
+      return (await octokit.rest.users.getAuthenticated()).data.login;
+    } catch {
+      return "github-actions[bot]";
+    }
+  },
   listComments: (issueNumber) =>
     octokit.paginate(octokit.rest.issues.listComments, { owner, repo, issue_number: issueNumber, per_page: 100 }),
   async createComment(issueNumber, body) {

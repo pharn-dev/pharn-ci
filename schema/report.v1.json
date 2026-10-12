@@ -115,7 +115,7 @@
       "properties": {
         "level": { "enum": ["info", "warn", "error"] },
         "code": {
-          "description": "Stable identifier; branch on this, never on text. Known codes: DIFF_COVERAGE_BELOW_THRESHOLD, NO_COVERABLE_CHANGES, COVERAGE_FILE_MISSING, DIFF_UNAVAILABLE, NO_AGENT_SETUP_FILES. New codes may be added within v1; consumers must tolerate unknown codes.",
+          "description": "Stable identifier; branch on this, never on text. Known codes: DIFF_COVERAGE_BELOW_THRESHOLD, NO_COVERABLE_CHANGES, COVERAGE_FILE_MISSING, COVERAGE_FILE_EMPTY, DIFF_UNAVAILABLE, NO_AGENT_SETUP_FILES. New codes may be added within v1; consumers must tolerate unknown codes.",
           "type": "string",
           "pattern": "^[A-Z][A-Z0-9_]*$"
         },

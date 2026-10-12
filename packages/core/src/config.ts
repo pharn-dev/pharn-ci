@@ -38,7 +38,9 @@ export function parseYamlSubset(text: string): YamlMap {
   const lines = text.replace(/^﻿/, "").split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
     const lineNo = i + 1;
-    const raw = stripComment(lines[i] as string).replace(/\s+$/, "");
+    // trimEnd, not /\s+$/: the regex is quadratic on a long run of inner whitespace, and the
+    // config file comes from the PR.
+    const raw = stripComment(lines[i] as string).trimEnd();
     if (raw.trim() === "") continue;
     if (raw.trim() === "---" && i === 0) continue;
     if (/^\s*\t/.test(raw)) throw new ConfigError(`line ${lineNo}: tabs are not allowed for indentation`);
@@ -112,7 +114,8 @@ function parseScalar(value: string, lineNo: number): Scalar {
   if (v === "true") return true;
   if (v === "false") return false;
   if (v === "null" || v === "~") return null;
-  if (/^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(v)) return Number(v);
+  // No overlapping quantifiers (the old `\d+\.?\d*` was quadratic on a long run of digits).
+  if (/^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$/.test(v)) return Number(v);
   return v;
 }
 

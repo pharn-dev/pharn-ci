@@ -68,6 +68,7 @@ describe("cli main", () => {
     const diff = deps.gitCalls.find((a) => a[0] === "diff");
     expect(diff).toContain("--unified=0");
     expect(diff?.at(-1)).toBe("origin/main...HEAD");
+    expect(diff?.at(-2)).toBe("--end-of-options");
   });
 
   it("uses --base", async () => {
@@ -106,6 +107,10 @@ describe("cli main", () => {
     [["check", "--coverage", "x", "--threshold", "abc"], "--threshold must be a number"],
     [["check"], "no coverage file"],
     [["check", "--coverage", "x", "--config", "missing.yml"], "config file not found"],
+    [
+      ["check", "--coverage", "x", "--base=--output=/tmp/pwned"],
+      '--base "--output=/tmp/pwned" must not start with "-"',
+    ],
   ])("exits 2 for %j", async (argv, message) => {
     const deps = fakeDeps({});
     expect(await main(argv, deps)).toBe(EXIT_ERROR);
