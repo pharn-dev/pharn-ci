@@ -6,7 +6,21 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/dist", "!fixtures"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!fixtures",
+      "!pharn",
+      "!.pharn",
+      "!.claude/commands/pharn-*.md",
+      "!.claude/hooks",
+      "!.claude/settings.json",
+      "!CLAUDE.md",
+      "!LIMITS.md",
+      "!THREAT-MODEL.md",
+      "!pharn.config.json",
+      "!pharn.records.json"
+    ]
   },
   "formatter": {
     "enabled": true,

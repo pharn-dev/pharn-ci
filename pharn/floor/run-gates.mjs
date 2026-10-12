@@ -1,0 +1,1334 @@
+#!/usr/bin/env node
+// pharn/floor/run-gates.mjs — the EXECUTION half of the gate runner: it runs each gate and records its
+// exit code, so the `{gate-id: exit-int}` map both verdict cores consume is produced by tested code
+// rather than typed by a model. The grammar/coverage half is gate-run-core.mjs and the hashing half is
+// worktree-fingerprint.mjs (P3, one axis per file: this file changes when EXECUTION changes).
+//
+// ================================== THE SHAPE, AND WHY IT IS THIS ==================================
+//
+// TWO subcommands, ONE Bash call each, because the harness runs each fenced block as its own process
+// and a long suite must not be wrapped in a loop the harness can kill mid-run:
+//
+//   init      resolves the set ONCE, wipes and recreates <out>, writes the in-progress record, prints the
+//             ordered ids. Exits 3 — writing no state — iff the SOURCE set is empty; injected entries
+//             never make a set non-empty (gate-run-core computes that refusal before injection, L34).
+//   run --next runs exactly the next unrun entry in spec order, prints {ran, exit, timed_out, remaining},
+//             and exits 0. A FAILING GATE IS DATA, NOT A RUNNER ERROR — exit 0 with a non-zero `exit`.
+//             Exit 3 when nothing remains; exit 2 on a runner error, carrying a closed `reason_code`.
+//             The call that runs the LAST entry also finalizes.
+//
+// The model never types a gate id and never captures an exit code, so there is nothing to mistype or
+// omit (lessons-learned L22: pin the command line rather than describing the technique; L30: the gate a
+// step ASKS for is the one that gets skipped — here the step asks for nothing).
+//
+// ===================================== PATH RESOLUTION =====================================
+// EVERY path operand — `--out`, `--spec-from`, `--discover`, `--scope-json`, `--ac-tests` — resolves against the
+// directory the runner is INVOKED from, and containment is checked against THAT directory's `.pharn/`.
+// `--cwd` changes exactly two things: where the gates EXECUTE, and which tree is fingerprinted (and whose
+// HEAD is recorded). It never moves the runner's own records.
+//
+// Why, stated because the other reading was shipped and was wrong (lessons-learned L45): `init` used to
+// resolve `--out` and `--spec-from` against `--cwd`, while `run --next` — which takes no `--cwd` — resolved
+// `--out` against the invoking directory. The two subcommands therefore disagreed about where the record
+// lived whenever `--cwd` was not `.`, and the one caller that passes it (`stage-regress.mjs`'s base side,
+// `--cwd .pharn/pharn-regress/base`) failed at `init` with `spec-mismatch`, reading the head record
+// from INSIDE the base worktree. Every test ran with the default `--cwd .`, so nothing saw it (L41).
+//
+// The corollary: `init` and every `run --next` for one `<out>` must be issued from the SAME directory.
+// Every pinned caller issues both from the repo root.
+//
+// ==================================== SINGLE STORE (L35) ====================================
+// `<out>/state.json` is the stamp IN PROGRESS (`finalized: false`). Finalizing writes `<out>/stamp.json`
+// and REMOVES the state file, so exactly ONE store of the map exists at rest. No `results.json` is ever
+// written: a second copy plus an equality check would certify agreement, not the fact (L43).
+//
+// ===================================== BOUNDS, NAMED =====================================
+//   • POSIX only. Process groups, SIGTERM->SIGKILL escalation and `/bin/sh` are assumed.
+//   • Gates are assumed ORDER-INDEPENDENT. ALLOWLIST order is fixed and recorded, but a gate needing
+//     another's output must build it itself (e.g. a `pretest` script).
+//   • A descendant that calls `setsid` leaves the process group and escapes the group kill.
+//   • If the HARNESS kills this process before its own `--timeout-ms` fires: a SIGTERM, SIGINT or SIGHUP is
+//     FORWARDED to the gate's group and the runner then dies by that signal, recording nothing for the entry; a
+//     SIGKILL cannot be caught, so the group is orphaned until the next `run --next` recovers the stale lock and
+//     stops the group `<out>/lock.child` names before re-running the entry (reapOrphanGroup, audit P3-P). That
+//     is why the invoking command's Bash timeout must still exceed `--timeout-ms`, and why `--timeout-ms` is
+//     REQUIRED rather than defaulted: floor code carries no harness-specific default, so there is no default
+//     for a test to leave unexercised (lessons-learned L41).
+//   • `CI=1` is added to the environment of the test-level gates (CI_GATE_IDS) unless `CI` is already defined,
+//     so vitest and Jest refuse to write a missing snapshot (audit P2-F).
+//   • `--gates` TOKENS ARE COMMA-SEPARATED, so a command containing a literal comma cannot be expressed
+//     there — the same convention check-regress.mjs's `--eval-pairs` uses. Such a gate goes in a wrapper
+//     script whose path has no comma. Stated because a split token fails in a confusing place.
+//   • NO SHELL COMMAND STRING IS EVER PARSED. argv entries never touch a shell; a `--gates` shell token
+//     is handed to `/bin/sh -c '<cmd> "$@"' sh <files…>` so file names arrive as POSITIONAL arguments and
+//     are never interpolated into the command text.
+//   • Gate stdout/stderr go to files BY FD, never through a pipe buffer, so there is no `maxBuffer` kill
+//     and a large log cannot truncate a verdict. Only their sha256 reaches the stamp; no verdict reads
+//     their content (P2 — they are untrusted free text).
+//   • LOG GROWTH: `init` recreates `<out>`, which bounds growth WITHIN a stage. Across iterations of
+//     /pharn-loop the logs accumulate under the git-ignored state root and nothing prunes them. Stated
+//     rather than discovered.
+//
+// ================================ PER-TEST RESULTS (6.15.0) ================================
+// Every gate is spawned with ONE extra environment variable, `PHARN_TEST_RESULTS` (gate-run-core's
+// RESULTS_ENV), valued with that gate's OWN absolute path under `<out>`, named by gate-run-core's
+// resultsFileName (one copy of the rule). A project's reporter config may write its results there. The rest of
+// the inherited environment is passed unchanged, except that a test-level gate also gets `CI=1` when `CI` is not
+// already defined (gateEnv, audit P2-F). The runner REMOVES that path before spawning — `init`'s wipe
+// does not cover a stale-lock re-run, which would otherwise hash the crashed attempt's file — and afterwards
+// records `results_sha256`: the sha256 of the path if it is a REGULAR file, else `null`. The file is read
+// through a descriptor opened O_NOFOLLOW|O_NONBLOCK and fstat-checked on that same descriptor, in fixed-size
+// chunks: a symlink, FIFO or device is never followed or blocked on, there is no check-then-use window, and a
+// large file costs no more memory than one chunk. The file is project-written and UNTRUSTED; the runner only
+// hashes it. What it MEANS is test-results-core.mjs's business (pharn-contracts/test-results-record.md).
+//
+// ================================ REUSED EXECUTIONS (6.34.0) ================================
+// `init --stage verify --reuse-stamp <regress-head stamp> --reuse-sha256 <hex>` OFFERS a finalized /pharn-regress HEAD
+// stamp — the caller (`stage-verify.mjs`) names it only when this run's git-dir offer binds those bytes
+// (head-reuse-offer.mjs). Init reads it once (a regular file, never followed, capped), requires the named digest, and
+// binds it in the in-progress record (`reuse`). Each
+// `run --next` then computes the entry's EXECUTION IDENTITY (gate-reuse-core.mjs) at the live tree and records it on
+// EVERY run as `identity_sha256`; for a verify entry with a source, it re-reads the source, requires the same bytes,
+// asks `findReusable`, and copies the candidate's two logs into `<out>` only after each hashes to the digest the source
+// recorded. A HIT records `gate-reuse-core.mjs reusedRunRecord` and SPAWNS NOTHING; any miss runs the gate exactly as
+// before. An offer that cannot be read is `reuse` absent — never a refusal: reuse is an optimisation, never a
+// requirement. The `reuse` field lives in the in-progress record only; a finalized stamp carries the provenance per run.
+// NAMED residual `verify-paused-chain-integrity`: while a budgeted verify chain is paused at `continue`, `state.json` —
+// its `reuse` binding included — is ordinary `.pharn/` state the write tools reach, exactly as its `runs` already are.
+//
+// ================================ GATE EXCLUSION (6.36.0) ================================
+// `init --discover <m>` (no `--gates`) reads the project's `gates.exclude` from the `pharn.config.json` beside `<m>`
+// (gate-exclusion-core.mjs) and hands it to resolveSet; a bad declaration is `bad-gate-exclusion`, nothing written. The
+// record (and so the stamp) carries the `excluded` block only when discovery removed an id; `init` prints its ids.
+//
+// TRUST (P2): every operand is a path, an integer or a hex digest. Untrusted inputs — a `--gates`
+// string, a `--extra` array, a scope JSON — are shape-gated by gate-run-core.mjs before use and are
+// never eval'd, imported, or compiled into a RegExp.
+//
+// Usage:
+//   node pharn/floor/run-gates.mjs init --stage verify|regress|entry [--side base|head] --feature <name>
+//        --out <dir> [--cwd <dir>] [--base <featureBase>] [--discover <package.json>] [--gates "<c>[::<id>],…"]
+//        [--extra <json-array>] [--scope-json <file>] [--skip-style] [--spec-from <dir>]
+//        [--reuse-stamp <file> --reuse-sha256 <hex>]
+//     `--reuse-stamp` (6.34.0) applies to `--stage verify` only, always with the offered bytes' `--reuse-sha256`: see
+//     REUSED EXECUTIONS above. `--base-tests <json-array-file>` (6.49.0) applies to `--stage entry` only: the entry
+//     check's evidence-only `base:test` slot (gate-run-core.mjs ENTRY_BASE_TEST_ID), the discovered `test` command handed
+//     exactly those files (each through ac-tests-core.mjs `badPath`), right after the style gates.
+//   node pharn/floor/run-gates.mjs init --stage ac-test --feature <name> --out <dir> --discover <package.json>
+//        --ac-tests <pharn/features/<name>/AC-TESTS.md> [--cwd <dir>]
+//     /pharn-test's RED RUN (6.18.0). The set is selected BY ID from the mapping's levels (gate-run-core.mjs
+//     LEVEL_GATES), and each gate is handed exactly the mapped files of its levels: unit/integration to `test`,
+//     e2e to each e2e gate. The mapping is read by ac-tests-core.mjs `acRowsOf` — the grammar's one home, the one
+//     check-ac-tests.mjs checks with (L35) — so a file the mapping checker would refuse (a leading `-` a runner
+//     would read as a flag, a glob, an absolute path) never reaches a gate's argv.
+//   node pharn/floor/run-gates.mjs init --stage build --feature <name> --out <dir> (--discover <package.json> |
+//        --gates "<c>[::<id>],…") [--targets <json-array-file>] [--cwd <dir>]
+//     /pharn-build's own gate (6.39.0), run by build-gate.mjs: the DISCOVERED set minus the e2e gates, or a human's
+//     explicit --gates, never filtered; no reconcile, no aux.completeness; with `--targets`, the `test` gate alone,
+//     handed those files (each through ac-tests-core.mjs `badPath`). `--extra`, `--skip-style`, `--scope-json`,
+//     `--spec-from`, `--side`, `--base` are refused.
+//   node pharn/floor/run-gates.mjs run --next --out <dir> --timeout-ms <N>
+//
+// Exit: init  0 ok · 2 runner error (reason_code) · 3 empty SOURCE set (nothing written)
+//       run   0 an entry ran (or none remained to claim) · 2 runner error (reason_code) · 3 nothing left
+
+import "./runtime-floor.mjs";
+import { createHash } from "node:crypto";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  closeSync,
+  fstatSync,
+  readSync,
+  readFileSync,
+  writeFileSync,
+  renameSync,
+  rmSync,
+  unlinkSync,
+  realpathSync,
+  constants as fsConstants,
+} from "node:fs";
+import { basename, dirname, resolve, join, sep } from "node:path";
+import { spawn, spawnSync, execFileSync } from "node:child_process";
+import { constants as osConstants } from "node:os";
+import {
+  SCHEMA,
+  STRUCTURAL_PREFIX,
+  RESULTS_ENV,
+  LEVEL_GATES,
+  ENTRY_BASE_TEST_ID,
+  REUSED_REASON,
+  REUSE_TARGET_STAGE,
+  isReasonCode,
+  resolveSet,
+  baseSpecFrom,
+  completenessArgv,
+  actualForExpected,
+  logBasename,
+  resultsFileName,
+} from "./gate-run-core.mjs";
+import { fingerprint } from "./worktree-fingerprint.mjs";
+import { acRowsOf, badPath } from "./ac-tests-core.mjs";
+import { executionIdentity, findReusable, reusedRunRecord } from "./gate-reuse-core.mjs";
+import { loadGateExclusion } from "./gate-exclusion-core.mjs";
+
+const STATE_ROOT = ".pharn";
+/** Grace between SIGTERM and SIGKILL, and the pid-reuse margin on a stale lock. */
+const KILL_GRACE_MS = 2000;
+const LOCK_GRACE_MS = 30000;
+
+/** ------------------------------------------------------------------------------------------------
+ *  Emit + exit. One JSON document on stdout, always — a caller parses stdout and branches on the exit
+ *  code, never on prose.
+ *  ---------------------------------------------------------------------------------------------- */
+/** The lock this invocation holds, if any. `emit()` calls `process.exit()`, which does NOT run a
+ *  `finally` block — so a try/finally around the work would never release it, and every call would leave
+ *  its lock for the next one to recover as stale. Releasing here is what makes the lock a lock rather
+ *  than a speed bump that happens to clear itself. Found by the test that asserts the lock is gone after
+ *  a NORMAL call, not by reading the code. */
+let heldLock = null;
+
+function emit(obj, code) {
+  if (heldLock) {
+    releaseLock(heldLock);
+    heldLock = null;
+  }
+  console.log(JSON.stringify(obj, null, 2));
+  process.exit(code);
+}
+
+function fail(reason_code, reason) {
+  // Fail-closed: the vocabulary is closed, so a refusal cannot be invented at the call site.
+  if (!isReasonCode(reason_code)) throw new Error(`internal: '${reason_code}' is not a closed reason_code`);
+  emit({ ok: false, reason_code, reason }, 2);
+}
+
+function flag(args, name) {
+  const i = args.indexOf(name);
+  return i !== -1 && i + 1 < args.length ? args[i + 1] : undefined;
+}
+
+function has(args, name) {
+  return args.includes(name);
+}
+
+/** ------------------------------------------------------------------------------------------------
+ *  CONTAINMENT. Every path this runner writes or deletes must resolve STRICTLY inside the state root,
+ *  must not BE the state root, and may not traverse a symlink at any component. Checked once per
+ *  invocation, before anything is created — a check performed after a write is not a containment check.
+ *
+ *  `base` is the directory `outDir` is resolved against and whose `.pharn/` is the state root. Both
+ *  subcommands pass the INVOKING directory, never `--cwd` (see PATH RESOLUTION in the header).
+ *  ---------------------------------------------------------------------------------------------- */
+function assertContained(outDir, base) {
+  const rootAbs = resolve(base, STATE_ROOT);
+  const outAbs = resolve(base, outDir);
+  if (outAbs === rootAbs) {
+    fail("path-containment", `--out may not BE the state root (${rootAbs}); use a subdirectory such as ${rootAbs}/pharn-verify/gates`);
+  }
+  if (!(outAbs + sep).startsWith(rootAbs + sep)) {
+    fail("path-containment", `--out must resolve strictly inside ${rootAbs}; got ${outAbs}`);
+  }
+  // Walk every component from the root down. lstat, never stat: stat FOLLOWS the link, which is exactly
+  // the case being refused. A component that does not exist yet is fine — it cannot be a symlink.
+  //
+  // ABSENCE IS PROVEN BY lstat's OWN ENOENT, never by `existsSync` (lessons-learned L54). `existsSync` is a
+  // stat, so a DANGLING link read as absent: the walk broke off before lstat saw it, and `mkdirSync` then
+  // crashed through the link with no document. The same guard read a FILE component as absent. Any other
+  // lstat error (ENOTDIR under a file, EACCES) is refused under `path-containment`. That is because
+  // the walk cannot PROVE the path safe, not because it found an escape. The closed vocabulary is not
+  // widened for it.
+  let cur = rootAbs;
+  const restParts = outAbs.slice(rootAbs.length).split(sep).filter(Boolean);
+  for (const part of [rootAbs, ...restParts.map((p) => p)]) {
+    cur = part === rootAbs ? rootAbs : join(cur, part);
+    let st;
+    try {
+      st = lstatSync(cur);
+    } catch (e) {
+      if (e && e.code === "ENOENT") break; // truly absent: lstat does not follow links, so a dangling one never lands here
+      fail("path-containment", `cannot lstat ${cur}: ${e.message}`);
+    }
+    if (st.isSymbolicLink()) {
+      fail("path-containment", `refusing a --out path that traverses a symlink at ${cur}`);
+    }
+  }
+  return outAbs;
+}
+
+/** Atomic write: a temp sibling, then rename. A reader never observes a half-written record. */
+function writeAtomic(file, text) {
+  const tmp = `${file}.tmp-${process.pid}`;
+  writeFileSync(tmp, text, "utf8");
+  renameSync(tmp, file);
+}
+
+function readJson(file) {
+  try {
+    return { ok: true, value: JSON.parse(readFileSync(file, "utf8")) };
+  } catch (e) {
+    return { ok: false, reason: e.message };
+  }
+}
+
+function sha256File(file) {
+  try {
+    return createHash("sha256").update(readFileSync(file)).digest("hex");
+  } catch {
+    return null;
+  }
+}
+
+/** The sha256 of a project-written file IF it is a regular file, else `null` — never following a symlink,
+ *  never blocking on a FIFO, and never holding more than one chunk in memory. The type test is `fstat` on
+ *  the descriptor that is then read, so no name is checked and then used (CWE-367). EXPORTED (6.33.0) so
+ *  regress-base-reuse.mjs re-hashes a retained base run's logs with the function that recorded its digests. */
+const RESULTS_OPEN_FLAGS = fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK;
+const HASH_CHUNK = 1 << 20;
+function sha256RegularFile(file) {
+  let fd;
+  try {
+    fd = openSync(file, RESULTS_OPEN_FLAGS);
+  } catch {
+    return null; // absent (ENOENT), a symlink (ELOOP), or unopenable — no file this record can bind to
+  }
+  try {
+    if (!fstatSync(fd).isFile()) return null;
+    const hash = createHash("sha256");
+    const buf = Buffer.alloc(HASH_CHUNK);
+    for (;;) {
+      const n = readSync(fd, buf, 0, HASH_CHUNK, null);
+      if (n === 0) break;
+      hash.update(buf.subarray(0, n));
+    }
+    return hash.digest("hex");
+  } catch {
+    return null;
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/** ------------------------------------------------------------------------------------------------
+ *  REUSE READS (6.34.0). The offered source and its logs are read WITHOUT following a link at any component under
+ *  the state root (lstat walk — ENOENT the only absence, L54) or at the last component (O_NOFOLLOW + fstat, L59), as
+ *  regular files only, capped — so a planted link, FIFO or huge file is a MISS, never followed, blocked on or loaded.
+ *  Every failure is returned, never thrown: a source that cannot be read runs the gate as before.
+ *  ---------------------------------------------------------------------------------------------- */
+const REUSE_MAX_BYTES = 64 * 1024 * 1024;
+
+function noLinkInside(base, relPath) {
+  const rootAbs = resolve(base, STATE_ROOT);
+  const abs = resolve(base, relPath);
+  if (!(abs + sep).startsWith(rootAbs + sep) || abs === rootAbs) return false;
+  let cur = rootAbs;
+  for (const part of [rootAbs, ...abs.slice(rootAbs.length).split(sep).filter(Boolean)]) {
+    cur = part === rootAbs ? rootAbs : join(cur, part);
+    let st;
+    try {
+      st = lstatSync(cur);
+    } catch (e) {
+      return e && e.code === "ENOENT"; // absent: nothing to follow (the open below then reports it)
+    }
+    if (st.isSymbolicLink()) return false;
+  }
+  return true;
+}
+
+function readRegularCapped(file) {
+  let fd;
+  try {
+    fd = openSync(file, RESULTS_OPEN_FLAGS);
+  } catch {
+    return null;
+  }
+  try {
+    const st = fstatSync(fd);
+    if (!st.isFile() || st.size > REUSE_MAX_BYTES) return null;
+    const buf = Buffer.alloc(st.size);
+    let off = 0;
+    while (off < st.size) {
+      const n = readSync(fd, buf, off, st.size - off, off);
+      if (n === 0) break;
+      off += n;
+    }
+    return off === st.size ? buf : null;
+  } catch {
+    return null;
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/** The offered source's bytes, or null — contained under the invoking directory's state root, never followed. */
+function readReuseSource(relPath) {
+  if (!noLinkInside(process.cwd(), relPath)) return null;
+  return readRegularCapped(resolve(relPath));
+}
+
+/** The gate's working directory as the identity binds it: its realpath (the directory the process really runs in),
+ *  or the resolved path when it cannot be resolved — which then matches nothing a realpath produced. */
+function cwdForIdentity(cwd) {
+  try {
+    return realpathSync(resolve(cwd));
+  } catch {
+    return resolve(cwd);
+  }
+}
+
+/** Try to stand a completed source execution in for `next`. Returns `{hit: true, run}` after BOTH logs were copied into
+ *  `<out>` byte-for-byte as the source recorded them, or `{hit: false, miss}`. Writes nothing but the two log files, and
+ *  only on the path to a HIT (a miss after a partial copy leaves logs spawnGate then truncates with "w"). */
+function tryReuse({ rec, next, liveFp, liveIdentity, outFile, errFile }) {
+  const bytes = readReuseSource(rec.reuse.stamp);
+  if (bytes === null || createHash("sha256").update(bytes).digest("hex") !== rec.reuse.stamp_sha256) {
+    return { hit: false, miss: "source-changed" };
+  }
+  let source;
+  try {
+    source = JSON.parse(bytes.toString("utf8"));
+  } catch {
+    return { hit: false, miss: "source-invalid" };
+  }
+  const found = findReusable({ source, feature: rec.feature, entry: next, liveIdentity });
+  if (!found.hit) return found;
+  const srcDir = dirname(rec.reuse.stamp);
+  const srcBase = logBasename(found.run.seq, found.run.id);
+  const copies = [
+    [join(srcDir, `${srcBase}.out`), outFile, found.run.stdout_sha256],
+    [join(srcDir, `${srcBase}.err`), errFile, found.run.stderr_sha256],
+  ];
+  for (const [from, to, expected] of copies) {
+    if (!noLinkInside(process.cwd(), from)) return { hit: false, miss: "log-unverified" };
+    const log = readRegularCapped(resolve(from));
+    if (log === null || createHash("sha256").update(log).digest("hex") !== expected) return { hit: false, miss: "log-unverified" };
+    writeFileSync(to, log);
+    if (sha256File(to) !== expected) return { hit: false, miss: "log-unverified" };
+  }
+  return {
+    hit: true,
+    run: reusedRunRecord({ entry: next, candidate: found.run, sourceSha256: rec.reuse.stamp_sha256, liveFp, liveIdentity }),
+  };
+}
+
+/** Remove a gate's results path before the gate runs, so the hash taken afterwards can only describe a file
+ *  THIS run wrote. Absent is the normal case. Whatever sits there — a file, a symlink (removed, never
+ *  followed), or a directory a previous attempt's gate created — is removed recursively: the path is a fixed
+ *  basename inside `<out>`, which assertContained() already proved is inside the state root. Only a path that
+ *  still cannot be removed (a permissions failure) is refused, under `path-containment`, the code this file
+ *  already uses when it cannot prove a path is its own; it is never hashed. */
+function clearResultsPath(file) {
+  try {
+    rmSync(file, { recursive: true, force: true });
+  } catch (e) {
+    fail("path-containment", `cannot clear the results path ${file} before the gate runs: ${e.message}`);
+  }
+}
+
+/** ------------------------------------------------------------------------------------------------
+ *  THE LOCK. `<out>/lock` holds `{pid, started_ms, timeout_ms}`. Parallel Bash calls are real in this
+ *  harness, so two `run --next` invocations could otherwise claim the same entry and double-run a gate.
+ *
+ *  Staleness has TWO independent triggers, and the second exists because of the first's flaw: a dead pid
+ *  is the normal signal, but pids are REUSED, so a long-dead runner's pid may be alive as something
+ *  else. The age test bounds that — a lock older than its own `--timeout-ms` plus a grace margin cannot
+ *  belong to a live run, whatever the pid says. Neither path is reachable from an end-to-end run (they
+ *  need a crashed runner), so each is exercised by a test that CONSTRUCTS the state directly — a default
+ *  no test reaches is a default that is wrong for a release line (lessons-learned L41).
+ *
+ *  THE CLAIM IS ONE CALL SITE, and that is the whole of `claimLock()`'s reason to exist. `wx` —
+ *  exclusive create — IS the claim: a separate existence test first would be a check-then-use (CWE-367,
+ *  CodeQL js/file-system-race), and so is a SECOND `wx` site, because that rule's "check" is `openSync`
+ *  every bit as much as `existsSync` — the first site dominates the second and the name can be replaced
+ *  between them. Removing only the `existsSync` member left the pair standing around the member the fix
+ *  ADDED, which is why the enumeration, not the member, is what a test may pin (lessons-learned L29/L36).
+ *
+ *  NOT CLAIMED — and an earlier comment here asserted the opposite, so the retraction is explicit:
+ *  two recoveries that both judged the SAME incumbent stale can BOTH end up holding the lock. A unlinks
+ *  and creates; B then unlinks A's FRESH lock and creates its own. The exclusive create decides a race
+ *  to CREATE on an unheld name; it cannot decide a race to REMOVE a held one, because POSIX has no
+ *  conditional unlink. What the lock does hold against is the case an end-to-end run produces — two
+ *  runners contending for a LIVE lock. Recovery is best-effort; closing it needs a second protocol
+ *  (an exclusive tombstone keyed to the incumbent's bytes), and no observed run has produced the race,
+ *  so it is a named residual rather than a build (P7): `run-gates-lock-recovery-race`.
+ *  ---------------------------------------------------------------------------------------------- */
+function pidAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    // EPERM means the process exists and belongs to another user — alive for our purposes.
+    return e.code === "EPERM";
+  }
+}
+
+function lockPath(outAbs) {
+  return join(outAbs, "lock");
+}
+
+function isStaleLock(lock, nowMs) {
+  if (lock === null || typeof lock !== "object") return true;
+  if (!Number.isInteger(lock.pid) || !Number.isInteger(lock.started_ms)) return true;
+  if (!pidAlive(lock.pid)) return true;
+  const budget = (Number.isInteger(lock.timeout_ms) ? lock.timeout_ms : 0) + LOCK_GRACE_MS;
+  return nowMs - lock.started_ms > budget;
+}
+
+/** The claim, and the file's ONLY `openSync(lp, …)`. `busy` is EEXIST — the one outcome a caller may
+ *  recover from; every other errno is a refusal, exactly as before. */
+function claimLock(lp, timeoutMs) {
+  let fd;
+  try {
+    fd = openSync(lp, "wx");
+  } catch (e) {
+    return { held: false, busy: e.code === "EEXIST" };
+  }
+  try {
+    writeFileSync(fd, JSON.stringify({ pid: process.pid, started_ms: Date.now(), timeout_ms: timeoutMs }));
+  } finally {
+    closeSync(fd);
+  }
+  return { held: true, busy: false };
+}
+
+function takeLock(outAbs, timeoutMs) {
+  const lp = lockPath(outAbs);
+  const first = claimLock(lp, timeoutMs);
+  if (first.held) return lp;
+  if (!first.busy) fail("lock-busy", `another run-gates invocation is starting at ${lp}`);
+  // EEXIST: read the incumbent and recover ONLY if it is stale. A record that does not parse cannot be
+  // judged live, so it is stale — `isStaleLock(null)` is `true`, never a reason to trust it.
+  const r = readJson(lp);
+  const lock = r.ok ? r.value : null;
+  if (!isStaleLock(lock, Date.now())) {
+    fail("lock-busy", `another run-gates invocation holds ${lp} (pid ${lock.pid}); parallel calls are refused`);
+  }
+  // Stale: recovered. Its in-progress entry, if any, is re-run — so first stop the gate the dead runner left running.
+  reapOrphanGroup(outAbs);
+  try {
+    unlinkSync(lp);
+  } catch {
+    /* raced with another recovery — the exclusive create below decides who CREATES the next lock */
+  }
+  if (!claimLock(lp, timeoutMs).held) {
+    fail("lock-busy", `another run-gates invocation is starting at ${lp}`);
+  }
+  return lp;
+}
+
+function releaseLock(lp) {
+  try {
+    unlinkSync(lp);
+  } catch {
+    /* already gone */
+  }
+}
+
+/** ------------------------------------------------------------------------------------------------
+ *  THE RUNNING GATE'S PROCESS GROUP (audit P3-P). A gate runs in its own process group, so a harness SIGKILL of
+ *  this runner — which no handler can catch — leaves the gate running. The stale-lock recovery above then re-ran
+ *  the entry while the orphan still ran: two copies of a suite overlapped (reproduced with a `sleep 30` gate).
+ *
+ *  So while a gate runs, `<out>/lock.child` holds `{runner_pid, pgid, started_ms}` (written atomically right after
+ *  the spawn, removed when the gate's leader exits), and a recovery that finds it stops that group — SIGTERM, then
+ *  SIGKILL after the grace — before it re-runs anything. A group that is still alive after both is refused
+ *  `lock-busy` (a lapse: re-run later), never overlapped. A group that answers EPERM belongs to another user, so it is
+ *  not this runner's gate and is left alone.
+ *
+ *  BOUNDS, named: a SIGKILL between the spawn and the sidecar write leaves an unrecorded group (a window of one
+ *  synchronous write); a descendant that called `setsid` left the group and is not reached; and if the WHOLE orphan
+ *  group already exited, its id may since have been reused by an unrelated group of the same user, which the reap
+ *  would signal — POSIX keeps a pgid unreused only while a member lives, and nothing here can tell the two apart.
+ *  ---------------------------------------------------------------------------------------------- */
+function childPath(outAbs) {
+  return join(outAbs, "lock.child");
+}
+
+function removeChildRecord(outAbs) {
+  try {
+    unlinkSync(childPath(outAbs));
+  } catch {
+    /* already gone */
+  }
+}
+
+/** Is process group `pgid` alive AND ours to signal? EPERM (another user's group) is not this runner's gate. */
+function groupAlive(pgid) {
+  try {
+    process.kill(-pgid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/** Wait up to `ms` for group `pgid` to be gone; true when it is. */
+function waitGroupGone(pgid, ms) {
+  const deadline = Date.now() + ms;
+  while (groupAlive(pgid)) {
+    if (Date.now() >= deadline) return false;
+    sleepSync(50);
+  }
+  return true;
+}
+
+function reapOrphanGroup(outAbs) {
+  const r = readJson(childPath(outAbs));
+  const pgid = r.ok && r.value !== null && typeof r.value === "object" ? r.value.pgid : null;
+  if (Number.isInteger(pgid) && pgid > 1 && groupAlive(pgid)) {
+    for (const sig of ["SIGTERM", "SIGKILL"]) {
+      try {
+        process.kill(-pgid, sig);
+      } catch {
+        /* gone between the test and the signal */
+      }
+      if (waitGroupGone(pgid, KILL_GRACE_MS)) break;
+    }
+    if (groupAlive(pgid)) {
+      fail("lock-busy", `the gate process group ${pgid} a crashed run left behind is still alive after SIGKILL; refusing to overlap it`);
+    }
+  }
+  removeChildRecord(outAbs);
+}
+
+/** ------------------------------------------------------------------------------------------------
+ *  init
+ *  ---------------------------------------------------------------------------------------------- */
+function readScopeJson(file) {
+  const r = readJson(file);
+  if (!r.ok) return { ok: false, reason: `--scope-json is not readable/parseable (${file}): ${r.reason}` };
+  const v = r.value;
+  if (v === null || typeof v !== "object" || Array.isArray(v)) return { ok: false, reason: `--scope-json must be a JSON object (${file})` };
+  // Refuse a scope whose own verdict says the partition is untrustworthy. A gate set derived from an
+  // inconclusive or escaped scope would be a set nobody can defend.
+  if (Array.isArray(v.escaped) && v.escaped.length > 0) {
+    return {
+      ok: false,
+      reason: `--scope-json reports ${v.escaped.length} escaped path(s) — resolve the scope breach before running gates`,
+    };
+  }
+  if (v.verdict === "inconclusive") {
+    return { ok: false, reason: "--scope-json verdict is 'inconclusive' — the inside/outside partition is not usable" };
+  }
+  const tests = Array.isArray(v.outside_tests) ? v.outside_tests : [];
+  const pairs = Array.isArray(v.outside_eval_pairs) ? v.outside_eval_pairs : [];
+  for (const t of tests) {
+    if (typeof t !== "string" || t.includes("*")) {
+      return { ok: false, reason: `--scope-json outside_tests entry ${JSON.stringify(t)} is not an expanded real path` };
+    }
+  }
+  return { ok: true, tests, pairs };
+}
+
+/** `--ac-tests`: THIS feature's mapping rows (its directory is named `--feature`), read by ac-tests-core.mjs acRowsOf,
+ *  or a refusal. Anything else is `usage-error`: the mapping is checked by check-ac-tests.mjs before the run, so a
+ *  refusal here is a caller that skipped it. */
+function readAcRows(file, feature) {
+  const abs = resolve(file);
+  if (basename(dirname(abs)) !== feature) {
+    return { ok: false, reason: `--ac-tests ${JSON.stringify(file)} is not feature ${JSON.stringify(feature)}'s mapping` };
+  }
+  let text;
+  try {
+    text = readFileSync(abs, "utf8");
+  } catch (e) {
+    return { ok: false, reason: `--ac-tests is not readable (${file}): ${e.code ?? e.message}` };
+  }
+  const rows = acRowsOf(text);
+  return rows.ok ? rows : { ok: false, reason: `--ac-tests ${JSON.stringify(file)}: ${rows.reason}` };
+}
+
+/** `--targets` (6.39.0, build): a JSON array of repo-relative test files, read from a FILE (the `--scope-json` pattern —
+ *  no list through argv splitting, L5), each one a path ac-tests-core.mjs `badPath` accepts — the path rule the red run
+ *  already applies to the files it hands a runner (no glob, not absolute, no leading `-`, normalized, outside `.pharn/`
+ *  and `pharn/features/`). The array's shape (non-empty, unique, capped) is resolveSet's. Returns `{ok, targets}` or a
+ *  reason naming a POSITION, never a value (L62). */
+function readTargets(file, name = "--targets") {
+  if (!file || file.startsWith("-")) return { ok: false, reason: `${name} requires a file` };
+  const r = readJson(resolve(file));
+  if (!r.ok) return { ok: false, reason: `${name} is not readable/parseable (${file}): ${r.reason}` };
+  if (!Array.isArray(r.value)) return { ok: false, reason: `${name} must hold a JSON array of paths (${file})` };
+  for (let i = 0; i < r.value.length; i++) {
+    const p = r.value[i];
+    if (typeof p !== "string" || badPath(p))
+      return { ok: false, reason: `${name} entry ${i} is not a usable repo-relative test file path` };
+  }
+  return { ok: true, targets: r.value };
+}
+
+function runInit(args) {
+  const cwd = flag(args, "--cwd") ?? ".";
+  const out = flag(args, "--out");
+  if (!out) fail("usage-error", "init requires --out <dir>");
+  // Against the INVOKING directory, never `--cwd` — `run --next` resolves `--out` the same way.
+  const outAbs = assertContained(out, process.cwd());
+
+  const stage = flag(args, "--stage");
+  const side = flag(args, "--side") ?? null;
+  const feature = flag(args, "--feature");
+  const featureBase = flag(args, "--base") ?? "pharn/features";
+  const specFrom = flag(args, "--spec-from");
+
+  // 6.34.0 — an OFFERED source, verify only, named with the sha256 of the exact bytes the caller's offer bound. A path
+  // outside the state root or a missing digest is the caller's error (usage-error); a source that cannot be read, or
+  // whose bytes are not the named ones, is simply no offer (`reuse` absent), never a refusal.
+  let reuse = null;
+  if (has(args, "--reuse-stamp") || has(args, "--reuse-sha256")) {
+    const src = flag(args, "--reuse-stamp");
+    const want = flag(args, "--reuse-sha256");
+    if (stage !== REUSE_TARGET_STAGE) fail("usage-error", `--reuse-stamp applies to --stage ${REUSE_TARGET_STAGE} only`);
+    if (!src || src.startsWith("-")) fail("usage-error", "--reuse-stamp requires a path");
+    if (!want || !/^[0-9a-f]{64}$/.test(want)) fail("usage-error", "--reuse-stamp requires --reuse-sha256 <the offered bytes' sha256>");
+    const rootAbs = resolve(process.cwd(), STATE_ROOT);
+    const abs = resolve(process.cwd(), src);
+    if (!(abs + sep).startsWith(rootAbs + sep)) fail("usage-error", `--reuse-stamp must resolve strictly inside ${rootAbs}`);
+    const bytes = readReuseSource(src);
+    if (bytes !== null && createHash("sha256").update(bytes).digest("hex") === want) reuse = { stamp: src, stamp_sha256: want };
+  }
+
+  // --side base copies the HEAD spec VERBATIM, so the gate set is decided ONCE and both sides are
+  // compared over the same keys (check-regress.mjs verdict fails inconclusive on a key-set mismatch).
+  if (stage === "regress" && side === "base") {
+    if (!specFrom) fail("usage-error", "--side base requires --spec-from <head-out> so the set is decided once");
+    // The head record lives beside this side's own record, in the invoking directory's state root —
+    // resolving it against `--cwd` looked for it inside the base worktree, where it never is.
+    const headStampish = join(resolve(specFrom), "state.json");
+    const headFinal = join(resolve(specFrom), "stamp.json");
+    const src = existsSync(headFinal) ? headFinal : headStampish;
+    const r = readJson(src);
+    if (!r.ok) fail("spec-mismatch", `--spec-from has no readable record at ${src}: ${r.reason}`);
+    // The copy rule is gate-run-core.mjs's `baseSpecFrom` (6.33.0) — the ONE owner, which /pharn-regress's BASE-reuse
+    // predicate also applies to decide whether an earlier base run was produced for exactly this spec (L35).
+    const copied = baseSpecFrom(r.value, feature);
+    if (!copied.ok) fail(copied.reason_code, `${copied.reason} (${src})`);
+    return startRecord(copied.spec, outAbs, cwd, args);
+  }
+
+  let acRows = null;
+  if (stage === "ac-test") {
+    // Refused by PRESENCE, value or not: `--side` because the resolve below passes `side: null` for every non-regress
+    // stage, `--base` because nothing at ac-test reads it, and `--gates` / `--extra` / `--skip-style` so a flag with
+    // a missing or flag-shaped value is refused too, not only one the resolve would see.
+    for (const f of ["--scope-json", "--spec-from", "--side", "--base", "--gates", "--extra", "--skip-style"]) {
+      if (has(args, f)) fail("usage-error", `${f} does not apply to --stage ac-test`);
+    }
+    if (!flag(args, "--discover")) fail("usage-error", "--stage ac-test requires --discover <package.json>");
+    const acTests = flag(args, "--ac-tests");
+    if (!acTests) fail("usage-error", "--stage ac-test requires --ac-tests <AC-TESTS.md>");
+    const r = readAcRows(acTests, feature);
+    if (!r.ok) fail("usage-error", r.reason);
+    acRows = r.rows;
+  } else if (has(args, "--ac-tests")) {
+    fail("usage-error", "--ac-tests applies to --stage ac-test only");
+  }
+
+  // 6.39.0 — /pharn-build's own gate (build-gate.mjs): discovered, or a human's --gates (review R1); by-presence refusals.
+  let targets = null;
+  if (stage === "build") {
+    for (const f of ["--scope-json", "--spec-from", "--side", "--base", "--extra", "--skip-style"]) {
+      if (has(args, f)) fail("usage-error", `${f} does not apply to --stage build`);
+    }
+    if (!flag(args, "--discover") && !flag(args, "--gates")) {
+      fail("usage-error", "--stage build requires --discover <package.json> or --gates <spec>");
+    }
+    if (has(args, "--targets")) {
+      const r = readTargets(flag(args, "--targets"));
+      if (!r.ok) fail("usage-error", r.reason);
+      targets = r.targets;
+    }
+  } else if (has(args, "--targets")) {
+    fail("usage-error", "--targets applies to --stage build only");
+  }
+
+  // 6.49.0 (entry-run-as-base-evidence) — the entry check's evidence-only base:test slot: a JSON array of test files, read
+  // from a FILE through the --targets reader (the badPath rule), for --stage entry only. resolveSet owns the shape.
+  let baseTests = null;
+  if (has(args, "--base-tests")) {
+    if (stage !== "entry") fail("usage-error", "--base-tests applies to --stage entry only");
+    const r = readTargets(flag(args, "--base-tests"), "--base-tests");
+    if (!r.ok) fail("usage-error", r.reason);
+    baseTests = r.targets;
+  }
+
+  const discover = flag(args, "--discover");
+  let scripts = null;
+  if (discover) {
+    const r = readJson(resolve(discover));
+    if (!r.ok) fail("usage-error", `--discover manifest is not readable/parseable: ${r.reason}`);
+    scripts = r.value && typeof r.value === "object" ? r.value.scripts : null;
+  }
+  // 6.36.0 — the project's declared exclusion, read beside the manifest discovery reads (the project root for every
+  // pinned caller) and only when the set is discovered: an explicit --gates string is never filtered (gate-exclusion-core).
+  // Keyed on the PARSED --gates value, the one resolveSet receives (review R4): a valueless trailing `--gates` used to
+  // skip the declaration while resolveSet still discovered, so an excluded gate ran. It is refused instead.
+  const gatesRaw = flag(args, "--gates");
+  if (has(args, "--gates") && gatesRaw === undefined) fail("usage-error", "--gates requires a value");
+  let exclude = [];
+  if (discover && gatesRaw === undefined) {
+    const x = loadGateExclusion(dirname(resolve(discover)));
+    if (!x.ok) fail("bad-gate-exclusion", x.reason);
+    exclude = x.exclude;
+  }
+
+  const res = resolveSet({
+    stage,
+    side: stage === "regress" ? side : null,
+    gates: gatesRaw ?? null,
+    scripts,
+    extras: flag(args, "--extra") ?? null,
+    skipStyle: has(args, "--skip-style"),
+    feature,
+    acRows,
+    exclude,
+    targets,
+    baseTests,
+  });
+  if (!res.ok) {
+    // The empty SOURCE set is the ONE refusal that writes no state and exits 3, so the invoking command
+    // routes it to its existing no-gates stop: an interactive HALT under /pharn-verify and
+    // /pharn-regress, and an unattended `blocked: no-gates` stop under /pharn-loop (S4). Both are
+    // fail-closed; neither is a guess.
+    if (res.reason_code === "empty-source-set") emit({ ok: false, reason_code: res.reason_code, reason: res.reason }, 3);
+    fail(res.reason_code, res.reason);
+  }
+  const spec = res.spec;
+
+  // regress/head: the file-addressable inputs come from `check-regress.mjs scope`'s OWN JSON, read from
+  // a FILE. No list passes through shell word-splitting — L5's original incident, where an unquoted
+  // expansion under zsh turned a whole test list into one bogus path and fabricated a pre-existing red.
+  if (stage === "regress" && side === "head") {
+    const sj = flag(args, "--scope-json");
+    if (!sj) fail("usage-error", "--side head requires --scope-json <file>");
+    const s = readScopeJson(resolve(sj));
+    if (!s.ok) fail("bad-scope-json", s.reason);
+    for (const e of spec.entries) {
+      if (e.id === "test") e.files = s.tests;
+    }
+    const pairEntries = [];
+    for (const p of s.pairs) {
+      const expected = typeof p === "object" && p !== null ? p.expected : null;
+      const actual = typeof p === "object" && p !== null ? p.actual : null;
+      if (typeof expected !== "string" || typeof actual !== "string") {
+        fail("bad-scope-json", `--scope-json outside_eval_pairs entry ${JSON.stringify(p)} is not {expected, actual}`);
+      }
+      if (actualForExpected(expected) !== actual) {
+        fail(
+          "bad-scope-json",
+          `outside_eval_pairs ${JSON.stringify(expected)} pairs with ${JSON.stringify(actual)}, which is not its colocated findings.json`
+        );
+      }
+      pairEntries.push({
+        id: `${STRUCTURAL_PREFIX}${expected}`,
+        shell: null,
+        argv: ["node", "pharn/floor/check-structural.mjs", expected, actual, "."],
+        files: [],
+      });
+    }
+    if (pairEntries.length) {
+      pairEntries.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+      spec.entries = [...spec.entries, ...pairEntries].map((e, i) => ({ ...e, seq: i }));
+    }
+  }
+
+  return startRecord(spec, outAbs, cwd, args, { featureBase, reuse });
+}
+
+function startRecord(spec, outAbs, cwd, args, opts = {}) {
+  // Recreate <out>: `init`'s wipe is what guarantees no STALE injected entry, log or stamp survives from
+  // an earlier run of this stage. Containment was asserted before this point.
+  rmSync(outAbs, { recursive: true, force: true });
+  mkdirSync(outAbs, { recursive: true });
+
+  const fp = fingerprint(cwd, { feature: spec.feature, stage: spec.stage });
+  if (!fp.ok) fail("usage-error", `cannot fingerprint the worktree: ${fp.reason}`);
+
+  let head = null;
+  try {
+    head = execFileSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8" }).trim();
+  } catch {
+    // not a git repo, or an unborn HEAD — `head` stays null: an honest absence, never a fabricated SHA
+  }
+
+  // verify only: capture build-completeness into `aux`, NEVER into `runs[]` (GRILL R1 — folding it in
+  // would make INCOMPLETE unreachable and silently disable /pharn-ship Step 2b's retry).
+  let completeness = null;
+  if (spec.stage === "verify") {
+    const argv = completenessArgv(spec.feature, opts.featureBase ?? "pharn/features");
+    const outFile = join(outAbs, "completeness.json");
+    const r = runSync(argv, cwd, outFile, join(outAbs, "completeness.err"));
+    completeness = r.exit;
+  }
+
+  const record = {
+    schema: SCHEMA,
+    stage: spec.stage,
+    side: spec.side,
+    feature: spec.feature,
+    head: head && /^[0-9a-f]{40}$/.test(head) ? head : null,
+    source: spec.source,
+    source_raw: spec.source_raw,
+    style_skipped: spec.style_skipped,
+    // 6.36.0 — present only when discovery removed an id the project excluded, so every other record is unchanged.
+    ...(spec.excluded ? { excluded: spec.excluded } : {}),
+    finalized: false,
+    fingerprint: { algo: fp.algo, init: fp.digest, final: null },
+    required: spec.required,
+    entries: spec.entries,
+    runs: [],
+    aux: { completeness },
+    cwd,
+  };
+  // In-progress only (dropped at finalize, like `entries` and `cwd`): the offered source, bound by its bytes.
+  if (opts.reuse) record.reuse = opts.reuse;
+  writeAtomic(join(outAbs, "state.json"), JSON.stringify(record, null, 2));
+  // `e2e_excluded` makes the regress e2e rule's drop visible to the caller (it renders it in REGRESSION.md); a
+  // base side copies the head spec and reports none of its own.
+  emit(
+    {
+      ok: true,
+      stage: spec.stage,
+      side: spec.side,
+      feature: spec.feature,
+      source: spec.source,
+      ids: spec.entries.map((e) => e.id),
+      e2e_excluded: spec.e2e_excluded ?? [],
+      ...(spec.excluded ? { excluded: spec.excluded.ids } : {}),
+      reuse_offered: Boolean(opts.reuse),
+    },
+    0
+  );
+}
+
+/** ------------------------------------------------------------------------------------------------
+ *  Execution. A gate runs in its OWN PROCESS GROUP with stdin ignored, so a timeout kills the whole
+ *  tree rather than only the immediate child.
+ *  ---------------------------------------------------------------------------------------------- */
+function signalExit(signalName) {
+  const n = osConstants.signals[signalName];
+  return Number.isInteger(n) ? 128 + n : 128;
+}
+
+/** Run one gate (or, since 6.23.0, any other command a stage script needs process-group-killed and
+ *  timed the same way — `stage-regress.mjs`'s INSTALL step, via the export below) in its own process
+ *  group. `resultsFile: null` means "no PHARN_TEST_RESULTS variable" — the install command is not a gate
+ *  with a per-test reporter, so nothing should tell it where to write one. EXPORTED (6.23.0,
+ *  stage-regress-script) so a stage script reuses this exact spawn/kill/log discipline rather than
+ *  re-implementing it (P3/P4 — one owner of "run a command, killed by timeout, in its own process group"). */
+/** The gate ids whose environment carries `CI=1` (audit P2-F): every AC level gate (LEVEL_GATES — `test`, `test:e2e`,
+ *  `e2e`) and the entry check's `base:test` slot, which runs the `test` command. vitest and Jest write a MISSING snapshot
+ *  on a run where `CI` is unset, so an AC test whose oracle is a snapshot failed before the build (the import) and passed
+ *  after it for ANY implementation; under `CI` both refuse to write one and the test fails. A `CI` the inherited
+ *  environment already defines — any value, empty included — is the project's (or its CI's) and is passed unchanged, so
+ *  an explicit `CI=false` restores snapshot writing: a bound, stated. Style gates are not touched. An explicit `--gates`
+ *  token gets it only when its id is one of these. */
+const CI_GATE_IDS = Object.freeze([...new Set([...Object.values(LEVEL_GATES).flat(), ENTRY_BASE_TEST_ID])]);
+
+/** The signals this runner forwards to a running gate's group. SIGKILL cannot be caught — see reapOrphanGroup. */
+const FORWARDED_SIGNALS = Object.freeze(["SIGTERM", "SIGINT", "SIGHUP"]);
+
+/** The environment a gate is spawned with: the inherited one, plus — when `resultsFile` is not null — this gate's own
+ *  results path, plus `CI=1` for a CI_GATE_IDS member when `CI` is not already defined. */
+function gateEnv(id, resultsFile) {
+  const env = { ...process.env };
+  if (resultsFile !== null) env[RESULTS_ENV] = resultsFile;
+  if (CI_GATE_IDS.includes(id) && !Object.hasOwn(process.env, "CI")) env.CI = "1";
+  return env;
+}
+
+/** `hooks` (optional): `onSpawn(pgid)` right after the group exists; `onInterrupted(signal)` after a forwarded
+ *  SIGTERM/SIGINT/SIGHUP has ended the gate's leader, just before this process re-raises the signal on itself and dies
+ *  by it. An interrupted gate is never a result: the caller records nothing for it. */
+function spawnGate(entry, cwd, outFile, errFile, resultsFile, timeoutMs, hooks = {}) {
+  return new Promise((done) => {
+    let cmd;
+    let argv;
+    if (entry.shell) {
+      // Files arrive as POSITIONAL args after `sh`, so `a b` stays ONE argument and `$(x)` is a literal.
+      cmd = "/bin/sh";
+      argv = ["-c", `${entry.shell} "$@"`, "sh", ...(entry.files ?? [])];
+    } else {
+      const base = entry.argv ?? [];
+      cmd = base[0];
+      // The program is looked up on PATH by bare name (`node`, `npm`, `npx`), never run from a path: a name with a
+      // separator would execute whatever file a record or command line points at (CodeQL
+      // js/indirect-command-line-injection). The spawn below is the one place such a name could reach `exec`.
+      if (typeof cmd !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._+-]*$/.test(cmd)) {
+        return done({ exit: 2, timed_out: false, spawnError: `gate argv[0] must be a bare program name, got ${JSON.stringify(cmd)}` });
+      }
+      argv = base.slice(1);
+      // Files follow `--`. Before 6.18.0 only `test` ever carried files; the ac-test stage hands the e2e gates their
+      // mapped files too, so the rule is "an argv gate carrying files", which changes nothing for verify or regress.
+      if ((entry.files ?? []).length) argv = [...argv, "--", ...entry.files];
+    }
+
+    let fdOut;
+    let fdErr;
+    try {
+      fdOut = openSync(outFile, "w");
+      fdErr = openSync(errFile, "w");
+    } catch (e) {
+      if (fdOut !== undefined) closeSync(fdOut);
+      return done({ exit: 2, timed_out: false, spawnError: `cannot open gate log files: ${e.message}` });
+    }
+
+    let settled = false;
+    let timedOut = false;
+    let killTimer = null;
+    let graceTimer = null;
+    let interrupted = null;
+
+    // gateEnv: the inherited environment, this gate's results path when `resultsFile` is not null (a `null` — the
+    // install-command caller — sets no such variable), and CI=1 for a test-level gate id (CI_GATE_IDS).
+    const env = gateEnv(entry.id, resultsFile);
+    // CodeQL js/indirect-command-line-injection (#10) and js/shell-command-injection-from-environment (#17) report
+    // this call, and the flow they trace is the runner's PURPOSE, not a defect: the command IS the project's
+    // configured gate — a package.json script run as `npm run <allowlisted id>`, or a `--gates` token the stage's own
+    // pinned line or a human passed — and running it is what a gate runner does. What is held, and tested: argv never
+    // touches a shell; a `--gates` shell token gets its files as POSITIONAL arguments, never spliced into the command
+    // text; an argv program is a bare PATH-looked-up name (the regex above); the shell is the fixed `/bin/sh`. #17's
+    // traced source is a test passing `process.execPath`, which that regex refuses. Restructuring cannot remove the
+    // flow without removing `--gates`, so the alerts are left to a reviewed dismissal, never suppressed here.
+    const child = spawn(cmd, argv, { cwd, env, detached: true, stdio: ["ignore", fdOut, fdErr] });
+
+    // Forward a harness's SIGTERM / SIGINT / SIGHUP to the gate's GROUP (audit P3-P): without this the runner died and
+    // the gate kept running. The listeners live exactly as long as the gate does.
+    const onSignal = (sig) => {
+      if (interrupted !== null) return;
+      interrupted = sig;
+      if (killTimer) clearTimeout(killTimer);
+      try {
+        process.kill(-child.pid, sig);
+      } catch {
+        /* group already gone */
+      }
+      graceTimer = setTimeout(() => {
+        try {
+          process.kill(-child.pid, "SIGKILL");
+        } catch {
+          /* group already gone */
+        }
+      }, KILL_GRACE_MS);
+    };
+    for (const s of FORWARDED_SIGNALS) process.on(s, onSignal);
+    if (Number.isInteger(child.pid) && typeof hooks.onSpawn === "function") {
+      try {
+        hooks.onSpawn(child.pid);
+      } catch {
+        /* best-effort: a failed record only loses the orphan reap, never the gate's result */
+      }
+    }
+
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      for (const s of FORWARDED_SIGNALS) process.removeListener(s, onSignal);
+      if (killTimer) clearTimeout(killTimer);
+      if (graceTimer) clearTimeout(graceTimer);
+      if (interrupted !== null) {
+        // The leader is gone; sweep any member that ignored the forwarded signal, then die by the signal we were sent —
+        // our listener is removed, so the default action applies. Nothing is recorded for this gate.
+        try {
+          process.kill(-child.pid, "SIGKILL");
+        } catch {
+          /* group already gone */
+        }
+        for (const fd of [fdOut, fdErr]) {
+          try {
+            closeSync(fd);
+          } catch {
+            /* already closed */
+          }
+        }
+        if (typeof hooks.onInterrupted === "function") hooks.onInterrupted(interrupted);
+        process.kill(process.pid, interrupted);
+        return done({ ...result, interrupted });
+      }
+      try {
+        closeSync(fdOut);
+      } catch {
+        /* already closed */
+      }
+      try {
+        closeSync(fdErr);
+      } catch {
+        /* already closed */
+      }
+      done(result);
+    };
+
+    child.on("error", (e) => {
+      // A spawn failure is a RUNNER-visible exit code, not a crash: ENOENT and EACCES carry the shell's
+      // own conventional codes so a reader sees the same number a shell would have reported.
+      const code = e.code === "ENOENT" ? 127 : e.code === "EACCES" ? 126 : 2;
+      finish({ exit: code, timed_out: false, spawnError: e.code === "ENOENT" || e.code === "EACCES" ? null : e.message });
+    });
+
+    child.on("close", (code, signal) => {
+      if (signal) return finish({ exit: timedOut ? 124 : signalExit(signal), timed_out: timedOut, spawnError: null });
+      finish({ exit: code === null ? 2 : code, timed_out: timedOut, spawnError: null });
+    });
+
+    killTimer = setTimeout(() => {
+      timedOut = true;
+      try {
+        process.kill(-child.pid, "SIGTERM");
+      } catch {
+        /* group already gone */
+      }
+      graceTimer = setTimeout(() => {
+        try {
+          process.kill(-child.pid, "SIGKILL");
+        } catch {
+          /* group already gone */
+        }
+      }, KILL_GRACE_MS);
+    }, timeoutMs);
+  });
+}
+
+/** The synchronous variant, used only for the `aux.completeness` capture at init: it is a short,
+ *  stdlib-only checker, so it needs neither a process group nor a timeout. */
+function runSync(argv, cwd, outFile, errFile) {
+  let fdOut;
+  let fdErr;
+  try {
+    fdOut = openSync(outFile, "w");
+    fdErr = openSync(errFile, "w");
+  } catch {
+    return { exit: 2 };
+  }
+  try {
+    const r = spawnSync(argv[0], argv.slice(1), { cwd, stdio: ["ignore", fdOut, fdErr] });
+    if (r.error) return { exit: r.error.code === "ENOENT" ? 127 : r.error.code === "EACCES" ? 126 : 2 };
+    if (r.signal) return { exit: signalExit(r.signal) };
+    return { exit: r.status === null ? 2 : r.status };
+  } finally {
+    try {
+      closeSync(fdOut);
+    } catch {
+      /* already closed */
+    }
+    try {
+      closeSync(fdErr);
+    } catch {
+      /* already closed */
+    }
+  }
+}
+
+/** ------------------------------------------------------------------------------------------------
+ *  run --next
+ *  ---------------------------------------------------------------------------------------------- */
+async function runNext(args) {
+  const out = flag(args, "--out");
+  if (!out) fail("usage-error", "run requires --out <dir>");
+  const timeoutRaw = flag(args, "--timeout-ms");
+  if (timeoutRaw === undefined || !/^\d{3,9}$/.test(timeoutRaw)) {
+    fail("usage-error", "run requires --timeout-ms <N> (a positive integer; floor code carries no harness-specific default)");
+  }
+  const timeoutMs = Number(timeoutRaw);
+
+  const statePath = join(resolve(out), "state.json");
+  if (!existsSync(statePath)) {
+    if (existsSync(join(resolve(out), "stamp.json"))) emit({ ok: true, remaining: 0, finalized: true }, 3);
+    fail("stamp-missing", `no in-progress record at ${statePath} — run \`init\` first`);
+  }
+  const r = readJson(statePath);
+  if (!r.ok) fail("stamp-malformed", `in-progress record is not parseable (${statePath}): ${r.reason}`);
+  const rec = r.value;
+  const cwd = rec.cwd ?? ".";
+  // The recorded `cwd` is where the gates RUN; the record itself lives under the invoking directory,
+  // exactly where `statePath` above was read from (PATH RESOLUTION, header).
+  const outAbs = assertContained(out, process.cwd());
+
+  heldLock = takeLock(outAbs, timeoutMs);
+  {
+    const next = rec.entries[rec.runs.length];
+    if (next === undefined) emit({ ok: true, remaining: 0, finalized: rec.finalized === true }, 3);
+
+    const fpBefore = fingerprint(cwd, { feature: rec.feature, stage: rec.stage });
+    if (!fpBefore.ok) fail("usage-error", `cannot fingerprint before ${next.id}: ${fpBefore.reason}`);
+
+    // The log names come from gate-run-core's ONE copy of the rule, which check-loop-fresh.mjs re-hashes.
+    const logBase = logBasename(next.seq, next.id);
+    const outFile = join(outAbs, `${logBase}.out`);
+    const errFile = join(outAbs, `${logBase}.err`);
+    const resultsFile = join(outAbs, resultsFileName(next.seq, next.id));
+    clearResultsPath(resultsFile);
+
+    let exit;
+    let timed_out = false;
+    let ran = true;
+    let reason = null;
+
+    // A file-addressable gate with NO files is recorded as 0 / ran:false — never SKIPPED silently, and
+    // never run with an empty list, which for several runners means "everything" (lessons-learned L16).
+    const needsFiles = next.id === "test" && Array.isArray(next.files);
+    const glob = (next.files ?? []).find((f) => typeof f === "string" && f.includes("*"));
+    if (glob !== undefined)
+      fail("bad-scope-json", `gate ${next.id} carries a glob-shaped file entry ${JSON.stringify(glob)}; expand it first`);
+
+    // ac-test: every entry carries its mapped files by construction (gate-run-core.mjs acFilesFor). An empty list
+    // would run the whole suite (L16), so a record that lost them is refused rather than run.
+    if (rec.stage === "ac-test" && (next.files ?? []).length === 0) {
+      fail("usage-error", `ac-test gate ${next.id} carries no mapped files — re-run init`);
+    }
+    // 6.34.0 — the entry's execution identity at the live tree (gate-reuse-core.mjs), recorded on every run.
+    const identity = executionIdentity({
+      shell: next.shell ?? null,
+      argv: next.argv ?? null,
+      files: next.files ?? [],
+      cwdAbs: cwdForIdentity(cwd),
+      timeoutMs,
+      head: rec.head ?? null,
+      fingerprintAlgo: fpBefore.algo,
+      fpBefore: fpBefore.digest,
+    });
+    const liveIdentity = identity.ok ? identity.value : null;
+
+    // 6.34.0 — a verify entry with an offered source: stand the completed source execution in for it, or run it.
+    let reused = null;
+    let reuseMiss = null;
+    if (rec.stage === REUSE_TARGET_STAGE && rec.reuse && liveIdentity !== null) {
+      const r = tryReuse({ rec, next, liveFp: fpBefore.digest, liveIdentity, outFile, errFile });
+      if (r.hit) reused = r.run;
+      else reuseMiss = r.miss;
+    }
+
+    let fpAfter = fpBefore;
+    if (reused !== null) {
+      // Nothing ran in this slot, so the tree was not fingerprinted again: fp_after IS fp_before (reusedRunRecord).
+      exit = reused.exit;
+      rec.runs.push(reused);
+    } else {
+      if (needsFiles && next.files.length === 0 && rec.stage === "regress") {
+        exit = 0;
+        ran = false;
+        reason = "no-files";
+        writeFileSync(outFile, "");
+        writeFileSync(errFile, "");
+      } else {
+        const res = await spawnGate(next, cwd, outFile, errFile, resultsFile, timeoutMs, {
+          onSpawn: (pgid) => writeAtomic(childPath(outAbs), JSON.stringify({ runner_pid: process.pid, pgid, started_ms: Date.now() })),
+          onInterrupted: () => {
+            // The entry stays unclaimed (nothing is written to state.json), so the next `run --next` runs it again.
+            removeChildRecord(outAbs);
+            if (heldLock) releaseLock(heldLock);
+            heldLock = null;
+          },
+        });
+        removeChildRecord(outAbs);
+        if (res.interrupted) process.exit(signalExit(res.interrupted)); // reached only if the re-raise did not end us
+        if (res.spawnError) fail("usage-error", `gate ${next.id} could not be started: ${res.spawnError}`);
+        exit = res.exit;
+        timed_out = res.timed_out;
+      }
+
+      fpAfter = fingerprint(cwd, { feature: rec.feature, stage: rec.stage });
+      if (!fpAfter.ok) fail("usage-error", `cannot fingerprint after ${next.id}: ${fpAfter.reason}`);
+
+      const run = {
+        seq: next.seq,
+        id: next.id,
+        exit,
+        ran,
+        timed_out,
+        // A gate that mutates the tree ITSELF is RECORDED, never refused — `reconcile` runs last and is
+        // what judges that write. Refusing here would turn a legitimate generator into a runner error.
+        mutated: fpAfter.digest !== fpBefore.digest,
+        reason,
+        argv: next.argv,
+        shell: next.shell,
+        files: next.files ?? [],
+        fp_before: fpBefore.digest,
+        fp_after: fpAfter.digest,
+        stdout_sha256: sha256File(outFile),
+        stderr_sha256: sha256File(errFile),
+        results_sha256: sha256RegularFile(resultsFile),
+      };
+      if (liveIdentity !== null) run.identity_sha256 = liveIdentity;
+      rec.runs.push(run);
+    }
+    // What this call did about reuse — stdout only (the stamp's run entry is the evidence): `reused` true when it
+    // recorded a source execution and spawned nothing; `reuse_miss` the closed REUSE_MISSES code when a source was
+    // offered and this entry ran anyway.
+    const reuseOut = rec.stage === REUSE_TARGET_STAGE && rec.reuse ? { reused: reused !== null, reuse_miss: reuseMiss } : {};
+
+    const remaining = rec.entries.length - rec.runs.length;
+    if (remaining === 0) {
+      // FINALIZE. The refusal is computed here, before anything is written, so a refused run leaves the
+      // in-progress record intact and nothing downstream can read a half-valid stamp.
+      // audit P3-J — init's fingerprint (over which aux.completeness was captured) must be the tree the first gate saw.
+      if (rec.runs[0].fp_before !== rec.fingerprint.init) {
+        fail(
+          "tree-changed-between-gates",
+          `the worktree changed between init and ${rec.runs[0].id} — the gates did not judge the tree init recorded`
+        );
+      }
+      for (let i = 1; i < rec.runs.length; i++) {
+        if (rec.runs[i].fp_before !== rec.runs[i - 1].fp_after) {
+          fail(
+            "tree-changed-between-gates",
+            `the worktree changed between ${rec.runs[i - 1].id} and ${rec.runs[i].id} — the gates did not judge one tree state`
+          );
+        }
+      }
+      // A REUSED entry (6.34.0) did not run here and is admitted: its result is the named source execution's.
+      const notRun = rec.runs.find((x) => x.ran === false && x.reason !== "no-files" && x.reason !== REUSED_REASON);
+      if (notRun) fail("entry-not-run", `entry ${notRun.id} never ran`);
+
+      rec.finalized = true;
+      rec.fingerprint.final = fpAfter.digest;
+      const stamp = { ...rec };
+      delete stamp.entries;
+      delete stamp.cwd;
+      delete stamp.reuse;
+      writeAtomic(join(outAbs, "stamp.json"), JSON.stringify(stamp, null, 2));
+      // Exactly ONE store of the map at rest (L35): the in-progress record is removed, and no
+      // results.json is ever written.
+      try {
+        unlinkSync(statePath);
+      } catch {
+        /* nothing to remove */
+      }
+      emit({ ok: true, ran: next.id, exit, timed_out, remaining: 0, finalized: true, stamp: join(out, "stamp.json"), ...reuseOut }, 0);
+    }
+
+    writeAtomic(statePath, JSON.stringify(rec, null, 2));
+    emit({ ok: true, ran: next.id, exit, timed_out, remaining, finalized: false, ...reuseOut }, 0);
+  }
+}
+
+async function main(argv) {
+  const sub = argv[2];
+  const args = argv.slice(3);
+  if (sub === "init") return runInit(args);
+  if (sub === "run") {
+    if (!has(args, "--next")) fail("usage-error", "run requires --next");
+    return runNext(args);
+  }
+  emit(
+    {
+      ok: false,
+      reason_code: "usage-error",
+      reason:
+        'usage: run-gates.mjs init --stage verify|regress [--side base|head] --feature <name> --out <dir> [--cwd <dir>] [--base <featureBase>] [--discover <package.json>] [--gates "<c>[::<id>],…"] [--extra <json>] [--scope-json <f>] [--skip-style] [--spec-from <dir>] [--reuse-stamp <f> --reuse-sha256 <hex>] | init --stage ac-test --feature <name> --out <dir> --discover <package.json> --ac-tests <AC-TESTS.md> [--cwd <dir>] | init --stage build --feature <name> --out <dir> (--discover <package.json> | --gates "<c>[::<id>],…") [--targets <json-file>] [--cwd <dir>] | run --next --out <dir> --timeout-ms <N>',
+    },
+    2
+  );
+}
+
+if (import.meta.main) {
+  main(process.argv).catch((e) => {
+    console.error(`run-gates: ${e && e.stack ? e.stack : e}`);
+    process.exit(2);
+  });
+}
+
+export { assertContained, isStaleLock, signalExit, readScopeJson, spawnGate, sha256RegularFile, CI_GATE_IDS };

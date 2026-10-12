@@ -1,0 +1,888 @@
+#!/usr/bin/env node
+// pharn/floor/check-bash-reconcile.mjs — the deterministic BASH-WRITE RECONCILIATION verdict.
+//
+// Floor/eval infrastructure — NOT a Capability (no `role:`), like check-verify.mjs / check-regress.mjs /
+// check-build-complete.mjs in this floor-ignored dir. It owns ONE axis — "did anything change that the
+// write guards would have DENIED?" — and its baseline half lives in pharn/floor/reconcile-baseline.mjs
+// (P3, one axis per file).
+//
+// ============================ WHAT IT GUARANTEES, AND WHAT IT DOES NOT =============================
+//
+// THE CLAIM, and it is deliberately this narrow (P0):
+//   "A NON-ADVERSARIAL write to a path the active writes-scope would have DENIED is DETECTED, and fails
+//    the stage." — unless (6.52.0) the path's bytes are exactly the upstream bytes HEAD merged in during the
+//   window: it is then classified `merged`, reported, and does not fail the stage (THE `merged` CLASSIFICATION).
+//
+//   "Non-adversarial" is load-bearing, not hedging — see bound 5. The baseline is unauthenticated state
+//   inside the writable tree, so a writer who also rewrites it defeats detection on ordinary paths. This
+//   is an ACCOUNTING tool against tooling that escapes its scope, NOT a control against an attacker.
+//
+//   NOT "Bash writes are prevented." Detection is strictly weaker than prevention. The only true
+//   prevention is OS-level sandboxing of the Bash process, which PHARN does not implement and cannot —
+//   it is harness-layer, environment-dependent, not expressible in markdown methodology (LIMITS.md §6).
+//   NOT "all Bash writes are detected" — only those to DENIED paths, inside the reconciled set, between
+//   two anchors, in one worktree. Every one of those four bounds is stated below.
+//   NOT "a clean verdict means no escape occurred" — it means none was detected.
+//
+// WHY IT EXISTS (P7 — a real, recurring failure, never a hypothetical). Both `PreToolUse` guards match
+// `Write|Edit|MultiEdit|NotebookEdit`; a Bash write reaches every path, is not denied, and — no
+// `PostToolUse` hook being wired — leaves no record. lessons-learned L19 named this in 2026-08-05 with a
+// DISCIPLINE-ONLY remedy ("declare it honestly"). L20's rule is that such a remedy WILL recur and the
+// SECOND occurrence is the trigger for a floor check. It recurred at least three times: L19's own
+// repo-wide-formatter instance, L38's writes-scope contention, and /pharn-*memory-promote's
+// docs/lessons-index.md generator write. The trigger is met and is NOT manufactured.
+//
+// WHY DETECTION AND NOT PREVENTION — the decisive fact, verified against the live documentation rather
+// than assumed (the task that commissioned this asked specifically not to assume it): a `PostToolUse`
+// hook CANNOT block. Its exit 2 is documented as "Shows stderr to Claude" — the tool has already run —
+// and the event carries no `permissionDecision` field. The strongest thing a hook there can do is put
+// text in front of the model, which the model may ignore: ADVISORY by construction. Calling that a
+// guarantee would be the exact P0 disease this repo exists to prevent. Enforcement therefore lives HERE,
+// in a checker whose exit code check-verify.mjs already folds into a verdict stages branch on.
+//
+// FLOOR REDUCTION (pharn/ARCHITECTURE.md §2): primitive #2 (content-hash, changed-vs-anchor) composed
+// with primitive #3 (path/enum membership, permitted-vs-denied). ZERO model judgment in the verdict, and
+// NO shell parsing anywhere — shell parsing is undecidable and a verb denylist is a heuristic, which P0
+// forbids labelling a guarantee. This file never reads a Bash command string; it compares hashes and
+// paths, so `sed -i`, a here-doc, `node -e`, a Makefile target and a compiled binary are all equally
+// visible. That is the whole reason the design is a reconciler and not a command filter.
+//
+// HOW "DENIED" IS DECIDED — DELEGATED, never re-derived (the task's constraint, and lessons-learned L37's
+// rule that a quantified claim is verified by EXECUTING the op, not by re-reading it):
+//   • trusted-path / canon / control-surface denial  -> EXECUTE .claude/hooks/protect-trusted-paths.cjs
+//   • the fail-closed DEFAULT, when no scope was set  -> EXECUTE .claude/hooks/enforce-writes-scope.cjs
+//     in a probe sandbox that reproduces THREE runtime signals (6.24.0, up from two): a
+//     pharn.config.json `skillsVersion`, `.dev/floor/` presence, and a FRESH run marker (written by
+//     pharn/floor/run-marker.mjs's own openRun(), so the probe always answers with the STRICT, in-run
+//     default rather than the newer install-posture permissive one — see makeDefaultProbeSandbox()'s own
+//     header for why that is the only defensible answer for a probe with no write history to consult).
+//     No scope file is present in the sandbox either way. The default set is therefore never copied into
+//     this file, and a future change to it is inherited.
+//   • an EXPLICIT scope -> matched here, against the scope SNAPSHOTTED in the baseline.
+//
+// THE ONE DUPLICATION, bounded and pinned: globToRegExp below is a faithful copy of the matcher in
+// enforce-writes-scope.cjs. It cannot be delegated, because the hook resolves the scope from disk and by
+// reconciliation time that file holds a LATER stage's scope (lessons-learned L38 — one mutable record,
+// global to the tree; check-regress.mjs documents the same trap). check-bash-reconcile.test.mjs carries a
+// PARITY test over shared cases — the check-build-complete.mjs precedent, which re-implements the
+// setter's `## Files` parser under the same discipline. Example-based, not a proof of equivalence: the
+// two must be updated together.
+//
+// TRUST (P2): every path here is `trust: untrusted` DATA — used only as readFileSync arguments, object
+// keys, and regex OPERANDS (never regex SOURCE; a crafted filename cannot alter the matcher). `git` is
+// invoked with execFileSync + an argv array, so no shell parses a filename. No network, no eval.
+//
+// ================================== THE BOUNDS, STATED, NOT HIDDEN ==================================
+//  1. THE RECONCILED SET is `tracked ∪ untracked-not-ignored`. A git-ignored path is INVISIBLE — by
+//     design (it is what makes `.pharn/` scratch, `runs/**` and `node_modules/` free) and by consequence
+//     (a Bash write there is never reported). See pharn/floor/reconcile-ignore.json. A symlink is reconciled as
+//     the LINK (its text, since 6.20.8), never as its target: a write through it lands on the target's own
+//     path, and a target outside the set (outside the repo, or ignored) is not seen through the link. A DELETION is
+//     a change (6.57.0): a path the anchor hashed that is gone from disk is judged like a write, whether git still
+//     lists it or not (see DELETIONS); a path still on disk that LEFT the set is only a warning when git itself
+//     reports it ignored (`git check-ignore`) — this bound again — and a candidate otherwise.
+//  2. THE WINDOW is anchor -> reconcile (build -> verify). A write before the anchor is baked into the
+//     baseline and is invisible; a later anchor RESETS, which is why anchoring is at build ONLY.
+//  3. ONE WORKTREE. Two agent sessions sharing a tree share `.pharn/`, so a second session's writes can
+//     surface as this one's escape. That is lessons-learned L38 exactly; this checker inherits the
+//     hazard and cannot fix it. Named as a bound in LIMITS.md; the structural remedy is L38's own.
+//  4. NO ATTRIBUTION. It answers "this path changed and the guards would have denied it", never "who".
+//  5. DELETING OR FORGING THIS CHECKER'S STATE is possible through the very channel it monitors — but it
+//     is LOUD, not silent. Two independent reasons: with `--require-baseline` (what /verify passes) an
+//     absent baseline is INCONCLUSIVE; and the control surface is reconciled against COMMITTED BLOB IDS
+//     on EVERY run — with a baseline and without one — so rewriting a guard's baseline entry to match
+//     the edited file does not clear it. An earlier draft ran that blob-id comparison only in the
+//     no-baseline branch, which meant the guarantee this header claims was strictly wider than the one
+//     the code implemented; caught in review, and the test named "reconciled against HEAD even WITH a
+//     baseline present" exists to keep it caught.
+//
+//     BUT THE CLAIM MUST BE NARROWED FURTHER, AND THIS IS THE MOST IMPORTANT SENTENCE IN THIS HEADER:
+//     that argument holds ONLY for the always-reconciled control surface — since 6.53.0 the guard files and
+//     pharn/floor/ + .dev/floor/, PLUS the human-only surface (the four trusted docs, CODEOWNERS at its three
+//     locations, pharn.spec-template.md) and the memory-bank canon subtrees, an added untracked file included.
+//     Before 6.53.0 a forged baseline entry cleared a Bash edit of LIMITS.md (audit 2026-10-07). For an ORDINARY
+//     path the
+//     baseline IS the reference, the baseline lives under `.pharn/` — which Bash reaches — and nothing
+//     authenticates it. So a writer who edits a denied file AND rewrites that file's baseline entry to
+//     the new hash gets a SILENT `CLEAN`: no escape, no warning, no INCONCLUSIVE. Therefore:
+//       • WHAT THIS DETECTS: a Bash write by a NON-ADVERSARIAL writer — a stage's own tooling, a
+//         formatter, a generator, a script, a mistake. That is the entire population of L19/L20's
+//         observed failures, and it is what the increment was built for.
+//       • WHAT THIS DOES NOT DETECT: an ADVERSARY who also rewrites the baseline. Against that actor
+//         only the control surface holds, because only it is anchored in committed git objects.
+//     "Cannot be disabled quietly" is therefore STRUCK for ordinary paths and TRUE only for the control
+//     surface. Closing it needs authenticated state outside the worktree — the same harness-layer
+//     category as the OS sandbox in LIMITS.md §6, and just as absent. Raised in review; the accepted
+//     remedy offered there was "narrow the documented guarantee", and this is that narrowing.
+//  6. A COMMITTED change moves HEAD too, so the control-surface fallback cannot see it. The backstop
+//     there is Code-Owner review, which is where CODEOWNERS already sits. (The baseline comparison DOES see a
+//     committed change; since 6.52.0 it is classified `merged` rather than an escape only when the committed
+//     bytes are upstream's — a commit the build makes itself stays an escape. See THE `merged` CLASSIFICATION.)
+//  7. THIS FILE CANNOT VOUCH FOR ITSELF. /pharn-*verify runs the WORKTREE copy of this checker through
+//     Bash, so a modified checker can print `CLEAN` without reconciling anything. `pharn/floor/` is in
+//     `always_reconciled`, which means a modified checker is detected — BY ITSELF, which is circular and
+//     is not a guarantee. A real fix loads the checker from an immutable installation outside the
+//     worktree; PHARN has no such location, so this is stated rather than solved.
+//  8. THE ANCHOR IS ADVISORY (lessons-learned L19 — it is a Bash call, outside the PreToolUse gate). A
+//     run that SKIPS it does not reliably fail: `--require-baseline` is satisfied by whatever earlier
+//     epoch is still on disk, so the reconciliation silently ranges over the wrong window. Only a tree
+//     that has NEVER anchored yields INCONCLUSIVE. Binding a record to a specific successful build
+//     would need a pending/committed lifecycle this does not implement.
+//
+// Usage:
+//   node pharn/floor/check-bash-reconcile.mjs [--base <dir>] [--require-baseline] [--json]
+//
+// Verdict enum (printed as `.verdict`): CLEAN | ESCAPE | NO_BASELINE | INCONCLUSIVE
+// Exit: 0 CLEAN or NO_BASELINE · 1 ESCAPE · 2 INCONCLUSIVE / bad input — FAIL-CLOSED (P5).
+//   NO_BASELINE is exit 0 BY DESIGN, and only without --require-baseline: a fresh clone or a CI checkout
+//   has never anchored, and REDding there would make every first run a false alarm — the same posture
+//   pharn/floor/check-lessons-index.mjs takes for COLD. /verify passes --require-baseline because a
+//   build DID run, so there an absent baseline is a real refusal.
+
+import "./runtime-floor.mjs";
+import { readFileSync, writeFileSync, existsSync, statSync, lstatSync, mkdtempSync, mkdirSync, copyFileSync } from "node:fs";
+import { resolve, join, basename } from "node:path";
+import { execFileSync, spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { createHash } from "node:crypto";
+import { enumerate, hashFile, RECORD_VERSION, RECORD_PATH } from "./reconcile-baseline.mjs";
+import { openRun } from "./run-marker.mjs";
+import { WIDENED_REASON, ESCAPE_REASONS } from "./reconcile-detail-core.mjs";
+import { IGNORE_DATA_PATH, loadIgnoreData, isHumanOnly, isAlwaysReconciled } from "./reconcile-ignore-core.mjs";
+
+// The always-reconciled set's loader and matcher live in reconcile-ignore-core.mjs since 6.57.0 (one owner, L35; the
+// deletion helper imports them from there). Re-exported here under the same names, so no importer of this module changes.
+export { IGNORE_DATA_PATH, loadIgnoreData, isHumanOnly, isAlwaysReconciled };
+export const VERDICTS = ["CLEAN", "ESCAPE", "NO_BASELINE", "INCONCLUSIVE"];
+
+// --- the hook's matcher, copied faithfully (see THE ONE DUPLICATION above). `**` spans segments; `*`
+// --- matches within one segment; everything else literal. A bare path matches only itself.
+export function globToRegExp(glob) {
+  let re = "";
+  for (let i = 0; i < glob.length; i++) {
+    const c = glob[i];
+    if (c === "*") {
+      if (glob[i + 1] === "*") {
+        re += ".*";
+        i++;
+      } else {
+        re += "[^/]*";
+      }
+    } else if ("\\^$.|?+()[]{}".includes(c)) {
+      re += "\\" + c;
+    } else {
+      re += c;
+    }
+  }
+  return new RegExp("^" + re + "$");
+}
+
+export function matchesAny(rel, globs) {
+  return globs.some((g) => globToRegExp(g).test(rel));
+}
+
+// --- A stage's OWN pipeline artifact (lessons-learned L17). `pharn/features/<slug>/<NAME>` or the same under
+// --- `.dev/`, where <NAME> is EXACT membership in the closed enum — never a `**` glob over the feature
+// --- dir, so a stray file there is still reported. <slug> is shape-gated so a crafted `..` cannot build
+// --- a traversing prefix (the same refusal check-regress.mjs's FEATURE_SLUG_RE makes, for the same
+// --- reason: the previous shape "yields a prefix that matches no path" was nearly true, not true).
+const PIPELINE_RE = /^(?:\.dev\/|pharn\/)features\/(?!\.\.?\/)([A-Za-z0-9._-]+)\/(.+)$/;
+
+// The ACTIVE feature slug, derived from the scope record's own `set_by` (a PLAN path). Narrowing the
+// exemption to that one feature matters: exempting a pipeline filename under ANY slug lets a write to
+// `pharn/features/<anything>/SHIP.md` pass unexamined, and an exemption set wide enough to swallow the rule is
+// the failure this whole increment was weighed against. When no slug is derivable (no snapshot, or a
+// `set_by` that is not a feature path) the exemption stays slug-agnostic — that is strictly no wider
+// than before, and it is the honest fallback rather than a guess.
+export function activeFeatureSlug(scopeSnapshot) {
+  const setBy = scopeSnapshot?.set_by;
+  if (typeof setBy !== "string") return null;
+  const m = PIPELINE_RE.exec(setBy.replace(/\\/g, "/"));
+  return m ? m[1] : null;
+}
+
+export function isPipelineArtifact(rel, data, activeSlug = null) {
+  const m = PIPELINE_RE.exec(rel);
+  if (!m) return false;
+  const slug = m[1];
+  if (slug === "." || slug === "..") return false;
+  if (activeSlug !== null && slug !== activeSlug) return false;
+  const tail = m[2];
+  if (data.pipelineNames.includes(tail)) return true;
+  return /^lenses\/[A-Za-z0-9._-]+\/findings\.json$/.test(tail);
+}
+
+// The one-line remedy a human-only escape carries (6.53.0, GATE-1 addition). Reconcile has no attribution
+// (lessons-learned L68), so a maintainer's own uncommitted edit of a trusted doc, CODEOWNERS, the SPEC template or
+// canon reads exactly like a stray Bash write; this tells them what to do instead of how to silence it.
+export const HUMAN_ONLY_REMEDY =
+  "if this is a human's own edit: commit it before running the gates, or land it outside the build's anchor->verify window (lessons-learned L68) — never re-anchor or edit the baseline to clear it";
+
+// The closed `reason` enum an escape may carry (6.54.0). Absent on every other escape. Since 6.55.0 its ONE copy lives
+// in reconcile-detail-core.mjs, which the two report renderers also read (L35); re-exported here under the same names.
+export { WIDENED_REASON, ESCAPE_REASONS };
+export const WIDENED_REMEDY =
+  "this path was added to the plan's `## Files` after the build anchored, and the anchored plan does not authorize it: declare every path in `## Files` BEFORE the build's Step 0 (the only widening that stays clean), or, if the human approves the widened plan, accept this at the post-review gate — never re-anchor or edit the baseline to clear it";
+
+// `set_by` as git and the setter would spell it: `/` separators, no leading `./`. Untrusted data, compared only.
+export function normalizeSetBy(setBy) {
+  return String(setBy ?? "")
+    .replace(/\\/g, "/")
+    .replace(/^(?:\.\/)+/, "");
+}
+
+// A stage command file: EXACTLY one path segment under `.claude/commands/`, ending `.md` (GATE-2 A1). A prefix test
+// admitted `.claude/commands/../../x/PLAN.md`, a plan dressed as a command; `..` and `.` cannot be a segment here.
+export function isCommandOrigin(setBy) {
+  const m = /^\.claude\/commands\/([^/]+\.md)$/.exec(normalizeSetBy(setBy));
+  return m !== null && m[1] !== ".." && !m[1].startsWith("..");
+}
+
+// ================================ DELETIONS (6.57.0, deletion-follow-ups) ================================
+//
+// WHY (measured, not hypothetical — reconciliation-record.md §3): the enumeration is `git ls-files --cached --others
+// --exclude-standard`, so a path the anchor hashed and git no longer lists — removed with `git rm`, deleted by a
+// commit, or an untracked file unlinked — used to be only a "present at anchor, absent now" WARN, judged by nothing:
+// an undeclared `git rm` read CLEAN (the 6.56.0 plan's scenario D, re-probed in deletion-follow-ups). A TRACKED file
+// unlinked from the worktree alone was already judged (git still lists it; it hashes to nothing). Now every such path
+// is classified by `absenceState`, and a deletion is a CANDIDATE judged exactly like a modified path: the real guard,
+// then the recorded scopes, then the default probe; an upstream merge's deletion is classified `merged` (below).
+//
+// absenceState answers from `lstat` — never stat/existsSync, which FOLLOW a link (L54, L59): a dangling or
+// re-pointed symlink left at the path is "present". ENOENT / ENOTDIR (a parent component is now a file) are the
+// only proof of absence → "gone". Any other lstat error → "unreadable", which the caller treats as gone (a
+// candidate) — fail closed, the "unreadable is changed" rule of §3. A DIRECTORY now at the path is "gone": the anchor
+// hashed a file or a link there (never a directory — hashFile returns null for one), so the entry it recorded no
+// longer exists; the files inside the new directory are new paths, judged on their own.
+//
+// "present" does NOT by itself mean "it became git-ignored" (GATE-2 review F1, measured). A successful lstat proves
+// only that SOME entry answers to that spelling: on a case-insensitive volume a case-only rename (`git mv src/Out.txt
+// src/out.txt`) leaves the old spelling lstat-able, and a parent directory replaced by a symlink lets lstat follow the
+// parent component. Both read CLEAN on macOS and ESCAPE on Linux before the fix. So the WARN needs git's own proof
+// of ignore — `ignoredByGit`, exit 0 of `git check-ignore --stdin -z --no-index` echoing the path back — and every
+// other answer (1 = not ignored, 128 = e.g. "beyond a symbolic link", a spawn failure) makes the path a candidate:
+// fail closed, and the platforms agree. Only a path git itself says is ignored is the stated ignored-paths bound
+// (bound 1) — a WARN, never judged.
+export function absenceState(root, rel) {
+  try {
+    return lstatSync(resolve(root, rel)).isDirectory() ? "gone" : "present";
+  } catch (e) {
+    return e && (e.code === "ENOENT" || e.code === "ENOTDIR") ? "gone" : "unreadable";
+  }
+}
+
+// true ONLY when git answers exit 0 ("ignored") AND echoes back exactly this path. The path travels on STDIN,
+// NUL-terminated (`--stdin -z`; `-z` is refused without `--stdin`, measured), never on argv, so it can never parse as
+// an option; no shell; `--no-index` so a path still in the index is judged by the rules alone. NOT under
+// GIT_LITERAL_PATHSPECS: check-ignore refuses that magic outright (measured: exit 128, "pathspec magic not supported
+// by this command: 'literal'" — the same trap CHANGELOG [6.19.0] records), which would make every path a
+// candidate. The echo test stands in for it: a name git read as anything other than itself does not come back
+// byte-identical, so it is not cleared.
+const CHECK_IGNORE_ENV = (() => {
+  const env = { ...process.env };
+  for (const k of ["GIT_LITERAL_PATHSPECS", "GIT_GLOB_PATHSPECS", "GIT_NOGLOB_PATHSPECS", "GIT_ICASE_PATHSPECS"]) delete env[k];
+  return env;
+})();
+// Through the shared `git()` helper (no git spawn of its own — the GIT CEILING enumeration is unchanged): exit 0 returns
+// stdout; a non-zero exit, a spawn failure or an oversize answer THROWS, which reads as "not ignored" → a candidate.
+export function ignoredByGit(root, rel) {
+  try {
+    return git(root, ["check-ignore", "--stdin", "-z", "--no-index"], "utf8", { env: CHECK_IGNORE_ENV, input: `${rel}\0` }) === `${rel}\0`;
+  } catch {
+    return false;
+  }
+}
+
+// --- EXECUTE a hook against one candidate path and read its exit code. -----------------------------
+// 0 = it would have allowed the write; 2 = it would have denied it. Anything else is unusable input and
+// the caller treats it as INCONCLUSIVE (fail-closed) rather than guessing a direction.
+function askHook(hookAbs, rel, cwd) {
+  const payload = JSON.stringify({ tool_name: "Write", tool_input: { file_path: rel } });
+  const r = spawnSync(process.execPath, [hookAbs], { input: payload, cwd, encoding: "utf8" });
+  if (r.error || r.status === null) return { ok: false, reason: `hook did not run: ${hookAbs}` };
+  // ONLY 0 and 2 are answers. Anything else — a crash, a usage error, a future exit code — is NOT an
+  // allow. Reading `status !== 2` as "permitted" would turn any hook malfunction into a false CLEAN,
+  // which is fail-OPEN in the one place this file must not be (P5). Caught in review, not by a test.
+  if (r.status === 0) return { ok: true, denied: false };
+  if (r.status === 2) return { ok: true, denied: true };
+  return {
+    ok: false,
+    reason: `hook ${hookAbs} answered with an unexpected exit code ${r.status} for '${rel}' — not treated as permission`,
+  };
+}
+
+// --- reuses makeDefaultProbeSandbox()'s runtime signals (below), then materializes a RECORDED scope on
+// --- top of them. Ask a hook how it would have answered under that scope rather than the live one.
+//
+// The only hook passed here is protect-trusted-paths.cjs. It resolves its guarded roots from its own module
+// path — plus, since hook-cwd-anchoring, the git work tree containing cwd when that tree shares a hook
+// root's common directory — and reads `.pharn/writes-scope.json` from the root a canon target sits under,
+// never from cwd as such. The sandbox is a non-git temp dir, so no tree is added there and the sandbox IS
+// that root. So reproducing a past scope means giving the hook a root where that
+// scope is the live one: copy the hook in, materialize the scope, and run it there with cwd set to the
+// sandbox so a repo-relative payload path resolves under that root. This is the same DELEGATION the
+// default probe makes (execute the real hook; reproduce only the runtime signals it reads), never a
+// re-implementation of its rules — L37.
+//
+// NARROWED, and stated: a sandbox holds no real files, so the hook's file-BASED checks (hard-link
+// aliasing, symlink resolution) cannot fire here. That is why this is only ever consulted to
+// RE-EXAMINE a path the real-root probe already denied, and only when a recorded scope covers it — it
+// can soften a denial that a scope legitimately authorizes, and it is never the first or only answer.
+const scopeProbeCache = new Map();
+function askHookUnderScope(hookAbs, rel, root, scopeRecord) {
+  const key = `${hookAbs}::${JSON.stringify(scopeRecord)}`;
+  let dir = scopeProbeCache.get(key);
+  if (dir === undefined) {
+    try {
+      dir = makeDefaultProbeSandbox(root);
+      const hookDir = join(dir, ".claude", "hooks");
+      mkdirSync(hookDir, { recursive: true });
+      copyFileSync(hookAbs, join(hookDir, basename(hookAbs)));
+      mkdirSync(join(dir, ".pharn"), { recursive: true });
+      writeFileSync(join(dir, ".pharn", "writes-scope.json"), JSON.stringify(scopeRecord) + "\n");
+    } catch {
+      dir = null; // unusable sandbox => no clearance, which fails CLOSED (the denial stands)
+    }
+    scopeProbeCache.set(key, dir);
+  }
+  if (dir === null) return { ok: false, reason: `could not build a scope probe sandbox for '${rel}'` };
+  return askHook(join(dir, ".claude", "hooks", basename(hookAbs)), rel, dir);
+}
+
+// Exported for the parity test. Reproduces THREE runtime signals `enforce-writes-scope.cjs`'s no-scope
+// decision reads (6.24.0 adds the third): `pharn.config.json` (copied), `.dev/floor/` (created), and a
+// FRESH run marker (written by run-marker.mjs's own openRun() — never a hand-built JSON blob, so this
+// probe cannot drift from what the real writer emits). The marker makes this sandbox answer with the
+// STRICT, in-run default whenever it represents an install: after D6 (reconcile-baseline.mjs §9) every
+// NEW baseline records a scope, so this probe is reached only for a LEGACY baseline anchored with none,
+// or the no-baseline control-surface path — and the marker state at the moment of each PAST write is
+// recorded nowhere (lessons-learned L42), so replaying with TODAY's markers would give a NOW answer and
+// replaying with none would give the PERMISSIVE answer — fail-open exactly where this checker knows
+// least. The strict answer is therefore the only defensible one for a probe with no history to consult.
+export function makeDefaultProbeSandbox(root) {
+  const dir = mkdtempSync(join(tmpdir(), "pharn-reconcile-"));
+  const cfg = resolve(root, "pharn.config.json");
+  if (existsSync(cfg)) {
+    try {
+      copyFileSync(cfg, join(dir, "pharn.config.json"));
+    } catch {
+      /* absent signal is a valid state; the hook handles it */
+    }
+  }
+  try {
+    if (statSync(resolve(root, ".dev/floor")).isDirectory()) mkdirSync(join(dir, ".dev/floor"), { recursive: true });
+  } catch {
+    /* not a dev repo */
+  }
+  // The third signal: a fresh run marker, so an install-posture sandbox always reads as "a run is open".
+  // Harmless (and unread) in a dev/unsignalled sandbox, where the hook never consults a marker at all.
+  // Its RESULT is checked (GATE-2 review, minor 8): a refused open would leave an install sandbox with no
+  // marker, i.e. answering with the PERMISSIVE default — the fail-open this probe exists to avoid. A throw
+  // here reaches every caller as an unusable sandbox, which each one treats as fail-closed.
+  const marker = openRun({ root: dir, command: "pharn-ship", name: "reconcile-probe", sessionId: null, now: Date.now() });
+  if (!marker.ok) throw new Error(`reconcile probe sandbox: the run marker was refused (${marker.reason})`);
+  return dir;
+}
+
+// ================================ THE `merged` CLASSIFICATION (6.52.0) ================================
+//
+// WHY (P7 — measured, audit 2026-10-07 P3-L): a `git merge` of upstream into the worktree moves bytes without
+// any write tool, so every path upstream changed differs from its baseline entry and — being outside the
+// build's scope — read as "a write reached it outside the guarded tool surface". On the maintainer's checkout a
+// day-old baseline reported 9 such escapes, all legitimate merges (two dependency bumps, a docs PR that touched
+// trusted docs); a ship agent that merges origin/main mid-run met the same RED at verify. That is
+// lessons-learned L17's failure class: a changed-since-anchor fact reported as a wrote-outside-scope claim.
+//
+// WHAT: a path that WOULD be an escape is classified `merged` instead — reported in `merged[]` and named in a
+// warning, never silently dropped (L48) — iff ALL of these hold. Each is an object-id / byte equality or a git
+// exit code (ARCHITECTURE §2 primitives #2 and #3); ANY git failure leaves the path an escape (fail-closed, P5):
+//   (a) the baseline records `anchored_head` X, and HEAD H resolves and differs from X;
+//   (b) X is an ancestor of H — the change lies in the commits X..H (a rebase, a reset elsewhere: no class);
+//   (c) the upstream resolves: the symbolic ref refs/remotes/origin/HEAD, to a commit U, and HEAD and U have a
+//       merge base M (`git merge-base H U`) — the newest upstream commit HEAD contains — that X does NOT
+//       contain, so at least one upstream commit entered HEAD inside the window;
+//   (d) the path's ANCHORED bytes are X's blob (or it is absent from both baseline and X) — so the epoch opened
+//       on exactly the committed state, and no uncommitted edit at anchor time is folded in;
+//   (e) its CURRENT bytes are H's blob — no uncommitted edit on top of the merge;
+//   (f) H's blob equals M's blob, same object id and same mode — THE ANTI-LAUNDERING CONDITION. M is reachable
+//       from upstream, and a commit the build makes itself during the window is not, so a path the build changed
+//       and committed has a blob at H that differs from M's and stays an escape; committing an escape does not
+//       clear it. M rather than U so that a later fetch, which moves U past the merged commit, does not undo the
+//       classification (U's newer bytes for the path are not HEAD's; M's still are).
+// The digest of a blob is the baseline's own rule: SHA-256 of its bytes, or of `symlink\0` + bytes for mode
+// 120000. Only modes 100644 / 100755 / 120000 qualify; a gitlink or a tree is never classified.
+// A DELETION (6.57.0) qualifies on the same (a)–(c) and: (d) its anchored bytes are X's blob; (e) it is gone from
+// disk; (f) it is ABSENT at H and ABSENT at M. Upstream's removal merged into HEAD is `merged`; a deletion the build
+// committed itself still has the path at M, so it stays an escape (the anti-laundering condition, for deletions).
+//
+// WHY ONLY WOULD-BE ESCAPES: an authorized path is never re-labelled, and a CLEAN run makes no extra git call.
+// It applies to every escape KIND — a trusted doc or canon (protect-trusted-paths.cjs), the control surface,
+// an ordinary path — because the condition is about where the bytes came from, not which guard denied them.
+//
+// BOUNDS, stated (P0). This buys PRECISION (fewer false REDs), never strength (L42's bound):
+//   • Bytes equal to upstream's are classified `merged` whoever wrote them — `git checkout origin/main -- p`
+//     or a Bash write that happens to produce upstream's exact bytes included. That is the class's meaning.
+//   • refs/remotes/origin/HEAD and the ref it names are local, Bash-movable aliases (L32). A STALE fetch only
+//     makes the classification miss, so the RED stays — the loud direction. Moving the ref with Bash, or pushing
+//     the build's own commit to the upstream branch and fetching it back, is outside the non-adversarial claim
+//     the reconciliation contract already states. HEAD and the upstream are read NOW; only X was recorded THEN
+//     (L42, L58), and every read is safe in its direction because each one can only withhold the class.
+//   • A clone made by `git init` + `git remote add` has no refs/remotes/origin/HEAD; the class is then inert and
+//     the warning names `git remote set-head origin --auto`. A remote not named `origin` is not consulted.
+//   • A conflict resolved by hand yields a blob equal to neither side, so (f) fails and an out-of-scope path stays
+//     an escape. Line-ending or filter conversion (`.gitattributes` eol, LFS) makes (e) fail the same way.
+//   • A shallow clone can lack the history (b) needs; that reads as "could not decide", never as an ancestor.
+const MERGEABLE_MODES = new Set(["100644", "100755", "120000"]);
+// A full git object id: SHA-1 (40 hex) or SHA-256 (64 hex). Every commit operand passed to git matches it first.
+const OBJECT_ID_RE = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+
+// Every pathspec is LITERAL (GIT_LITERAL_PATHSPECS, the env form of `--literal-pathspecs`): a filename is an
+// untrusted operand, never a pattern. Measured (GATE-2 A2): `ls-tree` already reads `*` and `?` literally, but it
+// honours pathspec MAGIC — `:(top)dep.json` names `dep.json` — and the env switches that off. argv only — no shell
+// parses a path.
+const GIT_ENV = { ...process.env, GIT_LITERAL_PATHSPECS: "1" };
+
+// The ONE argv helper that prints git output (stage-runtime.test.mjs's GIT CEILING pins its spawn and its maxBuffer).
+// `opts` is optional and, when absent, changes nothing for any caller: GIT_ENV, stdin ignored. `opts.env` replaces the
+// environment (only ignoredByGit passes one, to drop GIT_LITERAL_PATHSPECS); `opts.input` pipes stdin, and only then.
+function git(root, args, encoding = "utf8", opts = {}) {
+  const piped = opts.input !== undefined;
+  return execFileSync("git", args, {
+    cwd: root,
+    encoding,
+    env: opts.env ?? GIT_ENV,
+    maxBuffer: 1 << 28,
+    ...(piped ? { input: opts.input } : {}),
+    stdio: [piped ? "pipe" : "ignore", "pipe", "ignore"],
+  });
+}
+
+// git's one-line answer, trimmed, or null on a non-zero exit or an empty answer.
+function gitLine(root, args) {
+  try {
+    return git(root, args).trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+function gitOk(root, args) {
+  const r = spawnSync("git", args, { cwd: root, env: GIT_ENV, stdio: "ignore", maxBuffer: 1 << 20 });
+  return r.error ? null : r.status;
+}
+
+// One path's entry in one commit: { absent: true } | { mode, oid, digest } | null (unusable — fail closed).
+function blobAt(root, commit, rel) {
+  let out;
+  try {
+    out = git(root, ["ls-tree", "-z", "--full-tree", commit, "--", rel]);
+  } catch {
+    return null;
+  }
+  const rows = out.split("\0").filter(Boolean);
+  const hit = rows.map((row) => /^(\d{6}) (\w+) ([0-9a-f]{40,64})\t([\s\S]*)$/.exec(row)).filter((m) => m && m[4] === rel);
+  if (hit.length === 0) return rows.length === 0 ? { absent: true } : null;
+  const [, mode, type, oid] = hit[0];
+  if (type !== "blob" || !MERGEABLE_MODES.has(mode)) return null;
+  let bytes;
+  try {
+    bytes = git(root, ["cat-file", "blob", oid], "buffer");
+  } catch {
+    return null;
+  }
+  const h = createHash("sha256");
+  if (mode === "120000") h.update("symlink\0");
+  return { mode, oid, digest: h.update(bytes).digest("hex") };
+}
+
+function revCommit(root, rev) {
+  try {
+    const out = git(root, ["rev-parse", "--verify", "-q", `${rev}^{commit}`]).trim();
+    return OBJECT_ID_RE.test(out) ? out : null;
+  } catch {
+    return null;
+  }
+}
+
+// Exported for the tests. Returns { merged: [rel…], warnings: [string…] }. `files` are the would-be escapes.
+export function classifyMerged(root, baseline, files) {
+  const merged = [];
+  const warnings = [];
+  if (files.length === 0) return { merged, warnings };
+  // The baseline is unauthenticated state, so anchored_head is an untrusted operand: shape-checked as a full
+  // object id BEFORE it reaches git, where a value starting with `-` would parse as an option (GATE-2 A1).
+  const raw = baseline?.anchored_head;
+  const x = typeof raw === "string" && OBJECT_ID_RE.test(raw) ? raw : null;
+  const h = revCommit(root, "HEAD");
+  if (x === null) {
+    warnings.push(
+      raw === undefined || raw === null
+        ? "merged classification unavailable: the baseline records no anchored_head (anchored before 6.52.0, or on an unborn HEAD) — the next anchor records it"
+        : "merged classification unavailable: the baseline's anchored_head is not a full object id — refused, never passed to git"
+    );
+    return { merged, warnings };
+  }
+  if (h === null || h === x) return { merged, warnings }; // HEAD did not move: nothing was merged in the window
+  const anc = gitOk(root, ["merge-base", "--is-ancestor", x, h]);
+  if (anc !== 0) {
+    warnings.push(
+      anc === 1
+        ? `merged classification unavailable: HEAD moved since the anchor (${x.slice(0, 12)} -> ${h.slice(0, 12)}) but the anchored commit is not its ancestor (a rebase or a reset) — every changed path is judged as a write`
+        : `merged classification unavailable: HEAD moved since the anchor (${x.slice(0, 12)} -> ${h.slice(0, 12)}) and git could not decide ancestry (a shallow clone, or a missing object)`
+    );
+    return { merged, warnings };
+  }
+  const upstreamRef = gitLine(root, ["symbolic-ref", "-q", "refs/remotes/origin/HEAD"]);
+  const u = upstreamRef ? revCommit(root, upstreamRef) : null;
+  if (u === null) {
+    warnings.push(
+      `merged classification unavailable: HEAD moved since the anchor (${x.slice(0, 12)} -> ${h.slice(0, 12)}) but refs/remotes/origin/HEAD does not resolve — run \`git remote set-head origin --auto\` to name the upstream`
+    );
+    return { merged, warnings };
+  }
+  const m = gitLine(root, ["merge-base", h, u]);
+  if (!m || !OBJECT_ID_RE.test(m)) {
+    warnings.push(
+      `merged classification unavailable: HEAD moved since the anchor (${x.slice(0, 12)} -> ${h.slice(0, 12)}) but HEAD and ${upstreamRef} share no merge base`
+    );
+    return { merged, warnings };
+  }
+  // M must be NEW since the anchor: if the anchored commit already contained it, no upstream commit entered
+  // HEAD in the window, so no change here is explained by a merge — HEAD moved only by the build's own commits.
+  const mInX = gitOk(root, ["merge-base", "--is-ancestor", m, x]);
+  if (mInX !== 1) {
+    if (mInX !== 0) {
+      warnings.push(`merged classification unavailable: git could not decide whether ${m.slice(0, 12)} is in the anchored commit`);
+    }
+    return { merged, warnings };
+  }
+  for (const rel of files) {
+    const atH = blobAt(root, h, rel);
+    if (!atH) continue;
+    if (atH.absent) {
+      // A DELETION (6.57.0): upstream removed the path and HEAD merged that removal. (f) absent at H AND at M — a
+      // null at either (a tree, a gitlink, an unusual mode, a git failure) keeps the escape; a deletion the build
+      // commits itself leaves the path PRESENT at M, so it stays an escape — unless upstream removed the same path in
+      // the window, when M lacks it too and it is merged (the "whoever wrote them" bound). (e) gone from disk now. (d) the anchored
+      // bytes are X's blob — so the epoch opened on the committed file, unedited.
+      const atM = blobAt(root, m, rel);
+      if (!atM || !atM.absent) continue; // (f)
+      if (absenceState(root, rel) !== "gone") continue; // (e)
+      const atX = blobAt(root, x, rel);
+      if (!atX || atX.absent) continue;
+      const anchored = Object.hasOwn(baseline.entries, rel) ? baseline.entries[rel] : undefined;
+      if (anchored !== atX.digest) continue; // (d)
+      merged.push(rel);
+      continue;
+    }
+    const atM = blobAt(root, m, rel);
+    if (!atM || atM.absent || atM.oid !== atH.oid || atM.mode !== atH.mode) continue; // (f)
+    if (hashFile(resolve(root, rel)) !== atH.digest) continue; // (e)
+    const atX = blobAt(root, x, rel);
+    if (!atX) continue;
+    const before = Object.hasOwn(baseline.entries, rel) ? baseline.entries[rel] : undefined;
+    if (atX.absent ? before !== undefined : before !== atX.digest) continue; // (d)
+    merged.push(rel);
+  }
+  if (merged.length) {
+    warnings.push(
+      `HEAD moved since the anchor (${x.slice(0, 12)} -> ${h.slice(0, 12)}); ${merged.length} path(s) classified merged — each one's anchored bytes are its blob at the anchored commit, its bytes now are its blob at HEAD, and that blob is its blob at ${m.slice(0, 12)}, the merge base of HEAD and ${upstreamRef}`
+    );
+  }
+  return { merged, warnings };
+}
+
+function emit(obj, code) {
+  console.log(JSON.stringify(obj, null, 2));
+  process.exit(code);
+}
+
+function main(argv) {
+  const args = argv.slice(2);
+  let baseDir = ".";
+  let requireBaseline = false;
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--base") baseDir = args[++i];
+    else if (args[i] === "--require-baseline") requireBaseline = true;
+    else if (args[i] === "--json") {
+      /* default output is already JSON; accepted for symmetry with siblings */
+    } else {
+      emit({ verdict: "INCONCLUSIVE", reason: `unknown argument: ${args[i]}` }, 2);
+    }
+  }
+  if (!baseDir) emit({ verdict: "INCONCLUSIVE", reason: "--base requires a directory" }, 2);
+  const root = resolve(baseDir);
+  if (!existsSync(root)) emit({ verdict: "INCONCLUSIVE", reason: `--base is not a directory: ${baseDir}` }, 2);
+
+  let data;
+  try {
+    const d = loadIgnoreData();
+    if (!d.ok) emit({ verdict: "INCONCLUSIVE", reason: d.reason }, 2);
+    data = d;
+  } catch (e) {
+    emit({ verdict: "INCONCLUSIVE", reason: `cannot read reconcile-ignore.json: ${e.message}` }, 2);
+  }
+
+  const protectHook = resolve(root, ".claude/hooks/protect-trusted-paths.cjs");
+  const scopeHook = resolve(root, ".claude/hooks/enforce-writes-scope.cjs");
+  if (!existsSync(protectHook) || !existsSync(scopeHook)) {
+    // No guards wired => the writes-scope guarantee does not exist in this tree, so the premise of a
+    // reconciliation is void. Fail closed rather than report a reassuring CLEAN (P5).
+    emit({ verdict: "INCONCLUSIVE", reason: "a write guard is absent — nothing to reconcile against" }, 2);
+  }
+
+  // --- the baseline -------------------------------------------------------------------------------
+  const baselineAbs = resolve(root, RECORD_PATH);
+  const warnings = [];
+  let baseline = null;
+  if (existsSync(baselineAbs)) {
+    try {
+      baseline = JSON.parse(readFileSync(baselineAbs, "utf8"));
+    } catch (e) {
+      emit({ verdict: "INCONCLUSIVE", reason: `baseline is unparseable: ${e.message}` }, 2);
+    }
+    if (!baseline || typeof baseline !== "object" || !baseline.entries || typeof baseline.entries !== "object") {
+      emit({ verdict: "INCONCLUSIVE", reason: "baseline is present but malformed (no `entries` map)" }, 2);
+    }
+    if (Number(baseline.version) > RECORD_VERSION) {
+      emit({ verdict: "INCONCLUSIVE", reason: `baseline schema v${baseline.version} is newer than this checker (v${RECORD_VERSION})` }, 2);
+    }
+    if (Number(baseline.version) < RECORD_VERSION) {
+      // Legacy records are TOLERATED AT READ — an older epoch still names real paths and real hashes.
+      warnings.push(`baseline schema v${baseline.version} is older than v${RECORD_VERSION}; read as legacy`);
+    }
+  }
+
+  const en = enumerate(root);
+  if (!en.ok) emit({ verdict: "INCONCLUSIVE", reason: en.reason }, 2);
+
+  // --- the control surface, reconciled ALWAYS and against COMMITTED BLOB IDS ------------------------
+  // Not "always when there is no baseline" — ALWAYS. The baseline lives under `.pharn/`, which Bash
+  // reaches, so a caller that can edit a guard can also rewrite that guard's baseline entry to the new
+  // hash; the path then matches its baseline and never becomes a candidate. Comparing the control
+  // surface to `HEAD` instead anchors it in something the monitored channel cannot rewrite in place.
+  // This is the difference between the guarantee this file CLAIMS and the one an earlier draft
+  // implemented, and it was caught in review rather than by a test.
+  //
+  // ADDED FILES TOO (6.53.0). `git diff HEAD` lists tracked paths only, so a control path ABSENT at HEAD — no
+  // pharn.spec-template.md yet, a new pharn/floor/x.mjs — could be created through Bash, have its baseline entry
+  // forged, and read CLEAN (or NO_BASELINE with no baseline at all). The untracked-not-ignored control paths are
+  // therefore added from git's own `--others --exclude-standard` listing, filtered to the control surface ONLY, so
+  // an untracked file anywhere else is still judged by the baseline alone, exactly as before. BOUND: a git-ignored
+  // control path is invisible — including one ignored only through .git/info/exclude — as every ignored path is.
+  function controlSurfaceChanges() {
+    try {
+      // NUL-separated (6.53.0, GATE-2 R2): newline-split output is QUOTED by git's default core.quotePath for any
+      // non-ASCII name ("\303\274"), so such a control path failed isAlwaysReconciled and was missed silently.
+      // `-z` prints names verbatim. `--no-renames`: with rename detection on, a staged `git mv` of a control file
+      // lists only the NEW name, so the control path it left was missed the same way.
+      const out = execFileSync("git", ["diff", "--name-only", "-z", "--no-renames", "HEAD", "--"], {
+        cwd: root,
+        encoding: "utf8",
+        maxBuffer: 1 << 26,
+      });
+      const tracked = out.split("\0").filter(Boolean);
+      const untracked = git(root, ["ls-files", "-z", "--others", "--exclude-standard"]).split("\0").filter(Boolean);
+      return [...new Set([...tracked, ...untracked])].filter((rel) => isAlwaysReconciled(rel, data));
+    } catch {
+      warnings.push("control-surface blob-id reconciliation unavailable (no git HEAD) — baseline comparison only");
+      return null;
+    }
+  }
+
+  // --- candidates ---------------------------------------------------------------------------------
+  let candidates = [];
+  if (baseline) {
+    const seen = new Set();
+    for (const rel of en.paths) {
+      seen.add(rel);
+      const now = hashFile(resolve(root, rel));
+      if (now === null) {
+        // FAIL-CLOSED: a path we cannot hash is a path we cannot clear. Treating it as a warning and
+        // continuing would let "make it unreadable" suppress a denied change (P5).
+        warnings.push(`unreadable during reconcile, treated as changed: ${rel}`);
+        candidates.push(rel);
+        continue;
+      }
+      const before = baseline.entries[rel];
+      if (before === undefined || before !== now) candidates.push(rel);
+    }
+    const cs = controlSurfaceChanges();
+    if (cs) for (const rel of cs) if (!candidates.includes(rel)) candidates.push(rel);
+    // A path the anchor hashed that git no longer lists (6.57.0 — see absenceState). A CANDIDATE, judged like any other
+    // change, unless it is still on disk AND git says it is ignored (ignoredByGit) — only then a WARN (bound 1).
+    for (const rel of Object.keys(baseline.entries)) {
+      if (seen.has(rel)) continue;
+      const state = absenceState(root, rel);
+      if (state === "present" && ignoredByGit(root, rel)) {
+        warnings.push(`present at anchor, still on disk, now git-ignored — not judged: ${rel}`);
+        continue;
+      }
+      warnings.push(
+        state === "present"
+          ? `present at anchor, no longer listed by git and not proven ignored (a case alias or a symlinked parent?) — judged as a change: ${rel}`
+          : `present at anchor, absent now — judged as a change: ${rel}`
+      );
+      if (!candidates.includes(rel)) candidates.push(rel);
+    }
+  } else {
+    if (requireBaseline) {
+      emit({ verdict: "INCONCLUSIVE", reason: `no baseline at ${RECORD_PATH}, and --require-baseline was passed` }, 2);
+    }
+    // No anchor: ordinary-path detection is unavailable, but the ALWAYS-RECONCILED control surface still
+    // is — against committed blob ids, which live outside anything the monitored channel can rewrite in
+    // place. Same call as the baseline branch makes; one implementation, two entry points.
+    candidates = controlSurfaceChanges() ?? [];
+  }
+
+  // --- exemptions ---------------------------------------------------------------------------------
+  const exempted = [];
+  const activeSlug = activeFeatureSlug(baseline?.scope_snapshot ?? null);
+  candidates = candidates.filter((rel) => {
+    if (isAlwaysReconciled(rel, data)) return true; // never exemptible
+    if (data.exempt.includes(rel) || isPipelineArtifact(rel, data, activeSlug)) {
+      exempted.push(rel);
+      return false;
+    }
+    return true;
+  });
+
+  // --- permitted vs denied ------------------------------------------------------------------------
+  // The scopes that were legitimately in force during this epoch: the one taken when it OPENED, plus
+  // every scope a later stage recorded with `reconcile-baseline.mjs --amend-scope`. An epoch spans
+  // build -> ship and a run writes under SEVERAL scopes inside it, so judging every candidate against
+  // the opening snapshot alone reports the LATER stages' hook-approved writes as escapes — measured as
+  // .dev/features/product-features-relocation/REVIEW.md F3, and lessons-learned L17's failure mode.
+  const scopeSnapshot = baseline?.scope_snapshot ?? null;
+  const amendments = Array.isArray(baseline?.scope_amendments) ? baseline.scope_amendments : [];
+  const recordedScopes = [scopeSnapshot, ...amendments].filter((s) => s && Array.isArray(s.scope));
+
+  // The recorded scope that authorizes `rel`, or null. FIRST match wins and the snapshot is first, so a
+  // later amendment can never re-attribute a path the opening scope already covered.
+  //
+  // A SYMLINK is judged here by its OWN path, as text, and since 6.20.8 that is correct rather than a mismatch
+  // with the live guard (which `realpath`s a Write's target first): hashFile records every link by its LINK
+  // TEXT, so a link is a candidate only when the LINK changed, while a write THROUGH it changes — and is judged
+  // under — the target's own path, exactly the path the guard judges. Before 6.20.8 a link to a regular file
+  // carried its target's bytes, so an in-scope edit of the target made the link a candidate and a false ESCAPE.
+  // Residual, stated: a RE-POINTED link that no recorded scope names still gets the uniform "would have DENIED"
+  // sentence below. The guards cannot see a re-point at all (a Write writes through the link), so for a link
+  // re-pointed to an in-scope target that sentence describes this scope match, not a decision a guard made.
+  //
+  // A PLAN-ORIGIN AMENDMENT AUTHORIZES NOTHING THE SNAPSHOT DID NOT (6.54.0, audit P2-I). The plan is model-authored,
+  // so Bash-editing PLAN.md's `## Files`, re-running the setter and `--amend-scope` used to make any write CLEAN:
+  // the union above took every recorded scope at face value (lessons-learned L48's silent direction). An amendment is
+  // now trusted to authorize NEW paths only when its `set_by` is a stage command file (`.claude/commands/*.md` — the
+  // only `--from-frontmatter` origins, each narrowed to that stage's own artifacts by `--target`; the promote canon
+  // write, L42's F3, is one). Any other origin is a plan re-derivation: it may re-authorize what the opening snapshot
+  // already covered, and a path ONLY it covers is an escape with the closed reason `plan-widened-after-anchor`. The
+  // test is the origin, not "equal set_by + strict superset": a plan copied to a new path, or a re-plan that adds one
+  // path and drops another, is the same widening. COST, accepted at GATE 1 (option A): a LEGITIMATE mid-build re-plan
+  // is reported too — the reconciler cannot tell an Edit-tool PLAN edit from a Bash one — so it reds verify and is a
+  // STOP_TERMINAL in /pharn-loop; the human decides. BOUND: the opening snapshot is itself unauthenticated (bound 5),
+  // and a Bash-written scope record claiming a command `set_by` is outside the non-adversarial claim.
+  const commandOrigin = (s) => isCommandOrigin(s.set_by);
+  const authorizing = [scopeSnapshot, ...amendments.filter(commandOrigin)].filter((s) => s && Array.isArray(s.scope));
+  const planAmendments = amendments.filter((s) => s && Array.isArray(s.scope) && !commandOrigin(s));
+  const authorizingScope = (rel) => authorizing.find((s) => matchesAny(rel, s.scope)) ?? null;
+  const widenedBy = (rel) => planAmendments.find((s) => matchesAny(rel, s.scope)) ?? null;
+
+  let sandbox = null;
+  let escapes = [];
+  for (const rel of candidates) {
+    const auth = authorizingScope(rel);
+    const p = askHook(protectHook, rel, root);
+    if (!p.ok) emit({ verdict: "INCONCLUSIVE", reason: p.reason }, 2);
+    if (p.denied) {
+      // protect-trusted-paths.cjs has ONE scope-dependent rule — the canon denylist, whose escape keys
+      // on the writes-scope ORIGIN (`set_by`). It reads that file from its OWN guarded root, so asking
+      // it here answers "under whatever scope is live NOW", which by reconcile time is a later stage's
+      // or none at all. A denial is therefore not proof of denial under the scope actually in force.
+      // Re-ask the SAME hook — delegated, never re-derived (L37) — in a sandbox where it IS the guarded
+      // root and the authorizing scope is materialized. Only a scope this epoch RECORDED can clear a
+      // path, so nothing is cleared by the absence of a record.
+      const cleared = auth ? askHookUnderScope(protectHook, rel, root, auth) : null;
+      if (!cleared || !cleared.ok || cleared.denied) {
+        escapes.push({ file: rel, denied_by: "protect-trusted-paths.cjs" });
+        continue;
+      }
+    }
+    // An EXPLICIT scope is authoritative whatever its length. `{"scope": []}` means "this stage may
+    // write nothing", NOT "no scope was set" — CLAUDE.md makes the same point about why `--clear`
+    // DELETES the record rather than writing an empty array, since an empty array is truthy and denies
+    // everything. Gating on `length > 0` fell through to the *more permissive* fail-closed default,
+    // which is fail-OPEN on the strictest scope a stage can declare. An absent scope is `null`
+    // (snapshotScope never returns `[]` for an absent file), so the two states stay distinguishable.
+    // Judged against the UNION of every scope this epoch recorded, not the opening snapshot alone.
+    // `scope_set_by` names WHICH one authorized (or, on a denial, the opening scope) so a reader can
+    // tell a build-scope write from an amendment's without opening the baseline.
+    if (recordedScopes.length > 0) {
+      if (auth === null) {
+        const widened = widenedBy(rel);
+        escapes.push(
+          widened
+            ? { file: rel, denied_by: "writes-scope (snapshot)", reason: WIDENED_REASON, scope_set_by: widened.set_by }
+            : { file: rel, denied_by: "writes-scope (snapshot)", scope_set_by: (scopeSnapshot ?? recordedScopes[0]).set_by }
+        );
+      }
+      continue;
+    }
+    if (sandbox === null) {
+      try {
+        sandbox = makeDefaultProbeSandbox(root);
+      } catch {
+        emit(
+          {
+            verdict: "INCONCLUSIVE",
+            reason: "could not build the default-probe sandbox — no verdict is read from a probe that may be permissive",
+          },
+          2
+        );
+      }
+    }
+    const d = askHook(scopeHook, rel, sandbox);
+    if (!d.ok) emit({ verdict: "INCONCLUSIVE", reason: d.reason }, 2);
+    if (d.denied) escapes.push({ file: rel, denied_by: "writes-scope (fail-closed default)" });
+  }
+
+  // --- merged: a would-be escape whose change is exactly upstream's, merged into HEAD (see the section above).
+  // Only with a baseline — without one there is no anchored commit, and the control-surface-vs-HEAD candidates
+  // are uncommitted by construction, so (e) could never hold.
+  let merged = [];
+  if (baseline && escapes.length) {
+    const m = classifyMerged(
+      root,
+      baseline,
+      escapes.map((e) => e.file)
+    );
+    merged = m.merged;
+    warnings.push(...m.warnings);
+    escapes = escapes.filter((e) => !merged.includes(e.file));
+  }
+
+  const base = {
+    verdict: baseline ? (escapes.length ? "ESCAPE" : "CLEAN") : escapes.length ? "ESCAPE" : "NO_BASELINE",
+    epoch: baseline?.epoch ?? null,
+    anchored_by: baseline?.anchored_by ?? null,
+    reconciled: candidates.length,
+    escapes,
+    exempted,
+    merged,
+    warnings,
+  };
+  if (escapes.length) {
+    base.findings = escapes.map((e) => ({
+      type: "FINDING",
+      rule_id: "P0",
+      severity: "blocking",
+      file: e.file,
+      problem:
+        `'${e.file}' changed since the reconciliation anchor, and the write guards would have DENIED a write to it (${e.denied_by}) — a write reached it outside the guarded tool surface` +
+        (isHumanOnly(e.file, data) ? `; ${HUMAN_ONLY_REMEDY}` : "") +
+        (e.reason === WIDENED_REASON ? ` [${WIDENED_REASON}]; ${WIDENED_REMEDY}` : ""),
+    }));
+  }
+  emit(base, escapes.length ? 1 : 0);
+}
+
+if (import.meta.main) main(process.argv);
