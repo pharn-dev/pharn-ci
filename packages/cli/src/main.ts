@@ -43,6 +43,7 @@ Options:
   --threshold <n>      Minimum diff coverage percent (0-100). Default: coverage.threshold
   --format <md|json>   Output format. Default: md
   --exclude <glob>     Leave matching changed files out of diff coverage (repeatable; adds to coverage.exclude)
+  --require-agent-setup  Fail when the repo has no agent setup files. Default: setup.require, then off
   --config <path>      Config file. Default: <repo>/.pharn/ci.yml if present
   -h, --help           Show this help
   -v, --version        Show the version
@@ -93,6 +94,7 @@ function parse(argv: string[]) {
       format: { type: "string" },
       config: { type: "string" },
       exclude: { type: "string", multiple: true },
+      "require-agent-setup": { type: "boolean" },
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
     },
@@ -123,6 +125,8 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
       : (config.coverage?.threshold ?? null);
 
   const coverageFormat = coverageFormatFlag ?? config.coverage?.format ?? "auto";
+  // The flag only turns the requirement on; absent, setup.require decides, then off.
+  const requireAgentSetup = values["require-agent-setup"] === true || (config.setup?.require ?? false);
 
   // A --coverage path is relative to where you run the CLI; a config path is relative to the repo root.
   const coveragePath =
@@ -169,6 +173,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     threshold,
     repoFiles: lsFiles.split("\0").filter((p) => p !== ""),
     exclude: [...(config.coverage?.exclude ?? []), ...excludeFlags],
+    requireAgentSetup,
   };
   const report = check(input);
 

@@ -14,6 +14,10 @@ export interface PharnConfig {
     /** Glob patterns of changed files left out of diff coverage (validated and normalized). */
     exclude?: string[];
   };
+  setup?: {
+    /** When true, a repo with no agent setup files fails the check. */
+    require?: boolean;
+  };
 }
 
 export class ConfigError extends Error {
@@ -165,10 +169,36 @@ function parseScalar(value: string, lineNo: number): Scalar {
 function validateConfig(doc: YamlMap): PharnConfig {
   const config: PharnConfig = {};
   for (const key of Object.keys(doc)) {
-    if (key !== "coverage") throw new ConfigError(`unknown top-level key "${key}"`);
+    if (key !== "coverage" && key !== "setup") throw new ConfigError(`unknown top-level key "${key}"`);
   }
-  const cov = doc.coverage;
-  if (cov === undefined || cov === null) return config;
+  const coverage = validateCoverage(doc.coverage);
+  if (coverage !== undefined) config.coverage = coverage;
+  const setup = validateSetup(doc.setup);
+  if (setup !== undefined) config.setup = setup;
+  return config;
+}
+
+function validateSetup(value: YamlMap[string] | undefined): PharnConfig["setup"] | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "object" || Array.isArray(value)) throw new ConfigError(`"setup" must be a mapping`);
+
+  const setup: NonNullable<PharnConfig["setup"]> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (entry === null) continue;
+    switch (key) {
+      case "require":
+        if (typeof entry !== "boolean") throw new ConfigError(`"setup.require" must be true or false`);
+        setup.require = entry;
+        break;
+      default:
+        throw new ConfigError(`unknown key "setup.${key}"`);
+    }
+  }
+  return setup;
+}
+
+function validateCoverage(cov: YamlMap[string] | undefined): PharnConfig["coverage"] | undefined {
+  if (cov === undefined || cov === null) return undefined;
   if (typeof cov !== "object" || Array.isArray(cov)) throw new ConfigError(`"coverage" must be a mapping`);
 
   const coverage: NonNullable<PharnConfig["coverage"]> = {};
@@ -205,8 +235,7 @@ function validateConfig(doc: YamlMap): PharnConfig {
         throw new ConfigError(`unknown key "coverage.${key}"`);
     }
   }
-  config.coverage = coverage;
-  return config;
+  return coverage;
 }
 
 export function isCoverageFormat(value: string): value is CoverageFormat {

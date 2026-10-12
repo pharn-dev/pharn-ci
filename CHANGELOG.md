@@ -9,6 +9,8 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- Require agent setup: the `require-agent-setup` Action input, the CLI's `--require-agent-setup` flag and `setup.require` in `.pharn/ci.yml` (off by default) make `NO_AGENT_SETUP_FILES` an error and the verdict `fail` when the repo has no agent setup files.
+
 ### Changed
 
 ### Security

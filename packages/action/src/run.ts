@@ -87,6 +87,11 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const coverageFile = input("coverage-file") || config.coverage?.file;
   if (!coverageFile) throw new Error("no coverage file: set the coverage-file input or coverage.file in .pharn/ci.yml");
   const failOnThreshold = parseBool(input("fail-on-threshold"), true, "fail-on-threshold");
+  const requireAgentSetup = parseBool(
+    input("require-agent-setup"),
+    config.setup?.require ?? false,
+    "require-agent-setup",
+  );
   const comment = parseBool(input("comment"), true, "comment");
   const excludeInput = splitPatternList(input("exclude")).map((p) => parseExcludePattern(p, "exclude"));
 
@@ -109,6 +114,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     threshold,
     repoFiles: lsFiles.split("\0").filter((p) => p !== ""),
     exclude: [...(config.coverage?.exclude ?? []), ...excludeInput],
+    requireAgentSetup,
   };
   const report = check(checkInput);
   const markdown = renderMarkdown(report);

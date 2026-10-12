@@ -27,6 +27,8 @@ export interface CheckInput {
    * any order. Validated and de-duplicated here; an unsupported pattern throws a ConfigError.
    */
   exclude?: readonly string[];
+  /** When true, a repo with no agent setup files fails the check. Off when absent. */
+  requireAgentSetup?: boolean;
 }
 
 /** The whole pharn-ci check as one pure function: raw inputs in, Report v1 out. */
@@ -35,7 +37,12 @@ export function check(input: CheckInput): Report {
   const matchers = [...new Set((input.exclude ?? []).map((p) => parseExcludePattern(p)))].map(compileGlob);
   const isExcluded = (path: string) => matchers.some((matches) => matches(path));
   const agentSetup = scanAgentSetup(input.repoFiles);
-  const base = { version: input.version, threshold: input.threshold, agentSetup };
+  const base = {
+    version: input.version,
+    threshold: input.threshold,
+    agentSetup,
+    requireAgentSetup: input.requireAgentSetup === true,
+  };
 
   if ("missingFile" in input.coverage) {
     return buildReport({

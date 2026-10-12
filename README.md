@@ -211,6 +211,7 @@ On PRs from forks the token cannot comment; pharn-ci then warns and uses the job
 | `threshold`         | none                        | Minimum diff coverage %, inclusive       |
 | `base-ref`          | PR base                     | Ref or SHA to diff against               |
 | `exclude`           | none                        | Globs of changed files to leave out of diff coverage, comma or newline separated; added to `coverage.exclude` |
+| `require-agent-setup` | `setup.require`, then `false` | Fail when the repo has no agent setup files; the step fails through `fail-on-threshold` |
 | `comment`           | `true`                      | Post/update one sticky PR comment        |
 | `fail-on-threshold` | `true`                      | Fail the step when the verdict is `fail` |
 | `config`            | `.pharn/ci.yml`             | Config file path                         |
@@ -234,7 +235,7 @@ node packages/cli/dist/index.js check --coverage coverage/lcov.info --threshold 
 ```text
 pharn-ci check [--coverage <file>] [--coverage-format lcov|cobertura|auto] [--base <ref>]
                [--threshold <n>] [--format md|json] [--config <path>] [--exclude <glob>]...
-               [-h|--help] [-v|--version]
+               [--require-agent-setup] [-h|--help] [-v|--version]
 ```
 
 - `--coverage-format` defaults to `coverage.format` from the config, then `auto`, which reads lcov
@@ -244,6 +245,9 @@ pharn-ci check [--coverage <file>] [--coverage-format lcov|cobertura|auto] [--ba
 - `--exclude <glob>` leaves matching changed files out of diff coverage. Repeat it for several
   patterns; they are added to `coverage.exclude`, never replacing it
   ([Excluding files](#excluding-files)).
+- `--require-agent-setup` fails the check (exit `1`) when the repo has no agent setup files. Absent,
+  `setup.require` from the config decides, then off. The flag cannot turn off a requirement the
+  config turns on.
 - `--format json` prints only the report to stdout, for agents and scripts.
 - Exit codes: `0` pass or warn, `1` fail, `2` usage or runtime error.
 
@@ -263,6 +267,8 @@ coverage:
   exclude:
     - src/generated/**
     - "*.gen.ts"
+setup:
+  require: false # true fails the check when the repo has no agent setup files
 ```
 
 ### Excluding files
@@ -317,7 +323,11 @@ git.
   lower diff coverage.
 - **Files missing from the coverage report are invisible.** Configure your coverage tool to include
   all source files if untested files should count.
-- **The inventory is not a review.** pharn-ci lists agent setup files and never reads them.
+- **The inventory is not a review.** pharn-ci lists agent setup files and never reads them. It is
+  informational (`NO_AGENT_SETUP_FILES` is `info`) unless `require-agent-setup` or `setup.require`
+  is on, which makes it an `error` and the verdict `fail`.
+- **The setup requirement comes from the PR.** The `.pharn/ci.yml` a PR carries can switch
+  `setup.require` off, so protect it with CODEOWNERS (or set the Action input in the workflow).
 - **pharn-ci trusts the coverage file.** The PR's own tests write it in the same job; a PR that
   alters its test setup can produce a favorable one.
 - **Exclusions come from the PR.** The config and workflow a PR carries decide which of its files

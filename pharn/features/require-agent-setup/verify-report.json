@@ -1,0 +1,115 @@
+{
+  "feature": "require-agent-setup",
+  "gates": {
+    "build": 0,
+    "instruction-growth": 0,
+    "lint": 0,
+    "reconcile": 0,
+    "test": 0
+  },
+  "verdict": "PASS",
+  "failing_gates": [],
+  "gate_run": {
+    "stamp_sha256": "32295f30f7452127c18f588172a4afb6c89dd26dc86afca34d13d1093c0250c3",
+    "source": "discover",
+    "fingerprint": {
+      "algo": "worktree-fingerprint/2+sha256",
+      "final": "c522f3fa7b04bbeca21b3635bfdf17d6d94f07624d94e345a9740221e1248419"
+    }
+  },
+  "ac_gate": {
+    "mode": "test-first",
+    "verdict": "PASS",
+    "reason": null,
+    "evidence": [],
+    "acs": [
+      {
+        "id": "AC-1",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-require-setup-check.test.ts::check(): agent setup requirement › AC-1: a repo with no agent setup files fails only when the requirement is on; setup files mean no message"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-2",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-require-setup-config.test.ts::parseConfig: setup.require › AC-2: reads setup.require true and false as booleans, and rejects a non-boolean naming setup.require"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-3",
+        "level": "integration",
+        "tests": [
+          "packages/cli/test/ac-require-agent-setup.test.ts::require-agent-setup: CLI flag and Action input › AC-3: a set Action input decides; an empty one falls back to setup.require, then off",
+          "packages/cli/test/ac-require-agent-setup.test.ts::require-agent-setup: CLI flag and Action input › AC-3: an Action input that is not a boolean is reported as an error naming require-agent-setup",
+          "packages/cli/test/ac-require-agent-setup.test.ts::require-agent-setup: CLI flag and Action input › AC-3: the CLI flag turns the requirement on, else setup.require then off decides, and a fail exits 1"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      }
+    ],
+    "unmapped_anomalies": [],
+    "note": "an AC is delivered = a locked, once-red test titled AC-<n>:, in a file mapped to AC-<n>, passed on this head run. PHARN does not judge whether that test fully captures the AC's intent."
+  },
+  "completeness": {
+    "plan": "pharn/features/require-agent-setup/PLAN.md",
+    "repoDir": ".",
+    "declared": [
+      "packages/core/src/report.ts",
+      "packages/core/src/check.ts",
+      "packages/core/src/config.ts",
+      "packages/cli/src/main.ts",
+      "packages/action/src/run.ts",
+      "action.yml",
+      "schema/report.v1.json",
+      "fixtures/require-agent-setup/files.txt",
+      "fixtures/require-agent-setup/ci-require-true.yml",
+      "fixtures/require-agent-setup/ci-require-false.yml",
+      "README.md",
+      "CHANGELOG.md",
+      "docs/THREAT-MODEL.md",
+      "packages/action/dist/index.js"
+    ],
+    "skipped": [],
+    "missing": [],
+    "deletions": [],
+    "undeleted": [],
+    "complete": true,
+    "verdict": "complete"
+  },
+  "verifiers": {
+    "registered": 0,
+    "findings": []
+  },
+  "gate_reuse": {
+    "reused": []
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "reconcile_detail": {
+    "state": "parsed",
+    "exit": 0,
+    "verdict": "CLEAN",
+    "escapes": [],
+    "escapes_total": 0,
+    "merged_count": 0
+  }
+}

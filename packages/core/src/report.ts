@@ -60,6 +60,8 @@ export interface BuildReportInput {
     | { reason: "coverage-format-unsupported"; coverageFile: string | null }
     | { reason: "diff-unavailable"; detail: string };
   agentSetup: AgentSetupInventory;
+  /** When true, a repo with no agent setup files is an error instead of info. Off when absent. */
+  requireAgentSetup?: boolean;
 }
 
 export function buildReport(input: BuildReportInput): Report {
@@ -113,10 +115,12 @@ export function buildReport(input: BuildReportInput): Report {
   }
 
   if (input.agentSetup.files.length === 0) {
+    const required = input.requireAgentSetup === true;
+    const found = "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found";
     messages.push({
-      level: "info",
+      level: required ? "error" : "info",
       code: "NO_AGENT_SETUP_FILES",
-      text: "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found.",
+      text: required ? `${found}, and agent setup is required by config.` : `${found}.`,
     });
   }
 

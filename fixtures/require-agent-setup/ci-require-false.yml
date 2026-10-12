@@ -1,0 +1,3 @@
+# Does not require agent setup files in the repo.
+setup:
+  require: false
