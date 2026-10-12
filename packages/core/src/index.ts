@@ -2,17 +2,27 @@ export { type CheckInput, check } from "./check.js";
 export {
   ConfigError,
   isCoverageFormat,
+  isCoverageFormatSelection,
   type PharnConfig,
   parseConfig,
   parseExcludePattern,
   parseThreshold,
 } from "./config.js";
 export { parseCobertura } from "./coverage/cobertura.js";
+export {
+  type CoverageFormatChoice,
+  chooseCoverageFormat,
+  coverageChoiceLine,
+  type DetectedCoverageFormat,
+  detectCoverageFormat,
+} from "./coverage/detect.js";
 export { parseCoverage } from "./coverage/index.js";
 export { parseLcov } from "./coverage/lcov.js";
 export {
+  COVERAGE_FORMAT_SELECTIONS,
   COVERAGE_FORMATS,
   type CoverageFormat,
+  type CoverageFormatSelection,
   type CoverageMap,
   type LineHits,
   type ParseCoverageOptions,

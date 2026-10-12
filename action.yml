@@ -10,7 +10,7 @@ inputs:
     description: Path to the coverage report, relative to the workspace. Defaults to coverage.file in .pharn/ci.yml.
     required: false
   coverage-format:
-    description: Coverage report format. Only "lcov" is supported for now. Defaults to coverage.format in .pharn/ci.yml, then lcov.
+    description: Coverage report format, "lcov", "cobertura" or "auto" (detect it from the start of the file). Defaults to coverage.format in .pharn/ci.yml, then auto.
     required: false
   threshold:
     description: Minimum diff coverage percent (0-100, inclusive). Defaults to coverage.threshold in .pharn/ci.yml; no gate if unset.

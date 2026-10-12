@@ -1,10 +1,15 @@
-import { COVERAGE_FORMATS, type CoverageFormat } from "./coverage/types.js";
+import {
+  COVERAGE_FORMAT_SELECTIONS,
+  COVERAGE_FORMATS,
+  type CoverageFormat,
+  type CoverageFormatSelection,
+} from "./coverage/types.js";
 
 /** Shape of `.pharn/ci.yml`. Every field is optional; CLI/Action inputs override it. */
 export interface PharnConfig {
   coverage?: {
     file?: string;
-    format?: CoverageFormat;
+    format?: CoverageFormatSelection;
     threshold?: number;
     /** Glob patterns of changed files left out of diff coverage (validated and normalized). */
     exclude?: string[];
@@ -176,8 +181,8 @@ function validateConfig(doc: YamlMap): PharnConfig {
         coverage.file = value;
         break;
       case "format":
-        if (typeof value !== "string" || !isCoverageFormat(value)) {
-          throw new ConfigError(`"coverage.format" must be one of: ${COVERAGE_FORMATS.join(", ")}`);
+        if (typeof value !== "string" || !isCoverageFormatSelection(value)) {
+          throw new ConfigError(`"coverage.format" must be one of: ${COVERAGE_FORMAT_SELECTIONS.join(", ")}`);
         }
         coverage.format = value;
         break;
@@ -233,6 +238,10 @@ export function parseExcludePattern(pattern: string, label = "exclude pattern"):
     if (p.includes(ch)) reject(`must not contain "${ch}" (only *, ** and ? are supported)`);
   }
   return p;
+}
+
+export function isCoverageFormatSelection(value: string): value is CoverageFormatSelection {
+  return (COVERAGE_FORMAT_SELECTIONS as readonly string[]).includes(value);
 }
 
 /** Validate a threshold given as a number or a string (CLI flag / Action input). */

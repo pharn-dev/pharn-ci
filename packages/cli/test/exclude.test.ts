@@ -65,7 +65,7 @@ describe("pharn-ci check --exclude", () => {
     // Unexcluded, the golden change is 5/7 = 71.43%; without src/new.ts and src/utils/new-name.ts it is 3/4 = 75%.
     const passing = fakeDeps(files);
     const passCode = await main(args("74"), passing);
-    expect(passing.err).toBe("");
+    expect(passing.err).toBe("coverage: lcov (auto-detected)\n");
     const report = JSON.parse(passing.out);
     expect(report.diffCoverage.excludedFiles).toEqual(["src/new.ts", "src/utils/new-name.ts"]);
     expect(report.diffCoverage).toMatchObject({ percent: 75, coveredLines: 3, coverableLines: 4 });
@@ -75,7 +75,7 @@ describe("pharn-ci check --exclude", () => {
 
     const failing = fakeDeps(files);
     const failCode = await main(args("76"), failing);
-    expect(failing.err).toBe("");
+    expect(failing.err).toBe("coverage: lcov (auto-detected)\n");
     expect(JSON.parse(failing.out).verdict).toBe("fail");
     expect(failCode).toBe(EXIT_FAIL);
   });

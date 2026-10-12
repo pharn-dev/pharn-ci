@@ -11,6 +11,11 @@ export type CoverageFormat = "lcov" | "cobertura";
 
 export const COVERAGE_FORMATS: readonly CoverageFormat[] = ["lcov", "cobertura"];
 
+/** What the user may ask for: one of the formats, or `auto` to detect it from the start of the file. */
+export type CoverageFormatSelection = CoverageFormat | "auto";
+
+export const COVERAGE_FORMAT_SELECTIONS: readonly CoverageFormatSelection[] = ["lcov", "cobertura", "auto"];
+
 export interface ParseCoverageOptions {
   /** Absolute repo root; used to turn absolute report paths into repo-relative ones. */
   repoRoot?: string;

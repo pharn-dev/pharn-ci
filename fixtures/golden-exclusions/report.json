@@ -6,6 +6,7 @@
   },
   "verdict": "pass",
   "diffCoverage": {
+    "format": "lcov",
     "percent": 80,
     "threshold": 80,
     "coveredLines": 4,

@@ -317,7 +317,7 @@ describe("action run", () => {
   });
 
   it.each([
-    [{ "coverage-format": "cobertura" }, 'coverage-format "cobertura" is not supported yet'],
+    [{ "coverage-format": "clover" }, 'coverage-format "clover" is not supported (supported: lcov, cobertura, auto)'],
     [{ threshold: "abc" }, "threshold must be a number"],
     [{ comment: "maybe" }, "comment must be true or false"],
     [{ "coverage-file": "" }, "no coverage file"],

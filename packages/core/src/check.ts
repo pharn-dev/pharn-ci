@@ -1,6 +1,7 @@
 import { parseExcludePattern } from "./config.js";
+import { chooseCoverageFormat } from "./coverage/detect.js";
 import { parseCoverage } from "./coverage/index.js";
-import type { CoverageFormat } from "./coverage/types.js";
+import type { CoverageFormatSelection } from "./coverage/types.js";
 import { parseUnifiedDiff } from "./diff/unified.js";
 import { computeDiffCoverage } from "./diffCoverage.js";
 import { compileGlob } from "./glob.js";
@@ -13,7 +14,7 @@ export interface CheckInput {
    * Coverage report contents (and, optionally, the path it was read from, for messages), or the
    * path that was looked for when it is missing.
    */
-  coverage: { text: string; format: CoverageFormat; file?: string } | { missingFile: string };
+  coverage: { text: string; format: CoverageFormatSelection; file?: string } | { missingFile: string };
   /** Unified diff text, or why no diff is available. */
   diff: { text: string } | { unavailable: string };
   /** Absolute repo root, used to relativize absolute coverage paths. */
@@ -51,9 +52,26 @@ export function check(input: CheckInput): Report {
     });
   }
 
+  const coverageFile = input.coverage.file ?? null;
+  const choice = chooseCoverageFormat(input.coverage.text, input.coverage.format);
+  if (choice.format === "empty") {
+    return buildReport({
+      ...base,
+      diffCoverage: null,
+      missing: { reason: "coverage-file-empty", coverageFile },
+    });
+  }
+  if (choice.format === "unknown") {
+    return buildReport({
+      ...base,
+      diffCoverage: null,
+      missing: { reason: "coverage-format-unsupported", coverageFile },
+    });
+  }
+
   const coverage = parseCoverage(
     input.coverage.text,
-    input.coverage.format,
+    choice.format,
     input.repoRoot === undefined ? {} : { repoRoot: input.repoRoot },
   );
   // An empty or unreadable report would otherwise make every change look uncovered-but-untracked
@@ -62,9 +80,13 @@ export function check(input: CheckInput): Report {
     return buildReport({
       ...base,
       diffCoverage: null,
-      missing: { reason: "coverage-file-empty", coverageFile: input.coverage.file ?? null },
+      missing: { reason: "coverage-file-empty", coverageFile },
     });
   }
   const diff = parseUnifiedDiff(input.diff.text);
-  return buildReport({ ...base, diffCoverage: computeDiffCoverage(diff, coverage, input.threshold, isExcluded) });
+  return buildReport({
+    ...base,
+    coverageFormat: choice.format,
+    diffCoverage: computeDiffCoverage(diff, coverage, input.threshold, isExcluded),
+  });
 }

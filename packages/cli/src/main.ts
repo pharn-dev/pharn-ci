@@ -1,9 +1,12 @@
 import { parseArgs } from "node:util";
 import {
   type CheckInput,
+  COVERAGE_FORMAT_SELECTIONS,
   ConfigError,
   check,
-  isCoverageFormat,
+  chooseCoverageFormat,
+  coverageChoiceLine,
+  isCoverageFormatSelection,
   type PharnConfig,
   parseConfig,
   parseExcludePattern,
@@ -34,7 +37,8 @@ Usage:
   pharn-ci check [options]
 
 Options:
-  --coverage <file>    Coverage report (lcov). Default: coverage.file from config
+  --coverage <file>    Coverage report. Default: coverage.file from config
+  --coverage-format <f>  lcov, cobertura or auto. Default: coverage.format, then auto
   --base <ref>         Base to diff against (merge-base with HEAD). Default: origin/main
   --threshold <n>      Minimum diff coverage percent (0-100). Default: coverage.threshold
   --format <md|json>   Output format. Default: md
@@ -83,6 +87,7 @@ function parse(argv: string[]) {
     strict: true,
     options: {
       coverage: { type: "string" },
+      "coverage-format": { type: "string" },
       base: { type: "string" },
       threshold: { type: "string" },
       format: { type: "string" },
@@ -99,6 +104,12 @@ type Values = ReturnType<typeof parse>["values"];
 async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   const format = values.format ?? "md";
   if (format !== "md" && format !== "json") throw new ConfigError(`--format must be "md" or "json"`);
+  const coverageFormatFlag = values["coverage-format"];
+  if (coverageFormatFlag !== undefined && !isCoverageFormatSelection(coverageFormatFlag)) {
+    throw new ConfigError(
+      `--coverage-format must be one of: ${COVERAGE_FORMAT_SELECTIONS.join(", ")} (got "${coverageFormatFlag}")`,
+    );
+  }
   // A leading "-" would reach git as an option (e.g. --output=<file>), not a revision.
   if (values.base?.startsWith("-")) throw new ConfigError(`--base "${values.base}" must not start with "-"`);
   const excludeFlags = (values.exclude ?? []).map((p) => parseExcludePattern(p, "--exclude"));
@@ -111,8 +122,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
       ? parseThreshold(values.threshold, "--threshold")
       : (config.coverage?.threshold ?? null);
 
-  const coverageFormat = config.coverage?.format ?? "lcov";
-  if (!isCoverageFormat(coverageFormat)) throw new ConfigError(`unsupported coverage format "${coverageFormat}"`);
+  const coverageFormat = coverageFormatFlag ?? config.coverage?.format ?? "auto";
 
   // A --coverage path is relative to where you run the CLI; a config path is relative to the repo root.
   const coveragePath =
@@ -125,6 +135,10 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     throw new ConfigError("no coverage file: pass --coverage <file> or set coverage.file in .pharn/ci.yml");
   }
   const coverageText = await deps.readFile(coveragePath);
+  // Say which format was read and why, on stderr so stdout stays the report alone.
+  if (coverageText !== null) {
+    deps.stderr(`${coverageChoiceLine(chooseCoverageFormat(coverageText, coverageFormat))}\n`);
+  }
 
   const base = values.base ?? "origin/main";
   const diffText = await git(

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1728750000000" clover="4.5.2">
+  <project timestamp="1728750000000" name="demo">
+    <metrics files="1" loc="12" ncloc="10" classes="1" methods="2" coveredmethods="1" statements="4" coveredstatements="3" elements="6" coveredelements="4" conditionals="2" coveredconditionals="1"/>
+    <package name="src">
+      <file name="math.ts" path="/home/runner/work/demo/demo/src/math.ts">
+        <metrics loc="12" ncloc="10" classes="1" methods="2" coveredmethods="1" statements="4" coveredstatements="3" elements="6" coveredelements="4" conditionals="2" coveredconditionals="1"/>
+        <class name="Math">
+          <metrics methods="2" coveredmethods="1" statements="4" coveredstatements="3" elements="6" coveredelements="4" conditionals="2" coveredconditionals="1"/>
+        </class>
+        <line num="1" count="4" type="stmt"/>
+        <line num="3" count="4" type="method" signature="add(a: number, b: number)"/>
+        <line num="4" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="10" count="0" type="stmt"/>
+      </file>
+    </package>
+  </project>
+</coverage>

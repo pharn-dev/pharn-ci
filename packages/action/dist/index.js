@@ -24505,7 +24505,7 @@ function getOctokit(token, options, ...additionalPlugins) {
 }
 
 // ../core/src/coverage/types.ts
-var COVERAGE_FORMATS = ["lcov", "cobertura"];
+var COVERAGE_FORMAT_SELECTIONS = ["lcov", "cobertura", "auto"];
 
 // ../core/src/config.ts
 var ConfigError = class extends Error {
@@ -24634,8 +24634,8 @@ function validateConfig(doc) {
         coverage.file = value;
         break;
       case "format":
-        if (typeof value !== "string" || !isCoverageFormat(value)) {
-          throw new ConfigError(`"coverage.format" must be one of: ${COVERAGE_FORMATS.join(", ")}`);
+        if (typeof value !== "string" || !isCoverageFormatSelection(value)) {
+          throw new ConfigError(`"coverage.format" must be one of: ${COVERAGE_FORMAT_SELECTIONS.join(", ")}`);
         }
         coverage.format = value;
         break;
@@ -24661,9 +24661,6 @@ function validateConfig(doc) {
   config.coverage = coverage;
   return config;
 }
-function isCoverageFormat(value) {
-  return COVERAGE_FORMATS.includes(value);
-}
 function parseExcludePattern(pattern, label = "exclude pattern") {
   let start = 0;
   const trimmed = pattern.trim();
@@ -24684,56 +24681,15 @@ function parseExcludePattern(pattern, label = "exclude pattern") {
   }
   return p;
 }
+function isCoverageFormatSelection(value) {
+  return COVERAGE_FORMAT_SELECTIONS.includes(value);
+}
 function parseThreshold(value, label = "threshold") {
   const n = typeof value === "string" && value.trim() !== "" ? Number(value) : value;
   if (typeof n !== "number" || !Number.isFinite(n) || n < 0 || n > 100) {
     throw new ConfigError(`${label} must be a number between 0 and 100`);
   }
   return n;
-}
-
-// ../core/src/paths.ts
-function normalizePath(path, repoRoot) {
-  let p = toPosix(path.trim());
-  if (repoRoot) {
-    const root = toPosix(repoRoot.trim()).replace(/\/+$/, "");
-    if (root !== "" && startsWithPath(p, root)) {
-      p = p.slice(root.length + 1);
-    }
-  }
-  return p;
-}
-function isAbsolutePath(path) {
-  const first = path.charAt(0);
-  if (first === "/" || first === "\\") return true;
-  const separator = path.charAt(2);
-  return path.charAt(1) === ":" && (separator === "/" || separator === "\\") && isAsciiLetter(first);
-}
-function isAsciiLetter(char) {
-  return char >= "A" && char <= "Z" || char >= "a" && char <= "z";
-}
-function toPosix(path) {
-  const slashed = path.replace(/\\/g, "/");
-  const drive = /^[A-Za-z]:\//.exec(slashed)?.[0] ?? "";
-  const absolute = drive !== "" || slashed.startsWith("/");
-  const rest = drive !== "" ? slashed.slice(drive.length) : slashed;
-  const out = [];
-  for (const segment of rest.split("/")) {
-    if (segment === "" || segment === ".") continue;
-    if (segment === ".." && out.length > 0 && out[out.length - 1] !== "..") {
-      out.pop();
-    } else if (segment === ".." && absolute) {
-    } else {
-      out.push(segment);
-    }
-  }
-  const prefix = drive !== "" ? drive.toUpperCase() : absolute ? "/" : "";
-  return prefix + out.join("/");
-}
-function startsWithPath(path, root) {
-  if (path.length <= root.length || path[root.length] !== "/") return false;
-  const head = path.slice(0, root.length);
-  return /^[A-Z]:\//.test(root) ? head.toLowerCase() === root.toLowerCase() : head === root;
 }
 
 // ../core/src/coverage/xml.ts
@@ -24904,6 +24860,99 @@ function scanXml(text, onEvent) {
       pos = close + 1;
     }
   }
+}
+
+// ../core/src/coverage/detect.ts
+var DETECTION_WINDOW = 1024;
+function isSpace2(char) {
+  return char === " " || char === "	" || char === "\n" || char === "\r";
+}
+function detectCoverageFormat(text) {
+  const start = text.charCodeAt(0) === 65279 ? 1 : 0;
+  const end = start + DETECTION_WINDOW;
+  const window = text.slice(start, end);
+  let first = 0;
+  while (first < window.length && isSpace2(window.charAt(first))) first++;
+  if (first === window.length) return end >= text.length ? "empty" : "unknown";
+  if (window.startsWith("TN:", first) || window.startsWith("SF:", first)) return "lcov";
+  if (window.charAt(first) !== "<") return "unknown";
+  return detectXml(window.slice(first));
+}
+function detectXml(window) {
+  let decided;
+  let seenRoot = false;
+  scanXml(window, (event) => {
+    if (decided !== void 0) return;
+    if (!seenRoot) {
+      if (event.type === "text") {
+        if (event.text.trim() !== "") decided = "unknown";
+      } else if (event.type === "end") {
+        decided = "unknown";
+      } else if (event.name !== "coverage" || event.attrs.has("clover")) {
+        decided = "unknown";
+      } else if (event.selfClosing) {
+        decided = "cobertura";
+      } else {
+        seenRoot = true;
+      }
+      return;
+    }
+    if (event.type === "text") return;
+    decided = event.type === "start" && event.name === "project" ? "unknown" : "cobertura";
+  });
+  if (decided !== void 0) return decided;
+  return seenRoot ? "cobertura" : "unknown";
+}
+function chooseCoverageFormat(text, selection) {
+  if (selection === "auto") return { format: detectCoverageFormat(text), how: "auto-detected" };
+  return { format: selection, how: "configured" };
+}
+function coverageChoiceLine(choice) {
+  return `coverage: ${choice.format} (${choice.how})`;
+}
+
+// ../core/src/paths.ts
+function normalizePath(path, repoRoot) {
+  let p = toPosix(path.trim());
+  if (repoRoot) {
+    const root = toPosix(repoRoot.trim()).replace(/\/+$/, "");
+    if (root !== "" && startsWithPath(p, root)) {
+      p = p.slice(root.length + 1);
+    }
+  }
+  return p;
+}
+function isAbsolutePath(path) {
+  const first = path.charAt(0);
+  if (first === "/" || first === "\\") return true;
+  const separator = path.charAt(2);
+  return path.charAt(1) === ":" && (separator === "/" || separator === "\\") && isAsciiLetter(first);
+}
+function isAsciiLetter(char) {
+  return char >= "A" && char <= "Z" || char >= "a" && char <= "z";
+}
+function toPosix(path) {
+  const slashed = path.replace(/\\/g, "/");
+  const drive = /^[A-Za-z]:\//.exec(slashed)?.[0] ?? "";
+  const absolute = drive !== "" || slashed.startsWith("/");
+  const rest = drive !== "" ? slashed.slice(drive.length) : slashed;
+  const out = [];
+  for (const segment of rest.split("/")) {
+    if (segment === "" || segment === ".") continue;
+    if (segment === ".." && out.length > 0 && out[out.length - 1] !== "..") {
+      out.pop();
+    } else if (segment === ".." && absolute) {
+    } else {
+      out.push(segment);
+    }
+  }
+  const prefix = drive !== "" ? drive.toUpperCase() : absolute ? "/" : "";
+  return prefix + out.join("/");
+}
+function startsWithPath(path, root) {
+  if (path.length <= root.length || path[root.length] !== "/") return false;
+  const head = path.slice(0, root.length);
+  return /^[A-Z]:\//.test(root) ? head.toLowerCase() === root.toLowerCase() : head === root;
 }
 
 // ../core/src/coverage/cobertura.ts
@@ -25393,6 +25442,13 @@ function buildReport(input) {
         code: "COVERAGE_FILE_EMPTY",
         text: `${where} contains no coverage records; check its format and that the tests wrote it.`
       });
+    } else if (missing.reason === "coverage-format-unsupported") {
+      const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${missing.coverageFile}`;
+      messages.push({
+        level: input.threshold === null ? "warn" : "error",
+        code: "COVERAGE_FORMAT_UNSUPPORTED",
+        text: `${where} is not in a recognized coverage format; pharn-ci reads lcov and Cobertura XML.`
+      });
     } else {
       messages.push({
         level: "warn",
@@ -25425,6 +25481,7 @@ function buildReport(input) {
     tool: { name: "pharn-ci", version: input.version },
     verdict: verdictOf(messages),
     diffCoverage: dc === null ? null : {
+      ...input.coverageFormat === void 0 ? {} : { format: input.coverageFormat },
       percent: dc.percent,
       threshold: dc.threshold,
       coveredLines: dc.coveredLines,
@@ -25534,20 +25591,40 @@ function check(input) {
       missing: { reason: "diff-unavailable", detail: input.diff.unavailable }
     });
   }
+  const coverageFile = input.coverage.file ?? null;
+  const choice = chooseCoverageFormat(input.coverage.text, input.coverage.format);
+  if (choice.format === "empty") {
+    return buildReport({
+      ...base,
+      diffCoverage: null,
+      missing: { reason: "coverage-file-empty", coverageFile }
+    });
+  }
+  if (choice.format === "unknown") {
+    return buildReport({
+      ...base,
+      diffCoverage: null,
+      missing: { reason: "coverage-format-unsupported", coverageFile }
+    });
+  }
   const coverage = parseCoverage(
     input.coverage.text,
-    input.coverage.format,
+    choice.format,
     input.repoRoot === void 0 ? {} : { repoRoot: input.repoRoot }
   );
   if (coverage.size === 0) {
     return buildReport({
       ...base,
       diffCoverage: null,
-      missing: { reason: "coverage-file-empty", coverageFile: input.coverage.file ?? null }
+      missing: { reason: "coverage-file-empty", coverageFile }
     });
   }
   const diff = parseUnifiedDiff(input.diff.text);
-  return buildReport({ ...base, diffCoverage: computeDiffCoverage(diff, coverage, input.threshold, isExcluded) });
+  return buildReport({
+    ...base,
+    coverageFormat: choice.format,
+    diffCoverage: computeDiffCoverage(diff, coverage, input.threshold, isExcluded)
+  });
 }
 
 // ../core/src/render/markdown.ts
@@ -25658,9 +25735,9 @@ async function run(deps) {
 async function runUnsafe(deps) {
   const input = (name) => deps.getInput(name).trim();
   const config = await loadConfig(input("config") || ".pharn/ci.yml", deps);
-  const format = input("coverage-format") || config.coverage?.format || "lcov";
-  if (!isCoverageFormat(format) || format !== "lcov") {
-    throw new Error(`coverage-format "${format}" is not supported yet (supported: lcov)`);
+  const format = input("coverage-format") || config.coverage?.format || "auto";
+  if (!isCoverageFormatSelection(format)) {
+    throw new Error(`coverage-format "${format}" is not supported (supported: lcov, cobertura, auto)`);
   }
   const thresholdInput = input("threshold");
   const threshold = thresholdInput !== "" ? parseThreshold(thresholdInput, "threshold") : config.coverage?.threshold ?? null;
@@ -25671,6 +25748,7 @@ async function runUnsafe(deps) {
   const excludeInput = splitPatternList(input("exclude")).map((p) => parseExcludePattern(p, "exclude"));
   const coveragePath = deps.resolvePath(deps.workspace, coverageFile);
   const coverageText = await deps.readFile(coveragePath);
+  if (coverageText !== null) deps.info(coverageChoiceLine(chooseCoverageFormat(coverageText, format)));
   const pr = deps.context.payload.pull_request;
   const lsFiles = await deps.git(["ls-files", "-z"]).catch((err) => {
     deps.warning(`git ls-files failed, agent setup scan skipped: ${String(err)}`);
