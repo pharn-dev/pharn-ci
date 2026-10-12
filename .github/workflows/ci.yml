@@ -1,5 +1,15 @@
 name: CI
 
+# GitHub reports an Actions job under its `name:` (or its job id when it has none), and that string is
+# what the `main` branch ruleset lists in `required_status_checks`. So the job ids below (`ci`) and the
+# `name:` of `action-pins` are a CONTRACT with the ruleset, not decoration: renaming one makes a
+# required check unreportable and blocks every PR until the ruleset is edited to match. Do not add a
+# `strategy.matrix` to either job: GitHub would report it as `<name> (<value>)` and the required
+# context would never arrive.
+#
+# Third-party actions are pinned to a commit SHA (enforced by the `Action pins` job and the repo's
+# "require actions to be pinned" setting); the version goes in a trailing comment.
+
 on:
   push:
     branches: [main]
@@ -19,13 +29,14 @@ jobs:
       contents: read
       pull-requests: write # sticky PR comment from the dogfood step
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # full history so pharn-ci can diff locally
+          persist-credentials: false
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -56,3 +67,16 @@ jobs:
       - name: Show report
         if: always() && steps.pharn.outputs.report-path != ''
         run: cat "${{ steps.pharn.outputs.report-path }}"
+
+  action-pins:
+    name: Action pins
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+      - name: Check that every action is pinned to a commit SHA
+        run: node scripts/check-action-pins.mjs
