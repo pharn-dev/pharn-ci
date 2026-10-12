@@ -12,6 +12,8 @@
 
 ### Agent setup
 
+Agent setup: 8 files · claude-code, codex, copilot, cursor, mcp
+
 | Path | Kind |
 | --- | --- |
 | `.claude/settings.json` | claude-settings |

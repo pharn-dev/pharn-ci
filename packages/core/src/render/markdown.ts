@@ -1,4 +1,5 @@
 import { formatNumber, type Message, type Report } from "../report.js";
+import { summarizeAgentSetup } from "../setup/summary.js";
 
 export interface RenderMarkdownOptions {
   /** Maximum file rows per table; the rest are summarized. Keeps PR comments under GitHub's size limit. */
@@ -6,6 +7,8 @@ export interface RenderMarkdownOptions {
 }
 
 const VERDICT_ICON = { pass: "✅", warn: "⚠️", fail: "❌" } as const;
+/** Inventories larger than this get their table collapsed in a `<details>` block. */
+const COLLAPSE_ABOVE = 25;
 const LEVEL_ICON = { info: "ℹ️", warn: "⚠️", error: "❌" } as const;
 
 /** Render a Report as GitHub-flavored markdown (PR comment, job summary, CLI). */
@@ -42,10 +45,16 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
   if (setup.length === 0) {
     out.push("_No agent setup files found._", "");
   } else {
+    // Count, fixed words and names from the fixed tool list only: nothing input-derived.
+    const { tools } = summarizeAgentSetup(setup);
+    out.push(`Agent setup: ${setup.length} ${setup.length === 1 ? "file" : "files"} · ${tools.join(", ")}`, "");
+    const collapse = setup.length > COLLAPSE_ABOVE;
+    if (collapse) out.push("<details>", `<summary>Show all ${setup.length} agent setup files</summary>`, "");
     out.push("| Path | Kind |", "| --- | --- |");
     for (const f of setup.slice(0, maxRows)) out.push(`| ${code(f.path)} | ${f.kind} |`);
     if (setup.length > maxRows) out.push(`| _…and ${setup.length - maxRows} more files_ | |`);
     out.push("");
+    if (collapse) out.push("</details>", "");
   }
 
   if (report.messages.length > 0) {

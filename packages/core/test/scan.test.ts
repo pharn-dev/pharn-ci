@@ -18,6 +18,8 @@ describe("classifySetupPath", () => {
     [".cursorrules", "cursor-rules"],
     [".github/copilot-instructions.md", "copilot-instructions"],
     [".mcp.json", "mcp-config"],
+    ["src/.claude/settings.json", "claude-settings"],
+    ["nested/.mcp.json", "mcp-config"],
   ])("%s -> %s", (path, kind) => {
     expect(classifySetupPath(path)).toBe(kind);
   });
@@ -26,11 +28,9 @@ describe("classifySetupPath", () => {
     "README.md",
     "claude.md",
     "docs/CLAUDE.md.bak",
-    "src/.claude/settings.json",
     ".claude/settings.json.example",
     ".claude/skills",
     ".cursor/other.json",
-    "nested/.mcp.json",
   ])("ignores %s", (path) => {
     expect(classifySetupPath(path)).toBeNull();
   });
