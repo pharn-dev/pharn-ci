@@ -13,6 +13,9 @@ npm yet.
   ([`.github/rulesets/release-tags.json`](../.github/rulesets/release-tags.json)) forbids updating,
   force-pushing or deleting any `v*` tag, with no bypass. A broken release is fixed by releasing a
   new patch version.
+- **Tags are not signed.** Release tags are created by `gh release create` in the `Release publish`
+  job, through the GitHub API, so they are lightweight and not signed. Consumers should pin the
+  full commit SHA the tag points at, not the tag name.
 - **Before 1.0, a breaking change bumps the minor version** (0.1.x → 0.2.0). Report v1 stays
   compatible across all of them: fields are only added, message codes are never renamed.
 
@@ -27,14 +30,21 @@ npm yet.
    - In `CHANGELOG.md`, move the `[Unreleased]` entries under a new `## [X.Y.Z] - YYYY-MM-DD`
      heading, with the one-line date note beneath it, and leave an empty `## [Unreleased]` with
      `### Added`, `### Changed` and `### Security` above it.
-   - The maintainer replaces the `YYYY-MM-DD` placeholder with the release date, and deletes the
-     date note beneath the heading so the extracted release notes do not carry it, before running
-     the release workflow.
+   - **Set the CHANGELOG date.** The maintainer replaces the `YYYY-MM-DD` placeholder with the
+     release date, and deletes the date note beneath the heading so the extracted release notes do
+     not carry it, before running the release workflow. `Release verify` refuses the release unless
+     the heading is exactly `## [X.Y.Z] - <date>` with a real date and its notes contain neither
+     `YYYY-MM-DD` nor the date note (`scripts/check-release-notes.mjs`).
+   - **Update the README pins and the Status note.** Set both `uses: pharn-dev/pharn-ci@vX.Y.Z`
+     lines in `README.md` (the snippet at the top and the workflow under Quick start), and rewrite
+     the **Status** note under the badges so it no longer says the release has not been cut. The
+     docs tests fail when a pin disagrees with the package version.
    - Run `pnpm build` (the version is compiled into `packages/action/dist`) and commit the result.
-   - Merge with all required checks green.
+   - Merge with all required checks green, then dispatch `release.yml` (steps 2 and 3).
 2. **Dry run.** Actions → **release** → **Run workflow**, branch `main`, version `X.Y.Z`, leave
    **dry_run** ticked. The `Release verify` job refuses anything but `main`, a strict `X.Y.Z` equal
-   to the package version, an untagged version and a non-empty `CHANGELOG.md` section. It then runs
+   to the package version, an untagged version and a non-empty `CHANGELOG.md` section under an
+   exactly dated heading, free of the placeholder and the date note. It then runs
    lint, tests and the build, fails if `packages/action/dist` differs from the committed bundle, and
    shows the release notes in the job summary. `Release publish` is skipped.
 3. **Release.** Run the workflow again with **dry_run** unticked. After `Release verify` passes,

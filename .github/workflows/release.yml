@@ -9,7 +9,9 @@ name: release
 #
 # TWO JOBS, and the split is the point (the same split as phargus's publish.yml):
 #   - `verify` has NO write permission. It refuses anything but main and a strict X.Y.Z that equals
-#     the package version, has a CHANGELOG section and is not tagged yet. Then it runs every gate,
+#     the package version and is not tagged yet, and a CHANGELOG with exactly one
+#     `## [X.Y.Z] - <real date>` heading whose notes carry no YYYY-MM-DD placeholder or maintainer
+#     note (scripts/check-release-notes.mjs). Then it runs every gate,
 #     rebuilds packages/action/dist and fails if it differs from the committed bundle, and hands the
 #     release notes to the next job as an artifact.
 #   - `publish` is the ONLY job with `contents: write`, and runs in the `release` environment (give
@@ -78,6 +80,9 @@ jobs:
             exit 1
           fi
           grep -q "^## \[${VERSION//./\\.}\]" CHANGELOG.md || { echo "::error::CHANGELOG.md has no '## [$VERSION]' section"; exit 1; }
+          # Exactly one '## [X.Y.Z] - <real date>' heading, and notes free of the YYYY-MM-DD placeholder
+          # and the maintainer's instruction sentence. Node built-ins only; nothing is installed yet.
+          node scripts/check-release-notes.mjs "$VERSION" CHANGELOG.md
 
       - run: pnpm install --frozen-lockfile
 
@@ -107,6 +112,15 @@ jobs:
           awk -v h="## [$VERSION]" 'index($0, h) == 1 { f = 1; next } /^## \[/ { if (f) exit } f' CHANGELOG.md \
             > "$RUNNER_TEMP/notes/notes.md"
           [ -n "$(tr -d '[:space:]' < "$RUNNER_TEMP/notes/notes.md")" ] || { echo "::error::the '## [$VERSION]' section of CHANGELOG.md is empty"; exit 1; }
+          # Belt and braces on the file that becomes the release notes (check-release-notes.mjs checked it too).
+          if grep -q 'YYYY-MM-DD' "$RUNNER_TEMP/notes/notes.md"; then
+            echo "::error::the '## [$VERSION]' release notes still contain the YYYY-MM-DD placeholder"
+            exit 1
+          fi
+          if tr -s '[:space:]' ' ' < "$RUNNER_TEMP/notes/notes.md" | grep -qi 'the maintainer replaces'; then
+            echo "::error::the '## [$VERSION]' release notes still contain the maintainer instruction; delete it"
+            exit 1
+          fi
           {
             echo "### Release v$VERSION from $GITHUB_SHA"
             echo
