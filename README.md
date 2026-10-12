@@ -34,7 +34,7 @@ jobs:
           fetch-depth: 0
       # ...set up your toolchain and run tests with lcov output, e.g.:
       - run: npx vitest run --coverage --coverage.reporter=lcov
-      - uses: pharn-dev/pharn-ci@v0
+      - uses: pharn-dev/pharn-ci@v0.1.0 # or, better, the tag's full commit SHA
         with:
           coverage-file: coverage/lcov.info
           threshold: 80
@@ -49,6 +49,9 @@ jobs:
 | `comment` | `true` | Post/update one sticky PR comment |
 | `fail-on-threshold` | `true` | Fail the step when the verdict is `fail` |
 | `config` | `.pharn/ci.yml` | Config file path |
+
+Release tags are exact versions (`v0.1.0`), never moved or deleted. Pinning the tag's full commit
+SHA is stronger still; Dependabot keeps either up to date.
 
 Outputs: `report-path` (Report v1 JSON), `verdict`, `diff-coverage`. The report is also written
 to the job summary. On PRs from forks the token can't comment; pharn-ci then warns and uses the
@@ -111,11 +114,13 @@ coverage:
 
 The JSON report is the stable, machine-readable API; the comment and CLI text are renderings of
 it. See [`schema/report.v1.json`](schema/report.v1.json). Branch on message `code`s
-(`DIFF_COVERAGE_BELOW_THRESHOLD`, `NO_COVERABLE_CHANGES`, `COVERAGE_FILE_MISSING`, …), not on text.
+(`DIFF_COVERAGE_BELOW_THRESHOLD`, `NO_COVERABLE_CHANGES`, `COVERAGE_FILE_MISSING`,
+`COVERAGE_FILE_EMPTY`, …), not on text.
 
 How diff coverage is counted: only lines **added** in the PR count, and only if the coverage
 report knows them. Added comments, types and files without coverage are excluded from the
-denominator. No coverable changes means `pass` with `NO_COVERABLE_CHANGES`.
+denominator. No coverable changes means `pass` with `NO_COVERABLE_CHANGES`. What this does and
+does not prove is in [`docs/LIMITS.md`](docs/LIMITS.md).
 
 ## Roadmap
 
@@ -123,6 +128,15 @@ denominator. No coverable changes means `pass` with `NO_COVERABLE_CHANGES`.
 - Flaky test detection
 - Test-tampering detection (weakened, skipped or deleted tests)
 - Agent policy checks on top of the setup inventory
+
+## Contributing & security
+
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): setup, what CI checks, and the rules every change follows
+  ([`AGENTS.md`](AGENTS.md)).
+- [`SECURITY.md`](SECURITY.md): report vulnerabilities privately. The security design is in
+  [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md).
+- [`CHANGELOG.md`](CHANGELOG.md) and [`docs/RELEASING.md`](docs/RELEASING.md).
+- This project follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 

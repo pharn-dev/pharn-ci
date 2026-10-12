@@ -32,6 +32,8 @@ Closes #<!-- issue number -->
       codes, setup kinds) with `packages/core/src/report.ts` updated to match.
 - [ ] No new dependency, or it is justified below.
 - [ ] `pnpm build` was run, and `packages/action/dist` is committed and current.
+- [ ] User-visible changes have a line under **Unreleased** in `CHANGELOG.md`.
+- [ ] New untrusted input, output or GitHub API call? `docs/THREAT-MODEL.md` has a row for it.
 
 ## Security-sensitive changes
 

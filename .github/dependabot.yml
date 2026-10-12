@@ -10,6 +10,14 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    groups:
+      # Bundled into packages/action/dist, so these PRs fail `ci` until dist is rebuilt on the
+      # branch (CONTRIBUTING.md, "Dependabot PRs"). Grouped to keep that to one PR a week.
+      actions-runtime:
+        patterns:
+          - '@actions/*'
+      dev-dependencies:
+        dependency-type: development
 
   - package-ecosystem: github-actions
     directory: '/'
@@ -21,3 +29,7 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    groups:
+      actions:
+        patterns:
+          - '*'

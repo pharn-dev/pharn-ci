@@ -16,8 +16,14 @@ coordinated disclosure of any vulnerability in this repository.
   consumer's CI.
 - **The CLI** (`packages/cli`): reads files and runs `git` in the working directory.
 - **Release integrity**: `packages/action/dist` is committed and must match a build of the sources
-  (CI fails if it is stale), and consumers pin release tags such as `pharn-dev/pharn-ci@v1`. Tags
-  matching `v*` are protected from deletion and force-update.
+  (CI fails if it is stale), and consumers pin exact release tags such as
+  `pharn-dev/pharn-ci@v0.1.0`, or their commit SHA. Tags matching `v*` are never moved or deleted
+  (enforced by a ruleset), and releases are cut from verified `main` commits
+  ([`docs/RELEASING.md`](./docs/RELEASING.md)).
+
+The security design, with each mitigation tied to the test that enforces it, is in
+[`docs/THREAT-MODEL.md`](./docs/THREAT-MODEL.md); what pharn-ci does not guarantee is in
+[`docs/LIMITS.md`](./docs/LIMITS.md).
 
 ## Supported versions
 
