@@ -1,0 +1,151 @@
+name: release
+
+# Cuts a release: the exact tag vX.Y.Z and its GitHub Release, from a verified commit on main. Run by
+# hand (Actions -> release -> Run workflow, on main); see docs/RELEASING.md. `dry_run` defaults to
+# true, so a run verifies everything and creates nothing unless you untick it.
+#
+# Tags are exact versions only and never move: the `release-tags` ruleset forbids updating or
+# deleting `v*`. A bad release is fixed with a new patch release, never by retagging.
+#
+# TWO JOBS, and the split is the point (the same split as phargus's publish.yml):
+#   - `verify` has NO write permission. It refuses anything but main and a strict X.Y.Z that equals
+#     the package version, has a CHANGELOG section and is not tagged yet. Then it runs every gate,
+#     rebuilds packages/action/dist and fails if it differs from the committed bundle, and hands the
+#     release notes to the next job as an artifact.
+#   - `publish` is the ONLY job with `contents: write`, and runs in the `release` environment (give
+#     it a required reviewer). It checks out nothing and installs nothing, so no dependency code runs
+#     while a write token exists. It creates the tag at exactly the commit `verify` checked.
+#
+# Job names must not collide with the required check names in ci.yml. This workflow never runs on a
+# pull request, so it is not a required check.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release, X.Y.Z (must equal "version" in packages/*/package.json)
+        required: true
+        type: string
+      dry_run:
+        description: Verify only; create no tag and no release
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Release verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # Before checkout and install, so a bad request costs nothing.
+      - name: Refuse anything but main and a strict X.Y.Z
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = "refs/heads/main" ] || { echo "::error::run this workflow on main, not $GITHUB_REF"; exit 1; }
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::version \"$VERSION\" is not X.Y.Z"; exit 1; }
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # full history, as ci.yml does for the dogfood diff
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Check version, tag and changelog
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          PKG="$(node -p "require('./packages/action/package.json').version")"
+          [ "$PKG" = "$VERSION" ] || { echo "::error::version $VERSION != packages/action/package.json $PKG"; exit 1; }
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" > /dev/null; then
+            echo "::error::tag v$VERSION already exists; tags never move, release a new version"
+            exit 1
+          fi
+          grep -q "^## \[${VERSION//./\\.}\]" CHANGELOG.md || { echo "::error::CHANGELOG.md has no '## [$VERSION]' section"; exit 1; }
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm lint
+
+      # version.test.ts also keeps packages/core/src/version.ts equal to every package.json version.
+      - run: pnpm test
+
+      - run: pnpm build
+
+      - name: Check packages/action/dist matches the sources
+        run: |
+          if ! git diff --exit-code -- packages/action/dist || [ -n "$(git status --porcelain -- packages/action/dist)" ]; then
+            echo "::error::packages/action/dist is stale. Run 'pnpm build' and commit the result."
+            exit 1
+          fi
+
+      - name: Check that every action is pinned to a commit SHA
+        run: node scripts/check-action-pins.mjs
+
+      - name: Extract release notes
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/notes"
+          awk -v h="## [$VERSION]" 'index($0, h) == 1 { f = 1; next } /^## \[/ { if (f) exit } f' CHANGELOG.md \
+            > "$RUNNER_TEMP/notes/notes.md"
+          [ -n "$(tr -d '[:space:]' < "$RUNNER_TEMP/notes/notes.md")" ] || { echo "::error::the '## [$VERSION]' section of CHANGELOG.md is empty"; exit 1; }
+          {
+            echo "### Release v$VERSION from $GITHUB_SHA"
+            echo
+            cat "$RUNNER_TEMP/notes/notes.md"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-notes
+          path: ${{ runner.temp }}/notes/notes.md
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Release publish
+    needs: verify
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: release
+    permissions:
+      contents: write # create the tag and the GitHub Release. THIS job only.
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-notes
+          path: ${{ runner.temp }}/notes
+
+      # `gh` ships with the runner image; nothing is installed here. --target is the exact commit
+      # `verify` checked out and tested, not the branch, so a push to main in between changes nothing.
+      - name: Create tag and GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::version \"$VERSION\" is not X.Y.Z"; exit 1; }
+          gh release create "v$VERSION" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "v$VERSION" \
+            --notes-file "$RUNNER_TEMP/notes/notes.md"

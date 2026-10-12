@@ -1,0 +1,63 @@
+name: Bug report
+description: Something pharn-ci reported, computed or rendered wrong, or a crash.
+title: "[bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For vulnerabilities, use [private reporting](https://github.com/pharn-dev/pharn-ci/security/advisories/new) and follow [SECURITY.md](https://github.com/pharn-dev/pharn-ci/blob/main/SECURITY.md), not a public issue.
+        Remove tokens, private repository names and paths, and source code you cannot share from examples and logs.
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where did it happen?
+      options:
+        - GitHub Action
+        - CLI (pharn-ci check)
+        - Both
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: pharn-ci version
+      description: The tag or commit SHA in `uses:`, or `pharn-ci --version` for the CLI.
+      placeholder: pharn-dev/pharn-ci@v0.1.0
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Workflow or command
+      description: The workflow job (checkout, test and pharn-ci steps) or the CLI command line, plus `.pharn/ci.yml` if you use one.
+      render: yaml
+    validations:
+      required: true
+  - type: input
+    id: coverage-tool
+    attributes:
+      label: What produced the coverage file
+      description: Test runner, coverage tool and versions.
+      placeholder: vitest 5.0.4 with @vitest/coverage-v8, lcov reporter
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What pharn-ci reported instead (verdict, diff coverage, message codes).
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: Report excerpt
+      description: The relevant part of report.json, the job summary or the PR comment, with sensitive paths redacted. A minimal lcov and diff that reproduce the problem help most.
+      render: text

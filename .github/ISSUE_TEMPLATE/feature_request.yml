@@ -1,0 +1,38 @@
+name: Feature request
+description: Propose a new check, coverage format, output or option.
+title: "[feat] "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        pharn-ci stays AI-agnostic and stateless: no backend, no telemetry, no network calls except the GitHub API inside the Action. Proposals that need any of those are unlikely to land.
+        The planned work is listed under Roadmap in the [README](https://github.com/pharn-dev/pharn-ci#roadmap).
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is hard, risky or missing when AI coding agents work in your repo today?
+    validations:
+      required: true
+  - type: textarea
+    id: scenario
+    attributes:
+      label: Concrete use case
+      description: Your setup (language, test runner, coverage format, agents in use) and a representative PR.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Desired behavior
+      description: What pharn-ci should report or do, and how you would know it works.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other tools or workarounds, or why none fits.
+    validations:
+      required: true

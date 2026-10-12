@@ -49,7 +49,14 @@ A PR can merge only when these checks pass: `ci`, `Action pins`, `gitleaks`,
 Report`, `Socket Security: Pull Request Alerts`). The job names in `.github/workflows/` are a contract
 with the ruleset: renaming one blocks every PR until the ruleset is edited to match. Third-party
 actions must be pinned to a commit SHA (`scripts/check-action-pins.mjs`). Never weaken the rulesets to
-get a change through.
+get a change through. The rulesets are kept as code in `.github/rulesets/` (committing them does not
+apply them; see its README).
+
+Release tags are exact `vX.Y.Z`, cut by `.github/workflows/release.yml` and never moved or deleted
+(`docs/RELEASING.md`). That workflow's job names must not collide with the required check names.
+Add a line under **Unreleased** in `CHANGELOG.md` for every user-visible change. A change that adds
+parsing of untrusted input, a new place the action writes to, or a new GitHub API call updates
+`docs/THREAT-MODEL.md` in the same PR.
 
 ## Commands
 
