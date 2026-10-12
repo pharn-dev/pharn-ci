@@ -16,11 +16,11 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.6.4",
     "@vitest/coverage-v8": "5.0.4",
     "ajv": "^8.20.0",
     "esbuild": "^0.28.2",
-    "typescript": "~6.0.3",
+    "typescript": "~7.0.2",
     "vitest": "5.0.4"
   }
 }
