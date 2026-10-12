@@ -151,3 +151,74 @@ describe("release readiness: docs/RELEASING.md", () => {
     ).toBe(true);
   });
 });
+
+describe("release readiness: pins match the package version", () => {
+  it("every uses: pharn-dev/pharn-ci@ line in README.md and docs/MARKETPLACE.md pins v<VERSION>", async () => {
+    const { VERSION } = await import("../src/version.js");
+    const packageVersion: string = JSON.parse(read("packages/action/package.json")).version;
+    expect(VERSION, "version.ts and packages/action/package.json").toBe(packageVersion);
+
+    for (const [path, expected] of [
+      ["README.md", 2],
+      ["docs/MARKETPLACE.md", 1],
+    ] as const) {
+      const pins = read(path)
+        .split("\n")
+        .map((line) => line.match(/^\s*(?:- )?uses:\s*pharn-dev\/pharn-ci@(\S+)/)?.[1])
+        .filter((ref): ref is string => ref !== undefined);
+      expect(pins, `${path} uses: pharn-dev/pharn-ci@ lines`).toHaveLength(expected);
+      for (const ref of pins) {
+        expect(ref, `${path} pins the package version`).toBe(`v${VERSION}`);
+      }
+    }
+  });
+
+  it("the README Status note names v<VERSION>", async () => {
+    const { VERSION } = await import("../src/version.js");
+    const status = read("README.md").match(/^> \*\*Status:\*\*.*\n(?:>.*\n)*/m)?.[0];
+    expect(status, "a > **Status:** note in README.md").toBeDefined();
+    expect(status, "the Status note names the current version").toContain(`v${VERSION}`);
+  });
+});
+
+describe("release readiness: docs/RELEASING.md release steps and tag signing", () => {
+  const listItems = (lines: string[]): string[] => {
+    const items: string[] = [];
+    for (const line of lines) {
+      const marker = line.match(/^\s*(?:[-*]|\d+\.)\s+(.*)$/);
+      if (marker) items.push(marker[1] ?? "");
+      else if (line.trim() !== "" && items.length > 0) items[items.length - 1] += ` ${line.trim()}`;
+    }
+    return items.map((item) => item.replace(/\s+/g, " ").trim());
+  };
+
+  it("step 1 sets the CHANGELOG date, then updates the README pins and the Status note, then dispatches release.yml", () => {
+    const items = listItems(section(read("docs/RELEASING.md"), "Cutting a release"));
+    const start = items.findIndex((item) => item.startsWith("**Prepare a PR**"));
+    const end = items.findIndex((item) => item.startsWith("**Dry run.**"));
+    expect(start, "step 1 **Prepare a PR**").toBeGreaterThanOrEqual(0);
+    expect(end, "step 2 **Dry run.**").toBeGreaterThan(start);
+    const step1 = items.slice(start, end);
+
+    const at = (pattern: RegExp, what: string) => {
+      const index = step1.findIndex((item) => pattern.test(item));
+      expect(index, `step 1 has an item that ${what}`).toBeGreaterThanOrEqual(0);
+      return index;
+    };
+    const date = at(/^\*\*Set the CHANGELOG date\.\*\*.*`YYYY-MM-DD`.*release date/, "sets the CHANGELOG date");
+    const pins = at(
+      /^\*\*Update the README pins and the Status note\.\*\*.*`uses: pharn-dev\/pharn-ci@vX\.Y\.Z`.*\*\*Status\*\*/,
+      "updates the README pins and the Status note",
+    );
+    const dispatch = at(/dispatch `release\.yml`/, "dispatches release.yml");
+    expect(date, "the date comes before the pins").toBeLessThan(pins);
+    expect(pins, "the pins come before the dispatch").toBeLessThan(dispatch);
+  });
+
+  it("says release tags are created by gh release create, are not signed, and consumers pin the full commit SHA", () => {
+    const policy = section(read("docs/RELEASING.md"), "Tag policy").join(" ").replace(/\s+/g, " ").toLowerCase();
+    expect(policy).toContain("created by `gh release create`");
+    expect(policy).toContain("not signed");
+    expect(policy).toContain("pin the full commit sha");
+  });
+});
