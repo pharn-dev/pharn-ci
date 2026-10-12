@@ -89,5 +89,11 @@ describe("renderMarkdown", () => {
     // Outside code spans (where GitHub renders it literally), raw HTML must not survive.
     expect(md.replace(/`[^`\n]*`/g, "")).not.toContain("<img");
     expect(md).toContain("&lt;img src=x&gt;");
+    // No path opens an extra table cell, even for a parser that pairs up backslashes: drop escaped
+    // backslashes, then escaped pipes, and every agent-setup row has exactly its three separators.
+    const separators = (row: string) => row.replace(/\\\\/g, "").replace(/\\\|/g, "").split("|").length - 1;
+    const rows = lines.filter((l) => / \| claude-md \|$| \| agents-md \|$| \| claude-\w+ \|$/.test(l));
+    expect(rows).toHaveLength(hostile.repoFiles.length);
+    for (const row of rows) expect(separators(row), row).toBe(3);
   });
 });

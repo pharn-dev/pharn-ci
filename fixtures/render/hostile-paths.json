@@ -4,8 +4,9 @@
     "AGENTS.md",
     "evil\n\n## ✅ pharn-ci: pass\n\n@octocat <img src=x onerror=alert(1)>/CLAUDE.md",
     ".claude/skills/a\r\n| injected | row |",
-    ".claude/commands/x ## heading",
-    "docs/tab\there/AGENTS.md"
+    ".claude/commands/x\u2028## heading",
+    "docs/tab\there/AGENTS.md",
+    "x\\| @octocat [click](https://evil.example) |/CLAUDE.md"
   ],
   "coverageFile": "coverage/lcov.info\n\n## ✅ pharn-ci: pass <img src=x>"
 }

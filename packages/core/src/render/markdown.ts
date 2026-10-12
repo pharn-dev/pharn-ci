@@ -85,8 +85,10 @@ export function formatRanges(lines: readonly number[]): string {
 const CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
 
 function code(path: string): string {
-  // Pipes would break the table; backticks would break the code span.
-  return `\`${path.replace(CONTROL_CHARS, "\uFFFD").replace(/\|/g, "\\|").replace(/`/g, "'")}\``;
+  // Pipes would break the table; backticks would break the code span. Backslashes are escaped first,
+  // so a name ending in "\" cannot turn the following "\|" into "\\" plus a real cell separator.
+  const safe = path.replace(CONTROL_CHARS, "\uFFFD").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/`/g, "'");
+  return `\`${safe}\``;
 }
 
 /** Message text on one line, with HTML neutralized. */

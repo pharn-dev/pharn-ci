@@ -25118,7 +25118,8 @@ function formatRanges(lines) {
 }
 var CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
 function code(path) {
-  return `\`${path.replace(CONTROL_CHARS, "\uFFFD").replace(/\|/g, "\\|").replace(/`/g, "'")}\``;
+  const safe = path.replace(CONTROL_CHARS, "\uFFFD").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/`/g, "'");
+  return `\`${safe}\``;
 }
 function inlineText(text) {
   return text.replace(CONTROL_CHARS, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
