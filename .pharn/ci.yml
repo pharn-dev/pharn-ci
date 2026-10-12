@@ -1,0 +1,5 @@
+# pharn-ci config (dogfooding). CLI flags and Action inputs override these values.
+coverage:
+  file: coverage/lcov.info # written by `pnpm test:coverage`
+  format: lcov
+  threshold: 80

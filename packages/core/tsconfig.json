@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // core is pure: no Node globals or modules are typed here, so fs/process/etc. fail to compile.
+    "types": []
+  },
+  "include": ["src"]
+}

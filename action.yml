@@ -1,0 +1,48 @@
+name: pharn-ci
+description: Check whether AI coding agents can safely work in your repo — diff coverage gate and agent setup inventory.
+author: pharn-dev
+branding:
+  icon: shield
+  color: green
+
+inputs:
+  coverage-file:
+    description: Path to the coverage report, relative to the workspace. Defaults to coverage.file in .pharn/ci.yml.
+    required: false
+  coverage-format:
+    description: Coverage report format. Only "lcov" is supported for now. Defaults to coverage.format in .pharn/ci.yml, then lcov.
+    required: false
+  threshold:
+    description: Minimum diff coverage percent (0-100, inclusive). Defaults to coverage.threshold in .pharn/ci.yml; no gate if unset.
+    required: false
+  base-ref:
+    description: Ref or SHA to diff against (merge-base with HEAD). Defaults to the pull request base; on push, the previous commit.
+    required: false
+  comment:
+    description: Post or update one sticky PR comment with the report.
+    required: false
+    default: "true"
+  fail-on-threshold:
+    description: Fail the step when the verdict is "fail".
+    required: false
+    default: "true"
+  config:
+    description: Path to the pharn-ci config file.
+    required: false
+    default: .pharn/ci.yml
+  github-token:
+    description: Token for the GitHub API (comments, diff fallback). Needs contents read and pull-requests write.
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  report-path:
+    description: Path to report.json (Report v1, see schema/report.v1.json).
+  verdict:
+    description: pass, warn or fail.
+  diff-coverage:
+    description: Diff coverage percent, or empty when it could not be computed.
+
+runs:
+  using: node24
+  main: packages/action/dist/index.js

@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pharn.dev/schemas/ci/report.v1.json",
+  "title": "pharn-ci Report v1",
+  "description": "Machine-readable output of pharn-ci. This schema is the source of truth: markdown and CLI text are renderings of this object. Within schemaVersion \"1\" fields are never removed or retyped; new optional fields may only be added by updating this file.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "tool", "verdict", "diffCoverage", "agentSetup", "messages"],
+  "properties": {
+    "schemaVersion": {
+      "const": "1"
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "pharn-ci" },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?$" }
+      }
+    },
+    "verdict": {
+      "description": "\"fail\" if any message has level \"error\", else \"warn\" if any has level \"warn\", else \"pass\".",
+      "enum": ["pass", "warn", "fail"]
+    },
+    "diffCoverage": {
+      "description": "Coverage of lines added in the diff. null when it could not be computed (no coverage file, or no diff base); a message explains why.",
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/diffCoverage" }]
+    },
+    "agentSetup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files"],
+      "properties": {
+        "files": {
+          "description": "Agent setup files tracked in the repo, sorted by path.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/agentSetupFile" }
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/message" }
+    }
+  },
+  "$defs": {
+    "percent": {
+      "description": "Percentage rounded to 2 decimals. null when there are no coverable lines.",
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 100
+    },
+    "lineCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "diffCoverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["percent", "threshold", "coveredLines", "coverableLines", "files"],
+      "properties": {
+        "percent": { "$ref": "#/$defs/percent" },
+        "threshold": {
+          "description": "Minimum required percent (inclusive). null when no threshold is configured.",
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "coveredLines": { "$ref": "#/$defs/lineCount" },
+        "coverableLines": {
+          "description": "Added lines that the coverage report knows about. Added lines absent from the coverage report (comments, types, untested files) are excluded.",
+          "$ref": "#/$defs/lineCount"
+        },
+        "files": {
+          "description": "Files with at least one coverable added line, sorted by path.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/diffCoverageFile" }
+        }
+      }
+    },
+    "diffCoverageFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "percent", "coveredLines", "coverableLines", "uncoveredLines"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1, "description": "Repo-relative path with forward slashes." },
+        "percent": { "$ref": "#/$defs/percent" },
+        "coveredLines": { "$ref": "#/$defs/lineCount" },
+        "coverableLines": { "$ref": "#/$defs/lineCount" },
+        "uncoveredLines": {
+          "description": "1-based line numbers in the new file, ascending.",
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "agentSetupFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "kind"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "kind": {
+          "description": "Known kinds: claude-md, agents-md, claude-settings, claude-settings-local, claude-skill, claude-hook, claude-agent, claude-command, cursor-rules, copilot-instructions, mcp-config. New kinds may be added within v1; consumers must tolerate unknown kinds.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        }
+      }
+    },
+    "message": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "code", "text"],
+      "properties": {
+        "level": { "enum": ["info", "warn", "error"] },
+        "code": {
+          "description": "Stable identifier; branch on this, never on text. Known codes: DIFF_COVERAGE_BELOW_THRESHOLD, NO_COVERABLE_CHANGES, COVERAGE_FILE_MISSING, DIFF_UNAVAILABLE, NO_AGENT_SETUP_FILES. New codes may be added within v1; consumers must tolerate unknown codes.",
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "text": { "type": "string", "minLength": 1, "description": "Human-readable explanation; wording may change." }
+      }
+    }
+  }
+}

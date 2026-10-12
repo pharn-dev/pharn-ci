@@ -1,0 +1,2 @@
+packages/action/dist/** linguist-generated=true
+fixtures/** -text

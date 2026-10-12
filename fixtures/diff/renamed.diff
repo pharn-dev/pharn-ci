@@ -1,0 +1,14 @@
+diff --git a/src/old-name.ts b/src/utils/new-name.ts
+similarity index 88%
+rename from src/old-name.ts
+rename to src/utils/new-name.ts
+index 5555555..6666666 100644
+--- a/src/old-name.ts
++++ b/src/utils/new-name.ts
+@@ -2 +2 @@ export function util() {
+-  return 1;
++  return 2;
+diff --git a/docs/a.md b/docs/b.md
+similarity index 100%
+rename from docs/a.md
+rename to docs/b.md
