@@ -1,0 +1,24 @@
+{
+  "name": "@pharn-ci/cli",
+  "version": "0.1.0",
+  "description": "pharn-ci command line: check diff coverage and agent setup locally.",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "pharn-ci": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc --noEmit && node ../../scripts/bundle.mjs src/index.ts dist/index.js --shebang",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@pharn-ci/core": "workspace:*"
+  }
+}

@@ -1,0 +1,42 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderMarkdown > renders the no-coverable-changes state 1`] = `
+"## ✅ pharn-ci: pass
+
+### Diff coverage
+
+_No coverable lines changed._
+
+### Agent setup
+
+| Path | Kind |
+| --- | --- |
+| \`AGENTS.md\` | agents-md |
+
+### Messages
+
+- ℹ️ \`NO_COVERABLE_CHANGES\` No added lines are tracked by the coverage report; nothing to measure.
+
+<sub>pharn-ci 0.1.0 · report schema v1</sub>
+"
+`;
+
+exports[`renderMarkdown > renders the not-computed state 1`] = `
+"## ❌ pharn-ci: fail
+
+### Diff coverage
+
+_Not computed — see messages below._
+
+### Agent setup
+
+_No agent setup files found._
+
+### Messages
+
+- ❌ \`COVERAGE_FILE_MISSING\` Coverage file not found: coverage/lcov.info
+- ℹ️ \`NO_AGENT_SETUP_FILES\` No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found.
+
+<sub>pharn-ci 0.1.0 · report schema v1</sub>
+"
+`;

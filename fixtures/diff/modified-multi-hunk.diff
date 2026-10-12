@@ -1,0 +1,14 @@
+diff --git a/src/math.ts b/src/math.ts
+index 1111111..2222222 100644
+--- a/src/math.ts
++++ b/src/math.ts
+@@ -2,0 +3,3 @@ export function add(a: number, b: number) {
++  if (a < 0) {
++    return -add(-a, -b);
++  }
+@@ -7 +10 @@ export function sub(a: number, b: number) {
+-  return a - b;
++  return add(a, -b);
+@@ -20,2 +23,0 @@ export function mul(a: number, b: number) {
+-  // TODO
+-  // remove me

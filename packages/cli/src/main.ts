@@ -1,0 +1,179 @@
+import { parseArgs } from "node:util";
+import {
+  type CheckInput,
+  ConfigError,
+  check,
+  isCoverageFormat,
+  type PharnConfig,
+  parseConfig,
+  parseThreshold,
+  renderMarkdown,
+  VERSION,
+} from "@pharn-ci/core";
+
+/** Everything the CLI touches outside itself; injected so tests can fake it. */
+export interface CliDeps {
+  cwd: string;
+  /** Run git with args in `cwd`; resolves stdout, rejects with stderr on failure. */
+  git(args: string[]): Promise<string>;
+  /** File contents, or null when the file does not exist. */
+  readFile(path: string): Promise<string | null>;
+  resolvePath(...segments: string[]): string;
+  stdout(text: string): void;
+  stderr(text: string): void;
+}
+
+export const EXIT_OK = 0;
+export const EXIT_FAIL = 1;
+export const EXIT_ERROR = 2;
+
+const HELP = `pharn-ci ${VERSION} — can AI coding agents safely work in this repo?
+
+Usage:
+  pharn-ci check [options]
+
+Options:
+  --coverage <file>    Coverage report (lcov). Default: coverage.file from config
+  --base <ref>         Base to diff against (merge-base with HEAD). Default: origin/main
+  --threshold <n>      Minimum diff coverage percent (0-100). Default: coverage.threshold
+  --format <md|json>   Output format. Default: md
+  --config <path>      Config file. Default: <repo>/.pharn/ci.yml if present
+  -h, --help           Show this help
+  -v, --version        Show the version
+
+Exit codes: 0 pass or warn, 1 fail, 2 usage or runtime error.
+`;
+
+export async function main(argv: string[], deps: CliDeps): Promise<number> {
+  let parsed: ReturnType<typeof parse>;
+  try {
+    parsed = parse(argv);
+  } catch (err) {
+    deps.stderr(`pharn-ci: ${errorMessage(err)}\n\n${HELP}`);
+    return EXIT_ERROR;
+  }
+  const { values, positionals } = parsed;
+  if (values.version) {
+    deps.stdout(`${VERSION}\n`);
+    return EXIT_OK;
+  }
+  if (values.help || positionals.length === 0) {
+    (values.help ? deps.stdout : deps.stderr)(HELP);
+    return values.help ? EXIT_OK : EXIT_ERROR;
+  }
+  if (positionals[0] !== "check" || positionals.length > 1) {
+    deps.stderr(`pharn-ci: unknown command "${positionals.join(" ")}"\n\n${HELP}`);
+    return EXIT_ERROR;
+  }
+
+  try {
+    return await runCheck(values, deps);
+  } catch (err) {
+    deps.stderr(`pharn-ci: ${errorMessage(err)}\n`);
+    return EXIT_ERROR;
+  }
+}
+
+function parse(argv: string[]) {
+  return parseArgs({
+    args: argv,
+    allowPositionals: true,
+    strict: true,
+    options: {
+      coverage: { type: "string" },
+      base: { type: "string" },
+      threshold: { type: "string" },
+      format: { type: "string" },
+      config: { type: "string" },
+      help: { type: "boolean", short: "h" },
+      version: { type: "boolean", short: "v" },
+    },
+  });
+}
+
+type Values = ReturnType<typeof parse>["values"];
+
+async function runCheck(values: Values, deps: CliDeps): Promise<number> {
+  const format = values.format ?? "md";
+  if (format !== "md" && format !== "json") throw new ConfigError(`--format must be "md" or "json"`);
+
+  const repoRoot = (await git(deps, ["rev-parse", "--show-toplevel"], "not inside a git repository")).trim();
+  const config = await loadConfig(values.config, repoRoot, deps);
+
+  const threshold =
+    values.threshold !== undefined
+      ? parseThreshold(values.threshold, "--threshold")
+      : (config.coverage?.threshold ?? null);
+
+  const coverageFormat = config.coverage?.format ?? "lcov";
+  if (!isCoverageFormat(coverageFormat)) throw new ConfigError(`unsupported coverage format "${coverageFormat}"`);
+
+  // A --coverage path is relative to where you run the CLI; a config path is relative to the repo root.
+  const coveragePath =
+    values.coverage !== undefined
+      ? deps.resolvePath(deps.cwd, values.coverage)
+      : config.coverage?.file !== undefined
+        ? deps.resolvePath(repoRoot, config.coverage.file)
+        : undefined;
+  if (coveragePath === undefined) {
+    throw new ConfigError("no coverage file: pass --coverage <file> or set coverage.file in .pharn/ci.yml");
+  }
+  const coverageText = await deps.readFile(coveragePath);
+
+  const base = values.base ?? "origin/main";
+  const diffText = await git(
+    deps,
+    [
+      "diff",
+      "--unified=0",
+      "--no-color",
+      "--no-ext-diff",
+      "--find-renames",
+      "--src-prefix=a/",
+      "--dst-prefix=b/",
+      `${base}...HEAD`,
+    ],
+    `could not diff against "${base}" (fetch it, or pass --base <ref>)`,
+  );
+  const lsFiles = await git(deps, ["ls-files", "-z"], "git ls-files failed");
+
+  const input: CheckInput = {
+    version: VERSION,
+    coverage: coverageText === null ? { missingFile: coveragePath } : { text: coverageText, format: coverageFormat },
+    diff: { text: diffText },
+    repoRoot,
+    threshold,
+    repoFiles: lsFiles.split("\0").filter((p) => p !== ""),
+  };
+  const report = check(input);
+
+  deps.stdout(format === "json" ? `${JSON.stringify(report, null, 2)}\n` : renderMarkdown(report));
+  return report.verdict === "fail" ? EXIT_FAIL : EXIT_OK;
+}
+
+async function loadConfig(explicit: string | undefined, repoRoot: string, deps: CliDeps): Promise<PharnConfig> {
+  const path =
+    explicit !== undefined ? deps.resolvePath(deps.cwd, explicit) : deps.resolvePath(repoRoot, ".pharn/ci.yml");
+  const text = await deps.readFile(path);
+  if (text === null) {
+    if (explicit !== undefined) throw new ConfigError(`config file not found: ${path}`);
+    return {};
+  }
+  try {
+    return parseConfig(text);
+  } catch (err) {
+    throw new ConfigError(`${path}: ${errorMessage(err)}`);
+  }
+}
+
+async function git(deps: CliDeps, args: string[], context: string): Promise<string> {
+  try {
+    return await deps.git(args);
+  } catch (err) {
+    throw new Error(`${context}\n  git ${args.join(" ")}: ${errorMessage(err).trim()}`);
+  }
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
