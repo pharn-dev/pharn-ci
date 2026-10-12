@@ -209,6 +209,7 @@ On PRs from forks the token cannot comment; pharn-ci then warns and uses the job
 | `coverage-format`   | `lcov`                      | Only `lcov` for now                      |
 | `threshold`         | none                        | Minimum diff coverage %, inclusive       |
 | `base-ref`          | PR base                     | Ref or SHA to diff against               |
+| `exclude`           | none                        | Globs of changed files to leave out of diff coverage, comma or newline separated; added to `coverage.exclude` |
 | `comment`           | `true`                      | Post/update one sticky PR comment        |
 | `fail-on-threshold` | `true`                      | Fail the step when the verdict is `fail` |
 | `config`            | `.pharn/ci.yml`             | Config file path                         |
@@ -231,10 +232,13 @@ node packages/cli/dist/index.js check --coverage coverage/lcov.info --threshold 
 
 ```text
 pharn-ci check [--coverage <file>] [--base <ref>] [--threshold <n>]
-               [--format md|json] [--config <path>]
+               [--format md|json] [--config <path>] [--exclude <glob>]...
 ```
 
 - `--base` defaults to `origin/main`; the diff is `git diff --unified=0 <base>...HEAD`.
+- `--exclude <glob>` leaves matching changed files out of diff coverage. Repeat it for several
+  patterns; they are added to `coverage.exclude`, never replacing it
+  ([Excluding files](#excluding-files)).
 - `--format json` prints only the report to stdout, for agents and scripts.
 - Exit codes: `0` pass or warn, `1` fail, `2` usage or runtime error.
 
@@ -251,7 +255,27 @@ coverage:
   file: coverage/lcov.info
   format: lcov
   threshold: 80
+  exclude:
+    - src/generated/**
+    - "*.gen.ts"
 ```
+
+### Excluding files
+
+Generated code, vendored files and the like can be left out of diff coverage with glob patterns.
+Patterns come from three sources that are **merged** (a union, never an override):
+`coverage.exclude` in `.pharn/ci.yml`, the CLI's `--exclude` flags and the Action's `exclude` input.
+
+- The glob subset is `*` (any run of characters within one path segment), `**` as a whole segment
+  (any number of segments, including none) and `?` (one character). Patterns are anchored at the
+  repository root, must match the whole path, and are case-sensitive. Braces, `[...]` classes,
+  negation (`!`) and backslashes are rejected with an error rather than guessed at.
+- A pattern that starts with `*` must be quoted in YAML (`"*.gen.ts"`).
+- Only changed files are affected. Excluded files count nowhere in diff coverage; they are listed
+  under `diffCoverage.excludedFiles` in the report and in an "Excluded" summary in the comment.
+- The agent setup inventory is not affected by exclusions.
+- Exclusions come from the PR itself, so a PR can exclude its own files. Protect `.pharn/ci.yml` (and
+  your workflow file) with CODEOWNERS.
 
 ---
 
@@ -290,6 +314,8 @@ git.
 - **The inventory is not a review.** pharn-ci lists agent setup files and never reads them.
 - **pharn-ci trusts the coverage file.** The PR's own tests write it in the same job; a PR that
   alters its test setup can produce a favorable one.
+- **Exclusions come from the PR.** The config and workflow a PR carries decide which of its files
+  are left out of the measurement ([Excluding files](#excluding-files)).
 - **The gate is soft when the diff is unavailable.** `DIFF_UNAVAILABLE` warns instead of failing.
 
 ---

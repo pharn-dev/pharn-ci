@@ -1,5 +1,12 @@
 export { type CheckInput, check } from "./check.js";
-export { ConfigError, isCoverageFormat, type PharnConfig, parseConfig, parseThreshold } from "./config.js";
+export {
+  ConfigError,
+  isCoverageFormat,
+  type PharnConfig,
+  parseConfig,
+  parseExcludePattern,
+  parseThreshold,
+} from "./config.js";
 export { parseCobertura } from "./coverage/cobertura.js";
 export { parseCoverage } from "./coverage/index.js";
 export { parseLcov } from "./coverage/lcov.js";
@@ -12,6 +19,7 @@ export {
 } from "./coverage/types.js";
 export { type DiffFile, type DiffFileStatus, parseUnifiedDiff } from "./diff/unified.js";
 export { computeDiffCoverage, type DiffCoverageFile, type DiffCoverageResult } from "./diffCoverage.js";
+export { compileGlob, matchGlob } from "./glob.js";
 export { normalizePath } from "./paths.js";
 export { formatRanges, type RenderMarkdownOptions, renderMarkdown } from "./render/markdown.js";
 export {

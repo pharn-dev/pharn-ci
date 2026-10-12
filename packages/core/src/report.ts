@@ -20,6 +20,8 @@ export interface ReportDiffCoverage {
   coveredLines: number;
   coverableLines: number;
   files: DiffCoverageFile[];
+  /** Sorted repo-relative paths of changed files left out by an exclusion pattern; present only when at least one was. */
+  excludedFiles?: string[];
 }
 
 export type MessageLevel = "info" | "warn" | "error";
@@ -116,6 +118,9 @@ export function buildReport(input: BuildReportInput): Report {
             coveredLines: dc.coveredLines,
             coverableLines: dc.coverableLines,
             files: dc.files,
+            ...(dc.excludedFiles !== undefined && dc.excludedFiles.length > 0
+              ? { excludedFiles: dc.excludedFiles }
+              : {}),
           },
     agentSetup: { files: input.agentSetup.files, summary: summarizeAgentSetup(input.agentSetup.files) },
     messages,

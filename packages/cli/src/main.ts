@@ -6,6 +6,7 @@ import {
   isCoverageFormat,
   type PharnConfig,
   parseConfig,
+  parseExcludePattern,
   parseThreshold,
   renderMarkdown,
   VERSION,
@@ -37,6 +38,7 @@ Options:
   --base <ref>         Base to diff against (merge-base with HEAD). Default: origin/main
   --threshold <n>      Minimum diff coverage percent (0-100). Default: coverage.threshold
   --format <md|json>   Output format. Default: md
+  --exclude <glob>     Leave matching changed files out of diff coverage (repeatable; adds to coverage.exclude)
   --config <path>      Config file. Default: <repo>/.pharn/ci.yml if present
   -h, --help           Show this help
   -v, --version        Show the version
@@ -85,6 +87,7 @@ function parse(argv: string[]) {
       threshold: { type: "string" },
       format: { type: "string" },
       config: { type: "string" },
+      exclude: { type: "string", multiple: true },
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
     },
@@ -98,6 +101,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   if (format !== "md" && format !== "json") throw new ConfigError(`--format must be "md" or "json"`);
   // A leading "-" would reach git as an option (e.g. --output=<file>), not a revision.
   if (values.base?.startsWith("-")) throw new ConfigError(`--base "${values.base}" must not start with "-"`);
+  const excludeFlags = (values.exclude ?? []).map((p) => parseExcludePattern(p, "--exclude"));
 
   const repoRoot = (await git(deps, ["rev-parse", "--show-toplevel"], "not inside a git repository")).trim();
   const config = await loadConfig(values.config, repoRoot, deps);
@@ -150,6 +154,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     repoRoot,
     threshold,
     repoFiles: lsFiles.split("\0").filter((p) => p !== ""),
+    exclude: [...(config.coverage?.exclude ?? []), ...excludeFlags],
   };
   const report = check(input);
 

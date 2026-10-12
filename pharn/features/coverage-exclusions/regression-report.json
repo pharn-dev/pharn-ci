@@ -1,0 +1,115 @@
+{
+  "base": "8cc31571e0fa196543f8452deaa8e1eb3b116939",
+  "inside": [
+    "CHANGELOG.md",
+    "README.md",
+    "action.yml",
+    "docs/LIMITS.md",
+    "docs/THREAT-MODEL.md",
+    "packages/action/dist/index.js",
+    "packages/action/src/run.ts",
+    "packages/cli/src/main.ts",
+    "packages/core/src/check.ts",
+    "packages/core/src/config.ts",
+    "packages/core/src/diffCoverage.ts",
+    "packages/core/src/index.ts",
+    "packages/core/src/render/markdown.ts",
+    "packages/core/src/report.ts",
+    "schema/report.v1.json",
+    "fixtures/golden-exclusions/ci.yml",
+    "fixtures/golden-exclusions/coverage.info",
+    "fixtures/golden-exclusions/files.txt",
+    "fixtures/golden-exclusions/pr.diff",
+    "fixtures/golden-exclusions/report.json",
+    "fixtures/golden-exclusions/report.md",
+    "packages/action/test/exclude.test.ts",
+    "packages/cli/test/exclude.test.ts",
+    "packages/core/src/glob.ts",
+    "packages/core/test/config-exclude.test.ts",
+    "packages/core/test/exclusions-check.test.ts",
+    "packages/core/test/exclusions-golden.test.ts",
+    "packages/core/test/exclusions-report.test.ts",
+    "packages/core/test/glob.test.ts",
+    "pharn/features/coverage-exclusions/AC-TESTS.lock.json",
+    "pharn/features/coverage-exclusions/AC-TESTS.md",
+    "pharn/features/coverage-exclusions/BUILD.md",
+    "pharn/features/coverage-exclusions/GRILL.md",
+    "pharn/features/coverage-exclusions/PLAN.md",
+    "pharn/features/coverage-exclusions/SPEC.md"
+  ],
+  "outside_gates": {
+    "build": {
+      "base": 0,
+      "head": 0
+    },
+    "test": {
+      "base": 0,
+      "head": 0
+    }
+  },
+  "regressions": [],
+  "pre_existing": [],
+  "verdict": "no-regressions",
+  "gate_run": {
+    "base": {
+      "stamp_sha256": "295b993bbc3c7c0d6ff45566fd591ead62b5d01e7c6e58a863a37b94e6972b0b",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256+entry-feature-dir",
+        "final": "21b5fa184a0cebb45ba11abff5bab2694c9f899b6f5e2845ab7e61b8c55c9963"
+      }
+    },
+    "head": {
+      "stamp_sha256": "8d8b5591ea12a8c17057bb868d6bd321e26d6462796809c3505736c8bb4dc1b1",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "2b297ad95b0caff08818d177b33e0598282dde5bb1c2209a0c593cd77f604994"
+      }
+    }
+  },
+  "base_evidence": {
+    "reused": false,
+    "miss": "no-record",
+    "requirement_sha256": "57aa42fb5b404897a21842f57fad5d88ad545bfde556eb61a921d9692e360b3e",
+    "recorded": false,
+    "source": "entry",
+    "entry": {
+      "used": true,
+      "miss": null,
+      "offer_sha256": "4f35b04b904d69cde7e25fb03cb27a3a6a827bf3a98c7af9924ce04cb83649b0",
+      "entry_stamp_sha256": "550716ea7eaa6cedc7dbeebbab76f0b63657b3c808fb406767bf3910e05f86ee",
+      "base": "8cc31571e0fa196543f8452deaa8e1eb3b116939",
+      "run": {
+        "command": "pharn-loop",
+        "marker_sha256": "0b09931c9c4ef8bdf4687921c466965459b491578492eca29d4f9b938e0d0a04"
+      },
+      "reused_ids": [
+        "test",
+        "build"
+      ],
+      "no_files_ids": [],
+      "ignored_ids": [
+        "lint",
+        "test"
+      ]
+    }
+  },
+  "pre_run_snapshot": {
+    "status": "applied",
+    "unchanged": []
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "base_source": "explicit"
+}

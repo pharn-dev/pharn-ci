@@ -1,7 +1,9 @@
+import { parseExcludePattern } from "./config.js";
 import { parseCoverage } from "./coverage/index.js";
 import type { CoverageFormat } from "./coverage/types.js";
 import { parseUnifiedDiff } from "./diff/unified.js";
 import { computeDiffCoverage } from "./diffCoverage.js";
+import { compileGlob } from "./glob.js";
 import { buildReport, type Report } from "./report.js";
 import { scanAgentSetup } from "./setup/scan.js";
 
@@ -19,10 +21,18 @@ export interface CheckInput {
   threshold: number | null;
   /** Repo-relative tracked paths (e.g. `git ls-files`). */
   repoFiles: readonly string[];
+  /**
+   * Glob patterns of changed files to leave out of diff coverage, from every source (config, flag, input) in
+   * any order. Validated and de-duplicated here; an unsupported pattern throws a ConfigError.
+   */
+  exclude?: readonly string[];
 }
 
 /** The whole pharn-ci check as one pure function: raw inputs in, Report v1 out. */
 export function check(input: CheckInput): Report {
+  // Validate before any early return, so a bad pattern is an error even when nothing else is computed.
+  const matchers = [...new Set((input.exclude ?? []).map((p) => parseExcludePattern(p)))].map(compileGlob);
+  const isExcluded = (path: string) => matchers.some((matches) => matches(path));
   const agentSetup = scanAgentSetup(input.repoFiles);
   const base = { version: input.version, threshold: input.threshold, agentSetup };
 
@@ -56,5 +66,5 @@ export function check(input: CheckInput): Report {
     });
   }
   const diff = parseUnifiedDiff(input.diff.text);
-  return buildReport({ ...base, diffCoverage: computeDiffCoverage(diff, coverage, input.threshold) });
+  return buildReport({ ...base, diffCoverage: computeDiffCoverage(diff, coverage, input.threshold, isExcluded) });
 }

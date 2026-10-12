@@ -23,8 +23,17 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   pure rename adds no lines. Rename detection is git's default similarity (`--find-renames`).
 - **No coverable changes passes.** When none of the added lines are tracked by the coverage report,
   the verdict is `pass` with `NO_COVERABLE_CHANGES`, even with a threshold of 100.
-- **There is no exclude list yet.** Generated or vendored files that appear in the coverage report
-  count like any other.
+- **Exclusions apply to changed files only.** Patterns from `coverage.exclude`, `--exclude` and the
+  Action's `exclude` input (merged, never overriding each other) remove matching changed files from
+  every count and from the table. They are listed in `diffCoverage.excludedFiles` and in the
+  comment's "Excluded" summary; a deleted file is never listed. The agent setup inventory and
+  `COVERAGE_FILE_EMPTY` are unaffected, and a change whose every file is excluded is the
+  `NO_COVERABLE_CHANGES` pass.
+- **The glob subset is small.** `*`, `**` as a whole segment and `?`, anchored at the repository
+  root, matching the whole path, case-sensitively. Not supported, and rejected with an error rather
+  than matched literally: braces, `[...]` classes, negation (`!`), backslashes, unanchored
+  gitignore-style patterns (`foo/` or `*.ts` matching in subdirectories: use `**/*.ts`), `..`
+  segments, and case-insensitive matching.
 - **Coverage paths must be relative to the repository root.** `SF:` paths are matched exactly
   (case-sensitive) against repo-relative diff paths. Absolute paths under the repo root are
   relativized. In a monorepo, a coverage file whose paths are relative to a package directory
@@ -103,6 +112,11 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   (control characters, HTML in messages), but the numbers are only as honest as the coverage file
   the PR's own test run produced. pharn-ci cannot detect a test run that was altered to write a
   favorable lcov file.
+- **Exclusions come from the PR.** `coverage.exclude` lives in `.pharn/ci.yml` and the Action's
+  `exclude` input in the workflow file, both of which the change under review can edit. A PR can
+  exclude its own files, ultimately all of them, which passes as `NO_COVERABLE_CHANGES`. The gate
+  is only as honest as the config the PR carries. Protect `.pharn/ci.yml` and the workflow with
+  CODEOWNERS so changes to them need a code owner's review.
 - **Coverage and config paths are not confined to the repository.** They are resolved against the
   workspace (Action) or the current directory and repo root (CLI), and may point anywhere the job
   can read, such as `$RUNNER_TEMP`. The file is only parsed as lcov or config, never echoed, but its

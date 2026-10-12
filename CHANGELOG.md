@@ -29,6 +29,10 @@ release is cut.
 - One sticky PR comment and a job summary; on fork PRs, where the token cannot comment, the job
   summary only.
 - `.pharn/ci.yml` config file, overridden by Action inputs and CLI flags.
+- Coverage exclusions: glob patterns (`*`, `**`, `?`) from `coverage.exclude`, the CLI's repeatable
+  `--exclude <glob>` and the Action's `exclude` input, merged, leave matching changed files out of
+  diff coverage. The report gains the optional `diffCoverage.excludedFiles` field, and the comment
+  an "Excluded" summary listing them.
 - Cobertura XML coverage parsing in core, read by the CLI through `coverage.format: cobertura`.
   The Action still accepts lcov only.
 
