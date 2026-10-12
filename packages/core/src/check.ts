@@ -7,8 +7,11 @@ import { scanAgentSetup } from "./setup/scan.js";
 
 export interface CheckInput {
   version: string;
-  /** Coverage report contents, or the path that was looked for when it is missing. */
-  coverage: { text: string; format: CoverageFormat } | { missingFile: string };
+  /**
+   * Coverage report contents (and, optionally, the path it was read from, for messages), or the
+   * path that was looked for when it is missing.
+   */
+  coverage: { text: string; format: CoverageFormat; file?: string } | { missingFile: string };
   /** Unified diff text, or why no diff is available. */
   diff: { text: string } | { unavailable: string };
   /** Absolute repo root, used to relativize absolute coverage paths. */
@@ -43,6 +46,15 @@ export function check(input: CheckInput): Report {
     input.coverage.format,
     input.repoRoot === undefined ? {} : { repoRoot: input.repoRoot },
   );
+  // An empty or unreadable report would otherwise make every change look uncovered-but-untracked
+  // and pass as NO_COVERABLE_CHANGES. Say so instead.
+  if (coverage.size === 0) {
+    return buildReport({
+      ...base,
+      diffCoverage: null,
+      missing: { reason: "coverage-file-empty", coverageFile: input.coverage.file ?? null },
+    });
+  }
   const diff = parseUnifiedDiff(input.diff.text);
   return buildReport({ ...base, diffCoverage: computeDiffCoverage(diff, coverage, input.threshold) });
 }

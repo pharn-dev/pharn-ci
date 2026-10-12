@@ -28,6 +28,7 @@ export type MessageCode =
   | "DIFF_COVERAGE_BELOW_THRESHOLD"
   | "NO_COVERABLE_CHANGES"
   | "COVERAGE_FILE_MISSING"
+  | "COVERAGE_FILE_EMPTY"
   | "DIFF_UNAVAILABLE"
   | "NO_AGENT_SETUP_FILES";
 
@@ -44,7 +45,10 @@ export interface BuildReportInput {
   /** Threshold that applies even when diff coverage could not be computed. */
   threshold: number | null;
   /** Why diff coverage is missing, when it is. */
-  missing?: { reason: "coverage-file-missing"; coverageFile: string } | { reason: "diff-unavailable"; detail: string };
+  missing?:
+    | { reason: "coverage-file-missing"; coverageFile: string }
+    | { reason: "coverage-file-empty"; coverageFile: string | null }
+    | { reason: "diff-unavailable"; detail: string };
   agentSetup: AgentSetupInventory;
 }
 
@@ -60,6 +64,14 @@ export function buildReport(input: BuildReportInput): Report {
         level: input.threshold === null ? "warn" : "error",
         code: "COVERAGE_FILE_MISSING",
         text: `Coverage file not found: ${missing.coverageFile}`,
+      });
+    } else if (missing.reason === "coverage-file-empty") {
+      // Same severity as a missing file: either way there is nothing to measure against.
+      const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${missing.coverageFile}`;
+      messages.push({
+        level: input.threshold === null ? "warn" : "error",
+        code: "COVERAGE_FILE_EMPTY",
+        text: `${where} contains no coverage records; check its format and that the tests wrote it.`,
       });
     } else {
       messages.push({

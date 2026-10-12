@@ -47,6 +47,33 @@ describe("golden: fixture diff + lcov -> Report v1", () => {
     expect(report.messages.map((m) => m.code)).toEqual(["COVERAGE_FILE_MISSING"]);
   });
 
+  it.each([
+    ["lcov/empty.info", 80, "fail", "error"],
+    ["lcov/garbage.info", 80, "fail", "error"],
+    ["lcov/empty.info", null, "warn", "warn"],
+  ] as const)(
+    "reports %s (threshold %s) as COVERAGE_FILE_EMPTY instead of passing",
+    (file, threshold, verdict, level) => {
+      const report = check({
+        version: "0.1.0",
+        coverage: { text: fixture(file), format: "lcov", file: "coverage/lcov.info" },
+        diff: { text: fixture("golden/pr.diff") },
+        threshold,
+        repoFiles,
+      });
+      expectValidReport(report);
+      expect(report.verdict).toBe(verdict);
+      expect(report.diffCoverage).toBeNull();
+      expect(report.messages).toEqual([
+        {
+          level,
+          code: "COVERAGE_FILE_EMPTY",
+          text: "Coverage file coverage/lcov.info contains no coverage records; check its format and that the tests wrote it.",
+        },
+      ]);
+    },
+  );
+
   it("passes an empty diff with NO_COVERABLE_CHANGES", () => {
     const report = check({
       version: "0.1.0",
