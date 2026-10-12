@@ -96,6 +96,8 @@ type Values = ReturnType<typeof parse>["values"];
 async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   const format = values.format ?? "md";
   if (format !== "md" && format !== "json") throw new ConfigError(`--format must be "md" or "json"`);
+  // A leading "-" would reach git as an option (e.g. --output=<file>), not a revision.
+  if (values.base?.startsWith("-")) throw new ConfigError(`--base "${values.base}" must not start with "-"`);
 
   const repoRoot = (await git(deps, ["rev-parse", "--show-toplevel"], "not inside a git repository")).trim();
   const config = await loadConfig(values.config, repoRoot, deps);
@@ -131,6 +133,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
       "--find-renames",
       "--src-prefix=a/",
       "--dst-prefix=b/",
+      "--end-of-options",
       `${base}...HEAD`,
     ],
     `could not diff against "${base}" (fetch it, or pass --base <ref>)`,
@@ -139,7 +142,10 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
 
   const input: CheckInput = {
     version: VERSION,
-    coverage: coverageText === null ? { missingFile: coveragePath } : { text: coverageText, format: coverageFormat },
+    coverage:
+      coverageText === null
+        ? { missingFile: coveragePath }
+        : { text: coverageText, format: coverageFormat, file: coveragePath },
     diff: { text: diffText },
     repoRoot,
     threshold,

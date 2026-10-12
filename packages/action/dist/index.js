@@ -24793,6 +24793,13 @@ function buildReport(input) {
         code: "COVERAGE_FILE_MISSING",
         text: `Coverage file not found: ${missing.coverageFile}`
       });
+    } else if (missing.reason === "coverage-file-empty") {
+      const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${missing.coverageFile}`;
+      messages.push({
+        level: input.threshold === null ? "warn" : "error",
+        code: "COVERAGE_FILE_EMPTY",
+        text: `${where} contains no coverage records; check its format and that the tests wrote it.`
+      });
     } else {
       messages.push({
         level: "warn",
@@ -24903,6 +24910,13 @@ function check(input) {
     input.coverage.format,
     input.repoRoot === void 0 ? {} : { repoRoot: input.repoRoot }
   );
+  if (coverage.size === 0) {
+    return buildReport({
+      ...base,
+      diffCoverage: null,
+      missing: { reason: "coverage-file-empty", coverageFile: input.coverage.file ?? null }
+    });
+  }
   const diff = parseUnifiedDiff(input.diff.text);
   return buildReport({ ...base, diffCoverage: computeDiffCoverage(diff, coverage, input.threshold) });
 }
@@ -24924,7 +24938,7 @@ function parseYamlSubset(text) {
   const lines = text.replace(/^﻿/, "").split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
     const lineNo = i + 1;
-    const raw = stripComment(lines[i]).replace(/\s+$/, "");
+    const raw = stripComment(lines[i]).trimEnd();
     if (raw.trim() === "") continue;
     if (raw.trim() === "---" && i === 0) continue;
     if (/^\s*\t/.test(raw)) throw new ConfigError(`line ${lineNo}: tabs are not allowed for indentation`);
@@ -24991,7 +25005,7 @@ function parseScalar(value, lineNo) {
   if (v === "true") return true;
   if (v === "false") return false;
   if (v === "null" || v === "~") return null;
-  if (/^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(v)) return Number(v);
+  if (/^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$/.test(v)) return Number(v);
   return v;
 }
 function validateConfig(doc) {
@@ -25086,7 +25100,7 @@ function renderMarkdown(report, options = {}) {
 `;
 }
 function renderMessage(m) {
-  return `- ${LEVEL_ICON[m.level]} \`${m.code}\` ${m.text}`;
+  return `- ${LEVEL_ICON[m.level]} \`${m.code}\` ${inlineText(m.text)}`;
 }
 function formatRanges(lines) {
   const parts = [];
@@ -25102,8 +25116,12 @@ function formatRanges(lines) {
   }
   return parts.join(", ");
 }
+var CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
 function code(path) {
-  return `\`${path.replace(/\|/g, "\\|").replace(/`/g, "'")}\``;
+  return `\`${path.replace(CONTROL_CHARS, "\uFFFD").replace(/\|/g, "\\|").replace(/`/g, "'")}\``;
+}
+function inlineText(text) {
+  return text.replace(CONTROL_CHARS, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 // ../core/src/version.ts
@@ -25112,6 +25130,8 @@ var VERSION7 = "0.1.0";
 // src/run.ts
 var COMMENT_MARKER = "<!-- pharn-ci -->";
 var ZERO_SHA = /^0+$/;
+var MAX_COMMENT_LENGTH = 65e3;
+var TRUNCATED_NOTE = "\n\n_Truncated: the full report is in the job summary and report.json._\n";
 async function run(deps) {
   try {
     return await runUnsafe(deps);
@@ -25142,7 +25162,7 @@ async function runUnsafe(deps) {
   });
   const checkInput = {
     version: VERSION7,
-    coverage: coverageText === null ? { missingFile: coverageFile } : { text: coverageText, format },
+    coverage: coverageText === null ? { missingFile: coverageFile } : { text: coverageText, format, file: coverageFile },
     diff: await getDiff(input("base-ref"), deps),
     repoRoot: deps.workspace,
     threshold,
@@ -25157,8 +25177,8 @@ async function runUnsafe(deps) {
   deps.setOutput("verdict", report.verdict);
   deps.setOutput("diff-coverage", report.diffCoverage?.percent?.toString() ?? "");
   await deps.writeSummary(markdown).catch((err) => deps.warning(`could not write job summary: ${String(err)}`));
-  if (comment && pr) await upsertComment(deps, pr.number, `${COMMENT_MARKER}
-${markdown}`);
+  if (comment && pr) await upsertComment(deps, pr.number, fitComment(`${COMMENT_MARKER}
+${markdown}`));
   deps.info(`pharn-ci verdict: ${report.verdict}`);
   if (report.verdict === "fail" && failOnThreshold) {
     const errors = report.messages.filter((m) => m.level === "error").map((m) => m.text);
@@ -25167,11 +25187,23 @@ ${markdown}`);
   return report;
 }
 async function getDiff(baseRefInput, deps) {
+  if (baseRefInput.startsWith("-")) throw new Error(`base-ref "${baseRefInput}" must not start with "-"`);
   const { context: context3 } = deps;
   const pr = context3.payload.pull_request;
   const base = baseRefInput || pr?.base.sha || (context3.payload.before && !ZERO_SHA.test(context3.payload.before) ? context3.payload.before : "");
   if (!base) return { unavailable: "no base to diff against (not a pull request; set the base-ref input)" };
   const head = context3.eventName === "pull_request_target" && pr ? pr.head.sha : context3.sha;
+  if (context3.eventName === "pull_request_target" && pr) {
+    const localHead = await deps.git(["rev-parse", "HEAD"]).then(
+      (out) => out.trim(),
+      () => null
+    );
+    if (localHead !== null && localHead !== pr.head.sha) {
+      return {
+        unavailable: "pull_request_target checks out the base branch, not the PR; check out the PR head (ref: github.event.pull_request.head.sha) to measure it"
+      };
+    }
+  }
   const localBase = await resolveLocal(base, deps);
   if (localBase) {
     try {
@@ -25184,6 +25216,7 @@ async function getDiff(baseRefInput, deps) {
           "--find-renames",
           "--src-prefix=a/",
           "--dst-prefix=b/",
+          "--end-of-options",
           `${localBase}...HEAD`
         ])
       };
@@ -25209,10 +25242,16 @@ async function resolveLocal(base, deps) {
   }
   return null;
 }
+function fitComment(body) {
+  if (body.length <= MAX_COMMENT_LENGTH) return body;
+  const limit = MAX_COMMENT_LENGTH - TRUNCATED_NOTE.length;
+  const cut = body.lastIndexOf("\n", limit);
+  return `${body.slice(0, cut > 0 ? cut : limit)}${TRUNCATED_NOTE}`;
+}
 async function upsertComment(deps, issueNumber, body) {
   try {
-    const comments = await deps.api.listComments(issueNumber);
-    const existing = comments.find((c) => c.body?.includes(COMMENT_MARKER));
+    const [comments, viewer] = await Promise.all([deps.api.listComments(issueNumber), deps.api.viewerLogin()]);
+    const existing = comments.find((c) => c.user?.login === viewer && c.body?.startsWith(COMMENT_MARKER));
     if (existing) {
       await deps.api.updateComment(existing.id, body);
       deps.info(`updated pharn-ci comment ${existing.id}`);
@@ -25255,6 +25294,13 @@ var api = {
       mediaType: { format: "diff" }
     });
     return res.data;
+  },
+  async viewerLogin() {
+    try {
+      return (await octokit.rest.users.getAuthenticated()).data.login;
+    } catch {
+      return "github-actions[bot]";
+    }
   },
   listComments: (issueNumber) => octokit.paginate(octokit.rest.issues.listComments, { owner, repo, issue_number: issueNumber, per_page: 100 }),
   async createComment(issueNumber, body) {

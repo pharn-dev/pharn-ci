@@ -17,8 +17,14 @@ describe("packages/core purity", () => {
     const imports = [
       ...text.matchAll(/^\s*(?:import|export)\b[^;]*?\bfrom\s+["']([^"']+)["']/gm),
       ...text.matchAll(/\bimport\s*\(\s*["']([^"']+)["']/g),
+      // Side-effect imports: `import "x";`
+      ...text.matchAll(/^\s*import\s*["']([^"']+)["']/gm),
     ].map((m) => m[1]);
     for (const spec of imports) expect(spec, `import of "${spec}"`).toMatch(/^\.\.?\//);
     expect(text).not.toMatch(/\b(process|require|fetch|globalThis)\s*[.(]/);
+    // Ways around the checks above: computed imports, string evaluation, indexed globals.
+    expect(text, "dynamic import of a computed specifier").not.toMatch(/\bimport\s*\(\s*[^"'\s)]/);
+    expect(text, "eval / new Function").not.toMatch(/\beval\s*\(|\bnew\s+Function\b/);
+    expect(text, "globalThis[...]").not.toMatch(/\bglobalThis\s*\[/);
   });
 });

@@ -59,7 +59,7 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
 }
 
 function renderMessage(m: Message): string {
-  return `- ${LEVEL_ICON[m.level]} \`${m.code}\` ${m.text}`;
+  return `- ${LEVEL_ICON[m.level]} \`${m.code}\` ${inlineText(m.text)}`;
 }
 
 /** Collapse ascending line numbers into ranges: [1,2,3,7] -> "1-3, 7". */
@@ -78,7 +78,18 @@ export function formatRanges(lines: readonly number[]): string {
   return parts.join(", ");
 }
 
+// Paths come from the PR (git allows newlines in file names) and message text can carry inputs
+// such as the coverage path or base ref. A line break would let them end the table row or list
+// item and inject their own markdown into the PR comment, so control characters never get through.
+// biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point.
+const CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
+
 function code(path: string): string {
   // Pipes would break the table; backticks would break the code span.
-  return `\`${path.replace(/\|/g, "\\|").replace(/`/g, "'")}\``;
+  return `\`${path.replace(CONTROL_CHARS, "\uFFFD").replace(/\|/g, "\\|").replace(/`/g, "'")}\``;
+}
+
+/** Message text on one line, with HTML neutralized. */
+function inlineText(text: string): string {
+  return text.replace(CONTROL_CHARS, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }

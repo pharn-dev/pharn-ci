@@ -1,11 +1,19 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { type ActionContext, type ActionDeps, COMMENT_MARKER, type IssueComment, run } from "../src/run.js";
+import {
+  type ActionContext,
+  type ActionDeps,
+  COMMENT_MARKER,
+  type IssueComment,
+  MAX_COMMENT_LENGTH,
+  run,
+} from "../src/run.js";
 
 const FIXTURES = new URL("../../../fixtures/", import.meta.url);
 const fixture = (p: string) => readFileSync(new URL(p, FIXTURES), "utf8");
 
 const WORKSPACE = "/home/runner/work/demo/demo";
+const BOT = { login: "github-actions[bot]" };
 const PR_CONTEXT: ActionContext = {
   eventName: "pull_request",
   sha: "merge000",
@@ -32,6 +40,12 @@ interface Options {
   commentError?: Error;
   compareError?: Error;
   existingComments?: IssueComment[];
+  /** Login the token comments as (default: the GITHUB_TOKEN bot). */
+  viewer?: string;
+  /** Output of `git rev-parse HEAD` (default: not the PR head). */
+  localHead?: string;
+  /** Tracked files returned by `git ls-files` (default: fixtures/golden/files.txt). */
+  lsFiles?: string[];
 }
 
 function harness(opts: Options = {}): Harness {
@@ -58,6 +72,8 @@ function harness(opts: Options = {}): Harness {
     ...opts.inputs,
   };
   const localGit = opts.localGit ?? true;
+  const viewer = opts.viewer ?? BOT.login;
+  const lsFiles = opts.lsFiles ?? fixture("golden/files.txt").trim().split("\n");
   let nextId = 100;
 
   h.deps = {
@@ -71,6 +87,7 @@ function harness(opts: Options = {}): Harness {
         if (opts.compareError) throw opts.compareError;
         return fixture("golden/pr.diff");
       },
+      viewerLogin: async () => viewer,
       async listComments(n) {
         h.apiCalls.push(`list ${n}`);
         if (opts.commentError) throw opts.commentError;
@@ -78,7 +95,7 @@ function harness(opts: Options = {}): Harness {
       },
       async createComment(n, body) {
         h.apiCalls.push(`create ${n}`);
-        h.comments.push({ id: nextId++, body });
+        h.comments.push({ id: nextId++, body, user: { login: viewer } });
       },
       async updateComment(id, body) {
         h.apiCalls.push(`update ${id}`);
@@ -88,8 +105,9 @@ function harness(opts: Options = {}): Harness {
     },
     async git(args) {
       h.gitCalls.push(args);
-      if (args[0] === "ls-files") return `${fixture("golden/files.txt").trim().split("\n").join("\0")}\0`;
+      if (args[0] === "ls-files") return `${lsFiles.join("\0")}\0`;
       if (!localGit) throw new Error("fatal: bad object");
+      if (args[0] === "rev-parse" && args[1] === "HEAD") return `${opts.localHead ?? "c".repeat(40)}\n`;
       if (args[0] === "rev-parse") return "ok\n";
       if (args[0] === "diff") return fixture("golden/pr.diff");
       throw new Error(`unexpected git ${args.join(" ")}`);
@@ -151,6 +169,31 @@ describe("action run", () => {
     expect(h.apiCalls).toContain(`compare ${"a".repeat(40)}...${"b".repeat(40)}`);
   });
 
+  it("refuses to measure a pull_request_target run that checked out the base branch", async () => {
+    const h = harness({ inputs: { threshold: "80" }, context: { ...PR_CONTEXT, eventName: "pull_request_target" } });
+    const report = await run(h.deps);
+    expect(report?.verdict).toBe("warn");
+    expect(report?.messages[0]?.code).toBe("DIFF_UNAVAILABLE");
+    expect(report?.messages[0]?.text).toContain("check out the PR head");
+    expect(h.gitCalls.filter((a) => a[0] === "diff")).toEqual([]);
+  });
+
+  it("diffs locally on pull_request_target when the PR head is checked out", async () => {
+    const h = harness({ localHead: "b".repeat(40), context: { ...PR_CONTEXT, eventName: "pull_request_target" } });
+    const report = await run(h.deps);
+    expect(h.gitCalls.find((a) => a[0] === "diff")?.at(-1)).toBe(`${"a".repeat(40)}...HEAD`);
+    expect(report?.diffCoverage?.percent).toBe(71.43);
+  });
+
+  it("passes the base to git diff after --end-of-options", async () => {
+    const h = harness();
+    await run(h.deps);
+    expect(h.gitCalls.find((a) => a[0] === "diff")?.slice(-2)).toEqual([
+      "--end-of-options",
+      `${"a".repeat(40)}...HEAD`,
+    ]);
+  });
+
   it("prefers origin/<ref> for a base-ref input", async () => {
     const h = harness({ inputs: { "base-ref": "develop" } });
     await run(h.deps);
@@ -160,8 +203,8 @@ describe("action run", () => {
   it("updates the existing sticky comment instead of posting a duplicate", async () => {
     const h = harness({
       existingComments: [
-        { id: 1, body: "unrelated" },
-        { id: 2, body: `${COMMENT_MARKER}\nold report` },
+        { id: 1, body: "unrelated", user: { login: "someone" } },
+        { id: 2, body: `${COMMENT_MARKER}\nold report`, user: BOT },
       ],
     });
     await run(h.deps);
@@ -170,6 +213,47 @@ describe("action run", () => {
     expect(h.comments[1]?.body).toContain("pharn-ci: pass");
     expect(h.apiCalls.filter((c) => c.startsWith("create"))).toEqual([]);
     expect(h.apiCalls.filter((c) => c.startsWith("update"))).toEqual(["update 2", "update 2"]);
+  });
+
+  it("never takes over a marker comment written by someone else", async () => {
+    const forged = `${COMMENT_MARKER}\n## ✅ pharn-ci: pass`;
+    const quoted = `> earlier report\n${COMMENT_MARKER}`;
+    const h = harness({
+      inputs: { threshold: "80" },
+      existingComments: [
+        { id: 1, body: forged, user: { login: "mallory" } },
+        { id: 2, body: quoted, user: BOT },
+      ],
+    });
+    await run(h.deps);
+    expect(h.apiCalls.filter((c) => c.startsWith("update"))).toEqual([]);
+    expect(h.apiCalls.filter((c) => c.startsWith("create"))).toEqual(["create 7"]);
+    expect(h.comments[0]?.body).toBe(forged);
+    expect(h.comments[1]?.body).toBe(quoted);
+    expect(h.comments[2]?.body?.startsWith(`${COMMENT_MARKER}\n## ❌ pharn-ci: fail`)).toBe(true);
+  });
+
+  it("updates the comment of a non-default token's own login", async () => {
+    const h = harness({
+      viewer: "release-bot",
+      existingComments: [
+        { id: 1, body: `${COMMENT_MARKER}\nby the default token`, user: BOT },
+        { id: 2, body: `${COMMENT_MARKER}\nold`, user: { login: "release-bot" } },
+      ],
+    });
+    await run(h.deps);
+    expect(h.apiCalls.filter((c) => c.startsWith("update") || c.startsWith("create"))).toEqual(["update 2"]);
+  });
+
+  it("truncates a comment over GitHub's size limit and keeps the full report in the summary", async () => {
+    const long = Array.from({ length: 50 }, (_, i) => `.claude/skills/${"x".repeat(2000)}${i}/SKILL.md`);
+    const h = harness({ lsFiles: long });
+    await run(h.deps);
+    const body = h.comments[0]?.body ?? "";
+    expect(body.length).toBeLessThanOrEqual(MAX_COMMENT_LENGTH);
+    expect(body.startsWith(COMMENT_MARKER)).toBe(true);
+    expect(body).toMatch(/_Truncated: the full report is in the job summary and report\.json\._\n$/);
+    expect(h.summary[0]?.length).toBeGreaterThan(MAX_COMMENT_LENGTH);
   });
 
   it("falls back to the job summary when it cannot comment (fork PRs)", async () => {
@@ -237,6 +321,7 @@ describe("action run", () => {
     [{ threshold: "abc" }, "threshold must be a number"],
     [{ comment: "maybe" }, "comment must be true or false"],
     [{ "coverage-file": "" }, "no coverage file"],
+    [{ "base-ref": "--output=/tmp/x" }, 'base-ref "--output=/tmp/x" must not start with "-"'],
   ])("fails clearly for invalid inputs %j", async (inputs, message) => {
     const h = harness({ inputs });
     expect(await run(h.deps)).toBeUndefined();

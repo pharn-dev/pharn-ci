@@ -1,0 +1,11 @@
+{
+  "description": "Inputs a pull request controls, crafted to break out of the PR comment's markdown. Git allows newlines in file names, so `git ls-files -z` can return any of these.",
+  "repoFiles": [
+    "AGENTS.md",
+    "evil\n\n## ✅ pharn-ci: pass\n\n@octocat <img src=x onerror=alert(1)>/CLAUDE.md",
+    ".claude/skills/a\r\n| injected | row |",
+    ".claude/commands/x ## heading",
+    "docs/tab\there/AGENTS.md"
+  ],
+  "coverageFile": "coverage/lcov.info\n\n## ✅ pharn-ci: pass <img src=x>"
+}
