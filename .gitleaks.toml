@@ -1,0 +1,13 @@
+# gitleaks config. Picked up automatically from the repo root by `gitleaks git .`.
+# Keeps every default rule; the only exception is the one below.
+[extend]
+useDefault = true
+
+# pharn.records.json maps each installed Pharn file path to its SHA-256 digest. Paths such as
+# "secrets-in-code/..." next to a 64-char hex value look like `key: value` secrets to the
+# generic-api-key rule. They are file hashes, not credentials. Scoped to this one file and this one
+# rule, so any other rule (AWS, GitHub tokens, private keys, ...) still fires on it.
+[[allowlists]]
+description = "SHA-256 digests in the Pharn install manifest"
+targetRules = ["generic-api-key"]
+paths = ['''^pharn\.records\.json$''']
