@@ -4,3 +4,9 @@ packages/core/dist/
 packages/cli/dist/
 *.tsbuildinfo
 .DS_Store
+
+# PHARN workflow run state (keep the pharn-ci config file tracked)
+.pharn/*
+!.pharn/ci.yml
+# Claude Code agent worktrees
+.claude/worktrees/
