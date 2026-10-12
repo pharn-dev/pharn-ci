@@ -40,6 +40,17 @@ AI-agnostic and fully stateless (Phase 0): no backend, no telemetry.
 7. **`packages/action/dist` is committed.** Run `pnpm build` before committing any change that
    affects the action (including core). CI fails if dist is stale.
 
+## Repo protection
+
+`main` and `v*` tags are protected by GitHub rulesets (no direct pushes, no force-push, no deletion;
+squash-merge only, signed commits, linear history; a PR needs one approval including a code owner).
+A PR can merge only when these checks pass: `ci`, `Action pins`, `gitleaks`,
+`Analyze (javascript-typescript)`, and the two Socket Security app checks (`Socket Security: Project
+Report`, `Socket Security: Pull Request Alerts`). The job names in `.github/workflows/` are a contract
+with the ruleset: renaming one blocks every PR until the ruleset is edited to match. Third-party
+actions must be pinned to a commit SHA (`scripts/check-action-pins.mjs`). Never weaken the rulesets to
+get a change through.
+
 ## Commands
 
 ```bash

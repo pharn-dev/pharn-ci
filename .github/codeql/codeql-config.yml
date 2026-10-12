@@ -1,0 +1,7 @@
+name: pharn-ci codeql config
+
+# Scan everything. Add `paths-ignore` here only for vendored or generated code, and say why.
+# `packages/action/dist` is a committed esbuild bundle of our own sources (CI fails if it is stale),
+# so it is excluded: the same code is analysed from `packages/*/src`.
+paths-ignore:
+  - packages/action/dist/**
