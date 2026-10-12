@@ -1,3 +1,4 @@
+import type { CoverageFormat } from "./coverage/types.js";
 import type { DiffCoverageFile, DiffCoverageResult } from "./diffCoverage.js";
 import type { AgentSetupFile, AgentSetupInventory } from "./setup/scan.js";
 import { type AgentSetupSummary, summarizeAgentSetup } from "./setup/summary.js";
@@ -15,6 +16,8 @@ export interface Report {
 export type Verdict = "pass" | "warn" | "fail";
 
 export interface ReportDiffCoverage {
+  /** The coverage format the report was read as. Absent when the producer did not say. */
+  format?: CoverageFormat;
   percent: number | null;
   threshold: number | null;
   coveredLines: number;
@@ -32,6 +35,7 @@ export type MessageCode =
   | "NO_COVERABLE_CHANGES"
   | "COVERAGE_FILE_MISSING"
   | "COVERAGE_FILE_EMPTY"
+  | "COVERAGE_FORMAT_UNSUPPORTED"
   | "DIFF_UNAVAILABLE"
   | "NO_AGENT_SETUP_FILES";
 
@@ -47,10 +51,13 @@ export interface BuildReportInput {
   diffCoverage: DiffCoverageResult | null;
   /** Threshold that applies even when diff coverage could not be computed. */
   threshold: number | null;
+  /** The format the coverage file was read as; carried into `diffCoverage.format` when given. */
+  coverageFormat?: CoverageFormat;
   /** Why diff coverage is missing, when it is. */
   missing?:
     | { reason: "coverage-file-missing"; coverageFile: string }
     | { reason: "coverage-file-empty"; coverageFile: string | null }
+    | { reason: "coverage-format-unsupported"; coverageFile: string | null }
     | { reason: "diff-unavailable"; detail: string };
   agentSetup: AgentSetupInventory;
 }
@@ -75,6 +82,14 @@ export function buildReport(input: BuildReportInput): Report {
         level: input.threshold === null ? "warn" : "error",
         code: "COVERAGE_FILE_EMPTY",
         text: `${where} contains no coverage records; check its format and that the tests wrote it.`,
+      });
+    } else if (missing.reason === "coverage-format-unsupported") {
+      // Same severity as an empty file: either way there is nothing to measure against.
+      const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${missing.coverageFile}`;
+      messages.push({
+        level: input.threshold === null ? "warn" : "error",
+        code: "COVERAGE_FORMAT_UNSUPPORTED",
+        text: `${where} is not in a recognized coverage format; pharn-ci reads lcov and Cobertura XML.`,
       });
     } else {
       messages.push({
@@ -113,6 +128,7 @@ export function buildReport(input: BuildReportInput): Report {
       dc === null
         ? null
         : {
+            ...(input.coverageFormat === undefined ? {} : { format: input.coverageFormat }),
             percent: dc.percent,
             threshold: dc.threshold,
             coveredLines: dc.coveredLines,

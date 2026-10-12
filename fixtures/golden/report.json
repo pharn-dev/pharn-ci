@@ -6,6 +6,7 @@
   },
   "verdict": "fail",
   "diffCoverage": {
+    "format": "lcov",
     "percent": 71.43,
     "threshold": 80,
     "coveredLines": 5,

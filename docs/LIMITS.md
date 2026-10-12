@@ -57,9 +57,20 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
 
 ## 3. Coverage formats
 
-- **lcov in the Action, lcov and Cobertura in the CLI.** Core reads Cobertura XML, and the CLI
-  reads it with `coverage.format: cobertura` in the config file. The Action still rejects
-  `cobertura`; it accepts lcov only. Other formats are on the roadmap.
+- **lcov and Cobertura, in the Action and the CLI.** Both read the format you name (`lcov`,
+  `cobertura`) or, with `auto` (the default), detect it from the start of the file. Clover and
+  JaCoCo native XML are not supported; other formats are on the roadmap.
+- **Detection reads only the first 1 KiB.** After an optional byte order mark and leading
+  whitespace, a file that starts with `TN:` or `SF:` is lcov. XML is Cobertura when its root
+  element is named `coverage`, the root has no `clover` attribute, and its first child, if the
+  window shows one, is not `project` (that is Clover). The XML declaration, comments and DOCTYPE
+  before the root are skipped. A root start tag that does not end within the first 1 KiB makes
+  the file unknown, so a real Cobertura report with a very long prolog needs
+  `coverage-format: cobertura`. A file of only whitespace is empty.
+- **Unknown is not guessed.** Under `auto`, a file that is neither lcov nor Cobertura (Clover,
+  JaCoCo native XML, any other text) is `COVERAGE_FORMAT_UNSUPPORTED`, an error with a
+  threshold. An empty file is `COVERAGE_FILE_EMPTY`. Naming a format skips detection: `cobertura`
+  on a Clover or JaCoCo native file reads no records and is `COVERAGE_FILE_EMPTY`.
 - **Malformed lcov lines are skipped silently.** Invalid or orphan `DA` records do not produce a
   message; only a report with no records at all does (`COVERAGE_FILE_EMPTY`).
 - **Malformed Cobertura lines are skipped silently too.** A `<line>` whose `number` is not an

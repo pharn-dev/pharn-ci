@@ -58,7 +58,8 @@ behave. AI-agnostic, fully stateless, no telemetry.
 pharn-ci runs in your CI on every pull request and reports:
 
 - **Diff coverage**: the share of lines **added** in the PR that your tests execute, with an
-  optional threshold gate. It reads the lcov file your own test run already writes.
+  optional threshold gate. It reads the lcov or Cobertura XML file your own test run already writes
+  (Clover and JaCoCo native XML are not supported).
 - **Agent setup inventory**: which agent setup files the repo carries (`CLAUDE.md`, `AGENTS.md`,
   `GEMINI.md`, `.claude/` files, Cursor, Copilot, Codex, Windsurf and Cline files, MCP configs; see
   the table below), with a summary of how many there are and which tools they configure.
@@ -151,7 +152,7 @@ SHA is stronger still; Dependabot keeps either up to date.
 ```mermaid
 flowchart LR
     DIFF["PR diff<br/>(git, or GitHub API)"] --> CORE
-    LCOV["lcov file<br/>(from your test run)"] --> CORE
+    LCOV["lcov or Cobertura file<br/>(from your test run)"] --> CORE
     FILES["tracked files<br/>(git ls-files)"] --> CORE
     CFG[".pharn/ci.yml<br/>+ inputs / flags"] --> CORE
     CORE["core check()<br/>pure: no I/O"] --> REPORT["Report v1<br/>JSON, schema-validated"]
@@ -206,7 +207,7 @@ On PRs from forks the token cannot comment; pharn-ci then warns and uses the job
 | Input               | Default                     |                                          |
 | ------------------- | --------------------------- | ---------------------------------------- |
 | `coverage-file`     | `coverage.file` from config | Path to the coverage report              |
-| `coverage-format`   | `lcov`                      | Only `lcov` for now                      |
+| `coverage-format`   | `coverage.format`, then `auto` | `lcov`, `cobertura` or `auto` (detect it from the start of the file) |
 | `threshold`         | none                        | Minimum diff coverage %, inclusive       |
 | `base-ref`          | PR base                     | Ref or SHA to diff against               |
 | `exclude`           | none                        | Globs of changed files to leave out of diff coverage, comma or newline separated; added to `coverage.exclude` |
@@ -231,10 +232,13 @@ node packages/cli/dist/index.js check --coverage coverage/lcov.info --threshold 
 ```
 
 ```text
-pharn-ci check [--coverage <file>] [--base <ref>] [--threshold <n>]
-               [--format md|json] [--config <path>] [--exclude <glob>]...
+pharn-ci check [--coverage <file>] [--coverage-format lcov|cobertura|auto] [--base <ref>]
+               [--threshold <n>] [--format md|json] [--config <path>] [--exclude <glob>]...
 ```
 
+- `--coverage-format` defaults to `coverage.format` from the config, then `auto`, which reads lcov
+  or Cobertura XML from the start of the file. The chosen format is printed on stderr, for example
+  `coverage: cobertura (auto-detected)`.
 - `--base` defaults to `origin/main`; the diff is `git diff --unified=0 <base>...HEAD`.
 - `--exclude <glob>` leaves matching changed files out of diff coverage. Repeat it for several
   patterns; they are added to `coverage.exclude`, never replacing it
@@ -253,7 +257,7 @@ The CLI is not published to npm yet; build it from source.
 ```yaml
 coverage:
   file: coverage/lcov.info
-  format: lcov
+  format: auto # lcov, cobertura or auto (the default)
   threshold: 80
   exclude:
     - src/generated/**
@@ -290,6 +294,7 @@ it. See [`schema/report.v1.json`](schema/report.v1.json). Branch on message `cod
 | `NO_COVERABLE_CHANGES`          | None of the added lines are tracked by the coverage report     |
 | `COVERAGE_FILE_MISSING`         | The coverage file does not exist                               |
 | `COVERAGE_FILE_EMPTY`           | The coverage file has no usable records                        |
+| `COVERAGE_FORMAT_UNSUPPORTED`   | The coverage file is not lcov or Cobertura XML (format `auto`) |
 | `DIFF_UNAVAILABLE`              | No diff could be produced, so diff coverage was not computed   |
 | `NO_AGENT_SETUP_FILES`          | The repo has none of the agent setup files pharn-ci looks for  |
 
@@ -352,7 +357,7 @@ an untrusted checkout ([`SECURITY.md`](SECURITY.md)).
 | **pharn-ci**                                            | The CI check: diff coverage and agent setup on every PR, whatever wrote the code.   |
 
 pharn-ci does not need PHARN installed and does not read its artifacts. It is useful on its own in
-any repo with an lcov-producing test run.
+any repo with an lcov- or Cobertura-producing test run.
 
 **pharn-ci checks pharn-ci.** This repository's own `ci` job runs the Action from source on every
 PR with an 80% diff-coverage threshold, so every change here passes the same gate it ships.
@@ -361,7 +366,7 @@ PR with an 80% diff-coverage threshold, so every change here passes the same gat
 
 ## Roadmap
 
-- Cobertura (and more coverage formats)
+- More coverage formats (Clover, JaCoCo native XML)
 - Flaky test detection
 - Test-tampering detection (weakened, skipped or deleted tests)
 - Agent policy checks on top of the setup inventory

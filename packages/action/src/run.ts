@@ -1,7 +1,9 @@
 import {
   type CheckInput,
   check,
-  isCoverageFormat,
+  chooseCoverageFormat,
+  coverageChoiceLine,
+  isCoverageFormatSelection,
   type PharnConfig,
   parseConfig,
   parseExcludePattern,
@@ -75,9 +77,9 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const input = (name: string) => deps.getInput(name).trim();
   const config = await loadConfig(input("config") || ".pharn/ci.yml", deps);
 
-  const format = input("coverage-format") || config.coverage?.format || "lcov";
-  if (!isCoverageFormat(format) || format !== "lcov") {
-    throw new Error(`coverage-format "${format}" is not supported yet (supported: lcov)`);
+  const format = input("coverage-format") || config.coverage?.format || "auto";
+  if (!isCoverageFormatSelection(format)) {
+    throw new Error(`coverage-format "${format}" is not supported (supported: lcov, cobertura, auto)`);
   }
   const thresholdInput = input("threshold");
   const threshold =
@@ -90,6 +92,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
 
   const coveragePath = deps.resolvePath(deps.workspace, coverageFile);
   const coverageText = await deps.readFile(coveragePath);
+  if (coverageText !== null) deps.info(coverageChoiceLine(chooseCoverageFormat(coverageText, format)));
   const pr = deps.context.payload.pull_request;
 
   const lsFiles = await deps.git(["ls-files", "-z"]).catch((err: unknown) => {

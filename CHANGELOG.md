@@ -25,7 +25,8 @@ release is cut.
   `Agent setup: N files · tools` line in the markdown, with the table collapsed above 25 files.
 - Report v1 (`schema/report.v1.json`), the stable JSON output, with message codes
   `DIFF_COVERAGE_BELOW_THRESHOLD`, `NO_COVERABLE_CHANGES`, `COVERAGE_FILE_MISSING`,
-  `COVERAGE_FILE_EMPTY`, `DIFF_UNAVAILABLE` and `NO_AGENT_SETUP_FILES`.
+  `COVERAGE_FILE_EMPTY`, `COVERAGE_FORMAT_UNSUPPORTED`, `DIFF_UNAVAILABLE` and
+  `NO_AGENT_SETUP_FILES`.
 - One sticky PR comment and a job summary; on fork PRs, where the token cannot comment, the job
   summary only.
 - `.pharn/ci.yml` config file, overridden by Action inputs and CLI flags.
@@ -33,8 +34,18 @@ release is cut.
   `--exclude <glob>` and the Action's `exclude` input, merged, leave matching changed files out of
   diff coverage. The report gains the optional `diffCoverage.excludedFiles` field, and the comment
   an "Excluded" summary listing them.
-- Cobertura XML coverage parsing in core, read by the CLI through `coverage.format: cobertura`.
-  The Action still accepts lcov only.
+- Cobertura XML coverage parsing in core, read by the CLI and the Action (`coverage.format:
+  cobertura`).
+- Coverage format selection: the `coverage-format` Action input, the `--coverage-format` CLI flag
+  and `coverage.format` in `.pharn/ci.yml` take `lcov`, `cobertura` or `auto`. The flag or input
+  wins over the config file.
+- `auto` is the new default: the format is detected from the first 1 KiB of the file, and the CLI
+  (stderr) and the Action (log) print which format was used, for example
+  `coverage: cobertura (auto-detected)`. Clover and JaCoCo native XML are not supported.
+- Message code `COVERAGE_FORMAT_UNSUPPORTED`: under `auto`, a coverage file that is neither lcov
+  nor Cobertura XML is an error with a threshold, a warning without.
+- Report v1: optional `diffCoverage.format` (`lcov` or `cobertura`), the format the report was
+  read as.
 
 ### Security
 

@@ -1,0 +1,103 @@
+{
+  "schemaVersion": "1",
+  "tool": {
+    "name": "pharn-ci",
+    "version": "0.1.0"
+  },
+  "verdict": "fail",
+  "diffCoverage": {
+    "format": "cobertura",
+    "percent": 71.43,
+    "threshold": 80,
+    "coveredLines": 5,
+    "coverableLines": 7,
+    "files": [
+      {
+        "path": "src/math.ts",
+        "percent": 75,
+        "coveredLines": 3,
+        "coverableLines": 4,
+        "uncoveredLines": [
+          10
+        ]
+      },
+      {
+        "path": "src/new.ts",
+        "percent": 50,
+        "coveredLines": 1,
+        "coverableLines": 2,
+        "uncoveredLines": [
+          5
+        ]
+      },
+      {
+        "path": "src/utils/new-name.ts",
+        "percent": 100,
+        "coveredLines": 1,
+        "coverableLines": 1,
+        "uncoveredLines": []
+      }
+    ]
+  },
+  "agentSetup": {
+    "files": [
+      {
+        "path": ".claude/settings.json",
+        "kind": "claude-settings"
+      },
+      {
+        "path": ".claude/skills/release/SKILL.md",
+        "kind": "claude-skill"
+      },
+      {
+        "path": ".cursor/rules/style.mdc",
+        "kind": "cursor-rules"
+      },
+      {
+        "path": ".github/copilot-instructions.md",
+        "kind": "copilot-instructions"
+      },
+      {
+        "path": ".mcp.json",
+        "kind": "mcp-config"
+      },
+      {
+        "path": "AGENTS.md",
+        "kind": "agents-md"
+      },
+      {
+        "path": "CLAUDE.md",
+        "kind": "claude-md"
+      },
+      {
+        "path": "packages/web/CLAUDE.md",
+        "kind": "claude-md"
+      }
+    ],
+    "summary": {
+      "byKind": {
+        "agents-md": 1,
+        "claude-md": 2,
+        "claude-settings": 1,
+        "claude-skill": 1,
+        "copilot-instructions": 1,
+        "cursor-rules": 1,
+        "mcp-config": 1
+      },
+      "tools": [
+        "claude-code",
+        "codex",
+        "copilot",
+        "cursor",
+        "mcp"
+      ]
+    }
+  },
+  "messages": [
+    {
+      "level": "error",
+      "code": "DIFF_COVERAGE_BELOW_THRESHOLD",
+      "text": "Diff coverage 71.43% is below the threshold of 80%."
+    }
+  ]
+}

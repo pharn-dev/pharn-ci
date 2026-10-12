@@ -55,7 +55,7 @@ describe("cli main", () => {
     const deps = fakeDeps(coverage);
     const code = await main(["check", "--coverage", "lcov.info", "--threshold", "80", "--format", "json"], deps);
     expect(code).toBe(EXIT_FAIL);
-    expect(deps.err).toBe("");
+    expect(deps.err).toBe("coverage: lcov (auto-detected)\n");
     const report = JSON.parse(deps.out);
     expect(report.verdict).toBe("fail");
     expect(report.diffCoverage.percent).toBe(71.43);
@@ -187,6 +187,7 @@ describe("cli end to end against a real git repo", () => {
     const code = await main(["check", "--base", "main", "--format", "json"], deps);
     const report = JSON.parse(out);
     expect(report.diffCoverage).toEqual({
+      format: "lcov",
       percent: 66.67,
       threshold: 75,
       coveredLines: 2,
