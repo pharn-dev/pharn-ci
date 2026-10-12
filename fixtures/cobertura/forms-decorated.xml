@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE coverage SYSTEM "http://cobertura.sourceforge.net/xml/coverage-04.dtd">
+<!-- <class filename="src/evil.py"><lines><line number="99" hits="1"/></lines></class> -->
+<coverage>
+  <sources>
+    <source>/home/runner/work/demo/demo</source>
+  </sources>
+  <packages>
+    <package name="src">
+      <classes>
+        <class name="a" filename="src/a.py">
+          <lines>
+            <line number="1" hits="1"/>
+            <!-- <line number="4" hits="9"/> -->
+            <line number="2" hits="0"/>
+            <![CDATA[<line number="5" hits="7"/>]]>
+            <line number="3" hits="5"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+    <!-- <class filename="src/evil.py"><lines><line number="99" hits="1"/></lines></class> -->
+    <![CDATA[<class filename="src/evil.py"><lines><line number="99" hits="1"/></lines></class>]]>
+    <package name="src">
+      <classes>
+        <class name="b" filename="src/b.py">
+          <lines>
+            <line number="1" hits="0"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>

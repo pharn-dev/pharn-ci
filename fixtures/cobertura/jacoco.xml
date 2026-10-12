@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE coverage SYSTEM "http://cobertura.sourceforge.net/xml/coverage-04.dtd">
+<coverage line-rate="0.5" branch-rate="0.5" lines-covered="6" lines-valid="12" branches-covered="1" branches-valid="2" complexity="0.0" version="0.1" timestamp="1728750000">
+  <sources>
+    <source>/home/runner/work/demo/demo/src/main/java</source>
+  </sources>
+  <packages>
+    <package name="com.example" line-rate="0.5" branch-rate="0.5" complexity="0.0">
+      <classes>
+        <class name="com.example.Calculator" filename="com/example/Calculator.java" line-rate="0.5" branch-rate="0.5" complexity="0.0">
+          <methods>
+            <method name="add" signature="(II)I" line-rate="1.0" branch-rate="1.0">
+              <lines>
+                <line number="3" hits="1" branch="false"/>
+              </lines>
+            </method>
+            <method name="divide" signature="(II)I" line-rate="0.5" branch-rate="0.5">
+              <lines>
+                <line number="5" hits="0" branch="false"/>
+                <line number="6" hits="2" branch="true" condition-coverage="50% (1/2)"/>
+              </lines>
+            </method>
+          </methods>
+          <lines>
+            <line number="3" hits="1" branch="false"/>
+            <line number="5" hits="0" branch="false"/>
+            <line number="6" hits="2" branch="true" condition-coverage="50% (1/2)"/>
+            <line number="10" hits="0" branch="false"/>
+          </lines>
+        </class>
+        <class name="com.example.Calculator$Inner" filename="com/example/Calculator.java" line-rate="0.6667" branch-rate="1.0" complexity="0.0">
+          <methods>
+            <method name="run" signature="()V" line-rate="0.6667" branch-rate="1.0">
+              <lines>
+                <line number="5" hits="4" branch="false"/>
+                <line number="12" hits="1" branch="false"/>
+              </lines>
+            </method>
+          </methods>
+          <lines>
+            <line number="5" hits="4" branch="false"/>
+            <line number="10" hits="0" branch="false"/>
+            <line number="12" hits="1" branch="false"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+    <package name="com.example.util" line-rate="0.0" branch-rate="1.0" complexity="0.0">
+      <classes>
+        <class name="com.example.util.Strings" filename="com/example/util/Strings.java" line-rate="0.0" branch-rate="1.0" complexity="0.0">
+          <methods>
+            <method name="blank" signature="(Ljava/lang/String;)Z" line-rate="0.0" branch-rate="1.0">
+              <lines>
+                <line number="3" hits="0" branch="false"/>
+                <line number="4" hits="0" branch="false"/>
+              </lines>
+            </method>
+          </methods>
+          <lines>
+            <line number="3" hits="0" branch="false"/>
+            <line number="4" hits="0" branch="false"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>

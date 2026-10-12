@@ -1,0 +1,22 @@
+<coverage>
+  <packages>
+    <package name="src">
+      <classes>
+        <class name="a" filename="src/a.py">
+          <methods>
+            <method name="f" signature="()">
+              <lines>
+                <line number="7" hits="3"/>
+                <line number="2" hits="9"/>
+              </lines>
+            </method>
+          </methods>
+          <lines>
+            <line number="1" hits="1"/>
+            <line number="2" hits="0" branch="true" condition-coverage="50% (1/2)"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>

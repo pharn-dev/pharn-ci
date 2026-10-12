@@ -1,0 +1,17 @@
+<coverage>
+  <sources>
+    <source>/opt/build/a</source>
+    <source>/opt/build/b</source>
+  </sources>
+  <packages>
+    <package name="src">
+      <classes>
+        <class name="x" filename="src\x.py">
+          <lines>
+            <line number="3" hits="2"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>

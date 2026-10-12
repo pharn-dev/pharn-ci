@@ -1,0 +1,21 @@
+<coverage>
+  <sources>
+    <source>/home/runner/work/demo/demo</source>
+  </sources>
+  <packages>
+    <package name="src">
+      <classes>
+        <class name="x" filename="src/R&amp;D/x.py">
+          <lines>
+            <line number="1" hits="1"/>
+          </lines>
+        </class>
+        <class name="app" filename="src/&#x41;pp.py">
+          <lines>
+            <line number="2" hits="1"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>

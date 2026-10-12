@@ -1,0 +1,22 @@
+<coverage>
+  <sources>
+    <source>../outside</source>
+    <source>/home/runner/work/demo/demo/src</source>
+  </sources>
+  <packages>
+    <package name="p">
+      <classes>
+        <class name="a" filename="a.py">
+          <lines>
+            <line number="2" hits="1"/>
+          </lines>
+        </class>
+        <class name="escape" filename="../../escape.py">
+          <lines>
+            <line number="1" hits="1"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>

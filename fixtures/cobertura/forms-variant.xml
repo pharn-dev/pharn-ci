@@ -1,0 +1,32 @@
+<coverage>
+  <sources>
+    <source>/home/runner/work/demo/demo</source>
+  </sources>
+  <packages>
+    <package   name='src'  >
+      <classes>
+        <class
+            filename='src/a.py'
+            name='a'
+        >
+          <lines>
+            <line   hits='1'    number='1'  ></line>
+            <line
+                hits = '0'
+                number = '2'
+            ></line>
+            <line hits='5' number='3'
+            ></line>
+          </lines>
+        </class>
+        <class  filename='src/b.py'   name='b' >
+          <lines>
+            <line
+              hits='0'
+              number='1'   />
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>

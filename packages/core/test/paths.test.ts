@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { normalizePath } from "../src/paths.js";
+import { isAbsolutePath, normalizePath } from "../src/paths.js";
+
+describe("isAbsolutePath", () => {
+  it.each(["/a", "\\a", "C:\\a", "c:/a"])("treats %s as absolute", (input) => {
+    expect(isAbsolutePath(input)).toBe(true);
+  });
+
+  it.each(["a", "./a", "C:a", "", "src/a.ts"])("treats %j as relative", (input) => {
+    expect(isAbsolutePath(input)).toBe(false);
+  });
+});
 
 describe("normalizePath", () => {
   it.each([

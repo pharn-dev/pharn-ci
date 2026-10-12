@@ -12,8 +12,9 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   counts as added at its new position). A change that deletes the tests for code it leaves in place
   does not lower diff coverage.
 - **Only lines the coverage report knows count.** An added line with no `DA` entry in the lcov file
-  (a comment, a type, a blank line, a declaration the tool does not instrument) is left out of the
-  denominator. What is "coverable" is decided by your coverage tool, not by pharn-ci.
+  or no class-level `<line>` record in a Cobertura file (a comment, a type, a blank line, a
+  declaration the tool does not instrument) is left out of the denominator. What is "coverable" is
+  decided by your coverage tool, not by pharn-ci.
 - **Files missing from the coverage report are invisible.** A new source file that no test imports
   is often absent from lcov entirely, so it adds nothing to the denominator instead of counting as
   0%. Configure your coverage tool to include all source files (for example vitest's
@@ -27,7 +28,9 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
 - **Coverage paths must be relative to the repository root.** `SF:` paths are matched exactly
   (case-sensitive) against repo-relative diff paths. Absolute paths under the repo root are
   relativized. In a monorepo, a coverage file whose paths are relative to a package directory
-  matches nothing.
+  matches nothing. The same holds for Cobertura `filename` values: they are joined to the
+  report's `<source>` entries, and a report made inside a package directory yields paths
+  relative to that package, which match nothing.
 - **Percentages are rounded to two decimals** and compared after rounding, so the verdict agrees
   with the number shown. 100% and 0% are reserved for exactly all and exactly none covered.
 
@@ -45,10 +48,30 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
 
 ## 3. Coverage formats
 
-- **lcov only.** The `cobertura` format is accepted by the config parser but not implemented: the
-  Action rejects it, and the CLI exits with an error. Other formats are on the roadmap.
+- **lcov in the Action, lcov and Cobertura in the CLI.** Core reads Cobertura XML, and the CLI
+  reads it with `coverage.format: cobertura` in the config file. The Action still rejects
+  `cobertura`; it accepts lcov only. Other formats are on the roadmap.
 - **Malformed lcov lines are skipped silently.** Invalid or orphan `DA` records do not produce a
   message; only a report with no records at all does (`COVERAGE_FILE_EMPTY`).
+- **Malformed Cobertura lines are skipped silently too.** A `<line>` whose `number` is not an
+  integer >= 1, or whose `hits` is present but not a finite number >= 0, is dropped (a missing
+  `hits` counts as 0). A file with no valid line is absent from the map, and a report with no
+  valid line at all is `COVERAGE_FILE_EMPTY`.
+- **Cobertura methods, branches and rates are ignored.** Only class-level `<line>` records count.
+  A `<line>` inside `<methods>`, the `branch` and `condition-coverage` attributes, and every
+  `line-rate` or `branch-rate` are not read, so branch coverage never affects the verdict.
+- **Cobertura merges by maximum, lcov by sum.** One file repeated across classes (JaCoCo inner
+  classes) or packages (a shared source) keeps the highest hit count per line, because Cobertura
+  repeats a file's lines and summing would double-count them. Repeated lcov records are summed.
+- **The first usable `<source>` wins.** A relative `filename` is joined to the report's sources in
+  order and the first join that lies under the repo root is used. pharn-ci reads no files, so it
+  cannot tell which source actually holds the file; with several sources under the root, the
+  first can be wrong. An absolute `filename` is never joined. With no usable source, the
+  filename is used as written, normalized.
+- **The XML reader is minimal.** It skips comments, CDATA, processing instructions and DOCTYPE
+  declarations (no entity or DTD expansion), decodes only the five predefined and numeric
+  character references, and ignores namespace-prefixed element names. Text inside CDATA, such
+  as a source path written as CDATA, is not read.
 
 ## 4. Agent setup inventory
 

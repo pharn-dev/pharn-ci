@@ -1,0 +1,165 @@
+{
+  "schema": "ac-tests-lock/5",
+  "feature": "cobertura-parser",
+  "mode": "test-first",
+  "spec": {
+    "spec_id": "cobertura-parser",
+    "spec_content_hash": "a0f430ad49367ef04424d15f71b4cb1700f45f85d4d0c7ad684ded2f4c449f3c"
+  },
+  "mapping": {
+    "path": "pharn/features/cobertura-parser/AC-TESTS.md",
+    "sha256": "28337381c6980fa2195b056da97af9ee5034809e1c270ea8d07ce9d44d9db6fd"
+  },
+  "files": [
+    {
+      "path": "packages/core/test/cobertura-check.test.ts",
+      "sha256": "f165562a231c0cc4b2ecc73c0bd6e66f4e9db809134692977b64da244302ceab"
+    },
+    {
+      "path": "packages/core/test/cobertura-hostile.test.ts",
+      "sha256": "bc5185f8436cb464269aa9071f1aacbfe1d720554e4d531be0ebe1015faa7f1f"
+    },
+    {
+      "path": "packages/core/test/cobertura.test.ts",
+      "sha256": "858c0902002937076099ff826f3eecec11edd40811c43f87caacac933ea77244"
+    }
+  ],
+  "bootstrap": null,
+  "red_run": {
+    "stamp_sha256": "3505ef6e79e7151381de5b45b8468f91da3cc5b628934383f0e0fc62ffe57e33",
+    "files_sha256": "41b65eac8f6b066e4ce0beb209bc28b9e59b1c55c3d61014c2cc29f2197da94d",
+    "gates": [
+      {
+        "gate": "test",
+        "results_sha256": "6213c412f7020d5f30e09e721ec1404dac589644986266905717faffc3f2367e"
+      }
+    ],
+    "acs": [
+      {
+        "id": "AC-1",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: realistic reports › AC-1: reads a coverage.py report whose absolute source lies under the repo root"
+        ]
+      },
+      {
+        "id": "AC-2",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: realistic reports › AC-2: reads a pytest-cov report written from the repo root"
+        ]
+      },
+      {
+        "id": "AC-3",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: realistic reports › AC-3: merges one source file across JaCoCo outer and inner classes by maximum hits"
+        ]
+      },
+      {
+        "id": "AC-4",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: realistic reports › AC-4: reads a coverlet report with Windows paths into forward-slash repo-relative keys"
+        ]
+      },
+      {
+        "id": "AC-5",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: XML surface variation › AC-5: returns the same map for every surface form and ignores markup inside comments and CDATA"
+        ]
+      },
+      {
+        "id": "AC-6",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: XML surface variation › AC-6: decodes the &amp; entity in a class filename into a literal &"
+        ]
+      },
+      {
+        "id": "AC-7",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: line records › AC-7: reads a line without hits as 0 hits and skips non-numeric number or hits"
+        ]
+      },
+      {
+        "id": "AC-8",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: line records › AC-8: ignores method-only lines and reads a branch line's hits"
+        ]
+      },
+      {
+        "id": "AC-9",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: path resolution › AC-9: relativizes an absolute filename under the root and keeps one outside it absolute, normalized"
+        ]
+      },
+      {
+        "id": "AC-10",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: path resolution › AC-10: builds the key from the first source whose join lies under the repo root"
+        ]
+      },
+      {
+        "id": "AC-11",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: path resolution › AC-11: uses the normalized filename as written when there are no sources or none lies under the root"
+        ]
+      },
+      {
+        "id": "AC-12",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: path resolution › AC-12: never chooses a source join that climbs above the repo root"
+        ]
+      },
+      {
+        "id": "AC-13",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: empty and malformed reports › AC-13: returns an empty map for empty, garbage and line-less reports, and keeps only valid classes"
+        ]
+      },
+      {
+        "id": "AC-14",
+        "tests": [
+          "packages/core/test/cobertura-check.test.ts::check(): empty Cobertura reports › AC-14: reports empty and line-less Cobertura files as COVERAGE_FILE_EMPTY with no diff coverage"
+        ]
+      },
+      {
+        "id": "AC-15",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCoverage: cobertura dispatch › AC-15: returns the same map as parseCobertura for every Cobertura fixture"
+        ]
+      },
+      {
+        "id": "AC-16",
+        "tests": [
+          "packages/core/test/cobertura-hostile.test.ts::parseCobertura: hostile input › AC-16: a run of several million < characters parses in linear time",
+          "packages/core/test/cobertura-hostile.test.ts::parseCobertura: hostile input › AC-16: an unterminated CDATA section of several megabytes parses in linear time",
+          "packages/core/test/cobertura-hostile.test.ts::parseCobertura: hostile input › AC-16: an unterminated comment of several megabytes parses in linear time",
+          "packages/core/test/cobertura-hostile.test.ts::parseCobertura: hostile input › AC-16: an unterminated quoted attribute of several megabytes parses in linear time",
+          "packages/core/test/cobertura-hostile.test.ts::parseCobertura: hostile input › AC-16: many thousands of nested open tags around a valid class parse in linear time"
+        ]
+      }
+    ]
+  },
+  "test_infra": {
+    "levels": [
+      "integration",
+      "unit"
+    ],
+    "gates": [
+      {
+        "id": "test",
+        "script": "vitest run",
+        "pre": null,
+        "post": null,
+        "results": "vitest-json"
+      }
+    ],
+    "chained": [],
+    "configs": [
+      {
+        "path": "vitest.config.ts",
+        "sha256": "84fef4870fed6a1d5156f5260cd8fcc9b6d1dcca7cc76e8de3c86a978b336fec"
+      }
+    ],
+    "script_files": [],
+    "jest": null,
+    "exclude": []
+  }
+}

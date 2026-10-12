@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { parseCobertura } from "../src/coverage/cobertura.js";
 import { parseCoverage } from "../src/coverage/index.js";
 import { parseLcov } from "../src/coverage/lcov.js";
 import { fixture } from "./helpers.js";
@@ -49,8 +48,9 @@ describe("parseCoverage", () => {
     expect(parseCoverage("SF:a.ts\nDA:1,1\nend_of_record\n", "lcov").get("a.ts")?.get(1)).toBe(1);
   });
 
-  it("cobertura is a stub until M3", () => {
-    expect(() => parseCobertura("<coverage/>")).toThrow("not implemented (M3)");
-    expect(() => parseCoverage("<coverage/>", "cobertura")).toThrow("not implemented (M3)");
+  it("dispatches cobertura", () => {
+    const xml =
+      '<coverage><packages><package><classes><class filename="a.py"><lines><line number="1" hits="1"/></lines></class></classes></package></packages></coverage>';
+    expect(parseCoverage(xml, "cobertura").get("a.py")?.get(1)).toBe(1);
   });
 });
