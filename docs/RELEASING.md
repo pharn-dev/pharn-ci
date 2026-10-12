@@ -19,11 +19,17 @@ npm yet.
 ## Cutting a release
 
 1. **Prepare a PR** titled `chore: release X.Y.Z`:
-   - Set `"version": "X.Y.Z"` in `packages/core/package.json`, `packages/cli/package.json` and
-     `packages/action/package.json`, and `VERSION` in `packages/core/src/version.ts`.
-     `version.test.ts` fails if they disagree.
+   - Set `"version": "X.Y.Z"` in the root `package.json`, `packages/core/package.json`,
+     `packages/cli/package.json` and `packages/action/package.json`, `VERSION` in
+     `packages/core/src/version.ts`, and the version in the `uses: pharn-dev/pharn-ci@vX.Y.Z` line of
+     the quick start in `docs/MARKETPLACE.md`. `version.test.ts` and the docs tests fail when they
+     disagree.
    - In `CHANGELOG.md`, move the `[Unreleased]` entries under a new `## [X.Y.Z] - YYYY-MM-DD`
-     heading and leave an empty `## [Unreleased]` above it.
+     heading, with the one-line date note beneath it, and leave an empty `## [Unreleased]` with
+     `### Added`, `### Changed` and `### Security` above it.
+   - The maintainer replaces the `YYYY-MM-DD` placeholder with the release date, and deletes the
+     date note beneath the heading so the extracted release notes do not carry it, before running
+     the release workflow.
    - Run `pnpm build` (the version is compiled into `packages/action/dist`) and commit the result.
    - Merge with all required checks green.
 2. **Dry run.** Actions → **release** → **Run workflow**, branch `main`, version `X.Y.Z`, leave
