@@ -1,0 +1,100 @@
+{
+  "schema": "ac-tests-lock/5",
+  "feature": "release-readiness-v0-1-0",
+  "mode": "test-first",
+  "spec": {
+    "spec_id": "release-readiness-v0-1-0",
+    "spec_content_hash": "9fbea1c93031b67305156a9e286f8964e9fcfb216feb07a72109c3d47ebd076e"
+  },
+  "mapping": {
+    "path": "pharn/features/release-readiness-v0-1-0/AC-TESTS.md",
+    "sha256": "0400ce193c1ca4bb515f254fdfa2b6c35556fb70926041a47bb3d2cc3670a5c0"
+  },
+  "files": [
+    {
+      "path": "packages/core/test/ac-release-changelog.test.ts",
+      "sha256": "8993552382b47fb390b581eeaa578fdb4dcc0a8ab5923347b007bc271dc94582"
+    },
+    {
+      "path": "packages/core/test/ac-release-docs.test.ts",
+      "sha256": "464d9b974d55cf575e666abf4b051f638ffc303c468f77e8bea23947bbdbfd99"
+    },
+    {
+      "path": "packages/core/test/ac-release-version.test.ts",
+      "sha256": "c4d2d22195a11bce822fbe178944125200e8935a97fcf4d33f965d17c740bb69"
+    }
+  ],
+  "bootstrap": null,
+  "red_run": {
+    "stamp_sha256": "0abe53d40159d7d3ed0e9b4b541da7029e43ec1a7ce7ab5eb6fa5286218f3014",
+    "files_sha256": "b6d472dcb6175e0d4d7dd36d23fc74692406c8437dbbc5fa4437a5efdc18d6f5",
+    "gates": [
+      {
+        "gate": "test",
+        "results_sha256": "fa96f8ef14374d8d7b114f55f063e4107de71df0c63fe55eefb4a9dcc60c5bbc"
+      }
+    ],
+    "acs": [
+      {
+        "id": "AC-1",
+        "tests": [
+          "packages/core/test/ac-release-version.test.ts::release readiness: one version everywhere › AC-1: the root, core, cli and action package.json versions all equal VERSION"
+        ]
+      },
+      {
+        "id": "AC-2",
+        "tests": [
+          "packages/core/test/ac-release-changelog.test.ts::release readiness: CHANGELOG.md passes release.yml › AC-2: has exactly one dated or placeholder heading for the version, below ## [Unreleased]"
+        ]
+      },
+      {
+        "id": "AC-3",
+        "tests": [
+          "packages/core/test/ac-release-changelog.test.ts::release readiness: CHANGELOG.md passes release.yml › AC-3: the extracted release notes are non-empty, complete and claim no lcov-only reading"
+        ]
+      },
+      {
+        "id": "AC-4",
+        "tests": [
+          "packages/core/test/ac-release-docs.test.ts::release readiness: docs/MARKETPLACE.md listing › AC-4: name, one-line description, three-paragraph description and two categories match action.yml"
+        ]
+      },
+      {
+        "id": "AC-5",
+        "tests": [
+          "packages/core/test/ac-release-docs.test.ts::release readiness: docs/MARKETPLACE.md listing › AC-5: the quick start uses pharn-dev/pharn-ci@v<VERSION> with only inputs action.yml declares"
+        ]
+      },
+      {
+        "id": "AC-6",
+        "tests": [
+          "packages/core/test/ac-release-docs.test.ts::release readiness: docs/RELEASING.md › AC-6: the version step names all five version files and the placeholder date is replaced first"
+        ]
+      }
+    ]
+  },
+  "test_infra": {
+    "levels": [
+      "unit"
+    ],
+    "gates": [
+      {
+        "id": "test",
+        "script": "vitest run",
+        "pre": null,
+        "post": null,
+        "results": "vitest-json"
+      }
+    ],
+    "chained": [],
+    "configs": [
+      {
+        "path": "vitest.config.ts",
+        "sha256": "84fef4870fed6a1d5156f5260cd8fcc9b6d1dcca7cc76e8de3c86a978b336fec"
+      }
+    ],
+    "script_files": [],
+    "jest": null,
+    "exclude": []
+  }
+}

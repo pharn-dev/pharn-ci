@@ -16,8 +16,8 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   declaration the tool does not instrument) is left out of the denominator. What is "coverable" is
   decided by your coverage tool, not by pharn-ci.
 - **Files missing from the coverage report are invisible.** A new source file that no test imports
-  is often absent from lcov entirely, so it adds nothing to the denominator instead of counting as
-  0%. Configure your coverage tool to include all source files (for example vitest's
+  is often absent from the coverage report entirely, so it adds nothing to the denominator instead
+  of counting as 0%. Configure your coverage tool to include all source files (for example vitest's
   `coverage.include` or `all`) if you want untested files to count.
 - **Deleted and binary files are skipped.** Renamed files are measured under their new path; a
   pure rename adds no lines. Rename detection is git's default similarity (`--find-renames`).
@@ -122,7 +122,7 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   come from the change under review. pharn-ci neutralizes what would break the PR comment's markdown
   (control characters, HTML in messages), but the numbers are only as honest as the coverage file
   the PR's own test run produced. pharn-ci cannot detect a test run that was altered to write a
-  favorable lcov file.
+  favorable coverage file.
 - **Exclusions come from the PR.** `coverage.exclude` lives in `.pharn/ci.yml` and the Action's
   `exclude` input in the workflow file, both of which the change under review can edit. A PR can
   exclude its own files, ultimately all of them, which passes as `NO_COVERABLE_CHANGES`. The gate
@@ -130,8 +130,8 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   CODEOWNERS so changes to them need a code owner's review.
 - **Coverage and config paths are not confined to the repository.** They are resolved against the
   workspace (Action) or the current directory and repo root (CLI), and may point anywhere the job
-  can read, such as `$RUNNER_TEMP`. The file is only parsed as lcov or config, never echoed, but its
-  path appears in `COVERAGE_FILE_MISSING` messages.
+  can read, such as `$RUNNER_TEMP`. The file is only parsed as coverage (lcov or Cobertura) or
+  config, never echoed, but its path appears in `COVERAGE_FILE_MISSING` messages.
 - **Input sizes are not capped.** The coverage, diff and config parsers read their whole input. Git
   output is limited to 256 MiB. A hostile file can make the job slow or run out of memory; it cannot
   make pharn-ci write anywhere but `report.json`, the job summary and its PR comment.

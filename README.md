@@ -113,7 +113,7 @@ is a floor, not a verdict on quality: it says what was measured and, just as pla
 
 ## Quick start
 
-Add a workflow that runs your tests with lcov output, then pharn-ci:
+Add a workflow that runs your tests with lcov or Cobertura XML output, then pharn-ci:
 
 ```yaml
 # .github/workflows/pharn-ci.yml
@@ -131,7 +131,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      # ...set up your toolchain and run tests with lcov output, e.g.:
+      # ...set up your toolchain and run tests with lcov or Cobertura output, e.g.:
       - run: npx vitest run --coverage --coverage.reporter=lcov
       - uses: pharn-dev/pharn-ci@v0.1.0 # or, better, the tag's full commit SHA
         with:
@@ -234,6 +234,7 @@ node packages/cli/dist/index.js check --coverage coverage/lcov.info --threshold 
 ```text
 pharn-ci check [--coverage <file>] [--coverage-format lcov|cobertura|auto] [--base <ref>]
                [--threshold <n>] [--format md|json] [--config <path>] [--exclude <glob>]...
+               [-h|--help] [-v|--version]
 ```
 
 - `--coverage-format` defaults to `coverage.format` from the config, then `auto`, which reads lcov
@@ -384,11 +385,11 @@ pnpm lint             # biome check + typecheck
 pnpm pharn-ci check   # run the built CLI on this repo
 ```
 
-| Package           | Role                                                                          |
-| ----------------- | ----------------------------------------------------------------------------- |
-| `packages/core`   | Pure functions: lcov and diff parsing, diff coverage, setup scan, Report v1.  |
-| `packages/cli`    | `pharn-ci check`: reads files, runs git, calls core, prints output.           |
-| `packages/action` | Thin Action wrapper: inputs, PR diff, sticky comment, job summary, exit code. |
+| Package           | Role                                                                                   |
+| ----------------- | -------------------------------------------------------------------------------------- |
+| `packages/core`   | Pure functions: lcov, Cobertura and diff parsing, diff coverage, setup scan, Report v1. |
+| `packages/cli`    | `pharn-ci check`: reads files, runs git, calls core, prints output.                    |
+| `packages/action` | Thin Action wrapper: inputs, PR diff, sticky comment, job summary, exit code.          |
 
 The rules every change follows are in [`AGENTS.md`](AGENTS.md).
 

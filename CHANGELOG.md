@@ -7,20 +7,31 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ## [Unreleased]
 
-Planned first release: **0.1.0**. The release date and versioned heading will be set when the
-release is cut.
+### Added
+
+### Changed
+
+### Security
+
+## [0.1.0] - YYYY-MM-DD
+
+The maintainer replaces `YYYY-MM-DD` with the release date, and deletes this line, when cutting
+the release.
 
 ### Added
 
 - GitHub Action and `pharn-ci check` CLI.
-- Diff coverage: the share of lines added in the change that the lcov report covers, with an
-  optional, inclusive threshold gate (`threshold` input, `--threshold`, `coverage.threshold`).
-- Agent setup inventory: `CLAUDE.md`, `AGENTS.md`, `.claude/` settings, skills, hooks, agents and
-  commands, `.cursor/rules`, `.cursorrules`, `.github/copilot-instructions.md`, `.mcp.json`.
-- Agent setup inventory: new kinds `claude-local-md`, `gemini-md`, `copilot-instructions-scoped`,
-  `copilot-agents`, `copilot-prompts`, `cursor-mcp`, `vscode-mcp`, `codex-config`, `windsurf-rules`
-  and `cline-rules`; `.mcp.json`, `.claude/` files and `.cursor/rules/` are now also found in nested
-  directories, and the more specific directory rule wins over a file-name rule.
+- Diff coverage: the share of lines added in the change that the coverage report (lcov or
+  Cobertura XML) marks as executed, with an optional, inclusive threshold gate (`threshold` input,
+  `--threshold`, `coverage.threshold`).
+- Agent setup inventory: the tracked agent setup files of Claude Code, Cursor, GitHub Copilot,
+  Codex, Gemini, Windsurf, Cline and MCP, listed by kind and never read. The kinds are `claude-md`,
+  `claude-local-md`, `agents-md`, `gemini-md`, `claude-settings`, `claude-settings-local`,
+  `claude-skill`, `claude-hook`, `claude-agent`, `claude-command`, `cursor-rules`, `cursor-mcp`,
+  `copilot-instructions`, `copilot-instructions-scoped`, `copilot-agents`, `copilot-prompts`,
+  `vscode-mcp`, `codex-config`, `windsurf-rules`, `cline-rules` and `mcp-config`. `.mcp.json`,
+  `.claude/` files and `.cursor/rules/` are found in nested directories, and the more specific
+  directory rule wins over a file-name rule.
 - Report v1: optional `agentSetup.summary` (counts per kind and the tools involved), and an
   `Agent setup: N files · tools` line in the markdown, with the table collapsed above 25 files.
 - Report v1 (`schema/report.v1.json`), the stable JSON output, with message codes
@@ -31,15 +42,14 @@ release is cut.
   summary only.
 - `.pharn/ci.yml` config file, overridden by Action inputs and CLI flags.
 - Coverage exclusions: glob patterns (`*`, `**`, `?`) from `coverage.exclude`, the CLI's repeatable
-  `--exclude <glob>` and the Action's `exclude` input, merged, leave matching changed files out of
-  diff coverage. The report gains the optional `diffCoverage.excludedFiles` field, and the comment
-  an "Excluded" summary listing them.
-- Cobertura XML coverage parsing in core, read by the CLI and the Action (`coverage.format:
-  cobertura`).
+  `--exclude <glob>` and the Action's `exclude` input, merged (their union applies), leave matching
+  changed files out of diff coverage. The report gains the optional `diffCoverage.excludedFiles`
+  field, and the comment an "Excluded" summary listing them.
+- Cobertura XML coverage parsing in core, read by the CLI and the Action.
 - Coverage format selection: the `coverage-format` Action input, the `--coverage-format` CLI flag
   and `coverage.format` in `.pharn/ci.yml` take `lcov`, `cobertura` or `auto`. The flag or input
   wins over the config file.
-- `auto` is the new default: the format is detected from the first 1 KiB of the file, and the CLI
+- `auto` is the default: the format is detected from the first 1 KiB of the file, and the CLI
   (stderr) and the Action (log) print which format was used, for example
   `coverage: cobertura (auto-detected)`. Clover and JaCoCo native XML are not supported.
 - Message code `COVERAGE_FORMAT_UNSUPPORTED`: under `auto`, a coverage file that is neither lcov
