@@ -21,6 +21,9 @@ inputs:
   exclude:
     description: Glob patterns of changed files to leave out of diff coverage, separated by commas or newlines. Added to coverage.exclude in .pharn/ci.yml, never replacing it.
     required: false
+  require-agent-setup:
+    description: Fail the check when the repo has no agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...). Defaults to setup.require in .pharn/ci.yml, then false.
+    required: false
   comment:
     description: Post or update one sticky PR comment with the report.
     required: false

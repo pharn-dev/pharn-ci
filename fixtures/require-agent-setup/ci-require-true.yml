@@ -1,0 +1,3 @@
+# Requires agent setup files in the repo.
+setup:
+  require: true

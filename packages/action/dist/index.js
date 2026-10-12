@@ -24619,10 +24619,33 @@ function parseScalar(value, lineNo) {
 function validateConfig(doc) {
   const config = {};
   for (const key of Object.keys(doc)) {
-    if (key !== "coverage") throw new ConfigError(`unknown top-level key "${key}"`);
+    if (key !== "coverage" && key !== "setup") throw new ConfigError(`unknown top-level key "${key}"`);
   }
-  const cov = doc.coverage;
-  if (cov === void 0 || cov === null) return config;
+  const coverage = validateCoverage(doc.coverage);
+  if (coverage !== void 0) config.coverage = coverage;
+  const setup = validateSetup(doc.setup);
+  if (setup !== void 0) config.setup = setup;
+  return config;
+}
+function validateSetup(value) {
+  if (value === void 0 || value === null) return void 0;
+  if (typeof value !== "object" || Array.isArray(value)) throw new ConfigError(`"setup" must be a mapping`);
+  const setup = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (entry === null) continue;
+    switch (key) {
+      case "require":
+        if (typeof entry !== "boolean") throw new ConfigError(`"setup.require" must be true or false`);
+        setup.require = entry;
+        break;
+      default:
+        throw new ConfigError(`unknown key "setup.${key}"`);
+    }
+  }
+  return setup;
+}
+function validateCoverage(cov) {
+  if (cov === void 0 || cov === null) return void 0;
   if (typeof cov !== "object" || Array.isArray(cov)) throw new ConfigError(`"coverage" must be a mapping`);
   const coverage = {};
   for (const [key, value] of Object.entries(cov)) {
@@ -24658,8 +24681,7 @@ function validateConfig(doc) {
         throw new ConfigError(`unknown key "coverage.${key}"`);
     }
   }
-  config.coverage = coverage;
-  return config;
+  return coverage;
 }
 function parseExcludePattern(pattern, label = "exclude pattern") {
   let start = 0;
@@ -25470,10 +25492,12 @@ function buildReport(input) {
     });
   }
   if (input.agentSetup.files.length === 0) {
+    const required = input.requireAgentSetup === true;
+    const found = "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found";
     messages.push({
-      level: "info",
+      level: required ? "error" : "info",
       code: "NO_AGENT_SETUP_FILES",
-      text: "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found."
+      text: required ? `${found}, and agent setup is required by config.` : `${found}.`
     });
   }
   return {
@@ -25576,7 +25600,12 @@ function check(input) {
   const matchers = [...new Set((input.exclude ?? []).map((p) => parseExcludePattern(p)))].map(compileGlob);
   const isExcluded = (path) => matchers.some((matches) => matches(path));
   const agentSetup = scanAgentSetup(input.repoFiles);
-  const base = { version: input.version, threshold: input.threshold, agentSetup };
+  const base = {
+    version: input.version,
+    threshold: input.threshold,
+    agentSetup,
+    requireAgentSetup: input.requireAgentSetup === true
+  };
   if ("missingFile" in input.coverage) {
     return buildReport({
       ...base,
@@ -25744,6 +25773,11 @@ async function runUnsafe(deps) {
   const coverageFile = input("coverage-file") || config.coverage?.file;
   if (!coverageFile) throw new Error("no coverage file: set the coverage-file input or coverage.file in .pharn/ci.yml");
   const failOnThreshold = parseBool(input("fail-on-threshold"), true, "fail-on-threshold");
+  const requireAgentSetup = parseBool(
+    input("require-agent-setup"),
+    config.setup?.require ?? false,
+    "require-agent-setup"
+  );
   const comment = parseBool(input("comment"), true, "comment");
   const excludeInput = splitPatternList(input("exclude")).map((p) => parseExcludePattern(p, "exclude"));
   const coveragePath = deps.resolvePath(deps.workspace, coverageFile);
@@ -25761,7 +25795,8 @@ async function runUnsafe(deps) {
     repoRoot: deps.workspace,
     threshold,
     repoFiles: lsFiles.split("\0").filter((p) => p !== ""),
-    exclude: [...config.coverage?.exclude ?? [], ...excludeInput]
+    exclude: [...config.coverage?.exclude ?? [], ...excludeInput],
+    requireAgentSetup
   };
   const report = check(checkInput);
   const markdown = renderMarkdown(report);
