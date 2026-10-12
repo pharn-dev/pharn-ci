@@ -40,15 +40,15 @@ describe("release readiness: CHANGELOG.md passes release.yml", () => {
     expect(workflow, "release.yml still extracts the notes with this program").toContain(`'${AWK_PROGRAM}'`);
     expect(workflow).toContain('awk -v h="## [$VERSION]"');
 
-    const version = releaseVersion();
-    const notes = execFileSync(
-      "awk",
-      ["-v", `h=## [${version}]`, AWK_PROGRAM, fileURLToPath(repoFile("CHANGELOG.md"))],
-      {
+    const extract = (version: string) =>
+      execFileSync("awk", ["-v", `h=## [${version}]`, AWK_PROGRAM, fileURLToPath(repoFile("CHANGELOG.md"))], {
         encoding: "utf8",
-      },
-    );
-    expect(notes, "the extracted section has non-whitespace characters").toMatch(/\S/);
+      });
+    expect(extract(releaseVersion()), "the extracted section has non-whitespace characters").toMatch(/\S/);
+
+    // The completeness checks below describe what 0.1.0 shipped, so they read the 0.1.0 section only;
+    // a later release's notes list only its own changes.
+    const notes = extract("0.1.0");
 
     const named: Array<[string, RegExp]> = [
       ["Cobertura", /Cobertura/],

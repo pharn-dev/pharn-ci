@@ -385,11 +385,11 @@ pnpm lint             # biome check + typecheck
 pnpm pharn-ci check   # run the built CLI on this repo
 ```
 
-| Package           | Role                                                                          |
-| ----------------- | ----------------------------------------------------------------------------- |
+| Package           | Role                                                                                   |
+| ----------------- | -------------------------------------------------------------------------------------- |
 | `packages/core`   | Pure functions: lcov, Cobertura and diff parsing, diff coverage, setup scan, Report v1. |
-| `packages/cli`    | `pharn-ci check`: reads files, runs git, calls core, prints output.           |
-| `packages/action` | Thin Action wrapper: inputs, PR diff, sticky comment, job summary, exit code. |
+| `packages/cli`    | `pharn-ci check`: reads files, runs git, calls core, prints output.                    |
+| `packages/action` | Thin Action wrapper: inputs, PR diff, sticky comment, job summary, exit code.          |
 
 The rules every change follows are in [`AGENTS.md`](AGENTS.md).
 

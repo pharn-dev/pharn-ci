@@ -15,7 +15,8 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ## [0.1.0] - YYYY-MM-DD
 
-The maintainer replaces `YYYY-MM-DD` with the release date, and deletes this line, when cutting the release.
+The maintainer replaces `YYYY-MM-DD` with the release date, and deletes this line, when cutting
+the release.
 
 ### Added
 
