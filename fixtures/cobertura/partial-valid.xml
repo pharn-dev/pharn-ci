@@ -1,0 +1,23 @@
+<coverage>
+  <sources>
+    <source>/home/runner/work/demo/demo</source>
+  </sources>
+  <packages>
+    <package name="src">
+      <classes>
+        <class name="good" filename="src/good.py">
+          <lines>
+            <line number="1" hits="1"/>
+          </lines>
+        </class>
+        <class name="bad" filename="src/bad.py">
+          <lines>
+            <line number="x" hits="1"/>
+            <line number="0" hits="1"/>
+            <line number="2" hits="-1"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>

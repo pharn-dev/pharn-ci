@@ -24504,11 +24504,6 @@ function getOctokit(token, options, ...additionalPlugins) {
   return new GitHubWithPlugins(getOctokitOptions(token, options));
 }
 
-// ../core/src/coverage/cobertura.ts
-function parseCobertura(_text, _options = {}) {
-  throw new Error("Cobertura coverage format: not implemented (M3)");
-}
-
 // ../core/src/paths.ts
 function normalizePath(path, repoRoot) {
   let p = toPosix(path.trim());
@@ -24519,6 +24514,15 @@ function normalizePath(path, repoRoot) {
     }
   }
   return p;
+}
+function isAbsolutePath(path) {
+  const first = path.charAt(0);
+  if (first === "/" || first === "\\") return true;
+  const separator = path.charAt(2);
+  return path.charAt(1) === ":" && (separator === "/" || separator === "\\") && isAsciiLetter(first);
+}
+function isAsciiLetter(char) {
+  return char >= "A" && char <= "Z" || char >= "a" && char <= "z";
 }
 function toPosix(path) {
   const slashed = path.replace(/\\/g, "/");
@@ -24542,6 +24546,287 @@ function startsWithPath(path, root) {
   if (path.length <= root.length || path[root.length] !== "/") return false;
   const head = path.slice(0, root.length);
   return /^[A-Z]:\//.test(root) ? head.toLowerCase() === root.toLowerCase() : head === root;
+}
+
+// ../core/src/coverage/xml.ts
+var NO_ATTRS = /* @__PURE__ */ new Map();
+var ENTITY_WINDOW = 10;
+var NAMED_ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
+function isSpace(char) {
+  return char === " " || char === "	" || char === "\n" || char === "\r";
+}
+function isQuote(char) {
+  return char === '"' || char === "'";
+}
+function decodeEntities(text) {
+  let amp = text.indexOf("&");
+  if (amp === -1) return text;
+  let out = "";
+  let from = 0;
+  while (amp !== -1) {
+    const decoded = decodeReference(text, amp);
+    if (decoded === void 0) {
+      amp = text.indexOf("&", amp + 1);
+      continue;
+    }
+    out += text.slice(from, amp) + decoded.value;
+    from = decoded.end;
+    amp = text.indexOf("&", from);
+  }
+  return out + text.slice(from);
+}
+function decodeReference(text, amp) {
+  const limit = Math.min(text.length, amp + 1 + ENTITY_WINDOW);
+  let semi = -1;
+  for (let i = amp + 1; i < limit; i++) {
+    if (text.charAt(i) === ";") {
+      semi = i;
+      break;
+    }
+  }
+  if (semi === -1) return void 0;
+  const body = text.slice(amp + 1, semi);
+  const named = Object.hasOwn(NAMED_ENTITIES, body) ? NAMED_ENTITIES[body] : void 0;
+  if (named !== void 0) return { value: named, end: semi + 1 };
+  if (body.charAt(0) !== "#") return void 0;
+  const hex = body.charAt(1) === "x";
+  const digits = body.slice(hex ? 2 : 1);
+  if (digits === "") return void 0;
+  let code2 = 0;
+  for (let i = 0; i < digits.length; i++) {
+    const digit = Number.parseInt(digits.charAt(i), hex ? 16 : 10);
+    if (Number.isNaN(digit)) return void 0;
+    code2 = code2 * (hex ? 16 : 10) + digit;
+  }
+  if (code2 < 1 || code2 > 1114111 || code2 >= 55296 && code2 <= 57343) return void 0;
+  return { value: String.fromCodePoint(code2), end: semi + 1 };
+}
+function parseTag(body) {
+  if (body.charAt(0) === "/") {
+    const name2 = readName(body, 1);
+    return name2 === "" ? void 0 : { type: "end", name: name2 };
+  }
+  let end = body.length;
+  while (end > 0 && isSpace(body.charAt(end - 1))) end--;
+  const selfClosing = end > 0 && body.charAt(end - 1) === "/";
+  if (selfClosing) end--;
+  const name = readName(body, 0);
+  if (name === "") return void 0;
+  return { type: "start", name, attrs: parseAttributes(body, name.length, end), selfClosing };
+}
+function readName(body, from) {
+  let i = from;
+  while (i < body.length && !isSpace(body.charAt(i)) && body.charAt(i) !== "/") i++;
+  return body.slice(from, i);
+}
+function parseAttributes(body, from, end) {
+  let attrs;
+  let i = from;
+  while (i < end) {
+    while (i < end && isSpace(body.charAt(i))) i++;
+    const nameStart = i;
+    while (i < end && !isSpace(body.charAt(i)) && body.charAt(i) !== "=") i++;
+    const name = body.slice(nameStart, i);
+    while (i < end && isSpace(body.charAt(i))) i++;
+    if (body.charAt(i) !== "=" || i >= end) {
+      continue;
+    }
+    i++;
+    while (i < end && isSpace(body.charAt(i))) i++;
+    const quote = body.charAt(i);
+    if (!isQuote(quote) || i >= end) {
+      while (i < end && !isSpace(body.charAt(i))) i++;
+      continue;
+    }
+    const close = body.indexOf(quote, i + 1);
+    if (close === -1 || close >= end) break;
+    if (name !== "") {
+      attrs ??= /* @__PURE__ */ new Map();
+      if (!attrs.has(name)) attrs.set(name, decodeEntities(body.slice(i + 1, close)));
+    }
+    i = close + 1;
+  }
+  return attrs ?? NO_ATTRS;
+}
+function findDeclarationEnd(text, from) {
+  let quote = "";
+  for (let i = from; i < text.length; i++) {
+    const char = text.charAt(i);
+    if (quote !== "") {
+      if (char === quote) quote = "";
+    } else if (isQuote(char)) {
+      quote = char;
+    } else if (char === ">") {
+      return i;
+    }
+  }
+  return -1;
+}
+function findTagEnd(text, start) {
+  let quote = "";
+  for (let i = start + 1; i < text.length; i++) {
+    const char = text.charAt(i);
+    if (char === "<") return -i - 2;
+    if (quote !== "") {
+      if (char === quote) quote = "";
+    } else if (isQuote(char)) {
+      quote = char;
+    } else if (char === ">") {
+      return i;
+    }
+  }
+  return -1;
+}
+function scanXml(text, onEvent) {
+  const length = text.length;
+  let pos = text.charCodeAt(0) === 65279 ? 1 : 0;
+  while (pos < length) {
+    const lt = text.indexOf("<", pos);
+    const textEnd = lt === -1 ? length : lt;
+    if (textEnd > pos) onEvent({ type: "text", text: decodeEntities(text.slice(pos, textEnd)) });
+    if (lt === -1) return;
+    const next = text.charAt(lt + 1);
+    if (next === "<") {
+      pos = lt + 1;
+    } else if (next === "!" && text.startsWith("<!--", lt)) {
+      const close = text.indexOf("-->", lt + 4);
+      if (close === -1) return;
+      pos = close + 3;
+    } else if (next === "!" && text.startsWith("<![CDATA[", lt)) {
+      const close = text.indexOf("]]>", lt + 9);
+      if (close === -1) return;
+      pos = close + 3;
+    } else if (next === "?") {
+      const close = text.indexOf("?>", lt + 2);
+      if (close === -1) return;
+      pos = close + 2;
+    } else if (next === "!") {
+      const close = findDeclarationEnd(text, lt + 2);
+      if (close === -1) return;
+      pos = close + 1;
+    } else {
+      const close = findTagEnd(text, lt);
+      if (close === -1) return;
+      if (close < -1) {
+        pos = -close - 2;
+        continue;
+      }
+      const event = parseTag(text.slice(lt + 1, close));
+      if (event !== void 0) onEvent(event);
+      pos = close + 1;
+    }
+  }
+}
+
+// ../core/src/coverage/cobertura.ts
+function parseCobertura(text, options = {}) {
+  const sources = [];
+  const perFile = /* @__PURE__ */ new Map();
+  let inSources = false;
+  let sourceText;
+  let currentFile;
+  let methodDepth = 0;
+  scanXml(text, (event) => {
+    if (event.type === "text") {
+      if (sourceText !== void 0) sourceText += event.text;
+      return;
+    }
+    if (event.type === "end") {
+      switch (event.name) {
+        case "sources":
+          inSources = false;
+          sourceText = void 0;
+          break;
+        case "source": {
+          const source = sourceText?.trim();
+          if (source) sources.push(source);
+          sourceText = void 0;
+          break;
+        }
+        case "class":
+          currentFile = void 0;
+          methodDepth = 0;
+          break;
+        case "methods":
+        case "method":
+          if (methodDepth > 0) methodDepth--;
+          break;
+      }
+      return;
+    }
+    switch (event.name) {
+      case "sources":
+        inSources = !event.selfClosing;
+        break;
+      case "source":
+        if (inSources && !event.selfClosing) sourceText = "";
+        break;
+      case "class": {
+        const filename = event.selfClosing ? "" : (event.attrs.get("filename") ?? "").trim();
+        currentFile = filename === "" ? void 0 : filename;
+        methodDepth = 0;
+        break;
+      }
+      case "methods":
+      case "method":
+        if (currentFile !== void 0 && !event.selfClosing) methodDepth++;
+        break;
+      case "line":
+        if (currentFile !== void 0 && methodDepth === 0) {
+          addLine(perFile, currentFile, event.attrs.get("number"), event.attrs.get("hits"));
+        }
+        break;
+    }
+  });
+  const uniqueSources = [...new Set(sources)];
+  const map = /* @__PURE__ */ new Map();
+  for (const [filename, lines] of perFile) {
+    const key = resolvePath(filename, uniqueSources, options.repoRoot);
+    let target = map.get(key);
+    if (!target) {
+      target = /* @__PURE__ */ new Map();
+      map.set(key, target);
+    }
+    for (const [lineNo, hits] of lines) {
+      target.set(lineNo, Math.max(target.get(lineNo) ?? 0, hits));
+    }
+  }
+  return map;
+}
+function addLine(perFile, filename, number, hits) {
+  if (number === void 0) return;
+  const lineNo = Number(number);
+  if (!Number.isInteger(lineNo) || lineNo < 1) return;
+  let count = 0;
+  if (hits !== void 0) {
+    if (hits.trim() === "") return;
+    count = Number(hits);
+    if (!Number.isFinite(count) || count < 0) return;
+  }
+  let lines = perFile.get(filename);
+  if (!lines) {
+    lines = /* @__PURE__ */ new Map();
+    perFile.set(filename, lines);
+  }
+  lines.set(lineNo, Math.max(lines.get(lineNo) ?? 0, count));
+}
+function resolvePath(filename, sources, repoRoot) {
+  if (isAbsolutePath(filename)) return normalizePath(filename, repoRoot);
+  for (const source of sources) {
+    const joined = `${source}/${filename}`;
+    if (isAbsolutePath(source)) {
+      if (repoRoot === void 0) continue;
+      const key = normalizePath(joined, repoRoot);
+      if (!isAbsolutePath(key) && !climbs(key)) return key;
+    } else {
+      const key = normalizePath(joined);
+      if (key !== "" && !climbs(key)) return key;
+    }
+  }
+  return normalizePath(filename, repoRoot);
+}
+function climbs(path) {
+  return path === ".." || path.startsWith("../");
 }
 
 // ../core/src/coverage/lcov.ts

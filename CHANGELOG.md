@@ -23,6 +23,8 @@ release is cut.
 - One sticky PR comment and a job summary; on fork PRs, where the token cannot comment, the job
   summary only.
 - `.pharn/ci.yml` config file, overridden by Action inputs and CLI flags.
+- Cobertura XML coverage parsing in core, read by the CLI through `coverage.format: cobertura`.
+  The Action still accepts lcov only.
 
 ### Security
 

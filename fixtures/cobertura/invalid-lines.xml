@@ -1,0 +1,21 @@
+<coverage>
+  <packages>
+    <package name="src">
+      <classes>
+        <class name="a" filename="src/a.py">
+          <lines>
+            <line number="1"/>
+            <line number="x" hits="1"/>
+            <line number="3" hits="many"/>
+            <line number="4" hits="2"/>
+            <line number="0" hits="1"/>
+            <line number="-2" hits="1"/>
+            <line number="5.5" hits="1"/>
+            <line number="6" hits="-1"/>
+            <line number="7" hits=""/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>

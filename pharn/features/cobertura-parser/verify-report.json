@@ -1,0 +1,371 @@
+{
+  "feature": "cobertura-parser",
+  "gates": {
+    "build": 0,
+    "instruction-growth": 0,
+    "lint": 0,
+    "reconcile": 1,
+    "test": 0
+  },
+  "verdict": "FAIL",
+  "failing_gates": [
+    "reconcile"
+  ],
+  "gate_run": {
+    "stamp_sha256": "3d4180ebcdd45e6cec51cfa0a547c46293c59072b084671fd722876bd97b4256",
+    "source": "discover",
+    "fingerprint": {
+      "algo": "worktree-fingerprint/2+sha256",
+      "final": "4d99a8bae9c515d309e2e5ab906ba97ff6b6c64e1522bd9d7076acd1bbcc84ca"
+    }
+  },
+  "ac_gate": {
+    "mode": "test-first",
+    "verdict": "PASS",
+    "reason": null,
+    "evidence": [],
+    "acs": [
+      {
+        "id": "AC-1",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: realistic reports › AC-1: reads a coverage.py report whose absolute source lies under the repo root"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-2",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: realistic reports › AC-2: reads a pytest-cov report written from the repo root"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-3",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: realistic reports › AC-3: merges one source file across JaCoCo outer and inner classes by maximum hits"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-4",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: realistic reports › AC-4: reads a coverlet report with Windows paths into forward-slash repo-relative keys"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-5",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: XML surface variation › AC-5: returns the same map for every surface form and ignores markup inside comments and CDATA"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-6",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: XML surface variation › AC-6: decodes the &amp; entity in a class filename into a literal &"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-7",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: line records › AC-7: reads a line without hits as 0 hits and skips non-numeric number or hits"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-8",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: line records › AC-8: ignores method-only lines and reads a branch line's hits"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-9",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: path resolution › AC-9: relativizes an absolute filename under the root and keeps one outside it absolute, normalized"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-10",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: path resolution › AC-10: builds the key from the first source whose join lies under the repo root"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-11",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: path resolution › AC-11: uses the normalized filename as written when there are no sources or none lies under the root"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-12",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: path resolution › AC-12: never chooses a source join that climbs above the repo root"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-13",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCobertura: empty and malformed reports › AC-13: returns an empty map for empty, garbage and line-less reports, and keeps only valid classes"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-14",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/cobertura-check.test.ts::check(): empty Cobertura reports › AC-14: reports empty and line-less Cobertura files as COVERAGE_FILE_EMPTY with no diff coverage"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-15",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/cobertura.test.ts::parseCoverage: cobertura dispatch › AC-15: returns the same map as parseCobertura for every Cobertura fixture"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-16",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/cobertura-hostile.test.ts::parseCobertura: hostile input › AC-16: a run of several million < characters parses in linear time",
+          "packages/core/test/cobertura-hostile.test.ts::parseCobertura: hostile input › AC-16: an unterminated CDATA section of several megabytes parses in linear time",
+          "packages/core/test/cobertura-hostile.test.ts::parseCobertura: hostile input › AC-16: an unterminated comment of several megabytes parses in linear time",
+          "packages/core/test/cobertura-hostile.test.ts::parseCobertura: hostile input › AC-16: an unterminated quoted attribute of several megabytes parses in linear time",
+          "packages/core/test/cobertura-hostile.test.ts::parseCobertura: hostile input › AC-16: many thousands of nested open tags around a valid class parse in linear time"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      }
+    ],
+    "unmapped_anomalies": [],
+    "note": "an AC is delivered = a locked, once-red test titled AC-<n>:, in a file mapped to AC-<n>, passed on this head run. PHARN does not judge whether that test fully captures the AC's intent."
+  },
+  "completeness": {
+    "plan": "pharn/features/cobertura-parser/PLAN.md",
+    "repoDir": ".",
+    "declared": [
+      "packages/core/src/coverage/xml.ts",
+      "packages/core/src/coverage/cobertura.ts",
+      "packages/core/src/paths.ts",
+      "packages/core/test/paths.test.ts",
+      "packages/core/test/lcov.test.ts",
+      "fixtures/cobertura/coveragepy.xml",
+      "fixtures/cobertura/pytest-cov.xml",
+      "fixtures/cobertura/jacoco.xml",
+      "fixtures/cobertura/coverlet.xml",
+      "fixtures/cobertura/forms-base.xml",
+      "fixtures/cobertura/forms-variant.xml",
+      "fixtures/cobertura/forms-decorated.xml",
+      "fixtures/cobertura/entities.xml",
+      "fixtures/cobertura/invalid-lines.xml",
+      "fixtures/cobertura/methods-branches.xml",
+      "fixtures/cobertura/absolute-filenames.xml",
+      "fixtures/cobertura/multi-source.xml",
+      "fixtures/cobertura/no-sources.xml",
+      "fixtures/cobertura/sources-outside.xml",
+      "fixtures/cobertura/climb.xml",
+      "fixtures/cobertura/empty.xml",
+      "fixtures/cobertura/garbage.xml",
+      "fixtures/cobertura/no-lines.xml",
+      "fixtures/cobertura/partial-valid.xml",
+      "docs/LIMITS.md",
+      "docs/THREAT-MODEL.md",
+      "CHANGELOG.md",
+      "packages/action/dist/index.js"
+    ],
+    "skipped": [],
+    "missing": [],
+    "deletions": [],
+    "undeleted": [],
+    "complete": true,
+    "verdict": "complete"
+  },
+  "verifiers": {
+    "registered": 0,
+    "findings": []
+  },
+  "gate_reuse": {
+    "reused": [
+      {
+        "id": "build",
+        "stage": "regress",
+        "side": "head",
+        "seq": 1
+      }
+    ]
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "reconcile_detail": {
+    "state": "parsed",
+    "exit": 1,
+    "verdict": "ESCAPE",
+    "escapes": [
+      {
+        "file": ".pharn/cost/cobertura-parser/markers.jsonl",
+        "denied_by": "writes-scope (snapshot)",
+        "scope_set_by": "pharn/features/cobertura-parser/PLAN.md"
+      },
+      {
+        "file": ".pharn/cost/cobertura-parser/work.jsonl",
+        "denied_by": "writes-scope (snapshot)",
+        "scope_set_by": "pharn/features/cobertura-parser/PLAN.md"
+      },
+      {
+        "file": ".pharn/pharn-build/cobertura-parser/full.times.json",
+        "denied_by": "writes-scope (snapshot)",
+        "scope_set_by": "pharn/features/cobertura-parser/PLAN.md"
+      },
+      {
+        "file": ".pharn/pharn-build/cobertura-parser/full/0-test.out",
+        "denied_by": "writes-scope (snapshot)",
+        "scope_set_by": "pharn/features/cobertura-parser/PLAN.md"
+      },
+      {
+        "file": ".pharn/pharn-build/cobertura-parser/full/0-test.test-results.json",
+        "denied_by": "writes-scope (snapshot)",
+        "scope_set_by": "pharn/features/cobertura-parser/PLAN.md"
+      },
+      {
+        "file": ".pharn/pharn-build/cobertura-parser/full/1-lint.out",
+        "denied_by": "writes-scope (snapshot)",
+        "scope_set_by": "pharn/features/cobertura-parser/PLAN.md"
+      },
+      {
+        "file": ".pharn/pharn-build/cobertura-parser/full/stamp.json",
+        "denied_by": "writes-scope (snapshot)",
+        "scope_set_by": "pharn/features/cobertura-parser/PLAN.md"
+      },
+      {
+        "file": ".pharn/pharn-build/cobertura-parser/targeted.times.json",
+        "denied_by": "writes-scope (snapshot)",
+        "scope_set_by": "pharn/features/cobertura-parser/PLAN.md"
+      },
+      {
+        "file": ".pharn/pharn-build/cobertura-parser/targeted/0-test.out",
+        "denied_by": "writes-scope (snapshot)",
+        "scope_set_by": "pharn/features/cobertura-parser/PLAN.md"
+      },
+      {
+        "file": ".pharn/pharn-build/cobertura-parser/targeted/0-test.test-results.json",
+        "denied_by": "writes-scope (snapshot)",
+        "scope_set_by": "pharn/features/cobertura-parser/PLAN.md"
+      },
+      {
+        "file": ".pharn/pharn-build/cobertura-parser/targeted/stamp.json",
+        "denied_by": "writes-scope (snapshot)",
+        "scope_set_by": "pharn/features/cobertura-parser/PLAN.md"
+      },
+      {
+        "file": ".pharn/pharn-build/cobertura-parser/targets.json",
+        "denied_by": "writes-scope (snapshot)",
+        "scope_set_by": "pharn/features/cobertura-parser/PLAN.md"
+      },
+      {
+        "file": ".pharn/pharn-regress/base-gates/0-test.err",
+        "denied_by": "writes-scope (snapshot)",
+        "scope_set_by": "pharn/features/cobertura-parser/PLAN.md"
+      },
+      {
+        "file": ".pharn/pharn-regress/base-gates/0-test.out",
+        "denied_by": "writes-scope (snapshot)",
+        "scope_set_by": "pharn/features/cobertura-parser/PLAN.md"
+      },
+      {
+        "file": ".pharn/pharn-regress/base-gates/0-test.test-results.json",
+        "denied_by": "writes-scope (snapshot)",
+        "scope_set_by": "pharn/features/cobertura-parser/PLAN.md"
+      },
+      {
+        "file": ".pharn/pharn-regress/base-gates/1-build.err",
+        "denied_by": "writes-scope (snapshot)",
+        "scope_set_by": "pharn/features/cobertura-parser/PLAN.md"
+      },
+      {
+        "file": ".pharn/pharn-regress/base-gates/1-build.out",
+        "denied_by": "writes-scope (snapshot)",
+        "scope_set_by": "pharn/features/cobertura-parser/PLAN.md"
+      },
+      {
+        "file": ".pharn/pharn-regress/base-gates/stamp.json",
+        "denied_by": "writes-scope (snapshot)",
+        "scope_set_by": "pharn/features/cobertura-parser/PLAN.md"
+      },
+      {
+        "file": ".pharn/pharn-regress/head-install.json",
+        "denied_by": "writes-scope (snapshot)",
+        "scope_set_by": "pharn/features/cobertura-parser/PLAN.md"
+      },
+      {
+        "file": ".pharn/pharn-regress/head/0-test.err",
+        "denied_by": "writes-scope (snapshot)",
+        "scope_set_by": "pharn/features/cobertura-parser/PLAN.md"
+      }
+    ],
+    "escapes_total": 49,
+    "merged_count": 0
+  }
+}

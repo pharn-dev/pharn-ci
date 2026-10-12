@@ -1,0 +1,18 @@
+<coverage>
+  <sources>
+    <source>/opt/build/other</source>
+    <source>/home/runner/work/demo/demo/pkg</source>
+    <source>/home/runner/work/demo/demo/alt</source>
+  </sources>
+  <packages>
+    <package name="mod">
+      <classes>
+        <class name="a" filename="mod/a.py">
+          <lines>
+            <line number="1" hits="1"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>

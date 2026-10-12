@@ -19,6 +19,22 @@ export function normalizePath(path: string, repoRoot?: string): string {
   return p;
 }
 
+/**
+ * True when `path` is absolute under the rule `normalizePath` applies: after
+ * backslashes become forward slashes it starts with `/` or with a drive letter
+ * and `:/` (`C:\a`, `c:/a`). `C:a` and relative paths are not absolute.
+ */
+export function isAbsolutePath(path: string): boolean {
+  const first = path.charAt(0);
+  if (first === "/" || first === "\\") return true;
+  const separator = path.charAt(2);
+  return path.charAt(1) === ":" && (separator === "/" || separator === "\\") && isAsciiLetter(first);
+}
+
+function isAsciiLetter(char: string): boolean {
+  return (char >= "A" && char <= "Z") || (char >= "a" && char <= "z");
+}
+
 function toPosix(path: string): string {
   const slashed = path.replace(/\\/g, "/");
   const drive = /^[A-Za-z]:\//.exec(slashed)?.[0] ?? "";
