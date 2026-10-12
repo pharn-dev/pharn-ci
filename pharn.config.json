@@ -57,6 +57,9 @@
       }
     }
   },
+  "testResults": {
+    "test": "vitest-json"
+  },
   "seam": {
     "resolutionOrder": [
       "official-skill",
