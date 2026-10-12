@@ -80,6 +80,11 @@
           "description": "Files with at least one coverable added line, sorted by path.",
           "type": "array",
           "items": { "$ref": "#/$defs/diffCoverageFile" }
+        },
+        "excludedFiles": {
+          "description": "Changed files left out of diff coverage because an exclusion pattern (coverage.exclude, --exclude or the Action's exclude input) matches their path. Repo-relative paths with forward slashes, sorted by path. Present only when at least one changed file was excluded; such files count nowhere else in diffCoverage.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
         }
       }
     },

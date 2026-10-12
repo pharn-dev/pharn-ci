@@ -39,6 +39,17 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
     if (dc.files.length > maxRows) out.push(`| _…and ${dc.files.length - maxRows} more files_ | | | |`);
     out.push("");
   }
+  const excluded = dc?.excludedFiles ?? [];
+  if (excluded.length > 0) {
+    out.push(
+      `<details><summary>Excluded: ${excluded.length} ${excluded.length === 1 ? "file" : "files"}</summary>`,
+      "",
+    );
+    for (const path of excluded.slice(0, maxRows)) out.push(`- ${code(path)}`);
+    // report.json keeps the full list; the cap keeps the verdict inside GitHub's comment size limit.
+    if (excluded.length > maxRows) out.push(`- _…and ${excluded.length - maxRows} more files_`);
+    out.push("", "</details>", "");
+  }
 
   out.push("### Agent setup", "");
   const setup = report.agentSetup.files;

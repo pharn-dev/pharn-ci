@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "1",
+  "tool": {
+    "name": "pharn-ci",
+    "version": "0.1.0"
+  },
+  "verdict": "pass",
+  "diffCoverage": {
+    "percent": 80,
+    "threshold": 80,
+    "coveredLines": 4,
+    "coverableLines": 5,
+    "files": [
+      {
+        "path": "src/app.ts",
+        "percent": 100,
+        "coveredLines": 2,
+        "coverableLines": 2,
+        "uncoveredLines": []
+      },
+      {
+        "path": "src/util.ts",
+        "percent": 66.67,
+        "coveredLines": 2,
+        "coverableLines": 3,
+        "uncoveredLines": [
+          7
+        ]
+      }
+    ],
+    "excludedFiles": [
+      "schema.gen.ts",
+      "src/generated/api.ts"
+    ]
+  },
+  "agentSetup": {
+    "files": [
+      {
+        "path": "AGENTS.md",
+        "kind": "agents-md"
+      },
+      {
+        "path": "CLAUDE.md",
+        "kind": "claude-md"
+      }
+    ],
+    "summary": {
+      "byKind": {
+        "agents-md": 1,
+        "claude-md": 1
+      },
+      "tools": [
+        "claude-code",
+        "codex",
+        "copilot",
+        "cursor"
+      ]
+    }
+  },
+  "messages": []
+}

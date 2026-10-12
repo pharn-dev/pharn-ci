@@ -24504,6 +24504,194 @@ function getOctokit(token, options, ...additionalPlugins) {
   return new GitHubWithPlugins(getOctokitOptions(token, options));
 }
 
+// ../core/src/coverage/types.ts
+var COVERAGE_FORMATS = ["lcov", "cobertura"];
+
+// ../core/src/config.ts
+var ConfigError = class extends Error {
+  name = "ConfigError";
+};
+var DOUBLE_QUOTED = /^"(?:[^"\\]|\\.)*"$/;
+var SINGLE_QUOTED = /^'(?:[^']|'')*'$/;
+function parseConfig(text) {
+  return validateConfig(parseYamlSubset(text));
+}
+function parseYamlSubset(text) {
+  const root = {};
+  const stack = [{ indent: 0, map: root }];
+  let pendingKey = null;
+  let list = null;
+  const lines = text.replace(/^﻿/, "").split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const lineNo = i + 1;
+    const raw = stripComment(lines[i]).trimEnd();
+    if (raw.trim() === "") continue;
+    if (raw.trim() === "---" && i === 0) continue;
+    if (/^\s*\t/.test(raw)) throw new ConfigError(`line ${lineNo}: tabs are not allowed for indentation`);
+    const indent = raw.length - raw.trimStart().length;
+    const content = raw.trimStart();
+    if (content.startsWith("- ") || content === "-") {
+      if (pendingKey && pendingKey.key === "exclude" && pendingKey.map === root.coverage && indent >= pendingKey.indent) {
+        const items = [];
+        pendingKey.map.exclude = items;
+        list = { indent, items };
+        pendingKey = null;
+      } else if (list && indent !== list.indent) {
+        throw new ConfigError(`line ${lineNo}: unexpected indentation`);
+      } else if (!list) {
+        throw new ConfigError(`line ${lineNo}: lists are not supported in .pharn/ci.yml`);
+      }
+      list.items.push(parseListItem(content, lineNo));
+      continue;
+    }
+    list = null;
+    if (pendingKey) {
+      if (indent > pendingKey.indent) {
+        const child = {};
+        pendingKey.map[pendingKey.key] = child;
+        stack.push({ indent, map: child });
+      } else {
+        pendingKey.map[pendingKey.key] = null;
+      }
+      pendingKey = null;
+    }
+    while (stack.length > 1 && indent < stack[stack.length - 1].indent) stack.pop();
+    const top = stack[stack.length - 1];
+    if (indent !== top.indent) throw new ConfigError(`line ${lineNo}: unexpected indentation`);
+    const match = /^([A-Za-z0-9_-]+|"[^"]*"|'[^']*')\s*:(?:\s+(.*))?$/.exec(content);
+    if (!match) throw new ConfigError(`line ${lineNo}: expected "key: value"`);
+    const key = unquoteScalarKey(match[1]);
+    if (Object.hasOwn(top.map, key)) throw new ConfigError(`line ${lineNo}: duplicate key "${key}"`);
+    const value = match[2];
+    if (value === void 0 || value === "") {
+      pendingKey = { map: top.map, key, indent, line: lineNo };
+    } else {
+      top.map[key] = parseScalar(value, lineNo);
+    }
+  }
+  if (pendingKey) pendingKey.map[pendingKey.key] = null;
+  return root;
+}
+function stripComment(line) {
+  let quote = null;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (quote) {
+      if (ch === quote) quote = null;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === "#" && (i === 0 || /\s/.test(line[i - 1]))) {
+      return line.slice(0, i);
+    }
+  }
+  return line;
+}
+function unquoteScalarKey(key) {
+  return /^["']/.test(key) ? key.slice(1, -1) : key;
+}
+function parseListItem(content, lineNo) {
+  const item = content.slice(1).trim();
+  if (item === "") return null;
+  if (item === "-" || item.startsWith("- ")) throw new ConfigError(`line ${lineNo}: nested lists are not supported`);
+  const quoted = DOUBLE_QUOTED.test(item) || SINGLE_QUOTED.test(item);
+  if (!quoted && (item.includes(": ") || item.endsWith(":"))) {
+    throw new ConfigError(`line ${lineNo}: mappings are not supported in a list in .pharn/ci.yml`);
+  }
+  return parseScalar(item, lineNo);
+}
+function parseScalar(value, lineNo) {
+  const v = value.trim();
+  if (DOUBLE_QUOTED.test(v)) {
+    try {
+      return JSON.parse(v);
+    } catch {
+      throw new ConfigError(`line ${lineNo}: invalid double-quoted string`);
+    }
+  }
+  if (SINGLE_QUOTED.test(v)) return v.slice(1, -1).replace(/''/g, "'");
+  if (/^[[{|>&*!%@`]/.test(v)) throw new ConfigError(`line ${lineNo}: unsupported YAML syntax "${v}"`);
+  if (v === "true") return true;
+  if (v === "false") return false;
+  if (v === "null" || v === "~") return null;
+  if (/^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$/.test(v)) return Number(v);
+  return v;
+}
+function validateConfig(doc) {
+  const config = {};
+  for (const key of Object.keys(doc)) {
+    if (key !== "coverage") throw new ConfigError(`unknown top-level key "${key}"`);
+  }
+  const cov = doc.coverage;
+  if (cov === void 0 || cov === null) return config;
+  if (typeof cov !== "object" || Array.isArray(cov)) throw new ConfigError(`"coverage" must be a mapping`);
+  const coverage = {};
+  for (const [key, value] of Object.entries(cov)) {
+    if (value === null) continue;
+    switch (key) {
+      case "file":
+        if (typeof value !== "string" || value === "")
+          throw new ConfigError(`"coverage.file" must be a non-empty string`);
+        coverage.file = value;
+        break;
+      case "format":
+        if (typeof value !== "string" || !isCoverageFormat(value)) {
+          throw new ConfigError(`"coverage.format" must be one of: ${COVERAGE_FORMATS.join(", ")}`);
+        }
+        coverage.format = value;
+        break;
+      case "threshold":
+        coverage.threshold = parseThreshold(value, '"coverage.threshold"');
+        break;
+      case "exclude": {
+        if (!Array.isArray(value)) throw new ConfigError(`"coverage.exclude" must be a list of glob patterns`);
+        const patterns = [];
+        for (const item of value) {
+          if (typeof item !== "string" || item === "") {
+            throw new ConfigError(`"coverage.exclude" items must be non-empty strings`);
+          }
+          patterns.push(parseExcludePattern(item, '"coverage.exclude" pattern'));
+        }
+        coverage.exclude = patterns;
+        break;
+      }
+      default:
+        throw new ConfigError(`unknown key "coverage.${key}"`);
+    }
+  }
+  config.coverage = coverage;
+  return config;
+}
+function isCoverageFormat(value) {
+  return COVERAGE_FORMATS.includes(value);
+}
+function parseExcludePattern(pattern, label = "exclude pattern") {
+  let start = 0;
+  const trimmed = pattern.trim();
+  while (trimmed.startsWith("./", start)) start += 2;
+  const p = trimmed.slice(start);
+  const reject = (reason) => {
+    throw new ConfigError(`${label} "${pattern}" ${reason}`);
+  };
+  if (p === "") reject("is empty");
+  if (p.startsWith("/")) reject('must not start with "/" (patterns are relative to the repository root)');
+  if (p.startsWith("!")) reject('must not start with "!" (negation is not supported)');
+  if (p.endsWith("/")) reject('must not end with "/" (use "dir/**" for everything under a directory)');
+  if (p.includes("//")) reject('must not contain "//"');
+  if (p.split("/").includes("..")) reject('must not contain a ".." segment');
+  if (p.includes("\\")) reject('must not contain "\\" (use "/" as the separator)');
+  for (const ch of ["{", "}", "[", "]"]) {
+    if (p.includes(ch)) reject(`must not contain "${ch}" (only *, ** and ? are supported)`);
+  }
+  return p;
+}
+function parseThreshold(value, label = "threshold") {
+  const n = typeof value === "string" && value.trim() !== "" ? Number(value) : value;
+  if (typeof n !== "number" || !Number.isFinite(n) || n < 0 || n > 100) {
+    throw new ConfigError(`${label} must be a number between 0 and 100`);
+  }
+  return n;
+}
+
 // ../core/src/paths.ts
 function normalizePath(path, repoRoot) {
   let p = toPosix(path.trim());
@@ -25019,12 +25207,17 @@ function unquote(value) {
 }
 
 // ../core/src/diffCoverage.ts
-function computeDiffCoverage(diff, coverage, threshold) {
+function computeDiffCoverage(diff, coverage, threshold, isExcluded = () => false) {
   const files = [];
+  const excluded = /* @__PURE__ */ new Set();
   let covered = 0;
   let coverable = 0;
   for (const file of diff) {
     if (file.status === "deleted") continue;
+    if (isExcluded(file.path)) {
+      excluded.add(file.path);
+      continue;
+    }
     const hits = coverage.get(file.path);
     if (!hits) continue;
     let fileCovered = 0;
@@ -25048,7 +25241,8 @@ function computeDiffCoverage(diff, coverage, threshold) {
       uncoveredLines: uncovered.sort((a, b) => a - b)
     });
   }
-  files.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  const byPath = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+  files.sort((a, b) => byPath(a.path, b.path));
   const percent = percentOf(covered, coverable);
   return {
     percent,
@@ -25056,6 +25250,7 @@ function computeDiffCoverage(diff, coverage, threshold) {
     coveredLines: covered,
     coverableLines: coverable,
     files,
+    ...excluded.size > 0 ? { excludedFiles: [...excluded].sort(byPath) } : {},
     // Compare the reported (rounded) percent so the verdict always agrees with what users see.
     meetsThreshold: threshold === null || percent === null || percent >= threshold
   };
@@ -25064,6 +25259,83 @@ function percentOf(covered, total) {
   if (total === 0) return null;
   const rounded = Math.round(covered / total * 1e4) / 100;
   return Math.min(Math.max(rounded, covered > 0 ? 0.01 : 0), covered < total ? 99.99 : 100);
+}
+
+// ../core/src/glob.ts
+function compileGlob(pattern) {
+  const segments = pattern.split("/").map(compileSegment);
+  const end = segments.length;
+  let active = new Uint8Array(end + 1);
+  let next = new Uint8Array(end + 1);
+  const closure = (set) => {
+    for (let i = 0; i < end; i++) {
+      if (set[i] === 1 && segments[i].globstar) set[i + 1] = 1;
+    }
+  };
+  return (path) => {
+    active.fill(0);
+    active[0] = 1;
+    closure(active);
+    for (const text of path.split("/")) {
+      const cps = Array.from(text);
+      next.fill(0);
+      for (let i = 0; i < end; i++) {
+        if (active[i] !== 1) continue;
+        const segment = segments[i];
+        if (segment.globstar) next[i] = 1;
+        else if (segment.matches(cps, text)) next[i + 1] = 1;
+      }
+      closure(next);
+      const swap = active;
+      active = next;
+      next = swap;
+    }
+    return active[end] === 1;
+  };
+}
+function compileSegment(segment) {
+  if (segment === "**") return { globstar: true, matches: () => false };
+  const tokens = [];
+  for (const cp of segment) {
+    if (cp === "*") {
+      if (tokens[tokens.length - 1]?.kind !== "star") tokens.push({ kind: "star" });
+    } else if (cp === "?") {
+      tokens.push({ kind: "any" });
+    } else {
+      tokens.push({ kind: "lit", cp });
+    }
+  }
+  if (tokens.every((t) => t.kind === "lit")) return { globstar: false, matches: (_cps, text) => text === segment };
+  const n = tokens.length;
+  let active = new Uint8Array(n + 1);
+  let next = new Uint8Array(n + 1);
+  const closure = (set) => {
+    for (let j = 0; j < n; j++) {
+      if (set[j] === 1 && tokens[j].kind === "star") set[j + 1] = 1;
+    }
+  };
+  return {
+    globstar: false,
+    matches: (cps) => {
+      active.fill(0);
+      active[0] = 1;
+      closure(active);
+      for (const cp of cps) {
+        next.fill(0);
+        for (let j = 0; j < n; j++) {
+          if (active[j] !== 1) continue;
+          const token = tokens[j];
+          if (token.kind === "star") next[j] = 1;
+          else if (token.kind === "any" || token.cp === cp) next[j + 1] = 1;
+        }
+        closure(next);
+        const swap = active;
+        active = next;
+        next = swap;
+      }
+      return active[n] === 1;
+    }
+  };
 }
 
 // ../core/src/setup/summary.ts
@@ -25157,7 +25429,8 @@ function buildReport(input) {
       threshold: dc.threshold,
       coveredLines: dc.coveredLines,
       coverableLines: dc.coverableLines,
-      files: dc.files
+      files: dc.files,
+      ...dc.excludedFiles !== void 0 && dc.excludedFiles.length > 0 ? { excludedFiles: dc.excludedFiles } : {}
     },
     agentSetup: { files: input.agentSetup.files, summary: summarizeAgentSetup(input.agentSetup.files) },
     messages
@@ -25243,6 +25516,8 @@ function scanAgentSetup(paths) {
 
 // ../core/src/check.ts
 function check(input) {
+  const matchers = [...new Set((input.exclude ?? []).map((p) => parseExcludePattern(p)))].map(compileGlob);
+  const isExcluded = (path) => matchers.some((matches) => matches(path));
   const agentSetup = scanAgentSetup(input.repoFiles);
   const base = { version: input.version, threshold: input.threshold, agentSetup };
   if ("missingFile" in input.coverage) {
@@ -25272,138 +25547,7 @@ function check(input) {
     });
   }
   const diff = parseUnifiedDiff(input.diff.text);
-  return buildReport({ ...base, diffCoverage: computeDiffCoverage(diff, coverage, input.threshold) });
-}
-
-// ../core/src/coverage/types.ts
-var COVERAGE_FORMATS = ["lcov", "cobertura"];
-
-// ../core/src/config.ts
-var ConfigError = class extends Error {
-  name = "ConfigError";
-};
-function parseConfig(text) {
-  return validateConfig(parseYamlSubset(text));
-}
-function parseYamlSubset(text) {
-  const root = {};
-  const stack = [{ indent: 0, map: root }];
-  let pendingKey = null;
-  const lines = text.replace(/^﻿/, "").split(/\r?\n/);
-  for (let i = 0; i < lines.length; i++) {
-    const lineNo = i + 1;
-    const raw = stripComment(lines[i]).trimEnd();
-    if (raw.trim() === "") continue;
-    if (raw.trim() === "---" && i === 0) continue;
-    if (/^\s*\t/.test(raw)) throw new ConfigError(`line ${lineNo}: tabs are not allowed for indentation`);
-    const indent = raw.length - raw.trimStart().length;
-    const content = raw.trimStart();
-    if (content.startsWith("- ") || content === "-") {
-      throw new ConfigError(`line ${lineNo}: lists are not supported in .pharn/ci.yml`);
-    }
-    if (pendingKey) {
-      if (indent > pendingKey.indent) {
-        const child = {};
-        pendingKey.map[pendingKey.key] = child;
-        stack.push({ indent, map: child });
-      } else {
-        pendingKey.map[pendingKey.key] = null;
-      }
-      pendingKey = null;
-    }
-    while (stack.length > 1 && indent < stack[stack.length - 1].indent) stack.pop();
-    const top = stack[stack.length - 1];
-    if (indent !== top.indent) throw new ConfigError(`line ${lineNo}: unexpected indentation`);
-    const match = /^([A-Za-z0-9_-]+|"[^"]*"|'[^']*')\s*:(?:\s+(.*))?$/.exec(content);
-    if (!match) throw new ConfigError(`line ${lineNo}: expected "key: value"`);
-    const key = unquoteScalarKey(match[1]);
-    if (Object.hasOwn(top.map, key)) throw new ConfigError(`line ${lineNo}: duplicate key "${key}"`);
-    const value = match[2];
-    if (value === void 0 || value === "") {
-      pendingKey = { map: top.map, key, indent, line: lineNo };
-    } else {
-      top.map[key] = parseScalar(value, lineNo);
-    }
-  }
-  if (pendingKey) pendingKey.map[pendingKey.key] = null;
-  return root;
-}
-function stripComment(line) {
-  let quote = null;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (quote) {
-      if (ch === quote) quote = null;
-    } else if (ch === '"' || ch === "'") {
-      quote = ch;
-    } else if (ch === "#" && (i === 0 || /\s/.test(line[i - 1]))) {
-      return line.slice(0, i);
-    }
-  }
-  return line;
-}
-function unquoteScalarKey(key) {
-  return /^["']/.test(key) ? key.slice(1, -1) : key;
-}
-function parseScalar(value, lineNo) {
-  const v = value.trim();
-  if (/^"(?:[^"\\]|\\.)*"$/.test(v)) {
-    try {
-      return JSON.parse(v);
-    } catch {
-      throw new ConfigError(`line ${lineNo}: invalid double-quoted string`);
-    }
-  }
-  if (/^'(?:[^']|'')*'$/.test(v)) return v.slice(1, -1).replace(/''/g, "'");
-  if (/^[[{|>&*!%@`]/.test(v)) throw new ConfigError(`line ${lineNo}: unsupported YAML syntax "${v}"`);
-  if (v === "true") return true;
-  if (v === "false") return false;
-  if (v === "null" || v === "~") return null;
-  if (/^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$/.test(v)) return Number(v);
-  return v;
-}
-function validateConfig(doc) {
-  const config = {};
-  for (const key of Object.keys(doc)) {
-    if (key !== "coverage") throw new ConfigError(`unknown top-level key "${key}"`);
-  }
-  const cov = doc.coverage;
-  if (cov === void 0 || cov === null) return config;
-  if (typeof cov !== "object") throw new ConfigError(`"coverage" must be a mapping`);
-  const coverage = {};
-  for (const [key, value] of Object.entries(cov)) {
-    if (value === null) continue;
-    switch (key) {
-      case "file":
-        if (typeof value !== "string" || value === "")
-          throw new ConfigError(`"coverage.file" must be a non-empty string`);
-        coverage.file = value;
-        break;
-      case "format":
-        if (typeof value !== "string" || !isCoverageFormat(value)) {
-          throw new ConfigError(`"coverage.format" must be one of: ${COVERAGE_FORMATS.join(", ")}`);
-        }
-        coverage.format = value;
-        break;
-      case "threshold":
-        coverage.threshold = parseThreshold(value, '"coverage.threshold"');
-        break;
-      default:
-        throw new ConfigError(`unknown key "coverage.${key}"`);
-    }
-  }
-  config.coverage = coverage;
-  return config;
-}
-function isCoverageFormat(value) {
-  return COVERAGE_FORMATS.includes(value);
-}
-function parseThreshold(value, label = "threshold") {
-  const n = typeof value === "string" && value.trim() !== "" ? Number(value) : value;
-  if (typeof n !== "number" || !Number.isFinite(n) || n < 0 || n > 100) {
-    throw new ConfigError(`${label} must be a number between 0 and 100`);
-  }
-  return n;
+  return buildReport({ ...base, diffCoverage: computeDiffCoverage(diff, coverage, input.threshold, isExcluded) });
 }
 
 // ../core/src/render/markdown.ts
@@ -25434,6 +25578,16 @@ function renderMarkdown(report, options = {}) {
     }
     if (dc.files.length > maxRows) out.push(`| _\u2026and ${dc.files.length - maxRows} more files_ | | | |`);
     out.push("");
+  }
+  const excluded = dc?.excludedFiles ?? [];
+  if (excluded.length > 0) {
+    out.push(
+      `<details><summary>Excluded: ${excluded.length} ${excluded.length === 1 ? "file" : "files"}</summary>`,
+      ""
+    );
+    for (const path of excluded.slice(0, maxRows)) out.push(`- ${code(path)}`);
+    if (excluded.length > maxRows) out.push(`- _\u2026and ${excluded.length - maxRows} more files_`);
+    out.push("", "</details>", "");
   }
   out.push("### Agent setup", "");
   const setup = report.agentSetup.files;
@@ -25514,6 +25668,7 @@ async function runUnsafe(deps) {
   if (!coverageFile) throw new Error("no coverage file: set the coverage-file input or coverage.file in .pharn/ci.yml");
   const failOnThreshold = parseBool(input("fail-on-threshold"), true, "fail-on-threshold");
   const comment = parseBool(input("comment"), true, "comment");
+  const excludeInput = splitPatternList(input("exclude")).map((p) => parseExcludePattern(p, "exclude"));
   const coveragePath = deps.resolvePath(deps.workspace, coverageFile);
   const coverageText = await deps.readFile(coveragePath);
   const pr = deps.context.payload.pull_request;
@@ -25527,7 +25682,8 @@ async function runUnsafe(deps) {
     diff: await getDiff(input("base-ref"), deps),
     repoRoot: deps.workspace,
     threshold,
-    repoFiles: lsFiles.split("\0").filter((p) => p !== "")
+    repoFiles: lsFiles.split("\0").filter((p) => p !== ""),
+    exclude: [...config.coverage?.exclude ?? [], ...excludeInput]
   };
   const report = check(checkInput);
   const markdown = renderMarkdown(report);
@@ -25634,6 +25790,9 @@ async function loadConfig(path, deps) {
   } catch (err) {
     throw new Error(`${path}: ${err instanceof Error ? err.message : String(err)}`);
   }
+}
+function splitPatternList(value) {
+  return value.split(",").flatMap((part) => part.split("\n")).map((entry) => entry.trim()).filter((entry) => entry !== "");
 }
 function parseBool(value, fallback, name) {
   if (value === "") return fallback;

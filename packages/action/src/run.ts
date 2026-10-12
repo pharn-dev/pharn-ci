@@ -4,6 +4,7 @@ import {
   isCoverageFormat,
   type PharnConfig,
   parseConfig,
+  parseExcludePattern,
   parseThreshold,
   type Report,
   renderMarkdown,
@@ -85,6 +86,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   if (!coverageFile) throw new Error("no coverage file: set the coverage-file input or coverage.file in .pharn/ci.yml");
   const failOnThreshold = parseBool(input("fail-on-threshold"), true, "fail-on-threshold");
   const comment = parseBool(input("comment"), true, "comment");
+  const excludeInput = splitPatternList(input("exclude")).map((p) => parseExcludePattern(p, "exclude"));
 
   const coveragePath = deps.resolvePath(deps.workspace, coverageFile);
   const coverageText = await deps.readFile(coveragePath);
@@ -103,6 +105,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     repoRoot: deps.workspace,
     threshold,
     repoFiles: lsFiles.split("\0").filter((p) => p !== ""),
+    exclude: [...(config.coverage?.exclude ?? []), ...excludeInput],
   };
   const report = check(checkInput);
   const markdown = renderMarkdown(report);
@@ -241,6 +244,15 @@ async function loadConfig(path: string, deps: ActionDeps): Promise<PharnConfig> 
   } catch (err) {
     throw new Error(`${path}: ${err instanceof Error ? err.message : String(err)}`);
   }
+}
+
+/** Entries of a list input separated by commas or newlines; surrounding spaces and blank entries are dropped. */
+function splitPatternList(value: string): string[] {
+  return value
+    .split(",")
+    .flatMap((part) => part.split("\n"))
+    .map((entry) => entry.trim())
+    .filter((entry) => entry !== "");
 }
 
 function parseBool(value: string, fallback: boolean, name: string): boolean {

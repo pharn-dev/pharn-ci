@@ -1,0 +1,6 @@
+# Exclusions for the golden-exclusions fixture.
+coverage:
+  threshold: 80
+  exclude:
+    - src/generated/**
+    - "*.gen.ts"
