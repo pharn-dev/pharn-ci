@@ -70,32 +70,33 @@ export function buildReport(input: BuildReportInput): Report {
 
   if (dc === null) {
     const missing = input.missing ?? { reason: "diff-unavailable", detail: "no diff coverage data" };
+    // Diff coverage could not be computed (no coverage file, an empty or unrecognized one, or no diff). With a
+    // threshold the user asked for a gate, and a gate that cannot measure must fail closed, so this is an error
+    // (threshold 0 included). Without a threshold pharn-ci only reports, so it stays a warning.
+    const level: MessageLevel = input.threshold === null ? "warn" : "error";
     if (missing.reason === "coverage-file-missing") {
-      // Without a threshold the coverage file is optional, so it is only a warning.
       messages.push({
-        level: input.threshold === null ? "warn" : "error",
+        level,
         code: "COVERAGE_FILE_MISSING",
         text: `Coverage file not found: ${missing.coverageFile}`,
       });
     } else if (missing.reason === "coverage-file-empty") {
-      // Same severity as a missing file: either way there is nothing to measure against.
       const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${missing.coverageFile}`;
       messages.push({
-        level: input.threshold === null ? "warn" : "error",
+        level,
         code: "COVERAGE_FILE_EMPTY",
         text: `${where} contains no coverage records; check its format and that the tests wrote it.`,
       });
     } else if (missing.reason === "coverage-format-unsupported") {
-      // Same severity as an empty file: either way there is nothing to measure against.
       const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${missing.coverageFile}`;
       messages.push({
-        level: input.threshold === null ? "warn" : "error",
+        level,
         code: "COVERAGE_FORMAT_UNSUPPORTED",
         text: `${where} is not in a recognized coverage format; pharn-ci reads lcov and Cobertura XML.`,
       });
     } else {
       messages.push({
-        level: "warn",
+        level,
         code: "DIFF_UNAVAILABLE",
         text: `Diff coverage was not computed: ${missing.detail}`,
       });

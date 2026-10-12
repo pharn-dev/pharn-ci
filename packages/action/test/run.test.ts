@@ -172,7 +172,7 @@ describe("action run", () => {
   it("refuses to measure a pull_request_target run that checked out the base branch", async () => {
     const h = harness({ inputs: { threshold: "80" }, context: { ...PR_CONTEXT, eventName: "pull_request_target" } });
     const report = await run(h.deps);
-    expect(report?.verdict).toBe("warn");
+    expect(report?.verdict).toBe("fail");
     expect(report?.messages[0]?.code).toBe("DIFF_UNAVAILABLE");
     expect(report?.messages[0]?.text).toContain("check out the PR head");
     expect(h.gitCalls.filter((a) => a[0] === "diff")).toEqual([]);

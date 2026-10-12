@@ -80,15 +80,16 @@ describe("buildReport", () => {
     expectValidReport(report);
   });
 
-  it("warns when the diff is unavailable", () => {
+  it("fails when the diff is unavailable and a threshold is set", () => {
     const report = buildReport({
       ...base,
       threshold: 80,
       diffCoverage: null,
       missing: { reason: "diff-unavailable", detail: "no base" },
     });
-    expect(report.verdict).toBe("warn");
+    expect(report.verdict).toBe("fail");
     expect(report.messages[0]?.code).toBe("DIFF_UNAVAILABLE");
+    expect(report.messages[0]?.level).toBe("error");
     expectValidReport(report);
   });
 

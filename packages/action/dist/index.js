@@ -25451,29 +25451,30 @@ function buildReport(input) {
   const dc = input.diffCoverage;
   if (dc === null) {
     const missing = input.missing ?? { reason: "diff-unavailable", detail: "no diff coverage data" };
+    const level = input.threshold === null ? "warn" : "error";
     if (missing.reason === "coverage-file-missing") {
       messages.push({
-        level: input.threshold === null ? "warn" : "error",
+        level,
         code: "COVERAGE_FILE_MISSING",
         text: `Coverage file not found: ${missing.coverageFile}`
       });
     } else if (missing.reason === "coverage-file-empty") {
       const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${missing.coverageFile}`;
       messages.push({
-        level: input.threshold === null ? "warn" : "error",
+        level,
         code: "COVERAGE_FILE_EMPTY",
         text: `${where} contains no coverage records; check its format and that the tests wrote it.`
       });
     } else if (missing.reason === "coverage-format-unsupported") {
       const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${missing.coverageFile}`;
       messages.push({
-        level: input.threshold === null ? "warn" : "error",
+        level,
         code: "COVERAGE_FORMAT_UNSUPPORTED",
         text: `${where} is not in a recognized coverage format; pharn-ci reads lcov and Cobertura XML.`
       });
     } else {
       messages.push({
-        level: "warn",
+        level,
         code: "DIFF_UNAVAILABLE",
         text: `Diff coverage was not computed: ${missing.detail}`
       });
