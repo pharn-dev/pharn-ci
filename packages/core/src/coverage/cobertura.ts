@@ -1,4 +1,4 @@
-import { isAbsolutePath, normalizePath } from "../paths.js";
+import { foldForRoot, isAbsolutePath, normalizePath, normalizeRoot, startsWithPath } from "../paths.js";
 import type { CoverageMap, LineHits, ParseCoverageOptions } from "./types.js";
 import { scanXml } from "./xml.js";
 
@@ -28,6 +28,11 @@ import { scanXml } from "./xml.js";
  * root) wins. With no qualifying source the filename is used as written,
  * normalized. Core cannot check which joined file exists, so with several
  * qualifying sources the first one wins even when a later one was the real one.
+ * A relative filename that starts with `..` is joined only to the first
+ * `MAX_CLIMBING_JOIN_SOURCES` distinct sources; every other filename is joined
+ * to all of them, through a list built once that skips sources whose join can
+ * never qualify, so resolution stays linear on a report with thousands of
+ * sources and filenames.
  *
  * The XML is read with a linear, non-recursive scanner (`xml.ts`); malformed or
  * hostile input yields whatever was readable before the damage, never a throw.
@@ -93,10 +98,10 @@ export function parseCobertura(text: string, options: ParseCoverageOptions = {})
     }
   });
 
-  const uniqueSources = [...new Set(sources)];
+  const resolve = makeResolver([...new Set(sources)], options.repoRoot);
   const map: CoverageMap = new Map();
   for (const [filename, lines] of perFile) {
-    const key = resolvePath(filename, uniqueSources, options.repoRoot);
+    const key = resolve(filename);
     let target = map.get(key);
     if (!target) {
       target = new Map();
@@ -132,8 +137,84 @@ function addLine(
   lines.set(lineNo, Math.max(lines.get(lineNo) ?? 0, count));
 }
 
+/**
+ * How many distinct sources a relative filename that starts with `..` (after
+ * normalization) is joined to. Such a filename can step out of any source, so
+ * no source can be ruled out up front; the cap keeps a crafted report with
+ * thousands of sources and filenames linear (F-24).
+ */
+const MAX_CLIMBING_JOIN_SOURCES = 16;
+
+function makeResolver(sources: readonly string[], repoRoot: string | undefined): (filename: string) => string {
+  const direct = directSources(sources, repoRoot);
+  const climbing = sources.slice(0, MAX_CLIMBING_JOIN_SOURCES);
+  return (filename) => {
+    if (isAbsolutePath(filename)) return normalizePath(filename, repoRoot);
+    return resolvePath(filename, climbs(normalizePath(filename)) ? climbing : direct, repoRoot);
+  };
+}
+
+/**
+ * The sources, in document order, that `resolvePath` must try for a relative
+ * filename whose normalized form does not start with `..` to get the result it
+ * would get from all of them. Such a filename only appends segments to the
+ * normalized source, so the result is decided by the source alone, and this
+ * list leaves out:
+ * - a source whose join can never qualify: a relative source that climbs; an
+ *   absolute one with no usable root, one that is not under the root and at
+ *   least as long as it, one under the root whose remainder starts like a drive
+ *   path (`X:/`, so every key would be absolute), and a shorter one whose next
+ *   segment boundary is not one of the root's;
+ * - a source whose join gives the same result as an earlier kept one for every
+ *   such filename (same remainder under the root, the root itself, or the same
+ *   folded ancestor of the same length);
+ * - every source after the first one that qualifies for every such filename (a
+ *   non-empty relative source that does not climb, or one under the root with a
+ *   plain remainder).
+ * What is left is bounded by the depth of the root, not by the report.
+ */
+function directSources(sources: readonly string[], repoRoot: string | undefined): string[] {
+  const root = normalizeRoot(repoRoot);
+  const foldedRoot = foldForRoot(root, root);
+  const kept: string[] = [];
+  const seen = new Set<string>();
+  const keep = (source: string, key: string) => {
+    if (seen.has(key)) return;
+    seen.add(key);
+    kept.push(source);
+  };
+  for (const source of sources) {
+    const path = normalizePath(source);
+    if (!isAbsolutePath(source)) {
+      if (climbs(path)) continue;
+      if (path !== "") {
+        kept.push(source);
+        break;
+      }
+      keep(source, "relative:");
+      continue;
+    }
+    if (root === "") continue;
+    if (startsWithPath(path, root)) {
+      const rest = path.slice(root.length + 1);
+      if (rest !== "" && !isAbsolutePath(`${rest}/`)) {
+        kept.push(source);
+        break;
+      }
+      if (rest.length < 3) keep(source, `under:${rest}`);
+    } else if (path.length === root.length) {
+      if (startsWithPath(`${path}/`, root)) keep(source, "root:");
+    } else if (path.length < root.length) {
+      const folded = foldForRoot(path, root);
+      if (foldedRoot.startsWith(path.endsWith("/") ? folded : `${folded}/`)) {
+        keep(source, `ancestor:${path.length}:${folded}`);
+      }
+    }
+  }
+  return kept;
+}
+
 function resolvePath(filename: string, sources: readonly string[], repoRoot: string | undefined): string {
-  if (isAbsolutePath(filename)) return normalizePath(filename, repoRoot);
   for (const source of sources) {
     const joined = `${source}/${filename}`;
     if (isAbsolutePath(source)) {

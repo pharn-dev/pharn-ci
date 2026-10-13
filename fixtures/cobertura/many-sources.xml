@@ -1,0 +1,37 @@
+<coverage>
+  <sources>
+    <source>/opt/build/s1</source>
+    <source>/opt/build/s2</source>
+    <source>/opt/build/s3</source>
+    <source>/opt/build/s4</source>
+    <source>/opt/build/s5</source>
+    <source>/opt/build/s6</source>
+    <source>/opt/build/s7</source>
+    <source>/opt/build/s8</source>
+    <source>/opt/build/s9</source>
+    <source>/opt/build/s10</source>
+    <source>/opt/build/s11</source>
+    <source>/opt/build/s12</source>
+    <source>/opt/build/s13</source>
+    <source>/opt/build/s14</source>
+    <source>/opt/build/s15</source>
+    <source>/opt/build/s16</source>
+    <source>/home/runner/work/demo/demo/src</source>
+  </sources>
+  <packages>
+    <package name="p">
+      <classes>
+        <class name="a" filename="pkg/a.py">
+          <lines>
+            <line number="1" hits="1"/>
+          </lines>
+        </class>
+        <class name="b" filename="../lib/b.py">
+          <lines>
+            <line number="2" hits="1"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>

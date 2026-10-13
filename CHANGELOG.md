@@ -20,6 +20,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Security
 
+- Cobertura path resolution no longer slows down quadratically on a crafted report with thousands
+  of `<source>` entries and thousands of filenames (F-24). Results are unchanged, except that a
+  relative `filename` starting with `..` is now joined to at most the first 16 distinct sources.
+
 ## [0.1.0] - YYYY-MM-DD
 
 The maintainer replaces `YYYY-MM-DD` with the release date, and deletes this line, when cutting

@@ -39,7 +39,9 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   relativized. In a monorepo, a coverage file whose paths are relative to a package directory
   matches nothing. The same holds for Cobertura `filename` values: they are joined to the
   report's `<source>` entries, and a report made inside a package directory yields paths
-  relative to that package, which match nothing.
+  relative to that package, which match nothing. A relative `filename` that starts with `..`
+  (after normalization) is joined only to the first 16 distinct `<source>` entries; past them it
+  is used as written. Other filenames are joined to every source.
 - **Percentages are rounded to two decimals** and compared after rounding, so the verdict agrees
   with the number shown. 100% and 0% are reserved for exactly all and exactly none covered.
 
