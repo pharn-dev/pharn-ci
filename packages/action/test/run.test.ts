@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { createGitHubApi } from "../src/api.js";
 import {
   type ActionContext,
   type ActionDeps,
@@ -40,6 +41,11 @@ interface Options {
   commentError?: Error;
   compareError?: Error;
   existingComments?: IssueComment[];
+  /** Comments a concurrent run posts while this run creates its own (a list-then-create race). */
+  racingComments?: IssueComment[];
+  deleteError?: Error;
+  /** Error for listing comments again after creating one. */
+  relistError?: Error;
   /** Login the token comments as (default: the GITHUB_TOKEN bot). */
   viewer?: string;
   /** Output of `git rev-parse HEAD` (default: not the PR head). */
@@ -75,6 +81,7 @@ function harness(opts: Options = {}): Harness {
   const viewer = opts.viewer ?? BOT.login;
   const lsFiles = opts.lsFiles ?? fixture("golden/files.txt").trim().split("\n");
   let nextId = 100;
+  let lists = 0;
 
   h.deps = {
     getInput: (name) => inputs[name] ?? "",
@@ -91,16 +98,23 @@ function harness(opts: Options = {}): Harness {
       async listComments(n) {
         h.apiCalls.push(`list ${n}`);
         if (opts.commentError) throw opts.commentError;
-        return h.comments;
+        if (lists++ > 0 && opts.relistError) throw opts.relistError;
+        return h.comments.map((c) => ({ ...c }));
       },
       async createComment(n, body) {
         h.apiCalls.push(`create ${n}`);
-        h.comments.push({ id: nextId++, body, user: { login: viewer } });
+        h.comments.push({ id: nextId++, body, user: { login: viewer } }, ...(opts.racingComments ?? []));
+        h.comments.sort((a, b) => a.id - b.id);
       },
       async updateComment(id, body) {
         h.apiCalls.push(`update ${id}`);
         const c = h.comments.find((x) => x.id === id);
         if (c) c.body = body;
+      },
+      async deleteComment(id) {
+        h.apiCalls.push(`delete ${id}`);
+        if (opts.deleteError) throw opts.deleteError;
+        h.comments = h.comments.filter((x) => x.id !== id);
       },
     },
     async git(args) {
@@ -194,6 +208,26 @@ describe("action run", () => {
     ]);
   });
 
+  it("passes the candidate base to git rev-parse --verify after --end-of-options", async () => {
+    const h = harness({ inputs: { "base-ref": "develop" } });
+    await run(h.deps);
+    expect(h.gitCalls.filter((a) => a[0] === "rev-parse" && a[1] === "--verify")).toEqual([
+      ["rev-parse", "--verify", "--quiet", "--end-of-options", "origin/develop^{commit}"],
+    ]);
+  });
+
+  it("keeps a base that starts with -x after --end-of-options in every git call", async () => {
+    // A push payload's `before` bypasses the base-ref input check, so only --end-of-options guards it.
+    const h = harness({ localGit: false, context: { eventName: "push", sha: "c1", payload: { before: "-x" } } });
+    await run(h.deps);
+    expect(h.gitCalls.filter((a) => a[0] === "rev-parse")).toEqual([
+      ["rev-parse", "--verify", "--quiet", "--end-of-options", "origin/-x^{commit}"],
+      ["rev-parse", "--verify", "--quiet", "--end-of-options", "-x^{commit}"],
+    ]);
+    expect(h.gitCalls.filter((a) => a[0] === "diff")).toEqual([]);
+    expect(h.apiCalls).toContain("compare -x...c1");
+  });
+
   it("prefers origin/<ref> for a base-ref input", async () => {
     const h = harness({ inputs: { "base-ref": "develop" } });
     await run(h.deps);
@@ -245,6 +279,85 @@ describe("action run", () => {
     expect(h.apiCalls.filter((c) => c.startsWith("update") || c.startsWith("create"))).toEqual(["update 2"]);
   });
 
+  const commentCalls = (h: Harness) => h.apiCalls.filter((c) => !c.startsWith("compare"));
+  const ownMarkerComments = (h: Harness, login = BOT.login) =>
+    h.comments.filter((c) => c.user?.login === login && c.body?.startsWith(COMMENT_MARKER));
+
+  it("deletes its own comment and updates the older one when a concurrent run created one first", async () => {
+    const h = harness({
+      inputs: { threshold: "80" },
+      racingComments: [{ id: 50, body: `${COMMENT_MARKER}\nconcurrent run`, user: BOT }],
+    });
+    await run(h.deps);
+    expect(commentCalls(h)).toEqual(["list 7", "create 7", "list 7", "delete 100", "update 50"]);
+    expect(ownMarkerComments(h).map((c) => c.id)).toEqual([50]);
+    expect(h.comments[0]?.body?.startsWith(`${COMMENT_MARKER}\n## ❌ pharn-ci: fail`)).toBe(true);
+    expect(h.warnings).toEqual([]);
+
+    // The next run updates the one remaining comment.
+    await run(h.deps);
+    expect(commentCalls(h).slice(5)).toEqual(["list 7", "update 50"]);
+  });
+
+  it("keeps its own comment and deletes the newer one when a concurrent run created one after it", async () => {
+    const h = harness({ racingComments: [{ id: 200, body: `${COMMENT_MARKER}\nconcurrent run`, user: BOT }] });
+    await run(h.deps);
+    expect(commentCalls(h)).toEqual(["list 7", "create 7", "list 7", "delete 200"]);
+    expect(ownMarkerComments(h).map((c) => c.id)).toEqual([100]);
+  });
+
+  it("never deletes a comment without the marker at the start or written by another login", async () => {
+    const forged = { id: 10, body: `${COMMENT_MARKER}\nforged`, user: { login: "mallory" } };
+    const quoted = { id: 11, body: `> earlier report\n${COMMENT_MARKER}`, user: BOT };
+    const plain = { id: 12, body: "unrelated", user: BOT };
+    const anonymous = { id: 13, body: `${COMMENT_MARKER}\nghost`, user: null };
+    const h = harness({ racingComments: [forged, quoted, plain, anonymous] });
+    await run(h.deps);
+    expect(commentCalls(h)).toEqual(["list 7", "create 7", "list 7"]);
+    expect(h.comments.map((c) => c.id)).toEqual([10, 11, 12, 13, 100]);
+  });
+
+  it("only deletes duplicates of a non-default token's own login", async () => {
+    const h = harness({
+      viewer: "release-bot",
+      racingComments: [
+        { id: 20, body: `${COMMENT_MARKER}\nby the default token`, user: BOT },
+        { id: 300, body: `${COMMENT_MARKER}\nconcurrent run`, user: { login: "release-bot" } },
+      ],
+    });
+    await run(h.deps);
+    expect(h.apiCalls.filter((c) => c.startsWith("delete"))).toEqual(["delete 300"]);
+    expect(h.comments.map((c) => c.id)).toEqual([20, 100]);
+  });
+
+  it("updates the oldest own comment and deletes newer duplicates left by an earlier race", async () => {
+    const h = harness({
+      existingComments: [
+        { id: 3, body: `${COMMENT_MARKER}\nstale duplicate`, user: BOT },
+        { id: 2, body: `${COMMENT_MARKER}\nold report`, user: BOT },
+        { id: 1, body: `${COMMENT_MARKER}\nforged`, user: { login: "mallory" } },
+      ],
+    });
+    await run(h.deps);
+    expect(commentCalls(h)).toEqual(["list 7", "update 2", "delete 3"]);
+    expect(h.comments.map((c) => c.id)).toEqual([2, 1]);
+  });
+
+  it("only warns when a duplicate cannot be deleted or the comments cannot be listed again", async () => {
+    const racing = [{ id: 50, body: `${COMMENT_MARKER}\nconcurrent run`, user: BOT }];
+    const undeletable = harness({ racingComments: racing, deleteError: new Error("Not Found") });
+    expect((await run(undeletable.deps))?.verdict).toBe("pass");
+    expect(undeletable.failed).toEqual([]);
+    expect(undeletable.warnings).toEqual(["could not delete duplicate pharn-ci comment 100: Not Found"]);
+    expect(commentCalls(undeletable)).toEqual(["list 7", "create 7", "list 7", "delete 100", "update 50"]);
+
+    const unlisted = harness({ racingComments: racing, relistError: new Error("rate limited") });
+    expect((await run(unlisted.deps))?.verdict).toBe("pass");
+    expect(unlisted.failed).toEqual([]);
+    expect(unlisted.warnings).toEqual(["could not remove duplicate pharn-ci comments: rate limited"]);
+    expect(commentCalls(unlisted)).toEqual(["list 7", "create 7", "list 7"]);
+  });
+
   it("truncates a comment over GitHub's size limit and keeps the full report in the summary", async () => {
     const long = Array.from({ length: 50 }, (_, i) => `.claude/skills/${"x".repeat(2000)}${i}/SKILL.md`);
     const h = harness({ lsFiles: long });
@@ -269,6 +382,51 @@ describe("action run", () => {
     const h = harness({ inputs: { comment: "false" } });
     await run(h.deps);
     expect(h.apiCalls.filter((c) => !c.startsWith("compare"))).toEqual([]);
+  });
+
+  describe("with an empty github-token", () => {
+    const tokenless = (h: Harness) => {
+      const getOctokit = vi.fn(() => {
+        throw new Error("no client should be built without a token");
+      });
+      h.deps.api = createGitHubApi({ token: "", repo: () => ({ owner: "acme", repo: "demo" }), getOctokit });
+      return getOctokit;
+    };
+
+    it("runs with comment: false and a local diff, making no API call", async () => {
+      const h = harness({ inputs: { comment: "false", threshold: "50" } });
+      const getOctokit = tokenless(h);
+      const report = await run(h.deps);
+      expect(report?.verdict).toBe("pass");
+      expect(report?.diffCoverage?.percent).toBeTypeOf("number");
+      expect(h.failed).toEqual([]);
+      expect(h.warnings).toEqual([]);
+      expect(h.summary).toHaveLength(1);
+      expect(h.outputs.verdict).toBe("pass");
+      expect(getOctokit).not.toHaveBeenCalled();
+    });
+
+    it("degrades to DIFF_UNAVAILABLE when the compare fallback needs the token", async () => {
+      const h = harness({ inputs: { comment: "false" }, localGit: false });
+      const getOctokit = tokenless(h);
+      const report = await run(h.deps);
+      expect(report?.messages[0]?.code).toBe("DIFF_UNAVAILABLE");
+      expect(h.warnings.join("\n")).toContain("could not fetch the diff from the GitHub API");
+      expect(h.warnings.join("\n")).toContain("the github-token input is empty");
+      expect(h.failed).toEqual([]);
+      expect(getOctokit).not.toHaveBeenCalled();
+    });
+
+    it("warns and keeps the job summary when commenting needs the token", async () => {
+      const h = harness();
+      const getOctokit = tokenless(h);
+      const report = await run(h.deps);
+      expect(report?.verdict).toBe("pass");
+      expect(h.summary).toHaveLength(1);
+      expect(h.warnings.join("\n")).toContain("could not post the PR comment (the github-token input is empty)");
+      expect(h.failed).toEqual([]);
+      expect(getOctokit).not.toHaveBeenCalled();
+    });
   });
 
   it("does not fail the step when fail-on-threshold is false", async () => {
@@ -307,6 +465,36 @@ describe("action run", () => {
     const h = harness({ context: { eventName: "push", sha: "c1", payload: { before: "f".repeat(40) } } });
     await run(h.deps);
     expect(h.gitCalls.find((a) => a[0] === "diff")?.at(-1)).toBe(`${"f".repeat(40)}...HEAD`);
+  });
+
+  const MERGE_GROUP_CONTEXT: ActionContext = {
+    eventName: "merge_group",
+    sha: "e".repeat(40),
+    payload: { merge_group: { base_sha: "d".repeat(40), head_sha: "e".repeat(40) } },
+  };
+
+  it("diffs a merge queue run locally against merge_group.base_sha", async () => {
+    const h = harness({ context: MERGE_GROUP_CONTEXT });
+    const report = await run(h.deps);
+    expect(h.gitCalls.find((a) => a[0] === "diff")?.at(-1)).toBe(`${"d".repeat(40)}...HEAD`);
+    expect(report?.diffCoverage?.percent).toBe(71.43);
+  });
+
+  it("diffs a merge queue run through the API from merge_group.base_sha to merge_group.head_sha", async () => {
+    const h = harness({ localGit: false, context: { ...MERGE_GROUP_CONTEXT, sha: "mq000" } });
+    const report = await run(h.deps);
+    expect(h.apiCalls).toContain(`compare ${"d".repeat(40)}...${"e".repeat(40)}`);
+    expect(report?.messages.map((m) => m.code)).not.toContain("DIFF_UNAVAILABLE");
+  });
+
+  it("fails the step when an explicit base-ref resolves neither locally nor through the API", async () => {
+    const h = harness({ inputs: { "base-ref": "mian" }, localGit: false, compareError: new Error("Not Found") });
+    expect(await run(h.deps)).toBeUndefined();
+    expect(h.apiCalls).toContain("compare mian...merge000");
+    expect(h.failed).toHaveLength(1);
+    expect(h.failed[0]).toContain('base-ref "mian" was not found in the checkout or through the GitHub API');
+    expect(h.failed[0]).toContain("Not Found");
+    expect(h.outputs).toEqual({});
   });
 
   it("warns when the diff cannot be fetched at all", async () => {

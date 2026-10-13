@@ -63,7 +63,7 @@ describe("renderMarkdown", () => {
   });
 
   it("keeps PR-controlled paths and message text from injecting markdown", () => {
-    const hostile = JSON.parse(fixture("render/hostile-paths.json")) as { repoFiles: string[]; coverageFile: string };
+    const hostile = JSON.parse(fixture("render/hostile-paths.json")) as Hostile;
     const render = (repoFiles: string[], coverageFile: string) => {
       const report = check({
         version: "0.1.0",
@@ -95,8 +95,57 @@ describe("renderMarkdown", () => {
     const rows = lines.filter((l) => / \| claude-md \|$| \| agents-md \|$| \| claude-\w+ \|$/.test(l));
     expect(rows).toHaveLength(hostile.repoFiles.length);
     for (const row of rows) expect(separators(row), row).toBe(3);
+    // The coverage path from the PR's .pharn/ci.yml becomes message text: it must stay inert too.
+    const message = lines.find((l) => l.includes("`COVERAGE_FILE_MISSING`")) ?? "";
+    expectInert(message);
+  });
+
+  it("keeps PR-controlled message text from rendering links, emphasis, mentions or autolinks", () => {
+    const hostile = JSON.parse(fixture("render/hostile-paths.json")) as Hostile;
+    const report = check({
+      version: "0.1.0",
+      coverage: { text: "", format: "auto" },
+      // The Action's wording when git cannot diff against the base ref the PR names.
+      diff: {
+        unavailable: `could not get the diff for ${hostile.baseRef}...HEAD (use actions/checkout with fetch-depth: 0)`,
+      },
+      threshold: 80,
+      repoFiles: ["AGENTS.md"],
+    });
+    expectValidReport(report);
+    // The report keeps the text as given: message text is stable API, only the rendering escapes it.
+    expect(report.messages[0]?.text).toContain(hostile.baseRef);
+    const md = renderMarkdown(report);
+    const message = md.split("\n").find((l) => l.includes("`DIFF_UNAVAILABLE`")) ?? "";
+
+    expect(message).toBe(
+      "- ❌ `DIFF_UNAVAILABLE` Diff coverage was not computed: could not get the diff for main " +
+        "\\[verify your account\\](https:\\/\\/evil.example) @\u200Boctocat \\*\\*urgent\\*\\* \\~\\~x\\~\\~ " +
+        "\\!\\[i\\](www\\.evil.example/i.png) \\_em\\_ \\`t\\` \\#1 \\\\...HEAD (use actions/checkout with fetch-depth: 0)",
+    );
+    expectInert(message);
   });
 });
+
+interface Hostile {
+  repoFiles: string[];
+  coverageFile: string;
+  baseRef: string;
+}
+
+/**
+ * A message line, read as GitHub would: once backslash escapes and code spans are dropped, nothing
+ * that opens a link, image, emphasis, strikethrough, heading, mention, autolink or raw HTML is left.
+ */
+function expectInert(line: string): void {
+  expect(line).toMatch(/^- \S+ `[A-Z_]+` /);
+  const live = line.replace(/\\[\s\S]/g, "").replace(/`[^`]*`/g, "");
+  expect(live).not.toContain("](");
+  expect(live).not.toMatch(/[[\]*_~!#`<>\\]/);
+  expect(live).not.toMatch(/@\w/);
+  expect(live).not.toContain("://");
+  expect(live).not.toMatch(/www\./i);
+}
 
 describe("renderMarkdown explainability (F-32)", () => {
   type FileRow = {
@@ -164,6 +213,7 @@ describe("renderMarkdown explainability (F-32)", () => {
   it("adds a one-line hint under every message code", () => {
     const codes = [
       "DIFF_COVERAGE_BELOW_THRESHOLD",
+      "DIFF_COVERAGE_UNGATED",
       "NO_COVERABLE_CHANGES",
       "COVERAGE_FILE_MISSING",
       "COVERAGE_FILE_EMPTY",

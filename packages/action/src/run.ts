@@ -30,6 +30,8 @@ export interface GitHubApi {
   listComments(issueNumber: number): Promise<IssueComment[]>;
   createComment(issueNumber: number, body: string): Promise<void>;
   updateComment(commentId: number, body: string): Promise<void>;
+  /** Only ever called on a duplicate of pharn-ci's own marker comment (see upsertComment). */
+  deleteComment(commentId: number): Promise<void>;
 }
 
 export interface ActionContext {
@@ -38,6 +40,7 @@ export interface ActionContext {
   payload: {
     before?: string;
     pull_request?: { number: number; base: { sha: string }; head: { sha: string } };
+    merge_group?: { base_sha: string; head_sha: string };
   };
 }
 
@@ -145,14 +148,17 @@ async function getDiff(baseRefInput: string, deps: ActionDeps): Promise<CheckInp
   if (baseRefInput.startsWith("-")) throw new Error(`base-ref "${baseRefInput}" must not start with "-"`);
   const { context } = deps;
   const pr = context.payload.pull_request;
+  const mergeGroup = context.payload.merge_group;
   const base =
     baseRefInput ||
     pr?.base.sha ||
+    mergeGroup?.base_sha ||
     (context.payload.before && !ZERO_SHA.test(context.payload.before) ? context.payload.before : "");
   if (!base) return { unavailable: "no base to diff against (not a pull request; set the base-ref input)" };
 
-  // pull_request checks out the merge commit (context.sha); pull_request_target checks out the base.
-  const head = context.eventName === "pull_request_target" && pr ? pr.head.sha : context.sha;
+  // pull_request checks out the merge commit (context.sha); pull_request_target checks out the base;
+  // merge_group checks out the merge queue's temporary commit (merge_group.head_sha).
+  const head = context.eventName === "pull_request_target" && pr ? pr.head.sha : mergeGroup?.head_sha || context.sha;
 
   // On pull_request_target the default checkout is the base branch, so a local base...HEAD diff is
   // empty and would pass as NO_COVERABLE_CHANGES while measuring nothing of the PR.
@@ -193,6 +199,14 @@ async function getDiff(baseRefInput: string, deps: ActionDeps): Promise<CheckInp
   try {
     return { text: await deps.api.compareDiff(`${base}...${head}`) };
   } catch (err) {
+    // An explicit base-ref found neither locally nor by the API is most likely a typo: fail the
+    // step like the CLI does, instead of reporting DIFF_UNAVAILABLE (a warning without a threshold).
+    if (baseRefInput && !localBase) {
+      throw new Error(
+        `base-ref "${baseRefInput}" was not found in the checkout or through the GitHub API (${String(err)}); ` +
+          "check the ref name, or use actions/checkout with fetch-depth: 0",
+      );
+    }
     deps.warning(`could not fetch the diff from the GitHub API: ${String(err)}`);
     return { unavailable: `could not get the diff for ${base}...${head} (use actions/checkout with fetch-depth: 0)` };
   }
@@ -202,7 +216,7 @@ async function resolveLocal(base: string, deps: ActionDeps): Promise<string | nu
   const candidates = /^[0-9a-f]{40}$/i.test(base) ? [base] : [`origin/${base}`, base];
   for (const ref of candidates) {
     try {
-      await deps.git(["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]);
+      await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", `${ref}^{commit}`]);
       return ref;
     } catch {
       // try the next candidate
@@ -219,7 +233,12 @@ export function fitComment(body: string): string {
   return `${body.slice(0, cut > 0 ? cut : limit)}${TRUNCATED_NOTE}`;
 }
 
-/** Create or update the one comment carrying COMMENT_MARKER. Never posts duplicates. */
+/**
+ * Create or update the one comment carrying COMMENT_MARKER: the oldest (lowest id) marker comment
+ * of the token's own login. Concurrent runs on one PR can each find none and create one, so after
+ * creating, the comments are listed again and newer own duplicates are deleted. Clean-up failures
+ * are only warnings.
+ */
 export async function upsertComment(
   deps: Pick<ActionDeps, "api" | "info" | "warning">,
   issueNumber: number,
@@ -227,22 +246,67 @@ export async function upsertComment(
 ) {
   try {
     const [comments, viewer] = await Promise.all([deps.api.listComments(issueNumber), deps.api.viewerLogin()]);
-    // Anyone can post a comment containing the marker; only update the one this token wrote.
-    const existing = comments.find((c) => c.user?.login === viewer && c.body?.startsWith(COMMENT_MARKER));
+    const [existing, ...duplicates] = ownComments(comments, viewer);
     if (existing) {
       await deps.api.updateComment(existing.id, body);
       deps.info(`updated pharn-ci comment ${existing.id}`);
-    } else {
-      await deps.api.createComment(issueNumber, body);
-      deps.info("created pharn-ci comment");
+      await deleteDuplicates(deps, duplicates);
+      return;
     }
+    await deps.api.createComment(issueNumber, body);
+    deps.info("created pharn-ci comment");
+    await removeRaceDuplicates(deps, issueNumber, viewer, body);
   } catch (err) {
     // Typical cause: PRs from forks get a read-only token.
     deps.warning(
-      `could not post the PR comment (${err instanceof Error ? err.message : String(err)}); ` +
+      `could not post the PR comment (${errorText(err)}); ` +
         "the report is in the job summary. Grant `pull-requests: write` to enable comments.",
     );
   }
+}
+
+/** Anyone can post a comment containing the marker; only the ones this token wrote are pharn-ci's, oldest first. */
+function ownComments(comments: IssueComment[], viewer: string): IssueComment[] {
+  return comments
+    .filter((c) => c.user?.login === viewer && c.body?.startsWith(COMMENT_MARKER))
+    .sort((a, b) => a.id - b.id);
+}
+
+/** After a create: keep the oldest own marker comment, carrying this run's report, and delete the rest. */
+async function removeRaceDuplicates(
+  deps: Pick<ActionDeps, "api" | "info" | "warning">,
+  issueNumber: number,
+  viewer: string,
+  body: string,
+) {
+  try {
+    const [keep, ...duplicates] = ownComments(await deps.api.listComments(issueNumber), viewer);
+    if (!keep || duplicates.length === 0) return;
+    await deleteDuplicates(deps, duplicates);
+    // This run's comment may have been one of the deleted duplicates.
+    if (keep.body !== body) {
+      await deps.api.updateComment(keep.id, body);
+      deps.info(`updated pharn-ci comment ${keep.id}`);
+    }
+  } catch (err) {
+    deps.warning(`could not remove duplicate pharn-ci comments: ${errorText(err)}`);
+  }
+}
+
+/** Callers pass only comments from ownComments: the marker and the token's own login. */
+async function deleteDuplicates(deps: Pick<ActionDeps, "api" | "info" | "warning">, duplicates: IssueComment[]) {
+  for (const dup of duplicates) {
+    try {
+      await deps.api.deleteComment(dup.id);
+      deps.info(`deleted duplicate pharn-ci comment ${dup.id}`);
+    } catch (err) {
+      deps.warning(`could not delete duplicate pharn-ci comment ${dup.id}: ${errorText(err)}`);
+    }
+  }
+}
+
+function errorText(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
 async function loadConfig(path: string, deps: ActionDeps): Promise<PharnConfig> {

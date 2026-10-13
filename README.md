@@ -124,11 +124,16 @@ permissions:
   contents: read
   pull-requests: write
 
+# One run per PR at a time, so concurrent pushes do not race on the sticky comment.
+concurrency:
+  group: pharn-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   pharn-ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       # ...set up your toolchain and run tests with lcov or Cobertura output, e.g.:
@@ -140,10 +145,14 @@ jobs:
 ```
 
 `fetch-depth: 0` lets pharn-ci diff against the PR base locally. Without a threshold, pharn-ci
-reports and never fails the step.
+reports and never fails the step. With a merge queue, add `merge_group` to `on:`; pharn-ci diffs
+the queued change against the queue's base (`merge_group.base_sha`). The `concurrency` group
+cancels an older run when a new commit is pushed; without it, two runs that each post the sticky
+comment are cleaned up to one, but the older run may write last.
 
-Release tags are exact versions (`v0.1.0`), never moved or deleted. Pinning the tag's full commit
-SHA is stronger still; Dependabot keeps either up to date.
+Release tags are exact versions (`v0.1.0`), never moved or deleted, but they are unsigned
+lightweight tags, so there is no tag signature to verify. Pinning the tag's full commit SHA is the
+integrity control; Dependabot keeps either up to date.
 
 ---
 
@@ -208,14 +217,14 @@ On PRs from forks the token cannot comment; pharn-ci then warns and uses the job
 | ------------------- | --------------------------- | ---------------------------------------- |
 | `coverage-file`     | `coverage.file` from config | Path to the coverage report              |
 | `coverage-format`   | `coverage.format`, then `auto` | `lcov`, `cobertura` or `auto` (detect it from the start of the file) |
-| `threshold`         | none                        | Minimum diff coverage %, inclusive       |
-| `base-ref`          | PR base                     | Ref or SHA to diff against               |
+| `threshold`         | `coverage.threshold` from config, then none | Minimum diff coverage %, inclusive       |
+| `base-ref`          | PR base; merge queue base; on `push`, the previous head (`before`) | Ref or SHA to diff against. A `base-ref` found neither in the checkout nor through the GitHub API fails the step |
 | `exclude`           | none                        | Globs of changed files to leave out of diff coverage, comma or newline separated; added to `coverage.exclude` |
 | `require-agent-setup` | `setup.require`, then `false` | Fail when the repo has no agent setup files; the step fails through `fail-on-threshold` |
 | `comment`           | `true`                      | Post/update one sticky PR comment        |
 | `fail-on-threshold` | `true`                      | Fail the step when the verdict is `fail` |
 | `config`            | `.pharn/ci.yml`             | Config file path                         |
-| `github-token`      | `github.token`              | Token for the comment and diff fallback  |
+| `github-token`      | `github.token`              | Token for the comment and diff fallback; `pull-requests: write` only for the comment, may be empty with `comment: false` and a local diff |
 
 | Output          |                                                       |
 | --------------- | ----------------------------------------------------- |
@@ -300,6 +309,7 @@ it. See [`schema/report.v1.json`](schema/report.v1.json). Branch on message `cod
 | Code                            | Meaning                                                        |
 | ------------------------------- | -------------------------------------------------------------- |
 | `DIFF_COVERAGE_BELOW_THRESHOLD` | Diff coverage is below the configured threshold                |
+| `DIFF_COVERAGE_UNGATED`         | Diff coverage was measured but not gated (no threshold, or 0); info |
 | `NO_COVERABLE_CHANGES`          | None of the added lines are tracked by the coverage report     |
 | `COVERAGE_FILE_MISSING`         | The coverage file does not exist                               |
 | `COVERAGE_FILE_EMPTY`           | The coverage file has no usable records                        |
@@ -313,9 +323,8 @@ Within v1, fields are only added and codes are never renamed or removed.
 
 ## What it proves, and what it does not
 
-**Measured:** which added lines the coverage report marks as executed, compared against an
-inclusive threshold after rounding to two decimals; which known agent setup files are tracked in
-git.
+**Measured:** which added lines the coverage report marks as executed, compared exactly against an
+inclusive threshold (79.995% fails at 80); which known agent setup files are tracked in git.
 
 **Not measured**, stated plainly (full list in [`docs/LIMITS.md`](docs/LIMITS.md)):
 
@@ -343,16 +352,21 @@ pharn-ci runs inside other people's CI, on untrusted changes, with their token. 
 that:
 
 - **Stateless.** No backend, no telemetry, no network calls except the GitHub API inside the
-  Action.
+  Action. What it reads, what it sends to your GitHub and what it stores is listed in
+  [Data handling](SECURITY.md#data-handling).
 - **Small token footprint.** `contents: read` plus `pull-requests: write`. It reads the compare API
-  and comments, and updates only a comment its own login wrote.
-- **Untrusted input stays data.** Parsers are hand-written, pure and non-recursive. File names and
-  message text cannot inject markdown or HTML into the PR comment. Git runs without a shell, and
-  refs starting with `-` are rejected.
+  and comments, and updates only a comment its own login wrote. It deletes a comment only when
+  concurrent runs left duplicates of that own marker comment.
+- **Untrusted input stays data.** Parsers are hand-written, pure and non-recursive. File names
+  render in code spans and message text is escaped, so neither can add links, images, emphasis,
+  mentions or HTML to the PR comment. Git runs without a shell, and refs starting with `-` are
+  rejected.
 - **Pure core.** `packages/core` cannot do I/O; a test, a lint rule and its tsconfig enforce it.
 - **Reviewable releases.** The committed Action bundle is rebuilt and diffed in CI. Third-party
-  actions are pinned to commit SHAs, two runtime dependencies, CodeQL, gitleaks and Socket checks
-  on every PR, and release tags are never moved.
+  actions are pinned to commit SHAs. The Action has two direct runtime dependencies
+  (`@actions/core`, `@actions/github`), bundled into `packages/action/dist` together with their
+  transitive dependencies. CodeQL, gitleaks and Socket checks run on every PR, and release tags are
+  never moved.
 
 Each claim is mapped to the test or check that enforces it in
 [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md). Do not run pharn-ci on `pull_request_target` with

@@ -20377,8 +20377,8 @@ var Context = class {
   }
   get repo() {
     if (process.env.GITHUB_REPOSITORY) {
-      const [owner2, repo2] = process.env.GITHUB_REPOSITORY.split("/");
-      return { owner: owner2, repo: repo2 };
+      const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
+      return { owner, repo };
     }
     if (this.payload.repository) {
       return {
@@ -24268,7 +24268,7 @@ var handler = {
   set(target, methodName, value) {
     return target.cache[methodName] = value;
   },
-  get({ octokit: octokit2, scope, cache }, methodName) {
+  get({ octokit, scope, cache }, methodName) {
     if (cache[methodName]) {
       return cache[methodName];
     }
@@ -24279,27 +24279,27 @@ var handler = {
     const { endpointDefaults, decorations } = method;
     if (decorations) {
       cache[methodName] = decorate(
-        octokit2,
+        octokit,
         scope,
         methodName,
         endpointDefaults,
         decorations
       );
     } else {
-      cache[methodName] = octokit2.request.defaults(endpointDefaults);
+      cache[methodName] = octokit.request.defaults(endpointDefaults);
     }
     return cache[methodName];
   }
 };
-function endpointsToMethods(octokit2) {
+function endpointsToMethods(octokit) {
   const newMethods = {};
   for (const scope of endpointMethodsMap.keys()) {
-    newMethods[scope] = new Proxy({ octokit: octokit2, scope, cache: {} }, handler);
+    newMethods[scope] = new Proxy({ octokit, scope, cache: {} }, handler);
   }
   return newMethods;
 }
-function decorate(octokit2, scope, methodName, defaults2, decorations) {
-  const requestWithDefaults = octokit2.request.defaults(defaults2);
+function decorate(octokit, scope, methodName, defaults2, decorations) {
+  const requestWithDefaults = octokit.request.defaults(defaults2);
   function withDecorations(...args) {
     let options = requestWithDefaults.endpoint.merge(...args);
     if (decorations.mapToData) {
@@ -24311,12 +24311,12 @@ function decorate(octokit2, scope, methodName, defaults2, decorations) {
     }
     if (decorations.renamed) {
       const [newScope, newMethodName] = decorations.renamed;
-      octokit2.log.warn(
+      octokit.log.warn(
         `octokit.${scope}.${methodName}() has been renamed to octokit.${newScope}.${newMethodName}()`
       );
     }
     if (decorations.deprecated) {
-      octokit2.log.warn(decorations.deprecated);
+      octokit.log.warn(decorations.deprecated);
     }
     if (decorations.renamedParameters) {
       const options2 = requestWithDefaults.endpoint.merge(...args);
@@ -24324,7 +24324,7 @@ function decorate(octokit2, scope, methodName, defaults2, decorations) {
         decorations.renamedParameters
       )) {
         if (name in options2) {
-          octokit2.log.warn(
+          octokit.log.warn(
             `"${name}" parameter is deprecated for "octokit.${scope}.${methodName}()". Use "${alias}" instead`
           );
           if (!(alias in options2)) {
@@ -24341,15 +24341,15 @@ function decorate(octokit2, scope, methodName, defaults2, decorations) {
 }
 
 // ../../node_modules/.pnpm/@octokit+plugin-rest-endpoint-methods@17.0.0_@octokit+core@7.0.8/node_modules/@octokit/plugin-rest-endpoint-methods/dist-src/index.js
-function restEndpointMethods(octokit2) {
-  const api2 = endpointsToMethods(octokit2);
+function restEndpointMethods(octokit) {
+  const api2 = endpointsToMethods(octokit);
   return {
     rest: api2
   };
 }
 restEndpointMethods.VERSION = VERSION5;
-function legacyRestEndpointMethods(octokit2) {
-  const api2 = endpointsToMethods(octokit2);
+function legacyRestEndpointMethods(octokit) {
+  const api2 = endpointsToMethods(octokit);
   return {
     ...api2,
     rest: api2
@@ -24389,9 +24389,9 @@ function normalizePaginatedListResponse(response) {
   response.data.total_commits = totalCommits;
   return response;
 }
-function iterator(octokit2, route, parameters) {
-  const options = typeof route === "function" ? route.endpoint(parameters) : octokit2.request.endpoint(route, parameters);
-  const requestMethod = typeof route === "function" ? route : octokit2.request;
+function iterator(octokit, route, parameters) {
+  const options = typeof route === "function" ? route.endpoint(parameters) : octokit.request.endpoint(route, parameters);
+  const requestMethod = typeof route === "function" ? route : octokit.request;
   const method = options.method;
   const headers = options.headers;
   let url = options.url;
@@ -24431,19 +24431,19 @@ function iterator(octokit2, route, parameters) {
     })
   };
 }
-function paginate(octokit2, route, parameters, mapFn) {
+function paginate(octokit, route, parameters, mapFn) {
   if (typeof parameters === "function") {
     mapFn = parameters;
     parameters = void 0;
   }
   return gather(
-    octokit2,
+    octokit,
     [],
-    iterator(octokit2, route, parameters)[Symbol.asyncIterator](),
+    iterator(octokit, route, parameters)[Symbol.asyncIterator](),
     mapFn
   );
 }
-function gather(octokit2, results, iterator2, mapFn) {
+function gather(octokit, results, iterator2, mapFn) {
   return iterator2.next().then((result) => {
     if (result.done) {
       return results;
@@ -24458,16 +24458,16 @@ function gather(octokit2, results, iterator2, mapFn) {
     if (earlyExit) {
       return results;
     }
-    return gather(octokit2, results, iterator2, mapFn);
+    return gather(octokit, results, iterator2, mapFn);
   });
 }
 var composePaginateRest = Object.assign(paginate, {
   iterator
 });
-function paginateRest(octokit2) {
+function paginateRest(octokit) {
   return {
-    paginate: Object.assign(paginate.bind(null, octokit2), {
-      iterator: iterator.bind(null, octokit2)
+    paginate: Object.assign(paginate.bind(null, octokit), {
+      iterator: iterator.bind(null, octokit)
     })
   };
 }
@@ -24502,6 +24502,59 @@ var context2 = new Context();
 function getOctokit(token, options, ...additionalPlugins) {
   const GitHubWithPlugins = GitHub.plugin(...additionalPlugins);
   return new GitHubWithPlugins(getOctokitOptions(token, options));
+}
+
+// src/api.ts
+function createGitHubApi(opts) {
+  let client;
+  const connect = () => {
+    if (!client) {
+      if (opts.token === "") throw new Error("the github-token input is empty");
+      client = { octokit: opts.getOctokit(opts.token), ...opts.repo() };
+    }
+    return client;
+  };
+  return {
+    async compareDiff(basehead) {
+      const { octokit, owner, repo } = connect();
+      const res = await octokit.rest.repos.compareCommitsWithBasehead({
+        owner,
+        repo,
+        basehead,
+        mediaType: { format: "diff" }
+      });
+      return res.data;
+    },
+    async viewerLogin() {
+      const { octokit } = connect();
+      try {
+        return (await octokit.rest.users.getAuthenticated()).data.login;
+      } catch {
+        return "github-actions[bot]";
+      }
+    },
+    async listComments(issueNumber) {
+      const { octokit, owner, repo } = connect();
+      return octokit.paginate(octokit.rest.issues.listComments, {
+        owner,
+        repo,
+        issue_number: issueNumber,
+        per_page: 100
+      });
+    },
+    async createComment(issueNumber, body) {
+      const { octokit, owner, repo } = connect();
+      await octokit.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body });
+    },
+    async updateComment(commentId, body) {
+      const { octokit, owner, repo } = connect();
+      await octokit.rest.issues.updateComment({ owner, repo, comment_id: commentId, body });
+    },
+    async deleteComment(commentId) {
+      const { octokit, owner, repo } = connect();
+      await octokit.rest.issues.deleteComment({ owner, repo, comment_id: commentId });
+    }
+  };
 }
 
 // ../core/src/coverage/types.ts
@@ -25374,7 +25427,11 @@ function computeDiffCoverage(diff, coverage, threshold, isExcluded = () => false
   }
   const byPath = (a, b) => a < b ? -1 : a > b ? 1 : 0;
   files.sort((a, b) => byPath(a.path, b.path));
-  const percent = percentOf(covered, coverable);
+  const meetsThreshold = threshold === null || coverable === 0 || atLeast(covered, coverable, threshold);
+  let percent = percentOf(covered, coverable);
+  if (!meetsThreshold && percent !== null && threshold !== null && percent >= threshold) {
+    percent = percentOf(covered, coverable, Math.floor);
+  }
   return {
     percent,
     threshold,
@@ -25382,14 +25439,23 @@ function computeDiffCoverage(diff, coverage, threshold, isExcluded = () => false
     coverableLines: coverable,
     files,
     ...excluded.size > 0 ? { excludedFiles: [...excluded].sort(byPath) } : {},
-    // Compare the reported (rounded) percent so the verdict always agrees with what users see.
-    meetsThreshold: threshold === null || percent === null || percent >= threshold
+    meetsThreshold
   };
 }
-function percentOf(covered, total) {
+function percentOf(covered, total, round = Math.round) {
   if (total === 0) return null;
-  const rounded = Math.round(covered / total * 1e4) / 100;
+  const rounded = round(covered * 1e4 / total) / 100;
   return Math.min(Math.max(rounded, covered > 0 ? 0.01 : 0), covered < total ? 99.99 : 100);
+}
+function atLeast(covered, total, threshold) {
+  const m = /^(\d+)(?:\.(\d+))?(?:e([+-]\d+))?$/.exec(String(threshold));
+  if (m === null) return covered * 100 >= threshold * total;
+  const fraction = m[2] ?? "";
+  const scale = fraction.length - Number(m[3] ?? 0);
+  const digits = BigInt(`${m[1]}${fraction}`);
+  const left = BigInt(covered) * 100n * 10n ** BigInt(Math.max(scale, 0));
+  const right = digits * BigInt(total) * 10n ** BigInt(Math.max(-scale, 0));
+  return left >= right;
 }
 
 // ../core/src/glob.ts
@@ -25550,6 +25616,13 @@ function buildReport(input) {
       level: "error",
       code: "DIFF_COVERAGE_BELOW_THRESHOLD",
       text: `Diff coverage ${formatNumber(dc.percent ?? 0)}% is below the threshold of ${formatNumber(dc.threshold)}%.`
+    });
+  } else if (dc.threshold === null || dc.threshold === 0) {
+    const why = dc.threshold === null ? "no threshold is set" : "a threshold of 0% accepts any coverage";
+    messages.push({
+      level: "info",
+      code: "DIFF_COVERAGE_UNGATED",
+      text: `Diff coverage ${formatNumber(dc.percent ?? 0)}% is not gated: ${why}.`
     });
   }
   if (input.agentSetup.files.length === 0) {
@@ -25724,6 +25797,7 @@ var LEVEL_ICON = { info: "\u2139\uFE0F", warn: "\u26A0\uFE0F", error: "\u274C" }
 var FULL_REPORT_NOTE = "_Full list in report.json: the Action's `report-path` output, or `pharn-ci check --format json`._";
 var MESSAGE_HINTS = {
   DIFF_COVERAGE_BELOW_THRESHOLD: "Add tests that exercise the uncovered lines listed in the table above.",
+  DIFF_COVERAGE_UNGATED: "To gate diff coverage, set a threshold above 0 (`coverage.threshold`, `threshold` or `--threshold`).",
   NO_COVERABLE_CHANGES: "Nothing to do if the change has no code; otherwise check that the coverage report includes the changed files.",
   COVERAGE_FILE_MISSING: "Run the tests with coverage before pharn-ci, and check the path (`coverage.file`, `coverage-file` or `--coverage`).",
   COVERAGE_FILE_EMPTY: "Run the tests with coverage enabled before pharn-ci, and check that the report covers this repo's sources.",
@@ -25830,8 +25904,9 @@ function code(path) {
   const safe = path.replace(CONTROL_CHARS, "\uFFFD").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/`/g, "'");
   return `\`${safe}\``;
 }
+var MARKDOWN_ACTIVE = /[\\`*_[\]#!|~]/g;
 function inlineText(text) {
-  return text.replace(CONTROL_CHARS, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return text.replace(CONTROL_CHARS, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(MARKDOWN_ACTIVE, "\\$&").replace(/@/g, "@\u200B").replace(/:\/\//g, ":\\/\\/").replace(/(www)\./gi, "$1\\.");
 }
 
 // ../core/src/version.ts
@@ -25909,9 +25984,10 @@ async function getDiff(baseRefInput, deps) {
   if (baseRefInput.startsWith("-")) throw new Error(`base-ref "${baseRefInput}" must not start with "-"`);
   const { context: context3 } = deps;
   const pr = context3.payload.pull_request;
-  const base = baseRefInput || pr?.base.sha || (context3.payload.before && !ZERO_SHA.test(context3.payload.before) ? context3.payload.before : "");
+  const mergeGroup = context3.payload.merge_group;
+  const base = baseRefInput || pr?.base.sha || mergeGroup?.base_sha || (context3.payload.before && !ZERO_SHA.test(context3.payload.before) ? context3.payload.before : "");
   if (!base) return { unavailable: "no base to diff against (not a pull request; set the base-ref input)" };
-  const head = context3.eventName === "pull_request_target" && pr ? pr.head.sha : context3.sha;
+  const head = context3.eventName === "pull_request_target" && pr ? pr.head.sha : mergeGroup?.head_sha || context3.sha;
   if (context3.eventName === "pull_request_target" && pr) {
     const localHead = await deps.git(["rev-parse", "HEAD"]).then(
       (out) => out.trim(),
@@ -25946,6 +26022,11 @@ async function getDiff(baseRefInput, deps) {
   try {
     return { text: await deps.api.compareDiff(`${base}...${head}`) };
   } catch (err) {
+    if (baseRefInput && !localBase) {
+      throw new Error(
+        `base-ref "${baseRefInput}" was not found in the checkout or through the GitHub API (${String(err)}); check the ref name, or use actions/checkout with fetch-depth: 0`
+      );
+    }
     deps.warning(`could not fetch the diff from the GitHub API: ${String(err)}`);
     return { unavailable: `could not get the diff for ${base}...${head} (use actions/checkout with fetch-depth: 0)` };
   }
@@ -25954,7 +26035,7 @@ async function resolveLocal(base, deps) {
   const candidates = /^[0-9a-f]{40}$/i.test(base) ? [base] : [`origin/${base}`, base];
   for (const ref of candidates) {
     try {
-      await deps.git(["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]);
+      await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", `${ref}^{commit}`]);
       return ref;
     } catch {
     }
@@ -25970,19 +26051,50 @@ function fitComment(body) {
 async function upsertComment(deps, issueNumber, body) {
   try {
     const [comments, viewer] = await Promise.all([deps.api.listComments(issueNumber), deps.api.viewerLogin()]);
-    const existing = comments.find((c) => c.user?.login === viewer && c.body?.startsWith(COMMENT_MARKER));
+    const [existing, ...duplicates] = ownComments(comments, viewer);
     if (existing) {
       await deps.api.updateComment(existing.id, body);
       deps.info(`updated pharn-ci comment ${existing.id}`);
-    } else {
-      await deps.api.createComment(issueNumber, body);
-      deps.info("created pharn-ci comment");
+      await deleteDuplicates(deps, duplicates);
+      return;
     }
+    await deps.api.createComment(issueNumber, body);
+    deps.info("created pharn-ci comment");
+    await removeRaceDuplicates(deps, issueNumber, viewer, body);
   } catch (err) {
     deps.warning(
-      `could not post the PR comment (${err instanceof Error ? err.message : String(err)}); the report is in the job summary. Grant \`pull-requests: write\` to enable comments.`
+      `could not post the PR comment (${errorText(err)}); the report is in the job summary. Grant \`pull-requests: write\` to enable comments.`
     );
   }
+}
+function ownComments(comments, viewer) {
+  return comments.filter((c) => c.user?.login === viewer && c.body?.startsWith(COMMENT_MARKER)).sort((a, b) => a.id - b.id);
+}
+async function removeRaceDuplicates(deps, issueNumber, viewer, body) {
+  try {
+    const [keep, ...duplicates] = ownComments(await deps.api.listComments(issueNumber), viewer);
+    if (!keep || duplicates.length === 0) return;
+    await deleteDuplicates(deps, duplicates);
+    if (keep.body !== body) {
+      await deps.api.updateComment(keep.id, body);
+      deps.info(`updated pharn-ci comment ${keep.id}`);
+    }
+  } catch (err) {
+    deps.warning(`could not remove duplicate pharn-ci comments: ${errorText(err)}`);
+  }
+}
+async function deleteDuplicates(deps, duplicates) {
+  for (const dup of duplicates) {
+    try {
+      await deps.api.deleteComment(dup.id);
+      deps.info(`deleted duplicate pharn-ci comment ${dup.id}`);
+    } catch (err) {
+      deps.warning(`could not delete duplicate pharn-ci comment ${dup.id}: ${errorText(err)}`);
+    }
+  }
+}
+function errorText(err) {
+  return err instanceof Error ? err.message : String(err);
 }
 async function loadConfig(path, deps) {
   const text = await deps.readFile(deps.resolvePath(deps.workspace, path));
@@ -26005,33 +26117,11 @@ function parseBool(value, fallback, name) {
 
 // src/index.ts
 var workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
-var { owner, repo } = context2.repo;
-var octokit = getOctokit(getInput("github-token", { required: true }));
-var api = {
-  async compareDiff(basehead) {
-    const res = await octokit.rest.repos.compareCommitsWithBasehead({
-      owner,
-      repo,
-      basehead,
-      mediaType: { format: "diff" }
-    });
-    return res.data;
-  },
-  async viewerLogin() {
-    try {
-      return (await octokit.rest.users.getAuthenticated()).data.login;
-    } catch {
-      return "github-actions[bot]";
-    }
-  },
-  listComments: (issueNumber) => octokit.paginate(octokit.rest.issues.listComments, { owner, repo, issue_number: issueNumber, per_page: 100 }),
-  async createComment(issueNumber, body) {
-    await octokit.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body });
-  },
-  async updateComment(commentId, body) {
-    await octokit.rest.issues.updateComment({ owner, repo, comment_id: commentId, body });
-  }
-};
+var api = createGitHubApi({
+  token: getInput("github-token"),
+  repo: () => context2.repo,
+  getOctokit
+});
 await run({
   getInput: (name) => getInput(name),
   context: context2,

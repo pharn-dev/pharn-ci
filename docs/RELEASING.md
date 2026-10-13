@@ -14,8 +14,11 @@ npm yet.
   force-pushing or deleting any `v*` tag, with no bypass. A broken release is fixed by releasing a
   new patch version.
 - **Tags are not signed.** Release tags are created by `gh release create` in the `Release publish`
-  job, through the GitHub API, so they are lightweight and not signed. Consumers should pin the
-  full commit SHA the tag points at, not the tag name.
+  job, through the GitHub API, so they are lightweight and not signed: there is no tag signature to
+  verify. The `main` ruleset's signed-commits rule covers commits, not tags. The integrity control
+  is the commit SHA: consumers should pin the full commit SHA the tag points at, not the tag name,
+  and can check that the commit is on `main` and that its bundle rebuilds from the sources
+  ([Verify the release](#verify-the-release)).
 - **Before 1.0, a breaking change bumps the minor version** (0.1.x → 0.2.0). Report v1 stays
   compatible across all of them: fields are only added, message codes are never renamed.
 
@@ -79,9 +82,9 @@ npm yet.
 
 ## One-time setup
 
-These are repository settings, applied by an admin; see
-[`.github/rulesets/README.md`](../.github/rulesets/README.md):
+These repository settings are already applied by an admin and must stay on; see
+[`.github/rulesets/README.md`](../.github/rulesets/README.md) for how to check them:
 
 - the `release` environment with a required reviewer, deployable from `main` only;
 - immutable releases, so a published release's tag and assets cannot be changed;
-- the `release-tags` ruleset (already active).
+- the `release-tags` ruleset.

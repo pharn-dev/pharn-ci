@@ -63,7 +63,7 @@ describe("cli main", () => {
 
   it("exits 0 when the threshold is met, and diffs against origin/main by default", async () => {
     const deps = fakeDeps(coverage);
-    expect(await main(["check", "--coverage", "lcov.info", "--threshold", "71.43"], deps)).toBe(EXIT_OK);
+    expect(await main(["check", "--coverage", "lcov.info", "--threshold", "71.42"], deps)).toBe(EXIT_OK);
     expect(deps.out).toContain("## ✅ pharn-ci: pass");
     const diff = deps.gitCalls.find((a) => a[0] === "diff");
     expect(diff).toContain("--unified=0");
@@ -75,6 +75,33 @@ describe("cli main", () => {
     const deps = fakeDeps(coverage);
     await main(["check", "--coverage", "lcov.info", "--base", "develop"], deps);
     expect(deps.gitCalls.find((a) => a[0] === "diff")?.at(-1)).toBe("develop...HEAD");
+  });
+
+  it("passes the only user-influenced revision to git after --end-of-options", async () => {
+    const deps = fakeDeps(coverage);
+    await main(["check", "--coverage", "lcov.info", "--base", "topic/-x"], deps);
+    expect(deps.gitCalls).toEqual([
+      ["rev-parse", "--show-toplevel"],
+      [
+        "diff",
+        "--unified=0",
+        "--no-color",
+        "--no-ext-diff",
+        "--find-renames",
+        "--src-prefix=a/",
+        "--dst-prefix=b/",
+        "--end-of-options",
+        "topic/-x...HEAD",
+      ],
+      ["ls-files", "-z"],
+    ]);
+  });
+
+  it("never runs git with a --base that starts with -x", async () => {
+    const deps = fakeDeps(coverage);
+    expect(await main(["check", "--coverage", "lcov.info", "--base=-x"], deps)).toBe(EXIT_ERROR);
+    expect(deps.err).toContain('--base "-x" must not start with "-"');
+    expect(deps.gitCalls).toEqual([]);
   });
 
   it("reads .pharn/ci.yml from the repo root, with CLI flags overriding it", async () => {

@@ -50,7 +50,7 @@
   },
   "$defs": {
     "percent": {
-      "description": "Percentage rounded to 2 decimals. null when there are no coverable lines.",
+      "description": "Percentage rounded to 2 decimals. null when there are no coverable lines. diffCoverage.percent is rounded down instead when rounding up would reach a threshold the coverage does not meet (15,999 of 20,000 lines at threshold 80 is 79.99, not 80).",
       "type": ["number", "null"],
       "minimum": 0,
       "maximum": 100
@@ -70,7 +70,7 @@
         },
         "percent": { "$ref": "#/$defs/percent" },
         "threshold": {
-          "description": "Minimum required percent (inclusive). null when no threshold is configured.",
+          "description": "Minimum required percent (inclusive), compared exactly against coveredLines / coverableLines, not against the rounded percent. null when no threshold is configured. 0 gates no percent (a DIFF_COVERAGE_UNGATED message says so) but, like any threshold, makes unmeasurable coverage an error.",
           "type": ["number", "null"],
           "minimum": 0,
           "maximum": 100
@@ -147,7 +147,7 @@
       "properties": {
         "level": { "enum": ["info", "warn", "error"] },
         "code": {
-          "description": "Stable identifier; branch on this, never on text. Known codes: DIFF_COVERAGE_BELOW_THRESHOLD, NO_COVERABLE_CHANGES, COVERAGE_FILE_MISSING, COVERAGE_FILE_EMPTY, COVERAGE_FORMAT_UNSUPPORTED, DIFF_UNAVAILABLE, NO_AGENT_SETUP_FILES. New codes may be added within v1; consumers must tolerate unknown codes. NO_AGENT_SETUP_FILES is level info, or error when the agent setup requirement (setup.require, require-agent-setup) is on.",
+          "description": "Stable identifier; branch on this, never on text. Known codes: DIFF_COVERAGE_BELOW_THRESHOLD, DIFF_COVERAGE_UNGATED, NO_COVERABLE_CHANGES, COVERAGE_FILE_MISSING, COVERAGE_FILE_EMPTY, COVERAGE_FORMAT_UNSUPPORTED, DIFF_UNAVAILABLE, NO_AGENT_SETUP_FILES. New codes may be added within v1; consumers must tolerate unknown codes. DIFF_COVERAGE_UNGATED is level info: diff coverage was measured (coverableLines > 0) but no threshold above 0 gates it. NO_AGENT_SETUP_FILES is level info, or error when the agent setup requirement (setup.require, require-agent-setup) is on.",
           "type": "string",
           "pattern": "^[A-Z][A-Z0-9_]*$"
         },
