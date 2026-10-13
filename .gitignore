@@ -10,3 +10,11 @@ packages/cli/dist/
 !.pharn/ci.yml
 # Claude Code agent worktrees
 .claude/worktrees/
+
+# PHARN workflow tooling: the maintainer's local install, not part of the product. Kept out of the
+# repo so it does not ship with `uses: pharn-dev/pharn-ci@...`.
+/pharn/
+/pharn.config.json
+/pharn.records.json
+/LIMITS.md
+/THREAT-MODEL.md
