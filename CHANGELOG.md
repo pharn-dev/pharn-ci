@@ -25,6 +25,9 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Fixed
 
+- Docs: the quick start pins `actions/checkout` to a commit SHA; the Action reference gives the
+  real `threshold` and `base-ref` defaults; the docs name Cobertura as untrusted input, the
+  `GET /user` call, and the bundled transitive dependencies.
 - The Action no longer crashes with a stack trace before running when `github-token` is empty. The
   token is used only when an API call is needed, so `comment: false` with a local diff works
   without one; otherwise the compare fallback reports `DIFF_UNAVAILABLE` and the comment step

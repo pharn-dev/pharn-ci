@@ -10,8 +10,8 @@ AI-agnostic and fully stateless (Phase 0): no backend, no telemetry.
 
 ## Layout
 
-- `packages/core` — pure functions: lcov and unified-diff parsing, diff coverage, agent setup
-  scan, Report v1 builder, markdown renderer, config parser. Entry point: `check()` in `src/check.ts`.
+- `packages/core` — pure functions: lcov, Cobertura and unified-diff parsing, diff coverage, agent
+  setup scan, Report v1 builder, markdown renderer, config parser. Entry point: `check()` in `src/check.ts`.
 - `packages/cli` — `pharn-ci check`: reads files, runs git, calls core, prints output.
 - `packages/action` — thin GitHub Action wrapper: inputs, PR diff, sticky comment, job summary, exit code.
 - `schema/report.v1.json` — JSON Schema for the report. **Source of truth for all output.**
@@ -34,8 +34,9 @@ AI-agnostic and fully stateless (Phase 0): no backend, no telemetry.
    and explain why in the PR description. Golden files (`fixtures/golden/*`) change only when the
    output intentionally changes; regenerate with `pnpm test -u` and review the diff.
 5. **No network calls except the GitHub API inside the action. No telemetry.**
-6. **Keep dependencies minimal; justify every new one** in the PR. Runtime deps today:
-   `@actions/core`, `@actions/github` (action only). Parsers (lcov, diff, config YAML subset) are
+6. **Keep dependencies minimal; justify every new one** in the PR. Direct runtime deps
+   today: `@actions/core`, `@actions/github` (action only; bundled into `packages/action/dist` with
+   their transitive dependencies). Parsers (lcov, Cobertura XML, diff, config YAML subset) are
    hand-written on purpose.
 7. **`packages/action/dist` is committed.** Run `pnpm build` before committing any change that
    affects the action (including core). CI fails if dist is stale.

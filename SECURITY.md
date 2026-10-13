@@ -11,8 +11,8 @@ coordinated disclosure of any vulnerability in this repository.
 
 - **The GitHub Action** (`action.yml`, `packages/action`): runs in a consumer's workflow with their
   `GITHUB_TOKEN`. It makes no network calls except to the GitHub API, and has no telemetry.
-- **Input parsing** (`packages/core`): lcov, unified diffs and the config file are untrusted input,
-  parsed by hand-written parsers. A crafted file must not crash, hang or exhaust memory in the
+- **Input parsing** (`packages/core`): lcov, Cobertura XML, unified diffs and the config file are
+  untrusted input, parsed by hand-written parsers. A crafted file must not crash, hang or exhaust memory in the
   consumer's CI.
 - **The CLI** (`packages/cli`): reads files and runs `git` in the working directory.
 - **Release integrity**: `packages/action/dist` is committed and must match a build of the sources
@@ -87,7 +87,7 @@ unless you ask to remain anonymous.
 
 - Leaking or misusing the consumer's `GITHUB_TOKEN`, or writing anywhere other than the PR comment
   and job summary.
-- Path traversal or arbitrary file read or write through lcov, diff or config input.
+- Path traversal or arbitrary file read or write through lcov, Cobertura, diff or config input.
 - Command injection through the CLI's `git` calls or the Action's inputs.
 - A crafted input that crashes, hangs or exhausts memory in the consumer's CI.
 - Any way to publish, alter or substitute a release artifact, move a `v*` tag, or ship a
