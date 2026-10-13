@@ -51,9 +51,6 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   without one; otherwise the compare fallback reports `DIFF_UNAVAILABLE` and the comment step
   warns, as for any API failure. The `github-token` input now says `pull-requests: write` is
   needed only for the comment.
-
-### Fixed
-
 - Concurrent runs on one PR no longer leave two sticky comments: after creating its comment, the
   Action deletes newer duplicates of its own marker comment (only ones its own login wrote) and
   keeps updating the oldest. The README quick start now sets a per-PR `concurrency` group.
