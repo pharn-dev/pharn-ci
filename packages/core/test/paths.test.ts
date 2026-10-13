@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isAbsolutePath, normalizePath } from "../src/paths.js";
+import { foldForRoot, isAbsolutePath, normalizePath, normalizeRoot, startsWithPath } from "../src/paths.js";
 
 describe("isAbsolutePath", () => {
   it.each(["/a", "\\a", "C:\\a", "c:/a"])("treats %s as absolute", (input) => {
@@ -42,4 +42,21 @@ describe("normalizePath", () => {
     expect(normalizePath("c:\\a\\repo\\src\\a.ts", "C:\\a\\repo")).toBe("src/a.ts");
     expect(normalizePath("C:\\a\\Repo\\src\\a.ts", "c:/a/repo")).toBe("src/a.ts");
   });
+});
+
+describe("paths: hostile input", () => {
+  // Generous: CI runners vary, and a quadratic scan of a million characters would take minutes.
+  const LIMIT_MS = 2000;
+
+  it("handles a million slashes and backslashes in roots and paths in linear time", () => {
+    const slashes = "/".repeat(1_000_000);
+    const mixed = "/\\".repeat(250_000);
+    const started = performance.now();
+    expect(normalizeRoot(slashes)).toBe("");
+    expect(normalizeRoot(`C:${mixed}a${mixed}`)).toBe("C:/a");
+    expect(normalizePath(`/a/${mixed}b${mixed}`, `/a${mixed}`)).toBe("b");
+    expect(startsWithPath(slashes, "/a")).toBe(false);
+    expect(foldForRoot(slashes, "C:/a")).toBe(slashes);
+    expect(performance.now() - started).toBeLessThan(LIMIT_MS);
+  }, 30_000);
 });

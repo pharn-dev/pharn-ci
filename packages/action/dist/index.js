@@ -25049,13 +25049,21 @@ function coverageChoiceLine(choice) {
 // ../core/src/paths.ts
 function normalizePath(path, repoRoot) {
   let p = toPosix(path.trim());
-  if (repoRoot) {
-    const root = toPosix(repoRoot.trim()).replace(/\/+$/, "");
-    if (root !== "" && startsWithPath(p, root)) {
-      p = p.slice(root.length + 1);
-    }
+  const root = normalizeRoot(repoRoot);
+  if (root !== "" && startsWithPath(p, root)) {
+    p = p.slice(root.length + 1);
   }
   return p;
+}
+function normalizeRoot(repoRoot) {
+  if (!repoRoot) return "";
+  const root = toPosix(repoRoot.trim());
+  let end = root.length;
+  while (end > 0 && root[end - 1] === "/") end--;
+  return root.slice(0, end);
+}
+function foldForRoot(path, root) {
+  return isDriveRoot(root) ? path.toLowerCase() : path;
 }
 function isAbsolutePath(path) {
   const first = path.charAt(0);
@@ -25087,7 +25095,11 @@ function toPosix(path) {
 function startsWithPath(path, root) {
   if (path.length <= root.length || path[root.length] !== "/") return false;
   const head = path.slice(0, root.length);
-  return /^[A-Z]:\//.test(root) ? head.toLowerCase() === root.toLowerCase() : head === root;
+  return isDriveRoot(root) ? head.toLowerCase() === root.toLowerCase() : head === root;
+}
+function isDriveRoot(root) {
+  const first = root.charAt(0);
+  return first >= "A" && first <= "Z" && root.charAt(1) === ":" && root.charAt(2) === "/";
 }
 
 // ../core/src/coverage/cobertura.ts
@@ -25150,10 +25162,10 @@ function parseCobertura(text, options = {}) {
         break;
     }
   });
-  const uniqueSources = [...new Set(sources)];
+  const resolve2 = makeResolver([...new Set(sources)], options.repoRoot);
   const map = /* @__PURE__ */ new Map();
   for (const [filename, lines] of perFile) {
-    const key = resolvePath(filename, uniqueSources, options.repoRoot);
+    const key = resolve2(filename);
     let target = map.get(key);
     if (!target) {
       target = /* @__PURE__ */ new Map();
@@ -25182,8 +25194,56 @@ function addLine(perFile, filename, number, hits) {
   }
   lines.set(lineNo, Math.max(lines.get(lineNo) ?? 0, count));
 }
+var MAX_CLIMBING_JOIN_SOURCES = 16;
+function makeResolver(sources, repoRoot) {
+  const direct = directSources(sources, repoRoot);
+  const climbing = sources.slice(0, MAX_CLIMBING_JOIN_SOURCES);
+  return (filename) => {
+    if (isAbsolutePath(filename)) return normalizePath(filename, repoRoot);
+    return resolvePath(filename, climbs(normalizePath(filename)) ? climbing : direct, repoRoot);
+  };
+}
+function directSources(sources, repoRoot) {
+  const root = normalizeRoot(repoRoot);
+  const foldedRoot = foldForRoot(root, root);
+  const kept = [];
+  const seen = /* @__PURE__ */ new Set();
+  const keep = (source, key) => {
+    if (seen.has(key)) return;
+    seen.add(key);
+    kept.push(source);
+  };
+  for (const source of sources) {
+    const path = normalizePath(source);
+    if (!isAbsolutePath(source)) {
+      if (climbs(path)) continue;
+      if (path !== "") {
+        kept.push(source);
+        break;
+      }
+      keep(source, "relative:");
+      continue;
+    }
+    if (root === "") continue;
+    if (startsWithPath(path, root)) {
+      const rest = path.slice(root.length + 1);
+      if (rest !== "" && !isAbsolutePath(`${rest}/`)) {
+        kept.push(source);
+        break;
+      }
+      if (rest.length < 3) keep(source, `under:${rest}`);
+    } else if (path.length === root.length) {
+      if (startsWithPath(`${path}/`, root)) keep(source, "root:");
+    } else if (path.length < root.length) {
+      const folded = foldForRoot(path, root);
+      if (foldedRoot.startsWith(path.endsWith("/") ? folded : `${folded}/`)) {
+        keep(source, `ancestor:${path.length}:${folded}`);
+      }
+    }
+  }
+  return kept;
+}
 function resolvePath(filename, sources, repoRoot) {
-  if (isAbsolutePath(filename)) return normalizePath(filename, repoRoot);
   for (const source of sources) {
     const joined = `${source}/${filename}`;
     if (isAbsolutePath(source)) {
