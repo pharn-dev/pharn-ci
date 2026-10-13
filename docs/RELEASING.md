@@ -82,9 +82,9 @@ npm yet.
 
 ## One-time setup
 
-These are repository settings, applied by an admin; see
-[`.github/rulesets/README.md`](../.github/rulesets/README.md):
+These repository settings are already applied by an admin and must stay on; see
+[`.github/rulesets/README.md`](../.github/rulesets/README.md) for how to check them:
 
 - the `release` environment with a required reviewer, deployable from `main` only;
 - immutable releases, so a published release's tag and assets cannot be changed;
-- the `release-tags` ruleset (already active).
+- the `release-tags` ruleset.

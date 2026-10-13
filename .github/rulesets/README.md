@@ -54,13 +54,21 @@ gh api --method PUT repos/pharn-dev/pharn-ci/rulesets/24927484 --input .github/r
 
 Use ID `24927486` and `release-tags.json` for the tag ruleset. Run the drift check afterwards.
 
-## Settings to apply later
+## Release settings
 
-Not yet applied, and not represented by a file here. Apply them as an admin when the first release
-is near:
+Applied and live, but not represented by a file here:
 
 1. **The `release` environment**, used by the `Release publish` job: a required reviewer (the
-   maintainer), and deployments from `main` only.
+   maintainer), and deployments from `main` only. Check it with:
+
+   ```bash
+   gh api repos/pharn-dev/pharn-ci/environments/release \
+     --jq '{protection_rules: [.protection_rules[].type], deployment_branch_policy}'
+   gh api repos/pharn-dev/pharn-ci/environments/release/deployment-branch-policies \
+     --jq '[.branch_policies[] | {name, type}]'
+   ```
+
+   It was created with (re-run only to restore it):
 
    ```bash
    gh api --method PUT repos/pharn-dev/pharn-ci/environments/release --input - <<'JSON'
@@ -73,13 +81,15 @@ is near:
      -f name=main -f type=branch
    ```
 
-2. **Immutable releases**, so a published release's tag and assets cannot be changed:
+2. **Immutable releases**, so a published release's tag and assets cannot be changed. Check it
+   with `gh api repos/pharn-dev/pharn-ci/immutable-releases` (`"enabled": true`); it was turned on
+   with `gh api --method PUT repos/pharn-dev/pharn-ci/immutable-releases`.
 
-   ```bash
-   gh api --method PUT repos/pharn-dev/pharn-ci/immutable-releases
-   ```
+## Settings to apply later
 
-3. **Optional: turn off the wiki**, which is unused (docs live in the repository):
+Not yet applied. Apply as an admin if wanted:
+
+1. **Optional: turn off the wiki**, which is unused (docs live in the repository):
 
    ```bash
    gh api --method PATCH repos/pharn-dev/pharn-ci -F has_wiki=false
