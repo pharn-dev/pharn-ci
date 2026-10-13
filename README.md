@@ -145,9 +145,10 @@ jobs:
 ```
 
 `fetch-depth: 0` lets pharn-ci diff against the PR base locally. Without a threshold, pharn-ci
-reports and never fails the step. The `concurrency` group cancels an older run when a new commit
-is pushed; without it, two runs that each post the sticky comment are cleaned up to one, but the
-older run may write last.
+reports and never fails the step. With a merge queue, add `merge_group` to `on:`; pharn-ci diffs
+the queued change against the queue's base (`merge_group.base_sha`). The `concurrency` group
+cancels an older run when a new commit is pushed; without it, two runs that each post the sticky
+comment are cleaned up to one, but the older run may write last.
 
 Release tags are exact versions (`v0.1.0`), never moved or deleted, but they are unsigned
 lightweight tags, so there is no tag signature to verify. Pinning the tag's full commit SHA is the
@@ -217,7 +218,7 @@ On PRs from forks the token cannot comment; pharn-ci then warns and uses the job
 | `coverage-file`     | `coverage.file` from config | Path to the coverage report              |
 | `coverage-format`   | `coverage.format`, then `auto` | `lcov`, `cobertura` or `auto` (detect it from the start of the file) |
 | `threshold`         | `coverage.threshold` from config, then none | Minimum diff coverage %, inclusive       |
-| `base-ref`          | PR base; on `push`, the previous head (`before`) | Ref or SHA to diff against               |
+| `base-ref`          | PR base; merge queue base; on `push`, the previous head (`before`) | Ref or SHA to diff against. A `base-ref` found neither in the checkout nor through the GitHub API fails the step |
 | `exclude`           | none                        | Globs of changed files to leave out of diff coverage, comma or newline separated; added to `coverage.exclude` |
 | `require-agent-setup` | `setup.require`, then `false` | Fail when the repo has no agent setup files; the step fails through `fail-on-threshold` |
 | `comment`           | `true`                      | Post/update one sticky PR comment        |
@@ -306,6 +307,7 @@ it. See [`schema/report.v1.json`](schema/report.v1.json). Branch on message `cod
 | Code                            | Meaning                                                        |
 | ------------------------------- | -------------------------------------------------------------- |
 | `DIFF_COVERAGE_BELOW_THRESHOLD` | Diff coverage is below the configured threshold                |
+| `DIFF_COVERAGE_UNGATED`         | Diff coverage was measured but not gated (no threshold, or 0); info |
 | `NO_COVERABLE_CHANGES`          | None of the added lines are tracked by the coverage report     |
 | `COVERAGE_FILE_MISSING`         | The coverage file does not exist                               |
 | `COVERAGE_FILE_EMPTY`           | The coverage file has no usable records                        |
@@ -319,9 +321,8 @@ Within v1, fields are only added and codes are never renamed or removed.
 
 ## What it proves, and what it does not
 
-**Measured:** which added lines the coverage report marks as executed, compared against an
-inclusive threshold after rounding to two decimals; which known agent setup files are tracked in
-git.
+**Measured:** which added lines the coverage report marks as executed, compared exactly against an
+inclusive threshold (79.995% fails at 80); which known agent setup files are tracked in git.
 
 **Not measured**, stated plainly (full list in [`docs/LIMITS.md`](docs/LIMITS.md)):
 
@@ -354,9 +355,10 @@ that:
 - **Small token footprint.** `contents: read` plus `pull-requests: write`. It reads the compare API
   and comments, and updates only a comment its own login wrote. It deletes a comment only when
   concurrent runs left duplicates of that own marker comment.
-- **Untrusted input stays data.** Parsers are hand-written, pure and non-recursive. File names and
-  message text cannot inject markdown or HTML into the PR comment. Git runs without a shell, and
-  refs starting with `-` are rejected.
+- **Untrusted input stays data.** Parsers are hand-written, pure and non-recursive. File names
+  render in code spans and message text is escaped, so neither can add links, images, emphasis,
+  mentions or HTML to the PR comment. Git runs without a shell, and refs starting with `-` are
+  rejected.
 - **Pure core.** `packages/core` cannot do I/O; a test, a lint rule and its tsconfig enforce it.
 - **Reviewable releases.** The committed Action bundle is rebuilt and diffed in CI. Third-party
   actions are pinned to commit SHAs. The Action has two direct runtime dependencies

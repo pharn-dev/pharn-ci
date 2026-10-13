@@ -111,7 +111,22 @@ function code(path: string): string {
   return `\`${safe}\``;
 }
 
-/** Message text on one line, with HTML neutralized. */
+// Message text carries inputs a PR controls (the coverage path from .pharn/ci.yml, the base ref), so
+// the characters that open links, images, emphasis, strikethrough, code spans, headings and tables
+// are backslash-escaped. GitHub resolves @mentions after markdown, where a backslash no longer counts,
+// so "@" gets a zero-width space after it instead (as Dependabot does). "://" and "www." are escaped
+// so a bare URL is not autolinked.
+const MARKDOWN_ACTIVE = /[\\`*_[\]#!|~]/g;
+
+/** Message text on one line, with HTML, markdown, mentions and autolinks neutralized. */
 function inlineText(text: string): string {
-  return text.replace(CONTROL_CHARS, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return text
+    .replace(CONTROL_CHARS, " ")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(MARKDOWN_ACTIVE, "\\$&")
+    .replace(/@/g, "@\u200B")
+    .replace(/:\/\//g, ":\\/\\/")
+    .replace(/(www)\./gi, "$1\\.");
 }
