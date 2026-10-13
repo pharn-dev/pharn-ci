@@ -24549,6 +24549,10 @@ function createGitHubApi(opts) {
     async updateComment(commentId, body) {
       const { octokit, owner, repo } = connect();
       await octokit.rest.issues.updateComment({ owner, repo, comment_id: commentId, body });
+    },
+    async deleteComment(commentId) {
+      const { octokit, owner, repo } = connect();
+      await octokit.rest.issues.deleteComment({ owner, repo, comment_id: commentId });
     }
   };
 }
@@ -25958,19 +25962,50 @@ function fitComment(body) {
 async function upsertComment(deps, issueNumber, body) {
   try {
     const [comments, viewer] = await Promise.all([deps.api.listComments(issueNumber), deps.api.viewerLogin()]);
-    const existing = comments.find((c) => c.user?.login === viewer && c.body?.startsWith(COMMENT_MARKER));
+    const [existing, ...duplicates] = ownComments(comments, viewer);
     if (existing) {
       await deps.api.updateComment(existing.id, body);
       deps.info(`updated pharn-ci comment ${existing.id}`);
-    } else {
-      await deps.api.createComment(issueNumber, body);
-      deps.info("created pharn-ci comment");
+      await deleteDuplicates(deps, duplicates);
+      return;
     }
+    await deps.api.createComment(issueNumber, body);
+    deps.info("created pharn-ci comment");
+    await removeRaceDuplicates(deps, issueNumber, viewer, body);
   } catch (err) {
     deps.warning(
-      `could not post the PR comment (${err instanceof Error ? err.message : String(err)}); the report is in the job summary. Grant \`pull-requests: write\` to enable comments.`
+      `could not post the PR comment (${errorText(err)}); the report is in the job summary. Grant \`pull-requests: write\` to enable comments.`
     );
   }
+}
+function ownComments(comments, viewer) {
+  return comments.filter((c) => c.user?.login === viewer && c.body?.startsWith(COMMENT_MARKER)).sort((a, b) => a.id - b.id);
+}
+async function removeRaceDuplicates(deps, issueNumber, viewer, body) {
+  try {
+    const [keep, ...duplicates] = ownComments(await deps.api.listComments(issueNumber), viewer);
+    if (!keep || duplicates.length === 0) return;
+    await deleteDuplicates(deps, duplicates);
+    if (keep.body !== body) {
+      await deps.api.updateComment(keep.id, body);
+      deps.info(`updated pharn-ci comment ${keep.id}`);
+    }
+  } catch (err) {
+    deps.warning(`could not remove duplicate pharn-ci comments: ${errorText(err)}`);
+  }
+}
+async function deleteDuplicates(deps, duplicates) {
+  for (const dup of duplicates) {
+    try {
+      await deps.api.deleteComment(dup.id);
+      deps.info(`deleted duplicate pharn-ci comment ${dup.id}`);
+    } catch (err) {
+      deps.warning(`could not delete duplicate pharn-ci comment ${dup.id}: ${errorText(err)}`);
+    }
+  }
+}
+function errorText(err) {
+  return err instanceof Error ? err.message : String(err);
 }
 async function loadConfig(path, deps) {
   const text = await deps.readFile(deps.resolvePath(deps.workspace, path));

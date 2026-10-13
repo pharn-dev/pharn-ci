@@ -43,6 +43,9 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Fixed
 
+- Concurrent runs on one PR no longer leave two sticky comments: after creating its comment, the
+  Action deletes newer duplicates of its own marker comment (only ones its own login wrote) and
+  keeps updating the oldest. The README quick start now sets a per-PR `concurrency` group.
 - Merge queue runs (`merge_group`) diff against `merge_group.base_sha` instead of always reporting
   `DIFF_UNAVAILABLE`.
 - An explicit `base-ref` found neither in the checkout nor through the GitHub API now fails the

@@ -124,6 +124,11 @@ permissions:
   contents: read
   pull-requests: write
 
+# One run per PR at a time, so concurrent pushes do not race on the sticky comment.
+concurrency:
+  group: pharn-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   pharn-ci:
     runs-on: ubuntu-latest
@@ -141,7 +146,9 @@ jobs:
 
 `fetch-depth: 0` lets pharn-ci diff against the PR base locally. Without a threshold, pharn-ci
 reports and never fails the step. With a merge queue, add `merge_group` to `on:`; pharn-ci diffs
-the queued change against the queue's base (`merge_group.base_sha`).
+the queued change against the queue's base (`merge_group.base_sha`). The `concurrency` group
+cancels an older run when a new commit is pushed; without it, two runs that each post the sticky
+comment are cleaned up to one, but the older run may write last.
 
 Release tags are exact versions (`v0.1.0`), never moved or deleted, but they are unsigned
 lightweight tags, so there is no tag signature to verify. Pinning the tag's full commit SHA is the
@@ -346,7 +353,8 @@ that:
   Action. What it reads, what it sends to your GitHub and what it stores is listed in
   [Data handling](SECURITY.md#data-handling).
 - **Small token footprint.** `contents: read` plus `pull-requests: write`. It reads the compare API
-  and comments, and updates only a comment its own login wrote.
+  and comments, and updates only a comment its own login wrote. It deletes a comment only when
+  concurrent runs left duplicates of that own marker comment.
 - **Untrusted input stays data.** Parsers are hand-written, pure and non-recursive. File names
   render in code spans and message text is escaped, so neither can add links, images, emphasis,
   mentions or HTML to the PR comment. Git runs without a shell, and refs starting with `-` are
