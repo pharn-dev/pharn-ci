@@ -3,7 +3,7 @@
 [extend]
 useDefault = true
 
-# pharn.records.json maps each installed Pharn file path to its SHA-256 digest. Paths such as
+# pharn.records.json (no longer tracked, but still in git history, which `gitleaks git .` scans) maps each installed Pharn file path to its SHA-256 digest. Paths such as
 # "secrets-in-code/..." next to a 64-char hex value look like `key: value` secrets to the
 # generic-api-key rule. They are file hashes, not credentials. Scoped to this one file and this one
 # rule, so any other rule (AWS, GitHub tokens, private keys, ...) still fires on it.

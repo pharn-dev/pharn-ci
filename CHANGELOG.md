@@ -18,6 +18,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   without one), like a missing, empty or unrecognized coverage file. If a shallow checkout makes
   the diff unavailable, use `actions/checkout` with `fetch-depth: 0` or rely on the GitHub API
   fallback.
+- The repository no longer tracks the maintainer's PHARN workflow install (`pharn/`,
+  `pharn.config.json`, `pharn.records.json` and PHARN's own root `LIMITS.md` and `THREAT-MODEL.md`),
+  so `uses: pharn-dev/pharn-ci@...` downloads about 5 MB less. pharn-ci's own threat model and
+  limits are [`docs/THREAT-MODEL.md`](./docs/THREAT-MODEL.md) and [`docs/LIMITS.md`](./docs/LIMITS.md).
 
 ### Fixed
 
