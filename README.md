@@ -394,6 +394,10 @@ an untrusted checkout ([`SECURITY.md`](SECURITY.md)).
 pharn-ci does not need PHARN installed and does not read its artifacts. It is useful on its own in
 any repo with an lcov- or Cobertura-producing test run.
 
+**pharn-ci is free, and stays free.** It is the free part of Pharn: Apache-2.0, with no account,
+license key, usage limit or paid tier, and nothing in it phones home. Pharn's paid product is
+separate; pharn-ci never needs it and is never restricted to push you towards it.
+
 **pharn-ci checks pharn-ci.** This repository's own `ci` job runs the Action from source on every
 PR with an 80% diff-coverage threshold, so every change here passes the same gate it ships.
 
