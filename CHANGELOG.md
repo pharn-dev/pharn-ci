@@ -20,6 +20,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Security
 
+- PR-controlled text in messages (the coverage path from `.pharn/ci.yml`, the base ref) no longer
+  renders as links, images, emphasis or @mentions in the PR comment and job summary: markdown
+  characters are escaped, `@` cannot mention, and bare URLs are not autolinked. The report JSON
+  keeps the message text unchanged.
+
 ## [0.1.0] - YYYY-MM-DD
 
 The maintainer replaces `YYYY-MM-DD` with the release date, and deletes this line, when cutting

@@ -1,5 +1,5 @@
 {
-  "description": "Inputs a pull request controls, crafted to break out of the PR comment's markdown. Git allows newlines in file names, so `git ls-files -z` can return any of these.",
+  "description": "Inputs a pull request controls, crafted to break out of the PR comment's markdown. Git allows newlines in file names, so `git ls-files -z` can return any of these. coverageFile comes from the PR's .pharn/ci.yml and baseRef reaches DIFF_UNAVAILABLE's text; both must render as inert text, with no live link, image, emphasis, mention or autolink.",
   "repoFiles": [
     "AGENTS.md",
     "evil\n\n## ✅ pharn-ci: pass\n\n@octocat <img src=x onerror=alert(1)>/CLAUDE.md",
@@ -8,5 +8,6 @@
     "docs/tab\there/AGENTS.md",
     "x\\| @octocat [click](https://evil.example) |/CLAUDE.md"
   ],
-  "coverageFile": "coverage/lcov.info\n\n## ✅ pharn-ci: pass <img src=x>"
+  "coverageFile": "coverage/lcov.info\n\n## ✅ pharn-ci: pass <img src=x> @octocat [click](https://evil.example) ![i](https://evil.example/i.png) **bold** _em_ ~~strike~~ `tick` #1 www.evil.example a@evil.example \\",
+  "baseRef": "main [verify your account](https://evil.example) @octocat **urgent** ~~x~~ ![i](www.evil.example/i.png) _em_ `t` #1 \\"
 }

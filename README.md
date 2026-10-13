@@ -344,9 +344,10 @@ that:
   Action.
 - **Small token footprint.** `contents: read` plus `pull-requests: write`. It reads the compare API
   and comments, and updates only a comment its own login wrote.
-- **Untrusted input stays data.** Parsers are hand-written, pure and non-recursive. File names and
-  message text cannot inject markdown or HTML into the PR comment. Git runs without a shell, and
-  refs starting with `-` are rejected.
+- **Untrusted input stays data.** Parsers are hand-written, pure and non-recursive. File names
+  render in code spans and message text is escaped, so neither can add links, images, emphasis,
+  mentions or HTML to the PR comment. Git runs without a shell, and refs starting with `-` are
+  rejected.
 - **Pure core.** `packages/core` cannot do I/O; a test, a lint rule and its tsconfig enforce it.
 - **Reviewable releases.** The committed Action bundle is rebuilt and diffed in CI. Third-party
   actions are pinned to commit SHAs, two runtime dependencies, CodeQL, gitleaks and Socket checks
