@@ -309,6 +309,36 @@ describe("action run", () => {
     expect(h.gitCalls.find((a) => a[0] === "diff")?.at(-1)).toBe(`${"f".repeat(40)}...HEAD`);
   });
 
+  const MERGE_GROUP_CONTEXT: ActionContext = {
+    eventName: "merge_group",
+    sha: "e".repeat(40),
+    payload: { merge_group: { base_sha: "d".repeat(40), head_sha: "e".repeat(40) } },
+  };
+
+  it("diffs a merge queue run locally against merge_group.base_sha", async () => {
+    const h = harness({ context: MERGE_GROUP_CONTEXT });
+    const report = await run(h.deps);
+    expect(h.gitCalls.find((a) => a[0] === "diff")?.at(-1)).toBe(`${"d".repeat(40)}...HEAD`);
+    expect(report?.diffCoverage?.percent).toBe(71.43);
+  });
+
+  it("diffs a merge queue run through the API from merge_group.base_sha to merge_group.head_sha", async () => {
+    const h = harness({ localGit: false, context: { ...MERGE_GROUP_CONTEXT, sha: "mq000" } });
+    const report = await run(h.deps);
+    expect(h.apiCalls).toContain(`compare ${"d".repeat(40)}...${"e".repeat(40)}`);
+    expect(report?.messages.map((m) => m.code)).not.toContain("DIFF_UNAVAILABLE");
+  });
+
+  it("fails the step when an explicit base-ref resolves neither locally nor through the API", async () => {
+    const h = harness({ inputs: { "base-ref": "mian" }, localGit: false, compareError: new Error("Not Found") });
+    expect(await run(h.deps)).toBeUndefined();
+    expect(h.apiCalls).toContain("compare mian...merge000");
+    expect(h.failed).toHaveLength(1);
+    expect(h.failed[0]).toContain('base-ref "mian" was not found in the checkout or through the GitHub API');
+    expect(h.failed[0]).toContain("Not Found");
+    expect(h.outputs).toEqual({});
+  });
+
   it("warns when the diff cannot be fetched at all", async () => {
     const h = harness({ localGit: false, compareError: new Error("diff too large") });
     const report = await run(h.deps);

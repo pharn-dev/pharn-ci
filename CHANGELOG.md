@@ -19,6 +19,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   the diff unavailable, use `actions/checkout` with `fetch-depth: 0` or rely on the GitHub API
   fallback.
 
+### Fixed
+
+- Merge queue runs (`merge_group`) diff against `merge_group.base_sha` instead of always reporting
+  `DIFF_UNAVAILABLE`.
+- An explicit `base-ref` found neither in the checkout nor through the GitHub API now fails the
+  step with an error naming the ref, instead of reporting `DIFF_UNAVAILABLE`.
+
 ### Security
 
 - Release tags are documented as unsigned lightweight tags, with pinning the full commit SHA as the

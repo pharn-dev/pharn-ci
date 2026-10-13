@@ -140,7 +140,8 @@ jobs:
 ```
 
 `fetch-depth: 0` lets pharn-ci diff against the PR base locally. Without a threshold, pharn-ci
-reports and never fails the step.
+reports and never fails the step. With a merge queue, add `merge_group` to `on:`; pharn-ci diffs
+the queued change against the queue's base (`merge_group.base_sha`).
 
 Release tags are exact versions (`v0.1.0`), never moved or deleted, but they are unsigned
 lightweight tags, so there is no tag signature to verify. Pinning the tag's full commit SHA is the
@@ -210,7 +211,7 @@ On PRs from forks the token cannot comment; pharn-ci then warns and uses the job
 | `coverage-file`     | `coverage.file` from config | Path to the coverage report              |
 | `coverage-format`   | `coverage.format`, then `auto` | `lcov`, `cobertura` or `auto` (detect it from the start of the file) |
 | `threshold`         | none                        | Minimum diff coverage %, inclusive       |
-| `base-ref`          | PR base                     | Ref or SHA to diff against               |
+| `base-ref`          | PR base; merge queue base; on push, the previous commit | Ref or SHA to diff against. A `base-ref` found neither in the checkout nor through the GitHub API fails the step |
 | `exclude`           | none                        | Globs of changed files to leave out of diff coverage, comma or newline separated; added to `coverage.exclude` |
 | `require-agent-setup` | `setup.require`, then `false` | Fail when the repo has no agent setup files; the step fails through `fail-on-threshold` |
 | `comment`           | `true`                      | Post/update one sticky PR comment        |

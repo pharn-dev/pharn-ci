@@ -50,11 +50,14 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   threshold is set (0 included): a gate that cannot measure fails closed. Without a threshold they
   are warnings.
 - **`DIFF_UNAVAILABLE` has several causes.** It is reported when there is no base to diff against (a
-  push without a previous commit, or no `base-ref` outside a pull request), when neither local git
-  nor the GitHub API can produce the diff (for example a shallow checkout and an API error), when
-  the diff is over the size limit, and when a `pull_request_target` run checked out the base branch.
+  push without a previous commit, or no `base-ref` outside a pull request or merge queue), when
+  neither local git nor the GitHub API can produce the diff (for example a shallow checkout and an
+  API error), when the diff is over the size limit, and when a `pull_request_target` run checked out
+  the base branch.
   Use `fetch-depth: 0` (or let the GitHub API fallback fetch the diff) and a `pull_request` trigger
-  and this does not happen in practice.
+  and this does not happen in practice. A `base-ref` you set that is found neither in the checkout
+  nor through the GitHub API is not `DIFF_UNAVAILABLE`: it fails the step, like a bad `--base` in
+  the CLI.
 - **`fail-on-threshold: false` makes the step report, not gate.** The verdict and outputs are still
   set.
 
