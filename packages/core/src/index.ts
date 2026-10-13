@@ -1,7 +1,6 @@
 export { type CheckInput, check } from "./check.js";
 export {
   ConfigError,
-  isCoverageFormat,
   isCoverageFormatSelection,
   type PharnConfig,
   parseConfig,
@@ -30,6 +29,15 @@ export {
 export { type DiffFile, type DiffFileStatus, parseUnifiedDiff } from "./diff/unified.js";
 export { computeDiffCoverage, type DiffCoverageFile, type DiffCoverageResult } from "./diffCoverage.js";
 export { compileGlob, matchGlob } from "./glob.js";
+export {
+  gitDiffArgs,
+  InputError,
+  type InputErrorText,
+  type RawInputs,
+  type ResolvedInputs,
+  type ResolveInputsResult,
+  resolveInputs,
+} from "./inputs.js";
 export { normalizePath } from "./paths.js";
 export { formatRanges, type RenderMarkdownOptions, renderMarkdown } from "./render/markdown.js";
 export {

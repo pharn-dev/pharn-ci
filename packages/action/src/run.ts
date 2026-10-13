@@ -3,13 +3,13 @@ import {
   check,
   chooseCoverageFormat,
   coverageChoiceLine,
-  isCoverageFormatSelection,
+  gitDiffArgs,
+  type InputErrorText,
   type PharnConfig,
   parseConfig,
-  parseExcludePattern,
-  parseThreshold,
   type Report,
   renderMarkdown,
+  resolveInputs,
   VERSION,
 } from "@pharn-ci/core";
 
@@ -63,6 +63,14 @@ export interface ActionDeps {
 
 const ZERO_SHA = /^0+$/;
 
+/** How the action names its inputs in input errors. */
+const INPUT_ERRORS: InputErrorText = {
+  coverageFormat: (value) => `coverage-format "${value}" is not supported (supported: lcov, cobertura, auto)`,
+  threshold: "threshold",
+  exclude: "exclude",
+  noCoverageFile: "no coverage file: set the coverage-file input or coverage.file in .pharn/ci.yml",
+};
+
 /** GitHub rejects comments over 65,536 characters; stay below that with room for the note. */
 export const MAX_COMMENT_LENGTH = 65_000;
 const TRUNCATED_NOTE = "\n\n_Truncated: the full report is in the job summary and report.json._\n";
@@ -80,23 +88,23 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const input = (name: string) => deps.getInput(name).trim();
   const config = await loadConfig(input("config") || ".pharn/ci.yml", deps);
 
-  const format = input("coverage-format") || config.coverage?.format || "auto";
-  if (!isCoverageFormatSelection(format)) {
-    throw new Error(`coverage-format "${format}" is not supported (supported: lcov, cobertura, auto)`);
-  }
-  const thresholdInput = input("threshold");
-  const threshold =
-    thresholdInput !== "" ? parseThreshold(thresholdInput, "threshold") : (config.coverage?.threshold ?? null);
-  const coverageFile = input("coverage-file") || config.coverage?.file;
-  if (!coverageFile) throw new Error("no coverage file: set the coverage-file input or coverage.file in .pharn/ci.yml");
-  const failOnThreshold = parseBool(input("fail-on-threshold"), true, "fail-on-threshold");
-  const requireAgentSetup = parseBool(
-    input("require-agent-setup"),
-    config.setup?.require ?? false,
-    "require-agent-setup",
+  // An empty input is not given: the config, then the default, applies.
+  const resolved = resolveInputs(
+    config,
+    {
+      coverageFile: input("coverage-file") || undefined,
+      coverageFormat: input("coverage-format") || undefined,
+      threshold: input("threshold") || undefined,
+      exclude: splitPatternList(input("exclude")),
+      requireAgentSetup: parseBool(input("require-agent-setup"), "require-agent-setup"),
+    },
+    INPUT_ERRORS,
   );
-  const comment = parseBool(input("comment"), true, "comment");
-  const excludeInput = splitPatternList(input("exclude")).map((p) => parseExcludePattern(p, "exclude"));
+  if (!resolved.ok) throw resolved.errors[0];
+  const { coverageFormat: format, threshold, exclude, requireAgentSetup } = resolved.inputs;
+  const coverageFile = resolved.inputs.coverageFile.path;
+  const failOnThreshold = parseBool(input("fail-on-threshold"), "fail-on-threshold") ?? true;
+  const comment = parseBool(input("comment"), "comment") ?? true;
 
   const coveragePath = deps.resolvePath(deps.workspace, coverageFile);
   const coverageText = await deps.readFile(coveragePath);
@@ -116,7 +124,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     repoRoot: deps.workspace,
     threshold,
     repoFiles: lsFiles.split("\0").filter((p) => p !== ""),
-    exclude: [...(config.coverage?.exclude ?? []), ...excludeInput],
+    exclude,
     requireAgentSetup,
   };
   const report = check(checkInput);
@@ -180,17 +188,7 @@ async function getDiff(baseRefInput: string, deps: ActionDeps): Promise<CheckInp
   if (localBase) {
     try {
       return {
-        text: await deps.git([
-          "diff",
-          "--unified=0",
-          "--no-color",
-          "--no-ext-diff",
-          "--find-renames",
-          "--src-prefix=a/",
-          "--dst-prefix=b/",
-          "--end-of-options",
-          `${localBase}...HEAD`,
-        ]),
+        text: await deps.git(gitDiffArgs(localBase)),
       };
     } catch (err) {
       deps.info(`local git diff failed, falling back to the GitHub API: ${String(err)}`);
@@ -328,8 +326,9 @@ function splitPatternList(value: string): string[] {
     .filter((entry) => entry !== "");
 }
 
-function parseBool(value: string, fallback: boolean, name: string): boolean {
-  if (value === "") return fallback;
+/** An empty input is not given (undefined). */
+function parseBool(value: string, name: string): boolean | undefined {
+  if (value === "") return undefined;
   if (/^(true|yes|on|1)$/i.test(value)) return true;
   if (/^(false|no|off|0)$/i.test(value)) return false;
   throw new Error(`${name} must be true or false, got "${value}"`);

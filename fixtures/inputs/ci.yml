@@ -1,0 +1,9 @@
+# Config for the resolveInputs tests: every setting the inputs can override.
+coverage:
+  file: cov/lcov.info
+  format: cobertura
+  threshold: 80
+  exclude:
+    - src/generated/**
+setup:
+  require: true
