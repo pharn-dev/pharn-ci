@@ -142,8 +142,9 @@ jobs:
 `fetch-depth: 0` lets pharn-ci diff against the PR base locally. Without a threshold, pharn-ci
 reports and never fails the step.
 
-Release tags are exact versions (`v0.1.0`), never moved or deleted. Pinning the tag's full commit
-SHA is stronger still; Dependabot keeps either up to date.
+Release tags are exact versions (`v0.1.0`), never moved or deleted, but they are unsigned
+lightweight tags, so there is no tag signature to verify. Pinning the tag's full commit SHA is the
+integrity control; Dependabot keeps either up to date.
 
 ---
 
@@ -215,7 +216,7 @@ On PRs from forks the token cannot comment; pharn-ci then warns and uses the job
 | `comment`           | `true`                      | Post/update one sticky PR comment        |
 | `fail-on-threshold` | `true`                      | Fail the step when the verdict is `fail` |
 | `config`            | `.pharn/ci.yml`             | Config file path                         |
-| `github-token`      | `github.token`              | Token for the comment and diff fallback  |
+| `github-token`      | `github.token`              | Token for the comment and diff fallback; `pull-requests: write` only for the comment, may be empty with `comment: false` and a local diff |
 
 | Output          |                                                       |
 | --------------- | ----------------------------------------------------- |
@@ -341,7 +342,8 @@ pharn-ci runs inside other people's CI, on untrusted changes, with their token. 
 that:
 
 - **Stateless.** No backend, no telemetry, no network calls except the GitHub API inside the
-  Action.
+  Action. What it reads, what it sends to your GitHub and what it stores is listed in
+  [Data handling](SECURITY.md#data-handling).
 - **Small token footprint.** `contents: read` plus `pull-requests: write`. It reads the compare API
   and comments, and updates only a comment its own login wrote.
 - **Untrusted input stays data.** Parsers are hand-written, pure and non-recursive. File names and
