@@ -21,3 +21,6 @@ packages/cli/dist/
 /.claude/commands/pharn-*.md
 /.claude/hooks/
 /.claude/settings.json
+/.claude/commands/pharn-*.md
+/.claude/hooks/
+/.claude/settings.json
