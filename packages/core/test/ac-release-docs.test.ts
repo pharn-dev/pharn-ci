@@ -173,6 +173,20 @@ describe("release readiness: pins match the package version", () => {
     }
   });
 
+  it("every other uses: line in README.md and docs/MARKETPLACE.md pins a full commit SHA with a # vX.Y.Z comment", () => {
+    for (const path of ["README.md", "docs/MARKETPLACE.md"]) {
+      const others = read(path)
+        .split("\n")
+        .filter((line) => /^\s*(?:- )?uses:/.test(line) && !/uses:\s*pharn-dev\/pharn-ci@/.test(line));
+      expect(others.length, `${path} has other uses: lines`).toBeGreaterThanOrEqual(1);
+      for (const line of others) {
+        expect(line, `${path} pins by commit SHA`).toMatch(
+          /uses:\s*[\w.-]+\/[\w./-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+\s*$/,
+        );
+      }
+    }
+  });
+
   it("the README Status note names v<VERSION>", async () => {
     const { VERSION } = await import("../src/version.js");
     const status = read("README.md").match(/^> \*\*Status:\*\*.*\n(?:>.*\n)*/m)?.[0];

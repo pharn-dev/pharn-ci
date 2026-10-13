@@ -16,7 +16,7 @@ inputs:
     description: Minimum diff coverage percent (0-100, inclusive). Defaults to coverage.threshold in .pharn/ci.yml; no gate if unset.
     required: false
   base-ref:
-    description: Ref or SHA to diff against (merge-base with HEAD). Defaults to the pull request base; on push, the previous commit.
+    description: Ref or SHA to diff against (merge-base with HEAD). Defaults to the pull request base; in a merge queue (merge_group), the queue base; on push, the previous commit. A base-ref found neither in the checkout nor through the GitHub API fails the step.
     required: false
   exclude:
     description: Glob patterns of changed files to leave out of diff coverage, separated by commas or newlines. Added to coverage.exclude in .pharn/ci.yml, never replacing it.
@@ -37,7 +37,7 @@ inputs:
     required: false
     default: .pharn/ci.yml
   github-token:
-    description: Token for the GitHub API (comments, diff fallback). Needs contents read and pull-requests write.
+    description: Token for the GitHub API, used only for the PR comment and the diff fallback. Needs contents read, plus pull-requests write only for the comment. May be empty with comment false and a local diff.
     required: false
     default: ${{ github.token }}
 
