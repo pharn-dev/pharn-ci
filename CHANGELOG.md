@@ -18,6 +18,14 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   the diff unavailable, use `actions/checkout` with `fetch-depth: 0` or rely on the GitHub API
   fallback.
 
+### Fixed
+
+- The Action no longer crashes with a stack trace before running when `github-token` is empty. The
+  token is used only when an API call is needed, so `comment: false` with a local diff works
+  without one; otherwise the compare fallback reports `DIFF_UNAVAILABLE` and the comment step
+  warns, as for any API failure. The `github-token` input now says `pull-requests: write` is
+  needed only for the comment.
+
 ### Security
 
 ## [0.1.0] - YYYY-MM-DD
