@@ -40,8 +40,13 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   matches nothing. The same holds for Cobertura `filename` values: they are joined to the
   report's `<source>` entries, and a report made inside a package directory yields paths
   relative to that package, which match nothing.
-- **Percentages are rounded to two decimals** and compared after rounding, so the verdict agrees
-  with the number shown. 100% and 0% are reserved for exactly all and exactly none covered.
+- **Percentages are rounded to two decimals, but the threshold is compared exactly.** 15,999 of
+  20,000 lines (79.995%) fails a threshold of 80. When rounding up would show a failing coverage as
+  reaching the threshold, it is rounded down instead (79.99%), so the number shown agrees with the
+  verdict. 100% and 0% are reserved for exactly all and exactly none covered.
+- **Threshold 0 gates no percentage.** Any measured coverage meets it, and the report says so with
+  `DIFF_COVERAGE_UNGATED`, as it does without a threshold. Unlike no threshold, it still makes a
+  missing coverage file or diff an error (below).
 
 ## 2. When an input is missing
 
@@ -50,11 +55,14 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   threshold is set (0 included): a gate that cannot measure fails closed. Without a threshold they
   are warnings.
 - **`DIFF_UNAVAILABLE` has several causes.** It is reported when there is no base to diff against (a
-  push without a previous commit, or no `base-ref` outside a pull request), when neither local git
-  nor the GitHub API can produce the diff (for example a shallow checkout and an API error), when
-  the diff is over the size limit, and when a `pull_request_target` run checked out the base branch.
+  push without a previous commit, or no `base-ref` outside a pull request or merge queue), when
+  neither local git nor the GitHub API can produce the diff (for example a shallow checkout and an
+  API error), when the diff is over the size limit, and when a `pull_request_target` run checked out
+  the base branch.
   Use `fetch-depth: 0` (or let the GitHub API fallback fetch the diff) and a `pull_request` trigger
-  and this does not happen in practice.
+  and this does not happen in practice. A `base-ref` you set that is found neither in the checkout
+  nor through the GitHub API is not `DIFF_UNAVAILABLE`: it fails the step, like a bad `--base` in
+  the CLI.
 - **`fail-on-threshold: false` makes the step report, not gate.** The verdict and outputs are still
   set.
 
