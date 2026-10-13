@@ -38,6 +38,9 @@ const api: GitHubApi = {
   async updateComment(commentId, body) {
     await octokit.rest.issues.updateComment({ owner, repo, comment_id: commentId, body });
   },
+  async deleteComment(commentId) {
+    await octokit.rest.issues.deleteComment({ owner, repo, comment_id: commentId });
+  },
 };
 
 await run({

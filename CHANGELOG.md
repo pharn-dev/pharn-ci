@@ -18,6 +18,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   the diff unavailable, use `actions/checkout` with `fetch-depth: 0` or rely on the GitHub API
   fallback.
 
+### Fixed
+
+- Concurrent runs on one PR no longer leave two sticky comments: after creating its comment, the
+  Action deletes newer duplicates of its own marker comment (only ones its own login wrote) and
+  keeps updating the oldest. The README quick start now sets a per-PR `concurrency` group.
+
 ### Security
 
 ## [0.1.0] - YYYY-MM-DD

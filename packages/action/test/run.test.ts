@@ -40,6 +40,11 @@ interface Options {
   commentError?: Error;
   compareError?: Error;
   existingComments?: IssueComment[];
+  /** Comments a concurrent run posts while this run creates its own (a list-then-create race). */
+  racingComments?: IssueComment[];
+  deleteError?: Error;
+  /** Error for listing comments again after creating one. */
+  relistError?: Error;
   /** Login the token comments as (default: the GITHUB_TOKEN bot). */
   viewer?: string;
   /** Output of `git rev-parse HEAD` (default: not the PR head). */
@@ -75,6 +80,7 @@ function harness(opts: Options = {}): Harness {
   const viewer = opts.viewer ?? BOT.login;
   const lsFiles = opts.lsFiles ?? fixture("golden/files.txt").trim().split("\n");
   let nextId = 100;
+  let lists = 0;
 
   h.deps = {
     getInput: (name) => inputs[name] ?? "",
@@ -91,16 +97,23 @@ function harness(opts: Options = {}): Harness {
       async listComments(n) {
         h.apiCalls.push(`list ${n}`);
         if (opts.commentError) throw opts.commentError;
-        return h.comments;
+        if (lists++ > 0 && opts.relistError) throw opts.relistError;
+        return h.comments.map((c) => ({ ...c }));
       },
       async createComment(n, body) {
         h.apiCalls.push(`create ${n}`);
-        h.comments.push({ id: nextId++, body, user: { login: viewer } });
+        h.comments.push({ id: nextId++, body, user: { login: viewer } }, ...(opts.racingComments ?? []));
+        h.comments.sort((a, b) => a.id - b.id);
       },
       async updateComment(id, body) {
         h.apiCalls.push(`update ${id}`);
         const c = h.comments.find((x) => x.id === id);
         if (c) c.body = body;
+      },
+      async deleteComment(id) {
+        h.apiCalls.push(`delete ${id}`);
+        if (opts.deleteError) throw opts.deleteError;
+        h.comments = h.comments.filter((x) => x.id !== id);
       },
     },
     async git(args) {
@@ -243,6 +256,85 @@ describe("action run", () => {
     });
     await run(h.deps);
     expect(h.apiCalls.filter((c) => c.startsWith("update") || c.startsWith("create"))).toEqual(["update 2"]);
+  });
+
+  const commentCalls = (h: Harness) => h.apiCalls.filter((c) => !c.startsWith("compare"));
+  const ownMarkerComments = (h: Harness, login = BOT.login) =>
+    h.comments.filter((c) => c.user?.login === login && c.body?.startsWith(COMMENT_MARKER));
+
+  it("deletes its own comment and updates the older one when a concurrent run created one first", async () => {
+    const h = harness({
+      inputs: { threshold: "80" },
+      racingComments: [{ id: 50, body: `${COMMENT_MARKER}\nconcurrent run`, user: BOT }],
+    });
+    await run(h.deps);
+    expect(commentCalls(h)).toEqual(["list 7", "create 7", "list 7", "delete 100", "update 50"]);
+    expect(ownMarkerComments(h).map((c) => c.id)).toEqual([50]);
+    expect(h.comments[0]?.body?.startsWith(`${COMMENT_MARKER}\n## ❌ pharn-ci: fail`)).toBe(true);
+    expect(h.warnings).toEqual([]);
+
+    // The next run updates the one remaining comment.
+    await run(h.deps);
+    expect(commentCalls(h).slice(5)).toEqual(["list 7", "update 50"]);
+  });
+
+  it("keeps its own comment and deletes the newer one when a concurrent run created one after it", async () => {
+    const h = harness({ racingComments: [{ id: 200, body: `${COMMENT_MARKER}\nconcurrent run`, user: BOT }] });
+    await run(h.deps);
+    expect(commentCalls(h)).toEqual(["list 7", "create 7", "list 7", "delete 200"]);
+    expect(ownMarkerComments(h).map((c) => c.id)).toEqual([100]);
+  });
+
+  it("never deletes a comment without the marker at the start or written by another login", async () => {
+    const forged = { id: 10, body: `${COMMENT_MARKER}\nforged`, user: { login: "mallory" } };
+    const quoted = { id: 11, body: `> earlier report\n${COMMENT_MARKER}`, user: BOT };
+    const plain = { id: 12, body: "unrelated", user: BOT };
+    const anonymous = { id: 13, body: `${COMMENT_MARKER}\nghost`, user: null };
+    const h = harness({ racingComments: [forged, quoted, plain, anonymous] });
+    await run(h.deps);
+    expect(commentCalls(h)).toEqual(["list 7", "create 7", "list 7"]);
+    expect(h.comments.map((c) => c.id)).toEqual([10, 11, 12, 13, 100]);
+  });
+
+  it("only deletes duplicates of a non-default token's own login", async () => {
+    const h = harness({
+      viewer: "release-bot",
+      racingComments: [
+        { id: 20, body: `${COMMENT_MARKER}\nby the default token`, user: BOT },
+        { id: 300, body: `${COMMENT_MARKER}\nconcurrent run`, user: { login: "release-bot" } },
+      ],
+    });
+    await run(h.deps);
+    expect(h.apiCalls.filter((c) => c.startsWith("delete"))).toEqual(["delete 300"]);
+    expect(h.comments.map((c) => c.id)).toEqual([20, 100]);
+  });
+
+  it("updates the oldest own comment and deletes newer duplicates left by an earlier race", async () => {
+    const h = harness({
+      existingComments: [
+        { id: 3, body: `${COMMENT_MARKER}\nstale duplicate`, user: BOT },
+        { id: 2, body: `${COMMENT_MARKER}\nold report`, user: BOT },
+        { id: 1, body: `${COMMENT_MARKER}\nforged`, user: { login: "mallory" } },
+      ],
+    });
+    await run(h.deps);
+    expect(commentCalls(h)).toEqual(["list 7", "update 2", "delete 3"]);
+    expect(h.comments.map((c) => c.id)).toEqual([2, 1]);
+  });
+
+  it("only warns when a duplicate cannot be deleted or the comments cannot be listed again", async () => {
+    const racing = [{ id: 50, body: `${COMMENT_MARKER}\nconcurrent run`, user: BOT }];
+    const undeletable = harness({ racingComments: racing, deleteError: new Error("Not Found") });
+    expect((await run(undeletable.deps))?.verdict).toBe("pass");
+    expect(undeletable.failed).toEqual([]);
+    expect(undeletable.warnings).toEqual(["could not delete duplicate pharn-ci comment 100: Not Found"]);
+    expect(commentCalls(undeletable)).toEqual(["list 7", "create 7", "list 7", "delete 100", "update 50"]);
+
+    const unlisted = harness({ racingComments: racing, relistError: new Error("rate limited") });
+    expect((await run(unlisted.deps))?.verdict).toBe("pass");
+    expect(unlisted.failed).toEqual([]);
+    expect(unlisted.warnings).toEqual(["could not remove duplicate pharn-ci comments: rate limited"]);
+    expect(commentCalls(unlisted)).toEqual(["list 7", "create 7", "list 7"]);
   });
 
   it("truncates a comment over GitHub's size limit and keeps the full report in the summary", async () => {
