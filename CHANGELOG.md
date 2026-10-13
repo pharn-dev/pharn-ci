@@ -43,6 +43,9 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Fixed
 
+- Concurrent runs on one PR no longer leave two sticky comments: after creating its comment, the
+  Action deletes newer duplicates of its own marker comment (only ones its own login wrote) and
+  keeps updating the oldest. The README quick start now sets a per-PR `concurrency` group.
 - Merge queue runs (`merge_group`) diff against `merge_group.base_sha` instead of always reporting
   `DIFF_UNAVAILABLE`.
 - An explicit `base-ref` found neither in the checkout nor through the GitHub API now fails the
@@ -53,6 +56,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 - Cobertura path resolution no longer slows down quadratically on a crafted report with thousands
   of `<source>` entries and thousands of filenames (F-24). Results are unchanged, except that a
   relative `filename` starting with `..` is now joined to at most the first 16 distinct sources.
+- PR-controlled text in messages (the coverage path from `.pharn/ci.yml`, the base ref) no longer
+  renders as links, images, emphasis or @mentions in the PR comment and job summary: markdown
+  characters are escaped, `@` cannot mention, and bare URLs are not autolinked. The report JSON
+  keeps the message text unchanged.
 - The Action's `git rev-parse --verify` lookup of the base ref now passes the revision after
   `--end-of-options` too, so every git call that takes a revision separates it from options.
 - Release tags are documented as unsigned lightweight tags, with pinning the full commit SHA as the

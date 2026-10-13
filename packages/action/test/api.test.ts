@@ -12,6 +12,7 @@ function fakeOctokit() {
         listComments: vi.fn(),
         createComment: vi.fn(async () => ({})),
         updateComment: vi.fn(async () => ({})),
+        deleteComment: vi.fn(async () => ({})),
       },
     },
     paginate: vi.fn(async () => [{ id: 1 }]),
@@ -43,6 +44,7 @@ describe("createGitHubApi", () => {
     await expect(api.listComments(7)).rejects.toThrow(empty);
     await expect(api.createComment(7, "x")).rejects.toThrow(empty);
     await expect(api.updateComment(1, "x")).rejects.toThrow(empty);
+    await expect(api.deleteComment(1)).rejects.toThrow(empty);
     expect(getOctokit).not.toHaveBeenCalled();
   });
 
@@ -59,8 +61,10 @@ describe("createGitHubApi", () => {
     expect(await api.listComments(7)).toEqual([{ id: 1 }]);
     await api.createComment(7, "body");
     await api.updateComment(1, "body");
+    await api.deleteComment(2);
     expect(octokit.rest.issues.createComment).toHaveBeenCalledWith({ ...REPO, issue_number: 7, body: "body" });
     expect(octokit.rest.issues.updateComment).toHaveBeenCalledWith({ ...REPO, comment_id: 1, body: "body" });
+    expect(octokit.rest.issues.deleteComment).toHaveBeenCalledWith({ ...REPO, comment_id: 2 });
     expect(getOctokit).toHaveBeenCalledTimes(1);
     expect(getOctokit).toHaveBeenCalledWith("t0ken");
   });

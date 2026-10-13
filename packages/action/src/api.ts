@@ -65,5 +65,9 @@ export function createGitHubApi(opts: GitHubApiOptions): GitHubApi {
       const { octokit, owner, repo } = connect();
       await octokit.rest.issues.updateComment({ owner, repo, comment_id: commentId, body });
     },
+    async deleteComment(commentId) {
+      const { octokit, owner, repo } = connect();
+      await octokit.rest.issues.deleteComment({ owner, repo, comment_id: commentId });
+    },
   };
 }
