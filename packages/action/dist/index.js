@@ -25811,8 +25811,9 @@ function code(path) {
   const safe = path.replace(CONTROL_CHARS, "\uFFFD").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/`/g, "'");
   return `\`${safe}\``;
 }
+var MARKDOWN_ACTIVE = /[\\`*_[\]#!|~]/g;
 function inlineText(text) {
-  return text.replace(CONTROL_CHARS, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return text.replace(CONTROL_CHARS, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(MARKDOWN_ACTIVE, "\\$&").replace(/@/g, "@\u200B").replace(/:\/\//g, ":\\/\\/").replace(/(www)\./gi, "$1\\.");
 }
 
 // ../core/src/version.ts

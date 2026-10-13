@@ -50,6 +50,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Security
 
+- PR-controlled text in messages (the coverage path from `.pharn/ci.yml`, the base ref) no longer
+  renders as links, images, emphasis or @mentions in the PR comment and job summary: markdown
+  characters are escaped, `@` cannot mention, and bare URLs are not autolinked. The report JSON
+  keeps the message text unchanged.
 - The Action's `git rev-parse --verify` lookup of the base ref now passes the revision after
   `--end-of-options` too, so every git call that takes a revision separates it from options.
 - Release tags are documented as unsigned lightweight tags, with pinning the full commit SHA as the
