@@ -20,6 +20,9 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Security
 
+- The Action's `git rev-parse --verify` lookup of the base ref now passes the revision after
+  `--end-of-options` too, so every git call that takes a revision separates it from options.
+
 ## [0.1.0] - YYYY-MM-DD
 
 The maintainer replaces `YYYY-MM-DD` with the release date, and deletes this line, when cutting
