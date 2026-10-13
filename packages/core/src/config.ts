@@ -1,9 +1,4 @@
-import {
-  COVERAGE_FORMAT_SELECTIONS,
-  COVERAGE_FORMATS,
-  type CoverageFormat,
-  type CoverageFormatSelection,
-} from "./coverage/types.js";
+import { COVERAGE_FORMAT_SELECTIONS, type CoverageFormatSelection } from "./coverage/types.js";
 
 /** Shape of `.pharn/ci.yml`. Every field is optional; CLI/Action inputs override it. */
 export interface PharnConfig {
@@ -311,10 +306,6 @@ function validateCoverage(cov: YamlMap[string] | undefined): PharnConfig["covera
     }
   }
   return coverage;
-}
-
-export function isCoverageFormat(value: string): value is CoverageFormat {
-  return (COVERAGE_FORMATS as readonly string[]).includes(value);
 }
 
 /**

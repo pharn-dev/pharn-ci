@@ -6,12 +6,13 @@ import {
   check,
   chooseCoverageFormat,
   coverageChoiceLine,
-  isCoverageFormatSelection,
+  gitDiffArgs,
+  type InputErrorText,
   type PharnConfig,
   parseConfig,
-  parseExcludePattern,
-  parseThreshold,
+  type RawInputs,
   renderMarkdown,
+  resolveInputs,
   VERSION,
 } from "@pharn-ci/core";
 
@@ -103,41 +104,44 @@ function parse(argv: string[]) {
 
 type Values = ReturnType<typeof parse>["values"];
 
+/** How the CLI names its flags in input errors. */
+const FLAG_ERRORS: InputErrorText = {
+  coverageFormat: (value) =>
+    `--coverage-format must be one of: ${COVERAGE_FORMAT_SELECTIONS.join(", ")} (got "${value}")`,
+  threshold: "--threshold",
+  exclude: "--exclude",
+  noCoverageFile: "no coverage file: pass --coverage <file> or set coverage.file in .pharn/ci.yml",
+};
+
 async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   const format = values.format ?? "md";
   if (format !== "md" && format !== "json") throw new ConfigError(`--format must be "md" or "json"`);
-  const coverageFormatFlag = values["coverage-format"];
-  if (coverageFormatFlag !== undefined && !isCoverageFormatSelection(coverageFormatFlag)) {
-    throw new ConfigError(
-      `--coverage-format must be one of: ${COVERAGE_FORMAT_SELECTIONS.join(", ")} (got "${coverageFormatFlag}")`,
-    );
-  }
+  const raw: RawInputs = {
+    coverageFile: values.coverage,
+    coverageFormat: values["coverage-format"],
+    threshold: values.threshold,
+    exclude: values.exclude,
+    requireAgentSetup: values["require-agent-setup"],
+  };
+  // Malformed --coverage-format and --exclude flags are reported before any git call: they need no config.
+  const flagsAlone = resolveInputs({}, raw, FLAG_ERRORS);
+  const flagError = (input: keyof RawInputs) =>
+    flagsAlone.ok ? undefined : flagsAlone.errors.find((e) => e.input === input);
+  const formatError = flagError("coverageFormat");
+  if (formatError) throw formatError;
   // A leading "-" would reach git as an option (e.g. --output=<file>), not a revision.
   if (values.base?.startsWith("-")) throw new ConfigError(`--base "${values.base}" must not start with "-"`);
-  const excludeFlags = (values.exclude ?? []).map((p) => parseExcludePattern(p, "--exclude"));
+  const excludeError = flagError("exclude");
+  if (excludeError) throw excludeError;
 
   const repoRoot = (await git(deps, ["rev-parse", "--show-toplevel"], "not inside a git repository")).trim();
   const config = await loadConfig(values.config, repoRoot, deps);
-
-  const threshold =
-    values.threshold !== undefined
-      ? parseThreshold(values.threshold, "--threshold")
-      : (config.coverage?.threshold ?? null);
-
-  const coverageFormat = coverageFormatFlag ?? config.coverage?.format ?? "auto";
-  // The flag only turns the requirement on; absent, setup.require decides, then off.
-  const requireAgentSetup = values["require-agent-setup"] === true || (config.setup?.require ?? false);
+  const resolved = resolveInputs(config, raw, FLAG_ERRORS);
+  if (!resolved.ok) throw resolved.errors[0];
+  const { coverageFile, coverageFormat, threshold, exclude, requireAgentSetup } = resolved.inputs;
 
   // A --coverage path is relative to where you run the CLI; a config path is relative to the repo root.
-  const coveragePath =
-    values.coverage !== undefined
-      ? deps.resolvePath(deps.cwd, values.coverage)
-      : config.coverage?.file !== undefined
-        ? deps.resolvePath(repoRoot, config.coverage.file)
-        : undefined;
-  if (coveragePath === undefined) {
-    throw new ConfigError("no coverage file: pass --coverage <file> or set coverage.file in .pharn/ci.yml");
-  }
+  const coveragePath = deps.resolvePath(coverageFile.fromConfig ? repoRoot : deps.cwd, coverageFile.path);
   const coverageText = await deps.readFile(coveragePath);
   // Say which format was read and why, on stderr so stdout stays the report alone.
   if (coverageText !== null) {
@@ -147,17 +151,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   const base = values.base ?? "origin/main";
   const diffText = await git(
     deps,
-    [
-      "diff",
-      "--unified=0",
-      "--no-color",
-      "--no-ext-diff",
-      "--find-renames",
-      "--src-prefix=a/",
-      "--dst-prefix=b/",
-      "--end-of-options",
-      `${base}...HEAD`,
-    ],
+    gitDiffArgs(base),
     `could not diff against "${base}" (fetch it, or pass --base <ref>)`,
   );
   const lsFiles = await git(deps, ["ls-files", "-z"], "git ls-files failed");
@@ -172,7 +166,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     repoRoot,
     threshold,
     repoFiles: lsFiles.split("\0").filter((p) => p !== ""),
-    exclude: [...(config.coverage?.exclude ?? []), ...excludeFlags],
+    exclude,
     requireAgentSetup,
   };
   const report = check(input);

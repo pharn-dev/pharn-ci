@@ -25850,6 +25850,61 @@ function check(input) {
   });
 }
 
+// ../core/src/inputs.ts
+var InputError = class extends ConfigError {
+  constructor(input, message) {
+    super(message);
+    this.input = input;
+  }
+  input;
+};
+function resolveInputs(config, raw, text) {
+  const errors = [];
+  const attempt = (input, fn) => {
+    try {
+      return fn();
+    } catch (err) {
+      if (!(err instanceof ConfigError)) throw err;
+      errors.push(new InputError(input, err.message));
+      return void 0;
+    }
+  };
+  const coverageFormat = raw.coverageFormat ?? config.coverage?.format ?? "auto";
+  if (!isCoverageFormatSelection(coverageFormat)) {
+    errors.push(new InputError("coverageFormat", text.coverageFormat(coverageFormat)));
+  }
+  const threshold = raw.threshold !== void 0 ? attempt("threshold", () => parseThreshold(raw.threshold, text.threshold)) : config.coverage?.threshold ?? null;
+  const coverageFile = raw.coverageFile !== void 0 ? { path: raw.coverageFile, fromConfig: false } : config.coverage?.file !== void 0 ? { path: config.coverage.file, fromConfig: true } : void 0;
+  if (coverageFile === void 0) errors.push(new InputError("coverageFile", text.noCoverageFile));
+  const exclude = attempt("exclude", () => (raw.exclude ?? []).map((p) => parseExcludePattern(p, text.exclude)));
+  const [first, ...rest] = errors;
+  if (first !== void 0) return { ok: false, errors: [first, ...rest] };
+  return {
+    ok: true,
+    inputs: {
+      coverageFile,
+      coverageFormat,
+      threshold,
+      exclude: [...config.coverage?.exclude ?? [], ...exclude],
+      // Absent, setup.require decides, then off. The CLI flag can only turn it on.
+      requireAgentSetup: raw.requireAgentSetup ?? config.setup?.require ?? false
+    }
+  };
+}
+function gitDiffArgs(base, head = "HEAD") {
+  return [
+    "diff",
+    "--unified=0",
+    "--no-color",
+    "--no-ext-diff",
+    "--find-renames",
+    "--src-prefix=a/",
+    "--dst-prefix=b/",
+    "--end-of-options",
+    `${base}...${head}`
+  ];
+}
+
 // ../core/src/render/markdown.ts
 var VERDICT_ICON = { pass: "\u2705", warn: "\u26A0\uFE0F", fail: "\u274C" };
 var COLLAPSE_ABOVE = 25;
@@ -25911,7 +25966,7 @@ function renderMarkdown(report, options = {}) {
       ""
     );
   } else {
-    const { tools } = summarizeAgentSetup(setup);
+    const { tools } = report.agentSetup.summary ?? summarizeAgentSetup(setup);
     out.push(`Agent setup: ${setup.length} ${setup.length === 1 ? "file" : "files"} \xB7 ${tools.join(", ")}`, "");
     const collapse = setup.length > COLLAPSE_ABOVE;
     if (collapse) out.push("<details>", `<summary>Show all ${setup.length} agent setup files</summary>`, "");
@@ -25975,6 +26030,12 @@ var VERSION7 = "0.1.0";
 // src/run.ts
 var COMMENT_MARKER = "<!-- pharn-ci -->";
 var ZERO_SHA = /^0+$/;
+var INPUT_ERRORS = {
+  coverageFormat: (value) => `coverage-format "${value}" is not supported (supported: lcov, cobertura, auto)`,
+  threshold: "threshold",
+  exclude: "exclude",
+  noCoverageFile: "no coverage file: set the coverage-file input or coverage.file in .pharn/ci.yml"
+};
 var MAX_COMMENT_LENGTH = 65e3;
 var TRUNCATED_NOTE = "\n\n_Truncated: the full report is in the job summary and report.json._\n";
 async function run(deps) {
@@ -25988,22 +26049,22 @@ async function run(deps) {
 async function runUnsafe(deps) {
   const input = (name) => deps.getInput(name).trim();
   const config = await loadConfig(input("config") || ".pharn/ci.yml", deps);
-  const format = input("coverage-format") || config.coverage?.format || "auto";
-  if (!isCoverageFormatSelection(format)) {
-    throw new Error(`coverage-format "${format}" is not supported (supported: lcov, cobertura, auto)`);
-  }
-  const thresholdInput = input("threshold");
-  const threshold = thresholdInput !== "" ? parseThreshold(thresholdInput, "threshold") : config.coverage?.threshold ?? null;
-  const coverageFile = input("coverage-file") || config.coverage?.file;
-  if (!coverageFile) throw new Error("no coverage file: set the coverage-file input or coverage.file in .pharn/ci.yml");
-  const failOnThreshold = parseBool(input("fail-on-threshold"), true, "fail-on-threshold");
-  const requireAgentSetup = parseBool(
-    input("require-agent-setup"),
-    config.setup?.require ?? false,
-    "require-agent-setup"
+  const resolved = resolveInputs(
+    config,
+    {
+      coverageFile: input("coverage-file") || void 0,
+      coverageFormat: input("coverage-format") || void 0,
+      threshold: input("threshold") || void 0,
+      exclude: splitPatternList(input("exclude")),
+      requireAgentSetup: parseBool(input("require-agent-setup"), "require-agent-setup")
+    },
+    INPUT_ERRORS
   );
-  const comment = parseBool(input("comment"), true, "comment");
-  const excludeInput = splitPatternList(input("exclude")).map((p) => parseExcludePattern(p, "exclude"));
+  if (!resolved.ok) throw resolved.errors[0];
+  const { coverageFormat: format, threshold, exclude, requireAgentSetup } = resolved.inputs;
+  const coverageFile = resolved.inputs.coverageFile.path;
+  const failOnThreshold = parseBool(input("fail-on-threshold"), "fail-on-threshold") ?? true;
+  const comment = parseBool(input("comment"), "comment") ?? true;
   const coveragePath = deps.resolvePath(deps.workspace, coverageFile);
   const coverageText = await deps.readFile(coveragePath);
   if (coverageText !== null) deps.info(coverageChoiceLine(chooseCoverageFormat(coverageText, format)));
@@ -26019,7 +26080,7 @@ async function runUnsafe(deps) {
     repoRoot: deps.workspace,
     threshold,
     repoFiles: lsFiles.split("\0").filter((p) => p !== ""),
-    exclude: [...config.coverage?.exclude ?? [], ...excludeInput],
+    exclude,
     requireAgentSetup
   };
   const report = check(checkInput);
@@ -26063,17 +26124,7 @@ async function getDiff(baseRefInput, deps) {
   if (localBase) {
     try {
       return {
-        text: await deps.git([
-          "diff",
-          "--unified=0",
-          "--no-color",
-          "--no-ext-diff",
-          "--find-renames",
-          "--src-prefix=a/",
-          "--dst-prefix=b/",
-          "--end-of-options",
-          `${localBase}...HEAD`
-        ])
+        text: await deps.git(gitDiffArgs(localBase))
       };
     } catch (err) {
       deps.info(`local git diff failed, falling back to the GitHub API: ${String(err)}`);
@@ -26168,8 +26219,8 @@ async function loadConfig(path, deps) {
 function splitPatternList(value) {
   return value.split(",").flatMap((part) => part.split("\n")).map((entry) => entry.trim()).filter((entry) => entry !== "");
 }
-function parseBool(value, fallback, name) {
-  if (value === "") return fallback;
+function parseBool(value, name) {
+  if (value === "") return void 0;
   if (/^(true|yes|on|1)$/i.test(value)) return true;
   if (/^(false|no|off|0)$/i.test(value)) return false;
   throw new Error(`${name} must be true or false, got "${value}"`);

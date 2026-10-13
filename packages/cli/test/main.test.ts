@@ -145,6 +145,16 @@ describe("cli main", () => {
     expect(deps.out).toBe("");
   });
 
+  it.each([
+    [["--coverage-format", "xml"], '--coverage-format must be one of: lcov, cobertura, auto (got "xml")'],
+    [["--exclude", "/abs"], '--exclude "/abs" must not start with "/"'],
+  ])("reports a malformed %j before running git", async (flags, message) => {
+    const deps = fakeDeps(coverage);
+    expect(await main(["check", "--coverage", "lcov.info", ...flags], deps)).toBe(EXIT_ERROR);
+    expect(deps.err).toContain(message);
+    expect(deps.gitCalls).toEqual([]);
+  });
+
   it("exits 2 with a hint when the base cannot be diffed", async () => {
     const deps = fakeDeps(coverage, { diff: new Error("fatal: bad revision 'origin/main...HEAD'") });
     expect(await main(["check", "--coverage", "lcov.info"], deps)).toBe(EXIT_ERROR);

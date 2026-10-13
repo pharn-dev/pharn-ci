@@ -208,6 +208,38 @@ describe("action run", () => {
     ]);
   });
 
+  it("runs git diff with the exact arguments the CLI uses", async () => {
+    const h = harness();
+    await run(h.deps);
+    expect(h.gitCalls.find((a) => a[0] === "diff")).toEqual([
+      "diff",
+      "--unified=0",
+      "--no-color",
+      "--no-ext-diff",
+      "--find-renames",
+      "--src-prefix=a/",
+      "--dst-prefix=b/",
+      "--end-of-options",
+      `${"a".repeat(40)}...HEAD`,
+    ]);
+  });
+
+  it("lets the require-agent-setup input override setup.require either way, and empty fall back to it", async () => {
+    const level = async (config: string, value: string) => {
+      const h = harness({
+        inputs: { "require-agent-setup": value },
+        files: { [`${WORKSPACE}/.pharn/ci.yml`]: config },
+        lsFiles: ["src/a.ts"],
+      });
+      const report = await run(h.deps);
+      return report?.messages.find((m) => m.code === "NO_AGENT_SETUP_FILES")?.level;
+    };
+    expect(await level("setup:\n  require: true\n", "")).toBe("error");
+    expect(await level("setup:\n  require: true\n", "false")).toBe("info");
+    expect(await level("setup:\n  require: false\n", "")).toBe("info");
+    expect(await level("setup:\n  require: false\n", "yes")).toBe("error");
+  });
+
   it("passes the candidate base to git rev-parse --verify after --end-of-options", async () => {
     const h = harness({ inputs: { "base-ref": "develop" } });
     await run(h.deps);
@@ -508,6 +540,9 @@ describe("action run", () => {
     [{ "coverage-format": "clover" }, 'coverage-format "clover" is not supported (supported: lcov, cobertura, auto)'],
     [{ threshold: "abc" }, "threshold must be a number"],
     [{ comment: "maybe" }, "comment must be true or false"],
+    [{ "fail-on-threshold": "maybe" }, 'fail-on-threshold must be true or false, got "maybe"'],
+    [{ "require-agent-setup": "maybe" }, 'require-agent-setup must be true or false, got "maybe"'],
+    [{ exclude: "src/**, /abs" }, 'exclude "/abs" must not start with "/"'],
     [{ "coverage-file": "" }, "no coverage file"],
     [{ "base-ref": "--output=/tmp/x" }, 'base-ref "--output=/tmp/x" must not start with "-"'],
   ])("fails clearly for invalid inputs %j", async (inputs, message) => {
