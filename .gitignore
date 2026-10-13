@@ -18,3 +18,6 @@ packages/cli/dist/
 /pharn.records.json
 /LIMITS.md
 /THREAT-MODEL.md
+/.claude/commands/pharn-*.md
+/.claude/hooks/
+/.claude/settings.json
