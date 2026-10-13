@@ -25870,9 +25870,10 @@ async function getDiff(baseRefInput, deps) {
   if (baseRefInput.startsWith("-")) throw new Error(`base-ref "${baseRefInput}" must not start with "-"`);
   const { context: context3 } = deps;
   const pr = context3.payload.pull_request;
-  const base = baseRefInput || pr?.base.sha || (context3.payload.before && !ZERO_SHA.test(context3.payload.before) ? context3.payload.before : "");
+  const mergeGroup = context3.payload.merge_group;
+  const base = baseRefInput || pr?.base.sha || mergeGroup?.base_sha || (context3.payload.before && !ZERO_SHA.test(context3.payload.before) ? context3.payload.before : "");
   if (!base) return { unavailable: "no base to diff against (not a pull request; set the base-ref input)" };
-  const head = context3.eventName === "pull_request_target" && pr ? pr.head.sha : context3.sha;
+  const head = context3.eventName === "pull_request_target" && pr ? pr.head.sha : mergeGroup?.head_sha || context3.sha;
   if (context3.eventName === "pull_request_target" && pr) {
     const localHead = await deps.git(["rev-parse", "HEAD"]).then(
       (out) => out.trim(),
@@ -25907,6 +25908,11 @@ async function getDiff(baseRefInput, deps) {
   try {
     return { text: await deps.api.compareDiff(`${base}...${head}`) };
   } catch (err) {
+    if (baseRefInput && !localBase) {
+      throw new Error(
+        `base-ref "${baseRefInput}" was not found in the checkout or through the GitHub API (${String(err)}); check the ref name, or use actions/checkout with fetch-depth: 0`
+      );
+    }
     deps.warning(`could not fetch the diff from the GitHub API: ${String(err)}`);
     return { unavailable: `could not get the diff for ${base}...${head} (use actions/checkout with fetch-depth: 0)` };
   }

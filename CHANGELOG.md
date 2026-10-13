@@ -34,6 +34,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   warns, as for any API failure. The `github-token` input now says `pull-requests: write` is
   needed only for the comment.
 
+### Fixed
+
+- Merge queue runs (`merge_group`) diff against `merge_group.base_sha` instead of always reporting
+  `DIFF_UNAVAILABLE`.
+- An explicit `base-ref` found neither in the checkout nor through the GitHub API now fails the
+  step with an error naming the ref, instead of reporting `DIFF_UNAVAILABLE`.
+
 ### Security
 
 - The Action's `git rev-parse --verify` lookup of the base ref now passes the revision after
