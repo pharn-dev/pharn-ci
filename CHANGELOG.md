@@ -18,6 +18,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   the diff unavailable, use `actions/checkout` with `fetch-depth: 0` or rely on the GitHub API
   fallback.
 
+### Fixed
+
+- Docs: the quick start pins `actions/checkout` to a commit SHA; the Action reference gives the
+  real `threshold` and `base-ref` defaults; the docs name Cobertura as untrusted input, the
+  `GET /user` call, and the bundled transitive dependencies.
+
 ### Security
 
 ## [0.1.0] - YYYY-MM-DD
