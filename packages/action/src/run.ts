@@ -38,6 +38,7 @@ export interface ActionContext {
   payload: {
     before?: string;
     pull_request?: { number: number; base: { sha: string }; head: { sha: string } };
+    merge_group?: { base_sha: string; head_sha: string };
   };
 }
 
@@ -145,14 +146,17 @@ async function getDiff(baseRefInput: string, deps: ActionDeps): Promise<CheckInp
   if (baseRefInput.startsWith("-")) throw new Error(`base-ref "${baseRefInput}" must not start with "-"`);
   const { context } = deps;
   const pr = context.payload.pull_request;
+  const mergeGroup = context.payload.merge_group;
   const base =
     baseRefInput ||
     pr?.base.sha ||
+    mergeGroup?.base_sha ||
     (context.payload.before && !ZERO_SHA.test(context.payload.before) ? context.payload.before : "");
   if (!base) return { unavailable: "no base to diff against (not a pull request; set the base-ref input)" };
 
-  // pull_request checks out the merge commit (context.sha); pull_request_target checks out the base.
-  const head = context.eventName === "pull_request_target" && pr ? pr.head.sha : context.sha;
+  // pull_request checks out the merge commit (context.sha); pull_request_target checks out the base;
+  // merge_group checks out the merge queue's temporary commit (merge_group.head_sha).
+  const head = context.eventName === "pull_request_target" && pr ? pr.head.sha : mergeGroup?.head_sha || context.sha;
 
   // On pull_request_target the default checkout is the base branch, so a local base...HEAD diff is
   // empty and would pass as NO_COVERABLE_CHANGES while measuring nothing of the PR.
@@ -193,6 +197,14 @@ async function getDiff(baseRefInput: string, deps: ActionDeps): Promise<CheckInp
   try {
     return { text: await deps.api.compareDiff(`${base}...${head}`) };
   } catch (err) {
+    // An explicit base-ref found neither locally nor by the API is most likely a typo: fail the
+    // step like the CLI does, instead of reporting DIFF_UNAVAILABLE (a warning without a threshold).
+    if (baseRefInput && !localBase) {
+      throw new Error(
+        `base-ref "${baseRefInput}" was not found in the checkout or through the GitHub API (${String(err)}); ` +
+          "check the ref name, or use actions/checkout with fetch-depth: 0",
+      );
+    }
     deps.warning(`could not fetch the diff from the GitHub API: ${String(err)}`);
     return { unavailable: `could not get the diff for ${base}...${head} (use actions/checkout with fetch-depth: 0)` };
   }
@@ -202,7 +214,7 @@ async function resolveLocal(base: string, deps: ActionDeps): Promise<string | nu
   const candidates = /^[0-9a-f]{40}$/i.test(base) ? [base] : [`origin/${base}`, base];
   for (const ref of candidates) {
     try {
-      await deps.git(["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]);
+      await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", `${ref}^{commit}`]);
       return ref;
     } catch {
       // try the next candidate

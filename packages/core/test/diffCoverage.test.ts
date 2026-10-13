@@ -75,11 +75,66 @@ describe("computeDiffCoverage", () => {
     expect(result.meetsThreshold).toBe(true);
   });
 
-  it("compares the rounded percent, so the verdict matches the displayed number", () => {
-    // 2/3 = 66.666...% is reported as 66.67%, which meets a 66.67 threshold.
+  it("compares exactly, and never shows a failing percent as reaching the threshold", () => {
+    // 2/3 = 66.666...% is below 66.67, so it fails there; shown rounded down as 66.66%, not 66.67%.
     const diff = [file("a.ts", [1, 2, 3])];
-    expect(computeDiffCoverage(diff, lcov([1, 1, 0]), 66.67).meetsThreshold).toBe(true);
-    expect(computeDiffCoverage(diff, lcov([1, 1, 0]), 66.68).meetsThreshold).toBe(false);
+    expect(computeDiffCoverage(diff, lcov([1, 1, 0]), 66.67)).toMatchObject({ percent: 66.66, meetsThreshold: false });
+    // 66.67% already reads below 66.68, so the usual half-up rounding stays.
+    expect(computeDiffCoverage(diff, lcov([1, 1, 0]), 66.68)).toMatchObject({ percent: 66.67, meetsThreshold: false });
+    // At or below the true value it passes, and the percent keeps its usual half-up rounding.
+    expect(computeDiffCoverage(diff, lcov([1, 1, 0]), 66.66)).toMatchObject({ percent: 66.67, meetsThreshold: true });
+  });
+
+  describe("exact threshold comparison (F-31)", () => {
+    const many = (coveredCount: number, total: number, threshold: number | null) => {
+      const hits = Array.from({ length: total }, (_, i) => (i < coveredCount ? 1 : 0));
+      return computeDiffCoverage(
+        [
+          file(
+            "a.ts",
+            hits.map((_, i) => i + 1),
+          ),
+        ],
+        lcov(hits),
+        threshold,
+      );
+    };
+
+    it("fails 79.995% at 80 and shows it as 79.99%, not 80%", () => {
+      expect(many(15999, 20000, 80)).toMatchObject({ percent: 79.99, meetsThreshold: false });
+    });
+
+    it("keeps half-up rounding when no threshold is crossed", () => {
+      expect(many(15999, 20000, null)).toMatchObject({ percent: 80, meetsThreshold: true });
+      expect(many(15999, 20000, 79.99)).toMatchObject({ percent: 80, meetsThreshold: true });
+    });
+
+    it("passes exactly 80% at 80", () => {
+      expect(many(16000, 20000, 80)).toMatchObject({ percent: 80, meetsThreshold: true });
+      expect(many(4, 5, 80)).toMatchObject({ percent: 80, meetsThreshold: true });
+    });
+
+    it("reads decimal thresholds exactly, not as binary floats", () => {
+      // Float traps: 801/1000 = 80.1% exactly meets 80.1, 800/1000 does not.
+      expect(many(801, 1000, 80.1).meetsThreshold).toBe(true);
+      expect(many(800, 1000, 80.1).meetsThreshold).toBe(false);
+      expect(many(29, 100, 29)).toMatchObject({ percent: 29, meetsThreshold: true });
+      expect(many(57, 100, 57)).toMatchObject({ percent: 57, meetsThreshold: true });
+      expect(many(1, 100_000, 0.001).meetsThreshold).toBe(true);
+      expect(many(1, 100_001, 0.001).meetsThreshold).toBe(false);
+    });
+
+    it("keeps the 0 and 100 clamps", () => {
+      expect(many(20000, 20000, 100)).toMatchObject({ percent: 100, meetsThreshold: true });
+      expect(many(19999, 20000, 100)).toMatchObject({ percent: 99.99, meetsThreshold: false });
+      expect(many(0, 20000, 0)).toMatchObject({ percent: 0, meetsThreshold: true });
+      expect(many(0, 20000, 0.01)).toMatchObject({ percent: 0, meetsThreshold: false });
+      expect(many(2, 20000, 0.01)).toMatchObject({ percent: 0.01, meetsThreshold: true });
+    });
+
+    it("treats threshold 0 as met by any coverage, 0% included", () => {
+      expect(many(0, 3, 0)).toMatchObject({ percent: 0, threshold: 0, meetsThreshold: true });
+    });
   });
 
   it("rounds percent to two decimals", () => {

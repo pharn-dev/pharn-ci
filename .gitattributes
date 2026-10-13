@@ -1,2 +1,5 @@
-packages/action/dist/** linguist-generated=true
+# packages/action/dist is the committed bundle consumers run. It is vendored (kept out of the language
+# statistics) but deliberately NOT linguist-generated: generated files are collapsed in PR diffs, and
+# review of the dist diff is the backstop named in docs/THREAT-MODEL.md (G1).
+packages/action/dist/** linguist-generated=false linguist-vendored=true
 fixtures/** -text

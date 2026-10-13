@@ -59,6 +59,50 @@ jobs:
             exit 1
           fi
 
+      # Review of the dist diff is the backstop against a build dependency that tampers with the bundle
+      # (docs/THREAT-MODEL.md, G1). Put the change in front of the reviewer: the dist files this PR
+      # changes and the bundle's sha256 before and after. Informational only: never fails the job.
+      - name: Summarize packages/action/dist change
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -uo pipefail
+          bundle=packages/action/dist/index.js
+          if ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            git fetch --no-tags --quiet origin "$BASE_SHA" || echo "::warning::could not fetch the PR base $BASE_SHA"
+          fi
+          # Three-dot needs a merge base; a shallow history may lack one, so fall back to base..HEAD.
+          stat="$(git diff --stat "$BASE_SHA...HEAD" -- packages/action/dist 2>/dev/null \
+            || git diff --stat "$BASE_SHA" HEAD -- packages/action/dist 2>/dev/null)" || stat="unavailable"
+          if git cat-file -e "$BASE_SHA:$bundle" 2>/dev/null; then
+            base_sum="$(git show "$BASE_SHA:$bundle" | sha256sum | cut -d' ' -f1)"
+          else
+            base_sum="(unavailable)"
+          fi
+          head_sum="$(sha256sum "$bundle" | cut -d' ' -f1)"
+          {
+            echo "### packages/action/dist in this PR"
+            echo
+            if [ "$stat" = "unavailable" ]; then
+              echo "Could not diff against the PR base \`$BASE_SHA\`. Review the \`packages/action/dist\` diff in the PR."
+            elif [ -z "$stat" ]; then
+              echo "This PR does not change \`packages/action/dist\`."
+            else
+              echo "This PR changes the committed bundle that consumers run. Review this diff: it is the only human check on the shipped artifact."
+              echo
+              echo '```text'
+              echo "$stat"
+              echo '```'
+            fi
+            echo
+            echo "| \`$bundle\` | sha256 |"
+            echo "| --- | --- |"
+            echo "| base (\`${BASE_SHA:0:12}\`) | \`$base_sum\` |"
+            echo "| this PR (rebuilt and checked above) | \`$head_sum\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Dogfood pharn-ci
         id: pharn
         uses: ./
