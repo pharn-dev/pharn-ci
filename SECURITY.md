@@ -19,7 +19,8 @@ coordinated disclosure of any vulnerability in this repository.
   (CI fails if it is stale), and consumers pin exact release tags such as
   `pharn-dev/pharn-ci@v0.1.0`, or their commit SHA. Tags matching `v*` are never moved or deleted
   (enforced by a ruleset), and releases are cut from verified `main` commits
-  ([`docs/RELEASING.md`](./docs/RELEASING.md)).
+  ([`docs/RELEASING.md`](./docs/RELEASING.md)). Release tags are unsigned lightweight tags, so the
+  full commit SHA, not the tag, is what a consumer can verify.
 
 The security design, with each mitigation tied to the test that enforces it, is in
 [`docs/THREAT-MODEL.md`](./docs/THREAT-MODEL.md); what pharn-ci does not guarantee is in
@@ -82,8 +83,9 @@ unless you ask to remain anonymous.
 
 ## Security best practices for users
 
-1. **Pin the Action to a commit SHA**, not only to a tag, and keep `permissions:` minimal
-   (`contents: read`, plus `pull-requests: write` only if you want the PR comment).
+1. **Pin the Action to a commit SHA**, not only to a tag (release tags are not signed), and keep
+   `permissions:` minimal (`contents: read`, plus `pull-requests: write` only if you want the PR
+   comment).
 2. **Do not run it on `pull_request_target` with untrusted checkouts.**
 3. **Review the report** before acting on it; it is derived from untrusted PR content.
 

@@ -20,6 +20,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Security
 
+- Release tags are documented as unsigned lightweight tags, with pinning the full commit SHA as the
+  integrity control (`README.md`, `SECURITY.md`, `docs/RELEASING.md`). The `packages/action/dist`
+  diff is no longer collapsed in pull requests (`.gitattributes` no longer marks it
+  `linguist-generated`), and CI writes the changed dist files and the bundle's sha256 to the job
+  summary of every pull request so reviewers see the shipped artifact change.
+
 ## [0.1.0] - YYYY-MM-DD
 
 The maintainer replaces `YYYY-MM-DD` with the release date, and deletes this line, when cutting

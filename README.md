@@ -142,8 +142,9 @@ jobs:
 `fetch-depth: 0` lets pharn-ci diff against the PR base locally. Without a threshold, pharn-ci
 reports and never fails the step.
 
-Release tags are exact versions (`v0.1.0`), never moved or deleted. Pinning the tag's full commit
-SHA is stronger still; Dependabot keeps either up to date.
+Release tags are exact versions (`v0.1.0`), never moved or deleted, but they are unsigned
+lightweight tags, so there is no tag signature to verify. Pinning the tag's full commit SHA is the
+integrity control; Dependabot keeps either up to date.
 
 ---
 
