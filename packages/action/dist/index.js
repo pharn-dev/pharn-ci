@@ -25363,7 +25363,11 @@ function computeDiffCoverage(diff, coverage, threshold, isExcluded = () => false
   }
   const byPath = (a, b) => a < b ? -1 : a > b ? 1 : 0;
   files.sort((a, b) => byPath(a.path, b.path));
-  const percent = percentOf(covered, coverable);
+  const meetsThreshold = threshold === null || coverable === 0 || atLeast(covered, coverable, threshold);
+  let percent = percentOf(covered, coverable);
+  if (!meetsThreshold && percent !== null && threshold !== null && percent >= threshold) {
+    percent = percentOf(covered, coverable, Math.floor);
+  }
   return {
     percent,
     threshold,
@@ -25371,14 +25375,23 @@ function computeDiffCoverage(diff, coverage, threshold, isExcluded = () => false
     coverableLines: coverable,
     files,
     ...excluded.size > 0 ? { excludedFiles: [...excluded].sort(byPath) } : {},
-    // Compare the reported (rounded) percent so the verdict always agrees with what users see.
-    meetsThreshold: threshold === null || percent === null || percent >= threshold
+    meetsThreshold
   };
 }
-function percentOf(covered, total) {
+function percentOf(covered, total, round = Math.round) {
   if (total === 0) return null;
-  const rounded = Math.round(covered / total * 1e4) / 100;
+  const rounded = round(covered * 1e4 / total) / 100;
   return Math.min(Math.max(rounded, covered > 0 ? 0.01 : 0), covered < total ? 99.99 : 100);
+}
+function atLeast(covered, total, threshold) {
+  const m = /^(\d+)(?:\.(\d+))?(?:e([+-]\d+))?$/.exec(String(threshold));
+  if (m === null) return covered * 100 >= threshold * total;
+  const fraction = m[2] ?? "";
+  const scale = fraction.length - Number(m[3] ?? 0);
+  const digits = BigInt(`${m[1]}${fraction}`);
+  const left = BigInt(covered) * 100n * 10n ** BigInt(Math.max(scale, 0));
+  const right = digits * BigInt(total) * 10n ** BigInt(Math.max(-scale, 0));
+  return left >= right;
 }
 
 // ../core/src/glob.ts
@@ -25539,6 +25552,13 @@ function buildReport(input) {
       level: "error",
       code: "DIFF_COVERAGE_BELOW_THRESHOLD",
       text: `Diff coverage ${formatNumber(dc.percent ?? 0)}% is below the threshold of ${formatNumber(dc.threshold)}%.`
+    });
+  } else if (dc.threshold === null || dc.threshold === 0) {
+    const why = dc.threshold === null ? "no threshold is set" : "a threshold of 0% accepts any coverage";
+    messages.push({
+      level: "info",
+      code: "DIFF_COVERAGE_UNGATED",
+      text: `Diff coverage ${formatNumber(dc.percent ?? 0)}% is not gated: ${why}.`
     });
   }
   if (input.agentSetup.files.length === 0) {

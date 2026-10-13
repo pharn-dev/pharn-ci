@@ -63,7 +63,7 @@ describe("cli main", () => {
 
   it("exits 0 when the threshold is met, and diffs against origin/main by default", async () => {
     const deps = fakeDeps(coverage);
-    expect(await main(["check", "--coverage", "lcov.info", "--threshold", "71.43"], deps)).toBe(EXIT_OK);
+    expect(await main(["check", "--coverage", "lcov.info", "--threshold", "71.42"], deps)).toBe(EXIT_OK);
     expect(deps.out).toContain("## ✅ pharn-ci: pass");
     const diff = deps.gitCalls.find((a) => a[0] === "diff");
     expect(diff).toContain("--unified=0");

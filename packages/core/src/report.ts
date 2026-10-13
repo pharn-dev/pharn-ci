@@ -32,6 +32,7 @@ export type MessageLevel = "info" | "warn" | "error";
 /** Stable message codes. Add new ones here and in the schema description; never rename. */
 export type MessageCode =
   | "DIFF_COVERAGE_BELOW_THRESHOLD"
+  | "DIFF_COVERAGE_UNGATED"
   | "NO_COVERABLE_CHANGES"
   | "COVERAGE_FILE_MISSING"
   | "COVERAGE_FILE_EMPTY"
@@ -112,6 +113,14 @@ export function buildReport(input: BuildReportInput): Report {
       level: "error",
       code: "DIFF_COVERAGE_BELOW_THRESHOLD",
       text: `Diff coverage ${formatNumber(dc.percent ?? 0)}% is below the threshold of ${formatNumber(dc.threshold)}%.`,
+    });
+  } else if (dc.threshold === null || dc.threshold === 0) {
+    // Measured but not gated: say so, so a pass is not read as "met a threshold".
+    const why = dc.threshold === null ? "no threshold is set" : "a threshold of 0% accepts any coverage";
+    messages.push({
+      level: "info",
+      code: "DIFF_COVERAGE_UNGATED",
+      text: `Diff coverage ${formatNumber(dc.percent ?? 0)}% is not gated: ${why}.`,
     });
   }
 

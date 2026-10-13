@@ -10,6 +10,8 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 ### Added
 
 - Require agent setup: the `require-agent-setup` Action input, the CLI's `--require-agent-setup` flag and `setup.require` in `.pharn/ci.yml` (off by default) make `NO_AGENT_SETUP_FILES` an error and the verdict `fail` when the repo has no agent setup files.
+- `DIFF_COVERAGE_UNGATED` (info): diff coverage was measured, with its percent in the text, but no
+  threshold gates it (none is set, or it is 0). Before, an ungated run passed with no message.
 - Data handling section in `SECURITY.md`, linked from the README's Safety model: what the Action reads, what it sends to your GitHub API, what lands in the PR comment, job summary, step log and `report.json`, and that nothing is sent to Pharn.
 
 ### Changed
@@ -18,6 +20,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   without one), like a missing, empty or unrecognized coverage file. If a shallow checkout makes
   the diff unavailable, use `actions/checkout` with `fetch-depth: 0` or rely on the GitHub API
   fallback.
+- The diff coverage threshold is compared exactly against covered / coverable lines instead of the
+  percent rounded to two decimals: 15,999 of 20,000 lines (79.995%) now fails a threshold of 80.
+  A failing coverage that would round up to the threshold is shown rounded down (79.99%).
+- Threshold 0 is documented as gating no percentage (reported with `DIFF_COVERAGE_UNGATED`); it
+  still fails closed when coverage cannot be measured.
 - The repository no longer tracks the maintainer's PHARN workflow install (`pharn/`,
   `pharn.config.json`, `pharn.records.json` and PHARN's own root `LIMITS.md` and `THREAT-MODEL.md`),
   so `uses: pharn-dev/pharn-ci@...` downloads about 5 MB less. pharn-ci's own threat model and
@@ -73,9 +80,9 @@ the release.
 - Report v1: optional `agentSetup.summary` (counts per kind and the tools involved), and an
   `Agent setup: N files · tools` line in the markdown, with the table collapsed above 25 files.
 - Report v1 (`schema/report.v1.json`), the stable JSON output, with message codes
-  `DIFF_COVERAGE_BELOW_THRESHOLD`, `NO_COVERABLE_CHANGES`, `COVERAGE_FILE_MISSING`,
-  `COVERAGE_FILE_EMPTY`, `COVERAGE_FORMAT_UNSUPPORTED`, `DIFF_UNAVAILABLE` and
-  `NO_AGENT_SETUP_FILES`.
+  `DIFF_COVERAGE_BELOW_THRESHOLD`, `DIFF_COVERAGE_UNGATED`, `NO_COVERABLE_CHANGES`,
+  `COVERAGE_FILE_MISSING`, `COVERAGE_FILE_EMPTY`, `COVERAGE_FORMAT_UNSUPPORTED`,
+  `DIFF_UNAVAILABLE` and `NO_AGENT_SETUP_FILES`.
 - One sticky PR comment and a job summary; on fork PRs, where the token cannot comment, the job
   summary only.
 - `.pharn/ci.yml` config file, overridden by Action inputs and CLI flags.
