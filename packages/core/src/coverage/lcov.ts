@@ -1,4 +1,4 @@
-import { normalizePath } from "../paths.js";
+import { isAbsolutePath, joinCoverageRoot, normalizePath } from "../paths.js";
 import type { CoverageMap, LineHits, ParseCoverageOptions } from "./types.js";
 
 /**
@@ -15,7 +15,11 @@ export function parseLcov(text: string, options: ParseCoverageOptions = {}): Cov
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
     if (line.startsWith("SF:")) {
-      const path = normalizePath(line.slice(3), options.repoRoot);
+      const raw = line.slice(3);
+      const path =
+        options.coverageRoot !== undefined && !isAbsolutePath(raw.trim())
+          ? normalizePath(joinCoverageRoot(raw, options.coverageRoot), options.repoRoot)
+          : normalizePath(raw, options.repoRoot);
       current = map.get(path);
       if (!current) {
         current = new Map();

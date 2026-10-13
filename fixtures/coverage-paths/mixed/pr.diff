@@ -1,0 +1,19 @@
+diff --git a/packages/core/src/a.ts b/packages/core/src/a.ts
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/packages/core/src/a.ts
+@@ -0,0 +1,5 @@
++export function a(x: number): number {
++  const y = x + 1;
++  if (y < 0) return 0;
++  return y;
++}
+diff --git a/packages/core/src/b.ts b/packages/core/src/b.ts
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/packages/core/src/b.ts
+@@ -0,0 +1,2 @@
++export const b = 1;
++export const c = 2;

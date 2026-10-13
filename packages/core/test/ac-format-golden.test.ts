@@ -67,15 +67,35 @@ describe("golden reports and the coverage format", () => {
     });
     expectValidReport(report);
 
+    // The golden coverage names src/legacy.ts, which its tracked files lack, so the golden gained exactly one
+    // COVERAGE_PATHS_PARTIALLY_UNMATCHED info message on purpose (coverage path mapping). Taking that one message
+    // out (in the markdown, its bullet and the hint line F-32 renders under it) gives back the output the pinned
+    // hashes were taken from.
+    const partialCode = "COVERAGE_PATHS_PARTIALLY_UNMATCHED";
     const markdown = fixture("golden/report.md");
-    expect(sha256(markdown)).toBe(GOLDEN_MD_SHA256);
     expect(renderMarkdown(report)).toBe(markdown);
+    const markdownLines = markdown.split("\n");
+    expect(markdownLines.filter((line) => line.includes(`\`${partialCode}\``))).toHaveLength(1);
+    const partialAt = markdownLines.findIndex((line) => line.includes(`\`${partialCode}\``));
+    expect(markdownLines[partialAt + 1]).toMatch(/^ {2}- Hint: \S/);
+    const markdownWithoutMessage = markdownLines
+      .filter((_, index) => index !== partialAt && index !== partialAt + 1)
+      .join("\n");
+    expect(sha256(markdownWithoutMessage)).toBe(GOLDEN_MD_SHA256);
 
     const json = fixture("golden/report.json");
     expect(asFile(report)).toBe(json);
     const committed = JSON.parse(json);
     expect(committed.diffCoverage.format).toBe("lcov");
+    const partialMessages = committed.messages.filter((message: { code: string }) => message.code === partialCode);
+    expect(partialMessages).toHaveLength(1);
+    expect(partialMessages[0].level).toBe("info");
     const { format: _format, ...previousDiffCoverage } = committed.diffCoverage;
-    expect(sha256(asFile({ ...committed, diffCoverage: previousDiffCoverage }))).toBe(GOLDEN_JSON_SHA256);
+    const messagesWithoutPartial = committed.messages.filter(
+      (message: { code: string }) => message.code !== partialCode,
+    );
+    expect(sha256(asFile({ ...committed, diffCoverage: previousDiffCoverage, messages: messagesWithoutPartial }))).toBe(
+      GOLDEN_JSON_SHA256,
+    );
   });
 });

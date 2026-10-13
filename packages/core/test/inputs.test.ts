@@ -7,6 +7,7 @@ const TEXT: InputErrorText = {
   coverageFormat: (value) => `bad format "${value}"`,
   threshold: "THRESHOLD",
   exclude: "EXCLUDE",
+  coverageRoot: "ROOT",
   noCoverageFile: "no coverage file",
 };
 
@@ -89,6 +90,31 @@ describe("resolveInputs", () => {
     expect(resolved.ok ? [] : resolved.errors.map((e) => e.message)).toEqual([
       'bad format ""',
       "THRESHOLD must be a number between 0 and 100",
+    ]);
+  });
+});
+
+describe("resolveInputs: coverage root (F-01)", () => {
+  const rootConfig = parseConfig(fixture("coverage-paths/package-relative/ci-root.yml"));
+  const resolveRoot = (cfg: typeof rootConfig, coverageRoot?: string) => {
+    const resolved = resolveInputs(cfg, { coverageFile: "lcov.info", coverageRoot }, TEXT);
+    return resolved.ok ? resolved.inputs.coverageRoot : resolved.errors.map((e) => [e.input, e.message]);
+  };
+
+  it("takes the input over coverage.root, then coverage.root, then none, normalized", () => {
+    expect(resolveRoot(rootConfig, "./packages/web/")).toBe("packages/web");
+    expect(resolveRoot(rootConfig)).toBe("packages/core");
+    expect(resolveRoot({})).toBeUndefined();
+    expect(resolveRoot({}, ".")).toBe(".");
+  });
+
+  it("reports an unsafe input in the adapter's words, after the other settings", () => {
+    expect(resolveRoot(rootConfig, "../x")).toEqual([["coverageRoot", 'ROOT "../x" must not contain a ".." segment']]);
+    const resolved = resolveInputs({}, { threshold: "101", coverageRoot: "/abs" }, TEXT);
+    expect(resolved.ok ? [] : resolved.errors.map((e) => e.input)).toEqual([
+      "threshold",
+      "coverageFile",
+      "coverageRoot",
     ]);
   });
 });

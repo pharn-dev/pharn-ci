@@ -24560,6 +24560,66 @@ function createGitHubApi(opts) {
 // ../core/src/coverage/types.ts
 var COVERAGE_FORMAT_SELECTIONS = ["lcov", "cobertura", "auto"];
 
+// ../core/src/paths.ts
+function normalizePath(path, repoRoot) {
+  let p = toPosix(path.trim());
+  const root = normalizeRoot(repoRoot);
+  if (root !== "" && startsWithPath(p, root)) {
+    p = p.slice(root.length + 1);
+  }
+  return p;
+}
+function normalizeRoot(repoRoot) {
+  if (!repoRoot) return "";
+  const root = toPosix(repoRoot.trim());
+  let end = root.length;
+  while (end > 0 && root[end - 1] === "/") end--;
+  return root.slice(0, end);
+}
+function foldForRoot(path, root) {
+  return isDriveRoot(root) ? path.toLowerCase() : path;
+}
+function isAbsolutePath(path) {
+  const first = path.charAt(0);
+  if (first === "/" || first === "\\") return true;
+  const separator = path.charAt(2);
+  return path.charAt(1) === ":" && (separator === "/" || separator === "\\") && isAsciiLetter(first);
+}
+function joinCoverageRoot(path, coverageRoot) {
+  if (coverageRoot === void 0 || coverageRoot === ".") return path;
+  return normalizePath(`${coverageRoot}/${path}`);
+}
+function isAsciiLetter(char) {
+  return char >= "A" && char <= "Z" || char >= "a" && char <= "z";
+}
+function toPosix(path) {
+  const slashed = path.replace(/\\/g, "/");
+  const drive = /^[A-Za-z]:\//.exec(slashed)?.[0] ?? "";
+  const absolute = drive !== "" || slashed.startsWith("/");
+  const rest = drive !== "" ? slashed.slice(drive.length) : slashed;
+  const out = [];
+  for (const segment of rest.split("/")) {
+    if (segment === "" || segment === ".") continue;
+    if (segment === ".." && out.length > 0 && out[out.length - 1] !== "..") {
+      out.pop();
+    } else if (segment === ".." && absolute) {
+    } else {
+      out.push(segment);
+    }
+  }
+  const prefix = drive !== "" ? drive.toUpperCase() : absolute ? "/" : "";
+  return prefix + out.join("/");
+}
+function startsWithPath(path, root) {
+  if (path.length <= root.length || path[root.length] !== "/") return false;
+  const head = path.slice(0, root.length);
+  return isDriveRoot(root) ? head.toLowerCase() === root.toLowerCase() : head === root;
+}
+function isDriveRoot(root) {
+  const first = root.charAt(0);
+  return first >= "A" && first <= "Z" && root.charAt(1) === ":" && root.charAt(2) === "/";
+}
+
 // ../core/src/config.ts
 var ConfigError = class extends Error {
   name = "ConfigError";
@@ -24790,6 +24850,11 @@ function validateCoverage(cov) {
         coverage.exclude = patterns;
         break;
       }
+      case "root":
+        if (typeof value !== "string" || value === "")
+          throw new ConfigError(`"coverage.root" must be a non-empty string`);
+        coverage.root = parseCoverageRoot(value, '"coverage.root"');
+        break;
       default:
         throw new ConfigError(`unknown key "coverage.${key}"`);
     }
@@ -24815,6 +24880,20 @@ function parseExcludePattern(pattern, label = "exclude pattern") {
     if (p.includes(ch)) reject(`must not contain "${ch}" (only *, ** and ? are supported)`);
   }
   return p;
+}
+function parseCoverageRoot(value, label) {
+  const reject = (reason) => {
+    throw new ConfigError(`${label} "${value}" ${reason}`);
+  };
+  const trimmed = value.trim();
+  if (trimmed === "") reject("must not be empty");
+  if (trimmed.includes("\\")) reject('must not contain "\\" (use "/" as the separator)');
+  if (isAbsolutePath(trimmed)) reject("must be relative to the repository root, not absolute");
+  const segments = trimmed.split("/").filter((segment) => segment !== "" && segment !== ".");
+  const root = segments.join("/");
+  if (root.startsWith("-")) reject('must not start with "-"');
+  if (segments.includes("..")) reject('must not contain a ".." segment');
+  return root === "" ? "." : root;
 }
 function isCoverageFormatSelection(value) {
   return COVERAGE_FORMAT_SELECTIONS.includes(value);
@@ -25046,62 +25125,6 @@ function coverageChoiceLine(choice) {
   return `coverage: ${choice.format} (${choice.how})`;
 }
 
-// ../core/src/paths.ts
-function normalizePath(path, repoRoot) {
-  let p = toPosix(path.trim());
-  const root = normalizeRoot(repoRoot);
-  if (root !== "" && startsWithPath(p, root)) {
-    p = p.slice(root.length + 1);
-  }
-  return p;
-}
-function normalizeRoot(repoRoot) {
-  if (!repoRoot) return "";
-  const root = toPosix(repoRoot.trim());
-  let end = root.length;
-  while (end > 0 && root[end - 1] === "/") end--;
-  return root.slice(0, end);
-}
-function foldForRoot(path, root) {
-  return isDriveRoot(root) ? path.toLowerCase() : path;
-}
-function isAbsolutePath(path) {
-  const first = path.charAt(0);
-  if (first === "/" || first === "\\") return true;
-  const separator = path.charAt(2);
-  return path.charAt(1) === ":" && (separator === "/" || separator === "\\") && isAsciiLetter(first);
-}
-function isAsciiLetter(char) {
-  return char >= "A" && char <= "Z" || char >= "a" && char <= "z";
-}
-function toPosix(path) {
-  const slashed = path.replace(/\\/g, "/");
-  const drive = /^[A-Za-z]:\//.exec(slashed)?.[0] ?? "";
-  const absolute = drive !== "" || slashed.startsWith("/");
-  const rest = drive !== "" ? slashed.slice(drive.length) : slashed;
-  const out = [];
-  for (const segment of rest.split("/")) {
-    if (segment === "" || segment === ".") continue;
-    if (segment === ".." && out.length > 0 && out[out.length - 1] !== "..") {
-      out.pop();
-    } else if (segment === ".." && absolute) {
-    } else {
-      out.push(segment);
-    }
-  }
-  const prefix = drive !== "" ? drive.toUpperCase() : absolute ? "/" : "";
-  return prefix + out.join("/");
-}
-function startsWithPath(path, root) {
-  if (path.length <= root.length || path[root.length] !== "/") return false;
-  const head = path.slice(0, root.length);
-  return isDriveRoot(root) ? head.toLowerCase() === root.toLowerCase() : head === root;
-}
-function isDriveRoot(root) {
-  const first = root.charAt(0);
-  return first >= "A" && first <= "Z" && root.charAt(1) === ":" && root.charAt(2) === "/";
-}
-
 // ../core/src/coverage/cobertura.ts
 function parseCobertura(text, options = {}) {
   const sources = [];
@@ -25162,7 +25185,7 @@ function parseCobertura(text, options = {}) {
         break;
     }
   });
-  const resolve2 = makeResolver([...new Set(sources)], options.repoRoot);
+  const resolve2 = makeResolver([...new Set(sources)], options.repoRoot, options.coverageRoot);
   const map = /* @__PURE__ */ new Map();
   for (const [filename, lines] of perFile) {
     const key = resolve2(filename);
@@ -25195,12 +25218,12 @@ function addLine(perFile, filename, number, hits) {
   lines.set(lineNo, Math.max(lines.get(lineNo) ?? 0, count));
 }
 var MAX_CLIMBING_JOIN_SOURCES = 16;
-function makeResolver(sources, repoRoot) {
+function makeResolver(sources, repoRoot, coverageRoot) {
   const direct = directSources(sources, repoRoot);
   const climbing = sources.slice(0, MAX_CLIMBING_JOIN_SOURCES);
   return (filename) => {
     if (isAbsolutePath(filename)) return normalizePath(filename, repoRoot);
-    return resolvePath(filename, climbs(normalizePath(filename)) ? climbing : direct, repoRoot);
+    return resolvePath(filename, climbs(normalizePath(filename)) ? climbing : direct, repoRoot, coverageRoot);
   };
 }
 function directSources(sources, repoRoot) {
@@ -25243,19 +25266,20 @@ function directSources(sources, repoRoot) {
   }
   return kept;
 }
-function resolvePath(filename, sources, repoRoot) {
+function resolvePath(filename, sources, repoRoot, coverageRoot) {
   for (const source of sources) {
     const joined = `${source}/${filename}`;
     if (isAbsolutePath(source)) {
       if (repoRoot === void 0) continue;
-      const key = normalizePath(joined, repoRoot);
-      if (!isAbsolutePath(key) && !climbs(key)) return key;
+      const key2 = normalizePath(joined, repoRoot);
+      if (!isAbsolutePath(key2) && !climbs(key2)) return key2;
     } else {
-      const key = normalizePath(joined);
-      if (key !== "" && !climbs(key)) return key;
+      const key2 = normalizePath(joined);
+      if (key2 !== "" && !climbs(key2)) return joinCoverageRoot(key2, coverageRoot);
     }
   }
-  return normalizePath(filename, repoRoot);
+  const key = normalizePath(filename, repoRoot);
+  return isAbsolutePath(key) ? key : joinCoverageRoot(key, coverageRoot);
 }
 function climbs(path) {
   return path === ".." || path.startsWith("../");
@@ -25268,7 +25292,8 @@ function parseLcov(text, options = {}) {
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
     if (line.startsWith("SF:")) {
-      const path = normalizePath(line.slice(3), options.repoRoot);
+      const raw2 = line.slice(3);
+      const path = options.coverageRoot !== void 0 && !isAbsolutePath(raw2.trim()) ? normalizePath(joinCoverageRoot(raw2, options.coverageRoot), options.repoRoot) : normalizePath(raw2, options.repoRoot);
       current = map.get(path);
       if (!current) {
         current = /* @__PURE__ */ new Map();
@@ -25295,6 +25320,34 @@ function parseCoverage(text, format, options = {}) {
     case "cobertura":
       return parseCobertura(text, options);
   }
+}
+
+// ../core/src/coverage/match.ts
+function matchCoveragePaths(coverage, repoFiles, coverageRoot) {
+  const tracked = new Set(repoFiles);
+  const unmatched = [...coverage.keys()].filter((path) => !tracked.has(path)).sort();
+  const total = coverage.size;
+  return {
+    total,
+    unmatched,
+    suggestedRoot: unmatched.length === total ? suggestRoot(unmatched, repoFiles, coverageRoot) : null
+  };
+}
+function suggestRoot(unmatched, repoFiles, coverageRoot) {
+  const relative = new Set(unmatched.filter((path) => !isAbsolutePath(path)));
+  if (relative.size === 0) return null;
+  const rootPrefix = coverageRoot === void 0 || coverageRoot === "." ? null : `${coverageRoot}/`;
+  let best = null;
+  for (const file of repoFiles) {
+    for (let i = file.indexOf("/"); i > 0; i = file.indexOf("/", i + 1)) {
+      const suffix = file.slice(i + 1);
+      if (!relative.has(suffix)) continue;
+      const prefix = file.slice(0, i);
+      const candidate = rootPrefix !== null && suffix.startsWith(rootPrefix) ? `${prefix}/${coverageRoot}` : prefix;
+      if (best === null || candidate < best) best = candidate;
+    }
+  }
+  return best;
 }
 
 // ../core/src/diff/unified.ts
@@ -25658,6 +25711,8 @@ function buildReport(input) {
         code: "COVERAGE_FORMAT_UNSUPPORTED",
         text: `${where} is not in a recognized coverage format; pharn-ci reads lcov and Cobertura XML.`
       });
+    } else if (missing.reason === "coverage-paths-unmatched") {
+      messages.push({ level, code: "COVERAGE_PATHS_UNMATCHED", text: unmatchedText(missing) });
     } else {
       messages.push({
         level,
@@ -25685,6 +25740,11 @@ function buildReport(input) {
       text: `Diff coverage ${formatNumber(dc.percent ?? 0)}% is not gated: ${why}.`
     });
   }
+  const untracked = input.untrackedCoveragePaths ?? 0;
+  if (untracked > 0) {
+    const subject = untracked === 1 ? "1 file path in the coverage report is not a tracked file in the repository; its coverage is not used." : `${untracked} file paths in the coverage report are not tracked files in the repository; their coverage is not used.`;
+    messages.push({ level: "info", code: "COVERAGE_PATHS_PARTIALLY_UNMATCHED", text: subject });
+  }
   if (input.agentSetup.files.length === 0) {
     const required = input.requireAgentSetup === true;
     const found = "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found";
@@ -25711,6 +25771,16 @@ function buildReport(input) {
     messages
   };
 }
+function unmatchedText(missing) {
+  const head = missing.total === 1 ? "None of the 1 file path in the coverage report is a tracked file in the repository" : `None of the ${missing.total} file paths in the coverage report are tracked files in the repository`;
+  const hint = missing.suggestedRoot === null ? "Write coverage paths relative to the repository root or as absolute paths under the checkout, or set coverage-root to the directory relative paths start from." : `The paths look relative to ${codeSpan(missing.suggestedRoot)}: set coverage-root: ${codeSpan(missing.suggestedRoot)} (coverage.root in .pharn/ci.yml, --coverage-root in the CLI).`;
+  return `${head} (for example ${codeSpan(missing.example)}), so diff coverage was not measured. ${hint}`;
+}
+function codeSpan(text) {
+  const safe = text.replace(CONTROL_CHARS, "\uFFFD").replace(/`/g, "'");
+  return `\`${safe}\``;
+}
+var CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
 function verdictOf(messages) {
   if (messages.some((m) => m.level === "error")) return "fail";
   if (messages.some((m) => m.level === "warn")) return "warn";
@@ -25793,6 +25863,7 @@ function scanAgentSetup(paths) {
 function check(input) {
   const matchers = [...new Set((input.exclude ?? []).map((p) => parseExcludePattern(p)))].map(compileGlob);
   const isExcluded = (path) => matchers.some((matches) => matches(path));
+  const coverageRoot = input.coverageRoot === void 0 ? void 0 : parseCoverageRoot(input.coverageRoot, "coverage root");
   const agentSetup = scanAgentSetup(input.repoFiles);
   const base = {
     version: input.version,
@@ -25830,11 +25901,10 @@ function check(input) {
       missing: { reason: "coverage-format-unsupported", coverageFile }
     });
   }
-  const coverage = parseCoverage(
-    input.coverage.text,
-    choice.format,
-    input.repoRoot === void 0 ? {} : { repoRoot: input.repoRoot }
-  );
+  const coverage = parseCoverage(input.coverage.text, choice.format, {
+    ...input.repoRoot === void 0 ? {} : { repoRoot: input.repoRoot },
+    ...coverageRoot === void 0 ? {} : { coverageRoot }
+  });
   if (coverage.size === 0) {
     return buildReport({
       ...base,
@@ -25842,11 +25912,29 @@ function check(input) {
       missing: { reason: "coverage-file-empty", coverageFile }
     });
   }
+  let untrackedCoveragePaths = 0;
+  if (input.repoFiles.length > 0) {
+    const match = matchCoveragePaths(coverage, input.repoFiles, coverageRoot);
+    if (match.unmatched.length === match.total) {
+      return buildReport({
+        ...base,
+        diffCoverage: null,
+        missing: {
+          reason: "coverage-paths-unmatched",
+          total: match.total,
+          example: match.unmatched[0] ?? "",
+          suggestedRoot: match.suggestedRoot
+        }
+      });
+    }
+    untrackedCoveragePaths = match.unmatched.length;
+  }
   const diff = parseUnifiedDiff(input.diff.text);
   return buildReport({
     ...base,
     coverageFormat: choice.format,
-    diffCoverage: computeDiffCoverage(diff, coverage, input.threshold, isExcluded)
+    diffCoverage: computeDiffCoverage(diff, coverage, input.threshold, isExcluded),
+    ...untrackedCoveragePaths > 0 ? { untrackedCoveragePaths } : {}
   });
 }
 
@@ -25877,6 +25965,7 @@ function resolveInputs(config, raw, text) {
   const coverageFile = raw.coverageFile !== void 0 ? { path: raw.coverageFile, fromConfig: false } : config.coverage?.file !== void 0 ? { path: config.coverage.file, fromConfig: true } : void 0;
   if (coverageFile === void 0) errors.push(new InputError("coverageFile", text.noCoverageFile));
   const exclude = attempt("exclude", () => (raw.exclude ?? []).map((p) => parseExcludePattern(p, text.exclude)));
+  const coverageRoot = raw.coverageRoot !== void 0 ? attempt("coverageRoot", () => parseCoverageRoot(raw.coverageRoot, text.coverageRoot)) : config.coverage?.root;
   const [first, ...rest] = errors;
   if (first !== void 0) return { ok: false, errors: [first, ...rest] };
   return {
@@ -25886,6 +25975,7 @@ function resolveInputs(config, raw, text) {
       coverageFormat,
       threshold,
       exclude: [...config.coverage?.exclude ?? [], ...exclude],
+      coverageRoot,
       // Absent, setup.require decides, then off. The CLI flag can only turn it on.
       requireAgentSetup: raw.requireAgentSetup ?? config.setup?.require ?? false
     }
@@ -25918,6 +26008,8 @@ var MESSAGE_HINTS = {
   COVERAGE_FILE_EMPTY: "Run the tests with coverage enabled before pharn-ci, and check that the report covers this repo's sources.",
   COVERAGE_FORMAT_UNSUPPORTED: "Have the test runner write lcov or Cobertura XML; if it already does, set `coverage.format` explicitly.",
   DIFF_UNAVAILABLE: "Check out full history (`actions/checkout` with `fetch-depth: 0`) or set the base (`base-ref` or `--base`).",
+  COVERAGE_PATHS_UNMATCHED: "Write coverage paths relative to the repository root, or set the directory they start from (`coverage.root`, `coverage-root` or `--coverage-root`).",
+  COVERAGE_PATHS_PARTIALLY_UNMATCHED: "Nothing to do if those files are generated or outside the repo; if changed files are missing from the table, check the coverage root.",
   NO_AGENT_SETUP_FILES: "Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test."
 };
 function renderMarkdown(report, options = {}) {
@@ -26014,14 +26106,14 @@ function formatRanges(lines) {
   }
   return parts.join(", ");
 }
-var CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
+var CONTROL_CHARS2 = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
 function code(path) {
-  const safe = path.replace(CONTROL_CHARS, "\uFFFD").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/`/g, "'");
+  const safe = path.replace(CONTROL_CHARS2, "\uFFFD").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/`/g, "'");
   return `\`${safe}\``;
 }
 var MARKDOWN_ACTIVE = /[\\`*_[\]#!|~]/g;
 function inlineText(text) {
-  return text.replace(CONTROL_CHARS, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(MARKDOWN_ACTIVE, "\\$&").replace(/@/g, "@\u200B").replace(/:\/\//g, ":\\/\\/").replace(/(www)\./gi, "$1\\.");
+  return text.replace(CONTROL_CHARS2, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(MARKDOWN_ACTIVE, "\\$&").replace(/@/g, "@\u200B").replace(/:\/\//g, ":\\/\\/").replace(/(www)\./gi, "$1\\.");
 }
 
 // ../core/src/version.ts
@@ -26034,6 +26126,7 @@ var INPUT_ERRORS = {
   coverageFormat: (value) => `coverage-format "${value}" is not supported (supported: lcov, cobertura, auto)`,
   threshold: "threshold",
   exclude: "exclude",
+  coverageRoot: "coverage-root",
   noCoverageFile: "no coverage file: set the coverage-file input or coverage.file in .pharn/ci.yml"
 };
 var MAX_COMMENT_LENGTH = 65e3;
@@ -26056,12 +26149,13 @@ async function runUnsafe(deps) {
       coverageFormat: input("coverage-format") || void 0,
       threshold: input("threshold") || void 0,
       exclude: splitPatternList(input("exclude")),
+      coverageRoot: input("coverage-root") || void 0,
       requireAgentSetup: parseBool(input("require-agent-setup"), "require-agent-setup")
     },
     INPUT_ERRORS
   );
   if (!resolved.ok) throw resolved.errors[0];
-  const { coverageFormat: format, threshold, exclude, requireAgentSetup } = resolved.inputs;
+  const { coverageFormat: format, threshold, exclude, coverageRoot, requireAgentSetup } = resolved.inputs;
   const coverageFile = resolved.inputs.coverageFile.path;
   const failOnThreshold = parseBool(input("fail-on-threshold"), "fail-on-threshold") ?? true;
   const comment = parseBool(input("comment"), "comment") ?? true;
@@ -26081,7 +26175,8 @@ async function runUnsafe(deps) {
     threshold,
     repoFiles: lsFiles.split("\0").filter((p) => p !== ""),
     exclude,
-    requireAgentSetup
+    requireAgentSetup,
+    ...coverageRoot === void 0 ? {} : { coverageRoot }
   };
   const report = check(checkInput);
   const markdown = renderMarkdown(report);

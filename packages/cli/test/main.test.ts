@@ -93,7 +93,8 @@ describe("cli main", () => {
         "--end-of-options",
         "topic/-x...HEAD",
       ],
-      ["ls-files", "-z"],
+      // F-01: tracked files are listed from the repo root, whatever directory the CLI runs in.
+      ["ls-files", "-z", "--full-name", "--", ":/"],
     ]);
   });
 

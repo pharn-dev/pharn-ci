@@ -1,4 +1,5 @@
 import { COVERAGE_FORMAT_SELECTIONS, type CoverageFormatSelection } from "./coverage/types.js";
+import { isAbsolutePath } from "./paths.js";
 
 /** Shape of `.pharn/ci.yml`. Every field is optional; CLI/Action inputs override it. */
 export interface PharnConfig {
@@ -8,6 +9,11 @@ export interface PharnConfig {
     threshold?: number;
     /** Glob patterns of changed files left out of diff coverage (validated and normalized). */
     exclude?: string[];
+    /**
+     * Normalized repo-relative directory that relative coverage paths start from (package-relative
+     * coverage in a monorepo). `.` is the repo root.
+     */
+    root?: string;
   };
   setup?: {
     /** When true, a repo with no agent setup files fails the check. */
@@ -301,6 +307,11 @@ function validateCoverage(cov: YamlMap[string] | undefined): PharnConfig["covera
         coverage.exclude = patterns;
         break;
       }
+      case "root":
+        if (typeof value !== "string" || value === "")
+          throw new ConfigError(`"coverage.root" must be a non-empty string`);
+        coverage.root = parseCoverageRoot(value, '"coverage.root"');
+        break;
       default:
         throw new ConfigError(`unknown key "coverage.${key}"`);
     }
@@ -333,6 +344,29 @@ export function parseExcludePattern(pattern: string, label = "exclude pattern"):
     if (p.includes(ch)) reject(`must not contain "${ch}" (only *, ** and ? are supported)`);
   }
   return p;
+}
+
+/**
+ * Validate and normalize a coverage root (config value, CLI flag, Action input or `check()` input): a
+ * repo-relative directory that relative coverage paths start from. Trims it, strips leading `./` and
+ * trailing `/`, collapses duplicate `/`, and returns `.` for the repo root. Rejects an empty value, a
+ * backslash, an absolute path, a leading `-` and a `..` segment. Idempotent. The raw value is quoted in
+ * the error so the user can find it.
+ */
+export function parseCoverageRoot(value: string, label: string): string {
+  const reject = (reason: string): never => {
+    throw new ConfigError(`${label} "${value}" ${reason}`);
+  };
+  const trimmed = value.trim();
+  if (trimmed === "") reject("must not be empty");
+  if (trimmed.includes("\\")) reject('must not contain "\\" (use "/" as the separator)');
+  if (isAbsolutePath(trimmed)) reject("must be relative to the repository root, not absolute");
+
+  const segments = trimmed.split("/").filter((segment) => segment !== "" && segment !== ".");
+  const root = segments.join("/");
+  if (root.startsWith("-")) reject('must not start with "-"');
+  if (segments.includes("..")) reject('must not contain a ".." segment');
+  return root === "" ? "." : root;
 }
 
 export function isCoverageFormatSelection(value: string): value is CoverageFormatSelection {

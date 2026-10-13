@@ -98,6 +98,11 @@
       "level": "error",
       "code": "DIFF_COVERAGE_BELOW_THRESHOLD",
       "text": "Diff coverage 71.43% is below the threshold of 80%."
+    },
+    {
+      "level": "info",
+      "code": "COVERAGE_PATHS_PARTIALLY_UNMATCHED",
+      "text": "1 file path in the coverage report is not a tracked file in the repository; its coverage is not used."
     }
   ]
 }

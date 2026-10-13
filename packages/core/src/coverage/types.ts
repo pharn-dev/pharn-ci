@@ -19,4 +19,9 @@ export const COVERAGE_FORMAT_SELECTIONS: readonly CoverageFormatSelection[] = ["
 export interface ParseCoverageOptions {
   /** Absolute repo root; used to turn absolute report paths into repo-relative ones. */
   repoRoot?: string;
+  /**
+   * Repo-relative directory joined in front of paths that are relative as written (package-relative
+   * coverage in a monorepo). Never applied to an absolute path. Absent or `.` means the repo root.
+   */
+  coverageRoot?: string;
 }

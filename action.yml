@@ -21,6 +21,9 @@ inputs:
   exclude:
     description: Glob patterns of changed files to leave out of diff coverage, separated by commas or newlines. Added to coverage.exclude in .pharn/ci.yml, never replacing it.
     required: false
+  coverage-root:
+    description: Directory, relative to the repository root, that relative coverage paths start from (for package-relative coverage in a monorepo). Defaults to coverage.root in .pharn/ci.yml, then the repository root.
+    required: false
   require-agent-setup:
     description: Fail the check when the repo has no agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...). Defaults to setup.require in .pharn/ci.yml, then false.
     required: false

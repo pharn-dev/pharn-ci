@@ -1,4 +1,11 @@
-import { foldForRoot, isAbsolutePath, normalizePath, normalizeRoot, startsWithPath } from "../paths.js";
+import {
+  foldForRoot,
+  isAbsolutePath,
+  joinCoverageRoot,
+  normalizePath,
+  normalizeRoot,
+  startsWithPath,
+} from "../paths.js";
 import type { CoverageMap, LineHits, ParseCoverageOptions } from "./types.js";
 import { scanXml } from "./xml.js";
 
@@ -33,6 +40,12 @@ import { scanXml } from "./xml.js";
  * to all of them, through a list built once that skips sources whose join can
  * never qualify, so resolution stays linear on a report with thousands of
  * sources and filenames.
+ *
+ * Coverage root: when `coverageRoot` is set, it is joined in front of a path that
+ * is relative as written, that is a join with a relative source or the filename
+ * itself. An absolute filename, and a filename joined to an absolute source, are
+ * never prefixed. The source qualification above is judged on the key without
+ * the root.
  *
  * The XML is read with a linear, non-recursive scanner (`xml.ts`); malformed or
  * hostile input yields whatever was readable before the damage, never a throw.
@@ -98,7 +111,7 @@ export function parseCobertura(text: string, options: ParseCoverageOptions = {})
     }
   });
 
-  const resolve = makeResolver([...new Set(sources)], options.repoRoot);
+  const resolve = makeResolver([...new Set(sources)], options.repoRoot, options.coverageRoot);
   const map: CoverageMap = new Map();
   for (const [filename, lines] of perFile) {
     const key = resolve(filename);
@@ -145,12 +158,17 @@ function addLine(
  */
 const MAX_CLIMBING_JOIN_SOURCES = 16;
 
-function makeResolver(sources: readonly string[], repoRoot: string | undefined): (filename: string) => string {
+function makeResolver(
+  sources: readonly string[],
+  repoRoot: string | undefined,
+  coverageRoot: string | undefined,
+): (filename: string) => string {
+  // The coverage root is joined only after a source is chosen, so it does not change which sources qualify.
   const direct = directSources(sources, repoRoot);
   const climbing = sources.slice(0, MAX_CLIMBING_JOIN_SOURCES);
   return (filename) => {
     if (isAbsolutePath(filename)) return normalizePath(filename, repoRoot);
-    return resolvePath(filename, climbs(normalizePath(filename)) ? climbing : direct, repoRoot);
+    return resolvePath(filename, climbs(normalizePath(filename)) ? climbing : direct, repoRoot, coverageRoot);
   };
 }
 
@@ -214,7 +232,13 @@ function directSources(sources: readonly string[], repoRoot: string | undefined)
   return kept;
 }
 
-function resolvePath(filename: string, sources: readonly string[], repoRoot: string | undefined): string {
+/** Resolve a relative filename (absolute ones are handled by `makeResolver`). */
+function resolvePath(
+  filename: string,
+  sources: readonly string[],
+  repoRoot: string | undefined,
+  coverageRoot: string | undefined,
+): string {
   for (const source of sources) {
     const joined = `${source}/${filename}`;
     if (isAbsolutePath(source)) {
@@ -223,10 +247,11 @@ function resolvePath(filename: string, sources: readonly string[], repoRoot: str
       if (!isAbsolutePath(key) && !climbs(key)) return key;
     } else {
       const key = normalizePath(joined);
-      if (key !== "" && !climbs(key)) return key;
+      if (key !== "" && !climbs(key)) return joinCoverageRoot(key, coverageRoot);
     }
   }
-  return normalizePath(filename, repoRoot);
+  const key = normalizePath(filename, repoRoot);
+  return isAbsolutePath(key) ? key : joinCoverageRoot(key, coverageRoot);
 }
 
 function climbs(path: string): boolean {

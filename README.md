@@ -217,6 +217,7 @@ On PRs from forks the token cannot comment; pharn-ci then warns and uses the job
 | ------------------- | --------------------------- | ---------------------------------------- |
 | `coverage-file`     | `coverage.file` from config | Path to the coverage report              |
 | `coverage-format`   | `coverage.format`, then `auto` | `lcov`, `cobertura` or `auto` (detect it from the start of the file) |
+| `coverage-root`     | `coverage.root`, then the repo root | Directory relative coverage paths start from, e.g. `packages/core` in a monorepo |
 | `threshold`         | `coverage.threshold` from config, then none | Minimum diff coverage %, inclusive       |
 | `base-ref`          | PR base; merge queue base; on `push`, the previous head (`before`) | Ref or SHA to diff against. A `base-ref` found neither in the checkout nor through the GitHub API fails the step |
 | `exclude`           | none                        | Globs of changed files to leave out of diff coverage, comma or newline separated; added to `coverage.exclude` |
@@ -242,11 +243,16 @@ node packages/cli/dist/index.js check --coverage coverage/lcov.info --threshold 
 ```
 
 ```text
-pharn-ci check [--coverage <file>] [--coverage-format lcov|cobertura|auto] [--base <ref>]
-               [--threshold <n>] [--format md|json] [--config <path>] [--exclude <glob>]...
-               [--require-agent-setup] [-h|--help] [-v|--version]
+pharn-ci check [--coverage <file>] [--coverage-format lcov|cobertura|auto] [--coverage-root <dir>]
+               [--base <ref>] [--threshold <n>] [--format md|json] [--config <path>]
+               [--exclude <glob>]... [--require-agent-setup] [-h|--help] [-v|--version]
 ```
 
+- `--coverage-root <dir>` is the directory that relative coverage paths start from, for a
+  package-relative report in a monorepo (`SF:src/a.ts` with `--coverage-root packages/core` is
+  `packages/core/src/a.ts`). The flag wins over `coverage.root`, which wins over none (the repo
+  root). The value is repo-relative: no `..`, not absolute, not starting with `-`. Absolute
+  coverage paths are never remapped ([`docs/LIMITS.md`](docs/LIMITS.md), section 7).
 - `--coverage-format` defaults to `coverage.format` from the config, then `auto`, which reads lcov
   or Cobertura XML from the start of the file. The chosen format is printed on stderr, for example
   `coverage: cobertura (auto-detected)`.
@@ -276,6 +282,7 @@ coverage:
   exclude:
     - src/generated/**
     - "*.gen.ts"
+  # root: packages/core # directory relative coverage paths start from (monorepo); default: the repo root
 setup:
   require: false # true fails the check when the repo has no agent setup files
 ```
@@ -315,6 +322,8 @@ it. See [`schema/report.v1.json`](schema/report.v1.json). Branch on message `cod
 | `COVERAGE_FILE_EMPTY`           | The coverage file has no usable records                        |
 | `COVERAGE_FORMAT_UNSUPPORTED`   | The coverage file is not lcov or Cobertura XML (format `auto`) |
 | `DIFF_UNAVAILABLE`              | No diff could be produced, so diff coverage was not computed   |
+| `COVERAGE_PATHS_UNMATCHED`      | None of the coverage report's file paths is a tracked file, so diff coverage was not computed |
+| `COVERAGE_PATHS_PARTIALLY_UNMATCHED` | Some coverage paths are not tracked files; their coverage is not used (`info`) |
 | `NO_AGENT_SETUP_FILES`          | The repo has none of the agent setup files pharn-ci looks for  |
 
 Within v1, fields are only added and codes are never renamed or removed.

@@ -47,6 +47,17 @@ export function isAbsolutePath(path: string): boolean {
   return path.charAt(1) === ":" && (separator === "/" || separator === "\\") && isAsciiLetter(first);
 }
 
+/**
+ * Join a coverage root in front of a path that is relative as written. With no root, or the repo root
+ * (`.`), the path is returned unchanged. A `..` in `path` is resolved by the join; one that climbs above
+ * the repo root stays a `..`-led relative path and matches no tracked file. Callers use this only on
+ * paths that are not absolute.
+ */
+export function joinCoverageRoot(path: string, coverageRoot: string | undefined): string {
+  if (coverageRoot === undefined || coverageRoot === ".") return path;
+  return normalizePath(`${coverageRoot}/${path}`);
+}
+
 function isAsciiLetter(char: string): boolean {
   return (char >= "A" && char <= "Z") || (char >= "a" && char <= "z");
 }

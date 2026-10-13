@@ -22,7 +22,9 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
 - **Deleted and binary files are skipped.** Renamed files are measured under their new path; a
   pure rename adds no lines. Rename detection is git's default similarity (`--find-renames`).
 - **No coverable changes passes.** When none of the added lines are tracked by the coverage report,
-  the verdict is `pass` with `NO_COVERABLE_CHANGES`, even with a threshold of 100.
+  the verdict is `pass` with `NO_COVERABLE_CHANGES`, even with a threshold of 100. This holds only
+  when the coverage report's paths match tracked files; a report whose paths match none is
+  `COVERAGE_PATHS_UNMATCHED` instead (section 7).
 - **Exclusions apply to changed files only.** Patterns from `coverage.exclude`, `--exclude` and the
   Action's `exclude` input (merged, never overriding each other) remove matching changed files from
   every count and from the table. They are listed in `diffCoverage.excludedFiles` and in the
@@ -37,9 +39,11 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
 - **Coverage paths must be relative to the repository root.** `SF:` paths are matched exactly
   (case-sensitive) against repo-relative diff paths. Absolute paths under the repo root are
   relativized. In a monorepo, a coverage file whose paths are relative to a package directory
-  matches nothing. The same holds for Cobertura `filename` values: they are joined to the
-  report's `<source>` entries, and a report made inside a package directory yields paths
-  relative to that package, which match nothing. A relative `filename` that starts with `..`
+  matches nothing unless a coverage root is set. The same holds for Cobertura `filename` values:
+  they are joined to the report's `<source>` entries, and a report made inside a package directory
+  yields paths relative to that package, which match nothing unless a coverage root is set.
+  Section 7 describes the check that reports this and the setting that fixes it. A relative
+  `filename` that starts with `..`
   (after normalization) is joined only to the first 16 distinct `<source>` entries; past them it
   is used as written. Other filenames are joined to every source.
 - **Percentages are rounded to two decimals, but the threshold is compared exactly.** 15,999 of
@@ -53,7 +57,7 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
 ## 2. When an input is missing
 
 - **A missing input fails only with a threshold.** `COVERAGE_FILE_MISSING`, `COVERAGE_FILE_EMPTY`,
-  `COVERAGE_FORMAT_UNSUPPORTED` and `DIFF_UNAVAILABLE` are errors, and the verdict is `fail`, when a
+  `COVERAGE_FORMAT_UNSUPPORTED`, `COVERAGE_PATHS_UNMATCHED` and `DIFF_UNAVAILABLE` are errors, and the verdict is `fail`, when a
   threshold is set (0 included): a gate that cannot measure fails closed. Without a threshold they
   are warnings.
 - **`DIFF_UNAVAILABLE` has several causes.** It is reported when there is no base to diff against (a
@@ -160,3 +164,29 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
 - **The Action runs on the runner's Node 24** (`runs.using: node24`).
 - **Platform.** Developed and tested on Linux and macOS. The Action is tested on `ubuntu-latest`
   only.
+
+## 7. Coverage path mapping
+
+- **Paths are matched exactly against `git ls-files`.** After normalization, every path in the
+  coverage report is compared with the tracked files, case-sensitively. pharn-ci reads no files,
+  so a tracked path is the only evidence a coverage path names a real file.
+- **No path matches: `COVERAGE_PATHS_UNMATCHED`.** Diff coverage is not computed, and the report
+  says so instead of passing as `NO_COVERABLE_CHANGES`. It is an error, and the verdict `fail`,
+  with a threshold (0 included), and a warning without one. When a tracked file ends in a
+  coverage path at a path-segment boundary, the message suggests the directory in front of it as
+  the coverage root. The hint is a suggestion, never applied.
+- **Some paths do not match: `COVERAGE_PATHS_PARTIALLY_UNMATCHED`.** An `info` message with the
+  count. Those files' coverage is not used, and the verdict is unchanged.
+- **A coverage root fixes package-relative reports.** `coverage.root` in `.pharn/ci.yml`, the
+  Action's `coverage-root` input and the CLI's `--coverage-root` flag (the input and the flag win
+  over the config) name the repo-relative directory that relative coverage paths start from. It is joined in front of paths that are relative as written, and never in front of an
+  absolute one. It is one root for the whole report: a report that mixes packages cannot be mapped
+  with it.
+- **Absolute paths from another root are reported, not remapped.** A Docker build's `/app/src/a.ts`
+  stays unmatched, and so do paths through a symlinked workspace. Write coverage paths relative to
+  the repository, or as absolute paths under the checkout path.
+- **Both checks are skipped when the tracked-files list is empty**, which is what the Action does
+  when `git ls-files` fails (it warns). The report is then what it was before these checks.
+- **A changed file missing from the coverage report is never looked at here.** The checks read the
+  coverage report's paths only, so a docs-only change with mapped coverage still passes as
+  `NO_COVERABLE_CHANGES`.

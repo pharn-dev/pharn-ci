@@ -19,6 +19,8 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   setup files are found. Message text in `report.json` is unchanged.
 - `coverage.exclude` in `.pharn/ci.yml` can be written as a one-line flow list, e.g.
   `exclude: ["**", "dist/**"]`, which used to stop the check with exit code 2.
+- Coverage root: `coverage.root` in `.pharn/ci.yml`, the `coverage-root` Action input and the CLI's `--coverage-root` flag name the repo-relative directory that relative coverage paths start from, so a package-relative lcov or Cobertura report in a monorepo is measured at the right files. Absolute paths are never remapped.
+- `COVERAGE_PATHS_PARTIALLY_UNMATCHED` (info): some of the coverage report's file paths are not tracked files, so their coverage is not used. The verdict is unchanged. The `fixtures/golden` and `fixtures/golden-cobertura` reports gain this message.
 
 ### Changed
 
@@ -27,6 +29,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   in `report.json` (the Action's `report-path` output, or `--format json`).
 - `.pharn/ci.yml` errors for unsupported YAML now name the supported form (for example "use a block
   list").
+- A coverage report whose paths match no tracked file is now `COVERAGE_PATHS_UNMATCHED`: an error, and
+  the verdict `fail`, when a threshold is set (a warning without one), with the suggested coverage
+  root when one can be found. Before, it passed as `NO_COVERABLE_CHANGES`. If your coverage paths are
+  relative to a package directory, set `coverage.root`.
 - `DIFF_UNAVAILABLE` is now an error, and the verdict `fail`, when a threshold is set (a warning
   without one), like a missing, empty or unrecognized coverage file. If a shallow checkout makes
   the diff unavailable, use `actions/checkout` with `fetch-depth: 0` or rely on the GitHub API
@@ -58,6 +64,9 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   `DIFF_UNAVAILABLE`.
 - An explicit `base-ref` found neither in the checkout nor through the GitHub API now fails the
   step with an error naming the ref, instead of reporting `DIFF_UNAVAILABLE`.
+- The CLI lists tracked files from the repository root when run from a subdirectory, so coverage
+  paths are compared with the same names wherever it runs. The agent setup inventory of a
+  subdirectory run now covers the whole repo.
 
 ### Security
 

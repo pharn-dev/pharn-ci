@@ -4,6 +4,7 @@ export {
   isCoverageFormatSelection,
   type PharnConfig,
   parseConfig,
+  parseCoverageRoot,
   parseExcludePattern,
   parseThreshold,
 } from "./config.js";

@@ -38,6 +38,8 @@ export type MessageCode =
   | "COVERAGE_FILE_EMPTY"
   | "COVERAGE_FORMAT_UNSUPPORTED"
   | "DIFF_UNAVAILABLE"
+  | "COVERAGE_PATHS_UNMATCHED"
+  | "COVERAGE_PATHS_PARTIALLY_UNMATCHED"
   | "NO_AGENT_SETUP_FILES";
 
 export interface Message {
@@ -59,7 +61,10 @@ export interface BuildReportInput {
     | { reason: "coverage-file-missing"; coverageFile: string }
     | { reason: "coverage-file-empty"; coverageFile: string | null }
     | { reason: "coverage-format-unsupported"; coverageFile: string | null }
-    | { reason: "diff-unavailable"; detail: string };
+    | { reason: "diff-unavailable"; detail: string }
+    | { reason: "coverage-paths-unmatched"; total: number; example: string; suggestedRoot: string | null };
+  /** Count of distinct coverage paths that are not tracked files, when some but not all are; absent or 0 adds no message. */
+  untrackedCoveragePaths?: number;
   agentSetup: AgentSetupInventory;
   /** When true, a repo with no agent setup files is an error instead of info. Off when absent. */
   requireAgentSetup?: boolean;
@@ -71,7 +76,8 @@ export function buildReport(input: BuildReportInput): Report {
 
   if (dc === null) {
     const missing = input.missing ?? { reason: "diff-unavailable", detail: "no diff coverage data" };
-    // Diff coverage could not be computed (no coverage file, an empty or unrecognized one, or no diff). With a
+    // Diff coverage could not be computed (no coverage file, an empty or unrecognized one, coverage paths that
+    // match no tracked file, or no diff). With a
     // threshold the user asked for a gate, and a gate that cannot measure must fail closed, so this is an error
     // (threshold 0 included). Without a threshold pharn-ci only reports, so it stays a warning.
     const level: MessageLevel = input.threshold === null ? "warn" : "error";
@@ -95,6 +101,8 @@ export function buildReport(input: BuildReportInput): Report {
         code: "COVERAGE_FORMAT_UNSUPPORTED",
         text: `${where} is not in a recognized coverage format; pharn-ci reads lcov and Cobertura XML.`,
       });
+    } else if (missing.reason === "coverage-paths-unmatched") {
+      messages.push({ level, code: "COVERAGE_PATHS_UNMATCHED", text: unmatchedText(missing) });
     } else {
       messages.push({
         level,
@@ -122,6 +130,15 @@ export function buildReport(input: BuildReportInput): Report {
       code: "DIFF_COVERAGE_UNGATED",
       text: `Diff coverage ${formatNumber(dc.percent ?? 0)}% is not gated: ${why}.`,
     });
+  }
+
+  const untracked = input.untrackedCoveragePaths ?? 0;
+  if (untracked > 0) {
+    const subject =
+      untracked === 1
+        ? "1 file path in the coverage report is not a tracked file in the repository; its coverage is not used."
+        : `${untracked} file paths in the coverage report are not tracked files in the repository; their coverage is not used.`;
+    messages.push({ level: "info", code: "COVERAGE_PATHS_PARTIALLY_UNMATCHED", text: subject });
   }
 
   if (input.agentSetup.files.length === 0) {
@@ -156,6 +173,31 @@ export function buildReport(input: BuildReportInput): Report {
     messages,
   };
 }
+
+function unmatchedText(missing: { total: number; example: string; suggestedRoot: string | null }): string {
+  const head =
+    missing.total === 1
+      ? "None of the 1 file path in the coverage report is a tracked file in the repository"
+      : `None of the ${missing.total} file paths in the coverage report are tracked files in the repository`;
+  const hint =
+    missing.suggestedRoot === null
+      ? "Write coverage paths relative to the repository root or as absolute paths under the checkout, or set coverage-root to the directory relative paths start from."
+      : `The paths look relative to ${codeSpan(missing.suggestedRoot)}: set coverage-root: ${codeSpan(missing.suggestedRoot)} (coverage.root in .pharn/ci.yml, --coverage-root in the CLI).`;
+  return `${head} (for example ${codeSpan(missing.example)}), so diff coverage was not measured. ${hint}`;
+}
+
+/**
+ * Quote untrusted text (a coverage path, or a directory name from the tracked files) as one code span on
+ * one line: control characters and line breaks become U+FFFD and backticks become `'`, so the text cannot
+ * end its span or start a new line.
+ */
+function codeSpan(text: string): string {
+  const safe = text.replace(CONTROL_CHARS, "\uFFFD").replace(/`/g, "'");
+  return `\`${safe}\``;
+}
+
+// biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point.
+const CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
 
 export function verdictOf(messages: readonly Message[]): Verdict {
   if (messages.some((m) => m.level === "error")) return "fail";

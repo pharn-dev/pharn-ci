@@ -142,6 +142,9 @@ describe("check(): exclusions", () => {
       diff: { text: diff },
       threshold: null,
       exclude: ["gen/**"],
+      // The tracked files of this scenario. The default list lacks gen/a.ts and src/b.ts, which the lcov names,
+      // so with it no coverage path would match a tracked file. gen/deleted.ts is gone from the repo.
+      repoFiles: ["AGENTS.md", "gen/a.ts", "gen/unknown.ts", "src/b.ts"],
     } as Partial<CheckInput>);
     expectValidReport(report);
     const dc = report.diffCoverage as ({ excludedFiles?: string[] } & NonNullable<typeof report.diffCoverage>) | null;
