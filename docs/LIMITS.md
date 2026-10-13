@@ -40,8 +40,13 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   matches nothing. The same holds for Cobertura `filename` values: they are joined to the
   report's `<source>` entries, and a report made inside a package directory yields paths
   relative to that package, which match nothing.
-- **Percentages are rounded to two decimals** and compared after rounding, so the verdict agrees
-  with the number shown. 100% and 0% are reserved for exactly all and exactly none covered.
+- **Percentages are rounded to two decimals, but the threshold is compared exactly.** 15,999 of
+  20,000 lines (79.995%) fails a threshold of 80. When rounding up would show a failing coverage as
+  reaching the threshold, it is rounded down instead (79.99%), so the number shown agrees with the
+  verdict. 100% and 0% are reserved for exactly all and exactly none covered.
+- **Threshold 0 gates no percentage.** Any measured coverage meets it, and the report says so with
+  `DIFF_COVERAGE_UNGATED`, as it does without a threshold. Unlike no threshold, it still makes a
+  missing coverage file or diff an error (below).
 
 ## 2. When an input is missing
 

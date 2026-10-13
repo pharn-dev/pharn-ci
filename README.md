@@ -298,6 +298,7 @@ it. See [`schema/report.v1.json`](schema/report.v1.json). Branch on message `cod
 | Code                            | Meaning                                                        |
 | ------------------------------- | -------------------------------------------------------------- |
 | `DIFF_COVERAGE_BELOW_THRESHOLD` | Diff coverage is below the configured threshold                |
+| `DIFF_COVERAGE_UNGATED`         | Diff coverage was measured but not gated (no threshold, or 0); info |
 | `NO_COVERABLE_CHANGES`          | None of the added lines are tracked by the coverage report     |
 | `COVERAGE_FILE_MISSING`         | The coverage file does not exist                               |
 | `COVERAGE_FILE_EMPTY`           | The coverage file has no usable records                        |
@@ -311,9 +312,8 @@ Within v1, fields are only added and codes are never renamed or removed.
 
 ## What it proves, and what it does not
 
-**Measured:** which added lines the coverage report marks as executed, compared against an
-inclusive threshold after rounding to two decimals; which known agent setup files are tracked in
-git.
+**Measured:** which added lines the coverage report marks as executed, compared exactly against an
+inclusive threshold (79.995% fails at 80); which known agent setup files are tracked in git.
 
 **Not measured**, stated plainly (full list in [`docs/LIMITS.md`](docs/LIMITS.md)):
 
