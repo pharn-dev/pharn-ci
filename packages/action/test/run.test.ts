@@ -195,6 +195,26 @@ describe("action run", () => {
     ]);
   });
 
+  it("passes the candidate base to git rev-parse --verify after --end-of-options", async () => {
+    const h = harness({ inputs: { "base-ref": "develop" } });
+    await run(h.deps);
+    expect(h.gitCalls.filter((a) => a[0] === "rev-parse" && a[1] === "--verify")).toEqual([
+      ["rev-parse", "--verify", "--quiet", "--end-of-options", "origin/develop^{commit}"],
+    ]);
+  });
+
+  it("keeps a base that starts with -x after --end-of-options in every git call", async () => {
+    // A push payload's `before` bypasses the base-ref input check, so only --end-of-options guards it.
+    const h = harness({ localGit: false, context: { eventName: "push", sha: "c1", payload: { before: "-x" } } });
+    await run(h.deps);
+    expect(h.gitCalls.filter((a) => a[0] === "rev-parse")).toEqual([
+      ["rev-parse", "--verify", "--quiet", "--end-of-options", "origin/-x^{commit}"],
+      ["rev-parse", "--verify", "--quiet", "--end-of-options", "-x^{commit}"],
+    ]);
+    expect(h.gitCalls.filter((a) => a[0] === "diff")).toEqual([]);
+    expect(h.apiCalls).toContain("compare -x...c1");
+  });
+
   it("prefers origin/<ref> for a base-ref input", async () => {
     const h = harness({ inputs: { "base-ref": "develop" } });
     await run(h.deps);
