@@ -24992,7 +24992,11 @@ function normalizePath(path, repoRoot) {
   return p;
 }
 function normalizeRoot(repoRoot) {
-  return repoRoot ? toPosix(repoRoot.trim()).replace(/\/+$/, "") : "";
+  if (!repoRoot) return "";
+  const root = toPosix(repoRoot.trim());
+  let end = root.length;
+  while (end > 0 && root[end - 1] === "/") end--;
+  return root.slice(0, end);
 }
 function foldForRoot(path, root) {
   return isDriveRoot(root) ? path.toLowerCase() : path;
@@ -25030,7 +25034,8 @@ function startsWithPath(path, root) {
   return isDriveRoot(root) ? head.toLowerCase() === root.toLowerCase() : head === root;
 }
 function isDriveRoot(root) {
-  return /^[A-Z]:\//.test(root);
+  const first = root.charAt(0);
+  return first >= "A" && first <= "Z" && root.charAt(1) === ":" && root.charAt(2) === "/";
 }
 
 // ../core/src/coverage/cobertura.ts

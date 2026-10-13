@@ -19,7 +19,12 @@ export function normalizePath(path: string, repoRoot?: string): string {
 
 /** `repoRoot` in the form `normalizePath` compares paths against, or "" when there is none. */
 export function normalizeRoot(repoRoot?: string): string {
-  return repoRoot ? toPosix(repoRoot.trim()).replace(/\/+$/, "") : "";
+  if (!repoRoot) return "";
+  const root = toPosix(repoRoot.trim());
+  // Trailing slashes are stripped with a scan, not a regex, so hostile input stays linear.
+  let end = root.length;
+  while (end > 0 && root[end - 1] === "/") end--;
+  return root.slice(0, end);
 }
 
 /**
@@ -79,5 +84,6 @@ export function startsWithPath(path: string, root: string): boolean {
 }
 
 function isDriveRoot(root: string): boolean {
-  return /^[A-Z]:\//.test(root);
+  const first = root.charAt(0);
+  return first >= "A" && first <= "Z" && root.charAt(1) === ":" && root.charAt(2) === "/";
 }
