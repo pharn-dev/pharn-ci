@@ -1,0 +1,5 @@
+AGENTS.md
+README.md
+packages/core/package.json
+packages/core/src/a.ts
+packages/core/src/b.ts

@@ -1,0 +1,13 @@
+TN:
+SF:src/a.ts
+DA:1,1
+DA:2,0
+end_of_record
+TN:
+SF:src/gone.ts
+DA:1,0
+end_of_record
+TN:
+SF:vendor/lib.ts
+DA:1,1
+end_of_record

@@ -29,5 +29,7 @@ Agent setup: 8 files · claude-code, codex, copilot, cursor, mcp
 
 - ❌ `DIFF_COVERAGE_BELOW_THRESHOLD` Diff coverage 71.43% is below the threshold of 80%.
   - Hint: Add tests that exercise the uncovered lines listed in the table above.
+- ℹ️ `COVERAGE_PATHS_PARTIALLY_UNMATCHED` 1 file path in the coverage report is not a tracked file in the repository; its coverage is not used.
+  - Hint: Nothing to do if those files are generated or outside the repo; if changed files are missing from the table, check the coverage root.
 
 <sub>pharn-ci 0.1.0 · report schema v1</sub>

@@ -2,6 +2,7 @@ import {
   ConfigError,
   isCoverageFormatSelection,
   type PharnConfig,
+  parseCoverageRoot,
   parseExcludePattern,
   parseThreshold,
 } from "./config.js";
@@ -17,6 +18,7 @@ export interface RawInputs {
   coverageFormat?: string | undefined;
   threshold?: string | undefined;
   exclude?: readonly string[] | undefined;
+  coverageRoot?: string | undefined;
   requireAgentSetup?: boolean | undefined;
 }
 
@@ -28,6 +30,8 @@ export interface InputErrorText {
   threshold: string;
   /** Label for an exclusion pattern the matcher does not support. */
   exclude: string;
+  /** Label for a coverage root that is not a repo-relative directory. */
+  coverageRoot: string;
   /** The error when neither the input nor the config names a coverage file. */
   noCoverageFile: string;
 }
@@ -40,6 +44,8 @@ export interface ResolvedInputs {
   threshold: number | null;
   /** Config patterns first, then the input's; all validated and normalized. */
   exclude: string[];
+  /** Normalized repo-relative directory relative coverage paths start from; undefined means the repo root. */
+  coverageRoot: string | undefined;
   requireAgentSetup: boolean;
 }
 
@@ -59,7 +65,8 @@ export type ResolveInputsResult =
 
 /**
  * Merge the CLI flags or Action inputs with a parsed `.pharn/ci.yml`. Pure. Every invalid setting
- * yields one error, in the order coverage format, threshold, coverage file, exclusion patterns.
+ * yields one error, in the order coverage format, threshold, coverage file, exclusion patterns,
+ * coverage root.
  */
 export function resolveInputs(config: PharnConfig, raw: RawInputs, text: InputErrorText): ResolveInputsResult {
   const errors: InputError[] = [];
@@ -94,6 +101,12 @@ export function resolveInputs(config: PharnConfig, raw: RawInputs, text: InputEr
 
   const exclude = attempt("exclude", () => (raw.exclude ?? []).map((p) => parseExcludePattern(p, text.exclude)));
 
+  // A config root is already validated and normalized by parseConfig; the input overrides it.
+  const coverageRoot =
+    raw.coverageRoot !== undefined
+      ? attempt("coverageRoot", () => parseCoverageRoot(raw.coverageRoot as string, text.coverageRoot))
+      : config.coverage?.root;
+
   const [first, ...rest] = errors;
   if (first !== undefined) return { ok: false, errors: [first, ...rest] };
   // No errors: every value above was resolved.
@@ -104,6 +117,7 @@ export function resolveInputs(config: PharnConfig, raw: RawInputs, text: InputEr
       coverageFormat: coverageFormat as CoverageFormatSelection,
       threshold: threshold as number | null,
       exclude: [...(config.coverage?.exclude ?? []), ...(exclude as string[])],
+      coverageRoot,
       // Absent, setup.require decides, then off. The CLI flag can only turn it on.
       requireAgentSetup: raw.requireAgentSetup ?? config.setup?.require ?? false,
     },

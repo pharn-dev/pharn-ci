@@ -32,6 +32,10 @@ const MESSAGE_HINTS: Record<MessageCode, string> = {
     "Have the test runner write lcov or Cobertura XML; if it already does, set `coverage.format` explicitly.",
   DIFF_UNAVAILABLE:
     "Check out full history (`actions/checkout` with `fetch-depth: 0`) or set the base (`base-ref` or `--base`).",
+  COVERAGE_PATHS_UNMATCHED:
+    "Write coverage paths relative to the repository root, or set the directory they start from (`coverage.root`, `coverage-root` or `--coverage-root`).",
+  COVERAGE_PATHS_PARTIALLY_UNMATCHED:
+    "Nothing to do if those files are generated or outside the repo; if changed files are missing from the table, check the coverage root.",
   NO_AGENT_SETUP_FILES: "Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test.",
 };
 

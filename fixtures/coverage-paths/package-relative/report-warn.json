@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "1",
+  "tool": {
+    "name": "pharn-ci",
+    "version": "0.1.0"
+  },
+  "verdict": "warn",
+  "diffCoverage": null,
+  "agentSetup": {
+    "files": [
+      {
+        "path": "AGENTS.md",
+        "kind": "agents-md"
+      }
+    ],
+    "summary": {
+      "byKind": {
+        "agents-md": 1
+      },
+      "tools": [
+        "codex",
+        "copilot",
+        "cursor"
+      ]
+    }
+  },
+  "messages": [
+    {
+      "level": "warn",
+      "code": "COVERAGE_PATHS_UNMATCHED",
+      "text": "None of the 2 file paths in the coverage report are tracked files in the repository (for example `src/a.ts`), so diff coverage was not measured. The paths look relative to `packages/core`: set coverage-root: `packages/core` (coverage.root in .pharn/ci.yml, --coverage-root in the CLI)."
+    }
+  ]
+}

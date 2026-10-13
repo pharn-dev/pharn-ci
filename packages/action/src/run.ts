@@ -68,6 +68,7 @@ const INPUT_ERRORS: InputErrorText = {
   coverageFormat: (value) => `coverage-format "${value}" is not supported (supported: lcov, cobertura, auto)`,
   threshold: "threshold",
   exclude: "exclude",
+  coverageRoot: "coverage-root",
   noCoverageFile: "no coverage file: set the coverage-file input or coverage.file in .pharn/ci.yml",
 };
 
@@ -96,12 +97,13 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
       coverageFormat: input("coverage-format") || undefined,
       threshold: input("threshold") || undefined,
       exclude: splitPatternList(input("exclude")),
+      coverageRoot: input("coverage-root") || undefined,
       requireAgentSetup: parseBool(input("require-agent-setup"), "require-agent-setup"),
     },
     INPUT_ERRORS,
   );
   if (!resolved.ok) throw resolved.errors[0];
-  const { coverageFormat: format, threshold, exclude, requireAgentSetup } = resolved.inputs;
+  const { coverageFormat: format, threshold, exclude, coverageRoot, requireAgentSetup } = resolved.inputs;
   const coverageFile = resolved.inputs.coverageFile.path;
   const failOnThreshold = parseBool(input("fail-on-threshold"), "fail-on-threshold") ?? true;
   const comment = parseBool(input("comment"), "comment") ?? true;
@@ -126,6 +128,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     repoFiles: lsFiles.split("\0").filter((p) => p !== ""),
     exclude,
     requireAgentSetup,
+    ...(coverageRoot === undefined ? {} : { coverageRoot }),
   };
   const report = check(checkInput);
   const markdown = renderMarkdown(report);

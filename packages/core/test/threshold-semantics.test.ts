@@ -7,6 +7,13 @@ import { expectValidReport } from "./schema.js";
 // F-31: an ungated measurement says so, threshold 0 is explicit, and the gate compares exactly.
 // The golden fixtures cover 5 of 7 added lines: 71.428...%, shown as 71.43%.
 const repoFiles = fixture("golden/files.txt").trim().split("\n");
+// The golden coverage also names src/legacy.ts, which the PR deletes and the tracked files lack, so every measured
+// golden report carries this info message (F-01); it does not change the verdict.
+const PARTIAL = {
+  level: "info",
+  code: "COVERAGE_PATHS_PARTIALLY_UNMATCHED",
+  text: "1 file path in the coverage report is not a tracked file in the repository; its coverage is not used.",
+};
 
 function goldenReport(threshold: number | null) {
   return check({
@@ -27,6 +34,7 @@ describe("DIFF_COVERAGE_UNGATED", () => {
     expect(report.diffCoverage).toMatchObject({ percent: 71.43, threshold: null });
     expect(report.messages).toEqual([
       { level: "info", code: "DIFF_COVERAGE_UNGATED", text: "Diff coverage 71.43% is not gated: no threshold is set." },
+      PARTIAL,
     ]);
     expect(renderMarkdown(report)).toContain("`DIFF_COVERAGE_UNGATED` Diff coverage 71.43% is not gated");
   });
@@ -42,6 +50,7 @@ describe("DIFF_COVERAGE_UNGATED", () => {
         code: "DIFF_COVERAGE_UNGATED",
         text: "Diff coverage 71.43% is not gated: a threshold of 0% accepts any coverage.",
       },
+      PARTIAL,
     ]);
   });
 
@@ -61,7 +70,7 @@ describe("DIFF_COVERAGE_UNGATED", () => {
       repoFiles,
     });
     expectValidReport(report);
-    expect(report.messages.map((m) => m.code)).toEqual(["NO_COVERABLE_CHANGES"]);
+    expect(report.messages.map((m) => m.code)).toEqual(["NO_COVERABLE_CHANGES", PARTIAL.code]);
   });
 });
 
@@ -92,6 +101,7 @@ describe("exact threshold comparison", () => {
         code: "DIFF_COVERAGE_BELOW_THRESHOLD",
         text: "Diff coverage 71.42% is below the threshold of 71.43%.",
       },
+      PARTIAL,
     ]);
     expect(renderMarkdown(report)).toContain("**71.42%** of changed lines covered (5/7, threshold 71.43%)");
   });
@@ -101,6 +111,6 @@ describe("exact threshold comparison", () => {
     expectValidReport(report);
     expect(report.verdict).toBe("pass");
     expect(report.diffCoverage?.percent).toBe(71.43);
-    expect(report.messages).toEqual([]);
+    expect(report.messages).toEqual([PARTIAL]);
   });
 });

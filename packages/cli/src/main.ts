@@ -40,6 +40,7 @@ Usage:
 Options:
   --coverage <file>    Coverage report. Default: coverage.file from config
   --coverage-format <f>  lcov, cobertura or auto. Default: coverage.format, then auto
+  --coverage-root <dir>  Directory relative coverage paths start from. Default: coverage.root, then the repo root
   --base <ref>         Base to diff against (merge-base with HEAD). Default: origin/main
   --threshold <n>      Minimum diff coverage percent (0-100). Default: coverage.threshold
   --format <md|json>   Output format. Default: md
@@ -90,6 +91,7 @@ function parse(argv: string[]) {
     options: {
       coverage: { type: "string" },
       "coverage-format": { type: "string" },
+      "coverage-root": { type: "string" },
       base: { type: "string" },
       threshold: { type: "string" },
       format: { type: "string" },
@@ -110,6 +112,7 @@ const FLAG_ERRORS: InputErrorText = {
     `--coverage-format must be one of: ${COVERAGE_FORMAT_SELECTIONS.join(", ")} (got "${value}")`,
   threshold: "--threshold",
   exclude: "--exclude",
+  coverageRoot: "--coverage-root",
   noCoverageFile: "no coverage file: pass --coverage <file> or set coverage.file in .pharn/ci.yml",
 };
 
@@ -121,9 +124,12 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     coverageFormat: values["coverage-format"],
     threshold: values.threshold,
     exclude: values.exclude,
+    // An empty flag counts as absent, like an empty Action input.
+    coverageRoot: values["coverage-root"]?.trim() ? values["coverage-root"] : undefined,
     requireAgentSetup: values["require-agent-setup"],
   };
-  // Malformed --coverage-format and --exclude flags are reported before any git call: they need no config.
+  // Malformed --coverage-format, --exclude and --coverage-root flags are reported before any git call: they
+  // need no config.
   const flagsAlone = resolveInputs({}, raw, FLAG_ERRORS);
   const flagError = (input: keyof RawInputs) =>
     flagsAlone.ok ? undefined : flagsAlone.errors.find((e) => e.input === input);
@@ -133,12 +139,14 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   if (values.base?.startsWith("-")) throw new ConfigError(`--base "${values.base}" must not start with "-"`);
   const excludeError = flagError("exclude");
   if (excludeError) throw excludeError;
+  const coverageRootError = flagError("coverageRoot");
+  if (coverageRootError) throw coverageRootError;
 
   const repoRoot = (await git(deps, ["rev-parse", "--show-toplevel"], "not inside a git repository")).trim();
   const config = await loadConfig(values.config, repoRoot, deps);
   const resolved = resolveInputs(config, raw, FLAG_ERRORS);
   if (!resolved.ok) throw resolved.errors[0];
-  const { coverageFile, coverageFormat, threshold, exclude, requireAgentSetup } = resolved.inputs;
+  const { coverageFile, coverageFormat, threshold, exclude, coverageRoot, requireAgentSetup } = resolved.inputs;
 
   // A --coverage path is relative to where you run the CLI; a config path is relative to the repo root.
   const coveragePath = deps.resolvePath(coverageFile.fromConfig ? repoRoot : deps.cwd, coverageFile.path);
@@ -154,7 +162,9 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     gitDiffArgs(base),
     `could not diff against "${base}" (fetch it, or pass --base <ref>)`,
   );
-  const lsFiles = await git(deps, ["ls-files", "-z"], "git ls-files failed");
+  // `--full-name -- :/` lists the whole repository relative to its root wherever the CLI runs, so coverage
+  // paths are compared with the same names from a subdirectory.
+  const lsFiles = await git(deps, ["ls-files", "-z", "--full-name", "--", ":/"], "git ls-files failed");
 
   const input: CheckInput = {
     version: VERSION,
@@ -168,6 +178,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     repoFiles: lsFiles.split("\0").filter((p) => p !== ""),
     exclude,
     requireAgentSetup,
+    ...(coverageRoot === undefined ? {} : { coverageRoot }),
   };
   const report = check(input);
 
