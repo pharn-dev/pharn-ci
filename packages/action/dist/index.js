@@ -25915,7 +25915,7 @@ async function resolveLocal(base, deps) {
   const candidates = /^[0-9a-f]{40}$/i.test(base) ? [base] : [`origin/${base}`, base];
   for (const ref of candidates) {
     try {
-      await deps.git(["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]);
+      await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", `${ref}^{commit}`]);
       return ref;
     } catch {
     }

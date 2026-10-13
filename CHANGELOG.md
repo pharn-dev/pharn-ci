@@ -33,6 +33,8 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Security
 
+- The Action's `git rev-parse --verify` lookup of the base ref now passes the revision after
+  `--end-of-options` too, so every git call that takes a revision separates it from options.
 - Release tags are documented as unsigned lightweight tags, with pinning the full commit SHA as the
   integrity control (`README.md`, `SECURITY.md`, `docs/RELEASING.md`). The `packages/action/dist`
   diff is no longer collapsed in pull requests (`.gitattributes` no longer marks it
