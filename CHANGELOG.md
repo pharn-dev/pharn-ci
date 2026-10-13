@@ -10,6 +10,7 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 ### Added
 
 - Require agent setup: the `require-agent-setup` Action input, the CLI's `--require-agent-setup` flag and `setup.require` in `.pharn/ci.yml` (off by default) make `NO_AGENT_SETUP_FILES` an error and the verdict `fail` when the repo has no agent setup files.
+- Data handling section in `SECURITY.md`, linked from the README's Safety model: what the Action reads, what it sends to your GitHub API, what lands in the PR comment, job summary, step log and `report.json`, and that nothing is sent to Pharn.
 
 ### Changed
 
@@ -17,6 +18,21 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   without one), like a missing, empty or unrecognized coverage file. If a shallow checkout makes
   the diff unavailable, use `actions/checkout` with `fetch-depth: 0` or rely on the GitHub API
   fallback.
+- The repository no longer tracks the maintainer's PHARN workflow install (`pharn/`,
+  `pharn.config.json`, `pharn.records.json` and PHARN's own root `LIMITS.md` and `THREAT-MODEL.md`),
+  so `uses: pharn-dev/pharn-ci@...` downloads about 5 MB less. pharn-ci's own threat model and
+  limits are [`docs/THREAT-MODEL.md`](./docs/THREAT-MODEL.md) and [`docs/LIMITS.md`](./docs/LIMITS.md).
+
+### Fixed
+
+- Docs: the quick start pins `actions/checkout` to a commit SHA; the Action reference gives the
+  real `threshold` and `base-ref` defaults; the docs name Cobertura as untrusted input, the
+  `GET /user` call, and the bundled transitive dependencies.
+- The Action no longer crashes with a stack trace before running when `github-token` is empty. The
+  token is used only when an API call is needed, so `comment: false` with a local diff works
+  without one; otherwise the compare fallback reports `DIFF_UNAVAILABLE` and the comment step
+  warns, as for any API failure. The `github-token` input now says `pull-requests: write` is
+  needed only for the comment.
 
 ### Fixed
 
@@ -25,6 +41,14 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   keeps updating the oldest. The README quick start now sets a per-PR `concurrency` group.
 
 ### Security
+
+- The Action's `git rev-parse --verify` lookup of the base ref now passes the revision after
+  `--end-of-options` too, so every git call that takes a revision separates it from options.
+- Release tags are documented as unsigned lightweight tags, with pinning the full commit SHA as the
+  integrity control (`README.md`, `SECURITY.md`, `docs/RELEASING.md`). The `packages/action/dist`
+  diff is no longer collapsed in pull requests (`.gitattributes` no longer marks it
+  `linguist-generated`), and CI writes the changed dist files and the bundle's sha256 to the job
+  summary of every pull request so reviewers see the shipped artifact change.
 
 ## [0.1.0] - YYYY-MM-DD
 

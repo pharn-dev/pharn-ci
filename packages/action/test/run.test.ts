@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { createGitHubApi } from "../src/api.js";
 import {
   type ActionContext,
   type ActionDeps,
@@ -207,6 +208,26 @@ describe("action run", () => {
     ]);
   });
 
+  it("passes the candidate base to git rev-parse --verify after --end-of-options", async () => {
+    const h = harness({ inputs: { "base-ref": "develop" } });
+    await run(h.deps);
+    expect(h.gitCalls.filter((a) => a[0] === "rev-parse" && a[1] === "--verify")).toEqual([
+      ["rev-parse", "--verify", "--quiet", "--end-of-options", "origin/develop^{commit}"],
+    ]);
+  });
+
+  it("keeps a base that starts with -x after --end-of-options in every git call", async () => {
+    // A push payload's `before` bypasses the base-ref input check, so only --end-of-options guards it.
+    const h = harness({ localGit: false, context: { eventName: "push", sha: "c1", payload: { before: "-x" } } });
+    await run(h.deps);
+    expect(h.gitCalls.filter((a) => a[0] === "rev-parse")).toEqual([
+      ["rev-parse", "--verify", "--quiet", "--end-of-options", "origin/-x^{commit}"],
+      ["rev-parse", "--verify", "--quiet", "--end-of-options", "-x^{commit}"],
+    ]);
+    expect(h.gitCalls.filter((a) => a[0] === "diff")).toEqual([]);
+    expect(h.apiCalls).toContain("compare -x...c1");
+  });
+
   it("prefers origin/<ref> for a base-ref input", async () => {
     const h = harness({ inputs: { "base-ref": "develop" } });
     await run(h.deps);
@@ -361,6 +382,51 @@ describe("action run", () => {
     const h = harness({ inputs: { comment: "false" } });
     await run(h.deps);
     expect(h.apiCalls.filter((c) => !c.startsWith("compare"))).toEqual([]);
+  });
+
+  describe("with an empty github-token", () => {
+    const tokenless = (h: Harness) => {
+      const getOctokit = vi.fn(() => {
+        throw new Error("no client should be built without a token");
+      });
+      h.deps.api = createGitHubApi({ token: "", repo: () => ({ owner: "acme", repo: "demo" }), getOctokit });
+      return getOctokit;
+    };
+
+    it("runs with comment: false and a local diff, making no API call", async () => {
+      const h = harness({ inputs: { comment: "false", threshold: "50" } });
+      const getOctokit = tokenless(h);
+      const report = await run(h.deps);
+      expect(report?.verdict).toBe("pass");
+      expect(report?.diffCoverage?.percent).toBeTypeOf("number");
+      expect(h.failed).toEqual([]);
+      expect(h.warnings).toEqual([]);
+      expect(h.summary).toHaveLength(1);
+      expect(h.outputs.verdict).toBe("pass");
+      expect(getOctokit).not.toHaveBeenCalled();
+    });
+
+    it("degrades to DIFF_UNAVAILABLE when the compare fallback needs the token", async () => {
+      const h = harness({ inputs: { comment: "false" }, localGit: false });
+      const getOctokit = tokenless(h);
+      const report = await run(h.deps);
+      expect(report?.messages[0]?.code).toBe("DIFF_UNAVAILABLE");
+      expect(h.warnings.join("\n")).toContain("could not fetch the diff from the GitHub API");
+      expect(h.warnings.join("\n")).toContain("the github-token input is empty");
+      expect(h.failed).toEqual([]);
+      expect(getOctokit).not.toHaveBeenCalled();
+    });
+
+    it("warns and keeps the job summary when commenting needs the token", async () => {
+      const h = harness();
+      const getOctokit = tokenless(h);
+      const report = await run(h.deps);
+      expect(report?.verdict).toBe("pass");
+      expect(h.summary).toHaveLength(1);
+      expect(h.warnings.join("\n")).toContain("could not post the PR comment (the github-token input is empty)");
+      expect(h.failed).toEqual([]);
+      expect(getOctokit).not.toHaveBeenCalled();
+    });
   });
 
   it("does not fail the step when fail-on-threshold is false", async () => {

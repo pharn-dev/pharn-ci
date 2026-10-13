@@ -133,7 +133,7 @@ jobs:
   pharn-ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       # ...set up your toolchain and run tests with lcov or Cobertura output, e.g.:
@@ -149,8 +149,9 @@ reports and never fails the step. The `concurrency` group cancels an older run w
 is pushed; without it, two runs that each post the sticky comment are cleaned up to one, but the
 older run may write last.
 
-Release tags are exact versions (`v0.1.0`), never moved or deleted. Pinning the tag's full commit
-SHA is stronger still; Dependabot keeps either up to date.
+Release tags are exact versions (`v0.1.0`), never moved or deleted, but they are unsigned
+lightweight tags, so there is no tag signature to verify. Pinning the tag's full commit SHA is the
+integrity control; Dependabot keeps either up to date.
 
 ---
 
@@ -215,14 +216,14 @@ On PRs from forks the token cannot comment; pharn-ci then warns and uses the job
 | ------------------- | --------------------------- | ---------------------------------------- |
 | `coverage-file`     | `coverage.file` from config | Path to the coverage report              |
 | `coverage-format`   | `coverage.format`, then `auto` | `lcov`, `cobertura` or `auto` (detect it from the start of the file) |
-| `threshold`         | none                        | Minimum diff coverage %, inclusive       |
-| `base-ref`          | PR base                     | Ref or SHA to diff against               |
+| `threshold`         | `coverage.threshold` from config, then none | Minimum diff coverage %, inclusive       |
+| `base-ref`          | PR base; on `push`, the previous head (`before`) | Ref or SHA to diff against               |
 | `exclude`           | none                        | Globs of changed files to leave out of diff coverage, comma or newline separated; added to `coverage.exclude` |
 | `require-agent-setup` | `setup.require`, then `false` | Fail when the repo has no agent setup files; the step fails through `fail-on-threshold` |
 | `comment`           | `true`                      | Post/update one sticky PR comment        |
 | `fail-on-threshold` | `true`                      | Fail the step when the verdict is `fail` |
 | `config`            | `.pharn/ci.yml`             | Config file path                         |
-| `github-token`      | `github.token`              | Token for the comment and diff fallback  |
+| `github-token`      | `github.token`              | Token for the comment and diff fallback; `pull-requests: write` only for the comment, may be empty with `comment: false` and a local diff |
 
 | Output          |                                                       |
 | --------------- | ----------------------------------------------------- |
@@ -348,7 +349,8 @@ pharn-ci runs inside other people's CI, on untrusted changes, with their token. 
 that:
 
 - **Stateless.** No backend, no telemetry, no network calls except the GitHub API inside the
-  Action.
+  Action. What it reads, what it sends to your GitHub and what it stores is listed in
+  [Data handling](SECURITY.md#data-handling).
 - **Small token footprint.** `contents: read` plus `pull-requests: write`. It reads the compare API
   and comments, and updates only a comment its own login wrote. It deletes a comment only when
   concurrent runs left duplicates of that own marker comment.
@@ -357,8 +359,10 @@ that:
   refs starting with `-` are rejected.
 - **Pure core.** `packages/core` cannot do I/O; a test, a lint rule and its tsconfig enforce it.
 - **Reviewable releases.** The committed Action bundle is rebuilt and diffed in CI. Third-party
-  actions are pinned to commit SHAs, two runtime dependencies, CodeQL, gitleaks and Socket checks
-  on every PR, and release tags are never moved.
+  actions are pinned to commit SHAs. The Action has two direct runtime dependencies
+  (`@actions/core`, `@actions/github`), bundled into `packages/action/dist` together with their
+  transitive dependencies. CodeQL, gitleaks and Socket checks run on every PR, and release tags are
+  never moved.
 
 Each claim is mapped to the test or check that enforces it in
 [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md). Do not run pharn-ci on `pull_request_target` with

@@ -4,44 +4,16 @@ import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import * as core from "@actions/core";
 import * as github from "@actions/github";
-import { type GitHubApi, run } from "./run.js";
+import { createGitHubApi } from "./api.js";
+import { run } from "./run.js";
 
 const workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
-const { owner, repo } = github.context.repo;
-const octokit = github.getOctokit(core.getInput("github-token", { required: true }));
-
-const api: GitHubApi = {
-  async compareDiff(basehead) {
-    const res = await octokit.rest.repos.compareCommitsWithBasehead({
-      owner,
-      repo,
-      basehead,
-      mediaType: { format: "diff" },
-    });
-    // With the diff media type the response body is the raw diff text.
-    return res.data as unknown as string;
-  },
-  async viewerLogin() {
-    // Works for a personal or user token. The default GITHUB_TOKEN cannot read /user, and it
-    // comments as github-actions[bot].
-    try {
-      return (await octokit.rest.users.getAuthenticated()).data.login;
-    } catch {
-      return "github-actions[bot]";
-    }
-  },
-  listComments: (issueNumber) =>
-    octokit.paginate(octokit.rest.issues.listComments, { owner, repo, issue_number: issueNumber, per_page: 100 }),
-  async createComment(issueNumber, body) {
-    await octokit.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body });
-  },
-  async updateComment(commentId, body) {
-    await octokit.rest.issues.updateComment({ owner, repo, comment_id: commentId, body });
-  },
-  async deleteComment(commentId) {
-    await octokit.rest.issues.deleteComment({ owner, repo, comment_id: commentId });
-  },
-};
+// Built lazily: a run that needs no API call (comment: false, local diff) needs no token.
+const api = createGitHubApi({
+  token: core.getInput("github-token"),
+  repo: () => github.context.repo,
+  getOctokit: github.getOctokit,
+});
 
 await run({
   getInput: (name) => core.getInput(name),
