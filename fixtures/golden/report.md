@@ -6,8 +6,8 @@
 
 | File | Coverage | Covered | Uncovered lines |
 | --- | ---: | ---: | --- |
-| `src/math.ts` | 75% | 3/4 | 10 |
 | `src/new.ts` | 50% | 1/2 | 5 |
+| `src/math.ts` | 75% | 3/4 | 10 |
 | `src/utils/new-name.ts` | 100% | 1/1 |  |
 
 ### Agent setup
@@ -28,5 +28,6 @@ Agent setup: 8 files · claude-code, codex, copilot, cursor, mcp
 ### Messages
 
 - ❌ `DIFF_COVERAGE_BELOW_THRESHOLD` Diff coverage 71.43% is below the threshold of 80%.
+  - Hint: Add tests that exercise the uncovered lines listed in the table above.
 
 <sub>pharn-ci 0.1.0 · report schema v1</sub>

@@ -1,4 +1,4 @@
-import { formatNumber, type Message, type Report } from "../report.js";
+import { formatNumber, type Message, type MessageCode, type Report } from "../report.js";
 import { summarizeAgentSetup } from "../setup/summary.js";
 
 export interface RenderMarkdownOptions {
@@ -10,6 +10,30 @@ const VERDICT_ICON = { pass: "✅", warn: "⚠️", fail: "❌" } as const;
 /** Inventories larger than this get their table collapsed in a `<details>` block. */
 const COLLAPSE_ABOVE = 25;
 const LEVEL_ICON = { info: "ℹ️", warn: "⚠️", error: "❌" } as const;
+/** Where the full file list lives when the diff coverage table is cut short. */
+const FULL_REPORT_NOTE =
+  "_Full list in report.json: the Action's `report-path` output, or `pharn-ci check --format json`._";
+
+/**
+ * One-line remediation per message code, added at render time so message text (which consumers may
+ * match on) stays as it is. Fixed strings only: nothing input-derived.
+ */
+const MESSAGE_HINTS: Record<MessageCode, string> = {
+  DIFF_COVERAGE_BELOW_THRESHOLD: "Add tests that exercise the uncovered lines listed in the table above.",
+  DIFF_COVERAGE_UNGATED:
+    "To gate diff coverage, set a threshold above 0 (`coverage.threshold`, `threshold` or `--threshold`).",
+  NO_COVERABLE_CHANGES:
+    "Nothing to do if the change has no code; otherwise check that the coverage report includes the changed files.",
+  COVERAGE_FILE_MISSING:
+    "Run the tests with coverage before pharn-ci, and check the path (`coverage.file`, `coverage-file` or `--coverage`).",
+  COVERAGE_FILE_EMPTY:
+    "Run the tests with coverage enabled before pharn-ci, and check that the report covers this repo's sources.",
+  COVERAGE_FORMAT_UNSUPPORTED:
+    "Have the test runner write lcov or Cobertura XML; if it already does, set `coverage.format` explicitly.",
+  DIFF_UNAVAILABLE:
+    "Check out full history (`actions/checkout` with `fetch-depth: 0`) or set the base (`base-ref` or `--base`).",
+  NO_AGENT_SETUP_FILES: "Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test.",
+};
 
 /** Render a Report as GitHub-flavored markdown (PR comment, job summary, CLI). */
 export function renderMarkdown(report: Report, options: RenderMarkdownOptions = {}): string {
@@ -31,13 +55,15 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
       "",
     );
     out.push("| File | Coverage | Covered | Uncovered lines |", "| --- | ---: | ---: | --- |");
-    for (const f of dc.files.slice(0, maxRows)) {
+    // Worst first, so the files that need tests survive truncation; files with nothing to measure go last.
+    for (const f of byCoverage(dc.files).slice(0, maxRows)) {
       const pct = f.percent === null ? "—" : `${formatNumber(f.percent)}%`;
       const uncovered = f.uncoveredLines.length === 0 ? "" : formatRanges(f.uncoveredLines);
       out.push(`| ${code(f.path)} | ${pct} | ${f.coveredLines}/${f.coverableLines} | ${uncovered} |`);
     }
     if (dc.files.length > maxRows) out.push(`| _…and ${dc.files.length - maxRows} more files_ | | | |`);
     out.push("");
+    if (dc.files.length > maxRows) out.push(FULL_REPORT_NOTE, "");
   }
   const excluded = dc?.excludedFiles ?? [];
   if (excluded.length > 0) {
@@ -54,7 +80,12 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
   out.push("### Agent setup", "");
   const setup = report.agentSetup.files;
   if (setup.length === 0) {
-    out.push("_No agent setup files found._", "");
+    out.push(
+      "_No agent setup files found._",
+      "",
+      "Missing: an agent instructions file, typically `AGENTS.md` or `CLAUDE.md` at the repository root.",
+      "",
+    );
   } else {
     // Count, fixed words and names from the fixed tool list only: nothing input-derived. buildReport
     // already summarized the files; a report without a summary (an older producer's) is summarized here.
@@ -80,7 +111,21 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
 }
 
 function renderMessage(m: Message): string {
-  return `- ${LEVEL_ICON[m.level]} \`${m.code}\` ${inlineText(m.text)}`;
+  const line = `- ${LEVEL_ICON[m.level]} \`${m.code}\` ${inlineText(m.text)}`;
+  // Object.hasOwn: a code from a newer producer has no hint, and must not reach Object.prototype.
+  return Object.hasOwn(MESSAGE_HINTS, m.code) ? `${line}\n  - Hint: ${MESSAGE_HINTS[m.code]}` : line;
+}
+
+/** Ascending coverage, then path; files without coverable lines (percent null) last. Does not mutate. */
+function byCoverage<T extends { path: string; percent: number | null }>(files: readonly T[]): T[] {
+  return [...files].sort((a, b) => {
+    if (a.percent !== b.percent) {
+      if (a.percent === null) return 1;
+      if (b.percent === null) return -1;
+      return a.percent - b.percent;
+    }
+    return a.path < b.path ? -1 : a.path > b.path ? 1 : 0;
+  });
 }
 
 /** Collapse ascending line numbers into ranges: [1,2,3,7] -> "1-3, 7". */

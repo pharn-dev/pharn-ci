@@ -24580,7 +24580,9 @@ function parseYamlSubset(text) {
     const raw = stripComment(lines[i]).trimEnd();
     if (raw.trim() === "") continue;
     if (raw.trim() === "---" && i === 0) continue;
-    if (/^\s*\t/.test(raw)) throw new ConfigError(`line ${lineNo}: tabs are not allowed for indentation`);
+    if (/^\s*\t/.test(raw)) {
+      throw new ConfigError(`line ${lineNo}: tabs are not allowed for indentation; indent with spaces`);
+    }
     const indent = raw.length - raw.trimStart().length;
     const content = raw.trimStart();
     if (content.startsWith("- ") || content === "-") {
@@ -24592,7 +24594,7 @@ function parseYamlSubset(text) {
       } else if (list && indent !== list.indent) {
         throw new ConfigError(`line ${lineNo}: unexpected indentation`);
       } else if (!list) {
-        throw new ConfigError(`line ${lineNo}: lists are not supported in .pharn/ci.yml`);
+        throw new ConfigError(`line ${lineNo}: ${LISTS_ONLY_FOR_EXCLUDE}`);
       }
       list.items.push(parseListItem(content, lineNo));
       continue;
@@ -24618,6 +24620,11 @@ function parseYamlSubset(text) {
     const value = match[2];
     if (value === void 0 || value === "") {
       pendingKey = { map: top.map, key, indent, line: lineNo };
+    } else if (value.startsWith("[")) {
+      if (key !== "exclude" || top.map !== root.coverage) {
+        throw new ConfigError(`line ${lineNo}: ${LISTS_ONLY_FOR_EXCLUDE}`);
+      }
+      top.map[key] = parseFlowList(value, lineNo);
     } else {
       top.map[key] = parseScalar(value, lineNo);
     }
@@ -24642,15 +24649,60 @@ function stripComment(line) {
 function unquoteScalarKey(key) {
   return /^["']/.test(key) ? key.slice(1, -1) : key;
 }
+var LISTS_ONLY_FOR_EXCLUDE = "lists are not supported in .pharn/ci.yml except as the value of coverage.exclude";
+var USE_BLOCK_LIST = 'use a block list, one "- item" line per pattern';
 function parseListItem(content, lineNo) {
   const item = content.slice(1).trim();
   if (item === "") return null;
-  if (item === "-" || item.startsWith("- ")) throw new ConfigError(`line ${lineNo}: nested lists are not supported`);
+  if (item === "-" || item.startsWith("- ")) {
+    throw new ConfigError(`line ${lineNo}: nested lists are not supported; ${USE_BLOCK_LIST}`);
+  }
+  return parseListScalar(item, lineNo);
+}
+function parseListScalar(item, lineNo) {
   const quoted = DOUBLE_QUOTED.test(item) || SINGLE_QUOTED.test(item);
   if (!quoted && (item.includes(": ") || item.endsWith(":"))) {
-    throw new ConfigError(`line ${lineNo}: mappings are not supported in a list in .pharn/ci.yml`);
+    throw new ConfigError(
+      `line ${lineNo}: mappings are not supported in a list in .pharn/ci.yml; quote the item if it is a pattern`
+    );
   }
   return parseScalar(item, lineNo);
+}
+function parseFlowList(value, lineNo) {
+  const items = [];
+  let start = 1;
+  let quote = null;
+  let started = false;
+  for (let i = 1; i < value.length; i++) {
+    const ch = value[i];
+    if (quote) {
+      if (ch === "\\" && quote === '"') i++;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if ((ch === '"' || ch === "'") && !started) {
+      quote = ch;
+      started = true;
+    } else if (ch === "[" || ch === "{" || ch === "}") {
+      throw new ConfigError(`line ${lineNo}: nested collections are not supported in a flow list; ${USE_BLOCK_LIST}`);
+    } else if (ch === "," || ch === "]") {
+      const item = value.slice(start, i).trim();
+      const trailing = ch === "]" && (items.length > 0 || value[start - 1] === "[");
+      if (item !== "") items.push(parseListScalar(item, lineNo));
+      else if (!trailing) throw new ConfigError(`line ${lineNo}: empty item in a flow list; remove the extra comma`);
+      start = i + 1;
+      started = false;
+      if (ch === "]") {
+        if (value.slice(i + 1).trim() !== "") {
+          throw new ConfigError(`line ${lineNo}: unexpected text after the flow list "]"; ${USE_BLOCK_LIST}`);
+        }
+        return items;
+      }
+    } else if (ch !== " ") {
+      started = true;
+    }
+  }
+  throw new ConfigError(`line ${lineNo}: a flow list must end with "]" on the same line; ${USE_BLOCK_LIST}`);
 }
 function parseScalar(value, lineNo) {
   const v = value.trim();
@@ -24662,12 +24714,20 @@ function parseScalar(value, lineNo) {
     }
   }
   if (SINGLE_QUOTED.test(v)) return v.slice(1, -1).replace(/''/g, "'");
-  if (/^[[{|>&*!%@`]/.test(v)) throw new ConfigError(`line ${lineNo}: unsupported YAML syntax "${v}"`);
+  if (/^[[{|>&*!%@`]/.test(v)) {
+    throw new ConfigError(`line ${lineNo}: unsupported YAML syntax "${v}"; ${unsupportedFix(v[0])}`);
+  }
   if (v === "true") return true;
   if (v === "false") return false;
   if (v === "null" || v === "~") return null;
   if (/^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$/.test(v)) return Number(v);
   return v;
+}
+function unsupportedFix(first) {
+  if (first === "{") return "write the mapping as indented key: value lines";
+  if (first === "[") return USE_BLOCK_LIST;
+  if (first === "|" || first === ">") return "write the value on one line";
+  return 'quote the value, e.g. "*.gen.ts"';
 }
 function validateConfig(doc) {
   const config = {};
@@ -24989,13 +25049,21 @@ function coverageChoiceLine(choice) {
 // ../core/src/paths.ts
 function normalizePath(path, repoRoot) {
   let p = toPosix(path.trim());
-  if (repoRoot) {
-    const root = toPosix(repoRoot.trim()).replace(/\/+$/, "");
-    if (root !== "" && startsWithPath(p, root)) {
-      p = p.slice(root.length + 1);
-    }
+  const root = normalizeRoot(repoRoot);
+  if (root !== "" && startsWithPath(p, root)) {
+    p = p.slice(root.length + 1);
   }
   return p;
+}
+function normalizeRoot(repoRoot) {
+  if (!repoRoot) return "";
+  const root = toPosix(repoRoot.trim());
+  let end = root.length;
+  while (end > 0 && root[end - 1] === "/") end--;
+  return root.slice(0, end);
+}
+function foldForRoot(path, root) {
+  return isDriveRoot(root) ? path.toLowerCase() : path;
 }
 function isAbsolutePath(path) {
   const first = path.charAt(0);
@@ -25027,7 +25095,11 @@ function toPosix(path) {
 function startsWithPath(path, root) {
   if (path.length <= root.length || path[root.length] !== "/") return false;
   const head = path.slice(0, root.length);
-  return /^[A-Z]:\//.test(root) ? head.toLowerCase() === root.toLowerCase() : head === root;
+  return isDriveRoot(root) ? head.toLowerCase() === root.toLowerCase() : head === root;
+}
+function isDriveRoot(root) {
+  const first = root.charAt(0);
+  return first >= "A" && first <= "Z" && root.charAt(1) === ":" && root.charAt(2) === "/";
 }
 
 // ../core/src/coverage/cobertura.ts
@@ -25090,10 +25162,10 @@ function parseCobertura(text, options = {}) {
         break;
     }
   });
-  const uniqueSources = [...new Set(sources)];
+  const resolve2 = makeResolver([...new Set(sources)], options.repoRoot);
   const map = /* @__PURE__ */ new Map();
   for (const [filename, lines] of perFile) {
-    const key = resolvePath(filename, uniqueSources, options.repoRoot);
+    const key = resolve2(filename);
     let target = map.get(key);
     if (!target) {
       target = /* @__PURE__ */ new Map();
@@ -25122,8 +25194,56 @@ function addLine(perFile, filename, number, hits) {
   }
   lines.set(lineNo, Math.max(lines.get(lineNo) ?? 0, count));
 }
+var MAX_CLIMBING_JOIN_SOURCES = 16;
+function makeResolver(sources, repoRoot) {
+  const direct = directSources(sources, repoRoot);
+  const climbing = sources.slice(0, MAX_CLIMBING_JOIN_SOURCES);
+  return (filename) => {
+    if (isAbsolutePath(filename)) return normalizePath(filename, repoRoot);
+    return resolvePath(filename, climbs(normalizePath(filename)) ? climbing : direct, repoRoot);
+  };
+}
+function directSources(sources, repoRoot) {
+  const root = normalizeRoot(repoRoot);
+  const foldedRoot = foldForRoot(root, root);
+  const kept = [];
+  const seen = /* @__PURE__ */ new Set();
+  const keep = (source, key) => {
+    if (seen.has(key)) return;
+    seen.add(key);
+    kept.push(source);
+  };
+  for (const source of sources) {
+    const path = normalizePath(source);
+    if (!isAbsolutePath(source)) {
+      if (climbs(path)) continue;
+      if (path !== "") {
+        kept.push(source);
+        break;
+      }
+      keep(source, "relative:");
+      continue;
+    }
+    if (root === "") continue;
+    if (startsWithPath(path, root)) {
+      const rest = path.slice(root.length + 1);
+      if (rest !== "" && !isAbsolutePath(`${rest}/`)) {
+        kept.push(source);
+        break;
+      }
+      if (rest.length < 3) keep(source, `under:${rest}`);
+    } else if (path.length === root.length) {
+      if (startsWithPath(`${path}/`, root)) keep(source, "root:");
+    } else if (path.length < root.length) {
+      const folded = foldForRoot(path, root);
+      if (foldedRoot.startsWith(path.endsWith("/") ? folded : `${folded}/`)) {
+        keep(source, `ancestor:${path.length}:${folded}`);
+      }
+    }
+  }
+  return kept;
+}
 function resolvePath(filename, sources, repoRoot) {
-  if (isAbsolutePath(filename)) return normalizePath(filename, repoRoot);
   for (const source of sources) {
     const joined = `${source}/${filename}`;
     if (isAbsolutePath(source)) {
@@ -25789,6 +25909,17 @@ function gitDiffArgs(base, head = "HEAD") {
 var VERDICT_ICON = { pass: "\u2705", warn: "\u26A0\uFE0F", fail: "\u274C" };
 var COLLAPSE_ABOVE = 25;
 var LEVEL_ICON = { info: "\u2139\uFE0F", warn: "\u26A0\uFE0F", error: "\u274C" };
+var FULL_REPORT_NOTE = "_Full list in report.json: the Action's `report-path` output, or `pharn-ci check --format json`._";
+var MESSAGE_HINTS = {
+  DIFF_COVERAGE_BELOW_THRESHOLD: "Add tests that exercise the uncovered lines listed in the table above.",
+  DIFF_COVERAGE_UNGATED: "To gate diff coverage, set a threshold above 0 (`coverage.threshold`, `threshold` or `--threshold`).",
+  NO_COVERABLE_CHANGES: "Nothing to do if the change has no code; otherwise check that the coverage report includes the changed files.",
+  COVERAGE_FILE_MISSING: "Run the tests with coverage before pharn-ci, and check the path (`coverage.file`, `coverage-file` or `--coverage`).",
+  COVERAGE_FILE_EMPTY: "Run the tests with coverage enabled before pharn-ci, and check that the report covers this repo's sources.",
+  COVERAGE_FORMAT_UNSUPPORTED: "Have the test runner write lcov or Cobertura XML; if it already does, set `coverage.format` explicitly.",
+  DIFF_UNAVAILABLE: "Check out full history (`actions/checkout` with `fetch-depth: 0`) or set the base (`base-ref` or `--base`).",
+  NO_AGENT_SETUP_FILES: "Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test."
+};
 function renderMarkdown(report, options = {}) {
   const maxRows = options.maxRows ?? 50;
   const out = [];
@@ -25806,13 +25937,14 @@ function renderMarkdown(report, options = {}) {
       ""
     );
     out.push("| File | Coverage | Covered | Uncovered lines |", "| --- | ---: | ---: | --- |");
-    for (const f of dc.files.slice(0, maxRows)) {
+    for (const f of byCoverage(dc.files).slice(0, maxRows)) {
       const pct = f.percent === null ? "\u2014" : `${formatNumber(f.percent)}%`;
       const uncovered = f.uncoveredLines.length === 0 ? "" : formatRanges(f.uncoveredLines);
       out.push(`| ${code(f.path)} | ${pct} | ${f.coveredLines}/${f.coverableLines} | ${uncovered} |`);
     }
     if (dc.files.length > maxRows) out.push(`| _\u2026and ${dc.files.length - maxRows} more files_ | | | |`);
     out.push("");
+    if (dc.files.length > maxRows) out.push(FULL_REPORT_NOTE, "");
   }
   const excluded = dc?.excludedFiles ?? [];
   if (excluded.length > 0) {
@@ -25827,7 +25959,12 @@ function renderMarkdown(report, options = {}) {
   out.push("### Agent setup", "");
   const setup = report.agentSetup.files;
   if (setup.length === 0) {
-    out.push("_No agent setup files found._", "");
+    out.push(
+      "_No agent setup files found._",
+      "",
+      "Missing: an agent instructions file, typically `AGENTS.md` or `CLAUDE.md` at the repository root.",
+      ""
+    );
   } else {
     const { tools } = report.agentSetup.summary ?? summarizeAgentSetup(setup);
     out.push(`Agent setup: ${setup.length} ${setup.length === 1 ? "file" : "files"} \xB7 ${tools.join(", ")}`, "");
@@ -25849,7 +25986,19 @@ function renderMarkdown(report, options = {}) {
 `;
 }
 function renderMessage(m) {
-  return `- ${LEVEL_ICON[m.level]} \`${m.code}\` ${inlineText(m.text)}`;
+  const line = `- ${LEVEL_ICON[m.level]} \`${m.code}\` ${inlineText(m.text)}`;
+  return Object.hasOwn(MESSAGE_HINTS, m.code) ? `${line}
+  - Hint: ${MESSAGE_HINTS[m.code]}` : line;
+}
+function byCoverage(files) {
+  return [...files].sort((a, b) => {
+    if (a.percent !== b.percent) {
+      if (a.percent === null) return 1;
+      if (b.percent === null) return -1;
+      return a.percent - b.percent;
+    }
+    return a.path < b.path ? -1 : a.path > b.path ? 1 : 0;
+  });
 }
 function formatRanges(lines) {
   const parts = [];

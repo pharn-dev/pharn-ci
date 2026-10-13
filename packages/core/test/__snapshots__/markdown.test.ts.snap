@@ -18,6 +18,7 @@ Agent setup: 1 file · codex, copilot, cursor
 ### Messages
 
 - ℹ️ \`NO_COVERABLE_CHANGES\` No added lines are tracked by the coverage report; nothing to measure.
+  - Hint: Nothing to do if the change has no code; otherwise check that the coverage report includes the changed files.
 
 <sub>pharn-ci 0.1.0 · report schema v1</sub>
 "
@@ -34,10 +35,14 @@ _Not computed — see messages below._
 
 _No agent setup files found._
 
+Missing: an agent instructions file, typically \`AGENTS.md\` or \`CLAUDE.md\` at the repository root.
+
 ### Messages
 
 - ❌ \`COVERAGE_FILE_MISSING\` Coverage file not found: coverage/lcov.info
+  - Hint: Run the tests with coverage before pharn-ci, and check the path (\`coverage.file\`, \`coverage-file\` or \`--coverage\`).
 - ℹ️ \`NO_AGENT_SETUP_FILES\` No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found.
+  - Hint: Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test.
 
 <sub>pharn-ci 0.1.0 · report schema v1</sub>
 "

@@ -133,6 +133,161 @@ describe("parseCobertura: path resolution", () => {
   });
 });
 
+describe("parseCobertura: path resolution with many sources (F-24)", () => {
+  it("F-24: joins a plain filename to every source but one starting with .. only to the first 16", async () => {
+    const map = await parse(fixture("cobertura/many-sources.xml"), ROOT);
+    expect(toObject(map)).toEqual({
+      "src/pkg/a.py": { 1: 1 },
+      "../lib/b.py": { 2: 1 },
+    });
+    expect(map.has("lib/b.py")).toBe(false);
+  });
+
+  // The resolver before F-24: every relative filename joined to every distinct source in order. The parser must give
+  // the same keys whenever a report lists at most 16 distinct sources, and for every filename that does not start
+  // with `..` however many it lists.
+  async function referenceResolve(filename: string, sources: readonly string[], repoRoot: string | undefined) {
+    const { isAbsolutePath, normalizePath } = await import("../src/paths.js");
+    const climbs = (path: string) => path === ".." || path.startsWith("../");
+    if (isAbsolutePath(filename)) return normalizePath(filename, repoRoot);
+    for (const source of sources) {
+      const joined = `${source}/${filename}`;
+      if (isAbsolutePath(source)) {
+        if (repoRoot === undefined) continue;
+        const key = normalizePath(joined, repoRoot);
+        if (!isAbsolutePath(key) && !climbs(key)) return key;
+      } else {
+        const key = normalizePath(joined);
+        if (key !== "" && !climbs(key)) return key;
+      }
+    }
+    return normalizePath(filename, repoRoot);
+  }
+
+  const EDGE_SOURCES = [
+    "/opt/build",
+    "/home/runner/work/demo/demo/../demo/src",
+    "/home/runner",
+    "/home/runner/work/dem",
+    "/home/runner/work/demo/demo2",
+    "/HOME/runner/work/demo/demo",
+    "/home/runner/work/demo",
+    "/home/runner/work/demo/demo",
+    "/home/runner/work/demo/demo/",
+    "/home/runner/work/demo/demo/C:",
+    "/home/runner/work/demo/demo/C:/y",
+    "\\home\\runner\\work\\demo\\demo\\lib",
+    "/home/runner/work/demo/demo/src",
+    "/",
+    "C:/",
+    "C:\\",
+    "c:\\a",
+    "C:\\a\\dem",
+    "C:\\A\\DEMO",
+    "C:\\a\\demo",
+    "c:/A/Demo/DEMO",
+    "C:\\a\\demo\\demo",
+    "C:\\a\\demo\\demo\\C:",
+    "C:\\a\\demo\\demo\\c:\\x",
+    "C:/a/demo/demo/\u0130",
+    "C:/A/DEMO/DEMO/\u212a",
+    "C:/i\u0307",
+    "C:/\u0130",
+    "C:\\a\\demo\\demo\\src",
+    "../outside",
+    "..",
+    "a/..",
+    ".",
+    "./",
+    "C:",
+    "./C:/x",
+    "./src",
+    "src",
+  ];
+  const EDGE_FILENAMES = [
+    "a.py",
+    "src/a.py",
+    "./b.py",
+    ".",
+    "x/..",
+    "a\\b.py",
+    "Demo/m.py",
+    "demo/h.py",
+    "dem/l.py",
+    "work/demo/demo/g.py",
+    "runner/work/demo/demo/i.py",
+    "o/demo/demo/j.py",
+    "a/demo/demo/n.py",
+    "demo/q.py",
+    "./C:/k.py",
+    "C:",
+    "../c.py",
+    "../../d.py",
+    "../demo/e.py",
+    "../../../../../../home/runner/work/demo/demo/f.py",
+    "../../../a/demo/demo/o.py",
+    "..",
+    "C:/abs.py",
+    "/home/runner/work/demo/demo/p.py",
+  ];
+  const EDGE_ROOTS = [
+    undefined,
+    ROOT,
+    `${ROOT}/`,
+    WINDOWS_ROOT,
+    "c:/A/demo/demo",
+    "C:\\\u0130\\demo",
+    "C:\\",
+    "C:/",
+    "/",
+    "",
+  ];
+
+  function report(sources: readonly string[], filenames: readonly string[]): string {
+    const sourceXml = sources.map((source) => `<source>${source}</source>`).join("");
+    const classXml = filenames
+      .map((name, index) => `<class filename="${name}"><lines><line number="${index + 1}" hits="1"/></lines></class>`)
+      .join("");
+    return `<coverage><sources>${sourceXml}</sources><packages><package><classes>${classXml}</classes></package></packages></coverage>`;
+  }
+
+  async function expectSameAsReference(sources: readonly string[], filenames: readonly string[], root?: string) {
+    const expected: Record<string, Record<number, number>> = {};
+    for (const [index, name] of filenames.entries()) {
+      const key = await referenceResolve(name, [...new Set(sources)], root);
+      expected[key] = { ...expected[key], [index + 1]: 1 };
+    }
+    const label = `root ${JSON.stringify(root)}, sources ${JSON.stringify(sources)}`;
+    expect(toObject(await parse(report(sources, filenames), root)), label).toEqual(expected);
+  }
+
+  it("F-24: resolves every edge-case filename as before for any 16 sources in either order", async () => {
+    for (const root of EDGE_ROOTS) {
+      for (const list of [EDGE_SOURCES, [...EDGE_SOURCES].reverse()]) {
+        for (let start = 0; start + 16 <= list.length; start++) {
+          await expectSameAsReference(list.slice(start, start + 16), EDGE_FILENAMES, root);
+        }
+      }
+    }
+  }, 60_000);
+
+  it("F-24: resolves every filename not starting with .. as before however many sources there are", async () => {
+    const { normalizePath } = await import("../src/paths.js");
+    const plain = EDGE_FILENAMES.filter((name) => {
+      const path = normalizePath(name);
+      return path !== ".." && !path.startsWith("../");
+    });
+    expect(EDGE_SOURCES.length).toBeGreaterThan(16);
+    for (const root of EDGE_ROOTS) {
+      for (const list of [EDGE_SOURCES, [...EDGE_SOURCES].reverse()]) {
+        for (let start = 0; start < list.length; start++) {
+          await expectSameAsReference([...list.slice(start), ...list.slice(0, start)], plain, root);
+        }
+      }
+    }
+  }, 60_000);
+});
+
 describe("parseCobertura: empty and malformed reports", () => {
   it("AC-13: returns an empty map for empty, garbage and line-less reports, and keeps only valid classes", async () => {
     expect((await parse("", ROOT)).size).toBe(0);

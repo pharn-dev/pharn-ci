@@ -10,13 +10,29 @@
  */
 export function normalizePath(path: string, repoRoot?: string): string {
   let p = toPosix(path.trim());
-  if (repoRoot) {
-    const root = toPosix(repoRoot.trim()).replace(/\/+$/, "");
-    if (root !== "" && startsWithPath(p, root)) {
-      p = p.slice(root.length + 1);
-    }
+  const root = normalizeRoot(repoRoot);
+  if (root !== "" && startsWithPath(p, root)) {
+    p = p.slice(root.length + 1);
   }
   return p;
+}
+
+/** `repoRoot` in the form `normalizePath` compares paths against, or "" when there is none. */
+export function normalizeRoot(repoRoot?: string): string {
+  if (!repoRoot) return "";
+  const root = toPosix(repoRoot.trim());
+  // Trailing slashes are stripped with a scan, not a regex, so hostile input stays linear.
+  let end = root.length;
+  while (end > 0 && root[end - 1] === "/") end--;
+  return root.slice(0, end);
+}
+
+/**
+ * `path` folded the way `startsWithPath` compares it with `root` (a `normalizeRoot` result): lower
+ * case under a drive-letter root, unchanged otherwise.
+ */
+export function foldForRoot(path: string, root: string): string {
+  return isDriveRoot(root) ? path.toLowerCase() : path;
 }
 
 /**
@@ -56,9 +72,18 @@ function toPosix(path: string): string {
   return prefix + out.join("/");
 }
 
-function startsWithPath(path: string, root: string): boolean {
+/**
+ * True when the normalized `path` lies under `root` (a `normalizeRoot` result) on a whole-segment
+ * match, the rule `normalizePath` strips the root by.
+ */
+export function startsWithPath(path: string, root: string): boolean {
   if (path.length <= root.length || path[root.length] !== "/") return false;
   const head = path.slice(0, root.length);
   // Windows drive paths are case-insensitive.
-  return /^[A-Z]:\//.test(root) ? head.toLowerCase() === root.toLowerCase() : head === root;
+  return isDriveRoot(root) ? head.toLowerCase() === root.toLowerCase() : head === root;
+}
+
+function isDriveRoot(root: string): boolean {
+  const first = root.charAt(0);
+  return first >= "A" && first <= "Z" && root.charAt(1) === ":" && root.charAt(2) === "/";
 }

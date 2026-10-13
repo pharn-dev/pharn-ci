@@ -8,8 +8,10 @@ import { expectValidReport } from "./schema.js";
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
-// sha256 of fixtures/golden/report.md and fixtures/golden/report.json as committed before this change.
-const GOLDEN_MD_SHA256 = "8a2a179f2db7d24e769562c04e8b6a12e99fa8210485c76691fb12d3a6631b27";
+// sha256 of fixtures/golden/report.md and fixtures/golden/report.json as committed before this change. The
+// markdown hash was updated by F-32, which intentionally changed the rendering (file rows sorted by coverage,
+// a hint line under each message); the JSON report, and so its hash, did not change.
+const GOLDEN_MD_SHA256 = "5094fad628951a453a0a436279c9c19850e5bfa8703fcd13db3a823c632f45ad";
 const GOLDEN_JSON_SHA256 = "e3be10a5b1d4f03a3aa5d3b1f97651432fc4ea9bcba51b853dace36b05111419";
 
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");

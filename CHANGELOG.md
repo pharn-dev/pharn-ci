@@ -14,8 +14,19 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   threshold gates it (none is set, or it is 0). Before, an ungated run passed with no message.
 - Data handling section in `SECURITY.md`, linked from the README's Safety model: what the Action reads, what it sends to your GitHub API, what lands in the PR comment, job summary, step log and `report.json`, and that nothing is sent to Pharn.
 
+- The rendered report (PR comment, job summary, CLI markdown) adds a one-line hint under each message
+  saying how to fix it, and says what is missing (typically `AGENTS.md` or `CLAUDE.md`) when no agent
+  setup files are found. Message text in `report.json` is unchanged.
+- `coverage.exclude` in `.pharn/ci.yml` can be written as a one-line flow list, e.g.
+  `exclude: ["**", "dist/**"]`, which used to stop the check with exit code 2.
+
 ### Changed
 
+- The diff coverage table lists files by coverage, lowest first (then by path), so the files that
+  need tests stay visible when the table is cut at 50 rows; a cut table now points to the full list
+  in `report.json` (the Action's `report-path` output, or `--format json`).
+- `.pharn/ci.yml` errors for unsupported YAML now name the supported form (for example "use a block
+  list").
 - `DIFF_UNAVAILABLE` is now an error, and the verdict `fail`, when a threshold is set (a warning
   without one), like a missing, empty or unrecognized coverage file. If a shallow checkout makes
   the diff unavailable, use `actions/checkout` with `fetch-depth: 0` or rely on the GitHub API
@@ -53,6 +64,9 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Security
 
+- Cobertura path resolution no longer slows down quadratically on a crafted report with thousands
+  of `<source>` entries and thousands of filenames (F-24). Results are unchanged, except that a
+  relative `filename` starting with `..` is now joined to at most the first 16 distinct sources.
 - PR-controlled text in messages (the coverage path from `.pharn/ci.yml`, the base ref) no longer
   renders as links, images, emphasis or @mentions in the PR comment and job summary: markdown
   characters are escaped, `@` cannot mention, and bare URLs are not autolinked. The report JSON
