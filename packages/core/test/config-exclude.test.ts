@@ -52,7 +52,8 @@ describe("parseConfig: coverage.exclude", () => {
       ["an empty-string item", 'coverage:\n  exclude:\n    - ""\n', null],
       ["an unquoted item starting with *", "coverage:\n  exclude:\n    - *.ts\n", "unsupported YAML syntax"],
       ["a rejected pattern", 'coverage:\n  exclude:\n    - "{a,b}.ts"\n', "{a,b}.ts"],
-      ["a flow list", "coverage:\n  exclude: [a, b]\n", "unsupported YAML syntax"],
+      // A one-line flow list of scalars is read since F-32 (see AC-F32-1); nested ones are still rejected.
+      ["a nested flow list", "coverage:\n  exclude: [a, [b]]\n", "use a block list"],
       ["a list elsewhere", "coverage:\n  - file: x\n", "lists are not supported"],
     ];
     for (const [label, text, message] of cases) {
@@ -83,5 +84,74 @@ describe("parseConfig: coverage.exclude", () => {
     const longConfig = parseConfig(`coverage:\n  exclude:\n    - ${long}\n`);
     expect(performance.now() - start).toBeLessThan(1000);
     expect(longConfig.coverage?.exclude).toEqual([long]);
+  });
+
+  it("AC-F32-1: reads coverage.exclude as a one-line flow list of quoted and plain strings", async () => {
+    const { parseConfig } = await import("../src/config.js");
+
+    expect(parseConfig('coverage:\n  exclude: ["**"]\n')).toEqual({ coverage: { exclude: ["**"] } });
+    expect(
+      parseConfig(
+        'coverage:\n  exclude: [ "dist/**", \'vendor/**\' , docs/api/*.md, "a, b/c.ts" ] # flow\n  threshold: 80\n',
+      ),
+    ).toEqual({ coverage: { exclude: ["dist/**", "vendor/**", "docs/api/*.md", "a, b/c.ts"], threshold: 80 } });
+    // One trailing comma is allowed, an apostrophe inside a plain item is text, and [] is an empty list.
+    expect(parseConfig("coverage:\n  exclude: [src/it's/**, b/**,]\n")).toEqual({
+      coverage: { exclude: ["src/it's/**", "b/**"] },
+    });
+    expect(parseConfig("coverage:\n  exclude: []\n")).toEqual({ coverage: { exclude: [] } });
+
+    // Brackets, commas and escaped quotes inside quotes are text to the parser (the glob check rejects
+    // "]" afterwards, so this goes through the YAML layer only).
+    const { parseYamlSubset } = await import("../src/config.js");
+    expect(parseYamlSubset('coverage:\n  exclude: ["x]", \'y, z\', "q\\"r"]\n')).toEqual({
+      coverage: { exclude: ["x]", "y, z", 'q"r'] },
+    });
+  });
+
+  it("AC-F32-2: rejects unsupported flow lists with an error that names the fix", async () => {
+    const { ConfigError, parseConfig } = await import("../src/config.js");
+    const cases: [label: string, text: string, message: string][] = [
+      [
+        "a multi-line flow list",
+        "coverage:\n  exclude: [a,\n    b]\n",
+        'must end with "]" on the same line; use a block list',
+      ],
+      ["a nested flow mapping", "coverage:\n  exclude: [{a: b}]\n", "nested collections are not supported"],
+      ["an empty item", "coverage:\n  exclude: [a, , b]\n", "remove the extra comma"],
+      ["text after the list", "coverage:\n  exclude: [a] b\n", 'unexpected text after the flow list "]"'],
+      ["a mapping item", "coverage:\n  exclude: [a: b]\n", "quote the item if it is a pattern"],
+      ["an unquoted * item", "coverage:\n  exclude: [*.ts]\n", 'quote the value, e.g. "*.gen.ts"'],
+      ["a number item", "coverage:\n  exclude: [5]\n", '"coverage.exclude" items must be non-empty strings'],
+      ["a rejected pattern", 'coverage:\n  exclude: ["{a,b}.ts"]\n', "{a,b}.ts"],
+      ["a flow list elsewhere", "coverage:\n  file: [a]\n", "except as the value of coverage.exclude"],
+      ["a top-level flow list", "coverage: [a]\n", "except as the value of coverage.exclude"],
+    ];
+    for (const [label, text, message] of cases) {
+      let error: unknown;
+      try {
+        parseConfig(text);
+      } catch (e) {
+        error = e;
+      }
+      expect(error, label).toBeInstanceOf(ConfigError);
+      expect((error as Error).message, label).toContain(message);
+    }
+  });
+
+  it("AC-F32-3: parses hostile flow lists in linear time", async () => {
+    const { ConfigError, parseConfig } = await import("../src/config.js");
+    const n = 100_000;
+
+    const items = Array.from({ length: n }, (_, i) => `"src/f${i}/**"`);
+    let start = performance.now();
+    expect(parseConfig(`coverage:\n  exclude: [${items.join(", ")}]\n`).coverage?.exclude).toHaveLength(n);
+    expect(performance.now() - start).toBeLessThan(1000);
+
+    for (const hostile of [`[${'"'.repeat(n)}`, `[${"\\".repeat(n)}`, `["${"\\".repeat(n)}`, `[${",".repeat(n)}]`]) {
+      start = performance.now();
+      expect(() => parseConfig(`coverage:\n  exclude: ${hostile}\n`)).toThrow(ConfigError);
+      expect(performance.now() - start).toBeLessThan(1000);
+    }
   });
 });

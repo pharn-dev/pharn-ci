@@ -282,6 +282,8 @@ Patterns come from three sources that are **merged** (a union, never an override
   repository root, must match the whole path, and are case-sensitive. Braces, `[...]` classes,
   negation (`!`) and backslashes are rejected with an error rather than guessed at.
 - A pattern that starts with `*` must be quoted in YAML (`"*.gen.ts"`).
+- The list can also be written on one line: `exclude: ["dist/**", "*.gen.ts"]`. Longer lists read
+  better as a block list (one `- pattern` line each).
 - Only changed files are affected. Excluded files count nowhere in diff coverage; they are listed
   under `diffCoverage.excludedFiles` in the report and in an "Excluded" summary in the comment.
 - The agent setup inventory is not affected by exclusions.

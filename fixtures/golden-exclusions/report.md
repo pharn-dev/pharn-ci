@@ -6,8 +6,8 @@
 
 | File | Coverage | Covered | Uncovered lines |
 | --- | ---: | ---: | --- |
-| `src/app.ts` | 100% | 2/2 |  |
 | `src/util.ts` | 66.67% | 2/3 | 7 |
+| `src/app.ts` | 100% | 2/2 |  |
 
 <details><summary>Excluded: 2 files</summary>
 

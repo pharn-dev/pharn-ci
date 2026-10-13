@@ -37,8 +37,9 @@ const SINGLE_QUOTED = /^'(?:[^']|'')*'$/;
  *
  * Supports the YAML subset the config needs — nested block mappings, comments,
  * quoted/plain strings, numbers, booleans, null — and rejects anything else
- * with a clear error instead of guessing. A block list (`- item` lines) is read
- * only as the value of `coverage.exclude`. Avoids a YAML dependency.
+ * with a clear error, naming the supported alternative, instead of guessing. A
+ * list is read only as the value of `coverage.exclude`: a block list (`- item`
+ * lines) or a one-line flow list of scalars (`[a, "b"]`). Avoids a YAML dependency.
  */
 export function parseConfig(text: string): PharnConfig {
   return validateConfig(parseYamlSubset(text));
@@ -60,7 +61,9 @@ export function parseYamlSubset(text: string): YamlMap {
     const raw = stripComment(lines[i] as string).trimEnd();
     if (raw.trim() === "") continue;
     if (raw.trim() === "---" && i === 0) continue;
-    if (/^\s*\t/.test(raw)) throw new ConfigError(`line ${lineNo}: tabs are not allowed for indentation`);
+    if (/^\s*\t/.test(raw)) {
+      throw new ConfigError(`line ${lineNo}: tabs are not allowed for indentation; indent with spaces`);
+    }
 
     const indent = raw.length - raw.trimStart().length;
     const content = raw.trimStart();
@@ -78,7 +81,7 @@ export function parseYamlSubset(text: string): YamlMap {
       } else if (list && indent !== list.indent) {
         throw new ConfigError(`line ${lineNo}: unexpected indentation`);
       } else if (!list) {
-        throw new ConfigError(`line ${lineNo}: lists are not supported in .pharn/ci.yml`);
+        throw new ConfigError(`line ${lineNo}: ${LISTS_ONLY_FOR_EXCLUDE}`);
       }
       list.items.push(parseListItem(content, lineNo));
       continue;
@@ -108,6 +111,11 @@ export function parseYamlSubset(text: string): YamlMap {
     const value = match[2];
     if (value === undefined || value === "") {
       pendingKey = { map: top.map, key, indent, line: lineNo };
+    } else if (value.startsWith("[")) {
+      if (key !== "exclude" || top.map !== root.coverage) {
+        throw new ConfigError(`line ${lineNo}: ${LISTS_ONLY_FOR_EXCLUDE}`);
+      }
+      top.map[key] = parseFlowList(value, lineNo);
     } else {
       top.map[key] = parseScalar(value, lineNo);
     }
@@ -135,16 +143,73 @@ function unquoteScalarKey(key: string): string {
   return /^["']/.test(key) ? key.slice(1, -1) : key;
 }
 
+const LISTS_ONLY_FOR_EXCLUDE = "lists are not supported in .pharn/ci.yml except as the value of coverage.exclude";
+const USE_BLOCK_LIST = 'use a block list, one "- item" line per pattern';
+
 /** One `- item` line of a block list; `content` is the trimmed line, comment already stripped. */
 function parseListItem(content: string, lineNo: number): Scalar {
   const item = content.slice(1).trim();
   if (item === "") return null;
-  if (item === "-" || item.startsWith("- ")) throw new ConfigError(`line ${lineNo}: nested lists are not supported`);
+  if (item === "-" || item.startsWith("- ")) {
+    throw new ConfigError(`line ${lineNo}: nested lists are not supported; ${USE_BLOCK_LIST}`);
+  }
+  return parseListScalar(item, lineNo);
+}
+
+/** A list item: a quoted or plain scalar, never a mapping. */
+function parseListScalar(item: string, lineNo: number): Scalar {
   const quoted = DOUBLE_QUOTED.test(item) || SINGLE_QUOTED.test(item);
   if (!quoted && (item.includes(": ") || item.endsWith(":"))) {
-    throw new ConfigError(`line ${lineNo}: mappings are not supported in a list in .pharn/ci.yml`);
+    throw new ConfigError(
+      `line ${lineNo}: mappings are not supported in a list in .pharn/ci.yml; quote the item if it is a pattern`,
+    );
   }
   return parseScalar(item, lineNo);
+}
+
+/**
+ * A one-line flow list of scalars, `[a, "b, c", 'd']`; `value` starts with "[" and has no comment
+ * or trailing whitespace. One pass over the characters, so the cost stays linear on hostile input:
+ * commas and brackets inside quotes are text, anything nested or left open is rejected with the fix.
+ */
+function parseFlowList(value: string, lineNo: number): Scalar[] {
+  const items: Scalar[] = [];
+  let start = 1;
+  let quote: string | null = null;
+  // Whether the current item has started: a quote opens a quoted item only as its first character,
+  // so an apostrophe inside a plain item stays text.
+  let started = false;
+  for (let i = 1; i < value.length; i++) {
+    const ch = value[i];
+    if (quote) {
+      if (ch === "\\" && quote === '"') i++;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if ((ch === '"' || ch === "'") && !started) {
+      quote = ch;
+      started = true;
+    } else if (ch === "[" || ch === "{" || ch === "}") {
+      throw new ConfigError(`line ${lineNo}: nested collections are not supported in a flow list; ${USE_BLOCK_LIST}`);
+    } else if (ch === "," || ch === "]") {
+      const item = value.slice(start, i).trim();
+      // `[]` is an empty list and `[a, b,]` allows one trailing comma; any other empty item is an error.
+      const trailing = ch === "]" && (items.length > 0 || value[start - 1] === "[");
+      if (item !== "") items.push(parseListScalar(item, lineNo));
+      else if (!trailing) throw new ConfigError(`line ${lineNo}: empty item in a flow list; remove the extra comma`);
+      start = i + 1;
+      started = false;
+      if (ch === "]") {
+        if (value.slice(i + 1).trim() !== "") {
+          throw new ConfigError(`line ${lineNo}: unexpected text after the flow list "]"; ${USE_BLOCK_LIST}`);
+        }
+        return items;
+      }
+    } else if (ch !== " ") {
+      started = true;
+    }
+  }
+  throw new ConfigError(`line ${lineNo}: a flow list must end with "]" on the same line; ${USE_BLOCK_LIST}`);
 }
 
 function parseScalar(value: string, lineNo: number): Scalar {
@@ -157,13 +222,23 @@ function parseScalar(value: string, lineNo: number): Scalar {
     }
   }
   if (SINGLE_QUOTED.test(v)) return v.slice(1, -1).replace(/''/g, "'");
-  if (/^[[{|>&*!%@`]/.test(v)) throw new ConfigError(`line ${lineNo}: unsupported YAML syntax "${v}"`);
+  if (/^[[{|>&*!%@`]/.test(v)) {
+    throw new ConfigError(`line ${lineNo}: unsupported YAML syntax "${v}"; ${unsupportedFix(v[0] as string)}`);
+  }
   if (v === "true") return true;
   if (v === "false") return false;
   if (v === "null" || v === "~") return null;
   // No overlapping quantifiers (the old `\d+\.?\d*` was quadratic on a long run of digits).
   if (/^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$/.test(v)) return Number(v);
   return v;
+}
+
+/** The supported way to write what an unsupported leading character was trying to say. */
+function unsupportedFix(first: string): string {
+  if (first === "{") return "write the mapping as indented key: value lines";
+  if (first === "[") return USE_BLOCK_LIST;
+  if (first === "|" || first === ">") return "write the value on one line";
+  return 'quote the value, e.g. "*.gen.ts"';
 }
 
 function validateConfig(doc: YamlMap): PharnConfig {
