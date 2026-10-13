@@ -341,7 +341,8 @@ pharn-ci runs inside other people's CI, on untrusted changes, with their token. 
 that:
 
 - **Stateless.** No backend, no telemetry, no network calls except the GitHub API inside the
-  Action.
+  Action. What it reads, what it sends to your GitHub and what it stores is listed in
+  [Data handling](SECURITY.md#data-handling).
 - **Small token footprint.** `contents: read` plus `pull-requests: write`. It reads the compare API
   and comments, and updates only a comment its own login wrote.
 - **Untrusted input stays data.** Parsers are hand-written, pure and non-recursive. File names and

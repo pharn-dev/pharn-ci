@@ -25,6 +25,27 @@ The security design, with each mitigation tied to the test that enforces it, is 
 [`docs/THREAT-MODEL.md`](./docs/THREAT-MODEL.md); what pharn-ci does not guarantee is in
 [`docs/LIMITS.md`](./docs/LIMITS.md).
 
+## Data handling
+
+pharn-ci has no backend. Everything it reads stays on the runner, and everything it writes goes to
+your own GitHub: the PR comment, the job summary, the step log and a file in `RUNNER_TEMP`. The table
+describes the GitHub Action; the CLI makes no network calls and prints to your terminal.
+
+| Data | Where it goes | Retention |
+| ---- | ------------- | --------- |
+| Source code and working tree | Nowhere. Read locally by `git ls-files` and `git diff`. | Not stored. |
+| Unified diff of the change | Nowhere when the base commit is in the local checkout. Otherwise (for example on a shallow checkout) it is fetched from GitHub's compare API, at `api.github.com` or your GHES instance via `GITHUB_API_URL`; the request carries the owner/repo, the base ref as given (the `base-ref` input text, the PR base SHA or the push `before` SHA) and the head SHA. | Held in memory for the run, not stored. |
+| Coverage file contents | Nowhere. Parsed locally and never echoed. | Not stored. |
+| `.pharn/ci.yml` and Action inputs | Parsed locally. A parse or validation error can quote a key name and some values (for example an unsupported YAML value, an exclude pattern or the `coverage-format` input) into the step log. | Step log, under your log retention. |
+| Paths of changed files the coverage report tracks, their uncovered line numbers, per-file and total percentages and line counts, the threshold, excluded changed-file paths, agent setup file paths and kinds, the verdict | The PR comment and job summary in your own GitHub, and `report.json`. Agent setup files are matched by path only and never read. | The comment persists until someone deletes it; the summary follows your log retention. |
+| Coverage file path and diff `base...head` text | Message text in the comment, summary and `report.json`: the coverage path in `COVERAGE_FILE_MISSING`, `COVERAGE_FILE_EMPTY` and `COVERAGE_FORMAT_UNSUPPORTED`, and `base...head` in `DIFF_UNAVAILABLE`. | As above. |
+| Repo owner/name, PR number, base and head SHAs or refs | Your GitHub API only: compare commits (the diff fallback above), `GET /user` (to learn which login the token comments as), list PR comments, and create or update the one pharn-ci comment. Requests carry Octokit's standard `User-Agent` (library and Node.js versions, OS and architecture). | Per GitHub's own policies. |
+| `github-token` | Only as the `Authorization` header of those GitHub API requests. Never logged or written. | Not stored. |
+| Other environment variables and secrets | Not read, apart from the runner's standard `GITHUB_*` and `RUNNER_*` variables (workspace, temp dir, event payload, repository, API URL) through `@actions/core` and `@actions/github`. `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` are honoured for the GitHub API. | Not stored. |
+| Step log | Progress lines (coverage format, verdict, comment id) and warnings, which can include `git` or GitHub API error text. | Your log retention. |
+| `report.json` | Written to `$RUNNER_TEMP/pharn-ci/report.json` (the `report-path` output): the same data as the comment, untruncated. | Ephemeral: the runner clears `RUNNER_TEMP` after the job, unless your workflow uploads the file. |
+| Anything sent to Pharn | Nothing. No backend, no telemetry, no license check, no update check. | Nothing to retain. |
+
 ## Supported versions
 
 | Version  | Supported          |
