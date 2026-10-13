@@ -3,7 +3,7 @@ import { check } from "../src/check.js";
 import { formatRanges, renderMarkdown } from "../src/render/markdown.js";
 import { buildReport } from "../src/report.js";
 import { fixture } from "./helpers.js";
-import { expectValidReport } from "./schema.js";
+import { expectValidReport, validateReport } from "./schema.js";
 
 describe("formatRanges", () => {
   it("collapses consecutive lines", () => {
@@ -146,3 +146,120 @@ function expectInert(line: string): void {
   expect(live).not.toContain("://");
   expect(live).not.toMatch(/www\./i);
 }
+
+describe("renderMarkdown explainability (F-32)", () => {
+  type FileRow = {
+    path: string;
+    percent: number | null;
+    coveredLines: number;
+    coverableLines: number;
+    uncoveredLines: number[];
+  };
+  const row = (path: string, percent: number | null, covered: number, coverable: number): FileRow => ({
+    path,
+    percent,
+    coveredLines: covered,
+    coverableLines: coverable,
+    uncoveredLines: Array.from({ length: coverable - covered }, (_, i) => i + 1),
+  });
+  const reportWith = (files: FileRow[]) =>
+    buildReport({
+      version: "0.1.0",
+      threshold: 80,
+      diffCoverage: { percent: 50, threshold: 80, coveredLines: 1, coverableLines: 2, files, meetsThreshold: false },
+      agentSetup: { files: [{ path: "AGENTS.md", kind: "agents-md" }] },
+    });
+  const tablePaths = (md: string) =>
+    md
+      .split("\n")
+      .filter((l) => /^\| `/.test(l) && !l.includes("agents-md"))
+      .map((l) => /`([^`]*)`/.exec(l)?.[1]);
+
+  it("sorts file rows by coverage ascending, then path, with unmeasured files last", () => {
+    const files = [
+      row("a.ts", 100, 2, 2),
+      row("z.ts", 0, 0, 1),
+      row("n.ts", null, 0, 0),
+      row("m.ts", 50, 1, 2),
+      row("b.ts", 50, 1, 2),
+    ];
+    const report = reportWith(files);
+    expectValidReport(report);
+    expect(tablePaths(renderMarkdown(report))).toEqual(["z.ts", "b.ts", "m.ts", "a.ts", "n.ts"]);
+    // The report itself keeps its path order: sorting is a rendering choice.
+    expect(report.diffCoverage?.files.map((f) => f.path)).toEqual(["a.ts", "z.ts", "n.ts", "m.ts", "b.ts"]);
+  });
+
+  it("keeps the worst files when truncating and points to report.json", () => {
+    // 60 files in path order; the 3 failing ones sort last by path and used to be cut at 50 rows.
+    const files = [
+      ...Array.from({ length: 57 }, (_, i) => row(`src/ok${String(i).padStart(2, "0")}.ts`, 100, 1, 1)),
+      row("src/zz-a.ts", 0, 0, 3),
+      row("src/zz-b.ts", 25, 1, 4),
+      row("src/zz-c.ts", 50, 1, 2),
+    ];
+    const md = renderMarkdown(reportWith(files));
+    const paths = tablePaths(md);
+    expect(paths).toHaveLength(50);
+    expect(paths.slice(0, 3)).toEqual(["src/zz-a.ts", "src/zz-b.ts", "src/zz-c.ts"]);
+    expect(md).toContain("| _…and 10 more files_ | | | |");
+    expect(md).toContain(
+      "_Full list in report.json: the Action's `report-path` output, or `pharn-ci check --format json`._",
+    );
+    // No pointer when nothing was cut.
+    expect(renderMarkdown(reportWith(files.slice(0, 50)))).not.toContain("report.json");
+  });
+
+  it("adds a one-line hint under every message code", () => {
+    const codes = [
+      "DIFF_COVERAGE_BELOW_THRESHOLD",
+      "DIFF_COVERAGE_UNGATED",
+      "NO_COVERABLE_CHANGES",
+      "COVERAGE_FILE_MISSING",
+      "COVERAGE_FILE_EMPTY",
+      "COVERAGE_FORMAT_UNSUPPORTED",
+      "DIFF_UNAVAILABLE",
+      "NO_AGENT_SETUP_FILES",
+    ] as const;
+    // Every code the schema documents has a hint.
+    const schemaCodes = /Known codes: ([A-Z_, ]+)\./.exec(JSON.stringify(validateReport.schema))?.[1]?.split(", ");
+    expect(schemaCodes).toEqual([...codes]);
+
+    const report = buildReport({
+      version: "0.1.0",
+      threshold: null,
+      diffCoverage: null,
+      agentSetup: { files: [] },
+    });
+    report.messages = codes.map((code) => ({ level: "info", code, text: `text of ${code}` }));
+    expectValidReport(report);
+    const lines = renderMarkdown(report).split("\n");
+    for (const code of codes) {
+      const at = lines.findIndex((l) => l.includes(`\`${code}\``));
+      expect(lines[at + 1], code).toMatch(/^ {2}- Hint: \S.{10,}$/);
+    }
+
+    // A code from a newer producer renders without a hint instead of failing.
+    report.messages = [{ level: "warn", code: "SOME_NEW_CODE" as never, text: "new" }];
+    const md = renderMarkdown(report);
+    expect(md).toContain("- ⚠️ `SOME_NEW_CODE` new\n\n");
+    expect(md).not.toContain("Hint:");
+  });
+
+  it("says what agent setup is missing when none is found, and only then", () => {
+    const missing = "Missing: an agent instructions file, typically `AGENTS.md` or `CLAUDE.md` at the repository root.";
+    const none = buildReport({ version: "0.1.0", threshold: null, diffCoverage: null, agentSetup: { files: [] } });
+    const lines = renderMarkdown(none).split("\n");
+    const section = lines.indexOf("### Agent setup");
+    expect(lines.slice(section, section + 5)).toEqual([
+      "### Agent setup",
+      "",
+      "_No agent setup files found._",
+      "",
+      missing,
+    ]);
+
+    const some = reportWith([row("a.ts", 100, 1, 1)]);
+    expect(renderMarkdown(some)).not.toContain("Missing:");
+  });
+});

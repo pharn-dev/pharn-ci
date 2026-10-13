@@ -37,6 +37,22 @@ describe("parseConfig", () => {
   });
 });
 
+describe("parseConfig error messages name the fix (F-32)", () => {
+  it.each([
+    ["coverage: { file: x }\n", "write the mapping as indented key: value lines"],
+    ["coverage:\n  file: |\n", "write the value on one line"],
+    ["coverage:\n  file: *.info\n", 'quote the value, e.g. "*.gen.ts"'],
+    ["coverage:\n  - file: x\n", "except as the value of coverage.exclude"],
+    ["coverage:\n  exclude:\n    - - a\n", 'use a block list, one "- item" line per pattern'],
+    ["coverage:\n  exclude:\n    - [a]\n", 'use a block list, one "- item" line per pattern'],
+    ["coverage:\n  exclude:\n    - a: b\n", "quote the item if it is a pattern"],
+    ["coverage:\n\tfile: a\n", "indent with spaces"],
+  ])("%j", (text, fix) => {
+    expect(() => parseConfig(text)).toThrow(ConfigError);
+    expect(() => parseConfig(text)).toThrow(fix);
+  });
+});
+
 describe("parseYamlSubset", () => {
   it("parses nesting, booleans and single-quoted strings", () => {
     expect(parseYamlSubset("a:\n  b:\n    c: true\n  d: 'it''s'\ne: false\n")).toEqual({
