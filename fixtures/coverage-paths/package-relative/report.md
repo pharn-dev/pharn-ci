@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/main/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">
+
 ## 🛡️ pharn-ci · ❌ Fail
 
 Diff coverage was not computed; 1 agent setup file found.

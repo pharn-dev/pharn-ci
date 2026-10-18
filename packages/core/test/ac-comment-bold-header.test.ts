@@ -43,7 +43,14 @@ describe("renderMarkdown(): the branded header block", () => {
     const tableHeader = "| Verdict | Diff coverage | Agent setup |";
     const valueRow = "| ❌ Fail | 71.43% (threshold 80%) | 8 files |";
 
-    expect(lines.filter((line) => line.trim() !== "").slice(0, 3)).toEqual([heading, overview, tableHeader]);
+    // The first non-empty line is the fixed logo line; the next three are the heading, the overview and the table header.
+    const { logoMarkup } = await import("../src/render/logo.js");
+    expect(lines.filter((line) => line.trim() !== "").slice(0, 4)).toEqual([
+      logoMarkup(),
+      heading,
+      overview,
+      tableHeader,
+    ]);
 
     const section = lines.indexOf("### 🧪 Diff coverage");
     expect(section, "the Diff coverage section heading").toBeGreaterThan(-1);

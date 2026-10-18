@@ -22,17 +22,21 @@ const CODE = "COVERAGE_PATHS_PARTIALLY_UNMATCHED";
 // JSON reports, and so their hashes, did not change. The pr-comment-bold-look feature then updated the three markdown
 // hashes in this block on purpose: the render changed its header, section headings, collapsing and footer. The golden
 // and golden-cobertura markdown hashes now differ only by the footer's coverage format; the JSON reports did not change.
+// The pr-comment-logo-2 feature then updated the three markdown hashes in this block on purpose: the render gained the
+// fixed logo line and an empty line above the heading; the JSON reports, and so their hashes, did not change.
 const GOLDEN_JSON_SHA256 = "549b58c8b5f0dbe0e5fdb95ac115d53ce7ecbd1a8c7a20e6c60a9227de5ec537";
-const GOLDEN_MD_SHA256 = "b61cd0d636dd1f9e53756354f6ed7b17b8e9b2001a535491912ed619e970591d";
+const GOLDEN_MD_SHA256 = "a55ed107a7e2f29761b965f4a8a993dfc069807cea5e7fcc19944da3b01fa6fc";
 const GOLDEN_COBERTURA_JSON_SHA256 = "09f152cdc9119f7ee3de83a9912bf62dbcceeeb2d59a144765039b33a806feb1";
-const GOLDEN_COBERTURA_MD_SHA256 = "7ef7c7562dc407b77282fc89e6413c7b31235f23e8c0a35269d4e147ac77639c";
+const GOLDEN_COBERTURA_MD_SHA256 = "54e560874b3950e8624986d021d621cefdfcf2f3ea46686d346532565f7ae2cb";
 // fixtures/golden-exclusions/report.{json,md} as committed before this change (the markdown as F-32 committed
 // it, both as F-11 changed them above); the partial-mismatch change must not change them. The markdown hash was
 // updated on purpose by pr-comment-redesign-2 (the summary table under the verdict heading); the JSON did not change.
 // pr-comment-bold-look updated the markdown hash on purpose again (header, section headings, collapsing and footer);
 // the JSON did not change.
 const EXCLUSIONS_JSON_SHA256 = "5773d3ef5a254c8c35f803665f70e69b881252e941c94e00fbbd479b569688fc";
-const EXCLUSIONS_MD_SHA256 = "6ccd0260d4b9bac126eb1d3d7d569aa16d24baebefb11288ff2930385af8ae6e";
+// pr-comment-logo-2 updated the markdown hash on purpose again (the fixed logo line and an empty line above the
+// heading); the JSON did not change.
+const EXCLUSIONS_MD_SHA256 = "d470c10cfb7ca3d50ba370fccae4176615db8036f96168cc5c61063925562ce7";
 
 type Message = { level: string; code: string; text: string };
 

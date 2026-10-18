@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { check } from "../src/check.js";
+import { logoMarkup } from "../src/render/logo.js";
 import { formatRanges, renderMarkdown } from "../src/render/markdown.js";
 import { buildReport } from "../src/report.js";
 import { fixture } from "./helpers.js";
@@ -85,9 +86,16 @@ describe("renderMarkdown", () => {
 
     expect(lines).toHaveLength(benign.split("\n").length);
     expect(lines.filter((l) => l.startsWith("## "))).toEqual(["## 🛡️ pharn-ci · ❌ Fail"]);
-    expect(lines.filter((l) => l.startsWith("@") || l.startsWith("<img"))).toEqual([]);
+    // Line 0 is the fixed logo line, the only image; every other line is checked.
+    expect(lines[0]).toBe(logoMarkup());
+    expect(lines.slice(1).filter((l) => l.startsWith("@") || l.startsWith("<img"))).toEqual([]);
     // Outside code spans (where GitHub renders it literally), raw HTML must not survive.
-    expect(md.replace(/`[^`\n]*`/g, "")).not.toContain("<img");
+    expect(
+      lines
+        .slice(1)
+        .join("\n")
+        .replace(/`[^`\n]*`/g, ""),
+    ).not.toContain("<img");
     expect(md).toContain("&lt;img src=x&gt;");
     // No path opens an extra table cell, even for a parser that pairs up backslashes: drop escaped
     // backslashes, then escaped pipes, and every agent-setup row has exactly its three separators.

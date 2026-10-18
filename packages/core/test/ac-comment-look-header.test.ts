@@ -28,7 +28,9 @@ describe("PR comment look: verdict header and summary block (pr-comment-redesign
     expect(report.agentSetup.files).toHaveLength(8);
 
     const lines = renderMarkdown(report).split("\n");
-    const first = lines.findIndex((l) => l.trim() !== "");
+    // The heading follows the fixed logo block (the logo line and an empty line).
+    const first = lines.findIndex((l) => l.startsWith("## "));
+    expect(first).toBe(2);
     expect(lines[first]).toBe("## 🛡️ pharn-ci · ❌ Fail");
 
     const diffSection = lines.indexOf("### 🧪 Diff coverage");

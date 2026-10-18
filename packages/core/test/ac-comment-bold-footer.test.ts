@@ -114,7 +114,13 @@ describe("renderMarkdown(): the footer", () => {
       expect(lines[rule - 1], `${label}: empty line before ---`).toBe("");
     }
 
-    const renderings = [...(await earlierReports()), notComputed, noFormat].map((report) => renderMarkdown(report));
+    // The one allowed image is the fixed logo line (line 1); every banned string is still banned in the rest.
+    const { logoMarkup } = await import("../src/render/logo.js");
+    const renderings = [...(await earlierReports()), notComputed, noFormat].map((report) => {
+      const [first, ...rest] = renderMarkdown(report).split("\n");
+      expect(first).toBe(logoMarkup());
+      return rest.join("\n");
+    });
     for (const markdown of renderings) {
       for (const banned of ["<img", "![", "http://", "https://"]) {
         expect(markdown).not.toContain(banned);

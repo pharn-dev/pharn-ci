@@ -26539,8 +26539,9 @@ function gitDiffArgs(base, head = "HEAD") {
 }
 
 // ../core/src/render/logo.ts
+var LOGO_MARKUP = '<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/main/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">';
 function logoMarkup() {
-  return "";
+  return LOGO_MARKUP;
 }
 
 // ../core/src/render/markdown.ts

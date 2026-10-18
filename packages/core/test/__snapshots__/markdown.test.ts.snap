@@ -1,7 +1,9 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`renderMarkdown > renders the no-coverable-changes state 1`] = `
-"## 🛡️ pharn-ci · ✅ Pass
+"<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/main/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">
+
+## 🛡️ pharn-ci · ✅ Pass
 
 This change adds no coverable lines; 1 agent setup file found.
 
@@ -38,7 +40,9 @@ Agent setup: 1 file · amp, codex, copilot, cursor, jules, opencode, zed
 `;
 
 exports[`renderMarkdown > renders the not-computed state 1`] = `
-"## 🛡️ pharn-ci · ❌ Fail
+"<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/main/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">
+
+## 🛡️ pharn-ci · ❌ Fail
 
 Diff coverage was not computed; no agent setup files found.
 

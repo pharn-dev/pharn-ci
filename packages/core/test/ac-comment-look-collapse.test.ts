@@ -33,7 +33,8 @@ function enclosing(blocks: Block[], span: { first: number; last: number }): Bloc
 
 function sections(md: string) {
   const lines = md.split("\n");
-  const heading = lines.findIndex((l) => l.trim() !== "");
+  // The heading follows the fixed logo block (the logo line and an empty line), so it is the first `## ` line.
+  const heading = lines.findIndex((l) => l.startsWith("## "));
   const diff = lines.indexOf("### 🧪 Diff coverage");
   const messages = lines.findIndex((l) => l.startsWith("### 💬 Messages ("));
   const setup = lines.findIndex((l) => l.startsWith("### 🤖 Agent setup ("));

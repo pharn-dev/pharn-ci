@@ -6,14 +6,16 @@ import { expectValidReport } from "./schema.js";
 // the build; one `it` for the AC. No snapshot: the expected values are written inline.
 
 describe("PR comment look: compact footer and no image (pr-comment-redesign-2)", () => {
-  it("AC-4: ends with the <sub> footer and carries no image or URL, with an empty logo slot", async () => {
+  it("AC-4: ends with the <sub> footer and carries no image or URL, with only the fixed logo line", async () => {
     const { check } = await import("../src/check.js");
     const { buildReport } = await import("../src/report.js");
     const { renderMarkdown } = await import("../src/render/markdown.js");
     const { logoMarkup } = await import("../src/render/logo.js");
 
-    // The one place the header's logo markup comes from renders nothing in this increment.
-    expect(logoMarkup()).toBe("");
+    // The one place the header's logo markup comes from renders the fixed pharn logo line (pr-comment-logo-2).
+    const LOGO =
+      '<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/main/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">';
+    expect(logoMarkup()).toBe(LOGO);
 
     const agents = [{ path: "AGENTS.md", kind: "agents-md" }] as never;
     const empty = { coveredLines: 0, coverableLines: 0, files: [], meetsThreshold: true };
@@ -100,8 +102,12 @@ describe("PR comment look: compact footer and no image (pr-comment-redesign-2)",
       const lines = md.split("\n");
       const nonEmpty = lines.filter((l) => l.trim() !== "");
 
-      // Above Diff coverage: the verdict heading, the overview sentence, then the summary table (no image line).
-      const heading = lines.findIndex((l) => l.trim() !== "");
+      // Line 0 is the fixed logo, line 1 is empty; above Diff coverage: the verdict heading, the overview sentence,
+      // then the summary table (no other image line).
+      expect(lines[0], name).toBe(LOGO);
+      expect(lines[1], name).toBe("");
+      const heading = lines.findIndex((l) => l.startsWith("## "));
+      expect(heading, name).toBe(2);
       const diffSection = lines.indexOf("### 🧪 Diff coverage");
       expect(lines[heading], name).toMatch(/^## 🛡️ pharn-ci · \S+ (Pass|Warn|Fail)$/);
       expect(diffSection, name).toBeGreaterThan(heading);
@@ -122,11 +128,12 @@ describe("PR comment look: compact footer and no image (pr-comment-redesign-2)",
       expect(version, `${name}: footer names the tool version after pharn-ci`).toBeGreaterThan(tool);
       expect(schema, `${name}: footer names report schema v1 after the version`).toBeGreaterThan(version);
 
-      // No image, no remote URL.
-      expect(md, name).not.toContain("<img");
-      expect(md, name).not.toContain("![");
-      expect(md, name).not.toContain("http://");
-      expect(md, name).not.toContain("https://");
+      // No image, no remote URL, apart from the logo line (line 0).
+      const rest = lines.slice(1).join("\n");
+      expect(rest, name).not.toContain("<img");
+      expect(rest, name).not.toContain("![");
+      expect(rest, name).not.toContain("http://");
+      expect(rest, name).not.toContain("https://");
     }
   });
 });

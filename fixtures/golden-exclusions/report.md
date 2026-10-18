@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/main/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">
+
 ## 🛡️ pharn-ci · ✅ Pass
 
 Diff coverage of this change is 80% against a threshold of 80%; 2 agent setup files found.

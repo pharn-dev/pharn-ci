@@ -8,6 +8,9 @@ import { fixture, harness } from "./harness.js";
 const SHIELD = "\u{1F6E1}️";
 const DOT = "·";
 const HEADING_PREFIX = `## ${SHIELD} pharn-ci ${DOT} `;
+/** The fixed logo line (pr-comment-logo-2) that opens the rendering, then an empty line, then the heading. */
+const LOGO =
+  '<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/main/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">';
 
 /** 50 agent setup files with 2,000-character paths: their table rows push the render past the comment limit. */
 const LONG_SETUP_FILES = Array.from(
@@ -56,7 +59,9 @@ describe("run(): the new header block in a sticky comment that has to be shorten
     const fullLines = full.split("\n");
     const overview = `Diff coverage of this change is 71.43% against a threshold of 80%; ${setupFiles} agent setup files found.`;
     const valueRow = `| ❌ Fail | 71.43% (threshold 80%) | ${setupFiles} files |`;
-    expect(fullLines.filter((line) => line.trim() !== "")[1], "the overview sentence of the full rendering").toBe(
+    // The non-empty lines of the full rendering are the logo line, the heading, then the overview sentence.
+    expect(fullLines.filter((line) => line.trim() !== "")[0], "the logo line of the full rendering").toBe(LOGO);
+    expect(fullLines.filter((line) => line.trim() !== "")[2], "the overview sentence of the full rendering").toBe(
       overview,
     );
     expect(fullLines, "the summary value row of the full rendering").toContain(valueRow);
@@ -69,9 +74,10 @@ describe("run(): the new header block in a sticky comment that has to be shorten
       ["fitMarkdown", direct],
     ] as const) {
       expect(body.length, `${label}: within the limit`).toBeLessThanOrEqual(MAX_COMMENT_LENGTH);
-      expect(body.startsWith(`${prefix}${HEADING_PREFIX}`), `${label}: marker, scope line, then the heading`).toBe(
-        true,
-      );
+      expect(
+        body.startsWith(`${prefix}${LOGO}\n\n${HEADING_PREFIX}`),
+        `${label}: marker, scope line, the logo block, then the heading`,
+      ).toBe(true);
       const bodyLines = body.split("\n");
       expect(bodyLines, `${label}: the overview sentence`).toContain(overview);
       expect(bodyLines, `${label}: the summary value row`).toContain(valueRow);

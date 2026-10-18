@@ -110,8 +110,12 @@ describe("PR comment look: hostile paths and message text stay inert (pr-comment
       ["hostile paths", md],
       ["hostile base ref", mdBaseRef],
     ] as const) {
-      // Outside code spans (where GitHub renders it literally), no raw <img survives.
-      expect(text.replace(/`[^`\n]*`/g, ""), name).not.toContain("<img");
+      // Outside code spans (where GitHub renders it literally), no raw <img survives, apart from the fixed logo
+      // line, which is line 0.
+      const { logoMarkup } = await import("../src/render/logo.js");
+      const [logoLine = "", ...afterLogo] = text.split("\n");
+      expect(logoLine, name).toBe(logoMarkup());
+      expect(afterLogo.join("\n").replace(/`[^`\n]*`/g, ""), name).not.toContain("<img");
       // Every table, the summary table included, keeps its header's cell count.
       expect(expectTablesAligned(text), `${name}: tables`).toBeGreaterThan(0);
       // Every message line is inert.

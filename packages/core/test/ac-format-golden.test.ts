@@ -19,7 +19,9 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 // The pr-comment-bold-look feature then updated the markdown hash on purpose: the render changed its header, section
 // headings, collapsing and footer. The golden and golden-cobertura markdown now differ only by the footer's coverage
 // format; the JSON report, and so its hash, did not change.
-const GOLDEN_MD_SHA256 = "b61cd0d636dd1f9e53756354f6ed7b17b8e9b2001a535491912ed619e970591d";
+// The pr-comment-logo-2 feature added the fixed logo line and an empty line above the heading on purpose; the JSON
+// report, and so its hash, did not change.
+const GOLDEN_MD_SHA256 = "a55ed107a7e2f29761b965f4a8a993dfc069807cea5e7fcc19944da3b01fa6fc";
 const GOLDEN_JSON_SHA256 = "a455705f65d678d9c059231ba36bed7241155cd5063744d2effd8df8d8116c24";
 
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");

@@ -46,12 +46,13 @@ async function build(input: Partial<BuildReportInput>): Promise<Report> {
   return report;
 }
 
-/** The heading and the overview sentence: the first two non-empty lines (the logo slot is empty). */
+/** The heading and the overview sentence: the first two non-empty lines after the fixed logo line. */
 async function header(report: Report): Promise<{ heading: string; overview: string }> {
   const { renderMarkdown } = await import("../src/render/markdown.js");
-  const [heading = "", overview = ""] = renderMarkdown(report)
-    .split("\n")
-    .filter((line) => line.trim() !== "");
+  const { logoMarkup } = await import("../src/render/logo.js");
+  const [logo, ...rest] = renderMarkdown(report).split("\n");
+  expect(logo).toBe(logoMarkup());
+  const [heading = "", overview = ""] = rest.filter((line) => line.trim() !== "");
   return { heading, overview };
 }
 

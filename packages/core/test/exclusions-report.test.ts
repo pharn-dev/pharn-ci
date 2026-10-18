@@ -134,8 +134,17 @@ describe("renderMarkdown: excluded files", () => {
     expect(lines).toHaveLength(benign.split("\n").length);
     const headings = lines.filter((l) => l.startsWith("## "));
     expect(headings).toHaveLength(1);
-    expect(headings[0]).toBe(lines[0]);
-    // Outside code spans (where GitHub renders it literally), raw HTML must not survive.
-    expect(md.replace(/`[^`\n]*`/g, "")).not.toContain("<img");
+    // Line 0 is the fixed logo line, line 1 is empty, and the heading follows.
+    const { logoMarkup } = await import("../src/render/logo.js");
+    expect(lines[0]).toBe(logoMarkup());
+    expect(lines[1]).toBe("");
+    expect(headings[0]).toBe(lines[2]);
+    // Outside code spans (where GitHub renders it literally), raw HTML must not survive, apart from the logo line.
+    expect(
+      lines
+        .slice(1)
+        .join("\n")
+        .replace(/`[^`\n]*`/g, ""),
+    ).not.toContain("<img");
   });
 });

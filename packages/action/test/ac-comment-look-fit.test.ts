@@ -103,8 +103,15 @@ describe("action: redesigned PR comment fitted under the size limit (pr-comment-
     // The golden coverage (71.43%) is under the threshold of 80: the verdict is fail.
     expect(report.verdict).toBe("fail");
     const heading = "## 🛡️ pharn-ci · ❌ Fail";
-    expect(fullLines.find((l) => l.trim() !== "")).toBe(heading);
-    expect(body.startsWith(`${COMMENT_MARKER}\n${commentScopeLine("CI", "pharn")}\n${heading}\n`)).toBe(true);
+    // The rendering opens with the fixed logo line (pr-comment-logo-2), an empty line, then the heading.
+    const logo =
+      '<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/main/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">';
+    expect(fullLines[0]).toBe(logo);
+    expect(fullLines[1]).toBe("");
+    expect(fullLines[2]).toBe(heading);
+    expect(body.startsWith(`${COMMENT_MARKER}\n${commentScopeLine("CI", "pharn")}\n${logo}\n\n${heading}\n`)).toBe(
+      true,
+    );
 
     const bodyLines = new Set(body.split("\n"));
 

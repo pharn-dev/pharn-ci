@@ -126,8 +126,10 @@ describe("renderMarkdown(): the new header, summaries and footer with hostile pa
       const lines = markdown.split("\n");
       const label = report.messages.map((m) => m.code).join(",");
 
-      // No image outside a code span.
-      for (const line of lines) {
+      // No image outside a code span, except the fixed logo line, which is line 0.
+      const { logoMarkup } = await import("../src/render/logo.js");
+      expect(lines[0], `${label}: line 0 is the fixed logo`).toBe(logoMarkup());
+      for (const line of lines.slice(1)) {
         expect(outsideCode(line), `${label}: no <img outside code: ${line}`).not.toContain("<img");
       }
 
