@@ -180,8 +180,11 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
 
 ## 6. Distribution
 
-- **Pre-1.0.** Report v1 is stable within v1 (fields are only added; codes are never renamed), but
-  inputs, defaults and the comment layout may still change between minor versions.
+- **Pre-1.0.** Report v1 is stable within v1 (fields are only added; codes are never renamed).
+  Inputs, outputs and message codes are never removed before 1.0, and a renamed input keeps its old
+  name, with a warning, for at least one minor release. Defaults may still change, but only in a
+  minor release listed under **Changed** in the changelog, and the comment layout may change in any
+  release ([`RELEASING.md`](./RELEASING.md#inputs-outputs-and-message-codes)).
 - **The CLI is not published to npm yet.** Build it from source (`pnpm install && pnpm build`).
 - **The Action runs on the runner's Node 24** (`runs.using: node24`).
 - **Platform.** Developed and tested on Linux and macOS. The Action is tested on `ubuntu-latest`

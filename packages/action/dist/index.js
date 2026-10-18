@@ -26299,8 +26299,24 @@ async function run(deps) {
     return void 0;
   }
 }
+var INPUT_ALIASES = Object.freeze({});
+function readInput(deps, name, aliases = INPUT_ALIASES) {
+  const value = deps.getInput(name).trim();
+  for (const [oldName, current] of Object.entries(aliases)) {
+    if (current !== name) continue;
+    const oldValue = deps.getInput(oldName).trim();
+    if (oldValue === "") continue;
+    if (value !== "") {
+      deps.warning(`input "${oldName}" is deprecated and ignored because "${name}" is also set; remove "${oldName}"`);
+      continue;
+    }
+    deps.warning(`input "${oldName}" is deprecated; rename it to "${name}"`);
+    return oldValue;
+  }
+  return value;
+}
 async function runUnsafe(deps) {
-  const input = (name) => deps.getInput(name).trim();
+  const input = (name) => readInput(deps, name);
   const { prNumber, headSha } = parsePrNumberInputs(input("pr-number"), input("head-sha"));
   const pr = deps.context.payload.pull_request;
   if (pr && prNumber !== void 0 && prNumber !== pr.number) {

@@ -27,8 +27,10 @@ behave. AI-agnostic, fully stateless, no telemetry.
 </div>
 
 > **Status:** pre-1.0 and not yet released. The first release will be `v0.1.0`; until it is cut,
-> the snippet above will not resolve. Report v1 is stable; inputs and the comment layout may still
-> change between minor versions.
+> the snippet above will not resolve. Report v1 is stable. Before 1.0, inputs, outputs and message
+> codes are never removed, and a renamed input keeps working under its old name, with a warning, for
+> at least one minor release; defaults change only in a minor release and the changelog says so. The
+> comment layout may change in any release ([versioning policy](docs/RELEASING.md#inputs-outputs-and-message-codes)).
 
 ---
 
