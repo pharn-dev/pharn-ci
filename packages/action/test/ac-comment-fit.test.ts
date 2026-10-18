@@ -18,7 +18,7 @@ const TRUNCATED_LINE = "_Truncated: the full report is in the job summary and re
 const INPUT_DEFAULTS: Record<string, string> = {
   comment: "true",
   "fail-on-threshold": "true",
-  config: ".pharn/ci.yml",
+  config: "",
 };
 
 /** 50 agent setup files, each with a path of `width` characters plus a short suffix. */

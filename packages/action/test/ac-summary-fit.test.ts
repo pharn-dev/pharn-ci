@@ -18,7 +18,7 @@ const ONE_MIB = 1_048_576;
 const INPUT_DEFAULTS: Record<string, string> = {
   comment: "false",
   "fail-on-threshold": "true",
-  config: ".pharn/ci.yml",
+  config: "",
 };
 
 /** 50 agent setup files, each with a path of `width` characters plus a short suffix. */
