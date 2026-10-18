@@ -46,14 +46,24 @@ async function build(input: Partial<BuildReportInput>): Promise<Report> {
   return report;
 }
 
-/** The heading and the overview sentence: the first two non-empty lines after the fixed logo line. */
+const MARKER = { pass: "> [!TIP]", warn: "> [!WARNING]", fail: "> [!CAUTION]" } as const;
+const LABEL = { pass: "Pass", warn: "Warn", fail: "Fail" } as const;
+
+/**
+ * The heading, the alert marker and the overview sentence: the first three non-empty lines after the fixed logo
+ * line. pr-comment-verdict-callout moved the sentence into the callout's content line, `> **<Label>** · <sentence>`;
+ * `overview` is the sentence after that prefix, so every sentence assertion below is unchanged.
+ */
 async function header(report: Report): Promise<{ heading: string; overview: string }> {
   const { renderMarkdown } = await import("../src/render/markdown.js");
   const { logoMarkup } = await import("../src/render/logo.js");
   const [logo, ...rest] = renderMarkdown(report).split("\n");
   expect(logo).toBe(logoMarkup());
-  const [heading = "", overview = ""] = rest.filter((line) => line.trim() !== "");
-  return { heading, overview };
+  const [heading = "", marker = "", content = ""] = rest.filter((line) => line.trim() !== "");
+  expect(marker, "the alert marker").toBe(MARKER[report.verdict]);
+  const prefix = `> **${LABEL[report.verdict]}** ${DOT} `;
+  expect(content.startsWith(prefix), content).toBe(true);
+  return { heading, overview: content.slice(prefix.length) };
 }
 
 describe("renderMarkdown(): the heading and the overview sentence", () => {

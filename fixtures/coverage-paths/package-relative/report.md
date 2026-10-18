@@ -2,7 +2,8 @@
 
 ## 🛡️ pharn-ci · ❌ Fail
 
-Diff coverage was not computed; 1 agent setup file found.
+> [!CAUTION]
+> **Fail** · Diff coverage was not computed; 1 agent setup file found.
 
 | Verdict | Diff coverage | Agent setup |
 | --- | --- | --- |

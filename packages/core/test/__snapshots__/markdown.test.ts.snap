@@ -5,7 +5,8 @@ exports[`renderMarkdown > renders the no-coverable-changes state 1`] = `
 
 ## 🛡️ pharn-ci · ✅ Pass
 
-This change adds no coverable lines; 1 agent setup file found.
+> [!TIP]
+> **Pass** · This change adds no coverable lines; 1 agent setup file found.
 
 | Verdict | Diff coverage | Agent setup |
 | --- | --- | --- |
@@ -44,7 +45,8 @@ exports[`renderMarkdown > renders the not-computed state 1`] = `
 
 ## 🛡️ pharn-ci · ❌ Fail
 
-Diff coverage was not computed; no agent setup files found.
+> [!CAUTION]
+> **Fail** · Diff coverage was not computed; no agent setup files found.
 
 | Verdict | Diff coverage | Agent setup |
 | --- | --- | --- |

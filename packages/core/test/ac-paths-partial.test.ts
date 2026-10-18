@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { fixture } from "./helpers.js";
+import { fixture, foldCallout } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 // check(), the config parser, the renderer and the fixtures are loaded inside each test body: the AC tests are
@@ -36,6 +36,8 @@ const GOLDEN_COBERTURA_MD_SHA256 = "54e560874b3950e8624986d021d621cefdfcf2f3ea46
 const EXCLUSIONS_JSON_SHA256 = "5773d3ef5a254c8c35f803665f70e69b881252e941c94e00fbbd479b569688fc";
 // pr-comment-logo-2 updated the markdown hash on purpose again (the fixed logo line and an empty line above the
 // heading); the JSON did not change.
+// pr-comment-verdict-callout turned the overview line into a callout on purpose; every markdown hash in this file is
+// taken after folding the callout back into the bare sentence, so each constant is unchanged.
 const EXCLUSIONS_MD_SHA256 = "d470c10cfb7ca3d50ba370fccae4176615db8036f96168cc5c61063925562ce7";
 
 type Message = { level: string; code: string; text: string };
@@ -107,7 +109,7 @@ describe("check(): some coverage paths are not tracked files", () => {
       // Everything else is the report as it was before this change.
       const without = { ...report, messages: report.messages.filter((message) => message.code !== CODE) };
       expect(sha256(asFile(without)), `${dir} report.json without the message`).toBe(jsonSha);
-      const markdown = renderMarkdown(report).split("\n");
+      const markdown = foldCallout(renderMarkdown(report)).split("\n");
       const messageLines = markdown.filter((line) => line.includes(`\`${CODE}\``));
       expect(messageLines, `${dir} report.md lines naming the code`).toHaveLength(1);
       const at = markdown.findIndex((line) => line.includes(`\`${CODE}\``));
@@ -134,6 +136,6 @@ describe("check(): some coverage paths are not tracked files", () => {
     expect(asFile(exclusions)).toBe(fixture("golden-exclusions/report.json"));
     expect(renderMarkdown(exclusions)).toBe(fixture("golden-exclusions/report.md"));
     expect(sha256(fixture("golden-exclusions/report.json"))).toBe(EXCLUSIONS_JSON_SHA256);
-    expect(sha256(fixture("golden-exclusions/report.md"))).toBe(EXCLUSIONS_MD_SHA256);
+    expect(sha256(foldCallout(fixture("golden-exclusions/report.md")))).toBe(EXCLUSIONS_MD_SHA256);
   });
 });

@@ -112,9 +112,13 @@ describe("PR comment look: compact footer and no image (pr-comment-redesign-2)",
       expect(lines[heading], name).toMatch(/^## 🛡️ pharn-ci · \S+ (Pass|Warn|Fail)$/);
       expect(diffSection, name).toBeGreaterThan(heading);
       const between = lines.slice(heading + 1, diffSection).filter((l) => l.trim() !== "");
-      expect(between.length, `${name}: overview and summary table above Diff coverage`).toBeGreaterThan(1);
-      const [overview, ...tableRows] = between;
-      expect(overview, `${name}: overview sentence`).toMatch(/^(Diff coverage |This change ).*found\.$/);
+      expect(between.length, `${name}: callout and summary table above Diff coverage`).toBeGreaterThan(2);
+      // pr-comment-verdict-callout put the overview sentence in a callout: the alert marker, then its content line.
+      const [marker, overview, ...tableRows] = between;
+      expect(marker, `${name}: alert marker`).toMatch(/^> \[!(TIP|WARNING|CAUTION)\]$/);
+      expect(overview, `${name}: overview sentence`).toMatch(
+        /^> \*\*(Pass|Warn|Fail)\*\* · (Diff coverage |This change ).*found\.$/,
+      );
       expect(tableRows.length, `${name}: summary table above Diff coverage`).toBeGreaterThan(0);
       for (const line of tableRows) expect(line, `${name}: summary table line`).toMatch(/^\|.*\|$/);
 

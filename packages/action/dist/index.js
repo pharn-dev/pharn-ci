@@ -26547,6 +26547,7 @@ function logoMarkup() {
 // ../core/src/render/markdown.ts
 var VERDICT_ICON = { pass: "\u2705", warn: "\u26A0\uFE0F", fail: "\u274C" };
 var VERDICT_LABEL = { pass: "Pass", warn: "Warn", fail: "Fail" };
+var VERDICT_ALERT = { pass: "> [!TIP]", warn: "> [!WARNING]", fail: "> [!CAUTION]" };
 var BRAND = "\u{1F6E1}\uFE0F";
 var COVERAGE_FORMAT_LABEL = { lcov: "lcov", cobertura: "cobertura" };
 var MAX_UNCOVERED_RANGES = 20;
@@ -26576,7 +26577,7 @@ function renderMarkdown(report, options = {}) {
   const logo = logoMarkup();
   if (logo !== "") out.push(logo, "");
   out.push(`## ${BRAND} pharn-ci \xB7 ${VERDICT_ICON[report.verdict]} ${VERDICT_LABEL[report.verdict]}`, "");
-  out.push(overviewLine(report), "");
+  out.push(VERDICT_ALERT[report.verdict], `> **${VERDICT_LABEL[report.verdict]}** \xB7 ${overviewLine(report)}`, "");
   out.push(...summaryLines(report));
   out.push("### \u{1F9EA} Diff coverage", "");
   const dc = report.diffCoverage;
