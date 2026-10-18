@@ -45,6 +45,7 @@ const MESSAGE_HINTS: Record<MessageCode, string> = {
   DIFF_BINARY_COVERED_FILE:
     "Remove `-diff` or `binary` attributes for source files from `.gitattributes` so their changes are measured.",
   NO_AGENT_SETUP_FILES: "Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test.",
+  AGENT_SETUP_FILE_EMPTY: "Fill in the empty file or delete it; an agent reads nothing from an empty file.",
 };
 
 /** Render a Report as GitHub-flavored markdown (PR comment, job summary, CLI). */

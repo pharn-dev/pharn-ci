@@ -1,0 +1,6 @@
+100644 blob e69de29bb2d1d6434b8b29ae775ad8c2e48c5391       0	CLAUDE.md
+100644 blob 3b18e512dba79e4c8300dd08aeb37f8e728b8dad     120	AGENTS.md
+100644 blob 8baef1b4abc478178b004d62031cf7fe6db6f903   12345	src/a.ts
+100755 blob 8baef1b4abc478178b004d62031cf7fe6db6f903      42	scripts/run.sh
+160000 commit 0123456789abcdef0123456789abcdef01234567       -	vendor/sub
+100644 blob 8baef1b4abc478178b004d62031cf7fe6db6f903     7

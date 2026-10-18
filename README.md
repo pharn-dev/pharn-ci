@@ -74,8 +74,8 @@ pharn-ci runs in your CI on every pull request and reports:
 | `claude-local-md`             | `CLAUDE.local.md`, any directory                                                               | claude-code                                       |
 | `agents-md`                   | `AGENTS.md`, any directory                                                                     | amp, codex, copilot, cursor, jules, opencode, zed |
 | `gemini-md`                   | `GEMINI.md`, any directory                                                                     | gemini                                            |
-| `claude-settings`             | `.claude/settings.json`, any directory                                                         | claude-code                                       |
-| `claude-settings-local`       | `.claude/settings.local.json`, any directory                                                   | claude-code                                       |
+| `claude-settings`             | `.claude/settings.json`, repo root                                                             | claude-code                                       |
+| `claude-settings-local`       | `.claude/settings.local.json`, repo root                                                       | claude-code                                       |
 | `claude-skill`                | files under `.claude/skills/`, any directory                                                   | claude-code                                       |
 | `claude-hook`                 | files under `.claude/hooks/`, any directory                                                    | claude-code                                       |
 | `claude-agent`                | files under `.claude/agents/`, any directory                                                   | claude-code                                       |
@@ -91,7 +91,7 @@ pharn-ci runs in your CI on every pull request and reports:
 | `codex-config`                | `.codex/config.toml`, repo root                                                                | codex                                             |
 | `windsurf-rules`              | `.windsurfrules`, files under `.windsurf/rules/`                                               | windsurf                                          |
 | `cline-rules`                 | `.clinerules` (file or directory)                                                              | cline                                             |
-| `mcp-config`                  | `.mcp.json`, any directory                                                                     | mcp                                               |
+| `mcp-config`                  | `.mcp.json`, repo root                                                                         | mcp                                               |
 | `aider-config`                | `.aider.conf.yml`, repo root                                                                   | aider                                             |
 | `conventions-md`              | `CONVENTIONS.md`, repo root                                                                    | aider                                             |
 | `continue-rules`              | files under `.continue/rules/`, `.continuerules`, repo root                                    | continue                                          |
@@ -104,6 +104,10 @@ pharn-ci runs in your CI on every pull request and reports:
 | `goosehints`                  | `.goosehints`, any directory                                                                   | goose                                             |
 | `opencode-config`             | `opencode.json`, `opencode.jsonc`, repo root                                                   | opencode                                          |
 | `gemini-settings`             | `.gemini/settings.json`, repo root                                                             | gemini                                            |
+
+Placeholders do not count: a dot-file (such as `.gitkeep`) or a README under a directory in the table
+is not listed, and neither is any path with a `node_modules` directory. A listed file that is empty in
+`HEAD` gets an `AGENT_SETUP_FILE_EMPTY` warning, and stays in the inventory.
 
 It is **AI-agnostic**: it looks at your code, tests and setup files, never at which tool wrote the
 code. Claude Code, Cursor, Copilot, Codex and hand-written changes are measured the same way.
@@ -185,7 +189,7 @@ integrity control; Dependabot keeps either up to date.
 flowchart LR
     DIFF["PR diff<br/>(git, or GitHub API)"] --> CORE
     LCOV["lcov or Cobertura file<br/>(from your test run)"] --> CORE
-    FILES["tracked files<br/>(git ls-files)"] --> CORE
+    FILES["tracked files and sizes<br/>(git ls-files, git ls-tree)"] --> CORE
     CFG[".pharn/ci.yml<br/>+ inputs / flags"] --> CORE
     CORE["core check()<br/>pure: no I/O"] --> REPORT["Report v1<br/>JSON, schema-validated"]
     REPORT --> COMMENT["sticky PR comment"]
@@ -452,6 +456,7 @@ it. See [`schema/report.v1.json`](schema/report.v1.json). Branch on message `cod
 | `COVERAGE_FILE_TRACKED`         | The coverage file is tracked in the repository, so the change can supply it (`warn`) |
 | `DIFF_BINARY_COVERED_FILE`      | The diff shows a covered source file as binary, so its changes were not measured (`warn`) |
 | `NO_AGENT_SETUP_FILES`          | The repo has none of the agent setup files pharn-ci looks for  |
+| `AGENT_SETUP_FILE_EMPTY`        | A listed agent setup file is empty in `HEAD` (`warn`)          |
 
 Within v1, fields are only added and codes are never renamed or removed.
 

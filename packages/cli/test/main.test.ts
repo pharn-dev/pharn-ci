@@ -29,6 +29,7 @@ function fakeDeps(files: Record<string, string>, gitOverrides: Record<string, st
       if (args[0] === "rev-parse") return "/repo\n";
       if (args[0] === "diff") return fixture("golden/pr.diff");
       if (args[0] === "ls-files") return `${fixture("golden/files.txt").trim().split("\n").join("\0")}\0`;
+      if (args[0] === "ls-tree") return "";
       throw new Error(`unexpected git ${args.join(" ")}`);
     },
     async readFile(path) {
@@ -95,6 +96,8 @@ describe("cli main", () => {
       ],
       // F-01: tracked files are listed from the repo root, whatever directory the CLI runs in.
       ["ls-files", "-z", "--full-name", "--", ":/"],
+      // F-10: file sizes in HEAD, to report empty agent setup files.
+      ["ls-tree", "-r", "-l", "-z", "--full-tree", "HEAD"],
     ]);
   });
 

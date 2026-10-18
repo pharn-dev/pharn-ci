@@ -25942,6 +25942,12 @@ function buildReport(input) {
       text: required ? `${found}, and agent setup is required by config.` : `${found}.`
     });
   }
+  const empty = input.emptyAgentSetupFiles ?? [];
+  const firstEmpty = empty[0];
+  if (firstEmpty !== void 0) {
+    const text = empty.length === 1 ? `1 agent setup file is empty: ${codeSpan(firstEmpty)}.` : `${empty.length} agent setup files are empty, for example ${codeSpan(firstEmpty)}.`;
+    messages.push({ level: "warn", code: "AGENT_SETUP_FILE_EMPTY", text });
+  }
   return {
     schemaVersion: "1",
     tool: { name: "pharn-ci", version: input.version },
@@ -25994,9 +26000,6 @@ function underNested(path, anchor) {
     from = i + 1;
   }
 }
-function isNestedFile(path, file) {
-  return path === file || path.endsWith(`/${file}`);
-}
 function underRoot(path, prefix) {
   return path.startsWith(prefix) && path.length > prefix.length;
 }
@@ -26015,48 +26018,57 @@ function isRooModeFile(path) {
 }
 var INSTRUCTIONS_DIR = ".github/instructions/";
 var INSTRUCTIONS_SUFFIX = ".instructions.md";
+function hasNodeModulesSegment(path) {
+  return path.split("/").includes("node_modules");
+}
+function isPlaceholderName(name) {
+  if (name.startsWith(".")) return true;
+  const lower = name.toLowerCase();
+  return lower === "readme" || lower.startsWith("readme.");
+}
 var SETUP_RULES = [
   // Directory and full-path rules that also apply in nested directories (the .claude/ kinds, claude-rule
-  // among them, and cursor-rules).
-  { kind: "claude-settings", matches: (p) => isNestedFile(p, ".claude/settings.json") },
-  { kind: "claude-settings-local", matches: (p) => isNestedFile(p, ".claude/settings.local.json") },
-  { kind: "claude-skill", matches: (p) => underNested(p, ".claude/skills/") },
-  { kind: "claude-hook", matches: (p) => underNested(p, ".claude/hooks/") },
-  { kind: "claude-agent", matches: (p) => underNested(p, ".claude/agents/") },
-  { kind: "claude-command", matches: (p) => underNested(p, ".claude/commands/") },
-  { kind: "claude-rule", matches: (p) => underNested(p, ".claude/rules/") },
-  { kind: "cursor-rules", matches: (p) => underNested(p, ".cursor/rules/") },
-  // Directory and full-path rules for the repo root only (including the aider, continue, roo, amazonq, junie,
-  // zed, augment, kiro, opencode and gemini-settings kinds).
+  // among them, and cursor-rules). The settings and MCP files are not here: they count at the repo root only.
+  { kind: "claude-skill", matches: (p) => underNested(p, ".claude/skills/"), directory: true },
+  { kind: "claude-hook", matches: (p) => underNested(p, ".claude/hooks/"), directory: true },
+  { kind: "claude-agent", matches: (p) => underNested(p, ".claude/agents/"), directory: true },
+  { kind: "claude-command", matches: (p) => underNested(p, ".claude/commands/"), directory: true },
+  { kind: "claude-rule", matches: (p) => underNested(p, ".claude/rules/"), directory: true },
+  { kind: "cursor-rules", matches: (p) => underNested(p, ".cursor/rules/"), directory: true },
+  // Directory and full-path rules for the repo root only (including the claude-settings, claude-settings-local,
+  // mcp-config, aider, continue, roo, amazonq, junie, zed, augment, kiro, opencode and gemini-settings kinds).
+  { kind: "claude-settings", matches: (p) => p === ".claude/settings.json" },
+  { kind: "claude-settings-local", matches: (p) => p === ".claude/settings.local.json" },
+  { kind: "mcp-config", matches: (p) => p === ".mcp.json" },
   { kind: "cursor-rules", matches: (p) => p === ".cursorrules" },
   { kind: "copilot-instructions", matches: (p) => p === ".github/copilot-instructions.md" },
   {
     kind: "copilot-instructions-scoped",
     matches: (p) => p.startsWith(INSTRUCTIONS_DIR) && p.endsWith(INSTRUCTIONS_SUFFIX) && p.length > INSTRUCTIONS_DIR.length + INSTRUCTIONS_SUFFIX.length
   },
-  { kind: "copilot-agents", matches: (p) => underRoot(p, ".github/agents/") },
-  { kind: "copilot-prompts", matches: (p) => underRoot(p, ".github/prompts/") },
+  { kind: "copilot-agents", matches: (p) => underRoot(p, ".github/agents/"), directory: true },
+  { kind: "copilot-prompts", matches: (p) => underRoot(p, ".github/prompts/"), directory: true },
   { kind: "cursor-mcp", matches: (p) => p === ".cursor/mcp.json" },
   { kind: "vscode-mcp", matches: (p) => p === ".vscode/mcp.json" },
   { kind: "codex-config", matches: (p) => p === ".codex/config.toml" },
   { kind: "windsurf-rules", matches: (p) => p === ".windsurfrules" },
-  { kind: "windsurf-rules", matches: (p) => underRoot(p, ".windsurf/rules/") },
+  { kind: "windsurf-rules", matches: (p) => underRoot(p, ".windsurf/rules/"), directory: true },
   { kind: "cline-rules", matches: (p) => p === ".clinerules" },
-  { kind: "cline-rules", matches: (p) => underRoot(p, ".clinerules/") },
+  { kind: "cline-rules", matches: (p) => underRoot(p, ".clinerules/"), directory: true },
   { kind: "aider-config", matches: (p) => p === ".aider.conf.yml" },
   { kind: "conventions-md", matches: (p) => p === "CONVENTIONS.md" },
-  { kind: "continue-rules", matches: (p) => underRoot(p, ".continue/rules/") },
+  { kind: "continue-rules", matches: (p) => underRoot(p, ".continue/rules/"), directory: true },
   { kind: "continue-rules", matches: (p) => p === ".continuerules" },
   { kind: "roo-rules", matches: (p) => p === ".roorules" },
   { kind: "roo-rules", matches: isRooModeFile },
-  { kind: "roo-rules", matches: (p) => underRoot(p, ".roo/rules/") },
-  { kind: "roo-rules", matches: underRooModeDir },
-  { kind: "amazonq-rules", matches: (p) => underRoot(p, ".amazonq/rules/") },
+  { kind: "roo-rules", matches: (p) => underRoot(p, ".roo/rules/"), directory: true },
+  { kind: "roo-rules", matches: underRooModeDir, directory: true },
+  { kind: "amazonq-rules", matches: (p) => underRoot(p, ".amazonq/rules/"), directory: true },
   { kind: "junie-guidelines", matches: (p) => p === ".junie/guidelines.md" },
   { kind: "zed-rules", matches: (p) => p === ".rules" },
-  { kind: "augment-rules", matches: (p) => underRoot(p, ".augment/rules/") },
+  { kind: "augment-rules", matches: (p) => underRoot(p, ".augment/rules/"), directory: true },
   { kind: "augment-rules", matches: (p) => p === ".augment-guidelines" },
-  { kind: "kiro-steering", matches: (p) => underRoot(p, ".kiro/steering/") },
+  { kind: "kiro-steering", matches: (p) => underRoot(p, ".kiro/steering/"), directory: true },
   { kind: "opencode-config", matches: (p) => p === "opencode.json" },
   { kind: "opencode-config", matches: (p) => p === "opencode.jsonc" },
   { kind: "gemini-settings", matches: (p) => p === ".gemini/settings.json" },
@@ -26065,12 +26077,14 @@ var SETUP_RULES = [
   { kind: "claude-local-md", matches: (p) => baseName(p) === "CLAUDE.local.md" },
   { kind: "agents-md", matches: (p) => baseName(p) === "AGENTS.md" },
   { kind: "gemini-md", matches: (p) => baseName(p) === "GEMINI.md" },
-  { kind: "mcp-config", matches: (p) => baseName(p) === ".mcp.json" },
   { kind: "goosehints", matches: (p) => baseName(p) === ".goosehints" }
 ];
 function classifySetupPath(path) {
+  if (hasNodeModulesSegment(path)) return null;
   for (const rule of SETUP_RULES) {
-    if (rule.matches(path)) return rule.kind;
+    if (!rule.matches(path)) continue;
+    if (rule.directory === true && isPlaceholderName(baseName(path))) return null;
+    return rule.kind;
   }
   return null;
 }
@@ -26093,13 +26107,16 @@ function check(input) {
   const parsedDiff = "text" in input.diff ? parseUnifiedDiff(input.diff.text) : null;
   const configPaths = parsedDiff === null ? [] : changedConfigPaths(parsedDiff, input.configPath, input.repoRoot);
   const trackedCoverage = "text" in input.coverage ? trackedCoverageFile(input.coverage.file, input.repoRoot, input.repoFiles) : null;
+  const bytes = input.repoFileBytes;
+  const emptyAgentSetupFiles = bytes === void 0 ? [] : agentSetup.files.filter((file) => bytes.get(file.path) === 0).map((file) => file.path);
   const base = {
     version: input.version,
     threshold: input.threshold,
     agentSetup,
     requireAgentSetup: input.requireAgentSetup === true,
     ...configPaths.length > 0 ? { changedConfigPaths: configPaths } : {},
-    ...trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage }
+    ...trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage },
+    ...emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {}
   };
   if ("missingFile" in input.coverage) {
     return buildReport({
@@ -26247,7 +26264,8 @@ var MESSAGE_HINTS = {
   CONFIG_CHANGED_IN_DIFF: "Review the config and workflow changes before trusting the verdict; protect `.pharn/ci.yml` and `.github/workflows/` with CODEOWNERS.",
   COVERAGE_FILE_TRACKED: "Generate the coverage file in CI and stop tracking it (`git rm --cached` it and add it to `.gitignore`).",
   DIFF_BINARY_COVERED_FILE: "Remove `-diff` or `binary` attributes for source files from `.gitattributes` so their changes are measured.",
-  NO_AGENT_SETUP_FILES: "Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test."
+  NO_AGENT_SETUP_FILES: "Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test.",
+  AGENT_SETUP_FILE_EMPTY: "Fill in the empty file or delete it; an agent reads nothing from an empty file."
 };
 function renderMarkdown(report, options = {}) {
   const maxRows = options.maxRows ?? 50;
@@ -26356,6 +26374,26 @@ function code(path) {
 var MARKDOWN_ACTIVE = /[\\`*_[\]#!|~]/g;
 function inlineText(text) {
   return text.replace(CONTROL_CHARS2, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(MARKDOWN_ACTIVE, "\\$&").replace(/@/g, "@\u200B").replace(/:\/\//g, ":\\/\\/").replace(/(www)\./gi, "$1\\.");
+}
+
+// ../core/src/setup/sizes.ts
+function parseLsTreeSizes(text) {
+  const sizes = /* @__PURE__ */ new Map();
+  for (const record of text.split("\0")) {
+    if (record === "") continue;
+    const tab = record.indexOf("	");
+    if (tab === -1) continue;
+    const path = record.slice(tab + 1);
+    if (path === "") continue;
+    const meta = record.slice(0, tab).split(" ").filter((field) => field !== "");
+    if (meta.length !== 4) continue;
+    const [, type, , sizeText] = meta;
+    if (type !== "blob" || sizeText === void 0 || !/^[0-9]+$/.test(sizeText)) continue;
+    const size = Number(sizeText);
+    if (!Number.isSafeInteger(size)) continue;
+    sizes.set(path, size);
+  }
+  return sizes;
 }
 
 // ../core/src/version.ts
@@ -26482,6 +26520,10 @@ async function runUnsafe(deps) {
   const coverageText = await deps.readFile(coveragePath);
   if (coverageText !== null) deps.info(coverageChoiceLine(chooseCoverageFormat(coverageText, format)));
   const repoFiles = await trackedFiles(target, deps);
+  const lsTree = target ? null : await deps.git(["ls-tree", "-r", "-l", "-z", "--full-tree", "HEAD"]).catch((err) => {
+    deps.warning(`git ls-tree failed, so empty agent setup files are not reported: ${String(err)}`);
+    return null;
+  });
   const checkInput = {
     version: VERSION7,
     coverage: coverageText === null ? { missingFile: coverageFile } : { text: coverageText, format, file: coverageFile },
@@ -26489,6 +26531,7 @@ async function runUnsafe(deps) {
     repoRoot: deps.workspace,
     threshold,
     repoFiles,
+    ...lsTree === null ? {} : { repoFileBytes: parseLsTreeSizes(lsTree) },
     exclude,
     requireAgentSetup,
     ...coverageRoot === void 0 ? {} : { coverageRoot },

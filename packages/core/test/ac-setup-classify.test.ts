@@ -86,7 +86,7 @@ describe("agent setup classification (agent-setup-inventory)", () => {
     });
   });
 
-  it("AC-4: classifies .mcp.json, .claude/ kinds and .cursor/rules/ in nested directories", async () => {
+  it("AC-4: classifies the .claude/ directory kinds and .cursor/rules/ in nested directories, but not nested settings or .mcp.json", async () => {
     const classify = await classifier();
     expect(
       classifyAll(classify, [
@@ -100,9 +100,9 @@ describe("agent setup classification (agent-setup-inventory)", () => {
         "packages/web/.cursor/rules/style.mdc",
       ]),
     ).toEqual({
-      "packages/web/.mcp.json": "mcp-config",
-      "packages/web/.claude/settings.json": "claude-settings",
-      "packages/web/.claude/settings.local.json": "claude-settings-local",
+      "packages/web/.mcp.json": null,
+      "packages/web/.claude/settings.json": null,
+      "packages/web/.claude/settings.local.json": null,
       "packages/web/.claude/skills/release/SKILL.md": "claude-skill",
       "packages/web/.claude/hooks/pre.sh": "claude-hook",
       "packages/web/.claude/agents/reviewer.md": "claude-agent",
@@ -163,14 +163,14 @@ describe("agent setup classification (agent-setup-inventory)", () => {
         ".github/agents/AGENTS.md",
         ".claude/agents/CLAUDE.md",
         ".clinerules/AGENTS.md",
-        ".claude/skills/demo/.mcp.json",
+        ".claude/skills/demo/AGENTS.md",
         ".windsurf/rules/GEMINI.md",
       ]),
     ).toEqual({
       ".github/agents/AGENTS.md": "copilot-agents",
       ".claude/agents/CLAUDE.md": "claude-agent",
       ".clinerules/AGENTS.md": "cline-rules",
-      ".claude/skills/demo/.mcp.json": "claude-skill",
+      ".claude/skills/demo/AGENTS.md": "claude-skill",
       ".windsurf/rules/GEMINI.md": "windsurf-rules",
     });
   });

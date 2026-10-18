@@ -43,7 +43,8 @@ export type MessageCode =
   | "CONFIG_CHANGED_IN_DIFF"
   | "COVERAGE_FILE_TRACKED"
   | "DIFF_BINARY_COVERED_FILE"
-  | "NO_AGENT_SETUP_FILES";
+  | "NO_AGENT_SETUP_FILES"
+  | "AGENT_SETUP_FILE_EMPTY";
 
 export interface Message {
   level: MessageLevel;
@@ -75,6 +76,8 @@ export interface BuildReportInput {
   /** Changed files the diff shows as binary that the coverage report knows; absent or empty adds no message. */
   binaryCoveredPaths?: readonly string[];
   agentSetup: AgentSetupInventory;
+  /** Sorted paths of inventoried agent setup files whose size in HEAD is 0; absent or empty adds no message. */
+  emptyAgentSetupFiles?: readonly string[];
   /** When true, a repo with no agent setup files is an error instead of info. Off when absent. */
   requireAgentSetup?: boolean;
 }
@@ -180,6 +183,16 @@ export function buildReport(input: BuildReportInput): Report {
       code: "NO_AGENT_SETUP_FILES",
       text: required ? `${found}, and agent setup is required by config.` : `${found}.`,
     });
+  }
+
+  const empty = input.emptyAgentSetupFiles ?? [];
+  const firstEmpty = empty[0];
+  if (firstEmpty !== undefined) {
+    const text =
+      empty.length === 1
+        ? `1 agent setup file is empty: ${codeSpan(firstEmpty)}.`
+        : `${empty.length} agent setup files are empty, for example ${codeSpan(firstEmpty)}.`;
+    messages.push({ level: "warn", code: "AGENT_SETUP_FILE_EMPTY", text });
   }
 
   return {

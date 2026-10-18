@@ -124,6 +124,7 @@ function harness(opts: Options = {}): Harness {
     async git(args) {
       h.gitCalls.push(args);
       if (args[0] === "ls-files") return `${lsFiles.join("\0")}\0`;
+      if (args[0] === "ls-tree") return "";
       if (!localGit) throw new Error("fatal: bad object");
       if (args[0] === "rev-parse" && args[1] === "HEAD") return `${opts.localHead ?? "c".repeat(40)}\n`;
       if (args[0] === "rev-parse") return "ok\n";
