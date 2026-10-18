@@ -10,8 +10,9 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 
 // sha256 of fixtures/golden/report.md and fixtures/golden/report.json as committed before this change. The
 // markdown hash was updated by F-32, which intentionally changed the rendering (file rows sorted by coverage,
-// a hint line under each message); the JSON report, and so its hash, did not change.
-const GOLDEN_MD_SHA256 = "5094fad628951a453a0a436279c9c19850e5bfa8703fcd13db3a823c632f45ad";
+// a hint line under each message); the JSON report, and so its hash, did not change. F-16 changed the rendering
+// again on purpose, moving `### Messages` above `### Agent setup`, so the markdown hash changed once more.
+const GOLDEN_MD_SHA256 = "625c0fe399c49aca5aabdc560db4a1e412fac63d07c29d47b74e30c3b2783d43";
 const GOLDEN_JSON_SHA256 = "e3be10a5b1d4f03a3aa5d3b1f97651432fc4ea9bcba51b853dace36b05111419";
 
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");

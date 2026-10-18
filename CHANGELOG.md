@@ -24,6 +24,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- The rendered report lists messages before the agent setup inventory, and a file's uncovered-lines cell shows
+  at most 20 ranges followed by `…and N more`. The Action fits an oversized PR comment (65,000 characters) or
+  job summary (1 MiB) by rendering fewer table rows instead of cutting the end, so the verdict and messages
+  stay visible; `report.json` keeps the full report.
 - The diff coverage table lists files by coverage, lowest first (then by path), so the files that
   need tests stay visible when the table is cut at 50 rows; a cut table now points to the full list
   in `report.json` (the Action's `report-path` output, or `--format json`).

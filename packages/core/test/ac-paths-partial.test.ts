@@ -14,10 +14,12 @@ const CODE = "COVERAGE_PATHS_PARTIALLY_UNMATCHED";
 // message gives these again once that one message (in the markdown, its bullet and the hint line under it) is
 // taken out. The markdown hashes are those of the outputs F-32 committed, which intentionally changed the
 // rendering (file rows sorted by coverage, a hint line under each message); the JSON reports did not change.
+// F-16 moved `### Messages` above `### Agent setup` on purpose, as F-32 changed the rendering before, so the
+// markdown hashes changed once more.
 const GOLDEN_JSON_SHA256 = "647b7ba7088c13dd9a35e1e543c82135e17d8d754c212f5768a6f1ddbfe49f3d";
-const GOLDEN_MD_SHA256 = "5094fad628951a453a0a436279c9c19850e5bfa8703fcd13db3a823c632f45ad";
+const GOLDEN_MD_SHA256 = "625c0fe399c49aca5aabdc560db4a1e412fac63d07c29d47b74e30c3b2783d43";
 const GOLDEN_COBERTURA_JSON_SHA256 = "4aa93c70eaf2e1f4f1b6d30d7fe2aecc0ff2373e5a67bd5323bfddd836e036dc";
-const GOLDEN_COBERTURA_MD_SHA256 = "5094fad628951a453a0a436279c9c19850e5bfa8703fcd13db3a823c632f45ad";
+const GOLDEN_COBERTURA_MD_SHA256 = "625c0fe399c49aca5aabdc560db4a1e412fac63d07c29d47b74e30c3b2783d43";
 // fixtures/golden-exclusions/report.{json,md} as committed before this change (the markdown as F-32 committed
 // it); they must not change.
 const EXCLUSIONS_JSON_SHA256 = "c4e07ded4197d694c9df1a91202a9ee741d1bf2376ce2ece5e62ba39f75a4e52";

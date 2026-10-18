@@ -193,6 +193,10 @@ flowchart LR
 > | `src/new.ts` | 50% | 1/2 | 5 |
 > | `src/utils/new-name.ts` | 100% | 1/1 |  |
 >
+> ### Messages
+>
+> - ❌ `DIFF_COVERAGE_BELOW_THRESHOLD` Diff coverage 71.43% is below the threshold of 80%.
+>
 > ### Agent setup
 >
 > Agent setup: 3 files · claude-code, codex, copilot, cursor
@@ -202,10 +206,6 @@ flowchart LR
 > | `.claude/settings.json` | claude-settings |
 > | `AGENTS.md` | agents-md |
 > | `CLAUDE.md` | claude-md |
->
-> ### Messages
->
-> - ❌ `DIFF_COVERAGE_BELOW_THRESHOLD` Diff coverage 71.43% is below the threshold of 80%.
 
 On PRs from forks the token cannot comment; pharn-ci then warns and uses the job summary only.
 
