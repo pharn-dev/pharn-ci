@@ -24575,7 +24575,7 @@ function createGitHubApi(opts) {
 
 // src/node-io.ts
 import { execFile } from "node:child_process";
-import { mkdir as mkdir2, readFile, writeFile as writeFile2 } from "node:fs/promises";
+import { mkdir as mkdir2, readdir as readdir2, readFile, writeFile as writeFile2 } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 var GIT_TIMEOUT_MS = 12e4;
 function createNodeIo(workspace2, opts = {}) {
@@ -24598,6 +24598,19 @@ function createNodeIo(workspace2, opts = {}) {
         return await readFile(path, "utf8");
       } catch (err) {
         if (err.code === "ENOENT") return null;
+        throw err;
+      }
+    },
+    listDir: async (path) => {
+      try {
+        const entries = await readdir2(path, { withFileTypes: true });
+        return entries.map((entry) => ({
+          name: entry.name,
+          kind: entry.isSymbolicLink() ? "symlink" : entry.isDirectory() ? "directory" : entry.isFile() ? "file" : "other"
+        }));
+      } catch (err) {
+        const code2 = err.code;
+        if (code2 === "ENOENT" || code2 === "ENOTDIR") return null;
         throw err;
       }
     },
@@ -24677,6 +24690,86 @@ function withRequestPolicy(build, opts = {}) {
 
 // ../core/src/coverage/types.ts
 var COVERAGE_FORMAT_SELECTIONS = ["lcov", "cobertura", "auto"];
+
+// ../core/src/glob.ts
+function compileGlob(pattern) {
+  const segments = pattern.split("/").map(compileSegment);
+  const end = segments.length;
+  let active = new Uint8Array(end + 1);
+  let next = new Uint8Array(end + 1);
+  const closure = (set) => {
+    for (let i = 0; i < end; i++) {
+      if (set[i] === 1 && segments[i].globstar) set[i + 1] = 1;
+    }
+  };
+  return (path) => {
+    active.fill(0);
+    active[0] = 1;
+    closure(active);
+    for (const text of path.split("/")) {
+      const cps = Array.from(text);
+      next.fill(0);
+      for (let i = 0; i < end; i++) {
+        if (active[i] !== 1) continue;
+        const segment = segments[i];
+        if (segment.globstar) next[i] = 1;
+        else if (segment.matches(cps, text)) next[i + 1] = 1;
+      }
+      closure(next);
+      const swap = active;
+      active = next;
+      next = swap;
+    }
+    return active[end] === 1;
+  };
+}
+function hasGlobSyntax(entry) {
+  return /[*?[\]{}]/.test(entry);
+}
+function compileSegment(segment) {
+  if (segment === "**") return { globstar: true, matches: () => false };
+  const tokens = [];
+  for (const cp of segment) {
+    if (cp === "*") {
+      if (tokens[tokens.length - 1]?.kind !== "star") tokens.push({ kind: "star" });
+    } else if (cp === "?") {
+      tokens.push({ kind: "any" });
+    } else {
+      tokens.push({ kind: "lit", cp });
+    }
+  }
+  if (tokens.every((t) => t.kind === "lit")) return { globstar: false, matches: (_cps, text) => text === segment };
+  const n = tokens.length;
+  let active = new Uint8Array(n + 1);
+  let next = new Uint8Array(n + 1);
+  const closure = (set) => {
+    for (let j = 0; j < n; j++) {
+      if (set[j] === 1 && tokens[j].kind === "star") set[j + 1] = 1;
+    }
+  };
+  return {
+    globstar: false,
+    matches: (cps) => {
+      active.fill(0);
+      active[0] = 1;
+      closure(active);
+      for (const cp of cps) {
+        next.fill(0);
+        for (let j = 0; j < n; j++) {
+          if (active[j] !== 1) continue;
+          const token = tokens[j];
+          if (token.kind === "star") next[j] = 1;
+          else if (token.kind === "any" || token.cp === cp) next[j + 1] = 1;
+        }
+        closure(next);
+        const swap = active;
+        active = next;
+        next = swap;
+      }
+      return active[n] === 1;
+    }
+  };
+}
 
 // ../core/src/paths.ts
 function normalizePath(path, repoRoot) {
@@ -24764,9 +24857,9 @@ function parseYamlSubset(text) {
     const indent = raw.length - raw.trimStart().length;
     const content = raw.trimStart();
     if (content.startsWith("- ") || content === "-") {
-      if (pendingKey && pendingKey.key === "exclude" && pendingKey.map === root.coverage && indent >= pendingKey.indent) {
+      if (pendingKey && LIST_KEYS.has(pendingKey.key) && pendingKey.map === root.coverage && indent >= pendingKey.indent) {
         const items = [];
-        pendingKey.map.exclude = items;
+        pendingKey.map[pendingKey.key] = items;
         list = { indent, items };
         pendingKey = null;
       } else if (list && indent !== list.indent) {
@@ -24799,7 +24892,7 @@ function parseYamlSubset(text) {
     if (value === void 0 || value === "") {
       pendingKey = { map: top.map, key, indent, line: lineNo };
     } else if (value.startsWith("[")) {
-      if (key !== "exclude" || top.map !== root.coverage) {
+      if (!LIST_KEYS.has(key) || top.map !== root.coverage) {
         throw new ConfigError(`line ${lineNo}: ${LISTS_ONLY_FOR_EXCLUDE}`);
       }
       top.map[key] = parseFlowList(value, lineNo);
@@ -24827,7 +24920,8 @@ function stripComment(line) {
 function unquoteScalarKey(key) {
   return /^["']/.test(key) ? key.slice(1, -1) : key;
 }
-var LISTS_ONLY_FOR_EXCLUDE = "lists are not supported in .pharn/ci.yml except as the value of coverage.exclude";
+var LIST_KEYS = /* @__PURE__ */ new Set(["exclude", "file"]);
+var LISTS_ONLY_FOR_EXCLUDE = "lists are not supported in .pharn/ci.yml except as the value of coverage.exclude or coverage.file";
 var USE_BLOCK_LIST = 'use a block list, one "- item" line per pattern';
 function parseListItem(content, lineNo) {
   const item = content.slice(1).trim();
@@ -24943,9 +25037,7 @@ function validateCoverage(cov) {
     if (value === null) continue;
     switch (key) {
       case "file":
-        if (typeof value !== "string" || value === "")
-          throw new ConfigError(`"coverage.file" must be a non-empty string`);
-        coverage.file = value;
+        coverage.file = validateCoverageFile(value);
         break;
       case "format":
         if (typeof value !== "string" || !isCoverageFormatSelection(value)) {
@@ -24978,6 +25070,25 @@ function validateCoverage(cov) {
     }
   }
   return coverage;
+}
+function validateCoverageFile(value) {
+  const label = '"coverage.file" pattern';
+  const one = (item) => hasGlobSyntax(item) ? parseExcludePattern(item, label) : item;
+  if (Array.isArray(value)) {
+    if (value.length === 0) throw new ConfigError(`"coverage.file" must not be an empty list`);
+    const entries = [];
+    for (const item of value) {
+      if (typeof item !== "string" || item === "") {
+        throw new ConfigError(`"coverage.file" items must be non-empty strings`);
+      }
+      entries.push(one(item));
+    }
+    return entries;
+  }
+  if (typeof value !== "string" || value === "") {
+    throw new ConfigError(`"coverage.file" must be a non-empty string`);
+  }
+  return one(value);
 }
 function parseExcludePattern(pattern, label = "exclude pattern") {
   let start = 0;
@@ -25471,6 +25582,22 @@ function suggestRoot(unmatched, repoFiles, coverageRoot) {
   return best;
 }
 
+// ../core/src/coverage/merge.ts
+function mergeCoverageMaps(maps) {
+  const merged = /* @__PURE__ */ new Map();
+  for (const map of maps) {
+    for (const [path, lines] of map) {
+      let target = merged.get(path);
+      if (target === void 0) {
+        target = /* @__PURE__ */ new Map();
+        merged.set(path, target);
+      }
+      for (const [line, hits] of lines) target.set(line, (target.get(line) ?? 0) + hits);
+    }
+  }
+  return merged;
+}
+
 // ../core/src/diff/unified.ts
 var HUNK_HEADER = /^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 function parseUnifiedDiff(text) {
@@ -25723,83 +25850,6 @@ function binaryCoveredPaths(diff, coverage) {
     else if (coverage.has(file.oldPath)) found.add(file.oldPath);
   }
   return [...found].sort(byCodeUnit);
-}
-
-// ../core/src/glob.ts
-function compileGlob(pattern) {
-  const segments = pattern.split("/").map(compileSegment);
-  const end = segments.length;
-  let active = new Uint8Array(end + 1);
-  let next = new Uint8Array(end + 1);
-  const closure = (set) => {
-    for (let i = 0; i < end; i++) {
-      if (set[i] === 1 && segments[i].globstar) set[i + 1] = 1;
-    }
-  };
-  return (path) => {
-    active.fill(0);
-    active[0] = 1;
-    closure(active);
-    for (const text of path.split("/")) {
-      const cps = Array.from(text);
-      next.fill(0);
-      for (let i = 0; i < end; i++) {
-        if (active[i] !== 1) continue;
-        const segment = segments[i];
-        if (segment.globstar) next[i] = 1;
-        else if (segment.matches(cps, text)) next[i + 1] = 1;
-      }
-      closure(next);
-      const swap = active;
-      active = next;
-      next = swap;
-    }
-    return active[end] === 1;
-  };
-}
-function compileSegment(segment) {
-  if (segment === "**") return { globstar: true, matches: () => false };
-  const tokens = [];
-  for (const cp of segment) {
-    if (cp === "*") {
-      if (tokens[tokens.length - 1]?.kind !== "star") tokens.push({ kind: "star" });
-    } else if (cp === "?") {
-      tokens.push({ kind: "any" });
-    } else {
-      tokens.push({ kind: "lit", cp });
-    }
-  }
-  if (tokens.every((t) => t.kind === "lit")) return { globstar: false, matches: (_cps, text) => text === segment };
-  const n = tokens.length;
-  let active = new Uint8Array(n + 1);
-  let next = new Uint8Array(n + 1);
-  const closure = (set) => {
-    for (let j = 0; j < n; j++) {
-      if (set[j] === 1 && tokens[j].kind === "star") set[j + 1] = 1;
-    }
-  };
-  return {
-    globstar: false,
-    matches: (cps) => {
-      active.fill(0);
-      active[0] = 1;
-      closure(active);
-      for (const cp of cps) {
-        next.fill(0);
-        for (let j = 0; j < n; j++) {
-          if (active[j] !== 1) continue;
-          const token = tokens[j];
-          if (token.kind === "star") next[j] = 1;
-          else if (token.kind === "any" || token.cp === cp) next[j + 1] = 1;
-        }
-        closure(next);
-        const swap = active;
-        active = next;
-        next = swap;
-      }
-      return active[n] === 1;
-    }
-  };
 }
 
 // ../core/src/setup/summary.ts
@@ -26106,7 +26156,27 @@ function check(input) {
   const agentSetup = scanAgentSetup(input.repoFiles);
   const parsedDiff = "text" in input.diff ? parseUnifiedDiff(input.diff.text) : null;
   const configPaths = parsedDiff === null ? [] : changedConfigPaths(parsedDiff, input.configPath, input.repoRoot);
-  const trackedCoverage = "text" in input.coverage ? trackedCoverageFile(input.coverage.file, input.repoRoot, input.repoFiles) : null;
+  const coverageInput = input.coverage;
+  let files;
+  let selection;
+  if ("files" in coverageInput) {
+    files = coverageInput.files;
+    selection = coverageInput.format;
+  } else if ("missingFile" in coverageInput) {
+    files = [coverageInput];
+    selection = "auto";
+  } else {
+    files = [
+      coverageInput.file === void 0 ? { text: coverageInput.text } : { text: coverageInput.text, file: coverageInput.file }
+    ];
+    selection = coverageInput.format;
+  }
+  let trackedCoverage = null;
+  for (const file of files) {
+    if (!("text" in file)) continue;
+    trackedCoverage = trackedCoverageFile(file.file, input.repoRoot, input.repoFiles);
+    if (trackedCoverage !== null) break;
+  }
   const bytes = input.repoFileBytes;
   const emptyAgentSetupFiles = bytes === void 0 ? [] : agentSetup.files.filter((file) => bytes.get(file.path) === 0).map((file) => file.path);
   const base = {
@@ -26118,12 +26188,14 @@ function check(input) {
     ...trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage },
     ...emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {}
   };
-  if ("missingFile" in input.coverage) {
-    return buildReport({
-      ...base,
-      diffCoverage: null,
-      missing: { reason: "coverage-file-missing", coverageFile: input.coverage.missingFile }
-    });
+  for (const file of files) {
+    if ("missingFile" in file) {
+      return buildReport({
+        ...base,
+        diffCoverage: null,
+        missing: { reason: "coverage-file-missing", coverageFile: file.missingFile }
+      });
+    }
   }
   if ("unavailable" in input.diff) {
     return buildReport({
@@ -26132,33 +26204,50 @@ function check(input) {
       missing: { reason: "diff-unavailable", detail: input.diff.unavailable }
     });
   }
-  const coverageFile = input.coverage.file ?? null;
-  const choice = chooseCoverageFormat(input.coverage.text, input.coverage.format);
-  if (choice.format === "empty") {
+  const maps = [];
+  const formats = /* @__PURE__ */ new Set();
+  for (const file of files) {
+    if ("missingFile" in file) continue;
+    const coverageFile = file.file ?? null;
+    const choice = chooseCoverageFormat(file.text, selection);
+    if (choice.format === "empty") {
+      return buildReport({
+        ...base,
+        diffCoverage: null,
+        missing: { reason: "coverage-file-empty", coverageFile }
+      });
+    }
+    if (choice.format === "unknown") {
+      return buildReport({
+        ...base,
+        diffCoverage: null,
+        missing: { reason: "coverage-format-unsupported", coverageFile }
+      });
+    }
+    const parsed = parseCoverage(file.text, choice.format, {
+      ...input.repoRoot === void 0 ? {} : { repoRoot: input.repoRoot },
+      ...coverageRoot === void 0 ? {} : { coverageRoot }
+    });
+    if (parsed.size === 0) {
+      return buildReport({
+        ...base,
+        diffCoverage: null,
+        missing: { reason: "coverage-file-empty", coverageFile }
+      });
+    }
+    formats.add(choice.format);
+    maps.push(parsed);
+  }
+  if (maps.length === 0) {
     return buildReport({
       ...base,
       diffCoverage: null,
-      missing: { reason: "coverage-file-empty", coverageFile }
+      missing: { reason: "coverage-file-empty", coverageFile: null }
     });
   }
-  if (choice.format === "unknown") {
-    return buildReport({
-      ...base,
-      diffCoverage: null,
-      missing: { reason: "coverage-format-unsupported", coverageFile }
-    });
-  }
-  const coverage = parseCoverage(input.coverage.text, choice.format, {
-    ...input.repoRoot === void 0 ? {} : { repoRoot: input.repoRoot },
-    ...coverageRoot === void 0 ? {} : { coverageRoot }
-  });
-  if (coverage.size === 0) {
-    return buildReport({
-      ...base,
-      diffCoverage: null,
-      missing: { reason: "coverage-file-empty", coverageFile }
-    });
-  }
+  const coverage = mergeCoverageMaps(maps);
+  const [onlyFormat] = formats;
+  const coverageFormat = formats.size === 1 ? onlyFormat : void 0;
   const diff = parsedDiff ?? [];
   const binaryPaths = binaryCoveredPaths(diff, coverage);
   let untrackedCoveragePaths = 0;
@@ -26181,11 +26270,96 @@ function check(input) {
   }
   return buildReport({
     ...base,
-    coverageFormat: choice.format,
+    ...coverageFormat === void 0 ? {} : { coverageFormat },
     diffCoverage: computeDiffCoverage(diff, coverage, input.threshold, isExcluded),
     ...untrackedCoveragePaths > 0 ? { untrackedCoveragePaths } : {},
     ...binaryPaths.length > 0 ? { binaryCoveredPaths: binaryPaths } : {}
   });
+}
+
+// ../core/src/globWalk.ts
+var WalkLimitError = class extends Error {
+  constructor(limit) {
+    super(`the glob walk exceeded its ${limit} limit`);
+    this.limit = limit;
+  }
+  limit;
+  name = "WalkLimitError";
+};
+async function walkGlob(pattern, listDir, budget, limits) {
+  const segments = pattern.split("/");
+  const globstar = segments.indexOf("**");
+  const matchers = segments.map((segment) => segment === "**" ? null : compileGlob(segment));
+  const full = compileGlob(pattern);
+  const last = segments.length - 1;
+  const found = [];
+  const pending = [{ dir: "", depth: 0 }];
+  for (let item = pending.pop(); item !== void 0; item = pending.pop()) {
+    const { dir, depth } = item;
+    const entries = await listDir(dir);
+    if (entries === null) continue;
+    budget.entries += entries.length;
+    if (budget.entries > limits.entries) throw new WalkLimitError("entries");
+    const beforeGlobstar = globstar === -1 || depth < globstar;
+    for (const entry of entries) {
+      if (entry.kind === "symlink" || entry.kind === "other") continue;
+      const path = dir === "" ? entry.name : `${dir}/${entry.name}`;
+      if (entry.kind === "file") {
+        if (!full(path)) continue;
+        budget.files++;
+        if (budget.files > limits.files) throw new WalkLimitError("files");
+        found.push(path);
+        continue;
+      }
+      if (entry.name === ".git" || entry.name === "node_modules") {
+        if (beforeGlobstar && depth < last && segments[depth] === entry.name)
+          pending.push({ dir: path, depth: depth + 1 });
+        continue;
+      }
+      if (!beforeGlobstar) {
+        pending.push({ dir: path, depth: depth + 1 });
+      } else if (depth < last && matchers[depth](entry.name)) {
+        pending.push({ dir: path, depth: depth + 1 });
+      }
+    }
+  }
+  return found.sort();
+}
+
+// ../core/src/coverageEntries.ts
+var MAX_COVERAGE_GLOB_FILES = 1e3;
+var MAX_COVERAGE_WALK_ENTRIES = 1e5;
+function coverageEntryList(path) {
+  return typeof path === "string" ? [path] : [...path];
+}
+function parseCoverageEntries(entries, label) {
+  return entries.map((entry) => {
+    if (!hasGlobSyntax(entry)) return { kind: "literal", entry };
+    return { kind: "glob", entry, pattern: parseExcludePattern(entry, label) };
+  });
+}
+async function expandCoverageEntries(entries, listDir, label) {
+  const budget = { files: 0, entries: 0 };
+  const limits = { files: MAX_COVERAGE_GLOB_FILES, entries: MAX_COVERAGE_WALK_ENTRIES };
+  const expanded = [];
+  for (const item of entries) {
+    if (item.kind === "literal") {
+      expanded.push(item);
+      continue;
+    }
+    let paths;
+    try {
+      paths = await walkGlob(item.pattern, listDir, budget, limits);
+    } catch (err) {
+      if (!(err instanceof WalkLimitError)) throw err;
+      throw new ConfigError(
+        err.limit === "files" ? `${label} "${item.entry}" matched more than 1,000 files; the limit is 1,000 coverage files per run` : `${label} "${item.entry}": the glob walk limit was exceeded (more than 100,000 directory entries visited in one run)`
+      );
+    }
+    if (paths.length === 0) expanded.push({ kind: "no-match", glob: item.entry });
+    for (const path of paths) expanded.push({ kind: "match", glob: item.entry, path });
+  }
+  return expanded;
 }
 
 // ../core/src/inputs.ts
@@ -26212,7 +26386,14 @@ function resolveInputs(config, raw, text) {
     errors.push(new InputError("coverageFormat", text.coverageFormat(coverageFormat)));
   }
   const threshold = raw.threshold !== void 0 ? attempt("threshold", () => parseThreshold(raw.threshold, text.threshold)) : config.coverage?.threshold ?? null;
-  const coverageFile = raw.coverageFile !== void 0 ? { path: raw.coverageFile, fromConfig: false } : config.coverage?.file !== void 0 ? { path: config.coverage.file, fromConfig: true } : void 0;
+  const givenCoverageFile = typeof raw.coverageFile === "object" && raw.coverageFile.length === 0 ? void 0 : raw.coverageFile;
+  if (givenCoverageFile !== void 0) {
+    attempt(
+      "coverageFile",
+      () => parseCoverageEntries(coverageEntryList(givenCoverageFile), text.coverageFile ?? "coverage file")
+    );
+  }
+  const coverageFile = givenCoverageFile !== void 0 ? { path: givenCoverageFile, fromConfig: false } : config.coverage?.file !== void 0 ? { path: config.coverage.file, fromConfig: true } : void 0;
   if (coverageFile === void 0) errors.push(new InputError("coverageFile", text.noCoverageFile));
   const exclude = attempt("exclude", () => (raw.exclude ?? []).map((p) => parseExcludePattern(p, text.exclude)));
   const coverageRoot = raw.coverageRoot !== void 0 ? attempt("coverageRoot", () => parseCoverageRoot(raw.coverageRoot, text.coverageRoot)) : config.coverage?.root;
@@ -26457,6 +26638,7 @@ var DEFAULT_CONFIG = ".pharn/ci.yml";
 var INPUT_ERRORS = {
   coverageFormat: (value) => `coverage-format "${value}" is not supported (supported: lcov, cobertura, auto)`,
   threshold: "threshold",
+  coverageFile: "coverage-file",
   exclude: "exclude",
   coverageRoot: "coverage-root",
   noCoverageFile: "no coverage file: set the coverage-file input or coverage.file in .pharn/ci.yml"
@@ -26501,7 +26683,7 @@ async function runUnsafe(deps) {
   const resolved = resolveInputs(
     config,
     {
-      coverageFile: input("coverage-file") || void 0,
+      coverageFile: splitLines(input("coverage-file")),
       coverageFormat: input("coverage-format") || void 0,
       threshold: input("threshold") || void 0,
       exclude: splitPatternList(input("exclude")),
@@ -26512,13 +26694,35 @@ async function runUnsafe(deps) {
   );
   if (!resolved.ok) throw resolved.errors[0];
   const { coverageFormat: format, threshold, exclude, coverageRoot, requireAgentSetup } = resolved.inputs;
-  const coverageFile = resolved.inputs.coverageFile.path;
   const failOnThreshold = parseBool(input("fail-on-threshold"), "fail-on-threshold") ?? true;
   const comment = parseBool(input("comment"), "comment") ?? true;
   const target = !pr && prNumber !== void 0 ? await resolvePrNumberTarget(deps, { prNumber, headSha }) : void 0;
-  const coveragePath = deps.resolvePath(deps.workspace, coverageFile);
-  const coverageText = await deps.readFile(coveragePath);
-  if (coverageText !== null) deps.info(coverageChoiceLine(chooseCoverageFormat(coverageText, format)));
+  const coverageLabel = resolved.inputs.coverageFile.fromConfig ? '"coverage.file"' : "coverage-file";
+  const entries = parseCoverageEntries(coverageEntryList(resolved.inputs.coverageFile.path), coverageLabel);
+  const expanded = await expandCoverageEntries(
+    entries,
+    (dir) => deps.listDir(deps.resolvePath(deps.workspace, dir)),
+    coverageLabel
+  );
+  const coverageFiles = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const item of expanded) {
+    if (item.kind === "no-match") {
+      coverageFiles.push({ missingFile: item.glob });
+      continue;
+    }
+    const name = item.kind === "literal" ? item.entry : item.path;
+    const coveragePath = deps.resolvePath(deps.workspace, name);
+    if (seen.has(coveragePath)) continue;
+    seen.add(coveragePath);
+    const coverageText = await deps.readFile(coveragePath);
+    if (coverageText === null) {
+      coverageFiles.push({ missingFile: name });
+      continue;
+    }
+    deps.info(coverageChoiceLine(chooseCoverageFormat(coverageText, format)));
+    coverageFiles.push({ text: coverageText, file: name });
+  }
   const repoFiles = await trackedFiles(target, deps);
   const lsTree = target ? null : await deps.git(["ls-tree", "-r", "-l", "-z", "--full-tree", "HEAD"]).catch((err) => {
     deps.warning(`git ls-tree failed, so empty agent setup files are not reported: ${String(err)}`);
@@ -26526,7 +26730,7 @@ async function runUnsafe(deps) {
   });
   const checkInput = {
     version: VERSION7,
-    coverage: coverageText === null ? { missingFile: coverageFile } : { text: coverageText, format, file: coverageFile },
+    coverage: { files: coverageFiles, format },
     diff: await getDiff(input("base-ref"), deps, target),
     repoRoot: deps.workspace,
     threshold,
@@ -26763,6 +26967,10 @@ async function loadConfig(explicit, deps) {
 }
 function splitPatternList(value) {
   return value.split(",").flatMap((part) => part.split("\n")).map((entry) => entry.trim()).filter((entry) => entry !== "");
+}
+function splitLines(value) {
+  const entries = value.split(/\r?\n/).map((entry) => entry.trim()).filter((entry) => entry !== "");
+  return entries.length > 1 ? entries : entries[0];
 }
 function parseBool(value, name) {
   if (value === "") return void 0;

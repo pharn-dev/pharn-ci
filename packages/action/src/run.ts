@@ -1,12 +1,17 @@
 import {
   type CheckInput,
+  type CoverageFileInput,
   check,
   chooseCoverageFormat,
   coverageChoiceLine,
+  coverageEntryList,
+  type DirEntry,
+  expandCoverageEntries,
   gitDiffArgs,
   type InputErrorText,
   type PharnConfig,
   parseConfig,
+  parseCoverageEntries,
   parseLsTreeSizes,
   type Report,
   renderMarkdown,
@@ -80,6 +85,11 @@ export interface ActionDeps {
   api: GitHubApi;
   git(args: string[]): Promise<string>;
   readFile(path: string): Promise<string | null>;
+  /**
+   * The entries of a directory, with symbolic links reported as such and never followed; null when the
+   * directory does not exist or is not a directory. Only called to expand a coverage glob.
+   */
+  listDir(path: string): Promise<DirEntry[] | null>;
   writeFile(path: string, text: string): Promise<void>;
   resolvePath(...segments: string[]): string;
   info(message: string): void;
@@ -98,6 +108,7 @@ const DEFAULT_CONFIG = ".pharn/ci.yml";
 const INPUT_ERRORS: InputErrorText = {
   coverageFormat: (value) => `coverage-format "${value}" is not supported (supported: lcov, cobertura, auto)`,
   threshold: "threshold",
+  coverageFile: "coverage-file",
   exclude: "exclude",
   coverageRoot: "coverage-root",
   noCoverageFile: "no coverage file: set the coverage-file input or coverage.file in .pharn/ci.yml",
@@ -167,7 +178,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const resolved = resolveInputs(
     config,
     {
-      coverageFile: input("coverage-file") || undefined,
+      coverageFile: splitLines(input("coverage-file")),
       coverageFormat: input("coverage-format") || undefined,
       threshold: input("threshold") || undefined,
       exclude: splitPatternList(input("exclude")),
@@ -178,7 +189,6 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   );
   if (!resolved.ok) throw resolved.errors[0];
   const { coverageFormat: format, threshold, exclude, coverageRoot, requireAgentSetup } = resolved.inputs;
-  const coverageFile = resolved.inputs.coverageFile.path;
   const failOnThreshold = parseBool(input("fail-on-threshold"), "fail-on-threshold") ?? true;
   const comment = parseBool(input("comment"), "comment") ?? true;
 
@@ -186,9 +196,34 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   // measured, so a stale or forged target fails first.
   const target = !pr && prNumber !== undefined ? await resolvePrNumberTarget(deps, { prNumber, headSha }) : undefined;
 
-  const coveragePath = deps.resolvePath(deps.workspace, coverageFile);
-  const coverageText = await deps.readFile(coveragePath);
-  if (coverageText !== null) deps.info(coverageChoiceLine(chooseCoverageFormat(coverageText, format)));
+  // Entries are relative to the workspace, from the input and from the config alike.
+  const coverageLabel = resolved.inputs.coverageFile.fromConfig ? '"coverage.file"' : "coverage-file";
+  const entries = parseCoverageEntries(coverageEntryList(resolved.inputs.coverageFile.path), coverageLabel);
+  const expanded = await expandCoverageEntries(
+    entries,
+    (dir) => deps.listDir(deps.resolvePath(deps.workspace, dir)),
+    coverageLabel,
+  );
+  // Every entry is resolved and every file read before the check; a file reached twice is read once.
+  const coverageFiles: CoverageFileInput[] = [];
+  const seen = new Set<string>();
+  for (const item of expanded) {
+    if (item.kind === "no-match") {
+      coverageFiles.push({ missingFile: item.glob });
+      continue;
+    }
+    const name = item.kind === "literal" ? item.entry : item.path;
+    const coveragePath = deps.resolvePath(deps.workspace, name);
+    if (seen.has(coveragePath)) continue;
+    seen.add(coveragePath);
+    const coverageText = await deps.readFile(coveragePath);
+    if (coverageText === null) {
+      coverageFiles.push({ missingFile: name });
+      continue;
+    }
+    deps.info(coverageChoiceLine(chooseCoverageFormat(coverageText, format)));
+    coverageFiles.push({ text: coverageText, file: name });
+  }
 
   const repoFiles = await trackedFiles(target, deps);
   // File sizes in HEAD, so an empty agent setup file can be reported. Optional: without them the check still runs.
@@ -202,8 +237,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
 
   const checkInput: CheckInput = {
     version: VERSION,
-    coverage:
-      coverageText === null ? { missingFile: coverageFile } : { text: coverageText, format, file: coverageFile },
+    coverage: { files: coverageFiles, format },
     diff: await getDiff(input("base-ref"), deps, target),
     repoRoot: deps.workspace,
     threshold,
@@ -556,6 +590,18 @@ function splitPatternList(value: string): string[] {
     .flatMap((part) => part.split("\n"))
     .map((entry) => entry.trim())
     .filter((entry) => entry !== "");
+}
+
+/**
+ * Entries of a list input, one per line (commas are part of a path); surrounding spaces and blank lines are
+ * dropped. One entry is that string, several are a list, none is not given (undefined).
+ */
+function splitLines(value: string): string | string[] | undefined {
+  const entries = value
+    .split(/\r?\n/)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry !== "");
+  return entries.length > 1 ? entries : entries[0];
 }
 
 /** An empty input is not given (undefined). */

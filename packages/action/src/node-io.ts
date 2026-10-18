@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import * as core from "@actions/core";
 import type { ActionDeps } from "./run.js";
@@ -11,7 +11,7 @@ export const GIT_TIMEOUT_MS = 120_000;
 export function createNodeIo(
   workspace: string,
   opts: { gitTimeoutMs?: number } = {},
-): Pick<ActionDeps, "git" | "readFile" | "writeFile" | "resolvePath" | "writeSummary"> {
+): Pick<ActionDeps, "git" | "readFile" | "listDir" | "writeFile" | "resolvePath" | "writeSummary"> {
   const timeout = opts.gitTimeoutMs ?? GIT_TIMEOUT_MS;
   return {
     git: (args) =>
@@ -32,6 +32,26 @@ export function createNodeIo(
         return await readFile(path, "utf8");
       } catch (err) {
         if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
+        throw err;
+      }
+    },
+    listDir: async (path) => {
+      try {
+        const entries = await readdir(path, { withFileTypes: true });
+        // A symbolic link is reported as one (Node does not follow it here), whatever it points to.
+        return entries.map((entry) => ({
+          name: entry.name,
+          kind: entry.isSymbolicLink()
+            ? ("symlink" as const)
+            : entry.isDirectory()
+              ? ("directory" as const)
+              : entry.isFile()
+                ? ("file" as const)
+                : ("other" as const),
+        }));
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException).code;
+        if (code === "ENOENT" || code === "ENOTDIR") return null;
         throw err;
       }
     },

@@ -7,6 +7,7 @@ import {
   parseThreshold,
 } from "./config.js";
 import type { CoverageFormatSelection } from "./coverage/types.js";
+import { coverageEntryList, parseCoverageEntries } from "./coverageEntries.js";
 
 /**
  * Settings as the CLI flags or Action inputs gave them, before `.pharn/ci.yml` is applied.
@@ -14,7 +15,8 @@ import type { CoverageFormatSelection } from "./coverage/types.js";
  * empty input as not given, the CLI does not).
  */
 export interface RawInputs {
-  coverageFile?: string | undefined;
+  /** One path or glob, or a list of them; an empty list counts as not given. */
+  coverageFile?: string | readonly string[] | undefined;
   coverageFormat?: string | undefined;
   threshold?: string | undefined;
   exclude?: readonly string[] | undefined;
@@ -28,6 +30,8 @@ export interface InputErrorText {
   coverageFormat(value: string): string;
   /** Label for a threshold that is not a number between 0 and 100. */
   threshold: string;
+  /** Label for a coverage file glob the matcher does not support. Defaults to "coverage file". */
+  coverageFile?: string;
   /** Label for an exclusion pattern the matcher does not support. */
   exclude: string;
   /** Label for a coverage root that is not a repo-relative directory. */
@@ -38,8 +42,11 @@ export interface InputErrorText {
 
 /** The settings a run uses: inputs first, then `.pharn/ci.yml`, then the defaults. */
 export interface ResolvedInputs {
-  /** The coverage file as given, unresolved; `fromConfig` says which base directory it is relative to. */
-  coverageFile: { path: string; fromConfig: boolean };
+  /**
+   * The coverage file (or the list of files and globs) as given, unresolved; `fromConfig` says which base
+   * directory it is relative to.
+   */
+  coverageFile: { path: string | readonly string[]; fromConfig: boolean };
   coverageFormat: CoverageFormatSelection;
   threshold: number | null;
   /** Config patterns first, then the input's; all validated and normalized. */
@@ -91,9 +98,17 @@ export function resolveInputs(config: PharnConfig, raw: RawInputs, text: InputEr
       ? attempt("threshold", () => parseThreshold(raw.threshold, text.threshold))
       : (config.coverage?.threshold ?? null);
 
+  const givenCoverageFile =
+    typeof raw.coverageFile === "object" && raw.coverageFile.length === 0 ? undefined : raw.coverageFile;
+  if (givenCoverageFile !== undefined) {
+    // Entries with glob syntax follow the exclusion rules; a literal path is taken as given.
+    attempt("coverageFile", () =>
+      parseCoverageEntries(coverageEntryList(givenCoverageFile), text.coverageFile ?? "coverage file"),
+    );
+  }
   const coverageFile =
-    raw.coverageFile !== undefined
-      ? { path: raw.coverageFile, fromConfig: false }
+    givenCoverageFile !== undefined
+      ? { path: givenCoverageFile, fromConfig: false }
       : config.coverage?.file !== undefined
         ? { path: config.coverage.file, fromConfig: true }
         : undefined;

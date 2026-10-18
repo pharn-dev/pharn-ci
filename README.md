@@ -134,7 +134,9 @@ is a floor, not a verdict on quality: it says what was measured and, just as pla
 
 ## Quick start
 
-Add a workflow that runs your tests with lcov or Cobertura XML output, then pharn-ci:
+Add a workflow that runs your tests with lcov or Cobertura XML output, then pharn-ci. With vitest,
+`@vitest/coverage-v8` must be a dev dependency of the project (`npm install --save-dev
+@vitest/coverage-v8`); without it `vitest run --coverage` aborts and writes no report:
 
 ```yaml
 # .github/workflows/pharn-ci.yml
@@ -180,6 +182,38 @@ cutting a normal run short; without it, a stuck step runs until the job's 6-hour
 Release tags are exact versions (`v0.1.0`), never moved or deleted, but they are unsigned
 lightweight tags, so there is no tag signature to verify. Pinning the tag's full commit SHA is the
 integrity control; Dependabot keeps either up to date.
+
+### Coverage per ecosystem
+
+Point `coverage-file` at what your test run writes. Each of these tools produces a format pharn-ci
+reads (`coverage-format: auto` detects lcov or Cobertura XML per file):
+
+| Ecosystem       | Produce the report                                                         | `coverage-file`                                  |
+| --------------- | -------------------------------------------------------------------------- | ------------------------------------------------ |
+| vitest          | `npx vitest run --coverage --coverage.reporter=lcov` (needs `@vitest/coverage-v8`) | `coverage/lcov.info`                     |
+| jest            | `npx jest --coverage --coverageReporters=lcov`                             | `coverage/lcov.info`                             |
+| pytest-cov      | `pytest --cov --cov-report=xml` (Cobertura XML)                            | `coverage.xml`                                   |
+| coverlet (.NET) | `dotnet test --collect:"XPlat Code Coverage"` (Cobertura XML)              | `TestResults/**/coverage.cobertura.xml`          |
+| cargo-llvm-cov  | `cargo llvm-cov --lcov --output-path lcov.info`                            | `lcov.info`                                      |
+| Go              | `go test -coverprofile=cover.out ./...`, then `gcov2lcov -infile cover.out -outfile lcov.info` | `lcov.info`                  |
+| JaCoCo / Kover  | Convert the JaCoCo or Kover XML to Cobertura XML with a converter; the native XML is not read | the converted file                |
+
+`coverage-file` takes one entry per line, each a path or a glob, relative to the workspace. All the
+files are merged, and a line's hits are summed across them. A monorepo with a report per package:
+
+```yaml
+# the `with:` of the pharn-ci step
+with:
+  coverage-file: |
+    packages/*/coverage/lcov.info
+    tools/cli/coverage.xml
+  threshold: 80
+```
+
+`coverage-root` applies to every file. If each package's report writes paths relative to that
+package (`SF:src/index.ts`), have the test runner write absolute paths or paths from the repository
+root instead; otherwise those paths match no tracked file and pharn-ci reports
+`COVERAGE_PATHS_UNMATCHED` or `COVERAGE_PATHS_PARTIALLY_UNMATCHED`.
 
 ---
 
@@ -245,7 +279,7 @@ line. Matrix legs of one job share that scope, and so one comment.
 
 | Input               | Default                     |                                          |
 | ------------------- | --------------------------- | ---------------------------------------- |
-| `coverage-file`     | `coverage.file` from config | Path to the coverage report              |
+| `coverage-file`     | `coverage.file` from config | Coverage report paths or globs (`*`, `**`, `?`), one per line, relative to the workspace; all are merged ([Coverage per ecosystem](#coverage-per-ecosystem)) |
 | `coverage-format`   | `coverage.format`, then `auto` | `lcov`, `cobertura` or `auto` (detect it from the start of the file) |
 | `coverage-root`     | `coverage.root`, then the repo root | Directory relative coverage paths start from, e.g. `packages/core` in a monorepo |
 | `threshold`         | `coverage.threshold` from config, then none | Minimum diff coverage %, inclusive       |
@@ -371,11 +405,14 @@ node packages/cli/dist/index.js check --coverage coverage/lcov.info --threshold 
 ```
 
 ```text
-pharn-ci check [--coverage <file>] [--coverage-format lcov|cobertura|auto] [--coverage-root <dir>]
+pharn-ci check [--coverage <file|glob>]... [--coverage-format lcov|cobertura|auto] [--coverage-root <dir>]
                [--base <ref>] [--threshold <n>] [--format md|json] [--config <path>]
                [--exclude <glob>]... [--require-agent-setup] [-h|--help] [-v|--version]
 ```
 
+- `--coverage <file|glob>` is repeatable. A glob (`*`, `**`, `?`) is relative to the current
+  directory; entries in `coverage.file` are relative to the repo root. The files are merged with
+  hits summed ([Coverage files and globs](#coverage-files-and-globs) for the rules and limits).
 - `--coverage-root <dir>` is the directory that relative coverage paths start from, for a
   package-relative report in a monorepo (`SF:src/a.ts` with `--coverage-root packages/core` is
   `packages/core/src/a.ts`). The flag wins over `coverage.root`, which wins over none (the repo
@@ -404,7 +441,7 @@ The CLI is not published to npm yet; build it from source.
 
 ```yaml
 coverage:
-  file: coverage/lcov.info
+  file: coverage/lcov.info # or a list of paths and globs, see "Coverage files and globs" below
   format: auto # lcov, cobertura or auto (the default)
   threshold: 80
   exclude:
@@ -414,6 +451,22 @@ coverage:
 setup:
   require: false # true fails the check when the repo has no agent setup files
 ```
+
+### Coverage files and globs
+
+`coverage.file` is one path, or a list of paths and globs (a block list, or a one-line list such as
+`file: [coverage/lcov.info, "packages/*/coverage/lcov.info"]`). The `--coverage` flag and the
+`coverage-file` input take the same entries.
+
+- An entry with `*`, `**` or `?` is a glob: the same subset as [exclusions](#excluding-files),
+  relative to its base, with a leading `*` quoted in YAML. An entry with `[`, `]`, `{` or `}` is
+  rejected as unsupported glob syntax, so is a leading `/` or `..`. Any other entry is a literal path.
+- The walk skips `.git` and `node_modules` unless the pattern names them, and never follows a
+  symbolic link. It stops at 1,000 matched files or 100,000 visited directory entries per run
+  (exit code 2 on the CLI, a failed step in the Action).
+- An entry that finds nothing is `COVERAGE_FILE_MISSING`, naming it.
+- The files are merged: a line's hit counts are summed, so a line covered in any file is covered.
+  `auto` detects the format per file; the report names a format only when every file is the same.
 
 ### Excluding files
 

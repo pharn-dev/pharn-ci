@@ -1,4 +1,4 @@
-export { type CheckInput, check } from "./check.js";
+export { type CheckInput, type CoverageFileInput, check } from "./check.js";
 export {
   ConfigError,
   isCoverageFormatSelection,
@@ -18,6 +18,7 @@ export {
 } from "./coverage/detect.js";
 export { parseCoverage } from "./coverage/index.js";
 export { parseLcov } from "./coverage/lcov.js";
+export { mergeCoverageMaps } from "./coverage/merge.js";
 export {
   COVERAGE_FORMAT_SELECTIONS,
   COVERAGE_FORMATS,
@@ -27,9 +28,19 @@ export {
   type LineHits,
   type ParseCoverageOptions,
 } from "./coverage/types.js";
+export {
+  type CoverageEntry,
+  coverageEntryList,
+  type ExpandedCoverageEntry,
+  expandCoverageEntries,
+  MAX_COVERAGE_GLOB_FILES,
+  MAX_COVERAGE_WALK_ENTRIES,
+  parseCoverageEntries,
+} from "./coverageEntries.js";
 export { type DiffFile, type DiffFileStatus, parseUnifiedDiff } from "./diff/unified.js";
 export { computeDiffCoverage, type DiffCoverageFile, type DiffCoverageResult } from "./diffCoverage.js";
-export { compileGlob, matchGlob } from "./glob.js";
+export { compileGlob, hasGlobSyntax, matchGlob } from "./glob.js";
+export type { DirEntry, ListDir } from "./globWalk.js";
 export {
   gitDiffArgs,
   InputError,

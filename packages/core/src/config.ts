@@ -1,10 +1,15 @@
 import { COVERAGE_FORMAT_SELECTIONS, type CoverageFormatSelection } from "./coverage/types.js";
+import { hasGlobSyntax } from "./glob.js";
 import { isAbsolutePath } from "./paths.js";
 
 /** Shape of `.pharn/ci.yml`. Every field is optional; CLI/Action inputs override it. */
 export interface PharnConfig {
   coverage?: {
-    file?: string;
+    /**
+     * Coverage report path or glob, or a list of them. A string stays a string; entries with glob syntax are
+     * validated and normalized, literal paths are kept as written.
+     */
+    file?: string | string[];
     format?: CoverageFormatSelection;
     threshold?: number;
     /** Glob patterns of changed files left out of diff coverage (validated and normalized). */
@@ -39,8 +44,9 @@ const SINGLE_QUOTED = /^'(?:[^']|'')*'$/;
  * Supports the YAML subset the config needs — nested block mappings, comments,
  * quoted/plain strings, numbers, booleans, null — and rejects anything else
  * with a clear error, naming the supported alternative, instead of guessing. A
- * list is read only as the value of `coverage.exclude`: a block list (`- item`
- * lines) or a one-line flow list of scalars (`[a, "b"]`). Avoids a YAML dependency.
+ * list is read only as the value of `coverage.exclude` or `coverage.file`: a block
+ * list (`- item` lines) or a one-line flow list of scalars (`[a, "b"]`). Avoids a
+ * YAML dependency.
  */
 export function parseConfig(text: string): PharnConfig {
   return validateConfig(parseYamlSubset(text));
@@ -51,7 +57,7 @@ export function parseYamlSubset(text: string): YamlMap {
   // Stack of open mappings with the indent of their keys.
   const stack: Array<{ indent: number; map: YamlMap }> = [{ indent: 0, map: root }];
   let pendingKey: { map: YamlMap; key: string; indent: number; line: number } | null = null;
-  // The block list currently being read (only ever the value of coverage.exclude).
+  // The block list currently being read (only ever the value of coverage.exclude or coverage.file).
   let list: { indent: number; items: Scalar[] } | null = null;
 
   const lines = text.replace(/^﻿/, "").split(/\r?\n/);
@@ -71,12 +77,12 @@ export function parseYamlSubset(text: string): YamlMap {
     if (content.startsWith("- ") || content === "-") {
       if (
         pendingKey &&
-        pendingKey.key === "exclude" &&
+        LIST_KEYS.has(pendingKey.key) &&
         pendingKey.map === root.coverage &&
         indent >= pendingKey.indent
       ) {
         const items: Scalar[] = [];
-        pendingKey.map.exclude = items;
+        pendingKey.map[pendingKey.key] = items;
         list = { indent, items };
         pendingKey = null;
       } else if (list && indent !== list.indent) {
@@ -113,7 +119,7 @@ export function parseYamlSubset(text: string): YamlMap {
     if (value === undefined || value === "") {
       pendingKey = { map: top.map, key, indent, line: lineNo };
     } else if (value.startsWith("[")) {
-      if (key !== "exclude" || top.map !== root.coverage) {
+      if (!LIST_KEYS.has(key) || top.map !== root.coverage) {
         throw new ConfigError(`line ${lineNo}: ${LISTS_ONLY_FOR_EXCLUDE}`);
       }
       top.map[key] = parseFlowList(value, lineNo);
@@ -144,7 +150,10 @@ function unquoteScalarKey(key: string): string {
   return /^["']/.test(key) ? key.slice(1, -1) : key;
 }
 
-const LISTS_ONLY_FOR_EXCLUDE = "lists are not supported in .pharn/ci.yml except as the value of coverage.exclude";
+/** The keys under `coverage` that may hold a list. */
+const LIST_KEYS: ReadonlySet<string> = new Set(["exclude", "file"]);
+const LISTS_ONLY_FOR_EXCLUDE =
+  "lists are not supported in .pharn/ci.yml except as the value of coverage.exclude or coverage.file";
 const USE_BLOCK_LIST = 'use a block list, one "- item" line per pattern';
 
 /** One `- item` line of a block list; `content` is the trimmed line, comment already stripped. */
@@ -282,9 +291,7 @@ function validateCoverage(cov: YamlMap[string] | undefined): PharnConfig["covera
     if (value === null) continue;
     switch (key) {
       case "file":
-        if (typeof value !== "string" || value === "")
-          throw new ConfigError(`"coverage.file" must be a non-empty string`);
-        coverage.file = value;
+        coverage.file = validateCoverageFile(value);
         break;
       case "format":
         if (typeof value !== "string" || !isCoverageFormatSelection(value)) {
@@ -317,6 +324,30 @@ function validateCoverage(cov: YamlMap[string] | undefined): PharnConfig["covera
     }
   }
   return coverage;
+}
+
+/**
+ * `coverage.file`: a non-empty string, or a non-empty list of non-empty strings. Entries with glob syntax
+ * are validated with the exclusion rules and stored normalized; literal paths are stored as written.
+ */
+function validateCoverageFile(value: YamlMap[string]): string | string[] {
+  const label = '"coverage.file" pattern';
+  const one = (item: string): string => (hasGlobSyntax(item) ? parseExcludePattern(item, label) : item);
+  if (Array.isArray(value)) {
+    if (value.length === 0) throw new ConfigError(`"coverage.file" must not be an empty list`);
+    const entries: string[] = [];
+    for (const item of value) {
+      if (typeof item !== "string" || item === "") {
+        throw new ConfigError(`"coverage.file" items must be non-empty strings`);
+      }
+      entries.push(one(item));
+    }
+    return entries;
+  }
+  if (typeof value !== "string" || value === "") {
+    throw new ConfigError(`"coverage.file" must be a non-empty string`);
+  }
+  return one(value);
 }
 
 /**

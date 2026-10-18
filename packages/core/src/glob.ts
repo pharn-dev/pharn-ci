@@ -60,6 +60,15 @@ export function compileGlob(pattern: string): (path: string) => boolean {
   };
 }
 
+/**
+ * Whether a coverage entry is a pattern rather than a literal path: it contains `*`, `?`, `[`, `]`, `{` or
+ * `}`. The bracket and brace characters are not supported syntax, but they still mark the entry as a pattern,
+ * so validation rejects it instead of reading a file of that name.
+ */
+export function hasGlobSyntax(entry: string): boolean {
+  return /[*?[\]{}]/.test(entry);
+}
+
 /** Whether `path` matches `pattern`; `compileGlob(pattern)(path)`. */
 export function matchGlob(pattern: string, path: string): boolean {
   return compileGlob(pattern)(path);
