@@ -1,0 +1,14 @@
+diff --git a/tests/a.py b/tests/a.py
+deleted file mode 100644
+index 5555555..0000000
+--- a/tests/a.py
++++ /dev/null
+@@ -1,2 +0,0 @@
+-def test_a():
+-    assert True
+diff --git a/src/app.ts b/src/app.ts
+index 1111111..2222222 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -1,0 +2 @@
++export const b = 2;

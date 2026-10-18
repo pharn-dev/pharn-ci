@@ -10,6 +10,7 @@ import { binaryCoveredPaths, changedConfigPaths, trackedCoverageFile } from "./g
 import { compileGlob } from "./glob.js";
 import { buildReport, type Report } from "./report.js";
 import { scanAgentSetup } from "./setup/scan.js";
+import { deletedTestFiles } from "./testFiles.js";
 
 /** One coverage file of a multi-file input: its contents (and the path it came from, for messages), or the path that was not found. */
 export type CoverageFileInput = { text: string; file?: string } | { missingFile: string };
@@ -65,9 +66,11 @@ export function check(input: CheckInput): Report {
   const coverageRoot =
     input.coverageRoot === undefined ? undefined : parseCoverageRoot(input.coverageRoot, "coverage root");
   const agentSetup = scanAgentSetup(input.repoFiles);
-  // The change under review can edit the inputs of its own grade; these findings ride on every report path.
+  // The change under review can edit the inputs of its own grade or delete the tests that guard it; these
+  // findings (gate inputs and deleted test files) ride on every report path where the diff is available.
   const parsedDiff = "text" in input.diff ? parseUnifiedDiff(input.diff.text) : null;
   const configPaths = parsedDiff === null ? [] : changedConfigPaths(parsedDiff, input.configPath, input.repoRoot);
+  const testPaths = parsedDiff === null ? [] : deletedTestFiles(parsedDiff);
   // The single-file forms are several files with one entry, so there is one path through the check.
   const coverageInput = input.coverage;
   let files: readonly CoverageFileInput[];
@@ -103,6 +106,7 @@ export function check(input: CheckInput): Report {
     agentSetup,
     requireAgentSetup: input.requireAgentSetup === true,
     ...(configPaths.length > 0 ? { changedConfigPaths: configPaths } : {}),
+    ...(testPaths.length > 0 ? { deletedTestFiles: testPaths } : {}),
     ...(trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage }),
     ...(emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {}),
   };

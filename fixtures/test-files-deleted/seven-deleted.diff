@@ -1,0 +1,55 @@
+diff --git a/lib/seven.test.mjs b/lib/seven.test.mjs
+deleted file mode 100644
+index 5555555..0000000
+--- a/lib/seven.test.mjs
++++ /dev/null
+@@ -1 +0,0 @@
+-export {};
+diff --git a/packages/a/test/one.ts b/packages/a/test/one.ts
+deleted file mode 100644
+index 5555555..0000000
+--- a/packages/a/test/one.ts
++++ /dev/null
+@@ -1 +0,0 @@
+-export {};
+diff --git a/src/__tests__/two.tsx b/src/__tests__/two.tsx
+deleted file mode 100644
+index 5555555..0000000
+--- a/src/__tests__/two.tsx
++++ /dev/null
+@@ -1 +0,0 @@
+-export {};
+diff --git a/src/four.test.js b/src/four.test.js
+deleted file mode 100644
+index 5555555..0000000
+--- a/src/four.test.js
++++ /dev/null
+@@ -1 +0,0 @@
+-export {};
+diff --git a/src/three.spec.ts b/src/three.spec.ts
+deleted file mode 100644
+index 5555555..0000000
+--- a/src/three.spec.ts
++++ /dev/null
+@@ -1 +0,0 @@
+-export {};
+diff --git a/test/five.ts b/test/five.ts
+deleted file mode 100644
+index 5555555..0000000
+--- a/test/five.ts
++++ /dev/null
+@@ -1 +0,0 @@
+-export {};
+diff --git a/tests/six.py b/tests/six.py
+deleted file mode 100644
+index 5555555..0000000
+--- a/tests/six.py
++++ /dev/null
+@@ -1 +0,0 @@
+-pass
+diff --git a/src/app.ts b/src/app.ts
+index 1111111..2222222 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -1,0 +2 @@
++export const b = 2;

@@ -43,6 +43,7 @@ export type MessageCode =
   | "CONFIG_CHANGED_IN_DIFF"
   | "COVERAGE_FILE_TRACKED"
   | "DIFF_BINARY_COVERED_FILE"
+  | "TEST_FILES_DELETED"
   | "NO_AGENT_SETUP_FILES"
   | "AGENT_SETUP_FILE_EMPTY";
 
@@ -75,6 +76,8 @@ export interface BuildReportInput {
   trackedCoverageFile?: string;
   /** Changed files the diff shows as binary that the coverage report knows; absent or empty adds no message. */
   binaryCoveredPaths?: readonly string[];
+  /** Repo-relative test files the diff deletes or renames to a non-test name; absent or empty adds no message. */
+  deletedTestFiles?: readonly string[];
   agentSetup: AgentSetupInventory;
   /** Sorted paths of inventoried agent setup files whose size in HEAD is 0; absent or empty adds no message. */
   emptyAgentSetupFiles?: readonly string[];
@@ -172,6 +175,13 @@ export function buildReport(input: BuildReportInput): Report {
       level: "warn",
       code: "DIFF_BINARY_COVERED_FILE",
       text: `The diff shows ${pathList(input.binaryCoveredPaths)} as binary, so their added lines were not measured; check .gitattributes for -diff or binary on source files.`,
+    });
+  }
+  if (input.deletedTestFiles !== undefined && input.deletedTestFiles.length > 0) {
+    messages.push({
+      level: "info",
+      code: "TEST_FILES_DELETED",
+      text: `This change deletes or renames away test files: ${pathList(input.deletedTestFiles)}. Check that the tests they held were meant to go before trusting the result.`,
     });
   }
 
