@@ -26001,6 +26001,7 @@ function gitDiffArgs(base, head = "HEAD") {
 // ../core/src/render/markdown.ts
 var VERDICT_ICON = { pass: "\u2705", warn: "\u26A0\uFE0F", fail: "\u274C" };
 var COLLAPSE_ABOVE = 25;
+var MAX_UNCOVERED_RANGES = 20;
 var LEVEL_ICON = { info: "\u2139\uFE0F", warn: "\u26A0\uFE0F", error: "\u274C" };
 var FULL_REPORT_NOTE = "_Full list in report.json: the Action's `report-path` output, or `pharn-ci check --format json`._";
 var MESSAGE_HINTS = {
@@ -26034,7 +26035,7 @@ function renderMarkdown(report, options = {}) {
     out.push("| File | Coverage | Covered | Uncovered lines |", "| --- | ---: | ---: | --- |");
     for (const f of byCoverage(dc.files).slice(0, maxRows)) {
       const pct = f.percent === null ? "\u2014" : `${formatNumber(f.percent)}%`;
-      const uncovered = f.uncoveredLines.length === 0 ? "" : formatRanges(f.uncoveredLines);
+      const uncovered = f.uncoveredLines.length === 0 ? "" : uncoveredCell(f.uncoveredLines);
       out.push(`| ${code(f.path)} | ${pct} | ${f.coveredLines}/${f.coverableLines} | ${uncovered} |`);
     }
     if (dc.files.length > maxRows) out.push(`| _\u2026and ${dc.files.length - maxRows} more files_ | | | |`);
@@ -26050,6 +26051,11 @@ function renderMarkdown(report, options = {}) {
     for (const path of excluded.slice(0, maxRows)) out.push(`- ${code(path)}`);
     if (excluded.length > maxRows) out.push(`- _\u2026and ${excluded.length - maxRows} more files_`);
     out.push("", "</details>", "");
+  }
+  if (report.messages.length > 0) {
+    out.push("### Messages", "");
+    for (const m of report.messages) out.push(renderMessage(m));
+    out.push("");
   }
   out.push("### Agent setup", "");
   const setup = report.agentSetup.files;
@@ -26071,11 +26077,6 @@ function renderMarkdown(report, options = {}) {
     out.push("");
     if (collapse) out.push("</details>", "");
   }
-  if (report.messages.length > 0) {
-    out.push("### Messages", "");
-    for (const m of report.messages) out.push(renderMessage(m));
-    out.push("");
-  }
   out.push(`<sub>pharn-ci ${report.tool.version} \xB7 report schema v${report.schemaVersion}</sub>`);
   return `${out.join("\n")}
 `;
@@ -26095,7 +26096,12 @@ function byCoverage(files) {
     return a.path < b.path ? -1 : a.path > b.path ? 1 : 0;
   });
 }
-function formatRanges(lines) {
+function uncoveredCell(lines) {
+  const parts = rangeParts(lines);
+  if (parts.length <= MAX_UNCOVERED_RANGES) return parts.join(", ");
+  return `${parts.slice(0, MAX_UNCOVERED_RANGES).join(", ")}, \u2026and ${parts.length - MAX_UNCOVERED_RANGES} more`;
+}
+function rangeParts(lines) {
   const parts = [];
   let i = 0;
   while (i < lines.length) {
@@ -26107,7 +26113,7 @@ function formatRanges(lines) {
     parts.push(start === end ? String(start) : `${start}-${end}`);
     i++;
   }
-  return parts.join(", ");
+  return parts;
 }
 var CONTROL_CHARS2 = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
 function code(path) {
@@ -26135,6 +26141,9 @@ var INPUT_ERRORS = {
 };
 var MAX_COMMENT_LENGTH = 65e3;
 var TRUNCATED_NOTE = "\n\n_Truncated: the full report is in the job summary and report.json._\n";
+var MAX_SUMMARY_BYTES = 1e6;
+var SUMMARY_TRUNCATED_NOTE = "\n\n_Truncated: the full report is in report.json._\n";
+var FALLBACK_ROWS = [25, 12, 6, 3, 1, 0];
 async function run(deps) {
   try {
     return await runUnsafe(deps);
@@ -26183,16 +26192,27 @@ async function runUnsafe(deps) {
     ...coverageRoot === void 0 ? {} : { coverageRoot }
   };
   const report = check(checkInput);
-  const markdown = renderMarkdown(report);
+  const summary2 = fitMarkdown(report, {
+    prefix: "",
+    note: SUMMARY_TRUNCATED_NOTE,
+    fits: (text) => utf8Bytes(text) <= MAX_SUMMARY_BYTES
+  });
   const reportPath = deps.resolvePath(deps.tempDir, "pharn-ci", "report.json");
   await deps.writeFile(reportPath, `${JSON.stringify(report, null, 2)}
 `);
   deps.setOutput("report-path", reportPath);
   deps.setOutput("verdict", report.verdict);
   deps.setOutput("diff-coverage", report.diffCoverage?.percent?.toString() ?? "");
-  await deps.writeSummary(markdown).catch((err) => deps.warning(`could not write job summary: ${String(err)}`));
-  if (comment && pr) await upsertComment(deps, pr.number, fitComment(`${COMMENT_MARKER}
-${markdown}`));
+  await deps.writeSummary(summary2).catch((err) => deps.warning(`could not write job summary: ${String(err)}`));
+  if (comment && pr) {
+    const body = fitMarkdown(report, {
+      prefix: `${COMMENT_MARKER}
+`,
+      note: TRUNCATED_NOTE,
+      fits: (text) => text.length <= MAX_COMMENT_LENGTH
+    });
+    await upsertComment(deps, pr.number, body);
+  }
   deps.info(`pharn-ci verdict: ${report.verdict}`);
   if (report.verdict === "fail" && failOnThreshold) {
     const errors = report.messages.filter((m) => m.level === "error").map((m) => m.text);
@@ -26252,11 +26272,28 @@ async function resolveLocal(base, deps) {
   }
   return null;
 }
-function fitComment(body) {
-  if (body.length <= MAX_COMMENT_LENGTH) return body;
-  const limit = MAX_COMMENT_LENGTH - TRUNCATED_NOTE.length;
-  const cut = body.lastIndexOf("\n", limit);
-  return `${body.slice(0, cut > 0 ? cut : limit)}${TRUNCATED_NOTE}`;
+var utf8Bytes = (text) => Buffer.byteLength(text, "utf8");
+function fitMarkdown(report, fit) {
+  const full = fit.prefix + renderMarkdown(report);
+  if (fit.fits(full)) return full;
+  let minimal = "";
+  for (const maxRows of FALLBACK_ROWS) {
+    minimal = fit.prefix + renderMarkdown(report, { maxRows });
+    const text = minimal + fit.note;
+    if (fit.fits(text)) return text;
+  }
+  const fitsAt = (length) => fit.fits(minimal.slice(0, length) + fit.note);
+  let low = 0;
+  let high = minimal.length;
+  while (low < high) {
+    const mid = Math.ceil((low + high) / 2);
+    if (fitsAt(mid)) low = mid;
+    else high = mid - 1;
+  }
+  const lineBreak = minimal.lastIndexOf("\n", low);
+  let end = lineBreak > fit.prefix.length ? lineBreak : low;
+  if (end === low && end > 0 && /[\uD800-\uDBFF]/.test(minimal.charAt(end - 1))) end--;
+  return minimal.slice(0, end) + fit.note;
 }
 async function upsertComment(deps, issueNumber, body) {
   try {

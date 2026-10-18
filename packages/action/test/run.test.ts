@@ -393,10 +393,12 @@ describe("action run", () => {
   it("truncates a comment over GitHub's size limit and keeps the full report in the summary", async () => {
     const long = Array.from({ length: 50 }, (_, i) => `.claude/skills/${"x".repeat(2000)}${i}/SKILL.md`);
     const h = harness({ lsFiles: long });
-    await run(h.deps);
+    const report = await run(h.deps);
     const body = h.comments[0]?.body ?? "";
     expect(body.length).toBeLessThanOrEqual(MAX_COMMENT_LENGTH);
     expect(body.startsWith(COMMENT_MARKER)).toBe(true);
+    expect(body).toContain(`pharn-ci: ${report?.verdict}`);
+    for (const m of report?.messages ?? []) expect(body).toContain(`\`${m.code}\``);
     expect(body).toMatch(/_Truncated: the full report is in the job summary and report\.json\._\n$/);
     expect(h.summary[0]?.length).toBeGreaterThan(MAX_COMMENT_LENGTH);
   });

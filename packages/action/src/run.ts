@@ -78,6 +78,12 @@ const INPUT_ERRORS: InputErrorText = {
 /** GitHub rejects comments over 65,536 characters; stay below that with room for the note. */
 export const MAX_COMMENT_LENGTH = 65_000;
 const TRUNCATED_NOTE = "\n\n_Truncated: the full report is in the job summary and report.json._\n";
+/** GitHub rejects a step summary over 1 MiB (1,048,576 bytes); stay below that with room for the note. */
+export const MAX_SUMMARY_BYTES = 1_000_000;
+// The summary cannot point to itself.
+const SUMMARY_TRUNCATED_NOTE = "\n\n_Truncated: the full report is in report.json._\n";
+/** Table rows to try, most first, when the full render does not fit. 0 is the minimal render. */
+const FALLBACK_ROWS = [25, 12, 6, 3, 1, 0];
 
 export async function run(deps: ActionDeps): Promise<Report | undefined> {
   try {
@@ -134,7 +140,11 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
   };
   const report = check(checkInput);
-  const markdown = renderMarkdown(report);
+  const summary = fitMarkdown(report, {
+    prefix: "",
+    note: SUMMARY_TRUNCATED_NOTE,
+    fits: (text) => utf8Bytes(text) <= MAX_SUMMARY_BYTES,
+  });
 
   const reportPath = deps.resolvePath(deps.tempDir, "pharn-ci", "report.json");
   await deps.writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
@@ -142,11 +152,16 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   deps.setOutput("verdict", report.verdict);
   deps.setOutput("diff-coverage", report.diffCoverage?.percent?.toString() ?? "");
 
-  await deps
-    .writeSummary(markdown)
-    .catch((err: unknown) => deps.warning(`could not write job summary: ${String(err)}`));
+  await deps.writeSummary(summary).catch((err: unknown) => deps.warning(`could not write job summary: ${String(err)}`));
 
-  if (comment && pr) await upsertComment(deps, pr.number, fitComment(`${COMMENT_MARKER}\n${markdown}`));
+  if (comment && pr) {
+    const body = fitMarkdown(report, {
+      prefix: `${COMMENT_MARKER}\n`,
+      note: TRUNCATED_NOTE,
+      fits: (text) => text.length <= MAX_COMMENT_LENGTH,
+    });
+    await upsertComment(deps, pr.number, body);
+  }
 
   deps.info(`pharn-ci verdict: ${report.verdict}`);
   if (report.verdict === "fail" && failOnThreshold) {
@@ -229,12 +244,42 @@ async function resolveLocal(base: string, deps: ActionDeps): Promise<string | nu
   return null;
 }
 
-/** Cut an over-long comment at a line break and point to the full report. */
-export function fitComment(body: string): string {
-  if (body.length <= MAX_COMMENT_LENGTH) return body;
-  const limit = MAX_COMMENT_LENGTH - TRUNCATED_NOTE.length;
-  const cut = body.lastIndexOf("\n", limit);
-  return `${body.slice(0, cut > 0 ? cut : limit)}${TRUNCATED_NOTE}`;
+const utf8Bytes = (text: string): number => Buffer.byteLength(text, "utf8");
+
+/**
+ * Render the report so that it fits a size limit. A report that fits is returned as `renderMarkdown`
+ * makes it. Otherwise the tables are re-rendered with fewer rows until it fits, so the verdict and the
+ * messages (which the renderer puts before the inventory) stay; `note` is appended to say rows are
+ * missing. Only when the messages alone are too long is the text cut, at a line break.
+ */
+export function fitMarkdown(
+  report: Report,
+  fit: { prefix: string; note: string; fits(text: string): boolean },
+): string {
+  const full = fit.prefix + renderMarkdown(report);
+  if (fit.fits(full)) return full;
+
+  let minimal = "";
+  for (const maxRows of FALLBACK_ROWS) {
+    minimal = fit.prefix + renderMarkdown(report, { maxRows });
+    const text = minimal + fit.note;
+    if (fit.fits(text)) return text;
+  }
+
+  // Last resort: the longest prefix of the minimal render that fits with the note.
+  const fitsAt = (length: number) => fit.fits(minimal.slice(0, length) + fit.note);
+  let low = 0;
+  let high = minimal.length;
+  while (low < high) {
+    const mid = Math.ceil((low + high) / 2);
+    if (fitsAt(mid)) low = mid;
+    else high = mid - 1;
+  }
+  const lineBreak = minimal.lastIndexOf("\n", low);
+  let end = lineBreak > fit.prefix.length ? lineBreak : low;
+  // Do not leave half of a surrogate pair at the cut.
+  if (end === low && end > 0 && /[\uD800-\uDBFF]/.test(minimal.charAt(end - 1))) end--;
+  return minimal.slice(0, end) + fit.note;
 }
 
 /**

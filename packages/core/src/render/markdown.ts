@@ -9,6 +9,8 @@ export interface RenderMarkdownOptions {
 const VERDICT_ICON = { pass: "✅", warn: "⚠️", fail: "❌" } as const;
 /** Inventories larger than this get their table collapsed in a `<details>` block. */
 const COLLAPSE_ABOVE = 25;
+/** Ranges shown in one file's uncovered-lines cell; keeps a single file from making a huge table cell. */
+const MAX_UNCOVERED_RANGES = 20;
 const LEVEL_ICON = { info: "ℹ️", warn: "⚠️", error: "❌" } as const;
 /** Where the full file list lives when the diff coverage table is cut short. */
 const FULL_REPORT_NOTE =
@@ -62,7 +64,7 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
     // Worst first, so the files that need tests survive truncation; files with nothing to measure go last.
     for (const f of byCoverage(dc.files).slice(0, maxRows)) {
       const pct = f.percent === null ? "—" : `${formatNumber(f.percent)}%`;
-      const uncovered = f.uncoveredLines.length === 0 ? "" : formatRanges(f.uncoveredLines);
+      const uncovered = f.uncoveredLines.length === 0 ? "" : uncoveredCell(f.uncoveredLines);
       out.push(`| ${code(f.path)} | ${pct} | ${f.coveredLines}/${f.coverableLines} | ${uncovered} |`);
     }
     if (dc.files.length > maxRows) out.push(`| _…and ${dc.files.length - maxRows} more files_ | | | |`);
@@ -79,6 +81,14 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
     // report.json keeps the full list; the cap keeps the verdict inside GitHub's comment size limit.
     if (excluded.length > maxRows) out.push(`- _…and ${excluded.length - maxRows} more files_`);
     out.push("", "</details>", "");
+  }
+
+  // Before the agent setup inventory: when the Action has to drop rows to fit a size limit, the
+  // reason for the verdict is never what goes.
+  if (report.messages.length > 0) {
+    out.push("### Messages", "");
+    for (const m of report.messages) out.push(renderMessage(m));
+    out.push("");
   }
 
   out.push("### Agent setup", "");
@@ -102,12 +112,6 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
     if (setup.length > maxRows) out.push(`| _…and ${setup.length - maxRows} more files_ | |`);
     out.push("");
     if (collapse) out.push("</details>", "");
-  }
-
-  if (report.messages.length > 0) {
-    out.push("### Messages", "");
-    for (const m of report.messages) out.push(renderMessage(m));
-    out.push("");
   }
 
   out.push(`<sub>pharn-ci ${report.tool.version} · report schema v${report.schemaVersion}</sub>`);
@@ -134,6 +138,17 @@ function byCoverage<T extends { path: string; percent: number | null }>(files: r
 
 /** Collapse ascending line numbers into ranges: [1,2,3,7] -> "1-3, 7". */
 export function formatRanges(lines: readonly number[]): string {
+  return rangeParts(lines).join(", ");
+}
+
+/** The uncovered-lines table cell: at most MAX_UNCOVERED_RANGES ranges, then how many are not shown. */
+function uncoveredCell(lines: readonly number[]): string {
+  const parts = rangeParts(lines);
+  if (parts.length <= MAX_UNCOVERED_RANGES) return parts.join(", ");
+  return `${parts.slice(0, MAX_UNCOVERED_RANGES).join(", ")}, …and ${parts.length - MAX_UNCOVERED_RANGES} more`;
+}
+
+function rangeParts(lines: readonly number[]): string[] {
   const parts: string[] = [];
   let i = 0;
   while (i < lines.length) {
@@ -145,7 +160,7 @@ export function formatRanges(lines: readonly number[]): string {
     parts.push(start === end ? String(start) : `${start}-${end}`);
     i++;
   }
-  return parts.join(", ");
+  return parts;
 }
 
 // Paths come from the PR (git allows newlines in file names) and message text can carry inputs
