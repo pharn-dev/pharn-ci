@@ -1,0 +1,49 @@
+diff --git a/README.md b/README.md
+index 0123456..1234567 100644
+--- a/README.md
++++ b/README.md
+@@ -3,0 +4,2 @@
++## Usage
++Run it.
+diff --git a/src/math.ts b/src/math.ts
+index 1111111..2222222 100644
+--- a/src/math.ts
++++ b/src/math.ts
+@@ -2,0 +3,3 @@ export function add(a: number, b: number) {
++  if (a < 0) {
++    return -add(-a, -b);
++  }
+@@ -7 +10 @@ export function sub(a: number, b: number) {
+-  return a - b;
++  return add(a, -b);
+diff --git a/src/new.ts b/src/new.ts
+new file mode 100644
+index 0000000..3333333
+--- /dev/null
++++ b/src/new.ts
+@@ -0,0 +1,6 @@
++// Greeting helpers.
++export type Name = string;
++
++export function greet(name: Name) {
++  return `hi ${name}`;
++}
+diff --git a/src/old-name.ts b/src/utils/new-name.ts
+similarity index 88%
+rename from src/old-name.ts
+rename to src/utils/new-name.ts
+index 5555555..6666666 100644
+--- a/src/old-name.ts
++++ b/src/utils/new-name.ts
+@@ -2 +2 @@ export function util() {
+-  return 1;
++  return 2;
+diff --git a/src/legacy.ts b/src/legacy.ts
+deleted file mode 100644
+index 4444444..0000000
+--- a/src/legacy.ts
++++ /dev/null
+@@ -1,3 +0,0 @@
+-export function legacy() {
+-  return 1;
+-}

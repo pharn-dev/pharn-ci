@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import type { DirEntry } from "@pharn-ci/core";
 import type { CliDeps } from "./main.js";
 
 /** A git call is killed after this long, so a hung git cannot hang the CLI. */
@@ -29,6 +30,28 @@ export function nodeDeps(cwd: string = process.cwd(), opts: { gitTimeoutMs?: num
         return await readFile(path, "utf8");
       } catch (err) {
         if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
+        throw err;
+      }
+    },
+    listDir: async (path) => {
+      try {
+        const entries = await readdir(path, { withFileTypes: true });
+        // A symbolic link is reported as one (Node does not follow it here), whatever it points to.
+        return entries.map(
+          (entry): DirEntry => ({
+            name: entry.name,
+            kind: entry.isSymbolicLink()
+              ? "symlink"
+              : entry.isDirectory()
+                ? "directory"
+                : entry.isFile()
+                  ? "file"
+                  : "other",
+          }),
+        );
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException).code;
+        if (code === "ENOENT" || code === "ENOTDIR") return null;
         throw err;
       }
     },

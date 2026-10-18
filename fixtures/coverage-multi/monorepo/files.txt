@@ -1,0 +1,5 @@
+AGENTS.md
+packages/a/package.json
+packages/a/src/index.ts
+packages/b/package.json
+packages/b/src/index.ts

@@ -2,7 +2,8 @@ import { parseCoverageRoot, parseExcludePattern } from "./config.js";
 import { chooseCoverageFormat } from "./coverage/detect.js";
 import { parseCoverage } from "./coverage/index.js";
 import { matchCoveragePaths } from "./coverage/match.js";
-import type { CoverageFormatSelection } from "./coverage/types.js";
+import { mergeCoverageMaps } from "./coverage/merge.js";
+import type { CoverageFormat, CoverageFormatSelection, CoverageMap } from "./coverage/types.js";
 import { parseUnifiedDiff } from "./diff/unified.js";
 import { computeDiffCoverage } from "./diffCoverage.js";
 import { binaryCoveredPaths, changedConfigPaths, trackedCoverageFile } from "./gateInputs.js";
@@ -10,13 +11,20 @@ import { compileGlob } from "./glob.js";
 import { buildReport, type Report } from "./report.js";
 import { scanAgentSetup } from "./setup/scan.js";
 
+/** One coverage file of a multi-file input: its contents (and the path it came from, for messages), or the path that was not found. */
+export type CoverageFileInput = { text: string; file?: string } | { missingFile: string };
+
 export interface CheckInput {
   version: string;
   /**
    * Coverage report contents (and, optionally, the path it was read from, for messages), or the
-   * path that was looked for when it is missing.
+   * path that was looked for when it is missing; or several of them in the order they were read, which
+   * are merged with hit counts summed. `format` applies to every file (`auto` detects it per file).
    */
-  coverage: { text: string; format: CoverageFormatSelection; file?: string } | { missingFile: string };
+  coverage:
+    | { text: string; format: CoverageFormatSelection; file?: string }
+    | { missingFile: string }
+    | { files: readonly CoverageFileInput[]; format: CoverageFormatSelection };
   /** Unified diff text, or why no diff is available. */
   diff: { text: string } | { unavailable: string };
   /** Absolute repo root, used to relativize absolute coverage paths. */
@@ -60,8 +68,32 @@ export function check(input: CheckInput): Report {
   // The change under review can edit the inputs of its own grade; these findings ride on every report path.
   const parsedDiff = "text" in input.diff ? parseUnifiedDiff(input.diff.text) : null;
   const configPaths = parsedDiff === null ? [] : changedConfigPaths(parsedDiff, input.configPath, input.repoRoot);
-  const trackedCoverage =
-    "text" in input.coverage ? trackedCoverageFile(input.coverage.file, input.repoRoot, input.repoFiles) : null;
+  // The single-file forms are several files with one entry, so there is one path through the check.
+  const coverageInput = input.coverage;
+  let files: readonly CoverageFileInput[];
+  let selection: CoverageFormatSelection;
+  if ("files" in coverageInput) {
+    files = coverageInput.files;
+    selection = coverageInput.format;
+  } else if ("missingFile" in coverageInput) {
+    files = [coverageInput];
+    selection = "auto";
+  } else {
+    files = [
+      coverageInput.file === undefined
+        ? { text: coverageInput.text }
+        : { text: coverageInput.text, file: coverageInput.file },
+    ];
+    selection = coverageInput.format;
+  }
+
+  // With several files, the first tracked one is named: one is enough for the change to grade itself.
+  let trackedCoverage: string | null = null;
+  for (const file of files) {
+    if (!("text" in file)) continue;
+    trackedCoverage = trackedCoverageFile(file.file, input.repoRoot, input.repoFiles);
+    if (trackedCoverage !== null) break;
+  }
   const bytes = input.repoFileBytes;
   const emptyAgentSetupFiles =
     bytes === undefined ? [] : agentSetup.files.filter((file) => bytes.get(file.path) === 0).map((file) => file.path);
@@ -75,12 +107,14 @@ export function check(input: CheckInput): Report {
     ...(emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {}),
   };
 
-  if ("missingFile" in input.coverage) {
-    return buildReport({
-      ...base,
-      diffCoverage: null,
-      missing: { reason: "coverage-file-missing", coverageFile: input.coverage.missingFile },
-    });
+  for (const file of files) {
+    if ("missingFile" in file) {
+      return buildReport({
+        ...base,
+        diffCoverage: null,
+        missing: { reason: "coverage-file-missing", coverageFile: file.missingFile },
+      });
+    }
   }
   if ("unavailable" in input.diff) {
     return buildReport({
@@ -90,36 +124,55 @@ export function check(input: CheckInput): Report {
     });
   }
 
-  const coverageFile = input.coverage.file ?? null;
-  const choice = chooseCoverageFormat(input.coverage.text, input.coverage.format);
-  if (choice.format === "empty") {
+  // Each file in order, with its own format under `auto`; the first bad one is the one reported.
+  const maps: CoverageMap[] = [];
+  const formats = new Set<CoverageFormat>();
+  for (const file of files) {
+    if ("missingFile" in file) continue;
+    const coverageFile = file.file ?? null;
+    const choice = chooseCoverageFormat(file.text, selection);
+    if (choice.format === "empty") {
+      return buildReport({
+        ...base,
+        diffCoverage: null,
+        missing: { reason: "coverage-file-empty", coverageFile },
+      });
+    }
+    if (choice.format === "unknown") {
+      return buildReport({
+        ...base,
+        diffCoverage: null,
+        missing: { reason: "coverage-format-unsupported", coverageFile },
+      });
+    }
+    const parsed = parseCoverage(file.text, choice.format, {
+      ...(input.repoRoot === undefined ? {} : { repoRoot: input.repoRoot }),
+      ...(coverageRoot === undefined ? {} : { coverageRoot }),
+    });
+    // An empty or unreadable report would otherwise make every change look uncovered-but-untracked
+    // and pass as NO_COVERABLE_CHANGES. Say so instead.
+    if (parsed.size === 0) {
+      return buildReport({
+        ...base,
+        diffCoverage: null,
+        missing: { reason: "coverage-file-empty", coverageFile },
+      });
+    }
+    formats.add(choice.format);
+    maps.push(parsed);
+  }
+  // No file at all cannot be told from an unreadable one: fail closed.
+  if (maps.length === 0) {
     return buildReport({
       ...base,
       diffCoverage: null,
-      missing: { reason: "coverage-file-empty", coverageFile },
+      missing: { reason: "coverage-file-empty", coverageFile: null },
     });
   }
-  if (choice.format === "unknown") {
-    return buildReport({
-      ...base,
-      diffCoverage: null,
-      missing: { reason: "coverage-format-unsupported", coverageFile },
-    });
-  }
-
-  const coverage = parseCoverage(input.coverage.text, choice.format, {
-    ...(input.repoRoot === undefined ? {} : { repoRoot: input.repoRoot }),
-    ...(coverageRoot === undefined ? {} : { coverageRoot }),
-  });
-  // An empty or unreadable report would otherwise make every change look uncovered-but-untracked
-  // and pass as NO_COVERABLE_CHANGES. Say so instead.
-  if (coverage.size === 0) {
-    return buildReport({
-      ...base,
-      diffCoverage: null,
-      missing: { reason: "coverage-file-empty", coverageFile },
-    });
-  }
+  const coverage = mergeCoverageMaps(maps);
+  // The report names one format only when every file was read as that format.
+  const [onlyFormat] = formats;
+  const coverageFormat = formats.size === 1 ? onlyFormat : undefined;
   // The diff text was parsed up front; `diff` is only unavailable on the early return above.
   const diff = parsedDiff ?? [];
   const binaryPaths = binaryCoveredPaths(diff, coverage);
@@ -146,7 +199,7 @@ export function check(input: CheckInput): Report {
   }
   return buildReport({
     ...base,
-    coverageFormat: choice.format,
+    ...(coverageFormat === undefined ? {} : { coverageFormat }),
     diffCoverage: computeDiffCoverage(diff, coverage, input.threshold, isExcluded),
     ...(untrackedCoveragePaths > 0 ? { untrackedCoveragePaths } : {}),
     ...(binaryPaths.length > 0 ? { binaryCoveredPaths: binaryPaths } : {}),

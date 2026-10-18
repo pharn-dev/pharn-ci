@@ -3,13 +3,18 @@ import {
   type CheckInput,
   COVERAGE_FORMAT_SELECTIONS,
   ConfigError,
+  type CoverageFileInput,
   check,
   chooseCoverageFormat,
   coverageChoiceLine,
+  coverageEntryList,
+  type DirEntry,
+  expandCoverageEntries,
   gitDiffArgs,
   type InputErrorText,
   type PharnConfig,
   parseConfig,
+  parseCoverageEntries,
   parseLsTreeSizes,
   type RawInputs,
   renderMarkdown,
@@ -24,6 +29,11 @@ export interface CliDeps {
   git(args: string[]): Promise<string>;
   /** File contents, or null when the file does not exist. */
   readFile(path: string): Promise<string | null>;
+  /**
+   * The entries of a directory, with symbolic links reported as such and never followed; null when the
+   * directory does not exist or is not a directory. Only called to expand a coverage glob.
+   */
+  listDir(path: string): Promise<DirEntry[] | null>;
   resolvePath(...segments: string[]): string;
   stdout(text: string): void;
   stderr(text: string): void;
@@ -39,7 +49,7 @@ Usage:
   pharn-ci check [options]
 
 Options:
-  --coverage <file>    Coverage report. Default: coverage.file from config
+  --coverage <file|glob>  Coverage report path or glob (repeatable). Default: coverage.file from config
   --coverage-format <f>  lcov, cobertura or auto. Default: coverage.format, then auto
   --coverage-root <dir>  Directory relative coverage paths start from. Default: coverage.root, then the repo root
   --base <ref>         Base to diff against (merge-base with HEAD). Default: origin/main
@@ -90,7 +100,7 @@ function parse(argv: string[]) {
     allowPositionals: true,
     strict: true,
     options: {
-      coverage: { type: "string" },
+      coverage: { type: "string", multiple: true },
       "coverage-format": { type: "string" },
       "coverage-root": { type: "string" },
       base: { type: "string" },
@@ -112,6 +122,7 @@ const FLAG_ERRORS: InputErrorText = {
   coverageFormat: (value) =>
     `--coverage-format must be one of: ${COVERAGE_FORMAT_SELECTIONS.join(", ")} (got "${value}")`,
   threshold: "--threshold",
+  coverageFile: "--coverage",
   exclude: "--exclude",
   coverageRoot: "--coverage-root",
   noCoverageFile: "no coverage file: pass --coverage <file> or set coverage.file in .pharn/ci.yml",
@@ -129,8 +140,8 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     coverageRoot: values["coverage-root"]?.trim() ? values["coverage-root"] : undefined,
     requireAgentSetup: values["require-agent-setup"],
   };
-  // Malformed --coverage-format, --exclude and --coverage-root flags are reported before any git call: they
-  // need no config.
+  // Malformed --coverage-format, --coverage, --exclude and --coverage-root flags are reported before any git
+  // call: they need no config.
   const flagsAlone = resolveInputs({}, raw, FLAG_ERRORS);
   const flagError = (input: keyof RawInputs) =>
     flagsAlone.ok ? undefined : flagsAlone.errors.find((e) => e.input === input);
@@ -138,6 +149,9 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   if (formatError) throw formatError;
   // A leading "-" would reach git as an option (e.g. --output=<file>), not a revision.
   if (values.base?.startsWith("-")) throw new ConfigError(`--base "${values.base}" must not start with "-"`);
+  // Without the flag, "no coverage file" may be answered by the config, so it is not an error yet.
+  const coverageFileError = raw.coverageFile === undefined ? undefined : flagError("coverageFile");
+  if (coverageFileError) throw coverageFileError;
   const excludeError = flagError("exclude");
   if (excludeError) throw excludeError;
   const coverageRootError = flagError("coverageRoot");
@@ -149,12 +163,34 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   if (!resolved.ok) throw resolved.errors[0];
   const { coverageFile, coverageFormat, threshold, exclude, coverageRoot, requireAgentSetup } = resolved.inputs;
 
-  // A --coverage path is relative to where you run the CLI; a config path is relative to the repo root.
-  const coveragePath = deps.resolvePath(coverageFile.fromConfig ? repoRoot : deps.cwd, coverageFile.path);
-  const coverageText = await deps.readFile(coveragePath);
-  // Say which format was read and why, on stderr so stdout stays the report alone.
-  if (coverageText !== null) {
+  // A --coverage entry is relative to where you run the CLI; a config entry is relative to the repo root.
+  const coverageBase = coverageFile.fromConfig ? repoRoot : deps.cwd;
+  const coverageLabel = coverageFile.fromConfig ? '"coverage.file"' : "--coverage";
+  const entries = parseCoverageEntries(coverageEntryList(coverageFile.path), coverageLabel);
+  const expanded = await expandCoverageEntries(
+    entries,
+    (dir) => deps.listDir(deps.resolvePath(coverageBase, dir)),
+    coverageLabel,
+  );
+  // Every entry is resolved and every file read before the check; a file reached twice is read once.
+  const coverageFiles: CoverageFileInput[] = [];
+  const seen = new Set<string>();
+  for (const item of expanded) {
+    if (item.kind === "no-match") {
+      coverageFiles.push({ missingFile: deps.resolvePath(coverageBase, item.glob) });
+      continue;
+    }
+    const coveragePath = deps.resolvePath(coverageBase, item.kind === "literal" ? item.entry : item.path);
+    if (seen.has(coveragePath)) continue;
+    seen.add(coveragePath);
+    const coverageText = await deps.readFile(coveragePath);
+    if (coverageText === null) {
+      coverageFiles.push({ missingFile: coveragePath });
+      continue;
+    }
+    // Say which format was read and why, on stderr so stdout stays the report alone.
     deps.stderr(`${coverageChoiceLine(chooseCoverageFormat(coverageText, coverageFormat))}\n`);
+    coverageFiles.push({ text: coverageText, file: coveragePath });
   }
 
   const base = values.base ?? "origin/main";
@@ -178,10 +214,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
 
   const input: CheckInput = {
     version: VERSION,
-    coverage:
-      coverageText === null
-        ? { missingFile: coveragePath }
-        : { text: coverageText, format: coverageFormat, file: coveragePath },
+    coverage: { files: coverageFiles, format: coverageFormat },
     diff: { text: diffText },
     repoRoot,
     threshold,

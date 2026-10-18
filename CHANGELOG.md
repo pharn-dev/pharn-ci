@@ -17,6 +17,7 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   get a git tree), `pr-number` is validated, and `head-sha` is checked against the PR head. The README
   documents the two-workflow pattern for comments on fork PRs.
 - Three warn-level messages for a change that touches the inputs of its own grade: `CONFIG_CHANGED_IN_DIFF` (the diff edits the pharn-ci config in use or a file under `.github/workflows/`), `COVERAGE_FILE_TRACKED` (the coverage file is a tracked file, so the change can supply its own numbers) and `DIFF_BINARY_COVERED_FILE` (the diff shows a covered source file as binary, e.g. through `-diff` in `.gitattributes`, so its added lines were not measured). They lift a `pass` to `warn` and never fail the check.
+- Several coverage files and globs: the `coverage-file` Action input takes one entry per line, the CLI's `--coverage` flag is repeatable and `coverage.file` in `.pharn/ci.yml` can be a list. Each entry is a path or a glob (`*`, `**`, `?`, relative to the workspace, the current directory or the repo root), so `TestResults/**/coverage.cobertura.xml` and `packages/*/coverage/lcov.info` work. The files are merged with hit counts summed; `auto` detects the format of each file. A glob that finds nothing is `COVERAGE_FILE_MISSING`; a walk stops at 1,000 matched files or 100,000 visited entries, never follows a symbolic link and skips `.git` and `node_modules` unless named.
 - Require agent setup: the `require-agent-setup` Action input, the CLI's `--require-agent-setup` flag and `setup.require` in `.pharn/ci.yml` (off by default) make `NO_AGENT_SETUP_FILES` an error and the verdict `fail` when the repo has no agent setup files.
 - `DIFF_COVERAGE_UNGATED` (info): diff coverage was measured, with its percent in the text, but no
   threshold gates it (none is set, or it is 0). Before, an ungated run passed with no message.
@@ -37,6 +38,9 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   warning, for at least one minor release; a changed default ships only in a minor release and is
   listed here. The README status note and `docs/LIMITS.md` say the same.
 - Agent setup inventory quality (F-10): `.mcp.json`, `.claude/settings.json` and `.claude/settings.local.json` count at the repo root only (a nested copy in a package or a test fixture is no longer listed); a dot-file or README under a directory kind (such as `.claude/skills/x/.gitkeep` or `.github/agents/README.md`) is not listed; and a path with a `node_modules` directory is never listed. Repos with such files see fewer files in `agentSetup.files`.
+- A coverage entry (the `coverage-file` input, `--coverage` or `coverage.file`) containing `[`, `]`, `{` or `}` is
+  rejected as unsupported glob syntax, even without `*` or `?`. A literal coverage path with one of those characters
+  is now a usage error.
 - The rendered report lists messages before the agent setup inventory, and a file's uncovered-lines cell shows
   at most 20 ranges followed by `…and N more`. The Action fits an oversized PR comment (65,000 characters) or
   job summary (1 MiB) by rendering fewer table rows instead of cutting the end, so the verdict and messages
@@ -66,6 +70,9 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Fixed
 
+- The README quick start no longer aborts for vitest: it says `@vitest/coverage-v8` must be a dev dependency, and a
+  new "Coverage per ecosystem" table shows the report and `coverage-file` for vitest, jest, pytest-cov, coverlet,
+  cargo-llvm-cov, Go, and JaCoCo/Kover through a Cobertura converter.
 - An lcov file whose `SF` records carry no `DA` lines (a crashed or truncated reporter) is now
   `COVERAGE_FILE_EMPTY`, as the Cobertura equivalent already was, instead of passing as
   `NO_COVERABLE_CHANGES`. lcov files without a valid `DA` line are left out of the coverage map.

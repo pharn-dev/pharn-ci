@@ -102,6 +102,21 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
 - **Cobertura merges by maximum, lcov by sum.** One file repeated across classes (JaCoCo inner
   classes) or packages (a shared source) keeps the highest hit count per line, because Cobertura
   repeats a file's lines and summing would double-count them. Repeated lcov records are summed.
+- **Hit counts are summed across coverage files.** When several coverage files list the same
+  line, their hits are added, so a line covered in any of them is covered. This is also true of
+  two Cobertura files, whose own repeated lines inside one file still merge by maximum. Two
+  reports of the same test run have their hits counted twice, which changes the hit counts but
+  not whether a line is covered.
+- **Several coverage files and globs.** `coverage-file`, `--coverage` and `coverage.file` take
+  several entries, each a path or a glob (`*`, `**`, `?`; the exclusion subset). `auto` detects
+  the format of each file; an explicit format applies to all of them, so a Cobertura file read as
+  lcov is `COVERAGE_FILE_EMPTY` naming it. The report names `diffCoverage.format` only when every
+  file has the same format. The first bad file, in entry order and path order within a glob, is
+  the one reported. An entry containing `[`, `]`, `{` or `}` is rejected as unsupported glob
+  syntax even without `*` or `?`, so a literal coverage path with one of those characters is a
+  usage error. The walk goes down from the base, skips `.git` and `node_modules` unless the
+  pattern names them, never follows a symbolic link, and stops at 1,000 matched files or 100,000
+  visited directory entries per run. A glob that finds nothing is `COVERAGE_FILE_MISSING`.
 - **The first usable `<source>` wins.** A relative `filename` is joined to the report's sources in
   order and the first join that lies under the repo root is used. pharn-ci reads no files, so it
   cannot tell which source actually holds the file; with several sources under the root, the

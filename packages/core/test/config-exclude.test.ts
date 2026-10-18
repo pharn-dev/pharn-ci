@@ -124,7 +124,7 @@ describe("parseConfig: coverage.exclude", () => {
       ["an unquoted * item", "coverage:\n  exclude: [*.ts]\n", 'quote the value, e.g. "*.gen.ts"'],
       ["a number item", "coverage:\n  exclude: [5]\n", '"coverage.exclude" items must be non-empty strings'],
       ["a rejected pattern", 'coverage:\n  exclude: ["{a,b}.ts"]\n', "{a,b}.ts"],
-      ["a flow list elsewhere", "coverage:\n  file: [a]\n", "except as the value of coverage.exclude"],
+      ["a flow list elsewhere", "coverage:\n  format: [a]\n", "except as the value of coverage.exclude"],
       ["a top-level flow list", "coverage: [a]\n", "except as the value of coverage.exclude"],
     ];
     for (const [label, text, message] of cases) {
