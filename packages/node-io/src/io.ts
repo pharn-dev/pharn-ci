@@ -6,14 +6,55 @@ import type { DirEntry } from "@pharn-ci/core";
 export const GIT_TIMEOUT_MS = 120_000;
 
 /**
+ * The only git subcommands the shared runners run. All are local and read-only: none contacts a remote, so none
+ * takes `--upload-pack` or `--receive-pack`. pharn-ci runs `diff`, `ls-files`, `ls-tree` and `rev-parse`; `log` and
+ * `hash-object` (without `-w`, it writes nothing) are what the tests of these runners use.
+ */
+export const LOCAL_GIT_SUBCOMMANDS = ["diff", "hash-object", "log", "ls-files", "ls-tree", "rev-parse"] as const;
+
+/** Options that make git run another program or write a file. Refused before `--end-of-options` or `--`. */
+const REFUSED_OPTION_PREFIXES = ["--upload-pack", "--receive-pack", "--exec", "--output", "--ext-diff"];
+
+/**
+ * A new argument list for a git call the shared runners allow, or an Error saying why the call is refused. The
+ * subcommand in the result is the allowlist's own constant, never the caller's string. Options are checked up to
+ * the first `--end-of-options` or `--`; what follows is a revision or a path, not an option.
+ */
+export function localGitArgs(args: readonly string[]): string[] {
+  const subcommand = LOCAL_GIT_SUBCOMMANDS.find((name) => name === args[0]);
+  if (subcommand === undefined) {
+    throw new Error(
+      `git ${args[0] ?? ""} is not allowed: pharn-ci runs only these git subcommands: ${LOCAL_GIT_SUBCOMMANDS.join(", ")}`,
+    );
+  }
+  const safe: string[] = [subcommand];
+  let options = true;
+  for (const arg of args.slice(1)) {
+    if (options && (arg === "--end-of-options" || arg === "--")) {
+      options = false;
+    } else if (
+      options &&
+      (REFUSED_OPTION_PREFIXES.some((prefix) => arg.startsWith(prefix)) ||
+        (subcommand === "hash-object" && arg === "-w"))
+    ) {
+      throw new Error(`git ${subcommand}: the option "${arg}" is not allowed`);
+    }
+    safe.push(`${arg}`);
+  }
+  return safe;
+}
+
+/**
  * git's stdout as UTF-8 text chunks, with no buffer limit. Iteration throws git's stderr when git fails, and says
- * that git timed out when the timer killed it. Stdin stays an open pipe, as with `execFile`.
+ * that git timed out when the timer killed it. Stdin stays an open pipe, as with `execFile`. Only a call
+ * `localGitArgs` allows is run; any other throws on the first iteration, before git starts.
  */
 export async function* streamGit(
   cwd: string,
-  args: string[],
+  gitArgs: string[],
   timeoutMs: number = GIT_TIMEOUT_MS,
 ): AsyncGenerator<string> {
+  const args = localGitArgs(gitArgs);
   const child = spawn("git", args, { cwd, stdio: ["pipe", "pipe", "pipe"] });
   let stderr = "";
   let timedOut = false;
@@ -45,8 +86,17 @@ export async function* streamGit(
   }
 }
 
-/** git's whole stdout as one text. Rejects with git's stderr when git fails, and says when git timed out. */
-export function runGit(cwd: string, args: string[], timeoutMs: number = GIT_TIMEOUT_MS): Promise<string> {
+/**
+ * git's whole stdout as one text. Rejects with git's stderr when git fails, and says when git timed out. Only a call
+ * `localGitArgs` allows is run; any other rejects before git starts.
+ */
+export function runGit(cwd: string, gitArgs: string[], timeoutMs: number = GIT_TIMEOUT_MS): Promise<string> {
+  let args: string[];
+  try {
+    args = localGitArgs(gitArgs);
+  } catch (err) {
+    return Promise.reject(err);
+  }
   return new Promise((ok, fail) => {
     execFile(
       "git",

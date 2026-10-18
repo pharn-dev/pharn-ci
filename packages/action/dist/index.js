@@ -26655,7 +26655,29 @@ async function readCoverageFiles(deps, options) {
 import { execFile, spawn } from "node:child_process";
 import { open as open2, readdir as readdir2, readFile as readFileText } from "node:fs/promises";
 var GIT_TIMEOUT_MS = 12e4;
-async function* streamGit(cwd, args, timeoutMs = GIT_TIMEOUT_MS) {
+var LOCAL_GIT_SUBCOMMANDS = ["diff", "hash-object", "log", "ls-files", "ls-tree", "rev-parse"];
+var REFUSED_OPTION_PREFIXES = ["--upload-pack", "--receive-pack", "--exec", "--output", "--ext-diff"];
+function localGitArgs(args) {
+  const subcommand = LOCAL_GIT_SUBCOMMANDS.find((name) => name === args[0]);
+  if (subcommand === void 0) {
+    throw new Error(
+      `git ${args[0] ?? ""} is not allowed: pharn-ci runs only these git subcommands: ${LOCAL_GIT_SUBCOMMANDS.join(", ")}`
+    );
+  }
+  const safe = [subcommand];
+  let options = true;
+  for (const arg of args.slice(1)) {
+    if (options && (arg === "--end-of-options" || arg === "--")) {
+      options = false;
+    } else if (options && (REFUSED_OPTION_PREFIXES.some((prefix) => arg.startsWith(prefix)) || subcommand === "hash-object" && arg === "-w")) {
+      throw new Error(`git ${subcommand}: the option "${arg}" is not allowed`);
+    }
+    safe.push(`${arg}`);
+  }
+  return safe;
+}
+async function* streamGit(cwd, gitArgs, timeoutMs = GIT_TIMEOUT_MS) {
+  const args = localGitArgs(gitArgs);
   const child = spawn("git", args, { cwd, stdio: ["pipe", "pipe", "pipe"] });
   let stderr = "";
   let timedOut = false;
@@ -26685,7 +26707,13 @@ async function* streamGit(cwd, args, timeoutMs = GIT_TIMEOUT_MS) {
     if (child.exitCode === null && child.signalCode === null) child.kill();
   }
 }
-function runGit(cwd, args, timeoutMs = GIT_TIMEOUT_MS) {
+function runGit(cwd, gitArgs, timeoutMs = GIT_TIMEOUT_MS) {
+  let args;
+  try {
+    args = localGitArgs(gitArgs);
+  } catch (err) {
+    return Promise.reject(err);
+  }
   return new Promise((ok, fail) => {
     execFile(
       "git",
