@@ -67,6 +67,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   `DIFF_UNAVAILABLE`.
 - An explicit `base-ref` found neither in the checkout nor through the GitHub API now fails the
   step with an error naming the ref, instead of reporting `DIFF_UNAVAILABLE`.
+- A `config` input naming a file that does not exist now fails the step with "config file not
+  found", like the CLI's `--config`, instead of running with no config (and so without a threshold
+  held only in the config). The input no longer has a default in `action.yml`; left empty, it reads
+  `.pharn/ci.yml` when present, as before.
 - The CLI lists tracked files from the repository root when run from a subdirectory, so coverage
   paths are compared with the same names wherever it runs. The agent setup inventory of a
   subdirectory run now covers the whole repo.

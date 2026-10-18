@@ -224,7 +224,7 @@ On PRs from forks the token cannot comment; pharn-ci then warns and uses the job
 | `require-agent-setup` | `setup.require`, then `false` | Fail when the repo has no agent setup files; the step fails through `fail-on-threshold` |
 | `comment`           | `true`                      | Post/update one sticky PR comment        |
 | `fail-on-threshold` | `true`                      | Fail the step when the verdict is `fail` |
-| `config`            | `.pharn/ci.yml`             | Config file path                         |
+| `config`            | `.pharn/ci.yml`, may be absent | Config file path; a file named here that does not exist fails the step |
 | `github-token`      | `github.token`              | Token for the comment and diff fallback; `pull-requests: write` only for the comment, may be empty with `comment: false` and a local diff |
 
 | Output          |                                                       |

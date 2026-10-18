@@ -33,7 +33,7 @@ function harness(inputs: Record<string, string>, files: Record<string, string> =
     "coverage-file": "coverage/lcov.info",
     comment: "false",
     "fail-on-threshold": "true",
-    config: ".pharn/ci.yml",
+    config: "",
     ...inputs,
   };
   h.deps = {

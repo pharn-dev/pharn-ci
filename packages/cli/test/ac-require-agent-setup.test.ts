@@ -64,7 +64,7 @@ async function runCli(config: Config, flag: boolean) {
 const INPUT_DEFAULTS: Record<string, string> = {
   comment: "false",
   "fail-on-threshold": "true",
-  config: ".pharn/ci.yml",
+  config: "",
 };
 
 async function runAction(input: string, config: Config) {

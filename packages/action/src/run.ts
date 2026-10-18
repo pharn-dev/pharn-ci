@@ -63,6 +63,9 @@ export interface ActionDeps {
 
 const ZERO_SHA = /^0+$/;
 
+/** Config file read when the config input is empty. */
+const DEFAULT_CONFIG = ".pharn/ci.yml";
+
 /** How the action names its inputs in input errors. */
 const INPUT_ERRORS: InputErrorText = {
   coverageFormat: (value) => `coverage-format "${value}" is not supported (supported: lcov, cobertura, auto)`,
@@ -87,7 +90,7 @@ export async function run(deps: ActionDeps): Promise<Report | undefined> {
 
 async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const input = (name: string) => deps.getInput(name).trim();
-  const config = await loadConfig(input("config") || ".pharn/ci.yml", deps);
+  const config = await loadConfig(input("config") || undefined, deps);
 
   // An empty input is not given: the config, then the default, applies.
   const resolved = resolveInputs(
@@ -310,9 +313,18 @@ function errorText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-async function loadConfig(path: string, deps: ActionDeps): Promise<PharnConfig> {
+/**
+ * The config input, or `.pharn/ci.yml` when it is empty. A missing default file is no config; a
+ * missing file the input names fails the step (like the CLI's --config), so a typo cannot drop a
+ * threshold held only in the config.
+ */
+async function loadConfig(explicit: string | undefined, deps: ActionDeps): Promise<PharnConfig> {
+  const path = explicit ?? DEFAULT_CONFIG;
   const text = await deps.readFile(deps.resolvePath(deps.workspace, path));
-  if (text === null) return {};
+  if (text === null) {
+    if (explicit !== undefined) throw new Error(`config file not found: ${path}`);
+    return {};
+  }
   try {
     return parseConfig(text);
   } catch (err) {

@@ -17,7 +17,7 @@ const HEAD_SHA = "2222222222222222222222222222222222222222";
 const INPUT_DEFAULTS: Record<string, string> = {
   comment: "false",
   "fail-on-threshold": "true",
-  config: ".pharn/ci.yml",
+  config: "",
 };
 
 function fakeAction(inputs: Record<string, string>) {
