@@ -115,6 +115,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   is aborted after 30 s, and a 5xx, a network error or a rate limit asking for at most 60 s is retried
   once (honouring `retry-after` and `x-ratelimit-reset`); `git` calls in the Action and the CLI are
   killed after 2 minutes. The README example sets `timeout-minutes: 5` on the step.
+- Docs: the `github-token` input says the token is always used in `pr-number` mode; the README
+  quick start's `concurrency` group falls back to `github.ref`, so merge-queue entries no longer
+  cancel each other; the token-footprint bullet lists `GET /user` and the `pr-number` reads; and
+  SECURITY.md's data handling names every message code that quotes a path, including the coverage
+  report path quoted by `COVERAGE_PATHS_UNMATCHED`.
 
 ### Security
 
