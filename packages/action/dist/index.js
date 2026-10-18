@@ -24574,159 +24574,20 @@ function createGitHubApi(opts) {
 }
 
 // src/node-io.ts
-import { execFile, spawn } from "node:child_process";
-import { mkdir as mkdir2, open as open2, readdir as readdir2, readFile, writeFile as writeFile2 } from "node:fs/promises";
+import { mkdir as mkdir2, writeFile as writeFile2 } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-var GIT_TIMEOUT_MS = 12e4;
-async function* streamGit(cwd, args, timeout) {
-  const child = spawn("git", args, { cwd, stdio: ["pipe", "pipe", "pipe"] });
-  let stderr = "";
-  let timedOut = false;
-  child.stdin.on("error", () => {
-  });
-  child.stderr.setEncoding("utf8");
-  child.stderr.on("data", (chunk) => {
-    stderr += chunk;
-  });
-  const closed = new Promise((done) => {
-    child.on("error", (error2) => done({ code: null, error: error2 }));
-    child.on("close", (code2) => done({ code: code2 }));
-  });
-  const timer = setTimeout(() => {
-    timedOut = true;
-    child.kill();
-  }, timeout);
-  try {
-    child.stdout.setEncoding("utf8");
-    for await (const chunk of child.stdout) yield chunk;
-    const { code: code2, error: error2 } = await closed;
-    if (timedOut) throw new Error(`git ${args[0] ?? ""} timed out after ${timeout / 1e3} s`);
-    if (error2) throw error2;
-    if (code2 !== 0) throw new Error(stderr || `Command failed: git ${args.join(" ")}`);
-  } finally {
-    clearTimeout(timer);
-    if (child.exitCode === null && child.signalCode === null) child.kill();
-  }
-}
-function createNodeIo(workspace2, opts = {}) {
-  const timeout = opts.gitTimeoutMs ?? GIT_TIMEOUT_MS;
-  return {
-    gitStream: (args) => streamGit(workspace2, args, timeout),
-    readFileStream: async (path) => {
-      let handle;
-      try {
-        handle = await open2(path, "r");
-      } catch (err) {
-        if (err.code === "ENOENT") return null;
-        throw err;
-      }
-      return handle.createReadStream({ encoding: "utf8" });
-    },
-    git: (args) => new Promise((ok, fail) => {
-      execFile(
-        "git",
-        args,
-        { cwd: workspace2, maxBuffer: 256 * 1024 * 1024, encoding: "utf8", timeout },
-        (err, stdout, stderr) => {
-          if (err?.killed) fail(new Error(`git ${args[0] ?? ""} timed out after ${timeout / 1e3} s`));
-          else if (err) fail(new Error(stderr || err.message));
-          else ok(stdout);
-        }
-      );
-    }),
-    readFile: async (path) => {
-      try {
-        return await readFile(path, "utf8");
-      } catch (err) {
-        if (err.code === "ENOENT") return null;
-        throw err;
-      }
-    },
-    listDir: async (path) => {
-      try {
-        const entries = await readdir2(path, { withFileTypes: true });
-        return entries.map((entry) => ({
-          name: entry.name,
-          kind: entry.isSymbolicLink() ? "symlink" : entry.isDirectory() ? "directory" : entry.isFile() ? "file" : "other"
-        }));
-      } catch (err) {
-        const code2 = err.code;
-        if (code2 === "ENOENT" || code2 === "ENOTDIR") return null;
-        throw err;
-      }
-    },
-    writeFile: async (path, text) => {
-      await mkdir2(dirname(path), { recursive: true });
-      await writeFile2(path, text);
-    },
-    resolvePath: (...segments) => resolve(...segments),
-    writeSummary: async (markdown) => {
-      await summary.addRaw(markdown).write();
-    }
-  };
-}
 
-// src/request-policy.ts
-var API_TIMEOUT_MS = 3e4;
-var MAX_RETRY_WAIT_MS = 6e4;
-var DEFAULT_RETRY_WAIT_MS = 2e3;
-var ApiTimeoutError = class extends Error {
-};
-function retryWaitMs(err, nowMs) {
-  const { status, response } = err ?? {};
-  if (typeof status !== "number") return null;
-  const headers = response?.headers ?? {};
-  const retryAfter = Number(headers["retry-after"]);
-  const remaining = headers["x-ratelimit-remaining"];
-  const reset = Number(headers["x-ratelimit-reset"]);
-  const rateLimited = status === 429 || status === 403 && (headers["retry-after"] !== void 0 || String(remaining) === "0");
-  if (status < 500 && !rateLimited) return null;
-  let wait;
-  if (headers["retry-after"] !== void 0 && Number.isFinite(retryAfter) && retryAfter >= 0) wait = retryAfter * 1e3;
-  else if (rateLimited && String(remaining) === "0" && Number.isFinite(reset)) wait = Math.max(0, reset * 1e3 - nowMs);
-  else if (status >= 500) wait = DEFAULT_RETRY_WAIT_MS;
-  else return null;
-  return wait <= MAX_RETRY_WAIT_MS ? wait : null;
+// ../node-io/src/chunks.ts
+async function* oneChunk(read) {
+  yield await read();
 }
-function applyRequestPolicy(octokit, opts = {}) {
-  const timeoutMs = opts.timeoutMs ?? API_TIMEOUT_MS;
-  const sleep = opts.sleep ?? ((ms) => new Promise((done) => setTimeout(done, ms)));
-  const now = opts.now ?? Date.now;
-  octokit.hook.wrap("request", async (request2, options) => {
-    const send = async () => {
-      const signal = AbortSignal.timeout(timeoutMs);
-      options.request = { ...options.request, signal };
-      try {
-        return await request2(options);
-      } catch (err) {
-        if (signal.aborted) {
-          throw new ApiTimeoutError(
-            `GitHub API request ${options.method} ${options.url} timed out after ${timeoutMs / 1e3} s`
-          );
-        }
-        throw err;
-      }
-    };
-    try {
-      return await send();
-    } catch (err) {
-      if (err instanceof ApiTimeoutError) throw err;
-      const wait = retryWaitMs(err, now());
-      if (wait === null) throw err;
-      opts.log?.(
-        `GitHub API request ${options.method} ${options.url} failed (${err instanceof Error ? err.message : String(err)}); retrying once in ${Math.ceil(wait / 1e3)} s`
-      );
-      await sleep(wait);
-      return send();
-    }
-  });
+function gitChunks(deps, args) {
+  return deps.gitStream ? deps.gitStream(args) : oneChunk(() => deps.git(args));
 }
-function withRequestPolicy(build, opts = {}) {
-  return (token) => {
-    const octokit = build(token);
-    applyRequestPolicy(octokit, opts);
-    return octokit;
-  };
+async function fileChunks(deps, path) {
+  if (deps.readFileStream) return deps.readFileStream(path);
+  const text = await deps.readFile(path);
+  return text === null ? null : oneChunk(async () => text);
 }
 
 // ../core/src/coverage/types.ts
@@ -26464,7 +26325,7 @@ var WalkLimitError = class extends Error {
   limit;
   name = "WalkLimitError";
 };
-async function walkGlob(pattern, listDir, budget, limits) {
+async function walkGlob(pattern, listDir2, budget, limits) {
   const segments = pattern.split("/");
   const globstar = segments.indexOf("**");
   const matchers = segments.map((segment) => segment === "**" ? null : compileGlob(segment));
@@ -26474,7 +26335,7 @@ async function walkGlob(pattern, listDir, budget, limits) {
   const pending = [{ dir: "", depth: 0 }];
   for (let item = pending.pop(); item !== void 0; item = pending.pop()) {
     const { dir, depth } = item;
-    const entries = await listDir(dir);
+    const entries = await listDir2(dir);
     if (entries === null) continue;
     budget.entries += entries.length;
     if (budget.entries > limits.entries) throw new WalkLimitError("entries");
@@ -26516,7 +26377,7 @@ function parseCoverageEntries(entries, label) {
     return { kind: "glob", entry, pattern: parseExcludePattern(entry, label) };
   });
 }
-async function expandCoverageEntries(entries, listDir, label) {
+async function expandCoverageEntries(entries, listDir2, label) {
   const budget = { files: 0, entries: 0 };
   const limits = { files: MAX_COVERAGE_GLOB_FILES, entries: MAX_COVERAGE_WALK_ENTRIES };
   const expanded = [];
@@ -26527,7 +26388,7 @@ async function expandCoverageEntries(entries, listDir, label) {
     }
     let paths;
     try {
-      paths = await walkGlob(item.pattern, listDir, budget, limits);
+      paths = await walkGlob(item.pattern, listDir2, budget, limits);
     } catch (err) {
       if (!(err instanceof WalkLimitError)) throw err;
       throw new ConfigError(
@@ -26759,6 +26620,230 @@ function parseLsTreeSizes(text) {
 // ../core/src/version.ts
 var VERSION7 = "0.1.0";
 
+// ../node-io/src/coverage.ts
+async function readCoverageFiles(deps, options) {
+  const { label, baseDir, format, repoRoot, coverageRoot, name, log } = options;
+  const entries = parseCoverageEntries(coverageEntryList(options.entries), label);
+  const expanded = await expandCoverageEntries(entries, (dir) => deps.listDir(deps.resolvePath(baseDir, dir)), label);
+  const coverageFiles = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const item of expanded) {
+    if (item.kind === "no-match") {
+      coverageFiles.push({ missingFile: name(item.glob) });
+      continue;
+    }
+    const entry = item.kind === "literal" ? item.entry : item.path;
+    const coveragePath = deps.resolvePath(baseDir, entry);
+    if (seen.has(coveragePath)) continue;
+    seen.add(coveragePath);
+    const chunks = await fileChunks(deps, coveragePath);
+    if (chunks === null) {
+      coverageFiles.push({ missingFile: name(entry) });
+      continue;
+    }
+    const { choice, parsed } = await readCoverageChunks(chunks, format, {
+      repoRoot,
+      ...coverageRoot === void 0 ? {} : { coverageRoot }
+    });
+    log(coverageChoiceLine(choice));
+    coverageFiles.push({ parsed, format: choice.format, file: name(entry) });
+  }
+  return coverageFiles;
+}
+
+// ../node-io/src/io.ts
+import { execFile, spawn } from "node:child_process";
+import { open as open2, readdir as readdir2, readFile as readFileText } from "node:fs/promises";
+var GIT_TIMEOUT_MS = 12e4;
+var LOCAL_GIT_SUBCOMMANDS = ["diff", "hash-object", "log", "ls-files", "ls-tree", "rev-parse"];
+var REFUSED_OPTION_PREFIXES = ["--upload-pack", "--receive-pack", "--exec", "--output", "--ext-diff"];
+function localGitArgs(args) {
+  const subcommand = LOCAL_GIT_SUBCOMMANDS.find((name) => name === args[0]);
+  if (subcommand === void 0) {
+    throw new Error(
+      `git ${args[0] ?? ""} is not allowed: pharn-ci runs only these git subcommands: ${LOCAL_GIT_SUBCOMMANDS.join(", ")}`
+    );
+  }
+  const safe = [subcommand];
+  let options = true;
+  for (const arg of args.slice(1)) {
+    if (options && (arg === "--end-of-options" || arg === "--")) {
+      options = false;
+    } else if (options && (REFUSED_OPTION_PREFIXES.some((prefix) => arg.startsWith(prefix)) || subcommand === "hash-object" && arg === "-w")) {
+      throw new Error(`git ${subcommand}: the option "${arg}" is not allowed`);
+    }
+    safe.push(`${arg}`);
+  }
+  return safe;
+}
+async function* streamGit(cwd, gitArgs, timeoutMs = GIT_TIMEOUT_MS) {
+  const args = localGitArgs(gitArgs);
+  const child = spawn("git", args, { cwd, stdio: ["pipe", "pipe", "pipe"] });
+  let stderr = "";
+  let timedOut = false;
+  child.stdin.on("error", () => {
+  });
+  child.stderr.setEncoding("utf8");
+  child.stderr.on("data", (chunk) => {
+    stderr += chunk;
+  });
+  const closed = new Promise((done) => {
+    child.on("error", (error2) => done({ code: null, error: error2 }));
+    child.on("close", (code2) => done({ code: code2 }));
+  });
+  const timer = setTimeout(() => {
+    timedOut = true;
+    child.kill();
+  }, timeoutMs);
+  try {
+    child.stdout.setEncoding("utf8");
+    for await (const chunk of child.stdout) yield chunk;
+    const { code: code2, error: error2 } = await closed;
+    if (timedOut) throw new Error(`git ${args[0] ?? ""} timed out after ${timeoutMs / 1e3} s`);
+    if (error2) throw error2;
+    if (code2 !== 0) throw new Error(stderr || `Command failed: git ${args.join(" ")}`);
+  } finally {
+    clearTimeout(timer);
+    if (child.exitCode === null && child.signalCode === null) child.kill();
+  }
+}
+function runGit(cwd, gitArgs, timeoutMs = GIT_TIMEOUT_MS) {
+  let args;
+  try {
+    args = localGitArgs(gitArgs);
+  } catch (err) {
+    return Promise.reject(err);
+  }
+  return new Promise((ok, fail) => {
+    execFile(
+      "git",
+      args,
+      { cwd, maxBuffer: 256 * 1024 * 1024, encoding: "utf8", timeout: timeoutMs },
+      (err, stdout, stderr) => {
+        if (err?.killed) fail(new Error(`git ${args[0] ?? ""} timed out after ${timeoutMs / 1e3} s`));
+        else if (err) fail(new Error(stderr || err.message));
+        else ok(stdout);
+      }
+    );
+  });
+}
+async function readFile(path) {
+  try {
+    return await readFileText(path, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") return null;
+    throw err;
+  }
+}
+async function readFileStream(path) {
+  let handle;
+  try {
+    handle = await open2(path, "r");
+  } catch (err) {
+    if (err.code === "ENOENT") return null;
+    throw err;
+  }
+  return handle.createReadStream({ encoding: "utf8" });
+}
+async function listDir(path) {
+  try {
+    const entries = await readdir2(path, { withFileTypes: true });
+    return entries.map(
+      (entry) => ({
+        name: entry.name,
+        kind: entry.isSymbolicLink() ? "symlink" : entry.isDirectory() ? "directory" : entry.isFile() ? "file" : "other"
+      })
+    );
+  } catch (err) {
+    const code2 = err.code;
+    if (code2 === "ENOENT" || code2 === "ENOTDIR") return null;
+    throw err;
+  }
+}
+
+// src/node-io.ts
+function createNodeIo(workspace2, opts = {}) {
+  const timeout = opts.gitTimeoutMs ?? GIT_TIMEOUT_MS;
+  return {
+    gitStream: (args) => streamGit(workspace2, args, timeout),
+    readFileStream,
+    git: (args) => runGit(workspace2, args, timeout),
+    readFile,
+    listDir,
+    writeFile: async (path, text) => {
+      await mkdir2(dirname(path), { recursive: true });
+      await writeFile2(path, text);
+    },
+    resolvePath: (...segments) => resolve(...segments),
+    writeSummary: async (markdown) => {
+      await summary.addRaw(markdown).write();
+    }
+  };
+}
+
+// src/request-policy.ts
+var API_TIMEOUT_MS = 3e4;
+var MAX_RETRY_WAIT_MS = 6e4;
+var DEFAULT_RETRY_WAIT_MS = 2e3;
+var ApiTimeoutError = class extends Error {
+};
+function retryWaitMs(err, nowMs) {
+  const { status, response } = err ?? {};
+  if (typeof status !== "number") return null;
+  const headers = response?.headers ?? {};
+  const retryAfter = Number(headers["retry-after"]);
+  const remaining = headers["x-ratelimit-remaining"];
+  const reset = Number(headers["x-ratelimit-reset"]);
+  const rateLimited = status === 429 || status === 403 && (headers["retry-after"] !== void 0 || String(remaining) === "0");
+  if (status < 500 && !rateLimited) return null;
+  let wait;
+  if (headers["retry-after"] !== void 0 && Number.isFinite(retryAfter) && retryAfter >= 0) wait = retryAfter * 1e3;
+  else if (rateLimited && String(remaining) === "0" && Number.isFinite(reset)) wait = Math.max(0, reset * 1e3 - nowMs);
+  else if (status >= 500) wait = DEFAULT_RETRY_WAIT_MS;
+  else return null;
+  return wait <= MAX_RETRY_WAIT_MS ? wait : null;
+}
+function applyRequestPolicy(octokit, opts = {}) {
+  const timeoutMs = opts.timeoutMs ?? API_TIMEOUT_MS;
+  const sleep = opts.sleep ?? ((ms) => new Promise((done) => setTimeout(done, ms)));
+  const now = opts.now ?? Date.now;
+  octokit.hook.wrap("request", async (request2, options) => {
+    const send = async () => {
+      const signal = AbortSignal.timeout(timeoutMs);
+      options.request = { ...options.request, signal };
+      try {
+        return await request2(options);
+      } catch (err) {
+        if (signal.aborted) {
+          throw new ApiTimeoutError(
+            `GitHub API request ${options.method} ${options.url} timed out after ${timeoutMs / 1e3} s`
+          );
+        }
+        throw err;
+      }
+    };
+    try {
+      return await send();
+    } catch (err) {
+      if (err instanceof ApiTimeoutError) throw err;
+      const wait = retryWaitMs(err, now());
+      if (wait === null) throw err;
+      opts.log?.(
+        `GitHub API request ${options.method} ${options.url} failed (${err instanceof Error ? err.message : String(err)}); retrying once in ${Math.ceil(wait / 1e3)} s`
+      );
+      await sleep(wait);
+      return send();
+    }
+  });
+}
+function withRequestPolicy(build, opts = {}) {
+  return (token) => {
+    const octokit = build(token);
+    applyRequestPolicy(octokit, opts);
+    return octokit;
+  };
+}
+
 // src/pr-number.ts
 var PR_NUMBER = /^[1-9][0-9]{0,9}$/;
 var COMMIT_SHA = /^([0-9a-f]{40}|[0-9a-f]{64})$/i;
@@ -26877,35 +26962,17 @@ async function runUnsafe(deps) {
   const comment = parseBool(input("comment"), "comment") ?? true;
   const target = !pr && prNumber !== void 0 ? await resolvePrNumberTarget(deps, { prNumber, headSha }) : void 0;
   const coverageLabel = resolved.inputs.coverageFile.fromConfig ? '"coverage.file"' : "coverage-file";
-  const entries = parseCoverageEntries(coverageEntryList(resolved.inputs.coverageFile.path), coverageLabel);
-  const expanded = await expandCoverageEntries(
-    entries,
-    (dir) => deps.listDir(deps.resolvePath(deps.workspace, dir)),
-    coverageLabel
-  );
-  const coverageFiles = [];
-  const seen = /* @__PURE__ */ new Set();
-  for (const item of expanded) {
-    if (item.kind === "no-match") {
-      coverageFiles.push({ missingFile: item.glob });
-      continue;
-    }
-    const name = item.kind === "literal" ? item.entry : item.path;
-    const coveragePath = deps.resolvePath(deps.workspace, name);
-    if (seen.has(coveragePath)) continue;
-    seen.add(coveragePath);
-    const chunks = await openFile(deps, coveragePath);
-    if (chunks === null) {
-      coverageFiles.push({ missingFile: name });
-      continue;
-    }
-    const { choice, parsed } = await readCoverageChunks(chunks, format, {
-      repoRoot: deps.workspace,
-      ...coverageRoot === void 0 ? {} : { coverageRoot }
-    });
-    deps.info(coverageChoiceLine(choice));
-    coverageFiles.push({ parsed, format: choice.format, file: name });
-  }
+  const coverageFiles = await readCoverageFiles(deps, {
+    entries: resolved.inputs.coverageFile.path,
+    label: coverageLabel,
+    baseDir: deps.workspace,
+    format,
+    repoRoot: deps.workspace,
+    ...coverageRoot === void 0 ? {} : { coverageRoot },
+    // Named as written, relative to the workspace.
+    name: (entry) => entry,
+    log: (line) => deps.info(line)
+  });
   const repoFiles = await trackedFiles(target, deps);
   const lsTree = target ? null : await deps.git(["ls-tree", "-r", "-l", "-z", "--full-tree", "HEAD"]).catch((err) => {
     deps.warning(`git ls-tree failed, so empty agent setup files are not reported: ${String(err)}`);
@@ -26979,17 +27046,6 @@ async function trackedFiles(target, deps) {
     return [];
   }
 }
-async function* oneChunk(read) {
-  yield await read();
-}
-function streamGit2(deps, args) {
-  return deps.gitStream ? deps.gitStream(args) : oneChunk(() => deps.git(args));
-}
-async function openFile(deps, path) {
-  if (deps.readFileStream) return deps.readFileStream(path);
-  const text = await deps.readFile(path);
-  return text === null ? null : oneChunk(async () => text);
-}
 async function getDiff(baseRefInput, deps, target) {
   if (baseRefInput.startsWith("-")) throw new Error(`base-ref "${baseRefInput}" must not start with "-"`);
   if (target) return getTargetDiff(baseRefInput, target, deps);
@@ -27013,7 +27069,7 @@ async function getDiff(baseRefInput, deps, target) {
   const localBase = await resolveLocal(base, deps);
   if (localBase) {
     try {
-      return { parsed: await readDiffChunks(streamGit2(deps, gitDiffArgs(localBase))) };
+      return { parsed: await readDiffChunks(gitChunks(deps, gitDiffArgs(localBase))) };
     } catch (err) {
       deps.info(`local git diff failed, falling back to the GitHub API: ${String(err)}`);
     }

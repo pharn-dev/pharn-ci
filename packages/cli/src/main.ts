@@ -3,26 +3,21 @@ import {
   type CheckInput,
   COVERAGE_FORMAT_SELECTIONS,
   ConfigError,
-  type CoverageFileInput,
   check,
-  coverageChoiceLine,
-  coverageEntryList,
   type DiffFile,
   type DirEntry,
-  expandCoverageEntries,
   gitDiffArgs,
   type InputErrorText,
   type PharnConfig,
   parseConfig,
-  parseCoverageEntries,
   parseLsTreeSizes,
   type RawInputs,
-  readCoverageChunks,
   readDiffChunks,
   renderMarkdown,
   resolveInputs,
   VERSION,
 } from "@pharn-ci/core";
+import { gitChunks, readCoverageFiles } from "@pharn-ci/node-io";
 
 /** Everything the CLI touches outside itself; injected so tests can fake it. */
 export interface CliDeps {
@@ -179,43 +174,25 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   // A --coverage entry is relative to where you run the CLI; a config entry is relative to the repo root.
   const coverageBase = coverageFile.fromConfig ? repoRoot : deps.cwd;
   const coverageLabel = coverageFile.fromConfig ? '"coverage.file"' : "--coverage";
-  const entries = parseCoverageEntries(coverageEntryList(coverageFile.path), coverageLabel);
-  const expanded = await expandCoverageEntries(
-    entries,
-    (dir) => deps.listDir(deps.resolvePath(coverageBase, dir)),
-    coverageLabel,
-  );
   // Every entry is resolved and every file read before the check; a file reached twice is read once.
-  const coverageFiles: CoverageFileInput[] = [];
-  const seen = new Set<string>();
-  for (const item of expanded) {
-    if (item.kind === "no-match") {
-      coverageFiles.push({ missingFile: deps.resolvePath(coverageBase, item.glob) });
-      continue;
-    }
-    const coveragePath = deps.resolvePath(coverageBase, item.kind === "literal" ? item.entry : item.path);
-    if (seen.has(coveragePath)) continue;
-    seen.add(coveragePath);
-    const chunks = await openFile(deps, coveragePath);
-    if (chunks === null) {
-      coverageFiles.push({ missingFile: coveragePath });
-      continue;
-    }
-    // The file is parsed as it is read, with the same repo root and coverage root the check would use.
-    const { choice, parsed } = await readCoverageChunks(chunks, coverageFormat, {
-      repoRoot,
-      ...(coverageRoot === undefined ? {} : { coverageRoot }),
-    });
+  const coverageFiles = await readCoverageFiles(deps, {
+    entries: coverageFile.path,
+    label: coverageLabel,
+    baseDir: coverageBase,
+    format: coverageFormat,
+    repoRoot,
+    ...(coverageRoot === undefined ? {} : { coverageRoot }),
+    // Named by absolute path.
+    name: (entry) => deps.resolvePath(coverageBase, entry),
     // Say which format was read and why, on stderr so stdout stays the report alone.
-    deps.stderr(`${coverageChoiceLine(choice)}\n`);
-    coverageFiles.push({ parsed, format: choice.format, file: coveragePath });
-  }
+    log: (line) => deps.stderr(`${line}\n`),
+  });
 
   const base = values.base ?? "origin/main";
   const diffArgs = gitDiffArgs(base);
   let diffFiles: DiffFile[];
   try {
-    diffFiles = await readDiffChunks(streamGit(deps, diffArgs));
+    diffFiles = await readDiffChunks(gitChunks(deps, diffArgs));
   } catch (err) {
     throw gitFailure(diffArgs, `could not diff against "${base}" (fetch it, or pass --base <ref>)`, err);
   }
@@ -278,23 +255,6 @@ async function git(deps: CliDeps, args: string[], context: string): Promise<stri
 /** A failed git call, worded the same whether git was read whole or as a stream. */
 function gitFailure(args: string[], context: string, err: unknown): Error {
   return new Error(`${context}\n  git ${args.join(" ")}: ${errorMessage(err).trim()}`);
-}
-
-/** One chunk: what a whole-text read gave. */
-async function* oneChunk(read: () => Promise<string>): AsyncGenerator<string> {
-  yield await read();
-}
-
-/** git's stdout as chunks: streamed when the deps can, else the whole text as a single chunk. */
-function streamGit(deps: CliDeps, args: string[]): AsyncIterable<string> {
-  return deps.gitStream ? deps.gitStream(args) : oneChunk(() => deps.git(args));
-}
-
-/** The file as chunks: streamed when the deps can, else the whole text as a single chunk; null when it does not exist. */
-async function openFile(deps: CliDeps, path: string): Promise<AsyncIterable<string> | null> {
-  if (deps.readFileStream) return deps.readFileStream(path);
-  const text = await deps.readFile(path);
-  return text === null ? null : oneChunk(async () => text);
 }
 
 function errorMessage(err: unknown): string {

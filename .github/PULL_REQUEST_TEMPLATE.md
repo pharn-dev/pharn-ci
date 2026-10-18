@@ -20,7 +20,7 @@ Closes #<!-- issue number -->
 
 ## Package(s) touched
 
-<!-- packages/core | packages/cli | packages/action | schema | fixtures | docs | repo tooling -->
+<!-- packages/core | packages/cli | packages/action | packages/node-io | schema | fixtures | docs | repo tooling -->
 
 ## Checklist
 

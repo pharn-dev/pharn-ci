@@ -14,6 +14,8 @@ AI-agnostic and fully stateless (Phase 0): no backend, no telemetry.
   setup scan, Report v1 builder, markdown renderer, config parser. Entry point: `check()` in `src/check.ts`.
 - `packages/cli` — `pharn-ci check`: reads files, runs git, calls core, prints output.
 - `packages/action` — thin GitHub Action wrapper: inputs, PR diff, sticky comment, job summary, exit code.
+- `packages/node-io` — private shared Node I/O for cli and action: git, file reads, directory listing, the
+  coverage-file reading loop; bundled into their dists.
 - `schema/report.v1.json` — JSON Schema for the report. **Source of truth for all output.**
 - `fixtures/` — hand-written lcov files, diffs and golden outputs used by tests.
 - `action.yml` — Action metadata; runs `packages/action/dist/index.js`.
@@ -21,8 +23,8 @@ AI-agnostic and fully stateless (Phase 0): no backend, no telemetry.
 ## Rules
 
 1. **core is pure: no I/O.** No `fs`, `process`, `child_process`, network, clocks or randomness in
-   `packages/core/src`. All I/O lives in `packages/cli` and `packages/action`, which gather inputs
-   and pass plain data to core. This is enforced by core's tsconfig (`"types": []`), a Biome
+   `packages/core/src`. All I/O lives in `packages/cli`, `packages/action` and `packages/node-io`
+   (the Node I/O helpers they share); cli and action gather inputs and pass plain data to core. This is enforced by core's tsconfig (`"types": []`), a Biome
    import ban and `packages/core/test/purity.test.ts`.
 2. **`schema/report.v1.json` is the source of truth.** Changing it is a versioned decision. Within
    v1 you may only add optional fields, message codes or setup kinds (and document them in the
