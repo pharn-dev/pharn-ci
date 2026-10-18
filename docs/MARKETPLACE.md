@@ -40,7 +40,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      # ...set up your toolchain and run tests with lcov output, e.g.:
+      # ...set up your toolchain and run tests with lcov output, e.g. (vitest needs
+      # @vitest/coverage-v8 as a dev dependency, or it aborts and writes no report):
       - run: npx vitest run --coverage --coverage.reporter=lcov
       - uses: pharn-dev/pharn-ci@v0.1.0
         with:
