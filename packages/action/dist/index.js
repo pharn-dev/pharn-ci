@@ -26125,6 +26125,7 @@ var VERSION7 = "0.1.0";
 // src/run.ts
 var COMMENT_MARKER = "<!-- pharn-ci -->";
 var ZERO_SHA = /^0+$/;
+var DEFAULT_CONFIG = ".pharn/ci.yml";
 var INPUT_ERRORS = {
   coverageFormat: (value) => `coverage-format "${value}" is not supported (supported: lcov, cobertura, auto)`,
   threshold: "threshold",
@@ -26144,7 +26145,7 @@ async function run(deps) {
 }
 async function runUnsafe(deps) {
   const input = (name) => deps.getInput(name).trim();
-  const config = await loadConfig(input("config") || ".pharn/ci.yml", deps);
+  const config = await loadConfig(input("config") || void 0, deps);
   const resolved = resolveInputs(
     config,
     {
@@ -26305,9 +26306,13 @@ async function deleteDuplicates(deps, duplicates) {
 function errorText(err) {
   return err instanceof Error ? err.message : String(err);
 }
-async function loadConfig(path, deps) {
+async function loadConfig(explicit, deps) {
+  const path = explicit ?? DEFAULT_CONFIG;
   const text = await deps.readFile(deps.resolvePath(deps.workspace, path));
-  if (text === null) return {};
+  if (text === null) {
+    if (explicit !== void 0) throw new Error(`config file not found: ${path}`);
+    return {};
+  }
   try {
     return parseConfig(text);
   } catch (err) {

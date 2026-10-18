@@ -74,7 +74,7 @@ function harness(opts: Options = {}): Harness {
     "coverage-file": "coverage/lcov.info",
     comment: "true",
     "fail-on-threshold": "true",
-    config: ".pharn/ci.yml",
+    config: "",
     ...opts.inputs,
   };
   const localGit = opts.localGit ?? true;
@@ -476,6 +476,34 @@ describe("action run", () => {
     expect((await run(fromConfig.deps))?.diffCoverage?.threshold).toBe(90);
     const overridden = harness({ files, inputs: { "coverage-file": "", threshold: "70" } });
     expect((await run(overridden.deps))?.verdict).toBe("pass");
+  });
+
+  it("fails the step when the config input names a file that does not exist", async () => {
+    // A typo in `config:` must not silently drop a threshold held only in the config (F-08).
+    const h = harness({ inputs: { config: ".pharn/c1.yml" } });
+    expect(await run(h.deps)).toBeUndefined();
+    expect(h.failed).toEqual(["pharn-ci: config file not found: .pharn/c1.yml"]);
+    expect(h.outputs).toEqual({});
+    expect(h.apiCalls).toEqual([]);
+  });
+
+  it("fails the step when the config input names the default path and it does not exist", async () => {
+    const h = harness({ inputs: { config: ".pharn/ci.yml" } });
+    expect(await run(h.deps)).toBeUndefined();
+    expect(h.failed).toEqual(["pharn-ci: config file not found: .pharn/ci.yml"]);
+  });
+
+  it("runs without a config when the config input is empty and .pharn/ci.yml is absent", async () => {
+    const h = harness({ inputs: { config: "", threshold: "" } });
+    const report = await run(h.deps);
+    expect(report?.diffCoverage?.threshold).toBeNull();
+    expect(h.failed).toEqual([]);
+  });
+
+  it("reads the file the config input names, relative to the workspace", async () => {
+    const files = { [`${WORKSPACE}/ci/pharn.yml`]: "coverage:\n  threshold: 90\n" };
+    const h = harness({ files, inputs: { config: "ci/pharn.yml" } });
+    expect((await run(h.deps))?.diffCoverage?.threshold).toBe(90);
   });
 
   it("reports a missing coverage file", async () => {

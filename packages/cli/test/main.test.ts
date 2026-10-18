@@ -135,6 +135,7 @@ describe("cli main", () => {
     [["check", "--coverage", "x", "--threshold", "abc"], "--threshold must be a number"],
     [["check"], "no coverage file"],
     [["check", "--coverage", "x", "--config", "missing.yml"], "config file not found"],
+    [["check", "--coverage", "x", "--config", ".pharn/ci.yml"], "config file not found: /repo/sub/.pharn/ci.yml"],
     [
       ["check", "--coverage", "x", "--base=--output=/tmp/pwned"],
       '--base "--output=/tmp/pwned" must not start with "-"',
