@@ -61,32 +61,47 @@ pharn-ci runs in your CI on every pull request and reports:
   optional threshold gate. It reads the lcov or Cobertura XML file your own test run already writes
   (Clover and JaCoCo native XML are not supported).
 - **Agent setup inventory**: which agent setup files the repo carries (`CLAUDE.md`, `AGENTS.md`,
-  `GEMINI.md`, `.claude/` files, Cursor, Copilot, Codex, Windsurf and Cline files, MCP configs; see
-  the table below), with a summary of how many there are and which tools they configure.
+  `GEMINI.md`, `.claude/` files, MCP configs, and the files of Cursor, Copilot, Codex, Windsurf,
+  Cline, Aider, Continue, Roo Code, Amazon Q Developer, Junie, Zed, Augment, Kiro, Goose, OpenCode
+  and Gemini CLI; see the table below), with a summary of how many there are and which tools they
+  configure.
 
-| Kind                          | Matches                                                      | Tools                |
-| ----------------------------- | ------------------------------------------------------------ | -------------------- |
-| `claude-md`                   | `CLAUDE.md`, any directory                                   | claude-code          |
-| `claude-local-md`             | `CLAUDE.local.md`, any directory                             | claude-code          |
-| `agents-md`                   | `AGENTS.md`, any directory                                   | codex, copilot, cursor |
-| `gemini-md`                   | `GEMINI.md`, any directory                                   | gemini               |
-| `claude-settings`             | `.claude/settings.json`, any directory                       | claude-code          |
-| `claude-settings-local`       | `.claude/settings.local.json`, any directory                 | claude-code          |
-| `claude-skill`                | files under `.claude/skills/`, any directory                 | claude-code          |
-| `claude-hook`                 | files under `.claude/hooks/`, any directory                  | claude-code          |
-| `claude-agent`                | files under `.claude/agents/`, any directory                 | claude-code          |
-| `claude-command`              | files under `.claude/commands/`, any directory               | claude-code          |
-| `cursor-rules`                | files under `.cursor/rules/` (any directory), `.cursorrules` | cursor               |
-| `cursor-mcp`                  | `.cursor/mcp.json`, repo root                                | cursor, mcp          |
-| `copilot-instructions`        | `.github/copilot-instructions.md`                            | copilot              |
-| `copilot-instructions-scoped` | `.github/instructions/**/*.instructions.md`                  | copilot              |
-| `copilot-agents`              | files under `.github/agents/`                                | copilot              |
-| `copilot-prompts`             | files under `.github/prompts/`                               | copilot              |
-| `vscode-mcp`                  | `.vscode/mcp.json`, repo root                                | copilot, mcp         |
-| `codex-config`                | `.codex/config.toml`, repo root                              | codex                |
-| `windsurf-rules`              | `.windsurfrules`, files under `.windsurf/rules/`             | windsurf             |
-| `cline-rules`                 | `.clinerules` (file or directory)                            | cline                |
-| `mcp-config`                  | `.mcp.json`, any directory                                   | mcp                  |
+| Kind                          | Matches                                                                                        | Tools                                             |
+| ----------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `claude-md`                   | `CLAUDE.md`, any directory                                                                     | claude-code                                       |
+| `claude-local-md`             | `CLAUDE.local.md`, any directory                                                               | claude-code                                       |
+| `agents-md`                   | `AGENTS.md`, any directory                                                                     | amp, codex, copilot, cursor, jules, opencode, zed |
+| `gemini-md`                   | `GEMINI.md`, any directory                                                                     | gemini                                            |
+| `claude-settings`             | `.claude/settings.json`, any directory                                                         | claude-code                                       |
+| `claude-settings-local`       | `.claude/settings.local.json`, any directory                                                   | claude-code                                       |
+| `claude-skill`                | files under `.claude/skills/`, any directory                                                   | claude-code                                       |
+| `claude-hook`                 | files under `.claude/hooks/`, any directory                                                    | claude-code                                       |
+| `claude-agent`                | files under `.claude/agents/`, any directory                                                   | claude-code                                       |
+| `claude-command`              | files under `.claude/commands/`, any directory                                                 | claude-code                                       |
+| `claude-rule`                 | files under `.claude/rules/`, any directory                                                    | claude-code                                       |
+| `cursor-rules`                | files under `.cursor/rules/` (any directory), `.cursorrules`                                   | cursor                                            |
+| `cursor-mcp`                  | `.cursor/mcp.json`, repo root                                                                  | cursor, mcp                                       |
+| `copilot-instructions`        | `.github/copilot-instructions.md`                                                              | copilot                                           |
+| `copilot-instructions-scoped` | `.github/instructions/**/*.instructions.md`                                                    | copilot                                           |
+| `copilot-agents`              | files under `.github/agents/`                                                                  | copilot                                           |
+| `copilot-prompts`             | files under `.github/prompts/`                                                                 | copilot                                           |
+| `vscode-mcp`                  | `.vscode/mcp.json`, repo root                                                                  | copilot, mcp                                      |
+| `codex-config`                | `.codex/config.toml`, repo root                                                                | codex                                             |
+| `windsurf-rules`              | `.windsurfrules`, files under `.windsurf/rules/`                                               | windsurf                                          |
+| `cline-rules`                 | `.clinerules` (file or directory)                                                              | cline                                             |
+| `mcp-config`                  | `.mcp.json`, any directory                                                                     | mcp                                               |
+| `aider-config`                | `.aider.conf.yml`, repo root                                                                   | aider                                             |
+| `conventions-md`              | `CONVENTIONS.md`, repo root                                                                    | aider                                             |
+| `continue-rules`              | files under `.continue/rules/`, `.continuerules`, repo root                                    | continue                                          |
+| `roo-rules`                   | `.roorules`, `.roorules-<mode>`, files under `.roo/rules/` and `.roo/rules-<mode>/`, repo root | roo                                               |
+| `amazonq-rules`               | files under `.amazonq/rules/`, repo root                                                       | amazon-q                                          |
+| `junie-guidelines`            | `.junie/guidelines.md`, repo root                                                              | junie                                             |
+| `zed-rules`                   | `.rules`, repo root                                                                            | zed                                               |
+| `augment-rules`               | files under `.augment/rules/`, `.augment-guidelines`, repo root                                | augment                                           |
+| `kiro-steering`               | files under `.kiro/steering/`, repo root                                                       | kiro                                              |
+| `goosehints`                  | `.goosehints`, any directory                                                                   | goose                                             |
+| `opencode-config`             | `opencode.json`, `opencode.jsonc`, repo root                                                   | opencode                                          |
+| `gemini-settings`             | `.gemini/settings.json`, repo root                                                             | gemini                                            |
 
 It is **AI-agnostic**: it looks at your code, tests and setup files, never at which tool wrote the
 code. Claude Code, Cursor, Copilot, Codex and hand-written changes are measured the same way.
@@ -199,7 +214,7 @@ flowchart LR
 >
 > ### Agent setup
 >
-> Agent setup: 3 files · claude-code, codex, copilot, cursor
+> Agent setup: 3 files · amp, claude-code, codex, copilot, cursor, jules, opencode, zed
 >
 > | Path | Kind |
 > | --- | --- |

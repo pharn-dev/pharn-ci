@@ -19,7 +19,20 @@ export type AgentSetupKind =
   | "codex-config"
   | "windsurf-rules"
   | "cline-rules"
-  | "mcp-config";
+  | "mcp-config"
+  | "claude-rule"
+  | "aider-config"
+  | "conventions-md"
+  | "continue-rules"
+  | "roo-rules"
+  | "amazonq-rules"
+  | "junie-guidelines"
+  | "zed-rules"
+  | "augment-rules"
+  | "kiro-steering"
+  | "goosehints"
+  | "opencode-config"
+  | "gemini-settings";
 
 export interface AgentSetupFile {
   path: string;
@@ -64,6 +77,20 @@ function baseName(path: string): string {
   return path.slice(path.lastIndexOf("/") + 1);
 }
 
+/** True for a repo-root `.roo/rules-<mode>/<file>` path: a non-empty mode, then "/" and a non-empty rest. */
+function underRooModeDir(path: string): boolean {
+  const prefix = ".roo/rules-";
+  if (!path.startsWith(prefix)) return false;
+  const slash = path.indexOf("/", prefix.length);
+  return slash > prefix.length && path.length > slash + 1;
+}
+
+/** True for a repo-root `.roorules-<mode>` file: a non-empty mode and no "/". */
+function isRooModeFile(path: string): boolean {
+  const prefix = ".roorules-";
+  return path.startsWith(prefix) && path.length > prefix.length && !path.includes("/");
+}
+
 const INSTRUCTIONS_DIR = ".github/instructions/";
 const INSTRUCTIONS_SUFFIX = ".instructions.md";
 
@@ -73,15 +100,18 @@ const INSTRUCTIONS_SUFFIX = ".instructions.md";
  * (`.claude/agents/CLAUDE.md` is a Claude agent, not a CLAUDE.md).
  */
 export const SETUP_RULES: readonly SetupRule[] = [
-  // Directory and full-path rules that also apply in nested directories.
+  // Directory and full-path rules that also apply in nested directories (the .claude/ kinds, claude-rule
+  // among them, and cursor-rules).
   { kind: "claude-settings", matches: (p) => isNestedFile(p, ".claude/settings.json") },
   { kind: "claude-settings-local", matches: (p) => isNestedFile(p, ".claude/settings.local.json") },
   { kind: "claude-skill", matches: (p) => underNested(p, ".claude/skills/") },
   { kind: "claude-hook", matches: (p) => underNested(p, ".claude/hooks/") },
   { kind: "claude-agent", matches: (p) => underNested(p, ".claude/agents/") },
   { kind: "claude-command", matches: (p) => underNested(p, ".claude/commands/") },
+  { kind: "claude-rule", matches: (p) => underNested(p, ".claude/rules/") },
   { kind: "cursor-rules", matches: (p) => underNested(p, ".cursor/rules/") },
-  // Directory and full-path rules for the repo root only.
+  // Directory and full-path rules for the repo root only (including the aider, continue, roo, amazonq, junie,
+  // zed, augment, kiro, opencode and gemini-settings kinds).
   { kind: "cursor-rules", matches: (p) => p === ".cursorrules" },
   { kind: "copilot-instructions", matches: (p) => p === ".github/copilot-instructions.md" },
   {
@@ -100,12 +130,30 @@ export const SETUP_RULES: readonly SetupRule[] = [
   { kind: "windsurf-rules", matches: (p) => underRoot(p, ".windsurf/rules/") },
   { kind: "cline-rules", matches: (p) => p === ".clinerules" },
   { kind: "cline-rules", matches: (p) => underRoot(p, ".clinerules/") },
-  // File-name rules: these files are hierarchical, so tools read them from any directory.
+  { kind: "aider-config", matches: (p) => p === ".aider.conf.yml" },
+  { kind: "conventions-md", matches: (p) => p === "CONVENTIONS.md" },
+  { kind: "continue-rules", matches: (p) => underRoot(p, ".continue/rules/") },
+  { kind: "continue-rules", matches: (p) => p === ".continuerules" },
+  { kind: "roo-rules", matches: (p) => p === ".roorules" },
+  { kind: "roo-rules", matches: isRooModeFile },
+  { kind: "roo-rules", matches: (p) => underRoot(p, ".roo/rules/") },
+  { kind: "roo-rules", matches: underRooModeDir },
+  { kind: "amazonq-rules", matches: (p) => underRoot(p, ".amazonq/rules/") },
+  { kind: "junie-guidelines", matches: (p) => p === ".junie/guidelines.md" },
+  { kind: "zed-rules", matches: (p) => p === ".rules" },
+  { kind: "augment-rules", matches: (p) => underRoot(p, ".augment/rules/") },
+  { kind: "augment-rules", matches: (p) => p === ".augment-guidelines" },
+  { kind: "kiro-steering", matches: (p) => underRoot(p, ".kiro/steering/") },
+  { kind: "opencode-config", matches: (p) => p === "opencode.json" },
+  { kind: "opencode-config", matches: (p) => p === "opencode.jsonc" },
+  { kind: "gemini-settings", matches: (p) => p === ".gemini/settings.json" },
+  // File-name rules: these files are hierarchical, so tools read them from any directory (goosehints included).
   { kind: "claude-md", matches: (p) => baseName(p) === "CLAUDE.md" },
   { kind: "claude-local-md", matches: (p) => baseName(p) === "CLAUDE.local.md" },
   { kind: "agents-md", matches: (p) => baseName(p) === "AGENTS.md" },
   { kind: "gemini-md", matches: (p) => baseName(p) === "GEMINI.md" },
   { kind: "mcp-config", matches: (p) => baseName(p) === ".mcp.json" },
+  { kind: "goosehints", matches: (p) => baseName(p) === ".goosehints" },
 ];
 
 /** Classify a repo-relative path, or return null if it is not an agent setup file. */

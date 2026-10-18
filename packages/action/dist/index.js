@@ -25661,7 +25661,7 @@ var KIND_TOOLS = {
   "claude-hook": ["claude-code"],
   "claude-agent": ["claude-code"],
   "claude-command": ["claude-code"],
-  "agents-md": ["codex", "copilot", "cursor"],
+  "agents-md": ["amp", "codex", "copilot", "cursor", "jules", "opencode", "zed"],
   "cursor-rules": ["cursor"],
   "cursor-mcp": ["cursor", "mcp"],
   "copilot-instructions": ["copilot"],
@@ -25673,7 +25673,20 @@ var KIND_TOOLS = {
   "gemini-md": ["gemini"],
   "windsurf-rules": ["windsurf"],
   "cline-rules": ["cline"],
-  "mcp-config": ["mcp"]
+  "mcp-config": ["mcp"],
+  "claude-rule": ["claude-code"],
+  "aider-config": ["aider"],
+  "conventions-md": ["aider"],
+  "continue-rules": ["continue"],
+  "roo-rules": ["roo"],
+  "amazonq-rules": ["amazon-q"],
+  "junie-guidelines": ["junie"],
+  "zed-rules": ["zed"],
+  "augment-rules": ["augment"],
+  "kiro-steering": ["kiro"],
+  goosehints: ["goose"],
+  "opencode-config": ["opencode"],
+  "gemini-settings": ["gemini"]
 };
 function summarizeAgentSetup(files) {
   const counts = /* @__PURE__ */ new Map();
@@ -25812,18 +25825,31 @@ function underRoot(path, prefix) {
 function baseName(path) {
   return path.slice(path.lastIndexOf("/") + 1);
 }
+function underRooModeDir(path) {
+  const prefix = ".roo/rules-";
+  if (!path.startsWith(prefix)) return false;
+  const slash = path.indexOf("/", prefix.length);
+  return slash > prefix.length && path.length > slash + 1;
+}
+function isRooModeFile(path) {
+  const prefix = ".roorules-";
+  return path.startsWith(prefix) && path.length > prefix.length && !path.includes("/");
+}
 var INSTRUCTIONS_DIR = ".github/instructions/";
 var INSTRUCTIONS_SUFFIX = ".instructions.md";
 var SETUP_RULES = [
-  // Directory and full-path rules that also apply in nested directories.
+  // Directory and full-path rules that also apply in nested directories (the .claude/ kinds, claude-rule
+  // among them, and cursor-rules).
   { kind: "claude-settings", matches: (p) => isNestedFile(p, ".claude/settings.json") },
   { kind: "claude-settings-local", matches: (p) => isNestedFile(p, ".claude/settings.local.json") },
   { kind: "claude-skill", matches: (p) => underNested(p, ".claude/skills/") },
   { kind: "claude-hook", matches: (p) => underNested(p, ".claude/hooks/") },
   { kind: "claude-agent", matches: (p) => underNested(p, ".claude/agents/") },
   { kind: "claude-command", matches: (p) => underNested(p, ".claude/commands/") },
+  { kind: "claude-rule", matches: (p) => underNested(p, ".claude/rules/") },
   { kind: "cursor-rules", matches: (p) => underNested(p, ".cursor/rules/") },
-  // Directory and full-path rules for the repo root only.
+  // Directory and full-path rules for the repo root only (including the aider, continue, roo, amazonq, junie,
+  // zed, augment, kiro, opencode and gemini-settings kinds).
   { kind: "cursor-rules", matches: (p) => p === ".cursorrules" },
   { kind: "copilot-instructions", matches: (p) => p === ".github/copilot-instructions.md" },
   {
@@ -25839,12 +25865,30 @@ var SETUP_RULES = [
   { kind: "windsurf-rules", matches: (p) => underRoot(p, ".windsurf/rules/") },
   { kind: "cline-rules", matches: (p) => p === ".clinerules" },
   { kind: "cline-rules", matches: (p) => underRoot(p, ".clinerules/") },
-  // File-name rules: these files are hierarchical, so tools read them from any directory.
+  { kind: "aider-config", matches: (p) => p === ".aider.conf.yml" },
+  { kind: "conventions-md", matches: (p) => p === "CONVENTIONS.md" },
+  { kind: "continue-rules", matches: (p) => underRoot(p, ".continue/rules/") },
+  { kind: "continue-rules", matches: (p) => p === ".continuerules" },
+  { kind: "roo-rules", matches: (p) => p === ".roorules" },
+  { kind: "roo-rules", matches: isRooModeFile },
+  { kind: "roo-rules", matches: (p) => underRoot(p, ".roo/rules/") },
+  { kind: "roo-rules", matches: underRooModeDir },
+  { kind: "amazonq-rules", matches: (p) => underRoot(p, ".amazonq/rules/") },
+  { kind: "junie-guidelines", matches: (p) => p === ".junie/guidelines.md" },
+  { kind: "zed-rules", matches: (p) => p === ".rules" },
+  { kind: "augment-rules", matches: (p) => underRoot(p, ".augment/rules/") },
+  { kind: "augment-rules", matches: (p) => p === ".augment-guidelines" },
+  { kind: "kiro-steering", matches: (p) => underRoot(p, ".kiro/steering/") },
+  { kind: "opencode-config", matches: (p) => p === "opencode.json" },
+  { kind: "opencode-config", matches: (p) => p === "opencode.jsonc" },
+  { kind: "gemini-settings", matches: (p) => p === ".gemini/settings.json" },
+  // File-name rules: these files are hierarchical, so tools read them from any directory (goosehints included).
   { kind: "claude-md", matches: (p) => baseName(p) === "CLAUDE.md" },
   { kind: "claude-local-md", matches: (p) => baseName(p) === "CLAUDE.local.md" },
   { kind: "agents-md", matches: (p) => baseName(p) === "AGENTS.md" },
   { kind: "gemini-md", matches: (p) => baseName(p) === "GEMINI.md" },
-  { kind: "mcp-config", matches: (p) => baseName(p) === ".mcp.json" }
+  { kind: "mcp-config", matches: (p) => baseName(p) === ".mcp.json" },
+  { kind: "goosehints", matches: (p) => baseName(p) === ".goosehints" }
 ];
 function classifySetupPath(path) {
   for (const rule of SETUP_RULES) {

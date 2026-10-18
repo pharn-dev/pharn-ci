@@ -12,8 +12,10 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 // markdown hash was updated by F-32, which intentionally changed the rendering (file rows sorted by coverage,
 // a hint line under each message); the JSON report, and so its hash, did not change. F-16 changed the rendering
 // again on purpose, moving `### Messages` above `### Agent setup`, so the markdown hash changed once more.
-const GOLDEN_MD_SHA256 = "625c0fe399c49aca5aabdc560db4a1e412fac63d07c29d47b74e30c3b2783d43";
-const GOLDEN_JSON_SHA256 = "e3be10a5b1d4f03a3aa5d3b1f97651432fc4ea9bcba51b853dace36b05111419";
+// ai-agnostic-inventory (F-11) then updated both hashes on purpose: AGENTS.md is now credited to four more tools
+// (amp, jules, opencode, zed), so the golden's `Agent setup:` line and `agentSetup.summary.tools` changed.
+const GOLDEN_MD_SHA256 = "e96827f7e6b37b9d7602c94a7afc479390f8226a268b0c6905e0ed4136d81e3b";
+const GOLDEN_JSON_SHA256 = "a455705f65d678d9c059231ba36bed7241155cd5063744d2effd8df8d8116c24";
 
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
 const asFile = (report: unknown) => `${JSON.stringify(report, null, 2)}\n`;

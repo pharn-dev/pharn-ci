@@ -11,7 +11,7 @@ _Not computed — see messages below._
 
 ### Agent setup
 
-Agent setup: 1 file · codex, copilot, cursor
+Agent setup: 1 file · amp, codex, copilot, cursor, jules, opencode, zed
 
 | Path | Kind |
 | --- | --- |

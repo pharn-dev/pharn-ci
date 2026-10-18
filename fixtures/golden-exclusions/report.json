@@ -51,10 +51,14 @@
         "claude-md": 1
       },
       "tools": [
+        "amp",
         "claude-code",
         "codex",
         "copilot",
-        "cursor"
+        "cursor",
+        "jules",
+        "opencode",
+        "zed"
       ]
     }
   },

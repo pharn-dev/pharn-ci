@@ -38,7 +38,17 @@ describe("agent setup summary (agent-setup-inventory)", () => {
     };
     expect(summary?.byKind).toEqual(expectedByKind);
     expect(Object.keys(summary?.byKind ?? {})).toEqual(Object.keys(expectedByKind));
-    expect(summary?.tools).toEqual(["claude-code", "codex", "copilot", "cursor", "mcp"]);
+    expect(summary?.tools).toEqual([
+      "amp",
+      "claude-code",
+      "codex",
+      "copilot",
+      "cursor",
+      "jules",
+      "mcp",
+      "opencode",
+      "zed",
+    ]);
     expectValidReport(report);
   });
 
@@ -55,7 +65,7 @@ describe("agent setup summary (agent-setup-inventory)", () => {
       "claude-hook": ["claude-code"],
       "claude-agent": ["claude-code"],
       "claude-command": ["claude-code"],
-      "agents-md": ["codex", "copilot", "cursor"],
+      "agents-md": ["amp", "codex", "copilot", "cursor", "jules", "opencode", "zed"],
       "cursor-rules": ["cursor"],
       "cursor-mcp": ["cursor", "mcp"],
       "copilot-instructions": ["copilot"],
@@ -110,7 +120,9 @@ describe("agent setup summary (agent-setup-inventory)", () => {
     expect(validateReport(withSummary())).toBe(true);
     // A well-formed summary validates, so the rejections below come from the bad values themselves.
     expect(validateReport(withSummary({ byKind: { "claude-md": 1 }, tools: ["claude-code"] }))).toBe(true);
-    expect(validateReport(withSummary({ byKind: { "claude-md": 1 }, tools: ["aider"] }))).toBe(false);
+    // The tool list is open within v1 (ai-agnostic-inventory): "aider" validates, an invalid name does not.
+    expect(validateReport(withSummary({ byKind: { "claude-md": 1 }, tools: ["aider"] }))).toBe(true);
+    expect(validateReport(withSummary({ byKind: { "claude-md": 1 }, tools: ["Aider"] }))).toBe(false);
     expect(validateReport(withSummary({ byKind: { "claude-md": "1" }, tools: ["claude-code"] }))).toBe(false);
   });
 });
