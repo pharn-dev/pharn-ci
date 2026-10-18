@@ -22,6 +22,34 @@ coordinated disclosure of any vulnerability in this repository.
   ([`docs/RELEASING.md`](./docs/RELEASING.md)). Release tags are unsigned lightweight tags, so the
   full commit SHA, not the tag, is what a consumer can verify.
 
+## Maintainer model: one person today
+
+pharn-ci has a single maintainer, who is also the only code owner (`.github/CODEOWNERS`). Every
+control in this repository that needs a second person is therefore procedural, not enforced:
+
+- **Merges.** The `main` ruleset requires one approving review from a code owner, but GitHub does not
+  let an author approve their own pull request. Pull requests, including ones written with AI coding
+  agents, are merged under the maintainer's account using the ruleset's admin bypass
+  (`pull_request` mode). No second person reviews them.
+- **Releases.** The `release` environment's required reviewer is the same maintainer, who approves
+  their own release; `prevent_self_review` is off, because turning it on with one reviewer would
+  block every release.
+
+What still holds without a second person, because GitHub enforces it for the admin too:
+
+- no direct push, force-push or deletion on `main`; changes land only as signed, squash-merged
+  commits with linear history;
+- the bypass skips the approval only: a pull request cannot merge until all six required checks pass
+  (`ci`, with its stale-`dist` check; `Action pins`; `gitleaks`; CodeQL's
+  `Analyze (javascript-typescript)`; and the two Socket Security checks);
+- third-party actions pinned to commit SHAs; `v*` tags that nobody can move or delete; immutable
+  releases, cut only from a verified `main` commit by a job that installs nothing.
+
+**Plan:** when a second maintainer joins, add them to `.github/CODEOWNERS` and as a reviewer of the
+`release` environment, set `prevent_self_review: true` on that environment, and stop using the admin
+bypass for merges (then remove it from the `main` ruleset). Until then, treat a pharn-ci release as
+reviewed by one person, and pin the commit SHA you have checked.
+
 The security design, with each mitigation tied to the test that enforces it, is in
 [`docs/THREAT-MODEL.md`](./docs/THREAT-MODEL.md); what pharn-ci does not guarantee is in
 [`docs/LIMITS.md`](./docs/LIMITS.md).

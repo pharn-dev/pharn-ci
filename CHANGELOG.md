@@ -104,6 +104,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Security
 
+- `SECURITY.md` and `docs/THREAT-MODEL.md` state that pharn-ci has one maintainer: pull requests
+  are merged with the `main` ruleset's admin bypass and releases are self-approved, so no second
+  person reviews a change; they list what still enforces integrity and the plan for when a second
+  maintainer joins. The threat model no longer says `main` takes only reviewed pull requests (F-18).
 - A `pull_request_target` run that checked out the base branch no longer tells users to check out the
   PR head, which would run fork code with a write token. `DIFF_UNAVAILABLE` now says it cannot be
   measured safely and points to `pull_request` and `SECURITY.md`; the safe `workflow_run` pattern for

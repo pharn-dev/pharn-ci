@@ -73,7 +73,9 @@ that worked on the previous release. Before 1.0 the rules are:
    lint, tests and the build, fails if `packages/action/dist` differs from the committed bundle, and
    shows the release notes in the job summary. `Release publish` is skipped.
 3. **Release.** Run the workflow again with **dry_run** unticked. After `Release verify` passes,
-   `Release publish` waits for approval in the `release` environment, then creates the tag `vX.Y.Z`
+   `Release publish` waits for approval in the `release` environment (today the maintainer approves
+   their own release; see [`SECURITY.md`](../SECURITY.md#maintainer-model-one-person-today)), then
+   creates the tag `vX.Y.Z`
    at exactly the commit that was verified and the GitHub Release with the changelog section as its
    notes. The publishing job has `contents: write` and checks out and installs nothing.
 4. **The Marketplace.** The workflow creates the release through the API, which does not list it on
@@ -107,6 +109,7 @@ that worked on the previous release. Before 1.0 the rules are:
 These repository settings are already applied by an admin and must stay on; see
 [`.github/rulesets/README.md`](../.github/rulesets/README.md) for how to check them:
 
-- the `release` environment with a required reviewer, deployable from `main` only;
+- the `release` environment with a required reviewer, deployable from `main` only (one reviewer,
+  self-review allowed until a second maintainer exists);
 - immutable releases, so a published release's tag and assets cannot be changed;
 - the `release-tags` ruleset.
