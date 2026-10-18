@@ -1,5 +1,7 @@
+import type { CoverageFormat } from "../coverage/types.js";
 import { formatNumber, type Message, type MessageCode, type Report } from "../report.js";
 import { summarizeAgentSetup } from "../setup/summary.js";
+import { logoMarkup } from "./logo.js";
 
 export interface RenderMarkdownOptions {
   /** Maximum file rows per table; the rest are summarized. Keeps PR comments under GitHub's size limit. */
@@ -7,8 +9,10 @@ export interface RenderMarkdownOptions {
 }
 
 const VERDICT_ICON = { pass: "✅", warn: "⚠️", fail: "❌" } as const;
-/** Inventories larger than this get their table collapsed in a `<details>` block. */
-const COLLAPSE_ABOVE = 25;
+const VERDICT_LABEL = { pass: "Pass", warn: "Warn", fail: "Fail" } as const;
+const BRAND = "🛡️";
+/** Fixed words for the footer; a format outside the enum (another producer's) renders nothing. */
+const COVERAGE_FORMAT_LABEL: Record<CoverageFormat, string> = { lcov: "lcov", cobertura: "cobertura" };
 /** Ranges shown in one file's uncovered-lines cell; keeps a single file from making a huge table cell. */
 const MAX_UNCOVERED_RANGES = 20;
 const LEVEL_ICON = { info: "ℹ️", warn: "⚠️", error: "❌" } as const;
@@ -57,9 +61,13 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
   const maxRows = options.maxRows ?? 50;
   const out: string[] = [];
 
-  out.push(`## ${VERDICT_ICON[report.verdict]} pharn-ci: ${report.verdict}`, "");
+  const logo = logoMarkup();
+  if (logo !== "") out.push(logo, "");
+  out.push(`## ${BRAND} pharn-ci · ${VERDICT_ICON[report.verdict]} ${VERDICT_LABEL[report.verdict]}`, "");
+  out.push(overviewLine(report), "");
+  out.push(...summaryLines(report));
 
-  out.push("### Diff coverage", "");
+  out.push("### 🧪 Diff coverage", "");
   const dc = report.diffCoverage;
   if (dc === null) {
     out.push("_Not computed — see messages below._", "");
@@ -71,6 +79,9 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
       `**${formatNumber(dc.percent)}%** of changed lines covered (${dc.coveredLines}/${dc.coverableLines}, ${threshold})`,
       "",
     );
+    // Open exactly when the table is what the below-threshold message points at.
+    const open = report.messages.some((m) => m.code === "DIFF_COVERAGE_BELOW_THRESHOLD");
+    out.push(open ? "<details open>" : "<details>", `<summary>Changed files (${dc.files.length})</summary>`, "");
     out.push("| File | Coverage | Covered | Uncovered lines |", "| --- | ---: | ---: | --- |");
     // Worst first, so the files that need tests survive truncation; files with nothing to measure go last.
     for (const f of byCoverage(dc.files).slice(0, maxRows)) {
@@ -79,7 +90,7 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
       out.push(`| ${code(f.path)} | ${pct} | ${f.coveredLines}/${f.coverableLines} | ${uncovered} |`);
     }
     if (dc.files.length > maxRows) out.push(`| _…and ${dc.files.length - maxRows} more files_ | | | |`);
-    out.push("");
+    out.push("", "</details>", "");
     if (dc.files.length > maxRows) out.push(FULL_REPORT_NOTE, "");
   }
   const excluded = dc?.excludedFiles ?? [];
@@ -97,13 +108,13 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
   // Before the agent setup inventory: when the Action has to drop rows to fit a size limit, the
   // reason for the verdict is never what goes.
   if (report.messages.length > 0) {
-    out.push("### Messages", "");
+    out.push(`### 💬 Messages (${report.messages.length})`, "");
     for (const m of report.messages) out.push(renderMessage(m));
     out.push("");
   }
 
-  out.push("### Agent setup", "");
   const setup = report.agentSetup.files;
+  out.push(`### 🤖 Agent setup (${setup.length === 0 ? "no files" : countFiles(setup.length)})`, "");
   const missingTools = report.agentSetup.missing ?? [];
   const missingLine = `Missing: ${missingTools.map(code).join(", ")}`;
   if (setup.length === 0) {
@@ -121,17 +132,68 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
     const { tools } = report.agentSetup.summary ?? summarizeAgentSetup(setup);
     out.push(`Agent setup: ${setup.length} ${setup.length === 1 ? "file" : "files"} · ${tools.join(", ")}`, "");
     if (missingTools.length > 0) out.push(missingLine, "");
-    const collapse = setup.length > COLLAPSE_ABOVE;
-    if (collapse) out.push("<details>", `<summary>Show all ${setup.length} agent setup files</summary>`, "");
+    out.push("<details>", `<summary>Agent setup files (${setup.length})</summary>`, "");
     out.push("| Path | Kind |", "| --- | --- |");
     for (const f of setup.slice(0, maxRows)) out.push(`| ${code(f.path)} | ${f.kind} |`);
     if (setup.length > maxRows) out.push(`| _…and ${setup.length - maxRows} more files_ | |`);
-    out.push("");
-    if (collapse) out.push("</details>", "");
+    out.push("", "</details>", "");
   }
 
-  out.push(`<sub>pharn-ci ${report.tool.version} · report schema v${report.schemaVersion}</sub>`);
+  // The line before the rule is empty, so "---" is a thematic break and never a setext underline.
+  const format = report.diffCoverage?.format;
+  const formatNote =
+    format !== undefined && Object.hasOwn(COVERAGE_FORMAT_LABEL, format)
+      ? ` · coverage format ${COVERAGE_FORMAT_LABEL[format]}`
+      : "";
+  out.push("---", "");
+  out.push(`<sub>pharn-ci ${report.tool.version} · report schema v${report.schemaVersion}${formatNote}</sub>`);
   return `${out.join("\n")}\n`;
+}
+
+function countFiles(n: number): string {
+  return n === 1 ? "1 file" : `${n} files`;
+}
+
+/**
+ * One sentence under the heading. Fixed words, numbers and counts only: nothing input-derived, so no
+ * path or message text can reach it.
+ */
+function overviewLine(report: Report): string {
+  const dc = report.diffCoverage;
+  let first: string;
+  if (dc === null) first = "Diff coverage was not computed";
+  else if (dc.percent === null) first = "This change adds no coverable lines";
+  else if (dc.threshold === null)
+    first = `Diff coverage of this change is ${formatNumber(dc.percent)}%, with no threshold set`;
+  else
+    first = `Diff coverage of this change is ${formatNumber(dc.percent)}% against a threshold of ${formatNumber(dc.threshold)}%`;
+  const n = report.agentSetup.files.length;
+  const setup =
+    n === 0 ? "no agent setup files found." : n === 1 ? "1 agent setup file found." : `${n} agent setup files found.`;
+  return `${first}; ${setup}`;
+}
+
+/**
+ * The one-glance summary table under the verdict heading. Every cell is a fixed string, an icon, a
+ * number or a count: nothing input-derived, so no path or message text can reach it.
+ */
+function summaryLines(report: Report): string[] {
+  const dc = report.diffCoverage;
+  let coverage: string;
+  if (dc === null) coverage = "not computed";
+  else if (dc.percent === null) coverage = "no coverable lines";
+  else {
+    const threshold = dc.threshold === null ? "no threshold" : `threshold ${formatNumber(dc.threshold)}%`;
+    coverage = `${formatNumber(dc.percent)}% (${threshold})`;
+  }
+  const n = report.agentSetup.files.length;
+  const setup = n === 0 ? "none" : n === 1 ? "1 file" : `${n} files`;
+  return [
+    "| Verdict | Diff coverage | Agent setup |",
+    "| --- | --- | --- |",
+    `| ${VERDICT_ICON[report.verdict]} ${VERDICT_LABEL[report.verdict]} | ${coverage} | ${setup} |`,
+    "",
+  ];
 }
 
 function renderMessage(m: Message): string {

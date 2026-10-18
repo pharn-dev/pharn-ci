@@ -1,48 +1,73 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`renderMarkdown > renders the no-coverable-changes state 1`] = `
-"## ✅ pharn-ci: pass
+"<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/main/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">
 
-### Diff coverage
+## 🛡️ pharn-ci · ✅ Pass
+
+This change adds no coverable lines; 1 agent setup file found.
+
+| Verdict | Diff coverage | Agent setup |
+| --- | --- | --- |
+| ✅ Pass | no coverable lines | 1 file |
+
+### 🧪 Diff coverage
 
 _No coverable lines changed._
 
-### Messages
+### 💬 Messages (1)
 
 - ℹ️ \`NO_COVERABLE_CHANGES\` No added lines are tracked by the coverage report; nothing to measure.
   - Hint: Nothing to do if the change has no code; otherwise check that the coverage report includes the changed files.
 
-### Agent setup
+### 🤖 Agent setup (1 file)
 
 Agent setup: 1 file · amp, codex, copilot, cursor, jules, opencode, zed
+
+<details>
+<summary>Agent setup files (1)</summary>
 
 | Path | Kind |
 | --- | --- |
 | \`AGENTS.md\` | agents-md |
+
+</details>
+
+---
 
 <sub>pharn-ci 0.1.0 · report schema v1</sub>
 "
 `;
 
 exports[`renderMarkdown > renders the not-computed state 1`] = `
-"## ❌ pharn-ci: fail
+"<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/main/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">
 
-### Diff coverage
+## 🛡️ pharn-ci · ❌ Fail
+
+Diff coverage was not computed; no agent setup files found.
+
+| Verdict | Diff coverage | Agent setup |
+| --- | --- | --- |
+| ❌ Fail | not computed | none |
+
+### 🧪 Diff coverage
 
 _Not computed — see messages below._
 
-### Messages
+### 💬 Messages (2)
 
 - ❌ \`COVERAGE_FILE_MISSING\` Coverage file not found: coverage/lcov.info
   - Hint: Run the tests with coverage before pharn-ci, and check the path (\`coverage.file\`, \`coverage-file\` or \`--coverage\`).
 - ℹ️ \`NO_AGENT_SETUP_FILES\` No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found.
   - Hint: Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test.
 
-### Agent setup
+### 🤖 Agent setup (no files)
 
 _No agent setup files found._
 
 Missing: an agent instructions file, typically \`AGENTS.md\` or \`CLAUDE.md\` at the repository root.
+
+---
 
 <sub>pharn-ci 0.1.0 · report schema v1</sub>
 "

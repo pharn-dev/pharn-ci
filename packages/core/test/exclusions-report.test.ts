@@ -85,8 +85,12 @@ describe("renderMarkdown: excluded files", () => {
     expect(md).toContain(block);
     const at = md.indexOf(block);
     expect(at).toBeGreaterThan(md.indexOf("| `src/app.ts` | 50% | 1/2 | 2 |"));
-    expect(md.indexOf("| `src/app.ts` |")).toBeGreaterThan(md.indexOf("### Diff coverage"));
-    expect(at).toBeLessThan(md.indexOf("### Agent setup"));
+    const coverageAt = md.indexOf("### 🧪 Diff coverage");
+    const setupAt = md.indexOf("### 🤖 Agent setup (");
+    expect(coverageAt).toBeGreaterThanOrEqual(0);
+    expect(setupAt).toBeGreaterThanOrEqual(0);
+    expect(md.indexOf("| `src/app.ts` |")).toBeGreaterThan(coverageAt);
+    expect(at).toBeLessThan(setupAt);
 
     const one = await reportWith(["src/generated/api.ts"]);
     expectValidReport(one);
@@ -101,7 +105,8 @@ describe("renderMarkdown: excluded files", () => {
     const noneAt = noneMd.indexOf("<details><summary>Excluded: 2 files</summary>");
     expect(noneAt).toBeGreaterThan(noneMd.indexOf("_No coverable lines changed._"));
     expect(noneMd.indexOf("_No coverable lines changed._")).toBeGreaterThan(-1);
-    expect(noneAt).toBeLessThan(noneMd.indexOf("### Agent setup"));
+    expect(noneMd.indexOf("### 🤖 Agent setup (")).toBeGreaterThanOrEqual(0);
+    expect(noneAt).toBeLessThan(noneMd.indexOf("### 🤖 Agent setup ("));
     expect(noneMd).toContain("- `gen/a.ts`\n- `gen/b.ts`");
 
     const without = await reportWith(undefined);
@@ -129,8 +134,17 @@ describe("renderMarkdown: excluded files", () => {
     expect(lines).toHaveLength(benign.split("\n").length);
     const headings = lines.filter((l) => l.startsWith("## "));
     expect(headings).toHaveLength(1);
-    expect(headings[0]).toBe(lines[0]);
-    // Outside code spans (where GitHub renders it literally), raw HTML must not survive.
-    expect(md.replace(/`[^`\n]*`/g, "")).not.toContain("<img");
+    // Line 0 is the fixed logo line, line 1 is empty, and the heading follows.
+    const { logoMarkup } = await import("../src/render/logo.js");
+    expect(lines[0]).toBe(logoMarkup());
+    expect(lines[1]).toBe("");
+    expect(headings[0]).toBe(lines[2]);
+    // Outside code spans (where GitHub renders it literally), raw HTML must not survive, apart from the logo line.
+    expect(
+      lines
+        .slice(1)
+        .join("\n")
+        .replace(/`[^`\n]*`/g, ""),
+    ).not.toContain("<img");
   });
 });

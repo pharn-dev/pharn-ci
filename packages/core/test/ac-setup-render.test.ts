@@ -49,7 +49,7 @@ describe("agent setup rendering (agent-setup-inventory)", () => {
       }),
     );
     const lines = md.split("\n");
-    const section = lines.indexOf("### Agent setup");
+    const section = lines.indexOf("### 🤖 Agent setup (8 files)");
     const summaryLine = lines.indexOf(
       "Agent setup: 8 files · amp, claude-code, codex, copilot, cursor, jules, mcp, opencode, zed",
     );
@@ -57,8 +57,12 @@ describe("agent setup rendering (agent-setup-inventory)", () => {
     expect(section).toBeGreaterThanOrEqual(0);
     expect(summaryLine).toBeGreaterThan(section);
     expect(header).toBeGreaterThan(summaryLine);
-    // Nothing but blank lines between the summary line and the table header.
-    expect(lines.slice(summaryLine + 1, header).filter((l) => l.trim() !== "")).toEqual([]);
+    // Nothing but blank lines, the details tag and its summary between the summary line and the table header.
+    expect(
+      lines
+        .slice(summaryLine + 1, header)
+        .filter((l) => l.trim() !== "" && l !== "<details>" && l !== "<summary>Agent setup files (8)</summary>"),
+    ).toEqual([]);
     expect(md).toBe(fixture("golden/report.md"));
   });
 
@@ -67,11 +71,18 @@ describe("agent setup rendering (agent-setup-inventory)", () => {
     expect(md.split("\n")).toContain("Agent setup: 1 file · amp, codex, copilot, cursor, jules, opencode, zed");
   });
 
-  it("AC-13: collapses the table in a details block above 25 files and keeps the 50-row limit", async () => {
-    // 25 files: not collapsed.
+  it("AC-13: collapses the table in a details block at every size and keeps the 50-row limit", async () => {
+    // 25 files: the table is inside a details block whose summary names the count.
     const md25 = await renderInventory(skills(25));
-    expect(md25).not.toContain("<details>");
-    expect(md25.split("\n")).toContain("Agent setup: 25 files · claude-code");
+    const lines25 = md25.split("\n");
+    expect(lines25).toContain("Agent setup: 25 files · claude-code");
+    const open25 = lines25.indexOf("<details>");
+    const close25 = lines25.indexOf("</details>");
+    const header25 = lines25.indexOf("| Path | Kind |");
+    expect(lines25[open25 + 1]).toBe("<summary>Agent setup files (25)</summary>");
+    expect(open25).toBeGreaterThan(lines25.indexOf("Agent setup: 25 files · claude-code"));
+    expect(header25).toBeGreaterThan(open25);
+    expect(close25).toBeGreaterThan(header25);
 
     // 26 files: summary line outside and before <details>, which holds the whole table.
     const lines26 = (await renderInventory(skills(26))).split("\n");

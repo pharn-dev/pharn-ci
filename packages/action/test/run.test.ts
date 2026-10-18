@@ -3,6 +3,13 @@ import { createGitHubApi } from "../src/api.js";
 import { type ActionContext, COMMENT_MARKER, MAX_COMMENT_LENGTH, run } from "../src/run.js";
 import { BOT, fixture, type Harness, harness, PR_CONTEXT, SCOPE, WORKSPACE } from "./harness.js";
 
+/** The fixed logo line (pr-comment-logo-2) that opens the rendering; core's logoMarkup() is not exported. */
+const LOGO =
+  '<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/main/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">';
+
+/** The verdict heading the renderer writes, from a fixed map so the test does not reuse the renderer's own code. */
+const HEADING: Record<string, string> = { pass: "✅ Pass", warn: "⚠️ Warn", fail: "❌ Fail" };
+
 describe("action run", () => {
   it("writes report.json, outputs, job summary and a sticky comment, and fails below threshold", async () => {
     const h = harness({ inputs: { threshold: "80" } });
@@ -15,9 +22,11 @@ describe("action run", () => {
       "diff-coverage": "71.43",
     });
     expect(JSON.parse(h.written["/tmp/runner/pharn-ci/report.json"] as string)).toEqual(report);
-    expect(h.summary[0]).toContain("pharn-ci: fail");
+    expect(h.summary[0]).toContain(`## 🛡️ pharn-ci · ${HEADING.fail}`);
     expect(h.comments).toHaveLength(1);
-    expect(h.comments[0]?.body?.startsWith(`${COMMENT_MARKER}\n${SCOPE}\n## ❌ pharn-ci: fail`)).toBe(true);
+    expect(
+      h.comments[0]?.body?.startsWith(`${COMMENT_MARKER}\n${SCOPE}\n${LOGO}\n\n## 🛡️ pharn-ci · ${HEADING.fail}`),
+    ).toBe(true);
     expect(h.failed).toEqual(["pharn-ci: Diff coverage 71.43% is below the threshold of 80%."]);
   });
 
@@ -136,7 +145,7 @@ describe("action run", () => {
     await run(h.deps);
     await run(h.deps);
     expect(h.comments).toHaveLength(2);
-    expect(h.comments[1]?.body).toContain("pharn-ci: pass");
+    expect(h.comments[1]?.body).toContain(`## 🛡️ pharn-ci · ${HEADING.pass}`);
     expect(h.apiCalls.filter((c) => c.startsWith("create"))).toEqual([]);
     expect(h.apiCalls.filter((c) => c.startsWith("update"))).toEqual(["update 2", "update 2"]);
   });
@@ -156,7 +165,9 @@ describe("action run", () => {
     expect(h.apiCalls.filter((c) => c.startsWith("create"))).toEqual(["create 7"]);
     expect(h.comments[0]?.body).toBe(forged);
     expect(h.comments[1]?.body).toBe(quoted);
-    expect(h.comments[2]?.body?.startsWith(`${COMMENT_MARKER}\n${SCOPE}\n## ❌ pharn-ci: fail`)).toBe(true);
+    expect(
+      h.comments[2]?.body?.startsWith(`${COMMENT_MARKER}\n${SCOPE}\n${LOGO}\n\n## 🛡️ pharn-ci · ${HEADING.fail}`),
+    ).toBe(true);
   });
 
   it("updates its own scoped comment when GitHub returns the body with CRLF line endings", async () => {
@@ -191,7 +202,9 @@ describe("action run", () => {
     await run(h.deps);
     expect(commentCalls(h)).toEqual(["list 7", "create 7", "list 7", "delete 100", "update 50"]);
     expect(ownMarkerComments(h).map((c) => c.id)).toEqual([50]);
-    expect(h.comments[0]?.body?.startsWith(`${COMMENT_MARKER}\n${SCOPE}\n## ❌ pharn-ci: fail`)).toBe(true);
+    expect(
+      h.comments[0]?.body?.startsWith(`${COMMENT_MARKER}\n${SCOPE}\n${LOGO}\n\n## 🛡️ pharn-ci · ${HEADING.fail}`),
+    ).toBe(true);
     expect(h.warnings).toEqual([]);
 
     // The next run updates the one remaining comment.
@@ -271,7 +284,7 @@ describe("action run", () => {
     expect(h.posted.length).toBeGreaterThan(0);
     for (const posted of h.posted) expect(posted.length).toBeLessThanOrEqual(65_536);
     expect(body.startsWith(COMMENT_MARKER)).toBe(true);
-    expect(body).toContain(`pharn-ci: ${report?.verdict}`);
+    expect(body).toContain(`## 🛡️ pharn-ci · ${HEADING[report?.verdict ?? ""]}`);
     for (const m of report?.messages ?? []) expect(body).toContain(`\`${m.code}\``);
     expect(body).toMatch(/_Truncated: the full report is in the job summary and report\.json\._\n$/);
     expect(h.summary[0]?.length).toBeGreaterThan(MAX_COMMENT_LENGTH);
