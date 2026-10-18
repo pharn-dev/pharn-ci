@@ -6,7 +6,10 @@ import type { CoverageMap, LineHits, ParseCoverageOptions } from "./types.js";
  *
  * Only `SF`, `DA` and `end_of_record` matter; every other record (TN, FN, BRDA,
  * LF, LH, ...) is ignored. A file appearing in several records is merged by
- * summing hits per line. Malformed `DA` lines are skipped.
+ * summing hits per line. Malformed `DA` lines are skipped. A file appears in
+ * the map only when it has a valid `DA` line, as in the Cobertura parser, so a
+ * report whose records carry no line data (a crashed or truncated reporter) is
+ * an empty map and is reported as empty rather than passing.
  */
 export function parseLcov(text: string, options: ParseCoverageOptions = {}): CoverageMap {
   const map: CoverageMap = new Map();
@@ -34,6 +37,9 @@ export function parseLcov(text: string, options: ParseCoverageOptions = {}): Cov
     } else if (line === "end_of_record") {
       current = undefined;
     }
+  }
+  for (const [path, hits] of map) {
+    if (hits.size === 0) map.delete(path);
   }
   return map;
 }
