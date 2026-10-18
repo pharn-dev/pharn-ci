@@ -1,0 +1,29 @@
+/**
+ * Parse `git ls-tree -r -l -z --full-tree HEAD` output into a map from repo-relative path to size in bytes.
+ *
+ * Each NUL-terminated record is `<mode> <type> <object> <size>\t<path>`, with the size space-padded. With `-z` git
+ * does not quote the path, so it is taken verbatim. Only blobs with a numeric size are kept: a submodule entry
+ * (`commit`, size `-`), a record without a TAB, an empty path, a wrong field count or a size that is not plain
+ * digits is skipped. The input is untrusted (paths come from the PR), so this never throws.
+ */
+export function parseLsTreeSizes(text: string): Map<string, number> {
+  const sizes = new Map<string, number>();
+  for (const record of text.split("\0")) {
+    if (record === "") continue;
+    const tab = record.indexOf("\t");
+    if (tab === -1) continue;
+    const path = record.slice(tab + 1);
+    if (path === "") continue;
+    const meta = record
+      .slice(0, tab)
+      .split(" ")
+      .filter((field) => field !== "");
+    if (meta.length !== 4) continue;
+    const [, type, , sizeText] = meta;
+    if (type !== "blob" || sizeText === undefined || !/^[0-9]+$/.test(sizeText)) continue;
+    const size = Number(sizeText);
+    if (!Number.isSafeInteger(size)) continue;
+    sizes.set(path, size);
+  }
+  return sizes;
+}

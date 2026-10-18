@@ -125,11 +125,11 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   `windsurf-rules`, `cline-rules`, `mcp-config`, `aider-config`, `conventions-md`,
   `continue-rules`, `roo-rules`, `amazonq-rules`, `junie-guidelines`, `zed-rules`,
   `augment-rules`, `kiro-steering`, `goosehints`, `opencode-config` and `gemini-settings`.
-- **Nested directories:** `CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`, `GEMINI.md`, `.goosehints`
-  and `.mcp.json` match anywhere in the tree, as do `.claude/settings.json`,
-  `.claude/settings.local.json` and files under `.claude/skills/`, `.claude/hooks/`,
+- **Nested directories:** `CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`, `GEMINI.md` and
+  `.goosehints` match anywhere in the tree, as do files under `.claude/skills/`, `.claude/hooks/`,
   `.claude/agents/`, `.claude/commands/`, `.claude/rules/` and `.cursor/rules/`. Everything else
-  matches at the repo root only: `.cursor/mcp.json`, `.vscode/mcp.json`, `.codex/config.toml`,
+  matches at the repo root only: `.mcp.json`, `.claude/settings.json`, `.claude/settings.local.json`,
+  `.cursor/mcp.json`, `.vscode/mcp.json`, `.codex/config.toml`,
   `.cursorrules`, `.windsurfrules`, `.windsurf/rules/`, `.clinerules`, everything under `.github/`,
   `.aider.conf.yml`, `CONVENTIONS.md`, `.continue/rules/`, `.continuerules`, `.roorules`,
   `.roorules-<mode>`, `.roo/rules/`, `.roo/rules-<mode>/`, `.amazonq/rules/`,
@@ -139,13 +139,27 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   - Sourcegraph Cody: its repo rules were experimental, and the product is being wound down.
   - User-level and global configuration, such as files in a home directory.
   - OpenCode's `.opencode/` directory and Gemini CLI's `.gemini/commands/`.
-  - Nested copies of the root-only kinds, such as `packages/app/.rules`.
+  - Nested copies of the root-only kinds, such as `packages/app/.rules`, `packages/app/.mcp.json`
+    and `packages/app/.claude/settings.json`.
+  - Placeholders under a directory kind: a dot-file (`.gitkeep`) or a README (any case, with or
+    without an extension) in `.claude/skills/`, `.github/agents/`, `.roo/rules/` and the other
+    directories above is not listed, and does not fall through to a file-name kind.
+  - Anything with a `node_modules` directory in its path. A vendored copy of agent setup files
+    under another name (such as `third_party/`) is still counted, since pharn-ci cannot tell a
+    vendored copy from the repo's own.
   - Files that a config names (for example the `read` list in `.aider.conf.yml`): pharn-ci never
     reads a setup file, so it does not follow them.
   - Other tools that also read an existing kind: only `agents-md` credits several tools.
 - **Precedence:** a path is classified by the first matching rule, and rules tied to a directory
   or full path come before the file-name rules. So `.claude/agents/CLAUDE.md` is a `claude-agent`,
   not a `claude-md`.
+- **Empty files are reported from `HEAD`.** `AGENT_SETUP_FILE_EMPTY` (`warn`) comes from the file
+  sizes in `git ls-tree -r -l HEAD`, while the inventory comes from `git ls-files`. A file that is
+  staged or changed but not committed has its `HEAD` size, or none. Only size 0 counts: a file
+  with only whitespace or a comment is not reported. When `git ls-tree` fails, no empty file is
+  reported (the CLI notes it on stderr, the Action warns) and the rest of the report is unchanged.
+  In the Action's PR-number mode the checkout is not the PR, so no sizes are read and no empty
+  file is reported.
 - **The summary is derived.** `agentSetup.summary` holds counts per kind and the tools those kinds
   belong to, from a fixed list. It is computed from the file list and says nothing about content.
 

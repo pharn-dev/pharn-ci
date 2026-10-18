@@ -7,6 +7,7 @@ import {
   type InputErrorText,
   type PharnConfig,
   parseConfig,
+  parseLsTreeSizes,
   type Report,
   renderMarkdown,
   resolveInputs,
@@ -190,6 +191,14 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   if (coverageText !== null) deps.info(coverageChoiceLine(chooseCoverageFormat(coverageText, format)));
 
   const repoFiles = await trackedFiles(target, deps);
+  // File sizes in HEAD, so an empty agent setup file can be reported. Optional: without them the check still runs.
+  // PR-number mode skips them: the checkout is not the PR, so its HEAD sizes would describe other files.
+  const lsTree = target
+    ? null
+    : await deps.git(["ls-tree", "-r", "-l", "-z", "--full-tree", "HEAD"]).catch((err: unknown) => {
+        deps.warning(`git ls-tree failed, so empty agent setup files are not reported: ${String(err)}`);
+        return null;
+      });
 
   const checkInput: CheckInput = {
     version: VERSION,
@@ -199,6 +208,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     repoRoot: deps.workspace,
     threshold,
     repoFiles,
+    ...(lsTree === null ? {} : { repoFileBytes: parseLsTreeSizes(lsTree) }),
     exclude,
     requireAgentSetup,
     ...(coverageRoot === undefined ? {} : { coverageRoot }),

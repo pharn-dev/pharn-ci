@@ -22,6 +22,7 @@ function fakeDeps(files: Record<string, string>): Fake {
       if (args[0] === "rev-parse") return "/repo\n";
       if (args[0] === "diff") return fixture("golden/pr.diff");
       if (args[0] === "ls-files") return `${fixture("golden/files.txt").trim().split("\n").join("\0")}\0`;
+      if (args[0] === "ls-tree") return "";
       throw new Error(`unexpected git ${args.join(" ")}`);
     },
     async readFile(path) {

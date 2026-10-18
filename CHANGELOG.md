@@ -9,6 +9,7 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- `AGENT_SETUP_FILE_EMPTY` (warn): a listed agent setup file that is empty (size 0 in `HEAD`, from `git ls-tree -r -l`) is reported with the first path, and stays in the inventory. When `git ls-tree` fails, none is reported (the CLI notes it on stderr, the Action warns). Because it is a warning, the verdict of a repo with an empty `CLAUDE.md` changes from `pass` to `warn`.
 - Agent setup inventory covers more tools (F-11): 13 new setup kinds, `claude-rule` (`.claude/rules/`), `aider-config`, `conventions-md`, `continue-rules`, `roo-rules`, `amazonq-rules`, `junie-guidelines`, `zed-rules`, `augment-rules`, `kiro-steering`, `goosehints`, `opencode-config` and `gemini-settings`, so the files of Aider, Continue, Roo Code, Amazon Q Developer, Junie, Zed, Augment, Kiro, Goose, OpenCode and Gemini CLI are listed. `agents-md` is now also credited to amp, jules, opencode and zed, and `agentSetup.summary.tools` in Report v1 accepts new tool names within v1 (a lowercase name pattern replaces the closed list).
 - PR-number mode: the `pr-number` and `head-sha` Action inputs let pharn-ci measure and comment on a
   pull request from a `workflow_run` or `workflow_dispatch` run, with no PR code checked out. The PR,
@@ -35,6 +36,7 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   codes are never removed before 1.0; a renamed input keeps working under its old name, with a
   warning, for at least one minor release; a changed default ships only in a minor release and is
   listed here. The README status note and `docs/LIMITS.md` say the same.
+- Agent setup inventory quality (F-10): `.mcp.json`, `.claude/settings.json` and `.claude/settings.local.json` count at the repo root only (a nested copy in a package or a test fixture is no longer listed); a dot-file or README under a directory kind (such as `.claude/skills/x/.gitkeep` or `.github/agents/README.md`) is not listed; and a path with a `node_modules` directory is never listed. Repos with such files see fewer files in `agentSetup.files`.
 - The rendered report lists messages before the agent setup inventory, and a file's uncovered-lines cell shows
   at most 20 ranges followed by `…and N more`. The Action fits an oversized PR comment (65,000 characters) or
   job summary (1 MiB) by rendering fewer table rows instead of cutting the end, so the verdict and messages

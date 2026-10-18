@@ -61,5 +61,6 @@ export {
   type SetupRule,
   scanAgentSetup,
 } from "./setup/scan.js";
+export { parseLsTreeSizes } from "./setup/sizes.js";
 export { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
 export { VERSION } from "./version.js";

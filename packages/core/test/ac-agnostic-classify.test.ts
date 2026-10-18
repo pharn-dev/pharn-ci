@@ -138,7 +138,7 @@ describe("agent setup classification (ai-agnostic-inventory)", () => {
         ".claude/rules/CLAUDE.md": "claude-rule",
         "packages/web/.claude/rules/AGENTS.md": "claude-rule",
         ".kiro/steering/AGENTS.md": "kiro-steering",
-        ".roo/rules/.goosehints": "roo-rules",
+        ".roo/rules/AGENTS.md": "roo-rules",
         ".continue/rules/AGENTS.md": "continue-rules",
         ".amazonq/rules/CLAUDE.md": "amazonq-rules",
       },
@@ -180,9 +180,6 @@ describe("agent setup classification (ai-agnostic-inventory)", () => {
       ".clinerules": "cline-rules",
       ".clinerules/style.md": "cline-rules",
       // AC-4
-      "packages/web/.mcp.json": "mcp-config",
-      "packages/web/.claude/settings.json": "claude-settings",
-      "packages/web/.claude/settings.local.json": "claude-settings-local",
       "packages/web/.claude/skills/release/SKILL.md": "claude-skill",
       "packages/web/.claude/hooks/pre.sh": "claude-hook",
       "packages/web/.claude/agents/reviewer.md": "claude-agent",
@@ -203,17 +200,23 @@ describe("agent setup classification (ai-agnostic-inventory)", () => {
       ".cursorrules": "cursor-rules",
       ".github/copilot-instructions.md": "copilot-instructions",
       ".mcp.json": "mcp-config",
-      "src/.claude/settings.json": "claude-settings",
-      "nested/.mcp.json": "mcp-config",
       // AC-6
       ".github/agents/AGENTS.md": "copilot-agents",
       ".claude/agents/CLAUDE.md": "claude-agent",
       ".clinerules/AGENTS.md": "cline-rules",
-      ".claude/skills/demo/.mcp.json": "claude-skill",
+      ".claude/skills/demo/AGENTS.md": "claude-skill",
       ".windsurf/rules/GEMINI.md": "windsurf-rules",
     };
     // Every path those two files expect to return no kind.
     const nonMatches = [
+      // AC-4 and scan.test.ts: settings and .mcp.json count at the repo root only (F-10).
+      "packages/web/.mcp.json",
+      "packages/web/.claude/settings.json",
+      "packages/web/.claude/settings.local.json",
+      "src/.claude/settings.json",
+      "nested/.mcp.json",
+      // AC-6: a dot-file under a directory rule is a placeholder (F-10).
+      ".claude/skills/demo/.mcp.json",
       ".github/instructions/notes.md",
       ".vscode/settings.json",
       ".codex/other.toml",

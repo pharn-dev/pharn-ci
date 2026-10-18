@@ -41,5 +41,5 @@ CONVENTIONS.md
 GEMINI.md
 opencode.json
 opencode.jsonc
-packages/web/.claude/settings.json
-packages/web/.mcp.json
+packages/web/.claude/skills/lint/SKILL.md
+packages/web/CLAUDE.md

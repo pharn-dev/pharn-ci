@@ -10,6 +10,7 @@ import {
   type InputErrorText,
   type PharnConfig,
   parseConfig,
+  parseLsTreeSizes,
   type RawInputs,
   renderMarkdown,
   resolveInputs,
@@ -166,6 +167,15 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   // paths are compared with the same names from a subdirectory.
   const lsFiles = await git(deps, ["ls-files", "-z", "--full-name", "--", ":/"], "git ls-files failed");
 
+  // File sizes in HEAD, so an empty agent setup file can be reported. Optional: without them the check still runs.
+  let repoFileBytes: Map<string, number> | undefined;
+  try {
+    repoFileBytes = parseLsTreeSizes(await deps.git(["ls-tree", "-r", "-l", "-z", "--full-tree", "HEAD"]));
+  } catch (err) {
+    const firstLine = errorMessage(err).trim().split("\n")[0] ?? "";
+    deps.stderr(`pharn-ci: git ls-tree failed, so empty agent setup files are not reported: ${firstLine}\n`);
+  }
+
   const input: CheckInput = {
     version: VERSION,
     coverage:
@@ -176,6 +186,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     repoRoot,
     threshold,
     repoFiles: lsFiles.split("\0").filter((p) => p !== ""),
+    ...(repoFileBytes === undefined ? {} : { repoFileBytes }),
     exclude,
     requireAgentSetup,
     ...(coverageRoot === undefined ? {} : { coverageRoot }),

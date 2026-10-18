@@ -29,6 +29,11 @@ export interface CheckInput {
    * any order. Validated and de-duplicated here; an unsupported pattern throws a ConfigError.
    */
   exclude?: readonly string[];
+  /**
+   * Sizes in bytes of tracked files in HEAD, from `git ls-tree -r -l` (see `parseLsTreeSizes`). A path missing
+   * from the map has an unknown size; an absent map means sizes are unknown for every file.
+   */
+  repoFileBytes?: ReadonlyMap<string, number>;
   /** When true, a repo with no agent setup files fails the check. Off when absent. */
   requireAgentSetup?: boolean;
   /**
@@ -57,6 +62,9 @@ export function check(input: CheckInput): Report {
   const configPaths = parsedDiff === null ? [] : changedConfigPaths(parsedDiff, input.configPath, input.repoRoot);
   const trackedCoverage =
     "text" in input.coverage ? trackedCoverageFile(input.coverage.file, input.repoRoot, input.repoFiles) : null;
+  const bytes = input.repoFileBytes;
+  const emptyAgentSetupFiles =
+    bytes === undefined ? [] : agentSetup.files.filter((file) => bytes.get(file.path) === 0).map((file) => file.path);
   const base = {
     version: input.version,
     threshold: input.threshold,
@@ -64,6 +72,7 @@ export function check(input: CheckInput): Report {
     requireAgentSetup: input.requireAgentSetup === true,
     ...(configPaths.length > 0 ? { changedConfigPaths: configPaths } : {}),
     ...(trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage }),
+    ...(emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {}),
   };
 
   if ("missingFile" in input.coverage) {
