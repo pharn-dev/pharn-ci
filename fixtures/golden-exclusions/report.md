@@ -2,7 +2,8 @@
 
 ## 🛡️ pharn-ci · ✅ Pass
 
-Diff coverage of this change is 80% against a threshold of 80%; 2 agent setup files found.
+> [!TIP]
+> **Pass** · Diff coverage of this change is 80% against a threshold of 80%; 2 agent setup files found.
 
 | Verdict | Diff coverage | Agent setup |
 | --- | --- | --- |

@@ -10,6 +10,8 @@ export interface RenderMarkdownOptions {
 
 const VERDICT_ICON = { pass: "✅", warn: "⚠️", fail: "❌" } as const;
 const VERDICT_LABEL = { pass: "Pass", warn: "Warn", fail: "Fail" } as const;
+/** The GitHub alert marker line that opens the verdict callout; fixed strings, keyed by verdict. */
+const VERDICT_ALERT = { pass: "> [!TIP]", warn: "> [!WARNING]", fail: "> [!CAUTION]" } as const;
 const BRAND = "🛡️";
 /** Fixed words for the footer; a format outside the enum (another producer's) renders nothing. */
 const COVERAGE_FORMAT_LABEL: Record<CoverageFormat, string> = { lcov: "lcov", cobertura: "cobertura" };
@@ -64,7 +66,7 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
   const logo = logoMarkup();
   if (logo !== "") out.push(logo, "");
   out.push(`## ${BRAND} pharn-ci · ${VERDICT_ICON[report.verdict]} ${VERDICT_LABEL[report.verdict]}`, "");
-  out.push(overviewLine(report), "");
+  out.push(VERDICT_ALERT[report.verdict], `> **${VERDICT_LABEL[report.verdict]}** · ${overviewLine(report)}`, "");
   out.push(...summaryLines(report));
 
   out.push("### 🧪 Diff coverage", "");
@@ -155,7 +157,7 @@ function countFiles(n: number): string {
 }
 
 /**
- * One sentence under the heading. Fixed words, numbers and counts only: nothing input-derived, so no
+ * The sentence inside the verdict callout under the heading. Fixed words, numbers and counts only: nothing input-derived, so no
  * path or message text can reach it.
  */
 function overviewLine(report: Report): string {

@@ -42,19 +42,23 @@ describe("renderMarkdown(): the branded header block", () => {
     const overview = "Diff coverage of this change is 71.43% against a threshold of 80%; 8 agent setup files found.";
     const tableHeader = "| Verdict | Diff coverage | Agent setup |";
     const valueRow = "| ❌ Fail | 71.43% (threshold 80%) | 8 files |";
+    // pr-comment-verdict-callout put the overview sentence in a callout under the heading on purpose.
+    const marker = "> [!CAUTION]";
+    const callout = `> **Fail** ${DOT} ${overview}`;
 
-    // The first non-empty line is the fixed logo line; the next three are the heading, the overview and the table header.
+    // The first non-empty line is the fixed logo line; the next four are the heading, the callout and the table header.
     const { logoMarkup } = await import("../src/render/logo.js");
-    expect(lines.filter((line) => line.trim() !== "").slice(0, 4)).toEqual([
+    expect(lines.filter((line) => line.trim() !== "").slice(0, 5)).toEqual([
       logoMarkup(),
       heading,
-      overview,
+      marker,
+      callout,
       tableHeader,
     ]);
 
     const section = lines.indexOf("### 🧪 Diff coverage");
     expect(section, "the Diff coverage section heading").toBeGreaterThan(-1);
-    for (const line of [heading, overview, tableHeader, valueRow]) {
+    for (const line of [heading, callout, tableHeader, valueRow]) {
       const at = lines.indexOf(line);
       expect(at, `present: ${line}`).toBeGreaterThan(-1);
       expect(at, `above Diff coverage: ${line}`).toBeLessThan(section);

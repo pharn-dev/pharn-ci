@@ -37,6 +37,7 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- The PR comment, job summary and CLI markdown now show the overview sentence in a GitHub alert under the verdict heading: `[!CAUTION]` for fail, `[!WARNING]` for warn, `[!TIP]` for pass. Report data and message text are unchanged.
 - The PR comment, job summary and CLI markdown now show the pharn logo (a 48×48 image from the repository's raw `main` URL) above the verdict heading. Report data and message text are unchanged.
 - The PR comment, job summary and CLI markdown have a new look. They open with a branded header (a verdict heading, a one-line overview and a summary table), use emoji section headings with counts, and collapse the changed-files and agent setup tables in `<details>` blocks (the changed-files block is open when diff coverage is below the threshold). They end with a footer naming the tool version, the report schema and the coverage format. Report data and message text are unchanged.
 - Internal refactor: the CLI and the Action share their Node I/O (git, file reads, directory listing) and their coverage-file reading through a private workspace package, `@pharn-ci/node-io`. No user-visible change.

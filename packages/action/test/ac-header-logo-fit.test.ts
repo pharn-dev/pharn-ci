@@ -18,10 +18,12 @@ function longSkillPaths(width: number): string[] {
 }
 
 /** The overview sentence, the summary table's value row and every message line of a full rendering. */
-function keptLines(markdown: string): { overview: string; valueRow: string; messages: string[] } {
+function keptLines(markdown: string): { marker: string; overview: string; valueRow: string; messages: string[] } {
   const lines = markdown.split("\n");
   const heading = lines.findIndex((line) => line.startsWith(HEADING_PREFIX));
-  const overview = lines.slice(heading + 1).find((line) => line.trim() !== "") ?? "";
+  // pr-comment-verdict-callout: the sentence sits in the callout's content line, after the alert marker line.
+  const marker = lines.slice(heading + 1).find((line) => line.trim() !== "") ?? "";
+  const overview = lines.slice(heading + 1).find((line) => line.startsWith("> **")) ?? "";
   const separator = lines.findIndex((line) => /^\|( --- \|)+$/.test(line));
   const valueRow = lines[separator + 1] ?? "";
   const start = lines.findIndex((line) => line.startsWith("### 💬 Messages ("));
@@ -30,7 +32,7 @@ function keptLines(markdown: string): { overview: string; valueRow: string; mess
     start === -1
       ? []
       : lines.slice(start + 1, end === -1 ? lines.length : end).filter((line) => line.trimStart().startsWith("- "));
-  return { overview, valueRow, messages };
+  return { marker, overview, valueRow, messages };
 }
 
 describe("action: the fitted sticky comment keeps the logo and heading", () => {
@@ -52,7 +54,8 @@ describe("action: the fitted sticky comment keeps the logo and heading", () => {
     const full = renderMarkdown(report);
     expect(full.length).toBeGreaterThan(MAX_COMMENT_LENGTH);
     const kept = keptLines(full);
-    expect(kept.overview).not.toBe("");
+    expect(kept.marker).toMatch(/^> \[!(TIP|WARNING|CAUTION)\]$/);
+    expect(kept.overview.startsWith("> **")).toBe(true);
     expect(kept.valueRow.startsWith("| ")).toBe(true);
     // One top-level line per message; its hint lines are kept too.
     expect(kept.messages.filter((line) => line.startsWith("- ")).length).toBe(report.messages.length);
@@ -75,6 +78,7 @@ describe("action: the fitted sticky comment keeps the logo and heading", () => {
     for (const [name, body, head] of cases) {
       expect(body.length, name).toBeLessThanOrEqual(MAX_COMMENT_LENGTH);
       expect(body.startsWith(`${head}${LOGO}\n\n${HEADING_PREFIX}`), `${name}: ${body.slice(0, 300)}`).toBe(true);
+      expect(body, `${name}: alert marker`).toContain(kept.marker);
       expect(body, `${name}: overview`).toContain(kept.overview);
       expect(body, `${name}: value row`).toContain(kept.valueRow);
       for (const line of kept.messages) {

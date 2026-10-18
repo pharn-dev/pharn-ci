@@ -59,10 +59,14 @@ describe("run(): the new header block in a sticky comment that has to be shorten
     const fullLines = full.split("\n");
     const overview = `Diff coverage of this change is 71.43% against a threshold of 80%; ${setupFiles} agent setup files found.`;
     const valueRow = `| ❌ Fail | 71.43% (threshold 80%) | ${setupFiles} files |`;
-    // The non-empty lines of the full rendering are the logo line, the heading, then the overview sentence.
+    // The non-empty lines of the full rendering are the logo line, the heading, then (pr-comment-verdict-callout) the
+    // alert marker and the callout content line holding the overview sentence.
+    const marker = "> [!CAUTION]";
+    const callout = `> **Fail** ${DOT} ${overview}`;
     expect(fullLines.filter((line) => line.trim() !== "")[0], "the logo line of the full rendering").toBe(LOGO);
-    expect(fullLines.filter((line) => line.trim() !== "")[2], "the overview sentence of the full rendering").toBe(
-      overview,
+    expect(fullLines.filter((line) => line.trim() !== "")[2], "the alert marker of the full rendering").toBe(marker);
+    expect(fullLines.filter((line) => line.trim() !== "")[3], "the overview sentence of the full rendering").toBe(
+      callout,
     );
     expect(fullLines, "the summary value row of the full rendering").toContain(valueRow);
     const messages = messageLines(fullLines);
@@ -79,7 +83,8 @@ describe("run(): the new header block in a sticky comment that has to be shorten
         `${label}: marker, scope line, the logo block, then the heading`,
       ).toBe(true);
       const bodyLines = body.split("\n");
-      expect(bodyLines, `${label}: the overview sentence`).toContain(overview);
+      expect(bodyLines, `${label}: the alert marker`).toContain(marker);
+      expect(bodyLines, `${label}: the overview sentence`).toContain(callout);
       expect(bodyLines, `${label}: the summary value row`).toContain(valueRow);
       for (const line of messages) expect(bodyLines, `${label}: message line ${line}`).toContain(line);
     }

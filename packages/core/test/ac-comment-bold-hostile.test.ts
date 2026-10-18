@@ -144,8 +144,15 @@ describe("renderMarkdown(): the new header, summaries and footer with hostile pa
       // The fixed lines: the heading, the overview sentence, every <summary> line and the footer.
       const heading = lines.findIndex((line) => line.startsWith(HEADING_PREFIX));
       expect(heading, `${label}: the branded heading`).toBeGreaterThan(-1);
-      const overview = lines.findIndex((line, index) => index > heading && line.trim() !== "");
+      // pr-comment-verdict-callout put the sentence in a callout: the alert marker, then the content line.
+      const marker = lines.findIndex((line, index) => index > heading && line.trim() !== "");
+      expect(lines[marker], `${label}: the alert marker`).toMatch(/^> \[!(TIP|WARNING|CAUTION)\]$/);
+      const overview = marker + 1;
       expect(lines[overview]?.endsWith("found."), `${label}: the overview sentence: ${lines[overview]}`).toBe(true);
+      expect(
+        lines.filter((line) => line.startsWith(">")),
+        `${label}: exactly the two callout lines`,
+      ).toHaveLength(2);
       const nonEmpty = lines.filter((line) => line.trim() !== "");
       const footer = nonEmpty[nonEmpty.length - 1] ?? "";
       expect(footer.startsWith("<sub>pharn-ci "), `${label}: the footer: ${footer}`).toBe(true);
@@ -153,7 +160,7 @@ describe("renderMarkdown(): the new header, summaries and footer with hostile pa
       const summaries = lines.filter((line) => line.includes("<summary>"));
       expect(summaries.length, `${label}: the agent setup files block has a summary`).toBeGreaterThan(0);
 
-      const fixedLines = [lines[heading] ?? "", lines[overview] ?? "", footer, ...summaries];
+      const fixedLines = [lines[heading] ?? "", lines[marker] ?? "", lines[overview] ?? "", footer, ...summaries];
       for (const line of fixedLines) {
         for (const input of inputs) expect(line.includes(input), `${label}: input text in ${line}`).toBe(false);
         const leaked = runs.filter((run) => line.includes(run));

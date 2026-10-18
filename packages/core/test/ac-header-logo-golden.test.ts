@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { fixture } from "./helpers.js";
+import { fixture, foldCallout } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 // pr-comment-logo-2 AC-2. check() and the renderer are loaded inside the test body: the AC tests are written before the
@@ -37,8 +37,13 @@ describe("renderMarkdown(): the golden report opens with the logo line", () => {
     expect(lines[1]).toBe("");
     expect(lines[2]).toBe(HEADING);
 
+    // pr-comment-verdict-callout turned the overview line into a callout on purpose: lines 4 and 5 are its two lines,
+    // and the hash below is taken after folding them back into the bare sentence.
+    expect(lines[4]).toBe("> [!CAUTION]");
+    expect(lines[5]?.startsWith("> **Fail** · ")).toBe(true);
+
     // Every line after the first two equals the committed golden from before this increment, byte for byte.
-    const rest = lines.slice(2).join("\n");
+    const rest = foldCallout(lines.slice(2).join("\n"));
     expect(createHash("sha256").update(rest).digest("hex")).toBe(GOLDEN_MD_BEFORE_SHA256);
   });
 });

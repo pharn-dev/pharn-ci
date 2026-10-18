@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { fixture } from "./helpers.js";
+import { fixture, foldCallout } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 // check(), the renderer and the fixtures are loaded inside each test body: the AC tests are written before format
@@ -21,6 +21,8 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 // format; the JSON report, and so its hash, did not change.
 // The pr-comment-logo-2 feature added the fixed logo line and an empty line above the heading on purpose; the JSON
 // report, and so its hash, did not change.
+// pr-comment-verdict-callout turned the overview line into a callout on purpose; the markdown hash below is taken
+// after folding the callout back into the bare sentence, so it is unchanged.
 const GOLDEN_MD_SHA256 = "a55ed107a7e2f29761b965f4a8a993dfc069807cea5e7fcc19944da3b01fa6fc";
 const GOLDEN_JSON_SHA256 = "a455705f65d678d9c059231ba36bed7241155cd5063744d2effd8df8d8116c24";
 
@@ -93,7 +95,7 @@ describe("golden reports and the coverage format", () => {
     const partialCode = "COVERAGE_PATHS_PARTIALLY_UNMATCHED";
     const markdown = fixture("golden/report.md");
     expect(renderMarkdown(report)).toBe(markdown);
-    const markdownLines = markdown.split("\n");
+    const markdownLines = foldCallout(markdown).split("\n");
     expect(markdownLines.filter((line) => line.includes(`\`${partialCode}\``))).toHaveLength(1);
     const partialAt = markdownLines.findIndex((line) => line.includes(`\`${partialCode}\``));
     expect(markdownLines[partialAt + 1]).toMatch(/^ {2}- Hint: \S/);

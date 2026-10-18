@@ -249,7 +249,8 @@ flowchart LR
 >
 > ## 🛡️ pharn-ci · ❌ Fail
 >
-> Diff coverage of this change is 71.43% against a threshold of 80%; 8 agent setup files found.
+> > [!CAUTION]
+> > **Fail** · Diff coverage of this change is 71.43% against a threshold of 80%; 8 agent setup files found.
 >
 > | Verdict | Diff coverage | Agent setup |
 > | --- | --- | --- |
