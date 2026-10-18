@@ -1,0 +1,13 @@
+diff --git a/.pharn/ci.yml b/.pharn/ci.yml
+index 3333333..4444444 100644
+--- a/.pharn/ci.yml
++++ b/.pharn/ci.yml
+@@ -2 +2 @@
+-  threshold: 90
++  threshold: 10
+diff --git a/src/app.ts b/src/app.ts
+index 1111111..2222222 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -1,0 +2 @@
++export const b = 2;

@@ -8,6 +8,11 @@ export interface DiffFile {
   status: DiffFileStatus;
   /** 1-based line numbers added in the new file, ascending. */
   addedLines: number[];
+  /**
+   * Set (to `true`) only when the diff shows the file as binary (`Binary files ... differ` or
+   * `GIT binary patch`), so it carries no added lines. Absent on every other entry.
+   */
+  binary?: true;
 }
 
 interface Entry {
@@ -16,6 +21,7 @@ interface Entry {
   status: DiffFileStatus;
   addedLines: number[];
   sawHunk: boolean;
+  binary: boolean;
 }
 
 const HUNK_HEADER = /^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
@@ -34,7 +40,7 @@ export function parseUnifiedDiff(text: string): DiffFile[] {
   let cursor = 0;
 
   const start = (): Entry => {
-    current = { oldPath: null, newPath: null, status: "modified", addedLines: [], sawHunk: false };
+    current = { oldPath: null, newPath: null, status: "modified", addedLines: [], sawHunk: false, binary: false };
     entries.push(current);
     return current;
   };
@@ -95,6 +101,8 @@ export function parseUnifiedDiff(text: string): DiffFile[] {
       const path = parseMarkerPath(line.slice(4));
       if (path === null) entry.status = "deleted";
       else entry.newPath = path;
+    } else if ((line.startsWith("Binary files ") && line.endsWith(" differ")) || line === "GIT binary patch") {
+      if (current) current.binary = true;
     } else if (line.startsWith("@@ ")) {
       const match = HUNK_HEADER.exec(line);
       if (!match || !current) continue;
@@ -114,6 +122,7 @@ export function parseUnifiedDiff(text: string): DiffFile[] {
       oldPath: e.oldPath ?? path,
       status: e.status === "deleted" ? "deleted" : e.status,
       addedLines: e.status === "deleted" ? [] : [...new Set(e.addedLines)].sort((a, b) => a - b),
+      ...(e.binary ? { binary: true as const } : {}),
     });
   }
   return files;

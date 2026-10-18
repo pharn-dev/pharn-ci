@@ -161,6 +161,14 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   exclude its own files, ultimately all of them, which passes as `NO_COVERABLE_CHANGES`. The gate
   is only as honest as the config the PR carries. Protect `.pharn/ci.yml` and the workflow with
   CODEOWNERS so changes to them need a code owner's review.
+- **A PR controls the inputs that grade it.** Besides the config and the workflow, it can add a
+  committed coverage file or change `.gitattributes`: `*.ts -diff` makes `git diff` print
+  `Binary files ... differ` with no line counts, so those files' added lines are never measured.
+  pharn-ci flags these with three warnings, `CONFIG_CHANGED_IN_DIFF` (the diff touches the config in
+  use or a file under `.github/workflows/`), `COVERAGE_FILE_TRACKED` (the coverage file is a tracked
+  file) and `DIFF_BINARY_COVERED_FILE` (the diff shows a file the coverage report knows as binary).
+  They are warnings only, never a `fail`. pharn-ci does not read the base branch's copies of these
+  files and does not detect changes to `.gitattributes` itself.
 - **Coverage and config paths are not confined to the repository.** They are resolved against the
   workspace (Action) or the current directory and repo root (CLI), and may point anywhere the job
   can read, such as `$RUNNER_TEMP`. The file is only parsed as coverage (lcov or Cobertura) or

@@ -179,6 +179,8 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     exclude,
     requireAgentSetup,
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
+    // Absolute: core makes it repo-relative against repoRoot, or finds it outside the repo.
+    ...(values.config === undefined ? {} : { configPath: deps.resolvePath(deps.cwd, values.config) }),
   };
   const report = check(input);
 

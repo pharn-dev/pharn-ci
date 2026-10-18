@@ -1,0 +1,13 @@
+TN:
+SF:src/app.ts
+DA:1,1
+DA:2,1
+DA:3,1
+end_of_record
+SF:src/x.ts
+DA:1,1
+DA:2,0
+end_of_record
+SF:src/y.ts
+DA:1,1
+end_of_record

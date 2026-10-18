@@ -1,0 +1,14 @@
+diff --git a/config/pharn.yml b/config/pharn.yml
+new file mode 100644
+index 0000000..5555555
+--- /dev/null
++++ b/config/pharn.yml
+@@ -0,0 +1,2 @@
++coverage:
++  threshold: 10
+diff --git a/src/app.ts b/src/app.ts
+index 1111111..2222222 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -1,0 +2 @@
++export const b = 2;
