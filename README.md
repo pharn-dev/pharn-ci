@@ -156,6 +156,7 @@ jobs:
       # ...set up your toolchain and run tests with lcov or Cobertura output, e.g.:
       - run: npx vitest run --coverage --coverage.reporter=lcov
       - uses: pharn-dev/pharn-ci@v0.1.0 # or, better, the tag's full commit SHA
+        timeout-minutes: 5
         with:
           coverage-file: coverage/lcov.info
           threshold: 80
@@ -166,6 +167,11 @@ reports and never fails the step. With a merge queue, add `merge_group` to `on:`
 the queued change against the queue's base (`merge_group.base_sha`). The `concurrency` group
 cancels an older run when a new commit is pushed; without it, two runs that each post the sticky
 comment are cleaned up to one, but the older run may write last.
+
+Each GitHub API request pharn-ci makes is aborted after 30 s, and a 5xx, a network error or a rate
+limit that asks for at most 60 s is retried once; each `git` call is killed after 2 minutes. A run
+makes a handful of requests, so `timeout-minutes: 5` on the step bounds even a slow GitHub without
+cutting a normal run short; without it, a stuck step runs until the job's 6-hour limit.
 
 Release tags are exact versions (`v0.1.0`), never moved or deleted, but they are unsigned
 lightweight tags, so there is no tag signature to verify. Pinning the tag's full commit SHA is the

@@ -97,6 +97,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   arrives as bytes) the diff is decoded as UTF-8, and a body that is not diff text (such as JSON)
   degrades to `DIFF_UNAVAILABLE`. Before, the step crashed with "text.split is not a function" and
   wrote no summary, report or outputs.
+- A hung GitHub API or `git` call no longer stalls the Action for minutes per stage. Each API request
+  is aborted after 30 s, and a 5xx, a network error or a rate limit asking for at most 60 s is retried
+  once (honouring `retry-after` and `x-ratelimit-reset`); `git` calls in the Action and the CLI are
+  killed after 2 minutes. The README example sets `timeout-minutes: 5` on the step.
 
 ### Security
 
