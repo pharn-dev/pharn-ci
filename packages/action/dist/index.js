@@ -24574,13 +24574,54 @@ function createGitHubApi(opts) {
 }
 
 // src/node-io.ts
-import { execFile } from "node:child_process";
-import { mkdir as mkdir2, readdir as readdir2, readFile, writeFile as writeFile2 } from "node:fs/promises";
+import { execFile, spawn } from "node:child_process";
+import { mkdir as mkdir2, open as open2, readdir as readdir2, readFile, writeFile as writeFile2 } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 var GIT_TIMEOUT_MS = 12e4;
+async function* streamGit(cwd, args, timeout) {
+  const child = spawn("git", args, { cwd, stdio: ["pipe", "pipe", "pipe"] });
+  let stderr = "";
+  let timedOut = false;
+  child.stdin.on("error", () => {
+  });
+  child.stderr.setEncoding("utf8");
+  child.stderr.on("data", (chunk) => {
+    stderr += chunk;
+  });
+  const closed = new Promise((done) => {
+    child.on("error", (error2) => done({ code: null, error: error2 }));
+    child.on("close", (code2) => done({ code: code2 }));
+  });
+  const timer = setTimeout(() => {
+    timedOut = true;
+    child.kill();
+  }, timeout);
+  try {
+    child.stdout.setEncoding("utf8");
+    for await (const chunk of child.stdout) yield chunk;
+    const { code: code2, error: error2 } = await closed;
+    if (timedOut) throw new Error(`git ${args[0] ?? ""} timed out after ${timeout / 1e3} s`);
+    if (error2) throw error2;
+    if (code2 !== 0) throw new Error(stderr || `Command failed: git ${args.join(" ")}`);
+  } finally {
+    clearTimeout(timer);
+    if (child.exitCode === null && child.signalCode === null) child.kill();
+  }
+}
 function createNodeIo(workspace2, opts = {}) {
   const timeout = opts.gitTimeoutMs ?? GIT_TIMEOUT_MS;
   return {
+    gitStream: (args) => streamGit(workspace2, args, timeout),
+    readFileStream: async (path) => {
+      let handle;
+      try {
+        handle = await open2(path, "r");
+      } catch (err) {
+        if (err.code === "ENOENT") return null;
+        throw err;
+      }
+      return handle.createReadStream({ encoding: "utf8" });
+    },
     git: (args) => new Promise((ok, fail) => {
       execFile(
         "git",
@@ -25307,6 +25348,7 @@ function scanXml(text, onEvent) {
 
 // ../core/src/coverage/detect.ts
 var DETECTION_WINDOW = 1024;
+var DETECTION_PREFIX = 1 + DETECTION_WINDOW + 1;
 function isSpace2(char) {
   return char === " " || char === "	" || char === "\n" || char === "\r";
 }
@@ -25516,32 +25558,44 @@ function climbs(path) {
 
 // ../core/src/coverage/lcov.ts
 function parseLcov(text, options = {}) {
+  return parseLcovLines(text.split(/\r?\n/), options);
+}
+function parseLcovLines(lines, options = {}) {
+  const reader = createLcovReader(options);
+  for (const line of lines) reader.push(line);
+  return reader.finish();
+}
+function createLcovReader(options = {}) {
   const map = /* @__PURE__ */ new Map();
   let current;
-  for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim();
-    if (line.startsWith("SF:")) {
-      const raw2 = line.slice(3);
-      const path = options.coverageRoot !== void 0 && !isAbsolutePath(raw2.trim()) ? normalizePath(joinCoverageRoot(raw2, options.coverageRoot), options.repoRoot) : normalizePath(raw2, options.repoRoot);
-      current = map.get(path);
-      if (!current) {
-        current = /* @__PURE__ */ new Map();
-        map.set(path, current);
+  return {
+    push(raw) {
+      const line = raw.trim();
+      if (line.startsWith("SF:")) {
+        const raw2 = line.slice(3);
+        const path = options.coverageRoot !== void 0 && !isAbsolutePath(raw2.trim()) ? normalizePath(joinCoverageRoot(raw2, options.coverageRoot), options.repoRoot) : normalizePath(raw2, options.repoRoot);
+        current = map.get(path);
+        if (!current) {
+          current = /* @__PURE__ */ new Map();
+          map.set(path, current);
+        }
+      } else if (line.startsWith("DA:") && current) {
+        const [lineNo, hits] = line.slice(3).split(",");
+        const n = Number(lineNo);
+        const h = Number(hits);
+        if (!Number.isInteger(n) || n < 1 || !Number.isFinite(h) || h < 0) return;
+        current.set(n, (current.get(n) ?? 0) + h);
+      } else if (line === "end_of_record") {
+        current = void 0;
       }
-    } else if (line.startsWith("DA:") && current) {
-      const [lineNo, hits] = line.slice(3).split(",");
-      const n = Number(lineNo);
-      const h = Number(hits);
-      if (!Number.isInteger(n) || n < 1 || !Number.isFinite(h) || h < 0) continue;
-      current.set(n, (current.get(n) ?? 0) + h);
-    } else if (line === "end_of_record") {
-      current = void 0;
+    },
+    finish() {
+      for (const [path, hits] of map) {
+        if (hits.size === 0) map.delete(path);
+      }
+      return map;
     }
-  }
-  for (const [path, hits] of map) {
-    if (hits.size === 0) map.delete(path);
-  }
-  return map;
+  };
 }
 
 // ../core/src/coverage/index.ts
@@ -25601,6 +25655,14 @@ function mergeCoverageMaps(maps) {
 // ../core/src/diff/unified.ts
 var HUNK_HEADER = /^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 function parseUnifiedDiff(text) {
+  return parseUnifiedDiffLines(text.split(/\r?\n/));
+}
+function parseUnifiedDiffLines(lines) {
+  const reader = createUnifiedDiffReader();
+  for (const line of lines) reader.push(line);
+  return reader.finish();
+}
+function createUnifiedDiffReader() {
   const entries = [];
   let current;
   let oldRemaining = 0;
@@ -25611,29 +25673,29 @@ function parseUnifiedDiff(text) {
     entries.push(current);
     return current;
   };
-  for (const line of text.split(/\r?\n/)) {
+  const push = (line) => {
     if (current && (oldRemaining > 0 || newRemaining > 0)) {
       const marker = line[0];
       if (marker === "+") {
         current.addedLines.push(cursor++);
         newRemaining--;
-        continue;
+        return;
       }
       if (marker === "-") {
         oldRemaining--;
-        continue;
+        return;
       }
       if (marker === " ") {
         cursor++;
         oldRemaining--;
         newRemaining--;
-        continue;
+        return;
       }
-      if (marker === "\\") continue;
+      if (marker === "\\") return;
       oldRemaining = 0;
       newRemaining = 0;
     }
-    if (line.startsWith("\\")) continue;
+    if (line.startsWith("\\")) return;
     if (line.startsWith("diff --git ")) {
       const entry = start();
       const header = parseGitHeader(line.slice("diff --git ".length));
@@ -25669,31 +25731,40 @@ function parseUnifiedDiff(text) {
       if (current) current.binary = true;
     } else if (line.startsWith("@@ ")) {
       const match = HUNK_HEADER.exec(line);
-      if (!match || !current) continue;
+      if (!match || !current) return;
       current.sawHunk = true;
       oldRemaining = match[1] === void 0 ? 1 : Number(match[1]);
       cursor = Number(match[2]);
       newRemaining = match[3] === void 0 ? 1 : Number(match[3]);
     }
-  }
-  const files = [];
-  for (const e of entries) {
-    const path = e.status === "deleted" ? e.oldPath ?? e.newPath : e.newPath ?? e.oldPath;
-    if (path === null) continue;
-    files.push({
-      path,
-      oldPath: e.oldPath ?? path,
-      status: e.status === "deleted" ? "deleted" : e.status,
-      addedLines: e.status === "deleted" ? [] : [...new Set(e.addedLines)].sort((a, b) => a - b),
-      ...e.binary ? { binary: true } : {}
-    });
-  }
-  return files;
+  };
+  const finish = () => {
+    const files = [];
+    for (const e of entries) {
+      const path = e.status === "deleted" ? e.oldPath ?? e.newPath : e.newPath ?? e.oldPath;
+      if (path === null) continue;
+      files.push({
+        path,
+        oldPath: e.oldPath ?? path,
+        status: e.status === "deleted" ? "deleted" : e.status,
+        addedLines: e.status === "deleted" ? [] : [...new Set(e.addedLines)].sort((a, b) => a - b),
+        ...e.binary ? { binary: true } : {}
+      });
+    }
+    return files;
+  };
+  return { push, finish };
 }
 function parseMarkerPath(raw) {
-  const value = unquote(raw.replace(/\t.*$/, ""));
+  const value = unquote(stripTabSuffix(raw));
   if (value === "/dev/null") return null;
   return stripPrefix(value);
+}
+function stripTabSuffix(raw) {
+  let lastBreak = -1;
+  for (const terminator of ["\n", "\r", "\u2028", "\u2029"]) lastBreak = Math.max(lastBreak, raw.lastIndexOf(terminator));
+  const tab = raw.indexOf("	", lastBreak + 1);
+  return tab === -1 ? raw : raw.slice(0, tab);
 }
 function stripPrefix(path) {
   const slash = path.indexOf("/");
@@ -26179,7 +26250,7 @@ function check(input) {
   const isExcluded = (path) => matchers.some((matches) => matches(path));
   const coverageRoot = input.coverageRoot === void 0 ? void 0 : parseCoverageRoot(input.coverageRoot, "coverage root");
   const agentSetup = scanAgentSetup(input.repoFiles);
-  const parsedDiff = "text" in input.diff ? parseUnifiedDiff(input.diff.text) : null;
+  const parsedDiff = "text" in input.diff ? parseUnifiedDiff(input.diff.text) : "parsed" in input.diff ? input.diff.parsed : null;
   const configPaths = parsedDiff === null ? [] : changedConfigPaths(parsedDiff, input.configPath, input.repoRoot);
   const testPaths = parsedDiff === null ? [] : deletedTestFiles(parsedDiff);
   const coverageInput = input.coverage;
@@ -26199,7 +26270,7 @@ function check(input) {
   }
   let trackedCoverage = null;
   for (const file of files) {
-    if (!("text" in file)) continue;
+    if ("missingFile" in file) continue;
     trackedCoverage = trackedCoverageFile(file.file, input.repoRoot, input.repoFiles);
     if (trackedCoverage !== null) break;
   }
@@ -26236,7 +26307,7 @@ function check(input) {
   for (const file of files) {
     if ("missingFile" in file) continue;
     const coverageFile = file.file ?? null;
-    const choice = chooseCoverageFormat(file.text, selection);
+    const choice = "parsed" in file ? { format: file.format } : chooseCoverageFormat(file.text, selection);
     if (choice.format === "empty") {
       return buildReport({
         ...base,
@@ -26251,7 +26322,7 @@ function check(input) {
         missing: { reason: "coverage-format-unsupported", coverageFile }
       });
     }
-    const parsed = parseCoverage(file.text, choice.format, {
+    const parsed = "parsed" in file ? file.parsed : parseCoverage(file.text, choice.format, {
       ...input.repoRoot === void 0 ? {} : { repoRoot: input.repoRoot },
       ...coverageRoot === void 0 ? {} : { coverageRoot }
     });
@@ -26302,6 +26373,86 @@ function check(input) {
     ...untrackedCoveragePaths > 0 ? { untrackedCoveragePaths } : {},
     ...binaryPaths.length > 0 ? { binaryCoveredPaths: binaryPaths } : {}
   });
+}
+
+// ../core/src/lines.ts
+function createLineSplitter() {
+  let pending = "";
+  const complete = (text) => text.endsWith("\r") ? text.slice(0, -1) : text;
+  return {
+    push(chunk) {
+      const lines = [];
+      let from = 0;
+      let newline = chunk.indexOf("\n", from);
+      while (newline !== -1) {
+        lines.push(complete(pending + chunk.slice(from, newline)));
+        pending = "";
+        from = newline + 1;
+        newline = chunk.indexOf("\n", from);
+      }
+      pending += from === 0 ? chunk : chunk.slice(from);
+      return lines;
+    },
+    finish() {
+      const last = pending;
+      pending = "";
+      return [last];
+    }
+  };
+}
+
+// ../core/src/chunkInputs.ts
+async function readCoverageChunks(chunks, selection, options = {}) {
+  const iterator2 = chunks[Symbol.asyncIterator]();
+  let finished = false;
+  const pull = async () => {
+    try {
+      const next = await iterator2.next();
+      if (next.done) {
+        finished = true;
+        return null;
+      }
+      return next.value;
+    } catch (error2) {
+      finished = true;
+      throw error2;
+    }
+  };
+  try {
+    let prefix = "";
+    while (prefix.length < DETECTION_PREFIX) {
+      const chunk = await pull();
+      if (chunk === null) break;
+      prefix += chunk;
+    }
+    const choice = chooseCoverageFormat(prefix, selection);
+    if (choice.format === "empty" || choice.format === "unknown") return { choice, parsed: /* @__PURE__ */ new Map() };
+    if (choice.format === "lcov") {
+      const splitter = createLineSplitter();
+      const reader = createLcovReader(options);
+      const feed = (chunk) => {
+        for (const line of splitter.push(chunk)) reader.push(line);
+      };
+      feed(prefix);
+      for (let chunk = await pull(); chunk !== null; chunk = await pull()) feed(chunk);
+      for (const line of splitter.finish()) reader.push(line);
+      return { choice, parsed: reader.finish() };
+    }
+    let text = prefix;
+    for (let chunk = await pull(); chunk !== null; chunk = await pull()) text += chunk;
+    return { choice, parsed: parseCoverage(text, choice.format, options) };
+  } finally {
+    if (!finished) await iterator2.return?.();
+  }
+}
+async function readDiffChunks(chunks) {
+  const splitter = createLineSplitter();
+  const reader = createUnifiedDiffReader();
+  for await (const chunk of chunks) {
+    for (const line of splitter.push(chunk)) reader.push(line);
+  }
+  for (const line of splitter.finish()) reader.push(line);
+  return reader.finish();
 }
 
 // ../core/src/globWalk.ts
@@ -26711,7 +26862,7 @@ async function runUnsafe(deps) {
   const resolved = resolveInputs(
     config,
     {
-      coverageFile: splitLines(input("coverage-file")),
+      coverageFile: splitLines2(input("coverage-file")),
       coverageFormat: input("coverage-format") || void 0,
       threshold: input("threshold") || void 0,
       exclude: splitPatternList(input("exclude")),
@@ -26743,13 +26894,17 @@ async function runUnsafe(deps) {
     const coveragePath = deps.resolvePath(deps.workspace, name);
     if (seen.has(coveragePath)) continue;
     seen.add(coveragePath);
-    const coverageText = await deps.readFile(coveragePath);
-    if (coverageText === null) {
+    const chunks = await openFile(deps, coveragePath);
+    if (chunks === null) {
       coverageFiles.push({ missingFile: name });
       continue;
     }
-    deps.info(coverageChoiceLine(chooseCoverageFormat(coverageText, format)));
-    coverageFiles.push({ text: coverageText, file: name });
+    const { choice, parsed } = await readCoverageChunks(chunks, format, {
+      repoRoot: deps.workspace,
+      ...coverageRoot === void 0 ? {} : { coverageRoot }
+    });
+    deps.info(coverageChoiceLine(choice));
+    coverageFiles.push({ parsed, format: choice.format, file: name });
   }
   const repoFiles = await trackedFiles(target, deps);
   const lsTree = target ? null : await deps.git(["ls-tree", "-r", "-l", "-z", "--full-tree", "HEAD"]).catch((err) => {
@@ -26824,6 +26979,17 @@ async function trackedFiles(target, deps) {
     return [];
   }
 }
+async function* oneChunk(read) {
+  yield await read();
+}
+function streamGit2(deps, args) {
+  return deps.gitStream ? deps.gitStream(args) : oneChunk(() => deps.git(args));
+}
+async function openFile(deps, path) {
+  if (deps.readFileStream) return deps.readFileStream(path);
+  const text = await deps.readFile(path);
+  return text === null ? null : oneChunk(async () => text);
+}
 async function getDiff(baseRefInput, deps, target) {
   if (baseRefInput.startsWith("-")) throw new Error(`base-ref "${baseRefInput}" must not start with "-"`);
   if (target) return getTargetDiff(baseRefInput, target, deps);
@@ -26847,9 +27013,7 @@ async function getDiff(baseRefInput, deps, target) {
   const localBase = await resolveLocal(base, deps);
   if (localBase) {
     try {
-      return {
-        text: await deps.git(gitDiffArgs(localBase))
-      };
+      return { parsed: await readDiffChunks(streamGit2(deps, gitDiffArgs(localBase))) };
     } catch (err) {
       deps.info(`local git diff failed, falling back to the GitHub API: ${String(err)}`);
     }
@@ -26996,7 +27160,7 @@ async function loadConfig(explicit, deps) {
 function splitPatternList(value) {
   return value.split(",").flatMap((part) => part.split("\n")).map((entry) => entry.trim()).filter((entry) => entry !== "");
 }
-function splitLines(value) {
+function splitLines2(value) {
   const entries = value.split(/\r?\n/).map((entry) => entry.trim()).filter((entry) => entry !== "");
   return entries.length > 1 ? entries : entries[0];
 }

@@ -5,9 +5,9 @@ import {
   ConfigError,
   type CoverageFileInput,
   check,
-  chooseCoverageFormat,
   coverageChoiceLine,
   coverageEntryList,
+  type DiffFile,
   type DirEntry,
   expandCoverageEntries,
   gitDiffArgs,
@@ -17,6 +17,8 @@ import {
   parseCoverageEntries,
   parseLsTreeSizes,
   type RawInputs,
+  readCoverageChunks,
+  readDiffChunks,
   renderMarkdown,
   resolveInputs,
   VERSION,
@@ -27,8 +29,19 @@ export interface CliDeps {
   cwd: string;
   /** Run git with args in `cwd`; resolves stdout, rejects with stderr on failure. */
   git(args: string[]): Promise<string>;
+  /**
+   * Run git with args in `cwd` and yield its stdout as UTF-8 text chunks, without holding it whole. Iteration throws
+   * an Error whose message is git's stderr (or says that git timed out) when git fails. Absent: the CLI makes one
+   * chunk of what `git` resolves.
+   */
+  gitStream?(args: string[]): AsyncIterable<string>;
   /** File contents, or null when the file does not exist. */
   readFile(path: string): Promise<string | null>;
+  /**
+   * The file as UTF-8 text chunks, or null when it does not exist; any other failure rejects, or throws during
+   * iteration. Absent: the CLI makes one chunk of what `readFile` resolves.
+   */
+  readFileStream?(path: string): Promise<AsyncIterable<string> | null>;
   /**
    * The entries of a directory, with symbolic links reported as such and never followed; null when the
    * directory does not exist or is not a directory. Only called to expand a coverage glob.
@@ -183,22 +196,29 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     const coveragePath = deps.resolvePath(coverageBase, item.kind === "literal" ? item.entry : item.path);
     if (seen.has(coveragePath)) continue;
     seen.add(coveragePath);
-    const coverageText = await deps.readFile(coveragePath);
-    if (coverageText === null) {
+    const chunks = await openFile(deps, coveragePath);
+    if (chunks === null) {
       coverageFiles.push({ missingFile: coveragePath });
       continue;
     }
+    // The file is parsed as it is read, with the same repo root and coverage root the check would use.
+    const { choice, parsed } = await readCoverageChunks(chunks, coverageFormat, {
+      repoRoot,
+      ...(coverageRoot === undefined ? {} : { coverageRoot }),
+    });
     // Say which format was read and why, on stderr so stdout stays the report alone.
-    deps.stderr(`${coverageChoiceLine(chooseCoverageFormat(coverageText, coverageFormat))}\n`);
-    coverageFiles.push({ text: coverageText, file: coveragePath });
+    deps.stderr(`${coverageChoiceLine(choice)}\n`);
+    coverageFiles.push({ parsed, format: choice.format, file: coveragePath });
   }
 
   const base = values.base ?? "origin/main";
-  const diffText = await git(
-    deps,
-    gitDiffArgs(base),
-    `could not diff against "${base}" (fetch it, or pass --base <ref>)`,
-  );
+  const diffArgs = gitDiffArgs(base);
+  let diffFiles: DiffFile[];
+  try {
+    diffFiles = await readDiffChunks(streamGit(deps, diffArgs));
+  } catch (err) {
+    throw gitFailure(diffArgs, `could not diff against "${base}" (fetch it, or pass --base <ref>)`, err);
+  }
   // `--full-name -- :/` lists the whole repository relative to its root wherever the CLI runs, so coverage
   // paths are compared with the same names from a subdirectory.
   const lsFiles = await git(deps, ["ls-files", "-z", "--full-name", "--", ":/"], "git ls-files failed");
@@ -215,7 +235,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   const input: CheckInput = {
     version: VERSION,
     coverage: { files: coverageFiles, format: coverageFormat },
-    diff: { text: diffText },
+    diff: { parsed: diffFiles },
     repoRoot,
     threshold,
     repoFiles: lsFiles.split("\0").filter((p) => p !== ""),
@@ -251,8 +271,30 @@ async function git(deps: CliDeps, args: string[], context: string): Promise<stri
   try {
     return await deps.git(args);
   } catch (err) {
-    throw new Error(`${context}\n  git ${args.join(" ")}: ${errorMessage(err).trim()}`);
+    throw gitFailure(args, context, err);
   }
+}
+
+/** A failed git call, worded the same whether git was read whole or as a stream. */
+function gitFailure(args: string[], context: string, err: unknown): Error {
+  return new Error(`${context}\n  git ${args.join(" ")}: ${errorMessage(err).trim()}`);
+}
+
+/** One chunk: what a whole-text read gave. */
+async function* oneChunk(read: () => Promise<string>): AsyncGenerator<string> {
+  yield await read();
+}
+
+/** git's stdout as chunks: streamed when the deps can, else the whole text as a single chunk. */
+function streamGit(deps: CliDeps, args: string[]): AsyncIterable<string> {
+  return deps.gitStream ? deps.gitStream(args) : oneChunk(() => deps.git(args));
+}
+
+/** The file as chunks: streamed when the deps can, else the whole text as a single chunk; null when it does not exist. */
+async function openFile(deps: CliDeps, path: string): Promise<AsyncIterable<string> | null> {
+  if (deps.readFileStream) return deps.readFileStream(path);
+  const text = await deps.readFile(path);
+  return text === null ? null : oneChunk(async () => text);
 }
 
 function errorMessage(err: unknown): string {

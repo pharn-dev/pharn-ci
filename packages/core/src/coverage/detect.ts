@@ -13,6 +13,13 @@ export interface CoverageFormatChoice {
 /** Only this many characters after an optional BOM are ever read; the rest of the file is never looked at. */
 const DETECTION_WINDOW = 1024;
 
+/**
+ * How many characters of a file decide its format on their own: a BOM, the window, and one more character, which
+ * tells a text that ends at the window from one that goes on. `detectCoverageFormat` of a prefix this long (or of
+ * the whole text when that is shorter) equals `detectCoverageFormat` of the whole text.
+ */
+export const DETECTION_PREFIX = 1 + DETECTION_WINDOW + 1;
+
 function isSpace(char: string): boolean {
   return char === " " || char === "\t" || char === "\n" || char === "\r";
 }

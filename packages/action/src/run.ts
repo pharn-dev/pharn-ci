@@ -2,7 +2,6 @@ import {
   type CheckInput,
   type CoverageFileInput,
   check,
-  chooseCoverageFormat,
   coverageChoiceLine,
   coverageEntryList,
   type DirEntry,
@@ -14,6 +13,8 @@ import {
   parseCoverageEntries,
   parseLsTreeSizes,
   type Report,
+  readCoverageChunks,
+  readDiffChunks,
   renderMarkdown,
   resolveInputs,
   VERSION,
@@ -84,7 +85,17 @@ export interface ActionDeps {
   tempDir: string;
   api: GitHubApi;
   git(args: string[]): Promise<string>;
+  /**
+   * git's stdout as UTF-8 text chunks, without holding it whole. Iteration throws an Error whose message is git's
+   * stderr (or says that git timed out) when git fails. Absent: one chunk of what `git` resolves.
+   */
+  gitStream?(args: string[]): AsyncIterable<string>;
   readFile(path: string): Promise<string | null>;
+  /**
+   * The file as UTF-8 text chunks, or null when it does not exist; any other failure rejects, or throws during
+   * iteration. Absent: one chunk of what `readFile` resolves.
+   */
+  readFileStream?(path: string): Promise<AsyncIterable<string> | null>;
   /**
    * The entries of a directory, with symbolic links reported as such and never followed; null when the
    * directory does not exist or is not a directory. Only called to expand a coverage glob.
@@ -216,13 +227,18 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     const coveragePath = deps.resolvePath(deps.workspace, name);
     if (seen.has(coveragePath)) continue;
     seen.add(coveragePath);
-    const coverageText = await deps.readFile(coveragePath);
-    if (coverageText === null) {
+    const chunks = await openFile(deps, coveragePath);
+    if (chunks === null) {
       coverageFiles.push({ missingFile: name });
       continue;
     }
-    deps.info(coverageChoiceLine(chooseCoverageFormat(coverageText, format)));
-    coverageFiles.push({ text: coverageText, file: name });
+    // The file is parsed as it is read, with the same repo root and coverage root the check would use.
+    const { choice, parsed } = await readCoverageChunks(chunks, format, {
+      repoRoot: deps.workspace,
+      ...(coverageRoot === undefined ? {} : { coverageRoot }),
+    });
+    deps.info(coverageChoiceLine(choice));
+    coverageFiles.push({ parsed, format: choice.format, file: name });
   }
 
   const repoFiles = await trackedFiles(target, deps);
@@ -311,6 +327,23 @@ async function trackedFiles(target: PrNumberTarget | undefined, deps: ActionDeps
   }
 }
 
+/** One chunk: what a whole-text read gave. */
+async function* oneChunk(read: () => Promise<string>): AsyncGenerator<string> {
+  yield await read();
+}
+
+/** git's stdout as chunks: streamed when the deps can, else the whole text as a single chunk. */
+function streamGit(deps: ActionDeps, args: string[]): AsyncIterable<string> {
+  return deps.gitStream ? deps.gitStream(args) : oneChunk(() => deps.git(args));
+}
+
+/** The file as chunks: streamed when the deps can, else the whole text as a single chunk; null when it does not exist. */
+async function openFile(deps: ActionDeps, path: string): Promise<AsyncIterable<string> | null> {
+  if (deps.readFileStream) return deps.readFileStream(path);
+  const text = await deps.readFile(path);
+  return text === null ? null : oneChunk(async () => text);
+}
+
 /** Diff of the change under test: base...HEAD, from local git if possible, else the GitHub API. */
 async function getDiff(baseRefInput: string, deps: ActionDeps, target?: PrNumberTarget): Promise<CheckInput["diff"]> {
   // A leading "-" would reach git as an option (e.g. --output=<file>), not a revision.
@@ -351,9 +384,7 @@ async function getDiff(baseRefInput: string, deps: ActionDeps, target?: PrNumber
   const localBase = await resolveLocal(base, deps);
   if (localBase) {
     try {
-      return {
-        text: await deps.git(gitDiffArgs(localBase)),
-      };
+      return { parsed: await readDiffChunks(streamGit(deps, gitDiffArgs(localBase))) };
     } catch (err) {
       deps.info(`local git diff failed, falling back to the GitHub API: ${String(err)}`);
     }

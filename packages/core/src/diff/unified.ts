@@ -33,6 +33,28 @@ const HUNK_HEADER = /^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
  * hunks, and C-quoted paths.
  */
 export function parseUnifiedDiff(text: string): DiffFile[] {
+  return parseUnifiedDiffLines(text.split(/\r?\n/));
+}
+
+/** Parse the lines of a unified diff (already cut at line ends); same result as `parseUnifiedDiff` of the joined text. */
+export function parseUnifiedDiffLines(lines: Iterable<string>): DiffFile[] {
+  const reader = createUnifiedDiffReader();
+  for (const line of lines) reader.push(line);
+  return reader.finish();
+}
+
+/** Like `parseUnifiedDiffLines`, for lines that arrive from a stream. A rejection of the stream rejects the promise. */
+export async function parseUnifiedDiffLinesAsync(lines: AsyncIterable<string>): Promise<DiffFile[]> {
+  const reader = createUnifiedDiffReader();
+  for await (const line of lines) reader.push(line);
+  return reader.finish();
+}
+
+/**
+ * A unified diff read one line at a time: `push` each line (without its line end), then `finish` for the files.
+ * Memory holds the parsed paths and added line numbers, never the text.
+ */
+export function createUnifiedDiffReader(): { push(line: string): void; finish(): DiffFile[] } {
   const entries: Entry[] = [];
   let current: Entry | undefined;
   let oldRemaining = 0;
@@ -45,30 +67,30 @@ export function parseUnifiedDiff(text: string): DiffFile[] {
     return current;
   };
 
-  for (const line of text.split(/\r?\n/)) {
+  const push = (line: string): void => {
     if (current && (oldRemaining > 0 || newRemaining > 0)) {
       const marker = line[0];
       if (marker === "+") {
         current.addedLines.push(cursor++);
         newRemaining--;
-        continue;
+        return;
       }
       if (marker === "-") {
         oldRemaining--;
-        continue;
+        return;
       }
       if (marker === " ") {
         cursor++;
         oldRemaining--;
         newRemaining--;
-        continue;
+        return;
       }
-      if (marker === "\\") continue; // "\ No newline at end of file"
+      if (marker === "\\") return; // "\ No newline at end of file"
       // Anything else means the hunk was shorter than announced; fall through.
       oldRemaining = 0;
       newRemaining = 0;
     }
-    if (line.startsWith("\\")) continue;
+    if (line.startsWith("\\")) return;
 
     if (line.startsWith("diff --git ")) {
       const entry = start();
@@ -105,35 +127,50 @@ export function parseUnifiedDiff(text: string): DiffFile[] {
       if (current) current.binary = true;
     } else if (line.startsWith("@@ ")) {
       const match = HUNK_HEADER.exec(line);
-      if (!match || !current) continue;
+      if (!match || !current) return;
       current.sawHunk = true;
       oldRemaining = match[1] === undefined ? 1 : Number(match[1]);
       cursor = Number(match[2]);
       newRemaining = match[3] === undefined ? 1 : Number(match[3]);
     }
-  }
+  };
 
-  const files: DiffFile[] = [];
-  for (const e of entries) {
-    const path = e.status === "deleted" ? (e.oldPath ?? e.newPath) : (e.newPath ?? e.oldPath);
-    if (path === null) continue;
-    files.push({
-      path,
-      oldPath: e.oldPath ?? path,
-      status: e.status === "deleted" ? "deleted" : e.status,
-      addedLines: e.status === "deleted" ? [] : [...new Set(e.addedLines)].sort((a, b) => a - b),
-      ...(e.binary ? { binary: true as const } : {}),
-    });
-  }
-  return files;
+  const finish = (): DiffFile[] => {
+    const files: DiffFile[] = [];
+    for (const e of entries) {
+      const path = e.status === "deleted" ? (e.oldPath ?? e.newPath) : (e.newPath ?? e.oldPath);
+      if (path === null) continue;
+      files.push({
+        path,
+        oldPath: e.oldPath ?? path,
+        status: e.status === "deleted" ? "deleted" : e.status,
+        addedLines: e.status === "deleted" ? [] : [...new Set(e.addedLines)].sort((a, b) => a - b),
+        ...(e.binary ? { binary: true as const } : {}),
+      });
+    }
+    return files;
+  };
+
+  return { push, finish };
 }
 
 /** `a/foo.ts`, `"b/sp\303\251cial.ts"`, `/dev/null` (-> null). Strips one prefix segment. */
 function parseMarkerPath(raw: string): string | null {
   // git appends a tab after paths that contain spaces in some modes.
-  const value = unquote(raw.replace(/\t.*$/, ""));
+  const value = unquote(stripTabSuffix(raw));
   if (value === "/dev/null") return null;
   return stripPrefix(value);
+}
+
+/**
+ * `raw` without its tab suffix, exactly as `raw.replace(/\t.*$/, "")` but in linear time: the cut is at the first tab
+ * after the last line terminator (`.` matches none of them), so a run of tabs cannot make it backtrack.
+ */
+export function stripTabSuffix(raw: string): string {
+  let lastBreak = -1;
+  for (const terminator of ["\n", "\r", " ", " "]) lastBreak = Math.max(lastBreak, raw.lastIndexOf(terminator));
+  const tab = raw.indexOf("\t", lastBreak + 1);
+  return tab === -1 ? raw : raw.slice(0, tab);
 }
 
 function stripPrefix(path: string): string {

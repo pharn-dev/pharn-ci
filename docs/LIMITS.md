@@ -206,9 +206,12 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   workspace (Action) or the current directory and repo root (CLI), and may point anywhere the job
   can read, such as `$RUNNER_TEMP`. The file is only parsed as coverage (lcov or Cobertura) or
   config, never echoed, but its path appears in `COVERAGE_FILE_MISSING` messages.
-- **Input sizes are not capped.** The coverage, diff and config parsers read their whole input. Git
-  output is limited to 256 MiB. A hostile file can make the job slow or run out of memory; it cannot
-  make pharn-ci write anywhere but `report.json`, the job summary and its PR comment.
+- **Input sizes are not capped.** No input has a size limit of its own. The local diff and lcov
+  coverage are read line by line, so memory holds what they yield, not their text; Cobertura coverage
+  and the config are read whole. The output of `git ls-files` and `git ls-tree` is limited to 256 MiB.
+  A hostile file can make the job slow or run out of memory; it cannot make pharn-ci write anywhere
+  but `report.json`, the job summary and its PR comment. Section 8 lists what each input costs and
+  how it fails.
 - **pharn-ci cannot protect the job from the PR.** On `pull_request`, the PR's own code (its tests)
   runs in the same job before pharn-ci does. pharn-ci's guarantees are about what pharn-ci itself
   does with the token and with the input it reads.
@@ -256,3 +259,28 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
 - **A changed file missing from the coverage report is never looked at here.** The checks read the
   coverage report's paths only, so a docs-only change with mapped coverage still passes as
   `NO_COVERABLE_CHANGES`.
+
+## 8. Size limits
+
+Which inputs have a size limit, what it is, and what you see when it is passed. No input has a cap
+set by pharn-ci.
+
+- **The diff.** From local git (the CLI, and the Action when the checkout has the base) it is read
+  line by line as git writes it, with no fixed limit. Memory holds the changed paths and their added
+  line numbers, not the text. The 120 s git timeout still applies. From the GitHub compare API (the
+  Action's fallback, and PR-number mode) it is limited by GitHub's own compare limit; past it the
+  diff is unavailable and the report says `DIFF_UNAVAILABLE`.
+- **lcov coverage.** Read line by line from the file, with no fixed limit. Memory holds the coverage
+  map (a hit count per covered line), not the text. One single line longer than the longest string
+  the JavaScript engine can build still fails with `Invalid string length`: the CLI exits 2 after
+  `pharn-ci:`, and the Action step fails.
+- **Cobertura coverage.** The XML is read whole, as one string. Past about 512 Mi characters the
+  engine's own error, `Invalid string length`, ends the run: the CLI exits 2 after `pharn-ci:` and
+  the Action step fails, with or without a threshold. The error is not reworded. Use lcov for a
+  report that large.
+- **The config.** `.pharn/ci.yml` is read whole. A file past what Node can read as text fails with
+  Node's own error: the CLI exits 2 and the Action step fails.
+- **The `git ls-files` output.** It is read through a 256 MiB buffer. Past it the CLI exits 2, and
+  the Action warns and skips the agent setup scan and the coverage path checks.
+- **The `git ls-tree` output.** It is read through a 256 MiB buffer and is optional. Past it, empty
+  agent setup files are not reported, and the rest of the check runs.
