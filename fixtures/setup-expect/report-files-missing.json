@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1",
+  "tool": {
+    "name": "pharn-ci",
+    "version": "0.1.0"
+  },
+  "verdict": "warn",
+  "diffCoverage": null,
+  "agentSetup": {
+    "files": [
+      {
+        "path": "GEMINI.md",
+        "kind": "gemini-md"
+      }
+    ],
+    "summary": {
+      "byKind": {
+        "gemini-md": 1
+      },
+      "tools": [
+        "gemini"
+      ]
+    },
+    "missing": [
+      "claude-code",
+      "cursor"
+    ]
+  },
+  "messages": [
+    {
+      "level": "warn",
+      "code": "DIFF_UNAVAILABLE",
+      "text": "Diff coverage was not computed: no diff available"
+    },
+    {
+      "level": "warn",
+      "code": "AGENT_SETUP_EXPECTED_MISSING",
+      "text": "No agent setup file configures the expected tools: claude-code, cursor."
+    }
+  ]
+}

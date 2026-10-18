@@ -24733,6 +24733,77 @@ function isDriveRoot(root) {
   return first >= "A" && first <= "Z" && root.charAt(1) === ":" && root.charAt(2) === "/";
 }
 
+// ../core/src/setup/summary.ts
+var AGENT_TOOLS = [
+  "claude-code",
+  "cursor",
+  "copilot",
+  "codex",
+  "gemini",
+  "windsurf",
+  "cline",
+  "mcp",
+  "aider",
+  "amazon-q",
+  "amp",
+  "augment",
+  "continue",
+  "goose",
+  "jules",
+  "junie",
+  "kiro",
+  "opencode",
+  "roo",
+  "zed"
+];
+var KIND_TOOLS = {
+  "claude-md": ["claude-code"],
+  "claude-local-md": ["claude-code"],
+  "claude-settings": ["claude-code"],
+  "claude-settings-local": ["claude-code"],
+  "claude-skill": ["claude-code"],
+  "claude-hook": ["claude-code"],
+  "claude-agent": ["claude-code"],
+  "claude-command": ["claude-code"],
+  "agents-md": ["amp", "codex", "copilot", "cursor", "jules", "opencode", "zed"],
+  "cursor-rules": ["cursor"],
+  "cursor-mcp": ["cursor", "mcp"],
+  "copilot-instructions": ["copilot"],
+  "copilot-instructions-scoped": ["copilot"],
+  "copilot-agents": ["copilot"],
+  "copilot-prompts": ["copilot"],
+  "vscode-mcp": ["copilot", "mcp"],
+  "codex-config": ["codex"],
+  "gemini-md": ["gemini"],
+  "windsurf-rules": ["windsurf"],
+  "cline-rules": ["cline"],
+  "mcp-config": ["mcp"],
+  "claude-rule": ["claude-code"],
+  "aider-config": ["aider"],
+  "conventions-md": ["aider"],
+  "continue-rules": ["continue"],
+  "roo-rules": ["roo"],
+  "amazonq-rules": ["amazon-q"],
+  "junie-guidelines": ["junie"],
+  "zed-rules": ["zed"],
+  "augment-rules": ["augment"],
+  "kiro-steering": ["kiro"],
+  goosehints: ["goose"],
+  "opencode-config": ["opencode"],
+  "gemini-settings": ["gemini"]
+};
+function summarizeAgentSetup(files) {
+  const counts = /* @__PURE__ */ new Map();
+  for (const f of files) counts.set(f.kind, (counts.get(f.kind) ?? 0) + 1);
+  const byKind = {};
+  const tools = /* @__PURE__ */ new Set();
+  for (const [kind, count] of [...counts].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
+    byKind[kind] = count;
+    for (const tool of KIND_TOOLS[kind] ?? []) tools.add(tool);
+  }
+  return { byKind, tools: [...tools].sort() };
+}
+
 // ../core/src/config.ts
 var ConfigError = class extends Error {
   name = "ConfigError";
@@ -24759,7 +24830,7 @@ function parseYamlSubset(text) {
     const indent = raw.length - raw.trimStart().length;
     const content = raw.trimStart();
     if (content.startsWith("- ") || content === "-") {
-      if (pendingKey && LIST_KEYS.has(pendingKey.key) && pendingKey.map === root.coverage && indent >= pendingKey.indent) {
+      if (pendingKey && listAllowed(root, pendingKey.map, pendingKey.key) && indent >= pendingKey.indent) {
         const items = [];
         pendingKey.map[pendingKey.key] = items;
         list = { indent, items };
@@ -24794,7 +24865,7 @@ function parseYamlSubset(text) {
     if (value === void 0 || value === "") {
       pendingKey = { map: top.map, key, indent, line: lineNo };
     } else if (value.startsWith("[")) {
-      if (!LIST_KEYS.has(key) || top.map !== root.coverage) {
+      if (!listAllowed(root, top.map, key)) {
         throw new ConfigError(`line ${lineNo}: ${LISTS_ONLY_FOR_EXCLUDE}`);
       }
       top.map[key] = parseFlowList(value, lineNo);
@@ -24823,7 +24894,11 @@ function unquoteScalarKey(key) {
   return /^["']/.test(key) ? key.slice(1, -1) : key;
 }
 var LIST_KEYS = /* @__PURE__ */ new Set(["exclude", "file"]);
-var LISTS_ONLY_FOR_EXCLUDE = "lists are not supported in .pharn/ci.yml except as the value of coverage.exclude or coverage.file";
+var LISTS_ONLY_FOR_EXCLUDE = "lists are not supported in .pharn/ci.yml except as the value of coverage.exclude, coverage.file or setup.expect";
+function listAllowed(root, map, key) {
+  if (map === root.coverage) return LIST_KEYS.has(key);
+  return map === root.setup && key === "expect";
+}
 var USE_BLOCK_LIST = 'use a block list, one "- item" line per pattern';
 function parseListItem(content, lineNo) {
   const item = content.slice(1).trim();
@@ -24925,6 +25000,18 @@ function validateSetup(value) {
         if (typeof entry !== "boolean") throw new ConfigError(`"setup.require" must be true or false`);
         setup.require = entry;
         break;
+      case "expect": {
+        if (!Array.isArray(entry)) throw new ConfigError(`"setup.expect" must be a list of agent tool names`);
+        const names = [];
+        for (const item of entry) {
+          if (typeof item !== "string" || item.trim() === "") {
+            throw new ConfigError(`"setup.expect" items must be non-empty strings`);
+          }
+          names.push(item);
+        }
+        setup.expect = parseAgentToolNames(names, '"setup.expect" item');
+        break;
+      }
       default:
         throw new ConfigError(`unknown key "setup.${key}"`);
     }
@@ -25011,6 +25098,18 @@ function parseExcludePattern(pattern, label = "exclude pattern") {
     if (p.includes(ch)) reject(`must not contain "${ch}" (only *, ** and ? are supported)`);
   }
   return p;
+}
+function parseAgentToolNames(names, label) {
+  const tools = [];
+  for (const raw of names) {
+    const name = raw.trim();
+    const tool = AGENT_TOOLS.find((known) => known === name);
+    if (tool === void 0) {
+      throw new ConfigError(`${label} "${raw}" is not a known agent tool; known tools: ${AGENT_TOOLS.join(", ")}`);
+    }
+    if (!tools.includes(tool)) tools.push(tool);
+  }
+  return tools;
 }
 function parseCoverageRoot(value, label) {
   const reject = (reason) => {
@@ -25784,59 +25883,13 @@ function binaryCoveredPaths(diff, coverage) {
   return [...found].sort(byCodeUnit);
 }
 
-// ../core/src/setup/summary.ts
-var KIND_TOOLS = {
-  "claude-md": ["claude-code"],
-  "claude-local-md": ["claude-code"],
-  "claude-settings": ["claude-code"],
-  "claude-settings-local": ["claude-code"],
-  "claude-skill": ["claude-code"],
-  "claude-hook": ["claude-code"],
-  "claude-agent": ["claude-code"],
-  "claude-command": ["claude-code"],
-  "agents-md": ["amp", "codex", "copilot", "cursor", "jules", "opencode", "zed"],
-  "cursor-rules": ["cursor"],
-  "cursor-mcp": ["cursor", "mcp"],
-  "copilot-instructions": ["copilot"],
-  "copilot-instructions-scoped": ["copilot"],
-  "copilot-agents": ["copilot"],
-  "copilot-prompts": ["copilot"],
-  "vscode-mcp": ["copilot", "mcp"],
-  "codex-config": ["codex"],
-  "gemini-md": ["gemini"],
-  "windsurf-rules": ["windsurf"],
-  "cline-rules": ["cline"],
-  "mcp-config": ["mcp"],
-  "claude-rule": ["claude-code"],
-  "aider-config": ["aider"],
-  "conventions-md": ["aider"],
-  "continue-rules": ["continue"],
-  "roo-rules": ["roo"],
-  "amazonq-rules": ["amazon-q"],
-  "junie-guidelines": ["junie"],
-  "zed-rules": ["zed"],
-  "augment-rules": ["augment"],
-  "kiro-steering": ["kiro"],
-  goosehints: ["goose"],
-  "opencode-config": ["opencode"],
-  "gemini-settings": ["gemini"]
-};
-function summarizeAgentSetup(files) {
-  const counts = /* @__PURE__ */ new Map();
-  for (const f of files) counts.set(f.kind, (counts.get(f.kind) ?? 0) + 1);
-  const byKind = {};
-  const tools = /* @__PURE__ */ new Set();
-  for (const [kind, count] of [...counts].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
-    byKind[kind] = count;
-    for (const tool of KIND_TOOLS[kind] ?? []) tools.add(tool);
-  }
-  return { byKind, tools: [...tools].sort() };
-}
-
 // ../core/src/report.ts
 function buildReport(input) {
   const messages = [];
   const dc = input.diffCoverage;
+  const summary2 = summarizeAgentSetup(input.agentSetup.files);
+  const expected = input.expectedAgentTools ?? [];
+  const missingTools = AGENT_TOOLS.filter((tool) => expected.includes(tool) && !summary2.tools.includes(tool)).sort();
   if (dc === null) {
     const missing = input.missing ?? { reason: "diff-unavailable", detail: "no diff coverage data" };
     const level = input.threshold === null ? "warn" : "error";
@@ -25931,6 +25984,13 @@ function buildReport(input) {
       text: required ? `${found}, and agent setup is required by config.` : `${found}.`
     });
   }
+  if (missingTools.length > 0) {
+    messages.push({
+      level: input.requireAgentSetup === true ? "error" : "warn",
+      code: "AGENT_SETUP_EXPECTED_MISSING",
+      text: `No agent setup file configures the expected tool${missingTools.length === 1 ? "" : "s"}: ${missingTools.join(", ")}.`
+    });
+  }
   const empty = input.emptyAgentSetupFiles ?? [];
   const firstEmpty = empty[0];
   if (firstEmpty !== void 0) {
@@ -25950,7 +26010,11 @@ function buildReport(input) {
       files: dc.files,
       ...dc.excludedFiles !== void 0 && dc.excludedFiles.length > 0 ? { excludedFiles: dc.excludedFiles } : {}
     },
-    agentSetup: { files: input.agentSetup.files, summary: summarizeAgentSetup(input.agentSetup.files) },
+    agentSetup: {
+      files: input.agentSetup.files,
+      summary: summary2,
+      ...expected.length > 0 ? { missing: missingTools } : {}
+    },
     messages
   };
 }
@@ -26109,6 +26173,7 @@ function deletedTestFiles(diff) {
 function check(input) {
   const matchers = [...new Set((input.exclude ?? []).map((p) => parseExcludePattern(p)))].map(compileGlob);
   const isExcluded = (path) => matchers.some((matches) => matches(path));
+  const expectedAgentTools = parseAgentToolNames(input.expectAgentSetup ?? [], "expected agent tool");
   const coverageRoot = input.coverageRoot === void 0 ? void 0 : parseCoverageRoot(input.coverageRoot, "coverage root");
   const agentSetup = scanAgentSetup(input.repoFiles);
   const parsedDiff = "text" in input.diff ? parseUnifiedDiff(input.diff.text) : "parsed" in input.diff ? input.diff.parsed : null;
@@ -26142,6 +26207,7 @@ function check(input) {
     threshold: input.threshold,
     agentSetup,
     requireAgentSetup: input.requireAgentSetup === true,
+    ...expectedAgentTools.length > 0 ? { expectedAgentTools } : {},
     ...configPaths.length > 0 ? { changedConfigPaths: configPaths } : {},
     ...testPaths.length > 0 ? { deletedTestFiles: testPaths } : {},
     ...trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage },
@@ -26436,8 +26502,13 @@ function resolveInputs(config, raw, text) {
   if (coverageFile === void 0) errors.push(new InputError("coverageFile", text.noCoverageFile));
   const exclude = attempt("exclude", () => (raw.exclude ?? []).map((p) => parseExcludePattern(p, text.exclude)));
   const coverageRoot = raw.coverageRoot !== void 0 ? attempt("coverageRoot", () => parseCoverageRoot(raw.coverageRoot, text.coverageRoot)) : config.coverage?.root;
+  const expectAgentSetup = attempt(
+    "expectAgentSetup",
+    () => parseAgentToolNames(raw.expectAgentSetup ?? [], text.expectAgentSetup ?? "agent tool")
+  );
   const [first, ...rest] = errors;
   if (first !== void 0) return { ok: false, errors: [first, ...rest] };
+  const expectedTools = [.../* @__PURE__ */ new Set([...config.setup?.expect ?? [], ...expectAgentSetup])];
   return {
     ok: true,
     inputs: {
@@ -26447,7 +26518,9 @@ function resolveInputs(config, raw, text) {
       exclude: [...config.coverage?.exclude ?? [], ...exclude],
       coverageRoot,
       // Absent, setup.require decides, then off. The CLI flag can only turn it on.
-      requireAgentSetup: raw.requireAgentSetup ?? config.setup?.require ?? false
+      requireAgentSetup: raw.requireAgentSetup ?? config.setup?.require ?? false,
+      // The config's tools first, then the input's, each once.
+      ...expectedTools.length > 0 ? { expectAgentSetup: expectedTools } : {}
     }
   };
 }
@@ -26486,7 +26559,8 @@ var MESSAGE_HINTS = {
   DIFF_BINARY_COVERED_FILE: "Remove `-diff` or `binary` attributes for source files from `.gitattributes` so their changes are measured.",
   TEST_FILES_DELETED: "Check that the deleted or renamed tests were meant to go, or that their cases moved to a file the test runner still runs.",
   NO_AGENT_SETUP_FILES: "Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test.",
-  AGENT_SETUP_FILE_EMPTY: "Fill in the empty file or delete it; an agent reads nothing from an empty file."
+  AGENT_SETUP_FILE_EMPTY: "Fill in the empty file or delete it; an agent reads nothing from an empty file.",
+  AGENT_SETUP_EXPECTED_MISSING: "Add a setup file for each missing tool (for example AGENTS.md, CLAUDE.md or .cursor/rules/), or remove it from `setup.expect`."
 };
 function renderMarkdown(report, options = {}) {
   const maxRows = options.maxRows ?? 50;
@@ -26531,16 +26605,19 @@ function renderMarkdown(report, options = {}) {
   }
   out.push("### Agent setup", "");
   const setup = report.agentSetup.files;
+  const missingTools = report.agentSetup.missing ?? [];
+  const missingLine = `Missing: ${missingTools.map(code).join(", ")}`;
   if (setup.length === 0) {
     out.push(
       "_No agent setup files found._",
       "",
-      "Missing: an agent instructions file, typically `AGENTS.md` or `CLAUDE.md` at the repository root.",
+      missingTools.length > 0 ? missingLine : "Missing: an agent instructions file, typically `AGENTS.md` or `CLAUDE.md` at the repository root.",
       ""
     );
   } else {
     const { tools } = report.agentSetup.summary ?? summarizeAgentSetup(setup);
     out.push(`Agent setup: ${setup.length} ${setup.length === 1 ? "file" : "files"} \xB7 ${tools.join(", ")}`, "");
+    if (missingTools.length > 0) out.push(missingLine, "");
     const collapse = setup.length > COLLAPSE_ABOVE;
     if (collapse) out.push("<details>", `<summary>Show all ${setup.length} agent setup files</summary>`, "");
     out.push("| Path | Kind |", "| --- | --- |");
@@ -26905,6 +26982,7 @@ var INPUT_ERRORS = {
   coverageFile: "coverage-file",
   exclude: "exclude",
   coverageRoot: "coverage-root",
+  expectAgentSetup: "expect-agent-setup",
   noCoverageFile: "no coverage file: set the coverage-file input or coverage.file in .pharn/ci.yml"
 };
 var MAX_COMMENT_LENGTH = 65e3;
@@ -26952,12 +27030,20 @@ async function runUnsafe(deps) {
       threshold: input("threshold") || void 0,
       exclude: splitPatternList(input("exclude")),
       coverageRoot: input("coverage-root") || void 0,
-      requireAgentSetup: parseBool(input("require-agent-setup"), "require-agent-setup")
+      requireAgentSetup: parseBool(input("require-agent-setup"), "require-agent-setup"),
+      expectAgentSetup: splitPatternList(input("expect-agent-setup"))
     },
     INPUT_ERRORS
   );
   if (!resolved.ok) throw resolved.errors[0];
-  const { coverageFormat: format, threshold, exclude, coverageRoot, requireAgentSetup } = resolved.inputs;
+  const {
+    coverageFormat: format,
+    threshold,
+    exclude,
+    coverageRoot,
+    requireAgentSetup,
+    expectAgentSetup
+  } = resolved.inputs;
   const failOnThreshold = parseBool(input("fail-on-threshold"), "fail-on-threshold") ?? true;
   const comment = parseBool(input("comment"), "comment") ?? true;
   const target = !pr && prNumber !== void 0 ? await resolvePrNumberTarget(deps, { prNumber, headSha }) : void 0;
@@ -26988,6 +27074,7 @@ async function runUnsafe(deps) {
     ...lsTree === null ? {} : { repoFileBytes: parseLsTreeSizes(lsTree) },
     exclude,
     requireAgentSetup,
+    ...expectAgentSetup === void 0 ? {} : { expectAgentSetup },
     ...coverageRoot === void 0 ? {} : { coverageRoot },
     ...input("config") === "" ? {} : { configPath: input("config") }
   };

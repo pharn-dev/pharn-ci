@@ -33,6 +33,9 @@ inputs:
   require-agent-setup:
     description: Fail the check when the repo has no agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...). Defaults to setup.require in .pharn/ci.yml, then false.
     required: false
+  expect-agent-setup:
+    description: Agent tools (for example claude-code, cursor) the report names when no agent setup file configures them, separated by commas or newlines. Added to setup.expect in .pharn/ci.yml, never replacing it.
+    required: false
   comment:
     description: Post or update one sticky PR comment with the report.
     required: false

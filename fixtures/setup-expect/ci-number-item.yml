@@ -1,0 +1,5 @@
+# Invalid: the second item of setup.expect is a number, not a string.
+setup:
+  expect:
+    - cursor
+    - 1

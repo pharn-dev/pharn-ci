@@ -1,0 +1,3 @@
+# Invalid: setup.expect is a scalar, not a list.
+setup:
+  expect: cursor

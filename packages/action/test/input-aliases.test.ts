@@ -32,6 +32,7 @@ const SHIPPED_INPUTS = [
   "exclude",
   "coverage-root",
   "require-agent-setup",
+  "expect-agent-setup",
   "comment",
   "fail-on-threshold",
   "config",

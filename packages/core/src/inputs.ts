@@ -2,12 +2,14 @@ import {
   ConfigError,
   isCoverageFormatSelection,
   type PharnConfig,
+  parseAgentToolNames,
   parseCoverageRoot,
   parseExcludePattern,
   parseThreshold,
 } from "./config.js";
 import type { CoverageFormatSelection } from "./coverage/types.js";
 import { coverageEntryList, parseCoverageEntries } from "./coverageEntries.js";
+import type { AgentTool } from "./setup/summary.js";
 
 /**
  * Settings as the CLI flags or Action inputs gave them, before `.pharn/ci.yml` is applied.
@@ -22,6 +24,8 @@ export interface RawInputs {
   exclude?: readonly string[] | undefined;
   coverageRoot?: string | undefined;
   requireAgentSetup?: boolean | undefined;
+  /** Agent tool names the report names when no setup file configures them; added to `setup.expect`. */
+  expectAgentSetup?: readonly string[] | undefined;
 }
 
 /** How an adapter names its flags or inputs in error messages. */
@@ -36,6 +40,8 @@ export interface InputErrorText {
   exclude: string;
   /** Label for a coverage root that is not a repo-relative directory. */
   coverageRoot: string;
+  /** Label for an expected agent tool that is not in the fixed tool list. Defaults to "agent tool". */
+  expectAgentSetup?: string;
   /** The error when neither the input nor the config names a coverage file. */
   noCoverageFile: string;
 }
@@ -54,6 +60,11 @@ export interface ResolvedInputs {
   /** Normalized repo-relative directory relative coverage paths start from; undefined means the repo root. */
   coverageRoot: string | undefined;
   requireAgentSetup: boolean;
+  /**
+   * Config `setup.expect` first, then the input's; validated and de-duplicated, first occurrence kept.
+   * Absent when nothing is expected, so settings that expect nothing resolve exactly as before.
+   */
+  expectAgentSetup?: AgentTool[];
 }
 
 /** An invalid setting, naming the raw input it came from (the coverage file one: neither input nor config). */
@@ -73,7 +84,7 @@ export type ResolveInputsResult =
 /**
  * Merge the CLI flags or Action inputs with a parsed `.pharn/ci.yml`. Pure. Every invalid setting
  * yields one error, in the order coverage format, threshold, coverage file, exclusion patterns,
- * coverage root.
+ * coverage root, expected agent tools.
  */
 export function resolveInputs(config: PharnConfig, raw: RawInputs, text: InputErrorText): ResolveInputsResult {
   const errors: InputError[] = [];
@@ -122,8 +133,14 @@ export function resolveInputs(config: PharnConfig, raw: RawInputs, text: InputEr
       ? attempt("coverageRoot", () => parseCoverageRoot(raw.coverageRoot as string, text.coverageRoot))
       : config.coverage?.root;
 
+  const expectAgentSetup = attempt("expectAgentSetup", () =>
+    parseAgentToolNames(raw.expectAgentSetup ?? [], text.expectAgentSetup ?? "agent tool"),
+  );
+
   const [first, ...rest] = errors;
   if (first !== undefined) return { ok: false, errors: [first, ...rest] };
+  // The config's tools first, then the input's, each once.
+  const expectedTools = [...new Set([...(config.setup?.expect ?? []), ...(expectAgentSetup as AgentTool[])])];
   // No errors: every value above was resolved.
   return {
     ok: true,
@@ -135,6 +152,8 @@ export function resolveInputs(config: PharnConfig, raw: RawInputs, text: InputEr
       coverageRoot,
       // Absent, setup.require decides, then off. The CLI flag can only turn it on.
       requireAgentSetup: raw.requireAgentSetup ?? config.setup?.require ?? false,
+      // The config's tools first, then the input's, each once.
+      ...(expectedTools.length > 0 ? { expectAgentSetup: expectedTools } : {}),
     },
   };
 }

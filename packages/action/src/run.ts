@@ -117,6 +117,7 @@ const INPUT_ERRORS: InputErrorText = {
   coverageFile: "coverage-file",
   exclude: "exclude",
   coverageRoot: "coverage-root",
+  expectAgentSetup: "expect-agent-setup",
   noCoverageFile: "no coverage file: set the coverage-file input or coverage.file in .pharn/ci.yml",
 };
 
@@ -190,11 +191,19 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
       exclude: splitPatternList(input("exclude")),
       coverageRoot: input("coverage-root") || undefined,
       requireAgentSetup: parseBool(input("require-agent-setup"), "require-agent-setup"),
+      expectAgentSetup: splitPatternList(input("expect-agent-setup")),
     },
     INPUT_ERRORS,
   );
   if (!resolved.ok) throw resolved.errors[0];
-  const { coverageFormat: format, threshold, exclude, coverageRoot, requireAgentSetup } = resolved.inputs;
+  const {
+    coverageFormat: format,
+    threshold,
+    exclude,
+    coverageRoot,
+    requireAgentSetup,
+    expectAgentSetup,
+  } = resolved.inputs;
   const failOnThreshold = parseBool(input("fail-on-threshold"), "fail-on-threshold") ?? true;
   const comment = parseBool(input("comment"), "comment") ?? true;
 
@@ -237,6 +246,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     ...(lsTree === null ? {} : { repoFileBytes: parseLsTreeSizes(lsTree) }),
     exclude,
     requireAgentSetup,
+    ...(expectAgentSetup === undefined ? {} : { expectAgentSetup }),
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
     ...(input("config") === "" ? {} : { configPath: input("config") }),
   };

@@ -1,0 +1,4 @@
+# Expects the gemini agent tool.
+setup:
+  expect:
+    - gemini

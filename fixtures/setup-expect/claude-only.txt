@@ -1,0 +1,5 @@
+CLAUDE.md
+README.md
+src/math.ts
+src/new.ts
+src/utils/new-name.ts

@@ -291,6 +291,7 @@ line. Matrix legs of one job share that scope, and so one comment.
 | `head-sha`          | none                        | Commit SHA the PR head must be; the step fails otherwise. Set it to `${{ github.event.workflow_run.head_sha }}`. Only valid with `pr-number` |
 | `exclude`           | none                        | Globs of changed files to leave out of diff coverage, comma or newline separated; added to `coverage.exclude` |
 | `require-agent-setup` | `setup.require`, then `false` | Fail when the repo has no agent setup files; the step fails through `fail-on-threshold` |
+| `expect-agent-setup` | `setup.expect`, then none  | Agent tools that must have a setup file, comma or newline separated; added to `setup.expect`; a missing one is `AGENT_SETUP_EXPECTED_MISSING` |
 | `comment`           | `true`                      | Post/update one sticky PR comment per workflow and job |
 | `fail-on-threshold` | `true`                      | Fail the step when the verdict is `fail` |
 | `config`            | `.pharn/ci.yml`, may be absent | Config file path; a file named here that does not exist fails the step |
@@ -410,7 +411,8 @@ node packages/cli/dist/index.js check --coverage coverage/lcov.info --threshold 
 ```text
 pharn-ci check [--coverage <file|glob>]... [--coverage-format lcov|cobertura|auto] [--coverage-root <dir>]
                [--base <ref>] [--threshold <n>] [--format md|json] [--config <path>]
-               [--exclude <glob>]... [--require-agent-setup] [-h|--help] [-v|--version]
+               [--exclude <glob>]... [--require-agent-setup] [--expect-agent-setup <tool>]...
+               [-h|--help] [-v|--version]
 ```
 
 - `--coverage <file|glob>` is repeatable. A glob (`*`, `**`, `?`) is relative to the current
@@ -431,6 +433,10 @@ pharn-ci check [--coverage <file|glob>]... [--coverage-format lcov|cobertura|aut
 - `--require-agent-setup` fails the check (exit `1`) when the repo has no agent setup files. Absent,
   `setup.require` from the config decides, then off. The flag cannot turn off a requirement the
   config turns on.
+- `--expect-agent-setup <tool>` is repeatable and adds to `setup.expect`: a tool no setup file
+  configures is listed in `agentSetup.missing` and reported as `AGENT_SETUP_EXPECTED_MISSING`, a
+  warning, or an error with `--require-agent-setup`. Names come from the fixed tool list
+  (`claude-code`, `cursor`, `copilot`, `codex`, `gemini`, ...); an unknown one exits `2`.
 - `--format json` prints only the report to stdout, for agents and scripts.
 - Exit codes: `0` pass or warn, `1` fail, `2` usage or runtime error.
 
@@ -453,6 +459,7 @@ coverage:
   # root: packages/core # directory relative coverage paths start from (monorepo); default: the repo root
 setup:
   require: false # true fails the check when the repo has no agent setup files
+  # expect: [claude-code, cursor] # agent tools that must have a setup file
 ```
 
 ### Coverage files and globs
@@ -514,6 +521,7 @@ it. See [`schema/report.v1.json`](schema/report.v1.json). Branch on message `cod
 | `TEST_FILES_DELETED`            | The change deletes a test file or renames one to a non-test name (`info`) |
 | `NO_AGENT_SETUP_FILES`          | The repo has none of the agent setup files pharn-ci looks for  |
 | `AGENT_SETUP_FILE_EMPTY`        | A listed agent setup file is empty in `HEAD` (`warn`)          |
+| `AGENT_SETUP_EXPECTED_MISSING`  | An expected agent tool has no setup file (`warn`; `error` when agent setup is required) |
 
 Within v1, fields are only added and codes are never renamed or removed.
 
@@ -534,9 +542,11 @@ inclusive threshold (79.995% fails at 80); which known agent setup files are tra
   all source files if untested files should count.
 - **The inventory is not a review.** pharn-ci lists agent setup files and never reads them. It is
   informational (`NO_AGENT_SETUP_FILES` is `info`) unless `require-agent-setup` or `setup.require`
-  is on, which makes it an `error` and the verdict `fail`.
-- **The setup requirement comes from the PR.** The `.pharn/ci.yml` a PR carries can switch
-  `setup.require` off, so protect it with CODEOWNERS (or set the Action input in the workflow).
+  is on, which makes it an `error` and the verdict `fail`. An expected tool counts as present when
+  any setup kind it reads exists (`AGENTS.md` covers several tools).
+- **The setup requirement and expectations come from the PR.** The `.pharn/ci.yml` a PR carries can
+  switch `setup.require` off and drop tools from `setup.expect`, so protect it with CODEOWNERS. The
+  `expect-agent-setup` input in the workflow is the stronger, additive setting.
 - **pharn-ci trusts the coverage file.** The PR's own tests write it in the same job; a PR that
   alters its test setup can produce a favorable one.
 - **Exclusions come from the PR.** The config and workflow a PR carries decide which of its files

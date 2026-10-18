@@ -1,0 +1,5 @@
+# Invalid: the second item of setup.expect is an empty string.
+setup:
+  expect:
+    - cursor
+    - ""

@@ -179,6 +179,10 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   reported (the CLI notes it on stderr, the Action warns) and the rest of the report is unchanged.
   In the Action's PR-number mode the checkout is not the PR, so no sizes are read and no empty
   file is reported.
+- **Expected tools are judged by kind, not by content.** A tool in `setup.expect` counts as present
+  when any setup kind it reads exists; for example `AGENTS.md` satisfies amp, codex, copilot, cursor,
+  jules, opencode and zed. pharn-ci never reads file contents, so an empty or unrelated file still
+  counts (an empty one gets `AGENT_SETUP_FILE_EMPTY`).
 - **The summary is derived.** `agentSetup.summary` holds counts per kind and the tools those kinds
   belong to, from a fixed list. It is computed from the file list and says nothing about content.
 

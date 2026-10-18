@@ -1,6 +1,7 @@
 import { COVERAGE_FORMAT_SELECTIONS, type CoverageFormatSelection } from "./coverage/types.js";
 import { hasGlobSyntax } from "./glob.js";
 import { isAbsolutePath } from "./paths.js";
+import { AGENT_TOOLS, type AgentTool } from "./setup/summary.js";
 
 /** Shape of `.pharn/ci.yml`. Every field is optional; CLI/Action inputs override it. */
 export interface PharnConfig {
@@ -23,6 +24,8 @@ export interface PharnConfig {
   setup?: {
     /** When true, a repo with no agent setup files fails the check. */
     require?: boolean;
+    /** Agent tools the report names when no setup file configures them (validated against the fixed tool list). */
+    expect?: AgentTool[];
   };
 }
 
@@ -44,7 +47,7 @@ const SINGLE_QUOTED = /^'(?:[^']|'')*'$/;
  * Supports the YAML subset the config needs — nested block mappings, comments,
  * quoted/plain strings, numbers, booleans, null — and rejects anything else
  * with a clear error, naming the supported alternative, instead of guessing. A
- * list is read only as the value of `coverage.exclude` or `coverage.file`: a block
+ * list is read only as the value of `coverage.exclude`, `coverage.file` or `setup.expect`: a block
  * list (`- item` lines) or a one-line flow list of scalars (`[a, "b"]`). Avoids a
  * YAML dependency.
  */
@@ -57,7 +60,7 @@ export function parseYamlSubset(text: string): YamlMap {
   // Stack of open mappings with the indent of their keys.
   const stack: Array<{ indent: number; map: YamlMap }> = [{ indent: 0, map: root }];
   let pendingKey: { map: YamlMap; key: string; indent: number; line: number } | null = null;
-  // The block list currently being read (only ever the value of coverage.exclude or coverage.file).
+  // The block list currently being read (only ever the value of coverage.exclude, coverage.file or setup.expect).
   let list: { indent: number; items: Scalar[] } | null = null;
 
   const lines = text.replace(/^﻿/, "").split(/\r?\n/);
@@ -75,12 +78,7 @@ export function parseYamlSubset(text: string): YamlMap {
     const indent = raw.length - raw.trimStart().length;
     const content = raw.trimStart();
     if (content.startsWith("- ") || content === "-") {
-      if (
-        pendingKey &&
-        LIST_KEYS.has(pendingKey.key) &&
-        pendingKey.map === root.coverage &&
-        indent >= pendingKey.indent
-      ) {
+      if (pendingKey && listAllowed(root, pendingKey.map, pendingKey.key) && indent >= pendingKey.indent) {
         const items: Scalar[] = [];
         pendingKey.map[pendingKey.key] = items;
         list = { indent, items };
@@ -119,7 +117,7 @@ export function parseYamlSubset(text: string): YamlMap {
     if (value === undefined || value === "") {
       pendingKey = { map: top.map, key, indent, line: lineNo };
     } else if (value.startsWith("[")) {
-      if (!LIST_KEYS.has(key) || top.map !== root.coverage) {
+      if (!listAllowed(root, top.map, key)) {
         throw new ConfigError(`line ${lineNo}: ${LISTS_ONLY_FOR_EXCLUDE}`);
       }
       top.map[key] = parseFlowList(value, lineNo);
@@ -153,7 +151,13 @@ function unquoteScalarKey(key: string): string {
 /** The keys under `coverage` that may hold a list. */
 const LIST_KEYS: ReadonlySet<string> = new Set(["exclude", "file"]);
 const LISTS_ONLY_FOR_EXCLUDE =
-  "lists are not supported in .pharn/ci.yml except as the value of coverage.exclude or coverage.file";
+  "lists are not supported in .pharn/ci.yml except as the value of coverage.exclude, coverage.file or setup.expect";
+
+/** Whether `key` in `map` may hold a list: `coverage.exclude`, `coverage.file` or `setup.expect`. */
+function listAllowed(root: YamlMap, map: YamlMap, key: string): boolean {
+  if (map === root.coverage) return LIST_KEYS.has(key);
+  return map === root.setup && key === "expect";
+}
 const USE_BLOCK_LIST = 'use a block list, one "- item" line per pattern';
 
 /** One `- item` line of a block list; `content` is the trimmed line, comment already stripped. */
@@ -275,6 +279,18 @@ function validateSetup(value: YamlMap[string] | undefined): PharnConfig["setup"]
         if (typeof entry !== "boolean") throw new ConfigError(`"setup.require" must be true or false`);
         setup.require = entry;
         break;
+      case "expect": {
+        if (!Array.isArray(entry)) throw new ConfigError(`"setup.expect" must be a list of agent tool names`);
+        const names: string[] = [];
+        for (const item of entry) {
+          if (typeof item !== "string" || item.trim() === "") {
+            throw new ConfigError(`"setup.expect" items must be non-empty strings`);
+          }
+          names.push(item);
+        }
+        setup.expect = parseAgentToolNames(names, '"setup.expect" item');
+        break;
+      }
       default:
         throw new ConfigError(`unknown key "setup.${key}"`);
     }
@@ -375,6 +391,25 @@ export function parseExcludePattern(pattern: string, label = "exclude pattern"):
     if (p.includes(ch)) reject(`must not contain "${ch}" (only *, ** and ? are supported)`);
   }
   return p;
+}
+
+/**
+ * Validate expected agent tool names (config item, CLI flag, Action input entry or `check()` input): each is
+ * trimmed and must be exactly (case-sensitive) a member of the fixed `AGENT_TOOLS` list. Returns the names once
+ * each, in first-seen order. The raw name is quoted in the error so the user can find it; no input-derived text
+ * reaches a report, only the fixed names.
+ */
+export function parseAgentToolNames(names: readonly string[], label: string): AgentTool[] {
+  const tools: AgentTool[] = [];
+  for (const raw of names) {
+    const name = raw.trim();
+    const tool = AGENT_TOOLS.find((known) => known === name);
+    if (tool === undefined) {
+      throw new ConfigError(`${label} "${raw}" is not a known agent tool; known tools: ${AGENT_TOOLS.join(", ")}`);
+    }
+    if (!tools.includes(tool)) tools.push(tool);
+  }
+  return tools;
 }
 
 /**
