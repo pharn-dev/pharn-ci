@@ -1,4 +1,5 @@
 export { type CheckInput, type CoverageFileInput, check } from "./check.js";
+export { readCoverageChunks, readDiffChunks } from "./chunkInputs.js";
 export {
   ConfigError,
   isCoverageFormatSelection,
@@ -13,11 +14,12 @@ export {
   type CoverageFormatChoice,
   chooseCoverageFormat,
   coverageChoiceLine,
+  DETECTION_PREFIX,
   type DetectedCoverageFormat,
   detectCoverageFormat,
 } from "./coverage/detect.js";
 export { parseCoverage } from "./coverage/index.js";
-export { parseLcov } from "./coverage/lcov.js";
+export { createLcovReader, parseLcov, parseLcovLines, parseLcovLinesAsync } from "./coverage/lcov.js";
 export { mergeCoverageMaps } from "./coverage/merge.js";
 export {
   COVERAGE_FORMAT_SELECTIONS,
@@ -37,7 +39,14 @@ export {
   MAX_COVERAGE_WALK_ENTRIES,
   parseCoverageEntries,
 } from "./coverageEntries.js";
-export { type DiffFile, type DiffFileStatus, parseUnifiedDiff } from "./diff/unified.js";
+export {
+  createUnifiedDiffReader,
+  type DiffFile,
+  type DiffFileStatus,
+  parseUnifiedDiff,
+  parseUnifiedDiffLines,
+  parseUnifiedDiffLinesAsync,
+} from "./diff/unified.js";
 export { computeDiffCoverage, type DiffCoverageFile, type DiffCoverageResult } from "./diffCoverage.js";
 export { compileGlob, hasGlobSyntax, matchGlob } from "./glob.js";
 export type { DirEntry, ListDir } from "./globWalk.js";
@@ -50,6 +59,7 @@ export {
   type ResolveInputsResult,
   resolveInputs,
 } from "./inputs.js";
+export { createLineSplitter, splitLines, splitLinesAsync } from "./lines.js";
 export { normalizePath } from "./paths.js";
 export { formatRanges, type RenderMarkdownOptions, renderMarkdown } from "./render/markdown.js";
 export {

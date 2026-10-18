@@ -12,34 +12,66 @@ import type { CoverageMap, LineHits, ParseCoverageOptions } from "./types.js";
  * an empty map and is reported as empty rather than passing.
  */
 export function parseLcov(text: string, options: ParseCoverageOptions = {}): CoverageMap {
+  return parseLcovLines(text.split(/\r?\n/), options);
+}
+
+/** Parse the lines of an lcov tracefile (already cut at line ends); same result as `parseLcov` of the joined text. */
+export function parseLcovLines(lines: Iterable<string>, options: ParseCoverageOptions = {}): CoverageMap {
+  const reader = createLcovReader(options);
+  for (const line of lines) reader.push(line);
+  return reader.finish();
+}
+
+/** Like `parseLcovLines`, for lines that arrive from a stream. A rejection of the stream rejects the promise. */
+export async function parseLcovLinesAsync(
+  lines: AsyncIterable<string>,
+  options: ParseCoverageOptions = {},
+): Promise<CoverageMap> {
+  const reader = createLcovReader(options);
+  for await (const line of lines) reader.push(line);
+  return reader.finish();
+}
+
+/**
+ * An lcov tracefile read one line at a time: `push` each line (without its line end), then `finish` for the map.
+ * Memory holds the coverage map, never the text.
+ */
+export function createLcovReader(options: ParseCoverageOptions = {}): {
+  push(line: string): void;
+  finish(): CoverageMap;
+} {
   const map: CoverageMap = new Map();
   let current: LineHits | undefined;
 
-  for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim();
-    if (line.startsWith("SF:")) {
-      const raw = line.slice(3);
-      const path =
-        options.coverageRoot !== undefined && !isAbsolutePath(raw.trim())
-          ? normalizePath(joinCoverageRoot(raw, options.coverageRoot), options.repoRoot)
-          : normalizePath(raw, options.repoRoot);
-      current = map.get(path);
-      if (!current) {
-        current = new Map();
-        map.set(path, current);
+  return {
+    push(raw: string): void {
+      const line = raw.trim();
+      if (line.startsWith("SF:")) {
+        const raw = line.slice(3);
+        const path =
+          options.coverageRoot !== undefined && !isAbsolutePath(raw.trim())
+            ? normalizePath(joinCoverageRoot(raw, options.coverageRoot), options.repoRoot)
+            : normalizePath(raw, options.repoRoot);
+        current = map.get(path);
+        if (!current) {
+          current = new Map();
+          map.set(path, current);
+        }
+      } else if (line.startsWith("DA:") && current) {
+        const [lineNo, hits] = line.slice(3).split(",");
+        const n = Number(lineNo);
+        const h = Number(hits);
+        if (!Number.isInteger(n) || n < 1 || !Number.isFinite(h) || h < 0) return;
+        current.set(n, (current.get(n) ?? 0) + h);
+      } else if (line === "end_of_record") {
+        current = undefined;
       }
-    } else if (line.startsWith("DA:") && current) {
-      const [lineNo, hits] = line.slice(3).split(",");
-      const n = Number(lineNo);
-      const h = Number(hits);
-      if (!Number.isInteger(n) || n < 1 || !Number.isFinite(h) || h < 0) continue;
-      current.set(n, (current.get(n) ?? 0) + h);
-    } else if (line === "end_of_record") {
-      current = undefined;
-    }
-  }
-  for (const [path, hits] of map) {
-    if (hits.size === 0) map.delete(path);
-  }
-  return map;
+    },
+    finish(): CoverageMap {
+      for (const [path, hits] of map) {
+        if (hits.size === 0) map.delete(path);
+      }
+      return map;
+    },
+  };
 }
