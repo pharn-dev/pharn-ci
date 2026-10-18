@@ -4,6 +4,7 @@ import { parseCoverage } from "./coverage/index.js";
 import { matchCoveragePaths } from "./coverage/match.js";
 import { mergeCoverageMaps } from "./coverage/merge.js";
 import type { CoverageFormat, CoverageFormatSelection, CoverageMap } from "./coverage/types.js";
+import type { CoverageDiscoveryNotFound } from "./coverageDiscovery.js";
 import { type DiffFile, parseUnifiedDiff } from "./diff/unified.js";
 import { computeDiffCoverage } from "./diffCoverage.js";
 import { binaryCoveredPaths, changedConfigPaths, trackedCoverageFile } from "./gateInputs.js";
@@ -28,11 +29,14 @@ export interface CheckInput {
   /**
    * Coverage report contents (and, optionally, the path it was read from, for messages), or the
    * path that was looked for when it is missing; or several of them in the order they were read, which
-   * are merged with hit counts summed. `format` applies to every file (`auto` detects it per file).
+   * are merged with hit counts summed. `format` applies to every file (`auto` detects it per file). Or the
+   * not-found outcome of coverage auto-discovery (`chooseDiscoveredCoverage`), which reports that no report was
+   * found at any of the candidate paths.
    */
   coverage:
     | { text: string; format: CoverageFormatSelection; file?: string }
     | { missingFile: string }
+    | CoverageDiscoveryNotFound
     | { files: readonly CoverageFileInput[]; format: CoverageFormatSelection };
   /** Unified diff text, or the files an adapter already parsed from it, or why no diff is available. */
   diff: { text: string } | { parsed: readonly DiffFile[] } | { unavailable: string };
@@ -97,6 +101,10 @@ export function check(input: CheckInput): Report {
   } else if ("missingFile" in coverageInput) {
     files = [coverageInput];
     selection = "auto";
+  } else if ("kind" in coverageInput) {
+    // Discovery found no report: there is no file to read or name.
+    files = [];
+    selection = "auto";
   } else {
     files = [
       coverageInput.file === undefined
@@ -128,6 +136,9 @@ export function check(input: CheckInput): Report {
     ...(emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {}),
   };
 
+  if ("kind" in coverageInput) {
+    return buildReport({ ...base, diffCoverage: null, missing: { reason: "coverage-not-discovered" } });
+  }
   for (const file of files) {
     if ("missingFile" in file) {
       return buildReport({

@@ -1,4 +1,5 @@
 import type { CoverageFormat } from "./coverage/types.js";
+import { coverageNotDiscoveredText } from "./coverageDiscovery.js";
 import type { DiffCoverageFile, DiffCoverageResult } from "./diffCoverage.js";
 import type { AgentSetupFile, AgentSetupInventory } from "./setup/scan.js";
 import { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
@@ -70,6 +71,7 @@ export interface BuildReportInput {
   /** Why diff coverage is missing, when it is. */
   missing?:
     | { reason: "coverage-file-missing"; coverageFile: string }
+    | { reason: "coverage-not-discovered" }
     | { reason: "coverage-file-empty"; coverageFile: string | null }
     | { reason: "coverage-format-unsupported"; coverageFile: string | null }
     | { reason: "diff-unavailable"; detail: string }
@@ -107,7 +109,7 @@ export function buildReport(input: BuildReportInput): Report {
 
   if (dc === null) {
     const missing = input.missing ?? { reason: "diff-unavailable", detail: "no diff coverage data" };
-    // Diff coverage could not be computed (no coverage file, an empty or unrecognized one, coverage paths that
+    // Diff coverage could not be computed (no coverage file, none discovered, an empty or unrecognized one, coverage paths that
     // match no tracked file, or no diff). With a
     // threshold the user asked for a gate, and a gate that cannot measure must fail closed, so this is an error
     // (threshold 0 included). Without a threshold pharn-ci only reports, so it stays a warning.
@@ -118,6 +120,9 @@ export function buildReport(input: BuildReportInput): Report {
         code: "COVERAGE_FILE_MISSING",
         text: `Coverage file not found: ${missing.coverageFile}`,
       });
+    } else if (missing.reason === "coverage-not-discovered") {
+      // The existing code: no coverage file, here because none of the auto-discovery candidates exists.
+      messages.push({ level, code: "COVERAGE_FILE_MISSING", text: coverageNotDiscoveredText() });
     } else if (missing.reason === "coverage-file-empty") {
       const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${missing.coverageFile}`;
       messages.push({

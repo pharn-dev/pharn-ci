@@ -17,7 +17,7 @@ import {
   resolveInputs,
   VERSION,
 } from "@pharn-ci/core";
-import { gitChunks, readCoverageFiles } from "@pharn-ci/node-io";
+import { gitChunks, readCoverageFiles, readDiscoveredCoverage } from "@pharn-ci/node-io";
 
 /** Everything the CLI touches outside itself; injected so tests can fake it. */
 export interface CliDeps {
@@ -39,7 +39,8 @@ export interface CliDeps {
   readFileStream?(path: string): Promise<AsyncIterable<string> | null>;
   /**
    * The entries of a directory, with symbolic links reported as such and never followed; null when the
-   * directory does not exist or is not a directory. Only called to expand a coverage glob.
+   * directory does not exist or is not a directory. Only called to expand a coverage glob or to discover the
+   * coverage file.
    */
   listDir(path: string): Promise<DirEntry[] | null>;
   resolvePath(...segments: string[]): string;
@@ -57,7 +58,7 @@ Usage:
   pharn-ci check [options]
 
 Options:
-  --coverage <file|glob>  Coverage report path or glob (repeatable). Default: coverage.file from config
+  --coverage <file|glob>  Coverage report path or glob (repeatable). Default: coverage.file from config, then auto-discovery
   --coverage-format <f>  lcov, cobertura or auto. Default: coverage.format, then auto
   --coverage-root <dir>  Directory relative coverage paths start from. Default: coverage.root, then the repo root
   --base <ref>         Base to diff against (merge-base with HEAD). Default: origin/main
@@ -173,27 +174,42 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
 
   const repoRoot = (await git(deps, ["rev-parse", "--show-toplevel"], "not inside a git repository")).trim();
   const config = await loadConfig(values.config, repoRoot, deps);
-  const resolved = resolveInputs(config, raw, FLAG_ERRORS);
+  // With no coverage path set anywhere, the report is looked for at the discovery candidates.
+  const resolved = resolveInputs(config, raw, FLAG_ERRORS, { discoverCoverage: true });
   if (!resolved.ok) throw resolved.errors[0];
   const { coverageFile, coverageFormat, threshold, exclude, coverageRoot, requireAgentSetup, expectAgentSetup } =
     resolved.inputs;
 
-  // A --coverage entry is relative to where you run the CLI; a config entry is relative to the repo root.
-  const coverageBase = coverageFile.fromConfig ? repoRoot : deps.cwd;
-  const coverageLabel = coverageFile.fromConfig ? '"coverage.file"' : "--coverage";
-  // Every entry is resolved and every file read before the check; a file reached twice is read once.
-  const coverageFiles = await readCoverageFiles(deps, {
-    entries: coverageFile.path,
-    label: coverageLabel,
-    baseDir: coverageBase,
-    format: coverageFormat,
-    repoRoot,
-    ...(coverageRoot === undefined ? {} : { coverageRoot }),
-    // Named by absolute path.
-    name: (entry) => deps.resolvePath(coverageBase, entry),
-    // Say which format was read and why, on stderr so stdout stays the report alone.
-    log: (line) => deps.stderr(`${line}\n`),
-  });
+  // Say which format was read and why, on stderr so stdout stays the report alone.
+  const log = (line: string) => deps.stderr(`${line}\n`);
+  let coverage: CheckInput["coverage"];
+  if ("discover" in coverageFile) {
+    // Discovered from the repo root, wherever the CLI runs; an ambiguity is a ConfigError, so exit 2.
+    coverage = await readDiscoveredCoverage(deps, {
+      repoRoot,
+      format: coverageFormat,
+      ...(coverageRoot === undefined ? {} : { coverageRoot }),
+      howToSet: "pass --coverage <file> or set coverage.file in .pharn/ci.yml",
+      log,
+    });
+  } else {
+    // A --coverage entry is relative to where you run the CLI; a config entry is relative to the repo root.
+    const coverageBase = coverageFile.fromConfig ? repoRoot : deps.cwd;
+    const coverageLabel = coverageFile.fromConfig ? '"coverage.file"' : "--coverage";
+    // Every entry is resolved and every file read before the check; a file reached twice is read once.
+    const coverageFiles = await readCoverageFiles(deps, {
+      entries: coverageFile.path,
+      label: coverageLabel,
+      baseDir: coverageBase,
+      format: coverageFormat,
+      repoRoot,
+      ...(coverageRoot === undefined ? {} : { coverageRoot }),
+      // Named by absolute path.
+      name: (entry) => deps.resolvePath(coverageBase, entry),
+      log,
+    });
+    coverage = { files: coverageFiles, format: coverageFormat };
+  }
 
   const base = values.base ?? "origin/main";
   const diffArgs = gitDiffArgs(base);
@@ -218,7 +234,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
 
   const input: CheckInput = {
     version: VERSION,
-    coverage: { files: coverageFiles, format: coverageFormat },
+    coverage,
     diff: { parsed: diffFiles },
     repoRoot,
     threshold,

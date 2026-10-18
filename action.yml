@@ -7,7 +7,7 @@ branding:
 
 inputs:
   coverage-file:
-    description: Coverage report paths or globs (*, **, ?), one entry per line (commas are part of a path), relative to the workspace. All matched files are merged, with hit counts summed. Defaults to coverage.file in .pharn/ci.yml.
+    description: Coverage report paths or globs (*, **, ?), one entry per line (commas are part of a path), relative to the workspace. All matched files are merged, with hit counts summed. Defaults to coverage.file in .pharn/ci.yml; when that is unset too, the report is auto-discovered at coverage/lcov.info, lcov.info, coverage.xml, coverage/cobertura-coverage.xml or **/coverage.cobertura.xml (several kinds found is an error).
     required: false
   coverage-format:
     description: Coverage report format, "lcov", "cobertura" or "auto" (detect it from the start of the file). Defaults to coverage.format in .pharn/ci.yml, then auto.

@@ -1,4 +1,5 @@
 import {
+  type CoverageEntry,
   type CoverageFileInput,
   type CoverageFormatSelection,
   coverageChoiceLine,
@@ -32,6 +33,11 @@ export interface ReadCoverageFilesOptions {
   name(entry: string): string;
   /** Called once per file read, with `coverageChoiceLine`'s text. */
   log(line: string): void;
+  /**
+   * Take every entry as a literal path, even one with glob characters (`*`, `?`, `[`, `]`, `{`, `}`): for paths
+   * that were found on disk rather than written by the user. Absent or false: entries are parsed as globs.
+   */
+  literal?: boolean;
 }
 
 /**
@@ -43,7 +49,11 @@ export async function readCoverageFiles(
   options: ReadCoverageFilesOptions,
 ): Promise<CoverageFileInput[]> {
   const { label, baseDir, format, repoRoot, coverageRoot, name, log } = options;
-  const entries = parseCoverageEntries(coverageEntryList(options.entries), label);
+  const entryList = coverageEntryList(options.entries);
+  const entries =
+    options.literal === true
+      ? entryList.map((entry): CoverageEntry => ({ kind: "literal", entry }))
+      : parseCoverageEntries(entryList, label);
   const expanded = await expandCoverageEntries(entries, (dir) => deps.listDir(deps.resolvePath(baseDir, dir)), label);
   const coverageFiles: CoverageFileInput[] = [];
   const seen = new Set<string>();

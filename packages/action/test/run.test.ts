@@ -460,12 +460,23 @@ describe("action run", () => {
     [{ "fail-on-threshold": "maybe" }, 'fail-on-threshold must be true or false, got "maybe"'],
     [{ "require-agent-setup": "maybe" }, 'require-agent-setup must be true or false, got "maybe"'],
     [{ exclude: "src/**, /abs" }, 'exclude "/abs" must not start with "/"'],
-    [{ "coverage-file": "" }, "no coverage file"],
     [{ "base-ref": "--output=/tmp/x" }, 'base-ref "--output=/tmp/x" must not start with "-"'],
     [{ "base-ref": "-x" }, 'base-ref "-x" must not start with "-"'],
   ])("fails clearly for invalid inputs %j", async (inputs, message) => {
     const h = harness({ inputs });
     expect(await run(h.deps)).toBeUndefined();
     expect(h.failed[0]).toContain(message);
+  });
+
+  // Replaces the old empty `coverage-file` failure row: with no coverage path set, the Action now looks for a
+  // report, and reports COVERAGE_FILE_MISSING when it finds none.
+  it("reports COVERAGE_FILE_MISSING without failing when coverage-file is empty and none is discovered", async () => {
+    const h = harness({ inputs: { "coverage-file": "" } });
+    h.deps.listDir = async () => null;
+    const report = await run(h.deps);
+    const missing = report?.messages.find((m) => m.code === "COVERAGE_FILE_MISSING");
+    expect(missing?.text).toContain("coverage/lcov.info");
+    expect(missing?.text).toContain("**/coverage.cobertura.xml");
+    expect(h.failed).toEqual([]);
   });
 });
