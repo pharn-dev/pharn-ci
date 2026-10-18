@@ -1,0 +1,5 @@
+# Invalid: the second item of setup.expect is not a known agent tool.
+setup:
+  expect:
+    - cursor
+    - foo

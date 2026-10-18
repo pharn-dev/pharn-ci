@@ -9,6 +9,7 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- Expected agent tools: `setup.expect` in `.pharn/ci.yml`, the `expect-agent-setup` Action input and the CLI's `--expect-agent-setup` flag (repeatable) name agent tools (for example `claude-code`, `cursor`) that should have a setup file. Any tool no setup file configures is listed in the new `agentSetup.missing` field and reported as `AGENT_SETUP_EXPECTED_MISSING` (warn, or error when agent setup is required). A repo that expects nothing sees no change.
 - `AGENT_SETUP_FILE_EMPTY` (warn): a listed agent setup file that is empty (size 0 in `HEAD`, from `git ls-tree -r -l`) is reported with the first path, and stays in the inventory. When `git ls-tree` fails, none is reported (the CLI notes it on stderr, the Action warns). Because it is a warning, the verdict of a repo with an empty `CLAUDE.md` changes from `pass` to `warn`.
 - `TEST_FILES_DELETED` (info): the change deletes a test file, or renames one to a name that is not a test file
   (F-21). The message names up to five of them; the verdict is unchanged. Test files are recognized by name

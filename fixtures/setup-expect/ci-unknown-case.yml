@@ -1,0 +1,4 @@
+# Invalid: tool names are case-sensitive, so Claude-Code is not claude-code.
+setup:
+  expect:
+    - Claude-Code

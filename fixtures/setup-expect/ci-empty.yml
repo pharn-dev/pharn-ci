@@ -1,0 +1,3 @@
+# Expects no agent tool: an empty list.
+setup:
+  expect: []

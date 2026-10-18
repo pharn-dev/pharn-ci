@@ -1,4 +1,4 @@
-import { parseCoverageRoot, parseExcludePattern } from "./config.js";
+import { parseAgentToolNames, parseCoverageRoot, parseExcludePattern } from "./config.js";
 import { chooseCoverageFormat, type DetectedCoverageFormat } from "./coverage/detect.js";
 import { parseCoverage } from "./coverage/index.js";
 import { matchCoveragePaths } from "./coverage/match.js";
@@ -54,6 +54,12 @@ export interface CheckInput {
   /** When true, a repo with no agent setup files fails the check. Off when absent. */
   requireAgentSetup?: boolean;
   /**
+   * Agent tools the report names when no setup file configures them, from every source (config, flag, input).
+   * Validated here against the fixed tool list; an unknown name throws a ConfigError. Absent or empty means
+   * nothing is expected.
+   */
+  expectAgentSetup?: readonly string[];
+  /**
    * Repo-relative directory that relative coverage paths start from (package-relative coverage in a
    * monorepo). Validated here; an invalid value throws a ConfigError. Absent means the repo root.
    */
@@ -71,6 +77,7 @@ export function check(input: CheckInput): Report {
   // Validate before any early return, so a bad pattern is an error even when nothing else is computed.
   const matchers = [...new Set((input.exclude ?? []).map((p) => parseExcludePattern(p)))].map(compileGlob);
   const isExcluded = (path: string) => matchers.some((matches) => matches(path));
+  const expectedAgentTools = parseAgentToolNames(input.expectAgentSetup ?? [], "expected agent tool");
   const coverageRoot =
     input.coverageRoot === undefined ? undefined : parseCoverageRoot(input.coverageRoot, "coverage root");
   const agentSetup = scanAgentSetup(input.repoFiles);
@@ -114,6 +121,7 @@ export function check(input: CheckInput): Report {
     threshold: input.threshold,
     agentSetup,
     requireAgentSetup: input.requireAgentSetup === true,
+    ...(expectedAgentTools.length > 0 ? { expectedAgentTools } : {}),
     ...(configPaths.length > 0 ? { changedConfigPaths: configPaths } : {}),
     ...(testPaths.length > 0 ? { deletedTestFiles: testPaths } : {}),
     ...(trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage }),

@@ -48,6 +48,8 @@ const MESSAGE_HINTS: Record<MessageCode, string> = {
     "Check that the deleted or renamed tests were meant to go, or that their cases moved to a file the test runner still runs.",
   NO_AGENT_SETUP_FILES: "Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test.",
   AGENT_SETUP_FILE_EMPTY: "Fill in the empty file or delete it; an agent reads nothing from an empty file.",
+  AGENT_SETUP_EXPECTED_MISSING:
+    "Add a setup file for each missing tool (for example AGENTS.md, CLAUDE.md or .cursor/rules/), or remove it from `setup.expect`.",
 };
 
 /** Render a Report as GitHub-flavored markdown (PR comment, job summary, CLI). */
@@ -102,11 +104,15 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
 
   out.push("### Agent setup", "");
   const setup = report.agentSetup.files;
+  const missingTools = report.agentSetup.missing ?? [];
+  const missingLine = `Missing: ${missingTools.map(code).join(", ")}`;
   if (setup.length === 0) {
     out.push(
       "_No agent setup files found._",
       "",
-      "Missing: an agent instructions file, typically `AGENTS.md` or `CLAUDE.md` at the repository root.",
+      missingTools.length > 0
+        ? missingLine
+        : "Missing: an agent instructions file, typically `AGENTS.md` or `CLAUDE.md` at the repository root.",
       "",
     );
   } else {
@@ -114,6 +120,7 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
     // already summarized the files; a report without a summary (an older producer's) is summarized here.
     const { tools } = report.agentSetup.summary ?? summarizeAgentSetup(setup);
     out.push(`Agent setup: ${setup.length} ${setup.length === 1 ? "file" : "files"} · ${tools.join(", ")}`, "");
+    if (missingTools.length > 0) out.push(missingLine, "");
     const collapse = setup.length > COLLAPSE_ABOVE;
     if (collapse) out.push("<details>", `<summary>Show all ${setup.length} agent setup files</summary>`, "");
     out.push("| Path | Kind |", "| --- | --- |");

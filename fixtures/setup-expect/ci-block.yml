@@ -1,0 +1,7 @@
+# Expects three agent tools as a block list, with extra spaces and one duplicate.
+setup:
+  expect:
+    -   claude-code
+    - " cursor "
+    -  codex
+    - claude-code

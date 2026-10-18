@@ -1,7 +1,7 @@
 import type { CoverageFormat } from "./coverage/types.js";
 import type { DiffCoverageFile, DiffCoverageResult } from "./diffCoverage.js";
 import type { AgentSetupFile, AgentSetupInventory } from "./setup/scan.js";
-import { type AgentSetupSummary, summarizeAgentSetup } from "./setup/summary.js";
+import { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
 
 /** TypeScript mirror of schema/report.v1.json. The schema is the source of truth. */
 export interface Report {
@@ -9,7 +9,12 @@ export interface Report {
   tool: { name: "pharn-ci"; version: string };
   verdict: Verdict;
   diffCoverage: ReportDiffCoverage | null;
-  agentSetup: { files: AgentSetupFile[]; summary?: AgentSetupSummary };
+  agentSetup: {
+    files: AgentSetupFile[];
+    summary?: AgentSetupSummary;
+    /** Sorted expected tools no setup file configures; present only when a tool was expected. */
+    missing?: AgentTool[];
+  };
   messages: Message[];
 }
 
@@ -45,7 +50,8 @@ export type MessageCode =
   | "DIFF_BINARY_COVERED_FILE"
   | "TEST_FILES_DELETED"
   | "NO_AGENT_SETUP_FILES"
-  | "AGENT_SETUP_FILE_EMPTY";
+  | "AGENT_SETUP_FILE_EMPTY"
+  | "AGENT_SETUP_EXPECTED_MISSING";
 
 export interface Message {
   level: MessageLevel;
@@ -83,11 +89,21 @@ export interface BuildReportInput {
   emptyAgentSetupFiles?: readonly string[];
   /** When true, a repo with no agent setup files is an error instead of info. Off when absent. */
   requireAgentSetup?: boolean;
+  /**
+   * Agent tools the report names when no setup file configures them. Only names from the fixed tool list
+   * reach the report; absent or empty adds no field and no message.
+   */
+  expectedAgentTools?: readonly AgentTool[];
 }
 
 export function buildReport(input: BuildReportInput): Report {
   const messages: Message[] = [];
   const dc = input.diffCoverage;
+  const summary = summarizeAgentSetup(input.agentSetup.files);
+  const expected = input.expectedAgentTools ?? [];
+  // Filtering the fixed list keeps only its names, once each, whatever a direct caller passes. Named apart from
+  // `input.missing` (why diff coverage is missing), which the branch below reads.
+  const missingTools = AGENT_TOOLS.filter((tool) => expected.includes(tool) && !summary.tools.includes(tool)).sort();
 
   if (dc === null) {
     const missing = input.missing ?? { reason: "diff-unavailable", detail: "no diff coverage data" };
@@ -195,6 +211,14 @@ export function buildReport(input: BuildReportInput): Report {
     });
   }
 
+  if (missingTools.length > 0) {
+    messages.push({
+      level: input.requireAgentSetup === true ? "error" : "warn",
+      code: "AGENT_SETUP_EXPECTED_MISSING",
+      text: `No agent setup file configures the expected tool${missingTools.length === 1 ? "" : "s"}: ${missingTools.join(", ")}.`,
+    });
+  }
+
   const empty = input.emptyAgentSetupFiles ?? [];
   const firstEmpty = empty[0];
   if (firstEmpty !== undefined) {
@@ -223,7 +247,11 @@ export function buildReport(input: BuildReportInput): Report {
               ? { excludedFiles: dc.excludedFiles }
               : {}),
           },
-    agentSetup: { files: input.agentSetup.files, summary: summarizeAgentSetup(input.agentSetup.files) },
+    agentSetup: {
+      files: input.agentSetup.files,
+      summary,
+      ...(expected.length > 0 ? { missing: missingTools } : {}),
+    },
     messages,
   };
 }

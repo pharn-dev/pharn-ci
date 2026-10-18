@@ -1,0 +1,3 @@
+# Invalid: a flow list under setup.require, a key that takes no list.
+setup:
+  require: [true]

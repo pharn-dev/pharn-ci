@@ -1,0 +1,6 @@
+# Expects the cursor agent tool; names a coverage file so the settings resolve on their own.
+coverage:
+  file: coverage/lcov.info
+setup:
+  expect:
+    - cursor
