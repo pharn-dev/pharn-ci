@@ -5,6 +5,7 @@ import { matchCoveragePaths } from "./coverage/match.js";
 import type { CoverageFormatSelection } from "./coverage/types.js";
 import { parseUnifiedDiff } from "./diff/unified.js";
 import { computeDiffCoverage } from "./diffCoverage.js";
+import { binaryCoveredPaths, changedConfigPaths, trackedCoverageFile } from "./gateInputs.js";
 import { compileGlob } from "./glob.js";
 import { buildReport, type Report } from "./report.js";
 import { scanAgentSetup } from "./setup/scan.js";
@@ -35,6 +36,12 @@ export interface CheckInput {
    * monorepo). Validated here; an invalid value throws a ConfigError. Absent means the repo root.
    */
   coverageRoot?: string;
+  /**
+   * Repo-relative path of the pharn-ci config in use (an absolute path under `repoRoot` is made relative; one
+   * outside the repo matches no diff path). Absent means `.pharn/ci.yml`. Used only to warn when the change
+   * under review edits it.
+   */
+  configPath?: string;
 }
 
 /** The whole pharn-ci check as one pure function: raw inputs in, Report v1 out. */
@@ -45,11 +52,18 @@ export function check(input: CheckInput): Report {
   const coverageRoot =
     input.coverageRoot === undefined ? undefined : parseCoverageRoot(input.coverageRoot, "coverage root");
   const agentSetup = scanAgentSetup(input.repoFiles);
+  // The change under review can edit the inputs of its own grade; these findings ride on every report path.
+  const parsedDiff = "text" in input.diff ? parseUnifiedDiff(input.diff.text) : null;
+  const configPaths = parsedDiff === null ? [] : changedConfigPaths(parsedDiff, input.configPath, input.repoRoot);
+  const trackedCoverage =
+    "text" in input.coverage ? trackedCoverageFile(input.coverage.file, input.repoRoot, input.repoFiles) : null;
   const base = {
     version: input.version,
     threshold: input.threshold,
     agentSetup,
     requireAgentSetup: input.requireAgentSetup === true,
+    ...(configPaths.length > 0 ? { changedConfigPaths: configPaths } : {}),
+    ...(trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage }),
   };
 
   if ("missingFile" in input.coverage) {
@@ -97,6 +111,9 @@ export function check(input: CheckInput): Report {
       missing: { reason: "coverage-file-empty", coverageFile },
     });
   }
+  // The diff text was parsed up front; `diff` is only unavailable on the early return above.
+  const diff = parsedDiff ?? [];
+  const binaryPaths = binaryCoveredPaths(diff, coverage);
   // Coverage paths are compared with the tracked files by exact match. A report whose paths match none of
   // them would otherwise make every change look untracked and pass as NO_COVERABLE_CHANGES. An empty
   // tracked-files list (git failed) cannot be compared, so both checks are skipped then.
@@ -113,15 +130,16 @@ export function check(input: CheckInput): Report {
           example: match.unmatched[0] ?? "",
           suggestedRoot: match.suggestedRoot,
         },
+        ...(binaryPaths.length > 0 ? { binaryCoveredPaths: binaryPaths } : {}),
       });
     }
     untrackedCoveragePaths = match.unmatched.length;
   }
-  const diff = parseUnifiedDiff(input.diff.text);
   return buildReport({
     ...base,
     coverageFormat: choice.format,
     diffCoverage: computeDiffCoverage(diff, coverage, input.threshold, isExcluded),
     ...(untrackedCoveragePaths > 0 ? { untrackedCoveragePaths } : {}),
+    ...(binaryPaths.length > 0 ? { binaryCoveredPaths: binaryPaths } : {}),
   });
 }

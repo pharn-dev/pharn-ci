@@ -202,6 +202,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     exclude,
     requireAgentSetup,
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
+    ...(input("config") === "" ? {} : { configPath: input("config") }),
   };
   const report = check(checkInput);
   const summary = fitMarkdown(report, {

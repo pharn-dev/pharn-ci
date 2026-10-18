@@ -1,0 +1,21 @@
+diff --git a/src/x.ts b/src/x.ts
+index 3333333..4444444 100644
+Binary files a/src/x.ts and b/src/x.ts differ
+diff --git a/src/y.ts b/src/y.ts
+index 5555555..6666666 100644
+GIT binary patch
+literal 12
+Tc$@<O00001
+
+literal 10
+Rc$@<O00001
+
+diff --git a/assets/logo.png b/assets/logo.png
+index 7777777..8888888 100644
+Binary files a/assets/logo.png and b/assets/logo.png differ
+diff --git a/src/app.ts b/src/app.ts
+index 1111111..2222222 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -1,0 +2 @@
++export const b = 2;

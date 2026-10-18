@@ -38,6 +38,12 @@ const MESSAGE_HINTS: Record<MessageCode, string> = {
     "Write coverage paths relative to the repository root, or set the directory they start from (`coverage.root`, `coverage-root` or `--coverage-root`).",
   COVERAGE_PATHS_PARTIALLY_UNMATCHED:
     "Nothing to do if those files are generated or outside the repo; if changed files are missing from the table, check the coverage root.",
+  CONFIG_CHANGED_IN_DIFF:
+    "Review the config and workflow changes before trusting the verdict; protect `.pharn/ci.yml` and `.github/workflows/` with CODEOWNERS.",
+  COVERAGE_FILE_TRACKED:
+    "Generate the coverage file in CI and stop tracking it (`git rm --cached` it and add it to `.gitignore`).",
+  DIFF_BINARY_COVERED_FILE:
+    "Remove `-diff` or `binary` attributes for source files from `.gitattributes` so their changes are measured.",
   NO_AGENT_SETUP_FILES: "Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test.",
 };
 

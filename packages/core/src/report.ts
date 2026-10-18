@@ -40,6 +40,9 @@ export type MessageCode =
   | "DIFF_UNAVAILABLE"
   | "COVERAGE_PATHS_UNMATCHED"
   | "COVERAGE_PATHS_PARTIALLY_UNMATCHED"
+  | "CONFIG_CHANGED_IN_DIFF"
+  | "COVERAGE_FILE_TRACKED"
+  | "DIFF_BINARY_COVERED_FILE"
   | "NO_AGENT_SETUP_FILES";
 
 export interface Message {
@@ -65,6 +68,12 @@ export interface BuildReportInput {
     | { reason: "coverage-paths-unmatched"; total: number; example: string; suggestedRoot: string | null };
   /** Count of distinct coverage paths that are not tracked files, when some but not all are; absent or 0 adds no message. */
   untrackedCoveragePaths?: number;
+  /** Repo-relative paths the diff edits that configure this check (the config in use, workflows); absent or empty adds no message. */
+  changedConfigPaths?: readonly string[];
+  /** Repo-relative path of the coverage file when it is a tracked file; absent adds no message. */
+  trackedCoverageFile?: string;
+  /** Changed files the diff shows as binary that the coverage report knows; absent or empty adds no message. */
+  binaryCoveredPaths?: readonly string[];
   agentSetup: AgentSetupInventory;
   /** When true, a repo with no agent setup files is an error instead of info. Off when absent. */
   requireAgentSetup?: boolean;
@@ -141,6 +150,28 @@ export function buildReport(input: BuildReportInput): Report {
     messages.push({ level: "info", code: "COVERAGE_PATHS_PARTIALLY_UNMATCHED", text: subject });
   }
 
+  if (input.changedConfigPaths !== undefined && input.changedConfigPaths.length > 0) {
+    messages.push({
+      level: "warn",
+      code: "CONFIG_CHANGED_IN_DIFF",
+      text: `This change edits files that configure this check: ${pathList(input.changedConfigPaths)}. Review them before trusting the verdict.`,
+    });
+  }
+  if (input.trackedCoverageFile !== undefined) {
+    messages.push({
+      level: "warn",
+      code: "COVERAGE_FILE_TRACKED",
+      text: `The coverage file ${codeSpan(input.trackedCoverageFile)} is tracked in the repository, so the change under review can supply its own coverage numbers.`,
+    });
+  }
+  if (input.binaryCoveredPaths !== undefined && input.binaryCoveredPaths.length > 0) {
+    messages.push({
+      level: "warn",
+      code: "DIFF_BINARY_COVERED_FILE",
+      text: `The diff shows ${pathList(input.binaryCoveredPaths)} as binary, so their added lines were not measured; check .gitattributes for -diff or binary on source files.`,
+    });
+  }
+
   if (input.agentSetup.files.length === 0) {
     const required = input.requireAgentSetup === true;
     const found = "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found";
@@ -184,6 +215,16 @@ function unmatchedText(missing: { total: number; example: string; suggestedRoot:
       ? "Write coverage paths relative to the repository root or as absolute paths under the checkout, or set coverage-root to the directory relative paths start from."
       : `The paths look relative to ${codeSpan(missing.suggestedRoot)}: set coverage-root: ${codeSpan(missing.suggestedRoot)} (coverage.root in .pharn/ci.yml, --coverage-root in the CLI).`;
   return `${head} (for example ${codeSpan(missing.example)}), so diff coverage was not measured. ${hint}`;
+}
+
+/** Most paths a message names; the rest are counted. */
+const MAX_NAMED_PATHS = 5;
+
+/** The first few paths as code spans joined with `, `, then ` and N more` when there are more. */
+function pathList(paths: readonly string[]): string {
+  const named = paths.slice(0, MAX_NAMED_PATHS).map(codeSpan).join(", ");
+  const more = paths.length - MAX_NAMED_PATHS;
+  return more > 0 ? `${named} and ${more} more` : named;
 }
 
 /**

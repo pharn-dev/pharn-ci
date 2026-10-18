@@ -37,7 +37,7 @@ describe("parseUnifiedDiff", () => {
     expect(parseUnifiedDiff(fixture("diff/tricky.diff"))).toEqual([
       { path: "src/dashes.ts", oldPath: "src/dashes.ts", status: "modified", addedLines: [4, 5] },
       { path: "src/café file.ts", oldPath: "src/café file.ts", status: "modified", addedLines: [1] },
-      { path: "assets/logo.png", oldPath: "assets/logo.png", status: "modified", addedLines: [] },
+      { path: "assets/logo.png", oldPath: "assets/logo.png", status: "modified", addedLines: [], binary: true },
       { path: "src/context.ts", oldPath: "src/context.ts", status: "modified", addedLines: [11, 12] },
     ]);
   });

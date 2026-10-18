@@ -15,6 +15,7 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   its diff and its file list come from the GitHub API (two new read-only calls: get a pull request,
   get a git tree), `pr-number` is validated, and `head-sha` is checked against the PR head. The README
   documents the two-workflow pattern for comments on fork PRs.
+- Three warn-level messages for a change that touches the inputs of its own grade: `CONFIG_CHANGED_IN_DIFF` (the diff edits the pharn-ci config in use or a file under `.github/workflows/`), `COVERAGE_FILE_TRACKED` (the coverage file is a tracked file, so the change can supply its own numbers) and `DIFF_BINARY_COVERED_FILE` (the diff shows a covered source file as binary, e.g. through `-diff` in `.gitattributes`, so its added lines were not measured). They lift a `pass` to `warn` and never fail the check.
 - Require agent setup: the `require-agent-setup` Action input, the CLI's `--require-agent-setup` flag and `setup.require` in `.pharn/ci.yml` (off by default) make `NO_AGENT_SETUP_FILES` an error and the verdict `fail` when the repo has no agent setup files.
 - `DIFF_COVERAGE_UNGATED` (info): diff coverage was measured, with its percent in the text, but no
   threshold gates it (none is set, or it is 0). Before, an ungated run passed with no message.

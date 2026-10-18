@@ -25480,7 +25480,7 @@ function parseUnifiedDiff(text) {
   let newRemaining = 0;
   let cursor = 0;
   const start = () => {
-    current = { oldPath: null, newPath: null, status: "modified", addedLines: [], sawHunk: false };
+    current = { oldPath: null, newPath: null, status: "modified", addedLines: [], sawHunk: false, binary: false };
     entries.push(current);
     return current;
   };
@@ -25538,6 +25538,8 @@ function parseUnifiedDiff(text) {
       const path = parseMarkerPath(line.slice(4));
       if (path === null) entry.status = "deleted";
       else entry.newPath = path;
+    } else if (line.startsWith("Binary files ") && line.endsWith(" differ") || line === "GIT binary patch") {
+      if (current) current.binary = true;
     } else if (line.startsWith("@@ ")) {
       const match = HUNK_HEADER.exec(line);
       if (!match || !current) continue;
@@ -25555,7 +25557,8 @@ function parseUnifiedDiff(text) {
       path,
       oldPath: e.oldPath ?? path,
       status: e.status === "deleted" ? "deleted" : e.status,
-      addedLines: e.status === "deleted" ? [] : [...new Set(e.addedLines)].sort((a, b) => a - b)
+      addedLines: e.status === "deleted" ? [] : [...new Set(e.addedLines)].sort((a, b) => a - b),
+      ...e.binary ? { binary: true } : {}
     });
   }
   return files;
@@ -25690,6 +25693,36 @@ function atLeast(covered, total, threshold) {
   const left = BigInt(covered) * 100n * 10n ** BigInt(Math.max(scale, 0));
   const right = digits * BigInt(total) * 10n ** BigInt(Math.max(-scale, 0));
   return left >= right;
+}
+
+// ../core/src/gateInputs.ts
+var DEFAULT_CONFIG_PATH = ".pharn/ci.yml";
+var WORKFLOWS_DIR = ".github/workflows/";
+var byCodeUnit = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function changedConfigPaths(diff, configPath, repoRoot) {
+  const config = normalizePath(configPath ?? DEFAULT_CONFIG_PATH, repoRoot);
+  const configInRepo = !isAbsolutePath(config) && config !== ".." && !config.startsWith("../");
+  const found = /* @__PURE__ */ new Set();
+  for (const file of diff) {
+    for (const path of file.oldPath === file.path ? [file.path] : [file.path, file.oldPath]) {
+      if (configInRepo && path === config || path.startsWith(WORKFLOWS_DIR)) found.add(path);
+    }
+  }
+  return [...found].sort(byCodeUnit);
+}
+function trackedCoverageFile(file, repoRoot, repoFiles) {
+  if (file === void 0) return null;
+  const path = normalizePath(file, repoRoot);
+  return repoFiles.includes(path) ? path : null;
+}
+function binaryCoveredPaths(diff, coverage) {
+  const found = /* @__PURE__ */ new Set();
+  for (const file of diff) {
+    if (file.binary !== true) continue;
+    if (coverage.has(file.path)) found.add(file.path);
+    else if (coverage.has(file.oldPath)) found.add(file.oldPath);
+  }
+  return [...found].sort(byCodeUnit);
 }
 
 // ../core/src/glob.ts
@@ -25879,6 +25912,27 @@ function buildReport(input) {
     const subject = untracked === 1 ? "1 file path in the coverage report is not a tracked file in the repository; its coverage is not used." : `${untracked} file paths in the coverage report are not tracked files in the repository; their coverage is not used.`;
     messages.push({ level: "info", code: "COVERAGE_PATHS_PARTIALLY_UNMATCHED", text: subject });
   }
+  if (input.changedConfigPaths !== void 0 && input.changedConfigPaths.length > 0) {
+    messages.push({
+      level: "warn",
+      code: "CONFIG_CHANGED_IN_DIFF",
+      text: `This change edits files that configure this check: ${pathList(input.changedConfigPaths)}. Review them before trusting the verdict.`
+    });
+  }
+  if (input.trackedCoverageFile !== void 0) {
+    messages.push({
+      level: "warn",
+      code: "COVERAGE_FILE_TRACKED",
+      text: `The coverage file ${codeSpan(input.trackedCoverageFile)} is tracked in the repository, so the change under review can supply its own coverage numbers.`
+    });
+  }
+  if (input.binaryCoveredPaths !== void 0 && input.binaryCoveredPaths.length > 0) {
+    messages.push({
+      level: "warn",
+      code: "DIFF_BINARY_COVERED_FILE",
+      text: `The diff shows ${pathList(input.binaryCoveredPaths)} as binary, so their added lines were not measured; check .gitattributes for -diff or binary on source files.`
+    });
+  }
   if (input.agentSetup.files.length === 0) {
     const required = input.requireAgentSetup === true;
     const found = "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found";
@@ -25909,6 +25963,12 @@ function unmatchedText(missing) {
   const head = missing.total === 1 ? "None of the 1 file path in the coverage report is a tracked file in the repository" : `None of the ${missing.total} file paths in the coverage report are tracked files in the repository`;
   const hint = missing.suggestedRoot === null ? "Write coverage paths relative to the repository root or as absolute paths under the checkout, or set coverage-root to the directory relative paths start from." : `The paths look relative to ${codeSpan(missing.suggestedRoot)}: set coverage-root: ${codeSpan(missing.suggestedRoot)} (coverage.root in .pharn/ci.yml, --coverage-root in the CLI).`;
   return `${head} (for example ${codeSpan(missing.example)}), so diff coverage was not measured. ${hint}`;
+}
+var MAX_NAMED_PATHS = 5;
+function pathList(paths) {
+  const named = paths.slice(0, MAX_NAMED_PATHS).map(codeSpan).join(", ");
+  const more = paths.length - MAX_NAMED_PATHS;
+  return more > 0 ? `${named} and ${more} more` : named;
 }
 function codeSpan(text) {
   const safe = text.replace(CONTROL_CHARS, "\uFFFD").replace(/`/g, "'");
@@ -26030,11 +26090,16 @@ function check(input) {
   const isExcluded = (path) => matchers.some((matches) => matches(path));
   const coverageRoot = input.coverageRoot === void 0 ? void 0 : parseCoverageRoot(input.coverageRoot, "coverage root");
   const agentSetup = scanAgentSetup(input.repoFiles);
+  const parsedDiff = "text" in input.diff ? parseUnifiedDiff(input.diff.text) : null;
+  const configPaths = parsedDiff === null ? [] : changedConfigPaths(parsedDiff, input.configPath, input.repoRoot);
+  const trackedCoverage = "text" in input.coverage ? trackedCoverageFile(input.coverage.file, input.repoRoot, input.repoFiles) : null;
   const base = {
     version: input.version,
     threshold: input.threshold,
     agentSetup,
-    requireAgentSetup: input.requireAgentSetup === true
+    requireAgentSetup: input.requireAgentSetup === true,
+    ...configPaths.length > 0 ? { changedConfigPaths: configPaths } : {},
+    ...trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage }
   };
   if ("missingFile" in input.coverage) {
     return buildReport({
@@ -26077,6 +26142,8 @@ function check(input) {
       missing: { reason: "coverage-file-empty", coverageFile }
     });
   }
+  const diff = parsedDiff ?? [];
+  const binaryPaths = binaryCoveredPaths(diff, coverage);
   let untrackedCoveragePaths = 0;
   if (input.repoFiles.length > 0) {
     const match = matchCoveragePaths(coverage, input.repoFiles, coverageRoot);
@@ -26089,17 +26156,18 @@ function check(input) {
           total: match.total,
           example: match.unmatched[0] ?? "",
           suggestedRoot: match.suggestedRoot
-        }
+        },
+        ...binaryPaths.length > 0 ? { binaryCoveredPaths: binaryPaths } : {}
       });
     }
     untrackedCoveragePaths = match.unmatched.length;
   }
-  const diff = parseUnifiedDiff(input.diff.text);
   return buildReport({
     ...base,
     coverageFormat: choice.format,
     diffCoverage: computeDiffCoverage(diff, coverage, input.threshold, isExcluded),
-    ...untrackedCoveragePaths > 0 ? { untrackedCoveragePaths } : {}
+    ...untrackedCoveragePaths > 0 ? { untrackedCoveragePaths } : {},
+    ...binaryPaths.length > 0 ? { binaryCoveredPaths: binaryPaths } : {}
   });
 }
 
@@ -26176,6 +26244,9 @@ var MESSAGE_HINTS = {
   DIFF_UNAVAILABLE: "Check out full history (`actions/checkout` with `fetch-depth: 0`) or set the base (`base-ref` or `--base`).",
   COVERAGE_PATHS_UNMATCHED: "Write coverage paths relative to the repository root, or set the directory they start from (`coverage.root`, `coverage-root` or `--coverage-root`).",
   COVERAGE_PATHS_PARTIALLY_UNMATCHED: "Nothing to do if those files are generated or outside the repo; if changed files are missing from the table, check the coverage root.",
+  CONFIG_CHANGED_IN_DIFF: "Review the config and workflow changes before trusting the verdict; protect `.pharn/ci.yml` and `.github/workflows/` with CODEOWNERS.",
+  COVERAGE_FILE_TRACKED: "Generate the coverage file in CI and stop tracking it (`git rm --cached` it and add it to `.gitignore`).",
+  DIFF_BINARY_COVERED_FILE: "Remove `-diff` or `binary` attributes for source files from `.gitattributes` so their changes are measured.",
   NO_AGENT_SETUP_FILES: "Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test."
 };
 function renderMarkdown(report, options = {}) {
@@ -26420,7 +26491,8 @@ async function runUnsafe(deps) {
     repoFiles,
     exclude,
     requireAgentSetup,
-    ...coverageRoot === void 0 ? {} : { coverageRoot }
+    ...coverageRoot === void 0 ? {} : { coverageRoot },
+    ...input("config") === "" ? {} : { configPath: input("config") }
   };
   const report = check(checkInput);
   const summary2 = fitMarkdown(report, {
