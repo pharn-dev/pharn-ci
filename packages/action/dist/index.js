@@ -24529,6 +24529,17 @@ function createGitHubApi(opts) {
       });
       return diffText(res.data);
     },
+    async getPullRequest(pullNumber) {
+      const { octokit, owner, repo } = connect();
+      const { data } = await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber });
+      return { baseSha: data.base.sha, headSha: data.head.sha };
+    },
+    async listTree(sha) {
+      const { octokit, owner, repo } = connect();
+      const { data } = await octokit.rest.git.getTree({ owner, repo, tree_sha: sha, recursive: "1" });
+      const paths = data.tree.flatMap((entry) => entry.type === "blob" && entry.path ? [entry.path] : []);
+      return { paths, truncated: data.truncated === true };
+    },
     async viewerLogin() {
       const { octokit } = connect();
       try {
@@ -26213,6 +26224,52 @@ function inlineText(text) {
 // ../core/src/version.ts
 var VERSION7 = "0.1.0";
 
+// src/pr-number.ts
+var PR_NUMBER = /^[1-9][0-9]{0,9}$/;
+var COMMIT_SHA = /^([0-9a-f]{40}|[0-9a-f]{64})$/i;
+var HEAD_SHA_EXPRESSION = ["$", "{{ github.event.workflow_run.head_sha }}"].join("");
+function parsePrNumberInputs(prNumberRaw, headShaRaw) {
+  const prNumberText = prNumberRaw.trim();
+  const headShaText = headShaRaw.trim();
+  const result = {};
+  if (prNumberText !== "") {
+    if (!PR_NUMBER.test(prNumberText)) {
+      throw new Error("pr-number must be a positive whole number (digits only, no leading zero, at most 10 digits)");
+    }
+    result.prNumber = Number(prNumberText);
+  }
+  if (headShaText !== "") {
+    if (!COMMIT_SHA.test(headShaText)) {
+      throw new Error("head-sha must be a full commit SHA: 40 hexadecimal characters (64 for SHA-256 repositories)");
+    }
+    if (result.prNumber === void 0) throw new Error("head-sha is only used together with pr-number");
+    result.headSha = headShaText.toLowerCase();
+  }
+  return result;
+}
+async function resolvePrNumberTarget(deps, { prNumber, headSha }) {
+  let pr;
+  try {
+    pr = await deps.api.getPullRequest(prNumber);
+  } catch (err) {
+    throw new Error(
+      `could not read pull request #${prNumber} through the GitHub API: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+  const actualHead = pr.headSha.toLowerCase();
+  if (headSha !== void 0 && headSha !== actualHead) {
+    throw new Error(
+      `head-sha ${headSha} is not the head of pull request #${prNumber} (${actualHead}): the pull request head moved since the tested commit, or pr-number names another pull request`
+    );
+  }
+  if (headSha === void 0 && deps.context.eventName === "workflow_run") {
+    deps.warning(
+      `head-sha is not set, so nothing checks that pr-number belongs to the commit that was tested; set head-sha to ${HEAD_SHA_EXPRESSION}`
+    );
+  }
+  return { number: prNumber, baseSha: pr.baseSha, headSha: actualHead };
+}
+
 // src/run.ts
 var COMMENT_MARKER = "<!-- pharn-ci -->";
 var SCOPE_LINE_PREFIX = "<!-- pharn-ci scope:";
@@ -26244,6 +26301,11 @@ async function run(deps) {
 }
 async function runUnsafe(deps) {
   const input = (name) => deps.getInput(name).trim();
+  const { prNumber, headSha } = parsePrNumberInputs(input("pr-number"), input("head-sha"));
+  const pr = deps.context.payload.pull_request;
+  if (pr && prNumber !== void 0 && prNumber !== pr.number) {
+    throw new Error(`pr-number ${prNumber} is not the pull request of this event (#${pr.number})`);
+  }
   const config = await loadConfig(input("config") || void 0, deps);
   const resolved = resolveInputs(
     config,
@@ -26262,21 +26324,18 @@ async function runUnsafe(deps) {
   const coverageFile = resolved.inputs.coverageFile.path;
   const failOnThreshold = parseBool(input("fail-on-threshold"), "fail-on-threshold") ?? true;
   const comment = parseBool(input("comment"), "comment") ?? true;
+  const target = !pr && prNumber !== void 0 ? await resolvePrNumberTarget(deps, { prNumber, headSha }) : void 0;
   const coveragePath = deps.resolvePath(deps.workspace, coverageFile);
   const coverageText = await deps.readFile(coveragePath);
   if (coverageText !== null) deps.info(coverageChoiceLine(chooseCoverageFormat(coverageText, format)));
-  const pr = deps.context.payload.pull_request;
-  const lsFiles = await deps.git(["ls-files", "-z"]).catch((err) => {
-    deps.warning(`git ls-files failed, agent setup scan skipped: ${String(err)}`);
-    return "";
-  });
+  const repoFiles = await trackedFiles(target, deps);
   const checkInput = {
     version: VERSION7,
     coverage: coverageText === null ? { missingFile: coverageFile } : { text: coverageText, format, file: coverageFile },
-    diff: await getDiff(input("base-ref"), deps),
+    diff: await getDiff(input("base-ref"), deps, target),
     repoRoot: deps.workspace,
     threshold,
-    repoFiles: lsFiles.split("\0").filter((p) => p !== ""),
+    repoFiles,
     exclude,
     requireAgentSetup,
     ...coverageRoot === void 0 ? {} : { coverageRoot }
@@ -26294,7 +26353,8 @@ async function runUnsafe(deps) {
   deps.setOutput("verdict", report.verdict);
   deps.setOutput("diff-coverage", report.diffCoverage?.percent?.toString() ?? "");
   await deps.writeSummary(summary2).catch((err) => deps.warning(`could not write job summary: ${String(err)}`));
-  if (comment && pr) {
+  const issueNumber = pr?.number ?? target?.number;
+  if (comment && issueNumber !== void 0) {
     const scopeLine = commentScopeLine(deps.context.workflow ?? "", deps.context.job ?? "");
     const body = fitMarkdown(report, {
       prefix: `${COMMENT_MARKER}
@@ -26303,7 +26363,7 @@ ${scopeLine}
       note: TRUNCATED_NOTE,
       fits: (text) => text.length <= MAX_COMMENT_LENGTH
     });
-    await upsertComment(deps, pr.number, body, scopeLine);
+    await upsertComment(deps, issueNumber, body, scopeLine);
   }
   deps.info(`pharn-ci verdict: ${report.verdict}`);
   if (report.verdict === "fail" && failOnThreshold) {
@@ -26312,8 +26372,32 @@ ${scopeLine}
   }
   return report;
 }
-async function getDiff(baseRefInput, deps) {
+async function trackedFiles(target, deps) {
+  if (!target) {
+    const out = await deps.git(["ls-files", "-z"]).catch((err) => {
+      deps.warning(`git ls-files failed, agent setup scan skipped: ${String(err)}`);
+      return "";
+    });
+    return out.split("\0").filter((p) => p !== "");
+  }
+  try {
+    const tree = await deps.api.listTree(target.headSha);
+    if (tree.truncated) {
+      deps.warning(
+        "the file list of the PR head is truncated by the GitHub API (very large repository); the agent setup scan may miss files"
+      );
+    }
+    return tree.paths;
+  } catch (err) {
+    deps.warning(
+      `could not list the files of the PR head through the GitHub API, agent setup scan skipped: ${String(err)}`
+    );
+    return [];
+  }
+}
+async function getDiff(baseRefInput, deps, target) {
   if (baseRefInput.startsWith("-")) throw new Error(`base-ref "${baseRefInput}" must not start with "-"`);
+  if (target) return getTargetDiff(baseRefInput, target, deps);
   const { context: context3 } = deps;
   const pr = context3.payload.pull_request;
   const mergeGroup = context3.payload.merge_group;
@@ -26327,7 +26411,7 @@ async function getDiff(baseRefInput, deps) {
     );
     if (localHead !== null && localHead !== pr.head.sha) {
       return {
-        unavailable: "pull_request_target checks out the base branch, not the PR; check out the PR head (ref: github.event.pull_request.head.sha) to measure it"
+        unavailable: "pull_request_target cannot be measured safely: run pharn-ci on pull_request (fork PRs get the job summary only); see SECURITY.md"
       };
     }
   }
@@ -26351,6 +26435,20 @@ async function getDiff(baseRefInput, deps) {
     }
     deps.warning(`could not fetch the diff from the GitHub API: ${String(err)}`);
     return { unavailable: `could not get the diff for ${base}...${head} (use actions/checkout with fetch-depth: 0)` };
+  }
+}
+async function getTargetDiff(baseRefInput, target, deps) {
+  const base = baseRefInput || target.baseSha;
+  try {
+    return { text: await deps.api.compareDiff(`${base}...${target.headSha}`) };
+  } catch (err) {
+    if (baseRefInput) {
+      throw new Error(
+        `base-ref "${baseRefInput}" was not found through the GitHub API (${String(err)}); check the ref name`
+      );
+    }
+    deps.warning(`could not fetch the diff from the GitHub API: ${String(err)}`);
+    return { unavailable: `could not get the diff for ${base}...${target.headSha} from the GitHub API` };
   }
 }
 async function resolveLocal(base, deps) {

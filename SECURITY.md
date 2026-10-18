@@ -34,14 +34,14 @@ describes the GitHub Action; the CLI makes no network calls and prints to your t
 
 | Data | Where it goes | Retention |
 | ---- | ------------- | --------- |
-| Source code and working tree | Nowhere. Read locally by `git ls-files` and `git diff`. | Not stored. |
-| Unified diff of the change | Nowhere when the base commit is in the local checkout. Otherwise (for example on a shallow checkout) it is fetched from GitHub's compare API, at `api.github.com` or your GHES instance via `GITHUB_API_URL`; the request carries the owner/repo, the base ref as given (the `base-ref` input text, the PR base SHA or the push `before` SHA) and the head SHA. | Held in memory for the run, not stored. |
+| Source code and working tree | Nowhere. Read locally by `git ls-files` and `git diff`. In PR-number mode (the `pr-number` input) the checkout is not the PR, so the file list is read from the git trees API instead: the request carries the owner/repo and the PR head SHA, and the response lists paths only. | Not stored. |
+| Unified diff of the change | Nowhere when the base commit is in the local checkout. In PR-number mode it always comes from GitHub's compare API, with a request carrying the owner/repo, the PR base SHA (or the `base-ref` input text) and the PR head SHA. Otherwise (for example on a shallow checkout) it is fetched from GitHub's compare API, at `api.github.com` or your GHES instance via `GITHUB_API_URL`; the request carries the owner/repo, the base ref as given (the `base-ref` input text, the PR base SHA or the push `before` SHA) and the head SHA. | Held in memory for the run, not stored. |
 | Coverage file contents | Nowhere. Parsed locally and never echoed. | Not stored. |
 | `.pharn/ci.yml` and Action inputs | Parsed locally. A parse or validation error can quote a key name and some values (for example an unsupported YAML value, an exclude pattern or the `coverage-format` input) into the step log. | Step log, under your log retention. |
 | Paths of changed files the coverage report tracks, their uncovered line numbers, per-file and total percentages and line counts, the threshold, excluded changed-file paths, agent setup file paths and kinds, the verdict | The PR comment and job summary in your own GitHub, and `report.json`. Agent setup files are matched by path only and never read. | The comment persists until someone deletes it; the summary follows your log retention. |
 | Workflow name and job id | The PR comment's scope line, `<!-- pharn-ci scope: <workflow>/<job> -->`, URL-encoded. It tells the workflow and job's comments apart. | The comment persists until someone deletes it. |
 | Coverage file path and diff `base...head` text | Message text in the comment, summary and `report.json`: the coverage path in `COVERAGE_FILE_MISSING`, `COVERAGE_FILE_EMPTY` and `COVERAGE_FORMAT_UNSUPPORTED`, and `base...head` in `DIFF_UNAVAILABLE`. | As above. |
-| Repo owner/name, PR number, base and head SHAs or refs | Your GitHub API only: compare commits (the diff fallback above), `GET /user` (to learn which login the token comments as; when the token cannot read it, no login is guessed and comments are matched by scope), list PR comments, create or update the one pharn-ci comment of this workflow and job, and delete duplicates of it that concurrent runs left (only comments that start with pharn-ci's marker and share the kept comment's author login and scope line). Requests carry Octokit's standard `User-Agent` (library and Node.js versions, OS and architecture). | Per GitHub's own policies. |
+| Repo owner/name, PR number, base and head SHAs or refs | Your GitHub API only: compare commits (the diff fallback above), in PR-number mode `GET` of the pull request (its base and head SHAs) and `GET` of the git tree of its head (file paths), `GET /user` (to learn which login the token comments as; when the token cannot read it, no login is guessed and comments are matched by scope), list PR comments, create or update the one pharn-ci comment of this workflow and job, and delete duplicates of it that concurrent runs left (only comments that start with pharn-ci's marker and share the kept comment's author login and scope line). Requests carry Octokit's standard `User-Agent` (library and Node.js versions, OS and architecture). | Per GitHub's own policies. |
 | `github-token` | Only as the `Authorization` header of those GitHub API requests. Never logged or written. | Not stored. |
 | Other environment variables and secrets | Not read, apart from the runner's standard `GITHUB_*` and `RUNNER_*` variables (workspace, temp dir, event payload, repository, API URL) through `@actions/core` and `@actions/github`. `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` are honoured for the GitHub API. | Not stored. |
 | Step log | Progress lines (coverage format, verdict, comment id) and warnings, which can include `git` or GitHub API error text. | Your log retention. |
@@ -108,7 +108,16 @@ unless you ask to remain anonymous.
 1. **Pin the Action to a commit SHA**, not only to a tag (release tags are not signed), and keep
    `permissions:` minimal (`contents: read`, plus `pull-requests: write` only if you want the PR
    comment).
-2. **Do not run it on `pull_request_target` with untrusted checkouts.**
+2. **Do not run it on `pull_request_target`.** That event runs in the base repository's context with a
+   write token. Its default checkout is the base branch, so the PR cannot be measured, and checking
+   out the PR head to measure it would run fork code with that token. pharn-ci reports the diff as
+   unavailable instead (`DIFF_UNAVAILABLE`) and never advises checking out the PR head. Two safe
+   routes: run pharn-ci on `pull_request` (fork PRs get the job summary only), or, to get the comment
+   on fork PRs too, run your tests on `pull_request`, upload the coverage file and PR number as an
+   artifact, and run pharn-ci in a second workflow on `workflow_run` with the `pr-number` and
+   `head-sha` inputs (see the [README](./README.md#fork-prs-comment-from-workflow_run)). That run reads
+   the PR through the GitHub API, checks out and runs no PR code, and fails when the artifact does not
+   match the tested commit.
 3. **Review the report** before acting on it; it is derived from untrusted PR content.
 
 Thank you for helping keep pharn-ci and its users safe.

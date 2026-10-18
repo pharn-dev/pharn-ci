@@ -192,7 +192,9 @@ describe("action run", () => {
     const report = await run(h.deps);
     expect(report?.verdict).toBe("fail");
     expect(report?.messages[0]?.code).toBe("DIFF_UNAVAILABLE");
-    expect(report?.messages[0]?.text).toContain("check out the PR head");
+    expect(report?.messages[0]?.text).toContain(
+      "pull_request_target cannot be measured safely: run pharn-ci on pull_request",
+    );
     expect(h.gitCalls.filter((a) => a[0] === "diff")).toEqual([]);
   });
 

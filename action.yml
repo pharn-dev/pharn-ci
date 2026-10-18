@@ -18,6 +18,12 @@ inputs:
   base-ref:
     description: Ref or SHA to diff against (merge-base with HEAD). Defaults to the pull request base; in a merge queue (merge_group), the queue base; on push, the previous commit. A base-ref found neither in the checkout nor through the GitHub API fails the step.
     required: false
+  pr-number:
+    description: Number of the pull request to measure when the event carries no pull_request payload (a workflow_run or workflow_dispatch run). The PR, its diff and its file list are read from the GitHub API; no PR code is checked out, and the report is commented on this PR. Digits only, no leading zero. Not set on pull_request events.
+    required: false
+  head-sha:
+    description: Commit SHA the pr-number run expects the PR head to be; the step fails when the PR head is another commit. Set it to the head SHA of the triggering event, the expression github.event.workflow_run.head_sha. Only valid together with pr-number.
+    required: false
   exclude:
     description: Glob patterns of changed files to leave out of diff coverage, separated by commas or newlines. Added to coverage.exclude in .pharn/ci.yml, never replacing it.
     required: false

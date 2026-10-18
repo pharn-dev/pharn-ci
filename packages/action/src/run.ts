@@ -12,6 +12,7 @@ import {
   resolveInputs,
   VERSION,
 } from "@pharn-ci/core";
+import { type PrNumberTarget, parsePrNumberInputs, resolvePrNumberTarget } from "./pr-number.js";
 
 /** Identifies the single sticky comment pharn-ci owns on a PR. */
 export const COMMENT_MARKER = "<!-- pharn-ci -->";
@@ -39,6 +40,10 @@ export interface IssueComment {
 /** The slice of the GitHub API the action uses. */
 export interface GitHubApi {
   compareDiff(basehead: string): Promise<string>;
+  /** Read-only: the base and head commit SHAs of a pull request (PR-number mode). */
+  getPullRequest(pullNumber: number): Promise<{ baseSha: string; headSha: string }>;
+  /** Read-only: the file paths of a commit's tree, and whether GitHub cut the listing short (PR-number mode). */
+  listTree(sha: string): Promise<{ paths: string[]; truncated: boolean }>;
   /**
    * Login the token comments as. `null` when the token cannot read `GET /user` (an App installation
    * token or the default GITHUB_TOKEN): the login is then unknown and comments are matched by scope.
@@ -118,6 +123,12 @@ export async function run(deps: ActionDeps): Promise<Report | undefined> {
 
 async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const input = (name: string) => deps.getInput(name).trim();
+  // Validated first: in a workflow_run these come from an artifact and are attacker-controlled.
+  const { prNumber, headSha } = parsePrNumberInputs(input("pr-number"), input("head-sha"));
+  const pr = deps.context.payload.pull_request;
+  if (pr && prNumber !== undefined && prNumber !== pr.number) {
+    throw new Error(`pr-number ${prNumber} is not the pull request of this event (#${pr.number})`);
+  }
   const config = await loadConfig(input("config") || undefined, deps);
 
   // An empty input is not given: the config, then the default, applies.
@@ -139,24 +150,24 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const failOnThreshold = parseBool(input("fail-on-threshold"), "fail-on-threshold") ?? true;
   const comment = parseBool(input("comment"), "comment") ?? true;
 
+  // PR-number mode: no pull_request payload, the pr-number input names the PR. Resolved before anything is read or
+  // measured, so a stale or forged target fails first.
+  const target = !pr && prNumber !== undefined ? await resolvePrNumberTarget(deps, { prNumber, headSha }) : undefined;
+
   const coveragePath = deps.resolvePath(deps.workspace, coverageFile);
   const coverageText = await deps.readFile(coveragePath);
   if (coverageText !== null) deps.info(coverageChoiceLine(chooseCoverageFormat(coverageText, format)));
-  const pr = deps.context.payload.pull_request;
 
-  const lsFiles = await deps.git(["ls-files", "-z"]).catch((err: unknown) => {
-    deps.warning(`git ls-files failed, agent setup scan skipped: ${String(err)}`);
-    return "";
-  });
+  const repoFiles = await trackedFiles(target, deps);
 
   const checkInput: CheckInput = {
     version: VERSION,
     coverage:
       coverageText === null ? { missingFile: coverageFile } : { text: coverageText, format, file: coverageFile },
-    diff: await getDiff(input("base-ref"), deps),
+    diff: await getDiff(input("base-ref"), deps, target),
     repoRoot: deps.workspace,
     threshold,
-    repoFiles: lsFiles.split("\0").filter((p) => p !== ""),
+    repoFiles,
     exclude,
     requireAgentSetup,
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
@@ -176,14 +187,15 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
 
   await deps.writeSummary(summary).catch((err: unknown) => deps.warning(`could not write job summary: ${String(err)}`));
 
-  if (comment && pr) {
+  const issueNumber = pr?.number ?? target?.number;
+  if (comment && issueNumber !== undefined) {
     const scopeLine = commentScopeLine(deps.context.workflow ?? "", deps.context.job ?? "");
     const body = fitMarkdown(report, {
       prefix: `${COMMENT_MARKER}\n${scopeLine}\n`,
       note: TRUNCATED_NOTE,
       fits: (text) => text.length <= MAX_COMMENT_LENGTH,
     });
-    await upsertComment(deps, pr.number, body, scopeLine);
+    await upsertComment(deps, issueNumber, body, scopeLine);
   }
 
   deps.info(`pharn-ci verdict: ${report.verdict}`);
@@ -194,10 +206,41 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   return report;
 }
 
+/**
+ * The repo's file paths. Normally `git ls-files` of the checkout; in PR-number mode the checkout is not the PR, so
+ * the paths come from the git tree of the PR head, through the GitHub API.
+ */
+async function trackedFiles(target: PrNumberTarget | undefined, deps: ActionDeps): Promise<string[]> {
+  if (!target) {
+    const out = await deps.git(["ls-files", "-z"]).catch((err: unknown) => {
+      deps.warning(`git ls-files failed, agent setup scan skipped: ${String(err)}`);
+      return "";
+    });
+    return out.split("\0").filter((p) => p !== "");
+  }
+  try {
+    const tree = await deps.api.listTree(target.headSha);
+    if (tree.truncated) {
+      deps.warning(
+        "the file list of the PR head is truncated by the GitHub API (very large repository); " +
+          "the agent setup scan may miss files",
+      );
+    }
+    return tree.paths;
+  } catch (err) {
+    deps.warning(
+      `could not list the files of the PR head through the GitHub API, agent setup scan skipped: ${String(err)}`,
+    );
+    return [];
+  }
+}
+
 /** Diff of the change under test: base...HEAD, from local git if possible, else the GitHub API. */
-async function getDiff(baseRefInput: string, deps: ActionDeps): Promise<CheckInput["diff"]> {
+async function getDiff(baseRefInput: string, deps: ActionDeps, target?: PrNumberTarget): Promise<CheckInput["diff"]> {
   // A leading "-" would reach git as an option (e.g. --output=<file>), not a revision.
   if (baseRefInput.startsWith("-")) throw new Error(`base-ref "${baseRefInput}" must not start with "-"`);
+  // PR-number mode: the checkout is not the PR, so only the GitHub API can give the diff.
+  if (target) return getTargetDiff(baseRefInput, target, deps);
   const { context } = deps;
   const pr = context.payload.pull_request;
   const mergeGroup = context.payload.merge_group;
@@ -220,10 +263,11 @@ async function getDiff(baseRefInput: string, deps: ActionDeps): Promise<CheckInp
       () => null,
     );
     if (localHead !== null && localHead !== pr.head.sha) {
+      // Never advise checking out the PR head here: that runs fork code with a write token.
       return {
         unavailable:
-          "pull_request_target checks out the base branch, not the PR; check out the PR head " +
-          "(ref: github.event.pull_request.head.sha) to measure it",
+          "pull_request_target cannot be measured safely: run pharn-ci on pull_request " +
+          "(fork PRs get the job summary only); see SECURITY.md",
       };
     }
   }
@@ -251,6 +295,26 @@ async function getDiff(baseRefInput: string, deps: ActionDeps): Promise<CheckInp
     }
     deps.warning(`could not fetch the diff from the GitHub API: ${String(err)}`);
     return { unavailable: `could not get the diff for ${base}...${head} (use actions/checkout with fetch-depth: 0)` };
+  }
+}
+
+/** PR-number mode: base...head from the compare API only; no local git. An explicit base-ref replaces the PR base. */
+async function getTargetDiff(
+  baseRefInput: string,
+  target: PrNumberTarget,
+  deps: ActionDeps,
+): Promise<CheckInput["diff"]> {
+  const base = baseRefInput || target.baseSha;
+  try {
+    return { text: await deps.api.compareDiff(`${base}...${target.headSha}`) };
+  } catch (err) {
+    if (baseRefInput) {
+      throw new Error(
+        `base-ref "${baseRefInput}" was not found through the GitHub API (${String(err)}); check the ref name`,
+      );
+    }
+    deps.warning(`could not fetch the diff from the GitHub API: ${String(err)}`);
+    return { unavailable: `could not get the diff for ${base}...${target.headSha} from the GitHub API` };
   }
 }
 

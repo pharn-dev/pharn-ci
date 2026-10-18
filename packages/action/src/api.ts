@@ -60,6 +60,18 @@ export function createGitHubApi(opts: GitHubApiOptions): GitHubApi {
       });
       return diffText(res.data);
     },
+    async getPullRequest(pullNumber) {
+      const { octokit, owner, repo } = connect();
+      const { data } = await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber });
+      return { baseSha: data.base.sha, headSha: data.head.sha };
+    },
+    async listTree(sha) {
+      const { octokit, owner, repo } = connect();
+      const { data } = await octokit.rest.git.getTree({ owner, repo, tree_sha: sha, recursive: "1" });
+      // Only files count: drop directories ("tree") and submodule entries ("commit").
+      const paths = data.tree.flatMap((entry) => (entry.type === "blob" && entry.path ? [entry.path] : []));
+      return { paths, truncated: data.truncated === true };
+    },
     async viewerLogin() {
       const { octokit } = connect();
       // Works for a personal or user token. An App installation token or the default GITHUB_TOKEN

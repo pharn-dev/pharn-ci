@@ -159,7 +159,8 @@ describe("release readiness: pins match the package version", () => {
     expect(VERSION, "version.ts and packages/action/package.json").toBe(packageVersion);
 
     for (const [path, expected] of [
-      ["README.md", 2],
+      // The top snippet, the Quick start workflow and the two "Fork PRs: comment from workflow_run" workflows.
+      ["README.md", 4],
       ["docs/MARKETPLACE.md", 1],
     ] as const) {
       const pins = read(path)

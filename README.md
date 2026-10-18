@@ -238,6 +238,8 @@ line. Matrix legs of one job share that scope, and so one comment.
 | `coverage-root`     | `coverage.root`, then the repo root | Directory relative coverage paths start from, e.g. `packages/core` in a monorepo |
 | `threshold`         | `coverage.threshold` from config, then none | Minimum diff coverage %, inclusive       |
 | `base-ref`          | PR base; merge queue base; on `push`, the previous head (`before`) | Ref or SHA to diff against. A `base-ref` found neither in the checkout nor through the GitHub API fails the step |
+| `pr-number`         | none                        | Pull request to measure when the event has no `pull_request` payload (`workflow_run`, `workflow_dispatch`). The PR, its diff and its file list come from the GitHub API and no PR code is checked out. See [Fork PRs](#fork-prs-comment-from-workflow_run) |
+| `head-sha`          | none                        | Commit SHA the PR head must be; the step fails otherwise. Set it to `${{ github.event.workflow_run.head_sha }}`. Only valid with `pr-number` |
 | `exclude`           | none                        | Globs of changed files to leave out of diff coverage, comma or newline separated; added to `coverage.exclude` |
 | `require-agent-setup` | `setup.require`, then `false` | Fail when the repo has no agent setup files; the step fails through `fail-on-threshold` |
 | `comment`           | `true`                      | Post/update one sticky PR comment per workflow and job |
@@ -250,6 +252,102 @@ line. Matrix legs of one job share that scope, and so one comment.
 | `report-path`   | Path to `report.json` (Report v1)                     |
 | `verdict`       | `pass`, `warn` or `fail`                              |
 | `diff-coverage` | Diff coverage percent, or empty when not computed     |
+
+### Fork PRs: comment from workflow_run
+
+On a PR from a fork the `pull_request` token is read-only, so pharn-ci can only write the job
+summary. To get the sticky comment on fork PRs without ever running PR code with a write token,
+split the work in two workflows. Do not use `pull_request_target` for this: it checks out the base
+branch with a write token, and checking out the PR head there would run fork code with that token.
+
+The first workflow runs on `pull_request` with a read-only token, runs your tests and uploads the
+coverage file together with the PR number:
+
+```yaml
+# .github/workflows/pharn-ci.yml
+name: pharn-ci
+on: pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # ...set up your toolchain and run tests with lcov or Cobertura output, e.g.:
+      - run: npx vitest run --coverage --coverage.reporter=lcov
+      - uses: pharn-dev/pharn-ci@v0.1.0 # or, better, the tag's full commit SHA
+        with:
+          coverage-file: coverage/lcov.info
+          threshold: 80
+          comment: false
+      - env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: echo "$PR_NUMBER" > pr-number
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pharn-ci-input
+          path: |
+            coverage/lcov.info
+            pr-number
+```
+
+The second workflow runs on `workflow_run` in the context of your default branch, with a token that
+can comment. It downloads the artifact into the runner's temp directory and never executes it:
+
+```yaml
+# .github/workflows/pharn-ci-comment.yml
+name: pharn-ci comment
+on:
+  workflow_run:
+    workflows: [pharn-ci]
+    types: [completed]
+
+permissions:
+  contents: read
+  pull-requests: write
+  actions: read
+
+jobs:
+  comment:
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      # The default branch: your trusted config and .pharn/ci.yml, never the PR.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: pharn-ci-input
+          path: ${{ runner.temp }}/pharn-ci-input
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+      # Keep digits only. The artifact is attacker-controlled: never put its text into a script.
+      - id: pr
+        env:
+          PR_FILE: ${{ runner.temp }}/pharn-ci-input/pr-number
+        run: echo "number=$(tr -dc '0-9' < "$PR_FILE" | head -c 10)" >> "$GITHUB_OUTPUT"
+      - uses: pharn-dev/pharn-ci@v0.1.0 # or, better, the tag's full commit SHA
+        with:
+          coverage-file: ${{ runner.temp }}/pharn-ci-input/coverage/lcov.info
+          pr-number: ${{ steps.pr.outputs.number }}
+          head-sha: ${{ github.event.workflow_run.head_sha }}
+          fail-on-threshold: false # the first workflow already gates
+```
+
+The artifact comes from the fork and is attacker-controlled, so pharn-ci treats `pr-number` and the
+coverage file as untrusted. It checks that `pr-number` is a plain number, reads the PR's base and
+head through the GitHub API, and fails the step when `head-sha` (the tested commit, from the trusted
+`workflow_run` event) is not the PR's head. The diff and the file list also come from the API; no
+PR code is checked out or run. What it cannot check is that the coverage file is what the tests
+produced: a fork can upload a coverage file that flatters its own PR. The comment reports what the
+`pull_request` run uploaded, and that run's verdict is the gate.
 
 ---
 
@@ -397,8 +495,10 @@ that:
   never moved.
 
 Each claim is mapped to the test or check that enforces it in
-[`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md). Do not run pharn-ci on `pull_request_target` with
-an untrusted checkout ([`SECURITY.md`](SECURITY.md)).
+[`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md). pharn-ci cannot measure a `pull_request_target`
+run safely and reports the diff as unavailable: run it on `pull_request` instead, and use the
+[`workflow_run` pattern](#fork-prs-comment-from-workflow_run) for a comment on fork PRs
+([`SECURITY.md`](SECURITY.md)).
 
 ---
 
