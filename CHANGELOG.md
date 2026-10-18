@@ -49,6 +49,9 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Fixed
 
+- An lcov file whose `SF` records carry no `DA` lines (a crashed or truncated reporter) is now
+  `COVERAGE_FILE_EMPTY`, as the Cobertura equivalent already was, instead of passing as
+  `NO_COVERABLE_CHANGES`. lcov files without a valid `DA` line are left out of the coverage map.
 - Docs: the quick start pins `actions/checkout` to a commit SHA; the Action reference gives the
   real `threshold` and `base-ref` defaults; the docs name Cobertura as untrusted input, the
   `GET /user` call, and the bundled transitive dependencies.

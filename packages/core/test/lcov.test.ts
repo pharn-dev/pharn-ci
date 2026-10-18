@@ -41,6 +41,16 @@ describe("parseLcov", () => {
   it("returns an empty map for empty input", () => {
     expect(parseLcov("").size).toBe(0);
   });
+
+  it("returns an empty map when no SF record has a valid DA line", () => {
+    expect(parseLcov(fixture("lcov/no-lines.info"), { repoRoot: "/home/runner/work/demo/demo" }).size).toBe(0);
+  });
+
+  it("leaves out files without a valid DA line, as the Cobertura parser does", () => {
+    expect(toObject(parseLcov(fixture("lcov/some-without-lines.info")))).toEqual({
+      "src/math.ts": { 3: 1, 4: 0 },
+    });
+  });
 });
 
 describe("parseCoverage", () => {

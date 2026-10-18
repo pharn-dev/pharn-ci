@@ -50,6 +50,7 @@ describe("golden: fixture diff + lcov -> Report v1", () => {
   it.each([
     ["lcov/empty.info", 80, "fail", "error"],
     ["lcov/garbage.info", 80, "fail", "error"],
+    ["lcov/no-lines.info", 80, "fail", "error"],
     ["lcov/empty.info", null, "warn", "warn"],
   ] as const)(
     "reports %s (threshold %s) as COVERAGE_FILE_EMPTY instead of passing",

@@ -89,7 +89,8 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   threshold. An empty file is `COVERAGE_FILE_EMPTY`. Naming a format skips detection: `cobertura`
   on a Clover or JaCoCo native file reads no records and is `COVERAGE_FILE_EMPTY`.
 - **Malformed lcov lines are skipped silently.** Invalid or orphan `DA` records do not produce a
-  message; only a report with no records at all does (`COVERAGE_FILE_EMPTY`).
+  message. A file (`SF`) with no valid `DA` line is absent from the map, as in Cobertura, and a
+  report with no valid `DA` line at all (a crashed or truncated reporter) is `COVERAGE_FILE_EMPTY`.
 - **Malformed Cobertura lines are skipped silently too.** A `<line>` whose `number` is not an
   integer >= 1, or whose `hits` is present but not a finite number >= 0, is dropped (a missing
   `hits` counts as 0). A file with no valid line is absent from the map, and a report with no

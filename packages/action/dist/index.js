@@ -25309,6 +25309,9 @@ function parseLcov(text, options = {}) {
       current = void 0;
     }
   }
+  for (const [path, hits] of map) {
+    if (hits.size === 0) map.delete(path);
+  }
   return map;
 }
 
