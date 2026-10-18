@@ -30,6 +30,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- Versioning policy for 0.x (`docs/RELEASING.md`): Action inputs and outputs, CLI flags and message
+  codes are never removed before 1.0; a renamed input keeps working under its old name, with a
+  warning, for at least one minor release; a changed default ships only in a minor release and is
+  listed here. The README status note and `docs/LIMITS.md` say the same.
 - The rendered report lists messages before the agent setup inventory, and a file's uncovered-lines cell shows
   at most 20 ranges followed by `…and N more`. The Action fits an oversized PR comment (65,000 characters) or
   job summary (1 MiB) by rendering fewer table rows instead of cutting the end, so the verdict and messages

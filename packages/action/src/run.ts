@@ -121,8 +121,39 @@ export async function run(deps: ActionDeps): Promise<Report | undefined> {
   }
 }
 
+/**
+ * Renamed Action inputs: old name -> current name. Before 1.0 an input is never removed; a renamed
+ * one keeps its old name here, and declared in action.yml, for at least one minor release
+ * (docs/RELEASING.md, "Inputs, outputs and message codes"). Empty while no input has been renamed.
+ */
+export const INPUT_ALIASES: Readonly<Record<string, string>> = Object.freeze({});
+
+/**
+ * The trimmed value of an input, falling back to any old name it was renamed from. An old name
+ * still works but warns; when both are set, the current name wins and the old one is ignored.
+ */
+export function readInput(
+  deps: Pick<ActionDeps, "getInput" | "warning">,
+  name: string,
+  aliases: Readonly<Record<string, string>> = INPUT_ALIASES,
+): string {
+  const value = deps.getInput(name).trim();
+  for (const [oldName, current] of Object.entries(aliases)) {
+    if (current !== name) continue;
+    const oldValue = deps.getInput(oldName).trim();
+    if (oldValue === "") continue;
+    if (value !== "") {
+      deps.warning(`input "${oldName}" is deprecated and ignored because "${name}" is also set; remove "${oldName}"`);
+      continue;
+    }
+    deps.warning(`input "${oldName}" is deprecated; rename it to "${name}"`);
+    return oldValue;
+  }
+  return value;
+}
+
 async function runUnsafe(deps: ActionDeps): Promise<Report> {
-  const input = (name: string) => deps.getInput(name).trim();
+  const input = (name: string) => readInput(deps, name);
   // Validated first: in a workflow_run these come from an artifact and are attacker-controlled.
   const { prNumber, headSha } = parsePrNumberInputs(input("pr-number"), input("head-sha"));
   const pr = deps.context.payload.pull_request;

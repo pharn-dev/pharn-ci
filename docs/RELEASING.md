@@ -22,6 +22,27 @@ npm yet.
 - **Before 1.0, a breaking change bumps the minor version** (0.1.x → 0.2.0). Report v1 stays
   compatible across all of them: fields are only added, message codes are never renamed.
 
+## Inputs, outputs and message codes
+
+Consumers pin a release and let Dependabot or Renovate bump it, so a bump must not break a workflow
+that worked on the previous release. Before 1.0 the rules are:
+
+- **Never removed.** No Action input or output, CLI flag or report message code is removed in 0.x.
+  `packages/action/test/input-aliases.test.ts` lists every shipped input and output and fails when
+  one disappears from `action.yml`; message codes are held by `schema/report.v1.json` and the golden
+  tests.
+- **Renames keep the old name for at least one minor release.** A renamed input stays declared in
+  `action.yml` and is mapped to its new name in `INPUT_ALIASES` (`packages/action/src/run.ts`). The
+  old name keeps working and logs a `core.warning` saying to rename it; when both names are set, the
+  new one wins and the warning says the old one is ignored. The old name may be dropped only in a
+  later minor release than the one that renamed it, and its removal is a breaking change listed in
+  the changelog. A renamed CLI flag keeps its old spelling under the same rule. Message codes are
+  never renamed (Report v1).
+- **A changed default is a breaking change.** It ships only in a minor release, under **Changed** in
+  `CHANGELOG.md`, with the old behaviour named and how to get it back (usually by setting the input).
+- **The comment and summary layout may change** in any release; tools should read `report.json`
+  (the `report-path` output), not the markdown.
+
 ## Cutting a release
 
 1. **Prepare a PR** titled `chore: release X.Y.Z`:
