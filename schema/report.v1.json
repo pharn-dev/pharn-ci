@@ -115,7 +115,7 @@
       "properties": {
         "path": { "type": "string", "minLength": 1 },
         "kind": {
-          "description": "Known kinds: claude-md, agents-md, claude-settings, claude-settings-local, claude-skill, claude-hook, claude-agent, claude-command, cursor-rules, copilot-instructions, mcp-config, claude-local-md, gemini-md, copilot-instructions-scoped, copilot-agents, copilot-prompts, cursor-mcp, vscode-mcp, codex-config, windsurf-rules, cline-rules. New kinds may be added within v1; consumers must tolerate unknown kinds.",
+          "description": "Known kinds: claude-md, agents-md, claude-settings, claude-settings-local, claude-skill, claude-hook, claude-agent, claude-command, cursor-rules, copilot-instructions, mcp-config, claude-local-md, gemini-md, copilot-instructions-scoped, copilot-agents, copilot-prompts, cursor-mcp, vscode-mcp, codex-config, windsurf-rules, cline-rules, claude-rule, aider-config, conventions-md, continue-rules, roo-rules, amazonq-rules, junie-guidelines, zed-rules, augment-rules, kiro-steering, goosehints, opencode-config, gemini-settings. New kinds may be added within v1; consumers must tolerate unknown kinds.",
           "type": "string",
           "pattern": "^[a-z][a-z0-9-]*$"
         }
@@ -133,10 +133,10 @@
           "additionalProperties": { "type": "integer", "minimum": 1 }
         },
         "tools": {
-          "description": "Distinct agent tools that read the present kinds, derived from files and sorted. Drawn from a fixed list.",
+          "description": "Distinct agent tools that read the present kinds, derived from files and sorted. Drawn from a fixed list. Known tools: claude-code, cursor, copilot, codex, gemini, windsurf, cline, mcp, aider, amazon-q, amp, augment, continue, goose, jules, junie, kiro, opencode, roo, zed. New tools may be added within v1; consumers must tolerate unknown tools.",
           "type": "array",
           "uniqueItems": true,
-          "items": { "enum": ["claude-code", "cursor", "copilot", "codex", "gemini", "windsurf", "cline", "mcp"] }
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
         }
       }
     },

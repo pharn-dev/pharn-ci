@@ -15,15 +15,17 @@ const CODE = "COVERAGE_PATHS_PARTIALLY_UNMATCHED";
 // taken out. The markdown hashes are those of the outputs F-32 committed, which intentionally changed the
 // rendering (file rows sorted by coverage, a hint line under each message); the JSON reports did not change.
 // F-16 moved `### Messages` above `### Agent setup` on purpose, as F-32 changed the rendering before, so the
-// markdown hashes changed once more.
-const GOLDEN_JSON_SHA256 = "647b7ba7088c13dd9a35e1e543c82135e17d8d754c212f5768a6f1ddbfe49f3d";
-const GOLDEN_MD_SHA256 = "625c0fe399c49aca5aabdc560db4a1e412fac63d07c29d47b74e30c3b2783d43";
-const GOLDEN_COBERTURA_JSON_SHA256 = "4aa93c70eaf2e1f4f1b6d30d7fe2aecc0ff2373e5a67bd5323bfddd836e036dc";
-const GOLDEN_COBERTURA_MD_SHA256 = "625c0fe399c49aca5aabdc560db4a1e412fac63d07c29d47b74e30c3b2783d43";
+// markdown hashes changed once more. F-11 (ai-agnostic-inventory) then updated every hash in this block on
+// purpose: AGENTS.md is now credited to four more tools (amp, jules, opencode, zed), so each golden's
+// `Agent setup:` line and `agentSetup.summary.tools` changed.
+const GOLDEN_JSON_SHA256 = "549b58c8b5f0dbe0e5fdb95ac115d53ce7ecbd1a8c7a20e6c60a9227de5ec537";
+const GOLDEN_MD_SHA256 = "e96827f7e6b37b9d7602c94a7afc479390f8226a268b0c6905e0ed4136d81e3b";
+const GOLDEN_COBERTURA_JSON_SHA256 = "09f152cdc9119f7ee3de83a9912bf62dbcceeeb2d59a144765039b33a806feb1";
+const GOLDEN_COBERTURA_MD_SHA256 = "e96827f7e6b37b9d7602c94a7afc479390f8226a268b0c6905e0ed4136d81e3b";
 // fixtures/golden-exclusions/report.{json,md} as committed before this change (the markdown as F-32 committed
-// it); they must not change.
-const EXCLUSIONS_JSON_SHA256 = "c4e07ded4197d694c9df1a91202a9ee741d1bf2376ce2ece5e62ba39f75a4e52";
-const EXCLUSIONS_MD_SHA256 = "b190b519dbe7110bc663a67173d295376b049256298999cec34f706e2bf6049a";
+// it, both as F-11 changed them above); the partial-mismatch change must not change them.
+const EXCLUSIONS_JSON_SHA256 = "5773d3ef5a254c8c35f803665f70e69b881252e941c94e00fbbd479b569688fc";
+const EXCLUSIONS_MD_SHA256 = "4721f90e9cc5a112b954cb32318508cdf2da4b2f90514b359a333adaca3b12e0";
 
 type Message = { level: string; code: string; text: string };
 

@@ -85,11 +85,15 @@
         "mcp-config": 1
       },
       "tools": [
+        "amp",
         "claude-code",
         "codex",
         "copilot",
         "cursor",
-        "mcp"
+        "jules",
+        "mcp",
+        "opencode",
+        "zed"
       ]
     }
   },

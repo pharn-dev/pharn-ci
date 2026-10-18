@@ -1,7 +1,28 @@
 import type { AgentSetupFile, AgentSetupKind } from "./scan.js";
 
 /** The agent tools a setup file can configure. A fixed list: summaries never carry input-derived names. */
-export const AGENT_TOOLS = ["claude-code", "cursor", "copilot", "codex", "gemini", "windsurf", "cline", "mcp"] as const;
+export const AGENT_TOOLS = [
+  "claude-code",
+  "cursor",
+  "copilot",
+  "codex",
+  "gemini",
+  "windsurf",
+  "cline",
+  "mcp",
+  "aider",
+  "amazon-q",
+  "amp",
+  "augment",
+  "continue",
+  "goose",
+  "jules",
+  "junie",
+  "kiro",
+  "opencode",
+  "roo",
+  "zed",
+] as const;
 
 export type AgentTool = (typeof AGENT_TOOLS)[number];
 
@@ -15,7 +36,7 @@ const KIND_TOOLS: Record<AgentSetupKind, readonly AgentTool[]> = {
   "claude-hook": ["claude-code"],
   "claude-agent": ["claude-code"],
   "claude-command": ["claude-code"],
-  "agents-md": ["codex", "copilot", "cursor"],
+  "agents-md": ["amp", "codex", "copilot", "cursor", "jules", "opencode", "zed"],
   "cursor-rules": ["cursor"],
   "cursor-mcp": ["cursor", "mcp"],
   "copilot-instructions": ["copilot"],
@@ -28,6 +49,19 @@ const KIND_TOOLS: Record<AgentSetupKind, readonly AgentTool[]> = {
   "windsurf-rules": ["windsurf"],
   "cline-rules": ["cline"],
   "mcp-config": ["mcp"],
+  "claude-rule": ["claude-code"],
+  "aider-config": ["aider"],
+  "conventions-md": ["aider"],
+  "continue-rules": ["continue"],
+  "roo-rules": ["roo"],
+  "amazonq-rules": ["amazon-q"],
+  "junie-guidelines": ["junie"],
+  "zed-rules": ["zed"],
+  "augment-rules": ["augment"],
+  "kiro-steering": ["kiro"],
+  goosehints: ["goose"],
+  "opencode-config": ["opencode"],
+  "gemini-settings": ["gemini"],
 };
 
 export interface AgentSetupSummary {

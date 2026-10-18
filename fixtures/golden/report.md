@@ -19,7 +19,7 @@
 
 ### Agent setup
 
-Agent setup: 8 files · claude-code, codex, copilot, cursor, mcp
+Agent setup: 8 files · amp, claude-code, codex, copilot, cursor, jules, mcp, opencode, zed
 
 | Path | Kind |
 | --- | --- |

@@ -18,9 +18,13 @@
         "agents-md": 1
       },
       "tools": [
+        "amp",
         "codex",
         "copilot",
-        "cursor"
+        "cursor",
+        "jules",
+        "opencode",
+        "zed"
       ]
     }
   },

@@ -9,6 +9,7 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- Agent setup inventory covers more tools (F-11): 13 new setup kinds, `claude-rule` (`.claude/rules/`), `aider-config`, `conventions-md`, `continue-rules`, `roo-rules`, `amazonq-rules`, `junie-guidelines`, `zed-rules`, `augment-rules`, `kiro-steering`, `goosehints`, `opencode-config` and `gemini-settings`, so the files of Aider, Continue, Roo Code, Amazon Q Developer, Junie, Zed, Augment, Kiro, Goose, OpenCode and Gemini CLI are listed. `agents-md` is now also credited to amp, jules, opencode and zed, and `agentSetup.summary.tools` in Report v1 accepts new tool names within v1 (a lowercase name pattern replaces the closed list).
 - Require agent setup: the `require-agent-setup` Action input, the CLI's `--require-agent-setup` flag and `setup.require` in `.pharn/ci.yml` (off by default) make `NO_AGENT_SETUP_FILES` an error and the verdict `fail` when the repo has no agent setup files.
 - `DIFF_COVERAGE_UNGATED` (info): diff coverage was measured, with its percent in the text, but no
   threshold gates it (none is set, or it is 0). Before, an ungated run passed with no message.
@@ -112,9 +113,13 @@ the release.
   `claude-local-md`, `agents-md`, `gemini-md`, `claude-settings`, `claude-settings-local`,
   `claude-skill`, `claude-hook`, `claude-agent`, `claude-command`, `cursor-rules`, `cursor-mcp`,
   `copilot-instructions`, `copilot-instructions-scoped`, `copilot-agents`, `copilot-prompts`,
-  `vscode-mcp`, `codex-config`, `windsurf-rules`, `cline-rules` and `mcp-config`. `.mcp.json`,
-  `.claude/` files and `.cursor/rules/` are found in nested directories, and the more specific
-  directory rule wins over a file-name rule.
+  `vscode-mcp`, `codex-config`, `windsurf-rules`, `cline-rules` and `mcp-config`, plus, for Aider,
+  Continue, Roo Code, Amazon Q Developer, Junie, Zed, Augment, Kiro, Goose, OpenCode and Gemini CLI
+  and for `.claude/rules/`, `claude-rule`, `aider-config`, `conventions-md`, `continue-rules`,
+  `roo-rules`, `amazonq-rules`, `junie-guidelines`, `zed-rules`, `augment-rules`, `kiro-steering`,
+  `goosehints`, `opencode-config` and `gemini-settings`. `.mcp.json`, `.claude/` files and
+  `.cursor/rules/` are found in nested directories, and the more specific directory rule wins over
+  a file-name rule.
 - Report v1: optional `agentSetup.summary` (counts per kind and the tools involved), and an
   `Agent setup: N files · tools` line in the markdown, with the table collapsed above 25 files.
 - Report v1 (`schema/report.v1.json`), the stable JSON output, with message codes

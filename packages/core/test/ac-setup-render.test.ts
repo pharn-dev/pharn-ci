@@ -50,7 +50,9 @@ describe("agent setup rendering (agent-setup-inventory)", () => {
     );
     const lines = md.split("\n");
     const section = lines.indexOf("### Agent setup");
-    const summaryLine = lines.indexOf("Agent setup: 8 files · claude-code, codex, copilot, cursor, mcp");
+    const summaryLine = lines.indexOf(
+      "Agent setup: 8 files · amp, claude-code, codex, copilot, cursor, jules, mcp, opencode, zed",
+    );
     const header = lines.indexOf("| Path | Kind |");
     expect(section).toBeGreaterThanOrEqual(0);
     expect(summaryLine).toBeGreaterThan(section);
@@ -62,7 +64,7 @@ describe("agent setup rendering (agent-setup-inventory)", () => {
 
   it("AC-12: uses the singular for a one-file inventory", async () => {
     const md = await renderInventory([{ path: "AGENTS.md", kind: "agents-md" }]);
-    expect(md.split("\n")).toContain("Agent setup: 1 file · codex, copilot, cursor");
+    expect(md.split("\n")).toContain("Agent setup: 1 file · amp, codex, copilot, cursor, jules, opencode, zed");
   });
 
   it("AC-13: collapses the table in a details block above 25 files and keeps the 50-row limit", async () => {

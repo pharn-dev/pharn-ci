@@ -117,17 +117,31 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   does not validate their syntax, judge their content, or check them for prompt injection.
 - **Only tracked files are seen.** The list comes from `git ls-files`, so untracked or ignored
   files (a typical `.claude/settings.local.json`) are not listed.
-- **The kinds detected are fixed (21):** `claude-md`, `claude-local-md`, `agents-md`, `gemini-md`,
+- **The kinds detected are fixed (34):** `claude-md`, `claude-local-md`, `agents-md`, `gemini-md`,
   `claude-settings`, `claude-settings-local`, `claude-skill`, `claude-hook`, `claude-agent`,
-  `claude-command`, `cursor-rules`, `cursor-mcp`, `copilot-instructions`,
+  `claude-command`, `claude-rule`, `cursor-rules`, `cursor-mcp`, `copilot-instructions`,
   `copilot-instructions-scoped`, `copilot-agents`, `copilot-prompts`, `vscode-mcp`, `codex-config`,
-  `windsurf-rules`, `cline-rules` and `mcp-config`.
-- **Nested directories:** `CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`, `GEMINI.md` and `.mcp.json`
-  match anywhere in the tree, as do `.claude/settings.json`, `.claude/settings.local.json` and
-  files under `.claude/skills/`, `.claude/hooks/`, `.claude/agents/`, `.claude/commands/` and
-  `.cursor/rules/`. Everything else matches at the repo root only: `.cursor/mcp.json`,
-  `.vscode/mcp.json`, `.codex/config.toml`, `.cursorrules`, `.windsurfrules`, `.windsurf/rules/`,
-  `.clinerules` and everything under `.github/`.
+  `windsurf-rules`, `cline-rules`, `mcp-config`, `aider-config`, `conventions-md`,
+  `continue-rules`, `roo-rules`, `amazonq-rules`, `junie-guidelines`, `zed-rules`,
+  `augment-rules`, `kiro-steering`, `goosehints`, `opencode-config` and `gemini-settings`.
+- **Nested directories:** `CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`, `GEMINI.md`, `.goosehints`
+  and `.mcp.json` match anywhere in the tree, as do `.claude/settings.json`,
+  `.claude/settings.local.json` and files under `.claude/skills/`, `.claude/hooks/`,
+  `.claude/agents/`, `.claude/commands/`, `.claude/rules/` and `.cursor/rules/`. Everything else
+  matches at the repo root only: `.cursor/mcp.json`, `.vscode/mcp.json`, `.codex/config.toml`,
+  `.cursorrules`, `.windsurfrules`, `.windsurf/rules/`, `.clinerules`, everything under `.github/`,
+  `.aider.conf.yml`, `CONVENTIONS.md`, `.continue/rules/`, `.continuerules`, `.roorules`,
+  `.roorules-<mode>`, `.roo/rules/`, `.roo/rules-<mode>/`, `.amazonq/rules/`,
+  `.junie/guidelines.md`, `.rules`, `.augment/rules/`, `.augment-guidelines`, `.kiro/steering/`,
+  `opencode.json`, `opencode.jsonc` and `.gemini/settings.json`.
+- **Deliberately not detected:**
+  - Sourcegraph Cody: its repo rules were experimental, and the product is being wound down.
+  - User-level and global configuration, such as files in a home directory.
+  - OpenCode's `.opencode/` directory and Gemini CLI's `.gemini/commands/`.
+  - Nested copies of the root-only kinds, such as `packages/app/.rules`.
+  - Files that a config names (for example the `read` list in `.aider.conf.yml`): pharn-ci never
+    reads a setup file, so it does not follow them.
+  - Other tools that also read an existing kind: only `agents-md` credits several tools.
 - **Precedence:** a path is classified by the first matching rule, and rules tied to a directory
   or full path come before the file-name rules. So `.claude/agents/CLAUDE.md` is a `claude-agent`,
   not a `claude-md`.
