@@ -24502,6 +24502,13 @@ function getOctokit(token, options, ...additionalPlugins) {
 }
 
 // src/api.ts
+function diffText(data) {
+  if (typeof data === "string") return data;
+  if (data instanceof ArrayBuffer) return new TextDecoder().decode(data);
+  if (data instanceof Uint8Array) return new TextDecoder().decode(data);
+  const got = data === null ? "null" : data === void 0 ? "no body" : Array.isArray(data) ? "an array" : typeof data === "object" ? "an object" : `a ${typeof data}`;
+  throw new Error(`the compare API returned ${got} instead of diff text`);
+}
 function createGitHubApi(opts) {
   let client;
   const connect = () => {
@@ -24520,7 +24527,7 @@ function createGitHubApi(opts) {
         basehead,
         mediaType: { format: "diff" }
       });
-      return res.data;
+      return diffText(res.data);
     },
     async viewerLogin() {
       const { octokit } = connect();

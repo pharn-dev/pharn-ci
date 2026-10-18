@@ -84,6 +84,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   under the marker, so sibling jobs no longer overwrite each other. Comments from earlier versions
   keep being updated, but a PR whose single comment was shared by two jobs gains one comment for
   the second job after the upgrade.
+- When the Action falls back to the GitHub compare API and the response has no `charset=utf-8` (it
+  arrives as bytes) the diff is decoded as UTF-8, and a body that is not diff text (such as JSON)
+  degrades to `DIFF_UNAVAILABLE`. Before, the step crashed with "text.split is not a function" and
+  wrote no summary, report or outputs.
 
 ### Security
 
