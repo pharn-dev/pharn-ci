@@ -15,7 +15,10 @@ admin applies a change after it merges, from an up-to-date `main` checkout. The
     `Analyze (javascript-typescript)` from GitHub Actions, and `Socket Security: Project Report` and
     `Socket Security: Pull Request Alerts` from the Socket Security app (integration ID `156372`);
   - the only bypass actor is the repository admin role (ID `5`), in `pull_request` mode: an admin
-    can merge a PR without the approval, but cannot push to `main` directly.
+    can merge a PR without the approval, but cannot push to `main` directly. With one maintainer
+    (the only code owner, who cannot approve their own PR), every merge uses this bypass today; the
+    required checks still apply. Remove the bypass once a second code owner exists
+    ([`SECURITY.md`](../../SECURITY.md#maintainer-model-one-person-today)).
 - [`release-tags.json`](release-tags.json) (ruleset ID `24927486`) makes every `v*` tag immutable:
   no update, no force-push, no deletion, and no bypass for anyone. Tags can be created (that is how
   [`release.yml`](../workflows/release.yml) cuts a release), never moved. See
@@ -59,7 +62,9 @@ Use ID `24927486` and `release-tags.json` for the tag ruleset. Run the drift che
 Applied and live, but not represented by a file here:
 
 1. **The `release` environment**, used by the `Release publish` job: a required reviewer (the
-   maintainer), and deployments from `main` only. Check it with:
+   maintainer), and deployments from `main` only. `prevent_self_review` is off: the maintainer who
+   dispatches a release also approves it, since turning it on with a single reviewer would block every
+   release. Turn it on, with a second reviewer, when a second maintainer joins. Check it with:
 
    ```bash
    gh api repos/pharn-dev/pharn-ci/environments/release \
