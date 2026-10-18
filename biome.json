@@ -50,6 +50,20 @@
                   }
                 ]
               }
+            },
+            "noRestrictedGlobals": {
+              "level": "error",
+              "options": {
+                "deniedGlobals": {
+                  "Date": "packages/core is pure: no clocks or randomness. Pass the value in from packages/cli or packages/action.",
+                  "Intl": "packages/core is pure: no clocks or randomness. Pass the value in from packages/cli or packages/action.",
+                  "performance": "packages/core is pure: no clocks or randomness. Pass the value in from packages/cli or packages/action.",
+                  "crypto": "packages/core is pure: no clocks or randomness. Pass the value in from packages/cli or packages/action.",
+                  "setTimeout": "packages/core is pure: no clocks or randomness. Pass the value in from packages/cli or packages/action.",
+                  "setInterval": "packages/core is pure: no clocks or randomness. Pass the value in from packages/cli or packages/action.",
+                  "Function": "packages/core is pure: no clocks or randomness. Pass the value in from packages/cli or packages/action."
+                }
+              }
             }
           }
         }

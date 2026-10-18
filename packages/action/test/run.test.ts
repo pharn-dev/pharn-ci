@@ -1,154 +1,7 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { createGitHubApi } from "../src/api.js";
-import {
-  type ActionContext,
-  type ActionDeps,
-  COMMENT_MARKER,
-  commentScopeLine,
-  type IssueComment,
-  MAX_COMMENT_LENGTH,
-  run,
-} from "../src/run.js";
-
-const FIXTURES = new URL("../../../fixtures/", import.meta.url);
-const fixture = (p: string) => readFileSync(new URL(p, FIXTURES), "utf8");
-
-const WORKSPACE = "/home/runner/work/demo/demo";
-const BOT = { login: "github-actions[bot]" };
-/** The scope line of the harness context, which names no workflow or job. */
-const SCOPE = commentScopeLine("", "");
-const PR_CONTEXT: ActionContext = {
-  eventName: "pull_request",
-  sha: "merge000",
-  payload: { pull_request: { number: 7, base: { sha: "a".repeat(40) }, head: { sha: "b".repeat(40) } } },
-};
-
-interface Harness {
-  deps: ActionDeps;
-  outputs: Record<string, string>;
-  failed: string[];
-  warnings: string[];
-  summary: string[];
-  written: Record<string, string>;
-  comments: IssueComment[];
-  apiCalls: string[];
-  gitCalls: string[][];
-}
-
-interface Options {
-  inputs?: Record<string, string>;
-  files?: Record<string, string>;
-  context?: ActionContext;
-  localGit?: boolean;
-  commentError?: Error;
-  compareError?: Error;
-  existingComments?: IssueComment[];
-  /** Comments a concurrent run posts while this run creates its own (a list-then-create race). */
-  racingComments?: IssueComment[];
-  deleteError?: Error;
-  /** Error for listing comments again after creating one. */
-  relistError?: Error;
-  /** Login the token comments as (default: the GITHUB_TOKEN bot). */
-  viewer?: string;
-  /** Output of `git rev-parse HEAD` (default: not the PR head). */
-  localHead?: string;
-  /** Tracked files returned by `git ls-files` (default: fixtures/golden/files.txt). */
-  lsFiles?: string[];
-}
-
-function harness(opts: Options = {}): Harness {
-  const h: Harness = {
-    outputs: {},
-    failed: [],
-    warnings: [],
-    summary: [],
-    written: {},
-    comments: [...(opts.existingComments ?? [])],
-    apiCalls: [],
-    gitCalls: [],
-    deps: undefined as never,
-  };
-  const files: Record<string, string> = {
-    [`${WORKSPACE}/coverage/lcov.info`]: fixture("golden/coverage.info"),
-    ...opts.files,
-  };
-  const inputs: Record<string, string> = {
-    "coverage-file": "coverage/lcov.info",
-    comment: "true",
-    "fail-on-threshold": "true",
-    config: "",
-    ...opts.inputs,
-  };
-  const localGit = opts.localGit ?? true;
-  const viewer = opts.viewer ?? BOT.login;
-  const lsFiles = opts.lsFiles ?? fixture("golden/files.txt").trim().split("\n");
-  let nextId = 100;
-  let lists = 0;
-
-  h.deps = {
-    getInput: (name) => inputs[name] ?? "",
-    context: opts.context ?? PR_CONTEXT,
-    workspace: WORKSPACE,
-    tempDir: "/tmp/runner",
-    api: {
-      async compareDiff(basehead) {
-        h.apiCalls.push(`compare ${basehead}`);
-        if (opts.compareError) throw opts.compareError;
-        return fixture("golden/pr.diff");
-      },
-      viewerLogin: async () => viewer,
-      async listComments(n) {
-        h.apiCalls.push(`list ${n}`);
-        if (opts.commentError) throw opts.commentError;
-        if (lists++ > 0 && opts.relistError) throw opts.relistError;
-        return h.comments.map((c) => ({ ...c }));
-      },
-      async createComment(n, body) {
-        h.apiCalls.push(`create ${n}`);
-        h.comments.push({ id: nextId++, body, user: { login: viewer } }, ...(opts.racingComments ?? []));
-        h.comments.sort((a, b) => a.id - b.id);
-        return viewer;
-      },
-      async updateComment(id, body) {
-        h.apiCalls.push(`update ${id}`);
-        const c = h.comments.find((x) => x.id === id);
-        if (c) c.body = body;
-      },
-      async deleteComment(id) {
-        h.apiCalls.push(`delete ${id}`);
-        if (opts.deleteError) throw opts.deleteError;
-        h.comments = h.comments.filter((x) => x.id !== id);
-      },
-    },
-    async git(args) {
-      h.gitCalls.push(args);
-      if (args[0] === "ls-files") return `${lsFiles.join("\0")}\0`;
-      if (args[0] === "ls-tree") return "";
-      if (!localGit) throw new Error("fatal: bad object");
-      if (args[0] === "rev-parse" && args[1] === "HEAD") return `${opts.localHead ?? "c".repeat(40)}\n`;
-      if (args[0] === "rev-parse") return "ok\n";
-      if (args[0] === "diff") return fixture("golden/pr.diff");
-      throw new Error(`unexpected git ${args.join(" ")}`);
-    },
-    readFile: async (p) => files[p] ?? null,
-    async writeFile(p, text) {
-      h.written[p] = text;
-    },
-    resolvePath: (...segments) =>
-      segments.reduce((acc, s) => (s.startsWith("/") ? s : `${acc.replace(/\/$/, "")}/${s.replace(/^\.\//, "")}`), ""),
-    info: () => {},
-    warning: (m) => h.warnings.push(m),
-    setOutput: (name, value) => {
-      h.outputs[name] = value;
-    },
-    setFailed: (m) => h.failed.push(m),
-    writeSummary: async (md) => {
-      h.summary.push(md);
-    },
-  };
-  return h;
-}
+import { type ActionContext, COMMENT_MARKER, MAX_COMMENT_LENGTH, run } from "../src/run.js";
+import { BOT, fixture, type Harness, harness, PR_CONTEXT, SCOPE, WORKSPACE } from "./harness.js";
 
 describe("action run", () => {
   it("writes report.json, outputs, job summary and a sticky comment, and fails below threshold", async () => {
@@ -413,6 +266,10 @@ describe("action run", () => {
     const report = await run(h.deps);
     const body = h.comments[0]?.body ?? "";
     expect(body.length).toBeLessThanOrEqual(MAX_COMMENT_LENGTH);
+    // GitHub's own limit on a comment body, deliberately not the code's constant.
+    expect(MAX_COMMENT_LENGTH).toBeLessThanOrEqual(65_536);
+    expect(h.posted.length).toBeGreaterThan(0);
+    for (const posted of h.posted) expect(posted.length).toBeLessThanOrEqual(65_536);
     expect(body.startsWith(COMMENT_MARKER)).toBe(true);
     expect(body).toContain(`pharn-ci: ${report?.verdict}`);
     for (const m of report?.messages ?? []) expect(body).toContain(`\`${m.code}\``);
@@ -592,6 +449,7 @@ describe("action run", () => {
     [{ exclude: "src/**, /abs" }, 'exclude "/abs" must not start with "/"'],
     [{ "coverage-file": "" }, "no coverage file"],
     [{ "base-ref": "--output=/tmp/x" }, 'base-ref "--output=/tmp/x" must not start with "-"'],
+    [{ "base-ref": "-x" }, 'base-ref "-x" must not start with "-"'],
   ])("fails clearly for invalid inputs %j", async (inputs, message) => {
     const h = harness({ inputs });
     expect(await run(h.deps)).toBeUndefined();
