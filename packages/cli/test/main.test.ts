@@ -1,55 +1,11 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type CliDeps, EXIT_ERROR, EXIT_FAIL, EXIT_OK, main } from "../src/main.js";
+import { EXIT_ERROR, EXIT_FAIL, EXIT_OK, main } from "../src/main.js";
 import { nodeDeps } from "../src/nodeDeps.js";
-
-const FIXTURES = new URL("../../../fixtures/", import.meta.url);
-const fixture = (p: string) => readFileSync(new URL(p, FIXTURES), "utf8");
-
-interface Fake extends CliDeps {
-  out: string;
-  err: string;
-  gitCalls: string[][];
-}
-
-function fakeDeps(files: Record<string, string>, gitOverrides: Record<string, string | Error> = {}): Fake {
-  const fake: Fake = {
-    cwd: "/repo/sub",
-    out: "",
-    err: "",
-    gitCalls: [],
-    async git(args) {
-      fake.gitCalls.push(args);
-      const override = gitOverrides[args[0] as string];
-      if (override instanceof Error) throw override;
-      if (override !== undefined) return override;
-      if (args[0] === "rev-parse") return "/repo\n";
-      if (args[0] === "diff") return fixture("golden/pr.diff");
-      if (args[0] === "ls-files") return `${fixture("golden/files.txt").trim().split("\n").join("\0")}\0`;
-      if (args[0] === "ls-tree") return "";
-      throw new Error(`unexpected git ${args.join(" ")}`);
-    },
-    async readFile(path) {
-      return files[path] ?? null;
-    },
-    resolvePath: (...segments) =>
-      segments.reduce((acc, s) => (s.startsWith("/") ? s : `${acc.replace(/\/$/, "")}/${s.replace(/^\.\//, "")}`), ""),
-    stdout: (t) => {
-      fake.out += t;
-    },
-    stderr: (t) => {
-      fake.err += t;
-    },
-  };
-  return fake;
-}
-
-const coverage = {
-  "/repo/sub/lcov.info": fixture("golden/coverage.info").replaceAll("/home/runner/work/demo/demo", "/repo"),
-};
+import { coverage, fakeDeps } from "./fake-deps.js";
 
 describe("cli main", () => {
   it("prints JSON to stdout and exits 1 when below the threshold", async () => {
@@ -143,6 +99,8 @@ describe("cli main", () => {
       ["check", "--coverage", "x", "--base=--output=/tmp/pwned"],
       '--base "--output=/tmp/pwned" must not start with "-"',
     ],
+    // `--base=-x`: parseArgs refuses the two-token `--base -x` as an ambiguous option argument.
+    [["check", "--coverage", "x", "--base=-x"], '--base "-x" must not start with "-"'],
   ])("exits 2 for %j", async (argv, message) => {
     const deps = fakeDeps({});
     expect(await main(argv, deps)).toBe(EXIT_ERROR);
