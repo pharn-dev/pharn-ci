@@ -12,6 +12,29 @@ export interface GitHubApiOptions {
 }
 
 /**
+ * The compare API's diff body as text. Octokit decodes a body as text only when its content type is
+ * `text/*` or carries `charset=utf-8`; other types arrive as an ArrayBuffer, and a JSON body as a
+ * parsed value. An ArrayBuffer is decoded as UTF-8; anything else throws, so the caller degrades the
+ * way it does for any compare failure (DIFF_UNAVAILABLE) instead of crashing on a non-string.
+ */
+export function diffText(data: unknown): string {
+  if (typeof data === "string") return data;
+  if (data instanceof ArrayBuffer) return new TextDecoder().decode(data);
+  if (data instanceof Uint8Array) return new TextDecoder().decode(data as Uint8Array<ArrayBuffer>);
+  const got =
+    data === null
+      ? "null"
+      : data === undefined
+        ? "no body"
+        : Array.isArray(data)
+          ? "an array"
+          : typeof data === "object"
+            ? "an object"
+            : `a ${typeof data}`;
+  throw new Error(`the compare API returned ${got} instead of diff text`);
+}
+
+/**
  * The GitHub API, with the client built on first use. A run with `comment: false` and a local diff
  * makes no API call, so it needs no token. Without one, every call rejects, and run() degrades the
  * way it does for any API failure (DIFF_UNAVAILABLE for the compare fallback, a warning for the comment).
@@ -35,8 +58,7 @@ export function createGitHubApi(opts: GitHubApiOptions): GitHubApi {
         basehead,
         mediaType: { format: "diff" },
       });
-      // With the diff media type the response body is the raw diff text.
-      return res.data as unknown as string;
+      return diffText(res.data);
     },
     async viewerLogin() {
       const { octokit } = connect();
