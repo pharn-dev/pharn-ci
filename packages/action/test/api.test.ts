@@ -8,6 +8,22 @@ function fakeOctokit() {
     rest: {
       repos: { compareCommitsWithBasehead: vi.fn(async () => ({ data: "diff text" })) },
       users: { getAuthenticated: vi.fn(async () => ({ data: { login: "me" } })) },
+      pulls: {
+        get: vi.fn(async () => ({ data: { base: { sha: "b".repeat(40) }, head: { sha: "h".repeat(40) } } })),
+      },
+      git: {
+        getTree: vi.fn(async () => ({
+          data: {
+            truncated: false,
+            tree: [
+              { path: "src", type: "tree" },
+              { path: "src/a.ts", type: "blob" },
+              { path: "vendor/lib", type: "commit" },
+              { path: "AGENTS.md", type: "blob" },
+            ],
+          },
+        })),
+      },
       issues: {
         listComments: vi.fn(),
         createComment: vi.fn(async () => ({ data: { user: { login: "me" } } })),
@@ -67,6 +83,34 @@ describe("createGitHubApi", () => {
     expect(octokit.rest.issues.deleteComment).toHaveBeenCalledWith({ ...REPO, comment_id: 2 });
     expect(getOctokit).toHaveBeenCalledTimes(1);
     expect(getOctokit).toHaveBeenCalledWith("t0ken");
+  });
+
+  it("rejects the pull request and tree reads with a clear error when the token is empty", async () => {
+    const { opts, getOctokit } = options("");
+    const api = createGitHubApi(opts);
+    const empty = "the github-token input is empty";
+    await expect(api.getPullRequest(42)).rejects.toThrow(empty);
+    await expect(api.listTree("a".repeat(40))).rejects.toThrow(empty);
+    expect(getOctokit).not.toHaveBeenCalled();
+  });
+
+  it("reads a pull request's base and head SHAs", async () => {
+    const { opts, octokit } = options("t0ken");
+    expect(await createGitHubApi(opts).getPullRequest(42)).toEqual({
+      baseSha: "b".repeat(40),
+      headSha: "h".repeat(40),
+    });
+    expect(octokit.rest.pulls.get).toHaveBeenCalledWith({ ...REPO, pull_number: 42 });
+  });
+
+  it("lists the blob paths of a tree recursively and reports whether it was truncated", async () => {
+    const { opts, octokit } = options("t0ken");
+    const api = createGitHubApi(opts);
+    expect(await api.listTree("c".repeat(40))).toEqual({ paths: ["src/a.ts", "AGENTS.md"], truncated: false });
+    expect(octokit.rest.git.getTree).toHaveBeenCalledWith({ ...REPO, tree_sha: "c".repeat(40), recursive: "1" });
+
+    octokit.rest.git.getTree.mockResolvedValueOnce({ data: { truncated: true, tree: [] } });
+    expect(await api.listTree("c".repeat(40))).toEqual({ paths: [], truncated: true });
   });
 
   it("returns no login when /user is not readable", async () => {

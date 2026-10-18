@@ -10,6 +10,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 ### Added
 
 - Agent setup inventory covers more tools (F-11): 13 new setup kinds, `claude-rule` (`.claude/rules/`), `aider-config`, `conventions-md`, `continue-rules`, `roo-rules`, `amazonq-rules`, `junie-guidelines`, `zed-rules`, `augment-rules`, `kiro-steering`, `goosehints`, `opencode-config` and `gemini-settings`, so the files of Aider, Continue, Roo Code, Amazon Q Developer, Junie, Zed, Augment, Kiro, Goose, OpenCode and Gemini CLI are listed. `agents-md` is now also credited to amp, jules, opencode and zed, and `agentSetup.summary.tools` in Report v1 accepts new tool names within v1 (a lowercase name pattern replaces the closed list).
+- PR-number mode: the `pr-number` and `head-sha` Action inputs let pharn-ci measure and comment on a
+  pull request from a `workflow_run` or `workflow_dispatch` run, with no PR code checked out. The PR,
+  its diff and its file list come from the GitHub API (two new read-only calls: get a pull request,
+  get a git tree), `pr-number` is validated, and `head-sha` is checked against the PR head. The README
+  documents the two-workflow pattern for comments on fork PRs.
 - Require agent setup: the `require-agent-setup` Action input, the CLI's `--require-agent-setup` flag and `setup.require` in `.pharn/ci.yml` (off by default) make `NO_AGENT_SETUP_FILES` an error and the verdict `fail` when the repo has no agent setup files.
 - `DIFF_COVERAGE_UNGATED` (info): diff coverage was measured, with its percent in the text, but no
   threshold gates it (none is set, or it is 0). Before, an ungated run passed with no message.
@@ -91,6 +96,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Security
 
+- A `pull_request_target` run that checked out the base branch no longer tells users to check out the
+  PR head, which would run fork code with a write token. `DIFF_UNAVAILABLE` now says it cannot be
+  measured safely and points to `pull_request` and `SECURITY.md`; the safe `workflow_run` pattern for
+  comments on fork PRs is documented in the README.
 - Cobertura path resolution no longer slows down quadratically on a crafted report with thousands
   of `<source>` entries and thousands of filenames (F-24). Results are unchanged, except that a
   relative `filename` starting with `..` is now joined to at most the first 16 distinct sources.

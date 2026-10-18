@@ -64,7 +64,8 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   push without a previous commit, or no `base-ref` outside a pull request or merge queue), when
   neither local git nor the GitHub API can produce the diff (for example a shallow checkout and an
   API error), when the diff is over the size limit, and when a `pull_request_target` run checked out
-  the base branch.
+  the base branch (that run is refused, not measured: checking out the PR head to measure it would
+  run fork code with a write token; see `SECURITY.md`).
   Use `fetch-depth: 0` (or let the GitHub API fallback fetch the diff) and a `pull_request` trigger
   and this does not happen in practice. A `base-ref` you set that is found neither in the checkout
   nor through the GitHub API is not `DIFF_UNAVAILABLE`: it fails the step, like a bad `--base` in
@@ -170,6 +171,12 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
 - **pharn-ci cannot protect the job from the PR.** On `pull_request`, the PR's own code (its tests)
   runs in the same job before pharn-ci does. pharn-ci's guarantees are about what pharn-ci itself
   does with the token and with the input it reads.
+- **PR-number mode depends on the GitHub API.** With the `pr-number` input, the diff comes from the
+  compare API, so it is subject to GitHub's size limit for compare diffs (a diff over it is
+  `DIFF_UNAVAILABLE`), and the file list comes from the git trees API. For a very large repository
+  that listing is truncated: pharn-ci warns, and the agent setup scan may miss files. The coverage
+  file still comes from the workflow, so a forged one can flatter its own PR; the `pull_request`
+  run's verdict is the gate, not the comment.
 
 ## 6. Distribution
 
