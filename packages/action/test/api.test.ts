@@ -10,7 +10,7 @@ function fakeOctokit() {
       users: { getAuthenticated: vi.fn(async () => ({ data: { login: "me" } })) },
       issues: {
         listComments: vi.fn(),
-        createComment: vi.fn(async () => ({})),
+        createComment: vi.fn(async () => ({ data: { user: { login: "me" } } })),
         updateComment: vi.fn(async () => ({})),
         deleteComment: vi.fn(async () => ({})),
       },
@@ -59,7 +59,7 @@ describe("createGitHubApi", () => {
     });
     expect(await api.viewerLogin()).toBe("me");
     expect(await api.listComments(7)).toEqual([{ id: 1 }]);
-    await api.createComment(7, "body");
+    expect(await api.createComment(7, "body")).toBe("me");
     await api.updateComment(1, "body");
     await api.deleteComment(2);
     expect(octokit.rest.issues.createComment).toHaveBeenCalledWith({ ...REPO, issue_number: 7, body: "body" });
@@ -69,9 +69,9 @@ describe("createGitHubApi", () => {
     expect(getOctokit).toHaveBeenCalledWith("t0ken");
   });
 
-  it("falls back to the GITHUB_TOKEN bot login when /user is not readable", async () => {
+  it("returns no login when /user is not readable", async () => {
     const { opts, octokit } = options("t0ken");
     octokit.rest.users.getAuthenticated.mockRejectedValueOnce(new Error("Resource not accessible by integration"));
-    expect(await createGitHubApi(opts).viewerLogin()).toBe("github-actions[bot]");
+    expect(await createGitHubApi(opts).viewerLogin()).toBeNull();
   });
 });

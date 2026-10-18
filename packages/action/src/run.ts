@@ -16,6 +16,20 @@ import {
 /** Identifies the single sticky comment pharn-ci owns on a PR. */
 export const COMMENT_MARKER = "<!-- pharn-ci -->";
 
+/** Start of the second comment line, which names the workflow and job that own the comment. */
+const SCOPE_LINE_PREFIX = "<!-- pharn-ci scope:";
+
+/** The login of the default GITHUB_TOKEN: the one author of a pre-scope comment an unknown viewer may claim. */
+const DEFAULT_TOKEN_LOGIN = "github-actions[bot]";
+
+/**
+ * The scope line of a workflow and job. Both parts are URL-encoded, so neither can close the HTML
+ * comment, add a line or contain the "/" separator.
+ */
+export function commentScopeLine(workflow: string, job: string): string {
+  return `${SCOPE_LINE_PREFIX} ${encodeURIComponent(workflow)}/${encodeURIComponent(job)} -->`;
+}
+
 export interface IssueComment {
   id: number;
   body?: string | null | undefined;
@@ -25,10 +39,14 @@ export interface IssueComment {
 /** The slice of the GitHub API the action uses. */
 export interface GitHubApi {
   compareDiff(basehead: string): Promise<string>;
-  /** Login the token comments as, so only pharn-ci's own comment is ever updated. */
-  viewerLogin(): Promise<string>;
+  /**
+   * Login the token comments as. `null` when the token cannot read `GET /user` (an App installation
+   * token or the default GITHUB_TOKEN): the login is then unknown and comments are matched by scope.
+   */
+  viewerLogin(): Promise<string | null>;
   listComments(issueNumber: number): Promise<IssueComment[]>;
-  createComment(issueNumber: number, body: string): Promise<void>;
+  /** Resolves the created comment's author login, or null when the response names none. */
+  createComment(issueNumber: number, body: string): Promise<string | null>;
   updateComment(commentId: number, body: string): Promise<void>;
   /** Only ever called on a duplicate of pharn-ci's own marker comment (see upsertComment). */
   deleteComment(commentId: number): Promise<void>;
@@ -37,6 +55,10 @@ export interface GitHubApi {
 export interface ActionContext {
   eventName: string;
   sha: string;
+  /** Name of the running workflow (GITHUB_WORKFLOW). */
+  workflow?: string;
+  /** Id of the running job (GITHUB_JOB). */
+  job?: string;
   payload: {
     before?: string;
     pull_request?: { number: number; base: { sha: string }; head: { sha: string } };
@@ -155,12 +177,13 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   await deps.writeSummary(summary).catch((err: unknown) => deps.warning(`could not write job summary: ${String(err)}`));
 
   if (comment && pr) {
+    const scopeLine = commentScopeLine(deps.context.workflow ?? "", deps.context.job ?? "");
     const body = fitMarkdown(report, {
-      prefix: `${COMMENT_MARKER}\n`,
+      prefix: `${COMMENT_MARKER}\n${scopeLine}\n`,
       note: TRUNCATED_NOTE,
       fits: (text) => text.length <= MAX_COMMENT_LENGTH,
     });
-    await upsertComment(deps, pr.number, body);
+    await upsertComment(deps, pr.number, body, scopeLine);
   }
 
   deps.info(`pharn-ci verdict: ${report.verdict}`);
@@ -283,28 +306,36 @@ export function fitMarkdown(
 }
 
 /**
- * Create or update the one comment carrying COMMENT_MARKER: the oldest (lowest id) marker comment
- * of the token's own login. Concurrent runs on one PR can each find none and create one, so after
- * creating, the comments are listed again and newer own duplicates are deleted. Clean-up failures
- * are only warnings.
+ * Create or update the one comment carrying COMMENT_MARKER for this scope: the oldest (lowest id)
+ * own marker comment (see ownComments). Concurrent runs on one PR can each find none and create
+ * one, so after creating, the comments are listed again and newer duplicates are deleted. A
+ * duplicate must share the kept comment's author login and scope. Clean-up failures are only
+ * warnings.
  */
 export async function upsertComment(
   deps: Pick<ActionDeps, "api" | "info" | "warning">,
   issueNumber: number,
   body: string,
+  scopeLine: string,
 ) {
   try {
     const [comments, viewer] = await Promise.all([deps.api.listComments(issueNumber), deps.api.viewerLogin()]);
-    const [existing, ...duplicates] = ownComments(comments, viewer);
+    const [existing, ...rest] = ownComments(comments, viewer, scopeLine);
     if (existing) {
       await deps.api.updateComment(existing.id, body);
       deps.info(`updated pharn-ci comment ${existing.id}`);
-      await deleteDuplicates(deps, duplicates);
+      // With an unknown viewer, own comments may come from different bots: only the kept one's login is touched.
+      const scope = commentScope(existing, scopeLine);
+      await deleteDuplicates(
+        deps,
+        rest.filter((c) => c.user?.login === existing.user?.login && commentScope(c, scopeLine) === scope),
+      );
       return;
     }
-    await deps.api.createComment(issueNumber, body);
+    // A response without an author leaves the viewer; with neither, the clean-up cannot tell its comment apart.
+    const createdLogin = (await deps.api.createComment(issueNumber, body)) ?? viewer;
     deps.info("created pharn-ci comment");
-    await removeRaceDuplicates(deps, issueNumber, viewer, body);
+    if (createdLogin !== null) await removeRaceDuplicates(deps, issueNumber, createdLogin, body, scopeLine);
   } catch (err) {
     // Typical cause: PRs from forks get a read-only token.
     deps.warning(
@@ -314,22 +345,57 @@ export async function upsertComment(
   }
 }
 
-/** Anyone can post a comment containing the marker; only the ones this token wrote are pharn-ci's, oldest first. */
-function ownComments(comments: IssueComment[], viewer: string): IssueComment[] {
+/**
+ * How a marker comment relates to this run's scope line, read from the comment's second line:
+ * "same" when it equals the scope line, "other" when it is any other scope line (compared as exact
+ * text after dropping a CRLF line ending, so a malformed one is "other"), "legacy" when it is not a
+ * scope line (a comment from before scopes) or the comment has no second line.
+ */
+function commentScope(comment: IssueComment, scopeLine: string): "same" | "other" | "legacy" {
+  // A body edited in GitHub's web editor comes back with CRLF line endings.
+  const second = (comment.body ?? "").split("\n")[1]?.replace(/\r$/, "");
+  if (second === scopeLine) return "same";
+  return second?.startsWith(SCOPE_LINE_PREFIX) ? "other" : "legacy";
+}
+
+/**
+ * Anyone can post a comment containing the marker; only some are pharn-ci's, oldest first. A
+ * comment of another scope never is. With a known viewer, it is the viewer's own comment of this
+ * scope or from before scopes. With an unknown viewer (no readable `GET /user`), it is a bot's
+ * comment of this scope (a login ending in `[bot]`, which GitHub does not allow in a user login),
+ * or a pre-scope comment of the default GITHUB_TOKEN.
+ */
+function ownComments(comments: IssueComment[], viewer: string | null, scopeLine: string): IssueComment[] {
   return comments
-    .filter((c) => c.user?.login === viewer && c.body?.startsWith(COMMENT_MARKER))
+    .filter((c) => {
+      if (!c.body?.startsWith(COMMENT_MARKER)) return false;
+      const login = c.user?.login;
+      const scope = commentScope(c, scopeLine);
+      if (login === undefined || scope === "other") return false;
+      if (viewer !== null) return login === viewer;
+      return scope === "same" ? login.endsWith("[bot]") : login === DEFAULT_TOKEN_LOGIN;
+    })
     .sort((a, b) => a.id - b.id);
 }
 
-/** After a create: keep the oldest own marker comment, carrying this run's report, and delete the rest. */
+/**
+ * After a create: keep the oldest marker comment of the created comment's login and this scope,
+ * carrying this run's report, and delete the rest. Comments from before scopes are left alone.
+ */
 async function removeRaceDuplicates(
   deps: Pick<ActionDeps, "api" | "info" | "warning">,
   issueNumber: number,
-  viewer: string,
+  createdLogin: string,
   body: string,
+  scopeLine: string,
 ) {
   try {
-    const [keep, ...duplicates] = ownComments(await deps.api.listComments(issueNumber), viewer);
+    const [keep, ...duplicates] = (await deps.api.listComments(issueNumber))
+      .filter(
+        (c) =>
+          c.body?.startsWith(COMMENT_MARKER) && c.user?.login === createdLogin && commentScope(c, scopeLine) === "same",
+      )
+      .sort((a, b) => a.id - b.id);
     if (!keep || duplicates.length === 0) return;
     await deleteDuplicates(deps, duplicates);
     // This run's comment may have been one of the deleted duplicates.
@@ -342,7 +408,7 @@ async function removeRaceDuplicates(
   }
 }
 
-/** Callers pass only comments from ownComments: the marker and the token's own login. */
+/** Callers pass only own marker comments with the kept comment's author login and scope. */
 async function deleteDuplicates(deps: Pick<ActionDeps, "api" | "info" | "warning">, duplicates: IssueComment[]) {
   for (const dup of duplicates) {
     try {

@@ -78,6 +78,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 - The CLI lists tracked files from the repository root when run from a subdirectory, so coverage
   paths are compared with the same names wherever it runs. The agent setup inventory of a
   subdirectory run now covers the whole repo.
+- With a GitHub App token, the sticky comment is now found and updated instead of re-posted on every
+  run. Each workflow and job owns its own comment, marked by a `<!-- pharn-ci scope: ... -->` line
+  under the marker, so sibling jobs no longer overwrite each other. Comments from earlier versions
+  keep being updated, but a PR whose single comment was shared by two jobs gains one comment for
+  the second job after the upgrade.
 
 ### Security
 
