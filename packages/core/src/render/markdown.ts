@@ -44,6 +44,8 @@ const MESSAGE_HINTS: Record<MessageCode, string> = {
     "Generate the coverage file in CI and stop tracking it (`git rm --cached` it and add it to `.gitignore`).",
   DIFF_BINARY_COVERED_FILE:
     "Remove `-diff` or `binary` attributes for source files from `.gitattributes` so their changes are measured.",
+  TEST_FILES_DELETED:
+    "Check that the deleted or renamed tests were meant to go, or that their cases moved to a file the test runner still runs.",
   NO_AGENT_SETUP_FILES: "Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test.",
   AGENT_SETUP_FILE_EMPTY: "Fill in the empty file or delete it; an agent reads nothing from an empty file.",
 };

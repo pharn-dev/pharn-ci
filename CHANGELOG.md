@@ -10,6 +10,9 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 ### Added
 
 - `AGENT_SETUP_FILE_EMPTY` (warn): a listed agent setup file that is empty (size 0 in `HEAD`, from `git ls-tree -r -l`) is reported with the first path, and stays in the inventory. When `git ls-tree` fails, none is reported (the CLI notes it on stderr, the Action warns). Because it is a warning, the verdict of a repo with an empty `CLAUDE.md` changes from `pass` to `warn`.
+- `TEST_FILES_DELETED` (info): the change deletes a test file, or renames one to a name that is not a test file
+  (F-21). The message names up to five of them; the verdict is unchanged. Test files are recognized by name
+  (`.test.`/`.spec.` in the basename, or a `test`, `tests` or `__tests__` directory).
 - Agent setup inventory covers more tools (F-11): 13 new setup kinds, `claude-rule` (`.claude/rules/`), `aider-config`, `conventions-md`, `continue-rules`, `roo-rules`, `amazonq-rules`, `junie-guidelines`, `zed-rules`, `augment-rules`, `kiro-steering`, `goosehints`, `opencode-config` and `gemini-settings`, so the files of Aider, Continue, Roo Code, Amazon Q Developer, Junie, Zed, Augment, Kiro, Goose, OpenCode and Gemini CLI are listed. `agents-md` is now also credited to amp, jules, opencode and zed, and `agentSetup.summary.tools` in Report v1 accepts new tool names within v1 (a lowercase name pattern replaces the closed list).
 - PR-number mode: the `pr-number` and `head-sha` Action inputs let pharn-ci measure and comment on a
   pull request from a `workflow_run` or `workflow_dispatch` run, with no PR code checked out. The PR,

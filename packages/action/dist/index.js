@@ -25983,6 +25983,13 @@ function buildReport(input) {
       text: `The diff shows ${pathList(input.binaryCoveredPaths)} as binary, so their added lines were not measured; check .gitattributes for -diff or binary on source files.`
     });
   }
+  if (input.deletedTestFiles !== void 0 && input.deletedTestFiles.length > 0) {
+    messages.push({
+      level: "info",
+      code: "TEST_FILES_DELETED",
+      text: `This change deletes or renames away test files: ${pathList(input.deletedTestFiles)}. Check that the tests they held were meant to go before trusting the result.`
+    });
+  }
   if (input.agentSetup.files.length === 0) {
     const required = input.requireAgentSetup === true;
     const found = "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found";
@@ -26148,6 +26155,24 @@ function scanAgentSetup(paths) {
   return { files };
 }
 
+// ../core/src/testFiles.ts
+var TEST_DIRECTORIES = /* @__PURE__ */ new Set(["test", "tests", "__tests__"]);
+var byCodeUnit2 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function isTestFile(path) {
+  const segments = path.split("/");
+  const basename = segments[segments.length - 1] ?? "";
+  if (basename.includes(".test.") || basename.includes(".spec.")) return true;
+  return segments.slice(0, -1).some((segment) => TEST_DIRECTORIES.has(segment));
+}
+function deletedTestFiles(diff) {
+  const found = /* @__PURE__ */ new Set();
+  for (const file of diff) {
+    if (file.status === "deleted" && isTestFile(file.path)) found.add(file.path);
+    else if (file.status === "renamed" && isTestFile(file.oldPath) && !isTestFile(file.path)) found.add(file.oldPath);
+  }
+  return [...found].sort(byCodeUnit2);
+}
+
 // ../core/src/check.ts
 function check(input) {
   const matchers = [...new Set((input.exclude ?? []).map((p) => parseExcludePattern(p)))].map(compileGlob);
@@ -26156,6 +26181,7 @@ function check(input) {
   const agentSetup = scanAgentSetup(input.repoFiles);
   const parsedDiff = "text" in input.diff ? parseUnifiedDiff(input.diff.text) : null;
   const configPaths = parsedDiff === null ? [] : changedConfigPaths(parsedDiff, input.configPath, input.repoRoot);
+  const testPaths = parsedDiff === null ? [] : deletedTestFiles(parsedDiff);
   const coverageInput = input.coverage;
   let files;
   let selection;
@@ -26185,6 +26211,7 @@ function check(input) {
     agentSetup,
     requireAgentSetup: input.requireAgentSetup === true,
     ...configPaths.length > 0 ? { changedConfigPaths: configPaths } : {},
+    ...testPaths.length > 0 ? { deletedTestFiles: testPaths } : {},
     ...trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage },
     ...emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {}
   };
@@ -26445,6 +26472,7 @@ var MESSAGE_HINTS = {
   CONFIG_CHANGED_IN_DIFF: "Review the config and workflow changes before trusting the verdict; protect `.pharn/ci.yml` and `.github/workflows/` with CODEOWNERS.",
   COVERAGE_FILE_TRACKED: "Generate the coverage file in CI and stop tracking it (`git rm --cached` it and add it to `.gitignore`).",
   DIFF_BINARY_COVERED_FILE: "Remove `-diff` or `binary` attributes for source files from `.gitattributes` so their changes are measured.",
+  TEST_FILES_DELETED: "Check that the deleted or renamed tests were meant to go, or that their cases moved to a file the test runner still runs.",
   NO_AGENT_SETUP_FILES: "Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test.",
   AGENT_SETUP_FILE_EMPTY: "Fill in the empty file or delete it; an agent reads nothing from an empty file."
 };

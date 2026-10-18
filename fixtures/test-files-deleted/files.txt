@@ -1,0 +1,6 @@
+AGENTS.md
+src/app.ts
+src/b.test.ts
+src/x.ts
+test/a.ts
+test/helpers.ts

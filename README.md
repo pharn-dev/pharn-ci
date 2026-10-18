@@ -508,6 +508,7 @@ it. See [`schema/report.v1.json`](schema/report.v1.json). Branch on message `cod
 | `CONFIG_CHANGED_IN_DIFF`        | The change edits the pharn-ci config in use or a workflow under `.github/workflows/` (`warn`) |
 | `COVERAGE_FILE_TRACKED`         | The coverage file is tracked in the repository, so the change can supply it (`warn`) |
 | `DIFF_BINARY_COVERED_FILE`      | The diff shows a covered source file as binary, so its changes were not measured (`warn`) |
+| `TEST_FILES_DELETED`            | The change deletes a test file or renames one to a non-test name (`info`) |
 | `NO_AGENT_SETUP_FILES`          | The repo has none of the agent setup files pharn-ci looks for  |
 | `AGENT_SETUP_FILE_EMPTY`        | A listed agent setup file is empty in `HEAD` (`warn`)          |
 
@@ -595,7 +596,8 @@ PR with an 80% diff-coverage threshold, so every change here passes the same gat
 
 - More coverage formats (Clover, JaCoCo native XML)
 - Flaky test detection
-- Test-tampering detection (weakened, skipped or deleted tests)
+- Test-tampering detection (weakened, skipped or deleted test cases; deleted test files are already
+  named by `TEST_FILES_DELETED`)
 - Agent policy checks on top of the setup inventory
 
 ---

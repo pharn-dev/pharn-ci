@@ -10,7 +10,11 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   asserted anything about it. A suite that runs code without checking results scores 100%.
 - **Only added lines count.** Removed lines and unchanged context are not measured (a moved line
   counts as added at its new position). A change that deletes the tests for code it leaves in place
-  does not lower diff coverage.
+  does not lower diff coverage. pharn-ci names a deleted test file, or one renamed to a name that is
+  not a test file, in `TEST_FILES_DELETED` (info only; the verdict is unchanged). A test file is
+  recognized only by name: `.test.` or `.spec.` in the basename, or a `test`, `tests` or `__tests__`
+  directory. Weakened, skipped or focused tests inside a file, deleted test cases, and test files
+  named any other way (`_test.go`, `test_*.py`) are not detected.
 - **Only lines the coverage report knows count.** An added line with no `DA` entry in the lcov file
   or no class-level `<line>` record in a Cobertura file (a comment, a type, a blank line, a
   declaration the tool does not instrument) is left out of the denominator. What is "coverable" is

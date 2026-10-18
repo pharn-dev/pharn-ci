@@ -1,0 +1,14 @@
+diff --git a/test/helpers.ts b/test/helpers.ts
+deleted file mode 100644
+index 5555555..0000000
+--- a/test/helpers.ts
++++ /dev/null
+@@ -1,2 +0,0 @@
+-export const one = 1;
+-export const two = 2;
+diff --git a/src/app.ts b/src/app.ts
+index 1111111..2222222 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -1,0 +2 @@
++export const b = 2;
