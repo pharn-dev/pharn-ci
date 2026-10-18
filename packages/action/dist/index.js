@@ -26545,7 +26545,9 @@ function logoMarkup() {
 
 // ../core/src/render/markdown.ts
 var VERDICT_ICON = { pass: "\u2705", warn: "\u26A0\uFE0F", fail: "\u274C" };
-var COLLAPSE_ABOVE = 25;
+var VERDICT_LABEL = { pass: "Pass", warn: "Warn", fail: "Fail" };
+var BRAND = "\u{1F6E1}\uFE0F";
+var COVERAGE_FORMAT_LABEL = { lcov: "lcov", cobertura: "cobertura" };
 var MAX_UNCOVERED_RANGES = 20;
 var LEVEL_ICON = { info: "\u2139\uFE0F", warn: "\u26A0\uFE0F", error: "\u274C" };
 var FULL_REPORT_NOTE = "_Full list in report.json: the Action's `report-path` output, or `pharn-ci check --format json`._";
@@ -26572,9 +26574,10 @@ function renderMarkdown(report, options = {}) {
   const out = [];
   const logo = logoMarkup();
   if (logo !== "") out.push(logo, "");
-  out.push(`## ${VERDICT_ICON[report.verdict]} pharn-ci: ${report.verdict}`, "");
+  out.push(`## ${BRAND} pharn-ci \xB7 ${VERDICT_ICON[report.verdict]} ${VERDICT_LABEL[report.verdict]}`, "");
+  out.push(overviewLine(report), "");
   out.push(...summaryLines(report));
-  out.push("### Diff coverage", "");
+  out.push("### \u{1F9EA} Diff coverage", "");
   const dc = report.diffCoverage;
   if (dc === null) {
     out.push("_Not computed \u2014 see messages below._", "");
@@ -26586,8 +26589,8 @@ function renderMarkdown(report, options = {}) {
       `**${formatNumber(dc.percent)}%** of changed lines covered (${dc.coveredLines}/${dc.coverableLines}, ${threshold})`,
       ""
     );
-    const collapse = dc.files.length > COLLAPSE_ABOVE;
-    if (collapse) out.push("<details>", `<summary>Show all ${dc.files.length} changed files</summary>`, "");
+    const open3 = report.messages.some((m) => m.code === "DIFF_COVERAGE_BELOW_THRESHOLD");
+    out.push(open3 ? "<details open>" : "<details>", `<summary>Changed files (${dc.files.length})</summary>`, "");
     out.push("| File | Coverage | Covered | Uncovered lines |", "| --- | ---: | ---: | --- |");
     for (const f of byCoverage(dc.files).slice(0, maxRows)) {
       const pct = f.percent === null ? "\u2014" : `${formatNumber(f.percent)}%`;
@@ -26595,8 +26598,7 @@ function renderMarkdown(report, options = {}) {
       out.push(`| ${code(f.path)} | ${pct} | ${f.coveredLines}/${f.coverableLines} | ${uncovered} |`);
     }
     if (dc.files.length > maxRows) out.push(`| _\u2026and ${dc.files.length - maxRows} more files_ | | | |`);
-    out.push("");
-    if (collapse) out.push("</details>", "");
+    out.push("", "</details>", "");
     if (dc.files.length > maxRows) out.push(FULL_REPORT_NOTE, "");
   }
   const excluded = dc?.excludedFiles ?? [];
@@ -26610,12 +26612,12 @@ function renderMarkdown(report, options = {}) {
     out.push("", "</details>", "");
   }
   if (report.messages.length > 0) {
-    out.push("### Messages", "");
+    out.push(`### \u{1F4AC} Messages (${report.messages.length})`, "");
     for (const m of report.messages) out.push(renderMessage(m));
     out.push("");
   }
-  out.push("### Agent setup", "");
   const setup = report.agentSetup.files;
+  out.push(`### \u{1F916} Agent setup (${setup.length === 0 ? "no files" : countFiles(setup.length)})`, "");
   const missingTools = report.agentSetup.missing ?? [];
   const missingLine = `Missing: ${missingTools.map(code).join(", ")}`;
   if (setup.length === 0) {
@@ -26629,17 +26631,34 @@ function renderMarkdown(report, options = {}) {
     const { tools } = report.agentSetup.summary ?? summarizeAgentSetup(setup);
     out.push(`Agent setup: ${setup.length} ${setup.length === 1 ? "file" : "files"} \xB7 ${tools.join(", ")}`, "");
     if (missingTools.length > 0) out.push(missingLine, "");
-    const collapse = setup.length > COLLAPSE_ABOVE;
-    if (collapse) out.push("<details>", `<summary>Show all ${setup.length} agent setup files</summary>`, "");
+    out.push("<details>", `<summary>Agent setup files (${setup.length})</summary>`, "");
     out.push("| Path | Kind |", "| --- | --- |");
     for (const f of setup.slice(0, maxRows)) out.push(`| ${code(f.path)} | ${f.kind} |`);
     if (setup.length > maxRows) out.push(`| _\u2026and ${setup.length - maxRows} more files_ | |`);
-    out.push("");
-    if (collapse) out.push("</details>", "");
+    out.push("", "</details>", "");
   }
-  out.push(`<sub>pharn-ci ${report.tool.version} \xB7 report schema v${report.schemaVersion}</sub>`);
+  const format = report.diffCoverage?.format;
+  const formatNote = format !== void 0 && Object.hasOwn(COVERAGE_FORMAT_LABEL, format) ? ` \xB7 coverage format ${COVERAGE_FORMAT_LABEL[format]}` : "";
+  out.push("---", "");
+  out.push(`<sub>pharn-ci ${report.tool.version} \xB7 report schema v${report.schemaVersion}${formatNote}</sub>`);
   return `${out.join("\n")}
 `;
+}
+function countFiles(n) {
+  return n === 1 ? "1 file" : `${n} files`;
+}
+function overviewLine(report) {
+  const dc = report.diffCoverage;
+  let first;
+  if (dc === null) first = "Diff coverage was not computed";
+  else if (dc.percent === null) first = "This change adds no coverable lines";
+  else if (dc.threshold === null)
+    first = `Diff coverage of this change is ${formatNumber(dc.percent)}%, with no threshold set`;
+  else
+    first = `Diff coverage of this change is ${formatNumber(dc.percent)}% against a threshold of ${formatNumber(dc.threshold)}%`;
+  const n = report.agentSetup.files.length;
+  const setup = n === 0 ? "no agent setup files found." : n === 1 ? "1 agent setup file found." : `${n} agent setup files found.`;
+  return `${first}; ${setup}`;
 }
 function summaryLines(report) {
   const dc = report.diffCoverage;
@@ -26655,7 +26674,7 @@ function summaryLines(report) {
   return [
     "| Verdict | Diff coverage | Agent setup |",
     "| --- | --- | --- |",
-    `| ${VERDICT_ICON[report.verdict]} ${report.verdict} | ${coverage} | ${setup} |`,
+    `| ${VERDICT_ICON[report.verdict]} ${VERDICT_LABEL[report.verdict]} | ${coverage} | ${setup} |`,
     ""
   ];
 }

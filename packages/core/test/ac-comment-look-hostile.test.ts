@@ -11,11 +11,11 @@ interface Hostile {
   baseRef: string;
 }
 
-/** Non-empty lines between the verdict heading (first non-empty line) and `### Diff coverage`. */
+/** Non-empty lines between the verdict heading (first non-empty line) and `### 🧪 Diff coverage`. */
 function summaryLines(md: string): string[] {
   const lines = md.split("\n");
   const heading = lines.findIndex((l) => l.trim() !== "");
-  const diffSection = lines.indexOf("### Diff coverage");
+  const diffSection = lines.indexOf("### 🧪 Diff coverage");
   expect(diffSection).toBeGreaterThan(heading);
   return lines.slice(heading + 1, diffSection).filter((l) => l.trim() !== "");
 }
@@ -39,11 +39,11 @@ function expectTablesAligned(md: string): number {
   return tables;
 }
 
-/** Message lines of the `### Messages` section (the `- <icon> \`CODE\` text` lines). */
+/** Message lines of the `### 💬 Messages (n)` section (the `- <icon> \`CODE\` text` lines). */
 function messageLines(md: string): string[] {
   const lines = md.split("\n");
-  const from = lines.indexOf("### Messages");
-  const to = lines.indexOf("### Agent setup");
+  const from = lines.findIndex((l) => l.startsWith("### 💬 Messages ("));
+  const to = lines.findIndex((l) => l.startsWith("### 🤖 Agent setup ("));
   expect(from).toBeGreaterThanOrEqual(0);
   expect(to).toBeGreaterThan(from);
   return lines.slice(from + 1, to).filter((l) => l.startsWith("- "));

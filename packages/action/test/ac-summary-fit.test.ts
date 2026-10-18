@@ -8,6 +8,8 @@ import { expectValidReport } from "../../core/test/schema.js";
 // its second clause (a summary over 65,000 characters stays full) already holds before the build.
 
 const FIXTURES = new URL("../../../fixtures/", import.meta.url);
+/** The verdict heading the renderer writes, from a fixed map so the test does not reuse the renderer's own code. */
+const HEADING: Record<string, string> = { pass: "✅ Pass", warn: "⚠️ Warn", fail: "❌ Fail" };
 const fixture = (path: string) => readFileSync(new URL(path, FIXTURES), "utf8");
 
 const WORKSPACE = "/home/runner/work/demo/demo";
@@ -95,7 +97,7 @@ describe("action: job summary fitted under GitHub's 1 MiB limit (f16-comment-tru
     const huge = await runAction(inputs, longSkillPaths(25_000));
     expect(huge.report.messages.length).toBeGreaterThan(0);
     expect(Buffer.byteLength(huge.summary, "utf8")).toBeLessThan(ONE_MIB);
-    expect(huge.summary).toContain(`pharn-ci: ${huge.report.verdict}`);
+    expect(huge.summary).toContain(`## 🛡️ pharn-ci · ${HEADING[huge.report.verdict]}`);
     for (const message of huge.report.messages) {
       expect(huge.summary, message.code).toContain(`\`${message.code}\``);
     }

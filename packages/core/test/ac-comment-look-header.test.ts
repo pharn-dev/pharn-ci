@@ -29,12 +29,12 @@ describe("PR comment look: verdict header and summary block (pr-comment-redesign
 
     const lines = renderMarkdown(report).split("\n");
     const first = lines.findIndex((l) => l.trim() !== "");
-    expect(lines[first]).toBe("## ❌ pharn-ci: fail");
+    expect(lines[first]).toBe("## 🛡️ pharn-ci · ❌ Fail");
 
-    const diffSection = lines.indexOf("### Diff coverage");
+    const diffSection = lines.indexOf("### 🧪 Diff coverage");
     expect(diffSection).toBeGreaterThan(first);
     const block = lines.slice(first + 1, diffSection).join("\n");
-    for (const shown of ["fail", "71.43%", "80%", "8 files"]) {
+    for (const shown of ["Fail", "71.43%", "80%", "8 files"]) {
       expect(block, `summary block shows ${shown}`).toContain(shown);
     }
   });

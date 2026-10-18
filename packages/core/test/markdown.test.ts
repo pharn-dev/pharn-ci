@@ -84,7 +84,7 @@ describe("renderMarkdown", () => {
     const lines = md.split("\n");
 
     expect(lines).toHaveLength(benign.split("\n").length);
-    expect(lines.filter((l) => l.startsWith("## "))).toEqual(["## ❌ pharn-ci: fail"]);
+    expect(lines.filter((l) => l.startsWith("## "))).toEqual(["## 🛡️ pharn-ci · ❌ Fail"]);
     expect(lines.filter((l) => l.startsWith("@") || l.startsWith("<img"))).toEqual([]);
     // Outside code spans (where GitHub renders it literally), raw HTML must not survive.
     expect(md.replace(/`[^`\n]*`/g, "")).not.toContain("<img");
@@ -250,9 +250,9 @@ describe("renderMarkdown explainability (F-32)", () => {
     const missing = "Missing: an agent instructions file, typically `AGENTS.md` or `CLAUDE.md` at the repository root.";
     const none = buildReport({ version: "0.1.0", threshold: null, diffCoverage: null, agentSetup: { files: [] } });
     const lines = renderMarkdown(none).split("\n");
-    const section = lines.indexOf("### Agent setup");
+    const section = lines.indexOf("### 🤖 Agent setup (no files)");
     expect(lines.slice(section, section + 5)).toEqual([
-      "### Agent setup",
+      "### 🤖 Agent setup (no files)",
       "",
       "_No agent setup files found._",
       "",

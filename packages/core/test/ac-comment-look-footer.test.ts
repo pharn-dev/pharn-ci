@@ -100,14 +100,17 @@ describe("PR comment look: compact footer and no image (pr-comment-redesign-2)",
       const lines = md.split("\n");
       const nonEmpty = lines.filter((l) => l.trim() !== "");
 
-      // Above Diff coverage: only the verdict heading, then the summary table (no image line).
+      // Above Diff coverage: the verdict heading, the overview sentence, then the summary table (no image line).
       const heading = lines.findIndex((l) => l.trim() !== "");
-      const diffSection = lines.indexOf("### Diff coverage");
-      expect(lines[heading], name).toMatch(/^## \S+ pharn-ci: (pass|warn|fail)$/);
+      const diffSection = lines.indexOf("### 🧪 Diff coverage");
+      expect(lines[heading], name).toMatch(/^## 🛡️ pharn-ci · \S+ (Pass|Warn|Fail)$/);
       expect(diffSection, name).toBeGreaterThan(heading);
       const between = lines.slice(heading + 1, diffSection).filter((l) => l.trim() !== "");
-      expect(between.length, `${name}: summary table above Diff coverage`).toBeGreaterThan(0);
-      for (const line of between) expect(line, `${name}: summary table line`).toMatch(/^\|.*\|$/);
+      expect(between.length, `${name}: overview and summary table above Diff coverage`).toBeGreaterThan(1);
+      const [overview, ...tableRows] = between;
+      expect(overview, `${name}: overview sentence`).toMatch(/^(Diff coverage |This change ).*found\.$/);
+      expect(tableRows.length, `${name}: summary table above Diff coverage`).toBeGreaterThan(0);
+      for (const line of tableRows) expect(line, `${name}: summary table line`).toMatch(/^\|.*\|$/);
 
       // The last non-empty line: <sub> with pharn-ci, then the tool version, then the schema version.
       const last = nonEmpty.at(-1) ?? "";

@@ -85,8 +85,12 @@ describe("renderMarkdown: excluded files", () => {
     expect(md).toContain(block);
     const at = md.indexOf(block);
     expect(at).toBeGreaterThan(md.indexOf("| `src/app.ts` | 50% | 1/2 | 2 |"));
-    expect(md.indexOf("| `src/app.ts` |")).toBeGreaterThan(md.indexOf("### Diff coverage"));
-    expect(at).toBeLessThan(md.indexOf("### Agent setup"));
+    const coverageAt = md.indexOf("### 🧪 Diff coverage");
+    const setupAt = md.indexOf("### 🤖 Agent setup (");
+    expect(coverageAt).toBeGreaterThanOrEqual(0);
+    expect(setupAt).toBeGreaterThanOrEqual(0);
+    expect(md.indexOf("| `src/app.ts` |")).toBeGreaterThan(coverageAt);
+    expect(at).toBeLessThan(setupAt);
 
     const one = await reportWith(["src/generated/api.ts"]);
     expectValidReport(one);
@@ -101,7 +105,8 @@ describe("renderMarkdown: excluded files", () => {
     const noneAt = noneMd.indexOf("<details><summary>Excluded: 2 files</summary>");
     expect(noneAt).toBeGreaterThan(noneMd.indexOf("_No coverable lines changed._"));
     expect(noneMd.indexOf("_No coverable lines changed._")).toBeGreaterThan(-1);
-    expect(noneAt).toBeLessThan(noneMd.indexOf("### Agent setup"));
+    expect(noneMd.indexOf("### 🤖 Agent setup (")).toBeGreaterThanOrEqual(0);
+    expect(noneAt).toBeLessThan(noneMd.indexOf("### 🤖 Agent setup ("));
     expect(noneMd).toContain("- `gen/a.ts`\n- `gen/b.ts`");
 
     const without = await reportWith(undefined);

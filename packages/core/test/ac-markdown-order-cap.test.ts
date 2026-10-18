@@ -71,8 +71,8 @@ describe("markdown section order and capped uncovered-lines cell (f16-comment-tr
     const lines = md.split("\n");
 
     // Section order: the reason for the verdict comes before the inventory.
-    const messages = lines.indexOf("### Messages");
-    const setup = lines.indexOf("### Agent setup");
+    const messages = lines.findIndex((line) => line.startsWith("### 💬 Messages ("));
+    const setup = lines.findIndex((line) => line.startsWith("### 🤖 Agent setup ("));
     expect(messages).toBeGreaterThanOrEqual(0);
     expect(setup).toBeGreaterThanOrEqual(0);
     expect(messages).toBeLessThan(setup);

@@ -4,12 +4,12 @@ import { expectValidReport } from "./schema.js";
 // AC test for pr-comment-redesign-2 (AC-2). Targets are imported inside the test body so the file loads before
 // the build; one `it` for the AC. No snapshot: the expected values are written inline.
 
-/** The text between the verdict heading (first non-empty line) and the `### Diff coverage` heading. */
+/** The text between the verdict heading (first non-empty line) and the `### 🧪 Diff coverage` heading. */
 function summaryBlock(md: string): string {
   const lines = md.split("\n");
   const first = lines.findIndex((l) => l.trim() !== "");
-  const diffSection = lines.indexOf("### Diff coverage");
-  expect(lines[first]).toMatch(/^## \S+ pharn-ci: (pass|warn|fail)$/);
+  const diffSection = lines.indexOf("### 🧪 Diff coverage");
+  expect(lines[first]).toMatch(/^## 🛡️ pharn-ci · \S+ (Pass|Warn|Fail)$/);
   expect(diffSection).toBeGreaterThan(first);
   return lines.slice(first + 1, diffSection).join("\n");
 }

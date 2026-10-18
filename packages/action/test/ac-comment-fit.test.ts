@@ -8,6 +8,8 @@ import { expectValidReport } from "../../core/test/schema.js";
 // One `it` for the AC: its second clause (messages alone too long) already holds before the build.
 
 const FIXTURES = new URL("../../../fixtures/", import.meta.url);
+/** The verdict heading the renderer writes, from a fixed map so the test does not reuse the renderer's own code. */
+const HEADING: Record<string, string> = { pass: "✅ Pass", warn: "⚠️ Warn", fail: "❌ Fail" };
 const fixture = (path: string) => readFileSync(new URL(path, FIXTURES), "utf8");
 
 const WORKSPACE = "/home/runner/work/demo/demo";
@@ -99,7 +101,7 @@ describe("action: PR comment fitted under GitHub's size limit (f16-comment-trunc
     expect(big.report.messages.length).toBeGreaterThan(0);
     expect(big.body.length).toBeLessThanOrEqual(65_000);
     expect(big.body.startsWith(COMMENT_MARKER)).toBe(true);
-    expect(big.body).toContain(`pharn-ci: ${big.report.verdict}`);
+    expect(big.body).toContain(`## 🛡️ pharn-ci · ${HEADING[big.report.verdict]}`);
     for (const message of big.report.messages) {
       expect(big.body, message.code).toContain(`\`${message.code}\``);
     }
@@ -112,6 +114,6 @@ describe("action: PR comment fitted under GitHub's size limit (f16-comment-trunc
     expect(huge.report.messages.map((m) => m.code)).toContain("COVERAGE_FILE_MISSING");
     expect(huge.body.length).toBeLessThanOrEqual(65_000);
     expect(huge.body.startsWith(COMMENT_MARKER)).toBe(true);
-    expect(huge.body).toContain(`pharn-ci: ${huge.report.verdict}`);
+    expect(huge.body).toContain(`## 🛡️ pharn-ci · ${HEADING[huge.report.verdict]}`);
   });
 });

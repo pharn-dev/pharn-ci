@@ -16,7 +16,10 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 // (amp, jules, opencode, zed), so the golden's `Agent setup:` line and `agentSetup.summary.tools` changed.
 // The pr-comment-redesign-2 feature then updated the markdown hash on purpose: the render gained a summary table
 // under the verdict heading; the JSON report, and so its hash, did not change.
-const GOLDEN_MD_SHA256 = "c38b799b87203e7eca9c707becfc8e38238c4b29b8bb6600bcd1aa3c735a2587";
+// The pr-comment-bold-look feature then updated the markdown hash on purpose: the render changed its header, section
+// headings, collapsing and footer. The golden and golden-cobertura markdown now differ only by the footer's coverage
+// format; the JSON report, and so its hash, did not change.
+const GOLDEN_MD_SHA256 = "b61cd0d636dd1f9e53756354f6ed7b17b8e9b2001a535491912ed619e970591d";
 const GOLDEN_JSON_SHA256 = "a455705f65d678d9c059231ba36bed7241155cd5063744d2effd8df8d8116c24";
 
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
@@ -53,7 +56,16 @@ describe("golden reports and the coverage format", () => {
       repoFiles: fixture("golden/files.txt").trim().split("\n"),
     });
     expect(report).toEqual({ ...lcovReport, diffCoverage: { ...lcovReport.diffCoverage, format: "cobertura" } });
-    expect(renderMarkdown(report)).toBe(renderMarkdown(lcovReport));
+    // The two renders differ in exactly one line, the footer, which names the coverage format.
+    const lastLine = (markdown: string) => markdown.trimEnd().split("\n").at(-1);
+    const withoutFooter = (markdown: string) => markdown.trimEnd().split("\n").slice(0, -1);
+    expect(withoutFooter(renderMarkdown(report))).toEqual(withoutFooter(renderMarkdown(lcovReport)));
+    expect(lastLine(renderMarkdown(report))).toBe(
+      "<sub>pharn-ci 0.1.0 · report schema v1 · coverage format cobertura</sub>",
+    );
+    expect(lastLine(renderMarkdown(lcovReport))).toBe(
+      "<sub>pharn-ci 0.1.0 · report schema v1 · coverage format lcov</sub>",
+    );
 
     await expect(asFile(report)).toMatchFileSnapshot("../../../fixtures/golden-cobertura/report.json");
     await expect(renderMarkdown(report)).toMatchFileSnapshot("../../../fixtures/golden-cobertura/report.md");

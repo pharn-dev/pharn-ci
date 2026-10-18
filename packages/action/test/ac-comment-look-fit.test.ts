@@ -102,15 +102,15 @@ describe("action: redesigned PR comment fitted under the size limit (pr-comment-
     expect(body.length).toBeLessThanOrEqual(65_000);
     // The golden coverage (71.43%) is under the threshold of 80: the verdict is fail.
     expect(report.verdict).toBe("fail");
-    const heading = "## ❌ pharn-ci: fail";
+    const heading = "## 🛡️ pharn-ci · ❌ Fail";
     expect(fullLines.find((l) => l.trim() !== "")).toBe(heading);
     expect(body.startsWith(`${COMMENT_MARKER}\n${commentScopeLine("CI", "pharn")}\n${heading}\n`)).toBe(true);
 
     const bodyLines = new Set(body.split("\n"));
 
-    // The summary block: the non-empty lines between the verdict heading and `### Diff coverage`.
+    // The summary block: the non-empty lines between the verdict heading and `### 🧪 Diff coverage`.
     const headingAt = fullLines.indexOf(heading);
-    const diffAt = fullLines.indexOf("### Diff coverage");
+    const diffAt = fullLines.indexOf("### 🧪 Diff coverage");
     expect(diffAt).toBeGreaterThan(headingAt);
     const summary = fullLines.slice(headingAt + 1, diffAt).filter((l) => l.trim() !== "");
     expect(summary.length, "summary block in the full rendering").toBeGreaterThan(0);
@@ -118,8 +118,8 @@ describe("action: redesigned PR comment fitted under the size limit (pr-comment-
 
     // Every message line of the report.
     expect(report.messages.length).toBeGreaterThan(0);
-    const messagesAt = fullLines.indexOf("### Messages");
-    const setupAt = fullLines.indexOf("### Agent setup");
+    const messagesAt = fullLines.findIndex((l) => l.startsWith("### 💬 Messages ("));
+    const setupAt = fullLines.findIndex((l) => l.startsWith("### 🤖 Agent setup ("));
     expect(setupAt).toBeGreaterThan(messagesAt);
     const messageLines = fullLines.slice(messagesAt + 1, setupAt).filter((l) => l.startsWith("- "));
     expect(messageLines).toHaveLength(report.messages.length);

@@ -31,7 +31,7 @@ describe("PR comment look: report data unchanged (pr-comment-redesign-2)", () =>
 
     const lines = renderMarkdown(report).split("\n");
     const heading = lines.findIndex((l) => l.trim() !== "");
-    const diffSection = lines.indexOf("### Diff coverage");
+    const diffSection = lines.indexOf("### 🧪 Diff coverage");
     expect(diffSection).toBeGreaterThan(heading);
     const block = lines.slice(heading + 1, diffSection).join("\n");
     expect(block).toContain(`${percent}%`);

@@ -8,11 +8,11 @@ import { expectValidReport } from "./schema.js";
 const MISSING_LINE = "Missing: `claude-code`, `cursor`";
 const GENERIC_MISSING = "Missing: an agent instructions file, typically";
 
-/** The lines of the "### Agent setup" section, up to the next heading. */
+/** The lines of the "### 🤖 Agent setup (" section, up to the next heading. */
 function agentSetupSection(markdown: string): string[] {
   const all = markdown.split("\n");
-  const start = all.indexOf("### Agent setup");
-  expect(start, "the markdown has an ### Agent setup section").toBeGreaterThanOrEqual(0);
+  const start = all.findIndex((line) => line.startsWith("### 🤖 Agent setup ("));
+  expect(start, "the markdown has an agent setup section").toBeGreaterThanOrEqual(0);
   const rest = all.slice(start + 1);
   const end = rest.findIndex((line) => line.startsWith("#"));
   return end === -1 ? rest : rest.slice(0, end);

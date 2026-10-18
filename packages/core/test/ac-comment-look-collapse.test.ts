@@ -10,7 +10,8 @@ type Block = { open: number; close: number };
 function detailsBlocks(lines: string[]): Block[] {
   const blocks: Block[] = [];
   for (let i = 0; i < lines.length; i++) {
-    if (!(lines[i] ?? "").includes("<details>")) continue;
+    const line = lines[i] ?? "";
+    if (!line.includes("<details>") && !line.includes("<details open>")) continue;
     const close = lines.findIndex((l, j) => j >= i && l.includes("</details>"));
     expect(close, `<details> at line ${i} is closed`).toBeGreaterThanOrEqual(i);
     blocks.push({ open: i, close });
@@ -33,14 +34,14 @@ function enclosing(blocks: Block[], span: { first: number; last: number }): Bloc
 function sections(md: string) {
   const lines = md.split("\n");
   const heading = lines.findIndex((l) => l.trim() !== "");
-  const diff = lines.indexOf("### Diff coverage");
-  const messages = lines.indexOf("### Messages");
-  const setup = lines.indexOf("### Agent setup");
+  const diff = lines.indexOf("### 🧪 Diff coverage");
+  const messages = lines.findIndex((l) => l.startsWith("### 💬 Messages ("));
+  const setup = lines.findIndex((l) => l.startsWith("### 🤖 Agent setup ("));
   return { lines, heading, diff, messages, setup };
 }
 
 describe("PR comment look: section order and collapsed long tables (pr-comment-redesign-2)", () => {
-  it("AC-3: keeps the section order, collapses 30-file tables, never collapses messages, and leaves 25 open", async () => {
+  it("AC-3: keeps the section order, collapses the file tables at 30 and at 25 files, and never collapses messages", async () => {
     const { buildReport } = await import("../src/report.js");
     const { renderMarkdown } = await import("../src/render/markdown.js");
 
@@ -80,7 +81,7 @@ describe("PR comment look: section order and collapsed long tables (pr-comment-r
     const { lines } = s;
 
     // Order: verdict header, summary block, Diff coverage, Messages, Agent setup.
-    expect(lines[s.heading]).toBe("## ❌ pharn-ci: fail");
+    expect(lines[s.heading]).toBe("## 🛡️ pharn-ci · ❌ Fail");
     expect(s.diff).toBeGreaterThan(s.heading);
     const summary = lines.slice(s.heading + 1, s.diff).filter((l) => l.trim() !== "");
     expect(summary.length, "summary block between the header and Diff coverage").toBeGreaterThan(0);
@@ -113,15 +114,19 @@ describe("PR comment look: section order and collapsed long tables (pr-comment-r
       ).toBe(false);
     }
 
-    // 25 files of each kind: neither table inside a <details> block.
+    // 25 files of each kind: both tables are inside a <details> block whose <summary> names 25.
     const report25 = reportOf(25);
     expectValidReport(report25);
     const t = sections(renderMarkdown(report25));
     const blocks25 = detailsBlocks(t.lines);
-    expect(enclosing(blocks25, tableSpan(t.lines, t.diff, t.messages)), "25-file diff coverage table").toBeUndefined();
-    expect(
-      enclosing(blocks25, tableSpan(t.lines, t.setup, t.lines.length)),
-      "25-file agent setup table",
-    ).toBeUndefined();
+    for (const [name, span] of [
+      ["25-file diff coverage table", tableSpan(t.lines, t.diff, t.messages)],
+      ["25-file agent setup table", tableSpan(t.lines, t.setup, t.lines.length)],
+    ] as const) {
+      const block = enclosing(blocks25, span);
+      expect(block, `${name} sits inside <details>`).toBeDefined();
+      const summaryLine = t.lines.slice(block?.open ?? 0, span.first).find((l) => l.includes("<summary>"));
+      expect(summaryLine, `${name} <summary> names the count`).toMatch(/(^|[^\d])25([^\d]|$)/);
+    }
   });
 });
