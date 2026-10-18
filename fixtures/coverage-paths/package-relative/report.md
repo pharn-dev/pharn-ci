@@ -1,5 +1,9 @@
 ## ❌ pharn-ci: fail
 
+| Verdict | Diff coverage | Agent setup |
+| --- | --- | --- |
+| ❌ fail | not computed | 1 file |
+
 ### Diff coverage
 
 _Not computed — see messages below._

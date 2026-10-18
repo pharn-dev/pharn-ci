@@ -1,5 +1,6 @@
 import { formatNumber, type Message, type MessageCode, type Report } from "../report.js";
 import { summarizeAgentSetup } from "../setup/summary.js";
+import { logoMarkup } from "./logo.js";
 
 export interface RenderMarkdownOptions {
   /** Maximum file rows per table; the rest are summarized. Keeps PR comments under GitHub's size limit. */
@@ -7,7 +8,7 @@ export interface RenderMarkdownOptions {
 }
 
 const VERDICT_ICON = { pass: "✅", warn: "⚠️", fail: "❌" } as const;
-/** Inventories larger than this get their table collapsed in a `<details>` block. */
+/** Tables (diff coverage files, agent setup files) with more rows than this are collapsed in a `<details>` block. */
 const COLLAPSE_ABOVE = 25;
 /** Ranges shown in one file's uncovered-lines cell; keeps a single file from making a huge table cell. */
 const MAX_UNCOVERED_RANGES = 20;
@@ -57,7 +58,10 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
   const maxRows = options.maxRows ?? 50;
   const out: string[] = [];
 
+  const logo = logoMarkup();
+  if (logo !== "") out.push(logo, "");
   out.push(`## ${VERDICT_ICON[report.verdict]} pharn-ci: ${report.verdict}`, "");
+  out.push(...summaryLines(report));
 
   out.push("### Diff coverage", "");
   const dc = report.diffCoverage;
@@ -71,6 +75,8 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
       `**${formatNumber(dc.percent)}%** of changed lines covered (${dc.coveredLines}/${dc.coverableLines}, ${threshold})`,
       "",
     );
+    const collapse = dc.files.length > COLLAPSE_ABOVE;
+    if (collapse) out.push("<details>", `<summary>Show all ${dc.files.length} changed files</summary>`, "");
     out.push("| File | Coverage | Covered | Uncovered lines |", "| --- | ---: | ---: | --- |");
     // Worst first, so the files that need tests survive truncation; files with nothing to measure go last.
     for (const f of byCoverage(dc.files).slice(0, maxRows)) {
@@ -80,6 +86,7 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
     }
     if (dc.files.length > maxRows) out.push(`| _…and ${dc.files.length - maxRows} more files_ | | | |`);
     out.push("");
+    if (collapse) out.push("</details>", "");
     if (dc.files.length > maxRows) out.push(FULL_REPORT_NOTE, "");
   }
   const excluded = dc?.excludedFiles ?? [];
@@ -132,6 +139,29 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
 
   out.push(`<sub>pharn-ci ${report.tool.version} · report schema v${report.schemaVersion}</sub>`);
   return `${out.join("\n")}\n`;
+}
+
+/**
+ * The one-glance summary table under the verdict heading. Every cell is a fixed string, an icon, a
+ * number or a count: nothing input-derived, so no path or message text can reach it.
+ */
+function summaryLines(report: Report): string[] {
+  const dc = report.diffCoverage;
+  let coverage: string;
+  if (dc === null) coverage = "not computed";
+  else if (dc.percent === null) coverage = "no coverable lines";
+  else {
+    const threshold = dc.threshold === null ? "no threshold" : `threshold ${formatNumber(dc.threshold)}%`;
+    coverage = `${formatNumber(dc.percent)}% (${threshold})`;
+  }
+  const n = report.agentSetup.files.length;
+  const setup = n === 0 ? "none" : n === 1 ? "1 file" : `${n} files`;
+  return [
+    "| Verdict | Diff coverage | Agent setup |",
+    "| --- | --- | --- |",
+    `| ${VERDICT_ICON[report.verdict]} ${report.verdict} | ${coverage} | ${setup} |`,
+    "",
+  ];
 }
 
 function renderMessage(m: Message): string {

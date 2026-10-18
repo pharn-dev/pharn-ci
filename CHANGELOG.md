@@ -37,6 +37,7 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- The PR comment, job summary and CLI markdown open with a summary table (verdict, diff coverage against the threshold, agent setup file count) under the verdict heading, and a diff coverage table of more than 25 files is collapsed in a `<details>` block. Report data, headings and message text are unchanged.
 - Internal refactor: the CLI and the Action share their Node I/O (git, file reads, directory listing) and their coverage-file reading through a private workspace package, `@pharn-ci/node-io`. No user-visible change.
 - Large inputs: the diff and lcov coverage are read line by line (F-15), so a diff is no longer limited by a 256 MiB buffer and lcov no longer by the longest string the engine can build (only one line that long still fails). The CLI and the Action stream git's output and the coverage file instead of reading them whole. Cobertura coverage and the config stay string-based. The limits of each input and what you see when one is passed are in `docs/LIMITS.md` §8 (Size limits).
 - Versioning policy for 0.x (`docs/RELEASING.md`): Action inputs and outputs, CLI flags and message

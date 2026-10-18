@@ -14,7 +14,9 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 // again on purpose, moving `### Messages` above `### Agent setup`, so the markdown hash changed once more.
 // ai-agnostic-inventory (F-11) then updated both hashes on purpose: AGENTS.md is now credited to four more tools
 // (amp, jules, opencode, zed), so the golden's `Agent setup:` line and `agentSetup.summary.tools` changed.
-const GOLDEN_MD_SHA256 = "e96827f7e6b37b9d7602c94a7afc479390f8226a268b0c6905e0ed4136d81e3b";
+// The pr-comment-redesign-2 feature then updated the markdown hash on purpose: the render gained a summary table
+// under the verdict heading; the JSON report, and so its hash, did not change.
+const GOLDEN_MD_SHA256 = "c38b799b87203e7eca9c707becfc8e38238c4b29b8bb6600bcd1aa3c735a2587";
 const GOLDEN_JSON_SHA256 = "a455705f65d678d9c059231ba36bed7241155cd5063744d2effd8df8d8116c24";
 
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");

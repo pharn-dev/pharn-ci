@@ -17,15 +17,18 @@ const CODE = "COVERAGE_PATHS_PARTIALLY_UNMATCHED";
 // F-16 moved `### Messages` above `### Agent setup` on purpose, as F-32 changed the rendering before, so the
 // markdown hashes changed once more. F-11 (ai-agnostic-inventory) then updated every hash in this block on
 // purpose: AGENTS.md is now credited to four more tools (amp, jules, opencode, zed), so each golden's
-// `Agent setup:` line and `agentSetup.summary.tools` changed.
+// `Agent setup:` line and `agentSetup.summary.tools` changed. The pr-comment-redesign-2 feature then updated the
+// three markdown hashes in this block on purpose: the render gained a summary table under the verdict heading; the
+// JSON reports, and so their hashes, did not change.
 const GOLDEN_JSON_SHA256 = "549b58c8b5f0dbe0e5fdb95ac115d53ce7ecbd1a8c7a20e6c60a9227de5ec537";
-const GOLDEN_MD_SHA256 = "e96827f7e6b37b9d7602c94a7afc479390f8226a268b0c6905e0ed4136d81e3b";
+const GOLDEN_MD_SHA256 = "c38b799b87203e7eca9c707becfc8e38238c4b29b8bb6600bcd1aa3c735a2587";
 const GOLDEN_COBERTURA_JSON_SHA256 = "09f152cdc9119f7ee3de83a9912bf62dbcceeeb2d59a144765039b33a806feb1";
-const GOLDEN_COBERTURA_MD_SHA256 = "e96827f7e6b37b9d7602c94a7afc479390f8226a268b0c6905e0ed4136d81e3b";
+const GOLDEN_COBERTURA_MD_SHA256 = "c38b799b87203e7eca9c707becfc8e38238c4b29b8bb6600bcd1aa3c735a2587";
 // fixtures/golden-exclusions/report.{json,md} as committed before this change (the markdown as F-32 committed
-// it, both as F-11 changed them above); the partial-mismatch change must not change them.
+// it, both as F-11 changed them above); the partial-mismatch change must not change them. The markdown hash was
+// updated on purpose by pr-comment-redesign-2 (the summary table under the verdict heading); the JSON did not change.
 const EXCLUSIONS_JSON_SHA256 = "5773d3ef5a254c8c35f803665f70e69b881252e941c94e00fbbd479b569688fc";
-const EXCLUSIONS_MD_SHA256 = "4721f90e9cc5a112b954cb32318508cdf2da4b2f90514b359a333adaca3b12e0";
+const EXCLUSIONS_MD_SHA256 = "c0150a441894b00dce667e51adc80bdb0ca2a923e133e83f42f9d3b0ad2ac038";
 
 type Message = { level: string; code: string; text: string };
 

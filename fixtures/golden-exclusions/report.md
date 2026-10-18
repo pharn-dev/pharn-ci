@@ -1,5 +1,9 @@
 ## ✅ pharn-ci: pass
 
+| Verdict | Diff coverage | Agent setup |
+| --- | --- | --- |
+| ✅ pass | 80% (threshold 80%) | 2 files |
+
 ### Diff coverage
 
 **80%** of changed lines covered (4/5, threshold 80%)

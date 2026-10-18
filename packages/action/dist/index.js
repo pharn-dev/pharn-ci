@@ -26538,6 +26538,11 @@ function gitDiffArgs(base, head = "HEAD") {
   ];
 }
 
+// ../core/src/render/logo.ts
+function logoMarkup() {
+  return "";
+}
+
 // ../core/src/render/markdown.ts
 var VERDICT_ICON = { pass: "\u2705", warn: "\u26A0\uFE0F", fail: "\u274C" };
 var COLLAPSE_ABOVE = 25;
@@ -26565,7 +26570,10 @@ var MESSAGE_HINTS = {
 function renderMarkdown(report, options = {}) {
   const maxRows = options.maxRows ?? 50;
   const out = [];
+  const logo = logoMarkup();
+  if (logo !== "") out.push(logo, "");
   out.push(`## ${VERDICT_ICON[report.verdict]} pharn-ci: ${report.verdict}`, "");
+  out.push(...summaryLines(report));
   out.push("### Diff coverage", "");
   const dc = report.diffCoverage;
   if (dc === null) {
@@ -26578,6 +26586,8 @@ function renderMarkdown(report, options = {}) {
       `**${formatNumber(dc.percent)}%** of changed lines covered (${dc.coveredLines}/${dc.coverableLines}, ${threshold})`,
       ""
     );
+    const collapse = dc.files.length > COLLAPSE_ABOVE;
+    if (collapse) out.push("<details>", `<summary>Show all ${dc.files.length} changed files</summary>`, "");
     out.push("| File | Coverage | Covered | Uncovered lines |", "| --- | ---: | ---: | --- |");
     for (const f of byCoverage(dc.files).slice(0, maxRows)) {
       const pct = f.percent === null ? "\u2014" : `${formatNumber(f.percent)}%`;
@@ -26586,6 +26596,7 @@ function renderMarkdown(report, options = {}) {
     }
     if (dc.files.length > maxRows) out.push(`| _\u2026and ${dc.files.length - maxRows} more files_ | | | |`);
     out.push("");
+    if (collapse) out.push("</details>", "");
     if (dc.files.length > maxRows) out.push(FULL_REPORT_NOTE, "");
   }
   const excluded = dc?.excludedFiles ?? [];
@@ -26629,6 +26640,24 @@ function renderMarkdown(report, options = {}) {
   out.push(`<sub>pharn-ci ${report.tool.version} \xB7 report schema v${report.schemaVersion}</sub>`);
   return `${out.join("\n")}
 `;
+}
+function summaryLines(report) {
+  const dc = report.diffCoverage;
+  let coverage;
+  if (dc === null) coverage = "not computed";
+  else if (dc.percent === null) coverage = "no coverable lines";
+  else {
+    const threshold = dc.threshold === null ? "no threshold" : `threshold ${formatNumber(dc.threshold)}%`;
+    coverage = `${formatNumber(dc.percent)}% (${threshold})`;
+  }
+  const n = report.agentSetup.files.length;
+  const setup = n === 0 ? "none" : n === 1 ? "1 file" : `${n} files`;
+  return [
+    "| Verdict | Diff coverage | Agent setup |",
+    "| --- | --- | --- |",
+    `| ${VERDICT_ICON[report.verdict]} ${report.verdict} | ${coverage} | ${setup} |`,
+    ""
+  ];
 }
 function renderMessage(m) {
   const line = `- ${LEVEL_ICON[m.level]} \`${m.code}\` ${inlineText(m.text)}`;

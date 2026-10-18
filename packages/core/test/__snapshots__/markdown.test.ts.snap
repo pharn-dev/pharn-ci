@@ -3,6 +3,10 @@
 exports[`renderMarkdown > renders the no-coverable-changes state 1`] = `
 "## ✅ pharn-ci: pass
 
+| Verdict | Diff coverage | Agent setup |
+| --- | --- | --- |
+| ✅ pass | no coverable lines | 1 file |
+
 ### Diff coverage
 
 _No coverable lines changed._
@@ -26,6 +30,10 @@ Agent setup: 1 file · amp, codex, copilot, cursor, jules, opencode, zed
 
 exports[`renderMarkdown > renders the not-computed state 1`] = `
 "## ❌ pharn-ci: fail
+
+| Verdict | Diff coverage | Agent setup |
+| --- | --- | --- |
+| ❌ fail | not computed | none |
 
 ### Diff coverage
 

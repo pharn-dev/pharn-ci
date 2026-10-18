@@ -1,5 +1,9 @@
 ## ❌ pharn-ci: fail
 
+| Verdict | Diff coverage | Agent setup |
+| --- | --- | --- |
+| ❌ fail | 71.43% (threshold 80%) | 8 files |
+
 ### Diff coverage
 
 **71.43%** of changed lines covered (5/7, threshold 80%)
