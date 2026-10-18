@@ -1,24 +1,19 @@
 import {
   type CheckInput,
-  type CoverageFileInput,
   check,
-  coverageChoiceLine,
-  coverageEntryList,
   type DirEntry,
-  expandCoverageEntries,
   gitDiffArgs,
   type InputErrorText,
   type PharnConfig,
   parseConfig,
-  parseCoverageEntries,
   parseLsTreeSizes,
   type Report,
-  readCoverageChunks,
   readDiffChunks,
   renderMarkdown,
   resolveInputs,
   VERSION,
 } from "@pharn-ci/core";
+import { gitChunks, readCoverageFiles } from "@pharn-ci/node-io";
 import { type PrNumberTarget, parsePrNumberInputs, resolvePrNumberTarget } from "./pr-number.js";
 
 /** Identifies the single sticky comment pharn-ci owns on a PR. */
@@ -209,37 +204,18 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
 
   // Entries are relative to the workspace, from the input and from the config alike.
   const coverageLabel = resolved.inputs.coverageFile.fromConfig ? '"coverage.file"' : "coverage-file";
-  const entries = parseCoverageEntries(coverageEntryList(resolved.inputs.coverageFile.path), coverageLabel);
-  const expanded = await expandCoverageEntries(
-    entries,
-    (dir) => deps.listDir(deps.resolvePath(deps.workspace, dir)),
-    coverageLabel,
-  );
   // Every entry is resolved and every file read before the check; a file reached twice is read once.
-  const coverageFiles: CoverageFileInput[] = [];
-  const seen = new Set<string>();
-  for (const item of expanded) {
-    if (item.kind === "no-match") {
-      coverageFiles.push({ missingFile: item.glob });
-      continue;
-    }
-    const name = item.kind === "literal" ? item.entry : item.path;
-    const coveragePath = deps.resolvePath(deps.workspace, name);
-    if (seen.has(coveragePath)) continue;
-    seen.add(coveragePath);
-    const chunks = await openFile(deps, coveragePath);
-    if (chunks === null) {
-      coverageFiles.push({ missingFile: name });
-      continue;
-    }
-    // The file is parsed as it is read, with the same repo root and coverage root the check would use.
-    const { choice, parsed } = await readCoverageChunks(chunks, format, {
-      repoRoot: deps.workspace,
-      ...(coverageRoot === undefined ? {} : { coverageRoot }),
-    });
-    deps.info(coverageChoiceLine(choice));
-    coverageFiles.push({ parsed, format: choice.format, file: name });
-  }
+  const coverageFiles = await readCoverageFiles(deps, {
+    entries: resolved.inputs.coverageFile.path,
+    label: coverageLabel,
+    baseDir: deps.workspace,
+    format,
+    repoRoot: deps.workspace,
+    ...(coverageRoot === undefined ? {} : { coverageRoot }),
+    // Named as written, relative to the workspace.
+    name: (entry) => entry,
+    log: (line) => deps.info(line),
+  });
 
   const repoFiles = await trackedFiles(target, deps);
   // File sizes in HEAD, so an empty agent setup file can be reported. Optional: without them the check still runs.
@@ -327,23 +303,6 @@ async function trackedFiles(target: PrNumberTarget | undefined, deps: ActionDeps
   }
 }
 
-/** One chunk: what a whole-text read gave. */
-async function* oneChunk(read: () => Promise<string>): AsyncGenerator<string> {
-  yield await read();
-}
-
-/** git's stdout as chunks: streamed when the deps can, else the whole text as a single chunk. */
-function streamGit(deps: ActionDeps, args: string[]): AsyncIterable<string> {
-  return deps.gitStream ? deps.gitStream(args) : oneChunk(() => deps.git(args));
-}
-
-/** The file as chunks: streamed when the deps can, else the whole text as a single chunk; null when it does not exist. */
-async function openFile(deps: ActionDeps, path: string): Promise<AsyncIterable<string> | null> {
-  if (deps.readFileStream) return deps.readFileStream(path);
-  const text = await deps.readFile(path);
-  return text === null ? null : oneChunk(async () => text);
-}
-
 /** Diff of the change under test: base...HEAD, from local git if possible, else the GitHub API. */
 async function getDiff(baseRefInput: string, deps: ActionDeps, target?: PrNumberTarget): Promise<CheckInput["diff"]> {
   // A leading "-" would reach git as an option (e.g. --output=<file>), not a revision.
@@ -384,7 +343,7 @@ async function getDiff(baseRefInput: string, deps: ActionDeps, target?: PrNumber
   const localBase = await resolveLocal(base, deps);
   if (localBase) {
     try {
-      return { parsed: await readDiffChunks(streamGit(deps, gitDiffArgs(localBase))) };
+      return { parsed: await readDiffChunks(gitChunks(deps, gitDiffArgs(localBase))) };
     } catch (err) {
       deps.info(`local git diff failed, falling back to the GitHub API: ${String(err)}`);
     }

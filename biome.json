@@ -45,7 +45,19 @@
               "options": {
                 "patterns": [
                   {
-                    "group": ["node:*", "fs", "fs/*", "child_process", "path", "os", "http", "https", "net", "process"],
+                    "group": [
+                      "node:*",
+                      "fs",
+                      "fs/*",
+                      "child_process",
+                      "path",
+                      "os",
+                      "http",
+                      "https",
+                      "net",
+                      "process",
+                      "@pharn-ci/node-io"
+                    ],
                     "message": "packages/core is pure: no I/O. Move I/O into packages/cli or packages/action."
                   }
                 ]

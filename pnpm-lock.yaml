@@ -42,14 +42,26 @@ importers:
       '@pharn-ci/core':
         specifier: workspace:*
         version: link:../core
+      '@pharn-ci/node-io':
+        specifier: workspace:*
+        version: link:../node-io
 
   packages/cli:
     devDependencies:
       '@pharn-ci/core':
         specifier: workspace:*
         version: link:../core
+      '@pharn-ci/node-io':
+        specifier: workspace:*
+        version: link:../node-io
 
   packages/core: {}
+
+  packages/node-io:
+    devDependencies:
+      '@pharn-ci/core':
+        specifier: workspace:*
+        version: link:../core
 
 packages:
 

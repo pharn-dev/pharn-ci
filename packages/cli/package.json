@@ -19,6 +19,7 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@pharn-ci/core": "workspace:*"
+    "@pharn-ci/core": "workspace:*",
+    "@pharn-ci/node-io": "workspace:*"
   }
 }

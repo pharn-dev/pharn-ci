@@ -47,7 +47,7 @@ that worked on the previous release. Before 1.0 the rules are:
 
 1. **Prepare a PR** titled `chore: release X.Y.Z`:
    - Set `"version": "X.Y.Z"` in the root `package.json`, `packages/core/package.json`,
-     `packages/cli/package.json` and `packages/action/package.json`, `VERSION` in
+     `packages/cli/package.json`, `packages/action/package.json` and `packages/node-io/package.json`, `VERSION` in
      `packages/core/src/version.ts`, and the version in the `uses: pharn-dev/pharn-ci@vX.Y.Z` line of
      the quick start in `docs/MARKETPLACE.md`. `version.test.ts` and the docs tests fail when they
      disagree.

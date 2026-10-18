@@ -14,6 +14,8 @@ AI-agnostic and fully stateless (Phase 0): no backend, no telemetry.
   setup scan, Report v1 builder, markdown renderer, config parser. Entry point: `check()` in `src/check.ts`.
 - `packages/cli` — `pharn-ci check`: reads files, runs git, calls core, prints output.
 - `packages/action` — thin GitHub Action wrapper: inputs, PR diff, sticky comment, job summary, exit code.
+- `packages/node-io` — private shared Node I/O for cli and action: git, file reads, directory listing, the
+  coverage-file reading loop; bundled into their dists.
 - `schema/report.v1.json` — JSON Schema for the report. **Source of truth for all output.**
 - `fixtures/` — hand-written lcov files, diffs and golden outputs used by tests.
 - `action.yml` — Action metadata; runs `packages/action/dist/index.js`.
