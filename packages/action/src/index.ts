@@ -3,6 +3,7 @@ import * as core from "@actions/core";
 import * as github from "@actions/github";
 import { createGitHubApi } from "./api.js";
 import { createNodeIo } from "./node-io.js";
+import { withRequestPolicy } from "./request-policy.js";
 import { run } from "./run.js";
 
 const workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
@@ -10,7 +11,8 @@ const workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
 const api = createGitHubApi({
   token: core.getInput("github-token"),
   repo: () => github.context.repo,
-  getOctokit: github.getOctokit,
+  // Every request gets a 30 s timeout and at most one retry (request-policy.ts).
+  getOctokit: withRequestPolicy((token) => github.getOctokit(token), { log: core.info }),
 });
 
 await run({

@@ -24577,15 +24577,18 @@ function createGitHubApi(opts) {
 import { execFile } from "node:child_process";
 import { mkdir as mkdir2, readFile, writeFile as writeFile2 } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-function createNodeIo(workspace2) {
+var GIT_TIMEOUT_MS = 12e4;
+function createNodeIo(workspace2, opts = {}) {
+  const timeout = opts.gitTimeoutMs ?? GIT_TIMEOUT_MS;
   return {
     git: (args) => new Promise((ok, fail) => {
       execFile(
         "git",
         args,
-        { cwd: workspace2, maxBuffer: 256 * 1024 * 1024, encoding: "utf8" },
+        { cwd: workspace2, maxBuffer: 256 * 1024 * 1024, encoding: "utf8", timeout },
         (err, stdout, stderr) => {
-          if (err) fail(new Error(stderr || err.message));
+          if (err?.killed) fail(new Error(`git ${args[0] ?? ""} timed out after ${timeout / 1e3} s`));
+          else if (err) fail(new Error(stderr || err.message));
           else ok(stdout);
         }
       );
@@ -24606,6 +24609,69 @@ function createNodeIo(workspace2) {
     writeSummary: async (markdown) => {
       await summary.addRaw(markdown).write();
     }
+  };
+}
+
+// src/request-policy.ts
+var API_TIMEOUT_MS = 3e4;
+var MAX_RETRY_WAIT_MS = 6e4;
+var DEFAULT_RETRY_WAIT_MS = 2e3;
+var ApiTimeoutError = class extends Error {
+};
+function retryWaitMs(err, nowMs) {
+  const { status, response } = err ?? {};
+  if (typeof status !== "number") return null;
+  const headers = response?.headers ?? {};
+  const retryAfter = Number(headers["retry-after"]);
+  const remaining = headers["x-ratelimit-remaining"];
+  const reset = Number(headers["x-ratelimit-reset"]);
+  const rateLimited = status === 429 || status === 403 && (headers["retry-after"] !== void 0 || String(remaining) === "0");
+  if (status < 500 && !rateLimited) return null;
+  let wait;
+  if (headers["retry-after"] !== void 0 && Number.isFinite(retryAfter) && retryAfter >= 0) wait = retryAfter * 1e3;
+  else if (rateLimited && String(remaining) === "0" && Number.isFinite(reset)) wait = Math.max(0, reset * 1e3 - nowMs);
+  else if (status >= 500) wait = DEFAULT_RETRY_WAIT_MS;
+  else return null;
+  return wait <= MAX_RETRY_WAIT_MS ? wait : null;
+}
+function applyRequestPolicy(octokit, opts = {}) {
+  const timeoutMs = opts.timeoutMs ?? API_TIMEOUT_MS;
+  const sleep = opts.sleep ?? ((ms) => new Promise((done) => setTimeout(done, ms)));
+  const now = opts.now ?? Date.now;
+  octokit.hook.wrap("request", async (request2, options) => {
+    const send = async () => {
+      const signal = AbortSignal.timeout(timeoutMs);
+      options.request = { ...options.request, signal };
+      try {
+        return await request2(options);
+      } catch (err) {
+        if (signal.aborted) {
+          throw new ApiTimeoutError(
+            `GitHub API request ${options.method} ${options.url} timed out after ${timeoutMs / 1e3} s`
+          );
+        }
+        throw err;
+      }
+    };
+    try {
+      return await send();
+    } catch (err) {
+      if (err instanceof ApiTimeoutError) throw err;
+      const wait = retryWaitMs(err, now());
+      if (wait === null) throw err;
+      opts.log?.(
+        `GitHub API request ${options.method} ${options.url} failed (${err instanceof Error ? err.message : String(err)}); retrying once in ${Math.ceil(wait / 1e3)} s`
+      );
+      await sleep(wait);
+      return send();
+    }
+  });
+}
+function withRequestPolicy(build, opts = {}) {
+  return (token) => {
+    const octokit = build(token);
+    applyRequestPolicy(octokit, opts);
+    return octokit;
   };
 }
 
@@ -26595,7 +26661,8 @@ var workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
 var api = createGitHubApi({
   token: getInput("github-token"),
   repo: () => context2.repo,
-  getOctokit
+  // Every request gets a 30 s timeout and at most one retry (request-policy.ts).
+  getOctokit: withRequestPolicy((token) => getOctokit(token), { log: info })
 });
 await run({
   getInput: (name) => getInput(name),
