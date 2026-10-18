@@ -58,7 +58,7 @@
                       "process",
                       "@pharn-ci/node-io"
                     ],
-                    "message": "packages/core is pure: no I/O. Move I/O into packages/cli or packages/action."
+                    "message": "packages/core is pure: no I/O. Move I/O into packages/cli, packages/action or packages/node-io."
                   }
                 ]
               }

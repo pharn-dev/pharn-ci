@@ -23,8 +23,8 @@ AI-agnostic and fully stateless (Phase 0): no backend, no telemetry.
 ## Rules
 
 1. **core is pure: no I/O.** No `fs`, `process`, `child_process`, network, clocks or randomness in
-   `packages/core/src`. All I/O lives in `packages/cli` and `packages/action`, which gather inputs
-   and pass plain data to core. This is enforced by core's tsconfig (`"types": []`), a Biome
+   `packages/core/src`. All I/O lives in `packages/cli`, `packages/action` and `packages/node-io`
+   (the Node I/O helpers they share); cli and action gather inputs and pass plain data to core. This is enforced by core's tsconfig (`"types": []`), a Biome
    import ban and `packages/core/test/purity.test.ts`.
 2. **`schema/report.v1.json` is the source of truth.** Changing it is a versioned decision. Within
    v1 you may only add optional fields, message codes or setup kinds (and document them in the
