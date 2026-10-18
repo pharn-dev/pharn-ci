@@ -205,7 +205,10 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
 - **Coverage and config paths are not confined to the repository.** They are resolved against the
   workspace (Action) or the current directory and repo root (CLI), and may point anywhere the job
   can read, such as `$RUNNER_TEMP`. The file is only parsed as coverage (lcov or Cobertura) or
-  config, never echoed, but its path appears in `COVERAGE_FILE_MISSING` messages.
+  config and its contents are not echoed, with one exception: when no path in the coverage report
+  matches a tracked file, `COVERAGE_PATHS_UNMATCHED` quotes one example path from the report and a
+  suggested root. The coverage file's own path appears in `COVERAGE_FILE_MISSING`,
+  `COVERAGE_FILE_EMPTY`, `COVERAGE_FORMAT_UNSUPPORTED` and `COVERAGE_FILE_TRACKED` messages.
 - **Input sizes are not capped.** No input has a size limit of its own. The local diff and lcov
   coverage are read line by line, so memory holds what they yield, not their text; Cobertura coverage
   and the config are read whole. The output of `git ls-files` and `git ls-tree` is limited to 256 MiB.

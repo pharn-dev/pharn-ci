@@ -45,7 +45,7 @@ inputs:
     description: Path to the pharn-ci config file, relative to the workspace. Defaults to .pharn/ci.yml, which may be absent; a file named here that does not exist fails the step.
     required: false
   github-token:
-    description: Token for the GitHub API, used only for the PR comment and the diff fallback. Needs contents read, plus pull-requests write only for the comment. May be empty with comment false and a local diff.
+    description: Token for the GitHub API, used for the PR comment, the diff fallback and, in pr-number mode, always to read the pull request, its diff and its file tree. Needs contents read, plus pull-requests read in pr-number mode and pull-requests write for the comment. May be empty with comment false and a local diff, outside pr-number mode.
     required: false
     default: ${{ github.token }}
 

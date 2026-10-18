@@ -147,9 +147,10 @@ permissions:
   contents: read
   pull-requests: write
 
-# One run per PR at a time, so concurrent pushes do not race on the sticky comment.
+# One run per PR at a time, so concurrent pushes do not race on the sticky comment. The github.ref
+# fallback gives each merge-queue entry its own group, since merge_group events have no PR number.
 concurrency:
-  group: pharn-ci-${{ github.event.pull_request.number }}
+  group: pharn-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -172,7 +173,9 @@ jobs:
 reports and never fails the step. With a merge queue, add `merge_group` to `on:`; pharn-ci diffs
 the queued change against the queue's base (`merge_group.base_sha`). The `concurrency` group
 cancels an older run when a new commit is pushed; without it, two runs that each post the sticky
-comment are cleaned up to one, but the older run may write last.
+comment are cleaned up to one, but the older run may write last. Keep the `|| github.ref`
+fallback: a `merge_group` event has no PR number, so without it every queue entry shares one group
+and cancels the others' required check.
 
 Each GitHub API request pharn-ci makes is aborted after 30 s, and a 5xx, a network error or a rate
 limit that asks for at most 60 s is retried once; each `git` call is killed after 2 minutes. A run
@@ -291,7 +294,7 @@ line. Matrix legs of one job share that scope, and so one comment.
 | `comment`           | `true`                      | Post/update one sticky PR comment per workflow and job |
 | `fail-on-threshold` | `true`                      | Fail the step when the verdict is `fail` |
 | `config`            | `.pharn/ci.yml`, may be absent | Config file path; a file named here that does not exist fails the step |
-| `github-token`      | `github.token`              | Token for the comment and diff fallback; `pull-requests: write` only for the comment, may be empty with `comment: false` and a local diff |
+| `github-token`      | `github.token`              | Token for the comment and diff fallback, and in `pr-number` mode always for reading the pull request, its diff and its file tree; `pull-requests: write` for the comment (`pull-requests: read` is enough for `pr-number` mode without one), may be empty with `comment: false` and a local diff outside `pr-number` mode |
 
 | Output          |                                                       |
 | --------------- | ----------------------------------------------------- |
@@ -550,8 +553,9 @@ that:
   Action. What it reads, what it sends to your GitHub and what it stores is listed in
   [Data handling](SECURITY.md#data-handling).
 - **Small token footprint.** `contents: read` plus `pull-requests: write`. It reads the compare API
-  and comments, and updates only a comment its own login (or, when the token cannot read its login, a
-  bot) wrote for this workflow and job. It deletes a comment only when concurrent runs left
+  and the PR's comments, calls `GET /user` to learn which login its own comment has, and in
+  `pr-number` mode also reads the pull request and its git tree. It updates only a comment its own
+  login (or, when the token cannot read its login, a bot) wrote for this workflow and job. It deletes a comment only when concurrent runs left
   duplicates of that own marker comment.
 - **Untrusted input stays data.** Parsers are hand-written, pure and non-recursive. File names
   render in code spans and message text is escaped, so neither can add links, images, emphasis,
