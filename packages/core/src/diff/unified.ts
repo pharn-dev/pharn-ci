@@ -157,9 +157,20 @@ export function createUnifiedDiffReader(): { push(line: string): void; finish():
 /** `a/foo.ts`, `"b/sp\303\251cial.ts"`, `/dev/null` (-> null). Strips one prefix segment. */
 function parseMarkerPath(raw: string): string | null {
   // git appends a tab after paths that contain spaces in some modes.
-  const value = unquote(raw.replace(/\t.*$/, ""));
+  const value = unquote(stripTabSuffix(raw));
   if (value === "/dev/null") return null;
   return stripPrefix(value);
+}
+
+/**
+ * `raw` without its tab suffix, exactly as `raw.replace(/\t.*$/, "")` but in linear time: the cut is at the first tab
+ * after the last line terminator (`.` matches none of them), so a run of tabs cannot make it backtrack.
+ */
+export function stripTabSuffix(raw: string): string {
+  let lastBreak = -1;
+  for (const terminator of ["\n", "\r", " ", " "]) lastBreak = Math.max(lastBreak, raw.lastIndexOf(terminator));
+  const tab = raw.indexOf("\t", lastBreak + 1);
+  return tab === -1 ? raw : raw.slice(0, tab);
 }
 
 function stripPrefix(path: string): string {

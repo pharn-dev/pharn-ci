@@ -25756,9 +25756,15 @@ function createUnifiedDiffReader() {
   return { push, finish };
 }
 function parseMarkerPath(raw) {
-  const value = unquote(raw.replace(/\t.*$/, ""));
+  const value = unquote(stripTabSuffix(raw));
   if (value === "/dev/null") return null;
   return stripPrefix(value);
+}
+function stripTabSuffix(raw) {
+  let lastBreak = -1;
+  for (const terminator of ["\n", "\r", "\u2028", "\u2029"]) lastBreak = Math.max(lastBreak, raw.lastIndexOf(terminator));
+  const tab = raw.indexOf("	", lastBreak + 1);
+  return tab === -1 ? raw : raw.slice(0, tab);
 }
 function stripPrefix(path) {
   const slash = path.indexOf("/");
