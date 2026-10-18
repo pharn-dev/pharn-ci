@@ -224,6 +224,9 @@ flowchart LR
 
 On PRs from forks the token cannot comment; pharn-ci then warns and uses the job summary only.
 
+Each workflow and job keeps its own comment, marked by a hidden `<!-- pharn-ci scope: <workflow>/<job> -->`
+line. Matrix legs of one job share that scope, and so one comment.
+
 ---
 
 ## Action reference
@@ -237,7 +240,7 @@ On PRs from forks the token cannot comment; pharn-ci then warns and uses the job
 | `base-ref`          | PR base; merge queue base; on `push`, the previous head (`before`) | Ref or SHA to diff against. A `base-ref` found neither in the checkout nor through the GitHub API fails the step |
 | `exclude`           | none                        | Globs of changed files to leave out of diff coverage, comma or newline separated; added to `coverage.exclude` |
 | `require-agent-setup` | `setup.require`, then `false` | Fail when the repo has no agent setup files; the step fails through `fail-on-threshold` |
-| `comment`           | `true`                      | Post/update one sticky PR comment        |
+| `comment`           | `true`                      | Post/update one sticky PR comment per workflow and job |
 | `fail-on-threshold` | `true`                      | Fail the step when the verdict is `fail` |
 | `config`            | `.pharn/ci.yml`, may be absent | Config file path; a file named here that does not exist fails the step |
 | `github-token`      | `github.token`              | Token for the comment and diff fallback; `pull-requests: write` only for the comment, may be empty with `comment: false` and a local diff |
@@ -379,8 +382,9 @@ that:
   Action. What it reads, what it sends to your GitHub and what it stores is listed in
   [Data handling](SECURITY.md#data-handling).
 - **Small token footprint.** `contents: read` plus `pull-requests: write`. It reads the compare API
-  and comments, and updates only a comment its own login wrote. It deletes a comment only when
-  concurrent runs left duplicates of that own marker comment.
+  and comments, and updates only a comment its own login (or, when the token cannot read its login, a
+  bot) wrote for this workflow and job. It deletes a comment only when concurrent runs left
+  duplicates of that own marker comment.
 - **Untrusted input stays data.** Parsers are hand-written, pure and non-recursive. File names
   render in code spans and message text is escaped, so neither can add links, images, emphasis,
   mentions or HTML to the PR comment. Git runs without a shell, and refs starting with `-` are

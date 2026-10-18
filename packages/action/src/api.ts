@@ -40,12 +40,12 @@ export function createGitHubApi(opts: GitHubApiOptions): GitHubApi {
     },
     async viewerLogin() {
       const { octokit } = connect();
-      // Works for a personal or user token. The default GITHUB_TOKEN cannot read /user, and it
-      // comments as github-actions[bot].
+      // Works for a personal or user token. An App installation token or the default GITHUB_TOKEN
+      // cannot read /user; run() then matches its comment by scope instead of by login.
       try {
         return (await octokit.rest.users.getAuthenticated()).data.login;
       } catch {
-        return "github-actions[bot]";
+        return null;
       }
     },
     async listComments(issueNumber) {
@@ -59,7 +59,8 @@ export function createGitHubApi(opts: GitHubApiOptions): GitHubApi {
     },
     async createComment(issueNumber, body) {
       const { octokit, owner, repo } = connect();
-      await octokit.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body });
+      const created = await octokit.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body });
+      return created.data.user?.login ?? null;
     },
     async updateComment(commentId, body) {
       const { octokit, owner, repo } = connect();

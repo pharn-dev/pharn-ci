@@ -5,6 +5,7 @@ import {
   type ActionContext,
   type ActionDeps,
   COMMENT_MARKER,
+  commentScopeLine,
   type IssueComment,
   MAX_COMMENT_LENGTH,
   run,
@@ -15,6 +16,8 @@ const fixture = (p: string) => readFileSync(new URL(p, FIXTURES), "utf8");
 
 const WORKSPACE = "/home/runner/work/demo/demo";
 const BOT = { login: "github-actions[bot]" };
+/** The scope line of the harness context, which names no workflow or job. */
+const SCOPE = commentScopeLine("", "");
 const PR_CONTEXT: ActionContext = {
   eventName: "pull_request",
   sha: "merge000",
@@ -105,6 +108,7 @@ function harness(opts: Options = {}): Harness {
         h.apiCalls.push(`create ${n}`);
         h.comments.push({ id: nextId++, body, user: { login: viewer } }, ...(opts.racingComments ?? []));
         h.comments.sort((a, b) => a.id - b.id);
+        return viewer;
       },
       async updateComment(id, body) {
         h.apiCalls.push(`update ${id}`);
@@ -159,7 +163,7 @@ describe("action run", () => {
     expect(JSON.parse(h.written["/tmp/runner/pharn-ci/report.json"] as string)).toEqual(report);
     expect(h.summary[0]).toContain("pharn-ci: fail");
     expect(h.comments).toHaveLength(1);
-    expect(h.comments[0]?.body?.startsWith(`${COMMENT_MARKER}\n## ❌ pharn-ci: fail`)).toBe(true);
+    expect(h.comments[0]?.body?.startsWith(`${COMMENT_MARKER}\n${SCOPE}\n## ❌ pharn-ci: fail`)).toBe(true);
     expect(h.failed).toEqual(["pharn-ci: Diff coverage 71.43% is below the threshold of 80%."]);
   });
 
@@ -296,7 +300,15 @@ describe("action run", () => {
     expect(h.apiCalls.filter((c) => c.startsWith("create"))).toEqual(["create 7"]);
     expect(h.comments[0]?.body).toBe(forged);
     expect(h.comments[1]?.body).toBe(quoted);
-    expect(h.comments[2]?.body?.startsWith(`${COMMENT_MARKER}\n## ❌ pharn-ci: fail`)).toBe(true);
+    expect(h.comments[2]?.body?.startsWith(`${COMMENT_MARKER}\n${SCOPE}\n## ❌ pharn-ci: fail`)).toBe(true);
+  });
+
+  it("updates its own scoped comment when GitHub returns the body with CRLF line endings", async () => {
+    const h = harness({
+      existingComments: [{ id: 2, body: `${COMMENT_MARKER}\r\n${SCOPE}\r\nedited in the web editor`, user: BOT }],
+    });
+    await run(h.deps);
+    expect(h.apiCalls.filter((c) => c.startsWith("update") || c.startsWith("create"))).toEqual(["update 2"]);
   });
 
   it("updates the comment of a non-default token's own login", async () => {
@@ -318,12 +330,12 @@ describe("action run", () => {
   it("deletes its own comment and updates the older one when a concurrent run created one first", async () => {
     const h = harness({
       inputs: { threshold: "80" },
-      racingComments: [{ id: 50, body: `${COMMENT_MARKER}\nconcurrent run`, user: BOT }],
+      racingComments: [{ id: 50, body: `${COMMENT_MARKER}\n${SCOPE}\nconcurrent run`, user: BOT }],
     });
     await run(h.deps);
     expect(commentCalls(h)).toEqual(["list 7", "create 7", "list 7", "delete 100", "update 50"]);
     expect(ownMarkerComments(h).map((c) => c.id)).toEqual([50]);
-    expect(h.comments[0]?.body?.startsWith(`${COMMENT_MARKER}\n## ❌ pharn-ci: fail`)).toBe(true);
+    expect(h.comments[0]?.body?.startsWith(`${COMMENT_MARKER}\n${SCOPE}\n## ❌ pharn-ci: fail`)).toBe(true);
     expect(h.warnings).toEqual([]);
 
     // The next run updates the one remaining comment.
@@ -332,7 +344,9 @@ describe("action run", () => {
   });
 
   it("keeps its own comment and deletes the newer one when a concurrent run created one after it", async () => {
-    const h = harness({ racingComments: [{ id: 200, body: `${COMMENT_MARKER}\nconcurrent run`, user: BOT }] });
+    const h = harness({
+      racingComments: [{ id: 200, body: `${COMMENT_MARKER}\n${SCOPE}\nconcurrent run`, user: BOT }],
+    });
     await run(h.deps);
     expect(commentCalls(h)).toEqual(["list 7", "create 7", "list 7", "delete 200"]);
     expect(ownMarkerComments(h).map((c) => c.id)).toEqual([100]);
@@ -354,7 +368,7 @@ describe("action run", () => {
       viewer: "release-bot",
       racingComments: [
         { id: 20, body: `${COMMENT_MARKER}\nby the default token`, user: BOT },
-        { id: 300, body: `${COMMENT_MARKER}\nconcurrent run`, user: { login: "release-bot" } },
+        { id: 300, body: `${COMMENT_MARKER}\n${SCOPE}\nconcurrent run`, user: { login: "release-bot" } },
       ],
     });
     await run(h.deps);
@@ -376,7 +390,7 @@ describe("action run", () => {
   });
 
   it("only warns when a duplicate cannot be deleted or the comments cannot be listed again", async () => {
-    const racing = [{ id: 50, body: `${COMMENT_MARKER}\nconcurrent run`, user: BOT }];
+    const racing = [{ id: 50, body: `${COMMENT_MARKER}\n${SCOPE}\nconcurrent run`, user: BOT }];
     const undeletable = harness({ racingComments: racing, deleteError: new Error("Not Found") });
     expect((await run(undeletable.deps))?.verdict).toBe("pass");
     expect(undeletable.failed).toEqual([]);

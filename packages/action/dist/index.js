@@ -19838,10 +19838,7 @@ var require_lib = __commonJS({
 });
 
 // src/index.ts
-import { execFile } from "node:child_process";
-import { mkdir as mkdir2, readFile, writeFile as writeFile2 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, resolve } from "node:path";
 
 // ../../node_modules/.pnpm/@actions+core@3.0.1/node_modules/@actions/core/lib/command.js
 import * as os from "os";
@@ -24530,7 +24527,7 @@ function createGitHubApi(opts) {
       try {
         return (await octokit.rest.users.getAuthenticated()).data.login;
       } catch {
-        return "github-actions[bot]";
+        return null;
       }
     },
     async listComments(issueNumber) {
@@ -24544,7 +24541,8 @@ function createGitHubApi(opts) {
     },
     async createComment(issueNumber, body) {
       const { octokit, owner, repo } = connect();
-      await octokit.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body });
+      const created = await octokit.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body });
+      return created.data.user?.login ?? null;
     },
     async updateComment(commentId, body) {
       const { octokit, owner, repo } = connect();
@@ -24553,6 +24551,42 @@ function createGitHubApi(opts) {
     async deleteComment(commentId) {
       const { octokit, owner, repo } = connect();
       await octokit.rest.issues.deleteComment({ owner, repo, comment_id: commentId });
+    }
+  };
+}
+
+// src/node-io.ts
+import { execFile } from "node:child_process";
+import { mkdir as mkdir2, readFile, writeFile as writeFile2 } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+function createNodeIo(workspace2) {
+  return {
+    git: (args) => new Promise((ok, fail) => {
+      execFile(
+        "git",
+        args,
+        { cwd: workspace2, maxBuffer: 256 * 1024 * 1024, encoding: "utf8" },
+        (err, stdout, stderr) => {
+          if (err) fail(new Error(stderr || err.message));
+          else ok(stdout);
+        }
+      );
+    }),
+    readFile: async (path) => {
+      try {
+        return await readFile(path, "utf8");
+      } catch (err) {
+        if (err.code === "ENOENT") return null;
+        throw err;
+      }
+    },
+    writeFile: async (path, text) => {
+      await mkdir2(dirname(path), { recursive: true });
+      await writeFile2(path, text);
+    },
+    resolvePath: (...segments) => resolve(...segments),
+    writeSummary: async (markdown) => {
+      await summary.addRaw(markdown).write();
     }
   };
 }
@@ -26174,6 +26208,11 @@ var VERSION7 = "0.1.0";
 
 // src/run.ts
 var COMMENT_MARKER = "<!-- pharn-ci -->";
+var SCOPE_LINE_PREFIX = "<!-- pharn-ci scope:";
+var DEFAULT_TOKEN_LOGIN = "github-actions[bot]";
+function commentScopeLine(workflow, job) {
+  return `${SCOPE_LINE_PREFIX} ${encodeURIComponent(workflow)}/${encodeURIComponent(job)} -->`;
+}
 var ZERO_SHA = /^0+$/;
 var DEFAULT_CONFIG = ".pharn/ci.yml";
 var INPUT_ERRORS = {
@@ -26249,13 +26288,15 @@ async function runUnsafe(deps) {
   deps.setOutput("diff-coverage", report.diffCoverage?.percent?.toString() ?? "");
   await deps.writeSummary(summary2).catch((err) => deps.warning(`could not write job summary: ${String(err)}`));
   if (comment && pr) {
+    const scopeLine = commentScopeLine(deps.context.workflow ?? "", deps.context.job ?? "");
     const body = fitMarkdown(report, {
       prefix: `${COMMENT_MARKER}
+${scopeLine}
 `,
       note: TRUNCATED_NOTE,
       fits: (text) => text.length <= MAX_COMMENT_LENGTH
     });
-    await upsertComment(deps, pr.number, body);
+    await upsertComment(deps, pr.number, body, scopeLine);
   }
   deps.info(`pharn-ci verdict: ${report.verdict}`);
   if (report.verdict === "fail" && failOnThreshold) {
@@ -26339,31 +26380,49 @@ function fitMarkdown(report, fit) {
   if (end === low && end > 0 && /[\uD800-\uDBFF]/.test(minimal.charAt(end - 1))) end--;
   return minimal.slice(0, end) + fit.note;
 }
-async function upsertComment(deps, issueNumber, body) {
+async function upsertComment(deps, issueNumber, body, scopeLine) {
   try {
     const [comments, viewer] = await Promise.all([deps.api.listComments(issueNumber), deps.api.viewerLogin()]);
-    const [existing, ...duplicates] = ownComments(comments, viewer);
+    const [existing, ...rest] = ownComments(comments, viewer, scopeLine);
     if (existing) {
       await deps.api.updateComment(existing.id, body);
       deps.info(`updated pharn-ci comment ${existing.id}`);
-      await deleteDuplicates(deps, duplicates);
+      const scope = commentScope(existing, scopeLine);
+      await deleteDuplicates(
+        deps,
+        rest.filter((c) => c.user?.login === existing.user?.login && commentScope(c, scopeLine) === scope)
+      );
       return;
     }
-    await deps.api.createComment(issueNumber, body);
+    const createdLogin = await deps.api.createComment(issueNumber, body) ?? viewer;
     deps.info("created pharn-ci comment");
-    await removeRaceDuplicates(deps, issueNumber, viewer, body);
+    if (createdLogin !== null) await removeRaceDuplicates(deps, issueNumber, createdLogin, body, scopeLine);
   } catch (err) {
     deps.warning(
       `could not post the PR comment (${errorText(err)}); the report is in the job summary. Grant \`pull-requests: write\` to enable comments.`
     );
   }
 }
-function ownComments(comments, viewer) {
-  return comments.filter((c) => c.user?.login === viewer && c.body?.startsWith(COMMENT_MARKER)).sort((a, b) => a.id - b.id);
+function commentScope(comment, scopeLine) {
+  const second = (comment.body ?? "").split("\n")[1]?.replace(/\r$/, "");
+  if (second === scopeLine) return "same";
+  return second?.startsWith(SCOPE_LINE_PREFIX) ? "other" : "legacy";
 }
-async function removeRaceDuplicates(deps, issueNumber, viewer, body) {
+function ownComments(comments, viewer, scopeLine) {
+  return comments.filter((c) => {
+    if (!c.body?.startsWith(COMMENT_MARKER)) return false;
+    const login = c.user?.login;
+    const scope = commentScope(c, scopeLine);
+    if (login === void 0 || scope === "other") return false;
+    if (viewer !== null) return login === viewer;
+    return scope === "same" ? login.endsWith("[bot]") : login === DEFAULT_TOKEN_LOGIN;
+  }).sort((a, b) => a.id - b.id);
+}
+async function removeRaceDuplicates(deps, issueNumber, createdLogin, body, scopeLine) {
   try {
-    const [keep, ...duplicates] = ownComments(await deps.api.listComments(issueNumber), viewer);
+    const [keep, ...duplicates] = (await deps.api.listComments(issueNumber)).filter(
+      (c) => c.body?.startsWith(COMMENT_MARKER) && c.user?.login === createdLogin && commentScope(c, scopeLine) === "same"
+    ).sort((a, b) => a.id - b.id);
     if (!keep || duplicates.length === 0) return;
     await deleteDuplicates(deps, duplicates);
     if (keep.body !== body) {
@@ -26423,37 +26482,11 @@ await run({
   workspace,
   tempDir: process.env.RUNNER_TEMP ?? tmpdir(),
   api,
-  git: (args) => new Promise((ok, fail) => {
-    execFile(
-      "git",
-      args,
-      { cwd: workspace, maxBuffer: 256 * 1024 * 1024, encoding: "utf8" },
-      (err, stdout, stderr) => {
-        if (err) fail(new Error(stderr || err.message));
-        else ok(stdout);
-      }
-    );
-  }),
-  readFile: async (path) => {
-    try {
-      return await readFile(path, "utf8");
-    } catch (err) {
-      if (err.code === "ENOENT") return null;
-      throw err;
-    }
-  },
-  writeFile: async (path, text) => {
-    await mkdir2(dirname(path), { recursive: true });
-    await writeFile2(path, text);
-  },
-  resolvePath: (...segments) => resolve(...segments),
+  ...createNodeIo(workspace),
   info,
   warning,
   setOutput,
-  setFailed,
-  writeSummary: async (markdown) => {
-    await summary.addRaw(markdown).write();
-  }
+  setFailed
 });
 /*! Bundled license information:
 

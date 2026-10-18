@@ -114,6 +114,24 @@ jobs:
         if: always() && steps.pharn.outputs.report-path != ''
         run: cat "${{ steps.pharn.outputs.report-path }}"
 
+      # Run the same bundle a second time and check that it updates the comment the step above posted
+      # instead of posting another (docs/THREAT-MODEL.md, B2). It runs the bundle directly, with the
+      # inputs as INPUT_* variables, because a `uses:` step's log cannot be read by a later step. Only
+      # on same-repo PRs: a fork PR's token cannot comment, so there is no comment to update.
+      - name: Dogfood pharn-ci again and check it updates its comment
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          PHARN_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/pharn-ci-second-run.log"
+          env "INPUT_COVERAGE-FILE=coverage/lcov.info" "INPUT_THRESHOLD=80" "INPUT_GITHUB-TOKEN=$PHARN_TOKEN" \
+            node packages/action/dist/index.js | tee "$log"
+          if ! grep -q '^updated pharn-ci comment [0-9]' "$log"; then
+            echo "::error::the second pharn-ci run did not update the comment the first run posted"
+            exit 1
+          fi
+
   action-pins:
     name: Action pins
     runs-on: ubuntu-latest
