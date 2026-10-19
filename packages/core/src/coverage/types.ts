@@ -7,6 +7,12 @@ export type LineHits = Map<number, number>;
  */
 export type CoverageMap = Map<string, LineHits>;
 
+/** A parsed coverage report with the number of malformed records the parser dropped from it. */
+export interface ParsedCoverage {
+  map: CoverageMap;
+  skipped: number;
+}
+
 export type CoverageFormat = "lcov" | "cobertura";
 
 export const COVERAGE_FORMATS: readonly CoverageFormat[] = ["lcov", "cobertura"];

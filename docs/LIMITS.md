@@ -93,13 +93,17 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   JaCoCo native XML, any other text) is `COVERAGE_FORMAT_UNSUPPORTED`, an error with a
   threshold. An empty file is `COVERAGE_FILE_EMPTY`. Naming a format skips detection: `cobertura`
   on a Clover or JaCoCo native file reads no records and is `COVERAGE_FILE_EMPTY`.
-- **Malformed lcov lines are skipped silently.** Invalid or orphan `DA` records do not produce a
-  message. A file (`SF`) with no valid `DA` line is absent from the map, as in Cobertura, and a
-  report with no valid `DA` line at all (a crashed or truncated reporter) is `COVERAGE_FILE_EMPTY`.
-- **Malformed Cobertura lines are skipped silently too.** A `<line>` whose `number` is not an
+- **Malformed lcov lines are skipped and counted.** Invalid or orphan `DA` records are left out of
+  diff coverage, and the report carries one `COVERAGE_LINES_SKIPPED` message (`info`, so the verdict
+  does not change) that gives how many were skipped, never their line numbers or file names. The
+  message is only on reports where diff coverage was computed, not on the ones that end early (a
+  missing or empty file, an unmatched path, no diff). A file (`SF`) with no valid `DA` line is
+  absent from the map, as in Cobertura, and a report with no valid `DA` line at all (a crashed or
+  truncated reporter) is `COVERAGE_FILE_EMPTY`.
+- **Malformed Cobertura lines are skipped and counted too.** A `<line>` whose `number` is not an
   integer >= 1, or whose `hits` is present but not a finite number >= 0, is dropped (a missing
-  `hits` counts as 0). A file with no valid line is absent from the map, and a report with no
-  valid line at all is `COVERAGE_FILE_EMPTY`.
+  `hits` counts as 0) and counted in the same `COVERAGE_LINES_SKIPPED` message. A file with no valid
+  line is absent from the map, and a report with no valid line at all is `COVERAGE_FILE_EMPTY`.
 - **Cobertura methods, branches and rates are ignored.** Only class-level `<line>` records count.
   A `<line>` inside `<methods>`, the `branch` and `condition-coverage` attributes, and every
   `line-rate` or `branch-rate` are not read, so branch coverage never affects the verdict.

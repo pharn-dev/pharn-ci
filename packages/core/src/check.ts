@@ -1,6 +1,6 @@
 import { parseAgentToolNames, parseCoverageRoot, parseExcludePattern } from "./config.js";
 import { chooseCoverageFormat, type DetectedCoverageFormat } from "./coverage/detect.js";
-import { parseCoverage } from "./coverage/index.js";
+import { parseCoverageCounted } from "./coverage/index.js";
 import { matchCoveragePaths } from "./coverage/match.js";
 import { mergeCoverageMaps } from "./coverage/merge.js";
 import type { CoverageFormat, CoverageFormatSelection, CoverageMap } from "./coverage/types.js";
@@ -17,11 +17,12 @@ import { deletedTestFiles } from "./testFiles.js";
  * One coverage file of a multi-file input: its contents (and the path it came from, for messages); or the map an
  * adapter already parsed from it, with the format that was chosen on the start of that file (`empty` and `unknown`
  * included, with an empty map); or the path that was not found. The `format` of the enclosing input applies to text
- * entries only; a parsed entry carries its own.
+ * entries only; a parsed entry carries its own. A parsed entry may also carry `skipped`, the number of malformed
+ * records the adapter dropped while parsing it (from `readCoverageChunks`); absent means 0.
  */
 export type CoverageFileInput =
   | { text: string; file?: string }
-  | { parsed: CoverageMap; format: DetectedCoverageFormat; file?: string }
+  | { parsed: CoverageMap; format: DetectedCoverageFormat; file?: string; skipped?: number }
   | { missingFile: string };
 
 export interface CheckInput {
@@ -159,6 +160,7 @@ export function check(input: CheckInput): Report {
   // Each file in order, with its own format under `auto`; the first bad one is the one reported.
   const maps: CoverageMap[] = [];
   const formats = new Set<CoverageFormat>();
+  let skippedLines = 0;
   for (const file of files) {
     if ("missingFile" in file) continue;
     const coverageFile = file.file ?? null;
@@ -177,13 +179,19 @@ export function check(input: CheckInput): Report {
         missing: { reason: "coverage-format-unsupported", coverageFile },
       });
     }
-    const parsed =
-      "parsed" in file
-        ? file.parsed
-        : parseCoverage(file.text, choice.format, {
-            ...(input.repoRoot === undefined ? {} : { repoRoot: input.repoRoot }),
-            ...(coverageRoot === undefined ? {} : { coverageRoot }),
-          });
+    let parsed: CoverageMap;
+    if ("parsed" in file) {
+      parsed = file.parsed;
+      const count = file.skipped;
+      if (count !== undefined && Number.isSafeInteger(count) && count > 0) skippedLines += count;
+    } else {
+      const counted = parseCoverageCounted(file.text, choice.format, {
+        ...(input.repoRoot === undefined ? {} : { repoRoot: input.repoRoot }),
+        ...(coverageRoot === undefined ? {} : { coverageRoot }),
+      });
+      parsed = counted.map;
+      skippedLines += counted.skipped;
+    }
     // An empty or unreadable report would otherwise make every change look uncovered-but-untracked
     // and pass as NO_COVERABLE_CHANGES. Say so instead.
     if (parsed.size === 0) {
@@ -237,6 +245,7 @@ export function check(input: CheckInput): Report {
     ...(coverageFormat === undefined ? {} : { coverageFormat }),
     diffCoverage: computeDiffCoverage(diff, coverage, input.threshold, isExcluded),
     ...(untrackedCoveragePaths > 0 ? { untrackedCoveragePaths } : {}),
+    ...(skippedLines > 0 ? { skippedCoverageLines: skippedLines } : {}),
     ...(binaryPaths.length > 0 ? { binaryCoveredPaths: binaryPaths } : {}),
   });
 }

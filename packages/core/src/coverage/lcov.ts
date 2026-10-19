@@ -6,7 +6,8 @@ import type { CoverageMap, LineHits, ParseCoverageOptions } from "./types.js";
  *
  * Only `SF`, `DA` and `end_of_record` matter; every other record (TN, FN, BRDA,
  * LF, LH, ...) is ignored. A file appearing in several records is merged by
- * summing hits per line. Malformed `DA` lines are skipped. A file appears in
+ * summing hits per line. Malformed `DA` lines are skipped and counted (see
+ * `createLcovReader`). A file appears in
  * the map only when it has a valid `DA` line, as in the Cobertura parser, so a
  * report whose records carry no line data (a crashed or truncated reporter) is
  * an empty map and is reported as empty rather than passing.
@@ -34,14 +35,18 @@ export async function parseLcovLinesAsync(
 
 /**
  * An lcov tracefile read one line at a time: `push` each line (without its line end), then `finish` for the map.
- * Memory holds the coverage map, never the text.
+ * Memory holds the coverage map, never the text. `skipped` is the number of `DA` records dropped so far: one read
+ * while no `SF` is open, and one under an open `SF` whose line number is not an integer >= 1 or whose hit count is
+ * not a finite number >= 0 (a missing hit count included). Each dropped record counts once.
  */
 export function createLcovReader(options: ParseCoverageOptions = {}): {
   push(line: string): void;
   finish(): CoverageMap;
+  skipped(): number;
 } {
   const map: CoverageMap = new Map();
   let current: LineHits | undefined;
+  let skipped = 0;
 
   return {
     push(raw: string): void {
@@ -57,15 +62,25 @@ export function createLcovReader(options: ParseCoverageOptions = {}): {
           current = new Map();
           map.set(path, current);
         }
-      } else if (line.startsWith("DA:") && current) {
+      } else if (line.startsWith("DA:")) {
+        if (!current) {
+          skipped++;
+          return;
+        }
         const [lineNo, hits] = line.slice(3).split(",");
         const n = Number(lineNo);
         const h = Number(hits);
-        if (!Number.isInteger(n) || n < 1 || !Number.isFinite(h) || h < 0) return;
+        if (!Number.isInteger(n) || n < 1 || !Number.isFinite(h) || h < 0) {
+          skipped++;
+          return;
+        }
         current.set(n, (current.get(n) ?? 0) + h);
       } else if (line === "end_of_record") {
         current = undefined;
       }
+    },
+    skipped(): number {
+      return skipped;
     },
     finish(): CoverageMap {
       for (const [path, hits] of map) {
