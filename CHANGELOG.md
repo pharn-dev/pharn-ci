@@ -80,6 +80,7 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Fixed
 
+- CLI: a flag value that starts with `-` (for example `--threshold -1` or `--base -x`) no longer fails with the misleading "Did you forget to specify the option argument?". The error (exit code 2, unchanged) now says the value must be written with `=`, for example `--threshold=-1`.
 - The README quick start no longer aborts for vitest: it says `@vitest/coverage-v8` must be a dev dependency, and a
   new "Coverage per ecosystem" table shows the report and `coverage-file` for vitest, jest, pytest-cov, coverlet,
   cargo-llvm-cov, Go, and JaCoCo/Kover through a Cobertura converter.
