@@ -93,16 +93,12 @@ describe("docs: several coverage files and globs", () => {
     );
     expect(description, "coverage-file description: globs").toMatch(/\bglob/i);
 
-    // The changelog's Unreleased section mentions several coverage files and globs.
-    const changelog = read("CHANGELOG.md").split("\n");
-    const start = changelog.indexOf("## [Unreleased]");
-    expect(start, "## [Unreleased]").toBeGreaterThanOrEqual(0);
-    const after = changelog.slice(start + 1);
-    const end = after.findIndex((line) => line.startsWith("## ["));
-    const unreleased = (end === -1 ? after : after.slice(0, end)).join("\n");
-    expect(unreleased, "Unreleased: several coverage files").toMatch(
+    // The changelog's 0.1.0 section, where the change shipped (before that release, its line sat under Unreleased),
+    // mentions several coverage files and globs.
+    const shipped = markdownSection(read("CHANGELOG.md"), /^## \[0\.1\.0\]/);
+    expect(shipped, "0.1.0: several coverage files").toMatch(
       /(several|multiple|more than one)[^\n]*coverage (files|reports)/i,
     );
-    expect(unreleased, "Unreleased: globs").toMatch(/\bglob/i);
+    expect(shipped, "0.1.0: globs").toMatch(/\bglob/i);
   });
 });

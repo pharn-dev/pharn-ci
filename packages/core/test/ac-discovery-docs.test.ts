@@ -44,12 +44,13 @@ describe("docs: coverage auto-discovery", () => {
     expect(coverageFileInput(read("action.yml"))).toMatch(/auto-discover/i);
   });
 
-  it("AC-17: CHANGELOG.md has a line under Unreleased naming coverage auto-discovery", () => {
-    const unreleased = sectionText(read("CHANGELOG.md"), "## [Unreleased]", "## [");
-    const items = unreleased.split("\n").filter((line) => /^\s*[-*]\s/.test(line));
+  it("AC-17: CHANGELOG.md has a line under 0.1.0 naming coverage auto-discovery", () => {
+    // The change shipped in 0.1.0; before that release its line sat under Unreleased.
+    const shipped = sectionText(read("CHANGELOG.md"), "## [0.1.0] - 2026-10-19", "## [");
+    const items = shipped.split("\n").filter((line) => /^\s*[-*]\s/.test(line));
     expect(
       items.some((line) => /auto-discover/i.test(line) && /coverage/i.test(line)),
-      "an Unreleased list line naming coverage auto-discovery",
+      "a 0.1.0 list line naming coverage auto-discovery",
     ).toBe(true);
   });
 
