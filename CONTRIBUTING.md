@@ -55,6 +55,15 @@ The branch must be up to date with `main` before it can merge.
   why in the PR description.
 - Bug fixes include a regression test.
 
+## Agent skills
+
+The `pharn-ci` plugin in [pharn-dev/skills](https://github.com/pharn-dev/skills) branches on Report
+v1 message codes, and its evals replay reports, comments and CLI output generated with a built
+pharn-ci checkout. A change to message codes, the comment layout, coverage discovery or path mapping
+can make those skills stale: say so in the PR description so the plugin can be updated. From the
+skills repo, `node plugins/pharn-ci/evals/fixtures/regen.mjs --check --pharn-ci <this checkout>`
+(after `pnpm build`) shows whether its fixtures still match.
+
 ## Threat model and limits
 
 pharn-ci's security design is in [`docs/THREAT-MODEL.md`](./docs/THREAT-MODEL.md) and what it does

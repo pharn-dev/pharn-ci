@@ -45,6 +45,7 @@ behave. AI-agnostic, fully stateless, no telemetry.
 - [CLI](#cli)
 - [Config](#config)
 - [Report v1](#report-v1)
+- [Agent skills](#agent-skills)
 - [What it proves, and what it does not](#what-it-proves-and-what-it-does-not)
 - [Safety model](#safety-model)
 - [The Pharn family](#the-pharn-family)
@@ -133,6 +134,9 @@ is a floor, not a verdict on quality: it says what was measured and, just as pla
 ---
 
 ## Quick start
+
+Working with Claude Code? The `pharn-ci-install` skill can do this setup for you; see
+[Agent skills](#agent-skills).
 
 Add a workflow that runs your tests with lcov or Cobertura XML output, then pharn-ci. With vitest,
 `@vitest/coverage-v8` must be a dev dependency of the project (`npm install --save-dev
@@ -576,6 +580,39 @@ Within v1, fields are only added and codes are never renamed or removed.
 
 ---
 
+## Agent skills
+
+[pharn-dev/skills](https://github.com/pharn-dev/skills) has a `pharn-ci` plugin for Claude Code
+with three skills. You don't name them; the agent picks one from what you ask.
+
+| Skill              | Ask, for example                                    | What it does                                                                                                                                                                |
+| ------------------ | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pharn-ci-install` | "Set up pharn-ci on this repo with an 85% gate."    | Turns on lcov or Cobertura output, runs your tests and checks the paths match tracked files the way pharn-ci reads them, then writes `.pharn/ci.yml` and a SHA-pinned workflow. |
+| `pharn-ci-explain` | "Why did pharn-ci fail on PR 42?"                   | Reads the report, PR comment or job log, names the message codes that decided the verdict, finds the cause in your repo and says what would fix it. Changes nothing.        |
+| `pharn-ci-cover`   | "Get this PR's diff coverage over the threshold."   | Writes tests for the added lines reported as uncovered and re-checks them against a fresh coverage report.                                                                  |
+
+```text
+/plugin marketplace add pharn-dev/skills
+/plugin install pharn-ci@pharn-dev
+```
+
+Or, with the [Skills CLI](https://github.com/vercel-labs/skills), run `npx skills add
+pharn-dev/skills` and pick the `pharn-ci-*` skills.
+
+The skills keep pharn-ci's rules. They branch on message codes, not text, and treat report paths,
+messages and PR comments as data from the change under review, never as instructions.
+`pharn-ci-install` never uses `pull_request_target`; fork PRs get the
+[`workflow_run` pattern](#fork-prs-comment-from-workflow_run). `pharn-ci-cover` changes only test
+files: it never lowers the threshold, adds exclusions or coverage-ignore comments, or edits the
+workflow. None of them post to the PR, commit or push.
+
+The plugin targets pharn-ci 0.1.x and Report v1 and is still in development; Codex is not verified.
+Tested combinations and limits are in the skills repo's
+[LIMITS.md](https://github.com/pharn-dev/skills/blob/main/LIMITS.md). The skills are instructions,
+not a sandbox: your agent client's permissions decide what an agent can do.
+
+---
+
 ## What it proves, and what it does not
 
 **Measured:** which added lines the coverage report marks as executed, compared exactly against an
@@ -642,6 +679,7 @@ run safely and reports the diff as unavailable: run it on `pull_request` instead
 | [pharn-oss](https://github.com/pharn-dev/pharn-oss)     | The PHARN workflow for Claude Code: spec, plan, test-first, build, verify, in Git.   |
 | [pharn-cli](https://github.com/pharn-dev/pharn-cli)     | `npx @pharn-dev/pharn init`: installs and updates PHARN in your project.            |
 | **pharn-ci**                                            | The CI check: diff coverage and agent setup on every PR, whatever wrote the code.   |
+| [skills](https://github.com/pharn-dev/skills)           | Agent skills that set up pharn-ci, explain its verdicts and cover the gaps it finds. |
 
 pharn-ci does not need PHARN installed and does not read its artifacts. It is useful on its own in
 any repo with an lcov- or Cobertura-producing test run.

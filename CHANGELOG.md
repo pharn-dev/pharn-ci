@@ -9,6 +9,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- README: an [Agent skills](README.md#agent-skills) section on the `pharn-ci` plugin in
+  [pharn-dev/skills](https://github.com/pharn-dev/skills) (install, explain a verdict, cover
+  uncovered lines), and a pointer to it from the Quick start and the Pharn family table.
+
 ### Changed
 
 ### Security
