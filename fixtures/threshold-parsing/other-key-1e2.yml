@@ -1,0 +1,3 @@
+# A key other than threshold: the generic reader still reads 1e2 as the number 100.
+other:
+  limit: 1e2

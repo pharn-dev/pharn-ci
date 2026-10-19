@@ -82,6 +82,7 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 ### Fixed
 
 - CLI: a flag value that starts with `-` (for example `--threshold -1` or `--base -x`) no longer fails with the misleading "Did you forget to specify the option argument?". The error (exit code 2, unchanged) now says the value must be written with `=`, for example `--threshold=-1`.
+- Thresholds (`--threshold`, the `threshold` input and `coverage.threshold`) accept only plain decimal numbers from 0 to 100, such as `80` or `72.5`. Exponent (`1e2`), hex (`0x10`), a sign, a bare or trailing dot (`.5`, `80.`), `Infinity`, `%` and inner spaces were read as JavaScript numbers before and are now refused with the existing "must be a number between 0 and 100" error (exit 2).
 - The README quick start no longer aborts for vitest: it says `@vitest/coverage-v8` must be a dev dependency, and a
   new "Coverage per ecosystem" table shows the report and `coverage-file` for vitest, jest, pytest-cov, coverlet,
   cargo-llvm-cov, Go, and JaCoCo/Kover through a Cobertura converter.
