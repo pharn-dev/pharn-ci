@@ -522,6 +522,9 @@ setup:
 - An entry that finds nothing is `COVERAGE_FILE_MISSING`, naming it.
 - The files are merged: a line's hit counts are summed, so a line covered in any file is covered.
   `auto` detects the format per file; the report names a format only when every file is the same.
+- Each file read is logged with its format, on stderr in the CLI. When more than one file is read,
+  the line names the file: `coverage: coverage/a.info: lcov (auto-detected)`; with one file it is
+  `coverage: lcov (auto-detected)`.
 
 ### Excluding files
 

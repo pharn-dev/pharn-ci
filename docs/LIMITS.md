@@ -208,7 +208,9 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   files and does not detect changes to `.gitattributes` itself.
 - **Coverage and config paths are not confined to the repository.** They are resolved against the
   workspace (Action) or the current directory and repo root (CLI), and may point anywhere the job
-  can read, such as `$RUNNER_TEMP`. The file is only parsed as coverage (lcov or Cobertura) or
+  can read, such as `$RUNNER_TEMP`. A literal coverage path is opened as given, so a symbolic link
+  there is followed, including one that points outside the repository; only glob matching and
+  auto-discovery skip symbolic links. The file is only parsed as coverage (lcov or Cobertura) or
   config and its contents are not echoed, with one exception: when no path in the coverage report
   matches a tracked file, `COVERAGE_PATHS_UNMATCHED` quotes one example path from the report and a
   suggested root. The coverage file's own path appears in `COVERAGE_FILE_MISSING`,

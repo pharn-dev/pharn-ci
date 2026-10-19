@@ -31,7 +31,7 @@ export interface ReadCoverageFilesOptions {
   coverageRoot?: string;
   /** How an entry, glob or match (relative to `baseDir`) is named in `missingFile` and `file`. */
   name(entry: string): string;
-  /** Called once per file read, with `coverageChoiceLine`'s text. */
+  /** Called once per file read, with `coverageChoiceLine`'s text; it names the file when more than one is read. */
   log(line: string): void;
   /**
    * Take every entry as a literal path, even one with glob characters (`*`, `?`, `[`, `]`, `{`, `}`): for paths
@@ -56,6 +56,13 @@ export async function readCoverageFiles(
       : parseCoverageEntries(entryList, label);
   const expanded = await expandCoverageEntries(entries, (dir) => deps.listDir(deps.resolvePath(baseDir, dir)), label);
   const coverageFiles: CoverageFileInput[] = [];
+  // With more than one file to read, each format line names its file; with one, the line stays as it always was.
+  const distinctPaths = new Set<string>();
+  for (const item of expanded) {
+    if (item.kind === "no-match") continue;
+    distinctPaths.add(deps.resolvePath(baseDir, item.kind === "literal" ? item.entry : item.path));
+  }
+  const nameFiles = distinctPaths.size > 1;
   const seen = new Set<string>();
   for (const item of expanded) {
     if (item.kind === "no-match") {
@@ -76,7 +83,7 @@ export async function readCoverageFiles(
       repoRoot,
       ...(coverageRoot === undefined ? {} : { coverageRoot }),
     });
-    log(coverageChoiceLine(choice));
+    log(coverageChoiceLine(choice, nameFiles ? entry : undefined));
     coverageFiles.push({ parsed, format: choice.format, file: name(entry) });
   }
   return coverageFiles;
