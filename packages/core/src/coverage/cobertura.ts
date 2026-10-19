@@ -6,7 +6,7 @@ import {
   normalizeRoot,
   startsWithPath,
 } from "../paths.js";
-import type { CoverageMap, LineHits, ParseCoverageOptions } from "./types.js";
+import type { CoverageMap, LineHits, ParseCoverageOptions, ParsedCoverage } from "./types.js";
 import { scanXml } from "./xml.js";
 
 /**
@@ -21,7 +21,8 @@ import { scanXml } from "./xml.js";
  *
  * A `<line>` is valid on the same rule as lcov's `DA`: `number` is an integer
  * >= 1 and `hits` is absent (0) or a finite number >= 0. Invalid lines are
- * skipped silently. A file appears in the map only when it has a valid line.
+ * skipped and counted (`parseCoberturaCounted`); a `<line>` outside a class with a filename, or inside
+ * `<methods>`, is ignored by design and not counted. A file appears in the map only when it has a valid line.
  *
  * A file seen in several classes (JaCoCo inner classes, a source shared by two
  * packages) is merged by the maximum hits per line. This differs from lcov's
@@ -51,7 +52,13 @@ import { scanXml } from "./xml.js";
  * hostile input yields whatever was readable before the damage, never a throw.
  */
 export function parseCobertura(text: string, options: ParseCoverageOptions = {}): CoverageMap {
+  return parseCoberturaCounted(text, options).map;
+}
+
+/** Like `parseCobertura`, with the number of class-level `<line>` elements that were dropped as malformed. */
+export function parseCoberturaCounted(text: string, options: ParseCoverageOptions = {}): ParsedCoverage {
   const sources: string[] = [];
+  let skipped = 0;
   const perFile = new Map<string, LineHits>();
   let inSources = false;
   let sourceText: string | undefined;
@@ -105,7 +112,7 @@ export function parseCobertura(text: string, options: ParseCoverageOptions = {})
         break;
       case "line":
         if (currentFile !== undefined && methodDepth === 0) {
-          addLine(perFile, currentFile, event.attrs.get("number"), event.attrs.get("hits"));
+          if (!addLine(perFile, currentFile, event.attrs.get("number"), event.attrs.get("hits"))) skipped++;
         }
         break;
     }
@@ -124,23 +131,24 @@ export function parseCobertura(text: string, options: ParseCoverageOptions = {})
       target.set(lineNo, Math.max(target.get(lineNo) ?? 0, hits));
     }
   }
-  return map;
+  return { map, skipped };
 }
 
+/** Add one class-level line to `perFile`; false when the line is malformed and was dropped. */
 function addLine(
   perFile: Map<string, LineHits>,
   filename: string,
   number: string | undefined,
   hits: string | undefined,
-) {
-  if (number === undefined) return;
+): boolean {
+  if (number === undefined) return false;
   const lineNo = Number(number);
-  if (!Number.isInteger(lineNo) || lineNo < 1) return;
+  if (!Number.isInteger(lineNo) || lineNo < 1) return false;
   let count = 0;
   if (hits !== undefined) {
-    if (hits.trim() === "") return;
+    if (hits.trim() === "") return false;
     count = Number(hits);
-    if (!Number.isFinite(count) || count < 0) return;
+    if (!Number.isFinite(count) || count < 0) return false;
   }
   let lines = perFile.get(filename);
   if (!lines) {
@@ -148,6 +156,7 @@ function addLine(
     perFile.set(filename, lines);
   }
   lines.set(lineNo, Math.max(lines.get(lineNo) ?? 0, count));
+  return true;
 }
 
 /**

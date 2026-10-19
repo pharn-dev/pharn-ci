@@ -46,6 +46,7 @@ export type MessageCode =
   | "DIFF_UNAVAILABLE"
   | "COVERAGE_PATHS_UNMATCHED"
   | "COVERAGE_PATHS_PARTIALLY_UNMATCHED"
+  | "COVERAGE_LINES_SKIPPED"
   | "CONFIG_CHANGED_IN_DIFF"
   | "COVERAGE_FILE_TRACKED"
   | "DIFF_BINARY_COVERED_FILE"
@@ -78,6 +79,8 @@ export interface BuildReportInput {
     | { reason: "coverage-paths-unmatched"; total: number; example: string; suggestedRoot: string | null };
   /** Count of distinct coverage paths that are not tracked files, when some but not all are; absent or 0 adds no message. */
   untrackedCoveragePaths?: number;
+  /** Count of malformed coverage records the parsers skipped; absent or 0 adds no message. Only set when diff coverage was computed. */
+  skippedCoverageLines?: number;
   /** Repo-relative paths the diff edits that configure this check (the config in use, workflows); absent or empty adds no message. */
   changedConfigPaths?: readonly string[];
   /** Repo-relative path of the coverage file when it is a tracked file; absent adds no message. */
@@ -175,6 +178,15 @@ export function buildReport(input: BuildReportInput): Report {
         ? "1 file path in the coverage report is not a tracked file in the repository; its coverage is not used."
         : `${untracked} file paths in the coverage report are not tracked files in the repository; their coverage is not used.`;
     messages.push({ level: "info", code: "COVERAGE_PATHS_PARTIALLY_UNMATCHED", text: subject });
+  }
+
+  const skippedLines = input.skippedCoverageLines ?? 0;
+  if (skippedLines > 0) {
+    const subject =
+      skippedLines === 1
+        ? "1 malformed coverage record was skipped (an lcov DA record or Cobertura line with an invalid line number or hit count, or a DA record outside an SF record), so diff coverage leaves it out; check that the coverage reporter finished writing the file."
+        : `${skippedLines} malformed coverage records were skipped (lcov DA records or Cobertura lines with an invalid line number or hit count, or DA records outside an SF record), so diff coverage leaves them out; check that the coverage reporter finished writing the file.`;
+    messages.push({ level: "info", code: "COVERAGE_LINES_SKIPPED", text: subject });
   }
 
   if (input.changedConfigPaths !== undefined && input.changedConfigPaths.length > 0) {

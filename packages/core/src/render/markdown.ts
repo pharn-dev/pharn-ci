@@ -44,6 +44,8 @@ const MESSAGE_HINTS: Record<MessageCode, string> = {
     "Write coverage paths relative to the repository root, or set the directory they start from (`coverage.root`, `coverage-root` or `--coverage-root`).",
   COVERAGE_PATHS_PARTIALLY_UNMATCHED:
     "Nothing to do if those files are generated or outside the repo; if changed files are missing from the table, check the coverage root.",
+  COVERAGE_LINES_SKIPPED:
+    "Regenerate the coverage report and check that the reporter finished writing it; a truncated or hand-edited file can show more coverage than the tests gave.",
   CONFIG_CHANGED_IN_DIFF:
     "Review the config and workflow changes before trusting the verdict; protect `.pharn/ci.yml` and `.github/workflows/` with CODEOWNERS.",
   COVERAGE_FILE_TRACKED:

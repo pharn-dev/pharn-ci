@@ -1,5 +1,5 @@
 import { type CoverageFormatChoice, chooseCoverageFormat, DETECTION_PREFIX } from "./coverage/detect.js";
-import { parseCoverage } from "./coverage/index.js";
+import { parseCoverageCounted } from "./coverage/index.js";
 import { createLcovReader } from "./coverage/lcov.js";
 import type { CoverageFormatSelection, CoverageMap, ParseCoverageOptions } from "./coverage/types.js";
 import { createUnifiedDiffReader, type DiffFile } from "./diff/unified.js";
@@ -13,13 +13,13 @@ import { createLineSplitter } from "./lines.js";
  * the map is empty. lcov is parsed line by line, so memory holds the coverage map and not the text. Cobertura is
  * parsed from one string, so a file past the longest string the engine can build fails with the engine's own
  * RangeError, which is not caught or reworded. A rejection of the stream rejects the promise; no partial map is
- * returned.
+ * returned. `skipped` is the number of malformed records dropped from the file (0 for an empty or unrecognized one).
  */
 export async function readCoverageChunks(
   chunks: AsyncIterable<string>,
   selection: CoverageFormatSelection,
   options: ParseCoverageOptions = {},
-): Promise<{ choice: CoverageFormatChoice; parsed: CoverageMap }> {
+): Promise<{ choice: CoverageFormatChoice; parsed: CoverageMap; skipped: number }> {
   const iterator = chunks[Symbol.asyncIterator]();
   let finished = false;
 
@@ -47,7 +47,7 @@ export async function readCoverageChunks(
     }
 
     const choice = chooseCoverageFormat(prefix, selection);
-    if (choice.format === "empty" || choice.format === "unknown") return { choice, parsed: new Map() };
+    if (choice.format === "empty" || choice.format === "unknown") return { choice, parsed: new Map(), skipped: 0 };
 
     if (choice.format === "lcov") {
       const splitter = createLineSplitter();
@@ -58,12 +58,14 @@ export async function readCoverageChunks(
       feed(prefix);
       for (let chunk = await pull(); chunk !== null; chunk = await pull()) feed(chunk);
       for (const line of splitter.finish()) reader.push(line);
-      return { choice, parsed: reader.finish() };
+      const parsed = reader.finish();
+      return { choice, parsed, skipped: reader.skipped() };
     }
 
     let text = prefix;
     for (let chunk = await pull(); chunk !== null; chunk = await pull()) text += chunk;
-    return { choice, parsed: parseCoverage(text, choice.format, options) };
+    const { map, skipped } = parseCoverageCounted(text, choice.format, options);
+    return { choice, parsed: map, skipped };
   } finally {
     if (!finished) await iterator.return?.();
   }

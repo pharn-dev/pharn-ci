@@ -25358,8 +25358,9 @@ function coverageChoiceLine(choice, file) {
 }
 
 // ../core/src/coverage/cobertura.ts
-function parseCobertura(text, options = {}) {
+function parseCoberturaCounted(text, options = {}) {
   const sources = [];
+  let skipped = 0;
   const perFile = /* @__PURE__ */ new Map();
   let inSources = false;
   let sourceText;
@@ -25412,7 +25413,7 @@ function parseCobertura(text, options = {}) {
         break;
       case "line":
         if (currentFile !== void 0 && methodDepth === 0) {
-          addLine(perFile, currentFile, event.attrs.get("number"), event.attrs.get("hits"));
+          if (!addLine(perFile, currentFile, event.attrs.get("number"), event.attrs.get("hits"))) skipped++;
         }
         break;
     }
@@ -25430,17 +25431,17 @@ function parseCobertura(text, options = {}) {
       target.set(lineNo, Math.max(target.get(lineNo) ?? 0, hits));
     }
   }
-  return map;
+  return { map, skipped };
 }
 function addLine(perFile, filename, number, hits) {
-  if (number === void 0) return;
+  if (number === void 0) return false;
   const lineNo = Number(number);
-  if (!Number.isInteger(lineNo) || lineNo < 1) return;
+  if (!Number.isInteger(lineNo) || lineNo < 1) return false;
   let count = 0;
   if (hits !== void 0) {
-    if (hits.trim() === "") return;
+    if (hits.trim() === "") return false;
     count = Number(hits);
-    if (!Number.isFinite(count) || count < 0) return;
+    if (!Number.isFinite(count) || count < 0) return false;
   }
   let lines = perFile.get(filename);
   if (!lines) {
@@ -25448,6 +25449,7 @@ function addLine(perFile, filename, number, hits) {
     perFile.set(filename, lines);
   }
   lines.set(lineNo, Math.max(lines.get(lineNo) ?? 0, count));
+  return true;
 }
 var MAX_CLIMBING_JOIN_SOURCES = 16;
 function makeResolver(sources, repoRoot, coverageRoot) {
@@ -25518,17 +25520,10 @@ function climbs(path) {
 }
 
 // ../core/src/coverage/lcov.ts
-function parseLcov(text, options = {}) {
-  return parseLcovLines(text.split(/\r?\n/), options);
-}
-function parseLcovLines(lines, options = {}) {
-  const reader = createLcovReader(options);
-  for (const line of lines) reader.push(line);
-  return reader.finish();
-}
 function createLcovReader(options = {}) {
   const map = /* @__PURE__ */ new Map();
   let current;
+  let skipped = 0;
   return {
     push(raw) {
       const line = raw.trim();
@@ -25540,15 +25535,25 @@ function createLcovReader(options = {}) {
           current = /* @__PURE__ */ new Map();
           map.set(path, current);
         }
-      } else if (line.startsWith("DA:") && current) {
+      } else if (line.startsWith("DA:")) {
+        if (!current) {
+          skipped++;
+          return;
+        }
         const [lineNo, hits] = line.slice(3).split(",");
         const n = Number(lineNo);
         const h = Number(hits);
-        if (!Number.isInteger(n) || n < 1 || !Number.isFinite(h) || h < 0) return;
+        if (!Number.isInteger(n) || n < 1 || !Number.isFinite(h) || h < 0) {
+          skipped++;
+          return;
+        }
         current.set(n, (current.get(n) ?? 0) + h);
       } else if (line === "end_of_record") {
         current = void 0;
       }
+    },
+    skipped() {
+      return skipped;
     },
     finish() {
       for (const [path, hits] of map) {
@@ -25560,12 +25565,16 @@ function createLcovReader(options = {}) {
 }
 
 // ../core/src/coverage/index.ts
-function parseCoverage(text, format, options = {}) {
+function parseCoverageCounted(text, format, options = {}) {
   switch (format) {
-    case "lcov":
-      return parseLcov(text, options);
+    case "lcov": {
+      const reader = createLcovReader(options);
+      for (const line of text.split(/\r?\n/)) reader.push(line);
+      const map = reader.finish();
+      return { map, skipped: reader.skipped() };
+    }
     case "cobertura":
-      return parseCobertura(text, options);
+      return parseCoberturaCounted(text, options);
   }
 }
 
@@ -25995,6 +26004,11 @@ function buildReport(input) {
     const subject = untracked === 1 ? "1 file path in the coverage report is not a tracked file in the repository; its coverage is not used." : `${untracked} file paths in the coverage report are not tracked files in the repository; their coverage is not used.`;
     messages.push({ level: "info", code: "COVERAGE_PATHS_PARTIALLY_UNMATCHED", text: subject });
   }
+  const skippedLines = input.skippedCoverageLines ?? 0;
+  if (skippedLines > 0) {
+    const subject = skippedLines === 1 ? "1 malformed coverage record was skipped (an lcov DA record or Cobertura line with an invalid line number or hit count, or a DA record outside an SF record), so diff coverage leaves it out; check that the coverage reporter finished writing the file." : `${skippedLines} malformed coverage records were skipped (lcov DA records or Cobertura lines with an invalid line number or hit count, or DA records outside an SF record), so diff coverage leaves them out; check that the coverage reporter finished writing the file.`;
+    messages.push({ level: "info", code: "COVERAGE_LINES_SKIPPED", text: subject });
+  }
   if (input.changedConfigPaths !== void 0 && input.changedConfigPaths.length > 0) {
     messages.push({
       level: "warn",
@@ -26285,6 +26299,7 @@ function check(input) {
   }
   const maps = [];
   const formats = /* @__PURE__ */ new Set();
+  let skippedLines = 0;
   for (const file of files) {
     if ("missingFile" in file) continue;
     const coverageFile = file.file ?? null;
@@ -26303,10 +26318,19 @@ function check(input) {
         missing: { reason: "coverage-format-unsupported", coverageFile }
       });
     }
-    const parsed = "parsed" in file ? file.parsed : parseCoverage(file.text, choice.format, {
-      ...input.repoRoot === void 0 ? {} : { repoRoot: input.repoRoot },
-      ...coverageRoot === void 0 ? {} : { coverageRoot }
-    });
+    let parsed;
+    if ("parsed" in file) {
+      parsed = file.parsed;
+      const count = file.skipped;
+      if (count !== void 0 && Number.isSafeInteger(count) && count > 0) skippedLines += count;
+    } else {
+      const counted = parseCoverageCounted(file.text, choice.format, {
+        ...input.repoRoot === void 0 ? {} : { repoRoot: input.repoRoot },
+        ...coverageRoot === void 0 ? {} : { coverageRoot }
+      });
+      parsed = counted.map;
+      skippedLines += counted.skipped;
+    }
     if (parsed.size === 0) {
       return buildReport({
         ...base,
@@ -26352,6 +26376,7 @@ function check(input) {
     ...coverageFormat === void 0 ? {} : { coverageFormat },
     diffCoverage: computeDiffCoverage(diff, coverage, input.threshold, isExcluded),
     ...untrackedCoveragePaths > 0 ? { untrackedCoveragePaths } : {},
+    ...skippedLines > 0 ? { skippedCoverageLines: skippedLines } : {},
     ...binaryPaths.length > 0 ? { binaryCoveredPaths: binaryPaths } : {}
   });
 }
@@ -26407,7 +26432,7 @@ async function readCoverageChunks(chunks, selection, options = {}) {
       prefix += chunk;
     }
     const choice = chooseCoverageFormat(prefix, selection);
-    if (choice.format === "empty" || choice.format === "unknown") return { choice, parsed: /* @__PURE__ */ new Map() };
+    if (choice.format === "empty" || choice.format === "unknown") return { choice, parsed: /* @__PURE__ */ new Map(), skipped: 0 };
     if (choice.format === "lcov") {
       const splitter = createLineSplitter();
       const reader = createLcovReader(options);
@@ -26417,11 +26442,13 @@ async function readCoverageChunks(chunks, selection, options = {}) {
       feed(prefix);
       for (let chunk = await pull(); chunk !== null; chunk = await pull()) feed(chunk);
       for (const line of splitter.finish()) reader.push(line);
-      return { choice, parsed: reader.finish() };
+      const parsed = reader.finish();
+      return { choice, parsed, skipped: reader.skipped() };
     }
     let text = prefix;
     for (let chunk = await pull(); chunk !== null; chunk = await pull()) text += chunk;
-    return { choice, parsed: parseCoverage(text, choice.format, options) };
+    const { map, skipped } = parseCoverageCounted(text, choice.format, options);
+    return { choice, parsed: map, skipped };
   } finally {
     if (!finished) await iterator2.return?.();
   }
@@ -26617,6 +26644,7 @@ var MESSAGE_HINTS = {
   DIFF_UNAVAILABLE: "Check out full history (`actions/checkout` with `fetch-depth: 0`) or set the base (`base-ref` or `--base`).",
   COVERAGE_PATHS_UNMATCHED: "Write coverage paths relative to the repository root, or set the directory they start from (`coverage.root`, `coverage-root` or `--coverage-root`).",
   COVERAGE_PATHS_PARTIALLY_UNMATCHED: "Nothing to do if those files are generated or outside the repo; if changed files are missing from the table, check the coverage root.",
+  COVERAGE_LINES_SKIPPED: "Regenerate the coverage report and check that the reporter finished writing it; a truncated or hand-edited file can show more coverage than the tests gave.",
   CONFIG_CHANGED_IN_DIFF: "Review the config and workflow changes before trusting the verdict; protect `.pharn/ci.yml` and `.github/workflows/` with CODEOWNERS.",
   COVERAGE_FILE_TRACKED: "Generate the coverage file in CI and stop tracking it (`git rm --cached` it and add it to `.gitignore`).",
   DIFF_BINARY_COVERED_FILE: "Remove `-diff` or `binary` attributes for source files from `.gitattributes` so their changes are measured.",
@@ -26829,12 +26857,12 @@ async function readCoverageFiles(deps, options) {
       coverageFiles.push({ missingFile: name(entry) });
       continue;
     }
-    const { choice, parsed } = await readCoverageChunks(chunks, format, {
+    const { choice, parsed, skipped } = await readCoverageChunks(chunks, format, {
       repoRoot,
       ...coverageRoot === void 0 ? {} : { coverageRoot }
     });
     log(coverageChoiceLine(choice, nameFiles ? entry : void 0));
-    coverageFiles.push({ parsed, format: choice.format, file: name(entry) });
+    coverageFiles.push({ parsed, format: choice.format, file: name(entry), ...skipped > 0 ? { skipped } : {} });
   }
   return coverageFiles;
 }

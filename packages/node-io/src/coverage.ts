@@ -79,12 +79,13 @@ export async function readCoverageFiles(
       continue;
     }
     // The file is parsed as it is read, with the same repo root and coverage root the check would use.
-    const { choice, parsed } = await readCoverageChunks(chunks, format, {
+    const { choice, parsed, skipped } = await readCoverageChunks(chunks, format, {
       repoRoot,
       ...(coverageRoot === undefined ? {} : { coverageRoot }),
     });
     log(coverageChoiceLine(choice, nameFiles ? entry : undefined));
-    coverageFiles.push({ parsed, format: choice.format, file: name(entry) });
+    // The count rides on the entry only when some record was dropped, so every other entry is unchanged.
+    coverageFiles.push({ parsed, format: choice.format, file: name(entry), ...(skipped > 0 ? { skipped } : {}) });
   }
   return coverageFiles;
 }
