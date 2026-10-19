@@ -24870,11 +24870,22 @@ function parseYamlSubset(text) {
       }
       top.map[key] = parseFlowList(value, lineNo);
     } else {
-      top.map[key] = parseScalar(value, lineNo);
+      const scalar = parseScalar(value, lineNo);
+      top.map[key] = scalar;
+      if (typeof scalar === "number") recordNumberText(top.map, key, value.trim());
     }
   }
   if (pendingKey) pendingKey.map[pendingKey.key] = null;
   return root;
+}
+var NUMBER_TEXT = /* @__PURE__ */ new WeakMap();
+function recordNumberText(map, key, text) {
+  let texts = NUMBER_TEXT.get(map);
+  if (texts === void 0) {
+    texts = /* @__PURE__ */ new Map();
+    NUMBER_TEXT.set(map, texts);
+  }
+  texts.set(key, text);
 }
 function stripComment(line) {
   let quote = null;
@@ -25034,9 +25045,11 @@ function validateCoverage(cov) {
         }
         coverage.format = value;
         break;
-      case "threshold":
-        coverage.threshold = parseThreshold(value, '"coverage.threshold"');
+      case "threshold": {
+        const text = typeof value === "number" ? NUMBER_TEXT.get(cov)?.get(key) : void 0;
+        coverage.threshold = parseThreshold(text ?? value, '"coverage.threshold"');
         break;
+      }
       case "exclude": {
         if (!Array.isArray(value)) throw new ConfigError(`"coverage.exclude" must be a list of glob patterns`);
         const patterns = [];
@@ -25129,7 +25142,7 @@ function isCoverageFormatSelection(value) {
   return COVERAGE_FORMAT_SELECTIONS.includes(value);
 }
 function parseThreshold(value, label = "threshold") {
-  const n = typeof value === "string" && value.trim() !== "" ? Number(value) : value;
+  const n = typeof value === "string" ? /^\d+(?:\.\d+)?$/.test(value.trim()) ? Number(value.trim()) : Number.NaN : value;
   if (typeof n !== "number" || !Number.isFinite(n) || n < 0 || n > 100) {
     throw new ConfigError(`${label} must be a number between 0 and 100`);
   }

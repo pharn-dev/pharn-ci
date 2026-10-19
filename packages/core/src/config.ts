@@ -122,11 +122,29 @@ export function parseYamlSubset(text: string): YamlMap {
       }
       top.map[key] = parseFlowList(value, lineNo);
     } else {
-      top.map[key] = parseScalar(value, lineNo);
+      const scalar = parseScalar(value, lineNo);
+      top.map[key] = scalar;
+      if (typeof scalar === "number") recordNumberText(top.map, key, value.trim());
     }
   }
   if (pendingKey) pendingKey.map[pendingKey.key] = null;
   return root;
+}
+
+/**
+ * The trimmed source text of each value the reader turned into a number from a plain (unquoted) scalar,
+ * per mapping. The generic reader reads `1e2` as 100; a field that must judge what the user wrote (the
+ * threshold) reads the text instead. Keyed by the owning map, so only the map's own keys can borrow it.
+ */
+const NUMBER_TEXT = new WeakMap<YamlMap, Map<string, string>>();
+
+function recordNumberText(map: YamlMap, key: string, text: string): void {
+  let texts = NUMBER_TEXT.get(map);
+  if (texts === undefined) {
+    texts = new Map();
+    NUMBER_TEXT.set(map, texts);
+  }
+  texts.set(key, text);
 }
 
 function stripComment(line: string): string {
@@ -315,9 +333,12 @@ function validateCoverage(cov: YamlMap[string] | undefined): PharnConfig["covera
         }
         coverage.format = value;
         break;
-      case "threshold":
-        coverage.threshold = parseThreshold(value, '"coverage.threshold"');
+      case "threshold": {
+        // A plain number was read from text such as `1e2`; judge that text, not the number it became.
+        const text = typeof value === "number" ? NUMBER_TEXT.get(cov)?.get(key) : undefined;
+        coverage.threshold = parseThreshold(text ?? value, '"coverage.threshold"');
         break;
+      }
       case "exclude": {
         if (!Array.isArray(value)) throw new ConfigError(`"coverage.exclude" must be a list of glob patterns`);
         const patterns: string[] = [];
@@ -439,9 +460,15 @@ export function isCoverageFormatSelection(value: string): value is CoverageForma
   return (COVERAGE_FORMAT_SELECTIONS as readonly string[]).includes(value);
 }
 
-/** Validate a threshold given as a number or a string (CLI flag / Action input). */
+/**
+ * Validate a threshold given as a number or a string (CLI flag / Action input / config text). A string
+ * must be a plain decimal number once trimmed (`80`, `72.5`, `080`): no sign, exponent, hex, bare or
+ * trailing dot, `Infinity`, `%` or inner spaces. A number must be finite. Either way it lies in 0-100.
+ */
 export function parseThreshold(value: unknown, label = "threshold"): number {
-  const n = typeof value === "string" && value.trim() !== "" ? Number(value) : value;
+  // No overlapping quantifiers: linear on a long run of digits.
+  const n =
+    typeof value === "string" ? (/^\d+(?:\.\d+)?$/.test(value.trim()) ? Number(value.trim()) : Number.NaN) : value;
   if (typeof n !== "number" || !Number.isFinite(n) || n < 0 || n > 100) {
     throw new ConfigError(`${label} must be a number between 0 and 100`);
   }
