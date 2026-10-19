@@ -9,6 +9,54 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+### Changed
+
+### Security
+
+## [0.1.0] - 2026-10-19
+
+### Added
+
+- GitHub Action and `pharn-ci check` CLI.
+- Diff coverage: the share of lines added in the change that the coverage report (lcov or
+  Cobertura XML) marks as executed, with an optional, inclusive threshold gate (`threshold` input,
+  `--threshold`, `coverage.threshold`).
+- Agent setup inventory: the tracked agent setup files of Claude Code, Cursor, GitHub Copilot,
+  Codex, Gemini, Windsurf, Cline and MCP, listed by kind and never read. The kinds are `claude-md`,
+  `claude-local-md`, `agents-md`, `gemini-md`, `claude-settings`, `claude-settings-local`,
+  `claude-skill`, `claude-hook`, `claude-agent`, `claude-command`, `cursor-rules`, `cursor-mcp`,
+  `copilot-instructions`, `copilot-instructions-scoped`, `copilot-agents`, `copilot-prompts`,
+  `vscode-mcp`, `codex-config`, `windsurf-rules`, `cline-rules` and `mcp-config`, plus, for Aider,
+  Continue, Roo Code, Amazon Q Developer, Junie, Zed, Augment, Kiro, Goose, OpenCode and Gemini CLI
+  and for `.claude/rules/`, `claude-rule`, `aider-config`, `conventions-md`, `continue-rules`,
+  `roo-rules`, `amazonq-rules`, `junie-guidelines`, `zed-rules`, `augment-rules`, `kiro-steering`,
+  `goosehints`, `opencode-config` and `gemini-settings`. `.mcp.json`, `.claude/` files and
+  `.cursor/rules/` are found in nested directories, and the more specific directory rule wins over
+  a file-name rule.
+- Report v1: optional `agentSetup.summary` (counts per kind and the tools involved), and an
+  `Agent setup: N files · tools` line in the markdown, with the table collapsed above 25 files.
+- Report v1 (`schema/report.v1.json`), the stable JSON output, with message codes
+  `DIFF_COVERAGE_BELOW_THRESHOLD`, `DIFF_COVERAGE_UNGATED`, `NO_COVERABLE_CHANGES`,
+  `COVERAGE_FILE_MISSING`, `COVERAGE_FILE_EMPTY`, `COVERAGE_FORMAT_UNSUPPORTED`,
+  `DIFF_UNAVAILABLE` and `NO_AGENT_SETUP_FILES`.
+- One sticky PR comment and a job summary; on fork PRs, where the token cannot comment, the job
+  summary only.
+- `.pharn/ci.yml` config file, overridden by Action inputs and CLI flags.
+- Coverage exclusions: glob patterns (`*`, `**`, `?`) from `coverage.exclude`, the CLI's repeatable
+  `--exclude <glob>` and the Action's `exclude` input, merged (their union applies), leave matching
+  changed files out of diff coverage. The report gains the optional `diffCoverage.excludedFiles`
+  field, and the comment an "Excluded" summary listing them.
+- Cobertura XML coverage parsing in core, read by the CLI and the Action.
+- Coverage format selection: the `coverage-format` Action input, the `--coverage-format` CLI flag
+  and `coverage.format` in `.pharn/ci.yml` take `lcov`, `cobertura` or `auto`. The flag or input
+  wins over the config file.
+- `auto` is the default: the format is detected from the first 1 KiB of the file, and the CLI
+  (stderr) and the Action (log) print which format was used, for example
+  `coverage: cobertura (auto-detected)`. Clover and JaCoCo native XML are not supported.
+- Message code `COVERAGE_FORMAT_UNSUPPORTED`: under `auto`, a coverage file that is neither lcov
+  nor Cobertura XML is an error with a threshold, a warning without.
+- Report v1: optional `diffCoverage.format` (`lcov` or `cobertura`), the format the report was
+  read as.
 - `COVERAGE_LINES_SKIPPED` (info): malformed lcov `DA` records and Cobertura `<line>` elements that were skipped while reading the coverage files are now counted, and the report says how many (a count only, no line numbers or file names). The verdict and the diff coverage numbers do not change, and reports that end before diff coverage is computed do not carry the message.
 - Coverage auto-discovery: with no `coverage-file` input, no `--coverage` flag and no `coverage.file`, the Action and the CLI look for the coverage report at `coverage/lcov.info`, `lcov.info`, `coverage.xml`, `coverage/cobertura-coverage.xml` and `**/coverage.cobertura.xml`, and print `coverage: <path> (auto-discovered)` for each file they read. More than one kind found is an error asking you to set the path; none found is a `COVERAGE_FILE_MISSING` message (previously a usage error). Complete workflows for vitest, jest, pytest, .NET and cargo are in `examples/workflows/`.
 - Expected agent tools: `setup.expect` in `.pharn/ci.yml`, the `expect-agent-setup` Action input and the CLI's `--expect-agent-setup` flag (repeatable) name agent tools (for example `claude-code`, `cursor`) that should have a setup file. Any tool no setup file configures is listed in the new `agentSetup.missing` field and reported as `AGENT_SETUP_EXPECTED_MISSING` (warn, or error when agent setup is required). A repo that expects nothing sees no change.
@@ -133,6 +181,18 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Security
 
+- The PR comment cannot be altered through file names or message text: control characters in
+  paths are replaced and HTML in messages is escaped.
+- The sticky comment is matched by its author as well as its marker, so a comment someone else
+  posted is never taken over.
+- A base ref starting with `-` is rejected, and revisions reach git after `--end-of-options`.
+- The config parser runs in linear time on hostile input.
+- An empty or unparseable coverage file reports `COVERAGE_FILE_EMPTY` instead of passing.
+- A `pull_request_target` run that checked out the base branch reports `DIFF_UNAVAILABLE` instead
+  of passing.
+- PR comments are capped below GitHub's size limit; the job summary keeps the full report.
+- Repository protection: signed, linear, squash-merged `main` behind six required checks;
+  immutable `v*` tags; every third-party action pinned to a commit SHA.
 - `SECURITY.md` and `docs/THREAT-MODEL.md` state that pharn-ci has one maintainer: pull requests
   are merged with the `main` ruleset's admin bypass and releases are self-approved, so no second
   person reviews a change; they list what still enforces integrity and the plan for when a second
@@ -155,66 +215,3 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   diff is no longer collapsed in pull requests (`.gitattributes` no longer marks it
   `linguist-generated`), and CI writes the changed dist files and the bundle's sha256 to the job
   summary of every pull request so reviewers see the shipped artifact change.
-
-## [0.1.0] - YYYY-MM-DD
-
-The maintainer replaces `YYYY-MM-DD` with the release date, and deletes this line, when cutting
-the release.
-
-### Added
-
-- GitHub Action and `pharn-ci check` CLI.
-- Diff coverage: the share of lines added in the change that the coverage report (lcov or
-  Cobertura XML) marks as executed, with an optional, inclusive threshold gate (`threshold` input,
-  `--threshold`, `coverage.threshold`).
-- Agent setup inventory: the tracked agent setup files of Claude Code, Cursor, GitHub Copilot,
-  Codex, Gemini, Windsurf, Cline and MCP, listed by kind and never read. The kinds are `claude-md`,
-  `claude-local-md`, `agents-md`, `gemini-md`, `claude-settings`, `claude-settings-local`,
-  `claude-skill`, `claude-hook`, `claude-agent`, `claude-command`, `cursor-rules`, `cursor-mcp`,
-  `copilot-instructions`, `copilot-instructions-scoped`, `copilot-agents`, `copilot-prompts`,
-  `vscode-mcp`, `codex-config`, `windsurf-rules`, `cline-rules` and `mcp-config`, plus, for Aider,
-  Continue, Roo Code, Amazon Q Developer, Junie, Zed, Augment, Kiro, Goose, OpenCode and Gemini CLI
-  and for `.claude/rules/`, `claude-rule`, `aider-config`, `conventions-md`, `continue-rules`,
-  `roo-rules`, `amazonq-rules`, `junie-guidelines`, `zed-rules`, `augment-rules`, `kiro-steering`,
-  `goosehints`, `opencode-config` and `gemini-settings`. `.mcp.json`, `.claude/` files and
-  `.cursor/rules/` are found in nested directories, and the more specific directory rule wins over
-  a file-name rule.
-- Report v1: optional `agentSetup.summary` (counts per kind and the tools involved), and an
-  `Agent setup: N files · tools` line in the markdown, with the table collapsed above 25 files.
-- Report v1 (`schema/report.v1.json`), the stable JSON output, with message codes
-  `DIFF_COVERAGE_BELOW_THRESHOLD`, `DIFF_COVERAGE_UNGATED`, `NO_COVERABLE_CHANGES`,
-  `COVERAGE_FILE_MISSING`, `COVERAGE_FILE_EMPTY`, `COVERAGE_FORMAT_UNSUPPORTED`,
-  `DIFF_UNAVAILABLE` and `NO_AGENT_SETUP_FILES`.
-- One sticky PR comment and a job summary; on fork PRs, where the token cannot comment, the job
-  summary only.
-- `.pharn/ci.yml` config file, overridden by Action inputs and CLI flags.
-- Coverage exclusions: glob patterns (`*`, `**`, `?`) from `coverage.exclude`, the CLI's repeatable
-  `--exclude <glob>` and the Action's `exclude` input, merged (their union applies), leave matching
-  changed files out of diff coverage. The report gains the optional `diffCoverage.excludedFiles`
-  field, and the comment an "Excluded" summary listing them.
-- Cobertura XML coverage parsing in core, read by the CLI and the Action.
-- Coverage format selection: the `coverage-format` Action input, the `--coverage-format` CLI flag
-  and `coverage.format` in `.pharn/ci.yml` take `lcov`, `cobertura` or `auto`. The flag or input
-  wins over the config file.
-- `auto` is the default: the format is detected from the first 1 KiB of the file, and the CLI
-  (stderr) and the Action (log) print which format was used, for example
-  `coverage: cobertura (auto-detected)`. Clover and JaCoCo native XML are not supported.
-- Message code `COVERAGE_FORMAT_UNSUPPORTED`: under `auto`, a coverage file that is neither lcov
-  nor Cobertura XML is an error with a threshold, a warning without.
-- Report v1: optional `diffCoverage.format` (`lcov` or `cobertura`), the format the report was
-  read as.
-
-### Security
-
-- The PR comment cannot be altered through file names or message text: control characters in
-  paths are replaced and HTML in messages is escaped.
-- The sticky comment is matched by its author as well as its marker, so a comment someone else
-  posted is never taken over.
-- A base ref starting with `-` is rejected, and revisions reach git after `--end-of-options`.
-- The config parser runs in linear time on hostile input.
-- An empty or unparseable coverage file reports `COVERAGE_FILE_EMPTY` instead of passing.
-- A `pull_request_target` run that checked out the base branch reports `DIFF_UNAVAILABLE` instead
-  of passing.
-- PR comments are capped below GitHub's size limit; the job summary keeps the full report.
-- Repository protection: signed, linear, squash-merged `main` behind six required checks;
-  immutable `v*` tags; every third-party action pinned to a commit SHA.

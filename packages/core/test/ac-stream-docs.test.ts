@@ -64,8 +64,9 @@ describe("docs: size limits", () => {
     expect(residual).toContain("Size limits");
 
     const changelog = read("CHANGELOG.md");
-    const unreleased = section(changelog, /^\[Unreleased\]/);
-    expect(unreleased, "CHANGELOG.md has an Unreleased section").not.toBeNull();
-    expect(unreleased ?? "").toMatch(/the diff and lcov coverage are read line by line/i);
+    // The change shipped in 0.1.0; before that release its line sat under Unreleased.
+    const shipped = section(changelog, /^\[0\.1\.0\]/);
+    expect(shipped, "CHANGELOG.md has a 0.1.0 section").not.toBeNull();
+    expect(shipped ?? "").toMatch(/the diff and lcov coverage are read line by line/i);
   });
 });
