@@ -155,7 +155,11 @@ describe("action: several coverage files and globs in coverage-file", () => {
     ]);
     expect(report.diffCoverage).toMatchObject({ coveredLines: 5, coverableLines: 7 });
     expect(report.diffCoverage).not.toHaveProperty("format");
-    expect(action.formatLines()).toEqual(["coverage: lcov (auto-detected)", "coverage: cobertura (auto-detected)"]);
+    // Two files are read, so each format line names its file (as written, or as the glob matched it).
+    expect(action.formatLines()).toEqual([
+      "coverage: cov/math.info: lcov (auto-detected)",
+      `coverage: TestResults/${GUID}/coverage.cobertura.xml: cobertura (auto-detected)`,
+    ]);
   });
 
   it("AC-19: a single path with a comma is one file, and ../*.info fails the step naming coverage-file and the pattern", async () => {

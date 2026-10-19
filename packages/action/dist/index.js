@@ -25352,8 +25352,9 @@ function chooseCoverageFormat(text, selection) {
   if (selection === "auto") return { format: detectCoverageFormat(text), how: "auto-detected" };
   return { format: selection, how: "configured" };
 }
-function coverageChoiceLine(choice) {
-  return `coverage: ${choice.format} (${choice.how})`;
+function coverageChoiceLine(choice, file) {
+  const prefix = file === void 0 ? "coverage: " : `coverage: ${file}: `;
+  return `${prefix}${choice.format} (${choice.how})`;
 }
 
 // ../core/src/coverage/cobertura.ts
@@ -26807,6 +26808,12 @@ async function readCoverageFiles(deps, options) {
   const entries = options.literal === true ? entryList.map((entry) => ({ kind: "literal", entry })) : parseCoverageEntries(entryList, label);
   const expanded = await expandCoverageEntries(entries, (dir) => deps.listDir(deps.resolvePath(baseDir, dir)), label);
   const coverageFiles = [];
+  const distinctPaths = /* @__PURE__ */ new Set();
+  for (const item of expanded) {
+    if (item.kind === "no-match") continue;
+    distinctPaths.add(deps.resolvePath(baseDir, item.kind === "literal" ? item.entry : item.path));
+  }
+  const nameFiles = distinctPaths.size > 1;
   const seen = /* @__PURE__ */ new Set();
   for (const item of expanded) {
     if (item.kind === "no-match") {
@@ -26826,7 +26833,7 @@ async function readCoverageFiles(deps, options) {
       repoRoot,
       ...coverageRoot === void 0 ? {} : { coverageRoot }
     });
-    log(coverageChoiceLine(choice));
+    log(coverageChoiceLine(choice, nameFiles ? entry : void 0));
     coverageFiles.push({ parsed, format: choice.format, file: name(entry) });
   }
   return coverageFiles;

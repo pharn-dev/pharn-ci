@@ -90,7 +90,11 @@ export function chooseCoverageFormat(text: string, selection: CoverageFormatSele
   return { format: selection, how: "configured" };
 }
 
-/** The one line the CLI and the Action print so a reader can see which format was used and why. */
-export function coverageChoiceLine(choice: CoverageFormatChoice): string {
-  return `coverage: ${choice.format} (${choice.how})`;
+/**
+ * The one line the CLI and the Action print so a reader can see which format was used and why. With `file`, the
+ * line names the file it is about (`coverage: a.info: lcov (auto-detected)`): used when several files are read.
+ */
+export function coverageChoiceLine(choice: CoverageFormatChoice, file?: string): string {
+  const prefix = file === undefined ? "coverage: " : `coverage: ${file}: `;
+  return `${prefix}${choice.format} (${choice.how})`;
 }
