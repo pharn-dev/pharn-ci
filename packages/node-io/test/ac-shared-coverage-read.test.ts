@@ -65,12 +65,13 @@ function fakeDeps(options: { stream: boolean }) {
 }
 
 /** What the function should return for a file found at `entry` (base-relative), computed from core alone. */
-function expectedParsed(text: string, name: string) {
+function expectedParsed(text: string, name: string, entry: string) {
   const choice = chooseCoverageFormat(text, "auto");
   if (choice.format === "empty" || choice.format === "unknown") throw new Error(`fixture ${name} is not coverage`);
   return {
     entry: { parsed: parseCoverage(text, choice.format, { repoRoot: REPO_ROOT }), format: choice.format, file: name },
-    line: coverageChoiceLine(choice),
+    // Three files are read in these tests, so each line names its file (the entry as written or matched).
+    line: coverageChoiceLine(choice, entry),
   };
 }
 
@@ -101,9 +102,9 @@ describe("@pharn-ci/node-io readCoverageFiles", () => {
         log: (line: string) => logged.push(line),
       });
 
-      const lcov = expectedParsed(LCOV, name("coverage/lcov.info"));
-      const a = expectedParsed(COBERTURA_A, name("reports/a/coverage.xml"));
-      const b = expectedParsed(COBERTURA_B, name("reports/b/coverage.xml"));
+      const lcov = expectedParsed(LCOV, name("coverage/lcov.info"), "coverage/lcov.info");
+      const a = expectedParsed(COBERTURA_A, name("reports/a/coverage.xml"), "reports/a/coverage.xml");
+      const b = expectedParsed(COBERTURA_B, name("reports/b/coverage.xml"), "reports/b/coverage.xml");
       expect(lcov.entry.format).toBe("lcov");
       expect(a.entry.format).toBe("cobertura");
       expect(b.entry.format).toBe("cobertura");
@@ -129,7 +130,8 @@ describe("@pharn-ci/node-io readCoverageFiles", () => {
       expect(listed).toContain("/ws/reports");
       expect(listed.every((path) => path.startsWith(BASE))).toBe(true);
 
-      // The logger was called once per file read, with coverageChoiceLine's text for that file.
+      // The logger was called once per file read, with coverageChoiceLine's text for that file, naming it
+      // because more than one file is read.
       expect(logged).toEqual([lcov.line, a.line, b.line]);
     });
   }

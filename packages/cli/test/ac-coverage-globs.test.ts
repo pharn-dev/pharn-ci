@@ -138,7 +138,11 @@ describe("pharn-ci check: several coverage files and globs", () => {
     ]);
     expect(report.diffCoverage).toMatchObject({ coveredLines: 5, coverableLines: 7 });
 
-    expect(run.formatLines()).toEqual(["coverage: lcov (auto-detected)", "coverage: lcov (auto-detected)"]);
+    // With two files read, each format line names its file (as written on the command line).
+    expect(run.formatLines()).toEqual([
+      "coverage: a.info: lcov (auto-detected)",
+      "coverage: b.info: lcov (auto-detected)",
+    ]);
     const coverageReads = run.reads().filter((path) => path.endsWith(".info"));
     expect(coverageReads).toEqual([resolve(REPO_ROOT, "a.info"), resolve(REPO_ROOT, "b.info")]);
     // The first format line is logged after a.info is read.

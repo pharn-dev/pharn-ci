@@ -104,7 +104,29 @@ export async function main(argv: string[], deps: CliDeps): Promise<number> {
   }
 }
 
+/**
+ * parseArgs words "`--threshold -1`" as "Did you forget to specify the option argument?", which misleads: the value
+ * was given, it just starts with "-". Rewrite that one case; every other parse error keeps parseArgs' own text.
+ */
+function dashValueError(err: unknown, argv: string[]): Error | null {
+  if ((err as { code?: unknown } | null)?.code !== "ERR_PARSE_ARGS_INVALID_OPTION_VALUE") return null;
+  const flag = /^Option '(--[^' ]+)' argument is ambiguous/.exec(errorMessage(err))?.[1];
+  if (flag === undefined) return null;
+  const at = argv.findIndex((arg, i) => arg === flag && argv[i + 1]?.startsWith("-"));
+  const value = argv[at + 1];
+  if (at === -1 || value === undefined) return null;
+  return new Error(`${flag} ${value}: a value starting with "-" must be written ${flag}=${value}`);
+}
+
 function parse(argv: string[]) {
+  try {
+    return parseOptions(argv);
+  } catch (err) {
+    throw dashValueError(err, argv) ?? err;
+  }
+}
+
+function parseOptions(argv: string[]) {
   return parseArgs({
     args: argv,
     allowPositionals: true,

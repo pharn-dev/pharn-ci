@@ -38,6 +38,7 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- When more than one coverage file is read (a glob, a list, or several `--coverage` flags), the `coverage: <format> (<how>)` log line names its file: `coverage: coverage/a.info: lcov (auto-detected)`. With one file the line is unchanged, and so is the `(auto-discovered)` line.
 - The PR comment, job summary and CLI markdown now show the overview sentence in a GitHub alert under the verdict heading: `[!CAUTION]` for fail, `[!WARNING]` for warn, `[!TIP]` for pass. Report data and message text are unchanged.
 - The PR comment, job summary and CLI markdown now show the pharn logo (a 48×48 image from the repository's raw `main` URL) above the verdict heading. Report data and message text are unchanged.
 - The PR comment, job summary and CLI markdown have a new look. They open with a branded header (a verdict heading, a one-line overview and a summary table), use emoji section headings with counts, and collapse the changed-files and agent setup tables in `<details>` blocks (the changed-files block is open when diff coverage is below the threshold). They end with a footer naming the tool version, the report schema and the coverage format. Report data and message text are unchanged.
@@ -80,6 +81,7 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Fixed
 
+- CLI: a flag value that starts with `-` (for example `--threshold -1` or `--base -x`) no longer fails with the misleading "Did you forget to specify the option argument?". The error (exit code 2, unchanged) now says the value must be written with `=`, for example `--threshold=-1`.
 - The README quick start no longer aborts for vitest: it says `@vitest/coverage-v8` must be a dev dependency, and a
   new "Coverage per ecosystem" table shows the report and `coverage-file` for vitest, jest, pytest-cov, coverlet,
   cargo-llvm-cov, Go, and JaCoCo/Kover through a Cobertura converter.
