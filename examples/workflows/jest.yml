@@ -1,0 +1,30 @@
+# .github/workflows/pharn-ci.yml: pharn-ci on a jest project.
+# No coverage-file is set: pharn-ci finds coverage/lcov.info, which jest writes below. No threshold is
+# set either, so the step reports and never fails; add `with: threshold: 80` to gate on diff coverage.
+name: pharn-ci
+on: pull_request
+
+permissions:
+  contents: read
+  pull-requests: write
+
+# One run per PR at a time, so concurrent pushes do not race on the sticky comment. The github.ref
+# fallback gives each merge-queue entry its own group, since merge_group events have no PR number.
+concurrency:
+  group: pharn-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pharn-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npx jest --coverage --coverageReporters=lcov
+      - uses: pharn-dev/pharn-ci@v0.1.0 # or, better, the tag's full commit SHA
+        timeout-minutes: 5

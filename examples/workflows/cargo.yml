@@ -1,0 +1,30 @@
+# .github/workflows/pharn-ci.yml: pharn-ci on a Rust project.
+# No coverage-file is set: pharn-ci finds lcov.info, which cargo-llvm-cov writes below. No threshold is
+# set either, so the step reports and never fails; add `with: threshold: 80` to gate on diff coverage.
+name: pharn-ci
+on: pull_request
+
+permissions:
+  contents: read
+  pull-requests: write
+
+# One run per PR at a time, so concurrent pushes do not race on the sticky comment. The github.ref
+# fallback gives each merge-queue entry its own group, since merge_group events have no PR number.
+concurrency:
+  group: pharn-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pharn-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - run: rustup component add llvm-tools-preview
+      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+        with:
+          tool: cargo-llvm-cov
+      - run: cargo llvm-cov --lcov --output-path lcov.info
+      - uses: pharn-dev/pharn-ci@v0.1.0 # or, better, the tag's full commit SHA
+        timeout-minutes: 5

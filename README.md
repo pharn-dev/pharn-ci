@@ -186,6 +186,16 @@ Release tags are exact versions (`v0.1.0`), never moved or deleted, but they are
 lightweight tags, so there is no tag signature to verify. Pinning the tag's full commit SHA is the
 integrity control; Dependabot keeps either up to date.
 
+`coverage-file` may be left out. With no `coverage-file` input and no `coverage.file` in the
+config, pharn-ci auto-discovers the report at one of five paths, relative to the repo root:
+`coverage/lcov.info`, `lcov.info`, `coverage.xml`, `coverage/cobertura-coverage.xml` and
+`**/coverage.cobertura.xml` (anywhere in the repo outside `.git` and `node_modules`; several
+matches are read and merged). If reports are found at more than one of those paths, pharn-ci
+refuses to guess and fails with an error asking you to set the path; if none is found, the report
+carries a `COVERAGE_FILE_MISSING` message. Each file it reads is logged as `coverage: <path>
+(auto-discovered)`. A complete workflow for each of vitest, jest, pytest, .NET and cargo, with no
+`coverage-file` set, is in [`examples/workflows/`](examples/workflows/).
+
 ### Coverage per ecosystem
 
 Point `coverage-file` at what your test run writes. Each of these tools produces a format pharn-ci
@@ -449,6 +459,10 @@ pharn-ci check [--coverage <file|glob>]... [--coverage-format lcov|cobertura|aut
 - `--coverage <file|glob>` is repeatable. A glob (`*`, `**`, `?`) is relative to the current
   directory; entries in `coverage.file` are relative to the repo root. The files are merged with
   hits summed ([Coverage files and globs](#coverage-files-and-globs) for the rules and limits).
+  Without the flag and without `coverage.file`, the CLI auto-discovers the report from the repo
+  root (the five paths in the [Quick start](#quick-start)) and prints `coverage: <path>
+  (auto-discovered)` on stderr; more than one kind found exits `2`. Workflows that rely on it are in
+  [`examples/workflows/`](examples/workflows/).
 - `--coverage-root <dir>` is the directory that relative coverage paths start from, for a
   package-relative report in a monorepo (`SF:src/a.ts` with `--coverage-root packages/core` is
   `packages/core/src/a.ts`). The flag wins over `coverage.root`, which wins over none (the repo

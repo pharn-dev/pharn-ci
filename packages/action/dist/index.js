@@ -25883,6 +25883,51 @@ function binaryCoveredPaths(diff, coverage) {
   return [...found].sort(byCodeUnit);
 }
 
+// ../core/src/coverageDiscovery.ts
+var COVERAGE_DISCOVERY_CANDIDATES = Object.freeze([
+  "coverage/lcov.info",
+  "lcov.info",
+  "coverage.xml",
+  "coverage/cobertura-coverage.xml",
+  "**/coverage.cobertura.xml"
+]);
+var GLOB_CANDIDATE = "**/coverage.cobertura.xml";
+var matchesGlobCandidate = compileGlob(GLOB_CANDIDATE);
+function inSkippedDirectory(path) {
+  return path.split("/").some((segment) => segment === ".git" || segment === "node_modules");
+}
+function codeUnitOrder(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+function chooseDiscoveredCoverage(paths) {
+  const present = new Set(paths);
+  const kinds = [];
+  for (const candidate of COVERAGE_DISCOVERY_CANDIDATES) {
+    if (candidate === GLOB_CANDIDATE) {
+      const matches = [...present].filter((path) => !inSkippedDirectory(path) && matchesGlobCandidate(path)).sort(codeUnitOrder);
+      if (matches.length > 0) kinds.push(matches);
+    } else if (present.has(candidate)) {
+      kinds.push([candidate]);
+    }
+  }
+  const [only] = kinds;
+  if (only === void 0) return { kind: "not-found" };
+  if (kinds.length === 1) return { kind: "found", files: only };
+  return { kind: "ambiguous", found: kinds.flat() };
+}
+function coverageDiscoveryLine(path) {
+  return `coverage: ${path} (auto-discovered)`;
+}
+function coverageDiscoveryAmbiguousText(found, howToSet) {
+  return `found more than one coverage report (${found.join(", ")}), so none was chosen: ${howToSet}`;
+}
+function coverageNotDiscoveredText() {
+  return `No coverage report was found. Looked for: ${COVERAGE_DISCOVERY_CANDIDATES.join(", ")}. Set coverage.file in .pharn/ci.yml, the coverage-file input or --coverage to point at your report.`;
+}
+function coverageDiscoveryLimitText(limit) {
+  return limit === "files" ? "coverage auto-discovery matched more than 1,000 files; set the coverage path (coverage.file, the coverage-file input or --coverage)" : "coverage auto-discovery: the walk limit was exceeded (more than 100,000 directory entries visited in one run); set the coverage path (coverage.file, the coverage-file input or --coverage)";
+}
+
 // ../core/src/report.ts
 function buildReport(input) {
   const messages = [];
@@ -25899,6 +25944,8 @@ function buildReport(input) {
         code: "COVERAGE_FILE_MISSING",
         text: `Coverage file not found: ${missing.coverageFile}`
       });
+    } else if (missing.reason === "coverage-not-discovered") {
+      messages.push({ level, code: "COVERAGE_FILE_MISSING", text: coverageNotDiscoveredText() });
     } else if (missing.reason === "coverage-file-empty") {
       const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${missing.coverageFile}`;
       messages.push({
@@ -26188,6 +26235,9 @@ function check(input) {
   } else if ("missingFile" in coverageInput) {
     files = [coverageInput];
     selection = "auto";
+  } else if ("kind" in coverageInput) {
+    files = [];
+    selection = "auto";
   } else {
     files = [
       coverageInput.file === void 0 ? { text: coverageInput.text } : { text: coverageInput.text, file: coverageInput.file }
@@ -26213,6 +26263,9 @@ function check(input) {
     ...trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage },
     ...emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {}
   };
+  if ("kind" in coverageInput) {
+    return buildReport({ ...base, diffCoverage: null, missing: { reason: "coverage-not-discovered" } });
+  }
   for (const file of files) {
     if ("missingFile" in file) {
       return buildReport({
@@ -26475,7 +26528,7 @@ var InputError = class extends ConfigError {
   }
   input;
 };
-function resolveInputs(config, raw, text) {
+function resolveInputs(config, raw, text, options = {}) {
   const errors = [];
   const attempt = (input, fn) => {
     try {
@@ -26498,7 +26551,7 @@ function resolveInputs(config, raw, text) {
       () => parseCoverageEntries(coverageEntryList(givenCoverageFile), text.coverageFile ?? "coverage file")
     );
   }
-  const coverageFile = givenCoverageFile !== void 0 ? { path: givenCoverageFile, fromConfig: false } : config.coverage?.file !== void 0 ? { path: config.coverage.file, fromConfig: true } : void 0;
+  const coverageFile = givenCoverageFile !== void 0 ? { path: givenCoverageFile, fromConfig: false } : config.coverage?.file !== void 0 ? { path: config.coverage.file, fromConfig: true } : options.discoverCoverage === true ? { discover: true } : void 0;
   if (coverageFile === void 0) errors.push(new InputError("coverageFile", text.noCoverageFile));
   const exclude = attempt("exclude", () => (raw.exclude ?? []).map((p) => parseExcludePattern(p, text.exclude)));
   const coverageRoot = raw.coverageRoot !== void 0 ? attempt("coverageRoot", () => parseCoverageRoot(raw.coverageRoot, text.coverageRoot)) : config.coverage?.root;
@@ -26750,7 +26803,8 @@ var VERSION7 = "0.1.0";
 // ../node-io/src/coverage.ts
 async function readCoverageFiles(deps, options) {
   const { label, baseDir, format, repoRoot, coverageRoot, name, log } = options;
-  const entries = parseCoverageEntries(coverageEntryList(options.entries), label);
+  const entryList = coverageEntryList(options.entries);
+  const entries = options.literal === true ? entryList.map((entry) => ({ kind: "literal", entry })) : parseCoverageEntries(entryList, label);
   const expanded = await expandCoverageEntries(entries, (dir) => deps.listDir(deps.resolvePath(baseDir, dir)), label);
   const coverageFiles = [];
   const seen = /* @__PURE__ */ new Set();
@@ -26776,6 +26830,44 @@ async function readCoverageFiles(deps, options) {
     coverageFiles.push({ parsed, format: choice.format, file: name(entry) });
   }
   return coverageFiles;
+}
+
+// ../node-io/src/discovery.ts
+async function discoverCoverage(deps, repoRoot) {
+  const budget = { files: 0, entries: 0 };
+  const limits = { files: MAX_COVERAGE_GLOB_FILES, entries: MAX_COVERAGE_WALK_ENTRIES };
+  const listDir2 = (dir) => deps.listDir(deps.resolvePath(repoRoot, dir));
+  const existing = [];
+  try {
+    for (const candidate of COVERAGE_DISCOVERY_CANDIDATES) {
+      existing.push(...await walkGlob(candidate, listDir2, budget, limits));
+    }
+  } catch (err) {
+    if (err instanceof WalkLimitError) throw new ConfigError(coverageDiscoveryLimitText(err.limit));
+    throw err;
+  }
+  return chooseDiscoveredCoverage(existing);
+}
+async function readDiscoveredCoverage(deps, options) {
+  const { repoRoot, format, coverageRoot, howToSet, log } = options;
+  const discovery = await discoverCoverage(deps, repoRoot);
+  if (discovery.kind === "ambiguous") {
+    throw new ConfigError(coverageDiscoveryAmbiguousText(discovery.found, howToSet));
+  }
+  if (discovery.kind === "not-found") return discovery;
+  for (const path of discovery.files) log(coverageDiscoveryLine(path));
+  const files = await readCoverageFiles(deps, {
+    entries: discovery.files,
+    label: "coverage auto-discovery",
+    baseDir: repoRoot,
+    format,
+    repoRoot,
+    ...coverageRoot === void 0 ? {} : { coverageRoot },
+    name: (entry) => entry,
+    log,
+    literal: true
+  });
+  return { files, format };
 }
 
 // ../node-io/src/io.ts
@@ -27083,7 +27175,9 @@ async function runUnsafe(deps) {
       requireAgentSetup: parseBool(input("require-agent-setup"), "require-agent-setup"),
       expectAgentSetup: splitPatternList(input("expect-agent-setup"))
     },
-    INPUT_ERRORS
+    INPUT_ERRORS,
+    // With no coverage path set anywhere, the report is looked for at the discovery candidates.
+    { discoverCoverage: true }
   );
   if (!resolved.ok) throw resolved.errors[0];
   const {
@@ -27097,18 +27191,31 @@ async function runUnsafe(deps) {
   const failOnThreshold = parseBool(input("fail-on-threshold"), "fail-on-threshold") ?? true;
   const comment = parseBool(input("comment"), "comment") ?? true;
   const target = !pr && prNumber !== void 0 ? await resolvePrNumberTarget(deps, { prNumber, headSha }) : void 0;
-  const coverageLabel = resolved.inputs.coverageFile.fromConfig ? '"coverage.file"' : "coverage-file";
-  const coverageFiles = await readCoverageFiles(deps, {
-    entries: resolved.inputs.coverageFile.path,
-    label: coverageLabel,
-    baseDir: deps.workspace,
-    format,
-    repoRoot: deps.workspace,
-    ...coverageRoot === void 0 ? {} : { coverageRoot },
-    // Named as written, relative to the workspace.
-    name: (entry) => entry,
-    log: (line) => deps.info(line)
-  });
+  const { coverageFile } = resolved.inputs;
+  let coverage;
+  if ("discover" in coverageFile) {
+    coverage = await readDiscoveredCoverage(deps, {
+      repoRoot: deps.workspace,
+      format,
+      ...coverageRoot === void 0 ? {} : { coverageRoot },
+      howToSet: "set the coverage-file input or coverage.file in .pharn/ci.yml",
+      log: (line) => deps.info(line)
+    });
+  } else {
+    const coverageLabel = coverageFile.fromConfig ? '"coverage.file"' : "coverage-file";
+    const coverageFiles = await readCoverageFiles(deps, {
+      entries: coverageFile.path,
+      label: coverageLabel,
+      baseDir: deps.workspace,
+      format,
+      repoRoot: deps.workspace,
+      ...coverageRoot === void 0 ? {} : { coverageRoot },
+      // Named as written, relative to the workspace.
+      name: (entry) => entry,
+      log: (line) => deps.info(line)
+    });
+    coverage = { files: coverageFiles, format };
+  }
   const repoFiles = await trackedFiles(target, deps);
   const lsTree = target ? null : await deps.git(["ls-tree", "-r", "-l", "-z", "--full-tree", "HEAD"]).catch((err) => {
     deps.warning(`git ls-tree failed, so empty agent setup files are not reported: ${String(err)}`);
@@ -27116,7 +27223,7 @@ async function runUnsafe(deps) {
   });
   const checkInput = {
     version: VERSION7,
-    coverage: { files: coverageFiles, format },
+    coverage,
     diff: await getDiff(input("base-ref"), deps, target),
     repoRoot: deps.workspace,
     threshold,

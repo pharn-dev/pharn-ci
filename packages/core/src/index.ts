@@ -31,6 +31,16 @@ export {
   type ParseCoverageOptions,
 } from "./coverage/types.js";
 export {
+  COVERAGE_DISCOVERY_CANDIDATES,
+  type CoverageDiscovery,
+  type CoverageDiscoveryNotFound,
+  chooseDiscoveredCoverage,
+  coverageDiscoveryAmbiguousText,
+  coverageDiscoveryLimitText,
+  coverageDiscoveryLine,
+  coverageNotDiscoveredText,
+} from "./coverageDiscovery.js";
+export {
   type CoverageEntry,
   coverageEntryList,
   type ExpandedCoverageEntry,
@@ -49,7 +59,7 @@ export {
 } from "./diff/unified.js";
 export { computeDiffCoverage, type DiffCoverageFile, type DiffCoverageResult } from "./diffCoverage.js";
 export { compileGlob, hasGlobSyntax, matchGlob } from "./glob.js";
-export type { DirEntry, ListDir } from "./globWalk.js";
+export { type DirEntry, type ListDir, type WalkBudget, WalkLimitError, walkGlob } from "./globWalk.js";
 export {
   gitDiffArgs,
   InputError,

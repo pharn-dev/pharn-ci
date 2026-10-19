@@ -92,7 +92,6 @@ describe("cli main", () => {
     [["check", "--nope"], "Unknown option"],
     [["check", "--coverage", "x", "--format", "xml"], '--format must be "md" or "json"'],
     [["check", "--coverage", "x", "--threshold", "abc"], "--threshold must be a number"],
-    [["check"], "no coverage file"],
     [["check", "--coverage", "x", "--config", "missing.yml"], "config file not found"],
     [["check", "--coverage", "x", "--config", ".pharn/ci.yml"], "config file not found: /repo/sub/.pharn/ci.yml"],
     [
@@ -106,6 +105,20 @@ describe("cli main", () => {
     expect(await main(argv, deps)).toBe(EXIT_ERROR);
     expect(deps.err).toContain(message);
     expect(deps.out).toBe("");
+  });
+
+  // Replaces the old `["check"]` exit-2 row: with no coverage path set, the CLI now looks for a report, and
+  // reports COVERAGE_FILE_MISSING when it finds none.
+  it("reports COVERAGE_FILE_MISSING with exit 0 when no coverage path is set and none is discovered", async () => {
+    const deps = fakeDeps({});
+    deps.listDir = async () => null;
+    expect(await main(["check", "--format", "json"], deps)).toBe(EXIT_OK);
+    const report = JSON.parse(deps.out);
+    expect(report.messages[0].code).toBe("COVERAGE_FILE_MISSING");
+    expect(report.messages[0].level).toBe("warn");
+    expect(report.messages[0].text).toContain("coverage/lcov.info");
+    expect(report.messages[0].text).toContain("coverage.file");
+    expect(deps.err).not.toContain("(auto-discovered)");
   });
 
   it.each([

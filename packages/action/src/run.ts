@@ -13,7 +13,7 @@ import {
   resolveInputs,
   VERSION,
 } from "@pharn-ci/core";
-import { gitChunks, readCoverageFiles } from "@pharn-ci/node-io";
+import { gitChunks, readCoverageFiles, readDiscoveredCoverage } from "@pharn-ci/node-io";
 import { type PrNumberTarget, parsePrNumberInputs, resolvePrNumberTarget } from "./pr-number.js";
 
 /** Identifies the single sticky comment pharn-ci owns on a PR. */
@@ -93,7 +93,8 @@ export interface ActionDeps {
   readFileStream?(path: string): Promise<AsyncIterable<string> | null>;
   /**
    * The entries of a directory, with symbolic links reported as such and never followed; null when the
-   * directory does not exist or is not a directory. Only called to expand a coverage glob.
+   * directory does not exist or is not a directory. Only called to expand a coverage glob or to discover the
+   * coverage file.
    */
   listDir(path: string): Promise<DirEntry[] | null>;
   writeFile(path: string, text: string): Promise<void>;
@@ -194,6 +195,8 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
       expectAgentSetup: splitPatternList(input("expect-agent-setup")),
     },
     INPUT_ERRORS,
+    // With no coverage path set anywhere, the report is looked for at the discovery candidates.
+    { discoverCoverage: true },
   );
   if (!resolved.ok) throw resolved.errors[0];
   const {
@@ -211,20 +214,34 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   // measured, so a stale or forged target fails first.
   const target = !pr && prNumber !== undefined ? await resolvePrNumberTarget(deps, { prNumber, headSha }) : undefined;
 
-  // Entries are relative to the workspace, from the input and from the config alike.
-  const coverageLabel = resolved.inputs.coverageFile.fromConfig ? '"coverage.file"' : "coverage-file";
-  // Every entry is resolved and every file read before the check; a file reached twice is read once.
-  const coverageFiles = await readCoverageFiles(deps, {
-    entries: resolved.inputs.coverageFile.path,
-    label: coverageLabel,
-    baseDir: deps.workspace,
-    format,
-    repoRoot: deps.workspace,
-    ...(coverageRoot === undefined ? {} : { coverageRoot }),
-    // Named as written, relative to the workspace.
-    name: (entry) => entry,
-    log: (line) => deps.info(line),
-  });
+  const { coverageFile } = resolved.inputs;
+  let coverage: CheckInput["coverage"];
+  if ("discover" in coverageFile) {
+    // An ambiguity throws here, before the diff, the summary and the comment, so run() fails the step.
+    coverage = await readDiscoveredCoverage(deps, {
+      repoRoot: deps.workspace,
+      format,
+      ...(coverageRoot === undefined ? {} : { coverageRoot }),
+      howToSet: "set the coverage-file input or coverage.file in .pharn/ci.yml",
+      log: (line) => deps.info(line),
+    });
+  } else {
+    // Entries are relative to the workspace, from the input and from the config alike.
+    const coverageLabel = coverageFile.fromConfig ? '"coverage.file"' : "coverage-file";
+    // Every entry is resolved and every file read before the check; a file reached twice is read once.
+    const coverageFiles = await readCoverageFiles(deps, {
+      entries: coverageFile.path,
+      label: coverageLabel,
+      baseDir: deps.workspace,
+      format,
+      repoRoot: deps.workspace,
+      ...(coverageRoot === undefined ? {} : { coverageRoot }),
+      // Named as written, relative to the workspace.
+      name: (entry) => entry,
+      log: (line) => deps.info(line),
+    });
+    coverage = { files: coverageFiles, format };
+  }
 
   const repoFiles = await trackedFiles(target, deps);
   // File sizes in HEAD, so an empty agent setup file can be reported. Optional: without them the check still runs.
@@ -238,7 +255,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
 
   const checkInput: CheckInput = {
     version: VERSION,
-    coverage: { files: coverageFiles, format },
+    coverage,
     diff: await getDiff(input("base-ref"), deps, target),
     repoRoot: deps.workspace,
     threshold,

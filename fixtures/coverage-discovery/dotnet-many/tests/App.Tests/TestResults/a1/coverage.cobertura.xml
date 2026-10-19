@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<coverage line-rate="0.5" branch-rate="1" version="1.9">
+  <sources>
+    <source>./</source>
+  </sources>
+  <packages>
+    <package name="App" line-rate="0.5" branch-rate="1" complexity="1">
+      <classes>
+        <class name="App.A" filename="src/a.ts" line-rate="0.5" branch-rate="1" complexity="1">
+          <methods/>
+          <lines>
+            <line number="1" hits="1" branch="False" />
+            <line number="2" hits="0" branch="False" />
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>

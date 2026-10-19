@@ -50,9 +50,10 @@ export interface InputErrorText {
 export interface ResolvedInputs {
   /**
    * The coverage file (or the list of files and globs) as given, unresolved; `fromConfig` says which base
-   * directory it is relative to.
+   * directory it is relative to. `{ discover: true }` when none was given and the caller asked for
+   * auto-discovery (`options.discoverCoverage`).
    */
-  coverageFile: { path: string | readonly string[]; fromConfig: boolean };
+  coverageFile: { path: string | readonly string[]; fromConfig: boolean } | { discover: true };
   coverageFormat: CoverageFormatSelection;
   threshold: number | null;
   /** Config patterns first, then the input's; all validated and normalized. */
@@ -84,9 +85,15 @@ export type ResolveInputsResult =
 /**
  * Merge the CLI flags or Action inputs with a parsed `.pharn/ci.yml`. Pure. Every invalid setting
  * yields one error, in the order coverage format, threshold, coverage file, exclusion patterns,
- * coverage root, expected agent tools.
+ * coverage root, expected agent tools. With `options.discoverCoverage`, no coverage file given anywhere is not
+ * an error: `coverageFile` resolves to `{ discover: true }` and the adapter looks for the report.
  */
-export function resolveInputs(config: PharnConfig, raw: RawInputs, text: InputErrorText): ResolveInputsResult {
+export function resolveInputs(
+  config: PharnConfig,
+  raw: RawInputs,
+  text: InputErrorText,
+  options: { discoverCoverage?: boolean } = {},
+): ResolveInputsResult {
   const errors: InputError[] = [];
   const attempt = <T>(input: keyof RawInputs, fn: () => T): T | undefined => {
     try {
@@ -117,12 +124,14 @@ export function resolveInputs(config: PharnConfig, raw: RawInputs, text: InputEr
       parseCoverageEntries(coverageEntryList(givenCoverageFile), text.coverageFile ?? "coverage file"),
     );
   }
-  const coverageFile =
+  const coverageFile: ResolvedInputs["coverageFile"] | undefined =
     givenCoverageFile !== undefined
       ? { path: givenCoverageFile, fromConfig: false }
       : config.coverage?.file !== undefined
         ? { path: config.coverage.file, fromConfig: true }
-        : undefined;
+        : options.discoverCoverage === true
+          ? { discover: true }
+          : undefined;
   if (coverageFile === undefined) errors.push(new InputError("coverageFile", text.noCoverageFile));
 
   const exclude = attempt("exclude", () => (raw.exclude ?? []).map((p) => parseExcludePattern(p, text.exclude)));
