@@ -21,3 +21,7 @@ packages/cli/dist/
 /.claude/commands/pharn-*.md
 /.claude/hooks/
 /.claude/settings.json
+
+# Private product context (not part of the open-source Action)
+product/
+CLAUDE.local.md
