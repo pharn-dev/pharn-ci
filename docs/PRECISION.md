@@ -76,32 +76,89 @@ The three PRs that weaken tests:
   - deletes a test file while the code it tested stays (TI01);
   - the PR is a stated cleanup of low-value tests.
 
+### PRs closed without merging
+
+Merged PRs leave out the attempts a reviewer caught, so the same script also sampled agent PRs that
+were closed without merging (`--state unmerged`). It used the same apps, sizes and exclusions, for
+PRs closed between 2026-09-06 and 2026-10-24, across 1,247 repositories. 1,786 of the 2,000 diffs
+could be read; closed PRs often have a deleted branch.
+
+**35 of 1,786 PRs (2.0%) triggered at least one signal. Reviewed by hand, 7 of them (0.39%) weaken
+tests. All 7 say so in the PR description.**
+
+| App | Scanned | Any hit | TI01 | TI03 | TI04 | TI10 |
+|---|---:|---:|---:|---:|---:|---:|
+| claude | 478 | 6 | 3 | 3 | 0 | 0 |
+| copilot-swe-agent | 353 | 6 | 4 | 2 | 0 | 0 |
+| devin-ai-integration | 464 | 14 | 6 | 8 | 0 | 1 |
+| cursor | 491 | 9 | 3 | 6 | 0 | 0 |
+| **Total** | **1,786** | **35** | **16** | **19** | **0** | **1** |
+
+This sample exposed two more detector mistakes, and the script now handles both; the table is from
+the fixed script:
+- `def fit(` in Python matched TI04. `.only` and `fit(` now count only in JS/TS files.
+- An existing `it.fails` on a line the PR edited (sync → async) looked like a new skip. A skip now
+  counts as already there when the same token and test name were removed.
+
+**Hand review of the 35 PRs:**
+
+| Verdict | PRs | What they are |
+|---|---:|---|
+| Weakens tests; a reviewer should decide | 7 | Listed below |
+| Conditional skip, or a skip in a test the PR adds | 14 | Environment guards with a reason (`REDIS_URL not set`, OpenSSL version, Windows), and `xfail` on new tests for known bugs |
+| Tests deleted with the code they test | 11 | A whole server, app, package or theme removed, or a repository restructured |
+| Test migrated | 2 | Mocha specs rewritten as Vitest tests under a new name (Cypress) |
+| No tests yet | 1 | `--passWithNoTests` added to a project that has no tests |
+
+The seven PRs that weaken tests:
+
+- [jgarrison929/pitbull#679](https://github.com/jgarrison929/pitbull/pull/679), [#678](https://github.com/jgarrison929/pitbull/pull/678) and [#663](https://github.com/jgarrison929/pitbull/pull/663) (Cursor): each `test.skip`s an existing e2e test that failed once in CI, and the title says "skip flaky".
+- [COG-GTM/juice-shop#1248](https://github.com/COG-GTM/juice-shop/pull/1248) and [#1251](https://github.com/COG-GTM/juice-shop/pull/1251) (Devin): each fixes a deliberate vulnerability in OWASP Juice Shop and disables (`xdescribe`, `it.skip`) the e2e tests that exploited it, saying so.
+- [StorminRH/lgi-tools#558](https://github.com/StorminRH/lgi-tools/pull/558) (Cursor): a stated cleanup that deletes a low-value test file.
+- [VividLemon/bootstrap-vue-next#158](https://github.com/VividLemon/bootstrap-vue-next/pull/158) (Copilot): a component rewrite that replaces two spec files with one; about 100 test cases removed, 16 added.
+
 ### What this means for the signals
 
-- **Silent test tampering is rare in merged agent PRs.** It is well below the roughly 1% that
-  DECISIONS 2026-10-21 set as the bar for revisiting the positioning. What does occur is disclosed
-  and still lands. Those are the cases where a named, recorded override (the accept label) fits better
-  than a silent green check.
-- **As specced, TI03 and TI01 would block honest PRs about 1.1% of the time** (22 of 1,966),
-  which is above the 1% false-block bar. Two rules fix every false hit in this sample:
-  - **TI03:** block only an *unconditional* skip added to an existing test. A skip guarded by a
-    condition and given a reason (`test.skip(cond, "why")`, `pytest.skip()` inside an `if`,
-    `skipif`/`skipUnless`) is at most a warn.
-  - **TI01:** do not block when the PR also deletes the source file the test covers, matched
-    by name (`foo.test.ts` with `foo.ts`). This becomes a must-not-trigger fixture.
+- **Test weakening is rare, and it is not hidden.** 10 of 3,752 PRs weaken tests: 0.15% of
+  merged PRs and 0.39% of closed ones. That is well below the roughly 1% that DECISIONS 2026-10-21
+  set as the bar for revisiting the positioning. All 10 say what they do in the PR. The most common
+  case is skipping a test that failed in CI (4 of 10), then deliberate test cleanup (3).
+- **The useful check is a recorded sign-off, not catching a cheat.** What lands is disclosed but
+  goes unnoticed in review: 3 of these PRs merged. The accept label fits this better than a silent
+  green check: the PR fails, a person other than the author applies the label, and the run records
+  who.
+- **As specced, TI03 and TI01 would block honest PRs** about 1.1% of the time on merged PRs (22 of
+  1,966) and 1.6% on closed ones (28 of 1,786). Both are above the 1% false-block bar. These rules
+  fix all but one false hit across both samples:
+  - **TI03:** block only an *unconditional* skip added to a test that exists at base. A skip guarded
+    by a condition and given a reason (`test.skip(cond, "why")`, `pytest.skip()` inside an `if`,
+    `skipif`/`skipUnless`), or any skip in a test the PR adds, is at most a warn. A skip that is
+    already there does not count when its line is moved or edited.
+  - **TI01:** a deleted file counts only if its removed lines define tests (not a helper or an
+    `__init__.py` under `tests/`). It does not block when the PR also deletes the code the test
+    covers: a source file with the same name, or source files in the package the test belongs to
+    (the test's directory, or the one holding its `test`/`tests`/`__tests__` folder). It does not
+    block either when the PR adds a test file with the same name elsewhere (a move or a migration).
+  - **TI04:** `.only` and `fit(` only in JS/TS test files, and `fit(` only as a bare call.
+  - **TI10:** adding `--passWithNoTests` does not block when the repository has no test files
+    (`git ls-files`, which the check already reads).
+  - The one false hit left is a wholesale rewrite of a small project that deletes its old tests
+    without deleting their code in the same PR.
 
 ### Limits of this measurement
 
-- **Merged PRs only.** A PR that tampered with tests and was then closed by a reviewer is not in
-  the sample. The rate of attempts may be higher than the rate that lands.
-- **Ten days, mostly small repositories.** About 500 PRs per app fill up within ten days, and most
-  of the sampled repositories are personal or small-team projects.
+- **Merged and closed PRs, not open ones.** Open PRs and PRs still under review are not sampled.
+- **Days to weeks, mostly small repositories.** About 500 PRs per app fill up within ten days for
+  merged PRs and seven weeks for closed ones. Most of the sampled repositories are personal or
+  small-team projects.
 - **Diff-only signals.** Weakening that keeps the test, such as loosened assertions, edited expected
   values or hard-coded answers (TI02, TI05–TI07, TI15), is not measured. The precision run in E2
   covers those.
 - **A regex is not the detector.** The Action's signals will be tested on fixtures, and their own
   precision is measured separately on a frozen corpus. That gets its own section here with v0.3.0.
 
-To reproduce: `GH_TOKEN=$(gh auth token) node scripts/agent-pr-baserate.mjs --until 2026-10-23`.
-It writes `hits.csv` and `summary.json` to `.cache/baserate/`, which is gitignored. Today's search
+To reproduce:
+`GH_TOKEN=$(gh auth token) node scripts/agent-pr-baserate.mjs --until 2026-10-23` for merged PRs, and
+`… --state unmerged --until 2026-10-24 --out .cache/baserate-unmerged` for closed ones. Each run
+writes `hits.csv` and `summary.json` to its `--out` folder, which is gitignored. Today's search
 results will differ, because the sample is newest first.

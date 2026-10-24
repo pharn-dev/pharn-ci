@@ -1,11 +1,13 @@
-// Measures how often merged PRs written by AI coding agents delete, skip, narrow or weaken tests.
+// Measures how often PRs written by AI coding agents delete, skip, narrow or weaken tests.
 // A one-off research script for docs/PRECISION.md, never shipped with the Action. It calls only the
 // GitHub REST API, with the token in GH_TOKEN or GITHUB_TOKEN (e.g. GH_TOKEN=$(gh auth token)).
 //
-//   node scripts/agent-pr-baserate.mjs [--per-bot 500] [--per-repo 3] [--limit N] [--until YYYY-MM-DD]
-//                                      [--out .cache/baserate]
+//   node scripts/agent-pr-baserate.mjs [--state merged|unmerged] [--per-bot 500] [--per-repo 3]
+//                                      [--limit N] [--until YYYY-MM-DD] [--out .cache/baserate]
 //
-// It samples public merged PRs per agent app, newest first, with at most --per-repo PRs per repository
+// --state merged (the default) samples merged PRs; unmerged samples PRs closed without merging,
+// which is where a tampering attempt a reviewer caught ends up. Use a separate --out for each.
+// It samples public PRs per agent app, newest first, with at most --per-repo PRs per repository
 // so a few busy repositories do not dominate. Search results, the sample and every diff are cached in
 // --out, so a run resumes where it stopped and a re-run reads the same sample. The detectors are plain
 // regexes over the diff text: a deliberate approximation of TI01, TI03, TI04 and TI10 from the product
@@ -22,11 +24,14 @@ const SEARCH_PAUSE_MS = 2200; // search allows 30 requests a minute
 const MAX_DIFF_BYTES = 10 * 1024 * 1024;
 
 function parseArgs(argv) {
-  const options = { perBot: 500, perRepo: 3, limit: Infinity, until: null, out: ".cache/baserate" };
+  const options = { state: "merged", perBot: 500, perRepo: 3, limit: Infinity, until: null, out: ".cache/baserate" };
   for (let i = 0; i < argv.length; i += 2) {
     const [flag, value] = [argv[i], argv[i + 1]];
     if (value === undefined) usage(`missing value for ${flag}`);
-    if (flag === "--per-bot") options.perBot = positiveInt(flag, value);
+    if (flag === "--state") {
+      if (value !== "merged" && value !== "unmerged") usage("--state is merged or unmerged");
+      options.state = value;
+    } else if (flag === "--per-bot") options.perBot = positiveInt(flag, value);
     else if (flag === "--per-repo") options.perRepo = positiveInt(flag, value);
     else if (flag === "--limit") options.limit = positiveInt(flag, value);
     else if (flag === "--until") options.until = isoDate(value);
@@ -125,7 +130,9 @@ async function sampleBot(token, bot, options, cacheDir) {
   const excluded = EXCLUDED_ORGS.map((org) => `-org:${org}`).join(" ");
   for (const [from, to] of weeks(options.until)) {
     for (let page = 1; page <= 10 && picked.length < options.perBot; page++) {
-      const q = `is:pr is:merged is:public author:app/${bot} merged:${from}..${to} ${excluded}`;
+      const which =
+        options.state === "merged" ? `is:merged merged:${from}..${to}` : `is:closed is:unmerged closed:${from}..${to}`;
+      const q = `is:pr ${which} is:public author:app/${bot} ${excluded}`;
       const cacheFile = join(cacheDir, `${bot}_${from}_${page}.json`);
       const cached = readCached(cacheFile);
       let body;
@@ -150,6 +157,7 @@ async function sampleBot(token, bot, options, cacheDir) {
           number: item.number,
           url: item.html_url,
           mergedAt: item.pull_request?.merged_at ?? null,
+          closedAt: item.closed_at ?? null,
         });
         if (picked.length >= options.perBot) break;
       }
@@ -228,17 +236,31 @@ const WEAKENED_SCRIPT = [
 ];
 const COMMENT = /^\s*(?:\/\/|#|\*|\/\*)/;
 
-// Lines added that match, unless the same text was removed from the file (a moved or re-indented line).
+// What makes a matching line the same skip as before: the token that matched and the test's name (its
+// first string literal), or the whole line when it has no name. So a skip that was already there does
+// not count when the PR only moves the line or edits the rest of it (`() =>` to `async () =>`).
+function skipKey(text, patterns) {
+  const pattern = patterns.find((p) => p.test(text));
+  if (!pattern) return null;
+  const name = /(["'`])((?:\\.|(?!\1).)*)\1/.exec(text)?.[2];
+  return `${pattern.exec(text)[0]}|${name ?? text.trim()}`;
+}
+
+// Lines added that match, unless the same skip was removed from the file (moved or edited, not added).
 function addedMatches(file, patterns) {
   const removed = new Map();
-  for (const text of file.removed) removed.set(text.trim(), (removed.get(text.trim()) ?? 0) + 1);
+  for (const text of file.removed) {
+    const key = skipKey(text, patterns);
+    if (key !== null) removed.set(key, (removed.get(key) ?? 0) + 1);
+  }
   const hits = [];
   for (const { line, text } of file.added) {
-    const key = text.trim();
-    if (COMMENT.test(text) || !patterns.some((p) => p.test(text))) continue;
+    if (COMMENT.test(text)) continue;
+    const key = skipKey(text, patterns);
+    if (key === null) continue;
     const left = removed.get(key) ?? 0;
     if (left > 0) removed.set(key, left - 1);
-    else hits.push({ line, text: key });
+    else hits.push({ line, text: text.trim() });
   }
   return hits;
 }
@@ -261,7 +283,9 @@ function detect(files) {
       hits.push({ signal: "TI01", path: file.oldPath, line: null, text: `renamed to ${file.path}` });
     if (isTestFile(file.path) && file.status !== "deleted") {
       for (const hit of addedMatches(file, SKIP)) hits.push({ signal: "TI03", path: file.path, ...hit });
-      for (const hit of addedMatches(file, ONLY)) hits.push({ signal: "TI04", path: file.path, ...hit });
+      // `.only`/`fit(` are JS test-runner API; in Python `def fit(` is just a method.
+      if (/\.[cm]?[jt]sx?$/.test(file.path))
+        for (const hit of addedMatches(file, ONLY)) hits.push({ signal: "TI04", path: file.path, ...hit });
     }
     if (/(?:^|\/)package\.json$/.test(file.path) && file.status === "modified") {
       const before = scriptEntries(file.removed);
@@ -299,8 +323,11 @@ async function main() {
   const sampleFile = join(options.out, "sample.json");
   const cachedSample = readCached(sampleFile);
   let sample;
-  if (cachedSample !== null) sample = JSON.parse(cachedSample);
-  else {
+  if (cachedSample !== null) {
+    sample = JSON.parse(cachedSample);
+    if ((sample.state ?? "merged") !== options.state)
+      usage(`${sampleFile} holds a ${sample.state ?? "merged"} sample; use another --out for --state ${options.state}`);
+  } else {
     sample = [];
     for (const bot of BOTS) {
       process.stderr.write(`sampling ${bot}\n`);
@@ -308,7 +335,7 @@ async function main() {
     }
     writeCached(
       sampleFile,
-      `${JSON.stringify({ until: options.until, perRepo: options.perRepo, prs: sample }, null, 1)}\n`,
+      `${JSON.stringify({ state: options.state, until: options.until, perRepo: options.perRepo, prs: sample }, null, 1)}\n`,
     );
     sample = { prs: sample };
   }
@@ -345,7 +372,7 @@ async function main() {
         pr.repo,
         pr.number,
         pr.url,
-        pr.mergedAt,
+        options.state === "merged" ? pr.mergedAt : pr.closedAt,
         hit.signal,
         hit.path,
         hit.line,
@@ -353,7 +380,17 @@ async function main() {
       ]);
   }
 
-  const header = ["bot", "repo", "pr", "url", "merged_at", "signal", "path", "line", "excerpt"];
+  const header = [
+    "bot",
+    "repo",
+    "pr",
+    "url",
+    `${options.state === "merged" ? "merged" : "closed"}_at`,
+    "signal",
+    "path",
+    "line",
+    "excerpt",
+  ];
   writeFileSync(
     join(options.out, "hits.csv"),
     `${[header, ...rows].map((r) => r.map(csvCell).join(",")).join("\n")}\n`,
@@ -368,7 +405,7 @@ async function main() {
   }
   const total = { scanned: [...scanned.values()].reduce((a, b) => a + b, 0) };
   for (const s of signals) total[s] = BOTS.reduce((sum, bot) => sum + byBot[bot][s], 0);
-  const summary = { until: options.until, sampled: prs.length, skipped, total, byBot };
+  const summary = { state: options.state, until: options.until, sampled: prs.length, skipped, total, byBot };
   writeFileSync(join(options.out, "summary.json"), `${JSON.stringify(summary, null, 1)}\n`);
   process.stdout.write(`${JSON.stringify(summary, null, 1)}\n`);
 }
