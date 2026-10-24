@@ -1,5 +1,8 @@
 node_modules/
 /coverage/
+# Local caches (scripts/agent-pr-baserate.mjs keeps its sample and diffs here)
+/.cache/
+/.cache-*.log
 packages/core/dist/
 packages/cli/dist/
 *.tsbuildinfo
