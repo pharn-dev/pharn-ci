@@ -11,7 +11,7 @@
 // regexes over the diff text: a deliberate approximation of TI01, TI03, TI04 and TI10 from the product
 // spec, not the Action's implementation. Output: <out>/hits.csv (one row per finding, with a short
 // excerpt for hand review) and <out>/summary.json (PRs scanned and PRs hit, per bot and signal).
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const BOTS = ["claude", "copilot-swe-agent", "devin-ai-integration", "cursor"];
@@ -53,6 +53,36 @@ function usage(message) {
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// A cached file's text, or null when it is not there yet. Read directly instead of checking first,
+// so nothing can change between the check and the read.
+function readCached(path) {
+  try {
+    return readFileSync(path, "utf8");
+  } catch (error) {
+    if (error && error.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+// Creates the cache file; never overwrites one that appeared meanwhile (another run got there first).
+function writeCached(path, text) {
+  try {
+    writeFileSync(path, text, { flag: "wx" });
+  } catch (error) {
+    if (!(error && error.code === "EEXIST")) throw error;
+  }
+}
+
+// `owner/name` as GitHub allows it, and a PR number. Cache file names and API paths are built from
+// these, so anything else (from the API or from an edited sample.json) is skipped.
+const REPO = /^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/;
+const validPr = (pr) =>
+  typeof pr?.repo === "string" &&
+  REPO.test(pr.repo) &&
+  !/^\.+$/.test(pr.repo.split("/")[1]) && // `.github` is a real name; `.` and `..` are not
+  Number.isInteger(pr.number) &&
+  pr.number > 0;
 
 async function github(token, path, accept = "application/vnd.github+json") {
   for (let attempt = 1; ; attempt++) {
@@ -97,18 +127,20 @@ async function sampleBot(token, bot, options, cacheDir) {
     for (let page = 1; page <= 10 && picked.length < options.perBot; page++) {
       const q = `is:pr is:merged is:public author:app/${bot} merged:${from}..${to} ${excluded}`;
       const cacheFile = join(cacheDir, `${bot}_${from}_${page}.json`);
+      const cached = readCached(cacheFile);
       let body;
-      if (existsSync(cacheFile)) body = JSON.parse(readFileSync(cacheFile, "utf8"));
+      if (cached !== null) body = JSON.parse(cached);
       else {
         await sleep(SEARCH_PAUSE_MS);
         const params = new URLSearchParams({ q, per_page: "100", page: String(page), sort: "created", order: "desc" });
         const response = await github(token, `/search/issues?${params}`);
         if (!response.ok) throw new Error(`search failed (${response.status}): ${await response.text()}`);
         body = await response.json();
-        writeFileSync(cacheFile, JSON.stringify(body));
+        writeCached(cacheFile, JSON.stringify(body));
       }
       for (const item of body.items) {
         const repo = item.repository_url.replace(`${API}/repos/`, "");
+        if (!validPr({ repo, number: item.number })) continue;
         const count = perRepo.get(repo) ?? 0;
         if (count >= options.perRepo) continue;
         perRepo.set(repo, count + 1);
@@ -265,21 +297,22 @@ async function main() {
   mkdirSync(diffDir, { recursive: true });
 
   const sampleFile = join(options.out, "sample.json");
+  const cachedSample = readCached(sampleFile);
   let sample;
-  if (existsSync(sampleFile)) sample = JSON.parse(readFileSync(sampleFile, "utf8"));
+  if (cachedSample !== null) sample = JSON.parse(cachedSample);
   else {
     sample = [];
     for (const bot of BOTS) {
       process.stderr.write(`sampling ${bot}\n`);
       sample.push(...(await sampleBot(token, bot, options, searchDir)));
     }
-    writeFileSync(
+    writeCached(
       sampleFile,
       `${JSON.stringify({ until: options.until, perRepo: options.perRepo, prs: sample }, null, 1)}\n`,
     );
     sample = { prs: sample };
   }
-  const prs = sample.prs.slice(0, options.limit);
+  const prs = sample.prs.filter(validPr).slice(0, options.limit);
 
   const rows = [];
   const scanned = new Map();
@@ -287,13 +320,12 @@ async function main() {
   let skipped = 0;
   for (const [index, pr] of prs.entries()) {
     const diffFile = join(diffDir, `${pr.repo.replace("/", "__")}__${pr.number}.diff`);
-    let text;
-    if (existsSync(diffFile)) text = readFileSync(diffFile, "utf8");
-    else {
+    let text = readCached(diffFile);
+    if (text === null) {
       const response = await github(token, `/repos/${pr.repo}/pulls/${pr.number}`, "application/vnd.github.diff");
       text = response.ok ? await response.text() : "";
       if (!response.ok || text.length > MAX_DIFF_BYTES) text = "";
-      writeFileSync(diffFile, text);
+      writeCached(diffFile, text);
     }
     if ((index + 1) % 100 === 0) process.stderr.write(`  ${index + 1}/${prs.length} diffs\n`);
     if (text === "") {
