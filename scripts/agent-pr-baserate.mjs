@@ -14,7 +14,8 @@
 // spec, not the Action's implementation. Output: <out>/hits.csv (one row per finding, with a short
 // excerpt for hand review) and <out>/summary.json (PRs scanned and PRs hit, per bot and signal).
 // Each diff request's path is checked against an anchored pattern right before it is sent, and a PR
-// whose path fails is skipped.
+// whose path fails is skipped. The script writes no control characters other than tab, newline and
+// carriage return to the cache, and a fresh diff is analysed as cached.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -72,13 +73,18 @@ function readCached(path) {
   }
 }
 
-// Creates the cache file; never overwrites one that appeared meanwhile (another run got there first).
+// Caches text without control characters other than tab, newline and carriage return (an ESC sequence or a
+// C1 control in a diff would otherwise reach the terminal of whoever reads the cache or hits.csv). Returns
+// the text it cached. Creates the cache file; never overwrites one that appeared meanwhile.
 function writeCached(path, text) {
+  const clean = text.replace(/[^\t\n\r\x20-\x7e\xa0-\uffff]/g, "");
+  if (/[^\t\n\r\x20-\x7e\xa0-\uffff]/.test(clean)) throw new Error(`refusing to cache ${path}: control characters`);
   try {
-    writeFileSync(path, text, { flag: "wx" });
+    writeFileSync(path, clean, { flag: "wx" });
   } catch (error) {
     if (!(error && error.code === "EEXIST")) throw error;
   }
+  return clean;
 }
 
 // `owner/name` as GitHub allows it, and a PR number. Cache file names and API paths are built from
@@ -367,7 +373,7 @@ async function main() {
         const response = await github(token, path, "application/vnd.github.diff");
         text = response.ok ? await response.text() : "";
         if (!response.ok || text.length > MAX_DIFF_BYTES) text = "";
-        writeCached(diffFile, text);
+        text = writeCached(diffFile, text);
       }
     }
     if ((index + 1) % 100 === 0) process.stderr.write(`  ${index + 1}/${prs.length} diffs\n`);
