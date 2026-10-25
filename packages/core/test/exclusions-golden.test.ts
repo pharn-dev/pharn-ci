@@ -5,7 +5,7 @@ import { expectValidReport } from "./schema.js";
 // The fixtures and the core functions are loaded inside the test body: fixtures/golden-exclusions/ and the
 // exclusion support do not exist before the build, and a read at load time would fail the whole file.
 
-describe("golden: fixture diff + lcov + exclusions -> Report v1", () => {
+describe("golden: fixture diff + lcov + exclusions -> Report v2", () => {
   it("AC-17: excludes the fixture's generated files and matches the golden JSON and markdown", async () => {
     const { check } = await import("../src/check.js");
     const { parseConfig } = await import("../src/config.js");

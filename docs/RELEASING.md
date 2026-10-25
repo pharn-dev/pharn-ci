@@ -19,8 +19,14 @@ npm yet.
   is the commit SHA: consumers should pin the full commit SHA the tag points at, not the tag name,
   and can check that the commit is on `main` and that its bundle rebuilds from the sources
   ([Verify the release](#verify-the-release)).
-- **Before 1.0, a breaking change bumps the minor version** (0.1.x → 0.2.0). Report v1 stays
-  compatible across all of them: fields are only added, message codes are never renamed.
+- **Before 1.0, a breaking change bumps the minor version** (0.1.x → 0.2.0). Within one report
+  schema version, fields are only added and message codes are never renamed.
+
+**v0.2.0 is a breaking release for report consumers.** It ships Report v2 (`schema/report.v2.json`):
+`schemaVersion` becomes the number 2 (Report v1 used the string "1"), and the report gains optional top-level
+objects (`testIntegrity`, and `meta` from the Action). Every v1 field keeps its name, type and meaning, but
+`schema/report.v1.json` has `additionalProperties: false`, so a v2 report does not validate against it. Tools
+that validate `report.json` must switch on `schemaVersion`. Inputs, outputs and message codes are unchanged.
 
 ## Inputs, outputs and message codes
 
@@ -29,15 +35,15 @@ that worked on the previous release. Before 1.0 the rules are:
 
 - **Never removed.** No Action input or output, CLI flag or report message code is removed in 0.x.
   `packages/action/test/input-aliases.test.ts` lists every shipped input and output and fails when
-  one disappears from `action.yml`; message codes are held by `schema/report.v1.json` and the golden
-  tests.
+  one disappears from `action.yml`; message codes are held by `schema/report.v1.json`,
+  `schema/report.v2.json` and the golden tests.
 - **Renames keep the old name for at least one minor release.** A renamed input stays declared in
   `action.yml` and is mapped to its new name in `INPUT_ALIASES` (`packages/action/src/run.ts`). The
   old name keeps working and logs a `core.warning` saying to rename it; when both names are set, the
   new one wins and the warning says the old one is ignored. The old name may be dropped only in a
   later minor release than the one that renamed it, and its removal is a breaking change listed in
   the changelog. A renamed CLI flag keeps its old spelling under the same rule. Message codes are
-  never renamed (Report v1).
+  never renamed (Report v1 and v2).
 - **A changed default is a breaking change.** It ships only in a minor release, under **Changed** in
   `CHANGELOG.md`, with the old behaviour named and how to get it back (usually by setting the input).
 - **The comment and summary layout may change** in any release; tools should read `report.json`

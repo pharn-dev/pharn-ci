@@ -34,7 +34,7 @@ async function reportWith(excludedFiles: string[] | undefined, opts: { noCoverab
 }
 
 const BASE_REPORT = {
-  schemaVersion: "1",
+  schemaVersion: 2,
   tool: { name: "pharn-ci", version: "0.1.0" },
   verdict: "pass",
   diffCoverage: {
@@ -46,6 +46,7 @@ const BASE_REPORT = {
   },
   agentSetup: { files: [] },
   messages: [],
+  testIntegrity: { mode: "warn", source: "default", verdict: "pass", signals: [], languages: [] },
 };
 
 describe("report schema: diffCoverage.excludedFiles", () => {

@@ -53,4 +53,4 @@ Agent setup: 8 files · amp, claude-code, codex, copilot, cursor, jules, mcp, op
 
 ---
 
-<sub>pharn-ci 0.1.0 · report schema v1 · coverage format lcov</sub>
+<sub>pharn-ci 0.1.0 · report schema v2 · coverage format lcov</sub>

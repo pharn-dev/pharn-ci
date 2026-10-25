@@ -25952,6 +25952,9 @@ function coverageDiscoveryLimitText(limit) {
 }
 
 // ../core/src/report.ts
+function emptyTestIntegrity() {
+  return { mode: "warn", source: "default", verdict: "pass", signals: [], languages: [] };
+}
 function buildReport(input) {
   const messages = [];
   const dc = input.diffCoverage;
@@ -26073,7 +26076,7 @@ function buildReport(input) {
     messages.push({ level: "warn", code: "AGENT_SETUP_FILE_EMPTY", text });
   }
   return {
-    schemaVersion: "1",
+    schemaVersion: 2,
     tool: { name: "pharn-ci", version: input.version },
     verdict: verdictOf(messages),
     diffCoverage: dc === null ? null : {
@@ -26090,7 +26093,9 @@ function buildReport(input) {
       summary: summary2,
       ...expected.length > 0 ? { missing: missingTools } : {}
     },
-    messages
+    messages,
+    testIntegrity: emptyTestIntegrity(),
+    ...input.meta === void 0 ? {} : { meta: input.meta }
   };
 }
 function unmatchedText(missing) {
@@ -26289,7 +26294,8 @@ function check(input) {
     ...configPaths.length > 0 ? { changedConfigPaths: configPaths } : {},
     ...testPaths.length > 0 ? { deletedTestFiles: testPaths } : {},
     ...trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage },
-    ...emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {}
+    ...emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {},
+    ...input.meta === void 0 ? {} : { meta: input.meta }
   };
   if ("kind" in coverageInput) {
     return buildReport({ ...base, diffCoverage: null, missing: { reason: "coverage-not-discovered" } });
@@ -27157,6 +27163,57 @@ async function resolvePrNumberTarget(deps, { prNumber, headSha }) {
   return { number: prNumber, baseSha: pr.baseSha, headSha: actualHead };
 }
 
+// src/run-meta.ts
+var EVENTS = ["pull_request", "merge_group", "push", "workflow_run", "workflow_dispatch"];
+var SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+var ZERO_SHA = /^0+$/;
+function runMeta(context3, opts) {
+  const repository = context3.payload.repository?.full_name;
+  const { runId, runAttempt } = context3;
+  if (typeof repository !== "string" || repository === "") return void 0;
+  if (!Number.isInteger(runId) || !Number.isInteger(runAttempt) || runAttempt < 1) return void 0;
+  const pr = context3.payload.pull_request;
+  const mergeGroup = context3.payload.merge_group;
+  let headSha;
+  let baseSha;
+  let prNumber;
+  if (opts.target) {
+    headSha = opts.target.headSha;
+    baseSha = opts.target.baseSha;
+    prNumber = opts.target.number;
+  } else if (pr) {
+    headSha = pr.head.sha;
+    baseSha = pr.base.sha;
+    prNumber = pr.number;
+  } else if (mergeGroup) {
+    headSha = mergeGroup.head_sha;
+    baseSha = mergeGroup.base_sha;
+    prNumber = null;
+  } else {
+    headSha = context3.sha;
+    const before = context3.payload.before;
+    const baseRef = opts.baseRef?.toLowerCase();
+    baseSha = baseRef && SHA.test(baseRef) ? baseRef : before && !ZERO_SHA.test(before) ? before : null;
+    prNumber = null;
+  }
+  if (!SHA.test(headSha)) return void 0;
+  const event = EVENTS.find((name) => name === context3.eventName) ?? "other";
+  const repositoryId = context3.payload.repository?.id;
+  return {
+    event,
+    repository,
+    ...Number.isInteger(repositoryId) ? { repositoryId } : {},
+    prNumber,
+    headSha,
+    baseSha,
+    scope: `${context3.workflow ?? ""}/${context3.job ?? ""}`,
+    runId,
+    runAttempt,
+    ...context3.actor ? { actor: context3.actor } : {},
+    upload: { status: "skipped" }
+  };
+}
+
 // src/run.ts
 var COMMENT_MARKER = "<!-- pharn-ci -->";
 var SCOPE_LINE_PREFIX = "<!-- pharn-ci scope:";
@@ -27164,7 +27221,7 @@ var DEFAULT_TOKEN_LOGIN = "github-actions[bot]";
 function commentScopeLine(workflow, job) {
   return `${SCOPE_LINE_PREFIX} ${encodeURIComponent(workflow)}/${encodeURIComponent(job)} -->`;
 }
-var ZERO_SHA = /^0+$/;
+var ZERO_SHA2 = /^0+$/;
 var DEFAULT_CONFIG = ".pharn/ci.yml";
 var INPUT_ERRORS = {
   coverageFormat: (value) => `coverage-format "${value}" is not supported (supported: lcov, cobertura, auto)`,
@@ -27283,7 +27340,9 @@ async function runUnsafe(deps) {
     ...coverageRoot === void 0 ? {} : { coverageRoot },
     ...input("config") === "" ? {} : { configPath: input("config") }
   };
-  const report = check(checkInput);
+  const meta = runMeta(deps.context, { baseRef: input("base-ref"), ...target === void 0 ? {} : { target } });
+  if (meta === void 0) deps.info("run metadata is incomplete, so report.json carries no meta");
+  const report = check(meta === void 0 ? checkInput : { ...checkInput, meta });
   const summary2 = fitMarkdown(report, {
     prefix: "",
     note: SUMMARY_TRUNCATED_NOTE,
@@ -27344,7 +27403,7 @@ async function getDiff(baseRefInput, deps, target) {
   const { context: context3 } = deps;
   const pr = context3.payload.pull_request;
   const mergeGroup = context3.payload.merge_group;
-  const base = baseRefInput || pr?.base.sha || mergeGroup?.base_sha || (context3.payload.before && !ZERO_SHA.test(context3.payload.before) ? context3.payload.before : "");
+  const base = baseRefInput || pr?.base.sha || mergeGroup?.base_sha || (context3.payload.before && !ZERO_SHA2.test(context3.payload.before) ? context3.payload.before : "");
   if (!base) return { unavailable: "no base to diff against (not a pull request; set the base-ref input)" };
   const head = context3.eventName === "pull_request_target" && pr ? pr.head.sha : mergeGroup?.head_sha || context3.sha;
   if (context3.eventName === "pull_request_target" && pr) {

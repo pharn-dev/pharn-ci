@@ -9,7 +9,7 @@ import { type DiffFile, parseUnifiedDiff } from "./diff/unified.js";
 import { computeDiffCoverage } from "./diffCoverage.js";
 import { binaryCoveredPaths, changedConfigPaths, trackedCoverageFile } from "./gateInputs.js";
 import { compileGlob } from "./glob.js";
-import { buildReport, type Report } from "./report.js";
+import { buildReport, type Report, type ReportMeta } from "./report.js";
 import { scanAgentSetup } from "./setup/scan.js";
 import { deletedTestFiles } from "./testFiles.js";
 
@@ -75,9 +75,11 @@ export interface CheckInput {
    * under review edits it.
    */
   configPath?: string;
+  /** Run metadata from the caller (the Action), copied into the report as given. Absent adds no `meta`. */
+  meta?: ReportMeta;
 }
 
-/** The whole pharn-ci check as one pure function: raw inputs in, Report v1 out. */
+/** The whole pharn-ci check as one pure function: raw inputs in, Report v2 out. */
 export function check(input: CheckInput): Report {
   // Validate before any early return, so a bad pattern is an error even when nothing else is computed.
   const matchers = [...new Set((input.exclude ?? []).map((p) => parseExcludePattern(p)))].map(compileGlob);
@@ -135,6 +137,7 @@ export function check(input: CheckInput): Report {
     ...(testPaths.length > 0 ? { deletedTestFiles: testPaths } : {}),
     ...(trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage }),
     ...(emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {}),
+    ...(input.meta === undefined ? {} : { meta: input.meta }),
   };
 
   if ("kind" in coverageInput) {

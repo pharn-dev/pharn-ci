@@ -28,8 +28,9 @@ Closes #<!-- issue number -->
 - [ ] Core changes ship with fixture-based tests; reports are validated with `expectValidReport`.
 - [ ] No existing test was weakened, skipped or deleted. Golden files changed only because the output
       intentionally changed (explained below).
-- [ ] `schema/report.v1.json` is untouched, or changed only additively (optional fields, message
-      codes, setup kinds) with `packages/core/src/report.ts` updated to match.
+- [ ] `schema/report.v1.json` is untouched, and `schema/report.v2.json` is untouched or changed only
+      additively (optional fields, message codes, setup kinds) with `packages/core/src/report.ts`
+      updated to match.
 - [ ] No new dependency, or it is justified below.
 - [ ] `pnpm build` was run, and `packages/action/dist` is committed and current.
 - [ ] User-visible changes have a line under **Unreleased** in `CHANGELOG.md`.

@@ -75,11 +75,17 @@ export { formatRanges, type RenderMarkdownOptions, renderMarkdown } from "./rend
 export {
   type BuildReportInput,
   buildReport,
+  emptyTestIntegrity,
   type Message,
   type MessageCode,
   type MessageLevel,
   type Report,
   type ReportDiffCoverage,
+  type ReportMeta,
+  type ReportMetaEvent,
+  type ReportTestIntegrity,
+  type TestIntegrityMode,
+  type TestIntegritySignal,
   type Verdict,
   verdictOf,
 } from "./report.js";

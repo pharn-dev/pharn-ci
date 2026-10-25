@@ -15,6 +15,7 @@ import {
 } from "@pharn-ci/core";
 import { gitChunks, readCoverageFiles, readDiscoveredCoverage } from "@pharn-ci/node-io";
 import { type PrNumberTarget, parsePrNumberInputs, resolvePrNumberTarget } from "./pr-number.js";
+import { runMeta } from "./run-meta.js";
 
 /** Identifies the single sticky comment pharn-ci owns on a PR. */
 export const COMMENT_MARKER = "<!-- pharn-ci -->";
@@ -66,8 +67,13 @@ export interface ActionContext {
   workflow?: string;
   /** Id of the running job (GITHUB_JOB). */
   job?: string;
+  /** GITHUB_RUN_ID, GITHUB_RUN_ATTEMPT and GITHUB_ACTOR; recorded in the report's `meta`. */
+  runId?: number;
+  runAttempt?: number;
+  actor?: string;
   payload: {
     before?: string;
+    repository?: { full_name?: string; id?: number };
     pull_request?: { number: number; base: { sha: string }; head: { sha: string } };
     merge_group?: { base_sha: string; head_sha: string };
   };
@@ -267,7 +273,9 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
     ...(input("config") === "" ? {} : { configPath: input("config") }),
   };
-  const report = check(checkInput);
+  const meta = runMeta(deps.context, { baseRef: input("base-ref"), ...(target === undefined ? {} : { target }) });
+  if (meta === undefined) deps.info("run metadata is incomplete, so report.json carries no meta");
+  const report = check(meta === undefined ? checkInput : { ...checkInput, meta });
   const summary = fitMarkdown(report, {
     prefix: "",
     note: SUMMARY_TRUNCATED_NOTE,

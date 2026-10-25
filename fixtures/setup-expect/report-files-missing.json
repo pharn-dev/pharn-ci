@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1",
+  "schemaVersion": 2,
   "tool": {
     "name": "pharn-ci",
     "version": "0.1.0"
@@ -37,5 +37,12 @@
       "code": "AGENT_SETUP_EXPECTED_MISSING",
       "text": "No agent setup file configures the expected tools: claude-code, cursor."
     }
-  ]
+  ],
+  "testIntegrity": {
+    "mode": "warn",
+    "source": "default",
+    "verdict": "pass",
+    "signals": [],
+    "languages": []
+  }
 }

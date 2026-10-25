@@ -65,10 +65,10 @@ describe("golden reports and the coverage format", () => {
     const withoutFooter = (markdown: string) => markdown.trimEnd().split("\n").slice(0, -1);
     expect(withoutFooter(renderMarkdown(report))).toEqual(withoutFooter(renderMarkdown(lcovReport)));
     expect(lastLine(renderMarkdown(report))).toBe(
-      "<sub>pharn-ci 0.1.0 · report schema v1 · coverage format cobertura</sub>",
+      "<sub>pharn-ci 0.1.0 · report schema v2 · coverage format cobertura</sub>",
     );
     expect(lastLine(renderMarkdown(lcovReport))).toBe(
-      "<sub>pharn-ci 0.1.0 · report schema v1 · coverage format lcov</sub>",
+      "<sub>pharn-ci 0.1.0 · report schema v2 · coverage format lcov</sub>",
     );
 
     await expect(asFile(report)).toMatchFileSnapshot("../../../fixtures/golden-cobertura/report.json");
@@ -99,9 +99,11 @@ describe("golden reports and the coverage format", () => {
     expect(markdownLines.filter((line) => line.includes(`\`${partialCode}\``))).toHaveLength(1);
     const partialAt = markdownLines.findIndex((line) => line.includes(`\`${partialCode}\``));
     expect(markdownLines[partialAt + 1]).toMatch(/^ {2}- Hint: \S/);
+    // The pinned hash predates Report v2, whose only markdown change is the footer's schema version.
     const markdownWithoutMessage = markdownLines
       .filter((_, index) => index !== partialAt && index !== partialAt + 1)
-      .join("\n");
+      .join("\n")
+      .replace("· report schema v2", "· report schema v1");
     expect(sha256(markdownWithoutMessage)).toBe(GOLDEN_MD_SHA256);
 
     const json = fixture("golden/report.json");
@@ -115,7 +117,18 @@ describe("golden reports and the coverage format", () => {
     const messagesWithoutPartial = committed.messages.filter(
       (message: { code: string }) => message.code !== partialCode,
     );
-    expect(sha256(asFile({ ...committed, diffCoverage: previousDiffCoverage, messages: messagesWithoutPartial }))).toBe(
+    // The pinned hash predates Report v2: map the committed v2 report back to its v1 shape (schemaVersion "1", no
+    // testIntegrity), which is the whole of what v2 changed in it.
+    expect(committed.schemaVersion).toBe(2);
+    expect(committed.testIntegrity).toEqual({
+      mode: "warn",
+      source: "default",
+      verdict: "pass",
+      signals: [],
+      languages: [],
+    });
+    const { testIntegrity: _testIntegrity, ...v1Shape } = { ...committed, schemaVersion: "1" };
+    expect(sha256(asFile({ ...v1Shape, diffCoverage: previousDiffCoverage, messages: messagesWithoutPartial }))).toBe(
       GOLDEN_JSON_SHA256,
     );
   });

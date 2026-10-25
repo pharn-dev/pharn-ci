@@ -43,7 +43,10 @@ describe("renderMarkdown(): the golden report opens with the logo line", () => {
     expect(lines[5]?.startsWith("> **Fail** · ")).toBe(true);
 
     // Every line after the first two equals the committed golden from before this increment, byte for byte.
-    const rest = foldCallout(lines.slice(2).join("\n"));
+    // Report v2 changed the rendering in one place only, the footer's schema version, which is mapped back here.
+    const rendered = foldCallout(lines.slice(2).join("\n"));
+    expect(rendered).toContain("· report schema v2");
+    const rest = rendered.replace("· report schema v2", "· report schema v1");
     expect(createHash("sha256").update(rest).digest("hex")).toBe(GOLDEN_MD_BEFORE_SHA256);
   });
 });

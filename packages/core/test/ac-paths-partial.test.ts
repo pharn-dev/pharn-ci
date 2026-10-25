@@ -47,6 +47,26 @@ const asFile = (report: unknown) => `${JSON.stringify(report, null, 2)}\n`;
 const lines = (path: string) => fixture(path).trim().split("\n");
 const partial = (messages: readonly Message[]) => messages.filter((message) => message.code === CODE);
 
+// report-v2-skeleton (Report v2) set schemaVersion to 2, appended the empty testIntegrity block and changed the
+// footer's schema version, on purpose. Every hash in this file predates that, so each comparison maps the v2 output
+// back to its v1 form first; the constants are unchanged, and the v2 additions are asserted exactly.
+function toV1(report: { schemaVersion?: unknown; testIntegrity?: unknown }): Record<string, unknown> {
+  expect(report.schemaVersion).toBe(2);
+  expect(report.testIntegrity).toEqual({
+    mode: "warn",
+    source: "default",
+    verdict: "pass",
+    signals: [],
+    languages: [],
+  });
+  const { testIntegrity: _testIntegrity, ...v1 } = { ...report, schemaVersion: "1" };
+  return v1;
+}
+function footerToV1(markdown: string): string {
+  expect(markdown).toContain("· report schema v2");
+  return markdown.replace("· report schema v2", "· report schema v1");
+}
+
 async function load() {
   const { check } = await import("../src/check.js");
   const { parseConfig } = await import("../src/config.js");
@@ -106,16 +126,16 @@ describe("check(): some coverage paths are not tracked files", () => {
       expect(messages[0]?.level, dir).toBe("info");
       expect(messages[0]?.text, dir).toMatch(/(?<!\d)1(?!\d)/);
 
-      // Everything else is the report as it was before this change.
+      // Everything else is the report as it was before this change, in its Report v1 form (the hashes predate v2).
       const without = { ...report, messages: report.messages.filter((message) => message.code !== CODE) };
-      expect(sha256(asFile(without)), `${dir} report.json without the message`).toBe(jsonSha);
+      expect(sha256(asFile(toV1(without))), `${dir} report.json without the message`).toBe(jsonSha);
       const markdown = foldCallout(renderMarkdown(report)).split("\n");
       const messageLines = markdown.filter((line) => line.includes(`\`${CODE}\``));
       expect(messageLines, `${dir} report.md lines naming the code`).toHaveLength(1);
       const at = markdown.findIndex((line) => line.includes(`\`${CODE}\``));
       expect(markdown[at + 1], `${dir} report.md hint line under the message`).toMatch(/^ {2}- Hint: \S/);
       const previous = markdown.filter((_, index) => index !== at && index !== at + 1).join("\n");
-      expect(sha256(previous), `${dir} report.md without the message and its hint`).toBe(mdSha);
+      expect(sha256(footerToV1(previous)), `${dir} report.md without the message and its hint`).toBe(mdSha);
     }
 
     // golden-exclusions, as packages/core/test/exclusions-golden.test.ts builds it: every coverage path is tracked.
@@ -135,7 +155,7 @@ describe("check(): some coverage paths are not tracked files", () => {
     expect(partial(exclusions.messages)).toEqual([]);
     expect(asFile(exclusions)).toBe(fixture("golden-exclusions/report.json"));
     expect(renderMarkdown(exclusions)).toBe(fixture("golden-exclusions/report.md"));
-    expect(sha256(fixture("golden-exclusions/report.json"))).toBe(EXCLUSIONS_JSON_SHA256);
-    expect(sha256(foldCallout(fixture("golden-exclusions/report.md")))).toBe(EXCLUSIONS_MD_SHA256);
+    expect(sha256(asFile(toV1(JSON.parse(fixture("golden-exclusions/report.json")))))).toBe(EXCLUSIONS_JSON_SHA256);
+    expect(sha256(footerToV1(foldCallout(fixture("golden-exclusions/report.md"))))).toBe(EXCLUSIONS_MD_SHA256);
   });
 });

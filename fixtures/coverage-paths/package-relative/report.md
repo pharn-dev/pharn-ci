@@ -33,4 +33,4 @@ Agent setup: 1 file · amp, codex, copilot, cursor, jules, opencode, zed
 
 ---
 
-<sub>pharn-ci 0.1.0 · report schema v1</sub>
+<sub>pharn-ci 0.1.0 · report schema v2</sub>

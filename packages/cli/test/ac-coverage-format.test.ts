@@ -94,7 +94,7 @@ describe("pharn-ci check --coverage-format", () => {
       { "coverage/lcov.info": lcov },
     );
     const report = JSON.parse(auto.stdout());
-    expect(report.schemaVersion).toBe("1");
+    expect(report.schemaVersion).toBe(2);
     expect(report.diffCoverage.format).toBe("lcov");
     expect(auto.stdout()).not.toContain("coverage: lcov");
     expect(auto.formatLines()).toEqual(["coverage: lcov (auto-detected)"]);

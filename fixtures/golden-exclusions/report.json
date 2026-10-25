@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1",
+  "schemaVersion": 2,
   "tool": {
     "name": "pharn-ci",
     "version": "0.1.0"
@@ -62,5 +62,12 @@
       ]
     }
   },
-  "messages": []
+  "messages": [],
+  "testIntegrity": {
+    "mode": "warn",
+    "source": "default",
+    "verdict": "pass",
+    "signals": [],
+    "languages": []
+  }
 }

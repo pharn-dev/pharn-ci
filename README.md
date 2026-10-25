@@ -27,7 +27,7 @@ behave. AI-agnostic, fully stateless, no telemetry.
 </div>
 
 > **Status:** pre-1.0; the latest release is `v0.1.0` ([changelog](CHANGELOG.md)). Pin the tag's
-> full commit SHA for integrity. Report v1 is stable. Before 1.0, inputs, outputs and message
+> full commit SHA for integrity. The report schema is stable within a version (v2 from 0.2.0). Before 1.0, inputs, outputs and message
 > codes are never removed, and a renamed input keeps working under its old name, with a warning, for
 > at least one minor release; defaults change only in a minor release and the changelog says so. The
 > comment layout may change in any release ([versioning policy](docs/RELEASING.md#inputs-outputs-and-message-codes)).
@@ -44,7 +44,7 @@ behave. AI-agnostic, fully stateless, no telemetry.
 - [Action reference](#action-reference)
 - [CLI](#cli)
 - [Config](#config)
-- [Report v1](#report-v1)
+- [Report v2](#report-v2)
 - [Agent skills](#agent-skills)
 - [What it proves, and what it does not](#what-it-proves-and-what-it-does-not)
 - [Safety model](#safety-model)
@@ -242,7 +242,7 @@ flowchart LR
     LCOV["lcov or Cobertura file<br/>(from your test run)"] --> CORE
     FILES["tracked files and sizes<br/>(git ls-files, git ls-tree)"] --> CORE
     CFG[".pharn/ci.yml<br/>+ inputs / flags"] --> CORE
-    CORE["core check()<br/>pure: no I/O"] --> REPORT["Report v1<br/>JSON, schema-validated"]
+    CORE["core check()<br/>pure: no I/O"] --> REPORT["Report v2<br/>JSON, schema-validated"]
     REPORT --> COMMENT["sticky PR comment"]
     REPORT --> SUMMARY["job summary"]
     REPORT --> EXIT["verdict + exit code"]
@@ -252,7 +252,7 @@ flowchart LR
 | -------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | Gather   | The Action or CLI reads the coverage file, the diff against the base, the tracked file list and the config. All I/O happens here.          |
 | Measure  | `packages/core` matches added lines against the lines the coverage report knows, and classifies agent setup files. Pure functions only.     |
-| Report   | Core builds a Report v1 object. Every report produced in tests is validated against `schema/report.v1.json`.                                |
+| Report   | Core builds a Report v2 object. Every report produced in tests is validated against `schema/report.v2.json`.                                |
 | Render   | The comment, job summary and CLI text are renderings of that report, never a separate source of truth.                                     |
 
 ---
@@ -314,7 +314,7 @@ flowchart LR
 >
 > ---
 >
-> <sub>pharn-ci 0.1.0 · report schema v1 · coverage format lcov</sub>
+> <sub>pharn-ci 0.1.0 · report schema v2 · coverage format lcov</sub>
 
 On PRs from forks the token cannot comment; pharn-ci then warns and uses the job summary only.
 
@@ -344,7 +344,7 @@ line. Matrix legs of one job share that scope, and so one comment.
 
 | Output          |                                                       |
 | --------------- | ----------------------------------------------------- |
-| `report-path`   | Path to `report.json` (Report v1)                     |
+| `report-path`   | Path to `report.json` (Report v2)                     |
 | `verdict`       | `pass`, `warn` or `fail`                              |
 | `diff-coverage` | Diff coverage percent, or empty when not computed     |
 
@@ -551,10 +551,14 @@ Patterns come from three sources that are **merged** (a union, never an override
 
 ---
 
-## Report v1
+## Report v2
 
 The JSON report is the stable, machine-readable API; the comment and CLI text are renderings of
-it. See [`schema/report.v1.json`](schema/report.v1.json). Branch on message `code`s, not on text:
+it. See [`schema/report.v2.json`](schema/report.v2.json): Report v1
+([`schema/report.v1.json`](schema/report.v1.json), pharn-ci 0.1.x) plus a `testIntegrity` block on every
+report and a `meta` block (run metadata) from the Action, with `schemaVersion` the number 2. Every v1 field
+keeps its name, type and meaning; a tool that validates the report switches on `schemaVersion`. Branch on
+message `code`s, not on text:
 
 | Code                            | Meaning                                                        |
 | ------------------------------- | -------------------------------------------------------------- |
@@ -716,7 +720,7 @@ pnpm pharn-ci check   # run the built CLI on this repo
 
 | Package           | Role                                                                                   |
 | ----------------- | -------------------------------------------------------------------------------------- |
-| `packages/core`   | Pure functions: lcov, Cobertura and diff parsing, diff coverage, setup scan, Report v1. |
+| `packages/core`   | Pure functions: lcov, Cobertura and diff parsing, diff coverage, setup scan, Report v2. |
 | `packages/cli`    | `pharn-ci check`: reads files, runs git, calls core, prints output.                    |
 | `packages/action` | Thin Action wrapper: inputs, PR diff, sticky comment, job summary, exit code.          |
 
