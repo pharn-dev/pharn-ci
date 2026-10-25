@@ -28198,7 +28198,7 @@ function parseLsTreeSizes(text) {
 }
 
 // ../core/src/version.ts
-var VERSION7 = "0.1.0";
+var VERSION7 = "0.2.0";
 
 // ../node-io/src/coverage.ts
 async function readCoverageFiles(deps, options) {

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { VERSION } from "../../core/src/version.js";
 import { expectValidReport } from "../../core/test/schema.js";
 
 // main() and run() are loaded inside each test body: the AC tests are written before the CLI and the Action stream
@@ -9,6 +10,15 @@ import { expectValidReport } from "../../core/test/schema.js";
 
 const FIXTURES = new URL("../../../fixtures/", import.meta.url);
 const fixture = (path: string) => readFileSync(new URL(path, FIXTURES), "utf8");
+
+/**
+ * fixtures/golden/report.json as this build reports it. The golden file is shared with core tests that pass version
+ * "0.1.0" to check(); the CLI and the Action report the package VERSION, so tool.version is the only field set here.
+ */
+const goldenReport = () => {
+  const golden = JSON.parse(fixture("golden/report.json"));
+  return { ...golden, tool: { ...golden.tool, version: VERSION } };
+};
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const BASE_SHA = "1111111111111111111111111111111111111111";
@@ -318,7 +328,7 @@ describe("streamed inputs in the CLI and the Action: early stops and failures", 
     expect(fallback[0]).toContain("falling back to the GitHub API");
     expect(fallback[0]).not.toContain("whole-text git call");
     // The report is the one for the API diff alone: the golden report, with nothing of the failed local diff.
-    expect(action.report()).toEqual(JSON.parse(fixture("golden/report.json")));
+    expect(action.report()).toEqual(goldenReport());
   });
 
   it("AC-13: a coverage stream that fails part-way, or a coverage path that is a directory, is a runtime error", async () => {

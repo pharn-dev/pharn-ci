@@ -62,15 +62,15 @@ describe("the accept label in action.yml, the docs and the fixtures", () => {
     expect(readmeSection).toContain("merge_group");
     expect(readmeSection).toMatch(/\bpush\b/);
 
-    // CHANGELOG: the Unreleased section names the input and both codes.
+    // CHANGELOG: the 0.2.0 section names the input and both codes (before that release they sat under Unreleased).
     const changelog = read("CHANGELOG.md");
-    const unreleasedStart = changelog.indexOf("## [Unreleased]");
-    expect(unreleasedStart).toBeGreaterThan(-1);
-    const afterUnreleased = changelog.slice(unreleasedStart + 1);
-    const nextRelease = afterUnreleased.search(/\n## \[/);
-    const unreleased = nextRelease === -1 ? afterUnreleased : afterUnreleased.slice(0, nextRelease);
+    const shippedStart = changelog.indexOf("## [0.2.0]");
+    expect(shippedStart).toBeGreaterThan(-1);
+    const afterShipped = changelog.slice(shippedStart + 1);
+    const nextRelease = afterShipped.search(/\n## \[/);
+    const shipped = nextRelease === -1 ? afterShipped : afterShipped.slice(0, nextRelease);
     for (const name of ["accept-label", "TEST_INTEGRITY_ACCEPTED", "TEST_INTEGRITY_ACCEPT_IGNORED"]) {
-      expect(unreleased, name).toContain(name);
+      expect(shipped, name).toContain(name);
     }
 
     // THREAT-MODEL: the events read, fail closed, the bot and author rules, the page cap, the PR-editable workflow.

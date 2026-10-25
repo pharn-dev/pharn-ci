@@ -1,6 +1,6 @@
 # pharn-ci — Threat Model
 
-> **Status: pre-1.0 (latest release: `v0.1.0`).** This document is the security design the code is held to.
+> **Status: pre-1.0 (latest release: `v0.2.0`).** This document is the security design the code is held to.
 > Each row is marked:
 >
 > - **Enforced today**: the code does what the row says, and a named test or required CI check in

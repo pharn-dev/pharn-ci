@@ -33,9 +33,10 @@ describe("test-integrity mode: docs and schema", () => {
   });
 
   it("AC-11: the changelog, README and threat model name the input, the config key and the tighten-only rule", () => {
-    const unreleased = changelogSection("Unreleased");
-    expect(unreleased).toContain("test-integrity");
-    expect(unreleased).toContain("test_integrity.mode");
+    // Shipped in 0.2.0; before that release its line sat under Unreleased.
+    const shipped = changelogSection("0.2.0");
+    expect(shipped).toContain("test-integrity");
+    expect(shipped).toContain("test_integrity.mode");
 
     const readme = read("README.md");
     for (const word of ["test-integrity", "--test-integrity", "test_integrity"]) expect(readme).toContain(word);
