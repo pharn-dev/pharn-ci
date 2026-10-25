@@ -1,0 +1,5 @@
+package.json
+src/a.ts
+src/a.test.ts
+e2e/login.spec.ts
+AGENTS.md

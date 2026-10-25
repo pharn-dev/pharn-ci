@@ -140,7 +140,9 @@ describe("TI03 and TI04 in the PR comment, the streaming reader and the CLI", ()
     expect(ti03Hint).toMatch(/\bCI\b/);
     expect(ti03Hint).toMatch(/accept/i);
     expect(ti03Hint).toMatch(/label/i);
-    expect(ti03Hint).not.toContain("pharn/accepted");
+    // Superseded: when this test was written the label had not shipped, so the hint did not name `pharn/accepted`;
+    // now it does, as the hint a reviewer who is not the PR author acts on (accept-label-human-signoff-4).
+    expect(ti03Hint).toContain("`pharn/accepted`");
     expect(ti03Hint).not.toContain("accept-label");
     expect(hints.get("TI04")).not.toBe(ti03Hint);
 
@@ -151,7 +153,9 @@ describe("TI03 and TI04 in the PR comment, the streaming reader and the CLI", ()
       const at = all.findIndex((line) => line.includes(`\`${code}\``));
       expect(at, code).toBeGreaterThan(-1);
       expect(all[at + 1]?.startsWith("  - Hint: "), code).toBe(true);
-      expect(all[at + 1], code).not.toContain("pharn/accepted");
+      // TI04's hint is unchanged and names no label; TI03's now names the default one (superseded, see above).
+      if (code === "TEST_INTEGRITY_TI03") expect(all[at + 1], code).toContain("`pharn/accepted`");
+      else expect(all[at + 1], code).not.toContain("pharn/accepted");
       expect(all[at + 1], code).not.toContain("accept-label");
     }
 

@@ -9,6 +9,15 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- The accept label, the `accept-label` Action input (default `pharn/accepted`, at most 50 characters). In
+  `test-integrity: block` on a `pull_request` or `pr-number` run, a pull request that carries the label, applied last by
+  a user account that is not the PR author, has its block signals downgraded to `warn`: the report gains the
+  `TEST_INTEGRITY_ACCEPTED` message (info), `testIntegrity.accepted` and, for a non-default name,
+  `testIntegrity.acceptLabel`, and the comment says who accepted it. A label that does not count (the author or a bot
+  applied it, no labeling event, or anything unreadable) adds `TEST_INTEGRITY_ACCEPT_IGNORED` (warn) and the blocks
+  stand. The Action reads the pull request and its issue events (at most 10 pages of 100) with `pull-requests: read` or
+  `issues: read`; the CLI never honours the label, and `test_integrity.accept_label` in `.pharn/ci.yml` is refused. The
+  TI03, TI10 and TI13 hints now name the label.
 - The `test-integrity` Action input and `--test-integrity` CLI flag (`block`, `warn` or `off`, default `warn`),
   and a `test_integrity.mode` key in `.pharn/ci.yml` that can only make the check stricter than the input. The
   report's `testIntegrity.mode` and `testIntegrity.source` say which mode applies and where it came from, a

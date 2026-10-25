@@ -125,7 +125,10 @@ describe("TI10 and TI13 in the PR comment, the streaming reader and the CLI", ()
     expect(hints.size).toBe(2);
 
     // The TI10 hint: restore the script or state the reason in the PR. The TI13 hint: a test in place of the ignore
-    // comment. Both say the accept label will record a reviewer's sign-off once it ships, without naming it.
+    // comment. Both say a reviewer who is not the PR author records the sign-off by applying the accept label, and
+    // name it. Superseded: when this test was written the label had not shipped, so the hints said it "will record"
+    // the sign-off "once it ships" and did not name `pharn/accepted`; now it ships and the hints name it
+    // (accept-label-human-signoff-4, ac-accept-signoff-hints.test.ts).
     const ti10Hint = hints.get("TI10") ?? "";
     expect(ti10Hint).toMatch(/restore/i);
     expect(ti10Hint).toMatch(/script/i);
@@ -137,8 +140,9 @@ describe("TI10 and TI13 in the PR comment, the streaming reader and the CLI", ()
       expect(hint).toMatch(/accept label/i);
       expect(hint).toMatch(/review/i);
       expect(hint).toMatch(/sign-?off/i);
-      expect(hint).toMatch(/ships/i);
-      expect(hint).not.toContain("pharn/accepted");
+      expect(hint).toMatch(/not the PR author/i);
+      expect(hint).toContain("`pharn/accepted`");
+      expect(hint).not.toMatch(/ships/i);
       expect(hint).not.toContain("accept-label");
     }
     expect(ti13Hint).not.toBe(ti10Hint);
@@ -150,7 +154,8 @@ describe("TI10 and TI13 in the PR comment, the streaming reader and the CLI", ()
       const at = all.findIndex((line) => line.includes(`\`${code}\``));
       expect(at, code).toBeGreaterThan(-1);
       expect(all[at + 1]?.startsWith("  - Hint: "), code).toBe(true);
-      expect(all[at + 1], code).not.toContain("pharn/accepted");
+      // Superseded (see above): the message hints name the default label too.
+      expect(all[at + 1], code).toContain("`pharn/accepted`");
       expect(all[at + 1], code).not.toContain("accept-label");
     }
 

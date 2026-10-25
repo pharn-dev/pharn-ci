@@ -1,0 +1,9 @@
+[
+  {
+    "id": 3001,
+    "event": "labeled",
+    "actor": { "login": "claude[bot]", "type": "Bot" },
+    "label": { "name": "pharn/accepted", "color": "0e8a16" },
+    "created_at": "2026-10-20T10:00:00Z"
+  }
+]

@@ -338,16 +338,42 @@ line. Matrix legs of one job share that scope, and so one comment.
 | `require-agent-setup` | `setup.require`, then `false` | Fail when the repo has no agent setup files; the step fails through `fail-on-threshold` |
 | `expect-agent-setup` | `setup.expect`, then none  | Agent tools that must have a setup file, comma or newline separated; added to `setup.expect`; a missing one is `AGENT_SETUP_EXPECTED_MISSING` |
 | `test-integrity`    | `warn`                      | How strictly to treat weakened tests: `block`, `warn` or `off`. `test_integrity.mode` in `.pharn/ci.yml` can only make it stricter, never looser (a looser value is ignored with `TEST_INTEGRITY_MODE_IGNORED`). In `block` a block-level finding fails the check, in `warn` it warns, in `off` nothing is checked. The signals so far are TI01 (a test file deleted), TI03 (a skip added to a test), TI04 (a `.only`, `fit` or `fdescribe` added), TI10 (a test script in `package.json` weakened), TI11 (CI stopped running tests), TI13 (a coverage-ignore comment added to source) and TI14 (a lower coverage threshold or a wider exclusion in the config) |
+| `accept-label`      | `pharn/accepted`            | Name of the pull request label a reviewer who is not the PR author applies to sign off `test-integrity: block` findings, at most 50 characters. Read only from this input, never from `.pharn/ci.yml`. See [Accept label](#accept-label) |
 | `comment`           | `true`                      | Post/update one sticky PR comment per workflow and job |
 | `fail-on-threshold` | `true`                      | Fail the step when the verdict is `fail` |
 | `config`            | `.pharn/ci.yml`, may be absent | Config file path; a file named here that does not exist fails the step |
-| `github-token`      | `github.token`              | Token for the comment and diff fallback, and in `pr-number` mode always for reading the pull request, its diff and its file tree; `pull-requests: write` for the comment (`pull-requests: read` is enough for `pr-number` mode without one), may be empty with `comment: false` and a local diff outside `pr-number` mode |
+| `github-token`      | `github.token`              | Token for the comment and diff fallback, and in `pr-number` mode always for reading the pull request, its diff and its file tree; `pull-requests: write` for the comment (`pull-requests: read` is enough for `pr-number` mode without one), may be empty with `comment: false` and a local diff outside `pr-number` mode. With `test-integrity: block` the [accept label](#accept-label) also reads the pull request and its issue events (`GET /repos/{owner}/{repo}/issues/{issue_number}/events`), which `pull-requests: read` (or `issues: read`) allows |
 
 | Output          |                                                       |
 | --------------- | ----------------------------------------------------- |
 | `report-path`   | Path to `report.json` (Report v2)                     |
 | `verdict`       | `pass`, `warn` or `fail`                              |
 | `diff-coverage` | Diff coverage percent, or empty when not computed     |
+
+### Accept label
+
+In `test-integrity: block` a block-level finding fails the check. A reviewer who is not the PR author can sign it off
+by applying the accept label (`pharn/accepted`, or the name in the `accept-label` input) to the pull request. The
+Action then downgrades every block finding to `warn`, adds `TEST_INTEGRITY_ACCEPTED` (`info`) and records who accepted
+it in `testIntegrity.accepted`; the comment says `Accepted via label ... by @login`. Diff coverage and every other
+check are unaffected, so a run below its threshold still fails.
+
+- **Who counts.** The newest `labeled` event for the label decides. Its actor must be a user account (not a bot or an
+  organization) and not the PR author, compared case-insensitively. Otherwise the label is ignored, the blocks stand,
+  and `TEST_INTEGRITY_ACCEPT_IGNORED` (`warn`) says why: the author applied it, a non-user account applied it, no
+  labeling event was found, or the pull request or its events could not be read. Anything the Action cannot read counts
+  as ignored.
+- **Where it is set.** Only the `accept-label` input in the workflow. `test_integrity.accept_label` in `.pharn/ci.yml`
+  is refused with an error, because the change under review can edit that file.
+- **When it is looked at.** On `pull_request` runs and `pr-number` runs, in `test-integrity: block`, with at least one
+  block finding, and only when the pull request carries the label. `merge_group`, `push`, `pull_request_target` and
+  `workflow_run` runs without `pr-number` never ask, so a block there stays a block. The CLI has no pull request and no
+  labels and never honours the label; `--accept-label` is an unknown option.
+- **Triggers.** The label counts on a run that happens after it is applied, so list `labeled` and `unlabeled` next to
+  the defaults: `on: pull_request: types: [opened, synchronize, reopened, labeled, unlabeled]`.
+- **Token.** `pull-requests: read` (or `issues: read`); the quick start's `pull-requests: write` includes it.
+- **Not tied to a commit.** The sign-off belongs to the pull request: a later push keeps the label. Remove the label
+  to have the new commits judged again. See [docs/LIMITS.md](./docs/LIMITS.md).
 
 ### Fork PRs: comment from workflow_run
 
@@ -588,6 +614,8 @@ message `code`s, not on text:
 | `TEST_INTEGRITY_TI11`           | TI11: a workflow edit may stop CI from running tests: a removed test command or `pull_request` trigger (`error` in mode `block`, `warn` in mode `warn`), or a shrunk matrix, an added `continue-on-error: true`, a disabling `if:` or a `timeout-minutes` of 0 or 1 (`warn`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI13`           | TI13: the change adds a comment that leaves code out of coverage (an Istanbul, V8 or C8 ignore hint in a JS/TS file, or a `# pragma: no cover` in a Python file that is not a test file) (`error` in mode `block`, `warn` in mode `warn`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI14`           | TI14: the change lowers or removes the coverage threshold, or adds a coverage exclusion, in the pharn-ci config (`error` in mode `block`, `warn` in mode `warn`). Every finding is in `testIntegrity.signals` |
+| `TEST_INTEGRITY_ACCEPTED`       | A reviewer who is not the PR author applied the [accept label](#accept-label), so every block signal was downgraded to `warn` (`info`; Action only). `testIntegrity.accepted` names the label and the reviewer |
+| `TEST_INTEGRITY_ACCEPT_IGNORED` | The accept label was looked at and does not count: the PR author applied it, a non-user account applied it, no labeling event was found, or the pull request or its events could not be read (`warn`; Action only). The block signals stand |
 | `NO_AGENT_SETUP_FILES`          | The repo has none of the agent setup files pharn-ci looks for  |
 | `AGENT_SETUP_FILE_EMPTY`        | A listed agent setup file is empty in `HEAD` (`warn`)          |
 | `AGENT_SETUP_EXPECTED_MISSING`  | An expected agent tool has no setup file (`warn`; `error` when agent setup is required) |

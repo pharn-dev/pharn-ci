@@ -1,3 +1,18 @@
+export {
+  type AcceptDecision,
+  type AcceptIgnoredReason,
+  type AcceptLabelValidation,
+  acceptTestIntegrity,
+  carriesAcceptLabel,
+  DEFAULT_ACCEPT_LABEL,
+  decideAcceptLabel,
+  GITHUB_LOGIN,
+  ignoreAcceptLabel,
+  isDefaultAcceptLabel,
+  MAX_ACCEPT_LABEL_LENGTH,
+  validateAcceptLabel,
+  withAcceptLabel,
+} from "./acceptLabel.js";
 export { type CheckInput, type CoverageFileInput, check } from "./check.js";
 export { type ReadDiffOptions, readCoverageChunks, readDiffChunks } from "./chunkInputs.js";
 export {
@@ -91,6 +106,7 @@ export {
   type ReportTestIntegrity,
   type TestIntegrityMode,
   type TestIntegritySignal,
+  testIntegritySignalMessages,
   type Verdict,
   verdictOf,
 } from "./report.js";

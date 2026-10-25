@@ -48,6 +48,11 @@ export interface ReportTestIntegrity {
   source: "default" | "input" | "config" | "policy";
   verdict: Verdict;
   accepted?: { label: string; by: string | null } | null;
+  /**
+   * The accept label the Action was given, written only when it is not the default `pharn/accepted`. Never set by
+   * `check()` or the CLI.
+   */
+  acceptLabel?: string;
   signals: TestIntegritySignal[];
   /** Which detectors ran. */
   languages: ("ts" | "js" | "py" | "go")[];
@@ -121,7 +126,9 @@ export type MessageCode =
   | "TEST_INTEGRITY_TI10"
   | "TEST_INTEGRITY_TI11"
   | "TEST_INTEGRITY_TI13"
-  | "TEST_INTEGRITY_TI14";
+  | "TEST_INTEGRITY_TI14"
+  | "TEST_INTEGRITY_ACCEPTED"
+  | "TEST_INTEGRITY_ACCEPT_IGNORED";
 
 export interface Message {
   level: MessageLevel;
@@ -231,6 +238,31 @@ const SIGNAL_MESSAGES: ReadonlyArray<{
       `This change lowers the coverage threshold or adds a coverage exclusion in the check config: ${paths}. Check that the looser setting was meant before trusting the result.`,
   },
 ];
+
+/**
+ * The one `TEST_INTEGRITY_<id>` message per signal id found, in the fixed id order. A message's level is the highest
+ * severity among the findings of its id (error for block, warn, else info), and its text names those files. One rule,
+ * used by `buildReport` and again when a downgrade changes severities.
+ */
+export function testIntegritySignalMessages(signals: readonly TestIntegritySignal[]): Message[] {
+  const messages: Message[] = [];
+  for (const { id, code, text } of SIGNAL_MESSAGES) {
+    const own = signals.filter((signal) => signal.id === id);
+    if (own.length === 0) continue;
+    const top = own.some((s) => s.severity === "block")
+      ? "block"
+      : own.some((s) => s.severity === "warn")
+        ? "warn"
+        : "info";
+    const named = [...new Set(own.filter((s) => s.severity === top).map((s) => s.path))];
+    messages.push({
+      level: top === "block" ? "error" : top === "warn" ? "warn" : "info",
+      code,
+      text: text(top, pathList(named)),
+    });
+  }
+  return messages;
+}
 
 export function buildReport(input: BuildReportInput): Report {
   const messages: Message[] = [];
@@ -366,22 +398,7 @@ export function buildReport(input: BuildReportInput): Report {
   }
 
   const signals = [...(input.testIntegritySignals ?? [])];
-  for (const { id, code, text } of SIGNAL_MESSAGES) {
-    const own = signals.filter((signal) => signal.id === id);
-    if (own.length === 0) continue;
-    // One message per signal id; its level is the highest severity among the findings, and it names those files.
-    const top = own.some((s) => s.severity === "block")
-      ? "block"
-      : own.some((s) => s.severity === "warn")
-        ? "warn"
-        : "info";
-    const named = [...new Set(own.filter((s) => s.severity === top).map((s) => s.path))];
-    messages.push({
-      level: top === "block" ? "error" : top === "warn" ? "warn" : "info",
-      code,
-      text: text(top, pathList(named)),
-    });
-  }
+  messages.push(...testIntegritySignalMessages(signals));
 
   if (input.agentSetup.files.length === 0) {
     const required = input.requireAgentSetup === true;

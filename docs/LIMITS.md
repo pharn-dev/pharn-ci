@@ -191,6 +191,25 @@ TI13 reads the added and removed lines of JS/TS and Python source files that are
 - **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8); at most 20 signals are
   given per file. A diff that reaches `check()` already parsed without kept text yields no TI13.
 
+### What the accept label misses
+
+The accept label (`pharn/accepted`, or the `accept-label` input) records a reviewer's sign-off on test-integrity block
+findings. It is the Action's alone; the CLI never honours it.
+
+- **Not tied to a commit.** The sign-off is on the pull request as a whole. The label stays after a later push, so
+  findings added by a new commit are accepted too until someone removes the label. Nothing compares the commit the
+  reviewer looked at with the one that is checked.
+- **Over 1,000 events are not read.** The issue events are read in at most 10 pages of 100. A pull request whose event
+  list does not end within them (more than 1,000 events) is not read, and the label is ignored with
+  `TEST_INTEGRITY_ACCEPT_IGNORED`.
+- **No permission check on the applier.** Any user account that can label the pull request and is not the author counts,
+  whether or not it may approve or merge. A bot never counts, so a team that labels through an app has no sign-off by
+  that route, and a user acting through an app's token is read as the app.
+- **Pull request runs only.** A `merge_group` or `push` run, and `pull_request_target`, never ask, so a block there
+  stays a block even for a pull request that carries the label.
+- **Only the newest event decides.** An earlier sign-off by another reviewer does not count once the author or a bot has
+  applied the label again.
+
 ## 2. When an input is missing
 
 - **A missing input fails only with a threshold.** `COVERAGE_FILE_MISSING`, `COVERAGE_FILE_EMPTY`,

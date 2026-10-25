@@ -304,6 +304,13 @@ function validateTestIntegrity(value: YamlMap[string] | undefined): PharnConfig[
 
   const testIntegrity: NonNullable<PharnConfig["testIntegrity"]> = {};
   for (const [key, entry] of Object.entries(value)) {
+    // Checked before the null skip: whatever its value, the key is refused. A pull request edits this file, so the
+    // accept label can only come from the workflow's input.
+    if (key === "accept_label") {
+      throw new ConfigError(
+        `"test_integrity.accept_label" is not a setting: the accept label cannot be set in this file, because the change under review can edit it; set the accept-label input in the workflow instead`,
+      );
+    }
     if (entry === null) continue;
     switch (key) {
       case "mode":

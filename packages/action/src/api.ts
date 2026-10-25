@@ -65,6 +65,22 @@ export function createGitHubApi(opts: GitHubApiOptions): GitHubApi {
       const { data } = await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber });
       return { baseSha: data.base.sha, headSha: data.head.sha };
     },
+    async getPullRequestSignoff(pullNumber) {
+      const { octokit, owner, repo } = connect();
+      const { data } = await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber });
+      return { author: data.user, labels: data.labels };
+    },
+    async listIssueEvents(issueNumber, page) {
+      const { octokit, owner, repo } = connect();
+      const res = await octokit.rest.issues.listEvents({
+        owner,
+        repo,
+        issue_number: issueNumber,
+        per_page: 100,
+        page,
+      });
+      return { events: res.data, hasNext: /\brel="next"/.test(String(res.headers.link ?? "")) };
+    },
     async listTree(sha) {
       const { octokit, owner, repo } = connect();
       const { data } = await octokit.rest.git.getTree({ owner, repo, tree_sha: sha, recursive: "1" });
