@@ -15,8 +15,9 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   ones whose removed lines define tests as TI01 (see "What TI01 misses" below). A test file is
   recognized only by name: `.test.` or `.spec.` with a JavaScript or TypeScript extension, `.e2e.ts`,
   `.pw.ts`, `test_*.py`, `*_test.py`, `*_test.go`, or any file in a `test`, `tests` or `__tests__`
-  directory. Weakened, skipped or focused tests inside a file and deleted test cases are not
-  detected yet.
+  directory. An added skip or focus marker in a test file is TI03 or TI04. A weakened assertion, an emptied test
+  body and a test case deleted from a file that stays are not detected yet (see "What test integrity does not
+  catch" below).
 - **What TI01 misses.** TI01 reads line patterns, not syntax. (1) A test file counts only if its
   removed lines start with `it(`, `test(`, `describe(`, `context(`, `specify(`, `def test_` or
   `func Test`; a test written another way (a custom wrapper, a `Deno.test(` call) reads as not
@@ -209,6 +210,47 @@ findings. It is the Action's alone; the CLI never honours it.
   stays a block even for a pull request that carries the label.
 - **Only the newest event decides.** An earlier sign-off by another reviewer does not count once the author or a bot has
   applied the label again.
+
+## What test integrity does not catch
+
+The test-integrity signals that ship today (TI01, TI03, TI04, TI10, TI11, TI13 and TI14) read only the added and
+removed lines of the diff, in files they recognise by name. They do not run tests, parse syntax or read a file that the
+diff does not touch, and they cannot judge whether an assertion is strong. The accept label records that a reviewer who
+is not the author signed off a block finding. It cannot show that the reviewer read the tests, and it never adds a
+check. What each signal misses is listed under its own "What TIxx misses" heading above, and the accept label's limits
+under "What the accept label misses".
+
+The benchmark for what is not seen is Skylos's list of nine ways to hide a failing test. The nine cases are reproduced
+in vitest under `fixtures/skylos-nine/` and pinned by tests. The diff-only signals of this release catch **2 of 9**.
+
+Caught:
+
+- `deleted-test` — caught by TI01: the test file is deleted, and its removed lines define tests.
+- `added-skip` — caught by TI03: `it(` becomes `it.skip(` on a test the diff shows existed.
+
+Not caught. Each of these names the signal that is planned for it; none of them exists yet:
+
+- `emptied-assertion` — missed; planned: TI05. The `expect(...)` call is replaced by a bare call, so the test still
+  runs and asserts nothing.
+- `deselect-setting` — missed; planned: TI09. The runner's `include` list is narrowed in `vitest.config.ts`, so the
+  test file is never picked up. A runner config is not read.
+- `hard-coded-answer` — missed; planned: TI15. The source returns the expected value for the test's input. Source
+  files that are not tests are read for coverage-ignore comments only.
+- `always-true-matcher` — missed; planned: TI17, which is a proposal and not a signal in the test-integrity spec yet.
+  A custom matcher that always passes replaces `toBe(5)`.
+- `replaced-test` — missed; planned: TI02. A test is replaced by one with another name, so no test file is deleted and
+  nothing is skipped.
+- `loosened-assertion` — missed; planned: TI06. `toBe(5)` becomes `toBeTruthy()`.
+- `edited-expected-value` — missed; planned: TI07. `toBe(5)` becomes `toBe(6)` so that the test agrees with the code.
+
+Other ways a change can weaken tests without being seen:
+
+- A test replaced by a new test with the **same name** and a **trivial body**. TI02 (planned) misses it when the name
+  stays, and TI05 (planned) catches only the case with no assertion at all.
+- Semantic weakening that keeps the matcher, such as `toEqual(expectedFromOutput)`, where the expected value is read
+  back from the code under test.
+- A **mock** introduced in a **setup file** that the diff does not show as a test file, so a test passes against a
+  stand-in.
 
 ## 2. When an input is missing
 

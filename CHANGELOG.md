@@ -71,6 +71,16 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 - README: an [Agent skills](README.md#agent-skills) section on the `pharn-ci` plugin in
   [pharn-dev/skills](https://github.com/pharn-dev/skills) (install, explain a verdict, cover
   uncovered lines), and a pointer to it from the Quick start and the Pharn family table.
+- The Skylos nine benchmark: the nine ways Skylos hides a failing test, reproduced in vitest under
+  `fixtures/skylos-nine/` and pinned by tests. The diff-only signals of this release (TI01 and TI03) catch 2 of 9;
+  the other seven are named with the planned signal that would catch them.
+- A "What test integrity does not catch" section in [`docs/LIMITS.md`](docs/LIMITS.md), and a "Test integrity"
+  section in the README with a rendered example of a finding. The "Only added lines count" limit no longer says that
+  skipped tests are not detected.
+- A release smoke script, `scripts/smoke-release.mjs`, that builds a throwaway repository from `fixtures/smoke/`, runs
+  the built Action bundle against it with no token and no event, and checks the exit code, the `verdict` output, the
+  job summary and the footer version. `docs/RELEASING.md` describes running it in the dry run and after the release,
+  and adds a check with a pull request from a fork.
 
 ### Changed
 

@@ -1,0 +1,15 @@
+TN:
+SF:src/math.js
+FN:1,add
+FN:5,multiply
+FNF:2
+FNH:2
+FNDA:1,add
+FNDA:1,multiply
+DA:1,1
+DA:2,1
+DA:5,1
+DA:6,1
+LF:4
+LH:4
+end_of_record
