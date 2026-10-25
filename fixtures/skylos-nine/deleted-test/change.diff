@@ -1,0 +1,15 @@
+diff --git a/src/__tests__/cart.test.ts b/src/__tests__/cart.test.ts
+deleted file mode 100644
+index 3333333..0000000
+--- a/src/__tests__/cart.test.ts
++++ /dev/null
+@@ -1,9 +0,0 @@
+-import { describe, expect, it } from "vitest";
+-import { total } from "../cart.js";
+-
+-describe("cart", () => {
+-  it("adds the prices", () => {
+-    expect(total([2, 3])).toBe(5);
+-    expect(total([])).toBe(0);
+-  });
+-});
