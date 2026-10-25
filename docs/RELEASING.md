@@ -80,8 +80,7 @@ that worked on the previous release. Before 1.0 the rules are:
    shows the release notes in the job summary. `Release publish` is skipped.
    - **Smoke in the dry run.** The dry run also runs `node scripts/smoke-release.mjs .` on the committed
      bundle, after the stale-dist check. It builds a throwaway repository from `fixtures/smoke/` and runs the
-     bundle against it. A red smoke means no release. This step and the `Release smoke` job below are added to
-     `release.yml` by the maintainer by hand; they are not in the workflow until then.
+     bundle against it. A red smoke means no release.
    - **Fork PR check.** Before the release run, open a pull request from a fork against a throwaway
      repository whose workflow uses `pharn-dev/pharn-ci@<the release commit SHA>` on `pull_request`. Check that the
      run is green, that the job summary carries the report, and that no comment is posted: the fork token is

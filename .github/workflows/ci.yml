@@ -109,6 +109,9 @@ jobs:
         with:
           coverage-file: coverage/lcov.info
           threshold: 80
+          # The product gates its own PRs as DELIVERY-PLAN's dogfood asks: a weakened test fails CI here, and a
+          # reviewer who is not the author signs it off with the pharn/accepted label.
+          test-integrity: block
 
       - name: Show report
         if: always() && steps.pharn.outputs.report-path != ''
@@ -125,7 +128,7 @@ jobs:
         run: |
           set -euo pipefail
           log="$RUNNER_TEMP/pharn-ci-second-run.log"
-          env "INPUT_COVERAGE-FILE=coverage/lcov.info" "INPUT_THRESHOLD=80" "INPUT_GITHUB-TOKEN=$PHARN_TOKEN" \
+          env "INPUT_COVERAGE-FILE=coverage/lcov.info" "INPUT_THRESHOLD=80" "INPUT_TEST-INTEGRITY=block" "INPUT_GITHUB-TOKEN=$PHARN_TOKEN" \
             node packages/action/dist/index.js | tee "$log"
           if ! grep -q '^updated pharn-ci comment [0-9]' "$log"; then
             echo "::error::the second pharn-ci run did not update the comment the first run posted"

@@ -408,8 +408,10 @@ function rangeParts(lines: readonly number[]): string[] {
 // Paths come from the PR (git allows newlines in file names) and message text can carry inputs
 // such as the coverage path or base ref. A line break would let them end the table row or list
 // item and inject their own markdown into the PR comment, so control characters never get through.
+// Control characters, line and paragraph separators, and the invisible format characters that reorder or hide text
+// (zero-width marks, bidirectional overrides and isolates, the byte order mark): each becomes U+FFFD.
 // biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point.
-const CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
+const CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069\ufeff]/g;
 
 function code(path: string): string {
   // Pipes would break the table; backticks would break the code span. Backslashes are escaped first,

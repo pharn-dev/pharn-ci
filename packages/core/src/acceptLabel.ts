@@ -21,31 +21,45 @@ export const MAX_ACCEPT_LABEL_LENGTH = 50;
 /** What a GitHub user login looks like: 1 to 39 characters of letters, digits and hyphens, not starting with a hyphen. */
 export const GITHUB_LOGIN = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/;
 
+/**
+ * Control characters (U+0000 to U+001F, U+007F to U+009F) and the invisible format characters that reorder or hide
+ * text: zero-width spaces and joiners and the marks (U+200B to U+200F), the bidirectional embeddings and overrides
+ * (U+202A to U+202E) and isolates (U+2066 to U+2069), and the byte order mark (U+FEFF). A right-to-left override in the
+ * label would make the fixed hint text around it read differently from what it says.
+ */
 // biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point.
-const CONTROL = /[\u0000-\u001f\u007f-\u009f]/;
+const CONTROL = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/;
 
-const INVALID_LABEL = "the accept-label input must be at most 50 characters and must not contain control characters";
+const INVALID_LABEL =
+  "the accept-label input must be at most 50 characters and must not contain control or invisible formatting characters";
 
 export type AcceptLabelValidation = { ok: true; label: string } | { ok: false; error: string };
 
 /**
- * The accept label an input value names: trimmed, the default when empty. At most 50 code points and no control
- * character (U+0000 to U+001F, U+007F to U+009F). The error is one fixed sentence that never repeats the value.
+ * The accept label an input value names: trimmed, the default when empty or a spelling of the default in other letter
+ * case. At most 50 code points and no control or invisible format character (see `CONTROL`). The error is one fixed
+ * sentence that never repeats the value.
  */
 export function validateAcceptLabel(raw: string): AcceptLabelValidation {
   const label = raw.trim();
   if (label === "") return { ok: true, label: DEFAULT_ACCEPT_LABEL };
   if ([...label].length > MAX_ACCEPT_LABEL_LENGTH || CONTROL.test(label)) return { ok: false, error: INVALID_LABEL };
-  return { ok: true, label };
+  // A spelling of the default in other letter case is the default: the hints, `accepted.label` and the absent
+  // `acceptLabel` then all name `pharn/accepted`, as GitHub matches labels case-insensitively anyway.
+  return { ok: true, label: isDefaultAcceptLabel(label) ? DEFAULT_ACCEPT_LABEL : label };
 }
 
-/** True when `label` is the default label in any letter case. */
+/** True when `label` is the default label in any ASCII letter case. */
 export function isDefaultAcceptLabel(label: string): boolean {
   return sameName(label, DEFAULT_ACCEPT_LABEL);
 }
 
+/** ASCII letters to lower case, nothing else: `toLowerCase()` would fold the Kelvin sign U+212A into `k`. */
+const asciiLower = (text: string) => text.replace(/[A-Z]/g, (c) => c.toLowerCase());
+
+/** Two label names or logins compared as GitHub compares them: ASCII letters case-insensitively, all else exactly. */
 function sameName(a: string, b: string): boolean {
-  return a.toLowerCase() === b.toLowerCase();
+  return asciiLower(a) === asciiLower(b);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
