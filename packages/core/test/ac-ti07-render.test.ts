@@ -86,9 +86,10 @@ describe("renderMarkdown(): TI07 in the Test integrity section", () => {
     });
     expect(at, "the TI07 finding line, **TI07** then `path:line`").toBeGreaterThan(-1);
     const line = lines[at] as string;
-    expect(line, "one finding line, the id in bold then the code span").toMatch(
-      new RegExp(`^- \\S+ \\*\\*TI07\\*\\* \`${signal.path.replace(/\./g, "\\.")}:${signal.line}\` `),
-    );
+    // A plain prefix comparison: the icon, then the id in bold, then the location code span, then a space.
+    expect(line, "one finding line, the id in bold then the code span").toMatch(/^- \S+ \*\*TI07\*\* `/);
+    const afterIcon = line.slice(line.indexOf(" **TI07** "));
+    expect(afterIcon.startsWith(` **TI07** \`${signal.path}:${signal.line}\` `), afterIcon).toBe(true);
     expect(line.replace(/\\(.)/g, "$1"), "the finding line holds the detail").toContain(signal.detail);
     expect(lines[at + 1]).toBe(HINT);
   });

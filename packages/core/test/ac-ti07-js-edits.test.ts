@@ -154,8 +154,9 @@ const fileAt = (files: SourceFile[], path: string) => files.find((f) => f.path =
 /** The literal-looking pieces of a line: string contents, regex literals and numbers. */
 function literalPieces(line: string): string[] {
   const out: string[] = [];
-  for (const m of line.matchAll(/(['"`])((?:\\.|(?!\1).)*)\1/g)) out.push(m[2] as string);
-  for (const m of line.matchAll(/\/(?:\\.|[^/\n])+\/[a-z]*/g)) out.push(m[0]);
+  // Each alternative takes a backslash or a non-backslash, never both, so a long run of `\.` cannot backtrack.
+  for (const m of line.matchAll(/(['"`])((?:\\.|(?!\1)[^\\])*)\1/g)) out.push(m[2] as string);
+  for (const m of line.matchAll(/\/(?:\\.|[^/\\\n])+\/[a-z]*/g)) out.push(m[0]);
   for (const m of line.matchAll(/-?\d+(?:\.\d+)?/g)) out.push(m[0]);
   return out.filter((piece) => piece.length > 0);
 }
