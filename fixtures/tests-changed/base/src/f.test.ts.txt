@@ -1,0 +1,8 @@
+import { describe, expect, it } from "vitest";
+import { f } from "./f.js";
+
+describe("f", () => {
+  it("one", () => {
+    expect(f(1)).toBe(1);
+  });
+});

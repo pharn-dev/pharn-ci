@@ -53,7 +53,7 @@ describe("release-readiness-v020: README.md", () => {
 
     const section = h2Section(now, "## Test integrity");
     const body = normalize(section.join("\n"));
-    for (const word of ["block", "warn", "off", "default", "test_integrity.mode", "stricter", "Skylos", "4 of 9"]) {
+    for (const word of ["block", "warn", "off", "default", "test_integrity.mode", "stricter", "Skylos", "5 of 9"]) {
       expect(body, word).toContain(word);
     }
     expect(body).toMatch(/\]\(#accept-label\)/);

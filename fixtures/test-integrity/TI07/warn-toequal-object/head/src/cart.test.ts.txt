@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { summary, total } from "./cart.js";
+
+describe("cart", () => {
+  it("builds the summary", () => {
+    expect(summary([2, 3])).toEqual({ total: 6, count: 2 });
+  });
+
+  it("totals an empty cart", () => {
+    expect(total([])).toBe(0);
+  });
+});

@@ -7,7 +7,7 @@ import { expectValidReport } from "./schema.js";
 
 // check(), the Skylos sources and the docs are loaded inside each test body: the AC tests are written before TI02,
 // TI05 and fixtures/skylos-nine-sources/ exist, so nothing that depends on them may run while the file loads. Each of
-// the nine cases runs through check() as the Skylos AC tests run it, with base and head text for the two cases the
+// the nine cases runs through check() as the Skylos AC tests run it, with base and head text for the three cases the
 // base-and-head signals read. The fixture text is checked to hold the case before its result is read.
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
@@ -30,8 +30,9 @@ const CAUGHT: ReadonlyMap<string, string> = new Map([
   ["added-skip", "TI03"],
   ["emptied-assertion", "TI05"],
   ["replaced-test", "TI02"],
+  ["edited-expected-value", "TI07"],
 ]);
-const WITH_SOURCES = new Set(["emptied-assertion", "replaced-test"]);
+const WITH_SOURCES = new Set(["emptied-assertion", "replaced-test", "edited-expected-value"]);
 
 interface SourceFile {
   path: string;
@@ -124,7 +125,7 @@ function parseLimits(text: string): { body: string; caught: Map<string, string>;
 }
 
 describe("Skylos nine: TI05 and TI02 catch emptied-assertion and replaced-test", () => {
-  it("AC-17: emptied-assertion gives a block TI05, replaced-test a block TI02, deleted-test and added-skip their TI01 and TI03 as before, and the other five no signal", async () => {
+  it("AC-17: emptied-assertion gives a block TI05, replaced-test a block TI02, edited-expected-value a warn TI07, deleted-test and added-skip their TI01 and TI03 as before, and the other four no signal", async () => {
     // The two sources hold the case their diff shows: the expect on the edited line at base, a bare call at head;
     // and the removed test's name at base, the new name at head.
     const emptied = (side: string) =>
@@ -162,14 +163,15 @@ describe("Skylos nine: TI05 and TI02 catch emptied-assertion and replaced-test",
       "added-skip",
       "emptied-assertion",
       "replaced-test",
+      "edited-expected-value",
     ]);
   });
 
-  it("AC-17: docs/LIMITS.md and the README state that 4 of 9 are caught and list those four cases with their signal ids", () => {
+  it("AC-17: docs/LIMITS.md and the README state that 5 of 9 are caught and list those five cases with their signal ids", () => {
     const limits = parseLimits(readFileSync(`${ROOT}docs/LIMITS.md`, "utf8"));
-    expect(limits.body).toContain("4 of 9");
+    expect(limits.body).toContain("5 of 9");
     expect(limits.caught).toEqual(new Map(CAUGHT));
-    expect(limits.missed.size).toBe(5);
+    expect(limits.missed.size).toBe(4);
     expect(new Set([...limits.caught.keys(), ...limits.missed.keys()])).toEqual(new Set(NINE));
 
     const readme = lines(readFileSync(`${ROOT}README.md`, "utf8"));
@@ -178,7 +180,7 @@ describe("Skylos nine: TI05 and TI02 catch emptied-assertion and replaced-test",
     const rest = readme.slice(start + 1);
     const end = rest.findIndex((line) => line.startsWith("## "));
     const body = normalize((end === -1 ? rest : rest.slice(0, end)).join("\n"));
-    expect(body).toContain("4 of 9");
+    expect(body).toContain("5 of 9");
     expect(body).not.toContain("2 of 9");
     for (const [name, id] of CAUGHT) {
       expect(body, `the README names ${name}`).toContain(name);

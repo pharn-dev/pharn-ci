@@ -1,0 +1,14 @@
+import { describe, expect, it } from "vitest";
+import { delta } from "./c.js";
+
+describe("d", () => {
+  it("moves", () => {
+    const out = delta([4, 5, 6]);
+    expect(out.sum).toBe(15);
+    expect(out.max).toBe(6);
+  });
+
+  it("fresh", () => {
+    expect(delta([])).toEqual({ sum: 0, max: 0 });
+  });
+});

@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { delta } from "./c.js";
+
+describe("c", () => {
+  it("stays", () => {
+    expect(delta([1])).toEqual({ sum: 1, max: 1 });
+  });
+
+  it("added here", () => {
+    expect(typeof delta).toBe("function");
+  });
+});

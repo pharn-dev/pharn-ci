@@ -5,14 +5,14 @@ import { describe, expect, it } from "vitest";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
-// release-readiness-v020: the figure docs/LIMITS.md states (now 4 of 9) must match what check() does today. The caught
+// release-readiness-v020: the figure docs/LIMITS.md states (now 5 of 9) must match what check() does today. The caught
 // and missed cases are parsed from the LIMITS section, then each of the nine Skylos cases runs through check() with the
-// inputs the Skylos AC tests use, plus the base and head text of the test file for the two cases that need it
+// inputs the Skylos AC tests use, plus the base and head text of the test file for the three cases that need it
 // (fixtures/skylos-nine-sources/). check() and the docs are loaded inside the test body.
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const REPO_ROOT = "/home/runner/work/demo/demo";
-const WITH_SOURCES = new Set(["emptied-assertion", "replaced-test"]);
+const WITH_SOURCES = new Set(["emptied-assertion", "replaced-test", "edited-expected-value"]);
 
 /** The `<logical path>.txt` files under one side of a case's sources, as test-source files sorted by logical path. */
 function sideFiles(dir: string): { path: string; text: string }[] {
@@ -72,8 +72,8 @@ describe("release-readiness-v020: the LIMITS 2-of-9 figure matches check()", () 
   it("AC-3: exactly the two cases LIMITS lists as caught give a signal (only their named id), the seven it lists as missed give none, so the live count is 2 of 9", async () => {
     const { check } = await import("../src/check.js");
     const { caught, missed } = parseLimits(readFileSync(`${ROOT}docs/LIMITS.md`, "utf8"));
-    expect(caught.size).toBe(4);
-    expect(missed.size).toBe(5);
+    expect(caught.size).toBe(5);
+    expect(missed.size).toBe(4);
     const names = [...caught.keys(), ...missed.keys()];
     expect(new Set(names).size).toBe(9);
 
@@ -112,6 +112,6 @@ describe("release-readiness-v020: the LIMITS 2-of-9 figure matches check()", () 
     for (const name of missed.keys()) expect(live.get(name), name).toEqual([]);
 
     const liveCaught = [...live].filter(([, ids]) => ids.length > 0).length;
-    expect(`${liveCaught} of ${live.size}`).toBe("4 of 9");
+    expect(`${liveCaught} of ${live.size}`).toBe("5 of 9");
   });
 });

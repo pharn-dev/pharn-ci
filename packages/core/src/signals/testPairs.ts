@@ -24,7 +24,7 @@ const EXTENSION_LANGUAGE: ReadonlyMap<string, TestLanguage> = new Map([
 ]);
 
 /** The language of a path by its extension (case-sensitive), or null: Go and every other extension are not read. */
-function languageOf(path: string): TestLanguage | null {
+export function languageOf(path: string): TestLanguage | null {
   const basename = path.slice(path.lastIndexOf("/") + 1);
   const dot = basename.lastIndexOf(".");
   if (dot <= 0) return null;

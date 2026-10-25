@@ -1,0 +1,9 @@
+from e import compute
+
+
+def test_keep():
+    assert compute(1) == 2
+
+
+def test_change():
+    assert compute(2) == 4

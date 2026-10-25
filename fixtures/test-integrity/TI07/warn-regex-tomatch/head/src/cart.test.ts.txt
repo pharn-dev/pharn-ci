@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { label, total } from "./cart.js";
+
+describe("cart", () => {
+  it("shows the label", () => {
+    expect(label()).toMatch(/^basket: \d+$/);
+  });
+
+  it("totals an empty cart", () => {
+    expect(total([])).toBe(0);
+  });
+});

@@ -1,0 +1,12 @@
+import { expect } from "chai";
+import { total } from "./cart.js";
+
+describe("cart", () => {
+  it("adds the prices", () => {
+    expect(total([2, 3])).to.equal(6);
+  });
+
+  it("totals an empty cart", () => {
+    expect(total([])).to.equal(0);
+  });
+});

@@ -340,15 +340,18 @@ tests weaker? The `test-integrity` input takes `block`, `warn` or `off`, and the
 `test_integrity.mode` in `.pharn/ci.yml` can only make the mode stricter, never looser, so a pull request cannot loosen
 its own gate by editing the config. The signals so far are TI01 (a test file deleted), TI02 (a test removed from a test
 file that stays), TI03 (a skip added to a test), TI04 (a `.only`, `fit` or `fdescribe` added), TI05 (a test emptied of
-its assertions, or with fewer), TI08 (snapshots regenerated or updated in bulk), TI10 (a test script in `package.json`
+its assertions, or with fewer), TI07 (an expected value of a test edited to match, in a change that also edits source),
+TI08 (snapshots regenerated or updated in bulk), TI10 (a test script in `package.json`
 weakened), TI11 (CI stopped running tests), TI13 (a coverage-ignore comment added to source), TI14 (a lower coverage
 threshold or a wider exclusion in the config), TI15 (a source condition that compares with a value the tests add) and
-TI16 (a lint or type suppression comment added to a test file). TI08 and TI15 warn and TI16 gives an `info` finding in
-both `block` and `warn`, so those three never fail the check. Each reads the diff, and TI02 and TI05 also read the text
-of the JS/TS and Python test files the change modifies at the merge base and at HEAD, parsed without running them: a test
-counts as removed only when no test of the same name or a similar body is left in the touched test files, and
-`TEST_INTEGRITY_INDEX_UNAVAILABLE` names a file that could not be compared. A reviewer who is not the author can sign off
-block findings with the accept label: see [Accept label](#accept-label).
+TI16 (a lint or type suppression comment added to a test file). TI07, TI08 and TI15 warn and TI16 gives an `info` finding
+in both `block` and `warn`, so those four never fail the check. Each reads the diff, and TI02, TI05 and TI07 also read
+the text of the JS/TS and Python test files the change modifies at the merge base and at HEAD, parsed without running
+them: a test counts as removed only when no test of the same name or a similar body is left in the touched test files,
+and `TEST_INTEGRITY_INDEX_UNAVAILABLE` names a file that could not be compared. When a change adds, removes, modifies or
+renames tests, the comment also holds a collapsed "Tests changed" table with the counts per test file; the test names are
+in `report.json` only. A reviewer who is not the author can sign off block findings with the accept label: see
+[Accept label](#accept-label).
 
 This is the "Test integrity" section of the report for a change that turns `it(` into `it.skip(` in
 `src/cart.test.ts`, in mode `block`:
@@ -359,9 +362,9 @@ This is the "Test integrity" section of the report for a change that turns `it(`
 >   - Hint: A reviewer must decide whether each skipped test may stay, for example one that fails in CI; a reviewer who is not the PR author records that sign-off by applying the accept label `pharn/accepted`.
 
 The benchmark for this is Skylos's list of nine ways to hide a failing test. The nine cases are reproduced in vitest
-under `fixtures/skylos-nine/` and pinned by tests: the signals of this release catch **4 of 9** (`deleted-test` by TI01,
-`added-skip` by TI03, `emptied-assertion` by TI05 and `replaced-test` by TI02). The other five are planned signals that do
-not exist yet. What each signal misses is in [docs/LIMITS.md](./docs/LIMITS.md#what-test-integrity-does-not-catch).
+under `fixtures/skylos-nine/` and pinned by tests: the signals of this release catch **5 of 9** (`deleted-test` by TI01,
+`added-skip` by TI03, `emptied-assertion` by TI05, `replaced-test` by TI02 and `edited-expected-value` by TI07). The
+other four are planned signals that do not exist yet. What each signal misses is in [docs/LIMITS.md](./docs/LIMITS.md#what-test-integrity-does-not-catch).
 
 ---
 

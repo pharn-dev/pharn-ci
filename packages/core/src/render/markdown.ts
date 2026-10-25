@@ -82,6 +82,8 @@ const MESSAGE_HINTS: Record<MessageCode, Hint> = {
     "Remove the marker so the whole suite runs, or say in the PR why only the marked tests should run.",
   TEST_INTEGRITY_TI05: (label) =>
     `Restore the assertions the test had, or say in the PR why it checks less now; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
+  TEST_INTEGRITY_TI07:
+    "Check each new expected value against what the code should do, not what it now returns; if the behaviour change is meant, say so in the PR so a reviewer can confirm it.",
   TEST_INTEGRITY_TI08:
     "Review the snapshot changes, or regenerate them in a separate change, and keep snapshot-update flags out of the test command.",
   TEST_INTEGRITY_TI10: (label) =>
@@ -133,6 +135,7 @@ const SIGNAL_HINT_IDS: ReadonlySet<string> = new Set([
   "TI03",
   "TI04",
   "TI05",
+  "TI07",
   "TI08",
   "TI10",
   "TI11",
@@ -218,6 +221,35 @@ function testIntegrityLines(report: Report): string[] {
   return lines;
 }
 
+/** A count cell: a safe non-negative integer, else 0, so a hostile cell in a hand-built report renders as 0. */
+const count = (n: unknown): number => (typeof n === "number" && Number.isSafeInteger(n) && n >= 0 ? n : 0);
+
+/**
+ * The collapsed tests-changed table under the Test integrity section: one row per test file with its counts, at most
+ * `maxRows` rows, then the number of files left out. Nothing when the report has no summary or the mode is off. Paths
+ * go through `code`; every other cell is a number.
+ */
+function testChangesLines(report: Report, maxRows: number): string[] {
+  const changes = report.testIntegrity.changes;
+  if (changes === undefined || report.testIntegrity.mode === "off") return [];
+  const t = changes.totals;
+  const renamed = count(t.renamed) > 0 ? ` · ${count(t.renamed)} renamed` : "";
+  const lines = [
+    `<details><summary>Tests changed: +${count(t.added)} −${count(t.removed)} ~${count(t.modified)}${renamed}</summary>`,
+    "",
+    "| Test file | Added | Removed | Modified | Renamed |",
+    "| --- | ---: | ---: | ---: | ---: |",
+  ];
+  for (const f of changes.files.slice(0, maxRows)) {
+    lines.push(
+      `| ${code(f.path)} | ${count(f.added)} | ${count(f.removed)} | ${count(f.modified)} | ${count(f.renamed)} |`,
+    );
+  }
+  if (changes.files.length > maxRows) lines.push(`| _…and ${changes.files.length - maxRows} more files_ | | | | |`);
+  lines.push("", "</details>", "");
+  return lines;
+}
+
 /** Render a Report as GitHub-flavored markdown (PR comment, job summary, CLI). */
 export function renderMarkdown(report: Report, options: RenderMarkdownOptions = {}): string {
   const maxRows = options.maxRows ?? 50;
@@ -267,7 +299,7 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
     out.push("", "</details>", "");
   }
 
-  out.push("### 🔍 Test integrity", "", ...testIntegrityLines(report), "");
+  out.push("### 🔍 Test integrity", "", ...testIntegrityLines(report), "", ...testChangesLines(report, maxRows));
 
   // Before the agent setup inventory: when the Action has to drop rows to fit a size limit, the
   // reason for the verdict is never what goes.
