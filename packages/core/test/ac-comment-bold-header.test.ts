@@ -40,8 +40,8 @@ describe("renderMarkdown(): the branded header block", () => {
     const lines = renderMarkdown(report).split("\n");
     const heading = `## ${SHIELD} pharn-ci ${DOT} ❌ Fail`;
     const overview = "Diff coverage of this change is 71.43% against a threshold of 80%; 8 agent setup files found.";
-    const tableHeader = "| Verdict | Diff coverage | Agent setup |";
-    const valueRow = "| ❌ Fail | 71.43% (threshold 80%) | 8 files |";
+    const tableHeader = "| Verdict | Diff coverage | Test integrity | Agent setup |";
+    const valueRow = "| ❌ Fail | 71.43% (threshold 80%) | none (warn) | 8 files |";
     // pr-comment-verdict-callout put the overview sentence in a callout under the heading on purpose.
     const marker = "> [!CAUTION]";
     const callout = `> **Fail** ${DOT} ${overview}`;

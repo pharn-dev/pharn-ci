@@ -74,7 +74,11 @@
             }
           }
         },
-        "languages": { "type": "array", "items": { "enum": ["ts", "js", "py", "go"] } }
+        "languages": {
+          "description": "Which syntax-aware detectors ran: ts, js, py, go. Empty in 0.2.x, whose signals read diff lines only; the AST detectors fill it from 0.3.0.",
+          "type": "array",
+          "items": { "enum": ["ts", "js", "py", "go"] }
+        }
       }
     },
     "policy": {

@@ -85,11 +85,11 @@ function section(markdown: string): string[] {
 function hintsOf(markdown: string, id: string): string[] {
   const lines = section(markdown);
   const finding = lines.findIndex((line) => line.includes(`**${id}**`));
-  const all = markdown.split("\n");
-  const message = all.findIndex((line) => line.includes(`\`TEST_INTEGRITY_${id}\``));
   expect(finding, `finding ${id}`).toBeGreaterThan(-1);
-  expect(message, `message ${id}`).toBeGreaterThan(-1);
-  const hints = [lines[finding + 1] ?? "", all[message + 1] ?? ""];
+  // The comment-layout change leaves a signal's message out of the Messages section on purpose: its finding and hint
+  // are listed above, so the hint under the finding is the only one in the comment.
+  expect(markdown, `message ${id}`).not.toContain(`\`TEST_INTEGRITY_${id}\``);
+  const hints = [lines[finding + 1] ?? ""];
   for (const hint of hints) expect(hint.startsWith("  - Hint: "), `hint ${id}`).toBe(true);
   return hints;
 }

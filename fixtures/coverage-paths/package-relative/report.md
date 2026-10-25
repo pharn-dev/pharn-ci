@@ -5,9 +5,9 @@
 > [!CAUTION]
 > **Fail** · Diff coverage was not computed; 1 agent setup file found.
 
-| Verdict | Diff coverage | Agent setup |
-| --- | --- | --- |
-| ❌ Fail | not computed | 1 file |
+| Verdict | Diff coverage | Test integrity | Agent setup |
+| --- | --- | --- | --- |
+| ❌ Fail | not computed | none (warn) | 1 file |
 
 ### 🧪 Diff coverage
 

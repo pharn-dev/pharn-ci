@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { fixture, foldCallout } from "./helpers.js";
+import { fixture, foldCallout, foldIntegrityColumn } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 /** Remove the Test integrity section: its heading, an empty line, one fixed line and an empty line. */
@@ -139,7 +139,8 @@ describe("check(): some coverage paths are not tracked files", () => {
       const without = { ...report, messages: report.messages.filter((message) => message.code !== CODE) };
       expect(sha256(asFile(toV1(without))), `${dir} report.json without the message`).toBe(jsonSha);
       // test-integrity-mode added the "🔍 Test integrity" section on purpose: its four lines are folded out too.
-      const markdown = foldCallout(foldTestIntegrity(renderMarkdown(report))).split("\n");
+      // The comment-layout change added the summary table's Test integrity column on purpose: it is folded out too.
+      const markdown = foldCallout(foldTestIntegrity(foldIntegrityColumn(renderMarkdown(report)))).split("\n");
       const messageLines = markdown.filter((line) => line.includes(`\`${CODE}\``));
       expect(messageLines, `${dir} report.md lines naming the code`).toHaveLength(1);
       const at = markdown.findIndex((line) => line.includes(`\`${CODE}\``));
@@ -166,8 +167,8 @@ describe("check(): some coverage paths are not tracked files", () => {
     expect(asFile(exclusions)).toBe(fixture("golden-exclusions/report.json"));
     expect(renderMarkdown(exclusions)).toBe(fixture("golden-exclusions/report.md"));
     expect(sha256(asFile(toV1(JSON.parse(fixture("golden-exclusions/report.json")))))).toBe(EXCLUSIONS_JSON_SHA256);
-    expect(sha256(footerToV1(foldCallout(foldTestIntegrity(fixture("golden-exclusions/report.md")))))).toBe(
-      EXCLUSIONS_MD_SHA256,
-    );
+    expect(
+      sha256(footerToV1(foldCallout(foldTestIntegrity(foldIntegrityColumn(fixture("golden-exclusions/report.md")))))),
+    ).toBe(EXCLUSIONS_MD_SHA256);
   });
 });

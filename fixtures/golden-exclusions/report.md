@@ -5,9 +5,9 @@
 > [!TIP]
 > **Pass** · Diff coverage of this change is 80% against a threshold of 80%; 2 agent setup files found.
 
-| Verdict | Diff coverage | Agent setup |
-| --- | --- | --- |
-| ✅ Pass | 80% (threshold 80%) | 2 files |
+| Verdict | Diff coverage | Test integrity | Agent setup |
+| --- | --- | --- | --- |
+| ✅ Pass | 80% (threshold 80%) | none (warn) | 2 files |
 
 ### 🧪 Diff coverage
 

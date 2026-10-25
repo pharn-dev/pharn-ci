@@ -5,9 +5,9 @@
 > [!CAUTION]
 > **Fail** · Diff coverage of this change is 71.43% against a threshold of 80%; 8 agent setup files found.
 
-| Verdict | Diff coverage | Agent setup |
-| --- | --- | --- |
-| ❌ Fail | 71.43% (threshold 80%) | 8 files |
+| Verdict | Diff coverage | Test integrity | Agent setup |
+| --- | --- | --- | --- |
+| ❌ Fail | 71.43% (threshold 80%) | none (warn) | 8 files |
 
 ### 🧪 Diff coverage
 

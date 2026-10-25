@@ -73,11 +73,11 @@ function section(markdown: string): string[] {
 function hintsOf(markdown: string, id: string): string[] {
   const lines = section(markdown);
   const finding = lines.findIndex((line) => line.includes(`**${id}**`));
-  const all = markdown.split("\n");
-  const message = all.findIndex((line) => line.includes(`\`TEST_INTEGRITY_${id}\``));
   expect(finding, `finding ${id}`).toBeGreaterThan(-1);
-  expect(message, `message ${id}`).toBeGreaterThan(-1);
-  const hints = [lines[finding + 1] ?? "", all[message + 1] ?? ""];
+  // The comment-layout change leaves a signal's message out of the Messages section on purpose: its finding and hint
+  // are listed above, so the hint under the finding is the only one in the comment.
+  expect(markdown, `message ${id}`).not.toContain(`\`TEST_INTEGRITY_${id}\``);
+  const hints = [lines[finding + 1] ?? ""];
   for (const hint of hints) expect(hint.startsWith("  - Hint: "), `hint ${id}`).toBe(true);
   return hints;
 }
@@ -119,7 +119,7 @@ describe("the TI03, TI10 and TI13 hints name the accept label", () => {
     // line with the label inside a single code span.
     const hostile = renderMarkdown(await reportWith(HOSTILE));
     const holding = hostile.split("\n").filter((line) => line.includes("a`b"));
-    expect(holding.length).toBeGreaterThanOrEqual(NAMING.length * 2);
+    expect(holding.length).toBeGreaterThanOrEqual(NAMING.length);
     for (const line of holding) expect(inOneCodeSpan(line, HOSTILE), line).toBe(true);
     for (const id of NAMING)
       for (const hint of hintsOf(hostile, id)) expect(inOneCodeSpan(hint, HOSTILE), id).toBe(true);
@@ -127,7 +127,7 @@ describe("the TI03, TI10 and TI13 hints name the accept label", () => {
     // The TI01, TI04, TI11 and TI14 hints are the text they were, with no accept label.
     for (const markdown of [custom, plain, hostile]) {
       for (const [id, text] of Object.entries(UNCHANGED)) {
-        expect(hintsOf(markdown, id), id).toEqual([text, text]);
+        expect(hintsOf(markdown, id), id).toEqual([text]);
         expect(text).not.toMatch(/accept/i);
       }
     }

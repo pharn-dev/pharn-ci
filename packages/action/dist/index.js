@@ -28068,6 +28068,13 @@ function signalHint(id, label) {
   return SIGNAL_HINT_IDS.has(id) ? hintFor(`TEST_INTEGRITY_${id}`, label) : void 0;
 }
 var MAX_FINDINGS = 20;
+var OPEN_FINDINGS = 10;
+var SEVERITY_RANK = { block: 0, warn: 1, info: 2 };
+function bySeverity(signals) {
+  const rank = (s) => SEVERITY_RANK[s.severity] ?? 3;
+  return signals.map((signal, index) => ({ signal, index })).sort((a, b) => rank(a.signal) - rank(b.signal) || a.index - b.index).map(({ signal }) => signal);
+}
+var SIGNAL_MESSAGE_CODE = /^TEST_INTEGRITY_TI\d\d$/;
 var SEVERITY_ICON = { block: LEVEL_ICON.error, warn: LEVEL_ICON.warn, info: LEVEL_ICON.info };
 function testIntegrityLines(report) {
   const { mode, signals } = report.testIntegrity;
@@ -28076,13 +28083,28 @@ function testIntegrityLines(report) {
   if (signals.length === 0) {
     lines.push(mode === "off" ? "Test integrity is off for this run." : `No test-integrity findings (mode: ${mode}).`);
   } else {
-    for (const signal of signals.slice(0, MAX_FINDINGS)) {
+    const listed = bySeverity(signals).slice(0, MAX_FINDINGS);
+    const findingLines = (signal) => {
       const location = signal.line === null ? code(signal.path) : code(`${signal.path}:${signal.line}`);
-      lines.push(
+      const out = [
         `- ${SEVERITY_ICON[signal.severity] ?? LEVEL_ICON.info} **${inlineText(signal.id)}** ${location} \u2014 ${inlineText(signal.detail)}`
-      );
+      ];
       const hint = signalHint(signal.id, label);
-      if (hint !== void 0) lines.push(`  - Hint: ${hint}`);
+      if (hint !== void 0) out.push(`  - Hint: ${hint}`);
+      return out;
+    };
+    for (const signal of listed.slice(0, OPEN_FINDINGS)) lines.push(...findingLines(signal));
+    const folded = listed.slice(OPEN_FINDINGS);
+    if (folded.length > 0) {
+      lines.push(
+        "",
+        `<details><summary>${countOf(folded.length, "more finding", "more findings")}</summary>`,
+        "",
+        ...folded.flatMap(findingLines),
+        "",
+        "</details>",
+        ""
+      );
     }
     if (signals.length > MAX_FINDINGS) {
       lines.push(`- _\u2026and ${signals.length - MAX_FINDINGS} more findings in report.json._`);
@@ -28138,9 +28160,11 @@ function renderMarkdown(report, options = {}) {
     out.push("", "</details>", "");
   }
   out.push("### \u{1F50D} Test integrity", "", ...testIntegrityLines(report), "");
-  if (report.messages.length > 0) {
-    out.push(`### \u{1F4AC} Messages (${report.messages.length})`, "");
-    for (const m of report.messages) out.push(renderMessage(m, report));
+  const listedIds = new Set(report.testIntegrity.signals.map((s) => `TEST_INTEGRITY_${s.id}`));
+  const messages = report.messages.filter((m) => !(SIGNAL_MESSAGE_CODE.test(m.code) && listedIds.has(m.code)));
+  if (messages.length > 0) {
+    out.push(`### \u{1F4AC} Messages (${messages.length})`, "");
+    for (const m of messages) out.push(renderMessage(m, report));
     out.push("");
   }
   const setup = report.agentSetup.files;
@@ -28185,7 +28209,22 @@ function overviewLine(report) {
     first = `Diff coverage of this change is ${formatNumber(dc.percent)}% against a threshold of ${formatNumber(dc.threshold)}%`;
   const n = report.agentSetup.files.length;
   const setup = n === 0 ? "no agent setup files found." : n === 1 ? "1 agent setup file found." : `${n} agent setup files found.`;
-  return `${first}; ${setup}`;
+  const findings = report.testIntegrity.signals;
+  if (findings.length === 0) return `${first}; ${setup}`;
+  const blocking = findings.filter((s) => s.severity === "block").length;
+  const integrity = `${countOf(findings.length, "test-integrity finding", "test-integrity findings")}${blocking > 0 ? `, ${blocking} blocking` : ""}`;
+  return `${first}; ${integrity}; ${setup}`;
+}
+function countOf(n, one, many) {
+  return `${n} ${n === 1 ? one : many}`;
+}
+function integrityCell(report) {
+  const { mode, signals } = report.testIntegrity;
+  if (mode === "off") return "off";
+  if (signals.length === 0) return `none (${mode})`;
+  const blocking = signals.filter((s) => s.severity === "block").length;
+  const icon = blocking > 0 ? LEVEL_ICON.error : signals.some((s) => s.severity === "warn") ? LEVEL_ICON.warn : LEVEL_ICON.info;
+  return `${icon} ${countOf(signals.length, "finding", "findings")}${blocking > 0 ? `, ${blocking} blocking` : ""}`;
 }
 function summaryLines(report) {
   const dc = report.diffCoverage;
@@ -28199,9 +28238,9 @@ function summaryLines(report) {
   const n = report.agentSetup.files.length;
   const setup = n === 0 ? "none" : n === 1 ? "1 file" : `${n} files`;
   return [
-    "| Verdict | Diff coverage | Agent setup |",
-    "| --- | --- | --- |",
-    `| ${VERDICT_ICON[report.verdict]} ${VERDICT_LABEL[report.verdict]} | ${coverage} | ${setup} |`,
+    "| Verdict | Diff coverage | Test integrity | Agent setup |",
+    "| --- | --- | --- | --- |",
+    `| ${VERDICT_ICON[report.verdict]} ${VERDICT_LABEL[report.verdict]} | ${coverage} | ${integrityCell(report)} | ${setup} |`,
     ""
   ];
 }

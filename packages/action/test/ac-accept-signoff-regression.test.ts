@@ -94,6 +94,23 @@ function excludeFor(name: string, text: string): string[] {
 
 const sha256 = (data: string | Buffer) => createHash("sha256").update(data).digest("hex");
 
+/** The summary table without the Test integrity column, as it was at the base commit. Throws if the table is missing. */
+function foldIntegrityColumn(markdown: string): string {
+  const lines = markdown.split("\n");
+  const at = lines.indexOf("| Verdict | Diff coverage | Test integrity | Agent setup |");
+  if (at === -1 || lines[at + 1] !== "| --- | --- | --- | --- |") throw new Error("no four-column summary table");
+  const cells = (lines[at + 2] ?? "").split(" | ");
+  if (cells.length !== 4) throw new Error(`the summary row has ${cells.length} cells`);
+  lines.splice(
+    at,
+    3,
+    "| Verdict | Diff coverage | Agent setup |",
+    "| --- | --- | --- |",
+    [cells[0], cells[1], cells[3]].join(" | "),
+  );
+  return lines.join("\n");
+}
+
 describe("the accept label leaves the existing signals, hints, golden outputs and dist alone", () => {
   it("AC-14: the dist is a fresh bundle holding the accept label; fixtures, hints and golden outputs are as before", async () => {
     // The committed packages/action/dist holds the accept label and is a fresh bundle of packages/action/src.
@@ -114,7 +131,11 @@ describe("the accept label leaves the existing signals, hints, golden outputs an
     const goldenNames = readdirSync(new URL("fixtures/golden/", ROOT)).sort();
     expect(goldenNames).toEqual(Object.keys(GOLDEN_AT_BASE).sort());
     for (const name of goldenNames) {
-      expect(sha256(readFileSync(new URL(`fixtures/golden/${name}`, ROOT))), name).toBe(GOLDEN_AT_BASE[name]);
+      const bytes = readFileSync(new URL(`fixtures/golden/${name}`, ROOT));
+      // The comment-layout change added the summary table's Test integrity column on purpose: it is folded out of
+      // report.md before the hash, so every other byte is still the base commit's.
+      const asAtBase = name === "report.md" ? foldIntegrityColumn(bytes.toString("utf8")) : bytes;
+      expect(sha256(asAtBase), name).toBe(GOLDEN_AT_BASE[name]);
     }
 
     // Every test-integrity fixture gives the signals and messages it gave, with the same TI01/TI04/TI11/TI14 hints.
