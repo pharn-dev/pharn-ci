@@ -1,0 +1,23 @@
+diff --git a/src/cart.test.ts b/src/cart.test.ts
+index 1111111..2222222 100644
+--- a/src/cart.test.ts
++++ b/src/cart.test.ts
+@@ -11,0 +12,4 @@ describe("cart", () => {
++
++  it("keeps the cart truthy", () => {
++    expect(total([1])).toBeTruthy();
++  });
+diff --git a/src/extra.test.ts b/src/extra.test.ts
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/src/extra.test.ts
+@@ -0,0 +1,8 @@
++import { describe, expect, it } from "vitest";
++import { total } from "./cart.js";
++
++describe("extra", () => {
++  it("keeps the extra truthy", () => {
++    expect(total([5])).toBeTruthy();
++  });
++});

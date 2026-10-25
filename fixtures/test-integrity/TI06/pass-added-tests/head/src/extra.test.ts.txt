@@ -1,0 +1,8 @@
+import { describe, expect, it } from "vitest";
+import { total } from "./cart.js";
+
+describe("extra", () => {
+  it("keeps the extra truthy", () => {
+    expect(total([5])).toBeTruthy();
+  });
+});

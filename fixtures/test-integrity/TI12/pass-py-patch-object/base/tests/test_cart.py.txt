@@ -1,0 +1,8 @@
+from unittest.mock import patch
+
+from app import cart
+from app.cart import total
+
+
+def test_total():
+    assert total([2, 3]) == 5

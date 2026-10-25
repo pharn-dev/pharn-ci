@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { count, total } from "./cart.js";
+
+describe("cart", () => {
+  it("counts the items", () => {
+    expect(count()).toBeNull();
+  });
+
+  it("totals an empty cart", () => {
+    expect(total([])).toBe(0);
+  });
+});

@@ -1,0 +1,14 @@
+import { expect } from "chai";
+import { describe, it } from "mocha";
+import { value } from "./cart.js";
+
+describe("cart", () => {
+  it("has a value", () => {
+    const x = value();
+    expect(x).to.be.ok;
+  });
+
+  it("has another value", () => {
+    expect(value()).to.equal(2);
+  });
+});

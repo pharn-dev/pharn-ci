@@ -1,0 +1,19 @@
+import { describe, expect, it } from "vitest";
+import { label, list, spy, total } from "./cart.js";
+
+describe("cart", () => {
+  it("adds the prices", () => {
+    expect.hasAssertions();
+    expect(total([2, 3])).toBe(5);
+    expect(total([4, 2])).toBe(6);
+  });
+
+  it("sums many lists", () => {
+    expect(total([1])).toBe(1);
+    expect(list([1])).toContain(1);
+    expect(list([1])).toEqual([1]);
+    expect(list([1])).toHaveLength(1);
+    expect(label(1)).toMatch(/1/);
+    expect(list([1])).toStrictEqual([1]);
+  });
+});

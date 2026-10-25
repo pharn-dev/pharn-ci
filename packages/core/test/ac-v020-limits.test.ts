@@ -58,7 +58,6 @@ const MISSED_CASES: ReadonlyArray<[string, string]> = [
   ["deselect-setting", "TI09"],
   ["hard-coded-answer", "TI15"],
   ["always-true-matcher", "TI17"],
-  ["loosened-assertion", "TI06"],
 ];
 
 describe("release-readiness-v020: docs/LIMITS.md", () => {
@@ -75,7 +74,7 @@ describe("release-readiness-v020: docs/LIMITS.md", () => {
     }
     expect(body).toMatch(/accept label/i);
     expect(body).toContain("Skylos");
-    expect(body).toContain("5 of 9");
+    expect(body).toContain("6 of 9");
 
     const items = listItems(section);
     const caught = new Map<string, string>();
@@ -90,6 +89,7 @@ describe("release-readiness-v020: docs/LIMITS.md", () => {
     expect(caught.get("added-skip"), items.join("\n")).toBe("TI03");
     expect(caught.get("emptied-assertion"), items.join("\n")).toBe("TI05");
     expect(caught.get("replaced-test"), items.join("\n")).toBe("TI02");
+    expect(caught.get("loosened-assertion"), items.join("\n")).toBe("TI06");
     expect(caught.get("edited-expected-value"), items.join("\n")).toBe("TI07");
     for (const [name, id] of MISSED_CASES) expect(missed.get(name), `${name}\n${items.join("\n")}`).toBe(id);
   });

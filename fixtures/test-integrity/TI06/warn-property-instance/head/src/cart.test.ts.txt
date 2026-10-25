@@ -1,0 +1,13 @@
+import { describe, expect, it } from "vitest";
+import { build, summary, total } from "./cart.js";
+
+describe("cart", () => {
+  it("summarizes the cart", () => {
+    const cart = build([2, 3]);
+    expect(summary(cart)).toBeInstanceOf(Object);
+  });
+
+  it("totals an empty cart", () => {
+    expect(total([])).toBe(0);
+  });
+});

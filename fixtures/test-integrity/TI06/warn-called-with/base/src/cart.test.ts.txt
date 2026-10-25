@@ -1,0 +1,14 @@
+import { describe, expect, it } from "vitest";
+import { save } from "./cart.js";
+
+describe("cart", () => {
+  it("saves the item", () => {
+    const item = { price: 2 };
+    save(item);
+    expect(save).toHaveBeenCalledWith(item);
+  });
+
+  it("totals an empty cart", () => {
+    expect(save([])).toBe(0);
+  });
+});

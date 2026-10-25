@@ -1,0 +1,13 @@
+import { describe, expect, it } from "vitest";
+import { build, load } from "./cart.js";
+
+describe("cart", () => {
+  it("builds the cart", () => {
+    const cart = build([2, 3]);
+    expect(load(cart)).toEqual(cart);
+  });
+
+  it("builds an empty cart", () => {
+    expect(build([])).toBe(0);
+  });
+});
