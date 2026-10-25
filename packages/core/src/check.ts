@@ -21,6 +21,7 @@ import { detectTI13 } from "./signals/ti13.js";
 import { detectTI14 } from "./signals/ti14.js";
 import { deletedTestFiles } from "./testFiles.js";
 import { resolveTestIntegrityMode, type TestIntegrityModeSettings } from "./testIntegrityMode.js";
+import type { TestSources } from "./testSources.js";
 
 /**
  * One coverage file of a multi-file input: its contents (and the path it came from, for messages); or the map an
@@ -91,6 +92,12 @@ export interface CheckInput {
    * config. The input is the base (default `warn`); the config can only raise it. Absent means the default.
    */
   testIntegrityMode?: TestIntegrityModeSettings;
+  /**
+   * The text of the test and test-config files the change touches, at the merge base and at HEAD, gathered by the
+   * CLI and the Action for the base-and-head test-integrity signals. `check()` does not read it yet: the report is
+   * the same with it, without it, or with both sides unavailable.
+   */
+  testSources?: TestSources;
 }
 
 const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);

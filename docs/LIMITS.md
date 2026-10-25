@@ -428,7 +428,8 @@ Other ways a change can weaken tests without being seen:
   matches a tracked file, `COVERAGE_PATHS_UNMATCHED` quotes one example path from the report and a
   suggested root. The coverage file's own path appears in `COVERAGE_FILE_MISSING`,
   `COVERAGE_FILE_EMPTY`, `COVERAGE_FORMAT_UNSUPPORTED` and `COVERAGE_FILE_TRACKED` messages.
-- **Input sizes are not capped.** No input has a size limit of its own. The local diff and lcov
+- **Input sizes are not capped.** No input has a size limit of its own, except the text of the test and
+  test-config files (section 8). The local diff and lcov
   coverage are read line by line, so memory holds what they yield, not their text; Cobertura coverage
   and the config are read whole. The output of `git ls-files` and `git ls-tree` is limited to 256 MiB.
   A hostile file can make the job slow or run out of memory; it cannot make pharn-ci write anywhere
@@ -484,8 +485,9 @@ Other ways a change can weaken tests without being seen:
 
 ## 8. Size limits
 
-Which inputs have a size limit, what it is, and what you see when it is passed. No input has a cap
-set by pharn-ci.
+Which inputs have a size limit, what it is, and what you see when it is passed. Only the text of
+the test and test-config files has caps set by pharn-ci (the last bullet); every other input is
+limited by git, Node or GitHub alone.
 
 - **The diff.** From local git (the CLI, and the Action when the checkout has the base) it is read
   line by line as git writes it, with no fixed limit. Memory holds the changed paths and their added
@@ -512,3 +514,22 @@ set by pharn-ci.
   the Action warns and skips the agent setup scan and the coverage path checks.
 - **The `git ls-tree` output.** It is read through a 256 MiB buffer and is optional. Past it, empty
   agent setup files are not reported, and the rest of the check runs.
+- **The text of the test and test-config files.** For a diff read from local git, the CLI and the Action
+  read, from committed git objects, the text of the test files and the test-config files (`vitest.config.*`,
+  `vitest.workspace.*`, `jest.config.*`, `playwright.config.*`, `.mocharc*`, `pytest.ini`, `pyproject.toml`,
+  `setup.cfg`, `tox.ini`, `conftest.py` and `package.json`, by basename at any depth) that the change touches: the
+  base side at the merge base, the head side at `HEAD`. Three caps apply to each side, with fixed values that no input,
+  flag or config key changes: at most 200 files, at most 524288 bytes (512 KiB) per file, and at most 16777216 bytes
+  (16 MiB) in all. Paths are taken in code-unit order, so which files are read does not depend on the order of the
+  diff. A selected file that is not kept is dropped with one reason, tried in this order: `unsafe-path` (a control
+  character, a leading `/`, or an empty, `.` or `..` segment in the name), `missing` (absent at that revision, or not
+  a blob, such as a submodule), `too-large` (more than 524288 bytes), `over-file-cap` (the 201st file and later),
+  `over-total-cap` (the file that would take the side past 16777216 bytes, and every later path of that side that has
+  no earlier reason: the first file past the cap ends the reading, even if a later file is small), and `binary` (found after reading: a 0x00
+  byte, or bytes that are not well-formed UTF-8). A file found binary still counts toward the file and total caps.
+  A diff from the GitHub compare API (the Action's fallback) or from PR-number mode gets no text: both sides are
+  marked unavailable and nothing is fetched. When git fails, both sides are unavailable, the CLI writes one line to
+  stderr and the Action one log line naming the failed git step, and the report is unchanged. In a partial clone a
+  blob that is not local is `missing`, never fetched (`GIT_NO_LAZY_FETCH=1`; an older git ignores the variable). A
+  symlink test file is read as its link target path. Nothing reads this text yet: the report is the same with it,
+  without it and with both sides unavailable.

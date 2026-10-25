@@ -45,7 +45,16 @@ async function expectRefused(args: string[], message: string): Promise<void> {
 
 describe("@pharn-ci/node-io git allowlist", () => {
   it("allows exactly the local subcommands pharn-ci and the runner tests use", () => {
-    expect([...LOCAL_GIT_SUBCOMMANDS]).toEqual(["diff", "hash-object", "log", "ls-files", "ls-tree", "rev-parse"]);
+    expect([...LOCAL_GIT_SUBCOMMANDS]).toEqual([
+      "cat-file",
+      "diff",
+      "hash-object",
+      "log",
+      "ls-files",
+      "ls-tree",
+      "merge-base",
+      "rev-parse",
+    ]);
   });
 
   it("passes every argument list pharn-ci runs through unchanged", () => {
@@ -58,13 +67,16 @@ describe("@pharn-ci/node-io git allowlist", () => {
       ["rev-parse", "--show-toplevel"],
       ["rev-parse", "HEAD"],
       ["rev-parse", "--verify", "--quiet", "--end-of-options", "main^{commit}"],
+      ["cat-file", "--batch-check"],
+      ["cat-file", "--batch"],
+      ["merge-base", "a", "b"],
     ]) {
       expect(localGitArgs(args), args.join(" ")).toEqual(args);
     }
   });
 
   it("refuses a subcommand outside the allowlist, remote ones included", async () => {
-    const allowed = "diff, hash-object, log, ls-files, ls-tree, rev-parse";
+    const allowed = "cat-file, diff, hash-object, log, ls-files, ls-tree, merge-base, rev-parse";
     for (const sub of ["clone", "fetch", "pull", "ls-remote", "push", "config", "-c", "--upload-pack=touch x", ""]) {
       await expectRefused(
         [sub, "--upload-pack=touch pwned", "origin"],
@@ -87,6 +99,9 @@ describe("@pharn-ci/node-io git allowlist", () => {
       await expectRefused(["ls-files", "-z", option], `git ls-files: the option "${option}" is not allowed`);
     }
     await expectRefused(["hash-object", "-w", "--stdin"], 'git hash-object: the option "-w" is not allowed');
+    for (const option of ["--textconv", "--filters", "--filters=x"]) {
+      await expectRefused(["cat-file", option, "HEAD:x"], `git cat-file: the option "${option}" is not allowed`);
+    }
     expect(existsSync(join(dir, "pwned"))).toBe(false);
   });
 
