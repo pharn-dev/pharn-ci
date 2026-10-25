@@ -26057,6 +26057,16 @@ var SIGNAL_MESSAGES = [
     text: (top, paths) => top === "info" ? `This change deletes test files together with the code they cover or replaces them: ${paths}.` : `This change deletes or renames away test files that defined tests, with nothing in the change that accounts for them: ${paths}. Check that those tests were meant to go.`
   },
   {
+    id: "TI03",
+    code: "TEST_INTEGRITY_TI03",
+    text: (_top, paths) => `This change skips tests or marks them as expected to fail: ${paths}. Check that each skip was meant.`
+  },
+  {
+    id: "TI04",
+    code: "TEST_INTEGRITY_TI04",
+    text: (_top, paths) => `This change adds \`.only\`, \`fit\` or \`fdescribe\`, which runs only the marked tests: ${paths}. Remove the markers before merging.`
+  },
+  {
     id: "TI11",
     code: "TEST_INTEGRITY_TI11",
     text: (_top, paths) => `This change edits a workflow so that CI may run fewer tests or ignore their failures: ${paths}. Check that the removed step or trigger, the reduced matrix or the added condition was meant.`
@@ -26491,6 +26501,321 @@ function detectTI01(diff, mode) {
   return [...found.values()].sort((a, b) => byCodeUnit3(a.path, b.path));
 }
 
+// ../core/src/signals/testLines.ts
+var JS_EXTENSIONS = [".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"];
+function testLanguage(path) {
+  if (path.endsWith("_test.go")) return "go";
+  if (path.endsWith(".py")) return "python";
+  for (const extension of JS_EXTENSIONS) if (path.endsWith(extension)) return "jsts";
+  return null;
+}
+var MAX_NAME = 120;
+var isSpace3 = (c) => c === " " || c === "	";
+function isWordCode(code2) {
+  return code2 >= 48 && code2 <= 57 || // 0-9
+  code2 >= 65 && code2 <= 90 || // A-Z
+  code2 >= 97 && code2 <= 122 || // a-z
+  code2 === 95 || // _
+  code2 === 36;
+}
+function wordEnd(text, start) {
+  let i = start;
+  while (i < text.length && isWordCode(text.charCodeAt(i))) i++;
+  return i;
+}
+function scanArg(text, start) {
+  let depth = 0;
+  let quote = "";
+  for (let i = start; i < text.length; i++) {
+    const c = text.charAt(i);
+    if (quote !== "") {
+      if (c === "\\") i++;
+      else if (c === quote) quote = "";
+      continue;
+    }
+    if (c === "'" || c === '"' || c === "`") quote = c;
+    else if (c === "(" || c === "[" || c === "{") depth++;
+    else if (c === ")" || c === "]" || c === "}") {
+      if (depth > 0) depth--;
+      else if (c === ")") return { text: text.slice(start, i).trim(), end: i, terminator: ")" };
+    } else if (c === "," && depth === 0) return { text: text.slice(start, i).trim(), end: i, terminator: "," };
+  }
+  return { text: text.slice(start).trim(), end: text.length, terminator: "" };
+}
+function stringContent(arg, prefixes) {
+  let i = 0;
+  if (prefixes) while (i < 2 && i < arg.length && "rRbBuUfF".includes(arg.charAt(i))) i++;
+  const quote = arg.charAt(i);
+  if (quote !== "'" && quote !== '"' && quote !== "`") return null;
+  for (let j = i + 1; j < arg.length; j++) {
+    const c = arg.charAt(j);
+    if (c === "\\") j++;
+    else if (c === quote) return arg.slice(j + 1).trim() === "" ? arg.slice(i + 1, j) : null;
+  }
+  return null;
+}
+function argName(arg, python = false) {
+  return (stringContent(arg, python) ?? arg).slice(0, MAX_NAME);
+}
+var JS_HEADS = /* @__PURE__ */ new Set(["it", "test", "describe", "context", "specify"]);
+var JS_SKIP_HEADS = /* @__PURE__ */ new Set(["xit", "xtest", "xdescribe", "xcontext", "xspecify"]);
+var JS_ONLY_HEADS = /* @__PURE__ */ new Set(["fit", "fdescribe"]);
+function tokenOf(word) {
+  switch (word) {
+    case "skip":
+    case "only":
+    case "todo":
+    case "fails":
+    case "skipIf":
+    case "runIf":
+      return word;
+    default:
+      return "none";
+  }
+}
+function parseJsTestCall(text) {
+  const line = text.trimStart();
+  const headEnd = wordEnd(line, 0);
+  if (headEnd === 0) return null;
+  const head = line.slice(0, headEnd);
+  let i = headEnd;
+  if (head === "this") {
+    if (!line.startsWith(".skip", i)) return null;
+    i += ".skip".length;
+    while (isSpace3(line.charAt(i))) i++;
+    if (line.charAt(i) !== "(") return null;
+    const arg = scanArg(line, i + 1).text;
+    return { kind: "this-skip", token: "skip", arg, named: false, name: argName(arg), condition: "" };
+  }
+  const skipHead = JS_SKIP_HEADS.has(head);
+  const onlyHead = JS_ONLY_HEADS.has(head);
+  if (!(JS_HEADS.has(head) || skipHead || onlyHead)) return null;
+  let token = skipHead ? "skip" : onlyHead ? "only" : "none";
+  while (line.charAt(i) === ".") {
+    const end = wordEnd(line, i + 1);
+    if (end === i + 1) return null;
+    if (token === "none") token = tokenOf(line.slice(i + 1, end));
+    i = end;
+  }
+  while (isSpace3(line.charAt(i))) i++;
+  if (line.charAt(i) !== "(") return null;
+  const first = scanArg(line, i + 1);
+  if ((token === "skipIf" || token === "runIf") && first.terminator === ")") {
+    let j = first.end + 1;
+    while (isSpace3(line.charAt(j))) j++;
+    const arg = line.charAt(j) === "(" ? scanArg(line, j + 1).text : "";
+    return {
+      kind: "call",
+      token,
+      arg,
+      named: stringContent(arg, false) !== null,
+      name: argName(arg),
+      condition: first.text
+    };
+  }
+  return {
+    kind: "call",
+    token,
+    arg: first.text,
+    named: stringContent(first.text, false) !== null,
+    name: argName(first.text),
+    condition: ""
+  };
+}
+var PYTHON_DECORATORS = /* @__PURE__ */ new Map([
+  ["pytest.mark.skip", "never"],
+  ["pytest.mark.skipif", "always"],
+  ["pytest.mark.xfail", "by-argument"],
+  ["unittest.skip", "never"],
+  ["unittest.skipIf", "always"],
+  ["unittest.skipUnless", "always"]
+]);
+function dottedEnd(text, start) {
+  let i = start;
+  while (i < text.length && (isWordCode(text.charCodeAt(i)) || text.charAt(i) === ".")) i++;
+  return i;
+}
+function isKeywordArg(arg) {
+  const end = wordEnd(arg, 0);
+  if (end === 0) return false;
+  let i = end;
+  while (isSpace3(arg.charAt(i))) i++;
+  return arg.charAt(i) === "=" && arg.charAt(i + 1) !== "=";
+}
+function parsePythonSkip(text) {
+  const line = text.trimStart();
+  if (line.startsWith("@")) {
+    const end = dottedEnd(line, 1);
+    const token = line.slice(1, end);
+    const rule = PYTHON_DECORATORS.get(token);
+    if (rule === void 0) return null;
+    let i2 = end;
+    while (isSpace3(line.charAt(i2))) i2++;
+    const arg = line.charAt(i2) === "(" ? scanArg(line, i2 + 1).text : "";
+    const conditional = rule === "always" || rule === "by-argument" && arg !== "" && stringContent(arg, true) === null && !isKeywordArg(arg);
+    return { kind: "decorator", token, name: argName(arg, true), conditional };
+  }
+  if (!line.startsWith("pytest.skip")) return null;
+  let i = "pytest.skip".length;
+  while (isSpace3(line.charAt(i))) i++;
+  if (line.charAt(i) !== "(") return null;
+  return { kind: "call", token: "pytest.skip", name: argName(scanArg(line, i + 1).text, true), conditional: false };
+}
+var GO_SKIPS = /* @__PURE__ */ new Set(["t.Skip", "t.Skipf", "t.SkipNow"]);
+function parseGoSkip(text) {
+  const line = text.trimStart();
+  const end = dottedEnd(line, 0);
+  const token = line.slice(0, end);
+  if (!GO_SKIPS.has(token)) return null;
+  let i = end;
+  while (isSpace3(line.charAt(i))) i++;
+  if (line.charAt(i) !== "(") return null;
+  return { token, name: argName(scanArg(line, i + 1).text) };
+}
+function opensPythonTest(text) {
+  const line = text.trimStart();
+  return line.startsWith("def test_") || line.startsWith("async def test_") || line.startsWith("class Test");
+}
+
+// ../core/src/signals/ti03.ts
+var byCodeUnit4 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var MAX_PER_FILE = 20;
+var DETAILS = {
+  existing: "An unconditional skip was added to a test that the diff shows existed before this change, so that test no longer runs.",
+  conditional: "A conditional skip was added; the test is skipped only where its condition holds.",
+  "cannot-place": "A skip was added inside a test body or hook, where the diff cannot tell which test it stops or whether a condition guards it.",
+  adds: "A skip was added to a test that this change adds, so no test that ran before stops running."
+};
+var keyOf = (token, name) => `${token}\0${name}`;
+function jsSkip(parsed) {
+  const { token, name, condition } = parsed;
+  const key = keyOf(parsed.kind === "this-skip" ? "this.skip" : token, name);
+  if (parsed.kind === "this-skip") return { key, shape: "in-body", name };
+  switch (token) {
+    case "skip":
+      if (parsed.named) return { key, shape: "named", name };
+      return { key, shape: parsed.arg === "" || parsed.arg === "true" ? "in-body" : "conditional", name };
+    case "todo":
+    case "fails":
+      return { key, shape: "named", name };
+    case "skipIf":
+      if (condition === "false") return null;
+      return { key, shape: condition === "true" ? "named" : "conditional", name };
+    case "runIf":
+      if (condition === "true") return null;
+      return { key, shape: condition === "false" ? "named" : "conditional", name };
+    default:
+      return null;
+  }
+}
+function pythonSkip(text) {
+  const parsed = parsePythonSkip(text);
+  if (parsed === null) return null;
+  const key = keyOf(parsed.token, parsed.name);
+  if (parsed.kind === "call") return { key, shape: "in-body", name: parsed.name };
+  return { key, shape: parsed.conditional ? "conditional" : "decorator", name: parsed.name };
+}
+function goSkip(text) {
+  const parsed = parseGoSkip(text);
+  return parsed === null ? null : { key: keyOf(parsed.token, parsed.name), shape: "in-body", name: parsed.name };
+}
+function readSkip(language, text) {
+  if (language === "python") return pythonSkip(text);
+  if (language === "go") return goSkip(text);
+  const parsed = parseJsTestCall(text);
+  return parsed === null ? null : jsSkip(parsed);
+}
+function removedOpenings(hunks) {
+  const names = /* @__PURE__ */ new Set();
+  for (const hunk of hunks) {
+    for (const entry of hunk.removed) {
+      const parsed = parseJsTestCall(entry.text);
+      if (parsed !== null && parsed.kind === "call") names.add(parsed.name);
+    }
+  }
+  return names;
+}
+function removedSkips(hunks, language) {
+  const keys = /* @__PURE__ */ new Set();
+  for (const hunk of hunks) {
+    for (const entry of hunk.removed) {
+      const skip = readSkip(language, entry.text);
+      if (skip !== null) keys.add(skip.key);
+    }
+  }
+  return keys;
+}
+function findingsOf(file, hunks, language) {
+  const before = removedSkips(hunks, language);
+  const openings = language === "jsts" ? removedOpenings(hunks) : /* @__PURE__ */ new Set();
+  const found = [];
+  for (const hunk of hunks) {
+    hunk.added.forEach((entry, index) => {
+      const skip = readSkip(language, entry.text);
+      if (skip === null || before.has(skip.key)) return;
+      let category;
+      if (file.status === "added") category = "adds";
+      else if (skip.shape === "conditional") category = "conditional";
+      else if (skip.shape === "in-body") category = "cannot-place";
+      else if (skip.shape === "named") category = openings.has(skip.name) ? "existing" : "adds";
+      else category = hunk.added.slice(index + 1).some((later) => opensPythonTest(later.text)) ? "adds" : "existing";
+      found.push({ line: entry.line, category });
+    });
+  }
+  return found;
+}
+function detectTI03(diff, mode) {
+  const signals = [];
+  for (const file of diff) {
+    if (file.hunks === void 0 || file.binary === true || !isTestFile(file.path)) continue;
+    const language = testLanguage(file.path);
+    if (language === null) continue;
+    const found = findingsOf(file, file.hunks, language).sort((a, b) => a.line - b.line);
+    for (const { line, category } of found.slice(0, MAX_PER_FILE)) {
+      signals.push({
+        id: "TI03",
+        severity: category === "existing" ? mode : "warn",
+        path: file.path,
+        line,
+        detail: DETAILS[category]
+      });
+    }
+  }
+  return signals.sort((a, b) => byCodeUnit4(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+}
+
+// ../core/src/signals/ti04.ts
+var byCodeUnit5 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var MAX_PER_FILE2 = 20;
+var DETAIL = "A focused-run marker (`.only`, `fit` or `fdescribe`) was added, so the runner may skip the other tests of this file or of the whole run.";
+function detectTI04(diff, mode) {
+  const signals = [];
+  for (const file of diff) {
+    if (file.hunks === void 0 || file.binary === true || !isTestFile(file.path)) continue;
+    if (testLanguage(file.path) !== "jsts") continue;
+    const removed = /* @__PURE__ */ new Set();
+    for (const hunk of file.hunks) {
+      for (const entry of hunk.removed) {
+        const parsed = parseJsTestCall(entry.text);
+        if (parsed !== null && parsed.kind === "call" && parsed.token === "only") removed.add(parsed.name);
+      }
+    }
+    const lines = [];
+    for (const hunk of file.hunks) {
+      for (const entry of hunk.added) {
+        const parsed = parseJsTestCall(entry.text);
+        if (parsed === null || parsed.kind !== "call" || parsed.token !== "only") continue;
+        if (!removed.has(parsed.name)) lines.push(entry.line);
+      }
+    }
+    lines.sort((a, b) => a - b);
+    for (const line of lines.slice(0, MAX_PER_FILE2)) {
+      signals.push({ id: "TI04", severity: mode, path: file.path, line, detail: DETAIL });
+    }
+  }
+  return signals.sort((a, b) => byCodeUnit5(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+}
+
 // ../core/src/signals/yamlLines.ts
 var MAX_LINE = 400;
 function stripComment2(line) {
@@ -26561,7 +26886,7 @@ function flowItems(value) {
 }
 
 // ../core/src/signals/ti11.ts
-var byCodeUnit4 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit6 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var TEST_COMMAND = /^(?:(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?test(?::[\w:-]+)?(?:\s|$)|(?:npx\s+|pnpm\s+exec\s+|yarn\s+|bunx\s+)?(?:vitest|jest|mocha)(?:\s|$)|(?:python3?\s+-m\s+)?pytest(?:\s|$)|python3?\s+-m\s+unittest(?:\s|$)|go\s+test(?:\s|$)|(?:npx\s+)?playwright\s+test(?:\s|$))/;
 var NOT_A_MATRIX_KEY = /* @__PURE__ */ new Set([
   "on",
@@ -26675,12 +27000,12 @@ function detectTI11(diff, mode) {
     if (rushed !== void 0) emit("warn", rushed.line, SENTENCES.timeout);
   }
   return signals.sort(
-    (a, b) => byCodeUnit4(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit4(a.detail, b.detail)
+    (a, b) => byCodeUnit6(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit6(a.detail, b.detail)
   );
 }
 
 // ../core/src/signals/ti14.ts
-var byCodeUnit5 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit7 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var PLAIN_NUMBER = /^\d{1,3}(?:\.\d{1,4})?$/;
 function normalizedPattern(item) {
   try {
@@ -26797,14 +27122,14 @@ function detectTI14(diff, options) {
       });
     }
   }
-  return signals.sort((a, b) => byCodeUnit5(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit7(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/check.ts
-var byCodeUnit6 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit8 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function sortSignals(signals) {
   return signals.sort(
-    (a, b) => byCodeUnit6(a.id, b.id) || byCodeUnit6(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit6(a.detail, b.detail)
+    (a, b) => byCodeUnit8(a.id, b.id) || byCodeUnit8(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit8(a.detail, b.detail)
   );
 }
 function check(input) {
@@ -26819,6 +27144,8 @@ function check(input) {
   const testIntegrity = resolveTestIntegrityMode(input.testIntegrityMode);
   const testIntegritySignals = parsedDiff === null || testIntegrity.mode === "off" ? [] : sortSignals([
     ...detectTI01(parsedDiff, testIntegrity.mode),
+    ...detectTI03(parsedDiff, testIntegrity.mode),
+    ...detectTI04(parsedDiff, testIntegrity.mode),
     ...detectTI11(parsedDiff, testIntegrity.mode),
     ...detectTI14(parsedDiff, {
       configPath: input.configPath,
@@ -27257,11 +27584,15 @@ var MESSAGE_HINTS = {
   TEST_INTEGRITY_MODE_IGNORED: "Set the mode with the `test-integrity` input in the workflow; `test_integrity.mode` in `.pharn/ci.yml` can only make the check stricter, so remove the looser value.",
   TEST_INTEGRITY_OFF: "Set the `test-integrity` input to `warn` or `block` in the workflow to check for weakened tests.",
   TEST_INTEGRITY_TI01: "Restore the deleted tests, or say in the PR why they go so a reviewer can confirm it.",
+  TEST_INTEGRITY_TI03: "A reviewer must decide whether each skipped test may stay, for example one that fails in CI; the accept label will record that sign-off once it ships.",
+  TEST_INTEGRITY_TI04: "Remove the marker so the whole suite runs, or say in the PR why only the marked tests should run.",
   TEST_INTEGRITY_TI11: "Restore the test step or trigger, or say in the PR why CI stops running these tests so a reviewer can confirm it.",
   TEST_INTEGRITY_TI14: "Restore the threshold or the exclusions, or say in the PR why they change so a reviewer can confirm it."
 };
 var SIGNAL_HINTS = {
   TI01: MESSAGE_HINTS.TEST_INTEGRITY_TI01,
+  TI03: MESSAGE_HINTS.TEST_INTEGRITY_TI03,
+  TI04: MESSAGE_HINTS.TEST_INTEGRITY_TI04,
   TI11: MESSAGE_HINTS.TEST_INTEGRITY_TI11,
   TI14: MESSAGE_HINTS.TEST_INTEGRITY_TI14
 };

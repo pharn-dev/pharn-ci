@@ -33,6 +33,17 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   `pull_request` trigger. `warn` in every mode but `off`: a shrunk flow-list matrix, an added
   `continue-on-error: true`, an added `if:` that is a literal false or leaves pull requests out, and a
   `timeout-minutes` of 0 or 1. Which step a line belongs to cannot be seen without context lines, hence the warnings.
+- Signal **TI03**, a skip added to a test file, from the kept text of the diff, reported in `testIntegrity.signals`
+  and in one `TEST_INTEGRITY_TI03` message. It reads JS/TS (`.skip`, `xit` and the other `x` heads, `.todo`, `.fails`,
+  `skipIf`, `runIf`, `this.skip(`), Python (`@pytest.mark.skip`, `skipif`, `xfail`, `@unittest.skip*`, `pytest.skip(`) and
+  Go (`t.Skip(`, `t.Skipf(`, `t.SkipNow(`). An unconditional skip of a test the diff shows existed is `block` in mode
+  `block`; a conditional skip, a skip inside a test body, and a skip in a test the change adds are `warn`. A skip that
+  was already there (an edit, a move) never fires, and environment guards such as `skipIf(!hasCamera)` or
+  `pytest.skip("REDIS_URL not set")` stay `warn`.
+- Signal **TI04**, a focused-run marker added to a JS/TS test file (`.only`, bare `fit(` or `fdescribe(`), reported
+  in `testIntegrity.signals` and in one `TEST_INTEGRITY_TI04` message, `block` in mode `block`, `warn` in the default
+  mode. `solver.fit(x)`, `def fit(self)`, comments, strings and files that are not tests never fire; a marker that was
+  already there (an edit, a move) does not fire either.
 - The unified-diff parser keeps the text of added and removed lines per hunk for test files, the pharn-ci config in
   use and workflow files (at most 5000 lines per file, 400 characters per line; `textTruncated` marks a cut file),
   for the signals that read line text. `readDiffChunks` takes an optional `{ configPath, repoRoot }` so a custom

@@ -111,6 +111,47 @@ TI11 reads the added and removed lines of workflow files (`.github/workflows/*.y
   checks and the source paths from the app policy; they land with the policy work (E5), not here.
 - **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8).
 
+### What TI03 misses
+
+TI03 reads the added and removed lines of test files, one line at a time, in JS/TS, Python and Go. The local diff is
+`--unified=0`, so there are no context lines.
+
+- **No context lines.** A skip is judged from its own line and the lines the diff shows next to it. A decorator added
+  above a test the diff does not show is read as a skip of an existing test; a decorator added in a hunk that also adds
+  an unrelated test below it is read as a skip of a test the change adds (`warn`). A skip inside a test body cannot be
+  tied to the test it stops or to the `if` that guards it, so it is `warn`.
+- **Forms at the start of a line.** A form is recognised only at the start of a line after white space, so a one-line
+  `if (slow) this.skip()`, a skip written after another statement on the same line and a skip built through a helper
+  are missed. Comments and strings are never read as skips.
+- **Runner words that are not named.** `test.fixme`, `test.fail` and any other runner word that stops a test but is not
+  one of the forms above are not seen. `skipIf` and `runIf` are judged by their literal argument only: a
+  condition that is always true under another spelling reads as conditional.
+- **Go receivers other than `t`.** Only `t.Skip(`, `t.Skipf(` and `t.SkipNow(` are read; a receiver named `tb`, `b` or
+  anything else is missed.
+- **A skip moved to another file** reads as added, because the removed line is looked for in the same file only. A
+  rename that edits the skip is judged against the old file's lines.
+- **Names by content.** A test is matched by the text of its first argument, so two tests with the same name in a file
+  are one, and a name built from an expression (`describe.skip.each(table)`) is compared by that text. A nameless
+  `.skip(cond)` is read as conditional.
+- **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8); at most 20 signals are
+  given per file. A diff that reaches `check()` already parsed without kept text yields no TI03.
+
+### What TI04 misses
+
+TI04 reads the added and removed lines of JS/TS test files the same way.
+
+- **Forms at the start of a line.** `.only` is recognised only on a test call at the start of a line after white space,
+  so a marker after another statement on the same line, or in a call built through a helper, is missed. A bare `fit(`
+  at the start of a line is read as the Jasmine `fit`; a test helper that happens to be named `fit` and is called at
+  the start of a line fires.
+- **JS/TS only.** Python (`pytest -k`, `-m`) and Go (`-run`, `t.Parallel` filters) have no marker in the source that this
+  reads, so a Python or Go test file never gives TI04. `.only` written in a file that is not a test file, or in a
+  JSON fixture, is not read.
+- **No context lines.** A marker that was already there is excused when a removed line of the same file has the same
+  name, so an `.only` copied from one test to another of the same name is missed.
+- **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8); at most 20 signals are
+  given per file.
+
 ## 2. When an input is missing
 
 - **A missing input fails only with a threshold.** `COVERAGE_FILE_MISSING`, `COVERAGE_FILE_EMPTY`,

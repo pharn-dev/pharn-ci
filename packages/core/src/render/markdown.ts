@@ -63,6 +63,10 @@ const MESSAGE_HINTS: Record<MessageCode, string> = {
   TEST_INTEGRITY_OFF:
     "Set the `test-integrity` input to `warn` or `block` in the workflow to check for weakened tests.",
   TEST_INTEGRITY_TI01: "Restore the deleted tests, or say in the PR why they go so a reviewer can confirm it.",
+  TEST_INTEGRITY_TI03:
+    "A reviewer must decide whether each skipped test may stay, for example one that fails in CI; the accept label will record that sign-off once it ships.",
+  TEST_INTEGRITY_TI04:
+    "Remove the marker so the whole suite runs, or say in the PR why only the marked tests should run.",
   TEST_INTEGRITY_TI11:
     "Restore the test step or trigger, or say in the PR why CI stops running these tests so a reviewer can confirm it.",
   TEST_INTEGRITY_TI14:
@@ -72,6 +76,8 @@ const MESSAGE_HINTS: Record<MessageCode, string> = {
 /** One-line hint per test-integrity signal id, shown under its finding. Fixed strings only. */
 const SIGNAL_HINTS: Readonly<Record<string, string>> = {
   TI01: MESSAGE_HINTS.TEST_INTEGRITY_TI01,
+  TI03: MESSAGE_HINTS.TEST_INTEGRITY_TI03,
+  TI04: MESSAGE_HINTS.TEST_INTEGRITY_TI04,
   TI11: MESSAGE_HINTS.TEST_INTEGRITY_TI11,
   TI14: MESSAGE_HINTS.TEST_INTEGRITY_TI14,
 };

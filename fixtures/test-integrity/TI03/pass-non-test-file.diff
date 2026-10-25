@@ -1,0 +1,6 @@
+diff --git a/src/util.ts b/src/util.ts
+index 1111111..2222222 100644
+--- a/src/util.ts
++++ b/src/util.ts
+@@ -4,0 +5 @@ export function isMobileViewport() {
++test.skip(isMobile, "x")

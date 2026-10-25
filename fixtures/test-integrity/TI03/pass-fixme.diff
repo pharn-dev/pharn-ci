@@ -1,0 +1,6 @@
+diff --git a/e2e/checkout.spec.ts b/e2e/checkout.spec.ts
+index 1111111..2222222 100644
+--- a/e2e/checkout.spec.ts
++++ b/e2e/checkout.spec.ts
+@@ -9,0 +10 @@ import { test, expect } from '@playwright/test';
++test.fixme('applies a coupon', async ({ page }) => {

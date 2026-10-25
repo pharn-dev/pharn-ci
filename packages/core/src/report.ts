@@ -116,6 +116,8 @@ export type MessageCode =
   | "TEST_INTEGRITY_MODE_IGNORED"
   | "TEST_INTEGRITY_OFF"
   | "TEST_INTEGRITY_TI01"
+  | "TEST_INTEGRITY_TI03"
+  | "TEST_INTEGRITY_TI04"
   | "TEST_INTEGRITY_TI11"
   | "TEST_INTEGRITY_TI14";
 
@@ -169,7 +171,8 @@ export interface BuildReportInput {
   testIntegrity?: ResolvedTestIntegrityMode;
   /**
    * The test-integrity signals the detectors found, each with its effective severity (sorted by the caller). They fill
-   * `testIntegrity.signals` and `testIntegrity.verdict`; the TI01 ones also add one `TEST_INTEGRITY_TI01` message.
+   * `testIntegrity.signals` and `testIntegrity.verdict`; each signal id also adds one `TEST_INTEGRITY_<id>` message
+   * (TI01, TI03, TI04, TI11, TI14).
    * Absent or empty adds nothing.
    */
   testIntegritySignals?: readonly TestIntegritySignal[];
@@ -188,6 +191,18 @@ const SIGNAL_MESSAGES: ReadonlyArray<{
       top === "info"
         ? `This change deletes test files together with the code they cover or replaces them: ${paths}.`
         : `This change deletes or renames away test files that defined tests, with nothing in the change that accounts for them: ${paths}. Check that those tests were meant to go.`,
+  },
+  {
+    id: "TI03",
+    code: "TEST_INTEGRITY_TI03",
+    text: (_top, paths) =>
+      `This change skips tests or marks them as expected to fail: ${paths}. Check that each skip was meant.`,
+  },
+  {
+    id: "TI04",
+    code: "TEST_INTEGRITY_TI04",
+    text: (_top, paths) =>
+      `This change adds \`.only\`, \`fit\` or \`fdescribe\`, which runs only the marked tests: ${paths}. Remove the markers before merging.`,
   },
   {
     id: "TI11",

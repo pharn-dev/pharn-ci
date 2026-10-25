@@ -1,0 +1,8 @@
+diff --git a/tests/test_parser.py b/tests/test_parser.py
+index 1111111..2222222 100644
+--- a/tests/test_parser.py
++++ b/tests/test_parser.py
+@@ -30,0 +31,3 @@ def test_plain():
++@pytest.mark.xfail(reason="known bug in the quote handling")
++def test_nested_quotes():
++    assert parse("'a'") == ["a"]

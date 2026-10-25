@@ -1,0 +1,6 @@
+diff --git a/src/solver.test.ts b/src/solver.test.ts
+index 1111111..2222222 100644
+--- a/src/solver.test.ts
++++ b/src/solver.test.ts
+@@ -8,0 +9 @@ describe('solver', () => {
++    solver.fit(x)

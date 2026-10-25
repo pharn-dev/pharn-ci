@@ -1,0 +1,6 @@
+diff --git a/tests/test_images.py b/tests/test_images.py
+index 1111111..2222222 100644
+--- a/tests/test_images.py
++++ b/tests/test_images.py
+@@ -20,0 +21 @@ import shutil
++@pytest.mark.skipif(shutil.which("docker") is None, reason="no Docker on this runner")

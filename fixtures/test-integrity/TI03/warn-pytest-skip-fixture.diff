@@ -1,0 +1,6 @@
+diff --git a/tests/test_models.py b/tests/test_models.py
+index 1111111..2222222 100644
+--- a/tests/test_models.py
++++ b/tests/test_models.py
+@@ -9,0 +10 @@ def model_path(tmp_path):
++    pytest.skip("model fixture not downloaded")

@@ -125,6 +125,15 @@ These are accepted, not hidden:
     that none of the line patterns match (a test script run through a wrapper, a condition written another way), or
     add a matching line elsewhere in the diff to excuse a removed step; the findings are recorded prompts for a
     reviewer, and `docs/LIMITS.md` lists what TI14 and TI11 miss.
+15. **TI03 and TI04 read the kept text of test files.** They use the text the diff parser already keeps for test
+    files (13), and match each kept line, cut to 400 characters, by a hand-written left-to-right scan with no
+    backtracking, so the time is linear in the line; a form counts only at the start of a line, and at most 20 signals
+    are given per file. Nothing from that text reaches the report: a finding holds the path, a line number, a
+    severity and one fixed sentence per category, with no test name, skip reason, condition or line text. A PR cannot
+    use these findings to lower its own gate: they only add findings, and the mode rules of residual 12 still apply.
+    **Residual:** a PR can write a skip or a focused-run marker in a form the scans do not read, or keep a matching
+    line in the removed side of the file to excuse an added one; the findings are recorded prompts for a reviewer, and
+    `docs/LIMITS.md` lists what TI03 and TI04 miss.
 
 ## 4. Keeping this document honest
 

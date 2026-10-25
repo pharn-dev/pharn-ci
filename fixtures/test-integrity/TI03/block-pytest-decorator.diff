@@ -1,0 +1,6 @@
+diff --git a/tests/test_user.py b/tests/test_user.py
+index 1111111..2222222 100644
+--- a/tests/test_user.py
++++ b/tests/test_user.py
+@@ -8,0 +9 @@ import pytest
++@pytest.mark.skip(reason="flaky")

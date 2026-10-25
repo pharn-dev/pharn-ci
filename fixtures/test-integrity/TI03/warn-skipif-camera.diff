@@ -1,0 +1,7 @@
+diff --git a/src/camera.test.ts b/src/camera.test.ts
+index 1111111..2222222 100644
+--- a/src/camera.test.ts
++++ b/src/camera.test.ts
+@@ -9 +9 @@ describe('camera', () => {
+-  it('records a frame', async () => {
++  it.skipIf(!hasCamera)('records a frame', async () => {

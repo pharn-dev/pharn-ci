@@ -13,6 +13,8 @@ import { buildReport, type Report, type ReportMeta, type TestIntegritySignal } f
 import { scanAgentSetup } from "./setup/scan.js";
 import { keepSignalFileText } from "./signals/signalFiles.js";
 import { detectTI01 } from "./signals/ti01.js";
+import { detectTI03 } from "./signals/ti03.js";
+import { detectTI04 } from "./signals/ti04.js";
 import { detectTI11 } from "./signals/ti11.js";
 import { detectTI14 } from "./signals/ti14.js";
 import { deletedTestFiles } from "./testFiles.js";
@@ -128,6 +130,8 @@ export function check(input: CheckInput): Report {
       ? []
       : sortSignals([
           ...detectTI01(parsedDiff, testIntegrity.mode),
+          ...detectTI03(parsedDiff, testIntegrity.mode),
+          ...detectTI04(parsedDiff, testIntegrity.mode),
           ...detectTI11(parsedDiff, testIntegrity.mode),
           ...detectTI14(parsedDiff, {
             configPath: input.configPath,
