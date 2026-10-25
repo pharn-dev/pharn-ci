@@ -9,6 +9,9 @@ import {
   gitDiffArgs,
   type InputErrorText,
   type PharnConfig,
+  type PythonIndexRun,
+  type PythonSourceFile,
+  type PythonTestIndex,
   parseConfig,
   parseLsTreeSizes,
   type RawInputs,
@@ -20,7 +23,14 @@ import {
   unavailableTestSources,
   VERSION,
 } from "@pharn-ci/core";
-import { gitChunks, readCoverageFiles, readDiscoveredCoverage, readTestSources } from "@pharn-ci/node-io";
+import {
+  gitChunks,
+  indexPythonTestSources,
+  indexPythonTests,
+  readCoverageFiles,
+  readDiscoveredCoverage,
+  readTestSources,
+} from "@pharn-ci/node-io";
 
 /** Everything the CLI touches outside itself; injected so tests can fake it. */
 export interface CliDeps {
@@ -39,6 +49,12 @@ export interface CliDeps {
    * not read, and the test sources are marked unavailable.
    */
   gitBatch?(args: string[], input: string): Promise<Uint8Array>;
+  /**
+   * Indexes `.py` test files with the Python test index (one run, base files then head files). Absent: node-io's
+   * `indexPythonTests`, which runs the interpreter found on PATH. Only called when the test sources hold a `.py` test
+   * file.
+   */
+  indexPython?(files: readonly PythonSourceFile[]): Promise<PythonIndexRun>;
   /** File contents, or null when the file does not exist. */
   readFile(path: string): Promise<string | null>;
   /**
@@ -268,6 +284,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   }
   // The text of the touched test and test-config files, for the base-and-head signals. Mode off reads nothing.
   let testSources: TestSources | undefined;
+  let pythonTestIndex: PythonTestIndex | undefined;
   if (resolveTestIntegrityMode(testIntegrityMode).mode !== "off") {
     if (deps.gitBatch === undefined) {
       testSources = unavailableTestSources("reading git objects is not available");
@@ -281,6 +298,8 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
           `pharn-ci: could not read the test and test-config files from git, so they are not compared: ${testSources.base.unavailable}\n`,
         );
       }
+      // The Python test files of the sources, indexed by one interpreter run; nothing runs for JS/TS-only changes.
+      pythonTestIndex = await indexPythonTestSources(testSources, deps.indexPython ?? indexPythonTests);
     }
   }
   // `--full-name -- :/` lists the whole repository relative to its root wherever the CLI runs, so coverage
@@ -309,6 +328,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     ...(expectAgentSetup === undefined ? {} : { expectAgentSetup }),
     ...(testIntegrityMode === undefined ? {} : { testIntegrityMode }),
     ...(testSources === undefined ? {} : { testSources }),
+    ...(pythonTestIndex === undefined ? {} : { pythonTestIndex }),
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
     // Absolute: core makes it repo-relative against repoRoot, or finds it outside the repo.
     ...(values.config === undefined ? {} : { configPath: deps.resolvePath(deps.cwd, values.config) }),

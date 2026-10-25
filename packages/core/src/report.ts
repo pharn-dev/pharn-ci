@@ -122,12 +122,15 @@ export type MessageCode =
   | "TEST_INTEGRITY_MODE_IGNORED"
   | "TEST_INTEGRITY_OFF"
   | "TEST_INTEGRITY_TI01"
+  | "TEST_INTEGRITY_TI02"
   | "TEST_INTEGRITY_TI03"
   | "TEST_INTEGRITY_TI04"
+  | "TEST_INTEGRITY_TI05"
   | "TEST_INTEGRITY_TI10"
   | "TEST_INTEGRITY_TI11"
   | "TEST_INTEGRITY_TI13"
   | "TEST_INTEGRITY_TI14"
+  | "TEST_INTEGRITY_INDEX_UNAVAILABLE"
   | "TEST_INTEGRITY_TEXT_TRUNCATED"
   | "TEST_INTEGRITY_ACCEPTED"
   | "TEST_INTEGRITY_ACCEPT_IGNORED";
@@ -137,6 +140,16 @@ export interface Message {
   code: MessageCode;
   text: string;
 }
+
+/** The findings of one file and signal id that the 20-per-file cap left out of `testIntegrity.signals`. */
+export interface OmittedSignals {
+  id: string;
+  path: string;
+  count: number;
+}
+
+/** Test files that TI02 and TI05 could not compare, or why they did not run at all. */
+export type TestIndexUnavailable = { files: readonly { path: string; reason: string }[] } | { notRun: string };
 
 export interface BuildReportInput {
   version: string;
@@ -193,13 +206,24 @@ export interface BuildReportInput {
    * message unless the mode is off. Absent or empty adds nothing.
    */
   textTruncatedFiles?: readonly string[];
+  /** The sorted languages of the test files the base-and-head signals indexed; fills `testIntegrity.languages`. */
+  testIntegrityLanguages?: readonly ("ts" | "js" | "py" | "go")[];
+  /** Findings the per-file cap left out of `testIntegrity.signals`; the TI02 and TI05 messages say how many. */
+  omittedSignals?: readonly OmittedSignals[];
+  /** Touched test files TI02 and TI05 could not compare, or why they did not run; adds one warn message. */
+  testIndexUnavailable?: TestIndexUnavailable;
 }
 
-/** The one message each test-integrity signal id adds to a report that carries findings of that id. */
+/**
+ * The one message each test-integrity signal id adds to a report that carries findings of that id. `paths` names the
+ * top-severity files, or, for an id with `allPaths`, every file of the id, so the text does not depend on severity.
+ * `notListed` is empty, or the sentence that says how many findings the cap left out.
+ */
 const SIGNAL_MESSAGES: ReadonlyArray<{
   id: string;
   code: MessageCode;
-  text: (top: "block" | "warn" | "info", paths: string) => string;
+  allPaths?: true;
+  text: (top: "block" | "warn" | "info", paths: string, notListed: string) => string;
 }> = [
   {
     id: "TI01",
@@ -208,6 +232,13 @@ const SIGNAL_MESSAGES: ReadonlyArray<{
       top === "info"
         ? `This change deletes test files together with the code they cover or replaces them: ${paths}.`
         : `This change deletes or renames away test files that defined tests, with nothing in the change that accounts for them: ${paths}. Check that those tests were meant to go.`,
+  },
+  {
+    id: "TI02",
+    code: "TEST_INTEGRITY_TI02",
+    allPaths: true,
+    text: (_top, paths, notListed) =>
+      `This change removes tests from test files that stay, with no test of the same name or a similar body in the touched test files to take their place: ${paths}. Check that each removal was meant.${notListed}`,
   },
   {
     id: "TI03",
@@ -220,6 +251,13 @@ const SIGNAL_MESSAGES: ReadonlyArray<{
     code: "TEST_INTEGRITY_TI04",
     text: (_top, paths) =>
       `This change adds \`.only\`, \`fit\` or \`fdescribe\`, which runs only the marked tests: ${paths}. Remove the markers before merging.`,
+  },
+  {
+    id: "TI05",
+    code: "TEST_INTEGRITY_TI05",
+    allPaths: true,
+    text: (_top, paths, notListed) =>
+      `This change leaves tests with fewer assertions than they had, or none: ${paths}. Check that each test still checks what it did.${notListed}`,
   },
   {
     id: "TI10",
@@ -252,9 +290,12 @@ const SIGNAL_MESSAGES: ReadonlyArray<{
  * severity among the findings of its id (error for block, warn, else info), and its text names those files. One rule,
  * used by `buildReport` and again when a downgrade changes severities.
  */
-export function testIntegritySignalMessages(signals: readonly TestIntegritySignal[]): Message[] {
+export function testIntegritySignalMessages(
+  signals: readonly TestIntegritySignal[],
+  options: { omitted?: readonly OmittedSignals[]; previous?: readonly Message[] } = {},
+): Message[] {
   const messages: Message[] = [];
-  for (const { id, code, text } of SIGNAL_MESSAGES) {
+  for (const { id, code, allPaths, text } of SIGNAL_MESSAGES) {
     const own = signals.filter((signal) => signal.id === id);
     if (own.length === 0) continue;
     const top = own.some((s) => s.severity === "block")
@@ -262,14 +303,30 @@ export function testIntegritySignalMessages(signals: readonly TestIntegritySigna
       : own.some((s) => s.severity === "warn")
         ? "warn"
         : "info";
-    const named = [...new Set(own.filter((s) => s.severity === top).map((s) => s.path))];
-    messages.push({
-      level: top === "block" ? "error" : top === "warn" ? "warn" : "info",
-      code,
-      text: text(top, pathList(named)),
-    });
+    const level = top === "block" ? "error" : top === "warn" ? "warn" : "info";
+    // An id whose text is kept (TI02, TI05) keeps the text a previous message had, with the "not listed" counts the
+    // findings no longer carry; only the level follows the severities.
+    const previous = allPaths === true ? options.previous?.find((message) => message.code === code) : undefined;
+    if (previous !== undefined) {
+      messages.push({ level, code, text: previous.text });
+      continue;
+    }
+    const named = [...new Set(own.filter((s) => allPaths === true || s.severity === top).map((s) => s.path))];
+    messages.push({ level, code, text: text(top, pathList(named), notListedText(id, options.omitted ?? [])) });
   }
   return messages;
+}
+
+/** The sentence that names how many findings of an id the cap left out, per file; empty when none were. */
+function notListedText(id: string, omitted: readonly OmittedSignals[]): string {
+  const own = omitted.filter((entry) => entry.id === id && entry.count > 0);
+  if (own.length === 0) return "";
+  const named = own
+    .slice(0, MAX_NAMED_PATHS)
+    .map((entry) => `${entry.count} more in ${codeSpan(entry.path)}`)
+    .join(", ");
+  const more = own.length - MAX_NAMED_PATHS;
+  return ` Not listed: ${named}${more > 0 ? ` and ${more} more files` : ""}.`;
 }
 
 export function buildReport(input: BuildReportInput): Report {
@@ -406,7 +463,12 @@ export function buildReport(input: BuildReportInput): Report {
   }
 
   const signals = [...(input.testIntegritySignals ?? [])];
-  messages.push(...testIntegritySignalMessages(signals));
+  messages.push(...testIntegritySignalMessages(signals, { omitted: input.omittedSignals ?? [] }));
+  const unavailable = input.testIndexUnavailable;
+  if (unavailable !== undefined && testIntegrity?.mode !== "off") {
+    const text = indexUnavailableText(unavailable);
+    if (text !== null) messages.push({ level: "warn", code: "TEST_INTEGRITY_INDEX_UNAVAILABLE", text });
+  }
   const cut = input.textTruncatedFiles ?? [];
   if (cut.length > 0 && testIntegrity?.mode !== "off") {
     messages.push({
@@ -477,9 +539,44 @@ export function buildReport(input: BuildReportInput): Report {
           ? "warn"
           : "pass",
       signals,
+      languages: [...(input.testIntegrityLanguages ?? [])],
     },
     ...(input.meta === undefined ? {} : { meta: input.meta }),
   };
+}
+
+/** The most characters of a sources reason a message quotes. */
+const MAX_REASON_CHARS = 200;
+
+/** Text from outside on one line: control characters and runs of whitespace become one space; cut, not inside a pair. */
+function oneLine(text: string): string {
+  const line = text.replace(CONTROL_CHARS, " ").replace(/\s+/g, " ").trim();
+  if (line.length <= MAX_REASON_CHARS) return line;
+  const end = isHighSurrogate(line.charCodeAt(MAX_REASON_CHARS - 1)) ? MAX_REASON_CHARS - 1 : MAX_REASON_CHARS;
+  return line.slice(0, end);
+}
+
+function isHighSurrogate(code: number): boolean {
+  return code >= 0xd800 && code <= 0xdbff;
+}
+
+/**
+ * The text of the one `TEST_INTEGRITY_INDEX_UNAVAILABLE` message: the touched test files that could not be compared with
+ * a code for each (at most 5, then a count), or that TI02 and TI05 did not run, with the sources reason as one code span.
+ * Neither a Python run's detail nor any file content is in it. Null when there is nothing to say.
+ */
+function indexUnavailableText(unavailable: TestIndexUnavailable): string | null {
+  if ("notRun" in unavailable) {
+    return `TI02 and TI05 did not run: the text of the touched test files could not be read (${codeSpan(oneLine(unavailable.notRun))}), so removed tests and emptied assertions are not checked.`;
+  }
+  const files = unavailable.files;
+  if (files.length === 0) return null;
+  const named = files
+    .slice(0, MAX_NAMED_PATHS)
+    .map((file) => `${codeSpan(file.path)} (${codeSpan(file.reason)})`)
+    .join(", ");
+  const more = files.length - MAX_NAMED_PATHS;
+  return `TI02 and TI05 could not compare these touched test files, so they are not checked for removed tests or emptied assertions: ${named}${more > 0 ? ` and ${more} more` : ""}.`;
 }
 
 function unmatchedText(missing: { total: number; example: string; suggestedRoot: string | null }): string {

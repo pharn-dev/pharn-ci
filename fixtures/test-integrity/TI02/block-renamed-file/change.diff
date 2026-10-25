@@ -1,0 +1,12 @@
+diff --git a/src/cart.test.ts b/src/basket.test.ts
+similarity index 76%
+rename from src/cart.test.ts
+rename to src/basket.test.ts
+index 1111111..2222222 100644
+--- a/src/cart.test.ts
++++ b/src/basket.test.ts
+@@ -9,4 +8,0 @@ describe("cart", () => {
+-  it("rejects a negative price", () => {
+-    expect(() => total([-1])).toThrow("negative price");
+-  });
+-

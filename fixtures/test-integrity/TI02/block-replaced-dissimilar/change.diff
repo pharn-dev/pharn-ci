@@ -1,0 +1,9 @@
+diff --git a/src/cart.test.ts b/src/cart.test.ts
+index 1111111..2222222 100644
+--- a/src/cart.test.ts
++++ b/src/cart.test.ts
+@@ -9,2 +9,2 @@ describe("cart", () => {
+-  it("rejects a negative price", () => {
+-    expect(() => total([-1])).toThrow("negative price");
++  it("accepts an empty cart", () => {
++    expect(total([])).toBe(0);

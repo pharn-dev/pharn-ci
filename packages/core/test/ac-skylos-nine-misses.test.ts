@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
-// Skylos nine: the seven cases the diff-only signals of v0.2.0 do not catch. Each must run through check() and the
-// renderer without crashing and give no test-integrity signal. When the signal planned for a case ships (see the case
-// table in ac-skylos-nine-table.test.ts), that case's miss assertion is replaced by its catch assertion.
+// Skylos nine: the five cases the signals of this release do not catch (emptied-assertion and replaced-test moved out
+// when TI05 and TI02 shipped; their catch assertions are in ac-ti0205-skylos.test.ts). Each must run through check()
+// and the renderer without crashing and give no test-integrity signal. When the signal planned for a case ships (see
+// the case table in ac-skylos-nine-table.test.ts), that case's miss assertion is replaced by its catch assertion.
 // check(), the renderer and the fixtures are loaded inside each test body: the AC tests are written before
 // fixtures/skylos-nine/ exists, so a missing fixture fails only its test, never the file's load.
 
@@ -12,11 +13,9 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const HEADING = "### 🔍 Test integrity";
 
 const MISSES = [
-  "emptied-assertion",
   "deselect-setting",
   "hard-coded-answer",
   "always-true-matcher",
-  "replaced-test",
   "loosened-assertion",
   "edited-expected-value",
 ] as const;

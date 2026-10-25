@@ -13,6 +13,9 @@ const banner = [
   // Some bundled CommonJS dependencies call require() on Node builtins.
   'import { createRequire as __pharnCreateRequire } from "node:module";',
   "const require = __pharnCreateRequire(import.meta.url);",
+  // The bundled TypeScript parser (CommonJS) reads __filename and __dirname when it loads; ESM has neither.
+  "const __filename = import.meta.filename;",
+  "const __dirname = import.meta.dirname;",
 ]
   .filter(Boolean)
   .join("\n");

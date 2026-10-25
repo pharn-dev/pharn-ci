@@ -1,0 +1,6 @@
+import { expect, it } from "vitest";
+import { total } from "./cart.js";
+
+it("rejects a negative price", () => {
+  expect(() => total([-1])).toThrow("negative price");
+});

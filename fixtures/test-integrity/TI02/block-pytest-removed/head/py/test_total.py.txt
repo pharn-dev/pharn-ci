@@ -1,0 +1,5 @@
+from cart import total
+
+
+def test_empty():
+    assert total([]) == 0

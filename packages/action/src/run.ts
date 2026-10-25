@@ -5,6 +5,8 @@ import {
   gitDiffArgs,
   type InputErrorText,
   type PharnConfig,
+  type PythonIndexRun,
+  type PythonSourceFile,
   parseConfig,
   parseLsTreeSizes,
   type Report,
@@ -18,7 +20,14 @@ import {
   VERSION,
   validateAcceptLabel,
 } from "@pharn-ci/core";
-import { gitChunks, readCoverageFiles, readDiscoveredCoverage, readTestSources } from "@pharn-ci/node-io";
+import {
+  gitChunks,
+  indexPythonTestSources,
+  indexPythonTests,
+  readCoverageFiles,
+  readDiscoveredCoverage,
+  readTestSources,
+} from "@pharn-ci/node-io";
 import { applyAcceptLabel } from "./accept-label.js";
 import { type PrNumberTarget, parsePrNumberInputs, resolvePrNumberTarget } from "./pr-number.js";
 import { runMeta } from "./run-meta.js";
@@ -112,6 +121,12 @@ export interface ActionDeps {
    * of the test files from committed git objects (`cat-file`). Absent: that text is not read.
    */
   gitBatch?(args: string[], input: string): Promise<Uint8Array>;
+  /**
+   * Indexes `.py` test files with the Python test index (one run, base files then head files). Absent: node-io's
+   * `indexPythonTests`, which runs the interpreter found on PATH. Only called when the test sources hold a `.py` test
+   * file.
+   */
+  indexPython?(files: readonly PythonSourceFile[]): Promise<PythonIndexRun>;
   readFile(path: string): Promise<string | null>;
   /**
    * The file as UTF-8 text chunks, or null when it does not exist; any other failure rejects, or throws during
@@ -288,6 +303,16 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
 
   const { diff, localBase } = await getDiff(input("base-ref"), deps, target, input("config"));
   const testSources = await gatherTestSources(deps, { diff, localBase, target, testIntegrityMode });
+  // The Python test files of the sources, indexed by one interpreter run; nothing runs for JS/TS-only changes.
+  const pythonTestIndex =
+    testSources === undefined
+      ? undefined
+      : await indexPythonTestSources(testSources, deps.indexPython ?? indexPythonTests);
+  if (pythonTestIndex !== undefined && !pythonTestIndex.available) {
+    deps.info(
+      `pharn-ci: the Python test index is unavailable (${pythonTestIndex.reason}), so .py test files are not compared`,
+    );
+  }
 
   const checkInput: CheckInput = {
     version: VERSION,
@@ -302,6 +327,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     ...(expectAgentSetup === undefined ? {} : { expectAgentSetup }),
     ...(testIntegrityMode === undefined ? {} : { testIntegrityMode }),
     ...(testSources === undefined ? {} : { testSources }),
+    ...(pythonTestIndex === undefined ? {} : { pythonTestIndex }),
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
     ...(input("config") === "" ? {} : { configPath: input("config") }),
   };

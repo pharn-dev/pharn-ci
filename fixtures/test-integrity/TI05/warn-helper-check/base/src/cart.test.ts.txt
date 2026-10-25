@@ -1,0 +1,14 @@
+import { describe, expect, it } from "vitest";
+import { total } from "./cart.js";
+
+describe("cart", () => {
+  it("adds the prices", () => {
+    expect(total([2, 3])).toBe(5);
+  });
+
+  it("keeps the cart consistent", () => {
+    const cart = total([1, 1]);
+    expect(cart).toBe(2);
+    expect(cart).toBeLessThan(3);
+  });
+});

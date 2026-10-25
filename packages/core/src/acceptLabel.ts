@@ -161,7 +161,8 @@ export function acceptTestIntegrity(report: Report, accepted: { label: string; b
     code: "TEST_INTEGRITY_ACCEPTED",
     text: `The accept label "${accepted.label}" was applied by ${accepted.by}, who is not the PR author, so the block findings above are warnings.`,
   };
-  const rebuilt = testIntegritySignalMessages(signals);
+  // The TI02 and TI05 messages keep their text (and the "not listed" counts only the report held); their level follows.
+  const rebuilt = testIntegritySignalMessages(signals, { previous: report.messages });
   const messages: Message[] = [];
   let placed = false;
   for (const message of report.messages) {

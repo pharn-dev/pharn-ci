@@ -40,10 +40,26 @@ describe("test sources: documentation and schema", () => {
       expect(sizeLimits, `LIMITS §8 names the drop reason ${reason}`).toContain(reason);
     }
 
-    for (const path of ["schema/report.v1.json", "schema/report.v2.json"]) {
-      const atBase = execFileSync("git", ["show", `${BASE_COMMIT}:${path}`], { cwd: REPO_ROOT });
-      const now = readFileSync(new URL(path, ROOT));
-      expect(now.equals(atBase), `${path} is byte-identical to ${BASE_COMMIT}`).toBe(true);
-    }
+    const atBase = (path: string) => execFileSync("git", ["show", `${BASE_COMMIT}:${path}`], { cwd: REPO_ROOT });
+    const v1 = "schema/report.v1.json";
+    expect(readFileSync(new URL(v1, ROOT)).equals(atBase(v1)), `${v1} is byte-identical to ${BASE_COMMIT}`).toBe(true);
+
+    // TI02 and TI05 (ti02-ti05) document their three message codes and the `languages` field in schema/report.v2.json,
+    // so the whole file is no longer byte-identical to the base. Everything but those two descriptions still is: the
+    // schema with them taken out equals the base schema with them taken out.
+    const withoutEditedDescriptions = (schema: {
+      $defs: { message: { properties: { code: { description?: string } } } };
+      properties: { testIntegrity: { properties: { languages: { description?: string } } } };
+    }) => {
+      const copy = structuredClone(schema);
+      delete copy.$defs.message.properties.code.description;
+      delete copy.properties.testIntegrity.properties.languages.description;
+      return copy;
+    };
+    const v2 = "schema/report.v2.json";
+    expect(
+      withoutEditedDescriptions(JSON.parse(readFileSync(new URL(v2, ROOT), "utf8"))),
+      `${v2} differs from ${BASE_COMMIT} only in the message-code and languages descriptions`,
+    ).toEqual(withoutEditedDescriptions(JSON.parse(atBase(v2).toString("utf8"))));
   });
 });

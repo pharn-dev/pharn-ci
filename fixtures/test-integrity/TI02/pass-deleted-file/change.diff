@@ -1,0 +1,16 @@
+diff --git a/src/old.test.ts b/src/old.test.ts
+deleted file mode 100644
+index 1111111..0000000
+--- a/src/old.test.ts
++++ /dev/null
+@@ -1,10 +0,0 @@
+-import { expect, it } from "vitest";
+-import { total } from "./cart.js";
+-
+-it("adds the prices", () => {
+-  expect(total([2, 3])).toBe(5);
+-});
+-
+-it("totals an empty cart", () => {
+-  expect(total([])).toBe(0);
+-});

@@ -1,0 +1,19 @@
+diff --git a/src/a.test.ts b/src/a.test.ts
+index 1111111..2222222 100644
+--- a/src/a.test.ts
++++ b/src/a.test.ts
+@@ -7,5 +6,0 @@ it("adds the prices", () => {
+-
+-it("totals the cart", () => {
+-  const sum = total([4, 6]);
+-  expect(sum).toBe(10);
+-});
+diff --git a/src/b.test.ts b/src/b.test.ts
+index 3333333..4444444 100644
+--- a/src/b.test.ts
++++ b/src/b.test.ts
+@@ -6,0 +7,4 @@ it("rejects a negative price", () => {
++
++it("totals the cart", () => {
++  expect(total([1, 9])).toBe(10);
++});

@@ -1,0 +1,16 @@
+diff --git a/src/cart.test.ts b/src/cart.test.ts
+index 1111111..2222222 100644
+--- a/src/cart.test.ts
++++ b/src/cart.test.ts
+@@ -4,0 +5,5 @@ import { total } from "./cart.js";
++  it("totals an empty cart", () => {
++    expect(total([])).toBe(0);
++    expect(total([0])).toBe(0);
++  });
++
+@@ -12,5 +16,0 @@ describe("cart", () => {
+-
+-  it("totals an empty cart", () => {
+-    expect(total([])).toBe(0);
+-    expect(total([0])).toBe(0);
+-  });
