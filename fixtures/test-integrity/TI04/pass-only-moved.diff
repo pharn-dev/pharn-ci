@@ -1,0 +1,8 @@
+diff --git a/src/user.test.ts b/src/user.test.ts
+index 1111111..2222222 100644
+--- a/src/user.test.ts
++++ b/src/user.test.ts
+@@ -5 +4,0 @@ import { describe, it } from 'vitest';
+-describe.only('user service', () => {
+@@ -30,0 +30 @@ describe('other', () => {
++describe.only('user service', () => {

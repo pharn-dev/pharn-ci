@@ -1,0 +1,8 @@
+diff --git a/pkg/fs/chown_test.go b/pkg/fs/chown_test.go
+index 1111111..2222222 100644
+--- a/pkg/fs/chown_test.go
++++ b/pkg/fs/chown_test.go
+@@ -11,0 +12,3 @@ func TestChown(t *testing.T) {
++	if os.Geteuid() != 0 {
++		t.Skip("needs root")
++	}

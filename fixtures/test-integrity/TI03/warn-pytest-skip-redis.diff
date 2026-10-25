@@ -1,0 +1,7 @@
+diff --git a/tests/test_cache.py b/tests/test_cache.py
+index 1111111..2222222 100644
+--- a/tests/test_cache.py
++++ b/tests/test_cache.py
+@@ -12,0 +13,2 @@ def test_cache_roundtrip():
++    if not os.environ.get("REDIS_URL"):
++        pytest.skip("REDIS_URL not set")

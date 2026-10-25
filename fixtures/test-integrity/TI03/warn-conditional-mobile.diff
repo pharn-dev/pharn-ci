@@ -1,0 +1,6 @@
+diff --git a/e2e/login.spec.ts b/e2e/login.spec.ts
+index 1111111..2222222 100644
+--- a/e2e/login.spec.ts
++++ b/e2e/login.spec.ts
+@@ -13,0 +14 @@ test('shows the hamburger menu', async ({ page, isMobile }) => {
++  test.skip(!isMobile, "mobile only");

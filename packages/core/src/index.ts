@@ -107,6 +107,8 @@ export { parseLsTreeSizes } from "./setup/sizes.js";
 export { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
 export { isWorkflowFile, keepSignalFileText } from "./signals/signalFiles.js";
 export { detectTI01 } from "./signals/ti01.js";
+export { detectTI03 } from "./signals/ti03.js";
+export { detectTI04 } from "./signals/ti04.js";
 export { detectTI11 } from "./signals/ti11.js";
 export { detectTI14, type TI14Options } from "./signals/ti14.js";
 export {

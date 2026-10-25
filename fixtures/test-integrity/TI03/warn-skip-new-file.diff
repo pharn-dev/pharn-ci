@@ -1,0 +1,11 @@
+diff --git a/src/billing.test.ts b/src/billing.test.ts
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/src/billing.test.ts
+@@ -0,0 +1,5 @@
++import { it, expect } from 'vitest';
++
++it.skip('charges a card', () => {
++  expect(charge(100)).toBe(true);
++});

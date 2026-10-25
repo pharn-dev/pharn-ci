@@ -1,0 +1,12 @@
+diff --git a/src/user.test.ts b/src/user.test.ts
+index 1111111..2222222 100644
+--- a/src/user.test.ts
++++ b/src/user.test.ts
+@@ -12,0 +13 @@ describe('user', () => {
++  // it.skip('creates a user', () => {
+diff --git a/tests/test_user.py b/tests/test_user.py
+index 1111111..2222222 100644
+--- a/tests/test_user.py
++++ b/tests/test_user.py
+@@ -8,0 +9 @@ import pytest
++# @pytest.mark.skip

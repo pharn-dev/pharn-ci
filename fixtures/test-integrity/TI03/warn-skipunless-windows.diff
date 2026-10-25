@@ -1,0 +1,6 @@
+diff --git a/tests/test_registry.py b/tests/test_registry.py
+index 1111111..2222222 100644
+--- a/tests/test_registry.py
++++ b/tests/test_registry.py
+@@ -6,0 +7 @@ import unittest
++@unittest.skipUnless(sys.platform == "win32", "Windows only")
