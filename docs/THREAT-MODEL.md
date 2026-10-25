@@ -179,8 +179,10 @@ These are accepted, not hidden:
     `createSourceFile` reads no file. Core marks itself `"sideEffects": false`, so the parser stays out of the action
     and CLI bundles until the index is wired in (`ac-ts-index-deps-dist.test.ts › AC-14: core depends on typescript5 at
     npm:typescript@5.9.3 and both dists stay free of the parser`). Nothing from the parsed text reaches the report yet.
-    **Residual:** text inside the caps can still cost the parser's time and memory; only the limits test holds that
-    (`limits.test.ts › AC-12: indexes %s three times with a median under 2000 ms`), and the parser is a large
+    **Residual:** text inside the caps can still cost the parser's time and memory; only the limits test holds that,
+    by linear growth and a hang ceiling rather than a wall-clock budget
+    (`limits.test.ts › AC-12: indexing %s takes less than 8 times as long as a quarter of it`,
+    `limits.test.ts › AC-12: indexes %s three times with a median under the hang ceiling`), and the parser is a large
     dependency outside this repo. When the index is wired into `check()`, this entry and the bundle size limits must be
     read again.
 
