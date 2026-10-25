@@ -1,3 +1,4 @@
+import { MAX_TEST_SOURCE_FILE_BYTES } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 
 // indexTestFile is loaded inside each test body: the AC tests are written before the test index exists, so nothing
@@ -13,7 +14,9 @@ async function loadIndexTestFile(): Promise<IndexFn> {
   return core.indexTestFile;
 }
 
-const CAP = 524_288;
+// The reader caps a test file at this many bytes; a file within it has at most as many UTF-16 code units, so the
+// index's character cap of the same number never refuses a file the reader kept.
+const CAP = MAX_TEST_SOURCE_FILE_BYTES;
 const BUDGET_MS = 2000;
 const HEAP_BOUND = 256 * 1024 * 1024;
 const TIMEOUT = 60_000;
