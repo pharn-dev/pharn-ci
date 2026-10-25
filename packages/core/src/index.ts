@@ -172,6 +172,7 @@ export type {
   TestModuleMock,
 } from "./testIndex/types.js";
 export {
+  MAX_TEST_INDEX_DEPTH,
   PYTHON_MOCK_CALLEES,
   TEST_MODIFIER_ORDER,
 } from "./testIndex/types.js";

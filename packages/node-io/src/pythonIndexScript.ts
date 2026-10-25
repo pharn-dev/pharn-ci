@@ -29,6 +29,11 @@ LF = chr(10)
 CR = chr(13)
 BOM = chr(0xFEFF)
 
+# The deepest syntax tree node the index walks, as core's MAX_TEST_INDEX_DEPTH for the TS index: the module is at
+# depth 0 and every child one deeper. A deeper tree is refused as too-deep whether or not this Python's parser
+# accepted it, so every version from 3.8 gives the same answer.
+MAX_DEPTH = 1000
+
 DECORATOR_MODIFIERS = {
     "pytest.mark.skip": "skip",
     "mark.skip": "skip",
@@ -317,11 +322,25 @@ def normalize(text, ranges, points):
     return "".join(pieces), where
 
 
+def deeper_than_cap(tree):
+    """Whether any node of the tree sits deeper than MAX_DEPTH. Iterative: an explicit stack, never recursion."""
+    stack = [(tree, 0)]
+    while stack:
+        node, depth = stack.pop()
+        if depth > MAX_DEPTH:
+            return True
+        for child in ast.iter_child_nodes(node):
+            stack.append((child, depth + 1))
+    return False
+
+
 def build(text):
     text = text.replace(CR + LF, LF).replace(CR, LF)
     if text.startswith(BOM):
         text = text[1:]
     tree = ast.parse(text, "<pharn-ci-python-index>")
+    if deeper_than_cap(tree):
+        return {"parsed": False, "reason": "too-deep"}
     source = Source(text)
 
     blocks = []
