@@ -3,6 +3,7 @@ import { coverageNotDiscoveredText } from "./coverageDiscovery.js";
 import type { DiffCoverageFile, DiffCoverageResult } from "./diffCoverage.js";
 import type { AgentSetupFile, AgentSetupInventory } from "./setup/scan.js";
 import { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
+import type { ResolvedTestIntegrityMode } from "./testIntegrityMode.js";
 
 /**
  * TypeScript mirror of schema/report.v2.json, which is Report v1 (schema/report.v1.json) plus optional top-level
@@ -111,7 +112,9 @@ export type MessageCode =
   | "TEST_FILES_DELETED"
   | "NO_AGENT_SETUP_FILES"
   | "AGENT_SETUP_FILE_EMPTY"
-  | "AGENT_SETUP_EXPECTED_MISSING";
+  | "AGENT_SETUP_EXPECTED_MISSING"
+  | "TEST_INTEGRITY_MODE_IGNORED"
+  | "TEST_INTEGRITY_OFF";
 
 export interface Message {
   level: MessageLevel;
@@ -159,6 +162,8 @@ export interface BuildReportInput {
   expectedAgentTools?: readonly AgentTool[];
   /** Run metadata copied into the report as given; absent adds no field. */
   meta?: ReportMeta;
+  /** The effective test-integrity mode (see `resolveTestIntegrityMode`). Absent means the default `warn`. */
+  testIntegrity?: ResolvedTestIntegrityMode;
 }
 
 export function buildReport(input: BuildReportInput): Report {
@@ -278,6 +283,22 @@ export function buildReport(input: BuildReportInput): Report {
     });
   }
 
+  const testIntegrity = input.testIntegrity;
+  if (testIntegrity?.ignoredConfig !== undefined) {
+    messages.push({
+      level: "warn",
+      code: "TEST_INTEGRITY_MODE_IGNORED",
+      text: `.pharn/ci.yml sets test_integrity.mode to ${testIntegrity.ignoredConfig}, which is looser than ${testIntegrity.mode}, so ${testIntegrity.mode} applies: the config can only make the check stricter.`,
+    });
+  }
+  if (testIntegrity?.mode === "off") {
+    messages.push({
+      level: "info",
+      code: "TEST_INTEGRITY_OFF",
+      text: "Test integrity is off for this run, so no test-integrity signal is checked.",
+    });
+  }
+
   if (input.agentSetup.files.length === 0) {
     const required = input.requireAgentSetup === true;
     const found = "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found";
@@ -330,7 +351,10 @@ export function buildReport(input: BuildReportInput): Report {
       ...(expected.length > 0 ? { missing: missingTools } : {}),
     },
     messages,
-    testIntegrity: emptyTestIntegrity(),
+    testIntegrity:
+      testIntegrity === undefined
+        ? emptyTestIntegrity()
+        : { ...emptyTestIntegrity(), mode: testIntegrity.mode, source: testIntegrity.source },
     ...(input.meta === undefined ? {} : { meta: input.meta }),
   };
 }

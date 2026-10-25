@@ -24804,6 +24804,25 @@ function summarizeAgentSetup(files) {
   return { byKind, tools: [...tools].sort() };
 }
 
+// ../core/src/testIntegrityMode.ts
+var TEST_INTEGRITY_MODES = ["block", "warn", "off"];
+var STRICTNESS = { off: 0, warn: 1, block: 2 };
+function isTestIntegrityMode(value) {
+  return typeof value === "string" && TEST_INTEGRITY_MODES.includes(value);
+}
+function testIntegrityModeError(label, value) {
+  const got = typeof value === "string" ? `"${value}"` : String(value);
+  return `${label} must be one of: ${TEST_INTEGRITY_MODES.join(", ")} (got ${got})`;
+}
+function resolveTestIntegrityMode(settings = {}) {
+  const base = settings.input === void 0 ? { mode: "warn", source: "default" } : { mode: settings.input, source: "input" };
+  const config = settings.config;
+  if (config === void 0) return base;
+  if (STRICTNESS[config] > STRICTNESS[base.mode]) return { mode: config, source: "config" };
+  if (STRICTNESS[config] < STRICTNESS[base.mode]) return { ...base, ignoredConfig: config };
+  return base;
+}
+
 // ../core/src/config.ts
 var ConfigError = class extends Error {
   name = "ConfigError";
@@ -24992,13 +25011,34 @@ function unsupportedFix(first) {
 function validateConfig(doc) {
   const config = {};
   for (const key of Object.keys(doc)) {
-    if (key !== "coverage" && key !== "setup") throw new ConfigError(`unknown top-level key "${key}"`);
+    if (key !== "coverage" && key !== "setup" && key !== "test_integrity") {
+      throw new ConfigError(`unknown top-level key "${key}"`);
+    }
   }
   const coverage = validateCoverage(doc.coverage);
   if (coverage !== void 0) config.coverage = coverage;
   const setup = validateSetup(doc.setup);
   if (setup !== void 0) config.setup = setup;
+  const testIntegrity = validateTestIntegrity(doc.test_integrity);
+  if (testIntegrity !== void 0) config.testIntegrity = testIntegrity;
   return config;
+}
+function validateTestIntegrity(value) {
+  if (value === void 0 || value === null) return void 0;
+  if (typeof value !== "object" || Array.isArray(value)) throw new ConfigError(`"test_integrity" must be a mapping`);
+  const testIntegrity = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (entry === null) continue;
+    switch (key) {
+      case "mode":
+        if (!isTestIntegrityMode(entry)) throw new ConfigError(testIntegrityModeError('"test_integrity.mode"', entry));
+        testIntegrity.mode = entry;
+        break;
+      default:
+        throw new ConfigError(`unknown key "test_integrity.${key}"`);
+    }
+  }
+  return testIntegrity;
 }
 function validateSetup(value) {
   if (value === void 0 || value === null) return void 0;
@@ -26053,6 +26093,21 @@ function buildReport(input) {
       text: `This change deletes or renames away test files: ${pathList(input.deletedTestFiles)}. Check that the tests they held were meant to go before trusting the result.`
     });
   }
+  const testIntegrity = input.testIntegrity;
+  if (testIntegrity?.ignoredConfig !== void 0) {
+    messages.push({
+      level: "warn",
+      code: "TEST_INTEGRITY_MODE_IGNORED",
+      text: `.pharn/ci.yml sets test_integrity.mode to ${testIntegrity.ignoredConfig}, which is looser than ${testIntegrity.mode}, so ${testIntegrity.mode} applies: the config can only make the check stricter.`
+    });
+  }
+  if (testIntegrity?.mode === "off") {
+    messages.push({
+      level: "info",
+      code: "TEST_INTEGRITY_OFF",
+      text: "Test integrity is off for this run, so no test-integrity signal is checked."
+    });
+  }
   if (input.agentSetup.files.length === 0) {
     const required = input.requireAgentSetup === true;
     const found = "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found";
@@ -26094,7 +26149,7 @@ function buildReport(input) {
       ...expected.length > 0 ? { missing: missingTools } : {}
     },
     messages,
-    testIntegrity: emptyTestIntegrity(),
+    testIntegrity: testIntegrity === void 0 ? emptyTestIntegrity() : { ...emptyTestIntegrity(), mode: testIntegrity.mode, source: testIntegrity.source },
     ...input.meta === void 0 ? {} : { meta: input.meta }
   };
 }
@@ -26295,7 +26350,8 @@ function check(input) {
     ...testPaths.length > 0 ? { deletedTestFiles: testPaths } : {},
     ...trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage },
     ...emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {},
-    ...input.meta === void 0 ? {} : { meta: input.meta }
+    ...input.meta === void 0 ? {} : { meta: input.meta },
+    testIntegrity: resolveTestIntegrityMode(input.testIntegrityMode)
   };
   if ("kind" in coverageInput) {
     return buildReport({ ...base, diffCoverage: null, missing: { reason: "coverage-not-discovered" } });
@@ -26606,8 +26662,20 @@ function resolveInputs(config, raw, text, options = {}) {
     "expectAgentSetup",
     () => parseAgentToolNames(raw.expectAgentSetup ?? [], text.expectAgentSetup ?? "agent tool")
   );
+  const givenMode = raw.testIntegrity?.trim();
+  const testIntegrityInput = attempt("testIntegrity", () => {
+    if (givenMode === void 0 || givenMode === "") return void 0;
+    if (!isTestIntegrityMode(givenMode)) {
+      throw new ConfigError(testIntegrityModeError(text.testIntegrity ?? "test-integrity", givenMode));
+    }
+    return givenMode;
+  });
   const [first, ...rest] = errors;
   if (first !== void 0) return { ok: false, errors: [first, ...rest] };
+  const modeSettings = {
+    ...testIntegrityInput === void 0 ? {} : { input: testIntegrityInput },
+    ...config.testIntegrity?.mode === void 0 ? {} : { config: config.testIntegrity.mode }
+  };
   const expectedTools = [.../* @__PURE__ */ new Set([...config.setup?.expect ?? [], ...expectAgentSetup])];
   return {
     ok: true,
@@ -26620,7 +26688,8 @@ function resolveInputs(config, raw, text, options = {}) {
       // Absent, setup.require decides, then off. The CLI flag can only turn it on.
       requireAgentSetup: raw.requireAgentSetup ?? config.setup?.require ?? false,
       // The config's tools first, then the input's, each once.
-      ...expectedTools.length > 0 ? { expectAgentSetup: expectedTools } : {}
+      ...expectedTools.length > 0 ? { expectAgentSetup: expectedTools } : {},
+      ...modeSettings.input === void 0 && modeSettings.config === void 0 ? {} : { testIntegrityMode: modeSettings }
     }
   };
 }
@@ -26670,8 +26739,17 @@ var MESSAGE_HINTS = {
   TEST_FILES_DELETED: "Check that the deleted or renamed tests were meant to go, or that their cases moved to a file the test runner still runs.",
   NO_AGENT_SETUP_FILES: "Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test.",
   AGENT_SETUP_FILE_EMPTY: "Fill in the empty file or delete it; an agent reads nothing from an empty file.",
-  AGENT_SETUP_EXPECTED_MISSING: "Add a setup file for each missing tool (for example AGENTS.md, CLAUDE.md or .cursor/rules/), or remove it from `setup.expect`."
+  AGENT_SETUP_EXPECTED_MISSING: "Add a setup file for each missing tool (for example AGENTS.md, CLAUDE.md or .cursor/rules/), or remove it from `setup.expect`.",
+  TEST_INTEGRITY_MODE_IGNORED: "Set the mode with the `test-integrity` input in the workflow; `test_integrity.mode` in `.pharn/ci.yml` can only make the check stricter, so remove the looser value.",
+  TEST_INTEGRITY_OFF: "Set the `test-integrity` input to `warn` or `block` in the workflow to check for weakened tests."
 };
+function testIntegrityLine(report) {
+  const { mode, signals } = report.testIntegrity;
+  if (signals.length > 0) {
+    return `${signals.length} test-integrity ${signals.length === 1 ? "signal" : "signals"} (mode: ${mode}); the list is in report.json.`;
+  }
+  return mode === "off" ? "Test integrity is off for this run." : `No test-integrity findings (mode: ${mode}).`;
+}
 function renderMarkdown(report, options = {}) {
   const maxRows = options.maxRows ?? 50;
   const out = [];
@@ -26714,6 +26792,7 @@ function renderMarkdown(report, options = {}) {
     if (excluded.length > maxRows) out.push(`- _\u2026and ${excluded.length - maxRows} more files_`);
     out.push("", "</details>", "");
   }
+  out.push("### \u{1F50D} Test integrity", "", testIntegrityLine(report), "");
   if (report.messages.length > 0) {
     out.push(`### \u{1F4AC} Messages (${report.messages.length})`, "");
     for (const m of report.messages) out.push(renderMessage(m));
@@ -27230,6 +27309,7 @@ var INPUT_ERRORS = {
   exclude: "exclude",
   coverageRoot: "coverage-root",
   expectAgentSetup: "expect-agent-setup",
+  testIntegrity: "test-integrity",
   noCoverageFile: "no coverage file: set the coverage-file input or coverage.file in .pharn/ci.yml"
 };
 var MAX_COMMENT_LENGTH = 65e3;
@@ -27278,7 +27358,8 @@ async function runUnsafe(deps) {
       exclude: splitPatternList(input("exclude")),
       coverageRoot: input("coverage-root") || void 0,
       requireAgentSetup: parseBool(input("require-agent-setup"), "require-agent-setup"),
-      expectAgentSetup: splitPatternList(input("expect-agent-setup"))
+      expectAgentSetup: splitPatternList(input("expect-agent-setup")),
+      testIntegrity: input("test-integrity") || void 0
     },
     INPUT_ERRORS,
     // With no coverage path set anywhere, the report is looked for at the discovery candidates.
@@ -27291,7 +27372,8 @@ async function runUnsafe(deps) {
     exclude,
     coverageRoot,
     requireAgentSetup,
-    expectAgentSetup
+    expectAgentSetup,
+    testIntegrityMode
   } = resolved.inputs;
   const failOnThreshold = parseBool(input("fail-on-threshold"), "fail-on-threshold") ?? true;
   const comment = parseBool(input("comment"), "comment") ?? true;
@@ -27337,6 +27419,7 @@ async function runUnsafe(deps) {
     exclude,
     requireAgentSetup,
     ...expectAgentSetup === void 0 ? {} : { expectAgentSetup },
+    ...testIntegrityMode === void 0 ? {} : { testIntegrityMode },
     ...coverageRoot === void 0 ? {} : { coverageRoot },
     ...input("config") === "" ? {} : { configPath: input("config") }
   };

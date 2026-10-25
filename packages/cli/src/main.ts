@@ -67,6 +67,7 @@ Options:
   --exclude <glob>     Leave matching changed files out of diff coverage (repeatable; adds to coverage.exclude)
   --require-agent-setup  Fail when the repo has no agent setup files. Default: setup.require, then off
   --expect-agent-setup <tool>  Report this agent tool when no setup file configures it (repeatable; adds to setup.expect)
+  --test-integrity <m>  Test-integrity mode: block, warn or off. Default: warn; test_integrity.mode in the config can only tighten it
   --config <path>      Config file. Default: <repo>/.pharn/ci.yml if present
   -h, --help           Show this help
   -v, --version        Show the version
@@ -142,6 +143,7 @@ function parseOptions(argv: string[]) {
       exclude: { type: "string", multiple: true },
       "require-agent-setup": { type: "boolean" },
       "expect-agent-setup": { type: "string", multiple: true },
+      "test-integrity": { type: "string" },
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
     },
@@ -159,6 +161,7 @@ const FLAG_ERRORS: InputErrorText = {
   exclude: "--exclude",
   coverageRoot: "--coverage-root",
   expectAgentSetup: "--expect-agent-setup",
+  testIntegrity: "--test-integrity",
   noCoverageFile: "no coverage file: pass --coverage <file> or set coverage.file in .pharn/ci.yml",
 };
 
@@ -174,8 +177,9 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     coverageRoot: values["coverage-root"]?.trim() ? values["coverage-root"] : undefined,
     requireAgentSetup: values["require-agent-setup"],
     expectAgentSetup: values["expect-agent-setup"],
+    testIntegrity: values["test-integrity"],
   };
-  // Malformed --coverage-format, --coverage, --exclude, --coverage-root and --expect-agent-setup flags are reported before any git
+  // Malformed --coverage-format, --coverage, --exclude, --coverage-root, --expect-agent-setup and --test-integrity flags are reported before any git
   // call: they need no config.
   const flagsAlone = resolveInputs({}, raw, FLAG_ERRORS);
   const flagError = (input: keyof RawInputs) =>
@@ -193,14 +197,24 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   if (coverageRootError) throw coverageRootError;
   const expectError = flagError("expectAgentSetup");
   if (expectError) throw expectError;
+  const testIntegrityError = flagError("testIntegrity");
+  if (testIntegrityError) throw testIntegrityError;
 
   const repoRoot = (await git(deps, ["rev-parse", "--show-toplevel"], "not inside a git repository")).trim();
   const config = await loadConfig(values.config, repoRoot, deps);
   // With no coverage path set anywhere, the report is looked for at the discovery candidates.
   const resolved = resolveInputs(config, raw, FLAG_ERRORS, { discoverCoverage: true });
   if (!resolved.ok) throw resolved.errors[0];
-  const { coverageFile, coverageFormat, threshold, exclude, coverageRoot, requireAgentSetup, expectAgentSetup } =
-    resolved.inputs;
+  const {
+    coverageFile,
+    coverageFormat,
+    threshold,
+    exclude,
+    coverageRoot,
+    requireAgentSetup,
+    expectAgentSetup,
+    testIntegrityMode,
+  } = resolved.inputs;
 
   // Say which format was read and why, on stderr so stdout stays the report alone.
   const log = (line: string) => deps.stderr(`${line}\n`);
@@ -265,6 +279,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     exclude,
     requireAgentSetup,
     ...(expectAgentSetup === undefined ? {} : { expectAgentSetup }),
+    ...(testIntegrityMode === undefined ? {} : { testIntegrityMode }),
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
     // Absolute: core makes it repo-relative against repoRoot, or finds it outside the repo.
     ...(values.config === undefined ? {} : { configPath: deps.resolvePath(deps.cwd, values.config) }),

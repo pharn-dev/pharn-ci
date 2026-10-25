@@ -65,16 +65,22 @@ describe("renderMarkdown(): emoji section headings with counts", () => {
     expect(golden.agentSetup.files).toHaveLength(8);
     const goldenLines = await lines(golden);
 
-    const sections = ["### 🧪 Diff coverage", "### 💬 Messages (2)", "### 🤖 Agent setup (8 files)"];
+    // test-integrity-mode added the "🔍 Test integrity" section, between Diff coverage and Messages, on purpose.
+    const sections = [
+      "### 🧪 Diff coverage",
+      "### 🔍 Test integrity",
+      "### 💬 Messages (2)",
+      "### 🤖 Agent setup (8 files)",
+    ];
     const at = sections.map((section) => goldenLines.indexOf(section));
     for (const [i, section] of sections.entries()) {
       expect(at[i], `present: ${section}`).toBeGreaterThan(-1);
     }
     expect(at).toEqual([...at].sort((a, b) => a - b));
 
-    // Every line that starts a heading: the header heading, then the three sections, and nothing else.
+    // Every line that starts a heading: the header heading, then the four sections, and nothing else.
     const headings = goldenLines.filter((line) => line.startsWith("#"));
-    expect(headings).toHaveLength(4);
+    expect(headings).toHaveLength(5);
     expect(headings[0]?.startsWith(HEADING_PREFIX), headings[0]).toBe(true);
     expect(headings.slice(1)).toEqual(sections);
 

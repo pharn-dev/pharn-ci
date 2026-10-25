@@ -24,6 +24,10 @@
 
 </details>
 
+### 🔍 Test integrity
+
+No test-integrity findings (mode: warn).
+
 ### 💬 Messages (2)
 
 - ❌ `DIFF_COVERAGE_BELOW_THRESHOLD` Diff coverage 71.43% is below the threshold of 80%.

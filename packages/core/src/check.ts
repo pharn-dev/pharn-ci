@@ -12,6 +12,7 @@ import { compileGlob } from "./glob.js";
 import { buildReport, type Report, type ReportMeta } from "./report.js";
 import { scanAgentSetup } from "./setup/scan.js";
 import { deletedTestFiles } from "./testFiles.js";
+import { resolveTestIntegrityMode, type TestIntegrityModeSettings } from "./testIntegrityMode.js";
 
 /**
  * One coverage file of a multi-file input: its contents (and the path it came from, for messages); or the map an
@@ -77,6 +78,11 @@ export interface CheckInput {
   configPath?: string;
   /** Run metadata from the caller (the Action), copied into the report as given. Absent adds no `meta`. */
   meta?: ReportMeta;
+  /**
+   * The test-integrity mode settings: the `test-integrity` input (or flag) and `test_integrity.mode` from the
+   * config. The input is the base (default `warn`); the config can only raise it. Absent means the default.
+   */
+  testIntegrityMode?: TestIntegrityModeSettings;
 }
 
 /** The whole pharn-ci check as one pure function: raw inputs in, Report v2 out. */
@@ -138,6 +144,7 @@ export function check(input: CheckInput): Report {
     ...(trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage }),
     ...(emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {}),
     ...(input.meta === undefined ? {} : { meta: input.meta }),
+    testIntegrity: resolveTestIntegrityMode(input.testIntegrityMode),
   };
 
   if ("kind" in coverageInput) {

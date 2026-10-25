@@ -23,6 +23,16 @@ const BEFORE_SHA256 = {
 type Golden = keyof typeof BEFORE_SHA256;
 
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
+
+/** Remove the Test integrity section: its heading, an empty line, one fixed line and an empty line. */
+function foldTestIntegrity(markdown: string): string {
+  const parts = markdown.split("\n");
+  const at = parts.indexOf("### 🔍 Test integrity");
+  if (at === -1) throw new Error("foldTestIntegrity: no Test integrity heading");
+  parts.splice(at, 4);
+  return parts.join("\n");
+}
+
 const lines = (path: string) => fixture(path).trim().split("\n");
 
 async function load() {
@@ -107,7 +117,8 @@ describe("renderMarkdown(): the golden renderings gain the verdict callout and n
       expectValidReport(report);
       const { heading, marker, prefix } = EXPECTED[golden];
 
-      const rendered = loaded.renderMarkdown(report).split("\n");
+      // test-integrity-mode added the "🔍 Test integrity" section on purpose: its four lines are folded out first.
+      const rendered = foldTestIntegrity(loaded.renderMarkdown(report)).split("\n");
       expect(rendered[2]?.endsWith(heading), `${golden}: heading ${rendered[2]}`).toBe(true);
       expect(rendered[4], `${golden}: the alert marker on line 5`).toBe(marker);
       const content = rendered[5] ?? "";

@@ -16,6 +16,15 @@ const HEADING = "## \u{1F6E1}\u{FE0F} pharn-ci · ❌ Fail";
 /** sha256 of fixtures/golden/report.md as committed before this increment (no logo line), pinned here. */
 const GOLDEN_MD_BEFORE_SHA256 = "a92f89d7fd9fa8c81d2a6de24df49b686becb8e4d3f84868a63ef2cde04511c9";
 
+/** Remove the Test integrity section: its heading, an empty line, one fixed line and an empty line. */
+function foldTestIntegrity(markdown: string): string {
+  const lines = markdown.split("\n");
+  const at = lines.indexOf("### 🔍 Test integrity");
+  if (at === -1) throw new Error("foldTestIntegrity: no Test integrity heading");
+  lines.splice(at, 4);
+  return lines.join("\n");
+}
+
 describe("renderMarkdown(): the golden report opens with the logo line", () => {
   it("AC-2: the golden rendering is the logo line, an empty line, then the committed report.md unchanged", async () => {
     const { check } = await import("../src/check.js");
@@ -44,7 +53,8 @@ describe("renderMarkdown(): the golden report opens with the logo line", () => {
 
     // Every line after the first two equals the committed golden from before this increment, byte for byte.
     // Report v2 changed the rendering in one place only, the footer's schema version, which is mapped back here.
-    const rendered = foldCallout(lines.slice(2).join("\n"));
+    // test-integrity-mode added the "🔍 Test integrity" section on purpose: its four lines are folded out first.
+    const rendered = foldCallout(foldTestIntegrity(lines.slice(2).join("\n")));
     expect(rendered).toContain("· report schema v2");
     const rest = rendered.replace("· report schema v2", "· report schema v1");
     expect(createHash("sha256").update(rest).digest("hex")).toBe(GOLDEN_MD_BEFORE_SHA256);

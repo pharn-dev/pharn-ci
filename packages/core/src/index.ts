@@ -100,4 +100,12 @@ export {
 } from "./setup/scan.js";
 export { parseLsTreeSizes } from "./setup/sizes.js";
 export { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
+export {
+  isTestIntegrityMode,
+  type ResolvedTestIntegrityMode,
+  resolveTestIntegrityMode,
+  TEST_INTEGRITY_MODES,
+  type TestIntegrityModeSettings,
+  testIntegrityModeError,
+} from "./testIntegrityMode.js";
 export { VERSION } from "./version.js";

@@ -3,6 +3,15 @@ import { describe, expect, it } from "vitest";
 import { fixture, foldCallout } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
+/** Remove the Test integrity section: its heading, an empty line, one fixed line and an empty line. */
+function foldTestIntegrity(markdown: string): string {
+  const lines = markdown.split("\n");
+  const at = lines.indexOf("### 🔍 Test integrity");
+  if (at === -1) throw new Error("foldTestIntegrity: no Test integrity heading");
+  lines.splice(at, 4);
+  return lines.join("\n");
+}
+
 // check(), the config parser, the renderer and the fixtures are loaded inside each test body: the AC tests are
 // written before the partial-mismatch message and fixtures/coverage-paths/ exist, so nothing that depends on them
 // may run while the file loads.
@@ -129,7 +138,8 @@ describe("check(): some coverage paths are not tracked files", () => {
       // Everything else is the report as it was before this change, in its Report v1 form (the hashes predate v2).
       const without = { ...report, messages: report.messages.filter((message) => message.code !== CODE) };
       expect(sha256(asFile(toV1(without))), `${dir} report.json without the message`).toBe(jsonSha);
-      const markdown = foldCallout(renderMarkdown(report)).split("\n");
+      // test-integrity-mode added the "🔍 Test integrity" section on purpose: its four lines are folded out too.
+      const markdown = foldCallout(foldTestIntegrity(renderMarkdown(report))).split("\n");
       const messageLines = markdown.filter((line) => line.includes(`\`${CODE}\``));
       expect(messageLines, `${dir} report.md lines naming the code`).toHaveLength(1);
       const at = markdown.findIndex((line) => line.includes(`\`${CODE}\``));
@@ -156,6 +166,8 @@ describe("check(): some coverage paths are not tracked files", () => {
     expect(asFile(exclusions)).toBe(fixture("golden-exclusions/report.json"));
     expect(renderMarkdown(exclusions)).toBe(fixture("golden-exclusions/report.md"));
     expect(sha256(asFile(toV1(JSON.parse(fixture("golden-exclusions/report.json")))))).toBe(EXCLUSIONS_JSON_SHA256);
-    expect(sha256(footerToV1(foldCallout(fixture("golden-exclusions/report.md"))))).toBe(EXCLUSIONS_MD_SHA256);
+    expect(sha256(footerToV1(foldCallout(foldTestIntegrity(fixture("golden-exclusions/report.md")))))).toBe(
+      EXCLUSIONS_MD_SHA256,
+    );
   });
 });

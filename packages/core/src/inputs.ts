@@ -10,6 +10,7 @@ import {
 import type { CoverageFormatSelection } from "./coverage/types.js";
 import { coverageEntryList, parseCoverageEntries } from "./coverageEntries.js";
 import type { AgentTool } from "./setup/summary.js";
+import { isTestIntegrityMode, type TestIntegrityModeSettings, testIntegrityModeError } from "./testIntegrityMode.js";
 
 /**
  * Settings as the CLI flags or Action inputs gave them, before `.pharn/ci.yml` is applied.
@@ -26,6 +27,8 @@ export interface RawInputs {
   requireAgentSetup?: boolean | undefined;
   /** Agent tool names the report names when no setup file configures them; added to `setup.expect`. */
   expectAgentSetup?: readonly string[] | undefined;
+  /** The test-integrity mode as given (block, warn or off); trimmed here, and empty counts as not given. */
+  testIntegrity?: string | undefined;
 }
 
 /** How an adapter names its flags or inputs in error messages. */
@@ -42,6 +45,8 @@ export interface InputErrorText {
   coverageRoot: string;
   /** Label for an expected agent tool that is not in the fixed tool list. Defaults to "agent tool". */
   expectAgentSetup?: string;
+  /** Label for a test-integrity mode that is not block, warn or off. Defaults to "test-integrity". */
+  testIntegrity?: string;
   /** The error when neither the input nor the config names a coverage file. */
   noCoverageFile: string;
 }
@@ -66,6 +71,12 @@ export interface ResolvedInputs {
    * Absent when nothing is expected, so settings that expect nothing resolve exactly as before.
    */
   expectAgentSetup?: AgentTool[];
+  /**
+   * The test-integrity mode settings, each key absent when not given; absent when neither is given, so settings
+   * that name no mode resolve exactly as before. Precedence is applied later, by `check()`: the input is the
+   * base and the config may only tighten it.
+   */
+  testIntegrityMode?: TestIntegrityModeSettings;
 }
 
 /** An invalid setting, naming the raw input it came from (the coverage file one: neither input nor config). */
@@ -85,7 +96,7 @@ export type ResolveInputsResult =
 /**
  * Merge the CLI flags or Action inputs with a parsed `.pharn/ci.yml`. Pure. Every invalid setting
  * yields one error, in the order coverage format, threshold, coverage file, exclusion patterns,
- * coverage root, expected agent tools. With `options.discoverCoverage`, no coverage file given anywhere is not
+ * coverage root, expected agent tools, test-integrity mode. With `options.discoverCoverage`, no coverage file given anywhere is not
  * an error: `coverageFile` resolves to `{ discover: true }` and the adapter looks for the report.
  */
 export function resolveInputs(
@@ -146,8 +157,21 @@ export function resolveInputs(
     parseAgentToolNames(raw.expectAgentSetup ?? [], text.expectAgentSetup ?? "agent tool"),
   );
 
+  const givenMode = raw.testIntegrity?.trim();
+  const testIntegrityInput = attempt("testIntegrity", () => {
+    if (givenMode === undefined || givenMode === "") return undefined;
+    if (!isTestIntegrityMode(givenMode)) {
+      throw new ConfigError(testIntegrityModeError(text.testIntegrity ?? "test-integrity", givenMode));
+    }
+    return givenMode;
+  });
+
   const [first, ...rest] = errors;
   if (first !== undefined) return { ok: false, errors: [first, ...rest] };
+  const modeSettings: TestIntegrityModeSettings = {
+    ...(testIntegrityInput === undefined ? {} : { input: testIntegrityInput }),
+    ...(config.testIntegrity?.mode === undefined ? {} : { config: config.testIntegrity.mode }),
+  };
   // The config's tools first, then the input's, each once.
   const expectedTools = [...new Set([...(config.setup?.expect ?? []), ...(expectAgentSetup as AgentTool[])])];
   // No errors: every value above was resolved.
@@ -163,6 +187,9 @@ export function resolveInputs(
       requireAgentSetup: raw.requireAgentSetup ?? config.setup?.require ?? false,
       // The config's tools first, then the input's, each once.
       ...(expectedTools.length > 0 ? { expectAgentSetup: expectedTools } : {}),
+      ...(modeSettings.input === undefined && modeSettings.config === undefined
+        ? {}
+        : { testIntegrityMode: modeSettings }),
     },
   };
 }
