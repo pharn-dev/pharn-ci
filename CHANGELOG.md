@@ -80,6 +80,15 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   use, workflow files, every `package.json` and the JavaScript, TypeScript and Python source files (at most 5000 lines
   per file, 400 characters per line; `textTruncated` marks a cut file), for the signals that read line text. `readDiffChunks` takes an optional `{ configPath, repoRoot }` so a custom
   config path works through the stream as it does through `check()`.
+- Precision of the diff-only signals, from a review of the base-rate fixtures. TI11 reads a quoted `"on":` key and the
+  test commands `npm t`, `pnpm -r test`, `pnpm --filter <pkg> test`, `pnpm vitest`, `pnpm exec`, `bun x`,
+  `node --test`, `bun test`, `deno test`, `tox`, `nox` and the `uv`, `poetry`, `pipenv`, `pdm`, `hatch` and `rye run`
+  wrappers. TI10 reads `; true`, `|| :` and `; :` as ignoring the exit status, no longer reads a banner
+  (`echo start && vitest run`) as a weakening, and no longer reads mocha's `-t` (its timeout) as a name filter. TI13
+  reads coverage.py's `# pragma: nocover`. TI03 reads a Python skip decorator above an edited `def` line, or above an
+  existing test in a diff with context lines, as a skip of an existing test. TI01 no longer counts a deleted fixture,
+  snapshot or data file under a test directory because its text was cut. A hand-made hunk header that starts a side at
+  line 0 numbers its lines from 1.
 - The `TEST_INTEGRITY_TEXT_TRUNCATED` message (warn, not in mode `off`): a file that a test-integrity signal reads
   (a test file, a workflow, a modified `package.json`, a JavaScript, TypeScript or Python source file, or the pharn-ci
   config) has more than 5000 changed lines, so the signals read only the first 5000. The message names those files,

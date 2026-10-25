@@ -27,14 +27,21 @@ const WORD_END = "(?![A-Za-z0-9_])";
 /** A JavaScript or TypeScript marker: a comment start, the tool word, spaces and the word that ends the hint. */
 const JS_MARKER = new RegExp(`${BLOCK_OR_LINE_START}${SPACES}(istanbul|v8|c8)[ \\t]+ignore${WORD_END}`, "i");
 
-/** A Python marker: a hash, optional spaces, the word pragma, an optional colon, optional spaces, then the exclusion. */
-const PY_MARKER = new RegExp(`#${SPACES}pragma:?${SPACES}no[ \\t]+cover${WORD_END}`, "i");
+/**
+ * A Python marker, as coverage.py's default exclusion reads it: a hash, optional spaces, the word pragma, an optional
+ * colon, optional spaces, `no`, optional spaces, `cover` (`# pragma: no cover`, `#pragma nocover`).
+ */
+const PY_MARKER = new RegExp(`#${SPACES}pragma:?${SPACES}no${SPACES}cover${WORD_END}`, "i");
 
 /** The marker a line carries for the file's language, as its family and its normalized text, else null. */
 function markerOf(text: string, language: "jsts" | "python"): { family: Family; marker: string } | null {
   const match = (language === "jsts" ? JS_MARKER : PY_MARKER).exec(text);
   if (match === null) return null;
-  const marker = match[0].toLowerCase().replace(/[ \t]+/g, " ");
+  // Python spellings that coverage.py reads alike (`no cover`, `nocover`, with or without the colon) are one marker.
+  const marker =
+    language === "python"
+      ? match[0].toLowerCase().replace(/[ \t:]+/g, "")
+      : match[0].toLowerCase().replace(/[ \t]+/g, " ");
   const family = language === "python" ? "pragma" : ((match[1] as string).toLowerCase() as Family);
   return { family, marker };
 }
