@@ -1,3 +1,4 @@
+import { DEFAULT_ACCEPT_LABEL, GITHUB_LOGIN } from "../acceptLabel.js";
 import type { CoverageFormat } from "../coverage/types.js";
 import { formatNumber, type Message, type MessageCode, type Report } from "../report.js";
 import { summarizeAgentSetup } from "../setup/summary.js";
@@ -22,11 +23,21 @@ const LEVEL_ICON = { info: "ℹ️", warn: "⚠️", error: "❌" } as const;
 const FULL_REPORT_NOTE =
   "_Full list in report.json: the Action's `report-path` output, or `pharn-ci check --format json`._";
 
+/** A hint is a fixed string, or a function of the accept label's code span; the label is validated, never free text. */
+type Hint = string | ((labelSpan: string) => string);
+
+/** The accept label a report was made with: the configured name, or the default one. */
+function acceptLabelOf(report: Report): string {
+  const configured = report.testIntegrity.acceptLabel;
+  return typeof configured === "string" && configured !== "" ? configured : DEFAULT_ACCEPT_LABEL;
+}
+
 /**
  * One-line remediation per message code, added at render time so message text (which consumers may
- * match on) stays as it is. Fixed strings only: nothing input-derived.
+ * match on) stays as it is. Fixed strings only: nothing input-derived. The TI03, TI10 and TI13 hints name the
+ * accept label, so they are functions of its code span.
  */
-const MESSAGE_HINTS: Record<MessageCode, string> = {
+const MESSAGE_HINTS: Record<MessageCode, Hint> = {
   DIFF_COVERAGE_BELOW_THRESHOLD: "Add tests that exercise the uncovered lines listed in the table above.",
   DIFF_COVERAGE_UNGATED:
     "To gate diff coverage, set a threshold above 0 (`coverage.threshold`, `threshold` or `--threshold`).",
@@ -63,30 +74,52 @@ const MESSAGE_HINTS: Record<MessageCode, string> = {
   TEST_INTEGRITY_OFF:
     "Set the `test-integrity` input to `warn` or `block` in the workflow to check for weakened tests.",
   TEST_INTEGRITY_TI01: "Restore the deleted tests, or say in the PR why they go so a reviewer can confirm it.",
-  TEST_INTEGRITY_TI03:
-    "A reviewer must decide whether each skipped test may stay, for example one that fails in CI; the accept label will record that sign-off once it ships.",
+  TEST_INTEGRITY_TI03: (label) =>
+    `A reviewer must decide whether each skipped test may stay, for example one that fails in CI; a reviewer who is not the PR author records that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI04:
     "Remove the marker so the whole suite runs, or say in the PR why only the marked tests should run.",
-  TEST_INTEGRITY_TI10:
-    "Restore the test script, or say in the PR why it changes so a reviewer can confirm it; the accept label will record a reviewer's sign-off once it ships.",
-  TEST_INTEGRITY_TI13:
-    "Write a test for the code in place of the ignore comment, or say in the PR why it cannot be tested; the accept label will record a reviewer's sign-off once it ships.",
+  TEST_INTEGRITY_TI10: (label) =>
+    `Restore the test script, or say in the PR why it changes so a reviewer can confirm it; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
+  TEST_INTEGRITY_TI13: (label) =>
+    `Write a test for the code in place of the ignore comment, or say in the PR why it cannot be tested; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI11:
     "Restore the test step or trigger, or say in the PR why CI stops running these tests so a reviewer can confirm it.",
   TEST_INTEGRITY_TI14:
     "Restore the threshold or the exclusions, or say in the PR why they change so a reviewer can confirm it.",
+  TEST_INTEGRITY_ACCEPTED:
+    "A reviewer other than the PR author signed off, so the block findings are warnings. The sign-off belongs to the pull request, not to a commit: remove the label if a later push should be judged again.",
+  TEST_INTEGRITY_ACCEPT_IGNORED:
+    "The block findings stand. Fix them, or ask a reviewer who is not the PR author to apply the label; it counts only when a user account other than the author applied it last.",
 };
 
-/** One-line hint per test-integrity signal id, shown under its finding. Fixed strings only. */
-const SIGNAL_HINTS: Readonly<Record<string, string>> = {
-  TI01: MESSAGE_HINTS.TEST_INTEGRITY_TI01,
-  TI03: MESSAGE_HINTS.TEST_INTEGRITY_TI03,
-  TI04: MESSAGE_HINTS.TEST_INTEGRITY_TI04,
-  TI10: MESSAGE_HINTS.TEST_INTEGRITY_TI10,
-  TI11: MESSAGE_HINTS.TEST_INTEGRITY_TI11,
-  TI13: MESSAGE_HINTS.TEST_INTEGRITY_TI13,
-  TI14: MESSAGE_HINTS.TEST_INTEGRITY_TI14,
-};
+/** The hint text for a message code, or undefined when it has none. `label` is the report's accept label. */
+function hintFor(code: string, label: string): string | undefined {
+  // Object.hasOwn: a code from a newer producer has no hint, and must not reach Object.prototype.
+  if (!Object.hasOwn(MESSAGE_HINTS, code)) return undefined;
+  const hint = MESSAGE_HINTS[code as MessageCode];
+  return typeof hint === "function" ? hint(labelSpan(label)) : hint;
+}
+
+/**
+ * Quote the accept label as one code span on one line. Control characters become U+FFFD; the fence is one backtick
+ * longer than the longest backtick run in the text, so no run in it can close the span; a space pads each side when
+ * the text starts or ends with a backtick or a space (CommonMark strips one from each side).
+ */
+function labelSpan(text: string): string {
+  const safe = text.replace(CONTROL_CHARS, "�");
+  const longest = Math.max(0, ...(safe.match(/`+/g) ?? []).map((run) => run.length));
+  const fence = "`".repeat(longest + 1);
+  const pad = /^[` ]|[` ]$/.test(safe) ? " " : "";
+  return `${fence}${pad}${safe}${pad}${fence}`;
+}
+
+/** The signal ids that have a hint under their finding. */
+const SIGNAL_HINT_IDS: ReadonlySet<string> = new Set(["TI01", "TI03", "TI04", "TI10", "TI11", "TI13", "TI14"]);
+
+/** Hint under the finding of a test-integrity signal id: the hint of its `TEST_INTEGRITY_<id>` code. */
+function signalHint(id: string, label: string): string | undefined {
+  return SIGNAL_HINT_IDS.has(id) ? hintFor(`TEST_INTEGRITY_${id}`, label) : undefined;
+}
 
 /** Most findings listed in the Test integrity section; the rest are counted. */
 const MAX_FINDINGS = 20;
@@ -99,20 +132,30 @@ const SEVERITY_ICON = { block: LEVEL_ICON.error, warn: LEVEL_ICON.warn, info: LE
  */
 function testIntegrityLines(report: Report): string[] {
   const { mode, signals } = report.testIntegrity;
-  if (signals.length === 0) {
-    return [mode === "off" ? "Test integrity is off for this run." : `No test-integrity findings (mode: ${mode}).`];
-  }
+  const label = acceptLabelOf(report);
   const lines: string[] = [];
-  for (const signal of signals.slice(0, MAX_FINDINGS)) {
-    const location = signal.line === null ? code(signal.path) : code(`${signal.path}:${signal.line}`);
-    lines.push(
-      `- ${SEVERITY_ICON[signal.severity] ?? LEVEL_ICON.info} **${inlineText(signal.id)}** ${location} — ${inlineText(signal.detail)}`,
-    );
-    const hint = Object.hasOwn(SIGNAL_HINTS, signal.id) ? SIGNAL_HINTS[signal.id] : undefined;
-    if (hint !== undefined) lines.push(`  - Hint: ${hint}`);
+  if (signals.length === 0) {
+    lines.push(mode === "off" ? "Test integrity is off for this run." : `No test-integrity findings (mode: ${mode}).`);
+  } else {
+    for (const signal of signals.slice(0, MAX_FINDINGS)) {
+      const location = signal.line === null ? code(signal.path) : code(`${signal.path}:${signal.line}`);
+      lines.push(
+        `- ${SEVERITY_ICON[signal.severity] ?? LEVEL_ICON.info} **${inlineText(signal.id)}** ${location} — ${inlineText(signal.detail)}`,
+      );
+      const hint = signalHint(signal.id, label);
+      if (hint !== undefined) lines.push(`  - Hint: ${hint}`);
+    }
+    if (signals.length > MAX_FINDINGS) {
+      lines.push(`- _…and ${signals.length - MAX_FINDINGS} more findings in report.json._`);
+    }
   }
-  if (signals.length > MAX_FINDINGS) {
-    lines.push(`- _…and ${signals.length - MAX_FINDINGS} more findings in report.json._`);
+  const accepted = report.testIntegrity.accepted;
+  if (typeof accepted === "object" && accepted !== null && typeof accepted.label === "string") {
+    // The login is shown only when it has the shape of one; anything else (an older or another producer's report)
+    // leaves the line without a name rather than printing free text.
+    const by = typeof accepted.by === "string" && GITHUB_LOGIN.test(accepted.by) ? ` by @${accepted.by}` : "";
+    // A blank line first: right after a list item, the text would read as a continuation of its hint.
+    lines.push("", `Accepted via label ${labelSpan(accepted.label)}${by}`);
   }
   return lines;
 }
@@ -172,7 +215,7 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
   // reason for the verdict is never what goes.
   if (report.messages.length > 0) {
     out.push(`### 💬 Messages (${report.messages.length})`, "");
-    for (const m of report.messages) out.push(renderMessage(m));
+    for (const m of report.messages) out.push(renderMessage(m, report));
     out.push("");
   }
 
@@ -259,10 +302,10 @@ function summaryLines(report: Report): string[] {
   ];
 }
 
-function renderMessage(m: Message): string {
+function renderMessage(m: Message, report: Report): string {
   const line = `- ${LEVEL_ICON[m.level]} \`${m.code}\` ${inlineText(m.text)}`;
-  // Object.hasOwn: a code from a newer producer has no hint, and must not reach Object.prototype.
-  return Object.hasOwn(MESSAGE_HINTS, m.code) ? `${line}\n  - Hint: ${MESSAGE_HINTS[m.code]}` : line;
+  const hint = hintFor(m.code, acceptLabelOf(report));
+  return hint === undefined ? line : `${line}\n  - Hint: ${hint}`;
 }
 
 /** Ascending coverage, then path; files without coverable lines (percent null) last. Does not mutate. */

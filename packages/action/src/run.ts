@@ -12,8 +12,10 @@ import {
   renderMarkdown,
   resolveInputs,
   VERSION,
+  validateAcceptLabel,
 } from "@pharn-ci/core";
 import { gitChunks, readCoverageFiles, readDiscoveredCoverage } from "@pharn-ci/node-io";
+import { applyAcceptLabel } from "./accept-label.js";
 import { type PrNumberTarget, parsePrNumberInputs, resolvePrNumberTarget } from "./pr-number.js";
 import { runMeta } from "./run-meta.js";
 
@@ -45,6 +47,16 @@ export interface GitHubApi {
   compareDiff(basehead: string): Promise<string>;
   /** Read-only: the base and head commit SHAs of a pull request (PR-number mode). */
   getPullRequest(pullNumber: number): Promise<{ baseSha: string; headSha: string }>;
+  /**
+   * Read-only: a pull request's author (`user`) and labels, as GitHub returned them. Untrusted: the accept label
+   * code checks their shape. Only called when the accept label may apply.
+   */
+  getPullRequestSignoff(pullNumber: number): Promise<{ author: unknown; labels: unknown }>;
+  /**
+   * Read-only: one page (100 events, oldest first) of a pull request's issue events, and whether another page
+   * follows. Untrusted: the accept label code checks their shape. Only called after the pull request carries the label.
+   */
+  listIssueEvents(issueNumber: number, page: number): Promise<{ events: unknown; hasNext: boolean }>;
   /** Read-only: the file paths of a commit's tree, and whether GitHub cut the listing short (PR-number mode). */
   listTree(sha: string): Promise<{ paths: string[]; truncated: boolean }>;
   /**
@@ -187,6 +199,9 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   if (pr && prNumber !== undefined && prNumber !== pr.number) {
     throw new Error(`pr-number ${prNumber} is not the pull request of this event (#${pr.number})`);
   }
+  // Validated before the config is read or anything is measured; the error never repeats the value.
+  const acceptLabel = validateAcceptLabel(input("accept-label"));
+  if (!acceptLabel.ok) throw new Error(acceptLabel.error);
   const config = await loadConfig(input("config") || undefined, deps);
 
   // An empty input is not given: the config, then the default, applies.
@@ -279,7 +294,11 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   };
   const meta = runMeta(deps.context, { baseRef: input("base-ref"), ...(target === undefined ? {} : { target }) });
   if (meta === undefined) deps.info("run metadata is incomplete, so report.json carries no meta");
-  const report = check(meta === undefined ? checkInput : { ...checkInput, meta });
+  const checked = check(meta === undefined ? checkInput : { ...checkInput, meta });
+  // The accept label is the Action's alone: check() and the CLI never see it. Only a pull_request event with its
+  // payload, or a pr-number target, is a pull request run (not pull_request_target, push or merge_group).
+  const signoffNumber = deps.context.eventName === "pull_request" && pr ? pr.number : target?.number;
+  const report = await applyAcceptLabel(deps, checked, acceptLabel.label, signoffNumber);
   const summary = fitMarkdown(report, {
     prefix: "",
     note: SUMMARY_TRUNCATED_NOTE,

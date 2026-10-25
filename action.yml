@@ -39,6 +39,10 @@ inputs:
   test-integrity:
     description: How strictly to treat weakened tests, "block", "warn" or "off". Defaults to warn. test_integrity.mode in .pharn/ci.yml can only make the check stricter than this input (or the default), never looser; a looser value is ignored and reported as TEST_INTEGRITY_MODE_IGNORED.
     required: false
+  accept-label:
+    description: Name of the pull request label a reviewer who is not the PR author applies to sign off test-integrity block findings, at most 50 characters. Only used on pull_request runs and pr-number runs with test-integrity block; the CLI and .pharn/ci.yml never set it. Defaults to pharn/accepted.
+    required: false
+    default: pharn/accepted
   comment:
     description: Post or update one sticky PR comment with the report.
     required: false
@@ -51,7 +55,7 @@ inputs:
     description: Path to the pharn-ci config file, relative to the workspace. Defaults to .pharn/ci.yml, which may be absent; a file named here that does not exist fails the step.
     required: false
   github-token:
-    description: Token for the GitHub API, used for the PR comment, the diff fallback and, in pr-number mode, always to read the pull request, its diff and its file tree. Needs contents read, plus pull-requests read in pr-number mode and pull-requests write for the comment. May be empty with comment false and a local diff, outside pr-number mode.
+    description: Token for the GitHub API, used for the PR comment, the diff fallback and, in pr-number mode, always to read the pull request, its diff and its file tree. Needs contents read, plus pull-requests read in pr-number mode and pull-requests write for the comment. With test-integrity block it also reads the pull request and its issue events (GET /repos/{owner}/{repo}/issues/{issue_number}/events) for the accept label, which needs pull-requests read or issues read. May be empty with comment false and a local diff, outside pr-number mode.
     required: false
     default: ${{ github.token }}
 

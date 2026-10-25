@@ -24534,6 +24534,22 @@ function createGitHubApi(opts) {
       const { data } = await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber });
       return { baseSha: data.base.sha, headSha: data.head.sha };
     },
+    async getPullRequestSignoff(pullNumber) {
+      const { octokit, owner, repo } = connect();
+      const { data } = await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber });
+      return { author: data.user, labels: data.labels };
+    },
+    async listIssueEvents(issueNumber, page) {
+      const { octokit, owner, repo } = connect();
+      const res = await octokit.rest.issues.listEvents({
+        owner,
+        repo,
+        issue_number: issueNumber,
+        per_page: 100,
+        page
+      });
+      return { events: res.data, hasNext: /\brel="next"/.test(String(res.headers.link ?? "")) };
+    },
     async listTree(sha) {
       const { octokit, owner, repo } = connect();
       const { data } = await octokit.rest.git.getTree({ owner, repo, tree_sha: sha, recursive: "1" });
@@ -24589,9 +24605,6 @@ async function fileChunks(deps, path) {
   const text = await deps.readFile(path);
   return text === null ? null : oneChunk(async () => text);
 }
-
-// ../core/src/coverage/types.ts
-var COVERAGE_FORMAT_SELECTIONS = ["lcov", "cobertura", "auto"];
 
 // ../core/src/glob.ts
 function compileGlob(pattern) {
@@ -24673,64 +24686,49 @@ function compileSegment(segment) {
   };
 }
 
-// ../core/src/paths.ts
-function normalizePath(path, repoRoot) {
-  let p = toPosix(path.trim());
-  const root = normalizeRoot(repoRoot);
-  if (root !== "" && startsWithPath(p, root)) {
-    p = p.slice(root.length + 1);
-  }
-  return p;
+// ../core/src/coverageDiscovery.ts
+var COVERAGE_DISCOVERY_CANDIDATES = Object.freeze([
+  "coverage/lcov.info",
+  "lcov.info",
+  "coverage.xml",
+  "coverage/cobertura-coverage.xml",
+  "**/coverage.cobertura.xml"
+]);
+var GLOB_CANDIDATE = "**/coverage.cobertura.xml";
+var matchesGlobCandidate = compileGlob(GLOB_CANDIDATE);
+function inSkippedDirectory(path) {
+  return path.split("/").some((segment) => segment === ".git" || segment === "node_modules");
 }
-function normalizeRoot(repoRoot) {
-  if (!repoRoot) return "";
-  const root = toPosix(repoRoot.trim());
-  let end = root.length;
-  while (end > 0 && root[end - 1] === "/") end--;
-  return root.slice(0, end);
+function codeUnitOrder(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
 }
-function foldForRoot(path, root) {
-  return isDriveRoot(root) ? path.toLowerCase() : path;
-}
-function isAbsolutePath(path) {
-  const first = path.charAt(0);
-  if (first === "/" || first === "\\") return true;
-  const separator = path.charAt(2);
-  return path.charAt(1) === ":" && (separator === "/" || separator === "\\") && isAsciiLetter(first);
-}
-function joinCoverageRoot(path, coverageRoot) {
-  if (coverageRoot === void 0 || coverageRoot === ".") return path;
-  return normalizePath(`${coverageRoot}/${path}`);
-}
-function isAsciiLetter(char) {
-  return char >= "A" && char <= "Z" || char >= "a" && char <= "z";
-}
-function toPosix(path) {
-  const slashed = path.replace(/\\/g, "/");
-  const drive = /^[A-Za-z]:\//.exec(slashed)?.[0] ?? "";
-  const absolute = drive !== "" || slashed.startsWith("/");
-  const rest = drive !== "" ? slashed.slice(drive.length) : slashed;
-  const out = [];
-  for (const segment of rest.split("/")) {
-    if (segment === "" || segment === ".") continue;
-    if (segment === ".." && out.length > 0 && out[out.length - 1] !== "..") {
-      out.pop();
-    } else if (segment === ".." && absolute) {
-    } else {
-      out.push(segment);
+function chooseDiscoveredCoverage(paths) {
+  const present = new Set(paths);
+  const kinds = [];
+  for (const candidate of COVERAGE_DISCOVERY_CANDIDATES) {
+    if (candidate === GLOB_CANDIDATE) {
+      const matches = [...present].filter((path) => !inSkippedDirectory(path) && matchesGlobCandidate(path)).sort(codeUnitOrder);
+      if (matches.length > 0) kinds.push(matches);
+    } else if (present.has(candidate)) {
+      kinds.push([candidate]);
     }
   }
-  const prefix = drive !== "" ? drive.toUpperCase() : absolute ? "/" : "";
-  return prefix + out.join("/");
+  const [only] = kinds;
+  if (only === void 0) return { kind: "not-found" };
+  if (kinds.length === 1) return { kind: "found", files: only };
+  return { kind: "ambiguous", found: kinds.flat() };
 }
-function startsWithPath(path, root) {
-  if (path.length <= root.length || path[root.length] !== "/") return false;
-  const head = path.slice(0, root.length);
-  return isDriveRoot(root) ? head.toLowerCase() === root.toLowerCase() : head === root;
+function coverageDiscoveryLine(path) {
+  return `coverage: ${path} (auto-discovered)`;
 }
-function isDriveRoot(root) {
-  const first = root.charAt(0);
-  return first >= "A" && first <= "Z" && root.charAt(1) === ":" && root.charAt(2) === "/";
+function coverageDiscoveryAmbiguousText(found, howToSet) {
+  return `found more than one coverage report (${found.join(", ")}), so none was chosen: ${howToSet}`;
+}
+function coverageNotDiscoveredText() {
+  return `No coverage report was found. Looked for: ${COVERAGE_DISCOVERY_CANDIDATES.join(", ")}. Set coverage.file in .pharn/ci.yml, the coverage-file input or --coverage to point at your report.`;
+}
+function coverageDiscoveryLimitText(limit) {
+  return limit === "files" ? "coverage auto-discovery matched more than 1,000 files; set the coverage path (coverage.file, the coverage-file input or --coverage)" : "coverage auto-discovery: the walk limit was exceeded (more than 100,000 directory entries visited in one run); set the coverage path (coverage.file, the coverage-file input or --coverage)";
 }
 
 // ../core/src/setup/summary.ts
@@ -24802,6 +24800,439 @@ function summarizeAgentSetup(files) {
     for (const tool of KIND_TOOLS[kind] ?? []) tools.add(tool);
   }
   return { byKind, tools: [...tools].sort() };
+}
+
+// ../core/src/report.ts
+function emptyTestIntegrity() {
+  return { mode: "warn", source: "default", verdict: "pass", signals: [], languages: [] };
+}
+var SIGNAL_MESSAGES = [
+  {
+    id: "TI01",
+    code: "TEST_INTEGRITY_TI01",
+    text: (top, paths) => top === "info" ? `This change deletes test files together with the code they cover or replaces them: ${paths}.` : `This change deletes or renames away test files that defined tests, with nothing in the change that accounts for them: ${paths}. Check that those tests were meant to go.`
+  },
+  {
+    id: "TI03",
+    code: "TEST_INTEGRITY_TI03",
+    text: (_top, paths) => `This change skips tests or marks them as expected to fail: ${paths}. Check that each skip was meant.`
+  },
+  {
+    id: "TI04",
+    code: "TEST_INTEGRITY_TI04",
+    text: (_top, paths) => `This change adds \`.only\`, \`fit\` or \`fdescribe\`, which runs only the marked tests: ${paths}. Remove the markers before merging.`
+  },
+  {
+    id: "TI10",
+    code: "TEST_INTEGRITY_TI10",
+    text: (_top, paths) => `This change weakens a test script in package.json, so the test run can pass without the tests passing: ${paths}. Check that the change was meant.`
+  },
+  {
+    id: "TI11",
+    code: "TEST_INTEGRITY_TI11",
+    text: (_top, paths) => `This change edits a workflow so that CI may run fewer tests or ignore their failures: ${paths}. Check that the removed step or trigger, the reduced matrix or the added condition was meant.`
+  },
+  {
+    id: "TI13",
+    code: "TEST_INTEGRITY_TI13",
+    text: (_top, paths) => `This change adds comments that leave code out of coverage: ${paths}. Check that each was meant.`
+  },
+  {
+    id: "TI14",
+    code: "TEST_INTEGRITY_TI14",
+    text: (_top, paths) => `This change lowers the coverage threshold or adds a coverage exclusion in the check config: ${paths}. Check that the looser setting was meant before trusting the result.`
+  }
+];
+function testIntegritySignalMessages(signals) {
+  const messages = [];
+  for (const { id, code: code2, text } of SIGNAL_MESSAGES) {
+    const own = signals.filter((signal) => signal.id === id);
+    if (own.length === 0) continue;
+    const top = own.some((s) => s.severity === "block") ? "block" : own.some((s) => s.severity === "warn") ? "warn" : "info";
+    const named = [...new Set(own.filter((s) => s.severity === top).map((s) => s.path))];
+    messages.push({
+      level: top === "block" ? "error" : top === "warn" ? "warn" : "info",
+      code: code2,
+      text: text(top, pathList(named))
+    });
+  }
+  return messages;
+}
+function buildReport(input) {
+  const messages = [];
+  const dc = input.diffCoverage;
+  const summary2 = summarizeAgentSetup(input.agentSetup.files);
+  const expected = input.expectedAgentTools ?? [];
+  const missingTools = AGENT_TOOLS.filter((tool) => expected.includes(tool) && !summary2.tools.includes(tool)).sort();
+  if (dc === null) {
+    const missing = input.missing ?? { reason: "diff-unavailable", detail: "no diff coverage data" };
+    const level = input.threshold === null ? "warn" : "error";
+    if (missing.reason === "coverage-file-missing") {
+      messages.push({
+        level,
+        code: "COVERAGE_FILE_MISSING",
+        text: `Coverage file not found: ${missing.coverageFile}`
+      });
+    } else if (missing.reason === "coverage-not-discovered") {
+      messages.push({ level, code: "COVERAGE_FILE_MISSING", text: coverageNotDiscoveredText() });
+    } else if (missing.reason === "coverage-file-empty") {
+      const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${missing.coverageFile}`;
+      messages.push({
+        level,
+        code: "COVERAGE_FILE_EMPTY",
+        text: `${where} contains no coverage records; check its format and that the tests wrote it.`
+      });
+    } else if (missing.reason === "coverage-format-unsupported") {
+      const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${missing.coverageFile}`;
+      messages.push({
+        level,
+        code: "COVERAGE_FORMAT_UNSUPPORTED",
+        text: `${where} is not in a recognized coverage format; pharn-ci reads lcov and Cobertura XML.`
+      });
+    } else if (missing.reason === "coverage-paths-unmatched") {
+      messages.push({ level, code: "COVERAGE_PATHS_UNMATCHED", text: unmatchedText(missing) });
+    } else {
+      messages.push({
+        level,
+        code: "DIFF_UNAVAILABLE",
+        text: `Diff coverage was not computed: ${missing.detail}`
+      });
+    }
+  } else if (dc.coverableLines === 0) {
+    messages.push({
+      level: "info",
+      code: "NO_COVERABLE_CHANGES",
+      text: "No added lines are tracked by the coverage report; nothing to measure."
+    });
+  } else if (!dc.meetsThreshold && dc.threshold !== null) {
+    messages.push({
+      level: "error",
+      code: "DIFF_COVERAGE_BELOW_THRESHOLD",
+      text: `Diff coverage ${formatNumber(dc.percent ?? 0)}% is below the threshold of ${formatNumber(dc.threshold)}%.`
+    });
+  } else if (dc.threshold === null || dc.threshold === 0) {
+    const why = dc.threshold === null ? "no threshold is set" : "a threshold of 0% accepts any coverage";
+    messages.push({
+      level: "info",
+      code: "DIFF_COVERAGE_UNGATED",
+      text: `Diff coverage ${formatNumber(dc.percent ?? 0)}% is not gated: ${why}.`
+    });
+  }
+  const untracked = input.untrackedCoveragePaths ?? 0;
+  if (untracked > 0) {
+    const subject = untracked === 1 ? "1 file path in the coverage report is not a tracked file in the repository; its coverage is not used." : `${untracked} file paths in the coverage report are not tracked files in the repository; their coverage is not used.`;
+    messages.push({ level: "info", code: "COVERAGE_PATHS_PARTIALLY_UNMATCHED", text: subject });
+  }
+  const skippedLines = input.skippedCoverageLines ?? 0;
+  if (skippedLines > 0) {
+    const subject = skippedLines === 1 ? "1 malformed coverage record was skipped (an lcov DA record or Cobertura line with an invalid line number or hit count, or a DA record outside an SF record), so diff coverage leaves it out; check that the coverage reporter finished writing the file." : `${skippedLines} malformed coverage records were skipped (lcov DA records or Cobertura lines with an invalid line number or hit count, or DA records outside an SF record), so diff coverage leaves them out; check that the coverage reporter finished writing the file.`;
+    messages.push({ level: "info", code: "COVERAGE_LINES_SKIPPED", text: subject });
+  }
+  if (input.changedConfigPaths !== void 0 && input.changedConfigPaths.length > 0) {
+    messages.push({
+      level: "warn",
+      code: "CONFIG_CHANGED_IN_DIFF",
+      text: `This change edits files that configure this check: ${pathList(input.changedConfigPaths)}. Review them before trusting the verdict.`
+    });
+  }
+  if (input.trackedCoverageFile !== void 0) {
+    messages.push({
+      level: "warn",
+      code: "COVERAGE_FILE_TRACKED",
+      text: `The coverage file ${codeSpan(input.trackedCoverageFile)} is tracked in the repository, so the change under review can supply its own coverage numbers.`
+    });
+  }
+  if (input.binaryCoveredPaths !== void 0 && input.binaryCoveredPaths.length > 0) {
+    messages.push({
+      level: "warn",
+      code: "DIFF_BINARY_COVERED_FILE",
+      text: `The diff shows ${pathList(input.binaryCoveredPaths)} as binary, so their added lines were not measured; check .gitattributes for -diff or binary on source files.`
+    });
+  }
+  if (input.deletedTestFiles !== void 0 && input.deletedTestFiles.length > 0) {
+    messages.push({
+      level: "info",
+      code: "TEST_FILES_DELETED",
+      text: `This change deletes or renames away test files: ${pathList(input.deletedTestFiles)}. Check that the tests they held were meant to go before trusting the result.`
+    });
+  }
+  const testIntegrity = input.testIntegrity;
+  if (testIntegrity?.ignoredConfig !== void 0) {
+    messages.push({
+      level: "warn",
+      code: "TEST_INTEGRITY_MODE_IGNORED",
+      text: `.pharn/ci.yml sets test_integrity.mode to ${testIntegrity.ignoredConfig}, which is looser than ${testIntegrity.mode}, so ${testIntegrity.mode} applies: the config can only make the check stricter.`
+    });
+  }
+  if (testIntegrity?.mode === "off") {
+    messages.push({
+      level: "info",
+      code: "TEST_INTEGRITY_OFF",
+      text: "Test integrity is off for this run, so no test-integrity signal is checked."
+    });
+  }
+  const signals = [...input.testIntegritySignals ?? []];
+  messages.push(...testIntegritySignalMessages(signals));
+  if (input.agentSetup.files.length === 0) {
+    const required = input.requireAgentSetup === true;
+    const found = "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found";
+    messages.push({
+      level: required ? "error" : "info",
+      code: "NO_AGENT_SETUP_FILES",
+      text: required ? `${found}, and agent setup is required by config.` : `${found}.`
+    });
+  }
+  if (missingTools.length > 0) {
+    messages.push({
+      level: input.requireAgentSetup === true ? "error" : "warn",
+      code: "AGENT_SETUP_EXPECTED_MISSING",
+      text: `No agent setup file configures the expected tool${missingTools.length === 1 ? "" : "s"}: ${missingTools.join(", ")}.`
+    });
+  }
+  const empty = input.emptyAgentSetupFiles ?? [];
+  const firstEmpty = empty[0];
+  if (firstEmpty !== void 0) {
+    const text = empty.length === 1 ? `1 agent setup file is empty: ${codeSpan(firstEmpty)}.` : `${empty.length} agent setup files are empty, for example ${codeSpan(firstEmpty)}.`;
+    messages.push({ level: "warn", code: "AGENT_SETUP_FILE_EMPTY", text });
+  }
+  return {
+    schemaVersion: 2,
+    tool: { name: "pharn-ci", version: input.version },
+    verdict: verdictOf(messages),
+    diffCoverage: dc === null ? null : {
+      ...input.coverageFormat === void 0 ? {} : { format: input.coverageFormat },
+      percent: dc.percent,
+      threshold: dc.threshold,
+      coveredLines: dc.coveredLines,
+      coverableLines: dc.coverableLines,
+      files: dc.files,
+      ...dc.excludedFiles !== void 0 && dc.excludedFiles.length > 0 ? { excludedFiles: dc.excludedFiles } : {}
+    },
+    agentSetup: {
+      files: input.agentSetup.files,
+      summary: summary2,
+      ...expected.length > 0 ? { missing: missingTools } : {}
+    },
+    messages,
+    testIntegrity: {
+      ...emptyTestIntegrity(),
+      ...testIntegrity === void 0 ? {} : { mode: testIntegrity.mode, source: testIntegrity.source },
+      verdict: signals.some((s) => s.severity === "block") ? "fail" : signals.some((s) => s.severity === "warn") ? "warn" : "pass",
+      signals
+    },
+    ...input.meta === void 0 ? {} : { meta: input.meta }
+  };
+}
+function unmatchedText(missing) {
+  const head = missing.total === 1 ? "None of the 1 file path in the coverage report is a tracked file in the repository" : `None of the ${missing.total} file paths in the coverage report are tracked files in the repository`;
+  const hint = missing.suggestedRoot === null ? "Write coverage paths relative to the repository root or as absolute paths under the checkout, or set coverage-root to the directory relative paths start from." : `The paths look relative to ${codeSpan(missing.suggestedRoot)}: set coverage-root: ${codeSpan(missing.suggestedRoot)} (coverage.root in .pharn/ci.yml, --coverage-root in the CLI).`;
+  return `${head} (for example ${codeSpan(missing.example)}), so diff coverage was not measured. ${hint}`;
+}
+var MAX_NAMED_PATHS = 5;
+function pathList(paths) {
+  const named = paths.slice(0, MAX_NAMED_PATHS).map(codeSpan).join(", ");
+  const more = paths.length - MAX_NAMED_PATHS;
+  return more > 0 ? `${named} and ${more} more` : named;
+}
+function codeSpan(text) {
+  const safe = text.replace(CONTROL_CHARS, "\uFFFD").replace(/`/g, "'");
+  return `\`${safe}\``;
+}
+var CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
+function verdictOf(messages) {
+  if (messages.some((m) => m.level === "error")) return "fail";
+  if (messages.some((m) => m.level === "warn")) return "warn";
+  return "pass";
+}
+function formatNumber(n) {
+  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0$/, "");
+}
+
+// ../core/src/acceptLabel.ts
+var DEFAULT_ACCEPT_LABEL = "pharn/accepted";
+var MAX_ACCEPT_LABEL_LENGTH = 50;
+var GITHUB_LOGIN = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/;
+var CONTROL = /[\u0000-\u001f\u007f-\u009f]/;
+var INVALID_LABEL = "the accept-label input must be at most 50 characters and must not contain control characters";
+function validateAcceptLabel(raw) {
+  const label = raw.trim();
+  if (label === "") return { ok: true, label: DEFAULT_ACCEPT_LABEL };
+  if ([...label].length > MAX_ACCEPT_LABEL_LENGTH || CONTROL.test(label)) return { ok: false, error: INVALID_LABEL };
+  return { ok: true, label };
+}
+function isDefaultAcceptLabel(label) {
+  return sameName(label, DEFAULT_ACCEPT_LABEL);
+}
+function sameName(a, b) {
+  return a.toLowerCase() === b.toLowerCase();
+}
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function carriesAcceptLabel(labels, label) {
+  if (!Array.isArray(labels)) return "unreadable";
+  let found = false;
+  for (const entry of labels) {
+    if (!isRecord(entry) || typeof entry.name !== "string") return "unreadable";
+    if (sameName(entry.name, label)) found = true;
+  }
+  return found;
+}
+function decideAcceptLabel(input) {
+  const { label, authorLogin, events } = input;
+  if (!Array.isArray(events)) return { honoured: false, reason: "unreadable" };
+  let newest;
+  for (let i = events.length - 1; i >= 0; i--) {
+    const event = events[i];
+    if (!isRecord(event) || event.event !== "labeled") continue;
+    const named = event.label;
+    if (isRecord(named) && typeof named.name === "string" && sameName(named.name, label)) {
+      newest = event;
+      break;
+    }
+  }
+  if (newest === void 0) return { honoured: false, reason: "no-event" };
+  const actor = newest.actor;
+  if (!isRecord(actor)) return { honoured: false, reason: "unreadable" };
+  if (typeof actor.type !== "string") return { honoured: false, reason: "unreadable" };
+  if (actor.type !== "User") return { honoured: false, reason: "not-user" };
+  const login = actor.login;
+  if (typeof login !== "string" || !GITHUB_LOGIN.test(login)) return { honoured: false, reason: "unreadable" };
+  if (sameName(login, authorLogin)) return { honoured: false, reason: "author" };
+  return { honoured: true, by: login };
+}
+function withAcceptLabel(report, label) {
+  if (isDefaultAcceptLabel(label)) return report;
+  return { ...report, testIntegrity: { ...report.testIntegrity, acceptLabel: label } };
+}
+var TEST_INTEGRITY_SIGNAL_CODE = /^TEST_INTEGRITY_TI\d\d$/;
+function isSignalMessage(message) {
+  return TEST_INTEGRITY_SIGNAL_CODE.test(message.code);
+}
+function insertAfterSignalMessages(messages, added) {
+  let last = -1;
+  messages.forEach((m, i) => {
+    if (isSignalMessage(m)) last = i;
+  });
+  if (last === -1) return [...messages, ...added];
+  return [...messages.slice(0, last + 1), ...added, ...messages.slice(last + 1)];
+}
+function signalsVerdict(signals) {
+  if (signals.some((s) => s.severity === "block")) return "fail";
+  if (signals.some((s) => s.severity === "warn")) return "warn";
+  return "pass";
+}
+function acceptTestIntegrity(report, accepted) {
+  const signals = report.testIntegrity.signals.map(
+    (s) => s.severity === "block" ? { ...s, severity: "warn" } : s
+  );
+  const accepting = {
+    level: "info",
+    code: "TEST_INTEGRITY_ACCEPTED",
+    text: `The accept label "${accepted.label}" was applied by ${accepted.by}, who is not the PR author, so the block findings above are warnings.`
+  };
+  const rebuilt = testIntegritySignalMessages(signals);
+  const messages = [];
+  let placed = false;
+  for (const message of report.messages) {
+    if (!isSignalMessage(message)) {
+      messages.push(message);
+      continue;
+    }
+    if (placed) continue;
+    messages.push(...rebuilt, accepting);
+    placed = true;
+  }
+  if (!placed) messages.push(...rebuilt, accepting);
+  return {
+    ...report,
+    verdict: verdictOf(messages),
+    messages,
+    testIntegrity: {
+      ...report.testIntegrity,
+      verdict: signalsVerdict(signals),
+      accepted: { label: accepted.label, by: accepted.by },
+      signals
+    }
+  };
+}
+var IGNORED_BECAUSE = {
+  author: "it was applied by the PR author, and a reviewer other than the author must apply it",
+  "not-user": "it was not applied by a user account",
+  "no-event": "no labeling event for it was found",
+  unreadable: "the pull request or its labeling events could not be read"
+};
+function ignoreAcceptLabel(report, label, reason) {
+  const ignored = {
+    level: "warn",
+    code: "TEST_INTEGRITY_ACCEPT_IGNORED",
+    text: `The accept label "${label}" was ignored: ${IGNORED_BECAUSE[reason]}.`
+  };
+  const messages = insertAfterSignalMessages(report.messages, [ignored]);
+  return { ...report, verdict: verdictOf(messages), messages };
+}
+
+// ../core/src/coverage/types.ts
+var COVERAGE_FORMAT_SELECTIONS = ["lcov", "cobertura", "auto"];
+
+// ../core/src/paths.ts
+function normalizePath(path, repoRoot) {
+  let p = toPosix(path.trim());
+  const root = normalizeRoot(repoRoot);
+  if (root !== "" && startsWithPath(p, root)) {
+    p = p.slice(root.length + 1);
+  }
+  return p;
+}
+function normalizeRoot(repoRoot) {
+  if (!repoRoot) return "";
+  const root = toPosix(repoRoot.trim());
+  let end = root.length;
+  while (end > 0 && root[end - 1] === "/") end--;
+  return root.slice(0, end);
+}
+function foldForRoot(path, root) {
+  return isDriveRoot(root) ? path.toLowerCase() : path;
+}
+function isAbsolutePath(path) {
+  const first = path.charAt(0);
+  if (first === "/" || first === "\\") return true;
+  const separator = path.charAt(2);
+  return path.charAt(1) === ":" && (separator === "/" || separator === "\\") && isAsciiLetter(first);
+}
+function joinCoverageRoot(path, coverageRoot) {
+  if (coverageRoot === void 0 || coverageRoot === ".") return path;
+  return normalizePath(`${coverageRoot}/${path}`);
+}
+function isAsciiLetter(char) {
+  return char >= "A" && char <= "Z" || char >= "a" && char <= "z";
+}
+function toPosix(path) {
+  const slashed = path.replace(/\\/g, "/");
+  const drive = /^[A-Za-z]:\//.exec(slashed)?.[0] ?? "";
+  const absolute = drive !== "" || slashed.startsWith("/");
+  const rest = drive !== "" ? slashed.slice(drive.length) : slashed;
+  const out = [];
+  for (const segment of rest.split("/")) {
+    if (segment === "" || segment === ".") continue;
+    if (segment === ".." && out.length > 0 && out[out.length - 1] !== "..") {
+      out.pop();
+    } else if (segment === ".." && absolute) {
+    } else {
+      out.push(segment);
+    }
+  }
+  const prefix = drive !== "" ? drive.toUpperCase() : absolute ? "/" : "";
+  return prefix + out.join("/");
+}
+function startsWithPath(path, root) {
+  if (path.length <= root.length || path[root.length] !== "/") return false;
+  const head = path.slice(0, root.length);
+  return isDriveRoot(root) ? head.toLowerCase() === root.toLowerCase() : head === root;
+}
+function isDriveRoot(root) {
+  const first = root.charAt(0);
+  return first >= "A" && first <= "Z" && root.charAt(1) === ":" && root.charAt(2) === "/";
 }
 
 // ../core/src/testIntegrityMode.ts
@@ -25028,6 +25459,11 @@ function validateTestIntegrity(value) {
   if (typeof value !== "object" || Array.isArray(value)) throw new ConfigError(`"test_integrity" must be a mapping`);
   const testIntegrity = {};
   for (const [key, entry] of Object.entries(value)) {
+    if (key === "accept_label") {
+      throw new ConfigError(
+        `"test_integrity.accept_label" is not a setting: the accept label cannot be set in this file, because the change under review can edit it; set the accept-label input in the workflow instead`
+      );
+    }
     if (entry === null) continue;
     switch (key) {
       case "mode":
@@ -25999,292 +26435,6 @@ function binaryCoveredPaths(diff, coverage) {
     else if (coverage.has(file.oldPath)) found.add(file.oldPath);
   }
   return [...found].sort(byCodeUnit);
-}
-
-// ../core/src/coverageDiscovery.ts
-var COVERAGE_DISCOVERY_CANDIDATES = Object.freeze([
-  "coverage/lcov.info",
-  "lcov.info",
-  "coverage.xml",
-  "coverage/cobertura-coverage.xml",
-  "**/coverage.cobertura.xml"
-]);
-var GLOB_CANDIDATE = "**/coverage.cobertura.xml";
-var matchesGlobCandidate = compileGlob(GLOB_CANDIDATE);
-function inSkippedDirectory(path) {
-  return path.split("/").some((segment) => segment === ".git" || segment === "node_modules");
-}
-function codeUnitOrder(a, b) {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
-function chooseDiscoveredCoverage(paths) {
-  const present = new Set(paths);
-  const kinds = [];
-  for (const candidate of COVERAGE_DISCOVERY_CANDIDATES) {
-    if (candidate === GLOB_CANDIDATE) {
-      const matches = [...present].filter((path) => !inSkippedDirectory(path) && matchesGlobCandidate(path)).sort(codeUnitOrder);
-      if (matches.length > 0) kinds.push(matches);
-    } else if (present.has(candidate)) {
-      kinds.push([candidate]);
-    }
-  }
-  const [only] = kinds;
-  if (only === void 0) return { kind: "not-found" };
-  if (kinds.length === 1) return { kind: "found", files: only };
-  return { kind: "ambiguous", found: kinds.flat() };
-}
-function coverageDiscoveryLine(path) {
-  return `coverage: ${path} (auto-discovered)`;
-}
-function coverageDiscoveryAmbiguousText(found, howToSet) {
-  return `found more than one coverage report (${found.join(", ")}), so none was chosen: ${howToSet}`;
-}
-function coverageNotDiscoveredText() {
-  return `No coverage report was found. Looked for: ${COVERAGE_DISCOVERY_CANDIDATES.join(", ")}. Set coverage.file in .pharn/ci.yml, the coverage-file input or --coverage to point at your report.`;
-}
-function coverageDiscoveryLimitText(limit) {
-  return limit === "files" ? "coverage auto-discovery matched more than 1,000 files; set the coverage path (coverage.file, the coverage-file input or --coverage)" : "coverage auto-discovery: the walk limit was exceeded (more than 100,000 directory entries visited in one run); set the coverage path (coverage.file, the coverage-file input or --coverage)";
-}
-
-// ../core/src/report.ts
-function emptyTestIntegrity() {
-  return { mode: "warn", source: "default", verdict: "pass", signals: [], languages: [] };
-}
-var SIGNAL_MESSAGES = [
-  {
-    id: "TI01",
-    code: "TEST_INTEGRITY_TI01",
-    text: (top, paths) => top === "info" ? `This change deletes test files together with the code they cover or replaces them: ${paths}.` : `This change deletes or renames away test files that defined tests, with nothing in the change that accounts for them: ${paths}. Check that those tests were meant to go.`
-  },
-  {
-    id: "TI03",
-    code: "TEST_INTEGRITY_TI03",
-    text: (_top, paths) => `This change skips tests or marks them as expected to fail: ${paths}. Check that each skip was meant.`
-  },
-  {
-    id: "TI04",
-    code: "TEST_INTEGRITY_TI04",
-    text: (_top, paths) => `This change adds \`.only\`, \`fit\` or \`fdescribe\`, which runs only the marked tests: ${paths}. Remove the markers before merging.`
-  },
-  {
-    id: "TI10",
-    code: "TEST_INTEGRITY_TI10",
-    text: (_top, paths) => `This change weakens a test script in package.json, so the test run can pass without the tests passing: ${paths}. Check that the change was meant.`
-  },
-  {
-    id: "TI11",
-    code: "TEST_INTEGRITY_TI11",
-    text: (_top, paths) => `This change edits a workflow so that CI may run fewer tests or ignore their failures: ${paths}. Check that the removed step or trigger, the reduced matrix or the added condition was meant.`
-  },
-  {
-    id: "TI13",
-    code: "TEST_INTEGRITY_TI13",
-    text: (_top, paths) => `This change adds comments that leave code out of coverage: ${paths}. Check that each was meant.`
-  },
-  {
-    id: "TI14",
-    code: "TEST_INTEGRITY_TI14",
-    text: (_top, paths) => `This change lowers the coverage threshold or adds a coverage exclusion in the check config: ${paths}. Check that the looser setting was meant before trusting the result.`
-  }
-];
-function buildReport(input) {
-  const messages = [];
-  const dc = input.diffCoverage;
-  const summary2 = summarizeAgentSetup(input.agentSetup.files);
-  const expected = input.expectedAgentTools ?? [];
-  const missingTools = AGENT_TOOLS.filter((tool) => expected.includes(tool) && !summary2.tools.includes(tool)).sort();
-  if (dc === null) {
-    const missing = input.missing ?? { reason: "diff-unavailable", detail: "no diff coverage data" };
-    const level = input.threshold === null ? "warn" : "error";
-    if (missing.reason === "coverage-file-missing") {
-      messages.push({
-        level,
-        code: "COVERAGE_FILE_MISSING",
-        text: `Coverage file not found: ${missing.coverageFile}`
-      });
-    } else if (missing.reason === "coverage-not-discovered") {
-      messages.push({ level, code: "COVERAGE_FILE_MISSING", text: coverageNotDiscoveredText() });
-    } else if (missing.reason === "coverage-file-empty") {
-      const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${missing.coverageFile}`;
-      messages.push({
-        level,
-        code: "COVERAGE_FILE_EMPTY",
-        text: `${where} contains no coverage records; check its format and that the tests wrote it.`
-      });
-    } else if (missing.reason === "coverage-format-unsupported") {
-      const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${missing.coverageFile}`;
-      messages.push({
-        level,
-        code: "COVERAGE_FORMAT_UNSUPPORTED",
-        text: `${where} is not in a recognized coverage format; pharn-ci reads lcov and Cobertura XML.`
-      });
-    } else if (missing.reason === "coverage-paths-unmatched") {
-      messages.push({ level, code: "COVERAGE_PATHS_UNMATCHED", text: unmatchedText(missing) });
-    } else {
-      messages.push({
-        level,
-        code: "DIFF_UNAVAILABLE",
-        text: `Diff coverage was not computed: ${missing.detail}`
-      });
-    }
-  } else if (dc.coverableLines === 0) {
-    messages.push({
-      level: "info",
-      code: "NO_COVERABLE_CHANGES",
-      text: "No added lines are tracked by the coverage report; nothing to measure."
-    });
-  } else if (!dc.meetsThreshold && dc.threshold !== null) {
-    messages.push({
-      level: "error",
-      code: "DIFF_COVERAGE_BELOW_THRESHOLD",
-      text: `Diff coverage ${formatNumber(dc.percent ?? 0)}% is below the threshold of ${formatNumber(dc.threshold)}%.`
-    });
-  } else if (dc.threshold === null || dc.threshold === 0) {
-    const why = dc.threshold === null ? "no threshold is set" : "a threshold of 0% accepts any coverage";
-    messages.push({
-      level: "info",
-      code: "DIFF_COVERAGE_UNGATED",
-      text: `Diff coverage ${formatNumber(dc.percent ?? 0)}% is not gated: ${why}.`
-    });
-  }
-  const untracked = input.untrackedCoveragePaths ?? 0;
-  if (untracked > 0) {
-    const subject = untracked === 1 ? "1 file path in the coverage report is not a tracked file in the repository; its coverage is not used." : `${untracked} file paths in the coverage report are not tracked files in the repository; their coverage is not used.`;
-    messages.push({ level: "info", code: "COVERAGE_PATHS_PARTIALLY_UNMATCHED", text: subject });
-  }
-  const skippedLines = input.skippedCoverageLines ?? 0;
-  if (skippedLines > 0) {
-    const subject = skippedLines === 1 ? "1 malformed coverage record was skipped (an lcov DA record or Cobertura line with an invalid line number or hit count, or a DA record outside an SF record), so diff coverage leaves it out; check that the coverage reporter finished writing the file." : `${skippedLines} malformed coverage records were skipped (lcov DA records or Cobertura lines with an invalid line number or hit count, or DA records outside an SF record), so diff coverage leaves them out; check that the coverage reporter finished writing the file.`;
-    messages.push({ level: "info", code: "COVERAGE_LINES_SKIPPED", text: subject });
-  }
-  if (input.changedConfigPaths !== void 0 && input.changedConfigPaths.length > 0) {
-    messages.push({
-      level: "warn",
-      code: "CONFIG_CHANGED_IN_DIFF",
-      text: `This change edits files that configure this check: ${pathList(input.changedConfigPaths)}. Review them before trusting the verdict.`
-    });
-  }
-  if (input.trackedCoverageFile !== void 0) {
-    messages.push({
-      level: "warn",
-      code: "COVERAGE_FILE_TRACKED",
-      text: `The coverage file ${codeSpan(input.trackedCoverageFile)} is tracked in the repository, so the change under review can supply its own coverage numbers.`
-    });
-  }
-  if (input.binaryCoveredPaths !== void 0 && input.binaryCoveredPaths.length > 0) {
-    messages.push({
-      level: "warn",
-      code: "DIFF_BINARY_COVERED_FILE",
-      text: `The diff shows ${pathList(input.binaryCoveredPaths)} as binary, so their added lines were not measured; check .gitattributes for -diff or binary on source files.`
-    });
-  }
-  if (input.deletedTestFiles !== void 0 && input.deletedTestFiles.length > 0) {
-    messages.push({
-      level: "info",
-      code: "TEST_FILES_DELETED",
-      text: `This change deletes or renames away test files: ${pathList(input.deletedTestFiles)}. Check that the tests they held were meant to go before trusting the result.`
-    });
-  }
-  const testIntegrity = input.testIntegrity;
-  if (testIntegrity?.ignoredConfig !== void 0) {
-    messages.push({
-      level: "warn",
-      code: "TEST_INTEGRITY_MODE_IGNORED",
-      text: `.pharn/ci.yml sets test_integrity.mode to ${testIntegrity.ignoredConfig}, which is looser than ${testIntegrity.mode}, so ${testIntegrity.mode} applies: the config can only make the check stricter.`
-    });
-  }
-  if (testIntegrity?.mode === "off") {
-    messages.push({
-      level: "info",
-      code: "TEST_INTEGRITY_OFF",
-      text: "Test integrity is off for this run, so no test-integrity signal is checked."
-    });
-  }
-  const signals = [...input.testIntegritySignals ?? []];
-  for (const { id, code: code2, text } of SIGNAL_MESSAGES) {
-    const own = signals.filter((signal) => signal.id === id);
-    if (own.length === 0) continue;
-    const top = own.some((s) => s.severity === "block") ? "block" : own.some((s) => s.severity === "warn") ? "warn" : "info";
-    const named = [...new Set(own.filter((s) => s.severity === top).map((s) => s.path))];
-    messages.push({
-      level: top === "block" ? "error" : top === "warn" ? "warn" : "info",
-      code: code2,
-      text: text(top, pathList(named))
-    });
-  }
-  if (input.agentSetup.files.length === 0) {
-    const required = input.requireAgentSetup === true;
-    const found = "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found";
-    messages.push({
-      level: required ? "error" : "info",
-      code: "NO_AGENT_SETUP_FILES",
-      text: required ? `${found}, and agent setup is required by config.` : `${found}.`
-    });
-  }
-  if (missingTools.length > 0) {
-    messages.push({
-      level: input.requireAgentSetup === true ? "error" : "warn",
-      code: "AGENT_SETUP_EXPECTED_MISSING",
-      text: `No agent setup file configures the expected tool${missingTools.length === 1 ? "" : "s"}: ${missingTools.join(", ")}.`
-    });
-  }
-  const empty = input.emptyAgentSetupFiles ?? [];
-  const firstEmpty = empty[0];
-  if (firstEmpty !== void 0) {
-    const text = empty.length === 1 ? `1 agent setup file is empty: ${codeSpan(firstEmpty)}.` : `${empty.length} agent setup files are empty, for example ${codeSpan(firstEmpty)}.`;
-    messages.push({ level: "warn", code: "AGENT_SETUP_FILE_EMPTY", text });
-  }
-  return {
-    schemaVersion: 2,
-    tool: { name: "pharn-ci", version: input.version },
-    verdict: verdictOf(messages),
-    diffCoverage: dc === null ? null : {
-      ...input.coverageFormat === void 0 ? {} : { format: input.coverageFormat },
-      percent: dc.percent,
-      threshold: dc.threshold,
-      coveredLines: dc.coveredLines,
-      coverableLines: dc.coverableLines,
-      files: dc.files,
-      ...dc.excludedFiles !== void 0 && dc.excludedFiles.length > 0 ? { excludedFiles: dc.excludedFiles } : {}
-    },
-    agentSetup: {
-      files: input.agentSetup.files,
-      summary: summary2,
-      ...expected.length > 0 ? { missing: missingTools } : {}
-    },
-    messages,
-    testIntegrity: {
-      ...emptyTestIntegrity(),
-      ...testIntegrity === void 0 ? {} : { mode: testIntegrity.mode, source: testIntegrity.source },
-      verdict: signals.some((s) => s.severity === "block") ? "fail" : signals.some((s) => s.severity === "warn") ? "warn" : "pass",
-      signals
-    },
-    ...input.meta === void 0 ? {} : { meta: input.meta }
-  };
-}
-function unmatchedText(missing) {
-  const head = missing.total === 1 ? "None of the 1 file path in the coverage report is a tracked file in the repository" : `None of the ${missing.total} file paths in the coverage report are tracked files in the repository`;
-  const hint = missing.suggestedRoot === null ? "Write coverage paths relative to the repository root or as absolute paths under the checkout, or set coverage-root to the directory relative paths start from." : `The paths look relative to ${codeSpan(missing.suggestedRoot)}: set coverage-root: ${codeSpan(missing.suggestedRoot)} (coverage.root in .pharn/ci.yml, --coverage-root in the CLI).`;
-  return `${head} (for example ${codeSpan(missing.example)}), so diff coverage was not measured. ${hint}`;
-}
-var MAX_NAMED_PATHS = 5;
-function pathList(paths) {
-  const named = paths.slice(0, MAX_NAMED_PATHS).map(codeSpan).join(", ");
-  const more = paths.length - MAX_NAMED_PATHS;
-  return more > 0 ? `${named} and ${more} more` : named;
-}
-function codeSpan(text) {
-  const safe = text.replace(CONTROL_CHARS, "\uFFFD").replace(/`/g, "'");
-  return `\`${safe}\``;
-}
-var CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
-function verdictOf(messages) {
-  if (messages.some((m) => m.level === "error")) return "fail";
-  if (messages.some((m) => m.level === "warn")) return "warn";
-  return "pass";
-}
-function formatNumber(n) {
-  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0$/, "");
 }
 
 // ../core/src/setup/scan.ts
@@ -27794,6 +27944,10 @@ var COVERAGE_FORMAT_LABEL = { lcov: "lcov", cobertura: "cobertura" };
 var MAX_UNCOVERED_RANGES = 20;
 var LEVEL_ICON = { info: "\u2139\uFE0F", warn: "\u26A0\uFE0F", error: "\u274C" };
 var FULL_REPORT_NOTE = "_Full list in report.json: the Action's `report-path` output, or `pharn-ci check --format json`._";
+function acceptLabelOf(report) {
+  const configured = report.testIntegrity.acceptLabel;
+  return typeof configured === "string" && configured !== "" ? configured : DEFAULT_ACCEPT_LABEL;
+}
 var MESSAGE_HINTS = {
   DIFF_COVERAGE_BELOW_THRESHOLD: "Add tests that exercise the uncovered lines listed in the table above.",
   DIFF_COVERAGE_UNGATED: "To gate diff coverage, set a threshold above 0 (`coverage.threshold`, `threshold` or `--threshold`).",
@@ -27815,40 +27969,56 @@ var MESSAGE_HINTS = {
   TEST_INTEGRITY_MODE_IGNORED: "Set the mode with the `test-integrity` input in the workflow; `test_integrity.mode` in `.pharn/ci.yml` can only make the check stricter, so remove the looser value.",
   TEST_INTEGRITY_OFF: "Set the `test-integrity` input to `warn` or `block` in the workflow to check for weakened tests.",
   TEST_INTEGRITY_TI01: "Restore the deleted tests, or say in the PR why they go so a reviewer can confirm it.",
-  TEST_INTEGRITY_TI03: "A reviewer must decide whether each skipped test may stay, for example one that fails in CI; the accept label will record that sign-off once it ships.",
+  TEST_INTEGRITY_TI03: (label) => `A reviewer must decide whether each skipped test may stay, for example one that fails in CI; a reviewer who is not the PR author records that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI04: "Remove the marker so the whole suite runs, or say in the PR why only the marked tests should run.",
-  TEST_INTEGRITY_TI10: "Restore the test script, or say in the PR why it changes so a reviewer can confirm it; the accept label will record a reviewer's sign-off once it ships.",
-  TEST_INTEGRITY_TI13: "Write a test for the code in place of the ignore comment, or say in the PR why it cannot be tested; the accept label will record a reviewer's sign-off once it ships.",
+  TEST_INTEGRITY_TI10: (label) => `Restore the test script, or say in the PR why it changes so a reviewer can confirm it; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
+  TEST_INTEGRITY_TI13: (label) => `Write a test for the code in place of the ignore comment, or say in the PR why it cannot be tested; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI11: "Restore the test step or trigger, or say in the PR why CI stops running these tests so a reviewer can confirm it.",
-  TEST_INTEGRITY_TI14: "Restore the threshold or the exclusions, or say in the PR why they change so a reviewer can confirm it."
+  TEST_INTEGRITY_TI14: "Restore the threshold or the exclusions, or say in the PR why they change so a reviewer can confirm it.",
+  TEST_INTEGRITY_ACCEPTED: "A reviewer other than the PR author signed off, so the block findings are warnings. The sign-off belongs to the pull request, not to a commit: remove the label if a later push should be judged again.",
+  TEST_INTEGRITY_ACCEPT_IGNORED: "The block findings stand. Fix them, or ask a reviewer who is not the PR author to apply the label; it counts only when a user account other than the author applied it last."
 };
-var SIGNAL_HINTS = {
-  TI01: MESSAGE_HINTS.TEST_INTEGRITY_TI01,
-  TI03: MESSAGE_HINTS.TEST_INTEGRITY_TI03,
-  TI04: MESSAGE_HINTS.TEST_INTEGRITY_TI04,
-  TI10: MESSAGE_HINTS.TEST_INTEGRITY_TI10,
-  TI11: MESSAGE_HINTS.TEST_INTEGRITY_TI11,
-  TI13: MESSAGE_HINTS.TEST_INTEGRITY_TI13,
-  TI14: MESSAGE_HINTS.TEST_INTEGRITY_TI14
-};
+function hintFor(code2, label) {
+  if (!Object.hasOwn(MESSAGE_HINTS, code2)) return void 0;
+  const hint = MESSAGE_HINTS[code2];
+  return typeof hint === "function" ? hint(labelSpan(label)) : hint;
+}
+function labelSpan(text) {
+  const safe = text.replace(CONTROL_CHARS2, "\uFFFD");
+  const longest = Math.max(0, ...(safe.match(/`+/g) ?? []).map((run2) => run2.length));
+  const fence = "`".repeat(longest + 1);
+  const pad = /^[` ]|[` ]$/.test(safe) ? " " : "";
+  return `${fence}${pad}${safe}${pad}${fence}`;
+}
+var SIGNAL_HINT_IDS = /* @__PURE__ */ new Set(["TI01", "TI03", "TI04", "TI10", "TI11", "TI13", "TI14"]);
+function signalHint(id, label) {
+  return SIGNAL_HINT_IDS.has(id) ? hintFor(`TEST_INTEGRITY_${id}`, label) : void 0;
+}
 var MAX_FINDINGS = 20;
 var SEVERITY_ICON = { block: LEVEL_ICON.error, warn: LEVEL_ICON.warn, info: LEVEL_ICON.info };
 function testIntegrityLines(report) {
   const { mode, signals } = report.testIntegrity;
-  if (signals.length === 0) {
-    return [mode === "off" ? "Test integrity is off for this run." : `No test-integrity findings (mode: ${mode}).`];
-  }
+  const label = acceptLabelOf(report);
   const lines = [];
-  for (const signal of signals.slice(0, MAX_FINDINGS)) {
-    const location = signal.line === null ? code(signal.path) : code(`${signal.path}:${signal.line}`);
-    lines.push(
-      `- ${SEVERITY_ICON[signal.severity] ?? LEVEL_ICON.info} **${inlineText(signal.id)}** ${location} \u2014 ${inlineText(signal.detail)}`
-    );
-    const hint = Object.hasOwn(SIGNAL_HINTS, signal.id) ? SIGNAL_HINTS[signal.id] : void 0;
-    if (hint !== void 0) lines.push(`  - Hint: ${hint}`);
+  if (signals.length === 0) {
+    lines.push(mode === "off" ? "Test integrity is off for this run." : `No test-integrity findings (mode: ${mode}).`);
+  } else {
+    for (const signal of signals.slice(0, MAX_FINDINGS)) {
+      const location = signal.line === null ? code(signal.path) : code(`${signal.path}:${signal.line}`);
+      lines.push(
+        `- ${SEVERITY_ICON[signal.severity] ?? LEVEL_ICON.info} **${inlineText(signal.id)}** ${location} \u2014 ${inlineText(signal.detail)}`
+      );
+      const hint = signalHint(signal.id, label);
+      if (hint !== void 0) lines.push(`  - Hint: ${hint}`);
+    }
+    if (signals.length > MAX_FINDINGS) {
+      lines.push(`- _\u2026and ${signals.length - MAX_FINDINGS} more findings in report.json._`);
+    }
   }
-  if (signals.length > MAX_FINDINGS) {
-    lines.push(`- _\u2026and ${signals.length - MAX_FINDINGS} more findings in report.json._`);
+  const accepted = report.testIntegrity.accepted;
+  if (typeof accepted === "object" && accepted !== null && typeof accepted.label === "string") {
+    const by = typeof accepted.by === "string" && GITHUB_LOGIN.test(accepted.by) ? ` by @${accepted.by}` : "";
+    lines.push("", `Accepted via label ${labelSpan(accepted.label)}${by}`);
   }
   return lines;
 }
@@ -27897,7 +28067,7 @@ function renderMarkdown(report, options = {}) {
   out.push("### \u{1F50D} Test integrity", "", ...testIntegrityLines(report), "");
   if (report.messages.length > 0) {
     out.push(`### \u{1F4AC} Messages (${report.messages.length})`, "");
-    for (const m of report.messages) out.push(renderMessage(m));
+    for (const m of report.messages) out.push(renderMessage(m, report));
     out.push("");
   }
   const setup = report.agentSetup.files;
@@ -27962,10 +28132,11 @@ function summaryLines(report) {
     ""
   ];
 }
-function renderMessage(m) {
+function renderMessage(m, report) {
   const line = `- ${LEVEL_ICON[m.level]} \`${m.code}\` ${inlineText(m.text)}`;
-  return Object.hasOwn(MESSAGE_HINTS, m.code) ? `${line}
-  - Hint: ${MESSAGE_HINTS[m.code]}` : line;
+  const hint = hintFor(m.code, acceptLabelOf(report));
+  return hint === void 0 ? line : `${line}
+  - Hint: ${hint}`;
 }
 function byCoverage(files) {
   return [...files].sort((a, b) => {
@@ -28298,6 +28469,55 @@ function withRequestPolicy(build, opts = {}) {
   };
 }
 
+// src/accept-label.ts
+var MAX_EVENT_PAGES = 10;
+async function applyAcceptLabel(deps, report, label, pullNumber) {
+  const labelled = withAcceptLabel(report, label);
+  if (pullNumber === void 0) return labelled;
+  const { mode, signals } = labelled.testIntegrity;
+  if (mode !== "block" || !signals.some((s) => s.severity === "block")) return labelled;
+  const ignored = (reason) => {
+    deps.info(`accept label ignored: ${reason}`);
+    return ignoreAcceptLabel(labelled, label, reason);
+  };
+  let signoff;
+  try {
+    signoff = await deps.api.getPullRequestSignoff(pullNumber);
+  } catch {
+    return ignored("unreadable");
+  }
+  const authorLogin = loginOf(signoff?.author);
+  if (authorLogin === void 0) return ignored("unreadable");
+  const carries = carriesAcceptLabel(signoff.labels, label);
+  if (carries === "unreadable") return ignored("unreadable");
+  if (!carries) return labelled;
+  const events = await readEvents(deps, pullNumber);
+  if (events === void 0) return ignored("unreadable");
+  const decision = decideAcceptLabel({ label, authorLogin, events });
+  if (!decision.honoured) return ignored(decision.reason);
+  deps.info("accept label honoured");
+  return acceptTestIntegrity(labelled, { label, by: decision.by });
+}
+function loginOf(user) {
+  if (typeof user !== "object" || user === null) return void 0;
+  const login = user.login;
+  return typeof login === "string" && login !== "" ? login : void 0;
+}
+async function readEvents(deps, pullNumber) {
+  const events = [];
+  try {
+    for (let page = 1; page <= MAX_EVENT_PAGES; page++) {
+      const res = await deps.api.listIssueEvents(pullNumber, page);
+      if (typeof res !== "object" || res === null || !Array.isArray(res.events)) return void 0;
+      events.push(...res.events);
+      if (res.hasNext !== true) return events;
+    }
+  } catch {
+    return void 0;
+  }
+  return void 0;
+}
+
 // src/pr-number.ts
 var PR_NUMBER = /^[1-9][0-9]{0,9}$/;
 var COMMIT_SHA = /^([0-9a-f]{40}|[0-9a-f]{64})$/i;
@@ -28450,6 +28670,8 @@ async function runUnsafe(deps) {
   if (pr && prNumber !== void 0 && prNumber !== pr.number) {
     throw new Error(`pr-number ${prNumber} is not the pull request of this event (#${pr.number})`);
   }
+  const acceptLabel = validateAcceptLabel(input("accept-label"));
+  if (!acceptLabel.ok) throw new Error(acceptLabel.error);
   const config = await loadConfig(input("config") || void 0, deps);
   const resolved = resolveInputs(
     config,
@@ -28527,7 +28749,9 @@ async function runUnsafe(deps) {
   };
   const meta = runMeta(deps.context, { baseRef: input("base-ref"), ...target === void 0 ? {} : { target } });
   if (meta === void 0) deps.info("run metadata is incomplete, so report.json carries no meta");
-  const report = check(meta === void 0 ? checkInput : { ...checkInput, meta });
+  const checked = check(meta === void 0 ? checkInput : { ...checkInput, meta });
+  const signoffNumber = deps.context.eventName === "pull_request" && pr ? pr.number : target?.number;
+  const report = await applyAcceptLabel(deps, checked, acceptLabel.label, signoffNumber);
   const summary2 = fitMarkdown(report, {
     prefix: "",
     note: SUMMARY_TRUNCATED_NOTE,
