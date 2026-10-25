@@ -13,6 +13,8 @@
 // regexes over the diff text: a deliberate approximation of TI01, TI03, TI04 and TI10 from the product
 // spec, not the Action's implementation. Output: <out>/hits.csv (one row per finding, with a short
 // excerpt for hand review) and <out>/summary.json (PRs scanned and PRs hit, per bot and signal).
+// Each diff request's path is checked against an anchored pattern right before it is sent, and a PR
+// whose path fails is skipped.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -80,7 +82,8 @@ function writeCached(path, text) {
 }
 
 // `owner/name` as GitHub allows it, and a PR number. Cache file names and API paths are built from
-// these, so anything else (from the API or from an edited sample.json) is skipped.
+// these, so anything else (from the API or from an edited sample.json) is skipped. The diff path is
+// checked again where it is used (diffPath), right before the request.
 const REPO = /^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/;
 const validPr = (pr) =>
   typeof pr?.repo === "string" &&
@@ -88,6 +91,15 @@ const validPr = (pr) =>
   !/^\.+$/.test(pr.repo.split("/")[1]) && // `.github` is a real name; `.` and `..` are not
   Number.isInteger(pr.number) &&
   pr.number > 0;
+
+// The diff request path for a PR, or null when it is not `/repos/<owner>/<name>/pulls/<number>`. The
+// check sits here, at the point of use, so a tampered sample.json cannot steer the request to another
+// endpoint (CodeQL js/file-access-to-http: file content reaching an HTTP request).
+function diffPath(pr) {
+  const path = `/repos/${pr.repo}/pulls/${pr.number}`;
+  if (/^\/repos\/[A-Za-z0-9-]+\/(?!\.+\/)[A-Za-z0-9._-]+\/pulls\/[1-9]\d*$/.test(path)) return path;
+  return null;
+}
 
 async function github(token, path, accept = "application/vnd.github+json") {
   for (let attempt = 1; ; attempt++) {
@@ -349,10 +361,14 @@ async function main() {
     const diffFile = join(diffDir, `${pr.repo.replace("/", "__")}__${pr.number}.diff`);
     let text = readCached(diffFile);
     if (text === null) {
-      const response = await github(token, `/repos/${pr.repo}/pulls/${pr.number}`, "application/vnd.github.diff");
-      text = response.ok ? await response.text() : "";
-      if (!response.ok || text.length > MAX_DIFF_BYTES) text = "";
-      writeCached(diffFile, text);
+      const path = diffPath(pr);
+      if (path === null) text = "";
+      else {
+        const response = await github(token, path, "application/vnd.github.diff");
+        text = response.ok ? await response.text() : "";
+        if (!response.ok || text.length > MAX_DIFF_BYTES) text = "";
+        writeCached(diffFile, text);
+      }
     }
     if ((index + 1) % 100 === 0) process.stderr.write(`  ${index + 1}/${prs.length} diffs\n`);
     if (text === "") {
