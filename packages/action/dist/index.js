@@ -31898,17 +31898,17 @@ ${lanes.join("\n")}
       function isLineBreak(ch) {
         return ch === 10 || ch === 13 || ch === 8232 || ch === 8233;
       }
-      function isDigit(ch) {
+      function isDigit2(ch) {
         return ch >= 48 && ch <= 57;
       }
       function isHexDigit(ch) {
-        return isDigit(ch) || ch >= 65 && ch <= 70 || ch >= 97 && ch <= 102;
+        return isDigit2(ch) || ch >= 65 && ch <= 70 || ch >= 97 && ch <= 102;
       }
       function isASCIILetter(ch) {
         return ch >= 65 && ch <= 90 || ch >= 97 && ch <= 122;
       }
       function isWordCharacter(ch) {
-        return isASCIILetter(ch) || isDigit(ch) || ch === 95;
+        return isASCIILetter(ch) || isDigit2(ch) || ch === 95;
       }
       function isOctalDigit(ch) {
         return ch >= 48 && ch <= 55;
@@ -32393,7 +32393,7 @@ ${lanes.join("\n")}
               start2 = pos;
               continue;
             }
-            if (isDigit(ch)) {
+            if (isDigit2(ch)) {
               allowSeparator = true;
               isPreviousTokenSeparator = false;
               pos++;
@@ -32502,7 +32502,7 @@ ${lanes.join("\n")}
         function scanDigits() {
           const start2 = pos;
           let isOctal = true;
-          while (isDigit(charCodeChecked(pos))) {
+          while (isDigit2(charCodeChecked(pos))) {
             if (!isOctalDigit(charCodeUnchecked(pos))) {
               isOctal = false;
             }
@@ -32664,7 +32664,7 @@ ${lanes.join("\n")}
           pos++;
           switch (ch) {
             case 48:
-              if (pos >= end || !isDigit(charCodeUnchecked(pos))) {
+              if (pos >= end || !isDigit2(charCodeUnchecked(pos))) {
                 return "\0";
               }
             // '\01', '\011'
@@ -32929,7 +32929,7 @@ ${lanes.join("\n")}
               continue;
             }
             separatorAllowed = true;
-            if (!isDigit(ch) || ch - 48 >= base) {
+            if (!isDigit2(ch) || ch - 48 >= base) {
               break;
             }
             value += text[pos];
@@ -33100,7 +33100,7 @@ ${lanes.join("\n")}
                 pos++;
                 return token = 41;
               case 46:
-                if (isDigit(charCodeUnchecked(pos + 1))) {
+                if (isDigit2(charCodeUnchecked(pos + 1))) {
                   scanNumber();
                   return token = 9;
                 }
@@ -33283,7 +33283,7 @@ ${lanes.join("\n")}
                 pos++;
                 return token = 32;
               case 63:
-                if (charCodeUnchecked(pos + 1) === 46 && !isDigit(charCodeUnchecked(pos + 2))) {
+                if (charCodeUnchecked(pos + 1) === 46 && !isDigit2(charCodeUnchecked(pos + 2))) {
                   return pos += 2, token = 29;
                 }
                 if (charCodeUnchecked(pos + 1) === 63) {
@@ -171102,13 +171102,13 @@ ${lanes.join("\n")}
           parseable: !!content,
           fileName,
           get,
-          has(dependencyName, inGroups) {
-            return !!get(dependencyName, inGroups);
+          has(dependencyName, inGroups2) {
+            return !!get(dependencyName, inGroups2);
           }
         };
-        function get(dependencyName, inGroups = 15) {
+        function get(dependencyName, inGroups2 = 15) {
           for (const [group2, deps] of dependencyGroups) {
-            if (deps && inGroups & group2) {
+            if (deps && inGroups2 & group2) {
               const dep = deps.get(dependencyName);
               if (dep !== void 0) {
                 return dep;
@@ -174104,11 +174104,11 @@ ${lanes.join("\n")}
         }
         return String.fromCharCode(ch).toLowerCase().charCodeAt(0);
       }
-      function isDigit2(ch) {
+      function isDigit22(ch) {
         return ch >= 48 && ch <= 57;
       }
-      function isWordChar(ch) {
-        return isUpperCaseLetter(ch) || isLowerCaseLetter(ch) || isDigit2(ch) || ch === 95 || ch === 36;
+      function isWordChar3(ch) {
+        return isUpperCaseLetter(ch) || isLowerCaseLetter(ch) || isDigit22(ch) || ch === 95 || ch === 36;
       }
       function breakPatternIntoTextChunks(pattern) {
         const result = [];
@@ -174116,7 +174116,7 @@ ${lanes.join("\n")}
         let wordLength = 0;
         for (let i = 0; i < pattern.length; i++) {
           const ch = pattern.charCodeAt(i);
-          if (isWordChar(ch)) {
+          if (isWordChar3(ch)) {
             if (wordLength === 0) {
               wordStart = i;
             }
@@ -174160,8 +174160,8 @@ ${lanes.join("\n")}
         const result = [];
         let wordStart = 0;
         for (let i = 1; i < identifier.length; i++) {
-          const lastIsDigit = isDigit2(identifier.charCodeAt(i - 1));
-          const currentIsDigit = isDigit2(identifier.charCodeAt(i));
+          const lastIsDigit = isDigit22(identifier.charCodeAt(i - 1));
+          const currentIsDigit = isDigit22(identifier.charCodeAt(i));
           const hasTransitionFromLowerToUpper = transitionFromLowerToUpper(identifier, word, i);
           const hasTransitionFromUpperToLower = word && transitionFromUpperToLower(identifier, i, wordStart);
           if (charIsPunctuation(identifier.charCodeAt(i - 1)) || charIsPunctuation(identifier.charCodeAt(i)) || lastIsDigit !== currentIsDigit || hasTransitionFromLowerToUpper || hasTransitionFromUpperToLower) {
@@ -235802,6 +235802,11 @@ var SIGNAL_MESSAGES = [
     text: (_top, paths, notListed) => `This change leaves tests with fewer assertions than they had, or none: ${paths}. Check that each test still checks what it did.${notListed}`
   },
   {
+    id: "TI08",
+    code: "TEST_INTEGRITY_TI08",
+    text: (_top, paths) => `This change regenerates or updates snapshots in bulk: ${paths}. Check that each new snapshot was reviewed.`
+  },
+  {
     id: "TI10",
     code: "TEST_INTEGRITY_TI10",
     text: (_top, paths) => `This change weakens a test script in package.json, so the test run can pass without the tests passing: ${paths}. Check that the change was meant.`
@@ -235820,6 +235825,16 @@ var SIGNAL_MESSAGES = [
     id: "TI14",
     code: "TEST_INTEGRITY_TI14",
     text: (_top, paths) => `This change lowers the coverage threshold or adds a coverage exclusion in the check config: ${paths}. Check that the looser setting was meant before trusting the result.`
+  },
+  {
+    id: "TI15",
+    code: "TEST_INTEGRITY_TI15",
+    text: (_top, paths) => `This change adds conditions in source that compare against values its tests add, so the code may special-case the tests: ${paths}. Check that each is real logic.`
+  },
+  {
+    id: "TI16",
+    code: "TEST_INTEGRITY_TI16",
+    text: (_top, paths) => `This change adds comments that switch off a linter or type checker in test files: ${paths}.`
   }
 ];
 function testIntegritySignalMessages(signals, options = {}) {
@@ -237604,6 +237619,16 @@ function isWorkflowFile(path) {
   const name = path.slice(WORKFLOWS_DIR2.length);
   return name !== "" && !name.includes("/") && (name.endsWith(".yml") || name.endsWith(".yaml"));
 }
+var PYTEST_CONFIG_NAMES = /* @__PURE__ */ new Set(["pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini"]);
+function isPytestConfigFile(path) {
+  return PYTEST_CONFIG_NAMES.has(path.slice(path.lastIndexOf("/") + 1));
+}
+function isSnapshotFile(path) {
+  const segments = path.split("/");
+  const basename = segments[segments.length - 1] ?? "";
+  if (basename.endsWith(".snap") || basename.endsWith(".ambr")) return true;
+  return segments.slice(0, -1).includes("__snapshots__");
+}
 var JS_TS_EXTENSIONS = /* @__PURE__ */ new Set(["js", "jsx", "ts", "tsx", "mjs", "cjs", "mts", "cts"]);
 function isPackageJsonFile(path) {
   return path.slice(path.lastIndexOf("/") + 1) === "package.json";
@@ -237618,7 +237643,7 @@ function coverageSourceLanguage(path) {
 }
 function keepSignalFileText(configPath, repoRoot) {
   const config = configRepoPath(configPath, repoRoot);
-  return (file) => keepTestFileText(file) || isWorkflowFile(file.path) || isWorkflowFile(file.oldPath) || isPackageJsonFile(file.path) || isPackageJsonFile(file.oldPath) || coverageSourceLanguage(file.path) !== null || coverageSourceLanguage(file.oldPath) !== null || config !== null && (file.path === config || file.oldPath === config);
+  return (file) => keepTestFileText(file) || isWorkflowFile(file.path) || isWorkflowFile(file.oldPath) || isPackageJsonFile(file.path) || isPackageJsonFile(file.oldPath) || isPytestConfigFile(file.path) || isPytestConfigFile(file.oldPath) || coverageSourceLanguage(file.path) !== null || coverageSourceLanguage(file.oldPath) !== null || config !== null && (file.path === config || file.oldPath === config);
 }
 function textCutSignalFiles(diff, configPath, repoRoot) {
   const config = configRepoPath(configPath, repoRoot);
@@ -237627,7 +237652,7 @@ function textCutSignalFiles(diff, configPath, repoRoot) {
     if (file.textTruncated !== true || file.status === "deleted" || file.binary === true) continue;
     const { path } = file;
     const test = isTestFile(path);
-    const read = test && testLanguage(path) !== null || isWorkflowFile(path) || isPackageJsonFile(path) && file.status !== "added" || !test && coverageSourceLanguage(path) !== null || config !== null && path === config;
+    const read = test && testLanguage(path) !== null || isWorkflowFile(path) || isPackageJsonFile(path) && file.status !== "added" || isPytestConfigFile(path) || !test && coverageSourceLanguage(path) !== null || config !== null && path === config;
     if (read) cut.add(path);
   }
   return [...cut].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
@@ -238959,6 +238984,21 @@ function detectTI05(match, mode) {
   return found;
 }
 
+// ../core/src/signals/detailText.ts
+function escapeUnit(text, index) {
+  const char = text.charAt(index);
+  if (char === "\\") return "\\\\";
+  if (char === '"') return '\\"';
+  const unit = text.charCodeAt(index);
+  if (unit >= 32 && unit <= 126) return char;
+  return `\\u${unit.toString(16).padStart(4, "0")}`;
+}
+function escapeDetailText(text) {
+  let out = "";
+  for (let i = 0; i < text.length; i++) out += escapeUnit(text, i);
+  return out;
+}
+
 // ../core/src/signals/ti10.ts
 var byCodeUnit9 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE3 = 20;
@@ -239014,6 +239054,9 @@ function parseScriptLine(text) {
   return i === text.length ? { key: key.value, value: value.value } : null;
 }
 var RUNS_MOCHA = /(?:^|[\s/])mocha(?:\s|$)/;
+function runsMocha(value) {
+  return RUNS_MOCHA.test(value);
+}
 function scanKinds(value) {
   const found = /* @__PURE__ */ new Set();
   const mocha = RUNS_MOCHA.test(value);
@@ -239108,6 +239151,165 @@ function detectTI10(diff, options) {
   );
 }
 
+// ../core/src/signals/ti08.ts
+var byCodeUnit10 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var MAX_SNAPSHOT_FILES = 10;
+var MIN_INLINE_REWRITES = 10;
+var MAX_FLAG_SIGNALS_PER_FILE = 20;
+var MAX_DETAIL3 = 300;
+var NAMED_PATHS = 3;
+var DASH = "-";
+var UPDATE_FLAGS = /* @__PURE__ */ new Set([
+  `${DASH}u`,
+  `${DASH}${DASH}update`,
+  `${DASH}${DASH}updateSnapshot`,
+  `${DASH}${DASH}update-snapshots`,
+  `${DASH}${DASH}snapshot-update`
+]);
+var SHORT_FLAG = `${DASH}u`;
+var PYTEST_FLAG = `${DASH}${DASH}snapshot-update`;
+var INLINE_CALL = ["toMatchInline", "Snapshot("].join("");
+var SCRIPT_DETAIL = "A test script now updates snapshots on every run, so a changed output rewrites its snapshot instead of failing the test.";
+var PYTEST_DETAIL = "The pytest configuration now updates snapshots on every run, so a changed output rewrites its snapshot instead of failing the test.";
+function countsAsChangedSnapshot(file) {
+  if (!isSnapshotFile(file.path)) return false;
+  if (file.status === "modified" || file.status === "deleted") return true;
+  return file.status === "renamed" && file.addedLines.length > 0;
+}
+function massChangeDetail(count, firstPaths) {
+  const tail = "; check that each new snapshot was reviewed rather than regenerated.";
+  const head = `${count} snapshot files were changed in this change`;
+  const named = firstPaths.slice(0, NAMED_PATHS).map((path) => `"${escapeDetailText(path)}"`);
+  while (named.length > 0) {
+    const detail = `${head}, among them ${named.join(", ")}${tail}`;
+    if (detail.length <= MAX_DETAIL3) return detail;
+    named.pop();
+  }
+  return `${head}${tail}`;
+}
+function detectSnapshotFiles(diff) {
+  const counted = [...new Set(diff.filter(countsAsChangedSnapshot).map((file) => file.path))].sort(byCodeUnit10);
+  if (counted.length <= MAX_SNAPSHOT_FILES) return [];
+  return [
+    {
+      id: "TI08",
+      severity: "warn",
+      path: counted[0],
+      line: null,
+      detail: massChangeDetail(counted.length, counted)
+    }
+  ];
+}
+function detectInlineRewrites(diff) {
+  const signals = [];
+  for (const file of diff) {
+    if (file.hunks === void 0 || file.binary === true) continue;
+    if (!isTestFile(file.path) || testLanguage(file.path) !== "jsts") continue;
+    const removed = /* @__PURE__ */ new Map();
+    let removedTotal = 0;
+    for (const hunk of file.hunks) {
+      for (const entry of hunk.removed) {
+        if (!entry.text.includes(INLINE_CALL)) continue;
+        const key = entry.text.trim();
+        removed.set(key, (removed.get(key) ?? 0) + 1);
+        removedTotal++;
+      }
+    }
+    if (removedTotal === 0) continue;
+    const added = [];
+    for (const hunk of file.hunks) {
+      for (const entry of hunk.added) {
+        if (entry.text.includes(INLINE_CALL)) added.push({ line: entry.line, key: entry.text.trim() });
+      }
+    }
+    added.sort((a, b) => a.line - b.line);
+    let removedLeft = removedTotal;
+    const unmatchedAdded = [];
+    for (const entry of added) {
+      const left = removed.get(entry.key) ?? 0;
+      if (left > 0) {
+        removed.set(entry.key, left - 1);
+        removedLeft--;
+      } else {
+        unmatchedAdded.push(entry.line);
+      }
+    }
+    const rewritten = Math.min(removedLeft, unmatchedAdded.length);
+    if (rewritten < MIN_INLINE_REWRITES) continue;
+    signals.push({
+      id: "TI08",
+      severity: "warn",
+      path: file.path,
+      line: unmatchedAdded[0],
+      detail: `${rewritten} inline snapshots were rewritten in this test file at once; check that each new value was reviewed rather than regenerated.`
+    });
+  }
+  return signals;
+}
+function updateFlagsOf(value) {
+  const found = /* @__PURE__ */ new Set();
+  const mocha = runsMocha(value);
+  for (const word of value.split(/[\s;|&]+/)) {
+    const equals = word.indexOf("=");
+    const flag = equals === -1 ? word : word.slice(0, equals);
+    if (!UPDATE_FLAGS.has(flag)) continue;
+    if (flag === SHORT_FLAG && mocha) continue;
+    found.add(flag);
+  }
+  return found;
+}
+function detectScriptFlags(file) {
+  if (file.hunks === void 0 || file.binary === true || !isPackageJsonFile(file.path)) return [];
+  if (file.status !== "modified" && file.status !== "renamed") return [];
+  const before = /* @__PURE__ */ new Map();
+  for (const hunk of file.hunks) {
+    for (const entry of hunk.removed) {
+      const script = parseScriptLine(entry.text);
+      if (script === null || !script.key.startsWith("test")) continue;
+      const flags = before.get(script.key) ?? /* @__PURE__ */ new Set();
+      for (const flag of updateFlagsOf(script.value)) flags.add(flag);
+      before.set(script.key, flags);
+    }
+  }
+  const lines = [];
+  for (const hunk of file.hunks) {
+    for (const entry of hunk.added) {
+      const script = parseScriptLine(entry.text);
+      if (script === null || !script.key.startsWith("test")) continue;
+      const known = before.get(script.key);
+      for (const flag of updateFlagsOf(script.value)) {
+        if (known?.has(flag)) continue;
+        lines.push(entry.line);
+        break;
+      }
+    }
+  }
+  return toFlagSignals(file.path, lines, SCRIPT_DETAIL);
+}
+function detectPytestFlag(file) {
+  if (file.hunks === void 0 || file.binary === true || !isPytestConfigFile(file.path)) return [];
+  if (file.status === "deleted") return [];
+  const holdsFlag = (text) => text.split(/\s+/).includes(PYTEST_FLAG);
+  for (const hunk of file.hunks) {
+    for (const entry of hunk.removed) if (holdsFlag(entry.text)) return [];
+  }
+  const lines = [];
+  for (const hunk of file.hunks) {
+    for (const entry of hunk.added) if (holdsFlag(entry.text)) lines.push(entry.line);
+  }
+  return toFlagSignals(file.path, lines, PYTEST_DETAIL);
+}
+function toFlagSignals(path, lines, detail) {
+  return lines.sort((a, b) => a - b).slice(0, MAX_FLAG_SIGNALS_PER_FILE).map((line) => ({ id: "TI08", severity: "warn", path, line, detail }));
+}
+function detectTI08(diff) {
+  const signals = [...detectSnapshotFiles(diff), ...detectInlineRewrites(diff)];
+  for (const file of diff) signals.push(...detectScriptFlags(file), ...detectPytestFlag(file));
+  return signals.sort(
+    (a, b) => byCodeUnit10(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit10(a.detail, b.detail)
+  );
+}
+
 // ../core/src/signals/yamlLines.ts
 var MAX_LINE = 400;
 function stripComment2(line) {
@@ -239193,7 +239395,7 @@ function flowItems(value) {
 }
 
 // ../core/src/signals/ti11.ts
-var byCodeUnit10 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit11 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var PM_FLAGS = String.raw`(?:\s+(?:-r|--recursive|-w|--workspace-root|-ws|--workspaces|--if-present|(?:--filter|-F|-C|--dir|--prefix|--workspace|--cwd)(?:=|\s+)\S+))*`;
 var JS_LAUNCHER = String.raw`(?:(?:npx|bunx|yarn|pnpm${PM_FLAGS}(?:\s+(?:exec|dlx))?|bun\s+x|npm\s+exec)\s+)?`;
 var PY_WRAPPER = String.raw`(?:(?:uv|poetry|pipenv|pdm|hatch|rye)\s+run\s+)?`;
@@ -239321,12 +239523,12 @@ function detectTI11(diff, mode) {
     if (rushed !== void 0) emit("warn", rushed.line, SENTENCES.timeout);
   }
   return signals.sort(
-    (a, b) => byCodeUnit10(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit10(a.detail, b.detail)
+    (a, b) => byCodeUnit11(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit11(a.detail, b.detail)
   );
 }
 
 // ../core/src/signals/ti13.ts
-var byCodeUnit11 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit12 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE4 = 20;
 var DETAILS3 = {
   istanbul: "An Istanbul coverage hint was added, so the code it marks leaves the coverage this check grades.",
@@ -239378,12 +239580,12 @@ function detectTI13(diff, mode) {
     }
   }
   return signals.sort(
-    (a, b) => byCodeUnit11(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit11(a.detail, b.detail)
+    (a, b) => byCodeUnit12(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit12(a.detail, b.detail)
   );
 }
 
 // ../core/src/signals/ti14.ts
-var byCodeUnit12 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit13 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var PLAIN_NUMBER = /^\d+(?:\.\d+)?$/;
 function normalizedPattern(item) {
   try {
@@ -239501,14 +239703,381 @@ function detectTI14(diff, options) {
       });
     }
   }
-  return signals.sort((a, b) => byCodeUnit12(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit13(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+}
+
+// ../core/src/signals/ti15.ts
+var byCodeUnit14 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var MAX_PER_FILE5 = 20;
+var MAX_DETAIL4 = 300;
+var MIN_STRING_LENGTH = 4;
+var MIN_SIGNIFICANT_DIGITS = 3;
+var STOP_LIST = /* @__PURE__ */ new Set([
+  "string",
+  "number",
+  "boolean",
+  "object",
+  "function",
+  "symbol",
+  "bigint",
+  "true",
+  "false",
+  "null",
+  "none",
+  "undefined",
+  "test",
+  "error",
+  "default",
+  "get",
+  "post",
+  "put",
+  "patch",
+  "delete",
+  "head",
+  "options",
+  "utf-8",
+  "utf8"
+]);
+var isDigit = (c) => c >= "0" && c <= "9";
+var isWordChar = (c) => c >= "0" && c <= "9" || c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_";
+var isBlank2 = (c) => c === " " || c === "	";
+function digitsEnd(text, start) {
+  let i = start;
+  while (i < text.length && isDigit(text.charAt(i))) i++;
+  return i;
+}
+function scanLiterals(text) {
+  const found = [];
+  let i = 0;
+  while (i < text.length) {
+    const c = text.charAt(i);
+    if (c === "'" || c === '"' || c === "`") {
+      let j = i + 1;
+      let closed = false;
+      while (j < text.length) {
+        const d = text.charAt(j);
+        if (d === "\\") j += 2;
+        else if (d === c) {
+          closed = true;
+          break;
+        } else j++;
+      }
+      if (!closed) break;
+      const value = text.slice(i + 1, j);
+      if (!(c === "`" && value.includes("${"))) found.push({ kind: "string", value, start: i, end: j + 1 });
+      i = j + 1;
+    } else if (isDigit(c)) {
+      let end = digitsEnd(text, i);
+      if (text.charAt(end) === "." && isDigit(text.charAt(end + 1))) end = digitsEnd(text, end + 1);
+      const before = i === 0 ? "" : text.charAt(i - 1);
+      const after = text.charAt(end);
+      const clear = (n) => n === "" || !(isWordChar(n) || n === ".");
+      if (clear(before) && clear(after)) found.push({ kind: "number", value: text.slice(i, end), start: i, end });
+      i = end;
+    } else if (isWordChar(c)) {
+      let j = i + 1;
+      while (j < text.length && isWordChar(text.charAt(j))) j++;
+      i = j;
+    } else {
+      i++;
+    }
+  }
+  return found;
+}
+function significantDigits(value) {
+  const hasPoint = value.includes(".");
+  let digits = value.replace(".", "").replace(/^0+/, "");
+  if (!hasPoint) digits = digits.replace(/0+$/, "");
+  return digits.length;
+}
+function isEligible(literal) {
+  if (literal.kind === "number") return significantDigits(literal.value) >= MIN_SIGNIFICANT_DIGITS;
+  return literal.value.length >= MIN_STRING_LENGTH && !STOP_LIST.has(literal.value.toLowerCase());
+}
+var keyOf2 = (literal) => `${literal.kind === "string" ? "s" : "n"}${literal.value}`;
+var isOperatorChar = (c) => c === "=" || c === "!" || c === "<" || c === ">";
+function operatorBefore(text, at) {
+  let end = at;
+  while (end > 0 && isBlank2(text.charAt(end - 1))) end--;
+  let start = end;
+  while (start > 0 && isOperatorChar(text.charAt(start - 1))) start--;
+  return text.slice(start, end);
+}
+function operatorAfter(text, at) {
+  let start = at;
+  while (start < text.length && isBlank2(text.charAt(start))) start++;
+  let end = start;
+  while (end < text.length && isOperatorChar(text.charAt(end))) end++;
+  return text.slice(start, end);
+}
+var EQUALITY = /* @__PURE__ */ new Set(["===", "!==", "==", "!="]);
+function isCaseLabel(trimmed, offset, literal) {
+  if (!trimmed.startsWith("case") || !isBlank2(trimmed.charAt(4))) return false;
+  let i = 4;
+  while (isBlank2(trimmed.charAt(i))) i++;
+  if (literal.start - offset !== i) return false;
+  let j = literal.end - offset;
+  while (isBlank2(trimmed.charAt(j))) j++;
+  return trimmed.charAt(j) === ":";
+}
+var CLOSERS = { "(": ")", "[": "]", "{": "}" };
+function inGroups(text, literals) {
+  const groups = [];
+  const strings = literals.filter((l) => l.kind === "string");
+  let next = 0;
+  let i = 0;
+  while (i < text.length) {
+    while (next < strings.length && strings[next].end <= i) next++;
+    const inside = strings[next];
+    if (inside !== void 0 && i >= inside.start) {
+      i = inside.end;
+      continue;
+    }
+    if (!isWordChar(text.charAt(i))) {
+      i++;
+      continue;
+    }
+    let j = i + 1;
+    while (j < text.length && isWordChar(text.charAt(j))) j++;
+    if (text.slice(i, j) === "in") {
+      let k = j;
+      while (isBlank2(text.charAt(k))) k++;
+      const closer = CLOSERS[text.charAt(k)];
+      if (closer !== void 0) {
+        const close = text.indexOf(closer, k + 1);
+        if (close !== -1) groups.push([k, close]);
+      }
+    }
+    i = j;
+  }
+  return groups;
+}
+function conditionLiterals(text, language) {
+  const literals = scanLiterals(text);
+  if (literals.length === 0) return [];
+  const trimmed = text.trimStart();
+  const offset = text.length - trimmed.length;
+  const forLoop = trimmed.startsWith("for ") || trimmed.startsWith("async for ");
+  const groups = language === "python" && !forLoop ? inGroups(text, literals) : [];
+  return literals.filter((literal) => {
+    if (!isEligible(literal)) return false;
+    if (EQUALITY.has(operatorBefore(text, literal.start))) return true;
+    if (EQUALITY.has(operatorAfter(text, literal.end))) return true;
+    if (isCaseLabel(trimmed, offset, literal)) return true;
+    return groups.some(([open3, close]) => literal.start > open3 && literal.end <= close);
+  });
+}
+function testLiterals(diff) {
+  const found = /* @__PURE__ */ new Map();
+  for (const file of diff) {
+    if (file.hunks === void 0 || file.binary === true || file.status === "deleted") continue;
+    if (!isTestFile(file.path)) continue;
+    const language = testLanguage(file.path);
+    if (language !== "jsts" && language !== "python") continue;
+    for (const hunk of file.hunks) {
+      for (const entry of hunk.added) {
+        for (const literal of scanLiterals(entry.text)) {
+          if (!isEligible(literal)) continue;
+          const key = keyOf2(literal);
+          const paths = found.get(key) ?? /* @__PURE__ */ new Set();
+          paths.add(file.path);
+          found.set(key, paths);
+        }
+      }
+    }
+  }
+  return new Map([...found].map(([key, paths]) => [key, [...paths].sort(byCodeUnit14)]));
+}
+function detailOf(literal, sourcePath, line, testPath) {
+  const what = `a ${literal.value.length}-character ${literal.kind} literal`;
+  const tail = "so the code may special-case the test's input.";
+  const at = `The condition at "${escapeDetailText(`${sourcePath}:${line}`)}" compares with ${what}`;
+  const full = `${at} that the test file "${escapeDetailText(testPath)}" also adds, ${tail}`;
+  if (full.length <= MAX_DETAIL4) return full;
+  const noTest = `${at} that a test file in this change also adds, ${tail}`;
+  if (noTest.length <= MAX_DETAIL4) return noTest;
+  return `This condition compares with ${what} that a test file in this change also adds, ${tail}`;
+}
+function detectTI15(diff) {
+  const tests = testLiterals(diff);
+  if (tests.size === 0) return [];
+  const signals = [];
+  for (const file of diff) {
+    if (file.hunks === void 0 || file.binary === true || file.status === "deleted") continue;
+    if (isTestFile(file.path)) continue;
+    const language = coverageSourceLanguage(file.path);
+    if (language === null) continue;
+    const removed = /* @__PURE__ */ new Set();
+    for (const hunk of file.hunks) {
+      for (const entry of hunk.removed) for (const literal of scanLiterals(entry.text)) removed.add(keyOf2(literal));
+    }
+    const found = [];
+    for (const hunk of file.hunks) {
+      for (const entry of hunk.added) {
+        const seen = /* @__PURE__ */ new Set();
+        for (const literal of conditionLiterals(entry.text, language)) {
+          const key = keyOf2(literal);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          if (removed.has(key)) continue;
+          const testPaths = tests.get(key);
+          if (testPaths === void 0) continue;
+          found.push({ line: entry.line, detail: detailOf(literal, file.path, entry.line, testPaths[0]) });
+        }
+      }
+    }
+    found.sort((a, b) => a.line - b.line || byCodeUnit14(a.detail, b.detail));
+    for (const { line, detail } of found.slice(0, MAX_PER_FILE5)) {
+      signals.push({ id: "TI15", severity: "warn", path: file.path, line, detail });
+    }
+  }
+  return signals.sort(
+    (a, b) => byCodeUnit14(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit14(a.detail, b.detail)
+  );
+}
+
+// ../core/src/signals/ti16.ts
+var SLASH = "/";
+var STAR = "*";
+var HASH = "#";
+var LINE_OPENER = `${SLASH}${SLASH}`;
+var BLOCK_OPENER = `${SLASH}${STAR}`;
+var BLOCK_CLOSER = `${STAR}${SLASH}`;
+var ESLINT = ["es", "lint-dis", "able"].join("");
+var OXLINT = ["ox", "lint-dis", "able"].join("");
+var BIOME = ["bio", "me-ig", "nore"].join("");
+var TS = ["@", "ts-"].join("");
+var JS_MARKERS = /* @__PURE__ */ new Set([
+  ESLINT,
+  `${ESLINT}-line`,
+  `${ESLINT}-next-line`,
+  `${TS}ignore`,
+  `${TS}expect-error`,
+  `${TS}nocheck`,
+  BIOME,
+  `${BIOME}-all`,
+  `${BIOME}-start`,
+  `${BIOME}-end`,
+  OXLINT,
+  `${OXLINT}-line`,
+  `${OXLINT}-next-line`
+]);
+var TYPE_WORD = ["ty", "pe:"].join("");
+var IGNORE_WORD = ["ig", "nore"].join("");
+var NOQA_WORD = ["no", "qa"].join("");
+var PYLINT_WORD = ["py", "lint:"].join("");
+var DISABLE_WORD = ["dis", "able"].join("");
+var PYRIGHT_WORD = ["py", "right:"].join("");
+var MAX_LINE2 = 400;
+var isBlank3 = (c) => c === " " || c === "	";
+var isWordChar2 = (c) => c >= "0" && c <= "9" || c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_";
+var isTokenChar = (c) => isWordChar2(c) || c === "@" || c === "-";
+var endsWord = (text, at) => at >= text.length || !isWordChar2(text.charAt(at));
+var normalize = (text) => text.replace(/\s+/g, " ").trim();
+function skipBlanks(text, from) {
+  let i = from;
+  while (i < text.length && isBlank3(text.charAt(i))) i++;
+  return i;
+}
+function jsMarker(text) {
+  for (let i = 0; i + 1 < text.length; i++) {
+    if (text.charAt(i) !== SLASH) continue;
+    const opener = text.slice(i, i + 2);
+    if (opener !== LINE_OPENER && opener !== BLOCK_OPENER) continue;
+    const start = skipBlanks(text, i + 2);
+    let end = start;
+    while (end < text.length && isTokenChar(text.charAt(end))) end++;
+    if (!JS_MARKERS.has(text.slice(start, end))) continue;
+    let stop = text.length;
+    if (opener === BLOCK_OPENER) {
+      const close = text.indexOf(BLOCK_CLOSER, end);
+      if (close !== -1) stop = close;
+    }
+    return normalize(text.slice(start, stop));
+  }
+  return null;
+}
+function startsPythonMarker(text, at) {
+  if (text.startsWith(TYPE_WORD, at)) {
+    const word = skipBlanks(text, at + TYPE_WORD.length);
+    return text.startsWith(IGNORE_WORD, word) && endsWord(text, word + IGNORE_WORD.length);
+  }
+  if (text.slice(at, at + NOQA_WORD.length).toLowerCase() === NOQA_WORD) {
+    const next = at + NOQA_WORD.length;
+    return next >= text.length || text.charAt(next) === ":" || !isWordChar2(text.charAt(next));
+  }
+  if (text.startsWith(PYLINT_WORD, at)) {
+    const word = skipBlanks(text, at + PYLINT_WORD.length);
+    for (const name of [`${DISABLE_WORD}-next`, DISABLE_WORD]) {
+      if (!text.startsWith(name, word)) continue;
+      const next = word + name.length;
+      if (next >= text.length || text.charAt(next) === "=" || !isWordChar2(text.charAt(next))) return true;
+    }
+    return false;
+  }
+  if (text.startsWith(PYRIGHT_WORD, at)) {
+    const word = skipBlanks(text, at + PYRIGHT_WORD.length);
+    return text.startsWith(IGNORE_WORD, word) && endsWord(text, word + IGNORE_WORD.length);
+  }
+  return false;
+}
+function pythonMarker(text) {
+  for (let i = text.indexOf(HASH); i !== -1; i = text.indexOf(HASH, i + 1)) {
+    const start = skipBlanks(text, i + 1);
+    if (startsPythonMarker(text, start)) return normalize(text.slice(start));
+  }
+  return null;
+}
+var markerOf2 = (text, language) => {
+  const line = text.length > MAX_LINE2 ? text.slice(0, MAX_LINE2) : text;
+  return language === "jsts" ? jsMarker(line) : pythonMarker(line);
+};
+var byCodeUnit15 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function detectTI16(diff) {
+  const signals = [];
+  for (const file of diff) {
+    if (file.hunks === void 0 || file.binary === true || !isTestFile(file.path)) continue;
+    const language = testLanguage(file.path);
+    if (language !== "jsts" && language !== "python") continue;
+    const removed = /* @__PURE__ */ new Map();
+    for (const hunk of file.hunks) {
+      for (const entry of hunk.removed) {
+        const marker = markerOf2(entry.text, language);
+        if (marker !== null) removed.set(marker, (removed.get(marker) ?? 0) + 1);
+      }
+    }
+    const added = [];
+    for (const hunk of file.hunks) {
+      for (const entry of hunk.added) {
+        const marker = markerOf2(entry.text, language);
+        if (marker !== null) added.push({ line: entry.line, marker });
+      }
+    }
+    added.sort((a, b) => a.line - b.line);
+    const fresh = [];
+    for (const entry of added) {
+      const left = removed.get(entry.marker) ?? 0;
+      if (left > 0) removed.set(entry.marker, left - 1);
+      else fresh.push(entry.line);
+    }
+    if (fresh.length === 0) continue;
+    const count = fresh.length === 1 ? "1 comment" : `${fresh.length} comments`;
+    signals.push({
+      id: "TI16",
+      severity: "info",
+      path: file.path,
+      line: fresh[0],
+      detail: `This test file adds ${count} that switch off a linter or type checker, so the checks they silence no longer run on that code.`
+    });
+  }
+  return signals.sort((a, b) => byCodeUnit15(a.path, b.path));
 }
 
 // ../core/src/check.ts
-var byCodeUnit13 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit16 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function sortSignals(signals) {
   return signals.sort(
-    (a, b) => byCodeUnit13(a.id, b.id) || byCodeUnit13(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit13(a.detail, b.detail)
+    (a, b) => byCodeUnit16(a.id, b.id) || byCodeUnit16(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit16(a.detail, b.detail)
   );
 }
 function check(input) {
@@ -239525,6 +240094,7 @@ function check(input) {
     ...detectTI01(parsedDiff, testIntegrity.mode),
     ...detectTI03(parsedDiff, testIntegrity.mode),
     ...detectTI04(parsedDiff, testIntegrity.mode),
+    ...detectTI08(parsedDiff),
     ...detectTI10(parsedDiff, { repoFiles: input.repoFiles, mode: testIntegrity.mode }),
     ...detectTI11(parsedDiff, testIntegrity.mode),
     ...detectTI13(parsedDiff, testIntegrity.mode),
@@ -239533,7 +240103,9 @@ function check(input) {
       repoRoot: input.repoRoot,
       exclude: input.exclude ?? [],
       mode: testIntegrity.mode
-    })
+    }),
+    ...detectTI15(parsedDiff),
+    ...detectTI16(parsedDiff)
   ]);
   let comparison = null;
   const comparedMode = testIntegrity.mode;
@@ -239999,10 +240571,13 @@ var MESSAGE_HINTS = {
   TEST_INTEGRITY_TI03: (label) => `A reviewer must decide whether each skipped test may stay, for example one that fails in CI; a reviewer who is not the PR author records that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI04: "Remove the marker so the whole suite runs, or say in the PR why only the marked tests should run.",
   TEST_INTEGRITY_TI05: (label) => `Restore the assertions the test had, or say in the PR why it checks less now; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
+  TEST_INTEGRITY_TI08: "Review the snapshot changes, or regenerate them in a separate change, and keep snapshot-update flags out of the test command.",
   TEST_INTEGRITY_TI10: (label) => `Restore the test script, or say in the PR why it changes so a reviewer can confirm it; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI13: (label) => `Write a test for the code in place of the ignore comment, or say in the PR why it cannot be tested; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI11: "Restore the test step or trigger, or say in the PR why CI stops running these tests so a reviewer can confirm it.",
   TEST_INTEGRITY_TI14: "Restore the threshold or the exclusions, or say in the PR why they change so a reviewer can confirm it.",
+  TEST_INTEGRITY_TI15: "Check that the code handles the general case and not only the test's value, and add a test with another input.",
+  TEST_INTEGRITY_TI16: "Fix the lint or type error the comment hides, or say in the PR why the test needs it.",
   TEST_INTEGRITY_INDEX_UNAVAILABLE: "Review the named test files by hand for removed tests and weakened assertions. A file over 512 KiB, one with many syntax errors, a missing Python 3.8 or newer for `.py` files, or git objects that could not be read stop the comparison.",
   TEST_INTEGRITY_TEXT_TRUNCATED: "Review the named files by hand for skipped, focused or weakened tests, or split the change so each file stays under the limit.",
   TEST_INTEGRITY_ACCEPTED: "A reviewer other than the PR author signed off, so the block findings are warnings. The sign-off belongs to the pull request, not to a commit: remove the label if a later push should be judged again.",
@@ -240026,10 +240601,13 @@ var SIGNAL_HINT_IDS = /* @__PURE__ */ new Set([
   "TI03",
   "TI04",
   "TI05",
+  "TI08",
   "TI10",
   "TI11",
   "TI13",
-  "TI14"
+  "TI14",
+  "TI15",
+  "TI16"
 ]);
 function signalHint(id, label) {
   return SIGNAL_HINT_IDS.has(id) ? hintFor(`TEST_INTEGRITY_${id}`, label) : void 0;
@@ -240280,7 +240858,7 @@ function parseLsTreeSizes(text) {
 var MAX_TEST_SOURCE_FILES = 200;
 var MAX_TEST_SOURCE_FILE_BYTES = 524288;
 var MAX_TEST_SOURCE_TOTAL_BYTES = 16777216;
-var byCodeUnit14 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit17 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var TEST_CONFIG_PREFIXES = [
   "vitest.config.",
   "vitest.workspace.",
@@ -240313,7 +240891,7 @@ function selectTestSourcePaths(diff) {
       head.add(file.path);
     }
   }
-  return { base: [...base].sort(byCodeUnit14), head: [...head].sort(byCodeUnit14) };
+  return { base: [...base].sort(byCodeUnit17), head: [...head].sort(byCodeUnit17) };
 }
 function isUnsafeTestSourcePath(path) {
   if (path === "" || path.startsWith("/")) return true;
@@ -240328,7 +240906,7 @@ function planTestSourceReads(paths, objects) {
   const dropped = [];
   let total = 0;
   let tripped = false;
-  for (const path of [...new Set(paths)].sort(byCodeUnit14)) {
+  for (const path of [...new Set(paths)].sort(byCodeUnit17)) {
     if (isUnsafeTestSourcePath(path)) {
       dropped.push({ path, reason: "unsafe-path" });
       continue;
@@ -241593,7 +242171,7 @@ var MAX_REASON_CHARS2 = 300;
 var StepFailed = class extends Error {
 };
 var firstLine = (err) => (err instanceof Error ? err.message : String(err)).trim().split("\n")[0]?.slice(0, MAX_REASON_CHARS2) ?? "";
-var byCodeUnit15 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit18 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 async function resolveRevision(deps, revision, label) {
   let out;
   try {
@@ -241689,7 +242267,7 @@ async function readTestSources(deps, options) {
     plans.forEach((plan, i) => {
       for (const path of plan.read) wanted.add(sides[i]?.blobs.get(path));
     });
-    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit15));
+    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit18));
     const decoded = /* @__PURE__ */ new Map();
     const build = (index) => {
       const plan = plans[index];
@@ -241705,7 +242283,7 @@ async function readTestSources(deps, options) {
         if (text === null) dropped.push({ path, reason: "binary" });
         else files.push({ path, text });
       }
-      dropped.sort((a, b) => byCodeUnit15(a.path, b.path));
+      dropped.sort((a, b) => byCodeUnit18(a.path, b.path));
       return { files, dropped };
     };
     return { base: build(0), head: build(1) };

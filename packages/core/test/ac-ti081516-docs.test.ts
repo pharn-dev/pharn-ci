@@ -105,12 +105,15 @@ describe("TI08, TI15 and TI16: schemas and documents", () => {
     // schema/report.v1.json is byte-identical to the base.
     expect(readFileSync(`${ROOT}schema/report.v1.json`).equals(atBase(base, "schema/report.v1.json"))).toBe(true);
 
-    // schema/report.v2.json equals the base once the message-code description is set aside on both sides.
+    // schema/report.v2.json equals the base once the message-code description is set aside on both sides, and the
+    // `languages` description, which TI02 and TI05 (ti02-ti05, merged before this change) edit.
     const before = JSON.parse(atBase(base, "schema/report.v2.json").toString("utf8")) as Json;
     const now = JSON.parse(read("schema/report.v2.json")) as Json;
     const paths = codeDescriptionPaths(before);
     expect(paths.map((p) => p.join("/"))).toHaveLength(1);
-    expect(setAside(now, paths)).toEqual(setAside(before, paths));
+    const languages = ["properties", "testIntegrity", "properties", "languages", "description"];
+    expect(typeof getAt(before, languages), "the languages description at the base").toBe("string");
+    expect(setAside(now, [...paths, languages])).toEqual(setAside(before, [...paths, languages]));
     const [path] = paths as [string[]];
     const beforeText = getAt(before, path) as string;
     const nowText = getAt(now, path);
