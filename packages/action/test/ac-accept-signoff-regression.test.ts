@@ -24,6 +24,26 @@ const MODES = ["block", "warn"] as const;
 const BEFORE_DIGEST = "bf9469aaaac4d178af40fad47909e08507a87aae1fbce788f111ba5c87f66bbf";
 const BEFORE_COUNT = 216;
 
+/**
+ * Fixtures added after the digest above was taken. They are left out of it, so it keeps pinning every earlier fixture
+ * to the signals and messages it gave at the base commit; each of them is asserted by its own AC test (the E1 gate
+ * fixes: ac-ti01-rename-edited, ac-ti03-cap and ac-ti14-config-forms).
+ */
+const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
+  "TI01/block-rename-away-edited.diff",
+  "TI01/pass-rename-to-test-edited.diff",
+  "TI03/block-behind-twenty-warns.diff",
+  "TI03/warn-twenty-five-conditional.diff",
+  "TI14/block-exclude-quoted-key-block.diff",
+  "TI14/block-exclude-quoted-key.diff",
+  "TI14/block-threshold-escaped.diff",
+  "TI14/block-threshold-long-decimals.diff",
+  "TI14/block-threshold-quoted-key.diff",
+  "TI14/block-threshold-single-quoted.diff",
+  "TI14/pass-key-requoted.diff",
+  "TI14/pass-threshold-quoted-raised.diff",
+]);
+
 /** The TI01, TI04, TI11 and TI14 hints as renderMarkdown() gave them at the base commit a1089fd. */
 const UNCHANGED_HINTS: Record<string, string> = {
   TI01: "  - Hint: Restore the deleted tests, or say in the PR why they go so a reviewer can confirm it.",
@@ -87,7 +107,7 @@ describe("the accept label leaves the existing signals, hints, golden outputs an
     const records: unknown[] = [];
     for (const dir of readdirSync(new URL("fixtures/test-integrity/", ROOT)).sort()) {
       const names = readdirSync(new URL(`fixtures/test-integrity/${dir}/`, ROOT))
-        .filter((name) => name.endsWith(".diff"))
+        .filter((name) => name.endsWith(".diff") && !ADDED_AFTER_BASE.has(`${dir}/${name}`))
         .sort();
       for (const name of names) {
         const key = `${dir}/${name}`;

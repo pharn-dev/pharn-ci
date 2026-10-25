@@ -23,8 +23,9 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   `func Test`; a test written another way (a custom wrapper, a `Deno.test(` call) reads as not
   defining tests. (2) A source file of the same name deleted anywhere in the change makes the
   finding `info`, so an unrelated `foo.ts` deleted beside `foo.test.ts` exempts it. (3) A rename
-  with no edits shows no lines, so a test renamed away counts on its path alone, and a helper
-  renamed out of `tests/` counts too. (4) A test file emptied but not deleted is not seen (TI02 and
+  shows only the lines it edits, never the tests the file keeps, so a test renamed to a path that is
+  not a test file counts on its path alone, edited or not, and a helper renamed out of `tests/`
+  counts too. (4) A test file emptied but not deleted is not seen (TI02 and
   TI05 in a later release). (5) Text is kept for at most 5000 lines per file and 400 characters per
   line; a deleted file cut at that bound with no test-defining line kept still counts, so a huge
   file is never waved through. (6) A package that is the repository root never exempts a deletion.
@@ -81,9 +82,10 @@ TI14 reads the added and removed lines of the pharn-ci config in use, one line a
   patterns the check was given (so a pattern also given by the workflow input can make an item added to
   `coverage.file` read as an exclusion, and an exclusion appended to a list is missed when the check was not given
   it).
-- **Threshold by line.** Only a plain number on a `threshold:` line counts. A quoted value, a value moved
-  onto another key, and a threshold set by the workflow input (which beats the config and is out of the diff's
-  reach) are not seen. A config renamed with no edits shows no lines.
+- **Threshold by line.** Only a plain decimal number on a `threshold:` line counts, read as the config reads it:
+  the key and the value may be quoted, a double-quoted value is decoded (`"\u0037\u0030"` is 70), and any number of
+  decimals is read. A value moved onto another key, and a threshold set by the workflow input (which beats the config
+  and is out of the diff's reach) are not seen. A config renamed with no edits shows no lines.
 - **Any new pattern counts.** An exclusion that swaps one generated directory for another is reported like one that
   hides source; the finding is a prompt for a reviewer, and the exclusion's pattern is not judged.
 - **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8). A diff that reaches
@@ -135,7 +137,8 @@ TI03 reads the added and removed lines of test files, one line at a time, in JS/
   are one, and a name built from an expression (`describe.skip.each(table)`) is compared by that text. A nameless
   `.skip(cond)` is read as conditional.
 - **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8); at most 20 signals are
-  given per file. A diff that reaches `check()` already parsed without kept text yields no TI03.
+  given per file, the unconditional skips of existing tests first, so warn findings never push a block finding out.
+  A diff that reaches `check()` already parsed without kept text yields no TI03.
 
 ### What TI04 misses
 
@@ -218,7 +221,8 @@ removed lines of the diff, in files they recognise by name. They do not run test
 diff does not touch, and they cannot judge whether an assertion is strong. The accept label records that a reviewer who
 is not the author signed off a block finding. It cannot show that the reviewer read the tests, and it never adds a
 check. What each signal misses is listed under its own "What TIxx misses" heading above, and the accept label's limits
-under "What the accept label misses".
+under "What the accept label misses". A file whose changed lines run past 5000 is read only up to that point; the
+report names it with `TEST_INTEGRITY_TEXT_TRUNCATED` (section 8).
 
 The benchmark for what is not seen is Skylos's list of nine ways to hide a failing test. The nine cases are reproduced
 in vitest under `fixtures/skylos-nine/` and pinned by tests. The diff-only signals of this release catch **2 of 9**.
@@ -475,7 +479,11 @@ set by pharn-ci.
 - **The diff.** From local git (the CLI, and the Action when the checkout has the base) it is read
   line by line as git writes it, with no fixed limit. Memory holds the changed paths and their added
   line numbers, plus the text of added and removed lines for test files, the pharn-ci config in use, workflow files, every `package.json` and the JavaScript, TypeScript and Python source files only, capped at 5000 lines
-  per file and 400 characters per line (`textTruncated` marks a file cut at the cap). The 120 s git
+  per file and 400 characters per line (`textTruncated` marks a file cut at the cap). A finding past the cut is not
+  seen. When a signal reads the cut file (a test file in JS/TS, Python or Go, a workflow, a modified `package.json`, a
+  source file or the pharn-ci config) and the file is not deleted, the report adds `TEST_INTEGRITY_TEXT_TRUNCATED`
+  (`warn`) naming it, so a change cannot pass in silence by padding a file past the cut. A deleted file is not named:
+  TI01 already counts a cut test file. The 120 s git
   timeout still applies. From the GitHub compare API (the
   Action's fallback, and PR-number mode) it is limited by GitHub's own compare limit; past it the
   diff is unavailable and the report says `DIFF_UNAVAILABLE`.

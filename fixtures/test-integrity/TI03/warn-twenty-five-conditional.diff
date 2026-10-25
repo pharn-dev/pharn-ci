@@ -1,0 +1,30 @@
+diff --git a/src/user.test.ts b/src/user.test.ts
+index 1111111..2222222 100644
+--- a/src/user.test.ts
++++ b/src/user.test.ts
+@@ -2,0 +3,25 @@ describe('user', () => {
++  it.skipIf(process.env.CI)('new case 1', () => {});
++  it.skipIf(process.env.CI)('new case 2', () => {});
++  it.skipIf(process.env.CI)('new case 3', () => {});
++  it.skipIf(process.env.CI)('new case 4', () => {});
++  it.skipIf(process.env.CI)('new case 5', () => {});
++  it.skipIf(process.env.CI)('new case 6', () => {});
++  it.skipIf(process.env.CI)('new case 7', () => {});
++  it.skipIf(process.env.CI)('new case 8', () => {});
++  it.skipIf(process.env.CI)('new case 9', () => {});
++  it.skipIf(process.env.CI)('new case 10', () => {});
++  it.skipIf(process.env.CI)('new case 11', () => {});
++  it.skipIf(process.env.CI)('new case 12', () => {});
++  it.skipIf(process.env.CI)('new case 13', () => {});
++  it.skipIf(process.env.CI)('new case 14', () => {});
++  it.skipIf(process.env.CI)('new case 15', () => {});
++  it.skipIf(process.env.CI)('new case 16', () => {});
++  it.skipIf(process.env.CI)('new case 17', () => {});
++  it.skipIf(process.env.CI)('new case 18', () => {});
++  it.skipIf(process.env.CI)('new case 19', () => {});
++  it.skipIf(process.env.CI)('new case 20', () => {});
++  it.skipIf(process.env.CI)('new case 21', () => {});
++  it.skipIf(process.env.CI)('new case 22', () => {});
++  it.skipIf(process.env.CI)('new case 23', () => {});
++  it.skipIf(process.env.CI)('new case 24', () => {});
++  it.skipIf(process.env.CI)('new case 25', () => {});

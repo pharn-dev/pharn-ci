@@ -1,5 +1,6 @@
 import type { CoverageFormat } from "./coverage/types.js";
 import { coverageNotDiscoveredText } from "./coverageDiscovery.js";
+import { MAX_KEPT_LINES } from "./diff/unified.js";
 import type { DiffCoverageFile, DiffCoverageResult } from "./diffCoverage.js";
 import type { AgentSetupFile, AgentSetupInventory } from "./setup/scan.js";
 import { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
@@ -127,6 +128,7 @@ export type MessageCode =
   | "TEST_INTEGRITY_TI11"
   | "TEST_INTEGRITY_TI13"
   | "TEST_INTEGRITY_TI14"
+  | "TEST_INTEGRITY_TEXT_TRUNCATED"
   | "TEST_INTEGRITY_ACCEPTED"
   | "TEST_INTEGRITY_ACCEPT_IGNORED";
 
@@ -185,6 +187,12 @@ export interface BuildReportInput {
    * Absent or empty adds nothing.
    */
   testIntegritySignals?: readonly TestIntegritySignal[];
+  /**
+   * The files whose kept diff text was cut at the bound where a signal reads the added lines (see
+   * `textCutSignalFiles`), so a finding past the cut is not seen. Adds one `TEST_INTEGRITY_TEXT_TRUNCATED` warn
+   * message unless the mode is off. Absent or empty adds nothing.
+   */
+  textTruncatedFiles?: readonly string[];
 }
 
 /** The one message each test-integrity signal id adds to a report that carries findings of that id. */
@@ -399,6 +407,14 @@ export function buildReport(input: BuildReportInput): Report {
 
   const signals = [...(input.testIntegritySignals ?? [])];
   messages.push(...testIntegritySignalMessages(signals));
+  const cut = input.textTruncatedFiles ?? [];
+  if (cut.length > 0 && testIntegrity?.mode !== "off") {
+    messages.push({
+      level: "warn",
+      code: "TEST_INTEGRITY_TEXT_TRUNCATED",
+      text: `This change is too large to check in full in ${pathList(cut)}: test integrity reads the first ${MAX_KEPT_LINES} changed lines of a file, so a weakened test past them is not seen.`,
+    });
+  }
 
   if (input.agentSetup.files.length === 0) {
     const required = input.requireAgentSetup === true;

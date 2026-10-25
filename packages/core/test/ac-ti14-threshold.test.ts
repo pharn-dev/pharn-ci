@@ -44,7 +44,7 @@ const ti14 = (report: Awaited<ReturnType<typeof run>>) =>
   report.testIntegrity.signals.filter((signal) => String(signal.id) === "TI14");
 
 describe("TI14: the coverage threshold lowered", () => {
-  it("AC-3: a lowered, removed or deleted threshold is a block finding; raised, moved, added and quoted values are not", async () => {
+  it("AC-3: a lowered, removed or deleted threshold is a block finding, quoted or not; raised, moved, added and requoted values are not", async () => {
     const lowered = ti14(await run(edit(CONFIG, [[3, ["  threshold: 80"], ["  threshold: 70"]]])));
     expect(lowered).toHaveLength(1);
     expect(lowered[0]).toMatchObject({ severity: "block", path: CONFIG, line: 3 });
@@ -61,6 +61,12 @@ describe("TI14: the coverage threshold lowered", () => {
     expect(deleted).toHaveLength(1);
     expect(deleted[0]).toMatchObject({ severity: "block", path: CONFIG, line: 2 });
 
+    // The config reads `threshold: "70"` as 70, so a quoted lower value is a lowered threshold like a bare one.
+    const quoted = ti14(await run(edit(CONFIG, [[3, ["  threshold: 80"], ['  threshold: "70"']]])));
+    expect(quoted).toHaveLength(1);
+    expect(quoted[0]).toMatchObject({ severity: "block", path: CONFIG, line: 3 });
+    expect(quoted[0]?.detail).toBe("Coverage threshold lowered from 80 to 70.");
+
     const controls: Array<[string, string]> = [
       ["raised", edit(CONFIG, [[3, ["  threshold: 80"], ["  threshold: 90"]]])],
       ["equal", edit(CONFIG, [[3, ["  threshold: 80"], ["  threshold: 80"]]])],
@@ -72,7 +78,7 @@ describe("TI14: the coverage threshold lowered", () => {
         ]),
       ],
       ["added where there was none", edit(CONFIG, [[2, [], ["  threshold: 70"]]])],
-      ["quoted", edit(CONFIG, [[3, ["  threshold: 80"], ['  threshold: "70"']]])],
+      ["requoted, same value", edit(CONFIG, [[3, ["  threshold: 80"], ['  threshold: "80"']]])],
     ];
     for (const [label, diff] of controls) {
       expect(ti14(await run(diff)), label).toEqual([]);

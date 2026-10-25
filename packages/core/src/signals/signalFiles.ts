@@ -1,5 +1,7 @@
+import type { DiffFile } from "../diff/unified.js";
 import { configRepoPath } from "../gateInputs.js";
-import { keepTestFileText } from "../testFiles.js";
+import { isTestFile, keepTestFileText } from "../testFiles.js";
+import { testLanguage } from "./testLines.js";
 
 const WORKFLOWS_DIR = ".github/workflows/";
 
@@ -50,4 +52,30 @@ export function keepSignalFileText(
     coverageSourceLanguage(file.path) !== null ||
     coverageSourceLanguage(file.oldPath) !== null ||
     (config !== null && (file.path === config || file.oldPath === config));
+}
+
+/**
+ * The files whose kept text was cut at the bound (`textTruncated`) where a signal reads the added lines, so a finding
+ * past the cut is not seen: a test file in a language TI03 reads (TI03, TI04), a workflow file (TI11), a modified or
+ * renamed `package.json` (TI10), a JavaScript, TypeScript or Python file that is not a test file (TI13) and the
+ * pharn-ci config in use (TI14). A deleted file has no added lines and TI01 already counts a cut test file, so deleted
+ * files are left out; so are files no signal reads past the cut (a large fixture or snapshot under a test directory).
+ * Sorted by path.
+ */
+export function textCutSignalFiles(diff: readonly DiffFile[], configPath?: string, repoRoot?: string): string[] {
+  const config = configRepoPath(configPath, repoRoot);
+  const cut = new Set<string>();
+  for (const file of diff) {
+    if (file.textTruncated !== true || file.status === "deleted" || file.binary === true) continue;
+    const { path } = file;
+    const test = isTestFile(path);
+    const read =
+      (test && testLanguage(path) !== null) ||
+      isWorkflowFile(path) ||
+      (isPackageJsonFile(path) && file.status !== "added") ||
+      (!test && coverageSourceLanguage(path) !== null) ||
+      (config !== null && path === config);
+    if (read) cut.add(path);
+  }
+  return [...cut].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 }

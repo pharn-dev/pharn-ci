@@ -11,7 +11,7 @@ import { binaryCoveredPaths, changedConfigPaths, trackedCoverageFile } from "./g
 import { compileGlob } from "./glob.js";
 import { buildReport, type Report, type ReportMeta, type TestIntegritySignal } from "./report.js";
 import { scanAgentSetup } from "./setup/scan.js";
-import { keepSignalFileText } from "./signals/signalFiles.js";
+import { keepSignalFileText, textCutSignalFiles } from "./signals/signalFiles.js";
 import { detectTI01 } from "./signals/ti01.js";
 import { detectTI03 } from "./signals/ti03.js";
 import { detectTI04 } from "./signals/ti04.js";
@@ -144,6 +144,11 @@ export function check(input: CheckInput): Report {
             mode: testIntegrity.mode,
           }),
         ]);
+  // A file whose kept text was cut can hide a finding past the cut; the report names it rather than stay silent.
+  const textTruncatedFiles =
+    parsedDiff === null || testIntegrity.mode === "off"
+      ? []
+      : textCutSignalFiles(parsedDiff, input.configPath, input.repoRoot);
   // The single-file forms are several files with one entry, so there is one path through the check.
   const coverageInput = input.coverage;
   let files: readonly CoverageFileInput[];
@@ -190,6 +195,7 @@ export function check(input: CheckInput): Report {
     ...(input.meta === undefined ? {} : { meta: input.meta }),
     testIntegrity,
     ...(testIntegritySignals.length > 0 ? { testIntegritySignals } : {}),
+    ...(textTruncatedFiles.length > 0 ? { textTruncatedFiles } : {}),
   };
 
   if ("kind" in coverageInput) {

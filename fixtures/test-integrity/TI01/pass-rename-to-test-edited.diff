@@ -1,0 +1,9 @@
+diff --git a/src/user.test.ts b/src/users.test.ts
+similarity index 98%
+rename from src/user.test.ts
+rename to src/users.test.ts
+index 1111111..2222222 100644
+--- a/src/user.test.ts
++++ b/src/users.test.ts
+@@ -1 +0,0 @@
+-// Tests for the user service.

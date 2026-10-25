@@ -31,8 +31,9 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   report's `testIntegrity.mode` and `testIntegrity.source` say which mode applies and where it came from, a
   looser config value is ignored with the new `TEST_INTEGRITY_MODE_IGNORED` message (warn), mode `off` adds
   `TEST_INTEGRITY_OFF` (info), and the PR comment and job summary gain a "🔍 Test integrity" section.
-- Signal **TI01**, test file deleted: a deleted test file (or one renamed to a path that is not a test file) whose
-  removed lines define tests is reported in `testIntegrity.signals` and in one `TEST_INTEGRITY_TI01` message,
+- Signal **TI01**, test file deleted: a deleted test file whose removed lines define tests, or a test file renamed to
+  a path that is not a test file (edited or not, since a rename shows only the lines it edits), is reported in
+  `testIntegrity.signals` and in one `TEST_INTEGRITY_TI01` message,
   `block` in mode `block` (a failing check), `warn` in the default mode. It is `info` when the same change also
   deletes the source file of the same name, deletes other files of the test's package, or adds a test file of the
   same name (a migration); helpers, fixtures and an `__init__.py` under `tests/` do not count. The "🔍 Test
@@ -44,6 +45,8 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   `testIntegrity.signals` and in one `TEST_INTEGRITY_TI14` message, `block` in mode `block`, `warn` in the default
   mode. Raising a threshold, removing an exclusion and unrelated settings never fire. `CONFIG_CHANGED_IN_DIFF` is
   unchanged.
+  The config lines are read as the config reads them: a quoted key, a quoted or escaped value and any number of
+  decimals all count.
 - Signal **TI11**, CI stopped running tests, from the diff of workflow files (`.github/workflows/*.yml|yaml`),
   reported in `testIntegrity.signals` and in one `TEST_INTEGRITY_TI11` message. `block` in mode `block`: a removed
   test command (`pnpm test`, `vitest`, `jest`, `pytest`, `go test`, ...) that no workflow adds again, and a removed
@@ -57,6 +60,7 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   `block`; a conditional skip, a skip inside a test body, and a skip in a test the change adds are `warn`. A skip that
   was already there (an edit, a move) never fires, and environment guards such as `skipIf(!hasCamera)` or
   `pytest.skip("REDIS_URL not set")` stay `warn`.
+  At most 20 findings per file, with the skips of existing tests kept first, so warn findings never push a block out.
 - Signal **TI04**, a focused-run marker added to a JS/TS test file (`.only`, bare `fit(` or `fdescribe(`), reported
   in `testIntegrity.signals` and in one `TEST_INTEGRITY_TI04` message, `block` in mode `block`, `warn` in the default
   mode. `solver.fit(x)`, `def fit(self)`, comments, strings and files that are not tests never fire; a marker that was
@@ -76,6 +80,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   use, workflow files, every `package.json` and the JavaScript, TypeScript and Python source files (at most 5000 lines
   per file, 400 characters per line; `textTruncated` marks a cut file), for the signals that read line text. `readDiffChunks` takes an optional `{ configPath, repoRoot }` so a custom
   config path works through the stream as it does through `check()`.
+- The `TEST_INTEGRITY_TEXT_TRUNCATED` message (warn, not in mode `off`): a file that a test-integrity signal reads
+  (a test file, a workflow, a modified `package.json`, a JavaScript, TypeScript or Python source file, or the pharn-ci
+  config) has more than 5000 changed lines, so the signals read only the first 5000. The message names those files,
+  so a change cannot pass in silence by padding a file past the cut. Deleted files are not named.
 - README: an [Agent skills](README.md#agent-skills) section on the `pharn-ci` plugin in
   [pharn-dev/skills](https://github.com/pharn-dev/skills) (install, explain a verdict, cover
   uncovered lines), and a pointer to it from the Quick start and the Pharn family table.
