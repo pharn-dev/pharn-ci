@@ -113,6 +113,34 @@ describe("createGitHubApi", () => {
     expect(await api.listTree("c".repeat(40))).toEqual({ paths: [], truncated: true });
   });
 
+  it("reads a pull request's author and labels for the accept label", async () => {
+    const { opts, octokit } = options("tok");
+    const author = { login: "Author-1", type: "User" };
+    const labels = [{ name: "pharn/accepted" }];
+    octokit.rest.pulls.get.mockResolvedValueOnce({ data: { user: author, labels } } as never);
+    await expect(createGitHubApi(opts).getPullRequestSignoff(42)).resolves.toEqual({ author, labels });
+    expect(octokit.rest.pulls.get).toHaveBeenCalledWith({ ...REPO, pull_number: 42 });
+  });
+
+  it("lists one page of 100 issue events and reads whether a next page exists from the link header", async () => {
+    const { opts, octokit } = options("tok");
+    const listEvents = vi.fn();
+    (octokit.rest.issues as Record<string, unknown>).listEvents = listEvents;
+    const api = createGitHubApi(opts);
+    const events = [{ event: "labeled", label: { name: "pharn/accepted" } }];
+    listEvents.mockResolvedValueOnce({
+      data: events,
+      headers: { link: '<https://api.github.com/x?page=3>; rel="next", <https://api.github.com/x?page=9>; rel="last"' },
+    });
+    await expect(api.listIssueEvents(42, 2)).resolves.toEqual({ events, hasNext: true });
+    expect(listEvents).toHaveBeenCalledWith({ ...REPO, issue_number: 42, per_page: 100, page: 2 });
+
+    listEvents.mockResolvedValueOnce({ data: [], headers: { link: '<https://api.github.com/x?page=1>; rel="prev"' } });
+    await expect(api.listIssueEvents(42, 3)).resolves.toEqual({ events: [], hasNext: false });
+    listEvents.mockResolvedValueOnce({ data: [], headers: {} });
+    await expect(api.listIssueEvents(42, 4)).resolves.toEqual({ events: [], hasNext: false });
+  });
+
   it("returns no login when /user is not readable", async () => {
     const { opts, octokit } = options("t0ken");
     octokit.rest.users.getAuthenticated.mockRejectedValueOnce(new Error("Resource not accessible by integration"));

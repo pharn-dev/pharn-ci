@@ -80,6 +80,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   use, workflow files, every `package.json` and the JavaScript, TypeScript and Python source files (at most 5000 lines
   per file, 400 characters per line; `textTruncated` marks a cut file), for the signals that read line text. `readDiffChunks` takes an optional `{ configPath, repoRoot }` so a custom
   config path works through the stream as it does through `check()`.
+- The `accept-label` input also refuses invisible formatting characters (zero-width marks, bidirectional overrides
+  and isolates, a byte order mark inside the name), which could make the hint around the label read differently from
+  what it says. A spelling of `pharn/accepted` in other letter case is read as the default, so the report, the hints
+  and the sign-off line name the same label. The comment shows those characters in a path or label as U+FFFD.
 - The PR comment and job summary follow the Report v2 layout. The summary table gains a Test integrity column (`off`,
   `none (warn)`, or the number of findings and how many block), and the headline sentence counts the findings when
   there are any. The "🔍 Test integrity" section lists block findings first, then warn, then info, shows 10 and

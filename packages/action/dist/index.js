@@ -25284,19 +25284,20 @@ function formatNumber(n) {
 var DEFAULT_ACCEPT_LABEL = "pharn/accepted";
 var MAX_ACCEPT_LABEL_LENGTH = 50;
 var GITHUB_LOGIN = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/;
-var CONTROL = /[\u0000-\u001f\u007f-\u009f]/;
-var INVALID_LABEL = "the accept-label input must be at most 50 characters and must not contain control characters";
+var CONTROL = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/;
+var INVALID_LABEL = "the accept-label input must be at most 50 characters and must not contain control or invisible formatting characters";
 function validateAcceptLabel(raw) {
   const label = raw.trim();
   if (label === "") return { ok: true, label: DEFAULT_ACCEPT_LABEL };
   if ([...label].length > MAX_ACCEPT_LABEL_LENGTH || CONTROL.test(label)) return { ok: false, error: INVALID_LABEL };
-  return { ok: true, label };
+  return { ok: true, label: isDefaultAcceptLabel(label) ? DEFAULT_ACCEPT_LABEL : label };
 }
 function isDefaultAcceptLabel(label) {
   return sameName(label, DEFAULT_ACCEPT_LABEL);
 }
+var asciiLower = (text) => text.replace(/[A-Z]/g, (c) => c.toLowerCase());
 function sameName(a, b) {
-  return a.toLowerCase() === b.toLowerCase();
+  return asciiLower(a) === asciiLower(b);
 }
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -28279,7 +28280,7 @@ function rangeParts(lines) {
   }
   return parts;
 }
-var CONTROL_CHARS2 = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
+var CONTROL_CHARS2 = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069\ufeff]/g;
 function code(path) {
   const safe = path.replace(CONTROL_CHARS2, "\uFFFD").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/`/g, "'");
   return `\`${safe}\``;
