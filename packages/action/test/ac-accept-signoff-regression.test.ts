@@ -27,13 +27,28 @@ const BEFORE_COUNT = 216;
 /**
  * Fixtures added after the digest above was taken. They are left out of it, so it keeps pinning every earlier fixture
  * to the signals and messages it gave at the base commit; each of them is asserted by its own AC test (the E1 gate
- * fixes: ac-ti01-rename-edited, ac-ti03-cap and ac-ti14-config-forms).
+ * fixes: ac-ti01-rename-edited, ac-ti03-cap, ac-ti14-config-forms and ac-e1-precision).
  */
 const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
   "TI01/block-rename-away-edited.diff",
   "TI01/pass-rename-to-test-edited.diff",
   "TI03/block-behind-twenty-warns.diff",
+  "TI03/block-python-context-lines.diff",
+  "TI03/block-python-def-edited.diff",
   "TI03/warn-twenty-five-conditional.diff",
+  "TI10/block-echo-after-run.diff",
+  "TI10/block-jest-name-filter.diff",
+  "TI10/block-or-colon.diff",
+  "TI10/block-semicolon-true.diff",
+  "TI10/pass-echo-banner.diff",
+  "TI10/pass-mocha-timeout.diff",
+  "TI11/block-pnpm-vitest-removed.diff",
+  "TI11/block-trigger-quoted-on.diff",
+  "TI11/block-uv-pytest-removed.diff",
+  "TI11/pass-on-key-quoted.diff",
+  "TI11/pass-uv-pytest-moved.diff",
+  "TI13/block-pragma-nocover.diff",
+  "TI13/pass-pragma-respelled.diff",
   "TI14/block-exclude-quoted-key-block.diff",
   "TI14/block-exclude-quoted-key.diff",
   "TI14/block-threshold-escaped.diff",

@@ -31,7 +31,6 @@ export interface TI10Options {
 }
 
 const isBlank = (c: string | undefined) => c === " " || c === "\t";
-const isWordChar = (c: string | undefined) => c !== undefined && /[A-Za-z0-9_]/.test(c);
 
 /** Reads a JSON string that starts at `start` (a double quote). Honours `\"` and `\\`. Null when it does not close. */
 function readString(text: string, start: number): { value: string; end: number } | null {
@@ -81,13 +80,20 @@ function parseScriptLine(text: string): { key: string; value: string } | null {
   return i === text.length ? { key: key.value, value: value.value } : null;
 }
 
+/** Whether a script runs mocha, where `-t` is `--timeout`, not a name filter. */
+const RUNS_MOCHA = /(?:^|[\s/])mocha(?:\s|$)/;
+
 /**
  * The weakening kinds in the value of a test script. The value is read left to right: white space ends a word, and the
  * shell operators `;`, `|`, `||`, `&` and `&&` end a command. A command position is the start of the value or the text
- * after `||` or `;` (not after `&&` or a single `|`, because the script still fails when the runner fails).
+ * after `||` or `;` (not after `&&` or a single `|`, because the script still fails when the runner fails). An `echo`
+ * counts only when the script's exit status can be its own: it is not followed by `&&`, `|`, `&` or `;` (so
+ * `echo start && vitest run` is a banner, not a weakening). `true` or `:` after `||` or `;` ignores the status before
+ * it. `-t` is a name filter except in a script that runs mocha.
  */
 function scanKinds(value: string): Set<Kind> {
   const found = new Set<Kind>();
+  const mocha = RUNS_MOCHA.test(value);
   let operator = "";
   let words: string[] = [];
   let word = "";
@@ -96,15 +102,18 @@ function scanKinds(value: string): Set<Kind> {
     if (word !== "") words.push(word);
     word = "";
   };
-  const endCommand = () => {
+  const endCommand = (next: string) => {
     endWord();
     const atCommandPosition = operator === "" || operator === "||" || operator === ";";
-    if (atCommandPosition && words[0] === "echo") found.add("echo");
+    if (atCommandPosition && words[0] === "echo" && (next === "" || next === "||")) found.add("echo");
     if (atCommandPosition && words[0] === "exit" && words[1] === "0") found.add("exit-0");
+    if ((operator === "||" || operator === ";") && words.length === 1 && (words[0] === "true" || words[0] === ":")) {
+      found.add("or-true");
+    }
     for (const token of words) {
       if (token === "--passWithNoTests" || token.startsWith("--passWithNoTests=")) found.add("pass-with-no-tests");
       if (token.startsWith("--testPathPattern")) found.add("path-filter");
-      if (token === "-t" || token.startsWith("--testNamePattern")) found.add("name-filter");
+      if ((token === "-t" && !mocha) || token.startsWith("--testNamePattern")) found.add("name-filter");
     }
     words = [];
   };
@@ -117,12 +126,7 @@ function scanKinds(value: string): Set<Kind> {
         op = c + c;
         i++;
       }
-      endCommand();
-      if (op === "||") {
-        let j = i + 1;
-        while (isBlank(value[j])) j++;
-        if (value.startsWith("true", j) && !isWordChar(value[j + 4])) found.add("or-true");
-      }
+      endCommand(op);
       operator = op;
     } else if (isBlank(c)) {
       endWord();
@@ -130,7 +134,7 @@ function scanKinds(value: string): Set<Kind> {
       word += c;
     }
   }
-  endCommand();
+  endCommand("");
   return found;
 }
 

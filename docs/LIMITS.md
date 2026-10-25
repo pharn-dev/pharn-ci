@@ -27,8 +27,9 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   not a test file counts on its path alone, edited or not, and a helper renamed out of `tests/`
   counts too. (4) A test file emptied but not deleted is not seen (TI02 and
   TI05 in a later release). (5) Text is kept for at most 5000 lines per file and 400 characters per
-  line; a deleted file cut at that bound with no test-defining line kept still counts, so a huge
-  file is never waved through. (6) A package that is the repository root never exempts a deletion.
+  line; a deleted JS/TS, Python or Go file cut at that bound with no test-defining line kept still
+  counts, so a huge test file is never waved through, while a cut fixture, snapshot or data file
+  under a test directory does not. (6) A package that is the repository root never exempts a deletion.
 - **Only lines the coverage report knows count.** An added line with no `DA` entry in the lcov file
   or no class-level `<line>` record in a Cobertura file (a comment, a type, a blank line, a
   declaration the tool does not instrument) is left out of the denominator. What is "coverable" is
@@ -99,15 +100,19 @@ TI11 reads the added and removed lines of workflow files (`.github/workflows/*.y
   step or to the job it sits in, which is why those rules are `warn` in every mode but `off`. An `if:` other than a
   literal false or an event-name test, a job-level condition written another way and a timeout of 2 minutes are not
   seen.
-- **Test commands by name.** A removed command counts only if it starts with `npm`, `pnpm`, `yarn` or `bun` `test`,
-  `vitest`, `jest`, `mocha`, `pytest`, `python -m pytest`, `python -m unittest`, `go test` or `playwright test`,
-  alone or in a `&&`/`;` chain. A script run another way (`make check`, a shell script, a package filter such as
-  `pnpm -r test`) is not seen.
+- **Test commands by name.** A removed command counts only if it is a package-manager test script (`npm test`,
+  `npm t`, `pnpm -r test`, `pnpm --filter core test`, `yarn test:unit`, ...), `vitest`, `jest`, `mocha` or
+  `playwright test` (directly or through `npx`, `pnpm`, `pnpm exec`, `yarn`, `bunx` or `bun x`), `node --test`,
+  `bun test`, `deno test`, `pytest`, `python -m pytest`, `python -m unittest`, `tox` or `nox` (directly or through
+  `uv`, `poetry`, `pipenv`, `pdm`, `hatch` or `rye run`) or `go test`, alone or in a `&&`/`;` chain. A script run
+  another way (`make check`, a shell script, a task runner such as `turbo run test` or `nx test`) is not seen.
 - **Moved steps.** A test command removed from one place and added anywhere in the workflow files of the same diff
   counts as moved, even into a job that never runs on pull requests. A test job moved into a reusable workflow
   or a composite action is a removal of its steps; the called workflow is not read.
 - **Triggers by token.** A removed `pull_request` or `pull_request_target` is excused when any added line of the same
-  file names either. Other filters (`branches`, `paths`) are not judged.
+  file names either. The `on` key may be quoted (`"on":`). Other filters (`branches`, `paths`) are not judged, and a
+  workflow that drops its `pull_request` trigger is a block even when it never ran tests (a release or labeler
+  workflow).
 - **Matrix by one-line list.** Only a flow list (`[18, 20, 22]`) that shrinks on the same key counts; a block list
   loses no entry here, and `branches`, `paths`, `types` and `runs-on` lists are not read as matrices.
 - **Needs policy.** A required-check job renamed and a `paths-ignore` widened over source need the list of required
@@ -119,13 +124,15 @@ TI11 reads the added and removed lines of workflow files (`.github/workflows/*.y
 TI03 reads the added and removed lines of test files, one line at a time, in JS/TS, Python and Go. The local diff is
 `--unified=0`, so there are no context lines.
 
-- **No context lines.** A skip is judged from its own line and the lines the diff shows next to it. A decorator added
-  above a test the diff does not show is read as a skip of an existing test; a decorator added in a hunk that also adds
-  an unrelated test below it is read as a skip of a test the change adds (`warn`). A skip inside a test body cannot be
+- **No context lines.** A skip is judged from its own line and the lines the diff shows next to it. A Python decorator
+  is judged by the added lines directly below it: a `def` or `class` there is a test the change adds (`warn`) unless a
+  removed line of the same hunk opened a test of the same name (an edited `def` line); nothing added directly below it
+  means it sits on a test the diff does not show, a test that existed. A skip inside a test body cannot be
   tied to the test it stops or to the `if` that guards it, so it is `warn`.
 - **Forms at the start of a line.** A form is recognised only at the start of a line after white space, so a one-line
   `if (slow) this.skip()`, a skip written after another statement on the same line and a skip built through a helper
-  are missed. Comments and strings are never read as skips.
+  are missed. A call wrapped over lines is read from its first line only: `it` alone with `.skip(...)` on the next line
+  is missed, and `it.skip(` with the name on the next line reads as a skip inside a body (`warn`). Comments and strings are never read as skips.
 - **Runner words that are not named.** `test.fixme`, `test.fail` and any other runner word that stops a test but is not
   one of the forms above are not seen. `skipIf` and `runIf` are judged by their literal argument only: a
   condition that is always true under another spelling reads as conditional.
@@ -167,10 +174,13 @@ parser.
   multi-line value, a one-line object and a key written over several lines are not read.
 - **An added or deleted `package.json` gives nothing.** A new file has no earlier script to compare with, and a deleted
   one has no added line; only a modified or renamed `package.json` is read.
-- **Other weakening forms are not named.** `|| true`, `echo` or `exit 0` as a command, `--passWithNoTests`,
-  `--testPathPattern`, `-t` and `--testNamePattern` are caught; `--bail 0`, `--silent`, `--if-present`, a wrapper script
-  that swallows the exit code, `--test-name-pattern` of `node --test`, a changed `test` command in `pyproject.toml`, a
-  Makefile or tox are not. `exit 0` and `echo` count only as a command at the start, after `||` or after `;`.
+- **Other weakening forms are not named.** `|| true`, `|| :`, `; true`, `; :`, `echo` or `exit 0` as a command,
+  `--passWithNoTests`, `--testPathPattern`, `-t` and `--testNamePattern` are caught; `--bail 0`, `--silent`,
+  `--if-present`, a wrapper script that swallows the exit code, `--test-name-pattern` of `node --test`, a changed `test`
+  command in `pyproject.toml`, a Makefile or tox are not. `exit 0` counts only as a command at the start, after `||` or
+  after `;`. `echo` counts there too, and only when no `&&`, `|`, `&` or `;` follows it, so a banner such as
+  `echo start && vitest run` is not a finding. `-t` is not a name filter in a script that runs `mocha`, where it is
+  `--timeout`.
 - **A weakening that was already there is excused by key.** A removed line of the same key with the same form accounts
   for the added one, so moving `|| true` to another command of the same script is missed.
 - **`--passWithNoTests` is excused only when no tracked file is a test file.** An empty list of tracked files (git
@@ -182,8 +192,8 @@ parser.
 
 TI13 reads the added and removed lines of JS/TS and Python source files that are not test files.
 
-- **Other tools' markers.** Only the Istanbul, V8 and C8 ignore hints in a comment and the `# pragma: no cover` form are
-  read. `node:coverage` hints, `# pragma: no branch`, a custom `exclude_lines` pattern, `.coveragerc` and `.nycrc`
+- **Other tools' markers.** Only the Istanbul, V8 and C8 ignore hints in a comment and the coverage.py no-cover pragma
+  (`# pragma: no cover`, `#pragma nocover` and the other spellings its default pattern reads) are read. `node:coverage` hints, `# pragma: no branch`, a custom `exclude_lines` pattern, `.coveragerc` and `.nycrc`
   settings and an exclusion in a config file are not.
 - **Markers in test files.** A file that is a test file by name (section 1) gives nothing, and so does any file that is
   not JS/TS or Python. `*.test.mts` and `*.test.cts` files are not test files by the existing detection, so they count as
@@ -191,7 +201,8 @@ TI13 reads the added and removed lines of JS/TS and Python source files that are
 - **A marker inside a string fires,** because the scan sees a comment start in the text of the line, not the syntax. A
   marker on a later line of a block comment (without its own comment start) is missed.
 - **Moves and one-to-one matching.** A removed marker of the same text accounts for one added marker of the same file; a
-  marker moved to another file reads as added. The text is compared after lower-casing and collapsing white space.
+  marker moved to another file reads as added. The text is compared after lower-casing and collapsing white space
+  (for the Python pragma, after removing white space and the colon, so `no cover` and `nocover` are one marker).
 - **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8); at most 20 signals are
   given per file. A diff that reaches `check()` already parsed without kept text yields no TI13.
 

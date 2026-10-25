@@ -220,10 +220,12 @@ export function createUnifiedDiffReader(options: UnifiedDiffOptions = {}): {
       const match = HUNK_HEADER.exec(line);
       if (!match || !current) return;
       current.sawHunk = true;
-      oldCursor = Number(match[1]);
       oldRemaining = match[2] === undefined ? 1 : Number(match[2]);
-      cursor = Number(match[3]);
       newRemaining = match[4] === undefined ? 1 : Number(match[4]);
+      // git writes a start of 0 only for an empty side; a hand-made `+0,N` with lines would number them from 0, and
+      // every line number in a report is 1-based.
+      oldCursor = Math.max(Number(match[1]), oldRemaining > 0 ? 1 : 0);
+      cursor = Math.max(Number(match[3]), newRemaining > 0 ? 1 : 0);
       hunk = undefined;
       if (decideKeep(current)) {
         if (current.hunks.length >= MAX_KEPT_LINES) {

@@ -1,0 +1,6 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 5555555..6666666 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -24 +23,0 @@ jobs:
+-      - run: pnpm vitest run --coverage

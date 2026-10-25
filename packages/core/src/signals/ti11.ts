@@ -5,9 +5,30 @@ import { flowItems, keyValue, stripComment, unquote } from "./yamlLines.js";
 
 const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
-/** A command that runs tests: a package-manager test script, a JS or Python test runner, `go test`, Playwright. */
-const TEST_COMMAND =
-  /^(?:(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?test(?::[\w:-]+)?(?:\s|$)|(?:npx\s+|pnpm\s+exec\s+|yarn\s+|bunx\s+)?(?:vitest|jest|mocha)(?:\s|$)|(?:python3?\s+-m\s+)?pytest(?:\s|$)|python3?\s+-m\s+unittest(?:\s|$)|go\s+test(?:\s|$)|(?:npx\s+)?playwright\s+test(?:\s|$))/;
+/** Workspace flags a package manager takes before the script name: `-r`, `-w`, `--filter core`, `-C pkg`, ... */
+const PM_FLAGS = String.raw`(?:\s+(?:-r|--recursive|-w|--workspace-root|-ws|--workspaces|--if-present|(?:--filter|-F|-C|--dir|--prefix|--workspace|--cwd)(?:=|\s+)\S+))*`;
+/** A runner a package manager or a launcher starts: `pnpm vitest`, `pnpm exec jest`, `npx mocha`, `bun x vitest`. */
+const JS_LAUNCHER = String.raw`(?:(?:npx|bunx|yarn|pnpm${PM_FLAGS}(?:\s+(?:exec|dlx))?|bun\s+x|npm\s+exec)\s+)?`;
+/** A Python environment wrapper: `uv run`, `poetry run`, `pipenv run`, `pdm run`, `hatch run`, `rye run`. */
+const PY_WRAPPER = String.raw`(?:(?:uv|poetry|pipenv|pdm|hatch|rye)\s+run\s+)?`;
+
+/**
+ * A command that runs tests: a package-manager test script (`npm t`, `pnpm -r test`, `pnpm --filter core test`), a JS
+ * runner (`vitest`, `jest`, `mocha`, directly or through a launcher), `node --test`, `bun test`, `deno test`, `pytest`,
+ * `python -m unittest`, `tox` or `nox` (directly or through an environment wrapper), `go test`, Playwright.
+ */
+const TEST_COMMAND_PARTS: readonly string[] = [
+  String.raw`(?:npm|pnpm|yarn|bun)${PM_FLAGS}\s+(?:run\s+)?(?:test|t)(?::[\w:-]+)?(?:\s|$)`,
+  String.raw`${JS_LAUNCHER}(?:vitest|jest|mocha)(?:\s|$)`,
+  String.raw`node\s+(?:\S+\s+)*?--test(?:\s|=|$)`,
+  String.raw`(?:bun|deno)\s+test(?:\s|$)`,
+  String.raw`${PY_WRAPPER}(?:python3?\s+-m\s+)?pytest(?:\s|$)`,
+  String.raw`${PY_WRAPPER}python3?\s+-m\s+unittest(?:\s|$)`,
+  String.raw`${PY_WRAPPER}(?:tox|nox)(?:\s|$)`,
+  String.raw`go\s+test(?:\s|$)`,
+  String.raw`${JS_LAUNCHER}playwright\s+test(?:\s|$)`,
+];
+const TEST_COMMAND = new RegExp(`^(?:${TEST_COMMAND_PARTS.map((part) => `(?:${part})`).join("|")})`);
 
 /** A key that filters when a workflow runs, not a list of combinations to test. */
 const NOT_A_MATRIX_KEY: ReadonlySet<string> = new Set([
@@ -46,7 +67,7 @@ function carriesPullRequestTrigger(line: string): boolean {
   const text = stripComment(line);
   if (/^['"]?pull_request(?:_target)?['"]?\s*:/.test(text)) return true;
   if (/^-\s+['"]?pull_request(?:_target)?['"]?$/.test(text)) return true;
-  const on = /^on\s*:\s*(.+)$/.exec(text);
+  const on = /^(?:on|"on"|'on')\s*:\s*(.+)$/.exec(text);
   return on !== null && PULL_REQUEST_TOKEN.test(on[1] as string);
 }
 

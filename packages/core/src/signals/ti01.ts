@@ -1,6 +1,8 @@
 import type { DiffFile } from "../diff/unified.js";
 import type { TestIntegritySignal } from "../report.js";
 import { definesTests, isTestFile, testPackageDir, testStem } from "../testFiles.js";
+import { coverageSourceLanguage } from "./signalFiles.js";
+import { testLanguage } from "./testLines.js";
 
 const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -24,8 +26,8 @@ function addedTests(file: DiffFile): boolean {
 
 /**
  * TI01, a test file deleted. A candidate is a test file the diff deletes, or renames to a path that is not a test file
- * (named by its old path). It counts when its removed lines define tests, when its text is unknown (not kept) or was cut
- * at the bound, or when it is renamed away: a rename shows only the lines it edits, never the tests it keeps, so a
+ * (named by its old path). It counts when its removed lines define tests, when its text is unknown (not kept), when it
+ * is a JS/TS, Python or Go file whose text was cut at the bound, or when it is renamed away: a rename shows only the lines it edits, never the tests it keeps, so a
  * rename to a non-test path counts whatever its removed lines hold. A binary file never counts. A counting file is
  * `block` (shown as `warn` in mode `warn`), or `info` when the same diff also deletes a source file with the same name,
  * deletes other files of the package that holds the test (never the repository root), or adds a test file with the same
@@ -47,7 +49,11 @@ export function detectTI01(diff: readonly DiffFile[], mode: "block" | "warn"): T
     if (found.has(path)) continue;
 
     const defined = removedTests(file);
-    const counts = defined === "yes" || defined === "unknown" || file.textTruncated === true || renamedAway;
+    // A cut file counts only when it is code that can define tests: a large fixture, snapshot or data file under a test
+    // directory cannot, so cutting its text proves nothing.
+    const cutCode =
+      file.textTruncated === true && (testLanguage(path) !== null || coverageSourceLanguage(path) !== null);
+    const counts = defined === "yes" || defined === "unknown" || cutCode || renamedAway;
     if (!counts) continue;
 
     const stem = testStem(path);

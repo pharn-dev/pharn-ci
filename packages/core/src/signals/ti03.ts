@@ -115,6 +115,34 @@ function removedSkips(hunks: readonly DiffHunk[], language: TestLanguage): Set<s
   return keys;
 }
 
+/** The name a Python test-opening line gives (`test_x` of `def test_x(`, `TestX` of `class TestX`), else null. */
+function pythonTestName(text: string): string | null {
+  const match = /^(?:async\s+)?def\s+(test_\w*)|^class\s+(Test\w*)/.exec(text.trimStart());
+  return match === null ? null : ((match[1] ?? match[2]) as string);
+}
+
+/**
+ * What an added Python skip decorator at `index` sits on. It reads the added lines directly below it (each on the next
+ * line number, so a context line or a gap ends the run), passing over other decorators, comments and blank lines. A
+ * `def` or `class` there is a test the change adds, unless a removed line of the same hunk opened a test of the same
+ * name (the def line was edited, so the test existed). No added line there means the decorator sits on a line the diff
+ * does not show: a test that existed.
+ */
+function decoratedTest(hunk: DiffHunk, index: number): Category {
+  let previous = hunk.added[index]?.line ?? 0;
+  for (const entry of hunk.added.slice(index + 1)) {
+    if (entry.line !== previous + 1) break;
+    previous = entry.line;
+    const text = entry.text.trimStart();
+    if (text === "" || text.startsWith("@") || text.startsWith("#")) continue;
+    if (!opensPythonTest(text)) return "adds";
+    const name = pythonTestName(text);
+    const edited = hunk.removed.some((removed) => name !== null && pythonTestName(removed.text) === name);
+    return edited ? "existing" : "adds";
+  }
+  return "existing";
+}
+
 interface Found {
   line: number;
   category: Category;
@@ -133,7 +161,7 @@ function findingsOf(file: DiffFile, hunks: readonly DiffHunk[], language: TestLa
       else if (skip.shape === "conditional") category = "conditional";
       else if (skip.shape === "in-body") category = "cannot-place";
       else if (skip.shape === "named") category = openings.has(skip.name) ? "existing" : "adds";
-      else category = hunk.added.slice(index + 1).some((later) => opensPythonTest(later.text)) ? "adds" : "existing";
+      else category = decoratedTest(hunk, index);
       found.push({ line: entry.line, category });
     });
   }

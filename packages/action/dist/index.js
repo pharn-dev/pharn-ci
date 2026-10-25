@@ -24851,10 +24851,10 @@ function createUnifiedDiffReader(options = {}) {
       const match = HUNK_HEADER.exec(line);
       if (!match || !current) return;
       current.sawHunk = true;
-      oldCursor = Number(match[1]);
       oldRemaining = match[2] === void 0 ? 1 : Number(match[2]);
-      cursor = Number(match[3]);
       newRemaining = match[4] === void 0 ? 1 : Number(match[4]);
+      oldCursor = Math.max(Number(match[1]), oldRemaining > 0 ? 1 : 0);
+      cursor = Math.max(Number(match[3]), newRemaining > 0 ? 1 : 0);
       hunk = void 0;
       if (decideKeep(current)) {
         if (current.hunks.length >= MAX_KEPT_LINES) {
@@ -26847,7 +26847,8 @@ function detectTI01(diff, mode) {
     const path = renamedAway ? file.oldPath : file.path;
     if (found.has(path)) continue;
     const defined = removedTests(file);
-    const counts = defined === "yes" || defined === "unknown" || file.textTruncated === true || renamedAway;
+    const cutCode = file.textTruncated === true && (testLanguage(path) !== null || coverageSourceLanguage(path) !== null);
+    const counts = defined === "yes" || defined === "unknown" || cutCode || renamedAway;
     if (!counts) continue;
     const stem = testStem(path);
     const dir = testPackageDir(path);
@@ -26936,6 +26937,24 @@ function removedSkips(hunks, language) {
   }
   return keys;
 }
+function pythonTestName(text) {
+  const match = /^(?:async\s+)?def\s+(test_\w*)|^class\s+(Test\w*)/.exec(text.trimStart());
+  return match === null ? null : match[1] ?? match[2];
+}
+function decoratedTest(hunk, index) {
+  let previous = hunk.added[index]?.line ?? 0;
+  for (const entry of hunk.added.slice(index + 1)) {
+    if (entry.line !== previous + 1) break;
+    previous = entry.line;
+    const text = entry.text.trimStart();
+    if (text === "" || text.startsWith("@") || text.startsWith("#")) continue;
+    if (!opensPythonTest(text)) return "adds";
+    const name = pythonTestName(text);
+    const edited = hunk.removed.some((removed) => name !== null && pythonTestName(removed.text) === name);
+    return edited ? "existing" : "adds";
+  }
+  return "existing";
+}
 function findingsOf(file, hunks, language) {
   const before = removedSkips(hunks, language);
   const openings = language === "jsts" ? removedOpenings(hunks) : /* @__PURE__ */ new Set();
@@ -26949,7 +26968,7 @@ function findingsOf(file, hunks, language) {
       else if (skip.shape === "conditional") category = "conditional";
       else if (skip.shape === "in-body") category = "cannot-place";
       else if (skip.shape === "named") category = openings.has(skip.name) ? "existing" : "adds";
-      else category = hunk.added.slice(index + 1).some((later) => opensPythonTest(later.text)) ? "adds" : "existing";
+      else category = decoratedTest(hunk, index);
       found.push({ line: entry.line, category });
     });
   }
@@ -27023,7 +27042,6 @@ var DETAILS2 = {
   "hook-removed": "A script that ran before or after the tests was removed, so its checks no longer run with them."
 };
 var isBlank = (c) => c === " " || c === "	";
-var isWordChar = (c) => c !== void 0 && /[A-Za-z0-9_]/.test(c);
 function readString(text, start) {
   let value = "";
   let i = start + 1;
@@ -27065,8 +27083,10 @@ function parseScriptLine(text) {
   skip();
   return i === text.length ? { key: key.value, value: value.value } : null;
 }
+var RUNS_MOCHA = /(?:^|[\s/])mocha(?:\s|$)/;
 function scanKinds(value) {
   const found = /* @__PURE__ */ new Set();
+  const mocha = RUNS_MOCHA.test(value);
   let operator = "";
   let words = [];
   let word = "";
@@ -27074,15 +27094,18 @@ function scanKinds(value) {
     if (word !== "") words.push(word);
     word = "";
   };
-  const endCommand = () => {
+  const endCommand = (next) => {
     endWord();
     const atCommandPosition = operator === "" || operator === "||" || operator === ";";
-    if (atCommandPosition && words[0] === "echo") found.add("echo");
+    if (atCommandPosition && words[0] === "echo" && (next === "" || next === "||")) found.add("echo");
     if (atCommandPosition && words[0] === "exit" && words[1] === "0") found.add("exit-0");
+    if ((operator === "||" || operator === ";") && words.length === 1 && (words[0] === "true" || words[0] === ":")) {
+      found.add("or-true");
+    }
     for (const token of words) {
       if (token === "--passWithNoTests" || token.startsWith("--passWithNoTests=")) found.add("pass-with-no-tests");
       if (token.startsWith("--testPathPattern")) found.add("path-filter");
-      if (token === "-t" || token.startsWith("--testNamePattern")) found.add("name-filter");
+      if (token === "-t" && !mocha || token.startsWith("--testNamePattern")) found.add("name-filter");
     }
     words = [];
   };
@@ -27094,12 +27117,7 @@ function scanKinds(value) {
         op = c + c;
         i++;
       }
-      endCommand();
-      if (op === "||") {
-        let j = i + 1;
-        while (isBlank(value[j])) j++;
-        if (value.startsWith("true", j) && !isWordChar(value[j + 4])) found.add("or-true");
-      }
+      endCommand(op);
       operator = op;
     } else if (isBlank(c)) {
       endWord();
@@ -27107,7 +27125,7 @@ function scanKinds(value) {
       word += c;
     }
   }
-  endCommand();
+  endCommand("");
   return found;
 }
 function detectTI10(diff, options) {
@@ -27246,7 +27264,21 @@ function flowItems(value) {
 
 // ../core/src/signals/ti11.ts
 var byCodeUnit7 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-var TEST_COMMAND = /^(?:(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?test(?::[\w:-]+)?(?:\s|$)|(?:npx\s+|pnpm\s+exec\s+|yarn\s+|bunx\s+)?(?:vitest|jest|mocha)(?:\s|$)|(?:python3?\s+-m\s+)?pytest(?:\s|$)|python3?\s+-m\s+unittest(?:\s|$)|go\s+test(?:\s|$)|(?:npx\s+)?playwright\s+test(?:\s|$))/;
+var PM_FLAGS = String.raw`(?:\s+(?:-r|--recursive|-w|--workspace-root|-ws|--workspaces|--if-present|(?:--filter|-F|-C|--dir|--prefix|--workspace|--cwd)(?:=|\s+)\S+))*`;
+var JS_LAUNCHER = String.raw`(?:(?:npx|bunx|yarn|pnpm${PM_FLAGS}(?:\s+(?:exec|dlx))?|bun\s+x|npm\s+exec)\s+)?`;
+var PY_WRAPPER = String.raw`(?:(?:uv|poetry|pipenv|pdm|hatch|rye)\s+run\s+)?`;
+var TEST_COMMAND_PARTS = [
+  String.raw`(?:npm|pnpm|yarn|bun)${PM_FLAGS}\s+(?:run\s+)?(?:test|t)(?::[\w:-]+)?(?:\s|$)`,
+  String.raw`${JS_LAUNCHER}(?:vitest|jest|mocha)(?:\s|$)`,
+  String.raw`node\s+(?:\S+\s+)*?--test(?:\s|=|$)`,
+  String.raw`(?:bun|deno)\s+test(?:\s|$)`,
+  String.raw`${PY_WRAPPER}(?:python3?\s+-m\s+)?pytest(?:\s|$)`,
+  String.raw`${PY_WRAPPER}python3?\s+-m\s+unittest(?:\s|$)`,
+  String.raw`${PY_WRAPPER}(?:tox|nox)(?:\s|$)`,
+  String.raw`go\s+test(?:\s|$)`,
+  String.raw`${JS_LAUNCHER}playwright\s+test(?:\s|$)`
+];
+var TEST_COMMAND = new RegExp(`^(?:${TEST_COMMAND_PARTS.map((part) => `(?:${part})`).join("|")})`);
 var NOT_A_MATRIX_KEY = /* @__PURE__ */ new Set([
   "on",
   "branches",
@@ -27274,7 +27306,7 @@ function carriesPullRequestTrigger(line) {
   const text = stripComment2(line);
   if (/^['"]?pull_request(?:_target)?['"]?\s*:/.test(text)) return true;
   if (/^-\s+['"]?pull_request(?:_target)?['"]?$/.test(text)) return true;
-  const on = /^on\s*:\s*(.+)$/.exec(text);
+  const on = /^(?:on|"on"|'on')\s*:\s*(.+)$/.exec(text);
   return on !== null && PULL_REQUEST_TOKEN.test(on[1]);
 }
 function ifExpression(value) {
@@ -27376,11 +27408,11 @@ var BLOCK_OR_LINE_START = String.raw`(?:\/\*|\/\/)`;
 var SPACES = String.raw`[ \t]*`;
 var WORD_END = "(?![A-Za-z0-9_])";
 var JS_MARKER = new RegExp(`${BLOCK_OR_LINE_START}${SPACES}(istanbul|v8|c8)[ \\t]+ignore${WORD_END}`, "i");
-var PY_MARKER = new RegExp(`#${SPACES}pragma:?${SPACES}no[ \\t]+cover${WORD_END}`, "i");
+var PY_MARKER = new RegExp(`#${SPACES}pragma:?${SPACES}no${SPACES}cover${WORD_END}`, "i");
 function markerOf(text, language) {
   const match = (language === "jsts" ? JS_MARKER : PY_MARKER).exec(text);
   if (match === null) return null;
-  const marker = match[0].toLowerCase().replace(/[ \t]+/g, " ");
+  const marker = language === "python" ? match[0].toLowerCase().replace(/[ \t:]+/g, "") : match[0].toLowerCase().replace(/[ \t]+/g, " ");
   const family = language === "python" ? "pragma" : match[1].toLowerCase();
   return { family, marker };
 }
