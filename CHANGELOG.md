@@ -21,6 +21,15 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   index the Python test files of a change with `python3` when the change modifies one; with JS/TS-only changes nothing
   runs. The `skylos-nine` benchmark now catches 4 of 9. The action and CLI dist now carry the TypeScript parser, so the
   Action dist is larger (about 11 MB, under 12 MB).
+- Test-integrity signal TI07 (expected value edited to match) and the `TEST_INTEGRITY_TI07` message code. It warns, in
+  modes `block` and `warn` alike and so never fails the check, when a test of a modified JS/TS or Python test file
+  changes only literals inside the expected-value arguments of its assertions (the Jest and Vitest matchers, chai's
+  `equal`, node:assert's `assert.equal` family, unittest's `assertEqual` family and the operand after `==` in a pytest
+  `assert`) and the change also edits a JS/TS or Python source file. The finding names the test and the matcher, never
+  the literal. The `skylos-nine` benchmark now catches 5 of 9 (`edited-expected-value`).
+- Tests-changed summary: `testIntegrity.changes` in `report.json` (optional, in `schema/report.v2.json`) lists the tests a
+  change adds, removes, modifies or renames, with counts per test file, and the comment gains a collapsed "Tests changed"
+  table with the counts per test file. Test names are in `report.json` only, cut to 120 characters, at most 200 entries.
 - Test-integrity signal TI08 (snapshot churn). It warns, in modes `block` and `warn` alike, when a change modifies,
   deletes or rewrites more than 10 snapshot files (`__snapshots__` directories, `.snap` and `.ambr` files), when a
   JS/TS test file rewrites 10 or more `toMatchInlineSnapshot(` lines, or when a snapshot-update flag (`-u`,

@@ -77,6 +77,27 @@ export function helperTestDetail(name: string, baseCount: number): string {
   );
 }
 
+/** TI07: a test whose only edit is an expected value, in a change that also edits source. `matcher` is from a fixed list. */
+export function expectedValueEditedDetail(name: string, matcher: string): string {
+  return detailWithName(
+    'The test "',
+    name,
+    `" changed only an expected value of its ${matcher} assertion, in a change that also edits source files.`,
+  );
+}
+
+/** The longest test name the tests-changed summary keeps, in UTF-16 code units. */
+export const MAX_SUMMARY_NAME = 120;
+
+/** A test name for the tests-changed summary: control characters become spaces; cut to 120 with `…`, never in a pair. */
+export function summaryTestName(name: string): string {
+  const clean = withoutControls(name);
+  if (clean.length <= MAX_SUMMARY_NAME) return clean;
+  let end = MAX_SUMMARY_NAME - 1;
+  if (isHighSurrogate(clean.charCodeAt(end - 1))) end--;
+  return `${clean.slice(0, end)}…`;
+}
+
 /** TI05: a test that lost some assertions with the rest of its body unchanged. */
 export function droppedAssertionsDetail(name: string, baseCount: number, headCount: number): string {
   return detailWithName(

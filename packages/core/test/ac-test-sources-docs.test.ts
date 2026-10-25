@@ -46,15 +46,17 @@ describe("test sources: documentation and schema", () => {
 
     // TI02 and TI05 (ti02-ti05) document their three message codes and the `languages` field in schema/report.v2.json,
     // and TI08, TI15 and TI16 (ti08-ti15-ti16) add their codes to the same message-code description, so the whole file
-    // is no longer byte-identical to the base. Everything but those two descriptions still is: the schema with them
-    // taken out equals the base schema with them taken out.
+    // is no longer byte-identical to the base. ti07-tests-changed adds the optional `testIntegrity.changes` summary. Everything
+    // but those two descriptions and that property still is: the schema with them taken out equals the base schema with
+    // them taken out.
     const withoutEditedDescriptions = (schema: {
       $defs: { message: { properties: { code: { description?: string } } } };
-      properties: { testIntegrity: { properties: { languages: { description?: string } } } };
+      properties: { testIntegrity: { properties: { languages: { description?: string }; changes?: unknown } } };
     }) => {
       const copy = structuredClone(schema);
       delete copy.$defs.message.properties.code.description;
       delete copy.properties.testIntegrity.properties.languages.description;
+      delete copy.properties.testIntegrity.properties.changes;
       return copy;
     };
     const v2 = "schema/report.v2.json";

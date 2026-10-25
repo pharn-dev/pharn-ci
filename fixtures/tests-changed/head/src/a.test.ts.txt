@@ -1,0 +1,21 @@
+import { describe, expect, it } from "vitest";
+import { alpha, beta } from "./a.js";
+
+describe("a", () => {
+  it("keeps", () => {
+    expect(alpha(1)).toBe(2);
+  });
+
+  it("edits", () => {
+    expect(alpha(2)).toBe(3);
+    expect(alpha(3)).toBe(4);
+  });
+
+  it("new one", () => {
+    expect(() => alpha(-1)).toThrow("negative");
+  });
+
+  it.concurrent("flag", () => {
+    expect(alpha(5)).toBe(6);
+  });
+});

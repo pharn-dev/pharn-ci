@@ -14,12 +14,14 @@ import {
   type OmittedSignals,
   type Report,
   type ReportMeta,
+  type ReportTestChanges,
   type TestIndexUnavailable,
   type TestIntegritySignal,
 } from "./report.js";
 import { scanAgentSetup } from "./setup/scan.js";
 import { capFindings } from "./signals/findingCap.js";
 import { keepSignalFileText, textCutSignalFiles } from "./signals/signalFiles.js";
+import { summarizeTestChanges } from "./signals/testChanges.js";
 import { matchTests } from "./signals/testMatch.js";
 import { indexTouchedTestFiles } from "./signals/testPairs.js";
 import { detectTI01 } from "./signals/ti01.js";
@@ -27,6 +29,7 @@ import { detectTI02 } from "./signals/ti02.js";
 import { detectTI03 } from "./signals/ti03.js";
 import { detectTI04 } from "./signals/ti04.js";
 import { detectTI05 } from "./signals/ti05.js";
+import { detectTI07 } from "./signals/ti07.js";
 import { detectTI08 } from "./signals/ti08.js";
 import { detectTI10 } from "./signals/ti10.js";
 import { detectTI11 } from "./signals/ti11.js";
@@ -187,13 +190,19 @@ export function check(input: CheckInput): Report {
     unavailable: TestIndexUnavailable | undefined;
   } | null = null;
   const comparedMode = testIntegrity.mode;
+  let testChanges: ReportTestChanges | undefined;
   if (parsedDiff !== null && comparedMode !== "off" && input.testSources !== undefined) {
     const touched = indexTouchedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex);
     if (touched.notRun !== null) {
       comparison = { signals: [], omitted: [], languages: [], unavailable: { notRun: touched.notRun } };
     } else {
       const match = matchTests(touched);
-      const capped = capFindings([...detectTI02(match, comparedMode), ...detectTI05(match, comparedMode)]);
+      testChanges = summarizeTestChanges(touched, match) ?? undefined;
+      const capped = capFindings([
+        ...detectTI02(match, comparedMode),
+        ...detectTI05(match, comparedMode),
+        ...detectTI07(match, parsedDiff),
+      ]);
       comparison = {
         signals: capped.kept,
         omitted: capped.omitted,
@@ -263,6 +272,7 @@ export function check(input: CheckInput): Report {
       : { testIntegrityLanguages: comparison.languages }),
     ...(comparison === null || comparison.omitted.length === 0 ? {} : { omittedSignals: comparison.omitted }),
     ...(comparison?.unavailable === undefined ? {} : { testIndexUnavailable: comparison.unavailable }),
+    ...(testChanges === undefined ? {} : { testChanges }),
   };
 
   if ("kind" in coverageInput) {

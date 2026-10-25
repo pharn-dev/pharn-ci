@@ -1,0 +1,10 @@
+import pytest
+from cart import mean
+
+
+def test_mean_of_the_prices():
+    assert mean([2, 4]) == pytest.approx(3.5)
+
+
+def test_mean_of_one_price():
+    assert mean([7]) == 7

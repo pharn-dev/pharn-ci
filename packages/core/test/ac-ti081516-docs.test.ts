@@ -113,7 +113,9 @@ describe("TI08, TI15 and TI16: schemas and documents", () => {
     expect(paths.map((p) => p.join("/"))).toHaveLength(1);
     const languages = ["properties", "testIntegrity", "properties", "languages", "description"];
     expect(typeof getAt(before, languages), "the languages description at the base").toBe("string");
-    expect(setAside(now, [...paths, languages])).toEqual(setAside(before, [...paths, languages]));
+    // ti07-tests-changed adds the optional `testIntegrity.changes` summary: set aside on both sides too.
+    const changes = ["properties", "testIntegrity", "properties", "changes"];
+    expect(setAside(now, [...paths, languages, changes])).toEqual(setAside(before, [...paths, languages, changes]));
     const [path] = paths as [string[]];
     const beforeText = getAt(before, path) as string;
     const nowText = getAt(now, path);

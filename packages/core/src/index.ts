@@ -104,6 +104,9 @@ export {
   type ReportDiffCoverage,
   type ReportMeta,
   type ReportMetaEvent,
+  type ReportTestChange,
+  type ReportTestChanges,
+  type ReportTestChangesFile,
   type ReportTestIntegrity,
   type TestIndexUnavailable,
   type TestIntegrityMode,
@@ -131,12 +134,14 @@ export {
   isWorkflowFile,
   keepSignalFileText,
 } from "./signals/signalFiles.js";
+export { MAX_TEST_CHANGE_ENTRIES, summarizeTestChanges } from "./signals/testChanges.js";
 export { type MatchCandidate, type MatchedPair, matchTests, type TestMatch } from "./signals/testMatch.js";
 export { detectTI01 } from "./signals/ti01.js";
 export { detectTI02 } from "./signals/ti02.js";
 export { detectTI03 } from "./signals/ti03.js";
 export { detectTI04 } from "./signals/ti04.js";
 export { detectTI05 } from "./signals/ti05.js";
+export { detectTI07 } from "./signals/ti07.js";
 export { detectTI08 } from "./signals/ti08.js";
 export { detectTI10, type TI10Options } from "./signals/ti10.js";
 export { detectTI11 } from "./signals/ti11.js";

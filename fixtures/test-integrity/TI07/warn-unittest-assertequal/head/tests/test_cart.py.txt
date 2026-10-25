@@ -1,0 +1,12 @@
+import unittest
+
+from cart import label, total
+
+
+class TestCart(unittest.TestCase):
+    def test_label(self):
+        result = label()
+        self.assertEqual(result, "b")
+
+    def test_total_of_an_empty_cart(self):
+        self.assertEqual(total([]), 0)

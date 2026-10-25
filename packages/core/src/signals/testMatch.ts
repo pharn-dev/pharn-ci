@@ -20,8 +20,10 @@ export interface MatchedPair {
 export interface TestMatch {
   /** Candidates no rule cleared, in base-path then base-line order. */
   unmatched: MatchCandidate[];
-  /** The name pairs and the same-file body pairs. A cross-file match only clears a candidate; it is not listed. */
+  /** The name pairs and the same-file body pairs. A cross-file match is listed in `moved`, not here. */
   pairs: MatchedPair[];
+  /** The cross-file matches (phase 2): a base test and the new-at-head test of another file that cleared it. */
+  moved: MatchedPair[];
 }
 
 const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
@@ -239,6 +241,7 @@ export function matchTests(touched: Pick<TouchedTests, "pairs" | "added">): Test
   };
 
   const unmatched: MatchCandidate[] = [];
+  const moved: MatchedPair[] = [];
   for (const candidate of left) {
     const byLeaf = candidate.block.nameDynamic
       ? null
@@ -246,7 +249,10 @@ export function matchTests(touched: Pick<TouchedTests, "pairs" | "added">): Test
     const byBody = listFor(hashLists, hashEntries, candidate.block.bodyHash)?.firstOutside(candidate.fileIndex) ?? null;
     const pick = byLeaf !== null && (byBody === null || byLeaf.order < byBody.order) ? byLeaf : byBody;
     if (pick === null) unmatched.push({ path: candidate.path, block: candidate.block });
-    else pick.used = true;
+    else {
+      pick.used = true;
+      moved.push({ basePath: candidate.path, headPath: pick.path, base: candidate.block, head: pick.block });
+    }
   }
-  return { unmatched, pairs };
+  return { unmatched, pairs, moved };
 }

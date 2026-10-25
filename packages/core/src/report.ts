@@ -57,6 +57,37 @@ export interface ReportTestIntegrity {
   signals: TestIntegritySignal[];
   /** Which detectors ran. */
   languages: ("ts" | "js" | "py" | "go")[];
+  /** The tests the touched test files add, remove, modify or rename; present only when at least one test changed. */
+  changes?: ReportTestChanges;
+}
+
+/** One test in the tests-changed summary. `name` is the full name, cut to 120 characters. */
+export interface ReportTestChange {
+  path: string;
+  name: string;
+  line: number;
+}
+
+/** One test file's row of the tests-changed summary. */
+export interface ReportTestChangesFile {
+  path: string;
+  language: "ts" | "js" | "py";
+  added: number;
+  removed: number;
+  modified: number;
+  renamed: number;
+}
+
+/** The tests-changed summary: counts per kind and per file, and the tests by name (at most 200 across the lists). */
+export interface ReportTestChanges {
+  totals: { added: number; removed: number; modified: number; renamed: number };
+  files: ReportTestChangesFile[];
+  added: ReportTestChange[];
+  removed: ReportTestChange[];
+  modified: ReportTestChange[];
+  renamed: ReportTestChange[];
+  /** How many tests the 200-entry cap left out of the lists; absent when none were. */
+  truncated?: number;
 }
 
 export type ReportMetaEvent = "pull_request" | "merge_group" | "push" | "workflow_run" | "workflow_dispatch" | "other";
@@ -126,6 +157,7 @@ export type MessageCode =
   | "TEST_INTEGRITY_TI03"
   | "TEST_INTEGRITY_TI04"
   | "TEST_INTEGRITY_TI05"
+  | "TEST_INTEGRITY_TI07"
   | "TEST_INTEGRITY_TI08"
   | "TEST_INTEGRITY_TI10"
   | "TEST_INTEGRITY_TI11"
@@ -215,6 +247,8 @@ export interface BuildReportInput {
   omittedSignals?: readonly OmittedSignals[];
   /** Touched test files TI02 and TI05 could not compare, or why they did not run; adds one warn message. */
   testIndexUnavailable?: TestIndexUnavailable;
+  /** The tests-changed summary (see `summarizeTestChanges`); fills `testIntegrity.changes`. Absent adds nothing. */
+  testChanges?: ReportTestChanges;
 }
 
 /**
@@ -261,6 +295,13 @@ const SIGNAL_MESSAGES: ReadonlyArray<{
     allPaths: true,
     text: (_top, paths, notListed) =>
       `This change leaves tests with fewer assertions than they had, or none: ${paths}. Check that each test still checks what it did.${notListed}`,
+  },
+  {
+    id: "TI07",
+    code: "TEST_INTEGRITY_TI07",
+    allPaths: true,
+    text: (_top, paths, notListed) =>
+      `This change edits only the expected values of tests while it also edits source files, so the tests may have been made to agree with the code: ${paths}. Check that each new expected value is right.${notListed}`,
   },
   {
     id: "TI08",
@@ -561,6 +602,7 @@ export function buildReport(input: BuildReportInput): Report {
           : "pass",
       signals,
       languages: [...(input.testIntegrityLanguages ?? [])],
+      ...(input.testChanges === undefined ? {} : { changes: input.testChanges }),
     },
     ...(input.meta === undefined ? {} : { meta: input.meta }),
   };

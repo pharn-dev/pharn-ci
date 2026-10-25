@@ -1,0 +1,7 @@
+diff --git a/src/cart.test.ts b/src/cart.test.ts
+index 1111111..2222222 100644
+--- a/src/cart.test.ts
++++ b/src/cart.test.ts
+@@ -6 +6 @@ describe("cart", () => {
+-    expect(total([2, 3])).toBe(5);
++    expect(total([2, 3])).toBe(6);
