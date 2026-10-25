@@ -41,6 +41,7 @@ behave. AI-agnostic, fully stateless, no telemetry.
 - [Quick start](#quick-start)
 - [How it works](#how-it-works)
 - [Example PR comment](#example-pr-comment)
+- [Test integrity](#test-integrity)
 - [Action reference](#action-reference)
 - [CLI](#cli)
 - [Config](#config)
@@ -320,6 +321,37 @@ On PRs from forks the token cannot comment; pharn-ci then warns and uses the job
 
 Each workflow and job keeps its own comment, marked by a hidden `<!-- pharn-ci scope: <workflow>/<job> -->`
 line. Matrix legs of one job share that scope, and so one comment.
+
+---
+
+## Test integrity
+
+Diff coverage says which added lines a test ran. Test integrity looks at the other side of the change: did it make the
+tests weaker? The `test-integrity` input takes `block`, `warn` or `off`, and the default is `warn`.
+
+- `block`: a block-level finding fails the check.
+- `warn`: a block-level finding warns and does not fail the check.
+- `off`: nothing is checked.
+
+`test_integrity.mode` in `.pharn/ci.yml` can only make the mode stricter, never looser, so a pull request cannot loosen
+its own gate by editing the config. The signals so far are TI01 (a test file deleted), TI03 (a skip added to a test),
+TI04 (a `.only`, `fit` or `fdescribe` added), TI10 (a test script in `package.json` weakened), TI11 (CI stopped running
+tests), TI13 (a coverage-ignore comment added to source) and TI14 (a lower coverage threshold or a wider exclusion in the
+config). Each reads only the diff. A reviewer who is not the author can sign off block findings with the accept label:
+see [Accept label](#accept-label).
+
+This is the "Test integrity" section of the report for a change that turns `it(` into `it.skip(` in
+`src/cart.test.ts`, in mode `block`:
+
+> ### 🔍 Test integrity
+>
+> - ❌ **TI03** `src/cart.test.ts:12` — An unconditional skip was added to a test that the diff shows existed before this change, so that test no longer runs.
+>   - Hint: A reviewer must decide whether each skipped test may stay, for example one that fails in CI; a reviewer who is not the PR author records that sign-off by applying the accept label `pharn/accepted`.
+
+The benchmark for this is Skylos's list of nine ways to hide a failing test. The nine cases are reproduced in vitest
+under `fixtures/skylos-nine/` and pinned by tests: the diff-only signals of this release catch **2 of 9** (TI01 and
+TI03). The other seven are planned signals that do not exist yet. What each signal misses is in
+[docs/LIMITS.md](./docs/LIMITS.md#what-test-integrity-does-not-catch).
 
 ---
 
@@ -741,8 +773,8 @@ PR with an 80% diff-coverage threshold, so every change here passes the same gat
 
 - More coverage formats (Clover, JaCoCo native XML)
 - Flaky test detection
-- Test-tampering detection (weakened, skipped or deleted test cases; deleted test files are already
-  named by `TEST_FILES_DELETED`)
+- More test-integrity signals: emptied or loosened assertions, replaced tests, edited expected values, hard-coded
+  answers and deselection settings (see [Test integrity](#test-integrity))
 - Agent policy checks on top of the setup inventory
 
 ---

@@ -78,12 +78,26 @@ that worked on the previous release. Before 1.0 the rules are:
    exactly dated heading, free of the placeholder and the date note. It then runs
    lint, tests and the build, fails if `packages/action/dist` differs from the committed bundle, and
    shows the release notes in the job summary. `Release publish` is skipped.
+   - **Smoke in the dry run.** The dry run also runs `node scripts/smoke-release.mjs .` on the committed
+     bundle, after the stale-dist check. It builds a throwaway repository from `fixtures/smoke/` and runs the
+     bundle against it. A red smoke means no release. This step and the `Release smoke` job below are added to
+     `release.yml` by the maintainer by hand; they are not in the workflow until then.
+   - **Fork PR check.** Before the release run, open a pull request from a fork against a throwaway
+     repository whose workflow uses `pharn-dev/pharn-ci@<the release commit SHA>` on `pull_request`. Check that the
+     run is green, that the job summary carries the report, and that no comment is posted: the fork token is
+     read-only, so pharn-ci warns and uses the job summary only. This repository's CI cannot produce a fork PR, so
+     this is a manual step.
 3. **Release.** Run the workflow again with **dry_run** unticked. After `Release verify` passes,
    `Release publish` waits for approval in the `release` environment (today the maintainer approves
    their own release; see [`SECURITY.md`](../SECURITY.md#maintainer-model-one-person-today)), then
    creates the tag `vX.Y.Z`
    at exactly the commit that was verified and the GitHub Release with the changelog section as its
    notes. The publishing job has `contents: write` and checks out and installs nothing.
+   - **Release smoke.** After `Release publish`, the `Release smoke` job checks out the new tag and runs
+     `node scripts/smoke-release.mjs .`. It builds a throwaway repository from `fixtures/smoke/`, runs the tagged
+     bundle with no token and no event, and checks the exit code, the `verdict` output, the job summary and the
+     footer version. If `Release smoke` is red, skip the Marketplace step and fix it with a new patch release (tags
+     never move).
 4. **The Marketplace.** The workflow creates the release through the API, which does not list it on
    the GitHub Marketplace. Open the new release, choose **Edit**, tick **Publish this Action to the
    GitHub Marketplace** (the first time, accept the agreement and pick the categories) and save.
