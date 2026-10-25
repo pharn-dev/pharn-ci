@@ -29094,7 +29094,7 @@ async function runUnsafe(deps) {
   const resolved = resolveInputs(
     config,
     {
-      coverageFile: splitLines2(input("coverage-file")),
+      coverageFile: splitLines(input("coverage-file")),
       coverageFormat: input("coverage-format") || void 0,
       threshold: input("threshold") || void 0,
       exclude: splitPatternList(input("exclude")),
@@ -29424,7 +29424,7 @@ async function loadConfig(explicit, deps) {
 function splitPatternList(value) {
   return value.split(",").flatMap((part) => part.split("\n")).map((entry) => entry.trim()).filter((entry) => entry !== "");
 }
-function splitLines2(value) {
+function splitLines(value) {
   const entries = value.split(/\r?\n/).map((entry) => entry.trim()).filter((entry) => entry !== "");
   return entries.length > 1 ? entries : entries[0];
 }

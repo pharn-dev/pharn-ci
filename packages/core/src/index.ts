@@ -142,6 +142,19 @@ export {
   testPackageDir,
   testStem,
 } from "./testFiles.js";
+export { indexTestFile } from "./testIndex/indexTestFile.js";
+export type {
+  TestAssertion,
+  TestAssertionGuard,
+  TestBlock,
+  TestBlockKind,
+  TestIndex,
+  TestIndexRefusal,
+  TestIndexRefusalReason,
+  TestIndexResult,
+  TestModifier,
+  TestModuleMock,
+} from "./testIndex/types.js";
 export {
   isTestIntegrityMode,
   type ResolvedTestIntegrityMode,

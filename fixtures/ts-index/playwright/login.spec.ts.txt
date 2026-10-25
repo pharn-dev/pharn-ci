@@ -1,0 +1,40 @@
+import { expect, test } from "@playwright/test";
+
+test.describe("login", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/login");
+  });
+
+  test("signs in", async ({ page, browserName }) => {
+    test.skip(browserName === "webkit", "reason");
+    await test.step("fill", async () => {
+      await page.fill("#user", "ada");
+      await expect(page.locator("#user")).toHaveValue("ada");
+    });
+    await expect(page).toHaveText("Welcome");
+    expect.soft(page.url()).toContain("/home");
+    await expect.poll(() => page.title()).toBe("Home");
+  });
+
+  test.fixme("a", async ({ page }) => {
+    await expect(page).toHaveText("A");
+  });
+
+  test.fail("b", async ({ page }) => {
+    await expect(page).toHaveText("B");
+  });
+});
+
+test.describe.serial("serial group", () => {
+  test.describe.configure({ mode: "serial" });
+
+  test("first", async ({ page }) => {
+    await expect(page).toHaveText("First");
+  });
+});
+
+test.describe.only("focused group", () => {
+  test("runs alone", async () => {
+    expect(1).toBe(1);
+  });
+});

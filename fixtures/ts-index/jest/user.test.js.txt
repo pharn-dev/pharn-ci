@@ -1,0 +1,72 @@
+const { add, canAccess, fetchUser } = require("../src/user");
+const db = require("../src/db");
+
+jest.mock("../src/db");
+
+function handler() {
+  expect(db.find).toBeDefined();
+}
+
+beforeAll(() => {
+  db.connect.mockResolvedValue(true);
+});
+
+afterEach(() => {
+  jest.clearAllMocks();
+});
+
+describe("fetchUser", () => {
+  test("returns the user", async () => {
+    db.find.mockResolvedValue({ id: 1 });
+    expect(await fetchUser(1)).toEqual({ id: 1 });
+  });
+
+  test("rejects for a missing user", async () => {
+    await expect(fetchUser(2)).rejects.toThrow("missing");
+  });
+
+  test("matches the snapshot", () => {
+    expect(fetchUser).toMatchSnapshot();
+  });
+
+  test("uses a function reference", handler);
+});
+
+xtest("is skipped by the x prefix", () => {
+  expect(add(1, 1)).toBe(2);
+});
+
+xdescribe("a skipped group", () => {
+  test("never runs", () => {
+    expect(add(1, 1)).toBe(2);
+  });
+});
+
+fdescribe("a focused group", () => {
+  test("runs alone", () => {
+    expect(add(2, 2)).toBe(4);
+  });
+});
+
+test.each`
+  a    | b    | expected
+  ${1} | ${2} | ${3}
+`("adds $a and $b", ({ a, b, expected }) => {
+  expect(add(a, b)).toBe(expected);
+});
+
+describe.each([
+  ["admin", true],
+  ["guest", false],
+])("role %s", (role, allowed) => {
+  test("checks access", () => {
+    expect(canAccess(role)).toBe(allowed);
+  });
+});
+
+describe("late mocks", () => {
+  test("mocks the cache late", () => {
+    jest.doMock("../src/cache", () => ({ get: jest.fn() }));
+    expect(add(1, 2)).toBe(3);
+  });
+});
