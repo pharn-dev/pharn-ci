@@ -82,10 +82,14 @@ const MESSAGE_HINTS: Record<MessageCode, Hint> = {
     "Remove the marker so the whole suite runs, or say in the PR why only the marked tests should run.",
   TEST_INTEGRITY_TI05: (label) =>
     `Restore the assertions the test had, or say in the PR why it checks less now; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
+  TEST_INTEGRITY_TI06: (label) =>
+    `Restore the stronger matcher, guard or placement of the assertion, or say in the PR why the test checks less now; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI07:
     "Check each new expected value against what the code should do, not what it now returns; if the behaviour change is meant, say so in the PR so a reviewer can confirm it.",
   TEST_INTEGRITY_TI08:
     "Review the snapshot changes, or regenerate them in a separate change, and keep snapshot-update flags out of the test command.",
+  TEST_INTEGRITY_TI12: (label) =>
+    `Mock a collaborator of the code under test instead of the code itself, or say in the PR why this module is mocked; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI10: (label) =>
     `Restore the test script, or say in the PR why it changes so a reviewer can confirm it; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI13: (label) =>
@@ -135,10 +139,12 @@ const SIGNAL_HINT_IDS: ReadonlySet<string> = new Set([
   "TI03",
   "TI04",
   "TI05",
+  "TI06",
   "TI07",
   "TI08",
   "TI10",
   "TI11",
+  "TI12",
   "TI13",
   "TI14",
   "TI15",

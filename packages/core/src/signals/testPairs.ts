@@ -3,7 +3,7 @@ import { isTestFile } from "../testFiles.js";
 import { indexTestFile } from "../testIndex/indexTestFile.js";
 import type { PythonTestIndex } from "../testIndex/pythonSides.js";
 import type { PythonIndexFile } from "../testIndex/pythonTypes.js";
-import type { TestBlock, TestIndexResult } from "../testIndex/types.js";
+import type { TestBlock, TestIndexResult, TestModuleMock } from "../testIndex/types.js";
 import type { TestSourceSide, TestSources } from "../testSources.js";
 
 const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
@@ -31,18 +31,24 @@ export function languageOf(path: string): TestLanguage | null {
   return EXTENSION_LANGUAGE.get(basename.slice(dot + 1)) ?? null;
 }
 
-/** A test file present on both sides: the tests (kind `test` only) at its base path and at its head path. */
+/**
+ * A test file present on both sides: the tests (kind `test` only) at its base path and at its head path, and the module
+ * mocks the file holds on each side.
+ */
 export interface ComparedTestFile {
   basePath: string;
   headPath: string;
   base: TestBlock[];
   head: TestBlock[];
+  baseMocks: TestModuleMock[];
+  headMocks: TestModuleMock[];
 }
 
-/** A test file the change adds: the tests it holds at head. */
+/** A test file the change adds: the tests and the module mocks it holds at head. */
 export interface AddedTestFile {
   headPath: string;
   head: TestBlock[];
+  headMocks: TestModuleMock[];
 }
 
 /** A compared file that could not be compared, and why: a drop reason, `missing`, or a refusal or Python reason. */
@@ -64,7 +70,7 @@ export interface TouchedTests {
   languages: TestLanguage[];
 }
 
-type SideIndex = { ok: true; tests: TestBlock[] } | { ok: false; reason: string };
+type SideIndex = { ok: true; tests: TestBlock[]; mocks: TestModuleMock[] } | { ok: false; reason: string };
 
 interface SideLookup {
   texts: Map<string, string>;
@@ -83,7 +89,7 @@ function lookupOf(side: TestSourceSide): SideLookup {
 
 function testsOf(result: TestIndexResult): SideIndex {
   return result.parsed
-    ? { ok: true, tests: result.tests.filter((block) => block.kind === "test") }
+    ? { ok: true, tests: result.tests.filter((block) => block.kind === "test"), mocks: result.mocks }
     : { ok: false, reason: result.reason };
 }
 
@@ -166,7 +172,14 @@ export function indexTouchedTestFiles(
     const base = indexSide("base", file.basePath, file.language);
     const head = indexSide("head", file.headPath, file.language);
     if (base.ok && head.ok) {
-      pairs.push({ basePath: file.basePath, headPath: file.headPath, base: base.tests, head: head.tests });
+      pairs.push({
+        basePath: file.basePath,
+        headPath: file.headPath,
+        base: base.tests,
+        head: head.tests,
+        baseMocks: base.mocks,
+        headMocks: head.mocks,
+      });
     } else {
       const reason = base.ok ? (head as { reason: string }).reason : base.reason;
       unavailable.push({ path: file.headPath, reason });
@@ -177,7 +190,7 @@ export function indexTouchedTestFiles(
   const added: AddedTestFile[] = [];
   for (const [headPath, language] of [...addedPaths].sort((a, b) => byCodeUnit(a[0], b[0]))) {
     const head = indexSide("head", headPath, language);
-    if (head.ok) added.push({ headPath, head: head.tests });
+    if (head.ok) added.push({ headPath, head: head.tests, headMocks: head.mocks });
   }
   return { pairs, added, unavailable, notRun: null, languages: [...languages].sort(byCodeUnit) };
 }

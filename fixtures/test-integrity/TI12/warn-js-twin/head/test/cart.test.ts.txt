@@ -1,0 +1,10 @@
+import { describe, expect, it } from "vitest";
+import { price } from "../lib/price.js";
+
+jest.mock("../lib/price.js");
+
+describe("cart", () => {
+  it("prices an item", () => {
+    expect(price(2)).toBe(2);
+  });
+});

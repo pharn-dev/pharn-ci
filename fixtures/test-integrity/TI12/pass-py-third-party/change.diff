@@ -1,0 +1,14 @@
+diff --git a/tests/test_cart.py b/tests/test_cart.py
+index 1111111..2222222 100644
+--- a/tests/test_cart.py
++++ b/tests/test_cart.py
+@@ -7,0 +8,2 @@ def test_total():
++    with patch("requests.get"):
++        pass
+diff --git a/app/cart.py b/app/cart.py
+index 3333333..4444444 100644
+--- a/app/cart.py
++++ b/app/cart.py
+@@ -2 +2 @@ def total(xs):
+-    return sum(xs)
++    return sum(x for x in xs)

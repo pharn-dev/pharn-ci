@@ -1,0 +1,13 @@
+import { describe, expect, it } from "vitest";
+import { total } from "./cart.js";
+
+describe("cart", () => {
+  it("adds the prices", () => {
+    const x = total([1]);
+    expect.soft(x).toBeTruthy();
+  });
+
+  it("totals an empty cart", () => {
+    expect(total([])).toBe(0);
+  });
+});

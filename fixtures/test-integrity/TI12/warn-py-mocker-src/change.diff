@@ -1,0 +1,13 @@
+diff --git a/tests/test_prices.py b/tests/test_prices.py
+index 1111111..2222222 100644
+--- a/tests/test_prices.py
++++ b/tests/test_prices.py
+@@ -5,0 +6 @@ def test_prices(mocker):
++    mocker.patch("pkg.prices.lookup")
+diff --git a/src/pkg/prices.py b/src/pkg/prices.py
+index 3333333..4444444 100644
+--- a/src/pkg/prices.py
++++ b/src/pkg/prices.py
+@@ -2 +2 @@ def lookup(name):
+-    return 1
++    return 2

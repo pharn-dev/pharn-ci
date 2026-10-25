@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
-// Skylos nine: the four cases the signals of this release do not catch (emptied-assertion, replaced-test and
-// edited-expected-value moved out when TI05, TI02 and TI07 shipped; their catch assertions are in
-// ac-ti0205-skylos.test.ts and ac-ti07-skylos.test.ts). Each must run through check()
+// Skylos nine: the three cases the signals of this release do not catch (emptied-assertion and replaced-test moved out
+// when TI05 and TI02 shipped, edited-expected-value when TI07 shipped, loosened-assertion when TI06 shipped; their catch
+// assertions are in ac-ti0205-skylos.test.ts, ac-ti07-skylos.test.ts and ac-ti06-ti12-skylos.test.ts). Each must run through check()
 // and the renderer without crashing and give no test-integrity signal. When the signal planned for a case ships (see
 // the case table in ac-skylos-nine-table.test.ts), that case's miss assertion is replaced by its catch assertion.
 // check(), the renderer and the fixtures are loaded inside each test body: the AC tests are written before
@@ -13,7 +13,7 @@ import { expectValidReport } from "./schema.js";
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const HEADING = "### 🔍 Test integrity";
 
-const MISSES = ["deselect-setting", "hard-coded-answer", "always-true-matcher", "loosened-assertion"] as const;
+const MISSES = ["deselect-setting", "hard-coded-answer", "always-true-matcher"] as const;
 
 /** The lines of the Test integrity section: from its heading to the line before the next `### ` heading. */
 function section(markdown: string): string[] {

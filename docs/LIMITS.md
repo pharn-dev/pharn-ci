@@ -195,8 +195,9 @@ TI05 compares the assertion count of each test that has the same full name (or a
 merge base and at `HEAD`, in JavaScript, TypeScript and Python test files the change modifies.
 
 - **A weakening that keeps the number of assertions.** `toBe(5)` becomes `toBeTruthy()`, an expected value is edited, or a
-  matcher that always passes is added: the assertion count is the same, so TI05 sees nothing. An edited expected value is
-  TI07's (below); the rest of the weakening is planned for another signal (`loosened-assertion`).
+  matcher that always passes is added: the assertion count is the same, so TI05 sees nothing. TI06 reports the weakening
+  of a matcher, a lowered guard, a literal tautology and an assertion moved where it may not run (see "What TI06
+  misses"); an edited expected value is TI07's (below).
 - **Assertions in helpers outside the test body.** An assertion helper that is defined in another file, imported, or
   called from a hook or setup is not part of the test's count. A test that calls a function whose name starts with
   `expect`, `assert`, `check`, `verify`, `should`, `validate` or `ensure` and has no assertion of its own is reported as
@@ -266,6 +267,68 @@ changed.
 - **Not listed.** Tests of a deleted test file are not in the summary, nor is a file that could not be indexed (it gets
   `TEST_INTEGRITY_INDEX_UNAVAILABLE`, not a row), nor a Go or any other language's test file. With no test sources, with
   the mode `off`, or when the comparison did not run, there is no summary.
+
+### What TI06 misses
+
+TI06 compares each test that has the same full name (or a similar body, in the same file) at the merge base and at
+`HEAD`, in JavaScript, TypeScript and Python test files the change modifies, and reports a test that became weaker. It
+always gives `warn`, never `block`, and it reads the normalized text of the test body, never the type of a value.
+
+- **Semantic weakening that keeps the matcher.** `toEqual(expectedFromOutput)`, a narrower input, a looser regular
+  expression in `toMatch` or an expected value edited to agree with the code all keep the same matcher, so TI06 sees
+  nothing. Only a change of the matcher class (strong to weak), a lowered guard, a literal tautology and a move into a
+  `try` block with a `catch` or after an early `return` are read.
+- **A table, not a judgement.** The strong and weak matchers are a fixed list. **Custom matchers** (`expect.extend`,
+  `jest-extended`, a library's own), `toSatisfy`, `toBeGreaterThan` and every matcher not in the list are neutral: a
+  change to or from them is not reported. A `.not` form is weak only for `toBeNull`, `toBeUndefined`, `toBeTruthy`,
+  `toBeFalsy`, `toThrow` and `toThrowError`.
+- **Assertions in helpers.** An assertion inside a helper function that the test calls is not part of the test's
+  assertions, so a helper that gets weaker is not seen.
+- **Chai-style chains** (`expect(x).to.equal(1)`, `expect(x).to.be.ok`, `x.should.equal(1)`) and other assertion
+  libraries' spellings are neutral; only the Jest and Vitest `expect` matchers, the `node:assert` functions and the
+  Python forms are classified.
+- **Arguments past the 4000-character body cut.** `toThrow`, `toThrowError`, `toHaveProperty` and `toBeInstanceOf` need
+  their arguments, which TI06 reads from the normalized body, cut to 4000 characters by the test index. An argument
+  past the cut is not read, and the assertion counts as neutral. The argument reader skips string literals but does
+  not parse regular expression literals or template substitutions.
+- **A test matched only to a test in another file.** Only name pairs and same-file body pairs are compared. A test
+  that leaves one file and reappears weaker in another file is taken for a move (TI02) and TI06 does not compare the
+  two.
+- **Skipped, todo and conditional tests** (`skip`, `todo`, `skipIf`, `runIf`) at head are not checked; TI03 reports
+  skips added.
+- **Guards of unknown size.** An `expect.assertions(n)` whose argument is not a numeric literal makes the guard of
+  that side unknown, and no guard reason is given. Python tests carry no guard.
+- **Tautologies are literal.** Only a number, a string of at most 200 characters, `true`, `false`, `null` or
+  `undefined` (`True`, `False`, `None` in Python) compared with the same text counts; `expect(x).toBe(x)` does not.
+- **Go test files** and every other language are not read.
+- **Caps.** At most 20 findings per file.
+
+### What TI12 misses
+
+TI12 reports a mock that is new at head when its specifier names a source file the same change adds, modifies or
+renames, in JavaScript, TypeScript and Python test files. It reads the module specifier as written; it does not run
+the resolver of a bundler or of the interpreter.
+
+- **Bare specifiers.** `vi.mock("axios")` and every specifier that does not start with `./` or `../` is not resolved,
+  so a package of the repository imported by its name is missed.
+- **Alias specifiers.** `@/cart`, `~/cart`, `#cart` and any path alias or `paths` mapping from `tsconfig.json` or the
+  runner's config are not resolved.
+- **Mocks in setup files.** A mock in a setup file the runner loads, or in a file the diff does not show as a test
+  file, is not read, and neither is a mock in a test file that the change does not touch.
+- **Non-string targets.** `patch.object(module, "name")`, `mock.patch.object` and every call whose target is not a
+  string literal (a variable, a formatted string, a class) are not resolved: the `patch.object` forms are never
+  resolved.
+- **`monkeypatch.setattr` object forms.** `monkeypatch.setattr(module, "name", value)` is an object form, and TI12
+  cannot tell it from the string form with the index it has, so it resolves only when the dotted name happens to match
+  a changed path.
+- **Mocks moved from a deleted test file.** The mocks of deleted test files are not read. TI12 excuses a mock only when
+  the same compared file held it at base or another compared test file lost it, so a mock that moves from a deleted
+  test file into a test file reads as new and is reported. Deleted test files are TI01's.
+- **Python layout guesses.** A dotted name resolves to `P.py`, `P/__init__.py`, `src/P.py` or `src/P/__init__.py`
+  for a module prefix `P`; a package under another source root (`lib/`, `python/`) is not found.
+- **A source file with a different spelling.** A specifier with a runtime extension the candidates do not try (`.json`,
+  `.vue`) is not resolved.
+- **Caps.** At most 20 findings per file.
 
 ### What TI10 misses
 
@@ -404,18 +467,18 @@ findings. It is the Action's alone; the CLI never honours it.
 
 ## What test integrity does not catch
 
-The test-integrity signals that ship today (TI01, TI02, TI03, TI04, TI05, TI07, TI08, TI10, TI11, TI13, TI14, TI15 and
-TI16) read the added and removed lines of the diff, in files they recognise by name; TI02, TI05 and TI07 also read the
-text of the JavaScript, TypeScript and Python test files the change modifies, at the merge base and at `HEAD`. They do not run tests
-or read a file that the diff does not touch, and they cannot judge whether an assertion is strong. The accept label
-records that a reviewer who is not the author signed off a block finding. It cannot show that the reviewer read the
-tests, and it never adds a check. What each signal misses is listed under its own "What TIxx misses" heading above, and
-the accept label's limits under "What the accept label misses". A file whose changed lines run past 5000 is read only up
-to that point; the
+The test-integrity signals that ship today (TI01, TI02, TI03, TI04, TI05, TI06, TI07, TI08, TI10, TI11, TI12, TI13,
+TI14, TI15 and TI16) read the added and removed lines of the diff, in files they recognise by name; TI02, TI05, TI06,
+TI07 and TI12 also read the text of the JavaScript, TypeScript and Python test files the change modifies, at the merge
+base and at `HEAD`. They do not run tests or read a file that the diff does not touch, and they judge the strength of an
+assertion only from a fixed table of matchers (TI06). The accept label records that a reviewer who is not the author
+signed off a block finding. It cannot show that the reviewer read the tests, and it never adds a check. What each signal
+misses is listed under its own "What TIxx misses" heading above, and the accept label's limits under "What the accept
+label misses". A file whose changed lines run past 5000 is read only up to that point; the
 report names it with `TEST_INTEGRITY_TEXT_TRUNCATED` (section 8).
 
 The benchmark for what is not seen is Skylos's list of nine ways to hide a failing test. The nine cases are reproduced
-in vitest under `fixtures/skylos-nine/` and pinned by tests. The signals of this release catch **5 of 9**.
+in vitest under `fixtures/skylos-nine/` and pinned by tests. The signals of this release catch **6 of 9**.
 
 Caught:
 
@@ -425,6 +488,8 @@ Caught:
   asserts nothing; the test had an assertion at base and has none at head.
 - `replaced-test` — caught by TI02: a test is replaced by one with another name and a different body, so no test file is
   deleted and nothing is skipped, but no test of the old name or a similar body is left.
+- `loosened-assertion` — caught by TI06: `toBe(5)` becomes `toBeTruthy()`, so the test still runs and asserts as many
+  things, but the strong matcher is now a weak one. TI06 warns and never blocks.
 - `edited-expected-value` — caught by TI07: `toBe(5)` becomes `toBe(6)` in the same test, in a change that also edits a
   source file, so the test agrees with the code. TI07 warns and never blocks; it does not say that the new value is
   wrong.
@@ -438,7 +503,6 @@ exists but misses its own case:
   exists and still misses it, because the change adds no test line to match against and its numbers are one digit.
 - `always-true-matcher` — missed; planned: TI17, which is a proposal and not a signal in the test-integrity spec yet.
   A custom matcher that always passes replaces `toBe(5)`.
-- `loosened-assertion` — missed; planned: TI06. `toBe(5)` becomes `toBeTruthy()`.
 
 Other ways a change can weaken tests without being seen:
 

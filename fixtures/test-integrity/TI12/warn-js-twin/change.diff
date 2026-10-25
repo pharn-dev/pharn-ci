@@ -1,0 +1,14 @@
+diff --git a/test/cart.test.ts b/test/cart.test.ts
+index 1111111..2222222 100644
+--- a/test/cart.test.ts
++++ b/test/cart.test.ts
+@@ -3,0 +4,2 @@ import { price } from "../lib/price.js";
++jest.mock("../lib/price.js");
++
+diff --git a/lib/price.ts b/lib/price.ts
+index 3333333..4444444 100644
+--- a/lib/price.ts
++++ b/lib/price.ts
+@@ -1 +1 @@
+-export const price = (n: number) => n;
++export const price = (n: number) => n * 1;

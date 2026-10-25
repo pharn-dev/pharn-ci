@@ -45,6 +45,14 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 - Test-integrity signal TI16 (lint or type suppression in tests). It gives an `info` finding, which never blocks and
   leaves the verdict at `pass`, when a JS/TS or Python test file adds a comment that switches off a linter or type
   checker. Adds the `TEST_INTEGRITY_TI16` message code.
+- Signals **TI06** (a test weakened) and **TI12** (a module under test mocked), and the codes `TEST_INTEGRITY_TI06` and
+  `TEST_INTEGRITY_TI12`, both always `warn`. TI06 compares each matched test at the merge base and at HEAD and reports a
+  strong matcher replaced by a weak one (`toBe` to `toBeTruthy`), an `expect.assertions` or `expect.hasAssertions` guard
+  lowered or removed, an assertion that compares a literal with itself added, and an assertion moved into a `try` block
+  with a `catch` or after an early `return`; the detail is fixed text and matcher labels, never a test name. TI12 reports
+  a new `vi.mock`, `jest.mock` or Python `patch` of a source file the same change edits, once per test file and target,
+  with the mock's specifier sanitized and cut to 120 characters. At most 20 findings per file and signal are listed. The
+  `skylos-nine` benchmark now catches 6 of 9 (`loosened-assertion` by TI06).
 
 ### Changed
 

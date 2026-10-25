@@ -1,0 +1,8 @@
+import { describe, expect, it } from "vitest";
+import { helper } from "./helpers.js";
+
+describe("helpers", () => {
+  it("has a helper", () => {
+    expect(helper()).toBe(1);
+  });
+});

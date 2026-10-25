@@ -1,0 +1,8 @@
+import { describe, expect, it } from "vitest";
+import { total } from "./cart.js";
+
+describe("a", () => {
+  it("adds the prices", () => {
+    expect(total([2, 3])).toBe(5);
+  });
+});

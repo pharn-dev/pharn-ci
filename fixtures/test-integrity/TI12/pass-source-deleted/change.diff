@@ -1,0 +1,14 @@
+diff --git a/src/cart.test.ts b/src/cart.test.ts
+index 1111111..2222222 100644
+--- a/src/cart.test.ts
++++ b/src/cart.test.ts
+@@ -3,0 +4,2 @@ import { total } from "./cart.js";
++vi.mock("./gone");
++
+diff --git a/src/gone.ts b/src/gone.ts
+deleted file mode 100644
+index 3333333..0000000
+--- a/src/gone.ts
++++ /dev/null
+@@ -1 +0,0 @@
+-export const gone = 1;

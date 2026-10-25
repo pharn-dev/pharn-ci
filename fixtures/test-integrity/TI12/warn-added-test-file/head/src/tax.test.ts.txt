@@ -1,0 +1,10 @@
+import { describe, expect, it } from "vitest";
+import { tax } from "./tax.js";
+
+vi.doMock("./tax");
+
+describe("tax", () => {
+  it("taxes a price", () => {
+    expect(tax(10)).toBe(2);
+  });
+});

@@ -1,0 +1,14 @@
+import assert from "node:assert";
+import { describe, it } from "node:test";
+import { total } from "./cart.js";
+
+describe("cart", () => {
+  it("adds the prices", () => {
+    assert.strictEqual(total([2, 3]), 5);
+    assert.ok(true);
+  });
+
+  it("totals an empty cart", () => {
+    assert.strictEqual(total([]), 0);
+  });
+});

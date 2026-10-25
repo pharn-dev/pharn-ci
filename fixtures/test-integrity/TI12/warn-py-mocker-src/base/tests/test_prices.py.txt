@@ -1,0 +1,5 @@
+from pkg.prices import lookup
+
+
+def test_prices(mocker):
+    assert lookup("tea") == 1

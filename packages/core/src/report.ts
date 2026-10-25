@@ -157,10 +157,12 @@ export type MessageCode =
   | "TEST_INTEGRITY_TI03"
   | "TEST_INTEGRITY_TI04"
   | "TEST_INTEGRITY_TI05"
+  | "TEST_INTEGRITY_TI06"
   | "TEST_INTEGRITY_TI07"
   | "TEST_INTEGRITY_TI08"
   | "TEST_INTEGRITY_TI10"
   | "TEST_INTEGRITY_TI11"
+  | "TEST_INTEGRITY_TI12"
   | "TEST_INTEGRITY_TI13"
   | "TEST_INTEGRITY_TI14"
   | "TEST_INTEGRITY_TI15"
@@ -243,7 +245,7 @@ export interface BuildReportInput {
   textTruncatedFiles?: readonly string[];
   /** The sorted languages of the test files the base-and-head signals indexed; fills `testIntegrity.languages`. */
   testIntegrityLanguages?: readonly ("ts" | "js" | "py" | "go")[];
-  /** Findings the per-file cap left out of `testIntegrity.signals`; the TI02 and TI05 messages say how many. */
+  /** Findings the per-file cap left out of `testIntegrity.signals`; the TI02, TI05, TI06 and TI12 messages say how many. */
   omittedSignals?: readonly OmittedSignals[];
   /** Touched test files TI02 and TI05 could not compare, or why they did not run; adds one warn message. */
   testIndexUnavailable?: TestIndexUnavailable;
@@ -297,6 +299,13 @@ const SIGNAL_MESSAGES: ReadonlyArray<{
       `This change leaves tests with fewer assertions than they had, or none: ${paths}. Check that each test still checks what it did.${notListed}`,
   },
   {
+    id: "TI06",
+    code: "TEST_INTEGRITY_TI06",
+    allPaths: true,
+    text: (_top, paths, notListed) =>
+      `This change weakens tests that stay: a stronger matcher became a weaker one, an assertion guard was lowered or removed, an assertion that compares a literal with itself was added, or an assertion moved into a try block or after an early return: ${paths}. Check that each test still checks what it did.${notListed}`,
+  },
+  {
     id: "TI07",
     code: "TEST_INTEGRITY_TI07",
     allPaths: true,
@@ -320,6 +329,13 @@ const SIGNAL_MESSAGES: ReadonlyArray<{
     code: "TEST_INTEGRITY_TI11",
     text: (_top, paths) =>
       `This change edits a workflow so that CI may run fewer tests or ignore their failures: ${paths}. Check that the removed step or trigger, the reduced matrix or the added condition was meant.`,
+  },
+  {
+    id: "TI12",
+    code: "TEST_INTEGRITY_TI12",
+    allPaths: true,
+    text: (_top, paths, notListed) =>
+      `This change mocks a module it also edits, so the tests may not run the code under review: ${paths}. Check that each mock was meant.${notListed}`,
   },
   {
     id: "TI13",
@@ -366,7 +382,7 @@ export function testIntegritySignalMessages(
         ? "warn"
         : "info";
     const level = top === "block" ? "error" : top === "warn" ? "warn" : "info";
-    // An id whose text is kept (TI02, TI05) keeps the text a previous message had, with the "not listed" counts the
+    // An id whose text is kept (TI02, TI05, TI06, TI12) keeps the text a previous message had, with the "not listed" counts the
     // findings no longer carry; only the level follows the severities.
     const previous = allPaths === true ? options.previous?.find((message) => message.code === code) : undefined;
     if (previous !== undefined) {

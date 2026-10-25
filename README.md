@@ -340,17 +340,20 @@ tests weaker? The `test-integrity` input takes `block`, `warn` or `off`, and the
 `test_integrity.mode` in `.pharn/ci.yml` can only make the mode stricter, never looser, so a pull request cannot loosen
 its own gate by editing the config. The signals so far are TI01 (a test file deleted), TI02 (a test removed from a test
 file that stays), TI03 (a skip added to a test), TI04 (a `.only`, `fit` or `fdescribe` added), TI05 (a test emptied of
-its assertions, or with fewer), TI07 (an expected value of a test edited to match, in a change that also edits source),
-TI08 (snapshots regenerated or updated in bulk), TI10 (a test script in `package.json`
-weakened), TI11 (CI stopped running tests), TI13 (a coverage-ignore comment added to source), TI14 (a lower coverage
-threshold or a wider exclusion in the config), TI15 (a source condition that compares with a value the tests add) and
-TI16 (a lint or type suppression comment added to a test file). TI07, TI08 and TI15 warn and TI16 gives an `info` finding
-in both `block` and `warn`, so those four never fail the check. Each reads the diff, and TI02, TI05 and TI07 also read
-the text of the JS/TS and Python test files the change modifies at the merge base and at HEAD, parsed without running
-them: a test counts as removed only when no test of the same name or a similar body is left in the touched test files,
-and `TEST_INTEGRITY_INDEX_UNAVAILABLE` names a file that could not be compared. When a change adds, removes, modifies or
-renames tests, the comment also holds a collapsed "Tests changed" table with the counts per test file; the test names are
-in `report.json` only. A reviewer who is not the author can sign off block findings with the accept label: see
+its assertions, or with fewer), TI06 (a test weakened: a weaker matcher, a lower assertion guard, an assertion that
+compares a literal with itself, or an assertion moved into a `try`/`catch` or after an early `return`), TI07 (an
+expected value of a test edited to match, in a change that also edits source), TI08 (snapshots regenerated or updated
+in bulk), TI10 (a test script in `package.json` weakened), TI11 (CI stopped running tests), TI12 (a module under test
+mocked: a new `vi.mock`, `jest.mock` or Python `patch` of a source file the change also edits), TI13 (a coverage-ignore
+comment added to source), TI14 (a lower coverage threshold or a wider exclusion in the config), TI15 (a source
+condition that compares with a value the tests add) and TI16 (a lint or type suppression comment added to a test file).
+TI06, TI07, TI08, TI12 and TI15 warn and TI16 gives an `info` finding in both `block` and `warn`, so those six never fail
+the check. Each reads the diff, and TI02, TI05, TI06, TI07 and TI12 also read the text of the JS/TS and Python test files
+the change modifies at the merge base and at HEAD, parsed without running them: a test counts as removed only when no
+test of the same name or a similar body is left in the touched test files, and `TEST_INTEGRITY_INDEX_UNAVAILABLE` names
+a file that could not be compared. When a change adds, removes, modifies or renames tests, the comment also holds a
+collapsed "Tests changed" table with the counts per test file; the test names are in `report.json` only. A reviewer who
+is not the author can sign off block findings with the accept label: see
 [Accept label](#accept-label).
 
 This is the "Test integrity" section of the report for a change that turns `it(` into `it.skip(` in
@@ -362,9 +365,10 @@ This is the "Test integrity" section of the report for a change that turns `it(`
 >   - Hint: A reviewer must decide whether each skipped test may stay, for example one that fails in CI; a reviewer who is not the PR author records that sign-off by applying the accept label `pharn/accepted`.
 
 The benchmark for this is Skylos's list of nine ways to hide a failing test. The nine cases are reproduced in vitest
-under `fixtures/skylos-nine/` and pinned by tests: the signals of this release catch **5 of 9** (`deleted-test` by TI01,
-`added-skip` by TI03, `emptied-assertion` by TI05, `replaced-test` by TI02 and `edited-expected-value` by TI07). The
-other four are planned signals that do not exist yet. What each signal misses is in [docs/LIMITS.md](./docs/LIMITS.md#what-test-integrity-does-not-catch).
+under `fixtures/skylos-nine/` and pinned by tests: the signals of this release catch **6 of 9** (`deleted-test` by TI01,
+`added-skip` by TI03, `emptied-assertion` by TI05, `replaced-test` by TI02, `loosened-assertion` by TI06 and
+`edited-expected-value` by TI07). The other three are planned signals that do not exist yet. What each signal misses is
+in [docs/LIMITS.md](./docs/LIMITS.md#what-test-integrity-does-not-catch).
 
 ---
 
@@ -657,6 +661,8 @@ message `code`s, not on text:
 | `TEST_INTEGRITY_TI03`           | TI03: the change adds a skip to a test file: an unconditional skip of a test the diff shows existed (`error` in mode `block`, `warn` in mode `warn`), or a conditional skip, a skip inside a test body, or a skip in a test the change adds (`warn`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI04`           | TI04: the change adds `.only`, `fit` or `fdescribe` to a JS/TS test file, so the runner may skip the other tests (`error` in mode `block`, `warn` in mode `warn`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI05`           | TI05: a test that had assertions at base has none at head and calls no assertion helper (`error` in mode `block`, `warn` in mode `warn`), or it calls a function whose name suggests an assertion helper, or it lost some assertions with the rest of its body unchanged (`warn`). The finding sits at the head path and head line. The text names every file and says how many findings the cap of 20 per file left out; the listed findings are in `testIntegrity.signals` |
+| `TEST_INTEGRITY_TI06`           | TI06: a test that stays became weaker: a strong matcher replaced by a weak one (`toBe(5)` by `toBeTruthy()`), an `expect.assertions` or `expect.hasAssertions` guard lowered or removed, an assertion that compares a literal with itself added, or an assertion moved into a `try` block with a `catch` or after an early `return` (`warn` in every mode). The finding sits at the head path and head line. The text names every file and says how many findings the cap of 20 per file left out; the listed findings are in `testIntegrity.signals` |
+| `TEST_INTEGRITY_TI12`           | TI12: a test file newly mocks (`vi.mock`, `vi.doMock`, `jest.mock`, `jest.doMock`, Python `patch` and `monkeypatch.setattr`) a source file the same change adds, modifies or renames, so the test may not run the code under review (`warn` in every mode). One finding per test file and target, at the head path and the line of the first such mock. The text names every file and says how many findings the cap of 20 per file left out; the listed findings are in `testIntegrity.signals` |
 | `TEST_INTEGRITY_INDEX_UNAVAILABLE` | A touched JS/TS or Python test file could not be compared at the merge base and at HEAD (too large, dropped, a syntax-error-heavy file, no Python 3.8 or newer), so TI02 and TI05 did not check it; or TI02 and TI05 did not run because the test text could not be read (`warn`; not in mode `off`). The text names the files with a reason code each, or the reason |
 | `TEST_INTEGRITY_TI10`           | TI10: the change weakens a test script in `package.json` (`\|\| true`, `; true`, `echo` or `exit 0` in place of the run, `--passWithNoTests`, a path or name filter, or a removed `pretest` or `posttest`), so the test run can pass without the tests passing (`error` in mode `block`, `warn` in mode `warn`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI11`           | TI11: a workflow edit may stop CI from running tests: a removed test command or `pull_request` trigger (`error` in mode `block`, `warn` in mode `warn`), or a shrunk matrix, an added `continue-on-error: true`, a disabling `if:` or a `timeout-minutes` of 0 or 1 (`warn`). Every finding is in `testIntegrity.signals` |

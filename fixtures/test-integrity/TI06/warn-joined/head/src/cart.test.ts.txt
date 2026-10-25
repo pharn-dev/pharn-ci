@@ -1,0 +1,19 @@
+import { describe, expect, it } from "vitest";
+import { label, list, spy, total } from "./cart.js";
+
+describe("cart", () => {
+  it("adds the prices", () => {
+    expect(total([2, 3])).toBeTruthy();
+    expect(total([4, 2])).toBeTruthy();
+    expect(true).toBe(true);
+  });
+
+  it("sums many lists", () => {
+    expect(spy).toBeCalled();
+    expect(total([1])).toBeDefined();
+    expect(total([0])).toBeFalsy();
+    expect(total([1])).toBeTruthy();
+    expect(total([1])).toBeTypeOf("number");
+    expect(spy).toHaveBeenCalled();
+  });
+});

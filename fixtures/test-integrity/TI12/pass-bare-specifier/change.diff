@@ -1,0 +1,14 @@
+diff --git a/src/cart.test.ts b/src/cart.test.ts
+index 1111111..2222222 100644
+--- a/src/cart.test.ts
++++ b/src/cart.test.ts
+@@ -3,0 +4,2 @@ import { total } from "./cart.js";
++vi.mock("axios");
++
+diff --git a/src/cart.ts b/src/cart.ts
+index 3333333..4444444 100644
+--- a/src/cart.ts
++++ b/src/cart.ts
+@@ -1 +1 @@
+-export const total = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
++export const total = (xs: number[]) => xs.reduce((sum, x) => sum + x, 0);

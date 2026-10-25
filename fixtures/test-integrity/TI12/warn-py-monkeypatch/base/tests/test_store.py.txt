@@ -1,0 +1,6 @@
+from app.store import save
+
+
+def test_save(monkeypatch):
+    result = save("a")
+    assert result == "a"

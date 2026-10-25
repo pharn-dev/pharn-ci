@@ -29,10 +29,12 @@ import { detectTI02 } from "./signals/ti02.js";
 import { detectTI03 } from "./signals/ti03.js";
 import { detectTI04 } from "./signals/ti04.js";
 import { detectTI05 } from "./signals/ti05.js";
+import { detectTI06 } from "./signals/ti06.js";
 import { detectTI07 } from "./signals/ti07.js";
 import { detectTI08 } from "./signals/ti08.js";
 import { detectTI10 } from "./signals/ti10.js";
 import { detectTI11 } from "./signals/ti11.js";
+import { detectTI12 } from "./signals/ti12.js";
 import { detectTI13 } from "./signals/ti13.js";
 import { detectTI14 } from "./signals/ti14.js";
 import { detectTI15 } from "./signals/ti15.js";
@@ -113,7 +115,7 @@ export interface CheckInput {
   testIntegrityMode?: TestIntegrityModeSettings;
   /**
    * The text of the test and test-config files the change touches, at the merge base and at HEAD, gathered by the
-   * CLI and the Action for the base-and-head test-integrity signals (TI02 and TI05). They compare the JS/TS (and, with
+   * CLI and the Action for the base-and-head test-integrity signals (TI02, TI05, TI06 and TI12). They compare the JS/TS (and, with
    * `pythonTestIndex`, Python) test files the diff modifies. Without it, or in mode off, nothing is compared and the
    * report is the one it was before: no signal, no message, no language. With a side unavailable and a modified test
    * file, the report carries one `TEST_INTEGRITY_INDEX_UNAVAILABLE` message.
@@ -201,7 +203,9 @@ export function check(input: CheckInput): Report {
       const capped = capFindings([
         ...detectTI02(match, comparedMode),
         ...detectTI05(match, comparedMode),
+        ...detectTI06(match),
         ...detectTI07(match, parsedDiff),
+        ...detectTI12(touched, parsedDiff),
       ]);
       comparison = {
         signals: capped.kept,
