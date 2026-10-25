@@ -1,0 +1,5 @@
+[tox]
+envlist = py312
+
+[pytest]
+testpaths = tests/unit

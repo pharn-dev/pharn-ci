@@ -15,6 +15,7 @@ import {
   type Report,
   type ReportMeta,
   type ReportTestChanges,
+  type TestConfigUnavailable,
   type TestIndexUnavailable,
   type TestIntegritySignal,
 } from "./report.js";
@@ -32,6 +33,7 @@ import { detectTI05 } from "./signals/ti05.js";
 import { detectTI06 } from "./signals/ti06.js";
 import { detectTI07 } from "./signals/ti07.js";
 import { detectTI08 } from "./signals/ti08.js";
+import { detectTI09 } from "./signals/ti09.js";
 import { detectTI10 } from "./signals/ti10.js";
 import { detectTI11 } from "./signals/ti11.js";
 import { detectTI12 } from "./signals/ti12.js";
@@ -115,8 +117,9 @@ export interface CheckInput {
   testIntegrityMode?: TestIntegrityModeSettings;
   /**
    * The text of the test and test-config files the change touches, at the merge base and at HEAD, gathered by the
-   * CLI and the Action for the base-and-head test-integrity signals (TI02, TI05, TI06 and TI12). They compare the JS/TS (and, with
-   * `pythonTestIndex`, Python) test files the diff modifies. Without it, or in mode off, nothing is compared and the
+   * CLI and the Action for the base-and-head test-integrity signals (TI02, TI05, TI06, TI09 and TI12). TI02, TI05, TI06
+   * and TI12 compare the JS/TS (and, with `pythonTestIndex`, Python) test files the diff modifies; TI09 compares the
+   * touched test-runner config files. Without it, or in mode off, nothing is compared and the
    * report is the one it was before: no signal, no message, no language. With a side unavailable and a modified test
    * file, the report carries one `TEST_INTEGRITY_INDEX_UNAVAILABLE` message.
    */
@@ -190,13 +193,28 @@ export function check(input: CheckInput): Report {
     omitted: OmittedSignals[];
     languages: Array<"ts" | "js" | "py">;
     unavailable: TestIndexUnavailable | undefined;
+    configUnavailable: TestConfigUnavailable | undefined;
   } | null = null;
   const comparedMode = testIntegrity.mode;
   let testChanges: ReportTestChanges | undefined;
   if (parsedDiff !== null && comparedMode !== "off" && input.testSources !== undefined) {
     const touched = indexTouchedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex);
+    const configs = detectTI09(parsedDiff, input.testSources, comparedMode);
+    const configUnavailable: TestConfigUnavailable | undefined =
+      configs.notRun !== null
+        ? { notRun: configs.notRun }
+        : configs.unavailable.length > 0
+          ? { files: configs.unavailable }
+          : undefined;
     if (touched.notRun !== null) {
-      comparison = { signals: [], omitted: [], languages: [], unavailable: { notRun: touched.notRun } };
+      const capped = capFindings(configs.signals);
+      comparison = {
+        signals: capped.kept,
+        omitted: capped.omitted,
+        languages: [],
+        unavailable: { notRun: touched.notRun },
+        configUnavailable,
+      };
     } else {
       const match = matchTests(touched);
       testChanges = summarizeTestChanges(touched, match) ?? undefined;
@@ -206,12 +224,14 @@ export function check(input: CheckInput): Report {
         ...detectTI06(match),
         ...detectTI07(match, parsedDiff),
         ...detectTI12(touched, parsedDiff),
+        ...configs.signals,
       ]);
       comparison = {
         signals: capped.kept,
         omitted: capped.omitted,
         languages: touched.languages,
         unavailable: touched.unavailable.length > 0 ? { files: touched.unavailable } : undefined,
+        configUnavailable,
       };
     }
   }
@@ -277,6 +297,7 @@ export function check(input: CheckInput): Report {
     ...(comparison === null || comparison.omitted.length === 0 ? {} : { omittedSignals: comparison.omitted }),
     ...(comparison?.unavailable === undefined ? {} : { testIndexUnavailable: comparison.unavailable }),
     ...(testChanges === undefined ? {} : { testChanges }),
+    ...(comparison?.configUnavailable === undefined ? {} : { testConfigUnavailable: comparison.configUnavailable }),
   };
 
   if ("kind" in coverageInput) {

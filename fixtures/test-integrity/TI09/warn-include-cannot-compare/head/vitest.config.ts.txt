@@ -1,0 +1,8 @@
+import { defineConfig } from "vitest/config";
+import { files } from "./test-files";
+
+export default defineConfig({
+  test: {
+    include: files,
+  },
+});

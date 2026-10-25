@@ -1,0 +1,4 @@
+# mocha settings
+spec: test/**/*.spec.js
+grep: fast
+timeout: 2000

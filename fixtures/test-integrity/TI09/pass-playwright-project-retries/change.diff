@@ -1,0 +1,9 @@
+diff --git a/playwright.config.ts b/playwright.config.ts
+index 1111111..2222222 100644
+--- a/playwright.config.ts
++++ b/playwright.config.ts
+@@ -5,2 +5,2 @@ export default defineConfig({
+-  use: { baseURL: "http://localhost:3000" },
+-  projects: [{ name: "chromium", retries: 0 }],
++  use: { baseURL: "http://localhost:4000" },
++  projects: [{ name: "chromium", retries: 2 }],

@@ -6,8 +6,8 @@ import { expectValidReport } from "./schema.js";
 
 // Skylos nine: the benchmark's nine ways an agent hides a failing test, each mapped to the pharn-ci signal that
 // catches it today or is planned to catch it (TEST-INTEGRITY-SPEC "Definition of done", item 2). The signals of this
-// release catch 6 of 9: the diff-only TI01 and TI03, and TI05, TI02, TI06 and TI07, which also read the base and head text of
-// the test file (fixtures/skylos-nine-sources/<case>/, for the four cases that need it).
+// release catch 7 of 9: the diff-only TI01 and TI03, and TI05, TI02, TI06, TI07 and TI09, which also read the base and
+// head text of the test file or test config (fixtures/skylos-nine-sources/<case>/, for the five cases that need it).
 //
 // When the planned signal of a miss case ships, set that case's `caught` to true here and replace its miss assertion
 // in ac-skylos-nine-misses.test.ts with a catch assertion, so the benchmark result only moves forward on purpose.
@@ -17,7 +17,13 @@ import { expectValidReport } from "./schema.js";
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 /** The cases whose signal reads the base and head text of the test file, which `skylos-nine-sources` holds. */
-const WITH_SOURCES = new Set(["emptied-assertion", "replaced-test", "loosened-assertion", "edited-expected-value"]);
+const WITH_SOURCES = new Set([
+  "emptied-assertion",
+  "deselect-setting",
+  "replaced-test",
+  "loosened-assertion",
+  "edited-expected-value",
+]);
 
 /** The `<logical path>.txt` files under one side of a case's sources, as test-source files sorted by logical path. */
 function sideFiles(dir: string): { path: string; text: string }[] {
@@ -33,7 +39,7 @@ const CASES: ReadonlyArray<{ name: string; signal: string | null; caught: boolea
   { name: "deleted-test", signal: "TI01", caught: true },
   { name: "added-skip", signal: "TI03", caught: true },
   { name: "emptied-assertion", signal: "TI05", caught: true },
-  { name: "deselect-setting", signal: "TI09", caught: false },
+  { name: "deselect-setting", signal: "TI09", caught: true },
   { name: "hard-coded-answer", signal: "TI15", caught: false },
   { name: "always-true-matcher", signal: null, caught: false },
   { name: "replaced-test", signal: "TI02", caught: true },
@@ -93,7 +99,7 @@ describe("Skylos nine: the case table and the headline", () => {
     expect(directories).toEqual(CASES.map((c) => c.name).sort());
   });
 
-  it("AC-4: exactly the six caught cases give a signal, each only its table id, and the other three give none", async () => {
+  it("AC-4: exactly the seven caught cases give a signal, each only its table id, and the other two give none", async () => {
     const results = await runAll();
     for (const { name, signal, caught } of CASES) {
       const ids = results.get(name);
@@ -109,13 +115,14 @@ describe("Skylos nine: the case table and the headline", () => {
       "deleted-test",
       "added-skip",
       "emptied-assertion",
+      "deselect-setting",
       "replaced-test",
       "loosened-assertion",
       "edited-expected-value",
     ]);
   });
 
-  it("AC-4: the headline — nine cases, 6 caught, 3 expected misses", async () => {
+  it("AC-4: the headline — nine cases, 7 caught, 2 expected misses", async () => {
     const results = await runAll();
     const caught = [...results].filter(([, ids]) => ids.length > 0).map(([name]) => name);
     const missed = [...results].filter(([, ids]) => ids.length === 0).map(([name]) => name);
@@ -124,11 +131,12 @@ describe("Skylos nine: the case table and the headline", () => {
       "deleted-test",
       "added-skip",
       "emptied-assertion",
+      "deselect-setting",
       "replaced-test",
       "loosened-assertion",
       "edited-expected-value",
     ]);
-    expect(missed).toHaveLength(3);
-    expect(`${caught.length}/${results.size}`).toBe("6/9");
+    expect(missed).toHaveLength(2);
+    expect(`${caught.length}/${results.size}`).toBe("7/9");
   });
 });

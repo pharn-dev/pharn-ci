@@ -88,6 +88,8 @@ const MESSAGE_HINTS: Record<MessageCode, Hint> = {
     "Check each new expected value against what the code should do, not what it now returns; if the behaviour change is meant, say so in the PR so a reviewer can confirm it.",
   TEST_INTEGRITY_TI08:
     "Review the snapshot changes, or regenerate them in a separate change, and keep snapshot-update flags out of the test command.",
+  TEST_INTEGRITY_TI09: (label) =>
+    `Restore the setting, or say in the PR why it changes; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}. A raised retry count or timeout is a warning only.`,
   TEST_INTEGRITY_TI12: (label) =>
     `Mock a collaborator of the code under test instead of the code itself, or say in the PR why this module is mocked; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI10: (label) =>
@@ -142,6 +144,7 @@ const SIGNAL_HINT_IDS: ReadonlySet<string> = new Set([
   "TI06",
   "TI07",
   "TI08",
+  "TI09",
   "TI10",
   "TI11",
   "TI12",

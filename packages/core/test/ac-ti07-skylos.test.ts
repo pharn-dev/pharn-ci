@@ -28,6 +28,8 @@ const CAUGHT: Record<string, string> = {
   "replaced-test": "TI02",
   "loosened-assertion": "TI06",
   "edited-expected-value": "TI07",
+  // TI09 shipped after TI07 and catches deselect-setting from its base and head vitest.config.ts.
+  "deselect-setting": "TI09",
 };
 
 interface SourceFile {
@@ -85,7 +87,7 @@ function section(text: string, heading: string): string {
   return lines.slice(at, end === -1 ? lines.length : end).join("\n");
 }
 
-describe("Skylos nine: edited-expected-value is caught by TI07, 6 of 9", () => {
+describe("Skylos nine: edited-expected-value is caught by TI07, 7 of 9", () => {
   it("AC-14: edited-expected-value's diff also edits src/cart.ts without a new conditional, with no context lines and no .py path, and has test sources", () => {
     const diff = fixture("skylos-nine/edited-expected-value/change.diff");
     const chunks = diff.split(/^(?=diff --git )/m).filter((c) => c.startsWith("diff --git "));
@@ -115,7 +117,7 @@ describe("Skylos nine: edited-expected-value is caught by TI07, 6 of 9", () => {
     expect(textOf(head).split("\n")[7]).toContain("expect(total([2, 3])).toBe(6);");
   });
 
-  it("AC-14: the nine run with their sources: edited-expected-value is caught by TI07 and no TI15, and the caught count is 6 of 9", async () => {
+  it("AC-14: the nine run with their sources: edited-expected-value is caught by TI07 and no TI15, and the caught count is 7 of 9", async () => {
     expect(readdirSync(`${FIXTURES}skylos-nine`).sort()).toEqual(CASES);
     const caught: Record<string, string[]> = {};
     for (const name of CASES) {
@@ -127,21 +129,21 @@ describe("Skylos nine: edited-expected-value is caught by TI07, 6 of 9", () => {
     for (const [name, id] of Object.entries(CAUGHT)) expect(caught[name], name).toContain(id);
     expect(caught["edited-expected-value"]).toContain("TI07");
     expect(caught["edited-expected-value"]).not.toContain("TI15");
-    expect(Object.keys(caught)).toHaveLength(6);
+    expect(Object.keys(caught)).toHaveLength(7);
   });
 
-  it("AC-14: README and docs/LIMITS.md say 6 of 9, with edited-expected-value caught by TI07 and a missed list of 3", () => {
+  it("AC-14: README and docs/LIMITS.md say 7 of 9, with edited-expected-value caught by TI07 and a missed list of 2", () => {
     const readme = section(readFileSync(`${FIXTURES}../README.md`, "utf8"), "## Test integrity");
-    expect(readme).toContain("**6 of 9**");
+    expect(readme).toContain("**7 of 9**");
     expect(readme).not.toContain("4 of 9");
     expect(readme).toMatch(/`edited-expected-value` by TI07/);
-    expect(readme).toMatch(/other three/i);
+    expect(readme).toMatch(/other two/i);
 
     const limits = section(
       readFileSync(`${FIXTURES}../docs/LIMITS.md`, "utf8"),
       "## What test integrity does not catch",
     );
-    expect(limits).toContain("**6 of 9**");
+    expect(limits).toContain("**7 of 9**");
     expect(limits).not.toContain("4 of 9");
     const caught = [...limits.matchAll(/^- `([a-z-]+)` — caught by (TI\d\d)\b/gm)].map((m) => `${m[1]} ${m[2]}`);
     expect(caught.sort()).toEqual(
@@ -150,7 +152,7 @@ describe("Skylos nine: edited-expected-value is caught by TI07, 6 of 9", () => {
         .sort(),
     );
     const missed = [...limits.matchAll(/^- `([a-z-]+)` — missed\b/gm)].map((m) => m[1]);
-    expect(missed).toHaveLength(3);
+    expect(missed).toHaveLength(2);
     expect(missed).not.toContain("edited-expected-value");
   });
 });

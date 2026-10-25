@@ -1,0 +1,7 @@
+diff --git a/vitest.config.ts b/vitest.config.ts
+index 1111111..2222222 100644
+--- a/vitest.config.ts
++++ b/vitest.config.ts
+@@ -5 +5 @@ export default defineConfig({
+-    exclude: ["e2e/**"],
++    exclude: ["e2e/**", "**/node_modules/**", "dist"],

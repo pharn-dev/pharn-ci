@@ -108,6 +108,7 @@ export {
   type ReportTestChanges,
   type ReportTestChangesFile,
   type ReportTestIntegrity,
+  type TestConfigUnavailable,
   type TestIndexUnavailable,
   type TestIntegrityMode,
   type TestIntegritySignal,
@@ -144,6 +145,7 @@ export { detectTI05 } from "./signals/ti05.js";
 export { detectTI06 } from "./signals/ti06.js";
 export { detectTI07 } from "./signals/ti07.js";
 export { detectTI08 } from "./signals/ti08.js";
+export { detectTI09, type TI09Result, type UnreadConfigFile } from "./signals/ti09.js";
 export { detectTI10, type TI10Options } from "./signals/ti10.js";
 export { detectTI11 } from "./signals/ti11.js";
 export { detectTI12 } from "./signals/ti12.js";
@@ -151,6 +153,7 @@ export { detectTI13 } from "./signals/ti13.js";
 export { detectTI14, type TI14Options } from "./signals/ti14.js";
 export { detectTI15 } from "./signals/ti15.js";
 export { detectTI16 } from "./signals/ti16.js";
+export { type TestConfigKind, testConfigKind } from "./testConfig/kinds.js";
 export {
   definesTests,
   deletedTestFiles,

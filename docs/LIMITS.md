@@ -330,6 +330,53 @@ the resolver of a bundler or of the interpreter.
   `.vue`) is not resolved.
 - **Caps.** At most 20 findings per file.
 
+### What TI09 misses
+
+TI09 compares a fixed list of settings of the test-runner config files the change touches (`vitest.config.*`,
+`vite.config.*`, `vitest.workspace.*`, `jest.config.*`, the `jest` key of `package.json`, `playwright.config.*`,
+`.mocharc.js`, `.mocharc.cjs`, `.mocharc.json`, `.mocharc.yml`, `.mocharc.yaml`, `pytest.ini`, `tox.ini`, `setup.cfg` and
+`pyproject.toml`) at the merge base and at `HEAD`. It parses the text and never runs or imports it.
+
+- **Computed configs.** A value that is a call, an environment read, a template with substitutions or a binding that
+  is not a top-level `const` is opaque: the setting is compared by its normalized text, and a changed opaque value
+  gives at most a `warn` ("cannot be compared"), because TI09 cannot say whether it loosens anything. A config whose
+  default export is a call to anything other than `defineConfig`, `defineProject`, `defineWorkspace` or `mergeConfig`
+  is not found at all, and a config found at base but not at head gives one `warn` for `(config)`.
+- **Shared config packages and imports.** An imported base config, a spread (`...shared`) and a
+  `mergeConfig(base, …)` argument that is not an object literal are never resolved, so a setting that lives there is not
+  seen. A key that an open object (a spread, a shorthand property, a `mergeConfig` result) may set is `warn` when it
+  was set at base and is absent at head.
+- **CLI flags in CI workflows.** `vitest run --exclude …`, `pytest -k …` and the like in a workflow or a script are not
+  read here; TI10 (the scripts in `package.json`) and TI11 (workflows) cover what they cover.
+- **Deleted config files and removed sections.** A deleted file is never read. A removed `jest` key, a removed
+  `[pytest]` section or `[tool.pytest.ini_options]` table, and a removed `test` key of a vite config give nothing: the
+  runner's defaults apply, and TI09 does not model them.
+- **Playwright per-project settings.** Only the top-level keys are read. `projects[].retries`, `projects[].grep`,
+  `projects[].testMatch` and everything under `use` are not.
+- **Tool defaults.** A key that is removed, or that is set where it was unset, is not judged against the tool's default
+  (an unset list is read as empty only to decide that a gained exclude entry is new). A threshold that is removed is
+  reported as removed; a list that is narrowed from an unset base is not.
+- **`.mocharc.jsonc` and `conftest.py`.** They are test-config names for the sources but TI09 reads neither, nor a bare
+  `.mocharc`. A pytest option set in `conftest.py`, an environment variable such as `PYTEST_ADDOPTS` or `JEST_*`, and a
+  config named by a flag (`--config`, `-c`) are not seen.
+- **The INI and YAML subsets.** `pytest.ini`, `tox.ini` and `setup.cfg` are read by section only: `key = value` or
+  `key: value`, with indented continuation lines; an inline `#` after a value is kept in the value (pytest's own reader
+  does the same). `.mocharc.yml` is read as flat top-level keys: a nested mapping, a block scalar or an anchor makes
+  only that key opaque, and a top-level line that is none of these refuses the file (`invalid-yaml`). The TOML table is
+  read for strings, numbers, booleans and arrays of these; an inline table or a multi-line string is opaque.
+- **Build and dependency entries are excused.** A glob or regex added to an exclude or ignore list does not count as
+  widening when it names `node_modules`, `dist`, `build`, `coverage`, `.git`, `.venv`, `venv`, `__pycache__`, `.tox`,
+  `.nox`, `.cache`, `.next`, `.nuxt`, `.eggs`, `.mypy_cache`, `.pytest_cache`, `.ruff_cache`, `.nyc_output`, `.turbo` or
+  `.svelte-kit` (after `<rootDir>`, a leading `./`, `^`, `/` or a leading `**/` and a trailing `$`, `/`, `/**` or `/*`
+  are stripped), or declaration files (`*.d.ts`). `-p no:cacheprovider` in `addopts` is excused the same way.
+- **Retries and timeouts are warnings only.** A raised `retry`, `retries`, `testTimeout`, `hookTimeout` or mocha
+  `timeout` is `warn` in every mode, because a longer timeout or a retry does not by itself hide a failure: a timeout
+  counts as raised when it is at least ten times the base value (or at least 50000 ms when it was unset, or `0` in
+  mocha). Glob comparison covers one level of `{a,b}` braces (at most 64 alternatives) and the glob subset of
+  `exclude`; a regex list is compared by equality only, so a regex rewritten to match the same files is a widening.
+- **Caps.** At most 20 findings per file; a config of more than 524288 characters, or a syntax tree deeper than 1000, is
+  not read (`too-large`, `too-deep`) and is named in `TEST_INTEGRITY_INDEX_UNAVAILABLE`.
+
 ### What TI10 misses
 
 TI10 reads the added and removed lines of a modified or renamed `package.json`, with no context lines and no JSON
@@ -467,10 +514,10 @@ findings. It is the Action's alone; the CLI never honours it.
 
 ## What test integrity does not catch
 
-The test-integrity signals that ship today (TI01, TI02, TI03, TI04, TI05, TI06, TI07, TI08, TI10, TI11, TI12, TI13,
-TI14, TI15 and TI16) read the added and removed lines of the diff, in files they recognise by name; TI02, TI05, TI06,
-TI07 and TI12 also read the text of the JavaScript, TypeScript and Python test files the change modifies, at the merge
-base and at `HEAD`. They do not run tests or read a file that the diff does not touch, and they judge the strength of an
+The test-integrity signals that ship today (TI01, TI02, TI03, TI04, TI05, TI06, TI07, TI08, TI09, TI10, TI11, TI12,
+TI13, TI14, TI15 and TI16) read the added and removed lines of the diff, in files they recognise by name; TI02, TI05,
+TI06, TI07 and TI12 also read the text of the JavaScript, TypeScript and Python test files the change modifies, and TI09
+the text of the test-runner config files it touches, at the merge base and at `HEAD`. They do not run tests or read a file that the diff does not touch, and they judge the strength of an
 assertion only from a fixed table of matchers (TI06). The accept label records that a reviewer who is not the author
 signed off a block finding. It cannot show that the reviewer read the tests, and it never adds a check. What each signal
 misses is listed under its own "What TIxx misses" heading above, and the accept label's limits under "What the accept
@@ -478,7 +525,7 @@ label misses". A file whose changed lines run past 5000 is read only up to that 
 report names it with `TEST_INTEGRITY_TEXT_TRUNCATED` (section 8).
 
 The benchmark for what is not seen is Skylos's list of nine ways to hide a failing test. The nine cases are reproduced
-in vitest under `fixtures/skylos-nine/` and pinned by tests. The signals of this release catch **6 of 9**.
+in vitest under `fixtures/skylos-nine/` and pinned by tests. The signals of this release catch **7 of 9**.
 
 Caught:
 
@@ -486,6 +533,8 @@ Caught:
 - `added-skip` — caught by TI03: `it(` becomes `it.skip(` on a test the diff shows existed.
 - `emptied-assertion` — caught by TI05: the `expect(...)` call is replaced by a bare call, so the test still runs and
   asserts nothing; the test had an assertion at base and has none at head.
+- `deselect-setting` — caught by TI09: the runner's `include` list is narrowed in `vitest.config.ts`, so the test file
+  is never picked up; TI09 compares the config at the merge base and at `HEAD` and reports `test.include narrowed`.
 - `replaced-test` — caught by TI02: a test is replaced by one with another name and a different body, so no test file is
   deleted and nothing is skipped, but no test of the old name or a similar body is left.
 - `loosened-assertion` — caught by TI06: `toBe(5)` becomes `toBeTruthy()`, so the test still runs and asserts as many
@@ -497,8 +546,6 @@ Caught:
 Not caught. Each of these names the signal that is planned for it; most of the planned signals do not exist yet, and TI15
 exists but misses its own case:
 
-- `deselect-setting` — missed; planned: TI09. The runner's `include` list is narrowed in `vitest.config.ts`, so the
-  test file is never picked up. A runner config is not read.
 - `hard-coded-answer` — missed; planned: TI15. The source returns the expected value for the test's input. TI15 now
   exists and still misses it, because the change adds no test line to match against and its numbers are one digit.
 - `always-true-matcher` — missed; planned: TI17, which is a proposal and not a signal in the test-integrity spec yet.
@@ -763,7 +810,7 @@ limited by git, Node or GitHub alone.
   agent setup files are not reported, and the rest of the check runs.
 - **The text of the test and test-config files.** For a diff read from local git, the CLI and the Action
   read, from committed git objects, the text of the test files and the test-config files (`vitest.config.*`,
-  `vitest.workspace.*`, `jest.config.*`, `playwright.config.*`, `.mocharc*`, `pytest.ini`, `pyproject.toml`,
+  `vite.config.*`, `vitest.workspace.*`, `jest.config.*`, `playwright.config.*`, `.mocharc*`, `pytest.ini`, `pyproject.toml`,
   `setup.cfg`, `tox.ini`, `conftest.py` and `package.json`, by basename at any depth) that the change touches: the
   base side at the merge base, the head side at `HEAD`. Three caps apply to each side, with fixed values that no input,
   flag or config key changes: at most 200 files, at most 524288 bytes (512 KiB) per file, and at most 16777216 bytes

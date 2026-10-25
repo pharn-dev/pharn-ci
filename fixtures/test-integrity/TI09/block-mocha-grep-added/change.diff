@@ -1,0 +1,6 @@
+diff --git a/.mocharc.yml b/.mocharc.yml
+index 1111111..2222222 100644
+--- a/.mocharc.yml
++++ b/.mocharc.yml
+@@ -2,0 +3 @@ spec: test/**/*.spec.js
++grep: fast
