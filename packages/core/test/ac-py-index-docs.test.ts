@@ -11,9 +11,14 @@ const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 const sha256 = (data: Buffer) => createHash("sha256").update(data).digest("hex");
 
-/** sha256 of schema/report.v1.json and schema/report.v2.json at the base commit 5a42169. */
+/** sha256 of schema/report.v1.json at the base commit 5a42169. */
 const V1_AT_BASE = "c6cfd5b5afeada776fa89028f5ef29e06427d0e32529420184474e52ca77c731";
-const V2_AT_BASE = "67e784e2bc7a71c6d91790aca75ea9a03c8b9e11098ae1dcbae7c7a9537b796d";
+/**
+ * sha256 of JSON.stringify of schema/report.v2.json with the message-code description and the `languages` description
+ * taken out, as it was at the base commit 5a42169 and still is. TI02 and TI05 (ti02-ti05) edit exactly those two
+ * descriptions, so the whole file is no longer byte-identical to the base; the rest of it still is.
+ */
+const V2_WITHOUT_EDITED_DESCRIPTIONS = "d7a9ec11cf2212f2ff82cf7fd42f27cfa73896151f69281ad595c4fc933c3737";
 
 /** The numbered entries of THREAT-MODEL.md section 3 (Named residual risks), each with its continuation lines. */
 function residualEntries(doc: string): string[] {
@@ -109,6 +114,15 @@ describe("python-test-index: THREAT-MODEL, fixture layout, schemas and purity", 
     }
 
     expect(sha256(readFileSync(join(ROOT, "schema/report.v1.json"))), "schema/report.v1.json").toBe(V1_AT_BASE);
-    expect(sha256(readFileSync(join(ROOT, "schema/report.v2.json"))), "schema/report.v2.json").toBe(V2_AT_BASE);
+    const v2 = JSON.parse(read("schema/report.v2.json")) as {
+      $defs: { message: { properties: { code: { description?: string } } } };
+      properties: { testIntegrity: { properties: { languages: { description?: string } } } };
+    };
+    delete v2.$defs.message.properties.code.description;
+    delete v2.properties.testIntegrity.properties.languages.description;
+    expect(
+      sha256(Buffer.from(JSON.stringify(v2))),
+      "schema/report.v2.json without the message-code and languages descriptions",
+    ).toBe(V2_WITHOUT_EDITED_DESCRIPTIONS);
   });
 });

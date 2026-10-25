@@ -1,0 +1,9 @@
+diff --git a/src/cart.test.ts b/src/cart.test.ts
+index 1111111..2222222 100644
+--- a/src/cart.test.ts
++++ b/src/cart.test.ts
+@@ -7,4 +6,0 @@ it("keeps working", () => {
+-
+-it.each([[1, 2], [2, 3]])("adds %s", (a, b) => {
+-  expect(total([a, b])).toBe(a + b);
+-});

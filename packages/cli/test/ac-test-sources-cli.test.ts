@@ -105,7 +105,10 @@ describe("pharn-ci check: test sources", () => {
     const gathered = await runCli([]);
     expect(gathered.input.testSources?.base.files).toEqual([{ path: "tests/a.test.ts", text: MAIN_TEXT }]);
     expect(gathered.input.testSources?.head.files).toEqual([{ path: "tests/a.test.ts", text: FEATURE_TEXT }]);
-    expect(gathered.report).toEqual(actual.check(withoutSources(gathered.input)));
+    // Since TI02/TI05 check() reads the gathered sources (`languages` names the indexed `ts` file), so the printed
+    // report is the one check() makes from the input the CLI built, sources included.
+    expect(gathered.report.testIntegrity.languages).toEqual(["ts"]);
+    expect(gathered.report).toEqual(actual.check(gathered.input));
 
     const off = await runCli(["--test-integrity", "off"]);
     expect(off.calls.filter((args) => args[0] === "merge-base" || args[0] === "cat-file")).toEqual([]);

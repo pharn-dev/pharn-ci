@@ -1,0 +1,17 @@
+import { describe, expect, it } from "vitest";
+import { total } from "./cart.js";
+
+describe("cart", () => {
+  it("adds the prices", () => {
+    expect(total([2, 3])).toBe(5);
+  });
+
+  it("rejects a negative price", () => {
+    expect(() => total([-1])).toThrow("negative price");
+  });
+
+  it("totals an empty cart", () => {
+    total([]);
+    total([0]);
+  });
+});

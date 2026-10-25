@@ -1,0 +1,8 @@
+diff --git a/src/cart.test.ts b/src/cart.test.ts
+index 1111111..2222222 100644
+--- a/src/cart.test.ts
++++ b/src/cart.test.ts
+@@ -11,2 +11 @@ describe("cart", () => {
+-    expect(cart).toBe(4);
+-    expect(cart).toBeLessThan(5);
++    expectValidCart(cart);

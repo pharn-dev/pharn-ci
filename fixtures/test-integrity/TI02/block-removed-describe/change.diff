@@ -1,0 +1,25 @@
+diff --git a/src/cart.test.ts b/src/cart.test.ts
+index 1111111..2222222 100644
+--- a/src/cart.test.ts
++++ b/src/cart.test.ts
+@@ -9,20 +8,0 @@ describe("cart", () => {
+-
+-describe("totals", () => {
+-  let prices: number[];
+-
+-  beforeEach(() => {
+-    prices = [2, 3];
+-  });
+-
+-  it("sums the prices", () => {
+-    expect(total(prices)).toBe(5);
+-  });
+-
+-  it("sums one price", () => {
+-    expect(total([4])).toBe(4);
+-  });
+-
+-  it("sums no prices", () => {
+-    expect(total([])).toBe(0);
+-  });
+-});

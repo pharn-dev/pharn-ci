@@ -1,0 +1,23 @@
+diff --git a/src/a.test.ts b/src/a.test.ts
+index 1111111..2222222 100644
+--- a/src/a.test.ts
++++ b/src/a.test.ts
+@@ -7,5 +6,0 @@ it("adds the prices", () => {
+-
+-it("totals the cart", () => {
+-  const sum = total([4, 6]);
+-  expect(sum).toBe(10);
+-});
+diff --git a/src/c.test.ts b/src/c.test.ts
+new file mode 100644
+index 0000000..3333333
+--- /dev/null
++++ b/src/c.test.ts
+@@ -0,0 +1,7 @@
++import { expect, it } from "vitest";
++import { total } from "./cart.js";
++
++it("sums the cart", () => {
++  const sum = total([4, 6]);
++  expect(sum).toBe(10);
++});

@@ -1,0 +1,12 @@
+diff --git a/src/cart.test.ts b/src/cart.test.ts
+index 1111111..2222222 100644
+--- a/src/cart.test.ts
++++ b/src/cart.test.ts
+@@ -10,4 +10,3 @@ describe("cart", () => {
+-    const sum = total([1, 2, 3]);
+-    expect(sum).toBe(6);
+-    expect(sum).toBeGreaterThan(0);
+-    expect(sum).toBeLessThan(10);
++    const sum = total([1, 2, 3, 4]);
++    expect(sum).toBe(10);
++    expect(sum).toBeLessThan(20);

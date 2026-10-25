@@ -1,0 +1,16 @@
+diff --git a/src/a.test.ts b/src/a.test.ts
+index 1111111..2222222 100644
+--- a/src/a.test.ts
++++ b/src/a.test.ts
+@@ -4,4 +3,0 @@ import { total } from "./cart.js";
+-it("works", () => {
+-  expect(total([2, 3])).toBe(5);
+-});
+-
+diff --git a/src/b.test.ts b/src/b.test.ts
+index 3333333..4444444 100644
+--- a/src/b.test.ts
++++ b/src/b.test.ts
+@@ -9 +9 @@ it("also", () => {
+-  expect(total([6])).toBe(6);
++  expect(total([6, 1])).toBe(7);

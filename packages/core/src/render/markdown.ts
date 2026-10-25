@@ -74,10 +74,14 @@ const MESSAGE_HINTS: Record<MessageCode, Hint> = {
   TEST_INTEGRITY_OFF:
     "Set the `test-integrity` input to `warn` or `block` in the workflow to check for weakened tests.",
   TEST_INTEGRITY_TI01: "Restore the deleted tests, or say in the PR why they go so a reviewer can confirm it.",
+  TEST_INTEGRITY_TI02: (label) =>
+    `Restore the removed tests, or say in the PR why they go; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}. A test that only moved or was renamed is not reported when its body is the same or close to it.`,
   TEST_INTEGRITY_TI03: (label) =>
     `A reviewer must decide whether each skipped test may stay, for example one that fails in CI; a reviewer who is not the PR author records that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI04:
     "Remove the marker so the whole suite runs, or say in the PR why only the marked tests should run.",
+  TEST_INTEGRITY_TI05: (label) =>
+    `Restore the assertions the test had, or say in the PR why it checks less now; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI10: (label) =>
     `Restore the test script, or say in the PR why it changes so a reviewer can confirm it; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI13: (label) =>
@@ -86,6 +90,8 @@ const MESSAGE_HINTS: Record<MessageCode, Hint> = {
     "Restore the test step or trigger, or say in the PR why CI stops running these tests so a reviewer can confirm it.",
   TEST_INTEGRITY_TI14:
     "Restore the threshold or the exclusions, or say in the PR why they change so a reviewer can confirm it.",
+  TEST_INTEGRITY_INDEX_UNAVAILABLE:
+    "Review the named test files by hand for removed tests and weakened assertions. A file over 512 KiB, one with many syntax errors, a missing Python 3.8 or newer for `.py` files, or git objects that could not be read stop the comparison.",
   TEST_INTEGRITY_TEXT_TRUNCATED:
     "Review the named files by hand for skipped, focused or weakened tests, or split the change so each file stays under the limit.",
   TEST_INTEGRITY_ACCEPTED:
@@ -116,7 +122,17 @@ function labelSpan(text: string): string {
 }
 
 /** The signal ids that have a hint under their finding. */
-const SIGNAL_HINT_IDS: ReadonlySet<string> = new Set(["TI01", "TI03", "TI04", "TI10", "TI11", "TI13", "TI14"]);
+const SIGNAL_HINT_IDS: ReadonlySet<string> = new Set([
+  "TI01",
+  "TI02",
+  "TI03",
+  "TI04",
+  "TI05",
+  "TI10",
+  "TI11",
+  "TI13",
+  "TI14",
+]);
 
 /** Hint under the finding of a test-integrity signal id: the hint of its `TEST_INTEGRITY_<id>` code. */
 function signalHint(id: string, label: string): string | undefined {

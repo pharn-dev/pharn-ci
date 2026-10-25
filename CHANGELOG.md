@@ -9,6 +9,19 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- Signals **TI02** (a test removed) and **TI05** (assertions emptied or dropped), the first signals that compare the text
+  of the test files a change modifies at the merge base and at HEAD (JS/TS and, through the Python test index, `.py`
+  files), and the codes `TEST_INTEGRITY_TI02`, `TEST_INTEGRITY_TI05` and `TEST_INTEGRITY_INDEX_UNAVAILABLE`. TI02 reports a
+  test with no counterpart left in the touched test files by name or by a similar body (`block` in mode `block`, `warn`
+  in mode `warn` and for a computed name), at its base path and base line; TI05 reports a test that had assertions and has
+  none at head, or fewer with the rest of its body unchanged, at its head path and head line. At most 20 findings per file
+  and signal are listed and the messages say how many were left out. `TEST_INTEGRITY_INDEX_UNAVAILABLE` (warn) names the
+  touched test files that could not be compared, with a reason code each, or says that TI02 and TI05 did not run.
+  `testIntegrity.languages` now lists the languages (`js`, `py`, `ts`) the test indexes parsed. The CLI and the Action
+  index the Python test files of a change with `python3` when the change modifies one; with JS/TS-only changes nothing
+  runs. The `skylos-nine` benchmark now catches 4 of 9. The action and CLI dist now carry the TypeScript parser, so the
+  Action dist is larger (about 11 MB, under 12 MB).
+
 ### Changed
 
 - pharn-ci now reads the base and head text of the test and test-config files a change touches from local git

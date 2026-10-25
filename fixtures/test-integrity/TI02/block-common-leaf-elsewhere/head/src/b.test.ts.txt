@@ -1,0 +1,10 @@
+import { expect, it } from "vitest";
+import { total } from "./cart.js";
+
+it("works", () => {
+  expect(total([1])).toBe(1);
+});
+
+it("also", () => {
+  expect(total([6, 1])).toBe(7);
+});

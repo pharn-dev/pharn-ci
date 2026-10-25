@@ -55,11 +55,9 @@ const CAUGHT = /^- `([a-z-]+)` — caught by (TI\d\d)/;
 const MISSED = /^- `([a-z-]+)` — missed; planned: (TI\d\d)/;
 
 const MISSED_CASES: ReadonlyArray<[string, string]> = [
-  ["emptied-assertion", "TI05"],
   ["deselect-setting", "TI09"],
   ["hard-coded-answer", "TI15"],
   ["always-true-matcher", "TI17"],
-  ["replaced-test", "TI02"],
   ["loosened-assertion", "TI06"],
   ["edited-expected-value", "TI07"],
 ];
@@ -73,10 +71,12 @@ describe("release-readiness-v020: docs/LIMITS.md", () => {
     expect(start).toBeGreaterThan(acceptIndex);
 
     const body = normalize(section.join("\n"));
-    for (const id of ["TI01", "TI03", "TI04", "TI10", "TI11", "TI13", "TI14"]) expect(body).toContain(id);
+    for (const id of ["TI01", "TI02", "TI03", "TI04", "TI05", "TI10", "TI11", "TI13", "TI14"]) {
+      expect(body).toContain(id);
+    }
     expect(body).toMatch(/accept label/i);
     expect(body).toContain("Skylos");
-    expect(body).toContain("2 of 9");
+    expect(body).toContain("4 of 9");
 
     const items = listItems(section);
     const caught = new Map<string, string>();
@@ -89,6 +89,8 @@ describe("release-readiness-v020: docs/LIMITS.md", () => {
     }
     expect(caught.get("deleted-test"), items.join("\n")).toBe("TI01");
     expect(caught.get("added-skip"), items.join("\n")).toBe("TI03");
+    expect(caught.get("emptied-assertion"), items.join("\n")).toBe("TI05");
+    expect(caught.get("replaced-test"), items.join("\n")).toBe("TI02");
     for (const [name, id] of MISSED_CASES) expect(missed.get(name), `${name}\n${items.join("\n")}`).toBe(id);
   });
 

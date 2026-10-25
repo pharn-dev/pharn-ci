@@ -99,11 +99,13 @@ export {
   type Message,
   type MessageCode,
   type MessageLevel,
+  type OmittedSignals,
   type Report,
   type ReportDiffCoverage,
   type ReportMeta,
   type ReportMetaEvent,
   type ReportTestIntegrity,
+  type TestIndexUnavailable,
   type TestIntegrityMode,
   type TestIntegritySignal,
   testIntegritySignalMessages,
@@ -127,9 +129,12 @@ export {
   isWorkflowFile,
   keepSignalFileText,
 } from "./signals/signalFiles.js";
+export { type MatchCandidate, type MatchedPair, matchTests, type TestMatch } from "./signals/testMatch.js";
 export { detectTI01 } from "./signals/ti01.js";
+export { detectTI02 } from "./signals/ti02.js";
 export { detectTI03 } from "./signals/ti03.js";
 export { detectTI04 } from "./signals/ti04.js";
+export { detectTI05 } from "./signals/ti05.js";
 export { detectTI10, type TI10Options } from "./signals/ti10.js";
 export { detectTI11 } from "./signals/ti11.js";
 export { detectTI13 } from "./signals/ti13.js";
@@ -146,6 +151,7 @@ export { indexTestFile } from "./testIndex/indexTestFile.js";
 export { oneLineDetail, pythonRunOutcome } from "./testIndex/pythonOutcome.js";
 export { type PythonIndexPlan, planPythonIndex, pythonIndexStdin, utf8ByteLength } from "./testIndex/pythonPlan.js";
 export { pythonIndexFromRaw } from "./testIndex/pythonRaw.js";
+export { type PythonTestIndex, pythonTestIndexFromRun, pythonTestSourceFiles } from "./testIndex/pythonSides.js";
 export {
   MAX_PYTHON_DETAIL_CHARS,
   MAX_PYTHON_RAW_ARRAY,

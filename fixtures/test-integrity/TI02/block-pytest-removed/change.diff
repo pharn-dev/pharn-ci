@@ -1,0 +1,9 @@
+diff --git a/py/test_total.py b/py/test_total.py
+index 1111111..2222222 100644
+--- a/py/test_total.py
++++ b/py/test_total.py
+@@ -4,4 +3,0 @@ from cart import total
+-def test_total():
+-    assert total([2, 3]) == 5
+-
+-

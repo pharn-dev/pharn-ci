@@ -9,17 +9,30 @@ import { type DiffFile, parseUnifiedDiff } from "./diff/unified.js";
 import { computeDiffCoverage } from "./diffCoverage.js";
 import { binaryCoveredPaths, changedConfigPaths, trackedCoverageFile } from "./gateInputs.js";
 import { compileGlob } from "./glob.js";
-import { buildReport, type Report, type ReportMeta, type TestIntegritySignal } from "./report.js";
+import {
+  buildReport,
+  type OmittedSignals,
+  type Report,
+  type ReportMeta,
+  type TestIndexUnavailable,
+  type TestIntegritySignal,
+} from "./report.js";
 import { scanAgentSetup } from "./setup/scan.js";
+import { capFindings } from "./signals/findingCap.js";
 import { keepSignalFileText, textCutSignalFiles } from "./signals/signalFiles.js";
+import { matchTests } from "./signals/testMatch.js";
+import { indexTouchedTestFiles } from "./signals/testPairs.js";
 import { detectTI01 } from "./signals/ti01.js";
+import { detectTI02 } from "./signals/ti02.js";
 import { detectTI03 } from "./signals/ti03.js";
 import { detectTI04 } from "./signals/ti04.js";
+import { detectTI05 } from "./signals/ti05.js";
 import { detectTI10 } from "./signals/ti10.js";
 import { detectTI11 } from "./signals/ti11.js";
 import { detectTI13 } from "./signals/ti13.js";
 import { detectTI14 } from "./signals/ti14.js";
 import { deletedTestFiles } from "./testFiles.js";
+import type { PythonTestIndex } from "./testIndex/pythonSides.js";
 import { resolveTestIntegrityMode, type TestIntegrityModeSettings } from "./testIntegrityMode.js";
 import type { TestSources } from "./testSources.js";
 
@@ -94,10 +107,18 @@ export interface CheckInput {
   testIntegrityMode?: TestIntegrityModeSettings;
   /**
    * The text of the test and test-config files the change touches, at the merge base and at HEAD, gathered by the
-   * CLI and the Action for the base-and-head test-integrity signals. `check()` does not read it yet: the report is
-   * the same with it, without it, or with both sides unavailable.
+   * CLI and the Action for the base-and-head test-integrity signals (TI02 and TI05). They compare the JS/TS (and, with
+   * `pythonTestIndex`, Python) test files the diff modifies. Without it, or in mode off, nothing is compared and the
+   * report is the one it was before: no signal, no message, no language. With a side unavailable and a modified test
+   * file, the report carries one `TEST_INTEGRITY_INDEX_UNAVAILABLE` message.
    */
   testSources?: TestSources;
+  /**
+   * The Python test index of the `.py` test files in `testSources` (see `pythonTestSourceFiles` and
+   * `pythonTestIndexFromRun`), built by the CLI and the Action. Absent while `testSources` holds a modified `.py` test
+   * file means no interpreter was found.
+   */
+  pythonTestIndex?: PythonTestIndex;
 }
 
 const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
@@ -151,6 +172,34 @@ export function check(input: CheckInput): Report {
             mode: testIntegrity.mode,
           }),
         ]);
+  // The base-and-head signals: the touched test files are compared between the merge base and HEAD. Only with the
+  // sources, a diff and a mode that is not off; otherwise nothing runs and the report is the one it was.
+  let comparison: {
+    signals: TestIntegritySignal[];
+    omitted: OmittedSignals[];
+    languages: Array<"ts" | "js" | "py">;
+    unavailable: TestIndexUnavailable | undefined;
+  } | null = null;
+  const comparedMode = testIntegrity.mode;
+  if (parsedDiff !== null && comparedMode !== "off" && input.testSources !== undefined) {
+    const touched = indexTouchedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex);
+    if (touched.notRun !== null) {
+      comparison = { signals: [], omitted: [], languages: [], unavailable: { notRun: touched.notRun } };
+    } else {
+      const match = matchTests(touched);
+      const capped = capFindings([...detectTI02(match, comparedMode), ...detectTI05(match, comparedMode)]);
+      comparison = {
+        signals: capped.kept,
+        omitted: capped.omitted,
+        languages: touched.languages,
+        unavailable: touched.unavailable.length > 0 ? { files: touched.unavailable } : undefined,
+      };
+    }
+  }
+  if (comparison !== null && comparison.signals.length > 0) {
+    testIntegritySignals.push(...comparison.signals);
+    sortSignals(testIntegritySignals);
+  }
   // A file whose kept text was cut can hide a finding past the cut; the report names it rather than stay silent.
   const textTruncatedFiles =
     parsedDiff === null || testIntegrity.mode === "off"
@@ -203,6 +252,11 @@ export function check(input: CheckInput): Report {
     testIntegrity,
     ...(testIntegritySignals.length > 0 ? { testIntegritySignals } : {}),
     ...(textTruncatedFiles.length > 0 ? { textTruncatedFiles } : {}),
+    ...(comparison === null || comparison.languages.length === 0
+      ? {}
+      : { testIntegrityLanguages: comparison.languages }),
+    ...(comparison === null || comparison.omitted.length === 0 ? {} : { omittedSignals: comparison.omitted }),
+    ...(comparison?.unavailable === undefined ? {} : { testIndexUnavailable: comparison.unavailable }),
   };
 
   if ("kind" in coverageInput) {

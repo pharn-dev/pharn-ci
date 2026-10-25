@@ -1,0 +1,28 @@
+import { beforeEach, describe, expect, it } from "vitest";
+import { total } from "./cart.js";
+
+describe("cart", () => {
+  it("adds the prices", () => {
+    expect(total([2, 3])).toBe(5);
+  });
+});
+
+describe("totals", () => {
+  let prices: number[];
+
+  beforeEach(() => {
+    prices = [2, 3];
+  });
+
+  it("sums the prices", () => {
+    expect(total(prices)).toBe(5);
+  });
+
+  it("sums one price", () => {
+    expect(total([4])).toBe(4);
+  });
+
+  it("sums no prices", () => {
+    expect(total([])).toBe(0);
+  });
+});

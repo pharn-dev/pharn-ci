@@ -10,4 +10,5 @@ export {
   spawnPython,
 } from "./pythonIndex.js";
 export { PYTHON_BOOTSTRAP, PYTHON_INDEX_SCRIPT } from "./pythonIndexScript.js";
+export { indexPythonTestSources } from "./pythonSources.js";
 export { type ReadTestSourcesOptions, readTestSources, type TestSourceGitDeps } from "./testSources.js";

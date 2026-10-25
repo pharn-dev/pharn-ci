@@ -119,6 +119,32 @@ TI11 reads the added and removed lines of workflow files (`.github/workflows/*.y
   checks and the source paths from the app policy; they land with the policy work (E5), not here.
 - **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8).
 
+### What TI02 misses
+
+TI02 compares the tests of each JavaScript, TypeScript and Python test file the change modifies at the merge base and at
+`HEAD`, from their text, with the test index. It reports a base test with no counterpart left. It is not a judge of
+whether a test is still good.
+
+- **A test replaced by a trivial one with the same name.** A test is matched by its full name first, so a test whose
+  body is swapped for a trivial one under the same name is not removed as far as TI02 goes. TI05 sees the case where the
+  assertions go; a trivial body that still has an assertion, or a weak one, is not seen by either.
+- **A deleted test matched by a common leaf name in another touched file.** A test that leaves one file and a test with
+  the same leaf name (the last name in its path, as in `works`) that another touched test file gains are taken for a
+  move, so a deletion hidden behind a common name in a touched file is missed. The same goes for a deleted test whose
+  body hash matches any new test in a touched file. The file has to be touched by the change; a test moved to a file the
+  change does not touch is reported.
+- **A body that is close enough.** A removed test whose body has a token-set Jaccard of at least 0.8 with a new test of
+  the same file is taken for a rename. A rename that also weakens the body slightly passes.
+- **Names read from the text.** A test whose name is computed (a template literal with a substitution, `.each`, `.for`
+  or any other expression) is matched by body only and reported as `warn`; two tests with the same full name are
+  compared as a multiset, in line order.
+- **Go test files** (`_test.go`) are not read, and neither is any other language: only `.ts`, `.tsx`, `.mts`, `.cts`,
+  `.js`, `.jsx`, `.mjs`, `.cjs` and `.py` files. A deleted or renamed-away file is TI01's, not TI02's.
+- **No run, no resolution.** The tests are parsed, never run, and a test the framework generates (a loop that calls
+  `it`, a parametrized Python test) is one block or none. A syntax-error-heavy, oversized or deeply nested file is not
+  compared (`TEST_INTEGRITY_INDEX_UNAVAILABLE`).
+- **Caps.** At most 20 findings per file; the matching probes at most 256 candidates per test (section 8).
+
 ### What TI03 misses
 
 TI03 reads the added and removed lines of test files, one line at a time, in JS/TS, Python and Go. The local diff is
@@ -162,6 +188,27 @@ TI04 reads the added and removed lines of JS/TS test files the same way.
   name, so an `.only` copied from one test to another of the same name is missed.
 - **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8); at most 20 signals are
   given per file.
+
+### What TI05 misses
+
+TI05 compares the assertion count of each test that has the same full name (or a similar body, in the same file) at the
+merge base and at `HEAD`, in JavaScript, TypeScript and Python test files the change modifies.
+
+- **A weakening that keeps the number of assertions.** `toBe(5)` becomes `toBeTruthy()`, an expected value is edited, or a
+  matcher that always passes is added: the assertion count is the same, so TI05 sees nothing. Weakening is planned for
+  other signals (`loosened-assertion`, `edited-expected-value`).
+- **Assertions in helpers outside the test body.** An assertion helper that is defined in another file, imported, or
+  called from a hook or setup is not part of the test's count. A test that calls a function whose name starts with
+  `expect`, `assert`, `check`, `verify`, `should`, `validate` or `ensure` and has no assertion of its own is reported as
+  `warn`, not `block`, and the guess is made from the name alone, even inside a string.
+- **A test replaced by a trivial one with the same name** that keeps one assertion. Only the count of assertions is
+  compared, and a fewer-but-stronger rewrite is excused when the rest of the body changes too.
+- **Assertions dropped together with a rewrite.** TI05 reports fewer assertions only when the rest of the body is
+  the base's with assertion statements taken out; a change that drops an assertion and edits anything else passes.
+- **Skipped, todo and conditional tests** (`skip`, `todo`, `skipIf`, `runIf`) are not checked; TI03 reports skips added.
+- **Go test files** and every other language are not read; the Python count is the interpreter's own reading of
+  `assert` statements and the unittest assert methods.
+- **Caps.** At most 20 findings per file.
 
 ### What TI10 misses
 
@@ -227,41 +274,42 @@ findings. It is the Action's alone; the CLI never honours it.
 
 ## What test integrity does not catch
 
-The test-integrity signals that ship today (TI01, TI03, TI04, TI10, TI11, TI13 and TI14) read only the added and
-removed lines of the diff, in files they recognise by name. They do not run tests, parse syntax or read a file that the
-diff does not touch, and they cannot judge whether an assertion is strong. The accept label records that a reviewer who
-is not the author signed off a block finding. It cannot show that the reviewer read the tests, and it never adds a
-check. What each signal misses is listed under its own "What TIxx misses" heading above, and the accept label's limits
-under "What the accept label misses". A file whose changed lines run past 5000 is read only up to that point; the
+The test-integrity signals that ship today (TI01, TI02, TI03, TI04, TI05, TI10, TI11, TI13 and TI14) read the added and
+removed lines of the diff, in files they recognise by name; TI02 and TI05 also read the text of the JavaScript,
+TypeScript and Python test files the change modifies, at the merge base and at `HEAD`. They do not run tests or read a
+file that the diff does not touch, and they cannot judge whether an assertion is strong. The accept label records that a
+reviewer who is not the author signed off a block finding. It cannot show that the reviewer read the tests, and it never
+adds a check. What each signal misses is listed under its own "What TIxx misses" heading above, and the accept label's
+limits under "What the accept label misses". A file whose changed lines run past 5000 is read only up to that point; the
 report names it with `TEST_INTEGRITY_TEXT_TRUNCATED` (section 8).
 
 The benchmark for what is not seen is Skylos's list of nine ways to hide a failing test. The nine cases are reproduced
-in vitest under `fixtures/skylos-nine/` and pinned by tests. The diff-only signals of this release catch **2 of 9**.
+in vitest under `fixtures/skylos-nine/` and pinned by tests. The signals of this release catch **4 of 9**.
 
 Caught:
 
 - `deleted-test` — caught by TI01: the test file is deleted, and its removed lines define tests.
 - `added-skip` — caught by TI03: `it(` becomes `it.skip(` on a test the diff shows existed.
+- `emptied-assertion` — caught by TI05: the `expect(...)` call is replaced by a bare call, so the test still runs and
+  asserts nothing; the test had an assertion at base and has none at head.
+- `replaced-test` — caught by TI02: a test is replaced by one with another name and a different body, so no test file is
+  deleted and nothing is skipped, but no test of the old name or a similar body is left.
 
 Not caught. Each of these names the signal that is planned for it; none of them exists yet:
 
-- `emptied-assertion` — missed; planned: TI05. The `expect(...)` call is replaced by a bare call, so the test still
-  runs and asserts nothing.
 - `deselect-setting` — missed; planned: TI09. The runner's `include` list is narrowed in `vitest.config.ts`, so the
   test file is never picked up. A runner config is not read.
 - `hard-coded-answer` — missed; planned: TI15. The source returns the expected value for the test's input. Source
   files that are not tests are read for coverage-ignore comments only.
 - `always-true-matcher` — missed; planned: TI17, which is a proposal and not a signal in the test-integrity spec yet.
   A custom matcher that always passes replaces `toBe(5)`.
-- `replaced-test` — missed; planned: TI02. A test is replaced by one with another name, so no test file is deleted and
-  nothing is skipped.
 - `loosened-assertion` — missed; planned: TI06. `toBe(5)` becomes `toBeTruthy()`.
 - `edited-expected-value` — missed; planned: TI07. `toBe(5)` becomes `toBe(6)` so that the test agrees with the code.
 
 Other ways a change can weaken tests without being seen:
 
-- A test replaced by a new test with the **same name** and a **trivial body**. TI02 (planned) misses it when the name
-  stays, and TI05 (planned) catches only the case with no assertion at all.
+- A test replaced by a new test with the **same name** and a **trivial body**. TI02 misses it when the name stays, and
+  TI05 catches only the case where the assertions go (or some go with the rest of the body unchanged).
 - Semantic weakening that keeps the matcher, such as `toEqual(expectedFromOutput)`, where the expected value is read
   back from the code under test.
 - A **mock** introduced in a **setup file** that the diff does not show as a test file, so a test passes against a
@@ -529,7 +577,18 @@ limited by git, Node or GitHub alone.
   byte, or bytes that are not well-formed UTF-8). A file found binary still counts toward the file and total caps.
   A diff from the GitHub compare API (the Action's fallback) or from PR-number mode gets no text: both sides are
   marked unavailable and nothing is fetched. When git fails, both sides are unavailable, the CLI writes one line to
-  stderr and the Action one log line naming the failed git step, and the report is unchanged. In a partial clone a
+  stderr and the Action one log line naming the failed git step, and TI02 and TI05 do not run. In a partial clone a
   blob that is not local is `missing`, never fetched (`GIT_NO_LAZY_FETCH=1`; an older git ignores the variable). A
-  symlink test file is read as its link target path. Nothing reads this text yet: the report is the same with it,
-  without it and with both sides unavailable.
+  symlink test file is read as its link target path. TI02 and TI05 read this text for the JavaScript, TypeScript and
+  Python test files the diff modifies (and the added ones, as places a test can move to). A touched test file that has
+  no text on a side (any drop reason above), or that the test index refuses, is not compared: the report names it in
+  `TEST_INTEGRITY_INDEX_UNAVAILABLE` with the reason code, and when a side of the sources is unavailable and the diff
+  modifies a test file, the same message says that TI02 and TI05 did not run. The test index adds its own refusals:
+  more than 524288 UTF-16 code units of text (`too-large`), more than ten syntax errors (`syntax-error-heavy`) and a
+  syntax tree deeper than 1000 nodes (`too-deep`); the Python index adds the 30 s interpreter timeout, 64 MiB of
+  output and its own caps of 200 files, 512 KiB per file and 16 MiB in all, shared by the base and head files of one
+  run, so a large change can have its later Python files refused as `too-large`. A body is compared by its first 4000
+  characters. Matching a test with a similar one probes at most 256 candidates per test, so a file of thousands of
+  near-identical bodies can report a renamed test as removed. At most 20 TI02 and 20 TI05 findings are listed per file;
+  the messages say how many were left out, and the block findings come first. The action and CLI dists carry the
+  TypeScript parser for this and are about 11 MB.
