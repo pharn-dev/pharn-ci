@@ -233,6 +233,47 @@ node scripts/corpus-freeze.mjs --repo shadcn-ui/ui --frozen-at 2026-10-25T00:00:
 node scripts/corpus-freeze.mjs --repo honojs/hono --frozen-at 2026-10-25T00:00:00Z --count 200 --out fixtures/corpus/honojs__hono.json --monorepo false
 ```
 
+### How the run works
+
+Two maintainer scripts turn the frozen PR lists into a false-block rate. Neither is part of the Action or
+the CLI. Build the CLI first (`pnpm build`), then:
+
+```
+node scripts/corpus-run.mjs [--repo owner/name] [--limit n] [--jobs n] --out <file.csv>
+```
+
+`scripts/corpus-run.mjs` reads the files in `fixtures/corpus/` and, for each repository, makes one blobless
+clone in the cache. For each PR it fetches the base and head shas (falling back to GitHub's `pull/<n>/head`
+ref), adds a detached worktree at the head sha, runs
+`check --base <baseSha> --test-integrity block --format json` there, writes one row per signal of the report,
+and removes the worktree. `--jobs` runs several PRs at once; the CSV is the same whatever its value.
+
+- **Cache:** `~/.cache/pharn-ci-corpus` by default, or the directory in `PHARN_CORPUS_CACHE`, or `--cache`.
+  Without `--out` the CSV is `corpus-run.csv` in the cache, not in the repository.
+- **Safety:** the script reaches github.com only through git, with no GitHub API call. Git hooks and LFS
+  smudge are off. It installs nothing, runs nothing from a cloned repository and writes none of its
+  configuration.
+- **Columns:** `repo,pr,signal,severity,path,line,code,detail,verdict,note`. A PR with no signal gets one row
+  whose signal is `none`. A PR that could not be run (a failed clone or fetch, a CLI that crashes or runs
+  past `--timeout`) gets one row whose signal is `error` and whose `detail` says why; the run goes on.
+- **Resume:** a PR already in `--out` is not run again and its rows are kept as they are, so the verdicts you
+  type survive a rerun. To run a PR again, delete its rows.
+
+Review is by hand: fill the `verdict` column of every `block` row with `TP` (a true block), `FP` (a false
+block) or `unclear` (reviewed, and not counted as a false block), and use `note` for the reason. Then:
+
+```
+node scripts/corpus-rate.mjs <file.csv> [--format md|json]
+```
+
+`scripts/corpus-rate.mjs` prints, for each signal that has a `block` row, how many PRs it blocked, the verdict
+counts and the false-block rate. The rate is the number of PRs with an `FP` block row of that signal over
+all PRs in the CSV, PRs that errored included. A signal whose rate is below 1 % and whose `block` rows are all
+reviewed ships as block; otherwise it demotes to warn. Exactly 1 % demotes. The script exits 1 while a
+`block` row has no verdict, and 2 on a missing file, a wrong header or an unknown verdict.
+
+The reviewed CSV and the rates land with `v0.3.0`.
+
 ### Limits
 
 - **Base branch is the default branch today.** A PR whose base was changed after it merged is not
@@ -242,5 +283,5 @@ node scripts/corpus-freeze.mjs --repo honojs/hono --frozen-at 2026-10-25T00:00:0
   `Bot` account type (such as `copilot-swe-agent`) is excluded with the dependency bots.
 - **One busy week for `TanStack/query`.** Its 200 PRs cover seven days, so that repository's share
   reflects one stretch of work rather than a year.
-- **The runs are not here yet.** The detector run (`scripts/corpus-run.mjs`), the hand review and
+- **The runs are not here yet.** The scripts are, but running them on the 600 PRs, the hand review and
   any false-block rate land with BACKLOG item 18 and v0.3.0.
