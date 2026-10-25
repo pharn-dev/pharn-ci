@@ -13,7 +13,44 @@ export interface DiffFile {
    * `GIT binary patch`), so it carries no added lines. Absent on every other entry.
    */
   binary?: true;
+  /**
+   * The text of the added and removed lines, one entry per hunk. Present only when the caller selected this file with
+   * the `keepText` option; then it is always an array, empty when the diff shows no hunk for the file (an empty file
+   * deleted, a rename without edits). Absent when the text was not kept.
+   */
+  hunks?: DiffHunk[];
+  /**
+   * Set (to `true`) only on a file whose text was kept and ran past a bound (`MAX_KEPT_LINES`), so `hunks` holds the
+   * start of it. Absent otherwise.
+   */
+  textTruncated?: true;
 }
+
+/** One line of a hunk: its 1-based number (in the new file for added lines, the old file for removed lines) and its text. */
+export interface DiffLineText {
+  line: number;
+  text: string;
+}
+
+export interface DiffHunk {
+  oldStart: number;
+  newStart: number;
+  added: DiffLineText[];
+  removed: DiffLineText[];
+}
+
+export interface UnifiedDiffOptions {
+  /**
+   * Which files keep the text of their added and removed lines, judged by their new and old path. Absent keeps no
+   * text for any file, so memory holds the changed paths and added line numbers only.
+   */
+  keepText?: (file: { path: string; oldPath: string }) => boolean;
+}
+
+/** Most lines (added plus removed) whose text is kept for one file, and the most hunks kept for it. */
+export const MAX_KEPT_LINES = 5000;
+/** Most characters of one line that are kept. */
+export const MAX_KEPT_LINE_CHARS = 400;
 
 interface Entry {
   oldPath: string | null;
@@ -22,65 +59,119 @@ interface Entry {
   addedLines: number[];
   sawHunk: boolean;
   binary: boolean;
+  /** Decided at the first hunk (or at the end), once the paths are known; undefined until then. */
+  keep: boolean | undefined;
+  hunks: DiffHunk[];
+  keptLines: number;
+  truncated: boolean;
 }
 
-const HUNK_HEADER = /^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
+const HUNK_HEADER = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 
 /**
  * Parse `git diff` unified output (any `--unified=N`, intended for N=0) into the
- * set of lines added per file. Removed lines are ignored; only added lines in
- * the new file count. Handles new, deleted, renamed and binary files, multiple
- * hunks, and C-quoted paths.
+ * set of lines added per file. Only added lines in the new file count for
+ * `addedLines`; the text of added and removed lines is kept only for the files
+ * `options.keepText` selects. Handles new, deleted, renamed and binary files,
+ * multiple hunks, and C-quoted paths.
  */
-export function parseUnifiedDiff(text: string): DiffFile[] {
-  return parseUnifiedDiffLines(text.split(/\r?\n/));
+export function parseUnifiedDiff(text: string, options: UnifiedDiffOptions = {}): DiffFile[] {
+  return parseUnifiedDiffLines(text.split(/\r?\n/), options);
 }
 
 /** Parse the lines of a unified diff (already cut at line ends); same result as `parseUnifiedDiff` of the joined text. */
-export function parseUnifiedDiffLines(lines: Iterable<string>): DiffFile[] {
-  const reader = createUnifiedDiffReader();
+export function parseUnifiedDiffLines(lines: Iterable<string>, options: UnifiedDiffOptions = {}): DiffFile[] {
+  const reader = createUnifiedDiffReader(options);
   for (const line of lines) reader.push(line);
   return reader.finish();
 }
 
 /** Like `parseUnifiedDiffLines`, for lines that arrive from a stream. A rejection of the stream rejects the promise. */
-export async function parseUnifiedDiffLinesAsync(lines: AsyncIterable<string>): Promise<DiffFile[]> {
-  const reader = createUnifiedDiffReader();
+export async function parseUnifiedDiffLinesAsync(
+  lines: AsyncIterable<string>,
+  options: UnifiedDiffOptions = {},
+): Promise<DiffFile[]> {
+  const reader = createUnifiedDiffReader(options);
   for await (const line of lines) reader.push(line);
   return reader.finish();
 }
 
 /**
  * A unified diff read one line at a time: `push` each line (without its line end), then `finish` for the files.
- * Memory holds the parsed paths and added line numbers, never the text.
+ * Memory holds the parsed paths and added line numbers, plus the bounded text of the files `keepText` selects.
  */
-export function createUnifiedDiffReader(): { push(line: string): void; finish(): DiffFile[] } {
+export function createUnifiedDiffReader(options: UnifiedDiffOptions = {}): {
+  push(line: string): void;
+  finish(): DiffFile[];
+} {
   const entries: Entry[] = [];
+  const keepText = options.keepText;
   let current: Entry | undefined;
   let oldRemaining = 0;
   let newRemaining = 0;
   let cursor = 0;
+  let oldCursor = 0;
+  let hunk: DiffHunk | undefined;
 
   const start = (): Entry => {
-    current = { oldPath: null, newPath: null, status: "modified", addedLines: [], sawHunk: false, binary: false };
+    current = {
+      oldPath: null,
+      newPath: null,
+      status: "modified",
+      addedLines: [],
+      sawHunk: false,
+      binary: false,
+      keep: undefined,
+      hunks: [],
+      keptLines: 0,
+      truncated: false,
+    };
     entries.push(current);
     return current;
+  };
+
+  /** The paths of an entry as `finish` reports them, or null while it has none. */
+  const pathsOf = (e: Entry): { path: string; oldPath: string } | null => {
+    const path = e.status === "deleted" ? (e.oldPath ?? e.newPath) : (e.newPath ?? e.oldPath);
+    return path === null ? null : { path, oldPath: e.oldPath ?? path };
+  };
+
+  const decideKeep = (e: Entry): boolean => {
+    if (e.keep === undefined) {
+      const paths = pathsOf(e);
+      e.keep = keepText !== undefined && paths !== null && keepText(paths);
+    }
+    return e.keep;
+  };
+
+  /** Record one line of the current hunk, within the bounds. */
+  const keepLine = (e: Entry, kind: "added" | "removed", line: number, text: string): void => {
+    if (hunk === undefined || e.keptLines >= MAX_KEPT_LINES) {
+      e.truncated = true;
+      return;
+    }
+    e.keptLines++;
+    hunk[kind].push({ line, text: text.length > MAX_KEPT_LINE_CHARS ? text.slice(0, MAX_KEPT_LINE_CHARS) : text });
   };
 
   const push = (line: string): void => {
     if (current && (oldRemaining > 0 || newRemaining > 0)) {
       const marker = line[0];
       if (marker === "+") {
+        if (current.keep) keepLine(current, "added", cursor, line.slice(1));
         current.addedLines.push(cursor++);
         newRemaining--;
         return;
       }
       if (marker === "-") {
+        if (current.keep) keepLine(current, "removed", oldCursor, line.slice(1));
+        oldCursor++;
         oldRemaining--;
         return;
       }
       if (marker === " ") {
         cursor++;
+        oldCursor++;
         oldRemaining--;
         newRemaining--;
         return;
@@ -129,9 +220,19 @@ export function createUnifiedDiffReader(): { push(line: string): void; finish():
       const match = HUNK_HEADER.exec(line);
       if (!match || !current) return;
       current.sawHunk = true;
-      oldRemaining = match[1] === undefined ? 1 : Number(match[1]);
-      cursor = Number(match[2]);
-      newRemaining = match[3] === undefined ? 1 : Number(match[3]);
+      oldCursor = Number(match[1]);
+      oldRemaining = match[2] === undefined ? 1 : Number(match[2]);
+      cursor = Number(match[3]);
+      newRemaining = match[4] === undefined ? 1 : Number(match[4]);
+      hunk = undefined;
+      if (decideKeep(current)) {
+        if (current.hunks.length >= MAX_KEPT_LINES) {
+          current.truncated = true;
+        } else {
+          hunk = { oldStart: oldCursor, newStart: cursor, added: [], removed: [] };
+          current.hunks.push(hunk);
+        }
+      }
     }
   };
 
@@ -146,6 +247,8 @@ export function createUnifiedDiffReader(): { push(line: string): void; finish():
         status: e.status === "deleted" ? "deleted" : e.status,
         addedLines: e.status === "deleted" ? [] : [...new Set(e.addedLines)].sort((a, b) => a - b),
         ...(e.binary ? { binary: true as const } : {}),
+        ...(decideKeep(e) ? { hunks: e.hunks } : {}),
+        ...(e.truncated ? { textTruncated: true as const } : {}),
       });
     }
     return files;

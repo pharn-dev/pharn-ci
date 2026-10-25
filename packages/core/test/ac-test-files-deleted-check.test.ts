@@ -22,6 +22,10 @@ async function runCheck(diff: string) {
     repoRoot: REPO_ROOT,
     threshold: 80,
     repoFiles: lines("test-files-deleted/files.txt"),
+    // TI01 (test-file-detection-ti01) now reports deleted test files that define tests and raises the verdict in the
+    // default mode. This file asserts that the TEST_FILES_DELETED message itself is info only, so the signals are off
+    // here; the signal's own behaviour is covered by ac-ti01-*.test.ts.
+    testIntegrityMode: { input: "off" as const },
   };
   const report = check(input as Parameters<typeof check>[0]);
   expectValidReport(report);

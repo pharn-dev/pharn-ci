@@ -62,15 +62,41 @@ const MESSAGE_HINTS: Record<MessageCode, string> = {
     "Set the mode with the `test-integrity` input in the workflow; `test_integrity.mode` in `.pharn/ci.yml` can only make the check stricter, so remove the looser value.",
   TEST_INTEGRITY_OFF:
     "Set the `test-integrity` input to `warn` or `block` in the workflow to check for weakened tests.",
+  TEST_INTEGRITY_TI01: "Restore the deleted tests, or say in the PR why they go so a reviewer can confirm it.",
 };
 
-/** The one fixed line of the Test integrity section. Nothing in it comes from the pull request. */
-function testIntegrityLine(report: Report): string {
+/** One-line hint per test-integrity signal id, shown under its finding. Fixed strings only. */
+const SIGNAL_HINTS: Readonly<Record<string, string>> = {
+  TI01: MESSAGE_HINTS.TEST_INTEGRITY_TI01,
+};
+
+/** Most findings listed in the Test integrity section; the rest are counted. */
+const MAX_FINDINGS = 20;
+
+const SEVERITY_ICON = { block: LEVEL_ICON.error, warn: LEVEL_ICON.warn, info: LEVEL_ICON.info } as const;
+
+/**
+ * The lines of the Test integrity section after its heading: one finding per signal with a hint line, or the one
+ * fixed line when there is none. The fixed line has nothing from the pull request in it.
+ */
+function testIntegrityLines(report: Report): string[] {
   const { mode, signals } = report.testIntegrity;
-  if (signals.length > 0) {
-    return `${signals.length} test-integrity ${signals.length === 1 ? "signal" : "signals"} (mode: ${mode}); the list is in report.json.`;
+  if (signals.length === 0) {
+    return [mode === "off" ? "Test integrity is off for this run." : `No test-integrity findings (mode: ${mode}).`];
   }
-  return mode === "off" ? "Test integrity is off for this run." : `No test-integrity findings (mode: ${mode}).`;
+  const lines: string[] = [];
+  for (const signal of signals.slice(0, MAX_FINDINGS)) {
+    const location = signal.line === null ? code(signal.path) : code(`${signal.path}:${signal.line}`);
+    lines.push(
+      `- ${SEVERITY_ICON[signal.severity] ?? LEVEL_ICON.info} **${inlineText(signal.id)}** ${location} — ${inlineText(signal.detail)}`,
+    );
+    const hint = Object.hasOwn(SIGNAL_HINTS, signal.id) ? SIGNAL_HINTS[signal.id] : undefined;
+    if (hint !== undefined) lines.push(`  - Hint: ${hint}`);
+  }
+  if (signals.length > MAX_FINDINGS) {
+    lines.push(`- _…and ${signals.length - MAX_FINDINGS} more findings in report.json._`);
+  }
+  return lines;
 }
 
 /** Render a Report as GitHub-flavored markdown (PR comment, job summary, CLI). */
@@ -122,7 +148,7 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
     out.push("", "</details>", "");
   }
 
-  out.push("### 🔍 Test integrity", "", testIntegrityLine(report), "");
+  out.push("### 🔍 Test integrity", "", ...testIntegrityLines(report), "");
 
   // Before the agent setup inventory: when the Action has to drop rows to fit a size limit, the
   // reason for the verdict is never what goes.

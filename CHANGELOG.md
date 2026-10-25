@@ -13,8 +13,17 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   and a `test_integrity.mode` key in `.pharn/ci.yml` that can only make the check stricter than the input. The
   report's `testIntegrity.mode` and `testIntegrity.source` say which mode applies and where it came from, a
   looser config value is ignored with the new `TEST_INTEGRITY_MODE_IGNORED` message (warn), mode `off` adds
-  `TEST_INTEGRITY_OFF` (info), and the PR comment and job summary gain a "🔍 Test integrity" section. No
-  test-integrity signal ships yet, so the section reports no findings.
+  `TEST_INTEGRITY_OFF` (info), and the PR comment and job summary gain a "🔍 Test integrity" section.
+- Signal **TI01**, test file deleted: a deleted test file (or one renamed to a path that is not a test file) whose
+  removed lines define tests is reported in `testIntegrity.signals` and in one `TEST_INTEGRITY_TI01` message,
+  `block` in mode `block` (a failing check), `warn` in the default mode. It is `info` when the same change also
+  deletes the source file of the same name, deletes other files of the test's package, or adds a test file of the
+  same name (a migration); helpers, fixtures and an `__init__.py` under `tests/` do not count. The "🔍 Test
+  integrity" section lists the findings. Test files are now recognized by the spec's globs: `.test.` and `.spec.`
+  with a JavaScript or TypeScript extension, `.e2e.ts`, `.pw.ts`, `test_*.py`, `*_test.py`, `*_test.go` and the
+  `test`, `tests` and `__tests__` directories. `TEST_FILES_DELETED` is unchanged and now uses the same detection.
+- The unified-diff parser keeps the text of added and removed lines per hunk for test files (at most 5000 lines per
+  file, 400 characters per line; `textTruncated` marks a cut file), for the signals that read line text.
 - README: an [Agent skills](README.md#agent-skills) section on the `pharn-ci` plugin in
   [pharn-dev/skills](https://github.com/pharn-dev/skills) (install, explain a verdict, cover
   uncovered lines), and a pointer to it from the Quick start and the Pharn family table.

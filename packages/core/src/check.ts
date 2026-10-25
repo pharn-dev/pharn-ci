@@ -11,7 +11,8 @@ import { binaryCoveredPaths, changedConfigPaths, trackedCoverageFile } from "./g
 import { compileGlob } from "./glob.js";
 import { buildReport, type Report, type ReportMeta } from "./report.js";
 import { scanAgentSetup } from "./setup/scan.js";
-import { deletedTestFiles } from "./testFiles.js";
+import { detectTI01 } from "./signals/ti01.js";
+import { deletedTestFiles, keepTestFileText } from "./testFiles.js";
 import { resolveTestIntegrityMode, type TestIntegrityModeSettings } from "./testIntegrityMode.js";
 
 /**
@@ -97,9 +98,17 @@ export function check(input: CheckInput): Report {
   // The change under review can edit the inputs of its own grade or delete the tests that guard it; these
   // findings (gate inputs and deleted test files) ride on every report path where the diff is available.
   const parsedDiff =
-    "text" in input.diff ? parseUnifiedDiff(input.diff.text) : "parsed" in input.diff ? input.diff.parsed : null;
+    "text" in input.diff
+      ? parseUnifiedDiff(input.diff.text, { keepText: keepTestFileText })
+      : "parsed" in input.diff
+        ? input.diff.parsed
+        : null;
   const configPaths = parsedDiff === null ? [] : changedConfigPaths(parsedDiff, input.configPath, input.repoRoot);
   const testPaths = parsedDiff === null ? [] : deletedTestFiles(parsedDiff);
+  const testIntegrity = resolveTestIntegrityMode(input.testIntegrityMode);
+  // Mode off computes nothing; the signals carry their effective severity for the mode.
+  const testIntegritySignals =
+    parsedDiff === null || testIntegrity.mode === "off" ? [] : detectTI01(parsedDiff, testIntegrity.mode);
   // The single-file forms are several files with one entry, so there is one path through the check.
   const coverageInput = input.coverage;
   let files: readonly CoverageFileInput[];
@@ -144,7 +153,8 @@ export function check(input: CheckInput): Report {
     ...(trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage }),
     ...(emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {}),
     ...(input.meta === undefined ? {} : { meta: input.meta }),
-    testIntegrity: resolveTestIntegrityMode(input.testIntegrityMode),
+    testIntegrity,
+    ...(testIntegritySignals.length > 0 ? { testIntegritySignals } : {}),
   };
 
   if ("kind" in coverageInput) {
