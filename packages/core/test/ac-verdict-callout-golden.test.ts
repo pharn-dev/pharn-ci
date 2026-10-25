@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { fixture } from "./helpers.js";
+import { fixture, foldIntegrityColumn } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 // pr-comment-verdict-callout AC-1. check(), the config parser and the renderer are loaded inside the test body: the AC
@@ -118,7 +118,8 @@ describe("renderMarkdown(): the golden renderings gain the verdict callout and n
       const { heading, marker, prefix } = EXPECTED[golden];
 
       // test-integrity-mode added the "🔍 Test integrity" section on purpose: its four lines are folded out first.
-      const rendered = foldTestIntegrity(loaded.renderMarkdown(report)).split("\n");
+      // The comment-layout change added the summary table's Test integrity column on purpose: it is folded out too.
+      const rendered = foldTestIntegrity(foldIntegrityColumn(loaded.renderMarkdown(report))).split("\n");
       expect(rendered[2]?.endsWith(heading), `${golden}: heading ${rendered[2]}`).toBe(true);
       expect(rendered[4], `${golden}: the alert marker on line 5`).toBe(marker);
       const content = rendered[5] ?? "";

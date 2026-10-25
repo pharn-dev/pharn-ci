@@ -9,7 +9,7 @@ import { expectValidReport } from "./schema.js";
 
 /** U+1F6E1 U+FE0F, the brand mark, and U+00B7, the separator, as the SPEC writes them. */
 const HEADING_PREFIX = "## \u{1F6E1}\u{FE0F} pharn-ci · ";
-const TABLE_HEADER = "| Verdict | Diff coverage | Agent setup |";
+const TABLE_HEADER = "| Verdict | Diff coverage | Test integrity | Agent setup |";
 
 const AGENTS: AgentSetupFile = { path: "AGENTS.md", kind: "agents-md" };
 const CLAUDE: AgentSetupFile = { path: "CLAUDE.md", kind: "claude-md" };

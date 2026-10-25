@@ -125,6 +125,22 @@ function signalHint(id: string, label: string): string | undefined {
 
 /** Most findings listed in the Test integrity section; the rest are counted. */
 const MAX_FINDINGS = 20;
+/** Findings listed open; the rest of the listed ones go in a collapsed `<details>`. */
+const OPEN_FINDINGS = 10;
+
+const SEVERITY_RANK = { block: 0, warn: 1, info: 2 } as const;
+
+/** The signals block first, then warn, then info, each in report order (path, then line). Does not mutate. */
+function bySeverity<T extends { severity: string }>(signals: readonly T[]): T[] {
+  const rank = (s: T) => SEVERITY_RANK[s.severity as keyof typeof SEVERITY_RANK] ?? 3;
+  return signals
+    .map((signal, index) => ({ signal, index }))
+    .sort((a, b) => rank(a.signal) - rank(b.signal) || a.index - b.index)
+    .map(({ signal }) => signal);
+}
+
+/** A `TEST_INTEGRITY_<id>` message of a signal: its findings and hints are in the Test integrity section. */
+const SIGNAL_MESSAGE_CODE = /^TEST_INTEGRITY_TI\d\d$/;
 
 const SEVERITY_ICON = { block: LEVEL_ICON.error, warn: LEVEL_ICON.warn, info: LEVEL_ICON.info } as const;
 
@@ -139,13 +155,29 @@ function testIntegrityLines(report: Report): string[] {
   if (signals.length === 0) {
     lines.push(mode === "off" ? "Test integrity is off for this run." : `No test-integrity findings (mode: ${mode}).`);
   } else {
-    for (const signal of signals.slice(0, MAX_FINDINGS)) {
+    // Blocks first, so the findings that decide the verdict are never the ones collapsed or cut.
+    const listed = bySeverity(signals).slice(0, MAX_FINDINGS);
+    const findingLines = (signal: (typeof signals)[number]) => {
       const location = signal.line === null ? code(signal.path) : code(`${signal.path}:${signal.line}`);
-      lines.push(
+      const out = [
         `- ${SEVERITY_ICON[signal.severity] ?? LEVEL_ICON.info} **${inlineText(signal.id)}** ${location} — ${inlineText(signal.detail)}`,
-      );
+      ];
       const hint = signalHint(signal.id, label);
-      if (hint !== undefined) lines.push(`  - Hint: ${hint}`);
+      if (hint !== undefined) out.push(`  - Hint: ${hint}`);
+      return out;
+    };
+    for (const signal of listed.slice(0, OPEN_FINDINGS)) lines.push(...findingLines(signal));
+    const folded = listed.slice(OPEN_FINDINGS);
+    if (folded.length > 0) {
+      lines.push(
+        "",
+        `<details><summary>${countOf(folded.length, "more finding", "more findings")}</summary>`,
+        "",
+        ...folded.flatMap(findingLines),
+        "",
+        "</details>",
+        "",
+      );
     }
     if (signals.length > MAX_FINDINGS) {
       lines.push(`- _…and ${signals.length - MAX_FINDINGS} more findings in report.json._`);
@@ -215,9 +247,13 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
 
   // Before the agent setup inventory: when the Action has to drop rows to fit a size limit, the
   // reason for the verdict is never what goes.
-  if (report.messages.length > 0) {
-    out.push(`### 💬 Messages (${report.messages.length})`, "");
-    for (const m of report.messages) out.push(renderMessage(m, report));
+  // A signal's message repeats what the Test integrity section lists with its hint, so it is left out here when the
+  // section lists that signal id; report.json and the job's verdict still carry it.
+  const listedIds = new Set(report.testIntegrity.signals.map((s) => `TEST_INTEGRITY_${s.id}`));
+  const messages = report.messages.filter((m) => !(SIGNAL_MESSAGE_CODE.test(m.code) && listedIds.has(m.code)));
+  if (messages.length > 0) {
+    out.push(`### 💬 Messages (${messages.length})`, "");
+    for (const m of messages) out.push(renderMessage(m, report));
     out.push("");
   }
 
@@ -278,7 +314,27 @@ function overviewLine(report: Report): string {
   const n = report.agentSetup.files.length;
   const setup =
     n === 0 ? "no agent setup files found." : n === 1 ? "1 agent setup file found." : `${n} agent setup files found.`;
-  return `${first}; ${setup}`;
+  const findings = report.testIntegrity.signals;
+  if (findings.length === 0) return `${first}; ${setup}`;
+  const blocking = findings.filter((s) => s.severity === "block").length;
+  const integrity = `${countOf(findings.length, "test-integrity finding", "test-integrity findings")}${blocking > 0 ? `, ${blocking} blocking` : ""}`;
+  return `${first}; ${integrity}; ${setup}`;
+}
+
+/** `1 finding`, `3 findings`: a count with the word for it. */
+function countOf(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+/** The Test integrity cell of the summary table: `off`, `none (warn)` or a count of findings. Fixed words and numbers. */
+function integrityCell(report: Report): string {
+  const { mode, signals } = report.testIntegrity;
+  if (mode === "off") return "off";
+  if (signals.length === 0) return `none (${mode})`;
+  const blocking = signals.filter((s) => s.severity === "block").length;
+  const icon =
+    blocking > 0 ? LEVEL_ICON.error : signals.some((s) => s.severity === "warn") ? LEVEL_ICON.warn : LEVEL_ICON.info;
+  return `${icon} ${countOf(signals.length, "finding", "findings")}${blocking > 0 ? `, ${blocking} blocking` : ""}`;
 }
 
 /**
@@ -297,9 +353,9 @@ function summaryLines(report: Report): string[] {
   const n = report.agentSetup.files.length;
   const setup = n === 0 ? "none" : n === 1 ? "1 file" : `${n} files`;
   return [
-    "| Verdict | Diff coverage | Agent setup |",
-    "| --- | --- | --- |",
-    `| ${VERDICT_ICON[report.verdict]} ${VERDICT_LABEL[report.verdict]} | ${coverage} | ${setup} |`,
+    "| Verdict | Diff coverage | Test integrity | Agent setup |",
+    "| --- | --- | --- | --- |",
+    `| ${VERDICT_ICON[report.verdict]} ${VERDICT_LABEL[report.verdict]} | ${coverage} | ${integrityCell(report)} | ${setup} |`,
     "",
   ];
 }

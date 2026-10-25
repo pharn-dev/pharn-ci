@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { fixture } from "./helpers.js";
+import { fixture, foldIntegrityColumn } from "./helpers.js";
 
 // check() and renderMarkdown() are loaded inside each test body: these tests are written before CheckInput has
 // `testIntegrityMode` and before the section exists, so nothing that depends on them may run while the file loads.
@@ -68,6 +68,7 @@ describe("renderMarkdown: the Test integrity section", () => {
     expect(at).toBeGreaterThanOrEqual(0);
     expect(lines.slice(at, at + 4)).toEqual([HEADING, "", "No test-integrity findings (mode: warn).", ""]);
     lines.splice(at, 4);
-    expect(lines.join("\n")).toBe(gitShow("fixtures/golden/report.md"));
+    // The comment-layout change added the summary table's Test integrity column on purpose: it is folded out too.
+    expect(foldIntegrityColumn(lines.join("\n"))).toBe(gitShow("fixtures/golden/report.md"));
   });
 });

@@ -120,8 +120,16 @@ describe("TI14 and TI11 in the PR comment and the CLI", () => {
       ],
     } as typeof base;
     expectValidReport(withMessages);
-    const all = renderMarkdown(withMessages).split("\n");
+    // The comment-layout change leaves a signal's message out of the Messages section when the Test integrity section
+    // lists that signal (its finding and hint are above), so the comment names each code once. A report carrying the
+    // message without the signal (another producer's) still renders it, with its hint.
+    const listed = renderMarkdown(withMessages);
+    const all = renderMarkdown({
+      ...withMessages,
+      testIntegrity: { ...withMessages.testIntegrity, signals: [] },
+    }).split("\n");
     for (const code of ["TEST_INTEGRITY_TI11", "TEST_INTEGRITY_TI14"]) {
+      expect(listed, code).not.toContain(`\`${code}\``);
       const at = all.findIndex((line) => line.includes(`\`${code}\``));
       expect(at, code).toBeGreaterThan(-1);
       expect(all[at + 1]?.startsWith("  - Hint: "), code).toBe(true);

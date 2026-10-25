@@ -147,10 +147,14 @@ describe("TI10 and TI13 in the PR comment, the streaming reader and the CLI", ()
     }
     expect(ti13Hint).not.toBe(ti10Hint);
 
-    // The Messages section: a hint line under each of the two new codes.
-    const all = renderMarkdown(whole).split("\n");
+    // The comment-layout change leaves a signal's message out of the Messages section when the Test integrity section
+    // lists that signal (its finding and hint are above), so the comment names each code once. A report carrying the
+    // message without the signal (another producer's) still renders it, with its hint.
+    const listed = renderMarkdown(whole);
+    const all = renderMarkdown({ ...whole, testIntegrity: { ...whole.testIntegrity, signals: [] } }).split("\n");
     for (const code of ["TEST_INTEGRITY_TI10", "TEST_INTEGRITY_TI13"]) {
       expect(whole.messages.filter((m) => (m.code as string) === code)).toHaveLength(1);
+      expect(listed, code).not.toContain(`\`${code}\``);
       const at = all.findIndex((line) => line.includes(`\`${code}\``));
       expect(at, code).toBeGreaterThan(-1);
       expect(all[at + 1]?.startsWith("  - Hint: "), code).toBe(true);

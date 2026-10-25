@@ -52,12 +52,11 @@ describe("renderMarkdown(): the Test integrity section lists TI01 findings", () 
     expect(lines[at]).toContain(report.testIntegrity.signals[0]?.detail ?? "missing");
     expect(lines[at + 1]?.startsWith("  - Hint: ")).toBe(true);
 
-    const all = markdown.split("\n");
-    const message = all.findIndex((line) => line.includes("`TEST_INTEGRITY_TI01`"));
-    expect(message).toBeGreaterThan(-1);
-    const hint = all[message + 1] ?? "";
-    expect(hint.startsWith("  - Hint: ")).toBe(true);
-    expect(hint.toLowerCase()).not.toContain("accept");
+    // The comment-layout change leaves the signal's message out of the Messages section on purpose (the finding and
+    // its hint are listed above); report.json keeps it. The hint under the finding names no accept label.
+    expect(report.messages.some((m) => m.code === "TEST_INTEGRITY_TI01")).toBe(true);
+    expect(markdown).not.toContain("`TEST_INTEGRITY_TI01`");
+    expect((lines[at + 1] ?? "").toLowerCase()).not.toContain("accept");
   });
 
   it("AC-11: three signals of severity block, warn and info give three finding lines, each with its hint line", async () => {

@@ -80,6 +80,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   use, workflow files, every `package.json` and the JavaScript, TypeScript and Python source files (at most 5000 lines
   per file, 400 characters per line; `textTruncated` marks a cut file), for the signals that read line text. `readDiffChunks` takes an optional `{ configPath, repoRoot }` so a custom
   config path works through the stream as it does through `check()`.
+- The PR comment and job summary follow the Report v2 layout. The summary table gains a Test integrity column (`off`,
+  `none (warn)`, or the number of findings and how many block), and the headline sentence counts the findings when
+  there are any. The "🔍 Test integrity" section lists block findings first, then warn, then info, shows 10 and
+  collapses the next 10 in a `<details>` block. The Messages section leaves out each `TEST_INTEGRITY_TI*` message
+  whose findings the section lists, so a finding and its hint appear once; `report.json` keeps every message.
 - Precision of the diff-only signals, from a review of the base-rate fixtures. TI11 reads a quoted `"on":` key and the
   test commands `npm t`, `pnpm -r test`, `pnpm --filter <pkg> test`, `pnpm vitest`, `pnpm exec`, `bun x`,
   `node --test`, `bun test`, `deno test`, `tox`, `nox` and the `uv`, `poetry`, `pipenv`, `pdm`, `hatch` and `rye run`

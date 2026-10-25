@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { fixture, foldCallout } from "./helpers.js";
+import { fixture, foldCallout, foldIntegrityColumn } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 /** Remove the Test integrity section: its heading, an empty line, one fixed line and an empty line. */
@@ -105,7 +105,8 @@ describe("golden reports and the coverage format", () => {
     const markdown = fixture("golden/report.md");
     expect(renderMarkdown(report)).toBe(markdown);
     // test-integrity-mode added the "🔍 Test integrity" section on purpose: its four lines are folded out too.
-    const markdownLines = foldCallout(foldTestIntegrity(markdown)).split("\n");
+    // The comment-layout change added the summary table's Test integrity column on purpose: it is folded out too.
+    const markdownLines = foldCallout(foldTestIntegrity(foldIntegrityColumn(markdown))).split("\n");
     expect(markdownLines.filter((line) => line.includes(`\`${partialCode}\``))).toHaveLength(1);
     const partialAt = markdownLines.findIndex((line) => line.includes(`\`${partialCode}\``));
     expect(markdownLines[partialAt + 1]).toMatch(/^ {2}- Hint: \S/);

@@ -48,7 +48,7 @@ describe("run(): the verdict callout in a sticky comment that has to be shortene
     const fullLines = full.split("\n");
     const content = `> **Fail** · Diff coverage of this change is 71.43% against a threshold of 80%; ${setupFiles} agent setup files found.`;
     expect(fullLines, "the callout content line of the full rendering").toContain(content);
-    const valueRow = `| ❌ Fail | 71.43% (threshold 80%) | ${setupFiles} files |`;
+    const valueRow = `| ❌ Fail | 71.43% (threshold 80%) | none (warn) | ${setupFiles} files |`;
     expect(fullLines, "the summary value row of the full rendering").toContain(valueRow);
     const messages = messageLines(fullLines);
     expect(report.messages.length).toBeGreaterThan(0);

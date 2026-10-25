@@ -58,7 +58,7 @@ describe("run(): the new header block in a sticky comment that has to be shorten
 
     const fullLines = full.split("\n");
     const overview = `Diff coverage of this change is 71.43% against a threshold of 80%; ${setupFiles} agent setup files found.`;
-    const valueRow = `| ❌ Fail | 71.43% (threshold 80%) | ${setupFiles} files |`;
+    const valueRow = `| ❌ Fail | 71.43% (threshold 80%) | none (warn) | ${setupFiles} files |`;
     // The non-empty lines of the full rendering are the logo line, the heading, then (pr-comment-verdict-callout) the
     // alert marker and the callout content line holding the overview sentence.
     const marker = "> [!CAUTION]";
