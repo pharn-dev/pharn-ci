@@ -288,7 +288,8 @@ It is a `warn` signal and never blocks.
   are one digit (see the Skylos list below).
 - **Short and common literals.** A string under 4 characters, a number under 3 significant digits and the stop-list
   (`true`, `false`, `null`, `none`, `undefined`, `test`, `error`, `default`, `get`, `post`, `put`, `patch`, `delete`,
-  `head`, `options`, `utf-8`, `utf8`) are not read.
+  `head`, `options`, `utf-8`, `utf8`, and the `typeof` results `string`, `number`, `boolean`, `object`, `function`,
+  `symbol`, `bigint`) are not read.
 - **Template literals with `${`** are skipped.
 - **Other comparisons.** Only `===`, `!==`, `==`, `!=`, a `case` label and a Python `in (...)` group are read.
   `includes`, `startsWith`, `Set.has`, `<` and a regular expression are not.

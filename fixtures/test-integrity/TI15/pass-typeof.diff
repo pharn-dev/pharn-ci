@@ -1,0 +1,16 @@
+diff --git a/src/shape.test.ts b/src/shape.test.ts
+index 1111111..2222222 100644
+--- a/src/shape.test.ts
++++ b/src/shape.test.ts
+@@ -4,0 +5,3 @@ describe("shape", () => {
++  expect(shape("a")).toBe("string");
++  expect(shape(1)).toBe("number");
++  expect(shape(() => 1)).toBe("function");
+diff --git a/src/shape.ts b/src/shape.ts
+index 1111111..2222222 100644
+--- a/src/shape.ts
++++ b/src/shape.ts
+@@ -2,0 +3,3 @@ export function shape(value: unknown): string {
++  if (typeof value === "string") return "string";
++  if (typeof value === "number") return "number";
++  return typeof value === "function" ? "function" : "other";

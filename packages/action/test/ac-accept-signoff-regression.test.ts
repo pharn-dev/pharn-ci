@@ -72,6 +72,7 @@ const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
   "TI15/pass-no-comparison.diff",
   "TI15/pass-short-literal.diff",
   "TI15/pass-stop-list.diff",
+  "TI15/pass-typeof.diff",
   "TI15/warn-js-equality.diff",
   "TI15/warn-js-switch-case.diff",
   "TI15/warn-number.diff",

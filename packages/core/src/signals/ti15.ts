@@ -15,8 +15,18 @@ const MAX_DETAIL = 300;
 const MIN_STRING_LENGTH = 4;
 const MIN_SIGNIFICANT_DIGITS = 3;
 
-/** Strings too common to say anything about a test's input; compared case-insensitively. */
+/**
+ * Strings too common to say anything about a test's input; compared case-insensitively. The `typeof` results are on
+ * it because `typeof x === "string"` is ordinary code that any test naming a type would otherwise match.
+ */
 const STOP_LIST: ReadonlySet<string> = new Set([
+  "string",
+  "number",
+  "boolean",
+  "object",
+  "function",
+  "symbol",
+  "bigint",
   "true",
   "false",
   "null",
