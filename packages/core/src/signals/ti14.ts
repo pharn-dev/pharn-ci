@@ -2,7 +2,7 @@ import { parseExcludePattern } from "../config.js";
 import type { DiffFile, DiffLineText } from "../diff/unified.js";
 import { configRepoPath } from "../gateInputs.js";
 import type { TestIntegritySignal } from "../report.js";
-import { flowItems, indentOf, keyValue, listItem } from "./yamlLines.js";
+import { flowItems, indentOf, keyValue, listItem, scalarText } from "./yamlLines.js";
 
 const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -16,8 +16,11 @@ export interface TI14Options {
   mode: "block" | "warn";
 }
 
-/** A threshold written as a plain number a config could hold (0 to 100 with a few decimals). */
-const PLAIN_NUMBER = /^\d{1,3}(?:\.\d{1,4})?$/;
+/**
+ * A threshold written as a plain decimal number: the form `parseThreshold` accepts from the config text, with any
+ * number of decimals. No overlapping quantifiers, so it is linear on a long run of digits.
+ */
+const PLAIN_NUMBER = /^\d+(?:\.\d+)?$/;
 
 /** A pattern in the form the exclusion list compares it in: normalized when valid, as written otherwise. */
 function normalizedPattern(item: string): string {
@@ -28,11 +31,15 @@ function normalizedPattern(item: string): string {
   }
 }
 
-/** The plain number of a `threshold:` line, "" when the line is another key or its value is not a plain number. */
+/**
+ * The plain number of a `threshold:` line, null when the line is another key, "" when its value is not a plain number.
+ * The key and the value are read as the config reads them: either may be quoted, and a quoted value is decoded.
+ */
 function thresholdOf(text: string): string | null {
   const kv = keyValue(text);
   if (kv === null || kv.key !== "threshold") return null;
-  return PLAIN_NUMBER.test(kv.value) ? kv.value : "";
+  const value = scalarText(kv.value);
+  return PLAIN_NUMBER.test(value) ? value : "";
 }
 
 interface Candidate {

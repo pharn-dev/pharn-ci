@@ -25,7 +25,8 @@ function addedTests(file: DiffFile): boolean {
 /**
  * TI01, a test file deleted. A candidate is a test file the diff deletes, or renames to a path that is not a test file
  * (named by its old path). It counts when its removed lines define tests, when its text is unknown (not kept) or was cut
- * at the bound, or when it is a rename that shows no removed line; a binary file never counts. A counting file is
+ * at the bound, or when it is renamed away: a rename shows only the lines it edits, never the tests it keeps, so a
+ * rename to a non-test path counts whatever its removed lines hold. A binary file never counts. A counting file is
  * `block` (shown as `warn` in mode `warn`), or `info` when the same diff also deletes a source file with the same name,
  * deletes other files of the package that holds the test (never the repository root), or adds a test file with the same
  * name that defines tests. One signal per file, sorted by path. No file content reaches a signal.
@@ -46,8 +47,7 @@ export function detectTI01(diff: readonly DiffFile[], mode: "block" | "warn"): T
     if (found.has(path)) continue;
 
     const defined = removedTests(file);
-    const pureRename = renamedAway && defined !== "yes" && (file.hunks ?? []).every((h) => h.removed.length === 0);
-    const counts = defined === "yes" || defined === "unknown" || file.textTruncated === true || pureRename;
+    const counts = defined === "yes" || defined === "unknown" || file.textTruncated === true || renamedAway;
     if (!counts) continue;
 
     const stem = testStem(path);

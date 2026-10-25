@@ -28,6 +28,26 @@ export function unquote(value: string): string {
   return text;
 }
 
+/**
+ * A scalar value as the config reader turns it into a string: a double-quoted value is decoded as a JSON string (so
+ * `"\u0033\u0030"` is `30`), a single-quoted one has `''` read as `'`, anything else is the text as written. Trimmed.
+ * A double-quoted value that is not a valid JSON string is returned as written.
+ */
+export function scalarText(value: string): string {
+  const text = value.trim();
+  if (text.length >= 2 && text.startsWith('"') && text.endsWith('"')) {
+    try {
+      const decoded: unknown = JSON.parse(text);
+      return typeof decoded === "string" ? decoded.trim() : text;
+    } catch {
+      return text;
+    }
+  }
+  if (text.length >= 2 && text.startsWith("'") && text.endsWith("'"))
+    return text.slice(1, -1).replace(/''/g, "'").trim();
+  return text;
+}
+
 /** The leading space count of a line. */
 export function indentOf(line: string): number {
   let n = 0;
@@ -35,13 +55,17 @@ export function indentOf(line: string): number {
   return n;
 }
 
-/** `key: value` on one comment-free line (an optional `- ` before the key); the value is "" when the key stands alone. */
+/**
+ * `key: value` on one comment-free line (an optional `- ` before the key); the value is "" when the key stands alone.
+ * The key may be quoted (`"threshold": 30`, `'exclude':`), as the config reader allows; it is returned unquoted.
+ */
 export function keyValue(line: string): { key: string; value: string; indent: number } | null {
   const text = stripComment(line);
-  const match = /^(-\s+)?([A-Za-z0-9_.-]+)\s*:(?:\s+(.*))?$/.exec(text);
+  const match = /^(-\s+)?([A-Za-z0-9_.-]+|"[^"]*"|'[^']*')\s*:(?:\s+(.*))?$/.exec(text);
   if (match === null) return null;
+  const rawKey = match[2] as string;
   return {
-    key: match[2] as string,
+    key: rawKey.startsWith('"') || rawKey.startsWith("'") ? rawKey.slice(1, -1) : rawKey,
     value: (match[3] ?? "").trim(),
     indent: indentOf(line) + (match[1] === undefined ? 0 : match[1].length),
   };

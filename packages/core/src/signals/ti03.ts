@@ -13,7 +13,10 @@ import {
 
 const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
-/** The most TI03 signals one file gives; the rest are dropped, keeping the lowest line numbers. */
+/**
+ * The most TI03 signals one file gives. The unconditional skips of existing tests (the ones that take the mode as their
+ * severity) are kept first, then the rest, each on the lowest line numbers, so warn findings can never push a block out.
+ */
 const MAX_PER_FILE = 20;
 
 type Category = "existing" | "conditional" | "cannot-place" | "adds";
@@ -144,8 +147,9 @@ function findingsOf(file: DiffFile, hunks: readonly DiffHunk[], language: TestLa
  * `@unittest.skip*` and `pytest.skip(`; Go `t.Skip(`, `t.Skipf(`, `t.SkipNow(`. A removed line of the same file with the
  * same form and name (an edit or a move) accounts for it. The rest is sorted in this order: a file the change adds, a
  * conditional skip, a skip inside a body, a skip of a test the change adds (all `warn`), and an unconditional skip of a
- * test the diff shows existed (the mode as its severity). At most 20 per file, on the lowest line numbers. The detail is
- * one fixed sentence per category; no test text reaches a signal.
+ * test the diff shows existed (the mode as its severity). At most 20 per file: the skips of existing tests first, then
+ * the rest, each on the lowest line numbers. The detail is one fixed sentence per category; no test text reaches a
+ * signal.
  */
 export function detectTI03(diff: readonly DiffFile[], mode: "block" | "warn"): TestIntegritySignal[] {
   const signals: TestIntegritySignal[] = [];
@@ -153,7 +157,10 @@ export function detectTI03(diff: readonly DiffFile[], mode: "block" | "warn"): T
     if (file.hunks === undefined || file.binary === true || !isTestFile(file.path)) continue;
     const language = testLanguage(file.path);
     if (language === null) continue;
-    const found = findingsOf(file, file.hunks, language).sort((a, b) => a.line - b.line);
+    const rank = (category: Category) => (category === "existing" ? 0 : 1);
+    const found = findingsOf(file, file.hunks, language).sort(
+      (a, b) => rank(a.category) - rank(b.category) || a.line - b.line,
+    );
     for (const { line, category } of found.slice(0, MAX_PER_FILE)) {
       signals.push({
         id: "TI03",

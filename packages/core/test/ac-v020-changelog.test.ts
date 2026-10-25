@@ -6,7 +6,8 @@ import { describe, expect, it } from "vitest";
 // release-readiness-v020: CHANGELOG.md records the Skylos benchmark and the new LIMITS section. They were added under
 // Unreleased without editing an existing line; the 0.2.0 release moved that section under `## [0.2.0] - 2026-10-25`,
 // added nothing else as a heading, and corrected the two Report v2 lines that still called the testIntegrity block
-// empty (CORRECTED). Files are read inside the test body.
+// empty and, before the tag, the two TI01 lines that said a renamed-away test file counts only when its removed lines
+// define tests (CORRECTED). Files are read inside the test body.
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 /** Current main before this increment: the base for the "still present" checks. */
@@ -16,10 +17,16 @@ const lines = (text: string) => text.split("\n").map((line) => line.replace(/\r$
 const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
 
 const RELEASE_HEADING = "## [0.2.0] - 2026-10-25";
-/** The two lines the 0.2.0 release rewrote: they said the testIntegrity block stays empty until signals ship. */
+/**
+ * The lines rewritten before the 0.2.0 tag: two said the testIntegrity block stays empty until signals ship, and two
+ * said a test file renamed to a non-test path counts only when its removed lines define tests (a rename shows only
+ * the lines it edits, so it now always counts).
+ */
 const CORRECTED = new Set([
   '  string `"1"`), every report carries a `testIntegrity` block (empty until test-integrity signals ship: mode',
   "  `warn`, source `default`, verdict `pass`), and the Action's `report.json` adds a `meta` block with run",
+  "- Signal **TI01**, test file deleted: a deleted test file (or one renamed to a path that is not a test file) whose",
+  "  removed lines define tests is reported in `testIntegrity.signals` and in one `TEST_INTEGRITY_TI01` message,",
 ]);
 
 /** The section under the heading line that starts with `heading`, to the line before the next `## [` line. */

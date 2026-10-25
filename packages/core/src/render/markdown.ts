@@ -86,6 +86,8 @@ const MESSAGE_HINTS: Record<MessageCode, Hint> = {
     "Restore the test step or trigger, or say in the PR why CI stops running these tests so a reviewer can confirm it.",
   TEST_INTEGRITY_TI14:
     "Restore the threshold or the exclusions, or say in the PR why they change so a reviewer can confirm it.",
+  TEST_INTEGRITY_TEXT_TRUNCATED:
+    "Review the named files by hand for skipped, focused or weakened tests, or split the change so each file stays under the limit.",
   TEST_INTEGRITY_ACCEPTED:
     "A reviewer other than the PR author signed off, so the block findings are warnings. The sign-off belongs to the pull request, not to a commit: remove the label if a later push should be judged again.",
   TEST_INTEGRITY_ACCEPT_IGNORED:
