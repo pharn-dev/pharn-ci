@@ -125,6 +125,7 @@ const INPUT_ERRORS: InputErrorText = {
   exclude: "exclude",
   coverageRoot: "coverage-root",
   expectAgentSetup: "expect-agent-setup",
+  testIntegrity: "test-integrity",
   noCoverageFile: "no coverage file: set the coverage-file input or coverage.file in .pharn/ci.yml",
 };
 
@@ -199,6 +200,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
       coverageRoot: input("coverage-root") || undefined,
       requireAgentSetup: parseBool(input("require-agent-setup"), "require-agent-setup"),
       expectAgentSetup: splitPatternList(input("expect-agent-setup")),
+      testIntegrity: input("test-integrity") || undefined,
     },
     INPUT_ERRORS,
     // With no coverage path set anywhere, the report is looked for at the discovery candidates.
@@ -212,6 +214,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     coverageRoot,
     requireAgentSetup,
     expectAgentSetup,
+    testIntegrityMode,
   } = resolved.inputs;
   const failOnThreshold = parseBool(input("fail-on-threshold"), "fail-on-threshold") ?? true;
   const comment = parseBool(input("comment"), "comment") ?? true;
@@ -270,6 +273,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     exclude,
     requireAgentSetup,
     ...(expectAgentSetup === undefined ? {} : { expectAgentSetup }),
+    ...(testIntegrityMode === undefined ? {} : { testIntegrityMode }),
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
     ...(input("config") === "" ? {} : { configPath: input("config") }),
   };

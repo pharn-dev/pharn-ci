@@ -16,6 +16,10 @@ exports[`renderMarkdown > renders the no-coverable-changes state 1`] = `
 
 _No coverable lines changed._
 
+### 🔍 Test integrity
+
+No test-integrity findings (mode: warn).
+
 ### 💬 Messages (1)
 
 - ℹ️ \`NO_COVERABLE_CHANGES\` No added lines are tracked by the coverage report; nothing to measure.
@@ -55,6 +59,10 @@ exports[`renderMarkdown > renders the not-computed state 1`] = `
 ### 🧪 Diff coverage
 
 _Not computed — see messages below._
+
+### 🔍 Test integrity
+
+No test-integrity findings (mode: warn).
 
 ### 💬 Messages (2)
 

@@ -30,6 +30,10 @@
 
 </details>
 
+### 🔍 Test integrity
+
+No test-integrity findings (mode: warn).
+
 ### 🤖 Agent setup (2 files)
 
 Agent setup: 2 files · amp, claude-code, codex, copilot, cursor, jules, opencode, zed

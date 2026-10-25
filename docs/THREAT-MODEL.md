@@ -100,6 +100,12 @@ These are accepted, not hidden:
     can drop expectations, and an expectation is opt-in. The Action's `expect-agent-setup` input in
     the workflow file is the stronger setting, and it adds to `setup.expect` and never replaces it;
     protect both with CODEOWNERS.
+12. **The test-integrity mode can be set from the PR.** `test_integrity.mode` lives in the PR-carried
+    `.pharn/ci.yml`, so it is untrusted config, validated against the fixed values `block`, `warn` and
+    `off`. It can only make the check stricter than the workflow's `test-integrity` input (or the default
+    `warn`): a looser value is ignored, and the report says so with `TEST_INTEGRITY_MODE_IGNORED`. A PR
+    therefore cannot switch test integrity off or down for itself; the workflow file, protected with
+    CODEOWNERS, decides the base.
 
 ## 4. Keeping this document honest
 

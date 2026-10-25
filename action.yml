@@ -36,6 +36,9 @@ inputs:
   expect-agent-setup:
     description: Agent tools (for example claude-code, cursor) the report names when no agent setup file configures them, separated by commas or newlines. Added to setup.expect in .pharn/ci.yml, never replacing it.
     required: false
+  test-integrity:
+    description: How strictly to treat weakened tests, "block", "warn" or "off". Defaults to warn. test_integrity.mode in .pharn/ci.yml can only make the check stricter than this input (or the default), never looser; a looser value is ignored and reported as TEST_INTEGRITY_MODE_IGNORED.
+    required: false
   comment:
     description: Post or update one sticky PR comment with the report.
     required: false

@@ -9,6 +9,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- The `test-integrity` Action input and `--test-integrity` CLI flag (`block`, `warn` or `off`, default `warn`),
+  and a `test_integrity.mode` key in `.pharn/ci.yml` that can only make the check stricter than the input. The
+  report's `testIntegrity.mode` and `testIntegrity.source` say which mode applies and where it came from, a
+  looser config value is ignored with the new `TEST_INTEGRITY_MODE_IGNORED` message (warn), mode `off` adds
+  `TEST_INTEGRITY_OFF` (info), and the PR comment and job summary gain a "🔍 Test integrity" section. No
+  test-integrity signal ships yet, so the section reports no findings.
 - README: an [Agent skills](README.md#agent-skills) section on the `pharn-ci` plugin in
   [pharn-dev/skills](https://github.com/pharn-dev/skills) (install, explain a verdict, cover
   uncovered lines), and a pointer to it from the Quick start and the Pharn family table.

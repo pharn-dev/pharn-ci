@@ -58,7 +58,20 @@ const MESSAGE_HINTS: Record<MessageCode, string> = {
   AGENT_SETUP_FILE_EMPTY: "Fill in the empty file or delete it; an agent reads nothing from an empty file.",
   AGENT_SETUP_EXPECTED_MISSING:
     "Add a setup file for each missing tool (for example AGENTS.md, CLAUDE.md or .cursor/rules/), or remove it from `setup.expect`.",
+  TEST_INTEGRITY_MODE_IGNORED:
+    "Set the mode with the `test-integrity` input in the workflow; `test_integrity.mode` in `.pharn/ci.yml` can only make the check stricter, so remove the looser value.",
+  TEST_INTEGRITY_OFF:
+    "Set the `test-integrity` input to `warn` or `block` in the workflow to check for weakened tests.",
 };
+
+/** The one fixed line of the Test integrity section. Nothing in it comes from the pull request. */
+function testIntegrityLine(report: Report): string {
+  const { mode, signals } = report.testIntegrity;
+  if (signals.length > 0) {
+    return `${signals.length} test-integrity ${signals.length === 1 ? "signal" : "signals"} (mode: ${mode}); the list is in report.json.`;
+  }
+  return mode === "off" ? "Test integrity is off for this run." : `No test-integrity findings (mode: ${mode}).`;
+}
 
 /** Render a Report as GitHub-flavored markdown (PR comment, job summary, CLI). */
 export function renderMarkdown(report: Report, options: RenderMarkdownOptions = {}): string {
@@ -108,6 +121,8 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
     if (excluded.length > maxRows) out.push(`- _…and ${excluded.length - maxRows} more files_`);
     out.push("", "</details>", "");
   }
+
+  out.push("### 🔍 Test integrity", "", testIntegrityLine(report), "");
 
   // Before the agent setup inventory: when the Action has to drop rows to fit a size limit, the
   // reason for the verdict is never what goes.

@@ -1,7 +1,9 @@
 import { COVERAGE_FORMAT_SELECTIONS, type CoverageFormatSelection } from "./coverage/types.js";
 import { hasGlobSyntax } from "./glob.js";
 import { isAbsolutePath } from "./paths.js";
+import type { TestIntegrityMode } from "./report.js";
 import { AGENT_TOOLS, type AgentTool } from "./setup/summary.js";
+import { isTestIntegrityMode, testIntegrityModeError } from "./testIntegrityMode.js";
 
 /** Shape of `.pharn/ci.yml`. Every field is optional; CLI/Action inputs override it. */
 export interface PharnConfig {
@@ -26,6 +28,13 @@ export interface PharnConfig {
     require?: boolean;
     /** Agent tools the report names when no setup file configures them (validated against the fixed tool list). */
     expect?: AgentTool[];
+  };
+  testIntegrity?: {
+    /**
+     * The test-integrity mode. The workflow input beats it, and it can only make the check stricter than the
+     * input (or the default `warn`): a looser value is ignored.
+     */
+    mode?: TestIntegrityMode;
   };
 }
 
@@ -276,13 +285,36 @@ function unsupportedFix(first: string): string {
 function validateConfig(doc: YamlMap): PharnConfig {
   const config: PharnConfig = {};
   for (const key of Object.keys(doc)) {
-    if (key !== "coverage" && key !== "setup") throw new ConfigError(`unknown top-level key "${key}"`);
+    if (key !== "coverage" && key !== "setup" && key !== "test_integrity") {
+      throw new ConfigError(`unknown top-level key "${key}"`);
+    }
   }
   const coverage = validateCoverage(doc.coverage);
   if (coverage !== undefined) config.coverage = coverage;
   const setup = validateSetup(doc.setup);
   if (setup !== undefined) config.setup = setup;
+  const testIntegrity = validateTestIntegrity(doc.test_integrity);
+  if (testIntegrity !== undefined) config.testIntegrity = testIntegrity;
   return config;
+}
+
+function validateTestIntegrity(value: YamlMap[string] | undefined): PharnConfig["testIntegrity"] | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "object" || Array.isArray(value)) throw new ConfigError(`"test_integrity" must be a mapping`);
+
+  const testIntegrity: NonNullable<PharnConfig["testIntegrity"]> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (entry === null) continue;
+    switch (key) {
+      case "mode":
+        if (!isTestIntegrityMode(entry)) throw new ConfigError(testIntegrityModeError('"test_integrity.mode"', entry));
+        testIntegrity.mode = entry;
+        break;
+      default:
+        throw new ConfigError(`unknown key "test_integrity.${key}"`);
+    }
+  }
+  return testIntegrity;
 }
 
 function validateSetup(value: YamlMap[string] | undefined): PharnConfig["setup"] | undefined {

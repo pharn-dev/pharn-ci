@@ -13,6 +13,10 @@
 
 _Not computed — see messages below._
 
+### 🔍 Test integrity
+
+No test-integrity findings (mode: warn).
+
 ### 💬 Messages (1)
 
 - ❌ `COVERAGE_PATHS_UNMATCHED` None of the 2 file paths in the coverage report are tracked files in the repository (for example \`src/a.ts\`), so diff coverage was not measured. The paths look relative to \`packages/core\`: set coverage-root: \`packages/core\` (coverage.root in .pharn/ci.yml, --coverage-root in the CLI).

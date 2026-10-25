@@ -337,6 +337,7 @@ line. Matrix legs of one job share that scope, and so one comment.
 | `exclude`           | none                        | Globs of changed files to leave out of diff coverage, comma or newline separated; added to `coverage.exclude` |
 | `require-agent-setup` | `setup.require`, then `false` | Fail when the repo has no agent setup files; the step fails through `fail-on-threshold` |
 | `expect-agent-setup` | `setup.expect`, then none  | Agent tools that must have a setup file, comma or newline separated; added to `setup.expect`; a missing one is `AGENT_SETUP_EXPECTED_MISSING` |
+| `test-integrity`    | `warn`                      | How strictly to treat weakened tests: `block`, `warn` or `off`. `test_integrity.mode` in `.pharn/ci.yml` can only make it stricter, never looser (a looser value is ignored with `TEST_INTEGRITY_MODE_IGNORED`). No signals ship yet, so the mode only shows in the report and the comment |
 | `comment`           | `true`                      | Post/update one sticky PR comment per workflow and job |
 | `fail-on-threshold` | `true`                      | Fail the step when the verdict is `fail` |
 | `config`            | `.pharn/ci.yml`, may be absent | Config file path; a file named here that does not exist fails the step |
@@ -457,7 +458,7 @@ node packages/cli/dist/index.js check --coverage coverage/lcov.info --threshold 
 pharn-ci check [--coverage <file|glob>]... [--coverage-format lcov|cobertura|auto] [--coverage-root <dir>]
                [--base <ref>] [--threshold <n>] [--format md|json] [--config <path>]
                [--exclude <glob>]... [--require-agent-setup] [--expect-agent-setup <tool>]...
-               [-h|--help] [-v|--version]
+               [--test-integrity block|warn|off] [-h|--help] [-v|--version]
 ```
 
 - `--coverage <file|glob>` is repeatable. A glob (`*`, `**`, `?`) is relative to the current
@@ -486,6 +487,8 @@ pharn-ci check [--coverage <file|glob>]... [--coverage-format lcov|cobertura|aut
   configures is listed in `agentSetup.missing` and reported as `AGENT_SETUP_EXPECTED_MISSING`, a
   warning, or an error with `--require-agent-setup`. Names come from the fixed tool list
   (`claude-code`, `cursor`, `copilot`, `codex`, `gemini`, ...); an unknown one exits `2`.
+- `--test-integrity <mode>` sets the test-integrity mode (`block`, `warn` or `off`; default `warn`). The
+  `test_integrity.mode` config key can only make it stricter than the flag; an invalid value exits `2`.
 - `--format json` prints only the report to stdout, for agents and scripts.
 - Exit codes: `0` pass or warn, `1` fail, `2` usage or runtime error.
 
@@ -509,6 +512,8 @@ coverage:
 setup:
   require: false # true fails the check when the repo has no agent setup files
   # expect: [claude-code, cursor] # agent tools that must have a setup file
+# test_integrity:
+#   mode: block # block, warn or off; can only tighten the test-integrity input (default warn), never loosen it
 ```
 
 ### Coverage files and globs
