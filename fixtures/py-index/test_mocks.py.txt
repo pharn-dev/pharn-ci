@@ -1,0 +1,74 @@
+"""Mock calls: the nine patch forms as decorators, with statements and plain calls."""
+import os
+import unittest.mock
+from unittest import mock
+from unittest.mock import patch
+
+PATCHER = patch("os.getcwd")
+MODULE_LEVEL = mock.patch.object(os.path, "exists")
+
+
+@patch("os.getcwd")
+def test_patch_decorator(getcwd):
+    assert getcwd
+
+
+@mock.patch("os.listdir")
+def test_mock_patch_decorator(listdir):
+    assert listdir
+
+
+@unittest.mock.patch("os.getpid")
+def test_unittest_mock_patch_decorator(getpid):
+    assert getpid
+
+
+@patch.object(os, "getuid")
+def test_patch_object_decorator(getuid):
+    assert getuid
+
+
+@mock.patch.object(os.path, "isdir")
+def test_mock_patch_object_decorator(isdir):
+    assert isdir
+
+
+@unittest.mock.patch.object(os.path, "isfile")
+def test_unittest_mock_patch_object_decorator(isfile):
+    assert isfile
+
+
+@patch.dict(os.environ, {"PHARN": "1"})
+def test_patch_dict_is_not_a_mock():
+    assert os.environ
+
+
+def test_mocker(mocker):
+    mocker.patch("os.getcwd", return_value="/tmp")
+    mocker.patch.object(os.path, "exists")
+    mocker.patch(
+        "os.listdir",
+        return_value=[],
+    )
+    assert os.getcwd()
+
+
+def test_with_statements():
+    with patch("os.getcwd") as getcwd, mock.patch.object(os, "getuid"):
+        assert getcwd
+    with mock.patch("os.getpid"):
+        pass
+
+
+def test_monkeypatch(monkeypatch):
+    monkeypatch.setattr("os.getcwd", lambda: "/tmp")
+    monkeypatch.setattr(os, "getuid", lambda: 0)
+    monkeypatch.setattr(os, name_of_attribute(), None)
+    assert os.getuid() == 0
+
+
+def test_dynamic_targets(mocker):
+    target = "os.getcwd"
+    mocker.patch(target)
+    mocker.patch.object(os, target)
+    mocker.patch.object(get_module(), "name")

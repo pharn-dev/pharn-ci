@@ -1,0 +1,305 @@
+{
+  "parsed": true,
+  "syntaxErrors": 0,
+  "tests": [
+    {
+      "kind": "describe",
+      "name": "TestCalculator",
+      "nameDynamic": false,
+      "path": [
+        "TestCalculator"
+      ],
+      "line": 5,
+      "endLine": 44,
+      "modifiers": [],
+      "body": "value = 1 @classmethod def setup_class(cls): cls.value = 2 @classmethod def teardown_class(cls): cls.value = 0 def setup_method(self, method): self.total = 0 def teardown_method(self, method): self.total = None @pytest.fixture def operand(self): return 3 def test_add(self, operand): assert operand + 1 == 4 def test_subtract(self): assert 3 - 1 == 2 def helper_method(self): return 1 class TestNested: def setup_method(self): pass def test_inner(self): assert self is not None class TestDeeper: def test_deepest(self): assert True",
+      "bodyHash": "c968e202",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "setup_class",
+      "nameDynamic": false,
+      "path": [
+        "TestCalculator",
+        "setup_class"
+      ],
+      "line": 9,
+      "endLine": 10,
+      "modifiers": [],
+      "body": "cls.value = 2",
+      "bodyHash": "3466a1e1",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "teardown_class",
+      "nameDynamic": false,
+      "path": [
+        "TestCalculator",
+        "teardown_class"
+      ],
+      "line": 13,
+      "endLine": 14,
+      "modifiers": [],
+      "body": "cls.value = 0",
+      "bodyHash": "32669ebb",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "setup_method",
+      "nameDynamic": false,
+      "path": [
+        "TestCalculator",
+        "setup_method"
+      ],
+      "line": 16,
+      "endLine": 17,
+      "modifiers": [],
+      "body": "self.total = 0",
+      "bodyHash": "65401114",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "teardown_method",
+      "nameDynamic": false,
+      "path": [
+        "TestCalculator",
+        "teardown_method"
+      ],
+      "line": 19,
+      "endLine": 20,
+      "modifiers": [],
+      "body": "self.total = None",
+      "bodyHash": "698355ee",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "operand",
+      "nameDynamic": false,
+      "path": [
+        "TestCalculator",
+        "operand"
+      ],
+      "line": 23,
+      "endLine": 24,
+      "modifiers": [],
+      "body": "return 3",
+      "bodyHash": "af74e35a",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_add",
+      "nameDynamic": false,
+      "path": [
+        "TestCalculator",
+        "test_add"
+      ],
+      "line": 26,
+      "endLine": 27,
+      "modifiers": [],
+      "body": "assert operand + 1 == 4",
+      "bodyHash": "53d25346",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert ==",
+          "line": 27,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_subtract",
+      "nameDynamic": false,
+      "path": [
+        "TestCalculator",
+        "test_subtract"
+      ],
+      "line": 29,
+      "endLine": 30,
+      "modifiers": [],
+      "body": "assert 3 - 1 == 2",
+      "bodyHash": "e633bc2a",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert ==",
+          "line": 30,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "describe",
+      "name": "TestNested",
+      "nameDynamic": false,
+      "path": [
+        "TestCalculator",
+        "TestNested"
+      ],
+      "line": 35,
+      "endLine": 44,
+      "modifiers": [],
+      "body": "def setup_method(self): pass def test_inner(self): assert self is not None class TestDeeper: def test_deepest(self): assert True",
+      "bodyHash": "21ff3ccd",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "setup_method",
+      "nameDynamic": false,
+      "path": [
+        "TestCalculator",
+        "TestNested",
+        "setup_method"
+      ],
+      "line": 36,
+      "endLine": 37,
+      "modifiers": [],
+      "body": "pass",
+      "bodyHash": "7b7a7318",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_inner",
+      "nameDynamic": false,
+      "path": [
+        "TestCalculator",
+        "TestNested",
+        "test_inner"
+      ],
+      "line": 39,
+      "endLine": 40,
+      "modifiers": [],
+      "body": "assert self is not None",
+      "bodyHash": "45c294be",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert is not None",
+          "line": 40,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "describe",
+      "name": "TestDeeper",
+      "nameDynamic": false,
+      "path": [
+        "TestCalculator",
+        "TestNested",
+        "TestDeeper"
+      ],
+      "line": 42,
+      "endLine": 44,
+      "modifiers": [],
+      "body": "def test_deepest(self): assert True",
+      "bodyHash": "df1c4a1c",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_deepest",
+      "nameDynamic": false,
+      "path": [
+        "TestCalculator",
+        "TestNested",
+        "TestDeeper",
+        "test_deepest"
+      ],
+      "line": 43,
+      "endLine": 44,
+      "modifiers": [],
+      "body": "assert True",
+      "bodyHash": "7881eca9",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 44,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "describe",
+      "name": "TestAfterHelper",
+      "nameDynamic": false,
+      "path": [
+        "TestAfterHelper"
+      ],
+      "line": 56,
+      "endLine": 58,
+      "modifiers": [],
+      "body": "def test_after(self): assert 1",
+      "bodyHash": "db52f7a7",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_after",
+      "nameDynamic": false,
+      "path": [
+        "TestAfterHelper",
+        "test_after"
+      ],
+      "line": 57,
+      "endLine": 58,
+      "modifiers": [],
+      "body": "assert 1",
+      "bodyHash": "8e4c8950",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 58,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    }
+  ],
+  "mocks": []
+}

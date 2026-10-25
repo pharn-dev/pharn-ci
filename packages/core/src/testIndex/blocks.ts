@@ -1,6 +1,6 @@
 import ts from "typescript5";
 import { collapseWhitespace, cutName } from "./text.js";
-import type { TestBlockKind, TestModifier } from "./types.js";
+import { TEST_MODIFIER_ORDER, type TestBlockKind, type TestModifier } from "./types.js";
 
 /** Words that open a test. `x…` skips it and `f…` focuses it. */
 const TEST_WORDS: ReadonlyMap<string, TestModifier | null> = new Map([
@@ -52,18 +52,6 @@ export const MEMBER_MODIFIERS: ReadonlyMap<string, TestModifier | null> = new Ma
 const CALLABLE_MEMBERS: ReadonlySet<string> = new Set(["each", "for", "skipIf", "runIf"]);
 /** The members after which the callee may be tagged with a template: ``it.each`table`(…)``. */
 const TAGGABLE_MEMBERS: ReadonlySet<string> = new Set(["each", "for"]);
-
-/** The order modifiers are listed in. */
-const MODIFIER_ORDER: readonly TestModifier[] = [
-  "skip",
-  "only",
-  "todo",
-  "fails",
-  "concurrent",
-  "each",
-  "skipIf",
-  "runIf",
-];
 
 type Link = { type: "prop"; name: string } | { type: "call" } | { type: "template" };
 
@@ -138,7 +126,7 @@ function finish(
 ): BlockCall | null {
   if (!hasBlockArguments(args)) return null;
   const callback = args.find(isFunctionLiteral) ?? null;
-  const ordered = MODIFIER_ORDER.filter((m) => modifiers.has(m));
+  const ordered = TEST_MODIFIER_ORDER.filter((m) => modifiers.has(m));
   if (hookWord !== null) return { kind, name: hookWord, nameDynamic: false, modifiers: ordered, callback };
   const first = args[0] as ts.Expression;
   const { name, nameDynamic } = nameFromArgument(first, modifiers.has("each"), sourceFile);

@@ -15,6 +15,18 @@ export type TestBlockKind = "describe" | "test" | "hook";
 /** A modifier a block carries, listed in this order. */
 export type TestModifier = "skip" | "only" | "todo" | "fails" | "concurrent" | "each" | "skipIf" | "runIf";
 
+/** The order modifiers are listed in. */
+export const TEST_MODIFIER_ORDER: readonly TestModifier[] = [
+  "skip",
+  "only",
+  "todo",
+  "fails",
+  "concurrent",
+  "each",
+  "skipIf",
+  "runIf",
+];
+
 /** One assertion chain inside a block, written from its root with `.name` per property and `()` per call. */
 export interface TestAssertion {
   chain: string;
@@ -55,10 +67,39 @@ export interface TestBlock {
   guards: TestAssertionGuard[];
 }
 
-/** A `vi.mock`, `vi.doMock`, `jest.mock` or `jest.doMock` call. */
+/** The callees of the Python mock calls the Python test index records. */
+export const PYTHON_MOCK_CALLEES = [
+  "patch",
+  "mock.patch",
+  "unittest.mock.patch",
+  "mocker.patch",
+  "patch.object",
+  "mock.patch.object",
+  "unittest.mock.patch.object",
+  "mocker.patch.object",
+  "monkeypatch.setattr",
+] as const;
+
+/**
+ * A `vi.mock`, `vi.doMock`, `jest.mock` or `jest.doMock` call, or one of the Python mock calls (`patch`,
+ * `mock.patch`, `unittest.mock.patch`, `mocker.patch`, their `.object` forms and `monkeypatch.setattr`).
+ */
 export interface TestModuleMock {
-  callee: "vi.mock" | "vi.doMock" | "jest.mock" | "jest.doMock";
-  /** The module specifier when it is a string literal (or a dynamic import of one), else `null`. */
+  callee:
+    | "vi.mock"
+    | "vi.doMock"
+    | "jest.mock"
+    | "jest.doMock"
+    | "patch"
+    | "mock.patch"
+    | "unittest.mock.patch"
+    | "mocker.patch"
+    | "patch.object"
+    | "mock.patch.object"
+    | "unittest.mock.patch.object"
+    | "mocker.patch.object"
+    | "monkeypatch.setattr";
+  /** The module specifier when it is a string literal (or a dynamic import of one), else `null`. For the Python forms, the patch target. */
   specifier: string | null;
   line: number;
 }
@@ -72,7 +113,7 @@ export interface TestIndex {
 }
 
 /** Why a test file was not indexed. */
-export type TestIndexRefusalReason = "syntax-error-heavy" | "too-large" | "too-deep" | "parser-threw";
+export type TestIndexRefusalReason = "syntax-error-heavy" | "syntax-error" | "too-large" | "too-deep" | "parser-threw";
 
 export interface TestIndexRefusal {
   parsed: false;

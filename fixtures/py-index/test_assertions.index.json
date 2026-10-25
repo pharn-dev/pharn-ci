@@ -1,0 +1,502 @@
+{
+  "parsed": true,
+  "syntaxErrors": 0,
+  "tests": [
+    {
+      "kind": "test",
+      "name": "test_comparisons",
+      "nameDynamic": false,
+      "path": [
+        "test_comparisons"
+      ],
+      "line": 16,
+      "endLine": 28,
+      "modifiers": [],
+      "body": "assert left == right assert left != right assert left < right assert left <= right assert left > right assert left >= right assert left is right assert left is not right assert left in items assert left not in items assert 1 < left <= 3 assert left == right, \"the message is not part of the chain\"",
+      "bodyHash": "418be9bd",
+      "assertionCount": 12,
+      "assertions": [
+        {
+          "chain": "assert ==",
+          "line": 17,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert !=",
+          "line": 18,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert <",
+          "line": 19,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert <=",
+          "line": 20,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert >",
+          "line": 21,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert >=",
+          "line": 22,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert is",
+          "line": 23,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert is not",
+          "line": 24,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert in",
+          "line": 25,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert not in",
+          "line": 26,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert < <=",
+          "line": 27,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert ==",
+          "line": 28,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_none_checks",
+      "nameDynamic": false,
+      "path": [
+        "test_none_checks"
+      ],
+      "line": 31,
+      "endLine": 33,
+      "modifiers": [],
+      "body": "assert value is None assert value is not None",
+      "bodyHash": "da2c7032",
+      "assertionCount": 2,
+      "assertions": [
+        {
+          "chain": "assert is None",
+          "line": 32,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert is not None",
+          "line": 33,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_approx",
+      "nameDynamic": false,
+      "path": [
+        "test_approx"
+      ],
+      "line": 36,
+      "endLine": 39,
+      "modifiers": [],
+      "body": "assert value == pytest.approx(1.0) assert approx(2.0) == value assert value != pytest.approx(3.0, abs=0.1)",
+      "bodyHash": "da1db8fd",
+      "assertionCount": 3,
+      "assertions": [
+        {
+          "chain": "assert approx",
+          "line": 37,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert approx",
+          "line": 38,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert approx",
+          "line": 39,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_other_shapes",
+      "nameDynamic": false,
+      "path": [
+        "test_other_shapes"
+      ],
+      "line": 42,
+      "endLine": 48,
+      "modifiers": [],
+      "body": "assert isinstance(value, int) assert not items assert value assert callable(value) assert value and items assert len(items) == 2",
+      "bodyHash": "4e5a66c3",
+      "assertionCount": 6,
+      "assertions": [
+        {
+          "chain": "assert isinstance",
+          "line": 43,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert not",
+          "line": 44,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert truthy",
+          "line": 45,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert truthy",
+          "line": 46,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert truthy",
+          "line": 47,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert ==",
+          "line": 48,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_raises_forms",
+      "nameDynamic": false,
+      "path": [
+        "test_raises_forms"
+      ],
+      "line": 51,
+      "endLine": 57,
+      "modifiers": [],
+      "body": "with pytest.raises(ValueError): int(text) with pytest.warns(UserWarning): warn_user() pytest.raises(ValueError, int, text) pytest.fail(\"never reached\")",
+      "bodyHash": "584b629b",
+      "assertionCount": 4,
+      "assertions": [
+        {
+          "chain": "pytest.raises()",
+          "line": 52,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "pytest.warns()",
+          "line": 54,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "pytest.raises()",
+          "line": 56,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "pytest.fail()",
+          "line": 57,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_in_try",
+      "nameDynamic": false,
+      "path": [
+        "test_in_try"
+      ],
+      "line": 60,
+      "endLine": 65,
+      "modifiers": [],
+      "body": "try: assert compute() == 1 except AssertionError: raise assert compute() == 2",
+      "bodyHash": "411633b6",
+      "assertionCount": 2,
+      "assertions": [
+        {
+          "chain": "assert ==",
+          "line": 62,
+          "awaited": false,
+          "inTryCatch": true,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert ==",
+          "line": 65,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_after_return",
+      "nameDynamic": false,
+      "path": [
+        "test_after_return"
+      ],
+      "line": 68,
+      "endLine": 72,
+      "modifiers": [],
+      "body": "assert flag is not None if flag: return assert flag == 0",
+      "bodyHash": "4784ca95",
+      "assertionCount": 2,
+      "assertions": [
+        {
+          "chain": "assert is not None",
+          "line": 69,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "assert ==",
+          "line": 72,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": true
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_nested_in_try",
+      "nameDynamic": false,
+      "path": [
+        "test_nested_in_try"
+      ],
+      "line": 75,
+      "endLine": 82,
+      "modifiers": [],
+      "body": "try: def helper(value): assert value == 1 helper(1) except AssertionError: pass",
+      "bodyHash": "b64767e7",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert ==",
+          "line": 78,
+          "awaited": false,
+          "inTryCatch": true,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_nested_helper_with_return",
+      "nameDynamic": false,
+      "path": [
+        "test_nested_helper_with_return"
+      ],
+      "line": 85,
+      "endLine": 91,
+      "modifiers": [],
+      "body": "def helper(value): if value: return value assert value is None helper(None)",
+      "bodyHash": "b6b65977",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert is None",
+          "line": 89,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": true
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "describe",
+      "name": "TestAsync",
+      "nameDynamic": false,
+      "path": [
+        "TestAsync"
+      ],
+      "line": 94,
+      "endLine": 100,
+      "modifiers": [],
+      "body": "async def assert_ready(self, value): assert value async def test_awaited(self): await self.assert_ready(1) self.assert_ready(2)",
+      "bodyHash": "4d32779a",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 96,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_awaited",
+      "nameDynamic": false,
+      "path": [
+        "TestAsync",
+        "test_awaited"
+      ],
+      "line": 98,
+      "endLine": 100,
+      "modifiers": [],
+      "body": "await self.assert_ready(1) self.assert_ready(2)",
+      "bodyHash": "7886e34e",
+      "assertionCount": 2,
+      "assertions": [
+        {
+          "chain": "self.assert_ready()",
+          "line": 99,
+          "awaited": true,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "self.assert_ready()",
+          "line": 100,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "describe",
+      "name": "TestSelfAsserts",
+      "nameDynamic": false,
+      "path": [
+        "TestSelfAsserts"
+      ],
+      "line": 103,
+      "endLine": 108,
+      "modifiers": [],
+      "body": "def test_self(self): self.assertEqual(1, 1) with self.assertRaises(ValueError): int(\"x\") self.fail(\"stop\")",
+      "bodyHash": "88e85f0f",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_self",
+      "nameDynamic": false,
+      "path": [
+        "TestSelfAsserts",
+        "test_self"
+      ],
+      "line": 104,
+      "endLine": 108,
+      "modifiers": [],
+      "body": "self.assertEqual(1, 1) with self.assertRaises(ValueError): int(\"x\") self.fail(\"stop\")",
+      "bodyHash": "6ed6c024",
+      "assertionCount": 3,
+      "assertions": [
+        {
+          "chain": "self.assertEqual()",
+          "line": 105,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "self.assertRaises()",
+          "line": 106,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "self.fail()",
+          "line": 108,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    }
+  ],
+  "mocks": []
+}

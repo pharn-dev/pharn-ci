@@ -1,0 +1,105 @@
+"""Module-level pytest functions: tests, fixtures, xunit and module hooks, and what is not a block."""
+import pytest
+from pytest import fixture
+
+
+def setUpModule():
+    """The unittest module hook."""
+    return None
+
+
+def tearDownModule():
+    return None
+
+
+def setup_module(module):
+    module.value = 1
+
+
+def teardown_module(module):
+    module.value = 0
+
+
+def setup_function(function):
+    pass
+
+
+def teardown_function(function):
+    pass
+
+
+@pytest.fixture
+def plain_fixture():
+    return 1
+
+
+@pytest.fixture(scope="module")
+def scoped_fixture():
+    yield 2
+
+
+@fixture
+def bare_name_fixture():
+    return 3
+
+
+@fixture(autouse=True)
+def autouse_fixture():
+    return 4
+
+
+@pytest.fixture
+def test_named_fixture():
+    return 5
+
+
+def test_plain():
+    assert plain_fixture() == 1
+
+
+def test_with_helper():
+    def helper(value):
+        return value * 2
+
+    assert helper(2) == 4
+
+
+async def test_async_function():
+    assert True
+
+
+def testAdd():
+    assert 1 + 1 == 2
+
+
+@pytest.mark.parametrize("left, right", [(1, 2), (3, 4)])
+def test_parametrized(left, right):
+    assert left < right
+
+
+@pytest.mark.usefixtures("plain_fixture")
+@pytest.mark.slow
+def test_two_decorators():
+    assert 1
+
+
+def helper_not_a_test(value):
+    assert value
+    return value
+
+
+def make_checker():
+    def check(value):
+        assert value
+
+    return check
+
+
+def check_but_not_a_test():
+    return None
+
+
+def test_last():
+    # a comment between statements
+
+    assert helper_not_a_test(1)

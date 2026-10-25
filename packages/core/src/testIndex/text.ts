@@ -126,8 +126,13 @@ export function normalizeFile(text: string, ranges: readonly LiteralRange[]): { 
 
 /** The normalized text for the original slice [start, end), without the one-space ends. */
 export function bodySlice(normalized: string, map: Int32Array, start: number, end: number): string {
-  let body = normalized.slice(map[start] ?? 0, map[end] ?? normalized.length);
-  if (body.startsWith(" ")) body = body.slice(1);
-  if (body.endsWith(" ")) body = body.slice(0, -1);
-  return body;
+  return trimBodySpaces(normalized.slice(map[start] ?? 0, map[end] ?? normalized.length));
+}
+
+/** One leading and one trailing space dropped. */
+export function trimBodySpaces(body: string): string {
+  let trimmed = body;
+  if (trimmed.startsWith(" ")) trimmed = trimmed.slice(1);
+  if (trimmed.endsWith(" ")) trimmed = trimmed.slice(0, -1);
+  return trimmed;
 }

@@ -1,0 +1,108 @@
+"""Assertions: assert shapes, pytest helpers, and the awaited, try and early-return contexts."""
+import unittest
+
+import pytest
+from pytest import approx
+
+THRESHOLD = 3
+assert THRESHOLD > 0
+
+
+def not_a_test_helper(value):
+    assert value
+    return value
+
+
+def test_comparisons(left, right, items):
+    assert left == right
+    assert left != right
+    assert left < right
+    assert left <= right
+    assert left > right
+    assert left >= right
+    assert left is right
+    assert left is not right
+    assert left in items
+    assert left not in items
+    assert 1 < left <= 3
+    assert left == right, "the message is not part of the chain"
+
+
+def test_none_checks(value):
+    assert value is None
+    assert value is not None
+
+
+def test_approx(value):
+    assert value == pytest.approx(1.0)
+    assert approx(2.0) == value
+    assert value != pytest.approx(3.0, abs=0.1)
+
+
+def test_other_shapes(value, items):
+    assert isinstance(value, int)
+    assert not items
+    assert value
+    assert callable(value)
+    assert value and items
+    assert len(items) == 2
+
+
+def test_raises_forms(text):
+    with pytest.raises(ValueError):
+        int(text)
+    with pytest.warns(UserWarning):
+        warn_user()
+    pytest.raises(ValueError, int, text)
+    pytest.fail("never reached")
+
+
+def test_in_try(compute):
+    try:
+        assert compute() == 1
+    except AssertionError:
+        raise
+    assert compute() == 2
+
+
+def test_after_return(flag):
+    assert flag is not None
+    if flag:
+        return
+    assert flag == 0
+
+
+def test_nested_in_try():
+    try:
+        def helper(value):
+            assert value == 1
+
+        helper(1)
+    except AssertionError:
+        pass
+
+
+def test_nested_helper_with_return():
+    def helper(value):
+        if value:
+            return value
+        assert value is None
+
+    helper(None)
+
+
+class TestAsync:
+    async def assert_ready(self, value):
+        assert value
+
+    async def test_awaited(self):
+        await self.assert_ready(1)
+        self.assert_ready(2)
+
+
+class TestSelfAsserts(unittest.TestCase):
+    def test_self(self):
+        self.assertEqual(1, 1)
+        with self.assertRaises(ValueError):
+            int("x")
+        self.fail("stop")

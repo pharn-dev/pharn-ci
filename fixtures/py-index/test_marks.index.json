@@ -1,0 +1,802 @@
+{
+  "parsed": true,
+  "syntaxErrors": 0,
+  "tests": [
+    {
+      "kind": "test",
+      "name": "test_skip_marked",
+      "nameDynamic": false,
+      "path": [
+        "test_skip_marked"
+      ],
+      "line": 11,
+      "endLine": 12,
+      "modifiers": [
+        "skip"
+      ],
+      "body": "assert True",
+      "bodyHash": "7881eca9",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 12,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_skip_short_mark",
+      "nameDynamic": false,
+      "path": [
+        "test_skip_short_mark"
+      ],
+      "line": 16,
+      "endLine": 17,
+      "modifiers": [
+        "skip"
+      ],
+      "body": "assert True",
+      "bodyHash": "7881eca9",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 17,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_unittest_skip",
+      "nameDynamic": false,
+      "path": [
+        "test_unittest_skip"
+      ],
+      "line": 21,
+      "endLine": 22,
+      "modifiers": [
+        "skip"
+      ],
+      "body": "assert True",
+      "bodyHash": "7881eca9",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 22,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_bare_skip",
+      "nameDynamic": false,
+      "path": [
+        "test_bare_skip"
+      ],
+      "line": 26,
+      "endLine": 27,
+      "modifiers": [
+        "skip"
+      ],
+      "body": "assert True",
+      "bodyHash": "7881eca9",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 27,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_skipif_marked",
+      "nameDynamic": false,
+      "path": [
+        "test_skipif_marked"
+      ],
+      "line": 31,
+      "endLine": 32,
+      "modifiers": [
+        "skipIf"
+      ],
+      "body": "assert True",
+      "bodyHash": "7881eca9",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 32,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_unittest_skipif",
+      "nameDynamic": false,
+      "path": [
+        "test_unittest_skipif"
+      ],
+      "line": 36,
+      "endLine": 37,
+      "modifiers": [
+        "skipIf"
+      ],
+      "body": "assert True",
+      "bodyHash": "7881eca9",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 37,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_bare_skipif",
+      "nameDynamic": false,
+      "path": [
+        "test_bare_skipif"
+      ],
+      "line": 41,
+      "endLine": 42,
+      "modifiers": [
+        "skipIf"
+      ],
+      "body": "assert True",
+      "bodyHash": "7881eca9",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 42,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_unittest_skipunless",
+      "nameDynamic": false,
+      "path": [
+        "test_unittest_skipunless"
+      ],
+      "line": 46,
+      "endLine": 47,
+      "modifiers": [
+        "runIf"
+      ],
+      "body": "assert True",
+      "bodyHash": "7881eca9",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 47,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_bare_skipunless",
+      "nameDynamic": false,
+      "path": [
+        "test_bare_skipunless"
+      ],
+      "line": 51,
+      "endLine": 52,
+      "modifiers": [
+        "runIf"
+      ],
+      "body": "assert True",
+      "bodyHash": "7881eca9",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 52,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_xfail_reason_only",
+      "nameDynamic": false,
+      "path": [
+        "test_xfail_reason_only"
+      ],
+      "line": 56,
+      "endLine": 57,
+      "modifiers": [
+        "fails"
+      ],
+      "body": "assert True",
+      "bodyHash": "7881eca9",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 57,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_xfail_bare",
+      "nameDynamic": false,
+      "path": [
+        "test_xfail_bare"
+      ],
+      "line": 61,
+      "endLine": 62,
+      "modifiers": [
+        "fails"
+      ],
+      "body": "assert True",
+      "bodyHash": "7881eca9",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 62,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_xfail_string_first",
+      "nameDynamic": false,
+      "path": [
+        "test_xfail_string_first"
+      ],
+      "line": 66,
+      "endLine": 67,
+      "modifiers": [
+        "fails"
+      ],
+      "body": "assert True",
+      "bodyHash": "7881eca9",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 67,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_xfail_condition_positional",
+      "nameDynamic": false,
+      "path": [
+        "test_xfail_condition_positional"
+      ],
+      "line": 71,
+      "endLine": 72,
+      "modifiers": [
+        "fails",
+        "skipIf"
+      ],
+      "body": "assert True",
+      "bodyHash": "7881eca9",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 72,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_xfail_condition_keyword",
+      "nameDynamic": false,
+      "path": [
+        "test_xfail_condition_keyword"
+      ],
+      "line": 76,
+      "endLine": 77,
+      "modifiers": [
+        "fails",
+        "skipIf"
+      ],
+      "body": "assert True",
+      "bodyHash": "7881eca9",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 77,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_unittest_expected_failure",
+      "nameDynamic": false,
+      "path": [
+        "test_unittest_expected_failure"
+      ],
+      "line": 81,
+      "endLine": 82,
+      "modifiers": [
+        "fails"
+      ],
+      "body": "assert True",
+      "bodyHash": "7881eca9",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 82,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_bare_expected_failure",
+      "nameDynamic": false,
+      "path": [
+        "test_bare_expected_failure"
+      ],
+      "line": 86,
+      "endLine": 87,
+      "modifiers": [
+        "fails"
+      ],
+      "body": "assert True",
+      "bodyHash": "7881eca9",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 87,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_parametrized",
+      "nameDynamic": false,
+      "path": [
+        "test_parametrized"
+      ],
+      "line": 91,
+      "endLine": 92,
+      "modifiers": [
+        "each"
+      ],
+      "body": "assert value",
+      "bodyHash": "4414aaae",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 92,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_skip_and_parametrize",
+      "nameDynamic": false,
+      "path": [
+        "test_skip_and_parametrize"
+      ],
+      "line": 97,
+      "endLine": 98,
+      "modifiers": [
+        "skip",
+        "each"
+      ],
+      "body": "assert value",
+      "bodyHash": "4414aaae",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 98,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_body_skip",
+      "nameDynamic": false,
+      "path": [
+        "test_body_skip"
+      ],
+      "line": 101,
+      "endLine": 103,
+      "modifiers": [
+        "skip"
+      ],
+      "body": "pytest.skip(\"not today\") assert True",
+      "bodyHash": "1b86bb38",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 103,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_skip_in_if",
+      "nameDynamic": false,
+      "path": [
+        "test_skip_in_if"
+      ],
+      "line": 106,
+      "endLine": 109,
+      "modifiers": [
+        "skipIf"
+      ],
+      "body": "available = False if not available: pytest.skip(\"missing\")",
+      "bodyHash": "c075d428",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_skip_in_else",
+      "nameDynamic": false,
+      "path": [
+        "test_skip_in_else"
+      ],
+      "line": 112,
+      "endLine": 117,
+      "modifiers": [
+        "skipIf"
+      ],
+      "body": "available = False if available: pass else: pytest.skip(\"missing in the else branch\")",
+      "bodyHash": "abf0cc0e",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_skip_in_ternary",
+      "nameDynamic": false,
+      "path": [
+        "test_skip_in_ternary"
+      ],
+      "line": 120,
+      "endLine": 122,
+      "modifiers": [
+        "skipIf"
+      ],
+      "body": "result = pytest.skip(\"flagged\") if flag else None assert result is None",
+      "bodyHash": "11ebe62f",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert is None",
+          "line": 122,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_skip_in_while",
+      "nameDynamic": false,
+      "path": [
+        "test_skip_in_while"
+      ],
+      "line": 125,
+      "endLine": 128,
+      "modifiers": [
+        "skipIf"
+      ],
+      "body": "while flag: pytest.skip(\"looping\") break",
+      "bodyHash": "03d42f58",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_skip_in_match",
+      "nameDynamic": false,
+      "path": [
+        "test_skip_in_match"
+      ],
+      "line": 131,
+      "endLine": 136,
+      "modifiers": [
+        "skipIf"
+      ],
+      "body": "match flag: case 1: pytest.skip(\"matched one\") case _: pass",
+      "bodyHash": "8ff03d3a",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_skip_in_except",
+      "nameDynamic": false,
+      "path": [
+        "test_skip_in_except"
+      ],
+      "line": 139,
+      "endLine": 143,
+      "modifiers": [
+        "skipIf"
+      ],
+      "body": "try: int(\"x\") except ValueError: pytest.skip(\"not a number\")",
+      "bodyHash": "b96c0a68",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_skip_in_boolop",
+      "nameDynamic": false,
+      "path": [
+        "test_skip_in_boolop"
+      ],
+      "line": 146,
+      "endLine": 147,
+      "modifiers": [
+        "skipIf"
+      ],
+      "body": "flag and pytest.skip(\"both\")",
+      "bodyHash": "f9b64d82",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_xfail_call",
+      "nameDynamic": false,
+      "path": [
+        "test_xfail_call"
+      ],
+      "line": 150,
+      "endLine": 151,
+      "modifiers": [
+        "fails"
+      ],
+      "body": "pytest.xfail(\"known\")",
+      "bodyHash": "db52343c",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_xfail_conditional_call",
+      "nameDynamic": false,
+      "path": [
+        "test_xfail_conditional_call"
+      ],
+      "line": 154,
+      "endLine": 156,
+      "modifiers": [
+        "fails",
+        "skipIf"
+      ],
+      "body": "if sys.platform == \"win32\": pytest.xfail(\"windows\")",
+      "bodyHash": "d01e0aaa",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_skip_in_nested_def",
+      "nameDynamic": false,
+      "path": [
+        "test_skip_in_nested_def"
+      ],
+      "line": 159,
+      "endLine": 163,
+      "modifiers": [],
+      "body": "def inner(): pytest.skip(\"inner\") assert inner",
+      "bodyHash": "0b560340",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 163,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "describe",
+      "name": "TestInBody",
+      "nameDynamic": false,
+      "path": [
+        "TestInBody"
+      ],
+      "line": 166,
+      "endLine": 171,
+      "modifiers": [],
+      "body": "def test_skip_test(self): self.skipTest(\"later\") def test_plain(self): self.assertTrue(True)",
+      "bodyHash": "d7125cfe",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_skip_test",
+      "nameDynamic": false,
+      "path": [
+        "TestInBody",
+        "test_skip_test"
+      ],
+      "line": 167,
+      "endLine": 168,
+      "modifiers": [
+        "skip"
+      ],
+      "body": "self.skipTest(\"later\")",
+      "bodyHash": "548b2b51",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_plain",
+      "nameDynamic": false,
+      "path": [
+        "TestInBody",
+        "test_plain"
+      ],
+      "line": 170,
+      "endLine": 171,
+      "modifiers": [],
+      "body": "self.assertTrue(True)",
+      "bodyHash": "dc6ce3ee",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "self.assertTrue()",
+          "line": 171,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "describe",
+      "name": "TestSkippedClass",
+      "nameDynamic": false,
+      "path": [
+        "TestSkippedClass"
+      ],
+      "line": 175,
+      "endLine": 177,
+      "modifiers": [
+        "skip"
+      ],
+      "body": "def test_member(self): assert True",
+      "bodyHash": "d0cae34e",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_member",
+      "nameDynamic": false,
+      "path": [
+        "TestSkippedClass",
+        "test_member"
+      ],
+      "line": 176,
+      "endLine": 177,
+      "modifiers": [],
+      "body": "assert True",
+      "bodyHash": "7881eca9",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 177,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    }
+  ],
+  "mocks": []
+}

@@ -1,0 +1,62 @@
+"""unittest classes: TestCase-derived classes are describe blocks whatever their name."""
+import unittest
+
+import django.test
+from rest_framework.test import APITestCase
+
+
+class AccountTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.shared = 1
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.shared = None
+
+    def setUp(self):
+        self.value = 1
+
+    def tearDown(self):
+        self.value = 0
+
+    def test_equal(self):
+        self.assertEqual(self.value, 1)
+
+    def test_failure_path(self):
+        if self.value > 1:
+            self.fail("unexpected")
+        self.assertTrue(self.value)
+
+
+class AsyncAccountTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.value = 1
+
+    async def asyncTearDown(self):
+        self.value = 0
+
+    async def test_async_equal(self):
+        self.assertEqual(self.value, 1)
+
+
+class ModelTests(django.test.TestCase):
+    def test_model(self):
+        self.assertEqual(1, 1)
+        with self.assertRaises(ValueError):
+            int("x")
+
+
+class EndpointTests(APITestCase):
+    def test_endpoint(self):
+        self.assertEqual(200, 200)
+
+
+class TestPrefixed(unittest.TestCase):
+    def test_prefixed(self):
+        self.assertEqual("a", "a")
+
+
+class Plain(object):
+    def test_not_a_test(self):
+        self.assertEqual(1, 1)
