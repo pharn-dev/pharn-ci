@@ -15,7 +15,8 @@
 // excerpt for hand review) and <out>/summary.json (PRs scanned and PRs hit, per bot and signal).
 // Each diff request's path is checked against an anchored pattern right before it is sent, and a PR
 // whose path fails is skipped. The script writes no control characters other than tab, newline and
-// carriage return to the cache, and a fresh diff is analysed as cached.
+// carriage return to the cache, and a fresh diff is analysed as cached. The hits.csv cells are cleaned for
+// safe viewing too: control characters are dropped, and a cell that looks like a formula gets a `'` prefix.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -324,9 +325,12 @@ function detect(files) {
 
 // --- main ---------------------------------------------------------------------------------------
 
+// One hits.csv cell for safe viewing in a spreadsheet and a terminal: drops control characters (as writeCached
+// does), prefixes a cell starting with = + - @ tab or CR with ' so it is not read as a formula, quotes if needed.
 const csvCell = (value) => {
-  const text = String(value ?? "");
-  return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+  const cleaned = String(value ?? "").replace(/[^\t\n\r\x20-\x7e\xa0-\uffff]/g, "");
+  const text = /^[=+\-@\t\r]/.test(cleaned) ? `'${cleaned}` : cleaned;
+  return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 };
 
 async function main() {
@@ -413,10 +417,9 @@ async function main() {
     "line",
     "excerpt",
   ];
-  writeFileSync(
-    join(options.out, "hits.csv"),
-    `${[header, ...rows].map((r) => r.map(csvCell).join(",")).join("\n")}\n`,
-  );
+  const csv = `${[header, ...rows].map((r) => r.map(csvCell).join(",")).join("\n")}\n`;
+  if (/[^\t\n\r\x20-\x7e\xa0-\uffff]/.test(csv)) throw new Error("refusing to write hits.csv: control characters");
+  writeFileSync(join(options.out, "hits.csv"), csv);
 
   const signals = ["TI01", "TI03", "TI04", "TI10", "any"];
   const byBot = {};
