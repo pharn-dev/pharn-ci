@@ -1,0 +1,11 @@
+diff --git a/vitest.config.ts b/vitest.config.ts
+index 1111111..2222222 100644
+--- a/vitest.config.ts
++++ b/vitest.config.ts
+@@ -5,2 +5,4 @@ export default defineConfig({
+-    include: ["src/**/*.test.ts"],
+-    exclude: ["e2e/**"],
++    exclude: ['e2e/**'],
++    include: [
++      'src/**/*.test.ts',
++    ],

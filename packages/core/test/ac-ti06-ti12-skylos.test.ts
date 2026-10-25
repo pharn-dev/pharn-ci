@@ -29,11 +29,18 @@ const CAUGHT: ReadonlyMap<string, string> = new Map([
   ["deleted-test", "TI01"],
   ["added-skip", "TI03"],
   ["emptied-assertion", "TI05"],
+  ["deselect-setting", "TI09"],
   ["replaced-test", "TI02"],
   ["loosened-assertion", "TI06"],
   ["edited-expected-value", "TI07"],
 ]);
-const WITH_SOURCES = new Set(["emptied-assertion", "replaced-test", "loosened-assertion", "edited-expected-value"]);
+const WITH_SOURCES = new Set([
+  "emptied-assertion",
+  "deselect-setting",
+  "replaced-test",
+  "loosened-assertion",
+  "edited-expected-value",
+]);
 
 interface SourceFile {
   path: string;
@@ -126,7 +133,7 @@ function parseLimits(text: string): { body: string; caught: Map<string, string>;
 }
 
 describe("Skylos nine: TI06 catches loosened-assertion", () => {
-  it("AC-15: loosened-assertion gives a warn TI06, emptied-assertion, replaced-test, deleted-test and added-skip give their TI05, TI02, TI01 and TI03 as before, edited-expected-value its TI07, and the other three give no signal", async () => {
+  it("AC-15: loosened-assertion gives a warn TI06, emptied-assertion, replaced-test, deleted-test and added-skip give their TI05, TI02, TI01 and TI03 as before, edited-expected-value its TI07, deselect-setting its TI09, and the other two give no signal", async () => {
     // The loosened-assertion sources hold the case its diff shows: the emptied-assertion base, and at head line 8
     // loosened to toBeTruthy() with every other line kept.
     const source = (name: string, side: string) =>
@@ -170,18 +177,19 @@ describe("Skylos nine: TI06 catches loosened-assertion", () => {
       "deleted-test",
       "added-skip",
       "emptied-assertion",
+      "deselect-setting",
       "replaced-test",
       "loosened-assertion",
       "edited-expected-value",
     ]);
   });
 
-  it("AC-15: docs/LIMITS.md and the README state that 6 of 9 are caught and list those six cases with their signal ids", () => {
+  it("AC-15: docs/LIMITS.md and the README state that 7 of 9 are caught and list those seven cases with their signal ids", () => {
     const limits = parseLimits(readFileSync(`${ROOT}docs/LIMITS.md`, "utf8"));
-    expect(limits.body).toContain("6 of 9");
+    expect(limits.body).toContain("7 of 9");
     expect(limits.body).not.toContain("4 of 9");
     expect(limits.caught).toEqual(new Map(CAUGHT));
-    expect(limits.missed.size).toBe(3);
+    expect(limits.missed.size).toBe(2);
     expect(new Set([...limits.caught.keys(), ...limits.missed.keys()])).toEqual(new Set(NINE));
 
     const readme = lines(readFileSync(`${ROOT}README.md`, "utf8"));
@@ -190,7 +198,7 @@ describe("Skylos nine: TI06 catches loosened-assertion", () => {
     const rest = readme.slice(start + 1);
     const end = rest.findIndex((line) => line.startsWith("## "));
     const body = normalize((end === -1 ? rest : rest.slice(0, end)).join("\n"));
-    expect(body).toContain("6 of 9");
+    expect(body).toContain("7 of 9");
     expect(body).not.toContain("4 of 9");
     for (const [name, id] of CAUGHT) {
       expect(body, `the README names ${name}`).toContain(name);

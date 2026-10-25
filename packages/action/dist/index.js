@@ -11635,7 +11635,7 @@ var require_dns = __commonJS({
   "../../node_modules/.pnpm/undici@6.29.0/node_modules/undici/lib/interceptor/dns.js"(exports, module) {
     "use strict";
     var { isIP } = __require("node:net");
-    var { lookup } = __require("node:dns");
+    var { lookup: lookup2 } = __require("node:dns");
     var DecoratorHandler = require_decorator_handler();
     var { InvalidArgumentError, InformationalError } = require_errors();
     var maxInt = Math.pow(2, 31) - 1;
@@ -11725,7 +11725,7 @@ var require_dns = __commonJS({
         }
       }
       #defaultLookup(origin, opts, cb) {
-        lookup(
+        lookup2(
           origin.hostname,
           {
             all: true,
@@ -19842,7 +19842,7 @@ var require_lib = __commonJS({
 // ../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/typescript.js
 var require_typescript = __commonJS({
   "../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/typescript.js"(exports, module) {
-    var ts6 = {};
+    var ts7 = {};
     ((module2) => {
       "use strict";
       var __defProp2 = Object.defineProperty;
@@ -21732,7 +21732,7 @@ var require_typescript = __commonJS({
         nodeStartsNewLexicalEnvironment: () => nodeStartsNewLexicalEnvironment,
         noop: () => noop3,
         noopFileWatcher: () => noopFileWatcher,
-        normalizePath: () => normalizePath2,
+        normalizePath: () => normalizePath3,
         normalizeSlashes: () => normalizeSlashes,
         normalizeSpans: () => normalizeSpans,
         not: () => not,
@@ -21820,7 +21820,7 @@ var require_typescript = __commonJS({
         rangeStartPositionsAreOnSameLine: () => rangeStartPositionsAreOnSameLine,
         readBuilderProgram: () => readBuilderProgram,
         readConfigFile: () => readConfigFile,
-        readJson: () => readJson,
+        readJson: () => readJson2,
         readJsonConfigFile: () => readJsonConfigFile,
         readJsonOrUndefined: () => readJsonOrUndefined,
         reduceEachLeadingCommentRange: () => reduceEachLeadingCommentRange,
@@ -27942,7 +27942,7 @@ ${lanes.join("\n")}
         function updateChildWatches(parentDir, parentDirPath, options) {
           const parentWatcher = cache.get(parentDirPath);
           if (!parentWatcher) return false;
-          const target = normalizePath2(realpath(parentDir));
+          const target = normalizePath3(realpath(parentDir));
           let hasChanges;
           let newChildWatches;
           if (filePathComparer(target, parentDir) === 0) {
@@ -27953,7 +27953,7 @@ ${lanes.join("\n")}
                 /* Directory */
               ) ? mapDefined(getAccessibleSortedChildDirectories(parentDir), (child) => {
                 const childFullName = getNormalizedAbsolutePath(child, parentDir);
-                return !isIgnoredPath(childFullName, options) && filePathComparer(childFullName, normalizePath2(realpath(childFullName))) === 0 ? childFullName : void 0;
+                return !isIgnoredPath(childFullName, options) && filePathComparer(childFullName, normalizePath3(realpath(childFullName))) === 0 ? childFullName : void 0;
               }) : emptyArray,
               parentWatcher.childWatches,
               (child, childWatcher) => filePathComparer(child, childWatcher.dirName),
@@ -28019,7 +28019,7 @@ ${lanes.join("\n")}
       function createFsWatchCallbackForDirectoryWatcherCallback(directoryName, callback, options, useCaseSensitiveFileNames2, getCurrentDirectory) {
         return (eventName, relativeFileName) => {
           if (eventName === "rename") {
-            const fileName = !relativeFileName ? directoryName : normalizePath2(combinePaths(directoryName, relativeFileName));
+            const fileName = !relativeFileName ? directoryName : normalizePath3(combinePaths(directoryName, relativeFileName));
             if (!relativeFileName || !isIgnoredByWatchOptions(fileName, options, useCaseSensitiveFileNames2, getCurrentDirectory)) {
               callback(fileName);
             }
@@ -29005,7 +29005,7 @@ ${lanes.join("\n")}
         return path;
       }
       function resolvePath2(path, ...paths) {
-        return normalizePath2(some(paths) ? combinePaths(path, ...paths) : normalizeSlashes(path));
+        return normalizePath3(some(paths) ? combinePaths(path, ...paths) : normalizeSlashes(path));
       }
       function getNormalizedPathComponents(path, currentDirectory) {
         return reducePathComponents(getPathComponents(path, currentDirectory));
@@ -29085,7 +29085,7 @@ ${lanes.join("\n")}
         }
         return normalized ?? (length2 > rootLength ? removeTrailingDirectorySeparator(path) : path);
       }
-      function normalizePath2(path) {
+      function normalizePath3(path) {
         path = normalizeSlashes(path);
         let normalized = simpleNormalizePath(path);
         if (normalized !== void 0) {
@@ -29118,7 +29118,7 @@ ${lanes.join("\n")}
         return getPathWithoutRoot(getNormalizedPathComponents(fileName, currentDirectory));
       }
       function toPath(fileName, basePath, getCanonicalFileName) {
-        const nonCanonicalizedPath = isRootedDiskPath(fileName) ? normalizePath2(fileName) : getNormalizedAbsolutePath(fileName, basePath);
+        const nonCanonicalizedPath = isRootedDiskPath(fileName) ? normalizePath3(fileName) : getNormalizedAbsolutePath(fileName, basePath);
         return getCanonicalFileName(nonCanonicalizedPath);
       }
       function removeTrailingDirectorySeparator(path) {
@@ -35140,7 +35140,7 @@ ${lanes.join("\n")}
         }
         setUILocale(locale);
         function trySetLanguageAndTerritory(language2, territory2, errors2) {
-          const compilerFilePath = normalizePath2(sys2.getExecutingFilePath());
+          const compilerFilePath = normalizePath3(sys2.getExecutingFilePath());
           const containingDirectoryPath = getDirectoryPath(compilerFilePath);
           let filePath = combinePaths(containingDirectoryPath, language2);
           if (territory2) {
@@ -40266,11 +40266,11 @@ ${lanes.join("\n")}
         let hasReadNonFileDiagnostics = false;
         return {
           add,
-          lookup,
+          lookup: lookup2,
           getGlobalDiagnostics,
           getDiagnostics: getDiagnostics2
         };
-        function lookup(diagnostic) {
+        function lookup2(diagnostic) {
           let diagnostics;
           if (diagnostic.file) {
             diagnostics = fileDiagnostics.get(diagnostic.file.fileName);
@@ -40771,7 +40771,7 @@ ${lanes.join("\n")}
         try {
           writeFile22(path, data, writeByteOrderMark);
         } catch {
-          ensureDirectoriesExist(getDirectoryPath(normalizePath2(path)), createDirectory, directoryExists);
+          ensureDirectoriesExist(getDirectoryPath(normalizePath3(path)), createDirectory, directoryExists);
           writeFile22(path, data, writeByteOrderMark);
         }
       }
@@ -41484,7 +41484,7 @@ ${lanes.join("\n")}
         }
         return result;
       }
-      function readJson(path, host) {
+      function readJson2(path, host) {
         return readJsonOrUndefined(path, host) || {};
       }
       function tryParseJson(text) {
@@ -42823,8 +42823,8 @@ ${lanes.join("\n")}
         return match === "*" ? singleAsteriskRegexFragment : match === "?" ? "[^/]" : "\\" + match;
       }
       function getFileMatcherPatterns(path, excludes, includes, useCaseSensitiveFileNames2, currentDirectory) {
-        path = normalizePath2(path);
-        currentDirectory = normalizePath2(currentDirectory);
+        path = normalizePath3(path);
+        currentDirectory = normalizePath3(currentDirectory);
         const absolutePath = combinePaths(currentDirectory, path);
         return {
           includeFilePatterns: map(getRegularExpressionsForWildcards(includes, absolutePath, "files"), (pattern) => `^${pattern}$`),
@@ -42838,8 +42838,8 @@ ${lanes.join("\n")}
         return new RegExp(pattern, useCaseSensitiveFileNames2 ? "" : "i");
       }
       function matchFiles(path, extensions, excludes, includes, useCaseSensitiveFileNames2, currentDirectory, depth, getFileSystemEntries, realpath) {
-        path = normalizePath2(path);
-        currentDirectory = normalizePath2(currentDirectory);
+        path = normalizePath3(path);
+        currentDirectory = normalizePath3(currentDirectory);
         const patterns = getFileMatcherPatterns(path, excludes, includes, useCaseSensitiveFileNames2, currentDirectory);
         const includeFileRegexes = patterns.includeFilePatterns && patterns.includeFilePatterns.map((pattern) => getRegexFromPattern(pattern, useCaseSensitiveFileNames2));
         const includeDirectoryRegex = patterns.includeDirectoryPattern && getRegexFromPattern(patterns.includeDirectoryPattern, useCaseSensitiveFileNames2);
@@ -42890,7 +42890,7 @@ ${lanes.join("\n")}
         if (includes) {
           const includeBasePaths = [];
           for (const include of includes) {
-            const absolute = isRootedDiskPath(include) ? include : normalizePath2(combinePaths(path, include));
+            const absolute = isRootedDiskPath(include) ? include : normalizePath3(combinePaths(path, include));
             includeBasePaths.push(getIncludeBasePath(absolute));
           }
           includeBasePaths.sort(getStringComparer(!useCaseSensitiveFileNames2));
@@ -44061,7 +44061,7 @@ ${lanes.join("\n")}
         error: error22,
         getSymbolOfDeclaration,
         globals,
-        lookup,
+        lookup: lookup2,
         setRequiresScopeChangeCache = returnUndefined,
         getRequiresScopeChangeCache = returnUndefined,
         onPropertyWithInvalidInitializer = returnFalse,
@@ -44093,7 +44093,7 @@ ${lanes.join("\n")}
                 location = location.parent;
               }
               if (canHaveLocals(location) && location.locals && !isGlobalSourceFile(location)) {
-                if (result = lookup(location.locals, name, meaning)) {
+                if (result = lookup2(location.locals, name, meaning)) {
                   let useResult = true;
                   if (isFunctionLike(location) && lastLocation && lastLocation !== location.body) {
                     if (meaning & result.flags & 788968 && lastLocation.kind !== 321) {
@@ -44149,7 +44149,7 @@ ${lanes.join("\n")}
                       break;
                     }
                   }
-                  if (name !== "default" && (result = lookup(
+                  if (name !== "default" && (result = lookup2(
                     moduleExports,
                     name,
                     meaning & 2623475
@@ -44163,7 +44163,7 @@ ${lanes.join("\n")}
                   }
                   break;
                 case 267:
-                  if (result = lookup(
+                  if (result = lookup2(
                     ((_c = getSymbolOfDeclaration(location)) == null ? void 0 : _c.exports) || emptySymbols,
                     name,
                     meaning & 8
@@ -44185,7 +44185,7 @@ ${lanes.join("\n")}
                   if (!isStatic(location)) {
                     const ctor = findConstructorDeclaration(location.parent);
                     if (ctor && ctor.locals) {
-                      if (lookup(
+                      if (lookup2(
                         ctor.locals,
                         name,
                         meaning & 111551
@@ -44200,7 +44200,7 @@ ${lanes.join("\n")}
                 case 264:
                 case 232:
                 case 265:
-                  if (result = lookup(
+                  if (result = lookup2(
                     getSymbolOfDeclaration(location).members || emptySymbols,
                     name,
                     meaning & 788968
@@ -44229,7 +44229,7 @@ ${lanes.join("\n")}
                 case 234:
                   if (lastLocation === location.expression && location.parent.token === 96) {
                     const container = location.parent.parent;
-                    if (isClassLike(container) && (result = lookup(
+                    if (isClassLike(container) && (result = lookup2(
                       getSymbolOfDeclaration(container).members,
                       name,
                       meaning & 788968
@@ -44253,7 +44253,7 @@ ${lanes.join("\n")}
                 case 168:
                   grandparent = location.parent.parent;
                   if (isClassLike(grandparent) || grandparent.kind === 265) {
-                    if (result = lookup(
+                    if (result = lookup2(
                       getSymbolOfDeclaration(grandparent).members,
                       name,
                       meaning & 788968
@@ -44357,7 +44357,7 @@ ${lanes.join("\n")}
               }
             }
             if (!excludeGlobals) {
-              result = lookup(globals, name, meaning);
+              result = lookup2(globals, name, meaning);
             }
           }
           if (!result) {
@@ -49974,11 +49974,11 @@ ${lanes.join("\n")}
         function createObjectGetOwnPropertyDescriptorCall(target, propertyName) {
           return createGlobalMethodCall("Object", "getOwnPropertyDescriptor", [target, asExpression(propertyName)]);
         }
-        function createReflectGetCall(target, propertyKey, receiver) {
-          return createGlobalMethodCall("Reflect", "get", receiver ? [target, propertyKey, receiver] : [target, propertyKey]);
+        function createReflectGetCall(target, propertyKey2, receiver) {
+          return createGlobalMethodCall("Reflect", "get", receiver ? [target, propertyKey2, receiver] : [target, propertyKey2]);
         }
-        function createReflectSetCall(target, propertyKey, value, receiver) {
-          return createGlobalMethodCall("Reflect", "set", receiver ? [target, propertyKey, value, receiver] : [target, propertyKey, value]);
+        function createReflectSetCall(target, propertyKey2, value, receiver) {
+          return createGlobalMethodCall("Reflect", "set", receiver ? [target, propertyKey2, value, receiver] : [target, propertyKey2, value]);
         }
         function tryAddPropertyAssignment(properties, propertyName, expression) {
           if (expression) {
@@ -55262,7 +55262,7 @@ ${lanes.join("\n")}
           IdentifierConstructor2 = objectAllocator.getIdentifierConstructor();
           PrivateIdentifierConstructor2 = objectAllocator.getPrivateIdentifierConstructor();
           SourceFileConstructor2 = objectAllocator.getSourceFileConstructor();
-          fileName = normalizePath2(_fileName);
+          fileName = normalizePath3(_fileName);
           sourceText = _sourceText;
           languageVersion = _languageVersion;
           syntaxCursor = _syntaxCursor;
@@ -62619,7 +62619,7 @@ ${lanes.join("\n")}
               const typedefTag = factory2.createJSDocTypedefTag(tagName, typeExpression, fullName, comment);
               return finishNode(typedefTag, start2, end2);
             }
-            function parseJSDocTypeNameWithNamespace(nested) {
+            function parseJSDocTypeNameWithNamespace(nested2) {
               const start2 = scanner2.getTokenStart();
               if (!tokenIsIdentifierOrKeyword(token())) {
                 return void 0;
@@ -62638,11 +62638,11 @@ ${lanes.join("\n")}
                   void 0,
                   typeNameOrNamespaceName,
                   body,
-                  nested ? 8 : void 0
+                  nested2 ? 8 : void 0
                 );
                 return finishNode(jsDocNamespaceNode, start2);
               }
-              if (nested) {
+              if (nested2) {
                 typeNameOrNamespaceName.flags |= 4096;
               }
               return typeNameOrNamespaceName;
@@ -65643,14 +65643,14 @@ ${lanes.join("\n")}
               errors.push(createDiagnosticForNodeInSourceFile(sourceFile, element.name, Diagnostics.String_literal_with_double_quotes_expected));
             }
             const textOfKey = isComputedNonLiteralName(element.name) ? void 0 : getTextOfPropertyName(element.name);
-            const keyText = textOfKey && unescapeLeadingUnderscores(textOfKey);
-            const option = keyText ? (_a = objectOption == null ? void 0 : objectOption.elementOptions) == null ? void 0 : _a.get(keyText) : void 0;
+            const keyText2 = textOfKey && unescapeLeadingUnderscores(textOfKey);
+            const option = keyText2 ? (_a = objectOption == null ? void 0 : objectOption.elementOptions) == null ? void 0 : _a.get(keyText2) : void 0;
             const value = convertPropertyValueToJson(element.initializer, option);
-            if (typeof keyText !== "undefined") {
+            if (typeof keyText2 !== "undefined") {
               if (returnValue) {
-                result[keyText] = value;
+                result[keyText2] = value;
               }
-              jsonConversionNotifier == null ? void 0 : jsonConversionNotifier.onPropertySet(keyText, value, element, objectOption, option);
+              jsonConversionNotifier == null ? void 0 : jsonConversionNotifier.onPropertySet(keyText2, value, element, objectOption, option);
             }
           }
           return result;
@@ -66152,7 +66152,7 @@ ${lanes.join("\n")}
           basePath
         );
         options.configFilePath = configFileName && normalizeSlashes(configFileName);
-        const basePathForFileNames = normalizePath2(configFileName ? directoryOfCombinedPath(configFileName, basePath) : basePath);
+        const basePathForFileNames = normalizePath3(configFileName ? directoryOfCombinedPath(configFileName, basePath) : basePath);
         const configFileSpecs = getConfigFileSpecs();
         if (sourceFile) sourceFile.configFileSpecs = configFileSpecs;
         setConfigFileInOptions(options, sourceFile);
@@ -66531,7 +66531,7 @@ ${lanes.join("\n")}
           errors.push(createDiagnosticForNodeInSourceFile(sourceFile, rootCompilerOptions[0], Diagnostics._0_should_be_set_inside_the_compilerOptions_object_of_the_config_json_file, getTextOfPropertyName(rootCompilerOptions[0])));
         }
         return { raw: json, options, watchOptions, typeAcquisition, extendedConfigPath };
-        function onPropertySet(keyText, value, propertyAssignment, parentOption, option) {
+        function onPropertySet(keyText2, value, propertyAssignment, parentOption, option) {
           if (option && option !== extendsOptionDeclaration) value = convertJsonOption(option, value, basePath, errors, propertyAssignment, propertyAssignment.initializer, sourceFile);
           if (parentOption == null ? void 0 : parentOption.name) {
             if (option) {
@@ -66541,10 +66541,10 @@ ${lanes.join("\n")}
               else if (parentOption === typeAcquisitionDeclaration) currentOption = typeAcquisition ?? (typeAcquisition = getDefaultTypeAcquisition(configFileName));
               else Debug.fail("Unknown option");
               currentOption[option.name] = value;
-            } else if (keyText && (parentOption == null ? void 0 : parentOption.extraKeyDiagnostics)) {
+            } else if (keyText2 && (parentOption == null ? void 0 : parentOption.extraKeyDiagnostics)) {
               if (parentOption.elementOptions) {
                 errors.push(createUnknownOptionError(
-                  keyText,
+                  keyText2,
                   parentOption.extraKeyDiagnostics,
                   /*unknownOptionErrorText*/
                   void 0,
@@ -66552,17 +66552,17 @@ ${lanes.join("\n")}
                   sourceFile
                 ));
               } else {
-                errors.push(createDiagnosticForNodeInSourceFile(sourceFile, propertyAssignment.name, parentOption.extraKeyDiagnostics.unknownOptionDiagnostic, keyText));
+                errors.push(createDiagnosticForNodeInSourceFile(sourceFile, propertyAssignment.name, parentOption.extraKeyDiagnostics.unknownOptionDiagnostic, keyText2));
               }
             }
           } else if (parentOption === rootOptions) {
             if (option === extendsOptionDeclaration) {
               extendedConfigPath = getExtendsConfigPathOrArray(value, host, basePath, configFileName, errors, propertyAssignment, propertyAssignment.initializer, sourceFile);
             } else if (!option) {
-              if (keyText === "excludes") {
+              if (keyText2 === "excludes") {
                 errors.push(createDiagnosticForNodeInSourceFile(sourceFile, propertyAssignment.name, Diagnostics.Unknown_option_excludes_Did_you_mean_exclude));
               }
-              if (find(commandOptionsWithoutBuild, (opt) => opt.name === keyText)) {
+              if (find(commandOptionsWithoutBuild, (opt) => opt.name === keyText2)) {
                 rootCompilerOptions = append(rootCompilerOptions, propertyAssignment.name);
               }
             }
@@ -66756,7 +66756,7 @@ ${lanes.join("\n")}
       var invalidTrailingRecursionPattern = /(?:^|\/)\*\*\/?$/;
       var wildcardDirectoryPattern = /^[^*?]*(?=\/[^/]*[*?])/;
       function getFileNamesFromConfigSpecs(configFileSpecs, basePath, options, host, extraFileExtensions = emptyArray) {
-        basePath = normalizePath2(basePath);
+        basePath = normalizePath3(basePath);
         const keyMapper = createGetCanonicalFileName(host.useCaseSensitiveFileNames);
         const literalFileMap = /* @__PURE__ */ new Map();
         const wildcardFileMap = /* @__PURE__ */ new Map();
@@ -66820,7 +66820,7 @@ ${lanes.join("\n")}
       function isExcludedFile(pathToCheck, spec, basePath, useCaseSensitiveFileNames2, currentDirectory) {
         const { validatedFilesSpec, validatedIncludeSpecs, validatedExcludeSpecs } = spec;
         if (!length(validatedIncludeSpecs) || !length(validatedExcludeSpecs)) return false;
-        basePath = normalizePath2(basePath);
+        basePath = normalizePath3(basePath);
         const keyMapper = createGetCanonicalFileName(useCaseSensitiveFileNames2);
         if (validatedFilesSpec) {
           for (const fileName of validatedFilesSpec) {
@@ -66846,7 +66846,7 @@ ${lanes.join("\n")}
         );
       }
       function matchesExcludeWorker(pathToCheck, excludeSpecs, useCaseSensitiveFileNames2, currentDirectory, basePath) {
-        const excludePattern = getRegularExpressionForWildcard(excludeSpecs, combinePaths(normalizePath2(currentDirectory), basePath), "exclude");
+        const excludePattern = getRegularExpressionForWildcard(excludeSpecs, combinePaths(normalizePath3(currentDirectory), basePath), "exclude");
         const excludeRegex = excludePattern && getRegexFromPattern(excludePattern, useCaseSensitiveFileNames2);
         if (!excludeRegex) return false;
         if (excludeRegex.test(pathToCheck)) return true;
@@ -66882,7 +66882,7 @@ ${lanes.join("\n")}
         if (include !== void 0) {
           const recursiveKeys = [];
           for (const file of include) {
-            const spec = normalizePath2(combinePaths(basePath, file));
+            const spec = normalizePath3(combinePaths(basePath, file));
             if (excludeRegex && excludeRegex.test(spec)) {
               continue;
             }
@@ -67172,7 +67172,7 @@ ${lanes.join("\n")}
           }
           return;
         }
-        const path = normalizePath2(combinePaths(baseDirectory, fileName));
+        const path = normalizePath3(combinePaths(baseDirectory, fileName));
         if (state.traceEnabled) {
           trace(state.host, Diagnostics.package_json_has_0_field_1_that_references_2, fieldName, fileName, path);
         }
@@ -67251,7 +67251,7 @@ ${lanes.join("\n")}
       }
       function getDefaultTypeRoots(currentDirectory) {
         let typeRoots;
-        forEachAncestorDirectory(normalizePath2(currentDirectory), (directory) => {
+        forEachAncestorDirectory(normalizePath3(currentDirectory), (directory) => {
           const atTypes = combinePaths(directory, nodeModulesAtTypes);
           (typeRoots ?? (typeRoots = [])).push(atTypes);
         });
@@ -67535,9 +67535,9 @@ ${lanes.join("\n")}
             for (const root of typeRoots) {
               if (host.directoryExists(root)) {
                 for (const typeDirectivePath of host.getDirectories(root)) {
-                  const normalized = normalizePath2(typeDirectivePath);
+                  const normalized = normalizePath3(typeDirectivePath);
                   const packageJsonPath = combinePaths(root, normalized, "package.json");
-                  const isNotNeededPackage = host.fileExists(packageJsonPath) && readJson(packageJsonPath, host).typings === null;
+                  const isNotNeededPackage = host.fileExists(packageJsonPath) && readJson2(packageJsonPath, host).typings === null;
                   if (!isNotNeededPackage) {
                     const baseFileName = getBaseFileName(normalized);
                     if (baseFileName.charCodeAt(0) !== 46) {
@@ -67997,11 +67997,11 @@ ${lanes.join("\n")}
         if (state.traceEnabled) {
           trace(state.host, Diagnostics.rootDirs_option_is_set_using_it_to_resolve_relative_module_name_0, moduleName);
         }
-        const candidate = normalizePath2(combinePaths(containingDirectory, moduleName));
+        const candidate = normalizePath3(combinePaths(containingDirectory, moduleName));
         let matchedRootDir;
         let matchedNormalizedPrefix;
         for (const rootDir of state.compilerOptions.rootDirs) {
-          let normalizedRoot = normalizePath2(rootDir);
+          let normalizedRoot = normalizePath3(rootDir);
           if (!endsWith(normalizedRoot, directorySeparator)) {
             normalizedRoot += directorySeparator;
           }
@@ -68033,7 +68033,7 @@ ${lanes.join("\n")}
             if (rootDir === matchedRootDir) {
               continue;
             }
-            const candidate2 = combinePaths(normalizePath2(rootDir), suffix);
+            const candidate2 = combinePaths(normalizePath3(rootDir), suffix);
             if (state.traceEnabled) {
               trace(state.host, Diagnostics.Loading_0_from_the_root_dir_1_candidate_location_2, suffix, rootDir, candidate2);
             }
@@ -68057,7 +68057,7 @@ ${lanes.join("\n")}
         if (state.traceEnabled) {
           trace(state.host, Diagnostics.baseUrl_option_is_set_to_0_using_this_value_to_resolve_non_relative_module_name_1, baseUrl2, moduleName);
         }
-        const candidate = normalizePath2(combinePaths(baseUrl2, moduleName));
+        const candidate = normalizePath3(combinePaths(baseUrl2, moduleName));
         if (state.traceEnabled) {
           trace(state.host, Diagnostics.Resolving_module_name_0_relative_to_base_url_1_2, moduleName, baseUrl2, candidate);
         }
@@ -68344,14 +68344,14 @@ ${lanes.join("\n")}
         const combined = combinePaths(containingDirectory, moduleName);
         const parts = getPathComponents(combined);
         const lastPart = lastOrUndefined(parts);
-        const path = lastPart === "." || lastPart === ".." ? ensureTrailingDirectorySeparator(normalizePath2(combined)) : normalizePath2(combined);
+        const path = lastPart === "." || lastPart === ".." ? ensureTrailingDirectorySeparator(normalizePath3(combined)) : normalizePath3(combined);
         return { path, parts };
       }
       function realPath(path, host, traceEnabled) {
         if (!host.realpath) {
           return path;
         }
-        const real = normalizePath2(host.realpath(path));
+        const real = normalizePath3(host.realpath(path));
         if (traceEnabled) {
           trace(host, Diagnostics.Resolving_real_path_for_0_result_1, path, real);
         }
@@ -68402,7 +68402,7 @@ ${lanes.join("\n")}
         return path.includes(nodeModulesPathPart);
       }
       function parseNodeModuleFromPath(resolved, isFolder) {
-        const path = normalizePath2(resolved);
+        const path = normalizePath3(resolved);
         const idx = path.lastIndexOf(nodeModulesPathPart);
         if (idx === -1) {
           return void 0;
@@ -68803,7 +68803,7 @@ ${lanes.join("\n")}
         }
         const directoryExists = directoryProbablyExists(packageDirectory, host);
         if (directoryExists && host.fileExists(packageJsonPath)) {
-          const packageJsonContent = readJson(packageJsonPath, host);
+          const packageJsonContent = readJson2(packageJsonPath, host);
           if (traceEnabled) {
             trace(host, Diagnostics.Found_package_json_at_0, packageJsonPath);
           }
@@ -69387,14 +69387,14 @@ ${lanes.join("\n")}
         const secondaryExtensions = extensions & ~(1 | 4);
         if (priorityExtensions) {
           traceIfEnabled(state, Diagnostics.Searching_all_ancestor_node_modules_directories_for_preferred_extensions_Colon_0, formatExtensions(priorityExtensions));
-          const result = lookup(priorityExtensions);
+          const result = lookup2(priorityExtensions);
           if (result) return result;
         }
         if (secondaryExtensions && !typesScopeOnly) {
           traceIfEnabled(state, Diagnostics.Searching_all_ancestor_node_modules_directories_for_fallback_extensions_Colon_0, formatExtensions(secondaryExtensions));
-          return lookup(secondaryExtensions);
+          return lookup2(secondaryExtensions);
         }
-        function lookup(extensions2) {
+        function lookup2(extensions2) {
           return forEachAncestorDirectoryStoppingAtGlobalCache(
             state.host,
             normalizeSlashes(directory),
@@ -69445,7 +69445,7 @@ ${lanes.join("\n")}
       }
       function loadModuleFromSpecificNodeModulesDirectory(extensions, moduleName, nodeModulesDirectory, nodeModulesDirectoryExists, state, cache, redirectedReference) {
         var _a, _b;
-        const candidate = normalizePath2(combinePaths(nodeModulesDirectory, moduleName));
+        const candidate = normalizePath3(combinePaths(nodeModulesDirectory, moduleName));
         const { packageName, rest } = parsePackageName(moduleName);
         const packageDirectory = combinePaths(nodeModulesDirectory, packageName);
         let rootPackageInfo;
@@ -69510,7 +69510,7 @@ ${lanes.join("\n")}
           }
           const resolved = forEach(paths[matchedPatternText], (subst) => {
             const path = matchedStar ? replaceFirstStar(subst, matchedStar) : subst;
-            const candidate = normalizePath2(combinePaths(baseDirectory, path));
+            const candidate = normalizePath3(combinePaths(baseDirectory, path));
             if (state.traceEnabled) {
               trace(state.host, Diagnostics.Trying_substitution_0_candidate_module_location_Colon_1, subst, path);
             }
@@ -69631,7 +69631,7 @@ ${lanes.join("\n")}
                 if (resolutionFromCache) {
                   return resolutionFromCache;
                 }
-                const searchName = normalizePath2(combinePaths(directory, moduleName));
+                const searchName = normalizePath3(combinePaths(directory, moduleName));
                 return toSearchResult(loadModuleFromFileNoPackageId(
                   extensions,
                   searchName,
@@ -69648,7 +69648,7 @@ ${lanes.join("\n")}
               return resolved3;
             }
           } else {
-            const candidate = normalizePath2(combinePaths(containingDirectory, moduleName));
+            const candidate = normalizePath3(combinePaths(containingDirectory, moduleName));
             return toSearchResult(loadModuleFromFileNoPackageId(
               extensions,
               candidate,
@@ -73855,7 +73855,7 @@ ${lanes.join("\n")}
       function tryGetModuleNameFromPaths(relativeToBaseUrl, paths, allowedEndings, baseDirectory, getCanonicalFileName, host, compilerOptions) {
         for (const key in paths) {
           for (const patternText2 of paths[key]) {
-            const normalized = normalizePath2(patternText2);
+            const normalized = normalizePath3(patternText2);
             const pattern = getRelativePathIfInSameVolume(normalized, baseDirectory, getCanonicalFileName) ?? normalized;
             const indexOfStar = pattern.indexOf("*");
             const candidates = allowedEndings.map((ending) => ({
@@ -149415,7 +149415,7 @@ ${lanes.join("\n")}
         return getOutputs();
       }
       function getOutputFileNames(commandLine, inputFileName, ignoreCase) {
-        inputFileName = normalizePath2(inputFileName);
+        inputFileName = normalizePath3(inputFileName);
         Debug.assert(contains(commandLine.fileNames, inputFileName), `Expected fileName to be present in command line`);
         const { addOutput, getOutputs } = createAddOutput();
         if (commandLine.options.outFile) {
@@ -149753,7 +149753,7 @@ ${lanes.join("\n")}
             }
             return sourceMapDir;
           }
-          return getDirectoryPath(normalizePath2(filePath));
+          return getDirectoryPath(normalizePath3(filePath));
         }
         function getSourceMappingURL(mapOptions, sourceMapGenerator, filePath, sourceMapFilePath, sourceFile) {
           if (mapOptions.inlineSourceMap) {
@@ -149771,7 +149771,7 @@ ${lanes.join("\n")}
               sourceMapDir = combinePaths(host.getCommonSourceDirectory(), sourceMapDir);
               return encodeURI(
                 getRelativePathToDirectoryOrUrl(
-                  getDirectoryPath(normalizePath2(filePath)),
+                  getDirectoryPath(normalizePath3(filePath)),
                   // get the relative sourceMapDir path based on jsFilePath
                   combinePaths(sourceMapDir, sourceMapFile),
                   // this is where user expects to see sourceMap
@@ -154594,7 +154594,7 @@ ${lanes.join("\n")}
           return entries;
         }
         function getBaseNameOfFileName(fileName) {
-          return getBaseFileName(normalizePath2(fileName));
+          return getBaseFileName(normalizePath3(fileName));
         }
         function createCachedFileSystemEntries(rootDir, rootDirPath) {
           var _a;
@@ -155078,7 +155078,7 @@ ${lanes.join("\n")}
       function resolveTripleslashReference(moduleName, containingFile) {
         const basePath = getDirectoryPath(containingFile);
         const referencedFileName = isRootedDiskPath(moduleName) ? moduleName : combinePaths(basePath, moduleName);
-        return normalizePath2(referencedFileName);
+        return normalizePath3(referencedFileName);
       }
       function computeCommonSourceDirectoryOfFilenames(fileNames, currentDirectory, getCanonicalFileName) {
         let commonPathComponents;
@@ -155166,7 +155166,7 @@ ${lanes.join("\n")}
           return false;
         }
         function getDefaultLibLocation() {
-          return getDirectoryPath(normalizePath2(system.getExecutingFilePath()));
+          return getDirectoryPath(normalizePath3(system.getExecutingFilePath()));
         }
         const newLine = getNewLineCharacter(options);
         const realpath = system.realpath && ((path) => system.realpath(path));
@@ -157336,7 +157336,7 @@ ${lanes.join("\n")}
         }
         function processRootFile(fileName, isDefaultLib, ignoreNoDefaultLib, reason) {
           processSourceFile(
-            normalizePath2(fileName),
+            normalizePath3(fileName),
             isDefaultLib,
             ignoreNoDefaultLib,
             /*packageId*/
@@ -158824,7 +158824,7 @@ ${lanes.join("\n")}
           const symlinkCache = host.getSymlinkCache();
           const directoryPath = ensureTrailingDirectorySeparator(host.toPath(directory));
           if ((_a = symlinkCache.getSymlinkedDirectories()) == null ? void 0 : _a.has(directoryPath)) return;
-          const real = normalizePath2(originalRealpath.call(host.compilerHost, directory));
+          const real = normalizePath3(originalRealpath.call(host.compilerHost, directory));
           let realPath2;
           if (real === directory || (realPath2 = ensureTrailingDirectorySeparator(host.toPath(real))) === directoryPath) {
             symlinkCache.setSymlinkedDirectory(directoryPath, false);
@@ -161285,7 +161285,7 @@ ${lanes.join("\n")}
       }
       function getDirectoryToWatchFailedLookupLocation(failedLookupLocation, failedLookupLocationPath, rootDir, rootPath, rootPathComponents, isRootWatchable, getCurrentDirectory, preferNonRecursiveWatch) {
         const failedLookupPathComponents = getPathComponents(failedLookupLocationPath);
-        failedLookupLocation = isRootedDiskPath(failedLookupLocation) ? normalizePath2(failedLookupLocation) : getNormalizedAbsolutePath(failedLookupLocation, getCurrentDirectory());
+        failedLookupLocation = isRootedDiskPath(failedLookupLocation) ? normalizePath3(failedLookupLocation) : getNormalizedAbsolutePath(failedLookupLocation, getCurrentDirectory());
         const failedLookupComponents = getPathComponents(failedLookupLocation);
         const perceivedOsRootLength = perceivedOsRootLengthForWatching(failedLookupPathComponents, failedLookupPathComponents.length);
         if (failedLookupPathComponents.length <= perceivedOsRootLength + 1) return void 0;
@@ -161369,7 +161369,7 @@ ${lanes.join("\n")}
         if (isRootWatchable && isInDirectoryPath(rootPathComponents, typeRootPathComponents)) {
           return rootPath;
         }
-        typeRoot = isRootedDiskPath(typeRoot) ? normalizePath2(typeRoot) : getNormalizedAbsolutePath(typeRoot, getCurrentDirectory());
+        typeRoot = isRootedDiskPath(typeRoot) ? normalizePath3(typeRoot) : getNormalizedAbsolutePath(typeRoot, getCurrentDirectory());
         const toWatch = getDirectoryToWatchFromFailedLookupLocationDirectory(
           getPathComponents(typeRoot),
           typeRootPathComponents,
@@ -162927,7 +162927,7 @@ ${lanes.join("\n")}
         };
       }
       function createProgramHost(system, createProgram2) {
-        const getDefaultLibLocation = memoize(() => getDirectoryPath(normalizePath2(system.getExecutingFilePath())));
+        const getDefaultLibLocation = memoize(() => getDirectoryPath(normalizePath3(system.getExecutingFilePath())));
         return {
           useCaseSensitiveFileNames: () => system.useCaseSensitiveFileNames,
           getNewLine: () => system.newLine,
@@ -166067,7 +166067,7 @@ ${lanes.join("\n")}
               /* DiagnosticsPresent_OutputsSkipped */
             );
           }
-          const fileOrDirectory = normalizePath2(commandLine.options.project);
+          const fileOrDirectory = normalizePath3(commandLine.options.project);
           if (!fileOrDirectory || sys2.directoryExists(fileOrDirectory)) {
             configFileName = combinePaths(fileOrDirectory, "tsconfig.json");
             if (!sys2.fileExists(configFileName)) {
@@ -166088,12 +166088,12 @@ ${lanes.join("\n")}
             }
           }
         } else if (commandLine.fileNames.length === 0) {
-          const searchPath = normalizePath2(sys2.getCurrentDirectory());
+          const searchPath = normalizePath3(sys2.getCurrentDirectory());
           configFileName = findConfigFile(searchPath, (fileName) => sys2.fileExists(fileName));
         }
         if (commandLine.fileNames.length === 0 && !configFileName) {
           if (commandLine.options.showConfig) {
-            reportDiagnostic(createCompilerDiagnostic(Diagnostics.Cannot_find_a_tsconfig_json_file_at_the_current_directory_Colon_0, normalizePath2(sys2.getCurrentDirectory())));
+            reportDiagnostic(createCompilerDiagnostic(Diagnostics.Cannot_find_a_tsconfig_json_file_at_the_current_directory_Colon_0, normalizePath3(sys2.getCurrentDirectory())));
           } else {
             printVersion(sys2);
             printHelp(sys2, commandLine);
@@ -166751,7 +166751,7 @@ ${lanes.join("\n")}
       }
       function writeConfigFile(sys2, reportDiagnostic, options) {
         const currentDirectory = sys2.getCurrentDirectory();
-        const file = normalizePath2(combinePaths(currentDirectory, "tsconfig.json"));
+        const file = normalizePath3(combinePaths(currentDirectory, "tsconfig.json"));
         if (sys2.fileExists(file)) {
           reportDiagnostic(createCompilerDiagnostic(Diagnostics.A_tsconfig_json_file_is_already_defined_at_Colon_0, file));
         } else {
@@ -168124,7 +168124,7 @@ ${lanes.join("\n")}
         }
         const inferredTypings = /* @__PURE__ */ new Map();
         fileNames = mapDefined(fileNames, (fileName) => {
-          const path = normalizePath2(fileName);
+          const path = normalizePath3(fileName);
           if (hasJSFileExtension(path)) {
             return path;
           }
@@ -168214,14 +168214,14 @@ ${lanes.join("\n")}
             if (getBaseFileName(manifestPath2) !== manifestName) {
               return false;
             }
-            const pathComponents2 = getPathComponents(normalizePath2(manifestPath2));
+            const pathComponents2 = getPathComponents(normalizePath3(manifestPath2));
             const isScoped = pathComponents2[pathComponents2.length - 3][0] === "@";
             return isScoped && toFileNameLowerCase(pathComponents2[pathComponents2.length - 4]) === modulesDirName || // `node_modules/@foo/bar`
             !isScoped && toFileNameLowerCase(pathComponents2[pathComponents2.length - 3]) === modulesDirName;
           });
           if (log) log(`Searching for typing names in ${packagesFolderPath}; all files: ${JSON.stringify(dependencyManifestNames)}`);
           for (const manifestPath2 of dependencyManifestNames) {
-            const normalizedFileName = normalizePath2(manifestPath2);
+            const normalizedFileName = normalizePath3(manifestPath2);
             const result2 = readConfigFile(normalizedFileName, (path) => host.readFile(path));
             const manifest2 = result2.config;
             if (!manifest2.name) {
@@ -170320,7 +170320,7 @@ ${lanes.join("\n")}
       }
       function getMappedLocation(location, sourceMapper, fileExists) {
         const mapsTo = sourceMapper.tryGetSourcePosition(location);
-        return mapsTo && (!fileExists || fileExists(normalizePath2(mapsTo.fileName)) ? mapsTo : void 0);
+        return mapsTo && (!fileExists || fileExists(normalizePath3(mapsTo.fileName)) ? mapsTo : void 0);
       }
       function getMappedDocumentSpan(documentSpan, sourceMapper, fileExists) {
         const { fileName, textSpan } = documentSpan;
@@ -173803,7 +173803,7 @@ ${lanes.join("\n")}
         }
       }
       function combineNormal(pathA, pathB) {
-        return normalizePath2(combinePaths(pathA, pathB));
+        return normalizePath3(combinePaths(pathA, pathB));
       }
       function combinePathsSafe(pathA, pathB) {
         return ensurePathIsNonModuleName(combineNormal(pathA, pathB));
@@ -174990,7 +174990,7 @@ interface Symbol {
         }
         const newLine = getNewLineCharacter(options);
         const compilerHost = {
-          getSourceFile: (fileName) => fileName === normalizePath2(inputFileName) ? sourceFile : fileName === normalizePath2(barebonesLibName) ? barebonesLibSourceFile : void 0,
+          getSourceFile: (fileName) => fileName === normalizePath3(inputFileName) ? sourceFile : fileName === normalizePath3(barebonesLibName) ? barebonesLibSourceFile : void 0,
           writeFile: (name, text) => {
             if (fileExtensionIs(name, ".map")) {
               Debug.assertEqual(sourceMapText, void 0, "Unexpected multiple source map outputs, file:", name);
@@ -175791,7 +175791,7 @@ interface Symbol {
         switch (node.kind) {
           case 308:
             const sourceFile = node;
-            return isExternalModule(sourceFile) ? `"${escapeString(getBaseFileName(removeFileExtension(normalizePath2(sourceFile.fileName))))}"` : "<global>";
+            return isExternalModule(sourceFile) ? `"${escapeString(getBaseFileName(removeFileExtension(normalizePath3(sourceFile.fileName))))}"` : "<global>";
           case 278:
             return isExportAssignment(node) && node.isExportEquals ? "export=" : "default";
           case 220:
@@ -176998,7 +176998,7 @@ interface Symbol {
       function addNewFileToTsconfig(program, changes, oldFileName, newFileNameWithExtension, getCanonicalFileName) {
         const cfg = program.getCompilerOptions().configFile;
         if (!cfg) return;
-        const newFileAbsolutePath = normalizePath2(combinePaths(oldFileName, "..", newFileNameWithExtension));
+        const newFileAbsolutePath = normalizePath3(combinePaths(oldFileName, "..", newFileNameWithExtension));
         const newFilePath = getRelativePathFromFile(cfg.fileName, newFileAbsolutePath, getCanonicalFileName);
         const cfgObject = cfg.statements[0] && tryCast(cfg.statements[0].expression, isObjectLiteralExpression);
         const filesProp = cfgObject && find(cfgObject.properties, (prop) => isPropertyAssignment(prop) && isStringLiteral(prop.name) && prop.name.text === "files");
@@ -183228,8 +183228,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           return ts_FindAllReferences_exports.getImplementationsAtPosition(program, cancellationToken, program.getSourceFiles(), getValidSourceFile(fileName), position);
         }
         function getDocumentHighlights(fileName, position, filesToSearch) {
-          const normalizedFileName = normalizePath2(fileName);
-          Debug.assert(filesToSearch.some((f) => normalizePath2(f) === normalizedFileName));
+          const normalizedFileName = normalizePath3(fileName);
+          Debug.assert(filesToSearch.some((f) => normalizePath3(f) === normalizedFileName));
           synchronizeHostData();
           const sourceFilesToSearch = mapDefined(filesToSearch, (fileName2) => program.getSourceFile(fileName2));
           const sourceFile = getValidSourceFile(fileName);
@@ -184089,7 +184089,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       }
       function getDefaultLibFilePath(options) {
         if (sys) {
-          return combinePaths(getDirectoryPath(normalizePath2(sys.getExecutingFilePath())), getDefaultLibFileName(options));
+          return combinePaths(getDirectoryPath(normalizePath3(sys.getExecutingFilePath())), getDefaultLibFileName(options));
         }
         throw new Error("getDefaultLibFilePath is only supported when consumed as a node module. ");
       }
@@ -201714,7 +201714,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         return moduleResolutionUsesNodeModules(moduleResolution) ? getSupportedExtensionsWithJsonIfResolveJsonModule(compilerOptions, extensions) : extensions;
       }
       function getBaseDirectoriesFromRootDirs(rootDirs, basePath, scriptDirectory, ignoreCase) {
-        rootDirs = rootDirs.map((rootDirectory) => ensureTrailingDirectorySeparator(normalizePath2(isRootedDiskPath(rootDirectory) ? rootDirectory : combinePaths(basePath, rootDirectory))));
+        rootDirs = rootDirs.map((rootDirectory) => ensureTrailingDirectorySeparator(normalizePath3(isRootedDiskPath(rootDirectory) ? rootDirectory : combinePaths(basePath, rootDirectory))));
         const relativeDirectory = firstDefined(rootDirs, (rootDirectory) => containsPath(rootDirectory, scriptDirectory, basePath, ignoreCase) ? scriptDirectory.substr(rootDirectory.length) : void 0);
         return deduplicate(
           [...rootDirs.map((rootDirectory) => combinePaths(rootDirectory, relativeDirectory)), scriptDirectory].map((baseDir) => removeTrailingDirectorySeparator(baseDir)),
@@ -201760,7 +201760,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         if (!moduleSpecifierIsRelative) {
           const packageJsonPath = findPackageJson(baseDirectory, host);
           if (packageJsonPath) {
-            const packageJson = readJson(packageJsonPath, host);
+            const packageJson = readJson2(packageJsonPath, host);
             const typesVersions = packageJson.typesVersions;
             if (typeof typesVersions === "object") {
               const versionPaths = (_a = getPackageJsonTypesVersionsPaths(typesVersions)) == null ? void 0 : _a.paths;
@@ -201787,7 +201787,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         );
         if (files) {
           for (let filePath of files) {
-            filePath = normalizePath2(filePath);
+            filePath = normalizePath3(filePath);
             if (exclude && comparePaths(filePath, exclude, scriptDirectory, ignoreCase) === 0) {
               continue;
             }
@@ -201804,7 +201804,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         const directories = tryGetDirectories(host, baseDirectory);
         if (directories) {
           for (const directory of directories) {
-            const directoryName = getBaseFileName(normalizePath2(directory));
+            const directoryName = getBaseFileName(normalizePath3(directory));
             if (directoryName !== "@types") {
               result.add(directoryResult(directoryName));
             }
@@ -201912,7 +201912,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         const result = createNameAndKindSet();
         const moduleResolution = getEmitModuleResolutionKind(compilerOptions);
         if (baseUrl2) {
-          const absolute = normalizePath2(combinePaths(host.getCurrentDirectory(), baseUrl2));
+          const absolute = normalizePath3(combinePaths(host.getCurrentDirectory(), baseUrl2));
           getCompletionEntriesForDirectoryFragment(
             fragment,
             absolute,
@@ -201965,7 +201965,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               if (resolvePackageJsonImports && !seenPackageScope) {
                 const packageFile = combinePaths(directory, "package.json");
                 if (seenPackageScope = tryFileExists(host, packageFile)) {
-                  const packageJson = readJson(packageFile, host);
+                  const packageJson = readJson2(packageFile, host);
                   exportsOrImportsLookup(
                     packageJson.imports,
                     fragment,
@@ -202019,7 +202019,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
                 const packageDirectory = combinePaths(ancestor, "node_modules", packagePath);
                 const packageFile = combinePaths(packageDirectory, "package.json");
                 if (tryFileExists(host, packageFile)) {
-                  const packageJson = readJson(packageFile, host);
+                  const packageJson = readJson2(packageFile, host);
                   const fragmentSubpath = components.join("/") + (components.length && hasTrailingDirectorySeparator(fragment) ? "/" : "");
                   exportsOrImportsLookup(
                     packageJson.exports,
@@ -202130,10 +202130,10 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         const outDir = program.getCompilerOptions().outDir;
         const declarationDir = program.getCompilerOptions().declarationDir;
         const expandedPrefixDirectory = fragmentHasPath ? combinePaths(normalizedPrefixDirectory, normalizedPrefixBase + fragmentDirectory) : normalizedPrefixDirectory;
-        const baseDirectory = normalizePath2(combinePaths(packageDirectory, expandedPrefixDirectory));
+        const baseDirectory = normalizePath3(combinePaths(packageDirectory, expandedPrefixDirectory));
         const possibleInputBaseDirectoryForOutDir = isImports && outDir && getPossibleOriginalInputPathWithoutChangingExt(baseDirectory, ignoreCase, outDir, getCommonSourceDirectory2);
         const possibleInputBaseDirectoryForDeclarationDir = isImports && declarationDir && getPossibleOriginalInputPathWithoutChangingExt(baseDirectory, ignoreCase, declarationDir, getCommonSourceDirectory2);
-        const normalizedSuffix = normalizePath2(parsed.suffix);
+        const normalizedSuffix = normalizePath3(parsed.suffix);
         const declarationExtension = normalizedSuffix && getDeclarationEmitExtensionForPath("_" + normalizedSuffix);
         const inputExtension = normalizedSuffix ? getPossibleOriginalInputExtensionForExtension("_" + normalizedSuffix) : void 0;
         const matchingSuffixes = [
@@ -202185,7 +202185,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         function trimPrefixAndSuffix(path, prefix) {
           return firstDefined(matchingSuffixes, (suffix) => {
-            const inner = withoutStartAndEnd(normalizePath2(path), prefix, suffix);
+            const inner = withoutStartAndEnd(normalizePath3(path), prefix, suffix);
             return inner === void 0 ? void 0 : removeLeadingDirectorySeparator(inner);
           });
         }
@@ -202286,7 +202286,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         if (!host.readFile || !host.fileExists) return emptyArray;
         const result = [];
         for (const packageJson of findPackageJsons(scriptPath, host)) {
-          const contents = readJson(packageJson, host);
+          const contents = readJson2(packageJson, host);
           for (const key of nodeModulesDependencyKeys) {
             const dependencies = contents[key];
             if (!dependencies) continue;
@@ -211788,7 +211788,7 @@ ${options.prefix}` : "\n" : options.prefix
         ]);
         const highPriorityCommonRules = [
           // Leave comments alone
-          rule(
+          rule2(
             "IgnoreBeforeComment",
             anyToken,
             comments,
@@ -211796,7 +211796,7 @@ ${options.prefix}` : "\n" : options.prefix
             1
             /* StopProcessingSpaceActions */
           ),
-          rule(
+          rule2(
             "IgnoreAfterLineComment",
             2,
             anyToken,
@@ -211804,7 +211804,7 @@ ${options.prefix}` : "\n" : options.prefix
             1
             /* StopProcessingSpaceActions */
           ),
-          rule(
+          rule2(
             "NotSpaceBeforeColon",
             anyToken,
             59,
@@ -211812,7 +211812,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "SpaceAfterColon",
             59,
             anyToken,
@@ -211820,7 +211820,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBeforeQuestionMark",
             anyToken,
             58,
@@ -211829,7 +211829,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // insert space after '?' only when it is used in conditional operator
-          rule(
+          rule2(
             "SpaceAfterQuestionMarkInConditionalOperator",
             58,
             anyToken,
@@ -211838,7 +211838,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* InsertSpace */
           ),
           // in other cases there should be no space between '?' and next token
-          rule(
+          rule2(
             "NoSpaceAfterQuestionMark",
             58,
             anyToken,
@@ -211846,7 +211846,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBeforeDot",
             anyToken,
             [
@@ -211858,7 +211858,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterDot",
             [
               25,
@@ -211870,7 +211870,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBetweenImportParenInImportType",
             102,
             21,
@@ -211881,7 +211881,7 @@ ${options.prefix}` : "\n" : options.prefix
           // Special handling of unary operators.
           // Prefix operators generally shouldn't have a space between
           // them and their target unary expression.
-          rule(
+          rule2(
             "NoSpaceAfterUnaryPrefixOperator",
             unaryPrefixOperators,
             unaryPrefixExpressions,
@@ -211889,7 +211889,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterUnaryPreincrementOperator",
             46,
             unaryPreincrementExpressions,
@@ -211897,7 +211897,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterUnaryPredecrementOperator",
             47,
             unaryPredecrementExpressions,
@@ -211905,7 +211905,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBeforeUnaryPostincrementOperator",
             unaryPostincrementExpressions,
             46,
@@ -211913,7 +211913,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBeforeUnaryPostdecrementOperator",
             unaryPostdecrementExpressions,
             47,
@@ -211926,7 +211926,7 @@ ${options.prefix}` : "\n" : options.prefix
           // around unary operators.  Examples:
           //      1 - -2  --X--> 1--2
           //      a + ++b --X--> a+++b
-          rule(
+          rule2(
             "SpaceAfterPostincrementWhenFollowedByAdd",
             46,
             40,
@@ -211934,7 +211934,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "SpaceAfterAddWhenFollowedByUnaryPlus",
             40,
             40,
@@ -211942,7 +211942,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "SpaceAfterAddWhenFollowedByPreincrement",
             40,
             46,
@@ -211950,7 +211950,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "SpaceAfterPostdecrementWhenFollowedBySubtract",
             47,
             41,
@@ -211958,7 +211958,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "SpaceAfterSubtractWhenFollowedByUnaryMinus",
             41,
             41,
@@ -211966,7 +211966,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "SpaceAfterSubtractWhenFollowedByPredecrement",
             41,
             47,
@@ -211974,7 +211974,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterCloseBrace",
             20,
             [
@@ -211987,7 +211987,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // For functions and control block place } on a new line [multi-line rule]
-          rule(
+          rule2(
             "NewLineBeforeCloseBraceInBlockContext",
             anyTokenIncludingMultilineComments,
             20,
@@ -211996,7 +211996,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* InsertNewLine */
           ),
           // Space/new line after }.
-          rule(
+          rule2(
             "SpaceAfterCloseBrace",
             20,
             anyTokenExcept(
@@ -212009,7 +212009,7 @@ ${options.prefix}` : "\n" : options.prefix
           ),
           // Special case for (}, else) and (}, while) since else & while tokens are not part of the tree which makes SpaceAfterCloseBrace rule not applied
           // Also should not apply to })
-          rule(
+          rule2(
             "SpaceBetweenCloseBraceAndElse",
             20,
             93,
@@ -212017,7 +212017,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "SpaceBetweenCloseBraceAndWhile",
             20,
             117,
@@ -212025,7 +212025,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBetweenEmptyBraceBrackets",
             19,
             20,
@@ -212034,7 +212034,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // Add a space after control dec context if the next character is an open bracket ex: 'if (false)[a, b] = [1, 2];' -> 'if (false) [a, b] = [1, 2];'
-          rule(
+          rule2(
             "SpaceAfterConditionalClosingParen",
             22,
             23,
@@ -212042,7 +212042,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBetweenFunctionKeywordAndStar",
             100,
             42,
@@ -212050,7 +212050,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "SpaceAfterStarInGeneratorDeclaration",
             42,
             80,
@@ -212058,7 +212058,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "SpaceAfterFunctionInFuncDecl",
             100,
             anyToken,
@@ -212067,7 +212067,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* InsertSpace */
           ),
           // Insert new line after { and before } in multi-line contexts.
-          rule(
+          rule2(
             "NewLineAfterOpenBraceInBlockContext",
             19,
             anyToken,
@@ -212079,7 +212079,7 @@ ${options.prefix}` : "\n" : options.prefix
           // Though, we do extra check on the context to make sure we are dealing with get/set node. Example:
           //      get x() {}
           //      set x(val) {}
-          rule(
+          rule2(
             "SpaceAfterGetSetInMember",
             [
               139,
@@ -212091,7 +212091,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBetweenYieldKeywordAndStar",
             127,
             42,
@@ -212099,7 +212099,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "SpaceBetweenYieldOrYieldStarAndOperand",
             [
               127,
@@ -212111,7 +212111,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBetweenReturnAndSemicolon",
             107,
             27,
@@ -212119,7 +212119,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "SpaceAfterCertainKeywords",
             [
               115,
@@ -212136,7 +212136,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "SpaceAfterLetConstInVariableDeclaration",
             [
               121,
@@ -212148,7 +212148,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBeforeOpenParenInFuncCall",
             anyToken,
             21,
@@ -212157,7 +212157,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // Special case for binary operators (that are keywords). For these we have to add a space and shouldn't follow any user options.
-          rule(
+          rule2(
             "SpaceBeforeBinaryKeywordOperator",
             anyToken,
             binaryKeywordOperators,
@@ -212165,7 +212165,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "SpaceAfterBinaryKeywordOperator",
             binaryKeywordOperators,
             anyToken,
@@ -212173,7 +212173,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "SpaceAfterVoidOperator",
             116,
             anyToken,
@@ -212182,7 +212182,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* InsertSpace */
           ),
           // Async-await
-          rule(
+          rule2(
             "SpaceBetweenAsyncAndOpenParen",
             134,
             21,
@@ -212190,7 +212190,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "SpaceBetweenAsyncAndFunctionKeyword",
             134,
             [
@@ -212203,7 +212203,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* InsertSpace */
           ),
           // Template string
-          rule(
+          rule2(
             "NoSpaceBetweenTagAndTemplateString",
             [
               80,
@@ -212220,7 +212220,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // JSX opening elements
-          rule(
+          rule2(
             "SpaceBeforeJsxAttribute",
             anyToken,
             80,
@@ -212228,7 +212228,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "SpaceBeforeSlashInJsxOpeningElement",
             anyToken,
             44,
@@ -212236,7 +212236,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBeforeGreaterThanTokenInJsxOpeningElement",
             44,
             32,
@@ -212244,7 +212244,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBeforeEqualInJsxAttribute",
             anyToken,
             64,
@@ -212252,7 +212252,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterEqualInJsxAttribute",
             64,
             anyToken,
@@ -212260,7 +212260,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBeforeJsxNamespaceColon",
             80,
             59,
@@ -212268,7 +212268,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterJsxNamespaceColon",
             59,
             80,
@@ -212278,7 +212278,7 @@ ${options.prefix}` : "\n" : options.prefix
           ),
           // TypeScript-specific rules
           // Use of module as a function call. e.g.: import m2 = module("m2");
-          rule(
+          rule2(
             "NoSpaceAfterModuleImport",
             [
               144,
@@ -212291,7 +212291,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // Add a space around certain TypeScript keywords
-          rule(
+          rule2(
             "SpaceAfterCertainTypeScriptKeywords",
             [
               128,
@@ -212325,7 +212325,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "SpaceBeforeCertainTypeScriptKeywords",
             anyToken,
             [
@@ -212339,7 +212339,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* InsertSpace */
           ),
           // Treat string literals in module names as identifiers, and add a space between the literal and the opening Brace braces, e.g.: module "m2" {
-          rule(
+          rule2(
             "SpaceAfterModuleName",
             11,
             19,
@@ -212348,7 +212348,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* InsertSpace */
           ),
           // Lambda expressions
-          rule(
+          rule2(
             "SpaceBeforeArrow",
             anyToken,
             39,
@@ -212356,7 +212356,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "SpaceAfterArrow",
             39,
             anyToken,
@@ -212365,7 +212365,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* InsertSpace */
           ),
           // Optional parameters and let args
-          rule(
+          rule2(
             "NoSpaceAfterEllipsis",
             26,
             80,
@@ -212373,7 +212373,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterOptionalParameters",
             58,
             [
@@ -212386,7 +212386,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // Remove spaces in empty interface literals. e.g.: x: {}
-          rule(
+          rule2(
             "NoSpaceBetweenEmptyInterfaceBraceBrackets",
             19,
             20,
@@ -212395,7 +212395,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // generics and type assertions
-          rule(
+          rule2(
             "NoSpaceBeforeOpenAngularBracket",
             typeNames,
             30,
@@ -212403,7 +212403,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBetweenCloseParenAndAngularBracket",
             22,
             30,
@@ -212411,7 +212411,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterOpenAngularBracket",
             30,
             anyToken,
@@ -212419,7 +212419,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBeforeCloseAngularBracket",
             anyToken,
             32,
@@ -212427,7 +212427,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterCloseAngularBracket",
             32,
             [
@@ -212448,7 +212448,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // decorators
-          rule(
+          rule2(
             "SpaceBeforeAt",
             [
               22,
@@ -212460,7 +212460,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterAt",
             60,
             anyToken,
@@ -212469,7 +212469,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // Insert space after @ in decorator
-          rule(
+          rule2(
             "SpaceAfterDecorator",
             anyToken,
             [
@@ -212492,7 +212492,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBeforeNonNullAssertionOperator",
             anyToken,
             54,
@@ -212500,7 +212500,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterNewKeywordOnConstructorSignature",
             105,
             21,
@@ -212508,7 +212508,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "SpaceLessThanAndNonJSXTypeAnnotation",
             30,
             30,
@@ -212519,7 +212519,7 @@ ${options.prefix}` : "\n" : options.prefix
         ];
         const userConfigurableRules = [
           // Treat constructor as an identifier in a function declaration, and remove spaces between constructor and following left parentheses
-          rule(
+          rule2(
             "SpaceAfterConstructor",
             137,
             21,
@@ -212527,7 +212527,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterConstructor",
             137,
             21,
@@ -212535,7 +212535,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "SpaceAfterComma",
             28,
             anyToken,
@@ -212543,7 +212543,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterComma",
             28,
             anyToken,
@@ -212552,7 +212552,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // Insert space after function keyword for anonymous functions
-          rule(
+          rule2(
             "SpaceAfterAnonymousFunctionKeyword",
             [
               100,
@@ -212564,7 +212564,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterAnonymousFunctionKeyword",
             [
               100,
@@ -212577,7 +212577,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // Insert space after keywords in control flow statements
-          rule(
+          rule2(
             "SpaceAfterKeywordInControl",
             keywords,
             21,
@@ -212585,7 +212585,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterKeywordInControl",
             keywords,
             21,
@@ -212594,7 +212594,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // Insert space after opening and before closing nonempty parenthesis
-          rule(
+          rule2(
             "SpaceAfterOpenParen",
             21,
             anyToken,
@@ -212602,7 +212602,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "SpaceBeforeCloseParen",
             anyToken,
             22,
@@ -212610,7 +212610,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "SpaceBetweenOpenParens",
             21,
             21,
@@ -212618,7 +212618,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBetweenParens",
             21,
             22,
@@ -212626,7 +212626,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterOpenParen",
             21,
             anyToken,
@@ -212634,7 +212634,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBeforeCloseParen",
             anyToken,
             22,
@@ -212643,7 +212643,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // Insert space after opening and before closing nonempty brackets
-          rule(
+          rule2(
             "SpaceAfterOpenBracket",
             23,
             anyToken,
@@ -212651,7 +212651,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "SpaceBeforeCloseBracket",
             anyToken,
             24,
@@ -212659,7 +212659,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBetweenBrackets",
             23,
             24,
@@ -212667,7 +212667,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterOpenBracket",
             23,
             anyToken,
@@ -212675,7 +212675,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBeforeCloseBracket",
             anyToken,
             24,
@@ -212684,7 +212684,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // Insert a space after { and before } in single-line contexts, but remove space from empty object literals {}.
-          rule(
+          rule2(
             "SpaceAfterOpenBrace",
             19,
             anyToken,
@@ -212692,7 +212692,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "SpaceBeforeCloseBrace",
             anyToken,
             20,
@@ -212700,7 +212700,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBetweenEmptyBraceBrackets",
             19,
             20,
@@ -212708,7 +212708,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterOpenBrace",
             19,
             anyToken,
@@ -212716,7 +212716,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBeforeCloseBrace",
             anyToken,
             20,
@@ -212725,7 +212725,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // Insert a space after opening and before closing empty brace brackets
-          rule(
+          rule2(
             "SpaceBetweenEmptyBraceBrackets",
             19,
             20,
@@ -212733,7 +212733,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBetweenEmptyBraceBrackets",
             19,
             20,
@@ -212742,7 +212742,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // Insert space after opening and before closing template string braces
-          rule(
+          rule2(
             "SpaceAfterTemplateHeadAndMiddle",
             [
               16,
@@ -212755,7 +212755,7 @@ ${options.prefix}` : "\n" : options.prefix
             1
             /* CanDeleteNewLines */
           ),
-          rule(
+          rule2(
             "SpaceBeforeTemplateMiddleAndTail",
             anyToken,
             [
@@ -212767,7 +212767,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterTemplateHeadAndMiddle",
             [
               16,
@@ -212780,7 +212780,7 @@ ${options.prefix}` : "\n" : options.prefix
             1
             /* CanDeleteNewLines */
           ),
-          rule(
+          rule2(
             "NoSpaceBeforeTemplateMiddleAndTail",
             anyToken,
             [
@@ -212793,7 +212793,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // No space after { and before } in JSX expression
-          rule(
+          rule2(
             "SpaceAfterOpenBraceInJsxExpression",
             19,
             anyToken,
@@ -212801,7 +212801,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "SpaceBeforeCloseBraceInJsxExpression",
             anyToken,
             20,
@@ -212809,7 +212809,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterOpenBraceInJsxExpression",
             19,
             anyToken,
@@ -212817,7 +212817,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBeforeCloseBraceInJsxExpression",
             anyToken,
             20,
@@ -212826,7 +212826,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // Insert space after semicolon in for statement
-          rule(
+          rule2(
             "SpaceAfterSemicolonInFor",
             27,
             anyToken,
@@ -212834,7 +212834,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterSemicolonInFor",
             27,
             anyToken,
@@ -212843,7 +212843,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // Insert space before and after binary operators
-          rule(
+          rule2(
             "SpaceBeforeBinaryOperator",
             anyToken,
             binaryOperators,
@@ -212851,7 +212851,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "SpaceAfterBinaryOperator",
             binaryOperators,
             anyToken,
@@ -212859,7 +212859,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBeforeBinaryOperator",
             anyToken,
             binaryOperators,
@@ -212867,7 +212867,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterBinaryOperator",
             binaryOperators,
             anyToken,
@@ -212875,7 +212875,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "SpaceBeforeOpenParenInFuncDecl",
             anyToken,
             21,
@@ -212883,7 +212883,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBeforeOpenParenInFuncDecl",
             anyToken,
             21,
@@ -212892,7 +212892,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // Open Brace braces after control block
-          rule(
+          rule2(
             "NewLineBeforeOpenBraceInControl",
             controlOpenBraceLeftTokenRange,
             19,
@@ -212903,7 +212903,7 @@ ${options.prefix}` : "\n" : options.prefix
           ),
           // Open Brace braces after function
           // TypeScript: Function can have return types, which can be made of tons of different token kinds
-          rule(
+          rule2(
             "NewLineBeforeOpenBraceInFunction",
             functionOpenBraceLeftTokenRange,
             19,
@@ -212913,7 +212913,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* CanDeleteNewLines */
           ),
           // Open Brace braces after TypeScript module/class/interface
-          rule(
+          rule2(
             "NewLineBeforeOpenBraceInTypeScriptDeclWithBlock",
             typeScriptOpenBraceLeftTokenRange,
             19,
@@ -212922,7 +212922,7 @@ ${options.prefix}` : "\n" : options.prefix
             1
             /* CanDeleteNewLines */
           ),
-          rule(
+          rule2(
             "SpaceAfterTypeAssertion",
             32,
             anyToken,
@@ -212930,7 +212930,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterTypeAssertion",
             32,
             anyToken,
@@ -212938,7 +212938,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "SpaceBeforeTypeAnnotation",
             anyToken,
             [
@@ -212950,7 +212950,7 @@ ${options.prefix}` : "\n" : options.prefix
             4
             /* InsertSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceBeforeTypeAnnotation",
             anyToken,
             [
@@ -212962,7 +212962,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoOptionalSemicolon",
             27,
             anyTokenIncludingEOF,
@@ -212974,7 +212974,7 @@ ${options.prefix}` : "\n" : options.prefix
             32
             /* DeleteToken */
           ),
-          rule(
+          rule2(
             "OptionalSemicolon",
             anyToken,
             anyTokenIncludingEOF,
@@ -212989,7 +212989,7 @@ ${options.prefix}` : "\n" : options.prefix
         ];
         const lowPriorityCommonRules = [
           // Space after keyword but not before ; or : or ?
-          rule(
+          rule2(
             "NoSpaceBeforeSemicolon",
             anyToken,
             27,
@@ -212997,7 +212997,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "SpaceBeforeOpenBraceInControl",
             controlOpenBraceLeftTokenRange,
             19,
@@ -213006,7 +213006,7 @@ ${options.prefix}` : "\n" : options.prefix
             1
             /* CanDeleteNewLines */
           ),
-          rule(
+          rule2(
             "SpaceBeforeOpenBraceInFunction",
             functionOpenBraceLeftTokenRange,
             19,
@@ -213015,7 +213015,7 @@ ${options.prefix}` : "\n" : options.prefix
             1
             /* CanDeleteNewLines */
           ),
-          rule(
+          rule2(
             "SpaceBeforeOpenBraceInTypeScriptDeclWithBlock",
             typeScriptOpenBraceLeftTokenRange,
             19,
@@ -213024,7 +213024,7 @@ ${options.prefix}` : "\n" : options.prefix
             1
             /* CanDeleteNewLines */
           ),
-          rule(
+          rule2(
             "NoSpaceBeforeComma",
             anyToken,
             28,
@@ -213033,7 +213033,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* DeleteSpace */
           ),
           // No space before and after indexer `x[]`
-          rule(
+          rule2(
             "NoSpaceBeforeOpenBracket",
             anyTokenExcept(
               134,
@@ -213045,7 +213045,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "NoSpaceAfterCloseBracket",
             24,
             anyToken,
@@ -213053,7 +213053,7 @@ ${options.prefix}` : "\n" : options.prefix
             16
             /* DeleteSpace */
           ),
-          rule(
+          rule2(
             "SpaceAfterSemicolon",
             27,
             anyToken,
@@ -213062,7 +213062,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* InsertSpace */
           ),
           // Remove extra space between for and await
-          rule(
+          rule2(
             "SpaceBetweenForAndAwaitKeyword",
             99,
             135,
@@ -213071,7 +213071,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* InsertSpace */
           ),
           // Remove extra spaces between ... and type name in tuple spread
-          rule(
+          rule2(
             "SpaceBetweenDotDotDotAndTypeName",
             26,
             typeNames,
@@ -213081,7 +213081,7 @@ ${options.prefix}` : "\n" : options.prefix
           ),
           // Add a space between statements. All keywords except (do,else,case) has open/close parens after them.
           // So, we have a rule to add a space for [),Any], [do,Any], [else,Any], and [case,Any]
-          rule(
+          rule2(
             "SpaceBetweenStatements",
             [
               22,
@@ -213096,7 +213096,7 @@ ${options.prefix}` : "\n" : options.prefix
             /* InsertSpace */
           ),
           // This low-pri rule takes care of "try {", "catch {" and "finally {" in case the rule SpaceBeforeOpenBraceInControl didn't execute on FormatOnEnter.
-          rule(
+          rule2(
             "SpaceAfterTryCatchFinally",
             [
               113,
@@ -213116,7 +213116,7 @@ ${options.prefix}` : "\n" : options.prefix
           ...lowPriorityCommonRules
         ];
       }
-      function rule(debugName, left, right, context3, action, flags = 0) {
+      function rule2(debugName, left, right, context3, action, flags = 0) {
         return { leftTokenRange: toTokenRange(left), rightTokenRange: toTokenRange(right), rule: { debugName, context: context3, action, flags } };
       }
       function tokenRangeFrom(tokens) {
@@ -213559,11 +213559,11 @@ ${options.prefix}` : "\n" : options.prefix
           if (bucket) {
             const rules2 = [];
             let ruleActionMask = 0;
-            for (const rule2 of bucket) {
+            for (const rule22 of bucket) {
               const acceptRuleActions = ~getRuleActionExclusion(ruleActionMask);
-              if (rule2.action & acceptRuleActions && every(rule2.context, (c) => c(context3))) {
-                rules2.push(rule2);
-                ruleActionMask |= rule2.action;
+              if (rule22.action & acceptRuleActions && every(rule22.context, (c) => c(context3))) {
+                rules2.push(rule22);
+                ruleActionMask |= rule22.action;
               }
             }
             if (rules2.length) {
@@ -213575,16 +213575,16 @@ ${options.prefix}` : "\n" : options.prefix
       function buildMap(rules) {
         const map2 = new Array(mapRowLength * mapRowLength);
         const rulesBucketConstructionStateList = new Array(map2.length);
-        for (const rule2 of rules) {
-          const specificRule = rule2.leftTokenRange.isSpecific && rule2.rightTokenRange.isSpecific;
-          for (const left of rule2.leftTokenRange.tokens) {
-            for (const right of rule2.rightTokenRange.tokens) {
+        for (const rule22 of rules) {
+          const specificRule = rule22.leftTokenRange.isSpecific && rule22.rightTokenRange.isSpecific;
+          for (const left of rule22.leftTokenRange.tokens) {
+            for (const right of rule22.rightTokenRange.tokens) {
               const index = getRuleBucketIndex(left, right);
               let rulesBucket = map2[index];
               if (rulesBucket === void 0) {
                 rulesBucket = map2[index] = [];
               }
-              addRule(rulesBucket, rule2.rule, specificRule, rulesBucketConstructionStateList, index);
+              addRule(rulesBucket, rule22.rule, specificRule, rulesBucketConstructionStateList, index);
             }
           }
         }
@@ -213606,10 +213606,10 @@ ${options.prefix}` : "\n" : options.prefix
         RulesPosition2[RulesPosition2["NoContextRulesAny"] = maskBitSize * 5] = "NoContextRulesAny";
         return RulesPosition2;
       })(RulesPosition || {});
-      function addRule(rules, rule2, specificTokens, constructionState, rulesBucketIndex) {
-        const position = rule2.action & 3 ? specificTokens ? 0 : RulesPosition.StopRulesAny : rule2.context !== anyContext ? specificTokens ? RulesPosition.ContextRulesSpecific : RulesPosition.ContextRulesAny : specificTokens ? RulesPosition.NoContextRulesSpecific : RulesPosition.NoContextRulesAny;
+      function addRule(rules, rule22, specificTokens, constructionState, rulesBucketIndex) {
+        const position = rule22.action & 3 ? specificTokens ? 0 : RulesPosition.StopRulesAny : rule22.context !== anyContext ? specificTokens ? RulesPosition.ContextRulesSpecific : RulesPosition.ContextRulesAny : specificTokens ? RulesPosition.NoContextRulesSpecific : RulesPosition.NoContextRulesAny;
         const state = constructionState[rulesBucketIndex] || 0;
-        rules.splice(getInsertionIndex(state, position), 0, rule2);
+        rules.splice(getInsertionIndex(state, position), 0, rule22);
         constructionState[rulesBucketIndex] = increaseInsertionIndex(state, position);
       }
       function getInsertionIndex(indexBitmap, maskPosition) {
@@ -214358,8 +214358,8 @@ ${options.prefix}` : "\n" : options.prefix
           let trimTrailingWhitespaces = formattingContext.options.trimTrailingWhitespace !== false;
           let lineAction = 0;
           if (rules) {
-            forEachRight(rules, (rule2) => {
-              lineAction = applyRuleEdits(rule2, previousItem, previousStartLine, currentItem, currentStartLine);
+            forEachRight(rules, (rule22) => {
+              lineAction = applyRuleEdits(rule22, previousItem, previousStartLine, currentItem, currentStartLine);
               if (dynamicIndentation) {
                 switch (lineAction) {
                   case 2:
@@ -214387,7 +214387,7 @@ ${options.prefix}` : "\n" : options.prefix
                     );
                 }
               }
-              trimTrailingWhitespaces = trimTrailingWhitespaces && !(rule2.action & 16) && rule2.flags !== 1;
+              trimTrailingWhitespaces = trimTrailingWhitespaces && !(rule22.action & 16) && rule22.flags !== 1;
             });
           } else {
             trimTrailingWhitespaces = trimTrailingWhitespaces && currentItem.kind !== 1;
@@ -214526,9 +214526,9 @@ ${options.prefix}` : "\n" : options.prefix
             edits.push(createTextChangeFromStartLength(start, 0, text));
           }
         }
-        function applyRuleEdits(rule2, previousRange2, previousStartLine, currentRange, currentStartLine) {
+        function applyRuleEdits(rule22, previousRange2, previousStartLine, currentRange, currentStartLine) {
           const onLaterLine = currentStartLine !== previousStartLine;
-          switch (rule2.action) {
+          switch (rule22.action) {
             case 1:
               return 0;
             case 16:
@@ -214541,7 +214541,7 @@ ${options.prefix}` : "\n" : options.prefix
               recordDelete(previousRange2.pos, previousRange2.end - previousRange2.pos);
               break;
             case 8:
-              if (rule2.flags !== 1 && previousStartLine !== currentStartLine) {
+              if (rule22.flags !== 1 && previousStartLine !== currentStartLine) {
                 return 0;
               }
               const lineDelta = currentStartLine - previousStartLine;
@@ -214551,7 +214551,7 @@ ${options.prefix}` : "\n" : options.prefix
               }
               break;
             case 4:
-              if (rule2.flags !== 1 && previousStartLine !== currentStartLine) {
+              if (rule22.flags !== 1 && previousStartLine !== currentStartLine) {
                 return 0;
               }
               const posDelta = currentRange.pos - previousRange2.end;
@@ -217235,7 +217235,7 @@ ${options.prefix}` : "\n" : options.prefix
         nodeStartsNewLexicalEnvironment: () => nodeStartsNewLexicalEnvironment,
         noop: () => noop3,
         noopFileWatcher: () => noopFileWatcher,
-        normalizePath: () => normalizePath2,
+        normalizePath: () => normalizePath3,
         normalizeSlashes: () => normalizeSlashes,
         normalizeSpans: () => normalizeSpans,
         not: () => not,
@@ -217323,7 +217323,7 @@ ${options.prefix}` : "\n" : options.prefix
         rangeStartPositionsAreOnSameLine: () => rangeStartPositionsAreOnSameLine,
         readBuilderProgram: () => readBuilderProgram,
         readConfigFile: () => readConfigFile,
-        readJson: () => readJson,
+        readJson: () => readJson2,
         readJsonConfigFile: () => readJsonConfigFile,
         readJsonOrUndefined: () => readJsonOrUndefined,
         reduceEachLeadingCommentRange: () => reduceEachLeadingCommentRange,
@@ -218271,7 +218271,7 @@ ${options.prefix}` : "\n" : options.prefix
         Errors2.ThrowProjectDoesNotContainDocument = ThrowProjectDoesNotContainDocument;
       })(Errors || (Errors = {}));
       function toNormalizedPath(fileName) {
-        return normalizePath2(fileName);
+        return normalizePath3(fileName);
       }
       function normalizedPathToPath(normalizedPath, currentDirectory, getCanonicalFileName) {
         const f = isRootedDiskPath(normalizedPath) ? normalizedPath : getNormalizedAbsolutePath(normalizedPath, currentDirectory);
@@ -219440,7 +219440,7 @@ ${options.prefix}` : "\n" : options.prefix
           return this.currentDirectory;
         }
         getDefaultLibFileName() {
-          const nodeModuleBinDir = getDirectoryPath(normalizePath2(this.projectService.getExecutingFilePath()));
+          const nodeModuleBinDir = getDirectoryPath(normalizePath3(this.projectService.getExecutingFilePath()));
           return combinePaths(nodeModuleBinDir, getDefaultLibFileName(this.compilerOptions));
         }
         useCaseSensitiveFileNames() {
@@ -225084,20 +225084,20 @@ Dynamic files must always be opened with service's current directory or service 
           const excludeRules = [];
           const normalizedNames = rootFiles.map((f) => normalizeSlashes(f.fileName));
           for (const name of Object.keys(this.safelist)) {
-            const rule2 = this.safelist[name];
+            const rule22 = this.safelist[name];
             for (const root of normalizedNames) {
-              if (rule2.match.test(root)) {
+              if (rule22.match.test(root)) {
                 this.logger.info(`Excluding files based on rule ${name} matching file '${root}'`);
-                if (rule2.types) {
-                  for (const type of rule2.types) {
+                if (rule22.types) {
+                  for (const type of rule22.types) {
                     if (!typeAcqInclude.includes(type)) {
                       typeAcqInclude.push(type);
                     }
                   }
                 }
-                if (rule2.exclude) {
-                  for (const exclude of rule2.exclude) {
-                    const processedRule = root.replace(rule2.match, (...groups) => {
+                if (rule22.exclude) {
+                  for (const exclude of rule22.exclude) {
+                    const processedRule = root.replace(rule22.match, (...groups) => {
                       return exclude.map((groupNumberOrString) => {
                         if (typeof groupNumberOrString === "number") {
                           if (!isString(groups[groupNumberOrString])) {
@@ -228731,7 +228731,7 @@ Project '${project.projectName}' (${ProjectKind[project.projectKind]}) ${counter
           if (!fileName) {
             return;
           }
-          const file = normalizePath2(fileName);
+          const file = normalizePath3(fileName);
           this.projectService.closeClientFile(file);
         }
         mapLocationNavigationBarItems(items, scriptInfo) {
@@ -229265,7 +229265,7 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
         }
         getCanonicalFileName(fileName) {
           const name = this.host.useCaseSensitiveFileNames ? fileName : toFileNameLowerCase(fileName);
-          return normalizePath2(name);
+          return normalizePath3(name);
         }
         exit() {
         }
@@ -230570,9 +230570,9 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
         };
       }
     })({ get exports() {
-      return ts6;
+      return ts7;
     }, set exports(v) {
-      ts6 = v;
+      ts7 = v;
       if (typeof module !== "undefined" && module.exports) {
         module.exports = v;
       }
@@ -235819,6 +235819,12 @@ var SIGNAL_MESSAGES = [
     text: (_top, paths) => `This change regenerates or updates snapshots in bulk: ${paths}. Check that each new snapshot was reviewed.`
   },
   {
+    id: "TI09",
+    code: "TEST_INTEGRITY_TI09",
+    allPaths: true,
+    text: (_top, paths, notListed) => `This change loosens test-runner settings so that fewer tests run, a weaker run passes or the coverage gate drops: ${paths}. Check that each looser setting was meant.${notListed}`
+  },
+  {
     id: "TI10",
     code: "TEST_INTEGRITY_TI10",
     text: (_top, paths) => `This change weakens a test script in package.json, so the test run can pass without the tests passing: ${paths}. Check that the change was meant.`
@@ -235994,9 +236000,8 @@ function buildReport(input) {
   }
   const signals = [...input.testIntegritySignals ?? []];
   messages.push(...testIntegritySignalMessages(signals, { omitted: input.omittedSignals ?? [] }));
-  const unavailable2 = input.testIndexUnavailable;
-  if (unavailable2 !== void 0 && testIntegrity?.mode !== "off") {
-    const text = indexUnavailableText(unavailable2);
+  if (testIntegrity?.mode !== "off") {
+    const text = indexUnavailableText(input.testIndexUnavailable, input.testConfigUnavailable);
     if (text !== null) messages.push({ level: "warn", code: "TEST_INTEGRITY_INDEX_UNAVAILABLE", text });
   }
   const cut = input.textTruncatedFiles ?? [];
@@ -236069,15 +236074,36 @@ function oneLine(text) {
 function isHighSurrogate(code2) {
   return code2 >= 55296 && code2 <= 56319;
 }
-function indexUnavailableText(unavailable2) {
-  if ("notRun" in unavailable2) {
-    return `TI02 and TI05 did not run: the text of the touched test files could not be read (${codeSpan(oneLine(unavailable2.notRun))}), so removed tests and emptied assertions are not checked.`;
+function indexUnavailableText(unavailable2, configUnavailable) {
+  const parts = [];
+  if (unavailable2 !== void 0) {
+    if ("notRun" in unavailable2) {
+      parts.push(
+        `TI02 and TI05 did not run: the text of the touched test files could not be read (${codeSpan(oneLine(unavailable2.notRun))}), so removed tests and emptied assertions are not checked.`
+      );
+    } else if (unavailable2.files.length > 0) {
+      parts.push(
+        `TI02 and TI05 could not compare these touched test files, so they are not checked for removed tests or emptied assertions: ${namedFiles(unavailable2.files)}.`
+      );
+    }
   }
-  const files = unavailable2.files;
-  if (files.length === 0) return null;
+  if (configUnavailable !== void 0) {
+    if ("notRun" in configUnavailable) {
+      parts.push(
+        `TI09 did not run: the text of the touched test-config files could not be read (${codeSpan(oneLine(configUnavailable.notRun))}), so loosened test settings are not checked.`
+      );
+    } else if (configUnavailable.files.length > 0) {
+      parts.push(
+        `TI09 could not read these touched test-config files, so they are not checked for loosened settings: ${namedFiles(configUnavailable.files)}.`
+      );
+    }
+  }
+  return parts.length === 0 ? null : parts.join(" ");
+}
+function namedFiles(files) {
   const named = files.slice(0, MAX_NAMED_PATHS).map((file) => `${codeSpan(file.path)} (${codeSpan(file.reason)})`).join(", ");
   const more = files.length - MAX_NAMED_PATHS;
-  return `TI02 and TI05 could not compare these touched test files, so they are not checked for removed tests or emptied assertions: ${named}${more > 0 ? ` and ${more} more` : ""}.`;
+  return `${named}${more > 0 ? ` and ${more} more` : ""}`;
 }
 function unmatchedText(missing) {
   const head = missing.total === 1 ? "None of the 1 file path in the coverage report is a tracked file in the repository" : `None of the ${missing.total} file paths in the coverage report are tracked files in the repository`;
@@ -236377,9 +236403,9 @@ function parseYamlSubset(text) {
       }
       top.map[key] = parseFlowList(value, lineNo);
     } else {
-      const scalar = parseScalar(value, lineNo);
-      top.map[key] = scalar;
-      if (typeof scalar === "number") recordNumberText(top.map, key, value.trim());
+      const scalar2 = parseScalar(value, lineNo);
+      top.map[key] = scalar2;
+      if (typeof scalar2 === "number") recordNumberText(top.map, key, value.trim());
     }
   }
   if (pendingKey) pendingKey.map[pendingKey.key] = null;
@@ -237361,10 +237387,10 @@ var SETUP_RULES = [
 ];
 function classifySetupPath(path) {
   if (hasNodeModulesSegment(path)) return null;
-  for (const rule of SETUP_RULES) {
-    if (!rule.matches(path)) continue;
-    if (rule.directory === true && isPlaceholderName(baseName(path))) return null;
-    return rule.kind;
+  for (const rule2 of SETUP_RULES) {
+    if (!rule2.matches(path)) continue;
+    if (rule2.directory === true && isPlaceholderName(baseName(path))) return null;
+    return rule2.kind;
   }
   return null;
 }
@@ -237601,12 +237627,12 @@ function parsePythonSkip(text) {
   if (line.startsWith("@")) {
     const end = dottedEnd(line, 1);
     const token = line.slice(1, end);
-    const rule = PYTHON_DECORATORS.get(token);
-    if (rule === void 0) return null;
+    const rule2 = PYTHON_DECORATORS.get(token);
+    if (rule2 === void 0) return null;
     let i2 = end;
     while (isSpace3(line.charAt(i2))) i2++;
     const arg = line.charAt(i2) === "(" ? scanArg(line, i2 + 1).text : "";
-    const conditional = rule === "always" || rule === "by-argument" && arg !== "" && stringContent(arg, true) === null && !isKeywordArg(arg);
+    const conditional = rule2 === "always" || rule2 === "by-argument" && arg !== "" && stringContent(arg, true) === null && !isKeywordArg(arg);
     return { kind: "decorator", token, name: argName(arg, true), conditional };
   }
   if (!line.startsWith("pytest.skip")) return null;
@@ -238161,7 +238187,7 @@ function walkTestFile(sourceFile) {
   const drafts = [];
   const mocks = [];
   const ranges = [];
-  const lineOf = (position) => sourceFile.getLineAndCharacterOfPosition(position).line + 1;
+  const lineOf2 = (position) => sourceFile.getLineAndCharacterOfPosition(position).line + 1;
   const stack = [{ node: sourceFile, depth: 0, owner: null, fn: null, inTry: false }];
   const children = [];
   for (let entry = stack.pop(); entry !== void 0; entry = stack.pop()) {
@@ -238219,8 +238245,8 @@ function walkTestFile(sourceFile) {
           name: found.name,
           nameDynamic: found.nameDynamic,
           path: [...owner?.path ?? [], found.name],
-          line: lineOf(node.getStart(sourceFile)),
-          endLine: lineOf(node.end),
+          line: lineOf2(node.getStart(sourceFile)),
+          endLine: lineOf2(node.end),
           modifiers: found.modifiers,
           param: first !== void 0 && import_typescript55.default.isIdentifier(first) ? first.text : null,
           bodyStart,
@@ -238233,11 +238259,11 @@ function walkTestFile(sourceFile) {
       } else {
         const guard = owner === null ? null : guardCall(node);
         if (owner !== null && guard !== null) {
-          owner.guards.push({ kind: guard.kind, count: guard.count, line: lineOf(node.getStart(sourceFile)) });
+          owner.guards.push({ kind: guard.kind, count: guard.count, line: lineOf2(node.getStart(sourceFile)) });
         }
       }
       const mock = mockCall(node);
-      if (mock !== null) mocks.push({ ...mock, line: lineOf(node.getStart(sourceFile)) });
+      if (mock !== null) mocks.push({ ...mock, line: lineOf2(node.getStart(sourceFile)) });
     }
     if (owner !== null && (node.kind === import_typescript55.default.SyntaxKind.PropertyAccessExpression || node.kind === import_typescript55.default.SyntaxKind.CallExpression) && isChainTop(node)) {
       const chain = assertionChain(node);
@@ -238245,7 +238271,7 @@ function walkTestFile(sourceFile) {
         const start = node.getStart(sourceFile);
         owner.assertions.push({
           chain,
-          line: lineOf(start),
+          line: lineOf2(start),
           awaited: node.parent?.kind === import_typescript55.default.SyntaxKind.AwaitExpression,
           inTryCatch: entry.inTry,
           afterEarlyReturn: fn !== null && fn.firstReturnEnd <= start
@@ -238373,9 +238399,9 @@ function indexTouchedTestFiles(diff, sources, python) {
   const pythonSide = pythonLookupOf(python);
   const languages = /* @__PURE__ */ new Set();
   const indexSide = (side, path, language) => {
-    const lookup = side === "base" ? baseSide : headSide;
-    const text = lookup.texts.get(path);
-    if (text === void 0) return { ok: false, reason: lookup.dropped.get(path) ?? "missing" };
+    const lookup2 = side === "base" ? baseSide : headSide;
+    const text = lookup2.texts.get(path);
+    if (text === void 0) return { ok: false, reason: lookup2.dropped.get(path) ?? "missing" };
     let result;
     if (language === "py") {
       if (pythonSide.unavailable !== null) return { ok: false, reason: pythonSide.unavailable };
@@ -238391,10 +238417,10 @@ function indexTouchedTestFiles(diff, sources, python) {
   };
   const pairs = [];
   const unavailable2 = [];
-  const compared = [...comparedPaths.values()].sort(
+  const compared2 = [...comparedPaths.values()].sort(
     (a, b) => byCodeUnit3(a.basePath, b.basePath) || byCodeUnit3(a.headPath, b.headPath)
   );
-  for (const file of compared) {
+  for (const file of compared2) {
     const base = indexSide("base", file.basePath, file.language);
     const head = indexSide("head", file.headPath, file.language);
     if (base.ok && head.ok) {
@@ -239676,6 +239702,7 @@ var MAX_TEST_SOURCE_TOTAL_BYTES = 16777216;
 var byCodeUnit11 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var TEST_CONFIG_PREFIXES = [
   "vitest.config.",
+  "vite.config.",
   "vitest.workspace.",
   "jest.config.",
   "playwright.config."
@@ -240520,6 +240547,651 @@ function detectTI08(diff) {
   );
 }
 
+// ../core/src/testConfig/kinds.ts
+var JS_EXTENSIONS2 = /* @__PURE__ */ new Set(["ts", "mts", "cts", "js", "mjs", "cjs"]);
+function hasJsName(basename, prefix) {
+  return basename.startsWith(`${prefix}.`) && JS_EXTENSIONS2.has(basename.slice(prefix.length + 1));
+}
+function testConfigKind(path) {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  if (hasJsName(basename, "vitest.config")) return "vitest";
+  if (hasJsName(basename, "vite.config")) return "vite";
+  if (hasJsName(basename, "vitest.workspace") || basename === "vitest.workspace.json") return "vitest-workspace";
+  if (hasJsName(basename, "jest.config") || basename === "jest.config.json") return "jest";
+  if (hasJsName(basename, "playwright.config")) return "playwright";
+  switch (basename) {
+    case "package.json":
+      return "package-json";
+    case ".mocharc.js":
+    case ".mocharc.cjs":
+    case ".mocharc.json":
+    case ".mocharc.yml":
+    case ".mocharc.yaml":
+      return "mocha";
+    case "pytest.ini":
+      return "pytest-ini";
+    case "tox.ini":
+      return "tox-ini";
+    case "setup.cfg":
+      return "setup-cfg";
+    case "pyproject.toml":
+      return "pyproject";
+    default:
+      return null;
+  }
+}
+function isDedicatedTestConfig(kind) {
+  return kind !== "package-json" && kind !== "pyproject" && kind !== "setup-cfg" && kind !== "tox-ini";
+}
+function syntaxOf(kind, path) {
+  switch (kind) {
+    case "package-json":
+      return "json";
+    case "pytest-ini":
+    case "tox-ini":
+    case "setup-cfg":
+      return "ini";
+    case "pyproject":
+      return "toml";
+    default: {
+      const basename = path.slice(path.lastIndexOf("/") + 1);
+      if (basename.endsWith(".json")) return "json";
+      if (basename.endsWith(".yml") || basename.endsWith(".yaml")) return "yaml";
+      return "js";
+    }
+  }
+}
+
+// ../core/src/testConfig/value.ts
+var MAX_CONFIG_VALUE_DEPTH = 64;
+var MAX_CONFIG_CHARS = 524288;
+var MAX_CONFIG_IDENT_HOPS = 8;
+var MAX_VALUE_CHARS = 80;
+var MAX_KEY_CHARS = 100;
+function lookup(root, path) {
+  let current = root;
+  let entry = null;
+  for (const segment of path) {
+    if (current.type === "opaque") return "unknown";
+    if (current.type !== "object") return "unset";
+    const next = current.entries.get(segment);
+    if (next === void 0) return current.open ? "unknown" : "unset";
+    entry = next;
+    current = next.value;
+  }
+  return entry === null ? "unset" : { found: entry };
+}
+function replaceUnsafe(text) {
+  let out = "";
+  for (let i = 0; i < text.length; i++) {
+    const unit = text.charCodeAt(i);
+    if (unit >= 55296 && unit <= 56319) {
+      const next = text.charCodeAt(i + 1);
+      if (next >= 56320 && next <= 57343) {
+        out += text.slice(i, i + 2);
+        i++;
+      } else {
+        out += "\uFFFD";
+      }
+    } else if (unit >= 56320 && unit <= 57343) {
+      out += "\uFFFD";
+    } else if (unit <= 31 || unit >= 127 && unit <= 159 || unit === 8232 || unit === 8233) {
+      out += "\uFFFD";
+    } else {
+      out += text[i];
+    }
+  }
+  return out;
+}
+function cutText(text, limit) {
+  const safe = replaceUnsafe(text);
+  if (safe.length <= limit) return safe;
+  const high = safe.charCodeAt(limit - 1);
+  const end = high >= 55296 && high <= 56319 ? limit - 1 : limit;
+  return `${safe.slice(0, end)}\u2026`;
+}
+function cutValue(text) {
+  return cutText(text, MAX_VALUE_CHARS);
+}
+function cutDetail(text) {
+  const safe = replaceUnsafe(text);
+  if (safe.length <= 300) return safe;
+  const high = safe.charCodeAt(298);
+  return `${safe.slice(0, high >= 55296 && high <= 56319 ? 298 : 299)}\u2026`;
+}
+var IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
+var DIGITS = /^\d+$/;
+function keyText(segments) {
+  let out = "";
+  for (const segment of segments) {
+    if (IDENTIFIER.test(segment) || DIGITS.test(segment)) out += out === "" ? segment : `.${segment}`;
+    else out += `[${JSON.stringify(segment)}]`;
+  }
+  return cutText(out, MAX_KEY_CHARS);
+}
+var isIdentChar = (ch) => ch !== void 0 && (/[\w$]/.test(ch) || ch.charCodeAt(0) > 127);
+function normalizeOpaque(source) {
+  let out = "";
+  let pendingSpace = false;
+  let i = 0;
+  while (i < source.length) {
+    const ch = source[i];
+    const next = source[i + 1];
+    if (ch === "/" && next === "/") {
+      while (i < source.length && source[i] !== "\n") i++;
+      continue;
+    }
+    if (ch === "/" && next === "*") {
+      const close = source.indexOf("*/", i + 2);
+      i = close === -1 ? source.length : close + 2;
+      pendingSpace = pendingSpace || out !== "";
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") {
+      let j = i + 1;
+      while (j < source.length && source[j] !== ch) j += source[j] === "\\" ? 2 : 1;
+      pendingSpace = false;
+      out += source.slice(i, Math.min(j + 1, source.length));
+      i = j + 1;
+      continue;
+    }
+    if (/\s/.test(ch)) {
+      pendingSpace = out !== "";
+      i++;
+      continue;
+    }
+    if (pendingSpace && isIdentChar(out[out.length - 1]) && isIdentChar(ch)) out += " ";
+    pendingSpace = false;
+    out += ch;
+    i++;
+  }
+  return out;
+}
+function printValue(value) {
+  switch (value.type) {
+    case "string":
+    case "number":
+    case "boolean":
+      return JSON.stringify(value.value);
+    case "null":
+      return "null";
+    case "opaque":
+      return value.text;
+    case "array":
+      return `[${value.items.map(printValue).join(",")}]`;
+    case "object": {
+      const keys = [...value.entries.keys()].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+      const parts = keys.map(
+        (key) => `${JSON.stringify(key)}:${printValue(value.entries.get(key).value)}`
+      );
+      for (const extra of [...value.extras].sort()) parts.push(`...${extra}`);
+      return `{${parts.join(",")}}`;
+    }
+  }
+}
+function emptyObject(open3 = false) {
+  return { type: "object", entries: /* @__PURE__ */ new Map(), open: open3, extras: [] };
+}
+
+// ../core/src/testConfig/readIni.ts
+function splitKeyLine(raw) {
+  const first = raw[0];
+  if (first === void 0 || first === "=" || first === ":" || first.trim() === "") return null;
+  let at = -1;
+  for (let i = 0; i < raw.length; i++) {
+    if (raw[i] === "=" || raw[i] === ":") {
+      at = i;
+      break;
+    }
+  }
+  if (at === -1) return null;
+  return { key: raw.slice(0, at).trimEnd(), value: raw.slice(at + 1).trim() };
+}
+var isHeader = (line) => line.startsWith("[") && line.trimEnd().endsWith("]");
+function readIni(text, section) {
+  if (text.length > MAX_CONFIG_CHARS) return { ok: false, reason: "too-large" };
+  const lines = text.split(/\r\n|\r|\n/);
+  const header = `[${section}]`;
+  const start = lines.findIndex((line) => line.trimEnd() === header);
+  if (start === -1) return { ok: true, root: null };
+  const parts = /* @__PURE__ */ new Map();
+  let last = null;
+  for (let i = start + 1; i < lines.length; i++) {
+    const raw = lines[i];
+    const trimmed = raw.trim();
+    if (trimmed === "") continue;
+    if (isHeader(raw)) break;
+    if (trimmed.startsWith("#") || trimmed.startsWith(";")) continue;
+    if (/^\s/.test(raw) && last !== null) {
+      parts.get(last).parts.push(trimmed);
+      continue;
+    }
+    const split = splitKeyLine(raw);
+    if (split === null) return { ok: false, reason: "invalid-ini" };
+    parts.set(split.key, { line: i + 1, parts: split.value === "" ? [] : [split.value] });
+    last = split.key;
+  }
+  const entries = /* @__PURE__ */ new Map();
+  for (const [key, entry] of parts) {
+    entries.set(key, { value: { type: "string", value: entry.parts.join(" ") }, line: entry.line });
+  }
+  return { ok: true, root: { type: "object", entries, open: false, extras: [] } };
+}
+
+// ../core/src/testConfig/readJs.ts
+var import_typescript56 = __toESM(require_typescript(), 1);
+var WRAPPERS_STEP_LIMIT = 64;
+var DEFINE_CALLS = /* @__PURE__ */ new Set(["defineConfig", "defineProject", "defineWorkspace"]);
+function tooDeep(sourceFile) {
+  const stack = [{ node: sourceFile, depth: 0 }];
+  while (stack.length > 0) {
+    const { node, depth } = stack.pop();
+    if (depth > MAX_TEST_INDEX_DEPTH) return true;
+    import_typescript56.default.forEachChild(node, (child) => {
+      stack.push({ node: child, depth: depth + 1 });
+    });
+  }
+  return false;
+}
+function strip(node) {
+  let current = node;
+  for (let step = 0; step < WRAPPERS_STEP_LIMIT; step++) {
+    if (import_typescript56.default.isParenthesizedExpression(current) || import_typescript56.default.isAsExpression(current) || import_typescript56.default.isSatisfiesExpression(current) || import_typescript56.default.isNonNullExpression(current) || import_typescript56.default.isTypeAssertionExpression(current)) {
+      current = current.expression;
+    } else {
+      break;
+    }
+  }
+  return current;
+}
+function propertyKey(name) {
+  if (import_typescript56.default.isIdentifier(name) || import_typescript56.default.isStringLiteral(name) || import_typescript56.default.isNoSubstitutionTemplateLiteral(name)) return name.text;
+  if (import_typescript56.default.isNumericLiteral(name)) return name.text;
+  return null;
+}
+function mergeObjects(a, b) {
+  const entries = new Map(a.entries);
+  for (const [key, entry] of b.entries) {
+    const existing = entries.get(key);
+    if (existing !== void 0 && existing.value.type === "object" && entry.value.type === "object") {
+      entries.set(key, { value: mergeObjects(existing.value, entry.value), line: entry.line });
+    } else {
+      entries.set(key, entry);
+    }
+  }
+  return { type: "object", entries, open: true, extras: [...a.extras, ...b.extras] };
+}
+var JsConfigReader = class {
+  constructor(sourceFile) {
+    this.sourceFile = sourceFile;
+    for (const statement of sourceFile.statements) {
+      if (import_typescript56.default.isVariableStatement(statement) && (statement.declarationList.flags & import_typescript56.default.NodeFlags.Const) !== 0) {
+        for (const declaration of statement.declarationList.declarations) {
+          if (import_typescript56.default.isIdentifier(declaration.name) && declaration.initializer !== void 0) {
+            this.consts.set(declaration.name.text, declaration.initializer);
+          }
+        }
+      }
+    }
+  }
+  sourceFile;
+  consts = /* @__PURE__ */ new Map();
+  line(node) {
+    return this.sourceFile.getLineAndCharacterOfPosition(node.getStart(this.sourceFile)).line + 1;
+  }
+  opaque(node) {
+    return { type: "opaque", text: normalizeOpaque(node.getText(this.sourceFile)) };
+  }
+  identifier(node, depth, hops) {
+    const init = this.consts.get(node.text);
+    if (init === void 0 || hops >= MAX_CONFIG_IDENT_HOPS) return this.opaque(node);
+    return this.value(init, depth, hops + 1);
+  }
+  /** A value: a literal as itself, a top-level `const` name as what it holds, anything else opaque. */
+  value(expression, depth, hops) {
+    const node = strip(expression);
+    if (depth > MAX_CONFIG_VALUE_DEPTH) return this.opaque(node);
+    if (import_typescript56.default.isStringLiteral(node) || import_typescript56.default.isNoSubstitutionTemplateLiteral(node))
+      return { type: "string", value: node.text };
+    if (import_typescript56.default.isNumericLiteral(node)) return { type: "number", value: Number(node.text) };
+    if (import_typescript56.default.isPrefixUnaryExpression(node) && node.operator === import_typescript56.default.SyntaxKind.MinusToken && import_typescript56.default.isNumericLiteral(strip(node.operand))) {
+      return { type: "number", value: -Number(strip(node.operand).text) };
+    }
+    if (node.kind === import_typescript56.default.SyntaxKind.TrueKeyword) return { type: "boolean", value: true };
+    if (node.kind === import_typescript56.default.SyntaxKind.FalseKeyword) return { type: "boolean", value: false };
+    if (node.kind === import_typescript56.default.SyntaxKind.NullKeyword) return { type: "null" };
+    if (import_typescript56.default.isArrayLiteralExpression(node)) {
+      const items = node.elements.map(
+        (element) => import_typescript56.default.isSpreadElement(element) || import_typescript56.default.isOmittedExpression(element) ? this.opaque(element) : this.value(element, depth + 1, hops)
+      );
+      return { type: "array", items };
+    }
+    if (import_typescript56.default.isObjectLiteralExpression(node)) return this.object(node, depth, hops);
+    if (import_typescript56.default.isIdentifier(node)) return this.identifier(node, depth, hops);
+    return this.opaque(node);
+  }
+  object(node, depth, hops) {
+    const entries = /* @__PURE__ */ new Map();
+    const extras = [];
+    let open3 = false;
+    for (const property of node.properties) {
+      if (import_typescript56.default.isPropertyAssignment(property)) {
+        const key = propertyKey(property.name);
+        if (key === null) {
+          open3 = true;
+          extras.push(normalizeOpaque(property.getText(this.sourceFile)));
+        } else {
+          entries.set(key, {
+            value: this.value(property.initializer, depth + 1, hops),
+            line: this.line(property.name)
+          });
+        }
+      } else if (import_typescript56.default.isShorthandPropertyAssignment(property)) {
+        open3 = true;
+        entries.set(property.name.text, {
+          value: this.identifier(property.name, depth + 1, hops),
+          line: this.line(property.name)
+        });
+      } else {
+        open3 = true;
+        extras.push(normalizeOpaque(property.getText(this.sourceFile)));
+      }
+    }
+    return { type: "object", entries, open: open3, extras };
+  }
+  /** The single top-level `return` expression of a block body, or null. */
+  returned(body) {
+    const returns = body.statements.filter(import_typescript56.default.isReturnStatement);
+    const only = returns.length === 1 ? returns[0] : void 0;
+    return only?.expression ?? null;
+  }
+  /** The value the config expression unwraps to. */
+  resolve(expression, depth) {
+    let node = expression;
+    let hops = 0;
+    if (depth > MAX_CONFIG_VALUE_DEPTH) return this.opaque(node);
+    for (let step = 0; step < WRAPPERS_STEP_LIMIT; step++) {
+      node = strip(node);
+      if (import_typescript56.default.isIdentifier(node)) {
+        const init = this.consts.get(node.text);
+        if (init === void 0 || hops >= MAX_CONFIG_IDENT_HOPS) return this.opaque(node);
+        node = init;
+        hops++;
+        continue;
+      }
+      if (import_typescript56.default.isCallExpression(node)) {
+        const callee = node.expression;
+        const name = import_typescript56.default.isIdentifier(callee) ? callee.text : import_typescript56.default.isPropertyAccessExpression(callee) ? callee.name.text : null;
+        if (name !== null && DEFINE_CALLS.has(name)) {
+          const first = node.arguments[0];
+          if (first === void 0) return this.opaque(node);
+          node = first;
+          continue;
+        }
+        if (name === "mergeConfig") return this.merge(node, depth + 1);
+        return this.opaque(node);
+      }
+      if (import_typescript56.default.isArrowFunction(node) || import_typescript56.default.isFunctionExpression(node) || import_typescript56.default.isFunctionDeclaration(node)) {
+        const body = node.body;
+        if (body === void 0) return this.opaque(node);
+        if (import_typescript56.default.isBlock(body)) {
+          const returned = this.returned(body);
+          if (returned === null) return this.opaque(node);
+          node = returned;
+        } else {
+          node = body;
+        }
+        continue;
+      }
+      return this.value(node, 0, hops);
+    }
+    return this.opaque(node);
+  }
+  /** `mergeConfig(a, b, …)`: the arguments that unwrap to objects, later keys winning, as one open object. */
+  merge(call, depth) {
+    let merged = null;
+    for (const argument of call.arguments) {
+      const value = this.resolve(argument, depth);
+      if (value.type !== "object") continue;
+      merged = merged === null ? { ...value, open: true } : mergeObjects(merged, value);
+    }
+    return merged ?? this.opaque(call);
+  }
+  /** The config value of the file: the first default export, else the last CommonJS export assignment. */
+  root() {
+    for (const statement of this.sourceFile.statements) {
+      if (import_typescript56.default.isExportAssignment(statement) && statement.isExportEquals !== true) {
+        return this.resolve(statement.expression, 0);
+      }
+      if (import_typescript56.default.isFunctionDeclaration(statement)) {
+        const kinds = statement.modifiers?.map((modifier) => modifier.kind) ?? [];
+        if (kinds.includes(import_typescript56.default.SyntaxKind.ExportKeyword) && kinds.includes(import_typescript56.default.SyntaxKind.DefaultKeyword)) {
+          return this.resolve(statement, 0);
+        }
+      }
+    }
+    let assigned = null;
+    for (const statement of this.sourceFile.statements) {
+      if (!import_typescript56.default.isExpressionStatement(statement)) continue;
+      const expression = statement.expression;
+      if (import_typescript56.default.isBinaryExpression(expression) && expression.operatorToken.kind === import_typescript56.default.SyntaxKind.EqualsToken && import_typescript56.default.isPropertyAccessExpression(expression.left) && import_typescript56.default.isIdentifier(expression.left.expression) && expression.left.expression.text === "module" && expression.left.name.text === "exports") {
+        assigned = expression.right;
+      }
+    }
+    return assigned === null ? { type: "opaque", text: "" } : this.resolve(assigned, 0);
+  }
+};
+function readJs(path, text) {
+  if (text.length > MAX_CONFIG_CHARS) return { ok: false, reason: "too-large" };
+  try {
+    const { sourceFile, syntaxErrors } = parseTestFile(scriptKindOf(path), text);
+    if (syntaxErrors > 0) return { ok: false, reason: "syntax-error" };
+    if (tooDeep(sourceFile)) return { ok: false, reason: "too-deep" };
+    return { ok: true, root: new JsConfigReader(sourceFile).root() };
+  } catch (error2) {
+    if (error2 instanceof RangeError) return { ok: false, reason: "too-deep" };
+    return { ok: false, reason: "syntax-error" };
+  }
+}
+
+// ../core/src/testConfig/readJson.ts
+function tooDeep2(text) {
+  let depth = 0;
+  let inString = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (ch === "\\") i++;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') {
+      inString = true;
+    } else if (ch === "{" || ch === "[") {
+      depth++;
+      if (depth > MAX_TEST_INDEX_DEPTH) return true;
+    } else if (ch === "}" || ch === "]") {
+      depth--;
+    }
+  }
+  return false;
+}
+function toValue(json, depth) {
+  if (depth > MAX_CONFIG_VALUE_DEPTH) return { type: "opaque", text: JSON.stringify(json) };
+  if (typeof json === "string") return { type: "string", value: json };
+  if (typeof json === "number") return { type: "number", value: json };
+  if (typeof json === "boolean") return { type: "boolean", value: json };
+  if (json === null) return { type: "null" };
+  if (Array.isArray(json)) return { type: "array", items: json.map((item) => toValue(item, depth + 1)) };
+  const entries = /* @__PURE__ */ new Map();
+  for (const key of Object.keys(json)) {
+    entries.set(key, { value: toValue(json[key], depth + 1), line: null });
+  }
+  return { type: "object", entries, open: false, extras: [] };
+}
+function readJson(text) {
+  if (text.length > MAX_CONFIG_CHARS) return { ok: false, reason: "too-large" };
+  if (tooDeep2(text)) return { ok: false, reason: "too-deep" };
+  try {
+    const source = text.charCodeAt(0) === 65279 ? text.slice(1) : text;
+    return { ok: true, root: toValue(JSON.parse(source), 0) };
+  } catch {
+    return { ok: false, reason: "invalid-json" };
+  }
+}
+
+// ../core/src/testConfig/readToml.ts
+var TABLE = /^\[\s*tool\s*\.\s*pytest\s*\.\s*ini_options\s*\]\s*(?:#.*)?$/;
+var HEADER_LINE = /^\[\[?[A-Za-z0-9_.\s-]+\]\]?\s*(?:#.*)?$/;
+var KEY_LINE = /^([A-Za-z0-9_.-]+|"(?:[^"\\]|\\.)*"|'[^']*')\s*=([\s\S]*)$/;
+var NUMBER2 = /^[-+]?\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][-+]?\d+)?$/;
+function stringEnd2(text, open3) {
+  const quote = text[open3];
+  for (let i = open3 + 1; i < text.length; i++) {
+    if (quote === '"' && text[i] === "\\") i++;
+    else if (text[i] === quote) return i;
+  }
+  return -1;
+}
+function stripTomlComment(line) {
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"' || ch === "'") {
+      const end = stringEnd2(line, i);
+      if (end === -1) return line.trim();
+      i = end;
+    } else if (ch === "#") {
+      return line.slice(0, i).trim();
+    }
+  }
+  return line.trim();
+}
+function scalar(text) {
+  if (text.startsWith('"') || text.startsWith("'")) {
+    const end = stringEnd2(text, 0);
+    if (end === text.length - 1) {
+      if (text.startsWith("'")) return { type: "string", value: text.slice(1, end) };
+      try {
+        const decoded = JSON.parse(text);
+        if (typeof decoded === "string") return { type: "string", value: decoded };
+      } catch {
+      }
+    }
+    return { type: "opaque", text: normalizeOpaque(text) };
+  }
+  if (text === "true") return { type: "boolean", value: true };
+  if (text === "false") return { type: "boolean", value: false };
+  if (NUMBER2.test(text)) return { type: "number", value: Number(text.replace(/_/g, "")) };
+  return { type: "opaque", text: normalizeOpaque(text) };
+}
+function scanBrackets(text, from, depth) {
+  let open3 = depth;
+  for (let i = from; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '"' || ch === "'") {
+      const end = stringEnd2(text, i);
+      if (end === -1) return null;
+      i = end;
+    } else if (ch === "[" || ch === "{") {
+      open3++;
+    } else if (ch === "]" || ch === "}") {
+      open3--;
+      if (open3 === 0) return { close: i, depth: 0 };
+    }
+  }
+  return { close: -1, depth: open3 };
+}
+function closeOf2(text, open3) {
+  return scanBrackets(text, open3, 0)?.close ?? -1;
+}
+function arrayValue(text) {
+  const items = [];
+  let i = 1;
+  while (i < text.length) {
+    const ch = text[i];
+    if (ch === "]") break;
+    if (/\s/.test(ch) || ch === ",") {
+      i++;
+    } else if (ch === '"' || ch === "'") {
+      const end = stringEnd2(text, i);
+      if (end === -1) break;
+      items.push(scalar(text.slice(i, end + 1)));
+      i = end + 1;
+    } else if (ch === "[" || ch === "{") {
+      const end = closeOf2(text, i);
+      if (end === -1) break;
+      items.push({ type: "opaque", text: normalizeOpaque(text.slice(i, end + 1)) });
+      i = end + 1;
+    } else {
+      let end = i;
+      while (end < text.length && text[end] !== "," && text[end] !== "]") end++;
+      items.push(scalar(text.slice(i, end).trim()));
+      i = end;
+    }
+  }
+  return { type: "array", items };
+}
+function readToml(text) {
+  if (text.length > MAX_CONFIG_CHARS) return { ok: false, reason: "too-large" };
+  const lines = text.split(/\r\n|\r|\n/);
+  const start = lines.findIndex((line) => TABLE.test(line.trim()));
+  if (start === -1) return { ok: true, root: null };
+  const entries = /* @__PURE__ */ new Map();
+  let i = start + 1;
+  while (i < lines.length) {
+    const raw = lines[i];
+    const line = stripTomlComment(raw);
+    if (line === "") {
+      i++;
+      continue;
+    }
+    if (line.startsWith("[")) break;
+    const match = KEY_LINE.exec(line);
+    if (match === null) return { ok: false, reason: "invalid-toml" };
+    const rawKey = match[1];
+    let key = rawKey.replace(/^'|'$/g, "");
+    if (rawKey.startsWith('"')) {
+      try {
+        key = JSON.parse(rawKey);
+      } catch {
+        return { ok: false, reason: "invalid-toml" };
+      }
+    }
+    const rest = match[2].trim();
+    const first = i;
+    const multi = rest.startsWith('"""') ? '"""' : rest.startsWith("'''") ? "'''" : null;
+    if (multi !== null) {
+      let closed = rest.slice(3).includes(multi);
+      while (!closed) {
+        i++;
+        if (i >= lines.length) return { ok: false, reason: "invalid-toml" };
+        closed = lines[i].includes(multi);
+      }
+      entries.set(key, { value: { type: "opaque", text: normalizeOpaque(rest) }, line: first + 1 });
+      i++;
+      continue;
+    }
+    let value;
+    if (rest.startsWith("[")) {
+      const parts = [rest];
+      let scan = scanBrackets(rest, 0, 0);
+      while (scan !== null && scan.close === -1) {
+        i++;
+        const next = lines[i];
+        if (next === void 0 || HEADER_LINE.test(next.trim())) return { ok: false, reason: "invalid-toml" };
+        const added = stripTomlComment(next);
+        parts.push(added);
+        scan = scanBrackets(added, 0, scan.depth);
+      }
+      if (scan === null) return { ok: false, reason: "invalid-toml" };
+      value = arrayValue(parts.join(" "));
+    } else {
+      value = scalar(rest);
+    }
+    entries.set(key, { value, line: first + 1 });
+    i++;
+  }
+  return { ok: true, root: { type: "object", entries, open: false, extras: [] } };
+}
+
 // ../core/src/signals/yamlLines.ts
 var MAX_LINE = 400;
 function stripComment2(line) {
@@ -240604,8 +241276,706 @@ function flowItems(value) {
   return items.filter((item) => item !== "");
 }
 
-// ../core/src/signals/ti11.ts
+// ../core/src/testConfig/readYaml.ts
+function plain(text) {
+  if (/^(?:true|True|TRUE)$/.test(text)) return { type: "boolean", value: true };
+  if (/^(?:false|False|FALSE)$/.test(text)) return { type: "boolean", value: false };
+  if (/^(?:null|Null|NULL|~)$/.test(text)) return { type: "null" };
+  if (/^[-+]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(text)) return { type: "number", value: Number(text) };
+  return { type: "string", value: text };
+}
+function inlineValue(text) {
+  const trimmed = text.trim();
+  if (trimmed.startsWith('"') || trimmed.startsWith("'")) return { type: "string", value: scalarText(trimmed) };
+  if (trimmed.startsWith("[")) {
+    const items = flowItems(trimmed);
+    return items === null ? { type: "opaque", text: trimmed } : { type: "array", items: items.map(plain) };
+  }
+  if (/^[{|>&*!%@`]/.test(trimmed)) return { type: "opaque", text: trimmed };
+  return plain(trimmed);
+}
+var isIndented = (line) => indentOf(line) > 0 || line.startsWith("	");
+function readYaml(text) {
+  if (text.length > MAX_CONFIG_CHARS) return { ok: false, reason: "too-large" };
+  const lines = text.split(/\r\n|\r|\n/);
+  const entries = /* @__PURE__ */ new Map();
+  let i = 0;
+  while (i < lines.length) {
+    const raw = lines[i];
+    const stripped = stripComment2(raw);
+    if (stripped === "" || stripped === "---" || stripped === "...") {
+      i++;
+      continue;
+    }
+    if (isIndented(raw) || stripped.startsWith("-")) return { ok: false, reason: "invalid-yaml" };
+    const pair = keyValue(raw);
+    if (pair === null) return { ok: false, reason: "invalid-yaml" };
+    const children = [];
+    let j = i + 1;
+    while (j < lines.length) {
+      const next = lines[j];
+      const nextStripped = stripComment2(next);
+      if (nextStripped === "") {
+        j++;
+      } else if (isIndented(next) || pair.value === "" && nextStripped.startsWith("-")) {
+        children.push(next);
+        j++;
+      } else {
+        break;
+      }
+    }
+    let value;
+    if (pair.value !== "") {
+      value = children.length === 0 ? inlineValue(pair.value) : { type: "opaque", text: [pair.value, ...children.map((child) => stripComment2(child))].join(" ") };
+    } else if (children.length === 0) {
+      value = { type: "null" };
+    } else {
+      const items = children.map((child) => listItem(child));
+      value = items.every((item) => item !== null) ? { type: "array", items: items.map(plain) } : { type: "opaque", text: children.map((child) => stripComment2(child)).join(" ") };
+    }
+    entries.set(pair.key, { value, line: i + 1 });
+    i = j;
+  }
+  return { ok: true, root: { type: "object", entries, open: false, extras: [] } };
+}
+
+// ../core/src/testConfig/read.ts
+function nested(root, key) {
+  if (root.type !== "object") return { notFound: true };
+  const found = lookup(root, [key]);
+  if (found === "unset") return { absent: true };
+  if (found === "unknown") return { container: emptyObject(true) };
+  return found.found.value.type === "object" ? { container: found.found.value } : { notFound: true };
+}
+function readSyntax(kind, path, text) {
+  switch (syntaxOf(kind, path)) {
+    case "js":
+      return readJs(path, text);
+    case "json":
+      return readJson(text);
+    case "yaml":
+      return readYaml(text);
+    case "ini":
+      return readIni(text, kind === "setup-cfg" ? "tool:pytest" : "pytest");
+    case "toml":
+      return readToml(text);
+  }
+}
+function readTestConfig(kind, path, text) {
+  const result = readSyntax(kind, path, text);
+  if (!result.ok) return { refused: result.reason };
+  const root = result.root;
+  if (root === null) return { absent: true };
+  switch (kind) {
+    case "vitest":
+    case "vite":
+      return nested(root, "test");
+    case "package-json":
+      return nested(root, "jest");
+    case "vitest-workspace":
+      return root.type === "array" ? { container: root } : { notFound: true };
+    default:
+      return root.type === "object" ? { container: root } : { notFound: true };
+  }
+}
+
+// ../core/src/testConfig/addopts.ts
+var VALUE_TAKING_SHORT = /* @__PURE__ */ new Set(["k", "m", "p", "r", "c", "o", "W", "n"]);
+var LONG_WITH_VALUE = /* @__PURE__ */ new Set(["--deselect", "--ignore", "--ignore-glob", "--maxfail"]);
+var LONG_FLAGS = /* @__PURE__ */ new Map([
+  ["--co", "--co"],
+  ["--collect-only", "--co"],
+  ["--exitfirst", "-x"],
+  ["--lf", "--lf"],
+  ["--last-failed", "--lf"],
+  ["--sw", "--sw"],
+  ["--stepwise", "--sw"]
+]);
+function shellSplit(text) {
+  const tokens = [];
+  let current = "";
+  let inToken = false;
+  let quote = null;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quote === "'") {
+      if (ch === "'") quote = null;
+      else current += ch;
+    } else if (ch === "\\") {
+      i++;
+      if (i < text.length) current += text[i];
+      inToken = true;
+    } else if (quote === '"') {
+      if (ch === '"') quote = null;
+      else current += ch;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+      inToken = true;
+    } else if (/\s/.test(ch)) {
+      if (inToken) tokens.push(current);
+      current = "";
+      inToken = false;
+    } else {
+      current += ch;
+      inToken = true;
+    }
+  }
+  if (inToken) tokens.push(current);
+  return tokens;
+}
+function splitAddopts(value) {
+  if (value.type === "array") {
+    return value.items.filter((item) => item.type !== "opaque").map((item) => item.type === "string" ? item.value : printValue(item));
+  }
+  return value.type === "string" ? shellSplit(value.value) : [];
+}
+function deselectionPairs(tokens) {
+  const pairs = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (token === "--") break;
+    if (token.startsWith("--")) {
+      const equals = token.indexOf("=");
+      const name = equals === -1 ? token : token.slice(0, equals);
+      if (LONG_WITH_VALUE.has(name)) {
+        const value = equals === -1 ? tokens[++i] ?? "" : token.slice(equals + 1);
+        if (name === "--maxfail" && /^0*$/.test(value)) continue;
+        pairs.push({ flag: name, value });
+      } else {
+        const flag = LONG_FLAGS.get(name);
+        if (flag !== void 0) pairs.push({ flag, value: null });
+      }
+    } else if (token.length > 1 && token.startsWith("-")) {
+      const cluster = token.slice(1);
+      for (let j = 0; j < cluster.length; j++) {
+        const letter = cluster[j];
+        if (VALUE_TAKING_SHORT.has(letter)) {
+          const rest = cluster.slice(j + 1);
+          const value = rest === "" ? tokens[++i] ?? "" : rest;
+          if (letter === "k" || letter === "m") pairs.push({ flag: `-${letter}`, value });
+          else if (letter === "p" && value.startsWith("no:") && value !== "no:cacheprovider")
+            pairs.push({ flag: "-p", value });
+          break;
+        }
+        if (letter === "x") pairs.push({ flag: "-x", value: null });
+      }
+    }
+  }
+  return pairs;
+}
+var pairKey = (pair) => `${pair.flag}\0${pair.value ?? "\0"}`;
+function gainedPairs(base, head) {
+  const available = /* @__PURE__ */ new Map();
+  for (const pair of base) available.set(pairKey(pair), (available.get(pairKey(pair)) ?? 0) + 1);
+  const gained = [];
+  for (const pair of head) {
+    const left = available.get(pairKey(pair)) ?? 0;
+    if (left > 0) available.set(pairKey(pair), left - 1);
+    else gained.push(pair);
+  }
+  return gained;
+}
+function pairText(pair) {
+  const flag = pair.flag === "-x" ? "-x (--exitfirst)" : pair.flag;
+  if (pair.value === null) return flag;
+  const quoted = pair.value === "" || /[\s"']/.test(pair.value) ? `"${pair.value.replace(/(["\\])/g, "\\$1")}"` : pair.value;
+  return `${flag} ${quoted}`;
+}
+
+// ../core/src/testConfig/listCompare.ts
+var MAX_BRACE_ALTERNATIVES = 64;
+var BUILD_OR_DEPENDENCY_NAMES = /* @__PURE__ */ new Set([
+  "node_modules",
+  "dist",
+  "build",
+  "coverage",
+  ".git",
+  ".venv",
+  "venv",
+  "__pycache__",
+  ".tox",
+  ".nox",
+  ".cache",
+  ".next",
+  ".nuxt",
+  ".eggs",
+  ".mypy_cache",
+  ".pytest_cache",
+  ".ruff_cache",
+  ".nyc_output",
+  ".turbo",
+  ".svelte-kit"
+]);
+var DECLARATION_FILES = /* @__PURE__ */ new Set(["*.d.ts", "**/*.d.ts", "\\.d\\.ts$", "\\.d\\.ts"]);
+var PREFIXES = ["./", "^", "/", "**/"];
+var SUFFIXES = ["/**/*", "/**", "/*", "/", "$"];
+function isBuildOrDependencyEntry(entry) {
+  if (DECLARATION_FILES.has(entry)) return true;
+  let text = entry;
+  for (; ; ) {
+    const before = text;
+    if (text.startsWith("<rootDir>")) text = text.slice("<rootDir>".length);
+    for (const prefix of PREFIXES) if (text.startsWith(prefix)) text = text.slice(prefix.length);
+    for (const suffix of SUFFIXES) if (text.endsWith(suffix)) text = text.slice(0, -suffix.length);
+    if (text === before) break;
+  }
+  return BUILD_OR_DEPENDENCY_NAMES.has(text) || DECLARATION_FILES.has(text);
+}
+function entriesOf(value, splitWhitespace) {
+  const entry = (item) => item.type === "opaque" ? { opaque: true, text: item.text } : {
+    opaque: false,
+    isString: item.type === "string",
+    text: item.type === "string" ? item.value : printValue(item)
+  };
+  if (value.type === "array") return value.items.map(entry);
+  if (value.type === "string" && splitWhitespace) {
+    return value.value.split(/\s+/).filter((part) => part !== "").map((part) => ({ opaque: false, isString: true, text: part }));
+  }
+  return [entry(value)];
+}
+function expandBraces(entry) {
+  let alternatives = [""];
+  let expanded = false;
+  let i = 0;
+  while (i < entry.length) {
+    const ch = entry[i];
+    const close = ch === "{" ? entry.indexOf("}", i) : -1;
+    const inner = close === -1 ? "" : entry.slice(i + 1, close);
+    if (close !== -1 && inner.includes(",") && !inner.includes("{")) {
+      const parts = inner.split(",");
+      if (alternatives.length * parts.length > MAX_BRACE_ALTERNATIVES) return [entry];
+      alternatives = alternatives.flatMap((prefix) => parts.map((part) => prefix + part));
+      expanded = true;
+      i = close + 1;
+    } else {
+      alternatives = alternatives.map((prefix) => prefix + ch);
+      i++;
+    }
+  }
+  return expanded ? alternatives : [entry];
+}
+function normalizePath2(text) {
+  let out = text;
+  while (out.startsWith("./")) out = out.slice(2);
+  while (out.length > 1 && out.endsWith("/")) out = out.slice(0, -1);
+  return out;
+}
+function globCovers(wide, narrow) {
+  if (wide === narrow) return true;
+  if (narrow.includes("**") && !wide.includes("**")) return false;
+  return compileGlob(wide)(narrow);
+}
+function stringCovers(wide, narrow, mode) {
+  if (mode === "regex") return wide === narrow;
+  const wideAlternatives = expandBraces(normalizePath2(wide));
+  return expandBraces(normalizePath2(narrow)).every(
+    (n) => wideAlternatives.some((w) => globCovers(w, n) || mode === "testpaths" && (w === "." || globCovers(`${w}/**`, n)))
+  );
+}
+function covers(wide, narrow, mode) {
+  if (wide.opaque || narrow.opaque) return false;
+  if (!wide.isString || !narrow.isString) return wide.text === narrow.text;
+  return stringCovers(wide.text, narrow.text, mode);
+}
+var opaqueTexts = (entries) => new Set(entries.filter((entry) => entry.opaque).map((entry) => entry.text));
+function gainsOpaque(base, head) {
+  const known = opaqueTexts(base);
+  return head.some((entry) => entry.opaque && !known.has(entry.text));
+}
+function narrowedList(base, head, mode) {
+  const headOpaque = opaqueTexts(head);
+  if (base.some((entry) => entry.opaque && !headOpaque.has(entry.text))) return "cannot";
+  const uncovered = base.some((entry) => !entry.opaque && !head.some((other) => covers(other, entry, mode)));
+  if (!uncovered) return null;
+  return gainsOpaque(base, head) ? "cannot" : "narrowed";
+}
+function widenedList(base, head, mode) {
+  const gained = head.some(
+    (entry) => !entry.opaque && !base.some((other) => covers(other, entry, mode)) && !(entry.isString && isBuildOrDependencyEntry(entry.text))
+  );
+  if (gained) return "widened";
+  return gainsOpaque(base, head) ? "cannot" : null;
+}
+
+// ../core/src/testConfig/rules.ts
+var rule = (path, kind, extra = {}) => ({
+  path: path.split("."),
+  rule: kind,
+  ...extra
+});
+var VITEST_RULES = [
+  rule("coverage.thresholds", "thresholds"),
+  rule("coverage.lines", "lowered"),
+  rule("coverage.functions", "lowered"),
+  rule("coverage.branches", "lowered"),
+  rule("coverage.statements", "lowered"),
+  rule("coverage.exclude", "widened", { list: "glob" }),
+  rule("include", "narrowed", { list: "glob" }),
+  rule("exclude", "widened", { list: "glob" }),
+  rule("projects", "narrowed", { list: "glob" }),
+  rule("passWithNoTests", "turnedOn"),
+  rule("allowOnly", "turnedOn"),
+  rule("retry", "increased", { warn: true }),
+  rule("bail", "bail"),
+  rule("testTimeout", "raised", { warn: true }),
+  rule("hookTimeout", "raised", { warn: true })
+];
+var WORKSPACE_RULES = [rule("projects", "narrowed", { list: "glob" })];
+var JEST_RULES = [
+  rule("coverageThreshold", "jestThresholds"),
+  rule("coveragePathIgnorePatterns", "widened", { list: "regex" }),
+  rule("testPathIgnorePatterns", "widened", { list: "regex" }),
+  rule("testMatch", "narrowed", { list: "glob" }),
+  rule("testRegex", "narrowed", { list: "regex" }),
+  rule("projects", "narrowed", { list: "glob" }),
+  rule("passWithNoTests", "turnedOn"),
+  rule("bail", "bail"),
+  rule("testTimeout", "raised", { warn: true })
+];
+var PLAYWRIGHT_RULES = [
+  rule("retries", "increased", { warn: true }),
+  rule("testIgnore", "widened", { list: "glob" }),
+  rule("testMatch", "narrowed", { list: "glob" }),
+  rule("grep", "addedOrChanged"),
+  rule("grepInvert", "addedOrChanged"),
+  rule("forbidOnly", "turnedOff")
+];
+var MOCHA_RULES = [
+  rule("spec", "narrowed", { list: "glob" }),
+  rule("ignore", "widened", { list: "glob" }),
+  rule("grep", "addedOrChanged"),
+  rule("fgrep", "addedOrChanged"),
+  rule("bail", "turnedOn"),
+  rule("retries", "increased", { warn: true }),
+  rule("timeout", "raised", { warn: true })
+];
+var PYTEST_RULES = [
+  rule("addopts", "addopts"),
+  rule("testpaths", "narrowed", { list: "testpaths", split: true }),
+  rule("python_files", "narrowed", { list: "glob", split: true }),
+  rule("python_classes", "narrowed", { list: "glob", split: true }),
+  rule("python_functions", "narrowed", { list: "glob", split: true }),
+  rule("norecursedirs", "widened", { list: "glob", split: true })
+];
+var NEW_CONFIG_KEYS = /* @__PURE__ */ new Set(["passWithNoTests", "allowOnly", "retry", "retries"]);
+function familyOf(kind) {
+  switch (kind) {
+    case "vitest":
+    case "vite":
+      return { rules: VITEST_RULES, prefix: ["test"], mocha: false };
+    case "vitest-workspace":
+      return { rules: WORKSPACE_RULES, prefix: [], mocha: false };
+    case "jest":
+      return { rules: JEST_RULES, prefix: [], mocha: false };
+    case "package-json":
+      return { rules: JEST_RULES, prefix: ["jest"], mocha: false };
+    case "playwright":
+      return { rules: PLAYWRIGHT_RULES, prefix: [], mocha: false };
+    case "mocha":
+      return { rules: MOCHA_RULES, prefix: [], mocha: true };
+    default:
+      return { rules: PYTEST_RULES, prefix: [], mocha: false };
+  }
+}
+var UNSET = "(unset)";
+var shown = (value) => value === null ? UNSET : cutValue(printValue(value));
+function foundValue(look) {
+  return typeof look === "object" ? look.found.value : null;
+}
+function lineOf(look) {
+  return typeof look === "object" ? look.found.line : null;
+}
+function finding(severity, line, detail, base, head) {
+  return {
+    severity,
+    line,
+    detail: cutDetail(detail),
+    ...base === null ? {} : { base: shown(base) },
+    ...head === null ? {} : { head: shown(head) }
+  };
+}
+function compared(ctx, key, text, b, h) {
+  return finding(key.warn === true ? "warn" : ctx.mode, lineOf(h), text, foundValue(b), foundValue(h));
+}
+var cannotOpaque = (keyName, head) => `${keyName} cannot be compared: the head value ${cutValue(printValue(head))} is not a literal.`;
+var cannotUnknown = (keyName) => `${keyName} cannot be compared: the head value is not known (a spread or mergeConfig may set it).`;
+function toMilliseconds(value) {
+  if (value.type === "number") return value.value;
+  if (value.type !== "string") return null;
+  const match = /^(\d+(?:\.\d+)?)\s*(ms|s|m|h)?$/.exec(value.value.trim());
+  if (match === null) return null;
+  const factor = { ms: 1, s: 1e3, m: 6e4, h: 36e5 }[match[2] ?? "ms"];
+  return Number(match[1]) * factor;
+}
+function thresholdFindings(ctx, key, jest) {
+  const out = [];
+  const root = key.path;
+  const named = (path) => keyText([...ctx.family.prefix, ...path]);
+  const rootText = named(root);
+  const baseSub = ctx.base === null ? "unset" : lookup(ctx.base, root);
+  const headSub = lookup(ctx.head, root);
+  const headSubValue = foundValue(headSub);
+  if (!jest && headSubValue !== null && headSubValue.type === "object") {
+    const walk = (value, path, depth) => {
+      if (value.type !== "object" || depth > MAX_CONFIG_VALUE_DEPTH) return;
+      for (const [name, entry] of value.entries) {
+        const next = [...path, name];
+        if (name === "autoUpdate" && entry.value.type === "boolean" && entry.value.value) {
+          const before = ctx.base === null ? "unset" : lookup(ctx.base, [...root, ...next]);
+          const was = foundValue(before);
+          if (!(was !== null && was.type === "boolean" && was.value)) {
+            out.push(
+              finding(
+                ctx.mode,
+                entry.line,
+                `${named([...root, ...next])} turned on: ${shown(was)} \u2192 ${shown(entry.value)}.`,
+                was,
+                entry.value
+              )
+            );
+          }
+        }
+        walk(entry.value, next, depth + 1);
+      }
+    };
+    walk(headSubValue, [], 0);
+  }
+  const baseValue = foundValue(baseSub);
+  if (baseValue === null || baseValue.type !== "object") return out;
+  if (headSub === "unknown" || headSubValue !== null && headSubValue.type === "opaque") {
+    if (headSubValue === null || printValue(headSubValue) !== printValue(baseValue)) {
+      out.push(
+        finding(
+          "warn",
+          lineOf(headSub),
+          headSubValue === null ? cannotUnknown(rootText) : cannotOpaque(rootText, headSubValue),
+          baseValue,
+          headSubValue
+        )
+      );
+    }
+    return out;
+  }
+  const walkBase = (value, path, depth) => {
+    if (value.type !== "object" || depth > MAX_CONFIG_VALUE_DEPTH) return;
+    for (const [name, entry] of value.entries) {
+      const next = [...path, name];
+      const leaf = entry.value;
+      if (leaf.type === "object") {
+        walkBase(leaf, next, depth + 1);
+        continue;
+      }
+      const isNumber = leaf.type === "number";
+      const isStrict = !jest && leaf.type === "boolean" && leaf.value && (name === "100" || name === "perFile");
+      if (!isNumber && !isStrict) continue;
+      const leafKey = named([...root, ...next]);
+      const h = lookup(ctx.head, [...root, ...next]);
+      const headValue = foundValue(h);
+      if (h === "unset") {
+        out.push(finding(ctx.mode, null, `${leafKey} removed: ${shown(leaf)} \u2192 ${UNSET}.`, leaf, null));
+      } else if (h === "unknown") {
+        out.push(finding("warn", null, cannotUnknown(leafKey), leaf, null));
+      } else if (headValue !== null && headValue.type === "opaque") {
+        out.push(finding("warn", lineOf(h), cannotOpaque(leafKey, headValue), leaf, headValue));
+      } else if (headValue !== null && isNumber && headValue.type === "number" && leaf.type === "number") {
+        if (headValue.value < leaf.value) {
+          out.push(
+            finding(ctx.mode, lineOf(h), `${leafKey} lowered: ${shown(leaf)} \u2192 ${shown(headValue)}.`, leaf, headValue)
+          );
+        }
+      } else if (headValue !== null && isStrict && headValue.type === "boolean" && !headValue.value) {
+        out.push(
+          finding(ctx.mode, lineOf(h), `${leafKey} turned off: ${shown(leaf)} \u2192 ${shown(headValue)}.`, leaf, headValue)
+        );
+      }
+    }
+  };
+  walkBase(baseValue, [], 0);
+  return out;
+}
+function addoptsFindings(ctx, key, b, h, keyName) {
+  const headValue = foundValue(h);
+  if (headValue === null) return [];
+  const baseValue = foundValue(b);
+  if (b === "unknown") return [];
+  if (headValue.type === "opaque") {
+    return baseValue !== null && printValue(baseValue) !== printValue(headValue) ? [compared(ctx, { ...key, warn: true }, cannotOpaque(keyName, headValue), b, h)] : [];
+  }
+  if (baseValue !== null && printValue(baseValue) === printValue(headValue)) return [];
+  const before = baseValue === null ? [] : deselectionPairs(splitAddopts(baseValue));
+  return gainedPairs(before, deselectionPairs(splitAddopts(headValue))).map(
+    (pair) => compared(ctx, key, `${keyName} gains ${pairText(pair)}.`, b, h)
+  );
+}
+function keyFindings(ctx, key) {
+  const full = key.path;
+  const keyName = keyText([...ctx.family.prefix, ...full]);
+  if (key.rule === "thresholds") return thresholdFindings(ctx, key, false);
+  if (key.rule === "jestThresholds") return thresholdFindings(ctx, key, true);
+  const b = ctx.base === null ? "unset" : lookup(ctx.base, full);
+  const h = lookup(ctx.head, full);
+  if (key.rule === "addopts") return addoptsFindings(ctx, key, b, h, keyName);
+  if (h === "unset") return [];
+  const baseValue = foundValue(b);
+  if (h === "unknown") {
+    return baseValue !== null && key.rule !== "addedOrChanged" ? [finding("warn", null, cannotUnknown(keyName), baseValue, null)] : [];
+  }
+  const headValue = h.found.value;
+  if (baseValue !== null && printValue(baseValue) === printValue(headValue)) return [];
+  const cannot = () => [finding("warn", lineOf(h), cannotOpaque(keyName, headValue), baseValue, headValue)];
+  const hit = (verb) => [
+    compared(ctx, key, `${keyName} ${verb}: ${shown(baseValue)} \u2192 ${shown(headValue)}.`, b, h)
+  ];
+  if (key.rule === "addedOrChanged") return hit("added or changed");
+  if (key.list !== void 0) {
+    if (b === "unknown") return [];
+    const split = key.split === true;
+    if (key.rule === "narrowed") {
+      if (baseValue === null) return [];
+      const result2 = narrowedList(entriesOf(baseValue, split), entriesOf(headValue, split), key.list);
+      return result2 === "narrowed" ? hit("narrowed") : result2 === "cannot" ? cannot() : [];
+    }
+    const before = baseValue === null ? [] : entriesOf(baseValue, split);
+    const result = widenedList(before, entriesOf(headValue, split), key.list);
+    return result === "widened" ? hit("widened") : result === "cannot" ? cannot() : [];
+  }
+  if (headValue.type === "opaque") return baseValue !== null ? cannot() : [];
+  switch (key.rule) {
+    case "lowered":
+      return baseValue?.type === "number" && headValue.type === "number" && headValue.value < baseValue.value ? hit("lowered") : [];
+    case "turnedOn":
+      return headValue.type === "boolean" && headValue.value && !(baseValue?.type === "boolean" && baseValue.value) ? hit("turned on") : [];
+    case "turnedOff":
+      return headValue.type === "boolean" && !headValue.value && baseValue !== null && !(baseValue.type === "boolean" && !baseValue.value) ? hit("turned off") : [];
+    case "increased": {
+      if (headValue.type !== "number" || b === "unknown") return [];
+      const before = b === "unset" ? 0 : baseValue?.type === "number" ? baseValue.value : null;
+      return before !== null && headValue.value > before ? hit("increased") : [];
+    }
+    case "bail": {
+      const after = headValue.type === "number" ? headValue.value : headValue.type === "boolean" && headValue.value ? 1 : 0;
+      if (after <= 0 || b === "unknown") return [];
+      const before = b === "unset" ? 0 : baseValue?.type === "number" ? baseValue.value : baseValue?.type === "boolean" ? Number(baseValue.value) : null;
+      if (before === null) return [];
+      if (before <= 0) return hit("added");
+      return before > after ? hit("lowered") : [];
+    }
+    case "raised": {
+      const after = toMilliseconds(headValue);
+      if (after === null || b === "unknown") return [];
+      const before = b === "unset" ? 0 : baseValue === null ? null : toMilliseconds(baseValue);
+      if (before === null) return [];
+      if (ctx.family.mocha && after === 0) return before !== 0 ? hit("raised") : [];
+      return (before > 0 ? after >= 10 * before : after >= 5e4) ? hit("raised") : [];
+    }
+    default:
+      return [];
+  }
+}
+function evaluateRules(kind, base, head, mode) {
+  const family = familyOf(kind);
+  const wrap = (value) => kind === "vitest-workspace" ? { type: "object", entries: /* @__PURE__ */ new Map([["projects", { value, line: null }]]), open: false, extras: [] } : value;
+  const ctx = { base: base === null ? null : wrap(base), head: wrap(head), mode, family };
+  const rules = base === null ? family.rules.filter(
+    (key) => key.rule === "addopts" || NEW_CONFIG_KEYS.has(key.path[key.path.length - 1])
+  ) : family.rules;
+  return rules.flatMap((key) => keyFindings(ctx, key));
+}
+
+// ../core/src/signals/ti09.ts
 var byCodeUnit14 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function lookupOf2(side) {
+  const texts = /* @__PURE__ */ new Map();
+  const dropped = /* @__PURE__ */ new Map();
+  if (!("unavailable" in side)) {
+    for (const file of side.files) texts.set(file.path, file.text);
+    for (const drop of side.dropped) dropped.set(drop.path, drop.reason);
+  }
+  return { texts, dropped };
+}
+function candidatesOf(diff) {
+  const found = [];
+  for (const file of diff) {
+    if (file.binary === true) continue;
+    const kind = testConfigKind(file.path);
+    if (kind === null) continue;
+    if (file.status === "modified" || file.status === "added") {
+      found.push({ kind, path: file.path, oldPath: file.oldPath, added: file.status === "added" });
+    } else if (file.status === "renamed" && testConfigKind(file.oldPath) === kind) {
+      found.push({ kind, path: file.path, oldPath: file.oldPath, added: false });
+    }
+  }
+  return found;
+}
+var sideText = (side, path) => {
+  const text = side.texts.get(path);
+  return text === void 0 ? { reason: side.dropped.get(path) ?? "missing" } : { text };
+};
+function detectTI09(diff, sources, mode) {
+  const candidates = candidatesOf(diff);
+  if (candidates.length === 0) return { signals: [], unavailable: [], notRun: null };
+  const why = [
+    ...new Set([sources.base, sources.head].flatMap((side) => "unavailable" in side ? [side.unavailable] : []))
+  ];
+  if (why.length > 0) {
+    return candidates.some((candidate) => isDedicatedTestConfig(candidate.kind)) ? { signals: [], unavailable: [], notRun: why.join("; ") } : { signals: [], unavailable: [], notRun: null };
+  }
+  const baseSide = lookupOf2(sources.base);
+  const headSide = lookupOf2(sources.head);
+  const signals = [];
+  const unavailable2 = /* @__PURE__ */ new Map();
+  const readSide = (side, candidate, path) => {
+    const text = sideText(side, path);
+    if ("reason" in text) {
+      if (!isDedicatedTestConfig(candidate.kind) && text.reason === "missing") return "skip";
+      return { refused: text.reason };
+    }
+    return readTestConfig(candidate.kind, path, text.text);
+  };
+  const sorted = [...candidates].sort((a, b) => byCodeUnit14(a.path, b.path) || byCodeUnit14(a.oldPath, b.oldPath));
+  for (const candidate of sorted) {
+    const base = candidate.added ? null : readSide(baseSide, candidate, candidate.oldPath);
+    const head = readSide(headSide, candidate, candidate.path);
+    if (base === "skip" || head === "skip") continue;
+    const refusal = base !== null && "refused" in base ? base : "refused" in head ? head : null;
+    if (refusal !== null) {
+      if (!unavailable2.has(candidate.path)) unavailable2.set(candidate.path, refusal.refused);
+      continue;
+    }
+    let findings = [];
+    if ("container" in head) {
+      const baseContainer = base !== null && "container" in base ? base.container : null;
+      findings = evaluateRules(candidate.kind, baseContainer, head.container, mode);
+    } else if ("notFound" in head && base !== null && "container" in base) {
+      findings = [
+        {
+          severity: "warn",
+          line: null,
+          detail: "(config) cannot be compared: the config was read at base but not found at head."
+        }
+      ];
+    }
+    for (const found of findings) {
+      signals.push({
+        id: "TI09",
+        severity: found.severity,
+        path: candidate.path,
+        line: found.line,
+        detail: found.detail,
+        ...found.base === void 0 ? {} : { base: found.base },
+        ...found.head === void 0 ? {} : { head: found.head }
+      });
+    }
+  }
+  return {
+    signals,
+    unavailable: [...unavailable2].map(([path, reason]) => ({ path, reason })).sort((a, b) => byCodeUnit14(a.path, b.path)),
+    notRun: null
+  };
+}
+
+// ../core/src/signals/ti11.ts
+var byCodeUnit15 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var PM_FLAGS = String.raw`(?:\s+(?:-r|--recursive|-w|--workspace-root|-ws|--workspaces|--if-present|(?:--filter|-F|-C|--dir|--prefix|--workspace|--cwd)(?:=|\s+)\S+))*`;
 var JS_LAUNCHER = String.raw`(?:(?:npx|bunx|yarn|pnpm${PM_FLAGS}(?:\s+(?:exec|dlx))?|bun\s+x|npm\s+exec)\s+)?`;
 var PY_WRAPPER = String.raw`(?:(?:uv|poetry|pipenv|pdm|hatch|rye)\s+run\s+)?`;
@@ -240733,7 +242103,7 @@ function detectTI11(diff, mode) {
     if (rushed !== void 0) emit("warn", rushed.line, SENTENCES.timeout);
   }
   return signals.sort(
-    (a, b) => byCodeUnit14(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit14(a.detail, b.detail)
+    (a, b) => byCodeUnit15(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit15(a.detail, b.detail)
   );
 }
 
@@ -240868,13 +242238,13 @@ function targetsOf(path, mocks, changed) {
 function detectTI12(touched, diff) {
   const changed = changedSources(diff);
   if (changed.size === 0) return [];
-  const compared = touched.pairs.map((file) => ({
+  const compared2 = touched.pairs.map((file) => ({
     file,
     base: targetsOf(file.basePath, file.baseMocks, changed),
     head: targetsOf(file.headPath, file.headMocks, changed)
   }));
   const moved = /* @__PURE__ */ new Set();
-  for (const { base, head } of compared) {
+  for (const { base, head } of compared2) {
     for (const target of base.keys()) {
       if (!head.has(target)) moved.add(target);
     }
@@ -240886,13 +242256,13 @@ function detectTI12(touched, diff) {
       found.push({ id: "TI12", severity: "warn", path: headPath, line: mock.line, detail: detailOf2(mock, target) });
     }
   };
-  for (const { file, base, head } of compared) report(file.headPath, head, base);
+  for (const { file, base, head } of compared2) report(file.headPath, head, base);
   for (const file of touched.added) report(file.headPath, targetsOf(file.headPath, file.headMocks, changed), /* @__PURE__ */ new Map());
   return found;
 }
 
 // ../core/src/signals/ti13.ts
-var byCodeUnit15 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit16 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE4 = 20;
 var DETAILS3 = {
   istanbul: "An Istanbul coverage hint was added, so the code it marks leaves the coverage this check grades.",
@@ -240944,12 +242314,12 @@ function detectTI13(diff, mode) {
     }
   }
   return signals.sort(
-    (a, b) => byCodeUnit15(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit15(a.detail, b.detail)
+    (a, b) => byCodeUnit16(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit16(a.detail, b.detail)
   );
 }
 
 // ../core/src/signals/ti14.ts
-var byCodeUnit16 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit17 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var PLAIN_NUMBER = /^\d+(?:\.\d+)?$/;
 function normalizedPattern(item) {
   try {
@@ -241067,11 +242437,11 @@ function detectTI14(diff, options) {
       });
     }
   }
-  return signals.sort((a, b) => byCodeUnit16(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit17(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti15.ts
-var byCodeUnit17 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit18 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE5 = 20;
 var MAX_DETAIL5 = 300;
 var MIN_STRING_LENGTH = 4;
@@ -241250,7 +242620,7 @@ function testLiterals(diff) {
       }
     }
   }
-  return new Map([...found].map(([key, paths]) => [key, [...paths].sort(byCodeUnit17)]));
+  return new Map([...found].map(([key, paths]) => [key, [...paths].sort(byCodeUnit18)]));
 }
 function detailOf3(literal, sourcePath, line, testPath) {
   const what = `a ${literal.value.length}-character ${literal.kind} literal`;
@@ -241290,13 +242660,13 @@ function detectTI15(diff) {
         }
       }
     }
-    found.sort((a, b) => a.line - b.line || byCodeUnit17(a.detail, b.detail));
+    found.sort((a, b) => a.line - b.line || byCodeUnit18(a.detail, b.detail));
     for (const { line, detail } of found.slice(0, MAX_PER_FILE5)) {
       signals.push({ id: "TI15", severity: "warn", path: file.path, line, detail });
     }
   }
   return signals.sort(
-    (a, b) => byCodeUnit17(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit17(a.detail, b.detail)
+    (a, b) => byCodeUnit18(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit18(a.detail, b.detail)
   );
 }
 
@@ -241396,7 +242766,7 @@ var markerOf2 = (text, language) => {
   const line = text.length > MAX_LINE2 ? text.slice(0, MAX_LINE2) : text;
   return language === "jsts" ? jsMarker(line) : pythonMarker(line);
 };
-var byCodeUnit18 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit19 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function detectTI16(diff) {
   const signals = [];
   for (const file of diff) {
@@ -241434,14 +242804,14 @@ function detectTI16(diff) {
       detail: `This test file adds ${count2} that switch off a linter or type checker, so the checks they silence no longer run on that code.`
     });
   }
-  return signals.sort((a, b) => byCodeUnit18(a.path, b.path));
+  return signals.sort((a, b) => byCodeUnit19(a.path, b.path));
 }
 
 // ../core/src/check.ts
-var byCodeUnit19 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit20 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function sortSignals(signals) {
   return signals.sort(
-    (a, b) => byCodeUnit19(a.id, b.id) || byCodeUnit19(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit19(a.detail, b.detail)
+    (a, b) => byCodeUnit20(a.id, b.id) || byCodeUnit20(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit20(a.detail, b.detail)
   );
 }
 function check(input) {
@@ -241476,8 +242846,17 @@ function check(input) {
   let testChanges;
   if (parsedDiff !== null && comparedMode !== "off" && input.testSources !== void 0) {
     const touched = indexTouchedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex);
+    const configs = detectTI09(parsedDiff, input.testSources, comparedMode);
+    const configUnavailable = configs.notRun !== null ? { notRun: configs.notRun } : configs.unavailable.length > 0 ? { files: configs.unavailable } : void 0;
     if (touched.notRun !== null) {
-      comparison = { signals: [], omitted: [], languages: [], unavailable: { notRun: touched.notRun } };
+      const capped = capFindings(configs.signals);
+      comparison = {
+        signals: capped.kept,
+        omitted: capped.omitted,
+        languages: [],
+        unavailable: { notRun: touched.notRun },
+        configUnavailable
+      };
     } else {
       const match = matchTests(touched);
       testChanges = summarizeTestChanges(touched, match) ?? void 0;
@@ -241486,13 +242865,15 @@ function check(input) {
         ...detectTI05(match, comparedMode),
         ...detectTI06(match),
         ...detectTI07(match, parsedDiff),
-        ...detectTI12(touched, parsedDiff)
+        ...detectTI12(touched, parsedDiff),
+        ...configs.signals
       ]);
       comparison = {
         signals: capped.kept,
         omitted: capped.omitted,
         languages: touched.languages,
-        unavailable: touched.unavailable.length > 0 ? { files: touched.unavailable } : void 0
+        unavailable: touched.unavailable.length > 0 ? { files: touched.unavailable } : void 0,
+        configUnavailable
       };
     }
   }
@@ -241544,7 +242925,8 @@ function check(input) {
     ...comparison === null || comparison.languages.length === 0 ? {} : { testIntegrityLanguages: comparison.languages },
     ...comparison === null || comparison.omitted.length === 0 ? {} : { omittedSignals: comparison.omitted },
     ...comparison?.unavailable === void 0 ? {} : { testIndexUnavailable: comparison.unavailable },
-    ...testChanges === void 0 ? {} : { testChanges }
+    ...testChanges === void 0 ? {} : { testChanges },
+    ...comparison?.configUnavailable === void 0 ? {} : { testConfigUnavailable: comparison.configUnavailable }
   };
   if ("kind" in coverageInput) {
     return buildReport({ ...base, diffCoverage: null, missing: { reason: "coverage-not-discovered" } });
@@ -241947,6 +243329,7 @@ var MESSAGE_HINTS = {
   TEST_INTEGRITY_TI06: (label) => `Restore the stronger matcher, guard or placement of the assertion, or say in the PR why the test checks less now; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI07: "Check each new expected value against what the code should do, not what it now returns; if the behaviour change is meant, say so in the PR so a reviewer can confirm it.",
   TEST_INTEGRITY_TI08: "Review the snapshot changes, or regenerate them in a separate change, and keep snapshot-update flags out of the test command.",
+  TEST_INTEGRITY_TI09: (label) => `Restore the setting, or say in the PR why it changes; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}. A raised retry count or timeout is a warning only.`,
   TEST_INTEGRITY_TI12: (label) => `Mock a collaborator of the code under test instead of the code itself, or say in the PR why this module is mocked; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI10: (label) => `Restore the test script, or say in the PR why it changes so a reviewer can confirm it; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI13: (label) => `Write a test for the code in place of the ignore comment, or say in the PR why it cannot be tested; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
@@ -241980,6 +243363,7 @@ var SIGNAL_HINT_IDS = /* @__PURE__ */ new Set([
   "TI06",
   "TI07",
   "TI08",
+  "TI09",
   "TI10",
   "TI11",
   "TI12",
@@ -243493,7 +244877,7 @@ var MAX_REASON_CHARS2 = 300;
 var StepFailed = class extends Error {
 };
 var firstLine = (err) => (err instanceof Error ? err.message : String(err)).trim().split("\n")[0]?.slice(0, MAX_REASON_CHARS2) ?? "";
-var byCodeUnit20 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit21 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 async function resolveRevision(deps, revision, label) {
   let out;
   try {
@@ -243589,7 +244973,7 @@ async function readTestSources(deps, options) {
     plans.forEach((plan, i) => {
       for (const path of plan.read) wanted.add(sides[i]?.blobs.get(path));
     });
-    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit20));
+    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit21));
     const decoded = /* @__PURE__ */ new Map();
     const build = (index) => {
       const plan = plans[index];
@@ -243605,7 +244989,7 @@ async function readTestSources(deps, options) {
         if (text === null) dropped.push({ path, reason: "binary" });
         else files.push({ path, text });
       }
-      dropped.sort((a, b) => byCodeUnit20(a.path, b.path));
+      dropped.sort((a, b) => byCodeUnit21(a.path, b.path));
       return { files, dropped };
     };
     return { base: build(0), head: build(1) };

@@ -1,0 +1,7 @@
+diff --git a/pytest.ini b/pytest.ini
+index 1111111..2222222 100644
+--- a/pytest.ini
++++ b/pytest.ini
+@@ -2 +2 @@ [pytest]
+-addopts = -ra
++addopts = -ra -k "not slow"

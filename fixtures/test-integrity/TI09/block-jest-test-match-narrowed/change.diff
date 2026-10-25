@@ -1,0 +1,7 @@
+diff --git a/jest.config.js b/jest.config.js
+index 1111111..2222222 100644
+--- a/jest.config.js
++++ b/jest.config.js
+@@ -2 +2 @@ module.exports = {
+-  testMatch: ["**/__tests__/**/*.ts", "**/*.test.ts"],
++  testMatch: ["**/*.test.ts"],

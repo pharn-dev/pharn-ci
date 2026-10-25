@@ -1,0 +1,19 @@
+diff --git a/vitest.config.ts b/vitest.config.ts
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/vitest.config.ts
+@@ -0,0 +1,13 @@
++import { defineConfig } from "vitest/config";
++
++export default defineConfig({
++  test: {
++    include: ["src/**/*.test.ts"],
++    exclude: ["e2e/**"],
++    coverage: {
++      thresholds: {
++        lines: 80,
++      },
++    },
++  },
++});

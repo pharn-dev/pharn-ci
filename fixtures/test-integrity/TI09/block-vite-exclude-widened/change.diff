@@ -1,0 +1,7 @@
+diff --git a/vite.config.ts b/vite.config.ts
+index 1111111..2222222 100644
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -6 +6 @@ export default defineConfig({
+-    exclude: ["e2e/**"],
++    exclude: ["e2e/**", "legacy/**"],

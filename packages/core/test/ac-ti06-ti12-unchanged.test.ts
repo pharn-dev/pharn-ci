@@ -13,8 +13,9 @@ import { expectValidReport } from "./schema.js";
 // What stays: every golden report, with and without sources; every earlier diff-only signal fixture gives the signals
 // and messages it gave before (the digest ac-ti0205-regression.test.ts pins); and every TI02 and TI05 case, with its
 // base and head text, gives the signals and messages it gave at the base commit 98693cf (a digest taken there), so none
-// gains a TI06 or TI12. What changes on purpose: the six Skylos test files AC-19 names now pin 5 of 9 with
-// loosened-assertion caught by TI06, and every one of their test titles is the one it had at the base commit.
+// gains a TI06 or TI12. What changes on purpose: the six Skylos test files AC-19 names now pin 7 of 9 (with
+// loosened-assertion caught by TI06 and, since TI09, deselect-setting by TI09), and every one of their test titles is the
+// one it had at the base commit apart from the RENAMED_TITLES.
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const REPO_ROOT = "/home/runner/work/demo/demo";
@@ -33,19 +34,20 @@ const TITLES_BASE = "2fd75371e9e27c80c0df7a81ba3077f2d896cb22";
 const RENAMED_TITLES: ReadonlyMap<string, string> = new Map([
   [
     '"AC-17: emptied-assertion gives a block TI05, replaced-test a block TI02, edited-expected-value a warn TI07, deleted-test and added-skip their TI01 and TI03 as before, and the other four no signal"',
-    '"AC-17: emptied-assertion gives a block TI05, replaced-test a block TI02, edited-expected-value a warn TI07, loosened-assertion a warn TI06, deleted-test and added-skip their TI01 and TI03 as before, and the other three no signal"',
+    // TI09 (after TI06) moved deselect-setting to caught as well, so these four titles name 7 of 9 now.
+    '"AC-17: emptied-assertion gives a block TI05, replaced-test a block TI02, edited-expected-value a warn TI07, loosened-assertion a warn TI06, deselect-setting a block TI09, deleted-test and added-skip their TI01 and TI03 as before, and the other two no signal"',
   ],
   [
     '"AC-17: docs/LIMITS.md and the README state that 5 of 9 are caught and list those five cases with their signal ids"',
-    '"AC-17: docs/LIMITS.md and the README state that 6 of 9 are caught and list those six cases with their signal ids"',
+    '"AC-17: docs/LIMITS.md and the README state that 7 of 9 are caught and list those seven cases with their signal ids"',
   ],
   [
     '"AC-4: exactly the five caught cases give a signal, each only its table id, and the other four give none"',
-    '"AC-4: exactly the six caught cases give a signal, each only its table id, and the other three give none"',
+    '"AC-4: exactly the seven caught cases give a signal, each only its table id, and the other two give none"',
   ],
   [
     '"AC-4: the headline — nine cases, 5 caught, 4 expected misses"',
-    '"AC-4: the headline — nine cases, 6 caught, 3 expected misses"',
+    '"AC-4: the headline — nine cases, 7 caught, 2 expected misses"',
   ],
 ]);
 const NEW_IDS = ["TI06", "TI12"];
@@ -269,18 +271,18 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
     const file = (path: (typeof SIX)[number]) => readFileSync(join(ROOT, path), "utf8");
 
     const ti0205 = file("packages/core/test/ac-ti0205-skylos.test.ts");
-    expect(ti0205).toContain('"6 of 9"');
+    expect(ti0205).toContain('"7 of 9"');
     expect(ti0205).not.toContain('"4 of 9"');
     expect(ti0205).toMatch(/\["loosened-assertion",\s*"TI06"\]/);
 
     const table = file("packages/core/test/ac-skylos-nine-table.test.ts");
     expect(table).toMatch(/name: "loosened-assertion",\s*signal: "TI06",\s*caught: true/);
     expect(table).not.toMatch(/name: "loosened-assertion",\s*signal: "TI06",\s*caught: false/);
-    expect(table).toContain('"6/9"');
+    expect(table).toContain('"7/9"');
     expect(table).not.toContain('"4/9"');
 
     const count = file("packages/core/test/ac-v020-skylos-count.test.ts");
-    expect(count).toContain('"6 of 9"');
+    expect(count).toContain('"7 of 9"');
     expect(count).not.toContain('"4 of 9"');
     expect(count, "loosened-assertion is run with its sources").toContain('"loosened-assertion"');
 
@@ -290,14 +292,14 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
     );
 
     const limits = file("packages/core/test/ac-v020-limits.test.ts");
-    expect(limits).toContain('"6 of 9"');
+    expect(limits).toContain('"7 of 9"');
     expect(limits).not.toContain('"4 of 9"');
     expect(arrayLiteral(limits, "MISSED_CASES"), "loosened-assertion leaves the missed cases").not.toContain(
       "loosened-assertion",
     );
 
     const readme = file("packages/core/test/ac-v020-readme.test.ts");
-    expect(readme).toContain('"6 of 9"');
+    expect(readme).toContain('"7 of 9"');
     expect(readme).not.toContain('"4 of 9"');
   });
 });

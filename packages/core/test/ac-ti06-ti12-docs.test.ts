@@ -106,13 +106,14 @@ describe("TI06 and TI12: docs, schema, exports and fixtures", () => {
     ).toBe(true);
   });
 
-  it("AC-18: the README names TI06 and TI12 among the signals, lists both codes and says 6 of 9", () => {
+  it("AC-18: the README names TI06 and TI12 among the signals, lists both codes and says 7 of 9", () => {
     const readme = read("README.md");
     const section = normalize(sectionOf(readme, /^## Test integrity$/));
     const signals = /The signals so far are (.*?)\. Each /.exec(section)?.[1] ?? section;
     expect(signals).toContain("TI06");
     expect(signals).toContain("TI12");
-    expect(section).toContain("6 of 9");
+    // TI09 (after TI06 and TI12) moved deselect-setting to caught.
+    expect(section).toContain("7 of 9");
     const codeRows = lines(readme).filter((line) => /^\|\s*`TEST_INTEGRITY_/.test(line));
     for (const code of CODES) {
       expect(

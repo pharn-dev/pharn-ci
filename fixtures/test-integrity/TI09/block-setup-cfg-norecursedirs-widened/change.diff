@@ -1,0 +1,7 @@
+diff --git a/setup.cfg b/setup.cfg
+index 1111111..2222222 100644
+--- a/setup.cfg
++++ b/setup.cfg
+@@ -5 +5 @@ name = demo
+-norecursedirs = .git
++norecursedirs = .git legacy

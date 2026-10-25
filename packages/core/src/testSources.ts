@@ -55,6 +55,7 @@ const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 const TEST_CONFIG_PREFIXES: readonly string[] = [
   "vitest.config.",
+  "vite.config.",
   "vitest.workspace.",
   "jest.config.",
   "playwright.config.",
@@ -70,7 +71,8 @@ const TEST_CONFIG_NAMES: ReadonlySet<string> = new Set([
 
 /**
  * Whether a path is a test-config file, by basename at any depth, case-sensitive: a basename that starts with
- * `vitest.config.`, `vitest.workspace.`, `jest.config.` or `playwright.config.` and has at least one more character,
+ * `vitest.config.`, `vite.config.`, `vitest.workspace.`, `jest.config.` or `playwright.config.` and has at least one
+ * more character,
  * or starts with `.mocharc`, or is exactly `pytest.ini`, `pyproject.toml`, `setup.cfg`, `tox.ini`, `conftest.py` or
  * `package.json`. By name only: it reads no file.
  */

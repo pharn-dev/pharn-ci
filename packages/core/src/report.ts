@@ -160,6 +160,7 @@ export type MessageCode =
   | "TEST_INTEGRITY_TI06"
   | "TEST_INTEGRITY_TI07"
   | "TEST_INTEGRITY_TI08"
+  | "TEST_INTEGRITY_TI09"
   | "TEST_INTEGRITY_TI10"
   | "TEST_INTEGRITY_TI11"
   | "TEST_INTEGRITY_TI12"
@@ -187,6 +188,9 @@ export interface OmittedSignals {
 
 /** Test files that TI02 and TI05 could not compare, or why they did not run at all. */
 export type TestIndexUnavailable = { files: readonly { path: string; reason: string }[] } | { notRun: string };
+
+/** Touched test-config files that TI09 could not read, or why it did not run at all. */
+export type TestConfigUnavailable = { files: readonly { path: string; reason: string }[] } | { notRun: string };
 
 export interface BuildReportInput {
   version: string;
@@ -245,12 +249,17 @@ export interface BuildReportInput {
   textTruncatedFiles?: readonly string[];
   /** The sorted languages of the test files the base-and-head signals indexed; fills `testIntegrity.languages`. */
   testIntegrityLanguages?: readonly ("ts" | "js" | "py" | "go")[];
-  /** Findings the per-file cap left out of `testIntegrity.signals`; the TI02, TI05, TI06 and TI12 messages say how many. */
+  /** Findings the per-file cap left out of `testIntegrity.signals`; the TI02, TI05, TI06, TI09 and TI12 messages say how many. */
   omittedSignals?: readonly OmittedSignals[];
   /** Touched test files TI02 and TI05 could not compare, or why they did not run; adds one warn message. */
   testIndexUnavailable?: TestIndexUnavailable;
   /** The tests-changed summary (see `summarizeTestChanges`); fills `testIntegrity.changes`. Absent adds nothing. */
   testChanges?: ReportTestChanges;
+  /**
+   * Touched test-config files TI09 could not read, or why it did not run. Adds one TI09 sentence to the one
+   * `TEST_INTEGRITY_INDEX_UNAVAILABLE` message, after the TI02 and TI05 sentence when there is one.
+   */
+  testConfigUnavailable?: TestConfigUnavailable;
 }
 
 /**
@@ -317,6 +326,13 @@ const SIGNAL_MESSAGES: ReadonlyArray<{
     code: "TEST_INTEGRITY_TI08",
     text: (_top, paths) =>
       `This change regenerates or updates snapshots in bulk: ${paths}. Check that each new snapshot was reviewed.`,
+  },
+  {
+    id: "TI09",
+    code: "TEST_INTEGRITY_TI09",
+    allPaths: true,
+    text: (_top, paths, notListed) =>
+      `This change loosens test-runner settings so that fewer tests run, a weaker run passes or the coverage gate drops: ${paths}. Check that each looser setting was meant.${notListed}`,
   },
   {
     id: "TI10",
@@ -542,9 +558,8 @@ export function buildReport(input: BuildReportInput): Report {
 
   const signals = [...(input.testIntegritySignals ?? [])];
   messages.push(...testIntegritySignalMessages(signals, { omitted: input.omittedSignals ?? [] }));
-  const unavailable = input.testIndexUnavailable;
-  if (unavailable !== undefined && testIntegrity?.mode !== "off") {
-    const text = indexUnavailableText(unavailable);
+  if (testIntegrity?.mode !== "off") {
+    const text = indexUnavailableText(input.testIndexUnavailable, input.testConfigUnavailable);
     if (text !== null) messages.push({ level: "warn", code: "TEST_INTEGRITY_INDEX_UNAVAILABLE", text });
   }
   const cut = input.textTruncatedFiles ?? [];
@@ -640,22 +655,50 @@ function isHighSurrogate(code: number): boolean {
 }
 
 /**
- * The text of the one `TEST_INTEGRITY_INDEX_UNAVAILABLE` message: the touched test files that could not be compared with
- * a code for each (at most 5, then a count), or that TI02 and TI05 did not run, with the sources reason as one code span.
- * Neither a Python run's detail nor any file content is in it. Null when there is nothing to say.
+ * The text of the one `TEST_INTEGRITY_INDEX_UNAVAILABLE` message: the TI02 and TI05 sentence, then the TI09 sentence, joined
+ * by one space, each only when it has something to say. The TI02 and TI05 sentence names the touched test files that
+ * could not be compared with a code for each (at most 5, then a count), or says they did not run, with the sources
+ * reason as one code span. The TI09 sentence does the same for the touched test-config files. Neither a Python run's
+ * detail nor any file content is in it. Null when there is nothing to say.
  */
-function indexUnavailableText(unavailable: TestIndexUnavailable): string | null {
-  if ("notRun" in unavailable) {
-    return `TI02 and TI05 did not run: the text of the touched test files could not be read (${codeSpan(oneLine(unavailable.notRun))}), so removed tests and emptied assertions are not checked.`;
+function indexUnavailableText(
+  unavailable: TestIndexUnavailable | undefined,
+  configUnavailable: TestConfigUnavailable | undefined,
+): string | null {
+  const parts: string[] = [];
+  if (unavailable !== undefined) {
+    if ("notRun" in unavailable) {
+      parts.push(
+        `TI02 and TI05 did not run: the text of the touched test files could not be read (${codeSpan(oneLine(unavailable.notRun))}), so removed tests and emptied assertions are not checked.`,
+      );
+    } else if (unavailable.files.length > 0) {
+      parts.push(
+        `TI02 and TI05 could not compare these touched test files, so they are not checked for removed tests or emptied assertions: ${namedFiles(unavailable.files)}.`,
+      );
+    }
   }
-  const files = unavailable.files;
-  if (files.length === 0) return null;
+  if (configUnavailable !== undefined) {
+    if ("notRun" in configUnavailable) {
+      parts.push(
+        `TI09 did not run: the text of the touched test-config files could not be read (${codeSpan(oneLine(configUnavailable.notRun))}), so loosened test settings are not checked.`,
+      );
+    } else if (configUnavailable.files.length > 0) {
+      parts.push(
+        `TI09 could not read these touched test-config files, so they are not checked for loosened settings: ${namedFiles(configUnavailable.files)}.`,
+      );
+    }
+  }
+  return parts.length === 0 ? null : parts.join(" ");
+}
+
+/** The first few files as `path (reason)` code spans joined with `, `, then ` and N more` when there are more. */
+function namedFiles(files: readonly { path: string; reason: string }[]): string {
   const named = files
     .slice(0, MAX_NAMED_PATHS)
     .map((file) => `${codeSpan(file.path)} (${codeSpan(file.reason)})`)
     .join(", ");
   const more = files.length - MAX_NAMED_PATHS;
-  return `TI02 and TI05 could not compare these touched test files, so they are not checked for removed tests or emptied assertions: ${named}${more > 0 ? ` and ${more} more` : ""}.`;
+  return `${named}${more > 0 ? ` and ${more} more` : ""}`;
 }
 
 function unmatchedText(missing: { total: number; example: string; suggestedRoot: string | null }): string {

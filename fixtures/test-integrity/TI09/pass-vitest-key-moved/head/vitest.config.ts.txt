@@ -1,0 +1,10 @@
+import { defineConfig } from "vitest/config";
+
+const TEST_FILES = ["src/**/*.test.ts"];
+
+export default defineConfig({
+  test: {
+    environment: "node",
+    include: TEST_FILES,
+  },
+});

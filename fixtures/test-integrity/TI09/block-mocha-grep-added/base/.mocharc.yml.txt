@@ -1,0 +1,3 @@
+# mocha settings
+spec: test/**/*.spec.js
+timeout: 2000

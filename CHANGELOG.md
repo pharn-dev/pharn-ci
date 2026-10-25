@@ -54,6 +54,19 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   with the mock's specifier sanitized and cut to 120 characters. At most 20 findings per file and signal are listed. The
   `skylos-nine` benchmark now catches 6 of 9 (`loosened-assertion` by TI06).
 
+- Signal **TI09** (a test-runner setting loosened) and the code `TEST_INTEGRITY_TI09`. TI09 compares the base and head
+  text of the touched test-runner config files: `vitest.config.*`, `vite.config.*`, `vitest.workspace.*`, `jest.config.*`
+  and the `jest` key of `package.json`, `playwright.config.*`, `.mocharc.*`, `pytest.ini`, `tox.ini`, `setup.cfg` and
+  `pyproject.toml`. A fixed list of keys is judged: a lowered or removed coverage threshold, a narrowed test list, a
+  widened exclusion (build directories, `node_modules` and `.d.ts` files excepted), `passWithNoTests`, `allowOnly` or
+  `bail` turned on, a `grep` added, `forbidOnly` turned off and a pytest `addopts` that gains a deselecting option are
+  `block` in mode `block` and `warn` in mode `warn`; a raised retry count or timeout, and a value that is not a literal,
+  are always `warn`. The finding sits at the head path and the head line of the key (no line for JSON). At most 20
+  findings per file and signal are listed, and the message says how many were left out. `vite.config.*` is now read as a
+  test-config file by the CLI and the Action. A config that cannot be read, or the whole signal when a side of the test
+  sources is unavailable, adds a TI09 sentence to `TEST_INTEGRITY_INDEX_UNAVAILABLE`. The `skylos-nine` benchmark now
+  catches 7 of 9 (`deselect-setting` by TI09).
+
 ### Changed
 
 - pharn-ci now reads the base and head text of the test and test-config files a change touches from local git
