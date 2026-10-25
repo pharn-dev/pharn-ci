@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pharn.dev/schemas/ci/report.v2.json",
+  "title": "pharn-ci Report v2",
+  "description": "Machine-readable output of pharn-ci since 0.2.0. This schema is the source of truth: markdown and CLI text are renderings of this object. v2 is Report v1 (schema/report.v1.json) plus optional top-level objects: every v1 field keeps its name, type and meaning, and schemaVersion is the number 2. A missing optional object means that part did not run. Within schemaVersion 2 fields are never removed or retyped; new optional fields may only be added by updating this file. Format keywords are annotations.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "tool", "verdict", "diffCoverage", "agentSetup", "messages"],
+  "$defs": {
+    "message": {
+      "description": "A v1 message (schema/report.v1.json#/$defs/message) with the same fields and constraints. v2 documents its own codes here so codes added in v2 are listed in v2.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "code", "text"],
+      "properties": {
+        "level": { "enum": ["info", "warn", "error"] },
+        "code": {
+          "description": "Stable identifier; branch on this, never on text. Known codes: DIFF_COVERAGE_BELOW_THRESHOLD, DIFF_COVERAGE_UNGATED, NO_COVERABLE_CHANGES, COVERAGE_FILE_MISSING, COVERAGE_FILE_EMPTY, COVERAGE_FORMAT_UNSUPPORTED, DIFF_UNAVAILABLE, NO_AGENT_SETUP_FILES. Every v1 code keeps its meaning and level in v2 (schema/report.v1.json documents COVERAGE_PATHS_UNMATCHED, COVERAGE_PATHS_PARTIALLY_UNMATCHED, CONFIG_CHANGED_IN_DIFF, COVERAGE_FILE_TRACKED, DIFF_BINARY_COVERED_FILE, AGENT_SETUP_FILE_EMPTY, TEST_FILES_DELETED, AGENT_SETUP_EXPECTED_MISSING and COVERAGE_LINES_SKIPPED). New codes may be added within v2; consumers must tolerate unknown codes. No code is removed or renamed before 1.0.",
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "text": { "type": "string", "minLength": 1, "description": "Human-readable explanation; wording may change." }
+      }
+    }
+  },
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "tool": { "$ref": "report.v1.json#/properties/tool" },
+    "verdict": { "enum": ["pass", "warn", "fail"] },
+    "diffCoverage": { "$ref": "report.v1.json#/properties/diffCoverage" },
+    "agentSetup": { "$ref": "report.v1.json#/properties/agentSetup" },
+    "messages": { "type": "array", "items": { "$ref": "#/$defs/message" } },
+    "testIntegrity": {
+      "description": "Test-integrity findings for the change under review. mode: the effective mode (block | warn | off); source: where it came from; verdict: from the signals and the mode; languages: which detectors ran.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "source", "verdict", "signals", "languages"],
+      "properties": {
+        "mode": { "enum": ["block", "warn", "off"] },
+        "source": { "enum": ["default", "input", "config", "policy"] },
+        "verdict": { "enum": ["pass", "warn", "fail"] },
+        "accepted": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["label", "by"],
+              "properties": { "label": { "type": "string" }, "by": { "type": ["string", "null"] } }
+            }
+          ]
+        },
+        "signals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "severity", "path", "line", "detail"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^TI(0[1-9]|1[0-6])$" },
+              "severity": { "enum": ["block", "warn", "info"] },
+              "path": { "type": "string", "minLength": 1 },
+              "line": { "type": ["integer", "null"], "minimum": 1 },
+              "detail": { "type": "string", "minLength": 1, "maxLength": 300 },
+              "base": { "type": "string", "maxLength": 120 },
+              "head": { "type": "string", "maxLength": 120 }
+            }
+          }
+        },
+        "languages": { "type": "array", "items": { "enum": ["ts", "js", "py", "go"] } }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "version", "violations"],
+      "properties": {
+        "source": { "enum": ["app", "input", "config", "none"] },
+        "version": { "type": ["integer", "null"], "minimum": 1 },
+        "fetchedAt": { "type": "string", "format": "date-time" },
+        "violations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "severity", "path", "line", "detail"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^P(0[1-9]|1[0-9])$" },
+              "severity": { "enum": ["block", "warn", "info", "pending"] },
+              "path": { "type": ["string", "null"] },
+              "line": { "type": ["integer", "null"], "minimum": 1 },
+              "detail": { "type": "string", "minLength": 1, "maxLength": 300 }
+            }
+          }
+        }
+      }
+    },
+    "flaky": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uploaded", "testCount", "failed", "quarantined", "quarantinedFailures", "unquarantinedFailures"],
+      "properties": {
+        "uploaded": { "type": "boolean" },
+        "testCount": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "quarantined": { "type": "array", "items": { "type": "string" } },
+        "quarantinedFailures": { "type": "integer", "minimum": 0 },
+        "unquarantinedFailures": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "meta": {
+      "description": "Run metadata, present when the Action ran. Absent from a CLI run.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event", "repository", "headSha", "scope", "runId", "runAttempt", "upload"],
+      "properties": {
+        "event": { "enum": ["pull_request", "merge_group", "push", "workflow_run", "workflow_dispatch", "other"] },
+        "repository": { "type": "string" },
+        "repositoryId": { "type": "integer" },
+        "prNumber": { "type": ["integer", "null"], "minimum": 1 },
+        "headSha": { "type": "string", "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$" },
+        "baseSha": { "type": ["string", "null"] },
+        "mergeBase": { "type": ["string", "null"] },
+        "scope": { "type": "string" },
+        "runId": { "type": "integer" },
+        "runAttempt": { "type": "integer", "minimum": 1 },
+        "actor": { "type": "string" },
+        "prAuthor": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["login", "type"],
+              "properties": { "login": { "type": "string" }, "type": { "enum": ["User", "Bot", "Organization"] } }
+            }
+          ]
+        },
+        "prLabels": { "type": "array", "items": { "type": "string" } },
+        "coAuthors": { "type": "array", "items": { "type": "string" } },
+        "agentHint": { "type": ["string", "null"] },
+        "upload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "properties": {
+            "status": { "enum": ["ok", "skipped", "failed", "too_large"] },
+            "runUrl": { "type": "string", "format": "uri" }
+          }
+        }
+      }
+    }
+  }
+}

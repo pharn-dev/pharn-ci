@@ -116,8 +116,11 @@ describe("renderMarkdown(): the golden renderings gain the verdict callout and n
       expect(sentence.length, `${golden}: the overview sentence`).toBeGreaterThan(0);
 
       // Fold the two callout lines back into the bare overview sentence: the result is the file as committed before.
+      // Report v2 (report-v2-skeleton) changed the footer's schema version on purpose; map it back before the hash.
       const folded = [...rendered.slice(0, 4), sentence, ...rendered.slice(6)].join("\n");
-      expect(sha256(folded), `${golden}: folded rendering equals the committed file before`).toBe(
+      expect(folded, `${golden}: footer names report schema v2`).toContain("· report schema v2");
+      const foldedV1 = folded.replace("· report schema v2", "· report schema v1");
+      expect(sha256(foldedV1), `${golden}: folded rendering equals the committed file before`).toBe(
         BEFORE_SHA256[golden],
       );
     }

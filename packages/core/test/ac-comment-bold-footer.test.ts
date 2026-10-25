@@ -100,9 +100,9 @@ describe("renderMarkdown(): the footer", () => {
     expect(noFormat.diffCoverage && "format" in noFormat.diffCoverage).toBe(false);
 
     const cases: [string, Report, string][] = [
-      ["golden", golden, "<sub>pharn-ci 0.1.0 · report schema v1 · coverage format lcov</sub>"],
-      ["diff coverage not computed", notComputed, "<sub>pharn-ci 0.1.0 · report schema v1</sub>"],
-      ["no coverage format", noFormat, "<sub>pharn-ci 0.1.0 · report schema v1</sub>"],
+      ["golden", golden, "<sub>pharn-ci 0.1.0 · report schema v2 · coverage format lcov</sub>"],
+      ["diff coverage not computed", notComputed, "<sub>pharn-ci 0.1.0 · report schema v2</sub>"],
+      ["no coverage format", noFormat, "<sub>pharn-ci 0.1.0 · report schema v2</sub>"],
     ];
     for (const [label, report, footer] of cases) {
       expect(report.tool.version, label).toBe("0.1.0");

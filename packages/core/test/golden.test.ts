@@ -17,7 +17,7 @@ function goldenReport(threshold: number | null) {
   });
 }
 
-describe("golden: fixture diff + lcov -> Report v1", () => {
+describe("golden: fixture diff + lcov -> Report v2", () => {
   it("matches the expected report JSON and the schema", async () => {
     const report = goldenReport(80);
     expectValidReport(report);

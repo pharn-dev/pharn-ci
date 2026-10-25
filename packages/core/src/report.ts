@@ -4,9 +4,12 @@ import type { DiffCoverageFile, DiffCoverageResult } from "./diffCoverage.js";
 import type { AgentSetupFile, AgentSetupInventory } from "./setup/scan.js";
 import { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
 
-/** TypeScript mirror of schema/report.v1.json. The schema is the source of truth. */
+/**
+ * TypeScript mirror of schema/report.v2.json, which is Report v1 (schema/report.v1.json) plus optional top-level
+ * objects. The schemas are the source of truth.
+ */
 export interface Report {
-  schemaVersion: "1";
+  schemaVersion: 2;
   tool: { name: "pharn-ci"; version: string };
   verdict: Verdict;
   diffCoverage: ReportDiffCoverage | null;
@@ -17,6 +20,61 @@ export interface Report {
     missing?: AgentTool[];
   };
   messages: Message[];
+  /** Test-integrity findings; always present. */
+  testIntegrity: ReportTestIntegrity;
+  /** Run metadata; present only when the caller (the Action) gave it. */
+  meta?: ReportMeta;
+}
+
+export type TestIntegrityMode = "block" | "warn" | "off";
+
+export interface TestIntegritySignal {
+  /** TI01–TI16. */
+  id: string;
+  severity: "block" | "warn" | "info";
+  path: string;
+  /** 1-based line in the head file, or null. */
+  line: number | null;
+  detail: string;
+  base?: string;
+  head?: string;
+}
+
+export interface ReportTestIntegrity {
+  /** The effective mode after precedence. */
+  mode: TestIntegrityMode;
+  /** Where the effective mode came from. */
+  source: "default" | "input" | "config" | "policy";
+  verdict: Verdict;
+  accepted?: { label: string; by: string | null } | null;
+  signals: TestIntegritySignal[];
+  /** Which detectors ran. */
+  languages: ("ts" | "js" | "py" | "go")[];
+}
+
+export type ReportMetaEvent = "pull_request" | "merge_group" | "push" | "workflow_run" | "workflow_dispatch" | "other";
+
+export interface ReportMeta {
+  event: ReportMetaEvent;
+  /** owner/name */
+  repository: string;
+  repositoryId?: number;
+  prNumber?: number | null;
+  /** 40 or 64 lowercase hex characters. */
+  headSha: string;
+  baseSha?: string | null;
+  mergeBase?: string | null;
+  /** workflow/job */
+  scope: string;
+  runId: number;
+  runAttempt: number;
+  actor?: string;
+  upload: { status: "ok" | "skipped" | "failed" | "too_large"; runUrl?: string };
+}
+
+/** The test-integrity block of a run in which no detector ran: the default mode, nothing found. */
+export function emptyTestIntegrity(): ReportTestIntegrity {
+  return { mode: "warn", source: "default", verdict: "pass", signals: [], languages: [] };
 }
 
 export type Verdict = "pass" | "warn" | "fail";
@@ -99,6 +157,8 @@ export interface BuildReportInput {
    * reach the report; absent or empty adds no field and no message.
    */
   expectedAgentTools?: readonly AgentTool[];
+  /** Run metadata copied into the report as given; absent adds no field. */
+  meta?: ReportMeta;
 }
 
 export function buildReport(input: BuildReportInput): Report {
@@ -247,7 +307,7 @@ export function buildReport(input: BuildReportInput): Report {
   }
 
   return {
-    schemaVersion: "1",
+    schemaVersion: 2,
     tool: { name: "pharn-ci", version: input.version },
     verdict: verdictOf(messages),
     diffCoverage:
@@ -270,6 +330,8 @@ export function buildReport(input: BuildReportInput): Report {
       ...(expected.length > 0 ? { missing: missingTools } : {}),
     },
     messages,
+    testIntegrity: emptyTestIntegrity(),
+    ...(input.meta === undefined ? {} : { meta: input.meta }),
   };
 }
 

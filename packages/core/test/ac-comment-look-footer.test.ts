@@ -127,10 +127,10 @@ describe("PR comment look: compact footer and no image (pr-comment-redesign-2)",
       expect(last, name).toMatch(/^<sub>.*<\/sub>$/);
       const tool = last.indexOf("pharn-ci");
       const version = last.indexOf(report.tool.version, tool + "pharn-ci".length);
-      const schema = last.indexOf("report schema v1", version + report.tool.version.length);
+      const schema = last.indexOf("report schema v2", version + report.tool.version.length);
       expect(tool, `${name}: footer names pharn-ci`).toBeGreaterThanOrEqual(0);
       expect(version, `${name}: footer names the tool version after pharn-ci`).toBeGreaterThan(tool);
-      expect(schema, `${name}: footer names report schema v1 after the version`).toBeGreaterThan(version);
+      expect(schema, `${name}: footer names report schema v2 after the version`).toBeGreaterThan(version);
 
       // No image, no remote URL, apart from the logo line (line 0).
       const rest = lines.slice(1).join("\n");

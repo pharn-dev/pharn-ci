@@ -54,7 +54,7 @@ inputs:
 
 outputs:
   report-path:
-    description: Path to report.json (Report v1, see schema/report.v1.json).
+    description: Path to report.json (Report v2, see schema/report.v2.json).
   verdict:
     description: pass, warn or fail.
   diff-coverage:

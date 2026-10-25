@@ -36,7 +36,7 @@ Agent setup: 1 file · amp, codex, copilot, cursor, jules, opencode, zed
 
 ---
 
-<sub>pharn-ci 0.1.0 · report schema v1</sub>
+<sub>pharn-ci 0.1.0 · report schema v2</sub>
 "
 `;
 
@@ -71,6 +71,6 @@ Missing: an agent instructions file, typically \`AGENTS.md\` or \`CLAUDE.md\` at
 
 ---
 
-<sub>pharn-ci 0.1.0 · report schema v1</sub>
+<sub>pharn-ci 0.1.0 · report schema v2</sub>
 "
 `;

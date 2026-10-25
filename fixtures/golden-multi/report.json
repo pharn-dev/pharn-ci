@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1",
+  "schemaVersion": 2,
   "tool": {
     "name": "pharn-ci",
     "version": "0.1.0"
@@ -108,5 +108,12 @@
       "code": "COVERAGE_PATHS_PARTIALLY_UNMATCHED",
       "text": "1 file path in the coverage report is not a tracked file in the repository; its coverage is not used."
     }
-  ]
+  ],
+  "testIntegrity": {
+    "mode": "warn",
+    "source": "default",
+    "verdict": "pass",
+    "signals": [],
+    "languages": []
+  }
 }
