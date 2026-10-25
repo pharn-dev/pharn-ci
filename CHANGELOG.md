@@ -9,6 +9,14 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+### Changed
+
+### Security
+
+## [0.2.0] - 2026-10-25
+
+### Added
+
 - The accept label, the `accept-label` Action input (default `pharn/accepted`, at most 50 characters). In
   `test-integrity: block` on a `pull_request` or `pr-number` run, a pull request that carries the label, applied last by
   a user account that is not the PR author, has its block signals downgraded to `warn`: the report gains the
@@ -86,15 +94,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 - **Breaking for report consumers:** the report is now Report v2
   ([`schema/report.v2.json`](schema/report.v2.json)). `schemaVersion` is the number `2` (Report v1 used the
-  string `"1"`), every report carries a `testIntegrity` block (empty until test-integrity signals ship: mode
-  `warn`, source `default`, verdict `pass`), and the Action's `report.json` adds a `meta` block with run
+  string `"1"`), every report carries a `testIntegrity` block (the mode in effect and where it came from, the
+  verdict and the signals; mode `warn` from source `default` unless set), and the Action's `report.json` adds a `meta` block with run
   metadata (event, repository, pull request, head and base commits, run id and attempt). Every Report v1 field
   keeps its name, type and meaning, and no message code changed. `report.v1.json` has
   `additionalProperties: false`, so a v2 report does not validate against it: tools that validate the report
   must switch on `schemaVersion`. The CLI's `--format json` prints Report v2, and the comment footer reads
   `report schema v2`. `schema/report.v1.json` is unchanged.
-
-### Security
 
 ## [0.1.0] - 2026-10-19
 

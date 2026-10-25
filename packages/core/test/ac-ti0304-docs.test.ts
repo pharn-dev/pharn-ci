@@ -66,12 +66,13 @@ describe("TI03 and TI04: docs, schema and fixtures", () => {
   });
 
   it("AC-14: the changelog, README, limits and threat model name TI03 and TI04", () => {
-    const unreleased =
+    // Shipped in 0.2.0; before that release its line sat under Unreleased.
+    const shipped =
       read("CHANGELOG.md")
         .split(/^## \[/m)
-        .find((p) => p.startsWith("Unreleased]")) ?? "";
-    expect(unreleased).toContain("TI03");
-    expect(unreleased).toContain("TI04");
+        .find((p) => p.startsWith("0.2.0]")) ?? "";
+    expect(shipped).toContain("TI03");
+    expect(shipped).toContain("TI04");
 
     const readme = read("README.md");
     for (const word of ["TI03", "TI04", "TEST_INTEGRITY_TI03", "TEST_INTEGRITY_TI04"]) expect(readme).toContain(word);

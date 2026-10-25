@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { VERSION } from "../../core/src/version.js";
 
 // main() is loaded inside each test body: the AC tests are written before the CLI streams its diff and coverage
 // files, so nothing that depends on that may run while the file loads. The CLI runs against in-memory deps: a fake
@@ -8,6 +9,15 @@ import { describe, expect, it } from "vitest";
 
 const FIXTURES = new URL("../../../fixtures/", import.meta.url);
 const fixture = (path: string) => readFileSync(new URL(path, FIXTURES), "utf8");
+
+/**
+ * fixtures/golden/report.json as this build reports it. The golden file is shared with core tests that pass version
+ * "0.1.0" to check(); the CLI and the Action report the package VERSION, so tool.version is the only field set here.
+ */
+const goldenReport = () => {
+  const golden = JSON.parse(fixture("golden/report.json"));
+  return { ...golden, tool: { ...golden.tool, version: VERSION } };
+};
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const COVERAGE = "coverage/lcov.info";
@@ -113,7 +123,7 @@ describe("pharn-ci check with streamed inputs", () => {
 
     const coverageChunks = cut(fixture("golden/coverage.info"), 7);
 
-    const golden = JSON.parse(fixture("golden/report.json"));
+    const golden = goldenReport();
     const run = await runCli(["check", "--coverage", COVERAGE, "--threshold", "80", "--format", "json"], {
       rejectRead: [COVERAGE],
       streams: { [COVERAGE]: coverageChunks },

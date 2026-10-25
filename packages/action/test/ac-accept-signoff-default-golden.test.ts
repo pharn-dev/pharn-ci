@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { VERSION } from "../../core/src/version.js";
 import { harness } from "./harness.js";
 
 // run() is loaded inside the test body: the AC tests are written before the accept label exists, so nothing the build
@@ -13,14 +14,8 @@ const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
 const GOLDEN_AT_BASE = "0e2fc1bc1779fadebf210df5f97fdd3a0332ffbc95819c07d81efcaabfd04d6b";
 /** The two existing assertions that compare a whole default Action report with the golden report. */
 const GOLDEN_ASSERTIONS: Array<[string, string]> = [
-  [
-    "packages/action/test/ac-stream-action.test.ts",
-    'expect(action.report()).toEqual(JSON.parse(fixture("golden/report.json")));',
-  ],
-  [
-    "packages/cli/test/ac-stream-adapters.test.ts",
-    'expect(action.report()).toEqual(JSON.parse(fixture("golden/report.json")));',
-  ],
+  ["packages/action/test/ac-stream-action.test.ts", "expect(action.report()).toEqual(goldenReport());"],
+  ["packages/cli/test/ac-stream-adapters.test.ts", "expect(action.report()).toEqual(goldenReport());"],
 ];
 
 async function goldenRun(inputs: Record<string, string>) {
@@ -36,17 +31,20 @@ describe("a default Action run's report is the golden report", () => {
   it("AC-13: with accept-label unset the report has no acceptLabel and equals fixtures/golden/report.json", async () => {
     const golden = readFileSync(new URL("fixtures/golden/report.json", ROOT));
     expect(createHash("sha256").update(golden).digest("hex")).toBe(GOLDEN_AT_BASE);
+    // The Action reports the package VERSION; the golden file keeps the "0.1.0" its core tests pass to check().
+    const parsed = JSON.parse(golden.toString("utf8"));
+    const atVersion = { ...parsed, tool: { ...parsed.tool, version: VERSION } };
 
     const unset = await goldenRun({});
     expect("acceptLabel" in unset.report.testIntegrity).toBe(false);
-    expect(unset.report).toEqual(JSON.parse(golden.toString("utf8")));
+    expect(unset.report).toEqual(atVersion);
     expect(unset.h.failed.filter((message) => !message.includes("below the threshold"))).toEqual([]);
 
     // Control: the same run with a configured label carries it, and differs from the golden report by that key only.
     const configured = await goldenRun({ "accept-label": "team/tests-ok" });
     expect(configured.report.testIntegrity.acceptLabel).toBe("team/tests-ok");
     const { acceptLabel: _label, ...rest } = configured.report.testIntegrity;
-    expect({ ...configured.report, testIntegrity: rest }).toEqual(JSON.parse(golden.toString("utf8")));
+    expect({ ...configured.report, testIntegrity: rest }).toEqual(atVersion);
 
     // The two existing golden assertions are still there, as they were.
     for (const [file, assertion] of GOLDEN_ASSERTIONS) expect(read(file), file).toContain(assertion);

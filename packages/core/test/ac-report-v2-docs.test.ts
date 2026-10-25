@@ -5,7 +5,7 @@ const ROOT = new URL("../../../", import.meta.url);
 const readRoot = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
 
 describe("Report v2 is documented as a breaking release for report consumers", () => {
-  it("AC-9: RELEASING.md, the CHANGELOG's Unreleased section and action.yml name Report v2", () => {
+  it("AC-9: RELEASING.md, the CHANGELOG's 0.2.0 section and action.yml name Report v2", () => {
     const releasing = readRoot("docs/RELEASING.md");
     const paragraphs = releasing.split(/\n\s*\n/);
     const breaking = paragraphs.find(
@@ -14,12 +14,13 @@ describe("Report v2 is documented as a breaking release for report consumers", (
     expect(breaking, "a RELEASING.md paragraph names 0.2.0, breaking and schemaVersion").toBeDefined();
 
     const changelog = readRoot("CHANGELOG.md");
-    const start = changelog.indexOf("## [Unreleased]");
-    expect(start, "CHANGELOG has an Unreleased section").toBeGreaterThanOrEqual(0);
+    // Shipped in 0.2.0; before that release its lines sat under Unreleased.
+    const start = changelog.indexOf("## [0.2.0]");
+    expect(start, "CHANGELOG has a 0.2.0 section").toBeGreaterThanOrEqual(0);
     const next = changelog.indexOf("\n## [", start + 1);
-    const unreleased = changelog.slice(start, next === -1 ? undefined : next);
-    expect(unreleased).toContain("Report v2");
-    expect(unreleased).toContain("schemaVersion");
+    const shipped = changelog.slice(start, next === -1 ? undefined : next);
+    expect(shipped).toContain("Report v2");
+    expect(shipped).toContain("schemaVersion");
 
     const action = readRoot("action.yml");
     const outputs = action.slice(action.indexOf("\noutputs:"));

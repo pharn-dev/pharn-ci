@@ -43,7 +43,7 @@ jobs:
       # ...set up your toolchain and run tests with lcov output, e.g. (vitest needs
       # @vitest/coverage-v8 as a dev dependency, or it aborts and writes no report):
       - run: npx vitest run --coverage --coverage.reporter=lcov
-      - uses: pharn-dev/pharn-ci@v0.1.0
+      - uses: pharn-dev/pharn-ci@v0.2.0
         with:
           coverage-file: coverage/lcov.info
           threshold: 80

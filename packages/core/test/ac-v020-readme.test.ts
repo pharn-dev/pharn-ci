@@ -43,7 +43,7 @@ function statusNote(text: string): string[] {
 const usesLines = (text: string) => lines(text).filter((line) => line.includes("uses: pharn-dev/pharn-ci@"));
 
 describe("release-readiness-v020: README.md", () => {
-  it("AC-5: one ## Test integrity heading, its Contents line, the section's words and links, no uses: line, and the Status note and uses: pins unchanged", () => {
+  it("AC-5: one ## Test integrity heading, its Contents line, the section's words and links, no uses: line, and the Status note and uses: pins changed only from v0.1.0 to v0.2.0", () => {
     const now = read("README.md");
     const before = readBefore("README.md");
     const all = lines(now);
@@ -60,9 +60,11 @@ describe("release-readiness-v020: README.md", () => {
     expect(body).toMatch(/\]\((?:\.\/)?docs\/LIMITS\.md(?:#[^)]*)?\)/);
     expect(section.filter((line) => line.includes("uses:"))).toEqual([]);
 
-    expect(statusNote(now)).toEqual(statusNote(before));
+    // The 0.2.0 release PR moved the Status note and the pins from v0.1.0 to v0.2.0, and changed nothing else in them.
+    const released = (line: string) => line.replaceAll("v0.1.0", "v0.2.0");
+    expect(statusNote(now)).toEqual(statusNote(before).map(released));
     expect(usesLines(before).length).toBeGreaterThan(0);
-    expect(usesLines(now)).toEqual(usesLines(before));
+    expect(usesLines(now)).toEqual(usesLines(before).map(released));
   });
 
   it("AC-6: every non-blank line of the rendered added-skip Test integrity section appears, in order, in the README section with its > quote removed", async () => {

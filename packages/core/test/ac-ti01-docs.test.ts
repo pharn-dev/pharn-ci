@@ -41,7 +41,8 @@ describe("TI01: docs, schema and fixtures", () => {
   });
 
   it("AC-12: the changelog, README, limits and threat model name TI01", () => {
-    expect(changelogSection("Unreleased")).toContain("TI01");
+    // Shipped in 0.2.0; before that release its line sat under Unreleased.
+    expect(changelogSection("0.2.0")).toContain("TI01");
     expect(read("README.md")).toContain("TI01");
     const limits = read("docs/LIMITS.md");
     expect(limits).toContain("TI01");

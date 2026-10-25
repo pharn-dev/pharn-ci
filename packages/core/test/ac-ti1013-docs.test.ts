@@ -71,12 +71,13 @@ describe("TI10 and TI13: docs, schema and fixtures", () => {
   });
 
   it("AC-12: the changelog, README, limits and threat model name TI10 and TI13", () => {
-    const unreleased =
+    // Shipped in 0.2.0; before that release its line sat under Unreleased.
+    const shipped =
       read("CHANGELOG.md")
         .split(/^## \[/m)
-        .find((p) => p.startsWith("Unreleased]")) ?? "";
-    expect(unreleased).toContain("TI10");
-    expect(unreleased).toContain("TI13");
+        .find((p) => p.startsWith("0.2.0]")) ?? "";
+    expect(shipped).toContain("TI10");
+    expect(shipped).toContain("TI13");
 
     const readme = read("README.md").split("\n");
     const inputRow = readme.find((line) => line.startsWith("| `test-integrity`")) ?? "";

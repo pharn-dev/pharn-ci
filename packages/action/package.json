@@ -1,6 +1,6 @@
 {
   "name": "@pharn-ci/action",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "pharn-ci GitHub Action: diff coverage gate, agent setup inventory, sticky PR comment.",
   "license": "Apache-2.0",
   "private": true,
