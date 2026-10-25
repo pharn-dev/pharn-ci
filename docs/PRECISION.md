@@ -155,10 +155,92 @@ The seven PRs that weaken tests:
   values or hard-coded answers (TI02, TI05–TI07, TI15), is not measured. The precision run in E2
   covers those.
 - **A regex is not the detector.** The Action's signals will be tested on fixtures, and their own
-  precision is measured separately on a frozen corpus. That gets its own section here with v0.3.0.
+  precision is measured separately on a frozen corpus (section 2). The results land there with v0.3.0.
 
 To reproduce:
 `GH_TOKEN=$(gh auth token) node scripts/agent-pr-baserate.mjs --until 2026-10-23` for merged PRs, and
 `… --state unmerged --until 2026-10-24 --out .cache/baserate-unmerged` for closed ones. Each run
 writes `hits.csv` and `summary.json` to its `--out` folder, which is gitignored. Today's search
 results will differ, because the sample is newest first.
+
+## 2. Precision corpus
+
+The signals' own precision is measured on real merged PRs from three public repositories. The
+sample is frozen before any detector runs over it. A newest-first sample drifts every day, and a
+sample chosen after seeing detector output could be tuned to it. So the list of PRs is fixed here,
+in files committed to the repository, and the detector run (`scripts/corpus-run.mjs`), the hand
+review and any false-block rate come afterwards.
+
+### Repositories
+
+Picked for a test runner the Action's signals understand (vitest), an MIT license and enough merged
+PRs to fill 200 human PRs within a year. At least one is a monorepo.
+
+| Repository | License | Runner | Monorepo | Merged PRs into main, 12 months (non-bot) | Excluded bots | Excluded releases |
+|---|---|---|---|---:|---:|---:|
+| `TanStack/query` | MIT | vitest | yes | 1540 | 1 | 0 |
+| `shadcn-ui/ui` | MIT | vitest | yes | 697 | 96 | 0 |
+| `honojs/hono` | MIT | vitest | no | 288 | 0 | 0 |
+
+The 12-month count is merged PRs into the default branch from 2025-10-25 to 2026-10-24, counted
+with the rule below. It is how many PRs were available, not how many were frozen: 200 per
+repository are frozen, so the corpus is 600 PRs.
+
+Why these three:
+
+- **`TanStack/query`** is the monorepo: about 20 packages under `packages/` in one pnpm workspace,
+  built with nx, each tested with vitest. It also has the busiest PR flow, and many of its PRs only
+  add or change tests, which is where a false block would show.
+- **`shadcn-ui/ui`** is a second monorepo (`apps/*` and `packages/*`, turbo), tested with vitest in
+  `packages/shadcn`. Most of its PRs touch the component registry or the docs app and no test file:
+  a realistic share of PRs on which a signal should stay silent.
+- **`honojs/hono`** is a single library (its workspace only adds small `adapters/*` packages) with
+  dense vitest tests under `src/`, run through Vite+ (`vp test`). It is the non-monorepo case.
+
+Rejected: `withastro/astro`. Its unit and integration tests run on `node:test` (through
+`astro-scripts`) plus Playwright, not vitest or jest.
+
+### How the corpus is frozen
+
+`scripts/corpus-freeze.mjs` writes one file per repository to `fixtures/corpus/`. It is a maintainer
+script: nothing in the Action or the CLI imports it, and it reaches GitHub only through `gh api`.
+
+- **Freeze instant:** `2026-10-25T00:00:00Z`. A PR merged at that instant or later is not in the
+  corpus.
+- **Which PRs:** merged PRs into the repository's default branch, ordered by merge time, newest
+  first, ties by PR number, highest first. The first 200 that qualify are kept.
+- **Exclusions:** a PR does not qualify if its author is a bot (a `Bot` account type, a `[bot]`
+  login, or a login that is or starts with `renovate` or `dependabot`, in any case) or if it is a
+  changesets release PR (a `changeset-release/` branch, or a title that is exactly "version
+  packages" after an optional `chore:`-style prefix). The bot test runs first, so a bot's release PR
+  counts once, as a bot.
+- **Excluded counts:** each file records how many bot and release PRs were left out between the
+  oldest kept merge time and the freeze instant, so a reader can see how much of the activity the
+  rule removed. The table above copies these numbers from the files.
+- **What is stored:** for each PR, its number, merge time and the base, head and merge-commit shas.
+  Titles and logins are read only to apply the rule and are never stored.
+- **Reproducible:** the same repository state gives the same bytes. The files are never edited by
+  hand.
+- **Windows:** the 200 PRs of `TanStack/query` were merged between 2026-10-18 and 2026-10-24, those
+  of `shadcn-ui/ui` between 2026-07-16 and 2026-10-24, and those of `honojs/hono` between 2026-03-31
+  and 2026-10-17.
+
+To reproduce, with `gh` authenticated (`gh auth login`):
+
+```
+node scripts/corpus-freeze.mjs --repo TanStack/query --frozen-at 2026-10-25T00:00:00Z --count 200 --out fixtures/corpus/TanStack__query.json --monorepo true
+node scripts/corpus-freeze.mjs --repo shadcn-ui/ui --frozen-at 2026-10-25T00:00:00Z --count 200 --out fixtures/corpus/shadcn-ui__ui.json --monorepo true
+node scripts/corpus-freeze.mjs --repo honojs/hono --frozen-at 2026-10-25T00:00:00Z --count 200 --out fixtures/corpus/honojs__hono.json --monorepo false
+```
+
+### Limits
+
+- **Base branch is the default branch today.** A PR whose base was changed after it merged is not
+  listed by GitHub under the new base and is missed.
+- **Bots are matched by account, not by behavior.** An agent that opens PRs from a human account
+  is in the corpus, which is what the corpus is for. A coding-agent GitHub App whose PRs carry a
+  `Bot` account type (such as `copilot-swe-agent`) is excluded with the dependency bots.
+- **One busy week for `TanStack/query`.** Its 200 PRs cover seven days, so that repository's share
+  reflects one stretch of work rather than a year.
+- **The runs are not here yet.** The detector run (`scripts/corpus-run.mjs`), the hand review and
+  any false-block rate land with BACKLOG item 18 and v0.3.0.
