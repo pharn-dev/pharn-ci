@@ -15,7 +15,9 @@ import { keepSignalFileText } from "./signals/signalFiles.js";
 import { detectTI01 } from "./signals/ti01.js";
 import { detectTI03 } from "./signals/ti03.js";
 import { detectTI04 } from "./signals/ti04.js";
+import { detectTI10 } from "./signals/ti10.js";
 import { detectTI11 } from "./signals/ti11.js";
+import { detectTI13 } from "./signals/ti13.js";
 import { detectTI14 } from "./signals/ti14.js";
 import { deletedTestFiles } from "./testFiles.js";
 import { resolveTestIntegrityMode, type TestIntegrityModeSettings } from "./testIntegrityMode.js";
@@ -132,7 +134,9 @@ export function check(input: CheckInput): Report {
           ...detectTI01(parsedDiff, testIntegrity.mode),
           ...detectTI03(parsedDiff, testIntegrity.mode),
           ...detectTI04(parsedDiff, testIntegrity.mode),
+          ...detectTI10(parsedDiff, { repoFiles: input.repoFiles, mode: testIntegrity.mode }),
           ...detectTI11(parsedDiff, testIntegrity.mode),
+          ...detectTI13(parsedDiff, testIntegrity.mode),
           ...detectTI14(parsedDiff, {
             configPath: input.configPath,
             repoRoot: input.repoRoot,

@@ -67,6 +67,10 @@ const MESSAGE_HINTS: Record<MessageCode, string> = {
     "A reviewer must decide whether each skipped test may stay, for example one that fails in CI; the accept label will record that sign-off once it ships.",
   TEST_INTEGRITY_TI04:
     "Remove the marker so the whole suite runs, or say in the PR why only the marked tests should run.",
+  TEST_INTEGRITY_TI10:
+    "Restore the test script, or say in the PR why it changes so a reviewer can confirm it; the accept label will record a reviewer's sign-off once it ships.",
+  TEST_INTEGRITY_TI13:
+    "Write a test for the code in place of the ignore comment, or say in the PR why it cannot be tested; the accept label will record a reviewer's sign-off once it ships.",
   TEST_INTEGRITY_TI11:
     "Restore the test step or trigger, or say in the PR why CI stops running these tests so a reviewer can confirm it.",
   TEST_INTEGRITY_TI14:
@@ -78,7 +82,9 @@ const SIGNAL_HINTS: Readonly<Record<string, string>> = {
   TI01: MESSAGE_HINTS.TEST_INTEGRITY_TI01,
   TI03: MESSAGE_HINTS.TEST_INTEGRITY_TI03,
   TI04: MESSAGE_HINTS.TEST_INTEGRITY_TI04,
+  TI10: MESSAGE_HINTS.TEST_INTEGRITY_TI10,
   TI11: MESSAGE_HINTS.TEST_INTEGRITY_TI11,
+  TI13: MESSAGE_HINTS.TEST_INTEGRITY_TI13,
   TI14: MESSAGE_HINTS.TEST_INTEGRITY_TI14,
 };
 

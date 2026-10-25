@@ -1,0 +1,7 @@
+diff --git a/src/a.ts b/src/a.ts
+index 1111111..2222222 100644
+--- a/src/a.ts
++++ b/src/a.ts
+@@ -20 +20 @@ export function add(a: number, b: number): number {
+-export default function f() {}
++export default /* istanbul ignore next */ function f() {}
