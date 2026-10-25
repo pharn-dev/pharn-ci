@@ -11,10 +11,14 @@ import {
   readDiffChunks,
   renderMarkdown,
   resolveInputs,
+  resolveTestIntegrityMode,
+  type TestIntegrityModeSettings,
+  type TestSources,
+  unavailableTestSources,
   VERSION,
   validateAcceptLabel,
 } from "@pharn-ci/core";
-import { gitChunks, readCoverageFiles, readDiscoveredCoverage } from "@pharn-ci/node-io";
+import { gitChunks, readCoverageFiles, readDiscoveredCoverage, readTestSources } from "@pharn-ci/node-io";
 import { applyAcceptLabel } from "./accept-label.js";
 import { type PrNumberTarget, parsePrNumberInputs, resolvePrNumberTarget } from "./pr-number.js";
 import { runMeta } from "./run-meta.js";
@@ -103,6 +107,11 @@ export interface ActionDeps {
    * stderr (or says that git timed out) when git fails. Absent: one chunk of what `git` resolves.
    */
   gitStream?(args: string[]): AsyncIterable<string>;
+  /**
+   * Runs git with `input` on its stdin and resolves its stdout as bytes; rejects with stderr on failure. Reads the text
+   * of the test files from committed git objects (`cat-file`). Absent: that text is not read.
+   */
+  gitBatch?(args: string[], input: string): Promise<Uint8Array>;
   readFile(path: string): Promise<string | null>;
   /**
    * The file as UTF-8 text chunks, or null when it does not exist; any other failure rejects, or throws during
@@ -277,10 +286,13 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
         return null;
       });
 
+  const { diff, localBase } = await getDiff(input("base-ref"), deps, target, input("config"));
+  const testSources = await gatherTestSources(deps, { diff, localBase, target, testIntegrityMode });
+
   const checkInput: CheckInput = {
     version: VERSION,
     coverage,
-    diff: await getDiff(input("base-ref"), deps, target, input("config")),
+    diff,
     repoRoot: deps.workspace,
     threshold,
     repoFiles,
@@ -289,6 +301,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     requireAgentSetup,
     ...(expectAgentSetup === undefined ? {} : { expectAgentSetup }),
     ...(testIntegrityMode === undefined ? {} : { testIntegrityMode }),
+    ...(testSources === undefined ? {} : { testSources }),
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
     ...(input("config") === "" ? {} : { configPath: input("config") }),
   };
@@ -361,17 +374,54 @@ async function trackedFiles(target: PrNumberTarget | undefined, deps: ActionDeps
   }
 }
 
-/** Diff of the change under test: base...HEAD, from local git if possible, else the GitHub API. */
+/**
+ * The text of the test and test-config files the change touches, for the base-and-head signals; undefined when the
+ * effective test-integrity mode is off (nothing is gathered). Only a diff parsed from local git can be read from
+ * committed git objects: the compare API and PR-number mode give an unavailable marker, and no GitHub API call is made.
+ */
+async function gatherTestSources(
+  deps: ActionDeps,
+  from: {
+    diff: CheckInput["diff"];
+    localBase: string | undefined;
+    target: PrNumberTarget | undefined;
+    testIntegrityMode: TestIntegrityModeSettings | undefined;
+  },
+): Promise<TestSources | undefined> {
+  if (resolveTestIntegrityMode(from.testIntegrityMode).mode === "off") return undefined;
+  const { diff, localBase } = from;
+  if (from.target) return unavailableTestSources("pr-number mode: the diff came from the GitHub API");
+  if ("text" in diff) return unavailableTestSources("the diff came from the GitHub compare API");
+  if ("unavailable" in diff) return unavailableTestSources("the diff is unavailable");
+  if (deps.gitBatch === undefined || localBase === undefined) {
+    return unavailableTestSources("reading git objects is not available");
+  }
+  const sources = await readTestSources(
+    { git: (args) => deps.git(args), gitBatch: deps.gitBatch },
+    { base: localBase, head: "HEAD", diff: diff.parsed },
+  );
+  if ("unavailable" in sources.base) {
+    deps.info(
+      `pharn-ci: could not read the test and test-config files from git, so they are not compared: ${sources.base.unavailable}`,
+    );
+  }
+  return sources;
+}
+
+/**
+ * Diff of the change under test: base...HEAD, from local git if possible, else the GitHub API. `localBase` is the
+ * revision the local git diff was taken against; set only when the diff was parsed from local git.
+ */
 async function getDiff(
   baseRefInput: string,
   deps: ActionDeps,
   target?: PrNumberTarget,
   configInput = "",
-): Promise<CheckInput["diff"]> {
+): Promise<{ diff: CheckInput["diff"]; localBase?: string }> {
   // A leading "-" would reach git as an option (e.g. --output=<file>), not a revision.
   if (baseRefInput.startsWith("-")) throw new Error(`base-ref "${baseRefInput}" must not start with "-"`);
   // PR-number mode: the checkout is not the PR, so only the GitHub API can give the diff.
-  if (target) return getTargetDiff(baseRefInput, target, deps);
+  if (target) return { diff: await getTargetDiff(baseRefInput, target, deps) };
   const { context } = deps;
   const pr = context.payload.pull_request;
   const mergeGroup = context.payload.merge_group;
@@ -380,7 +430,7 @@ async function getDiff(
     pr?.base.sha ||
     mergeGroup?.base_sha ||
     (context.payload.before && !ZERO_SHA.test(context.payload.before) ? context.payload.before : "");
-  if (!base) return { unavailable: "no base to diff against (not a pull request; set the base-ref input)" };
+  if (!base) return { diff: { unavailable: "no base to diff against (not a pull request; set the base-ref input)" } };
 
   // pull_request checks out the merge commit (context.sha); pull_request_target checks out the base;
   // merge_group checks out the merge queue's temporary commit (merge_group.head_sha).
@@ -396,9 +446,11 @@ async function getDiff(
     if (localHead !== null && localHead !== pr.head.sha) {
       // Never advise checking out the PR head here: that runs fork code with a write token.
       return {
-        unavailable:
-          "pull_request_target cannot be measured safely: run pharn-ci on pull_request " +
-          "(fork PRs get the job summary only); see SECURITY.md",
+        diff: {
+          unavailable:
+            "pull_request_target cannot be measured safely: run pharn-ci on pull_request " +
+            "(fork PRs get the job summary only); see SECURITY.md",
+        },
       };
     }
   }
@@ -408,13 +460,13 @@ async function getDiff(
     try {
       // The config in use decides which file's text the reader keeps, so a custom `config` input works as it does for check().
       const options = { configPath: configInput === "" ? undefined : configInput, repoRoot: deps.workspace };
-      return { parsed: await readDiffChunks(gitChunks(deps, gitDiffArgs(localBase)), options) };
+      return { diff: { parsed: await readDiffChunks(gitChunks(deps, gitDiffArgs(localBase)), options) }, localBase };
     } catch (err) {
       deps.info(`local git diff failed, falling back to the GitHub API: ${String(err)}`);
     }
   }
   try {
-    return { text: await deps.api.compareDiff(`${base}...${head}`) };
+    return { diff: { text: await deps.api.compareDiff(`${base}...${head}`) } };
   } catch (err) {
     // An explicit base-ref found neither locally nor by the API is most likely a typo: fail the
     // step like the CLI does, instead of reporting DIFF_UNAVAILABLE (a warning without a threshold).
@@ -425,7 +477,11 @@ async function getDiff(
       );
     }
     deps.warning(`could not fetch the diff from the GitHub API: ${String(err)}`);
-    return { unavailable: `could not get the diff for ${base}...${head} (use actions/checkout with fetch-depth: 0)` };
+    return {
+      diff: {
+        unavailable: `could not get the diff for ${base}...${head} (use actions/checkout with fetch-depth: 0)`,
+      },
+    };
   }
 }
 

@@ -28310,6 +28310,143 @@ function parseLsTreeSizes(text) {
   return sizes;
 }
 
+// ../core/src/testSources.ts
+var MAX_TEST_SOURCE_FILES = 200;
+var MAX_TEST_SOURCE_FILE_BYTES = 524288;
+var MAX_TEST_SOURCE_TOTAL_BYTES = 16777216;
+var byCodeUnit11 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var TEST_CONFIG_PREFIXES = [
+  "vitest.config.",
+  "vitest.workspace.",
+  "jest.config.",
+  "playwright.config."
+];
+var TEST_CONFIG_NAMES = /* @__PURE__ */ new Set([
+  "pytest.ini",
+  "pyproject.toml",
+  "setup.cfg",
+  "tox.ini",
+  "conftest.py",
+  "package.json"
+]);
+function isTestConfigFile(path) {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  if (TEST_CONFIG_NAMES.has(basename)) return true;
+  if (basename.startsWith(".mocharc")) return true;
+  return TEST_CONFIG_PREFIXES.some((prefix) => basename.length > prefix.length && basename.startsWith(prefix));
+}
+var isTestSource = (path) => isTestFile(path) || isTestConfigFile(path);
+function selectTestSourcePaths(diff) {
+  const base = /* @__PURE__ */ new Set();
+  const head = /* @__PURE__ */ new Set();
+  for (const file of diff) {
+    if ((file.status === "modified" || file.status === "deleted" || file.status === "renamed") && isTestSource(file.oldPath)) {
+      base.add(file.oldPath);
+    }
+    if ((file.status === "added" || file.status === "modified" || file.status === "renamed") && isTestSource(file.path)) {
+      head.add(file.path);
+    }
+  }
+  return { base: [...base].sort(byCodeUnit11), head: [...head].sort(byCodeUnit11) };
+}
+function isUnsafeTestSourcePath(path) {
+  if (path === "" || path.startsWith("/")) return true;
+  for (let i = 0; i < path.length; i++) {
+    const code2 = path.charCodeAt(i);
+    if (code2 <= 31 || code2 >= 127 && code2 <= 159) return true;
+  }
+  return path.split("/").some((segment) => segment === "" || segment === "." || segment === "..");
+}
+function planTestSourceReads(paths, objects) {
+  const read = [];
+  const dropped = [];
+  let total = 0;
+  let tripped = false;
+  for (const path of [...new Set(paths)].sort(byCodeUnit11)) {
+    if (isUnsafeTestSourcePath(path)) {
+      dropped.push({ path, reason: "unsafe-path" });
+      continue;
+    }
+    const object = objects.get(path);
+    if (object === void 0 || object === null || object.type !== "blob") {
+      dropped.push({ path, reason: "missing" });
+    } else if (object.size > MAX_TEST_SOURCE_FILE_BYTES) {
+      dropped.push({ path, reason: "too-large" });
+    } else if (read.length >= MAX_TEST_SOURCE_FILES) {
+      dropped.push({ path, reason: "over-file-cap" });
+    } else if (tripped || total + object.size > MAX_TEST_SOURCE_TOTAL_BYTES) {
+      tripped = true;
+      dropped.push({ path, reason: "over-total-cap" });
+    } else {
+      total += object.size;
+      read.push(path);
+    }
+  }
+  return { read, dropped };
+}
+function unavailableTestSources(reason) {
+  return { base: { unavailable: reason }, head: { unavailable: reason } };
+}
+
+// ../core/src/testSourceText.ts
+var CHUNK_UNITS = 8192;
+function decodeTestSourceText(bytes) {
+  const units = [];
+  const parts = [];
+  const push = (unit) => {
+    units.push(unit);
+    if (units.length >= CHUNK_UNITS) {
+      parts.push(String.fromCharCode(...units));
+      units.length = 0;
+    }
+  };
+  const continuation = (at) => {
+    const byte = bytes[at];
+    return byte !== void 0 && (byte & 192) === 128 ? byte & 63 : -1;
+  };
+  let i = 0;
+  while (i < bytes.length) {
+    const first = bytes[i];
+    if (first === 0) return null;
+    if (first < 128) {
+      push(first);
+      i += 1;
+      continue;
+    }
+    let codePoint;
+    let length;
+    if (first >= 194 && first <= 223) {
+      length = 2;
+      codePoint = first & 31;
+    } else if (first >= 224 && first <= 239) {
+      length = 3;
+      codePoint = first & 15;
+    } else if (first >= 240 && first <= 244) {
+      length = 4;
+      codePoint = first & 7;
+    } else {
+      return null;
+    }
+    for (let k = 1; k < length; k++) {
+      const next = continuation(i + k);
+      if (next < 0) return null;
+      codePoint = codePoint << 6 | next;
+    }
+    if (length === 3 && (codePoint < 2048 || codePoint >= 55296 && codePoint <= 57343)) return null;
+    if (length === 4 && (codePoint < 65536 || codePoint > 1114111)) return null;
+    if (codePoint >= 65536) {
+      const offset = codePoint - 65536;
+      push(55296 + (offset >> 10));
+      push(56320 + (offset & 1023));
+    } else {
+      push(codePoint);
+    }
+    i += length;
+  }
+  parts.push(String.fromCharCode(...units));
+  return parts.join("");
+}
+
 // ../core/src/version.ts
 var VERSION7 = "0.2.0";
 
@@ -28393,7 +28530,16 @@ async function readDiscoveredCoverage(deps, options) {
 import { execFile, spawn } from "node:child_process";
 import { open as open2, readdir as readdir2, readFile as readFileText } from "node:fs/promises";
 var GIT_TIMEOUT_MS = 12e4;
-var LOCAL_GIT_SUBCOMMANDS = ["diff", "hash-object", "log", "ls-files", "ls-tree", "rev-parse"];
+var LOCAL_GIT_SUBCOMMANDS = [
+  "cat-file",
+  "diff",
+  "hash-object",
+  "log",
+  "ls-files",
+  "ls-tree",
+  "merge-base",
+  "rev-parse"
+];
 var REFUSED_OPTION_PREFIXES = ["--upload-pack", "--receive-pack", "--exec", "--output", "--ext-diff"];
 function localGitArgs(args) {
   const subcommand = LOCAL_GIT_SUBCOMMANDS.find((name) => name === args[0]);
@@ -28407,7 +28553,7 @@ function localGitArgs(args) {
   for (const arg of args.slice(1)) {
     if (options && (arg === "--end-of-options" || arg === "--")) {
       options = false;
-    } else if (options && (REFUSED_OPTION_PREFIXES.some((prefix) => arg.startsWith(prefix)) || subcommand === "hash-object" && arg === "-w")) {
+    } else if (options && (REFUSED_OPTION_PREFIXES.some((prefix) => arg.startsWith(prefix)) || subcommand === "hash-object" && arg === "-w" || subcommand === "cat-file" && (arg.startsWith("--textconv") || arg.startsWith("--filters")))) {
       throw new Error(`git ${subcommand}: the option "${arg}" is not allowed`);
     }
     safe.push(`${arg}`);
@@ -28465,6 +28611,36 @@ function runGit(cwd, gitArgs, timeoutMs = GIT_TIMEOUT_MS) {
     );
   });
 }
+var GIT_BATCH_MAX_BUFFER = 64 * 1024 * 1024;
+function runGitBatch(cwd, gitArgs, input, timeoutMs = GIT_TIMEOUT_MS) {
+  let args;
+  try {
+    args = localGitArgs(gitArgs);
+  } catch (err) {
+    return Promise.reject(err);
+  }
+  return new Promise((ok, fail) => {
+    const child = execFile(
+      "git",
+      args,
+      {
+        cwd,
+        maxBuffer: GIT_BATCH_MAX_BUFFER,
+        encoding: "buffer",
+        timeout: timeoutMs,
+        env: { ...process.env, GIT_NO_LAZY_FETCH: "1" }
+      },
+      (err, stdout, stderr) => {
+        if (err?.killed) fail(new Error(`git ${args[0] ?? ""} timed out after ${timeoutMs / 1e3} s`));
+        else if (err) fail(new Error(stderr.toString("utf8") || err.message));
+        else ok(stdout);
+      }
+    );
+    child.stdin?.on("error", () => {
+    });
+    child.stdin?.end(input);
+  });
+}
 async function readFile(path) {
   try {
     return await readFileText(path, "utf8");
@@ -28499,10 +28675,139 @@ async function listDir(path) {
   }
 }
 
+// ../node-io/src/testSources.ts
+var OBJECT_ID = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+var OBJECT_LINE = /^([0-9a-f]{40}(?:[0-9a-f]{24})?) (\S+) (\d+)$/;
+var MAX_REASON_CHARS = 300;
+var StepFailed = class extends Error {
+};
+var firstLine = (err) => (err instanceof Error ? err.message : String(err)).trim().split("\n")[0]?.slice(0, MAX_REASON_CHARS) ?? "";
+var byCodeUnit12 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+async function resolveRevision(deps, revision, label) {
+  let out;
+  try {
+    out = await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", `${revision}^{commit}`]);
+  } catch (err) {
+    throw new StepFailed(`git rev-parse could not resolve the ${label}: ${firstLine(err)}`);
+  }
+  const oid = out.trim();
+  if (!OBJECT_ID.test(oid))
+    throw new StepFailed(`git rev-parse could not resolve the ${label}: no commit id was printed`);
+  return oid;
+}
+async function mergeBaseOf(deps, baseOid, headOid) {
+  let out;
+  try {
+    out = await deps.git(["merge-base", baseOid, headOid]);
+  } catch (err) {
+    throw new StepFailed(`git merge-base failed: ${firstLine(err)}`);
+  }
+  const oid = out.trim();
+  if (!OBJECT_ID.test(oid)) throw new StepFailed("git merge-base failed: no commit id was printed");
+  return oid;
+}
+async function batchCheck(deps, requests) {
+  if (requests.length === 0) return [];
+  const input = requests.map((r) => `${r.oid}:${r.path}
+`).join("");
+  let out;
+  try {
+    out = await deps.gitBatch(["cat-file", "--batch-check"], input);
+  } catch (err) {
+    throw new StepFailed(`git cat-file --batch-check failed: ${firstLine(err)}`);
+  }
+  const lines = Buffer.from(out).toString("utf8").split("\n");
+  if (lines.pop() !== "" || lines.length !== requests.length) {
+    throw new StepFailed("git cat-file --batch-check output could not be read");
+  }
+  return lines.map((line) => {
+    const match = OBJECT_LINE.exec(line);
+    return match === null ? null : { oid: match[1], object: { type: match[2], size: Number(match[3]) } };
+  });
+}
+async function batchRead(deps, oids) {
+  const contents = /* @__PURE__ */ new Map();
+  if (oids.length === 0) return contents;
+  let out;
+  try {
+    out = await deps.gitBatch(["cat-file", "--batch"], oids.map((oid) => `${oid}
+`).join(""));
+  } catch (err) {
+    throw new StepFailed(`git cat-file --batch failed: ${firstLine(err)}`);
+  }
+  const unreadable = () => new StepFailed("git cat-file --batch output could not be read");
+  let at = 0;
+  for (const oid of oids) {
+    const end = out.indexOf(10, at);
+    if (end === -1) throw unreadable();
+    const header = OBJECT_LINE.exec(Buffer.from(out.subarray(at, end)).toString("utf8"));
+    if (header === null || header[1] !== oid || header[2] !== "blob") throw unreadable();
+    const size = Number(header[3]);
+    const start = end + 1;
+    if (start + size >= out.length || out[start + size] !== 10) throw unreadable();
+    contents.set(oid, out.subarray(start, start + size));
+    at = start + size + 1;
+  }
+  if (at !== out.length) throw unreadable();
+  return contents;
+}
+async function readTestSources(deps, options) {
+  try {
+    const baseOid = await resolveRevision(deps, options.base, "base");
+    const headOid = await resolveRevision(deps, options.head ?? "HEAD", "head");
+    const mergeBase = await mergeBaseOf(deps, baseOid, headOid);
+    const selected = selectTestSourcePaths(options.diff);
+    const requests = [
+      ...selected.base.filter((path) => !isUnsafeTestSourcePath(path)).map((path) => ({ oid: mergeBase, path })),
+      ...selected.head.filter((path) => !isUnsafeTestSourcePath(path)).map((path) => ({ oid: headOid, path }))
+    ];
+    const checked = await batchCheck(deps, requests);
+    const sides = [
+      selected.base,
+      selected.head
+    ].map((paths) => ({ paths, objects: /* @__PURE__ */ new Map(), blobs: /* @__PURE__ */ new Map() }));
+    const baseCount = selected.base.filter((path) => !isUnsafeTestSourcePath(path)).length;
+    requests.forEach((request2, i) => {
+      const side = sides[i < baseCount ? 0 : 1];
+      const result = checked[i] ?? null;
+      side?.objects.set(request2.path, result === null ? null : result.object);
+      if (result !== null) side?.blobs.set(request2.path, result.oid);
+    });
+    const plans = sides.map((side) => planTestSourceReads(side.paths, side.objects));
+    const wanted = /* @__PURE__ */ new Set();
+    plans.forEach((plan, i) => {
+      for (const path of plan.read) wanted.add(sides[i]?.blobs.get(path));
+    });
+    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit12));
+    const decoded = /* @__PURE__ */ new Map();
+    const build = (index) => {
+      const plan = plans[index];
+      const side = sides[index];
+      if (plan === void 0 || side === void 0)
+        throw new StepFailed("git cat-file --batch output could not be read");
+      const files = [];
+      const dropped = [...plan.dropped];
+      for (const path of plan.read) {
+        const oid = side.blobs.get(path);
+        if (!decoded.has(oid)) decoded.set(oid, decodeTestSourceText(contents.get(oid)));
+        const text = decoded.get(oid);
+        if (text === null) dropped.push({ path, reason: "binary" });
+        else files.push({ path, text });
+      }
+      dropped.sort((a, b) => byCodeUnit12(a.path, b.path));
+      return { files, dropped };
+    };
+    return { base: build(0), head: build(1) };
+  } catch (err) {
+    return unavailableTestSources(err instanceof StepFailed ? err.message : `git could not be read: ${firstLine(err)}`);
+  }
+}
+
 // src/node-io.ts
 function createNodeIo(workspace2, opts = {}) {
   const timeout = opts.gitTimeoutMs ?? GIT_TIMEOUT_MS;
   return {
+    gitBatch: (args, input) => runGitBatch(workspace2, args, input, timeout),
     gitStream: (args) => streamGit(workspace2, args, timeout),
     readFileStream,
     git: (args) => runGit(workspace2, args, timeout),
@@ -28845,10 +29150,12 @@ async function runUnsafe(deps) {
     deps.warning(`git ls-tree failed, so empty agent setup files are not reported: ${String(err)}`);
     return null;
   });
+  const { diff, localBase } = await getDiff(input("base-ref"), deps, target, input("config"));
+  const testSources = await gatherTestSources(deps, { diff, localBase, target, testIntegrityMode });
   const checkInput = {
     version: VERSION7,
     coverage,
-    diff: await getDiff(input("base-ref"), deps, target, input("config")),
+    diff,
     repoRoot: deps.workspace,
     threshold,
     repoFiles,
@@ -28857,6 +29164,7 @@ async function runUnsafe(deps) {
     requireAgentSetup,
     ...expectAgentSetup === void 0 ? {} : { expectAgentSetup },
     ...testIntegrityMode === void 0 ? {} : { testIntegrityMode },
+    ...testSources === void 0 ? {} : { testSources },
     ...coverageRoot === void 0 ? {} : { coverageRoot },
     ...input("config") === "" ? {} : { configPath: input("config") }
   };
@@ -28919,14 +29227,34 @@ async function trackedFiles(target, deps) {
     return [];
   }
 }
+async function gatherTestSources(deps, from) {
+  if (resolveTestIntegrityMode(from.testIntegrityMode).mode === "off") return void 0;
+  const { diff, localBase } = from;
+  if (from.target) return unavailableTestSources("pr-number mode: the diff came from the GitHub API");
+  if ("text" in diff) return unavailableTestSources("the diff came from the GitHub compare API");
+  if ("unavailable" in diff) return unavailableTestSources("the diff is unavailable");
+  if (deps.gitBatch === void 0 || localBase === void 0) {
+    return unavailableTestSources("reading git objects is not available");
+  }
+  const sources = await readTestSources(
+    { git: (args) => deps.git(args), gitBatch: deps.gitBatch },
+    { base: localBase, head: "HEAD", diff: diff.parsed }
+  );
+  if ("unavailable" in sources.base) {
+    deps.info(
+      `pharn-ci: could not read the test and test-config files from git, so they are not compared: ${sources.base.unavailable}`
+    );
+  }
+  return sources;
+}
 async function getDiff(baseRefInput, deps, target, configInput = "") {
   if (baseRefInput.startsWith("-")) throw new Error(`base-ref "${baseRefInput}" must not start with "-"`);
-  if (target) return getTargetDiff(baseRefInput, target, deps);
+  if (target) return { diff: await getTargetDiff(baseRefInput, target, deps) };
   const { context: context3 } = deps;
   const pr = context3.payload.pull_request;
   const mergeGroup = context3.payload.merge_group;
   const base = baseRefInput || pr?.base.sha || mergeGroup?.base_sha || (context3.payload.before && !ZERO_SHA2.test(context3.payload.before) ? context3.payload.before : "");
-  if (!base) return { unavailable: "no base to diff against (not a pull request; set the base-ref input)" };
+  if (!base) return { diff: { unavailable: "no base to diff against (not a pull request; set the base-ref input)" } };
   const head = context3.eventName === "pull_request_target" && pr ? pr.head.sha : mergeGroup?.head_sha || context3.sha;
   if (context3.eventName === "pull_request_target" && pr) {
     const localHead = await deps.git(["rev-parse", "HEAD"]).then(
@@ -28935,7 +29263,9 @@ async function getDiff(baseRefInput, deps, target, configInput = "") {
     );
     if (localHead !== null && localHead !== pr.head.sha) {
       return {
-        unavailable: "pull_request_target cannot be measured safely: run pharn-ci on pull_request (fork PRs get the job summary only); see SECURITY.md"
+        diff: {
+          unavailable: "pull_request_target cannot be measured safely: run pharn-ci on pull_request (fork PRs get the job summary only); see SECURITY.md"
+        }
       };
     }
   }
@@ -28943,13 +29273,13 @@ async function getDiff(baseRefInput, deps, target, configInput = "") {
   if (localBase) {
     try {
       const options = { configPath: configInput === "" ? void 0 : configInput, repoRoot: deps.workspace };
-      return { parsed: await readDiffChunks(gitChunks(deps, gitDiffArgs(localBase)), options) };
+      return { diff: { parsed: await readDiffChunks(gitChunks(deps, gitDiffArgs(localBase)), options) }, localBase };
     } catch (err) {
       deps.info(`local git diff failed, falling back to the GitHub API: ${String(err)}`);
     }
   }
   try {
-    return { text: await deps.api.compareDiff(`${base}...${head}`) };
+    return { diff: { text: await deps.api.compareDiff(`${base}...${head}`) } };
   } catch (err) {
     if (baseRefInput && !localBase) {
       throw new Error(
@@ -28957,7 +29287,11 @@ async function getDiff(baseRefInput, deps, target, configInput = "") {
       );
     }
     deps.warning(`could not fetch the diff from the GitHub API: ${String(err)}`);
-    return { unavailable: `could not get the diff for ${base}...${head} (use actions/checkout with fetch-depth: 0)` };
+    return {
+      diff: {
+        unavailable: `could not get the diff for ${base}...${head} (use actions/checkout with fetch-depth: 0)`
+      }
+    };
   }
 }
 async function getTargetDiff(baseRefInput, target, deps) {

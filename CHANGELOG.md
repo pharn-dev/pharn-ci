@@ -11,6 +11,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- pharn-ci now reads the base and head text of the test and test-config files a change touches from local git
+  (for the coming base-and-head signals; the report does not change). When that fails on git, the CLI writes one
+  stderr line and the Action one log line naming the failed git step.
+
 ### Security
 
 ## [0.2.0] - 2026-10-25

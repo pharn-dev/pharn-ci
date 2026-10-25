@@ -7,10 +7,20 @@ export const GIT_TIMEOUT_MS = 120_000;
 
 /**
  * The only git subcommands the shared runners run. All are local and read-only: none contacts a remote, so none
- * takes `--upload-pack` or `--receive-pack`. pharn-ci runs `diff`, `ls-files`, `ls-tree` and `rev-parse`; `log` and
- * `hash-object` (without `-w`, it writes nothing) are what the tests of these runners use.
+ * takes `--upload-pack` or `--receive-pack`. pharn-ci runs `cat-file` (without `--textconv` or `--filters`, which can
+ * run a configured program), `diff`, `ls-files`, `ls-tree`, `merge-base` and `rev-parse`; `log` and `hash-object`
+ * (without `-w`, it writes nothing) are what the tests of these runners use.
  */
-export const LOCAL_GIT_SUBCOMMANDS = ["diff", "hash-object", "log", "ls-files", "ls-tree", "rev-parse"] as const;
+export const LOCAL_GIT_SUBCOMMANDS = [
+  "cat-file",
+  "diff",
+  "hash-object",
+  "log",
+  "ls-files",
+  "ls-tree",
+  "merge-base",
+  "rev-parse",
+] as const;
 
 /** Options that make git run another program or write a file. Refused before `--end-of-options` or `--`. */
 const REFUSED_OPTION_PREFIXES = ["--upload-pack", "--receive-pack", "--exec", "--output", "--ext-diff"];
@@ -35,7 +45,8 @@ export function localGitArgs(args: readonly string[]): string[] {
     } else if (
       options &&
       (REFUSED_OPTION_PREFIXES.some((prefix) => arg.startsWith(prefix)) ||
-        (subcommand === "hash-object" && arg === "-w"))
+        (subcommand === "hash-object" && arg === "-w") ||
+        (subcommand === "cat-file" && (arg.startsWith("--textconv") || arg.startsWith("--filters"))))
     ) {
       throw new Error(`git ${subcommand}: the option "${arg}" is not allowed`);
     }
@@ -108,6 +119,50 @@ export function runGit(cwd: string, gitArgs: string[], timeoutMs: number = GIT_T
         else ok(stdout);
       },
     );
+  });
+}
+
+/** The most git's stdout may hold in `runGitBatch`: two sides of 16 MiB of text, their headers, and room to spare. */
+const GIT_BATCH_MAX_BUFFER = 64 * 1024 * 1024;
+
+/**
+ * Runs git with `input` written to its stdin and resolves its whole stdout as bytes (for `cat-file --batch`, whose
+ * output is not text). Rejects with git's stderr when git fails, and says when git timed out. Only a call
+ * `localGitArgs` allows is run; any other rejects before git starts. `GIT_NO_LAZY_FETCH=1` keeps a partial clone from
+ * fetching a missing object from its remote: the call stays local.
+ */
+export function runGitBatch(
+  cwd: string,
+  gitArgs: string[],
+  input: string,
+  timeoutMs: number = GIT_TIMEOUT_MS,
+): Promise<Buffer> {
+  let args: string[];
+  try {
+    args = localGitArgs(gitArgs);
+  } catch (err) {
+    return Promise.reject(err);
+  }
+  return new Promise((ok, fail) => {
+    const child = execFile(
+      "git",
+      args,
+      {
+        cwd,
+        maxBuffer: GIT_BATCH_MAX_BUFFER,
+        encoding: "buffer",
+        timeout: timeoutMs,
+        env: { ...process.env, GIT_NO_LAZY_FETCH: "1" },
+      },
+      (err, stdout, stderr) => {
+        if (err?.killed) fail(new Error(`git ${args[0] ?? ""} timed out after ${timeoutMs / 1000} s`));
+        else if (err) fail(new Error(stderr.toString("utf8") || err.message));
+        else ok(stdout);
+      },
+    );
+    // A broken pipe on stdin (git exited early) is reported through the exit code, not as an uncaught error.
+    child.stdin?.on("error", () => {});
+    child.stdin?.end(input);
   });
 }
 

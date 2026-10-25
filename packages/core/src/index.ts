@@ -150,4 +150,22 @@ export {
   type TestIntegrityModeSettings,
   testIntegrityModeError,
 } from "./testIntegrityMode.js";
+export {
+  isTestConfigFile,
+  isUnsafeTestSourcePath,
+  MAX_TEST_SOURCE_FILE_BYTES,
+  MAX_TEST_SOURCE_FILES,
+  MAX_TEST_SOURCE_TOTAL_BYTES,
+  planTestSourceReads,
+  selectTestSourcePaths,
+  TEST_SOURCE_DROP_REASONS,
+  type TestSourceDrop,
+  type TestSourceDropReason,
+  type TestSourceFile,
+  type TestSourceObject,
+  type TestSourceSide,
+  type TestSources,
+  unavailableTestSources,
+} from "./testSources.js";
+export { decodeTestSourceText } from "./testSourceText.js";
 export { VERSION } from "./version.js";

@@ -15,9 +15,12 @@ import {
   readDiffChunks,
   renderMarkdown,
   resolveInputs,
+  resolveTestIntegrityMode,
+  type TestSources,
+  unavailableTestSources,
   VERSION,
 } from "@pharn-ci/core";
-import { gitChunks, readCoverageFiles, readDiscoveredCoverage } from "@pharn-ci/node-io";
+import { gitChunks, readCoverageFiles, readDiscoveredCoverage, readTestSources } from "@pharn-ci/node-io";
 
 /** Everything the CLI touches outside itself; injected so tests can fake it. */
 export interface CliDeps {
@@ -30,6 +33,12 @@ export interface CliDeps {
    * chunk of what `git` resolves.
    */
   gitStream?(args: string[]): AsyncIterable<string>;
+  /**
+   * Run git with args in `cwd`, write `input` to its stdin and resolve its stdout as bytes; rejects with stderr on
+   * failure. Used to read the text of the test files from committed git objects (`cat-file`). Absent: that text is
+   * not read, and the test sources are marked unavailable.
+   */
+  gitBatch?(args: string[], input: string): Promise<Uint8Array>;
   /** File contents, or null when the file does not exist. */
   readFile(path: string): Promise<string | null>;
   /**
@@ -257,6 +266,23 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   } catch (err) {
     throw gitFailure(diffArgs, `could not diff against "${base}" (fetch it, or pass --base <ref>)`, err);
   }
+  // The text of the touched test and test-config files, for the base-and-head signals. Mode off reads nothing.
+  let testSources: TestSources | undefined;
+  if (resolveTestIntegrityMode(testIntegrityMode).mode !== "off") {
+    if (deps.gitBatch === undefined) {
+      testSources = unavailableTestSources("reading git objects is not available");
+    } else {
+      testSources = await readTestSources(
+        { git: (args) => deps.git(args), gitBatch: deps.gitBatch },
+        { base, head: "HEAD", diff: diffFiles },
+      );
+      if ("unavailable" in testSources.base) {
+        deps.stderr(
+          `pharn-ci: could not read the test and test-config files from git, so they are not compared: ${testSources.base.unavailable}\n`,
+        );
+      }
+    }
+  }
   // `--full-name -- :/` lists the whole repository relative to its root wherever the CLI runs, so coverage
   // paths are compared with the same names from a subdirectory.
   const lsFiles = await git(deps, ["ls-files", "-z", "--full-name", "--", ":/"], "git ls-files failed");
@@ -282,6 +308,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     requireAgentSetup,
     ...(expectAgentSetup === undefined ? {} : { expectAgentSetup }),
     ...(testIntegrityMode === undefined ? {} : { testIntegrityMode }),
+    ...(testSources === undefined ? {} : { testSources }),
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
     // Absolute: core makes it repo-relative against repoRoot, or finds it outside the repo.
     ...(values.config === undefined ? {} : { configPath: deps.resolvePath(deps.cwd, values.config) }),
