@@ -12,6 +12,9 @@ export function purityViolations(text: string): string[] {
     ...text.matchAll(/^\s*import\s*["']([^"']+)["']/gm),
   ].map((m) => m[1] as string);
   for (const spec of imports) {
+    // The one bare specifier core may import: the test index's parser, the pinned `typescript5` alias. Exact match
+    // only, so `typescript`, `typescript55` and `typescript5/…` stay violations.
+    if (spec === "typescript5") continue;
     if (!/^\.\.?\//.test(spec)) violations.push(`import of "${spec}"`);
   }
 

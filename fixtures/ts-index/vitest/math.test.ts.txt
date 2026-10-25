@@ -1,0 +1,139 @@
+import { afterAll, beforeEach, describe, expect, fit, it, test, vi, xit } from "vitest";
+import { add, divide, fetchTotal } from "./math.js";
+
+vi.mock("./math.js");
+vi.mock("./other.js", () => ({ other: 1 }));
+
+beforeEach(() => {
+  vi.resetAllMocks();
+});
+
+afterAll(() => {
+  vi.restoreAllMocks();
+});
+
+xit("is skipped by the x prefix", () => {
+  expect(add(1, 1)).toBe(2);
+});
+
+fit("is focused by the f prefix", () => {
+  expect(add(1, 1)).toBe(2);
+});
+
+describe("add", () => {
+  it("adds two numbers", () => {
+    // a line comment is dropped from the body
+    expect(add(1, 2)).toBe(3); /* and so is a block comment */
+    expect("a  b").toBe("a  b");
+  });
+
+  it(`adds ${1} and ${2}`, () => {
+    expect(add(1, 2)).toBe(3);
+  });
+
+  it.skip("is skipped", () => {
+    expect(add(0, 0)).toBe(0);
+  });
+
+  it.only("is focused", () => {
+    expect(add(2, 2)).not.toBe(5);
+  });
+
+  it.todo("will handle bigints");
+
+  it.fails("is known to fail", () => {
+    expect(add(1, 1)).toBe(3);
+  });
+
+  it.concurrent("runs concurrently", async () => {
+    await expect(fetchTotal()).resolves.toBe(2);
+  });
+
+  it.concurrent.skip("is concurrent and skipped", () => {
+    expect(add(1, 1)).toBe(2);
+  });
+
+  it.skipIf(isWindows)("is skipped on windows", () => {
+    expect(add(1, 1)).toBe(2);
+  });
+
+  it.runIf(isCi)("runs only on ci", () => {
+    expect(add(1, 1)).toBe(2);
+  });
+
+  it.each([
+    [1, 2, 3],
+    [2, 3, 5],
+  ])("adds %i and %i", (a, b, sum) => {
+    expect(add(a, b)).toBe(sum);
+  });
+
+  test.each`
+    a    | b    | sum
+    ${1} | ${1} | ${2}
+  `("adds $a and $b", ({ a, b, sum }) => {
+    expect(add(a, b)).toBe(sum);
+  });
+
+  test.for([1, 2])("squares %i", (n) => {
+    expect(n * n).toBeGreaterThan(0);
+  });
+});
+
+describe.skip("a skipped group", () => {
+  it("never runs", () => {
+    expect(add(1, 1)).toBe(2);
+  });
+});
+
+describe.concurrent("a concurrent group", () => {
+  it("collects soft assertions", () => {
+    expect.soft(add(1, 1)).toBe(2);
+  });
+});
+
+describe("divide", () => {
+  describe("by zero", () => {
+    it("throws", () => {
+      expect.assertions(2);
+      try {
+        expect(divide(1, 0)).toBe(Infinity);
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error);
+      }
+    });
+  });
+
+  it("returns a value", () => {
+    expect.hasAssertions();
+    const result = divide(4, 2);
+    expect(result).toBe(2);
+  });
+
+  it("stops early", () => {
+    const check = (value: number) => {
+      if (value > 1) {
+        return;
+      }
+      expect(value).toBe(1);
+    };
+    check(1);
+  });
+
+  it("returns the assertion", () => {
+    return expect(Promise.resolve(1)).resolves.toBe(1);
+  });
+});
+
+describe("lazy mocks", () => {
+  it("mocks late", async () => {
+    const path = "./late.js";
+    vi.doMock(path, () => ({ late: true }));
+    vi.doMock(import("./extra.js"), () => ({ extra: true }));
+    expect(add(1, 1)).toBe(2);
+  });
+});
+
+test("is a plain test call", () => {
+  expect(add(1, 1)).toBe(2);
+});

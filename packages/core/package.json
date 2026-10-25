@@ -5,6 +5,7 @@
   "license": "Apache-2.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "source": "./src/index.ts",
@@ -15,6 +16,9 @@
   "files": [
     "dist"
   ],
+  "dependencies": {
+    "typescript5": "npm:typescript@5.9.3"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
