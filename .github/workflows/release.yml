@@ -7,7 +7,7 @@ name: release
 # Tags are exact versions only and never move: the `release-tags` ruleset forbids updating or
 # deleting `v*`. A bad release is fixed with a new patch release, never by retagging.
 #
-# TWO JOBS, and the split is the point (the same split as phargus's publish.yml):
+# THREE JOBS, and the split is the point (the same split as phargus's publish.yml):
 #   - `verify` has NO write permission. It refuses anything but main and a strict X.Y.Z that equals
 #     the package version and is not tagged yet, and a CHANGELOG with exactly one
 #     `## [X.Y.Z] - <real date>` heading whose notes carry no YYYY-MM-DD placeholder or maintainer
@@ -17,6 +17,10 @@ name: release
 #   - `publish` is the ONLY job with `contents: write`, and runs in the `release` environment (give
 #     it a required reviewer). It checks out nothing and installs nothing, so no dependency code runs
 #     while a write token exists. It creates the tag at exactly the commit `verify` checked.
+#   - `smoke` runs after `publish` with read-only permission. It checks out the released commit, confirms the
+#     tag points at it, and runs scripts/smoke-release.mjs against that checkout's bundle. Red means: do not
+#     do the Marketplace step (docs/RELEASING.md). `verify` runs the same script on the committed bundle, so
+#     a broken smoke is caught in the dry run, before any tag exists.
 #
 # Job names must not collide with the required check names in ci.yml. This workflow never runs on a
 # pull request, so it is not a required check.
@@ -103,6 +107,11 @@ jobs:
       - name: Check that every action is pinned to a commit SHA
         run: node scripts/check-action-pins.mjs
 
+      # Build a throwaway repository from fixtures/smoke/ and run the committed bundle against it. Needs
+      # no token and no network; the same script runs again on the tagged bundle in `smoke` below.
+      - name: Smoke the committed bundle
+        run: node scripts/smoke-release.mjs .
+
       - name: Extract release notes
         env:
           VERSION: ${{ inputs.version }}
@@ -163,3 +172,35 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "v$VERSION" \
             --notes-file "$RUNNER_TEMP/notes/notes.md"
+
+  smoke:
+    name: Release smoke
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # read-only: nothing here may write to the repository
+    steps:
+      # The released commit by SHA, not main: a push to main since the release changes nothing.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      # The tag must exist and point at exactly the commit that was checked out and verified.
+      - name: Check the tag points at this commit
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::version \"$VERSION\" is not X.Y.Z"; exit 1; }
+          TAGGED="$(git ls-remote "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "refs/tags/v$VERSION^{}" "refs/tags/v$VERSION" | awk 'END { print $1 }')"
+          [ "$TAGGED" = "$GITHUB_SHA" ] || { echo "::error::tag v$VERSION points at \"$TAGGED\", not at $GITHUB_SHA"; exit 1; }
+
+      # Runs the checked-out (released) bundle, not the one on main, with no token and no event.
+      - name: Smoke the released bundle
+        run: node scripts/smoke-release.mjs .
