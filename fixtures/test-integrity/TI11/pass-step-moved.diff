@@ -1,0 +1,22 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 5555555..6666666 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -34,2 +33,0 @@ jobs:
+-      - name: Test (with lcov coverage)
+-        run: pnpm test:coverage
+diff --git a/.github/workflows/test.yml b/.github/workflows/test.yml
+new file mode 100644
+index 0000000..7777777
+--- /dev/null
++++ b/.github/workflows/test.yml
+@@ -0,0 +1,9 @@
++name: Test
++on:
++  pull_request:
++jobs:
++  unit:
++    runs-on: ubuntu-latest
++    steps:
++      - name: Test (with lcov coverage)
++        run: pnpm test:coverage

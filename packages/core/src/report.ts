@@ -115,7 +115,9 @@ export type MessageCode =
   | "AGENT_SETUP_EXPECTED_MISSING"
   | "TEST_INTEGRITY_MODE_IGNORED"
   | "TEST_INTEGRITY_OFF"
-  | "TEST_INTEGRITY_TI01";
+  | "TEST_INTEGRITY_TI01"
+  | "TEST_INTEGRITY_TI11"
+  | "TEST_INTEGRITY_TI14";
 
 export interface Message {
   level: MessageLevel;
@@ -172,6 +174,34 @@ export interface BuildReportInput {
    */
   testIntegritySignals?: readonly TestIntegritySignal[];
 }
+
+/** The one message each test-integrity signal id adds to a report that carries findings of that id. */
+const SIGNAL_MESSAGES: ReadonlyArray<{
+  id: string;
+  code: MessageCode;
+  text: (top: "block" | "warn" | "info", paths: string) => string;
+}> = [
+  {
+    id: "TI01",
+    code: "TEST_INTEGRITY_TI01",
+    text: (top, paths) =>
+      top === "info"
+        ? `This change deletes test files together with the code they cover or replaces them: ${paths}.`
+        : `This change deletes or renames away test files that defined tests, with nothing in the change that accounts for them: ${paths}. Check that those tests were meant to go.`,
+  },
+  {
+    id: "TI11",
+    code: "TEST_INTEGRITY_TI11",
+    text: (_top, paths) =>
+      `This change edits a workflow so that CI may run fewer tests or ignore their failures: ${paths}. Check that the removed step or trigger, the reduced matrix or the added condition was meant.`,
+  },
+  {
+    id: "TI14",
+    code: "TEST_INTEGRITY_TI14",
+    text: (_top, paths) =>
+      `This change lowers the coverage threshold or adds a coverage exclusion in the check config: ${paths}. Check that the looser setting was meant before trusting the result.`,
+  },
+];
 
 export function buildReport(input: BuildReportInput): Report {
   const messages: Message[] = [];
@@ -307,22 +337,20 @@ export function buildReport(input: BuildReportInput): Report {
   }
 
   const signals = [...(input.testIntegritySignals ?? [])];
-  const ti01 = signals.filter((signal) => signal.id === "TI01");
-  if (ti01.length > 0) {
-    // One message for the signal id; its level is the highest severity among the files, and it names those files.
-    const top = ti01.some((s) => s.severity === "block")
+  for (const { id, code, text } of SIGNAL_MESSAGES) {
+    const own = signals.filter((signal) => signal.id === id);
+    if (own.length === 0) continue;
+    // One message per signal id; its level is the highest severity among the findings, and it names those files.
+    const top = own.some((s) => s.severity === "block")
       ? "block"
-      : ti01.some((s) => s.severity === "warn")
+      : own.some((s) => s.severity === "warn")
         ? "warn"
         : "info";
-    const named = ti01.filter((s) => s.severity === top).map((s) => s.path);
+    const named = [...new Set(own.filter((s) => s.severity === top).map((s) => s.path))];
     messages.push({
       level: top === "block" ? "error" : top === "warn" ? "warn" : "info",
-      code: "TEST_INTEGRITY_TI01",
-      text:
-        top === "info"
-          ? `This change deletes test files together with the code they cover or replaces them: ${pathList(named)}.`
-          : `This change deletes or renames away test files that defined tests, with nothing in the change that accounts for them: ${pathList(named)}. Check that those tests were meant to go.`,
+      code,
+      text: text(top, pathList(named)),
     });
   }
 

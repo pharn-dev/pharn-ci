@@ -1,0 +1,7 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 5555555..6666666 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -30 +30 @@ jobs:
+-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++      - uses: actions/checkout@4e4d43f6bbd6916936936a3d2f2f0b2d2e1e4f5a # v7.0.2

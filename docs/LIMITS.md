@@ -70,6 +70,47 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   `DIFF_COVERAGE_UNGATED`, as it does without a threshold. Unlike no threshold, it still makes a
   missing coverage file or diff an error (below).
 
+### What TI14 misses
+
+TI14 reads the added and removed lines of the pharn-ci config in use, one line at a time. The local diff is
+`--unified=0`, so there are no context lines.
+
+- **No context lines.** A bare `- item` line added to a list cannot be tied to its key. It counts as an exclusion
+  only when it follows an added `exclude:` key line in the same hunk, or when its value is one of the exclusion
+  patterns the check was given (so a pattern also given by the workflow input can make an item added to
+  `coverage.file` read as an exclusion, and an exclusion appended to a list is missed when the check was not given
+  it).
+- **Threshold by line.** Only a plain number on a `threshold:` line counts. A quoted value, a value moved
+  onto another key, and a threshold set by the workflow input (which beats the config and is out of the diff's
+  reach) are not seen. A config renamed with no edits shows no lines.
+- **Any new pattern counts.** An exclusion that swaps one generated directory for another is reported like one that
+  hides source; the finding is a prompt for a reviewer, and the exclusion's pattern is not judged.
+- **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8). A diff that reaches
+  `check()` already parsed without kept text (not through `readDiffChunks` or a diff text) yields no TI14.
+
+### What TI11 misses
+
+TI11 reads the added and removed lines of workflow files (`.github/workflows/*.yml` and `*.yaml`) the same way.
+
+- **No context lines.** An added `continue-on-error: true`, `if:` or `timeout-minutes` line cannot be tied to a test
+  step or to the job it sits in, which is why those rules are `warn` in every mode but `off`. An `if:` other than a
+  literal false or an event-name test, a job-level condition written another way and a timeout of 2 minutes are not
+  seen.
+- **Test commands by name.** A removed command counts only if it starts with `npm`, `pnpm`, `yarn` or `bun` `test`,
+  `vitest`, `jest`, `mocha`, `pytest`, `python -m pytest`, `python -m unittest`, `go test` or `playwright test`,
+  alone or in a `&&`/`;` chain. A script run another way (`make check`, a shell script, a package filter such as
+  `pnpm -r test`) is not seen.
+- **Moved steps.** A test command removed from one place and added anywhere in the workflow files of the same diff
+  counts as moved, even into a job that never runs on pull requests. A test job moved into a reusable workflow
+  or a composite action is a removal of its steps; the called workflow is not read.
+- **Triggers by token.** A removed `pull_request` or `pull_request_target` is excused when any added line of the same
+  file names either. Other filters (`branches`, `paths`) are not judged.
+- **Matrix by one-line list.** Only a flow list (`[18, 20, 22]`) that shrinks on the same key counts; a block list
+  loses no entry here, and `branches`, `paths`, `types` and `runs-on` lists are not read as matrices.
+- **Needs policy.** A required-check job renamed and a `paths-ignore` widened over source need the list of required
+  checks and the source paths from the app policy; they land with the policy work (E5), not here.
+- **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8).
+
 ## 2. When an input is missing
 
 - **A missing input fails only with a threshold.** `COVERAGE_FILE_MISSING`, `COVERAGE_FILE_EMPTY`,
@@ -292,7 +333,7 @@ set by pharn-ci.
 
 - **The diff.** From local git (the CLI, and the Action when the checkout has the base) it is read
   line by line as git writes it, with no fixed limit. Memory holds the changed paths and their added
-  line numbers, plus the text of added and removed lines for test files only, capped at 5000 lines
+  line numbers, plus the text of added and removed lines for test files, the pharn-ci config in use and workflow files only, capped at 5000 lines
   per file and 400 characters per line (`textTruncated` marks a file cut at the cap). The 120 s git
   timeout still applies. From the GitHub compare API (the
   Action's fallback, and PR-number mode) it is limited by GitHub's own compare limit; past it the

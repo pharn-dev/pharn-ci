@@ -9,10 +9,13 @@ import { type DiffFile, parseUnifiedDiff } from "./diff/unified.js";
 import { computeDiffCoverage } from "./diffCoverage.js";
 import { binaryCoveredPaths, changedConfigPaths, trackedCoverageFile } from "./gateInputs.js";
 import { compileGlob } from "./glob.js";
-import { buildReport, type Report, type ReportMeta } from "./report.js";
+import { buildReport, type Report, type ReportMeta, type TestIntegritySignal } from "./report.js";
 import { scanAgentSetup } from "./setup/scan.js";
+import { keepSignalFileText } from "./signals/signalFiles.js";
 import { detectTI01 } from "./signals/ti01.js";
-import { deletedTestFiles, keepTestFileText } from "./testFiles.js";
+import { detectTI11 } from "./signals/ti11.js";
+import { detectTI14 } from "./signals/ti14.js";
+import { deletedTestFiles } from "./testFiles.js";
 import { resolveTestIntegrityMode, type TestIntegrityModeSettings } from "./testIntegrityMode.js";
 
 /**
@@ -86,6 +89,19 @@ export interface CheckInput {
   testIntegrityMode?: TestIntegrityModeSettings;
 }
 
+const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
+/** Signals sorted by id, then path, then line (none first), then detail, in code-unit order. */
+function sortSignals(signals: TestIntegritySignal[]): TestIntegritySignal[] {
+  return signals.sort(
+    (a, b) =>
+      byCodeUnit(a.id, b.id) ||
+      byCodeUnit(a.path, b.path) ||
+      (a.line ?? 0) - (b.line ?? 0) ||
+      byCodeUnit(a.detail, b.detail),
+  );
+}
+
 /** The whole pharn-ci check as one pure function: raw inputs in, Report v2 out. */
 export function check(input: CheckInput): Report {
   // Validate before any early return, so a bad pattern is an error even when nothing else is computed.
@@ -99,7 +115,7 @@ export function check(input: CheckInput): Report {
   // findings (gate inputs and deleted test files) ride on every report path where the diff is available.
   const parsedDiff =
     "text" in input.diff
-      ? parseUnifiedDiff(input.diff.text, { keepText: keepTestFileText })
+      ? parseUnifiedDiff(input.diff.text, { keepText: keepSignalFileText(input.configPath, input.repoRoot) })
       : "parsed" in input.diff
         ? input.diff.parsed
         : null;
@@ -108,7 +124,18 @@ export function check(input: CheckInput): Report {
   const testIntegrity = resolveTestIntegrityMode(input.testIntegrityMode);
   // Mode off computes nothing; the signals carry their effective severity for the mode.
   const testIntegritySignals =
-    parsedDiff === null || testIntegrity.mode === "off" ? [] : detectTI01(parsedDiff, testIntegrity.mode);
+    parsedDiff === null || testIntegrity.mode === "off"
+      ? []
+      : sortSignals([
+          ...detectTI01(parsedDiff, testIntegrity.mode),
+          ...detectTI11(parsedDiff, testIntegrity.mode),
+          ...detectTI14(parsedDiff, {
+            configPath: input.configPath,
+            repoRoot: input.repoRoot,
+            exclude: input.exclude ?? [],
+            mode: testIntegrity.mode,
+          }),
+        ]);
   // The single-file forms are several files with one entry, so there is one path through the check.
   const coverageInput = input.coverage;
   let files: readonly CoverageFileInput[];

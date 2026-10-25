@@ -1,0 +1,6 @@
+diff --git a/.pharn/ci.yml b/.pharn/ci.yml
+index 3333333..4444444 100644
+--- a/.pharn/ci.yml
++++ b/.pharn/ci.yml
+@@ -4,0 +5 @@ coverage:
++  exclude: [dist/**, docs/**]

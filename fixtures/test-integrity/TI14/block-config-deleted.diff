@@ -1,0 +1,10 @@
+diff --git a/.pharn/ci.yml b/.pharn/ci.yml
+deleted file mode 100644
+index 3333333..0000000
+--- a/.pharn/ci.yml
++++ /dev/null
+@@ -1,4 +0,0 @@
+-coverage:
+-  file: coverage/lcov.info
+-  format: lcov
+-  threshold: 80

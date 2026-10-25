@@ -114,6 +114,17 @@ These are accepted, not hidden:
     start with one of the recognized call forms reads as "not defining tests", and a PR can delete an unrelated
     source file of the same name to turn the finding to `info`. The finding is a recorded prompt for a
     reviewer, not proof; `docs/LIMITS.md` lists what TI01 misses.
+14. **TI14 and TI11 read the PR-controlled config and workflow files.** The diff parser now also keeps the text of
+    added and removed lines (same caps as in 13) for the pharn-ci config in use and for `.github/workflows/*.yml|yaml`.
+    Both detectors match each kept line, cut to 400 characters, with anchored patterns that run in linear time.
+    Nothing from that text reaches the report: a finding holds the path, a line number, one fixed sentence per rule
+    and a severity, plus the two numbers of a threshold change (digits parsed from a plain number, at most four
+    decimals); patterns, commands and values from the diff are never copied into a detail or a message. The config
+    is never read to loosen anything: a PR cannot use these findings, or the config it edits, to lower its own
+    gate, and the mode rules of residual 12 still apply to the signals. **Residual:** a PR can phrase a weakening
+    that none of the line patterns match (a test script run through a wrapper, a condition written another way), or
+    add a matching line elsewhere in the diff to excuse a removed step; the findings are recorded prompts for a
+    reviewer, and `docs/LIMITS.md` lists what TI14 and TI11 miss.
 
 ## 4. Keeping this document honest
 

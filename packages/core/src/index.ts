@@ -1,5 +1,5 @@
 export { type CheckInput, type CoverageFileInput, check } from "./check.js";
-export { readCoverageChunks, readDiffChunks } from "./chunkInputs.js";
+export { type ReadDiffOptions, readCoverageChunks, readDiffChunks } from "./chunkInputs.js";
 export {
   ConfigError,
   isCoverageFormatSelection,
@@ -105,7 +105,10 @@ export {
 } from "./setup/scan.js";
 export { parseLsTreeSizes } from "./setup/sizes.js";
 export { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
+export { isWorkflowFile, keepSignalFileText } from "./signals/signalFiles.js";
 export { detectTI01 } from "./signals/ti01.js";
+export { detectTI11 } from "./signals/ti11.js";
+export { detectTI14, type TI14Options } from "./signals/ti14.js";
 export {
   definesTests,
   deletedTestFiles,

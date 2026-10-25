@@ -22,8 +22,21 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   integrity" section lists the findings. Test files are now recognized by the spec's globs: `.test.` and `.spec.`
   with a JavaScript or TypeScript extension, `.e2e.ts`, `.pw.ts`, `test_*.py`, `*_test.py`, `*_test.go` and the
   `test`, `tests` and `__tests__` directories. `TEST_FILES_DELETED` is unchanged and now uses the same detection.
-- The unified-diff parser keeps the text of added and removed lines per hunk for test files (at most 5000 lines per
-  file, 400 characters per line; `textTruncated` marks a cut file), for the signals that read line text.
+- Signal **TI14**, diff-coverage exclusions widened: a change to the pharn-ci config in use (`.pharn/ci.yml`, or the
+  `config` input) that lowers or removes `coverage.threshold`, or adds a coverage exclusion, is reported in
+  `testIntegrity.signals` and in one `TEST_INTEGRITY_TI14` message, `block` in mode `block`, `warn` in the default
+  mode. Raising a threshold, removing an exclusion and unrelated settings never fire. `CONFIG_CHANGED_IN_DIFF` is
+  unchanged.
+- Signal **TI11**, CI stopped running tests, from the diff of workflow files (`.github/workflows/*.yml|yaml`),
+  reported in `testIntegrity.signals` and in one `TEST_INTEGRITY_TI11` message. `block` in mode `block`: a removed
+  test command (`pnpm test`, `vitest`, `jest`, `pytest`, `go test`, ...) that no workflow adds again, and a removed
+  `pull_request` trigger. `warn` in every mode but `off`: a shrunk flow-list matrix, an added
+  `continue-on-error: true`, an added `if:` that is a literal false or leaves pull requests out, and a
+  `timeout-minutes` of 0 or 1. Which step a line belongs to cannot be seen without context lines, hence the warnings.
+- The unified-diff parser keeps the text of added and removed lines per hunk for test files, the pharn-ci config in
+  use and workflow files (at most 5000 lines per file, 400 characters per line; `textTruncated` marks a cut file),
+  for the signals that read line text. `readDiffChunks` takes an optional `{ configPath, repoRoot }` so a custom
+  config path works through the stream as it does through `check()`.
 - README: an [Agent skills](README.md#agent-skills) section on the `pharn-ci` plugin in
   [pharn-dev/skills](https://github.com/pharn-dev/skills) (install, explain a verdict, cover
   uncovered lines), and a pointer to it from the Quick start and the Pharn family table.

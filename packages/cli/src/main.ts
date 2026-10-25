@@ -251,7 +251,9 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   const diffArgs = gitDiffArgs(base);
   let diffFiles: DiffFile[];
   try {
-    diffFiles = await readDiffChunks(gitChunks(deps, diffArgs));
+    // Absolute: core makes it repo-relative against repoRoot, or finds it outside the repo.
+    const configPath = values.config === undefined ? undefined : deps.resolvePath(deps.cwd, values.config);
+    diffFiles = await readDiffChunks(gitChunks(deps, diffArgs), { configPath, repoRoot });
   } catch (err) {
     throw gitFailure(diffArgs, `could not diff against "${base}" (fetch it, or pass --base <ref>)`, err);
   }

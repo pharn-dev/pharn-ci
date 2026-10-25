@@ -4,7 +4,7 @@ import { createLcovReader } from "./coverage/lcov.js";
 import type { CoverageFormatSelection, CoverageMap, ParseCoverageOptions } from "./coverage/types.js";
 import { createUnifiedDiffReader, type DiffFile } from "./diff/unified.js";
 import { createLineSplitter } from "./lines.js";
-import { keepTestFileText } from "./testFiles.js";
+import { keepSignalFileText } from "./signals/signalFiles.js";
 
 /**
  * Read one coverage file that arrives as a stream of text chunks.
@@ -72,14 +72,26 @@ export async function readCoverageChunks(
   }
 }
 
+/** What `readDiffChunks` needs to pick the files whose line text it keeps: the config in use and the repository root. */
+export interface ReadDiffOptions {
+  /** The config path the check will be given (`configPath`); absent means `.pharn/ci.yml`. */
+  configPath?: string | undefined;
+  /** The absolute repository root, used to make an absolute config path repo-relative. */
+  repoRoot?: string | undefined;
+}
+
 /**
  * Read a unified diff that arrives as a stream of text chunks, line by line. A rejection of the stream rejects the
- * promise, so a failed diff yields nothing. The text of added and removed lines is kept for test files only (bounded
- * per file, see `MAX_KEPT_LINES`), as `check()` keeps it when it parses a diff text, so both paths give the same files.
+ * promise, so a failed diff yields nothing. The text of added and removed lines is kept for test files, the config in
+ * use and workflow files only (bounded per file, see `MAX_KEPT_LINES`), as `check()` keeps it when it parses a diff
+ * text, so both paths give the same files.
  */
-export async function readDiffChunks(chunks: AsyncIterable<string>): Promise<DiffFile[]> {
+export async function readDiffChunks(
+  chunks: AsyncIterable<string>,
+  options: ReadDiffOptions = {},
+): Promise<DiffFile[]> {
   const splitter = createLineSplitter();
-  const reader = createUnifiedDiffReader({ keepText: keepTestFileText });
+  const reader = createUnifiedDiffReader({ keepText: keepSignalFileText(options.configPath, options.repoRoot) });
   for await (const chunk of chunks) {
     for (const line of splitter.push(chunk)) reader.push(line);
   }
