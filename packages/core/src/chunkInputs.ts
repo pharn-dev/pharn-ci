@@ -4,6 +4,7 @@ import { createLcovReader } from "./coverage/lcov.js";
 import type { CoverageFormatSelection, CoverageMap, ParseCoverageOptions } from "./coverage/types.js";
 import { createUnifiedDiffReader, type DiffFile } from "./diff/unified.js";
 import { createLineSplitter } from "./lines.js";
+import { keepTestFileText } from "./testFiles.js";
 
 /**
  * Read one coverage file that arrives as a stream of text chunks.
@@ -73,11 +74,12 @@ export async function readCoverageChunks(
 
 /**
  * Read a unified diff that arrives as a stream of text chunks, line by line. A rejection of the stream rejects the
- * promise, so a failed diff yields nothing.
+ * promise, so a failed diff yields nothing. The text of added and removed lines is kept for test files only (bounded
+ * per file, see `MAX_KEPT_LINES`), as `check()` keeps it when it parses a diff text, so both paths give the same files.
  */
 export async function readDiffChunks(chunks: AsyncIterable<string>): Promise<DiffFile[]> {
   const splitter = createLineSplitter();
-  const reader = createUnifiedDiffReader();
+  const reader = createUnifiedDiffReader({ keepText: keepTestFileText });
   for await (const chunk of chunks) {
     for (const line of splitter.push(chunk)) reader.push(line);
   }

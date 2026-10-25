@@ -11,10 +11,22 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
 - **Only added lines count.** Removed lines and unchanged context are not measured (a moved line
   counts as added at its new position). A change that deletes the tests for code it leaves in place
   does not lower diff coverage. pharn-ci names a deleted test file, or one renamed to a name that is
-  not a test file, in `TEST_FILES_DELETED` (info only; the verdict is unchanged). A test file is
-  recognized only by name: `.test.` or `.spec.` in the basename, or a `test`, `tests` or `__tests__`
-  directory. Weakened, skipped or focused tests inside a file, deleted test cases, and test files
-  named any other way (`_test.go`, `test_*.py`) are not detected.
+  not a test file, in `TEST_FILES_DELETED` (info only; the verdict is unchanged), and reports the
+  ones whose removed lines define tests as TI01 (see "What TI01 misses" below). A test file is
+  recognized only by name: `.test.` or `.spec.` with a JavaScript or TypeScript extension, `.e2e.ts`,
+  `.pw.ts`, `test_*.py`, `*_test.py`, `*_test.go`, or any file in a `test`, `tests` or `__tests__`
+  directory. Weakened, skipped or focused tests inside a file and deleted test cases are not
+  detected yet.
+- **What TI01 misses.** TI01 reads line patterns, not syntax. (1) A test file counts only if its
+  removed lines start with `it(`, `test(`, `describe(`, `context(`, `specify(`, `def test_` or
+  `func Test`; a test written another way (a custom wrapper, a `Deno.test(` call) reads as not
+  defining tests. (2) A source file of the same name deleted anywhere in the change makes the
+  finding `info`, so an unrelated `foo.ts` deleted beside `foo.test.ts` exempts it. (3) A rename
+  with no edits shows no lines, so a test renamed away counts on its path alone, and a helper
+  renamed out of `tests/` counts too. (4) A test file emptied but not deleted is not seen (TI02 and
+  TI05 in a later release). (5) Text is kept for at most 5000 lines per file and 400 characters per
+  line; a deleted file cut at that bound with no test-defining line kept still counts, so a huge
+  file is never waved through. (6) A package that is the repository root never exempts a deletion.
 - **Only lines the coverage report knows count.** An added line with no `DA` entry in the lcov file
   or no class-level `<line>` record in a Cobertura file (a comment, a type, a blank line, a
   declaration the tool does not instrument) is left out of the denominator. What is "coverable" is
@@ -280,7 +292,9 @@ set by pharn-ci.
 
 - **The diff.** From local git (the CLI, and the Action when the checkout has the base) it is read
   line by line as git writes it, with no fixed limit. Memory holds the changed paths and their added
-  line numbers, not the text. The 120 s git timeout still applies. From the GitHub compare API (the
+  line numbers, plus the text of added and removed lines for test files only, capped at 5000 lines
+  per file and 400 characters per line (`textTruncated` marks a file cut at the cap). The 120 s git
+  timeout still applies. From the GitHub compare API (the
   Action's fallback, and PR-number mode) it is limited by GitHub's own compare limit; past it the
   diff is unavailable and the report says `DIFF_UNAVAILABLE`.
 - **lcov coverage.** Read line by line from the file, with no fixed limit. Memory holds the coverage

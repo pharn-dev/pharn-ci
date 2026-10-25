@@ -1,0 +1,21 @@
+diff --git a/src/foo.test.ts b/src/foo.test.ts
+deleted file mode 100644
+index 5555555..0000000
+--- a/src/foo.test.ts
++++ /dev/null
+@@ -1,2 +0,0 @@
+-import { foo } from "./foo";
+-it("foos", () => { foo(); });
+diff --git a/src/foo.ts b/src/foo.ts
+deleted file mode 100644
+index 6666666..0000000
+--- a/src/foo.ts
++++ /dev/null
+@@ -1 +0,0 @@
+-export const foo = () => 1;
+diff --git a/src/app.ts b/src/app.ts
+index 1111111..2222222 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -1,0 +2 @@
++export const b = 2;

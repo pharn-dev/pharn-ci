@@ -114,7 +114,8 @@ export type MessageCode =
   | "AGENT_SETUP_FILE_EMPTY"
   | "AGENT_SETUP_EXPECTED_MISSING"
   | "TEST_INTEGRITY_MODE_IGNORED"
-  | "TEST_INTEGRITY_OFF";
+  | "TEST_INTEGRITY_OFF"
+  | "TEST_INTEGRITY_TI01";
 
 export interface Message {
   level: MessageLevel;
@@ -164,6 +165,12 @@ export interface BuildReportInput {
   meta?: ReportMeta;
   /** The effective test-integrity mode (see `resolveTestIntegrityMode`). Absent means the default `warn`. */
   testIntegrity?: ResolvedTestIntegrityMode;
+  /**
+   * The test-integrity signals the detectors found, each with its effective severity (sorted by the caller). They fill
+   * `testIntegrity.signals` and `testIntegrity.verdict`; the TI01 ones also add one `TEST_INTEGRITY_TI01` message.
+   * Absent or empty adds nothing.
+   */
+  testIntegritySignals?: readonly TestIntegritySignal[];
 }
 
 export function buildReport(input: BuildReportInput): Report {
@@ -299,6 +306,26 @@ export function buildReport(input: BuildReportInput): Report {
     });
   }
 
+  const signals = [...(input.testIntegritySignals ?? [])];
+  const ti01 = signals.filter((signal) => signal.id === "TI01");
+  if (ti01.length > 0) {
+    // One message for the signal id; its level is the highest severity among the files, and it names those files.
+    const top = ti01.some((s) => s.severity === "block")
+      ? "block"
+      : ti01.some((s) => s.severity === "warn")
+        ? "warn"
+        : "info";
+    const named = ti01.filter((s) => s.severity === top).map((s) => s.path);
+    messages.push({
+      level: top === "block" ? "error" : top === "warn" ? "warn" : "info",
+      code: "TEST_INTEGRITY_TI01",
+      text:
+        top === "info"
+          ? `This change deletes test files together with the code they cover or replaces them: ${pathList(named)}.`
+          : `This change deletes or renames away test files that defined tests, with nothing in the change that accounts for them: ${pathList(named)}. Check that those tests were meant to go.`,
+    });
+  }
+
   if (input.agentSetup.files.length === 0) {
     const required = input.requireAgentSetup === true;
     const found = "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found";
@@ -351,10 +378,16 @@ export function buildReport(input: BuildReportInput): Report {
       ...(expected.length > 0 ? { missing: missingTools } : {}),
     },
     messages,
-    testIntegrity:
-      testIntegrity === undefined
-        ? emptyTestIntegrity()
-        : { ...emptyTestIntegrity(), mode: testIntegrity.mode, source: testIntegrity.source },
+    testIntegrity: {
+      ...emptyTestIntegrity(),
+      ...(testIntegrity === undefined ? {} : { mode: testIntegrity.mode, source: testIntegrity.source }),
+      verdict: signals.some((s) => s.severity === "block")
+        ? "fail"
+        : signals.some((s) => s.severity === "warn")
+          ? "warn"
+          : "pass",
+      signals,
+    },
     ...(input.meta === undefined ? {} : { meta: input.meta }),
   };
 }

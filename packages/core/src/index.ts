@@ -53,9 +53,14 @@ export {
   createUnifiedDiffReader,
   type DiffFile,
   type DiffFileStatus,
+  type DiffHunk,
+  type DiffLineText,
+  MAX_KEPT_LINE_CHARS,
+  MAX_KEPT_LINES,
   parseUnifiedDiff,
   parseUnifiedDiffLines,
   parseUnifiedDiffLinesAsync,
+  type UnifiedDiffOptions,
 } from "./diff/unified.js";
 export { computeDiffCoverage, type DiffCoverageFile, type DiffCoverageResult } from "./diffCoverage.js";
 export { compileGlob, hasGlobSyntax, matchGlob } from "./glob.js";
@@ -100,6 +105,15 @@ export {
 } from "./setup/scan.js";
 export { parseLsTreeSizes } from "./setup/sizes.js";
 export { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
+export { detectTI01 } from "./signals/ti01.js";
+export {
+  definesTests,
+  deletedTestFiles,
+  isTestFile,
+  keepTestFileText,
+  testPackageDir,
+  testStem,
+} from "./testFiles.js";
 export {
   isTestIntegrityMode,
   type ResolvedTestIntegrityMode,

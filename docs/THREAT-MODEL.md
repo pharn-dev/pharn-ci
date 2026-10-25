@@ -106,6 +106,14 @@ These are accepted, not hidden:
     `warn`): a looser value is ignored, and the report says so with `TEST_INTEGRITY_MODE_IGNORED`. A PR
     therefore cannot switch test integrity off or down for itself; the workflow file, protected with
     CODEOWNERS, decides the base.
+13. **TI01 reads the text of the PR's diff.** To tell a test file that defines tests from a helper, the diff
+    parser keeps the text of added and removed lines for test files, and TI01 matches each kept line (cut to
+    400 characters, at most 5000 lines per file) against one anchored pattern that runs in linear time; a file
+    cut at the bound still counts. Nothing from that text reaches the report: a finding holds the path, a fixed
+    sentence and a severity, and paths are rendered in code spans as in B1. **Residual:** a test that does not
+    start with one of the recognized call forms reads as "not defining tests", and a PR can delete an unrelated
+    source file of the same name to turn the finding to `info`. The finding is a recorded prompt for a
+    reviewer, not proof; `docs/LIMITS.md` lists what TI01 misses.
 
 ## 4. Keeping this document honest
 

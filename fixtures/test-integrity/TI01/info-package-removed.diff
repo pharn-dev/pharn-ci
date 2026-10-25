@@ -1,0 +1,21 @@
+diff --git a/packages/a/src/x.ts b/packages/a/src/x.ts
+deleted file mode 100644
+index 6666666..0000000
+--- a/packages/a/src/x.ts
++++ /dev/null
+@@ -1 +0,0 @@
+-export const x = 1;
+diff --git a/packages/a/__tests__/y.test.ts b/packages/a/__tests__/y.test.ts
+deleted file mode 100644
+index 5555555..0000000
+--- a/packages/a/__tests__/y.test.ts
++++ /dev/null
+@@ -1,2 +0,0 @@
+-import { x } from "../src/x";
+-test("x is one", () => { expect(x).toBe(1); });
+diff --git a/src/app.ts b/src/app.ts
+index 1111111..2222222 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -1,0 +2 @@
++export const b = 2;

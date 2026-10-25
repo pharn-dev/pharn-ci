@@ -25676,40 +25676,79 @@ function mergeCoverageMaps(maps) {
 }
 
 // ../core/src/diff/unified.ts
-var HUNK_HEADER = /^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
-function parseUnifiedDiff(text) {
-  return parseUnifiedDiffLines(text.split(/\r?\n/));
+var MAX_KEPT_LINES = 5e3;
+var MAX_KEPT_LINE_CHARS = 400;
+var HUNK_HEADER = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
+function parseUnifiedDiff(text, options = {}) {
+  return parseUnifiedDiffLines(text.split(/\r?\n/), options);
 }
-function parseUnifiedDiffLines(lines) {
-  const reader = createUnifiedDiffReader();
+function parseUnifiedDiffLines(lines, options = {}) {
+  const reader = createUnifiedDiffReader(options);
   for (const line of lines) reader.push(line);
   return reader.finish();
 }
-function createUnifiedDiffReader() {
+function createUnifiedDiffReader(options = {}) {
   const entries = [];
+  const keepText = options.keepText;
   let current;
   let oldRemaining = 0;
   let newRemaining = 0;
   let cursor = 0;
+  let oldCursor = 0;
+  let hunk;
   const start = () => {
-    current = { oldPath: null, newPath: null, status: "modified", addedLines: [], sawHunk: false, binary: false };
+    current = {
+      oldPath: null,
+      newPath: null,
+      status: "modified",
+      addedLines: [],
+      sawHunk: false,
+      binary: false,
+      keep: void 0,
+      hunks: [],
+      keptLines: 0,
+      truncated: false
+    };
     entries.push(current);
     return current;
+  };
+  const pathsOf = (e) => {
+    const path = e.status === "deleted" ? e.oldPath ?? e.newPath : e.newPath ?? e.oldPath;
+    return path === null ? null : { path, oldPath: e.oldPath ?? path };
+  };
+  const decideKeep = (e) => {
+    if (e.keep === void 0) {
+      const paths = pathsOf(e);
+      e.keep = keepText !== void 0 && paths !== null && keepText(paths);
+    }
+    return e.keep;
+  };
+  const keepLine = (e, kind, line, text) => {
+    if (hunk === void 0 || e.keptLines >= MAX_KEPT_LINES) {
+      e.truncated = true;
+      return;
+    }
+    e.keptLines++;
+    hunk[kind].push({ line, text: text.length > MAX_KEPT_LINE_CHARS ? text.slice(0, MAX_KEPT_LINE_CHARS) : text });
   };
   const push = (line) => {
     if (current && (oldRemaining > 0 || newRemaining > 0)) {
       const marker = line[0];
       if (marker === "+") {
+        if (current.keep) keepLine(current, "added", cursor, line.slice(1));
         current.addedLines.push(cursor++);
         newRemaining--;
         return;
       }
       if (marker === "-") {
+        if (current.keep) keepLine(current, "removed", oldCursor, line.slice(1));
+        oldCursor++;
         oldRemaining--;
         return;
       }
       if (marker === " ") {
         cursor++;
+        oldCursor++;
         oldRemaining--;
         newRemaining--;
         return;
@@ -25756,9 +25795,19 @@ function createUnifiedDiffReader() {
       const match = HUNK_HEADER.exec(line);
       if (!match || !current) return;
       current.sawHunk = true;
-      oldRemaining = match[1] === void 0 ? 1 : Number(match[1]);
-      cursor = Number(match[2]);
-      newRemaining = match[3] === void 0 ? 1 : Number(match[3]);
+      oldCursor = Number(match[1]);
+      oldRemaining = match[2] === void 0 ? 1 : Number(match[2]);
+      cursor = Number(match[3]);
+      newRemaining = match[4] === void 0 ? 1 : Number(match[4]);
+      hunk = void 0;
+      if (decideKeep(current)) {
+        if (current.hunks.length >= MAX_KEPT_LINES) {
+          current.truncated = true;
+        } else {
+          hunk = { oldStart: oldCursor, newStart: cursor, added: [], removed: [] };
+          current.hunks.push(hunk);
+        }
+      }
     }
   };
   const finish = () => {
@@ -25771,7 +25820,9 @@ function createUnifiedDiffReader() {
         oldPath: e.oldPath ?? path,
         status: e.status === "deleted" ? "deleted" : e.status,
         addedLines: e.status === "deleted" ? [] : [...new Set(e.addedLines)].sort((a, b) => a - b),
-        ...e.binary ? { binary: true } : {}
+        ...e.binary ? { binary: true } : {},
+        ...decideKeep(e) ? { hunks: e.hunks } : {},
+        ...e.truncated ? { textTruncated: true } : {}
       });
     }
     return files;
@@ -26108,6 +26159,17 @@ function buildReport(input) {
       text: "Test integrity is off for this run, so no test-integrity signal is checked."
     });
   }
+  const signals = [...input.testIntegritySignals ?? []];
+  const ti01 = signals.filter((signal) => signal.id === "TI01");
+  if (ti01.length > 0) {
+    const top = ti01.some((s) => s.severity === "block") ? "block" : ti01.some((s) => s.severity === "warn") ? "warn" : "info";
+    const named = ti01.filter((s) => s.severity === top).map((s) => s.path);
+    messages.push({
+      level: top === "block" ? "error" : top === "warn" ? "warn" : "info",
+      code: "TEST_INTEGRITY_TI01",
+      text: top === "info" ? `This change deletes test files together with the code they cover or replaces them: ${pathList(named)}.` : `This change deletes or renames away test files that defined tests, with nothing in the change that accounts for them: ${pathList(named)}. Check that those tests were meant to go.`
+    });
+  }
   if (input.agentSetup.files.length === 0) {
     const required = input.requireAgentSetup === true;
     const found = "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found";
@@ -26149,7 +26211,12 @@ function buildReport(input) {
       ...expected.length > 0 ? { missing: missingTools } : {}
     },
     messages,
-    testIntegrity: testIntegrity === void 0 ? emptyTestIntegrity() : { ...emptyTestIntegrity(), mode: testIntegrity.mode, source: testIntegrity.source },
+    testIntegrity: {
+      ...emptyTestIntegrity(),
+      ...testIntegrity === void 0 ? {} : { mode: testIntegrity.mode, source: testIntegrity.source },
+      verdict: signals.some((s) => s.severity === "block") ? "fail" : signals.some((s) => s.severity === "warn") ? "warn" : "pass",
+      signals
+    },
     ...input.meta === void 0 ? {} : { meta: input.meta }
   };
 }
@@ -26289,11 +26356,45 @@ function scanAgentSetup(paths) {
 // ../core/src/testFiles.ts
 var TEST_DIRECTORIES = /* @__PURE__ */ new Set(["test", "tests", "__tests__"]);
 var byCodeUnit2 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var TEST_BASENAME = [
+  /\.(?:test|spec)\.(?:js|jsx|ts|tsx|mjs|cjs)$/,
+  /\.(?:e2e|pw)\.ts$/,
+  /^test_.+\.py$/,
+  /_test\.py$/,
+  /_test\.go$/
+];
 function isTestFile(path) {
   const segments = path.split("/");
   const basename = segments[segments.length - 1] ?? "";
-  if (basename.includes(".test.") || basename.includes(".spec.")) return true;
+  if (TEST_BASENAME.some((pattern) => pattern.test(basename))) return true;
   return segments.slice(0, -1).some((segment) => TEST_DIRECTORIES.has(segment));
+}
+function keepTestFileText(file) {
+  return isTestFile(file.path) || isTestFile(file.oldPath);
+}
+function testStem(path) {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  const dot = basename.lastIndexOf(".");
+  let stem = dot > 0 ? basename.slice(0, dot) : basename;
+  stem = stem.replace(/\.(?:test|spec|e2e|pw)$/, "");
+  if (stem.startsWith("test_") && stem.length > "test_".length) stem = stem.slice("test_".length);
+  if (stem.endsWith("_test") && stem.length > "_test".length) stem = stem.slice(0, -"_test".length);
+  return stem;
+}
+function testPackageDir(path) {
+  const directories = path.split("/").slice(0, -1);
+  let nearest = -1;
+  for (let i = directories.length - 1; i >= 0; i--) {
+    if (TEST_DIRECTORIES.has(directories[i])) {
+      nearest = i;
+      break;
+    }
+  }
+  return (nearest === -1 ? directories : directories.slice(0, nearest)).join("/");
+}
+var DEFINES_TEST = /^(?:(?:it|test|describe|context|specify)(?:\.[A-Za-z]+)*\s*[(`]|(?:async\s+)?def\s+test_|func\s+Test)/;
+function definesTests(text) {
+  return DEFINES_TEST.test(text.slice(0, 400).trimStart());
 }
 function deletedTestFiles(diff) {
   const found = /* @__PURE__ */ new Set();
@@ -26304,6 +26405,58 @@ function deletedTestFiles(diff) {
   return [...found].sort(byCodeUnit2);
 }
 
+// ../core/src/signals/ti01.ts
+var byCodeUnit3 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var MAX_DETAIL = 300;
+function removedTests(file) {
+  if (file.hunks === void 0) return "unknown";
+  for (const hunk of file.hunks) {
+    for (const removed of hunk.removed) if (definesTests(removed.text)) return "yes";
+  }
+  return "no";
+}
+function addedTests(file) {
+  for (const hunk of file.hunks ?? []) {
+    for (const added of hunk.added) if (definesTests(added.text)) return true;
+  }
+  return false;
+}
+function detectTI01(diff, mode) {
+  const deletedSources = diff.filter((file) => file.status === "deleted" && !isTestFile(file.path));
+  const sourceStems = new Set(deletedSources.map((file) => testStem(file.path)));
+  const addedTestFiles = diff.filter(
+    (file) => (file.status === "added" || file.status === "renamed") && isTestFile(file.path)
+  );
+  const found = /* @__PURE__ */ new Map();
+  for (const file of diff) {
+    const renamedAway = file.status === "renamed" && isTestFile(file.oldPath) && !isTestFile(file.path);
+    const deleted = file.status === "deleted" && isTestFile(file.path);
+    if (!(renamedAway || deleted) || file.binary === true) continue;
+    const path = renamedAway ? file.oldPath : file.path;
+    if (found.has(path)) continue;
+    const defined = removedTests(file);
+    const pureRename = renamedAway && defined !== "yes" && (file.hunks ?? []).every((h) => h.removed.length === 0);
+    const counts = defined === "yes" || defined === "unknown" || file.textTruncated === true || pureRename;
+    if (!counts) continue;
+    const stem = testStem(path);
+    const dir = testPackageDir(path);
+    let detail = renamedAway ? "Test file renamed to a path that is not a test file, so its tests are no longer found by name." : defined === "yes" ? "Test file deleted; its removed lines defined tests." : "Test file deleted; the diff text was cut or not read, so it cannot be confirmed to hold no tests.";
+    let severity = mode;
+    if (sourceStems.has(stem)) {
+      severity = "info";
+      detail = "Test file deleted together with a source file of the same name.";
+    } else if (dir !== "" && deletedSources.some((source) => source.path.startsWith(`${dir}/`))) {
+      severity = "info";
+      detail = "Test file deleted together with other files of its package.";
+    } else if (addedTestFiles.some((added) => added.path !== path && testStem(added.path) === stem && addedTests(added))) {
+      severity = "info";
+      detail = "Test file replaced by a test file of the same name that defines tests.";
+    }
+    found.set(path, { id: "TI01", severity, path, line: null, detail: detail.slice(0, MAX_DETAIL) });
+  }
+  return [...found.values()].sort((a, b) => byCodeUnit3(a.path, b.path));
+}
+
 // ../core/src/check.ts
 function check(input) {
   const matchers = [...new Set((input.exclude ?? []).map((p) => parseExcludePattern(p)))].map(compileGlob);
@@ -26311,9 +26464,11 @@ function check(input) {
   const expectedAgentTools = parseAgentToolNames(input.expectAgentSetup ?? [], "expected agent tool");
   const coverageRoot = input.coverageRoot === void 0 ? void 0 : parseCoverageRoot(input.coverageRoot, "coverage root");
   const agentSetup = scanAgentSetup(input.repoFiles);
-  const parsedDiff = "text" in input.diff ? parseUnifiedDiff(input.diff.text) : "parsed" in input.diff ? input.diff.parsed : null;
+  const parsedDiff = "text" in input.diff ? parseUnifiedDiff(input.diff.text, { keepText: keepTestFileText }) : "parsed" in input.diff ? input.diff.parsed : null;
   const configPaths = parsedDiff === null ? [] : changedConfigPaths(parsedDiff, input.configPath, input.repoRoot);
   const testPaths = parsedDiff === null ? [] : deletedTestFiles(parsedDiff);
+  const testIntegrity = resolveTestIntegrityMode(input.testIntegrityMode);
+  const testIntegritySignals = parsedDiff === null || testIntegrity.mode === "off" ? [] : detectTI01(parsedDiff, testIntegrity.mode);
   const coverageInput = input.coverage;
   let files;
   let selection;
@@ -26351,7 +26506,8 @@ function check(input) {
     ...trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage },
     ...emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {},
     ...input.meta === void 0 ? {} : { meta: input.meta },
-    testIntegrity: resolveTestIntegrityMode(input.testIntegrityMode)
+    testIntegrity,
+    ...testIntegritySignals.length > 0 ? { testIntegritySignals } : {}
   };
   if ("kind" in coverageInput) {
     return buildReport({ ...base, diffCoverage: null, missing: { reason: "coverage-not-discovered" } });
@@ -26530,7 +26686,7 @@ async function readCoverageChunks(chunks, selection, options = {}) {
 }
 async function readDiffChunks(chunks) {
   const splitter = createLineSplitter();
-  const reader = createUnifiedDiffReader();
+  const reader = createUnifiedDiffReader({ keepText: keepTestFileText });
   for await (const chunk of chunks) {
     for (const line of splitter.push(chunk)) reader.push(line);
   }
@@ -26741,14 +26897,32 @@ var MESSAGE_HINTS = {
   AGENT_SETUP_FILE_EMPTY: "Fill in the empty file or delete it; an agent reads nothing from an empty file.",
   AGENT_SETUP_EXPECTED_MISSING: "Add a setup file for each missing tool (for example AGENTS.md, CLAUDE.md or .cursor/rules/), or remove it from `setup.expect`.",
   TEST_INTEGRITY_MODE_IGNORED: "Set the mode with the `test-integrity` input in the workflow; `test_integrity.mode` in `.pharn/ci.yml` can only make the check stricter, so remove the looser value.",
-  TEST_INTEGRITY_OFF: "Set the `test-integrity` input to `warn` or `block` in the workflow to check for weakened tests."
+  TEST_INTEGRITY_OFF: "Set the `test-integrity` input to `warn` or `block` in the workflow to check for weakened tests.",
+  TEST_INTEGRITY_TI01: "Restore the deleted tests, or say in the PR why they go so a reviewer can confirm it."
 };
-function testIntegrityLine(report) {
+var SIGNAL_HINTS = {
+  TI01: MESSAGE_HINTS.TEST_INTEGRITY_TI01
+};
+var MAX_FINDINGS = 20;
+var SEVERITY_ICON = { block: LEVEL_ICON.error, warn: LEVEL_ICON.warn, info: LEVEL_ICON.info };
+function testIntegrityLines(report) {
   const { mode, signals } = report.testIntegrity;
-  if (signals.length > 0) {
-    return `${signals.length} test-integrity ${signals.length === 1 ? "signal" : "signals"} (mode: ${mode}); the list is in report.json.`;
+  if (signals.length === 0) {
+    return [mode === "off" ? "Test integrity is off for this run." : `No test-integrity findings (mode: ${mode}).`];
   }
-  return mode === "off" ? "Test integrity is off for this run." : `No test-integrity findings (mode: ${mode}).`;
+  const lines = [];
+  for (const signal of signals.slice(0, MAX_FINDINGS)) {
+    const location = signal.line === null ? code(signal.path) : code(`${signal.path}:${signal.line}`);
+    lines.push(
+      `- ${SEVERITY_ICON[signal.severity] ?? LEVEL_ICON.info} **${inlineText(signal.id)}** ${location} \u2014 ${inlineText(signal.detail)}`
+    );
+    const hint = Object.hasOwn(SIGNAL_HINTS, signal.id) ? SIGNAL_HINTS[signal.id] : void 0;
+    if (hint !== void 0) lines.push(`  - Hint: ${hint}`);
+  }
+  if (signals.length > MAX_FINDINGS) {
+    lines.push(`- _\u2026and ${signals.length - MAX_FINDINGS} more findings in report.json._`);
+  }
+  return lines;
 }
 function renderMarkdown(report, options = {}) {
   const maxRows = options.maxRows ?? 50;
@@ -26792,7 +26966,7 @@ function renderMarkdown(report, options = {}) {
     if (excluded.length > maxRows) out.push(`- _\u2026and ${excluded.length - maxRows} more files_`);
     out.push("", "</details>", "");
   }
-  out.push("### \u{1F50D} Test integrity", "", testIntegrityLine(report), "");
+  out.push("### \u{1F50D} Test integrity", "", ...testIntegrityLines(report), "");
   if (report.messages.length > 0) {
     out.push(`### \u{1F4AC} Messages (${report.messages.length})`, "");
     for (const m of report.messages) out.push(renderMessage(m));

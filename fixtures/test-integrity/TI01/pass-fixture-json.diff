@@ -1,0 +1,13 @@
+diff --git a/tests/fixtures/data.json b/tests/fixtures/data.json
+deleted file mode 100644
+index 5555555..0000000
+--- a/tests/fixtures/data.json
++++ /dev/null
+@@ -1 +0,0 @@
+-{"a": 1}
+diff --git a/src/app.ts b/src/app.ts
+index 1111111..2222222 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -1,0 +2 @@
++export const b = 2;
