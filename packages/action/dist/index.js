@@ -17190,8 +17190,8 @@ var require_connection = __commonJS({
         const headersList = getHeadersList(new Headers2(options.headers));
         request2.headersList = headersList;
       }
-      const keyValue = crypto2.randomBytes(16).toString("base64");
-      request2.headersList.append("sec-websocket-key", keyValue);
+      const keyValue2 = crypto2.randomBytes(16).toString("base64");
+      request2.headersList.append("sec-websocket-key", keyValue2);
       request2.headersList.append("sec-websocket-version", "13");
       for (const protocol of protocols) {
         request2.headersList.append("sec-websocket-protocol", protocol);
@@ -17220,7 +17220,7 @@ var require_connection = __commonJS({
             return;
           }
           const secWSAccept = response.headersList.get("Sec-WebSocket-Accept");
-          const digest = crypto2.createHash("sha1").update(keyValue + uid).digest("base64");
+          const digest = crypto2.createHash("sha1").update(keyValue2 + uid).digest("base64");
           if (secWSAccept !== digest) {
             failWebsocketConnection(ws, "Incorrect hash received in Sec-WebSocket-Accept header.");
             return;
@@ -25971,13 +25971,17 @@ function atLeast(covered, total, threshold) {
 var DEFAULT_CONFIG_PATH = ".pharn/ci.yml";
 var WORKFLOWS_DIR = ".github/workflows/";
 var byCodeUnit = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-function changedConfigPaths(diff, configPath, repoRoot) {
+function configRepoPath(configPath, repoRoot) {
   const config = normalizePath(configPath ?? DEFAULT_CONFIG_PATH, repoRoot);
-  const configInRepo = !isAbsolutePath(config) && config !== ".." && !config.startsWith("../");
+  const inRepo = !isAbsolutePath(config) && config !== ".." && !config.startsWith("../");
+  return inRepo ? config : null;
+}
+function changedConfigPaths(diff, configPath, repoRoot) {
+  const config = configRepoPath(configPath, repoRoot);
   const found = /* @__PURE__ */ new Set();
   for (const file of diff) {
     for (const path of file.oldPath === file.path ? [file.path] : [file.path, file.oldPath]) {
-      if (configInRepo && path === config || path.startsWith(WORKFLOWS_DIR)) found.add(path);
+      if (config !== null && path === config || path.startsWith(WORKFLOWS_DIR)) found.add(path);
     }
   }
   return [...found].sort(byCodeUnit);
@@ -26046,6 +26050,23 @@ function coverageDiscoveryLimitText(limit) {
 function emptyTestIntegrity() {
   return { mode: "warn", source: "default", verdict: "pass", signals: [], languages: [] };
 }
+var SIGNAL_MESSAGES = [
+  {
+    id: "TI01",
+    code: "TEST_INTEGRITY_TI01",
+    text: (top, paths) => top === "info" ? `This change deletes test files together with the code they cover or replaces them: ${paths}.` : `This change deletes or renames away test files that defined tests, with nothing in the change that accounts for them: ${paths}. Check that those tests were meant to go.`
+  },
+  {
+    id: "TI11",
+    code: "TEST_INTEGRITY_TI11",
+    text: (_top, paths) => `This change edits a workflow so that CI may run fewer tests or ignore their failures: ${paths}. Check that the removed step or trigger, the reduced matrix or the added condition was meant.`
+  },
+  {
+    id: "TI14",
+    code: "TEST_INTEGRITY_TI14",
+    text: (_top, paths) => `This change lowers the coverage threshold or adds a coverage exclusion in the check config: ${paths}. Check that the looser setting was meant before trusting the result.`
+  }
+];
 function buildReport(input) {
   const messages = [];
   const dc = input.diffCoverage;
@@ -26160,14 +26181,15 @@ function buildReport(input) {
     });
   }
   const signals = [...input.testIntegritySignals ?? []];
-  const ti01 = signals.filter((signal) => signal.id === "TI01");
-  if (ti01.length > 0) {
-    const top = ti01.some((s) => s.severity === "block") ? "block" : ti01.some((s) => s.severity === "warn") ? "warn" : "info";
-    const named = ti01.filter((s) => s.severity === top).map((s) => s.path);
+  for (const { id, code: code2, text } of SIGNAL_MESSAGES) {
+    const own = signals.filter((signal) => signal.id === id);
+    if (own.length === 0) continue;
+    const top = own.some((s) => s.severity === "block") ? "block" : own.some((s) => s.severity === "warn") ? "warn" : "info";
+    const named = [...new Set(own.filter((s) => s.severity === top).map((s) => s.path))];
     messages.push({
       level: top === "block" ? "error" : top === "warn" ? "warn" : "info",
-      code: "TEST_INTEGRITY_TI01",
-      text: top === "info" ? `This change deletes test files together with the code they cover or replaces them: ${pathList(named)}.` : `This change deletes or renames away test files that defined tests, with nothing in the change that accounts for them: ${pathList(named)}. Check that those tests were meant to go.`
+      code: code2,
+      text: text(top, pathList(named))
     });
   }
   if (input.agentSetup.files.length === 0) {
@@ -26405,6 +26427,18 @@ function deletedTestFiles(diff) {
   return [...found].sort(byCodeUnit2);
 }
 
+// ../core/src/signals/signalFiles.ts
+var WORKFLOWS_DIR2 = ".github/workflows/";
+function isWorkflowFile(path) {
+  if (!path.startsWith(WORKFLOWS_DIR2)) return false;
+  const name = path.slice(WORKFLOWS_DIR2.length);
+  return name !== "" && !name.includes("/") && (name.endsWith(".yml") || name.endsWith(".yaml"));
+}
+function keepSignalFileText(configPath, repoRoot) {
+  const config = configRepoPath(configPath, repoRoot);
+  return (file) => keepTestFileText(file) || isWorkflowFile(file.path) || isWorkflowFile(file.oldPath) || config !== null && (file.path === config || file.oldPath === config);
+}
+
 // ../core/src/signals/ti01.ts
 var byCodeUnit3 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_DETAIL = 300;
@@ -26457,18 +26491,342 @@ function detectTI01(diff, mode) {
   return [...found.values()].sort((a, b) => byCodeUnit3(a.path, b.path));
 }
 
+// ../core/src/signals/yamlLines.ts
+var MAX_LINE = 400;
+function stripComment2(line) {
+  const text = line.slice(0, MAX_LINE);
+  let quote = null;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quote !== null) {
+      if (ch === quote) quote = null;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === "#" && (i === 0 || text[i - 1] === " " || text[i - 1] === "	")) {
+      return text.slice(0, i).trim();
+    }
+  }
+  return text.trim();
+}
+function unquote2(value) {
+  const text = value.trim();
+  if (text.length >= 2) {
+    const first = text[0];
+    if ((first === '"' || first === "'") && text[text.length - 1] === first) return text.slice(1, -1).trim();
+  }
+  return text;
+}
+function indentOf(line) {
+  let n = 0;
+  while (n < line.length && line[n] === " ") n++;
+  return n;
+}
+function keyValue(line) {
+  const text = stripComment2(line);
+  const match = /^(-\s+)?([A-Za-z0-9_.-]+)\s*:(?:\s+(.*))?$/.exec(text);
+  if (match === null) return null;
+  return {
+    key: match[2],
+    value: (match[3] ?? "").trim(),
+    indent: indentOf(line) + (match[1] === void 0 ? 0 : match[1].length)
+  };
+}
+function listItem(line) {
+  const text = stripComment2(line);
+  if (!/^-\s+\S/.test(text)) return null;
+  return unquote2(text.slice(1));
+}
+function flowItems(value) {
+  const text = value.trim();
+  if (!text.startsWith("[") || !text.endsWith("]")) return null;
+  const items = [];
+  let current = "";
+  let quote = null;
+  for (const ch of text.slice(1, -1)) {
+    if (quote !== null) {
+      current += ch;
+      if (ch === quote) quote = null;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+      current += ch;
+    } else if (ch === ",") {
+      items.push(unquote2(current));
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  items.push(unquote2(current));
+  return items.filter((item) => item !== "");
+}
+
+// ../core/src/signals/ti11.ts
+var byCodeUnit4 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var TEST_COMMAND = /^(?:(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?test(?::[\w:-]+)?(?:\s|$)|(?:npx\s+|pnpm\s+exec\s+|yarn\s+|bunx\s+)?(?:vitest|jest|mocha)(?:\s|$)|(?:python3?\s+-m\s+)?pytest(?:\s|$)|python3?\s+-m\s+unittest(?:\s|$)|go\s+test(?:\s|$)|(?:npx\s+)?playwright\s+test(?:\s|$))/;
+var NOT_A_MATRIX_KEY = /* @__PURE__ */ new Set([
+  "on",
+  "branches",
+  "branches-ignore",
+  "tags",
+  "tags-ignore",
+  "paths",
+  "paths-ignore",
+  "types",
+  "runs-on",
+  "needs",
+  "labels"
+]);
+var PULL_REQUEST_TOKEN = /(?<![\w-])pull_request(?:_target)?(?![\w-])/;
+function commandText(line) {
+  const text = stripComment2(line).replace(/^-\s+/, "").replace(/^run\s*:\s*/, "");
+  return text.replace(/\s+/g, " ").trim();
+}
+function testCommandOf(line) {
+  const text = commandText(line);
+  if (text === "") return null;
+  return text.split(/\s*(?:&&|;)\s*/).some((part) => TEST_COMMAND.test(part)) ? text : null;
+}
+function carriesPullRequestTrigger(line) {
+  const text = stripComment2(line);
+  if (/^['"]?pull_request(?:_target)?['"]?\s*:/.test(text)) return true;
+  if (/^-\s+['"]?pull_request(?:_target)?['"]?$/.test(text)) return true;
+  const on = /^on\s*:\s*(.+)$/.exec(text);
+  return on !== null && PULL_REQUEST_TOKEN.test(on[1]);
+}
+function ifExpression(value) {
+  const inner = /^\$\{\{\s*(.*?)\s*\}\}$/.exec(unquote2(value));
+  return unquote2(inner === null ? value : inner[1]);
+}
+var DISABLING_IF = /^(?:false|github\.event_name\s*(?:!=\s*['"]pull_request['"]|==\s*['"](?:push|schedule|workflow_dispatch)['"]))$/i;
+var SENTENCES = {
+  testStep: "A step that runs tests was removed from a workflow.",
+  trigger: "The pull_request trigger was removed from a workflow, so it no longer runs on pull requests.",
+  matrix: "A matrix list in a workflow was reduced, so CI covers fewer combinations.",
+  continueOnError: "continue-on-error: true was added in a workflow, so a failing step no longer fails the job.",
+  condition: "An if: condition was added in a workflow that disables a step or job, or skips pull requests.",
+  timeout: "A timeout of 0 or 1 minutes was added in a workflow, so a test run may be cut off."
+};
+function pairOf(line) {
+  const kv = keyValue(line);
+  return kv === null ? null : `${kv.key}:${kv.value}`;
+}
+function flowOf(line) {
+  const kv = keyValue(line);
+  if (kv === null || NOT_A_MATRIX_KEY.has(kv.key)) return null;
+  const items = flowItems(kv.value);
+  return items === null ? null : { key: kv.key, items: new Set(items) };
+}
+function detectTI11(diff, mode) {
+  const files = diff.filter(
+    (file) => (isWorkflowFile(file.path) || isWorkflowFile(file.oldPath)) && file.hunks !== void 0 && file.binary !== true
+  );
+  const addedCommands = /* @__PURE__ */ new Set();
+  for (const file of files) {
+    for (const hunk of file.hunks ?? []) {
+      for (const entry of hunk.added) {
+        const command = testCommandOf(entry.text);
+        if (command !== null) addedCommands.add(command);
+      }
+    }
+  }
+  const signals = [];
+  for (const file of files) {
+    const path = file.path;
+    const added = (file.hunks ?? []).flatMap((hunk) => hunk.added);
+    const removed = (file.hunks ?? []).flatMap((hunk) => hunk.removed);
+    const emit = (severity, line, detail) => signals.push({ id: "TI11", severity, path, line, detail });
+    const lostCommand = removed.find((entry) => {
+      const command = testCommandOf(entry.text);
+      return command !== null && !addedCommands.has(command);
+    });
+    if (lostCommand !== void 0) emit(mode, lostCommand.line, SENTENCES.testStep);
+    const lostTrigger = removed.find((entry) => carriesPullRequestTrigger(entry.text));
+    if (lostTrigger !== void 0 && !added.some((entry) => carriesPullRequestTrigger(entry.text))) {
+      emit(mode, lostTrigger.line, SENTENCES.trigger);
+    }
+    const removedFlows = /* @__PURE__ */ new Map();
+    for (const entry of removed) {
+      const flow = flowOf(entry.text);
+      if (flow !== null) removedFlows.set(flow.key, flow.items);
+    }
+    const shrunk = added.find((entry) => {
+      const flow = flowOf(entry.text);
+      const before = flow === null ? void 0 : removedFlows.get(flow.key);
+      return flow !== null && before !== void 0 && flow.items.size < before.size;
+    });
+    if (shrunk !== void 0) emit("warn", shrunk.line, SENTENCES.matrix);
+    const removedPairs = new Set(removed.map((entry) => pairOf(entry.text)));
+    const newPair = (entry, key) => {
+      const kv = keyValue(entry.text);
+      if (kv === null || kv.key !== key || removedPairs.has(pairOf(entry.text))) return null;
+      return { value: kv.value };
+    };
+    const lenient = added.find((entry) => newPair(entry, "continue-on-error")?.value === "true");
+    if (lenient !== void 0) emit("warn", lenient.line, SENTENCES.continueOnError);
+    const disabled = added.find((entry) => {
+      const pair = newPair(entry, "if");
+      return pair !== null && DISABLING_IF.test(ifExpression(pair.value));
+    });
+    if (disabled !== void 0) emit("warn", disabled.line, SENTENCES.condition);
+    const rushed = added.find((entry) => {
+      const pair = newPair(entry, "timeout-minutes");
+      return pair !== null && /^\d+$/.test(pair.value) && Number(pair.value) <= 1;
+    });
+    if (rushed !== void 0) emit("warn", rushed.line, SENTENCES.timeout);
+  }
+  return signals.sort(
+    (a, b) => byCodeUnit4(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit4(a.detail, b.detail)
+  );
+}
+
+// ../core/src/signals/ti14.ts
+var byCodeUnit5 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var PLAIN_NUMBER = /^\d{1,3}(?:\.\d{1,4})?$/;
+function normalizedPattern(item) {
+  try {
+    return parseExcludePattern(item);
+  } catch {
+    return item;
+  }
+}
+function thresholdOf(text) {
+  const kv = keyValue(text);
+  if (kv === null || kv.key !== "threshold") return null;
+  return PLAIN_NUMBER.test(kv.value) ? kv.value : "";
+}
+function addedExclusions(hunks, known) {
+  const found = [];
+  for (const hunk of hunks) {
+    let owner = null;
+    let previous = -1;
+    for (const entry of hunk.added) {
+      const consecutive = entry.line === previous + 1;
+      previous = entry.line;
+      const kv = keyValue(entry.text);
+      const item = kv === null ? listItem(entry.text) : null;
+      if (kv !== null) {
+        owner = null;
+        if (kv.key !== "exclude") continue;
+        const flow = flowItems(kv.value);
+        if (flow !== null) for (const value of flow) found.push({ value, line: entry.line });
+        else if (kv.value === "") owner = { indent: kv.indent };
+      } else if (item !== null) {
+        if (owner !== null && consecutive && indentOf(entry.text) >= owner.indent) {
+          found.push({ value: item, line: entry.line });
+        } else if (known.has(normalizedPattern(item))) {
+          found.push({ value: item, line: entry.line });
+          owner = null;
+        }
+      } else {
+        owner = null;
+      }
+    }
+  }
+  return found;
+}
+function removedValues(hunks) {
+  const values = /* @__PURE__ */ new Set();
+  for (const hunk of hunks) {
+    for (const entry of hunk.removed) {
+      const kv = keyValue(entry.text);
+      if (kv !== null) {
+        const flow = kv.key === "exclude" ? flowItems(kv.value) : null;
+        if (flow !== null) for (const value of flow) values.add(normalizedPattern(value));
+        continue;
+      }
+      const item = listItem(entry.text);
+      if (item !== null) values.add(normalizedPattern(item));
+    }
+  }
+  return values;
+}
+function detectTI14(diff, options) {
+  const config = configRepoPath(options.configPath, options.repoRoot);
+  if (config === null) return [];
+  const known = new Set(options.exclude.map(normalizedPattern));
+  const signals = [];
+  for (const file of diff) {
+    if (file.path !== config && file.oldPath !== config) continue;
+    if (file.hunks === void 0 || file.binary === true) continue;
+    const path = file.path === config ? file.path : file.oldPath;
+    const removedNumbers = [];
+    const addedNumbers = [];
+    let addedThresholdLine = false;
+    for (const hunk of file.hunks) {
+      for (const entry of hunk.removed) {
+        const value = thresholdOf(entry.text);
+        if (value !== null && value !== "") removedNumbers.push({ value, line: entry.line });
+      }
+      for (const entry of hunk.added) {
+        const value = thresholdOf(entry.text);
+        if (value === null) continue;
+        addedThresholdLine = true;
+        if (value !== "") addedNumbers.push({ value, line: entry.line });
+      }
+    }
+    const before = removedNumbers[removedNumbers.length - 1];
+    const after = addedNumbers[addedNumbers.length - 1];
+    if (before !== void 0 && after !== void 0 && Number(after.value) < Number(before.value)) {
+      signals.push({
+        id: "TI14",
+        severity: options.mode,
+        path,
+        line: after.line,
+        detail: `Coverage threshold lowered from ${before.value} to ${after.value}.`
+      });
+    } else if (before !== void 0 && !addedThresholdLine) {
+      signals.push({
+        id: "TI14",
+        severity: options.mode,
+        path,
+        line: before.line,
+        detail: `Coverage threshold removed (it was ${before.value}).`
+      });
+    }
+    const removed = removedValues(file.hunks);
+    const fresh = addedExclusions(file.hunks, known).find(
+      (candidate) => !removed.has(normalizedPattern(candidate.value))
+    );
+    if (fresh !== void 0) {
+      signals.push({
+        id: "TI14",
+        severity: options.mode,
+        path,
+        line: fresh.line,
+        detail: "A coverage exclusion was added to the check config, so changed files it matches leave diff coverage."
+      });
+    }
+  }
+  return signals.sort((a, b) => byCodeUnit5(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+}
+
 // ../core/src/check.ts
+var byCodeUnit6 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function sortSignals(signals) {
+  return signals.sort(
+    (a, b) => byCodeUnit6(a.id, b.id) || byCodeUnit6(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit6(a.detail, b.detail)
+  );
+}
 function check(input) {
   const matchers = [...new Set((input.exclude ?? []).map((p) => parseExcludePattern(p)))].map(compileGlob);
   const isExcluded = (path) => matchers.some((matches) => matches(path));
   const expectedAgentTools = parseAgentToolNames(input.expectAgentSetup ?? [], "expected agent tool");
   const coverageRoot = input.coverageRoot === void 0 ? void 0 : parseCoverageRoot(input.coverageRoot, "coverage root");
   const agentSetup = scanAgentSetup(input.repoFiles);
-  const parsedDiff = "text" in input.diff ? parseUnifiedDiff(input.diff.text, { keepText: keepTestFileText }) : "parsed" in input.diff ? input.diff.parsed : null;
+  const parsedDiff = "text" in input.diff ? parseUnifiedDiff(input.diff.text, { keepText: keepSignalFileText(input.configPath, input.repoRoot) }) : "parsed" in input.diff ? input.diff.parsed : null;
   const configPaths = parsedDiff === null ? [] : changedConfigPaths(parsedDiff, input.configPath, input.repoRoot);
   const testPaths = parsedDiff === null ? [] : deletedTestFiles(parsedDiff);
   const testIntegrity = resolveTestIntegrityMode(input.testIntegrityMode);
-  const testIntegritySignals = parsedDiff === null || testIntegrity.mode === "off" ? [] : detectTI01(parsedDiff, testIntegrity.mode);
+  const testIntegritySignals = parsedDiff === null || testIntegrity.mode === "off" ? [] : sortSignals([
+    ...detectTI01(parsedDiff, testIntegrity.mode),
+    ...detectTI11(parsedDiff, testIntegrity.mode),
+    ...detectTI14(parsedDiff, {
+      configPath: input.configPath,
+      repoRoot: input.repoRoot,
+      exclude: input.exclude ?? [],
+      mode: testIntegrity.mode
+    })
+  ]);
   const coverageInput = input.coverage;
   let files;
   let selection;
@@ -26684,9 +27042,9 @@ async function readCoverageChunks(chunks, selection, options = {}) {
     if (!finished) await iterator2.return?.();
   }
 }
-async function readDiffChunks(chunks) {
+async function readDiffChunks(chunks, options = {}) {
   const splitter = createLineSplitter();
-  const reader = createUnifiedDiffReader({ keepText: keepTestFileText });
+  const reader = createUnifiedDiffReader({ keepText: keepSignalFileText(options.configPath, options.repoRoot) });
   for await (const chunk of chunks) {
     for (const line of splitter.push(chunk)) reader.push(line);
   }
@@ -26898,10 +27256,14 @@ var MESSAGE_HINTS = {
   AGENT_SETUP_EXPECTED_MISSING: "Add a setup file for each missing tool (for example AGENTS.md, CLAUDE.md or .cursor/rules/), or remove it from `setup.expect`.",
   TEST_INTEGRITY_MODE_IGNORED: "Set the mode with the `test-integrity` input in the workflow; `test_integrity.mode` in `.pharn/ci.yml` can only make the check stricter, so remove the looser value.",
   TEST_INTEGRITY_OFF: "Set the `test-integrity` input to `warn` or `block` in the workflow to check for weakened tests.",
-  TEST_INTEGRITY_TI01: "Restore the deleted tests, or say in the PR why they go so a reviewer can confirm it."
+  TEST_INTEGRITY_TI01: "Restore the deleted tests, or say in the PR why they go so a reviewer can confirm it.",
+  TEST_INTEGRITY_TI11: "Restore the test step or trigger, or say in the PR why CI stops running these tests so a reviewer can confirm it.",
+  TEST_INTEGRITY_TI14: "Restore the threshold or the exclusions, or say in the PR why they change so a reviewer can confirm it."
 };
 var SIGNAL_HINTS = {
-  TI01: MESSAGE_HINTS.TEST_INTEGRITY_TI01
+  TI01: MESSAGE_HINTS.TEST_INTEGRITY_TI01,
+  TI11: MESSAGE_HINTS.TEST_INTEGRITY_TI11,
+  TI14: MESSAGE_HINTS.TEST_INTEGRITY_TI14
 };
 var MAX_FINDINGS = 20;
 var SEVERITY_ICON = { block: LEVEL_ICON.error, warn: LEVEL_ICON.warn, info: LEVEL_ICON.info };
@@ -27585,7 +27947,7 @@ async function runUnsafe(deps) {
   const checkInput = {
     version: VERSION7,
     coverage,
-    diff: await getDiff(input("base-ref"), deps, target),
+    diff: await getDiff(input("base-ref"), deps, target, input("config")),
     repoRoot: deps.workspace,
     threshold,
     repoFiles,
@@ -27654,7 +28016,7 @@ async function trackedFiles(target, deps) {
     return [];
   }
 }
-async function getDiff(baseRefInput, deps, target) {
+async function getDiff(baseRefInput, deps, target, configInput = "") {
   if (baseRefInput.startsWith("-")) throw new Error(`base-ref "${baseRefInput}" must not start with "-"`);
   if (target) return getTargetDiff(baseRefInput, target, deps);
   const { context: context3 } = deps;
@@ -27677,7 +28039,8 @@ async function getDiff(baseRefInput, deps, target) {
   const localBase = await resolveLocal(base, deps);
   if (localBase) {
     try {
-      return { parsed: await readDiffChunks(gitChunks(deps, gitDiffArgs(localBase))) };
+      const options = { configPath: configInput === "" ? void 0 : configInput, repoRoot: deps.workspace };
+      return { parsed: await readDiffChunks(gitChunks(deps, gitDiffArgs(localBase)), options) };
     } catch (err) {
       deps.info(`local git diff failed, falling back to the GitHub API: ${String(err)}`);
     }

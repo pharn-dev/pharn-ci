@@ -20,6 +20,7 @@ async function load() {
   const { parseCoverage } = await import("../src/coverage/index.js");
   const { chooseCoverageFormat } = await import("../src/coverage/detect.js");
   const { parseUnifiedDiff } = await import("../src/diff/unified.js");
+  const { keepSignalFileText } = await import("../src/signals/signalFiles.js");
   const { parseConfig } = await import("../src/config.js");
   const { renderMarkdown } = await import("../src/render/markdown.js");
 
@@ -37,7 +38,8 @@ async function load() {
     return { parsed, format: choice.format, ...(file === undefined ? {} : { file }) };
   };
 
-  const parsedDiff = (text: string) => ({ parsed: parseUnifiedDiff(text) });
+  // Parsed the way the CLI and the Action read a diff, so the lines the test-integrity signals read are kept.
+  const parsedDiff = (text: string) => ({ parsed: parseUnifiedDiff(text, { keepText: keepSignalFileText() }) });
 
   return { run, parsedFile, parsedDiff, parseConfig, renderMarkdown };
 }

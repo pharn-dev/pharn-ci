@@ -63,11 +63,17 @@ const MESSAGE_HINTS: Record<MessageCode, string> = {
   TEST_INTEGRITY_OFF:
     "Set the `test-integrity` input to `warn` or `block` in the workflow to check for weakened tests.",
   TEST_INTEGRITY_TI01: "Restore the deleted tests, or say in the PR why they go so a reviewer can confirm it.",
+  TEST_INTEGRITY_TI11:
+    "Restore the test step or trigger, or say in the PR why CI stops running these tests so a reviewer can confirm it.",
+  TEST_INTEGRITY_TI14:
+    "Restore the threshold or the exclusions, or say in the PR why they change so a reviewer can confirm it.",
 };
 
 /** One-line hint per test-integrity signal id, shown under its finding. Fixed strings only. */
 const SIGNAL_HINTS: Readonly<Record<string, string>> = {
   TI01: MESSAGE_HINTS.TEST_INTEGRITY_TI01,
+  TI11: MESSAGE_HINTS.TEST_INTEGRITY_TI11,
+  TI14: MESSAGE_HINTS.TEST_INTEGRITY_TI14,
 };
 
 /** Most findings listed in the Test integrity section; the rest are counted. */

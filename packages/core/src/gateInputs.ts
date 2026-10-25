@@ -9,6 +9,16 @@ const WORKFLOWS_DIR = ".github/workflows/";
 const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
+ * The repo-relative path of the pharn-ci config in use (`.pharn/ci.yml` when none is named), or null when the
+ * configured path is outside the repository, so it can match no diff path.
+ */
+export function configRepoPath(configPath: string | undefined, repoRoot: string | undefined): string | null {
+  const config = normalizePath(configPath ?? DEFAULT_CONFIG_PATH, repoRoot);
+  const inRepo = !isAbsolutePath(config) && config !== ".." && !config.startsWith("../");
+  return inRepo ? config : null;
+}
+
+/**
  * The diff paths that edit the inputs of this check's own grade: the pharn-ci config in use (added, changed,
  * renamed from or to, or deleted) and anything under `.github/workflows/`. A config outside the repo can match
  * no diff path, so then only workflows count. Distinct, sorted in code-unit order.
@@ -18,12 +28,11 @@ export function changedConfigPaths(
   configPath: string | undefined,
   repoRoot: string | undefined,
 ): string[] {
-  const config = normalizePath(configPath ?? DEFAULT_CONFIG_PATH, repoRoot);
-  const configInRepo = !isAbsolutePath(config) && config !== ".." && !config.startsWith("../");
+  const config = configRepoPath(configPath, repoRoot);
   const found = new Set<string>();
   for (const file of diff) {
     for (const path of file.oldPath === file.path ? [file.path] : [file.path, file.oldPath]) {
-      if ((configInRepo && path === config) || path.startsWith(WORKFLOWS_DIR)) found.add(path);
+      if ((config !== null && path === config) || path.startsWith(WORKFLOWS_DIR)) found.add(path);
     }
   }
   return [...found].sort(byCodeUnit);

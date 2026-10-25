@@ -265,7 +265,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const checkInput: CheckInput = {
     version: VERSION,
     coverage,
-    diff: await getDiff(input("base-ref"), deps, target),
+    diff: await getDiff(input("base-ref"), deps, target, input("config")),
     repoRoot: deps.workspace,
     threshold,
     repoFiles,
@@ -343,7 +343,12 @@ async function trackedFiles(target: PrNumberTarget | undefined, deps: ActionDeps
 }
 
 /** Diff of the change under test: base...HEAD, from local git if possible, else the GitHub API. */
-async function getDiff(baseRefInput: string, deps: ActionDeps, target?: PrNumberTarget): Promise<CheckInput["diff"]> {
+async function getDiff(
+  baseRefInput: string,
+  deps: ActionDeps,
+  target?: PrNumberTarget,
+  configInput = "",
+): Promise<CheckInput["diff"]> {
   // A leading "-" would reach git as an option (e.g. --output=<file>), not a revision.
   if (baseRefInput.startsWith("-")) throw new Error(`base-ref "${baseRefInput}" must not start with "-"`);
   // PR-number mode: the checkout is not the PR, so only the GitHub API can give the diff.
@@ -382,7 +387,9 @@ async function getDiff(baseRefInput: string, deps: ActionDeps, target?: PrNumber
   const localBase = await resolveLocal(base, deps);
   if (localBase) {
     try {
-      return { parsed: await readDiffChunks(gitChunks(deps, gitDiffArgs(localBase))) };
+      // The config in use decides which file's text the reader keeps, so a custom `config` input works as it does for check().
+      const options = { configPath: configInput === "" ? undefined : configInput, repoRoot: deps.workspace };
+      return { parsed: await readDiffChunks(gitChunks(deps, gitDiffArgs(localBase)), options) };
     } catch (err) {
       deps.info(`local git diff failed, falling back to the GitHub API: ${String(err)}`);
     }

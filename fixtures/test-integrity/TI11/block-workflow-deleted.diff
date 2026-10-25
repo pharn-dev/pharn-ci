@@ -1,0 +1,18 @@
+diff --git a/.github/workflows/test.yml b/.github/workflows/test.yml
+deleted file mode 100644
+index 5555555..0000000
+--- a/.github/workflows/test.yml
++++ /dev/null
+@@ -1,12 +0,0 @@
+-name: Test
+-on:
+-  pull_request:
+-jobs:
+-  unit:
+-    runs-on: ubuntu-latest
+-    steps:
+-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+-      - run: pnpm install --frozen-lockfile
+-      - name: Unit tests
+-        run: npx vitest run
+-

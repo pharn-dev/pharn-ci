@@ -1,0 +1,7 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 5555555..6666666 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -22 +22 @@ jobs:
+-        node-version: [18, 20, 22]
++        node-version: [20, 22]
