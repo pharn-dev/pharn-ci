@@ -1,0 +1,12 @@
+diff --git a/src/tier.test.ts b/src/tier.test.ts
+index 1111111..2222222 100644
+--- a/src/tier.test.ts
++++ b/src/tier.test.ts
+@@ -7,0 +8 @@ describe("tier", () => {
++  expect(rank('gold-tier')).toBe(1);
+diff --git a/src/tier.ts b/src/tier.ts
+index 1111111..2222222 100644
+--- a/src/tier.ts
++++ b/src/tier.ts
+@@ -11,0 +12 @@ export function rank(name: string): number {
++    case 'gold-tier':

@@ -126,10 +126,13 @@ export type MessageCode =
   | "TEST_INTEGRITY_TI03"
   | "TEST_INTEGRITY_TI04"
   | "TEST_INTEGRITY_TI05"
+  | "TEST_INTEGRITY_TI08"
   | "TEST_INTEGRITY_TI10"
   | "TEST_INTEGRITY_TI11"
   | "TEST_INTEGRITY_TI13"
   | "TEST_INTEGRITY_TI14"
+  | "TEST_INTEGRITY_TI15"
+  | "TEST_INTEGRITY_TI16"
   | "TEST_INTEGRITY_INDEX_UNAVAILABLE"
   | "TEST_INTEGRITY_TEXT_TRUNCATED"
   | "TEST_INTEGRITY_ACCEPTED"
@@ -196,7 +199,7 @@ export interface BuildReportInput {
   /**
    * The test-integrity signals the detectors found, each with its effective severity (sorted by the caller). They fill
    * `testIntegrity.signals` and `testIntegrity.verdict`; each signal id also adds one `TEST_INTEGRITY_<id>` message
-   * (TI01, TI03, TI04, TI10, TI11, TI13, TI14).
+   * (TI01, TI03, TI04, TI08, TI10, TI11, TI13, TI14, TI15, TI16).
    * Absent or empty adds nothing.
    */
   testIntegritySignals?: readonly TestIntegritySignal[];
@@ -260,6 +263,12 @@ const SIGNAL_MESSAGES: ReadonlyArray<{
       `This change leaves tests with fewer assertions than they had, or none: ${paths}. Check that each test still checks what it did.${notListed}`,
   },
   {
+    id: "TI08",
+    code: "TEST_INTEGRITY_TI08",
+    text: (_top, paths) =>
+      `This change regenerates or updates snapshots in bulk: ${paths}. Check that each new snapshot was reviewed.`,
+  },
+  {
     id: "TI10",
     code: "TEST_INTEGRITY_TI10",
     text: (_top, paths) =>
@@ -282,6 +291,18 @@ const SIGNAL_MESSAGES: ReadonlyArray<{
     code: "TEST_INTEGRITY_TI14",
     text: (_top, paths) =>
       `This change lowers the coverage threshold or adds a coverage exclusion in the check config: ${paths}. Check that the looser setting was meant before trusting the result.`,
+  },
+  {
+    id: "TI15",
+    code: "TEST_INTEGRITY_TI15",
+    text: (_top, paths) =>
+      `This change adds conditions in source that compare against values its tests add, so the code may special-case the tests: ${paths}. Check that each is real logic.`,
+  },
+  {
+    id: "TI16",
+    code: "TEST_INTEGRITY_TI16",
+    text: (_top, paths) =>
+      `This change adds comments that switch off a linter or type checker in test files: ${paths}.`,
   },
 ];
 

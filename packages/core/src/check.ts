@@ -27,10 +27,13 @@ import { detectTI02 } from "./signals/ti02.js";
 import { detectTI03 } from "./signals/ti03.js";
 import { detectTI04 } from "./signals/ti04.js";
 import { detectTI05 } from "./signals/ti05.js";
+import { detectTI08 } from "./signals/ti08.js";
 import { detectTI10 } from "./signals/ti10.js";
 import { detectTI11 } from "./signals/ti11.js";
 import { detectTI13 } from "./signals/ti13.js";
 import { detectTI14 } from "./signals/ti14.js";
+import { detectTI15 } from "./signals/ti15.js";
+import { detectTI16 } from "./signals/ti16.js";
 import { deletedTestFiles } from "./testFiles.js";
 import type { PythonTestIndex } from "./testIndex/pythonSides.js";
 import { resolveTestIntegrityMode, type TestIntegrityModeSettings } from "./testIntegrityMode.js";
@@ -162,6 +165,7 @@ export function check(input: CheckInput): Report {
           ...detectTI01(parsedDiff, testIntegrity.mode),
           ...detectTI03(parsedDiff, testIntegrity.mode),
           ...detectTI04(parsedDiff, testIntegrity.mode),
+          ...detectTI08(parsedDiff),
           ...detectTI10(parsedDiff, { repoFiles: input.repoFiles, mode: testIntegrity.mode }),
           ...detectTI11(parsedDiff, testIntegrity.mode),
           ...detectTI13(parsedDiff, testIntegrity.mode),
@@ -171,6 +175,8 @@ export function check(input: CheckInput): Report {
             exclude: input.exclude ?? [],
             mode: testIntegrity.mode,
           }),
+          ...detectTI15(parsedDiff),
+          ...detectTI16(parsedDiff),
         ]);
   // The base-and-head signals: the touched test files are compared between the merge base and HEAD. Only with the
   // sources, a diff and a mode that is not off; otherwise nothing runs and the report is the one it was.

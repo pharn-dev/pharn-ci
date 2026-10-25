@@ -1,0 +1,8 @@
+diff --git a/src/a.test.ts b/src/a.test.ts
+index 1111111..2222222 100644
+--- a/src/a.test.ts
++++ b/src/a.test.ts
+@@ -5 +4,0 @@ describe("a", () => {
+-  // eslint-disable-next-line   no-console
+@@ -20,0 +20 @@ describe("a", () => {
++      //   eslint-disable-next-line no-console

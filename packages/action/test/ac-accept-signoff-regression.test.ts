@@ -27,7 +27,8 @@ const BEFORE_COUNT = 216;
 /**
  * Fixtures added after the digest above was taken. They are left out of it, so it keeps pinning every earlier fixture
  * to the signals and messages it gave at the base commit; each of them is asserted by its own AC test (the E1 gate
- * fixes: ac-ti01-rename-edited, ac-ti03-cap, ac-ti14-config-forms and ac-e1-precision).
+ * fixes: ac-ti01-rename-edited, ac-ti03-cap, ac-ti14-config-forms and ac-e1-precision; the TI08, TI15 and TI16
+ * fixtures: ac-ti081516-fixtures).
  */
 const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
   "TI01/block-rename-away-edited.diff",
@@ -57,6 +58,31 @@ const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
   "TI14/block-threshold-single-quoted.diff",
   "TI14/pass-key-requoted.diff",
   "TI14/pass-threshold-quoted-raised.diff",
+  "TI08/pass-inline-new-tests.diff",
+  "TI08/pass-mocha-u.diff",
+  "TI08/pass-snapshot-files-added.diff",
+  "TI08/pass-snapshot-pure-rename.diff",
+  "TI08/pass-ten-snapshot-files.diff",
+  "TI08/warn-inline-rewrite.diff",
+  "TI08/warn-pytest-snapshot-update.diff",
+  "TI08/warn-script-update-flag.diff",
+  "TI08/warn-snapshot-files-modified.diff",
+  "TI15/pass-go-source.diff",
+  "TI15/pass-moved-case.diff",
+  "TI15/pass-no-comparison.diff",
+  "TI15/pass-short-literal.diff",
+  "TI15/pass-stop-list.diff",
+  "TI15/warn-js-equality.diff",
+  "TI15/warn-js-switch-case.diff",
+  "TI15/warn-number.diff",
+  "TI15/warn-python-in-tuple.diff",
+  "TI16/info-eslint-disable.diff",
+  "TI16/info-python-suppressions.diff",
+  "TI16/info-ts-expect-error.diff",
+  "TI16/pass-go-test.diff",
+  "TI16/pass-moved.diff",
+  "TI16/pass-source-file.diff",
+  "TI16/pass-string-marker.diff",
 ]);
 
 /** The TI01, TI04, TI11 and TI14 hints as renderMarkdown() gave them at the base commit a1089fd. */

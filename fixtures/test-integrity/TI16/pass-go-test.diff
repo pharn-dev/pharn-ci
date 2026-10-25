@@ -1,0 +1,6 @@
+diff --git a/x_test.go b/x_test.go
+index 1111111..2222222 100644
+--- a/x_test.go
++++ b/x_test.go
+@@ -11,0 +12 @@ func TestX(t *testing.T) {
++	// eslint-disable

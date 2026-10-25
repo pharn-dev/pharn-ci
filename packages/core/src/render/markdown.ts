@@ -82,6 +82,8 @@ const MESSAGE_HINTS: Record<MessageCode, Hint> = {
     "Remove the marker so the whole suite runs, or say in the PR why only the marked tests should run.",
   TEST_INTEGRITY_TI05: (label) =>
     `Restore the assertions the test had, or say in the PR why it checks less now; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
+  TEST_INTEGRITY_TI08:
+    "Review the snapshot changes, or regenerate them in a separate change, and keep snapshot-update flags out of the test command.",
   TEST_INTEGRITY_TI10: (label) =>
     `Restore the test script, or say in the PR why it changes so a reviewer can confirm it; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI13: (label) =>
@@ -90,6 +92,9 @@ const MESSAGE_HINTS: Record<MessageCode, Hint> = {
     "Restore the test step or trigger, or say in the PR why CI stops running these tests so a reviewer can confirm it.",
   TEST_INTEGRITY_TI14:
     "Restore the threshold or the exclusions, or say in the PR why they change so a reviewer can confirm it.",
+  TEST_INTEGRITY_TI15:
+    "Check that the code handles the general case and not only the test's value, and add a test with another input.",
+  TEST_INTEGRITY_TI16: "Fix the lint or type error the comment hides, or say in the PR why the test needs it.",
   TEST_INTEGRITY_INDEX_UNAVAILABLE:
     "Review the named test files by hand for removed tests and weakened assertions. A file over 512 KiB, one with many syntax errors, a missing Python 3.8 or newer for `.py` files, or git objects that could not be read stop the comparison.",
   TEST_INTEGRITY_TEXT_TRUNCATED:
@@ -128,10 +133,13 @@ const SIGNAL_HINT_IDS: ReadonlySet<string> = new Set([
   "TI03",
   "TI04",
   "TI05",
+  "TI08",
   "TI10",
   "TI11",
   "TI13",
   "TI14",
+  "TI15",
+  "TI16",
 ]);
 
 /** Hint under the finding of a test-integrity signal id: the hint of its `TEST_INTEGRITY_<id>` code. */

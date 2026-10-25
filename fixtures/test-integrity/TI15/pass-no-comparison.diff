@@ -1,0 +1,12 @@
+diff --git a/src/flags.test.ts b/src/flags.test.ts
+index 1111111..2222222 100644
+--- a/src/flags.test.ts
++++ b/src/flags.test.ts
+@@ -7,0 +8 @@ describe("flags", () => {
++  config["feature-flag"] = true;
+diff --git a/src/flags.ts b/src/flags.ts
+index 1111111..2222222 100644
+--- a/src/flags.ts
++++ b/src/flags.ts
+@@ -11,0 +12 @@ export function enabled(config: Config): boolean {
++  const on = config["feature-flag"];

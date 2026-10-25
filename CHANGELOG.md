@@ -21,6 +21,20 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   index the Python test files of a change with `python3` when the change modifies one; with JS/TS-only changes nothing
   runs. The `skylos-nine` benchmark now catches 4 of 9. The action and CLI dist now carry the TypeScript parser, so the
   Action dist is larger (about 11 MB, under 12 MB).
+- Test-integrity signal TI08 (snapshot churn). It warns, in modes `block` and `warn` alike, when a change modifies,
+  deletes or rewrites more than 10 snapshot files (`__snapshots__` directories, `.snap` and `.ambr` files), when a
+  JS/TS test file rewrites 10 or more `toMatchInlineSnapshot(` lines, or when a snapshot-update flag (`-u`,
+  `--update`, `--updateSnapshot`, `--update-snapshots`, `--snapshot-update`) is added to a `test*` script in
+  `package.json` or `--snapshot-update` to a pytest config file. Adds the `TEST_INTEGRITY_TI08` message code. The
+  diff reader now keeps the text of `pytest.ini`, `pyproject.toml`, `setup.cfg` and `tox.ini`, and a cut one is named in
+  `TEST_INTEGRITY_TEXT_TRUNCATED`.
+- Test-integrity signal TI15 (the test may be special-cased). It warns, in modes `block` and `warn` alike, when a
+  condition added to a JavaScript, TypeScript or Python source file (`===`, `!==`, `==`, `!=`, a `case` label or a Python
+  `in (...)` group) compares with a string or number literal that a test file in the same change also adds. Adds the
+  `TEST_INTEGRITY_TI15` message code.
+- Test-integrity signal TI16 (lint or type suppression in tests). It gives an `info` finding, which never blocks and
+  leaves the verdict at `pass`, when a JS/TS or Python test file adds a comment that switches off a linter or type
+  checker. Adds the `TEST_INTEGRITY_TI16` message code.
 
 ### Changed
 

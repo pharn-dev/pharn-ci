@@ -1,0 +1,12 @@
+diff --git a/src/num.test.ts b/src/num.test.ts
+index 1111111..2222222 100644
+--- a/src/num.test.ts
++++ b/src/num.test.ts
+@@ -7,0 +8 @@ describe("isMagic", () => {
++  expect(isMagic(1234)).toBe(true);
+diff --git a/src/num.ts b/src/num.ts
+index 1111111..2222222 100644
+--- a/src/num.ts
++++ b/src/num.ts
+@@ -11,0 +12 @@ export function isMagic(n: number): boolean {
++  if (n === 1234) return true;

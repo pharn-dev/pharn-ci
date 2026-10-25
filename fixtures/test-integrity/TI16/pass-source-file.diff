@@ -1,0 +1,14 @@
+diff --git a/src/a.ts b/src/a.ts
+index 1111111..2222222 100644
+--- a/src/a.ts
++++ b/src/a.ts
+@@ -11,0 +12,2 @@ export function a() {
++  // eslint-disable-next-line no-console
++  // @ts-expect-error the argument is the wrong type
+diff --git a/src/a.py b/src/a.py
+index 1111111..2222222 100644
+--- a/src/a.py
++++ b/src/a.py
+@@ -11,0 +12,2 @@ def a():
++    import os  # noqa: E501
++    x = load()  # type: ignore[attr-defined]

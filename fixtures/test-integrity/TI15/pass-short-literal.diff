@@ -1,0 +1,15 @@
+diff --git a/src/discount.test.ts b/src/discount.test.ts
+index 1111111..2222222 100644
+--- a/src/discount.test.ts
++++ b/src/discount.test.ts
+@@ -7,0 +8,2 @@ describe("discount", () => {
++  expect(price("abc")).toBe(0);
++  expect(rate(12, 0.05)).toBe(1);
+diff --git a/src/discount.ts b/src/discount.ts
+index 1111111..2222222 100644
+--- a/src/discount.ts
++++ b/src/discount.ts
+@@ -11,0 +12,3 @@ export function price(code: string): number {
++  if (code === "abc") return 0;
++  if (n === 12) return 1;
++  if (r === 0.05) return 2;

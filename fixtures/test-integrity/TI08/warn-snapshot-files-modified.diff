@@ -1,0 +1,77 @@
+diff --git a/src/__snapshots__/view-01.ts.snap b/src/__snapshots__/view-01.ts.snap
+index 1111111..2222222 100644
+--- a/src/__snapshots__/view-01.ts.snap
++++ b/src/__snapshots__/view-01.ts.snap
+@@ -3 +3 @@ exports[`view renders 1`] = `
+-"old output 01"
++"new output 01"
+diff --git a/src/__snapshots__/view-02.ts.snap b/src/__snapshots__/view-02.ts.snap
+index 1111111..2222222 100644
+--- a/src/__snapshots__/view-02.ts.snap
++++ b/src/__snapshots__/view-02.ts.snap
+@@ -3 +3 @@ exports[`view renders 1`] = `
+-"old output 02"
++"new output 02"
+diff --git a/src/__snapshots__/view-03.ts.snap b/src/__snapshots__/view-03.ts.snap
+index 1111111..2222222 100644
+--- a/src/__snapshots__/view-03.ts.snap
++++ b/src/__snapshots__/view-03.ts.snap
+@@ -3 +3 @@ exports[`view renders 1`] = `
+-"old output 03"
++"new output 03"
+diff --git a/src/__snapshots__/view-04.ts.snap b/src/__snapshots__/view-04.ts.snap
+index 1111111..2222222 100644
+--- a/src/__snapshots__/view-04.ts.snap
++++ b/src/__snapshots__/view-04.ts.snap
+@@ -3 +3 @@ exports[`view renders 1`] = `
+-"old output 04"
++"new output 04"
+diff --git a/src/__snapshots__/view-05.ts.snap b/src/__snapshots__/view-05.ts.snap
+index 1111111..2222222 100644
+--- a/src/__snapshots__/view-05.ts.snap
++++ b/src/__snapshots__/view-05.ts.snap
+@@ -3 +3 @@ exports[`view renders 1`] = `
+-"old output 05"
++"new output 05"
+diff --git a/src/__snapshots__/view-06.ts.snap b/src/__snapshots__/view-06.ts.snap
+index 1111111..2222222 100644
+--- a/src/__snapshots__/view-06.ts.snap
++++ b/src/__snapshots__/view-06.ts.snap
+@@ -3 +3 @@ exports[`view renders 1`] = `
+-"old output 06"
++"new output 06"
+diff --git a/src/__snapshots__/view-07.ts.snap b/src/__snapshots__/view-07.ts.snap
+index 1111111..2222222 100644
+--- a/src/__snapshots__/view-07.ts.snap
++++ b/src/__snapshots__/view-07.ts.snap
+@@ -3 +3 @@ exports[`view renders 1`] = `
+-"old output 07"
++"new output 07"
+diff --git a/src/__snapshots__/view-08.ts.snap b/src/__snapshots__/view-08.ts.snap
+index 1111111..2222222 100644
+--- a/src/__snapshots__/view-08.ts.snap
++++ b/src/__snapshots__/view-08.ts.snap
+@@ -3 +3 @@ exports[`view renders 1`] = `
+-"old output 08"
++"new output 08"
+diff --git a/src/__snapshots__/view-09.ts.snap b/src/__snapshots__/view-09.ts.snap
+index 1111111..2222222 100644
+--- a/src/__snapshots__/view-09.ts.snap
++++ b/src/__snapshots__/view-09.ts.snap
+@@ -3 +3 @@ exports[`view renders 1`] = `
+-"old output 09"
++"new output 09"
+diff --git a/src/__snapshots__/view-10.ts.snap b/src/__snapshots__/view-10.ts.snap
+index 1111111..2222222 100644
+--- a/src/__snapshots__/view-10.ts.snap
++++ b/src/__snapshots__/view-10.ts.snap
+@@ -3 +3 @@ exports[`view renders 1`] = `
+-"old output 10"
++"new output 10"
+diff --git a/src/__snapshots__/view-11.ts.snap b/src/__snapshots__/view-11.ts.snap
+index 1111111..2222222 100644
+--- a/src/__snapshots__/view-11.ts.snap
++++ b/src/__snapshots__/view-11.ts.snap
+@@ -3 +3 @@ exports[`view renders 1`] = `
+-"old output 11"
++"new output 11"

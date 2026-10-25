@@ -1,0 +1,44 @@
+diff --git a/src/__snapshots__/old-01.ts.snap b/src/__snapshots__/view-01.ts.snap
+similarity index 100%
+rename from src/__snapshots__/old-01.ts.snap
+rename to src/__snapshots__/view-01.ts.snap
+diff --git a/src/__snapshots__/old-02.ts.snap b/src/__snapshots__/view-02.ts.snap
+similarity index 100%
+rename from src/__snapshots__/old-02.ts.snap
+rename to src/__snapshots__/view-02.ts.snap
+diff --git a/src/__snapshots__/old-03.ts.snap b/src/__snapshots__/view-03.ts.snap
+similarity index 100%
+rename from src/__snapshots__/old-03.ts.snap
+rename to src/__snapshots__/view-03.ts.snap
+diff --git a/src/__snapshots__/old-04.ts.snap b/src/__snapshots__/view-04.ts.snap
+similarity index 100%
+rename from src/__snapshots__/old-04.ts.snap
+rename to src/__snapshots__/view-04.ts.snap
+diff --git a/src/__snapshots__/old-05.ts.snap b/src/__snapshots__/view-05.ts.snap
+similarity index 100%
+rename from src/__snapshots__/old-05.ts.snap
+rename to src/__snapshots__/view-05.ts.snap
+diff --git a/src/__snapshots__/old-06.ts.snap b/src/__snapshots__/view-06.ts.snap
+similarity index 100%
+rename from src/__snapshots__/old-06.ts.snap
+rename to src/__snapshots__/view-06.ts.snap
+diff --git a/src/__snapshots__/old-07.ts.snap b/src/__snapshots__/view-07.ts.snap
+similarity index 100%
+rename from src/__snapshots__/old-07.ts.snap
+rename to src/__snapshots__/view-07.ts.snap
+diff --git a/src/__snapshots__/old-08.ts.snap b/src/__snapshots__/view-08.ts.snap
+similarity index 100%
+rename from src/__snapshots__/old-08.ts.snap
+rename to src/__snapshots__/view-08.ts.snap
+diff --git a/src/__snapshots__/old-09.ts.snap b/src/__snapshots__/view-09.ts.snap
+similarity index 100%
+rename from src/__snapshots__/old-09.ts.snap
+rename to src/__snapshots__/view-09.ts.snap
+diff --git a/src/__snapshots__/old-10.ts.snap b/src/__snapshots__/view-10.ts.snap
+similarity index 100%
+rename from src/__snapshots__/old-10.ts.snap
+rename to src/__snapshots__/view-10.ts.snap
+diff --git a/src/__snapshots__/old-11.ts.snap b/src/__snapshots__/view-11.ts.snap
+similarity index 100%
+rename from src/__snapshots__/old-11.ts.snap
+rename to src/__snapshots__/view-11.ts.snap
