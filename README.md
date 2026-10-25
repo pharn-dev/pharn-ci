@@ -340,13 +340,15 @@ tests weaker? The `test-integrity` input takes `block`, `warn` or `off`, and the
 `test_integrity.mode` in `.pharn/ci.yml` can only make the mode stricter, never looser, so a pull request cannot loosen
 its own gate by editing the config. The signals so far are TI01 (a test file deleted), TI02 (a test removed from a test
 file that stays), TI03 (a skip added to a test), TI04 (a `.only`, `fit` or `fdescribe` added), TI05 (a test emptied of
-its assertions, or with fewer), TI10 (a test script in `package.json` weakened), TI11 (CI stopped running tests), TI13 (a
-coverage-ignore comment added to source) and TI14 (a lower coverage threshold or a wider exclusion in the config). Each
-reads the diff, and TI02 and TI05 also read the text of the JS/TS and Python test files the change modifies at the merge
-base and at HEAD, parsed without running them: a test counts as removed only when no test of the same name or a similar
-body is left in the touched test files, and `TEST_INTEGRITY_INDEX_UNAVAILABLE` names a file that could not be compared.
-A reviewer who is not the author can sign off block findings with the accept label: see
-[Accept label](#accept-label).
+its assertions, or with fewer), TI08 (snapshots regenerated or updated in bulk), TI10 (a test script in `package.json`
+weakened), TI11 (CI stopped running tests), TI13 (a coverage-ignore comment added to source), TI14 (a lower coverage
+threshold or a wider exclusion in the config), TI15 (a source condition that compares with a value the tests add) and
+TI16 (a lint or type suppression comment added to a test file). TI08 and TI15 warn and TI16 gives an `info` finding in
+both `block` and `warn`, so those three never fail the check. Each reads the diff, and TI02 and TI05 also read the text
+of the JS/TS and Python test files the change modifies at the merge base and at HEAD, parsed without running them: a test
+counts as removed only when no test of the same name or a similar body is left in the touched test files, and
+`TEST_INTEGRITY_INDEX_UNAVAILABLE` names a file that could not be compared. A reviewer who is not the author can sign off
+block findings with the accept label: see [Accept label](#accept-label).
 
 This is the "Test integrity" section of the report for a change that turns `it(` into `it.skip(` in
 `src/cart.test.ts`, in mode `block`:
@@ -377,7 +379,7 @@ not exist yet. What each signal misses is in [docs/LIMITS.md](./docs/LIMITS.md#w
 | `exclude`           | none                        | Globs of changed files to leave out of diff coverage, comma or newline separated; added to `coverage.exclude` |
 | `require-agent-setup` | `setup.require`, then `false` | Fail when the repo has no agent setup files; the step fails through `fail-on-threshold` |
 | `expect-agent-setup` | `setup.expect`, then none  | Agent tools that must have a setup file, comma or newline separated; added to `setup.expect`; a missing one is `AGENT_SETUP_EXPECTED_MISSING` |
-| `test-integrity`    | `warn`                      | How strictly to treat weakened tests: `block`, `warn` or `off`. `test_integrity.mode` in `.pharn/ci.yml` can only make it stricter, never looser (a looser value is ignored with `TEST_INTEGRITY_MODE_IGNORED`). In `block` a block-level finding fails the check, in `warn` it warns, in `off` nothing is checked. The signals so far are TI01 (a test file deleted), TI03 (a skip added to a test), TI04 (a `.only`, `fit` or `fdescribe` added), TI10 (a test script in `package.json` weakened), TI11 (CI stopped running tests), TI13 (a coverage-ignore comment added to source) and TI14 (a lower coverage threshold or a wider exclusion in the config) |
+| `test-integrity`    | `warn`                      | How strictly to treat weakened tests: `block`, `warn` or `off`. `test_integrity.mode` in `.pharn/ci.yml` can only make it stricter, never looser (a looser value is ignored with `TEST_INTEGRITY_MODE_IGNORED`). In `block` a block-level finding fails the check, in `warn` it warns, in `off` nothing is checked. The signals so far are TI01 (a test file deleted), TI03 (a skip added to a test), TI04 (a `.only`, `fit` or `fdescribe` added), TI08 (snapshots regenerated or updated in bulk), TI10 (a test script in `package.json` weakened), TI11 (CI stopped running tests), TI13 (a coverage-ignore comment added to source), TI14 (a lower coverage threshold or a wider exclusion in the config), TI15 (a source condition that compares with a value the tests add) and TI16 (a lint or type suppression comment added to a test file) |
 | `accept-label`      | `pharn/accepted`            | Name of the pull request label a reviewer who is not the PR author applies to sign off `test-integrity: block` findings, at most 50 characters. Read only from this input, never from `.pharn/ci.yml`. See [Accept label](#accept-label) |
 | `comment`           | `true`                      | Post/update one sticky PR comment per workflow and job |
 | `fail-on-threshold` | `true`                      | Fail the step when the verdict is `fail` |
@@ -657,6 +659,9 @@ message `code`s, not on text:
 | `TEST_INTEGRITY_TI11`           | TI11: a workflow edit may stop CI from running tests: a removed test command or `pull_request` trigger (`error` in mode `block`, `warn` in mode `warn`), or a shrunk matrix, an added `continue-on-error: true`, a disabling `if:` or a `timeout-minutes` of 0 or 1 (`warn`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI13`           | TI13: the change adds a comment that leaves code out of coverage (an Istanbul, V8 or C8 ignore hint in a JS/TS file, or a `# pragma: no cover` in a Python file that is not a test file) (`error` in mode `block`, `warn` in mode `warn`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI14`           | TI14: the change lowers or removes the coverage threshold, or adds a coverage exclusion, in the pharn-ci config (`error` in mode `block`, `warn` in mode `warn`). Every finding is in `testIntegrity.signals` |
+| `TEST_INTEGRITY_TI08`           | TI08: the change regenerates or updates snapshots in bulk: more than 10 snapshot files modified, deleted or renamed with edits, 10 or more inline snapshots rewritten in a JS/TS test file, or a snapshot-update flag added to a test script or a pytest config file (`warn` in modes `block` and `warn`; it never blocks). Every finding is in `testIntegrity.signals` |
+| `TEST_INTEGRITY_TI15`           | TI15: the change adds a condition in JS/TS or Python source that compares with a string or number a test file in the same change also adds, so the code may special-case the test (`warn` in modes `block` and `warn`; it never blocks). Every finding is in `testIntegrity.signals` |
+| `TEST_INTEGRITY_TI16`           | TI16: the change adds a comment that switches off a linter or type checker in a JS/TS or Python test file (`info`; it never blocks and leaves the verdict at `pass`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TEXT_TRUNCATED` | A file a test-integrity signal reads has more than 5000 changed lines, so the signals read only the first 5000 and a finding past them is not seen (`warn`; not in mode `off`). The text names the files |
 | `TEST_INTEGRITY_ACCEPTED`       | A reviewer who is not the PR author applied the [accept label](#accept-label), so every block signal was downgraded to `warn` (`info`; Action only). `testIntegrity.accepted` names the label and the reviewer |
 | `TEST_INTEGRITY_ACCEPT_IGNORED` | The accept label was looked at and does not count: the PR author applied it, a non-user account applied it, no labeling event was found, or the pull request or its events could not be read (`warn`; Action only). The block signals stand |

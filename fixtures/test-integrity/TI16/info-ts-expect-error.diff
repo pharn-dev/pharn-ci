@@ -1,0 +1,6 @@
+diff --git a/tests/x.spec.ts b/tests/x.spec.ts
+index 1111111..2222222 100644
+--- a/tests/x.spec.ts
++++ b/tests/x.spec.ts
+@@ -11,0 +12 @@ describe("x", () => {
++  // @ts-expect-error the argument is the wrong type

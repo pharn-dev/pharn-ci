@@ -45,8 +45,9 @@ describe("test sources: documentation and schema", () => {
     expect(readFileSync(new URL(v1, ROOT)).equals(atBase(v1)), `${v1} is byte-identical to ${BASE_COMMIT}`).toBe(true);
 
     // TI02 and TI05 (ti02-ti05) document their three message codes and the `languages` field in schema/report.v2.json,
-    // so the whole file is no longer byte-identical to the base. Everything but those two descriptions still is: the
-    // schema with them taken out equals the base schema with them taken out.
+    // and TI08, TI15 and TI16 (ti08-ti15-ti16) add their codes to the same message-code description, so the whole file
+    // is no longer byte-identical to the base. Everything but those two descriptions still is: the schema with them
+    // taken out equals the base schema with them taken out.
     const withoutEditedDescriptions = (schema: {
       $defs: { message: { properties: { code: { description?: string } } } };
       properties: { testIntegrity: { properties: { languages: { description?: string } } } };

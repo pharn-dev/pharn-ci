@@ -16,7 +16,8 @@ const V1_AT_BASE = "c6cfd5b5afeada776fa89028f5ef29e06427d0e32529420184474e52ca77
 /**
  * sha256 of JSON.stringify of schema/report.v2.json with the message-code description and the `languages` description
  * taken out, as it was at the base commit 5a42169 and still is. TI02 and TI05 (ti02-ti05) edit exactly those two
- * descriptions, so the whole file is no longer byte-identical to the base; the rest of it still is.
+ * descriptions, and TI08, TI15 and TI16 (ti08-ti15-ti16) add their codes to the first, so the whole file is no longer
+ * byte-identical to the base; the rest of it still is.
  */
 const V2_WITHOUT_EDITED_DESCRIPTIONS = "d7a9ec11cf2212f2ff82cf7fd42f27cfa73896151f69281ad595c4fc933c3737";
 
@@ -104,7 +105,7 @@ describe("python-test-index: THREAT-MODEL, fixture layout, schemas and purity", 
     }
   });
 
-  it("AC-19: the purity checks pass over core's new Python index files, and both schemas are byte-identical to the base commit", async () => {
+  it("AC-19: the purity checks pass over core's new Python index files, v1 is byte-identical to the base commit and v2 differs from it only in its message-code and languages descriptions", async () => {
     const { purityViolations } = await import("./purity-check.js");
     const dir = join(ROOT, "packages/core/src/testIndex");
     const files = readdirSync(dir).filter((name) => /^python.*\.ts$/.test(name));

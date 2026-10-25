@@ -56,7 +56,7 @@ function readString(text: string, start: number): { value: string; end: number }
  * One `"key": "value"` pair on a line, any indentation, optional spaces around the colon, an optional trailing comma
  * and nothing else. Any other shape (a one-line object, a value continued on the next line) is not a script line.
  */
-function parseScriptLine(text: string): { key: string; value: string } | null {
+export function parseScriptLine(text: string): { key: string; value: string } | null {
   let i = 0;
   const skip = () => {
     while (isBlank(text[i])) i++;
@@ -82,6 +82,11 @@ function parseScriptLine(text: string): { key: string; value: string } | null {
 
 /** Whether a script runs mocha, where `-t` is `--timeout`, not a name filter. */
 const RUNS_MOCHA = /(?:^|[\s/])mocha(?:\s|$)/;
+
+/** Whether a script value runs mocha (TI08 reads it too: there `-u` is `--ui`, not a snapshot flag). */
+export function runsMocha(value: string): boolean {
+  return RUNS_MOCHA.test(value);
+}
 
 /**
  * The weakening kinds in the value of a test script. The value is read left to right: white space ends a word, and the

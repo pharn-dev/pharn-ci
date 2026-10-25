@@ -1,0 +1,25 @@
+diff --git a/src/view.test.ts b/src/view.test.ts
+index 1111111..2222222 100644
+--- a/src/view.test.ts
++++ b/src/view.test.ts
+@@ -5,10 +5,10 @@ describe("view", () => {
+-  expect(view(1)).toMatchInlineSnapshot(`"old 1"`);
+-  expect(view(2)).toMatchInlineSnapshot(`"old 2"`);
+-  expect(view(3)).toMatchInlineSnapshot(`"old 3"`);
+-  expect(view(4)).toMatchInlineSnapshot(`"old 4"`);
+-  expect(view(5)).toMatchInlineSnapshot(`"old 5"`);
+-  expect(view(6)).toMatchInlineSnapshot(`"old 6"`);
+-  expect(view(7)).toMatchInlineSnapshot(`"old 7"`);
+-  expect(view(8)).toMatchInlineSnapshot(`"old 8"`);
+-  expect(view(9)).toMatchInlineSnapshot(`"old 9"`);
+-  expect(view(10)).toMatchInlineSnapshot(`"old 10"`);
++  expect(view(1)).toMatchInlineSnapshot(`"new 1"`);
++  expect(view(2)).toMatchInlineSnapshot(`"new 2"`);
++  expect(view(3)).toMatchInlineSnapshot(`"new 3"`);
++  expect(view(4)).toMatchInlineSnapshot(`"new 4"`);
++  expect(view(5)).toMatchInlineSnapshot(`"new 5"`);
++  expect(view(6)).toMatchInlineSnapshot(`"new 6"`);
++  expect(view(7)).toMatchInlineSnapshot(`"new 7"`);
++  expect(view(8)).toMatchInlineSnapshot(`"new 8"`);
++  expect(view(9)).toMatchInlineSnapshot(`"new 9"`);
++  expect(view(10)).toMatchInlineSnapshot(`"new 10"`);

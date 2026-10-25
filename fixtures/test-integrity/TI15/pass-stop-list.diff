@@ -1,0 +1,18 @@
+diff --git a/src/kind.test.ts b/src/kind.test.ts
+index 1111111..2222222 100644
+--- a/src/kind.test.ts
++++ b/src/kind.test.ts
+@@ -7,0 +8,4 @@ describe("kind", () => {
++  expect(kind("Error")).toBe(1);
++  expect(kind("utf-8")).toBe(1);
++  expect(kind("DELETE")).toBe(1);
++  expect(kind("default")).toBe(1);
+diff --git a/src/kind.ts b/src/kind.ts
+index 1111111..2222222 100644
+--- a/src/kind.ts
++++ b/src/kind.ts
+@@ -11,0 +12,4 @@ export function kind(value: string): number {
++  if (value === "Error") return 1;
++  if (enc === "utf-8") return 2;
++  if (method === "DELETE") return 3;
++    case "default":

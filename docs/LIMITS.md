@@ -253,6 +253,79 @@ TI13 reads the added and removed lines of JS/TS and Python source files that are
 - **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8); at most 20 signals are
   given per file. A diff that reaches `check()` already parsed without kept text yields no TI13.
 
+### What TI08 misses
+
+TI08 reads the status and the added lines of snapshot files, the added and removed lines of JS/TS test files, the
+`test*` scripts of `package.json` and the pytest config files. It is a `warn` signal and never blocks.
+
+- **An inline rewrite that changes only the body.** The count compares the lines that hold the inline-snapshot call. A
+  rewrite that changes only the body lines (the template literal) and not the call line is not counted.
+- **A renamed snapshot whose hunks only remove lines.** A renamed snapshot file counts only when it also has added lines,
+  so a rename that removes lines is missed, and so is a pure rename.
+- **10 or fewer snapshot files, and added snapshot files.** The mass-change rule needs more than 10 changed files, and a
+  new snapshot file never counts.
+- **Snapshot files by name only.** A `__snapshots__` directory, `.snap` and `.ambr` are read. `__image_snapshots__` and
+  other extensions are not.
+- **Other inline forms.** `toThrowErrorMatchingInlineSnapshot(` and Python inline snapshots are not read.
+- **Update flags set elsewhere.** A flag passed on the command line, through an environment variable or a wrapper
+  script is not seen, and TI10's limits on script lines apply (one `"key": "value"` pair per line; only keys that start
+  with `test`; a `-u` in a mocha script is not a snapshot flag).
+- **A pytest config word glued to other text.** The word must stand alone between white space, so a flag inside a quoted
+  list or glued to other characters is missed, and a removed line that holds the word anywhere in the file excuses every
+  added one.
+- **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8); at most 20 flag signals are
+  given per file. A diff that reaches `check()` already parsed without kept text yields no text-based TI08 finding; the
+  mass-change rule still works, as it reads only the status and the added lines.
+
+### What TI15 misses
+
+TI15 reads the added lines of JS/TS and Python test files and of JS/TS and Python source files that are not test files.
+It is a `warn` signal and never blocks.
+
+- **Both sides must be added in this diff.** A test that already holds the value, or a condition that was there before,
+  gives nothing.
+- **The `hard-coded-answer` form.** A change that adds no test line has no test literal to match, and the numbers in it
+  are one digit (see the Skylos list below).
+- **Short and common literals.** A string under 4 characters, a number under 3 significant digits and the stop-list
+  (`true`, `false`, `null`, `none`, `undefined`, `test`, `error`, `default`, `get`, `post`, `put`, `patch`, `delete`,
+  `head`, `options`, `utf-8`, `utf8`, and the `typeof` results `string`, `number`, `boolean`, `object`, `function`,
+  `symbol`, `bigint`) are not read.
+- **Template literals with `${`** are skipped.
+- **Other comparisons.** Only `===`, `!==`, `==`, `!=`, a `case` label and a Python `in (...)` group are read.
+  `includes`, `startsWith`, `Set.has`, `<` and a regular expression are not.
+- **Literals are compared as written.** Differently escaped forms of one value differ, the match is case-sensitive, and a
+  string never equals a number.
+- **Literals in comments are read,** because the scan does not understand comments or regular expressions. A quote in a
+  comment can open a literal, and an unclosed quote ends the scan of its line.
+- **Common numbers match.** A status code such as `404` has 3 significant digits, so it can match; a number such as
+  `200` or `1000` does not (trailing zeros of a whole number do not count).
+- **The detail names the literal's kind and length, never its text.** A matched value can be a secret
+  (`if (key === "<token>")`), and the report leaves the job, so a reviewer finds the value at the source line the
+  finding names (`a 12-character string literal`, with the source `path:line` and the test file's path).
+- **Go and other languages** give nothing on either side.
+- **20 per file.** At most 20 signals are given per source file, on the lowest lines.
+- **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8). A diff that reaches `check()`
+  already parsed without kept text yields no TI15.
+
+### What TI16 misses
+
+TI16 reads the added and removed lines of JS/TS and Python test files. It gives `info` findings only, which never block
+and leave the verdict at `pass`.
+
+- **Other tools' markers.** Only the ESLint, Oxlint and Biome comments, the TypeScript `@ts-` comments, and the Python
+  `type`, `noqa`, `pylint` and `pyright` comments are read. `prettier-ignore` and `jshint` are not; `istanbul` hints
+  belong to TI13.
+- **Suppressions in config.** An ESLint override for test globs, `per-file-ignores` and `tsconfig` options are not read.
+- **Markers in non-test files** give nothing, and neither do Go test files.
+- **A comment opener inside a string fires,** because the scan sees the characters of the line, not the syntax. A marker
+  on a later line of a block comment is missed.
+- **One finding per file,** at the first fresh suppression, with the count in its detail.
+- **Moves.** A removed suppression with the same text (white space collapsed) accounts for one added one in the same
+  file; a suppression moved to another file reads as added.
+- **Info only.** The finding does not change the verdict and cannot fail the check in any mode.
+- **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8). A diff that reaches `check()`
+  already parsed without kept text yields no TI16.
+
 ### What the accept label misses
 
 The accept label (`pharn/accepted`, or the `accept-label` input) records a reviewer's sign-off on test-integrity block
@@ -274,13 +347,14 @@ findings. It is the Action's alone; the CLI never honours it.
 
 ## What test integrity does not catch
 
-The test-integrity signals that ship today (TI01, TI02, TI03, TI04, TI05, TI10, TI11, TI13 and TI14) read the added and
-removed lines of the diff, in files they recognise by name; TI02 and TI05 also read the text of the JavaScript,
-TypeScript and Python test files the change modifies, at the merge base and at `HEAD`. They do not run tests or read a
-file that the diff does not touch, and they cannot judge whether an assertion is strong. The accept label records that a
-reviewer who is not the author signed off a block finding. It cannot show that the reviewer read the tests, and it never
-adds a check. What each signal misses is listed under its own "What TIxx misses" heading above, and the accept label's
-limits under "What the accept label misses". A file whose changed lines run past 5000 is read only up to that point; the
+The test-integrity signals that ship today (TI01, TI02, TI03, TI04, TI05, TI08, TI10, TI11, TI13, TI14, TI15 and TI16)
+read the added and removed lines of the diff, in files they recognise by name; TI02 and TI05 also read the text of the
+JavaScript, TypeScript and Python test files the change modifies, at the merge base and at `HEAD`. They do not run tests
+or read a file that the diff does not touch, and they cannot judge whether an assertion is strong. The accept label
+records that a reviewer who is not the author signed off a block finding. It cannot show that the reviewer read the
+tests, and it never adds a check. What each signal misses is listed under its own "What TIxx misses" heading above, and
+the accept label's limits under "What the accept label misses". A file whose changed lines run past 5000 is read only up
+to that point; the
 report names it with `TEST_INTEGRITY_TEXT_TRUNCATED` (section 8).
 
 The benchmark for what is not seen is Skylos's list of nine ways to hide a failing test. The nine cases are reproduced
@@ -295,12 +369,13 @@ Caught:
 - `replaced-test` — caught by TI02: a test is replaced by one with another name and a different body, so no test file is
   deleted and nothing is skipped, but no test of the old name or a similar body is left.
 
-Not caught. Each of these names the signal that is planned for it; none of them exists yet:
+Not caught. Each of these names the signal that is planned for it; most of the planned signals do not exist yet, and TI15
+exists but misses its own case:
 
 - `deselect-setting` — missed; planned: TI09. The runner's `include` list is narrowed in `vitest.config.ts`, so the
   test file is never picked up. A runner config is not read.
-- `hard-coded-answer` — missed; planned: TI15. The source returns the expected value for the test's input. Source
-  files that are not tests are read for coverage-ignore comments only.
+- `hard-coded-answer` — missed; planned: TI15. The source returns the expected value for the test's input. TI15 now
+  exists and still misses it, because the change adds no test line to match against and its numbers are one digit.
 - `always-true-matcher` — missed; planned: TI17, which is a proposal and not a signal in the test-integrity spec yet.
   A custom matcher that always passes replaces `toBe(5)`.
 - `loosened-assertion` — missed; planned: TI06. `toBe(5)` becomes `toBeTruthy()`.
@@ -540,9 +615,10 @@ limited by git, Node or GitHub alone.
 - **The diff.** From local git (the CLI, and the Action when the checkout has the base) it is read
   line by line as git writes it, with no fixed limit. Memory holds the changed paths and their added
   line numbers, plus the text of added and removed lines for test files, the pharn-ci config in use, workflow files, every `package.json` and the JavaScript, TypeScript and Python source files only, capped at 5000 lines
-  per file and 400 characters per line (`textTruncated` marks a file cut at the cap). A finding past the cut is not
+  per file and 400 characters per line (`textTruncated` marks a file cut at the cap). The pytest config files
+  (`pytest.ini`, `pyproject.toml`, `setup.cfg` and `tox.ini`) keep their text too, for TI08. A finding past the cut is not
   seen. When a signal reads the cut file (a test file in JS/TS, Python or Go, a workflow, a modified `package.json`, a
-  source file or the pharn-ci config) and the file is not deleted, the report adds `TEST_INTEGRITY_TEXT_TRUNCATED`
+  pytest config file, a source file or the pharn-ci config) and the file is not deleted, the report adds `TEST_INTEGRITY_TEXT_TRUNCATED`
   (`warn`) naming it, so a change cannot pass in silence by padding a file past the cut. A deleted file is not named:
   TI01 already counts a cut test file. The 120 s git
   timeout still applies. From the GitHub compare API (the

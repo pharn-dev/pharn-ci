@@ -1,0 +1,13 @@
+diff --git a/tests/test_tiers.py b/tests/test_tiers.py
+index 1111111..2222222 100644
+--- a/tests/test_tiers.py
++++ b/tests/test_tiers.py
+@@ -7,0 +8,2 @@ def test_early_access():
++    assert early("alpha-user")
++    assert early("beta-user")
+diff --git a/app/tiers.py b/app/tiers.py
+index 1111111..2222222 100644
+--- a/app/tiers.py
++++ b/app/tiers.py
+@@ -11,0 +12 @@ def early(tier):
++    elif tier in ("alpha-user", "beta-user"):

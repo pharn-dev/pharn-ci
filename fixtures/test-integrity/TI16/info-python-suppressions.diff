@@ -1,0 +1,12 @@
+diff --git a/tests/test_x.py b/tests/test_x.py
+index 1111111..2222222 100644
+--- a/tests/test_x.py
++++ b/tests/test_x.py
+@@ -2,0 +3 @@ import pytest
++x = load()  # type: ignore[attr-defined]
+@@ -5,0 +7 @@ def test_one():
++import os  # noqa: E501
+@@ -7,0 +10 @@ def test_one():
++import sys  # pylint: disable=unused-import
+@@ -9,0 +13 @@ def test_one():
++y = bar()  # pyright: ignore
