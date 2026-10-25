@@ -1,0 +1,353 @@
+{
+  "parsed": true,
+  "syntaxErrors": 0,
+  "tests": [
+    {
+      "kind": "hook",
+      "name": "setUpModule",
+      "nameDynamic": false,
+      "path": [
+        "setUpModule"
+      ],
+      "line": 6,
+      "endLine": 8,
+      "modifiers": [],
+      "body": "\"\"\"The unittest module hook.\"\"\" return None",
+      "bodyHash": "d233ca09",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "tearDownModule",
+      "nameDynamic": false,
+      "path": [
+        "tearDownModule"
+      ],
+      "line": 11,
+      "endLine": 12,
+      "modifiers": [],
+      "body": "return None",
+      "bodyHash": "a41cd093",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "setup_module",
+      "nameDynamic": false,
+      "path": [
+        "setup_module"
+      ],
+      "line": 15,
+      "endLine": 16,
+      "modifiers": [],
+      "body": "module.value = 1",
+      "bodyHash": "7a97bb52",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "teardown_module",
+      "nameDynamic": false,
+      "path": [
+        "teardown_module"
+      ],
+      "line": 19,
+      "endLine": 20,
+      "modifiers": [],
+      "body": "module.value = 0",
+      "bodyHash": "7b97bce5",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "setup_function",
+      "nameDynamic": false,
+      "path": [
+        "setup_function"
+      ],
+      "line": 23,
+      "endLine": 24,
+      "modifiers": [],
+      "body": "pass",
+      "bodyHash": "7b7a7318",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "teardown_function",
+      "nameDynamic": false,
+      "path": [
+        "teardown_function"
+      ],
+      "line": 27,
+      "endLine": 28,
+      "modifiers": [],
+      "body": "pass",
+      "bodyHash": "7b7a7318",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "plain_fixture",
+      "nameDynamic": false,
+      "path": [
+        "plain_fixture"
+      ],
+      "line": 32,
+      "endLine": 33,
+      "modifiers": [],
+      "body": "return 1",
+      "bodyHash": "ad74e034",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "scoped_fixture",
+      "nameDynamic": false,
+      "path": [
+        "scoped_fixture"
+      ],
+      "line": 37,
+      "endLine": 38,
+      "modifiers": [],
+      "body": "yield 2",
+      "bodyHash": "a09d70a8",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "bare_name_fixture",
+      "nameDynamic": false,
+      "path": [
+        "bare_name_fixture"
+      ],
+      "line": 42,
+      "endLine": 43,
+      "modifiers": [],
+      "body": "return 3",
+      "bodyHash": "af74e35a",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "autouse_fixture",
+      "nameDynamic": false,
+      "path": [
+        "autouse_fixture"
+      ],
+      "line": 47,
+      "endLine": 48,
+      "modifiers": [],
+      "body": "return 4",
+      "bodyHash": "aa74db7b",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "test_named_fixture",
+      "nameDynamic": false,
+      "path": [
+        "test_named_fixture"
+      ],
+      "line": 52,
+      "endLine": 53,
+      "modifiers": [],
+      "body": "return 5",
+      "bodyHash": "a974d9e8",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_plain",
+      "nameDynamic": false,
+      "path": [
+        "test_plain"
+      ],
+      "line": 56,
+      "endLine": 57,
+      "modifiers": [],
+      "body": "assert plain_fixture() == 1",
+      "bodyHash": "00b1952f",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert ==",
+          "line": 57,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_with_helper",
+      "nameDynamic": false,
+      "path": [
+        "test_with_helper"
+      ],
+      "line": 60,
+      "endLine": 64,
+      "modifiers": [],
+      "body": "def helper(value): return value * 2 assert helper(2) == 4",
+      "bodyHash": "b46f16b2",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert ==",
+          "line": 64,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_async_function",
+      "nameDynamic": false,
+      "path": [
+        "test_async_function"
+      ],
+      "line": 67,
+      "endLine": 68,
+      "modifiers": [],
+      "body": "assert True",
+      "bodyHash": "7881eca9",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 68,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "testAdd",
+      "nameDynamic": false,
+      "path": [
+        "testAdd"
+      ],
+      "line": 71,
+      "endLine": 72,
+      "modifiers": [],
+      "body": "assert 1 + 1 == 2",
+      "bodyHash": "1e35f396",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert ==",
+          "line": 72,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_parametrized",
+      "nameDynamic": false,
+      "path": [
+        "test_parametrized"
+      ],
+      "line": 76,
+      "endLine": 77,
+      "modifiers": [
+        "each"
+      ],
+      "body": "assert left < right",
+      "bodyHash": "a9b807ca",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert <",
+          "line": 77,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_two_decorators",
+      "nameDynamic": false,
+      "path": [
+        "test_two_decorators"
+      ],
+      "line": 82,
+      "endLine": 83,
+      "modifiers": [],
+      "body": "assert 1",
+      "bodyHash": "8e4c8950",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 83,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_last",
+      "nameDynamic": false,
+      "path": [
+        "test_last"
+      ],
+      "line": 102,
+      "endLine": 105,
+      "modifiers": [],
+      "body": "assert helper_not_a_test(1)",
+      "bodyHash": "9a86b2fe",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 105,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    }
+  ],
+  "mocks": []
+}

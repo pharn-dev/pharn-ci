@@ -1,0 +1,364 @@
+{
+  "parsed": true,
+  "syntaxErrors": 0,
+  "tests": [
+    {
+      "kind": "test",
+      "name": "test_patch_decorator",
+      "nameDynamic": false,
+      "path": [
+        "test_patch_decorator"
+      ],
+      "line": 12,
+      "endLine": 13,
+      "modifiers": [],
+      "body": "assert getcwd",
+      "bodyHash": "5f54ecb3",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 13,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_mock_patch_decorator",
+      "nameDynamic": false,
+      "path": [
+        "test_mock_patch_decorator"
+      ],
+      "line": 17,
+      "endLine": 18,
+      "modifiers": [],
+      "body": "assert listdir",
+      "bodyHash": "c58511bc",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 18,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_unittest_mock_patch_decorator",
+      "nameDynamic": false,
+      "path": [
+        "test_unittest_mock_patch_decorator"
+      ],
+      "line": 22,
+      "endLine": 23,
+      "modifiers": [],
+      "body": "assert getpid",
+      "bodyHash": "f59d79bc",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 23,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_patch_object_decorator",
+      "nameDynamic": false,
+      "path": [
+        "test_patch_object_decorator"
+      ],
+      "line": 27,
+      "endLine": 28,
+      "modifiers": [],
+      "body": "assert getuid",
+      "bodyHash": "1fbafebf",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 28,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_mock_patch_object_decorator",
+      "nameDynamic": false,
+      "path": [
+        "test_mock_patch_object_decorator"
+      ],
+      "line": 32,
+      "endLine": 33,
+      "modifiers": [],
+      "body": "assert isdir",
+      "bodyHash": "f67c4080",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 33,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_unittest_mock_patch_object_decorator",
+      "nameDynamic": false,
+      "path": [
+        "test_unittest_mock_patch_object_decorator"
+      ],
+      "line": 37,
+      "endLine": 38,
+      "modifiers": [],
+      "body": "assert isfile",
+      "bodyHash": "ebd80d17",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 38,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_patch_dict_is_not_a_mock",
+      "nameDynamic": false,
+      "path": [
+        "test_patch_dict_is_not_a_mock"
+      ],
+      "line": 42,
+      "endLine": 43,
+      "modifiers": [],
+      "body": "assert os.environ",
+      "bodyHash": "d193acf4",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 43,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_mocker",
+      "nameDynamic": false,
+      "path": [
+        "test_mocker"
+      ],
+      "line": 46,
+      "endLine": 53,
+      "modifiers": [],
+      "body": "mocker.patch(\"os.getcwd\", return_value=\"/tmp\") mocker.patch.object(os.path, \"exists\") mocker.patch( \"os.listdir\", return_value=[], ) assert os.getcwd()",
+      "bodyHash": "d50e4fe7",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 53,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_with_statements",
+      "nameDynamic": false,
+      "path": [
+        "test_with_statements"
+      ],
+      "line": 56,
+      "endLine": 60,
+      "modifiers": [],
+      "body": "with patch(\"os.getcwd\") as getcwd, mock.patch.object(os, \"getuid\"): assert getcwd with mock.patch(\"os.getpid\"): pass",
+      "bodyHash": "ae81dc03",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert truthy",
+          "line": 58,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_monkeypatch",
+      "nameDynamic": false,
+      "path": [
+        "test_monkeypatch"
+      ],
+      "line": 63,
+      "endLine": 67,
+      "modifiers": [],
+      "body": "monkeypatch.setattr(\"os.getcwd\", lambda: \"/tmp\") monkeypatch.setattr(os, \"getuid\", lambda: 0) monkeypatch.setattr(os, name_of_attribute(), None) assert os.getuid() == 0",
+      "bodyHash": "7a95f4b0",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "assert ==",
+          "line": 67,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_dynamic_targets",
+      "nameDynamic": false,
+      "path": [
+        "test_dynamic_targets"
+      ],
+      "line": 70,
+      "endLine": 74,
+      "modifiers": [],
+      "body": "target = \"os.getcwd\" mocker.patch(target) mocker.patch.object(os, target) mocker.patch.object(get_module(), \"name\")",
+      "bodyHash": "e92cf4ea",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    }
+  ],
+  "mocks": [
+    {
+      "callee": "patch",
+      "specifier": "os.getcwd",
+      "line": 7
+    },
+    {
+      "callee": "mock.patch.object",
+      "specifier": "os.path.exists",
+      "line": 8
+    },
+    {
+      "callee": "patch",
+      "specifier": "os.getcwd",
+      "line": 11
+    },
+    {
+      "callee": "mock.patch",
+      "specifier": "os.listdir",
+      "line": 16
+    },
+    {
+      "callee": "unittest.mock.patch",
+      "specifier": "os.getpid",
+      "line": 21
+    },
+    {
+      "callee": "patch.object",
+      "specifier": "os.getuid",
+      "line": 26
+    },
+    {
+      "callee": "mock.patch.object",
+      "specifier": "os.path.isdir",
+      "line": 31
+    },
+    {
+      "callee": "unittest.mock.patch.object",
+      "specifier": "os.path.isfile",
+      "line": 36
+    },
+    {
+      "callee": "mocker.patch",
+      "specifier": "os.getcwd",
+      "line": 47
+    },
+    {
+      "callee": "mocker.patch.object",
+      "specifier": "os.path.exists",
+      "line": 48
+    },
+    {
+      "callee": "mocker.patch",
+      "specifier": "os.listdir",
+      "line": 49
+    },
+    {
+      "callee": "patch",
+      "specifier": "os.getcwd",
+      "line": 57
+    },
+    {
+      "callee": "mock.patch.object",
+      "specifier": "os.getuid",
+      "line": 57
+    },
+    {
+      "callee": "mock.patch",
+      "specifier": "os.getpid",
+      "line": 59
+    },
+    {
+      "callee": "monkeypatch.setattr",
+      "specifier": "os.getcwd",
+      "line": 64
+    },
+    {
+      "callee": "monkeypatch.setattr",
+      "specifier": "os.getuid",
+      "line": 65
+    },
+    {
+      "callee": "monkeypatch.setattr",
+      "specifier": null,
+      "line": 66
+    },
+    {
+      "callee": "mocker.patch",
+      "specifier": null,
+      "line": 72
+    },
+    {
+      "callee": "mocker.patch.object",
+      "specifier": null,
+      "line": 73
+    },
+    {
+      "callee": "mocker.patch.object",
+      "specifier": null,
+      "line": 74
+    }
+  ]
+}

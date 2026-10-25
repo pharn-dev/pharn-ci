@@ -1,0 +1,353 @@
+{
+  "parsed": true,
+  "syntaxErrors": 0,
+  "tests": [
+    {
+      "kind": "describe",
+      "name": "AccountTests",
+      "nameDynamic": false,
+      "path": [
+        "AccountTests"
+      ],
+      "line": 8,
+      "endLine": 29,
+      "modifiers": [],
+      "body": "@classmethod def setUpClass(cls): cls.shared = 1 @classmethod def tearDownClass(cls): cls.shared = None def setUp(self): self.value = 1 def tearDown(self): self.value = 0 def test_equal(self): self.assertEqual(self.value, 1) def test_failure_path(self): if self.value > 1: self.fail(\"unexpected\") self.assertTrue(self.value)",
+      "bodyHash": "369edf79",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "setUpClass",
+      "nameDynamic": false,
+      "path": [
+        "AccountTests",
+        "setUpClass"
+      ],
+      "line": 10,
+      "endLine": 11,
+      "modifiers": [],
+      "body": "cls.shared = 1",
+      "bodyHash": "a537deb2",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "tearDownClass",
+      "nameDynamic": false,
+      "path": [
+        "AccountTests",
+        "tearDownClass"
+      ],
+      "line": 14,
+      "endLine": 15,
+      "modifiers": [],
+      "body": "cls.shared = None",
+      "bodyHash": "5b801a09",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "setUp",
+      "nameDynamic": false,
+      "path": [
+        "AccountTests",
+        "setUp"
+      ],
+      "line": 17,
+      "endLine": 18,
+      "modifiers": [],
+      "body": "self.value = 1",
+      "bodyHash": "5a952e84",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "tearDown",
+      "nameDynamic": false,
+      "path": [
+        "AccountTests",
+        "tearDown"
+      ],
+      "line": 20,
+      "endLine": 21,
+      "modifiers": [],
+      "body": "self.value = 0",
+      "bodyHash": "5b953017",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_equal",
+      "nameDynamic": false,
+      "path": [
+        "AccountTests",
+        "test_equal"
+      ],
+      "line": 23,
+      "endLine": 24,
+      "modifiers": [],
+      "body": "self.assertEqual(self.value, 1)",
+      "bodyHash": "d46e9f5a",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "self.assertEqual()",
+          "line": 24,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_failure_path",
+      "nameDynamic": false,
+      "path": [
+        "AccountTests",
+        "test_failure_path"
+      ],
+      "line": 26,
+      "endLine": 29,
+      "modifiers": [],
+      "body": "if self.value > 1: self.fail(\"unexpected\") self.assertTrue(self.value)",
+      "bodyHash": "cf3f7412",
+      "assertionCount": 2,
+      "assertions": [
+        {
+          "chain": "self.fail()",
+          "line": 28,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "self.assertTrue()",
+          "line": 29,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "describe",
+      "name": "AsyncAccountTests",
+      "nameDynamic": false,
+      "path": [
+        "AsyncAccountTests"
+      ],
+      "line": 32,
+      "endLine": 40,
+      "modifiers": [],
+      "body": "async def asyncSetUp(self): self.value = 1 async def asyncTearDown(self): self.value = 0 async def test_async_equal(self): self.assertEqual(self.value, 1)",
+      "bodyHash": "b0405fc2",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "asyncSetUp",
+      "nameDynamic": false,
+      "path": [
+        "AsyncAccountTests",
+        "asyncSetUp"
+      ],
+      "line": 33,
+      "endLine": 34,
+      "modifiers": [],
+      "body": "self.value = 1",
+      "bodyHash": "5a952e84",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "hook",
+      "name": "asyncTearDown",
+      "nameDynamic": false,
+      "path": [
+        "AsyncAccountTests",
+        "asyncTearDown"
+      ],
+      "line": 36,
+      "endLine": 37,
+      "modifiers": [],
+      "body": "self.value = 0",
+      "bodyHash": "5b953017",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_async_equal",
+      "nameDynamic": false,
+      "path": [
+        "AsyncAccountTests",
+        "test_async_equal"
+      ],
+      "line": 39,
+      "endLine": 40,
+      "modifiers": [],
+      "body": "self.assertEqual(self.value, 1)",
+      "bodyHash": "d46e9f5a",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "self.assertEqual()",
+          "line": 40,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "describe",
+      "name": "ModelTests",
+      "nameDynamic": false,
+      "path": [
+        "ModelTests"
+      ],
+      "line": 43,
+      "endLine": 47,
+      "modifiers": [],
+      "body": "def test_model(self): self.assertEqual(1, 1) with self.assertRaises(ValueError): int(\"x\")",
+      "bodyHash": "4d6ac6fb",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_model",
+      "nameDynamic": false,
+      "path": [
+        "ModelTests",
+        "test_model"
+      ],
+      "line": 44,
+      "endLine": 47,
+      "modifiers": [],
+      "body": "self.assertEqual(1, 1) with self.assertRaises(ValueError): int(\"x\")",
+      "bodyHash": "df41b63f",
+      "assertionCount": 2,
+      "assertions": [
+        {
+          "chain": "self.assertEqual()",
+          "line": 45,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        },
+        {
+          "chain": "self.assertRaises()",
+          "line": 46,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "describe",
+      "name": "EndpointTests",
+      "nameDynamic": false,
+      "path": [
+        "EndpointTests"
+      ],
+      "line": 50,
+      "endLine": 52,
+      "modifiers": [],
+      "body": "def test_endpoint(self): self.assertEqual(200, 200)",
+      "bodyHash": "e58360c2",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_endpoint",
+      "nameDynamic": false,
+      "path": [
+        "EndpointTests",
+        "test_endpoint"
+      ],
+      "line": 51,
+      "endLine": 52,
+      "modifiers": [],
+      "body": "self.assertEqual(200, 200)",
+      "bodyHash": "ad1c2d08",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "self.assertEqual()",
+          "line": 52,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    },
+    {
+      "kind": "describe",
+      "name": "TestPrefixed",
+      "nameDynamic": false,
+      "path": [
+        "TestPrefixed"
+      ],
+      "line": 55,
+      "endLine": 57,
+      "modifiers": [],
+      "body": "def test_prefixed(self): self.assertEqual(\"a\", \"a\")",
+      "bodyHash": "a1c84510",
+      "assertionCount": 0,
+      "assertions": [],
+      "guards": []
+    },
+    {
+      "kind": "test",
+      "name": "test_prefixed",
+      "nameDynamic": false,
+      "path": [
+        "TestPrefixed",
+        "test_prefixed"
+      ],
+      "line": 56,
+      "endLine": 57,
+      "modifiers": [],
+      "body": "self.assertEqual(\"a\", \"a\")",
+      "bodyHash": "585cd97a",
+      "assertionCount": 1,
+      "assertions": [
+        {
+          "chain": "self.assertEqual()",
+          "line": 57,
+          "awaited": false,
+          "inTryCatch": false,
+          "afterEarlyReturn": false
+        }
+      ],
+      "guards": []
+    }
+  ],
+  "mocks": []
+}

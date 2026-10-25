@@ -143,6 +143,22 @@ export {
   testStem,
 } from "./testFiles.js";
 export { indexTestFile } from "./testIndex/indexTestFile.js";
+export { oneLineDetail, pythonRunOutcome } from "./testIndex/pythonOutcome.js";
+export { type PythonIndexPlan, planPythonIndex, pythonIndexStdin, utf8ByteLength } from "./testIndex/pythonPlan.js";
+export { pythonIndexFromRaw } from "./testIndex/pythonRaw.js";
+export {
+  MAX_PYTHON_DETAIL_CHARS,
+  MAX_PYTHON_RAW_ARRAY,
+  PYTHON_INDEX_MAX_STDOUT_BYTES,
+  PYTHON_INDEX_TIMEOUT_MS,
+  PYTHON_INDEX_UNAVAILABLE_REASONS,
+  type PythonIndexFile,
+  type PythonIndexRun,
+  type PythonIndexUnavailable,
+  type PythonIndexUnavailableReason,
+  type PythonSourceFile,
+  type PythonSpawnResult,
+} from "./testIndex/pythonTypes.js";
 export type {
   TestAssertion,
   TestAssertionGuard,
@@ -154,6 +170,11 @@ export type {
   TestIndexResult,
   TestModifier,
   TestModuleMock,
+} from "./testIndex/types.js";
+export {
+  MAX_TEST_INDEX_DEPTH,
+  PYTHON_MOCK_CALLEES,
+  TEST_MODIFIER_ORDER,
 } from "./testIndex/types.js";
 export {
   isTestIntegrityMode,

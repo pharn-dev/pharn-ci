@@ -1,0 +1,58 @@
+"""Test classes: describe blocks, methods, class hooks, a nested class, and classes that are not tests."""
+import pytest
+
+
+class TestCalculator:
+    value = 1
+
+    @classmethod
+    def setup_class(cls):
+        cls.value = 2
+
+    @classmethod
+    def teardown_class(cls):
+        cls.value = 0
+
+    def setup_method(self, method):
+        self.total = 0
+
+    def teardown_method(self, method):
+        self.total = None
+
+    @pytest.fixture
+    def operand(self):
+        return 3
+
+    def test_add(self, operand):
+        assert operand + 1 == 4
+
+    def test_subtract(self):
+        assert 3 - 1 == 2
+
+    def helper_method(self):
+        return 1
+
+    class TestNested:
+        def setup_method(self):
+            pass
+
+        def test_inner(self):
+            assert self is not None
+
+        class TestDeeper:
+            def test_deepest(self):
+                assert True
+
+
+class Helper:
+    def test_looks_like_a_test(self):
+        assert False
+
+    class TestInsideHelper:
+        def test_not_indexed(self):
+            assert True
+
+
+class TestAfterHelper:
+    def test_after(self):
+        assert 1
