@@ -299,8 +299,9 @@ It is a `warn` signal and never blocks.
   comment can open a literal, and an unclosed quote ends the scan of its line.
 - **Common numbers match.** A status code such as `404` has 3 significant digits, so it can match; a number such as
   `200` or `1000` does not (trailing zeros of a whole number do not count).
-- **The detail quotes up to 60 characters of the literal.** A longer literal is cut with `...`, and every non-ASCII
-  character, quote and backslash is written as an escape.
+- **The detail names the literal's kind and length, never its text.** A matched value can be a secret
+  (`if (key === "<token>")`), and the report leaves the job, so a reviewer finds the value at the source line the
+  finding names (`a 12-character string literal`, with the source `path:line` and the test file's path).
 - **Go and other languages** give nothing on either side.
 - **20 per file.** At most 20 signals are given per source file, on the lowest lines.
 - **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8). A diff that reaches `check()`

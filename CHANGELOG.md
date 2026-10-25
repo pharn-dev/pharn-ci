@@ -30,7 +30,8 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   `TEST_INTEGRITY_TEXT_TRUNCATED`.
 - Test-integrity signal TI15 (the test may be special-cased). It warns, in modes `block` and `warn` alike, when a
   condition added to a JavaScript, TypeScript or Python source file (`===`, `!==`, `==`, `!=`, a `case` label or a Python
-  `in (...)` group) compares with a string or number literal that a test file in the same change also adds. Adds the
+  `in (...)` group) compares with a string or number literal that a test file in the same change also adds. The finding
+  names the source line, the literal's kind and length and the test file, never the literal's text. Adds the
   `TEST_INTEGRITY_TI15` message code.
 - Test-integrity signal TI16 (lint or type suppression in tests). It gives an `info` finding, which never blocks and
   leaves the verdict at `pass`, when a JS/TS or Python test file adds a comment that switches off a linter or type

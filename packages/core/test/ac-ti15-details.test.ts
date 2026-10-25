@@ -3,6 +3,9 @@ import { runDiff, signalsOf } from "./ac-e1-fix-shared.js";
 
 // check() is loaded inside the test body (through runDiff): the AC tests are written before TI15 exists, so nothing
 // the build adds may run while the file loads.
+//
+// The detail names the literal's kind and length, never its text: a matched value can be a secret, and the report
+// leaves the job (product rule: nothing leaves it but capped and redacted messages, never file contents or diffs).
 
 /** The signal id, and every literal below, built from parts so this file adds none of them as written. */
 const ID = ["TI", "15"].join("");
@@ -18,57 +21,20 @@ function addLines(path: string, at: number, lines: string[]): string {
 const pair = (test: string, source: string, written: string) =>
   addLines(test, 8, [`  expect(f(${written})).toBe(1);`]) + addLines(source, 12, [`  if (s === ${written}) return 1;`]);
 
-/** The escape the criterion names: U+0020–U+007E as itself except `\` and `"`, anything else as `\uXXXX`. */
-function escapePieces(text: string): string[] {
-  const pieces: string[] = [];
-  for (let i = 0; i < text.length; i++) {
-    const unit = text.charCodeAt(i);
-    const char = text[i] as string;
-    if (char === "\\") pieces.push("\\\\");
-    else if (char === '"') pieces.push('\\"');
-    else if (unit >= 0x20 && unit <= 0x7e) pieces.push(char);
-    else pieces.push(`\\u${unit.toString(16).padStart(4, "0")}`);
-  }
-  return pieces;
-}
-
-/** The bodies of the double-quoted segments of a detail, reading `\` as escaping the next character. */
-function quotedSegments(detail: string): string[] {
+/** Every substring of `text` of `min` or more characters. */
+function substrings(text: string, min: number): string[] {
   const out: string[] = [];
-  let i = 0;
-  while (i < detail.length) {
-    if (detail[i] !== '"') {
-      i++;
-      continue;
-    }
-    let body = "";
-    i++;
-    while (i < detail.length && detail[i] !== '"') {
-      if (detail[i] === "\\" && i + 1 < detail.length) {
-        body += detail.slice(i, i + 2);
-        i += 2;
-      } else {
-        body += detail[i];
-        i++;
-      }
-    }
-    out.push(body);
-    i++;
-  }
+  for (let start = 0; start + min <= text.length; start++) out.push(text.slice(start, start + min));
   return out;
 }
 
-/** Printable ASCII, plus the one-character ellipsis a cut may end with: no raw character of a literal survives. */
-const ELLIPSIS = String.fromCharCode(0x2026);
+const PRINTABLE = /^[\x20-\x7e]*$/;
 const E_ACUTE = String.fromCharCode(0xe9);
 const U_UMLAUT = String.fromCharCode(0xfc);
-const PRINTABLE = new RegExp(`^[\\x20-\\x7e${ELLIPSIS}]*$`);
 const UNICODE = j("caf", E_ACUTE, "-", U_UMLAUT);
-/** How the detail must write UNICODE: each non-ASCII code unit as a backslash, `u` and four hex digits. */
-const UNICODE_ESCAPED = ["caf", "u00e9-", "u00fc"].join("\\");
 /** Written in the diffed file as `'say "hi" \\ now'`: a double quote and a (written-escaped) backslash. */
 const QUOTED = String.raw`say "hi" \\ now`;
-/** 100 code units, a non-ASCII one every fourth, so a cut near 60 lands among escapes. */
+/** 100 code units, a non-ASCII one every fourth. */
 const LONG = Array.from({ length: 100 }, (_, i) => (i % 4 === 3 ? E_ACUTE : String.fromCharCode(97 + (i % 26)))).join(
   "",
 );
@@ -76,52 +42,34 @@ const TWIN = j("twin", "-value");
 const FAR = j("far", "-away-value");
 const LONG_TEST = `tests/${"deep/".repeat(56)}long.test.ts`;
 
-describe("TI15: the detail escapes, cuts and names, and the per-file cap", () => {
-  it("AC-9: details escape non-ASCII, quote and backslash, cut a long literal to 60 with an ellipsis on an escape boundary, name the first test file or fall back past 300 characters, and 25 matches give 20 signals on the lowest lines", async () => {
+describe("TI15: the detail names kind, length and paths, and the per-file cap", () => {
+  it("AC-9: details carry no literal text, only its kind and length in printable ASCII, name the first test file or fall back past 300 characters, and 25 matches give 20 signals on the lowest lines", async () => {
     const details: string[] = [];
 
-    // Non-ASCII characters are written as \uXXXX.
-    const unicode = signalsOf(await runDiff(pair("src/cafe.test.ts", "src/cafe.ts", `"${UNICODE}"`)), ID);
-    expect(unicode).toHaveLength(1);
-    const unicodeDetail = unicode[0]?.detail ?? "";
-    details.push(unicodeDetail);
-    expect(UNICODE_ESCAPED).toBe(escapePieces(UNICODE).join(""));
-    expect(UNICODE_ESCAPED.length).toBe(3 + 6 + 1 + 6);
-    expect(unicodeDetail.toLowerCase()).toContain(UNICODE_ESCAPED);
-
-    // A double quote and a backslash are written as \" and \\.
-    const quoted = signalsOf(await runDiff(pair("src/say.test.ts", "src/say.ts", `'${QUOTED}'`)), ID);
-    expect(quoted).toHaveLength(1);
-    const quotedDetail = quoted[0]?.detail ?? "";
-    details.push(quotedDetail);
-    expect(quotedDetail).toContain(escapePieces(QUOTED).join(""));
-    expect(quotedDetail).toContain(String.raw`say \"hi\" \\\\ now`);
-
-    // The 100-character literal is cut to at most 60 characters, ending in an ellipsis, never inside an escape.
-    expect(LONG.length).toBe(100);
-    const long = signalsOf(await runDiff(pair("src/long.test.ts", "src/long.ts", `"${LONG}"`)), ID);
-    expect(long).toHaveLength(1);
-    const longDetail = long[0]?.detail ?? "";
-    details.push(longDetail);
-    const pieces = escapePieces(LONG);
-    const full = pieces.join("");
-    expect(longDetail).not.toContain(full);
-    const boundaries = new Set<number>([0]);
-    let length = 0;
-    for (const piece of pieces) {
-      length += piece.length;
-      boundaries.add(length);
+    // Each literal is described by kind and length; no 4-character piece of it reaches the detail.
+    for (const [name, literal, written] of [
+      ["non-ASCII", UNICODE, `"${UNICODE}"`],
+      ["quote and backslash", QUOTED, `'${QUOTED}'`],
+      ["100 characters", LONG, `"${LONG}"`],
+    ] as const) {
+      const signals = signalsOf(await runDiff(pair("src/lit.test.ts", "src/lit.ts", written)), ID);
+      expect(signals, name).toHaveLength(1);
+      const detail = signals[0]?.detail ?? "";
+      details.push(detail);
+      expect(detail, name).toContain(`a ${literal.length}-character string literal`);
+      expect(detail, name).toContain('"src/lit.ts:12"');
+      expect(detail, name).toContain('"src/lit.test.ts"');
+      for (const piece of substrings(literal, 4)) expect(detail, `${name}: ${piece}`).not.toContain(piece);
     }
-    const cut = quotedSegments(longDetail)
-      .map((body) => {
-        const ellipsis = body.endsWith("...") ? 3 : body.endsWith(ELLIPSIS) ? 1 : 0;
-        return { body, kept: body.slice(0, body.length - ellipsis), ellipsis };
-      })
-      .filter((s) => s.ellipsis > 0 && s.kept.length > 0 && full.startsWith(s.kept));
-    expect(cut, longDetail).toHaveLength(1);
-    const [segment] = cut;
-    expect(segment?.body.length, longDetail).toBeLessThanOrEqual(60);
-    expect(boundaries.has(segment?.kept.length ?? -1), `cut splits an escape: ${longDetail}`).toBe(true);
+
+    // A number is described the same way.
+    const number = j("12", "34");
+    const numbers = signalsOf(await runDiff(pair("src/num.test.ts", "src/num.ts", number)), ID);
+    expect(numbers).toHaveLength(1);
+    const numberDetail = numbers[0]?.detail ?? "";
+    details.push(numberDetail);
+    expect(numberDetail).toContain("a 4-character number literal");
+    expect(numberDetail).not.toContain(number);
 
     // A literal two test files add names the first of them in code-unit order.
     const twin =
@@ -134,6 +82,7 @@ describe("TI15: the detail escapes, cuts and names, and the per-file cap", () =>
     details.push(twinDetail);
     expect(twinDetail).toContain("src/a.test.ts");
     expect(twinDetail).not.toContain("src/b.test.ts");
+    expect(twinDetail).not.toContain(TWIN);
 
     // A test path that would push the detail past 300 characters is replaced by "a test file in this change".
     expect(LONG_TEST.length).toBeGreaterThan(280);
@@ -143,7 +92,8 @@ describe("TI15: the detail escapes, cuts and names, and the per-file cap", () =>
     details.push(farDetail);
     expect(farDetail).toContain("a test file in this change");
     expect(farDetail).not.toContain(LONG_TEST);
-    expect(farDetail).toContain(FAR);
+    expect(farDetail).toContain(`a ${FAR.length}-character string literal`);
+    expect(farDetail).not.toContain(FAR);
 
     // 25 matching condition literals in one source file give exactly 20 signals, on its lowest lines.
     const values = Array.from({ length: 25 }, (_, i) => j("lit-value-", String(i + 1).padStart(2, "0")));

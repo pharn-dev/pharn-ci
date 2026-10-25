@@ -1,7 +1,7 @@
 import type { DiffFile } from "../diff/unified.js";
 import type { TestIntegritySignal } from "../report.js";
 import { isTestFile } from "../testFiles.js";
-import { escapeDetailText, quoteLiteral } from "./detailText.js";
+import { escapeDetailText } from "./detailText.js";
 import { coverageSourceLanguage } from "./signalFiles.js";
 import { testLanguage } from "./testLines.js";
 
@@ -246,12 +246,21 @@ function testLiterals(diff: readonly DiffFile[]): Map<string, string[]> {
   return new Map([...found].map(([key, paths]) => [key, [...paths].sort(byCodeUnit)]));
 }
 
-/** The sentence of a signal; the test path is replaced by a general phrase when the sentence would pass 300 characters. */
-function detailOf(literal: string, testPath: string): string {
-  const quoted = quoteLiteral(literal);
-  const full = `This condition compares with "${quoted}", a value the test file "${escapeDetailText(testPath)}" also adds, so the code may special-case the test's input.`;
+/**
+ * The sentence of a signal. It names the source location, the literal's kind and length (in UTF-16 code units, as
+ * written) and the test path, and never any text of the literal: a matched value can be a secret, and the report
+ * leaves the job. When the sentence would pass 300 characters the test path gives way to a general phrase, then the
+ * source location too.
+ */
+function detailOf(literal: Literal, sourcePath: string, line: number, testPath: string): string {
+  const what = `a ${literal.value.length}-character ${literal.kind} literal`;
+  const tail = "so the code may special-case the test's input.";
+  const at = `The condition at "${escapeDetailText(`${sourcePath}:${line}`)}" compares with ${what}`;
+  const full = `${at} that the test file "${escapeDetailText(testPath)}" also adds, ${tail}`;
   if (full.length <= MAX_DETAIL) return full;
-  return `This condition compares with "${quoted}", a value a test file in this change also adds, so the code may special-case the test's input.`;
+  const noTest = `${at} that a test file in this change also adds, ${tail}`;
+  if (noTest.length <= MAX_DETAIL) return noTest;
+  return `This condition compares with ${what} that a test file in this change also adds, ${tail}`;
 }
 
 /**
@@ -263,7 +272,8 @@ function detailOf(literal: string, testPath: string): string {
  * literal is a condition literal when it is next to an equality operator, is the label of a `case`, or (in Python)
  * lies in the bracket group after `in`. A condition literal that also appears on a removed line of the same file is not
  * new. Each new condition literal whose kind and value a test adds is one signal at the source path and line, whose
- * detail quotes the literal (cut at 60 characters) and names the first test path in code-unit order. At most 20 per
+ * detail names that location, the literal's kind and length (never its text) and the first test path in code-unit
+ * order. At most 20 per
  * source file, on the lowest lines. Go and other languages give nothing, on either side.
  */
 export function detectTI15(diff: readonly DiffFile[]): TestIntegritySignal[] {
@@ -293,7 +303,7 @@ export function detectTI15(diff: readonly DiffFile[]): TestIntegritySignal[] {
           if (removed.has(key)) continue;
           const testPaths = tests.get(key);
           if (testPaths === undefined) continue;
-          found.push({ line: entry.line, detail: detailOf(literal.value, testPaths[0] as string) });
+          found.push({ line: entry.line, detail: detailOf(literal, file.path, entry.line, testPaths[0] as string) });
         }
       }
     }

@@ -125,19 +125,26 @@ const CASES: Case[] = [
 ];
 
 describe("TI15: a new source condition compares against a literal the test adds", () => {
-  it("AC-7: each matching condition literal gives one warn signal at the source path:line whose detail names the literal and the test file", async () => {
+  it("AC-7: each matching condition literal gives one warn signal at the source path:line whose detail names the location, the literal's kind and length and the test file, never the literal", async () => {
     for (const c of CASES) {
       const signals = signalsOf(await runDiff(c.diff), ID);
       expect(
         signals.map((s) => `${s.severity} ${s.path}:${s.line}`),
         c.label,
       ).toEqual(c.expected.map((e) => `warn ${e.path}:${e.line}`));
-      for (const e of c.expected) {
-        const matching = signals.filter((s) => s.detail.includes(e.literal));
-        expect(matching, `${c.label}: ${e.literal}`).toHaveLength(1);
-        const detail = matching[0]?.detail ?? "";
-        expect(detail, c.label).toContain(e.test);
-        expect(detail.length, c.label).toBeLessThanOrEqual(300);
+      // The details of one line differ only in the literal's length, so both sides are compared as sorted lists.
+      const expectedLine = (e: Expected) =>
+        `${e.path}:${e.line} ${e.literal.length}-character ${/^[0-9]/.test(e.literal) ? "number" : "string"} ${e.test}`;
+      const seen = signals.map((s) => {
+        const what = /a (\d+)-character (string|number) literal/.exec(s.detail);
+        const test = /the test file "([^"]+)"/.exec(s.detail);
+        return `${s.path}:${s.line} ${what?.[1]}-character ${what?.[2]} ${test?.[1]}`;
+      });
+      expect(seen.sort(), c.label).toEqual(c.expected.map(expectedLine).sort());
+      for (const s of signals) {
+        expect(s.detail, c.label).toContain(`"${s.path}:${s.line}"`);
+        expect(s.detail.length, c.label).toBeLessThanOrEqual(300);
+        for (const e of c.expected) expect(s.detail, `${c.label}: no literal text`).not.toContain(e.literal);
       }
     }
   });

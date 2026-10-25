@@ -163,9 +163,9 @@ describe("TI08, TI15 and TI16: schemas and documents", () => {
     expect(ti08, "the rename that only removes lines").toMatch(/renam/);
     expect(ti08, "the rename that only removes lines").toMatch(/remov/);
     const ti15 = normalize(sectionOf(limits, `### What ${IDS[1]} misses`)).toLowerCase();
-    expect(ti15, "the detail quotes up to 60 characters").toMatch(/\b60\b/);
-    expect(ti15, "the detail quotes up to 60 characters").toContain("detail");
-    expect(ti15, "the detail quotes up to 60 characters").toContain("literal");
+    expect(ti15, "the detail names the literal's kind and length").toMatch(/detail names [^.]*kind[^.]*length/);
+    expect(ti15, "the detail never carries the literal's text").toMatch(/never[^.]*text/);
+    expect(ti15, "no detail quotes the literal").not.toMatch(/quotes up to/);
     sectionOf(limits, `### What ${IDS[2]} misses`);
 
     const item = listItems(limits).find((line) => line.startsWith("- `hard-coded-answer` —"));
