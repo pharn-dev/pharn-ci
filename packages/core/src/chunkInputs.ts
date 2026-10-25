@@ -83,7 +83,8 @@ export interface ReadDiffOptions {
 /**
  * Read a unified diff that arrives as a stream of text chunks, line by line. A rejection of the stream rejects the
  * promise, so a failed diff yields nothing. The text of added and removed lines is kept for test files, the config in
- * use and workflow files only (bounded per file, see `MAX_KEPT_LINES`), as `check()` keeps it when it parses a diff
+ * use, workflow files, every `package.json` and the JavaScript, TypeScript and Python source files only (bounded per
+ * file, see `MAX_KEPT_LINES`), as `check()` keeps it when it parses a diff
  * text, so both paths give the same files.
  */
 export async function readDiffChunks(

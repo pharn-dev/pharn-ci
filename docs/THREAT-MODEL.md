@@ -134,6 +134,18 @@ These are accepted, not hidden:
     **Residual:** a PR can write a skip or a focused-run marker in a form the scans do not read, or keep a matching
     line in the removed side of the file to excuse an added one; the findings are recorded prompts for a reviewer, and
     `docs/LIMITS.md` lists what TI03 and TI04 miss.
+16. **TI10 and TI13 make the diff reader keep the text of source files and `package.json`.** The diff parser now
+    also keeps the text of added and removed lines (same caps as in 13: 5000 lines per file, 400 characters per line)
+    for every `package.json` and every JavaScript, TypeScript and Python source file, so a PR that changes many source
+    files makes the reader hold more kept text in memory than before; there is still no cap on the input size
+    (`docs/LIMITS.md` section 8). TI10 and TI13 match each kept line with a hand-written left-to-right scan or an anchored
+    pattern with no nested quantifier, so the time is linear in the line, and at most 20 signals are given per file.
+    Nothing from that text reaches the report: every detail is one fixed sentence per kind or family, with no script
+    key, command, flag or comment text, and the message holds paths only. A PR cannot use these findings to lower its
+    own gate: they only add findings, and the mode rules of residual 12 still apply. **Residual:** a PR can weaken a
+    test script or exclude code from coverage in a form the scans do not read, or keep a matching line on the removed
+    side to excuse an added one; the findings are recorded prompts for a reviewer, and `docs/LIMITS.md` lists what TI10
+    and TI13 miss.
 
 ## 4. Keeping this document honest
 

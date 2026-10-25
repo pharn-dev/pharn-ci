@@ -44,9 +44,20 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   in `testIntegrity.signals` and in one `TEST_INTEGRITY_TI04` message, `block` in mode `block`, `warn` in the default
   mode. `solver.fit(x)`, `def fit(self)`, comments, strings and files that are not tests never fire; a marker that was
   already there (an edit, a move) does not fire either.
+- Signal **TI10**, a test script weakened, from the diff of a modified or renamed `package.json` (root or nested),
+  reported in `testIntegrity.signals` and in one `TEST_INTEGRITY_TI10` message, `block` in mode `block`, `warn` in the
+  default mode. In a script whose key starts with `test`, an added `|| true`, an `echo` or `exit 0` as a command,
+  `--passWithNoTests`, `--testPathPattern` and `-t` or `--testNamePattern` each fire once per line, unless a removed
+  line of the same key already had that form; a removed `pretest` or `posttest` script fires too. `--passWithNoTests`
+  stays quiet when no tracked file is a test file. Other scripts, an added or deleted `package.json` and a pure edit
+  that keeps the weakening never fire.
+- Signal **TI13**, a coverage-ignore comment added to source, reported in `testIntegrity.signals` and in one
+  `TEST_INTEGRITY_TI13` message, `block` in mode `block`, `warn` in the default mode. An added Istanbul, V8 or C8
+  ignore hint in a comment of a JS/TS file, or a `# pragma: no cover` in a Python file, that is not a test file fires;
+  a marker that was already there (an edit, a move) never does.
 - The unified-diff parser keeps the text of added and removed lines per hunk for test files, the pharn-ci config in
-  use and workflow files (at most 5000 lines per file, 400 characters per line; `textTruncated` marks a cut file),
-  for the signals that read line text. `readDiffChunks` takes an optional `{ configPath, repoRoot }` so a custom
+  use, workflow files, every `package.json` and the JavaScript, TypeScript and Python source files (at most 5000 lines
+  per file, 400 characters per line; `textTruncated` marks a cut file), for the signals that read line text. `readDiffChunks` takes an optional `{ configPath, repoRoot }` so a custom
   config path works through the stream as it does through `check()`.
 - README: an [Agent skills](README.md#agent-skills) section on the `pharn-ci` plugin in
   [pharn-dev/skills](https://github.com/pharn-dev/skills) (install, explain a verdict, cover

@@ -152,6 +152,45 @@ TI04 reads the added and removed lines of JS/TS test files the same way.
 - **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8); at most 20 signals are
   given per file.
 
+### What TI10 misses
+
+TI10 reads the added and removed lines of a modified or renamed `package.json`, with no context lines and no JSON
+parser.
+
+- **No context lines.** The diff is read with `--unified=0`, so any line of the form `"test…": "…"` is read as a script,
+  even a `test` key outside `scripts` (a config block, a nested object) or one the line shows nothing about.
+- **A script split over lines.** A script line is one `"key": "value"` pair. A value continued on the next line, a
+  multi-line value, a one-line object and a key written over several lines are not read.
+- **An added or deleted `package.json` gives nothing.** A new file has no earlier script to compare with, and a deleted
+  one has no added line; only a modified or renamed `package.json` is read.
+- **Other weakening forms are not named.** `|| true`, `echo` or `exit 0` as a command, `--passWithNoTests`,
+  `--testPathPattern`, `-t` and `--testNamePattern` are caught; `--bail 0`, `--silent`, `--if-present`, a wrapper script
+  that swallows the exit code, `--test-name-pattern` of `node --test`, a changed `test` command in `pyproject.toml`, a
+  Makefile or tox are not. `exit 0` and `echo` count only as a command at the start, after `||` or after `;`.
+- **A weakening that was already there is excused by key.** A removed line of the same key with the same form accounts
+  for the added one, so moving `|| true` to another command of the same script is missed.
+- **`--passWithNoTests` is excused only when no tracked file is a test file.** An empty list of tracked files (git
+  failed) does not excuse it, and a diff that deletes a test file does not either.
+- **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8); at most 20 signals are
+  given per file. A diff that reaches `check()` already parsed without kept text yields no TI10.
+
+### What TI13 misses
+
+TI13 reads the added and removed lines of JS/TS and Python source files that are not test files.
+
+- **Other tools' markers.** Only the Istanbul, V8 and C8 ignore hints in a comment and the `# pragma: no cover` form are
+  read. `node:coverage` hints, `# pragma: no branch`, a custom `exclude_lines` pattern, `.coveragerc` and `.nycrc`
+  settings and an exclusion in a config file are not.
+- **Markers in test files.** A file that is a test file by name (section 1) gives nothing, and so does any file that is
+  not JS/TS or Python. `*.test.mts` and `*.test.cts` files are not test files by the existing detection, so they count as
+  source and fire.
+- **A marker inside a string fires,** because the scan sees a comment start in the text of the line, not the syntax. A
+  marker on a later line of a block comment (without its own comment start) is missed.
+- **Moves and one-to-one matching.** A removed marker of the same text accounts for one added marker of the same file; a
+  marker moved to another file reads as added. The text is compared after lower-casing and collapsing white space.
+- **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8); at most 20 signals are
+  given per file. A diff that reaches `check()` already parsed without kept text yields no TI13.
+
 ## 2. When an input is missing
 
 - **A missing input fails only with a threshold.** `COVERAGE_FILE_MISSING`, `COVERAGE_FILE_EMPTY`,
@@ -374,7 +413,7 @@ set by pharn-ci.
 
 - **The diff.** From local git (the CLI, and the Action when the checkout has the base) it is read
   line by line as git writes it, with no fixed limit. Memory holds the changed paths and their added
-  line numbers, plus the text of added and removed lines for test files, the pharn-ci config in use and workflow files only, capped at 5000 lines
+  line numbers, plus the text of added and removed lines for test files, the pharn-ci config in use, workflow files, every `package.json` and the JavaScript, TypeScript and Python source files only, capped at 5000 lines
   per file and 400 characters per line (`textTruncated` marks a file cut at the cap). The 120 s git
   timeout still applies. From the GitHub compare API (the
   Action's fallback, and PR-number mode) it is limited by GitHub's own compare limit; past it the

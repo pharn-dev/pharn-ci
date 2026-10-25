@@ -26067,9 +26067,19 @@ var SIGNAL_MESSAGES = [
     text: (_top, paths) => `This change adds \`.only\`, \`fit\` or \`fdescribe\`, which runs only the marked tests: ${paths}. Remove the markers before merging.`
   },
   {
+    id: "TI10",
+    code: "TEST_INTEGRITY_TI10",
+    text: (_top, paths) => `This change weakens a test script in package.json, so the test run can pass without the tests passing: ${paths}. Check that the change was meant.`
+  },
+  {
     id: "TI11",
     code: "TEST_INTEGRITY_TI11",
     text: (_top, paths) => `This change edits a workflow so that CI may run fewer tests or ignore their failures: ${paths}. Check that the removed step or trigger, the reduced matrix or the added condition was meant.`
+  },
+  {
+    id: "TI13",
+    code: "TEST_INTEGRITY_TI13",
+    text: (_top, paths) => `This change adds comments that leave code out of coverage: ${paths}. Check that each was meant.`
   },
   {
     id: "TI14",
@@ -26444,9 +26454,21 @@ function isWorkflowFile(path) {
   const name = path.slice(WORKFLOWS_DIR2.length);
   return name !== "" && !name.includes("/") && (name.endsWith(".yml") || name.endsWith(".yaml"));
 }
+var JS_TS_EXTENSIONS = /* @__PURE__ */ new Set(["js", "jsx", "ts", "tsx", "mjs", "cjs", "mts", "cts"]);
+function isPackageJsonFile(path) {
+  return path.slice(path.lastIndexOf("/") + 1) === "package.json";
+}
+function coverageSourceLanguage(path) {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  const dot = basename.lastIndexOf(".");
+  if (dot <= 0) return null;
+  const extension = basename.slice(dot + 1);
+  if (extension === "py") return "python";
+  return JS_TS_EXTENSIONS.has(extension) ? "jsts" : null;
+}
 function keepSignalFileText(configPath, repoRoot) {
   const config = configRepoPath(configPath, repoRoot);
-  return (file) => keepTestFileText(file) || isWorkflowFile(file.path) || isWorkflowFile(file.oldPath) || config !== null && (file.path === config || file.oldPath === config);
+  return (file) => keepTestFileText(file) || isWorkflowFile(file.path) || isWorkflowFile(file.oldPath) || isPackageJsonFile(file.path) || isPackageJsonFile(file.oldPath) || coverageSourceLanguage(file.path) !== null || coverageSourceLanguage(file.oldPath) !== null || config !== null && (file.path === config || file.oldPath === config);
 }
 
 // ../core/src/signals/ti01.ts
@@ -26816,6 +26838,156 @@ function detectTI04(diff, mode) {
   return signals.sort((a, b) => byCodeUnit5(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
+// ../core/src/signals/ti10.ts
+var byCodeUnit6 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var MAX_PER_FILE3 = 20;
+var DETAILS2 = {
+  "or-true": "A test script now ignores the exit status of a command, so it passes even when the tests fail.",
+  echo: "A test script now prints a message in place of running the tests, or after a failing run, so it can pass without the tests passing.",
+  "exit-0": "A test script now forces a successful exit status, so it passes whatever the tests do.",
+  "pass-with-no-tests": "A test script now lets a run that finds no tests pass.",
+  "path-filter": "A test script now limits the run to the test files matching a path pattern, so the other test files do not run.",
+  "name-filter": "A test script now limits the run to the tests whose names match a pattern, so the other tests do not run.",
+  "hook-removed": "A script that ran before or after the tests was removed, so its checks no longer run with them."
+};
+var isBlank = (c) => c === " " || c === "	";
+var isWordChar = (c) => c !== void 0 && /[A-Za-z0-9_]/.test(c);
+function readString(text, start) {
+  let value = "";
+  let i = start + 1;
+  while (i < text.length) {
+    const c = text.charAt(i);
+    if (c === '"') return { value, end: i + 1 };
+    if (c === "\\") {
+      const next = text.charAt(i + 1);
+      if (next === "") return null;
+      value += next === '"' || next === "\\" || next === "/" ? next : c + next;
+      i += 2;
+    } else {
+      value += c;
+      i += 1;
+    }
+  }
+  return null;
+}
+function parseScriptLine(text) {
+  let i = 0;
+  const skip = () => {
+    while (isBlank(text[i])) i++;
+  };
+  skip();
+  if (text[i] !== '"') return null;
+  const key = readString(text, i);
+  if (key === null) return null;
+  i = key.end;
+  skip();
+  if (text[i] !== ":") return null;
+  i++;
+  skip();
+  if (text[i] !== '"') return null;
+  const value = readString(text, i);
+  if (value === null) return null;
+  i = value.end;
+  skip();
+  if (text[i] === ",") i++;
+  skip();
+  return i === text.length ? { key: key.value, value: value.value } : null;
+}
+function scanKinds(value) {
+  const found = /* @__PURE__ */ new Set();
+  let operator = "";
+  let words = [];
+  let word = "";
+  const endWord = () => {
+    if (word !== "") words.push(word);
+    word = "";
+  };
+  const endCommand = () => {
+    endWord();
+    const atCommandPosition = operator === "" || operator === "||" || operator === ";";
+    if (atCommandPosition && words[0] === "echo") found.add("echo");
+    if (atCommandPosition && words[0] === "exit" && words[1] === "0") found.add("exit-0");
+    for (const token of words) {
+      if (token === "--passWithNoTests" || token.startsWith("--passWithNoTests=")) found.add("pass-with-no-tests");
+      if (token.startsWith("--testPathPattern")) found.add("path-filter");
+      if (token === "-t" || token.startsWith("--testNamePattern")) found.add("name-filter");
+    }
+    words = [];
+  };
+  for (let i = 0; i < value.length; i++) {
+    const c = value.charAt(i);
+    if (c === ";" || c === "|" || c === "&") {
+      let op = c;
+      if ((c === "|" || c === "&") && value.charAt(i + 1) === c) {
+        op = c + c;
+        i++;
+      }
+      endCommand();
+      if (op === "||") {
+        let j = i + 1;
+        while (isBlank(value[j])) j++;
+        if (value.startsWith("true", j) && !isWordChar(value[j + 4])) found.add("or-true");
+      }
+      operator = op;
+    } else if (isBlank(c)) {
+      endWord();
+    } else {
+      word += c;
+    }
+  }
+  endCommand();
+  return found;
+}
+function detectTI10(diff, options) {
+  const noTestFiles = options.repoFiles.length > 0 && !options.repoFiles.some((path) => isTestFile(path)) && deletedTestFiles(diff).length === 0;
+  const signals = [];
+  for (const file of diff) {
+    if (file.hunks === void 0 || file.binary === true || !isPackageJsonFile(file.path)) continue;
+    if (file.status !== "modified" && file.status !== "renamed") continue;
+    const removedKinds = /* @__PURE__ */ new Map();
+    const removedHooks = [];
+    const addedKeys = /* @__PURE__ */ new Set();
+    const found = [];
+    for (const hunk of file.hunks) {
+      for (const entry of hunk.removed) {
+        const script = parseScriptLine(entry.text);
+        if (script === null) continue;
+        if (script.key.startsWith("test")) {
+          const kinds = removedKinds.get(script.key) ?? /* @__PURE__ */ new Set();
+          for (const kind of scanKinds(script.value)) kinds.add(kind);
+          removedKinds.set(script.key, kinds);
+        } else if (script.key === "pretest" || script.key === "posttest") {
+          removedHooks.push({ key: script.key, line: entry.line });
+        }
+      }
+    }
+    for (const hunk of file.hunks) {
+      for (const entry of hunk.added) {
+        const script = parseScriptLine(entry.text);
+        if (script === null) continue;
+        addedKeys.add(script.key);
+        if (!script.key.startsWith("test")) continue;
+        const before = removedKinds.get(script.key);
+        for (const kind of scanKinds(script.value)) {
+          if (before?.has(kind)) continue;
+          if (kind === "pass-with-no-tests" && noTestFiles) continue;
+          found.push({ line: entry.line, kind });
+        }
+      }
+    }
+    for (const hook2 of removedHooks) {
+      if (!addedKeys.has(hook2.key)) found.push({ line: hook2.line, kind: "hook-removed" });
+    }
+    found.sort((a, b) => a.line - b.line || byCodeUnit6(DETAILS2[a.kind], DETAILS2[b.kind]));
+    for (const { line, kind } of found.slice(0, MAX_PER_FILE3)) {
+      signals.push({ id: "TI10", severity: options.mode, path: file.path, line, detail: DETAILS2[kind] });
+    }
+  }
+  return signals.sort(
+    (a, b) => byCodeUnit6(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit6(a.detail, b.detail)
+  );
+}
+
 // ../core/src/signals/yamlLines.ts
 var MAX_LINE = 400;
 function stripComment2(line) {
@@ -26886,7 +27058,7 @@ function flowItems(value) {
 }
 
 // ../core/src/signals/ti11.ts
-var byCodeUnit6 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit7 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var TEST_COMMAND = /^(?:(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?test(?::[\w:-]+)?(?:\s|$)|(?:npx\s+|pnpm\s+exec\s+|yarn\s+|bunx\s+)?(?:vitest|jest|mocha)(?:\s|$)|(?:python3?\s+-m\s+)?pytest(?:\s|$)|python3?\s+-m\s+unittest(?:\s|$)|go\s+test(?:\s|$)|(?:npx\s+)?playwright\s+test(?:\s|$))/;
 var NOT_A_MATRIX_KEY = /* @__PURE__ */ new Set([
   "on",
@@ -27000,12 +27172,69 @@ function detectTI11(diff, mode) {
     if (rushed !== void 0) emit("warn", rushed.line, SENTENCES.timeout);
   }
   return signals.sort(
-    (a, b) => byCodeUnit6(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit6(a.detail, b.detail)
+    (a, b) => byCodeUnit7(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit7(a.detail, b.detail)
+  );
+}
+
+// ../core/src/signals/ti13.ts
+var byCodeUnit8 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var MAX_PER_FILE4 = 20;
+var DETAILS3 = {
+  istanbul: "An Istanbul coverage hint was added, so the code it marks leaves the coverage this check grades.",
+  v8: "A V8 coverage hint was added, so the code it marks leaves the coverage this check grades.",
+  c8: "A C8 coverage hint was added, so the code it marks leaves the coverage this check grades.",
+  pragma: "A coverage.py exclusion pragma was added, so the Python code it marks leaves the coverage this check grades."
+};
+var BLOCK_OR_LINE_START = String.raw`(?:\/\*|\/\/)`;
+var SPACES = String.raw`[ \t]*`;
+var WORD_END = "(?![A-Za-z0-9_])";
+var JS_MARKER = new RegExp(`${BLOCK_OR_LINE_START}${SPACES}(istanbul|v8|c8)[ \\t]+ignore${WORD_END}`, "i");
+var PY_MARKER = new RegExp(`#${SPACES}pragma:?${SPACES}no[ \\t]+cover${WORD_END}`, "i");
+function markerOf(text, language) {
+  const match = (language === "jsts" ? JS_MARKER : PY_MARKER).exec(text);
+  if (match === null) return null;
+  const marker = match[0].toLowerCase().replace(/[ \t]+/g, " ");
+  const family = language === "python" ? "pragma" : match[1].toLowerCase();
+  return { family, marker };
+}
+function detectTI13(diff, mode) {
+  const signals = [];
+  for (const file of diff) {
+    if (file.hunks === void 0 || file.binary === true || isTestFile(file.path)) continue;
+    const language = coverageSourceLanguage(file.path);
+    if (language === null) continue;
+    const removed = /* @__PURE__ */ new Map();
+    for (const hunk of file.hunks) {
+      for (const entry of hunk.removed) {
+        const found = markerOf(entry.text, language);
+        if (found !== null) removed.set(found.marker, (removed.get(found.marker) ?? 0) + 1);
+      }
+    }
+    const added = [];
+    for (const hunk of file.hunks) {
+      for (const entry of hunk.added) {
+        const found = markerOf(entry.text, language);
+        if (found !== null) added.push({ line: entry.line, ...found });
+      }
+    }
+    added.sort((a, b) => a.line - b.line);
+    const fresh = [];
+    for (const entry of added) {
+      const left = removed.get(entry.marker) ?? 0;
+      if (left > 0) removed.set(entry.marker, left - 1);
+      else fresh.push(entry);
+    }
+    for (const { line, family } of fresh.slice(0, MAX_PER_FILE4)) {
+      signals.push({ id: "TI13", severity: mode, path: file.path, line, detail: DETAILS3[family] });
+    }
+  }
+  return signals.sort(
+    (a, b) => byCodeUnit8(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit8(a.detail, b.detail)
   );
 }
 
 // ../core/src/signals/ti14.ts
-var byCodeUnit7 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit9 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var PLAIN_NUMBER = /^\d{1,3}(?:\.\d{1,4})?$/;
 function normalizedPattern(item) {
   try {
@@ -27122,14 +27351,14 @@ function detectTI14(diff, options) {
       });
     }
   }
-  return signals.sort((a, b) => byCodeUnit7(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit9(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/check.ts
-var byCodeUnit8 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit10 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function sortSignals(signals) {
   return signals.sort(
-    (a, b) => byCodeUnit8(a.id, b.id) || byCodeUnit8(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit8(a.detail, b.detail)
+    (a, b) => byCodeUnit10(a.id, b.id) || byCodeUnit10(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit10(a.detail, b.detail)
   );
 }
 function check(input) {
@@ -27146,7 +27375,9 @@ function check(input) {
     ...detectTI01(parsedDiff, testIntegrity.mode),
     ...detectTI03(parsedDiff, testIntegrity.mode),
     ...detectTI04(parsedDiff, testIntegrity.mode),
+    ...detectTI10(parsedDiff, { repoFiles: input.repoFiles, mode: testIntegrity.mode }),
     ...detectTI11(parsedDiff, testIntegrity.mode),
+    ...detectTI13(parsedDiff, testIntegrity.mode),
     ...detectTI14(parsedDiff, {
       configPath: input.configPath,
       repoRoot: input.repoRoot,
@@ -27586,6 +27817,8 @@ var MESSAGE_HINTS = {
   TEST_INTEGRITY_TI01: "Restore the deleted tests, or say in the PR why they go so a reviewer can confirm it.",
   TEST_INTEGRITY_TI03: "A reviewer must decide whether each skipped test may stay, for example one that fails in CI; the accept label will record that sign-off once it ships.",
   TEST_INTEGRITY_TI04: "Remove the marker so the whole suite runs, or say in the PR why only the marked tests should run.",
+  TEST_INTEGRITY_TI10: "Restore the test script, or say in the PR why it changes so a reviewer can confirm it; the accept label will record a reviewer's sign-off once it ships.",
+  TEST_INTEGRITY_TI13: "Write a test for the code in place of the ignore comment, or say in the PR why it cannot be tested; the accept label will record a reviewer's sign-off once it ships.",
   TEST_INTEGRITY_TI11: "Restore the test step or trigger, or say in the PR why CI stops running these tests so a reviewer can confirm it.",
   TEST_INTEGRITY_TI14: "Restore the threshold or the exclusions, or say in the PR why they change so a reviewer can confirm it."
 };
@@ -27593,7 +27826,9 @@ var SIGNAL_HINTS = {
   TI01: MESSAGE_HINTS.TEST_INTEGRITY_TI01,
   TI03: MESSAGE_HINTS.TEST_INTEGRITY_TI03,
   TI04: MESSAGE_HINTS.TEST_INTEGRITY_TI04,
+  TI10: MESSAGE_HINTS.TEST_INTEGRITY_TI10,
   TI11: MESSAGE_HINTS.TEST_INTEGRITY_TI11,
+  TI13: MESSAGE_HINTS.TEST_INTEGRITY_TI13,
   TI14: MESSAGE_HINTS.TEST_INTEGRITY_TI14
 };
 var MAX_FINDINGS = 20;

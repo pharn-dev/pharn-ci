@@ -1,0 +1,6 @@
+diff --git a/tools/run.py b/tools/run.py
+index 1111111..2222222 100644
+--- a/tools/run.py
++++ b/tools/run.py
+@@ -12,0 +13 @@ def main():
++    x = 1  # pragma: no branch

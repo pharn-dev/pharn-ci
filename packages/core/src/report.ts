@@ -118,7 +118,9 @@ export type MessageCode =
   | "TEST_INTEGRITY_TI01"
   | "TEST_INTEGRITY_TI03"
   | "TEST_INTEGRITY_TI04"
+  | "TEST_INTEGRITY_TI10"
   | "TEST_INTEGRITY_TI11"
+  | "TEST_INTEGRITY_TI13"
   | "TEST_INTEGRITY_TI14";
 
 export interface Message {
@@ -172,7 +174,7 @@ export interface BuildReportInput {
   /**
    * The test-integrity signals the detectors found, each with its effective severity (sorted by the caller). They fill
    * `testIntegrity.signals` and `testIntegrity.verdict`; each signal id also adds one `TEST_INTEGRITY_<id>` message
-   * (TI01, TI03, TI04, TI11, TI14).
+   * (TI01, TI03, TI04, TI10, TI11, TI13, TI14).
    * Absent or empty adds nothing.
    */
   testIntegritySignals?: readonly TestIntegritySignal[];
@@ -205,10 +207,22 @@ const SIGNAL_MESSAGES: ReadonlyArray<{
       `This change adds \`.only\`, \`fit\` or \`fdescribe\`, which runs only the marked tests: ${paths}. Remove the markers before merging.`,
   },
   {
+    id: "TI10",
+    code: "TEST_INTEGRITY_TI10",
+    text: (_top, paths) =>
+      `This change weakens a test script in package.json, so the test run can pass without the tests passing: ${paths}. Check that the change was meant.`,
+  },
+  {
     id: "TI11",
     code: "TEST_INTEGRITY_TI11",
     text: (_top, paths) =>
       `This change edits a workflow so that CI may run fewer tests or ignore their failures: ${paths}. Check that the removed step or trigger, the reduced matrix or the added condition was meant.`,
+  },
+  {
+    id: "TI13",
+    code: "TEST_INTEGRITY_TI13",
+    text: (_top, paths) =>
+      `This change adds comments that leave code out of coverage: ${paths}. Check that each was meant.`,
   },
   {
     id: "TI14",

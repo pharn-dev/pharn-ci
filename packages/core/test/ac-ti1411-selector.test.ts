@@ -40,7 +40,8 @@ describe("keepSignalFileText(): which files keep their line text", () => {
         .map((file) => file.path)
         .sort(byCodeUnit);
 
-    const common = [".github/workflows/ci.yml", ".github/workflows/x.yaml", "src/a.test.ts"];
+    // src/app.ts is a JS/TS source file, whose text is kept since TI10 and TI13.
+    const common = [".github/workflows/ci.yml", ".github/workflows/x.yaml", "src/a.test.ts", "src/app.ts"];
 
     // Default config path: .pharn/ci.yml is selected, config/pharn.yml is not.
     expect(kept(keepSignalFileText())).toEqual([...common, ".pharn/ci.yml"].sort(byCodeUnit));
@@ -61,7 +62,11 @@ describe("keepSignalFileText(): which files keep their line text", () => {
     const config = files.find((file) => file.path === ".pharn/ci.yml");
     expect(config?.hunks?.[0]?.added[0]).toEqual({ line: 3, text: "  threshold: 70" });
     expect(config?.hunks?.[0]?.removed[0]).toEqual({ line: 3, text: "  threshold: 80" });
-    for (const path of ["src/app.ts", ".github/dependabot.yml", "config/pharn.yml"]) {
+    expect(files.find((file) => file.path === "src/app.ts")?.hunks?.[0]?.added[0]).toEqual({
+      line: 1,
+      text: "export const a = 1;",
+    });
+    for (const path of [".github/dependabot.yml", "config/pharn.yml"]) {
       expect(files.find((file) => file.path === path)?.hunks, path).toBeUndefined();
     }
   });
