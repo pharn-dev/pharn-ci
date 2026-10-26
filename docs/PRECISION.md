@@ -313,3 +313,26 @@ TI02, on the reviewed corpus, come with BACKLOG item 18 and `v0.3.0`.
   reflects one stretch of work rather than a year.
 - **The runs are not here yet.** The scripts are, but running them on the 600 PRs, the hand review and
   any false-block rate land with BACKLOG item 18 and v0.3.0.
+
+## 3. Skylos nine: what pharn-ci catches
+
+Skylos publishes a list of nine ways to hide a failing test. The same nine are reproduced as small changes in two
+places: `fixtures/skylos-nine/` for vitest (with `fixtures/skylos-nine-sources/` holding the base and head text of the
+five cases that need it) and `fixtures/skylos-nine-pytest/` for pytest, where the `always-true-matcher` case has a second
+variant, `always-true-matcher-any`. Every cell below is pinned by a test that runs `check()` over the case in mode
+`block`, so the table cannot drift from the signals. A `warn` cell never blocks a merge. `missed` means no signal fires.
+
+| Case | vitest | pytest | Notes |
+| --- | --- | --- | --- |
+| `deleted-test` | TI01 block | TI01 block | The test file is deleted. |
+| `added-skip` | TI03 block | TI03 block | A skip is added to a test that existed. The aliased skip (`@mark.skip` after `from pytest import mark`) is caught too. |
+| `emptied-assertion` | TI05 block | TI05 block | The assertion becomes a bare call, so the test asserts nothing. |
+| `deselect-setting` | TI09 block | TI09 block | The runner's setting is narrowed: `testpaths` for pytest, `test.include` for vitest. TI09 does not read `collect_ignore` in `conftest.py`, `PYTEST_ADDOPTS` or a `-c` flag. |
+| `hard-coded-answer` | missed | missed | TI15 exists and misses it: the change adds no test line to match against and its numbers are one digit. |
+| `always-true-matcher` | missed | TI06 warn | Vitest misses the `expect.extend` matcher (planned TI17). For pytest, TI06 catches the `==` to truthiness change and does not catch the helper's constant `True`; the `mock.ANY` variant is missed. |
+| `replaced-test` | TI02 block | TI02 block | A test is replaced by one with another name and a different body. |
+| `loosened-assertion` | TI06 warn | TI06 warn | The strong matcher becomes a weak one; TI06 warns and never blocks. |
+| `edited-expected-value` | TI07 warn | TI07 warn | The expected value is edited in a change that also edits the source; TI07 warns and never blocks. |
+
+In total: vitest 7 of 9, pytest 8 of 9. What each signal misses is in
+[LIMITS.md](./LIMITS.md#what-test-integrity-does-not-catch).

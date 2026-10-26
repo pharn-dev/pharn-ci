@@ -9,6 +9,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- The Skylos nine reproduced for pytest under `fixtures/skylos-nine-pytest` (eleven cases, the nine plus an aliased
+  skip and a `mock.ANY` variant of the always-true matcher), pinned by tests that run `check()` with the real Python
+  index. The signals catch **8 of 9** for pytest, beside vitest's unchanged 7 of 9. `docs/PRECISION.md` gains a section
+  with the case-by-case table, and `docs/LIMITS.md` gains the TI17 proposal for the always-true matcher (a proposal only,
+  nothing implements it).
 - Python test-integrity parity with JS/TS. **TI03** and the Python test index now resolve pytest marker and unittest
   decorator aliases bound by a test file's own top-level imports (`import pytest as pt`, `from pytest import mark as m`,
   `from unittest import skipIf as si`), so TI02, TI05 and TI06 see through them too; TI03 also reads
