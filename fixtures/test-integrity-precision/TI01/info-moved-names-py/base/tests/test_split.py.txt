@@ -1,0 +1,9 @@
+from pkg.ops import split
+
+
+def test_split_cuts_at_a_comma():
+    assert split("a,b") == ["a", "b"]
+
+
+def test_split_keeps_empty_parts():
+    assert split("a,,b") == ["a", "", "b"]

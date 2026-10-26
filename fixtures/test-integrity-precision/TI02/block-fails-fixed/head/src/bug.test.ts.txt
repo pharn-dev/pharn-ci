@@ -1,0 +1,8 @@
+import { describe, expect, it } from "vitest";
+import { flatten } from "./bug.js";
+
+describe("flatten", () => {
+  it("flattens nested lists completely", () => {
+    expect(flatten([[1], [[2]]])).toEqual([1, 2]);
+  });
+});

@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { load } from "../src/ops.js";
+
+describe("load", () => {
+  it("load reads a stored file", () => {
+    expect(load("a.txt")).toBe("a");
+  });
+
+  it("load fails on a missing file", () => {
+    expect(() => load("none.txt")).toThrow();
+  });
+});

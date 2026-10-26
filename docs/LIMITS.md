@@ -30,6 +30,19 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   line; a deleted JS/TS, Python or Go file cut at that bound with no test-defining line kept still
   counts, so a huge test file is never waved through, while a cut fixture, snapshot or data file
   under a test directory does not. (6) A package that is the repository root never exempts a deletion.
+  (7) A snapshot file (a basename that ends in `.snap`) is never a TI01 candidate, deleted or renamed away, because it
+  holds stored output and no test; the `TEST_FILES_DELETED` message and `deletedTestFiles` still list it by its old
+  path, and TI08 owns snapshot churn. A test file that stores tests in a `.snap` file is not read. (8) A deleted JS/TS or
+  Python test file is `info`, not `block`, when the change keeps the base text of the file, every test name and every
+  group name it held is added, in a test with at least one assertion, in another test file of the change (a test of an
+  added file, or a test of a modified file whose full name is not at base), and every test it held is found again in a
+  distinct one of those tests by its body: a body-token Jaccard of at least 4/5, or a new body that holds at least 4/5
+  of the old body's distinct tokens and every assertion chain it held. A name alone never qualifies, so a file deleted
+  and re-added under the same names with trivial assertions blocks; the moved tests are also judged by TI05, TI06 and
+  TI07 as pairs. A test moved and refactored past those thresholds (a new fixture helper, say) keeps the file a
+  `block`: a known false block, cleared with the accept label. A name added in a file the change does not touch does
+  not count. The rule is off when the sources are missing, the base text was dropped, a compared file could not be
+  read, or the Python interpreter was not found.
 - **Only lines the coverage report knows count.** An added line with no `DA` entry in the lcov file
   or no class-level `<line>` record in a Cobertura file (a comment, a type, a blank line, a
   declaration the tool does not instrument) is left out of the denominator. What is "coverable" is
@@ -148,8 +161,30 @@ whether a test is still good.
   move, so a deletion hidden behind a common name in a touched file is missed. The same goes for a deleted test whose
   body hash matches any new test in a touched file. The file has to be touched by the change; a test moved to a file the
   change does not touch is reported.
-- **A body that is close enough.** A removed test whose body has a token-set Jaccard of at least 0.8 with a new test of
+- **A body that is close enough.** A removed test whose body has a token-set Jaccard of at least 4/5 with a new test of
   the same file is taken for a rename. A rename that also weakens the body slightly passes.
+- **A test renamed in place.** Per file and group (the exact names of the enclosing blocks), when as many tests are
+  left unmatched as new tests are unused, the i-th of each in line order is a rename in place (a pair, so TI05, TI06 and
+  TI07 judge it) when the body tokens have a Jaccard of at least 1/2 and the new body holds at least 3/4 of the old
+  body's distinct tokens. A test replaced in the same slot by a different test with mostly shared setup is a pair too, and
+  its changed assertion is TI06's, not TI02's. Groups with more or fewer new tests than removed ones are not paired by
+  slot.
+- **An `.each` table replacing hand-written tests.** A removed test with at least one assertion is cleared by the first
+  of the first 256 unpaired new `.each` tests of its file and group (line order) that shares a subject (the function
+  called first inside `expect(`, or right after a Python `assert`) and holds every assertion chain the removed test
+  held. The `.each` test is listed once under renamed in `testIntegrity.changes`, and the table's rows are not compared,
+  so a table that lost a case the hand-written test had passes. One `.each` test may clear several tests.
+- **A test moved to another touched file under a new name.** A removed test that nothing in its own file or by exact leaf
+  name or body hash matched takes the first unused new test of another touched file (head path, then line) whose body
+  tokens have a Jaccard of at least 4/5; else the first whose full-name words have a Jaccard of at least 1/2, whose body
+  contains at least 4/5 of the removed test's distinct tokens and which holds every assertion chain it held. A name-only
+  move across files therefore needs body containment, and a test moved to a file the change does not touch is reported.
+- **A suite rewritten under reworded names: a known false block.** No rule clears or softens a removed test by its name
+  alone, because a name is what a change controls most easily: a real test deleted beside a hollow new test with a
+  similar name stays a `block`. So a suite rewritten in one describe, whose tests get reworded names and bodies that
+  share less than the rename-in-place or cross-file thresholds above, blocks even when nothing was lost (the corpus dry
+  run had one such PR). A person who confirms the rewrite clears it with the accept label. Every probe looks at no more
+  than 256 candidates.
 - **Names read from the text.** A test whose name is computed (a template literal with a substitution, `.each`, `.for`
   or any other expression) is matched by body only and reported as `warn`; two tests with the same full name are
   compared as a multiset, in line order.
@@ -159,6 +194,8 @@ whether a test is still good.
   `it`, a parametrized Python test) is one block or none. A syntax-error-heavy, oversized or deeply nested file is not
   compared (`TEST_INTEGRITY_INDEX_UNAVAILABLE`).
 - **Caps.** At most 20 findings per file; the matching probes at most 256 candidates per test (section 8).
+- **Order of the rules.** Name pairs and phase 1 (4/5), then the rename in place, the `.each` replacement, the exact
+  cross-file leaf name or body hash and, last, the cross-file similarity. Every threshold is an integer comparison.
 
 ### What TI03 misses
 
@@ -288,7 +325,8 @@ changed.
 - **What counts.** A test is **added** when it is new at head and matches no base test; **removed** when no test at head
   stands for a base test (the candidates TI02 looks at); **modified** when a test of the same full name in the same file
   has another body or other modifiers (`skip`, `only`, `todo` and the like); **renamed** when a base test is matched to a
-  test of another name, or moved to another file. A removed test sits at its base path and line, the others at head.
+  test of another name (a rename in place included), moved to another file, or replaced by an `.each` test (listed once
+  however many tests it replaced, and not as added). A removed test sits at its base path and line, the others at head.
 - **Caps.** The lists hold at most 200 entries in all, filled in the order removed, modified, renamed, added, each sorted
   by path and line; `truncated` says how many were left out, and the totals and the per-file counts still count every
   test. A name is cut to 120 characters, with control characters turned into spaces. The comment shows one row per test

@@ -1,0 +1,15 @@
+import { describe, expect, it } from "vitest";
+import { createUser, findUser } from "./user.js";
+
+describe("user", () => {
+  it("finds a user by id", () => {
+    const user = createUser({ id: 7 });
+    expect(findUser(7)).toBe(user);
+  });
+
+  it("creates a user with an email address", () => {
+    const user = createUser({ email: "a@example.com" });
+    expect(user.email).toBe("a@example.com");
+    expect(user.verified).toBe(false);
+  });
+});

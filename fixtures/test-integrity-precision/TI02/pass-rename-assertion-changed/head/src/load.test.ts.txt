@@ -1,0 +1,10 @@
+import { describe, expect, it } from "vitest";
+import { createLoader } from "./load.js";
+
+describe("load", () => {
+  it("rejects for a missing file", async () => {
+    const loader = createLoader({ cache: false });
+    const attempt = loader.load("missing.json");
+    await expect(attempt).rejects.toThrow();
+  });
+});

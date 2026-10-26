@@ -1,0 +1,10 @@
+import { describe, expect, it } from "vitest";
+import { createCart, total } from "./total.js";
+
+describe("total", () => {
+  it("computes the order total", () => {
+    const lines = [{ price: 2 }, { price: 3 }];
+    const order = createCart(lines);
+    expect(total(order)).toBeTruthy();
+  });
+});

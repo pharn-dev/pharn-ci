@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { split } from "../src/ops.js";
+
+describe("split", () => {
+  it("split cuts at a comma", () => {
+    expect(split("a,b")).toEqual(["a", "b"]);
+  });
+
+  it("split keeps empty parts", () => {
+    expect(split("a,,b")).toEqual(["a", "", "b"]);
+  });
+});

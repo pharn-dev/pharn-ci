@@ -1,0 +1,4 @@
+diff --git a/test/__snapshots__/a.test.ts.snap b/src/__snapshots__/a.test.ts.snap
+similarity index 100%
+rename from test/__snapshots__/a.test.ts.snap
+rename to src/__snapshots__/a.test.ts.snap

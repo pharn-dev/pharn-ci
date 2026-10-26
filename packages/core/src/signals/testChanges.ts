@@ -24,15 +24,21 @@ const entryOf = (path: string, block: TestBlock): ReportTestChange => ({
  * The tests-changed summary of the touched test files, from the base-and-head match: each test added (new at head and
  * matched to no base test), removed (TI02's candidates: a base test nothing at head stands for), modified (the same
  * name in the same file, with another body or other modifiers) or renamed (matched to a test of another name, or in
- * another file). Removed tests sit at their base path and base line; the others at their head path and head line.
- * Null when no test changed, so a report gains the field only when it carries something.
+ * another file). An `.each` test that replaced hand-written tests is listed once, under renamed. Removed tests sit at
+ * their base path and base line; the others at their head path and head line. Null when no test changed, so a report
+ * gains the field only when it carries something.
  */
 export function summarizeTestChanges(
   touched: Pick<TouchedTests, "pairs" | "added">,
-  match: Pick<TestMatch, "unmatched" | "pairs" | "moved">,
+  match: Pick<TestMatch, "unmatched" | "pairs" | "moved"> & Partial<Pick<TestMatch, "replaced">>,
 ): ReportTestChanges | null {
   const lists: Record<Kind, ReportTestChange[]> = { added: [], removed: [], modified: [], renamed: [] };
   const matchedHeads = new Set<TestBlock>();
+  for (const pair of match.replaced ?? []) {
+    if (matchedHeads.has(pair.head)) continue;
+    matchedHeads.add(pair.head);
+    lists.renamed.push(entryOf(pair.headPath, pair.head));
+  }
   for (const pair of [...match.pairs, ...match.moved]) {
     matchedHeads.add(pair.head);
     const sameName = fullTestName(pair.base) === fullTestName(pair.head);

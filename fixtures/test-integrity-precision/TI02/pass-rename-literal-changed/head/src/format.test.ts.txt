@@ -1,0 +1,6 @@
+import { describe, expect, it } from "vitest";
+import { pad } from "./format.js";
+
+describe("format", () => {
+  it("left-pads a single digit", () => { expect(pad(7, 3)).toBe("007"); });
+});

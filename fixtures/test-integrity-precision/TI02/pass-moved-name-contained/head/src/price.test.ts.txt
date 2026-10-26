@@ -1,0 +1,9 @@
+import { describe, expect, it } from "vitest";
+import { priceOrder } from "./price.js";
+
+describe("price", () => {
+  it("charges full price for small orders", () => {
+    const items = [{ qty: 1, price: 2 }];
+    expect(priceOrder(items).total).toBe(2);
+  });
+});

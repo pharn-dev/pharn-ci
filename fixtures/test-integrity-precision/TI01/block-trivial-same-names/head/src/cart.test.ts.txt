@@ -1,0 +1,11 @@
+import { describe, expect, it } from "vitest";
+
+describe("cart", () => {
+  it("adds the prices", () => {
+    expect(true).toBe(true);
+  });
+
+  it("rejects a negative price", () => {
+    expect(true).toBe(true);
+  });
+});

@@ -280,6 +280,28 @@ reviewed ships as block; otherwise it demotes to warn. Exactly 1 % demotes. The 
 
 The reviewed CSV and the rates land with `v0.3.0`.
 
+### What the early dry run changed
+
+An early dry run of the detectors over the frozen corpus (all 600 PRs, rated by hand only as far as the TI01 and TI02
+block rows) found that TI02 falsely blocked 6 of 600 PRs (1.0 %, which fails the rule above) and TI01 raised 12 false
+block rows on one PR. Every one came from tests that were renamed, moved or rewritten rather than lost, so both signals
+were tightened before the official run; the two real TI02 deletions in the dry run still block. The patterns
+are re-created as small hand-made fixtures under `fixtures/test-integrity-precision/`; no upstream code is kept, and a
+pull request number appears only in a test name or comment.
+
+- **TI02** now clears a test renamed in its place in its describe, hand-written assertions replaced by an `it.each`
+  table, and a test moved to another touched file under a new name when its body matches closely. Every rule needs the
+  test's code to be found again; a name alone never clears or softens a finding, because names are what a change
+  controls. The thresholds are in [LIMITS.md](./LIMITS.md#what-ti02-misses).
+- **TI01** no longer counts a snapshot (`.snap`) file as a deleted test file, and gives `info` when every test a
+  deleted test file held is found again, by name and by body, in another test file of the same change.
+
+Re-run over the same 600 PRs with these rules, the dry run's TI02 blocks fall to 3 PRs: the two real deletions and one
+false block (a suite rewritten under reworded names), so 1 false-block PR of 600. TI01 blocks on 1 PR: three test files
+moved from `test/` to `src/` whose bodies were refactored on the way (a new fixture-path helper), a false block that
+the accept label clears. These are dry-run counts, not reviewed rates: the official false-block rates of TI01 and
+TI02, on the reviewed corpus, come with BACKLOG item 18 and `v0.3.0`.
+
 ### Limits
 
 - **Base branch is the default branch today.** A PR whose base was changed after it merged is not

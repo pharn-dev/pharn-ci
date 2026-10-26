@@ -1,0 +1,16 @@
+import { describe, it } from "vitest";
+
+describe("load", () => {
+  it("load reads a stored file", () => {});
+  it("load fails on a missing file", () => {});
+});
+
+describe("save", () => {
+  it("save writes a new file", () => {});
+  it("save replaces an old file", () => {});
+});
+
+describe("split", () => {
+  it("split cuts at a comma", () => {});
+  it("split keeps empty parts", () => {});
+});

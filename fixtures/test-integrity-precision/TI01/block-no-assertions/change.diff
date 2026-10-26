@@ -1,0 +1,162 @@
+diff --git a/test/format.test.ts b/test/format.test.ts
+deleted file mode 100644
+index 1111111..0000000
+--- a/test/format.test.ts
++++ /dev/null
+@@ -1,11 +0,0 @@
+-import { describe, expect, it } from "vitest";
+-import { format } from "../src/ops.js";
+-
+-describe("format", () => {
+-  it("format pads a short value", () => {
+-    expect(format("a")).toBe("a ");
+-  });
+-
+-  it("format keeps a long value", () => {
+-    expect(format("abcdef")).toBe("abcdef");
+-  });
+-});
+diff --git a/test/load.test.ts b/test/load.test.ts
+deleted file mode 100644
+index 1111111..0000000
+--- a/test/load.test.ts
++++ /dev/null
+@@ -1,11 +0,0 @@
+-import { describe, expect, it } from "vitest";
+-import { load } from "../src/ops.js";
+-
+-describe("load", () => {
+-  it("load reads a stored file", () => {
+-    expect(load("a.txt")).toBe("a");
+-  });
+-
+-  it("load fails on a missing file", () => {
+-    expect(() => load("none.txt")).toThrow();
+-  });
+-});
+diff --git a/test/merge.test.ts b/test/merge.test.ts
+deleted file mode 100644
+index 1111111..0000000
+--- a/test/merge.test.ts
++++ /dev/null
+@@ -1,11 +0,0 @@
+-import { describe, expect, it } from "vitest";
+-import { merge } from "../src/ops.js";
+-
+-describe("merge", () => {
+-  it("merge joins two lists", () => {
+-    expect(merge([1], [2])).toEqual([1, 2]);
+-  });
+-
+-  it("merge drops duplicates", () => {
+-    expect(merge([1], [1])).toEqual([1]);
+-  });
+-});
+diff --git a/test/parse.test.ts b/test/parse.test.ts
+deleted file mode 100644
+index 1111111..0000000
+--- a/test/parse.test.ts
++++ /dev/null
+@@ -1,11 +0,0 @@
+-import { describe, expect, it } from "vitest";
+-import { parse } from "../src/ops.js";
+-
+-describe("parse", () => {
+-  it("parse reads a plain value", () => {
+-    expect(parse("a")).toBe("a");
+-  });
+-
+-  it("parse rejects an empty value", () => {
+-    expect(() => parse("")).toThrow();
+-  });
+-});
+diff --git a/test/save.test.ts b/test/save.test.ts
+deleted file mode 100644
+index 1111111..0000000
+--- a/test/save.test.ts
++++ /dev/null
+@@ -1,11 +0,0 @@
+-import { describe, expect, it } from "vitest";
+-import { save } from "../src/ops.js";
+-
+-describe("save", () => {
+-  it("save writes a new file", () => {
+-    expect(save("a.txt", "a")).toBe(true);
+-  });
+-
+-  it("save replaces an old file", () => {
+-    expect(save("a.txt", "b")).toBe(true);
+-  });
+-});
+diff --git a/test/split.test.ts b/test/split.test.ts
+deleted file mode 100644
+index 1111111..0000000
+--- a/test/split.test.ts
++++ /dev/null
+@@ -1,11 +0,0 @@
+-import { describe, expect, it } from "vitest";
+-import { split } from "../src/ops.js";
+-
+-describe("split", () => {
+-  it("split cuts at a comma", () => {
+-    expect(split("a,b")).toEqual(["a", "b"]);
+-  });
+-
+-  it("split keeps empty parts", () => {
+-    expect(split("a,,b")).toEqual(["a", "", "b"]);
+-  });
+-});
+diff --git a/src/core.test.ts b/src/core.test.ts
+index 2222222..3333333 100644
+--- a/src/core.test.ts
++++ b/src/core.test.ts
+@@ -7,0 +8,5 @@ describe("core", () => {
++
++  it("core exposes both entry points", () => {
++    expect(core().text).toBeDefined();
++    expect(core().io).toBeDefined();
++  });
+diff --git a/src/io/io-ops.test.ts b/src/io/io-ops.test.ts
+new file mode 100644
+index 0000000..4444444
+--- /dev/null
++++ b/src/io/io-ops.test.ts
+@@ -0,0 +1,16 @@
++import { describe, it } from "vitest";
++
++describe("load", () => {
++  it("load reads a stored file", () => {});
++  it("load fails on a missing file", () => {});
++});
++
++describe("save", () => {
++  it("save writes a new file", () => {});
++  it("save replaces an old file", () => {});
++});
++
++describe("split", () => {
++  it("split cuts at a comma", () => {});
++  it("split keeps empty parts", () => {});
++});
+diff --git a/src/text/text-ops.test.ts b/src/text/text-ops.test.ts
+new file mode 100644
+index 0000000..5555555
+--- /dev/null
++++ b/src/text/text-ops.test.ts
+@@ -0,0 +1,16 @@
++import { describe, it } from "vitest";
++
++describe("parse", () => {
++  it("parse reads a plain value", () => {});
++  it("parse rejects an empty value", () => {});
++});
++
++describe("format", () => {
++  it("format pads a short value", () => {});
++  it("format keeps a long value", () => {});
++});
++
++describe("merge", () => {
++  it("merge joins two lists", () => {});
++  it("merge drops duplicates", () => {});
++});

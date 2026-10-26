@@ -1,0 +1,15 @@
+import { describe, expect, it } from "vitest";
+import { add, multiply, sub } from "./math.js";
+
+describe("math", () => {
+  it.each([
+    [2, 3, 6],
+    [3, 3, 9],
+  ])("scales %s by %s", (a, b, c) => {
+    expect(multiply(a, b)).toBe(c);
+  });
+
+  it("subtracts two numbers", () => {
+    expect(sub(3, 1)).toBe(2);
+  });
+});

@@ -1,0 +1,21 @@
+import { describe, expect, it } from "vitest";
+import { createCart } from "./cart.js";
+
+describe("cart", () => {
+  it("adds an item", () => {
+    const cart = createCart();
+    cart.add("apple");
+    expect(cart.count()).toBe(1);
+  });
+
+  it("removes an item from the cart", () => {
+    expect(true).toBe(true);
+  });
+
+  it("empties the cart", () => {
+    const cart = createCart();
+    cart.add("apple");
+    cart.clear();
+    expect(cart.count()).toBe(0);
+  });
+});

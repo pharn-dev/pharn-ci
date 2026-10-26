@@ -75,6 +75,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- **TI02** and **TI01** are more precise, with no change to the report format or the message codes. TI02 now clears a test
+  renamed in place in its describe, hand-written tests replaced by an `it.each` table, and a test moved to another touched
+  file under a new name when its body closely matches; no rule clears a test by its name alone. The tests-changed
+  summary lists an `.each` replacement once under renamed. TI01 no longer counts a `.snap` file as a deleted test file
+  (the `TEST_FILES_DELETED` message still lists it) and gives `info` when every test a deleted test file held is found
+  again, by name and by body, in another test file of the change; those moved tests are judged by TI05, TI06 and TI07.
+  The rules and their limits are in `docs/LIMITS.md`.
 - pharn-ci now reads the base and head text of the test and test-config files a change touches from local git
   (for the coming base-and-head signals; the report does not change). When that fails on git, the CLI writes one
   stderr line and the Action one log line naming the failed git step.

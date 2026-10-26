@@ -1,0 +1,62 @@
+diff --git a/src/queue.test.ts b/src/queue.test.ts
+index 1111111..2222222 100644
+--- a/src/queue.test.ts
++++ b/src/queue.test.ts
+@@ -5,21 +5,36 @@ import { createQueue } from "./queue.js";
+-  it("enqueues an item at the tail", () => {
+-    const q = createQueue();
+-    q.push("a");
+-    q.push("b");
+-    expect(q.size()).toBe(2);
+-    expect(q.peekLast()).toBe("b");
+-  });
+-
+-  it("dequeues the oldest item first", () => {
+-    const q = createQueue();
+-    q.push("a");
+-    q.push("b");
+-    expect(q.shift()).toBe("a");
+-    expect(q.size()).toBe(1);
+-  });
+-
+-  it("reports an empty queue", () => {
+-    const q = createQueue();
+-    expect(q.isEmpty()).toBe(true);
+-    expect(q.shift()).toBeUndefined();
+-  });
++  it("enqueues an item at the end", () => {
++    const queue = createQueue();
++    queue.push("a");
++    queue.push("b");
++    expect(queue.length).toBe(2);
++    expect(queue.last()).toBe("b");
++  });
++
++  it("dequeues the oldest item", () => {
++    const queue = createQueue();
++    queue.push("a");
++    queue.push("b");
++    expect(queue.pop()).toBe("a");
++    expect(queue.length).toBe(1);
++  });
++
++  it("reports an empty queue after draining", () => {
++    const queue = createQueue();
++    queue.push("a");
++    queue.pop();
++    expect(queue.empty).toBe(true);
++    expect(queue.pop()).toBeUndefined();
++  });
++
++  it("rejects a push beyond the limit", () => {
++    const queue = createQueue({ limit: 1 });
++    queue.push("a");
++    expect(() => queue.push("b")).toThrow("full");
++  });
++
++  it("keeps nothing when cleared twice", () => {
++    const queue = createQueue();
++    queue.clear();
++    queue.clear();
++    expect(queue.length).toBe(0);
++  });

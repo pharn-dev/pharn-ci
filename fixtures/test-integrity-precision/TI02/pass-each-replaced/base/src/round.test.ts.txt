@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { round } from "./round.js";
+
+describe("round", () => {
+  it("rounds halves away from zero", () => {
+    expect(round(0.5)).toBe(1);
+    expect(round(1.5)).toBe(2);
+    expect(round(2.5)).toBe(3);
+    expect(round(-0.5)).toBe(-1);
+    expect(round(-1.5)).toBe(-2);
+  });
+});

@@ -1,0 +1,13 @@
+import { describe, expect, it } from "vitest";
+import { core } from "./core.js";
+
+describe("core", () => {
+  it("core wires the modules", () => {
+    expect(core()).toBeDefined();
+  });
+
+  it("core exposes both entry points", () => {
+    expect(core().text).toBeDefined();
+    expect(core().io).toBeDefined();
+  });
+});

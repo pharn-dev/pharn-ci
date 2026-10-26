@@ -1,0 +1,19 @@
+diff --git a/src/round.test.ts b/src/round.test.ts
+index 1111111..2222222 100644
+--- a/src/round.test.ts
++++ b/src/round.test.ts
+@@ -5,6 +5,8 @@ import { round } from "./round.js";
+-  it("rounds halves away from zero", () => {
+-    expect(round(0.5)).toBe(1);
+-    expect(round(1.5)).toBe(2);
+-    expect(round(2.5)).toBe(3);
+-    expect(round(-0.5)).toBe(-1);
+-    expect(round(-1.5)).toBe(-2);
++  it.each([
++    [0.5, 1],
++    [1.5, 2],
++    [2.5, 3],
++    [-0.5, -1],
++    [-1.5, -2],
++  ])("rounds %s to %s", (x, y) => {
++    expect(round(x)).toBe(y);

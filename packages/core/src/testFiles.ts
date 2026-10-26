@@ -26,6 +26,16 @@ export function isTestFile(path: string): boolean {
   return segments.slice(0, -1).some((segment) => TEST_DIRECTORIES.has(segment));
 }
 
+/**
+ * Whether a path is a snapshot file by its name: the basename ends in `.snap` and is longer than that. Case-sensitive;
+ * by name only, it reads no file. Narrower than TI08's snapshot test (`isSnapshotFile`), which also takes
+ * `__snapshots__` directories.
+ */
+export function isSnapFile(path: string): boolean {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  return basename.length > ".snap".length && basename.endsWith(".snap");
+}
+
 /** Selects the files whose added and removed line text the diff reader keeps: the test files, by new or old path. */
 export function keepTestFileText(file: { path: string; oldPath: string }): boolean {
   return isTestFile(file.path) || isTestFile(file.oldPath);

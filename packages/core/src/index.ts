@@ -138,6 +138,7 @@ export {
 export { MAX_TEST_CHANGE_ENTRIES, summarizeTestChanges } from "./signals/testChanges.js";
 export { type MatchCandidate, type MatchedPair, matchTests, type TestMatch } from "./signals/testMatch.js";
 export { detectTI01 } from "./signals/ti01.js";
+export { movedTestFiles } from "./signals/ti01Moved.js";
 export { detectTI02 } from "./signals/ti02.js";
 export { detectTI03 } from "./signals/ti03.js";
 export { detectTI04 } from "./signals/ti04.js";
@@ -157,6 +158,7 @@ export { type TestConfigKind, testConfigKind } from "./testConfig/kinds.js";
 export {
   definesTests,
   deletedTestFiles,
+  isSnapFile,
   isTestFile,
   keepTestFileText,
   testPackageDir,
