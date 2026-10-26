@@ -43,9 +43,9 @@ describe("corpus-run-script: docs/PRECISION.md section 2", () => {
     }
   });
 
-  // precision-v030: the official run is published, so the `The runs are not here yet` bullet is gone and section 2
-  // names the reviewed CSV instead.
-  it("AC-13: the `The runs are not here yet` limit bullet is gone and section 2 names fixtures/corpus/review.csv", () => {
+  // precision-v030: the official run is published, so the `The runs are not here yet` bullet is gone (and so cannot name
+  // scripts/corpus-run.mjs) and section 2 names the reviewed CSV instead. The title is kept as it was.
+  it("AC-13: the `The runs are not here yet` limit bullet no longer names scripts/corpus-run.mjs", () => {
     const lines = section();
     expect(
       lines.some((line) => line.includes("The runs are not here yet")),
