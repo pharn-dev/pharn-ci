@@ -17,8 +17,11 @@ const BEFORE: Record<string, string[]> = {
   "TI01/block-code-stays.diff": ["TI01 block src/__tests__/b.test.ts"],
   "TI01/block-rename-away.diff": ["TI01 block src/x.test.ts"],
   "TI01/block-root-tests.diff": ["TI01 block tests/test_a.py"],
-  "TI01/info-migration-mjs.diff": ["TI01 info lib/x.test.js"],
-  "TI01/info-migration-ts.diff": ["TI01 info lib/x.test.js"],
+  // Re-pinned by the name-only-moves change: TI01's same-stem rule no longer softens a deleted test file without body
+  // evidence (a name is the part a change controls most easily), and a diff-only check has none, so the two migration
+  // diffs are now a block.
+  "TI01/info-migration-mjs.diff": ["TI01 block lib/x.test.js"],
+  "TI01/info-migration-ts.diff": ["TI01 block lib/x.test.js"],
   "TI01/info-package-removed.diff": ["TI01 info packages/a/__tests__/y.test.ts"],
   "TI01/info-with-source.diff": ["TI01 info src/foo.test.ts"],
   "TI01/pass-binary.diff": [],
@@ -68,7 +71,9 @@ const BEFORE: Record<string, string[]> = {
  * full TI01, TI11 and TI14 signals (details included) and the TEST_INTEGRITY_TI01, _TI11 and _TI14 messages, as
  * check() gave them at the base commit be11155.
  */
-const BEFORE_DIGEST = "cb22003fe57b0895c0168a5c5d70cef1f134684a8b65e367aa71eaec2b44c2b9";
+// Re-pinned by the name-only-moves change: only the two TI01 migration records changed (info to block, new detail),
+// because TI01's same-stem rule now needs body evidence, not a name alone.
+const BEFORE_DIGEST = "fdc37bb7a6e2cd78c6a3af66a48371da5805a01b53d19a83df5099c2b4f6277c";
 
 async function run(diff: string, exclude: string[] = [], files = "test-files-deleted/files.txt") {
   const { check } = await import("../src/check.js");

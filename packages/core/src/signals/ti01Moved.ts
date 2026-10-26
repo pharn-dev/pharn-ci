@@ -1,21 +1,14 @@
 import type { DiffFile } from "../diff/unified.js";
-import { isTestFile } from "../testFiles.js";
+import { isTestFile, testStem } from "../testFiles.js";
 import { indexTestFile } from "../testIndex/indexTestFile.js";
 import type { PythonTestIndex } from "../testIndex/pythonSides.js";
 import type { TestBlock, TestIndexResult } from "../testIndex/types.js";
 import type { TestSources } from "../testSources.js";
-import {
-  containsAtLeast,
-  FOUR_FIFTHS,
-  jaccardAtLeast,
-  MAX_SIMILARITY_PROBES,
-  SimilarityIndex,
-  tokenSetMemo,
-} from "./bodyTokens.js";
+import { FOUR_FIFTHS, MAX_SIMILARITY_PROBES, SimilarityIndex, tokenSetMemo } from "./bodyTokens.js";
+import { holdsBody } from "./sameGroupRules.js";
 import type { MatchedPair } from "./testMatch.js";
 import { fullTestName } from "./testName.js";
 import { languageOf, type TouchedTests } from "./testPairs.js";
-import { assertionChains, holdsEveryChain } from "./testSubjects.js";
 
 const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 const leafOf = (block: TestBlock): string => block.path[block.path.length - 1] ?? "";
@@ -23,6 +16,12 @@ const leafOf = (block: TestBlock): string => block.path[block.path.length - 1] ?
 /** The deleted test files whose every test moved, and each moved test paired with the new test that holds it. */
 export interface MovedTests {
   files: Set<string>;
+  /**
+   * The deleted test files whose base text was kept and indexed, so their tests could be compared with the new ones:
+   * a file that held no test counts, and so does one checked when no new test with an assertion exists. Empty when
+   * the touched files could not be compared, when the base side is unavailable, and for a Python file with no index.
+   */
+  compared: Set<string>;
   /** Base path is the deleted file, head path the file that holds the test now; for TI05, TI06 and TI07. */
   pairs: MatchedPair[];
 }
@@ -35,6 +34,35 @@ interface Fresh {
 }
 
 /**
+ * The deleted test files for which the diff also adds a test file, or renames a file to a test path, at another path
+ * with the same stem (`testStem`). A renamed-away file is never in it: only a deletion is replaced. The stem only lifts
+ * the name check of `movedTestFiles` and picks the detail of TI01; the tests' bodies decide the severity.
+ */
+export function sameStemDeletions(diff: readonly DiffFile[]): Set<string> {
+  const stems = new Map<string, Set<string>>();
+  for (const file of diff) {
+    if ((file.status !== "added" && file.status !== "renamed") || !isTestFile(file.path)) continue;
+    const stem = testStem(file.path);
+    const paths = stems.get(stem);
+    if (paths === undefined) stems.set(stem, new Set([file.path]));
+    else paths.add(file.path);
+  }
+  const linked = new Set<string>();
+  for (const file of diff) {
+    if (file.status !== "deleted" || !isTestFile(file.path) || file.binary === true) continue;
+    const paths = stems.get(testStem(file.path));
+    if (paths === undefined) continue;
+    for (const path of paths) {
+      if (path !== file.path) {
+        linked.add(file.path);
+        break;
+      }
+    }
+  }
+  return linked;
+}
+
+/**
  * The deleted test files whose tests moved, by name and by body. A file qualifies when the diff deletes it, its base text
  * was kept and indexed (JS/TS by the test index, Python by the Python index's base entries), it held at least one
  * test, every test's leaf name and every group name on its path are among the new-at-head tests with an assertion, and
@@ -42,9 +70,11 @@ interface Fresh {
  * least 4/5 of the deleted body's distinct tokens and every assertion chain it held. Tests of the same leaf name are
  * tried first (the first 256, head path then line), then a body-similarity probe over all of them (at most 256 posting
  * entries). The new-at-head tests are every test of an added test file and the tests of a compared file whose full name
- * is not at base. Empty when the touched files could not be compared (`touched.notRun`), when the base side of the
- * sources is unavailable, or when no deleted file qualifies; a deleted Python file needs the Python index. A name alone
- * never qualifies a file: the test's code has to be found again.
+ * is not at base. A file for which the diff adds a test file, or renames to one, of the same stem
+ * (`sameStemDeletions`) needs no name check: its tests are held by body only. `files` and `pairs` are empty when the
+ * touched files could not be compared (`touched.notRun`), when the base side of the sources is unavailable, or when no
+ * deleted file qualifies; a deleted Python file needs the Python index. A name alone never qualifies a file: the
+ * test's code has to be found again. `compared` lists every deleted file whose text was indexed, qualifying or not.
  */
 export function movedTestFiles(
   diff: readonly DiffFile[],
@@ -52,7 +82,7 @@ export function movedTestFiles(
   python: PythonTestIndex | undefined,
   touched: Pick<TouchedTests, "pairs" | "added" | "notRun">,
 ): MovedTests {
-  const moved: MovedTests = { files: new Set(), pairs: [] };
+  const moved: MovedTests = { files: new Set(), compared: new Set(), pairs: [] };
   if (touched.notRun !== null || "unavailable" in sources.base) return moved;
 
   const deleted = diff
@@ -60,6 +90,24 @@ export function movedTestFiles(
     .map((file) => file.path)
     .sort(byCodeUnit);
   if (deleted.length === 0) return moved;
+
+  // Index every deleted file first, so `compared` lists them even when no new test could hold any of their tests.
+  const texts = new Map(sources.base.files.map((file) => [file.path, file.text]));
+  const pythonBase = python?.available ? new Map(python.base.map((file) => [file.path, file.result])) : null;
+  const indexed: Array<{ path: string; tests: TestBlock[] }> = [];
+  for (const path of [...new Set(deleted)]) {
+    const language = languageOf(path);
+    let result: TestIndexResult | undefined;
+    if (language === "py") result = pythonBase?.get(path);
+    else if (language !== null) {
+      const text = texts.get(path);
+      if (text !== undefined) result = indexTestFile(path, text);
+    }
+    if (result === undefined || !result.parsed) continue;
+    moved.compared.add(path);
+    const tests = result.tests.filter((block) => block.kind === "test").sort((a, b) => a.line - b.line);
+    if (tests.length > 0) indexed.push({ path, tests });
+  }
 
   const fresh: Fresh[] = [];
   for (const file of touched.added) {
@@ -87,25 +135,15 @@ export function movedTestFiles(
     for (const group of entry.block.path.slice(0, -1)) groups.add(group);
   }
 
-  const texts = new Map(sources.base.files.map((file) => [file.path, file.text]));
-  const pythonBase = python?.available ? new Map(python.base.map((file) => [file.path, file.result])) : null;
-  const named: Array<{ path: string; tests: TestBlock[] }> = [];
-  for (const path of [...new Set(deleted)]) {
-    const language = languageOf(path);
-    let result: TestIndexResult | undefined;
-    if (language === "py") result = pythonBase?.get(path);
-    else if (language !== null) {
-      const text = texts.get(path);
-      if (text !== undefined) result = indexTestFile(path, text);
-    }
-    if (result === undefined || !result.parsed) continue;
-    const tests = result.tests.filter((block) => block.kind === "test").sort((a, b) => a.line - b.line);
-    if (tests.length === 0) continue;
-    const reappears = tests.every(
-      (block) => leaves.has(leafOf(block)) && block.path.slice(0, -1).every((group) => groups.has(group)),
-    );
-    if (reappears) named.push({ path, tests });
-  }
+  // A stem-linked file (a test file of the same name is added) needs no name check: the body evidence below decides.
+  const stemLinked = sameStemDeletions(diff);
+  const named = indexed.filter(
+    (file) =>
+      stemLinked.has(file.path) ||
+      file.tests.every(
+        (block) => leaves.has(leafOf(block)) && block.path.slice(0, -1).every((group) => groups.has(group)),
+      ),
+  );
   if (named.length === 0) return moved;
 
   const tokensOf = tokenSetMemo();
@@ -114,15 +152,6 @@ export function movedTestFiles(
     named.flatMap((file) => file.tests.map((block) => tokensOf(block))),
     FOUR_FIFTHS,
   );
-  const holds = (block: TestBlock, entry: Fresh): boolean => {
-    const before = tokensOf(block);
-    const after = tokensOf(entry.block);
-    return (
-      jaccardAtLeast(before, after, FOUR_FIFTHS) ||
-      (containsAtLeast(before, after, FOUR_FIFTHS) &&
-        holdsEveryChain(assertionChains(block), assertionChains(entry.block)))
-    );
-  };
 
   for (const file of named) {
     const taken = new Set<Fresh>();
@@ -132,7 +161,7 @@ export function movedTestFiles(
       let pick =
         (leaves.get(leafOf(block)) ?? [])
           .slice(0, MAX_SIMILARITY_PROBES)
-          .find((entry) => free(entry) && holds(block, entry)) ?? null;
+          .find((entry) => free(entry) && holdsBody(block, entry.block, tokensOf)) ?? null;
       if (pick === null) {
         const at = bodies.find(tokensOf(block), (index) => !free(fresh[index] as Fresh)).index;
         if (at !== -1) pick = fresh[at] as Fresh;

@@ -18,8 +18,11 @@ const TI01_FIXTURES: Array<[string, "block" | "info" | "none"]> = [
   ["pass-binary.diff", "none"],
   ["info-with-source.diff", "info"],
   ["info-package-removed.diff", "info"],
-  ["info-migration-ts.diff", "info"],
-  ["info-migration-mjs.diff", "info"],
+  // Re-pinned by the name-only-moves change: TI01's same-stem rule no longer softens a deleted test file without body
+  // evidence (a name is the part a change controls most easily), and a diff-only check has none, so these two are now a
+  // block.
+  ["info-migration-ts.diff", "block"],
+  ["info-migration-mjs.diff", "block"],
 ];
 
 async function run(diff: string, files: string, coverage: string, mode: "block" | "warn" = "block") {

@@ -1,0 +1,22 @@
+diff --git a/src/a.test.ts b/src/a.test.ts
+index 1111111..2222222 100644
+--- a/src/a.test.ts
++++ b/src/a.test.ts
+@@ -5,5 +4,0 @@ describe("cart", () => {
+-  it("totals the cart", () => {
+-    const cart = addItem([], { sku: "a", price: 2 });
+-    expect(total(cart)).toBe(2);
+-  });
+-
+diff --git a/test/checkout/b.test.ts b/test/checkout/b.test.ts
+index 3333333..4444444 100644
+--- a/test/checkout/b.test.ts
++++ b/test/checkout/b.test.ts
+@@ -9,0 +10,7 @@ describe("checkout flow for guests", () => {
++
++    it("totals the cart", () => {
++      const coupon = { code: "SAVE5", off: 1 };
++      const cart = addItem([], { sku: "a", price: 2 });
++      expect(total(cart)).toBe(2);
++      expect(coupon.code).toHaveLength(5);
++    });

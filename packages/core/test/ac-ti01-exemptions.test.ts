@@ -27,8 +27,6 @@ describe("check(): TI01 exemptions make the finding info", () => {
   it.each([
     ["info-with-source.diff", "src/foo.test.ts"],
     ["info-package-removed.diff", "packages/a/__tests__/y.test.ts"],
-    ["info-migration-ts.diff", "lib/x.test.js"],
-    ["info-migration-mjs.diff", "lib/x.test.js"],
   ] as const)("AC-7: %s leaves %s as an info signal", async (diff, path) => {
     const baseline = await runCheck("test-files-deleted/baseline.diff");
     const report = await runCheck(`test-integrity/TI01/${diff}`);
@@ -46,5 +44,28 @@ describe("check(): TI01 exemptions make the finding info", () => {
     expect(messages).toHaveLength(1);
     expect(messages[0]?.level).toBe("info");
     expect(report.verdict).toBe(baseline.verdict);
+  });
+
+  // Re-pinned by the name-only-moves change: TI01's same-stem rule no longer softens a deleted test file because a test
+  // file of the same name was added (a name is the part a change controls most easily). Checked diff-only, the tests
+  // cannot be compared by body, so these two migration diffs are now a block, with the not-available detail. They were
+  // an info signal before.
+  it.each([
+    ["info-migration-ts.diff", "lib/x.test.js"],
+    ["info-migration-mjs.diff", "lib/x.test.js"],
+  ] as const)("AC-7: %s leaves %s as a block signal, its tests not comparable by body", async (diff, path) => {
+    const report = await runCheck(`test-integrity/TI01/${diff}`);
+
+    expect(report.testIntegrity.signals).toHaveLength(1);
+    const signal = report.testIntegrity.signals[0];
+    expect(signal?.id).toBe("TI01");
+    expect(signal?.path).toBe(path);
+    expect(signal?.severity).toBe("block");
+    expect(signal?.detail).toBe(
+      "Test file deleted; a test file of the same name was added, but the text to compare their tests was not available.",
+    );
+    expect(report.testIntegrity.verdict).toBe("fail");
+    const messages = report.messages.filter((m) => (m.code as string) === "TEST_INTEGRITY_TI01");
+    expect(messages).toHaveLength(1);
   });
 });

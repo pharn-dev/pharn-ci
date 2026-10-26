@@ -99,6 +99,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   digits, and lists at most 10 findings per change (the message says how many more). **TI06** reads the subject of
   `expect(…)` for `toBe`, `toEqual` and `toStrictEqual`, so `typeof`, `instanceof`, `.length`, `!!x`, `null` and
   `undefined` rewrites to the matcher they equal are no longer a weakening.
+- **TI01** and **TI02** no longer let a name stand in for a test's code. A deleted test file replaced by a test file of the
+  same name is `info` only when every test it held is found again by body in a new test, and stays a `block` when the
+  tests are hollow or when no test sources are given (the two `info-migration` diffs checked diff-only are now a
+  `block`); TI02 clears a removed test by the same leaf name in another touched file only when that test holds the
+  body. No change to the report format or the message codes. See `docs/LIMITS.md`.
 
 ### Security
 

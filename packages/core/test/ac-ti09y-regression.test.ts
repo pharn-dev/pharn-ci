@@ -17,10 +17,12 @@ const DIST_BOUND = 12_000_000;
  * new TI11 fixtures left out of the base-commit digest loop; the new TI11 and TI15 fixtures added to ADDED_AFTER_BASE),
  * so these are the digests of the edited files; before that they were on main at e47695e.
  */
+// Re-pinned again by the name-only-moves change: both files are edited on purpose (a re-pinned digest and a comment
+// each), so these are the digests of those edited files.
 const PINNED: Record<string, string> = {
-  "packages/core/test/ac-ti0205-regression.test.ts": "3d7f5cee93bd3abef001b222b29293f4db073fdcaa46914bbac7594fd9aef203",
+  "packages/core/test/ac-ti0205-regression.test.ts": "0e7ec98bf36dc000fb3419b35c0889b9ad23952826984145ee29be1561b5497d",
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "7b9039d3d5541cca135c12059048f1545184fd926e1521f1db6915f298b8ca5d",
+    "d3b2fef3e8d8dc20e52dafbf368375f370cba211969987cfd1cb6e6e7fb24077",
 };
 
 /** The Skylos-count tests that record the move, and the count literal each one asserts. */

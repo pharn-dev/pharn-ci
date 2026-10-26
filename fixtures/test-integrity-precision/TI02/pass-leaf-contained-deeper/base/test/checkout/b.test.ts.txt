@@ -1,0 +1,11 @@
+import { describe, expect, it } from "vitest";
+import { checkout } from "../../src/checkout.js";
+import { addItem, total } from "../../src/cart.js";
+
+describe("checkout flow for guests", () => {
+  describe("promotions", () => {
+    it("rejects an expired coupon", () => {
+      expect(checkout({ coupon: "OLD" }).ok).toBe(false);
+    });
+  });
+});

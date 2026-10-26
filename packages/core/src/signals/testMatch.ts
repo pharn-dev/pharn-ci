@@ -1,7 +1,14 @@
 import type { TestBlock } from "../testIndex/types.js";
-import { containsAtLeast, FOUR_FIFTHS, HALF, SimilarityIndex, tokenSetMemo } from "./bodyTokens.js";
+import {
+  containsAtLeast,
+  FOUR_FIFTHS,
+  HALF,
+  MAX_SIMILARITY_PROBES,
+  SimilarityIndex,
+  tokenSetMemo,
+} from "./bodyTokens.js";
 import { fullNameWords } from "./nameWords.js";
-import { eachReplacements, renameInPlace } from "./sameGroupRules.js";
+import { eachReplacements, holdsBody, renameInPlace } from "./sameGroupRules.js";
 import { fullTestName } from "./testName.js";
 import type { TouchedTests } from "./testPairs.js";
 import { assertionChains, holdsEveryChain } from "./testSubjects.js";
@@ -134,7 +141,10 @@ function push<K, V>(map: Map<K, V[]>, key: K, value: V): void {
  *    256 not-yet-paired new-at-head `.each` tests that shares a subject with it and holds every assertion chain it
  *    held. That is listed in `replaced`, not `pairs`; the `.each` test counts as used from then on.
  * 4. Phase 2, over what is left, each candidate takes the first unused new-at-head test of another touched file (head
- *    path, then line) with the same leaf name or the same body hash; that only clears the candidate (`moved`).
+ *    path, then line) with the same body hash, or with the same leaf name and a body that holds it: the first of the
+ *    first 256 entries of that leaf's list with a body-token Jaccard of at least 4/5, or a body that holds at least 4/5
+ *    of the candidate's distinct tokens and every assertion chain it held. Of the two the earlier one in head order
+ *    wins. That only clears the candidate (`moved`).
  * 5. R3, cross-file similarity, over what is left: the first unused new-at-head test of another touched file with a
  *    body-token Jaccard of at least 4/5; else the first whose full-name words have a Jaccard of at least 1/2, whose
  *    body holds at least 4/5 of the candidate's distinct body tokens and every assertion chain the candidate held.
@@ -292,7 +302,6 @@ export function matchTests(touched: Pick<TouchedTests, "pairs" | "added">): Test
     if (!entry.block.nameDynamic) push(leafEntries, leafName(entry.block), entry);
     push(hashEntries, entry.block.bodyHash, entry);
   }
-  const leafLists = new Map<string, OtherFileList>();
   const hashLists = new Map<string, OtherFileList>();
   const listFor = (lists: Map<string, OtherFileList>, entries: Map<string, NewHead[]>, key: string) => {
     let list = lists.get(key);
@@ -308,9 +317,24 @@ export function matchTests(touched: Pick<TouchedTests, "pairs" | "added">): Test
   const afterNames: Candidate[] = [];
   const moved: MatchedPair[] = [];
   for (const candidate of left) {
-    const byLeaf = candidate.block.nameDynamic
-      ? null
-      : (listFor(leafLists, leafEntries, leafName(candidate.block))?.firstOutside(candidate.fileIndex) ?? null);
+    // The same leaf name only names the place to look: the first of the first 256 entries of that leaf's list that is
+    // unused, in another file, and holds the candidate's body (a name alone never clears a candidate).
+    let byLeaf: NewHead | null = null;
+    if (!candidate.block.nameDynamic) {
+      const sameLeaf = leafEntries.get(leafName(candidate.block)) ?? [];
+      const scan = Math.min(sameLeaf.length, MAX_SIMILARITY_PROBES);
+      for (let at = 0; at < scan; at++) {
+        const entry = sameLeaf[at] as NewHead;
+        if (
+          !entry.used &&
+          entry.fileIndex !== candidate.fileIndex &&
+          holdsBody(candidate.block, entry.block, tokensOf)
+        ) {
+          byLeaf = entry;
+          break;
+        }
+      }
+    }
     const byBody = listFor(hashLists, hashEntries, candidate.block.bodyHash)?.firstOutside(candidate.fileIndex) ?? null;
     const pick = byLeaf !== null && (byBody === null || byLeaf.order < byBody.order) ? byLeaf : byBody;
     if (pick === null) afterNames.push(candidate);

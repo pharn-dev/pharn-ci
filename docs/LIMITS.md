@@ -42,7 +42,16 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   TI07 as pairs. A test moved and refactored past those thresholds (a new fixture helper, say) keeps the file a
   `block`: a known false block, cleared with the accept label. A name added in a file the change does not touch does
   not count. The rule is off when the sources are missing, the base text was dropped, a compared file could not be
-  read, or the Python interpreter was not found.
+  read, or the Python interpreter was not found. A file with a same-name test file added has no name requirement, see
+  (9). (9) A deleted test file for which the change adds a test file of the same name (the same stem, in another
+  directory), or renames a file to one, is `info` only on body evidence, as in (8) and with no name check: every test it
+  held must be found again, by body, in a distinct new test with an assertion (a Jaccard of at least 4/5, or a body that
+  holds at least 4/5 of the old body's distinct tokens and every assertion chain it held). A test file of the same name
+  alone softens nothing. Otherwise the file stays a `block` (`warn` in mode `warn`), and it blocks too when no sources
+  are given or the text could not be compared, so a diff-only run never softens it. A test file renamed to a path that
+  is not a test file is never softened by a same-name file. The tests found again are judged as pairs by TI05, TI06 and
+  TI07. A replacement whose tests were rewritten past those thresholds is a known false block, cleared with the accept
+  label.
 - **Only lines the coverage report knows count.** An added line with no `DA` entry in the lcov file
   or no class-level `<line>` record in a Cobertura file (a comment, a type, a blank line, a
   declaration the tool does not instrument) is left out of the denominator. What is "coverable" is
@@ -158,9 +167,12 @@ whether a test is still good.
   assertions go; a trivial body that still has an assertion, or a weak one, is not seen by either.
 - **A deleted test matched by a common leaf name in another touched file.** A test that leaves one file and a test with
   the same leaf name (the last name in its path, as in `works`) that another touched test file gains are taken for a
-  move, so a deletion hidden behind a common name in a touched file is missed. The same goes for a deleted test whose
-  body hash matches any new test in a touched file. The file has to be touched by the change; a test moved to a file the
-  change does not touch is reported.
+  move only when the same-name test holds the body: a body-token Jaccard of at least 4/5, or a body that holds at least
+  4/5 of the removed body's distinct tokens and every assertion chain it held (body evidence; the first 256 same-name
+  tests are tried). A hollow or assertion-less test of the same leaf name clears nothing. A deletion hidden behind a
+  same-name test that keeps most of the body is still missed, and so is a deleted test whose body hash matches any new
+  test in a touched file. The file has to be touched by the change; a test moved to a file the change does not touch is
+  reported.
 - **A body that is close enough.** A removed test whose body has a token-set Jaccard of at least 4/5 with a new test of
   the same file is taken for a rename. A rename that also weakens the body slightly passes.
 - **A test renamed in place.** Per file and group (the exact names of the enclosing blocks), when as many tests are
@@ -195,7 +207,8 @@ whether a test is still good.
   compared (`TEST_INTEGRITY_INDEX_UNAVAILABLE`).
 - **Caps.** At most 20 findings per file; the matching probes at most 256 candidates per test (section 8).
 - **Order of the rules.** Name pairs and phase 1 (4/5), then the rename in place, the `.each` replacement, the exact
-  cross-file leaf name or body hash and, last, the cross-file similarity. Every threshold is an integer comparison.
+  cross-file body hash or leaf name with a body that holds the old one (body evidence) and, last, the cross-file
+  similarity. Every threshold is an integer comparison.
 
 ### What TI03 misses
 

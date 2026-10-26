@@ -139,6 +139,8 @@ The seven PRs that weaken tests:
     covers: a source file with the same name, or source files in the package the test belongs to
     (the test's directory, or the one holding its `test`/`tests`/`__tests__` folder). It does not
     block either when the PR adds a test file with the same name elsewhere (a move or a migration).
+    (These were the rules when this sample was measured; that file must now also hold every deleted
+    test's body, see section 2.)
   - **TI04:** `.only` and `fit(` only in JS/TS test files, and `fit(` only as a bare call.
   - **TI10:** adding `--passWithNoTests` does not block when the repository has no test files
     (`git ls-files`, which the check already reads).
@@ -294,12 +296,17 @@ pull request number appears only in a test name or comment.
   test's code to be found again; a name alone never clears or softens a finding, because names are what a change
   controls. The thresholds are in [LIMITS.md](./LIMITS.md#what-ti02-misses).
 - **TI01** no longer counts a snapshot (`.snap`) file as a deleted test file, and gives `info` when every test a
-  deleted test file held is found again, by name and by body, in another test file of the same change.
+  deleted test file held is found again, by name and by body, in another test file of the same change. A test file of
+  the same name added elsewhere avoids the block only when it holds every deleted test's body, found again in a new test
+  of the change; the name alone no longer softens it.
 
 Re-run over the same 600 PRs with these rules, the dry run's TI02 blocks fall to 3 PRs: the two real deletions and one
 false block (a suite rewritten under reworded names), so 1 false-block PR of 600. TI01 blocks on 1 PR: three test files
 moved from `test/` to `src/` whose bodies were refactored on the way (a new fixture-path helper), a false block that
-the accept label clears. These are dry-run counts, not reviewed rates: the official false-block rates of TI01 and
+the accept label clears. With the body evidence for a test file of the same name (above), the same 600 PRs give the
+same block PRs: TI02 3 PRs, TI01 the same 1 PR, where two more files that moved to a file of the same name with
+refactored bodies are now a `block` instead of `info` (five files in that PR instead of three). These are dry-run
+counts, not reviewed rates: the official false-block rates of TI01 and
 TI02, on the reviewed corpus, come with BACKLOG item 18 and `v0.3.0`.
 
 ### Limits

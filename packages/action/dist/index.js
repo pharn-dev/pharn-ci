@@ -238913,6 +238913,11 @@ function sharesAny(a, b) {
 }
 
 // ../core/src/signals/sameGroupRules.ts
+function holdsBody(before, after, tokensOf) {
+  const old = tokensOf(before);
+  const fresh = tokensOf(after);
+  return jaccardAtLeast(old, fresh, FOUR_FIFTHS) || containsAtLeast(old, fresh, FOUR_FIFTHS) && holdsEveryChain(assertionChains(before), assertionChains(after));
+}
 var MAX_EACH_SCAN = 256;
 function groupItems(items, keyOf4) {
   const groups = /* @__PURE__ */ new Map();
@@ -239172,7 +239177,6 @@ function matchTests(touched) {
     if (!entry.block.nameDynamic) push(leafEntries, leafName(entry.block), entry);
     push(hashEntries, entry.block.bodyHash, entry);
   }
-  const leafLists = /* @__PURE__ */ new Map();
   const hashLists = /* @__PURE__ */ new Map();
   const listFor = (lists, entries, key) => {
     let list = lists.get(key);
@@ -239187,7 +239191,18 @@ function matchTests(touched) {
   const afterNames = [];
   const moved = [];
   for (const candidate of left) {
-    const byLeaf = candidate.block.nameDynamic ? null : listFor(leafLists, leafEntries, leafName(candidate.block))?.firstOutside(candidate.fileIndex) ?? null;
+    let byLeaf = null;
+    if (!candidate.block.nameDynamic) {
+      const sameLeaf = leafEntries.get(leafName(candidate.block)) ?? [];
+      const scan = Math.min(sameLeaf.length, MAX_SIMILARITY_PROBES);
+      for (let at = 0; at < scan; at++) {
+        const entry = sameLeaf[at];
+        if (!entry.used && entry.fileIndex !== candidate.fileIndex && holdsBody(candidate.block, entry.block, tokensOf)) {
+          byLeaf = entry;
+          break;
+        }
+      }
+    }
     const byBody = listFor(hashLists, hashEntries, candidate.block.bodyHash)?.firstOutside(candidate.fileIndex) ?? null;
     const pick = byLeaf !== null && (byBody === null || byLeaf.order < byBody.order) ? byLeaf : byBody;
     if (pick === null) afterNames.push(candidate);
@@ -239242,8 +239257,114 @@ function matchTests(touched) {
   return { unmatched, pairs, moved, replaced };
 }
 
-// ../core/src/signals/ti01.ts
+// ../core/src/signals/ti01Moved.ts
 var byCodeUnit7 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var leafOf = (block) => block.path[block.path.length - 1] ?? "";
+function sameStemDeletions(diff) {
+  const stems = /* @__PURE__ */ new Map();
+  for (const file of diff) {
+    if (file.status !== "added" && file.status !== "renamed" || !isTestFile(file.path)) continue;
+    const stem = testStem(file.path);
+    const paths = stems.get(stem);
+    if (paths === void 0) stems.set(stem, /* @__PURE__ */ new Set([file.path]));
+    else paths.add(file.path);
+  }
+  const linked = /* @__PURE__ */ new Set();
+  for (const file of diff) {
+    if (file.status !== "deleted" || !isTestFile(file.path) || file.binary === true) continue;
+    const paths = stems.get(testStem(file.path));
+    if (paths === void 0) continue;
+    for (const path of paths) {
+      if (path !== file.path) {
+        linked.add(file.path);
+        break;
+      }
+    }
+  }
+  return linked;
+}
+function movedTestFiles(diff, sources, python, touched) {
+  const moved = { files: /* @__PURE__ */ new Set(), compared: /* @__PURE__ */ new Set(), pairs: [] };
+  if (touched.notRun !== null || "unavailable" in sources.base) return moved;
+  const deleted = diff.filter((file) => file.status === "deleted" && isTestFile(file.path) && file.binary !== true).map((file) => file.path).sort(byCodeUnit7);
+  if (deleted.length === 0) return moved;
+  const texts = new Map(sources.base.files.map((file) => [file.path, file.text]));
+  const pythonBase = python?.available ? new Map(python.base.map((file) => [file.path, file.result])) : null;
+  const indexed = [];
+  for (const path of [...new Set(deleted)]) {
+    const language = languageOf(path);
+    let result;
+    if (language === "py") result = pythonBase?.get(path);
+    else if (language !== null) {
+      const text = texts.get(path);
+      if (text !== void 0) result = indexTestFile(path, text);
+    }
+    if (result === void 0 || !result.parsed) continue;
+    moved.compared.add(path);
+    const tests = result.tests.filter((block) => block.kind === "test").sort((a, b) => a.line - b.line);
+    if (tests.length > 0) indexed.push({ path, tests });
+  }
+  const fresh = [];
+  for (const file of touched.added) {
+    for (const block of file.head)
+      if (block.assertionCount >= 1) fresh.push({ path: file.headPath, block, used: false });
+  }
+  for (const file of touched.pairs) {
+    const known = new Set(file.base.map(fullTestName));
+    for (const block of file.head) {
+      if (block.assertionCount >= 1 && !known.has(fullTestName(block))) {
+        fresh.push({ path: file.headPath, block, used: false });
+      }
+    }
+  }
+  if (fresh.length === 0) return moved;
+  fresh.sort((a, b) => byCodeUnit7(a.path, b.path) || a.block.line - b.block.line);
+  const leaves = /* @__PURE__ */ new Map();
+  const groups = /* @__PURE__ */ new Set();
+  for (const entry of fresh) {
+    const leaf = leafOf(entry.block);
+    const list = leaves.get(leaf);
+    if (list === void 0) leaves.set(leaf, [entry]);
+    else list.push(entry);
+    for (const group of entry.block.path.slice(0, -1)) groups.add(group);
+  }
+  const stemLinked = sameStemDeletions(diff);
+  const named = indexed.filter(
+    (file) => stemLinked.has(file.path) || file.tests.every(
+      (block) => leaves.has(leafOf(block)) && block.path.slice(0, -1).every((group) => groups.has(group))
+    )
+  );
+  if (named.length === 0) return moved;
+  const tokensOf = tokenSetMemo();
+  const bodies = new SimilarityIndex(
+    fresh.map((entry) => tokensOf(entry.block)),
+    named.flatMap((file) => file.tests.map((block) => tokensOf(block))),
+    FOUR_FIFTHS
+  );
+  for (const file of named) {
+    const taken = /* @__PURE__ */ new Set();
+    const found = [];
+    for (const block of file.tests) {
+      const free = (entry) => !entry.used && !taken.has(entry);
+      let pick = (leaves.get(leafOf(block)) ?? []).slice(0, MAX_SIMILARITY_PROBES).find((entry) => free(entry) && holdsBody(block, entry.block, tokensOf)) ?? null;
+      if (pick === null) {
+        const at = bodies.find(tokensOf(block), (index) => !free(fresh[index])).index;
+        if (at !== -1) pick = fresh[at];
+      }
+      if (pick === null) break;
+      taken.add(pick);
+      found.push({ basePath: file.path, headPath: pick.path, base: block, head: pick.block });
+    }
+    if (found.length !== file.tests.length) continue;
+    for (const entry of taken) entry.used = true;
+    moved.files.add(file.path);
+    moved.pairs.push(...found);
+  }
+  return moved;
+}
+
+// ../core/src/signals/ti01.ts
+var byCodeUnit8 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_DETAIL2 = 300;
 function removedTests(file) {
   if (file.hunks === void 0) return "unknown";
@@ -239252,18 +239373,10 @@ function removedTests(file) {
   }
   return "no";
 }
-function addedTests(file) {
-  for (const hunk of file.hunks ?? []) {
-    for (const added of hunk.added) if (definesTests(added.text)) return true;
-  }
-  return false;
-}
-function detectTI01(diff, mode, moved = /* @__PURE__ */ new Set()) {
+function detectTI01(diff, mode, moved = /* @__PURE__ */ new Set(), compared2 = /* @__PURE__ */ new Set()) {
   const deletedSources = diff.filter((file) => file.status === "deleted" && !isTestFile(file.path));
   const sourceStems = new Set(deletedSources.map((file) => testStem(file.path)));
-  const addedTestFiles = diff.filter(
-    (file) => (file.status === "added" || file.status === "renamed") && isTestFile(file.path)
-  );
+  const sameStem = sameStemDeletions(diff);
   const found = /* @__PURE__ */ new Map();
   for (const file of diff) {
     const renamedAway = file.status === "renamed" && isTestFile(file.oldPath) && !isTestFile(file.path);
@@ -239285,101 +239398,22 @@ function detectTI01(diff, mode, moved = /* @__PURE__ */ new Set()) {
     } else if (dir !== "" && deletedSources.some((source) => source.path.startsWith(`${dir}/`))) {
       severity = "info";
       detail = "Test file deleted together with other files of its package.";
-    } else if (addedTestFiles.some((added) => added.path !== path && testStem(added.path) === stem && addedTests(added))) {
-      severity = "info";
-      detail = "Test file replaced by a test file of the same name that defines tests.";
+    } else if (deleted && sameStem.has(path)) {
+      if (moved.has(path)) {
+        severity = "info";
+        detail = "Test file replaced by a test file of the same name; every test it held is found again, by body, in a new test of this change.";
+      } else if (compared2.has(path)) {
+        detail = "Test file deleted; a test file of the same name was added, but not every test it held is found again by body.";
+      } else {
+        detail = "Test file deleted; a test file of the same name was added, but the text to compare their tests was not available.";
+      }
     } else if (deleted && moved.has(path)) {
       severity = "info";
       detail = "Test file deleted; every test it held is found again, by name and body, in another test file of this change.";
     }
     found.set(path, { id: "TI01", severity, path, line: null, detail: detail.slice(0, MAX_DETAIL2) });
   }
-  return [...found.values()].sort((a, b) => byCodeUnit7(a.path, b.path));
-}
-
-// ../core/src/signals/ti01Moved.ts
-var byCodeUnit8 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-var leafOf = (block) => block.path[block.path.length - 1] ?? "";
-function movedTestFiles(diff, sources, python, touched) {
-  const moved = { files: /* @__PURE__ */ new Set(), pairs: [] };
-  if (touched.notRun !== null || "unavailable" in sources.base) return moved;
-  const deleted = diff.filter((file) => file.status === "deleted" && isTestFile(file.path) && file.binary !== true).map((file) => file.path).sort(byCodeUnit8);
-  if (deleted.length === 0) return moved;
-  const fresh = [];
-  for (const file of touched.added) {
-    for (const block of file.head)
-      if (block.assertionCount >= 1) fresh.push({ path: file.headPath, block, used: false });
-  }
-  for (const file of touched.pairs) {
-    const known = new Set(file.base.map(fullTestName));
-    for (const block of file.head) {
-      if (block.assertionCount >= 1 && !known.has(fullTestName(block))) {
-        fresh.push({ path: file.headPath, block, used: false });
-      }
-    }
-  }
-  if (fresh.length === 0) return moved;
-  fresh.sort((a, b) => byCodeUnit8(a.path, b.path) || a.block.line - b.block.line);
-  const leaves = /* @__PURE__ */ new Map();
-  const groups = /* @__PURE__ */ new Set();
-  for (const entry of fresh) {
-    const leaf = leafOf(entry.block);
-    const list = leaves.get(leaf);
-    if (list === void 0) leaves.set(leaf, [entry]);
-    else list.push(entry);
-    for (const group of entry.block.path.slice(0, -1)) groups.add(group);
-  }
-  const texts = new Map(sources.base.files.map((file) => [file.path, file.text]));
-  const pythonBase = python?.available ? new Map(python.base.map((file) => [file.path, file.result])) : null;
-  const named = [];
-  for (const path of [...new Set(deleted)]) {
-    const language = languageOf(path);
-    let result;
-    if (language === "py") result = pythonBase?.get(path);
-    else if (language !== null) {
-      const text = texts.get(path);
-      if (text !== void 0) result = indexTestFile(path, text);
-    }
-    if (result === void 0 || !result.parsed) continue;
-    const tests = result.tests.filter((block) => block.kind === "test").sort((a, b) => a.line - b.line);
-    if (tests.length === 0) continue;
-    const reappears = tests.every(
-      (block) => leaves.has(leafOf(block)) && block.path.slice(0, -1).every((group) => groups.has(group))
-    );
-    if (reappears) named.push({ path, tests });
-  }
-  if (named.length === 0) return moved;
-  const tokensOf = tokenSetMemo();
-  const bodies = new SimilarityIndex(
-    fresh.map((entry) => tokensOf(entry.block)),
-    named.flatMap((file) => file.tests.map((block) => tokensOf(block))),
-    FOUR_FIFTHS
-  );
-  const holds = (block, entry) => {
-    const before = tokensOf(block);
-    const after = tokensOf(entry.block);
-    return jaccardAtLeast(before, after, FOUR_FIFTHS) || containsAtLeast(before, after, FOUR_FIFTHS) && holdsEveryChain(assertionChains(block), assertionChains(entry.block));
-  };
-  for (const file of named) {
-    const taken = /* @__PURE__ */ new Set();
-    const found = [];
-    for (const block of file.tests) {
-      const free = (entry) => !entry.used && !taken.has(entry);
-      let pick = (leaves.get(leafOf(block)) ?? []).slice(0, MAX_SIMILARITY_PROBES).find((entry) => free(entry) && holds(block, entry)) ?? null;
-      if (pick === null) {
-        const at = bodies.find(tokensOf(block), (index) => !free(fresh[index])).index;
-        if (at !== -1) pick = fresh[at];
-      }
-      if (pick === null) break;
-      taken.add(pick);
-      found.push({ basePath: file.path, headPath: pick.path, base: block, head: pick.block });
-    }
-    if (found.length !== file.tests.length) continue;
-    for (const entry of taken) entry.used = true;
-    moved.files.add(file.path);
-    moved.pairs.push(...found);
-  }
-  return moved;
+  return [...found.values()].sort((a, b) => byCodeUnit8(a.path, b.path));
 }
 
 // ../core/src/signals/ti02.ts
@@ -243805,7 +243839,7 @@ function check(input) {
   const movedTests = touched === null || parsedDiff === null || input.testSources === void 0 ? void 0 : movedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex, touched);
   const sourceMatches = parsedDiff === null || testIntegrity.mode === "off" ? { signals: [], omitted: [] } : detectTI15(parsedDiff, { repoFiles: input.repoFiles });
   const testIntegritySignals = parsedDiff === null || testIntegrity.mode === "off" ? [] : sortSignals([
-    ...detectTI01(parsedDiff, testIntegrity.mode, movedTests?.files),
+    ...detectTI01(parsedDiff, testIntegrity.mode, movedTests?.files, movedTests?.compared),
     ...detectTI03(parsedDiff, testIntegrity.mode, input.testSources),
     ...detectTI04(parsedDiff, testIntegrity.mode),
     ...detectTI08(parsedDiff),
