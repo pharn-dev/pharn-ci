@@ -43,6 +43,14 @@ inputs:
     description: Name of the pull request label a reviewer who is not the PR author applies to sign off test-integrity block findings, at most 50 characters. Only used on pull_request runs and pr-number runs with test-integrity block; the CLI and .pharn/ci.yml never set it. Defaults to pharn/accepted.
     required: false
     default: pharn/accepted
+  policy:
+    description: 'Where the org policy comes from: "auto" fetches it from the pharn.dev app when the job grants id-token: write (only the OIDC token and the repo name are sent; no policy or no token is silent), "never" uses none, "required" fails the check when no policy can be fetched, and "file:<path>" reads a policy document from the workspace (a path the pull request can change, so it can only tighten; nothing is fetched). A policy raises the thresholds and the test-integrity mode and replaces the exclusions and the coverage root; see the README, Org policy.'
+    required: false
+    default: auto
+  app-url:
+    description: Origin of the pharn.dev app to fetch the org policy from. https only, with no credentials, path, query or fragment; empty means https://pharn.dev. The OIDC audience stays pharn.dev whatever this is.
+    required: false
+    default: https://pharn.dev
   comment:
     description: Post or update one sticky PR comment with the report.
     required: false

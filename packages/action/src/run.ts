@@ -1,6 +1,7 @@
 import {
   type AgentConfigSources,
   agentConfigSecretPaths,
+  applyPolicy,
   type CheckInput,
   check,
   type DirEntry,
@@ -12,6 +13,7 @@ import {
   type PythonSourceFile,
   parseConfig,
   parseLsTreeSizes,
+  type RawInputs,
   type Report,
   readDiffChunks,
   renderMarkdown,
@@ -29,6 +31,7 @@ import {
   gitChunks,
   indexPythonTestSources,
   indexPythonTests,
+  type PathStat,
   readAgentConfigSources,
   readCoverageFiles,
   readDiscoveredCoverage,
@@ -36,6 +39,9 @@ import {
 } from "@pharn-ci/node-io";
 import { applyAcceptLabel } from "./accept-label.js";
 import { gatherAgentPrFacts } from "./agent-pr.js";
+import { parseAppUrl } from "./app-client.js";
+import { parsePolicyInput } from "./policy-input.js";
+import { obtainPolicy } from "./policy-source.js";
 import { type PrNumberTarget, parsePrNumberInputs, resolvePrNumberTarget } from "./pr-number.js";
 import { runMeta } from "./run-meta.js";
 
@@ -167,6 +173,23 @@ export interface ActionDeps {
   setOutput(name: string, value: string): void;
   setFailed(message: string): void;
   writeSummary(markdown: string): Promise<void>;
+  /**
+   * `lstat` of a path without following a symbolic link; null when it does not exist. Used to read a `file:` policy.
+   * Absent: node-io's `lstatPath`.
+   */
+  lstat?: ((path: string) => Promise<PathStat | null>) | undefined;
+  /**
+   * The org policy deps (see app-client.ts). All optional: an absent `fetch`, `getIDToken`, `setSecret` or `hasOidcEnv`
+   * means there is no OIDC and no policy is fetched. Absent `now`, `sleep` and `timeoutMs` use the clock, a timer and
+   * the default timeout.
+   */
+  fetch?: ((input: string, init: RequestInit) => Promise<Response>) | undefined;
+  getIDToken?: ((audience?: string) => Promise<string>) | undefined;
+  setSecret?: ((secret: string) => void) | undefined;
+  hasOidcEnv?: boolean | undefined;
+  now?: (() => Date) | undefined;
+  timeoutMs?: number | undefined;
+  sleep?: ((ms: number) => Promise<void>) | undefined;
 }
 
 const ZERO_SHA = /^0+$/;
@@ -247,26 +270,36 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   // Validated before the config is read or anything is measured; the error never repeats the value.
   const acceptLabel = validateAcceptLabel(input("accept-label"));
   if (!acceptLabel.ok) throw new Error(acceptLabel.error);
+  // Also validated before the config is read or anything is fetched: the errors are fixed texts, never the values.
+  const policyChoice = parsePolicyInput(input("policy"));
+  const appOrigin = parseAppUrl(input("app-url"));
   const config = await loadConfig(input("config") || undefined, deps);
 
   // An empty input is not given: the config, then the default, applies.
+  const rawInputs: RawInputs = {
+    coverageFile: splitLines(input("coverage-file")),
+    coverageFormat: input("coverage-format") || undefined,
+    threshold: input("threshold") || undefined,
+    exclude: splitPatternList(input("exclude")),
+    coverageRoot: input("coverage-root") || undefined,
+    requireAgentSetup: parseBool(input("require-agent-setup"), "require-agent-setup"),
+    expectAgentSetup: splitPatternList(input("expect-agent-setup")),
+    testIntegrity: input("test-integrity") || undefined,
+  };
   const resolved = resolveInputs(
     config,
-    {
-      coverageFile: splitLines(input("coverage-file")),
-      coverageFormat: input("coverage-format") || undefined,
-      threshold: input("threshold") || undefined,
-      exclude: splitPatternList(input("exclude")),
-      coverageRoot: input("coverage-root") || undefined,
-      requireAgentSetup: parseBool(input("require-agent-setup"), "require-agent-setup"),
-      expectAgentSetup: splitPatternList(input("expect-agent-setup")),
-      testIntegrity: input("test-integrity") || undefined,
-    },
+    rawInputs,
     INPUT_ERRORS,
     // With no coverage path set anywhere, the report is looked for at the discovery candidates.
     { discoverCoverage: true },
   );
   if (!resolved.ok) throw resolved.errors[0];
+  // The org policy is obtained after the config and before anything is read or measured, and applied over the layers.
+  // A `file:` problem throws here; an unavailable app policy never does: the check then runs with the inputs and the config.
+  const policy = await obtainPolicy(deps, policyChoice, appOrigin);
+  const application =
+    policy === undefined ? undefined : applyPolicy({ config, raw: rawInputs, resolved: resolved.inputs }, policy);
+  const effective = application?.inputs ?? resolved.inputs;
   const {
     coverageFormat: format,
     threshold,
@@ -275,7 +308,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     requireAgentSetup,
     expectAgentSetup,
     testIntegrityMode,
-  } = resolved.inputs;
+  } = effective;
   const failOnThreshold = parseBool(input("fail-on-threshold"), "fail-on-threshold") ?? true;
   const comment = parseBool(input("comment"), "comment") ?? true;
 
@@ -353,6 +386,9 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     ...(pythonTestIndex === undefined ? {} : { pythonTestIndex }),
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
     ...(input("config") === "" ? {} : { configPath: input("config") }),
+    ...(policy === undefined ? {} : { policy }),
+    ...(application === undefined || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored }),
+    ...(application?.signalOverrides === undefined ? {} : { signalOverrides: application.signalOverrides }),
   };
   const meta = runMeta(deps.context, { baseRef: input("base-ref"), ...(target === undefined ? {} : { target }) });
   if (meta === undefined) deps.info("run metadata is incomplete, so report.json carries no meta");
@@ -360,7 +396,15 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   // The accept label is the Action's alone: check() and the CLI never see it. Only a pull_request event with its
   // payload, or a pr-number target, is a pull request run (not pull_request_target, push or merge_group).
   const signoffNumber = deps.context.eventName === "pull_request" && pr ? pr.number : target?.number;
-  const labelled = await applyAcceptLabel(deps, checked, acceptLabel.label, signoffNumber);
+  // An app policy's accept label replaces the input's when it passes the same check; otherwise the input's applies,
+  // with one fixed warning that never names the value.
+  let label = acceptLabel.label;
+  if (application?.acceptLabel !== undefined) {
+    const fromPolicy = validateAcceptLabel(application.acceptLabel);
+    if (fromPolicy.ok) label = fromPolicy.label;
+    else deps.warning("pharn-ci: the org policy's accept label is not usable here, so the accept-label input applies");
+  }
+  const labelled = await applyAcceptLabel(deps, checked, label, signoffNumber);
   // Agent PR detection is metadata only: it needs the report's `meta`, and the verdict, the messages, the summary and the
   // comment never read what it adds. It uses the default lists only; no input and no config entry changes them.
   let report = labelled;

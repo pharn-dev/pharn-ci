@@ -22,13 +22,25 @@ export interface TestIntegrityModeSettings {
   input?: TestIntegrityMode;
   /** `test_integrity.mode` from `.pharn/ci.yml`, which the pull request carries. */
   config?: TestIntegrityMode;
+  /**
+   * `test_integrity.mode` from an org policy (see `applyPolicy`): an app policy (`app`) replaces the default, and
+   * the input and the config can only raise it; a policy file (`file`) can only raise what the input and the config
+   * give.
+   */
+  policy?: { mode: TestIntegrityMode; kind: "app" | "file" };
 }
 
 export interface ResolvedTestIntegrityMode {
   mode: TestIntegrityMode;
-  source: "input" | "config" | "default";
+  source: "input" | "config" | "default" | "policy";
   /** The config value that was ignored because it is looser than the mode that applies; absent otherwise. */
   ignoredConfig?: TestIntegrityMode;
+  /**
+   * The mode the input and the config gave before a policy was applied. Set only when a policy is in the settings;
+   * the `TEST_INTEGRITY_MODE_IGNORED` message names it, so a config value is judged against the same mode with and
+   * without a policy.
+   */
+  baseMode?: TestIntegrityMode;
 }
 
 /**
@@ -37,6 +49,29 @@ export interface ResolvedTestIntegrityMode {
  * looser config value is ignored and returned as `ignoredConfig`; an equal one changes nothing.
  */
 export function resolveTestIntegrityMode(settings: TestIntegrityModeSettings = {}): ResolvedTestIntegrityMode {
+  const today = withoutPolicy(settings);
+  const policy = settings.policy;
+  if (policy === undefined) return today;
+  // The policy layer: an app mode replaces the default, so the input and the config can only raise it; a file mode
+  // can only raise what they gave. The source is `policy` when the mode in force is the policy's own.
+  let mode = policy.mode;
+  if (policy.kind === "app") {
+    for (const given of [settings.input, settings.config]) {
+      if (given !== undefined && STRICTNESS[given] > STRICTNESS[mode]) mode = given;
+    }
+  } else if (STRICTNESS[today.mode] > STRICTNESS[mode]) {
+    mode = today.mode;
+  }
+  return {
+    mode,
+    source: mode === policy.mode ? "policy" : today.source,
+    ...(today.ignoredConfig === undefined ? {} : { ignoredConfig: today.ignoredConfig }),
+    baseMode: today.mode,
+  };
+}
+
+/** The mode from the input and the config alone: the base is the input when given, else `warn`; the config can only raise it. */
+function withoutPolicy(settings: TestIntegrityModeSettings): ResolvedTestIntegrityMode {
   const base: ResolvedTestIntegrityMode =
     settings.input === undefined ? { mode: "warn", source: "default" } : { mode: settings.input, source: "input" };
   const config = settings.config;

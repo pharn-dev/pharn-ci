@@ -1,0 +1,3 @@
+AGENTS.md
+pkg/package.json
+pkg/src/a.ts

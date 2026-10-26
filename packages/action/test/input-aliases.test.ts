@@ -37,6 +37,9 @@ const SHIPPED_INPUTS = [
   "fail-on-threshold",
   "config",
   "github-token",
+  // Added by E3 item 20 (the org policy).
+  "policy",
+  "app-url",
 ];
 const SHIPPED_OUTPUTS = ["report-path", "verdict", "diff-coverage"];
 

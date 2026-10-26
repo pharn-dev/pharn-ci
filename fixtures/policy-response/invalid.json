@@ -1,0 +1,170 @@
+{
+  "missing-key": {
+    "version": 7,
+    "etag": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "updatedAt": "2026-10-26T10:00:00Z",
+    "policy": { "version": 1, "coverage": { "threshold": 85, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": ["billing > refunds a flaky test"]
+  },
+  "unknown-key": {
+    "version": 7,
+    "etag": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "updatedAt": "2026-10-26T10:00:00Z",
+    "policy": { "version": 1, "coverage": { "threshold": 85, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": ["billing > refunds a flaky test"],
+    "settings": { "uploadJunit": false, "redactMessages": true, "messageMaxBytes": 4096 },
+    "zzz-unknown": true
+  },
+  "version-0": {
+    "version": 0,
+    "etag": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "updatedAt": "2026-10-26T10:00:00Z",
+    "policy": { "version": 1, "coverage": { "threshold": 85, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": ["billing > refunds a flaky test"],
+    "settings": { "uploadJunit": false, "redactMessages": true, "messageMaxBytes": 4096 }
+  },
+  "version-1.5": {
+    "version": 1.5,
+    "etag": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "updatedAt": "2026-10-26T10:00:00Z",
+    "policy": { "version": 1, "coverage": { "threshold": 85, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": ["billing > refunds a flaky test"],
+    "settings": { "uploadJunit": false, "redactMessages": true, "messageMaxBytes": 4096 }
+  },
+  "version-string": {
+    "version": "seven-x",
+    "etag": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "updatedAt": "2026-10-26T10:00:00Z",
+    "policy": { "version": 1, "coverage": { "threshold": 85, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": ["billing > refunds a flaky test"],
+    "settings": { "uploadJunit": false, "redactMessages": true, "messageMaxBytes": 4096 }
+  },
+  "etag-empty": {
+    "version": 7,
+    "etag": "",
+    "updatedAt": "2026-10-26T10:00:00Z",
+    "policy": { "version": 1, "coverage": { "threshold": 85, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": ["billing > refunds a flaky test"],
+    "settings": { "uploadJunit": false, "redactMessages": true, "messageMaxBytes": 4096 }
+  },
+  "etag-201": {
+    "version": 7,
+    "etag": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk",
+    "updatedAt": "2026-10-26T10:00:00Z",
+    "policy": { "version": 1, "coverage": { "threshold": 85, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": ["billing > refunds a flaky test"],
+    "settings": { "uploadJunit": false, "redactMessages": true, "messageMaxBytes": 4096 }
+  },
+  "etag-e-acute": {
+    "version": 7,
+    "etag": "sha256:café",
+    "updatedAt": "2026-10-26T10:00:00Z",
+    "policy": { "version": 1, "coverage": { "threshold": 85, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": ["billing > refunds a flaky test"],
+    "settings": { "uploadJunit": false, "redactMessages": true, "messageMaxBytes": 4096 }
+  },
+  "etag-tab": {
+    "version": 7,
+    "etag": "sha256:ab\tcd",
+    "updatedAt": "2026-10-26T10:00:00Z",
+    "policy": { "version": 1, "coverage": { "threshold": 85, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": ["billing > refunds a flaky test"],
+    "settings": { "uploadJunit": false, "redactMessages": true, "messageMaxBytes": 4096 }
+  },
+  "updatedAt-month-13": {
+    "version": 7,
+    "etag": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "updatedAt": "2026-13-26T10:00:00Z",
+    "policy": { "version": 1, "coverage": { "threshold": 85, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": ["billing > refunds a flaky test"],
+    "settings": { "uploadJunit": false, "redactMessages": true, "messageMaxBytes": 4096 }
+  },
+  "updatedAt-no-z": {
+    "version": 7,
+    "etag": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "updatedAt": "2026-10-26T10:00:00",
+    "policy": { "version": 1, "coverage": { "threshold": 85, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": ["billing > refunds a flaky test"],
+    "settings": { "uploadJunit": false, "redactMessages": true, "messageMaxBytes": 4096 }
+  },
+  "updatedAt-lower-t": {
+    "version": 7,
+    "etag": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "updatedAt": "2026-10-26t10:00:00Z",
+    "policy": { "version": 1, "coverage": { "threshold": 85, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": ["billing > refunds a flaky test"],
+    "settings": { "uploadJunit": false, "redactMessages": true, "messageMaxBytes": 4096 }
+  },
+  "updatedAt-hour-24": {
+    "version": 7,
+    "etag": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "updatedAt": "2026-10-26T24:00:00Z",
+    "policy": { "version": 1, "coverage": { "threshold": 85, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": ["billing > refunds a flaky test"],
+    "settings": { "uploadJunit": false, "redactMessages": true, "messageMaxBytes": 4096 }
+  },
+  "policy-threshold": {
+    "version": 7,
+    "etag": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "updatedAt": "2026-10-26T10:00:00Z",
+    "policy": { "version": 1, "coverage": { "threshold": 101, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": ["billing > refunds a flaky test"],
+    "settings": { "uploadJunit": false, "redactMessages": true, "messageMaxBytes": 4096 }
+  },
+  "quarantine-empty-item": {
+    "version": 7,
+    "etag": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "updatedAt": "2026-10-26T10:00:00Z",
+    "policy": { "version": 1, "coverage": { "threshold": 85, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": [""],
+    "settings": { "uploadJunit": false, "redactMessages": true, "messageMaxBytes": 4096 }
+  },
+  "quarantine-u0085": {
+    "version": 7,
+    "etag": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "updatedAt": "2026-10-26T10:00:00Z",
+    "policy": { "version": 1, "coverage": { "threshold": 85, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": ["line\u0085break"],
+    "settings": { "uploadJunit": false, "redactMessages": true, "messageMaxBytes": 4096 }
+  },
+  "settings-missing-redact": {
+    "version": 7,
+    "etag": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "updatedAt": "2026-10-26T10:00:00Z",
+    "policy": { "version": 1, "coverage": { "threshold": 85, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": ["billing > refunds a flaky test"],
+    "settings": { "uploadJunit": false, "messageMaxBytes": 4096 }
+  },
+  "settings-extra-key": {
+    "version": 7,
+    "etag": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "updatedAt": "2026-10-26T10:00:00Z",
+    "policy": { "version": 1, "coverage": { "threshold": 85, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": ["billing > refunds a flaky test"],
+    "settings": { "uploadJunit": false, "redactMessages": true, "messageMaxBytes": 4096, "zzz-extra": 1 }
+  },
+  "max-bytes-255": {
+    "version": 7,
+    "etag": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "updatedAt": "2026-10-26T10:00:00Z",
+    "policy": { "version": 1, "coverage": { "threshold": 85, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": ["billing > refunds a flaky test"],
+    "settings": { "uploadJunit": false, "redactMessages": true, "messageMaxBytes": 255 }
+  },
+  "max-bytes-65537": {
+    "version": 7,
+    "etag": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "updatedAt": "2026-10-26T10:00:00Z",
+    "policy": { "version": 1, "coverage": { "threshold": 85, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": ["billing > refunds a flaky test"],
+    "settings": { "uploadJunit": false, "redactMessages": true, "messageMaxBytes": 65537 }
+  },
+  "max-bytes-300.5": {
+    "version": 7,
+    "etag": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "updatedAt": "2026-10-26T10:00:00Z",
+    "policy": { "version": 1, "coverage": { "threshold": 85, "exclude": ["gen/**"] }, "test_integrity": { "mode": "block" } },
+    "quarantine": ["billing > refunds a flaky test"],
+    "settings": { "uploadJunit": false, "redactMessages": true, "messageMaxBytes": 300.5 }
+  }
+}

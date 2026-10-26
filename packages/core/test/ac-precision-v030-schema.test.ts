@@ -21,6 +21,9 @@ const APPENDED_START = " Codes added in v0.4.0:";
 const SECRET_CODES = [
   ...Array.from({ length: 11 }, (_, i) => `AGENT_CONFIG_SECRET_S${String(i + 1).padStart(2, "0")}`),
   "AGENT_CONFIG_SECRET_UNSCANNED",
+  // Re-pinned for E3 item 20 (the org policy): the same appended text also names these two codes.
+  "POLICY_OVERRIDE_IGNORED",
+  "POLICY_UNAVAILABLE",
 ];
 
 // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property: the four lines it inserts after the

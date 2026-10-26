@@ -163,8 +163,14 @@ describe("TI08, TI15 and TI16: schemas and documents", () => {
       expect(row, `the ${code(id)} message-table row`).toBeDefined();
     }
 
-    // action.yml declares no new input.
-    expect(actionInputs(read("action.yml"))).toEqual(actionInputs(atBase(base, "action.yml").toString("utf8")));
+    // action.yml declares no new input. Re-pinned for the org policy (E3 item 20), which adds exactly the `policy` and
+    // `app-url` inputs: both must be declared, and with them set aside the inputs are the base's, in order.
+    const POLICY_INPUTS = ["policy", "app-url"];
+    const inputsNow = actionInputs(read("action.yml"));
+    for (const name of POLICY_INPUTS) expect(inputsNow, `action.yml declares ${name}`).toContain(name);
+    expect(inputsNow.filter((name) => !POLICY_INPUTS.includes(name))).toEqual(
+      actionInputs(atBase(base, "action.yml").toString("utf8")),
+    );
 
     // docs/LIMITS.md: three "What … misses" sections and the hard-coded-answer line.
     const limits = read("docs/LIMITS.md");

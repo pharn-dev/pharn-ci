@@ -2,6 +2,7 @@ import { parseArgs } from "node:util";
 import {
   type AgentConfigSources,
   agentConfigSecretPaths,
+  applyPolicy,
   type CheckInput,
   COVERAGE_FORMAT_SELECTIONS,
   ConfigError,
@@ -30,9 +31,12 @@ import {
   gitChunks,
   indexPythonTestSources,
   indexPythonTests,
+  lstatPath,
+  type PathStat,
   readAgentConfigSources,
   readCoverageFiles,
   readDiscoveredCoverage,
+  readPolicyFile,
   readTestSources,
 } from "@pharn-ci/node-io";
 
@@ -73,6 +77,11 @@ export interface CliDeps {
    */
   listDir(path: string): Promise<DirEntry[] | null>;
   resolvePath(...segments: string[]): string;
+  /**
+   * `lstat` of a path without following a symbolic link; null when it does not exist. Only called to read a
+   * `--policy-file`. Absent: node-io's `lstatPath`.
+   */
+  lstat?(path: string): Promise<PathStat | null>;
   stdout(text: string): void;
   stderr(text: string): void;
 }
@@ -98,6 +107,8 @@ Options:
   --expect-agent-setup <tool>  Report this agent tool when no setup file configures it (repeatable; adds to setup.expect)
   --test-integrity <m>  Test-integrity mode: block, warn or off. Default: warn; test_integrity.mode in the config can only tighten it
   --config <path>      Config file. Default: <repo>/.pharn/ci.yml if present
+  --policy-file <path> Org policy document to apply, relative to the repo root. It can only tighten; the CLI never fetches a policy
+  --no-policy          Apply no org policy (the default; cannot be combined with --policy-file)
   -h, --help           Show this help
   -v, --version        Show the version
 
@@ -123,6 +134,10 @@ export async function main(argv: string[], deps: CliDeps): Promise<number> {
   }
   if (positionals[0] !== "check" || positionals.length > 1) {
     deps.stderr(`pharn-ci: unknown command "${positionals.join(" ")}"\n\n${HELP}`);
+    return EXIT_ERROR;
+  }
+  if (values["policy-file"] !== undefined && values["no-policy"] === true) {
+    deps.stderr(`pharn-ci: --policy-file and --no-policy cannot be used together\n\n${HELP}`);
     return EXIT_ERROR;
   }
 
@@ -173,6 +188,8 @@ function parseOptions(argv: string[]) {
       "require-agent-setup": { type: "boolean" },
       "expect-agent-setup": { type: "string", multiple: true },
       "test-integrity": { type: "string" },
+      "policy-file": { type: "string" },
+      "no-policy": { type: "boolean" },
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
     },
@@ -234,6 +251,19 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   // With no coverage path set anywhere, the report is looked for at the discovery candidates.
   const resolved = resolveInputs(config, raw, FLAG_ERRORS, { discoverCoverage: true });
   if (!resolved.ok) throw resolved.errors[0];
+  // A --policy-file document is read before anything is measured and applied over the flags and the config; the CLI
+  // never fetches a policy. A problem with the file is an Error, so exit 2. --no-policy and no flag change nothing.
+  const policyFile = values["policy-file"];
+  const policy =
+    policyFile === undefined
+      ? undefined
+      : await readPolicyFile(
+          { readFile: deps.readFile, resolvePath: deps.resolvePath, lstat: deps.lstat ?? lstatPath },
+          { root: repoRoot, path: policyFile, label: "--policy-file" },
+        );
+  const application =
+    policy === undefined ? undefined : applyPolicy({ config, raw, resolved: resolved.inputs }, policy);
+  const effective = application?.inputs ?? resolved.inputs;
   const {
     coverageFile,
     coverageFormat,
@@ -243,7 +273,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     requireAgentSetup,
     expectAgentSetup,
     testIntegrityMode,
-  } = resolved.inputs;
+  } = effective;
 
   // Say which format was read and why, on stderr so stdout stays the report alone.
   const log = (line: string) => deps.stderr(`${line}\n`);
@@ -353,6 +383,9 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
     // Absolute: core makes it repo-relative against repoRoot, or finds it outside the repo.
     ...(values.config === undefined ? {} : { configPath: deps.resolvePath(deps.cwd, values.config) }),
+    ...(policy === undefined ? {} : { policy }),
+    ...(application === undefined || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored }),
+    ...(application?.signalOverrides === undefined ? {} : { signalOverrides: application.signalOverrides }),
   };
   const report = check(input);
 

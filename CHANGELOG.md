@@ -18,7 +18,17 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 - `schema/policy.v1.json`: the JSON Schema (draft 2020-12) for version 1 of the policy document, the file that will
   tell pharn-ci what "safe to merge" means for a repository, shared with the pharn.dev app. A pure validator in core
   (`validatePolicy`, and `parsePolicyJson` for JSON text) checks a document against it: it never throws, never
-  repeats a value from the document in an error, and bounds its work on any input. Nothing reads a policy yet.
+  repeats a value from the document in an error, and bounds its work on any input. The org policy entry below is
+  what reads it.
+- Org policy. The Action takes two inputs, `policy` (`auto`, `never`, `required` or `file:<path>`, default `auto`) and
+  `app-url` (default `https://pharn.dev`), and the CLI two flags, `--policy-file <path>` and `--no-policy`. With
+  `policy: auto` or `required` and an OIDC token (`permissions: id-token: write`), the Action makes one `GET` of the
+  pharn.dev policy endpoint, sending only the OIDC token and the repository name, and applies the served policy over
+  the workflow inputs and `.pharn/ci.yml`: it raises the threshold, `setup.require` and the test-integrity mode,
+  replaces the exclusions and the coverage root, sets per-signal severities and the accept label, and adds
+  `setup.expect` tools. A `file:` policy carried by the pull request can only tighten. Two new message codes:
+  `POLICY_UNAVAILABLE` (`warn`, `error` under `policy: required`) and `POLICY_OVERRIDE_IGNORED` (`warn`). With no
+  token, `policy: never` or no policy, the report is the one it was.
 - Check **A7**, secrets in agent configs. The CLI and the Action read the committed text at `HEAD` of the
   machine-readable agent setup files (`.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`, `.claude/settings*.json`,
   `.codex/config.toml`, `.gemini/settings.json`, `opencode.json`, `.aider.conf.yml`, the files under `.claude/hooks/` and
