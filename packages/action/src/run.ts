@@ -4,6 +4,7 @@ import {
   type CheckInput,
   check,
   type DirEntry,
+  detectAgentPr,
   gitDiffArgs,
   type InputErrorText,
   type PharnConfig,
@@ -22,6 +23,7 @@ import {
   unavailableTestSources,
   VERSION,
   validateAcceptLabel,
+  withAgentPrMeta,
 } from "@pharn-ci/core";
 import {
   gitChunks,
@@ -33,6 +35,7 @@ import {
   readTestSources,
 } from "@pharn-ci/node-io";
 import { applyAcceptLabel } from "./accept-label.js";
+import { gatherAgentPrFacts } from "./agent-pr.js";
 import { type PrNumberTarget, parsePrNumberInputs, resolvePrNumberTarget } from "./pr-number.js";
 import { runMeta } from "./run-meta.js";
 
@@ -65,10 +68,16 @@ export interface GitHubApi {
   /** Read-only: the base and head commit SHAs of a pull request (PR-number mode). */
   getPullRequest(pullNumber: number): Promise<{ baseSha: string; headSha: string }>;
   /**
-   * Read-only: a pull request's author (`user`) and labels, as GitHub returned them. Untrusted: the accept label
-   * code checks their shape. Only called when the accept label may apply.
+   * Read-only: a pull request's author (`user`), labels and commit count (`commits`), as GitHub returned them.
+   * Untrusted: the accept label code and the agent PR detection check their shape. Called when the accept label may
+   * apply, and in PR-number mode for the agent PR detection.
    */
-  getPullRequestSignoff(pullNumber: number): Promise<{ author: unknown; labels: unknown }>;
+  getPullRequestSignoff(pullNumber: number): Promise<{ author: unknown; labels: unknown; commits: unknown }>;
+  /**
+   * Read-only: one page (100 commits, oldest first) of a pull request's commits, and whether another page follows.
+   * Untrusted: the agent PR detection checks their shape and reads only logins and commit messages, in memory.
+   */
+  listPullRequestCommits(pullNumber: number, page: number): Promise<{ commits: unknown; hasNext: boolean }>;
   /**
    * Read-only: one page (100 events, oldest first) of a pull request's issue events, and whether another page
    * follows. Untrusted: the accept label code checks their shape. Only called after the pull request carries the label.
@@ -103,7 +112,15 @@ export interface ActionContext {
   payload: {
     before?: string;
     repository?: { full_name?: string; id?: number };
-    pull_request?: { number: number; base: { sha: string }; head: { sha: string } };
+    pull_request?: {
+      number: number;
+      base: { sha: string };
+      head: { sha: string };
+      /** Untrusted: shape-checked by the agent PR detection (`agent-pr.ts`). */
+      user?: unknown;
+      labels?: unknown;
+      commits?: unknown;
+    };
     merge_group?: { base_sha: string; head_sha: string };
   };
 }
@@ -343,7 +360,20 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   // The accept label is the Action's alone: check() and the CLI never see it. Only a pull_request event with its
   // payload, or a pr-number target, is a pull request run (not pull_request_target, push or merge_group).
   const signoffNumber = deps.context.eventName === "pull_request" && pr ? pr.number : target?.number;
-  const report = await applyAcceptLabel(deps, checked, acceptLabel.label, signoffNumber);
+  const labelled = await applyAcceptLabel(deps, checked, acceptLabel.label, signoffNumber);
+  // Agent PR detection is metadata only: it needs the report's `meta`, and the verdict, the messages, the summary and the
+  // comment never read what it adds. It uses the default lists only; no input and no config entry changes them.
+  let report = labelled;
+  if (labelled.meta !== undefined) {
+    const facts = await gatherAgentPrFacts(deps, target);
+    const detection = detectAgentPr(facts);
+    if (detection.incomplete !== null) {
+      deps.info(
+        `pharn-ci: agent PR detection could not read all of the pull request's evidence (${detection.incomplete}), so it counts as an agent PR`,
+      );
+    }
+    report = withAgentPrMeta(labelled, detection, facts);
+  }
   const summary = fitMarkdown(report, {
     prefix: "",
     note: SUMMARY_TRUNCATED_NOTE,

@@ -54,28 +54,28 @@ var require_tunnel = __commonJS({
     exports.httpOverHttps = httpOverHttps2;
     exports.httpsOverHttps = httpsOverHttps2;
     function httpOverHttp2(options) {
-      var agent = new TunnelingAgent(options);
-      agent.request = http.request;
-      return agent;
+      var agent2 = new TunnelingAgent(options);
+      agent2.request = http.request;
+      return agent2;
     }
     function httpsOverHttp2(options) {
-      var agent = new TunnelingAgent(options);
-      agent.request = http.request;
-      agent.createSocket = createSecureSocket;
-      agent.defaultPort = 443;
-      return agent;
+      var agent2 = new TunnelingAgent(options);
+      agent2.request = http.request;
+      agent2.createSocket = createSecureSocket;
+      agent2.defaultPort = 443;
+      return agent2;
     }
     function httpOverHttps2(options) {
-      var agent = new TunnelingAgent(options);
-      agent.request = https.request;
-      return agent;
+      var agent2 = new TunnelingAgent(options);
+      agent2.request = https.request;
+      return agent2;
     }
     function httpsOverHttps2(options) {
-      var agent = new TunnelingAgent(options);
-      agent.request = https.request;
-      agent.createSocket = createSecureSocket;
-      agent.defaultPort = 443;
-      return agent;
+      var agent2 = new TunnelingAgent(options);
+      agent2.request = https.request;
+      agent2.createSocket = createSecureSocket;
+      agent2.defaultPort = 443;
+      return agent2;
     }
     function TunnelingAgent(options) {
       var self = this;
@@ -8958,8 +8958,8 @@ var require_env_http_proxy_agent = __commonJS({
       }
       [kDispatch](opts, handler2) {
         const url = new URL(opts.origin);
-        const agent = this.#getProxyAgentForUrl(url);
-        return agent.dispatch(opts, handler2);
+        const agent2 = this.#getProxyAgentForUrl(url);
+        return agent2.dispatch(opts, handler2);
       }
       async [kClose]() {
         await this[kNoProxyAgent].close();
@@ -9408,9 +9408,9 @@ var require_retry_agent = __commonJS({
     var RetryAgent = class extends Dispatcher {
       #agent = null;
       #options = null;
-      constructor(agent, options = {}) {
+      constructor(agent2, options = {}) {
         super(options);
-        this.#agent = agent;
+        this.#agent = agent2;
         this.#options = options;
       }
       dispatch(opts, handler2) {
@@ -10879,16 +10879,16 @@ var require_mock_utils = __commonJS({
       return true;
     }
     function buildMockDispatch() {
-      const agent = this[kMockAgent];
+      const agent2 = this[kMockAgent];
       const origin = this[kOrigin];
       const originalDispatch = this[kOriginalDispatch];
       return function dispatch(opts, handler2) {
-        if (agent.isMockActive) {
+        if (agent2.isMockActive) {
           try {
             mockDispatch.call(this, opts, handler2);
           } catch (error2) {
             if (error2 instanceof MockNotMatchedError) {
-              const netConnect = agent[kGetNetConnect]();
+              const netConnect = agent2[kGetNetConnect]();
               if (netConnect === false) {
                 throw new MockNotMatchedError(`${error2.message}: subsequent request to origin ${origin} was not allowed (net.connect disabled)`);
               }
@@ -10917,7 +10917,7 @@ var require_mock_utils = __commonJS({
     }
     function buildMockOptions(opts) {
       if (opts) {
-        const { agent, ...mockOptions } = opts;
+        const { agent: agent2, ...mockOptions } = opts;
         return mockOptions;
       }
     }
@@ -11313,9 +11313,9 @@ var require_mock_agent = __commonJS({
         if (opts?.agent && typeof opts.agent.dispatch !== "function") {
           throw new InvalidArgumentError("Argument opts.agent must implement Agent");
         }
-        const agent = opts?.agent ? opts.agent : new Agent(opts);
-        this[kAgent] = agent;
-        this[kClients] = agent[kClients];
+        const agent2 = opts?.agent ? opts.agent : new Agent(opts);
+        this[kAgent] = agent2;
+        this[kClients] = agent2[kClients];
         this[kOptions] = buildMockOptions(opts);
       }
       get(origin) {
@@ -11421,12 +11421,12 @@ var require_global2 = __commonJS({
     if (getGlobalDispatcher() === void 0) {
       setGlobalDispatcher(new Agent());
     }
-    function setGlobalDispatcher(agent) {
-      if (!agent || typeof agent.dispatch !== "function") {
+    function setGlobalDispatcher(agent2) {
+      if (!agent2 || typeof agent2.dispatch !== "function") {
         throw new InvalidArgumentError("Argument agent must implement Agent");
       }
       Object.defineProperty(globalThis, globalDispatcher, {
-        value: agent,
+        value: agent2,
         writable: true,
         enumerable: false,
         configurable: false
@@ -14422,13 +14422,13 @@ var require_fetch = __commonJS({
       return response;
       function dispatch({ body }) {
         const url = requestCurrentURL(request2);
-        const agent = fetchParams.controller.dispatcher;
-        return new Promise((resolve2, reject) => agent.dispatch(
+        const agent2 = fetchParams.controller.dispatcher;
+        return new Promise((resolve2, reject) => agent2.dispatch(
           {
             path: url.pathname + url.search,
             origin: url.origin,
             method: request2.method,
-            body: agent.isMockActive ? request2.body && (request2.body.source || request2.body.stream) : body,
+            body: agent2.isMockActive ? request2.body && (request2.body.source || request2.body.stream) : body,
             headers: request2.headersList.entries,
             maxRedirections: 0,
             upgrade: request2.mode === "websocket" ? "websocket" : void 0
@@ -19003,8 +19003,8 @@ var require_undici = __commonJS({
           }
           url = util.parseURL(url);
         }
-        const { agent, dispatcher = getGlobalDispatcher() } = opts;
-        if (agent) {
+        const { agent: agent2, dispatcher = getGlobalDispatcher() } = opts;
+        if (agent2) {
           throw new InvalidArgumentError("unsupported opts.agent. Did you mean opts.client?");
         }
         return fn.call(dispatcher, {
@@ -19696,17 +19696,17 @@ var require_lib = __commonJS({
         return _default;
       }
       _getAgent(parsedUrl) {
-        let agent;
+        let agent2;
         const proxyUrl = pm.getProxyUrl(parsedUrl);
         const useProxy = proxyUrl && proxyUrl.hostname;
         if (this._keepAlive && useProxy) {
-          agent = this._proxyAgent;
+          agent2 = this._proxyAgent;
         }
         if (!useProxy) {
-          agent = this._agent;
+          agent2 = this._agent;
         }
-        if (agent) {
-          return agent;
+        if (agent2) {
+          return agent2;
         }
         const usingSsl = parsedUrl.protocol === "https:";
         let maxSockets = 100;
@@ -19728,20 +19728,20 @@ var require_lib = __commonJS({
           } else {
             tunnelAgent = overHttps ? tunnel2.httpOverHttps : tunnel2.httpOverHttp;
           }
-          agent = tunnelAgent(agentOptions);
-          this._proxyAgent = agent;
+          agent2 = tunnelAgent(agentOptions);
+          this._proxyAgent = agent2;
         }
-        if (!agent) {
+        if (!agent2) {
           const options = { keepAlive: this._keepAlive, maxSockets };
-          agent = usingSsl ? new https.Agent(options) : new http.Agent(options);
-          this._agent = agent;
+          agent2 = usingSsl ? new https.Agent(options) : new http.Agent(options);
+          this._agent = agent2;
         }
         if (usingSsl && this._ignoreSslError) {
-          agent.options = Object.assign(agent.options || {}, {
+          agent2.options = Object.assign(agent2.options || {}, {
             rejectUnauthorized: false
           });
         }
-        return agent;
+        return agent2;
       }
       _getProxyAgentDispatcher(parsedUrl, proxyUrl) {
         let proxyAgent;
@@ -235280,7 +235280,12 @@ function createGitHubApi(opts) {
     async getPullRequestSignoff(pullNumber) {
       const { octokit, owner, repo } = connect();
       const { data } = await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber });
-      return { author: data.user, labels: data.labels };
+      return { author: data.user, labels: data.labels, commits: data.commits };
+    },
+    async listPullRequestCommits(pullNumber, page) {
+      const { octokit, owner, repo } = connect();
+      const res = await octokit.rest.pulls.listCommits({ owner, repo, pull_number: pullNumber, per_page: 100, page });
+      return { commits: res.data, hasNext: /\brel="next"/.test(String(res.headers.link ?? "")) };
     },
     async listIssueEvents(issueNumber, page) {
       const { octokit, owner, repo } = connect();
@@ -236242,6 +236247,189 @@ function ignoreAcceptLabel(report, label, reason) {
   };
   const messages = insertAfterSignalMessages(report.messages, [ignored]);
   return { ...report, verdict: verdictOf(messages), messages };
+}
+
+// ../core/src/agents.ts
+var agent = (hint, logins, emails) => Object.freeze({ hint, logins: Object.freeze([...logins]), emails: Object.freeze([...emails]) });
+var KNOWN_AGENTS = Object.freeze([
+  agent("claude-code", ["claude[bot]"], ["noreply@anthropic.com"]),
+  agent("copilot", ["Copilot", "copilot-swe-agent[bot]"], []),
+  agent("codex", ["chatgpt-codex-connector[bot]"], []),
+  agent("devin", ["devin-ai-integration[bot]"], []),
+  agent("cursor", ["cursor[bot]", "cursoragent"], ["cursoragent@cursor.com"]),
+  agent("gemini", ["gemini-code-assist[bot]"], []),
+  agent("jules", ["google-labs-jules[bot]"], [])
+]);
+var DEFAULT_AGENT_LABELS = Object.freeze(["agent", "ai-generated"]);
+var MAX_MESSAGE_UNITS = 65536;
+var MAX_TRAILERS = 50;
+var MAX_CO_AUTHORS = 20;
+var MAX_META_LABELS = 100;
+var MAX_META_LABEL_CODE_POINTS = 50;
+var TRAILER_PREFIX = "co-authored-by:";
+var LOGIN_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?$/;
+var NOREPLY_PATTERN = /^(?:[0-9]+\+)?([^@+]+)@users\.noreply\.github\.com$/i;
+function isSpaceUnit(c) {
+  return c <= 32 || c === 127 || c === 160 || c === 5760 || c >= 8192 && c <= 8202 || c === 8232 || c === 8233 || c === 8239 || c === 8287 || c === 12288 || c === 65279;
+}
+function trailerOnLine(text, from, to) {
+  let i = from;
+  while (i < to && (text.charCodeAt(i) === 32 || text.charCodeAt(i) === 9)) i++;
+  if (to - i < TRAILER_PREFIX.length) return null;
+  if (text.slice(i, i + TRAILER_PREFIX.length).toLowerCase() !== TRAILER_PREFIX) return null;
+  const rest = text.slice(i + TRAILER_PREFIX.length, to).trim();
+  if (!rest.endsWith(">")) return null;
+  const lt = rest.lastIndexOf("<");
+  if (lt === -1) return null;
+  const email = rest.slice(lt + 1, rest.length - 1);
+  if (email === "") return null;
+  for (let k = 0; k < email.length; k++) {
+    const c = email.charCodeAt(k);
+    if (isSpaceUnit(c) || c === 60 || c === 62) return null;
+  }
+  return { name: rest.slice(0, lt).trim(), email };
+}
+function parseCoAuthorTrailers(message) {
+  if (typeof message !== "string") return [];
+  const text = message.length > MAX_MESSAGE_UNITS ? message.slice(0, MAX_MESSAGE_UNITS) : message;
+  const trailers = [];
+  let start = 0;
+  while (start <= text.length && trailers.length < MAX_TRAILERS) {
+    let end = text.indexOf("\n", start);
+    if (end === -1) end = text.length;
+    const lineEnd = end > start && text.charCodeAt(end - 1) === 13 ? end - 1 : end;
+    const trailer = trailerOnLine(text, start, lineEnd);
+    if (trailer !== null) trailers.push(trailer);
+    start = end + 1;
+  }
+  return trailers;
+}
+var EVIDENCE_ORDER = [
+  "author-bot",
+  "author-known-agent",
+  "author-extra-login",
+  "commit-bot",
+  "commit-known-agent",
+  "commit-extra-login",
+  "co-author-known-agent",
+  "co-author-extra-login",
+  "label"
+];
+var strings = (value) => Array.isArray(value) ? value.filter((v) => typeof v === "string") : [];
+function detectAgentPr(facts, agents = KNOWN_AGENTS) {
+  const pr = facts?.pr;
+  if (pr === null || pr === void 0 || typeof pr !== "object") {
+    return { isAgentPr: false, agentHint: null, evidence: [], incomplete: null, coAuthors: [] };
+  }
+  const loginAgent = /* @__PURE__ */ new Map();
+  const emailAgent = /* @__PURE__ */ new Map();
+  agents.forEach((a, index) => {
+    for (const login of strings(a.logins))
+      if (!loginAgent.has(login.toLowerCase())) loginAgent.set(login.toLowerCase(), index);
+    for (const email of strings(a.emails))
+      if (!emailAgent.has(email.toLowerCase())) emailAgent.set(email.toLowerCase(), index);
+  });
+  const extraLogins = new Set(strings(facts.extraLogins).map((l) => l.toLowerCase()));
+  const labelSet = new Set([...DEFAULT_AGENT_LABELS, ...strings(facts.labels)].map((l) => l.toLowerCase()));
+  const found = /* @__PURE__ */ new Set();
+  let hintIndex = Number.POSITIVE_INFINITY;
+  const coAuthors = [];
+  const known = (index) => {
+    if (index < hintIndex) hintIndex = index;
+  };
+  const rawAuthor = pr.author;
+  let author = null;
+  if (rawAuthor !== null && typeof rawAuthor === "object") {
+    const { login, type } = rawAuthor;
+    if (typeof login === "string" && typeof type === "string") author = { login, type };
+  }
+  if (author !== null) {
+    const login = author.login.toLowerCase();
+    if (author.type === "Bot" || login.endsWith("[bot]")) found.add("author-bot");
+    const index = loginAgent.get(login);
+    if (index !== void 0) {
+      found.add("author-known-agent");
+      known(index);
+    }
+    if (extraLogins.has(login)) found.add("author-extra-login");
+  }
+  const commits = pr.commits;
+  if (Array.isArray(commits)) {
+    for (const commit of commits) {
+      if (commit === null || typeof commit !== "object") continue;
+      const { authorLogin, committerLogin, message } = commit;
+      for (const raw of [authorLogin, committerLogin]) {
+        if (typeof raw !== "string") continue;
+        const login = raw.toLowerCase();
+        if (login.endsWith("[bot]")) found.add("commit-bot");
+        const index = loginAgent.get(login);
+        if (index !== void 0) {
+          found.add("commit-known-agent");
+          known(index);
+        }
+        if (extraLogins.has(login)) found.add("commit-extra-login");
+      }
+      if (typeof message !== "string") continue;
+      for (const trailer of parseCoAuthorTrailers(message)) {
+        const email = trailer.email.toLowerCase();
+        const noreply = NOREPLY_PATTERN.exec(email);
+        const login = noreply === null ? null : noreply[1];
+        const index = login === null ? emailAgent.get(email) : loginAgent.get(login);
+        const extra = login !== null && extraLogins.has(login);
+        if (index !== void 0) {
+          found.add("co-author-known-agent");
+          known(index);
+        }
+        if (extra) found.add("co-author-extra-login");
+        let entry;
+        if (index !== void 0) entry = `${agents[index]?.hint} <${email}>`;
+        else if (extra) entry = `${login} <${email}>`;
+        if (entry !== void 0 && coAuthors.length < MAX_CO_AUTHORS && !coAuthors.includes(entry))
+          coAuthors.push(entry);
+      }
+    }
+  }
+  for (const label of strings(pr.labels)) {
+    if (labelSet.has(label.toLowerCase())) {
+      found.add("label");
+      break;
+    }
+  }
+  let incomplete = null;
+  if (author === null) incomplete = "author-unknown";
+  else if (!Array.isArray(commits)) incomplete = "commits-unreadable";
+  else if (pr.commitsIncomplete === true) incomplete = "commits-truncated";
+  const evidence = EVIDENCE_ORDER.filter((kind) => found.has(kind));
+  return {
+    isAgentPr: evidence.length > 0 || incomplete !== null,
+    agentHint: Number.isFinite(hintIndex) ? agents[hintIndex]?.hint ?? null : null,
+    evidence,
+    incomplete,
+    coAuthors
+  };
+}
+function agentPrMetaFields(detection, facts) {
+  const pr = facts?.pr;
+  if (pr === null || pr === void 0 || typeof pr !== "object") return { isAgentPr: false };
+  const author = pr.author;
+  let prAuthor = null;
+  if (author !== null && typeof author === "object") {
+    const { login, type } = author;
+    if (typeof login === "string" && LOGIN_PATTERN.test(login) && (type === "User" || type === "Bot" || type === "Organization")) {
+      prAuthor = { login, type };
+    }
+  }
+  return {
+    isAgentPr: detection.isAgentPr,
+    prAuthor,
+    prLabels: strings(pr.labels).slice(0, MAX_META_LABELS).map((label) => Array.from(label).slice(0, MAX_META_LABEL_CODE_POINTS).join("")),
+    coAuthors: detection.coAuthors.slice(0, MAX_CO_AUTHORS),
+    agentHint: detection.agentHint
+  };
+}
+function withAgentPrMeta(report, detection, facts) {
+  if (report.meta === void 0) return report;
+  return { ...report, meta: { ...report.meta, ...agentPrMetaFields(detection, facts) } };
 }
 
 // ../core/src/coverage/types.ts
@@ -244049,12 +244237,12 @@ function isCaseLabel(trimmed, offset, literal) {
 var CLOSERS3 = { "(": ")", "[": "]", "{": "}" };
 function inGroups(text, literals) {
   const groups = [];
-  const strings = literals.filter((l) => l.kind === "string");
+  const strings2 = literals.filter((l) => l.kind === "string");
   let next = 0;
   let i = 0;
   while (i < text.length) {
-    while (next < strings.length && strings[next].end <= i) next++;
-    const inside = strings[next];
+    while (next < strings2.length && strings2[next].end <= i) next++;
+    const inside = strings2[next];
     if (inside !== void 0 && i >= inside.start) {
       i = inside.end;
       continue;
@@ -246742,6 +246930,95 @@ async function readEvents(deps, pullNumber) {
   return void 0;
 }
 
+// src/agent-pr.ts
+var MAX_COMMIT_PAGES = 3;
+var MAX_PR_COMMITS = 250;
+var MAX_MESSAGE_UNITS2 = 65536;
+var LOGIN_PATTERN2 = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?$/;
+async function gatherAgentPrFacts(deps, target) {
+  const payloadPr = deps.context.payload.pull_request;
+  if (payloadPr === void 0 && target === void 0) return { pr: null };
+  try {
+    let number;
+    let rawAuthor;
+    let rawLabels;
+    let rawCount;
+    if (payloadPr !== void 0) {
+      number = payloadPr.number;
+      rawAuthor = payloadPr.user;
+      rawLabels = payloadPr.labels;
+      rawCount = payloadPr.commits;
+    } else {
+      number = target.number;
+      try {
+        const signoff = await deps.api.getPullRequestSignoff(number);
+        rawAuthor = signoff?.author;
+        rawLabels = signoff?.labels;
+        rawCount = signoff?.commits;
+      } catch {
+      }
+    }
+    const count2 = typeof rawCount === "number" && Number.isInteger(rawCount) && rawCount >= 0 ? rawCount : void 0;
+    const { commits, cut } = await listCommits(deps, number);
+    const incomplete = cut || commits !== null && commits.length > MAX_PR_COMMITS || count2 !== void 0 && (count2 > MAX_PR_COMMITS || commits !== null && count2 !== commits.length);
+    return {
+      pr: {
+        author: authorOf(rawAuthor),
+        labels: labelsOf(rawLabels),
+        commits,
+        ...incomplete ? { commitsIncomplete: true } : {}
+      }
+    };
+  } catch {
+    return { pr: { author: null, labels: [], commits: null } };
+  }
+}
+function authorOf(user) {
+  if (typeof user !== "object" || user === null) return null;
+  const { login, type } = user;
+  if (typeof login !== "string" || !LOGIN_PATTERN2.test(login)) return null;
+  if (type !== "User" && type !== "Bot" && type !== "Organization") return null;
+  return { login, type };
+}
+function labelsOf(labels) {
+  if (!Array.isArray(labels)) return [];
+  const names = [];
+  for (const label of labels) {
+    const name = typeof label === "object" && label !== null ? label.name : void 0;
+    if (typeof name === "string") names.push(name);
+  }
+  return names;
+}
+function loginOf2(user) {
+  if (typeof user !== "object" || user === null) return null;
+  const login = user.login;
+  return typeof login === "string" && LOGIN_PATTERN2.test(login) ? login : null;
+}
+async function listCommits(deps, number) {
+  const commits = [];
+  try {
+    for (let page = 1; page <= MAX_COMMIT_PAGES; page++) {
+      const res = await deps.api.listPullRequestCommits(number, page);
+      if (typeof res !== "object" || res === null || !Array.isArray(res.commits)) return { commits: null, cut: false };
+      for (const entry of res.commits) {
+        if (typeof entry !== "object" || entry === null) return { commits: null, cut: false };
+        const { commit, author, committer } = entry;
+        const message = typeof commit === "object" && commit !== null ? commit.message : void 0;
+        if (typeof message !== "string") return { commits: null, cut: false };
+        commits.push({
+          authorLogin: loginOf2(author),
+          committerLogin: loginOf2(committer),
+          message: message.slice(0, MAX_MESSAGE_UNITS2)
+        });
+      }
+      if (res.hasNext !== true) return { commits, cut: false };
+    }
+  } catch {
+    return { commits: null, cut: false };
+  }
+  return { commits, cut: true };
+}
+
 // src/pr-number.ts
 var PR_NUMBER = /^[1-9][0-9]{0,9}$/;
 var COMMIT_SHA = /^([0-9a-f]{40}|[0-9a-f]{64})$/i;
@@ -246987,7 +247264,18 @@ async function runUnsafe(deps) {
   if (meta === void 0) deps.info("run metadata is incomplete, so report.json carries no meta");
   const checked = check(meta === void 0 ? checkInput : { ...checkInput, meta });
   const signoffNumber = deps.context.eventName === "pull_request" && pr ? pr.number : target?.number;
-  const report = await applyAcceptLabel(deps, checked, acceptLabel.label, signoffNumber);
+  const labelled = await applyAcceptLabel(deps, checked, acceptLabel.label, signoffNumber);
+  let report = labelled;
+  if (labelled.meta !== void 0) {
+    const facts = await gatherAgentPrFacts(deps, target);
+    const detection = detectAgentPr(facts);
+    if (detection.incomplete !== null) {
+      deps.info(
+        `pharn-ci: agent PR detection could not read all of the pull request's evidence (${detection.incomplete}), so it counts as an agent PR`
+      );
+    }
+    report = withAgentPrMeta(labelled, detection, facts);
+  }
   const summary2 = fitMarkdown(report, {
     prefix: "",
     note: SUMMARY_TRUNCATED_NOTE,

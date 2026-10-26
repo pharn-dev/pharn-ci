@@ -107,6 +107,16 @@ export interface ReportMeta {
   runId: number;
   runAttempt: number;
   actor?: string;
+  /** The pull request's author, when the Action read a valid login and type; `null` when it could not. */
+  prAuthor?: { login: string; type: "User" | "Bot" | "Organization" } | null;
+  /** The pull request's label names: at most 100, each cut to 50 code points. */
+  prLabels?: string[];
+  /** The agent co-authors of its commits, as `<hint or login> <email>`; at most 20. A person is never recorded. */
+  coAuthors?: string[];
+  /** The known agent the evidence points to, or `null`. */
+  agentHint?: string | null;
+  /** `true` when the pull request counts as an agent PR, including when the evidence could not be read in full. */
+  isAgentPr?: boolean;
   upload: { status: "ok" | "skipped" | "failed" | "too_large"; runUrl?: string };
 }
 

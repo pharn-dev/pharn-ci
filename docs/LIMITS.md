@@ -1066,3 +1066,26 @@ limited by git, Node or GitHub alone.
   near-identical bodies can report a renamed test as removed. At most 20 TI02 and 20 TI05 findings are listed per file;
   the messages say how many were left out, and the block findings come first. The action and CLI dists carry the
   TypeScript parser for this and are about 11 MB.
+
+## 9. Agent-PR detection
+
+`meta.isAgentPr` in the Action's report says whether the pull request counts as an agent PR. What it does not do:
+
+- **Metadata only.** It reads the pull request's author, labels and commit count, and its commits' authors, committers
+  and `Co-authored-by` trailers. It never reads the diff or any file, and it says nothing about who wrote the code. An
+  agent that commits through a person's account with no trailer, label or known login counts as human.
+- **Commits are read through the API, at most 3 pages of 100.** A pull request of more than 250 commits, a commit count
+  that does not match the list, a page that cannot be read and a list cut at the third page all count as an agent PR:
+  evidence that cannot be read in full fails closed. The Action says so in one fixed log line.
+- **Dependabot and any `[bot]` author count as agent PRs.** So does a pull request whose author is not a user, a bot or
+  an organization (a deleted account, a Mannequin) or is missing.
+- **Labels are read as the event delivered them.** A label added after the event started the run is not seen until the
+  next run.
+- **The known-agent list holds only the seven verified entries** (Claude Code, Copilot, Codex, Devin, Cursor, Gemini and
+  Jules). Another agent is recognized only by a `[bot]` login, a label or a `Co-authored-by` trailer of a login on the
+  list.
+- **The lists cannot be changed from `.pharn/ci.yml`.** No `agents:` key is read, and no input sets one: a setting the
+  pull request carries cannot loosen or tighten the detection.
+- **A human co-author is never recorded.** Only trailers of known agents reach the report, as a hint and an address.
+- **The CLI does not set it.** Only the Action gathers pull request facts, and the detection changes no verdict, message,
+  comment or exit code.

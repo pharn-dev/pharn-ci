@@ -109,7 +109,18 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
       };
       // Re-pinned for the agent-config secrets change (E3 item 26): the one text starting ` Codes added in v0.4.0:`
       // right after the final sentence of the message-code description is cut out first (it names the 12 new codes).
-      const currentText = read(`schema/${name}`);
+      // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property: its four inserted lines appear once
+      // and are cut out of the current text as well.
+      const isAgentPrLines = [
+        '        "isAgentPr": {',
+        '          "description": "true when the pull request counts as an agent PR, including when detection could not read all of its evidence; false when the run has no pull request.",',
+        '          "type": "boolean"',
+        "        },",
+        "",
+      ].join("\n");
+      const withIsAgentPr = read(`schema/${name}`);
+      expect(withIsAgentPr.split(isAgentPrLines).length - 1, "the four isAgentPr lines appear once").toBe(1);
+      const currentText = withIsAgentPr.replace(isAgentPrLines, "");
       const sentenceEnd = currentText.indexOf(FINAL_SENTENCE) + FINAL_SENTENCE.length;
       expect(currentText.slice(sentenceEnd, sentenceEnd + APPENDED_START.length), "the appended v0.4.0 text").toBe(
         APPENDED_START,

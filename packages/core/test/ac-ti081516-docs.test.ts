@@ -116,7 +116,12 @@ describe("TI08, TI15 and TI16: schemas and documents", () => {
     expect(typeof getAt(before, languages), "the languages description at the base").toBe("string");
     // ti07-tests-changed adds the optional `testIntegrity.changes` summary: set aside on both sides too.
     const changes = ["properties", "testIntegrity", "properties", "changes"];
-    expect(setAside(now, [...paths, languages, changes])).toEqual(setAside(before, [...paths, languages, changes]));
+    // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property: the base has none, and setAside puts
+    // the marker in its place on both sides, so only that property differs.
+    const isAgentPr = ["properties", "meta", "properties", "isAgentPr"];
+    expect(setAside(now, [...paths, languages, changes, isAgentPr])).toEqual(
+      setAside(before, [...paths, languages, changes, isAgentPr]),
+    );
     const [path] = paths as [string[]];
     const beforeText = getAt(before, path) as string;
     const nowText = getAt(now, path);

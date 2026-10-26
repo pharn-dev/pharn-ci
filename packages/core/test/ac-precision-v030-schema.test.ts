@@ -23,6 +23,16 @@ const SECRET_CODES = [
   "AGENT_CONFIG_SECRET_UNSCANNED",
 ];
 
+// agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property: the four lines it inserts after the
+// `agentHint` line of meta.properties.
+const IS_AGENT_PR_LINES = [
+  '        "isAgentPr": {',
+  '          "description": "true when the pull request counts as an agent PR, including when detection could not read all of its evidence; false when the run has no pull request.",',
+  '          "type": "boolean"',
+  "        },",
+  "",
+].join("\n");
+
 const readNow = (path: string) => readFileSync(join(ROOT, path));
 const readBase = (path: string) => execFileSync("git", ["show", `${BASE}:${path}`], { cwd: ROOT }) as Buffer;
 
@@ -50,7 +60,11 @@ describe("schema: only the TI15 level sentence changes", () => {
       "report.v1.json is byte-identical to its copy at b31de0c",
     ).toBe(true);
 
-    const current = readNow("schema/report.v2.json").toString("utf8");
+    // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property
+    // Its four inserted lines appear once in the current schema and are cut out before the comparison with the base.
+    const withIsAgentPr = readNow("schema/report.v2.json").toString("utf8");
+    expect(withIsAgentPr.split(IS_AGENT_PR_LINES).length - 1, "the four isAgentPr lines appear once").toBe(1);
+    const current = withIsAgentPr.replace(IS_AGENT_PR_LINES, "");
     const { cut: now, appended } = cutAppended(current);
     expect(appended.startsWith(APPENDED_START), "the appended text starts right after the final sentence").toBe(true);
     for (const code of SECRET_CODES) expect(appended, `the appended text names ${code}`).toContain(code);

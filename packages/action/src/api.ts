@@ -68,7 +68,12 @@ export function createGitHubApi(opts: GitHubApiOptions): GitHubApi {
     async getPullRequestSignoff(pullNumber) {
       const { octokit, owner, repo } = connect();
       const { data } = await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber });
-      return { author: data.user, labels: data.labels };
+      return { author: data.user, labels: data.labels, commits: data.commits };
+    },
+    async listPullRequestCommits(pullNumber, page) {
+      const { octokit, owner, repo } = connect();
+      const res = await octokit.rest.pulls.listCommits({ owner, repo, pull_number: pullNumber, per_page: 100, page });
+      return { commits: res.data, hasNext: /\brel="next"/.test(String(res.headers.link ?? "")) };
     },
     async listIssueEvents(issueNumber, page) {
       const { octokit, owner, repo } = connect();
