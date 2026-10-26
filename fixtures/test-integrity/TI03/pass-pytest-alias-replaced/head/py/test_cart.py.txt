@@ -1,0 +1,13 @@
+import pytest as pt
+import os as pt
+
+from cart import total
+
+
+@pt.mark.skip
+def test_total():
+    assert total([2, 3]) == 5
+
+
+def test_empty():
+    assert total([]) == 0

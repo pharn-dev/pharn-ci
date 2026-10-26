@@ -237482,6 +237482,182 @@ function deletedTestFiles(diff) {
   return [...found].sort(byCodeUnit2);
 }
 
+// ../core/src/signals/pythonAliases.ts
+var isIdentStart = (code2) => code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122 || code2 === 95;
+var isIdentChar = (code2) => isIdentStart(code2) || code2 >= 48 && code2 <= 57;
+function identEnd(text, start) {
+  if (start >= text.length || !isIdentStart(text.charCodeAt(start))) return start;
+  let i = start + 1;
+  while (i < text.length && isIdentChar(text.charCodeAt(i))) i++;
+  return i;
+}
+var isBlank = (c) => c === " " || c === "	";
+function skipBlanks(text, start) {
+  let i = start;
+  while (i < text.length && isBlank(text.charAt(i))) i++;
+  return i;
+}
+function closeTriple(line, from, quote) {
+  for (let i = from; i < line.length; i++) {
+    const c = line.charAt(i);
+    if (c === "\\") i++;
+    else if (c === quote && line.charAt(i + 1) === quote && line.charAt(i + 2) === quote) return i;
+  }
+  return -1;
+}
+function scanCode(line, from) {
+  for (let i = from; i < line.length; i++) {
+    const c = line.charAt(i);
+    if (c === "#") return "";
+    if (c !== '"' && c !== "'") continue;
+    if (line.charAt(i + 1) === c && line.charAt(i + 2) === c) {
+      const end = closeTriple(line, i + 3, c);
+      if (end < 0) return c + c + c;
+      i = end + 2;
+      continue;
+    }
+    let j = i + 1;
+    while (j < line.length && line.charAt(j) !== c) j += line.charAt(j) === "\\" ? 2 : 1;
+    i = j;
+  }
+  return "";
+}
+var isStatementEnd = (code2) => code2 === 59 || code2 === 35 || code2 === 34 || code2 === 39;
+function startsStatement(line) {
+  if (line.startsWith("import") && isBlank(line.charAt(6))) return true;
+  return line.startsWith("from") && isBlank(line.charAt(4));
+}
+function fromItem(piece) {
+  const nameEnd = identEnd(piece, 0);
+  if (nameEnd === 0) return null;
+  const name = piece.slice(0, nameEnd);
+  if (nameEnd === piece.length) return [name, name];
+  const asAt = skipBlanks(piece, nameEnd);
+  if (asAt === nameEnd || !piece.startsWith("as", asAt)) return null;
+  const localAt = skipBlanks(piece, asAt + 2);
+  if (localAt === asAt + 2) return null;
+  const localEnd = identEnd(piece, localAt);
+  if (localEnd === localAt || localEnd !== piece.length) return null;
+  return [name, piece.slice(localAt, localEnd)];
+}
+function importItem(piece) {
+  let end = identEnd(piece, 0);
+  if (end === 0) return null;
+  const first = piece.slice(0, end);
+  while (piece.charAt(end) === ".") {
+    const next = identEnd(piece, end + 1);
+    if (next === end + 1) return null;
+    end = next;
+  }
+  const dotted = piece.slice(0, end);
+  if (end === piece.length) return [first, first];
+  const asAt = skipBlanks(piece, end);
+  if (asAt === end || !piece.startsWith("as", asAt)) return null;
+  const localAt = skipBlanks(piece, asAt + 2);
+  if (localAt === asAt + 2) return null;
+  const localEnd = identEnd(piece, localAt);
+  if (localEnd === localAt || localEnd !== piece.length) return null;
+  return [piece.slice(localAt, localEnd), dotted];
+}
+function pieces(segment) {
+  const out = [];
+  for (const piece of segment.split(",")) {
+    const trimmed = piece.trim();
+    if (trimmed !== "") out.push(trimmed);
+  }
+  return out;
+}
+var fromTarget = (module, name) => `${module}.${name}`;
+function pythonImportAliases(text) {
+  const aliases = /* @__PURE__ */ new Map();
+  const lines = text.split("\n");
+  const state = { triple: "", group: null };
+  const readGroup = (line, from) => {
+    const open3 = state.group;
+    let stop = from;
+    while (stop < line.length) {
+      const code2 = line.charCodeAt(stop);
+      if (code2 === 41 || isStatementEnd(code2)) break;
+      stop++;
+    }
+    for (const piece of pieces(line.slice(from, stop))) {
+      const item = fromItem(piece);
+      if (item !== null) open3.pending.push([item[1], fromTarget(open3.module, item[0])]);
+    }
+    const c = line.charAt(stop);
+    if (c === ")") {
+      for (const [local, target] of open3.pending) aliases.set(local, target);
+      state.group = null;
+      state.triple = scanCode(line, stop + 1);
+    } else if (c === "#" || stop >= line.length) {
+    } else {
+      state.group = null;
+      state.triple = scanCode(line, stop);
+    }
+  };
+  const readStatement = (line) => {
+    let end = 0;
+    while (end < line.length && !isStatementEnd(line.charCodeAt(end))) end++;
+    const body = end === line.length ? line : line.slice(0, end);
+    if (body.startsWith("import")) {
+      for (const piece of pieces(body.slice(6))) {
+        const item = importItem(piece);
+        if (item !== null) aliases.set(item[0], item[1]);
+      }
+    } else {
+      const moduleAt = skipBlanks(body, 4);
+      let moduleEnd = moduleAt;
+      while (moduleEnd < body.length && (body.charAt(moduleEnd) === "." || isIdentChar(body.charCodeAt(moduleEnd)))) {
+        moduleEnd++;
+      }
+      const module = body.slice(moduleAt, moduleEnd);
+      const importAt = skipBlanks(body, moduleEnd);
+      const listAt = importAt + 6;
+      if (module !== "" && importAt > moduleEnd && body.startsWith("import", importAt) && isBlank(body.charAt(listAt))) {
+        const rest = skipBlanks(body, listAt);
+        if (body.charAt(rest) === "(") {
+          state.group = { module, pending: [] };
+          readGroup(line, rest + 1);
+          return;
+        }
+        for (const piece of pieces(body.slice(rest))) {
+          const item = fromItem(piece);
+          if (item !== null) aliases.set(item[1], fromTarget(module, item[0]));
+        }
+      }
+    }
+    state.triple = line.charAt(end) === ";" ? scanCode(line, end + 1) : scanCode(line, end);
+  };
+  for (let n = 0; n < lines.length; n++) {
+    let line = lines[n];
+    if (n === 0 && line.charCodeAt(0) === 65279) line = line.slice(1);
+    if (line.endsWith("\r")) line = line.slice(0, -1);
+    if (state.triple !== "") {
+      const close = closeTriple(line, 0, state.triple.charAt(0));
+      if (close < 0) continue;
+      state.triple = scanCode(line, close + 3);
+      continue;
+    }
+    if (state.group !== null) {
+      if (!startsStatement(line)) {
+        readGroup(line, 0);
+        continue;
+      }
+      state.group = null;
+    }
+    if (startsStatement(line)) readStatement(line);
+    else state.triple = scanCode(line, 0);
+  }
+  return aliases;
+}
+function resolvePythonName(name, aliases) {
+  const dot = name.indexOf(".");
+  const head = dot < 0 ? name : name.slice(0, dot);
+  const target = aliases.get(head);
+  if (target === void 0) return null;
+  return dot < 0 ? target : target + name.slice(dot);
+}
+
 // ../core/src/signals/testLines.ts
 var JS_EXTENSIONS = [".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"];
 function testLanguage(path) {
@@ -237609,8 +237785,16 @@ var PYTHON_DECORATORS = /* @__PURE__ */ new Map([
   ["pytest.mark.xfail", "by-argument"],
   ["unittest.skip", "never"],
   ["unittest.skipIf", "always"],
-  ["unittest.skipUnless", "always"]
+  ["unittest.skipUnless", "always"],
+  ["unittest.expectedFailure", "never"]
 ]);
+var PYTHON_CALLS = /* @__PURE__ */ new Set(["pytest.skip", "pytest.xfail"]);
+function canonicalPython(written, table, aliases) {
+  if (table.has(written)) return written;
+  if (aliases === void 0) return null;
+  const resolved = resolvePythonName(written, aliases);
+  return resolved !== null && table.has(resolved) ? resolved : null;
+}
 function dottedEnd(text, start) {
   let i = start;
   while (i < text.length && (isWordCode(text.charCodeAt(i)) || text.charAt(i) === ".")) i++;
@@ -237623,11 +237807,12 @@ function isKeywordArg(arg) {
   while (isSpace3(arg.charAt(i))) i++;
   return arg.charAt(i) === "=" && arg.charAt(i + 1) !== "=";
 }
-function parsePythonSkip(text) {
+function parsePythonSkip(text, aliases) {
   const line = text.trimStart();
   if (line.startsWith("@")) {
     const end = dottedEnd(line, 1);
-    const token = line.slice(1, end);
+    const token = canonicalPython(line.slice(1, end), PYTHON_DECORATORS, aliases);
+    if (token === null) return null;
     const rule2 = PYTHON_DECORATORS.get(token);
     if (rule2 === void 0) return null;
     let i2 = end;
@@ -237636,11 +237821,13 @@ function parsePythonSkip(text) {
     const conditional = rule2 === "always" || rule2 === "by-argument" && arg !== "" && stringContent(arg, true) === null && !isKeywordArg(arg);
     return { kind: "decorator", token, name: argName(arg, true), conditional };
   }
-  if (!line.startsWith("pytest.skip")) return null;
-  let i = "pytest.skip".length;
+  const callEnd = dottedEnd(line, 0);
+  const call = canonicalPython(line.slice(0, callEnd), PYTHON_CALLS, aliases);
+  if (call === null) return null;
+  let i = callEnd;
   while (isSpace3(line.charAt(i))) i++;
   if (line.charAt(i) !== "(") return null;
-  return { kind: "call", token: "pytest.skip", name: argName(scanArg(line, i + 1).text, true), conditional: false };
+  return { kind: "call", token: call, name: argName(scanArg(line, i + 1).text, true), conditional: false };
 }
 var GO_SKIPS = /* @__PURE__ */ new Set(["t.Skip", "t.Skipf", "t.SkipNow"]);
 function parseGoSkip(text) {
@@ -238925,8 +239112,12 @@ function jsSkip(parsed) {
       return null;
   }
 }
-function pythonSkip(text) {
-  const parsed = parsePythonSkip(text);
+function pythonSkip(text, aliases) {
+  let parsed = parsePythonSkip(text);
+  if (parsed === null && aliases !== void 0 && (text.includes("@") || text.includes("("))) {
+    const map = aliases();
+    if (map !== void 0) parsed = parsePythonSkip(text, map);
+  }
   if (parsed === null) return null;
   const key = keyOf(parsed.token, parsed.name);
   if (parsed.kind === "call") return { key, shape: "in-body", name: parsed.name };
@@ -238936,8 +239127,8 @@ function goSkip(text) {
   const parsed = parseGoSkip(text);
   return parsed === null ? null : { key: keyOf(parsed.token, parsed.name), shape: "in-body", name: parsed.name };
 }
-function readSkip(language, text) {
-  if (language === "python") return pythonSkip(text);
+function readSkip(language, text, aliases) {
+  if (language === "python") return pythonSkip(text, aliases);
   if (language === "go") return goSkip(text);
   const parsed = parseJsTestCall(text);
   return parsed === null ? null : jsSkip(parsed);
@@ -238952,11 +239143,11 @@ function removedOpenings(hunks) {
   }
   return names;
 }
-function removedSkips(hunks, language) {
+function removedSkips(hunks, language, aliases) {
   const keys = /* @__PURE__ */ new Set();
   for (const hunk of hunks) {
     for (const entry of hunk.removed) {
-      const skip = readSkip(language, entry.text);
+      const skip = readSkip(language, entry.text, aliases);
       if (skip !== null) keys.add(skip.key);
     }
   }
@@ -238980,13 +239171,31 @@ function decoratedTest(hunk, index) {
   }
   return "existing";
 }
-function findingsOf(file, hunks, language) {
-  const before = removedSkips(hunks, language);
+function textsOf(side) {
+  const texts = /* @__PURE__ */ new Map();
+  if (side !== void 0 && "files" in side) for (const file of side.files) texts.set(file.path, file.text);
+  return texts;
+}
+function sourceOf(text) {
+  let map;
+  return () => {
+    if (map === void 0 && text !== void 0) map = pythonImportAliases(text);
+    return map;
+  };
+}
+function aliasesOf(file, language, texts) {
+  if (language !== "python") return {};
+  const base = sourceOf(texts.base.get(file.oldPath));
+  const head = sourceOf(texts.head.get(file.path));
+  return { base: () => base() ?? head(), head: () => head() ?? base() };
+}
+function findingsOf(file, hunks, language, aliases) {
+  const before = removedSkips(hunks, language, aliases.base);
   const openings = language === "jsts" ? removedOpenings(hunks) : /* @__PURE__ */ new Set();
   const found = [];
   for (const hunk of hunks) {
     hunk.added.forEach((entry, index) => {
-      const skip = readSkip(language, entry.text);
+      const skip = readSkip(language, entry.text, aliases.head);
       if (skip === null || before.has(skip.key)) return;
       let category;
       if (file.status === "added") category = "adds";
@@ -238999,14 +239208,15 @@ function findingsOf(file, hunks, language) {
   }
   return found;
 }
-function detectTI03(diff, mode) {
+function detectTI03(diff, mode, sources) {
   const signals = [];
+  const texts = { base: textsOf(sources?.base), head: textsOf(sources?.head) };
   for (const file of diff) {
     if (file.hunks === void 0 || file.binary === true || !isTestFile(file.path)) continue;
     const language = testLanguage(file.path);
     if (language === null) continue;
     const rank = (category) => category === "existing" ? 0 : 1;
-    const found = findingsOf(file, file.hunks, language).sort(
+    const found = findingsOf(file, file.hunks, language, aliasesOf(file, language, texts)).sort(
       (a, b) => rank(a.category) - rank(b.category) || a.line - b.line
     );
     for (const { line, category } of found.slice(0, MAX_PER_FILE)) {
@@ -239230,7 +239440,7 @@ var ARGUMENT_CHARS = 200;
 var MAX_TRIM = 64;
 var CLOSERS2 = { ")": "(", "]": "[", "}": "{" };
 var isIdentifierChar = (code2) => code2 >= 48 && code2 <= 57 || code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122 || code2 === 95 || code2 === 36;
-var isBlank = (code2) => code2 === 32 || code2 === 9 || code2 === 10 || code2 === 13;
+var isBlank2 = (code2) => code2 === 32 || code2 === 9 || code2 === 10 || code2 === 13;
 function wordBefore(body, at, word) {
   const start = at - word.length;
   if (start < 0 || !body.startsWith(word, start)) return false;
@@ -239268,9 +239478,9 @@ function argumentText(body, start, end) {
 }
 function subjectOf(body, start, end) {
   let from = start;
-  while (from < end && from - start < MAX_TRIM && isBlank(body.charCodeAt(from))) from++;
+  while (from < end && from - start < MAX_TRIM && isBlank2(body.charCodeAt(from))) from++;
   let to = end;
-  while (to > from && end - to < MAX_TRIM && isBlank(body.charCodeAt(to - 1))) to--;
+  while (to > from && end - to < MAX_TRIM && isBlank2(body.charCodeAt(to - 1))) to--;
   return {
     head: body.slice(from, Math.min(to, from + SUBJECT_HEAD_CHARS)).trim(),
     tail: body.slice(Math.max(from, to - SUBJECT_TAIL_CHARS), to).trim()
@@ -240425,7 +240635,7 @@ var DETAILS2 = {
   "name-filter": "A test script now limits the run to the tests whose names match a pattern, so the other tests do not run.",
   "hook-removed": "A script that ran before or after the tests was removed, so its checks no longer run with them."
 };
-var isBlank2 = (c) => c === " " || c === "	";
+var isBlank3 = (c) => c === " " || c === "	";
 function readString(text, start) {
   let value = "";
   let i = start + 1;
@@ -240447,7 +240657,7 @@ function readString(text, start) {
 function parseScriptLine(text) {
   let i = 0;
   const skip = () => {
-    while (isBlank2(text[i])) i++;
+    while (isBlank3(text[i])) i++;
   };
   skip();
   if (text[i] !== '"') return null;
@@ -240506,7 +240716,7 @@ function scanKinds(value) {
       }
       endCommand(op);
       operator = op;
-    } else if (isBlank2(c)) {
+    } else if (isBlank3(c)) {
       endWord();
     } else {
       word += c;
@@ -240846,7 +241056,7 @@ function keyText(segments) {
   }
   return cutText(out, MAX_KEY_CHARS);
 }
-var isIdentChar = (ch) => ch !== void 0 && (/[\w$]/.test(ch) || ch.charCodeAt(0) > 127);
+var isIdentChar2 = (ch) => ch !== void 0 && (/[\w$]/.test(ch) || ch.charCodeAt(0) > 127);
 function normalizeOpaque(source) {
   let out = "";
   let pendingSpace = false;
@@ -240877,7 +241087,7 @@ function normalizeOpaque(source) {
       i++;
       continue;
     }
-    if (pendingSpace && isIdentChar(out[out.length - 1]) && isIdentChar(ch)) out += " ";
+    if (pendingSpace && isIdentChar2(out[out.length - 1]) && isIdentChar2(ch)) out += " ";
     pendingSpace = false;
     out += ch;
     i++;
@@ -241217,6 +241427,7 @@ function readJson(text) {
 
 // ../core/src/testConfig/readToml.ts
 var TABLE = /^\[\s*tool\s*\.\s*pytest\s*\.\s*ini_options\s*\]\s*(?:#.*)?$/;
+var NATIVE_TABLE = /^\[\s*tool\s*\.\s*pytest\s*\]\s*(?:#.*)?$/;
 var HEADER_LINE = /^\[\[?[A-Za-z0-9_.\s-]+\]\]?\s*(?:#.*)?$/;
 var KEY_LINE = /^([A-Za-z0-9_.-]+|"(?:[^"\\]|\\.)*"|'[^']*')\s*=([\s\S]*)$/;
 var NUMBER2 = /^[-+]?\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][-+]?\d+)?$/;
@@ -241306,15 +241517,66 @@ function arrayValue(text) {
   }
   return { type: "array", items };
 }
-function readToml(text) {
-  if (text.length > MAX_CONFIG_CHARS) return { ok: false, reason: "too-large" };
-  const lines = text.split(/\r\n|\r|\n/);
-  const start = lines.findIndex((line) => TABLE.test(line.trim()));
-  if (start === -1) return { ok: true, root: null };
+function breakAt(text, from) {
+  for (let i = from; i < text.length; i++) {
+    const code2 = text.charCodeAt(i);
+    if (code2 === 10 || code2 === 13) return i;
+  }
+  return -1;
+}
+var afterBreak = (text, at) => at + (text.charCodeAt(at) === 13 && text.charCodeAt(at + 1) === 10 ? 2 : 1);
+var Lines = class {
+  constructor(text, from, first) {
+    this.text = text;
+    this.first = first;
+    this.pos = from;
+    this.done = from > text.length;
+  }
+  text;
+  first;
+  pos;
+  done;
+  cache = [];
+  /** The line with index `i`, or undefined past the end of the text. */
+  at(i) {
+    const k = i - this.first;
+    while (this.cache.length <= k && !this.done) {
+      const end = breakAt(this.text, this.pos);
+      if (end === -1) {
+        this.cache.push(this.text.slice(this.pos));
+        this.done = true;
+      } else {
+        this.cache.push(this.text.slice(this.pos, end));
+        this.pos = afterBreak(this.text, end);
+      }
+    }
+    return this.cache[k];
+  }
+};
+function headerAt(text, needle, header) {
+  let from = 0;
+  for (; ; ) {
+    const hit = text.indexOf(needle, from);
+    if (hit === -1) return null;
+    let start = hit;
+    while (start > 0 && text.charCodeAt(start - 1) !== 10 && text.charCodeAt(start - 1) !== 13) start--;
+    const end = breakAt(text, hit);
+    if (header.test(text.slice(start, end === -1 ? text.length : end).trim())) {
+      let line = 0;
+      for (let i = 0; i < start; i++) {
+        const code2 = text.charCodeAt(i);
+        if (code2 === 10 || code2 === 13 && text.charCodeAt(i + 1) !== 10) line++;
+      }
+      return { line, next: end === -1 ? text.length + 1 : afterBreak(text, end) };
+    }
+    if (end === -1) return null;
+    from = end;
+  }
+}
+function readTable(lines, headerAt2) {
   const entries = /* @__PURE__ */ new Map();
-  let i = start + 1;
-  while (i < lines.length) {
-    const raw = lines[i];
+  let i = headerAt2 + 1;
+  for (let raw = lines.at(i); raw !== void 0; raw = lines.at(i)) {
     const line = stripTomlComment(raw);
     if (line === "") {
       i++;
@@ -241322,14 +241584,14 @@ function readToml(text) {
     }
     if (line.startsWith("[")) break;
     const match = KEY_LINE.exec(line);
-    if (match === null) return { ok: false, reason: "invalid-toml" };
+    if (match === null) return null;
     const rawKey = match[1];
     let key = rawKey.replace(/^'|'$/g, "");
     if (rawKey.startsWith('"')) {
       try {
         key = JSON.parse(rawKey);
       } catch {
-        return { ok: false, reason: "invalid-toml" };
+        return null;
       }
     }
     const rest = match[2].trim();
@@ -241339,8 +241601,9 @@ function readToml(text) {
       let closed = rest.slice(3).includes(multi);
       while (!closed) {
         i++;
-        if (i >= lines.length) return { ok: false, reason: "invalid-toml" };
-        closed = lines[i].includes(multi);
+        const more = lines.at(i);
+        if (more === void 0) return null;
+        closed = more.includes(multi);
       }
       entries.set(key, { value: { type: "opaque", text: normalizeOpaque(rest) }, line: first + 1 });
       i++;
@@ -241352,19 +241615,32 @@ function readToml(text) {
       let scan = scanBrackets(rest, 0, 0);
       while (scan !== null && scan.close === -1) {
         i++;
-        const next = lines[i];
-        if (next === void 0 || HEADER_LINE.test(next.trim())) return { ok: false, reason: "invalid-toml" };
+        const next = lines.at(i);
+        if (next === void 0 || HEADER_LINE.test(next.trim())) return null;
         const added = stripTomlComment(next);
         parts.push(added);
         scan = scanBrackets(added, 0, scan.depth);
       }
-      if (scan === null) return { ok: false, reason: "invalid-toml" };
+      if (scan === null) return null;
       value = arrayValue(parts.join(" "));
     } else {
       value = scalar(rest);
     }
     entries.set(key, { value, line: first + 1 });
     i++;
+  }
+  return entries;
+}
+function readToml(text) {
+  if (text.length > MAX_CONFIG_CHARS) return { ok: false, reason: "too-large" };
+  const starts = [headerAt(text, "ini_options", TABLE), headerAt(text, "pytest", NATIVE_TABLE)];
+  if (starts[0] === null && starts[1] === null) return { ok: true, root: null };
+  const entries = /* @__PURE__ */ new Map();
+  for (const start of starts) {
+    if (start === null) continue;
+    const table = readTable(new Lines(text, start.next, start.line + 1), start.line);
+    if (table === null) return { ok: false, reason: "invalid-toml" };
+    for (const [key, entry] of table) entries.set(key, entry);
   }
   return { ok: true, root: { type: "object", entries, open: false, extras: [] } };
 }
@@ -242857,7 +243133,7 @@ var STOP_LIST = /* @__PURE__ */ new Set([
 ]);
 var isDigit2 = (c) => c >= "0" && c <= "9";
 var isWordChar = (c) => c >= "0" && c <= "9" || c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_";
-var isBlank3 = (c) => c === " " || c === "	";
+var isBlank4 = (c) => c === " " || c === "	";
 function digitsEnd2(text, start) {
   let i = start;
   while (i < text.length && isDigit2(text.charAt(i))) i++;
@@ -242915,26 +243191,26 @@ var keyOf3 = (literal) => `${literal.kind === "string" ? "s" : "n"}${literal.val
 var isOperatorChar = (c) => c === "=" || c === "!" || c === "<" || c === ">";
 function operatorBefore(text, at) {
   let end = at;
-  while (end > 0 && isBlank3(text.charAt(end - 1))) end--;
+  while (end > 0 && isBlank4(text.charAt(end - 1))) end--;
   let start = end;
   while (start > 0 && isOperatorChar(text.charAt(start - 1))) start--;
   return text.slice(start, end);
 }
 function operatorAfter(text, at) {
   let start = at;
-  while (start < text.length && isBlank3(text.charAt(start))) start++;
+  while (start < text.length && isBlank4(text.charAt(start))) start++;
   let end = start;
   while (end < text.length && isOperatorChar(text.charAt(end))) end++;
   return text.slice(start, end);
 }
 var EQUALITY = /* @__PURE__ */ new Set(["===", "!==", "==", "!="]);
 function isCaseLabel(trimmed, offset, literal) {
-  if (!trimmed.startsWith("case") || !isBlank3(trimmed.charAt(4))) return false;
+  if (!trimmed.startsWith("case") || !isBlank4(trimmed.charAt(4))) return false;
   let i = 4;
-  while (isBlank3(trimmed.charAt(i))) i++;
+  while (isBlank4(trimmed.charAt(i))) i++;
   if (literal.start - offset !== i) return false;
   let j = literal.end - offset;
-  while (isBlank3(trimmed.charAt(j))) j++;
+  while (isBlank4(trimmed.charAt(j))) j++;
   return trimmed.charAt(j) === ":";
 }
 var CLOSERS3 = { "(": ")", "[": "]", "{": "}" };
@@ -242958,7 +243234,7 @@ function inGroups(text, literals) {
     while (j < text.length && isWordChar(text.charAt(j))) j++;
     if (text.slice(i, j) === "in") {
       let k = j;
-      while (isBlank3(text.charAt(k))) k++;
+      while (isBlank4(text.charAt(k))) k++;
       const closer = CLOSERS3[text.charAt(k)];
       if (closer !== void 0) {
         const close = text.indexOf(closer, k + 1);
@@ -243092,14 +243368,14 @@ var PYLINT_WORD = ["py", "lint:"].join("");
 var DISABLE_WORD = ["dis", "able"].join("");
 var PYRIGHT_WORD = ["py", "right:"].join("");
 var MAX_LINE2 = 400;
-var isBlank4 = (c) => c === " " || c === "	";
+var isBlank5 = (c) => c === " " || c === "	";
 var isWordChar2 = (c) => c >= "0" && c <= "9" || c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_";
 var isTokenChar = (c) => isWordChar2(c) || c === "@" || c === "-";
 var endsWord = (text, at) => at >= text.length || !isWordChar2(text.charAt(at));
 var normalize = (text) => text.replace(/\s+/g, " ").trim();
-function skipBlanks(text, from) {
+function skipBlanks2(text, from) {
   let i = from;
-  while (i < text.length && isBlank4(text.charAt(i))) i++;
+  while (i < text.length && isBlank5(text.charAt(i))) i++;
   return i;
 }
 function jsMarker(text) {
@@ -243107,7 +243383,7 @@ function jsMarker(text) {
     if (text.charAt(i) !== SLASH) continue;
     const opener = text.slice(i, i + 2);
     if (opener !== LINE_OPENER && opener !== BLOCK_OPENER) continue;
-    const start = skipBlanks(text, i + 2);
+    const start = skipBlanks2(text, i + 2);
     let end = start;
     while (end < text.length && isTokenChar(text.charAt(end))) end++;
     if (!JS_MARKERS.has(text.slice(start, end))) continue;
@@ -243122,7 +243398,7 @@ function jsMarker(text) {
 }
 function startsPythonMarker(text, at) {
   if (text.startsWith(TYPE_WORD, at)) {
-    const word = skipBlanks(text, at + TYPE_WORD.length);
+    const word = skipBlanks2(text, at + TYPE_WORD.length);
     return text.startsWith(IGNORE_WORD, word) && endsWord(text, word + IGNORE_WORD.length);
   }
   if (text.slice(at, at + NOQA_WORD.length).toLowerCase() === NOQA_WORD) {
@@ -243130,7 +243406,7 @@ function startsPythonMarker(text, at) {
     return next >= text.length || text.charAt(next) === ":" || !isWordChar2(text.charAt(next));
   }
   if (text.startsWith(PYLINT_WORD, at)) {
-    const word = skipBlanks(text, at + PYLINT_WORD.length);
+    const word = skipBlanks2(text, at + PYLINT_WORD.length);
     for (const name of [`${DISABLE_WORD}-next`, DISABLE_WORD]) {
       if (!text.startsWith(name, word)) continue;
       const next = word + name.length;
@@ -243139,14 +243415,14 @@ function startsPythonMarker(text, at) {
     return false;
   }
   if (text.startsWith(PYRIGHT_WORD, at)) {
-    const word = skipBlanks(text, at + PYRIGHT_WORD.length);
+    const word = skipBlanks2(text, at + PYRIGHT_WORD.length);
     return text.startsWith(IGNORE_WORD, word) && endsWord(text, word + IGNORE_WORD.length);
   }
   return false;
 }
 function pythonMarker(text) {
   for (let i = text.indexOf(HASH); i !== -1; i = text.indexOf(HASH, i + 1)) {
-    const start = skipBlanks(text, i + 1);
+    const start = skipBlanks2(text, i + 1);
     if (startsPythonMarker(text, start)) return normalize(text.slice(start));
   }
   return null;
@@ -243216,7 +243492,7 @@ function check(input) {
   const sourceMatches = parsedDiff === null || testIntegrity.mode === "off" ? { signals: [], omitted: [] } : detectTI15(parsedDiff, { repoFiles: input.repoFiles });
   const testIntegritySignals = parsedDiff === null || testIntegrity.mode === "off" ? [] : sortSignals([
     ...detectTI01(parsedDiff, testIntegrity.mode),
-    ...detectTI03(parsedDiff, testIntegrity.mode),
+    ...detectTI03(parsedDiff, testIntegrity.mode, input.testSources),
     ...detectTI04(parsedDiff, testIntegrity.mode),
     ...detectTI08(parsedDiff),
     ...detectTI10(parsedDiff, { repoFiles: input.repoFiles, mode: testIntegrity.mode }),
@@ -244633,6 +244909,8 @@ DECORATOR_MODIFIERS = {
     "pytest.mark.parametrize": "each",
 }
 FIXTURES = ("pytest.fixture", "fixture")
+APPROX = ("pytest.approx", "approx")
+BODY_CALLS = ("pytest.skip", "pytest.xfail")
 CLASS_HOOKS = (
     "setup_method", "teardown_method", "setup_class", "teardown_class",
     "setUp", "tearDown", "setUpClass", "tearDownClass", "asyncSetUp", "asyncTearDown",
@@ -244677,11 +244955,48 @@ def is_string(node):
     return isinstance(node, ast.Constant) and isinstance(node.value, (str, bytes))
 
 
-def decorator_modifiers(decorators):
+def import_aliases(tree):
+    """Local name to dotted name for the module's top-level imports, in order; a later binding replaces an earlier one."""
+    aliases = {}
+    for node in tree.body:
+        if isinstance(node, ast.Import):
+            for item in node.names:
+                if item.asname:
+                    aliases[item.asname] = item.name
+                else:
+                    first = item.name.split(".")[0]
+                    aliases[first] = first
+        elif isinstance(node, ast.ImportFrom):
+            for item in node.names:
+                if item.name == "*":
+                    continue
+                if node.level > 0 or node.module is None:
+                    target = "." + item.name
+                else:
+                    target = node.module + "." + item.name
+                aliases[item.asname or item.name] = target
+    return aliases
+
+
+def canonical(name, table, aliases):
+    """The table's own name for a dotted name: as written when it is in the table, else with its first segment resolved."""
+    if name is None:
+        return None
+    if name in table:
+        return name
+    head, dot, rest = name.partition(".")
+    target = aliases.get(head)
+    if target is None:
+        return None
+    resolved = target + dot + rest
+    return resolved if resolved in table else None
+
+
+def decorator_modifiers(decorators, aliases):
     mods = []
     for decorator in decorators:
         call = decorator if isinstance(decorator, ast.Call) else None
-        name = dotted(call.func if call is not None else decorator)
+        name = canonical(dotted(call.func if call is not None else decorator), DECORATOR_MODIFIERS, aliases)
         mod = DECORATOR_MODIFIERS.get(name)
         if mod is None:
             continue
@@ -244694,9 +245009,10 @@ def decorator_modifiers(decorators):
     return mods
 
 
-def has_decorator(decorators, names):
+def has_decorator(decorators, names, aliases):
     for decorator in decorators:
-        if dotted(decorator.func if isinstance(decorator, ast.Call) else decorator) in names:
+        name = dotted(decorator.func if isinstance(decorator, ast.Call) else decorator)
+        if canonical(name, names, aliases) is not None:
             return True
     return False
 
@@ -244711,10 +245027,10 @@ def is_test_class(node):
     return False
 
 
-def block_kind(node, scope):
+def block_kind(node, scope, aliases):
     """The block kind of a def at module level (scope 0) or in a test class (scope 1), else None."""
     name = node.name
-    fixture = has_decorator(node.decorator_list, FIXTURES)
+    fixture = has_decorator(node.decorator_list, FIXTURES, aliases)
     if scope == 0:
         if fixture:
             return "hook"
@@ -244730,10 +245046,10 @@ def block_kind(node, scope):
     return None
 
 
-def assert_chain(test):
+def assert_chain(test, aliases):
     if isinstance(test, ast.Compare):
         for operand in [test.left] + list(test.comparators):
-            if isinstance(operand, ast.Call) and dotted(operand.func) in ("pytest.approx", "approx"):
+            if isinstance(operand, ast.Call) and canonical(dotted(operand.func), APPROX, aliases) is not None:
                 return "assert approx"
         if len(test.ops) == 1 and isinstance(test.ops[0], (ast.Is, ast.IsNot)):
             for operand in (test.left, test.comparators[0]):
@@ -244747,9 +245063,10 @@ def assert_chain(test):
     return "assert truthy"
 
 
-def call_assertion(callee, node):
-    if callee in RAISING_CALLEES:
-        return callee + "()"
+def call_assertion(callee, node, aliases):
+    raising = canonical(callee, RAISING_CALLEES, aliases)
+    if raising is not None:
+        return raising + "()"
     func = node.func
     if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name) and func.value.id == "self":
         if func.attr.startswith("assert") or func.attr == "fail":
@@ -244925,6 +245242,7 @@ def build(text):
     if deeper_than_cap(tree):
         return {"parsed": False, "reason": "too-deep"}
     source = Source(text)
+    aliases = import_aliases(tree)
 
     blocks = []
     mocks = []
@@ -244939,7 +245257,7 @@ def build(text):
         if kind_of in FUNCTIONS:
             block = ctx[BLOCK]
             scope = ctx[SCOPE]
-            kind = block_kind(node, scope) if scope < 2 else None
+            kind = block_kind(node, scope, aliases) if scope < 2 else None
             record = [None]
             for field in ("decorator_list", "args", "returns", "type_params"):
                 value = getattr(node, field, None)
@@ -244948,7 +245266,9 @@ def build(text):
                 elif value is not None:
                     stack.append((value, ctx))
             if kind is not None:
-                entry = new_block(source, node, kind, ctx[CHAIN] + (node.name,), decorator_modifiers(node.decorator_list))
+                entry = new_block(
+                    source, node, kind, ctx[CHAIN] + (node.name,), decorator_modifiers(node.decorator_list, aliases)
+                )
                 blocks.append(entry)
                 inner = (entry, 2, ctx[CHAIN], record, False, False, False, ctx[FSTR])
             else:
@@ -244962,7 +245282,7 @@ def build(text):
                 stack.extend((child, ctx) for child in getattr(node, field, ()))
             if scope < 2 and is_test_class(node):
                 chain = ctx[CHAIN] + (node.name,)
-                entry = new_block(source, node, "describe", chain, decorator_modifiers(node.decorator_list))
+                entry = new_block(source, node, "describe", chain, decorator_modifiers(node.decorator_list, aliases))
                 blocks.append(entry)
                 inner = (entry, 1, chain, None, False, False, False, ctx[FSTR])
             else:
@@ -245008,20 +245328,21 @@ def build(text):
         elif kind_of is ast.Assert:
             block = ctx[BLOCK]
             if block is not None:
-                assertions.append((block, node.lineno, node.col_offset, assert_chain(node.test), False, ctx))
+                assertions.append((block, node.lineno, node.col_offset, assert_chain(node.test, aliases), False, ctx))
         elif kind_of is ast.Call:
             callee = dotted(node.func)
             block = ctx[BLOCK]
             if callee in MOCK_CALLEES:
                 mocks.append((node.lineno, node.col_offset, callee, mock_specifier(callee, node)))
             if block is not None and callee is not None:
-                chain = call_assertion(callee, node)
+                chain = call_assertion(callee, node, aliases)
                 if chain is not None:
                     assertions.append((block, node.lineno, node.col_offset, chain, id(node) in awaited, ctx))
                 elif block["kind"] != "describe" and not ctx[NESTED]:
-                    if callee in ("pytest.skip", "self.skipTest"):
+                    body_call = canonical(callee, BODY_CALLS, aliases)
+                    if body_call == "pytest.skip" or callee == "self.skipTest":
                         block["mods"].append("skipIf" if ctx[COND] else "skip")
-                    elif callee == "pytest.xfail":
+                    elif body_call == "pytest.xfail":
                         block["mods"].append("fails")
                         if ctx[COND]:
                             block["mods"].append("skipIf")

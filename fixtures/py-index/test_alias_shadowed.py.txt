@@ -1,0 +1,13 @@
+"""A name that hides pytest: the literal spelling still gives the modifier, an alias that resolves still does too."""
+import foo as pytest
+import pytest as ok
+
+
+@pytest.mark.skip
+def test_shadowed():
+    assert True
+
+
+@ok.mark.skip
+def test_control():
+    assert True

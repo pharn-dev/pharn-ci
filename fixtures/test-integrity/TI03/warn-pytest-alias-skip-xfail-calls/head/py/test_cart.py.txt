@@ -1,0 +1,13 @@
+from pytest import skip as sk, xfail
+
+from cart import total
+
+
+def test_total():
+    sk("r")
+    assert total([2, 3]) == 5
+
+
+def test_empty():
+    xfail("r")
+    assert total([]) == 0

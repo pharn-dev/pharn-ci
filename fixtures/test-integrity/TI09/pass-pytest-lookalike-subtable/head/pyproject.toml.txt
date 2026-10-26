@@ -1,0 +1,5 @@
+[project]
+name = "demo"
+
+[tool.pytest.foo]
+testpaths = ["tests/unit"]

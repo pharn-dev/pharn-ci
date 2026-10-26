@@ -1,0 +1,12 @@
+from pytest import fixture as fx
+
+from cart import total
+
+
+@fx
+def test_data():
+    return [2, 3]
+
+
+def test_total():
+    assert total([2, 3]) == 5

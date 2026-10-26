@@ -1,0 +1,71 @@
+"""Bindings the index does not resolve: inside if, try and a function, by import *, by assignment, or replaced later."""
+import os
+import pytest as ok
+import pytest as pt
+import os as pt
+from pytest import *
+
+if os.name == "nt":
+    import pytest as p1
+
+try:
+    import pytest as p2
+except ImportError:
+    p2 = None
+
+
+def load():
+    import pytest as p3
+
+    return p3
+
+
+sm = pytest.mark.skip
+
+
+@p1.mark.skip
+def test_in_if():
+    assert True
+
+
+@p2.mark.skip
+def test_in_try():
+    assert True
+
+
+@p3.mark.skip
+def test_in_function():
+    assert True
+
+
+@sm
+def test_assigned():
+    assert True
+
+
+@pt.mark.skip
+def test_replaced_skip():
+    assert True
+
+
+@pt.fixture
+def test_replaced_fixture():
+    return 1
+
+
+def test_replaced_raises():
+    with pt.raises(ValueError):
+        int("x")
+
+
+def test_replaced_approx():
+    assert 0.1 + 0.2 == pt.approx(0.3)
+
+
+def test_star_xfail():
+    xfail("r")
+
+
+@ok.mark.skip
+def test_control():
+    assert True

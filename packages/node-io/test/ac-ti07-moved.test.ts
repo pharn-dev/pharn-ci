@@ -19,6 +19,21 @@ const FIXTURES = fileURLToPath(new URL("../../../fixtures/", import.meta.url));
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const SLOW = 60_000;
 
+/**
+ * The TI02 and TI05 case directories added after the base commit (the Python alias cases of py-parity-2); the digests
+ * below were taken before they existed, so they are not in AT_BASE.
+ */
+const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
+  "TI02/block-pytest-alias-marked-removed",
+  "TI02/block-pytest-alias-marked-removed-literal",
+  "TI02/pass-pytest-alias-fixture-removed",
+  "TI02/pass-pytest-alias-fixture-removed-literal",
+  "TI05/block-pytest-alias-raises-removed",
+  "TI05/block-pytest-alias-raises-removed-literal",
+  "TI05/pass-pytest-alias-emptied-skipped",
+  "TI05/pass-pytest-alias-emptied-skipped-literal",
+]);
+
 /** [fixture, TI02/TI05 signals as "id severity path:line", their messages as "code level", digest] at d73684d. */
 const AT_BASE: Array<[string, string[], string[], string]> = [
   [
@@ -276,7 +291,8 @@ describe("matchTests gains `moved`, and TI02 and TI05 keep their results", () =>
       const listed = ["TI02", "TI05"].flatMap((dir) =>
         readdirSync(`${FIXTURES}test-integrity/${dir}`)
           .sort()
-          .map((n) => `${dir}/${n}`),
+          .map((n) => `${dir}/${n}`)
+          .filter((name) => !ADDED_AFTER_BASE.has(name)),
       );
       expect(AT_BASE.map(([name]) => name)).toEqual(listed);
       for (const name of Object.keys(MOVED)) {

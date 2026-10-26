@@ -1,0 +1,80 @@
+import pytest as pt
+from pytest import mark as m, fixture as fx, raises, approx as ax, skip as sk, xfail as xf
+from unittest import skipIf as si, skipUnless as su, expectedFailure as ef
+import sys
+
+
+@pt.mark.skip(reason="r")
+def test_pt_skip():
+    assert True
+
+
+@m.skipif(sys.platform == "win32", reason="r")
+def test_m_skipif():
+    assert True
+
+
+@m.xfail(reason="r")
+def test_m_xfail_reason():
+    assert True
+
+
+@m.xfail(sys.platform == "win32", reason="r")
+def test_m_xfail_condition():
+    assert True
+
+
+@pt.mark.parametrize("v", [1, 2])
+def test_pt_parametrize(v):
+    assert v
+
+
+@fx
+def test_resource():
+    return 1
+
+
+@fx(scope="module")
+def config():
+    return 2
+
+
+@si(sys.platform == "win32", "r")
+def test_si():
+    assert True
+
+
+@su(sys.platform == "linux", "r")
+def test_su():
+    assert True
+
+
+@ef
+def test_ef():
+    assert True
+
+
+def test_body_skip():
+    sk("r")
+
+
+def test_body_xfail():
+    xf("r")
+
+
+def test_raises():
+    with raises(ValueError):
+        int("x")
+
+
+def test_warns():
+    with pt.warns(UserWarning):
+        pass
+
+
+def test_fail():
+    pt.fail("r")
+
+
+def test_approx():
+    assert 0.1 + 0.2 == ax(0.3)

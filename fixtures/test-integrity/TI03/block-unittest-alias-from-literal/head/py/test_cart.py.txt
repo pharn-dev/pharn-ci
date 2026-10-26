@@ -1,0 +1,23 @@
+import sys
+import unittest
+
+
+from cart import total
+
+
+class TestCart(unittest.TestCase):
+    @unittest.skip("r")
+    def test_total(self):
+        self.assertEqual(total([2, 3]), 5)
+
+    @unittest.skipIf(sys.platform == "win32", "needs posix")
+    def test_empty(self):
+        self.assertEqual(total([]), 0)
+
+    @unittest.skipUnless(sys.platform == "linux", "needs linux")
+    def test_negative(self):
+        self.assertEqual(total([-1]), -1)
+
+    @unittest.expectedFailure
+    def test_zero(self):
+        self.assertEqual(total([0]), 0)

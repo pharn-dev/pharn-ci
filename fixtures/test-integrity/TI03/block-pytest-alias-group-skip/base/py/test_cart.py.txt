@@ -1,0 +1,14 @@
+from pytest import (
+    mark as m,
+    skip,
+)
+
+from cart import total
+
+
+def test_total():
+    assert total([2, 3]) == 5
+
+
+def test_empty():
+    assert total([]) == 0

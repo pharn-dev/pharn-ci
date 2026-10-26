@@ -28,6 +28,20 @@ const NEW_TI11 = new Set([
   "block-swap-drops-test.diff",
   "block-job-removed-script-kept.diff",
 ]);
+/**
+ * The TI02 and TI05 case directories added after the base commit (the Python alias cases of py-parity-2). They need the
+ * Python index, which this file runs without, and the digest below never covered them; the node-io tests run them.
+ */
+const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
+  "TI02/block-pytest-alias-marked-removed",
+  "TI02/block-pytest-alias-marked-removed-literal",
+  "TI02/pass-pytest-alias-fixture-removed",
+  "TI02/pass-pytest-alias-fixture-removed-literal",
+  "TI05/block-pytest-alias-raises-removed",
+  "TI05/block-pytest-alias-raises-removed-literal",
+  "TI05/pass-pytest-alias-emptied-skipped",
+  "TI05/pass-pytest-alias-emptied-skipped-literal",
+]);
 /** The digest ac-ti0205-regression.test.ts pins for the earlier fixtures without sources. */
 const EARLIER_DIGEST = "9851046d2ff16b5c718d655494b44f96ceed0e91f996e689aaa72524174b59f8";
 /**
@@ -235,7 +249,7 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
     const pairs: Array<{ fixture: string; signals: unknown[]; messages: unknown[] }> = [];
     for (const dir of PAIR_DIRS) {
       const names = readdirSync(`${FIXTURES}test-integrity/${dir}`, { withFileTypes: true })
-        .filter((entry) => entry.isDirectory())
+        .filter((entry) => entry.isDirectory() && !ADDED_AFTER_BASE.has(`${dir}/${entry.name}`))
         .map((entry) => entry.name)
         .sort();
       for (const name of names) {

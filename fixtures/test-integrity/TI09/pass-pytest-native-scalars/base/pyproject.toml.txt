@@ -1,0 +1,6 @@
+[project]
+name = "demo"
+
+[tool.pytest]
+log_cli = false
+faulthandler_timeout = 10
