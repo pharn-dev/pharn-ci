@@ -244989,7 +244989,7 @@ function decodeTestSourceText(bytes) {
 }
 
 // ../core/src/version.ts
-var VERSION7 = "0.2.0";
+var VERSION7 = "0.3.0";
 
 // ../node-io/src/coverage.ts
 async function readCoverageFiles(deps, options) {

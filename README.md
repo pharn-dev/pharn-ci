@@ -11,7 +11,7 @@ leans on most: tests that actually run the new code, and the setup files that te
 behave. AI-agnostic, fully stateless, no telemetry.
 
 ```yaml
-- uses: pharn-dev/pharn-ci@v0.2.0
+- uses: pharn-dev/pharn-ci@v0.3.0
   with:
     coverage-file: coverage/lcov.info
     threshold: 80
@@ -26,7 +26,7 @@ behave. AI-agnostic, fully stateless, no telemetry.
 
 </div>
 
-> **Status:** pre-1.0; the latest release is `v0.2.0` ([changelog](CHANGELOG.md)). Pin the tag's
+> **Status:** pre-1.0; the latest release is `v0.3.0` ([changelog](CHANGELOG.md)). Pin the tag's
 > full commit SHA for integrity. The report schema is stable within a version (v2 from 0.2.0). Before 1.0, inputs, outputs and message
 > codes are never removed, and a renamed input keeps working under its old name, with a warning, for
 > at least one minor release; defaults change only in a minor release and the changelog says so. The
@@ -167,7 +167,7 @@ jobs:
           fetch-depth: 0
       # ...set up your toolchain and run tests with lcov or Cobertura output, e.g.:
       - run: npx vitest run --coverage --coverage.reporter=lcov
-      - uses: pharn-dev/pharn-ci@v0.2.0 # or, better, the tag's full commit SHA
+      - uses: pharn-dev/pharn-ci@v0.3.0 # or, better, the tag's full commit SHA
         timeout-minutes: 5
         with:
           coverage-file: coverage/lcov.info
@@ -319,7 +319,7 @@ flowchart LR
 >
 > ---
 >
-> <sub>pharn-ci 0.2.0 · report schema v2 · coverage format lcov</sub>
+> <sub>pharn-ci 0.3.0 · report schema v2 · coverage format lcov</sub>
 
 On PRs from forks the token cannot comment; pharn-ci then warns and uses the job summary only.
 
@@ -338,32 +338,51 @@ tests weaker? The `test-integrity` input takes `block`, `warn` or `off`, and the
 - `off`: nothing is checked.
 
 `test_integrity.mode` in `.pharn/ci.yml` can only make the mode stricter, never looser, so a pull request cannot loosen
-its own gate by editing the config. The signals so far are TI01 (a test file deleted), TI02 (a test removed from a test
-file that stays), TI03 (a skip added to a test), TI04 (a `.only`, `fit` or `fdescribe` added), TI05 (a test emptied of
-its assertions, or with fewer), TI06 (a test weakened: a weaker matcher, a lower assertion guard, an assertion that
-compares a literal with itself, or an assertion moved into a `try`/`catch` or after an early `return`), TI07 (an
-expected value of a test edited to match, in a change that also edits source), TI08 (snapshots regenerated or updated
-in bulk), TI09 (a test-runner setting loosened), TI10 (a test script in `package.json` weakened), TI11 (CI stopped
-running tests), TI12 (a module under test
-mocked: a new `vi.mock`, `jest.mock` or Python `patch` of a source file the change also edits), TI13 (a coverage-ignore
-comment added to source), TI14 (a lower coverage threshold or a wider exclusion in the config), TI15 (a source
-condition that compares with a value the tests add) and TI16 (a lint or type suppression comment added to a test file).
-TI06, TI07, TI08 and TI12 warn and TI15 and TI16 give an `info` finding in both `block` and `warn`, so those six never fail
-the check. Each reads the diff, and TI02, TI05, TI06, TI07 and TI12 also read the text of the JS/TS and Python test files
-the change modifies at the merge base and at HEAD, parsed without running them: a test counts as removed only when no
-test of the same name or a similar body is left in the touched test files (a test of the same name in another touched
-file counts only when it holds the removed test's body), and `TEST_INTEGRITY_INDEX_UNAVAILABLE` names
-a file that could not be compared. TI09 reads the text of the touched test-runner config files the same way
-(`vitest.config.*`, `vite.config.*`, `vitest.workspace.*`, `jest.config.*`, `playwright.config.*`, `.mocharc.*`,
-`package.json`, `pytest.ini`, `tox.ini`, `setup.cfg` and `pyproject.toml`) and compares a fixed list of settings between
-the two: a lowered coverage threshold, a narrower test list (`include`, `testMatch`, `testpaths`, `spec`), a wider
-exclusion (build directories, `node_modules` and `.d.ts` files excepted), `passWithNoTests`, `allowOnly` or `bail`
-turned on, a `grep` added, `forbidOnly` turned off, or a pytest `addopts` that gains `-k`, `-m`, `--deselect`, `--ignore`
-or `-x`. A raised retry count or timeout is a warning only, and so is a value that is not a literal and cannot be
-compared. When a change adds, removes, modifies or renames tests, the comment also holds a
-collapsed "Tests changed" table with the counts per test file; the test names are in `report.json` only. A reviewer who
-is not the author can sign off block findings with the accept label: see
-[Accept label](#accept-label).
+its own gate by editing the config. The signals so far are TI01, TI02, TI03, TI04, TI05, TI06, TI07, TI08, TI09, TI10,
+TI11, TI12, TI13, TI14, TI15 and TI16:
+
+| Signal | What it reports | Severity in mode `block` | JS/TS | Python |
+| --- | --- | --- | --- | --- |
+| TI01 | a test file deleted | block; `info` when the change also deletes the code it tested, or its tests are found again by body | yes | yes |
+| TI02 | a test removed from a test file that stays | block; `warn` for a computed name | yes | yes |
+| TI03 | a skip added to a test | block for an unconditional skip of an existing test; `warn` otherwise | yes | yes |
+| TI04 | a `.only`, `fit` or `fdescribe` added | block | yes | not applicable |
+| TI05 | a test emptied of its assertions, or with fewer | block when none are left; `warn` for fewer | yes | yes |
+| TI06 | a test weakened: a weaker matcher, a lower assertion guard, an assertion that compares a literal with itself, or an assertion moved into a `try`/`catch` or after an early `return` | `warn` | yes | yes |
+| TI07 | an expected value of a test edited to match, in a change that also edits source | `warn` | yes | yes |
+| TI08 | snapshots regenerated or updated in bulk | `warn` | yes | yes (pytest config) |
+| TI09 | a test-runner setting loosened | block; `warn` for a raised retry count or timeout, or a value that is not a literal | yes | yes |
+| TI10 | a test script in `package.json` weakened | block | yes | no |
+| TI11 | CI stopped running tests | block for a removed test command or `pull_request` trigger; `warn` otherwise | yes | yes |
+| TI12 | a module under test mocked: a new `vi.mock`, `jest.mock` or Python `patch` of a source file the change also edits | `warn` | yes | yes |
+| TI13 | a coverage-ignore comment added to source | block | yes | yes |
+| TI14 | a lower coverage threshold or a wider exclusion in the pharn-ci config | block | yes | not applicable |
+| TI15 | a source condition that compares with a value the tests add | `info` | yes | yes |
+| TI16 | a lint or type suppression comment added to a test file | `info` | yes | yes |
+
+In mode `warn` every `block` above is a `warn`. TI06, TI07, TI08 and TI12 warn and TI15 and TI16 give an `info` finding
+in both `block` and `warn`, so those six never fail the check. Each reads the diff, and TI02, TI05, TI06, TI07 and TI12
+also read the text of the JS/TS and Python test files the change modifies at the merge base and at HEAD, parsed without
+running them: a test counts as removed only when no test of the same name or a similar body is left in the touched test
+files (a test of the same name in another touched file counts only when it holds the removed test's body), and
+`TEST_INTEGRITY_INDEX_UNAVAILABLE` names a file that could not be compared. TI09 reads the text of the touched
+test-runner config files the same way (`vitest.config.*`, `vite.config.*`, `vitest.workspace.*`, `jest.config.*`,
+`playwright.config.*`, `.mocharc.*`, `package.json`, `pytest.ini`, `tox.ini`, `setup.cfg` and `pyproject.toml`) and
+compares a fixed list of settings between the two: a lowered coverage threshold, a narrower test list (`include`,
+`testMatch`, `testpaths`, `spec`), a wider exclusion (build directories, `node_modules` and `.d.ts` files excepted),
+`passWithNoTests`, `allowOnly` or `bail` turned on, a `grep` added, `forbidOnly` turned off, or a pytest `addopts` that
+gains `-k`, `-m`, `--deselect`, `--ignore` or `-x`. A raised retry count or timeout is a warning only, and so is a value
+that is not a literal and cannot be compared. When a change adds, removes, modifies or renames tests, the comment also
+holds a collapsed "Tests changed" table with the counts per test file; the test names are in `report.json` only. A
+reviewer who is not the author can sign off block findings with the accept label: see [Accept label](#accept-label).
+
+Python test files are parsed with the runner's own `python3` (or `python`), 3.8 or newer, and only when the change
+modifies one. Without it, those files are named in `TEST_INTEGRITY_INDEX_UNAVAILABLE` (warn), the signals that compare
+test text skip them, and the diff-only signals still run.
+
+The block signals were measured on 600 merged pull requests of three open-source vitest repositories: TI01, TI02 and
+TI11 each falsely block 1 of 600 (0.17 %). The method, the reviewed findings and the warn and info signals' sampled
+precision are in [docs/PRECISION.md](./docs/PRECISION.md#official-results-v030-2026-10-26).
 
 This is the "Test integrity" section of the report for a change that turns `it(` into `it.skip(` in
 `src/cart.test.ts`, in mode `block`:
@@ -464,7 +483,7 @@ jobs:
           persist-credentials: false
       # ...set up your toolchain and run tests with lcov or Cobertura output, e.g.:
       - run: npx vitest run --coverage --coverage.reporter=lcov
-      - uses: pharn-dev/pharn-ci@v0.2.0 # or, better, the tag's full commit SHA
+      - uses: pharn-dev/pharn-ci@v0.3.0 # or, better, the tag's full commit SHA
         with:
           coverage-file: coverage/lcov.info
           threshold: 80
@@ -516,7 +535,7 @@ jobs:
         env:
           PR_FILE: ${{ runner.temp }}/pharn-ci-input/pr-number
         run: echo "number=$(tr -dc '0-9' < "$PR_FILE" | head -c 10)" >> "$GITHUB_OUTPUT"
-      - uses: pharn-dev/pharn-ci@v0.2.0 # or, better, the tag's full commit SHA
+      - uses: pharn-dev/pharn-ci@v0.3.0 # or, better, the tag's full commit SHA
         with:
           coverage-file: ${{ runner.temp }}/pharn-ci-input/coverage/lcov.info
           pr-number: ${{ steps.pr.outputs.number }}

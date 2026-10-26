@@ -94,15 +94,24 @@ describe("TI06 and TI12: docs, schema, exports and fixtures", () => {
     expect(typeof core.detectTI12).toBe("function");
   });
 
-  it("AC-18: the CHANGELOG Unreleased Added section has an entry naming TI06 and TI12 and keeps #91's entry unchanged", () => {
-    const addedNow = listItems(sectionOf(sectionOf(read("CHANGELOG.md"), /^## \[Unreleased\]/), /^### Added/));
+  it("AC-18: the CHANGELOG 0.3.0 Added section has entries naming TI06 and TI12 and keeps the facts of #91's entry", () => {
+    // Shipped in 0.3.0. The release PR regrouped the entries for a reader: TI06 and TI12 have an Added entry each, and
+    // #91's entry is split over the TI02 and TI05 entries and the Changed list, with every code span it held kept.
+    const released = sectionOf(read("CHANGELOG.md"), /^## \[0\.3\.0\]/);
+    const addedNow = listItems(sectionOf(released, /^### Added/));
     const addedBase = listItems(sectionOf(sectionOf(readBase("CHANGELOG.md"), /^## \[Unreleased\]/), /^### Added/));
     const earlier = addedBase.filter((item) => item.includes("**TI02**") && item.includes("**TI05**"));
     expect(earlier, "#91's entry at the base commit").toHaveLength(1);
-    expect(addedNow, "#91's entry, byte for byte").toContain(earlier[0]);
+    const spans = new Set(normalize(earlier[0] as string).match(/`[^`]+`/g) ?? []);
+    expect(spans.size, "#91's entry has code spans").toBeGreaterThan(5);
+    for (const span of spans) expect(normalize(released), `#91's ${span}`).toContain(span);
     expect(
-      addedNow.some((item) => item !== earlier[0] && item.includes("TI06") && item.includes("TI12")),
-      "a new entry names TI06 and TI12",
+      addedNow.some((item) => item.includes("**TI06**")),
+      "an entry names TI06",
+    ).toBe(true);
+    expect(
+      addedNow.some((item) => item.includes("**TI12**")),
+      "an entry names TI12",
     ).toBe(true);
   });
 

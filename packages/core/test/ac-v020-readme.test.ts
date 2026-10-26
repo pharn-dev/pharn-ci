@@ -60,8 +60,10 @@ describe("release-readiness-v020: README.md", () => {
     expect(body).toMatch(/\]\((?:\.\/)?docs\/LIMITS\.md(?:#[^)]*)?\)/);
     expect(section.filter((line) => line.includes("uses:"))).toEqual([]);
 
-    // The 0.2.0 release PR moved the Status note and the pins from v0.1.0 to v0.2.0, and changed nothing else in them.
-    const released = (line: string) => line.replaceAll("v0.1.0", "v0.2.0");
+    // The 0.2.0 release PR moved the Status note and the pins from v0.1.0 to v0.2.0, and the 0.3.0 release PR from v0.2.0
+    // to v0.3.0; neither changed anything else in them. The title keeps its 0.2.0 words: ac-ti06-ti12-unchanged.test.ts
+    // pins every title of this file byte for byte.
+    const released = (line: string) => line.replaceAll("v0.1.0", "v0.3.0");
     expect(statusNote(now)).toEqual(statusNote(before).map(released));
     expect(usesLines(before).length).toBeGreaterThan(0);
     expect(usesLines(now)).toEqual(usesLines(before).map(released));

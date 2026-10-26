@@ -103,8 +103,9 @@ describe("TI01 and TI02 precision: the docs and the fixtures", () => {
     expect(corpus).toContain("item 18");
   });
 
-  it("AC-15: the CHANGELOG Unreleased section has an entry that mentions TI01 and TI02", () => {
-    const unreleased = section(read("CHANGELOG.md"), "## [Unreleased]");
+  it("AC-15: the CHANGELOG 0.3.0 section has an entry that mentions TI01 and TI02", () => {
+    // Shipped in 0.3.0; before that release its entry sat under Unreleased.
+    const unreleased = section(read("CHANGELOG.md"), "## [0.3.0]");
     const items: string[] = [];
     for (const line of unreleased.split("\n")) {
       if (line.startsWith("- ")) items.push(line);
@@ -112,7 +113,7 @@ describe("TI01 and TI02 precision: the docs and the fixtures", () => {
     }
     expect(
       items.some((item) => item.includes("TI01") && item.includes("TI02")),
-      "one Unreleased entry mentions both TI01 and TI02",
+      "one 0.3.0 entry mentions both TI01 and TI02",
     ).toBe(true);
   });
 

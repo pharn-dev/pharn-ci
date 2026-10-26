@@ -28,5 +28,5 @@ jobs:
       # Needed for `vitest run --coverage`; skip this step if @vitest/coverage-v8 is already a dev dependency.
       - run: npm install --no-save @vitest/coverage-v8
       - run: npx vitest run --coverage --coverage.reporter=lcov
-      - uses: pharn-dev/pharn-ci@v0.2.0 # or, better, the tag's full commit SHA
+      - uses: pharn-dev/pharn-ci@v0.3.0 # or, better, the tag's full commit SHA
         timeout-minutes: 5

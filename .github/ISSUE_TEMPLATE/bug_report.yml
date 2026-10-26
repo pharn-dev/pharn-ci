@@ -23,7 +23,7 @@ body:
     attributes:
       label: pharn-ci version
       description: The tag or commit SHA in `uses:`, or `pharn-ci --version` for the CLI.
-      placeholder: pharn-dev/pharn-ci@v0.2.0
+      placeholder: pharn-dev/pharn-ci@v0.3.0
     validations:
       required: true
   - type: textarea

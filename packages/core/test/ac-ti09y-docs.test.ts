@@ -70,11 +70,11 @@ describe("TI09: schema, docs and fixtures", () => {
       .digest("hex");
     expect(v1, "schema/report.v1.json is byte-identical to the base commit").toBe(V1_SHA256_AT_BASE);
 
-    // CHANGELOG: the Unreleased section adds a TI09 line.
-    const unreleased = section(read("CHANGELOG.md"), "[Unreleased]");
+    // CHANGELOG: the 0.3.0 section has a TI09 line (before that release it sat under Unreleased).
+    const unreleased = section(read("CHANGELOG.md"), "[0.3.0]");
     expect(
       unreleased.split("\n").some((line) => line.includes("TI09")),
-      "an Unreleased line names TI09",
+      "a 0.3.0 line names TI09",
     ).toBe(true);
 
     // README: TI09 in the signals sentences and its message code in the table.

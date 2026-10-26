@@ -56,9 +56,10 @@ describe("TI02 and TI05: docs, schema and fixtures", () => {
     expect(read("schema/report.v1.json")).toBe(before);
   });
 
-  it("AC-20: the CHANGELOG Unreleased Added section names TI02, TI05, the three codes, languages, Python indexing in the CLI and the Action, and the larger dist", () => {
-    const unreleased = sectionOf(read("CHANGELOG.md"), /^## \[Unreleased\]/);
-    const added = normalize(sectionOf(unreleased, /^### Added/));
+  it("AC-20: the CHANGELOG 0.3.0 section names TI02, TI05, the three codes, languages, Python indexing in the CLI and the Action, and the larger dist", () => {
+    // Shipped in 0.3.0. The release PR regrouped the entries: the signals, codes and languages are under Added, and the
+    // Python interpreter and the larger dist, which a 0.2.0 user must know about, under Changed.
+    const added = normalize(sectionOf(read("CHANGELOG.md"), /^## \[0\.3\.0\]/));
     for (const word of ["TI02", "TI05", ...CODES, "languages"]) expect(added, word).toContain(word);
     expect(added).toMatch(/Python/);
     expect(added).toMatch(/\bCLI\b/);

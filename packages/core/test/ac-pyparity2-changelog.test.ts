@@ -2,14 +2,15 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 // Reads CHANGELOG.md and docs/THREAT-MODEL.md as text; nothing the build adds is loaded.
+// Shipped in 0.3.0; before that release its line sat under Unreleased.
 
 const read = (path: string) => readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8");
 
-/** The `## [Unreleased]` section of the changelog, up to the next `## [` heading. */
+/** The `## [0.3.0]` section of the changelog, up to the next `## [` heading. */
 function unreleased(text: string): string {
   const lines = text.split("\n");
-  const start = lines.findIndex((l) => /^## \[Unreleased\]/.test(l));
-  if (start < 0) throw new Error("CHANGELOG.md has no ## [Unreleased] section");
+  const start = lines.findIndex((l) => /^## \[0\.3\.0\]/.test(l));
+  if (start < 0) throw new Error("CHANGELOG.md has no ## [0.3.0] section");
   const end = lines.findIndex((l, i) => i > start && /^## \[/.test(l));
   return lines.slice(start + 1, end < 0 ? undefined : end).join("\n");
 }
@@ -26,7 +27,7 @@ function bullets(text: string): string[] {
 }
 
 describe("the changelog and the threat model name the pytest parity change", () => {
-  it("AC-19: the Unreleased section holds a line naming pytest marker aliases, TI03's expectedFailure and pytest.xfail forms and TI09's native [tool.pytest] table, and THREAT-MODEL row A1 names the native [tool.pytest] table read by the same linear, size-capped reader", () => {
+  it("AC-19: the 0.3.0 section holds a line naming pytest marker aliases, TI03's expectedFailure and pytest.xfail forms and TI09's native [tool.pytest] table, and THREAT-MODEL row A1 names the native [tool.pytest] table read by the same linear, size-capped reader", () => {
     const entries = bullets(unreleased(read("CHANGELOG.md")));
     const line = entries.find(
       (b) =>
@@ -37,10 +38,7 @@ describe("the changelog and the threat model name the pytest parity change", () 
         /pytest\.xfail/.test(b) &&
         /\[tool\.pytest\]/.test(b),
     );
-    expect(
-      line,
-      "one Unreleased entry names marker aliases, expectedFailure, pytest.xfail and [tool.pytest]",
-    ).toBeDefined();
+    expect(line, "one 0.3.0 entry names marker aliases, expectedFailure, pytest.xfail and [tool.pytest]").toBeDefined();
     expect(line, "it names TI03").toMatch(/TI03/);
     expect(line, "it names TI09").toMatch(/TI09/);
 
