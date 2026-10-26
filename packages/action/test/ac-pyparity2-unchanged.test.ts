@@ -30,6 +30,20 @@ const PINNED = [
   "packages/core/test/ac-ti081516-regression.test.ts",
   "packages/core/test/ac-skylos-nine-table.test.ts",
 ];
+/**
+ * The files the name-only-moves change re-pins on purpose (TI01's same-stem rule and TI02's phase-2 leaf pick now need
+ * body evidence): for exactly these, the new sha256 of the file is accepted instead of the base bytes.
+ */
+const NAME_ONLY_REPINNED: Record<string, string> = {
+  "packages/action/test/ac-accept-signoff-regression.test.ts":
+    "d3b2fef3e8d8dc20e52dafbf368375f370cba211969987cfd1cb6e6e7fb24077",
+  "packages/core/test/ac-ti0205-regression.test.ts": "0e7ec98bf36dc000fb3419b35c0889b9ad23952826984145ee29be1561b5497d",
+};
+/** The digests of ac-ti06-ti12-unchanged.test.ts the name-only-moves change re-pins; every other one is as at the base. */
+const NAME_ONLY_DIGESTS: Record<string, string> = {
+  EARLIER_DIGEST: "0197e0cfe0e50e9dfc8c453e5bfa978147632c47ab09dfc073d770cd965bb04f",
+  PAIR_DIGEST: "129d9dbe605feab5c7cd65df323ee57ca43e4cb19a1142f99402c8048073d867",
+};
 /** The two tests whose case listings gain an ADDED_AFTER_BASE set for the new TI02 and TI05 directories. */
 const LISTINGS = ["packages/core/test/ac-ti06-ti12-unchanged.test.ts", "packages/node-io/test/ac-ti07-moved.test.ts"];
 
@@ -84,7 +98,11 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
     expect(schemaWords, "report.v2.json codes and ids as at the base").toEqual(words(atBase("schema/report.v2.json")));
 
     // The pinned regression tests: byte-identical, and the digests of ac-ti06-ti12-unchanged unchanged.
-    for (const path of PINNED) expect(sha256(read(path)), `${path} as at the base`).toBe(sha256(atBase(path)));
+    for (const path of PINNED) {
+      const repinned = NAME_ONLY_REPINNED[path];
+      if (repinned !== undefined) expect(sha256(read(path)), `${path} as re-pinned by name-only-moves`).toBe(repinned);
+      else expect(sha256(read(path)), `${path} as at the base`).toBe(sha256(atBase(path)));
+    }
     const digest = (text: string, name: string) => {
       const m = new RegExp(`const ${name} = "([0-9a-f]{64})"`).exec(text);
       expect(m, name).not.toBeNull();
@@ -92,7 +110,9 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
     };
     const unchanged = "packages/core/test/ac-ti06-ti12-unchanged.test.ts";
     for (const name of ["EARLIER_DIGEST", "PAIR_DIGEST"]) {
-      expect(digest(read(unchanged), name), `${name} as at the base`).toBe(digest(atBase(unchanged), name));
+      expect(digest(read(unchanged), name), `${name} as at the base, or as re-pinned by name-only-moves`).toBe(
+        NAME_ONLY_DIGESTS[name] ?? digest(atBase(unchanged), name),
+      );
     }
 
     // Only the TI02 and TI05 case directories added after the base join the two ADDED_AFTER_BASE sets.

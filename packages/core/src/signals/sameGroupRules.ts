@@ -1,5 +1,5 @@
 import type { TestBlock } from "../testIndex/types.js";
-import { containsAtLeast, HALF, jaccardAtLeast, THREE_QUARTERS } from "./bodyTokens.js";
+import { containsAtLeast, FOUR_FIFTHS, HALF, jaccardAtLeast, THREE_QUARTERS } from "./bodyTokens.js";
 import { groupKey } from "./nameWords.js";
 import { assertionChains, holdsEveryChain, sharesAny, testSubjects } from "./testSubjects.js";
 
@@ -18,6 +18,20 @@ export interface Answer<F extends FreshTest> {
 
 /** The distinct body tokens of a test, memoized by the caller. */
 export type TokensOf = (block: TestBlock) => ReadonlySet<string>;
+
+/**
+ * The body evidence a test needs before another test counts as holding it: a body-token Jaccard of at least 4/5, or a
+ * body that holds at least 4/5 of the old body's distinct tokens and every assertion chain the old one held. A name
+ * never counts. The chains are computed only when the containment passes.
+ */
+export function holdsBody(before: TestBlock, after: TestBlock, tokensOf: TokensOf): boolean {
+  const old = tokensOf(before);
+  const fresh = tokensOf(after);
+  return (
+    jaccardAtLeast(old, fresh, FOUR_FIFTHS) ||
+    (containsAtLeast(old, fresh, FOUR_FIFTHS) && holdsEveryChain(assertionChains(before), assertionChains(after)))
+  );
+}
 
 /** The most `.each` tests one candidate is compared with. */
 export const MAX_EACH_SCAN = 256;

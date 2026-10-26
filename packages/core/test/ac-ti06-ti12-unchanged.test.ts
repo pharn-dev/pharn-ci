@@ -43,12 +43,15 @@ const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
   "TI05/pass-pytest-alias-emptied-skipped-literal",
 ]);
 /** The digest ac-ti0205-regression.test.ts pins for the earlier fixtures without sources. */
-const EARLIER_DIGEST = "9851046d2ff16b5c718d655494b44f96ceed0e91f996e689aaa72524174b59f8";
+// Re-pinned by the name-only-moves change, with ac-ti0205-regression.test.ts: the two TI01 migration records changed.
+const EARLIER_DIGEST = "0197e0cfe0e50e9dfc8c453e5bfa978147632c47ab09dfc073d770cd965bb04f";
 /**
  * sha256 of the JSON list of { fixture, signals, messages } over the TI02 and TI05 cases with their sources, in
  * directory then case order, as check() gave them at the base commit 98693cf.
  */
-const PAIR_DIGEST = "2baa284042284c968c42f9f57acc2642ced6dbf743a09958aafab9e852a95a71";
+// Re-pinned by the name-only-moves change: only TI02/pass-moved-to-other-file changed (it now gives one TI02 block),
+// because TI02's phase-2 leaf pick now needs body evidence, not a name alone.
+const PAIR_DIGEST = "129d9dbe605feab5c7cd65df323ee57ca43e4cb19a1142f99402c8048073d867";
 /** The main commit this change was rebased onto (after #94); the Skylos test titles are compared with it. */
 const TITLES_BASE = "2fd75371e9e27c80c0df7a81ba3077f2d896cb22";
 /** The titles that name the Skylos count, as they were at TITLES_BASE and as they are now. */

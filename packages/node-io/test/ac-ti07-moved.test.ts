@@ -91,7 +91,14 @@ const AT_BASE: Array<[string, string[], string[], string]> = [
   ["TI02/pass-each-table-edited", [], [], "34f6882b1f82977bda289fffb5b7a1fd4133c35bdb3dd7f189878e54bf9e3e55"],
   ["TI02/pass-moved-in-file", [], [], "34f6882b1f82977bda289fffb5b7a1fd4133c35bdb3dd7f189878e54bf9e3e55"],
   ["TI02/pass-moved-to-added-file", [], [], "34f6882b1f82977bda289fffb5b7a1fd4133c35bdb3dd7f189878e54bf9e3e55"],
-  ["TI02/pass-moved-to-other-file", [], [], "34f6882b1f82977bda289fffb5b7a1fd4133c35bdb3dd7f189878e54bf9e3e55"],
+  // Re-pinned by the name-only-moves change: a same leaf name alone no longer clears a removed test, and the hollow
+  // same-leaf test in b.test.ts does not hold its body, so this case gives one TI02 block and nothing is moved.
+  [
+    "TI02/pass-moved-to-other-file",
+    ["TI02 block src/a.test.ts:8"],
+    ["TEST_INTEGRITY_TI02 error"],
+    "b300cdfdaa5b3274572eba7ba18e7db7e88de4cbfac39cee8ca67386ce7c7359",
+  ],
   ["TI02/pass-pytest-renamed", [], [], "34f6882b1f82977bda289fffb5b7a1fd4133c35bdb3dd7f189878e54bf9e3e55"],
   ["TI02/pass-renamed-edited-literal", [], [], "34f6882b1f82977bda289fffb5b7a1fd4133c35bdb3dd7f189878e54bf9e3e55"],
   ["TI02/pass-renamed-same-body", [], [], "34f6882b1f82977bda289fffb5b7a1fd4133c35bdb3dd7f189878e54bf9e3e55"],
@@ -161,7 +168,8 @@ const AT_BASE: Array<[string, string[], string[], string]> = [
 
 /** The cross-file moves the two moved cases hold, as "base path › base name -> head path › head name". */
 const MOVED: Record<string, string[]> = {
-  "TI02/pass-moved-to-other-file": ["src/a.test.ts › totals the cart -> src/b.test.ts › totals the cart"],
+  // Re-pinned by the name-only-moves change: TI02/pass-moved-to-other-file is no longer a cross-file move (its
+  // same-leaf test does not hold the removed body), so it left this list.
   "TI02/pass-moved-to-added-file": ["src/a.test.ts › totals the cart -> src/c.test.ts › sums the cart"],
 };
 

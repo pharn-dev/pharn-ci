@@ -21,7 +21,9 @@ const MODES = ["block", "warn"] as const;
  * directory and name order) in modes block and warn, holding each report's test-integrity signals and its
  * TEST_INTEGRITY_* messages, as check() gave them at the base commit a1089fd.
  */
-const BEFORE_DIGEST = "bf9469aaaac4d178af40fad47909e08507a87aae1fbce788f111ba5c87f66bbf";
+// Re-pinned by the name-only-moves change: the two TI01 migration records changed (info to block, new detail), because
+// TI01's same-stem rule now needs body evidence, not a name alone.
+const BEFORE_DIGEST = "5c247f48f503d112ab50e43a896f150cac657db3296fc6e62dabb60afaa81d8b";
 const BEFORE_COUNT = 216;
 
 /**

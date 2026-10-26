@@ -31,7 +31,9 @@ const UNAVAILABLE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
  * sha256 of the JSON list of { fixture, signals, messages } over the earlier fixtures without sources, in directory
  * then file order, as check() gave them at the base commit ad8277c.
  */
-const BEFORE_DIGEST = "9851046d2ff16b5c718d655494b44f96ceed0e91f996e689aaa72524174b59f8";
+// Re-pinned by the name-only-moves change: only the two TI01 migration records changed (info to block, new detail),
+// because TI01's same-stem rule now needs body evidence, not a name alone.
+const BEFORE_DIGEST = "0197e0cfe0e50e9dfc8c453e5bfa978147632c47ab09dfc073d770cd965bb04f";
 
 const asFile = (report: unknown) => `${JSON.stringify(report, null, 2)}\n`;
 const lines = (path: string) => fixture(path).trim().split("\n");

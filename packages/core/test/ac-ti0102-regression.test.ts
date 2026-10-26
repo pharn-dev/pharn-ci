@@ -29,7 +29,10 @@ const SCHEMAS = ["schema/report.v1.json", "schema/report.v2.json"];
  * f1b252e, the commit this change was rebased onto (it was bc448710… at 5860ba4; #103's Python parity moved it, and this
  * change leaves it as main has it).
  */
-const BEFORE_DIGEST = "b3a2b28e114e4158bd253d7531463330a912731a01422d049f0216bf99b2c9c9";
+// Re-pinned by the name-only-moves change: the two TI01 migration records changed (info to block, new detail), and
+// TI02/pass-moved-to-other-file now gives one TI02 block, because TI01's same-stem rule and TI02's phase-2 leaf pick
+// now need body evidence, not a name alone.
+const BEFORE_DIGEST = "41cde9b625577c664f0b2aae4d319a15e6c92c46e5ca8bae5c7586c7439a415e";
 /** The rename hint was dropped in review: a name alone must never soften a TI02 block. */
 const HINT = "a new test in the same group has a similar name or body, so it may have been renamed.";
 const MOVED =

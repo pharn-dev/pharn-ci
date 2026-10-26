@@ -1,0 +1,12 @@
+import { describe, it } from "vitest";
+import { priceOrder } from "../test-helpers.js";
+
+describe("pricing", () => {
+  it("applies a bulk discount to large orders", () => {
+    priceOrder([]);
+  });
+
+  it("charges full price for small orders", () => {
+    priceOrder([]);
+  });
+});
