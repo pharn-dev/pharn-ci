@@ -1,5 +1,7 @@
 import { parseArgs } from "node:util";
 import {
+  type AgentConfigSources,
+  agentConfigSecretPaths,
   type CheckInput,
   COVERAGE_FORMAT_SELECTIONS,
   ConfigError,
@@ -19,6 +21,7 @@ import {
   renderMarkdown,
   resolveInputs,
   resolveTestIntegrityMode,
+  scanAgentSetup,
   type TestSources,
   unavailableTestSources,
   VERSION,
@@ -27,6 +30,7 @@ import {
   gitChunks,
   indexPythonTestSources,
   indexPythonTests,
+  readAgentConfigSources,
   readCoverageFiles,
   readDiscoveredCoverage,
   readTestSources,
@@ -305,6 +309,22 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   // `--full-name -- :/` lists the whole repository relative to its root wherever the CLI runs, so coverage
   // paths are compared with the same names from a subdirectory.
   const lsFiles = await git(deps, ["ls-files", "-z", "--full-name", "--", ":/"], "git ls-files failed");
+  const repoFiles = lsFiles.split("\0").filter((p) => p !== "");
+
+  // The committed text of the agent config files, for the secret scan (check A7), always at HEAD. Nothing is read
+  // without a batch git runner or when no tracked path is a scannable agent config file.
+  let agentConfigSources: AgentConfigSources | undefined;
+  if (deps.gitBatch !== undefined) {
+    const agentConfigPaths = agentConfigSecretPaths(scanAgentSetup(repoFiles));
+    if (agentConfigPaths.length > 0) {
+      agentConfigSources = await readAgentConfigSources({ gitBatch: deps.gitBatch }, agentConfigPaths);
+      if ("unavailable" in agentConfigSources) {
+        deps.stderr(
+          `pharn-ci: could not read the agent config files from git, so they are not scanned for secrets: ${agentConfigSources.unavailable}\n`,
+        );
+      }
+    }
+  }
 
   // File sizes in HEAD, so an empty agent setup file can be reported. Optional: without them the check still runs.
   let repoFileBytes: Map<string, number> | undefined;
@@ -321,8 +341,9 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     diff: { parsed: diffFiles },
     repoRoot,
     threshold,
-    repoFiles: lsFiles.split("\0").filter((p) => p !== ""),
+    repoFiles,
     ...(repoFileBytes === undefined ? {} : { repoFileBytes }),
+    ...(agentConfigSources === undefined ? {} : { agentConfigSources }),
     exclude,
     requireAgentSetup,
     ...(expectAgentSetup === undefined ? {} : { expectAgentSetup }),

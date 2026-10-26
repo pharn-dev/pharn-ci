@@ -835,8 +835,10 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
 
 ## 4. Agent setup inventory
 
-- **It is an inventory, not a review.** pharn-ci lists agent setup files and never reads them. It
-  does not validate their syntax, judge their content, or check them for prompt injection.
+- **It is an inventory, not a review.** pharn-ci lists agent setup files; the inventory itself reads
+  none of them. Check A7 reads the machine-readable kinds for committed secrets
+  ([Secrets in agent configs](#secrets-in-agent-configs)). It does not validate their syntax, judge their
+  content, or check them for prompt injection.
 - **Only tracked files are seen.** The list comes from `git ls-files`, so untracked or ignored
   files (a typical `.claude/settings.local.json`) are not listed.
 - **The kinds detected are fixed (34):** `claude-md`, `claude-local-md`, `agents-md`, `gemini-md`,
@@ -869,7 +871,7 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
     under another name (such as `third_party/`) is still counted, since pharn-ci cannot tell a
     vendored copy from the repo's own.
   - Files that a config names (for example the `read` list in `.aider.conf.yml`): pharn-ci never
-    reads a setup file, so it does not follow them.
+    follows a path a setup file names.
   - Other tools that also read an existing kind: only `agents-md` credits several tools.
 - **Precedence:** a path is classified by the first matching rule, and rules tied to a directory
   or full path come before the file-name rules. So `.claude/agents/CLAUDE.md` is a `claude-agent`,
@@ -883,10 +885,40 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
   file is reported.
 - **Expected tools are judged by kind, not by content.** A tool in `setup.expect` counts as present
   when any setup kind it reads exists; for example `AGENTS.md` satisfies amp, codex, copilot, cursor,
-  jules, opencode and zed. pharn-ci never reads file contents, so an empty or unrelated file still
+  jules, opencode and zed. The kind comes from the path alone, so an unrelated file still
   counts (an empty one gets `AGENT_SETUP_FILE_EMPTY`).
 - **The summary is derived.** `agentSetup.summary` holds counts per kind and the tools those kinds
   belong to, from a fixed list. It is computed from the file list and says nothing about content.
+
+## Secrets in agent configs
+
+Check A7 (`AGENT_CONFIG_SECRET_*`) reads the committed text of the machine-readable agent setup kinds at `HEAD` and looks
+for ten shapes of secret by prefix and position. It is a heuristic, not a secret manager. What it misses:
+
+- **Markdown kinds are not read.** `CLAUDE.md`, `AGENTS.md`, the rules, skills, agents and commands are never scanned,
+  and neither is a `.md` file under `.continue/rules/`.
+- **`.env` files and other files are not read.** `.env*` files, `.continue/config.*` and every file the inventory does
+  not list are outside the scan, as is any custom format a tool reads from another path.
+- **Only the listed kinds and paths.** A nested copy of a root-only kind (`packages/app/.mcp.json`) is not an agent
+  setup file, so it is not scanned.
+- **Shapes, not provider checks.** A key is recognized by its prefix and length, or by a secret-named key with a long,
+  high-entropy value. Nothing asks the provider whether a key is live (no network call), so a revoked or made-up key is
+  reported, and a key of a provider or format not in the ten shapes is missed.
+- **Low-entropy passwords are missed.** S10 needs 20 characters and 3.5 bits of entropy per character; `hunter2` is
+  not reported by S10 (S11 may name it when the file also loads other secrets from the environment).
+- **Encoded or split values are missed.** A base64-wrapped value, a secret split across two strings or lines, a value
+  built from variables, and a secret in a key that is not named like one are not seen.
+- **Keys in file names are not read.** A secret in a path or a file name is outside the scan.
+- **Bare values stop at a space.** A header such as `Authorization: Bearer <value>` without quotes is read as the word
+  `Bearer`; quote it, or the scheme word hides the value from S10.
+- **The files must be committed text.** A file over 512 KiB, a binary file, a path git cannot read safely, or one past the
+  caps (200 files, 16 MiB) is named in `AGENT_CONFIG_SECRET_UNSCANNED` and not read.
+- **The Action reads the checkout's `HEAD`.** With a diff from the local checkout that is the pull request head; in
+  PR-number mode or with a compare-API diff it may not be, so nothing is read and the report says so.
+- **An embedding with no batch git runner scans nothing.** The CLI and the Action gather the sources only when their
+  deps carry a batch git runner (`gitBatch`); a program that calls `check()` itself passes `agentConfigSources` or gets
+  no A7 message.
+- **A finding is not a removal.** A secret already in git history stays there after the file is fixed; revoke it.
 
 ## 5. Security limits
 

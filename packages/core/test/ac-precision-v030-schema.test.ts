@@ -12,8 +12,27 @@ const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const BASE = "b31de0c";
 const START = "TEST_INTEGRITY_TI15 (";
 
+// Re-pinned for the agent-config secrets change (E3 item 26): report.v2.json may also carry one appended text, the one
+// starting ` Codes added in v0.4.0:` right after the final sentence of the message-code description, which names the 12
+// AGENT_CONFIG_SECRET_ codes. It is cut out of the current schema before the comparison with b31de0c; everything else
+// is as before.
+const FINAL_SENTENCE = "No code is removed or renamed before 1.0.";
+const APPENDED_START = " Codes added in v0.4.0:";
+const SECRET_CODES = [
+  ...Array.from({ length: 11 }, (_, i) => `AGENT_CONFIG_SECRET_S${String(i + 1).padStart(2, "0")}`),
+  "AGENT_CONFIG_SECRET_UNSCANNED",
+];
+
 const readNow = (path: string) => readFileSync(join(ROOT, path));
 const readBase = (path: string) => execFileSync("git", ["show", `${BASE}:${path}`], { cwd: ROOT }) as Buffer;
+
+/** The text without the appended agent-config secrets text, and that text (to the end of the JSON string). */
+function cutAppended(text: string): { cut: string; appended: string } {
+  const at = text.indexOf(FINAL_SENTENCE) + FINAL_SENTENCE.length;
+  let end = at;
+  while (end < text.length && text[end] !== '"') end += text[end] === "\\" ? 2 : 1;
+  return { cut: text.slice(0, at) + text.slice(end), appended: text.slice(at, end) };
+}
 
 /** The [start, end) of the part from `TEST_INTEGRITY_TI15 (` to the next `TEST_INTEGRITY_` code, which must be unique. */
 function ti15Part(text: string, label: string): [number, number] {
@@ -31,7 +50,10 @@ describe("schema: only the TI15 level sentence changes", () => {
       "report.v1.json is byte-identical to its copy at b31de0c",
     ).toBe(true);
 
-    const now = readNow("schema/report.v2.json").toString("utf8");
+    const current = readNow("schema/report.v2.json").toString("utf8");
+    const { cut: now, appended } = cutAppended(current);
+    expect(appended.startsWith(APPENDED_START), "the appended text starts right after the final sentence").toBe(true);
+    for (const code of SECRET_CODES) expect(appended, `the appended text names ${code}`).toContain(code);
     const baseBytes = readBase("schema/report.v2.json");
     const base = baseBytes.toString("utf8");
     const [ns, ne] = ti15Part(now, "now");

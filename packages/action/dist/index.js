@@ -21355,7 +21355,7 @@ var require_typescript = __commonJS({
         isLateVisibilityPaintedStatement: () => isLateVisibilityPaintedStatement,
         isLeftHandSideExpression: () => isLeftHandSideExpression,
         isLet: () => isLet,
-        isLineBreak: () => isLineBreak,
+        isLineBreak: () => isLineBreak2,
         isLiteralComputedPropertyDeclarationName: () => isLiteralComputedPropertyDeclarationName,
         isLiteralExpression: () => isLiteralExpression,
         isLiteralExpressionOfObject: () => isLiteralExpressionOfObject,
@@ -31826,7 +31826,7 @@ ${lanes.join("\n")}
               lineStart = pos;
               break;
             default:
-              if (ch > 127 && isLineBreak(ch)) {
+              if (ch > 127 && isLineBreak2(ch)) {
                 result.push(lineStart);
                 lineStart = pos;
               }
@@ -31839,20 +31839,20 @@ ${lanes.join("\n")}
       function getPositionOfLineAndCharacter(sourceFile, line, character, allowEdits) {
         return sourceFile.getPositionOfLineAndCharacter ? sourceFile.getPositionOfLineAndCharacter(line, character, allowEdits) : computePositionOfLineAndCharacter(getLineStarts(sourceFile), line, character, sourceFile.text, allowEdits);
       }
-      function computePositionOfLineAndCharacter(lineStarts, line, character, debugText, allowEdits) {
-        if (line < 0 || line >= lineStarts.length) {
+      function computePositionOfLineAndCharacter(lineStarts2, line, character, debugText, allowEdits) {
+        if (line < 0 || line >= lineStarts2.length) {
           if (allowEdits) {
-            line = line < 0 ? 0 : line >= lineStarts.length ? lineStarts.length - 1 : line;
+            line = line < 0 ? 0 : line >= lineStarts2.length ? lineStarts2.length - 1 : line;
           } else {
-            Debug.fail(`Bad line number. Line: ${line}, lineStarts.length: ${lineStarts.length} , line map is correct? ${debugText !== void 0 ? arrayIsEqualTo(lineStarts, computeLineStarts(debugText)) : "unknown"}`);
+            Debug.fail(`Bad line number. Line: ${line}, lineStarts.length: ${lineStarts2.length} , line map is correct? ${debugText !== void 0 ? arrayIsEqualTo(lineStarts2, computeLineStarts(debugText)) : "unknown"}`);
           }
         }
-        const res = lineStarts[line] + character;
+        const res = lineStarts2[line] + character;
         if (allowEdits) {
-          return res > lineStarts[line + 1] ? lineStarts[line + 1] : typeof debugText === "string" && res > debugText.length ? debugText.length : res;
+          return res > lineStarts2[line + 1] ? lineStarts2[line + 1] : typeof debugText === "string" && res > debugText.length ? debugText.length : res;
         }
-        if (line < lineStarts.length - 1) {
-          Debug.assert(res < lineStarts[line + 1]);
+        if (line < lineStarts2.length - 1) {
+          Debug.assert(res < lineStarts2[line + 1]);
         } else if (debugText !== void 0) {
           Debug.assert(res <= debugText.length);
         }
@@ -31861,15 +31861,15 @@ ${lanes.join("\n")}
       function getLineStarts(sourceFile) {
         return sourceFile.lineMap || (sourceFile.lineMap = computeLineStarts(sourceFile.text));
       }
-      function computeLineAndCharacterOfPosition(lineStarts, position) {
-        const lineNumber = computeLineOfPosition(lineStarts, position);
+      function computeLineAndCharacterOfPosition(lineStarts2, position) {
+        const lineNumber = computeLineOfPosition(lineStarts2, position);
         return {
           line: lineNumber,
-          character: position - lineStarts[lineNumber]
+          character: position - lineStarts2[lineNumber]
         };
       }
-      function computeLineOfPosition(lineStarts, position, lowerBound) {
-        let lineNumber = binarySearch(lineStarts, position, identity, compareValues, lowerBound);
+      function computeLineOfPosition(lineStarts2, position, lowerBound) {
+        let lineNumber = binarySearch(lineStarts2, position, identity, compareValues, lowerBound);
         if (lineNumber < 0) {
           lineNumber = ~lineNumber - 1;
           Debug.assert(lineNumber !== -1, "position cannot precede the beginning of the file");
@@ -31878,37 +31878,37 @@ ${lanes.join("\n")}
       }
       function getLinesBetweenPositions(sourceFile, pos1, pos2) {
         if (pos1 === pos2) return 0;
-        const lineStarts = getLineStarts(sourceFile);
+        const lineStarts2 = getLineStarts(sourceFile);
         const lower = Math.min(pos1, pos2);
         const isNegative = lower === pos2;
         const upper = isNegative ? pos1 : pos2;
-        const lowerLine = computeLineOfPosition(lineStarts, lower);
-        const upperLine = computeLineOfPosition(lineStarts, upper, lowerLine);
+        const lowerLine = computeLineOfPosition(lineStarts2, lower);
+        const upperLine = computeLineOfPosition(lineStarts2, upper, lowerLine);
         return isNegative ? lowerLine - upperLine : upperLine - lowerLine;
       }
       function getLineAndCharacterOfPosition(sourceFile, position) {
         return computeLineAndCharacterOfPosition(getLineStarts(sourceFile), position);
       }
       function isWhiteSpaceLike(ch) {
-        return isWhiteSpaceSingleLine(ch) || isLineBreak(ch);
+        return isWhiteSpaceSingleLine(ch) || isLineBreak2(ch);
       }
       function isWhiteSpaceSingleLine(ch) {
         return ch === 32 || ch === 9 || ch === 11 || ch === 12 || ch === 160 || ch === 133 || ch === 5760 || ch >= 8192 && ch <= 8203 || ch === 8239 || ch === 8287 || ch === 12288 || ch === 65279;
       }
-      function isLineBreak(ch) {
+      function isLineBreak2(ch) {
         return ch === 10 || ch === 13 || ch === 8232 || ch === 8233;
       }
-      function isDigit3(ch) {
+      function isDigit4(ch) {
         return ch >= 48 && ch <= 57;
       }
       function isHexDigit(ch) {
-        return isDigit3(ch) || ch >= 65 && ch <= 70 || ch >= 97 && ch <= 102;
+        return isDigit4(ch) || ch >= 65 && ch <= 70 || ch >= 97 && ch <= 102;
       }
       function isASCIILetter(ch) {
         return ch >= 65 && ch <= 90 || ch >= 97 && ch <= 122;
       }
       function isWordCharacter(ch) {
-        return isASCIILetter(ch) || isDigit3(ch) || ch === 95;
+        return isASCIILetter(ch) || isDigit4(ch) || ch === 95;
       }
       function isOctalDigit(ch) {
         return ch >= 48 && ch <= 55;
@@ -31969,7 +31969,7 @@ ${lanes.join("\n")}
               if (text.charCodeAt(pos + 1) === 47) {
                 pos += 2;
                 while (pos < text.length) {
-                  if (isLineBreak(text.charCodeAt(pos))) {
+                  if (isLineBreak2(text.charCodeAt(pos))) {
                     break;
                   }
                   pos++;
@@ -32027,7 +32027,7 @@ ${lanes.join("\n")}
       var mergeConflictMarkerLength = "<<<<<<<".length;
       function isConflictMarkerTrivia(text, pos) {
         Debug.assert(pos >= 0);
-        if (pos === 0 || isLineBreak(text.charCodeAt(pos - 1))) {
+        if (pos === 0 || isLineBreak2(text.charCodeAt(pos - 1))) {
           const ch = text.charCodeAt(pos);
           if (pos + mergeConflictMarkerLength < text.length) {
             for (let i = 0; i < mergeConflictMarkerLength; i++) {
@@ -32047,7 +32047,7 @@ ${lanes.join("\n")}
         const ch = text.charCodeAt(pos);
         const len = text.length;
         if (ch === 60 || ch === 62) {
-          while (pos < len && !isLineBreak(text.charCodeAt(pos))) {
+          while (pos < len && !isLineBreak2(text.charCodeAt(pos))) {
             pos++;
           }
         } else {
@@ -32124,7 +32124,7 @@ ${lanes.join("\n")}
                   pos += 2;
                   if (nextChar === 47) {
                     while (pos < text.length) {
-                      if (isLineBreak(text.charCodeAt(pos))) {
+                      if (isLineBreak2(text.charCodeAt(pos))) {
                         hasTrailingNewLine = true;
                         break;
                       }
@@ -32157,7 +32157,7 @@ ${lanes.join("\n")}
                 break scan;
               default:
                 if (ch > 127 && isWhiteSpaceLike(ch)) {
-                  if (hasPendingCommentRange && isLineBreak(ch)) {
+                  if (hasPendingCommentRange && isLineBreak2(ch)) {
                     pendingHasTrailingNewLine = true;
                   }
                   pos++;
@@ -32393,7 +32393,7 @@ ${lanes.join("\n")}
               start2 = pos;
               continue;
             }
-            if (isDigit3(ch)) {
+            if (isDigit4(ch)) {
               allowSeparator = true;
               isPreviousTokenSeparator = false;
               pos++;
@@ -32502,7 +32502,7 @@ ${lanes.join("\n")}
         function scanDigits() {
           const start2 = pos;
           let isOctal = true;
-          while (isDigit3(charCodeChecked(pos))) {
+          while (isDigit4(charCodeChecked(pos))) {
             if (!isOctalDigit(charCodeUnchecked(pos))) {
               isOctal = false;
             }
@@ -32664,7 +32664,7 @@ ${lanes.join("\n")}
           pos++;
           switch (ch) {
             case 48:
-              if (pos >= end || !isDigit3(charCodeUnchecked(pos))) {
+              if (pos >= end || !isDigit4(charCodeUnchecked(pos))) {
                 return "\0";
               }
             // '\01', '\011'
@@ -32929,7 +32929,7 @@ ${lanes.join("\n")}
               continue;
             }
             separatorAllowed = true;
-            if (!isDigit3(ch) || ch - 48 >= base) {
+            if (!isDigit4(ch) || ch - 48 >= base) {
               break;
             }
             value += text[pos];
@@ -33100,7 +33100,7 @@ ${lanes.join("\n")}
                 pos++;
                 return token = 41;
               case 46:
-                if (isDigit3(charCodeUnchecked(pos + 1))) {
+                if (isDigit4(charCodeUnchecked(pos + 1))) {
                   scanNumber();
                   return token = 9;
                 }
@@ -33113,7 +33113,7 @@ ${lanes.join("\n")}
                 if (charCodeUnchecked(pos + 1) === 47) {
                   pos += 2;
                   while (pos < end) {
-                    if (isLineBreak(charCodeUnchecked(pos))) {
+                    if (isLineBreak2(charCodeUnchecked(pos))) {
                       break;
                     }
                     pos++;
@@ -33143,7 +33143,7 @@ ${lanes.join("\n")}
                       break;
                     }
                     pos++;
-                    if (isLineBreak(ch2)) {
+                    if (isLineBreak2(ch2)) {
                       lastLineStart = pos;
                       tokenFlags |= 1;
                     }
@@ -33283,7 +33283,7 @@ ${lanes.join("\n")}
                 pos++;
                 return token = 32;
               case 63:
-                if (charCodeUnchecked(pos + 1) === 46 && !isDigit3(charCodeUnchecked(pos + 2))) {
+                if (charCodeUnchecked(pos + 1) === 46 && !isDigit4(charCodeUnchecked(pos + 2))) {
                   return pos += 2, token = 29;
                 }
                 if (charCodeUnchecked(pos + 1) === 63) {
@@ -33402,7 +33402,7 @@ ${lanes.join("\n")}
                 } else if (isWhiteSpaceSingleLine(ch)) {
                   pos += charSize(ch);
                   continue;
-                } else if (isLineBreak(ch)) {
+                } else if (isLineBreak2(ch)) {
                   tokenFlags |= 1;
                   pos += charSize(ch);
                   continue;
@@ -33493,7 +33493,7 @@ ${lanes.join("\n")}
             let inCharacterClass = false;
             while (true) {
               const ch = charCodeChecked(pos);
-              if (ch === -1 || isLineBreak(ch)) {
+              if (ch === -1 || isLineBreak2(ch)) {
                 tokenFlags |= 4;
                 break;
               }
@@ -34601,9 +34601,9 @@ ${lanes.join("\n")}
             if (char === 125) {
               error22(Diagnostics.Unexpected_token_Did_you_mean_or_rbrace, pos, 1);
             }
-            if (isLineBreak(char) && firstNonWhitespace === 0) {
+            if (isLineBreak2(char) && firstNonWhitespace === 0) {
               firstNonWhitespace = -1;
-            } else if (!allowMultilineJsxText && isLineBreak(char) && firstNonWhitespace > 0) {
+            } else if (!allowMultilineJsxText && isLineBreak2(char) && firstNonWhitespace > 0) {
               break;
             } else if (!isWhiteSpaceLike(char)) {
               firstNonWhitespace = pos;
@@ -34656,7 +34656,7 @@ ${lanes.join("\n")}
           if (pos >= end) {
             return token = 1;
           }
-          for (let ch = charCodeUnchecked(pos); pos < end && (!isLineBreak(ch) && ch !== 96); ch = codePointUnchecked(++pos)) {
+          for (let ch = charCodeUnchecked(pos); pos < end && (!isLineBreak2(ch) && ch !== 96); ch = codePointUnchecked(++pos)) {
             if (!inBackticks) {
               if (ch === 123) {
                 break;
@@ -36761,16 +36761,16 @@ ${lanes.join("\n")}
       }
       function getEndLinePosition(line, sourceFile) {
         Debug.assert(line >= 0);
-        const lineStarts = getLineStarts(sourceFile);
+        const lineStarts2 = getLineStarts(sourceFile);
         const lineIndex = line;
         const sourceText = sourceFile.text;
-        if (lineIndex + 1 === lineStarts.length) {
+        if (lineIndex + 1 === lineStarts2.length) {
           return sourceText.length - 1;
         } else {
-          const start = lineStarts[lineIndex];
-          let pos = lineStarts[lineIndex + 1] - 1;
-          Debug.assert(isLineBreak(sourceText.charCodeAt(pos)));
-          while (start <= pos && isLineBreak(sourceText.charCodeAt(pos))) {
+          const start = lineStarts2[lineIndex];
+          let pos = lineStarts2[lineIndex + 1] - 1;
+          Debug.assert(isLineBreak2(sourceText.charCodeAt(pos)));
+          while (start <= pos && isLineBreak2(sourceText.charCodeAt(pos))) {
             pos--;
           }
           return pos;
@@ -40776,8 +40776,8 @@ ${lanes.join("\n")}
         }
       }
       function getLineOfLocalPosition(sourceFile, pos) {
-        const lineStarts = getLineStarts(sourceFile);
-        return computeLineOfPosition(lineStarts, pos);
+        const lineStarts2 = getLineStarts(sourceFile);
+        return computeLineOfPosition(lineStarts2, pos);
       }
       function getLineOfLocalPositionFromLineMap(lineMap, pos) {
         return computeLineOfPosition(lineMap, pos);
@@ -107084,7 +107084,7 @@ ${lanes.join("\n")}
               let relatedInformation;
               if (node.arguments.length === 1) {
                 const text = getSourceFileOfNode(node).text;
-                if (isLineBreak(text.charCodeAt(skipTrivia(
+                if (isLineBreak2(text.charCodeAt(skipTrivia(
                   text,
                   node.expression.end,
                   /*stopAfterLineBreak*/
@@ -123651,10 +123651,10 @@ ${lanes.join("\n")}
       var sourceMapCommentRegExpDontCareLineStart = /\/\/[@#] source[M]appingURL=(.+)\r?\n?$/;
       var sourceMapCommentRegExp = /^\/\/[@#] source[M]appingURL=(.+)\r?\n?$/;
       var whitespaceOrMapCommentRegExp = /^\s*(\/\/[@#] .*)?$/;
-      function getLineInfo(text, lineStarts) {
+      function getLineInfo(text, lineStarts2) {
         return {
-          getLineCount: () => lineStarts.length,
-          getLineText: (line) => text.substring(lineStarts[line], lineStarts[line + 1])
+          getLineCount: () => lineStarts2.length,
+          getLineText: (line) => text.substring(lineStarts2[line], lineStarts2[line + 1])
         };
       }
       function tryGetSourceMappingURL(lineInfo) {
@@ -136374,7 +136374,7 @@ ${lanes.join("\n")}
           let lastNonWhitespace = -1;
           for (let i = 0; i < text.length; i++) {
             const c = text.charCodeAt(i);
-            if (isLineBreak(c)) {
+            if (isLineBreak2(c)) {
               if (firstNonWhitespace !== -1 && lastNonWhitespace !== -1) {
                 acc = addLineOfJsxText(acc, text.substr(firstNonWhitespace, lastNonWhitespace - firstNonWhitespace + 1));
               }
@@ -157045,13 +157045,13 @@ ${lanes.join("\n")}
           if (!file) {
             return -1;
           }
-          const lineStarts = getLineStarts(file);
-          let line = computeLineAndCharacterOfPosition(lineStarts, start).line - 1;
+          const lineStarts2 = getLineStarts(file);
+          let line = computeLineAndCharacterOfPosition(lineStarts2, start).line - 1;
           while (line >= 0) {
             if (directives.markUsed(line)) {
               return line;
             }
-            const lineText = file.text.slice(lineStarts[line], lineStarts[line + 1]).trim();
+            const lineText = file.text.slice(lineStarts2[line], lineStarts2[line + 1]).trim();
             if (lineText !== "" && !/^\s*\/\/.*$/.test(lineText)) {
               return -1;
             }
@@ -162898,7 +162898,7 @@ ${lanes.join("\n")}
               case 13:
                 break;
               default:
-                if (ch < 127 || !isLineBreak(ch)) {
+                if (ch < 127 || !isLineBreak2(ch)) {
                   lineStart = pos;
                   continue;
                 }
@@ -169067,9 +169067,9 @@ ${lanes.join("\n")}
       }
       var tripleSlashDirectivePrefixRegex = /^\/\/\/\s*</;
       function getLineStartPositionForPosition(position, sourceFile) {
-        const lineStarts = getLineStarts(sourceFile);
+        const lineStarts2 = getLineStarts(sourceFile);
         const line = sourceFile.getLineAndCharacterOfPosition(position).line;
-        return lineStarts[line];
+        return lineStarts2[line];
       }
       function rangeContainsRangeExclusive(r1, r2) {
         return rangeContainsPositionExclusive(r1, r2.pos) && rangeContainsPositionExclusive(r1, r2.end);
@@ -172826,7 +172826,7 @@ ${lanes.join("\n")}
         function classifyDisabledMergeCode(text, start, end) {
           let i;
           for (i = start; i < end; i++) {
-            if (isLineBreak(text.charCodeAt(i))) {
+            if (isLineBreak2(text.charCodeAt(i))) {
               break;
             }
           }
@@ -182248,13 +182248,13 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         getLineEndOfPosition(pos) {
           const { line } = this.getLineAndCharacterOfPosition(pos);
-          const lineStarts = this.getLineStarts();
+          const lineStarts2 = this.getLineStarts();
           let lastCharPos;
-          if (line + 1 >= lineStarts.length) {
+          if (line + 1 >= lineStarts2.length) {
             lastCharPos = this.getEnd();
           }
           if (!lastCharPos) {
-            lastCharPos = lineStarts[line + 1] - 1;
+            lastCharPos = lineStarts2[line + 1] - 1;
           }
           const fullText = this.getFullText();
           return fullText[lastCharPos] === "\n" && fullText[lastCharPos - 1] === "\r" ? lastCharPos - 1 : lastCharPos;
@@ -183557,15 +183557,15 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         function toggleLineComment(fileName, textRange, insertComment) {
           const sourceFile = syntaxTreeCache.getCurrentSourceFile(fileName);
           const textChanges2 = [];
-          const { lineStarts, firstLine: firstLine2, lastLine: lastLine2 } = getLinesForRange(sourceFile, textRange);
+          const { lineStarts: lineStarts2, firstLine: firstLine2, lastLine: lastLine2 } = getLinesForRange(sourceFile, textRange);
           let isCommenting = insertComment || false;
           let leftMostPosition = Number.MAX_VALUE;
           const lineTextStarts = /* @__PURE__ */ new Map();
           const firstNonWhitespaceCharacterRegex = new RegExp(/\S/);
-          const isJsx = isInsideJsxElement(sourceFile, lineStarts[firstLine2]);
+          const isJsx = isInsideJsxElement(sourceFile, lineStarts2[firstLine2]);
           const openComment = isJsx ? "{/*" : "//";
           for (let i = firstLine2; i <= lastLine2; i++) {
-            const lineText = sourceFile.text.substring(lineStarts[i], sourceFile.getLineEndOfPosition(lineStarts[i]));
+            const lineText = sourceFile.text.substring(lineStarts2[i], sourceFile.getLineEndOfPosition(lineStarts2[i]));
             const regExec = firstNonWhitespaceCharacterRegex.exec(lineText);
             if (regExec) {
               leftMostPosition = Math.min(leftMostPosition, regExec.index);
@@ -183576,27 +183576,27 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             }
           }
           for (let i = firstLine2; i <= lastLine2; i++) {
-            if (firstLine2 !== lastLine2 && lineStarts[i] === textRange.end) {
+            if (firstLine2 !== lastLine2 && lineStarts2[i] === textRange.end) {
               continue;
             }
             const lineTextStart = lineTextStarts.get(i.toString());
             if (lineTextStart !== void 0) {
               if (isJsx) {
-                textChanges2.push(...toggleMultilineComment(fileName, { pos: lineStarts[i] + leftMostPosition, end: sourceFile.getLineEndOfPosition(lineStarts[i]) }, isCommenting, isJsx));
+                textChanges2.push(...toggleMultilineComment(fileName, { pos: lineStarts2[i] + leftMostPosition, end: sourceFile.getLineEndOfPosition(lineStarts2[i]) }, isCommenting, isJsx));
               } else if (isCommenting) {
                 textChanges2.push({
                   newText: openComment,
                   span: {
                     length: 0,
-                    start: lineStarts[i] + leftMostPosition
+                    start: lineStarts2[i] + leftMostPosition
                   }
                 });
-              } else if (sourceFile.text.substr(lineStarts[i] + lineTextStart, openComment.length) === openComment) {
+              } else if (sourceFile.text.substr(lineStarts2[i] + lineTextStart, openComment.length) === openComment) {
                 textChanges2.push({
                   newText: "",
                   span: {
                     length: openComment.length,
-                    start: lineStarts[i] + lineTextStart
+                    start: lineStarts2[i] + lineTextStart
                   }
                 });
               }
@@ -207660,8 +207660,8 @@ ${content}
       }
       function addRegionOutliningSpans(sourceFile, out) {
         const regions = [];
-        const lineStarts = sourceFile.getLineStarts();
-        for (const currentLineStart of lineStarts) {
+        const lineStarts2 = sourceFile.getLineStarts();
+        for (const currentLineStart of lineStarts2) {
           const lineEnd = sourceFile.getLineEndOfPosition(currentLineStart);
           const lineText = sourceFile.text.substring(currentLineStart, lineEnd);
           const result = parseRegionDelimiter(lineText);
@@ -210074,7 +210074,7 @@ ${content}
           /*stopAfterLineBreak*/
           true
         );
-        return newEnd !== end && (trailingTriviaOption === 2 || isLineBreak(sourceFile.text.charCodeAt(newEnd - 1))) ? newEnd : end;
+        return newEnd !== end && (trailingTriviaOption === 2 || isLineBreak2(sourceFile.text.charCodeAt(newEnd - 1))) ? newEnd : end;
       }
       function isSeparator(node, candidate) {
         return !!candidate && !!node.parent && (candidate.kind === 28 || candidate.kind === 27 && node.parent.kind === 211);
@@ -210206,7 +210206,7 @@ ${content}
           const pos = getInsertionPositionAtSourceFileTop(sourceFile);
           const options = {
             prefix: pos === 0 ? void 0 : this.newLineCharacter,
-            suffix: (isLineBreak(sourceFile.text.charCodeAt(pos)) ? "" : this.newLineCharacter) + (blankLineBetween ? this.newLineCharacter : "")
+            suffix: (isLineBreak2(sourceFile.text.charCodeAt(pos)) ? "" : this.newLineCharacter) + (blankLineBetween ? this.newLineCharacter : "")
           };
           if (isArray(insert)) {
             this.insertNodesAt(sourceFile, pos, insert, options);
@@ -210379,7 +210379,7 @@ ${content}
         insertNodeAtEndOfScope(sourceFile, scope, newNode) {
           const pos = getAdjustedStartPosition(sourceFile, scope.getLastToken(), {});
           this.insertNodeAt(sourceFile, pos, newNode, {
-            prefix: isLineBreak(sourceFile.text.charCodeAt(scope.getLastToken().pos)) ? this.newLineCharacter : this.newLineCharacter + this.newLineCharacter,
+            prefix: isLineBreak2(sourceFile.text.charCodeAt(scope.getLastToken().pos)) ? this.newLineCharacter : this.newLineCharacter + this.newLineCharacter,
             suffix: this.newLineCharacter
           });
         }
@@ -210594,7 +210594,7 @@ ${options.prefix}` : "\n" : options.prefix
                 /*stopAtComments*/
                 false
               );
-              while (insertPos !== end && isLineBreak(sourceFile.text.charCodeAt(insertPos - 1))) {
+              while (insertPos !== end && isLineBreak2(sourceFile.text.charCodeAt(insertPos - 1))) {
                 insertPos--;
               }
               this.replaceRange(sourceFile, createRange(insertPos), newNode, { indentation, prefix: this.newLineCharacter });
@@ -210737,9 +210737,9 @@ ${options.prefix}` : "\n" : options.prefix
               true
             );
             if (positionsAreOnSameLine(prevToken.getStart(sourceFile), token.getStart(sourceFile), sourceFile)) {
-              return isLineBreak(sourceFile.text.charCodeAt(pos - 1)) ? pos - 1 : pos;
+              return isLineBreak2(sourceFile.text.charCodeAt(pos - 1)) ? pos - 1 : pos;
             }
-            if (isLineBreak(sourceFile.text.charCodeAt(pos))) {
+            if (isLineBreak2(sourceFile.text.charCodeAt(pos))) {
               return pos;
             }
           }
@@ -211139,7 +211139,7 @@ ${options.prefix}` : "\n" : options.prefix
         function advancePastLineBreak() {
           if (position < text.length) {
             const charCode = text.charCodeAt(position);
-            if (isLineBreak(charCode)) {
+            if (isLineBreak2(charCode)) {
               position++;
               if (position < text.length && charCode === 13 && text.charCodeAt(position) === 10) {
                 position++;
@@ -213643,7 +213643,7 @@ ${options.prefix}` : "\n" : options.prefix
         while (isWhiteSpaceSingleLine(sourceFile.text.charCodeAt(endOfFormatSpan))) {
           endOfFormatSpan--;
         }
-        if (isLineBreak(sourceFile.text.charCodeAt(endOfFormatSpan))) {
+        if (isLineBreak2(sourceFile.text.charCodeAt(endOfFormatSpan))) {
           endOfFormatSpan--;
         }
         const span = {
@@ -216858,7 +216858,7 @@ ${options.prefix}` : "\n" : options.prefix
         isLateVisibilityPaintedStatement: () => isLateVisibilityPaintedStatement,
         isLeftHandSideExpression: () => isLeftHandSideExpression,
         isLet: () => isLet,
-        isLineBreak: () => isLineBreak,
+        isLineBreak: () => isLineBreak2,
         isLiteralComputedPropertyDeclarationName: () => isLiteralComputedPropertyDeclarationName,
         isLiteralExpression: () => isLiteralExpression,
         isLiteralExpressionOfObject: () => isLiteralExpressionOfObject,
@@ -228245,7 +228245,7 @@ Project '${project.projectName}' (${ProjectKind[project.projectKind]}) ${counter
             Debug.checkDefined(this.projectService.getScriptInfo(file))
           );
           if (!renameInfo.canRename) return simplifiedResult ? { info: renameInfo, locs: [] } : [];
-          const locations = getRenameLocationsWorker(
+          const locations2 = getRenameLocationsWorker(
             projects,
             defaultProject,
             { fileName: args.file, pos: position },
@@ -228254,8 +228254,8 @@ Project '${project.projectName}' (${ProjectKind[project.projectKind]}) ${counter
             preferences,
             this.host.useCaseSensitiveFileNames
           );
-          if (!simplifiedResult) return locations;
-          return { info: renameInfo, locs: this.toSpanGroups(locations) };
+          if (!simplifiedResult) return locations2;
+          return { info: renameInfo, locs: this.toSpanGroups(locations2) };
         }
         mapRenameInfo(info2, scriptInfo) {
           if (info2.canRename) {
@@ -228267,9 +228267,9 @@ Project '${project.projectName}' (${ProjectKind[project.projectKind]}) ${counter
             return info2;
           }
         }
-        toSpanGroups(locations) {
+        toSpanGroups(locations2) {
           const map2 = /* @__PURE__ */ new Map();
-          for (const { fileName, textSpan, contextSpan, originalContextSpan: _2, originalTextSpan: _, originalFileName: _1, ...prefixSuffixText } of locations) {
+          for (const { fileName, textSpan, contextSpan, originalContextSpan: _2, originalTextSpan: _, originalFileName: _1, ...prefixSuffixText } of locations2) {
             let group2 = map2.get(fileName);
             if (!group2) map2.set(fileName, group2 = { file: fileName, locs: [] });
             const scriptInfo = Debug.checkDefined(this.projectService.getScriptInfo(fileName));
@@ -229145,10 +229145,10 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
           this.projectService.configurePlugin(args);
         }
         getSmartSelectionRange(args, simplifiedResult) {
-          const { locations } = args;
+          const { locations: locations2 } = args;
           const { file, languageService } = this.getFileAndLanguageServiceForSyntacticOperation(args);
           const scriptInfo = Debug.checkDefined(this.projectService.getScriptInfo(file));
-          return map(locations, (location) => {
+          return map(locations2, (location) => {
             const pos = this.getPosition(location, scriptInfo);
             const selectionRange = languageService.getSmartSelectionRange(file, pos);
             return simplifiedResult ? this.mapSelectionRange(selectionRange, scriptInfo) : selectionRange;
@@ -235336,19 +235336,6 @@ function createGitHubApi(opts) {
 import { mkdir as mkdir2, writeFile as writeFile2 } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
-// ../node-io/src/chunks.ts
-async function* oneChunk(read) {
-  yield await read();
-}
-function gitChunks(deps, args) {
-  return deps.gitStream ? deps.gitStream(args) : oneChunk(() => deps.git(args));
-}
-async function fileChunks(deps, path) {
-  if (deps.readFileStream) return deps.readFileStream(path);
-  const text = await deps.readFile(path);
-  return text === null ? null : oneChunk(async () => text);
-}
-
 // ../core/src/glob.ts
 function compileGlob(pattern) {
   const segments = pattern.split("/").map(compileSegment);
@@ -236035,6 +236022,7 @@ function buildReport(input) {
     const text = empty.length === 1 ? `1 agent setup file is empty: ${codeSpan(firstEmpty)}.` : `${empty.length} agent setup files are empty, for example ${codeSpan(firstEmpty)}.`;
     messages.push({ level: "warn", code: "AGENT_SETUP_FILE_EMPTY", text });
   }
+  messages.push(...input.agentConfigSecretMessages ?? []);
   return {
     schemaVersion: 2,
     tool: { name: "pharn-ci", version: input.version },
@@ -237297,6 +237285,505 @@ function binaryCoveredPaths(diff, coverage) {
   return [...found].sort(byCodeUnit);
 }
 
+// ../core/src/secrets/keys.ts
+var MAX_KEY_CHARS = 128;
+var MAX_VALUE_CHARS = 4096;
+var MAX_GAP_CHARS = 16;
+var SECRET_WORDS = /* @__PURE__ */ new Set([
+  "token",
+  "secret",
+  "password",
+  "passwd",
+  "auth",
+  "authorization",
+  "apikey"
+]);
+var SECRET_FRAGMENT = /token|secret|pass|auth|api/i;
+var isUpper = (c) => c !== void 0 && c >= "A" && c <= "Z";
+var isLower = (c) => c !== void 0 && c >= "a" && c <= "z";
+var isDigit = (c) => c !== void 0 && c >= "0" && c <= "9";
+function wordBounds(key) {
+  const bounds = [];
+  let start = -1;
+  for (let i = 0; i < key.length; i++) {
+    const code2 = key.charCodeAt(i);
+    if (code2 === 95 || code2 === 45 || code2 === 46 || code2 === 32) {
+      if (start !== -1) bounds.push(start, i);
+      start = -1;
+      continue;
+    }
+    if (start === -1) {
+      start = i;
+      continue;
+    }
+    const c = key[i];
+    if (isUpper(c)) {
+      const prev = key[i - 1];
+      if (isLower(prev) || isDigit(prev) || isUpper(prev) && isLower(key[i + 1])) {
+        bounds.push(start, i);
+        start = i;
+      }
+    }
+  }
+  if (start !== -1) bounds.push(start, key.length);
+  return bounds;
+}
+var MAX_SECRET_WORD_CHARS = 13;
+function isSecretKey(key) {
+  if (!SECRET_FRAGMENT.test(key)) return false;
+  const bounds = wordBounds(key);
+  for (let i = 0; i < bounds.length; i += 2) {
+    const length = bounds[i + 1] - bounds[i];
+    if (length < 3 || length > MAX_SECRET_WORD_CHARS) continue;
+    const word = key.slice(bounds[i], bounds[i + 1]).toLowerCase();
+    if (SECRET_WORDS.has(word)) return true;
+    if (word === "api" && i + 3 < bounds.length && key.slice(bounds[i + 2], bounds[i + 3]).toLowerCase() === "key")
+      return true;
+  }
+  return false;
+}
+function isEnvReference(value) {
+  if (value.includes("${")) return true;
+  if (value.startsWith("{env:") || value.startsWith("{file:")) return true;
+  if (value.startsWith("$")) {
+    const next = value[1];
+    if (next === "{" || next === "(" || isUpper(next) || isLower(next)) return true;
+  }
+  return /^%[A-Za-z_][A-Za-z0-9_]*%$/.test(value);
+}
+function isUrlValue(value) {
+  return /^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(value);
+}
+function isPathValue(value) {
+  return value.startsWith("/") || value.startsWith("./") || value.startsWith("../") || value.startsWith("~/");
+}
+function shannonEntropy(text) {
+  if (text.length === 0) return 0;
+  const counts2 = /* @__PURE__ */ new Map();
+  for (let i = 0; i < text.length; i++) {
+    const code2 = text.charCodeAt(i);
+    counts2.set(code2, (counts2.get(code2) ?? 0) + 1);
+  }
+  let bits = 0;
+  for (const count2 of counts2.values()) {
+    const p = count2 / text.length;
+    bits -= p * Math.log2(p);
+  }
+  return bits;
+}
+var isKeyChar = (c) => c !== void 0 && (isUpper(c) || isLower(c) || isDigit(c) || c === "_" || c === "." || c === "-");
+var isBlank = (c) => c === " " || c === "	";
+var isQuote2 = (c) => c === '"' || c === "'";
+var isLineBreak = (c) => c === "\n" || c === "\r";
+var BARE_STOPS = /* @__PURE__ */ new Set([" ", "	", ",", ";", "#", "}", '"', "'"]);
+function readValue(text, from) {
+  const first = text[from];
+  if (first === void 0 || isLineBreak(first)) return null;
+  if (isQuote2(first)) {
+    const limit2 = Math.min(text.length, from + 1 + MAX_VALUE_CHARS);
+    for (let i = from + 1; i < limit2; i++) {
+      const c = text[i];
+      if (c === "\\") {
+        i++;
+        continue;
+      }
+      if (c === first) return { value: text.slice(from + 1, i), start: from + 1, end: i, quoted: true };
+      if (isLineBreak(c)) return null;
+    }
+    return null;
+  }
+  if (first === "=" || first === ":") return null;
+  const limit = Math.min(text.length, from + MAX_VALUE_CHARS);
+  let end = from;
+  while (end < limit) {
+    const c = text[end];
+    if (BARE_STOPS.has(c) || isLineBreak(c)) break;
+    end++;
+  }
+  if (end === from) return null;
+  return { value: text.slice(from, end), start: from, end, quoted: false };
+}
+function skipBlanks(text, from) {
+  let i = from;
+  const limit = Math.min(text.length, from + MAX_GAP_CHARS);
+  while (i < limit && isBlank(text[i])) i++;
+  return i;
+}
+var isKeyCode = (c) => c >= 97 && c <= 122 || c >= 65 && c <= 90 || c >= 48 && c <= 57 || c === 95 || c === 46 || c === 45;
+var isBlankCode = (c) => c === 32 || c === 9;
+var isQuoteCode = (c) => c === 34 || c === 39;
+function readKeyBefore(text, at) {
+  let j = at - 1;
+  const gapLimit = Math.max(-1, j - MAX_GAP_CHARS);
+  while (j > gapLimit && isBlankCode(text.charCodeAt(j))) j--;
+  let quote = -1;
+  if (j >= 0 && isQuoteCode(text.charCodeAt(j))) {
+    quote = text.charCodeAt(j);
+    j--;
+  }
+  const end = j + 1;
+  const keyLimit = Math.max(-1, j - MAX_KEY_CHARS);
+  while (j > keyLimit && isKeyCode(text.charCodeAt(j))) j--;
+  const start = j + 1;
+  if (start === end) return null;
+  if (quote !== -1 && (j < 0 || text.charCodeAt(j) !== quote)) return null;
+  return { key: text.slice(start, end), start, end };
+}
+function secretKeyValues(text) {
+  const found = [];
+  let skipUntil = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (i < skipUntil) continue;
+    const code2 = text.charCodeAt(i);
+    if (code2 !== 58 && code2 !== 61 && code2 !== 45) continue;
+    if (code2 !== 45) {
+      const key = readKeyBefore(text, i);
+      if (key === null || !isSecretKey(key.key)) continue;
+      const value = readValue(text, skipBlanks(text, i + 1));
+      if (value === null) continue;
+      found.push({
+        key: key.key,
+        keyStart: key.start,
+        keyEnd: key.end,
+        value: value.value,
+        valueStart: value.start,
+        valueEnd: value.end,
+        quoted: value.quoted
+      });
+      if (!value.quoted) skipUntil = value.end;
+    } else if (text.charCodeAt(i + 1) === 45 && !isKeyChar(text[i - 1])) {
+      let nameEnd = i + 2;
+      const nameLimit = Math.min(text.length, i + 2 + MAX_KEY_CHARS);
+      while (nameEnd < nameLimit && isKeyChar(text[nameEnd])) nameEnd++;
+      if (nameEnd === i + 2) continue;
+      const key = text.slice(i, nameEnd);
+      if (!isSecretKey(key)) continue;
+      let p = nameEnd;
+      if (isQuote2(text[p])) p++;
+      let separated = false;
+      if (text[p] === ",") {
+        separated = true;
+        p++;
+      }
+      const afterBlanks = skipBlanks(text, p);
+      if (afterBlanks > p) separated = true;
+      p = afterBlanks;
+      if (!separated || text[p] === "=" || text[p] === ":") continue;
+      const value = readValue(text, p);
+      if (value === null || !value.quoted && value.value.startsWith("--")) continue;
+      found.push({
+        key,
+        keyStart: i,
+        keyEnd: nameEnd,
+        value: value.value,
+        valueStart: value.start,
+        valueEnd: value.end,
+        quoted: value.quoted
+      });
+      if (!value.quoted) skipUntil = value.end;
+    }
+  }
+  return found;
+}
+
+// ../core/src/secrets/spans.ts
+var isKeyCharCode = (code2) => code2 >= 48 && code2 <= 57 || code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122 || code2 === 95 || code2 === 45;
+function prefixed(text, source, accept) {
+  const re = new RegExp(source.source, "g");
+  const found = [];
+  for (let m = re.exec(text); m !== null; m = re.exec(text)) {
+    const start = m.index;
+    const ok = (start === 0 || !isKeyCharCode(text.charCodeAt(start - 1))) && (accept === void 0 || accept(m[0]));
+    if (ok) found.push([start, start + m[0].length]);
+    else re.lastIndex = start + 1;
+  }
+  return found;
+}
+var findS01 = (text) => prefixed(text, /gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{50,}/);
+var findS02 = (text) => prefixed(text, /sk-ant-[A-Za-z0-9_-]{20,}/);
+var findS03 = (text) => [
+  ...prefixed(text, /sk-proj-[A-Za-z0-9_-]{20,}/),
+  ...prefixed(text, /sk-[A-Za-z0-9_-]{40,}/, (match) => /[0-9]/.test(match))
+].sort((a, b) => a[0] - b[0]);
+var findS04 = (text) => prefixed(text, /AIza[A-Za-z0-9_-]{35}(?![A-Za-z0-9_-])/);
+var findS05 = (text) => prefixed(text, /A[KS]IA[A-Z0-9]{16}(?![A-Za-z0-9])/, (match) => !match.endsWith("EXAMPLE"));
+var findS06 = (text) => prefixed(text, /xox[baprs]-[A-Za-z0-9-]{10,}/);
+var findS07 = (text) => prefixed(text, /[sr]k_live_[A-Za-z0-9]{16,}/);
+var PRIVATE_KEY_BEGIN = /-----BEGIN (?:(?:RSA|EC|DSA|OPENSSH|ENCRYPTED|PGP) )?PRIVATE KEY(?: BLOCK)?-----/g;
+var PRIVATE_KEY_END = /-----END (?:[A-Z]+ )?PRIVATE KEY(?: BLOCK)?-----/g;
+function findS08(text) {
+  const found = [];
+  const begin = new RegExp(PRIVATE_KEY_BEGIN.source, "g");
+  const end = new RegExp(PRIVATE_KEY_END.source, "g");
+  for (let m = begin.exec(text); m !== null; m = begin.exec(text)) {
+    end.lastIndex = m.index + m[0].length;
+    const close = end.exec(text);
+    const stop = close === null ? text.length : close.index + close[0].length;
+    found.push([m.index, stop]);
+    begin.lastIndex = stop;
+  }
+  return found;
+}
+var MAX_AUTHORITY_CHARS = 256;
+var MIN_SECRET_VALUE_CHARS = 8;
+var AUTHORITY_STOPS = /* @__PURE__ */ new Set(["/", "?", "#", '"', "'", "<", ">", "`", " ", "	", "\n", "\r"]);
+var EXAMPLE_DOMAINS = ["example.com", "example.org", "example.net"];
+function isPlaceholderHost(host) {
+  const name = host.toLowerCase().replace(/\.$/, "");
+  if (name === "localhost" || name.endsWith(".localhost")) return true;
+  if (name === "127.0.0.1" || name === "0.0.0.0" || name === "[::1]" || name === "::1") return true;
+  return EXAMPLE_DOMAINS.some((domain) => name === domain || name.endsWith(`.${domain}`));
+}
+function userinfoPassword(text, from) {
+  const schemeEnd = from - 3;
+  if (schemeEnd <= 0 || !/[A-Za-z0-9+.-]/.test(text[schemeEnd - 1])) return null;
+  const limit = Math.min(text.length, from + MAX_AUTHORITY_CHARS);
+  let at = -1;
+  let colon = -1;
+  let end = from;
+  while (end < limit && !AUTHORITY_STOPS.has(text[end])) {
+    const c = text[end];
+    if (c === "@") at = end;
+    else if (c === ":" && colon === -1) colon = end;
+    end++;
+  }
+  if (at === -1 || colon === -1 || colon >= at) return null;
+  const password = text.slice(colon + 1, at);
+  if (password.length < MIN_SECRET_VALUE_CHARS || isEnvReference(password)) return null;
+  const hostPart = text.slice(at + 1, end);
+  const hostStop = hostPart.startsWith("[") ? hostPart.indexOf("]") + 1 : hostPart.indexOf(":");
+  if (isPlaceholderHost(hostStop > 0 ? hostPart.slice(0, hostStop) : hostPart)) return null;
+  return [colon + 1, at];
+}
+var QUERY_SECRET = /[?&](?:access_token|auth_token|refresh_token|token|api_key|api-key|apikey|client_secret|secret|password|passwd)=([^\s&#"'<>`\\]{8,})/gi;
+function findS09(text) {
+  const found = [];
+  for (let at = text.indexOf("://"); at !== -1; at = text.indexOf("://", at + 3)) {
+    const password = userinfoPassword(text, at + 3);
+    if (password !== null) found.push(password);
+  }
+  const re = new RegExp(QUERY_SECRET.source, "gi");
+  for (let m = re.exec(text); m !== null; m = re.exec(text)) {
+    const value = m[1];
+    if (isEnvReference(value)) continue;
+    const end = m.index + m[0].length;
+    found.push([end - value.length, end]);
+  }
+  return found.sort((a, b) => a[0] - b[0]);
+}
+var MIN_S10_CHARS = 20;
+var MIN_S10_ENTROPY = 3.5;
+var AUTH_SCHEME = /^(?:Bearer|Basic|token) /i;
+function findS10(_text, pairs) {
+  const found = [];
+  for (const pair of pairs) {
+    if (isEnvReference(pair.value)) continue;
+    const scheme = AUTH_SCHEME.exec(pair.value);
+    const value = scheme === null ? pair.value : pair.value.slice(scheme[0].length);
+    if (value.length < MIN_S10_CHARS || /\s/.test(value)) continue;
+    if (isEnvReference(value) || isUrlValue(value) || isPathValue(value)) continue;
+    if (shannonEntropy(value) < MIN_S10_ENTROPY) continue;
+    const start = pair.valueEnd - value.length;
+    found.push([start, pair.valueEnd]);
+  }
+  return found;
+}
+var TABLE = [
+  ["S01", findS01],
+  ["S02", findS02],
+  ["S03", findS03],
+  ["S04", findS04],
+  ["S05", findS05],
+  ["S06", findS06],
+  ["S07", findS07],
+  ["S08", findS08],
+  ["S09", findS09],
+  ["S10", findS10]
+];
+function findSecretSpansWith(text, pairs) {
+  const taken = new Uint8Array(text.length);
+  const spans = [];
+  for (const [id, find] of TABLE) {
+    for (const [start, end] of find(text, pairs)) {
+      let free = true;
+      for (let i = start; i < end; i++) {
+        if (taken[i] === 1) {
+          free = false;
+          break;
+        }
+      }
+      if (!free) continue;
+      taken.fill(1, start, end);
+      spans.push({ id, start, end });
+    }
+  }
+  return spans;
+}
+
+// ../core/src/secrets/scan.ts
+var SECRET_SCAN_KINDS = [
+  "mcp-config",
+  "cursor-mcp",
+  "vscode-mcp",
+  "claude-settings",
+  "claude-settings-local",
+  "codex-config",
+  "gemini-settings",
+  "opencode-config",
+  "aider-config",
+  "claude-hook",
+  "continue-rules"
+];
+var SCAN_KINDS = new Set(SECRET_SCAN_KINDS);
+var CONTINUE_CONFIG_EXTENSIONS = [".json", ".yaml", ".yml"];
+var byCodeUnit2 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function agentConfigSecretPaths(inventory) {
+  const paths = /* @__PURE__ */ new Set();
+  for (const file of inventory.files) {
+    if (!SCAN_KINDS.has(file.kind)) continue;
+    if (file.kind === "continue-rules") {
+      const lower = file.path.toLowerCase();
+      if (!CONTINUE_CONFIG_EXTENSIONS.some((extension) => lower.endsWith(extension))) continue;
+    }
+    paths.add(file.path);
+  }
+  return [...paths].sort(byCodeUnit2);
+}
+var MIN_S11_CHARS = 8;
+function lineStarts(text) {
+  const starts = [0];
+  for (let i = text.indexOf("\n"); i !== -1; i = text.indexOf("\n", i + 1)) starts.push(i + 1);
+  return starts;
+}
+function lineOf(starts, offset) {
+  let low = 0;
+  let high = starts.length - 1;
+  while (low < high) {
+    const mid = low + high + 1 >> 1;
+    if (starts[mid] <= offset) low = mid;
+    else high = mid - 1;
+  }
+  return low + 1;
+}
+function isLiteralSecret(value) {
+  if (value.length < MIN_S11_CHARS || isEnvReference(value) || isUrlValue(value) || isPathValue(value)) return false;
+  const lower = value.toLowerCase();
+  if (lower === "true" || lower === "false") return false;
+  return !/^[+-]?\d+(?:\.\d+)?$/.test(value);
+}
+function literalFindings(pairs, spans) {
+  if (!pairs.some((pair) => isEnvReference(pair.value))) return [];
+  const offsets = [];
+  for (const pair of pairs) {
+    if (!isLiteralSecret(pair.value)) continue;
+    if (spans.some((span) => span.start < pair.valueEnd && pair.valueStart < span.end)) continue;
+    offsets.push(pair.valueStart);
+  }
+  return offsets;
+}
+function scanAgentConfigSecrets(files) {
+  const found = /* @__PURE__ */ new Map();
+  for (const file of files) {
+    const starts = lineStarts(file.text);
+    const pairs = secretKeyValues(file.text);
+    const spans = findSecretSpansWith(file.text, pairs);
+    const add = (id, offset) => {
+      const line = lineOf(starts, offset);
+      found.set(`${id}\0${file.path}\0${line}`, { id, path: file.path, line });
+    };
+    for (const span of spans) add(span.id, span.start);
+    for (const offset of literalFindings(pairs, spans)) add("S11", offset);
+  }
+  return [...found.values()].sort((a, b) => byCodeUnit2(a.id, b.id) || byCodeUnit2(a.path, b.path) || a.line - b.line);
+}
+
+// ../core/src/secrets/messages.ts
+var MAX_LOCATIONS = 5;
+var MAX_UNSCANNED_FILES = 20;
+var SHAPES = {
+  S01: "a GitHub token",
+  S02: "an Anthropic API key",
+  S03: "an OpenAI API key",
+  S04: "a Google API key",
+  S05: "an AWS access key ID",
+  S06: "a Slack token",
+  S07: "a Stripe live key",
+  S08: "a private key",
+  S09: "a password or token in a URL",
+  S10: "a secret-like value under a secret-named key",
+  S11: "a literal value under a secret-named key in a file that loads its other secrets from the environment"
+};
+var CODES = {
+  S01: "AGENT_CONFIG_SECRET_S01",
+  S02: "AGENT_CONFIG_SECRET_S02",
+  S03: "AGENT_CONFIG_SECRET_S03",
+  S04: "AGENT_CONFIG_SECRET_S04",
+  S05: "AGENT_CONFIG_SECRET_S05",
+  S06: "AGENT_CONFIG_SECRET_S06",
+  S07: "AGENT_CONFIG_SECRET_S07",
+  S08: "AGENT_CONFIG_SECRET_S08",
+  S09: "AGENT_CONFIG_SECRET_S09",
+  S10: "AGENT_CONFIG_SECRET_S10",
+  S11: "AGENT_CONFIG_SECRET_S11"
+};
+var FAIL_CLOSED_REASONS = /* @__PURE__ */ new Set([
+  "too-large",
+  "over-file-cap",
+  "over-total-cap",
+  "unsafe-path"
+]);
+var byCodeUnit3 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function levelOf(id) {
+  return id === "S10" ? "warn" : id === "S11" ? "info" : "error";
+}
+function locations(findings) {
+  const named = findings.slice(0, MAX_LOCATIONS).map((finding2) => `${codeSpan(finding2.path)} line ${finding2.line}`).join(", ");
+  const more = findings.length - MAX_LOCATIONS;
+  return more > 0 ? `${named} and ${more} more` : named;
+}
+function unscannedFiles(files) {
+  const named = files.slice(0, MAX_UNSCANNED_FILES).map((file) => `${codeSpan(file.path)} (${codeSpan(file.reason)})`).join(", ");
+  const more = files.length - MAX_UNSCANNED_FILES;
+  return more > 0 ? `${named} and ${more} more` : named;
+}
+function agentConfigSecretMessages(sources, selected) {
+  if ("unavailable" in sources) {
+    return [
+      {
+        level: "warn",
+        code: "AGENT_CONFIG_SECRET_UNSCANNED",
+        text: `Agent config files were not scanned for committed secrets: ${codeSpan(oneLine(sources.unavailable))}.`
+      }
+    ];
+  }
+  const messages = [];
+  const findings = scanAgentConfigSecrets(sources.files);
+  const ids = [...new Set(findings.map((finding2) => finding2.id))].sort(byCodeUnit3);
+  for (const id of ids) {
+    const ofId = findings.filter((finding2) => finding2.id === id);
+    messages.push({
+      level: levelOf(id),
+      code: CODES[id],
+      text: `Agent config files hold ${SHAPES[id]} (${id}): ${locations(ofId)}.`
+    });
+  }
+  const read = new Set(sources.files.map((file) => file.path));
+  const dropped = new Set(sources.dropped.map((drop) => drop.path));
+  const unscanned = [...sources.dropped];
+  for (const path of selected) {
+    if (!read.has(path) && !dropped.has(path)) unscanned.push({ path, reason: "not-read" });
+  }
+  if (unscanned.length > 0) {
+    unscanned.sort((a, b) => byCodeUnit3(a.path, b.path));
+    messages.push({
+      level: unscanned.some((file) => FAIL_CLOSED_REASONS.has(file.reason)) ? "error" : "warn",
+      code: "AGENT_CONFIG_SECRET_UNSCANNED",
+      text: `Some agent config files were not scanned for committed secrets: ${unscannedFiles(unscanned)}.`
+    });
+  }
+  return messages;
+}
+
 // ../core/src/setup/scan.ts
 function underNested(path, anchor) {
   let from = 0;
@@ -237432,7 +237919,7 @@ function capFindings(signals, limit = MAX_FINDINGS_PER_FILE) {
 
 // ../core/src/testFiles.ts
 var TEST_DIRECTORIES = /* @__PURE__ */ new Set(["test", "tests", "__tests__"]);
-var byCodeUnit2 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit4 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var TEST_BASENAME = [
   /\.(?:test|spec)\.(?:js|jsx|ts|tsx|mjs|cjs)$/,
   /\.(?:e2e|pw)\.ts$/,
@@ -237483,7 +237970,7 @@ function deletedTestFiles(diff) {
     if (file.status === "deleted" && isTestFile(file.path)) found.add(file.path);
     else if (file.status === "renamed" && isTestFile(file.oldPath) && !isTestFile(file.path)) found.add(file.oldPath);
   }
-  return [...found].sort(byCodeUnit2);
+  return [...found].sort(byCodeUnit4);
 }
 
 // ../core/src/signals/pythonAliases.ts
@@ -237495,10 +237982,10 @@ function identEnd(text, start) {
   while (i < text.length && isIdentChar(text.charCodeAt(i))) i++;
   return i;
 }
-var isBlank = (c) => c === " " || c === "	";
-function skipBlanks(text, start) {
+var isBlank2 = (c) => c === " " || c === "	";
+function skipBlanks2(text, start) {
   let i = start;
-  while (i < text.length && isBlank(text.charAt(i))) i++;
+  while (i < text.length && isBlank2(text.charAt(i))) i++;
   return i;
 }
 function closeTriple(line, from, quote) {
@@ -237528,17 +238015,17 @@ function scanCode(line, from) {
 }
 var isStatementEnd = (code2) => code2 === 59 || code2 === 35 || code2 === 34 || code2 === 39;
 function startsStatement(line) {
-  if (line.startsWith("import") && isBlank(line.charAt(6))) return true;
-  return line.startsWith("from") && isBlank(line.charAt(4));
+  if (line.startsWith("import") && isBlank2(line.charAt(6))) return true;
+  return line.startsWith("from") && isBlank2(line.charAt(4));
 }
 function fromItem(piece) {
   const nameEnd = identEnd(piece, 0);
   if (nameEnd === 0) return null;
   const name = piece.slice(0, nameEnd);
   if (nameEnd === piece.length) return [name, name];
-  const asAt = skipBlanks(piece, nameEnd);
+  const asAt = skipBlanks2(piece, nameEnd);
   if (asAt === nameEnd || !piece.startsWith("as", asAt)) return null;
-  const localAt = skipBlanks(piece, asAt + 2);
+  const localAt = skipBlanks2(piece, asAt + 2);
   if (localAt === asAt + 2) return null;
   const localEnd = identEnd(piece, localAt);
   if (localEnd === localAt || localEnd !== piece.length) return null;
@@ -237555,9 +238042,9 @@ function importItem(piece) {
   }
   const dotted = piece.slice(0, end);
   if (end === piece.length) return [first, first];
-  const asAt = skipBlanks(piece, end);
+  const asAt = skipBlanks2(piece, end);
   if (asAt === end || !piece.startsWith("as", asAt)) return null;
-  const localAt = skipBlanks(piece, asAt + 2);
+  const localAt = skipBlanks2(piece, asAt + 2);
   if (localAt === asAt + 2) return null;
   const localEnd = identEnd(piece, localAt);
   if (localEnd === localAt || localEnd !== piece.length) return null;
@@ -237609,16 +238096,16 @@ function pythonImportAliases(text) {
         if (item !== null) aliases.set(item[0], item[1]);
       }
     } else {
-      const moduleAt = skipBlanks(body, 4);
+      const moduleAt = skipBlanks2(body, 4);
       let moduleEnd = moduleAt;
       while (moduleEnd < body.length && (body.charAt(moduleEnd) === "." || isIdentChar(body.charCodeAt(moduleEnd)))) {
         moduleEnd++;
       }
       const module = body.slice(moduleAt, moduleEnd);
-      const importAt = skipBlanks(body, moduleEnd);
+      const importAt = skipBlanks2(body, moduleEnd);
       const listAt = importAt + 6;
-      if (module !== "" && importAt > moduleEnd && body.startsWith("import", importAt) && isBlank(body.charAt(listAt))) {
-        const rest = skipBlanks(body, listAt);
+      if (module !== "" && importAt > moduleEnd && body.startsWith("import", importAt) && isBlank2(body.charAt(listAt))) {
+        const rest = skipBlanks2(body, listAt);
         if (body.charAt(rest) === "(") {
           state.group = { module, pending: [] };
           readGroup(line, rest + 1);
@@ -238379,7 +238866,7 @@ function walkTestFile(sourceFile) {
   const drafts = [];
   const mocks = [];
   const ranges = [];
-  const lineOf2 = (position) => sourceFile.getLineAndCharacterOfPosition(position).line + 1;
+  const lineOf3 = (position) => sourceFile.getLineAndCharacterOfPosition(position).line + 1;
   const stack = [{ node: sourceFile, depth: 0, owner: null, fn: null, inTry: false }];
   const children = [];
   for (let entry = stack.pop(); entry !== void 0; entry = stack.pop()) {
@@ -238437,8 +238924,8 @@ function walkTestFile(sourceFile) {
           name: found.name,
           nameDynamic: found.nameDynamic,
           path: [...owner?.path ?? [], found.name],
-          line: lineOf2(node.getStart(sourceFile)),
-          endLine: lineOf2(node.end),
+          line: lineOf3(node.getStart(sourceFile)),
+          endLine: lineOf3(node.end),
           modifiers: found.modifiers,
           param: first !== void 0 && import_typescript55.default.isIdentifier(first) ? first.text : null,
           bodyStart,
@@ -238451,11 +238938,11 @@ function walkTestFile(sourceFile) {
       } else {
         const guard = owner === null ? null : guardCall(node);
         if (owner !== null && guard !== null) {
-          owner.guards.push({ kind: guard.kind, count: guard.count, line: lineOf2(node.getStart(sourceFile)) });
+          owner.guards.push({ kind: guard.kind, count: guard.count, line: lineOf3(node.getStart(sourceFile)) });
         }
       }
       const mock = mockCall(node);
-      if (mock !== null) mocks.push({ ...mock, line: lineOf2(node.getStart(sourceFile)) });
+      if (mock !== null) mocks.push({ ...mock, line: lineOf3(node.getStart(sourceFile)) });
     }
     if (owner !== null && (node.kind === import_typescript55.default.SyntaxKind.PropertyAccessExpression || node.kind === import_typescript55.default.SyntaxKind.CallExpression) && isChainTop(node)) {
       const chain = assertionChain(node);
@@ -238463,7 +238950,7 @@ function walkTestFile(sourceFile) {
         const start = node.getStart(sourceFile);
         owner.assertions.push({
           chain,
-          line: lineOf2(start),
+          line: lineOf3(start),
           awaited: node.parent?.kind === import_typescript55.default.SyntaxKind.AwaitExpression,
           inTryCatch: entry.inTry,
           afterEarlyReturn: fn !== null && fn.firstReturnEnd <= start
@@ -238532,7 +239019,7 @@ function indexTestFile(path, text) {
 }
 
 // ../core/src/signals/testPairs.ts
-var byCodeUnit3 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit5 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var EXTENSION_LANGUAGE = /* @__PURE__ */ new Map([
   ["ts", "ts"],
   ["tsx", "ts"],
@@ -238610,7 +239097,7 @@ function indexTouchedTestFiles(diff, sources, python) {
   const pairs = [];
   const unavailable2 = [];
   const compared2 = [...comparedPaths.values()].sort(
-    (a, b) => byCodeUnit3(a.basePath, b.basePath) || byCodeUnit3(a.headPath, b.headPath)
+    (a, b) => byCodeUnit5(a.basePath, b.basePath) || byCodeUnit5(a.headPath, b.headPath)
   );
   for (const file of compared2) {
     const base = indexSide("base", file.basePath, file.language);
@@ -238629,19 +239116,19 @@ function indexTouchedTestFiles(diff, sources, python) {
       unavailable2.push({ path: file.headPath, reason });
     }
   }
-  unavailable2.sort((a, b) => byCodeUnit3(a.path, b.path));
+  unavailable2.sort((a, b) => byCodeUnit5(a.path, b.path));
   const added = [];
-  for (const [headPath, language] of [...addedPaths].sort((a, b) => byCodeUnit3(a[0], b[0]))) {
+  for (const [headPath, language] of [...addedPaths].sort((a, b) => byCodeUnit5(a[0], b[0]))) {
     const head = indexSide("head", headPath, language);
     if (head.ok) added.push({ headPath, head: head.tests, headMocks: head.mocks });
   }
-  return { pairs, added, unavailable: unavailable2, notRun: null, languages: [...languages].sort(byCodeUnit3) };
+  return { pairs, added, unavailable: unavailable2, notRun: null, languages: [...languages].sort(byCodeUnit5) };
 }
 
 // ../core/src/signals/testChanges.ts
 var MAX_TEST_CHANGE_ENTRIES = 200;
-var byCodeUnit4 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-var byEntry = (a, b) => byCodeUnit4(a.path, b.path) || a.line - b.line;
+var byCodeUnit6 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byEntry = (a, b) => byCodeUnit6(a.path, b.path) || a.line - b.line;
 var KINDS = ["removed", "modified", "renamed", "added"];
 var entryOf = (path, block) => ({
   path,
@@ -238704,7 +239191,7 @@ function summarizeTestChanges(touched, match) {
       modified: lists.modified.length,
       renamed: lists.renamed.length
     },
-    files: [...rows.values()].sort((a, b) => byCodeUnit4(a.path, b.path)),
+    files: [...rows.values()].sort((a, b) => byCodeUnit6(a.path, b.path)),
     added: kept.added,
     removed: kept.removed,
     modified: kept.modified,
@@ -238754,7 +239241,7 @@ function containsAtLeast(old, fresh, ratio) {
   if (old.size === 0) return true;
   return ratio.den * overlap(old, fresh) >= ratio.num * old.size;
 }
-var byCodeUnit5 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit7 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var CursorHeap = class {
   list = [];
   at = [];
@@ -238831,7 +239318,7 @@ var SimilarityIndex = class {
   }
   prefix(set) {
     const frequency = this.frequency;
-    const ordered = [...set].sort((a, b) => (frequency.get(a) ?? 0) - (frequency.get(b) ?? 0) || byCodeUnit5(a, b));
+    const ordered = [...set].sort((a, b) => (frequency.get(a) ?? 0) - (frequency.get(b) ?? 0) || byCodeUnit7(a, b));
     return ordered.slice(0, set.size - ceilRatio(set.size, this.ratio) + 1);
   }
   /**
@@ -238991,7 +239478,7 @@ function eachReplacements(candidates, fresh) {
 }
 
 // ../core/src/signals/testMatch.ts
-var byCodeUnit6 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit8 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var byLine = (a, b) => a.line - b.line;
 var leafName = (block) => block.path[block.path.length - 1] ?? "";
 var OtherFileList = class {
@@ -239049,7 +239536,7 @@ function matchTests(touched) {
   const left = [];
   const tokensOf = tokenSetMemo();
   const files = [...touched.pairs].sort(
-    (a, b) => byCodeUnit6(a.basePath, b.basePath) || byCodeUnit6(a.headPath, b.headPath)
+    (a, b) => byCodeUnit8(a.basePath, b.basePath) || byCodeUnit8(a.headPath, b.headPath)
   );
   let fileIndex = 0;
   for (const file of files) {
@@ -239160,13 +239647,13 @@ function matchTests(touched) {
     for (const entry of clearing) entry.used = true;
     for (const candidate of afterRename) if (!cleared.has(candidate.block)) left.push(candidate);
   }
-  for (const file of [...touched.added].sort((a, b) => byCodeUnit6(a.headPath, b.headPath))) {
+  for (const file of [...touched.added].sort((a, b) => byCodeUnit8(a.headPath, b.headPath))) {
     const index = fileIndex++;
     for (const block of [...file.head].sort(byLine)) {
       fresh.push({ fileIndex: index, path: file.headPath, block, order: 0, used: false });
     }
   }
-  fresh.sort((a, b) => byCodeUnit6(a.path, b.path) || a.block.line - b.block.line);
+  fresh.sort((a, b) => byCodeUnit8(a.path, b.path) || a.block.line - b.block.line);
   fresh.forEach((entry, at) => {
     entry.order = at;
   });
@@ -239258,7 +239745,7 @@ function matchTests(touched) {
 }
 
 // ../core/src/signals/ti01Moved.ts
-var byCodeUnit7 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit9 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var leafOf = (block) => block.path[block.path.length - 1] ?? "";
 function sameStemDeletions(diff) {
   const stems = /* @__PURE__ */ new Map();
@@ -239286,7 +239773,7 @@ function sameStemDeletions(diff) {
 function movedTestFiles(diff, sources, python, touched) {
   const moved = { files: /* @__PURE__ */ new Set(), compared: /* @__PURE__ */ new Set(), pairs: [] };
   if (touched.notRun !== null || "unavailable" in sources.base) return moved;
-  const deleted = diff.filter((file) => file.status === "deleted" && isTestFile(file.path) && file.binary !== true).map((file) => file.path).sort(byCodeUnit7);
+  const deleted = diff.filter((file) => file.status === "deleted" && isTestFile(file.path) && file.binary !== true).map((file) => file.path).sort(byCodeUnit9);
   if (deleted.length === 0) return moved;
   const texts = new Map(sources.base.files.map((file) => [file.path, file.text]));
   const pythonBase = python?.available ? new Map(python.base.map((file) => [file.path, file.result])) : null;
@@ -239318,7 +239805,7 @@ function movedTestFiles(diff, sources, python, touched) {
     }
   }
   if (fresh.length === 0) return moved;
-  fresh.sort((a, b) => byCodeUnit7(a.path, b.path) || a.block.line - b.block.line);
+  fresh.sort((a, b) => byCodeUnit9(a.path, b.path) || a.block.line - b.block.line);
   const leaves = /* @__PURE__ */ new Map();
   const groups = /* @__PURE__ */ new Set();
   for (const entry of fresh) {
@@ -239364,7 +239851,7 @@ function movedTestFiles(diff, sources, python, touched) {
 }
 
 // ../core/src/signals/ti01.ts
-var byCodeUnit8 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit10 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_DETAIL2 = 300;
 function removedTests(file) {
   if (file.hunks === void 0) return "unknown";
@@ -239413,7 +239900,7 @@ function detectTI01(diff, mode, moved = /* @__PURE__ */ new Set(), compared2 = /
     }
     found.set(path, { id: "TI01", severity, path, line: null, detail: detail.slice(0, MAX_DETAIL2) });
   }
-  return [...found.values()].sort((a, b) => byCodeUnit8(a.path, b.path));
+  return [...found.values()].sort((a, b) => byCodeUnit10(a.path, b.path));
 }
 
 // ../core/src/signals/ti02.ts
@@ -239428,7 +239915,7 @@ function detectTI02(match, mode) {
 }
 
 // ../core/src/signals/ti03.ts
-var byCodeUnit9 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit11 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE = 20;
 var DETAILS = {
   existing: "An unconditional skip was added to a test that the diff shows existed before this change, so that test no longer runs.",
@@ -239575,11 +240062,11 @@ function detectTI03(diff, mode, sources) {
       });
     }
   }
-  return signals.sort((a, b) => byCodeUnit9(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit11(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti04.ts
-var byCodeUnit10 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit12 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE2 = 20;
 var DETAIL = "A focused-run marker (`.only`, `fit` or `fdescribe`) was added, so the runner may skip the other tests of this file or of the whole run.";
 function detectTI04(diff, mode) {
@@ -239607,7 +240094,7 @@ function detectTI04(diff, mode) {
       signals.push({ id: "TI04", severity: mode, path: file.path, line, detail: DETAIL });
     }
   }
-  return signals.sort((a, b) => byCodeUnit10(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit12(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti05.ts
@@ -239786,7 +240273,7 @@ var ARGUMENT_CHARS = 200;
 var MAX_TRIM = 64;
 var CLOSERS2 = { ")": "(", "]": "[", "}": "{" };
 var isIdentifierChar = (code2) => code2 >= 48 && code2 <= 57 || code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122 || code2 === 95 || code2 === 36;
-var isBlank2 = (code2) => code2 === 32 || code2 === 9 || code2 === 10 || code2 === 13;
+var isBlank3 = (code2) => code2 === 32 || code2 === 9 || code2 === 10 || code2 === 13;
 function wordBefore(body, at, word) {
   const start = at - word.length;
   if (start < 0 || !body.startsWith(word, start)) return false;
@@ -239824,9 +240311,9 @@ function argumentText(body, start, end) {
 }
 function subjectOf(body, start, end) {
   let from = start;
-  while (from < end && from - start < MAX_TRIM && isBlank2(body.charCodeAt(from))) from++;
+  while (from < end && from - start < MAX_TRIM && isBlank3(body.charCodeAt(from))) from++;
   let to = end;
-  while (to > from && end - to < MAX_TRIM && isBlank2(body.charCodeAt(to - 1))) to--;
+  while (to > from && end - to < MAX_TRIM && isBlank3(body.charCodeAt(to - 1))) to--;
   return {
     head: body.slice(from, Math.min(to, from + SUBJECT_HEAD_CHARS)).trim(),
     tail: body.slice(Math.max(from, to - SUBJECT_TAIL_CHARS), to).trim()
@@ -240132,7 +240619,7 @@ function labelledAssertions(block, language) {
 // ../core/src/signals/tautology.ts
 var MAX_LITERAL = 200;
 var isWord = (code2) => code2 >= 48 && code2 <= 57 || code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122 || code2 === 95 || code2 === 36;
-var isDigit = (code2) => code2 >= 48 && code2 <= 57;
+var isDigit2 = (code2) => code2 >= 48 && code2 <= 57;
 var isSpace4 = (code2) => code2 === 32 || code2 === 9 || code2 === 10 || code2 === 13;
 function skipSpaces(text, at) {
   let i = at;
@@ -240141,7 +240628,7 @@ function skipSpaces(text, at) {
 }
 function digitsEnd(text, at) {
   let i = at;
-  while (i < text.length && (isDigit(text.charCodeAt(i)) || i > at && text.charCodeAt(i) === 95)) i++;
+  while (i < text.length && (isDigit2(text.charCodeAt(i)) || i > at && text.charCodeAt(i) === 95)) i++;
   return i;
 }
 function literalEnd(text, at, language) {
@@ -240160,14 +240647,14 @@ function literalEnd(text, at, language) {
   }
   let i = at;
   if (code2 === 45) i++;
-  if (i < text.length && isDigit(text.charCodeAt(i))) {
+  if (i < text.length && isDigit2(text.charCodeAt(i))) {
     i = digitsEnd(text, i);
-    if (text.charCodeAt(i) === 46 && isDigit(text.charCodeAt(i + 1))) i = digitsEnd(text, i + 1);
+    if (text.charCodeAt(i) === 46 && isDigit2(text.charCodeAt(i + 1))) i = digitsEnd(text, i + 1);
     const e = text.charCodeAt(i);
     if (e === 101 || e === 69) {
       let j = i + 1;
       if (text.charCodeAt(j) === 43 || text.charCodeAt(j) === 45) j++;
-      if (isDigit(text.charCodeAt(j))) i = digitsEnd(text, j);
+      if (isDigit2(text.charCodeAt(j))) i = digitsEnd(text, j);
     }
     return i < text.length && isWord(text.charCodeAt(i)) ? -1 : i;
   }
@@ -240341,7 +240828,7 @@ var MODIFIERS_THAT_EXCUSE2 = ["skip", "todo", "skipIf", "runIf"];
 var TAUTOLOGY_REASON = "an assertion that compares a literal with itself was added";
 var TRY_REASON = "an assertion moved into a try block that has a catch";
 var RETURN_REASON = "an assertion moved after an early return";
-var byCodeUnit11 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit13 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function counts(labels) {
   const map = /* @__PURE__ */ new Map();
   for (const label of labels) map.set(label, (map.get(label) ?? 0) + 1);
@@ -240350,7 +240837,7 @@ function counts(labels) {
 function surplus(from, other) {
   const own = counts(from);
   const against = counts(other);
-  return [...own].filter(([label, n]) => n > (against.get(label) ?? 0)).map(([label]) => label).sort(byCodeUnit11);
+  return [...own].filter(([label, n]) => n > (against.get(label) ?? 0)).map(([label]) => label).sort(byCodeUnit13);
 }
 function listed(labels, cut) {
   if (labels.length <= cut) return labels.join(", ");
@@ -240432,7 +240919,7 @@ function detectTI06(match) {
 var MAX_TEST_SOURCE_FILES = 200;
 var MAX_TEST_SOURCE_FILE_BYTES = 524288;
 var MAX_TEST_SOURCE_TOTAL_BYTES = 16777216;
-var byCodeUnit12 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit14 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var TEST_CONFIG_PREFIXES = [
   "vitest.config.",
   "vite.config.",
@@ -240466,7 +240953,7 @@ function selectTestSourcePaths(diff) {
       head.add(file.path);
     }
   }
-  return { base: [...base].sort(byCodeUnit12), head: [...head].sort(byCodeUnit12) };
+  return { base: [...base].sort(byCodeUnit14), head: [...head].sort(byCodeUnit14) };
 }
 function isUnsafeTestSourcePath(path) {
   if (path === "" || path.startsWith("/")) return true;
@@ -240481,7 +240968,7 @@ function planTestSourceReads(paths, objects) {
   const dropped = [];
   let total = 0;
   let tripped = false;
-  for (const path of [...new Set(paths)].sort(byCodeUnit12)) {
+  for (const path of [...new Set(paths)].sort(byCodeUnit14)) {
     if (isUnsafeTestSourcePath(path)) {
       dropped.push({ path, reason: "unsafe-path" });
       continue;
@@ -240970,7 +241457,7 @@ function escapeDetailText(text) {
 }
 
 // ../core/src/signals/ti10.ts
-var byCodeUnit13 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit15 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE3 = 20;
 var DETAILS2 = {
   "or-true": "A test script now ignores the exit status of a command, so it passes even when the tests fail.",
@@ -240981,7 +241468,7 @@ var DETAILS2 = {
   "name-filter": "A test script now limits the run to the tests whose names match a pattern, so the other tests do not run.",
   "hook-removed": "A script that ran before or after the tests was removed, so its checks no longer run with them."
 };
-var isBlank3 = (c) => c === " " || c === "	";
+var isBlank4 = (c) => c === " " || c === "	";
 function readString(text, start) {
   let value = "";
   let i = start + 1;
@@ -241003,7 +241490,7 @@ function readString(text, start) {
 function parseScriptLine(text) {
   let i = 0;
   const skip = () => {
-    while (isBlank3(text[i])) i++;
+    while (isBlank4(text[i])) i++;
   };
   skip();
   if (text[i] !== '"') return null;
@@ -241062,7 +241549,7 @@ function scanKinds(value) {
       }
       endCommand(op);
       operator = op;
-    } else if (isBlank3(c)) {
+    } else if (isBlank4(c)) {
       endWord();
     } else {
       word += c;
@@ -241111,18 +241598,18 @@ function detectTI10(diff, options) {
     for (const hook2 of removedHooks) {
       if (!addedKeys.has(hook2.key)) found.push({ line: hook2.line, kind: "hook-removed" });
     }
-    found.sort((a, b) => a.line - b.line || byCodeUnit13(DETAILS2[a.kind], DETAILS2[b.kind]));
+    found.sort((a, b) => a.line - b.line || byCodeUnit15(DETAILS2[a.kind], DETAILS2[b.kind]));
     for (const { line, kind } of found.slice(0, MAX_PER_FILE3)) {
       signals.push({ id: "TI10", severity: options.mode, path: file.path, line, detail: DETAILS2[kind] });
     }
   }
   return signals.sort(
-    (a, b) => byCodeUnit13(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit13(a.detail, b.detail)
+    (a, b) => byCodeUnit15(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit15(a.detail, b.detail)
   );
 }
 
 // ../core/src/signals/ti08.ts
-var byCodeUnit14 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit16 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_SNAPSHOT_FILES = 10;
 var MIN_INLINE_REWRITES = 10;
 var MAX_FLAG_SIGNALS_PER_FILE = 20;
@@ -241158,7 +241645,7 @@ function massChangeDetail(count2, firstPaths) {
   return `${head}${tail}`;
 }
 function detectSnapshotFiles(diff) {
-  const counted = [...new Set(diff.filter(countsAsChangedSnapshot).map((file) => file.path))].sort(byCodeUnit14);
+  const counted = [...new Set(diff.filter(countsAsChangedSnapshot).map((file) => file.path))].sort(byCodeUnit16);
   if (counted.length <= MAX_SNAPSHOT_FILES) return [];
   return [
     {
@@ -241276,7 +241763,7 @@ function detectTI08(diff) {
   const signals = [...detectSnapshotFiles(diff), ...detectInlineRewrites(diff)];
   for (const file of diff) signals.push(...detectScriptFlags(file), ...detectPytestFlag(file));
   return signals.sort(
-    (a, b) => byCodeUnit14(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit14(a.detail, b.detail)
+    (a, b) => byCodeUnit16(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit16(a.detail, b.detail)
   );
 }
 
@@ -241339,8 +241826,8 @@ function syntaxOf(kind, path) {
 var MAX_CONFIG_VALUE_DEPTH = 64;
 var MAX_CONFIG_CHARS = 524288;
 var MAX_CONFIG_IDENT_HOPS = 8;
-var MAX_VALUE_CHARS = 80;
-var MAX_KEY_CHARS = 100;
+var MAX_VALUE_CHARS2 = 80;
+var MAX_KEY_CHARS2 = 100;
 function lookup(root, path) {
   let current = root;
   let entry = null;
@@ -241384,7 +241871,7 @@ function cutText(text, limit) {
   return `${safe.slice(0, end)}\u2026`;
 }
 function cutValue(text) {
-  return cutText(text, MAX_VALUE_CHARS);
+  return cutText(text, MAX_VALUE_CHARS2);
 }
 function cutDetail(text) {
   const safe = replaceUnsafe(text);
@@ -241400,7 +241887,7 @@ function keyText(segments) {
     if (IDENTIFIER.test(segment) || DIGITS.test(segment)) out += out === "" ? segment : `.${segment}`;
     else out += `[${JSON.stringify(segment)}]`;
   }
-  return cutText(out, MAX_KEY_CHARS);
+  return cutText(out, MAX_KEY_CHARS2);
 }
 var isIdentChar2 = (ch) => ch !== void 0 && (/[\w$]/.test(ch) || ch.charCodeAt(0) > 127);
 function normalizeOpaque(source) {
@@ -241772,7 +242259,7 @@ function readJson(text) {
 }
 
 // ../core/src/testConfig/readToml.ts
-var TABLE = /^\[\s*tool\s*\.\s*pytest\s*\.\s*ini_options\s*\]\s*(?:#.*)?$/;
+var TABLE2 = /^\[\s*tool\s*\.\s*pytest\s*\.\s*ini_options\s*\]\s*(?:#.*)?$/;
 var NATIVE_TABLE = /^\[\s*tool\s*\.\s*pytest\s*\]\s*(?:#.*)?$/;
 var HEADER_LINE = /^\[\[?[A-Za-z0-9_.\s-]+\]\]?\s*(?:#.*)?$/;
 var KEY_LINE = /^([A-Za-z0-9_.-]+|"(?:[^"\\]|\\.)*"|'[^']*')\s*=([\s\S]*)$/;
@@ -241979,7 +242466,7 @@ function readTable(lines, headerAt2) {
 }
 function readToml(text) {
   if (text.length > MAX_CONFIG_CHARS) return { ok: false, reason: "too-large" };
-  const starts = [headerAt(text, "ini_options", TABLE), headerAt(text, "pytest", NATIVE_TABLE)];
+  const starts = [headerAt(text, "ini_options", TABLE2), headerAt(text, "pytest", NATIVE_TABLE)];
   if (starts[0] === null && starts[1] === null) return { ok: true, root: null };
   const entries = /* @__PURE__ */ new Map();
   for (const start of starts) {
@@ -242585,7 +243072,7 @@ var shown = (value) => value === null ? UNSET : cutValue(printValue(value));
 function foundValue(look) {
   return typeof look === "object" ? look.found.value : null;
 }
-function lineOf(look) {
+function lineOf2(look) {
   return typeof look === "object" ? look.found.line : null;
 }
 function finding(severity, line, detail, base, head) {
@@ -242598,7 +243085,7 @@ function finding(severity, line, detail, base, head) {
   };
 }
 function compared(ctx, key, text, b, h) {
-  return finding(key.warn === true ? "warn" : ctx.mode, lineOf(h), text, foundValue(b), foundValue(h));
+  return finding(key.warn === true ? "warn" : ctx.mode, lineOf2(h), text, foundValue(b), foundValue(h));
 }
 var cannotOpaque = (keyName, head) => `${keyName} cannot be compared: the head value ${cutValue(printValue(head))} is not a literal.`;
 var cannotUnknown = (keyName) => `${keyName} cannot be compared: the head value is not known (a spread or mergeConfig may set it).`;
@@ -242650,7 +243137,7 @@ function thresholdFindings(ctx, key, jest) {
       out.push(
         finding(
           "warn",
-          lineOf(headSub),
+          lineOf2(headSub),
           headSubValue === null ? cannotUnknown(rootText) : cannotOpaque(rootText, headSubValue),
           baseValue,
           headSubValue
@@ -242679,16 +243166,16 @@ function thresholdFindings(ctx, key, jest) {
       } else if (h === "unknown") {
         out.push(finding("warn", null, cannotUnknown(leafKey), leaf, null));
       } else if (headValue !== null && headValue.type === "opaque") {
-        out.push(finding("warn", lineOf(h), cannotOpaque(leafKey, headValue), leaf, headValue));
+        out.push(finding("warn", lineOf2(h), cannotOpaque(leafKey, headValue), leaf, headValue));
       } else if (headValue !== null && isNumber && headValue.type === "number" && leaf.type === "number") {
         if (headValue.value < leaf.value) {
           out.push(
-            finding(ctx.mode, lineOf(h), `${leafKey} lowered: ${shown(leaf)} \u2192 ${shown(headValue)}.`, leaf, headValue)
+            finding(ctx.mode, lineOf2(h), `${leafKey} lowered: ${shown(leaf)} \u2192 ${shown(headValue)}.`, leaf, headValue)
           );
         }
       } else if (headValue !== null && isStrict && headValue.type === "boolean" && !headValue.value) {
         out.push(
-          finding(ctx.mode, lineOf(h), `${leafKey} turned off: ${shown(leaf)} \u2192 ${shown(headValue)}.`, leaf, headValue)
+          finding(ctx.mode, lineOf2(h), `${leafKey} turned off: ${shown(leaf)} \u2192 ${shown(headValue)}.`, leaf, headValue)
         );
       }
     }
@@ -242725,7 +243212,7 @@ function keyFindings(ctx, key) {
   }
   const headValue = h.found.value;
   if (baseValue !== null && printValue(baseValue) === printValue(headValue)) return [];
-  const cannot = () => [finding("warn", lineOf(h), cannotOpaque(keyName, headValue), baseValue, headValue)];
+  const cannot = () => [finding("warn", lineOf2(h), cannotOpaque(keyName, headValue), baseValue, headValue)];
   const hit = (verb) => [
     compared(ctx, key, `${keyName} ${verb}: ${shown(baseValue)} \u2192 ${shown(headValue)}.`, b, h)
   ];
@@ -242791,7 +243278,7 @@ function evaluateRules(kind, base, head, mode) {
 }
 
 // ../core/src/signals/ti09.ts
-var byCodeUnit15 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit17 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function lookupOf2(side) {
   const texts = /* @__PURE__ */ new Map();
   const dropped = /* @__PURE__ */ new Map();
@@ -242840,7 +243327,7 @@ function detectTI09(diff, sources, mode) {
     }
     return readTestConfig(candidate.kind, path, text.text);
   };
-  const sorted = [...candidates].sort((a, b) => byCodeUnit15(a.path, b.path) || byCodeUnit15(a.oldPath, b.oldPath));
+  const sorted = [...candidates].sort((a, b) => byCodeUnit17(a.path, b.path) || byCodeUnit17(a.oldPath, b.oldPath));
   for (const candidate of sorted) {
     const base = candidate.added ? null : readSide(baseSide, candidate, candidate.oldPath);
     const head = readSide(headSide, candidate, candidate.path);
@@ -242877,13 +243364,13 @@ function detectTI09(diff, sources, mode) {
   }
   return {
     signals,
-    unavailable: [...unavailable2].map(([path, reason]) => ({ path, reason })).sort((a, b) => byCodeUnit15(a.path, b.path)),
+    unavailable: [...unavailable2].map(([path, reason]) => ({ path, reason })).sort((a, b) => byCodeUnit17(a.path, b.path)),
     notRun: null
   };
 }
 
 // ../core/src/signals/ti11.ts
-var byCodeUnit16 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit18 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var PM_FLAGS = String.raw`(?:\s+(?:-r|--recursive|-w|--workspace-root|-ws|--workspaces|--if-present|(?:--filter|-F|-C|--dir|--prefix|--workspace|--cwd)(?:=|\s+)\S+))*`;
 var JS_LAUNCHER = String.raw`(?:(?:npx|bunx|yarn|pnpm${PM_FLAGS}(?:\s+(?:exec|dlx))?|bun\s+x|npm\s+exec)\s+)?`;
 var PY_WRAPPER = String.raw`(?:(?:uv|poetry|pipenv|pdm|hatch|rye)\s+run\s+)?`;
@@ -243078,7 +243565,7 @@ function detectTI11(diff, mode) {
     if (rushed !== void 0) emit("warn", rushed.line, SENTENCES.timeout);
   }
   return signals.sort(
-    (a, b) => byCodeUnit16(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit16(a.detail, b.detail)
+    (a, b) => byCodeUnit18(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit18(a.detail, b.detail)
   );
 }
 
@@ -243237,7 +243724,7 @@ function detectTI12(touched, diff) {
 }
 
 // ../core/src/signals/ti13.ts
-var byCodeUnit17 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit19 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE4 = 20;
 var DETAILS3 = {
   istanbul: "An Istanbul coverage hint was added, so the code it marks leaves the coverage this check grades.",
@@ -243289,12 +243776,12 @@ function detectTI13(diff, mode) {
     }
   }
   return signals.sort(
-    (a, b) => byCodeUnit17(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit17(a.detail, b.detail)
+    (a, b) => byCodeUnit19(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit19(a.detail, b.detail)
   );
 }
 
 // ../core/src/signals/ti14.ts
-var byCodeUnit18 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit20 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var PLAIN_NUMBER = /^\d+(?:\.\d+)?$/;
 function normalizedPattern(item) {
   try {
@@ -243412,11 +243899,11 @@ function detectTI14(diff, options) {
       });
     }
   }
-  return signals.sort((a, b) => byCodeUnit18(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit20(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti15.ts
-var byCodeUnit19 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit21 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_CHANGE = 10;
 var MAX_DETAIL5 = 300;
 var MIN_STRING_LENGTH = 6;
@@ -243477,12 +243964,12 @@ var STOP_LIST = /* @__PURE__ */ new Set([
   "utf-8",
   "utf8"
 ]);
-var isDigit2 = (c) => c >= "0" && c <= "9";
+var isDigit3 = (c) => c >= "0" && c <= "9";
 var isWordChar = (c) => c >= "0" && c <= "9" || c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_";
-var isBlank4 = (c) => c === " " || c === "	";
+var isBlank5 = (c) => c === " " || c === "	";
 function digitsEnd2(text, start) {
   let i = start;
-  while (i < text.length && isDigit2(text.charAt(i))) i++;
+  while (i < text.length && isDigit3(text.charAt(i))) i++;
   return i;
 }
 function scanLiterals(text) {
@@ -243505,9 +243992,9 @@ function scanLiterals(text) {
       const value = text.slice(i + 1, j);
       if (!(c === "`" && value.includes("${"))) found.push({ kind: "string", value, start: i, end: j + 1 });
       i = j + 1;
-    } else if (isDigit2(c)) {
+    } else if (isDigit3(c)) {
       let end = digitsEnd2(text, i);
-      if (text.charAt(end) === "." && isDigit2(text.charAt(end + 1))) end = digitsEnd2(text, end + 1);
+      if (text.charAt(end) === "." && isDigit3(text.charAt(end + 1))) end = digitsEnd2(text, end + 1);
       const before = i === 0 ? "" : text.charAt(i - 1);
       const after = text.charAt(end);
       const clear = (n) => n === "" || !(isWordChar(n) || n === ".");
@@ -243537,26 +244024,26 @@ var keyOf3 = (literal) => `${literal.kind === "string" ? "s" : "n"}${literal.val
 var isOperatorChar = (c) => c === "=" || c === "!" || c === "<" || c === ">";
 function operatorBefore(text, at) {
   let end = at;
-  while (end > 0 && isBlank4(text.charAt(end - 1))) end--;
+  while (end > 0 && isBlank5(text.charAt(end - 1))) end--;
   let start = end;
   while (start > 0 && isOperatorChar(text.charAt(start - 1))) start--;
   return text.slice(start, end);
 }
 function operatorAfter(text, at) {
   let start = at;
-  while (start < text.length && isBlank4(text.charAt(start))) start++;
+  while (start < text.length && isBlank5(text.charAt(start))) start++;
   let end = start;
   while (end < text.length && isOperatorChar(text.charAt(end))) end++;
   return text.slice(start, end);
 }
 var EQUALITY = /* @__PURE__ */ new Set(["===", "!==", "==", "!="]);
 function isCaseLabel(trimmed, offset, literal) {
-  if (!trimmed.startsWith("case") || !isBlank4(trimmed.charAt(4))) return false;
+  if (!trimmed.startsWith("case") || !isBlank5(trimmed.charAt(4))) return false;
   let i = 4;
-  while (isBlank4(trimmed.charAt(i))) i++;
+  while (isBlank5(trimmed.charAt(i))) i++;
   if (literal.start - offset !== i) return false;
   let j = literal.end - offset;
-  while (isBlank4(trimmed.charAt(j))) j++;
+  while (isBlank5(trimmed.charAt(j))) j++;
   return trimmed.charAt(j) === ":";
 }
 var CLOSERS3 = { "(": ")", "[": "]", "{": "}" };
@@ -243580,7 +244067,7 @@ function inGroups(text, literals) {
     while (j < text.length && isWordChar(text.charAt(j))) j++;
     if (text.slice(i, j) === "in") {
       let k = j;
-      while (isBlank4(text.charAt(k))) k++;
+      while (isBlank5(text.charAt(k))) k++;
       const closer = CLOSERS3[text.charAt(k)];
       if (closer !== void 0) {
         const close = text.indexOf(closer, k + 1);
@@ -243621,7 +244108,7 @@ function testLiterals(diff, manifests) {
           const key = keyOf3(literal);
           const roots = found.get(key) ?? /* @__PURE__ */ new Map();
           const first = roots.get(root);
-          if (first === void 0 || byCodeUnit19(file.path, first) < 0) roots.set(root, file.path);
+          if (first === void 0 || byCodeUnit21(file.path, first) < 0) roots.set(root, file.path);
           found.set(key, roots);
         }
       }
@@ -243673,7 +244160,7 @@ function detectTI15(diff, options) {
       }
     }
   }
-  findings.sort((a, b) => byCodeUnit19(a.path, b.path) || a.line - b.line || byCodeUnit19(a.detail, b.detail));
+  findings.sort((a, b) => byCodeUnit21(a.path, b.path) || a.line - b.line || byCodeUnit21(a.detail, b.detail));
   const signals = findings.slice(0, MAX_PER_CHANGE).map(({ path, line, detail }) => ({ id: "TI15", severity: "info", path, line, detail }));
   const counts2 = /* @__PURE__ */ new Map();
   for (const { path } of findings.slice(MAX_PER_CHANGE)) counts2.set(path, (counts2.get(path) ?? 0) + 1);
@@ -243714,14 +244201,14 @@ var PYLINT_WORD = ["py", "lint:"].join("");
 var DISABLE_WORD = ["dis", "able"].join("");
 var PYRIGHT_WORD = ["py", "right:"].join("");
 var MAX_LINE2 = 400;
-var isBlank5 = (c) => c === " " || c === "	";
+var isBlank6 = (c) => c === " " || c === "	";
 var isWordChar2 = (c) => c >= "0" && c <= "9" || c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_";
 var isTokenChar = (c) => isWordChar2(c) || c === "@" || c === "-";
 var endsWord = (text, at) => at >= text.length || !isWordChar2(text.charAt(at));
 var normalize = (text) => text.replace(/\s+/g, " ").trim();
-function skipBlanks2(text, from) {
+function skipBlanks3(text, from) {
   let i = from;
-  while (i < text.length && isBlank5(text.charAt(i))) i++;
+  while (i < text.length && isBlank6(text.charAt(i))) i++;
   return i;
 }
 function jsMarker(text) {
@@ -243729,7 +244216,7 @@ function jsMarker(text) {
     if (text.charAt(i) !== SLASH) continue;
     const opener = text.slice(i, i + 2);
     if (opener !== LINE_OPENER && opener !== BLOCK_OPENER) continue;
-    const start = skipBlanks2(text, i + 2);
+    const start = skipBlanks3(text, i + 2);
     let end = start;
     while (end < text.length && isTokenChar(text.charAt(end))) end++;
     if (!JS_MARKERS.has(text.slice(start, end))) continue;
@@ -243744,7 +244231,7 @@ function jsMarker(text) {
 }
 function startsPythonMarker(text, at) {
   if (text.startsWith(TYPE_WORD, at)) {
-    const word = skipBlanks2(text, at + TYPE_WORD.length);
+    const word = skipBlanks3(text, at + TYPE_WORD.length);
     return text.startsWith(IGNORE_WORD, word) && endsWord(text, word + IGNORE_WORD.length);
   }
   if (text.slice(at, at + NOQA_WORD.length).toLowerCase() === NOQA_WORD) {
@@ -243752,7 +244239,7 @@ function startsPythonMarker(text, at) {
     return next >= text.length || text.charAt(next) === ":" || !isWordChar2(text.charAt(next));
   }
   if (text.startsWith(PYLINT_WORD, at)) {
-    const word = skipBlanks2(text, at + PYLINT_WORD.length);
+    const word = skipBlanks3(text, at + PYLINT_WORD.length);
     for (const name of [`${DISABLE_WORD}-next`, DISABLE_WORD]) {
       if (!text.startsWith(name, word)) continue;
       const next = word + name.length;
@@ -243761,14 +244248,14 @@ function startsPythonMarker(text, at) {
     return false;
   }
   if (text.startsWith(PYRIGHT_WORD, at)) {
-    const word = skipBlanks2(text, at + PYRIGHT_WORD.length);
+    const word = skipBlanks3(text, at + PYRIGHT_WORD.length);
     return text.startsWith(IGNORE_WORD, word) && endsWord(text, word + IGNORE_WORD.length);
   }
   return false;
 }
 function pythonMarker(text) {
   for (let i = text.indexOf(HASH); i !== -1; i = text.indexOf(HASH, i + 1)) {
-    const start = skipBlanks2(text, i + 1);
+    const start = skipBlanks3(text, i + 1);
     if (startsPythonMarker(text, start)) return normalize(text.slice(start));
   }
   return null;
@@ -243777,7 +244264,7 @@ var markerOf2 = (text, language) => {
   const line = text.length > MAX_LINE2 ? text.slice(0, MAX_LINE2) : text;
   return language === "jsts" ? jsMarker(line) : pythonMarker(line);
 };
-var byCodeUnit20 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit22 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function detectTI16(diff) {
   const signals = [];
   for (const file of diff) {
@@ -243815,14 +244302,14 @@ function detectTI16(diff) {
       detail: `This test file adds ${count2} that switch off a linter or type checker, so the checks they silence no longer run on that code.`
     });
   }
-  return signals.sort((a, b) => byCodeUnit20(a.path, b.path));
+  return signals.sort((a, b) => byCodeUnit22(a.path, b.path));
 }
 
 // ../core/src/check.ts
-var byCodeUnit21 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit23 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function sortSignals(signals) {
   return signals.sort(
-    (a, b) => byCodeUnit21(a.id, b.id) || byCodeUnit21(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit21(a.detail, b.detail)
+    (a, b) => byCodeUnit23(a.id, b.id) || byCodeUnit23(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit23(a.detail, b.detail)
   );
 }
 function check(input) {
@@ -243925,6 +244412,7 @@ function check(input) {
   const bytes = input.repoFileBytes;
   const emptyAgentSetupFiles = bytes === void 0 ? [] : agentSetup.files.filter((file) => bytes.get(file.path) === 0).map((file) => file.path);
   const omittedSignals = [...comparison?.omitted ?? [], ...sourceMatches.omitted];
+  const agentConfigMessages = input.agentConfigSources === void 0 ? [] : agentConfigSecretMessages(input.agentConfigSources, agentConfigSecretPaths(agentSetup));
   const base = {
     version: input.version,
     threshold: input.threshold,
@@ -243943,7 +244431,8 @@ function check(input) {
     ...omittedSignals.length === 0 ? {} : { omittedSignals },
     ...comparison?.unavailable === void 0 ? {} : { testIndexUnavailable: comparison.unavailable },
     ...testChanges === void 0 ? {} : { testChanges },
-    ...comparison?.configUnavailable === void 0 ? {} : { testConfigUnavailable: comparison.configUnavailable }
+    ...comparison?.configUnavailable === void 0 ? {} : { testConfigUnavailable: comparison.configUnavailable },
+    ...agentConfigMessages.length === 0 ? {} : { agentConfigSecretMessages: agentConfigMessages }
   };
   if ("kind" in coverageInput) {
     return buildReport({ ...base, diffCoverage: null, missing: { reason: "coverage-not-discovered" } });
@@ -244318,6 +244807,7 @@ function acceptLabelOf(report) {
   const configured = report.testIntegrity.acceptLabel;
   return typeof configured === "string" && configured !== "" ? configured : DEFAULT_ACCEPT_LABEL;
 }
+var SECRET_HINT = "Revoke the credential at its provider, remove it from the file and from git history, and load it from an environment variable or a secret store.";
 var MESSAGE_HINTS = {
   DIFF_COVERAGE_BELOW_THRESHOLD: "Add tests that exercise the uncovered lines listed in the table above.",
   DIFF_COVERAGE_UNGATED: "To gate diff coverage, set a threshold above 0 (`coverage.threshold`, `threshold` or `--threshold`).",
@@ -244357,7 +244847,19 @@ var MESSAGE_HINTS = {
   TEST_INTEGRITY_INDEX_UNAVAILABLE: "Review the named test files by hand for removed tests and weakened assertions. A file over 512 KiB, one with many syntax errors, a missing Python 3.8 or newer for `.py` files, or git objects that could not be read stop the comparison.",
   TEST_INTEGRITY_TEXT_TRUNCATED: "Review the named files by hand for skipped, focused or weakened tests, or split the change so each file stays under the limit.",
   TEST_INTEGRITY_ACCEPTED: "A reviewer other than the PR author signed off, so the block findings are warnings. The sign-off belongs to the pull request, not to a commit: remove the label if a later push should be judged again.",
-  TEST_INTEGRITY_ACCEPT_IGNORED: "The block findings stand. Fix them, or ask a reviewer who is not the PR author to apply the label; it counts only when a user account other than the author applied it last."
+  TEST_INTEGRITY_ACCEPT_IGNORED: "The block findings stand. Fix them, or ask a reviewer who is not the PR author to apply the label; it counts only when a user account other than the author applied it last.",
+  AGENT_CONFIG_SECRET_S01: SECRET_HINT,
+  AGENT_CONFIG_SECRET_S02: SECRET_HINT,
+  AGENT_CONFIG_SECRET_S03: SECRET_HINT,
+  AGENT_CONFIG_SECRET_S04: SECRET_HINT,
+  AGENT_CONFIG_SECRET_S05: SECRET_HINT,
+  AGENT_CONFIG_SECRET_S06: SECRET_HINT,
+  AGENT_CONFIG_SECRET_S07: SECRET_HINT,
+  AGENT_CONFIG_SECRET_S08: SECRET_HINT,
+  AGENT_CONFIG_SECRET_S09: SECRET_HINT,
+  AGENT_CONFIG_SECRET_S10: "If the value is a real secret, revoke it at its provider, remove it from the file and from git history, and load it from an environment variable or a secret store. If it is not a secret, a reviewer can confirm that.",
+  AGENT_CONFIG_SECRET_S11: "Move the literal value into the environment, like the other secrets in the same file, so no secret is committed.",
+  AGENT_CONFIG_SECRET_UNSCANNED: "Keep agent config files text, under 512 KiB and inside the repository, and run on a checkout of the pull request head (not PR-number mode or a compare-API diff), so they can be scanned for committed secrets."
 };
 function hintFor(code2, label) {
   if (!Object.hasOwn(MESSAGE_HINTS, code2)) return void 0;
@@ -244990,6 +245492,104 @@ function decodeTestSourceText(bytes) {
 
 // ../core/src/version.ts
 var VERSION7 = "0.3.0";
+
+// ../node-io/src/gitBlobs.ts
+var OBJECT_ID = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+var OBJECT_LINE = /^([0-9a-f]{40}(?:[0-9a-f]{24})?) (\S+) (\d+)$/;
+var MAX_REASON_CHARS2 = 300;
+var StepFailed = class extends Error {
+};
+var firstLine = (err) => (err instanceof Error ? err.message : String(err)).trim().split("\n")[0]?.slice(0, MAX_REASON_CHARS2) ?? "";
+async function batchCheck(deps, requests) {
+  if (requests.length === 0) return [];
+  const input = requests.map((r) => `${r.oid}:${r.path}
+`).join("");
+  let out;
+  try {
+    out = await deps.gitBatch(["cat-file", "--batch-check"], input);
+  } catch (err) {
+    throw new StepFailed(`git cat-file --batch-check failed: ${firstLine(err)}`);
+  }
+  const lines = Buffer.from(out).toString("utf8").split("\n");
+  if (lines.pop() !== "" || lines.length !== requests.length) {
+    throw new StepFailed("git cat-file --batch-check output could not be read");
+  }
+  return lines.map((line) => {
+    const match = OBJECT_LINE.exec(line);
+    return match === null ? null : { oid: match[1], object: { type: match[2], size: Number(match[3]) } };
+  });
+}
+async function batchRead(deps, oids) {
+  const contents = /* @__PURE__ */ new Map();
+  if (oids.length === 0) return contents;
+  let out;
+  try {
+    out = await deps.gitBatch(["cat-file", "--batch"], oids.map((oid) => `${oid}
+`).join(""));
+  } catch (err) {
+    throw new StepFailed(`git cat-file --batch failed: ${firstLine(err)}`);
+  }
+  const unreadable = () => new StepFailed("git cat-file --batch output could not be read");
+  let at = 0;
+  for (const oid of oids) {
+    const end = out.indexOf(10, at);
+    if (end === -1) throw unreadable();
+    const header = OBJECT_LINE.exec(Buffer.from(out.subarray(at, end)).toString("utf8"));
+    if (header === null || header[1] !== oid || header[2] !== "blob") throw unreadable();
+    const size = Number(header[3]);
+    const start = end + 1;
+    if (start + size >= out.length || out[start + size] !== 10) throw unreadable();
+    contents.set(oid, out.subarray(start, start + size));
+    at = start + size + 1;
+  }
+  if (at !== out.length) throw unreadable();
+  return contents;
+}
+
+// ../node-io/src/agentConfigSources.ts
+var byCodeUnit24 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+async function readAgentConfigSources(deps, paths) {
+  try {
+    const unique = [...new Set(paths)].sort(byCodeUnit24);
+    const requests = unique.filter((path) => !isUnsafeTestSourcePath(path)).map((path) => ({ oid: "HEAD", path }));
+    const checked = await batchCheck(deps, requests);
+    const objects = /* @__PURE__ */ new Map();
+    const blobs = /* @__PURE__ */ new Map();
+    requests.forEach((request2, i) => {
+      const result = checked[i] ?? null;
+      objects.set(request2.path, result === null ? null : result.object);
+      if (result !== null) blobs.set(request2.path, result.oid);
+    });
+    const plan = planTestSourceReads(unique, objects);
+    const wanted = /* @__PURE__ */ new Set();
+    for (const path of plan.read) wanted.add(blobs.get(path));
+    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit24));
+    const files = [];
+    const dropped = [...plan.dropped];
+    for (const path of plan.read) {
+      const text = decodeTestSourceText(contents.get(blobs.get(path)));
+      if (text === null) dropped.push({ path, reason: "binary" });
+      else files.push({ path, text });
+    }
+    dropped.sort((a, b) => byCodeUnit24(a.path, b.path));
+    return { files, dropped };
+  } catch (err) {
+    return { unavailable: err instanceof StepFailed ? err.message : `git could not be read: ${firstLine(err)}` };
+  }
+}
+
+// ../node-io/src/chunks.ts
+async function* oneChunk(read) {
+  yield await read();
+}
+function gitChunks(deps, args) {
+  return deps.gitStream ? deps.gitStream(args) : oneChunk(() => deps.git(args));
+}
+async function fileChunks(deps, path) {
+  if (deps.readFileStream) return deps.readFileStream(path);
+  const text = await deps.readFile(path);
+  return text === null ? null : oneChunk(async () => text);
+}
 
 // ../node-io/src/coverage.ts
 async function readCoverageFiles(deps, options) {
@@ -245933,13 +246533,7 @@ async function indexPythonTestSources(sources, index = (files) => indexPythonTes
 }
 
 // ../node-io/src/testSources.ts
-var OBJECT_ID = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
-var OBJECT_LINE = /^([0-9a-f]{40}(?:[0-9a-f]{24})?) (\S+) (\d+)$/;
-var MAX_REASON_CHARS2 = 300;
-var StepFailed = class extends Error {
-};
-var firstLine = (err) => (err instanceof Error ? err.message : String(err)).trim().split("\n")[0]?.slice(0, MAX_REASON_CHARS2) ?? "";
-var byCodeUnit22 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit25 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 async function resolveRevision(deps, revision, label) {
   let out;
   try {
@@ -245962,51 +246556,6 @@ async function mergeBaseOf(deps, baseOid, headOid) {
   const oid = out.trim();
   if (!OBJECT_ID.test(oid)) throw new StepFailed("git merge-base failed: no commit id was printed");
   return oid;
-}
-async function batchCheck(deps, requests) {
-  if (requests.length === 0) return [];
-  const input = requests.map((r) => `${r.oid}:${r.path}
-`).join("");
-  let out;
-  try {
-    out = await deps.gitBatch(["cat-file", "--batch-check"], input);
-  } catch (err) {
-    throw new StepFailed(`git cat-file --batch-check failed: ${firstLine(err)}`);
-  }
-  const lines = Buffer.from(out).toString("utf8").split("\n");
-  if (lines.pop() !== "" || lines.length !== requests.length) {
-    throw new StepFailed("git cat-file --batch-check output could not be read");
-  }
-  return lines.map((line) => {
-    const match = OBJECT_LINE.exec(line);
-    return match === null ? null : { oid: match[1], object: { type: match[2], size: Number(match[3]) } };
-  });
-}
-async function batchRead(deps, oids) {
-  const contents = /* @__PURE__ */ new Map();
-  if (oids.length === 0) return contents;
-  let out;
-  try {
-    out = await deps.gitBatch(["cat-file", "--batch"], oids.map((oid) => `${oid}
-`).join(""));
-  } catch (err) {
-    throw new StepFailed(`git cat-file --batch failed: ${firstLine(err)}`);
-  }
-  const unreadable = () => new StepFailed("git cat-file --batch output could not be read");
-  let at = 0;
-  for (const oid of oids) {
-    const end = out.indexOf(10, at);
-    if (end === -1) throw unreadable();
-    const header = OBJECT_LINE.exec(Buffer.from(out.subarray(at, end)).toString("utf8"));
-    if (header === null || header[1] !== oid || header[2] !== "blob") throw unreadable();
-    const size = Number(header[3]);
-    const start = end + 1;
-    if (start + size >= out.length || out[start + size] !== 10) throw unreadable();
-    contents.set(oid, out.subarray(start, start + size));
-    at = start + size + 1;
-  }
-  if (at !== out.length) throw unreadable();
-  return contents;
 }
 async function readTestSources(deps, options) {
   try {
@@ -246035,7 +246584,7 @@ async function readTestSources(deps, options) {
     plans.forEach((plan, i) => {
       for (const path of plan.read) wanted.add(sides[i]?.blobs.get(path));
     });
-    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit22));
+    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit25));
     const decoded = /* @__PURE__ */ new Map();
     const build = (index) => {
       const plan = plans[index];
@@ -246051,7 +246600,7 @@ async function readTestSources(deps, options) {
         if (text === null) dropped.push({ path, reason: "binary" });
         else files.push({ path, text });
       }
-      dropped.sort((a, b) => byCodeUnit22(a.path, b.path));
+      dropped.sort((a, b) => byCodeUnit25(a.path, b.path));
       return { files, dropped };
     };
     return { base: build(0), head: build(1) };
@@ -246409,6 +246958,7 @@ async function runUnsafe(deps) {
   });
   const { diff, localBase } = await getDiff(input("base-ref"), deps, target, input("config"));
   const testSources = await gatherTestSources(deps, { diff, localBase, target, testIntegrityMode });
+  const agentConfigSources = await gatherAgentConfigSources(deps, { repoFiles, diff, target });
   const pythonTestIndex = testSources === void 0 ? void 0 : await indexPythonTestSources(testSources, deps.indexPython ?? indexPythonTests);
   if (pythonTestIndex !== void 0 && !pythonTestIndex.available) {
     deps.info(
@@ -246428,6 +246978,7 @@ async function runUnsafe(deps) {
     ...expectAgentSetup === void 0 ? {} : { expectAgentSetup },
     ...testIntegrityMode === void 0 ? {} : { testIntegrityMode },
     ...testSources === void 0 ? {} : { testSources },
+    ...agentConfigSources === void 0 ? {} : { agentConfigSources },
     ...pythonTestIndex === void 0 ? {} : { pythonTestIndex },
     ...coverageRoot === void 0 ? {} : { coverageRoot },
     ...input("config") === "" ? {} : { configPath: input("config") }
@@ -246507,6 +247058,31 @@ async function gatherTestSources(deps, from) {
   if ("unavailable" in sources.base) {
     deps.info(
       `pharn-ci: could not read the test and test-config files from git, so they are not compared: ${sources.base.unavailable}`
+    );
+  }
+  return sources;
+}
+async function gatherAgentConfigSources(deps, from) {
+  if (deps.gitBatch === void 0) return void 0;
+  const paths = agentConfigSecretPaths(scanAgentSetup(from.repoFiles));
+  if (paths.length === 0) return void 0;
+  if (from.target) {
+    return {
+      unavailable: "pr-number mode: the checkout is not the pull request head, so its committed agent config files were not read"
+    };
+  }
+  if ("text" in from.diff) {
+    return {
+      unavailable: "the diff came from the GitHub compare API, so the checkout may not be the pull request head"
+    };
+  }
+  if ("unavailable" in from.diff) {
+    return { unavailable: "the diff is unavailable, so the checkout may not be the pull request head" };
+  }
+  const sources = await readAgentConfigSources({ gitBatch: deps.gitBatch }, paths);
+  if ("unavailable" in sources) {
+    deps.info(
+      `pharn-ci: could not read the agent config files from git, so they are not scanned for secrets: ${sources.unavailable}`
     );
   }
   return sources;

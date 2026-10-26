@@ -171,7 +171,19 @@ export type MessageCode =
   | "TEST_INTEGRITY_INDEX_UNAVAILABLE"
   | "TEST_INTEGRITY_TEXT_TRUNCATED"
   | "TEST_INTEGRITY_ACCEPTED"
-  | "TEST_INTEGRITY_ACCEPT_IGNORED";
+  | "TEST_INTEGRITY_ACCEPT_IGNORED"
+  | "AGENT_CONFIG_SECRET_S01"
+  | "AGENT_CONFIG_SECRET_S02"
+  | "AGENT_CONFIG_SECRET_S03"
+  | "AGENT_CONFIG_SECRET_S04"
+  | "AGENT_CONFIG_SECRET_S05"
+  | "AGENT_CONFIG_SECRET_S06"
+  | "AGENT_CONFIG_SECRET_S07"
+  | "AGENT_CONFIG_SECRET_S08"
+  | "AGENT_CONFIG_SECRET_S09"
+  | "AGENT_CONFIG_SECRET_S10"
+  | "AGENT_CONFIG_SECRET_S11"
+  | "AGENT_CONFIG_SECRET_UNSCANNED";
 
 export interface Message {
   level: MessageLevel;
@@ -263,6 +275,11 @@ export interface BuildReportInput {
    * `TEST_INTEGRITY_INDEX_UNAVAILABLE` message, after the TI02 and TI05 sentence when there is one.
    */
   testConfigUnavailable?: TestConfigUnavailable;
+  /**
+   * The messages of the agent config secret check (see `agentConfigSecretMessages`), appended after the agent setup
+   * messages as given. They name a shape id, paths and line numbers, never a value. Absent or empty adds nothing.
+   */
+  agentConfigSecretMessages?: readonly Message[];
 }
 
 /**
@@ -603,6 +620,8 @@ export function buildReport(input: BuildReportInput): Report {
     messages.push({ level: "warn", code: "AGENT_SETUP_FILE_EMPTY", text });
   }
 
+  messages.push(...(input.agentConfigSecretMessages ?? []));
+
   return {
     schemaVersion: 2,
     tool: { name: "pharn-ci", version: input.version },
@@ -647,7 +666,7 @@ export function buildReport(input: BuildReportInput): Report {
 const MAX_REASON_CHARS = 200;
 
 /** Text from outside on one line: control characters and runs of whitespace become one space; cut, not inside a pair. */
-function oneLine(text: string): string {
+export function oneLine(text: string): string {
   const line = text.replace(CONTROL_CHARS, " ").replace(/\s+/g, " ").trim();
   if (line.length <= MAX_REASON_CHARS) return line;
   const end = isHighSurrogate(line.charCodeAt(MAX_REASON_CHARS - 1)) ? MAX_REASON_CHARS - 1 : MAX_REASON_CHARS;
@@ -732,7 +751,7 @@ function pathList(paths: readonly string[]): string {
  * one line: control characters and line breaks become U+FFFD and backticks become `'`, so the text cannot
  * end its span or start a new line.
  */
-function codeSpan(text: string): string {
+export function codeSpan(text: string): string {
   const safe = text.replace(CONTROL_CHARS, "\uFFFD").replace(/`/g, "'");
   return `\`${safe}\``;
 }

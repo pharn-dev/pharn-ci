@@ -16,6 +16,14 @@ const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 // regression tests on its own; the comparison is with that main commit, where this increment now starts.
 const BASE = "e13765681e266dd33c27b5d46bbbf34d359cba4e";
 const MARKER = "pythonImportAliases";
+// Re-pinned for the agent-config secrets change (E3 item 26): the message codes may grow by exactly these 12, and the
+// schema's message-code description by the one text that names them.
+const FINAL_SENTENCE = "No code is removed or renamed before 1.0.";
+const APPENDED_START = " Codes added in v0.4.0:";
+const SECRET_CODES = [
+  ...Array.from({ length: 11 }, (_, i) => `AGENT_CONFIG_SECRET_S${String(i + 1).padStart(2, "0")}`),
+  "AGENT_CONFIG_SECRET_UNSCANNED",
+];
 
 const git = (...args: string[]) =>
   execFileSync("git", args, { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
@@ -99,7 +107,18 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
         const next = text.indexOf("TEST_INTEGRITY_", start + START.length);
         return [start, next === -1 ? text.length : next];
       };
-      const nowText = read(`schema/${name}`);
+      // Re-pinned for the agent-config secrets change (E3 item 26): the one text starting ` Codes added in v0.4.0:`
+      // right after the final sentence of the message-code description is cut out first (it names the 12 new codes).
+      const currentText = read(`schema/${name}`);
+      const sentenceEnd = currentText.indexOf(FINAL_SENTENCE) + FINAL_SENTENCE.length;
+      expect(currentText.slice(sentenceEnd, sentenceEnd + APPENDED_START.length), "the appended v0.4.0 text").toBe(
+        APPENDED_START,
+      );
+      let appendedEnd = sentenceEnd;
+      while (appendedEnd < currentText.length && currentText[appendedEnd] !== '"') {
+        appendedEnd += currentText[appendedEnd] === "\\" ? 2 : 1;
+      }
+      const nowText = currentText.slice(0, sentenceEnd) + currentText.slice(appendedEnd);
       const baseText = atBase(`schema/${name}`);
       const [ns, ne] = partOf(nowText);
       const [bs, be] = partOf(baseText);
@@ -113,8 +132,9 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
     }
 
     // The message codes and signal ids: the schema's (byte-identical above) and the TypeScript types'.
+    const withSecretCodes = (list: string[]) => [...new Set([...list, ...SECRET_CODES])].sort();
     expect(codes(read("packages/core/src/report.ts")), "report.ts codes and ids").toEqual(
-      codes(atBase("packages/core/src/report.ts")),
+      withSecretCodes(codes(atBase("packages/core/src/report.ts"))),
     );
     const words = (text: string) =>
       [...new Set([...text.matchAll(/\b(?:TI\d\d|[A-Z][A-Z0-9]*_[A-Z0-9_]+)\b/g)].map((m) => m[0]))].sort();
@@ -122,7 +142,9 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
     expect(schemaWords, "report.v2.json names TI16 and its code").toEqual(
       expect.arrayContaining(["TI16", "TEST_INTEGRITY_TI16", "TEST_INTEGRITY_INDEX_UNAVAILABLE"]),
     );
-    expect(schemaWords, "report.v2.json codes and ids as at the base").toEqual(words(atBase("schema/report.v2.json")));
+    expect(schemaWords, "report.v2.json codes and ids as at the base, plus the 12 agent config secret codes").toEqual(
+      withSecretCodes(words(atBase("schema/report.v2.json"))),
+    );
 
     // The pinned regression tests: byte-identical, and the digests of ac-ti06-ti12-unchanged unchanged.
     for (const path of PINNED) {

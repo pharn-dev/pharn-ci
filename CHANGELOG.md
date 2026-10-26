@@ -13,10 +13,25 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   tell pharn-ci what "safe to merge" means for a repository, shared with the pharn.dev app. A pure validator in core
   (`validatePolicy`, and `parsePolicyJson` for JSON text) checks a document against it: it never throws, never
   repeats a value from the document in an error, and bounds its work on any input. Nothing reads a policy yet.
+- Check **A7**, secrets in agent configs. The CLI and the Action read the committed text at `HEAD` of the
+  machine-readable agent setup files (`.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`, `.claude/settings*.json`,
+  `.codex/config.toml`, `.gemini/settings.json`, `opencode.json`, `.aider.conf.yml`, the files under `.claude/hooks/` and
+  the `.json`, `.yaml` and `.yml` files under `.continue/rules/`; never the Markdown kinds) and report ten shapes of
+  secret (GitHub, Anthropic, OpenAI, Google, AWS, Slack, Stripe, private keys, URL passwords and tokens, and secret-like
+  values under secret-named keys). Twelve message codes, `AGENT_CONFIG_SECRET_S01` to `AGENT_CONFIG_SECRET_S11` and
+  `AGENT_CONFIG_SECRET_UNSCANNED`: S01 to S09 are `error` and fail the check, S10 is `warn`, S11 is `info`, and files that
+  could not be scanned are named in the unscanned code (`error` when a drop could hide a secret). Report v2 only gains
+  codes; the message-code description in `schema/report.v2.json` names them. In the Action, the files are read only for
+  a diff from the local checkout; in PR-number mode and for a compare-API diff the message says nothing was read.
+- A redaction module in `@pharn-ci/core`: `findSecretSpans`, `redactSecrets`, `truncateUtf8`, `redactMessage` and
+  `MESSAGE_MAX_BYTES`. Nothing outside check A7 uses it yet.
 
 ### Changed
 
 ### Security
+
+- No A7 message, and nothing else the report, the comment or the summary carries, names a secret's value, its key or
+  any other text of an agent config file: a message holds the shape id, a path in a code span and a line number.
 
 ## [0.3.0] - 2026-10-26
 
