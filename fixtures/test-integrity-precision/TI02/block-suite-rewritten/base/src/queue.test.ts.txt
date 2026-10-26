@@ -1,0 +1,26 @@
+import { describe, expect, it } from "vitest";
+import { createQueue } from "./queue.js";
+
+describe("queue", () => {
+  it("enqueues an item at the tail", () => {
+    const q = createQueue();
+    q.push("a");
+    q.push("b");
+    expect(q.size()).toBe(2);
+    expect(q.peekLast()).toBe("b");
+  });
+
+  it("dequeues the oldest item first", () => {
+    const q = createQueue();
+    q.push("a");
+    q.push("b");
+    expect(q.shift()).toBe("a");
+    expect(q.size()).toBe(1);
+  });
+
+  it("reports an empty queue", () => {
+    const q = createQueue();
+    expect(q.isEmpty()).toBe(true);
+    expect(q.shift()).toBeUndefined();
+  });
+});

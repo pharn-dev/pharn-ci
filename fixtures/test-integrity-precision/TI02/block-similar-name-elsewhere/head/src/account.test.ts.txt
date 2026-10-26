@@ -1,0 +1,10 @@
+import { describe, expect, it } from "vitest";
+import { openAccount } from "./account.js";
+
+describe("user account", () => {
+  it("creates a user with an email", () => {
+    const account = openAccount("plan-b");
+    expect(account.plan).toBe("plan-b");
+    expect(account.balance).toBe(0);
+  });
+});

@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { parse } from "../src/ops.js";
+
+describe("parse", () => {
+  it("parse reads a plain value", () => {
+    expect(parse("a")).toBe("a");
+  });
+
+  it("parse rejects an empty value", () => {
+    expect(() => parse("")).toThrow();
+  });
+});

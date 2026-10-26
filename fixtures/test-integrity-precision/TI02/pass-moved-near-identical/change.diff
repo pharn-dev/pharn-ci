@@ -1,0 +1,27 @@
+diff --git a/src/cart.test.ts b/src/cart.test.ts
+index 1111111..2222222 100644
+--- a/src/cart.test.ts
++++ b/src/cart.test.ts
+@@ -8,6 +7,0 @@ describe("cart", () => {
+-
+-  it("applies a ten percent discount", () => {
+-    const prices = [100, 50];
+-    const discounted = total(prices, { discount: 0.1 });
+-    expect(discounted).toBe(135);
+-  });
+diff --git a/test/checkout/totals.test.ts b/test/checkout/totals.test.ts
+new file mode 100644
+index 0000000..3333333
+--- /dev/null
++++ b/test/checkout/totals.test.ts
+@@ -0,0 +1,10 @@
++import { describe, expect, it } from "vitest";
++import { total } from "../../src/cart.js";
++
++describe("checkout totals", () => {
++  it("takes ten percent off the order", () => {
++    const prices = [100, 50];
++    const reduced = total(prices, { discount: 0.1 });
++    expect(reduced).toBe(135);
++  });
++});

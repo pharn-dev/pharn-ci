@@ -1,0 +1,7 @@
+diff --git a/src/format.test.ts b/src/format.test.ts
+index 1111111..2222222 100644
+--- a/src/format.test.ts
++++ b/src/format.test.ts
+@@ -5 +5 @@ import { pad } from "./format.js";
+-  it("pads a number to two digits", () => { expect(pad(7, 2)).toBe("07"); });
++  it("left-pads a single digit", () => { expect(pad(7, 3)).toBe("007"); });

@@ -1,0 +1,16 @@
+import { describe, expect, it } from "vitest";
+import { describeOrder } from "../../src/describe.js";
+import { priceOrder } from "../../src/price.js";
+
+describe("price discounts", () => {
+  it("applies a bulk discount to a large order", () => {
+    const items = [{ qty: 100, price: 2 }];
+    const result = priceOrder(items);
+    const label = describeOrder(result);
+    const parts = label.split(" ");
+    expect(parts).toContain("bulk");
+    expect(label).toMatch(/20% off/);
+    expect(result.discount).toBe(0.2);
+    expect(result.total).toBe(160);
+  });
+});

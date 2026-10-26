@@ -1,0 +1,9 @@
+from pkg.ops import save
+
+
+def test_save_writes_a_new_file():
+    assert save("a.txt", "a") is True
+
+
+def test_save_replaces_an_old_file():
+    assert save("a.txt", "b") is True

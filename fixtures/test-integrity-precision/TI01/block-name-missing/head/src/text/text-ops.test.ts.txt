@@ -1,0 +1,32 @@
+import { describe, expect, it } from "vitest";
+import { format, merge, parse } from "../ops.js";
+
+describe("parse", () => {
+  it("parse reads a plain value", () => {
+    expect(parse("a")).toBe("a");
+  });
+
+  it("parse rejects an empty value", () => {
+    expect(() => parse("")).toThrow();
+  });
+});
+
+describe("format", () => {
+  it("format pads a short value", () => {
+    expect(format("a")).toBe("a ");
+  });
+
+  it("format keeps a long value", () => {
+    expect(format("abcdef")).toBe("abcdef");
+  });
+});
+
+describe("merge", () => {
+  it("merge joins two lists", () => {
+    expect(merge([1], [2])).toEqual([1, 2]);
+  });
+
+  it("merge drops duplicates", () => {
+    expect(merge([1], [1])).toEqual([1]);
+  });
+});

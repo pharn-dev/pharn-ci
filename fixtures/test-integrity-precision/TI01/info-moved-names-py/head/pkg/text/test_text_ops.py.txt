@@ -1,0 +1,25 @@
+from pkg.ops import format_value, merge, parse
+
+
+def test_parse_reads_a_plain_value():
+    assert parse("a") == "a"
+
+
+def test_parse_rejects_an_empty_value():
+    assert parse("") is None
+
+
+def test_format_pads_a_short_value():
+    assert format_value("a") == "a "
+
+
+def test_format_keeps_a_long_value():
+    assert format_value("abcdef") == "abcdef"
+
+
+def test_merge_joins_two_lists():
+    assert merge([1], [2]) == [1, 2]
+
+
+def test_merge_drops_duplicates():
+    assert merge([1], [1]) == [1]

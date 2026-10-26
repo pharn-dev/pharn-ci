@@ -1,0 +1,9 @@
+from pkg.ops import parse
+
+
+def test_parse_reads_a_plain_value():
+    assert parse("a") == "a"
+
+
+def test_parse_rejects_an_empty_value():
+    assert parse("") is None

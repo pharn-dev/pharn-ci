@@ -1,0 +1,25 @@
+from pkg.ops import load, save, split
+
+
+def test_load_reads_a_stored_file():
+    assert load("a.txt") == "a"
+
+
+def test_load_fails_on_a_missing_file():
+    assert load("none.txt") is None
+
+
+def test_save_writes_a_new_file():
+    assert save("a.txt", "a") is True
+
+
+def test_save_replaces_an_old_file():
+    assert save("a.txt", "b") is True
+
+
+def test_split_cuts_at_a_comma():
+    assert split("a,b") == ["a", "b"]
+
+
+def test_split_keeps_empty_parts():
+    assert split("a,,b") == ["a", "", "b"]

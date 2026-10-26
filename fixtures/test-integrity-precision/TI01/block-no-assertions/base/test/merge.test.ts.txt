@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { merge } from "../src/ops.js";
+
+describe("merge", () => {
+  it("merge joins two lists", () => {
+    expect(merge([1], [2])).toEqual([1, 2]);
+  });
+
+  it("merge drops duplicates", () => {
+    expect(merge([1], [1])).toEqual([1]);
+  });
+});

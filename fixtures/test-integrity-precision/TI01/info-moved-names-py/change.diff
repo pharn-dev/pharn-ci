@@ -1,0 +1,162 @@
+diff --git a/tests/test_format.py b/tests/test_format.py
+deleted file mode 100644
+index 1111111..0000000
+--- a/tests/test_format.py
++++ /dev/null
+@@ -1,9 +0,0 @@
+-from pkg.ops import format_value
+-
+-
+-def test_format_pads_a_short_value():
+-    assert format_value("a") == "a "
+-
+-
+-def test_format_keeps_a_long_value():
+-    assert format_value("abcdef") == "abcdef"
+diff --git a/tests/test_load.py b/tests/test_load.py
+deleted file mode 100644
+index 1111111..0000000
+--- a/tests/test_load.py
++++ /dev/null
+@@ -1,9 +0,0 @@
+-from pkg.ops import load
+-
+-
+-def test_load_reads_a_stored_file():
+-    assert load("a.txt") == "a"
+-
+-
+-def test_load_fails_on_a_missing_file():
+-    assert load("none.txt") is None
+diff --git a/tests/test_merge.py b/tests/test_merge.py
+deleted file mode 100644
+index 1111111..0000000
+--- a/tests/test_merge.py
++++ /dev/null
+@@ -1,9 +0,0 @@
+-from pkg.ops import merge
+-
+-
+-def test_merge_joins_two_lists():
+-    assert merge([1], [2]) == [1, 2]
+-
+-
+-def test_merge_drops_duplicates():
+-    assert merge([1], [1]) == [1]
+diff --git a/tests/test_parse.py b/tests/test_parse.py
+deleted file mode 100644
+index 1111111..0000000
+--- a/tests/test_parse.py
++++ /dev/null
+@@ -1,9 +0,0 @@
+-from pkg.ops import parse
+-
+-
+-def test_parse_reads_a_plain_value():
+-    assert parse("a") == "a"
+-
+-
+-def test_parse_rejects_an_empty_value():
+-    assert parse("") is None
+diff --git a/tests/test_save.py b/tests/test_save.py
+deleted file mode 100644
+index 1111111..0000000
+--- a/tests/test_save.py
++++ /dev/null
+@@ -1,9 +0,0 @@
+-from pkg.ops import save
+-
+-
+-def test_save_writes_a_new_file():
+-    assert save("a.txt", "a") is True
+-
+-
+-def test_save_replaces_an_old_file():
+-    assert save("a.txt", "b") is True
+diff --git a/tests/test_split.py b/tests/test_split.py
+deleted file mode 100644
+index 1111111..0000000
+--- a/tests/test_split.py
++++ /dev/null
+@@ -1,9 +0,0 @@
+-from pkg.ops import split
+-
+-
+-def test_split_cuts_at_a_comma():
+-    assert split("a,b") == ["a", "b"]
+-
+-
+-def test_split_keeps_empty_parts():
+-    assert split("a,,b") == ["a", "", "b"]
+diff --git a/pkg/test_core.py b/pkg/test_core.py
+index 2222222..3333333 100644
+--- a/pkg/test_core.py
++++ b/pkg/test_core.py
+@@ -5,0 +6,5 @@ def test_core_wires_the_modules():
++
++
++def test_core_exposes_both_entry_points():
++    assert core().text is not None
++    assert core().io is not None
+diff --git a/pkg/io/test_io_ops.py b/pkg/io/test_io_ops.py
+new file mode 100644
+index 0000000..4444444
+--- /dev/null
++++ b/pkg/io/test_io_ops.py
+@@ -0,0 +1,25 @@
++from pkg.ops import load, save, split
++
++
++def test_load_reads_a_stored_file():
++    assert load("a.txt") == "a"
++
++
++def test_load_fails_on_a_missing_file():
++    assert load("none.txt") is None
++
++
++def test_save_writes_a_new_file():
++    assert save("a.txt", "a") is True
++
++
++def test_save_replaces_an_old_file():
++    assert save("a.txt", "b") is True
++
++
++def test_split_cuts_at_a_comma():
++    assert split("a,b") == ["a", "b"]
++
++
++def test_split_keeps_empty_parts():
++    assert split("a,,b") == ["a", "", "b"]
+diff --git a/pkg/text/test_text_ops.py b/pkg/text/test_text_ops.py
+new file mode 100644
+index 0000000..5555555
+--- /dev/null
++++ b/pkg/text/test_text_ops.py
+@@ -0,0 +1,25 @@
++from pkg.ops import format_value, merge, parse
++
++
++def test_parse_reads_a_plain_value():
++    assert parse("a") == "a"
++
++
++def test_parse_rejects_an_empty_value():
++    assert parse("") is None
++
++
++def test_format_pads_a_short_value():
++    assert format_value("a") == "a "
++
++
++def test_format_keeps_a_long_value():
++    assert format_value("abcdef") == "abcdef"
++
++
++def test_merge_joins_two_lists():
++    assert merge([1], [2]) == [1, 2]
++
++
++def test_merge_drops_duplicates():
++    assert merge([1], [1]) == [1]

@@ -1,0 +1,18 @@
+diff --git a/test/__snapshots__/b.test.ts.snap b/test/__snapshots__/b.test.ts.snap
+deleted file mode 100644
+index 1111111..0000000
+--- a/test/__snapshots__/b.test.ts.snap
++++ /dev/null
+@@ -1,5 +0,0 @@
+-// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+-
+-exports[`b stores a case 1`] = `
+-test("stored case", () => {})
+-`;
+diff --git a/test/b.test.ts b/test/b.test.ts
+index 2222222..3333333 100644
+--- a/test/b.test.ts
++++ b/test/b.test.ts
+@@ -1 +1 @@
+-// Tests for b.
++// Tests for the b module.

@@ -1,0 +1,24 @@
+diff --git a/src/store.test.ts b/src/store.test.ts
+index 1111111..2222222 100644
+--- a/src/store.test.ts
++++ b/src/store.test.ts
+@@ -12,7 +12,12 @@ describe("store", () => {
+-describe("legacy store", () => {
+-  it("migrates old keys", () => {
+-    const store = createStore({ legacy: true });
+-    store.set("old:a", 1);
+-    expect(store.get("a")).toBe(1);
+-  });
+-});
++describe("sync", () => {
++  it("pushes pending writes", async () => {
++    const sync = createSync();
++    sync.queue("x");
++    await expect(sync.flush()).resolves.toBe(1);
++  });
++
++  it("pulls remote changes", () => {
++    const sync = createSync();
++    expect(sync.pull()).toEqual([]);
++  });
++});

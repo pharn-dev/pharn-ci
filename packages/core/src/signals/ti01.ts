@@ -1,6 +1,6 @@
 import type { DiffFile } from "../diff/unified.js";
 import type { TestIntegritySignal } from "../report.js";
-import { definesTests, isTestFile, testPackageDir, testStem } from "../testFiles.js";
+import { definesTests, isSnapFile, isTestFile, testPackageDir, testStem } from "../testFiles.js";
 import { coverageSourceLanguage } from "./signalFiles.js";
 import { testLanguage } from "./testLines.js";
 
@@ -31,9 +31,16 @@ function addedTests(file: DiffFile): boolean {
  * rename to a non-test path counts whatever its removed lines hold. A binary file never counts. A counting file is
  * `block` (shown as `warn` in mode `warn`), or `info` when the same diff also deletes a source file with the same name,
  * deletes other files of the package that holds the test (never the repository root), or adds a test file with the same
- * name that defines tests. One signal per file, sorted by path. No file content reaches a signal.
+ * name that defines tests, or (for a deleted file in `moved`, see `movedTestFiles`) when every test it held is found
+ * again, by name and by body, in another test file of this change. A snapshot (`.snap`) path is never a
+ * candidate: it holds no test, only stored output. One signal per file, sorted by path. No file content reaches a
+ * signal.
  */
-export function detectTI01(diff: readonly DiffFile[], mode: "block" | "warn"): TestIntegritySignal[] {
+export function detectTI01(
+  diff: readonly DiffFile[],
+  mode: "block" | "warn",
+  moved: ReadonlySet<string> = new Set(),
+): TestIntegritySignal[] {
   const deletedSources = diff.filter((file) => file.status === "deleted" && !isTestFile(file.path));
   const sourceStems = new Set(deletedSources.map((file) => testStem(file.path)));
   const addedTestFiles = diff.filter(
@@ -46,7 +53,7 @@ export function detectTI01(diff: readonly DiffFile[], mode: "block" | "warn"): T
     const deleted = file.status === "deleted" && isTestFile(file.path);
     if (!(renamedAway || deleted) || file.binary === true) continue;
     const path = renamedAway ? file.oldPath : file.path;
-    if (found.has(path)) continue;
+    if (isSnapFile(path) || found.has(path)) continue;
 
     const defined = removedTests(file);
     // A cut file counts only when it is code that can define tests: a large fixture, snapshot or data file under a test
@@ -76,6 +83,10 @@ export function detectTI01(diff: readonly DiffFile[], mode: "block" | "warn"): T
     ) {
       severity = "info";
       detail = "Test file replaced by a test file of the same name that defines tests.";
+    } else if (deleted && moved.has(path)) {
+      severity = "info";
+      detail =
+        "Test file deleted; every test it held is found again, by name and body, in another test file of this change.";
     }
 
     found.set(path, { id: "TI01", severity, path, line: null, detail: detail.slice(0, MAX_DETAIL) });

@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { save } from "../src/ops.js";
+
+describe("save", () => {
+  it("save writes a new file", () => {
+    expect(save("a.txt", "a")).toBe(true);
+  });
+
+  it("save replaces an old file", () => {
+    expect(save("a.txt", "b")).toBe(true);
+  });
+});

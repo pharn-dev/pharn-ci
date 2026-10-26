@@ -1,0 +1,18 @@
+import { describe, expect, it } from "vitest";
+import { createStore } from "./store.js";
+
+describe("store", () => {
+  it("saves a value", () => {
+    const store = createStore();
+    store.set("a", 1);
+    expect(store.get("a")).toBe(1);
+  });
+});
+
+describe("legacy store", () => {
+  it("migrates old keys", () => {
+    const store = createStore({ legacy: true });
+    store.set("old:a", 1);
+    expect(store.get("a")).toBe(1);
+  });
+});

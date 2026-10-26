@@ -1,0 +1,9 @@
+from pkg.ops import format_value
+
+
+def test_format_pads_a_short_value():
+    assert format_value("a") == "a "
+
+
+def test_format_keeps_a_long_value():
+    assert format_value("abcdef") == "abcdef"

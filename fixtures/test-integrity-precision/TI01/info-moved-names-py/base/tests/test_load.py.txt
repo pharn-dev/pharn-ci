@@ -1,0 +1,9 @@
+from pkg.ops import load
+
+
+def test_load_reads_a_stored_file():
+    assert load("a.txt") == "a"
+
+
+def test_load_fails_on_a_missing_file():
+    assert load("none.txt") is None
