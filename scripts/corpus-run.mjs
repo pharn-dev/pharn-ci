@@ -511,9 +511,7 @@ async function runCorpus(options, selected, kept) {
   };
 
   const processPr = async ({ repo, pr }) => {
-    let touched = false;
     try {
-      touched = true;
       const prepared = await steps.prepare(repo, pr);
       if (prepared.error !== null) return [errorRow(repo, pr.number, prepared.error)];
 
@@ -526,7 +524,7 @@ async function runCorpus(options, selected, kept) {
     } catch (error) {
       return [errorRow(repo, pr.number, detailText(error instanceof Error ? error.message : String(error)))];
     } finally {
-      if (touched) await steps.cleanup(repo, pr).catch(() => undefined);
+      await steps.cleanup(repo, pr).catch(() => undefined);
     }
   };
 
