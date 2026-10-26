@@ -1,6 +1,6 @@
 {
   "name": "@pharn-ci/cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "pharn-ci command line: check diff coverage and agent setup locally.",
   "license": "Apache-2.0",
   "private": true,

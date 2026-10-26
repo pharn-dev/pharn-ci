@@ -26,5 +26,5 @@ jobs:
         with:
           tool: cargo-llvm-cov
       - run: cargo llvm-cov --lcov --output-path lcov.info
-      - uses: pharn-dev/pharn-ci@v0.2.0 # or, better, the tag's full commit SHA
+      - uses: pharn-dev/pharn-ci@v0.3.0 # or, better, the tag's full commit SHA
         timeout-minutes: 5

@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 // Skylos nine, part 2: README.md keeps its vitest Skylos paragraph and adds a pytest 8 of 9 sentence linking
 // docs/PRECISION.md, and CHANGELOG.md's Unreleased › Added list gains one line for it. Both are compared with their
 // copies at the commit this increment starts from, read with git show. The documents are read inside the test body.
+// Shipped in 0.3.0; the release PR moved the Added line under `## [0.3.0]`, where it is looked for now.
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 /** Current main before this increment: the base for the "unchanged" checks. */
@@ -48,11 +49,11 @@ function containsBlock(all: string[], block: string[]): boolean {
   return false;
 }
 
-/** The bullets of the `### Added` list under `## [Unreleased]`, each joined with its continuation lines. */
-function unreleasedAdded(text: string): string[] {
+/** The bullets of the `### Added` list under `heading` (`## [Unreleased]` by default), each with its continuations. */
+function unreleasedAdded(text: string, heading = /^## \[Unreleased\]/): string[] {
   const all = lines(text);
-  const start = all.findIndex((line) => /^## \[Unreleased\]/.test(line));
-  if (start < 0) throw new Error("CHANGELOG.md has no ## [Unreleased] section");
+  const start = all.findIndex((line) => heading.test(line));
+  if (start < 0) throw new Error(`CHANGELOG.md has no ${heading} section`);
   const end = all.findIndex((line, i) => i > start && /^## \[/.test(line));
   const unreleased = all.slice(start + 1, end < 0 ? undefined : end);
   const added = unreleased.findIndex((line) => line.trim() === "### Added");
@@ -68,7 +69,7 @@ function unreleasedAdded(text: string): string[] {
 }
 
 describe("README.md and CHANGELOG.md name the pytest Skylos result", () => {
-  it("AC-12: the README keeps its catch **7 of 9** paragraph and adds a pytest **8 of 9** sentence linking docs/PRECISION.md with no new 2, 4 or 5 of 9, and the Unreleased › Added list holds one new line naming fixtures/skylos-nine-pytest, 8 of 9 and docs/PRECISION.md", () => {
+  it("AC-12: the README keeps its catch **7 of 9** paragraph and adds a pytest **8 of 9** sentence linking docs/PRECISION.md with no new 2, 4 or 5 of 9, and the 0.3.0 › Added list holds one new line naming fixtures/skylos-nine-pytest, 8 of 9 and docs/PRECISION.md", () => {
     const now = h2Section(read("README.md"), "## Test integrity");
     const base = h2Section(readBase("README.md"), "## Test integrity");
 
@@ -93,7 +94,7 @@ describe("README.md and CHANGELOG.md name the pytest Skylos result", () => {
     }
 
     const bulletsBase = new Set(unreleasedAdded(readBase("CHANGELOG.md")));
-    const newBullets = unreleasedAdded(read("CHANGELOG.md")).filter((b) => !bulletsBase.has(b));
+    const newBullets = unreleasedAdded(read("CHANGELOG.md"), /^## \[0\.3\.0\]/).filter((b) => !bulletsBase.has(b));
     const entries = newBullets.filter((b) => b.includes("fixtures/skylos-nine-pytest"));
     expect(entries, "one new Added line naming fixtures/skylos-nine-pytest").toHaveLength(1);
     expect(entries[0], "it names 8 of 9").toContain("8 of 9");

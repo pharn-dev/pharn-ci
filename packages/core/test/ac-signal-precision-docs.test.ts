@@ -55,7 +55,7 @@ function codeDescriptions(value: Json): string[] {
 }
 
 describe("signal precision: the documents record the narrower rules", () => {
-  it("AC-13: LIMITS names the TI15, TI11, TI09 and TI06 rules, PRECISION §2 names item 18, the CHANGELOG has a Changed entry for the four, the README TI15 row and the v2 schema name the caps, v1 is byte-identical, and THREAT-MODEL residuals 14 and 18 name the moved-job block and the expect-subject reader", () => {
+  it("AC-13: LIMITS names the TI15, TI11, TI09 and TI06 rules, PRECISION §2 names item 18, the CHANGELOG 0.3.0 section names the four rules, the README TI15 row and the v2 schema name the caps, v1 is byte-identical, and THREAT-MODEL residuals 14 and 18 name the moved-job block and the expect-subject reader", () => {
     const limits = read("docs/LIMITS.md");
 
     const ti15 = sectionOf(limits, "### What TI15 misses", 3);
@@ -88,20 +88,23 @@ describe("signal precision: the documents record the narrower rules", () => {
     const precision = sectionOf(read("docs/PRECISION.md"), "## 2. Precision corpus", 2);
     expect(precision, "PRECISION §2 names item 18").toMatch(/\bitem 18\b/);
 
+    // Shipped in 0.3.0. Before that release one Unreleased › Changed entry named the four; the release PR regrouped the
+    // entries for a reader, so TI09, TI15 and TI06 (new in 0.3.0) carry their rules in their Added entries and TI11's
+    // command key is under Fixed. Each rule is still named in the 0.3.0 section.
     const changelog = lines(read("CHANGELOG.md"));
-    const unreleased = changelog.indexOf("## [Unreleased]");
-    expect(unreleased, "the Unreleased section").toBeGreaterThan(-1);
+    const unreleased = changelog.findIndex((line) => line.startsWith("## [0.3.0]"));
+    expect(unreleased, "the 0.3.0 section").toBeGreaterThan(-1);
     const afterUnreleased = changelog.slice(unreleased + 1);
     const unreleasedEnd = afterUnreleased.findIndex((line) => line.startsWith("## "));
     const section = unreleasedEnd === -1 ? afterUnreleased : afterUnreleased.slice(0, unreleasedEnd);
-    const changed = section.indexOf("### Changed");
-    expect(changed, "a ### Changed heading under Unreleased").toBeGreaterThan(-1);
-    const afterChanged = section.slice(changed + 1);
-    const changedEnd = afterChanged.findIndex((line) => /^#{2,3} /.test(line));
-    const entries = normalize((changedEnd === -1 ? afterChanged : afterChanged.slice(0, changedEnd)).join("\n"));
+    const entries = normalize(section.join("\n"));
     for (const id of ["TI11", "TI09", "TI15", "TI06"]) {
-      expect(entries, `the Changed entries name ${id}`).toMatch(new RegExp(`\\b${id}\\b`));
+      expect(entries, `the 0.3.0 entries name ${id}`).toMatch(new RegExp(`\\b${id}\\b`));
     }
+    expect(entries, "TI11: a package-manager swap").toContain("package-manager swap");
+    expect(entries, "TI09: projects matched by name").toContain("displayName");
+    expect(entries, "TI15: at most 10 findings per change").toContain("at most 10 findings per change");
+    expect(entries, "TI06: equivalent rewrites").toContain("`typeof`");
 
     const row = lines(read("README.md")).find((line) => line.startsWith("| `TEST_INTEGRITY_TI15`"));
     expect(row, "the README TEST_INTEGRITY_TI15 row").toBeDefined();

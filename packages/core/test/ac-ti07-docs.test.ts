@@ -94,8 +94,9 @@ describe("docs: TI07 and the tests-changed summary", () => {
     expect(readme).toMatch(/collapsed/i);
   });
 
-  it("AC-15: CHANGELOG Unreleased › Added has one line for TI07 and one for the tests-changed summary", () => {
-    const unreleased = section(doc("CHANGELOG.md"), "## [Unreleased]");
+  it("AC-15: CHANGELOG 0.3.0 › Added has one line for TI07 and one for the tests-changed summary", () => {
+    // Shipped in 0.3.0; before that release its lines sat under Unreleased.
+    const unreleased = section(doc("CHANGELOG.md"), "## [0.3.0] - 2026-10-26");
     const added = bullets(section(unreleased, "### Added"));
     const ti07 = added.filter((b) => /\bTI07\b/.test(b));
     const summary = added.filter((b) => /tests[- ]changed|testIntegrity\.changes/i.test(b));

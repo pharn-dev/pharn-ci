@@ -7,7 +7,8 @@ import { describe, expect, it } from "vitest";
 // Unreleased without editing an existing line; the 0.2.0 release moved that section under `## [0.2.0] - 2026-10-25`,
 // added nothing else as a heading, and corrected the two Report v2 lines that still called the testIntegrity block
 // empty and, before the tag, the two TI01 lines that said a renamed-away test file counts only when its removed lines
-// define tests (CORRECTED). Files are read inside the test body.
+// define tests (CORRECTED). Files are read inside the test body. The 0.3.0 release then added its own heading
+// between Unreleased and 0.2.0 (LATER_RELEASES); the 0.2.0 section did not change.
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 /** Current main before this increment: the base for the "still present" checks. */
@@ -17,6 +18,8 @@ const lines = (text: string) => text.split("\n").map((line) => line.replace(/\r$
 const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
 
 const RELEASE_HEADING = "## [0.2.0] - 2026-10-25";
+/** The release headings added above the 0.2.0 one since, newest first. */
+const LATER_RELEASES = ["## [0.3.0] - 2026-10-26"];
 /**
  * The lines rewritten before the 0.2.0 tag: two said the testIntegrity block stays empty until signals ship, and two
  * said a test file renamed to a non-test path counts only when its removed lines define tests (a rename shows only
@@ -40,7 +43,7 @@ function changelogSection(text: string, heading: string): string[] {
 }
 
 describe("release-readiness-v020: CHANGELOG.md", () => {
-  it("AC-8: the 0.2.0 section names Skylos, 2 of 9 and docs/LIMITS.md, keeps the Report v2 line and every earlier Unreleased line, and adds only the 0.2.0 heading", () => {
+  it("AC-8: the 0.2.0 section names Skylos, 2 of 9 and docs/LIMITS.md, keeps the Report v2 line and every earlier Unreleased line, and adds only the 0.2.0 heading and the later release headings", () => {
     const now = readFileSync(`${ROOT}CHANGELOG.md`, "utf8");
     const before = execFileSync("git", ["show", `${BEFORE}:CHANGELOG.md`], { cwd: ROOT, encoding: "utf8" });
 
@@ -59,7 +62,7 @@ describe("release-readiness-v020: CHANGELOG.md", () => {
 
     const headings = (text: string) => lines(text).filter((line) => line.startsWith("## ["));
     const [unreleasedHeading, ...released] = headings(before);
-    expect(headings(now)).toEqual([unreleasedHeading, RELEASE_HEADING, ...released]);
+    expect(headings(now)).toEqual([unreleasedHeading, ...LATER_RELEASES, RELEASE_HEADING, ...released]);
     expect(lines(now).filter((line) => CORRECTED.has(line))).toEqual([]);
   });
 });
