@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { measureGrowth, threadCpuMs } from "./growth.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -10,6 +11,8 @@ import { expectValidReport } from "./schema.js";
 // and whose bodies are unrelated, so the cross-file name probe finds candidates that fail containment. A small control
 // file replaces three hand-written round() assertions by an it.each table: the new rules clear it, so a run where the
 // new rules did not run cannot pass. Besides the timing, every run must report TI02 signals for the big file.
+// The growth is measured on this thread's CPU time with measureGrowth (growth.ts) after a warm-up run of each size, and
+// every run's CPU time stays under 15 s.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const BIG = "src/big.test.ts";
@@ -99,8 +102,6 @@ function generate(bytes: number) {
   };
 }
 
-const median = (values: number[]) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)] as number;
-
 describe("TI02 precision: the new rules stay linear", () => {
   it("AC-13: a 512 KiB test file removing thousands of tests and adding thousands of .each tests, with other touched files of similarly named tests, takes less than 8 times the median of the 128 KiB input, each run within 15 s, with TI02 signals", async () => {
     const { check } = await import("../src/check.js");
@@ -133,11 +134,11 @@ describe("TI02 precision: the new rules stay linear", () => {
 
     const all: number[] = [];
     const time = (run: ReturnType<typeof generate>) => {
-      const started = performance.now();
+      const started = threadCpuMs();
       const report = check(run.data as unknown as Input) as unknown as {
         testIntegrity: { signals: { id: string; path: string }[]; languages: string[] };
       };
-      const ms = performance.now() - started;
+      const ms = threadCpuMs() - started;
       all.push(ms);
       const ti02 = report.testIntegrity.signals.filter((s) => String(s.id) === "TI02");
       expect(
@@ -156,12 +157,11 @@ describe("TI02 precision: the new rules stay linear", () => {
       expectValidReport(warm.report);
       expect(warm.report.testIntegrity.languages, "the files were indexed").toEqual(["ts"]);
     }
-    const fullRuns = [time(full).ms, time(full).ms, time(full).ms];
-    const quarterRuns = [time(quarter).ms, time(quarter).ms, time(quarter).ms];
-
-    expect(median(fullRuns), `full ${fullRuns.join(", ")} ms vs quarter ${quarterRuns.join(", ")} ms`).toBeLessThan(
-      8 * median(quarterRuns),
+    const growth = await measureGrowth(
+      () => time(quarter),
+      () => time(full),
     );
-    for (const ms of all) expect(ms, "every run finishes within 15 s").toBeLessThan(CEILING_MS);
+    expect(growth.ratio, `full vs quarter: ${growth.detail}`).toBeLessThan(8);
+    for (const ms of all) expect(ms, "every run finishes within 15 s of CPU time").toBeLessThan(CEILING_MS);
   }, 300_000);
 });

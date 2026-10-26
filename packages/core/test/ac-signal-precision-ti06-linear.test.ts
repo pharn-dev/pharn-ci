@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { measureGrowth } from "./growth.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -8,13 +9,13 @@ import { expectValidReport } from "./schema.js";
 // a literal-unaware or comment-unaware scan reads as unterminated, and many `expect(` calls), ending with an
 // `expect(typeof …).toBe('function')` chain whose subject is longer than 200 code units, rewritten at head to
 // `toBeTypeOf('function')`. The files are valid TypeScript, so the test index parses them. The host is loaded, so the
-// timing compares the best of several runs, never an absolute budget.
+// timing compares this thread's CPU time over samples of many runs (measureGrowth, growth.ts), never an absolute
+// budget.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const PATH = "src/big.test.ts";
 const SMALL = 100_000;
 const LARGE = 4 * SMALL;
-const RUNS = 3;
 const KEY = "k".repeat(220);
 const SUBJECT = `registry.lookup("${KEY}").handler`;
 const BASE_CHAIN = `  expect(typeof ${SUBJECT}).toBe('function');`;
@@ -108,16 +109,11 @@ describe("TI06: the expect-subject reader is linear", () => {
       }
     }
 
-    const time = (run: ReturnType<typeof input>) => {
-      const started = performance.now();
-      const report = check(run as unknown as Input);
-      return { ms: performance.now() - started, report };
-    };
     for (const [label, run] of [
       ["100,000 characters", small],
       ["400,000 characters", large],
     ] as const) {
-      const { report } = time(run);
+      const report = check(run as unknown as Input);
       expectValidReport(report);
       expect(report.testIntegrity.languages, `${label}: the file was indexed`).toEqual(["ts"]);
       expect(
@@ -126,9 +122,12 @@ describe("TI06: the expect-subject reader is linear", () => {
       ).toEqual([]);
     }
 
-    const best = (run: ReturnType<typeof input>) => Math.min(...Array.from({ length: RUNS }, () => time(run).ms));
-    const smallMs = best(small);
-    const largeMs = best(large);
-    expect(largeMs, `best of ${RUNS}: 400,000 ${largeMs} ms vs 100,000 ${smallMs} ms`).toBeLessThan(8 * smallMs);
+    const smallInput = small as unknown as Input;
+    const largeInput = large as unknown as Input;
+    const growth = await measureGrowth(
+      () => check(smallInput),
+      () => check(largeInput),
+    );
+    expect(growth.ratio, `400,000 vs 100,000 characters: ${growth.detail}`).toBeLessThan(8);
   }, 300_000);
 });

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { measureGrowth, threadCpuMs } from "./growth.js";
 
 // findSecretSpans() and scanAgentConfigSecrets() are loaded inside the test body: the AC test is written before the
 // redaction module exists, so nothing the build adds may run while the file loads.
+// Growth is measured on this thread's CPU time with measureGrowth (growth.ts), after a warm-up call of each input; the
+// slowest single call must finish within 15 s of CPU time.
 
 type Span = { id: string; start: number; end: number };
 interface Scanner {
@@ -30,29 +33,26 @@ function oneLine(bytes: number): string {
   return UNIT.repeat(Math.ceil(bytes / UNIT.length)).slice(0, bytes);
 }
 
-function median(values: number[]): number {
-  const sorted = [...values].sort((a, b) => a - b);
-  return sorted[Math.floor(sorted.length / 2)] as number;
-}
-
-/** Calls of `fn` per timed run: a run of a few milliseconds is otherwise decided by one preemption on a loaded host. */
-const CALLS_PER_RUN = 4;
-
 /**
- * The median of 3 timed runs of `fn` (each `CALLS_PER_RUN` calls), after one warm-up call; each run must finish within
- * 15 seconds.
+ * How the CPU time of `large` grows over `small` (measureGrowth, growth.ts), after one warm-up call of each that must
+ * return a list; the slowest single call, read on this thread's CPU time, must finish within 15 s.
  */
-function timed(label: string, fn: () => unknown): number {
-  fn();
-  const runs: number[] = [];
-  for (let i = 0; i < 3; i++) {
-    const start = performance.now();
-    for (let call = 0; call < CALLS_PER_RUN; call++) fn();
-    const ms = performance.now() - start;
-    expect(ms, `${label}: run ${i + 1} returns within 15 s`).toBeLessThan(15_000);
-    runs.push(ms);
+async function growthOf(label: string, small: () => unknown, large: () => unknown) {
+  for (const [side, fn] of [
+    ["small", small],
+    ["large", large],
+  ] as const) {
+    expect(Array.isArray(fn()), `${label}: the ${side} input's warm-up call returns a list`).toBe(true);
   }
-  return median(runs);
+  let slowest = 0;
+  const timedCall = (fn: () => unknown) => () => {
+    const start = threadCpuMs();
+    fn();
+    slowest = Math.max(slowest, threadCpuMs() - start);
+  };
+  const growth = await measureGrowth(timedCall(small), timedCall(large));
+  expect(slowest, `${label}: the slowest call finishes within 15 s of CPU time`).toBeLessThan(15_000);
+  return growth;
 }
 
 describe("A7 pattern matching grows close to linearly", () => {
@@ -62,14 +62,21 @@ describe("A7 pattern matching grows close to linearly", () => {
     const large = oneLine(512 * 1024);
     expect(findSecretSpans(small), "control: the near-miss text holds no span").toEqual([]);
 
-    const spansSmall = timed("findSecretSpans 128 KiB", () => findSecretSpans(small));
-    const spansLarge = timed("findSecretSpans 512 KiB", () => findSecretSpans(large));
-    // A floor of 1 ms keeps timer noise on a very fast small run from deciding the ratio.
-    expect(spansLarge / Math.max(spansSmall, 1), "findSecretSpans growth").toBeLessThan(8);
+    const spans = await growthOf(
+      "findSecretSpans",
+      () => findSecretSpans(small),
+      () => findSecretSpans(large),
+    );
+    expect(spans.ratio, `findSecretSpans growth: ${spans.detail}`).toBeLessThan(8);
 
     const file = (text: string) => [{ path: ".mcp.json", text }];
-    const scanSmall = timed("scanAgentConfigSecrets 128 KiB", () => scanAgentConfigSecrets(file(small)));
-    const scanLarge = timed("scanAgentConfigSecrets 512 KiB", () => scanAgentConfigSecrets(file(large)));
-    expect(scanLarge / Math.max(scanSmall, 1), "scanAgentConfigSecrets growth").toBeLessThan(8);
+    const smallFile = file(small);
+    const largeFile = file(large);
+    const scan = await growthOf(
+      "scanAgentConfigSecrets",
+      () => scanAgentConfigSecrets(smallFile),
+      () => scanAgentConfigSecrets(largeFile),
+    );
+    expect(scan.ratio, `scanAgentConfigSecrets growth: ${scan.detail}`).toBeLessThan(8);
   }, 300_000);
 });
