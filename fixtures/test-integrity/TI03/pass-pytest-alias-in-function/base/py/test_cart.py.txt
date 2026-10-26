@@ -1,0 +1,15 @@
+from cart import total
+
+
+def helper():
+    import pytest as pt
+
+    return pt
+
+
+def test_total():
+    assert total([2, 3]) == 5
+
+
+def test_empty():
+    assert total([]) == 0

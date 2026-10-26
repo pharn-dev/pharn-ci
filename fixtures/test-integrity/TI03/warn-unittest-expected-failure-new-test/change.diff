@@ -1,0 +1,9 @@
+diff --git a/py/test_cart.py b/py/test_cart.py
+index 1111111..2222222 100644
+--- a/py/test_cart.py
++++ b/py/test_cart.py
+@@ -10,0 +11,4 @@ class TestCart(unittest.TestCase):
++
++    @unittest.expectedFailure
++    def test_negative(self):
++        self.assertEqual(total([-1]), -1)

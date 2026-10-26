@@ -1,0 +1,8 @@
+import pytest
+
+from cart import total_price
+
+
+def test_total():
+    total = total_price([1.5, 1.5])
+    assert total == pytest.approx(3.0)

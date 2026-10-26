@@ -119,9 +119,10 @@ export interface CheckInput {
    * The text of the test and test-config files the change touches, at the merge base and at HEAD, gathered by the
    * CLI and the Action for the base-and-head test-integrity signals (TI02, TI05, TI06, TI09 and TI12). TI02, TI05, TI06
    * and TI12 compare the JS/TS (and, with `pythonTestIndex`, Python) test files the diff modifies; TI09 compares the
-   * touched test-runner config files. Without it, or in mode off, nothing is compared and the
-   * report is the one it was before: no signal, no message, no language. With a side unavailable and a modified test
-   * file, the report carries one `TEST_INTEGRITY_INDEX_UNAVAILABLE` message.
+   * touched test-runner config files. TI03 reads the top-level imports of the Python test files in it, to resolve
+   * `import pytest as pt` style aliases; without them it reads the literal spellings only. Without it, or in mode off,
+   * nothing is compared and the report is the one it was before: no signal, no message, no language. With a side
+   * unavailable and a modified test file, the report carries one `TEST_INTEGRITY_INDEX_UNAVAILABLE` message.
    */
   testSources?: TestSources;
   /**
@@ -175,7 +176,7 @@ export function check(input: CheckInput): Report {
       ? []
       : sortSignals([
           ...detectTI01(parsedDiff, testIntegrity.mode),
-          ...detectTI03(parsedDiff, testIntegrity.mode),
+          ...detectTI03(parsedDiff, testIntegrity.mode, input.testSources),
           ...detectTI04(parsedDiff, testIntegrity.mode),
           ...detectTI08(parsedDiff),
           ...detectTI10(parsedDiff, { repoFiles: input.repoFiles, mode: testIntegrity.mode }),

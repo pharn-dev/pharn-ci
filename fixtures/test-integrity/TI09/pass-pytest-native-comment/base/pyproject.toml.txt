@@ -1,0 +1,6 @@
+[project]
+name = "demo"
+
+[tool.pytest]
+# keep the output short
+addopts = ["-ra"]

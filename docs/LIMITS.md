@@ -179,6 +179,21 @@ TI03 reads the added and removed lines of test files, one line at a time, in JS/
   condition that is always true under another spelling reads as conditional.
 - **Go receivers other than `t`.** Only `t.Skip(`, `t.Skipf(` and `t.SkipNow(` are read; a receiver named `tb`, `b` or
   anything else is missed.
+- **Python aliases from top-level imports only.** A Python skip is also read through the names the test file binds with
+  its own `import` and `from … import` statements that start at column 0 (`import pytest as pt`, `from pytest import mark
+  as m`, `from unittest import skipIf as si`, the parenthesized multi-line form included), so `@pt.mark.skip`,
+  `@m.skipif(…)`, `@si(…)` and `sk("r")` are read as the `pytest.mark.skip`, `pytest.mark.skipif`, `unittest.skipIf` and
+  `pytest.skip` they name. An alias bound anywhere else is not read: inside an `if`, a `try` or a function, in a
+  module docstring, by `from pytest import *`, by an assignment (`pt = pytest`) or after a backslash continuation. A
+  name bound twice keeps its last binding, and `import os as pt` after `import pytest as pt` hides the pytest one.
+  The text read is the test file's own text in the test sources; `conftest.py` is not followed, and without the text
+  (no test sources, or a side that cannot be read) only the literal spellings are read. The literal spelling is always
+  tried first, so `@pytest.mark.skip` under `import foo as pytest` still counts; a binding the reader gets wrong can
+  only add a match, never take one away.
+- **Python forms.** `@unittest.expectedFailure` (and its aliases) is an unconditional skip like `@unittest.skip`, and
+  `pytest.xfail(` in a body is read like `pytest.skip(`: a skip inside a body, `warn`. A skip written through
+  `request.node.add_marker(pytest.mark.skip)`, `pytest.mark.skip` assigned to a name and used as `@name`, or a marker
+  set in `conftest.py` is not read.
 - **A skip moved to another file** reads as added, because the removed line is looked for in the same file only. A
   rename that edits the skip is judged against the old file's lines.
 - **Names by content.** A test is matched by the text of its first argument, so two tests with the same name in a file
@@ -380,7 +395,15 @@ TI09 compares a fixed list of settings of the test-runner config files the chang
   read here; TI10 (the scripts in `package.json`) and TI11 (workflows) cover what they cover.
 - **Deleted config files and removed sections.** A deleted file is never read. A removed `jest` key, a removed
   `[pytest]` section or `[tool.pytest.ini_options]` table, and a removed `test` key of a vite config give nothing: the
-  runner's defaults apply, and TI09 does not model them.
+  runner's defaults apply, and TI09 does not model them. For `pyproject.toml` both the `[tool.pytest]` and the
+  `[tool.pytest.ini_options]` table count: a change from a file that has either one to a file that has neither gives
+  nothing.
+- **pytest's native `[tool.pytest]` table.** `pyproject.toml` is read for pytest 9's native `[tool.pytest]` table
+  beside `[tool.pytest.ini_options]`, by the same rules. The headers are matched whole (`[tool.pytestx]`,
+  `[tool.pytest.foo]` and `[[tool.pytest]]` are other tables and give nothing), and a quoted or dotted key in a header
+  is not read. When a file holds both tables their entries are merged into one, and the native value wins over the
+  `ini_options` one of the same key, whatever pytest itself does with a file that has both (TI09 does not model it).
+  A table that cannot be read is refused like the other config texts (`too-large`, `invalid-toml`).
 - **Playwright per-project settings.** Only the top-level keys are read. `projects[].retries`, `projects[].grep`,
   `projects[].testMatch` and everything under `use` are not.
 - **Vitest and jest projects are matched by identity.** The object projects of a `projects` list are matched by name
@@ -607,6 +630,49 @@ Other ways a change can weaken tests without being seen:
   back from the code under test.
 - A **mock** introduced in a **setup file** that the diff does not show as a test file, so a test passes against a
   stand-in.
+
+## Python parity
+
+The Python column below is what the signals do for pytest and unittest test files today, each cell grounded in a fixture
+under `fixtures/test-integrity/` or `fixtures/py-index/` that a test pins. `caught` means a must-trigger case and a
+must-not-trigger case exist; it does not mean every spelling is seen (see the Python misses after the table).
+
+| Signal | JS/TS | Python |
+| --- | --- | --- |
+| TI01 deleted test file | caught — `block-code-stays` | caught — `block-root-tests` and `pass-init-py` |
+| TI02 removed test | caught — `block-removed-it` | caught — `block-pytest-removed`, `block-unittest-method-removed`, and through aliases `block-pytest-alias-marked-removed` |
+| TI03 added skip | caught — `block-it-skip-existing` | caught — `block-pytest-decorator`, the `*-alias-*` cases, `@unittest.expectedFailure` and `pytest.xfail(` |
+| TI04 focused run | caught — `block-it-only` | not applicable — pytest has no `.only` |
+| TI05 emptied test | caught — `block-emptied` | caught — `block-pytest-emptied`, `block-pytest-alias-raises-removed`, `pass-pytest-alias-emptied-skipped` |
+| TI06 weakened assertion | caught — `warn-assert-ok` | caught — `warn-py-assert-truthy`, `warn-pytest-alias-approx-truthy` |
+| TI07 expected value edited | caught — `warn-tobe-number` | caught — `warn-pytest-eq` and `warn-unittest-assertequal`, through the Python index |
+| TI08 snapshot and update flags | caught — snapshot files and `test*` scripts | caught — the pytest config files (`pytest.ini`, `tox.ini`, `setup.cfg`, `pyproject.toml`) |
+| TI09 runner config loosened | caught — vitest, jest, mocha and playwright configs | caught — `block-pyproject-testpaths-narrowed`, `block-pytest-native-*` for the `[tool.pytest]` table |
+| TI10 test script weakened | caught — `package.json` scripts | missed — only `package.json` scripts are read, not `tox.ini` commands or a Makefile |
+| TI11 test step removed from CI | caught — workflow commands | caught — `pytest`, `python -m pytest`, `python -m unittest`, `tox` and `nox` commands in workflows |
+| TI12 module under test mocked | caught — `vi.mock` and `jest.mock` of the module under test | caught — `patch` and `mock.patch` of it, through the Python index |
+| TI13 coverage exclusion | caught — Istanbul, V8 and C8 hints | caught — `block-pragma-*` and `pass-pragma-*` for `# pragma: no cover` |
+| TI14 pharn-ci config loosened | caught — the config file | not applicable — it reads the pharn-ci config, not test code |
+| TI15 test value hard-coded | caught — JS/TS test and source files | caught — Python test and source files |
+| TI16 suppression added | caught — ESLint, TypeScript and Biome comments | caught — `noqa`, `type`, `pylint` and `pyright` comments |
+
+**Python misses.** What the Python column does not see:
+
+- `monkeypatch.setattr` object forms are read only when the object is a dotted name and the attribute a string
+  literal; `monkeypatch.setattr(make_obj(), name, …)` is not, and an aliased mock callee (`from unittest import mock as mk`, then
+  `mk.patch(…)`) is read as written, so TI12 does not see it. The assertion, marker and fixture names of TI02, TI05 and
+  TI06 are resolved through top-level imports; mock callees are not.
+- `conftest.py` is a test-config name for the sources but nothing in it is read: a marker, a fixture or an option set
+  there is not seen, and neither is `PYTEST_ADDOPTS` or a `-c` config flag.
+- `request.node.add_marker(pytest.mark.skip)` and a marker kept in a variable (`sm = pytest.mark.skip`, `@sm`) are not
+  read as skips.
+- An alias is read only when it is bound by a top-level `import` or `from … import` statement at column 0. One bound
+  inside an `if`, a `try` or a function, in a docstring, by a backslash continuation, or by `from pytest import *`
+  (`import *` binds nothing) is not. A reassignment after the import (`pt = pytest`) is not followed, and a later
+  top-level import of the same name replaces the earlier binding, so `import os as pt` after `import pytest as pt` hides
+  pytest.
+- `[tool.pytest]` and `[tool.pytest.ini_options]` in one `pyproject.toml` are merged into one table in which the native
+  value wins, which is not necessarily what pytest does; a header written with a quoted or dotted key is not read.
 
 ## 2. When an input is missing
 

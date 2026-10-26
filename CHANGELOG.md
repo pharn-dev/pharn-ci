@@ -9,6 +9,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- Python test-integrity parity with JS/TS. **TI03** and the Python test index now resolve pytest marker and unittest
+  decorator aliases bound by a test file's own top-level imports (`import pytest as pt`, `from pytest import mark as m`,
+  `from unittest import skipIf as si`), so TI02, TI05 and TI06 see through them too; TI03 also reads
+  `@unittest.expectedFailure` and `pytest.xfail(`. **TI09** now reads pytest 9's native `[tool.pytest]` table of
+  `pyproject.toml` beside `[tool.pytest.ini_options]`. The tests that need `python3` now fail, instead of skipping,
+  when it is missing. `docs/LIMITS.md` gains a Python parity table and the list of Python misses.
 - Signals **TI02** (a test removed) and **TI05** (assertions emptied or dropped), the first signals that compare the text
   of the test files a change modifies at the merge base and at HEAD (JS/TS and, through the Python test index, `.py`
   files), and the codes `TEST_INTEGRITY_TI02`, `TEST_INTEGRITY_TI05` and `TEST_INTEGRITY_INDEX_UNAVAILABLE`. TI02 reports a

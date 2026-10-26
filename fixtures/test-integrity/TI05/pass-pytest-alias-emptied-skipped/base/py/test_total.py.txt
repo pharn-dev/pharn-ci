@@ -1,0 +1,8 @@
+import pytest as pt
+
+from cart import total
+
+
+def test_total():
+    result = total([2, 3])
+    assert result == 5

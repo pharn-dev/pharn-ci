@@ -5,6 +5,8 @@
  * comment, a string, `if (x) this.skip()`, `solver.fit(x)`) is not read.
  */
 
+import { resolvePythonName } from "./pythonAliases.js";
+
 /** The language a test file's one-line forms are read in. */
 export type TestLanguage = "jsts" | "python" | "go";
 
@@ -208,7 +210,27 @@ const PYTHON_DECORATORS: ReadonlyMap<string, "always" | "never" | "by-argument">
   ["unittest.skip", "never"],
   ["unittest.skipIf", "always"],
   ["unittest.skipUnless", "always"],
+  ["unittest.expectedFailure", "never"],
 ]);
+
+/** The Python calls in a test body that stop or fail the test they sit in. */
+const PYTHON_CALLS: ReadonlySet<string> = new Set(["pytest.skip", "pytest.xfail"]);
+
+/**
+ * The name `written` is in `table`: literally first (so `@pytest.mark.skip` matches whatever `pytest` is bound to), then,
+ * when the file's top-level imports are known, by replacing its first segment with the name it is bound to. The table's
+ * own name is returned, so a respelled line keeps the key of the line it replaces.
+ */
+function canonicalPython(
+  written: string,
+  table: ReadonlyMap<string, unknown> | ReadonlySet<string>,
+  aliases: ReadonlyMap<string, string> | undefined,
+): string | null {
+  if (table.has(written)) return written;
+  if (aliases === undefined) return null;
+  const resolved = resolvePythonName(written, aliases);
+  return resolved !== null && table.has(resolved) ? resolved : null;
+}
 
 function dottedEnd(text: string, start: number): number {
   let i = start;
@@ -225,12 +247,18 @@ function isKeywordArg(arg: string): boolean {
   return arg.charAt(i) === "=" && arg.charAt(i + 1) !== "=";
 }
 
-/** Reads a Python skip decorator or `pytest.skip(` at the start of a line; null for anything else. */
-export function parsePythonSkip(text: string): PythonSkipLine | null {
+/**
+ * Reads a Python skip decorator, or `pytest.skip(` / `pytest.xfail(`, at the start of a line; null for anything else.
+ * With `aliases` (the file's top-level imports, see `pythonImportAliases`) a name that is not in the tables as written
+ * is also tried with its first segment replaced (`@pt.mark.skip` under `import pytest as pt`, `sk("r")` under `from
+ * pytest import skip as sk`). The `token` returned is the table's name, whatever the spelling.
+ */
+export function parsePythonSkip(text: string, aliases?: ReadonlyMap<string, string>): PythonSkipLine | null {
   const line = text.trimStart();
   if (line.startsWith("@")) {
     const end = dottedEnd(line, 1);
-    const token = line.slice(1, end);
+    const token = canonicalPython(line.slice(1, end), PYTHON_DECORATORS, aliases);
+    if (token === null) return null;
     const rule = PYTHON_DECORATORS.get(token);
     if (rule === undefined) return null;
     let i = end;
@@ -241,11 +269,13 @@ export function parsePythonSkip(text: string): PythonSkipLine | null {
       (rule === "by-argument" && arg !== "" && stringContent(arg, true) === null && !isKeywordArg(arg));
     return { kind: "decorator", token, name: argName(arg, true), conditional };
   }
-  if (!line.startsWith("pytest.skip")) return null;
-  let i = "pytest.skip".length;
+  const callEnd = dottedEnd(line, 0);
+  const call = canonicalPython(line.slice(0, callEnd), PYTHON_CALLS, aliases);
+  if (call === null) return null;
+  let i = callEnd;
   while (isSpace(line.charAt(i))) i++;
   if (line.charAt(i) !== "(") return null;
-  return { kind: "call", token: "pytest.skip", name: argName(scanArg(line, i + 1).text, true), conditional: false };
+  return { kind: "call", token: call, name: argName(scanArg(line, i + 1).text, true), conditional: false };
 }
 
 export interface GoSkipLine {

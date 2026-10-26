@@ -1,0 +1,7 @@
+import pytest as pt
+
+from cart import total
+
+
+def test_rejects():
+    total([-1])

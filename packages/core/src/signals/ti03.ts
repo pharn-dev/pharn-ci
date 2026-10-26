@@ -1,6 +1,8 @@
 import type { DiffFile, DiffHunk } from "../diff/unified.js";
 import type { TestIntegritySignal } from "../report.js";
 import { isTestFile } from "../testFiles.js";
+import type { TestSourceSide, TestSources } from "../testSources.js";
+import { pythonImportAliases } from "./pythonAliases.js";
 import {
   type JsTestLine,
   opensPythonTest,
@@ -71,8 +73,16 @@ function jsSkip(parsed: JsTestLine): SkipLine | null {
   }
 }
 
-function pythonSkip(text: string): SkipLine | null {
-  const parsed = parsePythonSkip(text);
+/**
+ * The skip a Python line makes. The literal spelling is tried first; the file's aliases are asked for (and read from the
+ * text, once) only when the line has the shape of a decorator or a call and the literal spelling is not a skip.
+ */
+function pythonSkip(text: string, aliases: AliasSource | undefined): SkipLine | null {
+  let parsed = parsePythonSkip(text);
+  if (parsed === null && aliases !== undefined && (text.includes("@") || text.includes("("))) {
+    const map = aliases();
+    if (map !== undefined) parsed = parsePythonSkip(text, map);
+  }
   if (parsed === null) return null;
   const key = keyOf(parsed.token, parsed.name);
   if (parsed.kind === "call") return { key, shape: "in-body", name: parsed.name };
@@ -84,8 +94,8 @@ function goSkip(text: string): SkipLine | null {
   return parsed === null ? null : { key: keyOf(parsed.token, parsed.name), shape: "in-body", name: parsed.name };
 }
 
-function readSkip(language: TestLanguage, text: string): SkipLine | null {
-  if (language === "python") return pythonSkip(text);
+function readSkip(language: TestLanguage, text: string, aliases?: AliasSource): SkipLine | null {
+  if (language === "python") return pythonSkip(text, aliases);
   if (language === "go") return goSkip(text);
   const parsed = parseJsTestCall(text);
   return parsed === null ? null : jsSkip(parsed);
@@ -103,12 +113,12 @@ function removedOpenings(hunks: readonly DiffHunk[]): Set<string> {
   return names;
 }
 
-/** The skip lines the file's removed lines held, as keys. */
-function removedSkips(hunks: readonly DiffHunk[], language: TestLanguage): Set<string> {
+/** The skip lines the file's removed lines held, as keys (read with the base side's aliases). */
+function removedSkips(hunks: readonly DiffHunk[], language: TestLanguage, aliases?: AliasSource): Set<string> {
   const keys = new Set<string>();
   for (const hunk of hunks) {
     for (const entry of hunk.removed) {
-      const skip = readSkip(language, entry.text);
+      const skip = readSkip(language, entry.text, aliases);
       if (skip !== null) keys.add(skip.key);
     }
   }
@@ -148,13 +158,52 @@ interface Found {
   category: Category;
 }
 
-function findingsOf(file: DiffFile, hunks: readonly DiffHunk[], language: TestLanguage): Found[] {
-  const before = removedSkips(hunks, language);
+/** The alias map of a Python test file, read from its text on the first call and kept; undefined with no text. */
+type AliasSource = () => ReadonlyMap<string, string> | undefined;
+
+/** The text of each file one side of the test sources holds, by path; empty when the side is unavailable or absent. */
+function textsOf(side: TestSourceSide | undefined): ReadonlyMap<string, string> {
+  const texts = new Map<string, string>();
+  if (side !== undefined && "files" in side) for (const file of side.files) texts.set(file.path, file.text);
+  return texts;
+}
+
+/** An alias source that reads `text` the first time it is asked, and never when it is not. */
+function sourceOf(text: string | undefined): AliasSource {
+  let map: ReadonlyMap<string, string> | undefined;
+  return () => {
+    if (map === undefined && text !== undefined) map = pythonImportAliases(text);
+    return map;
+  };
+}
+
+/**
+ * The alias sources of a Python test file: the base one reads the base text of its old path, the head one the head text
+ * of its path. A side without text takes the other side's map; with neither, there is no map.
+ */
+function aliasesOf(
+  file: DiffFile,
+  language: TestLanguage,
+  texts: { base: ReadonlyMap<string, string>; head: ReadonlyMap<string, string> },
+): { base?: AliasSource; head?: AliasSource } {
+  if (language !== "python") return {};
+  const base = sourceOf(texts.base.get(file.oldPath));
+  const head = sourceOf(texts.head.get(file.path));
+  return { base: () => base() ?? head(), head: () => head() ?? base() };
+}
+
+function findingsOf(
+  file: DiffFile,
+  hunks: readonly DiffHunk[],
+  language: TestLanguage,
+  aliases: { base?: AliasSource; head?: AliasSource },
+): Found[] {
+  const before = removedSkips(hunks, language, aliases.base);
   const openings = language === "jsts" ? removedOpenings(hunks) : new Set<string>();
   const found: Found[] = [];
   for (const hunk of hunks) {
     hunk.added.forEach((entry, index) => {
-      const skip = readSkip(language, entry.text);
+      const skip = readSkip(language, entry.text, aliases.head);
       if (skip === null || before.has(skip.key)) return;
       let category: Category;
       if (file.status === "added") category = "adds";
@@ -172,21 +221,32 @@ function findingsOf(file: DiffFile, hunks: readonly DiffHunk[], language: TestLa
  * TI03, a skip added to a test file. An added line that starts with a skip form is one signal, at its line in the new
  * file: JS/TS `.skip`, `x`-prefixed heads, `.todo`, `.fails`, `skipIf(true)`, `runIf(false)` and the conditional
  * `skipIf`/`runIf`/nameless `.skip(cond)`, `this.skip(`; Python `@pytest.mark.skip`, `skipif`, `xfail`,
- * `@unittest.skip*` and `pytest.skip(`; Go `t.Skip(`, `t.Skipf(`, `t.SkipNow(`. A removed line of the same file with the
- * same form and name (an edit or a move) accounts for it. The rest is sorted in this order: a file the change adds, a
- * conditional skip, a skip inside a body, a skip of a test the change adds (all `warn`), and an unconditional skip of a
- * test the diff shows existed (the mode as its severity). At most 20 per file: the skips of existing tests first, then
- * the rest, each on the lowest line numbers. The detail is one fixed sentence per category; no test text reaches a
- * signal.
+ * `@unittest.skip*`, `@unittest.expectedFailure`, `pytest.skip(` and `pytest.xfail(`; Go `t.Skip(`, `t.Skipf(`,
+ * `t.SkipNow(`. A removed line of the same file with the same form and name (an edit or a move) accounts for it. The rest
+ * is sorted in this order: a file the change adds, a conditional skip, a skip inside a body, a skip of a test the change
+ * adds (all `warn`), and an unconditional skip of a test the diff shows existed (the mode as its severity). At most 20
+ * per file: the skips of existing tests first, then the rest, each on the lowest line numbers. The detail is one fixed
+ * sentence per category; no test text reaches a signal.
+ *
+ * A Python line is also read through the aliases the test file binds with its own top-level `import` / `from` lines
+ * (`import pytest as pt`, `from pytest import mark as m`, `from unittest import skipIf as si`), taken from `sources`:
+ * removed lines with the base text of the file's old path, added lines with the head text of its path; with only one
+ * side's text that map serves both, and with neither (no `sources`, a side unavailable or without the file) only the
+ * literal spellings are read, as before. The literal spelling is always tried first, so an alias can only add a match.
  */
-export function detectTI03(diff: readonly DiffFile[], mode: "block" | "warn"): TestIntegritySignal[] {
+export function detectTI03(
+  diff: readonly DiffFile[],
+  mode: "block" | "warn",
+  sources?: TestSources,
+): TestIntegritySignal[] {
   const signals: TestIntegritySignal[] = [];
+  const texts = { base: textsOf(sources?.base), head: textsOf(sources?.head) };
   for (const file of diff) {
     if (file.hunks === undefined || file.binary === true || !isTestFile(file.path)) continue;
     const language = testLanguage(file.path);
     if (language === null) continue;
     const rank = (category: Category) => (category === "existing" ? 0 : 1);
-    const found = findingsOf(file, file.hunks, language).sort(
+    const found = findingsOf(file, file.hunks, language, aliasesOf(file, language, texts)).sort(
       (a, b) => rank(a.category) - rank(b.category) || a.line - b.line,
     );
     for (const { line, category } of found.slice(0, MAX_PER_FILE)) {

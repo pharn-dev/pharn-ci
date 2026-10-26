@@ -1,0 +1,9 @@
+diff --git a/pyproject.toml b/pyproject.toml
+index 1111111..2222222 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -5,2 +5,2 @@ name = "demo"
+-log_cli = false
+-faulthandler_timeout = 10
++log_cli = true
++faulthandler_timeout = 20

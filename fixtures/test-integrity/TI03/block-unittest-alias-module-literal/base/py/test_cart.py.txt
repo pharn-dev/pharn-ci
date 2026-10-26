@@ -1,0 +1,11 @@
+import unittest
+
+from cart import total
+
+
+class TestCart(unittest.TestCase):
+    def test_total(self):
+        self.assertEqual(total([2, 3]), 5)
+
+    def test_empty(self):
+        self.assertEqual(total([]), 0)

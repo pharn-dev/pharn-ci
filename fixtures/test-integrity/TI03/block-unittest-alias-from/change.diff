@@ -1,0 +1,12 @@
+diff --git a/py/test_cart.py b/py/test_cart.py
+index 1111111..2222222 100644
+--- a/py/test_cart.py
++++ b/py/test_cart.py
+@@ -8,0 +9 @@ class TestCart(unittest.TestCase):
++    @skip("r")
+@@ -11,0 +13 @@ class TestCart(unittest.TestCase):
++    @si(sys.platform == "win32", "needs posix")
+@@ -14,0 +17 @@ class TestCart(unittest.TestCase):
++    @skipUnless(sys.platform == "linux", "needs linux")
+@@ -17,0 +21 @@ class TestCart(unittest.TestCase):
++    @ef
