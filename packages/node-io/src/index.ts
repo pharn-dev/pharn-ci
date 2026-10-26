@@ -4,6 +4,14 @@ export { type CoverageReadDeps, type ReadCoverageFilesOptions, readCoverageFiles
 export { discoverCoverage, type ReadDiscoveredCoverageOptions, readDiscoveredCoverage } from "./discovery.js";
 export { GIT_TIMEOUT_MS, listDir, readFile, readFileStream, runGit, runGitBatch, streamGit } from "./io.js";
 export {
+  lstatPath,
+  type PathStat,
+  POLICY_FILE_MAX_BYTES,
+  type PolicyFileDeps,
+  PolicyFileError,
+  readPolicyFile,
+} from "./policyFile.js";
+export {
   indexPythonTests,
   type PythonIndexDeps,
   type PythonSpawn,

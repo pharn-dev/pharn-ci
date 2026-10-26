@@ -130,6 +130,10 @@ const MESSAGE_HINTS: Record<MessageCode, Hint> = {
     "Move the literal value into the environment, like the other secrets in the same file, so no secret is committed.",
   AGENT_CONFIG_SECRET_UNSCANNED:
     "Keep agent config files text, under 512 KiB and inside the repository, and run on a checkout of the pull request head (not PR-number mode or a compare-API diff), so they can be scanned for committed secrets.",
+  POLICY_UNAVAILABLE:
+    "Give the job `permissions: id-token: write` (fork pull requests get no OIDC token), check that the pharn.dev app is installed for this repository, or set `policy: never` to run without the org policy.",
+  POLICY_OVERRIDE_IGNORED:
+    "The org policy's value applies. Raise the setting in the workflow inputs or `.pharn/ci.yml` to match, or ask the policy owner to change the policy.",
 };
 
 /** The hint text for a message code, or undefined when it has none. `label` is the report's accept label. */

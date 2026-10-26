@@ -193,7 +193,9 @@ export type MessageCode =
   | "AGENT_CONFIG_SECRET_S09"
   | "AGENT_CONFIG_SECRET_S10"
   | "AGENT_CONFIG_SECRET_S11"
-  | "AGENT_CONFIG_SECRET_UNSCANNED";
+  | "AGENT_CONFIG_SECRET_UNSCANNED"
+  | "POLICY_UNAVAILABLE"
+  | "POLICY_OVERRIDE_IGNORED";
 
 export interface Message {
   level: MessageLevel;
@@ -290,6 +292,11 @@ export interface BuildReportInput {
    * messages as given. They name a shape id, paths and line numbers, never a value. Absent or empty adds nothing.
    */
   agentConfigSecretMessages?: readonly Message[];
+  /**
+   * The messages of the org policy (see `policyUnavailableMessage` and `policyOverrideIgnoredMessage`), appended after
+   * the agent config secret messages as given, so they follow every other message. Absent or empty adds nothing.
+   */
+  policyMessages?: readonly Message[];
 }
 
 /**
@@ -573,10 +580,13 @@ export function buildReport(input: BuildReportInput): Report {
 
   const testIntegrity = input.testIntegrity;
   if (testIntegrity?.ignoredConfig !== undefined) {
+    // With an org policy the message still names the mode the input and the config gave: the policy's own effect is
+    // told by the policy messages.
+    const against = testIntegrity.baseMode ?? testIntegrity.mode;
     messages.push({
       level: "warn",
       code: "TEST_INTEGRITY_MODE_IGNORED",
-      text: `.pharn/ci.yml sets test_integrity.mode to ${testIntegrity.ignoredConfig}, which is looser than ${testIntegrity.mode}, so ${testIntegrity.mode} applies: the config can only make the check stricter.`,
+      text: `.pharn/ci.yml sets test_integrity.mode to ${testIntegrity.ignoredConfig}, which is looser than ${against}, so ${against} applies: the config can only make the check stricter.`,
     });
   }
   if (testIntegrity?.mode === "off") {
@@ -631,6 +641,7 @@ export function buildReport(input: BuildReportInput): Report {
   }
 
   messages.push(...(input.agentConfigSecretMessages ?? []));
+  messages.push(...(input.policyMessages ?? []));
 
   return {
     schemaVersion: 2,

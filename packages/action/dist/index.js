@@ -44,8 +44,8 @@ var require_tunnel = __commonJS({
     "use strict";
     var net = __require("net");
     var tls = __require("tls");
-    var http = __require("http");
-    var https = __require("https");
+    var http2 = __require("http");
+    var https2 = __require("https");
     var events = __require("events");
     var assert = __require("assert");
     var util = __require("util");
@@ -55,24 +55,24 @@ var require_tunnel = __commonJS({
     exports.httpsOverHttps = httpsOverHttps2;
     function httpOverHttp2(options) {
       var agent2 = new TunnelingAgent(options);
-      agent2.request = http.request;
+      agent2.request = http2.request;
       return agent2;
     }
     function httpsOverHttp2(options) {
       var agent2 = new TunnelingAgent(options);
-      agent2.request = http.request;
+      agent2.request = http2.request;
       agent2.createSocket = createSecureSocket;
       agent2.defaultPort = 443;
       return agent2;
     }
     function httpOverHttps2(options) {
       var agent2 = new TunnelingAgent(options);
-      agent2.request = https.request;
+      agent2.request = https2.request;
       return agent2;
     }
     function httpsOverHttps2(options) {
       var agent2 = new TunnelingAgent(options);
-      agent2.request = https.request;
+      agent2.request = https2.request;
       agent2.createSocket = createSecureSocket;
       agent2.defaultPort = 443;
       return agent2;
@@ -81,7 +81,7 @@ var require_tunnel = __commonJS({
       var self = this;
       self.options = options || {};
       self.proxyOptions = self.options.proxy || {};
-      self.maxSockets = self.options.maxSockets || http.Agent.defaultMaxSockets;
+      self.maxSockets = self.options.maxSockets || http2.Agent.defaultMaxSockets;
       self.requests = [];
       self.sockets = [];
       self.on("free", function onFree(socket, host, port, localAddress) {
@@ -1500,36 +1500,36 @@ var require_diagnostics = __commonJS({
       const debuglog = fetchDebuglog.enabled ? fetchDebuglog : undiciDebugLog;
       diagnosticsChannel.channel("undici:client:beforeConnect").subscribe((evt) => {
         const {
-          connectParams: { version, protocol, port, host }
+          connectParams: { version: version2, protocol, port, host }
         } = evt;
         debuglog(
           "connecting to %s using %s%s",
           `${host}${port ? `:${port}` : ""}`,
           protocol,
-          version
+          version2
         );
       });
       diagnosticsChannel.channel("undici:client:connected").subscribe((evt) => {
         const {
-          connectParams: { version, protocol, port, host }
+          connectParams: { version: version2, protocol, port, host }
         } = evt;
         debuglog(
           "connected to %s using %s%s",
           `${host}${port ? `:${port}` : ""}`,
           protocol,
-          version
+          version2
         );
       });
       diagnosticsChannel.channel("undici:client:connectError").subscribe((evt) => {
         const {
-          connectParams: { version, protocol, port, host },
+          connectParams: { version: version2, protocol, port, host },
           error: error2
         } = evt;
         debuglog(
           "connection to %s using %s%s errored - %s",
           `${host}${port ? `:${port}` : ""}`,
           protocol,
-          version,
+          version2,
           error2.message
         );
       });
@@ -1578,31 +1578,31 @@ var require_diagnostics = __commonJS({
         const debuglog = undiciDebugLog.enabled ? undiciDebugLog : websocketDebuglog;
         diagnosticsChannel.channel("undici:client:beforeConnect").subscribe((evt) => {
           const {
-            connectParams: { version, protocol, port, host }
+            connectParams: { version: version2, protocol, port, host }
           } = evt;
           debuglog(
             "connecting to %s%s using %s%s",
             host,
             port ? `:${port}` : "",
             protocol,
-            version
+            version2
           );
         });
         diagnosticsChannel.channel("undici:client:connected").subscribe((evt) => {
           const {
-            connectParams: { version, protocol, port, host }
+            connectParams: { version: version2, protocol, port, host }
           } = evt;
           debuglog(
             "connected to %s%s using %s%s",
             host,
             port ? `:${port}` : "",
             protocol,
-            version
+            version2
           );
         });
         diagnosticsChannel.channel("undici:client:connectError").subscribe((evt) => {
           const {
-            connectParams: { version, protocol, port, host },
+            connectParams: { version: version2, protocol, port, host },
             error: error2
           } = evt;
           debuglog(
@@ -1610,7 +1610,7 @@ var require_diagnostics = __commonJS({
             host,
             port ? `:${port}` : "",
             protocol,
-            version,
+            version2,
             error2.message
           );
         });
@@ -7620,7 +7620,7 @@ var require_client = __commonJS({
     "use strict";
     var assert = __require("node:assert");
     var net = __require("node:net");
-    var http = __require("node:http");
+    var http2 = __require("node:http");
     var util = require_util();
     var { channels } = require_diagnostics();
     var Request = require_request();
@@ -7808,7 +7808,7 @@ var require_client = __commonJS({
         this[kUrl] = util.parseOrigin(url);
         this[kConnector] = connect2;
         this[kPipelining] = pipelining != null ? pipelining : 1;
-        this[kMaxHeadersSize] = maxHeaderSize || http.maxHeaderSize;
+        this[kMaxHeadersSize] = maxHeaderSize || http2.maxHeaderSize;
         this[kKeepAliveDefaultTimeout] = keepAliveTimeout == null ? 4e3 : keepAliveTimeout;
         this[kKeepAliveMaxTimeout] = keepAliveMaxTimeout == null ? 6e5 : keepAliveMaxTimeout;
         this[kKeepAliveTimeoutThreshold] = keepAliveTimeoutThreshold == null ? 2e3 : keepAliveTimeoutThreshold;
@@ -8615,7 +8615,7 @@ var require_agent = __commonJS({
     function defaultFactory(origin, opts) {
       return opts && opts.connections === 1 ? new Client(origin, opts) : new Pool(origin, opts);
     }
-    var Agent = class extends DispatcherBase {
+    var Agent3 = class extends DispatcherBase {
       constructor({ factory = defaultFactory, maxRedirections = 0, connect, ...options } = {}) {
         if (typeof factory !== "function") {
           throw new InvalidArgumentError("factory must be a function.");
@@ -8687,7 +8687,7 @@ var require_agent = __commonJS({
         await Promise.all(destroyPromises);
       }
     };
-    module.exports = Agent;
+    module.exports = Agent3;
   }
 });
 
@@ -8697,7 +8697,7 @@ var require_proxy_agent = __commonJS({
     "use strict";
     var { kProxy, kClose, kDestroy, kDispatch, kInterceptors } = require_symbols();
     var { URL: URL2 } = __require("node:url");
-    var Agent = require_agent();
+    var Agent3 = require_agent();
     var Pool = require_pool();
     var DispatcherBase = require_dispatcher_base();
     var { InvalidArgumentError, RequestAbortedError, SecureProxyConnectionError } = require_errors();
@@ -8812,7 +8812,7 @@ var require_proxy_agent = __commonJS({
           return agentFactory(origin2, options);
         };
         this[kClient] = clientFactory(url, { connect });
-        this[kAgent] = new Agent({
+        this[kAgent] = new Agent3({
           ...opts,
           factory,
           connect: async (opts2, callback) => {
@@ -8921,7 +8921,7 @@ var require_env_http_proxy_agent = __commonJS({
     var DispatcherBase = require_dispatcher_base();
     var { kClose, kDestroy, kClosed, kDestroyed, kDispatch, kNoProxyAgent, kHttpProxyAgent, kHttpsProxyAgent } = require_symbols();
     var ProxyAgent2 = require_proxy_agent();
-    var Agent = require_agent();
+    var Agent3 = require_agent();
     var DEFAULT_PORTS = {
       "http:": 80,
       "https:": 443
@@ -8941,7 +8941,7 @@ var require_env_http_proxy_agent = __commonJS({
           });
         }
         const { httpProxy, httpsProxy, noProxy, ...agentOpts } = opts;
-        this[kNoProxyAgent] = new Agent(agentOpts);
+        this[kNoProxyAgent] = new Agent3(agentOpts);
         const HTTP_PROXY = httpProxy ?? process.env.http_proxy ?? process.env.HTTP_PROXY;
         if (HTTP_PROXY) {
           this[kHttpProxyAgent] = new ProxyAgent2({ ...agentOpts, uri: HTTP_PROXY });
@@ -11286,7 +11286,7 @@ var require_mock_agent = __commonJS({
   "../../node_modules/.pnpm/undici@6.29.0/node_modules/undici/lib/mock/mock-agent.js"(exports, module) {
     "use strict";
     var { kClients } = require_symbols();
-    var Agent = require_agent();
+    var Agent3 = require_agent();
     var {
       kAgent,
       kMockAgentSet,
@@ -11313,7 +11313,7 @@ var require_mock_agent = __commonJS({
         if (opts?.agent && typeof opts.agent.dispatch !== "function") {
           throw new InvalidArgumentError("Argument opts.agent must implement Agent");
         }
-        const agent2 = opts?.agent ? opts.agent : new Agent(opts);
+        const agent2 = opts?.agent ? opts.agent : new Agent3(opts);
         this[kAgent] = agent2;
         this[kClients] = agent2[kClients];
         this[kOptions] = buildMockOptions(opts);
@@ -11417,9 +11417,9 @@ var require_global2 = __commonJS({
     "use strict";
     var globalDispatcher = /* @__PURE__ */ Symbol.for("undici.globalDispatcher.1");
     var { InvalidArgumentError } = require_errors();
-    var Agent = require_agent();
+    var Agent3 = require_agent();
     if (getGlobalDispatcher() === void 0) {
-      setGlobalDispatcher(new Agent());
+      setGlobalDispatcher(new Agent3());
     }
     function setGlobalDispatcher(agent2) {
       if (!agent2 || typeof agent2.dispatch !== "function") {
@@ -13601,7 +13601,7 @@ var require_fetch = __commonJS({
     function handleFetchDone(response) {
       finalizeAndReportTiming(response, "fetch");
     }
-    function fetch2(input, init = void 0) {
+    function fetch3(input, init = void 0) {
       webidl.argumentLengthCheck(arguments, 1, "globalThis.fetch");
       let p = createDeferredPromise();
       let requestObject;
@@ -14558,7 +14558,7 @@ var require_fetch = __commonJS({
       }
     }
     module.exports = {
-      fetch: fetch2,
+      fetch: fetch3,
       Fetch,
       fetching,
       finalizeAndReportTiming
@@ -18300,7 +18300,7 @@ var require_eventsource_stream = __commonJS({
     var COLON = 58;
     var SPACE = 32;
     var DATA = Buffer.from("data");
-    var EVENT = Buffer.from("event");
+    var EVENT2 = Buffer.from("event");
     var ID = Buffer.from("id");
     var RETRY = Buffer.from("retry");
     function isASCIINumberBytes(buffer, start) {
@@ -18477,7 +18477,7 @@ ${value}`;
           }
           return;
         }
-        if (isFieldName(line, fieldLength, EVENT)) {
+        if (isFieldName(line, fieldLength, EVENT2)) {
           const value = line.toString("utf8", valueStart);
           if (value.length > 0) {
             event.event = value;
@@ -18933,7 +18933,7 @@ var require_undici = __commonJS({
     var Dispatcher = require_dispatcher();
     var Pool = require_pool();
     var BalancedPool = require_balanced_pool();
-    var Agent = require_agent();
+    var Agent3 = require_agent();
     var ProxyAgent2 = require_proxy_agent();
     var EnvHttpProxyAgent = require_env_http_proxy_agent();
     var RetryAgent = require_retry_agent();
@@ -18956,7 +18956,7 @@ var require_undici = __commonJS({
     module.exports.Client = Client;
     module.exports.Pool = Pool;
     module.exports.BalancedPool = BalancedPool;
-    module.exports.Agent = Agent;
+    module.exports.Agent = Agent3;
     module.exports.ProxyAgent = ProxyAgent2;
     module.exports.EnvHttpProxyAgent = EnvHttpProxyAgent;
     module.exports.RetryAgent = RetryAgent;
@@ -19018,7 +19018,7 @@ var require_undici = __commonJS({
     module.exports.setGlobalDispatcher = setGlobalDispatcher;
     module.exports.getGlobalDispatcher = getGlobalDispatcher;
     var fetchImpl = require_fetch().fetch;
-    module.exports.fetch = async function fetch2(init, options = void 0) {
+    module.exports.fetch = async function fetch3(init, options = void 0) {
       try {
         return await fetchImpl(init, options);
       } catch (err) {
@@ -19073,10 +19073,10 @@ var require_proxy = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.getProxyUrl = getProxyUrl2;
-    exports.checkBypass = checkBypass;
+    exports.checkBypass = checkBypass2;
     function getProxyUrl2(reqUrl) {
       const usingSsl = reqUrl.protocol === "https:";
-      if (checkBypass(reqUrl)) {
+      if (checkBypass2(reqUrl)) {
         return void 0;
       }
       const proxyVar = (() => {
@@ -19088,21 +19088,21 @@ var require_proxy = __commonJS({
       })();
       if (proxyVar) {
         try {
-          return new DecodedURL(proxyVar);
+          return new DecodedURL2(proxyVar);
         } catch (_a) {
           if (!proxyVar.startsWith("http://") && !proxyVar.startsWith("https://"))
-            return new DecodedURL(`http://${proxyVar}`);
+            return new DecodedURL2(`http://${proxyVar}`);
         }
       } else {
         return void 0;
       }
     }
-    function checkBypass(reqUrl) {
+    function checkBypass2(reqUrl) {
       if (!reqUrl.hostname) {
         return false;
       }
       const reqHost = reqUrl.hostname;
-      if (isLoopbackAddress(reqHost)) {
+      if (isLoopbackAddress2(reqHost)) {
         return true;
       }
       const noProxy = process.env["no_proxy"] || process.env["NO_PROXY"] || "";
@@ -19128,11 +19128,11 @@ var require_proxy = __commonJS({
       }
       return false;
     }
-    function isLoopbackAddress(host) {
+    function isLoopbackAddress2(host) {
       const hostLower = host.toLowerCase();
       return hostLower === "localhost" || hostLower.startsWith("127.") || hostLower.startsWith("[::1]") || hostLower.startsWith("[0:0:0:0:0:0:0:1]");
     }
-    var DecodedURL = class extends URL {
+    var DecodedURL2 = class extends URL {
       constructor(url, base) {
         super(url, base);
         this._decodedUsername = decodeURIComponent(super.username);
@@ -19189,7 +19189,7 @@ var require_lib = __commonJS({
         return result;
       };
     })();
-    var __awaiter3 = exports && exports.__awaiter || function(thisArg, _arguments, P, generator) {
+    var __awaiter7 = exports && exports.__awaiter || function(thisArg, _arguments, P, generator) {
       function adopt(value) {
         return value instanceof P ? value : new P(function(resolve2) {
           resolve2(value);
@@ -19220,8 +19220,8 @@ var require_lib = __commonJS({
     exports.HttpClient = exports.HttpClientResponse = exports.HttpClientError = exports.MediaTypes = exports.Headers = exports.HttpCodes = void 0;
     exports.getProxyUrl = getProxyUrl2;
     exports.isHttps = isHttps;
-    var http = __importStar(__require("http"));
-    var https = __importStar(__require("https"));
+    var http2 = __importStar(__require("http"));
+    var https2 = __importStar(__require("https"));
     var pm = __importStar(require_proxy());
     var tunnel2 = __importStar(require_tunnel2());
     var undici_1 = require_undici();
@@ -19280,10 +19280,10 @@ var require_lib = __commonJS({
       HttpCodes2.ServiceUnavailable,
       HttpCodes2.GatewayTimeout
     ];
-    var RetryableHttpVerbs = ["OPTIONS", "GET", "DELETE", "HEAD"];
-    var ExponentialBackoffCeiling = 10;
-    var ExponentialBackoffTimeSlice = 5;
-    var HttpClientError = class _HttpClientError extends Error {
+    var RetryableHttpVerbs2 = ["OPTIONS", "GET", "DELETE", "HEAD"];
+    var ExponentialBackoffCeiling2 = 10;
+    var ExponentialBackoffTimeSlice2 = 5;
+    var HttpClientError2 = class _HttpClientError extends Error {
       constructor(message, statusCode) {
         super(message);
         this.name = "HttpClientError";
@@ -19291,14 +19291,14 @@ var require_lib = __commonJS({
         Object.setPrototypeOf(this, _HttpClientError.prototype);
       }
     };
-    exports.HttpClientError = HttpClientError;
-    var HttpClientResponse = class {
+    exports.HttpClientError = HttpClientError2;
+    var HttpClientResponse2 = class {
       constructor(message) {
         this.message = message;
       }
       readBody() {
-        return __awaiter3(this, void 0, void 0, function* () {
-          return new Promise((resolve2) => __awaiter3(this, void 0, void 0, function* () {
+        return __awaiter7(this, void 0, void 0, function* () {
+          return new Promise((resolve2) => __awaiter7(this, void 0, void 0, function* () {
             let output = Buffer.alloc(0);
             this.message.on("data", (chunk) => {
               output = Buffer.concat([output, chunk]);
@@ -19310,8 +19310,8 @@ var require_lib = __commonJS({
         });
       }
       readBodyBuffer() {
-        return __awaiter3(this, void 0, void 0, function* () {
-          return new Promise((resolve2) => __awaiter3(this, void 0, void 0, function* () {
+        return __awaiter7(this, void 0, void 0, function* () {
+          return new Promise((resolve2) => __awaiter7(this, void 0, void 0, function* () {
             const chunks = [];
             this.message.on("data", (chunk) => {
               chunks.push(chunk);
@@ -19323,7 +19323,7 @@ var require_lib = __commonJS({
         });
       }
     };
-    exports.HttpClientResponse = HttpClientResponse;
+    exports.HttpClientResponse = HttpClientResponse2;
     function isHttps(requestUrl) {
       const parsedUrl = new URL(requestUrl);
       return parsedUrl.protocol === "https:";
@@ -19367,42 +19367,42 @@ var require_lib = __commonJS({
         }
       }
       options(requestUrl, additionalHeaders) {
-        return __awaiter3(this, void 0, void 0, function* () {
+        return __awaiter7(this, void 0, void 0, function* () {
           return this.request("OPTIONS", requestUrl, null, additionalHeaders || {});
         });
       }
       get(requestUrl, additionalHeaders) {
-        return __awaiter3(this, void 0, void 0, function* () {
+        return __awaiter7(this, void 0, void 0, function* () {
           return this.request("GET", requestUrl, null, additionalHeaders || {});
         });
       }
       del(requestUrl, additionalHeaders) {
-        return __awaiter3(this, void 0, void 0, function* () {
+        return __awaiter7(this, void 0, void 0, function* () {
           return this.request("DELETE", requestUrl, null, additionalHeaders || {});
         });
       }
       post(requestUrl, data, additionalHeaders) {
-        return __awaiter3(this, void 0, void 0, function* () {
+        return __awaiter7(this, void 0, void 0, function* () {
           return this.request("POST", requestUrl, data, additionalHeaders || {});
         });
       }
       patch(requestUrl, data, additionalHeaders) {
-        return __awaiter3(this, void 0, void 0, function* () {
+        return __awaiter7(this, void 0, void 0, function* () {
           return this.request("PATCH", requestUrl, data, additionalHeaders || {});
         });
       }
       put(requestUrl, data, additionalHeaders) {
-        return __awaiter3(this, void 0, void 0, function* () {
+        return __awaiter7(this, void 0, void 0, function* () {
           return this.request("PUT", requestUrl, data, additionalHeaders || {});
         });
       }
       head(requestUrl, additionalHeaders) {
-        return __awaiter3(this, void 0, void 0, function* () {
+        return __awaiter7(this, void 0, void 0, function* () {
           return this.request("HEAD", requestUrl, null, additionalHeaders || {});
         });
       }
       sendStream(verb, requestUrl, stream, additionalHeaders) {
-        return __awaiter3(this, void 0, void 0, function* () {
+        return __awaiter7(this, void 0, void 0, function* () {
           return this.request(verb, requestUrl, stream, additionalHeaders);
         });
       }
@@ -19411,14 +19411,14 @@ var require_lib = __commonJS({
        * Be aware that not found returns a null.  Other errors (4xx, 5xx) reject the promise
        */
       getJson(requestUrl_1) {
-        return __awaiter3(this, arguments, void 0, function* (requestUrl, additionalHeaders = {}) {
+        return __awaiter7(this, arguments, void 0, function* (requestUrl, additionalHeaders = {}) {
           additionalHeaders[Headers2.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers2.Accept, MediaTypes2.ApplicationJson);
           const res = yield this.get(requestUrl, additionalHeaders);
           return this._processResponse(res, this.requestOptions);
         });
       }
       postJson(requestUrl_1, obj_1) {
-        return __awaiter3(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter7(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
           const data = JSON.stringify(obj, null, 2);
           additionalHeaders[Headers2.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers2.Accept, MediaTypes2.ApplicationJson);
           additionalHeaders[Headers2.ContentType] = this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes2.ApplicationJson);
@@ -19427,7 +19427,7 @@ var require_lib = __commonJS({
         });
       }
       putJson(requestUrl_1, obj_1) {
-        return __awaiter3(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter7(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
           const data = JSON.stringify(obj, null, 2);
           additionalHeaders[Headers2.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers2.Accept, MediaTypes2.ApplicationJson);
           additionalHeaders[Headers2.ContentType] = this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes2.ApplicationJson);
@@ -19436,7 +19436,7 @@ var require_lib = __commonJS({
         });
       }
       patchJson(requestUrl_1, obj_1) {
-        return __awaiter3(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter7(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
           const data = JSON.stringify(obj, null, 2);
           additionalHeaders[Headers2.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers2.Accept, MediaTypes2.ApplicationJson);
           additionalHeaders[Headers2.ContentType] = this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes2.ApplicationJson);
@@ -19450,13 +19450,13 @@ var require_lib = __commonJS({
        * Prefer get, del, post and patch
        */
       request(verb, requestUrl, data, headers) {
-        return __awaiter3(this, void 0, void 0, function* () {
+        return __awaiter7(this, void 0, void 0, function* () {
           if (this._disposed) {
             throw new Error("Client has already been disposed.");
           }
           const parsedUrl = new URL(requestUrl);
           let info2 = this._prepareRequest(verb, parsedUrl, headers);
-          const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb) ? this._maxRetries + 1 : 1;
+          const maxTries = this._allowRetries && RetryableHttpVerbs2.includes(verb) ? this._maxRetries + 1 : 1;
           let numTries = 0;
           let response;
           do {
@@ -19524,7 +19524,7 @@ var require_lib = __commonJS({
        * @param data
        */
       requestRaw(info2, data) {
-        return __awaiter3(this, void 0, void 0, function* () {
+        return __awaiter7(this, void 0, void 0, function* () {
           return new Promise((resolve2, reject) => {
             function callbackForResult(err, res) {
               if (err) {
@@ -19560,7 +19560,7 @@ var require_lib = __commonJS({
           }
         }
         const req = info2.httpModule.request(info2.options, (msg) => {
-          const res = new HttpClientResponse(msg);
+          const res = new HttpClientResponse2(msg);
           handleResult(void 0, res);
         });
         let socket;
@@ -19610,7 +19610,7 @@ var require_lib = __commonJS({
         const info2 = {};
         info2.parsedUrl = requestUrl;
         const usingSsl = info2.parsedUrl.protocol === "https:";
-        info2.httpModule = usingSsl ? https : http;
+        info2.httpModule = usingSsl ? https2 : http2;
         const defaultPort = usingSsl ? 443 : 80;
         info2.options = {};
         info2.options.host = info2.parsedUrl.hostname;
@@ -19631,9 +19631,9 @@ var require_lib = __commonJS({
       }
       _mergeHeaders(headers) {
         if (this.requestOptions && this.requestOptions.headers) {
-          return Object.assign({}, lowercaseKeys2(this.requestOptions.headers), lowercaseKeys2(headers || {}));
+          return Object.assign({}, lowercaseKeys3(this.requestOptions.headers), lowercaseKeys3(headers || {}));
         }
-        return lowercaseKeys2(headers || {});
+        return lowercaseKeys3(headers || {});
       }
       /**
        * Gets an existing header value or returns a default.
@@ -19645,7 +19645,7 @@ var require_lib = __commonJS({
       _getExistingOrDefaultHeader(additionalHeaders, header, _default) {
         let clientHeader;
         if (this.requestOptions && this.requestOptions.headers) {
-          const headerValue = lowercaseKeys2(this.requestOptions.headers)[header];
+          const headerValue = lowercaseKeys3(this.requestOptions.headers)[header];
           if (headerValue) {
             clientHeader = typeof headerValue === "number" ? headerValue.toString() : headerValue;
           }
@@ -19669,7 +19669,7 @@ var require_lib = __commonJS({
       _getExistingOrDefaultContentTypeHeader(additionalHeaders, _default) {
         let clientHeader;
         if (this.requestOptions && this.requestOptions.headers) {
-          const headerValue = lowercaseKeys2(this.requestOptions.headers)[Headers2.ContentType];
+          const headerValue = lowercaseKeys3(this.requestOptions.headers)[Headers2.ContentType];
           if (headerValue) {
             if (typeof headerValue === "number") {
               clientHeader = String(headerValue);
@@ -19711,7 +19711,7 @@ var require_lib = __commonJS({
         const usingSsl = parsedUrl.protocol === "https:";
         let maxSockets = 100;
         if (this.requestOptions) {
-          maxSockets = this.requestOptions.maxSockets || http.globalAgent.maxSockets;
+          maxSockets = this.requestOptions.maxSockets || http2.globalAgent.maxSockets;
         }
         if (proxyUrl && proxyUrl.hostname) {
           const agentOptions = {
@@ -19733,7 +19733,7 @@ var require_lib = __commonJS({
         }
         if (!agent2) {
           const options = { keepAlive: this._keepAlive, maxSockets };
-          agent2 = usingSsl ? new https.Agent(options) : new http.Agent(options);
+          agent2 = usingSsl ? new https2.Agent(options) : new http2.Agent(options);
           this._agent = agent2;
         }
         if (usingSsl && this._ignoreSslError) {
@@ -19773,15 +19773,15 @@ var require_lib = __commonJS({
         return baseUserAgent;
       }
       _performExponentialBackoff(retryNumber) {
-        return __awaiter3(this, void 0, void 0, function* () {
-          retryNumber = Math.min(ExponentialBackoffCeiling, retryNumber);
-          const ms = ExponentialBackoffTimeSlice * Math.pow(2, retryNumber);
+        return __awaiter7(this, void 0, void 0, function* () {
+          retryNumber = Math.min(ExponentialBackoffCeiling2, retryNumber);
+          const ms = ExponentialBackoffTimeSlice2 * Math.pow(2, retryNumber);
           return new Promise((resolve2) => setTimeout(() => resolve2(), ms));
         });
       }
       _processResponse(res, options) {
-        return __awaiter3(this, void 0, void 0, function* () {
-          return new Promise((resolve2, reject) => __awaiter3(this, void 0, void 0, function* () {
+        return __awaiter7(this, void 0, void 0, function* () {
+          return new Promise((resolve2, reject) => __awaiter7(this, void 0, void 0, function* () {
             const statusCode = res.message.statusCode || 0;
             const response = {
               statusCode,
@@ -19824,7 +19824,7 @@ var require_lib = __commonJS({
               } else {
                 msg = `Failed request: (${statusCode})`;
               }
-              const err = new HttpClientError(msg, statusCode);
+              const err = new HttpClientError2(msg, statusCode);
               err.result = response.result;
               reject(err);
             } else {
@@ -19835,7 +19835,7 @@ var require_lib = __commonJS({
       }
     };
     exports.HttpClient = HttpClient3;
-    var lowercaseKeys2 = (obj) => Object.keys(obj).reduce((c, k) => (c[k.toLowerCase()] = obj[k], c), {});
+    var lowercaseKeys3 = (obj) => Object.keys(obj).reduce((c, k) => (c[k.toLowerCase()] = obj[k], c), {});
   }
 });
 
@@ -22087,7 +22087,7 @@ var require_typescript = __commonJS({
         usingSingleLineStringWriter: () => usingSingleLineStringWriter,
         utf16EncodeAsString: () => utf16EncodeAsString,
         validateLocaleAndSetLanguage: () => validateLocaleAndSetLanguage,
-        version: () => version,
+        version: () => version2,
         versionMajorMinor: () => versionMajorMinor,
         visitArray: () => visitArray,
         visitCommaListElements: () => visitCommaListElements,
@@ -22111,7 +22111,7 @@ var require_typescript = __commonJS({
       });
       module2.exports = __toCommonJS(typescript_exports);
       var versionMajorMinor = "5.9";
-      var version = "5.9.3";
+      var version2 = "5.9.3";
       var Comparison = /* @__PURE__ */ ((Comparison3) => {
         Comparison3[Comparison3["LessThan"] = -1] = "LessThan";
         Comparison3[Comparison3["EqualTo"] = 0] = "EqualTo";
@@ -23675,17 +23675,17 @@ var require_typescript = __commonJS({
           }
           return true;
         }
-        function fail(message, stackCrawlMark) {
+        function fail2(message, stackCrawlMark) {
           debugger;
           const e = new Error(message ? `Debug Failure. ${message}` : "Debug Failure.");
           if (Error.captureStackTrace) {
-            Error.captureStackTrace(e, stackCrawlMark || fail);
+            Error.captureStackTrace(e, stackCrawlMark || fail2);
           }
           throw e;
         }
-        Debug2.fail = fail;
+        Debug2.fail = fail2;
         function failBadSyntaxKind(node, message, stackCrawlMark) {
-          return fail(
+          return fail2(
             `${message || "Unexpected node."}\r
 Node ${formatSyntaxKind(node.kind)} was unexpected.`,
             stackCrawlMark || failBadSyntaxKind
@@ -23698,38 +23698,38 @@ Node ${formatSyntaxKind(node.kind)} was unexpected.`,
             if (verboseDebugInfo) {
               message += "\r\nVerbose Debug Information: " + (typeof verboseDebugInfo === "string" ? verboseDebugInfo : verboseDebugInfo());
             }
-            fail(message, stackCrawlMark || assert);
+            fail2(message, stackCrawlMark || assert);
           }
         }
         Debug2.assert = assert;
         function assertEqual(a, b, msg, msg2, stackCrawlMark) {
           if (a !== b) {
             const message = msg ? msg2 ? `${msg} ${msg2}` : msg : "";
-            fail(`Expected ${a} === ${b}. ${message}`, stackCrawlMark || assertEqual);
+            fail2(`Expected ${a} === ${b}. ${message}`, stackCrawlMark || assertEqual);
           }
         }
         Debug2.assertEqual = assertEqual;
         function assertLessThan(a, b, msg, stackCrawlMark) {
           if (a >= b) {
-            fail(`Expected ${a} < ${b}. ${msg || ""}`, stackCrawlMark || assertLessThan);
+            fail2(`Expected ${a} < ${b}. ${msg || ""}`, stackCrawlMark || assertLessThan);
           }
         }
         Debug2.assertLessThan = assertLessThan;
         function assertLessThanOrEqual(a, b, stackCrawlMark) {
           if (a > b) {
-            fail(`Expected ${a} <= ${b}`, stackCrawlMark || assertLessThanOrEqual);
+            fail2(`Expected ${a} <= ${b}`, stackCrawlMark || assertLessThanOrEqual);
           }
         }
         Debug2.assertLessThanOrEqual = assertLessThanOrEqual;
         function assertGreaterThanOrEqual(a, b, stackCrawlMark) {
           if (a < b) {
-            fail(`Expected ${a} >= ${b}`, stackCrawlMark || assertGreaterThanOrEqual);
+            fail2(`Expected ${a} >= ${b}`, stackCrawlMark || assertGreaterThanOrEqual);
           }
         }
         Debug2.assertGreaterThanOrEqual = assertGreaterThanOrEqual;
         function assertIsDefined(value, message, stackCrawlMark) {
           if (value === void 0 || value === null) {
-            fail(message, stackCrawlMark || assertIsDefined);
+            fail2(message, stackCrawlMark || assertIsDefined);
           }
         }
         Debug2.assertIsDefined = assertIsDefined;
@@ -23751,7 +23751,7 @@ Node ${formatSyntaxKind(node.kind)} was unexpected.`,
         Debug2.checkEachDefined = checkEachDefined;
         function assertNever(member, message = "Illegal value:", stackCrawlMark) {
           const detail = typeof member === "object" && hasProperty(member, "kind") && hasProperty(member, "pos") ? "SyntaxKind: " + formatSyntaxKind(member.kind) : JSON.stringify(member);
-          return fail(`${message} ${detail}`, stackCrawlMark || assertNever);
+          return fail2(`${message} ${detail}`, stackCrawlMark || assertNever);
         }
         Debug2.assertNever = assertNever;
         function assertEachNode(nodes, test, message, stackCrawlMark) {
@@ -24747,9 +24747,9 @@ ${lanes.join("\n")}
          * Tests whether a version matches the range. This is equivalent to `satisfies(version, range, { includePrerelease: true })`.
          * in `node-semver`.
          */
-        test(version2) {
-          if (typeof version2 === "string") version2 = new Version(version2);
-          return testDisjunction(version2, this._alternatives);
+        test(version22) {
+          if (typeof version22 === "string") version22 = new Version(version22);
+          return testDisjunction(version22, this._alternatives);
         }
         toString() {
           return formatDisjunction(this._alternatives);
@@ -24783,14 +24783,14 @@ ${lanes.join("\n")}
         const match = partialRegExp.exec(text);
         if (!match) return void 0;
         const [, major, minor = "*", patch = "*", prerelease, build2] = match;
-        const version2 = new Version(
+        const version22 = new Version(
           isWildcard(major) ? 0 : parseInt(major, 10),
           isWildcard(major) || isWildcard(minor) ? 0 : parseInt(minor, 10),
           isWildcard(major) || isWildcard(minor) || isWildcard(patch) ? 0 : parseInt(patch, 10),
           prerelease,
           build2
         );
-        return { version: version2, major, minor, patch };
+        return { version: version22, major, minor, patch };
       }
       function parseHyphen(left, right, comparators) {
         const leftResult = parsePartial(left);
@@ -24810,46 +24810,46 @@ ${lanes.join("\n")}
       function parseComparator(operator, text, comparators) {
         const result = parsePartial(text);
         if (!result) return false;
-        const { version: version2, major, minor, patch } = result;
+        const { version: version22, major, minor, patch } = result;
         if (!isWildcard(major)) {
           switch (operator) {
             case "~":
-              comparators.push(createComparator(">=", version2));
+              comparators.push(createComparator(">=", version22));
               comparators.push(createComparator(
                 "<",
-                version2.increment(
+                version22.increment(
                   isWildcard(minor) ? "major" : "minor"
                 )
               ));
               break;
             case "^":
-              comparators.push(createComparator(">=", version2));
+              comparators.push(createComparator(">=", version22));
               comparators.push(createComparator(
                 "<",
-                version2.increment(
-                  version2.major > 0 || isWildcard(minor) ? "major" : version2.minor > 0 || isWildcard(patch) ? "minor" : "patch"
+                version22.increment(
+                  version22.major > 0 || isWildcard(minor) ? "major" : version22.minor > 0 || isWildcard(patch) ? "minor" : "patch"
                 )
               ));
               break;
             case "<":
             case ">=":
               comparators.push(
-                isWildcard(minor) || isWildcard(patch) ? createComparator(operator, version2.with({ prerelease: "0" })) : createComparator(operator, version2)
+                isWildcard(minor) || isWildcard(patch) ? createComparator(operator, version22.with({ prerelease: "0" })) : createComparator(operator, version22)
               );
               break;
             case "<=":
             case ">":
               comparators.push(
-                isWildcard(minor) ? createComparator(operator === "<=" ? "<" : ">=", version2.increment("major").with({ prerelease: "0" })) : isWildcard(patch) ? createComparator(operator === "<=" ? "<" : ">=", version2.increment("minor").with({ prerelease: "0" })) : createComparator(operator, version2)
+                isWildcard(minor) ? createComparator(operator === "<=" ? "<" : ">=", version22.increment("major").with({ prerelease: "0" })) : isWildcard(patch) ? createComparator(operator === "<=" ? "<" : ">=", version22.increment("minor").with({ prerelease: "0" })) : createComparator(operator, version22)
               );
               break;
             case "=":
             case void 0:
               if (isWildcard(minor) || isWildcard(patch)) {
-                comparators.push(createComparator(">=", version2.with({ prerelease: "0" })));
-                comparators.push(createComparator("<", version2.increment(isWildcard(minor) ? "major" : "minor").with({ prerelease: "0" })));
+                comparators.push(createComparator(">=", version22.with({ prerelease: "0" })));
+                comparators.push(createComparator("<", version22.increment(isWildcard(minor) ? "major" : "minor").with({ prerelease: "0" })));
               } else {
-                comparators.push(createComparator("=", version2));
+                comparators.push(createComparator("=", version22));
               }
               break;
             default:
@@ -24866,21 +24866,21 @@ ${lanes.join("\n")}
       function createComparator(operator, operand) {
         return { operator, operand };
       }
-      function testDisjunction(version2, alternatives) {
+      function testDisjunction(version22, alternatives) {
         if (alternatives.length === 0) return true;
         for (const alternative of alternatives) {
-          if (testAlternative(version2, alternative)) return true;
+          if (testAlternative(version22, alternative)) return true;
         }
         return false;
       }
-      function testAlternative(version2, comparators) {
+      function testAlternative(version22, comparators) {
         for (const comparator of comparators) {
-          if (!testComparator(version2, comparator.operator, comparator.operand)) return false;
+          if (!testComparator(version22, comparator.operator, comparator.operand)) return false;
         }
         return true;
       }
-      function testComparator(version2, operator, operand) {
-        const cmp = version2.compareTo(operand);
+      function testComparator(version22, operator, operand) {
+        const cmp = version22.compareTo(operand);
         switch (operator) {
           case "<":
             return cmp < 0;
@@ -67223,7 +67223,7 @@ ${lanes.join("\n")}
       }
       var typeScriptVersion;
       function getPackageJsonTypesVersionsPaths(typesVersions) {
-        if (!typeScriptVersion) typeScriptVersion = new Version(version);
+        if (!typeScriptVersion) typeScriptVersion = new Version(version2);
         for (const key in typesVersions) {
           if (!hasProperty(typesVersions, key)) continue;
           const keyRange = VersionRange.tryParse(key);
@@ -68001,16 +68001,16 @@ ${lanes.join("\n")}
         let matchedRootDir;
         let matchedNormalizedPrefix;
         for (const rootDir of state.compilerOptions.rootDirs) {
-          let normalizedRoot = normalizePath3(rootDir);
-          if (!endsWith(normalizedRoot, directorySeparator)) {
-            normalizedRoot += directorySeparator;
+          let normalizedRoot2 = normalizePath3(rootDir);
+          if (!endsWith(normalizedRoot2, directorySeparator)) {
+            normalizedRoot2 += directorySeparator;
           }
-          const isLongestMatchingPrefix = startsWith(candidate, normalizedRoot) && (matchedNormalizedPrefix === void 0 || matchedNormalizedPrefix.length < normalizedRoot.length);
+          const isLongestMatchingPrefix = startsWith(candidate, normalizedRoot2) && (matchedNormalizedPrefix === void 0 || matchedNormalizedPrefix.length < normalizedRoot2.length);
           if (state.traceEnabled) {
-            trace(state.host, Diagnostics.Checking_if_0_is_the_longest_matching_prefix_for_1_2, normalizedRoot, candidate, isLongestMatchingPrefix);
+            trace(state.host, Diagnostics.Checking_if_0_is_the_longest_matching_prefix_for_1_2, normalizedRoot2, candidate, isLongestMatchingPrefix);
           }
           if (isLongestMatchingPrefix) {
-            matchedNormalizedPrefix = normalizedRoot;
+            matchedNormalizedPrefix = normalizedRoot2;
             matchedRootDir = rootDir;
           }
         }
@@ -68771,9 +68771,9 @@ ${lanes.join("\n")}
               state
             );
             if (peerPackageJson) {
-              const version2 = peerPackageJson.contents.packageJsonContent.version;
-              result += `+${key}@${version2}`;
-              if (state.traceEnabled) trace(state.host, Diagnostics.Found_peerDependency_0_with_1_version, key, version2);
+              const version22 = peerPackageJson.contents.packageJsonContent.version;
+              result += `+${key}@${version22}`;
+              if (state.traceEnabled) trace(state.host, Diagnostics.Found_peerDependency_0_with_1_version, key, version22);
             } else {
               if (state.traceEnabled) trace(state.host, Diagnostics.Failed_to_find_peerDependency_0, key);
             }
@@ -68871,7 +68871,7 @@ ${lanes.join("\n")}
             false
           );
           if (state.traceEnabled) {
-            trace(state.host, Diagnostics.package_json_has_a_typesVersions_entry_0_that_matches_compiler_version_1_looking_for_a_pattern_to_match_module_name_2, versionPaths.version, version, moduleName);
+            trace(state.host, Diagnostics.package_json_has_a_typesVersions_entry_0_that_matches_compiler_version_1_looking_for_a_pattern_to_match_module_name_2, versionPaths.version, version2, moduleName);
           }
           const pathPatterns = tryParsePatterns(versionPaths.paths);
           const result = tryLoadModuleUsingPaths(extensions, moduleName, candidate, versionPaths.paths, pathPatterns, loader, onlyRecordFailuresForPackageFile || onlyRecordFailuresForIndex, state);
@@ -69353,7 +69353,7 @@ ${lanes.join("\n")}
         if (!startsWith(key, "types@")) return false;
         const range = VersionRange.tryParse(key.substring("types@".length));
         if (!range) return false;
-        return range.test(version);
+        return range.test(version2);
       }
       function loadModuleFromNearestNodeModulesDirectory(extensions, moduleName, directory, state, cache, redirectedReference) {
         return loadModuleFromNearestNodeModulesDirectoryWorker(
@@ -69489,7 +69489,7 @@ ${lanes.join("\n")}
         const versionPaths = rest !== "" && packageInfo ? getVersionPathsOfPackageJsonInfo(packageInfo, state) : void 0;
         if (versionPaths) {
           if (state.traceEnabled) {
-            trace(state.host, Diagnostics.package_json_has_a_typesVersions_entry_0_that_matches_compiler_version_1_looking_for_a_pattern_to_match_module_name_2, versionPaths.version, version, rest);
+            trace(state.host, Diagnostics.package_json_has_a_typesVersions_entry_0_that_matches_compiler_version_1_looking_for_a_pattern_to_match_module_name_2, versionPaths.version, version2, rest);
           }
           const packageDirectoryExists = nodeModulesDirectoryExists && directoryProbablyExists(packageDirectory, state.host);
           const pathPatterns = tryParsePatterns(versionPaths.paths);
@@ -100479,8 +100479,8 @@ ${lanes.join("\n")}
             }
             return type;
           }
-          function narrowTypeByBooleanComparison(type, expr, bool, operator, assumeTrue) {
-            assumeTrue = assumeTrue !== (bool.kind === 112) !== (operator !== 38 && operator !== 36);
+          function narrowTypeByBooleanComparison(type, expr, bool2, operator, assumeTrue) {
+            assumeTrue = assumeTrue !== (bool2.kind === 112) !== (operator !== 38 && operator !== 36);
             return narrowType(type, expr, assumeTrue);
           }
           function narrowTypeByBinaryExpression(type, expr, assumeTrue) {
@@ -144729,7 +144729,7 @@ ${lanes.join("\n")}
             moduleBodyBlock
           );
           const moduleName = tryGetModuleNameFromFile(factory2, node, host, compilerOptions);
-          const dependencies = factory2.createArrayLiteralExpression(map(dependencyGroups, (dependencyGroup) => dependencyGroup.name));
+          const dependencies2 = factory2.createArrayLiteralExpression(map(dependencyGroups, (dependencyGroup) => dependencyGroup.name));
           const updated = setEmitFlags(
             factory2.updateSourceFile(
               node,
@@ -144740,7 +144740,7 @@ ${lanes.join("\n")}
                       factory2.createPropertyAccessExpression(factory2.createIdentifier("System"), "register"),
                       /*typeArguments*/
                       void 0,
-                      moduleName ? [moduleName, dependencies, moduleBodyFunction] : [dependencies, moduleBodyFunction]
+                      moduleName ? [moduleName, dependencies2, moduleBodyFunction] : [dependencies2, moduleBodyFunction]
                     )
                   )
                 ]),
@@ -149498,7 +149498,7 @@ ${lanes.join("\n")}
             emitSkipped = true;
             return;
           }
-          const buildInfo = host.getBuildInfo() || { version };
+          const buildInfo = host.getBuildInfo() || { version: version2 };
           writeFile3(
             host,
             emitterDiagnostics,
@@ -157472,42 +157472,42 @@ ${lanes.join("\n")}
         function getSourceFileFromReference(referencingFile, ref) {
           return getSourceFileFromReferenceWorker(resolveTripleslashReference(ref.fileName, referencingFile.fileName), getSourceFile);
         }
-        function getSourceFileFromReferenceWorker(fileName, getSourceFile2, fail, reason) {
+        function getSourceFileFromReferenceWorker(fileName, getSourceFile2, fail2, reason) {
           if (hasExtension(fileName)) {
             const canonicalFileName = host.getCanonicalFileName(fileName);
             if (!options.allowNonTsExtensions && !forEach(flatten(supportedExtensionsWithJsonIfResolveJsonModule), (extension) => fileExtensionIs(canonicalFileName, extension))) {
-              if (fail) {
+              if (fail2) {
                 if (hasJSFileExtension(canonicalFileName)) {
-                  fail(Diagnostics.File_0_is_a_JavaScript_file_Did_you_mean_to_enable_the_allowJs_option, fileName);
+                  fail2(Diagnostics.File_0_is_a_JavaScript_file_Did_you_mean_to_enable_the_allowJs_option, fileName);
                 } else {
-                  fail(Diagnostics.File_0_has_an_unsupported_extension_The_only_supported_extensions_are_1, fileName, "'" + flatten(supportedExtensions).join("', '") + "'");
+                  fail2(Diagnostics.File_0_has_an_unsupported_extension_The_only_supported_extensions_are_1, fileName, "'" + flatten(supportedExtensions).join("', '") + "'");
                 }
               }
               return void 0;
             }
             const sourceFile = getSourceFile2(fileName);
-            if (fail) {
+            if (fail2) {
               if (!sourceFile) {
                 const redirect = getRedirectFromSourceFile(fileName);
                 if (redirect == null ? void 0 : redirect.outputDts) {
-                  fail(Diagnostics.Output_file_0_has_not_been_built_from_source_file_1, redirect.outputDts, fileName);
+                  fail2(Diagnostics.Output_file_0_has_not_been_built_from_source_file_1, redirect.outputDts, fileName);
                 } else {
-                  fail(Diagnostics.File_0_not_found, fileName);
+                  fail2(Diagnostics.File_0_not_found, fileName);
                 }
               } else if (isReferencedFile(reason) && canonicalFileName === host.getCanonicalFileName(getSourceFileByPath(reason.file).fileName)) {
-                fail(Diagnostics.A_file_cannot_have_a_reference_to_itself);
+                fail2(Diagnostics.A_file_cannot_have_a_reference_to_itself);
               }
             }
             return sourceFile;
           } else {
             const sourceFileNoExtension = options.allowNonTsExtensions && getSourceFile2(fileName);
             if (sourceFileNoExtension) return sourceFileNoExtension;
-            if (fail && options.allowNonTsExtensions) {
-              fail(Diagnostics.File_0_not_found, fileName);
+            if (fail2 && options.allowNonTsExtensions) {
+              fail2(Diagnostics.File_0_not_found, fileName);
               return void 0;
             }
             const sourceFileWithAddedExtension = forEach(supportedExtensions[0], (extension) => getSourceFile2(fileName + extension));
-            if (fail && !sourceFileWithAddedExtension) fail(Diagnostics.Could_not_resolve_the_path_0_with_the_extensions_Colon_1, fileName, "'" + flatten(supportedExtensions).join("', '") + "'");
+            if (fail2 && !sourceFileWithAddedExtension) fail2(Diagnostics.Could_not_resolve_the_path_0_with_the_extensions_Colon_1, fileName, "'" + flatten(supportedExtensions).join("', '") + "'");
             return sourceFileWithAddedExtension;
           }
         }
@@ -159417,7 +159417,7 @@ ${lanes.join("\n")}
           const useOldState = canReuseOldState(referencedMap, oldState);
           newProgram.getTypeChecker();
           for (const sourceFile of newProgram.getSourceFiles()) {
-            const version2 = Debug.checkDefined(sourceFile.version, "Program intended to be used with Builder should have source files with versions set");
+            const version22 = Debug.checkDefined(sourceFile.version, "Program intended to be used with Builder should have source files with versions set");
             const oldUncommittedSignature = useOldState ? (_a = oldState.oldSignatures) == null ? void 0 : _a.get(sourceFile.resolvedPath) : void 0;
             const signature = oldUncommittedSignature === void 0 ? useOldState ? (_b = oldState.fileInfos.get(sourceFile.resolvedPath)) == null ? void 0 : _b.signature : void 0 : oldUncommittedSignature || void 0;
             if (referencedMap) {
@@ -159427,7 +159427,7 @@ ${lanes.join("\n")}
               }
             }
             fileInfos.set(sourceFile.resolvedPath, {
-              version: version2,
+              version: version22,
               signature,
               // No need to calculate affectsGlobalScope with --out since its not used at all
               affectsGlobalScope: !options.outFile ? isFileAffectingGlobalScope(sourceFile) || void 0 : void 0,
@@ -160231,7 +160231,7 @@ ${lanes.join("\n")}
             root: arrayFrom(rootFileNames, (r) => relativeToBuildInfo(r)),
             errors: state.hasErrors ? true : void 0,
             checkPending: state.checkPending,
-            version
+            version: version2
           };
           return buildInfo2;
         }
@@ -160263,7 +160263,7 @@ ${lanes.join("\n")}
             // Actual value
             errors: state.hasErrors ? true : void 0,
             checkPending: state.checkPending,
-            version
+            version: version2
           };
           return buildInfo2;
         }
@@ -160360,7 +160360,7 @@ ${lanes.join("\n")}
           latestChangedDtsFile,
           errors: state.hasErrors ? true : void 0,
           checkPending: state.checkPending,
-          version
+          version: version2
         };
         return buildInfo;
         function relativeToBuildInfoEnsuringAbsolutePath(path) {
@@ -161137,8 +161137,8 @@ ${lanes.join("\n")}
         const resolvedRoots = new Map(program.resolvedRoot);
         program.fileInfos.forEach((fileInfo, index) => {
           const path = toPath(program.fileNames[index], buildInfoDirectory, getCanonicalFileName);
-          const version2 = isString(fileInfo) ? fileInfo : fileInfo.version;
-          fileInfos.set(path, version2);
+          const version22 = isString(fileInfo) ? fileInfo : fileInfo.version;
+          fileInfos.set(path, version22);
           if (rootIndex < program.root.length) {
             const current = program.root[rootIndex];
             const fileId = index + 1;
@@ -163038,7 +163038,7 @@ ${lanes.join("\n")}
           if (!content) return void 0;
           buildInfo = getBuildInfo(buildInfoPath, content);
         }
-        if (!buildInfo || buildInfo.version !== version || !isIncrementalBuildInfo(buildInfo)) return void 0;
+        if (!buildInfo || buildInfo.version !== version2 || !isIncrementalBuildInfo(buildInfo)) return void 0;
         return createBuilderProgramUsingIncrementalBuildInfo(buildInfo, buildInfoPath, host);
       }
       function createIncrementalCompilerHost(options, system = sys) {
@@ -164741,7 +164741,7 @@ ${lanes.join("\n")}
           };
         }
         const incrementalBuildInfo = isIncremental && isIncrementalBuildInfo(buildInfo) ? buildInfo : void 0;
-        if ((incrementalBuildInfo || !isIncremental) && buildInfo.version !== version) {
+        if ((incrementalBuildInfo || !isIncremental) && buildInfo.version !== version2) {
           return {
             type: 14,
             version: buildInfo.version
@@ -164797,17 +164797,17 @@ ${lanes.join("\n")}
           }
           const inputPath = toPath2(state, inputFile);
           if (buildInfoTime < inputTime) {
-            let version2;
+            let version22;
             let currentVersion;
             if (incrementalBuildInfo) {
               if (!buildInfoVersionMap) buildInfoVersionMap = getBuildInfoFileVersionMap(incrementalBuildInfo, buildInfoPath, host);
               const resolvedInputPath = buildInfoVersionMap.roots.get(inputPath);
-              version2 = buildInfoVersionMap.fileInfos.get(resolvedInputPath ?? inputPath);
-              const text = version2 ? state.readFileWithCache(resolvedInputPath ?? inputFile) : void 0;
+              version22 = buildInfoVersionMap.fileInfos.get(resolvedInputPath ?? inputPath);
+              const text = version22 ? state.readFileWithCache(resolvedInputPath ?? inputFile) : void 0;
               currentVersion = text !== void 0 ? getSourceFileVersionAsHashFromText(host, text) : void 0;
-              if (version2 && version2 === currentVersion) pseudoInputUpToDate = true;
+              if (version22 && version22 === currentVersion) pseudoInputUpToDate = true;
             }
-            if (!version2 || version2 !== currentVersion) {
+            if (!version22 || version22 !== currentVersion) {
               return {
                 type: 5,
                 outOfDateOutputFileName: buildInfoPath,
@@ -165560,7 +165560,7 @@ ${lanes.join("\n")}
               Diagnostics.Project_0_is_out_of_date_because_output_for_it_was_generated_with_version_1_that_differs_with_current_version_2,
               relName(state, configFileName),
               status.version,
-              version
+              version2
             );
           case 17:
             return reportStatus(
@@ -165648,7 +165648,7 @@ ${lanes.join("\n")}
         return !!commandLine.options.all ? toSorted(optionDeclarations.concat(tscBuildOption), (a, b) => compareStringsCaseInsensitive(a.name, b.name)) : filter(optionDeclarations.concat(tscBuildOption), (v) => !!v.showInSimplifiedHelpView);
       }
       function printVersion(sys2) {
-        sys2.write(getDiagnosticText(Diagnostics.Version_0, version) + sys2.newLine);
+        sys2.write(getDiagnosticText(Diagnostics.Version_0, version2) + sys2.newLine);
       }
       function createColors(sys2) {
         const showColors = defaultIsPretty(sys2);
@@ -165900,7 +165900,7 @@ ${lanes.join("\n")}
       }
       function printEasyHelp(sys2, simpleOptions) {
         const colors = createColors(sys2);
-        let output = [...getHeader(sys2, `${getDiagnosticText(Diagnostics.tsc_Colon_The_TypeScript_Compiler)} - ${getDiagnosticText(Diagnostics.Version_0, version)}`)];
+        let output = [...getHeader(sys2, `${getDiagnosticText(Diagnostics.tsc_Colon_The_TypeScript_Compiler)} - ${getDiagnosticText(Diagnostics.Version_0, version2)}`)];
         output.push(colors.bold(getDiagnosticText(Diagnostics.COMMON_COMMANDS)) + sys2.newLine + sys2.newLine);
         example("tsc", Diagnostics.Compiles_the_current_project_tsconfig_json_in_the_working_directory);
         example("tsc app.ts util.ts", Diagnostics.Ignoring_tsconfig_json_compiles_the_specified_files_with_default_compiler_options);
@@ -165947,7 +165947,7 @@ ${lanes.join("\n")}
         }
       }
       function printAllHelp(sys2, compilerOptions, buildOptions, watchOptions) {
-        let output = [...getHeader(sys2, `${getDiagnosticText(Diagnostics.tsc_Colon_The_TypeScript_Compiler)} - ${getDiagnosticText(Diagnostics.Version_0, version)}`)];
+        let output = [...getHeader(sys2, `${getDiagnosticText(Diagnostics.tsc_Colon_The_TypeScript_Compiler)} - ${getDiagnosticText(Diagnostics.Version_0, version2)}`)];
         output = [...output, ...generateSectionOptionsOutput(
           sys2,
           getDiagnosticText(Diagnostics.ALL_COMPILER_OPTIONS),
@@ -165979,7 +165979,7 @@ ${lanes.join("\n")}
         }
       }
       function printBuildHelp(sys2, buildOptions) {
-        let output = [...getHeader(sys2, `${getDiagnosticText(Diagnostics.tsc_Colon_The_TypeScript_Compiler)} - ${getDiagnosticText(Diagnostics.Version_0, version)}`)];
+        let output = [...getHeader(sys2, `${getDiagnosticText(Diagnostics.tsc_Colon_The_TypeScript_Compiler)} - ${getDiagnosticText(Diagnostics.Version_0, version2)}`)];
         output = [...output, ...generateSectionOptionsOutput(
           sys2,
           getDiagnosticText(Diagnostics.BUILD_OPTIONS),
@@ -171080,13 +171080,13 @@ ${lanes.join("\n")}
         const info2 = {};
         if (content) {
           for (const key of dependencyKeys) {
-            const dependencies = content[key];
-            if (!dependencies) {
+            const dependencies2 = content[key];
+            if (!dependencies2) {
               continue;
             }
             const dependencyMap = /* @__PURE__ */ new Map();
-            for (const packageName in dependencies) {
-              dependencyMap.set(packageName, dependencies[packageName]);
+            for (const packageName in dependencies2) {
+              dependencyMap.set(packageName, dependencies2[packageName]);
             }
             info2[key] = dependencyMap;
           }
@@ -173512,38 +173512,38 @@ ${lanes.join("\n")}
           }
           return settingsOrHost;
         }
-        function acquireDocument(fileName, compilationSettings, scriptSnapshot, version2, scriptKind, languageVersionOrOptions) {
+        function acquireDocument(fileName, compilationSettings, scriptSnapshot, version22, scriptKind, languageVersionOrOptions) {
           const path = toPath(fileName, currentDirectory, getCanonicalFileName);
           const key = getKeyForCompilationSettings(getCompilationSettings(compilationSettings));
-          return acquireDocumentWithKey(fileName, path, compilationSettings, key, scriptSnapshot, version2, scriptKind, languageVersionOrOptions);
+          return acquireDocumentWithKey(fileName, path, compilationSettings, key, scriptSnapshot, version22, scriptKind, languageVersionOrOptions);
         }
-        function acquireDocumentWithKey(fileName, path, compilationSettings, key, scriptSnapshot, version2, scriptKind, languageVersionOrOptions) {
+        function acquireDocumentWithKey(fileName, path, compilationSettings, key, scriptSnapshot, version22, scriptKind, languageVersionOrOptions) {
           return acquireOrUpdateDocument(
             fileName,
             path,
             compilationSettings,
             key,
             scriptSnapshot,
-            version2,
+            version22,
             /*acquiring*/
             true,
             scriptKind,
             languageVersionOrOptions
           );
         }
-        function updateDocument(fileName, compilationSettings, scriptSnapshot, version2, scriptKind, languageVersionOrOptions) {
+        function updateDocument(fileName, compilationSettings, scriptSnapshot, version22, scriptKind, languageVersionOrOptions) {
           const path = toPath(fileName, currentDirectory, getCanonicalFileName);
           const key = getKeyForCompilationSettings(getCompilationSettings(compilationSettings));
-          return updateDocumentWithKey(fileName, path, compilationSettings, key, scriptSnapshot, version2, scriptKind, languageVersionOrOptions);
+          return updateDocumentWithKey(fileName, path, compilationSettings, key, scriptSnapshot, version22, scriptKind, languageVersionOrOptions);
         }
-        function updateDocumentWithKey(fileName, path, compilationSettings, key, scriptSnapshot, version2, scriptKind, languageVersionOrOptions) {
+        function updateDocumentWithKey(fileName, path, compilationSettings, key, scriptSnapshot, version22, scriptKind, languageVersionOrOptions) {
           return acquireOrUpdateDocument(
             fileName,
             path,
             getCompilationSettings(compilationSettings),
             key,
             scriptSnapshot,
-            version2,
+            version22,
             /*acquiring*/
             false,
             scriptKind,
@@ -173555,7 +173555,7 @@ ${lanes.join("\n")}
           Debug.assert(scriptKind === void 0 || !entry || entry.sourceFile.scriptKind === scriptKind, `Script kind should match provided ScriptKind:${scriptKind} and sourceFile.scriptKind: ${entry == null ? void 0 : entry.sourceFile.scriptKind}, !entry: ${!entry}`);
           return entry;
         }
-        function acquireOrUpdateDocument(fileName, path, compilationSettingsOrHost, key, scriptSnapshot, version2, acquiring, scriptKind, languageVersionOrOptions) {
+        function acquireOrUpdateDocument(fileName, path, compilationSettingsOrHost, key, scriptSnapshot, version22, acquiring, scriptKind, languageVersionOrOptions) {
           var _a, _b, _c, _d;
           scriptKind = ensureScriptKind(fileName, scriptKind);
           const compilationSettings = getCompilationSettings(compilationSettingsOrHost);
@@ -173599,7 +173599,7 @@ ${lanes.join("\n")}
               fileName,
               scriptSnapshot,
               sourceFileOptions,
-              version2,
+              version22,
               /*setNodeParents*/
               false,
               scriptKind
@@ -173613,8 +173613,8 @@ ${lanes.join("\n")}
             };
             setBucketEntry();
           } else {
-            if (entry.sourceFile.version !== version2) {
-              entry.sourceFile = updateLanguageServiceSourceFile(entry.sourceFile, scriptSnapshot, version2, scriptSnapshot.getChangeRange(entry.sourceFile.scriptSnapshot));
+            if (entry.sourceFile.version !== version22) {
+              entry.sourceFile = updateLanguageServiceSourceFile(entry.sourceFile, scriptSnapshot, version22, scriptSnapshot.getChangeRange(entry.sourceFile.scriptSnapshot));
               if (externalCache) {
                 externalCache.setDocument(keyWithMode, path, entry.sourceFile);
               }
@@ -177748,9 +177748,9 @@ interface Symbol {
       function isRefactorErrorInfo(info2) {
         return info2.error !== void 0;
       }
-      function refactorKindBeginsWith(known, requested) {
+      function refactorKindBeginsWith(known2, requested) {
         if (!requested) return true;
-        return known.substr(0, requested.length) === requested;
+        return known2.substr(0, requested.length) === requested;
       }
       function getIdentifierForNode(node, scope, checker, file) {
         return isPropertyAccessExpression(node) && !isClassLike(scope) && !checker.resolveName(
@@ -182459,7 +182459,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             throw new Error("Could not find file: '" + fileName + "'.");
           }
           const scriptKind = getScriptKind(fileName, this.host);
-          const version2 = this.host.getScriptVersion(fileName);
+          const version22 = this.host.getScriptVersion(fileName);
           let sourceFile;
           if (this.currentFileName !== fileName) {
             const options = {
@@ -182479,17 +182479,17 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               fileName,
               scriptSnapshot,
               options,
-              version2,
+              version22,
               /*setNodeParents*/
               true,
               scriptKind
             );
-          } else if (this.currentFileVersion !== version2) {
+          } else if (this.currentFileVersion !== version22) {
             const editRange = scriptSnapshot.getChangeRange(this.currentFileScriptSnapshot);
-            sourceFile = updateLanguageServiceSourceFile(this.currentSourceFile, scriptSnapshot, version2, editRange);
+            sourceFile = updateLanguageServiceSourceFile(this.currentSourceFile, scriptSnapshot, version22, editRange);
           }
           if (sourceFile) {
-            this.currentFileVersion = version2;
+            this.currentFileVersion = version22;
             this.currentFileName = fileName;
             this.currentFileScriptSnapshot = scriptSnapshot;
             this.currentSourceFile = sourceFile;
@@ -182497,18 +182497,18 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           return this.currentSourceFile;
         }
       };
-      function setSourceFileFields(sourceFile, scriptSnapshot, version2) {
-        sourceFile.version = version2;
+      function setSourceFileFields(sourceFile, scriptSnapshot, version22) {
+        sourceFile.version = version22;
         sourceFile.scriptSnapshot = scriptSnapshot;
       }
-      function createLanguageServiceSourceFile(fileName, scriptSnapshot, scriptTargetOrOptions, version2, setNodeParents, scriptKind) {
+      function createLanguageServiceSourceFile(fileName, scriptSnapshot, scriptTargetOrOptions, version22, setNodeParents, scriptKind) {
         const sourceFile = createSourceFile(fileName, getSnapshotText(scriptSnapshot), scriptTargetOrOptions, setNodeParents, scriptKind);
-        setSourceFileFields(sourceFile, scriptSnapshot, version2);
+        setSourceFileFields(sourceFile, scriptSnapshot, version22);
         return sourceFile;
       }
-      function updateLanguageServiceSourceFile(sourceFile, scriptSnapshot, version2, textChangeRange, aggressiveChecks) {
+      function updateLanguageServiceSourceFile(sourceFile, scriptSnapshot, version22, textChangeRange, aggressiveChecks) {
         if (textChangeRange) {
-          if (version2 !== sourceFile.version) {
+          if (version22 !== sourceFile.version) {
             let newText;
             const prefix = textChangeRange.span.start !== 0 ? sourceFile.text.substr(0, textChangeRange.span.start) : "";
             const suffix = textSpanEnd(textChangeRange.span) !== sourceFile.text.length ? sourceFile.text.substr(textSpanEnd(textChangeRange.span)) : "";
@@ -182519,7 +182519,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               newText = prefix && suffix ? prefix + changedText + suffix : prefix ? prefix + changedText : changedText + suffix;
             }
             const newSourceFile = updateSourceFile(sourceFile, newText, textChangeRange, aggressiveChecks);
-            setSourceFileFields(newSourceFile, scriptSnapshot, version2);
+            setSourceFileFields(newSourceFile, scriptSnapshot, version22);
             newSourceFile.nameTable = void 0;
             if (sourceFile !== newSourceFile && sourceFile.scriptSnapshot) {
               if (sourceFile.scriptSnapshot.dispose) {
@@ -182540,7 +182540,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           sourceFile.fileName,
           scriptSnapshot,
           options,
-          version2,
+          version22,
           /*setNodeParents*/
           true,
           sourceFile.scriptKind
@@ -202288,10 +202288,10 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         for (const packageJson of findPackageJsons(scriptPath, host)) {
           const contents = readJson2(packageJson, host);
           for (const key of nodeModulesDependencyKeys) {
-            const dependencies = contents[key];
-            if (!dependencies) continue;
-            for (const dep in dependencies) {
-              if (hasProperty(dependencies, dep) && !startsWith(dep, "@types/")) {
+            const dependencies2 = contents[key];
+            if (!dependencies2) continue;
+            for (const dep in dependencies2) {
+              if (hasProperty(dependencies2, dep) && !startsWith(dep, "@types/")) {
                 result.push(dep);
               }
             }
@@ -217590,7 +217590,7 @@ ${options.prefix}` : "\n" : options.prefix
         usingSingleLineStringWriter: () => usingSingleLineStringWriter,
         utf16EncodeAsString: () => utf16EncodeAsString,
         validateLocaleAndSetLanguage: () => validateLocaleAndSetLanguage,
-        version: () => version,
+        version: () => version2,
         versionMajorMinor: () => versionMajorMinor,
         visitArray: () => visitArray,
         visitCommaListElements: () => visitCommaListElements,
@@ -217615,7 +217615,7 @@ ${options.prefix}` : "\n" : options.prefix
       var enableDeprecationWarnings = true;
       var typeScriptVersion2;
       function getTypeScriptVersion() {
-        return typeScriptVersion2 ?? (typeScriptVersion2 = new Version(version));
+        return typeScriptVersion2 ?? (typeScriptVersion2 = new Version(version2));
       }
       function formatDeprecationMessage(name, error22, errorAfter, since, message) {
         let deprecationMessage = error22 ? "DeprecationError: " : "DeprecationWarning: ";
@@ -217655,12 +217655,12 @@ ${options.prefix}` : "\n" : options.prefix
         };
       }
       function createDeprecation(name, options = {}) {
-        const version2 = typeof options.typeScriptVersion === "string" ? new Version(options.typeScriptVersion) : options.typeScriptVersion ?? getTypeScriptVersion();
+        const version22 = typeof options.typeScriptVersion === "string" ? new Version(options.typeScriptVersion) : options.typeScriptVersion ?? getTypeScriptVersion();
         const errorAfter = typeof options.errorAfter === "string" ? new Version(options.errorAfter) : options.errorAfter;
         const warnAfter = typeof options.warnAfter === "string" ? new Version(options.warnAfter) : options.warnAfter;
         const since = typeof options.since === "string" ? new Version(options.since) : options.since ?? warnAfter;
-        const error22 = options.error || errorAfter && version2.compareTo(errorAfter) >= 0;
-        const warn = !warnAfter || version2.compareTo(warnAfter) >= 0;
+        const error22 = options.error || errorAfter && version22.compareTo(errorAfter) >= 0;
+        const warn = !warnAfter || version22.compareTo(warnAfter) >= 0;
         return error22 ? createErrorDeprecation(name, errorAfter, since, options.message) : warn ? createWarningDeprecation(name, errorAfter, since, options.message) : noop3;
       }
       function wrapFunction(deprecation, func) {
@@ -218055,11 +218055,11 @@ ${options.prefix}` : "\n" : options.prefix
                   this.log.writeLine(`Adding entry into typings cache: '${packageName}' => '${typingFile}'`);
                 }
                 const info2 = npmLock.packages && getProperty(npmLock.packages, `node_modules/${key}`) || getProperty(npmLock.dependencies, key);
-                const version2 = info2 && info2.version;
-                if (!version2) {
+                const version22 = info2 && info2.version;
+                if (!version22) {
                   continue;
                 }
-                const newTyping = { typingLocation: typingFile, version: new Version(version2) };
+                const newTyping = { typingLocation: typingFile, version: new Version(version22) };
                 this.packageNameToTypingLocation.set(packageName, newTyping);
               }
             }
@@ -218124,7 +218124,7 @@ ${options.prefix}` : "\n" : options.prefix
           this.sendResponse({
             kind: EventBeginInstallTypes,
             eventId: requestId,
-            typingsInstallerVersion: version,
+            typingsInstallerVersion: version2,
             projectName: req.projectName
           });
           const scopedTypings = filteredTypings.map(typingsName);
@@ -218166,7 +218166,7 @@ ${options.prefix}` : "\n" : options.prefix
                 projectName: req.projectName,
                 packagesToInstall: scopedTypings,
                 installSuccess: ok,
-                typingsInstallerVersion: version
+                typingsInstallerVersion: version2
               };
               this.sendResponse(response);
             }
@@ -223205,7 +223205,7 @@ ${options.prefix}` : "\n" : options.prefix
             configFileName: configFileName(),
             projectType: project instanceof ExternalProject ? "external" : "configured",
             languageServiceEnabled: project.languageServiceEnabled,
-            version
+            version: version2
           };
           this.eventHandler({ eventName: ProjectInfoTelemetryEvent, data });
           function configFileName() {
@@ -226173,7 +226173,7 @@ ${json}${newLine}`;
               "status"
               /* Status */
             ]: () => {
-              const response = { version };
+              const response = { version: version2 };
               return this.requiredResponse(response);
             },
             [
@@ -229731,11 +229731,11 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
           this.minVersion = 0;
           this.currentVersion = 0;
         }
-        versionToIndex(version2) {
-          if (version2 < this.minVersion || version2 > this.currentVersion) {
+        versionToIndex(version22) {
+          if (version22 < this.minVersion || version22 > this.currentVersion) {
             return void 0;
           }
-          return version2 % _ScriptVersionCache2.maxVersions;
+          return version22 % _ScriptVersionCache2.maxVersions;
         }
         currentVersionToIndex() {
           return this.currentVersion % _ScriptVersionCache2.maxVersions;
@@ -229820,8 +229820,8 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
       _ScriptVersionCache.maxVersions = 8;
       var ScriptVersionCache = _ScriptVersionCache;
       var LineIndexSnapshot = class _LineIndexSnapshot {
-        constructor(version2, cache, index, changesSincePreviousVersion = emptyArray2) {
-          this.version = version2;
+        constructor(version22, cache, index, changesSincePreviousVersion = emptyArray2) {
+          this.version = version22;
           this.cache = cache;
           this.index = index;
           this.changesSincePreviousVersion = changesSincePreviousVersion;
@@ -230686,8 +230686,112 @@ function prepareKeyValueMessage(key, value) {
 import * as os4 from "os";
 
 // ../../node_modules/.pnpm/@actions+http-client@4.0.1/node_modules/@actions/http-client/lib/index.js
+import * as http from "http";
+import * as https from "https";
+
+// ../../node_modules/.pnpm/@actions+http-client@4.0.1/node_modules/@actions/http-client/lib/proxy.js
+function getProxyUrl(reqUrl) {
+  const usingSsl = reqUrl.protocol === "https:";
+  if (checkBypass(reqUrl)) {
+    return void 0;
+  }
+  const proxyVar = (() => {
+    if (usingSsl) {
+      return process.env["https_proxy"] || process.env["HTTPS_PROXY"];
+    } else {
+      return process.env["http_proxy"] || process.env["HTTP_PROXY"];
+    }
+  })();
+  if (proxyVar) {
+    try {
+      return new DecodedURL(proxyVar);
+    } catch (_a) {
+      if (!proxyVar.startsWith("http://") && !proxyVar.startsWith("https://"))
+        return new DecodedURL(`http://${proxyVar}`);
+    }
+  } else {
+    return void 0;
+  }
+}
+function checkBypass(reqUrl) {
+  if (!reqUrl.hostname) {
+    return false;
+  }
+  const reqHost = reqUrl.hostname;
+  if (isLoopbackAddress(reqHost)) {
+    return true;
+  }
+  const noProxy = process.env["no_proxy"] || process.env["NO_PROXY"] || "";
+  if (!noProxy) {
+    return false;
+  }
+  let reqPort;
+  if (reqUrl.port) {
+    reqPort = Number(reqUrl.port);
+  } else if (reqUrl.protocol === "http:") {
+    reqPort = 80;
+  } else if (reqUrl.protocol === "https:") {
+    reqPort = 443;
+  }
+  const upperReqHosts = [reqUrl.hostname.toUpperCase()];
+  if (typeof reqPort === "number") {
+    upperReqHosts.push(`${upperReqHosts[0]}:${reqPort}`);
+  }
+  for (const upperNoProxyItem of noProxy.split(",").map((x) => x.trim().toUpperCase()).filter((x) => x)) {
+    if (upperNoProxyItem === "*" || upperReqHosts.some((x) => x === upperNoProxyItem || x.endsWith(`.${upperNoProxyItem}`) || upperNoProxyItem.startsWith(".") && x.endsWith(`${upperNoProxyItem}`))) {
+      return true;
+    }
+  }
+  return false;
+}
+function isLoopbackAddress(host) {
+  const hostLower = host.toLowerCase();
+  return hostLower === "localhost" || hostLower.startsWith("127.") || hostLower.startsWith("[::1]") || hostLower.startsWith("[0:0:0:0:0:0:0:1]");
+}
+var DecodedURL = class extends URL {
+  constructor(url, base) {
+    super(url, base);
+    this._decodedUsername = decodeURIComponent(super.username);
+    this._decodedPassword = decodeURIComponent(super.password);
+  }
+  get username() {
+    return this._decodedUsername;
+  }
+  get password() {
+    return this._decodedPassword;
+  }
+};
+
+// ../../node_modules/.pnpm/@actions+http-client@4.0.1/node_modules/@actions/http-client/lib/index.js
 var tunnel = __toESM(require_tunnel2(), 1);
 var import_undici = __toESM(require_undici(), 1);
+var __awaiter = function(thisArg, _arguments, P, generator) {
+  function adopt(value) {
+    return value instanceof P ? value : new P(function(resolve2) {
+      resolve2(value);
+    });
+  }
+  return new (P || (P = Promise))(function(resolve2, reject) {
+    function fulfilled(value) {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+    function rejected(value) {
+      try {
+        step(generator["throw"](value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+    function step(result) {
+      result.done ? resolve2(result.value) : adopt(result.value).then(fulfilled, rejected);
+    }
+    step((generator = generator.apply(thisArg, _arguments || [])).next());
+  });
+};
 var HttpCodes;
 (function(HttpCodes2) {
   HttpCodes2[HttpCodes2["OK"] = 200] = "OK";
@@ -230739,11 +230843,698 @@ var HttpResponseRetryCodes = [
   HttpCodes.ServiceUnavailable,
   HttpCodes.GatewayTimeout
 ];
+var RetryableHttpVerbs = ["OPTIONS", "GET", "DELETE", "HEAD"];
+var ExponentialBackoffCeiling = 10;
+var ExponentialBackoffTimeSlice = 5;
+var HttpClientError = class _HttpClientError extends Error {
+  constructor(message, statusCode) {
+    super(message);
+    this.name = "HttpClientError";
+    this.statusCode = statusCode;
+    Object.setPrototypeOf(this, _HttpClientError.prototype);
+  }
+};
+var HttpClientResponse = class {
+  constructor(message) {
+    this.message = message;
+  }
+  readBody() {
+    return __awaiter(this, void 0, void 0, function* () {
+      return new Promise((resolve2) => __awaiter(this, void 0, void 0, function* () {
+        let output = Buffer.alloc(0);
+        this.message.on("data", (chunk) => {
+          output = Buffer.concat([output, chunk]);
+        });
+        this.message.on("end", () => {
+          resolve2(output.toString());
+        });
+      }));
+    });
+  }
+  readBodyBuffer() {
+    return __awaiter(this, void 0, void 0, function* () {
+      return new Promise((resolve2) => __awaiter(this, void 0, void 0, function* () {
+        const chunks = [];
+        this.message.on("data", (chunk) => {
+          chunks.push(chunk);
+        });
+        this.message.on("end", () => {
+          resolve2(Buffer.concat(chunks));
+        });
+      }));
+    });
+  }
+};
+var HttpClient = class {
+  constructor(userAgent2, handlers, requestOptions) {
+    this._ignoreSslError = false;
+    this._allowRedirects = true;
+    this._allowRedirectDowngrade = false;
+    this._maxRedirects = 50;
+    this._allowRetries = false;
+    this._maxRetries = 1;
+    this._keepAlive = false;
+    this._disposed = false;
+    this.userAgent = this._getUserAgentWithOrchestrationId(userAgent2);
+    this.handlers = handlers || [];
+    this.requestOptions = requestOptions;
+    if (requestOptions) {
+      if (requestOptions.ignoreSslError != null) {
+        this._ignoreSslError = requestOptions.ignoreSslError;
+      }
+      this._socketTimeout = requestOptions.socketTimeout;
+      if (requestOptions.allowRedirects != null) {
+        this._allowRedirects = requestOptions.allowRedirects;
+      }
+      if (requestOptions.allowRedirectDowngrade != null) {
+        this._allowRedirectDowngrade = requestOptions.allowRedirectDowngrade;
+      }
+      if (requestOptions.maxRedirects != null) {
+        this._maxRedirects = Math.max(requestOptions.maxRedirects, 0);
+      }
+      if (requestOptions.keepAlive != null) {
+        this._keepAlive = requestOptions.keepAlive;
+      }
+      if (requestOptions.allowRetries != null) {
+        this._allowRetries = requestOptions.allowRetries;
+      }
+      if (requestOptions.maxRetries != null) {
+        this._maxRetries = requestOptions.maxRetries;
+      }
+    }
+  }
+  options(requestUrl, additionalHeaders) {
+    return __awaiter(this, void 0, void 0, function* () {
+      return this.request("OPTIONS", requestUrl, null, additionalHeaders || {});
+    });
+  }
+  get(requestUrl, additionalHeaders) {
+    return __awaiter(this, void 0, void 0, function* () {
+      return this.request("GET", requestUrl, null, additionalHeaders || {});
+    });
+  }
+  del(requestUrl, additionalHeaders) {
+    return __awaiter(this, void 0, void 0, function* () {
+      return this.request("DELETE", requestUrl, null, additionalHeaders || {});
+    });
+  }
+  post(requestUrl, data, additionalHeaders) {
+    return __awaiter(this, void 0, void 0, function* () {
+      return this.request("POST", requestUrl, data, additionalHeaders || {});
+    });
+  }
+  patch(requestUrl, data, additionalHeaders) {
+    return __awaiter(this, void 0, void 0, function* () {
+      return this.request("PATCH", requestUrl, data, additionalHeaders || {});
+    });
+  }
+  put(requestUrl, data, additionalHeaders) {
+    return __awaiter(this, void 0, void 0, function* () {
+      return this.request("PUT", requestUrl, data, additionalHeaders || {});
+    });
+  }
+  head(requestUrl, additionalHeaders) {
+    return __awaiter(this, void 0, void 0, function* () {
+      return this.request("HEAD", requestUrl, null, additionalHeaders || {});
+    });
+  }
+  sendStream(verb, requestUrl, stream, additionalHeaders) {
+    return __awaiter(this, void 0, void 0, function* () {
+      return this.request(verb, requestUrl, stream, additionalHeaders);
+    });
+  }
+  /**
+   * Gets a typed object from an endpoint
+   * Be aware that not found returns a null.  Other errors (4xx, 5xx) reject the promise
+   */
+  getJson(requestUrl_1) {
+    return __awaiter(this, arguments, void 0, function* (requestUrl, additionalHeaders = {}) {
+      additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+      const res = yield this.get(requestUrl, additionalHeaders);
+      return this._processResponse(res, this.requestOptions);
+    });
+  }
+  postJson(requestUrl_1, obj_1) {
+    return __awaiter(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
+      const data = JSON.stringify(obj, null, 2);
+      additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+      additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes.ApplicationJson);
+      const res = yield this.post(requestUrl, data, additionalHeaders);
+      return this._processResponse(res, this.requestOptions);
+    });
+  }
+  putJson(requestUrl_1, obj_1) {
+    return __awaiter(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
+      const data = JSON.stringify(obj, null, 2);
+      additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+      additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes.ApplicationJson);
+      const res = yield this.put(requestUrl, data, additionalHeaders);
+      return this._processResponse(res, this.requestOptions);
+    });
+  }
+  patchJson(requestUrl_1, obj_1) {
+    return __awaiter(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
+      const data = JSON.stringify(obj, null, 2);
+      additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+      additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes.ApplicationJson);
+      const res = yield this.patch(requestUrl, data, additionalHeaders);
+      return this._processResponse(res, this.requestOptions);
+    });
+  }
+  /**
+   * Makes a raw http request.
+   * All other methods such as get, post, patch, and request ultimately call this.
+   * Prefer get, del, post and patch
+   */
+  request(verb, requestUrl, data, headers) {
+    return __awaiter(this, void 0, void 0, function* () {
+      if (this._disposed) {
+        throw new Error("Client has already been disposed.");
+      }
+      const parsedUrl = new URL(requestUrl);
+      let info2 = this._prepareRequest(verb, parsedUrl, headers);
+      const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb) ? this._maxRetries + 1 : 1;
+      let numTries = 0;
+      let response;
+      do {
+        response = yield this.requestRaw(info2, data);
+        if (response && response.message && response.message.statusCode === HttpCodes.Unauthorized) {
+          let authenticationHandler;
+          for (const handler2 of this.handlers) {
+            if (handler2.canHandleAuthentication(response)) {
+              authenticationHandler = handler2;
+              break;
+            }
+          }
+          if (authenticationHandler) {
+            return authenticationHandler.handleAuthentication(this, info2, data);
+          } else {
+            return response;
+          }
+        }
+        let redirectsRemaining = this._maxRedirects;
+        while (response.message.statusCode && HttpRedirectCodes.includes(response.message.statusCode) && this._allowRedirects && redirectsRemaining > 0) {
+          const redirectUrl = response.message.headers["location"];
+          if (!redirectUrl) {
+            break;
+          }
+          const parsedRedirectUrl = new URL(redirectUrl);
+          if (parsedUrl.protocol === "https:" && parsedUrl.protocol !== parsedRedirectUrl.protocol && !this._allowRedirectDowngrade) {
+            throw new Error("Redirect from HTTPS to HTTP protocol. This downgrade is not allowed for security reasons. If you want to allow this behavior, set the allowRedirectDowngrade option to true.");
+          }
+          yield response.readBody();
+          if (parsedRedirectUrl.hostname !== parsedUrl.hostname) {
+            for (const header in headers) {
+              if (header.toLowerCase() === "authorization") {
+                delete headers[header];
+              }
+            }
+          }
+          info2 = this._prepareRequest(verb, parsedRedirectUrl, headers);
+          response = yield this.requestRaw(info2, data);
+          redirectsRemaining--;
+        }
+        if (!response.message.statusCode || !HttpResponseRetryCodes.includes(response.message.statusCode)) {
+          return response;
+        }
+        numTries += 1;
+        if (numTries < maxTries) {
+          yield response.readBody();
+          yield this._performExponentialBackoff(numTries);
+        }
+      } while (numTries < maxTries);
+      return response;
+    });
+  }
+  /**
+   * Needs to be called if keepAlive is set to true in request options.
+   */
+  dispose() {
+    if (this._agent) {
+      this._agent.destroy();
+    }
+    this._disposed = true;
+  }
+  /**
+   * Raw request.
+   * @param info
+   * @param data
+   */
+  requestRaw(info2, data) {
+    return __awaiter(this, void 0, void 0, function* () {
+      return new Promise((resolve2, reject) => {
+        function callbackForResult(err, res) {
+          if (err) {
+            reject(err);
+          } else if (!res) {
+            reject(new Error("Unknown error"));
+          } else {
+            resolve2(res);
+          }
+        }
+        this.requestRawWithCallback(info2, data, callbackForResult);
+      });
+    });
+  }
+  /**
+   * Raw request with callback.
+   * @param info
+   * @param data
+   * @param onResult
+   */
+  requestRawWithCallback(info2, data, onResult) {
+    if (typeof data === "string") {
+      if (!info2.options.headers) {
+        info2.options.headers = {};
+      }
+      info2.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
+    }
+    let callbackCalled = false;
+    function handleResult(err, res) {
+      if (!callbackCalled) {
+        callbackCalled = true;
+        onResult(err, res);
+      }
+    }
+    const req = info2.httpModule.request(info2.options, (msg) => {
+      const res = new HttpClientResponse(msg);
+      handleResult(void 0, res);
+    });
+    let socket;
+    req.on("socket", (sock) => {
+      socket = sock;
+    });
+    req.setTimeout(this._socketTimeout || 3 * 6e4, () => {
+      if (socket) {
+        socket.end();
+      }
+      handleResult(new Error(`Request timeout: ${info2.options.path}`));
+    });
+    req.on("error", function(err) {
+      handleResult(err);
+    });
+    if (data && typeof data === "string") {
+      req.write(data, "utf8");
+    }
+    if (data && typeof data !== "string") {
+      data.on("close", function() {
+        req.end();
+      });
+      data.pipe(req);
+    } else {
+      req.end();
+    }
+  }
+  /**
+   * Gets an http agent. This function is useful when you need an http agent that handles
+   * routing through a proxy server - depending upon the url and proxy environment variables.
+   * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
+   */
+  getAgent(serverUrl) {
+    const parsedUrl = new URL(serverUrl);
+    return this._getAgent(parsedUrl);
+  }
+  getAgentDispatcher(serverUrl) {
+    const parsedUrl = new URL(serverUrl);
+    const proxyUrl = getProxyUrl(parsedUrl);
+    const useProxy = proxyUrl && proxyUrl.hostname;
+    if (!useProxy) {
+      return;
+    }
+    return this._getProxyAgentDispatcher(parsedUrl, proxyUrl);
+  }
+  _prepareRequest(method, requestUrl, headers) {
+    const info2 = {};
+    info2.parsedUrl = requestUrl;
+    const usingSsl = info2.parsedUrl.protocol === "https:";
+    info2.httpModule = usingSsl ? https : http;
+    const defaultPort = usingSsl ? 443 : 80;
+    info2.options = {};
+    info2.options.host = info2.parsedUrl.hostname;
+    info2.options.port = info2.parsedUrl.port ? parseInt(info2.parsedUrl.port) : defaultPort;
+    info2.options.path = (info2.parsedUrl.pathname || "") + (info2.parsedUrl.search || "");
+    info2.options.method = method;
+    info2.options.headers = this._mergeHeaders(headers);
+    if (this.userAgent != null) {
+      info2.options.headers["user-agent"] = this.userAgent;
+    }
+    info2.options.agent = this._getAgent(info2.parsedUrl);
+    if (this.handlers) {
+      for (const handler2 of this.handlers) {
+        handler2.prepareRequest(info2.options);
+      }
+    }
+    return info2;
+  }
+  _mergeHeaders(headers) {
+    if (this.requestOptions && this.requestOptions.headers) {
+      return Object.assign({}, lowercaseKeys(this.requestOptions.headers), lowercaseKeys(headers || {}));
+    }
+    return lowercaseKeys(headers || {});
+  }
+  /**
+   * Gets an existing header value or returns a default.
+   * Handles converting number header values to strings since HTTP headers must be strings.
+   * Note: This returns string | string[] since some headers can have multiple values.
+   * For headers that must always be a single string (like Content-Type), use the
+   * specialized _getExistingOrDefaultContentTypeHeader method instead.
+   */
+  _getExistingOrDefaultHeader(additionalHeaders, header, _default) {
+    let clientHeader;
+    if (this.requestOptions && this.requestOptions.headers) {
+      const headerValue = lowercaseKeys(this.requestOptions.headers)[header];
+      if (headerValue) {
+        clientHeader = typeof headerValue === "number" ? headerValue.toString() : headerValue;
+      }
+    }
+    const additionalValue = additionalHeaders[header];
+    if (additionalValue !== void 0) {
+      return typeof additionalValue === "number" ? additionalValue.toString() : additionalValue;
+    }
+    if (clientHeader !== void 0) {
+      return clientHeader;
+    }
+    return _default;
+  }
+  /**
+   * Specialized version of _getExistingOrDefaultHeader for Content-Type header.
+   * Always returns a single string (not an array) since Content-Type should be a single value.
+   * Converts arrays to comma-separated strings and numbers to strings to ensure type safety.
+   * This was split from _getExistingOrDefaultHeader to provide stricter typing for callers
+   * that assign the result to places expecting a string (e.g., additionalHeaders[Headers.ContentType]).
+   */
+  _getExistingOrDefaultContentTypeHeader(additionalHeaders, _default) {
+    let clientHeader;
+    if (this.requestOptions && this.requestOptions.headers) {
+      const headerValue = lowercaseKeys(this.requestOptions.headers)[Headers.ContentType];
+      if (headerValue) {
+        if (typeof headerValue === "number") {
+          clientHeader = String(headerValue);
+        } else if (Array.isArray(headerValue)) {
+          clientHeader = headerValue.join(", ");
+        } else {
+          clientHeader = headerValue;
+        }
+      }
+    }
+    const additionalValue = additionalHeaders[Headers.ContentType];
+    if (additionalValue !== void 0) {
+      if (typeof additionalValue === "number") {
+        return String(additionalValue);
+      } else if (Array.isArray(additionalValue)) {
+        return additionalValue.join(", ");
+      } else {
+        return additionalValue;
+      }
+    }
+    if (clientHeader !== void 0) {
+      return clientHeader;
+    }
+    return _default;
+  }
+  _getAgent(parsedUrl) {
+    let agent2;
+    const proxyUrl = getProxyUrl(parsedUrl);
+    const useProxy = proxyUrl && proxyUrl.hostname;
+    if (this._keepAlive && useProxy) {
+      agent2 = this._proxyAgent;
+    }
+    if (!useProxy) {
+      agent2 = this._agent;
+    }
+    if (agent2) {
+      return agent2;
+    }
+    const usingSsl = parsedUrl.protocol === "https:";
+    let maxSockets = 100;
+    if (this.requestOptions) {
+      maxSockets = this.requestOptions.maxSockets || http.globalAgent.maxSockets;
+    }
+    if (proxyUrl && proxyUrl.hostname) {
+      const agentOptions = {
+        maxSockets,
+        keepAlive: this._keepAlive,
+        proxy: Object.assign(Object.assign({}, (proxyUrl.username || proxyUrl.password) && {
+          proxyAuth: `${proxyUrl.username}:${proxyUrl.password}`
+        }), { host: proxyUrl.hostname, port: proxyUrl.port })
+      };
+      let tunnelAgent;
+      const overHttps = proxyUrl.protocol === "https:";
+      if (usingSsl) {
+        tunnelAgent = overHttps ? tunnel.httpsOverHttps : tunnel.httpsOverHttp;
+      } else {
+        tunnelAgent = overHttps ? tunnel.httpOverHttps : tunnel.httpOverHttp;
+      }
+      agent2 = tunnelAgent(agentOptions);
+      this._proxyAgent = agent2;
+    }
+    if (!agent2) {
+      const options = { keepAlive: this._keepAlive, maxSockets };
+      agent2 = usingSsl ? new https.Agent(options) : new http.Agent(options);
+      this._agent = agent2;
+    }
+    if (usingSsl && this._ignoreSslError) {
+      agent2.options = Object.assign(agent2.options || {}, {
+        rejectUnauthorized: false
+      });
+    }
+    return agent2;
+  }
+  _getProxyAgentDispatcher(parsedUrl, proxyUrl) {
+    let proxyAgent;
+    if (this._keepAlive) {
+      proxyAgent = this._proxyAgentDispatcher;
+    }
+    if (proxyAgent) {
+      return proxyAgent;
+    }
+    const usingSsl = parsedUrl.protocol === "https:";
+    proxyAgent = new import_undici.ProxyAgent(Object.assign({ uri: proxyUrl.href, pipelining: !this._keepAlive ? 0 : 1 }, (proxyUrl.username || proxyUrl.password) && {
+      token: `Basic ${Buffer.from(`${proxyUrl.username}:${proxyUrl.password}`).toString("base64")}`
+    }));
+    this._proxyAgentDispatcher = proxyAgent;
+    if (usingSsl && this._ignoreSslError) {
+      proxyAgent.options = Object.assign(proxyAgent.options.requestTls || {}, {
+        rejectUnauthorized: false
+      });
+    }
+    return proxyAgent;
+  }
+  _getUserAgentWithOrchestrationId(userAgent2) {
+    const baseUserAgent = userAgent2 || "actions/http-client";
+    const orchId = process.env["ACTIONS_ORCHESTRATION_ID"];
+    if (orchId) {
+      const sanitizedId = orchId.replace(/[^a-z0-9_.-]/gi, "_");
+      return `${baseUserAgent} actions_orchestration_id/${sanitizedId}`;
+    }
+    return baseUserAgent;
+  }
+  _performExponentialBackoff(retryNumber) {
+    return __awaiter(this, void 0, void 0, function* () {
+      retryNumber = Math.min(ExponentialBackoffCeiling, retryNumber);
+      const ms = ExponentialBackoffTimeSlice * Math.pow(2, retryNumber);
+      return new Promise((resolve2) => setTimeout(() => resolve2(), ms));
+    });
+  }
+  _processResponse(res, options) {
+    return __awaiter(this, void 0, void 0, function* () {
+      return new Promise((resolve2, reject) => __awaiter(this, void 0, void 0, function* () {
+        const statusCode = res.message.statusCode || 0;
+        const response = {
+          statusCode,
+          result: null,
+          headers: {}
+        };
+        if (statusCode === HttpCodes.NotFound) {
+          resolve2(response);
+        }
+        function dateTimeDeserializer(key, value) {
+          if (typeof value === "string") {
+            const a = new Date(value);
+            if (!isNaN(a.valueOf())) {
+              return a;
+            }
+          }
+          return value;
+        }
+        let obj;
+        let contents;
+        try {
+          contents = yield res.readBody();
+          if (contents && contents.length > 0) {
+            if (options && options.deserializeDates) {
+              obj = JSON.parse(contents, dateTimeDeserializer);
+            } else {
+              obj = JSON.parse(contents);
+            }
+            response.result = obj;
+          }
+          response.headers = res.message.headers;
+        } catch (err) {
+        }
+        if (statusCode > 299) {
+          let msg;
+          if (obj && obj.message) {
+            msg = obj.message;
+          } else if (contents && contents.length > 0) {
+            msg = contents;
+          } else {
+            msg = `Failed request: (${statusCode})`;
+          }
+          const err = new HttpClientError(msg, statusCode);
+          err.result = response.result;
+          reject(err);
+        } else {
+          resolve2(response);
+        }
+      }));
+    });
+  }
+};
+var lowercaseKeys = (obj) => Object.keys(obj).reduce((c, k) => (c[k.toLowerCase()] = obj[k], c), {});
+
+// ../../node_modules/.pnpm/@actions+http-client@4.0.1/node_modules/@actions/http-client/lib/auth.js
+var __awaiter2 = function(thisArg, _arguments, P, generator) {
+  function adopt(value) {
+    return value instanceof P ? value : new P(function(resolve2) {
+      resolve2(value);
+    });
+  }
+  return new (P || (P = Promise))(function(resolve2, reject) {
+    function fulfilled(value) {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+    function rejected(value) {
+      try {
+        step(generator["throw"](value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+    function step(result) {
+      result.done ? resolve2(result.value) : adopt(result.value).then(fulfilled, rejected);
+    }
+    step((generator = generator.apply(thisArg, _arguments || [])).next());
+  });
+};
+var BearerCredentialHandler = class {
+  constructor(token) {
+    this.token = token;
+  }
+  // currently implements pre-authorization
+  // TODO: support preAuth = false where it hooks on 401
+  prepareRequest(options) {
+    if (!options.headers) {
+      throw Error("The request has no headers");
+    }
+    options.headers["Authorization"] = `Bearer ${this.token}`;
+  }
+  // This handler cannot handle 401
+  canHandleAuthentication() {
+    return false;
+  }
+  handleAuthentication() {
+    return __awaiter2(this, void 0, void 0, function* () {
+      throw new Error("not implemented");
+    });
+  }
+};
+
+// ../../node_modules/.pnpm/@actions+core@3.0.1/node_modules/@actions/core/lib/oidc-utils.js
+var __awaiter3 = function(thisArg, _arguments, P, generator) {
+  function adopt(value) {
+    return value instanceof P ? value : new P(function(resolve2) {
+      resolve2(value);
+    });
+  }
+  return new (P || (P = Promise))(function(resolve2, reject) {
+    function fulfilled(value) {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+    function rejected(value) {
+      try {
+        step(generator["throw"](value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+    function step(result) {
+      result.done ? resolve2(result.value) : adopt(result.value).then(fulfilled, rejected);
+    }
+    step((generator = generator.apply(thisArg, _arguments || [])).next());
+  });
+};
+var OidcClient = class _OidcClient {
+  static createHttpClient(allowRetry = true, maxRetry = 10) {
+    const requestOptions = {
+      allowRetries: allowRetry,
+      maxRetries: maxRetry
+    };
+    return new HttpClient("actions/oidc-client", [new BearerCredentialHandler(_OidcClient.getRequestToken())], requestOptions);
+  }
+  static getRequestToken() {
+    const token = process.env["ACTIONS_ID_TOKEN_REQUEST_TOKEN"];
+    if (!token) {
+      throw new Error("Unable to get ACTIONS_ID_TOKEN_REQUEST_TOKEN env variable");
+    }
+    return token;
+  }
+  static getIDTokenUrl() {
+    const runtimeUrl = process.env["ACTIONS_ID_TOKEN_REQUEST_URL"];
+    if (!runtimeUrl) {
+      throw new Error("Unable to get ACTIONS_ID_TOKEN_REQUEST_URL env variable");
+    }
+    return runtimeUrl;
+  }
+  static getCall(id_token_url) {
+    return __awaiter3(this, void 0, void 0, function* () {
+      var _a;
+      const httpclient = _OidcClient.createHttpClient();
+      const res = yield httpclient.getJson(id_token_url).catch((error2) => {
+        throw new Error(`Failed to get ID Token. 
+ 
+        Error Code : ${error2.statusCode}
+ 
+        Error Message: ${error2.message}`);
+      });
+      const id_token = (_a = res.result) === null || _a === void 0 ? void 0 : _a.value;
+      if (!id_token) {
+        throw new Error("Response json body do not have ID Token field");
+      }
+      return id_token;
+    });
+  }
+  static getIDToken(audience) {
+    return __awaiter3(this, void 0, void 0, function* () {
+      try {
+        let id_token_url = _OidcClient.getIDTokenUrl();
+        if (audience) {
+          const encodedAudience = encodeURIComponent(audience);
+          id_token_url = `${id_token_url}&audience=${encodedAudience}`;
+        }
+        debug(`ID token url is ${id_token_url}`);
+        const id_token = yield _OidcClient.getCall(id_token_url);
+        setSecret(id_token);
+        return id_token;
+      } catch (error2) {
+        throw new Error(`Error message: ${error2.message}`);
+      }
+    });
+  }
+};
 
 // ../../node_modules/.pnpm/@actions+core@3.0.1/node_modules/@actions/core/lib/summary.js
 import { EOL as EOL3 } from "os";
 import { constants, promises } from "fs";
-var __awaiter = function(thisArg, _arguments, P, generator) {
+var __awaiter4 = function(thisArg, _arguments, P, generator) {
   function adopt(value) {
     return value instanceof P ? value : new P(function(resolve2) {
       resolve2(value);
@@ -230783,7 +231574,7 @@ var Summary = class {
    * @returns step summary file path
    */
   filePath() {
-    return __awaiter(this, void 0, void 0, function* () {
+    return __awaiter4(this, void 0, void 0, function* () {
       if (this._filePath) {
         return this._filePath;
       }
@@ -230824,7 +231615,7 @@ var Summary = class {
    * @returns {Promise<Summary>} summary instance
    */
   write(options) {
-    return __awaiter(this, void 0, void 0, function* () {
+    return __awaiter4(this, void 0, void 0, function* () {
       const overwrite = !!(options === null || options === void 0 ? void 0 : options.overwrite);
       const filePath = yield this.filePath();
       const writeFunc = overwrite ? writeFile : appendFile;
@@ -230838,7 +231629,7 @@ var Summary = class {
    * @returns {Summary} summary instance
    */
   clear() {
-    return __awaiter(this, void 0, void 0, function* () {
+    return __awaiter4(this, void 0, void 0, function* () {
       return this.emptyBuffer().write({ overwrite: true });
     });
   }
@@ -231042,11 +231833,41 @@ var platform = os3.platform();
 var arch = os3.arch();
 
 // ../../node_modules/.pnpm/@actions+core@3.0.1/node_modules/@actions/core/lib/core.js
+var __awaiter5 = function(thisArg, _arguments, P, generator) {
+  function adopt(value) {
+    return value instanceof P ? value : new P(function(resolve2) {
+      resolve2(value);
+    });
+  }
+  return new (P || (P = Promise))(function(resolve2, reject) {
+    function fulfilled(value) {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+    function rejected(value) {
+      try {
+        step(generator["throw"](value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+    function step(result) {
+      result.done ? resolve2(result.value) : adopt(result.value).then(fulfilled, rejected);
+    }
+    step((generator = generator.apply(thisArg, _arguments || [])).next());
+  });
+};
 var ExitCode;
 (function(ExitCode2) {
   ExitCode2[ExitCode2["Success"] = 0] = "Success";
   ExitCode2[ExitCode2["Failure"] = 1] = "Failure";
 })(ExitCode || (ExitCode = {}));
+function setSecret(secret) {
+  issueCommand("add-mask", {}, secret);
+}
 function getInput(name, options) {
   const val = process.env[`INPUT_${name.replace(/ /g, "_").toUpperCase()}`] || "";
   if (options && options.required && !val) {
@@ -231069,6 +231890,9 @@ function setFailed(message) {
   process.exitCode = ExitCode.Failure;
   error(message);
 }
+function debug(message) {
+  issueCommand("debug", {}, message);
+}
 function error(message, properties = {}) {
   issueCommand("error", toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
@@ -231077,6 +231901,11 @@ function warning(message, properties = {}) {
 }
 function info(message) {
   process.stdout.write(message + os4.EOL);
+}
+function getIDToken(aud) {
+  return __awaiter5(this, void 0, void 0, function* () {
+    return yield OidcClient.getIDToken(aud);
+  });
 }
 
 // ../../node_modules/.pnpm/@actions+github@9.1.1/node_modules/@actions/github/lib/context.js
@@ -231133,7 +231962,7 @@ var Context = class {
 // ../../node_modules/.pnpm/@actions+github@9.1.1/node_modules/@actions/github/lib/internal/utils.js
 var httpClient = __toESM(require_lib(), 1);
 var import_undici2 = __toESM(require_undici(), 1);
-var __awaiter2 = function(thisArg, _arguments, P, generator) {
+var __awaiter6 = function(thisArg, _arguments, P, generator) {
   function adopt(value) {
     return value instanceof P ? value : new P(function(resolve2) {
       resolve2(value);
@@ -231178,7 +232007,7 @@ function getProxyAgentDispatcher(destinationUrl) {
 }
 function getProxyFetch(destinationUrl) {
   const httpDispatcher = getProxyAgentDispatcher(destinationUrl);
-  const proxyFetch = (url, opts) => __awaiter2(this, void 0, void 0, function* () {
+  const proxyFetch = (url, opts) => __awaiter6(this, void 0, void 0, function* () {
     return (0, import_undici2.fetch)(url, Object.assign(Object.assign({}, opts), { dispatcher: httpDispatcher }));
   });
   return proxyFetch;
@@ -231331,7 +232160,7 @@ var DEFAULTS = {
     format: ""
   }
 };
-function lowercaseKeys(object) {
+function lowercaseKeys2(object) {
   if (!object) {
     return {};
   }
@@ -231375,7 +232204,7 @@ function merge(defaults2, route, options) {
   } else {
     options = Object.assign({}, route);
   }
-  options.headers = lowercaseKeys(options.headers);
+  options.headers = lowercaseKeys2(options.headers);
   removeUndefinedProperties(options);
   removeUndefinedProperties(options.headers);
   const mergedOptions = mergeDeep(defaults2 || {}, options);
@@ -232205,8 +233034,8 @@ function isPlainObject2(value) {
 }
 var noop = () => "";
 async function fetchWrapper(requestOptions) {
-  const fetch2 = requestOptions.request?.fetch || globalThis.fetch;
-  if (!fetch2) {
+  const fetch3 = requestOptions.request?.fetch || globalThis.fetch;
+  if (!fetch3) {
     throw new Error(
       "fetch is not set. Please pass a fetch implementation as new Octokit({ request: { fetch }}). Learn more at https://github.com/octokit/octokit.js/#fetch-missing"
     );
@@ -232222,7 +233051,7 @@ async function fetchWrapper(requestOptions) {
   );
   let fetchResponse;
   try {
-    fetchResponse = await fetch2(requestOptions.url, {
+    fetchResponse = await fetch3(requestOptions.url, {
       method: requestOptions.method,
       body,
       redirect: requestOptions.request?.redirect,
@@ -235976,15 +236805,16 @@ function buildReport(input) {
       text: `This change deletes or renames away test files: ${pathList(input.deletedTestFiles)}. Check that the tests they held were meant to go before trusting the result.`
     });
   }
-  const testIntegrity = input.testIntegrity;
-  if (testIntegrity?.ignoredConfig !== void 0) {
+  const testIntegrity2 = input.testIntegrity;
+  if (testIntegrity2?.ignoredConfig !== void 0) {
+    const against = testIntegrity2.baseMode ?? testIntegrity2.mode;
     messages.push({
       level: "warn",
       code: "TEST_INTEGRITY_MODE_IGNORED",
-      text: `.pharn/ci.yml sets test_integrity.mode to ${testIntegrity.ignoredConfig}, which is looser than ${testIntegrity.mode}, so ${testIntegrity.mode} applies: the config can only make the check stricter.`
+      text: `.pharn/ci.yml sets test_integrity.mode to ${testIntegrity2.ignoredConfig}, which is looser than ${against}, so ${against} applies: the config can only make the check stricter.`
     });
   }
-  if (testIntegrity?.mode === "off") {
+  if (testIntegrity2?.mode === "off") {
     messages.push({
       level: "info",
       code: "TEST_INTEGRITY_OFF",
@@ -235993,12 +236823,12 @@ function buildReport(input) {
   }
   const signals = [...input.testIntegritySignals ?? []];
   messages.push(...testIntegritySignalMessages(signals, { omitted: input.omittedSignals ?? [] }));
-  if (testIntegrity?.mode !== "off") {
+  if (testIntegrity2?.mode !== "off") {
     const text = indexUnavailableText(input.testIndexUnavailable, input.testConfigUnavailable);
     if (text !== null) messages.push({ level: "warn", code: "TEST_INTEGRITY_INDEX_UNAVAILABLE", text });
   }
   const cut = input.textTruncatedFiles ?? [];
-  if (cut.length > 0 && testIntegrity?.mode !== "off") {
+  if (cut.length > 0 && testIntegrity2?.mode !== "off") {
     messages.push({
       level: "warn",
       code: "TEST_INTEGRITY_TEXT_TRUNCATED",
@@ -236028,6 +236858,7 @@ function buildReport(input) {
     messages.push({ level: "warn", code: "AGENT_SETUP_FILE_EMPTY", text });
   }
   messages.push(...input.agentConfigSecretMessages ?? []);
+  messages.push(...input.policyMessages ?? []);
   return {
     schemaVersion: 2,
     tool: { name: "pharn-ci", version: input.version },
@@ -236049,7 +236880,7 @@ function buildReport(input) {
     messages,
     testIntegrity: {
       ...emptyTestIntegrity(),
-      ...testIntegrity === void 0 ? {} : { mode: testIntegrity.mode, source: testIntegrity.source },
+      ...testIntegrity2 === void 0 ? {} : { mode: testIntegrity2.mode, source: testIntegrity2.source },
       verdict: signals.some((s) => s.severity === "block") ? "fail" : signals.some((s) => s.severity === "warn") ? "warn" : "pass",
       signals,
       languages: [...input.testIntegrityLanguages ?? []],
@@ -236316,14 +237147,14 @@ var EVIDENCE_ORDER = [
   "label"
 ];
 var strings = (value) => Array.isArray(value) ? value.filter((v) => typeof v === "string") : [];
-function detectAgentPr(facts, agents = KNOWN_AGENTS) {
+function detectAgentPr(facts, agents2 = KNOWN_AGENTS) {
   const pr = facts?.pr;
   if (pr === null || pr === void 0 || typeof pr !== "object") {
     return { isAgentPr: false, agentHint: null, evidence: [], incomplete: null, coAuthors: [] };
   }
   const loginAgent = /* @__PURE__ */ new Map();
   const emailAgent = /* @__PURE__ */ new Map();
-  agents.forEach((a, index) => {
+  agents2.forEach((a, index) => {
     for (const login of strings(a.logins))
       if (!loginAgent.has(login.toLowerCase())) loginAgent.set(login.toLowerCase(), index);
     for (const email of strings(a.emails))
@@ -236334,7 +237165,7 @@ function detectAgentPr(facts, agents = KNOWN_AGENTS) {
   const found = /* @__PURE__ */ new Set();
   let hintIndex = Number.POSITIVE_INFINITY;
   const coAuthors = [];
-  const known = (index) => {
+  const known2 = (index) => {
     if (index < hintIndex) hintIndex = index;
   };
   const rawAuthor = pr.author;
@@ -236349,7 +237180,7 @@ function detectAgentPr(facts, agents = KNOWN_AGENTS) {
     const index = loginAgent.get(login);
     if (index !== void 0) {
       found.add("author-known-agent");
-      known(index);
+      known2(index);
     }
     if (extraLogins.has(login)) found.add("author-extra-login");
   }
@@ -236365,7 +237196,7 @@ function detectAgentPr(facts, agents = KNOWN_AGENTS) {
         const index = loginAgent.get(login);
         if (index !== void 0) {
           found.add("commit-known-agent");
-          known(index);
+          known2(index);
         }
         if (extraLogins.has(login)) found.add("commit-extra-login");
       }
@@ -236378,11 +237209,11 @@ function detectAgentPr(facts, agents = KNOWN_AGENTS) {
         const extra = login !== null && extraLogins.has(login);
         if (index !== void 0) {
           found.add("co-author-known-agent");
-          known(index);
+          known2(index);
         }
         if (extra) found.add("co-author-extra-login");
         let entry;
-        if (index !== void 0) entry = `${agents[index]?.hint} <${email}>`;
+        if (index !== void 0) entry = `${agents2[index]?.hint} <${email}>`;
         else if (extra) entry = `${login} <${email}>`;
         if (entry !== void 0 && coAuthors.length < MAX_CO_AUTHORS && !coAuthors.includes(entry))
           coAuthors.push(entry);
@@ -236402,7 +237233,7 @@ function detectAgentPr(facts, agents = KNOWN_AGENTS) {
   const evidence = EVIDENCE_ORDER.filter((kind) => found.has(kind));
   return {
     isAgentPr: evidence.length > 0 || incomplete !== null,
-    agentHint: Number.isFinite(hintIndex) ? agents[hintIndex]?.hint ?? null : null,
+    agentHint: Number.isFinite(hintIndex) ? agents2[hintIndex]?.hint ?? null : null,
     evidence,
     incomplete,
     coAuthors
@@ -236506,6 +237337,25 @@ function testIntegrityModeError(label, value) {
   return `${label} must be one of: ${TEST_INTEGRITY_MODES.join(", ")} (got ${got})`;
 }
 function resolveTestIntegrityMode(settings = {}) {
+  const today = withoutPolicy(settings);
+  const policy = settings.policy;
+  if (policy === void 0) return today;
+  let mode = policy.mode;
+  if (policy.kind === "app") {
+    for (const given of [settings.input, settings.config]) {
+      if (given !== void 0 && STRICTNESS[given] > STRICTNESS[mode]) mode = given;
+    }
+  } else if (STRICTNESS[today.mode] > STRICTNESS[mode]) {
+    mode = today.mode;
+  }
+  return {
+    mode,
+    source: mode === policy.mode ? "policy" : today.source,
+    ...today.ignoredConfig === void 0 ? {} : { ignoredConfig: today.ignoredConfig },
+    baseMode: today.mode
+  };
+}
+function withoutPolicy(settings) {
   const base = settings.input === void 0 ? { mode: "warn", source: "default" } : { mode: settings.input, source: "input" };
   const config = settings.config;
   if (config === void 0) return base;
@@ -236706,18 +237556,18 @@ function validateConfig(doc) {
       throw new ConfigError(`unknown top-level key "${key}"`);
     }
   }
-  const coverage = validateCoverage(doc.coverage);
-  if (coverage !== void 0) config.coverage = coverage;
-  const setup = validateSetup(doc.setup);
-  if (setup !== void 0) config.setup = setup;
-  const testIntegrity = validateTestIntegrity(doc.test_integrity);
-  if (testIntegrity !== void 0) config.testIntegrity = testIntegrity;
+  const coverage2 = validateCoverage(doc.coverage);
+  if (coverage2 !== void 0) config.coverage = coverage2;
+  const setup2 = validateSetup(doc.setup);
+  if (setup2 !== void 0) config.setup = setup2;
+  const testIntegrity2 = validateTestIntegrity(doc.test_integrity);
+  if (testIntegrity2 !== void 0) config.testIntegrity = testIntegrity2;
   return config;
 }
 function validateTestIntegrity(value) {
   if (value === void 0 || value === null) return void 0;
   if (typeof value !== "object" || Array.isArray(value)) throw new ConfigError(`"test_integrity" must be a mapping`);
-  const testIntegrity = {};
+  const testIntegrity2 = {};
   for (const [key, entry] of Object.entries(value)) {
     if (key === "accept_label") {
       throw new ConfigError(
@@ -236728,24 +237578,24 @@ function validateTestIntegrity(value) {
     switch (key) {
       case "mode":
         if (!isTestIntegrityMode(entry)) throw new ConfigError(testIntegrityModeError('"test_integrity.mode"', entry));
-        testIntegrity.mode = entry;
+        testIntegrity2.mode = entry;
         break;
       default:
         throw new ConfigError(`unknown key "test_integrity.${key}"`);
     }
   }
-  return testIntegrity;
+  return testIntegrity2;
 }
 function validateSetup(value) {
   if (value === void 0 || value === null) return void 0;
   if (typeof value !== "object" || Array.isArray(value)) throw new ConfigError(`"setup" must be a mapping`);
-  const setup = {};
+  const setup2 = {};
   for (const [key, entry] of Object.entries(value)) {
     if (entry === null) continue;
     switch (key) {
       case "require":
         if (typeof entry !== "boolean") throw new ConfigError(`"setup.require" must be true or false`);
-        setup.require = entry;
+        setup2.require = entry;
         break;
       case "expect": {
         if (!Array.isArray(entry)) throw new ConfigError(`"setup.expect" must be a list of agent tool names`);
@@ -236756,34 +237606,34 @@ function validateSetup(value) {
           }
           names.push(item);
         }
-        setup.expect = parseAgentToolNames(names, '"setup.expect" item');
+        setup2.expect = parseAgentToolNames(names, '"setup.expect" item');
         break;
       }
       default:
         throw new ConfigError(`unknown key "setup.${key}"`);
     }
   }
-  return setup;
+  return setup2;
 }
 function validateCoverage(cov) {
   if (cov === void 0 || cov === null) return void 0;
   if (typeof cov !== "object" || Array.isArray(cov)) throw new ConfigError(`"coverage" must be a mapping`);
-  const coverage = {};
+  const coverage2 = {};
   for (const [key, value] of Object.entries(cov)) {
     if (value === null) continue;
     switch (key) {
       case "file":
-        coverage.file = validateCoverageFile(value);
+        coverage2.file = validateCoverageFile(value);
         break;
       case "format":
         if (typeof value !== "string" || !isCoverageFormatSelection(value)) {
           throw new ConfigError(`"coverage.format" must be one of: ${COVERAGE_FORMAT_SELECTIONS.join(", ")}`);
         }
-        coverage.format = value;
+        coverage2.format = value;
         break;
       case "threshold": {
         const text = typeof value === "number" ? NUMBER_TEXT.get(cov)?.get(key) : void 0;
-        coverage.threshold = parseThreshold(text ?? value, '"coverage.threshold"');
+        coverage2.threshold = parseThreshold(text ?? value, '"coverage.threshold"');
         break;
       }
       case "exclude": {
@@ -236795,19 +237645,19 @@ function validateCoverage(cov) {
           }
           patterns.push(parseExcludePattern(item, '"coverage.exclude" pattern'));
         }
-        coverage.exclude = patterns;
+        coverage2.exclude = patterns;
         break;
       }
       case "root":
         if (typeof value !== "string" || value === "")
           throw new ConfigError(`"coverage.root" must be a non-empty string`);
-        coverage.root = parseCoverageRoot(value, '"coverage.root"');
+        coverage2.root = parseCoverageRoot(value, '"coverage.root"');
         break;
       default:
         throw new ConfigError(`unknown key "coverage.${key}"`);
     }
   }
-  return coverage;
+  return coverage2;
 }
 function validateCoverageFile(value) {
   const label = '"coverage.file" pattern';
@@ -236852,7 +237702,7 @@ function parseAgentToolNames(names, label) {
   const tools = [];
   for (const raw of names) {
     const name = raw.trim();
-    const tool = AGENT_TOOLS.find((known) => known === name);
+    const tool = AGENT_TOOLS.find((known2) => known2 === name);
     if (tool === void 0) {
       throw new ConfigError(`${label} "${raw}" is not a known agent tool; known tools: ${AGENT_TOOLS.join(", ")}`);
     }
@@ -237328,10 +238178,10 @@ function parseCoverageCounted(text, format, options = {}) {
 }
 
 // ../core/src/coverage/match.ts
-function matchCoveragePaths(coverage, repoFiles, coverageRoot) {
+function matchCoveragePaths(coverage2, repoFiles, coverageRoot) {
   const tracked = new Set(repoFiles);
-  const unmatched = [...coverage.keys()].filter((path) => !tracked.has(path)).sort();
-  const total = coverage.size;
+  const unmatched = [...coverage2.keys()].filter((path) => !tracked.has(path)).sort();
+  const total = coverage2.size;
   return {
     total,
     unmatched,
@@ -237372,7 +238222,7 @@ function mergeCoverageMaps(maps) {
 }
 
 // ../core/src/diffCoverage.ts
-function computeDiffCoverage(diff, coverage, threshold, isExcluded = () => false) {
+function computeDiffCoverage(diff, coverage2, threshold, isExcluded = () => false) {
   const files = [];
   const excluded = /* @__PURE__ */ new Set();
   let covered = 0;
@@ -237383,7 +238233,7 @@ function computeDiffCoverage(diff, coverage, threshold, isExcluded = () => false
       excluded.add(file.path);
       continue;
     }
-    const hits = coverage.get(file.path);
+    const hits = coverage2.get(file.path);
     if (!hits) continue;
     let fileCovered = 0;
     let fileCoverable = 0;
@@ -237463,14 +238313,46 @@ function trackedCoverageFile(file, repoRoot, repoFiles) {
   const path = normalizePath(file, repoRoot);
   return repoFiles.includes(path) ? path : null;
 }
-function binaryCoveredPaths(diff, coverage) {
+function binaryCoveredPaths(diff, coverage2) {
   const found = /* @__PURE__ */ new Set();
   for (const file of diff) {
     if (file.binary !== true) continue;
-    if (coverage.has(file.path)) found.add(file.path);
-    else if (coverage.has(file.oldPath)) found.add(file.oldPath);
+    if (coverage2.has(file.path)) found.add(file.path);
+    else if (coverage2.has(file.oldPath)) found.add(file.oldPath);
   }
   return [...found].sort(byCodeUnit);
+}
+
+// ../core/src/policy/messages.ts
+var MAX_NAMED_SETTINGS = 20;
+var byCodeUnit2 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function policyUnavailableMessage(unavailable2) {
+  const status = unavailable2.status === void 0 ? "" : `, status ${String(unavailable2.status)}`;
+  const requestId = unavailable2.requestId === void 0 ? "" : `, request id ${unavailable2.requestId}`;
+  const head = `The org policy could not be used (${unavailable2.reason}${status}${requestId}).`;
+  const text = unavailable2.required ? `${head} The workflow requires a policy (policy: required), so this check fails. It ran with the workflow inputs and .pharn/ci.yml.` : `${head} The check ran with the workflow inputs and .pharn/ci.yml.`;
+  return { level: unavailable2.required ? "error" : "warn", code: "POLICY_UNAVAILABLE", text };
+}
+function policyOverrideIgnoredMessage(ignored) {
+  const seen = /* @__PURE__ */ new Set();
+  const unique = ignored.filter((record) => {
+    const key = `${record.setting}\0${record.layer}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  unique.sort((a, b) => byCodeUnit2(a.setting, b.setting) || byCodeUnit2(a.layer, b.layer));
+  const named = unique.slice(0, MAX_NAMED_SETTINGS).map((record) => {
+    const numbers = record.given !== void 0 && record.applied !== void 0 ? ` ${formatNumber(record.given)} \u2192 ${formatNumber(record.applied)}` : "";
+    return `${record.setting} (${record.layer})${numbers}`;
+  });
+  const more = unique.length - MAX_NAMED_SETTINGS;
+  const list = more > 0 ? `${named.join(", ")}, and ${String(more)} more` : named.join(", ");
+  return {
+    level: "warn",
+    code: "POLICY_OVERRIDE_IGNORED",
+    text: `Some settings were looser than the org policy, or are not allowed from a policy file, so the policy's value applies: ${list}.`
+  };
 }
 
 // ../core/src/secrets/keys.ts
@@ -237824,7 +238706,7 @@ var SECRET_SCAN_KINDS = [
 ];
 var SCAN_KINDS = new Set(SECRET_SCAN_KINDS);
 var CONTINUE_CONFIG_EXTENSIONS = [".json", ".yaml", ".yml"];
-var byCodeUnit2 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit3 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function agentConfigSecretPaths(inventory) {
   const paths = /* @__PURE__ */ new Set();
   for (const file of inventory.files) {
@@ -237835,7 +238717,7 @@ function agentConfigSecretPaths(inventory) {
     }
     paths.add(file.path);
   }
-  return [...paths].sort(byCodeUnit2);
+  return [...paths].sort(byCodeUnit3);
 }
 var MIN_S11_CHARS = 8;
 function lineStarts(text) {
@@ -237882,7 +238764,7 @@ function scanAgentConfigSecrets(files) {
     for (const span of spans) add(span.id, span.start);
     for (const offset of literalFindings(pairs, spans)) add("S11", offset);
   }
-  return [...found.values()].sort((a, b) => byCodeUnit2(a.id, b.id) || byCodeUnit2(a.path, b.path) || a.line - b.line);
+  return [...found.values()].sort((a, b) => byCodeUnit3(a.id, b.id) || byCodeUnit3(a.path, b.path) || a.line - b.line);
 }
 
 // ../core/src/secrets/messages.ts
@@ -237920,7 +238802,7 @@ var FAIL_CLOSED_REASONS = /* @__PURE__ */ new Set([
   "over-total-cap",
   "unsafe-path"
 ]);
-var byCodeUnit3 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit4 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function levelOf(id) {
   return id === "S10" ? "warn" : id === "S11" ? "info" : "error";
 }
@@ -237946,7 +238828,7 @@ function agentConfigSecretMessages(sources, selected) {
   }
   const messages = [];
   const findings = scanAgentConfigSecrets(sources.files);
-  const ids = [...new Set(findings.map((finding2) => finding2.id))].sort(byCodeUnit3);
+  const ids = [...new Set(findings.map((finding2) => finding2.id))].sort(byCodeUnit4);
   for (const id of ids) {
     const ofId = findings.filter((finding2) => finding2.id === id);
     messages.push({
@@ -237962,7 +238844,7 @@ function agentConfigSecretMessages(sources, selected) {
     if (!read.has(path) && !dropped.has(path)) unscanned.push({ path, reason: "not-read" });
   }
   if (unscanned.length > 0) {
-    unscanned.sort((a, b) => byCodeUnit3(a.path, b.path));
+    unscanned.sort((a, b) => byCodeUnit4(a.path, b.path));
     messages.push({
       level: unscanned.some((file) => FAIL_CLOSED_REASONS.has(file.reason)) ? "error" : "warn",
       code: "AGENT_CONFIG_SECRET_UNSCANNED",
@@ -238105,9 +238987,43 @@ function capFindings(signals, limit = MAX_FINDINGS_PER_FILE) {
   return { kept: signals.filter((signal) => !dropped.has(signal)), omitted };
 }
 
+// ../core/src/signals/overrides.ts
+var RANK2 = { off: 0, info: 1, warn: 2, block: 3 };
+function applySignalOverrides(signals, omitted, overrides, mode) {
+  const severities = overrides.severities;
+  const dropped = new Set(
+    overrides.kind === "replace" ? Object.keys(severities).filter((id) => severities[id] === "off") : []
+  );
+  const lowered = /* @__PURE__ */ new Set();
+  const kept = [];
+  for (const signal of signals) {
+    if (dropped.has(signal.id)) continue;
+    const wanted = Object.hasOwn(severities, signal.id) ? severities[signal.id] : void 0;
+    let severity2 = signal.severity;
+    if (wanted !== void 0) {
+      if (overrides.kind === "replace") {
+        severity2 = wanted;
+      } else if (RANK2[wanted] > RANK2[severity2]) {
+        severity2 = wanted;
+      } else if (RANK2[wanted] < RANK2[severity2]) {
+        lowered.add(signal.id);
+      }
+    }
+    if (mode === "warn" && severity2 === "block") severity2 = "warn";
+    kept.push(
+      severity2 === signal.severity ? signal : { ...signal, severity: severity2 }
+    );
+  }
+  return {
+    signals: kept,
+    omitted: omitted.filter((entry) => !dropped.has(entry.id)),
+    lowered: [...lowered].sort()
+  };
+}
+
 // ../core/src/testFiles.ts
 var TEST_DIRECTORIES = /* @__PURE__ */ new Set(["test", "tests", "__tests__"]);
-var byCodeUnit4 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit5 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var TEST_BASENAME = [
   /\.(?:test|spec)\.(?:js|jsx|ts|tsx|mjs|cjs)$/,
   /\.(?:e2e|pw)\.ts$/,
@@ -238158,7 +239074,7 @@ function deletedTestFiles(diff) {
     if (file.status === "deleted" && isTestFile(file.path)) found.add(file.path);
     else if (file.status === "renamed" && isTestFile(file.oldPath) && !isTestFile(file.path)) found.add(file.oldPath);
   }
-  return [...found].sort(byCodeUnit4);
+  return [...found].sort(byCodeUnit5);
 }
 
 // ../core/src/signals/pythonAliases.ts
@@ -239207,7 +240123,7 @@ function indexTestFile(path, text) {
 }
 
 // ../core/src/signals/testPairs.ts
-var byCodeUnit5 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit6 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var EXTENSION_LANGUAGE = /* @__PURE__ */ new Map([
   ["ts", "ts"],
   ["tsx", "ts"],
@@ -239285,7 +240201,7 @@ function indexTouchedTestFiles(diff, sources, python) {
   const pairs = [];
   const unavailable2 = [];
   const compared2 = [...comparedPaths.values()].sort(
-    (a, b) => byCodeUnit5(a.basePath, b.basePath) || byCodeUnit5(a.headPath, b.headPath)
+    (a, b) => byCodeUnit6(a.basePath, b.basePath) || byCodeUnit6(a.headPath, b.headPath)
   );
   for (const file of compared2) {
     const base = indexSide("base", file.basePath, file.language);
@@ -239304,19 +240220,19 @@ function indexTouchedTestFiles(diff, sources, python) {
       unavailable2.push({ path: file.headPath, reason });
     }
   }
-  unavailable2.sort((a, b) => byCodeUnit5(a.path, b.path));
+  unavailable2.sort((a, b) => byCodeUnit6(a.path, b.path));
   const added = [];
-  for (const [headPath, language] of [...addedPaths].sort((a, b) => byCodeUnit5(a[0], b[0]))) {
+  for (const [headPath, language] of [...addedPaths].sort((a, b) => byCodeUnit6(a[0], b[0]))) {
     const head = indexSide("head", headPath, language);
     if (head.ok) added.push({ headPath, head: head.tests, headMocks: head.mocks });
   }
-  return { pairs, added, unavailable: unavailable2, notRun: null, languages: [...languages].sort(byCodeUnit5) };
+  return { pairs, added, unavailable: unavailable2, notRun: null, languages: [...languages].sort(byCodeUnit6) };
 }
 
 // ../core/src/signals/testChanges.ts
 var MAX_TEST_CHANGE_ENTRIES = 200;
-var byCodeUnit6 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-var byEntry = (a, b) => byCodeUnit6(a.path, b.path) || a.line - b.line;
+var byCodeUnit7 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byEntry = (a, b) => byCodeUnit7(a.path, b.path) || a.line - b.line;
 var KINDS = ["removed", "modified", "renamed", "added"];
 var entryOf = (path, block) => ({
   path,
@@ -239379,7 +240295,7 @@ function summarizeTestChanges(touched, match) {
       modified: lists.modified.length,
       renamed: lists.renamed.length
     },
-    files: [...rows.values()].sort((a, b) => byCodeUnit6(a.path, b.path)),
+    files: [...rows.values()].sort((a, b) => byCodeUnit7(a.path, b.path)),
     added: kept.added,
     removed: kept.removed,
     modified: kept.modified,
@@ -239429,7 +240345,7 @@ function containsAtLeast(old, fresh, ratio) {
   if (old.size === 0) return true;
   return ratio.den * overlap(old, fresh) >= ratio.num * old.size;
 }
-var byCodeUnit7 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit8 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var CursorHeap = class {
   list = [];
   at = [];
@@ -239506,7 +240422,7 @@ var SimilarityIndex = class {
   }
   prefix(set) {
     const frequency = this.frequency;
-    const ordered = [...set].sort((a, b) => (frequency.get(a) ?? 0) - (frequency.get(b) ?? 0) || byCodeUnit7(a, b));
+    const ordered = [...set].sort((a, b) => (frequency.get(a) ?? 0) - (frequency.get(b) ?? 0) || byCodeUnit8(a, b));
     return ordered.slice(0, set.size - ceilRatio(set.size, this.ratio) + 1);
   }
   /**
@@ -239666,7 +240582,7 @@ function eachReplacements(candidates, fresh) {
 }
 
 // ../core/src/signals/testMatch.ts
-var byCodeUnit8 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit9 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var byLine = (a, b) => a.line - b.line;
 var leafName = (block) => block.path[block.path.length - 1] ?? "";
 var OtherFileList = class {
@@ -239724,7 +240640,7 @@ function matchTests(touched) {
   const left = [];
   const tokensOf = tokenSetMemo();
   const files = [...touched.pairs].sort(
-    (a, b) => byCodeUnit8(a.basePath, b.basePath) || byCodeUnit8(a.headPath, b.headPath)
+    (a, b) => byCodeUnit9(a.basePath, b.basePath) || byCodeUnit9(a.headPath, b.headPath)
   );
   let fileIndex = 0;
   for (const file of files) {
@@ -239835,13 +240751,13 @@ function matchTests(touched) {
     for (const entry of clearing) entry.used = true;
     for (const candidate of afterRename) if (!cleared.has(candidate.block)) left.push(candidate);
   }
-  for (const file of [...touched.added].sort((a, b) => byCodeUnit8(a.headPath, b.headPath))) {
+  for (const file of [...touched.added].sort((a, b) => byCodeUnit9(a.headPath, b.headPath))) {
     const index = fileIndex++;
     for (const block of [...file.head].sort(byLine)) {
       fresh.push({ fileIndex: index, path: file.headPath, block, order: 0, used: false });
     }
   }
-  fresh.sort((a, b) => byCodeUnit8(a.path, b.path) || a.block.line - b.block.line);
+  fresh.sort((a, b) => byCodeUnit9(a.path, b.path) || a.block.line - b.block.line);
   fresh.forEach((entry, at) => {
     entry.order = at;
   });
@@ -239933,7 +240849,7 @@ function matchTests(touched) {
 }
 
 // ../core/src/signals/ti01Moved.ts
-var byCodeUnit9 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit10 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var leafOf = (block) => block.path[block.path.length - 1] ?? "";
 function sameStemDeletions(diff) {
   const stems = /* @__PURE__ */ new Map();
@@ -239961,7 +240877,7 @@ function sameStemDeletions(diff) {
 function movedTestFiles(diff, sources, python, touched) {
   const moved = { files: /* @__PURE__ */ new Set(), compared: /* @__PURE__ */ new Set(), pairs: [] };
   if (touched.notRun !== null || "unavailable" in sources.base) return moved;
-  const deleted = diff.filter((file) => file.status === "deleted" && isTestFile(file.path) && file.binary !== true).map((file) => file.path).sort(byCodeUnit9);
+  const deleted = diff.filter((file) => file.status === "deleted" && isTestFile(file.path) && file.binary !== true).map((file) => file.path).sort(byCodeUnit10);
   if (deleted.length === 0) return moved;
   const texts = new Map(sources.base.files.map((file) => [file.path, file.text]));
   const pythonBase = python?.available ? new Map(python.base.map((file) => [file.path, file.result])) : null;
@@ -239985,15 +240901,15 @@ function movedTestFiles(diff, sources, python, touched) {
       if (block.assertionCount >= 1) fresh.push({ path: file.headPath, block, used: false });
   }
   for (const file of touched.pairs) {
-    const known = new Set(file.base.map(fullTestName));
+    const known2 = new Set(file.base.map(fullTestName));
     for (const block of file.head) {
-      if (block.assertionCount >= 1 && !known.has(fullTestName(block))) {
+      if (block.assertionCount >= 1 && !known2.has(fullTestName(block))) {
         fresh.push({ path: file.headPath, block, used: false });
       }
     }
   }
   if (fresh.length === 0) return moved;
-  fresh.sort((a, b) => byCodeUnit9(a.path, b.path) || a.block.line - b.block.line);
+  fresh.sort((a, b) => byCodeUnit10(a.path, b.path) || a.block.line - b.block.line);
   const leaves = /* @__PURE__ */ new Map();
   const groups = /* @__PURE__ */ new Set();
   for (const entry of fresh) {
@@ -240039,7 +240955,7 @@ function movedTestFiles(diff, sources, python, touched) {
 }
 
 // ../core/src/signals/ti01.ts
-var byCodeUnit10 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit11 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_DETAIL2 = 300;
 function removedTests(file) {
   if (file.hunks === void 0) return "unknown";
@@ -240066,16 +240982,16 @@ function detectTI01(diff, mode, moved = /* @__PURE__ */ new Set(), compared2 = /
     const stem = testStem(path);
     const dir = testPackageDir(path);
     let detail = renamedAway ? "Test file renamed to a path that is not a test file, so its tests are no longer found by name." : defined === "yes" ? "Test file deleted; its removed lines defined tests." : "Test file deleted; the diff text was cut or not read, so it cannot be confirmed to hold no tests.";
-    let severity = mode;
+    let severity2 = mode;
     if (sourceStems.has(stem)) {
-      severity = "info";
+      severity2 = "info";
       detail = "Test file deleted together with a source file of the same name.";
     } else if (dir !== "" && deletedSources.some((source) => source.path.startsWith(`${dir}/`))) {
-      severity = "info";
+      severity2 = "info";
       detail = "Test file deleted together with other files of its package.";
     } else if (deleted && sameStem.has(path)) {
       if (moved.has(path)) {
-        severity = "info";
+        severity2 = "info";
         detail = "Test file replaced by a test file of the same name; every test it held is found again, by body, in a new test of this change.";
       } else if (compared2.has(path)) {
         detail = "Test file deleted; a test file of the same name was added, but not every test it held is found again by body.";
@@ -240083,12 +240999,12 @@ function detectTI01(diff, mode, moved = /* @__PURE__ */ new Set(), compared2 = /
         detail = "Test file deleted; a test file of the same name was added, but the text to compare their tests was not available.";
       }
     } else if (deleted && moved.has(path)) {
-      severity = "info";
+      severity2 = "info";
       detail = "Test file deleted; every test it held is found again, by name and body, in another test file of this change.";
     }
-    found.set(path, { id: "TI01", severity, path, line: null, detail: detail.slice(0, MAX_DETAIL2) });
+    found.set(path, { id: "TI01", severity: severity2, path, line: null, detail: detail.slice(0, MAX_DETAIL2) });
   }
-  return [...found.values()].sort((a, b) => byCodeUnit10(a.path, b.path));
+  return [...found.values()].sort((a, b) => byCodeUnit11(a.path, b.path));
 }
 
 // ../core/src/signals/ti02.ts
@@ -240103,7 +241019,7 @@ function detectTI02(match, mode) {
 }
 
 // ../core/src/signals/ti03.ts
-var byCodeUnit11 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit12 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE = 20;
 var DETAILS = {
   existing: "An unconditional skip was added to a test that the diff shows existed before this change, so that test no longer runs.",
@@ -240250,11 +241166,11 @@ function detectTI03(diff, mode, sources) {
       });
     }
   }
-  return signals.sort((a, b) => byCodeUnit11(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit12(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti04.ts
-var byCodeUnit12 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit13 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE2 = 20;
 var DETAIL = "A focused-run marker (`.only`, `fit` or `fdescribe`) was added, so the runner may skip the other tests of this file or of the whole run.";
 function detectTI04(diff, mode) {
@@ -240282,7 +241198,7 @@ function detectTI04(diff, mode) {
       signals.push({ id: "TI04", severity: mode, path: file.path, line, detail: DETAIL });
     }
   }
-  return signals.sort((a, b) => byCodeUnit12(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit13(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti05.ts
@@ -240342,17 +241258,17 @@ function detectTI05(match, mode) {
     if (base.assertionCount <= 0) continue;
     if (MODIFIERS_THAT_EXCUSE.some((modifier) => head.modifiers.includes(modifier))) continue;
     const name = fullTestName(head);
-    let severity = null;
+    let severity2 = null;
     let detail = "";
     if (head.assertionCount === 0) {
       const helper = callsHelper(head.body);
-      severity = helper ? "warn" : mode;
+      severity2 = helper ? "warn" : mode;
       detail = helper ? helperTestDetail(name, base.assertionCount) : emptiedTestDetail(name, base.assertionCount);
     } else if (head.assertionCount < base.assertionCount && restUnchanged(base, head)) {
-      severity = "warn";
+      severity2 = "warn";
       detail = droppedAssertionsDetail(name, base.assertionCount, head.assertionCount);
     }
-    if (severity !== null) found.push({ id: "TI05", severity, path: headPath, line: head.line, detail });
+    if (severity2 !== null) found.push({ id: "TI05", severity: severity2, path: headPath, line: head.line, detail });
   }
   return found;
 }
@@ -241016,7 +241932,7 @@ var MODIFIERS_THAT_EXCUSE2 = ["skip", "todo", "skipIf", "runIf"];
 var TAUTOLOGY_REASON = "an assertion that compares a literal with itself was added";
 var TRY_REASON = "an assertion moved into a try block that has a catch";
 var RETURN_REASON = "an assertion moved after an early return";
-var byCodeUnit13 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit14 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function counts(labels) {
   const map = /* @__PURE__ */ new Map();
   for (const label of labels) map.set(label, (map.get(label) ?? 0) + 1);
@@ -241025,7 +241941,7 @@ function counts(labels) {
 function surplus(from, other) {
   const own = counts(from);
   const against = counts(other);
-  return [...own].filter(([label, n]) => n > (against.get(label) ?? 0)).map(([label]) => label).sort(byCodeUnit13);
+  return [...own].filter(([label, n]) => n > (against.get(label) ?? 0)).map(([label]) => label).sort(byCodeUnit14);
 }
 function listed(labels, cut) {
   if (labels.length <= cut) return labels.join(", ");
@@ -241107,7 +242023,7 @@ function detectTI06(match) {
 var MAX_TEST_SOURCE_FILES = 200;
 var MAX_TEST_SOURCE_FILE_BYTES = 524288;
 var MAX_TEST_SOURCE_TOTAL_BYTES = 16777216;
-var byCodeUnit14 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit15 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var TEST_CONFIG_PREFIXES = [
   "vitest.config.",
   "vite.config.",
@@ -241141,7 +242057,7 @@ function selectTestSourcePaths(diff) {
       head.add(file.path);
     }
   }
-  return { base: [...base].sort(byCodeUnit14), head: [...head].sort(byCodeUnit14) };
+  return { base: [...base].sort(byCodeUnit15), head: [...head].sort(byCodeUnit15) };
 }
 function isUnsafeTestSourcePath(path) {
   if (path === "" || path.startsWith("/")) return true;
@@ -241156,7 +242072,7 @@ function planTestSourceReads(paths, objects) {
   const dropped = [];
   let total = 0;
   let tripped = false;
-  for (const path of [...new Set(paths)].sort(byCodeUnit14)) {
+  for (const path of [...new Set(paths)].sort(byCodeUnit15)) {
     if (isUnsafeTestSourcePath(path)) {
       dropped.push({ path, reason: "unsafe-path" });
       continue;
@@ -241645,7 +242561,7 @@ function escapeDetailText(text) {
 }
 
 // ../core/src/signals/ti10.ts
-var byCodeUnit15 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit16 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE3 = 20;
 var DETAILS2 = {
   "or-true": "A test script now ignores the exit status of a command, so it passes even when the tests fail.",
@@ -241786,18 +242702,18 @@ function detectTI10(diff, options) {
     for (const hook2 of removedHooks) {
       if (!addedKeys.has(hook2.key)) found.push({ line: hook2.line, kind: "hook-removed" });
     }
-    found.sort((a, b) => a.line - b.line || byCodeUnit15(DETAILS2[a.kind], DETAILS2[b.kind]));
+    found.sort((a, b) => a.line - b.line || byCodeUnit16(DETAILS2[a.kind], DETAILS2[b.kind]));
     for (const { line, kind } of found.slice(0, MAX_PER_FILE3)) {
       signals.push({ id: "TI10", severity: options.mode, path: file.path, line, detail: DETAILS2[kind] });
     }
   }
   return signals.sort(
-    (a, b) => byCodeUnit15(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit15(a.detail, b.detail)
+    (a, b) => byCodeUnit16(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit16(a.detail, b.detail)
   );
 }
 
 // ../core/src/signals/ti08.ts
-var byCodeUnit16 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit17 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_SNAPSHOT_FILES = 10;
 var MIN_INLINE_REWRITES = 10;
 var MAX_FLAG_SIGNALS_PER_FILE = 20;
@@ -241833,7 +242749,7 @@ function massChangeDetail(count2, firstPaths) {
   return `${head}${tail}`;
 }
 function detectSnapshotFiles(diff) {
-  const counted = [...new Set(diff.filter(countsAsChangedSnapshot).map((file) => file.path))].sort(byCodeUnit16);
+  const counted = [...new Set(diff.filter(countsAsChangedSnapshot).map((file) => file.path))].sort(byCodeUnit17);
   if (counted.length <= MAX_SNAPSHOT_FILES) return [];
   return [
     {
@@ -241921,9 +242837,9 @@ function detectScriptFlags(file) {
     for (const entry of hunk.added) {
       const script = parseScriptLine(entry.text);
       if (script === null || !script.key.startsWith("test")) continue;
-      const known = before.get(script.key);
+      const known2 = before.get(script.key);
       for (const flag of updateFlagsOf(script.value)) {
-        if (known?.has(flag)) continue;
+        if (known2?.has(flag)) continue;
         lines.push(entry.line);
         break;
       }
@@ -241951,7 +242867,7 @@ function detectTI08(diff) {
   const signals = [...detectSnapshotFiles(diff), ...detectInlineRewrites(diff)];
   for (const file of diff) signals.push(...detectScriptFlags(file), ...detectPytestFlag(file));
   return signals.sort(
-    (a, b) => byCodeUnit16(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit16(a.detail, b.detail)
+    (a, b) => byCodeUnit17(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit17(a.detail, b.detail)
   );
 }
 
@@ -243053,8 +243969,8 @@ function covers(wide, narrow, mode) {
 }
 var opaqueTexts = (entries) => new Set(entries.filter((entry) => entry.opaque).map((entry) => entry.text));
 function gainsOpaque(base, head) {
-  const known = opaqueTexts(base);
-  return head.some((entry) => entry.opaque && !known.has(entry.text));
+  const known2 = opaqueTexts(base);
+  return head.some((entry) => entry.opaque && !known2.has(entry.text));
 }
 function narrowedList(base, head, mode) {
   const headOpaque = opaqueTexts(head);
@@ -243263,9 +244179,9 @@ function foundValue(look) {
 function lineOf2(look) {
   return typeof look === "object" ? look.found.line : null;
 }
-function finding(severity, line, detail, base, head) {
+function finding(severity2, line, detail, base, head) {
   return {
-    severity,
+    severity: severity2,
     line,
     detail: cutDetail(detail),
     ...base === null ? {} : { base: shown(base) },
@@ -243466,7 +244382,7 @@ function evaluateRules(kind, base, head, mode) {
 }
 
 // ../core/src/signals/ti09.ts
-var byCodeUnit17 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit18 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function lookupOf2(side) {
   const texts = /* @__PURE__ */ new Map();
   const dropped = /* @__PURE__ */ new Map();
@@ -243515,7 +244431,7 @@ function detectTI09(diff, sources, mode) {
     }
     return readTestConfig(candidate.kind, path, text.text);
   };
-  const sorted = [...candidates].sort((a, b) => byCodeUnit17(a.path, b.path) || byCodeUnit17(a.oldPath, b.oldPath));
+  const sorted = [...candidates].sort((a, b) => byCodeUnit18(a.path, b.path) || byCodeUnit18(a.oldPath, b.oldPath));
   for (const candidate of sorted) {
     const base = candidate.added ? null : readSide(baseSide, candidate, candidate.oldPath);
     const head = readSide(headSide, candidate, candidate.path);
@@ -243552,13 +244468,13 @@ function detectTI09(diff, sources, mode) {
   }
   return {
     signals,
-    unavailable: [...unavailable2].map(([path, reason]) => ({ path, reason })).sort((a, b) => byCodeUnit17(a.path, b.path)),
+    unavailable: [...unavailable2].map(([path, reason]) => ({ path, reason })).sort((a, b) => byCodeUnit18(a.path, b.path)),
     notRun: null
   };
 }
 
 // ../core/src/signals/ti11.ts
-var byCodeUnit18 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit19 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var PM_FLAGS = String.raw`(?:\s+(?:-r|--recursive|-w|--workspace-root|-ws|--workspaces|--if-present|(?:--filter|-F|-C|--dir|--prefix|--workspace|--cwd)(?:=|\s+)\S+))*`;
 var JS_LAUNCHER = String.raw`(?:(?:npx|bunx|yarn|pnpm${PM_FLAGS}(?:\s+(?:exec|dlx))?|bun\s+x|npm\s+exec)\s+)?`;
 var PY_WRAPPER = String.raw`(?:(?:uv|poetry|pipenv|pdm|hatch|rye)\s+run\s+)?`;
@@ -243715,7 +244631,7 @@ function detectTI11(diff, mode) {
     const path = file.path;
     const added = (file.hunks ?? []).flatMap((hunk) => hunk.added);
     const removed = (file.hunks ?? []).flatMap((hunk) => hunk.removed);
-    const emit = (severity, line, detail) => signals.push({ id: "TI11", severity, path, line, detail });
+    const emit = (severity2, line, detail) => signals.push({ id: "TI11", severity: severity2, path, line, detail });
     const lostCommand = removed.find((entry) => testKeysOf(entry.text).some((key) => !addedKeys.has(key)));
     if (lostCommand !== void 0) emit(mode, lostCommand.line, SENTENCES.testStep);
     const lostTrigger = removed.find((entry) => carriesPullRequestTrigger(entry.text));
@@ -243753,7 +244669,7 @@ function detectTI11(diff, mode) {
     if (rushed !== void 0) emit("warn", rushed.line, SENTENCES.timeout);
   }
   return signals.sort(
-    (a, b) => byCodeUnit18(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit18(a.detail, b.detail)
+    (a, b) => byCodeUnit19(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit19(a.detail, b.detail)
   );
 }
 
@@ -243912,7 +244828,7 @@ function detectTI12(touched, diff) {
 }
 
 // ../core/src/signals/ti13.ts
-var byCodeUnit19 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit20 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE4 = 20;
 var DETAILS3 = {
   istanbul: "An Istanbul coverage hint was added, so the code it marks leaves the coverage this check grades.",
@@ -243964,12 +244880,12 @@ function detectTI13(diff, mode) {
     }
   }
   return signals.sort(
-    (a, b) => byCodeUnit19(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit19(a.detail, b.detail)
+    (a, b) => byCodeUnit20(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit20(a.detail, b.detail)
   );
 }
 
 // ../core/src/signals/ti14.ts
-var byCodeUnit20 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit21 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var PLAIN_NUMBER = /^\d+(?:\.\d+)?$/;
 function normalizedPattern(item) {
   try {
@@ -243984,7 +244900,7 @@ function thresholdOf(text) {
   const value = scalarText(kv.value);
   return PLAIN_NUMBER.test(value) ? value : "";
 }
-function addedExclusions(hunks, known) {
+function addedExclusions(hunks, known2) {
   const found = [];
   for (const hunk of hunks) {
     let owner = null;
@@ -244003,7 +244919,7 @@ function addedExclusions(hunks, known) {
       } else if (item !== null) {
         if (owner !== null && consecutive && indentOf(entry.text) >= owner.indent) {
           found.push({ value: item, line: entry.line });
-        } else if (known.has(normalizedPattern(item))) {
+        } else if (known2.has(normalizedPattern(item))) {
           found.push({ value: item, line: entry.line });
           owner = null;
         }
@@ -244033,7 +244949,7 @@ function removedValues(hunks) {
 function detectTI14(diff, options) {
   const config = configRepoPath(options.configPath, options.repoRoot);
   if (config === null) return [];
-  const known = new Set(options.exclude.map(normalizedPattern));
+  const known2 = new Set(options.exclude.map(normalizedPattern));
   const signals = [];
   for (const file of diff) {
     if (file.path !== config && file.oldPath !== config) continue;
@@ -244074,7 +244990,7 @@ function detectTI14(diff, options) {
       });
     }
     const removed = removedValues(file.hunks);
-    const fresh = addedExclusions(file.hunks, known).find(
+    const fresh = addedExclusions(file.hunks, known2).find(
       (candidate) => !removed.has(normalizedPattern(candidate.value))
     );
     if (fresh !== void 0) {
@@ -244087,11 +245003,11 @@ function detectTI14(diff, options) {
       });
     }
   }
-  return signals.sort((a, b) => byCodeUnit20(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit21(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti15.ts
-var byCodeUnit21 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit22 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_CHANGE = 10;
 var MAX_DETAIL5 = 300;
 var MIN_STRING_LENGTH = 6;
@@ -244296,7 +245212,7 @@ function testLiterals(diff, manifests) {
           const key = keyOf3(literal);
           const roots = found.get(key) ?? /* @__PURE__ */ new Map();
           const first = roots.get(root);
-          if (first === void 0 || byCodeUnit21(file.path, first) < 0) roots.set(root, file.path);
+          if (first === void 0 || byCodeUnit22(file.path, first) < 0) roots.set(root, file.path);
           found.set(key, roots);
         }
       }
@@ -244348,7 +245264,7 @@ function detectTI15(diff, options) {
       }
     }
   }
-  findings.sort((a, b) => byCodeUnit21(a.path, b.path) || a.line - b.line || byCodeUnit21(a.detail, b.detail));
+  findings.sort((a, b) => byCodeUnit22(a.path, b.path) || a.line - b.line || byCodeUnit22(a.detail, b.detail));
   const signals = findings.slice(0, MAX_PER_CHANGE).map(({ path, line, detail }) => ({ id: "TI15", severity: "info", path, line, detail }));
   const counts2 = /* @__PURE__ */ new Map();
   for (const { path } of findings.slice(MAX_PER_CHANGE)) counts2.set(path, (counts2.get(path) ?? 0) + 1);
@@ -244452,7 +245368,7 @@ var markerOf2 = (text, language) => {
   const line = text.length > MAX_LINE2 ? text.slice(0, MAX_LINE2) : text;
   return language === "jsts" ? jsMarker(line) : pythonMarker(line);
 };
-var byCodeUnit22 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit23 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function detectTI16(diff) {
   const signals = [];
   for (const file of diff) {
@@ -244490,14 +245406,14 @@ function detectTI16(diff) {
       detail: `This test file adds ${count2} that switch off a linter or type checker, so the checks they silence no longer run on that code.`
     });
   }
-  return signals.sort((a, b) => byCodeUnit22(a.path, b.path));
+  return signals.sort((a, b) => byCodeUnit23(a.path, b.path));
 }
 
 // ../core/src/check.ts
-var byCodeUnit23 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit24 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function sortSignals(signals) {
   return signals.sort(
-    (a, b) => byCodeUnit23(a.id, b.id) || byCodeUnit23(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit23(a.detail, b.detail)
+    (a, b) => byCodeUnit24(a.id, b.id) || byCodeUnit24(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit24(a.detail, b.detail)
   );
 }
 function check(input) {
@@ -244509,29 +245425,29 @@ function check(input) {
   const parsedDiff = "text" in input.diff ? parseUnifiedDiff(input.diff.text, { keepText: keepSignalFileText(input.configPath, input.repoRoot) }) : "parsed" in input.diff ? input.diff.parsed : null;
   const configPaths = parsedDiff === null ? [] : changedConfigPaths(parsedDiff, input.configPath, input.repoRoot);
   const testPaths = parsedDiff === null ? [] : deletedTestFiles(parsedDiff);
-  const testIntegrity = resolveTestIntegrityMode(input.testIntegrityMode);
-  const touched = parsedDiff !== null && testIntegrity.mode !== "off" && input.testSources !== void 0 ? indexTouchedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex) : null;
+  const testIntegrity2 = resolveTestIntegrityMode(input.testIntegrityMode);
+  const touched = parsedDiff !== null && testIntegrity2.mode !== "off" && input.testSources !== void 0 ? indexTouchedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex) : null;
   const movedTests = touched === null || parsedDiff === null || input.testSources === void 0 ? void 0 : movedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex, touched);
-  const sourceMatches = parsedDiff === null || testIntegrity.mode === "off" ? { signals: [], omitted: [] } : detectTI15(parsedDiff, { repoFiles: input.repoFiles });
-  const testIntegritySignals = parsedDiff === null || testIntegrity.mode === "off" ? [] : sortSignals([
-    ...detectTI01(parsedDiff, testIntegrity.mode, movedTests?.files, movedTests?.compared),
-    ...detectTI03(parsedDiff, testIntegrity.mode, input.testSources),
-    ...detectTI04(parsedDiff, testIntegrity.mode),
+  const sourceMatches = parsedDiff === null || testIntegrity2.mode === "off" ? { signals: [], omitted: [] } : detectTI15(parsedDiff, { repoFiles: input.repoFiles });
+  const testIntegritySignals = parsedDiff === null || testIntegrity2.mode === "off" ? [] : sortSignals([
+    ...detectTI01(parsedDiff, testIntegrity2.mode, movedTests?.files, movedTests?.compared),
+    ...detectTI03(parsedDiff, testIntegrity2.mode, input.testSources),
+    ...detectTI04(parsedDiff, testIntegrity2.mode),
     ...detectTI08(parsedDiff),
-    ...detectTI10(parsedDiff, { repoFiles: input.repoFiles, mode: testIntegrity.mode }),
-    ...detectTI11(parsedDiff, testIntegrity.mode),
-    ...detectTI13(parsedDiff, testIntegrity.mode),
+    ...detectTI10(parsedDiff, { repoFiles: input.repoFiles, mode: testIntegrity2.mode }),
+    ...detectTI11(parsedDiff, testIntegrity2.mode),
+    ...detectTI13(parsedDiff, testIntegrity2.mode),
     ...detectTI14(parsedDiff, {
       configPath: input.configPath,
       repoRoot: input.repoRoot,
       exclude: input.exclude ?? [],
-      mode: testIntegrity.mode
+      mode: testIntegrity2.mode
     }),
     ...sourceMatches.signals,
     ...detectTI16(parsedDiff)
   ]);
   let comparison = null;
-  const comparedMode = testIntegrity.mode;
+  const comparedMode = testIntegrity2.mode;
   let testChanges;
   if (parsedDiff !== null && comparedMode !== "off" && input.testSources !== void 0 && touched !== null) {
     const configs = detectTI09(parsedDiff, input.testSources, comparedMode);
@@ -244572,7 +245488,7 @@ function check(input) {
     testIntegritySignals.push(...comparison.signals);
     sortSignals(testIntegritySignals);
   }
-  const textTruncatedFiles = parsedDiff === null || testIntegrity.mode === "off" ? [] : textCutSignalFiles(parsedDiff, input.configPath, input.repoRoot);
+  const textTruncatedFiles = parsedDiff === null || testIntegrity2.mode === "off" ? [] : textCutSignalFiles(parsedDiff, input.configPath, input.repoRoot);
   const coverageInput = input.coverage;
   let files;
   let selection;
@@ -244599,7 +245515,20 @@ function check(input) {
   }
   const bytes = input.repoFileBytes;
   const emptyAgentSetupFiles = bytes === void 0 ? [] : agentSetup.files.filter((file) => bytes.get(file.path) === 0).map((file) => file.path);
-  const omittedSignals = [...comparison?.omitted ?? [], ...sourceMatches.omitted];
+  const omittedBeforePolicy = [...comparison?.omitted ?? [], ...sourceMatches.omitted];
+  const overridden = input.signalOverrides === void 0 || testIntegrity2.mode === "off" ? void 0 : applySignalOverrides(testIntegritySignals, omittedBeforePolicy, input.signalOverrides, testIntegrity2.mode);
+  const finalSignals = overridden?.signals ?? testIntegritySignals;
+  const omittedSignals = overridden?.omitted ?? omittedBeforePolicy;
+  const policyIgnored = [
+    ...input.policyIgnored ?? [],
+    ...(overridden?.lowered ?? []).map(
+      (id) => ({ setting: `test_integrity.signals.${id}`, layer: "policy-file", reason: "looser" })
+    )
+  ];
+  const policyMessages = [
+    ...input.policy?.unavailable === void 0 ? [] : [policyUnavailableMessage(input.policy.unavailable)],
+    ...policyIgnored.length === 0 ? [] : [policyOverrideIgnoredMessage(policyIgnored)]
+  ];
   const agentConfigMessages = input.agentConfigSources === void 0 ? [] : agentConfigSecretMessages(input.agentConfigSources, agentConfigSecretPaths(agentSetup));
   const base = {
     version: input.version,
@@ -244612,15 +245541,16 @@ function check(input) {
     ...trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage },
     ...emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {},
     ...input.meta === void 0 ? {} : { meta: input.meta },
-    testIntegrity,
-    ...testIntegritySignals.length > 0 ? { testIntegritySignals } : {},
+    testIntegrity: testIntegrity2,
+    ...finalSignals.length > 0 ? { testIntegritySignals: finalSignals } : {},
     ...textTruncatedFiles.length > 0 ? { textTruncatedFiles } : {},
     ...comparison === null || comparison.languages.length === 0 ? {} : { testIntegrityLanguages: comparison.languages },
     ...omittedSignals.length === 0 ? {} : { omittedSignals },
     ...comparison?.unavailable === void 0 ? {} : { testIndexUnavailable: comparison.unavailable },
     ...testChanges === void 0 ? {} : { testChanges },
     ...comparison?.configUnavailable === void 0 ? {} : { testConfigUnavailable: comparison.configUnavailable },
-    ...agentConfigMessages.length === 0 ? {} : { agentConfigSecretMessages: agentConfigMessages }
+    ...agentConfigMessages.length === 0 ? {} : { agentConfigSecretMessages: agentConfigMessages },
+    ...policyMessages.length === 0 ? {} : { policyMessages }
   };
   if ("kind" in coverageInput) {
     return buildReport({ ...base, diffCoverage: null, missing: { reason: "coverage-not-discovered" } });
@@ -244692,14 +245622,14 @@ function check(input) {
       missing: { reason: "coverage-file-empty", coverageFile: null }
     });
   }
-  const coverage = mergeCoverageMaps(maps);
+  const coverage2 = mergeCoverageMaps(maps);
   const [onlyFormat] = formats;
   const coverageFormat = formats.size === 1 ? onlyFormat : void 0;
   const diff = parsedDiff ?? [];
-  const binaryPaths = binaryCoveredPaths(diff, coverage);
+  const binaryPaths = binaryCoveredPaths(diff, coverage2);
   let untrackedCoveragePaths = 0;
   if (input.repoFiles.length > 0) {
-    const match = matchCoveragePaths(coverage, input.repoFiles, coverageRoot);
+    const match = matchCoveragePaths(coverage2, input.repoFiles, coverageRoot);
     if (match.unmatched.length === match.total) {
       return buildReport({
         ...base,
@@ -244718,7 +245648,7 @@ function check(input) {
   return buildReport({
     ...base,
     ...coverageFormat === void 0 ? {} : { coverageFormat },
-    diffCoverage: computeDiffCoverage(diff, coverage, input.threshold, isExcluded),
+    diffCoverage: computeDiffCoverage(diff, coverage2, input.threshold, isExcluded),
     ...untrackedCoveragePaths > 0 ? { untrackedCoveragePaths } : {},
     ...skippedLines > 0 ? { skippedCoverageLines: skippedLines } : {},
     ...binaryPaths.length > 0 ? { binaryCoveredPaths: binaryPaths } : {}
@@ -244902,7 +245832,7 @@ var InputError = class extends ConfigError {
 };
 function resolveInputs(config, raw, text, options = {}) {
   const errors = [];
-  const attempt = (input, fn) => {
+  const attempt2 = (input, fn) => {
     try {
       return fn();
     } catch (err) {
@@ -244915,24 +245845,24 @@ function resolveInputs(config, raw, text, options = {}) {
   if (!isCoverageFormatSelection(coverageFormat)) {
     errors.push(new InputError("coverageFormat", text.coverageFormat(coverageFormat)));
   }
-  const threshold = raw.threshold !== void 0 ? attempt("threshold", () => parseThreshold(raw.threshold, text.threshold)) : config.coverage?.threshold ?? null;
+  const threshold = raw.threshold !== void 0 ? attempt2("threshold", () => parseThreshold(raw.threshold, text.threshold)) : config.coverage?.threshold ?? null;
   const givenCoverageFile = typeof raw.coverageFile === "object" && raw.coverageFile.length === 0 ? void 0 : raw.coverageFile;
   if (givenCoverageFile !== void 0) {
-    attempt(
+    attempt2(
       "coverageFile",
       () => parseCoverageEntries(coverageEntryList(givenCoverageFile), text.coverageFile ?? "coverage file")
     );
   }
   const coverageFile = givenCoverageFile !== void 0 ? { path: givenCoverageFile, fromConfig: false } : config.coverage?.file !== void 0 ? { path: config.coverage.file, fromConfig: true } : options.discoverCoverage === true ? { discover: true } : void 0;
   if (coverageFile === void 0) errors.push(new InputError("coverageFile", text.noCoverageFile));
-  const exclude = attempt("exclude", () => (raw.exclude ?? []).map((p) => parseExcludePattern(p, text.exclude)));
-  const coverageRoot = raw.coverageRoot !== void 0 ? attempt("coverageRoot", () => parseCoverageRoot(raw.coverageRoot, text.coverageRoot)) : config.coverage?.root;
-  const expectAgentSetup = attempt(
+  const exclude = attempt2("exclude", () => (raw.exclude ?? []).map((p) => parseExcludePattern(p, text.exclude)));
+  const coverageRoot = raw.coverageRoot !== void 0 ? attempt2("coverageRoot", () => parseCoverageRoot(raw.coverageRoot, text.coverageRoot)) : config.coverage?.root;
+  const expectAgentSetup = attempt2(
     "expectAgentSetup",
     () => parseAgentToolNames(raw.expectAgentSetup ?? [], text.expectAgentSetup ?? "agent tool")
   );
   const givenMode = raw.testIntegrity?.trim();
-  const testIntegrityInput = attempt("testIntegrity", () => {
+  const testIntegrityInput = attempt2("testIntegrity", () => {
     if (givenMode === void 0 || givenMode === "") return void 0;
     if (!isTestIntegrityMode(givenMode)) {
       throw new ConfigError(testIntegrityModeError(text.testIntegrity ?? "test-integrity", givenMode));
@@ -244974,6 +245904,720 @@ function gitDiffArgs(base, head = "HEAD") {
     "--end-of-options",
     `${base}...${head}`
   ];
+}
+
+// ../core/src/policy/apply.ts
+var STRICTNESS2 = { off: 0, warn: 1, block: 2 };
+var byCodeUnit25 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function rootKey(root) {
+  return root === void 0 || root === null ? "." : root;
+}
+function normalizedRoot(root) {
+  try {
+    return parseCoverageRoot(root, "coverage root");
+  } catch {
+    return root;
+  }
+}
+function applyPolicy(layers, policy) {
+  const document2 = policy.document;
+  if (policy.source === "none" || document2 === null) return { inputs: layers.resolved, ignored: [] };
+  const app = policy.source === "app";
+  const policyLayer = "policy-file";
+  const ignored = [];
+  const inputs = { ...layers.resolved };
+  applyCoverage(layers, document2, app, inputs, ignored);
+  applySetup(layers, document2, app, inputs, ignored);
+  const modeSettings = applyMode(layers, document2, app, ignored);
+  if (modeSettings !== void 0) inputs.testIntegrityMode = modeSettings;
+  const integrity = document2.test_integrity;
+  const result = { inputs, ignored: [] };
+  if (integrity?.signals !== void 0 && Object.keys(integrity.signals).length > 0) {
+    result.signalOverrides = { kind: app ? "replace" : "raise", severities: { ...integrity.signals } };
+  }
+  if (integrity?.accept_label !== void 0) {
+    if (app) result.acceptLabel = integrity.accept_label;
+    else ignored.push({ setting: "test_integrity.accept_label", layer: policyLayer, reason: "not-allowed" });
+  }
+  if (!app && document2.policy?.required !== void 0) {
+    ignored.push({ setting: "policy.required", layer: policyLayer, reason: "not-allowed" });
+  }
+  const seen = /* @__PURE__ */ new Set();
+  result.ignored = ignored.filter((record) => {
+    const key = `${record.setting}\0${record.layer}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a, b) => byCodeUnit25(a.setting, b.setting) || byCodeUnit25(a.layer, b.layer));
+  return result;
+}
+function applyCoverage(layers, document2, app, inputs, ignored) {
+  const { config, raw, resolved } = layers;
+  const coverage2 = document2.coverage;
+  if (coverage2 === void 0) return;
+  if (coverage2.threshold !== void 0) {
+    const theirs = coverage2.threshold;
+    const inForce = resolved.threshold;
+    if (inForce === null) {
+      inputs.threshold = theirs;
+    } else {
+      if (app && inForce < theirs) {
+        ignored.push({
+          setting: "coverage.threshold",
+          layer: raw.threshold !== void 0 ? "input" : "config",
+          reason: "looser",
+          given: inForce,
+          applied: theirs
+        });
+      } else if (!app && theirs < inForce) {
+        ignored.push({
+          setting: "coverage.threshold",
+          layer: "policy-file",
+          reason: "looser",
+          given: theirs,
+          applied: inForce
+        });
+      }
+      inputs.threshold = Math.max(theirs, inForce);
+    }
+  }
+  if (coverage2.exclude !== void 0) {
+    if (app) {
+      const theirs = coverage2.exclude;
+      const configCount = (config.coverage?.exclude ?? []).length;
+      const fromConfig = resolved.exclude.slice(0, configCount);
+      const fromInput = resolved.exclude.slice(configCount);
+      for (const [layer, patterns] of [
+        ["config", fromConfig],
+        ["input", fromInput]
+      ]) {
+        if (patterns.some((pattern) => !theirs.includes(pattern))) {
+          ignored.push({ setting: "coverage.exclude", layer, reason: "looser" });
+        }
+      }
+      inputs.exclude = [...theirs];
+    } else if (coverage2.exclude.length > 0) {
+      ignored.push({ setting: "coverage.exclude", layer: "policy-file", reason: "not-allowed" });
+    }
+  }
+  if (coverage2.root !== void 0) {
+    if (app) {
+      const theirs = coverage2.root === null ? "." : normalizedRoot(coverage2.root);
+      const inputGiven = raw.coverageRoot !== void 0;
+      const configGiven = config.coverage?.root !== void 0;
+      if (inputGiven || configGiven) {
+        const today = inputGiven ? rootKey(resolved.coverageRoot) : rootKey(config.coverage?.root);
+        if (today !== theirs) {
+          ignored.push({ setting: "coverage.root", layer: inputGiven ? "input" : "config", reason: "looser" });
+        }
+      }
+      inputs.coverageRoot = theirs === "." ? void 0 : theirs;
+    } else {
+      ignored.push({ setting: "coverage.root", layer: "policy-file", reason: "not-allowed" });
+    }
+  }
+}
+function applySetup(layers, document2, app, inputs, ignored) {
+  const { config, raw, resolved } = layers;
+  const setup2 = document2.setup;
+  if (setup2 === void 0) return;
+  if (setup2.require !== void 0) {
+    if (setup2.require) {
+      const inputGiven = raw.requireAgentSetup !== void 0;
+      const lower = inputGiven ? raw.requireAgentSetup : config.setup?.require;
+      if (app && lower === false) {
+        ignored.push({ setting: "setup.require", layer: inputGiven ? "input" : "config", reason: "looser" });
+      }
+      inputs.requireAgentSetup = true;
+    } else if (!app && resolved.requireAgentSetup) {
+      ignored.push({ setting: "setup.require", layer: "policy-file", reason: "looser" });
+    }
+  }
+  if (setup2.expect !== void 0) {
+    const union = [.../* @__PURE__ */ new Set([...resolved.expectAgentSetup ?? [], ...setup2.expect])];
+    if (union.length > 0) inputs.expectAgentSetup = union;
+  }
+}
+function applyMode(layers, document2, app, ignored) {
+  const given = layers.resolved.testIntegrityMode;
+  const mode = document2.test_integrity?.mode;
+  if (mode === void 0) return given;
+  if (app) {
+    for (const [layer, value] of [
+      ["config", given?.config],
+      ["input", given?.input]
+    ]) {
+      if (value !== void 0 && STRICTNESS2[value] < STRICTNESS2[mode]) {
+        ignored.push({ setting: "test_integrity.mode", layer, reason: "looser" });
+      }
+    }
+  } else {
+    const inForce = given?.input ?? "warn";
+    const today = given?.config !== void 0 && STRICTNESS2[given.config] > STRICTNESS2[inForce] ? given.config : inForce;
+    if ((given?.input !== void 0 || given?.config !== void 0) && STRICTNESS2[mode] < STRICTNESS2[today]) {
+      ignored.push({ setting: "test_integrity.mode", layer: "policy-file", reason: "looser" });
+    }
+  }
+  return { ...given, policy: { mode, kind: app ? "app" : "file" } };
+}
+
+// ../core/src/policy/limits.ts
+var POLICY_MAX_CHARS = 262144;
+var POLICY_MAX_ERRORS = 50;
+var POLICY_MAX_LIST_ITEMS = 1e3;
+var POLICY_MAX_GLOB = 512;
+var POLICY_MAX_ROOT = 512;
+var POLICY_MAX_PERM = 512;
+var POLICY_MAX_NAME = 128;
+var POLICY_MAX_NAME_OR_GLOB = 512;
+var POLICY_MAX_LABEL = 50;
+var POLICY_MAX_LOGIN = 44;
+var POLICY_MAX_EVENT = 64;
+var POLICY_MAX_MATCHER = 512;
+var POLICY_THRESHOLD_MIN = 0;
+var POLICY_THRESHOLD_MAX = 100;
+var POLICY_MAX_FILES_MIN = 1;
+var POLICY_MAX_FILES_MAX = 1e5;
+var POLICY_MAX_CHANGED_LINES_MIN = 1;
+var POLICY_MAX_CHANGED_LINES_MAX = 1e7;
+var POLICY_MIN_AGE_DAYS_MIN = 0;
+var POLICY_MIN_AGE_DAYS_MAX = 3650;
+var POLICY_MIN_WEEKLY_DOWNLOADS_MIN = 0;
+var POLICY_MIN_WEEKLY_DOWNLOADS_MAX = 1e9;
+var POLICY_SEVERITIES = ["block", "warn", "info", "off"];
+var POLICY_SIGNAL_IDS = [
+  "TI01",
+  "TI02",
+  "TI03",
+  "TI04",
+  "TI05",
+  "TI06",
+  "TI07",
+  "TI08",
+  "TI09",
+  "TI10",
+  "TI11",
+  "TI12",
+  "TI13",
+  "TI14",
+  "TI15",
+  "TI16"
+];
+var POLICY_RULE_IDS = [
+  "P01",
+  "P02",
+  "P03",
+  "P04",
+  "P05",
+  "P06",
+  "P07",
+  "P08",
+  "P09",
+  "P10",
+  "P11",
+  "P12",
+  "P13",
+  "P14"
+];
+var POLICY_REGISTRIES = ["npm", "pypi"];
+var POLICY_PROTECTED_PATHS_MODES = ["block", "warn"];
+
+// ../core/src/policy/errors.ts
+var MESSAGES = {
+  object: "must be an object",
+  required: "is required",
+  unknownKey: "is not a known key",
+  list: "must be a list",
+  tooManyItems: "must have at most 1000 items",
+  string: "must be a string",
+  empty: "must not be empty",
+  version: "must be 1",
+  number: "must be a number",
+  integer: "must be an integer",
+  boolean: "must be true or false",
+  stringOrNull: "must be a string or null",
+  plain: "must not contain a control character or start or end with white space",
+  glob: "is not a supported glob pattern",
+  root: "is not a repo-relative directory",
+  perm: "is not a permission rule such as Tool or Tool(pattern)",
+  login: "is not a GitHub login",
+  event: "must contain only the letters A-Z and a-z",
+  couldNotValidate: "policy could not be validated",
+  textNotString: "policy text must be a string",
+  textNotJson: "policy text is not valid JSON"
+};
+function maxCharsMessage(max) {
+  return `must be at most ${String(max)} characters`;
+}
+function rangeMessage(min, max) {
+  return `must be between ${String(min)} and ${String(max)}`;
+}
+function enumMessage(members) {
+  return `must be one of: ${members.join(", ")}`;
+}
+function textTooLongMessage(max) {
+  return `policy text must be at most ${String(max)} characters`;
+}
+var MAX_SEGMENT_CODE_POINTS = 64;
+function pointerSegment(key) {
+  let kept = "";
+  let count2 = 0;
+  let cut = false;
+  for (const ch of key) {
+    if (count2 === MAX_SEGMENT_CODE_POINTS) {
+      cut = true;
+      break;
+    }
+    const code2 = ch.charCodeAt(0);
+    kept += ch.length === 1 && (code2 <= 31 || code2 === 127) ? "?" : ch;
+    count2++;
+  }
+  if (cut) kept += "\u2026";
+  return kept.replace(/~/g, "~0").replace(/\//g, "~1");
+}
+var ErrorCollector = class {
+  stored = [];
+  count = 0;
+  /** The number of errors added so far. */
+  get total() {
+    return this.count;
+  }
+  add(path, message) {
+    this.count++;
+    if (this.stored.length < POLICY_MAX_ERRORS) this.stored.push({ path, message });
+  }
+  /** An unknown key under `parent`; the key's segment is built only when the error is kept. */
+  addUnknownKey(parent, key) {
+    this.count++;
+    if (this.stored.length < POLICY_MAX_ERRORS) {
+      this.stored.push({ path: `${parent}/${pointerSegment(key)}`, message: MESSAGES.unknownKey });
+    }
+  }
+  /** All errors when there are at most `POLICY_MAX_ERRORS`; else the first 49 and a line counting the rest. */
+  finish() {
+    if (this.count <= POLICY_MAX_ERRORS) return this.stored.slice();
+    const listed2 = this.stored.slice(0, POLICY_MAX_ERRORS - 1);
+    listed2.push({ path: "", message: `${String(this.count - (POLICY_MAX_ERRORS - 1))} more errors not listed` });
+    return listed2;
+  }
+};
+
+// ../core/src/policy/grammar.ts
+var POLICY_PATTERNS = {
+  /** No control character; no leading or trailing white space (ECMAScript `\s`). */
+  PLAIN: String.raw`^(?!\s)(?![\s\S]*\s$)[^\u0000-\u001F\u007F]*$`,
+  /** A glob: not starting with `./`, `/` or `!`; not ending with `/`; no `//`; no `..` segment; none of `\{}[]`. */
+  GLOB: String.raw`^(?!\s)(?![\s\S]*\s$)(?!\./)(?![/!])(?![\s\S]*/$)(?![\s\S]*//)(?!(?:[\s\S]*/)?\.\.(?:/|$))[^\u0000-\u001F\u007F\\{}\[\]]*$`,
+  /** A normalized repo-relative directory. */
+  ROOT: String.raw`^(?!\s)(?![\s\S]*\s$)(?![/-])(?![A-Za-z]:)(?!\./)(?![\s\S]*/$)(?![\s\S]*//)(?!(?:[\s\S]*/)?\.\.(?:/|$))[^\u0000-\u001F\u007F\\]*$`,
+  /** `Tool` or `Tool(pattern)`. */
+  PERM: String.raw`^(?![\s\S]*[\u0000-\u001F\u007F])[A-Za-z][A-Za-z0-9_-]*(\(.+\))?$`,
+  /** A GitHub login, optionally followed by `[bot]`. */
+  LOGIN: String.raw`^[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?$`,
+  /** A hook event name. */
+  EVENT: "^[A-Za-z]+$"
+};
+var PLAIN = new RegExp(POLICY_PATTERNS.PLAIN, "u");
+var GLOB = new RegExp(POLICY_PATTERNS.GLOB, "u");
+var ROOT = new RegExp(POLICY_PATTERNS.ROOT, "u");
+var PERM = new RegExp(POLICY_PATTERNS.PERM, "u");
+var LOGIN = new RegExp(POLICY_PATTERNS.LOGIN, "u");
+var EVENT = new RegExp(POLICY_PATTERNS.EVENT, "u");
+var GRAMMARS = {
+  glob: { max: POLICY_MAX_GLOB, regex: GLOB, message: MESSAGES.glob },
+  root: { max: POLICY_MAX_ROOT, regex: ROOT, message: MESSAGES.root },
+  perm: { max: POLICY_MAX_PERM, regex: PERM, message: MESSAGES.perm },
+  name: { max: POLICY_MAX_NAME, regex: PLAIN, message: MESSAGES.plain },
+  nameOrGlob: { max: POLICY_MAX_NAME_OR_GLOB, regex: PLAIN, message: MESSAGES.plain },
+  label: { max: POLICY_MAX_LABEL, regex: PLAIN, message: MESSAGES.plain },
+  login: { max: POLICY_MAX_LOGIN, regex: LOGIN, message: MESSAGES.login },
+  event: { max: POLICY_MAX_EVENT, regex: EVENT, message: MESSAGES.event },
+  matcher: { max: POLICY_MAX_MATCHER, regex: PLAIN, message: MESSAGES.plain }
+};
+function codePointLength(s, max) {
+  if (s.length <= max) return s.length;
+  if (s.length > 2 * max) return max + 1;
+  let count2 = 0;
+  for (let i = 0; i < s.length; i++) {
+    count2++;
+    if (count2 > max) return count2;
+    const unit = s.charCodeAt(i);
+    if (unit >= 55296 && unit <= 56319 && i + 1 < s.length) {
+      const next = s.charCodeAt(i + 1);
+      if (next >= 56320 && next <= 57343) i++;
+    }
+  }
+  return count2;
+}
+
+// ../core/src/policy/validate.ts
+function known(entries) {
+  return new Map(entries);
+}
+function objectOf(keys, required = []) {
+  return (value, path, errors) => {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      errors.add(path, MESSAGES.object);
+      return void 0;
+    }
+    const input = value;
+    for (const key of required) {
+      if (!Object.hasOwn(input, key)) errors.add(`${path}/${key}`, MESSAGES.required);
+    }
+    const out = {};
+    for (const key of Object.keys(input)) {
+      const handler2 = keys.get(key);
+      if (handler2 === void 0) {
+        errors.addUnknownKey(path, key);
+        continue;
+      }
+      const result = handler2(input[key], `${path}/${key}`, errors);
+      if (result !== void 0) out[key] = result;
+    }
+    return out;
+  };
+}
+function listOf2(item) {
+  return (value, path, errors) => {
+    if (!Array.isArray(value)) {
+      errors.add(path, MESSAGES.list);
+      return void 0;
+    }
+    if (value.length > POLICY_MAX_LIST_ITEMS) {
+      errors.add(path, MESSAGES.tooManyItems);
+      return void 0;
+    }
+    const out = [];
+    for (let i = 0; i < value.length; i++) {
+      const result = item(value[i], `${path}/${String(i)}`, errors);
+      if (result !== void 0) out.push(result);
+    }
+    return out;
+  };
+}
+function enumOf(members) {
+  const message = enumMessage(members);
+  return (value, path, errors) => {
+    if (typeof value === "string" && members.includes(value)) return value;
+    errors.add(path, message);
+    return void 0;
+  };
+}
+function stringOf(grammar) {
+  const tooLong = maxCharsMessage(grammar.max);
+  return (value, path, errors) => {
+    if (typeof value !== "string") {
+      errors.add(path, MESSAGES.string);
+      return void 0;
+    }
+    if (value === "") {
+      errors.add(path, MESSAGES.empty);
+      return void 0;
+    }
+    if (codePointLength(value, grammar.max) > grammar.max) {
+      errors.add(path, tooLong);
+      return void 0;
+    }
+    if (!grammar.regex.test(value)) {
+      errors.add(path, grammar.message);
+      return void 0;
+    }
+    return value;
+  };
+}
+var bool = (value, path, errors) => {
+  if (typeof value === "boolean") return value;
+  errors.add(path, MESSAGES.boolean);
+  return void 0;
+};
+function numberIn(min, max) {
+  const range = rangeMessage(min, max);
+  return (value, path, errors) => {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      errors.add(path, MESSAGES.number);
+      return void 0;
+    }
+    if (value < min || value > max) {
+      errors.add(path, range);
+      return void 0;
+    }
+    return value;
+  };
+}
+function integerIn(min, max) {
+  const range = rangeMessage(min, max);
+  return (value, path, errors) => {
+    if (typeof value !== "number" || !Number.isInteger(value)) {
+      errors.add(path, MESSAGES.integer);
+      return void 0;
+    }
+    if (value < min || value > max) {
+      errors.add(path, range);
+      return void 0;
+    }
+    return value;
+  };
+}
+var version = (value, path, errors) => {
+  if (value === 1) return 1;
+  errors.add(path, MESSAGES.version);
+  return void 0;
+};
+var severity = enumOf(POLICY_SEVERITIES);
+var rootString = stringOf(GRAMMARS.root);
+var rootOrNull = (value, path, errors) => {
+  if (value === null) return null;
+  if (typeof value !== "string") {
+    errors.add(path, MESSAGES.stringOrNull);
+    return void 0;
+  }
+  return rootString(value, path, errors);
+};
+var coverage = objectOf(
+  known([
+    ["threshold", numberIn(POLICY_THRESHOLD_MIN, POLICY_THRESHOLD_MAX)],
+    ["exclude", listOf2(stringOf(GRAMMARS.glob))],
+    ["root", rootOrNull]
+  ])
+);
+var requiredHook = objectOf(
+  known([
+    ["event", stringOf(GRAMMARS.event)],
+    ["matcher", stringOf(GRAMMARS.matcher)]
+  ]),
+  ["event"]
+);
+var setup = objectOf(
+  known([
+    ["require", bool],
+    ["expect", listOf2(enumOf(AGENT_TOOLS))],
+    ["consistency", severity],
+    ["forbidden_permissions", listOf2(stringOf(GRAMMARS.perm))],
+    ["required_permissions_deny", listOf2(stringOf(GRAMMARS.perm))],
+    ["allowed_mcp_servers", listOf2(stringOf(GRAMMARS.name))],
+    ["forbidden_mcp_servers", listOf2(stringOf(GRAMMARS.nameOrGlob))],
+    ["required_hooks", listOf2(requiredHook)],
+    ["forbidden_files", listOf2(stringOf(GRAMMARS.glob))]
+  ])
+);
+var testIntegrity = objectOf(
+  known([
+    ["mode", enumOf(TEST_INTEGRITY_MODES)],
+    ["signals", objectOf(known(POLICY_SIGNAL_IDS.map((id) => [id, severity])))],
+    ["accept_label", stringOf(GRAMMARS.label)]
+  ])
+);
+var flaky = objectOf(known([["quarantine", bool]]));
+var policySettings = objectOf(
+  known([
+    ["required", bool],
+    ["rules", objectOf(known(POLICY_RULE_IDS.map((id) => [id, severity])))]
+  ])
+);
+var agents = objectOf(
+  known([
+    ["labels", listOf2(stringOf(GRAMMARS.label))],
+    ["extra_logins", listOf2(stringOf(GRAMMARS.login))],
+    ["protected_paths", listOf2(stringOf(GRAMMARS.glob))],
+    ["protected_paths_mode", enumOf(POLICY_PROTECTED_PATHS_MODES)],
+    ["require_human_approval", bool],
+    ["max_files", integerIn(POLICY_MAX_FILES_MIN, POLICY_MAX_FILES_MAX)],
+    ["max_changed_lines", integerIn(POLICY_MAX_CHANGED_LINES_MIN, POLICY_MAX_CHANGED_LINES_MAX)]
+  ])
+);
+var dependencies = objectOf(
+  known([
+    ["registries", listOf2(enumOf(POLICY_REGISTRIES))],
+    ["min_age_days", integerIn(POLICY_MIN_AGE_DAYS_MIN, POLICY_MIN_AGE_DAYS_MAX)],
+    ["min_weekly_downloads", integerIn(POLICY_MIN_WEEKLY_DOWNLOADS_MIN, POLICY_MIN_WEEKLY_DOWNLOADS_MAX)]
+  ])
+);
+var document = objectOf(
+  known([
+    ["version", version],
+    ["coverage", coverage],
+    ["setup", setup],
+    ["test_integrity", testIntegrity],
+    ["flaky", flaky],
+    ["policy", policySettings],
+    ["agents", agents],
+    ["dependencies", dependencies]
+  ]),
+  ["version"]
+);
+function validatePolicy(value) {
+  try {
+    const errors = new ErrorCollector();
+    const out = document(value, "", errors);
+    if (errors.total === 0) return { ok: true, policy: out };
+    return { ok: false, errors: errors.finish() };
+  } catch {
+    return { ok: false, errors: [{ path: "", message: MESSAGES.couldNotValidate }] };
+  }
+}
+
+// ../core/src/policy/parse.ts
+function fail(message) {
+  return { ok: false, errors: [{ path: "", message }] };
+}
+function parsePolicyJson(text) {
+  if (typeof text !== "string") return fail(MESSAGES.textNotString);
+  const body = text.charCodeAt(0) === 65279 ? text.slice(1) : text;
+  if (body.length > POLICY_MAX_CHARS) return fail(textTooLongMessage(POLICY_MAX_CHARS));
+  let parsed;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return fail(MESSAGES.textNotJson);
+  }
+  return validatePolicy(parsed);
+}
+
+// ../core/src/policy/response.ts
+var RESPONSE_MAX_QUARANTINE_ITEMS = 1e4;
+var MAX_ITEM_UNITS = 1024;
+var MAX_ETAG_UNITS = 200;
+var MESSAGE_MAX_BYTES_MIN = 256;
+var MESSAGE_MAX_BYTES_MAX = 65536;
+var MESSAGE_TEXT = {
+  versionMin: "must be an integer of at least 1",
+  etag: "must be 1 to 200 printable ASCII characters",
+  updatedAt: "must be a UTC time such as 2026-01-31T09:30:00Z",
+  quarantineItem: "must not contain a control character",
+  quarantineTooMany: "must have at most 10000 items"
+};
+var UPDATED_AT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?Z$/;
+function validUpdatedAt(value) {
+  const m = UPDATED_AT.exec(value);
+  if (m === null) return false;
+  const [year, month, day, hour, minute, second] = m.slice(1, 7).map(Number);
+  if (month < 1 || month > 12 || hour > 23 || minute > 59 || second > 59) return false;
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+  return day >= 1 && day <= days;
+}
+function hasControl(text) {
+  for (let i = 0; i < text.length; i++) {
+    const code2 = text.charCodeAt(i);
+    if (code2 <= 31 || code2 >= 127 && code2 <= 159 || code2 === 8232 || code2 === 8233) return true;
+  }
+  return false;
+}
+function isPrintableAscii(text) {
+  for (let i = 0; i < text.length; i++) {
+    const code2 = text.charCodeAt(i);
+    if (code2 < 32 || code2 > 126) return false;
+  }
+  return true;
+}
+function validatePolicyResponse(value) {
+  const errors = new ErrorCollector();
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    errors.add("", MESSAGES.object);
+    return { ok: false, errors: errors.finish() };
+  }
+  const input = value;
+  const keys = ["version", "etag", "updatedAt", "policy", "quarantine", "settings"];
+  for (const key of keys) {
+    if (!Object.hasOwn(input, key)) errors.add(`/${key}`, MESSAGES.required);
+  }
+  for (const key of Object.keys(input)) {
+    if (!keys.includes(key)) errors.addUnknownKey("", key);
+  }
+  let version2;
+  if (Object.hasOwn(input, "version")) {
+    const v = input.version;
+    if (typeof v !== "number") errors.add("/version", MESSAGES.number);
+    else if (!Number.isSafeInteger(v) || v < 1) errors.add("/version", MESSAGE_TEXT.versionMin);
+    else version2 = v;
+  }
+  let etag;
+  if (Object.hasOwn(input, "etag")) {
+    const v = input.etag;
+    if (typeof v !== "string") errors.add("/etag", MESSAGES.string);
+    else if (v === "") errors.add("/etag", MESSAGES.empty);
+    else if (v.length > MAX_ETAG_UNITS) errors.add("/etag", maxCharsMessage(MAX_ETAG_UNITS));
+    else if (!isPrintableAscii(v)) errors.add("/etag", MESSAGE_TEXT.etag);
+    else etag = v;
+  }
+  let updatedAt;
+  if (Object.hasOwn(input, "updatedAt")) {
+    const v = input.updatedAt;
+    if (typeof v !== "string") errors.add("/updatedAt", MESSAGES.string);
+    else if (!validUpdatedAt(v)) errors.add("/updatedAt", MESSAGE_TEXT.updatedAt);
+    else updatedAt = v;
+  }
+  let policy;
+  if (Object.hasOwn(input, "policy")) {
+    const checked = validatePolicy(input.policy);
+    if (checked.ok) policy = checked.policy;
+    else for (const e of checked.errors) errors.add(e.path === "" ? "/policy" : `/policy${e.path}`, e.message);
+  }
+  let quarantine;
+  if (Object.hasOwn(input, "quarantine")) {
+    const v = input.quarantine;
+    if (!Array.isArray(v)) errors.add("/quarantine", MESSAGES.list);
+    else if (v.length > RESPONSE_MAX_QUARANTINE_ITEMS) errors.add("/quarantine", MESSAGE_TEXT.quarantineTooMany);
+    else {
+      const items = [];
+      let good = true;
+      for (let i = 0; i < v.length; i++) {
+        const item = v[i];
+        const at = `/quarantine/${String(i)}`;
+        if (typeof item !== "string") errors.add(at, MESSAGES.string);
+        else if (item === "") errors.add(at, MESSAGES.empty);
+        else if (item.length > MAX_ITEM_UNITS) errors.add(at, maxCharsMessage(MAX_ITEM_UNITS));
+        else if (hasControl(item)) errors.add(at, MESSAGE_TEXT.quarantineItem);
+        else {
+          items.push(item);
+          continue;
+        }
+        good = false;
+      }
+      if (good) quarantine = items;
+    }
+  }
+  let settings;
+  if (Object.hasOwn(input, "settings")) {
+    const v = input.settings;
+    if (typeof v !== "object" || v === null || Array.isArray(v)) errors.add("/settings", MESSAGES.object);
+    else {
+      const s = v;
+      const known2 = ["uploadJunit", "redactMessages", "messageMaxBytes"];
+      for (const key of known2) {
+        if (!Object.hasOwn(s, key)) errors.add(`/settings/${key}`, MESSAGES.required);
+      }
+      for (const key of Object.keys(s)) {
+        if (!known2.includes(key)) errors.addUnknownKey("/settings", key);
+      }
+      let uploadJunit;
+      let redactMessages;
+      let messageMaxBytes;
+      if (Object.hasOwn(s, "uploadJunit")) {
+        if (typeof s.uploadJunit === "boolean") uploadJunit = s.uploadJunit;
+        else errors.add("/settings/uploadJunit", MESSAGES.boolean);
+      }
+      if (Object.hasOwn(s, "redactMessages")) {
+        if (typeof s.redactMessages === "boolean") redactMessages = s.redactMessages;
+        else errors.add("/settings/redactMessages", MESSAGES.boolean);
+      }
+      if (Object.hasOwn(s, "messageMaxBytes")) {
+        const n = s.messageMaxBytes;
+        if (typeof n !== "number") errors.add("/settings/messageMaxBytes", MESSAGES.number);
+        else if (!Number.isInteger(n)) errors.add("/settings/messageMaxBytes", MESSAGES.integer);
+        else if (n < MESSAGE_MAX_BYTES_MIN || n > MESSAGE_MAX_BYTES_MAX) {
+          errors.add("/settings/messageMaxBytes", rangeMessage(MESSAGE_MAX_BYTES_MIN, MESSAGE_MAX_BYTES_MAX));
+        } else messageMaxBytes = n;
+      }
+      if (uploadJunit !== void 0 && redactMessages !== void 0 && messageMaxBytes !== void 0) {
+        settings = { uploadJunit, redactMessages, messageMaxBytes };
+      }
+    }
+  }
+  if (errors.total > 0 || version2 === void 0 || etag === void 0 || updatedAt === void 0 || policy === void 0 || quarantine === void 0 || settings === void 0) {
+    return { ok: false, errors: errors.finish() };
+  }
+  return { ok: true, response: { version: version2, etag, updatedAt, policy, quarantine, settings } };
 }
 
 // ../core/src/render/logo.ts
@@ -245047,7 +246691,9 @@ var MESSAGE_HINTS = {
   AGENT_CONFIG_SECRET_S09: SECRET_HINT,
   AGENT_CONFIG_SECRET_S10: "If the value is a real secret, revoke it at its provider, remove it from the file and from git history, and load it from an environment variable or a secret store. If it is not a secret, a reviewer can confirm that.",
   AGENT_CONFIG_SECRET_S11: "Move the literal value into the environment, like the other secrets in the same file, so no secret is committed.",
-  AGENT_CONFIG_SECRET_UNSCANNED: "Keep agent config files text, under 512 KiB and inside the repository, and run on a checkout of the pull request head (not PR-number mode or a compare-API diff), so they can be scanned for committed secrets."
+  AGENT_CONFIG_SECRET_UNSCANNED: "Keep agent config files text, under 512 KiB and inside the repository, and run on a checkout of the pull request head (not PR-number mode or a compare-API diff), so they can be scanned for committed secrets.",
+  POLICY_UNAVAILABLE: "Give the job `permissions: id-token: write` (fork pull requests get no OIDC token), check that the pharn.dev app is installed for this repository, or set `policy: never` to run without the org policy.",
+  POLICY_OVERRIDE_IGNORED: "The org policy's value applies. Raise the setting in the workflow inputs or `.pharn/ci.yml` to match, or ask the policy owner to change the policy."
 };
 function hintFor(code2, label) {
   if (!Object.hasOwn(MESSAGE_HINTS, code2)) return void 0;
@@ -245203,11 +246849,11 @@ function renderMarkdown(report, options = {}) {
     for (const m of messages) out.push(renderMessage(m, report));
     out.push("");
   }
-  const setup = report.agentSetup.files;
-  out.push(`### \u{1F916} Agent setup (${setup.length === 0 ? "no files" : countFiles(setup.length)})`, "");
+  const setup2 = report.agentSetup.files;
+  out.push(`### \u{1F916} Agent setup (${setup2.length === 0 ? "no files" : countFiles(setup2.length)})`, "");
   const missingTools = report.agentSetup.missing ?? [];
   const missingLine = `Missing: ${missingTools.map(code).join(", ")}`;
-  if (setup.length === 0) {
+  if (setup2.length === 0) {
     out.push(
       "_No agent setup files found._",
       "",
@@ -245215,13 +246861,13 @@ function renderMarkdown(report, options = {}) {
       ""
     );
   } else {
-    const { tools } = report.agentSetup.summary ?? summarizeAgentSetup(setup);
-    out.push(`Agent setup: ${setup.length} ${setup.length === 1 ? "file" : "files"} \xB7 ${tools.join(", ")}`, "");
+    const { tools } = report.agentSetup.summary ?? summarizeAgentSetup(setup2);
+    out.push(`Agent setup: ${setup2.length} ${setup2.length === 1 ? "file" : "files"} \xB7 ${tools.join(", ")}`, "");
     if (missingTools.length > 0) out.push(missingLine, "");
-    out.push("<details>", `<summary>Agent setup files (${setup.length})</summary>`, "");
+    out.push("<details>", `<summary>Agent setup files (${setup2.length})</summary>`, "");
     out.push("| Path | Kind |", "| --- | --- |");
-    for (const f of setup.slice(0, maxRows)) out.push(`| ${code(f.path)} | ${f.kind} |`);
-    if (setup.length > maxRows) out.push(`| _\u2026and ${setup.length - maxRows} more files_ | |`);
+    for (const f of setup2.slice(0, maxRows)) out.push(`| ${code(f.path)} | ${f.kind} |`);
+    if (setup2.length > maxRows) out.push(`| _\u2026and ${setup2.length - maxRows} more files_ | |`);
     out.push("", "</details>", "");
   }
   const format = report.diffCoverage?.format;
@@ -245244,12 +246890,12 @@ function overviewLine(report) {
   else
     first = `Diff coverage of this change is ${formatNumber(dc.percent)}% against a threshold of ${formatNumber(dc.threshold)}%`;
   const n = report.agentSetup.files.length;
-  const setup = n === 0 ? "no agent setup files found." : n === 1 ? "1 agent setup file found." : `${n} agent setup files found.`;
+  const setup2 = n === 0 ? "no agent setup files found." : n === 1 ? "1 agent setup file found." : `${n} agent setup files found.`;
   const findings = report.testIntegrity.signals;
-  if (findings.length === 0) return `${first}; ${setup}`;
+  if (findings.length === 0) return `${first}; ${setup2}`;
   const blocking = findings.filter((s) => s.severity === "block").length;
   const integrity = `${countOf(findings.length, "test-integrity finding", "test-integrity findings")}${blocking > 0 ? `, ${blocking} blocking` : ""}`;
-  return `${first}; ${integrity}; ${setup}`;
+  return `${first}; ${integrity}; ${setup2}`;
 }
 function countOf(n, one, many) {
   return `${n} ${n === 1 ? one : many}`;
@@ -245264,19 +246910,19 @@ function integrityCell(report) {
 }
 function summaryLines(report) {
   const dc = report.diffCoverage;
-  let coverage;
-  if (dc === null) coverage = "not computed";
-  else if (dc.percent === null) coverage = "no coverable lines";
+  let coverage2;
+  if (dc === null) coverage2 = "not computed";
+  else if (dc.percent === null) coverage2 = "no coverable lines";
   else {
     const threshold = dc.threshold === null ? "no threshold" : `threshold ${formatNumber(dc.threshold)}%`;
-    coverage = `${formatNumber(dc.percent)}% (${threshold})`;
+    coverage2 = `${formatNumber(dc.percent)}% (${threshold})`;
   }
   const n = report.agentSetup.files.length;
-  const setup = n === 0 ? "none" : n === 1 ? "1 file" : `${n} files`;
+  const setup2 = n === 0 ? "none" : n === 1 ? "1 file" : `${n} files`;
   return [
     "| Verdict | Diff coverage | Test integrity | Agent setup |",
     "| --- | --- | --- | --- |",
-    `| ${VERDICT_ICON[report.verdict]} ${VERDICT_LABEL[report.verdict]} | ${coverage} | ${integrityCell(report)} | ${setup} |`,
+    `| ${VERDICT_ICON[report.verdict]} ${VERDICT_LABEL[report.verdict]} | ${coverage2} | ${integrityCell(report)} | ${setup2} |`,
     ""
   ];
 }
@@ -245735,10 +247381,10 @@ async function batchRead(deps, oids) {
 }
 
 // ../node-io/src/agentConfigSources.ts
-var byCodeUnit24 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit26 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 async function readAgentConfigSources(deps, paths) {
   try {
-    const unique = [...new Set(paths)].sort(byCodeUnit24);
+    const unique = [...new Set(paths)].sort(byCodeUnit26);
     const requests = unique.filter((path) => !isUnsafeTestSourcePath(path)).map((path) => ({ oid: "HEAD", path }));
     const checked = await batchCheck(deps, requests);
     const objects = /* @__PURE__ */ new Map();
@@ -245751,7 +247397,7 @@ async function readAgentConfigSources(deps, paths) {
     const plan = planTestSourceReads(unique, objects);
     const wanted = /* @__PURE__ */ new Set();
     for (const path of plan.read) wanted.add(blobs.get(path));
-    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit24));
+    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit26));
     const files = [];
     const dropped = [...plan.dropped];
     for (const path of plan.read) {
@@ -245759,7 +247405,7 @@ async function readAgentConfigSources(deps, paths) {
       if (text === null) dropped.push({ path, reason: "binary" });
       else files.push({ path, text });
     }
-    dropped.sort((a, b) => byCodeUnit24(a.path, b.path));
+    dropped.sort((a, b) => byCodeUnit26(a.path, b.path));
     return { files, dropped };
   } catch (err) {
     return { unavailable: err instanceof StepFailed ? err.message : `git could not be read: ${firstLine(err)}` };
@@ -245927,14 +247573,14 @@ function runGit(cwd, gitArgs, timeoutMs = GIT_TIMEOUT_MS) {
   } catch (err) {
     return Promise.reject(err);
   }
-  return new Promise((ok, fail) => {
+  return new Promise((ok, fail2) => {
     execFile(
       "git",
       args,
       { cwd, maxBuffer: 256 * 1024 * 1024, encoding: "utf8", timeout: timeoutMs },
       (err, stdout, stderr) => {
-        if (err?.killed) fail(new Error(`git ${args[0] ?? ""} timed out after ${timeoutMs / 1e3} s`));
-        else if (err) fail(new Error(stderr || err.message));
+        if (err?.killed) fail2(new Error(`git ${args[0] ?? ""} timed out after ${timeoutMs / 1e3} s`));
+        else if (err) fail2(new Error(stderr || err.message));
         else ok(stdout);
       }
     );
@@ -245948,7 +247594,7 @@ function runGitBatch(cwd, gitArgs, input, timeoutMs = GIT_TIMEOUT_MS) {
   } catch (err) {
     return Promise.reject(err);
   }
-  return new Promise((ok, fail) => {
+  return new Promise((ok, fail2) => {
     const child = execFile(
       "git",
       args,
@@ -245960,8 +247606,8 @@ function runGitBatch(cwd, gitArgs, input, timeoutMs = GIT_TIMEOUT_MS) {
         env: { ...process.env, GIT_NO_LAZY_FETCH: "1" }
       },
       (err, stdout, stderr) => {
-        if (err?.killed) fail(new Error(`git ${args[0] ?? ""} timed out after ${timeoutMs / 1e3} s`));
-        else if (err) fail(new Error(stderr.toString("utf8") || err.message));
+        if (err?.killed) fail2(new Error(`git ${args[0] ?? ""} timed out after ${timeoutMs / 1e3} s`));
+        else if (err) fail2(new Error(stderr.toString("utf8") || err.message));
         else ok(stdout);
       }
     );
@@ -246002,6 +247648,66 @@ async function listDir(path) {
     if (code2 === "ENOENT" || code2 === "ENOTDIR") return null;
     throw err;
   }
+}
+
+// ../node-io/src/policyFile.ts
+import { lstat as lstat2 } from "node:fs/promises";
+var POLICY_FILE_MAX_BYTES = 1048576;
+async function lstatPath(path) {
+  try {
+    const stat2 = await lstat2(path);
+    const kind = stat2.isSymbolicLink() ? "symlink" : stat2.isDirectory() ? "directory" : stat2.isFile() ? "file" : "other";
+    return { kind, size: stat2.size };
+  } catch (err) {
+    const code2 = err.code;
+    if (code2 === "ENOENT" || code2 === "ENOTDIR") return null;
+    throw err;
+  }
+}
+var PolicyFileError = class extends Error {
+  name = "PolicyFileError";
+};
+var MAX_LISTED_PROBLEMS = 50;
+async function readPolicyFile(deps, options) {
+  const { label } = options;
+  const fail2 = (reason) => new PolicyFileError(`${label} ${reason}`);
+  const raw = options.path;
+  if (raw.trim() === "") throw fail2("is empty: name a policy file relative to the repository");
+  if (raw.startsWith("/") || raw.startsWith("\\") || /^[A-Za-z]:/.test(raw)) {
+    throw fail2("must be a path relative to the repository, not an absolute path");
+  }
+  const segments = [];
+  for (const segment of raw.replace(/\\/g, "/").split("/")) {
+    if (segment === "" || segment === ".") continue;
+    if (segment === "..") {
+      if (segments.pop() === void 0) throw fail2("must stay inside the repository");
+      continue;
+    }
+    segments.push(segment);
+  }
+  if (segments.length === 0) throw fail2("does not name a file");
+  let size = 0;
+  for (let depth = 1; depth <= segments.length; depth++) {
+    const stat2 = await deps.lstat(deps.resolvePath(options.root, ...segments.slice(0, depth)));
+    if (stat2 === null) throw fail2("names a file that does not exist");
+    if (stat2.kind === "symlink") throw fail2("must not go through a symbolic link");
+    if (depth < segments.length) {
+      if (stat2.kind !== "directory") throw fail2("names a file that does not exist");
+    } else {
+      if (stat2.kind !== "file") throw fail2("must name a regular file");
+      size = stat2.size;
+    }
+  }
+  if (size > POLICY_FILE_MAX_BYTES) throw fail2("names a file that is too large (the limit is 1 MiB)");
+  const text = await deps.readFile(deps.resolvePath(options.root, ...segments));
+  if (text === null) throw fail2("names a file that does not exist");
+  const parsed = parsePolicyJson(text);
+  if (!parsed.ok) {
+    const lines = parsed.errors.slice(0, MAX_LISTED_PROBLEMS).map((error2) => `${error2.path === "" ? "(document)" : error2.path}: ${error2.message}`);
+    throw fail2(`is not a valid policy document:
+${lines.join("\n")}`);
+  }
+  return { source: "file", version: null, path: segments.join("/"), document: parsed.policy };
 }
 
 // ../node-io/src/pythonIndex.ts
@@ -246721,7 +248427,7 @@ async function indexPythonTestSources(sources, index = (files) => indexPythonTes
 }
 
 // ../node-io/src/testSources.ts
-var byCodeUnit25 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit27 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 async function resolveRevision(deps, revision, label) {
   let out;
   try {
@@ -246772,7 +248478,7 @@ async function readTestSources(deps, options) {
     plans.forEach((plan, i) => {
       for (const path of plan.read) wanted.add(sides[i]?.blobs.get(path));
     });
-    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit25));
+    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit27));
     const decoded = /* @__PURE__ */ new Map();
     const build = (index) => {
       const plan = plans[index];
@@ -246788,7 +248494,7 @@ async function readTestSources(deps, options) {
         if (text === null) dropped.push({ path, reason: "binary" });
         else files.push({ path, text });
       }
-      dropped.sort((a, b) => byCodeUnit25(a.path, b.path));
+      dropped.sort((a, b) => byCodeUnit27(a.path, b.path));
       return { files, dropped };
     };
     return { base: build(0), head: build(1) };
@@ -246807,6 +248513,7 @@ function createNodeIo(workspace2, opts = {}) {
     git: (args) => runGit(workspace2, args, timeout),
     readFile,
     listDir,
+    lstat: lstatPath,
     writeFile: async (path, text) => {
       await mkdir2(dirname(path), { recursive: true });
       await writeFile2(path, text);
@@ -247019,6 +248726,213 @@ async function listCommits(deps, number) {
   return { commits, cut: true };
 }
 
+// src/app-client.ts
+var APP_AUDIENCE = "pharn.dev";
+var DEFAULT_APP_URL = "https://pharn.dev";
+var APP_TIMEOUT_MS = 1e4;
+var APP_RETRY_WAIT_MS = 1e3;
+var APP_MAX_BODY_BYTES = 1048576;
+var APP_URL_ERROR = "the app-url input must be an https origin such as https://pharn.dev, with no credentials, path, query or fragment";
+function parseAppUrl(value) {
+  const trimmed = value.trim();
+  if (trimmed === "") return new URL(DEFAULT_APP_URL);
+  let url;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    throw new Error(APP_URL_ERROR);
+  }
+  if (url.protocol !== "https:" || url.username !== "" || url.password !== "" || url.search !== "" || url.hash !== "" || url.pathname !== "/") {
+    throw new Error(APP_URL_ERROR);
+  }
+  return url;
+}
+var NO_TOKEN_LINE = "pharn-ci: no OIDC token is available for the org policy; grant the job `permissions: id-token: write` to use it";
+function oidcOffered(deps) {
+  return deps.hasOidcEnv === true && deps.getIDToken !== void 0 && deps.setSecret !== void 0;
+}
+async function requestAppToken(deps) {
+  const { getIDToken: getIDToken2, setSecret: setSecret2 } = deps;
+  if (!oidcOffered(deps) || getIDToken2 === void 0 || setSecret2 === void 0) {
+    deps.info(NO_TOKEN_LINE);
+    return null;
+  }
+  let token;
+  try {
+    token = await getIDToken2(APP_AUDIENCE);
+  } catch {
+    deps.info(NO_TOKEN_LINE);
+    return null;
+  }
+  if (typeof token !== "string" || token === "") {
+    deps.info(NO_TOKEN_LINE);
+    return null;
+  }
+  setSecret2(token);
+  return token;
+}
+var REQUEST_ID = /^[A-Za-z0-9-]{1,64}$/;
+var defaultSleep = (ms) => new Promise((resolve2) => setTimeout(resolve2, ms));
+async function appRequest(deps, request2) {
+  const first = await attempt(deps, request2);
+  const retry = first.kind === "network" || first.kind === "response" && first.status >= 500;
+  if (!retry) return first;
+  await (deps.sleep ?? defaultSleep)(APP_RETRY_WAIT_MS);
+  return attempt(deps, request2);
+}
+async function attempt(deps, request2) {
+  const doFetch = deps.fetch;
+  if (doFetch === void 0) return { kind: "network" };
+  const signal = AbortSignal.timeout(deps.timeoutMs ?? APP_TIMEOUT_MS);
+  let response;
+  try {
+    response = await doFetch(request2.url.href, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${request2.token}`,
+        "User-Agent": `pharn-ci/${VERSION7}`
+      },
+      redirect: "error",
+      signal
+    });
+  } catch {
+    return signal.aborted ? { kind: "timeout" } : { kind: "network" };
+  }
+  const requestIdHeader = response.headers.get("x-pharn-request-id");
+  const answer = {
+    kind: "response",
+    status: response.status,
+    contentType: response.headers.get("content-type"),
+    ...requestIdHeader !== null && REQUEST_ID.test(requestIdHeader) ? { requestId: requestIdHeader } : {}
+  };
+  if (response.status < 200 || response.status > 299 || response.status === 204) {
+    await response.body?.cancel().catch(() => {
+    });
+    return answer;
+  }
+  try {
+    const read = await readCapped(response);
+    return read === null ? { ...answer, tooLarge: true } : { ...answer, body: read };
+  } catch {
+    return signal.aborted ? { kind: "timeout" } : { kind: "network" };
+  }
+}
+async function readCapped(response) {
+  if (response.body === null) return "";
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  for (; ; ) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > APP_MAX_BODY_BYTES) {
+      await reader.cancel().catch(() => {
+      });
+      return null;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let at = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, at);
+    at += chunk.byteLength;
+  }
+  return new TextDecoder("utf-8").decode(bytes);
+}
+
+// src/policy-input.ts
+var POLICY_INPUT_ERROR = "the policy input must be auto, never, required or file:<path>";
+function parsePolicyInput(value) {
+  const trimmed = value.trim();
+  if (trimmed === "" || trimmed === "auto") return { kind: "auto" };
+  if (trimmed === "never") return { kind: "never" };
+  if (trimmed === "required") return { kind: "required" };
+  if (trimmed.startsWith("file:")) return { kind: "file", path: trimmed.slice("file:".length).trim() };
+  throw new Error(POLICY_INPUT_ERROR);
+}
+
+// src/policy-fetch.ts
+var REPOSITORY = /^[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}$/;
+var JSON_CONTENT_TYPE = /^application\/json\s*(?:;|$)/i;
+async function fetchPolicy(deps, options) {
+  const required = options.mode === "required";
+  const unavailable2 = (reason, extra = {}) => {
+    if (extra.requestId !== void 0)
+      deps.info(`pharn-ci: the org policy request failed (request id ${extra.requestId})`);
+    return {
+      source: "none",
+      version: null,
+      document: null,
+      ...extra.noApp === true ? { noApp: true } : {},
+      unavailable: {
+        reason,
+        ...extra.status === void 0 ? {} : { status: extra.status },
+        ...extra.requestId === void 0 ? {} : { requestId: extra.requestId },
+        required
+      }
+    };
+  };
+  const silent = (extra = {}) => ({
+    source: "none",
+    version: null,
+    document: null,
+    ...extra.noApp === true ? { noApp: true } : {}
+  });
+  if (oidcOffered(deps) && !REPOSITORY.test(options.repository)) return unavailable2("no-repository");
+  const token = await requestAppToken(deps);
+  if (token === null) return required ? unavailable2("no-oidc-token") : silent();
+  const url = new URL("/api/v1/policy", options.origin);
+  url.searchParams.set("repo", options.repository);
+  const result = await appRequest(deps, { url, token });
+  if (result.kind === "timeout") return unavailable2("timeout");
+  if (result.kind === "network") return unavailable2("network");
+  const { status } = result;
+  const id = result.requestId === void 0 ? {} : { requestId: result.requestId };
+  if (status === 204)
+    return required ? unavailable2("no-policy", { status, noApp: true, ...id }) : silent({ noApp: true });
+  if (status === 404) {
+    return required ? unavailable2("installation_not_found", { status, noApp: true, ...id }) : silent({ noApp: true });
+  }
+  if (status === 401) return unavailable2("token_invalid", { status, ...id });
+  if (status === 403) return unavailable2("repo_not_in_installation", { status, ...id });
+  if (status === 429) return unavailable2("rate-limited", { status, ...id });
+  if (status !== 200) return unavailable2("unexpected-status", { status, ...id });
+  if (result.tooLarge === true) return unavailable2("response-too-large", { status, ...id });
+  if (result.contentType === null || !JSON_CONTENT_TYPE.test(result.contentType)) {
+    return unavailable2("invalid-response", { status, ...id });
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(result.body ?? "");
+  } catch {
+    return unavailable2("invalid-response", { status, ...id });
+  }
+  const validated = validatePolicyResponse(parsed);
+  if (!validated.ok) return unavailable2("invalid-response", { status, ...id });
+  return {
+    source: "app",
+    version: validated.response.version,
+    fetchedAt: (deps.now?.() ?? /* @__PURE__ */ new Date()).toISOString(),
+    document: validated.response.policy
+  };
+}
+
+// src/policy-source.ts
+async function obtainPolicy(deps, choice, origin) {
+  if (choice.kind === "never") return void 0;
+  if (choice.kind === "file") {
+    return readPolicyFile(
+      { readFile: deps.readFile, resolvePath: deps.resolvePath, lstat: deps.lstat ?? lstatPath },
+      { root: deps.workspace, path: choice.path, label: "the policy input" }
+    );
+  }
+  const repository = deps.context.payload.repository?.full_name;
+  return fetchPolicy(deps, { mode: choice.kind, origin, repository: typeof repository === "string" ? repository : "" });
+}
+
 // src/pr-number.ts
 var PR_NUMBER = /^[1-9][0-9]{0,9}$/;
 var COMMIT_SHA = /^([0-9a-f]{40}|[0-9a-f]{64})$/i;
@@ -247173,24 +249087,30 @@ async function runUnsafe(deps) {
   }
   const acceptLabel = validateAcceptLabel(input("accept-label"));
   if (!acceptLabel.ok) throw new Error(acceptLabel.error);
+  const policyChoice = parsePolicyInput(input("policy"));
+  const appOrigin = parseAppUrl(input("app-url"));
   const config = await loadConfig(input("config") || void 0, deps);
+  const rawInputs = {
+    coverageFile: splitLines(input("coverage-file")),
+    coverageFormat: input("coverage-format") || void 0,
+    threshold: input("threshold") || void 0,
+    exclude: splitPatternList(input("exclude")),
+    coverageRoot: input("coverage-root") || void 0,
+    requireAgentSetup: parseBool(input("require-agent-setup"), "require-agent-setup"),
+    expectAgentSetup: splitPatternList(input("expect-agent-setup")),
+    testIntegrity: input("test-integrity") || void 0
+  };
   const resolved = resolveInputs(
     config,
-    {
-      coverageFile: splitLines(input("coverage-file")),
-      coverageFormat: input("coverage-format") || void 0,
-      threshold: input("threshold") || void 0,
-      exclude: splitPatternList(input("exclude")),
-      coverageRoot: input("coverage-root") || void 0,
-      requireAgentSetup: parseBool(input("require-agent-setup"), "require-agent-setup"),
-      expectAgentSetup: splitPatternList(input("expect-agent-setup")),
-      testIntegrity: input("test-integrity") || void 0
-    },
+    rawInputs,
     INPUT_ERRORS,
     // With no coverage path set anywhere, the report is looked for at the discovery candidates.
     { discoverCoverage: true }
   );
   if (!resolved.ok) throw resolved.errors[0];
+  const policy = await obtainPolicy(deps, policyChoice, appOrigin);
+  const application = policy === void 0 ? void 0 : applyPolicy({ config, raw: rawInputs, resolved: resolved.inputs }, policy);
+  const effective = application?.inputs ?? resolved.inputs;
   const {
     coverageFormat: format,
     threshold,
@@ -247199,14 +249119,14 @@ async function runUnsafe(deps) {
     requireAgentSetup,
     expectAgentSetup,
     testIntegrityMode
-  } = resolved.inputs;
+  } = effective;
   const failOnThreshold = parseBool(input("fail-on-threshold"), "fail-on-threshold") ?? true;
   const comment = parseBool(input("comment"), "comment") ?? true;
   const target = !pr && prNumber !== void 0 ? await resolvePrNumberTarget(deps, { prNumber, headSha }) : void 0;
   const { coverageFile } = resolved.inputs;
-  let coverage;
+  let coverage2;
   if ("discover" in coverageFile) {
-    coverage = await readDiscoveredCoverage(deps, {
+    coverage2 = await readDiscoveredCoverage(deps, {
       repoRoot: deps.workspace,
       format,
       ...coverageRoot === void 0 ? {} : { coverageRoot },
@@ -247226,7 +249146,7 @@ async function runUnsafe(deps) {
       name: (entry) => entry,
       log: (line) => deps.info(line)
     });
-    coverage = { files: coverageFiles, format };
+    coverage2 = { files: coverageFiles, format };
   }
   const repoFiles = await trackedFiles(target, deps);
   const lsTree = target ? null : await deps.git(["ls-tree", "-r", "-l", "-z", "--full-tree", "HEAD"]).catch((err) => {
@@ -247244,7 +249164,7 @@ async function runUnsafe(deps) {
   }
   const checkInput = {
     version: VERSION7,
-    coverage,
+    coverage: coverage2,
     diff,
     repoRoot: deps.workspace,
     threshold,
@@ -247258,13 +249178,22 @@ async function runUnsafe(deps) {
     ...agentConfigSources === void 0 ? {} : { agentConfigSources },
     ...pythonTestIndex === void 0 ? {} : { pythonTestIndex },
     ...coverageRoot === void 0 ? {} : { coverageRoot },
-    ...input("config") === "" ? {} : { configPath: input("config") }
+    ...input("config") === "" ? {} : { configPath: input("config") },
+    ...policy === void 0 ? {} : { policy },
+    ...application === void 0 || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored },
+    ...application?.signalOverrides === void 0 ? {} : { signalOverrides: application.signalOverrides }
   };
   const meta = runMeta(deps.context, { baseRef: input("base-ref"), ...target === void 0 ? {} : { target } });
   if (meta === void 0) deps.info("run metadata is incomplete, so report.json carries no meta");
   const checked = check(meta === void 0 ? checkInput : { ...checkInput, meta });
   const signoffNumber = deps.context.eventName === "pull_request" && pr ? pr.number : target?.number;
-  const labelled = await applyAcceptLabel(deps, checked, acceptLabel.label, signoffNumber);
+  let label = acceptLabel.label;
+  if (application?.acceptLabel !== void 0) {
+    const fromPolicy = validateAcceptLabel(application.acceptLabel);
+    if (fromPolicy.ok) label = fromPolicy.label;
+    else deps.warning("pharn-ci: the org policy's accept label is not usable here, so the accept-label input applies");
+  }
+  const labelled = await applyAcceptLabel(deps, checked, label, signoffNumber);
   let report = labelled;
   if (labelled.meta !== void 0) {
     const facts = await gatherAgentPrFacts(deps, target);
@@ -247581,7 +249510,15 @@ await run({
   info,
   warning,
   setOutput,
-  setFailed
+  setFailed,
+  // The org policy: the runner's OIDC token for the audience pharn.dev, and the global fetch. Only a job that grants
+  // `id-token: write` has both request variables, and only then is a policy fetched (policy-fetch.ts).
+  fetch: (input, init) => fetch(input, init),
+  getIDToken: (audience) => getIDToken(audience),
+  setSecret,
+  hasOidcEnv: Boolean(process.env.ACTIONS_ID_TOKEN_REQUEST_URL) && Boolean(process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN),
+  now: () => /* @__PURE__ */ new Date(),
+  sleep: (ms) => new Promise((resolve2) => setTimeout(resolve2, ms))
 });
 /*! Bundled license information:
 

@@ -920,6 +920,33 @@ for ten shapes of secret by prefix and position. It is a heuristic, not a secret
   no A7 message.
 - **A finding is not a removal.** A secret already in git history stays there after the file is fixed; revoke it.
 
+## Org policy
+
+The org policy (`policy: auto`, `required` or `file:<path>`; see the README, Org policy) is fetched, validated and
+applied once per run. What it does not do:
+
+- **No persistent ETag cache.** The app's response carries an ETag, but a GitHub-hosted runner starts empty and the
+  Action keeps no state between runs (no backend, no cache of its own), so every run asks again and no `If-None-Match`
+  is sent. A run that cannot reach the app has no cached copy to fall back on: it runs with the workflow inputs and
+  `.pharn/ci.yml` and reports `POLICY_UNAVAILABLE`, or fails under `policy: required`.
+- **No connect timeout of its own.** Each attempt has one timeout for the whole request, response body included
+  (10 s); there is no separate 5 s connect timeout, so a host that accepts the connection and then stalls costs the
+  full timeout, and with the one retry a failing request can take about 21 s.
+- **Fork pull requests and jobs without `id-token: write` get no policy.** GitHub gives a fork pull request no OIDC
+  token, and a job that does not grant `id-token: write` has none. Under `policy: auto` that is silent apart from one
+  info line, and the check runs without the policy; `policy: required` makes it a failing check. The OIDC token is also
+  the only identity the app sees, so a repository the app does not know gets no policy (`204` or `404`).
+- **A `file:` policy can only tighten.** The pull request carries the file, so pharn-ci applies a threshold, mode,
+  `setup.require`, `setup.expect` and signal severities only upwards, and never its exclusions, root, accept label or
+  `policy.required`. Because of that, a `file:` document and the same document served by the app give the same
+  effective settings only when it is a tightening-only document and no lower layer holds a value above it that the
+  app would have named: an app value above a lower layer's is recorded as `looser`, while the same file value above it
+  is not, so the two reports then differ by one `POLICY_OVERRIDE_IGNORED` message.
+- **The `policy` and `app-url` inputs are the workflow's.** A pull request that edits the workflow can set them
+  (THREAT-MODEL, items 22 and 24).
+- **Only some keys are applied.** `policy.rules`, `agents`, `dependencies`, `flaky`, `setup.forbidden_files` and the
+  other `setup` lists are validated and carried in the document, not applied by this release.
+
 ## 5. Security limits
 
 - **The report is derived from untrusted input.** File paths, coverage data and the config file

@@ -1,0 +1,32 @@
+{
+  "base": {
+    "files": [
+      {
+        "path": "src/__tests__/b.test.ts",
+        "text": "import { it } from \"vitest\";\nit(\"adds\", () => {});\n"
+      },
+      {
+        "path": "src/cart.test.ts",
+        "text": "import { describe, expect, it } from \"vitest\";\nimport { total } from \"./cart.js\";\n\ndescribe(\"cart\", () => {\n  it(\"adds the prices\", () => {\n    expect(total([2, 3])).toBe(5);\n  });\n\n  it(\"totals an empty cart\", () => {\n    expect(total([])).toBe(0);\n  });\n});\n"
+      },
+      {
+        "path": "src/num.test.ts",
+        "text": "import { describe, expect, it } from \"vitest\";\nimport { isMagic } from \"./num.js\";\n\ndescribe(\"isMagic\", () => {\n  it(\"is false for small numbers\", () => {\n    expect(isMagic(1)).toBe(false);\n  });\n});\n"
+      }
+    ],
+    "dropped": []
+  },
+  "head": {
+    "files": [
+      {
+        "path": "src/cart.test.ts",
+        "text": "import { describe, expect, it } from \"vitest\";\nimport { total } from \"./cart.js\";\n\ndescribe(\"cart\", () => {\n  it(\"adds the prices\", () => {\n    expect(total([2, 3])).toBeTruthy();\n  });\n\n  it(\"totals an empty cart\", () => {\n    expect(total([])).toBe(0);\n  });\n});\n"
+      },
+      {
+        "path": "src/num.test.ts",
+        "text": "import { describe, expect, it } from \"vitest\";\nimport { isMagic } from \"./num.js\";\n\ndescribe(\"isMagic\", () => {\n  it(\"is false for small numbers\", () => {\n    expect(isMagic(1)).toBe(false);\n  });\n  it(\"is true for the magic number\", () => {\n    expect(isMagic(1234)).toBe(true);\n  });\n});\n"
+      }
+    ],
+    "dropped": []
+  }
+}

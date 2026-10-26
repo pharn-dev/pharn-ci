@@ -25,6 +25,11 @@ const CODES = [
   "AGENT_CONFIG_SECRET_UNSCANNED",
 ];
 
+// E3 item 20 (the org policy) adds two more codes to the same appended text and to report.ts. They join every exact
+// code-word comparison below; nothing is removed from the 12 above.
+const POLICY_CODES = ["POLICY_OVERRIDE_IGNORED", "POLICY_UNAVAILABLE"];
+const ADDED_CODES = [...CODES, ...POLICY_CODES];
+
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 const atCommit = (commit: string, path: string) =>
   execFileSync("git", ["show", `${commit}:${path}`], { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
@@ -83,7 +88,9 @@ describe("the v0.4.0 codes are the only schema and report.ts additions, and the 
     const end = stringEnd(schema, appendedAt);
     const appended = schema.slice(appendedAt, end);
     expect(appended.indexOf(APPENDED_START, 1), "exactly one appended text").toBe(-1);
-    expect(words(appended), "the appended text names the 12 codes and no other code word").toEqual([...CODES].sort());
+    expect(words(appended), "the appended text names the 12 codes, the 2 policy codes and no other code word").toEqual(
+      [...ADDED_CODES].sort(),
+    );
 
     // With the appended text removed and the TI15 part put back, the schema is byte-identical to b31de0c.
     const removed = schema.slice(0, appendedAt) + schema.slice(end);
@@ -93,9 +100,9 @@ describe("the v0.4.0 codes are the only schema and report.ts additions, and the 
     expect(removed.slice(0, ns) + base.slice(bs, be) + removed.slice(ne), "as at b31de0c").toBe(base);
 
     // The code words of the schema and report.ts are the pyparity2 base's plus exactly the 12 codes.
-    const withCodes = (list: string[]) => [...new Set([...list, ...CODES])].sort();
+    const withCodes = (list: string[]) => [...new Set([...list, ...ADDED_CODES])].sort();
     const schemaBase = words(atCommit(PYPARITY_BASE, "schema/report.v2.json"));
-    for (const code of CODES) expect(schemaBase, `control: ${code} is new`).not.toContain(code);
+    for (const code of ADDED_CODES) expect(schemaBase, `control: ${code} is new`).not.toContain(code);
     expect(words(schema), "schema code words").toEqual(withCodes(schemaBase));
     const reportTs = read("packages/core/src/report.ts");
     const reportBase = quotedCodes(atCommit(PYPARITY_BASE, "packages/core/src/report.ts"));
@@ -105,7 +112,7 @@ describe("the v0.4.0 codes are the only schema and report.ts additions, and the 
         .filter((w) => !words(atCommit(PYPARITY_BASE, "packages/core/src/report.ts")).includes(w))
         .sort(),
       "report.ts code words",
-    ).toEqual([...CODES].sort());
+    ).toEqual([...ADDED_CODES].sort());
 
     // Each re-pinned test carries a comment naming the agent-config secrets change.
     for (const path of REPINNED) {

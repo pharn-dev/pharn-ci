@@ -10,7 +10,9 @@ coordinated disclosure of any vulnerability in this repository.
 ## Security surface
 
 - **The GitHub Action** (`action.yml`, `packages/action`): runs in a consumer's workflow with their
-  `GITHUB_TOKEN`. It makes no network calls except to the GitHub API, and has no telemetry.
+  `GITHUB_TOKEN`. It makes no network calls except to the GitHub API and, only when the `policy` input is `auto`
+  or `required` and the job grants `id-token: write`, one `GET /api/v1/policy` to the `app-url` origin (https only,
+  default `https://pharn.dev`) to read the org policy. It has no telemetry.
 - **Input parsing** (`packages/core`): lcov, Cobertura XML, unified diffs and the config file are
   untrusted input, parsed by hand-written parsers. A crafted file must not crash, hang or exhaust memory in the
   consumer's CI.
@@ -56,9 +58,10 @@ The security design, with each mitigation tied to the test that enforces it, is 
 
 ## Data handling
 
-pharn-ci has no backend. Everything it reads stays on the runner, and everything it writes goes to
-your own GitHub: the PR comment, the job summary, the step log and a file in `RUNNER_TEMP`. The table
-describes the GitHub Action; the CLI makes no network calls and prints to your terminal.
+pharn-ci has no backend of its own in the Action. Everything it reads stays on the runner, and everything it writes
+goes to your own GitHub: the PR comment, the job summary, the step log and a file in `RUNNER_TEMP`. The one exception
+is the org policy request (row below), which sends only an OIDC token and the repository name. The table describes
+the GitHub Action; the CLI makes no network calls and prints to your terminal.
 
 | Data | Where it goes | Retention |
 | ---- | ------------- | --------- |
@@ -74,7 +77,8 @@ describes the GitHub Action; the CLI makes no network calls and prints to your t
 | Other environment variables and secrets | Not read, apart from the runner's standard `GITHUB_*` and `RUNNER_*` variables (workspace, temp dir, event payload, repository, API URL) through `@actions/core` and `@actions/github`. `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` are honoured for the GitHub API. | Not stored. |
 | Step log | Progress lines (coverage format, verdict, comment id) and warnings, which can include `git` or GitHub API error text. | Your log retention. |
 | `report.json` | Written to `$RUNNER_TEMP/pharn-ci/report.json` (the `report-path` output): the same data as the comment, untruncated. | Ephemeral: the runner clears `RUNNER_TEMP` after the job, unless your workflow uploads the file. |
-| Anything sent to Pharn | Nothing. No backend, no telemetry, no license check, no update check. | Nothing to retain. |
+| Org policy request (`policy: auto` or `required`, only with `id-token: write`) | One `GET <app-url>/api/v1/policy?repo=<owner>/<name>` with a GitHub OIDC token (audience `pharn.dev`, masked in the log, sent only to the https `app-url` origin, never on a redirect) as the `Authorization` header, `Accept` and a `User-Agent: pharn-ci/<version>`. Nothing else: no file contents, diff, coverage or log. Fork PRs and jobs without `id-token: write` get no token, so nothing is sent. With `policy: never` or `file:<path>`, nothing is sent. | Per the app's own policy. |
+| Anything else sent to Pharn | Nothing. No telemetry, no license check, no update check. | Nothing to retain. |
 
 ## Supported versions
 

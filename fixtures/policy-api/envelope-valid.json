@@ -1,0 +1,12 @@
+{
+  "version": 7,
+  "etag": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+  "updatedAt": "2026-10-26T10:00:00Z",
+  "policy": {
+    "version": 1,
+    "coverage": { "threshold": 85, "exclude": ["gen/**"] },
+    "test_integrity": { "mode": "block" }
+  },
+  "quarantine": [],
+  "settings": { "uploadJunit": false, "redactMessages": true, "messageMaxBytes": 4096 }
+}
