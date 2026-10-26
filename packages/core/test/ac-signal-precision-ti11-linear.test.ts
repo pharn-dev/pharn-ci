@@ -1,18 +1,19 @@
 import { describe, expect, it } from "vitest";
+import { measureGrowth } from "./growth.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 // check() is loaded inside the test body. The diffs are generated here: N removed job headers, each followed by a
 // removed runs-on line and a removed `run: pnpm run test:N` line, a package.json hunk that removes every test:N script,
 // and a renamed test file; the keyed comparison must stay linear in that input, and the removed jobs still block. The
-// host is loaded, so the timing compares the best of several runs, never an absolute budget.
+// host is loaded, so the timing compares this thread's CPU time over samples of many runs (measureGrowth, growth.ts),
+// never an absolute budget.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const CI = ".github/workflows/ci.yml";
 const TEST_STEP = "A step that runs tests was removed from a workflow.";
 const SMALL = 5000;
 const LARGE = 4 * SMALL;
-const RUNS = 3;
 
 function removal(path: string, start: number, lines: string[]): string {
   const head = [`diff --git a/${path} b/${path}`, "index 1111111..2222222 100644", `--- a/${path}`, `+++ b/${path}`];
@@ -53,26 +54,21 @@ describe("TI11: the keyed comparison is linear", () => {
     const small = inputFor(SMALL);
     const large = inputFor(LARGE);
 
-    const time = (input: Input) => {
-      const started = performance.now();
-      const report = check(input);
-      return { ms: performance.now() - started, report };
-    };
-
     for (const [label, input] of [
       ["5000 jobs", small],
       ["20000 jobs", large],
     ] as const) {
-      const { report } = time(input);
+      const report = check(input);
       expectValidReport(report);
       const ti11 = report.testIntegrity.signals.filter((s) => String(s.id) === "TI11");
       expect(ti11, label).toHaveLength(1);
       expect(ti11[0], label).toMatchObject({ severity: "block", path: CI, detail: TEST_STEP });
     }
 
-    const best = (input: Input) => Math.min(...Array.from({ length: RUNS }, () => time(input).ms));
-    const smallMs = best(small);
-    const largeMs = best(large);
-    expect(largeMs, `best of ${RUNS}: 20000 jobs ${largeMs} ms vs 5000 jobs ${smallMs} ms`).toBeLessThan(8 * smallMs);
+    const growth = await measureGrowth(
+      () => check(small),
+      () => check(large),
+    );
+    expect(growth.ratio, `20000 vs 5000 jobs: ${growth.detail}`).toBeLessThan(8);
   }, 300_000);
 });

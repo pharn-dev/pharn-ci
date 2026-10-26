@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { measureGrowth, threadCpuMs } from "./growth.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -8,6 +9,8 @@ import { expectValidReport } from "./schema.js";
 // characters a literal-unaware scan reads as unterminated, a real toThrow assertion to make the argument reader run,
 // and deep bracket nesting. The files are valid TypeScript, so the test index parses them. Besides the timing, the test
 // checks that TI06 ran (findings on the file), so a check that skips the files cannot pass it.
+// The growth is measured on this thread's CPU time with measureGrowth (growth.ts) after a warm-up run of each size, and
+// every run's CPU time stays under 15 s.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const PATH = "src/big.test.ts";
@@ -81,8 +84,6 @@ function input(bytes: number) {
   };
 }
 
-const median = (values: number[]) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)] as number;
-
 describe("TI06: the comparison of one file grows less than eightfold from a quarter of the cap", () => {
   it("AC-17: 512 KiB base and head files full of unbalanced toThrow( openings, unterminated quotes and deep nesting give TI06 findings, take less than 8 times the median of 128 KiB ones, and finish each run within 15 s", async () => {
     const { check } = await import("../src/check.js");
@@ -112,11 +113,11 @@ describe("TI06: the comparison of one file grows less than eightfold from a quar
 
     const all: number[] = [];
     const time = (run: ReturnType<typeof input>) => {
-      const started = performance.now();
+      const started = threadCpuMs();
       const report = check(run.data as unknown as Input) as unknown as {
         testIntegrity: { signals: { id: string; path: string }[]; languages: string[] };
       };
-      const ms = performance.now() - started;
+      const ms = threadCpuMs() - started;
       all.push(ms);
       const ti06 = report.testIntegrity.signals.filter((s) => String(s.id) === "TI06");
       expect(ti06.length, "the run gives TI06 findings").toBeGreaterThan(0);
@@ -129,12 +130,11 @@ describe("TI06: the comparison of one file grows less than eightfold from a quar
       expectValidReport(warm.report);
       expect(warm.report.testIntegrity.languages, "the file was indexed").toEqual(["ts"]);
     }
-    const fullRuns = [time(full).ms, time(full).ms, time(full).ms];
-    const quarterRuns = [time(quarter).ms, time(quarter).ms, time(quarter).ms];
-
-    expect(median(fullRuns), `full ${fullRuns.join(", ")} ms vs quarter ${quarterRuns.join(", ")} ms`).toBeLessThan(
-      8 * median(quarterRuns),
+    const growth = await measureGrowth(
+      () => time(quarter),
+      () => time(full),
     );
-    for (const ms of all) expect(ms, "every run finishes within 15 s").toBeLessThan(CEILING_MS);
-  }, 240_000);
+    expect(growth.ratio, `full vs quarter: ${growth.detail}`).toBeLessThan(8);
+    for (const ms of all) expect(ms, "every run finishes within 15 s of CPU time").toBeLessThan(CEILING_MS);
+  }, 300_000);
 });

@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { measureGrowth } from "../../core/test/growth.js";
 
 // indexPythonTests and MAX_TEST_SOURCE_FILE_BYTES are loaded inside each test body: these tests are written before
 // indexPythonTests exists, so nothing the build adds may run while the file loads. The real interpreter runs; a
-// missing python3 fails the test. Timing is asserted as growth (full size over quarter size, medians of three after a
-// warm-up) and a loose 15 s ceiling, never a fixed budget tuned on one machine.
+// missing python3 fails the test. Timing is asserted as growth (full size over quarter size, wall-clock
+// samples from measureGrowth in core's growth.ts after a warm-up of each size: the work runs in a python3 child
+// process, off this thread's CPU clock) and a loose 15 s wall-clock ceiling, never a fixed budget tuned on one machine.
 
 const CEILING_MS = 15_000;
 const MAX_RATIO = 8;
-const SLOW = 180_000;
+const SLOW = 300_000;
 
 type Result = { parsed: true; tests: unknown[] } | { parsed: false; reason: string };
 type Run = { available: true; files: { path: string; result: Result }[] } | { available: false; reason: string };
@@ -39,8 +41,6 @@ const INPUTS: [label: string, make: (n: number) => string, full: number | "cap"]
   ["a not chain of 50,000 operators", nots, 50_000],
 ];
 
-const median = (values: number[]) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)] as number;
-
 describe("indexPythonTests: growth from quarter to full size", () => {
   it.each(INPUTS)(
     "AC-11: %s grows by less than 8 times from a quarter of its size, each run within 15 s",
@@ -71,17 +71,16 @@ describe("indexPythonTests: growth from quarter to full size", () => {
         if (!warm.result.parsed) throw new Error(`the 524,288-byte file was refused: ${JSON.stringify(warm.result)}`);
         expect(warm.result.tests.length).toBeGreaterThan(1000);
       }
-      const quarters: number[] = [];
-      const fulls: number[] = [];
-      for (let round = 0; round < 3; round++) {
-        quarters.push((await timed(quarterText)).elapsed);
-        fulls.push((await timed(fullText)).elapsed);
-      }
-      const ratio = median(fulls) / median(quarters);
-      expect(
-        ratio,
-        `${label}: median full ${median(fulls)} ms over median quarter ${median(quarters)} ms`,
-      ).toBeLessThan(MAX_RATIO);
+      const warmQuarter = await timed(quarterText);
+      expect(typeof warmQuarter.result.parsed, `${label}: the quarter-size run gives an index or a refusal`).toBe(
+        "boolean",
+      );
+      const growth = await measureGrowth(
+        () => timed(quarterText),
+        () => timed(fullText),
+        { clock: "wall" },
+      );
+      expect(growth.ratio, `${label}: ${growth.detail}`).toBeLessThan(MAX_RATIO);
     },
     SLOW,
   );

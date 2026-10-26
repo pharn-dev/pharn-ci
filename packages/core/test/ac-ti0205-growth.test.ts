@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { measureGrowth, threadCpuMs } from "./growth.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -6,6 +7,8 @@ import { expectValidReport } from "./schema.js";
 // depends on that may run while the file loads. The texts are generated here: every base test is removed and as many
 // new tests with dissimilar bodies are added, each body with its own identifiers. Besides the timing, the test checks
 // that the comparison ran (TI02 findings and languages ["ts"]), so a check that skips the files cannot pass it.
+// The growth is measured on this thread's CPU time with measureGrowth (growth.ts) after a warm-up run of each size,
+// and every run's CPU time is held under the 15 s ceiling.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const PATH = "src/big.test.ts";
@@ -48,22 +51,22 @@ function input(bytes: number) {
     "",
   ].join("\n");
   return {
-    version: "0.1.0",
-    coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
-    diff: { text: diff },
-    repoRoot: REPO_ROOT,
-    threshold: 80,
-    repoFiles: [PATH, "src/cart.ts"],
-    testSources: {
-      base: { files: [{ path: PATH, text: base.text }], dropped: [] },
-      head: { files: [{ path: PATH, text: head.text }], dropped: [] },
+    data: {
+      version: "0.1.0",
+      coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
+      diff: { text: diff },
+      repoRoot: REPO_ROOT,
+      threshold: 80,
+      repoFiles: [PATH, "src/cart.ts"],
+      testSources: {
+        base: { files: [{ path: PATH, text: base.text }], dropped: [] },
+        head: { files: [{ path: PATH, text: head.text }], dropped: [] },
+      },
+      testIntegrityMode: { input: "block" },
     },
-    testIntegrityMode: { input: "block" },
     sizes: { base: base.text.length, head: head.text.length, tests: base.count, headTests: head.count },
   };
 }
-
-const median = (values: number[]) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)] as number;
 
 describe("TI02 and TI05: the comparison of one file grows less than eightfold from a quarter of the cap", () => {
   it("AC-18: 512 KiB base and head files take less than 8 times the median of 128 KiB ones, each run within 15 s", async () => {
@@ -71,41 +74,39 @@ describe("TI02 and TI05: the comparison of one file grows less than eightfold fr
     type Input = Parameters<typeof check>[0];
     const full = input(FULL);
     const quarter = input(QUARTER);
-    for (const [data, bytes] of [
+    for (const [run, bytes] of [
       [full, FULL],
       [quarter, QUARTER],
     ] as const) {
-      expect(data.sizes.base).toBeLessThanOrEqual(bytes);
-      expect(data.sizes.head).toBeLessThanOrEqual(bytes);
-      expect(Math.max(data.sizes.base, data.sizes.head), "the larger file fills the size").toBeGreaterThan(bytes - 200);
-      expect(data.sizes.headTests).toBe(data.sizes.tests);
+      expect(run.sizes.base).toBeLessThanOrEqual(bytes);
+      expect(run.sizes.head).toBeLessThanOrEqual(bytes);
+      expect(Math.max(run.sizes.base, run.sizes.head), "the larger file fills the size").toBeGreaterThan(bytes - 200);
+      expect(run.sizes.headTests).toBe(run.sizes.tests);
     }
 
     const all: number[] = [];
-    const time = (data: ReturnType<typeof input>) => {
-      const { sizes: _sizes, ...rest } = data;
-      const started = performance.now();
-      const report = check(rest as unknown as Input) as unknown as {
+    const time = (run: ReturnType<typeof input>) => {
+      const started = threadCpuMs();
+      const report = check(run.data as unknown as Input) as unknown as {
         testIntegrity: { signals: { id: string }[]; languages: string[] };
       };
-      const ms = performance.now() - started;
+      const ms = threadCpuMs() - started;
       all.push(ms);
       return { ms, report };
     };
 
-    for (const data of [full, quarter]) {
-      const warm = time(data);
+    for (const run of [full, quarter]) {
+      const warm = time(run);
       expectValidReport(warm.report);
       // The comparison ran: the removed base tests are TI02 findings and the file was indexed.
       expect(warm.report.testIntegrity.signals.filter((s) => String(s.id) === "TI02").length).toBeGreaterThan(0);
       expect(warm.report.testIntegrity.languages).toEqual(["ts"]);
     }
-    const fullRuns = [time(full).ms, time(full).ms, time(full).ms];
-    const quarterRuns = [time(quarter).ms, time(quarter).ms, time(quarter).ms];
-
-    expect(median(fullRuns), `full ${fullRuns.join(", ")} ms vs quarter ${quarterRuns.join(", ")} ms`).toBeLessThan(
-      8 * median(quarterRuns),
+    const growth = await measureGrowth(
+      () => time(quarter),
+      () => time(full),
     );
-    for (const ms of all) expect(ms, "every run finishes within 15 s").toBeLessThan(CEILING_MS);
-  }, 180_000);
+    expect(growth.ratio, `full vs quarter: ${growth.detail}`).toBeLessThan(8);
+    for (const ms of all) expect(ms, "every run finishes within 15 s of CPU time").toBeLessThan(CEILING_MS);
+  }, 300_000);
 });
