@@ -42,6 +42,7 @@ behave. AI-agnostic, fully stateless, no telemetry.
 - [How it works](#how-it-works)
 - [Example PR comment](#example-pr-comment)
 - [Test integrity](#test-integrity)
+- [Secrets in agent configs](#secrets-in-agent-configs)
 - [Action reference](#action-reference)
 - [CLI](#cli)
 - [Config](#config)
@@ -403,6 +404,33 @@ case-by-case table is in [docs/PRECISION.md](./docs/PRECISION.md#3-skylos-nine-w
 
 ---
 
+## Secrets in agent configs
+
+Check A7 reads the machine-readable agent config files the inventory finds (`.mcp.json`, `.cursor/mcp.json`,
+`.vscode/mcp.json`, `.claude/settings.json`, `.claude/settings.local.json`, `.codex/config.toml`,
+`.gemini/settings.json`, `opencode.json`, `.aider.conf.yml`, the files under `.claude/hooks/`, and the `.json`, `.yaml`
+and `.yml` files under `.continue/rules/`) and looks for committed secrets. The Markdown kinds (instructions, rules,
+skills, commands) are never read. It reads the committed text at `HEAD` (`git cat-file`), never the working tree and never
+a file a symlink points to, with the test-source caps: 200 files, 512 KiB each, 16 MiB in all.
+
+Ten shapes are looked for by their prefix or position: S01 a GitHub token, S02 an Anthropic API key, S03 an OpenAI API key,
+S04 a Google API key, S05 an AWS access key ID, S06 a Slack token, S07 a Stripe live key, S08 a private key, S09 a
+password or token in a URL, and S10 a long, high-entropy value under a key named like a token, secret, password, auth or
+API key. S01 to S09 are `error` and fail the check; S10 is `warn`. S11 (`info`) names a literal value under a
+secret-named key in a file whose other secrets are loaded from the environment (`${VAR}`, `$VAR`, `%VAR%`, `{env:VAR}`).
+
+A message names the shape id and up to 5 locations (`path` and line), never the value, the key or any other file text.
+A file that could not be scanned is named in `AGENT_CONFIG_SECRET_UNSCANNED`: a file over 512 KiB, one over the caps, or a
+path git cannot read safely is an `error` (it may hide a secret), a binary or missing file a `warn`. The Action reads the
+files only when the diff came from the local checkout; in PR-number mode and with a compare-API diff the checkout may not
+be the pull request head, so the message says so and nothing is read. What the scan misses is in
+[docs/LIMITS.md](./docs/LIMITS.md#secrets-in-agent-configs).
+
+The shapes and the redaction helpers are exported from `@pharn-ci/core` (`findSecretSpans`, `redactSecrets`,
+`truncateUtf8`, `redactMessage`, `MESSAGE_MAX_BYTES`).
+
+---
+
 ## Action reference
 
 | Input               | Default                     |                                          |
@@ -709,6 +737,18 @@ message `code`s, not on text:
 | `NO_AGENT_SETUP_FILES`          | The repo has none of the agent setup files pharn-ci looks for  |
 | `AGENT_SETUP_FILE_EMPTY`        | A listed agent setup file is empty in `HEAD` (`warn`)          |
 | `AGENT_SETUP_EXPECTED_MISSING`  | An expected agent tool has no setup file (`warn`; `error` when agent setup is required) |
+| `AGENT_CONFIG_SECRET_S01`       | A GitHub token is committed in an agent config file (`error`); the text names the id and up to 5 path and line locations, never the value |
+| `AGENT_CONFIG_SECRET_S02`       | An Anthropic API key is committed in an agent config file (`error`) |
+| `AGENT_CONFIG_SECRET_S03`       | An OpenAI API key is committed in an agent config file (`error`) |
+| `AGENT_CONFIG_SECRET_S04`       | A Google API key is committed in an agent config file (`error`) |
+| `AGENT_CONFIG_SECRET_S05`       | An AWS access key ID is committed in an agent config file (`error`) |
+| `AGENT_CONFIG_SECRET_S06`       | A Slack token is committed in an agent config file (`error`) |
+| `AGENT_CONFIG_SECRET_S07`       | A Stripe live key is committed in an agent config file (`error`) |
+| `AGENT_CONFIG_SECRET_S08`       | A private key is committed in an agent config file (`error`) |
+| `AGENT_CONFIG_SECRET_S09`       | A password or token is committed in a URL in an agent config file (`error`) |
+| `AGENT_CONFIG_SECRET_S10`       | A secret-like value sits under a secret-named key in an agent config file (`warn`) |
+| `AGENT_CONFIG_SECRET_S11`       | A literal value sits under a secret-named key in a file that loads its other secrets from the environment (`info`) |
+| `AGENT_CONFIG_SECRET_UNSCANNED` | Agent config files were not scanned for secrets: the sources were unavailable (`warn`), or a file was dropped as too large, over a cap or at an unsafe path (`error`), or as binary or missing (`warn`). The text names the files with a reason code each |
 
 Within v1, fields are only added and codes are never renamed or removed.
 
@@ -760,7 +800,9 @@ inclusive threshold (79.995% fails at 80); which known agent setup files are tra
   lower diff coverage.
 - **Files missing from the coverage report are invisible.** Configure your coverage tool to include
   all source files if untested files should count.
-- **The inventory is not a review.** pharn-ci lists agent setup files and never reads them. It is
+- **The inventory is not a review.** pharn-ci lists agent setup files; check A7 reads only the
+  machine-readable kinds, for committed secrets (never the Markdown kinds), and no file is reviewed for
+  what it tells an agent. Their contents stay in the job: never printed, never written, never sent. The inventory is
   informational (`NO_AGENT_SETUP_FILES` is `info`) unless `require-agent-setup` or `setup.require`
   is on, which makes it an `error` and the verdict `fail`. An expected tool counts as present when
   any setup kind it reads exists (`AGENTS.md` covers several tools).

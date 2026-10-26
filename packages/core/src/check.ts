@@ -19,6 +19,8 @@ import {
   type TestIndexUnavailable,
   type TestIntegritySignal,
 } from "./report.js";
+import { agentConfigSecretMessages } from "./secrets/messages.js";
+import { type AgentConfigSources, agentConfigSecretPaths } from "./secrets/scan.js";
 import { scanAgentSetup } from "./setup/scan.js";
 import { capFindings } from "./signals/findingCap.js";
 import { keepSignalFileText, textCutSignalFiles } from "./signals/signalFiles.js";
@@ -132,6 +134,12 @@ export interface CheckInput {
    * file means no interpreter was found.
    */
   pythonTestIndex?: PythonTestIndex;
+  /**
+   * The text of the agent config files (the machine-readable agent setup kinds) as committed at HEAD, gathered by the
+   * CLI and the Action for the secret scan of check A7: the files read and the files dropped with a reason, or why
+   * none could be read. Absent means nothing is scanned and the report is the one it was: no message.
+   */
+  agentConfigSources?: AgentConfigSources;
 }
 
 const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
@@ -298,6 +306,11 @@ export function check(input: CheckInput): Report {
   const emptyAgentSetupFiles =
     bytes === undefined ? [] : agentSetup.files.filter((file) => bytes.get(file.path) === 0).map((file) => file.path);
   const omittedSignals: OmittedSignals[] = [...(comparison?.omitted ?? []), ...sourceMatches.omitted];
+  // Check A7 does not depend on the mode or the diff: it rides on every report path, and only the sources start it.
+  const agentConfigMessages =
+    input.agentConfigSources === undefined
+      ? []
+      : agentConfigSecretMessages(input.agentConfigSources, agentConfigSecretPaths(agentSetup));
   const base = {
     version: input.version,
     threshold: input.threshold,
@@ -319,6 +332,7 @@ export function check(input: CheckInput): Report {
     ...(comparison?.unavailable === undefined ? {} : { testIndexUnavailable: comparison.unavailable }),
     ...(testChanges === undefined ? {} : { testChanges }),
     ...(comparison?.configUnavailable === undefined ? {} : { testConfigUnavailable: comparison.configUnavailable }),
+    ...(agentConfigMessages.length === 0 ? {} : { agentConfigSecretMessages: agentConfigMessages }),
   };
 
   if ("kind" in coverageInput) {

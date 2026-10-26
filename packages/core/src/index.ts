@@ -137,6 +137,16 @@ export {
   type Verdict,
   verdictOf,
 } from "./report.js";
+export { agentConfigSecretMessages } from "./secrets/messages.js";
+export { MESSAGE_MAX_BYTES, redactMessage, redactSecrets, truncateUtf8 } from "./secrets/redact.js";
+export {
+  type AgentConfigSecretFinding,
+  type AgentConfigSources,
+  agentConfigSecretPaths,
+  SECRET_SCAN_KINDS,
+  scanAgentConfigSecrets,
+} from "./secrets/scan.js";
+export { findSecretSpans, type SecretId, type SecretSpan } from "./secrets/spans.js";
 export {
   type AgentSetupFile,
   type AgentSetupInventory,

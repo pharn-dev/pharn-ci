@@ -32,6 +32,10 @@ function acceptLabelOf(report: Report): string {
   return typeof configured === "string" && configured !== "" ? configured : DEFAULT_ACCEPT_LABEL;
 }
 
+/** The hint of a committed secret of a known shape (S01 to S09). */
+const SECRET_HINT =
+  "Revoke the credential at its provider, remove it from the file and from git history, and load it from an environment variable or a secret store.";
+
 /**
  * One-line remediation per message code, added at render time so message text (which consumers may
  * match on) stays as it is. Fixed strings only: nothing input-derived. The TI03, TI10 and TI13 hints name the
@@ -111,6 +115,21 @@ const MESSAGE_HINTS: Record<MessageCode, Hint> = {
     "A reviewer other than the PR author signed off, so the block findings are warnings. The sign-off belongs to the pull request, not to a commit: remove the label if a later push should be judged again.",
   TEST_INTEGRITY_ACCEPT_IGNORED:
     "The block findings stand. Fix them, or ask a reviewer who is not the PR author to apply the label; it counts only when a user account other than the author applied it last.",
+  AGENT_CONFIG_SECRET_S01: SECRET_HINT,
+  AGENT_CONFIG_SECRET_S02: SECRET_HINT,
+  AGENT_CONFIG_SECRET_S03: SECRET_HINT,
+  AGENT_CONFIG_SECRET_S04: SECRET_HINT,
+  AGENT_CONFIG_SECRET_S05: SECRET_HINT,
+  AGENT_CONFIG_SECRET_S06: SECRET_HINT,
+  AGENT_CONFIG_SECRET_S07: SECRET_HINT,
+  AGENT_CONFIG_SECRET_S08: SECRET_HINT,
+  AGENT_CONFIG_SECRET_S09: SECRET_HINT,
+  AGENT_CONFIG_SECRET_S10:
+    "If the value is a real secret, revoke it at its provider, remove it from the file and from git history, and load it from an environment variable or a secret store. If it is not a secret, a reviewer can confirm that.",
+  AGENT_CONFIG_SECRET_S11:
+    "Move the literal value into the environment, like the other secrets in the same file, so no secret is committed.",
+  AGENT_CONFIG_SECRET_UNSCANNED:
+    "Keep agent config files text, under 512 KiB and inside the repository, and run on a checkout of the pull request head (not PR-number mode or a compare-API diff), so they can be scanned for committed secrets.",
 };
 
 /** The hint text for a message code, or undefined when it has none. `label` is the report's accept label. */

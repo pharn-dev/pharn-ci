@@ -1,4 +1,6 @@
 import {
+  type AgentConfigSources,
+  agentConfigSecretPaths,
   type CheckInput,
   check,
   type DirEntry,
@@ -14,6 +16,7 @@ import {
   renderMarkdown,
   resolveInputs,
   resolveTestIntegrityMode,
+  scanAgentSetup,
   type TestIntegrityModeSettings,
   type TestSources,
   unavailableTestSources,
@@ -24,6 +27,7 @@ import {
   gitChunks,
   indexPythonTestSources,
   indexPythonTests,
+  readAgentConfigSources,
   readCoverageFiles,
   readDiscoveredCoverage,
   readTestSources,
@@ -303,6 +307,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
 
   const { diff, localBase } = await getDiff(input("base-ref"), deps, target, input("config"));
   const testSources = await gatherTestSources(deps, { diff, localBase, target, testIntegrityMode });
+  const agentConfigSources = await gatherAgentConfigSources(deps, { repoFiles, diff, target });
   // The Python test files of the sources, indexed by one interpreter run; nothing runs for JS/TS-only changes.
   const pythonTestIndex =
     testSources === undefined
@@ -327,6 +332,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     ...(expectAgentSetup === undefined ? {} : { expectAgentSetup }),
     ...(testIntegrityMode === undefined ? {} : { testIntegrityMode }),
     ...(testSources === undefined ? {} : { testSources }),
+    ...(agentConfigSources === undefined ? {} : { agentConfigSources }),
     ...(pythonTestIndex === undefined ? {} : { pythonTestIndex }),
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
     ...(input("config") === "" ? {} : { configPath: input("config") }),
@@ -429,6 +435,42 @@ async function gatherTestSources(
   if ("unavailable" in sources.base) {
     deps.info(
       `pharn-ci: could not read the test and test-config files from git, so they are not compared: ${sources.base.unavailable}`,
+    );
+  }
+  return sources;
+}
+
+/**
+ * The committed text of the agent config files, for the secret scan (check A7); undefined when the deps carry no batch
+ * git runner or no tracked path is a scannable agent config file (nothing is read, nothing is said). Only a diff parsed
+ * from local git means the checkout is the pull request head, so only then are the files read, at HEAD. Otherwise the
+ * sources are unavailable with a fixed sentence, and no git call and no GitHub API call is made.
+ */
+async function gatherAgentConfigSources(
+  deps: ActionDeps,
+  from: { repoFiles: readonly string[]; diff: CheckInput["diff"]; target: PrNumberTarget | undefined },
+): Promise<AgentConfigSources | undefined> {
+  if (deps.gitBatch === undefined) return undefined;
+  const paths = agentConfigSecretPaths(scanAgentSetup(from.repoFiles));
+  if (paths.length === 0) return undefined;
+  if (from.target) {
+    return {
+      unavailable:
+        "pr-number mode: the checkout is not the pull request head, so its committed agent config files were not read",
+    };
+  }
+  if ("text" in from.diff) {
+    return {
+      unavailable: "the diff came from the GitHub compare API, so the checkout may not be the pull request head",
+    };
+  }
+  if ("unavailable" in from.diff) {
+    return { unavailable: "the diff is unavailable, so the checkout may not be the pull request head" };
+  }
+  const sources = await readAgentConfigSources({ gitBatch: deps.gitBatch }, paths);
+  if ("unavailable" in sources) {
+    deps.info(
+      `pharn-ci: could not read the agent config files from git, so they are not scanned for secrets: ${sources.unavailable}`,
     );
   }
   return sources;
