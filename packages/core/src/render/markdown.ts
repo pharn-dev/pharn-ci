@@ -7,6 +7,8 @@ import { logoMarkup } from "./logo.js";
 export interface RenderMarkdownOptions {
   /** Maximum file rows per table; the rest are summarized. Keeps PR comments under GitHub's size limit. */
   maxRows?: number;
+  /** When true, a line before the footer says the Pharn GitHub App adds org policy, history and flaky detection. */
+  appHint?: boolean;
 }
 
 const VERDICT_ICON = { pass: "✅", warn: "⚠️", fail: "❌" } as const;
@@ -134,6 +136,7 @@ const MESSAGE_HINTS: Record<MessageCode, Hint> = {
     "Give the job `permissions: id-token: write` (fork pull requests get no OIDC token), check that the pharn.dev app is installed for this repository, or set `policy: never` to run without the org policy.",
   POLICY_OVERRIDE_IGNORED:
     "The org policy's value applies. Raise the setting in the workflow inputs or `.pharn/ci.yml` to match, or ask the policy owner to change the policy.",
+  UPLOAD_TOO_LARGE: "Nothing in the pull request needs fixing; the full report is in the job summary and report.json.",
 };
 
 /** The hint text for a message code, or undefined when it has none. `label` is the report's accept label. */
@@ -377,6 +380,9 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
     format !== undefined && Object.hasOwn(COVERAGE_FORMAT_LABEL, format)
       ? ` · coverage format ${COVERAGE_FORMAT_LABEL[format]}`
       : "";
+  if (options.appHint === true) {
+    out.push("Install the Pharn GitHub App for org policy, history and flaky detection.", "");
+  }
   out.push("---", "");
   out.push(`<sub>pharn-ci ${report.tool.version} · report schema v${report.schemaVersion}${formatNote}</sub>`);
   return `${out.join("\n")}\n`;

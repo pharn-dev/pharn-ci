@@ -24,6 +24,8 @@ const SECRET_CODES = [
   // Re-pinned for E3 item 20 (the org policy): the same appended text also names these two codes.
   "POLICY_OVERRIDE_IGNORED",
   "POLICY_UNAVAILABLE",
+  // Re-pinned for E3 item 21 (the run upload): the same appended text also names this code.
+  "UPLOAD_TOO_LARGE",
 ];
 
 // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property: the four lines it inserts after the

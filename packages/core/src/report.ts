@@ -195,7 +195,8 @@ export type MessageCode =
   | "AGENT_CONFIG_SECRET_S11"
   | "AGENT_CONFIG_SECRET_UNSCANNED"
   | "POLICY_UNAVAILABLE"
-  | "POLICY_OVERRIDE_IGNORED";
+  | "POLICY_OVERRIDE_IGNORED"
+  | "UPLOAD_TOO_LARGE";
 
 export interface Message {
   level: MessageLevel;

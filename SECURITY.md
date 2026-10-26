@@ -12,7 +12,10 @@ coordinated disclosure of any vulnerability in this repository.
 - **The GitHub Action** (`action.yml`, `packages/action`): runs in a consumer's workflow with their
   `GITHUB_TOKEN`. It makes no network calls except to the GitHub API and, only when the `policy` input is `auto`
   or `required` and the job grants `id-token: write`, one `GET /api/v1/policy` to the `app-url` origin (https only,
-  default `https://pharn.dev`) to read the org policy. It has no telemetry.
+  default `https://pharn.dev`) to read the org policy and, unless the `upload` input is `never` and only when the job
+  grants `id-token: write`, the upload of the run to pharn.dev: two `POST` requests to the same origin and one `PUT`
+  of the redacted `report.json` and `meta.json` to a signed storage URL it names (`upload: never` turns that off). It
+  has no telemetry.
 - **Input parsing** (`packages/core`): lcov, Cobertura XML, unified diffs and the config file are
   untrusted input, parsed by hand-written parsers. A crafted file must not crash, hang or exhaust memory in the
   consumer's CI.

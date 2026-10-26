@@ -1,12 +1,14 @@
 /**
- * The Action's one client of the pharn.dev app: an OIDC token and a single GET with a few fixed headers. It is the
- * only place the Action talks to anything but the GitHub API, and it is small on purpose, so the next item (the
- * result upload) can reuse it.
+ * The Action's one client of the pharn.dev app: an OIDC token and a single request (a GET, or a JSON POST) with a few
+ * fixed headers. Besides the signed-URL PUT of the upload (upload.ts), it is the only place the Action talks to
+ * anything but the GitHub API, and it is small on purpose. Two callers use it: the org policy (policy-fetch.ts, GET)
+ * and the run upload (upload.ts, POST).
  *
  *   parseAppUrl(value)          the `app-url` input as an https origin, or one fixed Error that never repeats the value
- *   requestAppToken(deps)       the OIDC token for the audience `pharn.dev`, masked, or null with one fixed info line
- *   appRequest(deps, request)   one GET with a timeout, no redirect, one retry on a network error or a 5xx, and a
- *                               response body read only up to a cap
+ *   requestAppToken(deps, line) the OIDC token for the audience `pharn.dev`, masked, or null with one fixed info line
+ *                               (the caller's own line when it gives one)
+ *   appRequest(deps, request)   one GET or POST with a timeout, no redirect, one retry on a network error or a 5xx,
+ *                               and a response body read only up to a cap
  *
  * Nothing here quotes what the app answered: the status, the content type and a sanitized request id are all that
  * come back besides the body, and the callers decide what to say.
@@ -80,21 +82,24 @@ export function oidcOffered(deps: AppClientDeps): boolean {
  * fixed info line, when the runner offers no OIDC, or `getIDToken` rejects or answers nothing: the error text is
  * never logged.
  */
-export async function requestAppToken(deps: AppClientDeps): Promise<string | null> {
+export async function requestAppToken(
+  deps: AppClientDeps,
+  noTokenLine: string = NO_TOKEN_LINE,
+): Promise<string | null> {
   const { getIDToken, setSecret } = deps;
   if (!oidcOffered(deps) || getIDToken === undefined || setSecret === undefined) {
-    deps.info(NO_TOKEN_LINE);
+    deps.info(noTokenLine);
     return null;
   }
   let token: string;
   try {
     token = await getIDToken(APP_AUDIENCE);
   } catch {
-    deps.info(NO_TOKEN_LINE);
+    deps.info(noTokenLine);
     return null;
   }
   if (typeof token !== "string" || token === "") {
-    deps.info(NO_TOKEN_LINE);
+    deps.info(noTokenLine);
     return null;
   }
   setSecret(token);
@@ -104,6 +109,12 @@ export async function requestAppToken(deps: AppClientDeps): Promise<string | nul
 export interface AppRequest {
   url: URL;
   token: string;
+  /** `GET` when absent. A POST sends `body` with `Content-Type: application/json`. */
+  method?: "GET" | "POST";
+  /** The JSON text a POST sends; never sent by a GET. */
+  body?: string;
+  /** The timeout of one attempt when `deps.timeoutMs` is absent; `APP_TIMEOUT_MS` when both are. */
+  timeoutMs?: number;
 }
 
 /** The outcome of one request: how it ended, or the status and what could be read of the answer. */
@@ -127,9 +138,9 @@ const REQUEST_ID = /^[A-Za-z0-9-]{1,64}$/;
 const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * One GET of the app. Each attempt has its own timeout (`AbortSignal.timeout`), never follows a redirect (a redirect
- * rejects, which is a network error), and sends exactly the headers `Accept`, `Authorization` and `User-Agent`, and no
- * body. A network error or a 5xx on the first attempt waits `APP_RETRY_WAIT_MS` and tries once more; a timeout, a 429
+ * One GET or POST of the app. Each attempt has its own timeout (`AbortSignal.timeout`), never follows a redirect (a
+ * redirect rejects, which is a network error), and sends exactly the headers `Accept`, `Authorization` and
+ * `User-Agent`, and for a POST `Content-Type` and the body; a GET has no body. A network error or a 5xx on the first attempt waits `APP_RETRY_WAIT_MS` and tries once more; a timeout, a 429
  * and any other answer are final.
  */
 export async function appRequest(deps: AppClientDeps, request: AppRequest): Promise<AppResult> {
@@ -143,16 +154,19 @@ export async function appRequest(deps: AppClientDeps, request: AppRequest): Prom
 async function attempt(deps: AppClientDeps, request: AppRequest): Promise<AppResult> {
   const doFetch = deps.fetch;
   if (doFetch === undefined) return { kind: "network" };
-  const signal = AbortSignal.timeout(deps.timeoutMs ?? APP_TIMEOUT_MS);
+  const signal = AbortSignal.timeout(deps.timeoutMs ?? request.timeoutMs ?? APP_TIMEOUT_MS);
+  const post = request.method === "POST";
   let response: Response;
   try {
     response = await doFetch(request.url.href, {
-      method: "GET",
+      method: post ? "POST" : "GET",
       headers: {
         Accept: "application/json",
         Authorization: `Bearer ${request.token}`,
+        ...(post ? { "Content-Type": "application/json" } : {}),
         "User-Agent": `pharn-ci/${VERSION}`,
       },
+      ...(post && request.body !== undefined ? { body: request.body } : {}),
       redirect: "error",
       signal,
     });
