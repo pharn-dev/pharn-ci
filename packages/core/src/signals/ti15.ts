@@ -324,7 +324,8 @@ export interface TI15Result {
 }
 
 /**
- * TI15, a new condition in source that compares with a value the tests add; always severity `warn`.
+ * TI15, a new condition in source that compares with a value the tests add; always severity `info` (it never blocks
+ * or warns: on the precision corpus 0 of 30 sampled findings were right, see docs/PRECISION.md).
  *
  * The test literals are the eligible string and number literals on the added lines of JavaScript, TypeScript and Python
  * test files. A string is eligible from 6 UTF-16 code units and outside a small stop-list; a number from 4 significant
@@ -379,7 +380,7 @@ export function detectTI15(diff: readonly DiffFile[], options: TI15Options): TI1
   findings.sort((a, b) => byCodeUnit(a.path, b.path) || a.line - b.line || byCodeUnit(a.detail, b.detail));
   const signals: TestIntegritySignal[] = findings
     .slice(0, MAX_PER_CHANGE)
-    .map(({ path, line, detail }) => ({ id: "TI15", severity: "warn", path, line, detail }));
+    .map(({ path, line, detail }) => ({ id: "TI15", severity: "info", path, line, detail }));
   const counts = new Map<string, number>();
   for (const { path } of findings.slice(MAX_PER_CHANGE)) counts.set(path, (counts.get(path) ?? 0) + 1);
   const omitted: OmittedSignals[] = [...counts].map(([path, count]) => ({ id: "TI15", path, count }));

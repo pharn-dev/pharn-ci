@@ -43,15 +43,14 @@ describe("corpus-run-script: docs/PRECISION.md section 2", () => {
     }
   });
 
+  // precision-v030: the official run is published, so the `The runs are not here yet` bullet is gone (and so cannot name
+  // scripts/corpus-run.mjs) and section 2 names the reviewed CSV instead. The title is kept as it was.
   it("AC-13: the `The runs are not here yet` limit bullet no longer names scripts/corpus-run.mjs", () => {
     const lines = section();
-    const start = lines.findIndex((line) => line.startsWith("- **The runs are not here yet.**"));
-    expect(start, "section 2 has the `The runs are not here yet` bullet").toBeGreaterThan(-1);
-    const item = [lines[start] as string];
-    for (const line of lines.slice(start + 1)) {
-      if (!/^\s+\S/.test(line)) break;
-      item.push(line.trim());
-    }
-    expect(item.join(" ")).not.toContain("scripts/corpus-run.mjs");
+    expect(
+      lines.some((line) => line.includes("The runs are not here yet")),
+      "section 2 no longer has the `The runs are not here yet` bullet",
+    ).toBe(false);
+    expect(lines.join("\n"), "section 2 names the reviewed CSV").toContain("fixtures/corpus/review.csv");
   });
 });

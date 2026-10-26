@@ -54,7 +54,8 @@ describe("TI15: excluded directories and the 6-unit and 4-digit minimums", () =>
     for (const [label, diff, path] of one) {
       const signals = signalsOf(await runDiff(diff, "block"), ID);
       expect(signals, label).toHaveLength(1);
-      expect(signals[0], label).toMatchObject({ severity: "warn", path, line: 12 });
+      // precision-v030: TI15 became an info signal (0 of 30 sampled findings were right), so its severity is info.
+      expect(signals[0], label).toMatchObject({ severity: "info", path, line: 12 });
     }
 
     for (const name of ["pass-examples-dir.diff", "pass-benchmark-dir.diff", "pass-short-status-code.diff"]) {

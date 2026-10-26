@@ -243674,7 +243674,7 @@ function detectTI15(diff, options) {
     }
   }
   findings.sort((a, b) => byCodeUnit19(a.path, b.path) || a.line - b.line || byCodeUnit19(a.detail, b.detail));
-  const signals = findings.slice(0, MAX_PER_CHANGE).map(({ path, line, detail }) => ({ id: "TI15", severity: "warn", path, line, detail }));
+  const signals = findings.slice(0, MAX_PER_CHANGE).map(({ path, line, detail }) => ({ id: "TI15", severity: "info", path, line, detail }));
   const counts2 = /* @__PURE__ */ new Map();
   for (const { path } of findings.slice(MAX_PER_CHANGE)) counts2.set(path, (counts2.get(path) ?? 0) + 1);
   const omitted = [...counts2].map(([path, count2]) => ({ id: "TI15", path, count: count2 }));

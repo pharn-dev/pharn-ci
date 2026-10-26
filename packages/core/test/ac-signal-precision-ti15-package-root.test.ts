@@ -78,7 +78,8 @@ describe("TI15: a test literal matches a source condition only within one packag
     const withoutManifest = testLine(addedTest) + sourceLine(addedSource);
     const control = await runWith(withoutManifest, rootOnly);
     expect(control, "control: both under the root package.json match").toHaveLength(1);
-    expect(control[0]?.severity).toBe("warn");
+    // precision-v030: TI15 became an info signal (0 of 30 sampled findings were right), so its severity is info.
+    expect(control[0]?.severity).toBe("info");
     const manifest = addFile("packages/b/package.json", ["{", '  "name": "b",', '  "private": true', "}"]);
     expect(await runWith(withoutManifest + manifest, rootOnly), "the diff-added manifest separates them").toEqual([]);
 
@@ -90,7 +91,7 @@ describe("TI15: a test literal matches a source condition only within one packag
       "src/z.test.ts",
     ]);
     expect(one, "one manifest").toHaveLength(1);
-    expect(one[0]).toMatchObject({ severity: "warn", path: "src/x.ts", line: 12 });
+    expect(one[0]).toMatchObject({ severity: "info", path: "src/x.ts", line: 12 });
     expect(one[0]?.detail).toContain("src/b.test.ts");
     expect(one[0]?.detail).not.toContain("src/z.test.ts");
 
@@ -102,6 +103,6 @@ describe("TI15: a test literal matches a source condition only within one packag
 
     const same = signalsOf(await runDiff(fixture("test-integrity/TI15/warn-same-package.diff"), "block"), ID);
     expect(same.length, "warn-same-package.diff").toBeGreaterThan(0);
-    for (const signal of same) expect(signal.severity, "warn-same-package.diff").toBe("warn");
+    for (const signal of same) expect(signal.severity, "warn-same-package.diff").toBe("info");
   });
 });
