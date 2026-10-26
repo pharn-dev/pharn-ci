@@ -1,0 +1,6 @@
+[project]
+name = "cart"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

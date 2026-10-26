@@ -636,6 +636,10 @@ report names it with `TEST_INTEGRITY_TEXT_TRUNCATED` (section 8).
 The benchmark for what is not seen is Skylos's list of nine ways to hide a failing test. The nine cases are reproduced
 in vitest under `fixtures/skylos-nine/` and pinned by tests. The signals of this release catch **7 of 9**.
 
+The same nine are reproduced for pytest under `fixtures/skylos-nine-pytest/`, where the signals catch **8 of 9**; the
+case-by-case table is in [PRECISION.md](./PRECISION.md#3-skylos-nine-what-pharn-ci-catches). The lists below are the
+vitest result.
+
 Caught:
 
 - `deleted-test` — caught by TI01: the test file is deleted, and its removed lines define tests.
@@ -658,7 +662,7 @@ exists but misses its own case:
 - `hard-coded-answer` — missed; planned: TI15. The source returns the expected value for the test's input. TI15 now
   exists and still misses it, because the change adds no test line to match against and its numbers are one digit.
 - `always-true-matcher` — missed; planned: TI17, which is a proposal and not a signal in the test-integrity spec yet.
-  A custom matcher that always passes replaces `toBe(5)`.
+  A custom matcher that always passes replaces `toBe(5)`. See "TI17 proposal" below.
 
 Other ways a change can weaken tests without being seen:
 
@@ -668,6 +672,26 @@ Other ways a change can weaken tests without being seen:
   back from the code under test.
 - A **mock** introduced in a **setup file** that the diff does not show as a test file, so a test passes against a
   stand-in.
+
+### TI17 proposal (not implemented)
+
+TI17 is a proposal for the always-true matcher, which no signal is built for (TI06 sees only a changed matcher, not a
+matcher that always passes). It is not implemented, it is not in the
+report schema, and nothing in the Action or the CLI produces it. It would detect three things:
+
+1. An `expect.extend` matcher defined in the diff whose `pass` is constant true.
+2. A Python helper defined in the diff that returns a constant `True` and is used in an `assert`.
+3. `expect.anything()` or `mock.ANY` replacing a concrete expected value.
+
+The planned severity is `warn`: each of these can be deliberate, so TI17 would ask for a look and never block.
+
+The cases it would ship with: must-trigger: the vitest `always-true-matcher` (a matcher whose `pass` is constant true
+replaces `toBe(5)`) and the pytest `always-true-matcher-any` (`== 5` becomes `== ANY`). must-not-trigger: a matcher
+whose `pass` compares its argument, and `expect.anything()` in the argument list of a call matcher such as
+`toHaveBeenCalledWith`, where it stands for one argument the test does not care about.
+
+It would miss a matcher or helper defined outside the diff, and a constant computed indirectly, for example through a
+variable or a function call.
 
 ## Python parity
 

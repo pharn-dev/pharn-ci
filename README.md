@@ -378,6 +378,9 @@ under `fixtures/skylos-nine/` and pinned by tests: the signals of this release c
 `loosened-assertion` by TI06 and `edited-expected-value` by TI07). The other two are planned signals that do not exist
 yet (TI15 exists and misses its case). What each signal misses is in [docs/LIMITS.md](./docs/LIMITS.md#what-test-integrity-does-not-catch).
 
+The same nine are reproduced for pytest under `fixtures/skylos-nine-pytest/`, where the signals catch **8 of 9**; the
+case-by-case table is in [docs/PRECISION.md](./docs/PRECISION.md#3-skylos-nine-what-pharn-ci-catches).
+
 ---
 
 ## Action reference
