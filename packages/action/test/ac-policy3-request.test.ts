@@ -93,7 +93,10 @@ function redirectToEvil(calls: () => FetchCall[]): Answer {
     if (call.redirect === "error")
       return Promise.reject(new TypeError("fetch failed", { cause: "unexpected redirect" }));
     calls().push({ ...call, url: EVIL });
-    return respond(200, apiFixture("envelope-valid.json"))(call);
+    return new Response(apiFixture("envelope-valid.json"), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
   };
 }
 
