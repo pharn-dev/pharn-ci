@@ -944,8 +944,17 @@ applied once per run. What it does not do:
   is not, so the two reports then differ by one `POLICY_OVERRIDE_IGNORED` message.
 - **The `policy` and `app-url` inputs are the workflow's.** A pull request that edits the workflow can set them
   (THREAT-MODEL, items 22 and 24).
-- **Only some keys are applied.** `policy.rules`, `agents`, `dependencies`, `flaky`, `setup.forbidden_files` and the
-  other `setup` lists are validated and carried in the document, not applied by this release.
+- **Only some keys are applied.** `policy.rules` applies to P01, P08 and P09 (P10 cannot be overridden), and
+  `setup.forbidden_files` feeds P08; `agents`, `dependencies`, `flaky` and the other `setup` lists are validated and
+  carried in the document, not applied by this release.
+- **What P09 sees, and what it misses.** P09 sees four kinds of edit in the diff: (1) the `file:` policy file itself,
+  edited or renamed away; (2) the config in use, while `.pharn/ci.yml` holds a setting looser than the policy; (3) a
+  file under `.github/workflows/`, while a workflow input is looser than the policy; (4) `.claude/settings*.json` (root
+  or nested), `.mcp.json`, `.cursor/mcp.json` or `.vscode/mcp.json`, while the policy sets an agent-settings list. It
+  cannot see a pull request that edits the workflow to `policy: never`, removes the pharn-ci step or changes
+  `app-url`: the Action then does not run or does not ask for the policy, so nothing is checked against it. TI11 and
+  `CONFIG_CHANGED_IN_DIFF` flag such a workflow edit. Class 4 does not judge direction (a tightening edit warns too)
+  until a later release reads those files.
 
 ## Upload to pharn.dev
 

@@ -26,6 +26,9 @@ const SECRET_CODES = [
   "POLICY_UNAVAILABLE",
   // Re-pinned for E3 item 21 (the run upload): the same appended text also names this code.
   "UPLOAD_TOO_LARGE",
+  // Re-pinned for E3 item 22 (policy rules): the same appended text also names these two rule codes.
+  "POLICY_P08",
+  "POLICY_P09",
 ];
 
 // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property: the four lines it inserts after the

@@ -24,8 +24,27 @@ export interface Report {
   messages: Message[];
   /** Test-integrity findings; always present. */
   testIntegrity: ReportTestIntegrity;
+  /** The org policy's findings; present only when a policy was asked for and is in force or unavailable. */
+  policy?: ReportPolicy;
   /** Run metadata; present only when the caller (the Action) gave it. */
   meta?: ReportMeta;
+}
+
+/** One finding of an org-policy rule, as the report carries it. */
+export interface ReportPolicyViolation {
+  id: string;
+  severity: "block" | "warn" | "info" | "pending";
+  path: string | null;
+  line: number | null;
+  detail: string;
+}
+
+/** The `policy` object of the report: where the policy came from and what the rules found. */
+export interface ReportPolicy {
+  source: "app" | "input" | "config" | "none";
+  version: number | null;
+  fetchedAt?: string;
+  violations: ReportPolicyViolation[];
 }
 
 export type TestIntegrityMode = "block" | "warn" | "off";
@@ -196,7 +215,9 @@ export type MessageCode =
   | "AGENT_CONFIG_SECRET_UNSCANNED"
   | "POLICY_UNAVAILABLE"
   | "POLICY_OVERRIDE_IGNORED"
-  | "UPLOAD_TOO_LARGE";
+  | "UPLOAD_TOO_LARGE"
+  | "POLICY_P08"
+  | "POLICY_P09";
 
 export interface Message {
   level: MessageLevel;
@@ -294,10 +315,18 @@ export interface BuildReportInput {
    */
   agentConfigSecretMessages?: readonly Message[];
   /**
-   * The messages of the org policy (see `policyUnavailableMessage` and `policyOverrideIgnoredMessage`), appended after
-   * the agent config secret messages as given, so they follow every other message. Absent or empty adds nothing.
+   * The messages of the org policy (the unavailable message, the per-rule messages and the ignored-settings message,
+   * in that order), appended after the agent config secret messages as given, so they follow every other
+   * message. Absent or empty adds nothing.
    */
   policyMessages?: readonly Message[];
+  /**
+   * The levels the org policy's agent setup rule sets: `noFiles` for the no-agent-setup-files message (which then also says the org
+   * policy requires setup), `expectedMissing` for the expected-tools message. Absent keeps today's levels and texts.
+   */
+  agentSetupLevels?: { noFiles?: MessageLevel; expectedMissing?: MessageLevel };
+  /** The org policy object, copied into the report as given; absent adds no key. */
+  policy?: ReportPolicy;
 }
 
 /**
@@ -616,16 +645,25 @@ export function buildReport(input: BuildReportInput): Report {
   if (input.agentSetup.files.length === 0) {
     const required = input.requireAgentSetup === true;
     const found = "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found";
-    messages.push({
-      level: required ? "error" : "info",
-      code: "NO_AGENT_SETUP_FILES",
-      text: required ? `${found}, and agent setup is required by config.` : `${found}.`,
-    });
+    const policyLevel = input.agentSetupLevels?.noFiles;
+    if (policyLevel !== undefined) {
+      messages.push({
+        level: policyLevel,
+        code: "NO_AGENT_SETUP_FILES",
+        text: `${found}, and agent setup is required by the org policy.`,
+      });
+    } else {
+      messages.push({
+        level: required ? "error" : "info",
+        code: "NO_AGENT_SETUP_FILES",
+        text: required ? `${found}, and agent setup is required by config.` : `${found}.`,
+      });
+    }
   }
 
   if (missingTools.length > 0) {
     messages.push({
-      level: input.requireAgentSetup === true ? "error" : "warn",
+      level: input.agentSetupLevels?.expectedMissing ?? (input.requireAgentSetup === true ? "error" : "warn"),
       code: "AGENT_SETUP_EXPECTED_MISSING",
       text: `No agent setup file configures the expected tool${missingTools.length === 1 ? "" : "s"}: ${missingTools.join(", ")}.`,
     });
@@ -680,6 +718,7 @@ export function buildReport(input: BuildReportInput): Report {
       languages: [...(input.testIntegrityLanguages ?? [])],
       ...(input.testChanges === undefined ? {} : { changes: input.testChanges }),
     },
+    ...(input.policy === undefined ? {} : { policy: input.policy }),
     ...(input.meta === undefined ? {} : { meta: input.meta }),
   };
 }

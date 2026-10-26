@@ -33,6 +33,11 @@ const REQUIRED = [
 
 const SENTENCE =
   " UPLOAD_TOO_LARGE (warn: the run was not uploaded because the report is larger than the upload limit; the check ran in full).";
+// Re-pinned for E3 item 22 (policy rules): the same description then gains exactly this text, which names the two rule
+// codes POLICY_P08 and POLICY_P09; report.ts gains those two MessageCode members. Nothing else may change.
+const POLICY_RULES_TEXT =
+  " POLICY_P08 (error, or the level the org policy sets for P08: tracked files match a forbidden file pattern of the org policy; the message names up to 20 paths and the count) and POLICY_P09 (error, or warn for an agent settings file whose direction is not judged yet: the change edits a file the org policy guards; the message names up to 20 paths and the count; each reason is in policy.violations).";
+const POLICY_RULE_CODES = ["POLICY_P08", "POLICY_P09"];
 
 /** Every object schema inside a JSON Schema document (by `type` naming object, or by `properties`). */
 function objectSchemas(value: unknown, path = "$", out: Array<[string, Json]> = []): Array<[string, Json]> {
@@ -122,7 +127,7 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
     const baseDescription = strings(JSON.parse(v2Base)).find((s) => s.includes(" Codes added in v0.4.0:"));
     expect(baseDescription, "control: the base has the v0.4.0 text").toBeDefined();
     const description = strings(JSON.parse(v2)).find((s) => s.includes(" Codes added in v0.4.0:"));
-    expect(description).toBe(`${baseDescription}${SENTENCE}`);
+    expect(description).toBe(`${baseDescription}${SENTENCE}${POLICY_RULES_TEXT}`);
     expect(v2.split(" Codes added in v0.4.0:").length - 1).toBe(1);
 
     // Every other line is the base's.
@@ -136,11 +141,13 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
       JSON.parse(text, (_key, value) => (value === from ? to : value)) as unknown;
     expect(swap(v2, description as string, "X")).toEqual(swap(v2Base, baseDescription as string, "X"));
 
-    expect(added(codeWords(v2), codeWords(v2Base))).toEqual(["UPLOAD_TOO_LARGE"]);
+    expect(added(codeWords(v2), codeWords(v2Base))).toEqual([...POLICY_RULE_CODES, "UPLOAD_TOO_LARGE"].sort());
 
     const reportTsBase = atBase("packages/core/src/report.ts");
     const reportTs = read("packages/core/src/report.ts");
-    expect(added(upperWords(reportTs), upperWords(reportTsBase))).toEqual(["UPLOAD_TOO_LARGE"]);
+    expect(added(upperWords(reportTs), upperWords(reportTsBase))).toEqual(
+      [...POLICY_RULE_CODES, "UPLOAD_TOO_LARGE"].sort(),
+    );
     const declaration = reportTs.slice(reportTs.indexOf("type MessageCode"));
     const union = declaration.slice(0, declaration.indexOf(";"));
     expect(union.length).toBeGreaterThan(0);

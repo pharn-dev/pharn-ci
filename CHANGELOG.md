@@ -48,6 +48,14 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   summary. A failed upload never fails the check; a report over the limit adds the `UPLOAD_TOO_LARGE` message code
   (`warn`). `schema/upload-meta.v1.json` describes `meta.json`. In core: `buildUploadMeta`, `buildUploadBundle`,
   `buildUploadTar`, `withUploadOutcome` and `UPLOAD_REPORT_MAX_BYTES`.
+- Org policy rules P01, P08, P09 and P10. A policy that sets `setup.require` or `setup.expect` (P01) raises
+  `NO_AGENT_SETUP_FILES` and `AGENT_SETUP_EXPECTED_MISSING` to the rule's severity; a tracked file that matches a
+  `setup.forbidden_files` pattern (P08) is a new `POLICY_P08` error; a pull request that edits the policy file it is
+  checked against, the config or a workflow while it sets a value looser than the policy, or an agent settings file
+  the policy checks (P09) is a new `POLICY_P09` error (a warning for an agent settings file); an unreadable policy
+  (P10) stays `POLICY_UNAVAILABLE`. `policy.rules` sets each rule's severity, and a `file:` policy can only raise it.
+  The findings are in the report's `policy` object and a new Policy section of the PR comment; without a policy the
+  report and the comment are the ones they were.
 
 ### Changed
 

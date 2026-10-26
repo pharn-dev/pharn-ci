@@ -7,16 +7,21 @@ import type { CoverageFormat, CoverageFormatSelection, CoverageMap } from "./cov
 import type { CoverageDiscoveryNotFound } from "./coverageDiscovery.js";
 import { type DiffFile, parseUnifiedDiff } from "./diff/unified.js";
 import { computeDiffCoverage } from "./diffCoverage.js";
-import { binaryCoveredPaths, changedConfigPaths, trackedCoverageFile } from "./gateInputs.js";
+import { binaryCoveredPaths, changedConfigPaths, configRepoPath, trackedCoverageFile } from "./gateInputs.js";
 import { compileGlob } from "./glob.js";
 import { policyOverrideIgnoredMessage, policyUnavailableMessage } from "./policy/messages.js";
 import type { IgnoredSetting, ResolvedPolicy, SignalOverrides } from "./policy/resolved.js";
+import { evaluatePolicyRules } from "./policy/rules/evaluate.js";
+import { policyRuleMessages } from "./policy/rules/messages.js";
+import { NO_SETUP_DETAIL } from "./policy/rules/p01.js";
+import { levelOf, strongest } from "./policy/rules/severity.js";
 import {
   buildReport,
   type Message,
   type OmittedSignals,
   type Report,
   type ReportMeta,
+  type ReportPolicy,
   type ReportTestChanges,
   type TestConfigUnavailable,
   type TestIndexUnavailable,
@@ -25,6 +30,7 @@ import {
 import { agentConfigSecretMessages } from "./secrets/messages.js";
 import { type AgentConfigSources, agentConfigSecretPaths } from "./secrets/scan.js";
 import { scanAgentSetup } from "./setup/scan.js";
+import { summarizeAgentSetup } from "./setup/summary.js";
 import { capFindings } from "./signals/findingCap.js";
 import { applySignalOverrides } from "./signals/overrides.js";
 import { keepSignalFileText, textCutSignalFiles } from "./signals/signalFiles.js";
@@ -146,8 +152,9 @@ export interface CheckInput {
   agentConfigSources?: AgentConfigSources;
   /**
    * The org policy of the run (see `ResolvedPolicy`), after `applyPolicy` gave the effective settings the other fields
-   * carry. Only its `unavailable` reason is read here: it adds one POLICY_UNAVAILABLE message. Absent, or a policy of
-   * source `none` with no reason, adds nothing and the report is the one it was.
+   * carry. Its document runs the org-policy rules (P01, P08, P09, P10), its `unavailable` reason adds one
+   * POLICY_UNAVAILABLE message, and the report carries a `policy` object for an app or file policy or an unavailable
+   * one. Absent, or a policy of source `none` with no reason, adds nothing and the report is the one it was.
    */
   policy?: ResolvedPolicy;
   /**
@@ -330,17 +337,72 @@ export function check(input: CheckInput): Report {
       : applySignalOverrides(testIntegritySignals, omittedBeforePolicy, input.signalOverrides, testIntegrity.mode);
   const finalSignals = overridden?.signals ?? testIntegritySignals;
   const omittedSignals = overridden?.omitted ?? omittedBeforePolicy;
-  // The settings a policy beat, and the policy-file severities that were lower than the computed ones, as one message.
+  // The org-policy rules (P01, P08, P09, P10) run once, only when a policy was asked for.
+  const policyEvaluation =
+    input.policy === undefined
+      ? null
+      : evaluatePolicyRules({
+          policy: input.policy,
+          agentSetupFileCount: agentSetup.files.length,
+          agentTools: summarizeAgentSetup(agentSetup.files).tools,
+          repoFiles: input.repoFiles,
+          diff: parsedDiff,
+          configPath: configRepoPath(input.configPath, input.repoRoot),
+          ignored: input.policyIgnored ?? [],
+        });
+  // The settings a policy beat, and the policy-file severities that were lower than the computed ones (signals and
+  // rules), as one message.
   const policyIgnored: IgnoredSetting[] = [
     ...(input.policyIgnored ?? []),
     ...(overridden?.lowered ?? []).map(
       (id): IgnoredSetting => ({ setting: `test_integrity.signals.${id}`, layer: "policy-file", reason: "looser" }),
     ),
+    ...(policyEvaluation?.lowered ?? []).map(
+      (id): IgnoredSetting => ({ setting: `policy.rules.${id}`, layer: "policy-file", reason: "looser" }),
+    ),
   ];
   const policyMessages: Message[] = [
     ...(input.policy?.unavailable === undefined ? [] : [policyUnavailableMessage(input.policy.unavailable)]),
+    ...(policyEvaluation === null ? [] : policyRuleMessages(policyEvaluation)),
     ...(policyIgnored.length === 0 ? [] : [policyOverrideIgnoredMessage(policyIgnored)]),
   ];
+  // P01 sets the levels of the agent setup messages for the settings the policy requires.
+  const p01 = (policyEvaluation?.violations ?? []).filter((violation) => violation.id === "P01");
+  const noFilesViolation = p01.find((violation) => violation.detail === NO_SETUP_DETAIL);
+  const expectedViolations = p01.filter((violation) => violation.detail !== NO_SETUP_DETAIL);
+  const agentSetupLevels: NonNullable<Parameters<typeof buildReport>[0]["agentSetupLevels"]> = {
+    ...(noFilesViolation === undefined ? {} : { noFiles: levelOf(noFilesViolation.severity) }),
+    ...(expectedViolations.length === 0
+      ? {}
+      : { expectedMissing: levelOf(strongest(expectedViolations.map((violation) => violation.severity))) }),
+  };
+  // With the policy's expected tools in the report, a direct caller that did not pass them as `expectAgentSetup` still
+  // gets the expected-tools message (and the verdict) for a P01 violation.
+  const reportedTools =
+    agentSetupLevels.expectedMissing === undefined
+      ? expectedAgentTools
+      : [...new Set([...expectedAgentTools, ...(input.policy?.document?.setup?.expect ?? [])])];
+  // The report's `policy` object: for an app or file policy, or an unavailable one; not for a bare `none`.
+  const policySource = input.policy?.source;
+  const reportPolicy: ReportPolicy | undefined =
+    input.policy === undefined || policyEvaluation === null
+      ? undefined
+      : policySource === "app" || policySource === "file" || input.policy.unavailable !== undefined
+        ? {
+            source: policySource === "app" ? "app" : policySource === "file" ? "input" : "none",
+            version: policySource === "app" ? input.policy.version : null,
+            ...(policySource === "app" && input.policy.fetchedAt !== undefined
+              ? { fetchedAt: input.policy.fetchedAt }
+              : {}),
+            violations: policyEvaluation.violations.map(({ id, severity, path, line, detail }) => ({
+              id,
+              severity,
+              path,
+              line,
+              detail,
+            })),
+          }
+        : undefined;
   // Check A7 does not depend on the mode or the diff: it rides on every report path, and only the sources start it.
   const agentConfigMessages =
     input.agentConfigSources === undefined
@@ -351,7 +413,9 @@ export function check(input: CheckInput): Report {
     threshold: input.threshold,
     agentSetup,
     requireAgentSetup: input.requireAgentSetup === true,
-    ...(expectedAgentTools.length > 0 ? { expectedAgentTools } : {}),
+    ...(reportedTools.length > 0 ? { expectedAgentTools: reportedTools } : {}),
+    ...(Object.keys(agentSetupLevels).length > 0 ? { agentSetupLevels } : {}),
+    ...(reportPolicy === undefined ? {} : { policy: reportPolicy }),
     ...(configPaths.length > 0 ? { changedConfigPaths: configPaths } : {}),
     ...(testPaths.length > 0 ? { deletedTestFiles: testPaths } : {}),
     ...(trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage }),

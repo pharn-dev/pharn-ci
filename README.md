@@ -476,6 +476,16 @@ allowed from a file, and a value lower than the workflow inputs give is ignored;
 symbolic link and names a regular file of at most 1 MiB; anything else fails the step (the CLI exits `2`) with a fixed
 message that never names the path. What the policy does not cover is in [`docs/LIMITS.md`](docs/LIMITS.md).
 
+**Rules.** A policy also runs four rules over what the check already has (the agent setup inventory, the tracked
+files, the diff and the policy itself; never the contents of an agent setup file). Each finding is in the report's
+`policy.violations` and in the comment's Policy section. `policy.rules` sets a rule's severity (`block`, `warn`,
+`info` or `off`); a `file:` policy can only raise it.
+
+- **P01**, required agent setup: `setup.require` or `setup.expect` set by the policy and not met; it raises `NO_AGENT_SETUP_FILES` and `AGENT_SETUP_EXPECTED_MISSING` to the rule's severity (`error` by default).
+- **P08**, forbidden file tracked: a tracked file matches a `setup.forbidden_files` pattern (`POLICY_P08`, `error`).
+- **P09**, the pull request loosens the policy it is graded by: it edits the policy file, the config or a workflow that sets a value looser than the policy, or an agent settings file the policy checks (`POLICY_P09`, `error`; `warn` for an agent settings file until its direction is judged).
+- **P10**, policy unavailable: the policy could not be read (`POLICY_UNAVAILABLE`).
+
 ---
 
 ## Upload to pharn.dev (optional)
@@ -839,6 +849,8 @@ message `code`s, not on text:
 | `POLICY_UNAVAILABLE`            | The [org policy](#org-policy) could not be fetched or used, so the check ran with the workflow inputs and `.pharn/ci.yml` (`warn`; `error` with `policy: required`, which fails the check). The text names the reason, the HTTP status when there is one and the request id the app sent |
 | `POLICY_OVERRIDE_IGNORED`       | Settings looser than the org policy, or not allowed from a policy file, were not applied; the policy's value applies (`warn`). The text names each setting and its layer (up to 20, then a count), with both numbers for a coverage threshold and never a pattern, root or label |
 | `UPLOAD_TOO_LARGE`              | The run was not [uploaded to pharn.dev](#upload-to-pharndev-optional) because its report is larger than the upload limit (`warn`; the check ran in full). The text names the limit in bytes when the app gave one |
+| `POLICY_P08` | Tracked files match a forbidden file pattern of the [org policy](#org-policy) (`error`, or the level the policy sets for P08). The text names up to 20 paths and the count |
+| `POLICY_P09` | The change edits a file the org policy guards: the policy file, the config or a workflow while it sets a value looser than the policy, or an agent settings file (`error`; `warn` for an agent settings file whose direction is not judged yet). The text names up to 20 paths; each reason is in `policy.violations` |
 
 ### Agent PRs
 
