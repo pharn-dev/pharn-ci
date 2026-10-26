@@ -348,7 +348,7 @@ running tests), TI12 (a module under test
 mocked: a new `vi.mock`, `jest.mock` or Python `patch` of a source file the change also edits), TI13 (a coverage-ignore
 comment added to source), TI14 (a lower coverage threshold or a wider exclusion in the config), TI15 (a source
 condition that compares with a value the tests add) and TI16 (a lint or type suppression comment added to a test file).
-TI06, TI07, TI08, TI12 and TI15 warn and TI16 gives an `info` finding in both `block` and `warn`, so those six never fail
+TI06, TI07, TI08 and TI12 warn and TI15 and TI16 give an `info` finding in both `block` and `warn`, so those six never fail
 the check. Each reads the diff, and TI02, TI05, TI06, TI07 and TI12 also read the text of the JS/TS and Python test files
 the change modifies at the merge base and at HEAD, parsed without running them: a test counts as removed only when no
 test of the same name or a similar body is left in the touched test files (a test of the same name in another touched
@@ -682,7 +682,7 @@ message `code`s, not on text:
 | `TEST_INTEGRITY_TI13`           | TI13: the change adds a comment that leaves code out of coverage (an Istanbul, V8 or C8 ignore hint in a JS/TS file, or a `# pragma: no cover` in a Python file that is not a test file) (`error` in mode `block`, `warn` in mode `warn`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI14`           | TI14: the change lowers or removes the coverage threshold, or adds a coverage exclusion, in the pharn-ci config (`error` in mode `block`, `warn` in mode `warn`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI08`           | TI08: the change regenerates or updates snapshots in bulk: more than 10 snapshot files modified, deleted or renamed with edits, 10 or more inline snapshots rewritten in a JS/TS test file, or a snapshot-update flag added to a test script or a pytest config file (`warn` in modes `block` and `warn`; it never blocks). Every finding is in `testIntegrity.signals` |
-| `TEST_INTEGRITY_TI15`           | TI15: the change adds a condition in JS/TS or Python source that compares with a string or number a test file in the same change also adds, so the code may special-case the test (`warn` in modes `block` and `warn`; it never blocks). Every finding up to at most 10 per change is in `testIntegrity.signals`, and the message says how many more there are |
+| `TEST_INTEGRITY_TI15`           | TI15: the change adds a condition in JS/TS or Python source that compares with a string or number a test file in the same change also adds, so the code may special-case the test (`info` in modes `block` and `warn`; it never blocks or warns). Every finding up to at most 10 per change is in `testIntegrity.signals`, and the message says how many more there are |
 | `TEST_INTEGRITY_TI16`           | TI16: the change adds a comment that switches off a linter or type checker in a JS/TS or Python test file (`info`; it never blocks and leaves the verdict at `pass`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TEXT_TRUNCATED` | A file a test-integrity signal reads has more than 5000 changed lines, so the signals read only the first 5000 and a finding past them is not seen (`warn`; not in mode `off`). The text names the files |
 | `TEST_INTEGRITY_ACCEPTED`       | A reviewer who is not the PR author applied the [accept label](#accept-label), so every block signal was downgraded to `warn` (`info`; Action only). `testIntegrity.accepted` names the label and the reviewer |

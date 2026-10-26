@@ -51,7 +51,10 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   are given or the text could not be compared, so a diff-only run never softens it. A test file renamed to a path that
   is not a test file is never softened by a same-name file. The tests found again are judged as pairs by TI05, TI06 and
   TI07. A replacement whose tests were rewritten past those thresholds is a known false block, cleared with the accept
-  label.
+  label. (10) TI01 does not read the test runner's include or exclude settings, so deleting a test file the runner
+  never ran (a sample app's own test inside a `fixtures/` directory the vitest config excludes, say) still blocks: a
+  known false block seen on the precision corpus ([PRECISION.md](./PRECISION.md#official-results-v030-2026-10-26)),
+  cleared with the accept label.
 - **Only lines the coverage report knows count.** An added line with no `DA` entry in the lcov file
   or no class-level `<line>` record in a Cobertura file (a comment, a type, a blank line, a
   declaration the tool does not instrument) is left out of the denominator. What is "coverable" is
@@ -425,6 +428,9 @@ the resolver of a bundler or of the interpreter.
 - **A source file with a different spelling.** A specifier with a runtime extension the candidates do not try (`.json`,
   `.vue`) is not resolved.
 - **Caps.** At most 20 findings per file.
+- **One measured sample.** On the precision corpus TI12 gave one finding, and it was wrong (0 of 1: a mock that follows
+  a moved module). One row is too small to judge the signal, so it stays `warn` (see
+  [PRECISION.md](./PRECISION.md#official-results-v030-2026-10-26)).
 
 ### What TI09 misses
 
@@ -559,7 +565,8 @@ TI08 reads the status and the added lines of snapshot files, the added and remov
 ### What TI15 misses
 
 TI15 reads the added lines of JS/TS and Python test files and of JS/TS and Python source files that are not test files.
-It is a `warn` signal and never blocks.
+It is an `info` signal: it never blocks or warns, because on the precision corpus 0 of 30 sampled findings were a real
+special case (see [PRECISION.md](./PRECISION.md#official-results-v030-2026-10-26)).
 
 - **Both sides must be added in this diff.** A test that already holds the value, or a condition that was there before,
   gives nothing.

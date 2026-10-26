@@ -45,7 +45,8 @@ describe("TI15: at most 10 findings per change", () => {
     expect(signals.map((s) => `${s.path}:${s.line}`)).toEqual(
       Array.from({ length: 10 }, (_, i) => `${MANY}:${10 + i}`),
     );
-    for (const signal of signals) expect(signal.severity).toBe("warn");
+    // precision-v030: TI15 became an info signal (0 of 30 sampled findings were right), so its severity is info.
+    for (const signal of signals) expect(signal.severity).toBe("info");
 
     const messages = messagesOf(report, CODE);
     expect(messages).toHaveLength(1);

@@ -80,6 +80,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- **TI15** now gives an `info` finding (it never blocks or warns) in modes `block` and `warn`, because 0 of 30 sampled
+  TI15 findings were right on the 600-PR precision corpus, and `TEST_INTEGRITY_TI15` follows at level `info` with the code
+  unchanged. The official precision results for v0.3.0 are in `docs/PRECISION.md`: 600 PRs, 0 errors, TI01, TI02 and TI11
+  each falsely block 1 of 600 PRs and ship as block, and the reviewed CSV is `fixtures/corpus/review.csv`.
 - **TI02** and **TI01** are more precise, with no change to the report format or the message codes. TI02 now clears a test
   renamed in place in its describe, hand-written tests replaced by an `it.each` table, and a test moved to another touched
   file under a new name when its body closely matches; no rule clears a test by its name alone. The tests-changed

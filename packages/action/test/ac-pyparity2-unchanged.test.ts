@@ -82,8 +82,33 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
       .filter((n) => n !== "")
       .sort();
     expect(schemaNow, "the files of schema/").toEqual(schemaBase);
-    for (const name of schemaNow)
-      expect(sha256(read(`schema/${name}`)), `schema/${name}`).toBe(sha256(atBase(`schema/${name}`)));
+    // precision-v030: TI15 became an info signal, so report.v2.json accepts exactly one change: its
+    // `TEST_INTEGRITY_TI15 (` part (up to the next `TEST_INTEGRITY_` code) now says `info in modes block and warn`.
+    // With that part put back from the base the file must equal the base bytes; every other schema file is unchanged.
+    for (const name of schemaNow) {
+      if (name !== "report.v2.json") {
+        expect(sha256(read(`schema/${name}`)), `schema/${name}`).toBe(sha256(atBase(`schema/${name}`)));
+        continue;
+      }
+      const START = "TEST_INTEGRITY_TI15 (";
+      const partOf = (text: string): [number, number] => {
+        const start = text.indexOf(START);
+        expect(start, `report.v2.json holds "${START}"`).toBeGreaterThan(-1);
+        const next = text.indexOf("TEST_INTEGRITY_", start + START.length);
+        return [start, next === -1 ? text.length : next];
+      };
+      const nowText = read(`schema/${name}`);
+      const baseText = atBase(`schema/${name}`);
+      const [ns, ne] = partOf(nowText);
+      const [bs, be] = partOf(baseText);
+      expect(nowText.slice(ns, ne), "the TI15 part says info in modes block and warn").toContain(
+        "info in modes block and warn",
+      );
+      expect(
+        sha256(nowText.slice(0, ns) + baseText.slice(bs, be) + nowText.slice(ne)),
+        "report.v2.json with the TI15 part put back is as at the base",
+      ).toBe(sha256(baseText));
+    }
 
     // The message codes and signal ids: the schema's (byte-identical above) and the TypeScript types'.
     expect(codes(read("packages/core/src/report.ts")), "report.ts codes and ids").toEqual(

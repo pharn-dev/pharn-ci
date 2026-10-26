@@ -16,7 +16,8 @@ const IDS = [j("TI", "08"), j("TI", "15"), j("TI", "16")];
 const code = (id: string) => j("TEST_INTEGRITY_", id);
 const LEVELS: Record<string, string> = {
   [IDS[0] as string]: "warn",
-  [IDS[1] as string]: "warn",
+  // precision-v030: TI15 became an info signal (0 of 30 sampled findings were right).
+  [IDS[1] as string]: "info",
   [IDS[2] as string]: "info",
 };
 /** A message-code-like token: upper-case words joined by underscores. */
