@@ -51,6 +51,10 @@ inputs:
     description: Origin of the pharn.dev app to fetch the org policy from. https only, with no credentials, path, query or fragment; empty means https://pharn.dev. The OIDC audience stays pharn.dev whatever this is.
     required: false
     default: https://pharn.dev
+  upload:
+    description: 'Whether to upload the run (report.json and meta.json, redacted, never file contents, diffs, coverage files or logs) to pharn.dev: "auto" uploads when the job grants id-token: write and the org installed the Pharn GitHub App, and "never" turns the upload off. An upload that fails never fails the check. Not read from .pharn/ci.yml, so a pull request cannot change it; see the README, Upload to pharn.dev.'
+    required: false
+    default: auto
   comment:
     description: Post or update one sticky PR comment with the report.
     required: false
@@ -74,6 +78,8 @@ outputs:
     description: pass, warn or fail.
   diff-coverage:
     description: Diff coverage percent, or empty when it could not be computed.
+  run-url:
+    description: Page of the uploaded run on pharn.dev; set only when the run was uploaded.
 
 runs:
   using: node24

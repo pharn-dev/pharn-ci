@@ -40,8 +40,11 @@ const SHIPPED_INPUTS = [
   // Added by E3 item 20 (the org policy).
   "policy",
   "app-url",
+  // Added by E3 item 21 (the run upload).
+  "upload",
 ];
-const SHIPPED_OUTPUTS = ["report-path", "verdict", "diff-coverage"];
+// "run-url" was added by E3 item 21 (the run upload).
+const SHIPPED_OUTPUTS = ["report-path", "verdict", "diff-coverage", "run-url"];
 
 function deps(inputs: Record<string, string>) {
   const warnings: string[] = [];

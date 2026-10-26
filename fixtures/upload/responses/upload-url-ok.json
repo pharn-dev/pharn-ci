@@ -1,0 +1,7 @@
+{
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"uploadUrl\":\"https://storage.example.test/o/runs/acme/widgets/9-1.tar.gz?X-Sig=fixture\",\"objectKey\":\"runs/acme/widgets/9-1.tar.gz\",\"maxBytes\":10485760,\"expiresAt\":\"2026-10-26T12:15:00Z\"}"
+}

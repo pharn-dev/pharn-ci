@@ -26,6 +26,7 @@ import {
   VERSION,
   validateAcceptLabel,
   withAgentPrMeta,
+  withUploadOutcome,
 } from "@pharn-ci/core";
 import {
   gitChunks,
@@ -44,6 +45,8 @@ import { parsePolicyInput } from "./policy-input.js";
 import { obtainPolicy } from "./policy-source.js";
 import { type PrNumberTarget, parsePrNumberInputs, resolvePrNumberTarget } from "./pr-number.js";
 import { runMeta } from "./run-meta.js";
+import { runUpload } from "./upload.js";
+import { parseUploadInput } from "./upload-input.js";
 
 /** Identifies the single sticky comment pharn-ci owns on a PR. */
 export const COMMENT_MARKER = "<!-- pharn-ci -->";
@@ -66,6 +69,8 @@ export interface IssueComment {
   id: number;
   body?: string | null | undefined;
   user?: { login: string } | null | undefined;
+  /** The comment's page on GitHub, as the API returns it; untrusted, so the upload checks it before using it. */
+  html_url?: string | null | undefined;
 }
 
 /** The slice of the GitHub API the action uses. */
@@ -273,6 +278,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   // Also validated before the config is read or anything is fetched: the errors are fixed texts, never the values.
   const policyChoice = parsePolicyInput(input("policy"));
   const appOrigin = parseAppUrl(input("app-url"));
+  const uploadChoice = parseUploadInput(input("upload"));
   const config = await loadConfig(input("config") || undefined, deps);
 
   // An empty input is not given: the config, then the default, applies.
@@ -418,10 +424,27 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     }
     report = withAgentPrMeta(labelled, detection, facts);
   }
+  // The upload is the last thing that reads the report before it is rendered and written: its outcome is part of it.
+  // It never throws and never changes the step's pass or fail (a too-large report only adds a warning).
+  const issueNumber = pr?.number ?? target?.number;
+  const scopeLine = commentScopeLine(deps.context.workflow ?? "", deps.context.job ?? "");
+  const commentNumber = comment ? issueNumber : undefined;
+  const outcome = await runUpload(deps, {
+    choice: uploadChoice,
+    report,
+    appOrigin,
+    ...(target !== undefined && headSha !== undefined ? { prHeadShaExpected: headSha } : {}),
+    ...(commentNumber === undefined ? {} : { findOwnComment: () => findOwnComment(deps, commentNumber, scopeLine) }),
+  });
+  report = withUploadOutcome(report, outcome);
+  // Only a run that found the org has not installed the app gets the install hint.
+  const render =
+    outcome.status === "skipped" && outcome.reason === "no-installation" ? { render: { appHint: true } } : {};
   const summary = fitMarkdown(report, {
     prefix: "",
     note: SUMMARY_TRUNCATED_NOTE,
     fits: (text) => utf8Bytes(text) <= MAX_SUMMARY_BYTES,
+    ...render,
   });
 
   const reportPath = deps.resolvePath(deps.tempDir, "pharn-ci", "report.json");
@@ -429,16 +452,19 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   deps.setOutput("report-path", reportPath);
   deps.setOutput("verdict", report.verdict);
   deps.setOutput("diff-coverage", report.diffCoverage?.percent?.toString() ?? "");
+  if (outcome.status === "ok") deps.setOutput("run-url", outcome.runUrl);
 
   await deps.writeSummary(summary).catch((err: unknown) => deps.warning(`could not write job summary: ${String(err)}`));
 
-  const issueNumber = pr?.number ?? target?.number;
-  if (comment && issueNumber !== undefined) {
-    const scopeLine = commentScopeLine(deps.context.workflow ?? "", deps.context.job ?? "");
+  if (outcome.status === "ok") {
+    // The app comments on the pull request for an uploaded run; a second comment would only repeat it.
+    deps.info("pharn-ci: the Pharn GitHub App comments on the pull request for this run, so pharn-ci posts no comment");
+  } else if (comment && issueNumber !== undefined) {
     const body = fitMarkdown(report, {
       prefix: `${COMMENT_MARKER}\n${scopeLine}\n`,
       note: TRUNCATED_NOTE,
       fits: (text) => text.length <= MAX_COMMENT_LENGTH,
+      ...render,
     });
     await upsertComment(deps, issueNumber, body, scopeLine);
   }
@@ -670,14 +696,14 @@ const utf8Bytes = (text: string): number => Buffer.byteLength(text, "utf8");
  */
 export function fitMarkdown(
   report: Report,
-  fit: { prefix: string; note: string; fits(text: string): boolean },
+  fit: { prefix: string; note: string; fits(text: string): boolean; render?: { appHint?: boolean } },
 ): string {
-  const full = fit.prefix + renderMarkdown(report);
+  const full = fit.prefix + renderMarkdown(report, { ...fit.render });
   if (fit.fits(full)) return full;
 
   let minimal = "";
   for (const maxRows of FALLBACK_ROWS) {
-    minimal = fit.prefix + renderMarkdown(report, { maxRows });
+    minimal = fit.prefix + renderMarkdown(report, { ...fit.render, maxRows });
     const text = minimal + fit.note;
     if (fit.fits(text)) return text;
   }
@@ -769,6 +795,19 @@ function ownComments(comments: IssueComment[], viewer: string | null, scopeLine:
       return scope === "same" ? login.endsWith("[bot]") : login === DEFAULT_TOKEN_LOGIN;
     })
     .sort((a, b) => a.id - b.id);
+}
+
+/**
+ * This run's own pull request comment (the oldest, see ownComments), for the link the upload carries. Rejects when the
+ * comments cannot be read; the upload turns that into "no link".
+ */
+async function findOwnComment(
+  deps: Pick<ActionDeps, "api">,
+  issueNumber: number,
+  scopeLine: string,
+): Promise<IssueComment | undefined> {
+  const [comments, viewer] = await Promise.all([deps.api.listComments(issueNumber), deps.api.viewerLogin()]);
+  return ownComments(comments, viewer, scopeLine)[0];
 }
 
 /**

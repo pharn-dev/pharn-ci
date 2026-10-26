@@ -16,7 +16,7 @@ pharn-ci measures diff coverage: the share of the lines added in a pull request 
 
 pharn-ci also keeps an inventory of the agent setup files tracked in your repository: the instruction, settings, rules and MCP configuration files of Claude Code, Cursor, GitHub Copilot, Codex, Gemini, Windsurf, Cline and MCP, with a summary of the tools involved. It lists these files by kind and never reads them.
 
-The result is one sticky comment on the pull request, the job summary, a pass, warn or fail verdict and a Report v2 JSON file. pharn-ci is stateless: it has no telemetry, and it makes no network calls except to the GitHub API and, when the job grants `id-token: write`, one read of the org policy from pharn.dev (`policy: never` turns that off).
+The result is one sticky comment on the pull request, the job summary, a pass, warn or fail verdict and a Report v2 JSON file. pharn-ci is stateless: it has no telemetry, and it makes no network calls except to the GitHub API and, when the job grants `id-token: write`, one read of the org policy from pharn.dev (`policy: never` turns that off) and the redacted report and run metadata, uploaded to pharn.dev (`upload: never` turns that off).
 
 ## Categories
 

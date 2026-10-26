@@ -277,4 +277,8 @@ export {
   unavailableTestSources,
 } from "./testSources.js";
 export { decodeTestSourceText } from "./testSourceText.js";
+export { buildUploadBundle } from "./upload/bundle.js";
+export { buildUploadMeta, type UploadMeta } from "./upload/meta.js";
+export { UPLOAD_REPORT_MAX_BYTES, type UploadOutcome, withUploadOutcome } from "./upload/outcome.js";
+export { buildUploadTar } from "./upload/tar.js";
 export { VERSION } from "./version.js";

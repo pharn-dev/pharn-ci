@@ -44,6 +44,7 @@ behave. AI-agnostic, fully stateless, no telemetry.
 - [Test integrity](#test-integrity)
 - [Secrets in agent configs](#secrets-in-agent-configs)
 - [Org policy](#org-policy)
+- [Upload to pharn.dev (optional)](#upload-to-pharndev-optional)
 - [Action reference](#action-reference)
 - [CLI](#cli)
 - [Config](#config)
@@ -477,6 +478,38 @@ message that never names the path. What the policy does not cover is in [`docs/L
 
 ---
 
+## Upload to pharn.dev (optional)
+
+When the job grants `id-token: write` and the organization installed the Pharn GitHub App, the Action uploads the run
+to pharn.dev, so the app can keep the history of runs and comment on the pull request itself. The `upload` input
+(`auto` by default, or `never`) is in the [Action reference](#action-reference); it is read only from the workflow,
+never from `.pharn/ci.yml`, so a pull request cannot turn it on or off.
+
+**What is sent.** One gzip archive of two files, `report.json` and `meta.json`, and three requests: one `POST` to ask
+the app for a signed storage URL, one `PUT` of the archive to that URL, and one `POST` to register the run. Only the OIDC
+token (to the app, never to storage) and these two files leave the job. `report.json` is the report with every string
+redacted by the [secret shapes](#secrets-in-agent-configs), every message and signal text cut to 2048 bytes, and the
+test-integrity excerpts (`base` and `head`) dropped. `meta.json` is the run metadata ([`schema/upload-meta.v1.json`](schema/upload-meta.v1.json)).
+Never file contents, diffs, coverage files or logs. The archive is limited to 5 MiB of `report.json` and to the size
+the app names; a larger report is not uploaded and adds one `UPLOAD_TOO_LARGE` warning (the check ran in full).
+
+**What the job sees.** The signed URL and the token are masked and never logged. An upload that succeeds sets the
+`run-url` output and logs one line without a URL. The App then comments on the pull request, so `pharn-ci` posts no
+comment of its own and the job summary and `report.json` still carry the report. An upload fails open: whatever goes
+wrong (a timeout, a non-2xx answer, an unexpected answer, an exception) ends in one warning that names a reason, never
+fails the check and never changes its verdict, except that `UPLOAD_TOO_LARGE` can turn a pass into a warn.
+
+**When nothing is uploaded.** With `upload: never`, without `id-token: write` (a fork pull request never gets it), or
+when the run has no metadata, nothing is sent and the report says `meta.upload.status: skipped`. When the app answers
+that the organization has not installed the Pharn GitHub App for the repository, the PR comment and the job summary
+end with a one-line hint to install it, and nothing else changes.
+
+What this does not cover is in [`docs/LIMITS.md`](docs/LIMITS.md), and the trust boundaries are in
+[`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md). The app comments as `pharn[bot]`; the comment of the Action and the one
+of the App never both appear for one upload.
+
+---
+
 ## Action reference
 
 | Input               | Default                     |                                          |
@@ -495,6 +528,7 @@ message that never names the path. What the policy does not cover is in [`docs/L
 | `accept-label`      | `pharn/accepted`            | Name of the pull request label a reviewer who is not the PR author applies to sign off `test-integrity: block` findings, at most 50 characters. Read only from this input, never from `.pharn/ci.yml`. See [Accept label](#accept-label) |
 | `policy`            | `auto`                      | Where the [org policy](#org-policy) comes from: `auto` fetches it from the pharn.dev app when the job grants `id-token: write` (only the OIDC token and the repo name are sent; no policy or no token is silent), `never` uses none, `required` fails the check when no policy can be fetched, `file:<path>` reads a policy document from the workspace (the pull request can change it, so it can only tighten; nothing is fetched). Any other value fails the step |
 | `app-url`           | `https://pharn.dev`         | Origin of the pharn.dev app the policy is fetched from. `https` only, with no credentials, path, query or fragment; the OIDC audience stays `pharn.dev` whatever it is |
+| `upload`            | `auto`                      | Whether to [upload the run to pharn.dev](#upload-to-pharndev-optional): `auto` uploads `report.json` and `meta.json` (redacted) when the job grants `id-token: write` and the organization installed the Pharn GitHub App, `never` turns it off. A failed upload never fails the check. Not read from `.pharn/ci.yml`. Any other value fails the step |
 | `comment`           | `true`                      | Post/update one sticky PR comment per workflow and job |
 | `fail-on-threshold` | `true`                      | Fail the step when the verdict is `fail` |
 | `config`            | `.pharn/ci.yml`, may be absent | Config file path; a file named here that does not exist fails the step |
@@ -505,6 +539,7 @@ message that never names the path. What the policy does not cover is in [`docs/L
 | `report-path`   | Path to `report.json` (Report v2)                     |
 | `verdict`       | `pass`, `warn` or `fail`                              |
 | `diff-coverage` | Diff coverage percent, or empty when not computed     |
+| `run-url`       | Page of the uploaded run on pharn.dev; set only when the run was uploaded |
 
 ### Accept label
 
@@ -803,6 +838,7 @@ message `code`s, not on text:
 | `AGENT_CONFIG_SECRET_UNSCANNED` | Agent config files were not scanned for secrets: the sources were unavailable (`warn`), or a file was dropped as too large, over a cap or at an unsafe path (`error`), or as binary or missing (`warn`). The text names the files with a reason code each |
 | `POLICY_UNAVAILABLE`            | The [org policy](#org-policy) could not be fetched or used, so the check ran with the workflow inputs and `.pharn/ci.yml` (`warn`; `error` with `policy: required`, which fails the check). The text names the reason, the HTTP status when there is one and the request id the app sent |
 | `POLICY_OVERRIDE_IGNORED`       | Settings looser than the org policy, or not allowed from a policy file, were not applied; the policy's value applies (`warn`). The text names each setting and its layer (up to 20, then a count), with both numbers for a coverage threshold and never a pattern, root or label |
+| `UPLOAD_TOO_LARGE`              | The run was not [uploaded to pharn.dev](#upload-to-pharndev-optional) because its report is larger than the upload limit (`warn`; the check ran in full). The text names the limit in bytes when the app gave one |
 
 ### Agent PRs
 
@@ -899,7 +935,9 @@ that:
 
 - **Stateless.** No backend of its own, no telemetry, no network calls except the GitHub API inside the
   Action and, only with `policy` set to `auto` or `required` and an OIDC token granted, one `GET` of the
-  pharn.dev policy endpoint that sends the OIDC token and the repository name ([Org policy](#org-policy)).
+  pharn.dev policy endpoint that sends the OIDC token and the repository name ([Org policy](#org-policy)), and,
+  with `upload` not set to `never` and an OIDC token granted, the redacted `report.json` and `meta.json` of the run to
+  pharn.dev ([Upload](#upload-to-pharndev-optional)).
   What it reads, what it sends to your GitHub and what it stores is listed in
   [Data handling](SECURITY.md#data-handling).
 - **Small token footprint.** `contents: read` plus `pull-requests: write`. It reads the compare API

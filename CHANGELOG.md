@@ -41,6 +41,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   a diff from the local checkout; in PR-number mode and for a compare-API diff the message says nothing was read.
 - A redaction module in `@pharn-ci/core`: `findSecretSpans`, `redactSecrets`, `truncateUtf8`, `redactMessage` and
   `MESSAGE_MAX_BYTES`. Nothing outside check A7 uses it yet.
+- Upload of the run to pharn.dev. The Action takes an `upload` input (`auto` or `never`, default `auto`) and sets a
+  `run-url` output. With `auto`, a job that grants `id-token: write` and an organization that installed the Pharn
+  GitHub App get the redacted `report.json` and a new `meta.json` uploaded; the App then comments on the pull request,
+  so the Action posts no comment of its own, and a `404` from the app puts an install hint under the comment and the
+  summary. A failed upload never fails the check; a report over the limit adds the `UPLOAD_TOO_LARGE` message code
+  (`warn`). `schema/upload-meta.v1.json` describes `meta.json`. In core: `buildUploadMeta`, `buildUploadBundle`,
+  `buildUploadTar`, `withUploadOutcome` and `UPLOAD_REPORT_MAX_BYTES`.
 
 ### Changed
 
@@ -53,6 +60,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   surface A5 and residual risks 22 and 23.
 - No A7 message, and nothing else the report, the comment or the summary carries, names a secret's value, its key or
   any other text of an agent config file: a message holds the shape id, a path in a code span and a line number.
+- The upload is a new network surface of the Action: two `POST` requests to the app origin and one `PUT` to a signed
+  storage URL, only with `upload` not `never` and a job that grants `id-token: write`. Only the redacted `report.json`
+  and `meta.json` leave the job, never file contents, diffs, coverage files or logs; the token and the signed URL are
+  masked and never logged, and nothing the app answers is quoted. `docs/THREAT-MODEL.md` has the new row D7 and residual
+  risk 27: a same-repository pull request runs its code in the job that can mint the upload token.
 
 ## [0.3.0] - 2026-10-26
 

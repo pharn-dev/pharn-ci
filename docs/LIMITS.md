@@ -947,6 +947,35 @@ applied once per run. What it does not do:
 - **Only some keys are applied.** `policy.rules`, `agents`, `dependencies`, `flaky`, `setup.forbidden_files` and the
   other `setup` lists are validated and carried in the document, not applied by this release.
 
+## Upload to pharn.dev
+
+The upload (`upload: auto`; see the README, Upload to pharn.dev) sends the redacted `report.json` and `meta.json` of a
+run. What it does not do:
+
+- **No connect timeout of its own.** Each request has one timeout for the whole exchange, response body included (60 s
+  for the two requests to the app, 120 s for the `PUT`); there is no separate connect timeout, so a host that accepts
+  the connection and then stalls costs the full timeout. The two app requests are retried once after a network error or
+  a `5xx`; the `PUT` is never retried.
+- **One upload per job run, not per matrix leg.** The report and the upload are those of one job. A matrix of jobs
+  uploads once per leg, and the run identity the Action sends is the run id, the run attempt and the `scope`
+  (`<workflow>/<job>`), none of which carries the matrix values: two legs of one job share all three, so the app may
+  treat them as one run.
+- **A `404` from the app is "not installed", whatever the cause.** The app answers `404` when the organization has not
+  installed the Pharn GitHub App for the repository, and also for a repository it does not know. The Action cannot
+  tell them apart, so it logs that the app is not installed and adds the install hint to the comment and the summary.
+- **The hint is not a policy check.** The line under the summary (`Install the Pharn GitHub App for org policy, history
+  and flaky detection.`) appears only after that `404`; it says nothing about whether a policy exists, and a run
+  without an OIDC token (a fork pull request, a job without `id-token: write`) gets no hint.
+- **Redaction misses what it does not know.** The report is redacted with the ten secret shapes of the agent config
+  scan (README, Secrets in agent configs) and cut to 2048 bytes per message; a secret of another shape, split across
+  strings or encoded, is not found. Paths and test names are not secrets to it and are sent as they are.
+- **The CLI never uploads.** Only the Action does; the CLI makes no network call.
+- **A report over the limit is not uploaded.** A `report.json` over 5 MiB (5242880 bytes), a gzip archive over the
+  `maxBytes` the app names, or a `413` from the app ends in `UPLOAD_TOO_LARGE`; the check ran in full and only the
+  history misses the run. A `413` is also what the app answers to a size it will never take.
+- **No retry of a registered run.** The register request can reach the app twice when its first answer is lost to a
+  network error or a `5xx`; the app answers a repeated run with `200` and the upload counts as `ok` then.
+
 ## 5. Security limits
 
 - **The report is derived from untrusted input.** File paths, coverage data and the config file
