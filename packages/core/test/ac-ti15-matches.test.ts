@@ -19,13 +19,14 @@ type Case = { label: string; diff: string; expected: Expected[] };
 
 const SUMMER = j("SUMMER", "2024");
 const GOLD = j("gold", "-tier");
-const ABCD = j("ab", "cd");
+// ABCD, XYZW and RATE keep their names; the signal-precision increment lengthened them to the 6-character and 4-digit minimums.
+const ABCD = j("ab", "cdef");
 const BETA = j("beta", "-user");
 const ENTERPRISE = j("enter", "prise");
 const ALPHA = j("alpha", "-user");
-const XYZW = j("xy", "zw");
+const XYZW = j("xy", "zwvu");
 const N1234 = j("12", "34");
-const RATE = j("0.1", "25");
+const RATE = j("0.1", "255");
 const PREMIUM = j("premium", "-plan");
 
 /** A test file adding `testLines` at line 8, and a source file adding `sourceLine` at line 12. */
@@ -125,13 +126,14 @@ const CASES: Case[] = [
 ];
 
 describe("TI15: a new source condition compares against a literal the test adds", () => {
-  it("AC-7: each matching condition literal gives one warn signal at the source path:line whose detail names the location, the literal's kind and length and the test file, never the literal", async () => {
+  // precision-v030: TI15 became an info signal (0 of 30 sampled findings were right), so each signal is info.
+  it("AC-7: each matching condition literal gives one info signal at the source path:line whose detail names the location, the literal's kind and length and the test file, never the literal", async () => {
     for (const c of CASES) {
       const signals = signalsOf(await runDiff(c.diff), ID);
       expect(
         signals.map((s) => `${s.severity} ${s.path}:${s.line}`),
         c.label,
-      ).toEqual(c.expected.map((e) => `warn ${e.path}:${e.line}`));
+      ).toEqual(c.expected.map((e) => `info ${e.path}:${e.line}`));
       // The details of one line differ only in the literal's length, so both sides are compared as sorted lists.
       const expectedLine = (e: Expected) =>
         `${e.path}:${e.line} ${e.literal.length}-character ${/^[0-9]/.test(e.literal) ? "number" : "string"} ${e.test}`;

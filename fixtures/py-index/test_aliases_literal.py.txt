@@ -1,0 +1,80 @@
+import pytest
+import unittest
+
+import sys
+
+
+@pytest.mark.skip(reason="r")
+def test_pt_skip():
+    assert True
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="r")
+def test_m_skipif():
+    assert True
+
+
+@pytest.mark.xfail(reason="r")
+def test_m_xfail_reason():
+    assert True
+
+
+@pytest.mark.xfail(sys.platform == "win32", reason="r")
+def test_m_xfail_condition():
+    assert True
+
+
+@pytest.mark.parametrize("v", [1, 2])
+def test_pt_parametrize(v):
+    assert v
+
+
+@pytest.fixture
+def test_resource():
+    return 1
+
+
+@pytest.fixture(scope="module")
+def config():
+    return 2
+
+
+@unittest.skipIf(sys.platform == "win32", "r")
+def test_si():
+    assert True
+
+
+@unittest.skipUnless(sys.platform == "linux", "r")
+def test_su():
+    assert True
+
+
+@unittest.expectedFailure
+def test_ef():
+    assert True
+
+
+def test_body_skip():
+    pytest.skip("r")
+
+
+def test_body_xfail():
+    pytest.xfail("r")
+
+
+def test_raises():
+    with pytest.raises(ValueError):
+        int("x")
+
+
+def test_warns():
+    with pytest.warns(UserWarning):
+        pass
+
+
+def test_fail():
+    pytest.fail("r")
+
+
+def test_approx():
+    assert 0.1 + 0.2 == pytest.approx(0.3)

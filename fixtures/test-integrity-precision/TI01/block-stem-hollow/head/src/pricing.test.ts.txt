@@ -1,0 +1,11 @@
+import { describe, expect, it } from "vitest";
+
+describe("pricing", () => {
+  it("applies a bulk discount to large orders", () => {
+    expect(true).toBe(true);
+  });
+
+  it("charges full price for small orders", () => {
+    expect(true).toBe(true);
+  });
+});

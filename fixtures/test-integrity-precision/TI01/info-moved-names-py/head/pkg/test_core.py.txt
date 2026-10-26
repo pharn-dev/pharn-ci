@@ -1,0 +1,10 @@
+from pkg.core import core
+
+
+def test_core_wires_the_modules():
+    assert core() is not None
+
+
+def test_core_exposes_both_entry_points():
+    assert core().text is not None
+    assert core().io is not None

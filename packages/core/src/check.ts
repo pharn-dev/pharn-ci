@@ -26,6 +26,7 @@ import { summarizeTestChanges } from "./signals/testChanges.js";
 import { matchTests } from "./signals/testMatch.js";
 import { indexTouchedTestFiles } from "./signals/testPairs.js";
 import { detectTI01 } from "./signals/ti01.js";
+import { movedTestFiles } from "./signals/ti01Moved.js";
 import { detectTI02 } from "./signals/ti02.js";
 import { detectTI03 } from "./signals/ti03.js";
 import { detectTI04 } from "./signals/ti04.js";
@@ -119,9 +120,10 @@ export interface CheckInput {
    * The text of the test and test-config files the change touches, at the merge base and at HEAD, gathered by the
    * CLI and the Action for the base-and-head test-integrity signals (TI02, TI05, TI06, TI09 and TI12). TI02, TI05, TI06
    * and TI12 compare the JS/TS (and, with `pythonTestIndex`, Python) test files the diff modifies; TI09 compares the
-   * touched test-runner config files. Without it, or in mode off, nothing is compared and the
-   * report is the one it was before: no signal, no message, no language. With a side unavailable and a modified test
-   * file, the report carries one `TEST_INTEGRITY_INDEX_UNAVAILABLE` message.
+   * touched test-runner config files. TI03 reads the top-level imports of the Python test files in it, to resolve
+   * `import pytest as pt` style aliases; without them it reads the literal spellings only. Without it, or in mode off,
+   * nothing is compared and the report is the one it was before: no signal, no message, no language. With a side
+   * unavailable and a modified test file, the report carries one `TEST_INTEGRITY_INDEX_UNAVAILABLE` message.
    */
   testSources?: TestSources;
   /**
@@ -165,13 +167,27 @@ export function check(input: CheckInput): Report {
   const configPaths = parsedDiff === null ? [] : changedConfigPaths(parsedDiff, input.configPath, input.repoRoot);
   const testPaths = parsedDiff === null ? [] : deletedTestFiles(parsedDiff);
   const testIntegrity = resolveTestIntegrityMode(input.testIntegrityMode);
+  // The touched test files are indexed once, only with the sources, a diff and a mode that is not off: the
+  // base-and-head signals compare them, and TI01 reads which deleted test files moved.
+  const touched =
+    parsedDiff !== null && testIntegrity.mode !== "off" && input.testSources !== undefined
+      ? indexTouchedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex)
+      : null;
+  const movedTests =
+    touched === null || parsedDiff === null || input.testSources === undefined
+      ? undefined
+      : movedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex, touched);
   // Mode off computes nothing; the signals carry their effective severity for the mode.
+  const sourceMatches =
+    parsedDiff === null || testIntegrity.mode === "off"
+      ? { signals: [], omitted: [] }
+      : detectTI15(parsedDiff, { repoFiles: input.repoFiles });
   const testIntegritySignals =
     parsedDiff === null || testIntegrity.mode === "off"
       ? []
       : sortSignals([
-          ...detectTI01(parsedDiff, testIntegrity.mode),
-          ...detectTI03(parsedDiff, testIntegrity.mode),
+          ...detectTI01(parsedDiff, testIntegrity.mode, movedTests?.files, movedTests?.compared),
+          ...detectTI03(parsedDiff, testIntegrity.mode, input.testSources),
           ...detectTI04(parsedDiff, testIntegrity.mode),
           ...detectTI08(parsedDiff),
           ...detectTI10(parsedDiff, { repoFiles: input.repoFiles, mode: testIntegrity.mode }),
@@ -183,7 +199,7 @@ export function check(input: CheckInput): Report {
             exclude: input.exclude ?? [],
             mode: testIntegrity.mode,
           }),
-          ...detectTI15(parsedDiff),
+          ...sourceMatches.signals,
           ...detectTI16(parsedDiff),
         ]);
   // The base-and-head signals: the touched test files are compared between the merge base and HEAD. Only with the
@@ -197,8 +213,7 @@ export function check(input: CheckInput): Report {
   } | null = null;
   const comparedMode = testIntegrity.mode;
   let testChanges: ReportTestChanges | undefined;
-  if (parsedDiff !== null && comparedMode !== "off" && input.testSources !== undefined) {
-    const touched = indexTouchedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex);
+  if (parsedDiff !== null && comparedMode !== "off" && input.testSources !== undefined && touched !== null) {
     const configs = detectTI09(parsedDiff, input.testSources, comparedMode);
     const configUnavailable: TestConfigUnavailable | undefined =
       configs.notRun !== null
@@ -218,11 +233,16 @@ export function check(input: CheckInput): Report {
     } else {
       const match = matchTests(touched);
       testChanges = summarizeTestChanges(touched, match) ?? undefined;
+      // A test of a deleted file that TI01 found again in another file is judged like any other pair, unless the match
+      // already pairs that head test.
+      const matchedHeads = new Set([...match.pairs, ...match.moved, ...match.replaced].map((pair) => pair.head));
+      const movedPairs = (movedTests?.pairs ?? []).filter((pair) => !matchedHeads.has(pair.head));
+      const judged = movedPairs.length === 0 ? match : { ...match, pairs: [...match.pairs, ...movedPairs] };
       const capped = capFindings([
         ...detectTI02(match, comparedMode),
-        ...detectTI05(match, comparedMode),
-        ...detectTI06(match),
-        ...detectTI07(match, parsedDiff),
+        ...detectTI05(judged, comparedMode),
+        ...detectTI06(judged),
+        ...detectTI07(judged, parsedDiff),
         ...detectTI12(touched, parsedDiff),
         ...configs.signals,
       ]);
@@ -277,6 +297,7 @@ export function check(input: CheckInput): Report {
   const bytes = input.repoFileBytes;
   const emptyAgentSetupFiles =
     bytes === undefined ? [] : agentSetup.files.filter((file) => bytes.get(file.path) === 0).map((file) => file.path);
+  const omittedSignals: OmittedSignals[] = [...(comparison?.omitted ?? []), ...sourceMatches.omitted];
   const base = {
     version: input.version,
     threshold: input.threshold,
@@ -294,7 +315,7 @@ export function check(input: CheckInput): Report {
     ...(comparison === null || comparison.languages.length === 0
       ? {}
       : { testIntegrityLanguages: comparison.languages }),
-    ...(comparison === null || comparison.omitted.length === 0 ? {} : { omittedSignals: comparison.omitted }),
+    ...(omittedSignals.length === 0 ? {} : { omittedSignals }),
     ...(comparison?.unavailable === undefined ? {} : { testIndexUnavailable: comparison.unavailable }),
     ...(testChanges === undefined ? {} : { testChanges }),
     ...(comparison?.configUnavailable === undefined ? {} : { testConfigUnavailable: comparison.configUnavailable }),

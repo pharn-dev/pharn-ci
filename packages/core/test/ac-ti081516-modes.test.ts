@@ -70,19 +70,20 @@ describe("TI08, TI15 and TI16 in the three modes and through the streaming reade
     const block = await runDiff(DIFF, "block");
     expect(severities(block, TI04)).toEqual(["block"]);
     expect(severities(block, TI08)).toEqual(["warn"]);
-    expect(severities(block, TI15)).toEqual(["warn"]);
+    // precision-v030: TI15 became an info signal (0 of 30 sampled findings were right); TI08 still warns.
+    expect(severities(block, TI15)).toEqual(["info"]);
     expect(severities(block, TI16)).toEqual(["info"]);
     expect(block.testIntegrity.verdict).toBe("fail");
     expect(ours(block)).toEqual([
       `${code(TI04)} error`,
       `${code(TI08)} warn`,
-      `${code(TI15)} warn`,
+      `${code(TI15)} info`,
       `${code(TI16)} info`,
     ]);
 
     const warn = await runDiff(DIFF, "warn");
     expect(severities(warn, TI08)).toEqual(["warn"]);
-    expect(severities(warn, TI15)).toEqual(["warn"]);
+    expect(severities(warn, TI15)).toEqual(["info"]);
     expect(severities(warn, TI16)).toEqual(["info"]);
     expect(warn.testIntegrity.verdict).toBe("warn");
 

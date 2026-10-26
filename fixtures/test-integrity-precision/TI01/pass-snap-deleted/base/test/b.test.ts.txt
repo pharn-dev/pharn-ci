@@ -1,0 +1,7 @@
+// Tests for b.
+import { expect, it } from "vitest";
+import { b } from "../src/b.js";
+
+it("renders b", () => {
+  expect(b()).toBe("b");
+});

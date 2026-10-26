@@ -1,0 +1,7 @@
+diff --git a/pyproject.toml b/pyproject.toml
+index 1111111..2222222 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -5 +5 @@ name = "demo"
+-addopts = "-ra"
++addopts = "-ra --ignore=tests/slow"

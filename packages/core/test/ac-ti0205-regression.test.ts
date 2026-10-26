@@ -15,13 +15,25 @@ import { expectValidReport } from "./schema.js";
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const EARLIER_DIRS = ["TI01", "TI03", "TI04", "TI10", "TI11", "TI13", "TI14"];
+/**
+ * The TI11 fixtures the signal-precision increment adds; the digest below is the base commit's, taken before they
+ * existed, so they are left out of the loops over EARLIER_DIRS (and the old fixtures still hash to it).
+ */
+const NEW_TI11 = new Set([
+  "pass-package-manager-swap.diff",
+  "block-job-moved-with-tests.diff",
+  "block-swap-drops-test.diff",
+  "block-job-removed-script-kept.diff",
+]);
 const JS_TS_PY = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs|py)$/;
 const UNAVAILABLE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 /**
  * sha256 of the JSON list of { fixture, signals, messages } over the earlier fixtures without sources, in directory
  * then file order, as check() gave them at the base commit ad8277c.
  */
-const BEFORE_DIGEST = "9851046d2ff16b5c718d655494b44f96ceed0e91f996e689aaa72524174b59f8";
+// Re-pinned by the name-only-moves change: only the two TI01 migration records changed (info to block, new detail),
+// because TI01's same-stem rule now needs body evidence, not a name alone.
+const BEFORE_DIGEST = "0197e0cfe0e50e9dfc8c453e5bfa978147632c47ab09dfc073d770cd965bb04f";
 
 const asFile = (report: unknown) => `${JSON.stringify(report, null, 2)}\n`;
 const lines = (path: string) => fixture(path).trim().split("\n");
@@ -112,7 +124,7 @@ describe("TI02 and TI05 change the earlier outputs only where they mean to", () 
     const runs: Array<{ name: string; text: string; input: Record<string, unknown>; without: Report }> = [];
     for (const dir of EARLIER_DIRS) {
       const names = readdirSync(`${FIXTURES}test-integrity/${dir}`)
-        .filter((name) => name.endsWith(".diff"))
+        .filter((name) => name.endsWith(".diff") && !(dir === "TI11" && NEW_TI11.has(name)))
         .sort();
       for (const file of names) {
         const name = `${dir}/${file}`;

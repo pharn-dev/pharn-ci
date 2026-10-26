@@ -1,0 +1,29 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 5555555..6666666 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -22,13 +21,0 @@ jobs:
+-  lambda:
+-    runs-on: ubuntu-latest
+-    steps:
+-      - uses: actions/checkout@v4
+-      - uses: oven-sh/setup-bun@v2
+-      - run: bun install
+-      - run: bun run test:lambda
+-  lambda-edge:
+-    runs-on: ubuntu-latest
+-    steps:
+-      - uses: actions/checkout@v4
+-      - run: bun install
+-      - run: bun run test:lambda-edge
+diff --git a/package.json b/package.json
+index 7777777..8888888 100644
+--- a/package.json
++++ b/package.json
+@@ -15,2 +14,0 @@
+-    "test:lambda": "vitest run --project lambda",
+-    "test:lambda-edge": "vitest run --project lambda-edge",
+diff --git a/src/adapter/lambda/handler.test.ts b/src/adapter/aws-lambda/handler.test.ts
+similarity index 100%
+rename from src/adapter/lambda/handler.test.ts
+rename to src/adapter/aws-lambda/handler.test.ts

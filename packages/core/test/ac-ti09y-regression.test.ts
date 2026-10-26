@@ -12,11 +12,17 @@ import { describe, expect, it } from "vitest";
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const DIST_BOUND = 12_000_000;
 
-/** The two regression tests and their sha256 on main at e47695e. */
+/**
+ * The two regression tests and their sha256. Re-pinned by the signal-precision increment: it edits both on purpose (the
+ * new TI11 fixtures left out of the base-commit digest loop; the new TI11 and TI15 fixtures added to ADDED_AFTER_BASE),
+ * so these are the digests of the edited files; before that they were on main at e47695e.
+ */
+// Re-pinned again by the name-only-moves change: both files are edited on purpose (a re-pinned digest and a comment
+// each), so these are the digests of those edited files.
 const PINNED: Record<string, string> = {
-  "packages/core/test/ac-ti0205-regression.test.ts": "4b65056075714ee11f8dd3c67eb1eca1f557b8095e5bbbc2e3d659f8fe2278f5",
+  "packages/core/test/ac-ti0205-regression.test.ts": "0e7ec98bf36dc000fb3419b35c0889b9ad23952826984145ee29be1561b5497d",
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "3f116acffe192079eb69684c56633c3f61a274e18681f8cc21eb105182d5b503",
+    "d3b2fef3e8d8dc20e52dafbf368375f370cba211969987cfd1cb6e6e7fb24077",
 };
 
 /** The Skylos-count tests that record the move, and the count literal each one asserts. */

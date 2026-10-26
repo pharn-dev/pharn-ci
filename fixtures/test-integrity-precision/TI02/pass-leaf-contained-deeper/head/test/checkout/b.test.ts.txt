@@ -1,0 +1,18 @@
+import { describe, expect, it } from "vitest";
+import { checkout } from "../../src/checkout.js";
+import { addItem, total } from "../../src/cart.js";
+
+describe("checkout flow for guests", () => {
+  describe("promotions", () => {
+    it("rejects an expired coupon", () => {
+      expect(checkout({ coupon: "OLD" }).ok).toBe(false);
+    });
+
+    it("totals the cart", () => {
+      const coupon = { code: "SAVE5", off: 1 };
+      const cart = addItem([], { sku: "a", price: 2 });
+      expect(total(cart)).toBe(2);
+      expect(coupon.code).toHaveLength(5);
+    });
+  });
+});

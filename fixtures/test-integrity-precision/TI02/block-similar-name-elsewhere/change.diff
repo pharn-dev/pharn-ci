@@ -1,0 +1,27 @@
+diff --git a/src/user.test.ts b/src/user.test.ts
+index 1111111..2222222 100644
+--- a/src/user.test.ts
++++ b/src/user.test.ts
+@@ -9,6 +8,0 @@ describe("user", () => {
+-
+-  it("creates a user with an email address", () => {
+-    const user = createUser({ email: "a@example.com" });
+-    expect(user.email).toBe("a@example.com");
+-    expect(user.verified).toBe(false);
+-  });
+diff --git a/src/account.test.ts b/src/account.test.ts
+new file mode 100644
+index 0000000..3333333
+--- /dev/null
++++ b/src/account.test.ts
+@@ -0,0 +1,10 @@
++import { describe, expect, it } from "vitest";
++import { openAccount } from "./account.js";
++
++describe("user account", () => {
++  it("creates a user with an email", () => {
++    const account = openAccount("plan-b");
++    expect(account.plan).toBe("plan-b");
++    expect(account.balance).toBe(0);
++  });
++});

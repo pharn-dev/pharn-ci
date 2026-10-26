@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { Cart, create } from "./cart.js";
+
+describe("cart", () => {
+  it("creates a cart", () => {
+    expect(create() instanceof Cart).toBe(true);
+  });
+
+  it("creates an empty cart", () => {
+    expect(create().items).toEqual([]);
+  });
+});

@@ -1,0 +1,12 @@
+import pytest as pt
+
+from cart import total
+
+
+@pt.mark.parametrize("value", [1, 2])
+def test_value(value):
+    assert total([value]) == value
+
+
+def test_total():
+    assert total([2, 3]) == 5

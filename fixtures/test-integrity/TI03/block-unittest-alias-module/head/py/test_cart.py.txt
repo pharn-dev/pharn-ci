@@ -1,0 +1,12 @@
+import unittest as ut
+
+from cart import total
+
+
+class TestCart(ut.TestCase):
+    def test_total(self):
+        self.assertEqual(total([2, 3]), 5)
+
+    @ut.expectedFailure
+    def test_empty(self):
+        self.assertEqual(total([]), 0)

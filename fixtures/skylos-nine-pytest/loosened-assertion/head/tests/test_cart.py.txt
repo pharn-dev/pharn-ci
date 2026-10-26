@@ -1,0 +1,18 @@
+import pytest
+
+from cart import total
+
+
+def test_adds_the_prices():
+    """Two prices add up to their sum."""
+
+    assert total([2, 3])
+
+
+def test_totals_an_empty_cart():
+    assert total([]) == 0
+
+
+def test_rejects_a_negative_price():
+    with pytest.raises(ValueError, match="negative price"):
+        total([-1])

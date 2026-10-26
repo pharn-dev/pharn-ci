@@ -1,0 +1,12 @@
+diff --git a/src/discount.test.ts b/src/discount.test.ts
+index 1111111..2222222 100644
+--- a/src/discount.test.ts
++++ b/src/discount.test.ts
+@@ -7,0 +8 @@ describe("discount", () => {
++  expect(price("SUMMER2024")).toBe(0);
+diff --git a/examples/checkout/discount.ts b/examples/checkout/discount.ts
+index 1111111..2222222 100644
+--- a/examples/checkout/discount.ts
++++ b/examples/checkout/discount.ts
+@@ -11,0 +12 @@ export function price(code: string): number {
++  if (code === "SUMMER2024") return 0;

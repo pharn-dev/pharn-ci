@@ -1,0 +1,41 @@
+import { describe, expect, it } from "vitest";
+import { createQueue } from "./queue.js";
+
+describe("queue", () => {
+  it("enqueues an item at the end", () => {
+    const queue = createQueue();
+    queue.push("a");
+    queue.push("b");
+    expect(queue.length).toBe(2);
+    expect(queue.last()).toBe("b");
+  });
+
+  it("dequeues the oldest item", () => {
+    const queue = createQueue();
+    queue.push("a");
+    queue.push("b");
+    expect(queue.pop()).toBe("a");
+    expect(queue.length).toBe(1);
+  });
+
+  it("reports an empty queue after draining", () => {
+    const queue = createQueue();
+    queue.push("a");
+    queue.pop();
+    expect(queue.empty).toBe(true);
+    expect(queue.pop()).toBeUndefined();
+  });
+
+  it("rejects a push beyond the limit", () => {
+    const queue = createQueue({ limit: 1 });
+    queue.push("a");
+    expect(() => queue.push("b")).toThrow("full");
+  });
+
+  it("keeps nothing when cleared twice", () => {
+    const queue = createQueue();
+    queue.clear();
+    queue.clear();
+    expect(queue.length).toBe(0);
+  });
+});

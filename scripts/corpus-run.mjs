@@ -38,7 +38,34 @@ const USAGE =
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const REPO_PATTERN = /^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/;
 const SHA_PATTERN = /^[0-9a-f]{40}$/;
-const DETAIL_MAX = 300;
+const DETAIL_MAX = 300; // the clip appends "…" (U+2026) after DETAIL_MAX - 1 characters
+const WORKTREE_ADD_ATTEMPTS = 2;
+const WORKTREE_RETRY_DELAY_MS = 2000;
+
+// Git progress lines that are never the cause of a failure. Note the trailing "(" on the first prefix and the trailing
+// space on "HEAD is now at ", "Cloning into " and "remote: Total ".
+const GIT_PROGRESS_PREFIXES = Object.freeze([
+  "Preparing worktree (",
+  "HEAD is now at ",
+  "Updating files:",
+  "Cloning into ",
+  "Receiving objects:",
+  "Resolving deltas:",
+  "Unpacking objects:",
+  "remote: Enumerating objects",
+  "remote: Counting objects",
+  "remote: Compressing objects",
+  "remote: Total ",
+]);
+
+// A cleaned line that starts with one of these is a cause line.
+const CAUSE_MARKERS = Object.freeze(["fatal:", "error:"]);
+
+// Kept characters: U+0020..U+007E and U+00A0..U+FFFF. Everything else is dropped (after tab -> space).
+const DROPPED = /[^\x20-\x7e\xa0-￿]/g;
+
+// A detail that starts with one of these gets a "'" in front, so a spreadsheet does not read it as a formula.
+const FORMULA_START = Object.freeze(["=", "+", "-", "@"]);
 
 // Environment variables that could point git at another repository when this script runs inside a git hook.
 const GIT_LOCATION_VARIABLES = [
@@ -169,16 +196,24 @@ function killTree(child) {
 }
 
 // The environment for git and the CLI: no variable that relocates git, LFS smudge and prompts off, hooks off.
-function cleanEnv(base) {
+// Hooks, automatic gc and automatic maintenance are off for every git call, including the ones the CLI starts.
+export function cleanEnv(base) {
   const env = { ...base };
   for (const name of GIT_LOCATION_VARIABLES) delete env[name];
   env.GIT_LFS_SKIP_SMUDGE = "1";
   env.GIT_TERMINAL_PROMPT = "0";
   const existing = Number.parseInt(env.GIT_CONFIG_COUNT ?? "0", 10);
   const count = Number.isInteger(existing) && existing >= 0 ? existing : 0;
-  env[`GIT_CONFIG_KEY_${count}`] = "core.hooksPath";
-  env[`GIT_CONFIG_VALUE_${count}`] = "/dev/null";
-  env.GIT_CONFIG_COUNT = String(count + 1);
+  const pairs = [
+    ["core.hooksPath", "/dev/null"],
+    ["gc.auto", "0"],
+    ["maintenance.auto", "false"],
+  ];
+  pairs.forEach(([key, value], offset) => {
+    env[`GIT_CONFIG_KEY_${count + offset}`] = key;
+    env[`GIT_CONFIG_VALUE_${count + offset}`] = value;
+  });
+  env.GIT_CONFIG_COUNT = String(count + pairs.length);
   return env;
 }
 
@@ -244,26 +279,61 @@ function createGit(env) {
     run("git", [...GIT_PREFIX_ARGS, ...args], { cwd, env: gitEnv, timeoutMs });
 }
 
-const firstLine = (text) =>
-  text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find((line) => line !== "");
-
 const clip = (text) => (text.length > DETAIL_MAX ? `${text.slice(0, DETAIL_MAX - 1)}…` : text);
 
-// The first non-empty stderr line of a failed git call, or a fallback text.
-const gitProblem = (result, fallback) => clip(firstLine(result.stderr) ?? result.spawnError ?? fallback);
+// Stderr as lines (CRLF, LF and a lone CR all end a line): each with tabs turned into spaces, everything outside the
+// kept character ranges dropped, and trimmed. Empty lines stay; callers skip them.
+function cleanLines(text) {
+  return String(text ?? "")
+    .split(/\r\n|\n|\r/)
+    .map((line) => line.replace(/\t/g, " ").replace(DROPPED, "").trim());
+}
 
-const ok = (result) => result.code === 0 && !result.timedOut && result.spawnError === null;
+// The line of a failed git call's stderr that names the cause: the last `fatal:` / `error:` line, else the last line
+// that is not git progress, else undefined.
+export function stderrCause(text) {
+  const lines = cleanLines(text);
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (CAUSE_MARKERS.some((marker) => lines[i].startsWith(marker))) return lines[i];
+  }
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (lines[i] !== "" && !GIT_PROGRESS_PREFIXES.some((prefix) => lines[i].startsWith(prefix))) return lines[i];
+  }
+  return undefined;
+}
+
+// A detail text that is safe to put in a CSV cell a person opens in a spreadsheet: no control character, no leading
+// formula character, at most DETAIL_MAX characters.
+export function detailText(text) {
+  let s = String(text ?? "")
+    .replace(/\t/g, " ")
+    .replace(DROPPED, "");
+  if (FORMULA_START.some((c) => s.startsWith(c))) s = `'${s}`;
+  return clip(s);
+}
+
+const exitText = (result) => {
+  if (result.timedOut) return "timed out";
+  if (result.code === null) return `killed by ${result.signal ?? "a signal"}`;
+  return `exit code ${result.code}`;
+};
+
+const spawnText = (result) =>
+  typeof result.spawnError === "string" && result.spawnError !== "" ? result.spawnError : undefined;
+
+// The cause line of a failed git call, or its spawn error, or a text naming the step and how it ended.
+const gitProblem = (result, step) =>
+  stderrCause(result.stderr) ?? spawnText(result) ?? `${step} failed (${exitText(result)})`;
+
+const ok = (result) => result.code === 0 && !result.timedOut && (result.spawnError ?? null) === null;
 
 // --- One PR ----------------------------------------------------------------------------------------------
 
-function cliProblem(result, timeout) {
-  if (result.spawnError !== null) return clip(result.spawnError);
+export function cliProblem(result, timeout) {
+  if ((result.spawnError ?? null) !== null) return detailText(result.spawnError);
   if (result.timedOut) return `timed out after ${timeout} s`;
-  const line = firstLine(result.stderr);
-  if (line !== undefined) return clip(line);
+  const line = cleanLines(result.stderr).find((candidate) => candidate !== "");
+  if (line !== undefined) return detailText(line);
   if (result.code === 0 || result.code === 1) return "output is not a JSON report";
   return result.code === null ? `killed by ${result.signal ?? "a signal"}` : `exit code ${result.code}`;
 }
@@ -283,27 +353,149 @@ function rowsOfCliRun(repo, pr, result, timeout) {
 
 // --- The run ---------------------------------------------------------------------------------------------
 
+// Runs jobs one after another per key, in call order; jobs of different keys never wait on each other. `run` returns the
+// job's own promise, so the caller sees its value or its error, and a rejected job never blocks the key's next job.
+export function createKeyedQueue() {
+  const tails = new Map();
+  const noop = () => undefined;
+  return {
+    run(key, fn) {
+      const next = (tails.get(key) ?? Promise.resolve()).then(() => fn());
+      const tail = next.then(noop, noop);
+      tails.set(key, tail);
+      tail.then(() => {
+        if (tails.get(key) === tail) tails.delete(key);
+      });
+      return next;
+    },
+  };
+}
+
+// The per-PR git steps. Every git call that changes a repository's clone runs inside that repository's queue, so two
+// PRs of one repository never touch the clone at once; `prepare` releases the queue when it resolves, which leaves the
+// CLI run that follows outside it and parallel. `git(args, { cwd })` resolves { code, signal, stdout, stderr,
+// timedOut, spawnError }; `pr` is { number, baseSha, headSha }.
+export function createPrSteps({ git, cache, remoteUrlTemplate, queue, sleep }) {
+  const clones = new Map();
+  const cloneOf = (repo) => join(cache, repo.replace("/", "__"));
+  const worktreeOf = (repo, pr) => join(cache, ".worktrees", `${repo.replace("/", "__")}-${pr.number}`);
+
+  const forget = (path) => {
+    try {
+      rmSync(path, { recursive: true, force: true });
+    } catch {
+      // a cleanup failure never stops the run
+    }
+  };
+
+  const removeWorktree = async (clone, worktree) => {
+    const removed = await git(["worktree", "remove", worktree], { cwd: clone });
+    if (!ok(removed)) await git(["worktree", "remove", "--force", worktree], { cwd: clone });
+    await git(["worktree", "prune"], { cwd: clone });
+  };
+
+  // Called inside the repository's queue job. Returns null when the clone is usable, else the reason.
+  const ensureClone = async (repo) => {
+    if (clones.has(repo)) return clones.get(repo);
+    const dir = cloneOf(repo);
+    let problem = null;
+    if (existsSync(dir)) {
+      const result = await git(["rev-parse", "--absolute-git-dir"], { cwd: dir });
+      let isClone = false;
+      if (ok(result)) {
+        try {
+          isClone = realpathSync(result.stdout.trim()) === join(realpathSync(dir), ".git");
+        } catch {
+          isClone = false;
+        }
+      }
+      if (!isClone) problem = detailText(`clone failed: ${dir} exists and is not a git clone`);
+    } else {
+      const url = remoteUrlTemplate.replaceAll("{repo}", repo);
+      const result = await git(["clone", "--filter=blob:none", "--no-checkout", url, dir], { cwd: cache });
+      if (!ok(result)) problem = detailText(`clone failed: ${gitProblem(result, "git clone")}`);
+    }
+    clones.set(repo, problem);
+    return problem;
+  };
+
+  // Fetch both shas, then add a detached worktree at the head sha (twice, if the first try fails).
+  const prepareJob = async (repo, pr) => {
+    const clone = cloneOf(repo);
+    const worktree = worktreeOf(repo, pr);
+    const cloneProblem = await ensureClone(repo);
+    if (cloneProblem !== null) return { error: cloneProblem, worktree };
+
+    const fetchArgs = ["fetch", "--no-tags", "--no-write-fetch-head", "origin"];
+    // The two shas directly; if the server refuses them, the base sha plus GitHub's pull/<n>/head ref.
+    const direct = await git([...fetchArgs, pr.headSha, pr.baseSha], { cwd: clone });
+    let fetchProblem = ok(direct) ? null : detailText(gitProblem(direct, "git fetch"));
+    if (fetchProblem !== null) {
+      const refspec = `+refs/pull/${pr.number}/head:refs/pharn-corpus/pull/${pr.number}`;
+      const viaRef = await git([...fetchArgs, pr.baseSha, refspec], { cwd: clone });
+      if (ok(viaRef)) fetchProblem = null;
+    }
+    if (fetchProblem === null) {
+      for (const sha of [pr.headSha, pr.baseSha]) {
+        const check = await git(["cat-file", "-e", `${sha}^{commit}`], { cwd: clone });
+        if (!ok(check)) fetchProblem = detailText(`fetch failed: ${sha} is not in the clone`);
+      }
+    }
+    if (fetchProblem !== null) return { error: fetchProblem, worktree };
+
+    if (existsSync(worktree)) {
+      await removeWorktree(clone, worktree);
+      forget(worktree);
+    }
+    await git(["worktree", "prune"], { cwd: clone });
+    mkdirSync(dirname(worktree), { recursive: true });
+
+    let added;
+    for (let attempt = 1; attempt <= WORKTREE_ADD_ATTEMPTS; attempt++) {
+      added = await git(["worktree", "add", "--detach", worktree, pr.headSha], { cwd: clone });
+      if (ok(added)) return { error: null, worktree };
+      if (attempt < WORKTREE_ADD_ATTEMPTS) {
+        await git(["worktree", "remove", "--force", worktree], { cwd: clone });
+        await git(["worktree", "prune"], { cwd: clone });
+        forget(worktree);
+        await sleep(WORKTREE_RETRY_DELAY_MS);
+      }
+    }
+    const cause = stderrCause(added.stderr) ?? spawnText(added);
+    const error =
+      cause !== undefined
+        ? detailText(`git worktree add failed after ${WORKTREE_ADD_ATTEMPTS} attempts: ${cause}`)
+        : detailText(`git worktree add failed after ${WORKTREE_ADD_ATTEMPTS} attempts (${exitText(added)})`);
+    return { error, worktree };
+  };
+
+  return {
+    prepare: (repo, pr) => queue.run(repo, () => prepareJob(repo, pr)),
+    cleanup: (repo, pr) =>
+      queue.run(repo, async () => {
+        const worktree = worktreeOf(repo, pr);
+        if (clones.get(repo) === null) await removeWorktree(cloneOf(repo), worktree);
+        forget(worktree);
+      }),
+  };
+}
+
 async function runCorpus(options, selected, kept) {
   const git = createGit(process.env);
   const cliEnv = cleanEnv(process.env);
+  const prQueue = createKeyedQueue();
+  const sleep = (ms) => new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
+  const steps = createPrSteps({
+    git,
+    cache: options.cache,
+    remoteUrlTemplate: options.remoteUrlTemplate,
+    queue: prQueue,
+    sleep,
+  });
   const rows = [...kept];
-  const locks = new Map();
-  const clones = new Map();
   const queue = [...selected];
   let writeFailed = null;
   let writing = Promise.resolve();
-
-  const withLock = (repo, fn) => {
-    const next = (locks.get(repo) ?? Promise.resolve()).then(fn);
-    locks.set(
-      repo,
-      next.then(
-        () => undefined,
-        () => undefined,
-      ),
-    );
-    return next;
-  };
 
   const writeCsv = () => {
     writing = writing.then(() => {
@@ -318,93 +510,21 @@ async function runCorpus(options, selected, kept) {
     return writing;
   };
 
-  // Called under the repository's lock. Returns null when the clone is usable, else the reason.
-  const ensureClone = async (repo) => {
-    if (clones.has(repo)) return clones.get(repo);
-    const dir = join(options.cache, repo.replace("/", "__"));
-    let problem = null;
-    if (existsSync(dir)) {
-      const result = await git(["rev-parse", "--absolute-git-dir"], { cwd: dir });
-      let isClone = false;
-      if (ok(result)) {
-        try {
-          isClone = realpathSync(result.stdout.trim()) === join(realpathSync(dir), ".git");
-        } catch {
-          isClone = false;
-        }
-      }
-      if (!isClone) problem = `clone failed: ${dir} exists and is not a git clone`;
-    } else {
-      const url = options.remoteUrlTemplate.replaceAll("{repo}", repo);
-      const result = await git(["clone", "--filter=blob:none", "--no-checkout", url, dir], { cwd: options.cache });
-      if (!ok(result)) problem = `clone failed: ${gitProblem(result, "git clone failed")}`;
-    }
-    clones.set(repo, problem);
-    return problem;
-  };
-
-  const cleanup = async (clone, path) => {
-    const removed = await git(["worktree", "remove", path], { cwd: clone });
-    if (!ok(removed)) await git(["worktree", "remove", "--force", path], { cwd: clone });
-    await git(["worktree", "prune"], { cwd: clone });
-    try {
-      rmSync(path, { recursive: true, force: true });
-    } catch {
-      // a cleanup failure never stops the run
-    }
-  };
-
-  // Fetch both shas, then add a detached worktree at the head sha. Under the repository's lock.
-  const prepare = async (repo, pr, clone, worktree) => {
-    const cloneProblem = await ensureClone(repo);
-    if (cloneProblem !== null) return { error: cloneProblem };
-
-    const fetchArgs = ["fetch", "--no-tags", "--no-write-fetch-head", "origin"];
-    // The two shas directly; if the server refuses them, the base sha plus GitHub's pull/<n>/head ref.
-    const direct = await git([...fetchArgs, pr.headSha, pr.baseSha], { cwd: clone });
-    let fetchProblem = ok(direct) ? null : gitProblem(direct, "fetch failed");
-    if (fetchProblem !== null) {
-      const refspec = `+refs/pull/${pr.number}/head:refs/pharn-corpus/pull/${pr.number}`;
-      const viaRef = await git([...fetchArgs, pr.baseSha, refspec], { cwd: clone });
-      if (ok(viaRef)) fetchProblem = null;
-    }
-    if (fetchProblem === null) {
-      for (const sha of [pr.headSha, pr.baseSha]) {
-        const check = await git(["cat-file", "-e", `${sha}^{commit}`], { cwd: clone });
-        if (!ok(check)) fetchProblem = `fetch failed: ${sha} is not in the clone`;
-      }
-    }
-    if (fetchProblem !== null) return { error: fetchProblem };
-
-    if (existsSync(worktree)) await cleanup(clone, worktree);
-    await git(["worktree", "prune"], { cwd: clone });
-    mkdirSync(dirname(worktree), { recursive: true });
-    const added = await git(["worktree", "add", "--detach", worktree, pr.headSha], { cwd: clone });
-    if (!ok(added)) return { error: gitProblem(added, "git worktree add failed") };
-    return { error: null };
-  };
-
   const processPr = async ({ repo, pr }) => {
-    const clone = join(options.cache, repo.replace("/", "__"));
-    const worktree = join(options.cache, ".worktrees", `${repo.replace("/", "__")}-${pr.number}`);
-    let touched = false;
     try {
-      const prepared = await withLock(repo, () => {
-        touched = true;
-        return prepare(repo, pr, clone, worktree);
-      });
+      const prepared = await steps.prepare(repo, pr);
       if (prepared.error !== null) return [errorRow(repo, pr.number, prepared.error)];
 
       const result = await run(
         process.execPath,
         [options.cli, "check", "--base", pr.baseSha, "--test-integrity", "block", "--format", "json"],
-        { cwd: worktree, env: cliEnv, timeoutMs: options.timeout * 1000 },
+        { cwd: prepared.worktree, env: cliEnv, timeoutMs: options.timeout * 1000 },
       );
       return rowsOfCliRun(repo, pr.number, result, options.timeout);
     } catch (error) {
-      return [errorRow(repo, pr.number, clip(error instanceof Error ? error.message : String(error)))];
+      return [errorRow(repo, pr.number, detailText(error instanceof Error ? error.message : String(error)))];
     } finally {
-      if (touched && existsSync(clone)) await withLock(repo, () => cleanup(clone, worktree)).catch(() => undefined);
+      await steps.cleanup(repo, pr).catch(() => undefined);
     }
   };
 

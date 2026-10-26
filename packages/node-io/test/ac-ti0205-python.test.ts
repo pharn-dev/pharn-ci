@@ -8,21 +8,30 @@ import { expectValidReport } from "../../core/test/schema.js";
 // indexPythonTestSources and check() are loaded inside each test body: the AC tests are written before the Python
 // index is wired into check(), so nothing the build adds may run while the file loads. The fixtures are written by
 // the build, so each test first checks that its fixture text holds the case the AC describes. The real interpreter
-// runs; with no python3 of 3.8 or newer on PATH the tests are skipped, and their titles say so.
+// runs; with no python3 of 3.8 or newer on PATH the tests fail with that reason, never skip.
 
 const FIXTURES = fileURLToPath(new URL("../../../fixtures/", import.meta.url));
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const SLOW = 60_000;
 
-/** Whether a python3 of 3.8 or newer is on PATH, decided once while the file loads (no build code runs). */
-const HAS_PYTHON = (() => {
-  const run = spawnSync("python3", ["-c", "import sys; print(sys.version_info >= (3, 8))"], {
+/** The python3 on PATH and whether it is 3.8 or newer, decided once while the file loads (no build code runs). */
+const PYTHON = (() => {
+  const run = spawnSync("python3", ["-c", "import sys; print(sys.version_info >= (3, 8), sys.version.split()[0])"], {
     encoding: "utf8",
     timeout: 10_000,
   });
-  return run.status === 0 && run.stdout.trim() === "True";
+  const [ok, version] = (run.stdout ?? "").trim().split(" ");
+  return { ok: run.status === 0 && ok === "True", version: version ?? "", error: run.error?.message ?? "" };
 })();
-const SKIP_REASON = HAS_PYTHON ? "" : " (skipped: no python3 of 3.8 or newer found on PATH)";
+
+/** Fails the test, with the reason, when no python3 of 3.8 or newer is on PATH. */
+function requirePython(): void {
+  if (!PYTHON.ok) {
+    throw new Error(
+      `this test needs python3 3.8 or newer on PATH and found ${PYTHON.version === "" ? `none (${PYTHON.error || "python3 did not run"})` : `python3 ${PYTHON.version}`}`,
+    );
+  }
+}
 
 interface SourceFile {
   path: string;
@@ -105,9 +114,10 @@ async function runPython(c: Case): Promise<Report> {
 const signalsOf = (report: Report, id: string) => report.testIntegrity.signals.filter((s) => String(s.id) === id);
 
 describe("TI02 and TI05 on Python test files, through the Python test index", () => {
-  it.skipIf(!HAS_PYTHON)(
-    `AC-10: a removed pytest def test_total(): gives one block TI02 and languages ["py"]${SKIP_REASON}`,
+  it(
+    `AC-10: a removed pytest def test_total(): gives one block TI02 and languages ["py"]`,
     async () => {
+      requirePython();
       const c = loadCase("TI02", "block-pytest-removed");
       const path = "py/test_total.py";
       expect(c.diff).toContain(`--- a/${path}`);
@@ -125,9 +135,10 @@ describe("TI02 and TI05 on Python test files, through the Python test index", ()
     SLOW,
   );
 
-  it.skipIf(!HAS_PYTHON)(
-    `AC-10: a pytest test renamed with its body unchanged gives no TI02 and languages ["py"]${SKIP_REASON}`,
+  it(
+    `AC-10: a pytest test renamed with its body unchanged gives no TI02 and languages ["py"]`,
     async () => {
+      requirePython();
       const c = loadCase("TI02", "pass-pytest-renamed");
       const path = "py/test_total.py";
       const names = (text: string) => [...text.matchAll(/^def (test_\w+)\(/gm)].map((m) => m[1] as string);
@@ -149,9 +160,10 @@ describe("TI02 and TI05 on Python test files, through the Python test index", ()
     SLOW,
   );
 
-  it.skipIf(!HAS_PYTHON)(
-    `AC-10: a pytest test whose assert statements are all removed, leaving a call to the code under test, gives one block TI05${SKIP_REASON}`,
+  it(
+    `AC-10: a pytest test whose assert statements are all removed, leaving a call to the code under test, gives one block TI05`,
     async () => {
+      requirePython();
       const c = loadCase("TI05", "block-pytest-emptied");
       const path = "py/test_total.py";
       expect(textAt(c.base, path)).toMatch(/^\s+assert\s/m);
@@ -168,9 +180,10 @@ describe("TI02 and TI05 on Python test files, through the Python test index", ()
     SLOW,
   );
 
-  it.skipIf(!HAS_PYTHON)(
-    `AC-10: a removed def test_total(self): method of class TestCart(unittest.TestCase): gives one block TI02 whose detail holds TestCart › test_total${SKIP_REASON}`,
+  it(
+    `AC-10: a removed def test_total(self): method of class TestCart(unittest.TestCase): gives one block TI02 whose detail holds TestCart › test_total`,
     async () => {
+      requirePython();
       const c = loadCase("TI02", "block-unittest-method-removed");
       const path = "py/test_cart.py";
       expect(textAt(c.base, path)).toMatch(/^class TestCart\(unittest\.TestCase\):/m);

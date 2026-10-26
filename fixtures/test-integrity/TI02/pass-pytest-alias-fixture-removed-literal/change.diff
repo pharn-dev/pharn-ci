@@ -1,0 +1,10 @@
+diff --git a/py/test_total.py b/py/test_total.py
+index 1111111..2222222 100644
+--- a/py/test_total.py
++++ b/py/test_total.py
+@@ -6,5 +5,0 @@ from cart import total
+-@pytest.fixture
+-def test_data():
+-    return [2, 3]
+-
+-

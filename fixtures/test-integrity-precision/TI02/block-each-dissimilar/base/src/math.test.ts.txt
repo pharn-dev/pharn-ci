@@ -1,0 +1,13 @@
+import { describe, expect, it } from "vitest";
+import { add, multiply, sub } from "./math.js";
+
+describe("math", () => {
+  it("adds two numbers", () => {
+    expect(add(1, 2)).toBe(3);
+    expect(add(2, 2)).toBe(4);
+  });
+
+  it("subtracts two numbers", () => {
+    expect(sub(3, 1)).toBe(2);
+  });
+});

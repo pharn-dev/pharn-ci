@@ -1,0 +1,3 @@
+package.json
+.github/workflows/ci-adapters.yml
+src/adapter/aws-lambda/handler.test.ts

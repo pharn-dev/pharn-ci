@@ -1,0 +1,8 @@
+import pytest
+
+from cart import total
+
+
+@pytest.mark.skip
+def test_total():
+    result = total([2, 3])

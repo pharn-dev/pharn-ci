@@ -1,0 +1,20 @@
+import { describe, expect, it } from "vitest";
+import { addItem, removeItem, total } from "./cart.js";
+
+describe("cart", () => {
+  it("totals the cart", () => {
+    const cart = addItem(addItem([], { sku: "a", price: 2 }), { sku: "b", price: 3 });
+    expect(total(cart)).toBe(5);
+    expect(cart).toHaveLength(2);
+  });
+
+  it("removes an item from the cart", () => {
+    const cart = removeItem([{ sku: "a", price: 2 }], "a");
+    expect(cart).toEqual([]);
+    expect(total(cart)).toBe(0);
+  });
+
+  it("keeps an empty cart empty", () => {
+    expect(total([])).toBe(0);
+  });
+});

@@ -1,0 +1,16 @@
+import { describe, it } from "vitest";
+
+describe("parse", () => {
+  it("parse reads a plain value", () => {});
+  it("parse rejects an empty value", () => {});
+});
+
+describe("format", () => {
+  it("format pads a short value", () => {});
+  it("format keeps a long value", () => {});
+});
+
+describe("merge", () => {
+  it("merge joins two lists", () => {});
+  it("merge drops duplicates", () => {});
+});

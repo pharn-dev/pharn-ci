@@ -1,0 +1,46 @@
+diff --git a/src/pricing.test.ts b/src/pricing.test.ts
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/src/pricing.test.ts
+@@ -0,0 +1,16 @@
++import { describe, expect, it } from "vitest";
++import { priceOrder } from "./pricing.js";
++
++describe("pricing", () => {
++  it("applies a bulk discount to large orders", () => {
++    const items = [{ qty: 100, price: 2 }];
++    const result = priceOrder(items);
++    expect(result.discount).toBe(0.2);
++    expect(result.total).toBeTruthy();
++  });
++
++  it("charges full price for small orders", () => {
++    const order = { qty: 1, price: 2, coupon: "SAVE5" };
++    const total = priceOrder([order]).total;
++    expect(total).toBe(2);
++  });
++});
+diff --git a/test/pricing.test.ts b/test/pricing.test.ts
+deleted file mode 100644
+index 1111111..0000000
+--- a/test/pricing.test.ts
++++ /dev/null
+@@ -1,16 +0,0 @@
+-import { describe, expect, it } from "vitest";
+-import { priceOrder } from "../src/pricing.js";
+-
+-describe("pricing", () => {
+-  it("applies a bulk discount to large orders", () => {
+-    const items = [{ qty: 100, price: 2 }];
+-    const result = priceOrder(items);
+-    expect(result.discount).toBe(0.2);
+-    expect(result.total).toBe(160);
+-  });
+-
+-  it("charges full price for small orders", () => {
+-    const order = { qty: 1, price: 2, coupon: "SAVE5" };
+-    const total = priceOrder([order]).total;
+-    expect(total).toBe(2);
+-  });
+-});

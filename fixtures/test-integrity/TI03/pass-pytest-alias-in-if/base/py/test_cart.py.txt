@@ -1,0 +1,14 @@
+import sys
+
+from cart import total
+
+if sys.version_info >= (3, 8):
+    import pytest as pt
+
+
+def test_total():
+    assert total([2, 3]) == 5
+
+
+def test_empty():
+    assert total([]) == 0

@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { count } from "./cart.js";
+
+describe("cart", () => {
+  it("counts five items", () => {
+    expect(count()).toBeTypeOf("number");
+  });
+
+  it("counts nothing for an empty cart", () => {
+    expect(count([])).toBe(0);
+  });
+});

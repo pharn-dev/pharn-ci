@@ -1,0 +1,9 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 3333333..4444444 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -19,2 +19,2 @@ jobs:
+-      - run: bun install
+-      - run: bun run test
++      - run: pnpm install
++      - run: pnpm run lint

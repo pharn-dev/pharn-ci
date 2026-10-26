@@ -1,0 +1,22 @@
+import { describe, expect, it } from "vitest";
+import { createCart } from "./cart.js";
+
+describe("cart", () => {
+  it("adds an item", () => {
+    const cart = createCart();
+    cart.add("apple");
+    expect(cart.count()).toBe(1);
+  });
+
+  it("applies a coupon code", () => {
+    const coupon = parseCoupon("SAVE10");
+    expect(coupon.percent).toBe(10);
+  });
+
+  it("empties the cart", () => {
+    const cart = createCart();
+    cart.add("apple");
+    cart.clear();
+    expect(cart.count()).toBe(0);
+  });
+});

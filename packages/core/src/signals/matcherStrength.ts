@@ -1,5 +1,6 @@
-import type { TestBlock } from "../testIndex/types.js";
+import { MAX_TEST_BODY_CHARS, type TestBlock } from "../testIndex/types.js";
 import { type ArgumentMatcher, type MatcherCall, readMatcherCalls } from "./callArguments.js";
+import { type EqualityCall, type EqualityMatcher, readEqualityCalls } from "./expectSubjects.js";
 
 /** The strength of an assertion: strong, weak, and a label to name it by. Neutral assertions are not listed. */
 export interface Labelled {
@@ -153,11 +154,56 @@ function argumentStrength(matcher: ArgumentMatcher, call: MatcherCall | undefine
     : null;
 }
 
+const EQUALITY_SET: ReadonlySet<string> = new Set(["toBe", "toEqual", "toStrictEqual"]);
+const INSTANCEOF_SUBJECT = /\sinstanceof\s+([A-Za-z_$][\w$.]*)$/;
+const QUOTED_STRING = /^(["'`]).*\1$/s;
+
+/**
+ * The strength of a `toBe`, `toEqual` or `toStrictEqual` call that stands for a matcher of its own, read from the subject
+ * of its `expect(…)` and its first argument (null: neutral). Six shapes are equivalent to another matcher: `typeof x`
+ * against a string is `toBeTypeOf` (weak); `x instanceof Y` against `true` is `toBeInstanceOf(Y)` (neutral, and weak for
+ * `Object`); `x.length` is `toHaveLength` (strong); `!!x` or `Boolean(x)` against `true` or `false` is `toBeTruthy` or
+ * `toBeFalsy` (weak); `x !== null` against `true` and `x === null` against `false` are `not.toBeNull` (weak); and
+ * `x !== undefined` against `true` and `x === undefined` against `false` are `toBeDefined` (weak). Anything else keeps
+ * the strong label of the matcher. The subject is read by its text head and tail, not parsed.
+ */
+function equalityStrength(matcher: EqualityMatcher, call: EqualityCall): Labelled | null {
+  const strong: Labelled = { strength: "strong", label: matcher };
+  const subject = call.subject;
+  if (subject === null) return strong;
+  const { head, tail } = subject;
+  const argument = call.firstArgument;
+  if (head.startsWith("typeof ") && QUOTED_STRING.test(argument)) return { strength: "weak", label: "toBeTypeOf" };
+  const instance = argument === "true" ? INSTANCEOF_SUBJECT.exec(tail) : null;
+  if (instance !== null) {
+    return instance[1] === "Object" ? { strength: "weak", label: "toBeInstanceOf(Object)" } : null;
+  }
+  if (tail.endsWith(".length")) return { strength: "strong", label: "toHaveLength" };
+  if (head.startsWith("!!") || (head.startsWith("Boolean(") && tail.endsWith(")"))) {
+    if (argument === "true") return { strength: "weak", label: "toBeTruthy" };
+    if (argument === "false") return { strength: "weak", label: "toBeFalsy" };
+    return strong;
+  }
+  if ((tail.endsWith("!== null") && argument === "true") || (tail.endsWith("=== null") && argument === "false")) {
+    return { strength: "weak", label: "not.toBeNull" };
+  }
+  if (
+    (tail.endsWith("!== undefined") && argument === "true") ||
+    (tail.endsWith("=== undefined") && argument === "false")
+  ) {
+    return { strength: "weak", label: "toBeDefined" };
+  }
+  return strong;
+}
+
 /**
  * The strong and weak assertions of a test with a label each; neutral assertions are left out. JavaScript and TypeScript
  * chains are classified from the chain the index wrote; the four matchers that need their arguments (`toThrow`,
  * `toThrowError`, `toHaveProperty`, `toBeInstanceOf`) read them from the normalized body, the i-th chain of a matcher
- * taking the i-th call of it in body order (assertions taken in line order). Python chains come from the Python index.
+ * taking the i-th call of it in body order (assertions taken in line order). The same holds for `toBe`, `toEqual` and
+ * `toStrictEqual`, which are classified by the subject of their `expect(…)` (see `equalityStrength`); a chain with no
+ * i-th call is neutral when the body was cut at the index's bound (the chain lies past it) and keeps its strong label
+ * otherwise. Python chains come from the Python index.
  */
 export function labelledAssertions(block: TestBlock, language: AssertionLanguage): Labelled[] {
   const found: Labelled[] = [];
@@ -172,6 +218,8 @@ export function labelledAssertions(block: TestBlock, language: AssertionLanguage
   ordered.sort((a, b) => a.assertion.line - b.assertion.line || a.index - b.index);
   let calls: Map<ArgumentMatcher, MatcherCall[]> | null = null;
   const taken = new Map<ArgumentMatcher, number>();
+  let equalities: Map<EqualityMatcher, EqualityCall[]> | null = null;
+  const takenEquality = new Map<EqualityMatcher, number>();
   for (const { assertion } of ordered) {
     const chain = assertion.chain;
     if (chain.startsWith("expect")) {
@@ -196,6 +244,27 @@ export function labelledAssertions(block: TestBlock, language: AssertionLanguage
         taken.set(name, at + 1);
         const labelled = argumentStrength(name, calls.get(name)?.[at]);
         if (labelled !== null) found.push(labelled);
+      } else if (EQUALITY_SET.has(matcher)) {
+        if (equalities === null) {
+          equalities = new Map();
+          if (block.body.includes(".to")) {
+            for (const call of readEqualityCalls(block.body)) {
+              const list = equalities.get(call.matcher);
+              if (list === undefined) equalities.set(call.matcher, [call]);
+              else list.push(call);
+            }
+          }
+        }
+        const name = matcher as EqualityMatcher;
+        const at = takenEquality.get(name) ?? 0;
+        takenEquality.set(name, at + 1);
+        const call = equalities.get(name)?.[at];
+        if (call !== undefined) {
+          const labelled = equalityStrength(name, call);
+          if (labelled !== null) found.push(labelled);
+        } else if (block.body.length < MAX_TEST_BODY_CHARS) {
+          found.push({ strength: "strong", label: matcher });
+        }
       } else if (STRONG_MATCHERS.has(matcher)) {
         found.push({ strength: "strong", label: matcher });
       } else if (WEAK_MATCHERS.has(matcher)) {

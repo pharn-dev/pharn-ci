@@ -11,7 +11,7 @@ leans on most: tests that actually run the new code, and the setup files that te
 behave. AI-agnostic, fully stateless, no telemetry.
 
 ```yaml
-- uses: pharn-dev/pharn-ci@v0.2.0
+- uses: pharn-dev/pharn-ci@v0.3.0
   with:
     coverage-file: coverage/lcov.info
     threshold: 80
@@ -26,7 +26,7 @@ behave. AI-agnostic, fully stateless, no telemetry.
 
 </div>
 
-> **Status:** pre-1.0; the latest release is `v0.2.0` ([changelog](CHANGELOG.md)). Pin the tag's
+> **Status:** pre-1.0; the latest release is `v0.3.0` ([changelog](CHANGELOG.md)). Pin the tag's
 > full commit SHA for integrity. The report schema is stable within a version (v2 from 0.2.0). Before 1.0, inputs, outputs and message
 > codes are never removed, and a renamed input keeps working under its old name, with a warning, for
 > at least one minor release; defaults change only in a minor release and the changelog says so. The
@@ -167,7 +167,7 @@ jobs:
           fetch-depth: 0
       # ...set up your toolchain and run tests with lcov or Cobertura output, e.g.:
       - run: npx vitest run --coverage --coverage.reporter=lcov
-      - uses: pharn-dev/pharn-ci@v0.2.0 # or, better, the tag's full commit SHA
+      - uses: pharn-dev/pharn-ci@v0.3.0 # or, better, the tag's full commit SHA
         timeout-minutes: 5
         with:
           coverage-file: coverage/lcov.info
@@ -319,7 +319,7 @@ flowchart LR
 >
 > ---
 >
-> <sub>pharn-ci 0.2.0 · report schema v2 · coverage format lcov</sub>
+> <sub>pharn-ci 0.3.0 · report schema v2 · coverage format lcov</sub>
 
 On PRs from forks the token cannot comment; pharn-ci then warns and uses the job summary only.
 
@@ -338,31 +338,51 @@ tests weaker? The `test-integrity` input takes `block`, `warn` or `off`, and the
 - `off`: nothing is checked.
 
 `test_integrity.mode` in `.pharn/ci.yml` can only make the mode stricter, never looser, so a pull request cannot loosen
-its own gate by editing the config. The signals so far are TI01 (a test file deleted), TI02 (a test removed from a test
-file that stays), TI03 (a skip added to a test), TI04 (a `.only`, `fit` or `fdescribe` added), TI05 (a test emptied of
-its assertions, or with fewer), TI06 (a test weakened: a weaker matcher, a lower assertion guard, an assertion that
-compares a literal with itself, or an assertion moved into a `try`/`catch` or after an early `return`), TI07 (an
-expected value of a test edited to match, in a change that also edits source), TI08 (snapshots regenerated or updated
-in bulk), TI09 (a test-runner setting loosened), TI10 (a test script in `package.json` weakened), TI11 (CI stopped
-running tests), TI12 (a module under test
-mocked: a new `vi.mock`, `jest.mock` or Python `patch` of a source file the change also edits), TI13 (a coverage-ignore
-comment added to source), TI14 (a lower coverage threshold or a wider exclusion in the config), TI15 (a source
-condition that compares with a value the tests add) and TI16 (a lint or type suppression comment added to a test file).
-TI06, TI07, TI08, TI12 and TI15 warn and TI16 gives an `info` finding in both `block` and `warn`, so those six never fail
-the check. Each reads the diff, and TI02, TI05, TI06, TI07 and TI12 also read the text of the JS/TS and Python test files
-the change modifies at the merge base and at HEAD, parsed without running them: a test counts as removed only when no
-test of the same name or a similar body is left in the touched test files, and `TEST_INTEGRITY_INDEX_UNAVAILABLE` names
-a file that could not be compared. TI09 reads the text of the touched test-runner config files the same way
-(`vitest.config.*`, `vite.config.*`, `vitest.workspace.*`, `jest.config.*`, `playwright.config.*`, `.mocharc.*`,
-`package.json`, `pytest.ini`, `tox.ini`, `setup.cfg` and `pyproject.toml`) and compares a fixed list of settings between
-the two: a lowered coverage threshold, a narrower test list (`include`, `testMatch`, `testpaths`, `spec`), a wider
-exclusion (build directories, `node_modules` and `.d.ts` files excepted), `passWithNoTests`, `allowOnly` or `bail`
-turned on, a `grep` added, `forbidOnly` turned off, or a pytest `addopts` that gains `-k`, `-m`, `--deselect`, `--ignore`
-or `-x`. A raised retry count or timeout is a warning only, and so is a value that is not a literal and cannot be
-compared. When a change adds, removes, modifies or renames tests, the comment also holds a
-collapsed "Tests changed" table with the counts per test file; the test names are in `report.json` only. A reviewer who
-is not the author can sign off block findings with the accept label: see
-[Accept label](#accept-label).
+its own gate by editing the config. The signals so far are TI01, TI02, TI03, TI04, TI05, TI06, TI07, TI08, TI09, TI10,
+TI11, TI12, TI13, TI14, TI15 and TI16:
+
+| Signal | What it reports | Severity in mode `block` | JS/TS | Python |
+| --- | --- | --- | --- | --- |
+| TI01 | a test file deleted | block; `info` when the change also deletes the code it tested, or its tests are found again by body | yes | yes |
+| TI02 | a test removed from a test file that stays | block; `warn` for a computed name | yes | yes |
+| TI03 | a skip added to a test | block for an unconditional skip of an existing test; `warn` otherwise | yes | yes |
+| TI04 | a `.only`, `fit` or `fdescribe` added | block | yes | not applicable |
+| TI05 | a test emptied of its assertions, or with fewer | block when none are left; `warn` for fewer | yes | yes |
+| TI06 | a test weakened: a weaker matcher, a lower assertion guard, an assertion that compares a literal with itself, or an assertion moved into a `try`/`catch` or after an early `return` | `warn` | yes | yes |
+| TI07 | an expected value of a test edited to match, in a change that also edits source | `warn` | yes | yes |
+| TI08 | snapshots regenerated or updated in bulk | `warn` | yes | yes (pytest config) |
+| TI09 | a test-runner setting loosened | block; `warn` for a raised retry count or timeout, or a value that is not a literal | yes | yes |
+| TI10 | a test script in `package.json` weakened | block | yes | no |
+| TI11 | CI stopped running tests | block for a removed test command or `pull_request` trigger; `warn` otherwise | yes | yes |
+| TI12 | a module under test mocked: a new `vi.mock`, `jest.mock` or Python `patch` of a source file the change also edits | `warn` | yes | yes |
+| TI13 | a coverage-ignore comment added to source | block | yes | yes |
+| TI14 | a lower coverage threshold or a wider exclusion in the pharn-ci config | block | yes | not applicable |
+| TI15 | a source condition that compares with a value the tests add | `info` | yes | yes |
+| TI16 | a lint or type suppression comment added to a test file | `info` | yes | yes |
+
+In mode `warn` every `block` above is a `warn`. TI06, TI07, TI08 and TI12 warn and TI15 and TI16 give an `info` finding
+in both `block` and `warn`, so those six never fail the check. Each reads the diff, and TI02, TI05, TI06, TI07 and TI12
+also read the text of the JS/TS and Python test files the change modifies at the merge base and at HEAD, parsed without
+running them: a test counts as removed only when no test of the same name or a similar body is left in the touched test
+files (a test of the same name in another touched file counts only when it holds the removed test's body), and
+`TEST_INTEGRITY_INDEX_UNAVAILABLE` names a file that could not be compared. TI09 reads the text of the touched
+test-runner config files the same way (`vitest.config.*`, `vite.config.*`, `vitest.workspace.*`, `jest.config.*`,
+`playwright.config.*`, `.mocharc.*`, `package.json`, `pytest.ini`, `tox.ini`, `setup.cfg` and `pyproject.toml`) and
+compares a fixed list of settings between the two: a lowered coverage threshold, a narrower test list (`include`,
+`testMatch`, `testpaths`, `spec`), a wider exclusion (build directories, `node_modules` and `.d.ts` files excepted),
+`passWithNoTests`, `allowOnly` or `bail` turned on, a `grep` added, `forbidOnly` turned off, or a pytest `addopts` that
+gains `-k`, `-m`, `--deselect`, `--ignore` or `-x`. A raised retry count or timeout is a warning only, and so is a value
+that is not a literal and cannot be compared. When a change adds, removes, modifies or renames tests, the comment also
+holds a collapsed "Tests changed" table with the counts per test file; the test names are in `report.json` only. A
+reviewer who is not the author can sign off block findings with the accept label: see [Accept label](#accept-label).
+
+Python test files are parsed with the runner's own `python3` (or `python`), 3.8 or newer, and only when the change
+modifies one. Without it, those files are named in `TEST_INTEGRITY_INDEX_UNAVAILABLE` (warn), the signals that compare
+test text skip them, and the diff-only signals still run.
+
+The block signals were measured on 600 merged pull requests of three open-source vitest repositories: TI01, TI02 and
+TI11 each falsely block 1 of 600 (0.17 %). The method, the reviewed findings and the warn and info signals' sampled
+precision are in [docs/PRECISION.md](./docs/PRECISION.md#official-results-v030-2026-10-26).
 
 This is the "Test integrity" section of the report for a change that turns `it(` into `it.skip(` in
 `src/cart.test.ts`, in mode `block`:
@@ -377,6 +397,9 @@ under `fixtures/skylos-nine/` and pinned by tests: the signals of this release c
 `added-skip` by TI03, `emptied-assertion` by TI05, `deselect-setting` by TI09, `replaced-test` by TI02,
 `loosened-assertion` by TI06 and `edited-expected-value` by TI07). The other two are planned signals that do not exist
 yet (TI15 exists and misses its case). What each signal misses is in [docs/LIMITS.md](./docs/LIMITS.md#what-test-integrity-does-not-catch).
+
+The same nine are reproduced for pytest under `fixtures/skylos-nine-pytest/`, where the signals catch **8 of 9**; the
+case-by-case table is in [docs/PRECISION.md](./docs/PRECISION.md#3-skylos-nine-what-pharn-ci-catches).
 
 ---
 
@@ -460,7 +483,7 @@ jobs:
           persist-credentials: false
       # ...set up your toolchain and run tests with lcov or Cobertura output, e.g.:
       - run: npx vitest run --coverage --coverage.reporter=lcov
-      - uses: pharn-dev/pharn-ci@v0.2.0 # or, better, the tag's full commit SHA
+      - uses: pharn-dev/pharn-ci@v0.3.0 # or, better, the tag's full commit SHA
         with:
           coverage-file: coverage/lcov.info
           threshold: 80
@@ -512,7 +535,7 @@ jobs:
         env:
           PR_FILE: ${{ runner.temp }}/pharn-ci-input/pr-number
         run: echo "number=$(tr -dc '0-9' < "$PR_FILE" | head -c 10)" >> "$GITHUB_OUTPUT"
-      - uses: pharn-dev/pharn-ci@v0.2.0 # or, better, the tag's full commit SHA
+      - uses: pharn-dev/pharn-ci@v0.3.0 # or, better, the tag's full commit SHA
         with:
           coverage-file: ${{ runner.temp }}/pharn-ci-input/coverage/lcov.info
           pr-number: ${{ steps.pr.outputs.number }}
@@ -664,8 +687,8 @@ message `code`s, not on text:
 | `COVERAGE_FILE_TRACKED`         | The coverage file is tracked in the repository, so the change can supply it (`warn`) |
 | `DIFF_BINARY_COVERED_FILE`      | The diff shows a covered source file as binary, so its changes were not measured (`warn`) |
 | `TEST_FILES_DELETED`            | The change deletes a test file or renames one to a non-test name (`info`) |
-| `TEST_INTEGRITY_TI01`           | TI01: the change deletes test files whose removed lines defined tests, or renames a test file to a path that is not a test file, with nothing that accounts for them (`error` in mode `block`, `warn` in mode `warn`); `info` when they go with their source, with their package, or as a migration to a file of the same name. Every file is in `testIntegrity.signals` |
-| `TEST_INTEGRITY_TI02`           | TI02: the change removes a test from a JS/TS or Python test file that stays, and no test of the same name or of a similar body (token-set Jaccard of at least 0.8) is left in the touched test files (`error` in mode `block`, `warn` in mode `warn`, and `warn` for a test whose name is computed). The finding sits at the base path and base line. The text names every file and says how many findings the cap of 20 per file left out; the listed findings are in `testIntegrity.signals` |
+| `TEST_INTEGRITY_TI01`           | TI01: the change deletes test files whose removed lines defined tests, or renames a test file to a path that is not a test file, with nothing that accounts for them (`error` in mode `block`, `warn` in mode `warn`); `info` when they go with their source, with their package, or as a migration to a file of the same name that holds every deleted test's body (found again by body in a new test of the change). Every file is in `testIntegrity.signals` |
+| `TEST_INTEGRITY_TI02`           | TI02: the change removes a test from a JS/TS or Python test file that stays, and no test of the same name or of a similar body (token-set Jaccard of at least 0.8) is left in the touched test files (a test of the same name in another touched file counts only when it holds the removed test's body; `error` in mode `block`, `warn` in mode `warn`, and `warn` for a test whose name is computed). The finding sits at the base path and base line. The text names every file and says how many findings the cap of 20 per file left out; the listed findings are in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI03`           | TI03: the change adds a skip to a test file: an unconditional skip of a test the diff shows existed (`error` in mode `block`, `warn` in mode `warn`), or a conditional skip, a skip inside a test body, or a skip in a test the change adds (`warn`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI04`           | TI04: the change adds `.only`, `fit` or `fdescribe` to a JS/TS test file, so the runner may skip the other tests (`error` in mode `block`, `warn` in mode `warn`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI05`           | TI05: a test that had assertions at base has none at head and calls no assertion helper (`error` in mode `block`, `warn` in mode `warn`), or it calls a function whose name suggests an assertion helper, or it lost some assertions with the rest of its body unchanged (`warn`). The finding sits at the head path and head line. The text names every file and says how many findings the cap of 20 per file left out; the listed findings are in `testIntegrity.signals` |
@@ -678,7 +701,7 @@ message `code`s, not on text:
 | `TEST_INTEGRITY_TI13`           | TI13: the change adds a comment that leaves code out of coverage (an Istanbul, V8 or C8 ignore hint in a JS/TS file, or a `# pragma: no cover` in a Python file that is not a test file) (`error` in mode `block`, `warn` in mode `warn`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI14`           | TI14: the change lowers or removes the coverage threshold, or adds a coverage exclusion, in the pharn-ci config (`error` in mode `block`, `warn` in mode `warn`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI08`           | TI08: the change regenerates or updates snapshots in bulk: more than 10 snapshot files modified, deleted or renamed with edits, 10 or more inline snapshots rewritten in a JS/TS test file, or a snapshot-update flag added to a test script or a pytest config file (`warn` in modes `block` and `warn`; it never blocks). Every finding is in `testIntegrity.signals` |
-| `TEST_INTEGRITY_TI15`           | TI15: the change adds a condition in JS/TS or Python source that compares with a string or number a test file in the same change also adds, so the code may special-case the test (`warn` in modes `block` and `warn`; it never blocks). Every finding is in `testIntegrity.signals` |
+| `TEST_INTEGRITY_TI15`           | TI15: the change adds a condition in JS/TS or Python source that compares with a string or number a test file in the same change also adds, so the code may special-case the test (`info` in modes `block` and `warn`; it never blocks or warns). Every finding up to at most 10 per change is in `testIntegrity.signals`, and the message says how many more there are |
 | `TEST_INTEGRITY_TI16`           | TI16: the change adds a comment that switches off a linter or type checker in a JS/TS or Python test file (`info`; it never blocks and leaves the verdict at `pass`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TEXT_TRUNCATED` | A file a test-integrity signal reads has more than 5000 changed lines, so the signals read only the first 5000 and a finding past them is not seen (`warn`; not in mode `off`). The text names the files |
 | `TEST_INTEGRITY_ACCEPTED`       | A reviewer who is not the PR author applied the [accept label](#accept-label), so every block signal was downgraded to `warn` (`info`; Action only). `testIntegrity.accepted` names the label and the reviewer |

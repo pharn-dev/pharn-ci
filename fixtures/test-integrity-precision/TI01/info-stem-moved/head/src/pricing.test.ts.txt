@@ -1,0 +1,17 @@
+import { describe, expect, it } from "vitest";
+import { priceOrder } from "./pricing.js";
+
+describe("pricing", () => {
+  it("gives a bulk discount to a large order", () => {
+    const items = [{ qty: 100, price: 2 }];
+    const result = priceOrder(items);
+    expect(result.discount).toBe(0.2);
+    expect(result.total).toBe(160);
+  });
+
+  it("charges full price for small orders", () => {
+    const line = { qty: 1, price: 2, coupon: "SAVE5" };
+    const total = priceOrder([line]).total;
+    expect(total).toBe(2);
+  });
+});

@@ -50,6 +50,8 @@ DECORATOR_MODIFIERS = {
     "pytest.mark.parametrize": "each",
 }
 FIXTURES = ("pytest.fixture", "fixture")
+APPROX = ("pytest.approx", "approx")
+BODY_CALLS = ("pytest.skip", "pytest.xfail")
 CLASS_HOOKS = (
     "setup_method", "teardown_method", "setup_class", "teardown_class",
     "setUp", "tearDown", "setUpClass", "tearDownClass", "asyncSetUp", "asyncTearDown",
@@ -94,11 +96,48 @@ def is_string(node):
     return isinstance(node, ast.Constant) and isinstance(node.value, (str, bytes))
 
 
-def decorator_modifiers(decorators):
+def import_aliases(tree):
+    """Local name to dotted name for the module's top-level imports, in order; a later binding replaces an earlier one."""
+    aliases = {}
+    for node in tree.body:
+        if isinstance(node, ast.Import):
+            for item in node.names:
+                if item.asname:
+                    aliases[item.asname] = item.name
+                else:
+                    first = item.name.split(".")[0]
+                    aliases[first] = first
+        elif isinstance(node, ast.ImportFrom):
+            for item in node.names:
+                if item.name == "*":
+                    continue
+                if node.level > 0 or node.module is None:
+                    target = "." + item.name
+                else:
+                    target = node.module + "." + item.name
+                aliases[item.asname or item.name] = target
+    return aliases
+
+
+def canonical(name, table, aliases):
+    """The table's own name for a dotted name: as written when it is in the table, else with its first segment resolved."""
+    if name is None:
+        return None
+    if name in table:
+        return name
+    head, dot, rest = name.partition(".")
+    target = aliases.get(head)
+    if target is None:
+        return None
+    resolved = target + dot + rest
+    return resolved if resolved in table else None
+
+
+def decorator_modifiers(decorators, aliases):
     mods = []
     for decorator in decorators:
         call = decorator if isinstance(decorator, ast.Call) else None
-        name = dotted(call.func if call is not None else decorator)
+        name = canonical(dotted(call.func if call is not None else decorator), DECORATOR_MODIFIERS, aliases)
         mod = DECORATOR_MODIFIERS.get(name)
         if mod is None:
             continue
@@ -111,9 +150,10 @@ def decorator_modifiers(decorators):
     return mods
 
 
-def has_decorator(decorators, names):
+def has_decorator(decorators, names, aliases):
     for decorator in decorators:
-        if dotted(decorator.func if isinstance(decorator, ast.Call) else decorator) in names:
+        name = dotted(decorator.func if isinstance(decorator, ast.Call) else decorator)
+        if canonical(name, names, aliases) is not None:
             return True
     return False
 
@@ -128,10 +168,10 @@ def is_test_class(node):
     return False
 
 
-def block_kind(node, scope):
+def block_kind(node, scope, aliases):
     """The block kind of a def at module level (scope 0) or in a test class (scope 1), else None."""
     name = node.name
-    fixture = has_decorator(node.decorator_list, FIXTURES)
+    fixture = has_decorator(node.decorator_list, FIXTURES, aliases)
     if scope == 0:
         if fixture:
             return "hook"
@@ -147,10 +187,10 @@ def block_kind(node, scope):
     return None
 
 
-def assert_chain(test):
+def assert_chain(test, aliases):
     if isinstance(test, ast.Compare):
         for operand in [test.left] + list(test.comparators):
-            if isinstance(operand, ast.Call) and dotted(operand.func) in ("pytest.approx", "approx"):
+            if isinstance(operand, ast.Call) and canonical(dotted(operand.func), APPROX, aliases) is not None:
                 return "assert approx"
         if len(test.ops) == 1 and isinstance(test.ops[0], (ast.Is, ast.IsNot)):
             for operand in (test.left, test.comparators[0]):
@@ -164,9 +204,10 @@ def assert_chain(test):
     return "assert truthy"
 
 
-def call_assertion(callee, node):
-    if callee in RAISING_CALLEES:
-        return callee + "()"
+def call_assertion(callee, node, aliases):
+    raising = canonical(callee, RAISING_CALLEES, aliases)
+    if raising is not None:
+        return raising + "()"
     func = node.func
     if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name) and func.value.id == "self":
         if func.attr.startswith("assert") or func.attr == "fail":
@@ -342,6 +383,7 @@ def build(text):
     if deeper_than_cap(tree):
         return {"parsed": False, "reason": "too-deep"}
     source = Source(text)
+    aliases = import_aliases(tree)
 
     blocks = []
     mocks = []
@@ -356,7 +398,7 @@ def build(text):
         if kind_of in FUNCTIONS:
             block = ctx[BLOCK]
             scope = ctx[SCOPE]
-            kind = block_kind(node, scope) if scope < 2 else None
+            kind = block_kind(node, scope, aliases) if scope < 2 else None
             record = [None]
             for field in ("decorator_list", "args", "returns", "type_params"):
                 value = getattr(node, field, None)
@@ -365,7 +407,9 @@ def build(text):
                 elif value is not None:
                     stack.append((value, ctx))
             if kind is not None:
-                entry = new_block(source, node, kind, ctx[CHAIN] + (node.name,), decorator_modifiers(node.decorator_list))
+                entry = new_block(
+                    source, node, kind, ctx[CHAIN] + (node.name,), decorator_modifiers(node.decorator_list, aliases)
+                )
                 blocks.append(entry)
                 inner = (entry, 2, ctx[CHAIN], record, False, False, False, ctx[FSTR])
             else:
@@ -379,7 +423,7 @@ def build(text):
                 stack.extend((child, ctx) for child in getattr(node, field, ()))
             if scope < 2 and is_test_class(node):
                 chain = ctx[CHAIN] + (node.name,)
-                entry = new_block(source, node, "describe", chain, decorator_modifiers(node.decorator_list))
+                entry = new_block(source, node, "describe", chain, decorator_modifiers(node.decorator_list, aliases))
                 blocks.append(entry)
                 inner = (entry, 1, chain, None, False, False, False, ctx[FSTR])
             else:
@@ -425,20 +469,21 @@ def build(text):
         elif kind_of is ast.Assert:
             block = ctx[BLOCK]
             if block is not None:
-                assertions.append((block, node.lineno, node.col_offset, assert_chain(node.test), False, ctx))
+                assertions.append((block, node.lineno, node.col_offset, assert_chain(node.test, aliases), False, ctx))
         elif kind_of is ast.Call:
             callee = dotted(node.func)
             block = ctx[BLOCK]
             if callee in MOCK_CALLEES:
                 mocks.append((node.lineno, node.col_offset, callee, mock_specifier(callee, node)))
             if block is not None and callee is not None:
-                chain = call_assertion(callee, node)
+                chain = call_assertion(callee, node, aliases)
                 if chain is not None:
                     assertions.append((block, node.lineno, node.col_offset, chain, id(node) in awaited, ctx))
                 elif block["kind"] != "describe" and not ctx[NESTED]:
-                    if callee in ("pytest.skip", "self.skipTest"):
+                    body_call = canonical(callee, BODY_CALLS, aliases)
+                    if body_call == "pytest.skip" or callee == "self.skipTest":
                         block["mods"].append("skipIf" if ctx[COND] else "skip")
-                    elif callee == "pytest.xfail":
+                    elif body_call == "pytest.xfail":
                         block["mods"].append("fails")
                         if ctx[COND]:
                             block["mods"].append("skipIf")

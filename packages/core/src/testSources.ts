@@ -1,5 +1,5 @@
 import type { DiffFile } from "./diff/unified.js";
-import { isTestFile } from "./testFiles.js";
+import { isSnapFile, isTestFile } from "./testFiles.js";
 
 /** Why a selected test or test-config file has no text in the sources. */
 export type TestSourceDropReason =
@@ -83,12 +83,13 @@ export function isTestConfigFile(path: string): boolean {
   return TEST_CONFIG_PREFIXES.some((prefix) => basename.length > prefix.length && basename.startsWith(prefix));
 }
 
-const isTestSource = (path: string) => isTestFile(path) || isTestConfigFile(path);
+const isTestSource = (path: string) => !isSnapFile(path) && (isTestFile(path) || isTestConfigFile(path));
 
 /**
  * The paths whose text is read on each side. The base side gets the old path of a modified, deleted or renamed entry,
  * the head side the path of an added, modified or renamed entry, each only when that path itself is a test file or a
- * test-config file. Each side is de-duplicated and sorted in code-unit order, so the entry order never matters.
+ * test-config file, and never a snapshot (`.snap`) file: no signal reads one. Each side is de-duplicated and sorted in
+ * code-unit order, so the entry order never matters.
  */
 export function selectTestSourcePaths(diff: readonly DiffFile[]): { base: string[]; head: string[] } {
   const base = new Set<string>();

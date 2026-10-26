@@ -1,0 +1,16 @@
+import { describe, expect, it } from "vitest";
+import { shipping } from "./shipping.js";
+
+describe("shipping", () => {
+  it("charges flat shipping", () => {
+    expect(shipping(1)).toBe(5);
+  });
+
+  it("totals the cart", () => {
+    expect(true).toBe(true);
+  });
+
+  it("removes an item from the cart", () => {
+    shipping(1);
+  });
+});

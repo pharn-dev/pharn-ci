@@ -1,0 +1,10 @@
+diff --git a/py/test_cart.py b/py/test_cart.py
+index 1111111..2222222 100644
+--- a/py/test_cart.py
++++ b/py/test_cart.py
+@@ -1 +1 @@
+-import pytest
++import pytest as pt
+@@ -6 +6 @@ from cart import total
+-@pytest.mark.skip
++@pt.mark.skip

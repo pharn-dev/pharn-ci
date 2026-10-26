@@ -1,0 +1,10 @@
+import { describe, expect, it } from "vitest";
+import { total } from "../../src/cart.js";
+
+describe("checkout totals", () => {
+  it("takes ten percent off the order", () => {
+    const prices = [100, 50];
+    const reduced = total(prices, { discount: 0.1 });
+    expect(reduced).toBe(135);
+  });
+});

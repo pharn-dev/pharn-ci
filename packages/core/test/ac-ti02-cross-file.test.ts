@@ -117,7 +117,10 @@ async function removedFrom(c: Case, path: string): Promise<Block[]> {
 }
 
 describe("TI02: a test that moves to another touched test file", () => {
-  it("AC-4: a test removed from the modified a.test.ts with a test of the same leaf name added to the modified b.test.ts gives no TI02", async () => {
+  // Re-pinned by the name-only-moves change: TI02's phase-2 leaf pick now needs body evidence, so a same leaf name alone
+  // no longer clears a removed test. The b.test.ts test of that name does not hold the removed one's body, so the
+  // removal is one TI02 block at its base line. Before, the leaf name cleared it.
+  it("AC-4: a test removed from the modified a.test.ts with a test of the same leaf name added to the modified b.test.ts, whose body does not hold the removed one, gives one TI02 block", async () => {
     const c = loadCase("pass-moved-to-other-file");
     expect(diffSection(c.diff, A)).not.toMatch(/^(new|deleted) file mode/m);
     expect(diffSection(c.diff, B)).not.toMatch(/^(new|deleted) file mode/m);
@@ -136,7 +139,9 @@ describe("TI02: a test that moves to another touched test file", () => {
     ).toBe(true);
 
     const report = await runCase(c);
-    expect(ti02Of(report)).toEqual([]);
+    const ti02 = ti02Of(report);
+    expect(ti02, "one TI02 signal").toHaveLength(1);
+    expect(ti02[0]).toMatchObject({ severity: "block", path: A, line: removed[0]?.line });
     expect(report.testIntegrity.languages).toEqual(["ts"]);
   });
 

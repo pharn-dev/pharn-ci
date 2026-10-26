@@ -21,7 +21,9 @@ const MODES = ["block", "warn"] as const;
  * directory and name order) in modes block and warn, holding each report's test-integrity signals and its
  * TEST_INTEGRITY_* messages, as check() gave them at the base commit a1089fd.
  */
-const BEFORE_DIGEST = "bf9469aaaac4d178af40fad47909e08507a87aae1fbce788f111ba5c87f66bbf";
+// Re-pinned by the name-only-moves change: the two TI01 migration records changed (info to block, new detail), because
+// TI01's same-stem rule now needs body evidence, not a name alone.
+const BEFORE_DIGEST = "5c247f48f503d112ab50e43a896f150cac657db3296fc6e62dabb60afaa81d8b";
 const BEFORE_COUNT = 216;
 
 /**
@@ -84,6 +86,16 @@ const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
   "TI16/pass-moved.diff",
   "TI16/pass-source-file.diff",
   "TI16/pass-string-marker.diff",
+  // The signal-precision fixtures (ac-signal-precision-ti11-*, ac-signal-precision-ti15-*).
+  "TI11/pass-package-manager-swap.diff",
+  "TI11/block-job-moved-with-tests.diff",
+  "TI11/block-swap-drops-test.diff",
+  "TI11/block-job-removed-script-kept.diff",
+  "TI15/pass-other-package.diff",
+  "TI15/pass-examples-dir.diff",
+  "TI15/pass-benchmark-dir.diff",
+  "TI15/pass-short-status-code.diff",
+  "TI15/warn-same-package.diff",
 ]);
 
 /** The TI01, TI04, TI11 and TI14 hints as renderMarkdown() gave them at the base commit a1089fd. */

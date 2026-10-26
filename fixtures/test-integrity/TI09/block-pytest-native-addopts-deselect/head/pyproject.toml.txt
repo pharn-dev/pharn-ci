@@ -1,0 +1,5 @@
+[project]
+name = "demo"
+
+[tool.pytest]
+addopts = ["-ra", "--deselect=tests/test_a.py::test_x"]

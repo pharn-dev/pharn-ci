@@ -19,6 +19,21 @@ const FIXTURES = fileURLToPath(new URL("../../../fixtures/", import.meta.url));
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const SLOW = 60_000;
 
+/**
+ * The TI02 and TI05 case directories added after the base commit (the Python alias cases of py-parity-2); the digests
+ * below were taken before they existed, so they are not in AT_BASE.
+ */
+const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
+  "TI02/block-pytest-alias-marked-removed",
+  "TI02/block-pytest-alias-marked-removed-literal",
+  "TI02/pass-pytest-alias-fixture-removed",
+  "TI02/pass-pytest-alias-fixture-removed-literal",
+  "TI05/block-pytest-alias-raises-removed",
+  "TI05/block-pytest-alias-raises-removed-literal",
+  "TI05/pass-pytest-alias-emptied-skipped",
+  "TI05/pass-pytest-alias-emptied-skipped-literal",
+]);
+
 /** [fixture, TI02/TI05 signals as "id severity path:line", their messages as "code level", digest] at d73684d. */
 const AT_BASE: Array<[string, string[], string[], string]> = [
   [
@@ -76,7 +91,14 @@ const AT_BASE: Array<[string, string[], string[], string]> = [
   ["TI02/pass-each-table-edited", [], [], "34f6882b1f82977bda289fffb5b7a1fd4133c35bdb3dd7f189878e54bf9e3e55"],
   ["TI02/pass-moved-in-file", [], [], "34f6882b1f82977bda289fffb5b7a1fd4133c35bdb3dd7f189878e54bf9e3e55"],
   ["TI02/pass-moved-to-added-file", [], [], "34f6882b1f82977bda289fffb5b7a1fd4133c35bdb3dd7f189878e54bf9e3e55"],
-  ["TI02/pass-moved-to-other-file", [], [], "34f6882b1f82977bda289fffb5b7a1fd4133c35bdb3dd7f189878e54bf9e3e55"],
+  // Re-pinned by the name-only-moves change: a same leaf name alone no longer clears a removed test, and the hollow
+  // same-leaf test in b.test.ts does not hold its body, so this case gives one TI02 block and nothing is moved.
+  [
+    "TI02/pass-moved-to-other-file",
+    ["TI02 block src/a.test.ts:8"],
+    ["TEST_INTEGRITY_TI02 error"],
+    "b300cdfdaa5b3274572eba7ba18e7db7e88de4cbfac39cee8ca67386ce7c7359",
+  ],
   ["TI02/pass-pytest-renamed", [], [], "34f6882b1f82977bda289fffb5b7a1fd4133c35bdb3dd7f189878e54bf9e3e55"],
   ["TI02/pass-renamed-edited-literal", [], [], "34f6882b1f82977bda289fffb5b7a1fd4133c35bdb3dd7f189878e54bf9e3e55"],
   ["TI02/pass-renamed-same-body", [], [], "34f6882b1f82977bda289fffb5b7a1fd4133c35bdb3dd7f189878e54bf9e3e55"],
@@ -146,7 +168,8 @@ const AT_BASE: Array<[string, string[], string[], string]> = [
 
 /** The cross-file moves the two moved cases hold, as "base path › base name -> head path › head name". */
 const MOVED: Record<string, string[]> = {
-  "TI02/pass-moved-to-other-file": ["src/a.test.ts › totals the cart -> src/b.test.ts › totals the cart"],
+  // Re-pinned by the name-only-moves change: TI02/pass-moved-to-other-file is no longer a cross-file move (its
+  // same-leaf test does not hold the removed body), so it left this list.
   "TI02/pass-moved-to-added-file": ["src/a.test.ts › totals the cart -> src/c.test.ts › sums the cart"],
 };
 
@@ -276,7 +299,8 @@ describe("matchTests gains `moved`, and TI02 and TI05 keep their results", () =>
       const listed = ["TI02", "TI05"].flatMap((dir) =>
         readdirSync(`${FIXTURES}test-integrity/${dir}`)
           .sort()
-          .map((n) => `${dir}/${n}`),
+          .map((n) => `${dir}/${n}`)
+          .filter((name) => !ADDED_AFTER_BASE.has(name)),
       );
       expect(AT_BASE.map(([name]) => name)).toEqual(listed);
       for (const name of Object.keys(MOVED)) {

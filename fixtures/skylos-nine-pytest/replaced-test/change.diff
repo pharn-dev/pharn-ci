@@ -1,0 +1,10 @@
+diff --git a/tests/test_cart.py b/tests/test_cart.py
+index 1111111..2222222 100644
+--- a/tests/test_cart.py
++++ b/tests/test_cart.py
+@@ -16,3 +16,2 @@ def test_totals_an_empty_cart():
+-def test_rejects_a_negative_price():
+-    with pytest.raises(ValueError, match="negative price"):
+-        total([-1])
++def test_accepts_an_empty_cart():
++    assert total(list()) == 0

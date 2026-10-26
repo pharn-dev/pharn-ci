@@ -17,7 +17,7 @@ coordinated disclosure of any vulnerability in this repository.
 - **The CLI** (`packages/cli`): reads files and runs `git` in the working directory.
 - **Release integrity**: `packages/action/dist` is committed and must match a build of the sources
   (CI fails if it is stale), and consumers pin exact release tags such as
-  `pharn-dev/pharn-ci@v0.2.0`, or their commit SHA. Tags matching `v*` are never moved or deleted
+  `pharn-dev/pharn-ci@v0.3.0`, or their commit SHA. Tags matching `v*` are never moved or deleted
   (enforced by a ruleset), and releases are cut from verified `main` commits
   ([`docs/RELEASING.md`](./docs/RELEASING.md)). Release tags are unsigned lightweight tags, so the
   full commit SHA, not the tag, is what a consumer can verify.

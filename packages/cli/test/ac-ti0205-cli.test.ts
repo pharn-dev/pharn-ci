@@ -63,14 +63,24 @@ const PY_BASE = [
 /** One Python test removed. */
 const PY_HEAD = PY_BASE.slice(0, 6);
 
-/** Whether a python3 of 3.8 or newer is on PATH (no build code runs). */
-const HAS_PYTHON = (() => {
-  const run = spawnSync("python3", ["-c", "import sys; print(sys.version_info >= (3, 8))"], {
+/** The python3 on PATH and whether it is 3.8 or newer, decided once while the file loads (no build code runs). */
+const PYTHON = (() => {
+  const run = spawnSync("python3", ["-c", "import sys; print(sys.version_info >= (3, 8), sys.version.split()[0])"], {
     encoding: "utf8",
     timeout: 10_000,
   });
-  return run.status === 0 && run.stdout.trim() === "True";
+  const [ok, version] = (run.stdout ?? "").trim().split(" ");
+  return { ok: run.status === 0 && ok === "True", version: version ?? "", error: run.error?.message ?? "" };
 })();
+
+/** Fails the test, with the reason, when no python3 of 3.8 or newer is on PATH. */
+function requirePython(): void {
+  if (!PYTHON.ok) {
+    throw new Error(
+      `this test needs python3 3.8 or newer on PATH and found ${PYTHON.version === "" ? `none (${PYTHON.error || "python3 did not run"})` : `python3 ${PYTHON.version}`}`,
+    );
+  }
+}
 
 let dir: string;
 let baseId: string;
@@ -113,7 +123,8 @@ interface Signal {
 }
 
 describe("pharn-ci check: TI02 and TI05 from base and head text, with the Python index", () => {
-  it(`AC-14: --test-integrity block reports TI02 and TI05 for ${JS_PATH}, ${HAS_PYTHON ? `a TI02 for ${PY_PATH} and languages ["py", "ts"]` : `a TEST_INTEGRITY_INDEX_UNAVAILABLE message naming ${PY_PATH} (no python3 on PATH)`}, and exits 1`, async () => {
+  it(`AC-14: --test-integrity block reports TI02 and TI05 for ${JS_PATH}, a TI02 for ${PY_PATH} and languages ["py", "ts"], and exits 1`, async () => {
+    requirePython();
     const { main } = await import("../src/main.js");
     const { nodeDeps } = await import("../src/nodeDeps.js");
     const deps = nodeDeps(dir) as unknown as { stdout(text: string): void; stderr(text: string): void };
@@ -142,16 +153,10 @@ describe("pharn-ci check: TI02 and TI05 from base and head text, with the Python
     expect(ti02?.detail).toContain("cart › rejects a negative price");
     expect(ti02?.severity).toBe("block");
 
-    if (HAS_PYTHON) {
-      const pyTi02 = report.testIntegrity.signals.filter((s) => String(s.id) === "TI02" && s.path === PY_PATH);
-      expect(pyTi02).toHaveLength(1);
-      expect(pyTi02[0]?.detail).toContain("test_empty_cart");
-      expect(report.testIntegrity.languages).toEqual(["py", "ts"]);
-    } else {
-      const unavailable = report.messages.filter((m) => String(m.code) === "TEST_INTEGRITY_INDEX_UNAVAILABLE");
-      expect(unavailable).toHaveLength(1);
-      expect(unavailable[0]?.text).toContain(PY_PATH);
-    }
+    const pyTi02 = report.testIntegrity.signals.filter((s) => String(s.id) === "TI02" && s.path === PY_PATH);
+    expect(pyTi02).toHaveLength(1);
+    expect(pyTi02[0]?.detail).toContain("test_empty_cart");
+    expect(report.testIntegrity.languages).toEqual(["py", "ts"]);
     expect(code).toBe(1);
   }, 60_000);
 });

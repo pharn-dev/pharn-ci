@@ -1,0 +1,13 @@
+import pytest
+import sys
+
+from cart import total
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="posix")
+def test_total():
+    assert total([2, 3]) == 5
+
+
+def test_empty():
+    assert total([]) == 0

@@ -1,0 +1,11 @@
+diff --git a/src/bug.test.ts b/src/bug.test.ts
+index 1111111..2222222 100644
+--- a/src/bug.test.ts
++++ b/src/bug.test.ts
+@@ -5,5 +5 @@ describe("flatten", () => {
+-  it("keeps a nested list inside the result", () => {
+-    expect(flatten([[1], [[2]]])).toEqual([1, [2]]);
+-  });
+-
+-  it.fails("flattens nested lists completely", () => {
++  it("flattens nested lists completely", () => {

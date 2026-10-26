@@ -1,6 +1,6 @@
 # pharn-ci — Limits
 
-What pharn-ci does **not** guarantee, stated plainly. pharn-ci is pre-1.0 (latest release: `v0.2.0`).
+What pharn-ci does **not** guarantee, stated plainly. pharn-ci is pre-1.0 (latest release: `v0.3.0`).
 These are the design's inherent limits and the known gaps in what is built. For the security design
 see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
 
@@ -30,6 +30,31 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   line; a deleted JS/TS, Python or Go file cut at that bound with no test-defining line kept still
   counts, so a huge test file is never waved through, while a cut fixture, snapshot or data file
   under a test directory does not. (6) A package that is the repository root never exempts a deletion.
+  (7) A snapshot file (a basename that ends in `.snap`) is never a TI01 candidate, deleted or renamed away, because it
+  holds stored output and no test; the `TEST_FILES_DELETED` message and `deletedTestFiles` still list it by its old
+  path, and TI08 owns snapshot churn. A test file that stores tests in a `.snap` file is not read. (8) A deleted JS/TS or
+  Python test file is `info`, not `block`, when the change keeps the base text of the file, every test name and every
+  group name it held is added, in a test with at least one assertion, in another test file of the change (a test of an
+  added file, or a test of a modified file whose full name is not at base), and every test it held is found again in a
+  distinct one of those tests by its body: a body-token Jaccard of at least 4/5, or a new body that holds at least 4/5
+  of the old body's distinct tokens and every assertion chain it held. A name alone never qualifies, so a file deleted
+  and re-added under the same names with trivial assertions blocks; the moved tests are also judged by TI05, TI06 and
+  TI07 as pairs. A test moved and refactored past those thresholds (a new fixture helper, say) keeps the file a
+  `block`: a known false block, cleared with the accept label. A name added in a file the change does not touch does
+  not count. The rule is off when the sources are missing, the base text was dropped, a compared file could not be
+  read, or the Python interpreter was not found. A file with a same-name test file added has no name requirement, see
+  (9). (9) A deleted test file for which the change adds a test file of the same name (the same stem, in another
+  directory), or renames a file to one, is `info` only on body evidence, as in (8) and with no name check: every test it
+  held must be found again, by body, in a distinct new test with an assertion (a Jaccard of at least 4/5, or a body that
+  holds at least 4/5 of the old body's distinct tokens and every assertion chain it held). A test file of the same name
+  alone softens nothing. Otherwise the file stays a `block` (`warn` in mode `warn`), and it blocks too when no sources
+  are given or the text could not be compared, so a diff-only run never softens it. A test file renamed to a path that
+  is not a test file is never softened by a same-name file. The tests found again are judged as pairs by TI05, TI06 and
+  TI07. A replacement whose tests were rewritten past those thresholds is a known false block, cleared with the accept
+  label. (10) TI01 does not read the test runner's include or exclude settings, so deleting a test file the runner
+  never ran (a sample app's own test inside a `fixtures/` directory the vitest config excludes, say) still blocks: a
+  known false block seen on the precision corpus ([PRECISION.md](./PRECISION.md#official-results-v030-2026-10-26)),
+  cleared with the accept label.
 - **Only lines the coverage report knows count.** An added line with no `DA` entry in the lcov file
   or no class-level `<line>` record in a Cobertura file (a comment, a type, a blank line, a
   declaration the tool does not instrument) is left out of the denominator. What is "coverable" is
@@ -109,6 +134,21 @@ TI11 reads the added and removed lines of workflow files (`.github/workflows/*.y
 - **Moved steps.** A test command removed from one place and added anywhere in the workflow files of the same diff
   counts as moved, even into a job that never runs on pull requests. A test job moved into a reusable workflow
   or a composite action is a removal of its steps; the called workflow is not read.
+- **Commands compared by key.** Each test part of a `&&`/`;` chain gets a key, and a removed line is a loss when one of
+  its parts has a key that no added line of the diff has. A package-manager script run keys on the script with its
+  workspace flags and arguments (`npm run test`, `npm t`, `yarn test` and `pnpm test` are one key, `bun run test` too;
+  `pnpm --filter core test` and `pnpm test src/a` are different keys), and a runner keys on its command without the
+  launcher (`npx vitest run`, `pnpm exec vitest run` and `vitest run` are one key). A swap of package manager
+  therefore passes, and a narrowed run is still a removal. Bare `bun test` starts bun's own runner, not a script, so it
+  keeps its text as its key.
+- **A test job moved to another workflow file still blocks.** Other workflows are not read: a test command that an
+  unchanged line of another workflow runs is not seen (the diff holds no such line), so a job whose tests moved to
+  another workflow file, and now run there under another script (`test:lambda` replaced by `test:adapters`), is a
+  removal and a `block`, even when the same change removes the old script from `package.json` and renames the test
+  files. That is a known false block (one PR in the 600 of the precision corpus). It is kept on purpose: removing the
+  job, removing its script and renaming a test file are exactly what a change that stops CI from running its tests
+  would do, and nothing the pull request carries may loosen this block. Use the [accept label](../README.md#accept-label)
+  for a real move.
 - **Triggers by token.** A removed `pull_request` or `pull_request_target` is excused when any added line of the same
   file names either. The `on` key may be quoted (`"on":`). Other filters (`branches`, `paths`) are not judged, and a
   workflow that drops its `pull_request` trigger is a block even when it never ran tests (a release or labeler
@@ -130,11 +170,36 @@ whether a test is still good.
   assertions go; a trivial body that still has an assertion, or a weak one, is not seen by either.
 - **A deleted test matched by a common leaf name in another touched file.** A test that leaves one file and a test with
   the same leaf name (the last name in its path, as in `works`) that another touched test file gains are taken for a
-  move, so a deletion hidden behind a common name in a touched file is missed. The same goes for a deleted test whose
-  body hash matches any new test in a touched file. The file has to be touched by the change; a test moved to a file the
-  change does not touch is reported.
-- **A body that is close enough.** A removed test whose body has a token-set Jaccard of at least 0.8 with a new test of
+  move only when the same-name test holds the body: a body-token Jaccard of at least 4/5, or a body that holds at least
+  4/5 of the removed body's distinct tokens and every assertion chain it held (body evidence; the first 256 same-name
+  tests are tried). A hollow or assertion-less test of the same leaf name clears nothing. A deletion hidden behind a
+  same-name test that keeps most of the body is still missed, and so is a deleted test whose body hash matches any new
+  test in a touched file. The file has to be touched by the change; a test moved to a file the change does not touch is
+  reported.
+- **A body that is close enough.** A removed test whose body has a token-set Jaccard of at least 4/5 with a new test of
   the same file is taken for a rename. A rename that also weakens the body slightly passes.
+- **A test renamed in place.** Per file and group (the exact names of the enclosing blocks), when as many tests are
+  left unmatched as new tests are unused, the i-th of each in line order is a rename in place (a pair, so TI05, TI06 and
+  TI07 judge it) when the body tokens have a Jaccard of at least 1/2 and the new body holds at least 3/4 of the old
+  body's distinct tokens. A test replaced in the same slot by a different test with mostly shared setup is a pair too, and
+  its changed assertion is TI06's, not TI02's. Groups with more or fewer new tests than removed ones are not paired by
+  slot.
+- **An `.each` table replacing hand-written tests.** A removed test with at least one assertion is cleared by the first
+  of the first 256 unpaired new `.each` tests of its file and group (line order) that shares a subject (the function
+  called first inside `expect(`, or right after a Python `assert`) and holds every assertion chain the removed test
+  held. The `.each` test is listed once under renamed in `testIntegrity.changes`, and the table's rows are not compared,
+  so a table that lost a case the hand-written test had passes. One `.each` test may clear several tests.
+- **A test moved to another touched file under a new name.** A removed test that nothing in its own file or by exact leaf
+  name or body hash matched takes the first unused new test of another touched file (head path, then line) whose body
+  tokens have a Jaccard of at least 4/5; else the first whose full-name words have a Jaccard of at least 1/2, whose body
+  contains at least 4/5 of the removed test's distinct tokens and which holds every assertion chain it held. A name-only
+  move across files therefore needs body containment, and a test moved to a file the change does not touch is reported.
+- **A suite rewritten under reworded names: a known false block.** No rule clears or softens a removed test by its name
+  alone, because a name is what a change controls most easily: a real test deleted beside a hollow new test with a
+  similar name stays a `block`. So a suite rewritten in one describe, whose tests get reworded names and bodies that
+  share less than the rename-in-place or cross-file thresholds above, blocks even when nothing was lost (the corpus dry
+  run had one such PR). A person who confirms the rewrite clears it with the accept label. Every probe looks at no more
+  than 256 candidates.
 - **Names read from the text.** A test whose name is computed (a template literal with a substitution, `.each`, `.for`
   or any other expression) is matched by body only and reported as `warn`; two tests with the same full name are
   compared as a multiset, in line order.
@@ -144,6 +209,9 @@ whether a test is still good.
   `it`, a parametrized Python test) is one block or none. A syntax-error-heavy, oversized or deeply nested file is not
   compared (`TEST_INTEGRITY_INDEX_UNAVAILABLE`).
 - **Caps.** At most 20 findings per file; the matching probes at most 256 candidates per test (section 8).
+- **Order of the rules.** Name pairs and phase 1 (4/5), then the rename in place, the `.each` replacement, the exact
+  cross-file body hash or leaf name with a body that holds the old one (body evidence) and, last, the cross-file
+  similarity. Every threshold is an integer comparison.
 
 ### What TI03 misses
 
@@ -164,6 +232,21 @@ TI03 reads the added and removed lines of test files, one line at a time, in JS/
   condition that is always true under another spelling reads as conditional.
 - **Go receivers other than `t`.** Only `t.Skip(`, `t.Skipf(` and `t.SkipNow(` are read; a receiver named `tb`, `b` or
   anything else is missed.
+- **Python aliases from top-level imports only.** A Python skip is also read through the names the test file binds with
+  its own `import` and `from … import` statements that start at column 0 (`import pytest as pt`, `from pytest import mark
+  as m`, `from unittest import skipIf as si`, the parenthesized multi-line form included), so `@pt.mark.skip`,
+  `@m.skipif(…)`, `@si(…)` and `sk("r")` are read as the `pytest.mark.skip`, `pytest.mark.skipif`, `unittest.skipIf` and
+  `pytest.skip` they name. An alias bound anywhere else is not read: inside an `if`, a `try` or a function, in a
+  module docstring, by `from pytest import *`, by an assignment (`pt = pytest`) or after a backslash continuation. A
+  name bound twice keeps its last binding, and `import os as pt` after `import pytest as pt` hides the pytest one.
+  The text read is the test file's own text in the test sources; `conftest.py` is not followed, and without the text
+  (no test sources, or a side that cannot be read) only the literal spellings are read. The literal spelling is always
+  tried first, so `@pytest.mark.skip` under `import foo as pytest` still counts; a binding the reader gets wrong can
+  only add a match, never take one away.
+- **Python forms.** `@unittest.expectedFailure` (and its aliases) is an unconditional skip like `@unittest.skip`, and
+  `pytest.xfail(` in a body is read like `pytest.skip(`: a skip inside a body, `warn`. A skip written through
+  `request.node.add_marker(pytest.mark.skip)`, `pytest.mark.skip` assigned to a name and used as `@name`, or a marker
+  set in `conftest.py` is not read.
 - **A skip moved to another file** reads as added, because the removed line is looked for in the same file only. A
   rename that edits the skip is judged against the old file's lines.
 - **Names by content.** A test is matched by the text of its first argument, so two tests with the same name in a file
@@ -258,7 +341,8 @@ changed.
 - **What counts.** A test is **added** when it is new at head and matches no base test; **removed** when no test at head
   stands for a base test (the candidates TI02 looks at); **modified** when a test of the same full name in the same file
   has another body or other modifiers (`skip`, `only`, `todo` and the like); **renamed** when a base test is matched to a
-  test of another name, or moved to another file. A removed test sits at its base path and line, the others at head.
+  test of another name (a rename in place included), moved to another file, or replaced by an `.each` test (listed once
+  however many tests it replaced, and not as added). A removed test sits at its base path and line, the others at head.
 - **Caps.** The lists hold at most 200 entries in all, filled in the order removed, modified, renamed, added, each sorted
   by path and line; `truncated` says how many were left out, and the totals and the per-file counts still count every
   test. A name is cut to 120 characters, with control characters turned into spaces. The comment shows one row per test
@@ -291,6 +375,21 @@ always gives `warn`, never `block`, and it reads the normalized text of the test
   their arguments, which TI06 reads from the normalized body, cut to 4000 characters by the test index. An argument
   past the cut is not read, and the assertion counts as neutral. The argument reader skips string literals but does
   not parse regular expression literals or template substitutions.
+- **Equivalent forms of one matcher.** A `toBe`, `toEqual` or `toStrictEqual` that stands for another matcher is
+  labelled as that matcher, so a rewrite between the two forms is not a weakening: `expect(typeof x).toBe('string')`
+  and `toBeTypeOf('string')` (weak); `expect(x instanceof Y).toBe(true)` and `toBeInstanceOf(Y)` (neutral, weak for
+  `Object`); `expect(x.length).toBe(n)` and `toHaveLength(n)` (strong); `expect(!!x).toBe(true)` or
+  `Boolean(x)` and `toBeTruthy()` (`toBeFalsy()` against `false`); `expect(x !== null).toBe(true)` and
+  `not.toBeNull()`; `expect(x !== undefined).toBe(true)` and `toBeDefined()`. A real weakening still warns:
+  `expect(x).toBe(5)` → `toBeTypeOf('number')`.
+- **Weak to weak.** `expect(typeof x).toBe('function')` → `expect(x).toBeTruthy()` is a weaker check by meaning, but
+  `toBeTypeOf` and `toBeTruthy()` are both weak, so TI06 gives nothing.
+- **The subject is read by its text, not parsed.** The subject of `expect(…)` is read as its first 64 and last 96
+  characters (the head and the tail), one left-to-right pass with a bracket stack that skips string literals, and the
+  call must follow the `expect(…)` directly (a space is allowed): `expect(x).resolves.toBe(…)` keeps its strong label.
+  Operator precedence is not modelled, so `a || b instanceof B` reads as an instanceof test of `B`. The i-th chain of
+  a matcher takes the i-th call of it in the body, so a `.toBe(` outside an `expect` chain can shift the pairing. A
+  chain past the 4000-character body cut has no call to read and counts as neutral, as the argument matchers do.
 - **A test matched only to a test in another file.** Only name pairs and same-file body pairs are compared. A test
   that leaves one file and reappears weaker in another file is taken for a move (TI02) and TI06 does not compare the
   two.
@@ -329,6 +428,9 @@ the resolver of a bundler or of the interpreter.
 - **A source file with a different spelling.** A specifier with a runtime extension the candidates do not try (`.json`,
   `.vue`) is not resolved.
 - **Caps.** At most 20 findings per file.
+- **One measured sample.** On the precision corpus TI12 gave one finding, and it was wrong (0 of 1: a mock that follows
+  a moved module). One row is too small to judge the signal, so it stays `warn` (see
+  [PRECISION.md](./PRECISION.md#official-results-v030-2026-10-26)).
 
 ### What TI09 misses
 
@@ -350,9 +452,25 @@ TI09 compares a fixed list of settings of the test-runner config files the chang
   read here; TI10 (the scripts in `package.json`) and TI11 (workflows) cover what they cover.
 - **Deleted config files and removed sections.** A deleted file is never read. A removed `jest` key, a removed
   `[pytest]` section or `[tool.pytest.ini_options]` table, and a removed `test` key of a vite config give nothing: the
-  runner's defaults apply, and TI09 does not model them.
+  runner's defaults apply, and TI09 does not model them. For `pyproject.toml` both the `[tool.pytest]` and the
+  `[tool.pytest.ini_options]` table count: a change from a file that has either one to a file that has neither gives
+  nothing.
+- **pytest's native `[tool.pytest]` table.** `pyproject.toml` is read for pytest 9's native `[tool.pytest]` table
+  beside `[tool.pytest.ini_options]`, by the same rules. The headers are matched whole (`[tool.pytestx]`,
+  `[tool.pytest.foo]` and `[[tool.pytest]]` are other tables and give nothing), and a quoted or dotted key in a header
+  is not read. When a file holds both tables their entries are merged into one, and the native value wins over the
+  `ini_options` one of the same key, whatever pytest itself does with a file that has both (TI09 does not model it).
+  A table that cannot be read is refused like the other config texts (`too-large`, `invalid-toml`).
 - **Playwright per-project settings.** Only the top-level keys are read. `projects[].retries`, `projects[].grep`,
   `projects[].testMatch` and everything under `use` are not.
+- **Vitest and jest projects are matched by identity.** The object projects of a `projects` list are matched by name
+  (vitest `test.name`, a string or the `label` of an object; jest `displayName`, a string or its `name`), or by
+  position for a project renamed in place, and only their test-list keys are compared: vitest `test.include` and
+  `test.exclude`, jest `testMatch`, `testRegex` and `testPathIgnorePatterns`. A reorder, a changed `setupFiles`,
+  `extends`, `transform` or any other key, and an `include` added where the base had none give nothing. A project
+  removed at head is narrowed (a `block`), or a `warn` when the head gains an opaque entry. Entries that are not objects
+  (glob strings, `defineProject(…)` calls) are compared as a glob list. A project that is renamed and reordered at the
+  same time is read as removed.
 - **Tool defaults.** A key that is removed, or that is set where it was unset, is not judged against the tool's default
   (an unset list is read as empty only to decide that a gained exclude entry is new). A threshold that is removed is
   reported as removed; a list that is narrowed from an unset base is not.
@@ -447,16 +565,26 @@ TI08 reads the status and the added lines of snapshot files, the added and remov
 ### What TI15 misses
 
 TI15 reads the added lines of JS/TS and Python test files and of JS/TS and Python source files that are not test files.
-It is a `warn` signal and never blocks.
+It is an `info` signal: it never blocks or warns, because on the precision corpus 0 of 30 sampled findings were a real
+special case (see [PRECISION.md](./PRECISION.md#official-results-v030-2026-10-26)).
 
 - **Both sides must be added in this diff.** A test that already holds the value, or a condition that was there before,
   gives nothing.
 - **The `hard-coded-answer` form.** A change that adds no test line has no test literal to match, and the numbers in it
   are one digit (see the Skylos list below).
-- **Short and common literals.** A string under 4 characters, a number under 3 significant digits and the stop-list
-  (`true`, `false`, `null`, `none`, `undefined`, `test`, `error`, `default`, `get`, `post`, `put`, `patch`, `delete`,
-  `head`, `options`, `utf-8`, `utf8`, and the `typeof` results `string`, `number`, `boolean`, `object`, `function`,
-  `symbol`, `bigint`) are not read.
+- **Short and common literals.** A string under 6 characters (UTF-16 code units), a number under 4 significant digits
+  and the stop-list (`true`, `false`, `null`, `none`, `undefined`, `test`, `error`, `default`, `get`, `post`, `put`,
+  `patch`, `delete`, `head`, `options`, `utf-8`, `utf8`, and the `typeof` results `string`, `number`, `boolean`,
+  `object`, `function`, `symbol`, `bigint`) are not read. A real special case with a short value (`"vip"`, `42`) is
+  missed.
+- **One package root.** A test literal matches a source condition only within the same package: the root of a path is
+  its nearest directory that holds a `package.json` or `pyproject.toml` (in the tracked files or added by the diff).
+  With no manifest at all, a path under `packages/` or `apps/` takes its first two segments as its root. A shared
+  literal between two packages is not seen, and a monorepo with no manifest outside `packages/` and `apps/` is one
+  root.
+- **Excluded directories.** A test file or a source file with a directory segment named `examples`, `benchmarks`,
+  `bench`, `docs` or `fixtures` is left out (the file name does not count, so `src/examples.ts` is read). A special
+  case in such a directory is missed.
 - **Template literals with `${`** are skipped.
 - **Other comparisons.** Only `===`, `!==`, `==`, `!=`, a `case` label and a Python `in (...)` group are read.
   `includes`, `startsWith`, `Set.has`, `<` and a regular expression are not.
@@ -464,13 +592,14 @@ It is a `warn` signal and never blocks.
   string never equals a number.
 - **Literals in comments are read,** because the scan does not understand comments or regular expressions. A quote in a
   comment can open a literal, and an unclosed quote ends the scan of its line.
-- **Common numbers match.** A status code such as `404` has 3 significant digits, so it can match; a number such as
-  `200` or `1000` does not (trailing zeros of a whole number do not count).
+- **Numbers need 4 significant digits.** A status code such as `404` or a number such as `200` or `1000` is not read
+  (trailing zeros of a whole number do not count); `1234` and `0.1255` are.
 - **The detail names the literal's kind and length, never its text.** A matched value can be a secret
   (`if (key === "<token>")`), and the report leaves the job, so a reviewer finds the value at the source line the
   finding names (`a 12-character string literal`, with the source `path:line` and the test file's path).
 - **Go and other languages** give nothing on either side.
-- **20 per file.** At most 20 signals are given per source file, on the lowest lines.
+- **10 per change.** The first 10 findings of a change, ordered by source path, then line, then detail, are signals;
+  the rest are counted per source path, and the message ends with how many more there are in each file.
 - **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8). A diff that reaches `check()`
   already parsed without kept text yields no TI15.
 
@@ -527,6 +656,10 @@ report names it with `TEST_INTEGRITY_TEXT_TRUNCATED` (section 8).
 The benchmark for what is not seen is Skylos's list of nine ways to hide a failing test. The nine cases are reproduced
 in vitest under `fixtures/skylos-nine/` and pinned by tests. The signals of this release catch **7 of 9**.
 
+The same nine are reproduced for pytest under `fixtures/skylos-nine-pytest/`, where the signals catch **8 of 9**; the
+case-by-case table is in [PRECISION.md](./PRECISION.md#3-skylos-nine-what-pharn-ci-catches). The lists below are the
+vitest result.
+
 Caught:
 
 - `deleted-test` — caught by TI01: the test file is deleted, and its removed lines define tests.
@@ -549,7 +682,7 @@ exists but misses its own case:
 - `hard-coded-answer` — missed; planned: TI15. The source returns the expected value for the test's input. TI15 now
   exists and still misses it, because the change adds no test line to match against and its numbers are one digit.
 - `always-true-matcher` — missed; planned: TI17, which is a proposal and not a signal in the test-integrity spec yet.
-  A custom matcher that always passes replaces `toBe(5)`.
+  A custom matcher that always passes replaces `toBe(5)`. See "TI17 proposal" below.
 
 Other ways a change can weaken tests without being seen:
 
@@ -559,6 +692,69 @@ Other ways a change can weaken tests without being seen:
   back from the code under test.
 - A **mock** introduced in a **setup file** that the diff does not show as a test file, so a test passes against a
   stand-in.
+
+### TI17 proposal (not implemented)
+
+TI17 is a proposal for the always-true matcher, which no signal is built for (TI06 sees only a changed matcher, not a
+matcher that always passes). It is not implemented, it is not in the
+report schema, and nothing in the Action or the CLI produces it. It would detect three things:
+
+1. An `expect.extend` matcher defined in the diff whose `pass` is constant true.
+2. A Python helper defined in the diff that returns a constant `True` and is used in an `assert`.
+3. `expect.anything()` or `mock.ANY` replacing a concrete expected value.
+
+The planned severity is `warn`: each of these can be deliberate, so TI17 would ask for a look and never block.
+
+The cases it would ship with: must-trigger: the vitest `always-true-matcher` (a matcher whose `pass` is constant true
+replaces `toBe(5)`) and the pytest `always-true-matcher-any` (`== 5` becomes `== ANY`). must-not-trigger: a matcher
+whose `pass` compares its argument, and `expect.anything()` in the argument list of a call matcher such as
+`toHaveBeenCalledWith`, where it stands for one argument the test does not care about.
+
+It would miss a matcher or helper defined outside the diff, and a constant computed indirectly, for example through a
+variable or a function call.
+
+## Python parity
+
+The Python column below is what the signals do for pytest and unittest test files today, each cell grounded in a fixture
+under `fixtures/test-integrity/` or `fixtures/py-index/` that a test pins. `caught` means a must-trigger case and a
+must-not-trigger case exist; it does not mean every spelling is seen (see the Python misses after the table).
+
+| Signal | JS/TS | Python |
+| --- | --- | --- |
+| TI01 deleted test file | caught — `block-code-stays` | caught — `block-root-tests` and `pass-init-py` |
+| TI02 removed test | caught — `block-removed-it` | caught — `block-pytest-removed`, `block-unittest-method-removed`, and through aliases `block-pytest-alias-marked-removed` |
+| TI03 added skip | caught — `block-it-skip-existing` | caught — `block-pytest-decorator`, the `*-alias-*` cases, `@unittest.expectedFailure` and `pytest.xfail(` |
+| TI04 focused run | caught — `block-it-only` | not applicable — pytest has no `.only` |
+| TI05 emptied test | caught — `block-emptied` | caught — `block-pytest-emptied`, `block-pytest-alias-raises-removed`, `pass-pytest-alias-emptied-skipped` |
+| TI06 weakened assertion | caught — `warn-assert-ok` | caught — `warn-py-assert-truthy`, `warn-pytest-alias-approx-truthy` |
+| TI07 expected value edited | caught — `warn-tobe-number` | caught — `warn-pytest-eq` and `warn-unittest-assertequal`, through the Python index |
+| TI08 snapshot and update flags | caught — snapshot files and `test*` scripts | caught — the pytest config files (`pytest.ini`, `tox.ini`, `setup.cfg`, `pyproject.toml`) |
+| TI09 runner config loosened | caught — vitest, jest, mocha and playwright configs | caught — `block-pyproject-testpaths-narrowed`, `block-pytest-native-*` for the `[tool.pytest]` table |
+| TI10 test script weakened | caught — `package.json` scripts | missed — only `package.json` scripts are read, not `tox.ini` commands or a Makefile |
+| TI11 test step removed from CI | caught — workflow commands | caught — `pytest`, `python -m pytest`, `python -m unittest`, `tox` and `nox` commands in workflows |
+| TI12 module under test mocked | caught — `vi.mock` and `jest.mock` of the module under test | caught — `patch` and `mock.patch` of it, through the Python index |
+| TI13 coverage exclusion | caught — Istanbul, V8 and C8 hints | caught — `block-pragma-*` and `pass-pragma-*` for `# pragma: no cover` |
+| TI14 pharn-ci config loosened | caught — the config file | not applicable — it reads the pharn-ci config, not test code |
+| TI15 test value hard-coded | caught — JS/TS test and source files | caught — Python test and source files |
+| TI16 suppression added | caught — ESLint, TypeScript and Biome comments | caught — `noqa`, `type`, `pylint` and `pyright` comments |
+
+**Python misses.** What the Python column does not see:
+
+- `monkeypatch.setattr` object forms are read only when the object is a dotted name and the attribute a string
+  literal; `monkeypatch.setattr(make_obj(), name, …)` is not, and an aliased mock callee (`from unittest import mock as mk`, then
+  `mk.patch(…)`) is read as written, so TI12 does not see it. The assertion, marker and fixture names of TI02, TI05 and
+  TI06 are resolved through top-level imports; mock callees are not.
+- `conftest.py` is a test-config name for the sources but nothing in it is read: a marker, a fixture or an option set
+  there is not seen, and neither is `PYTEST_ADDOPTS` or a `-c` config flag.
+- `request.node.add_marker(pytest.mark.skip)` and a marker kept in a variable (`sm = pytest.mark.skip`, `@sm`) are not
+  read as skips.
+- An alias is read only when it is bound by a top-level `import` or `from … import` statement at column 0. One bound
+  inside an `if`, a `try` or a function, in a docstring, by a backslash continuation, or by `from pytest import *`
+  (`import *` binds nothing) is not. A reassignment after the import (`pt = pytest`) is not followed, and a later
+  top-level import of the same name replaces the earlier binding, so `import os as pt` after `import pytest as pt` hides
+  pytest.
+- `[tool.pytest]` and `[tool.pytest.ini_options]` in one `pyproject.toml` are merged into one table in which the native
+  value wins, which is not necessarily what pytest does; a header written with a quoted or dotted key is not read.
 
 ## 2. When an input is missing
 

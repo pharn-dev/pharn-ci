@@ -1,0 +1,20 @@
+diff --git a/src/parse.test.ts b/src/parse.test.ts
+index 1111111..2222222 100644
+--- a/src/parse.test.ts
++++ b/src/parse.test.ts
+@@ -1 +1 @@
+-import { beforeEach, describe, expect, it } from "vitest";
++import { describe, expect, it } from "vitest";
+@@ -5,8 +5,4 @@ import { parse } from "./parse.js";
+-  let input: string;
+-
+-  beforeEach(() => {
+-    input = '{"a": [1, 2';
+-  });
+-
+-  it("fails on an unclosed brace", () => {
+-    expect(() => parse(input)).toThrowError("unclosed brace");
++  it("reports an unclosed brace", () => {
++    const input = '{"a": [1, 2';
++    const attempt = () => parse(input);
++    expect(attempt).toThrowError("unclosed brace");

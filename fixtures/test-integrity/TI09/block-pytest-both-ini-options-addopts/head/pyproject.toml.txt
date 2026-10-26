@@ -1,0 +1,8 @@
+[project]
+name = "demo"
+
+[tool.pytest.ini_options]
+addopts = "-ra -k slow"
+
+[tool.pytest]
+testpaths = ["tests"]

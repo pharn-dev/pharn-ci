@@ -1,0 +1,13 @@
+"""An aliased mock callee is not matched: mock callees are read as written."""
+from unittest import mock as mk
+import pytest as ok
+
+
+def test_mock_alias():
+    with mk.patch("app.total"):
+        assert True
+
+
+@ok.mark.skip
+def test_control():
+    assert True

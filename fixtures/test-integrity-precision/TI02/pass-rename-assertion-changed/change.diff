@@ -1,0 +1,13 @@
+diff --git a/src/load.test.ts b/src/load.test.ts
+index 1111111..2222222 100644
+--- a/src/load.test.ts
++++ b/src/load.test.ts
+@@ -5,4 +5,4 @@ import { createLoader } from "./load.js";
+-  it("returns nothing for a missing file", async () => {
+-    const loader = createLoader({ cache: false });
+-    const result = await loader.load("missing.json");
+-    expect(result).toEqual([]);
++  it("rejects for a missing file", async () => {
++    const loader = createLoader({ cache: false });
++    const attempt = loader.load("missing.json");
++    await expect(attempt).rejects.toThrow();

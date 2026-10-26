@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { total } from "./cart.js";
+
+describe("cart", () => {
+  it("exposes the total function", () => {
+    expect(total).toBeTypeOf("function");
+  });
+
+  it("totals an empty cart", () => {
+    expect(total([])).toBe(0);
+  });
+});

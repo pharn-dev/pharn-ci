@@ -1,0 +1,8 @@
+import { describe, expect, it } from "vitest";
+import { core } from "./core.js";
+
+describe("core", () => {
+  it("core wires the modules", () => {
+    expect(core()).toBeDefined();
+  });
+});

@@ -1,0 +1,13 @@
+diff --git a/src/math.test.ts b/src/math.test.ts
+index 1111111..2222222 100644
+--- a/src/math.test.ts
++++ b/src/math.test.ts
+@@ -5,3 +5,5 @@ describe("math", () => {
+-  it("adds two numbers", () => {
+-    expect(add(1, 2)).toBe(3);
+-    expect(add(2, 2)).toBe(4);
++  it.each([
++    [2, 3, 6],
++    [3, 3, 9],
++  ])("scales %s by %s", (a, b, c) => {
++    expect(multiply(a, b)).toBe(c);

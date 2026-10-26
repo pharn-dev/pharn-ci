@@ -1,0 +1,23 @@
+import { describe, expect, it } from "vitest";
+import { createStore } from "./store.js";
+
+describe("store", () => {
+  it("saves a value", () => {
+    const store = createStore();
+    store.set("a", 1);
+    expect(store.get("a")).toBe(1);
+  });
+});
+
+describe("sync", () => {
+  it("pushes pending writes", async () => {
+    const sync = createSync();
+    sync.queue("x");
+    await expect(sync.flush()).resolves.toBe(1);
+  });
+
+  it("pulls remote changes", () => {
+    const sync = createSync();
+    expect(sync.pull()).toEqual([]);
+  });
+});

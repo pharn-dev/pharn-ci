@@ -1,0 +1,17 @@
+import pytest
+
+from cart import total
+
+
+def test_adds_the_prices():
+    """Two prices add up to their sum."""
+
+    assert total([2, 3]) == 5
+
+
+def test_totals_an_empty_cart():
+    assert total([]) == 0
+
+
+def test_accepts_an_empty_cart():
+    assert total(list()) == 0

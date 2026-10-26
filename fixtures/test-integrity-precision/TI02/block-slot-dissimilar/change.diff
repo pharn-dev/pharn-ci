@@ -1,0 +1,13 @@
+diff --git a/src/cart.test.ts b/src/cart.test.ts
+index 1111111..2222222 100644
+--- a/src/cart.test.ts
++++ b/src/cart.test.ts
+@@ -11,5 +11,3 @@ describe("cart", () => {
+-  it("removes an item", () => {
+-    const cart = createCart();
+-    cart.add("apple");
+-    cart.remove("apple");
+-    expect(cart.count()).toBe(0);
++  it("applies a coupon code", () => {
++    const coupon = parseCoupon("SAVE10");
++    expect(coupon.percent).toBe(10);

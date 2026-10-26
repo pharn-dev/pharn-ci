@@ -9,71 +9,136 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
-- Signals **TI02** (a test removed) and **TI05** (assertions emptied or dropped), the first signals that compare the text
-  of the test files a change modifies at the merge base and at HEAD (JS/TS and, through the Python test index, `.py`
-  files), and the codes `TEST_INTEGRITY_TI02`, `TEST_INTEGRITY_TI05` and `TEST_INTEGRITY_INDEX_UNAVAILABLE`. TI02 reports a
-  test with no counterpart left in the touched test files by name or by a similar body (`block` in mode `block`, `warn`
-  in mode `warn` and for a computed name), at its base path and base line; TI05 reports a test that had assertions and has
-  none at head, or fewer with the rest of its body unchanged, at its head path and head line. At most 20 findings per file
-  and signal are listed and the messages say how many were left out. `TEST_INTEGRITY_INDEX_UNAVAILABLE` (warn) names the
-  touched test files that could not be compared, with a reason code each, or says that TI02 and TI05 did not run.
-  `testIntegrity.languages` now lists the languages (`js`, `py`, `ts`) the test indexes parsed. The CLI and the Action
-  index the Python test files of a change with `python3` when the change modifies one; with JS/TS-only changes nothing
-  runs. The `skylos-nine` benchmark now catches 4 of 9. The action and CLI dist now carry the TypeScript parser, so the
-  Action dist is larger (about 11 MB, under 12 MB).
-- Test-integrity signal TI07 (expected value edited to match) and the `TEST_INTEGRITY_TI07` message code. It warns, in
-  modes `block` and `warn` alike and so never fails the check, when a test of a modified JS/TS or Python test file
-  changes only literals inside the expected-value arguments of its assertions (the Jest and Vitest matchers, chai's
-  `equal`, node:assert's `assert.equal` family, unittest's `assertEqual` family and the operand after `==` in a pytest
-  `assert`) and the change also edits a JS/TS or Python source file. The finding names the test and the matcher, never
-  the literal. The `skylos-nine` benchmark now catches 5 of 9 (`edited-expected-value`).
+### Changed
+
+### Security
+
+## [0.3.0] - 2026-10-26
+
+Test integrity now reads the tests themselves. Nine new signals (TI02, TI05, TI06, TI07, TI08, TI09, TI12, TI15 and
+TI16) compare what a change does to its test files, test-runner configs and sources, for JS/TS and Python alike, and the
+report lists the tests a change adds, removes, modifies or renames. With `test-integrity: block`, a pull request that
+passed under 0.2.0 can now fail: see the first entry under **Changed** for what, and how to get the 0.2.0 outcome back.
+No input, output or message code was removed or renamed, the default mode is still `warn`, and the report is still
+Report v2 with two optional fields added.
+
+### Added
+
+- Signal **TI02**, a test removed, and the code `TEST_INTEGRITY_TI02`. With TI05, the first signals that compare the
+  text of the test files a change modifies at the merge base and at HEAD (JS/TS and, through the Python test index,
+  `.py` files). TI02 reports a test with no counterpart left in the touched test files by name or by a similar body,
+  `block` in mode `block` and `warn` in mode `warn` and for a computed name, at its base path and base line. It clears a
+  test renamed in place in its describe, hand-written tests replaced by an `it.each` table, and a test moved to another
+  touched file under a new name when its body closely matches. No rule clears a test by its name alone: a removed test
+  is cleared by the same leaf name in another touched file only when that test holds the body.
+- Signal **TI05**, assertions emptied or dropped, and the code `TEST_INTEGRITY_TI05`. It reports a test that had
+  assertions and has none at head (`block` in mode `block`), or fewer with the rest of its body unchanged (`warn`), at
+  its head path and head line.
+- Signal **TI06**, a test weakened, and the code `TEST_INTEGRITY_TI06`, always `warn`. TI06 compares each matched test at
+  the merge base and at HEAD and reports a strong matcher replaced by a weak one (`toBe` to `toBeTruthy`), an
+  `expect.assertions` or `expect.hasAssertions` guard lowered or removed, an assertion that compares a literal with
+  itself added, and an assertion moved into a `try` block with a `catch` or after an early `return`. It reads the
+  subject of `expect(…)` for `toBe`, `toEqual` and `toStrictEqual`, so `typeof`, `instanceof`, `.length`, `!!x`, `null`
+  and `undefined` rewrites to the matcher they equal are not a weakening. The detail is fixed text and matcher labels,
+  never a test name.
+- Signal **TI07**, an expected value edited to match, and the code `TEST_INTEGRITY_TI07`. It warns, in modes `block` and
+  `warn` alike and so never fails the check, when a test of a modified JS/TS or Python test file changes only literals
+  inside the expected-value arguments of its assertions (the Jest and Vitest matchers, chai's `equal`, node:assert's
+  `assert.equal` family, unittest's `assertEqual` family and the operand after `==` in a pytest `assert`) and the change
+  also edits a JS/TS or Python source file. The finding names the test and the matcher, never the literal.
+- Signal **TI08**, snapshot churn, and the code `TEST_INTEGRITY_TI08`. It warns, in modes `block` and `warn` alike, when a
+  change modifies, deletes or rewrites more than 10 snapshot files (`__snapshots__` directories, `.snap` and `.ambr`
+  files), when a JS/TS test file rewrites 10 or more `toMatchInlineSnapshot(` lines, or when a snapshot-update flag
+  (`-u`, `--update`, `--updateSnapshot`, `--update-snapshots`, `--snapshot-update`) is added to a `test*` script in
+  `package.json` or `--snapshot-update` to a pytest config file.
+- Signal **TI09**, a test-runner setting loosened, and the code `TEST_INTEGRITY_TI09`. TI09 compares the base and head
+  text of the touched test-runner config files: `vitest.config.*`, `vite.config.*` (now read as a test-config file by the
+  CLI and the Action), `vitest.workspace.*`, `jest.config.*` and the `jest` key of `package.json`, `playwright.config.*`,
+  `.mocharc.*`, `pytest.ini`, `tox.ini`, `setup.cfg` and `pyproject.toml`. A fixed list of keys is judged: a lowered
+  or removed coverage threshold, a narrowed test list, a widened exclusion (build directories, `node_modules` and
+  `.d.ts` files excepted), `passWithNoTests`, `allowOnly` or `bail` turned on, a `grep` added, `forbidOnly` turned off
+  and a pytest `addopts` that gains a deselecting option are `block` in mode `block` and `warn` in mode `warn`; a raised
+  retry count or timeout, and a value that is not a literal, are always `warn`. The projects of a vitest or jest `projects` list are matched by name
+  (`test.name`, `displayName`) or by position and only their test-list keys are compared, so an unrelated key changed in
+  a project gives nothing. The finding sits at the head path and the head line of the key (no line for JSON). A config
+  that cannot be read, or the whole signal when a side of the test sources is unavailable, adds a TI09 sentence to
+  `TEST_INTEGRITY_INDEX_UNAVAILABLE`.
+- Signal **TI12**, a module under test mocked, and the code `TEST_INTEGRITY_TI12`, always `warn`. TI12 reports a new
+  `vi.mock`, `jest.mock` or Python `patch` of a source file the same change edits, once per test file and target, with
+  the mock's specifier sanitized and cut to 120 characters.
+- Signal **TI15**, the test may be special-cased, and the code `TEST_INTEGRITY_TI15`, at level `info`: it never blocks or
+  warns, in modes `block` and `warn` alike. It fires when a condition added to a JavaScript, TypeScript or Python source
+  file (`===`, `!==`, `==`, `!=`, a `case` label or a Python `in (...)` group) compares with a string or number literal
+  that a test file in the same change also adds. It matches only inside the same package (the nearest `package.json` or
+  `pyproject.toml`), leaves out `examples`, `benchmarks`, `bench`, `docs` and `fixtures` directories, needs 6 characters
+  or 4 significant digits, and lists at most 10 findings per change (the message says how many more). The finding names
+  the source line, the literal's kind and length and the test file, never the literal's text. It is `info` because 0 of
+  30 sampled TI15 findings were right on the 600-PR precision corpus (`docs/PRECISION.md`).
+- Signal **TI16**, a lint or type suppression in tests, and the code `TEST_INTEGRITY_TI16`. It gives an `info` finding,
+  which never blocks and leaves the verdict at `pass`, when a JS/TS or Python test file adds a comment that switches off
+  a linter or type checker.
+- At most 20 findings per file and signal are listed for TI02, TI05, TI06, TI09 and TI12, and the messages say how many
+  were left out.
+- The code `TEST_INTEGRITY_INDEX_UNAVAILABLE` (warn). It names the touched test files that could not be compared, with a
+  reason code each, or says that TI02 and TI05 did not run.
 - Tests-changed summary: `testIntegrity.changes` in `report.json` (optional, in `schema/report.v2.json`) lists the tests a
   change adds, removes, modifies or renames, with counts per test file, and the comment gains a collapsed "Tests changed"
   table with the counts per test file. Test names are in `report.json` only, cut to 120 characters, at most 200 entries.
-- Test-integrity signal TI08 (snapshot churn). It warns, in modes `block` and `warn` alike, when a change modifies,
-  deletes or rewrites more than 10 snapshot files (`__snapshots__` directories, `.snap` and `.ambr` files), when a
-  JS/TS test file rewrites 10 or more `toMatchInlineSnapshot(` lines, or when a snapshot-update flag (`-u`,
-  `--update`, `--updateSnapshot`, `--update-snapshots`, `--snapshot-update`) is added to a `test*` script in
-  `package.json` or `--snapshot-update` to a pytest config file. Adds the `TEST_INTEGRITY_TI08` message code. The
-  diff reader now keeps the text of `pytest.ini`, `pyproject.toml`, `setup.cfg` and `tox.ini`, and a cut one is named in
-  `TEST_INTEGRITY_TEXT_TRUNCATED`.
-- Test-integrity signal TI15 (the test may be special-cased). It warns, in modes `block` and `warn` alike, when a
-  condition added to a JavaScript, TypeScript or Python source file (`===`, `!==`, `==`, `!=`, a `case` label or a Python
-  `in (...)` group) compares with a string or number literal that a test file in the same change also adds. The finding
-  names the source line, the literal's kind and length and the test file, never the literal's text. Adds the
-  `TEST_INTEGRITY_TI15` message code.
-- Test-integrity signal TI16 (lint or type suppression in tests). It gives an `info` finding, which never blocks and
-  leaves the verdict at `pass`, when a JS/TS or Python test file adds a comment that switches off a linter or type
-  checker. Adds the `TEST_INTEGRITY_TI16` message code.
-- Signals **TI06** (a test weakened) and **TI12** (a module under test mocked), and the codes `TEST_INTEGRITY_TI06` and
-  `TEST_INTEGRITY_TI12`, both always `warn`. TI06 compares each matched test at the merge base and at HEAD and reports a
-  strong matcher replaced by a weak one (`toBe` to `toBeTruthy`), an `expect.assertions` or `expect.hasAssertions` guard
-  lowered or removed, an assertion that compares a literal with itself added, and an assertion moved into a `try` block
-  with a `catch` or after an early `return`; the detail is fixed text and matcher labels, never a test name. TI12 reports
-  a new `vi.mock`, `jest.mock` or Python `patch` of a source file the same change edits, once per test file and target,
-  with the mock's specifier sanitized and cut to 120 characters. At most 20 findings per file and signal are listed. The
-  `skylos-nine` benchmark now catches 6 of 9 (`loosened-assertion` by TI06).
-
-- Signal **TI09** (a test-runner setting loosened) and the code `TEST_INTEGRITY_TI09`. TI09 compares the base and head
-  text of the touched test-runner config files: `vitest.config.*`, `vite.config.*`, `vitest.workspace.*`, `jest.config.*`
-  and the `jest` key of `package.json`, `playwright.config.*`, `.mocharc.*`, `pytest.ini`, `tox.ini`, `setup.cfg` and
-  `pyproject.toml`. A fixed list of keys is judged: a lowered or removed coverage threshold, a narrowed test list, a
-  widened exclusion (build directories, `node_modules` and `.d.ts` files excepted), `passWithNoTests`, `allowOnly` or
-  `bail` turned on, a `grep` added, `forbidOnly` turned off and a pytest `addopts` that gains a deselecting option are
-  `block` in mode `block` and `warn` in mode `warn`; a raised retry count or timeout, and a value that is not a literal,
-  are always `warn`. The finding sits at the head path and the head line of the key (no line for JSON). At most 20
-  findings per file and signal are listed, and the message says how many were left out. `vite.config.*` is now read as a
-  test-config file by the CLI and the Action. A config that cannot be read, or the whole signal when a side of the test
-  sources is unavailable, adds a TI09 sentence to `TEST_INTEGRITY_INDEX_UNAVAILABLE`. The `skylos-nine` benchmark now
-  catches 7 of 9 (`deselect-setting` by TI09).
+  An `.each` replacement is listed once under renamed.
+- `testIntegrity.languages` in `report.json` (optional) lists the languages (`js`, `py`, `ts`) the test indexes parsed.
+- Python parity with JS/TS. **TI03** and the Python test index resolve pytest marker and unittest decorator aliases
+  bound by a test file's own top-level imports (`import pytest as pt`, `from pytest import mark as m`,
+  `from unittest import skipIf as si`), so TI02, TI05 and TI06 see through them too; TI03 also reads
+  `@unittest.expectedFailure` and `pytest.xfail(`. **TI09** reads pytest 9's native `[tool.pytest]` table of
+  `pyproject.toml` beside `[tool.pytest.ini_options]`. `docs/LIMITS.md` gains a Python parity table and the list of
+  Python misses.
+- The official precision results for v0.3.0, in `docs/PRECISION.md`: 600 PRs, 0 errors, TI01, TI02 and TI11 each
+  falsely block 1 of 600 PRs and ship as block, and the reviewed CSV is `fixtures/corpus/review.csv`.
+- The Skylos nine reproduced for pytest under `fixtures/skylos-nine-pytest` (eleven cases, the nine plus an aliased skip
+  and a `mock.ANY` variant of the always-true matcher), pinned by tests that run `check()` with the real Python index.
+  The signals catch **8 of 9** for pytest, and the vitest `skylos-nine` benchmark under `fixtures/skylos-nine/` now
+  catches **7 of 9**, up from 2 of 9 in 0.2.0 (`emptied-assertion`, `deselect-setting`, `replaced-test`,
+  `loosened-assertion` and `edited-expected-value` are new). `docs/PRECISION.md` gains a section with the case-by-case
+  table, and `docs/LIMITS.md` gains the TI17 proposal for the always-true matcher (a proposal only, nothing implements it).
 
 ### Changed
 
-- pharn-ci now reads the base and head text of the test and test-config files a change touches from local git
-  (for the coming base-and-head signals; the report does not change). When that fails on git, the CLI writes one
-  stderr line and the Action one log line naming the failed git step.
+- **What can now fail a pull request in mode `block`** that passed under 0.2.0: a removed test (TI02), a test left with
+  no assertions (TI05), a loosened test-runner setting (TI09), a skip of an existing test written through an aliased
+  pytest marker or unittest decorator, or `@unittest.expectedFailure` (TI03), and a deleted test file replaced by a test
+  file of the same name whose tests are not found again by body (TI01, below). Mode `warn`, the default, reports the
+  same findings without failing the check. To get the 0.2.0 outcome back on one pull request, a reviewer who is not its
+  author applies the accept label (`pharn/accepted`, the `accept-label` input), which downgrades its block findings to
+  `warn`; to get it back for every pull request, set `test-integrity: warn`.
+- **TI01** no longer lets a name stand in for a test's code. A deleted test file replaced by a test file of the same
+  name is `info` only when every test it held is found again by body in a new test, and stays a `block` when the tests
+  are hollow or when no test sources are given (the two `info-migration` diffs checked diff-only are now a `block`).
+  TI01 also gives `info` when every test a deleted test file held is found again, by name and by body, in another test
+  file of the change; those moved tests are judged by TI05, TI06 and TI07. The rules and their limits are in
+  `docs/LIMITS.md`.
+- **The Python test index needs `python3`.** The CLI and the Action index the Python test files of a change with
+  `python3` (or `python`, 3.8 or newer) when the change modifies one; with JS/TS-only changes nothing runs. Without a
+  usable interpreter the touched Python test files are named in `TEST_INTEGRITY_INDEX_UNAVAILABLE` (warn) with a reason
+  code (`python-not-found`, `python-too-old`), the signals that compare test text skip them, and the diff-only signals
+  still run. The repository's own tests that need `python3` now fail, instead of skipping, when it is missing.
+- pharn-ci now reads the base and head text of the test and test-config files a change touches from local git. When
+  that fails on git, the CLI writes one stderr line and the Action one log line naming the failed git step.
+- The diff reader now keeps the text of `pytest.ini`, `pyproject.toml`, `setup.cfg` and `tox.ini`, and a cut one is
+  named in `TEST_INTEGRITY_TEXT_TRUNCATED`.
+- The action and CLI dist now carry the TypeScript parser, so the Action dist is larger (about 11 MB, under 12 MB).
+
+### Fixed
+
+- **TI11** compares test commands by a key per test part, so a package-manager swap (`bun run test` to `pnpm run test`)
+  is no longer a removed step; a narrowed run and a test job moved to another workflow file are still a `block`.
+- **TI01** no longer counts a `.snap` file as a deleted test file (the `TEST_FILES_DELETED` message still lists it).
 
 ### Security
+
+- The Python test index runs the runner's own `python3`, found on the job's `PATH`, on the text of the pull request's
+  Python test files. It only parses them (`ast.parse`), in isolated mode, with no shell, a minimal environment, a 30 s
+  timeout and a 64 MiB output limit; a hostile interpreter earlier on `PATH` is a residual risk. See
+  `docs/THREAT-MODEL.md` (row C3, residual risk 20).
 
 ## [0.2.0] - 2026-10-25
 

@@ -16,7 +16,8 @@ const IDS = [j("TI", "08"), j("TI", "15"), j("TI", "16")];
 const code = (id: string) => j("TEST_INTEGRITY_", id);
 const LEVELS: Record<string, string> = {
   [IDS[0] as string]: "warn",
-  [IDS[1] as string]: "warn",
+  // precision-v030: TI15 became an info signal (0 of 30 sampled findings were right).
+  [IDS[1] as string]: "info",
   [IDS[2] as string]: "info",
 };
 /** A message-code-like token: upper-case words joined by underscores. */
@@ -130,15 +131,15 @@ describe("TI08, TI15 and TI16: schemas and documents", () => {
       expect(window, code(id)).toContain(LEVELS[id] as string);
     }
 
-    // CHANGELOG: the Unreleased Added section has a line for each id.
+    // CHANGELOG: the 0.3.0 Added section has a line for each id (before that release they sat under Unreleased).
     const changelog = lines(read("CHANGELOG.md"));
-    const unreleased = changelog.findIndex((line) => line.startsWith("## [Unreleased]"));
-    expect(unreleased, "## [Unreleased]").toBeGreaterThan(-1);
+    const unreleased = changelog.findIndex((line) => line.startsWith("## [0.3.0]"));
+    expect(unreleased, "## [0.3.0]").toBeGreaterThan(-1);
     const afterUnreleased = changelog.slice(unreleased + 1);
     const nextRelease = afterUnreleased.findIndex((line) => line.startsWith("## ["));
     const unreleasedLines = nextRelease === -1 ? afterUnreleased : afterUnreleased.slice(0, nextRelease);
     const added = unreleasedLines.indexOf("### Added");
-    expect(added, "### Added under Unreleased").toBeGreaterThan(-1);
+    expect(added, "### Added under 0.3.0").toBeGreaterThan(-1);
     const afterAdded = unreleasedLines.slice(added + 1);
     const nextSub = afterAdded.findIndex((line) => line.startsWith("### "));
     const addedLines = nextSub === -1 ? afterAdded : afterAdded.slice(0, nextSub);

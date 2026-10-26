@@ -34955,8 +34955,8 @@ ${lanes.join("\n")}
         return textSpanOverlap(span, other) !== void 0;
       }
       function textSpanOverlap(span1, span2) {
-        const overlap = textSpanIntersection(span1, span2);
-        return overlap && overlap.length === 0 ? void 0 : overlap;
+        const overlap2 = textSpanIntersection(span1, span2);
+        return overlap2 && overlap2.length === 0 ? void 0 : overlap2;
       }
       function textSpanIntersectsWithTextSpan(span, other) {
         return decodedTextSpanIntersectsWith(span.start, span.length, other.start, other.length);
@@ -121443,11 +121443,11 @@ ${lanes.join("\n")}
             let matchingCount = 0;
             for (const target of unionTarget.types) {
               if (!(target.flags & (402784252 | 406847488))) {
-                const overlap = getIntersectionType([getIndexType(source), getIndexType(target)]);
-                if (overlap.flags & 4194304) {
+                const overlap2 = getIntersectionType([getIndexType(source), getIndexType(target)]);
+                if (overlap2.flags & 4194304) {
                   return target;
-                } else if (isUnitType(overlap) || overlap.flags & 1048576) {
-                  const len = overlap.flags & 1048576 ? countWhere2(overlap.types, isUnitType) : 1;
+                } else if (isUnitType(overlap2) || overlap2.flags & 1048576) {
+                  const len = overlap2.flags & 1048576 ? countWhere2(overlap2.types, isUnitType) : 1;
                   if (len >= matchingCount) {
                     bestMatch = target;
                     matchingCount = len;
@@ -197538,7 +197538,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           return void 0;
         }
       }
-      function getJSDocParamAnnotation(paramName, initializer, dotDotDotToken, isJs, isObject2, isSnippet, checker, options, preferences, tabstopCounter) {
+      function getJSDocParamAnnotation(paramName, initializer, dotDotDotToken, isJs, isObject3, isSnippet, checker, options, preferences, tabstopCounter) {
         if (isSnippet) {
           Debug.assertIsDefined(tabstopCounter);
         }
@@ -197550,7 +197550,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         if (isJs) {
           let type = "*";
-          if (isObject2) {
+          if (isObject3) {
             Debug.assert(!dotDotDotToken, `Cannot annotate a rest parameter with type 'Object'.`);
             type = "Object";
           } else {
@@ -197586,7 +197586,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               type = `\${${tabstopCounter.tabstop++}:${type}}`;
             }
           }
-          const dotDotDot = !isObject2 && dotDotDotToken ? "..." : "";
+          const dotDotDot = !isObject3 && dotDotDotToken ? "..." : "";
           const description3 = isSnippet ? `\${${tabstopCounter.tabstop++}}` : "";
           return `@param {${dotDotDot}${type}} ${paramName} ${description3}`;
         } else {
@@ -231834,8 +231834,8 @@ var stringifyIteratively = (rootValue, replacer, spaceParam) => {
   const isFunctionReplacer = typeof replacer === "function";
   const propertyList = Array.isArray(replacer) ? new Set(replacer.map(String)) : null;
   const prepareVal = (parent, key, val) => {
-    const isObject2 = val !== null && typeof val === "object";
-    const hasToJSON = isObject2 && typeof val.toJSON === "function";
+    const isObject3 = val !== null && typeof val === "object";
+    const hasToJSON = isObject3 && typeof val.toJSON === "function";
     if (hasToJSON) {
       val = val.toJSON(key);
     }
@@ -235853,7 +235853,8 @@ var SIGNAL_MESSAGES = [
   {
     id: "TI15",
     code: "TEST_INTEGRITY_TI15",
-    text: (_top, paths) => `This change adds conditions in source that compare against values its tests add, so the code may special-case the tests: ${paths}. Check that each is real logic.`
+    allPaths: true,
+    text: (_top, paths, notListed) => `This change adds conditions in source that compare against values its tests add, so the code may special-case the tests: ${paths}. Check that each is real logic.${notListed}`
   },
   {
     id: "TI16",
@@ -237445,6 +237446,10 @@ function isTestFile(path) {
   if (TEST_BASENAME.some((pattern) => pattern.test(basename))) return true;
   return segments.slice(0, -1).some((segment) => TEST_DIRECTORIES.has(segment));
 }
+function isSnapFile(path) {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  return basename.length > ".snap".length && basename.endsWith(".snap");
+}
 function keepTestFileText(file) {
   return isTestFile(file.path) || isTestFile(file.oldPath);
 }
@@ -237479,6 +237484,182 @@ function deletedTestFiles(diff) {
     else if (file.status === "renamed" && isTestFile(file.oldPath) && !isTestFile(file.path)) found.add(file.oldPath);
   }
   return [...found].sort(byCodeUnit2);
+}
+
+// ../core/src/signals/pythonAliases.ts
+var isIdentStart = (code2) => code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122 || code2 === 95;
+var isIdentChar = (code2) => isIdentStart(code2) || code2 >= 48 && code2 <= 57;
+function identEnd(text, start) {
+  if (start >= text.length || !isIdentStart(text.charCodeAt(start))) return start;
+  let i = start + 1;
+  while (i < text.length && isIdentChar(text.charCodeAt(i))) i++;
+  return i;
+}
+var isBlank = (c) => c === " " || c === "	";
+function skipBlanks(text, start) {
+  let i = start;
+  while (i < text.length && isBlank(text.charAt(i))) i++;
+  return i;
+}
+function closeTriple(line, from, quote) {
+  for (let i = from; i < line.length; i++) {
+    const c = line.charAt(i);
+    if (c === "\\") i++;
+    else if (c === quote && line.charAt(i + 1) === quote && line.charAt(i + 2) === quote) return i;
+  }
+  return -1;
+}
+function scanCode(line, from) {
+  for (let i = from; i < line.length; i++) {
+    const c = line.charAt(i);
+    if (c === "#") return "";
+    if (c !== '"' && c !== "'") continue;
+    if (line.charAt(i + 1) === c && line.charAt(i + 2) === c) {
+      const end = closeTriple(line, i + 3, c);
+      if (end < 0) return c + c + c;
+      i = end + 2;
+      continue;
+    }
+    let j = i + 1;
+    while (j < line.length && line.charAt(j) !== c) j += line.charAt(j) === "\\" ? 2 : 1;
+    i = j;
+  }
+  return "";
+}
+var isStatementEnd = (code2) => code2 === 59 || code2 === 35 || code2 === 34 || code2 === 39;
+function startsStatement(line) {
+  if (line.startsWith("import") && isBlank(line.charAt(6))) return true;
+  return line.startsWith("from") && isBlank(line.charAt(4));
+}
+function fromItem(piece) {
+  const nameEnd = identEnd(piece, 0);
+  if (nameEnd === 0) return null;
+  const name = piece.slice(0, nameEnd);
+  if (nameEnd === piece.length) return [name, name];
+  const asAt = skipBlanks(piece, nameEnd);
+  if (asAt === nameEnd || !piece.startsWith("as", asAt)) return null;
+  const localAt = skipBlanks(piece, asAt + 2);
+  if (localAt === asAt + 2) return null;
+  const localEnd = identEnd(piece, localAt);
+  if (localEnd === localAt || localEnd !== piece.length) return null;
+  return [name, piece.slice(localAt, localEnd)];
+}
+function importItem(piece) {
+  let end = identEnd(piece, 0);
+  if (end === 0) return null;
+  const first = piece.slice(0, end);
+  while (piece.charAt(end) === ".") {
+    const next = identEnd(piece, end + 1);
+    if (next === end + 1) return null;
+    end = next;
+  }
+  const dotted = piece.slice(0, end);
+  if (end === piece.length) return [first, first];
+  const asAt = skipBlanks(piece, end);
+  if (asAt === end || !piece.startsWith("as", asAt)) return null;
+  const localAt = skipBlanks(piece, asAt + 2);
+  if (localAt === asAt + 2) return null;
+  const localEnd = identEnd(piece, localAt);
+  if (localEnd === localAt || localEnd !== piece.length) return null;
+  return [piece.slice(localAt, localEnd), dotted];
+}
+function pieces(segment) {
+  const out = [];
+  for (const piece of segment.split(",")) {
+    const trimmed = piece.trim();
+    if (trimmed !== "") out.push(trimmed);
+  }
+  return out;
+}
+var fromTarget = (module, name) => `${module}.${name}`;
+function pythonImportAliases(text) {
+  const aliases = /* @__PURE__ */ new Map();
+  const lines = text.split("\n");
+  const state = { triple: "", group: null };
+  const readGroup = (line, from) => {
+    const open3 = state.group;
+    let stop = from;
+    while (stop < line.length) {
+      const code2 = line.charCodeAt(stop);
+      if (code2 === 41 || isStatementEnd(code2)) break;
+      stop++;
+    }
+    for (const piece of pieces(line.slice(from, stop))) {
+      const item = fromItem(piece);
+      if (item !== null) open3.pending.push([item[1], fromTarget(open3.module, item[0])]);
+    }
+    const c = line.charAt(stop);
+    if (c === ")") {
+      for (const [local, target] of open3.pending) aliases.set(local, target);
+      state.group = null;
+      state.triple = scanCode(line, stop + 1);
+    } else if (c === "#" || stop >= line.length) {
+    } else {
+      state.group = null;
+      state.triple = scanCode(line, stop);
+    }
+  };
+  const readStatement = (line) => {
+    let end = 0;
+    while (end < line.length && !isStatementEnd(line.charCodeAt(end))) end++;
+    const body = end === line.length ? line : line.slice(0, end);
+    if (body.startsWith("import")) {
+      for (const piece of pieces(body.slice(6))) {
+        const item = importItem(piece);
+        if (item !== null) aliases.set(item[0], item[1]);
+      }
+    } else {
+      const moduleAt = skipBlanks(body, 4);
+      let moduleEnd = moduleAt;
+      while (moduleEnd < body.length && (body.charAt(moduleEnd) === "." || isIdentChar(body.charCodeAt(moduleEnd)))) {
+        moduleEnd++;
+      }
+      const module = body.slice(moduleAt, moduleEnd);
+      const importAt = skipBlanks(body, moduleEnd);
+      const listAt = importAt + 6;
+      if (module !== "" && importAt > moduleEnd && body.startsWith("import", importAt) && isBlank(body.charAt(listAt))) {
+        const rest = skipBlanks(body, listAt);
+        if (body.charAt(rest) === "(") {
+          state.group = { module, pending: [] };
+          readGroup(line, rest + 1);
+          return;
+        }
+        for (const piece of pieces(body.slice(rest))) {
+          const item = fromItem(piece);
+          if (item !== null) aliases.set(item[1], fromTarget(module, item[0]));
+        }
+      }
+    }
+    state.triple = line.charAt(end) === ";" ? scanCode(line, end + 1) : scanCode(line, end);
+  };
+  for (let n = 0; n < lines.length; n++) {
+    let line = lines[n];
+    if (n === 0 && line.charCodeAt(0) === 65279) line = line.slice(1);
+    if (line.endsWith("\r")) line = line.slice(0, -1);
+    if (state.triple !== "") {
+      const close = closeTriple(line, 0, state.triple.charAt(0));
+      if (close < 0) continue;
+      state.triple = scanCode(line, close + 3);
+      continue;
+    }
+    if (state.group !== null) {
+      if (!startsStatement(line)) {
+        readGroup(line, 0);
+        continue;
+      }
+      state.group = null;
+    }
+    if (startsStatement(line)) readStatement(line);
+    else state.triple = scanCode(line, 0);
+  }
+  return aliases;
+}
+function resolvePythonName(name, aliases) {
+  const dot = name.indexOf(".");
+  const head = dot < 0 ? name : name.slice(0, dot);
+  const target = aliases.get(head);
+  if (target === void 0) return null;
+  return dot < 0 ? target : target + name.slice(dot);
 }
 
 // ../core/src/signals/testLines.ts
@@ -237608,8 +237789,16 @@ var PYTHON_DECORATORS = /* @__PURE__ */ new Map([
   ["pytest.mark.xfail", "by-argument"],
   ["unittest.skip", "never"],
   ["unittest.skipIf", "always"],
-  ["unittest.skipUnless", "always"]
+  ["unittest.skipUnless", "always"],
+  ["unittest.expectedFailure", "never"]
 ]);
+var PYTHON_CALLS = /* @__PURE__ */ new Set(["pytest.skip", "pytest.xfail"]);
+function canonicalPython(written, table, aliases) {
+  if (table.has(written)) return written;
+  if (aliases === void 0) return null;
+  const resolved = resolvePythonName(written, aliases);
+  return resolved !== null && table.has(resolved) ? resolved : null;
+}
 function dottedEnd(text, start) {
   let i = start;
   while (i < text.length && (isWordCode(text.charCodeAt(i)) || text.charAt(i) === ".")) i++;
@@ -237622,11 +237811,12 @@ function isKeywordArg(arg) {
   while (isSpace3(arg.charAt(i))) i++;
   return arg.charAt(i) === "=" && arg.charAt(i + 1) !== "=";
 }
-function parsePythonSkip(text) {
+function parsePythonSkip(text, aliases) {
   const line = text.trimStart();
   if (line.startsWith("@")) {
     const end = dottedEnd(line, 1);
-    const token = line.slice(1, end);
+    const token = canonicalPython(line.slice(1, end), PYTHON_DECORATORS, aliases);
+    if (token === null) return null;
     const rule2 = PYTHON_DECORATORS.get(token);
     if (rule2 === void 0) return null;
     let i2 = end;
@@ -237635,11 +237825,13 @@ function parsePythonSkip(text) {
     const conditional = rule2 === "always" || rule2 === "by-argument" && arg !== "" && stringContent(arg, true) === null && !isKeywordArg(arg);
     return { kind: "decorator", token, name: argName(arg, true), conditional };
   }
-  if (!line.startsWith("pytest.skip")) return null;
-  let i = "pytest.skip".length;
+  const callEnd = dottedEnd(line, 0);
+  const call = canonicalPython(line.slice(0, callEnd), PYTHON_CALLS, aliases);
+  if (call === null) return null;
+  let i = callEnd;
   while (isSpace3(line.charAt(i))) i++;
   if (line.charAt(i) !== "(") return null;
-  return { kind: "call", token: "pytest.skip", name: argName(scanArg(line, i + 1).text, true), conditional: false };
+  return { kind: "call", token: call, name: argName(scanArg(line, i + 1).text, true), conditional: false };
 }
 var GO_SKIPS = /* @__PURE__ */ new Set(["t.Skip", "t.Skipf", "t.SkipNow"]);
 function parseGoSkip(text) {
@@ -238459,6 +238651,11 @@ var entryOf = (path, block) => ({
 function summarizeTestChanges(touched, match) {
   const lists = { added: [], removed: [], modified: [], renamed: [] };
   const matchedHeads = /* @__PURE__ */ new Set();
+  for (const pair of match.replaced ?? []) {
+    if (matchedHeads.has(pair.head)) continue;
+    matchedHeads.add(pair.head);
+    lists.renamed.push(entryOf(pair.headPath, pair.head));
+  }
   for (const pair of [...match.pairs, ...match.moved]) {
     matchedHeads.add(pair.head);
     const sameName2 = fullTestName(pair.base) === fullTestName(pair.head);
@@ -238525,14 +238722,38 @@ function bodyTokens(body) {
 function bodyTokenSet(body) {
   return new Set(bodyTokens(body));
 }
-function jaccardAtLeast(a, b) {
-  if (a.size === 0 && b.size === 0) return true;
+function tokenSetMemo() {
+  const memo = /* @__PURE__ */ new Map();
+  return (block) => {
+    let found = memo.get(block);
+    if (found === void 0) {
+      found = bodyTokenSet(block.body);
+      memo.set(block, found);
+    }
+    return found;
+  };
+}
+var FOUR_FIFTHS = { num: 4, den: 5 };
+var HALF = { num: 1, den: 2 };
+var THREE_QUARTERS = { num: 3, den: 4 };
+function ceilRatio(n, ratio) {
+  return Math.floor((ratio.num * n + ratio.den - 1) / ratio.den);
+}
+function overlap(a, b) {
   const [small, large] = a.size <= b.size ? [a, b] : [b, a];
   let both = 0;
   for (const token of small) if (large.has(token)) both++;
-  return 5 * both >= 4 * (a.size + b.size - both);
+  return both;
 }
-var ceilEight = (n) => Math.floor((4 * n + 4) / 5);
+function jaccardAtLeast(a, b, ratio = FOUR_FIFTHS) {
+  if (a.size === 0 && b.size === 0) return true;
+  const both = overlap(a, b);
+  return ratio.den * both >= ratio.num * (a.size + b.size - both);
+}
+function containsAtLeast(old, fresh, ratio) {
+  if (old.size === 0) return true;
+  return ratio.den * overlap(old, fresh) >= ratio.num * old.size;
+}
 var byCodeUnit5 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var CursorHeap = class {
   list = [];
@@ -238583,8 +238804,9 @@ var CursorHeap = class {
   }
 };
 var SimilarityIndex = class {
-  constructor(heads, candidates) {
+  constructor(heads, candidates, ratio = FOUR_FIFTHS) {
     this.heads = heads;
+    this.ratio = ratio;
     for (const set of heads) this.count(set);
     for (const set of candidates) this.count(set);
     heads.forEach((set, index) => {
@@ -238600,6 +238822,7 @@ var SimilarityIndex = class {
     });
   }
   heads;
+  ratio;
   frequency = /* @__PURE__ */ new Map();
   postings = /* @__PURE__ */ new Map();
   empty = [];
@@ -238609,17 +238832,17 @@ var SimilarityIndex = class {
   prefix(set) {
     const frequency = this.frequency;
     const ordered = [...set].sort((a, b) => (frequency.get(a) ?? 0) - (frequency.get(b) ?? 0) || byCodeUnit5(a, b));
-    return ordered.slice(0, set.size - ceilEight(set.size) + 1);
+    return ordered.slice(0, set.size - ceilRatio(set.size, this.ratio) + 1);
   }
   /**
-   * The index of the first unused head set similar to `candidate` and below `below`, or -1 when there is none. `bounded`
-   * is true when the probe stopped at the bound without finding one, so a similar head set may exist.
+   * The index of the first head set similar to `candidate`, below `below`, not skipped and accepted, or -1 when there
+   * is none. `bounded` is true when the probe stopped at the bound without finding one, so a similar head set may exist.
    */
-  find(candidate, isUsed, below = Number.POSITIVE_INFINITY) {
+  find(candidate, isSkipped, below = Number.POSITIVE_INFINITY, accept = () => true) {
     if (candidate.size === 0) {
       for (const index of this.empty) {
         if (index >= below) break;
-        if (!isUsed(index)) return { index, bounded: false };
+        if (!isSkipped(index) && accept(index)) return { index, bounded: false };
       }
       return { index: -1, bounded: false };
     }
@@ -238631,8 +238854,8 @@ var SimilarityIndex = class {
       lists.push(list);
       heap.push(lists.length - 1, 0, list[0]);
     }
-    const least = ceilEight(candidate.size);
-    const most = Math.floor(5 * candidate.size / 4);
+    const least = ceilRatio(candidate.size, this.ratio);
+    const most = Math.floor(this.ratio.den * candidate.size / this.ratio.num);
     let probes = 0;
     let previous = -1;
     while (heap.size > 0) {
@@ -238643,14 +238866,129 @@ var SimilarityIndex = class {
       if (key === previous) continue;
       previous = key;
       if (++probes > MAX_SIMILARITY_PROBES) return { index: -1, bounded: true };
-      if (isUsed(key)) continue;
+      if (isSkipped(key)) continue;
       const head = this.heads[key];
       if (head.size < least || head.size > most) continue;
-      if (jaccardAtLeast(candidate, head)) return { index: key, bounded: false };
+      if (jaccardAtLeast(candidate, head, this.ratio) && accept(key)) return { index: key, bounded: false };
     }
     return { index: -1, bounded: false };
   }
 };
+
+// ../core/src/signals/nameWords.ts
+var WORD = /[\p{L}\p{N}]+/gu;
+function nameWords(text) {
+  return new Set(text.toLowerCase().match(WORD) ?? []);
+}
+function fullNameWords(block) {
+  return nameWords(block.path.join(" "));
+}
+function groupKey(block) {
+  return JSON.stringify(block.path.slice(0, -1));
+}
+
+// ../core/src/signals/testSubjects.ts
+var DOTTED = "[A-Za-z_$][\\w$]*(?:\\.[A-Za-z_$][\\w$]*)*";
+var EXPECT_SUBJECT = new RegExp(`expect\\(\\s*(?:await\\s+)?(${DOTTED})\\s*\\(`, "g");
+var ASSERT_SUBJECT = new RegExp(`\\bassert\\s+(?:await\\s+)?(${DOTTED})\\s*\\(`, "g");
+function testSubjects(body) {
+  const found = /* @__PURE__ */ new Set();
+  for (const pattern of [EXPECT_SUBJECT, ASSERT_SUBJECT]) {
+    pattern.lastIndex = 0;
+    for (let match = pattern.exec(body); match !== null; match = pattern.exec(body)) found.add(match[1]);
+  }
+  return found;
+}
+function assertionChains(block) {
+  return new Set(block.assertions.map((assertion) => assertion.chain));
+}
+function holdsEveryChain(base, head) {
+  for (const chain of base) if (!head.has(chain)) return false;
+  return true;
+}
+function sharesAny(a, b) {
+  const [small, large] = a.size <= b.size ? [a, b] : [b, a];
+  for (const item of small) if (large.has(item)) return true;
+  return false;
+}
+
+// ../core/src/signals/sameGroupRules.ts
+function holdsBody(before, after, tokensOf) {
+  const old = tokensOf(before);
+  const fresh = tokensOf(after);
+  return jaccardAtLeast(old, fresh, FOUR_FIFTHS) || containsAtLeast(old, fresh, FOUR_FIFTHS) && holdsEveryChain(assertionChains(before), assertionChains(after));
+}
+var MAX_EACH_SCAN = 256;
+function groupItems(items, keyOf4) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const item of items) {
+    const key = keyOf4(item);
+    const list = groups.get(key);
+    if (list === void 0) groups.set(key, [item]);
+    else list.push(item);
+  }
+  return groups;
+}
+function renameInPlace(candidates, fresh, tokensOf) {
+  const unusedByGroup = groupItems(
+    fresh.filter((entry) => !entry.used),
+    (entry) => groupKey(entry.block)
+  );
+  const answers = [];
+  for (const [key, group] of groupItems(candidates, groupKey)) {
+    const unused = unusedByGroup.get(key);
+    if (unused === void 0 || unused.length !== group.length) continue;
+    group.forEach((candidate, at) => {
+      const entry = unused[at];
+      const before = tokensOf(candidate);
+      const after = tokensOf(entry.block);
+      if (jaccardAtLeast(before, after, HALF) && containsAtLeast(before, after, THREE_QUARTERS)) {
+        answers.push({ candidate, fresh: entry });
+      }
+    });
+  }
+  return answers;
+}
+function eachReplacements(candidates, fresh) {
+  const eachByGroup = groupItems(
+    fresh.filter((entry) => !entry.used && entry.block.modifiers.includes("each")),
+    (entry) => groupKey(entry.block)
+  );
+  if (eachByGroup.size === 0) return [];
+  const shapesByGroup = /* @__PURE__ */ new Map();
+  const shapesOf = (key, group) => {
+    let shapes = shapesByGroup.get(key);
+    if (shapes === void 0) {
+      shapes = [];
+      const seen = /* @__PURE__ */ new Set();
+      for (const entry of group.slice(0, MAX_EACH_SCAN)) {
+        const subjects = testSubjects(entry.block.body);
+        const chains = assertionChains(entry.block);
+        const shape = JSON.stringify([[...subjects].sort(), [...chains].sort()]);
+        if (seen.has(shape)) continue;
+        seen.add(shape);
+        shapes.push({ entry, subjects, chains });
+      }
+      shapesByGroup.set(key, shapes);
+    }
+    return shapes;
+  };
+  const answers = [];
+  for (const candidate of candidates) {
+    if (candidate.assertionCount < 1) continue;
+    const key = groupKey(candidate);
+    const group = eachByGroup.get(key);
+    if (group === void 0) continue;
+    const wanted = testSubjects(candidate.body);
+    if (wanted.size === 0) continue;
+    const held = assertionChains(candidate);
+    const found = shapesOf(key, group).find(
+      (shape) => sharesAny(wanted, shape.subjects) && holdsEveryChain(held, shape.chains)
+    );
+    if (found !== void 0) answers.push({ candidate, fresh: found.entry });
+  }
+  return answers;
+}
 
 // ../core/src/signals/testMatch.ts
 var byCodeUnit6 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
@@ -238706,8 +239044,10 @@ function push(map, key, value) {
 }
 function matchTests(touched) {
   const pairs = [];
+  const replaced = [];
   const fresh = [];
   const left = [];
+  const tokensOf = tokenSetMemo();
   const files = [...touched.pairs].sort(
     (a, b) => byCodeUnit6(a.basePath, b.basePath) || byCodeUnit6(a.headPath, b.headPath)
   );
@@ -238757,9 +239097,10 @@ function matchTests(touched) {
     for (let at = 0; at < entries.length; at++) push(byHash, entries[at].block.bodyHash, at);
     const cursor = /* @__PURE__ */ new Map();
     const similar = candidates.length > 0 && entries.length > 0 ? new SimilarityIndex(
-      entries.map((entry) => bodyTokenSet(entry.block.body)),
-      candidates.map((block) => bodyTokenSet(block.body))
+      entries.map((entry) => tokensOf(entry.block)),
+      candidates.map(tokensOf)
     ) : null;
+    const fileLeft = [];
     for (const block of candidates) {
       let pick = -1;
       const bucket = byHash.get(block.bodyHash);
@@ -238771,20 +239112,53 @@ function matchTests(touched) {
       }
       if (similar !== null) {
         const found = similar.find(
-          bodyTokenSet(block.body),
+          tokensOf(block),
           (at) => entries[at].used,
           pick === -1 ? Number.POSITIVE_INFINITY : pick
         );
         if (found.index !== -1) pick = found.index;
       }
       if (pick === -1) {
-        left.push({ fileIndex: index, path: file.basePath, block });
+        fileLeft.push({ fileIndex: index, path: file.basePath, block });
       } else {
         const entry = entries[pick];
         entry.used = true;
         pairs.push({ basePath: file.basePath, headPath: file.headPath, base: block, head: entry.block });
       }
     }
+    const renamed = /* @__PURE__ */ new Set();
+    for (const answer of renameInPlace(
+      fileLeft.map((candidate) => candidate.block),
+      entries,
+      tokensOf
+    )) {
+      answer.fresh.used = true;
+      renamed.add(answer.candidate);
+      pairs.push({
+        basePath: file.basePath,
+        headPath: file.headPath,
+        base: answer.candidate,
+        head: answer.fresh.block
+      });
+    }
+    const afterRename = fileLeft.filter((candidate) => !renamed.has(candidate.block));
+    const cleared = /* @__PURE__ */ new Set();
+    const clearing = [];
+    for (const answer of eachReplacements(
+      afterRename.map((candidate) => candidate.block),
+      entries
+    )) {
+      cleared.add(answer.candidate);
+      clearing.push(answer.fresh);
+      replaced.push({
+        basePath: file.basePath,
+        headPath: file.headPath,
+        base: answer.candidate,
+        head: answer.fresh.block
+      });
+    }
+    for (const entry of clearing) entry.used = true;
+    for (const candidate of afterRename) if (!cleared.has(candidate.block)) left.push(candidate);
   }
   for (const file of [...touched.added].sort((a, b) => byCodeUnit6(a.headPath, b.headPath))) {
     const index = fileIndex++;
@@ -238803,7 +239177,6 @@ function matchTests(touched) {
     if (!entry.block.nameDynamic) push(leafEntries, leafName(entry.block), entry);
     push(hashEntries, entry.block.bodyHash, entry);
   }
-  const leafLists = /* @__PURE__ */ new Map();
   const hashLists = /* @__PURE__ */ new Map();
   const listFor = (lists, entries, key) => {
     let list = lists.get(key);
@@ -238815,23 +239188,183 @@ function matchTests(touched) {
     }
     return list;
   };
-  const unmatched = [];
+  const afterNames = [];
   const moved = [];
   for (const candidate of left) {
-    const byLeaf = candidate.block.nameDynamic ? null : listFor(leafLists, leafEntries, leafName(candidate.block))?.firstOutside(candidate.fileIndex) ?? null;
+    let byLeaf = null;
+    if (!candidate.block.nameDynamic) {
+      const sameLeaf = leafEntries.get(leafName(candidate.block)) ?? [];
+      const scan = Math.min(sameLeaf.length, MAX_SIMILARITY_PROBES);
+      for (let at = 0; at < scan; at++) {
+        const entry = sameLeaf[at];
+        if (!entry.used && entry.fileIndex !== candidate.fileIndex && holdsBody(candidate.block, entry.block, tokensOf)) {
+          byLeaf = entry;
+          break;
+        }
+      }
+    }
     const byBody = listFor(hashLists, hashEntries, candidate.block.bodyHash)?.firstOutside(candidate.fileIndex) ?? null;
     const pick = byLeaf !== null && (byBody === null || byLeaf.order < byBody.order) ? byLeaf : byBody;
-    if (pick === null) unmatched.push({ path: candidate.path, block: candidate.block });
+    if (pick === null) afterNames.push(candidate);
     else {
       pick.used = true;
       moved.push({ basePath: candidate.path, headPath: pick.path, base: candidate.block, head: pick.block });
     }
   }
-  return { unmatched, pairs, moved };
+  const afterSimilarity = [];
+  const pool = fresh.filter((entry) => !entry.used);
+  if (afterNames.length > 0 && pool.length > 0) {
+    const poolBodies = pool.map((entry) => tokensOf(entry.block));
+    const poolNames = pool.map((entry) => entry.block.nameDynamic ? /* @__PURE__ */ new Set() : fullNameWords(entry.block));
+    const candidateNames = afterNames.map(
+      (candidate) => candidate.block.nameDynamic ? /* @__PURE__ */ new Set() : fullNameWords(candidate.block)
+    );
+    const candidateBodies = afterNames.map((candidate) => tokensOf(candidate.block));
+    const bodyIndex = new SimilarityIndex(poolBodies, candidateBodies, FOUR_FIFTHS);
+    const nameIndex = new SimilarityIndex(poolNames, candidateNames, HALF);
+    afterNames.forEach((candidate, at) => {
+      const skipped = (index) => {
+        const entry = pool[index];
+        return entry.used || entry.fileIndex === candidate.fileIndex;
+      };
+      const bodies = candidateBodies[at];
+      let found = bodyIndex.find(bodies, skipped).index;
+      const words = candidateNames[at];
+      if (found === -1 && words.size > 0) {
+        const chains = assertionChains(candidate.block);
+        found = nameIndex.find(
+          words,
+          skipped,
+          Number.POSITIVE_INFINITY,
+          (index) => containsAtLeast(bodies, poolBodies[index], FOUR_FIFTHS) && holdsEveryChain(chains, assertionChains(pool[index].block))
+        ).index;
+      }
+      if (found === -1) {
+        afterSimilarity.push(candidate);
+      } else {
+        const pick = pool[found];
+        pick.used = true;
+        moved.push({ basePath: candidate.path, headPath: pick.path, base: candidate.block, head: pick.block });
+      }
+    });
+  } else {
+    afterSimilarity.push(...afterNames);
+  }
+  const unmatched = afterSimilarity.map((candidate) => ({
+    path: candidate.path,
+    block: candidate.block
+  }));
+  return { unmatched, pairs, moved, replaced };
+}
+
+// ../core/src/signals/ti01Moved.ts
+var byCodeUnit7 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var leafOf = (block) => block.path[block.path.length - 1] ?? "";
+function sameStemDeletions(diff) {
+  const stems = /* @__PURE__ */ new Map();
+  for (const file of diff) {
+    if (file.status !== "added" && file.status !== "renamed" || !isTestFile(file.path)) continue;
+    const stem = testStem(file.path);
+    const paths = stems.get(stem);
+    if (paths === void 0) stems.set(stem, /* @__PURE__ */ new Set([file.path]));
+    else paths.add(file.path);
+  }
+  const linked = /* @__PURE__ */ new Set();
+  for (const file of diff) {
+    if (file.status !== "deleted" || !isTestFile(file.path) || file.binary === true) continue;
+    const paths = stems.get(testStem(file.path));
+    if (paths === void 0) continue;
+    for (const path of paths) {
+      if (path !== file.path) {
+        linked.add(file.path);
+        break;
+      }
+    }
+  }
+  return linked;
+}
+function movedTestFiles(diff, sources, python, touched) {
+  const moved = { files: /* @__PURE__ */ new Set(), compared: /* @__PURE__ */ new Set(), pairs: [] };
+  if (touched.notRun !== null || "unavailable" in sources.base) return moved;
+  const deleted = diff.filter((file) => file.status === "deleted" && isTestFile(file.path) && file.binary !== true).map((file) => file.path).sort(byCodeUnit7);
+  if (deleted.length === 0) return moved;
+  const texts = new Map(sources.base.files.map((file) => [file.path, file.text]));
+  const pythonBase = python?.available ? new Map(python.base.map((file) => [file.path, file.result])) : null;
+  const indexed = [];
+  for (const path of [...new Set(deleted)]) {
+    const language = languageOf(path);
+    let result;
+    if (language === "py") result = pythonBase?.get(path);
+    else if (language !== null) {
+      const text = texts.get(path);
+      if (text !== void 0) result = indexTestFile(path, text);
+    }
+    if (result === void 0 || !result.parsed) continue;
+    moved.compared.add(path);
+    const tests = result.tests.filter((block) => block.kind === "test").sort((a, b) => a.line - b.line);
+    if (tests.length > 0) indexed.push({ path, tests });
+  }
+  const fresh = [];
+  for (const file of touched.added) {
+    for (const block of file.head)
+      if (block.assertionCount >= 1) fresh.push({ path: file.headPath, block, used: false });
+  }
+  for (const file of touched.pairs) {
+    const known = new Set(file.base.map(fullTestName));
+    for (const block of file.head) {
+      if (block.assertionCount >= 1 && !known.has(fullTestName(block))) {
+        fresh.push({ path: file.headPath, block, used: false });
+      }
+    }
+  }
+  if (fresh.length === 0) return moved;
+  fresh.sort((a, b) => byCodeUnit7(a.path, b.path) || a.block.line - b.block.line);
+  const leaves = /* @__PURE__ */ new Map();
+  const groups = /* @__PURE__ */ new Set();
+  for (const entry of fresh) {
+    const leaf = leafOf(entry.block);
+    const list = leaves.get(leaf);
+    if (list === void 0) leaves.set(leaf, [entry]);
+    else list.push(entry);
+    for (const group of entry.block.path.slice(0, -1)) groups.add(group);
+  }
+  const stemLinked = sameStemDeletions(diff);
+  const named = indexed.filter(
+    (file) => stemLinked.has(file.path) || file.tests.every(
+      (block) => leaves.has(leafOf(block)) && block.path.slice(0, -1).every((group) => groups.has(group))
+    )
+  );
+  if (named.length === 0) return moved;
+  const tokensOf = tokenSetMemo();
+  const bodies = new SimilarityIndex(
+    fresh.map((entry) => tokensOf(entry.block)),
+    named.flatMap((file) => file.tests.map((block) => tokensOf(block))),
+    FOUR_FIFTHS
+  );
+  for (const file of named) {
+    const taken = /* @__PURE__ */ new Set();
+    const found = [];
+    for (const block of file.tests) {
+      const free = (entry) => !entry.used && !taken.has(entry);
+      let pick = (leaves.get(leafOf(block)) ?? []).slice(0, MAX_SIMILARITY_PROBES).find((entry) => free(entry) && holdsBody(block, entry.block, tokensOf)) ?? null;
+      if (pick === null) {
+        const at = bodies.find(tokensOf(block), (index) => !free(fresh[index])).index;
+        if (at !== -1) pick = fresh[at];
+      }
+      if (pick === null) break;
+      taken.add(pick);
+      found.push({ basePath: file.path, headPath: pick.path, base: block, head: pick.block });
+    }
+    if (found.length !== file.tests.length) continue;
+    for (const entry of taken) entry.used = true;
+    moved.files.add(file.path);
+    moved.pairs.push(...found);
+  }
+  return moved;
 }
 
 // ../core/src/signals/ti01.ts
-var byCodeUnit7 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit8 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_DETAIL2 = 300;
 function removedTests(file) {
   if (file.hunks === void 0) return "unknown";
@@ -238840,25 +239373,17 @@ function removedTests(file) {
   }
   return "no";
 }
-function addedTests(file) {
-  for (const hunk of file.hunks ?? []) {
-    for (const added of hunk.added) if (definesTests(added.text)) return true;
-  }
-  return false;
-}
-function detectTI01(diff, mode) {
+function detectTI01(diff, mode, moved = /* @__PURE__ */ new Set(), compared2 = /* @__PURE__ */ new Set()) {
   const deletedSources = diff.filter((file) => file.status === "deleted" && !isTestFile(file.path));
   const sourceStems = new Set(deletedSources.map((file) => testStem(file.path)));
-  const addedTestFiles = diff.filter(
-    (file) => (file.status === "added" || file.status === "renamed") && isTestFile(file.path)
-  );
+  const sameStem = sameStemDeletions(diff);
   const found = /* @__PURE__ */ new Map();
   for (const file of diff) {
     const renamedAway = file.status === "renamed" && isTestFile(file.oldPath) && !isTestFile(file.path);
     const deleted = file.status === "deleted" && isTestFile(file.path);
     if (!(renamedAway || deleted) || file.binary === true) continue;
     const path = renamedAway ? file.oldPath : file.path;
-    if (found.has(path)) continue;
+    if (isSnapFile(path) || found.has(path)) continue;
     const defined = removedTests(file);
     const cutCode = file.textTruncated === true && (testLanguage(path) !== null || coverageSourceLanguage(path) !== null);
     const counts2 = defined === "yes" || defined === "unknown" || cutCode || renamedAway;
@@ -238873,13 +239398,22 @@ function detectTI01(diff, mode) {
     } else if (dir !== "" && deletedSources.some((source) => source.path.startsWith(`${dir}/`))) {
       severity = "info";
       detail = "Test file deleted together with other files of its package.";
-    } else if (addedTestFiles.some((added) => added.path !== path && testStem(added.path) === stem && addedTests(added))) {
+    } else if (deleted && sameStem.has(path)) {
+      if (moved.has(path)) {
+        severity = "info";
+        detail = "Test file replaced by a test file of the same name; every test it held is found again, by body, in a new test of this change.";
+      } else if (compared2.has(path)) {
+        detail = "Test file deleted; a test file of the same name was added, but not every test it held is found again by body.";
+      } else {
+        detail = "Test file deleted; a test file of the same name was added, but the text to compare their tests was not available.";
+      }
+    } else if (deleted && moved.has(path)) {
       severity = "info";
-      detail = "Test file replaced by a test file of the same name that defines tests.";
+      detail = "Test file deleted; every test it held is found again, by name and body, in another test file of this change.";
     }
     found.set(path, { id: "TI01", severity, path, line: null, detail: detail.slice(0, MAX_DETAIL2) });
   }
-  return [...found.values()].sort((a, b) => byCodeUnit7(a.path, b.path));
+  return [...found.values()].sort((a, b) => byCodeUnit8(a.path, b.path));
 }
 
 // ../core/src/signals/ti02.ts
@@ -238894,7 +239428,7 @@ function detectTI02(match, mode) {
 }
 
 // ../core/src/signals/ti03.ts
-var byCodeUnit8 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit9 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE = 20;
 var DETAILS = {
   existing: "An unconditional skip was added to a test that the diff shows existed before this change, so that test no longer runs.",
@@ -238924,8 +239458,12 @@ function jsSkip(parsed) {
       return null;
   }
 }
-function pythonSkip(text) {
-  const parsed = parsePythonSkip(text);
+function pythonSkip(text, aliases) {
+  let parsed = parsePythonSkip(text);
+  if (parsed === null && aliases !== void 0 && (text.includes("@") || text.includes("("))) {
+    const map = aliases();
+    if (map !== void 0) parsed = parsePythonSkip(text, map);
+  }
   if (parsed === null) return null;
   const key = keyOf(parsed.token, parsed.name);
   if (parsed.kind === "call") return { key, shape: "in-body", name: parsed.name };
@@ -238935,8 +239473,8 @@ function goSkip(text) {
   const parsed = parseGoSkip(text);
   return parsed === null ? null : { key: keyOf(parsed.token, parsed.name), shape: "in-body", name: parsed.name };
 }
-function readSkip(language, text) {
-  if (language === "python") return pythonSkip(text);
+function readSkip(language, text, aliases) {
+  if (language === "python") return pythonSkip(text, aliases);
   if (language === "go") return goSkip(text);
   const parsed = parseJsTestCall(text);
   return parsed === null ? null : jsSkip(parsed);
@@ -238951,11 +239489,11 @@ function removedOpenings(hunks) {
   }
   return names;
 }
-function removedSkips(hunks, language) {
+function removedSkips(hunks, language, aliases) {
   const keys = /* @__PURE__ */ new Set();
   for (const hunk of hunks) {
     for (const entry of hunk.removed) {
-      const skip = readSkip(language, entry.text);
+      const skip = readSkip(language, entry.text, aliases);
       if (skip !== null) keys.add(skip.key);
     }
   }
@@ -238979,13 +239517,31 @@ function decoratedTest(hunk, index) {
   }
   return "existing";
 }
-function findingsOf(file, hunks, language) {
-  const before = removedSkips(hunks, language);
+function textsOf(side) {
+  const texts = /* @__PURE__ */ new Map();
+  if (side !== void 0 && "files" in side) for (const file of side.files) texts.set(file.path, file.text);
+  return texts;
+}
+function sourceOf(text) {
+  let map;
+  return () => {
+    if (map === void 0 && text !== void 0) map = pythonImportAliases(text);
+    return map;
+  };
+}
+function aliasesOf(file, language, texts) {
+  if (language !== "python") return {};
+  const base = sourceOf(texts.base.get(file.oldPath));
+  const head = sourceOf(texts.head.get(file.path));
+  return { base: () => base() ?? head(), head: () => head() ?? base() };
+}
+function findingsOf(file, hunks, language, aliases) {
+  const before = removedSkips(hunks, language, aliases.base);
   const openings = language === "jsts" ? removedOpenings(hunks) : /* @__PURE__ */ new Set();
   const found = [];
   for (const hunk of hunks) {
     hunk.added.forEach((entry, index) => {
-      const skip = readSkip(language, entry.text);
+      const skip = readSkip(language, entry.text, aliases.head);
       if (skip === null || before.has(skip.key)) return;
       let category;
       if (file.status === "added") category = "adds";
@@ -238998,14 +239554,15 @@ function findingsOf(file, hunks, language) {
   }
   return found;
 }
-function detectTI03(diff, mode) {
+function detectTI03(diff, mode, sources) {
   const signals = [];
+  const texts = { base: textsOf(sources?.base), head: textsOf(sources?.head) };
   for (const file of diff) {
     if (file.hunks === void 0 || file.binary === true || !isTestFile(file.path)) continue;
     const language = testLanguage(file.path);
     if (language === null) continue;
     const rank = (category) => category === "existing" ? 0 : 1;
-    const found = findingsOf(file, file.hunks, language).sort(
+    const found = findingsOf(file, file.hunks, language, aliasesOf(file, language, texts)).sort(
       (a, b) => rank(a.category) - rank(b.category) || a.line - b.line
     );
     for (const { line, category } of found.slice(0, MAX_PER_FILE)) {
@@ -239018,11 +239575,11 @@ function detectTI03(diff, mode) {
       });
     }
   }
-  return signals.sort((a, b) => byCodeUnit8(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit9(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti04.ts
-var byCodeUnit9 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit10 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE2 = 20;
 var DETAIL = "A focused-run marker (`.only`, `fit` or `fdescribe`) was added, so the runner may skip the other tests of this file or of the whole run.";
 function detectTI04(diff, mode) {
@@ -239050,7 +239607,7 @@ function detectTI04(diff, mode) {
       signals.push({ id: "TI04", severity: mode, path: file.path, line, detail: DETAIL });
     }
   }
-  return signals.sort((a, b) => byCodeUnit9(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit10(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti05.ts
@@ -239221,6 +239778,131 @@ function readMatcherCalls(body) {
   return calls;
 }
 
+// ../core/src/signals/expectSubjects.ts
+var EQUALITY_MATCHERS = ["toBe", "toEqual", "toStrictEqual"];
+var SUBJECT_HEAD_CHARS = 64;
+var SUBJECT_TAIL_CHARS = 96;
+var ARGUMENT_CHARS = 200;
+var MAX_TRIM = 64;
+var CLOSERS2 = { ")": "(", "]": "[", "}": "{" };
+var isIdentifierChar = (code2) => code2 >= 48 && code2 <= 57 || code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122 || code2 === 95 || code2 === 36;
+var isBlank2 = (code2) => code2 === 32 || code2 === 9 || code2 === 10 || code2 === 13;
+function wordBefore(body, at, word) {
+  const start = at - word.length;
+  if (start < 0 || !body.startsWith(word, start)) return false;
+  if (start === 0) return true;
+  const before = body.charCodeAt(start - 1);
+  return !isIdentifierChar(before) && before !== 46;
+}
+function opensSubject(body, at) {
+  return wordBefore(body, at, "expect") || wordBefore(body, at, "expect.soft");
+}
+function equalityBefore(body, at) {
+  let end = at;
+  if (end > 0 && body.charCodeAt(end - 1) === 32) end--;
+  for (const name of EQUALITY_MATCHERS) {
+    const start = end - name.length;
+    if (start < 1 || !body.startsWith(name, start) || body.charCodeAt(start - 1) !== 46) continue;
+    if (start >= 5 && body.startsWith(".not", start - 5)) return null;
+    return { matcher: name, dot: start - 1 };
+  }
+  return null;
+}
+function skipLiteral2(body, at) {
+  const quote = body.charCodeAt(at);
+  let i = at + 1;
+  while (i < body.length) {
+    const code2 = body.charCodeAt(i);
+    if (code2 === 92) i += 2;
+    else if (code2 === quote) return i + 1;
+    else i++;
+  }
+  return body.length;
+}
+function argumentText(body, start, end) {
+  return body.slice(start, Math.min(end, start + ARGUMENT_CHARS)).trim();
+}
+function subjectOf(body, start, end) {
+  let from = start;
+  while (from < end && from - start < MAX_TRIM && isBlank2(body.charCodeAt(from))) from++;
+  let to = end;
+  while (to > from && end - to < MAX_TRIM && isBlank2(body.charCodeAt(to - 1))) to--;
+  return {
+    head: body.slice(from, Math.min(to, from + SUBJECT_HEAD_CHARS)).trim(),
+    tail: body.slice(Math.max(from, to - SUBJECT_TAIL_CHARS), to).trim()
+  };
+}
+function readEqualityCalls(body) {
+  const calls = [];
+  const stack = [];
+  let lastSubjectClose = -2;
+  let lastSubject = null;
+  let i = 0;
+  while (i < body.length) {
+    const code2 = body.charCodeAt(i);
+    if (code2 === 39 || code2 === 34 || code2 === 96) {
+      i = skipLiteral2(body, i);
+      continue;
+    }
+    if (code2 === 40 || code2 === 91 || code2 === 123) {
+      let call = null;
+      let subjectStart = -1;
+      if (code2 === 40) {
+        const found = equalityBefore(body, i);
+        if (found !== null) {
+          const adjacent = found.dot === lastSubjectClose + 1 || found.dot === lastSubjectClose + 2 && body.charCodeAt(lastSubjectClose + 1) === 32;
+          call = { matcher: found.matcher, subject: adjacent ? lastSubject : null, firstArgument: "" };
+          calls.push(call);
+        } else if (opensSubject(body, i)) {
+          subjectStart = i + 1;
+        }
+      }
+      stack.push({
+        open: body[i],
+        call,
+        argumentStart: call === null ? -1 : i + 1,
+        subjectStart,
+        subjectEnd: -1
+      });
+      i++;
+      continue;
+    }
+    const closes = CLOSERS2[body[i]];
+    if (closes !== void 0) {
+      const top = stack[stack.length - 1];
+      if (top !== void 0 && top.open === closes) {
+        stack.pop();
+        if (top.call !== null && top.argumentStart >= 0)
+          top.call.firstArgument = argumentText(body, top.argumentStart, i);
+        if (top.subjectStart >= 0) {
+          lastSubjectClose = i;
+          lastSubject = subjectOf(body, top.subjectStart, top.subjectEnd >= 0 ? top.subjectEnd : i);
+        }
+      }
+      i++;
+      continue;
+    }
+    if (code2 === 44) {
+      const top = stack[stack.length - 1];
+      if (top !== void 0 && top.open === "(") {
+        if (top.call !== null && top.argumentStart >= 0) {
+          top.call.firstArgument = argumentText(body, top.argumentStart, i);
+          top.argumentStart = -1;
+        }
+        if (top.subjectStart >= 0 && top.subjectEnd < 0) top.subjectEnd = i;
+      }
+    }
+    i++;
+  }
+  for (let at = stack.length - 1; at >= 0; at--) {
+    const frame = stack[at];
+    if (frame.call !== null && frame.argumentStart >= 0) {
+      frame.call.firstArgument = argumentText(body, frame.argumentStart, body.length);
+    }
+  }
+  return calls;
+}
+
 // ../core/src/signals/matcherStrength.ts
 var STRONG_MATCHERS = /* @__PURE__ */ new Set([
   "toBe",
@@ -239346,6 +240028,34 @@ function argumentStrength(matcher, call) {
   }
   return call.args === 1 && call.firstArgument === "Object" ? { strength: "weak", label: "toBeInstanceOf(Object)" } : null;
 }
+var EQUALITY_SET = /* @__PURE__ */ new Set(["toBe", "toEqual", "toStrictEqual"]);
+var INSTANCEOF_SUBJECT = /\sinstanceof\s+([A-Za-z_$][\w$.]*)$/;
+var QUOTED_STRING = /^(["'`]).*\1$/s;
+function equalityStrength(matcher, call) {
+  const strong = { strength: "strong", label: matcher };
+  const subject = call.subject;
+  if (subject === null) return strong;
+  const { head, tail } = subject;
+  const argument = call.firstArgument;
+  if (head.startsWith("typeof ") && QUOTED_STRING.test(argument)) return { strength: "weak", label: "toBeTypeOf" };
+  const instance = argument === "true" ? INSTANCEOF_SUBJECT.exec(tail) : null;
+  if (instance !== null) {
+    return instance[1] === "Object" ? { strength: "weak", label: "toBeInstanceOf(Object)" } : null;
+  }
+  if (tail.endsWith(".length")) return { strength: "strong", label: "toHaveLength" };
+  if (head.startsWith("!!") || head.startsWith("Boolean(") && tail.endsWith(")")) {
+    if (argument === "true") return { strength: "weak", label: "toBeTruthy" };
+    if (argument === "false") return { strength: "weak", label: "toBeFalsy" };
+    return strong;
+  }
+  if (tail.endsWith("!== null") && argument === "true" || tail.endsWith("=== null") && argument === "false") {
+    return { strength: "weak", label: "not.toBeNull" };
+  }
+  if (tail.endsWith("!== undefined") && argument === "true" || tail.endsWith("=== undefined") && argument === "false") {
+    return { strength: "weak", label: "toBeDefined" };
+  }
+  return strong;
+}
 function labelledAssertions(block, language) {
   const found = [];
   if (language === "py") {
@@ -239359,6 +240069,8 @@ function labelledAssertions(block, language) {
   ordered.sort((a, b) => a.assertion.line - b.assertion.line || a.index - b.index);
   let calls = null;
   const taken = /* @__PURE__ */ new Map();
+  let equalities = null;
+  const takenEquality = /* @__PURE__ */ new Map();
   for (const { assertion } of ordered) {
     const chain = assertion.chain;
     if (chain.startsWith("expect")) {
@@ -239383,6 +240095,27 @@ function labelledAssertions(block, language) {
         taken.set(name, at + 1);
         const labelled = argumentStrength(name, calls.get(name)?.[at]);
         if (labelled !== null) found.push(labelled);
+      } else if (EQUALITY_SET.has(matcher)) {
+        if (equalities === null) {
+          equalities = /* @__PURE__ */ new Map();
+          if (block.body.includes(".to")) {
+            for (const call2 of readEqualityCalls(block.body)) {
+              const list = equalities.get(call2.matcher);
+              if (list === void 0) equalities.set(call2.matcher, [call2]);
+              else list.push(call2);
+            }
+          }
+        }
+        const name = matcher;
+        const at = takenEquality.get(name) ?? 0;
+        takenEquality.set(name, at + 1);
+        const call = equalities.get(name)?.[at];
+        if (call !== void 0) {
+          const labelled = equalityStrength(name, call);
+          if (labelled !== null) found.push(labelled);
+        } else if (block.body.length < MAX_TEST_BODY_CHARS) {
+          found.push({ strength: "strong", label: matcher });
+        }
       } else if (STRONG_MATCHERS.has(matcher)) {
         found.push({ strength: "strong", label: matcher });
       } else if (WEAK_MATCHERS.has(matcher)) {
@@ -239608,7 +240341,7 @@ var MODIFIERS_THAT_EXCUSE2 = ["skip", "todo", "skipIf", "runIf"];
 var TAUTOLOGY_REASON = "an assertion that compares a literal with itself was added";
 var TRY_REASON = "an assertion moved into a try block that has a catch";
 var RETURN_REASON = "an assertion moved after an early return";
-var byCodeUnit10 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit11 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function counts(labels) {
   const map = /* @__PURE__ */ new Map();
   for (const label of labels) map.set(label, (map.get(label) ?? 0) + 1);
@@ -239617,7 +240350,7 @@ function counts(labels) {
 function surplus(from, other) {
   const own = counts(from);
   const against = counts(other);
-  return [...own].filter(([label, n]) => n > (against.get(label) ?? 0)).map(([label]) => label).sort(byCodeUnit10);
+  return [...own].filter(([label, n]) => n > (against.get(label) ?? 0)).map(([label]) => label).sort(byCodeUnit11);
 }
 function listed(labels, cut) {
   if (labels.length <= cut) return labels.join(", ");
@@ -239699,7 +240432,7 @@ function detectTI06(match) {
 var MAX_TEST_SOURCE_FILES = 200;
 var MAX_TEST_SOURCE_FILE_BYTES = 524288;
 var MAX_TEST_SOURCE_TOTAL_BYTES = 16777216;
-var byCodeUnit11 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit12 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var TEST_CONFIG_PREFIXES = [
   "vitest.config.",
   "vite.config.",
@@ -239721,7 +240454,7 @@ function isTestConfigFile(path) {
   if (basename.startsWith(".mocharc")) return true;
   return TEST_CONFIG_PREFIXES.some((prefix) => basename.length > prefix.length && basename.startsWith(prefix));
 }
-var isTestSource = (path) => isTestFile(path) || isTestConfigFile(path);
+var isTestSource = (path) => !isSnapFile(path) && (isTestFile(path) || isTestConfigFile(path));
 function selectTestSourcePaths(diff) {
   const base = /* @__PURE__ */ new Set();
   const head = /* @__PURE__ */ new Set();
@@ -239733,7 +240466,7 @@ function selectTestSourcePaths(diff) {
       head.add(file.path);
     }
   }
-  return { base: [...base].sort(byCodeUnit11), head: [...head].sort(byCodeUnit11) };
+  return { base: [...base].sort(byCodeUnit12), head: [...head].sort(byCodeUnit12) };
 }
 function isUnsafeTestSourcePath(path) {
   if (path === "" || path.startsWith("/")) return true;
@@ -239748,7 +240481,7 @@ function planTestSourceReads(paths, objects) {
   const dropped = [];
   let total = 0;
   let tripped = false;
-  for (const path of [...new Set(paths)].sort(byCodeUnit11)) {
+  for (const path of [...new Set(paths)].sort(byCodeUnit12)) {
     if (isUnsafeTestSourcePath(path)) {
       dropped.push({ path, reason: "unsafe-path" });
       continue;
@@ -239835,7 +240568,7 @@ var UNITTEST = /* @__PURE__ */ new Set([
 var JS_KEYWORD_LITERALS = /* @__PURE__ */ new Set(["true", "false", "null", "undefined"]);
 var PY_KEYWORD_LITERALS = /* @__PURE__ */ new Set(["True", "False", "None"]);
 var NUMBER = /^(?:0[xXoObB][0-9a-fA-F_]+n?|(?:\d[\d_]*(?:\.[\d_]*)?|\.\d[\d_]*)(?:[eE][+-]?\d+)?[njJ]?)/;
-var WORD = /^[A-Za-z_$][\w$]*/;
+var WORD2 = /^[A-Za-z_$][\w$]*/;
 var REGEX_BEFORE = /* @__PURE__ */ new Set([
   "(",
   ",",
@@ -239974,7 +240707,7 @@ function lexJs(body) {
       i += number[0].length;
       continue;
     }
-    const word = WORD.exec(body.slice(i, i + 256));
+    const word = WORD2.exec(body.slice(i, i + 256));
     if (word !== null) {
       let end = i + word[0].length;
       while (end < body.length && /[\w$]/.test(body[end])) end++;
@@ -240237,7 +240970,7 @@ function escapeDetailText(text) {
 }
 
 // ../core/src/signals/ti10.ts
-var byCodeUnit12 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit13 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE3 = 20;
 var DETAILS2 = {
   "or-true": "A test script now ignores the exit status of a command, so it passes even when the tests fail.",
@@ -240248,7 +240981,7 @@ var DETAILS2 = {
   "name-filter": "A test script now limits the run to the tests whose names match a pattern, so the other tests do not run.",
   "hook-removed": "A script that ran before or after the tests was removed, so its checks no longer run with them."
 };
-var isBlank = (c) => c === " " || c === "	";
+var isBlank3 = (c) => c === " " || c === "	";
 function readString(text, start) {
   let value = "";
   let i = start + 1;
@@ -240270,7 +241003,7 @@ function readString(text, start) {
 function parseScriptLine(text) {
   let i = 0;
   const skip = () => {
-    while (isBlank(text[i])) i++;
+    while (isBlank3(text[i])) i++;
   };
   skip();
   if (text[i] !== '"') return null;
@@ -240329,7 +241062,7 @@ function scanKinds(value) {
       }
       endCommand(op);
       operator = op;
-    } else if (isBlank(c)) {
+    } else if (isBlank3(c)) {
       endWord();
     } else {
       word += c;
@@ -240378,18 +241111,18 @@ function detectTI10(diff, options) {
     for (const hook2 of removedHooks) {
       if (!addedKeys.has(hook2.key)) found.push({ line: hook2.line, kind: "hook-removed" });
     }
-    found.sort((a, b) => a.line - b.line || byCodeUnit12(DETAILS2[a.kind], DETAILS2[b.kind]));
+    found.sort((a, b) => a.line - b.line || byCodeUnit13(DETAILS2[a.kind], DETAILS2[b.kind]));
     for (const { line, kind } of found.slice(0, MAX_PER_FILE3)) {
       signals.push({ id: "TI10", severity: options.mode, path: file.path, line, detail: DETAILS2[kind] });
     }
   }
   return signals.sort(
-    (a, b) => byCodeUnit12(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit12(a.detail, b.detail)
+    (a, b) => byCodeUnit13(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit13(a.detail, b.detail)
   );
 }
 
 // ../core/src/signals/ti08.ts
-var byCodeUnit13 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit14 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_SNAPSHOT_FILES = 10;
 var MIN_INLINE_REWRITES = 10;
 var MAX_FLAG_SIGNALS_PER_FILE = 20;
@@ -240425,7 +241158,7 @@ function massChangeDetail(count2, firstPaths) {
   return `${head}${tail}`;
 }
 function detectSnapshotFiles(diff) {
-  const counted = [...new Set(diff.filter(countsAsChangedSnapshot).map((file) => file.path))].sort(byCodeUnit13);
+  const counted = [...new Set(diff.filter(countsAsChangedSnapshot).map((file) => file.path))].sort(byCodeUnit14);
   if (counted.length <= MAX_SNAPSHOT_FILES) return [];
   return [
     {
@@ -240543,7 +241276,7 @@ function detectTI08(diff) {
   const signals = [...detectSnapshotFiles(diff), ...detectInlineRewrites(diff)];
   for (const file of diff) signals.push(...detectScriptFlags(file), ...detectPytestFlag(file));
   return signals.sort(
-    (a, b) => byCodeUnit13(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit13(a.detail, b.detail)
+    (a, b) => byCodeUnit14(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit14(a.detail, b.detail)
   );
 }
 
@@ -240669,7 +241402,7 @@ function keyText(segments) {
   }
   return cutText(out, MAX_KEY_CHARS);
 }
-var isIdentChar = (ch) => ch !== void 0 && (/[\w$]/.test(ch) || ch.charCodeAt(0) > 127);
+var isIdentChar2 = (ch) => ch !== void 0 && (/[\w$]/.test(ch) || ch.charCodeAt(0) > 127);
 function normalizeOpaque(source) {
   let out = "";
   let pendingSpace = false;
@@ -240700,7 +241433,7 @@ function normalizeOpaque(source) {
       i++;
       continue;
     }
-    if (pendingSpace && isIdentChar(out[out.length - 1]) && isIdentChar(ch)) out += " ";
+    if (pendingSpace && isIdentChar2(out[out.length - 1]) && isIdentChar2(ch)) out += " ";
     pendingSpace = false;
     out += ch;
     i++;
@@ -241040,6 +241773,7 @@ function readJson(text) {
 
 // ../core/src/testConfig/readToml.ts
 var TABLE = /^\[\s*tool\s*\.\s*pytest\s*\.\s*ini_options\s*\]\s*(?:#.*)?$/;
+var NATIVE_TABLE = /^\[\s*tool\s*\.\s*pytest\s*\]\s*(?:#.*)?$/;
 var HEADER_LINE = /^\[\[?[A-Za-z0-9_.\s-]+\]\]?\s*(?:#.*)?$/;
 var KEY_LINE = /^([A-Za-z0-9_.-]+|"(?:[^"\\]|\\.)*"|'[^']*')\s*=([\s\S]*)$/;
 var NUMBER2 = /^[-+]?\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][-+]?\d+)?$/;
@@ -241129,15 +241863,66 @@ function arrayValue(text) {
   }
   return { type: "array", items };
 }
-function readToml(text) {
-  if (text.length > MAX_CONFIG_CHARS) return { ok: false, reason: "too-large" };
-  const lines = text.split(/\r\n|\r|\n/);
-  const start = lines.findIndex((line) => TABLE.test(line.trim()));
-  if (start === -1) return { ok: true, root: null };
+function breakAt(text, from) {
+  for (let i = from; i < text.length; i++) {
+    const code2 = text.charCodeAt(i);
+    if (code2 === 10 || code2 === 13) return i;
+  }
+  return -1;
+}
+var afterBreak = (text, at) => at + (text.charCodeAt(at) === 13 && text.charCodeAt(at + 1) === 10 ? 2 : 1);
+var Lines = class {
+  constructor(text, from, first) {
+    this.text = text;
+    this.first = first;
+    this.pos = from;
+    this.done = from > text.length;
+  }
+  text;
+  first;
+  pos;
+  done;
+  cache = [];
+  /** The line with index `i`, or undefined past the end of the text. */
+  at(i) {
+    const k = i - this.first;
+    while (this.cache.length <= k && !this.done) {
+      const end = breakAt(this.text, this.pos);
+      if (end === -1) {
+        this.cache.push(this.text.slice(this.pos));
+        this.done = true;
+      } else {
+        this.cache.push(this.text.slice(this.pos, end));
+        this.pos = afterBreak(this.text, end);
+      }
+    }
+    return this.cache[k];
+  }
+};
+function headerAt(text, needle, header) {
+  let from = 0;
+  for (; ; ) {
+    const hit = text.indexOf(needle, from);
+    if (hit === -1) return null;
+    let start = hit;
+    while (start > 0 && text.charCodeAt(start - 1) !== 10 && text.charCodeAt(start - 1) !== 13) start--;
+    const end = breakAt(text, hit);
+    if (header.test(text.slice(start, end === -1 ? text.length : end).trim())) {
+      let line = 0;
+      for (let i = 0; i < start; i++) {
+        const code2 = text.charCodeAt(i);
+        if (code2 === 10 || code2 === 13 && text.charCodeAt(i + 1) !== 10) line++;
+      }
+      return { line, next: end === -1 ? text.length + 1 : afterBreak(text, end) };
+    }
+    if (end === -1) return null;
+    from = end;
+  }
+}
+function readTable(lines, headerAt2) {
   const entries = /* @__PURE__ */ new Map();
-  let i = start + 1;
-  while (i < lines.length) {
-    const raw = lines[i];
+  let i = headerAt2 + 1;
+  for (let raw = lines.at(i); raw !== void 0; raw = lines.at(i)) {
     const line = stripTomlComment(raw);
     if (line === "") {
       i++;
@@ -241145,14 +241930,14 @@ function readToml(text) {
     }
     if (line.startsWith("[")) break;
     const match = KEY_LINE.exec(line);
-    if (match === null) return { ok: false, reason: "invalid-toml" };
+    if (match === null) return null;
     const rawKey = match[1];
     let key = rawKey.replace(/^'|'$/g, "");
     if (rawKey.startsWith('"')) {
       try {
         key = JSON.parse(rawKey);
       } catch {
-        return { ok: false, reason: "invalid-toml" };
+        return null;
       }
     }
     const rest = match[2].trim();
@@ -241162,8 +241947,9 @@ function readToml(text) {
       let closed = rest.slice(3).includes(multi);
       while (!closed) {
         i++;
-        if (i >= lines.length) return { ok: false, reason: "invalid-toml" };
-        closed = lines[i].includes(multi);
+        const more = lines.at(i);
+        if (more === void 0) return null;
+        closed = more.includes(multi);
       }
       entries.set(key, { value: { type: "opaque", text: normalizeOpaque(rest) }, line: first + 1 });
       i++;
@@ -241175,19 +241961,32 @@ function readToml(text) {
       let scan = scanBrackets(rest, 0, 0);
       while (scan !== null && scan.close === -1) {
         i++;
-        const next = lines[i];
-        if (next === void 0 || HEADER_LINE.test(next.trim())) return { ok: false, reason: "invalid-toml" };
+        const next = lines.at(i);
+        if (next === void 0 || HEADER_LINE.test(next.trim())) return null;
         const added = stripTomlComment(next);
         parts.push(added);
         scan = scanBrackets(added, 0, scan.depth);
       }
-      if (scan === null) return { ok: false, reason: "invalid-toml" };
+      if (scan === null) return null;
       value = arrayValue(parts.join(" "));
     } else {
       value = scalar(rest);
     }
     entries.set(key, { value, line: first + 1 });
     i++;
+  }
+  return entries;
+}
+function readToml(text) {
+  if (text.length > MAX_CONFIG_CHARS) return { ok: false, reason: "too-large" };
+  const starts = [headerAt(text, "ini_options", TABLE), headerAt(text, "pytest", NATIVE_TABLE)];
+  if (starts[0] === null && starts[1] === null) return { ok: true, root: null };
+  const entries = /* @__PURE__ */ new Map();
+  for (const start of starts) {
+    if (start === null) continue;
+    const table = readTable(new Lines(text, start.next, start.line + 1), start.line);
+    if (table === null) return { ok: false, reason: "invalid-toml" };
+    for (const [key, entry] of table) entries.set(key, entry);
   }
   return { ok: true, root: { type: "object", entries, open: false, extras: [] } };
 }
@@ -241597,6 +242396,110 @@ function widenedList(base, head, mode) {
   return gainsOpaque(base, head) ? "cannot" : null;
 }
 
+// ../core/src/testConfig/projects.ts
+var PROJECT_KEYS = {
+  vitest: [
+    { path: ["test", "include"], kind: "narrowed", list: "glob" },
+    { path: ["test", "exclude"], kind: "widened", list: "glob" }
+  ],
+  jest: [
+    { path: ["testMatch"], kind: "narrowed", list: "glob" },
+    { path: ["testRegex"], kind: "narrowed", list: "regex" },
+    { path: ["testPathIgnorePatterns"], kind: "widened", list: "regex" }
+  ]
+};
+var NAME = {
+  vitest: { path: ["test", "name"], field: "label" },
+  jest: { path: ["displayName"], field: "name" }
+};
+var isObject = (value) => value.type === "object";
+function itemsOf(value) {
+  return value.type === "array" ? value.items : [value];
+}
+function nameOf(project, flavor) {
+  const { path, field } = NAME[flavor];
+  const look = lookup(project, path);
+  if (typeof look !== "object") return null;
+  const value = look.found.value;
+  if (value.type === "string") return value.value;
+  if (value.type !== "object") return null;
+  const inner = lookup(value, [field]);
+  if (typeof inner !== "object") return null;
+  return inner.found.value.type === "string" ? inner.found.value.value : null;
+}
+var fold = (a, b) => a === "narrowed" || b === "narrowed" ? "narrowed" : a === "cannot" || b === "cannot" ? "cannot" : null;
+function compareKey(base, head, key) {
+  const b = lookup(base, key.path);
+  const h = lookup(head, key.path);
+  const baseValue = typeof b === "object" ? b.found.value : null;
+  const headValue = typeof h === "object" ? h.found.value : null;
+  if (baseValue !== null && headValue !== null && printValue(baseValue) === printValue(headValue)) return null;
+  if (b === "unknown" || h === "unset") return null;
+  if (headValue === null) return baseValue !== null ? "cannot" : null;
+  const headEntries = entriesOf(headValue, false);
+  if (key.kind === "narrowed") {
+    return baseValue === null ? null : narrowedList(entriesOf(baseValue, false), headEntries, key.list);
+  }
+  const result = widenedList(baseValue === null ? [] : entriesOf(baseValue, false), headEntries, key.list);
+  return result === "widened" ? "narrowed" : result;
+}
+var listOf = (items) => ({ type: "array", items });
+function compareProjects(base, head, flavor) {
+  const baseItems = itemsOf(base);
+  const headItems = itemsOf(head);
+  const baseObjects = baseItems.filter(isObject);
+  const headObjects = headItems.filter(isObject);
+  const baseOthers = baseItems.filter((item) => !isObject(item));
+  const headOthers = headItems.filter((item) => !isObject(item));
+  let outcome = narrowedList(
+    entriesOf(listOf(baseOthers), false),
+    entriesOf(listOf(headOthers), false),
+    "glob"
+  );
+  const baseNames = baseObjects.map((project) => nameOf(project, flavor));
+  const headNames = headObjects.map((project) => nameOf(project, flavor));
+  const baseNameSet = new Set(baseNames.filter((name) => name !== null));
+  const headByName = /* @__PURE__ */ new Map();
+  headNames.forEach((name, index) => {
+    if (name === null) return;
+    const queue = headByName.get(name);
+    if (queue === void 0) headByName.set(name, { indexes: [index], next: 0 });
+    else queue.indexes.push(index);
+  });
+  const matchOf = new Array(baseObjects.length).fill(-1);
+  const taken = /* @__PURE__ */ new Set();
+  baseNames.forEach((name, index) => {
+    const queue = name === null ? void 0 : headByName.get(name);
+    if (queue === void 0 || queue.next >= queue.indexes.length) return;
+    const match = queue.indexes[queue.next];
+    queue.next += 1;
+    matchOf[index] = match;
+    taken.add(match);
+  });
+  matchOf.forEach((match, index) => {
+    if (match !== -1 || index >= headObjects.length || taken.has(index)) return;
+    const headName = headNames[index];
+    if (headName !== null && baseNameSet.has(headName)) return;
+    matchOf[index] = index;
+    taken.add(index);
+  });
+  const baseOpaque = new Set(
+    baseOthers.filter((item) => item.type === "opaque").map((item) => item.text)
+  );
+  const gainsOpaque2 = headOthers.some((item) => item.type === "opaque" && !baseOpaque.has(item.text));
+  baseObjects.forEach((project, index) => {
+    const match = matchOf[index];
+    if (match === -1) {
+      outcome = fold(outcome, gainsOpaque2 ? "cannot" : "narrowed");
+      return;
+    }
+    for (const key of PROJECT_KEYS[flavor]) {
+      outcome = fold(outcome, compareKey(project, headObjects[match], key));
+    }
+  });
+  return outcome;
+}
+
 // ../core/src/testConfig/rules.ts
 var rule = (path, kind, extra = {}) => ({
   path: path.split("."),
@@ -241612,7 +242515,7 @@ var VITEST_RULES = [
   rule("coverage.exclude", "widened", { list: "glob" }),
   rule("include", "narrowed", { list: "glob" }),
   rule("exclude", "widened", { list: "glob" }),
-  rule("projects", "narrowed", { list: "glob" }),
+  rule("projects", "projects", { projects: "vitest" }),
   rule("passWithNoTests", "turnedOn"),
   rule("allowOnly", "turnedOn"),
   rule("retry", "increased", { warn: true }),
@@ -241620,14 +242523,14 @@ var VITEST_RULES = [
   rule("testTimeout", "raised", { warn: true }),
   rule("hookTimeout", "raised", { warn: true })
 ];
-var WORKSPACE_RULES = [rule("projects", "narrowed", { list: "glob" })];
+var WORKSPACE_RULES = [rule("projects", "projects", { projects: "vitest" })];
 var JEST_RULES = [
   rule("coverageThreshold", "jestThresholds"),
   rule("coveragePathIgnorePatterns", "widened", { list: "regex" }),
   rule("testPathIgnorePatterns", "widened", { list: "regex" }),
   rule("testMatch", "narrowed", { list: "glob" }),
   rule("testRegex", "narrowed", { list: "regex" }),
-  rule("projects", "narrowed", { list: "glob" }),
+  rule("projects", "projects", { projects: "jest" }),
   rule("passWithNoTests", "turnedOn"),
   rule("bail", "bail"),
   rule("testTimeout", "raised", { warn: true })
@@ -241827,6 +242730,11 @@ function keyFindings(ctx, key) {
     compared(ctx, key, `${keyName} ${verb}: ${shown(baseValue)} \u2192 ${shown(headValue)}.`, b, h)
   ];
   if (key.rule === "addedOrChanged") return hit("added or changed");
+  if (key.rule === "projects") {
+    if (baseValue === null || b === "unknown") return [];
+    const result = compareProjects(baseValue, headValue, key.projects ?? "vitest");
+    return result === "narrowed" ? hit("narrowed") : result === "cannot" ? cannot() : [];
+  }
   if (key.list !== void 0) {
     if (b === "unknown") return [];
     const split = key.split === true;
@@ -241883,7 +242791,7 @@ function evaluateRules(kind, base, head, mode) {
 }
 
 // ../core/src/signals/ti09.ts
-var byCodeUnit14 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit15 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function lookupOf2(side) {
   const texts = /* @__PURE__ */ new Map();
   const dropped = /* @__PURE__ */ new Map();
@@ -241932,7 +242840,7 @@ function detectTI09(diff, sources, mode) {
     }
     return readTestConfig(candidate.kind, path, text.text);
   };
-  const sorted = [...candidates].sort((a, b) => byCodeUnit14(a.path, b.path) || byCodeUnit14(a.oldPath, b.oldPath));
+  const sorted = [...candidates].sort((a, b) => byCodeUnit15(a.path, b.path) || byCodeUnit15(a.oldPath, b.oldPath));
   for (const candidate of sorted) {
     const base = candidate.added ? null : readSide(baseSide, candidate, candidate.oldPath);
     const head = readSide(headSide, candidate, candidate.path);
@@ -241969,13 +242877,13 @@ function detectTI09(diff, sources, mode) {
   }
   return {
     signals,
-    unavailable: [...unavailable2].map(([path, reason]) => ({ path, reason })).sort((a, b) => byCodeUnit14(a.path, b.path)),
+    unavailable: [...unavailable2].map(([path, reason]) => ({ path, reason })).sort((a, b) => byCodeUnit15(a.path, b.path)),
     notRun: null
   };
 }
 
 // ../core/src/signals/ti11.ts
-var byCodeUnit15 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit16 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var PM_FLAGS = String.raw`(?:\s+(?:-r|--recursive|-w|--workspace-root|-ws|--workspaces|--if-present|(?:--filter|-F|-C|--dir|--prefix|--workspace|--cwd)(?:=|\s+)\S+))*`;
 var JS_LAUNCHER = String.raw`(?:(?:npx|bunx|yarn|pnpm${PM_FLAGS}(?:\s+(?:exec|dlx))?|bun\s+x|npm\s+exec)\s+)?`;
 var PY_WRAPPER = String.raw`(?:(?:uv|poetry|pipenv|pdm|hatch|rye)\s+run\s+)?`;
@@ -242009,10 +242917,81 @@ function commandText(line) {
   const text = stripComment2(line).replace(/^-\s+/, "").replace(/^run\s*:\s*/, "");
   return text.replace(/\s+/g, " ").trim();
 }
-function testCommandOf(line) {
+var PM_PLAIN_FLAGS = /* @__PURE__ */ new Set([
+  "-r",
+  "--recursive",
+  "-w",
+  "--workspace-root",
+  "-ws",
+  "--workspaces",
+  "--if-present"
+]);
+var PM_VALUE_FLAGS = /* @__PURE__ */ new Set([
+  "--filter",
+  "-F",
+  "-C",
+  "--dir",
+  "--prefix",
+  "--workspace",
+  "--cwd"
+]);
+var PACKAGE_MANAGERS = /* @__PURE__ */ new Set(["npm", "pnpm", "yarn", "bun"]);
+var RUNNERS = /* @__PURE__ */ new Set(["vitest", "jest", "mocha"]);
+function runnerStart(tokens) {
+  const first = tokens[0];
+  let start = -1;
+  if (first === "npx" || first === "bunx") start = 1;
+  else if (first === "bun" || first === "npm") start = tokens[1] === (first === "bun" ? "x" : "exec") ? 2 : -1;
+  else if (first === "pnpm") start = tokens[1] === "exec" || tokens[1] === "dlx" ? 2 : 1;
+  else if (first === "yarn") start = 1;
+  else start = 0;
+  if (start < 0) return -1;
+  const runner = tokens[start];
+  if (runner === void 0) return -1;
+  if (RUNNERS.has(runner) || runner === "playwright" && tokens[start + 1] === "test") return start;
+  return -1;
+}
+function keyOf2(part) {
+  const tokens = part.split(" ");
+  const runner = runnerStart(tokens);
+  if (runner >= 0) return tokens.slice(runner).join(" ");
+  const manager = tokens[0];
+  if (!PACKAGE_MANAGERS.has(manager)) return part;
+  let i = 1;
+  const flags = [];
+  for (; ; ) {
+    const token = tokens[i];
+    if (token === void 0) break;
+    if (PM_PLAIN_FLAGS.has(token)) {
+      flags.push(token);
+      i += 1;
+    } else if (PM_VALUE_FLAGS.has(token) && tokens[i + 1] !== void 0) {
+      flags.push(token, tokens[i + 1]);
+      i += 2;
+    } else if (/^(?:--filter|-F|-C|--dir|--prefix|--workspace|--cwd)=\S+$/.test(token)) {
+      flags.push(token);
+      i += 1;
+    } else {
+      break;
+    }
+  }
+  let ran = false;
+  if (tokens[i] === "run" || manager === "npm" && tokens[i] === "run-script") {
+    ran = true;
+    i += 1;
+  }
+  let script = tokens[i];
+  if (script === void 0 || !/^(?:test|t)(?::[\w:-]+)?$/.test(script)) return part;
+  if (manager === "bun" && !ran) return part;
+  if (!ran && script === "t") script = "test";
+  i += 1;
+  if (tokens[i] === "--") i += 1;
+  return ["run", ...flags, script, ...tokens.slice(i)].join(" ");
+}
+function testKeysOf(line) {
   const text = commandText(line);
-  if (text === "") return null;
-  return text.split(/\s*(?:&&|;)\s*/).some((part) => TEST_COMMAND.test(part)) ? text : null;
+  if (text === "") return [];
+  return text.split(/\s*(?:&&|;)\s*/).filter((part) => TEST_COMMAND.test(part)).map(keyOf2);
 }
 function carriesPullRequestTrigger(line) {
   const text = stripComment2(line);
@@ -242048,12 +243027,11 @@ function detectTI11(diff, mode) {
   const files = diff.filter(
     (file) => (isWorkflowFile(file.path) || isWorkflowFile(file.oldPath)) && file.hunks !== void 0 && file.binary !== true
   );
-  const addedCommands = /* @__PURE__ */ new Set();
+  const addedKeys = /* @__PURE__ */ new Set();
   for (const file of files) {
     for (const hunk of file.hunks ?? []) {
       for (const entry of hunk.added) {
-        const command = testCommandOf(entry.text);
-        if (command !== null) addedCommands.add(command);
+        for (const key of testKeysOf(entry.text)) addedKeys.add(key);
       }
     }
   }
@@ -242063,10 +243041,7 @@ function detectTI11(diff, mode) {
     const added = (file.hunks ?? []).flatMap((hunk) => hunk.added);
     const removed = (file.hunks ?? []).flatMap((hunk) => hunk.removed);
     const emit = (severity, line, detail) => signals.push({ id: "TI11", severity, path, line, detail });
-    const lostCommand = removed.find((entry) => {
-      const command = testCommandOf(entry.text);
-      return command !== null && !addedCommands.has(command);
-    });
+    const lostCommand = removed.find((entry) => testKeysOf(entry.text).some((key) => !addedKeys.has(key)));
     if (lostCommand !== void 0) emit(mode, lostCommand.line, SENTENCES.testStep);
     const lostTrigger = removed.find((entry) => carriesPullRequestTrigger(entry.text));
     if (lostTrigger !== void 0 && !added.some((entry) => carriesPullRequestTrigger(entry.text))) {
@@ -242103,7 +243078,7 @@ function detectTI11(diff, mode) {
     if (rushed !== void 0) emit("warn", rushed.line, SENTENCES.timeout);
   }
   return signals.sort(
-    (a, b) => byCodeUnit15(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit15(a.detail, b.detail)
+    (a, b) => byCodeUnit16(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit16(a.detail, b.detail)
   );
 }
 
@@ -242262,7 +243237,7 @@ function detectTI12(touched, diff) {
 }
 
 // ../core/src/signals/ti13.ts
-var byCodeUnit16 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit17 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE4 = 20;
 var DETAILS3 = {
   istanbul: "An Istanbul coverage hint was added, so the code it marks leaves the coverage this check grades.",
@@ -242314,12 +243289,12 @@ function detectTI13(diff, mode) {
     }
   }
   return signals.sort(
-    (a, b) => byCodeUnit16(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit16(a.detail, b.detail)
+    (a, b) => byCodeUnit17(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit17(a.detail, b.detail)
   );
 }
 
 // ../core/src/signals/ti14.ts
-var byCodeUnit17 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit18 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var PLAIN_NUMBER = /^\d+(?:\.\d+)?$/;
 function normalizedPattern(item) {
   try {
@@ -242437,15 +243412,45 @@ function detectTI14(diff, options) {
       });
     }
   }
-  return signals.sort((a, b) => byCodeUnit17(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit18(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti15.ts
-var byCodeUnit18 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-var MAX_PER_FILE5 = 20;
+var byCodeUnit19 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var MAX_PER_CHANGE = 10;
 var MAX_DETAIL5 = 300;
-var MIN_STRING_LENGTH = 4;
-var MIN_SIGNIFICANT_DIGITS = 3;
+var MIN_STRING_LENGTH = 6;
+var MIN_SIGNIFICANT_DIGITS = 4;
+var EXCLUDED_DIRS = /* @__PURE__ */ new Set(["examples", "benchmarks", "bench", "docs", "fixtures"]);
+function inExcludedDir(path) {
+  const segments = path.split("/");
+  for (let i = 0; i < segments.length - 1; i++) if (EXCLUDED_DIRS.has(segments[i])) return true;
+  return false;
+}
+var MANIFEST_NAMES = /* @__PURE__ */ new Set(["package.json", "pyproject.toml"]);
+function manifestDirs(diff, repoFiles) {
+  const dirs = /* @__PURE__ */ new Set();
+  const note = (path) => {
+    const slash = path.lastIndexOf("/");
+    if (MANIFEST_NAMES.has(path.slice(slash + 1))) dirs.add(slash === -1 ? "" : path.slice(0, slash));
+  };
+  for (const path of repoFiles) note(path);
+  for (const file of diff) if (file.status === "added") note(file.path);
+  return dirs;
+}
+function packageRoot(path, manifests) {
+  if (manifests.size === 0) {
+    const segments = path.split("/");
+    return segments.length >= 3 && (segments[0] === "packages" || segments[0] === "apps") ? `${segments[0]}/${segments[1]}` : "";
+  }
+  let slash = path.lastIndexOf("/");
+  while (slash > 0) {
+    const dir = path.slice(0, slash);
+    if (manifests.has(dir)) return dir;
+    slash = path.lastIndexOf("/", slash - 1);
+  }
+  return "";
+}
 var STOP_LIST = /* @__PURE__ */ new Set([
   "string",
   "number",
@@ -242474,7 +243479,7 @@ var STOP_LIST = /* @__PURE__ */ new Set([
 ]);
 var isDigit2 = (c) => c >= "0" && c <= "9";
 var isWordChar = (c) => c >= "0" && c <= "9" || c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_";
-var isBlank2 = (c) => c === " " || c === "	";
+var isBlank4 = (c) => c === " " || c === "	";
 function digitsEnd2(text, start) {
   let i = start;
   while (i < text.length && isDigit2(text.charAt(i))) i++;
@@ -242528,33 +243533,33 @@ function isEligible(literal) {
   if (literal.kind === "number") return significantDigits(literal.value) >= MIN_SIGNIFICANT_DIGITS;
   return literal.value.length >= MIN_STRING_LENGTH && !STOP_LIST.has(literal.value.toLowerCase());
 }
-var keyOf2 = (literal) => `${literal.kind === "string" ? "s" : "n"}${literal.value}`;
+var keyOf3 = (literal) => `${literal.kind === "string" ? "s" : "n"}${literal.value}`;
 var isOperatorChar = (c) => c === "=" || c === "!" || c === "<" || c === ">";
 function operatorBefore(text, at) {
   let end = at;
-  while (end > 0 && isBlank2(text.charAt(end - 1))) end--;
+  while (end > 0 && isBlank4(text.charAt(end - 1))) end--;
   let start = end;
   while (start > 0 && isOperatorChar(text.charAt(start - 1))) start--;
   return text.slice(start, end);
 }
 function operatorAfter(text, at) {
   let start = at;
-  while (start < text.length && isBlank2(text.charAt(start))) start++;
+  while (start < text.length && isBlank4(text.charAt(start))) start++;
   let end = start;
   while (end < text.length && isOperatorChar(text.charAt(end))) end++;
   return text.slice(start, end);
 }
 var EQUALITY = /* @__PURE__ */ new Set(["===", "!==", "==", "!="]);
 function isCaseLabel(trimmed, offset, literal) {
-  if (!trimmed.startsWith("case") || !isBlank2(trimmed.charAt(4))) return false;
+  if (!trimmed.startsWith("case") || !isBlank4(trimmed.charAt(4))) return false;
   let i = 4;
-  while (isBlank2(trimmed.charAt(i))) i++;
+  while (isBlank4(trimmed.charAt(i))) i++;
   if (literal.start - offset !== i) return false;
   let j = literal.end - offset;
-  while (isBlank2(trimmed.charAt(j))) j++;
+  while (isBlank4(trimmed.charAt(j))) j++;
   return trimmed.charAt(j) === ":";
 }
-var CLOSERS2 = { "(": ")", "[": "]", "{": "}" };
+var CLOSERS3 = { "(": ")", "[": "]", "{": "}" };
 function inGroups(text, literals) {
   const groups = [];
   const strings = literals.filter((l) => l.kind === "string");
@@ -242575,8 +243580,8 @@ function inGroups(text, literals) {
     while (j < text.length && isWordChar(text.charAt(j))) j++;
     if (text.slice(i, j) === "in") {
       let k = j;
-      while (isBlank2(text.charAt(k))) k++;
-      const closer = CLOSERS2[text.charAt(k)];
+      while (isBlank4(text.charAt(k))) k++;
+      const closer = CLOSERS3[text.charAt(k)];
       if (closer !== void 0) {
         const close = text.indexOf(closer, k + 1);
         if (close !== -1) groups.push([k, close]);
@@ -242601,26 +243606,28 @@ function conditionLiterals(text, language) {
     return groups.some(([open3, close]) => literal.start > open3 && literal.end <= close);
   });
 }
-function testLiterals(diff) {
+function testLiterals(diff, manifests) {
   const found = /* @__PURE__ */ new Map();
   for (const file of diff) {
     if (file.hunks === void 0 || file.binary === true || file.status === "deleted") continue;
-    if (!isTestFile(file.path)) continue;
+    if (!isTestFile(file.path) || inExcludedDir(file.path)) continue;
     const language = testLanguage(file.path);
     if (language !== "jsts" && language !== "python") continue;
+    const root = packageRoot(file.path, manifests);
     for (const hunk of file.hunks) {
       for (const entry of hunk.added) {
         for (const literal of scanLiterals(entry.text)) {
           if (!isEligible(literal)) continue;
-          const key = keyOf2(literal);
-          const paths = found.get(key) ?? /* @__PURE__ */ new Set();
-          paths.add(file.path);
-          found.set(key, paths);
+          const key = keyOf3(literal);
+          const roots = found.get(key) ?? /* @__PURE__ */ new Map();
+          const first = roots.get(root);
+          if (first === void 0 || byCodeUnit19(file.path, first) < 0) roots.set(root, file.path);
+          found.set(key, roots);
         }
       }
     }
   }
-  return new Map([...found].map(([key, paths]) => [key, [...paths].sort(byCodeUnit18)]));
+  return found;
 }
 function detailOf3(literal, sourcePath, line, testPath) {
   const what = `a ${literal.value.length}-character ${literal.kind} literal`;
@@ -242632,42 +243639,46 @@ function detailOf3(literal, sourcePath, line, testPath) {
   if (noTest.length <= MAX_DETAIL5) return noTest;
   return `This condition compares with ${what} that a test file in this change also adds, ${tail}`;
 }
-function detectTI15(diff) {
-  const tests = testLiterals(diff);
-  if (tests.size === 0) return [];
-  const signals = [];
+function detectTI15(diff, options) {
+  const manifests = manifestDirs(diff, options.repoFiles);
+  const tests = testLiterals(diff, manifests);
+  if (tests.size === 0) return { signals: [], omitted: [] };
+  const findings = [];
   for (const file of diff) {
     if (file.hunks === void 0 || file.binary === true || file.status === "deleted") continue;
-    if (isTestFile(file.path)) continue;
+    if (isTestFile(file.path) || inExcludedDir(file.path)) continue;
     const language = coverageSourceLanguage(file.path);
     if (language === null) continue;
+    const root = packageRoot(file.path, manifests);
     const removed = /* @__PURE__ */ new Set();
     for (const hunk of file.hunks) {
-      for (const entry of hunk.removed) for (const literal of scanLiterals(entry.text)) removed.add(keyOf2(literal));
+      for (const entry of hunk.removed) for (const literal of scanLiterals(entry.text)) removed.add(keyOf3(literal));
     }
-    const found = [];
     for (const hunk of file.hunks) {
       for (const entry of hunk.added) {
         const seen = /* @__PURE__ */ new Set();
         for (const literal of conditionLiterals(entry.text, language)) {
-          const key = keyOf2(literal);
+          const key = keyOf3(literal);
           if (seen.has(key)) continue;
           seen.add(key);
           if (removed.has(key)) continue;
-          const testPaths = tests.get(key);
-          if (testPaths === void 0) continue;
-          found.push({ line: entry.line, detail: detailOf3(literal, file.path, entry.line, testPaths[0]) });
+          const testPath = tests.get(key)?.get(root);
+          if (testPath === void 0) continue;
+          findings.push({
+            path: file.path,
+            line: entry.line,
+            detail: detailOf3(literal, file.path, entry.line, testPath)
+          });
         }
       }
     }
-    found.sort((a, b) => a.line - b.line || byCodeUnit18(a.detail, b.detail));
-    for (const { line, detail } of found.slice(0, MAX_PER_FILE5)) {
-      signals.push({ id: "TI15", severity: "warn", path: file.path, line, detail });
-    }
   }
-  return signals.sort(
-    (a, b) => byCodeUnit18(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit18(a.detail, b.detail)
-  );
+  findings.sort((a, b) => byCodeUnit19(a.path, b.path) || a.line - b.line || byCodeUnit19(a.detail, b.detail));
+  const signals = findings.slice(0, MAX_PER_CHANGE).map(({ path, line, detail }) => ({ id: "TI15", severity: "info", path, line, detail }));
+  const counts2 = /* @__PURE__ */ new Map();
+  for (const { path } of findings.slice(MAX_PER_CHANGE)) counts2.set(path, (counts2.get(path) ?? 0) + 1);
+  const omitted = [...counts2].map(([path, count2]) => ({ id: "TI15", path, count: count2 }));
+  return { signals, omitted };
 }
 
 // ../core/src/signals/ti16.ts
@@ -242703,14 +243714,14 @@ var PYLINT_WORD = ["py", "lint:"].join("");
 var DISABLE_WORD = ["dis", "able"].join("");
 var PYRIGHT_WORD = ["py", "right:"].join("");
 var MAX_LINE2 = 400;
-var isBlank3 = (c) => c === " " || c === "	";
+var isBlank5 = (c) => c === " " || c === "	";
 var isWordChar2 = (c) => c >= "0" && c <= "9" || c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_";
 var isTokenChar = (c) => isWordChar2(c) || c === "@" || c === "-";
 var endsWord = (text, at) => at >= text.length || !isWordChar2(text.charAt(at));
 var normalize = (text) => text.replace(/\s+/g, " ").trim();
-function skipBlanks(text, from) {
+function skipBlanks2(text, from) {
   let i = from;
-  while (i < text.length && isBlank3(text.charAt(i))) i++;
+  while (i < text.length && isBlank5(text.charAt(i))) i++;
   return i;
 }
 function jsMarker(text) {
@@ -242718,7 +243729,7 @@ function jsMarker(text) {
     if (text.charAt(i) !== SLASH) continue;
     const opener = text.slice(i, i + 2);
     if (opener !== LINE_OPENER && opener !== BLOCK_OPENER) continue;
-    const start = skipBlanks(text, i + 2);
+    const start = skipBlanks2(text, i + 2);
     let end = start;
     while (end < text.length && isTokenChar(text.charAt(end))) end++;
     if (!JS_MARKERS.has(text.slice(start, end))) continue;
@@ -242733,7 +243744,7 @@ function jsMarker(text) {
 }
 function startsPythonMarker(text, at) {
   if (text.startsWith(TYPE_WORD, at)) {
-    const word = skipBlanks(text, at + TYPE_WORD.length);
+    const word = skipBlanks2(text, at + TYPE_WORD.length);
     return text.startsWith(IGNORE_WORD, word) && endsWord(text, word + IGNORE_WORD.length);
   }
   if (text.slice(at, at + NOQA_WORD.length).toLowerCase() === NOQA_WORD) {
@@ -242741,7 +243752,7 @@ function startsPythonMarker(text, at) {
     return next >= text.length || text.charAt(next) === ":" || !isWordChar2(text.charAt(next));
   }
   if (text.startsWith(PYLINT_WORD, at)) {
-    const word = skipBlanks(text, at + PYLINT_WORD.length);
+    const word = skipBlanks2(text, at + PYLINT_WORD.length);
     for (const name of [`${DISABLE_WORD}-next`, DISABLE_WORD]) {
       if (!text.startsWith(name, word)) continue;
       const next = word + name.length;
@@ -242750,14 +243761,14 @@ function startsPythonMarker(text, at) {
     return false;
   }
   if (text.startsWith(PYRIGHT_WORD, at)) {
-    const word = skipBlanks(text, at + PYRIGHT_WORD.length);
+    const word = skipBlanks2(text, at + PYRIGHT_WORD.length);
     return text.startsWith(IGNORE_WORD, word) && endsWord(text, word + IGNORE_WORD.length);
   }
   return false;
 }
 function pythonMarker(text) {
   for (let i = text.indexOf(HASH); i !== -1; i = text.indexOf(HASH, i + 1)) {
-    const start = skipBlanks(text, i + 1);
+    const start = skipBlanks2(text, i + 1);
     if (startsPythonMarker(text, start)) return normalize(text.slice(start));
   }
   return null;
@@ -242766,7 +243777,7 @@ var markerOf2 = (text, language) => {
   const line = text.length > MAX_LINE2 ? text.slice(0, MAX_LINE2) : text;
   return language === "jsts" ? jsMarker(line) : pythonMarker(line);
 };
-var byCodeUnit19 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit20 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function detectTI16(diff) {
   const signals = [];
   for (const file of diff) {
@@ -242804,14 +243815,14 @@ function detectTI16(diff) {
       detail: `This test file adds ${count2} that switch off a linter or type checker, so the checks they silence no longer run on that code.`
     });
   }
-  return signals.sort((a, b) => byCodeUnit19(a.path, b.path));
+  return signals.sort((a, b) => byCodeUnit20(a.path, b.path));
 }
 
 // ../core/src/check.ts
-var byCodeUnit20 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit21 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function sortSignals(signals) {
   return signals.sort(
-    (a, b) => byCodeUnit20(a.id, b.id) || byCodeUnit20(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit20(a.detail, b.detail)
+    (a, b) => byCodeUnit21(a.id, b.id) || byCodeUnit21(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit21(a.detail, b.detail)
   );
 }
 function check(input) {
@@ -242824,9 +243835,12 @@ function check(input) {
   const configPaths = parsedDiff === null ? [] : changedConfigPaths(parsedDiff, input.configPath, input.repoRoot);
   const testPaths = parsedDiff === null ? [] : deletedTestFiles(parsedDiff);
   const testIntegrity = resolveTestIntegrityMode(input.testIntegrityMode);
+  const touched = parsedDiff !== null && testIntegrity.mode !== "off" && input.testSources !== void 0 ? indexTouchedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex) : null;
+  const movedTests = touched === null || parsedDiff === null || input.testSources === void 0 ? void 0 : movedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex, touched);
+  const sourceMatches = parsedDiff === null || testIntegrity.mode === "off" ? { signals: [], omitted: [] } : detectTI15(parsedDiff, { repoFiles: input.repoFiles });
   const testIntegritySignals = parsedDiff === null || testIntegrity.mode === "off" ? [] : sortSignals([
-    ...detectTI01(parsedDiff, testIntegrity.mode),
-    ...detectTI03(parsedDiff, testIntegrity.mode),
+    ...detectTI01(parsedDiff, testIntegrity.mode, movedTests?.files, movedTests?.compared),
+    ...detectTI03(parsedDiff, testIntegrity.mode, input.testSources),
     ...detectTI04(parsedDiff, testIntegrity.mode),
     ...detectTI08(parsedDiff),
     ...detectTI10(parsedDiff, { repoFiles: input.repoFiles, mode: testIntegrity.mode }),
@@ -242838,14 +243852,13 @@ function check(input) {
       exclude: input.exclude ?? [],
       mode: testIntegrity.mode
     }),
-    ...detectTI15(parsedDiff),
+    ...sourceMatches.signals,
     ...detectTI16(parsedDiff)
   ]);
   let comparison = null;
   const comparedMode = testIntegrity.mode;
   let testChanges;
-  if (parsedDiff !== null && comparedMode !== "off" && input.testSources !== void 0) {
-    const touched = indexTouchedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex);
+  if (parsedDiff !== null && comparedMode !== "off" && input.testSources !== void 0 && touched !== null) {
     const configs = detectTI09(parsedDiff, input.testSources, comparedMode);
     const configUnavailable = configs.notRun !== null ? { notRun: configs.notRun } : configs.unavailable.length > 0 ? { files: configs.unavailable } : void 0;
     if (touched.notRun !== null) {
@@ -242860,11 +243873,14 @@ function check(input) {
     } else {
       const match = matchTests(touched);
       testChanges = summarizeTestChanges(touched, match) ?? void 0;
+      const matchedHeads = new Set([...match.pairs, ...match.moved, ...match.replaced].map((pair) => pair.head));
+      const movedPairs = (movedTests?.pairs ?? []).filter((pair) => !matchedHeads.has(pair.head));
+      const judged = movedPairs.length === 0 ? match : { ...match, pairs: [...match.pairs, ...movedPairs] };
       const capped = capFindings([
         ...detectTI02(match, comparedMode),
-        ...detectTI05(match, comparedMode),
-        ...detectTI06(match),
-        ...detectTI07(match, parsedDiff),
+        ...detectTI05(judged, comparedMode),
+        ...detectTI06(judged),
+        ...detectTI07(judged, parsedDiff),
         ...detectTI12(touched, parsedDiff),
         ...configs.signals
       ]);
@@ -242908,6 +243924,7 @@ function check(input) {
   }
   const bytes = input.repoFileBytes;
   const emptyAgentSetupFiles = bytes === void 0 ? [] : agentSetup.files.filter((file) => bytes.get(file.path) === 0).map((file) => file.path);
+  const omittedSignals = [...comparison?.omitted ?? [], ...sourceMatches.omitted];
   const base = {
     version: input.version,
     threshold: input.threshold,
@@ -242923,7 +243940,7 @@ function check(input) {
     ...testIntegritySignals.length > 0 ? { testIntegritySignals } : {},
     ...textTruncatedFiles.length > 0 ? { textTruncatedFiles } : {},
     ...comparison === null || comparison.languages.length === 0 ? {} : { testIntegrityLanguages: comparison.languages },
-    ...comparison === null || comparison.omitted.length === 0 ? {} : { omittedSignals: comparison.omitted },
+    ...omittedSignals.length === 0 ? {} : { omittedSignals },
     ...comparison?.unavailable === void 0 ? {} : { testIndexUnavailable: comparison.unavailable },
     ...testChanges === void 0 ? {} : { testChanges },
     ...comparison?.configUnavailable === void 0 ? {} : { testConfigUnavailable: comparison.configUnavailable }
@@ -243718,7 +244735,7 @@ var BadOutput = class extends Error {
     this.detail = detail;
   }
 };
-function isObject(value) {
+function isObject2(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function hasExactKeys(value, keys) {
@@ -243748,7 +244765,7 @@ function checkBool(value, where, field) {
   return value;
 }
 function checkKeys(value, keys, where, what) {
-  if (!isObject(value)) return bad(where, `${what} is not an object`);
+  if (!isObject2(value)) return bad(where, `${what} is not an object`);
   if (!hasExactKeys(value, keys)) return bad(where, `${what} has missing or extra keys`);
   return value;
 }
@@ -243807,7 +244824,7 @@ function mapMock(value, where) {
 }
 function mapEntry(value, index) {
   const where = `entry ${index}`;
-  if (!isObject(value)) return bad(where, "is not an object");
+  if (!isObject2(value)) return bad(where, "is not an object");
   if (value.parsed === false) {
     const raw2 = checkKeys(value, REFUSED_KEYS, where, "a refused entry");
     if (raw2.id !== index) return bad(where, "id is not its position");
@@ -243972,7 +244989,7 @@ function decodeTestSourceText(bytes) {
 }
 
 // ../core/src/version.ts
-var VERSION7 = "0.2.0";
+var VERSION7 = "0.3.0";
 
 // ../node-io/src/coverage.ts
 async function readCoverageFiles(deps, options) {
@@ -244242,6 +245259,8 @@ DECORATOR_MODIFIERS = {
     "pytest.mark.parametrize": "each",
 }
 FIXTURES = ("pytest.fixture", "fixture")
+APPROX = ("pytest.approx", "approx")
+BODY_CALLS = ("pytest.skip", "pytest.xfail")
 CLASS_HOOKS = (
     "setup_method", "teardown_method", "setup_class", "teardown_class",
     "setUp", "tearDown", "setUpClass", "tearDownClass", "asyncSetUp", "asyncTearDown",
@@ -244286,11 +245305,48 @@ def is_string(node):
     return isinstance(node, ast.Constant) and isinstance(node.value, (str, bytes))
 
 
-def decorator_modifiers(decorators):
+def import_aliases(tree):
+    """Local name to dotted name for the module's top-level imports, in order; a later binding replaces an earlier one."""
+    aliases = {}
+    for node in tree.body:
+        if isinstance(node, ast.Import):
+            for item in node.names:
+                if item.asname:
+                    aliases[item.asname] = item.name
+                else:
+                    first = item.name.split(".")[0]
+                    aliases[first] = first
+        elif isinstance(node, ast.ImportFrom):
+            for item in node.names:
+                if item.name == "*":
+                    continue
+                if node.level > 0 or node.module is None:
+                    target = "." + item.name
+                else:
+                    target = node.module + "." + item.name
+                aliases[item.asname or item.name] = target
+    return aliases
+
+
+def canonical(name, table, aliases):
+    """The table's own name for a dotted name: as written when it is in the table, else with its first segment resolved."""
+    if name is None:
+        return None
+    if name in table:
+        return name
+    head, dot, rest = name.partition(".")
+    target = aliases.get(head)
+    if target is None:
+        return None
+    resolved = target + dot + rest
+    return resolved if resolved in table else None
+
+
+def decorator_modifiers(decorators, aliases):
     mods = []
     for decorator in decorators:
         call = decorator if isinstance(decorator, ast.Call) else None
-        name = dotted(call.func if call is not None else decorator)
+        name = canonical(dotted(call.func if call is not None else decorator), DECORATOR_MODIFIERS, aliases)
         mod = DECORATOR_MODIFIERS.get(name)
         if mod is None:
             continue
@@ -244303,9 +245359,10 @@ def decorator_modifiers(decorators):
     return mods
 
 
-def has_decorator(decorators, names):
+def has_decorator(decorators, names, aliases):
     for decorator in decorators:
-        if dotted(decorator.func if isinstance(decorator, ast.Call) else decorator) in names:
+        name = dotted(decorator.func if isinstance(decorator, ast.Call) else decorator)
+        if canonical(name, names, aliases) is not None:
             return True
     return False
 
@@ -244320,10 +245377,10 @@ def is_test_class(node):
     return False
 
 
-def block_kind(node, scope):
+def block_kind(node, scope, aliases):
     """The block kind of a def at module level (scope 0) or in a test class (scope 1), else None."""
     name = node.name
-    fixture = has_decorator(node.decorator_list, FIXTURES)
+    fixture = has_decorator(node.decorator_list, FIXTURES, aliases)
     if scope == 0:
         if fixture:
             return "hook"
@@ -244339,10 +245396,10 @@ def block_kind(node, scope):
     return None
 
 
-def assert_chain(test):
+def assert_chain(test, aliases):
     if isinstance(test, ast.Compare):
         for operand in [test.left] + list(test.comparators):
-            if isinstance(operand, ast.Call) and dotted(operand.func) in ("pytest.approx", "approx"):
+            if isinstance(operand, ast.Call) and canonical(dotted(operand.func), APPROX, aliases) is not None:
                 return "assert approx"
         if len(test.ops) == 1 and isinstance(test.ops[0], (ast.Is, ast.IsNot)):
             for operand in (test.left, test.comparators[0]):
@@ -244356,9 +245413,10 @@ def assert_chain(test):
     return "assert truthy"
 
 
-def call_assertion(callee, node):
-    if callee in RAISING_CALLEES:
-        return callee + "()"
+def call_assertion(callee, node, aliases):
+    raising = canonical(callee, RAISING_CALLEES, aliases)
+    if raising is not None:
+        return raising + "()"
     func = node.func
     if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name) and func.value.id == "self":
         if func.attr.startswith("assert") or func.attr == "fail":
@@ -244534,6 +245592,7 @@ def build(text):
     if deeper_than_cap(tree):
         return {"parsed": False, "reason": "too-deep"}
     source = Source(text)
+    aliases = import_aliases(tree)
 
     blocks = []
     mocks = []
@@ -244548,7 +245607,7 @@ def build(text):
         if kind_of in FUNCTIONS:
             block = ctx[BLOCK]
             scope = ctx[SCOPE]
-            kind = block_kind(node, scope) if scope < 2 else None
+            kind = block_kind(node, scope, aliases) if scope < 2 else None
             record = [None]
             for field in ("decorator_list", "args", "returns", "type_params"):
                 value = getattr(node, field, None)
@@ -244557,7 +245616,9 @@ def build(text):
                 elif value is not None:
                     stack.append((value, ctx))
             if kind is not None:
-                entry = new_block(source, node, kind, ctx[CHAIN] + (node.name,), decorator_modifiers(node.decorator_list))
+                entry = new_block(
+                    source, node, kind, ctx[CHAIN] + (node.name,), decorator_modifiers(node.decorator_list, aliases)
+                )
                 blocks.append(entry)
                 inner = (entry, 2, ctx[CHAIN], record, False, False, False, ctx[FSTR])
             else:
@@ -244571,7 +245632,7 @@ def build(text):
                 stack.extend((child, ctx) for child in getattr(node, field, ()))
             if scope < 2 and is_test_class(node):
                 chain = ctx[CHAIN] + (node.name,)
-                entry = new_block(source, node, "describe", chain, decorator_modifiers(node.decorator_list))
+                entry = new_block(source, node, "describe", chain, decorator_modifiers(node.decorator_list, aliases))
                 blocks.append(entry)
                 inner = (entry, 1, chain, None, False, False, False, ctx[FSTR])
             else:
@@ -244617,20 +245678,21 @@ def build(text):
         elif kind_of is ast.Assert:
             block = ctx[BLOCK]
             if block is not None:
-                assertions.append((block, node.lineno, node.col_offset, assert_chain(node.test), False, ctx))
+                assertions.append((block, node.lineno, node.col_offset, assert_chain(node.test, aliases), False, ctx))
         elif kind_of is ast.Call:
             callee = dotted(node.func)
             block = ctx[BLOCK]
             if callee in MOCK_CALLEES:
                 mocks.append((node.lineno, node.col_offset, callee, mock_specifier(callee, node)))
             if block is not None and callee is not None:
-                chain = call_assertion(callee, node)
+                chain = call_assertion(callee, node, aliases)
                 if chain is not None:
                     assertions.append((block, node.lineno, node.col_offset, chain, id(node) in awaited, ctx))
                 elif block["kind"] != "describe" and not ctx[NESTED]:
-                    if callee in ("pytest.skip", "self.skipTest"):
+                    body_call = canonical(callee, BODY_CALLS, aliases)
+                    if body_call == "pytest.skip" or callee == "self.skipTest":
                         block["mods"].append("skipIf" if ctx[COND] else "skip")
-                    elif callee == "pytest.xfail":
+                    elif body_call == "pytest.xfail":
                         block["mods"].append("fails")
                         if ctx[COND]:
                             block["mods"].append("skipIf")
@@ -244877,7 +245939,7 @@ var MAX_REASON_CHARS2 = 300;
 var StepFailed = class extends Error {
 };
 var firstLine = (err) => (err instanceof Error ? err.message : String(err)).trim().split("\n")[0]?.slice(0, MAX_REASON_CHARS2) ?? "";
-var byCodeUnit21 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit22 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 async function resolveRevision(deps, revision, label) {
   let out;
   try {
@@ -244973,7 +246035,7 @@ async function readTestSources(deps, options) {
     plans.forEach((plan, i) => {
       for (const path of plan.read) wanted.add(sides[i]?.blobs.get(path));
     });
-    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit21));
+    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit22));
     const decoded = /* @__PURE__ */ new Map();
     const build = (index) => {
       const plan = plans[index];
@@ -244989,7 +246051,7 @@ async function readTestSources(deps, options) {
         if (text === null) dropped.push({ path, reason: "binary" });
         else files.push({ path, text });
       }
-      dropped.sort((a, b) => byCodeUnit21(a.path, b.path));
+      dropped.sort((a, b) => byCodeUnit22(a.path, b.path));
       return { files, dropped };
     };
     return { base: build(0), head: build(1) };

@@ -1,0 +1,32 @@
+import { describe, expect, it } from "vitest";
+import { load, save, split } from "../ops.js";
+
+describe("load", () => {
+  it("load reads a stored file", () => {
+    expect(load("a.txt")).toBe("a");
+  });
+
+  it("load fails on a missing file", () => {
+    expect(() => load("none.txt")).toThrow();
+  });
+});
+
+describe("save", () => {
+  it("save writes a new file", () => {
+    expect(save("a.txt", "a")).toBe(true);
+  });
+
+  it("save replaces an old file", () => {
+    expect(save("a.txt", "b")).toBe(true);
+  });
+});
+
+describe("split", () => {
+  it("split cuts at a comma", () => {
+    expect(split("a,b")).toEqual(["a", "b"]);
+  });
+
+  it("split keeps empty parts", () => {
+    expect(split("a,,b")).toEqual(["a", "", "b"]);
+  });
+});

@@ -1,0 +1,13 @@
+diff --git a/src/total.test.ts b/src/total.test.ts
+index 1111111..2222222 100644
+--- a/src/total.test.ts
++++ b/src/total.test.ts
+@@ -5,4 +5,4 @@ import { createCart, total } from "./total.js";
+-  it("sums the line items", () => {
+-    const items = [{ price: 2 }, { price: 3 }];
+-    const cart = createCart(items);
+-    expect(total(cart)).toBe(5);
++  it("computes the order total", () => {
++    const lines = [{ price: 2 }, { price: 3 }];
++    const order = createCart(lines);
++    expect(total(order)).toBeTruthy();
