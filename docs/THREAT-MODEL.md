@@ -129,11 +129,10 @@ These are accepted, not hidden:
     add a matching line elsewhere in the diff to excuse a removed step; the findings are recorded prompts for a
     reviewer, and `docs/LIMITS.md` lists what TI14 and TI11 miss. TI11 now compares test commands by a normalized key
     per test part, so a PR can excuse a removed step with an added line that has the same key (`pnpm test` for
-    `npm test`), and it can turn a `block` into a `warn` by removing a whole job together with its `package.json`
-    script while it renames a test file to another test-file path. That is the one evasion path from block to warn: the
-    finding still names the workflow file and its first lost line, and no setting that the PR carries decides it.
-    The retired-job pass is one left-to-right walk over the kept lines (at most 5000 per file, 400 characters per
-    line), linear in their number.
+    `npm test`); the key keeps the workspace flags and arguments, so a narrowed run is still a removal. A test job
+    removed or moved to another workflow file still gives a `block`, even when the same change removes its
+    `package.json` script and renames test files: those are what a change that stops CI from running its tests would
+    do, so no such combination turns the block into a warn. For a real move the accept label is the way through.
 15. **TI03 and TI04 read the kept text of test files.** They use the text the diff parser already keeps for test
     files (13), and match each kept line, cut to 400 characters, by a hand-written left-to-right scan with no
     backtracking, so the time is linear in the line; a form counts only at the start of a line, and at most 20 signals

@@ -18,9 +18,9 @@ const DIST_BOUND = 12_000_000;
  * so these are the digests of the edited files; before that they were on main at e47695e.
  */
 const PINNED: Record<string, string> = {
-  "packages/core/test/ac-ti0205-regression.test.ts": "67c55a5467bb2a0a3f38c6af0081cb5a436720611072e724258b3fb0d28e1c72",
+  "packages/core/test/ac-ti0205-regression.test.ts": "3d7f5cee93bd3abef001b222b29293f4db073fdcaa46914bbac7594fd9aef203",
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "b1e22f44c9e7eb79c72eaa534a861d75a26ee92fe8ce587e209973bb30aaff93",
+    "7b9039d3d5541cca135c12059048f1545184fd926e1521f1db6915f298b8ca5d",
 };
 
 /** The Skylos-count tests that record the move, and the count literal each one asserts. */

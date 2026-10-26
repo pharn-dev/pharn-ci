@@ -55,7 +55,7 @@ function codeDescriptions(value: Json): string[] {
 }
 
 describe("signal precision: the documents record the narrower rules", () => {
-  it("AC-13: LIMITS names the TI15, TI11, TI09 and TI06 rules, PRECISION §2 names item 18, the CHANGELOG has a Changed entry for the four, the README TI15 row and the v2 schema name the caps, v1 is byte-identical, and THREAT-MODEL residuals 14 and 18 name the retired-job warn and the expect-subject reader", () => {
+  it("AC-13: LIMITS names the TI15, TI11, TI09 and TI06 rules, PRECISION §2 names item 18, the CHANGELOG has a Changed entry for the four, the README TI15 row and the v2 schema name the caps, v1 is byte-identical, and THREAT-MODEL residuals 14 and 18 name the moved-job block and the expect-subject reader", () => {
     const limits = read("docs/LIMITS.md");
 
     const ti15 = sectionOf(limits, "### What TI15 misses", 3);
@@ -69,11 +69,11 @@ describe("signal precision: the documents record the narrower rules", () => {
     expect(ti15, "TI15: the pyproject.toml package root").toContain("pyproject.toml");
 
     const ti11 = sectionOf(limits, "### What TI11 misses", 3);
-    expect(ti11, "TI11: the retired-job warn").toMatch(/\bretired\b/i);
-    expect(ti11, "TI11: the retired-job warn").toMatch(/\bwarn\b/);
+    expect(ti11, "TI11: a test job moved to another workflow file").toMatch(/\bmoved\b[^.]{0,80}\banother workflow\b/);
     expect(ti11, "TI11: a script still run by an unchanged line of another workflow").toMatch(/\bunchanged\b/);
-    expect(ti11, "TI11: another workflow").toMatch(/\banother workflow\b/);
     expect(ti11, "TI11: stays a block").toMatch(/\bblock\b/);
+    expect(ti11, "TI11: a known false block").toMatch(/\bfalse block\b/);
+    expect(ti11, "TI11: the accept label is the way through").toMatch(/\baccept label\b/);
 
     const ti09 = sectionOf(limits, "### What TI09 misses", 3);
     expect(ti09, "TI09: projects matched by test.name").toContain("test.name");
@@ -112,8 +112,7 @@ describe("signal precision: the documents record the narrower rules", () => {
     expect(descriptions, "the v2 message-code description").toHaveLength(1);
     const description = descriptions[0] as string;
     const ti11Code = codePart(description, "TI11");
-    expect(ti11Code, "v2: the TI11 retired-job warn names the job").toMatch(/\bjobs?\b/);
-    expect(ti11Code, "v2: the TI11 retired-job warn names the script").toMatch(/\bscripts?\b/);
+    expect(ti11Code, "v2: TI11 has no warn path for a removed test step").not.toMatch(/\bjob that ran tests\b/);
     const ti15Code = codePart(description, "TI15");
     expect(ti15Code, "v2: the TI15 cap of 10").toMatch(/\b10\b/);
     expect(ti15Code, "v2: the TI15 cap per change").toMatch(/\bper change\b/);
@@ -125,9 +124,8 @@ describe("signal precision: the documents record the narrower rules", () => {
 
     const threat = read("docs/THREAT-MODEL.md");
     const fourteen = residual(threat, 14);
-    expect(fourteen, "residual 14: the retired-job warn").toMatch(/\bwarn\b/);
-    expect(fourteen, "residual 14: the job removed").toMatch(/\bjob\b/);
-    expect(fourteen, "residual 14: a test file renamed").toMatch(/\brenam/);
+    expect(fourteen, "residual 14: a moved test job still blocks").toMatch(/\bjob\b[^.]{0,120}\bblock\b/);
+    expect(fourteen, "residual 14: the accept label is the way through").toMatch(/\baccept label\b/);
     const eighteen = residual(threat, 18);
     expect(eighteen, "residual 18: the expect-subject reader").toMatch(/\bexpect\b/);
     expect(eighteen, "residual 18: the subject").toMatch(/\bsubject\b/);

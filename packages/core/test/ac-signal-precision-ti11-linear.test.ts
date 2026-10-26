@@ -2,15 +2,14 @@ import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
-// check() is loaded inside the test body: the AC test is written before TI11 reads retired jobs, so nothing the build
-// adds may run while the file loads. The diffs are generated here: N removed job headers, each followed by a removed
-// runs-on line and a removed `run: pnpm run test:N` line, a package.json hunk that removes every test:N script, and a
-// renamed test file. The host is loaded, so the timing compares the best of several runs, never an absolute budget.
+// check() is loaded inside the test body. The diffs are generated here: N removed job headers, each followed by a
+// removed runs-on line and a removed `run: pnpm run test:N` line, a package.json hunk that removes every test:N script,
+// and a renamed test file; the keyed comparison must stay linear in that input, and the removed jobs still block. The
+// host is loaded, so the timing compares the best of several runs, never an absolute budget.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const CI = ".github/workflows/ci.yml";
-const RETIRED =
-  "A job that ran tests was removed from a workflow together with the script it ran, while this change moves test files; check that another workflow runs them.";
+const TEST_STEP = "A step that runs tests was removed from a workflow.";
 const SMALL = 5000;
 const LARGE = 4 * SMALL;
 const RUNS = 3;
@@ -20,8 +19,8 @@ function removal(path: string, start: number, lines: string[]): string {
   return `${[...head, `@@ -${start},${lines.length} +${start - 1},0 @@`, ...lines.map((l) => `-${l}`)].join("\n")}\n`;
 }
 
-/** The retired-job change with `jobs` jobs. */
-function retiredJobs(jobs: number): string {
+/** The moved-job change with `jobs` jobs. */
+function movedJobs(jobs: number): string {
   const rename = `${[
     "diff --git a/src/adapter/old/handler.test.ts b/src/adapter/new/handler.test.ts",
     "similarity index 100%",
@@ -37,15 +36,15 @@ function retiredJobs(jobs: number): string {
   return rename + removal("package.json", 10, scripts) + removal(CI, 20, workflow);
 }
 
-describe("TI11: the retired-job pass is linear", () => {
-  it("AC-4: 5000 and 20000 removed jobs with their scripts and a renamed test file each give one warn TI11 with the retired-job sentence, and the larger input takes less than eight times as long", async () => {
+describe("TI11: the keyed comparison is linear", () => {
+  it("AC-4: 5000 and 20000 removed jobs with their scripts and a renamed test file each give one block TI11 test-step finding, and the larger input takes less than eight times as long", async () => {
     const { check } = await import("../src/check.js");
     type Input = Parameters<typeof check>[0];
     const inputFor = (jobs: number) =>
       ({
         version: "0.1.0",
         coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
-        diff: { text: retiredJobs(jobs) },
+        diff: { text: movedJobs(jobs) },
         repoRoot: REPO_ROOT,
         threshold: 80,
         repoFiles: fixture("test-files-deleted/files.txt").trim().split("\n"),
@@ -68,7 +67,7 @@ describe("TI11: the retired-job pass is linear", () => {
       expectValidReport(report);
       const ti11 = report.testIntegrity.signals.filter((s) => String(s.id) === "TI11");
       expect(ti11, label).toHaveLength(1);
-      expect(ti11[0], label).toMatchObject({ severity: "warn", path: CI, detail: RETIRED });
+      expect(ti11[0], label).toMatchObject({ severity: "block", path: CI, detail: TEST_STEP });
     }
 
     const best = (input: Input) => Math.min(...Array.from({ length: RUNS }, () => time(input).ms));

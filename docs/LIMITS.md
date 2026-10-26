@@ -116,15 +116,14 @@ TI11 reads the added and removed lines of workflow files (`.github/workflows/*.y
   launcher (`npx vitest run`, `pnpm exec vitest run` and `vitest run` are one key). A swap of package manager
   therefore passes, and a narrowed run is still a removal. Bare `bun test` starts bun's own runner, not a script, so it
   keeps its text as its key.
-- **Retired jobs are a warn, not a block.** When the diff removes a whole job (a block that holds `runs-on`, `steps` or
-  `uses`) whose test command is a package script, removes that script from `package.json` without adding it back, and
-  renames a test file to another test-file path, the lost command is read as a retired job and gives one `warn` (not a
-  block) that asks for a check that another workflow runs the tests. Every one of those conditions must hold for
-  every lost command of the file; if one lost command is not retired, the file is a `block` at that command. Other
-  workflows are not read: a script that an unchanged line of another workflow still runs is not seen (the diff holds
-  no such line), so a job removed while its script stays in `package.json` stays a `block` whether or not another
-  workflow runs the script. A step removed alone, a command that is not a package-manager script and a rename of a
-  source file only are blocks too.
+- **A test job moved to another workflow file still blocks.** Other workflows are not read: a test command that an
+  unchanged line of another workflow runs is not seen (the diff holds no such line), so a job whose tests moved to
+  another workflow file, and now run there under another script (`test:lambda` replaced by `test:adapters`), is a
+  removal and a `block`, even when the same change removes the old script from `package.json` and renames the test
+  files. That is a known false block (one PR in the 600 of the precision corpus). It is kept on purpose: removing the
+  job, removing its script and renaming a test file are exactly what a change that stops CI from running its tests
+  would do, and nothing the pull request carries may loosen this block. Use the [accept label](../README.md#accept-label)
+  for a real move.
 - **Triggers by token.** A removed `pull_request` or `pull_request_target` is excused when any added line of the same
   file names either. The `on` key may be quoted (`"on":`). Other filters (`branches`, `paths`) are not judged, and a
   workflow that drops its `pull_request` trigger is a block even when it never ran tests (a release or labeler

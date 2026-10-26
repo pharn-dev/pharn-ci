@@ -21,7 +21,7 @@ const EARLIER_DIRS = ["TI01", "TI03", "TI04", "TI10", "TI11", "TI13", "TI14"];
  */
 const NEW_TI11 = new Set([
   "pass-package-manager-swap.diff",
-  "warn-job-retired-tests-moved.diff",
+  "block-job-moved-with-tests.diff",
   "block-swap-drops-test.diff",
   "block-job-removed-script-kept.diff",
 ]);

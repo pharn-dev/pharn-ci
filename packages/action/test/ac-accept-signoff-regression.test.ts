@@ -86,7 +86,7 @@ const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
   "TI16/pass-string-marker.diff",
   // The signal-precision fixtures (ac-signal-precision-ti11-*, ac-signal-precision-ti15-*).
   "TI11/pass-package-manager-swap.diff",
-  "TI11/warn-job-retired-tests-moved.diff",
+  "TI11/block-job-moved-with-tests.diff",
   "TI11/block-swap-drops-test.diff",
   "TI11/block-job-removed-script-kept.diff",
   "TI15/pass-other-package.diff",

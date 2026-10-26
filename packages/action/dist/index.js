@@ -242329,12 +242329,12 @@ function runnerStart(tokens) {
   if (RUNNERS.has(runner) || runner === "playwright" && tokens[start + 1] === "test") return start;
   return -1;
 }
-function partOf(part) {
+function keyOf2(part) {
   const tokens = part.split(" ");
   const runner = runnerStart(tokens);
-  if (runner >= 0) return { key: tokens.slice(runner).join(" "), script: null };
+  if (runner >= 0) return tokens.slice(runner).join(" ");
   const manager = tokens[0];
-  if (!PACKAGE_MANAGERS.has(manager)) return { key: part, script: null };
+  if (!PACKAGE_MANAGERS.has(manager)) return part;
   let i = 1;
   const flags = [];
   for (; ; ) {
@@ -242359,17 +242359,17 @@ function partOf(part) {
     i += 1;
   }
   let script = tokens[i];
-  if (script === void 0 || !/^(?:test|t)(?::[\w:-]+)?$/.test(script)) return { key: part, script: null };
-  if (manager === "bun" && !ran) return { key: part, script: null };
+  if (script === void 0 || !/^(?:test|t)(?::[\w:-]+)?$/.test(script)) return part;
+  if (manager === "bun" && !ran) return part;
   if (!ran && script === "t") script = "test";
   i += 1;
   if (tokens[i] === "--") i += 1;
-  return { key: ["run", ...flags, script, ...tokens.slice(i)].join(" "), script };
+  return ["run", ...flags, script, ...tokens.slice(i)].join(" ");
 }
-function testPartsOf(line) {
+function testKeysOf(line) {
   const text = commandText(line);
   if (text === "") return [];
-  return text.split(/\s*(?:&&|;)\s*/).filter((part) => TEST_COMMAND.test(part)).map(partOf);
+  return text.split(/\s*(?:&&|;)\s*/).filter((part) => TEST_COMMAND.test(part)).map(keyOf2);
 }
 function carriesPullRequestTrigger(line) {
   const text = stripComment2(line);
@@ -242385,7 +242385,6 @@ function ifExpression(value) {
 var DISABLING_IF = /^(?:false|github\.event_name\s*(?:!=\s*['"]pull_request['"]|==\s*['"](?:push|schedule|workflow_dispatch)['"]))$/i;
 var SENTENCES = {
   testStep: "A step that runs tests was removed from a workflow.",
-  retiredJob: "A job that ran tests was removed from a workflow together with the script it ran, while this change moves test files; check that another workflow runs them.",
   trigger: "The pull_request trigger was removed from a workflow, so it no longer runs on pull requests.",
   matrix: "A matrix list in a workflow was reduced, so CI covers fewer combinations.",
   continueOnError: "continue-on-error: true was added in a workflow, so a failing step no longer fails the job.",
@@ -242402,56 +242401,6 @@ function flowOf(line) {
   const items = flowItems(kv.value);
   return items === null ? null : { key: kv.key, items: new Set(items) };
 }
-var JOB_MARKER_KEYS = /* @__PURE__ */ new Set(["runs-on", "steps", "uses"]);
-function retiredJobLines(removed) {
-  const marks = new Array(removed.length + 1).fill(0);
-  const stack = [];
-  const close = (end) => {
-    const header = stack.pop();
-    if (!header.marked) return;
-    marks[header.index] = marks[header.index] + 1;
-    marks[end] = marks[end] - 1;
-    const parent = stack[stack.length - 1];
-    if (parent !== void 0) parent.marked = true;
-  };
-  let previous = null;
-  for (let index = 0; index < removed.length; index++) {
-    const entry = removed[index];
-    if (previous !== null && entry.line !== previous + 1) {
-      while (stack.length > 0) close(index);
-    }
-    previous = entry.line;
-    if (stripComment2(entry.text) === "") continue;
-    const kv = keyValue(entry.text);
-    const indent = kv === null ? indentOf(entry.text) : kv.indent;
-    while (stack.length > 0 && stack[stack.length - 1].indent >= indent) close(index);
-    if (kv === null) continue;
-    const top = stack[stack.length - 1];
-    if (top !== void 0 && JOB_MARKER_KEYS.has(kv.key)) top.marked = true;
-    if (kv.value === "" && indent > 0) stack.push({ indent, index, marked: false });
-  }
-  while (stack.length > 0) close(removed.length);
-  const covered = [];
-  let running = 0;
-  for (let index = 0; index < removed.length; index++) {
-    running += marks[index];
-    covered.push(running > 0);
-  }
-  return covered;
-}
-function scriptNames(diff, side) {
-  const names = /* @__PURE__ */ new Set();
-  for (const file of diff) {
-    if (!isPackageJsonFile(file.path) && !isPackageJsonFile(file.oldPath)) continue;
-    for (const hunk of file.hunks ?? []) {
-      for (const entry of hunk[side]) {
-        const script = parseScriptLine(entry.text);
-        if (script !== null) names.add(script.key);
-      }
-    }
-  }
-  return names;
-}
 function detectTI11(diff, mode) {
   const files = diff.filter(
     (file) => (isWorkflowFile(file.path) || isWorkflowFile(file.oldPath)) && file.hunks !== void 0 && file.binary !== true
@@ -242460,37 +242409,18 @@ function detectTI11(diff, mode) {
   for (const file of files) {
     for (const hunk of file.hunks ?? []) {
       for (const entry of hunk.added) {
-        for (const part of testPartsOf(entry.text)) addedKeys.add(part.key);
+        for (const key of testKeysOf(entry.text)) addedKeys.add(key);
       }
     }
   }
-  const removedScripts = scriptNames(diff, "removed");
-  const addedScripts = scriptNames(diff, "added");
-  const testRenamed = diff.some(
-    (file) => file.status === "renamed" && isTestFile(file.oldPath) && isTestFile(file.path)
-  );
   const signals = [];
   for (const file of files) {
     const path = file.path;
     const added = (file.hunks ?? []).flatMap((hunk) => hunk.added);
     const removed = (file.hunks ?? []).flatMap((hunk) => hunk.removed);
     const emit = (severity, line, detail) => signals.push({ id: "TI11", severity, path, line, detail });
-    const retiredLines = (file.hunks ?? []).flatMap((hunk) => retiredJobLines(hunk.removed));
-    const lost = [];
-    removed.forEach((entry, index) => {
-      const parts = testPartsOf(entry.text);
-      if (!parts.some((part) => !addedKeys.has(part.key))) return;
-      const retired = testRenamed && retiredLines[index] === true && parts.every(
-        (part) => part.script !== null && removedScripts.has(part.script) && !addedScripts.has(part.script)
-      );
-      lost.push({ entry, retired });
-    });
-    const firstLost = lost[0];
-    if (firstLost !== void 0) {
-      const open3 = lost.find((item) => !item.retired);
-      if (open3 === void 0) emit("warn", firstLost.entry.line, SENTENCES.retiredJob);
-      else emit(mode, open3.entry.line, SENTENCES.testStep);
-    }
+    const lostCommand = removed.find((entry) => testKeysOf(entry.text).some((key) => !addedKeys.has(key)));
+    if (lostCommand !== void 0) emit(mode, lostCommand.line, SENTENCES.testStep);
     const lostTrigger = removed.find((entry) => carriesPullRequestTrigger(entry.text));
     if (lostTrigger !== void 0 && !added.some((entry) => carriesPullRequestTrigger(entry.text))) {
       emit(mode, lostTrigger.line, SENTENCES.trigger);
@@ -242981,7 +242911,7 @@ function isEligible(literal) {
   if (literal.kind === "number") return significantDigits(literal.value) >= MIN_SIGNIFICANT_DIGITS;
   return literal.value.length >= MIN_STRING_LENGTH && !STOP_LIST.has(literal.value.toLowerCase());
 }
-var keyOf2 = (literal) => `${literal.kind === "string" ? "s" : "n"}${literal.value}`;
+var keyOf3 = (literal) => `${literal.kind === "string" ? "s" : "n"}${literal.value}`;
 var isOperatorChar = (c) => c === "=" || c === "!" || c === "<" || c === ">";
 function operatorBefore(text, at) {
   let end = at;
@@ -243066,7 +242996,7 @@ function testLiterals(diff, manifests) {
       for (const entry of hunk.added) {
         for (const literal of scanLiterals(entry.text)) {
           if (!isEligible(literal)) continue;
-          const key = keyOf2(literal);
+          const key = keyOf3(literal);
           const roots = found.get(key) ?? /* @__PURE__ */ new Map();
           const first = roots.get(root);
           if (first === void 0 || byCodeUnit18(file.path, first) < 0) roots.set(root, file.path);
@@ -243100,13 +243030,13 @@ function detectTI15(diff, options) {
     const root = packageRoot(file.path, manifests);
     const removed = /* @__PURE__ */ new Set();
     for (const hunk of file.hunks) {
-      for (const entry of hunk.removed) for (const literal of scanLiterals(entry.text)) removed.add(keyOf2(literal));
+      for (const entry of hunk.removed) for (const literal of scanLiterals(entry.text)) removed.add(keyOf3(literal));
     }
     for (const hunk of file.hunks) {
       for (const entry of hunk.added) {
         const seen = /* @__PURE__ */ new Set();
         for (const literal of conditionLiterals(entry.text, language)) {
-          const key = keyOf2(literal);
+          const key = keyOf3(literal);
           if (seen.has(key)) continue;
           seen.add(key);
           if (removed.has(key)) continue;

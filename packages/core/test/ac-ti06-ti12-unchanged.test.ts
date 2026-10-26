@@ -24,7 +24,7 @@ const PAIR_DIRS = ["TI02", "TI05"];
 /** The TI11 fixtures the signal-precision increment adds; the digest below predates them, so the loop leaves them out. */
 const NEW_TI11 = new Set([
   "pass-package-manager-swap.diff",
-  "warn-job-retired-tests-moved.diff",
+  "block-job-moved-with-tests.diff",
   "block-swap-drops-test.diff",
   "block-job-removed-script-kept.diff",
 ]);

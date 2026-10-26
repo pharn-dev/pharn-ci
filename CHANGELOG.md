@@ -73,9 +73,8 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   (for the coming base-and-head signals; the report does not change). When that fails on git, the CLI writes one
   stderr line and the Action one log line naming the failed git step.
 - Four signals are narrower, after a dry run of the precision corpus. **TI11** compares test commands by a key per test
-  part, so a package-manager swap (`bun run test` to `pnpm run test`) is no longer a removed step, and a whole job
-  removed together with the `package.json` script it ran, while a test file is renamed, now gives a `warn` instead of
-  a `block`. **TI09** matches the projects of a vitest or jest `projects` list by name (`test.name`, `displayName`) or
+  part, so a package-manager swap (`bun run test` to `pnpm run test`) is no longer a removed step; a narrowed run and a
+  test job moved to another workflow file are still a `block`. **TI09** matches the projects of a vitest or jest `projects` list by name (`test.name`, `displayName`) or
   by position and compares only their test-list keys, so an unrelated key changed in a project gives nothing.
   **TI15** matches a test literal only inside the same package (the nearest `package.json` or `pyproject.toml`),
   leaves out `examples`, `benchmarks`, `bench`, `docs` and `fixtures` directories, needs 6 characters or 4 significant
