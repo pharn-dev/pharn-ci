@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "coverage": { "threshold": 80, "exclude": ["**/*.generated.ts"], "root": null },
+  "setup": {
+    "require": true,
+    "expect": ["claude-code", "cursor"],
+    "consistency": "warn",
+    "forbidden_permissions": ["Bash(rm -rf:*)", "Bash(curl:*)", "Write(/etc/**)"],
+    "required_permissions_deny": [],
+    "allowed_mcp_servers": [],
+    "forbidden_mcp_servers": [],
+    "required_hooks": [{ "event": "PreToolUse", "matcher": "Write|Edit" }],
+    "forbidden_files": ["CLAUDE.local.md", ".claude/settings.local.json"]
+  },
+  "test_integrity": { "mode": "block", "signals": { "TI08": "warn", "TI15": "off" }, "accept_label": "pharn/accepted" },
+  "flaky": { "quarantine": true },
+  "policy": { "required": false },
+  "agents": {
+    "labels": ["agent", "ai-generated"],
+    "extra_logins": [],
+    "protected_paths": [".github/workflows/**", "migrations/**"],
+    "protected_paths_mode": "block",
+    "require_human_approval": false
+  },
+  "dependencies": { "registries": ["npm", "pypi"], "min_age_days": 30, "min_weekly_downloads": 100 }
+}

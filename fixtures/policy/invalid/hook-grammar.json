@@ -1,0 +1,1 @@
+{"version":1,"setup":{"required_hooks":[{"matcher":"Write"},{"event":"Pre-Tool"},{"event":"Stop","matcher":""},{"event":"Stop","matcher":" Write"},"PreToolUse"]}}

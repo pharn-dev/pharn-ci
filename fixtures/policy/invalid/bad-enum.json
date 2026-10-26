@@ -1,0 +1,1 @@
+{"version":1,"setup":{"expect":["claude-code","Claude-Code","vim"],"consistency":"error"},"test_integrity":{"mode":"info","signals":{"TI01":"fatal"}},"policy":{"rules":{"P02":"BLOCK"}},"agents":{"protected_paths_mode":"off"},"dependencies":{"registries":["npm","crates"]}}

@@ -1,0 +1,1 @@
+{"version":1,"coverage":{"threshold":80,"thresh":80},"setup":{"required_hooks":[{"event":"Stop","command":"x"}]},"flaky":{"retries":3}}

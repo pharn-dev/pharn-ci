@@ -1,0 +1,1 @@
+{"version":1,"coverage":{"threshold":100},"agents":{"max_files":100000,"max_changed_lines":10000000},"dependencies":{"min_age_days":3650,"min_weekly_downloads":1000000000}}
