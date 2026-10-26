@@ -43,7 +43,7 @@ const FAR = j("far", "-away-value");
 const LONG_TEST = `tests/${"deep/".repeat(56)}long.test.ts`;
 
 describe("TI15: the detail names kind, length and paths, and the per-file cap", () => {
-  it("AC-9: details carry no literal text, only its kind and length in printable ASCII, name the first test file or fall back past 300 characters, and 25 matches give 20 signals on the lowest lines", async () => {
+  it("AC-9: details carry no literal text, only its kind and length in printable ASCII, name the first test file or fall back past 300 characters, and 25 matches give 10 signals on the lowest lines with a Not-listed count of 15", async () => {
     const details: string[] = [];
 
     // Each literal is described by kind and length; no 4-character piece of it reaches the detail.
@@ -95,7 +95,8 @@ describe("TI15: the detail names kind, length and paths, and the per-file cap", 
     expect(farDetail).toContain(`a ${FAR.length}-character string literal`);
     expect(farDetail).not.toContain(FAR);
 
-    // 25 matching condition literals in one source file give exactly 20 signals, on its lowest lines.
+    // 25 matching condition literals in one source file give exactly 10 signals (the cap is 10 per change), on its
+    // lowest lines, and the message says how many more there are.
     const values = Array.from({ length: 25 }, (_, i) => j("lit-value-", String(i + 1).padStart(2, "0")));
     const many =
       addLines(
@@ -108,11 +109,14 @@ describe("TI15: the detail names kind, length and paths, and the per-file cap", 
         10,
         values.map((v, i) => `  if (s === "${v}") return ${i};`),
       );
-    const manySignals = signalsOf(await runDiff(many), ID);
+    const manyReport = await runDiff(many);
+    const manySignals = signalsOf(manyReport, ID);
     details.push(...manySignals.map((s) => s.detail));
     expect(manySignals.map((s) => `${s.path}:${s.line}`)).toEqual(
-      Array.from({ length: 20 }, (_, i) => `src/many.ts:${10 + i}`),
+      Array.from({ length: 10 }, (_, i) => `src/many.ts:${10 + i}`),
     );
+    const manyMessage = manyReport.messages.find((m) => String(m.code) === j("TEST_INTEGRITY_", ID));
+    expect(manyMessage?.text.endsWith(" Not listed: 15 more in `src/many.ts`."), manyMessage?.text).toBe(true);
 
     for (const detail of details) {
       expect(detail.length, detail).toBeGreaterThan(0);

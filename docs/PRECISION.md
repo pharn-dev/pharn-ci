@@ -171,6 +171,12 @@ sample chosen after seeing detector output could be tuned to it. So the list of 
 in files committed to the repository, and the detector run (`scripts/corpus-run.mjs`), the hand
 review and any false-block rate come afterwards.
 
+An early dry run of the detectors over this corpus, made before the official run, found false hits in four signals.
+The narrower rules for TI11 (commands compared by key, a retired job is a `warn`), TI09 (projects matched by name),
+TI15 (same package, a 6-character and 4-digit minimum, at most 10 per change) and TI06 (equivalent matcher rewrites)
+came from that dry run. They are not a measured result. The official numbers come with item 18, the full precision
+run over the frozen corpus, and may recommend demoting TI15 to `info`.
+
 ### Repositories
 
 Picked for a test runner the Action's signals understand (vitest), an MIT license and enough merged

@@ -1,7 +1,9 @@
 import type { DiffFile, DiffLineText } from "../diff/unified.js";
 import type { TestIntegritySignal } from "../report.js";
-import { isWorkflowFile } from "./signalFiles.js";
-import { flowItems, keyValue, stripComment, unquote } from "./yamlLines.js";
+import { isTestFile } from "../testFiles.js";
+import { isPackageJsonFile, isWorkflowFile } from "./signalFiles.js";
+import { parseScriptLine } from "./ti10.js";
+import { flowItems, indentOf, keyValue, stripComment, unquote } from "./yamlLines.js";
 
 const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -55,11 +57,99 @@ function commandText(line: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
-/** The normalized command of a line that runs tests, else null. A `&&` or `;` chain counts when any part does. */
-function testCommandOf(line: string): string | null {
+/** Workspace flags that take no value, as tokens (the value flags of `PM_FLAGS` are read beside them). */
+const PM_PLAIN_FLAGS: ReadonlySet<string> = new Set([
+  "-r",
+  "--recursive",
+  "-w",
+  "--workspace-root",
+  "-ws",
+  "--workspaces",
+  "--if-present",
+]);
+const PM_VALUE_FLAGS: ReadonlySet<string> = new Set([
+  "--filter",
+  "-F",
+  "-C",
+  "--dir",
+  "--prefix",
+  "--workspace",
+  "--cwd",
+]);
+const PACKAGE_MANAGERS: ReadonlySet<string> = new Set(["npm", "pnpm", "yarn", "bun"]);
+const RUNNERS: ReadonlySet<string> = new Set(["vitest", "jest", "mocha"]);
+
+/** The comparison key of one test part, and the package.json script it runs when it is a package-manager script run. */
+interface TestPart {
+  key: string;
+  script: string | null;
+}
+
+/** The index in `tokens` where a runner command starts after a launcher, or -1 when the part is not a launcher form. */
+function runnerStart(tokens: readonly string[]): number {
+  const first = tokens[0] as string;
+  let start = -1;
+  if (first === "npx" || first === "bunx") start = 1;
+  else if (first === "bun" || first === "npm") start = tokens[1] === (first === "bun" ? "x" : "exec") ? 2 : -1;
+  else if (first === "pnpm") start = tokens[1] === "exec" || tokens[1] === "dlx" ? 2 : 1;
+  else if (first === "yarn") start = 1;
+  else start = 0;
+  if (start < 0) return -1;
+  const runner = tokens[start];
+  if (runner === undefined) return -1;
+  if (RUNNERS.has(runner) || (runner === "playwright" && tokens[start + 1] === "test")) return start;
+  return -1;
+}
+
+/** The key of a test part: the runner command without its launcher, the script run with its flags, else the text. */
+function partOf(part: string): TestPart {
+  const tokens = part.split(" ");
+  const runner = runnerStart(tokens);
+  if (runner >= 0) return { key: tokens.slice(runner).join(" "), script: null };
+
+  const manager = tokens[0] as string;
+  if (!PACKAGE_MANAGERS.has(manager)) return { key: part, script: null };
+  let i = 1;
+  const flags: string[] = [];
+  for (;;) {
+    const token = tokens[i];
+    if (token === undefined) break;
+    if (PM_PLAIN_FLAGS.has(token)) {
+      flags.push(token);
+      i += 1;
+    } else if (PM_VALUE_FLAGS.has(token) && tokens[i + 1] !== undefined) {
+      flags.push(token, tokens[i + 1] as string);
+      i += 2;
+    } else if (/^(?:--filter|-F|-C|--dir|--prefix|--workspace|--cwd)=\S+$/.test(token)) {
+      flags.push(token);
+      i += 1;
+    } else {
+      break;
+    }
+  }
+  let ran = false;
+  if (tokens[i] === "run" || (manager === "npm" && tokens[i] === "run-script")) {
+    ran = true;
+    i += 1;
+  }
+  let script = tokens[i];
+  if (script === undefined || !/^(?:test|t)(?::[\w:-]+)?$/.test(script)) return { key: part, script: null };
+  // `bun test` starts bun's own runner, not a package script.
+  if (manager === "bun" && !ran) return { key: part, script: null };
+  if (!ran && script === "t") script = "test";
+  i += 1;
+  if (tokens[i] === "--") i += 1;
+  return { key: ["run", ...flags, script, ...tokens.slice(i)].join(" "), script };
+}
+
+/** The test parts of a line that runs tests (a `&&` or `;` chain counts part by part), empty when none does. */
+function testPartsOf(line: string): TestPart[] {
   const text = commandText(line);
-  if (text === "") return null;
-  return text.split(/\s*(?:&&|;)\s*/).some((part) => TEST_COMMAND.test(part)) ? text : null;
+  if (text === "") return [];
+  return text
+    .split(/\s*(?:&&|;)\s*/)
+    .filter((part) => TEST_COMMAND.test(part))
+    .map(partOf);
 }
 
 /** Whether a line names a pull request event as a key, a list item or in the value of `on:`. */
@@ -82,6 +172,8 @@ const DISABLING_IF =
 
 const SENTENCES = {
   testStep: "A step that runs tests was removed from a workflow.",
+  retiredJob:
+    "A job that ran tests was removed from a workflow together with the script it ran, while this change moves test files; check that another workflow runs them.",
   trigger: "The pull_request trigger was removed from a workflow, so it no longer runs on pull requests.",
   matrix: "A matrix list in a workflow was reduced, so CI covers fewer combinations.",
   continueOnError: "continue-on-error: true was added in a workflow, so a failing step no longer fails the job.",
@@ -102,29 +194,98 @@ function flowOf(line: string): { key: string; items: Set<string> } | null {
   return items === null ? null : { key: kv.key, items: new Set(items) };
 }
 
+/** The keys that make a header a job: a job holds `runs-on`, `steps` or `uses` somewhere below its header. */
+const JOB_MARKER_KEYS: ReadonlySet<string> = new Set(["runs-on", "steps", "uses"]);
+
+/**
+ * For each removed line of one hunk (in old-file order), whether a removed job covers it. A key line with an empty value
+ * at an indent above 0 opens a header, a line at or below an open header's indent closes it, and a header that holds a
+ * `runs-on`, `steps` or `uses` key (or has a marked header below it) is a job. A gap in old-file line numbers closes
+ * every header; blank and comment-only lines are skipped. One walk with a stack and one prefix sum.
+ */
+function retiredJobLines(removed: readonly DiffLineText[]): boolean[] {
+  const marks = new Array<number>(removed.length + 1).fill(0);
+  const stack: Array<{ indent: number; index: number; marked: boolean }> = [];
+  const close = (end: number) => {
+    const header = stack.pop() as { indent: number; index: number; marked: boolean };
+    if (!header.marked) return;
+    marks[header.index] = (marks[header.index] as number) + 1;
+    marks[end] = (marks[end] as number) - 1;
+    const parent = stack[stack.length - 1];
+    if (parent !== undefined) parent.marked = true;
+  };
+  let previous: number | null = null;
+  for (let index = 0; index < removed.length; index++) {
+    const entry = removed[index] as DiffLineText;
+    if (previous !== null && entry.line !== previous + 1) {
+      while (stack.length > 0) close(index);
+    }
+    previous = entry.line;
+    if (stripComment(entry.text) === "") continue;
+    const kv = keyValue(entry.text);
+    const indent = kv === null ? indentOf(entry.text) : kv.indent;
+    while (stack.length > 0 && (stack[stack.length - 1] as { indent: number }).indent >= indent) close(index);
+    if (kv === null) continue;
+    const top = stack[stack.length - 1];
+    if (top !== undefined && JOB_MARKER_KEYS.has(kv.key)) top.marked = true;
+    if (kv.value === "" && indent > 0) stack.push({ indent, index, marked: false });
+  }
+  while (stack.length > 0) close(removed.length);
+  const covered: boolean[] = [];
+  let running = 0;
+  for (let index = 0; index < removed.length; index++) {
+    running += marks[index] as number;
+    covered.push(running > 0);
+  }
+  return covered;
+}
+
+/** The script names (the keys of `"name": "command"` lines) of the added or removed lines of every package.json. */
+function scriptNames(diff: readonly DiffFile[], side: "added" | "removed"): Set<string> {
+  const names = new Set<string>();
+  for (const file of diff) {
+    if (!isPackageJsonFile(file.path) && !isPackageJsonFile(file.oldPath)) continue;
+    for (const hunk of file.hunks ?? []) {
+      for (const entry of hunk[side]) {
+        const script = parseScriptLine(entry.text);
+        if (script !== null) names.add(script.key);
+      }
+    }
+  }
+  return names;
+}
+
 /**
  * TI11, CI stopped running tests, from the added and removed lines of workflow files (`.github/workflows/*.yml|yaml`).
  * Block rules take the effective mode: a removed test command that no workflow line of the diff adds again, and a
- * removed `pull_request` or `pull_request_target` trigger that the same file does not carry again. The warn rules (a
- * flow-list matrix that shrinks, an added `continue-on-error: true`, an added `if:` that is a literal false or an
- * event-name test leaving pull requests out, an added `timeout-minutes` of 0 or 1) stay `warn` in every mode, because
- * without context lines the line cannot be tied to a test step. One signal per rule per file, on its first matching
- * line; the detail is a fixed sentence.
+ * removed `pull_request` or `pull_request_target` trigger that the same file does not carry again. A test command is
+ * compared by a key per test part of a `&&` or `;` chain: a package-manager script run keys on the script with its
+ * workspace flags and arguments, a runner on its command without the launcher, so `npm run test` and `pnpm test` are
+ * one command. A file whose every lost command is a script run in a whole removed job, whose script the diff removes
+ * from `package.json` without adding it back, while the diff renames a test file to another test file, gives a `warn`
+ * instead. The other warn rules (a flow-list matrix that shrinks, an added `continue-on-error: true`, an added `if:`
+ * that is a literal false or an event-name test leaving pull requests out, an added `timeout-minutes` of 0 or 1) stay
+ * `warn` in every mode, because without context lines the line cannot be tied to a test step. One signal per rule per
+ * file, on its first matching line; the detail is a fixed sentence.
  */
 export function detectTI11(diff: readonly DiffFile[], mode: "block" | "warn"): TestIntegritySignal[] {
   const files = diff.filter(
     (file) =>
       (isWorkflowFile(file.path) || isWorkflowFile(file.oldPath)) && file.hunks !== undefined && file.binary !== true,
   );
-  const addedCommands = new Set<string>();
+  const addedKeys = new Set<string>();
   for (const file of files) {
     for (const hunk of file.hunks ?? []) {
       for (const entry of hunk.added) {
-        const command = testCommandOf(entry.text);
-        if (command !== null) addedCommands.add(command);
+        for (const part of testPartsOf(entry.text)) addedKeys.add(part.key);
       }
     }
   }
+  const removedScripts = scriptNames(diff, "removed");
+  const addedScripts = scriptNames(diff, "added");
+  const testRenamed = diff.some(
+    (file) => file.status === "renamed" && isTestFile(file.oldPath) && isTestFile(file.path),
+  );
 
   const signals: TestIntegritySignal[] = [];
   for (const file of files) {
@@ -134,11 +295,25 @@ export function detectTI11(diff: readonly DiffFile[], mode: "block" | "warn"): T
     const emit = (severity: "block" | "warn" | "info", line: number, detail: string) =>
       signals.push({ id: "TI11", severity, path, line, detail });
 
-    const lostCommand = removed.find((entry) => {
-      const command = testCommandOf(entry.text);
-      return command !== null && !addedCommands.has(command);
+    const retiredLines = (file.hunks ?? []).flatMap((hunk) => retiredJobLines(hunk.removed));
+    const lost: Array<{ entry: DiffLineText; retired: boolean }> = [];
+    removed.forEach((entry, index) => {
+      const parts = testPartsOf(entry.text);
+      if (!parts.some((part) => !addedKeys.has(part.key))) return;
+      const retired =
+        testRenamed &&
+        retiredLines[index] === true &&
+        parts.every(
+          (part) => part.script !== null && removedScripts.has(part.script) && !addedScripts.has(part.script),
+        );
+      lost.push({ entry, retired });
     });
-    if (lostCommand !== undefined) emit(mode, lostCommand.line, SENTENCES.testStep);
+    const firstLost = lost[0];
+    if (firstLost !== undefined) {
+      const open = lost.find((item) => !item.retired);
+      if (open === undefined) emit("warn", firstLost.entry.line, SENTENCES.retiredJob);
+      else emit(mode, open.entry.line, SENTENCES.testStep);
+    }
 
     const lostTrigger = removed.find((entry) => carriesPullRequestTrigger(entry.text));
     if (lostTrigger !== undefined && !added.some((entry) => carriesPullRequestTrigger(entry.text))) {

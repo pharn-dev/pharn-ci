@@ -84,6 +84,16 @@ const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
   "TI16/pass-moved.diff",
   "TI16/pass-source-file.diff",
   "TI16/pass-string-marker.diff",
+  // The signal-precision fixtures (ac-signal-precision-ti11-*, ac-signal-precision-ti15-*).
+  "TI11/pass-package-manager-swap.diff",
+  "TI11/warn-job-retired-tests-moved.diff",
+  "TI11/block-swap-drops-test.diff",
+  "TI11/block-job-removed-script-kept.diff",
+  "TI15/pass-other-package.diff",
+  "TI15/pass-examples-dir.diff",
+  "TI15/pass-benchmark-dir.diff",
+  "TI15/pass-short-status-code.diff",
+  "TI15/warn-same-package.diff",
 ]);
 
 /** The TI01, TI04, TI11 and TI14 hints as renderMarkdown() gave them at the base commit a1089fd. */

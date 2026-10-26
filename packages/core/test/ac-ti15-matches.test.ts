@@ -19,13 +19,14 @@ type Case = { label: string; diff: string; expected: Expected[] };
 
 const SUMMER = j("SUMMER", "2024");
 const GOLD = j("gold", "-tier");
-const ABCD = j("ab", "cd");
+// ABCD, XYZW and RATE keep their names; the signal-precision increment lengthened them to the 6-character and 4-digit minimums.
+const ABCD = j("ab", "cdef");
 const BETA = j("beta", "-user");
 const ENTERPRISE = j("enter", "prise");
 const ALPHA = j("alpha", "-user");
-const XYZW = j("xy", "zw");
+const XYZW = j("xy", "zwvu");
 const N1234 = j("12", "34");
-const RATE = j("0.1", "25");
+const RATE = j("0.1", "255");
 const PREMIUM = j("premium", "-plan");
 
 /** A test file adding `testLines` at line 8, and a source file adding `sourceLine` at line 12. */

@@ -1,6 +1,7 @@
 import { deselectionPairs, gainedPairs, pairText, splitAddopts } from "./addopts.js";
 import type { TestConfigKind } from "./kinds.js";
 import { entriesOf, type ListMode, narrowedList, widenedList } from "./listCompare.js";
+import { compareProjects, type ProjectsFlavor } from "./projects.js";
 import {
   type ConfigValue,
   cutDetail,
@@ -34,6 +35,7 @@ type RuleKind =
   | "addedOrChanged"
   | "narrowed"
   | "widened"
+  | "projects"
   | "addopts";
 
 /** One settings key and how a change to it is judged. A rule is `mode` severity unless `warn` is set. */
@@ -42,6 +44,8 @@ interface KeyRule {
   rule: RuleKind;
   warn?: true;
   list?: ListMode;
+  /** The `projects` rule only: whose project objects the list holds (where their settings and names are written). */
+  projects?: ProjectsFlavor;
   /** The values of this key are lists written as one string, split on whitespace (pytest). */
   split?: true;
 }
@@ -61,7 +65,7 @@ const VITEST_RULES: readonly KeyRule[] = [
   rule("coverage.exclude", "widened", { list: "glob" }),
   rule("include", "narrowed", { list: "glob" }),
   rule("exclude", "widened", { list: "glob" }),
-  rule("projects", "narrowed", { list: "glob" }),
+  rule("projects", "projects", { projects: "vitest" }),
   rule("passWithNoTests", "turnedOn"),
   rule("allowOnly", "turnedOn"),
   rule("retry", "increased", { warn: true }),
@@ -70,7 +74,7 @@ const VITEST_RULES: readonly KeyRule[] = [
   rule("hookTimeout", "raised", { warn: true }),
 ];
 
-const WORKSPACE_RULES: readonly KeyRule[] = [rule("projects", "narrowed", { list: "glob" })];
+const WORKSPACE_RULES: readonly KeyRule[] = [rule("projects", "projects", { projects: "vitest" })];
 
 const JEST_RULES: readonly KeyRule[] = [
   rule("coverageThreshold", "jestThresholds"),
@@ -78,7 +82,7 @@ const JEST_RULES: readonly KeyRule[] = [
   rule("testPathIgnorePatterns", "widened", { list: "regex" }),
   rule("testMatch", "narrowed", { list: "glob" }),
   rule("testRegex", "narrowed", { list: "regex" }),
-  rule("projects", "narrowed", { list: "glob" }),
+  rule("projects", "projects", { projects: "jest" }),
   rule("passWithNoTests", "turnedOn"),
   rule("bail", "bail"),
   rule("testTimeout", "raised", { warn: true }),
@@ -331,6 +335,12 @@ function keyFindings(ctx: Context, key: KeyRule): RuleFinding[] {
   ];
 
   if (key.rule === "addedOrChanged") return hit("added or changed");
+
+  if (key.rule === "projects") {
+    if (baseValue === null || b === "unknown") return [];
+    const result = compareProjects(baseValue, headValue, key.projects ?? "vitest");
+    return result === "narrowed" ? hit("narrowed") : result === "cannot" ? cannot() : [];
+  }
 
   if (key.list !== undefined) {
     if (b === "unknown") return [];

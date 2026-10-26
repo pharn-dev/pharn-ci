@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { list } from "./cart.js";
+
+describe("cart", () => {
+  it("lists two items", () => {
+    expect(list()).toHaveLength(2);
+  });
+
+  it("lists nothing for an empty cart", () => {
+    expect(list([])).toEqual([]);
+  });
+});
