@@ -127,7 +127,14 @@ describe("the file: policy mode", () => {
       const app = await actionRun(dir, "auto", envelope);
       const fileReport = reportOf(file, "file");
       const appReport = reportOf(app, "app");
-      expect(fileReport).toEqual(appReport);
+      // E3 item 22 (policy rules): the reports now carry a `policy` object whose source differs ("input" for a file,
+      // "app" for a served policy); the violations and everything else are still equal.
+      const { policy: filePolicy, ...fileRest } = fileReport;
+      const { policy: appPolicy, ...appRest } = appReport;
+      expect(filePolicy?.source).toBe("input");
+      expect(appPolicy?.source).toBe("app");
+      expect(filePolicy?.violations).toEqual(appPolicy?.violations);
+      expect(fileRest).toEqual(appRest);
       expect(file.calls).toEqual([]);
       expect(file.tokenCalls).toEqual([]);
       expect(app.calls).toHaveLength(1);

@@ -28,6 +28,9 @@ const SECRET_CODES = [
   "POLICY_UNAVAILABLE",
   // Re-pinned for E3 item 21 (the run upload): the same appended text and report.ts also gain this code.
   "UPLOAD_TOO_LARGE",
+  // Re-pinned for E3 item 22 (policy rules): the appended schema text and report.ts also gain these two rule codes.
+  "POLICY_P08",
+  "POLICY_P09",
 ];
 
 const git = (...args: string[]) =>

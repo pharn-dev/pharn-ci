@@ -116,7 +116,11 @@ describe("policy keys this item does not apply", () => {
     const auto = await actionReport("auto", envelopeFor(REQUIRED));
     expect(auto.calls).toHaveLength(1);
     expect(auto.report.messages.filter((m) => m.code.startsWith("POLICY_"))).toEqual([]);
-    expect(auto.report).toEqual(never.report);
+    // E3 item 22 (policy rules): a served policy now puts the `policy` object in the report (here with no violations);
+    // it is asserted here, and the rest of the report is still the policy: never report.
+    const { policy: autoPolicy, ...autoRest } = auto.report;
+    expect(autoPolicy).toEqual({ source: "app", version: 7, fetchedAt: NOW.toISOString(), violations: [] });
+    expect(autoRest).toEqual(never.report);
 
     for (const policy of [app(CARRIED), file(CARRIED)]) {
       const first = core.applyPolicy(layers, policy);

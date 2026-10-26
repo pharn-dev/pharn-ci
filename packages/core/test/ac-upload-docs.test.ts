@@ -286,7 +286,12 @@ describe("upload documentation", { timeout: 60_000 }, () => {
     const head = unreleased(read("CHANGELOG.md"));
     const base = unreleased(atBase("CHANGELOG.md"));
     const fresh = (name: string) => (head.get(name) ?? []).filter((b) => !(base.get(name) ?? []).includes(b));
-    const addedBullets = fresh("Added");
+    // Re-pinned for E3 item 22 (policy rules): Unreleased also gains exactly one Added bullet for the org policy rules,
+    // which names POLICY_P08; it is asserted here and set aside, and the upload bullet is judged as before.
+    const policyRuleBullets = fresh("Added").filter((b) => b.startsWith("- Org policy rules P01, P08, P09 and P10."));
+    expect(policyRuleBullets).toHaveLength(1);
+    expect(policyRuleBullets[0]).toContain("POLICY_P08");
+    const addedBullets = fresh("Added").filter((b) => !policyRuleBullets.includes(b));
     const securityBullets = fresh("Security");
     expect(addedBullets).toHaveLength(1);
     expect(securityBullets).toHaveLength(1);

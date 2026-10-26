@@ -1,0 +1,4 @@
+.cursor/rules/x.mdc
+CLAUDE.md
+package.json
+src/a.ts

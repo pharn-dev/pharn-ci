@@ -114,6 +114,9 @@ export {
   type PolicyResponseValidation,
   validatePolicyResponse,
 } from "./policy/response.js";
+export { evaluatePolicyRules } from "./policy/rules/evaluate.js";
+export { policyRuleMessages } from "./policy/rules/messages.js";
+export type { PolicyEvaluation, PolicyRuleInput, PolicyViolation } from "./policy/rules/types.js";
 export type {
   PolicyAgents,
   PolicyCoverage,
@@ -146,6 +149,8 @@ export {
   type ReportDiffCoverage,
   type ReportMeta,
   type ReportMetaEvent,
+  type ReportPolicy,
+  type ReportPolicyViolation,
   type ReportTestChange,
   type ReportTestChanges,
   type ReportTestChangesFile,

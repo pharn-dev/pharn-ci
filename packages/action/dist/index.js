@@ -4153,11 +4153,11 @@ var require_util2 = __commonJS({
     }
     function setRequestReferrerPolicyOnRedirect(request2, actualResponse) {
       const { headersList } = actualResponse;
-      const policyHeader = (headersList.get("referrer-policy", true) ?? "").split(",");
+      const policyHeader2 = (headersList.get("referrer-policy", true) ?? "").split(",");
       let policy = "";
-      if (policyHeader.length > 0) {
-        for (let i = policyHeader.length; i !== 0; i--) {
-          const token = policyHeader[i - 1].trim();
+      if (policyHeader2.length > 0) {
+        for (let i = policyHeader2.length; i !== 0; i--) {
+          const token = policyHeader2[i - 1].trim();
           if (referrerPolicyTokens.has(token)) {
             policy = token;
             break;
@@ -4369,8 +4369,8 @@ var require_util2 = __commonJS({
       if (parsedMetadata.length === 0) {
         return true;
       }
-      const strongest = getStrongestMetadata(parsedMetadata);
-      const metadata = filterMetadataListByAlgorithm(parsedMetadata, strongest);
+      const strongest2 = getStrongestMetadata(parsedMetadata);
+      const metadata = filterMetadataListByAlgorithm(parsedMetadata, strongest2);
       for (const item of metadata) {
         const algorithm = item.algo;
         const expectedValue = item.hash;
@@ -18690,10 +18690,10 @@ var require_eventsource = __commonJS({
           lastEventId: "",
           reconnectionTime: defaultReconnectionTime
         };
-        const settings = environmentSettingsObject;
+        const settings2 = environmentSettingsObject;
         let urlRecord;
         try {
-          urlRecord = new URL(url, settings.settingsObject.baseUrl);
+          urlRecord = new URL(url, settings2.settingsObject.baseUrl);
           this.#state.origin = urlRecord.origin;
         } catch (e) {
           throw new DOMException(e, "SyntaxError");
@@ -173673,8 +173673,8 @@ ${lanes.join("\n")}
           getBuckets: () => buckets
         };
       }
-      function getKeyForCompilationSettings(settings) {
-        return getKeyForCompilerOptions(settings, sourceFileAffectingCompilerOptions);
+      function getKeyForCompilationSettings(settings2) {
+        return getKeyForCompilerOptions(settings2, sourceFileAffectingCompilerOptions);
       }
       function getDocumentRegistryBucketKeyWithMode(key, mode) {
         return mode ? `${key}|${mode}` : key;
@@ -182420,14 +182420,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         if (allPropertiesAreCamelCased) {
           return optionsAsMap;
         }
-        const settings = {};
+        const settings2 = {};
         for (const key in optionsAsMap) {
           if (hasProperty(optionsAsMap, key)) {
             const newKey = isCamelCase(key) ? key : key.charAt(0).toLowerCase() + key.substr(1);
-            settings[newKey] = optionsAsMap[key];
+            settings2[newKey] = optionsAsMap[key];
           }
         }
-        return settings;
+        return settings2;
       }
       function isCamelCase(s) {
         return !s.length || s.charAt(0) === s.charAt(0).toLowerCase();
@@ -183397,11 +183397,11 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         function getIndentationAtPosition(fileName, position, editorOptions) {
           let start = timestamp();
-          const settings = toEditorSettings(editorOptions);
+          const settings2 = toEditorSettings(editorOptions);
           const sourceFile = syntaxTreeCache.getCurrentSourceFile(fileName);
           log("getIndentationAtPosition: getCurrentSourceFile: " + (timestamp() - start));
           start = timestamp();
-          const result = ts_formatting_exports.SmartIndenter.getIndentation(position, sourceFile, settings);
+          const result = ts_formatting_exports.SmartIndenter.getIndentation(position, sourceFile, settings2);
           log("getIndentationAtPosition: computeIndentation  : " + (timestamp() - start));
           return result;
         }
@@ -215085,7 +215085,7 @@ ${options.prefix}` : "\n" : options.prefix
           return findFirstNonWhitespaceCharacterAndColumn(startPos, endPos, sourceFile, options).column;
         }
         SmartIndenter2.findFirstNonWhitespaceColumn = findFirstNonWhitespaceColumn;
-        function nodeWillIndentChild(settings, parent2, child, sourceFile, indentByDefault) {
+        function nodeWillIndentChild(settings2, parent2, child, sourceFile, indentByDefault) {
           const childKind = child ? child.kind : 0;
           switch (parent2.kind) {
             case 245:
@@ -215133,11 +215133,11 @@ ${options.prefix}` : "\n" : options.prefix
             case 298:
               return true;
             case 270:
-              return settings.indentSwitchCase ?? true;
+              return settings2.indentSwitchCase ?? true;
             case 261:
             case 304:
             case 227:
-              if (!settings.indentMultiLineObjectLiteralBeginningOnBlankLine && sourceFile && childKind === 211) {
+              if (!settings2.indentMultiLineObjectLiteralBeginningOnBlankLine && sourceFile && childKind === 211) {
                 return rangeIsOnOneLine(sourceFile, child);
               }
               if (parent2.kind === 227 && sourceFile && child && childKind === 285) {
@@ -215202,9 +215202,9 @@ ${options.prefix}` : "\n" : options.prefix
               return false;
           }
         }
-        function shouldIndentChildNode(settings, parent2, child, sourceFile, isNextChild = false) {
+        function shouldIndentChildNode(settings2, parent2, child, sourceFile, isNextChild = false) {
           return nodeWillIndentChild(
-            settings,
+            settings2,
             parent2,
             child,
             sourceFile,
@@ -227186,7 +227186,7 @@ ${json}${newLine}`;
             isCancellationRequested: () => this.cancellationToken.isCancellationRequested()
           };
           this.errorCheck = new MultistepOperation(multistepOperationHost);
-          const settings = {
+          const settings2 = {
             host: this.host,
             logger: this.logger,
             cancellationToken: this.cancellationToken,
@@ -227205,7 +227205,7 @@ ${json}${newLine}`;
             canUseWatchEvents: opts.canUseWatchEvents,
             incrementalVerifier: opts.incrementalVerifier
           };
-          this.projectService = new ProjectService2(settings);
+          this.projectService = new ProjectService2(settings2);
           this.projectService.setPerformanceEventHandler(this.performanceEventHandler.bind(this));
           this.gcTimer = new GcTimer(
             this.host,
@@ -236332,13 +236332,13 @@ function createUnifiedDiffReader(options = {}) {
     entries.push(current);
     return current;
   };
-  const pathsOf = (e) => {
+  const pathsOf2 = (e) => {
     const path = e.status === "deleted" ? e.oldPath ?? e.newPath : e.newPath ?? e.oldPath;
     return path === null ? null : { path, oldPath: e.oldPath ?? path };
   };
   const decideKeep = (e) => {
     if (e.keep === void 0) {
-      const paths = pathsOf(e);
+      const paths = pathsOf2(e);
       e.keep = keepText !== void 0 && paths !== null && keepText(paths);
     }
     return e.keep;
@@ -236838,15 +236838,24 @@ function buildReport(input) {
   if (input.agentSetup.files.length === 0) {
     const required = input.requireAgentSetup === true;
     const found = "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found";
-    messages.push({
-      level: required ? "error" : "info",
-      code: "NO_AGENT_SETUP_FILES",
-      text: required ? `${found}, and agent setup is required by config.` : `${found}.`
-    });
+    const policyLevel = input.agentSetupLevels?.noFiles;
+    if (policyLevel !== void 0) {
+      messages.push({
+        level: policyLevel,
+        code: "NO_AGENT_SETUP_FILES",
+        text: `${found}, and agent setup is required by the org policy.`
+      });
+    } else {
+      messages.push({
+        level: required ? "error" : "info",
+        code: "NO_AGENT_SETUP_FILES",
+        text: required ? `${found}, and agent setup is required by config.` : `${found}.`
+      });
+    }
   }
   if (missingTools.length > 0) {
     messages.push({
-      level: input.requireAgentSetup === true ? "error" : "warn",
+      level: input.agentSetupLevels?.expectedMissing ?? (input.requireAgentSetup === true ? "error" : "warn"),
       code: "AGENT_SETUP_EXPECTED_MISSING",
       text: `No agent setup file configures the expected tool${missingTools.length === 1 ? "" : "s"}: ${missingTools.join(", ")}.`
     });
@@ -236886,6 +236895,7 @@ function buildReport(input) {
       languages: [...input.testIntegrityLanguages ?? []],
       ...input.testChanges === void 0 ? {} : { changes: input.testChanges }
     },
+    ...input.policy === void 0 ? {} : { policy: input.policy },
     ...input.meta === void 0 ? {} : { meta: input.meta }
   };
 }
@@ -237336,13 +237346,13 @@ function testIntegrityModeError(label, value) {
   const got = typeof value === "string" ? `"${value}"` : String(value);
   return `${label} must be one of: ${TEST_INTEGRITY_MODES.join(", ")} (got ${got})`;
 }
-function resolveTestIntegrityMode(settings = {}) {
-  const today = withoutPolicy(settings);
-  const policy = settings.policy;
+function resolveTestIntegrityMode(settings2 = {}) {
+  const today = withoutPolicy(settings2);
+  const policy = settings2.policy;
   if (policy === void 0) return today;
   let mode = policy.mode;
   if (policy.kind === "app") {
-    for (const given of [settings.input, settings.config]) {
+    for (const given of [settings2.input, settings2.config]) {
       if (given !== void 0 && STRICTNESS[given] > STRICTNESS[mode]) mode = given;
     }
   } else if (STRICTNESS[today.mode] > STRICTNESS[mode]) {
@@ -237355,9 +237365,9 @@ function resolveTestIntegrityMode(settings = {}) {
     baseMode: today.mode
   };
 }
-function withoutPolicy(settings) {
-  const base = settings.input === void 0 ? { mode: "warn", source: "default" } : { mode: settings.input, source: "input" };
-  const config = settings.config;
+function withoutPolicy(settings2) {
+  const base = settings2.input === void 0 ? { mode: "warn", source: "default" } : { mode: settings2.input, source: "input" };
+  const config = settings2.config;
   if (config === void 0) return base;
   if (STRICTNESS[config] > STRICTNESS[base.mode]) return { mode: config, source: "config" };
   if (STRICTNESS[config] < STRICTNESS[base.mode]) return { ...base, ignoredConfig: config };
@@ -238355,6 +238365,258 @@ function policyOverrideIgnoredMessage(ignored) {
   };
 }
 
+// ../core/src/policy/rules/p01.ts
+var NO_SETUP_DETAIL = "no agent setup files found";
+function detectP01(input) {
+  const { policy } = input;
+  if (policy.source !== "app" && policy.source !== "file" || policy.document === null) return [];
+  const setup2 = policy.document.setup;
+  const findings = [];
+  if (setup2?.require === true && input.agentSetupFileCount === 0) {
+    findings.push({ id: "P01", fallback: "block", path: null, detail: NO_SETUP_DETAIL });
+  }
+  const seen = /* @__PURE__ */ new Set();
+  for (const tool of setup2?.expect ?? []) {
+    if (seen.has(tool)) continue;
+    seen.add(tool);
+    if (AGENT_TOOLS.includes(tool) && !input.agentTools.includes(tool)) {
+      findings.push({ id: "P01", fallback: "block", path: null, detail: `no setup file for ${tool}` });
+    }
+  }
+  return findings;
+}
+
+// ../core/src/policy/rules/p08.ts
+var MAX_SHOWN = 80;
+var byCodeUnit3 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function shownPattern(pattern) {
+  if (pattern.length <= MAX_SHOWN) return pattern;
+  const high = pattern.charCodeAt(MAX_SHOWN - 2);
+  const end = high >= 55296 && high <= 56319 ? MAX_SHOWN - 2 : MAX_SHOWN - 1;
+  return `${pattern.slice(0, end)}\u2026`;
+}
+function detectP08(input) {
+  const { policy } = input;
+  if (policy.source !== "app" && policy.source !== "file" || policy.document === null) return [];
+  const patterns = policy.document.setup?.forbidden_files;
+  if (!Array.isArray(patterns) || patterns.length === 0) return [];
+  const compiled = patterns.map((pattern) => ({ shown: shownPattern(pattern), matches: compileGlob(pattern) }));
+  const findings = [];
+  for (const path of [...new Set(input.repoFiles)].sort(byCodeUnit3)) {
+    const hit = compiled.find((entry) => entry.matches(path));
+    if (hit === void 0) continue;
+    findings.push({
+      id: "P08",
+      fallback: "block",
+      path,
+      detail: `tracked file matches forbidden pattern ${hit.shown}`
+    });
+  }
+  return findings;
+}
+
+// ../core/src/policy/rules/p09.ts
+var WORKFLOWS_DIR2 = ".github/workflows/";
+var CLAUDE_SETTINGS = /^(?:.*\/)?\.claude\/settings[^/]*\.json$/;
+var MCP_FILES = /* @__PURE__ */ new Set([".mcp.json", ".cursor/mcp.json", ".vscode/mcp.json"]);
+var MAX_SETTINGS = 5;
+var SETTINGS_LISTS = [
+  "forbidden_permissions",
+  "required_permissions_deny",
+  "allowed_mcp_servers",
+  "forbidden_mcp_servers",
+  "required_hooks"
+];
+var byCodeUnit4 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function settings(ignored, layer) {
+  const names = [...new Set(ignored.filter((record) => record.layer === layer).map((record) => record.setting))].sort(
+    byCodeUnit4
+  );
+  const shown2 = names.slice(0, MAX_SETTINGS).join(", ");
+  return names.length > MAX_SETTINGS ? `${shown2}, and ${names.length - MAX_SETTINGS} more` : shown2;
+}
+function detectP09(input) {
+  const { policy, diff } = input;
+  if (policy.source !== "app" && policy.source !== "file" || policy.document === null || diff === null) return [];
+  const touched = /* @__PURE__ */ new Set();
+  for (const file of diff) {
+    touched.add(file.path);
+    touched.add(file.oldPath);
+  }
+  const findings = [];
+  if (policy.source === "file" && typeof policy.path === "string" && touched.has(policy.path)) {
+    findings.push({
+      id: "P09",
+      fallback: "block",
+      path: policy.path,
+      detail: "this change edits the policy file it is checked against"
+    });
+  }
+  if (input.configPath !== null && touched.has(input.configPath) && input.ignored.some((record) => record.layer === "config")) {
+    findings.push({
+      id: "P09",
+      fallback: "block",
+      path: input.configPath,
+      detail: `this change edits the config, which sets ${settings(input.ignored, "config")} looser than the policy`
+    });
+  }
+  const paths = [...touched].sort(byCodeUnit4);
+  if (input.ignored.some((record) => record.layer === "input")) {
+    for (const path of paths) {
+      if (!path.startsWith(WORKFLOWS_DIR2)) continue;
+      findings.push({
+        id: "P09",
+        fallback: "block",
+        path,
+        detail: `this change edits a workflow while a workflow input is looser than the policy (${settings(input.ignored, "input")})`
+      });
+    }
+  }
+  const setup2 = policy.document.setup;
+  const guarded = setup2 !== void 0 && SETTINGS_LISTS.some((key) => (setup2[key]?.length ?? 0) > 0);
+  if (guarded) {
+    for (const path of paths) {
+      if (!CLAUDE_SETTINGS.test(path) && !MCP_FILES.has(path)) continue;
+      findings.push({
+        id: "P09",
+        fallback: "warn",
+        path,
+        detail: "this change edits a file the policy checks; its direction is not judged yet"
+      });
+    }
+  }
+  return findings;
+}
+
+// ../core/src/policy/rules/p10.ts
+function detectP10(input) {
+  const unavailable2 = input.policy.unavailable;
+  if (unavailable2 === void 0) return [];
+  return [
+    {
+      id: "P10",
+      fallback: unavailable2.required ? "block" : "warn",
+      path: null,
+      detail: `org policy could not be read (${unavailable2.reason})`
+    }
+  ];
+}
+
+// ../core/src/policy/rules/severity.ts
+var RANK = { off: 0, info: 1, warn: 2, block: 3 };
+var MAX_DETAIL = 300;
+function resolveSeverity(policy, id, fallback) {
+  const rules = policy.document?.policy?.rules;
+  const value = rules !== void 0 && Object.hasOwn(rules, id) ? rules[id] : void 0;
+  if (value === void 0) return { severity: fallback, lowered: false };
+  if (policy.source === "app") {
+    return value === "off" ? { severity: null, lowered: false } : { severity: value, lowered: false };
+  }
+  if (policy.source === "file") {
+    if (RANK[value] > RANK[fallback]) return { severity: value, lowered: false };
+    if (RANK[value] < RANK[fallback]) return { severity: fallback, lowered: true };
+    return { severity: fallback, lowered: false };
+  }
+  return { severity: fallback, lowered: false };
+}
+function levelOf(severity2) {
+  return severity2 === "block" ? "error" : severity2 === "warn" ? "warn" : "info";
+}
+function strongest(severities) {
+  let top = "info";
+  for (const severity2 of severities) if (RANK[severity2] > RANK[top]) top = severity2;
+  return top;
+}
+function boundDetail(text) {
+  if (text.length <= MAX_DETAIL) return text;
+  const high = (code2) => code2 >= 55296 && code2 <= 56319;
+  const end = high(text.charCodeAt(MAX_DETAIL - 2)) ? MAX_DETAIL - 2 : MAX_DETAIL - 1;
+  return `${text.slice(0, end)}\u2026`;
+}
+
+// ../core/src/policy/rules/evaluate.ts
+var MAX_P08_VIOLATIONS = 50;
+var byCodeUnit5 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function evaluatePolicyRules(input) {
+  const findings = [...detectP01(input), ...detectP08(input), ...detectP09(input), ...detectP10(input)];
+  const lowered = /* @__PURE__ */ new Set();
+  let violations = [];
+  for (const finding2 of findings) {
+    if (finding2.id === "P10") {
+      violations.push({
+        id: finding2.id,
+        severity: finding2.fallback,
+        path: finding2.path,
+        line: null,
+        detail: finding2.detail
+      });
+      continue;
+    }
+    const resolved = resolveSeverity(input.policy, finding2.id, finding2.fallback);
+    if (resolved.lowered) lowered.add(finding2.id);
+    if (resolved.severity === null) continue;
+    violations.push({
+      id: finding2.id,
+      severity: resolved.severity,
+      path: finding2.path,
+      line: null,
+      detail: boundDetail(finding2.detail)
+    });
+  }
+  const omitted = {};
+  const p08 = violations.filter((violation) => violation.id === "P08");
+  if (p08.length > MAX_P08_VIOLATIONS) {
+    const dropped = new Set(p08.slice(MAX_P08_VIOLATIONS));
+    violations = violations.filter((violation) => !dropped.has(violation));
+    omitted.P08 = p08.length - MAX_P08_VIOLATIONS;
+  }
+  violations.sort(
+    (a, b) => byCodeUnit5(a.id, b.id) || (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : byCodeUnit5(a.path, b.path)) || byCodeUnit5(a.detail, b.detail)
+  );
+  return { violations, omitted, lowered: [...lowered].sort(byCodeUnit5) };
+}
+
+// ../core/src/policy/rules/messages.ts
+var MAX_LISTED = 20;
+var byCodeUnit6 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function listOf(paths, total) {
+  const named = paths.slice(0, MAX_LISTED).map(codeSpan).join(", ");
+  return total > MAX_LISTED ? `${named} and ${total - MAX_LISTED} more` : named;
+}
+function pathsOf(violations) {
+  return [...new Set(violations.flatMap((violation) => violation.path === null ? [] : [violation.path]))];
+}
+var RULE_MESSAGES = {
+  P08: (violations, omitted) => {
+    const kept = pathsOf(violations);
+    const total = kept.length + omitted;
+    const head = total === 1 ? "This repository tracks 1 file that matches a forbidden file pattern of the org policy" : `This repository tracks ${total} files that match a forbidden file pattern of the org policy`;
+    const notListed = total > 50 ? ` ${total - 50} of ${total - 50 === 1 ? "them is" : "them are"} not listed in the report.` : "";
+    return `${head}: ${listOf(kept, total)}.${notListed}`;
+  },
+  P09: (violations) => {
+    const paths = pathsOf(violations).sort(byCodeUnit6);
+    const total = paths.length;
+    const head = total === 1 ? "This change edits 1 file that the org policy guards" : `This change edits ${total} files that the org policy guards`;
+    return `${head}: ${listOf(paths, total)}. The reason for each is in the report's policy violations.`;
+  }
+};
+function policyRuleMessages(evaluation) {
+  const messages = [];
+  const ids = [...new Set(evaluation.violations.map((violation) => violation.id))].sort(byCodeUnit6);
+  for (const id of ids) {
+    const text = RULE_MESSAGES[id];
+    if (text === void 0) continue;
+    const own = evaluation.violations.filter((violation) => violation.id === id);
+    messages.push({
+      level: levelOf(strongest(own.map((violation) => violation.severity))),
+      code: `POLICY_${id}`,
+      text: text(own, evaluation.omitted[id] ?? 0)
+    });
+  }
+  return messages;
+}
+
 // ../core/src/secrets/keys.ts
 var MAX_KEY_CHARS = 128;
 var MAX_VALUE_CHARS = 4096;
@@ -238709,7 +238971,7 @@ var SECRET_SCAN_KINDS = [
 ];
 var SCAN_KINDS = new Set(SECRET_SCAN_KINDS);
 var CONTINUE_CONFIG_EXTENSIONS = [".json", ".yaml", ".yml"];
-var byCodeUnit3 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit7 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function agentConfigSecretPaths(inventory) {
   const paths = /* @__PURE__ */ new Set();
   for (const file of inventory.files) {
@@ -238720,7 +238982,7 @@ function agentConfigSecretPaths(inventory) {
     }
     paths.add(file.path);
   }
-  return [...paths].sort(byCodeUnit3);
+  return [...paths].sort(byCodeUnit7);
 }
 var MIN_S11_CHARS = 8;
 function lineStarts(text) {
@@ -238767,7 +239029,7 @@ function scanAgentConfigSecrets(files) {
     for (const span of spans) add(span.id, span.start);
     for (const offset of literalFindings(pairs, spans)) add("S11", offset);
   }
-  return [...found.values()].sort((a, b) => byCodeUnit3(a.id, b.id) || byCodeUnit3(a.path, b.path) || a.line - b.line);
+  return [...found.values()].sort((a, b) => byCodeUnit7(a.id, b.id) || byCodeUnit7(a.path, b.path) || a.line - b.line);
 }
 
 // ../core/src/secrets/messages.ts
@@ -238805,8 +239067,8 @@ var FAIL_CLOSED_REASONS = /* @__PURE__ */ new Set([
   "over-total-cap",
   "unsafe-path"
 ]);
-var byCodeUnit4 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-function levelOf(id) {
+var byCodeUnit8 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function levelOf2(id) {
   return id === "S10" ? "warn" : id === "S11" ? "info" : "error";
 }
 function locations(findings) {
@@ -238831,11 +239093,11 @@ function agentConfigSecretMessages(sources, selected) {
   }
   const messages = [];
   const findings = scanAgentConfigSecrets(sources.files);
-  const ids = [...new Set(findings.map((finding2) => finding2.id))].sort(byCodeUnit4);
+  const ids = [...new Set(findings.map((finding2) => finding2.id))].sort(byCodeUnit8);
   for (const id of ids) {
     const ofId = findings.filter((finding2) => finding2.id === id);
     messages.push({
-      level: levelOf(id),
+      level: levelOf2(id),
       code: CODES[id],
       text: `Agent config files hold ${SHAPES[id]} (${id}): ${locations(ofId)}.`
     });
@@ -238847,7 +239109,7 @@ function agentConfigSecretMessages(sources, selected) {
     if (!read.has(path) && !dropped.has(path)) unscanned.push({ path, reason: "not-read" });
   }
   if (unscanned.length > 0) {
-    unscanned.sort((a, b) => byCodeUnit4(a.path, b.path));
+    unscanned.sort((a, b) => byCodeUnit8(a.path, b.path));
     messages.push({
       level: unscanned.some((file) => FAIL_CLOSED_REASONS.has(file.reason)) ? "error" : "warn",
       code: "AGENT_CONFIG_SECRET_UNSCANNED",
@@ -238967,7 +239229,7 @@ function scanAgentSetup(paths) {
 
 // ../core/src/signals/findingCap.ts
 var MAX_FINDINGS_PER_FILE = 20;
-var RANK = { block: 0, warn: 1, info: 2 };
+var RANK2 = { block: 0, warn: 1, info: 2 };
 function capFindings(signals, limit = MAX_FINDINGS_PER_FILE) {
   const groups = /* @__PURE__ */ new Map();
   for (const signal of signals) {
@@ -238981,7 +239243,7 @@ function capFindings(signals, limit = MAX_FINDINGS_PER_FILE) {
   for (const group of groups.values()) {
     if (group.length <= limit) continue;
     const ranked = group.map((signal, index) => ({ signal, index })).sort(
-      (a, b) => RANK[a.signal.severity] - RANK[b.signal.severity] || (a.signal.line ?? Number.POSITIVE_INFINITY) - (b.signal.line ?? Number.POSITIVE_INFINITY) || a.index - b.index
+      (a, b) => RANK2[a.signal.severity] - RANK2[b.signal.severity] || (a.signal.line ?? Number.POSITIVE_INFINITY) - (b.signal.line ?? Number.POSITIVE_INFINITY) || a.index - b.index
     );
     for (const { signal } of ranked.slice(limit)) dropped.add(signal);
     const first = group[0];
@@ -238991,7 +239253,7 @@ function capFindings(signals, limit = MAX_FINDINGS_PER_FILE) {
 }
 
 // ../core/src/signals/overrides.ts
-var RANK2 = { off: 0, info: 1, warn: 2, block: 3 };
+var RANK3 = { off: 0, info: 1, warn: 2, block: 3 };
 function applySignalOverrides(signals, omitted, overrides, mode) {
   const severities = overrides.severities;
   const dropped = new Set(
@@ -239006,9 +239268,9 @@ function applySignalOverrides(signals, omitted, overrides, mode) {
     if (wanted !== void 0) {
       if (overrides.kind === "replace") {
         severity2 = wanted;
-      } else if (RANK2[wanted] > RANK2[severity2]) {
+      } else if (RANK3[wanted] > RANK3[severity2]) {
         severity2 = wanted;
-      } else if (RANK2[wanted] < RANK2[severity2]) {
+      } else if (RANK3[wanted] < RANK3[severity2]) {
         lowered.add(signal.id);
       }
     }
@@ -239026,7 +239288,7 @@ function applySignalOverrides(signals, omitted, overrides, mode) {
 
 // ../core/src/testFiles.ts
 var TEST_DIRECTORIES = /* @__PURE__ */ new Set(["test", "tests", "__tests__"]);
-var byCodeUnit5 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit9 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var TEST_BASENAME = [
   /\.(?:test|spec)\.(?:js|jsx|ts|tsx|mjs|cjs)$/,
   /\.(?:e2e|pw)\.ts$/,
@@ -239077,7 +239339,7 @@ function deletedTestFiles(diff) {
     if (file.status === "deleted" && isTestFile(file.path)) found.add(file.path);
     else if (file.status === "renamed" && isTestFile(file.oldPath) && !isTestFile(file.path)) found.add(file.oldPath);
   }
-  return [...found].sort(byCodeUnit5);
+  return [...found].sort(byCodeUnit9);
 }
 
 // ../core/src/signals/pythonAliases.ts
@@ -239444,10 +239706,10 @@ function opensPythonTest(text) {
 }
 
 // ../core/src/signals/signalFiles.ts
-var WORKFLOWS_DIR2 = ".github/workflows/";
+var WORKFLOWS_DIR3 = ".github/workflows/";
 function isWorkflowFile(path) {
-  if (!path.startsWith(WORKFLOWS_DIR2)) return false;
-  const name = path.slice(WORKFLOWS_DIR2.length);
+  if (!path.startsWith(WORKFLOWS_DIR3)) return false;
+  const name = path.slice(WORKFLOWS_DIR3.length);
   return name !== "" && !name.includes("/") && (name.endsWith(".yml") || name.endsWith(".yaml"));
 }
 var PYTEST_CONFIG_NAMES = /* @__PURE__ */ new Set(["pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini"]);
@@ -239491,7 +239753,7 @@ function textCutSignalFiles(diff, configPath, repoRoot) {
 
 // ../core/src/signals/testName.ts
 var NAME_SEPARATOR = " \u203A ";
-var MAX_DETAIL = 300;
+var MAX_DETAIL2 = 300;
 function isControl(code2) {
   return code2 <= 31 || code2 >= 127 && code2 <= 159 || code2 === 8232 || code2 === 8233;
 }
@@ -239508,7 +239770,7 @@ function isHighSurrogate2(code2) {
 }
 function detailWithName(before, name, after) {
   const clean = withoutControls(name);
-  const room = MAX_DETAIL - before.length - after.length;
+  const room = MAX_DETAIL2 - before.length - after.length;
   if (clean.length <= room) return `${before}${clean}${after}`;
   let end = Math.max(0, room - 1);
   if (end > 0 && isHighSurrogate2(clean.charCodeAt(end - 1))) end--;
@@ -240126,7 +240388,7 @@ function indexTestFile(path, text) {
 }
 
 // ../core/src/signals/testPairs.ts
-var byCodeUnit6 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit10 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var EXTENSION_LANGUAGE = /* @__PURE__ */ new Map([
   ["ts", "ts"],
   ["tsx", "ts"],
@@ -240204,7 +240466,7 @@ function indexTouchedTestFiles(diff, sources, python) {
   const pairs = [];
   const unavailable2 = [];
   const compared2 = [...comparedPaths.values()].sort(
-    (a, b) => byCodeUnit6(a.basePath, b.basePath) || byCodeUnit6(a.headPath, b.headPath)
+    (a, b) => byCodeUnit10(a.basePath, b.basePath) || byCodeUnit10(a.headPath, b.headPath)
   );
   for (const file of compared2) {
     const base = indexSide("base", file.basePath, file.language);
@@ -240223,19 +240485,19 @@ function indexTouchedTestFiles(diff, sources, python) {
       unavailable2.push({ path: file.headPath, reason });
     }
   }
-  unavailable2.sort((a, b) => byCodeUnit6(a.path, b.path));
+  unavailable2.sort((a, b) => byCodeUnit10(a.path, b.path));
   const added = [];
-  for (const [headPath, language] of [...addedPaths].sort((a, b) => byCodeUnit6(a[0], b[0]))) {
+  for (const [headPath, language] of [...addedPaths].sort((a, b) => byCodeUnit10(a[0], b[0]))) {
     const head = indexSide("head", headPath, language);
     if (head.ok) added.push({ headPath, head: head.tests, headMocks: head.mocks });
   }
-  return { pairs, added, unavailable: unavailable2, notRun: null, languages: [...languages].sort(byCodeUnit6) };
+  return { pairs, added, unavailable: unavailable2, notRun: null, languages: [...languages].sort(byCodeUnit10) };
 }
 
 // ../core/src/signals/testChanges.ts
 var MAX_TEST_CHANGE_ENTRIES = 200;
-var byCodeUnit7 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-var byEntry = (a, b) => byCodeUnit7(a.path, b.path) || a.line - b.line;
+var byCodeUnit11 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byEntry = (a, b) => byCodeUnit11(a.path, b.path) || a.line - b.line;
 var KINDS = ["removed", "modified", "renamed", "added"];
 var entryOf = (path, block) => ({
   path,
@@ -240298,7 +240560,7 @@ function summarizeTestChanges(touched, match) {
       modified: lists.modified.length,
       renamed: lists.renamed.length
     },
-    files: [...rows.values()].sort((a, b) => byCodeUnit7(a.path, b.path)),
+    files: [...rows.values()].sort((a, b) => byCodeUnit11(a.path, b.path)),
     added: kept.added,
     removed: kept.removed,
     modified: kept.modified,
@@ -240348,7 +240610,7 @@ function containsAtLeast(old, fresh, ratio) {
   if (old.size === 0) return true;
   return ratio.den * overlap(old, fresh) >= ratio.num * old.size;
 }
-var byCodeUnit8 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit12 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var CursorHeap = class {
   list = [];
   at = [];
@@ -240425,7 +240687,7 @@ var SimilarityIndex = class {
   }
   prefix(set) {
     const frequency = this.frequency;
-    const ordered = [...set].sort((a, b) => (frequency.get(a) ?? 0) - (frequency.get(b) ?? 0) || byCodeUnit8(a, b));
+    const ordered = [...set].sort((a, b) => (frequency.get(a) ?? 0) - (frequency.get(b) ?? 0) || byCodeUnit12(a, b));
     return ordered.slice(0, set.size - ceilRatio(set.size, this.ratio) + 1);
   }
   /**
@@ -240585,7 +240847,7 @@ function eachReplacements(candidates, fresh) {
 }
 
 // ../core/src/signals/testMatch.ts
-var byCodeUnit9 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit13 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var byLine = (a, b) => a.line - b.line;
 var leafName = (block) => block.path[block.path.length - 1] ?? "";
 var OtherFileList = class {
@@ -240643,7 +240905,7 @@ function matchTests(touched) {
   const left = [];
   const tokensOf = tokenSetMemo();
   const files = [...touched.pairs].sort(
-    (a, b) => byCodeUnit9(a.basePath, b.basePath) || byCodeUnit9(a.headPath, b.headPath)
+    (a, b) => byCodeUnit13(a.basePath, b.basePath) || byCodeUnit13(a.headPath, b.headPath)
   );
   let fileIndex = 0;
   for (const file of files) {
@@ -240754,13 +241016,13 @@ function matchTests(touched) {
     for (const entry of clearing) entry.used = true;
     for (const candidate of afterRename) if (!cleared.has(candidate.block)) left.push(candidate);
   }
-  for (const file of [...touched.added].sort((a, b) => byCodeUnit9(a.headPath, b.headPath))) {
+  for (const file of [...touched.added].sort((a, b) => byCodeUnit13(a.headPath, b.headPath))) {
     const index = fileIndex++;
     for (const block of [...file.head].sort(byLine)) {
       fresh.push({ fileIndex: index, path: file.headPath, block, order: 0, used: false });
     }
   }
-  fresh.sort((a, b) => byCodeUnit9(a.path, b.path) || a.block.line - b.block.line);
+  fresh.sort((a, b) => byCodeUnit13(a.path, b.path) || a.block.line - b.block.line);
   fresh.forEach((entry, at) => {
     entry.order = at;
   });
@@ -240852,7 +241114,7 @@ function matchTests(touched) {
 }
 
 // ../core/src/signals/ti01Moved.ts
-var byCodeUnit10 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit14 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var leafOf = (block) => block.path[block.path.length - 1] ?? "";
 function sameStemDeletions(diff) {
   const stems = /* @__PURE__ */ new Map();
@@ -240880,7 +241142,7 @@ function sameStemDeletions(diff) {
 function movedTestFiles(diff, sources, python, touched) {
   const moved = { files: /* @__PURE__ */ new Set(), compared: /* @__PURE__ */ new Set(), pairs: [] };
   if (touched.notRun !== null || "unavailable" in sources.base) return moved;
-  const deleted = diff.filter((file) => file.status === "deleted" && isTestFile(file.path) && file.binary !== true).map((file) => file.path).sort(byCodeUnit10);
+  const deleted = diff.filter((file) => file.status === "deleted" && isTestFile(file.path) && file.binary !== true).map((file) => file.path).sort(byCodeUnit14);
   if (deleted.length === 0) return moved;
   const texts = new Map(sources.base.files.map((file) => [file.path, file.text]));
   const pythonBase = python?.available ? new Map(python.base.map((file) => [file.path, file.result])) : null;
@@ -240912,7 +241174,7 @@ function movedTestFiles(diff, sources, python, touched) {
     }
   }
   if (fresh.length === 0) return moved;
-  fresh.sort((a, b) => byCodeUnit10(a.path, b.path) || a.block.line - b.block.line);
+  fresh.sort((a, b) => byCodeUnit14(a.path, b.path) || a.block.line - b.block.line);
   const leaves = /* @__PURE__ */ new Map();
   const groups = /* @__PURE__ */ new Set();
   for (const entry of fresh) {
@@ -240958,8 +241220,8 @@ function movedTestFiles(diff, sources, python, touched) {
 }
 
 // ../core/src/signals/ti01.ts
-var byCodeUnit11 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-var MAX_DETAIL2 = 300;
+var byCodeUnit15 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var MAX_DETAIL3 = 300;
 function removedTests(file) {
   if (file.hunks === void 0) return "unknown";
   for (const hunk of file.hunks) {
@@ -241005,9 +241267,9 @@ function detectTI01(diff, mode, moved = /* @__PURE__ */ new Set(), compared2 = /
       severity2 = "info";
       detail = "Test file deleted; every test it held is found again, by name and body, in another test file of this change.";
     }
-    found.set(path, { id: "TI01", severity: severity2, path, line: null, detail: detail.slice(0, MAX_DETAIL2) });
+    found.set(path, { id: "TI01", severity: severity2, path, line: null, detail: detail.slice(0, MAX_DETAIL3) });
   }
-  return [...found.values()].sort((a, b) => byCodeUnit11(a.path, b.path));
+  return [...found.values()].sort((a, b) => byCodeUnit15(a.path, b.path));
 }
 
 // ../core/src/signals/ti02.ts
@@ -241022,7 +241284,7 @@ function detectTI02(match, mode) {
 }
 
 // ../core/src/signals/ti03.ts
-var byCodeUnit12 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit16 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE = 20;
 var DETAILS = {
   existing: "An unconditional skip was added to a test that the diff shows existed before this change, so that test no longer runs.",
@@ -241169,11 +241431,11 @@ function detectTI03(diff, mode, sources) {
       });
     }
   }
-  return signals.sort((a, b) => byCodeUnit12(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit16(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti04.ts
-var byCodeUnit13 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit17 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE2 = 20;
 var DETAIL = "A focused-run marker (`.only`, `fit` or `fdescribe`) was added, so the runner may skip the other tests of this file or of the whole run.";
 function detectTI04(diff, mode) {
@@ -241201,7 +241463,7 @@ function detectTI04(diff, mode) {
       signals.push({ id: "TI04", severity: mode, path: file.path, line, detail: DETAIL });
     }
   }
-  return signals.sort((a, b) => byCodeUnit13(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit17(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti05.ts
@@ -241929,13 +242191,13 @@ function countTautologies(body, language) {
 }
 
 // ../core/src/signals/ti06.ts
-var MAX_DETAIL3 = 300;
+var MAX_DETAIL4 = 300;
 var MAX_LABELS = 5;
 var MODIFIERS_THAT_EXCUSE2 = ["skip", "todo", "skipIf", "runIf"];
 var TAUTOLOGY_REASON = "an assertion that compares a literal with itself was added";
 var TRY_REASON = "an assertion moved into a try block that has a catch";
 var RETURN_REASON = "an assertion moved after an early return";
-var byCodeUnit14 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit18 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function counts(labels) {
   const map = /* @__PURE__ */ new Map();
   for (const label of labels) map.set(label, (map.get(label) ?? 0) + 1);
@@ -241944,7 +242206,7 @@ function counts(labels) {
 function surplus(from, other) {
   const own = counts(from);
   const against = counts(other);
-  return [...own].filter(([label, n]) => n > (against.get(label) ?? 0)).map(([label]) => label).sort(byCodeUnit14);
+  return [...own].filter(([label, n]) => n > (against.get(label) ?? 0)).map(([label]) => label).sort(byCodeUnit18);
 }
 function listed(labels, cut) {
   if (labels.length <= cut) return labels.join(", ");
@@ -242007,9 +242269,9 @@ function detailOf(reasons) {
   let detail = "";
   for (let cut = MAX_LABELS; cut >= 1; cut--) {
     detail = `The test was weakened: ${reasons.map((reason) => reason(cut)).join("; ")}.`;
-    if (detail.length <= MAX_DETAIL3) return detail;
+    if (detail.length <= MAX_DETAIL4) return detail;
   }
-  return `${detail.slice(0, MAX_DETAIL3 - 1)}\u2026`;
+  return `${detail.slice(0, MAX_DETAIL4 - 1)}\u2026`;
 }
 function detectTI06(match) {
   const found = [];
@@ -242026,7 +242288,7 @@ function detectTI06(match) {
 var MAX_TEST_SOURCE_FILES = 200;
 var MAX_TEST_SOURCE_FILE_BYTES = 524288;
 var MAX_TEST_SOURCE_TOTAL_BYTES = 16777216;
-var byCodeUnit15 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit19 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var TEST_CONFIG_PREFIXES = [
   "vitest.config.",
   "vite.config.",
@@ -242060,7 +242322,7 @@ function selectTestSourcePaths(diff) {
       head.add(file.path);
     }
   }
-  return { base: [...base].sort(byCodeUnit15), head: [...head].sort(byCodeUnit15) };
+  return { base: [...base].sort(byCodeUnit19), head: [...head].sort(byCodeUnit19) };
 }
 function isUnsafeTestSourcePath(path) {
   if (path === "" || path.startsWith("/")) return true;
@@ -242075,7 +242337,7 @@ function planTestSourceReads(paths, objects) {
   const dropped = [];
   let total = 0;
   let tripped = false;
-  for (const path of [...new Set(paths)].sort(byCodeUnit15)) {
+  for (const path of [...new Set(paths)].sort(byCodeUnit19)) {
     if (isUnsafeTestSourcePath(path)) {
       dropped.push({ path, reason: "unsafe-path" });
       continue;
@@ -242564,7 +242826,7 @@ function escapeDetailText(text) {
 }
 
 // ../core/src/signals/ti10.ts
-var byCodeUnit16 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit20 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE3 = 20;
 var DETAILS2 = {
   "or-true": "A test script now ignores the exit status of a command, so it passes even when the tests fail.",
@@ -242705,22 +242967,22 @@ function detectTI10(diff, options) {
     for (const hook2 of removedHooks) {
       if (!addedKeys.has(hook2.key)) found.push({ line: hook2.line, kind: "hook-removed" });
     }
-    found.sort((a, b) => a.line - b.line || byCodeUnit16(DETAILS2[a.kind], DETAILS2[b.kind]));
+    found.sort((a, b) => a.line - b.line || byCodeUnit20(DETAILS2[a.kind], DETAILS2[b.kind]));
     for (const { line, kind } of found.slice(0, MAX_PER_FILE3)) {
       signals.push({ id: "TI10", severity: options.mode, path: file.path, line, detail: DETAILS2[kind] });
     }
   }
   return signals.sort(
-    (a, b) => byCodeUnit16(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit16(a.detail, b.detail)
+    (a, b) => byCodeUnit20(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit20(a.detail, b.detail)
   );
 }
 
 // ../core/src/signals/ti08.ts
-var byCodeUnit17 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit21 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_SNAPSHOT_FILES = 10;
 var MIN_INLINE_REWRITES = 10;
 var MAX_FLAG_SIGNALS_PER_FILE = 20;
-var MAX_DETAIL4 = 300;
+var MAX_DETAIL5 = 300;
 var NAMED_PATHS = 3;
 var DASH = "-";
 var UPDATE_FLAGS = /* @__PURE__ */ new Set([
@@ -242746,13 +243008,13 @@ function massChangeDetail(count2, firstPaths) {
   const named = firstPaths.slice(0, NAMED_PATHS).map((path) => `"${escapeDetailText(path)}"`);
   while (named.length > 0) {
     const detail = `${head}, among them ${named.join(", ")}${tail}`;
-    if (detail.length <= MAX_DETAIL4) return detail;
+    if (detail.length <= MAX_DETAIL5) return detail;
     named.pop();
   }
   return `${head}${tail}`;
 }
 function detectSnapshotFiles(diff) {
-  const counted = [...new Set(diff.filter(countsAsChangedSnapshot).map((file) => file.path))].sort(byCodeUnit17);
+  const counted = [...new Set(diff.filter(countsAsChangedSnapshot).map((file) => file.path))].sort(byCodeUnit21);
   if (counted.length <= MAX_SNAPSHOT_FILES) return [];
   return [
     {
@@ -242870,7 +243132,7 @@ function detectTI08(diff) {
   const signals = [...detectSnapshotFiles(diff), ...detectInlineRewrites(diff)];
   for (const file of diff) signals.push(...detectScriptFlags(file), ...detectPytestFlag(file));
   return signals.sort(
-    (a, b) => byCodeUnit17(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit17(a.detail, b.detail)
+    (a, b) => byCodeUnit21(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit21(a.detail, b.detail)
   );
 }
 
@@ -244037,7 +244299,7 @@ function compareKey(base, head, key) {
   const result = widenedList(baseValue === null ? [] : entriesOf(baseValue, false), headEntries, key.list);
   return result === "widened" ? "narrowed" : result;
 }
-var listOf = (items) => ({ type: "array", items });
+var listOf2 = (items) => ({ type: "array", items });
 function compareProjects(base, head, flavor) {
   const baseItems = itemsOf(base);
   const headItems = itemsOf(head);
@@ -244046,8 +244308,8 @@ function compareProjects(base, head, flavor) {
   const baseOthers = baseItems.filter((item) => !isObject(item));
   const headOthers = headItems.filter((item) => !isObject(item));
   let outcome = narrowedList(
-    entriesOf(listOf(baseOthers), false),
-    entriesOf(listOf(headOthers), false),
+    entriesOf(listOf2(baseOthers), false),
+    entriesOf(listOf2(headOthers), false),
     "glob"
   );
   const baseNames = baseObjects.map((project) => nameOf(project, flavor));
@@ -244385,7 +244647,7 @@ function evaluateRules(kind, base, head, mode) {
 }
 
 // ../core/src/signals/ti09.ts
-var byCodeUnit18 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit22 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function lookupOf2(side) {
   const texts = /* @__PURE__ */ new Map();
   const dropped = /* @__PURE__ */ new Map();
@@ -244434,7 +244696,7 @@ function detectTI09(diff, sources, mode) {
     }
     return readTestConfig(candidate.kind, path, text.text);
   };
-  const sorted = [...candidates].sort((a, b) => byCodeUnit18(a.path, b.path) || byCodeUnit18(a.oldPath, b.oldPath));
+  const sorted = [...candidates].sort((a, b) => byCodeUnit22(a.path, b.path) || byCodeUnit22(a.oldPath, b.oldPath));
   for (const candidate of sorted) {
     const base = candidate.added ? null : readSide(baseSide, candidate, candidate.oldPath);
     const head = readSide(headSide, candidate, candidate.path);
@@ -244471,13 +244733,13 @@ function detectTI09(diff, sources, mode) {
   }
   return {
     signals,
-    unavailable: [...unavailable2].map(([path, reason]) => ({ path, reason })).sort((a, b) => byCodeUnit18(a.path, b.path)),
+    unavailable: [...unavailable2].map(([path, reason]) => ({ path, reason })).sort((a, b) => byCodeUnit22(a.path, b.path)),
     notRun: null
   };
 }
 
 // ../core/src/signals/ti11.ts
-var byCodeUnit19 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit23 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var PM_FLAGS = String.raw`(?:\s+(?:-r|--recursive|-w|--workspace-root|-ws|--workspaces|--if-present|(?:--filter|-F|-C|--dir|--prefix|--workspace|--cwd)(?:=|\s+)\S+))*`;
 var JS_LAUNCHER = String.raw`(?:(?:npx|bunx|yarn|pnpm${PM_FLAGS}(?:\s+(?:exec|dlx))?|bun\s+x|npm\s+exec)\s+)?`;
 var PY_WRAPPER = String.raw`(?:(?:uv|poetry|pipenv|pdm|hatch|rye)\s+run\s+)?`;
@@ -244672,7 +244934,7 @@ function detectTI11(diff, mode) {
     if (rushed !== void 0) emit("warn", rushed.line, SENTENCES.timeout);
   }
   return signals.sort(
-    (a, b) => byCodeUnit19(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit19(a.detail, b.detail)
+    (a, b) => byCodeUnit23(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit23(a.detail, b.detail)
   );
 }
 
@@ -244831,7 +245093,7 @@ function detectTI12(touched, diff) {
 }
 
 // ../core/src/signals/ti13.ts
-var byCodeUnit20 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit24 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE4 = 20;
 var DETAILS3 = {
   istanbul: "An Istanbul coverage hint was added, so the code it marks leaves the coverage this check grades.",
@@ -244883,12 +245145,12 @@ function detectTI13(diff, mode) {
     }
   }
   return signals.sort(
-    (a, b) => byCodeUnit20(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit20(a.detail, b.detail)
+    (a, b) => byCodeUnit24(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit24(a.detail, b.detail)
   );
 }
 
 // ../core/src/signals/ti14.ts
-var byCodeUnit21 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit25 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var PLAIN_NUMBER = /^\d+(?:\.\d+)?$/;
 function normalizedPattern(item) {
   try {
@@ -245006,13 +245268,13 @@ function detectTI14(diff, options) {
       });
     }
   }
-  return signals.sort((a, b) => byCodeUnit21(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit25(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti15.ts
-var byCodeUnit22 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit26 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_CHANGE = 10;
-var MAX_DETAIL5 = 300;
+var MAX_DETAIL6 = 300;
 var MIN_STRING_LENGTH = 6;
 var MIN_SIGNIFICANT_DIGITS = 4;
 var EXCLUDED_DIRS = /* @__PURE__ */ new Set(["examples", "benchmarks", "bench", "docs", "fixtures"]);
@@ -245215,7 +245477,7 @@ function testLiterals(diff, manifests) {
           const key = keyOf3(literal);
           const roots = found.get(key) ?? /* @__PURE__ */ new Map();
           const first = roots.get(root);
-          if (first === void 0 || byCodeUnit22(file.path, first) < 0) roots.set(root, file.path);
+          if (first === void 0 || byCodeUnit26(file.path, first) < 0) roots.set(root, file.path);
           found.set(key, roots);
         }
       }
@@ -245228,9 +245490,9 @@ function detailOf3(literal, sourcePath, line, testPath) {
   const tail = "so the code may special-case the test's input.";
   const at = `The condition at "${escapeDetailText(`${sourcePath}:${line}`)}" compares with ${what}`;
   const full = `${at} that the test file "${escapeDetailText(testPath)}" also adds, ${tail}`;
-  if (full.length <= MAX_DETAIL5) return full;
+  if (full.length <= MAX_DETAIL6) return full;
   const noTest = `${at} that a test file in this change also adds, ${tail}`;
-  if (noTest.length <= MAX_DETAIL5) return noTest;
+  if (noTest.length <= MAX_DETAIL6) return noTest;
   return `This condition compares with ${what} that a test file in this change also adds, ${tail}`;
 }
 function detectTI15(diff, options) {
@@ -245267,7 +245529,7 @@ function detectTI15(diff, options) {
       }
     }
   }
-  findings.sort((a, b) => byCodeUnit22(a.path, b.path) || a.line - b.line || byCodeUnit22(a.detail, b.detail));
+  findings.sort((a, b) => byCodeUnit26(a.path, b.path) || a.line - b.line || byCodeUnit26(a.detail, b.detail));
   const signals = findings.slice(0, MAX_PER_CHANGE).map(({ path, line, detail }) => ({ id: "TI15", severity: "info", path, line, detail }));
   const counts2 = /* @__PURE__ */ new Map();
   for (const { path } of findings.slice(MAX_PER_CHANGE)) counts2.set(path, (counts2.get(path) ?? 0) + 1);
@@ -245371,7 +245633,7 @@ var markerOf2 = (text, language) => {
   const line = text.length > MAX_LINE2 ? text.slice(0, MAX_LINE2) : text;
   return language === "jsts" ? jsMarker(line) : pythonMarker(line);
 };
-var byCodeUnit23 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit27 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function detectTI16(diff) {
   const signals = [];
   for (const file of diff) {
@@ -245409,14 +245671,14 @@ function detectTI16(diff) {
       detail: `This test file adds ${count2} that switch off a linter or type checker, so the checks they silence no longer run on that code.`
     });
   }
-  return signals.sort((a, b) => byCodeUnit23(a.path, b.path));
+  return signals.sort((a, b) => byCodeUnit27(a.path, b.path));
 }
 
 // ../core/src/check.ts
-var byCodeUnit24 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit28 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function sortSignals(signals) {
   return signals.sort(
-    (a, b) => byCodeUnit24(a.id, b.id) || byCodeUnit24(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit24(a.detail, b.detail)
+    (a, b) => byCodeUnit28(a.id, b.id) || byCodeUnit28(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit28(a.detail, b.detail)
   );
 }
 function check(input) {
@@ -245522,23 +245784,59 @@ function check(input) {
   const overridden = input.signalOverrides === void 0 || testIntegrity2.mode === "off" ? void 0 : applySignalOverrides(testIntegritySignals, omittedBeforePolicy, input.signalOverrides, testIntegrity2.mode);
   const finalSignals = overridden?.signals ?? testIntegritySignals;
   const omittedSignals = overridden?.omitted ?? omittedBeforePolicy;
+  const policyEvaluation = input.policy === void 0 ? null : evaluatePolicyRules({
+    policy: input.policy,
+    agentSetupFileCount: agentSetup.files.length,
+    agentTools: summarizeAgentSetup(agentSetup.files).tools,
+    repoFiles: input.repoFiles,
+    diff: parsedDiff,
+    configPath: configRepoPath(input.configPath, input.repoRoot),
+    ignored: input.policyIgnored ?? []
+  });
   const policyIgnored = [
     ...input.policyIgnored ?? [],
     ...(overridden?.lowered ?? []).map(
       (id) => ({ setting: `test_integrity.signals.${id}`, layer: "policy-file", reason: "looser" })
+    ),
+    ...(policyEvaluation?.lowered ?? []).map(
+      (id) => ({ setting: `policy.rules.${id}`, layer: "policy-file", reason: "looser" })
     )
   ];
   const policyMessages = [
     ...input.policy?.unavailable === void 0 ? [] : [policyUnavailableMessage(input.policy.unavailable)],
+    ...policyEvaluation === null ? [] : policyRuleMessages(policyEvaluation),
     ...policyIgnored.length === 0 ? [] : [policyOverrideIgnoredMessage(policyIgnored)]
   ];
+  const p01 = (policyEvaluation?.violations ?? []).filter((violation) => violation.id === "P01");
+  const noFilesViolation = p01.find((violation) => violation.detail === NO_SETUP_DETAIL);
+  const expectedViolations = p01.filter((violation) => violation.detail !== NO_SETUP_DETAIL);
+  const agentSetupLevels = {
+    ...noFilesViolation === void 0 ? {} : { noFiles: levelOf(noFilesViolation.severity) },
+    ...expectedViolations.length === 0 ? {} : { expectedMissing: levelOf(strongest(expectedViolations.map((violation) => violation.severity))) }
+  };
+  const reportedTools = agentSetupLevels.expectedMissing === void 0 ? expectedAgentTools : [.../* @__PURE__ */ new Set([...expectedAgentTools, ...input.policy?.document?.setup?.expect ?? []])];
+  const policySource = input.policy?.source;
+  const reportPolicy = input.policy === void 0 || policyEvaluation === null ? void 0 : policySource === "app" || policySource === "file" || input.policy.unavailable !== void 0 ? {
+    source: policySource === "app" ? "app" : policySource === "file" ? "input" : "none",
+    version: policySource === "app" ? input.policy.version : null,
+    ...policySource === "app" && input.policy.fetchedAt !== void 0 ? { fetchedAt: input.policy.fetchedAt } : {},
+    violations: policyEvaluation.violations.map(({ id, severity: severity2, path, line, detail }) => ({
+      id,
+      severity: severity2,
+      path,
+      line,
+      detail
+    }))
+  } : void 0;
   const agentConfigMessages = input.agentConfigSources === void 0 ? [] : agentConfigSecretMessages(input.agentConfigSources, agentConfigSecretPaths(agentSetup));
   const base = {
     version: input.version,
     threshold: input.threshold,
     agentSetup,
     requireAgentSetup: input.requireAgentSetup === true,
-    ...expectedAgentTools.length > 0 ? { expectedAgentTools } : {},
+    ...reportedTools.length > 0 ? { expectedAgentTools: reportedTools } : {},
+    ...Object.keys(agentSetupLevels).length > 0 ? { agentSetupLevels } : {},
+    ...reportPolicy === void 0 ? {} : { policy: reportPolicy },
     ...configPaths.length > 0 ? { changedConfigPaths: configPaths } : {},
     ...testPaths.length > 0 ? { deletedTestFiles: testPaths } : {},
     ...trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage },
@@ -245911,7 +246209,7 @@ function gitDiffArgs(base, head = "HEAD") {
 
 // ../core/src/policy/apply.ts
 var STRICTNESS2 = { off: 0, warn: 1, block: 2 };
-var byCodeUnit25 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit29 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function rootKey(root) {
   return root === void 0 || root === null ? "." : root;
 }
@@ -245951,7 +246249,7 @@ function applyPolicy(layers, policy) {
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
-  }).sort((a, b) => byCodeUnit25(a.setting, b.setting) || byCodeUnit25(a.layer, b.layer));
+  }).sort((a, b) => byCodeUnit29(a.setting, b.setting) || byCodeUnit29(a.layer, b.layer));
   return result;
 }
 function applyCoverage(layers, document2, app, inputs, ignored) {
@@ -246280,7 +246578,7 @@ function objectOf(keys, required = []) {
     return out;
   };
 }
-function listOf2(item) {
+function listOf3(item) {
   return (value, path, errors) => {
     if (!Array.isArray(value)) {
       errors.add(path, MESSAGES.list);
@@ -246379,7 +246677,7 @@ var rootOrNull = (value, path, errors) => {
 var coverage = objectOf(
   known([
     ["threshold", numberIn(POLICY_THRESHOLD_MIN, POLICY_THRESHOLD_MAX)],
-    ["exclude", listOf2(stringOf(GRAMMARS.glob))],
+    ["exclude", listOf3(stringOf(GRAMMARS.glob))],
     ["root", rootOrNull]
   ])
 );
@@ -246393,14 +246691,14 @@ var requiredHook = objectOf(
 var setup = objectOf(
   known([
     ["require", bool],
-    ["expect", listOf2(enumOf(AGENT_TOOLS))],
+    ["expect", listOf3(enumOf(AGENT_TOOLS))],
     ["consistency", severity],
-    ["forbidden_permissions", listOf2(stringOf(GRAMMARS.perm))],
-    ["required_permissions_deny", listOf2(stringOf(GRAMMARS.perm))],
-    ["allowed_mcp_servers", listOf2(stringOf(GRAMMARS.name))],
-    ["forbidden_mcp_servers", listOf2(stringOf(GRAMMARS.nameOrGlob))],
-    ["required_hooks", listOf2(requiredHook)],
-    ["forbidden_files", listOf2(stringOf(GRAMMARS.glob))]
+    ["forbidden_permissions", listOf3(stringOf(GRAMMARS.perm))],
+    ["required_permissions_deny", listOf3(stringOf(GRAMMARS.perm))],
+    ["allowed_mcp_servers", listOf3(stringOf(GRAMMARS.name))],
+    ["forbidden_mcp_servers", listOf3(stringOf(GRAMMARS.nameOrGlob))],
+    ["required_hooks", listOf3(requiredHook)],
+    ["forbidden_files", listOf3(stringOf(GRAMMARS.glob))]
   ])
 );
 var testIntegrity = objectOf(
@@ -246419,9 +246717,9 @@ var policySettings = objectOf(
 );
 var agents = objectOf(
   known([
-    ["labels", listOf2(stringOf(GRAMMARS.label))],
-    ["extra_logins", listOf2(stringOf(GRAMMARS.login))],
-    ["protected_paths", listOf2(stringOf(GRAMMARS.glob))],
+    ["labels", listOf3(stringOf(GRAMMARS.label))],
+    ["extra_logins", listOf3(stringOf(GRAMMARS.login))],
+    ["protected_paths", listOf3(stringOf(GRAMMARS.glob))],
     ["protected_paths_mode", enumOf(POLICY_PROTECTED_PATHS_MODES)],
     ["require_human_approval", bool],
     ["max_files", integerIn(POLICY_MAX_FILES_MIN, POLICY_MAX_FILES_MAX)],
@@ -246430,7 +246728,7 @@ var agents = objectOf(
 );
 var dependencies = objectOf(
   known([
-    ["registries", listOf2(enumOf(POLICY_REGISTRIES))],
+    ["registries", listOf3(enumOf(POLICY_REGISTRIES))],
     ["min_age_days", integerIn(POLICY_MIN_AGE_DAYS_MIN, POLICY_MIN_AGE_DAYS_MAX)],
     ["min_weekly_downloads", integerIn(POLICY_MIN_WEEKLY_DOWNLOADS_MIN, POLICY_MIN_WEEKLY_DOWNLOADS_MAX)]
   ])
@@ -246580,7 +246878,7 @@ function validatePolicyResponse(value) {
       if (good) quarantine = items;
     }
   }
-  let settings;
+  let settings2;
   if (Object.hasOwn(input, "settings")) {
     const v = input.settings;
     if (typeof v !== "object" || v === null || Array.isArray(v)) errors.add("/settings", MESSAGES.object);
@@ -246613,14 +246911,14 @@ function validatePolicyResponse(value) {
         } else messageMaxBytes = n;
       }
       if (uploadJunit !== void 0 && redactMessages !== void 0 && messageMaxBytes !== void 0) {
-        settings = { uploadJunit, redactMessages, messageMaxBytes };
+        settings2 = { uploadJunit, redactMessages, messageMaxBytes };
       }
     }
   }
-  if (errors.total > 0 || version2 === void 0 || etag === void 0 || updatedAt === void 0 || policy === void 0 || quarantine === void 0 || settings === void 0) {
+  if (errors.total > 0 || version2 === void 0 || etag === void 0 || updatedAt === void 0 || policy === void 0 || quarantine === void 0 || settings2 === void 0) {
     return { ok: false, errors: errors.finish() };
   }
-  return { ok: true, response: { version: version2, etag, updatedAt, policy, quarantine, settings } };
+  return { ok: true, response: { version: version2, etag, updatedAt, policy, quarantine, settings: settings2 } };
 }
 
 // ../core/src/render/logo.ts
@@ -246697,7 +246995,9 @@ var MESSAGE_HINTS = {
   AGENT_CONFIG_SECRET_UNSCANNED: "Keep agent config files text, under 512 KiB and inside the repository, and run on a checkout of the pull request head (not PR-number mode or a compare-API diff), so they can be scanned for committed secrets.",
   POLICY_UNAVAILABLE: "Give the job `permissions: id-token: write` (fork pull requests get no OIDC token), check that the pharn.dev app is installed for this repository, or set `policy: never` to run without the org policy.",
   POLICY_OVERRIDE_IGNORED: "The org policy's value applies. Raise the setting in the workflow inputs or `.pharn/ci.yml` to match, or ask the policy owner to change the policy.",
-  UPLOAD_TOO_LARGE: "Nothing in the pull request needs fixing; the full report is in the job summary and report.json."
+  UPLOAD_TOO_LARGE: "Nothing in the pull request needs fixing; the full report is in the job summary and report.json.",
+  POLICY_P08: "Stop tracking the file (`git rm --cached` it and add it to `.gitignore`); the org policy forbids it in the repository.",
+  POLICY_P09: "Revert the edit, or ask the policy owner to make it; a pull request cannot loosen the check it is graded by."
 };
 function hintFor(code2, label) {
   if (!Object.hasOwn(MESSAGE_HINTS, code2)) return void 0;
@@ -246803,6 +247103,102 @@ function testChangesLines(report, maxRows) {
   lines.push("", "</details>", "");
   return lines;
 }
+var UNAVAILABLE_REASONS = /* @__PURE__ */ new Set([
+  "no-policy",
+  "installation_not_found",
+  "token_invalid",
+  "repo_not_in_installation",
+  "rate-limited",
+  "unexpected-status",
+  "timeout",
+  "network",
+  "response-too-large",
+  "invalid-response",
+  "no-oidc-token",
+  "no-repository"
+]);
+var POLICY_RULE_MESSAGE_CODE = /^POLICY_P\d\d$/;
+var MAX_POLICY_VIOLATIONS = 20;
+var hasPolicy = (report) => typeof report.policy === "object" && report.policy !== null;
+function policyViolationsOf(report) {
+  const violations = report.policy?.violations;
+  return Array.isArray(violations) ? violations : [];
+}
+function policyHeader(report, violations) {
+  const policy = report.policy;
+  const source = policy?.source;
+  if (source === "app") {
+    const version2 = policy?.version;
+    return typeof version2 === "number" && Number.isSafeInteger(version2) && version2 >= 1 ? `Org policy v${version2}` : "Org policy";
+  }
+  if (source === "input") return "Policy file \u2014 the pull request can edit this file, so it can only tighten the check";
+  if (source === "config") return "Policy from the check config";
+  if (source === "none") {
+    const unavailable2 = violations.find((v) => v.id === "P10");
+    if (unavailable2 !== void 0) {
+      const reason = typeof unavailable2.detail === "string" ? /^org policy could not be read \(([a-z_-]+)\)$/.exec(unavailable2.detail)?.[1] : void 0;
+      return reason !== void 0 && UNAVAILABLE_REASONS.has(reason) ? `Org policy unavailable (${reason})` : "Org policy unavailable";
+    }
+  }
+  return "No org policy";
+}
+function policyViolationHint(violation, label) {
+  const id = String(violation.id);
+  if (id === "P01") {
+    return hintFor(
+      violation.detail === "no agent setup files found" ? "NO_AGENT_SETUP_FILES" : "AGENT_SETUP_EXPECTED_MISSING",
+      label
+    );
+  }
+  if (id === "P10") return hintFor("POLICY_UNAVAILABLE", label);
+  return /^P\d\d$/.test(id) ? hintFor(`POLICY_${id}`, label) : void 0;
+}
+function policyLines(report, maxRows) {
+  const label = acceptLabelOf(report);
+  const violations = policyViolationsOf(report);
+  const lines = ["### \u{1F4DC} Policy", "", policyHeader(report, violations)];
+  const unavailable2 = report.messages.find((m) => m.code === "POLICY_UNAVAILABLE");
+  if (unavailable2 !== void 0) lines.push("", inlineText(unavailable2.text));
+  lines.push("");
+  if (violations.length === 0) {
+    if (report.policy?.source !== "none") lines.push("No policy violations.", "");
+  } else {
+    const listed2 = bySeverity(violations).slice(0, Math.min(MAX_POLICY_VIOLATIONS, maxRows));
+    const violationLines = (violation) => {
+      const icon = SEVERITY_ICON[violation.severity] ?? LEVEL_ICON.info;
+      const id = inlineText(String(violation.id));
+      const detail = inlineText(String(violation.detail));
+      const out = typeof violation.path === "string" ? [
+        `- ${icon} **${id}** ${violation.line === null || violation.line === void 0 ? code(violation.path) : code(`${violation.path}:${violation.line}`)} \u2014 ${detail}`
+      ] : [`- ${icon} **${id}** \u2014 ${detail}`];
+      const hint = policyViolationHint(violation, label);
+      if (hint !== void 0) out.push(`  - Hint: ${hint}`);
+      return out;
+    };
+    for (const violation of listed2.slice(0, OPEN_FINDINGS)) lines.push(...violationLines(violation));
+    const folded = listed2.slice(OPEN_FINDINGS);
+    if (folded.length > 0) {
+      lines.push(
+        "",
+        `<details><summary>${countOf(folded.length, "more violation", "more violations")}</summary>`,
+        "",
+        ...folded.flatMap(violationLines),
+        "",
+        "</details>",
+        ""
+      );
+    }
+    if (violations.length > listed2.length) {
+      lines.push(`- _\u2026and ${violations.length - listed2.length} more violations in report.json._`);
+    }
+  }
+  const ignored = report.messages.find((m) => m.code === "POLICY_OVERRIDE_IGNORED");
+  if (ignored !== void 0) {
+    lines.push(`- \u26A0\uFE0F Ignored: ${inlineText(ignored.text)}`, `  - Hint: ${hintFor("POLICY_OVERRIDE_IGNORED", label)}`);
+  }
+  if (lines[lines.length - 1] !== "") lines.push("");
+  return lines;
+}
 function renderMarkdown(report, options = {}) {
   const maxRows = options.maxRows ?? 50;
   const out = [];
@@ -246846,8 +247242,13 @@ function renderMarkdown(report, options = {}) {
     out.push("", "</details>", "");
   }
   out.push("### \u{1F50D} Test integrity", "", ...testIntegrityLines(report), "", ...testChangesLines(report, maxRows));
+  if (hasPolicy(report)) out.push(...policyLines(report, maxRows));
   const listedIds = new Set(report.testIntegrity.signals.map((s) => `TEST_INTEGRITY_${s.id}`));
-  const messages = report.messages.filter((m) => !(SIGNAL_MESSAGE_CODE.test(m.code) && listedIds.has(m.code)));
+  const policyListsP01 = hasPolicy(report) && policyViolationsOf(report).some((v) => v.id === "P01");
+  const inPolicySection = (code2) => hasPolicy(report) && (POLICY_RULE_MESSAGE_CODE.test(code2) || code2 === "POLICY_UNAVAILABLE" || code2 === "POLICY_OVERRIDE_IGNORED" || policyListsP01 && (code2 === "NO_AGENT_SETUP_FILES" || code2 === "AGENT_SETUP_EXPECTED_MISSING"));
+  const messages = report.messages.filter(
+    (m) => !(SIGNAL_MESSAGE_CODE.test(m.code) && listedIds.has(m.code)) && !inPolicySection(m.code)
+  );
   if (messages.length > 0) {
     out.push(`### \u{1F4AC} Messages (${messages.length})`, "");
     for (const m of messages) out.push(renderMessage(m, report));
@@ -246926,12 +247327,27 @@ function summaryLines(report) {
   }
   const n = report.agentSetup.files.length;
   const setup2 = n === 0 ? "none" : n === 1 ? "1 file" : `${n} files`;
+  if (hasPolicy(report)) {
+    return [
+      "| Verdict | Diff coverage | Test integrity | Agent setup | Policy |",
+      "| --- | --- | --- | --- | --- |",
+      `| ${VERDICT_ICON[report.verdict]} ${VERDICT_LABEL[report.verdict]} | ${coverage2} | ${integrityCell(report)} | ${setup2} | ${policyCell(report)} |`,
+      ""
+    ];
+  }
   return [
     "| Verdict | Diff coverage | Test integrity | Agent setup |",
     "| --- | --- | --- | --- |",
     `| ${VERDICT_ICON[report.verdict]} ${VERDICT_LABEL[report.verdict]} | ${coverage2} | ${integrityCell(report)} | ${setup2} |`,
     ""
   ];
+}
+function policyCell(report) {
+  const violations = policyViolationsOf(report);
+  if (violations.length === 0) return report.policy?.source === "none" ? "no org policy" : "\u2705 none";
+  const blocking = violations.filter((v) => v.severity === "block").length;
+  const icon = blocking > 0 ? LEVEL_ICON.error : violations.some((v) => v.severity === "warn") ? LEVEL_ICON.warn : LEVEL_ICON.info;
+  return `${icon} ${countOf(violations.length, "violation", "violations")}${blocking > 0 ? `, ${blocking} blocking` : ""}`;
 }
 function renderMessage(m, report) {
   const line = `- ${LEVEL_ICON[m.level]} \`${m.code}\` ${inlineText(m.text)}`;
@@ -247609,10 +248025,10 @@ async function batchRead(deps, oids) {
 }
 
 // ../node-io/src/agentConfigSources.ts
-var byCodeUnit26 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit30 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 async function readAgentConfigSources(deps, paths) {
   try {
-    const unique = [...new Set(paths)].sort(byCodeUnit26);
+    const unique = [...new Set(paths)].sort(byCodeUnit30);
     const requests = unique.filter((path) => !isUnsafeTestSourcePath(path)).map((path) => ({ oid: "HEAD", path }));
     const checked = await batchCheck(deps, requests);
     const objects = /* @__PURE__ */ new Map();
@@ -247625,7 +248041,7 @@ async function readAgentConfigSources(deps, paths) {
     const plan = planTestSourceReads(unique, objects);
     const wanted = /* @__PURE__ */ new Set();
     for (const path of plan.read) wanted.add(blobs.get(path));
-    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit26));
+    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit30));
     const files = [];
     const dropped = [...plan.dropped];
     for (const path of plan.read) {
@@ -247633,7 +248049,7 @@ async function readAgentConfigSources(deps, paths) {
       if (text === null) dropped.push({ path, reason: "binary" });
       else files.push({ path, text });
     }
-    dropped.sort((a, b) => byCodeUnit26(a.path, b.path));
+    dropped.sort((a, b) => byCodeUnit30(a.path, b.path));
     return { files, dropped };
   } catch (err) {
     return { unavailable: err instanceof StepFailed ? err.message : `git could not be read: ${firstLine(err)}` };
@@ -248655,7 +249071,7 @@ async function indexPythonTestSources(sources, index = (files) => indexPythonTes
 }
 
 // ../node-io/src/testSources.ts
-var byCodeUnit27 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit31 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 async function resolveRevision(deps, revision, label) {
   let out;
   try {
@@ -248706,7 +249122,7 @@ async function readTestSources(deps, options) {
     plans.forEach((plan, i) => {
       for (const path of plan.read) wanted.add(sides[i]?.blobs.get(path));
     });
-    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit27));
+    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit31));
     const decoded = /* @__PURE__ */ new Map();
     const build = (index) => {
       const plan = plans[index];
@@ -248722,7 +249138,7 @@ async function readTestSources(deps, options) {
         if (text === null) dropped.push({ path, reason: "binary" });
         else files.push({ path, text });
       }
-      dropped.sort((a, b) => byCodeUnit27(a.path, b.path));
+      dropped.sort((a, b) => byCodeUnit31(a.path, b.path));
       return { files, dropped };
     };
     return { base: build(0), head: build(1) };

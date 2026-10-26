@@ -1,6 +1,7 @@
 import { DEFAULT_ACCEPT_LABEL, GITHUB_LOGIN } from "../acceptLabel.js";
 import type { CoverageFormat } from "../coverage/types.js";
-import { formatNumber, type Message, type MessageCode, type Report } from "../report.js";
+import type { PolicyUnavailableReason } from "../policy/resolved.js";
+import { formatNumber, type Message, type MessageCode, type Report, type ReportPolicyViolation } from "../report.js";
 import { summarizeAgentSetup } from "../setup/summary.js";
 import { logoMarkup } from "./logo.js";
 
@@ -137,6 +138,10 @@ const MESSAGE_HINTS: Record<MessageCode, Hint> = {
   POLICY_OVERRIDE_IGNORED:
     "The org policy's value applies. Raise the setting in the workflow inputs or `.pharn/ci.yml` to match, or ask the policy owner to change the policy.",
   UPLOAD_TOO_LARGE: "Nothing in the pull request needs fixing; the full report is in the job summary and report.json.",
+  POLICY_P08:
+    "Stop tracking the file (`git rm --cached` it and add it to `.gitignore`); the org policy forbids it in the repository.",
+  POLICY_P09:
+    "Revert the edit, or ask the policy owner to make it; a pull request cannot loosen the check it is graded by.",
 };
 
 /** The hint text for a message code, or undefined when it has none. `label` is the report's accept label. */
@@ -285,6 +290,130 @@ function testChangesLines(report: Report, maxRows: number): string[] {
   return lines;
 }
 
+/** The reasons an org policy can be unavailable; only these words reach the Policy header. */
+const UNAVAILABLE_REASONS: ReadonlySet<string> = new Set([
+  "no-policy",
+  "installation_not_found",
+  "token_invalid",
+  "repo_not_in_installation",
+  "rate-limited",
+  "unexpected-status",
+  "timeout",
+  "network",
+  "response-too-large",
+  "invalid-response",
+  "no-oidc-token",
+  "no-repository",
+] satisfies readonly PolicyUnavailableReason[]);
+
+/** The rule messages of the org policy (`POLICY_P08`, `POLICY_P09`, ...). */
+const POLICY_RULE_MESSAGE_CODE = /^POLICY_P\d\d$/;
+
+/** Most violations listed in the Policy section; the rest are counted. */
+const MAX_POLICY_VIOLATIONS = 20;
+
+const hasPolicy = (report: Report): boolean => typeof report.policy === "object" && report.policy !== null;
+
+/** The violations of a report's policy object; a hand-built report is untrusted, so anything but an array is none. */
+function policyViolationsOf(report: Report): ReportPolicyViolation[] {
+  const violations: unknown = report.policy?.violations;
+  return Array.isArray(violations) ? (violations as ReportPolicyViolation[]) : [];
+}
+
+/** The header line of the Policy section: where the policy came from, in fixed words and a version number. */
+function policyHeader(report: Report, violations: readonly ReportPolicyViolation[]): string {
+  const policy = report.policy;
+  const source: unknown = policy?.source;
+  if (source === "app") {
+    const version = policy?.version;
+    return typeof version === "number" && Number.isSafeInteger(version) && version >= 1
+      ? `Org policy v${version}`
+      : "Org policy";
+  }
+  if (source === "input") return "Policy file — the pull request can edit this file, so it can only tighten the check";
+  if (source === "config") return "Policy from the check config";
+  if (source === "none") {
+    const unavailable = violations.find((v) => v.id === "P10");
+    if (unavailable !== undefined) {
+      const reason =
+        typeof unavailable.detail === "string"
+          ? /^org policy could not be read \(([a-z_-]+)\)$/.exec(unavailable.detail)?.[1]
+          : undefined;
+      return reason !== undefined && UNAVAILABLE_REASONS.has(reason)
+        ? `Org policy unavailable (${reason})`
+        : "Org policy unavailable";
+    }
+  }
+  return "No org policy";
+}
+
+/** The hint under a policy violation, or undefined when its rule has none. */
+function policyViolationHint(violation: ReportPolicyViolation, label: string): string | undefined {
+  const id = String(violation.id);
+  if (id === "P01") {
+    return hintFor(
+      violation.detail === "no agent setup files found" ? "NO_AGENT_SETUP_FILES" : "AGENT_SETUP_EXPECTED_MISSING",
+      label,
+    );
+  }
+  if (id === "P10") return hintFor("POLICY_UNAVAILABLE", label);
+  return /^P\d\d$/.test(id) ? hintFor(`POLICY_${id}`, label) : undefined;
+}
+
+/**
+ * The Policy section after the Test integrity section: where the policy came from, the unavailable text when there is
+ * one, then each violation (blocks first) with its hint, and the ignored-settings line.
+ */
+function policyLines(report: Report, maxRows: number): string[] {
+  const label = acceptLabelOf(report);
+  const violations = policyViolationsOf(report);
+  const lines: string[] = ["### 📜 Policy", "", policyHeader(report, violations)];
+  const unavailable = report.messages.find((m) => m.code === "POLICY_UNAVAILABLE");
+  if (unavailable !== undefined) lines.push("", inlineText(unavailable.text));
+  lines.push("");
+  if (violations.length === 0) {
+    if (report.policy?.source !== "none") lines.push("No policy violations.", "");
+  } else {
+    const listed = bySeverity(violations).slice(0, Math.min(MAX_POLICY_VIOLATIONS, maxRows));
+    const violationLines = (violation: ReportPolicyViolation) => {
+      const icon = SEVERITY_ICON[violation.severity as keyof typeof SEVERITY_ICON] ?? LEVEL_ICON.info;
+      const id = inlineText(String(violation.id));
+      const detail = inlineText(String(violation.detail));
+      const out =
+        typeof violation.path === "string"
+          ? [
+              `- ${icon} **${id}** ${violation.line === null || violation.line === undefined ? code(violation.path) : code(`${violation.path}:${violation.line}`)} — ${detail}`,
+            ]
+          : [`- ${icon} **${id}** — ${detail}`];
+      const hint = policyViolationHint(violation, label);
+      if (hint !== undefined) out.push(`  - Hint: ${hint}`);
+      return out;
+    };
+    for (const violation of listed.slice(0, OPEN_FINDINGS)) lines.push(...violationLines(violation));
+    const folded = listed.slice(OPEN_FINDINGS);
+    if (folded.length > 0) {
+      lines.push(
+        "",
+        `<details><summary>${countOf(folded.length, "more violation", "more violations")}</summary>`,
+        "",
+        ...folded.flatMap(violationLines),
+        "",
+        "</details>",
+        "",
+      );
+    }
+    if (violations.length > listed.length) {
+      lines.push(`- _…and ${violations.length - listed.length} more violations in report.json._`);
+    }
+  }
+  const ignored = report.messages.find((m) => m.code === "POLICY_OVERRIDE_IGNORED");
+  if (ignored !== undefined) {
+    lines.push(`- ⚠️ Ignored: ${inlineText(ignored.text)}`, `  - Hint: ${hintFor("POLICY_OVERRIDE_IGNORED", label)}`);
+  }
+  if (lines[lines.length - 1] !== "") lines.push("");
+  return lines;
+}
+
 /** Render a Report as GitHub-flavored markdown (PR comment, job summary, CLI). */
 export function renderMarkdown(report: Report, options: RenderMarkdownOptions = {}): string {
   const maxRows = options.maxRows ?? 50;
@@ -335,13 +464,25 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
   }
 
   out.push("### 🔍 Test integrity", "", ...testIntegrityLines(report), "", ...testChangesLines(report, maxRows));
+  if (hasPolicy(report)) out.push(...policyLines(report, maxRows));
 
   // Before the agent setup inventory: when the Action has to drop rows to fit a size limit, the
   // reason for the verdict is never what goes.
   // A signal's message repeats what the Test integrity section lists with its hint, so it is left out here when the
   // section lists that signal id; report.json and the job's verdict still carry it.
   const listedIds = new Set(report.testIntegrity.signals.map((s) => `TEST_INTEGRITY_${s.id}`));
-  const messages = report.messages.filter((m) => !(SIGNAL_MESSAGE_CODE.test(m.code) && listedIds.has(m.code)));
+  // With a policy, the Policy section lists its findings, so the policy messages are left out here the same way (and
+  // the agent setup messages P01 raised, when the section lists a P01 finding).
+  const policyListsP01 = hasPolicy(report) && policyViolationsOf(report).some((v) => v.id === "P01");
+  const inPolicySection = (code: string): boolean =>
+    hasPolicy(report) &&
+    (POLICY_RULE_MESSAGE_CODE.test(code) ||
+      code === "POLICY_UNAVAILABLE" ||
+      code === "POLICY_OVERRIDE_IGNORED" ||
+      (policyListsP01 && (code === "NO_AGENT_SETUP_FILES" || code === "AGENT_SETUP_EXPECTED_MISSING")));
+  const messages = report.messages.filter(
+    (m) => !(SIGNAL_MESSAGE_CODE.test(m.code) && listedIds.has(m.code)) && !inPolicySection(m.code),
+  );
   if (messages.length > 0) {
     out.push(`### 💬 Messages (${messages.length})`, "");
     for (const m of messages) out.push(renderMessage(m, report));
@@ -446,12 +587,30 @@ function summaryLines(report: Report): string[] {
   }
   const n = report.agentSetup.files.length;
   const setup = n === 0 ? "none" : n === 1 ? "1 file" : `${n} files`;
+  if (hasPolicy(report)) {
+    return [
+      "| Verdict | Diff coverage | Test integrity | Agent setup | Policy |",
+      "| --- | --- | --- | --- | --- |",
+      `| ${VERDICT_ICON[report.verdict]} ${VERDICT_LABEL[report.verdict]} | ${coverage} | ${integrityCell(report)} | ${setup} | ${policyCell(report)} |`,
+      "",
+    ];
+  }
   return [
     "| Verdict | Diff coverage | Test integrity | Agent setup |",
     "| --- | --- | --- | --- |",
     `| ${VERDICT_ICON[report.verdict]} ${VERDICT_LABEL[report.verdict]} | ${coverage} | ${integrityCell(report)} | ${setup} |`,
     "",
   ];
+}
+
+/** The Policy cell of the summary table: a fixed word or a count of violations. Fixed words and numbers. */
+function policyCell(report: Report): string {
+  const violations = policyViolationsOf(report);
+  if (violations.length === 0) return report.policy?.source === "none" ? "no org policy" : "✅ none";
+  const blocking = violations.filter((v) => v.severity === "block").length;
+  const icon =
+    blocking > 0 ? LEVEL_ICON.error : violations.some((v) => v.severity === "warn") ? LEVEL_ICON.warn : LEVEL_ICON.info;
+  return `${icon} ${countOf(violations.length, "violation", "violations")}${blocking > 0 ? `, ${blocking} blocking` : ""}`;
 }
 
 function renderMessage(m: Message, report: Report): string {
