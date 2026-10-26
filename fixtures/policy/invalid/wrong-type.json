@@ -1,0 +1,1 @@
+{"version":1,"coverage":{"threshold":"80","root":5},"setup":{"require":"true","expect":"claude-code","forbidden_files":[7]},"test_integrity":{"signals":[]},"flaky":[],"policy":{"required":1},"agents":{"labels":null},"dependencies":{"min_age_days":"30"}}

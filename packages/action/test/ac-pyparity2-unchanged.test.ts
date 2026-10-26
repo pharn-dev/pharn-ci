@@ -81,11 +81,13 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
       .split("\n")
       .filter((n) => n !== "")
       .sort();
-    expect(schemaNow, "the files of schema/").toEqual(schemaBase);
+    // policy-v1-schema (E3 item 25) adds schema/policy.v1.json, a new file with no base bytes: it is the one file
+    // accepted beyond the base list, and every file the base has is still compared below.
+    expect(schemaNow, "the files of schema/").toEqual([...schemaBase, "policy.v1.json"].sort());
     // precision-v030: TI15 became an info signal, so report.v2.json accepts exactly one change: its
     // `TEST_INTEGRITY_TI15 (` part (up to the next `TEST_INTEGRITY_` code) now says `info in modes block and warn`.
     // With that part put back from the base the file must equal the base bytes; every other schema file is unchanged.
-    for (const name of schemaNow) {
+    for (const name of schemaBase) {
       if (name !== "report.v2.json") {
         expect(sha256(read(`schema/${name}`)), `schema/${name}`).toBe(sha256(atBase(`schema/${name}`)));
         continue;

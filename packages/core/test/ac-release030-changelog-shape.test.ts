@@ -11,6 +11,8 @@ import { describe, expect, it } from "vitest";
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 /** Main before this increment: the base for the "unchanged" checks. */
 const BASE = "f1dd7e99b90719fbe1602b7b3ff231b0dca38c98";
+/** The `chore: release 0.3.0 (#107)` commit, whose Unreleased section is the empty skeleton. */
+const RELEASE = "ad3b75f9f2b9863806055897e99430b06db7fd1c";
 const HEADING = "## [0.3.0] - 2026-10-26";
 const GROUPS = ["### Added", "### Changed", "### Fixed", "### Security"];
 
@@ -39,8 +41,17 @@ describe("release-030: CHANGELOG.md shape", () => {
     expect(run.stdout.trim(), "check-release-notes.mjs output").toBe("ok   CHANGELOG.md is ready to release 0.3.0");
     expect(run.status, "check-release-notes.mjs exit code").toBe(0);
 
-    const unreleased = section(all, "## [Unreleased]").filter((line) => line.trim() !== "");
-    expect(unreleased, "an empty Unreleased skeleton").toEqual(["### Added", "### Changed", "### Security"]);
+    const atRelease = lines(execFileSync("git", ["show", `${RELEASE}:CHANGELOG.md`], { cwd: ROOT, encoding: "utf8" }));
+    const unreleased = section(atRelease, "## [Unreleased]").filter((line) => line.trim() !== "");
+    expect(unreleased, "an empty Unreleased skeleton at the 0.3.0 release").toEqual([
+      "### Added",
+      "### Changed",
+      "### Security",
+    ]);
+    expect(
+      section(all, "## [Unreleased]").filter((line) => line.startsWith("### ")),
+      "the live Unreleased headings",
+    ).toEqual(["### Added", "### Changed", "### Security"]);
 
     const notes = section(all, HEADING);
     expect(

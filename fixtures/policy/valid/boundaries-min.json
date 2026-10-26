@@ -1,0 +1,1 @@
+{"version":1,"coverage":{"threshold":0,"root":"."},"setup":{"allowed_mcp_servers":["n"],"required_hooks":[{"event":"A","matcher":"*"}]},"test_integrity":{"accept_label":"a"},"agents":{"extra_logins":["a"],"max_files":1,"max_changed_lines":1},"dependencies":{"min_age_days":0,"min_weekly_downloads":0}}

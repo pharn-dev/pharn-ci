@@ -9,6 +9,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- `schema/policy.v1.json`: the JSON Schema (draft 2020-12) for version 1 of the policy document, the file that will
+  tell pharn-ci what "safe to merge" means for a repository, shared with the pharn.dev app. A pure validator in core
+  (`validatePolicy`, and `parsePolicyJson` for JSON text) checks a document against it: it never throws, never
+  repeats a value from the document in an error, and bounds its work on any input. Nothing reads a policy yet.
+
 ### Changed
 
 ### Security

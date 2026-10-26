@@ -1,0 +1,1 @@
+{"version":1,"policy":{"required":true,"rules":{"P01":"block","P02":"warn","P03":"info","P04":"off","P05":"block","P06":"warn","P07":"info","P08":"off","P09":"block","P10":"warn","P11":"info","P12":"off","P13":"block","P14":"warn"}}}

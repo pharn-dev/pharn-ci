@@ -91,6 +91,27 @@ export {
 } from "./inputs.js";
 export { createLineSplitter, splitLines, splitLinesAsync } from "./lines.js";
 export { normalizePath } from "./paths.js";
+export { POLICY_MAX_CHARS, POLICY_MAX_ERRORS } from "./policy/limits.js";
+export { parsePolicyJson } from "./policy/parse.js";
+export type {
+  PolicyAgents,
+  PolicyCoverage,
+  PolicyDependencies,
+  PolicyDocument,
+  PolicyError,
+  PolicyFlaky,
+  PolicyProtectedPathsMode,
+  PolicyRegistry,
+  PolicyRequiredHook,
+  PolicyRuleId,
+  PolicySettings,
+  PolicySetup,
+  PolicySeverity,
+  PolicySignalId,
+  PolicyTestIntegrity,
+  PolicyValidation,
+} from "./policy/types.js";
+export { validatePolicy } from "./policy/validate.js";
 export { formatRanges, type RenderMarkdownOptions, renderMarkdown } from "./render/markdown.js";
 export {
   type BuildReportInput,
