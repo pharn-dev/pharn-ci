@@ -21,6 +21,13 @@ const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const EARLIER_DIRS = ["TI01", "TI03", "TI04", "TI10", "TI11", "TI13", "TI14"];
 const PAIR_DIRS = ["TI02", "TI05"];
+/** The TI11 fixtures the signal-precision increment adds; the digest below predates them, so the loop leaves them out. */
+const NEW_TI11 = new Set([
+  "pass-package-manager-swap.diff",
+  "block-job-moved-with-tests.diff",
+  "block-swap-drops-test.diff",
+  "block-job-removed-script-kept.diff",
+]);
 /** The digest ac-ti0205-regression.test.ts pins for the earlier fixtures without sources. */
 const EARLIER_DIGEST = "9851046d2ff16b5c718d655494b44f96ceed0e91f996e689aaa72524174b59f8";
 /**
@@ -197,7 +204,7 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
     const earlier: Array<{ fixture: string; signals: unknown[]; messages: unknown[] }> = [];
     for (const dir of EARLIER_DIRS) {
       const names = readdirSync(`${FIXTURES}test-integrity/${dir}`)
-        .filter((name) => name.endsWith(".diff"))
+        .filter((name) => name.endsWith(".diff") && !(dir === "TI11" && NEW_TI11.has(name)))
         .sort();
       for (const file of names) {
         const name = `${dir}/${file}`;

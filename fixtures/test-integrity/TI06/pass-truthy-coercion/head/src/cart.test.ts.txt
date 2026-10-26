@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { find } from "./cart.js";
+
+describe("cart", () => {
+  it("finds an item", () => {
+    expect(find("apple")).toBeTruthy();
+  });
+
+  it("finds nothing for an empty name", () => {
+    expect(find("")).toBeUndefined();
+  });
+});

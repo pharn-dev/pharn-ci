@@ -1,0 +1,16 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 3333333..4444444 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -19,3 +19,3 @@ jobs:
+-      - uses: oven-sh/setup-bun@v2
+-      - run: bun install
+-      - run: bun run lint
++      - uses: pnpm/action-setup@v4
++      - run: pnpm install
++      - run: pnpm run lint
+@@ -24,2 +24,2 @@ jobs:
+-      - run: bun run test
+-      - run: bun run test:bun
++      - run: pnpm run test
++      - run: pnpm run test:bun

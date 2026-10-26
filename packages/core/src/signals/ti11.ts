@@ -55,11 +55,93 @@ function commandText(line: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
-/** The normalized command of a line that runs tests, else null. A `&&` or `;` chain counts when any part does. */
-function testCommandOf(line: string): string | null {
+/** Workspace flags that take no value, as tokens (the value flags of `PM_FLAGS` are read beside them). */
+const PM_PLAIN_FLAGS: ReadonlySet<string> = new Set([
+  "-r",
+  "--recursive",
+  "-w",
+  "--workspace-root",
+  "-ws",
+  "--workspaces",
+  "--if-present",
+]);
+const PM_VALUE_FLAGS: ReadonlySet<string> = new Set([
+  "--filter",
+  "-F",
+  "-C",
+  "--dir",
+  "--prefix",
+  "--workspace",
+  "--cwd",
+]);
+const PACKAGE_MANAGERS: ReadonlySet<string> = new Set(["npm", "pnpm", "yarn", "bun"]);
+const RUNNERS: ReadonlySet<string> = new Set(["vitest", "jest", "mocha"]);
+
+/** The index in `tokens` where a runner command starts after a launcher, or -1 when the part is not a launcher form. */
+function runnerStart(tokens: readonly string[]): number {
+  const first = tokens[0] as string;
+  let start = -1;
+  if (first === "npx" || first === "bunx") start = 1;
+  else if (first === "bun" || first === "npm") start = tokens[1] === (first === "bun" ? "x" : "exec") ? 2 : -1;
+  else if (first === "pnpm") start = tokens[1] === "exec" || tokens[1] === "dlx" ? 2 : 1;
+  else if (first === "yarn") start = 1;
+  else start = 0;
+  if (start < 0) return -1;
+  const runner = tokens[start];
+  if (runner === undefined) return -1;
+  if (RUNNERS.has(runner) || (runner === "playwright" && tokens[start + 1] === "test")) return start;
+  return -1;
+}
+
+/** The key of a test part: the runner command without its launcher, the script run with its flags, else the text. */
+function keyOf(part: string): string {
+  const tokens = part.split(" ");
+  const runner = runnerStart(tokens);
+  if (runner >= 0) return tokens.slice(runner).join(" ");
+
+  const manager = tokens[0] as string;
+  if (!PACKAGE_MANAGERS.has(manager)) return part;
+  let i = 1;
+  const flags: string[] = [];
+  for (;;) {
+    const token = tokens[i];
+    if (token === undefined) break;
+    if (PM_PLAIN_FLAGS.has(token)) {
+      flags.push(token);
+      i += 1;
+    } else if (PM_VALUE_FLAGS.has(token) && tokens[i + 1] !== undefined) {
+      flags.push(token, tokens[i + 1] as string);
+      i += 2;
+    } else if (/^(?:--filter|-F|-C|--dir|--prefix|--workspace|--cwd)=\S+$/.test(token)) {
+      flags.push(token);
+      i += 1;
+    } else {
+      break;
+    }
+  }
+  let ran = false;
+  if (tokens[i] === "run" || (manager === "npm" && tokens[i] === "run-script")) {
+    ran = true;
+    i += 1;
+  }
+  let script = tokens[i];
+  if (script === undefined || !/^(?:test|t)(?::[\w:-]+)?$/.test(script)) return part;
+  // `bun test` starts bun's own runner, not a package script.
+  if (manager === "bun" && !ran) return part;
+  if (!ran && script === "t") script = "test";
+  i += 1;
+  if (tokens[i] === "--") i += 1;
+  return ["run", ...flags, script, ...tokens.slice(i)].join(" ");
+}
+
+/** The keys of the test parts of a line that runs tests (a `&&` or `;` chain counts part by part), empty when none does. */
+function testKeysOf(line: string): string[] {
   const text = commandText(line);
-  if (text === "") return null;
-  return text.split(/\s*(?:&&|;)\s*/).some((part) => TEST_COMMAND.test(part)) ? text : null;
+  if (text === "") return [];
+  return text
+    .split(/\s*(?:&&|;)\s*/)
+    .filter((part) => TEST_COMMAND.test(part))
+    .map(keyOf);
 }
 
 /** Whether a line names a pull request event as a key, a list item or in the value of `on:`. */
@@ -105,9 +187,13 @@ function flowOf(line: string): { key: string; items: Set<string> } | null {
 /**
  * TI11, CI stopped running tests, from the added and removed lines of workflow files (`.github/workflows/*.yml|yaml`).
  * Block rules take the effective mode: a removed test command that no workflow line of the diff adds again, and a
- * removed `pull_request` or `pull_request_target` trigger that the same file does not carry again. The warn rules (a
- * flow-list matrix that shrinks, an added `continue-on-error: true`, an added `if:` that is a literal false or an
- * event-name test leaving pull requests out, an added `timeout-minutes` of 0 or 1) stay `warn` in every mode, because
+ * removed `pull_request` or `pull_request_target` trigger that the same file does not carry again. A test command is
+ * compared by a key per test part of a `&&` or `;` chain: a package-manager script run keys on the script with its
+ * workspace flags and arguments, a runner on its command without the launcher, so `npm run test` and `pnpm test` are
+ * one command. A test job removed from a workflow is a removal even when the change moves its tests elsewhere: the diff
+ * cannot show that another workflow runs them, and nothing the pull request carries may loosen this block. The warn
+ * rules (a flow-list matrix that shrinks, an added `continue-on-error: true`, an added `if:` that is a literal false or
+ * an event-name test leaving pull requests out, an added `timeout-minutes` of 0 or 1) stay `warn` in every mode, because
  * without context lines the line cannot be tied to a test step. One signal per rule per file, on its first matching
  * line; the detail is a fixed sentence.
  */
@@ -116,12 +202,11 @@ export function detectTI11(diff: readonly DiffFile[], mode: "block" | "warn"): T
     (file) =>
       (isWorkflowFile(file.path) || isWorkflowFile(file.oldPath)) && file.hunks !== undefined && file.binary !== true,
   );
-  const addedCommands = new Set<string>();
+  const addedKeys = new Set<string>();
   for (const file of files) {
     for (const hunk of file.hunks ?? []) {
       for (const entry of hunk.added) {
-        const command = testCommandOf(entry.text);
-        if (command !== null) addedCommands.add(command);
+        for (const key of testKeysOf(entry.text)) addedKeys.add(key);
       }
     }
   }
@@ -134,10 +219,7 @@ export function detectTI11(diff: readonly DiffFile[], mode: "block" | "warn"): T
     const emit = (severity: "block" | "warn" | "info", line: number, detail: string) =>
       signals.push({ id: "TI11", severity, path, line, detail });
 
-    const lostCommand = removed.find((entry) => {
-      const command = testCommandOf(entry.text);
-      return command !== null && !addedCommands.has(command);
-    });
+    const lostCommand = removed.find((entry) => testKeysOf(entry.text).some((key) => !addedKeys.has(key)));
     if (lostCommand !== undefined) emit(mode, lostCommand.line, SENTENCES.testStep);
 
     const lostTrigger = removed.find((entry) => carriesPullRequestTrigger(entry.text));

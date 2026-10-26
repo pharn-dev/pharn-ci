@@ -179,7 +179,10 @@ export interface Message {
   text: string;
 }
 
-/** The findings of one file and signal id that the 20-per-file cap left out of `testIntegrity.signals`. */
+/**
+ * The findings of one file and signal id that a cap left out of `testIntegrity.signals`: the 20-per-file cap of the
+ * base-and-head signals, or the 10-per-change cap of TI15 (counted per source path).
+ */
 export interface OmittedSignals {
   id: string;
   path: string;
@@ -368,8 +371,9 @@ const SIGNAL_MESSAGES: ReadonlyArray<{
   {
     id: "TI15",
     code: "TEST_INTEGRITY_TI15",
-    text: (_top, paths) =>
-      `This change adds conditions in source that compare against values its tests add, so the code may special-case the tests: ${paths}. Check that each is real logic.`,
+    allPaths: true,
+    text: (_top, paths, notListed) =>
+      `This change adds conditions in source that compare against values its tests add, so the code may special-case the tests: ${paths}. Check that each is real logic.${notListed}`,
   },
   {
     id: "TI16",
@@ -398,7 +402,7 @@ export function testIntegritySignalMessages(
         ? "warn"
         : "info";
     const level = top === "block" ? "error" : top === "warn" ? "warn" : "info";
-    // An id whose text is kept (TI02, TI05, TI06, TI12) keeps the text a previous message had, with the "not listed" counts the
+    // An id whose text is kept (TI02, TI05, TI06, TI07, TI09, TI12, TI15) keeps the text a previous message had, with the "not listed" counts the
     // findings no longer carry; only the level follows the severities.
     const previous = allPaths === true ? options.previous?.find((message) => message.code === code) : undefined;
     if (previous !== undefined) {

@@ -127,7 +127,12 @@ These are accepted, not hidden:
     gate, and the mode rules of residual 12 still apply to the signals. **Residual:** a PR can phrase a weakening
     that none of the line patterns match (a test script run through a wrapper, a condition written another way), or
     add a matching line elsewhere in the diff to excuse a removed step; the findings are recorded prompts for a
-    reviewer, and `docs/LIMITS.md` lists what TI14 and TI11 miss.
+    reviewer, and `docs/LIMITS.md` lists what TI14 and TI11 miss. TI11 now compares test commands by a normalized key
+    per test part, so a PR can excuse a removed step with an added line that has the same key (`pnpm test` for
+    `npm test`); the key keeps the workspace flags and arguments, so a narrowed run is still a removal. A test job
+    removed or moved to another workflow file still gives a `block`, even when the same change removes its
+    `package.json` script and renames test files: those are what a change that stops CI from running its tests would
+    do, so no such combination turns the block into a warn. For a real move the accept label is the way through.
 15. **TI03 and TI04 read the kept text of test files.** They use the text the diff parser already keeps for test
     files (13), and match each kept line, cut to 400 characters, by a hand-written left-to-right scan with no
     backtracking, so the time is linear in the line; a form counts only at the start of a line, and at most 20 signals
@@ -161,7 +166,10 @@ These are accepted, not hidden:
     by three fixed caps (`docs/LIMITS.md` section 8), so a PR that touches many large test files makes the job hold up
     to 16 MiB per side. The text is untrusted data, never written or sent out of the job; `check()` parses the JS/TS and
     Python test files among it (residuals 19 and 20) for TI02, TI05, TI06 and TI12; TI07 and the tests-changed summary
-    read that already-parsed test index and nothing new. Only test names, paths, line numbers and a mock's specifier
+    read that already-parsed test index and nothing new. TI06 also reads the `expect(…)` subject and first argument of
+    each `toBe`, `toEqual` and `toStrictEqual` call from the test body the index already holds (at most 4000 code
+    units), with a linear bracket-stack reader that keeps only a 64-unit head and a 96-unit tail of each subject and
+    never copies it into a finding. Only test names, paths, line numbers and a mock's specifier
     (sanitized and cut to 120 code units) from it reach the report and the comment, and the summary's test names go to `report.json` alone (`testIntegrity.changes`), cut to 120 characters
     with control characters turned into spaces, never into the comment. **Residual:** a hostile test name is rendered
     inert (control characters turned into spaces, the markdown escaped), but a name is free text of up to 300

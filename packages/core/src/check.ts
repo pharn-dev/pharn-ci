@@ -166,6 +166,10 @@ export function check(input: CheckInput): Report {
   const testPaths = parsedDiff === null ? [] : deletedTestFiles(parsedDiff);
   const testIntegrity = resolveTestIntegrityMode(input.testIntegrityMode);
   // Mode off computes nothing; the signals carry their effective severity for the mode.
+  const sourceMatches =
+    parsedDiff === null || testIntegrity.mode === "off"
+      ? { signals: [], omitted: [] }
+      : detectTI15(parsedDiff, { repoFiles: input.repoFiles });
   const testIntegritySignals =
     parsedDiff === null || testIntegrity.mode === "off"
       ? []
@@ -183,7 +187,7 @@ export function check(input: CheckInput): Report {
             exclude: input.exclude ?? [],
             mode: testIntegrity.mode,
           }),
-          ...detectTI15(parsedDiff),
+          ...sourceMatches.signals,
           ...detectTI16(parsedDiff),
         ]);
   // The base-and-head signals: the touched test files are compared between the merge base and HEAD. Only with the
@@ -277,6 +281,7 @@ export function check(input: CheckInput): Report {
   const bytes = input.repoFileBytes;
   const emptyAgentSetupFiles =
     bytes === undefined ? [] : agentSetup.files.filter((file) => bytes.get(file.path) === 0).map((file) => file.path);
+  const omittedSignals: OmittedSignals[] = [...(comparison?.omitted ?? []), ...sourceMatches.omitted];
   const base = {
     version: input.version,
     threshold: input.threshold,
@@ -294,7 +299,7 @@ export function check(input: CheckInput): Report {
     ...(comparison === null || comparison.languages.length === 0
       ? {}
       : { testIntegrityLanguages: comparison.languages }),
-    ...(comparison === null || comparison.omitted.length === 0 ? {} : { omittedSignals: comparison.omitted }),
+    ...(omittedSignals.length === 0 ? {} : { omittedSignals }),
     ...(comparison?.unavailable === undefined ? {} : { testIndexUnavailable: comparison.unavailable }),
     ...(testChanges === undefined ? {} : { testChanges }),
     ...(comparison?.configUnavailable === undefined ? {} : { testConfigUnavailable: comparison.configUnavailable }),

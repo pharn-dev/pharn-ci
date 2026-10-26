@@ -15,6 +15,16 @@ import { expectValidReport } from "./schema.js";
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const EARLIER_DIRS = ["TI01", "TI03", "TI04", "TI10", "TI11", "TI13", "TI14"];
+/**
+ * The TI11 fixtures the signal-precision increment adds; the digest below is the base commit's, taken before they
+ * existed, so they are left out of the loops over EARLIER_DIRS (and the old fixtures still hash to it).
+ */
+const NEW_TI11 = new Set([
+  "pass-package-manager-swap.diff",
+  "block-job-moved-with-tests.diff",
+  "block-swap-drops-test.diff",
+  "block-job-removed-script-kept.diff",
+]);
 const JS_TS_PY = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs|py)$/;
 const UNAVAILABLE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 /**
@@ -112,7 +122,7 @@ describe("TI02 and TI05 change the earlier outputs only where they mean to", () 
     const runs: Array<{ name: string; text: string; input: Record<string, unknown>; without: Report }> = [];
     for (const dir of EARLIER_DIRS) {
       const names = readdirSync(`${FIXTURES}test-integrity/${dir}`)
-        .filter((name) => name.endsWith(".diff"))
+        .filter((name) => name.endsWith(".diff") && !(dir === "TI11" && NEW_TI11.has(name)))
         .sort();
       for (const file of names) {
         const name = `${dir}/${file}`;

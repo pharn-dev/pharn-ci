@@ -197538,7 +197538,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           return void 0;
         }
       }
-      function getJSDocParamAnnotation(paramName, initializer, dotDotDotToken, isJs, isObject2, isSnippet, checker, options, preferences, tabstopCounter) {
+      function getJSDocParamAnnotation(paramName, initializer, dotDotDotToken, isJs, isObject3, isSnippet, checker, options, preferences, tabstopCounter) {
         if (isSnippet) {
           Debug.assertIsDefined(tabstopCounter);
         }
@@ -197550,7 +197550,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         if (isJs) {
           let type = "*";
-          if (isObject2) {
+          if (isObject3) {
             Debug.assert(!dotDotDotToken, `Cannot annotate a rest parameter with type 'Object'.`);
             type = "Object";
           } else {
@@ -197586,7 +197586,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               type = `\${${tabstopCounter.tabstop++}:${type}}`;
             }
           }
-          const dotDotDot = !isObject2 && dotDotDotToken ? "..." : "";
+          const dotDotDot = !isObject3 && dotDotDotToken ? "..." : "";
           const description3 = isSnippet ? `\${${tabstopCounter.tabstop++}}` : "";
           return `@param {${dotDotDot}${type}} ${paramName} ${description3}`;
         } else {
@@ -231834,8 +231834,8 @@ var stringifyIteratively = (rootValue, replacer, spaceParam) => {
   const isFunctionReplacer = typeof replacer === "function";
   const propertyList = Array.isArray(replacer) ? new Set(replacer.map(String)) : null;
   const prepareVal = (parent, key, val) => {
-    const isObject2 = val !== null && typeof val === "object";
-    const hasToJSON = isObject2 && typeof val.toJSON === "function";
+    const isObject3 = val !== null && typeof val === "object";
+    const hasToJSON = isObject3 && typeof val.toJSON === "function";
     if (hasToJSON) {
       val = val.toJSON(key);
     }
@@ -235853,7 +235853,8 @@ var SIGNAL_MESSAGES = [
   {
     id: "TI15",
     code: "TEST_INTEGRITY_TI15",
-    text: (_top, paths) => `This change adds conditions in source that compare against values its tests add, so the code may special-case the tests: ${paths}. Check that each is real logic.`
+    allPaths: true,
+    text: (_top, paths, notListed) => `This change adds conditions in source that compare against values its tests add, so the code may special-case the tests: ${paths}. Check that each is real logic.${notListed}`
   },
   {
     id: "TI16",
@@ -239221,6 +239222,131 @@ function readMatcherCalls(body) {
   return calls;
 }
 
+// ../core/src/signals/expectSubjects.ts
+var EQUALITY_MATCHERS = ["toBe", "toEqual", "toStrictEqual"];
+var SUBJECT_HEAD_CHARS = 64;
+var SUBJECT_TAIL_CHARS = 96;
+var ARGUMENT_CHARS = 200;
+var MAX_TRIM = 64;
+var CLOSERS2 = { ")": "(", "]": "[", "}": "{" };
+var isIdentifierChar = (code2) => code2 >= 48 && code2 <= 57 || code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122 || code2 === 95 || code2 === 36;
+var isBlank = (code2) => code2 === 32 || code2 === 9 || code2 === 10 || code2 === 13;
+function wordBefore(body, at, word) {
+  const start = at - word.length;
+  if (start < 0 || !body.startsWith(word, start)) return false;
+  if (start === 0) return true;
+  const before = body.charCodeAt(start - 1);
+  return !isIdentifierChar(before) && before !== 46;
+}
+function opensSubject(body, at) {
+  return wordBefore(body, at, "expect") || wordBefore(body, at, "expect.soft");
+}
+function equalityBefore(body, at) {
+  let end = at;
+  if (end > 0 && body.charCodeAt(end - 1) === 32) end--;
+  for (const name of EQUALITY_MATCHERS) {
+    const start = end - name.length;
+    if (start < 1 || !body.startsWith(name, start) || body.charCodeAt(start - 1) !== 46) continue;
+    if (start >= 5 && body.startsWith(".not", start - 5)) return null;
+    return { matcher: name, dot: start - 1 };
+  }
+  return null;
+}
+function skipLiteral2(body, at) {
+  const quote = body.charCodeAt(at);
+  let i = at + 1;
+  while (i < body.length) {
+    const code2 = body.charCodeAt(i);
+    if (code2 === 92) i += 2;
+    else if (code2 === quote) return i + 1;
+    else i++;
+  }
+  return body.length;
+}
+function argumentText(body, start, end) {
+  return body.slice(start, Math.min(end, start + ARGUMENT_CHARS)).trim();
+}
+function subjectOf(body, start, end) {
+  let from = start;
+  while (from < end && from - start < MAX_TRIM && isBlank(body.charCodeAt(from))) from++;
+  let to = end;
+  while (to > from && end - to < MAX_TRIM && isBlank(body.charCodeAt(to - 1))) to--;
+  return {
+    head: body.slice(from, Math.min(to, from + SUBJECT_HEAD_CHARS)).trim(),
+    tail: body.slice(Math.max(from, to - SUBJECT_TAIL_CHARS), to).trim()
+  };
+}
+function readEqualityCalls(body) {
+  const calls = [];
+  const stack = [];
+  let lastSubjectClose = -2;
+  let lastSubject = null;
+  let i = 0;
+  while (i < body.length) {
+    const code2 = body.charCodeAt(i);
+    if (code2 === 39 || code2 === 34 || code2 === 96) {
+      i = skipLiteral2(body, i);
+      continue;
+    }
+    if (code2 === 40 || code2 === 91 || code2 === 123) {
+      let call = null;
+      let subjectStart = -1;
+      if (code2 === 40) {
+        const found = equalityBefore(body, i);
+        if (found !== null) {
+          const adjacent = found.dot === lastSubjectClose + 1 || found.dot === lastSubjectClose + 2 && body.charCodeAt(lastSubjectClose + 1) === 32;
+          call = { matcher: found.matcher, subject: adjacent ? lastSubject : null, firstArgument: "" };
+          calls.push(call);
+        } else if (opensSubject(body, i)) {
+          subjectStart = i + 1;
+        }
+      }
+      stack.push({
+        open: body[i],
+        call,
+        argumentStart: call === null ? -1 : i + 1,
+        subjectStart,
+        subjectEnd: -1
+      });
+      i++;
+      continue;
+    }
+    const closes = CLOSERS2[body[i]];
+    if (closes !== void 0) {
+      const top = stack[stack.length - 1];
+      if (top !== void 0 && top.open === closes) {
+        stack.pop();
+        if (top.call !== null && top.argumentStart >= 0)
+          top.call.firstArgument = argumentText(body, top.argumentStart, i);
+        if (top.subjectStart >= 0) {
+          lastSubjectClose = i;
+          lastSubject = subjectOf(body, top.subjectStart, top.subjectEnd >= 0 ? top.subjectEnd : i);
+        }
+      }
+      i++;
+      continue;
+    }
+    if (code2 === 44) {
+      const top = stack[stack.length - 1];
+      if (top !== void 0 && top.open === "(") {
+        if (top.call !== null && top.argumentStart >= 0) {
+          top.call.firstArgument = argumentText(body, top.argumentStart, i);
+          top.argumentStart = -1;
+        }
+        if (top.subjectStart >= 0 && top.subjectEnd < 0) top.subjectEnd = i;
+      }
+    }
+    i++;
+  }
+  for (let at = stack.length - 1; at >= 0; at--) {
+    const frame = stack[at];
+    if (frame.call !== null && frame.argumentStart >= 0) {
+      frame.call.firstArgument = argumentText(body, frame.argumentStart, body.length);
+    }
+  }
+  return calls;
+}
+
 // ../core/src/signals/matcherStrength.ts
 var STRONG_MATCHERS = /* @__PURE__ */ new Set([
   "toBe",
@@ -239346,6 +239472,34 @@ function argumentStrength(matcher, call) {
   }
   return call.args === 1 && call.firstArgument === "Object" ? { strength: "weak", label: "toBeInstanceOf(Object)" } : null;
 }
+var EQUALITY_SET = /* @__PURE__ */ new Set(["toBe", "toEqual", "toStrictEqual"]);
+var INSTANCEOF_SUBJECT = /\sinstanceof\s+([A-Za-z_$][\w$.]*)$/;
+var QUOTED_STRING = /^(["'`]).*\1$/s;
+function equalityStrength(matcher, call) {
+  const strong = { strength: "strong", label: matcher };
+  const subject = call.subject;
+  if (subject === null) return strong;
+  const { head, tail } = subject;
+  const argument = call.firstArgument;
+  if (head.startsWith("typeof ") && QUOTED_STRING.test(argument)) return { strength: "weak", label: "toBeTypeOf" };
+  const instance = argument === "true" ? INSTANCEOF_SUBJECT.exec(tail) : null;
+  if (instance !== null) {
+    return instance[1] === "Object" ? { strength: "weak", label: "toBeInstanceOf(Object)" } : null;
+  }
+  if (tail.endsWith(".length")) return { strength: "strong", label: "toHaveLength" };
+  if (head.startsWith("!!") || head.startsWith("Boolean(") && tail.endsWith(")")) {
+    if (argument === "true") return { strength: "weak", label: "toBeTruthy" };
+    if (argument === "false") return { strength: "weak", label: "toBeFalsy" };
+    return strong;
+  }
+  if (tail.endsWith("!== null") && argument === "true" || tail.endsWith("=== null") && argument === "false") {
+    return { strength: "weak", label: "not.toBeNull" };
+  }
+  if (tail.endsWith("!== undefined") && argument === "true" || tail.endsWith("=== undefined") && argument === "false") {
+    return { strength: "weak", label: "toBeDefined" };
+  }
+  return strong;
+}
 function labelledAssertions(block, language) {
   const found = [];
   if (language === "py") {
@@ -239359,6 +239513,8 @@ function labelledAssertions(block, language) {
   ordered.sort((a, b) => a.assertion.line - b.assertion.line || a.index - b.index);
   let calls = null;
   const taken = /* @__PURE__ */ new Map();
+  let equalities = null;
+  const takenEquality = /* @__PURE__ */ new Map();
   for (const { assertion } of ordered) {
     const chain = assertion.chain;
     if (chain.startsWith("expect")) {
@@ -239383,6 +239539,27 @@ function labelledAssertions(block, language) {
         taken.set(name, at + 1);
         const labelled = argumentStrength(name, calls.get(name)?.[at]);
         if (labelled !== null) found.push(labelled);
+      } else if (EQUALITY_SET.has(matcher)) {
+        if (equalities === null) {
+          equalities = /* @__PURE__ */ new Map();
+          if (block.body.includes(".to")) {
+            for (const call2 of readEqualityCalls(block.body)) {
+              const list = equalities.get(call2.matcher);
+              if (list === void 0) equalities.set(call2.matcher, [call2]);
+              else list.push(call2);
+            }
+          }
+        }
+        const name = matcher;
+        const at = takenEquality.get(name) ?? 0;
+        takenEquality.set(name, at + 1);
+        const call = equalities.get(name)?.[at];
+        if (call !== void 0) {
+          const labelled = equalityStrength(name, call);
+          if (labelled !== null) found.push(labelled);
+        } else if (block.body.length < MAX_TEST_BODY_CHARS) {
+          found.push({ strength: "strong", label: matcher });
+        }
       } else if (STRONG_MATCHERS.has(matcher)) {
         found.push({ strength: "strong", label: matcher });
       } else if (WEAK_MATCHERS.has(matcher)) {
@@ -240248,7 +240425,7 @@ var DETAILS2 = {
   "name-filter": "A test script now limits the run to the tests whose names match a pattern, so the other tests do not run.",
   "hook-removed": "A script that ran before or after the tests was removed, so its checks no longer run with them."
 };
-var isBlank = (c) => c === " " || c === "	";
+var isBlank2 = (c) => c === " " || c === "	";
 function readString(text, start) {
   let value = "";
   let i = start + 1;
@@ -240270,7 +240447,7 @@ function readString(text, start) {
 function parseScriptLine(text) {
   let i = 0;
   const skip = () => {
-    while (isBlank(text[i])) i++;
+    while (isBlank2(text[i])) i++;
   };
   skip();
   if (text[i] !== '"') return null;
@@ -240329,7 +240506,7 @@ function scanKinds(value) {
       }
       endCommand(op);
       operator = op;
-    } else if (isBlank(c)) {
+    } else if (isBlank2(c)) {
       endWord();
     } else {
       word += c;
@@ -241597,6 +241774,110 @@ function widenedList(base, head, mode) {
   return gainsOpaque(base, head) ? "cannot" : null;
 }
 
+// ../core/src/testConfig/projects.ts
+var PROJECT_KEYS = {
+  vitest: [
+    { path: ["test", "include"], kind: "narrowed", list: "glob" },
+    { path: ["test", "exclude"], kind: "widened", list: "glob" }
+  ],
+  jest: [
+    { path: ["testMatch"], kind: "narrowed", list: "glob" },
+    { path: ["testRegex"], kind: "narrowed", list: "regex" },
+    { path: ["testPathIgnorePatterns"], kind: "widened", list: "regex" }
+  ]
+};
+var NAME = {
+  vitest: { path: ["test", "name"], field: "label" },
+  jest: { path: ["displayName"], field: "name" }
+};
+var isObject = (value) => value.type === "object";
+function itemsOf(value) {
+  return value.type === "array" ? value.items : [value];
+}
+function nameOf(project, flavor) {
+  const { path, field } = NAME[flavor];
+  const look = lookup(project, path);
+  if (typeof look !== "object") return null;
+  const value = look.found.value;
+  if (value.type === "string") return value.value;
+  if (value.type !== "object") return null;
+  const inner = lookup(value, [field]);
+  if (typeof inner !== "object") return null;
+  return inner.found.value.type === "string" ? inner.found.value.value : null;
+}
+var fold = (a, b) => a === "narrowed" || b === "narrowed" ? "narrowed" : a === "cannot" || b === "cannot" ? "cannot" : null;
+function compareKey(base, head, key) {
+  const b = lookup(base, key.path);
+  const h = lookup(head, key.path);
+  const baseValue = typeof b === "object" ? b.found.value : null;
+  const headValue = typeof h === "object" ? h.found.value : null;
+  if (baseValue !== null && headValue !== null && printValue(baseValue) === printValue(headValue)) return null;
+  if (b === "unknown" || h === "unset") return null;
+  if (headValue === null) return baseValue !== null ? "cannot" : null;
+  const headEntries = entriesOf(headValue, false);
+  if (key.kind === "narrowed") {
+    return baseValue === null ? null : narrowedList(entriesOf(baseValue, false), headEntries, key.list);
+  }
+  const result = widenedList(baseValue === null ? [] : entriesOf(baseValue, false), headEntries, key.list);
+  return result === "widened" ? "narrowed" : result;
+}
+var listOf = (items) => ({ type: "array", items });
+function compareProjects(base, head, flavor) {
+  const baseItems = itemsOf(base);
+  const headItems = itemsOf(head);
+  const baseObjects = baseItems.filter(isObject);
+  const headObjects = headItems.filter(isObject);
+  const baseOthers = baseItems.filter((item) => !isObject(item));
+  const headOthers = headItems.filter((item) => !isObject(item));
+  let outcome = narrowedList(
+    entriesOf(listOf(baseOthers), false),
+    entriesOf(listOf(headOthers), false),
+    "glob"
+  );
+  const baseNames = baseObjects.map((project) => nameOf(project, flavor));
+  const headNames = headObjects.map((project) => nameOf(project, flavor));
+  const baseNameSet = new Set(baseNames.filter((name) => name !== null));
+  const headByName = /* @__PURE__ */ new Map();
+  headNames.forEach((name, index) => {
+    if (name === null) return;
+    const queue = headByName.get(name);
+    if (queue === void 0) headByName.set(name, { indexes: [index], next: 0 });
+    else queue.indexes.push(index);
+  });
+  const matchOf = new Array(baseObjects.length).fill(-1);
+  const taken = /* @__PURE__ */ new Set();
+  baseNames.forEach((name, index) => {
+    const queue = name === null ? void 0 : headByName.get(name);
+    if (queue === void 0 || queue.next >= queue.indexes.length) return;
+    const match = queue.indexes[queue.next];
+    queue.next += 1;
+    matchOf[index] = match;
+    taken.add(match);
+  });
+  matchOf.forEach((match, index) => {
+    if (match !== -1 || index >= headObjects.length || taken.has(index)) return;
+    const headName = headNames[index];
+    if (headName !== null && baseNameSet.has(headName)) return;
+    matchOf[index] = index;
+    taken.add(index);
+  });
+  const baseOpaque = new Set(
+    baseOthers.filter((item) => item.type === "opaque").map((item) => item.text)
+  );
+  const gainsOpaque2 = headOthers.some((item) => item.type === "opaque" && !baseOpaque.has(item.text));
+  baseObjects.forEach((project, index) => {
+    const match = matchOf[index];
+    if (match === -1) {
+      outcome = fold(outcome, gainsOpaque2 ? "cannot" : "narrowed");
+      return;
+    }
+    for (const key of PROJECT_KEYS[flavor]) {
+      outcome = fold(outcome, compareKey(project, headObjects[match], key));
+    }
+  });
+  return outcome;
+}
+
 // ../core/src/testConfig/rules.ts
 var rule = (path, kind, extra = {}) => ({
   path: path.split("."),
@@ -241612,7 +241893,7 @@ var VITEST_RULES = [
   rule("coverage.exclude", "widened", { list: "glob" }),
   rule("include", "narrowed", { list: "glob" }),
   rule("exclude", "widened", { list: "glob" }),
-  rule("projects", "narrowed", { list: "glob" }),
+  rule("projects", "projects", { projects: "vitest" }),
   rule("passWithNoTests", "turnedOn"),
   rule("allowOnly", "turnedOn"),
   rule("retry", "increased", { warn: true }),
@@ -241620,14 +241901,14 @@ var VITEST_RULES = [
   rule("testTimeout", "raised", { warn: true }),
   rule("hookTimeout", "raised", { warn: true })
 ];
-var WORKSPACE_RULES = [rule("projects", "narrowed", { list: "glob" })];
+var WORKSPACE_RULES = [rule("projects", "projects", { projects: "vitest" })];
 var JEST_RULES = [
   rule("coverageThreshold", "jestThresholds"),
   rule("coveragePathIgnorePatterns", "widened", { list: "regex" }),
   rule("testPathIgnorePatterns", "widened", { list: "regex" }),
   rule("testMatch", "narrowed", { list: "glob" }),
   rule("testRegex", "narrowed", { list: "regex" }),
-  rule("projects", "narrowed", { list: "glob" }),
+  rule("projects", "projects", { projects: "jest" }),
   rule("passWithNoTests", "turnedOn"),
   rule("bail", "bail"),
   rule("testTimeout", "raised", { warn: true })
@@ -241827,6 +242108,11 @@ function keyFindings(ctx, key) {
     compared(ctx, key, `${keyName} ${verb}: ${shown(baseValue)} \u2192 ${shown(headValue)}.`, b, h)
   ];
   if (key.rule === "addedOrChanged") return hit("added or changed");
+  if (key.rule === "projects") {
+    if (baseValue === null || b === "unknown") return [];
+    const result = compareProjects(baseValue, headValue, key.projects ?? "vitest");
+    return result === "narrowed" ? hit("narrowed") : result === "cannot" ? cannot() : [];
+  }
   if (key.list !== void 0) {
     if (b === "unknown") return [];
     const split = key.split === true;
@@ -242009,10 +242295,81 @@ function commandText(line) {
   const text = stripComment2(line).replace(/^-\s+/, "").replace(/^run\s*:\s*/, "");
   return text.replace(/\s+/g, " ").trim();
 }
-function testCommandOf(line) {
+var PM_PLAIN_FLAGS = /* @__PURE__ */ new Set([
+  "-r",
+  "--recursive",
+  "-w",
+  "--workspace-root",
+  "-ws",
+  "--workspaces",
+  "--if-present"
+]);
+var PM_VALUE_FLAGS = /* @__PURE__ */ new Set([
+  "--filter",
+  "-F",
+  "-C",
+  "--dir",
+  "--prefix",
+  "--workspace",
+  "--cwd"
+]);
+var PACKAGE_MANAGERS = /* @__PURE__ */ new Set(["npm", "pnpm", "yarn", "bun"]);
+var RUNNERS = /* @__PURE__ */ new Set(["vitest", "jest", "mocha"]);
+function runnerStart(tokens) {
+  const first = tokens[0];
+  let start = -1;
+  if (first === "npx" || first === "bunx") start = 1;
+  else if (first === "bun" || first === "npm") start = tokens[1] === (first === "bun" ? "x" : "exec") ? 2 : -1;
+  else if (first === "pnpm") start = tokens[1] === "exec" || tokens[1] === "dlx" ? 2 : 1;
+  else if (first === "yarn") start = 1;
+  else start = 0;
+  if (start < 0) return -1;
+  const runner = tokens[start];
+  if (runner === void 0) return -1;
+  if (RUNNERS.has(runner) || runner === "playwright" && tokens[start + 1] === "test") return start;
+  return -1;
+}
+function keyOf2(part) {
+  const tokens = part.split(" ");
+  const runner = runnerStart(tokens);
+  if (runner >= 0) return tokens.slice(runner).join(" ");
+  const manager = tokens[0];
+  if (!PACKAGE_MANAGERS.has(manager)) return part;
+  let i = 1;
+  const flags = [];
+  for (; ; ) {
+    const token = tokens[i];
+    if (token === void 0) break;
+    if (PM_PLAIN_FLAGS.has(token)) {
+      flags.push(token);
+      i += 1;
+    } else if (PM_VALUE_FLAGS.has(token) && tokens[i + 1] !== void 0) {
+      flags.push(token, tokens[i + 1]);
+      i += 2;
+    } else if (/^(?:--filter|-F|-C|--dir|--prefix|--workspace|--cwd)=\S+$/.test(token)) {
+      flags.push(token);
+      i += 1;
+    } else {
+      break;
+    }
+  }
+  let ran = false;
+  if (tokens[i] === "run" || manager === "npm" && tokens[i] === "run-script") {
+    ran = true;
+    i += 1;
+  }
+  let script = tokens[i];
+  if (script === void 0 || !/^(?:test|t)(?::[\w:-]+)?$/.test(script)) return part;
+  if (manager === "bun" && !ran) return part;
+  if (!ran && script === "t") script = "test";
+  i += 1;
+  if (tokens[i] === "--") i += 1;
+  return ["run", ...flags, script, ...tokens.slice(i)].join(" ");
+}
+function testKeysOf(line) {
   const text = commandText(line);
-  if (text === "") return null;
-  return text.split(/\s*(?:&&|;)\s*/).some((part) => TEST_COMMAND.test(part)) ? text : null;
+  if (text === "") return [];
+  return text.split(/\s*(?:&&|;)\s*/).filter((part) => TEST_COMMAND.test(part)).map(keyOf2);
 }
 function carriesPullRequestTrigger(line) {
   const text = stripComment2(line);
@@ -242048,12 +242405,11 @@ function detectTI11(diff, mode) {
   const files = diff.filter(
     (file) => (isWorkflowFile(file.path) || isWorkflowFile(file.oldPath)) && file.hunks !== void 0 && file.binary !== true
   );
-  const addedCommands = /* @__PURE__ */ new Set();
+  const addedKeys = /* @__PURE__ */ new Set();
   for (const file of files) {
     for (const hunk of file.hunks ?? []) {
       for (const entry of hunk.added) {
-        const command = testCommandOf(entry.text);
-        if (command !== null) addedCommands.add(command);
+        for (const key of testKeysOf(entry.text)) addedKeys.add(key);
       }
     }
   }
@@ -242063,10 +242419,7 @@ function detectTI11(diff, mode) {
     const added = (file.hunks ?? []).flatMap((hunk) => hunk.added);
     const removed = (file.hunks ?? []).flatMap((hunk) => hunk.removed);
     const emit = (severity, line, detail) => signals.push({ id: "TI11", severity, path, line, detail });
-    const lostCommand = removed.find((entry) => {
-      const command = testCommandOf(entry.text);
-      return command !== null && !addedCommands.has(command);
-    });
+    const lostCommand = removed.find((entry) => testKeysOf(entry.text).some((key) => !addedKeys.has(key)));
     if (lostCommand !== void 0) emit(mode, lostCommand.line, SENTENCES.testStep);
     const lostTrigger = removed.find((entry) => carriesPullRequestTrigger(entry.text));
     if (lostTrigger !== void 0 && !added.some((entry) => carriesPullRequestTrigger(entry.text))) {
@@ -242442,10 +242795,40 @@ function detectTI14(diff, options) {
 
 // ../core/src/signals/ti15.ts
 var byCodeUnit18 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-var MAX_PER_FILE5 = 20;
+var MAX_PER_CHANGE = 10;
 var MAX_DETAIL5 = 300;
-var MIN_STRING_LENGTH = 4;
-var MIN_SIGNIFICANT_DIGITS = 3;
+var MIN_STRING_LENGTH = 6;
+var MIN_SIGNIFICANT_DIGITS = 4;
+var EXCLUDED_DIRS = /* @__PURE__ */ new Set(["examples", "benchmarks", "bench", "docs", "fixtures"]);
+function inExcludedDir(path) {
+  const segments = path.split("/");
+  for (let i = 0; i < segments.length - 1; i++) if (EXCLUDED_DIRS.has(segments[i])) return true;
+  return false;
+}
+var MANIFEST_NAMES = /* @__PURE__ */ new Set(["package.json", "pyproject.toml"]);
+function manifestDirs(diff, repoFiles) {
+  const dirs = /* @__PURE__ */ new Set();
+  const note = (path) => {
+    const slash = path.lastIndexOf("/");
+    if (MANIFEST_NAMES.has(path.slice(slash + 1))) dirs.add(slash === -1 ? "" : path.slice(0, slash));
+  };
+  for (const path of repoFiles) note(path);
+  for (const file of diff) if (file.status === "added") note(file.path);
+  return dirs;
+}
+function packageRoot(path, manifests) {
+  if (manifests.size === 0) {
+    const segments = path.split("/");
+    return segments.length >= 3 && (segments[0] === "packages" || segments[0] === "apps") ? `${segments[0]}/${segments[1]}` : "";
+  }
+  let slash = path.lastIndexOf("/");
+  while (slash > 0) {
+    const dir = path.slice(0, slash);
+    if (manifests.has(dir)) return dir;
+    slash = path.lastIndexOf("/", slash - 1);
+  }
+  return "";
+}
 var STOP_LIST = /* @__PURE__ */ new Set([
   "string",
   "number",
@@ -242474,7 +242857,7 @@ var STOP_LIST = /* @__PURE__ */ new Set([
 ]);
 var isDigit2 = (c) => c >= "0" && c <= "9";
 var isWordChar = (c) => c >= "0" && c <= "9" || c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_";
-var isBlank2 = (c) => c === " " || c === "	";
+var isBlank3 = (c) => c === " " || c === "	";
 function digitsEnd2(text, start) {
   let i = start;
   while (i < text.length && isDigit2(text.charAt(i))) i++;
@@ -242528,33 +242911,33 @@ function isEligible(literal) {
   if (literal.kind === "number") return significantDigits(literal.value) >= MIN_SIGNIFICANT_DIGITS;
   return literal.value.length >= MIN_STRING_LENGTH && !STOP_LIST.has(literal.value.toLowerCase());
 }
-var keyOf2 = (literal) => `${literal.kind === "string" ? "s" : "n"}${literal.value}`;
+var keyOf3 = (literal) => `${literal.kind === "string" ? "s" : "n"}${literal.value}`;
 var isOperatorChar = (c) => c === "=" || c === "!" || c === "<" || c === ">";
 function operatorBefore(text, at) {
   let end = at;
-  while (end > 0 && isBlank2(text.charAt(end - 1))) end--;
+  while (end > 0 && isBlank3(text.charAt(end - 1))) end--;
   let start = end;
   while (start > 0 && isOperatorChar(text.charAt(start - 1))) start--;
   return text.slice(start, end);
 }
 function operatorAfter(text, at) {
   let start = at;
-  while (start < text.length && isBlank2(text.charAt(start))) start++;
+  while (start < text.length && isBlank3(text.charAt(start))) start++;
   let end = start;
   while (end < text.length && isOperatorChar(text.charAt(end))) end++;
   return text.slice(start, end);
 }
 var EQUALITY = /* @__PURE__ */ new Set(["===", "!==", "==", "!="]);
 function isCaseLabel(trimmed, offset, literal) {
-  if (!trimmed.startsWith("case") || !isBlank2(trimmed.charAt(4))) return false;
+  if (!trimmed.startsWith("case") || !isBlank3(trimmed.charAt(4))) return false;
   let i = 4;
-  while (isBlank2(trimmed.charAt(i))) i++;
+  while (isBlank3(trimmed.charAt(i))) i++;
   if (literal.start - offset !== i) return false;
   let j = literal.end - offset;
-  while (isBlank2(trimmed.charAt(j))) j++;
+  while (isBlank3(trimmed.charAt(j))) j++;
   return trimmed.charAt(j) === ":";
 }
-var CLOSERS2 = { "(": ")", "[": "]", "{": "}" };
+var CLOSERS3 = { "(": ")", "[": "]", "{": "}" };
 function inGroups(text, literals) {
   const groups = [];
   const strings = literals.filter((l) => l.kind === "string");
@@ -242575,8 +242958,8 @@ function inGroups(text, literals) {
     while (j < text.length && isWordChar(text.charAt(j))) j++;
     if (text.slice(i, j) === "in") {
       let k = j;
-      while (isBlank2(text.charAt(k))) k++;
-      const closer = CLOSERS2[text.charAt(k)];
+      while (isBlank3(text.charAt(k))) k++;
+      const closer = CLOSERS3[text.charAt(k)];
       if (closer !== void 0) {
         const close = text.indexOf(closer, k + 1);
         if (close !== -1) groups.push([k, close]);
@@ -242601,26 +242984,28 @@ function conditionLiterals(text, language) {
     return groups.some(([open3, close]) => literal.start > open3 && literal.end <= close);
   });
 }
-function testLiterals(diff) {
+function testLiterals(diff, manifests) {
   const found = /* @__PURE__ */ new Map();
   for (const file of diff) {
     if (file.hunks === void 0 || file.binary === true || file.status === "deleted") continue;
-    if (!isTestFile(file.path)) continue;
+    if (!isTestFile(file.path) || inExcludedDir(file.path)) continue;
     const language = testLanguage(file.path);
     if (language !== "jsts" && language !== "python") continue;
+    const root = packageRoot(file.path, manifests);
     for (const hunk of file.hunks) {
       for (const entry of hunk.added) {
         for (const literal of scanLiterals(entry.text)) {
           if (!isEligible(literal)) continue;
-          const key = keyOf2(literal);
-          const paths = found.get(key) ?? /* @__PURE__ */ new Set();
-          paths.add(file.path);
-          found.set(key, paths);
+          const key = keyOf3(literal);
+          const roots = found.get(key) ?? /* @__PURE__ */ new Map();
+          const first = roots.get(root);
+          if (first === void 0 || byCodeUnit18(file.path, first) < 0) roots.set(root, file.path);
+          found.set(key, roots);
         }
       }
     }
   }
-  return new Map([...found].map(([key, paths]) => [key, [...paths].sort(byCodeUnit18)]));
+  return found;
 }
 function detailOf3(literal, sourcePath, line, testPath) {
   const what = `a ${literal.value.length}-character ${literal.kind} literal`;
@@ -242632,42 +243017,46 @@ function detailOf3(literal, sourcePath, line, testPath) {
   if (noTest.length <= MAX_DETAIL5) return noTest;
   return `This condition compares with ${what} that a test file in this change also adds, ${tail}`;
 }
-function detectTI15(diff) {
-  const tests = testLiterals(diff);
-  if (tests.size === 0) return [];
-  const signals = [];
+function detectTI15(diff, options) {
+  const manifests = manifestDirs(diff, options.repoFiles);
+  const tests = testLiterals(diff, manifests);
+  if (tests.size === 0) return { signals: [], omitted: [] };
+  const findings = [];
   for (const file of diff) {
     if (file.hunks === void 0 || file.binary === true || file.status === "deleted") continue;
-    if (isTestFile(file.path)) continue;
+    if (isTestFile(file.path) || inExcludedDir(file.path)) continue;
     const language = coverageSourceLanguage(file.path);
     if (language === null) continue;
+    const root = packageRoot(file.path, manifests);
     const removed = /* @__PURE__ */ new Set();
     for (const hunk of file.hunks) {
-      for (const entry of hunk.removed) for (const literal of scanLiterals(entry.text)) removed.add(keyOf2(literal));
+      for (const entry of hunk.removed) for (const literal of scanLiterals(entry.text)) removed.add(keyOf3(literal));
     }
-    const found = [];
     for (const hunk of file.hunks) {
       for (const entry of hunk.added) {
         const seen = /* @__PURE__ */ new Set();
         for (const literal of conditionLiterals(entry.text, language)) {
-          const key = keyOf2(literal);
+          const key = keyOf3(literal);
           if (seen.has(key)) continue;
           seen.add(key);
           if (removed.has(key)) continue;
-          const testPaths = tests.get(key);
-          if (testPaths === void 0) continue;
-          found.push({ line: entry.line, detail: detailOf3(literal, file.path, entry.line, testPaths[0]) });
+          const testPath = tests.get(key)?.get(root);
+          if (testPath === void 0) continue;
+          findings.push({
+            path: file.path,
+            line: entry.line,
+            detail: detailOf3(literal, file.path, entry.line, testPath)
+          });
         }
       }
     }
-    found.sort((a, b) => a.line - b.line || byCodeUnit18(a.detail, b.detail));
-    for (const { line, detail } of found.slice(0, MAX_PER_FILE5)) {
-      signals.push({ id: "TI15", severity: "warn", path: file.path, line, detail });
-    }
   }
-  return signals.sort(
-    (a, b) => byCodeUnit18(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit18(a.detail, b.detail)
-  );
+  findings.sort((a, b) => byCodeUnit18(a.path, b.path) || a.line - b.line || byCodeUnit18(a.detail, b.detail));
+  const signals = findings.slice(0, MAX_PER_CHANGE).map(({ path, line, detail }) => ({ id: "TI15", severity: "warn", path, line, detail }));
+  const counts2 = /* @__PURE__ */ new Map();
+  for (const { path } of findings.slice(MAX_PER_CHANGE)) counts2.set(path, (counts2.get(path) ?? 0) + 1);
+  const omitted = [...counts2].map(([path, count2]) => ({ id: "TI15", path, count: count2 }));
+  return { signals, omitted };
 }
 
 // ../core/src/signals/ti16.ts
@@ -242703,14 +243092,14 @@ var PYLINT_WORD = ["py", "lint:"].join("");
 var DISABLE_WORD = ["dis", "able"].join("");
 var PYRIGHT_WORD = ["py", "right:"].join("");
 var MAX_LINE2 = 400;
-var isBlank3 = (c) => c === " " || c === "	";
+var isBlank4 = (c) => c === " " || c === "	";
 var isWordChar2 = (c) => c >= "0" && c <= "9" || c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_";
 var isTokenChar = (c) => isWordChar2(c) || c === "@" || c === "-";
 var endsWord = (text, at) => at >= text.length || !isWordChar2(text.charAt(at));
 var normalize = (text) => text.replace(/\s+/g, " ").trim();
 function skipBlanks(text, from) {
   let i = from;
-  while (i < text.length && isBlank3(text.charAt(i))) i++;
+  while (i < text.length && isBlank4(text.charAt(i))) i++;
   return i;
 }
 function jsMarker(text) {
@@ -242824,6 +243213,7 @@ function check(input) {
   const configPaths = parsedDiff === null ? [] : changedConfigPaths(parsedDiff, input.configPath, input.repoRoot);
   const testPaths = parsedDiff === null ? [] : deletedTestFiles(parsedDiff);
   const testIntegrity = resolveTestIntegrityMode(input.testIntegrityMode);
+  const sourceMatches = parsedDiff === null || testIntegrity.mode === "off" ? { signals: [], omitted: [] } : detectTI15(parsedDiff, { repoFiles: input.repoFiles });
   const testIntegritySignals = parsedDiff === null || testIntegrity.mode === "off" ? [] : sortSignals([
     ...detectTI01(parsedDiff, testIntegrity.mode),
     ...detectTI03(parsedDiff, testIntegrity.mode),
@@ -242838,7 +243228,7 @@ function check(input) {
       exclude: input.exclude ?? [],
       mode: testIntegrity.mode
     }),
-    ...detectTI15(parsedDiff),
+    ...sourceMatches.signals,
     ...detectTI16(parsedDiff)
   ]);
   let comparison = null;
@@ -242908,6 +243298,7 @@ function check(input) {
   }
   const bytes = input.repoFileBytes;
   const emptyAgentSetupFiles = bytes === void 0 ? [] : agentSetup.files.filter((file) => bytes.get(file.path) === 0).map((file) => file.path);
+  const omittedSignals = [...comparison?.omitted ?? [], ...sourceMatches.omitted];
   const base = {
     version: input.version,
     threshold: input.threshold,
@@ -242923,7 +243314,7 @@ function check(input) {
     ...testIntegritySignals.length > 0 ? { testIntegritySignals } : {},
     ...textTruncatedFiles.length > 0 ? { textTruncatedFiles } : {},
     ...comparison === null || comparison.languages.length === 0 ? {} : { testIntegrityLanguages: comparison.languages },
-    ...comparison === null || comparison.omitted.length === 0 ? {} : { omittedSignals: comparison.omitted },
+    ...omittedSignals.length === 0 ? {} : { omittedSignals },
     ...comparison?.unavailable === void 0 ? {} : { testIndexUnavailable: comparison.unavailable },
     ...testChanges === void 0 ? {} : { testChanges },
     ...comparison?.configUnavailable === void 0 ? {} : { testConfigUnavailable: comparison.configUnavailable }
@@ -243718,7 +244109,7 @@ var BadOutput = class extends Error {
     this.detail = detail;
   }
 };
-function isObject(value) {
+function isObject2(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function hasExactKeys(value, keys) {
@@ -243748,7 +244139,7 @@ function checkBool(value, where, field) {
   return value;
 }
 function checkKeys(value, keys, where, what) {
-  if (!isObject(value)) return bad(where, `${what} is not an object`);
+  if (!isObject2(value)) return bad(where, `${what} is not an object`);
   if (!hasExactKeys(value, keys)) return bad(where, `${what} has missing or extra keys`);
   return value;
 }
@@ -243807,7 +244198,7 @@ function mapMock(value, where) {
 }
 function mapEntry(value, index) {
   const where = `entry ${index}`;
-  if (!isObject(value)) return bad(where, "is not an object");
+  if (!isObject2(value)) return bad(where, "is not an object");
   if (value.parsed === false) {
     const raw2 = checkKeys(value, REFUSED_KEYS, where, "a refused entry");
     if (raw2.id !== index) return bad(where, "id is not its position");

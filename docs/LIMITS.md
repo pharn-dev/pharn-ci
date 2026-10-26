@@ -109,6 +109,21 @@ TI11 reads the added and removed lines of workflow files (`.github/workflows/*.y
 - **Moved steps.** A test command removed from one place and added anywhere in the workflow files of the same diff
   counts as moved, even into a job that never runs on pull requests. A test job moved into a reusable workflow
   or a composite action is a removal of its steps; the called workflow is not read.
+- **Commands compared by key.** Each test part of a `&&`/`;` chain gets a key, and a removed line is a loss when one of
+  its parts has a key that no added line of the diff has. A package-manager script run keys on the script with its
+  workspace flags and arguments (`npm run test`, `npm t`, `yarn test` and `pnpm test` are one key, `bun run test` too;
+  `pnpm --filter core test` and `pnpm test src/a` are different keys), and a runner keys on its command without the
+  launcher (`npx vitest run`, `pnpm exec vitest run` and `vitest run` are one key). A swap of package manager
+  therefore passes, and a narrowed run is still a removal. Bare `bun test` starts bun's own runner, not a script, so it
+  keeps its text as its key.
+- **A test job moved to another workflow file still blocks.** Other workflows are not read: a test command that an
+  unchanged line of another workflow runs is not seen (the diff holds no such line), so a job whose tests moved to
+  another workflow file, and now run there under another script (`test:lambda` replaced by `test:adapters`), is a
+  removal and a `block`, even when the same change removes the old script from `package.json` and renames the test
+  files. That is a known false block (one PR in the 600 of the precision corpus). It is kept on purpose: removing the
+  job, removing its script and renaming a test file are exactly what a change that stops CI from running its tests
+  would do, and nothing the pull request carries may loosen this block. Use the [accept label](../README.md#accept-label)
+  for a real move.
 - **Triggers by token.** A removed `pull_request` or `pull_request_target` is excused when any added line of the same
   file names either. The `on` key may be quoted (`"on":`). Other filters (`branches`, `paths`) are not judged, and a
   workflow that drops its `pull_request` trigger is a block even when it never ran tests (a release or labeler
@@ -291,6 +306,21 @@ always gives `warn`, never `block`, and it reads the normalized text of the test
   their arguments, which TI06 reads from the normalized body, cut to 4000 characters by the test index. An argument
   past the cut is not read, and the assertion counts as neutral. The argument reader skips string literals but does
   not parse regular expression literals or template substitutions.
+- **Equivalent forms of one matcher.** A `toBe`, `toEqual` or `toStrictEqual` that stands for another matcher is
+  labelled as that matcher, so a rewrite between the two forms is not a weakening: `expect(typeof x).toBe('string')`
+  and `toBeTypeOf('string')` (weak); `expect(x instanceof Y).toBe(true)` and `toBeInstanceOf(Y)` (neutral, weak for
+  `Object`); `expect(x.length).toBe(n)` and `toHaveLength(n)` (strong); `expect(!!x).toBe(true)` or
+  `Boolean(x)` and `toBeTruthy()` (`toBeFalsy()` against `false`); `expect(x !== null).toBe(true)` and
+  `not.toBeNull()`; `expect(x !== undefined).toBe(true)` and `toBeDefined()`. A real weakening still warns:
+  `expect(x).toBe(5)` → `toBeTypeOf('number')`.
+- **Weak to weak.** `expect(typeof x).toBe('function')` → `expect(x).toBeTruthy()` is a weaker check by meaning, but
+  `toBeTypeOf` and `toBeTruthy()` are both weak, so TI06 gives nothing.
+- **The subject is read by its text, not parsed.** The subject of `expect(…)` is read as its first 64 and last 96
+  characters (the head and the tail), one left-to-right pass with a bracket stack that skips string literals, and the
+  call must follow the `expect(…)` directly (a space is allowed): `expect(x).resolves.toBe(…)` keeps its strong label.
+  Operator precedence is not modelled, so `a || b instanceof B` reads as an instanceof test of `B`. The i-th chain of
+  a matcher takes the i-th call of it in the body, so a `.toBe(` outside an `expect` chain can shift the pairing. A
+  chain past the 4000-character body cut has no call to read and counts as neutral, as the argument matchers do.
 - **A test matched only to a test in another file.** Only name pairs and same-file body pairs are compared. A test
   that leaves one file and reappears weaker in another file is taken for a move (TI02) and TI06 does not compare the
   two.
@@ -353,6 +383,14 @@ TI09 compares a fixed list of settings of the test-runner config files the chang
   runner's defaults apply, and TI09 does not model them.
 - **Playwright per-project settings.** Only the top-level keys are read. `projects[].retries`, `projects[].grep`,
   `projects[].testMatch` and everything under `use` are not.
+- **Vitest and jest projects are matched by identity.** The object projects of a `projects` list are matched by name
+  (vitest `test.name`, a string or the `label` of an object; jest `displayName`, a string or its `name`), or by
+  position for a project renamed in place, and only their test-list keys are compared: vitest `test.include` and
+  `test.exclude`, jest `testMatch`, `testRegex` and `testPathIgnorePatterns`. A reorder, a changed `setupFiles`,
+  `extends`, `transform` or any other key, and an `include` added where the base had none give nothing. A project
+  removed at head is narrowed (a `block`), or a `warn` when the head gains an opaque entry. Entries that are not objects
+  (glob strings, `defineProject(…)` calls) are compared as a glob list. A project that is renamed and reordered at the
+  same time is read as removed.
 - **Tool defaults.** A key that is removed, or that is set where it was unset, is not judged against the tool's default
   (an unset list is read as empty only to decide that a gained exclude entry is new). A threshold that is removed is
   reported as removed; a list that is narrowed from an unset base is not.
@@ -453,10 +491,19 @@ It is a `warn` signal and never blocks.
   gives nothing.
 - **The `hard-coded-answer` form.** A change that adds no test line has no test literal to match, and the numbers in it
   are one digit (see the Skylos list below).
-- **Short and common literals.** A string under 4 characters, a number under 3 significant digits and the stop-list
-  (`true`, `false`, `null`, `none`, `undefined`, `test`, `error`, `default`, `get`, `post`, `put`, `patch`, `delete`,
-  `head`, `options`, `utf-8`, `utf8`, and the `typeof` results `string`, `number`, `boolean`, `object`, `function`,
-  `symbol`, `bigint`) are not read.
+- **Short and common literals.** A string under 6 characters (UTF-16 code units), a number under 4 significant digits
+  and the stop-list (`true`, `false`, `null`, `none`, `undefined`, `test`, `error`, `default`, `get`, `post`, `put`,
+  `patch`, `delete`, `head`, `options`, `utf-8`, `utf8`, and the `typeof` results `string`, `number`, `boolean`,
+  `object`, `function`, `symbol`, `bigint`) are not read. A real special case with a short value (`"vip"`, `42`) is
+  missed.
+- **One package root.** A test literal matches a source condition only within the same package: the root of a path is
+  its nearest directory that holds a `package.json` or `pyproject.toml` (in the tracked files or added by the diff).
+  With no manifest at all, a path under `packages/` or `apps/` takes its first two segments as its root. A shared
+  literal between two packages is not seen, and a monorepo with no manifest outside `packages/` and `apps/` is one
+  root.
+- **Excluded directories.** A test file or a source file with a directory segment named `examples`, `benchmarks`,
+  `bench`, `docs` or `fixtures` is left out (the file name does not count, so `src/examples.ts` is read). A special
+  case in such a directory is missed.
 - **Template literals with `${`** are skipped.
 - **Other comparisons.** Only `===`, `!==`, `==`, `!=`, a `case` label and a Python `in (...)` group are read.
   `includes`, `startsWith`, `Set.has`, `<` and a regular expression are not.
@@ -464,13 +511,14 @@ It is a `warn` signal and never blocks.
   string never equals a number.
 - **Literals in comments are read,** because the scan does not understand comments or regular expressions. A quote in a
   comment can open a literal, and an unclosed quote ends the scan of its line.
-- **Common numbers match.** A status code such as `404` has 3 significant digits, so it can match; a number such as
-  `200` or `1000` does not (trailing zeros of a whole number do not count).
+- **Numbers need 4 significant digits.** A status code such as `404` or a number such as `200` or `1000` is not read
+  (trailing zeros of a whole number do not count); `1234` and `0.1255` are.
 - **The detail names the literal's kind and length, never its text.** A matched value can be a secret
   (`if (key === "<token>")`), and the report leaves the job, so a reviewer finds the value at the source line the
   finding names (`a 12-character string literal`, with the source `path:line` and the test file's path).
 - **Go and other languages** give nothing on either side.
-- **20 per file.** At most 20 signals are given per source file, on the lowest lines.
+- **10 per change.** The first 10 findings of a change, ordered by source path, then line, then detail, are signals;
+  the rest are counted per source path, and the message ends with how many more there are in each file.
 - **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8). A diff that reaches `check()`
   already parsed without kept text yields no TI15.
 

@@ -1,0 +1,14 @@
+diff --git a/src/response.test.ts b/src/response.test.ts
+index 1111111..2222222 100644
+--- a/src/response.test.ts
++++ b/src/response.test.ts
+@@ -7,0 +8,2 @@ describe("response", () => {
++  expect(status("plain")).toBe(404);
++  expect(status("other")).toBe(500);
+diff --git a/src/response.ts b/src/response.ts
+index 1111111..2222222 100644
+--- a/src/response.ts
++++ b/src/response.ts
+@@ -11,0 +12,2 @@ export function status(kind: string): number {
++  if (code === 404) return 404;
++  if (kind === "plain") return 200;

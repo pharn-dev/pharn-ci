@@ -1,0 +1,7 @@
+diff --git a/vitest.config.ts b/vitest.config.ts
+index 1111111..2222222 100644
+--- a/vitest.config.ts
++++ b/vitest.config.ts
+@@ -6 +6 @@ export default defineConfig({
+-      { test: { name: "unit", include: ["src/**/*.test.ts", "lib/**/*.test.ts"] } },
++      { test: { name: "unit", include: ["src/**/*.test.ts"] } },
