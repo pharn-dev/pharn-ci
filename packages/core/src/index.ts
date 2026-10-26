@@ -13,6 +13,20 @@ export {
   validateAcceptLabel,
   withAcceptLabel,
 } from "./acceptLabel.js";
+export {
+  type AgentEvidence,
+  type AgentHint,
+  type AgentPrDetection,
+  type AgentPrFacts,
+  type AgentPrIncomplete,
+  agentPrMetaFields,
+  DEFAULT_AGENT_LABELS,
+  detectAgentPr,
+  KNOWN_AGENTS,
+  type KnownAgent,
+  parseCoAuthorTrailers,
+  withAgentPrMeta,
+} from "./agents.js";
 export { type CheckInput, type CoverageFileInput, check } from "./check.js";
 export { type ReadDiffOptions, readCoverageChunks, readDiffChunks } from "./chunkInputs.js";
 export {

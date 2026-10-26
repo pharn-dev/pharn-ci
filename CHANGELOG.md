@@ -9,6 +9,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- `meta.isAgentPr` in the Action's report, with `meta.prAuthor`, `meta.prLabels`, `meta.coAuthors` and `meta.agentHint`:
+  whether the pull request counts as an agent PR, from its author, its commits' authors, committers and
+  `Co-authored-by` trailers, and its labels (`agent` and `ai-generated` by default). Seven known agents are recognized.
+  Evidence that cannot be read in full (an unknown author, unreadable commits, more than 250 commits) counts as an agent
+  PR. Metadata only: the verdict, the messages, the comment and the exit code do not change. In core: `detectAgentPr`,
+  `parseCoAuthorTrailers`, `agentPrMetaFields`, `withAgentPrMeta`, `KNOWN_AGENTS` and `DEFAULT_AGENT_LABELS`.
 - `schema/policy.v1.json`: the JSON Schema (draft 2020-12) for version 1 of the policy document, the file that will
   tell pharn-ci what "safe to merge" means for a repository, shared with the pharn.dev app. A pure validator in core
   (`validatePolicy`, and `parsePolicyJson` for JSON text) checks a document against it: it never throws, never
@@ -30,6 +36,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Security
 
+- The Action makes one new read-only GitHub API call, `GET /repos/{owner}/{repo}/pulls/{n}/commits` (at most 3 pages of
+  100), and reads the text of the pull request's commit messages in memory for the agent PR detection. A message is
+  capped at 65,536 UTF-16 code units, read for at most 50 trailers in linear time, and never stored, logged or sent;
+  only fixed words, valid logins and the trailers of known agents reach the report. `docs/THREAT-MODEL.md` has the new
+  surface A5 and residual risks 22 and 23.
 - No A7 message, and nothing else the report, the comment or the summary carries, names a secret's value, its key or
   any other text of an agent config file: a message holds the shape id, a path in a code span and a line number.
 

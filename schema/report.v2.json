@@ -323,6 +323,10 @@
         "prLabels": { "type": "array", "items": { "type": "string" } },
         "coAuthors": { "type": "array", "items": { "type": "string" } },
         "agentHint": { "type": ["string", "null"] },
+        "isAgentPr": {
+          "description": "true when the pull request counts as an agent PR, including when detection could not read all of its evidence; false when the run has no pull request.",
+          "type": "boolean"
+        },
         "upload": {
           "type": "object",
           "additionalProperties": false,

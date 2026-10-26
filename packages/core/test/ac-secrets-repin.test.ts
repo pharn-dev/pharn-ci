@@ -58,7 +58,18 @@ function ti15Part(text: string): [number, number] {
 
 describe("the v0.4.0 codes are the only schema and report.ts additions, and the two pins are re-pinned", () => {
   it("AC-24: one appended text after the final sentence names the 12 codes; with it removed the schema is as at b31de0c; the code words are the base's plus the 12; each re-pinned test names this change", () => {
-    const schema = read("schema/report.v2.json");
+    // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property: its four inserted lines appear once
+    // and are cut out of the schema before every comparison below.
+    const isAgentPrLines = [
+      '        "isAgentPr": {',
+      '          "description": "true when the pull request counts as an agent PR, including when detection could not read all of its evidence; false when the run has no pull request.",',
+      '          "type": "boolean"',
+      "        },",
+      "",
+    ].join("\n");
+    const schemaWithIsAgentPr = read("schema/report.v2.json");
+    expect(schemaWithIsAgentPr.split(isAgentPrLines).length - 1, "the four isAgentPr lines appear once").toBe(1);
+    const schema = schemaWithIsAgentPr.replace(isAgentPrLines, "");
 
     // The final sentence appears once, and exactly one appended text follows it to the end of the description.
     const sentence = schema.indexOf(FINAL_SENTENCE);

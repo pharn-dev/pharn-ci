@@ -750,6 +750,28 @@ message `code`s, not on text:
 | `AGENT_CONFIG_SECRET_S11`       | A literal value sits under a secret-named key in a file that loads its other secrets from the environment (`info`) |
 | `AGENT_CONFIG_SECRET_UNSCANNED` | Agent config files were not scanned for secrets: the sources were unavailable (`warn`), or a file was dropped as too large, over a cap or at an unsafe path (`error`), or as binary or missing (`warn`). The text names the files with a reason code each |
 
+### Agent PRs
+
+In the Action, `meta.isAgentPr` says whether the pull request counts as an agent PR, and `meta.agentHint`,
+`meta.prAuthor`, `meta.prLabels` and `meta.coAuthors` carry what it was read from. The detection is metadata only: it
+reads the pull request's author, labels and commits (their authors, committers and `Co-authored-by` trailers), never a
+file or the diff, and it changes no verdict, message, comment or exit code. A pull request counts as an agent PR when
+any of this holds:
+
+- its author is a bot (type `Bot`, or a login ending in `[bot]`, Dependabot included), a known agent or a login you
+  listed (`author-bot`, `author-known-agent`, `author-extra-login`);
+- one of its commits is authored or committed by such a login (`commit-bot`, `commit-known-agent`,
+  `commit-extra-login`);
+- a commit carries a `Co-authored-by` trailer of a known agent (`co-author-known-agent`, `co-author-extra-login`);
+- it carries one of the default labels `agent` or `ai-generated` (`label`).
+
+The known agents are Claude Code, Copilot, Codex, Devin, Cursor, Gemini and Jules. Evidence that cannot be read in full
+counts as an agent PR (fail closed): an unknown author, commits that cannot be listed, and a pull request of more than
+250 commits or whose commit count does not match the list. Only trailers of known agents are recorded, as a hint and an
+address; a human co-author never is. A run with no pull request records `isAgentPr: false`, and the CLI does not set the
+field. The lists cannot be changed from `.pharn/ci.yml` or an input. See
+[`docs/LIMITS.md`](docs/LIMITS.md) §9 and [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) (A5).
+
 Within v1, fields are only added and codes are never renamed or removed.
 
 ---
