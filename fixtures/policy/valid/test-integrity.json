@@ -1,0 +1,1 @@
+{"version":1,"test_integrity":{"mode":"warn","signals":{"TI01":"block","TI02":"warn","TI03":"info","TI04":"off","TI05":"block","TI06":"warn","TI07":"info","TI08":"off","TI09":"block","TI10":"warn","TI11":"info","TI12":"off","TI13":"block","TI14":"warn","TI15":"info","TI16":"off"},"accept_label":"pharn/accepted"}}

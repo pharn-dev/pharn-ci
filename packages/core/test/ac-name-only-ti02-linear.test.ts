@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { measureGrowth, threadCpuMs } from "./growth.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -8,8 +9,9 @@ import { expectValidReport } from "./schema.js";
 // describe, each with a real assertion), and src/b.test.ts gains thousands of hollow `works` tests
 // (`expect(true).toBe(true)`), more than were removed. A leaf name alone cleared every one of them before this change, so
 // a run with no TI02 for src/a.test.ts is the name-only pick. Each run must report TI02 blocks for src/a.test.ts within
-// the per-file finding cap, and the full-size run must take less than 8 times the quarter-size run (medians of three,
-// after a warm-up run of each).
+// the per-file finding cap, and the full-size run must take less than 8 times the quarter-size run (after a warm-up run
+// of each, measured on this thread's CPU time with measureGrowth from growth.ts; every run's CPU time stays under
+// 15 s).
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const A = "src/a.test.ts";
@@ -78,8 +80,6 @@ function generate(bytes: number) {
   };
 }
 
-const median = (values: number[]) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)] as number;
-
 describe("TI02 phase 2: the body-checked leaf pick stays linear", () => {
   it("AC-8: thousands of removed `works` tests beside thousands of hollow `works` tests in another touched file give TI02 blocks within the finding cap at full and quarter size, and the full run takes less than 8 times the quarter run", async () => {
     const { check } = await import("../src/check.js");
@@ -114,11 +114,11 @@ describe("TI02 phase 2: the body-checked leaf pick stays linear", () => {
 
     const all: number[] = [];
     const time = (run: ReturnType<typeof generate>) => {
-      const started = performance.now();
+      const started = threadCpuMs();
       const report = check(run.data as unknown as Input) as unknown as {
         testIntegrity: { signals: { id: string; severity: string; path: string }[]; languages: string[] };
       };
-      const ms = performance.now() - started;
+      const ms = threadCpuMs() - started;
       all.push(ms);
       const ti02 = report.testIntegrity.signals.filter((s) => String(s.id) === "TI02");
       const mine = ti02.filter((s) => s.path === A);
@@ -139,12 +139,11 @@ describe("TI02 phase 2: the body-checked leaf pick stays linear", () => {
       expectValidReport(warm.report);
       expect(warm.report.testIntegrity.languages, "the files were indexed").toEqual(["ts"]);
     }
-    const fullRuns = [time(full).ms, time(full).ms, time(full).ms];
-    const quarterRuns = [time(quarter).ms, time(quarter).ms, time(quarter).ms];
-
-    expect(median(fullRuns), `full ${fullRuns.join(", ")} ms vs quarter ${quarterRuns.join(", ")} ms`).toBeLessThan(
-      8 * median(quarterRuns),
+    const growth = await measureGrowth(
+      () => time(quarter),
+      () => time(full),
     );
-    for (const ms of all) expect(ms, "every run finishes within 15 s").toBeLessThan(CEILING_MS);
+    expect(growth.ratio, `full vs quarter: ${growth.detail}`).toBeLessThan(8);
+    for (const ms of all) expect(ms, "every run finishes within 15 s of CPU time").toBeLessThan(CEILING_MS);
   }, 300_000);
 });

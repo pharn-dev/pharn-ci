@@ -13,6 +13,20 @@ export {
   validateAcceptLabel,
   withAcceptLabel,
 } from "./acceptLabel.js";
+export {
+  type AgentEvidence,
+  type AgentHint,
+  type AgentPrDetection,
+  type AgentPrFacts,
+  type AgentPrIncomplete,
+  agentPrMetaFields,
+  DEFAULT_AGENT_LABELS,
+  detectAgentPr,
+  KNOWN_AGENTS,
+  type KnownAgent,
+  parseCoAuthorTrailers,
+  withAgentPrMeta,
+} from "./agents.js";
 export { type CheckInput, type CoverageFileInput, check } from "./check.js";
 export { type ReadDiffOptions, readCoverageChunks, readDiffChunks } from "./chunkInputs.js";
 export {
@@ -91,6 +105,34 @@ export {
 } from "./inputs.js";
 export { createLineSplitter, splitLines, splitLinesAsync } from "./lines.js";
 export { normalizePath } from "./paths.js";
+export { applyPolicy, type PolicyApplication, type PolicyLayers } from "./policy/apply.js";
+export { POLICY_MAX_CHARS, POLICY_MAX_ERRORS } from "./policy/limits.js";
+export { parsePolicyJson } from "./policy/parse.js";
+export type { IgnoredSetting, PolicyUnavailableReason, ResolvedPolicy, SignalOverrides } from "./policy/resolved.js";
+export {
+  type PolicyResponse,
+  type PolicyResponseValidation,
+  validatePolicyResponse,
+} from "./policy/response.js";
+export type {
+  PolicyAgents,
+  PolicyCoverage,
+  PolicyDependencies,
+  PolicyDocument,
+  PolicyError,
+  PolicyFlaky,
+  PolicyProtectedPathsMode,
+  PolicyRegistry,
+  PolicyRequiredHook,
+  PolicyRuleId,
+  PolicySettings,
+  PolicySetup,
+  PolicySeverity,
+  PolicySignalId,
+  PolicyTestIntegrity,
+  PolicyValidation,
+} from "./policy/types.js";
+export { validatePolicy } from "./policy/validate.js";
 export { formatRanges, type RenderMarkdownOptions, renderMarkdown } from "./render/markdown.js";
 export {
   type BuildReportInput,
@@ -116,6 +158,16 @@ export {
   type Verdict,
   verdictOf,
 } from "./report.js";
+export { agentConfigSecretMessages } from "./secrets/messages.js";
+export { MESSAGE_MAX_BYTES, redactMessage, redactSecrets, truncateUtf8 } from "./secrets/redact.js";
+export {
+  type AgentConfigSecretFinding,
+  type AgentConfigSources,
+  agentConfigSecretPaths,
+  SECRET_SCAN_KINDS,
+  scanAgentConfigSecrets,
+} from "./secrets/scan.js";
+export { findSecretSpans, type SecretId, type SecretSpan } from "./secrets/spans.js";
 export {
   type AgentSetupFile,
   type AgentSetupInventory,

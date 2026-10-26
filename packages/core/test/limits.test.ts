@@ -1,5 +1,6 @@
 import { MAX_TEST_SOURCE_FILE_BYTES } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
+import { measureGrowth, threadCpuMs } from "./growth.js";
 
 // indexTestFile is loaded inside each test body: the AC tests are written before the test index exists, so nothing
 // the build adds may run while the file loads. All timing and heap measurement lives here, never in packages/core/src.
@@ -19,11 +20,14 @@ async function loadIndexTestFile(): Promise<IndexFn> {
 const CAP = MAX_TEST_SOURCE_FILE_BYTES;
 // A wall-clock budget measures the machine (v8 coverage on a CI runner is several times slower than a laptop), so
 // the time checks are a growth ratio between a quarter-size and a full-size input of the same shape, plus a loose
-// ceiling that only catches a hang. Linear work gives a ratio near 4, quadratic work near 16.
+// ceiling that only catches a hang. Linear work gives a ratio near 4, quadratic work near 16. Both read this thread's
+// CPU time (growth.ts), so preemption on a loaded host counts for nothing; the growth ratio comes from measureGrowth's
+// samples.
 const MAX_GROWTH = 8;
 const HANG_CEILING_MS = 15_000;
 const HEAP_BOUND = 256 * 1024 * 1024;
 const TIMEOUT = 60_000;
+const GROWTH_TIMEOUT = 300_000;
 
 /** Tests of one assertion each, then a block comment, to exactly `length` characters. */
 function capFile(length: number): string {
@@ -78,13 +82,13 @@ function median(values: number[]): number {
   return sorted[Math.floor(sorted.length / 2)] as number;
 }
 
-/** The median wall time of three runs of indexing `text`, checking each result is an index or a refusal. */
+/** The median CPU time of three runs of indexing `text`, checking each result is an index or a refusal. */
 function medianTime(indexTestFile: IndexFn, text: string): number {
   const times: number[] = [];
   for (let run = 0; run < 3; run++) {
-    const start = performance.now();
+    const start = threadCpuMs();
     const result = indexTestFile("src/limits.test.ts", text) as Result;
-    times.push(performance.now() - start);
+    times.push(threadCpuMs() - start);
     expect(typeof result.parsed).toBe("boolean");
   }
   return median(times);
@@ -106,14 +110,18 @@ describe("indexTestFile limits", () => {
       const indexTestFile = await loadIndexTestFile();
       const small = quarter();
       const large = full();
-      // Warm up, so the JIT compiling the parser does not land on the small input's runs.
-      indexTestFile("src/limits.test.ts", small);
-      const smallMs = medianTime(indexTestFile, small);
-      const largeMs = medianTime(indexTestFile, large);
-      const growth = largeMs / Math.max(smallMs, 1);
-      expect(growth, `${label}: ${largeMs.toFixed(1)} ms vs ${smallMs.toFixed(1)} ms`).toBeLessThan(MAX_GROWTH);
+      // Warm up both inputs, so the JIT compiling the parser lands on neither side; each gives an index or a refusal.
+      for (const text of [small, large]) {
+        const warm = indexTestFile("src/limits.test.ts", text) as Result;
+        expect(typeof warm.parsed).toBe("boolean");
+      }
+      const growth = await measureGrowth(
+        () => indexTestFile("src/limits.test.ts", small),
+        () => indexTestFile("src/limits.test.ts", large),
+      );
+      expect(growth.ratio, `${label}: ${growth.detail}`).toBeLessThan(MAX_GROWTH);
     },
-    TIMEOUT,
+    GROWTH_TIMEOUT,
   );
 
   it(

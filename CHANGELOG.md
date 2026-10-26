@@ -9,9 +9,50 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- `meta.isAgentPr` in the Action's report, with `meta.prAuthor`, `meta.prLabels`, `meta.coAuthors` and `meta.agentHint`:
+  whether the pull request counts as an agent PR, from its author, its commits' authors, committers and
+  `Co-authored-by` trailers, and its labels (`agent` and `ai-generated` by default). Seven known agents are recognized.
+  Evidence that cannot be read in full (an unknown author, unreadable commits, more than 250 commits) counts as an agent
+  PR. Metadata only: the verdict, the messages, the comment and the exit code do not change. In core: `detectAgentPr`,
+  `parseCoAuthorTrailers`, `agentPrMetaFields`, `withAgentPrMeta`, `KNOWN_AGENTS` and `DEFAULT_AGENT_LABELS`.
+- `schema/policy.v1.json`: the JSON Schema (draft 2020-12) for version 1 of the policy document, the file that will
+  tell pharn-ci what "safe to merge" means for a repository, shared with the pharn.dev app. A pure validator in core
+  (`validatePolicy`, and `parsePolicyJson` for JSON text) checks a document against it: it never throws, never
+  repeats a value from the document in an error, and bounds its work on any input. The org policy entry below is
+  what reads it.
+- Org policy. The Action takes two inputs, `policy` (`auto`, `never`, `required` or `file:<path>`, default `auto`) and
+  `app-url` (default `https://pharn.dev`), and the CLI two flags, `--policy-file <path>` and `--no-policy`. With
+  `policy: auto` or `required` and an OIDC token (`permissions: id-token: write`), the Action makes one `GET` of the
+  pharn.dev policy endpoint, sending only the OIDC token and the repository name, and applies the served policy over
+  the workflow inputs and `.pharn/ci.yml`: it raises the threshold, `setup.require` and the test-integrity mode,
+  replaces the exclusions and the coverage root, sets per-signal severities and the accept label, and adds
+  `setup.expect` tools. A `file:` policy carried by the pull request can only tighten. Two new message codes:
+  `POLICY_UNAVAILABLE` (`warn`, `error` under `policy: required`) and `POLICY_OVERRIDE_IGNORED` (`warn`). With no
+  token, `policy: never` or no policy, the report is the one it was.
+- Check **A7**, secrets in agent configs. The CLI and the Action read the committed text at `HEAD` of the
+  machine-readable agent setup files (`.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`, `.claude/settings*.json`,
+  `.codex/config.toml`, `.gemini/settings.json`, `opencode.json`, `.aider.conf.yml`, the files under `.claude/hooks/` and
+  the `.json`, `.yaml` and `.yml` files under `.continue/rules/`; never the Markdown kinds) and report ten shapes of
+  secret (GitHub, Anthropic, OpenAI, Google, AWS, Slack, Stripe, private keys, URL passwords and tokens, and secret-like
+  values under secret-named keys). Twelve message codes, `AGENT_CONFIG_SECRET_S01` to `AGENT_CONFIG_SECRET_S11` and
+  `AGENT_CONFIG_SECRET_UNSCANNED`: S01 to S09 are `error` and fail the check, S10 is `warn`, S11 is `info`, and files that
+  could not be scanned are named in the unscanned code (`error` when a drop could hide a secret). Report v2 only gains
+  codes; the message-code description in `schema/report.v2.json` names them. In the Action, the files are read only for
+  a diff from the local checkout; in PR-number mode and for a compare-API diff the message says nothing was read.
+- A redaction module in `@pharn-ci/core`: `findSecretSpans`, `redactSecrets`, `truncateUtf8`, `redactMessage` and
+  `MESSAGE_MAX_BYTES`. Nothing outside check A7 uses it yet.
+
 ### Changed
 
 ### Security
+
+- The Action makes one new read-only GitHub API call, `GET /repos/{owner}/{repo}/pulls/{n}/commits` (at most 3 pages of
+  100), and reads the text of the pull request's commit messages in memory for the agent PR detection. A message is
+  capped at 65,536 UTF-16 code units, read for at most 50 trailers in linear time, and never stored, logged or sent;
+  only fixed words, valid logins and the trailers of known agents reach the report. `docs/THREAT-MODEL.md` has the new
+  surface A5 and residual risks 22 and 23.
+- No A7 message, and nothing else the report, the comment or the summary carries, names a secret's value, its key or
+  any other text of an agent config file: a message holds the shape id, a path in a code span and a line number.
 
 ## [0.3.0] - 2026-10-26
 

@@ -835,8 +835,10 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
 
 ## 4. Agent setup inventory
 
-- **It is an inventory, not a review.** pharn-ci lists agent setup files and never reads them. It
-  does not validate their syntax, judge their content, or check them for prompt injection.
+- **It is an inventory, not a review.** pharn-ci lists agent setup files; the inventory itself reads
+  none of them. Check A7 reads the machine-readable kinds for committed secrets
+  ([Secrets in agent configs](#secrets-in-agent-configs)). It does not validate their syntax, judge their
+  content, or check them for prompt injection.
 - **Only tracked files are seen.** The list comes from `git ls-files`, so untracked or ignored
   files (a typical `.claude/settings.local.json`) are not listed.
 - **The kinds detected are fixed (34):** `claude-md`, `claude-local-md`, `agents-md`, `gemini-md`,
@@ -869,7 +871,7 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
     under another name (such as `third_party/`) is still counted, since pharn-ci cannot tell a
     vendored copy from the repo's own.
   - Files that a config names (for example the `read` list in `.aider.conf.yml`): pharn-ci never
-    reads a setup file, so it does not follow them.
+    follows a path a setup file names.
   - Other tools that also read an existing kind: only `agents-md` credits several tools.
 - **Precedence:** a path is classified by the first matching rule, and rules tied to a directory
   or full path come before the file-name rules. So `.claude/agents/CLAUDE.md` is a `claude-agent`,
@@ -883,10 +885,67 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
   file is reported.
 - **Expected tools are judged by kind, not by content.** A tool in `setup.expect` counts as present
   when any setup kind it reads exists; for example `AGENTS.md` satisfies amp, codex, copilot, cursor,
-  jules, opencode and zed. pharn-ci never reads file contents, so an empty or unrelated file still
+  jules, opencode and zed. The kind comes from the path alone, so an unrelated file still
   counts (an empty one gets `AGENT_SETUP_FILE_EMPTY`).
 - **The summary is derived.** `agentSetup.summary` holds counts per kind and the tools those kinds
   belong to, from a fixed list. It is computed from the file list and says nothing about content.
+
+## Secrets in agent configs
+
+Check A7 (`AGENT_CONFIG_SECRET_*`) reads the committed text of the machine-readable agent setup kinds at `HEAD` and looks
+for ten shapes of secret by prefix and position. It is a heuristic, not a secret manager. What it misses:
+
+- **Markdown kinds are not read.** `CLAUDE.md`, `AGENTS.md`, the rules, skills, agents and commands are never scanned,
+  and neither is a `.md` file under `.continue/rules/`.
+- **`.env` files and other files are not read.** `.env*` files, `.continue/config.*` and every file the inventory does
+  not list are outside the scan, as is any custom format a tool reads from another path.
+- **Only the listed kinds and paths.** A nested copy of a root-only kind (`packages/app/.mcp.json`) is not an agent
+  setup file, so it is not scanned.
+- **Shapes, not provider checks.** A key is recognized by its prefix and length, or by a secret-named key with a long,
+  high-entropy value. Nothing asks the provider whether a key is live (no network call), so a revoked or made-up key is
+  reported, and a key of a provider or format not in the ten shapes is missed.
+- **Low-entropy passwords are missed.** S10 needs 20 characters and 3.5 bits of entropy per character; `hunter2` is
+  not reported by S10 (S11 may name it when the file also loads other secrets from the environment).
+- **Encoded or split values are missed.** A base64-wrapped value, a secret split across two strings or lines, a value
+  built from variables, and a secret in a key that is not named like one are not seen.
+- **Keys in file names are not read.** A secret in a path or a file name is outside the scan.
+- **Bare values stop at a space.** A header such as `Authorization: Bearer <value>` without quotes is read as the word
+  `Bearer`; quote it, or the scheme word hides the value from S10.
+- **The files must be committed text.** A file over 512 KiB, a binary file, a path git cannot read safely, or one past the
+  caps (200 files, 16 MiB) is named in `AGENT_CONFIG_SECRET_UNSCANNED` and not read.
+- **The Action reads the checkout's `HEAD`.** With a diff from the local checkout that is the pull request head; in
+  PR-number mode or with a compare-API diff it may not be, so nothing is read and the report says so.
+- **An embedding with no batch git runner scans nothing.** The CLI and the Action gather the sources only when their
+  deps carry a batch git runner (`gitBatch`); a program that calls `check()` itself passes `agentConfigSources` or gets
+  no A7 message.
+- **A finding is not a removal.** A secret already in git history stays there after the file is fixed; revoke it.
+
+## Org policy
+
+The org policy (`policy: auto`, `required` or `file:<path>`; see the README, Org policy) is fetched, validated and
+applied once per run. What it does not do:
+
+- **No persistent ETag cache.** The app's response carries an ETag, but a GitHub-hosted runner starts empty and the
+  Action keeps no state between runs (no backend, no cache of its own), so every run asks again and no `If-None-Match`
+  is sent. A run that cannot reach the app has no cached copy to fall back on: it runs with the workflow inputs and
+  `.pharn/ci.yml` and reports `POLICY_UNAVAILABLE`, or fails under `policy: required`.
+- **No connect timeout of its own.** Each attempt has one timeout for the whole request, response body included
+  (10 s); there is no separate 5 s connect timeout, so a host that accepts the connection and then stalls costs the
+  full timeout, and with the one retry a failing request can take about 21 s.
+- **Fork pull requests and jobs without `id-token: write` get no policy.** GitHub gives a fork pull request no OIDC
+  token, and a job that does not grant `id-token: write` has none. Under `policy: auto` that is silent apart from one
+  info line, and the check runs without the policy; `policy: required` makes it a failing check. The OIDC token is also
+  the only identity the app sees, so a repository the app does not know gets no policy (`204` or `404`).
+- **A `file:` policy can only tighten.** The pull request carries the file, so pharn-ci applies a threshold, mode,
+  `setup.require`, `setup.expect` and signal severities only upwards, and never its exclusions, root, accept label or
+  `policy.required`. Because of that, a `file:` document and the same document served by the app give the same
+  effective settings only when it is a tightening-only document and no lower layer holds a value above it that the
+  app would have named: an app value above a lower layer's is recorded as `looser`, while the same file value above it
+  is not, so the two reports then differ by one `POLICY_OVERRIDE_IGNORED` message.
+- **The `policy` and `app-url` inputs are the workflow's.** A pull request that edits the workflow can set them
+  (THREAT-MODEL, items 22 and 24).
+- **Only some keys are applied.** `policy.rules`, `agents`, `dependencies`, `flaky`, `setup.forbidden_files` and the
+  other `setup` lists are validated and carried in the document, not applied by this release.
 
 ## 5. Security limits
 
@@ -1034,3 +1093,26 @@ limited by git, Node or GitHub alone.
   near-identical bodies can report a renamed test as removed. At most 20 TI02 and 20 TI05 findings are listed per file;
   the messages say how many were left out, and the block findings come first. The action and CLI dists carry the
   TypeScript parser for this and are about 11 MB.
+
+## 9. Agent-PR detection
+
+`meta.isAgentPr` in the Action's report says whether the pull request counts as an agent PR. What it does not do:
+
+- **Metadata only.** It reads the pull request's author, labels and commit count, and its commits' authors, committers
+  and `Co-authored-by` trailers. It never reads the diff or any file, and it says nothing about who wrote the code. An
+  agent that commits through a person's account with no trailer, label or known login counts as human.
+- **Commits are read through the API, at most 3 pages of 100.** A pull request of more than 250 commits, a commit count
+  that does not match the list, a page that cannot be read and a list cut at the third page all count as an agent PR:
+  evidence that cannot be read in full fails closed. The Action says so in one fixed log line.
+- **Dependabot and any `[bot]` author count as agent PRs.** So does a pull request whose author is not a user, a bot or
+  an organization (a deleted account, a Mannequin) or is missing.
+- **Labels are read as the event delivered them.** A label added after the event started the run is not seen until the
+  next run.
+- **The known-agent list holds only the seven verified entries** (Claude Code, Copilot, Codex, Devin, Cursor, Gemini and
+  Jules). Another agent is recognized only by a `[bot]` login, a label or a `Co-authored-by` trailer of a login on the
+  list.
+- **The lists cannot be changed from `.pharn/ci.yml`.** No `agents:` key is read, and no input sets one: a setting the
+  pull request carries cannot loosen or tighten the detection.
+- **A human co-author is never recorded.** Only trailers of known agents reach the report, as a hint and an address.
+- **The CLI does not set it.** Only the Action gathers pull request facts, and the detection changes no verdict, message,
+  comment or exit code.

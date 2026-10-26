@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { measureGrowth } from "./growth.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 // check() and the size cap are loaded inside the test body: the AC test is written before TI03 reads aliases, so
 // nothing the build adds may run while the file loads. The hostile text is generated here. Its first line binds `pt`
 // to pytest, so the added `@pt.mark.skip` must give one block TI03, which only the build makes true; the hostile part
-// below it binds nothing to `pt`. Each size is run once to warm up, then timed three times; the medians are compared.
+// below it binds nothing to `pt`. Each size is run once to warm up, then measured on this thread's CPU time with
+// measureGrowth (growth.ts).
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const PATH = "py/test_cart.py";
@@ -63,12 +65,11 @@ const DIFF = `${[
   "+@pt.mark.skip",
 ].join("\n")}\n`;
 
-async function runOnce(
-  head: string,
-  base: string,
-): Promise<{ ms: number; signals: { id: string; severity: string; path: string; line: number | null }[] }> {
-  const { check } = await import("../src/check.js");
-  const input = {
+type Signal = { id: string; severity: string; path: string; line: number | null };
+
+/** The check() input for one head and base text, built before any timing so the timed span is check() alone. */
+function inputOf(head: string, base: string) {
+  return {
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
     diff: { text: DIFF },
@@ -80,22 +81,15 @@ async function runOnce(
       base: { files: [{ path: PATH, text: base }], dropped: [] },
       head: { files: [{ path: PATH, text: head }], dropped: [] },
     },
-  } as unknown as Parameters<typeof check>[0];
-  const started = performance.now();
-  const report = check(input);
-  const ms = performance.now() - started;
-  expectValidReport(report);
-  const signals = (
-    report as unknown as {
-      testIntegrity: { signals: { id: string; severity: string; path: string; line: number | null }[] };
-    }
-  ).testIntegrity.signals
-    .filter((s) => String(s.id) === "TI03")
-    .map((s) => ({ id: String(s.id), severity: s.severity, path: s.path, line: s.line }));
-  return { ms, signals };
+  };
 }
 
-const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] as number;
+/** The report's TI03 signals, in the shape the assertion compares. */
+function ti03Of(report: unknown): Signal[] {
+  return (report as { testIntegrity: { signals: Signal[] } }).testIntegrity.signals
+    .filter((s) => String(s.id) === "TI03")
+    .map((s) => ({ id: String(s.id), severity: s.severity, path: s.path, line: s.line }));
+}
 
 describe("TI03's alias reader on hostile text near the test-source size cap", () => {
   it(
@@ -118,25 +112,25 @@ describe("TI03's alias reader on hostile text near the test-source size cap", ()
         "unclosed groups",
       ).toBeGreaterThan(1000);
 
+      const { check } = await import("../src/check.js");
+      type Input = Parameters<typeof check>[0];
+      const fullInput = inputOf(full.head, full.base) as unknown as Input;
+      const quarterInput = inputOf(quarter.head, quarter.base) as unknown as Input;
       const expected = [{ id: "TI03", severity: "block", path: PATH, line: DECORATOR_LINE }];
-      for (const [label, t] of [
-        ["full", full],
-        ["quarter", quarter],
+      for (const [label, input] of [
+        ["full", fullInput],
+        ["quarter", quarterInput],
       ] as const) {
-        const warm = await runOnce(t.head, t.base);
-        expect(warm.signals, `${label}: one block TI03 for @pt.mark.skip`).toEqual(expected);
+        const warm = check(input);
+        expectValidReport(warm);
+        expect(ti03Of(warm), `${label}: one block TI03 for @pt.mark.skip`).toEqual(expected);
       }
 
-      const times = { full: [] as number[], quarter: [] as number[] };
-      for (let i = 0; i < 3; i++) {
-        times.quarter.push((await runOnce(quarter.head, quarter.base)).ms);
-        times.full.push((await runOnce(full.head, full.base)).ms);
-      }
-      const ratio = median(times.full) / Math.max(median(times.quarter), 1);
-      expect(
-        ratio,
-        `full ${median(times.full).toFixed(1)} ms vs quarter ${median(times.quarter).toFixed(1)} ms`,
-      ).toBeLessThan(8);
+      const growth = await measureGrowth(
+        () => check(quarterInput),
+        () => check(fullInput),
+      );
+      expect(growth.ratio, `full vs quarter: ${growth.detail}`).toBeLessThan(8);
     },
     SLOW,
   );

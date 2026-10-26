@@ -1,7 +1,11 @@
 import {
+  type AgentConfigSources,
+  agentConfigSecretPaths,
+  applyPolicy,
   type CheckInput,
   check,
   type DirEntry,
+  detectAgentPr,
   gitDiffArgs,
   type InputErrorText,
   type PharnConfig,
@@ -9,26 +13,35 @@ import {
   type PythonSourceFile,
   parseConfig,
   parseLsTreeSizes,
+  type RawInputs,
   type Report,
   readDiffChunks,
   renderMarkdown,
   resolveInputs,
   resolveTestIntegrityMode,
+  scanAgentSetup,
   type TestIntegrityModeSettings,
   type TestSources,
   unavailableTestSources,
   VERSION,
   validateAcceptLabel,
+  withAgentPrMeta,
 } from "@pharn-ci/core";
 import {
   gitChunks,
   indexPythonTestSources,
   indexPythonTests,
+  type PathStat,
+  readAgentConfigSources,
   readCoverageFiles,
   readDiscoveredCoverage,
   readTestSources,
 } from "@pharn-ci/node-io";
 import { applyAcceptLabel } from "./accept-label.js";
+import { gatherAgentPrFacts } from "./agent-pr.js";
+import { parseAppUrl } from "./app-client.js";
+import { parsePolicyInput } from "./policy-input.js";
+import { obtainPolicy } from "./policy-source.js";
 import { type PrNumberTarget, parsePrNumberInputs, resolvePrNumberTarget } from "./pr-number.js";
 import { runMeta } from "./run-meta.js";
 
@@ -61,10 +74,16 @@ export interface GitHubApi {
   /** Read-only: the base and head commit SHAs of a pull request (PR-number mode). */
   getPullRequest(pullNumber: number): Promise<{ baseSha: string; headSha: string }>;
   /**
-   * Read-only: a pull request's author (`user`) and labels, as GitHub returned them. Untrusted: the accept label
-   * code checks their shape. Only called when the accept label may apply.
+   * Read-only: a pull request's author (`user`), labels and commit count (`commits`), as GitHub returned them.
+   * Untrusted: the accept label code and the agent PR detection check their shape. Called when the accept label may
+   * apply, and in PR-number mode for the agent PR detection.
    */
-  getPullRequestSignoff(pullNumber: number): Promise<{ author: unknown; labels: unknown }>;
+  getPullRequestSignoff(pullNumber: number): Promise<{ author: unknown; labels: unknown; commits: unknown }>;
+  /**
+   * Read-only: one page (100 commits, oldest first) of a pull request's commits, and whether another page follows.
+   * Untrusted: the agent PR detection checks their shape and reads only logins and commit messages, in memory.
+   */
+  listPullRequestCommits(pullNumber: number, page: number): Promise<{ commits: unknown; hasNext: boolean }>;
   /**
    * Read-only: one page (100 events, oldest first) of a pull request's issue events, and whether another page
    * follows. Untrusted: the accept label code checks their shape. Only called after the pull request carries the label.
@@ -99,7 +118,15 @@ export interface ActionContext {
   payload: {
     before?: string;
     repository?: { full_name?: string; id?: number };
-    pull_request?: { number: number; base: { sha: string }; head: { sha: string } };
+    pull_request?: {
+      number: number;
+      base: { sha: string };
+      head: { sha: string };
+      /** Untrusted: shape-checked by the agent PR detection (`agent-pr.ts`). */
+      user?: unknown;
+      labels?: unknown;
+      commits?: unknown;
+    };
     merge_group?: { base_sha: string; head_sha: string };
   };
 }
@@ -146,6 +173,23 @@ export interface ActionDeps {
   setOutput(name: string, value: string): void;
   setFailed(message: string): void;
   writeSummary(markdown: string): Promise<void>;
+  /**
+   * `lstat` of a path without following a symbolic link; null when it does not exist. Used to read a `file:` policy.
+   * Absent: node-io's `lstatPath`.
+   */
+  lstat?: ((path: string) => Promise<PathStat | null>) | undefined;
+  /**
+   * The org policy deps (see app-client.ts). All optional: an absent `fetch`, `getIDToken`, `setSecret` or `hasOidcEnv`
+   * means there is no OIDC and no policy is fetched. Absent `now`, `sleep` and `timeoutMs` use the clock, a timer and
+   * the default timeout.
+   */
+  fetch?: ((input: string, init: RequestInit) => Promise<Response>) | undefined;
+  getIDToken?: ((audience?: string) => Promise<string>) | undefined;
+  setSecret?: ((secret: string) => void) | undefined;
+  hasOidcEnv?: boolean | undefined;
+  now?: (() => Date) | undefined;
+  timeoutMs?: number | undefined;
+  sleep?: ((ms: number) => Promise<void>) | undefined;
 }
 
 const ZERO_SHA = /^0+$/;
@@ -226,26 +270,36 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   // Validated before the config is read or anything is measured; the error never repeats the value.
   const acceptLabel = validateAcceptLabel(input("accept-label"));
   if (!acceptLabel.ok) throw new Error(acceptLabel.error);
+  // Also validated before the config is read or anything is fetched: the errors are fixed texts, never the values.
+  const policyChoice = parsePolicyInput(input("policy"));
+  const appOrigin = parseAppUrl(input("app-url"));
   const config = await loadConfig(input("config") || undefined, deps);
 
   // An empty input is not given: the config, then the default, applies.
+  const rawInputs: RawInputs = {
+    coverageFile: splitLines(input("coverage-file")),
+    coverageFormat: input("coverage-format") || undefined,
+    threshold: input("threshold") || undefined,
+    exclude: splitPatternList(input("exclude")),
+    coverageRoot: input("coverage-root") || undefined,
+    requireAgentSetup: parseBool(input("require-agent-setup"), "require-agent-setup"),
+    expectAgentSetup: splitPatternList(input("expect-agent-setup")),
+    testIntegrity: input("test-integrity") || undefined,
+  };
   const resolved = resolveInputs(
     config,
-    {
-      coverageFile: splitLines(input("coverage-file")),
-      coverageFormat: input("coverage-format") || undefined,
-      threshold: input("threshold") || undefined,
-      exclude: splitPatternList(input("exclude")),
-      coverageRoot: input("coverage-root") || undefined,
-      requireAgentSetup: parseBool(input("require-agent-setup"), "require-agent-setup"),
-      expectAgentSetup: splitPatternList(input("expect-agent-setup")),
-      testIntegrity: input("test-integrity") || undefined,
-    },
+    rawInputs,
     INPUT_ERRORS,
     // With no coverage path set anywhere, the report is looked for at the discovery candidates.
     { discoverCoverage: true },
   );
   if (!resolved.ok) throw resolved.errors[0];
+  // The org policy is obtained after the config and before anything is read or measured, and applied over the layers.
+  // A `file:` problem throws here; an unavailable app policy never does: the check then runs with the inputs and the config.
+  const policy = await obtainPolicy(deps, policyChoice, appOrigin);
+  const application =
+    policy === undefined ? undefined : applyPolicy({ config, raw: rawInputs, resolved: resolved.inputs }, policy);
+  const effective = application?.inputs ?? resolved.inputs;
   const {
     coverageFormat: format,
     threshold,
@@ -254,7 +308,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     requireAgentSetup,
     expectAgentSetup,
     testIntegrityMode,
-  } = resolved.inputs;
+  } = effective;
   const failOnThreshold = parseBool(input("fail-on-threshold"), "fail-on-threshold") ?? true;
   const comment = parseBool(input("comment"), "comment") ?? true;
 
@@ -303,6 +357,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
 
   const { diff, localBase } = await getDiff(input("base-ref"), deps, target, input("config"));
   const testSources = await gatherTestSources(deps, { diff, localBase, target, testIntegrityMode });
+  const agentConfigSources = await gatherAgentConfigSources(deps, { repoFiles, diff, target });
   // The Python test files of the sources, indexed by one interpreter run; nothing runs for JS/TS-only changes.
   const pythonTestIndex =
     testSources === undefined
@@ -327,9 +382,13 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     ...(expectAgentSetup === undefined ? {} : { expectAgentSetup }),
     ...(testIntegrityMode === undefined ? {} : { testIntegrityMode }),
     ...(testSources === undefined ? {} : { testSources }),
+    ...(agentConfigSources === undefined ? {} : { agentConfigSources }),
     ...(pythonTestIndex === undefined ? {} : { pythonTestIndex }),
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
     ...(input("config") === "" ? {} : { configPath: input("config") }),
+    ...(policy === undefined ? {} : { policy }),
+    ...(application === undefined || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored }),
+    ...(application?.signalOverrides === undefined ? {} : { signalOverrides: application.signalOverrides }),
   };
   const meta = runMeta(deps.context, { baseRef: input("base-ref"), ...(target === undefined ? {} : { target }) });
   if (meta === undefined) deps.info("run metadata is incomplete, so report.json carries no meta");
@@ -337,7 +396,28 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   // The accept label is the Action's alone: check() and the CLI never see it. Only a pull_request event with its
   // payload, or a pr-number target, is a pull request run (not pull_request_target, push or merge_group).
   const signoffNumber = deps.context.eventName === "pull_request" && pr ? pr.number : target?.number;
-  const report = await applyAcceptLabel(deps, checked, acceptLabel.label, signoffNumber);
+  // An app policy's accept label replaces the input's when it passes the same check; otherwise the input's applies,
+  // with one fixed warning that never names the value.
+  let label = acceptLabel.label;
+  if (application?.acceptLabel !== undefined) {
+    const fromPolicy = validateAcceptLabel(application.acceptLabel);
+    if (fromPolicy.ok) label = fromPolicy.label;
+    else deps.warning("pharn-ci: the org policy's accept label is not usable here, so the accept-label input applies");
+  }
+  const labelled = await applyAcceptLabel(deps, checked, label, signoffNumber);
+  // Agent PR detection is metadata only: it needs the report's `meta`, and the verdict, the messages, the summary and the
+  // comment never read what it adds. It uses the default lists only; no input and no config entry changes them.
+  let report = labelled;
+  if (labelled.meta !== undefined) {
+    const facts = await gatherAgentPrFacts(deps, target);
+    const detection = detectAgentPr(facts);
+    if (detection.incomplete !== null) {
+      deps.info(
+        `pharn-ci: agent PR detection could not read all of the pull request's evidence (${detection.incomplete}), so it counts as an agent PR`,
+      );
+    }
+    report = withAgentPrMeta(labelled, detection, facts);
+  }
   const summary = fitMarkdown(report, {
     prefix: "",
     note: SUMMARY_TRUNCATED_NOTE,
@@ -429,6 +509,42 @@ async function gatherTestSources(
   if ("unavailable" in sources.base) {
     deps.info(
       `pharn-ci: could not read the test and test-config files from git, so they are not compared: ${sources.base.unavailable}`,
+    );
+  }
+  return sources;
+}
+
+/**
+ * The committed text of the agent config files, for the secret scan (check A7); undefined when the deps carry no batch
+ * git runner or no tracked path is a scannable agent config file (nothing is read, nothing is said). Only a diff parsed
+ * from local git means the checkout is the pull request head, so only then are the files read, at HEAD. Otherwise the
+ * sources are unavailable with a fixed sentence, and no git call and no GitHub API call is made.
+ */
+async function gatherAgentConfigSources(
+  deps: ActionDeps,
+  from: { repoFiles: readonly string[]; diff: CheckInput["diff"]; target: PrNumberTarget | undefined },
+): Promise<AgentConfigSources | undefined> {
+  if (deps.gitBatch === undefined) return undefined;
+  const paths = agentConfigSecretPaths(scanAgentSetup(from.repoFiles));
+  if (paths.length === 0) return undefined;
+  if (from.target) {
+    return {
+      unavailable:
+        "pr-number mode: the checkout is not the pull request head, so its committed agent config files were not read",
+    };
+  }
+  if ("text" in from.diff) {
+    return {
+      unavailable: "the diff came from the GitHub compare API, so the checkout may not be the pull request head",
+    };
+  }
+  if ("unavailable" in from.diff) {
+    return { unavailable: "the diff is unavailable, so the checkout may not be the pull request head" };
+  }
+  const sources = await readAgentConfigSources({ gitBatch: deps.gitBatch }, paths);
+  if ("unavailable" in sources) {
+    deps.info(
+      `pharn-ci: could not read the agent config files from git, so they are not scanned for secrets: ${sources.unavailable}`,
     );
   }
   return sources;

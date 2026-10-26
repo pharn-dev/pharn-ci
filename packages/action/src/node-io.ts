@@ -1,7 +1,16 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import * as core from "@actions/core";
-import { GIT_TIMEOUT_MS, listDir, readFile, readFileStream, runGit, runGitBatch, streamGit } from "@pharn-ci/node-io";
+import {
+  GIT_TIMEOUT_MS,
+  listDir,
+  lstatPath,
+  readFile,
+  readFileStream,
+  runGit,
+  runGitBatch,
+  streamGit,
+} from "@pharn-ci/node-io";
 import type { ActionDeps } from "./run.js";
 
 export { GIT_TIMEOUT_MS };
@@ -10,7 +19,7 @@ export { GIT_TIMEOUT_MS };
 export function createNodeIo(
   workspace: string,
   opts: { gitTimeoutMs?: number } = {},
-): Pick<ActionDeps, "git" | "readFile" | "listDir" | "writeFile" | "resolvePath" | "writeSummary"> &
+): Pick<ActionDeps, "git" | "readFile" | "listDir" | "lstat" | "writeFile" | "resolvePath" | "writeSummary"> &
   Required<Pick<ActionDeps, "gitStream" | "gitBatch" | "readFileStream">> {
   const timeout = opts.gitTimeoutMs ?? GIT_TIMEOUT_MS;
   return {
@@ -20,6 +29,7 @@ export function createNodeIo(
     git: (args) => runGit(workspace, args, timeout),
     readFile,
     listDir,
+    lstat: lstatPath,
     writeFile: async (path, text) => {
       await mkdir(dirname(path), { recursive: true });
       await writeFile(path, text);

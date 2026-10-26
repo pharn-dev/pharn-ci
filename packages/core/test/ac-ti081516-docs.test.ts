@@ -116,7 +116,12 @@ describe("TI08, TI15 and TI16: schemas and documents", () => {
     expect(typeof getAt(before, languages), "the languages description at the base").toBe("string");
     // ti07-tests-changed adds the optional `testIntegrity.changes` summary: set aside on both sides too.
     const changes = ["properties", "testIntegrity", "properties", "changes"];
-    expect(setAside(now, [...paths, languages, changes])).toEqual(setAside(before, [...paths, languages, changes]));
+    // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property: the base has none, and setAside puts
+    // the marker in its place on both sides, so only that property differs.
+    const isAgentPr = ["properties", "meta", "properties", "isAgentPr"];
+    expect(setAside(now, [...paths, languages, changes, isAgentPr])).toEqual(
+      setAside(before, [...paths, languages, changes, isAgentPr]),
+    );
     const [path] = paths as [string[]];
     const beforeText = getAt(before, path) as string;
     const nowText = getAt(now, path);
@@ -158,8 +163,14 @@ describe("TI08, TI15 and TI16: schemas and documents", () => {
       expect(row, `the ${code(id)} message-table row`).toBeDefined();
     }
 
-    // action.yml declares no new input.
-    expect(actionInputs(read("action.yml"))).toEqual(actionInputs(atBase(base, "action.yml").toString("utf8")));
+    // action.yml declares no new input. Re-pinned for the org policy (E3 item 20), which adds exactly the `policy` and
+    // `app-url` inputs: both must be declared, and with them set aside the inputs are the base's, in order.
+    const POLICY_INPUTS = ["policy", "app-url"];
+    const inputsNow = actionInputs(read("action.yml"));
+    for (const name of POLICY_INPUTS) expect(inputsNow, `action.yml declares ${name}`).toContain(name);
+    expect(inputsNow.filter((name) => !POLICY_INPUTS.includes(name))).toEqual(
+      actionInputs(atBase(base, "action.yml").toString("utf8")),
+    );
 
     // docs/LIMITS.md: three "What … misses" sections and the hard-coded-answer line.
     const limits = read("docs/LIMITS.md");

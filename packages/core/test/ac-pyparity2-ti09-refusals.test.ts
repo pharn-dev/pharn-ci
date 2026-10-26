@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { measureGrowth } from "./growth.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 // check() is loaded inside the test body: the AC test is written before TI09 reads the native [tool.pytest] table, so
 // nothing the build adds may run while the file loads. Every text is generated here. A native table that cannot be
 // read is refused as the [tool.pytest.ini_options] table is today: no TI09 and a TEST_INTEGRITY_INDEX_UNAVAILABLE
-// message naming pyproject.toml with its reason. Each hostile size is run once to warm up, then timed three times.
+// message naming pyproject.toml with its reason. Each hostile size is run once to warm up, then measured on this
+// thread's CPU time with measureGrowth (growth.ts).
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const PATH = "pyproject.toml";
@@ -28,9 +30,9 @@ function diffOf(base: string, head: string): string {
   return `${lines.join("\n")}\n`;
 }
 
-async function run(base: string, head: string): Promise<{ report: Report; ms: number }> {
-  const { check } = await import("../src/check.js");
-  const input = {
+/** The check() input for one base and head text, diff included, built before any timing. */
+function inputOf(base: string, head: string) {
+  return {
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
     diff: { text: diffOf(base, head) },
@@ -42,12 +44,14 @@ async function run(base: string, head: string): Promise<{ report: Report; ms: nu
       base: { files: [{ path: PATH, text: base }], dropped: [] },
       head: { files: [{ path: PATH, text: head }], dropped: [] },
     },
-  } as unknown as Parameters<typeof check>[0];
-  const started = performance.now();
-  const report = check(input);
-  const ms = performance.now() - started;
+  };
+}
+
+async function run(base: string, head: string): Promise<{ report: Report }> {
+  const { check } = await import("../src/check.js");
+  const report = check(inputOf(base, head) as unknown as Parameters<typeof check>[0]);
   expectValidReport(report);
-  return { report: report as unknown as Report, ms };
+  return { report: report as unknown as Report };
 }
 
 const BASE = '[project]\nname = "demo"\n\n[tool.pytest]\naddopts = ["-ra"]\ntestpaths = ["tests"]\n';
@@ -90,8 +94,6 @@ function hostile(size: number): string {
   return `${lines.join("\n")}\n`;
 }
 
-const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] as number;
-
 describe("TI09 refuses a native [tool.pytest] table it cannot read, in linear time", () => {
   it("AC-16: a native table over the cap, with a non key = value line, or with an unclosed array gives no TI09 and a TEST_INTEGRITY_INDEX_UNAVAILABLE naming pyproject.toml with too-large, invalid-toml and invalid-toml; a hostile native table just under the cap reads in less than 8 times a quarter-size one", async () => {
     expect((UNREADABLE[0] as { head: string }).head.length, "over the cap").toBeGreaterThan(CAP);
@@ -115,16 +117,15 @@ describe("TI09 refuses a native [tool.pytest] table it cannot read, in linear ti
       full.split("\n").filter((l) => l.startsWith("[tool.pytest")).length,
       "thousands of look-alikes",
     ).toBeGreaterThan(5000);
-    for (const text of [full, quarter]) await run(BASE, text);
-    const times = { full: [] as number[], quarter: [] as number[] };
-    for (let i = 0; i < 3; i++) {
-      times.quarter.push((await run(BASE, quarter)).ms);
-      times.full.push((await run(BASE, full)).ms);
-    }
-    const ratio = median(times.full) / Math.max(median(times.quarter), 1);
-    expect(
-      ratio,
-      `full ${median(times.full).toFixed(1)} ms vs quarter ${median(times.quarter).toFixed(1)} ms`,
-    ).toBeLessThan(8);
+    const { check } = await import("../src/check.js");
+    type Input = Parameters<typeof check>[0];
+    const fullInput = inputOf(BASE, full) as unknown as Input;
+    const quarterInput = inputOf(BASE, quarter) as unknown as Input;
+    for (const input of [fullInput, quarterInput]) expectValidReport(check(input));
+    const growth = await measureGrowth(
+      () => check(quarterInput),
+      () => check(fullInput),
+    );
+    expect(growth.ratio, `full vs quarter: ${growth.detail}`).toBeLessThan(8);
   }, 300_000);
 });

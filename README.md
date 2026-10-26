@@ -42,6 +42,8 @@ behave. AI-agnostic, fully stateless, no telemetry.
 - [How it works](#how-it-works)
 - [Example PR comment](#example-pr-comment)
 - [Test integrity](#test-integrity)
+- [Secrets in agent configs](#secrets-in-agent-configs)
+- [Org policy](#org-policy)
 - [Action reference](#action-reference)
 - [CLI](#cli)
 - [Config](#config)
@@ -151,6 +153,7 @@ on: pull_request
 permissions:
   contents: read
   pull-requests: write
+  id-token: write # lets pharn-ci fetch your org policy (see Org policy); leave it out to run without one
 
 # One run per PR at a time, so concurrent pushes do not race on the sticky comment. The github.ref
 # fallback gives each merge-queue entry its own group, since merge_group events have no PR number.
@@ -403,6 +406,77 @@ case-by-case table is in [docs/PRECISION.md](./docs/PRECISION.md#3-skylos-nine-w
 
 ---
 
+## Secrets in agent configs
+
+Check A7 reads the machine-readable agent config files the inventory finds (`.mcp.json`, `.cursor/mcp.json`,
+`.vscode/mcp.json`, `.claude/settings.json`, `.claude/settings.local.json`, `.codex/config.toml`,
+`.gemini/settings.json`, `opencode.json`, `.aider.conf.yml`, the files under `.claude/hooks/`, and the `.json`, `.yaml`
+and `.yml` files under `.continue/rules/`) and looks for committed secrets. The Markdown kinds (instructions, rules,
+skills, commands) are never read. It reads the committed text at `HEAD` (`git cat-file`), never the working tree and never
+a file a symlink points to, with the test-source caps: 200 files, 512 KiB each, 16 MiB in all.
+
+Ten shapes are looked for by their prefix or position: S01 a GitHub token, S02 an Anthropic API key, S03 an OpenAI API key,
+S04 a Google API key, S05 an AWS access key ID, S06 a Slack token, S07 a Stripe live key, S08 a private key, S09 a
+password or token in a URL, and S10 a long, high-entropy value under a key named like a token, secret, password, auth or
+API key. S01 to S09 are `error` and fail the check; S10 is `warn`. S11 (`info`) names a literal value under a
+secret-named key in a file whose other secrets are loaded from the environment (`${VAR}`, `$VAR`, `%VAR%`, `{env:VAR}`).
+
+A message names the shape id and up to 5 locations (`path` and line), never the value, the key or any other file text.
+A file that could not be scanned is named in `AGENT_CONFIG_SECRET_UNSCANNED`: a file over 512 KiB, one over the caps, or a
+path git cannot read safely is an `error` (it may hide a secret), a binary or missing file a `warn`. The Action reads the
+files only when the diff came from the local checkout; in PR-number mode and with a compare-API diff the checkout may not
+be the pull request head, so the message says so and nothing is read. What the scan misses is in
+[docs/LIMITS.md](./docs/LIMITS.md#secrets-in-agent-configs).
+
+The shapes and the redaction helpers are exported from `@pharn-ci/core` (`findSecretSpans`, `redactSecrets`,
+`truncateUtf8`, `redactMessage`, `MESSAGE_MAX_BYTES`).
+
+---
+
+## Org policy
+
+A policy sets one gate for every repository of an organization, so a pull request cannot loosen it. It is a JSON
+document ([`schema/policy.v1.json`](schema/policy.v1.json)) that the pharn.dev app serves, or that a pull request
+carries in a file. This release applies the coverage, setup and test-integrity keys; the other keys are read and
+carried for later.
+
+**What is sent.** With `policy: auto` (the default) or `required`, and only when the job grants `id-token: write`, the
+Action makes one `GET` of `/api/v1/policy?repo=<owner>/<name>` on the pharn.dev app. Only the OIDC token and the repository name
+leave the job: no file content, diff, coverage file or log. The token is for the audience `pharn.dev` and is masked in
+the log. Without `id-token: write` (a fork pull request never gets it) nothing is sent, one info line says why, and the
+check runs with the workflow inputs and `.pharn/ci.yml`. The `policy` and `app-url` inputs are in the
+[Action reference](#action-reference). `app-url` takes an `https` origin only: no credentials, path, query or fragment.
+The CLI never fetches a policy.
+
+**Precedence.** The app's policy beats the workflow inputs, which beat `.pharn/ci.yml`; `.pharn/ci.yml` can only
+tighten. A served policy:
+
+- raises `coverage.threshold` (the larger value applies) and `setup.require` (`true` wins), and raises the
+  test-integrity mode above the input and the config (`block > warn > off`);
+- replaces `coverage.exclude` and `coverage.root` (`null` is the repo root) and sets per-signal severities
+  (`test_integrity.signals`) and the `test_integrity.accept_label`;
+- adds its `setup.expect` tools to the others.
+
+A setting of the workflow inputs or `.pharn/ci.yml` that the policy beat is named in one `POLICY_OVERRIDE_IGNORED`
+warning (a threshold with both numbers; never a pattern, root or label).
+
+**No policy, or no way to read it.** A repository with no policy (`204` or `404`) is silent under `auto` and the same as
+`policy: never`. Any other failure (a network error, a timeout, a `429`, a `5xx`, a response over 1 MiB, one that does
+not validate) is one `POLICY_UNAVAILABLE` warning, last in the report, and the check runs with the workflow inputs and
+`.pharn/ci.yml`. With `policy: required` every one of these, and a missing token, is a `POLICY_UNAVAILABLE` error and
+the check fails. A request is retried once after a network error or a `5xx`; it never follows a redirect, and nothing the
+app answers is quoted in the report.
+
+**`policy: file:<path>`.** A policy document read from the workspace (in the CLI, `--policy-file <path>`). The pull
+request carries the file, so it can only tighten: a higher threshold, `setup.require: true`, a stricter mode, more
+`setup.expect` tools and higher signal severities. Exclusions, a root, an accept label and `policy.required` are not
+allowed from a file, and a value lower than the workflow inputs give is ignored; both are named in
+`POLICY_OVERRIDE_IGNORED`. Nothing is fetched. The path is relative, stays inside the repository, goes through no
+symbolic link and names a regular file of at most 1 MiB; anything else fails the step (the CLI exits `2`) with a fixed
+message that never names the path. What the policy does not cover is in [`docs/LIMITS.md`](docs/LIMITS.md).
+
+---
+
 ## Action reference
 
 | Input               | Default                     |                                          |
@@ -419,6 +493,8 @@ case-by-case table is in [docs/PRECISION.md](./docs/PRECISION.md#3-skylos-nine-w
 | `expect-agent-setup` | `setup.expect`, then none  | Agent tools that must have a setup file, comma or newline separated; added to `setup.expect`; a missing one is `AGENT_SETUP_EXPECTED_MISSING` |
 | `test-integrity`    | `warn`                      | How strictly to treat weakened tests: `block`, `warn` or `off`. `test_integrity.mode` in `.pharn/ci.yml` can only make it stricter, never looser (a looser value is ignored with `TEST_INTEGRITY_MODE_IGNORED`). In `block` a block-level finding fails the check, in `warn` it warns, in `off` nothing is checked. The signals so far are TI01 (a test file deleted), TI03 (a skip added to a test), TI04 (a `.only`, `fit` or `fdescribe` added), TI08 (snapshots regenerated or updated in bulk), TI09 (a test-runner setting loosened), TI10 (a test script in `package.json` weakened), TI11 (CI stopped running tests), TI13 (a coverage-ignore comment added to source), TI14 (a lower coverage threshold or a wider exclusion in the config), TI15 (a source condition that compares with a value the tests add) and TI16 (a lint or type suppression comment added to a test file) |
 | `accept-label`      | `pharn/accepted`            | Name of the pull request label a reviewer who is not the PR author applies to sign off `test-integrity: block` findings, at most 50 characters. Read only from this input, never from `.pharn/ci.yml`. See [Accept label](#accept-label) |
+| `policy`            | `auto`                      | Where the [org policy](#org-policy) comes from: `auto` fetches it from the pharn.dev app when the job grants `id-token: write` (only the OIDC token and the repo name are sent; no policy or no token is silent), `never` uses none, `required` fails the check when no policy can be fetched, `file:<path>` reads a policy document from the workspace (the pull request can change it, so it can only tighten; nothing is fetched). Any other value fails the step |
+| `app-url`           | `https://pharn.dev`         | Origin of the pharn.dev app the policy is fetched from. `https` only, with no credentials, path, query or fragment; the OIDC audience stays `pharn.dev` whatever it is |
 | `comment`           | `true`                      | Post/update one sticky PR comment per workflow and job |
 | `fail-on-threshold` | `true`                      | Fail the step when the verdict is `fail` |
 | `config`            | `.pharn/ci.yml`, may be absent | Config file path; a file named here that does not exist fails the step |
@@ -564,7 +640,7 @@ node packages/cli/dist/index.js check --coverage coverage/lcov.info --threshold 
 pharn-ci check [--coverage <file|glob>]... [--coverage-format lcov|cobertura|auto] [--coverage-root <dir>]
                [--base <ref>] [--threshold <n>] [--format md|json] [--config <path>]
                [--exclude <glob>]... [--require-agent-setup] [--expect-agent-setup <tool>]...
-               [--test-integrity block|warn|off] [-h|--help] [-v|--version]
+               [--test-integrity block|warn|off] [--policy-file <path>] [--no-policy] [-h|--help] [-v|--version]
 ```
 
 - `--coverage <file|glob>` is repeatable. A glob (`*`, `**`, `?`) is relative to the current
@@ -595,6 +671,10 @@ pharn-ci check [--coverage <file|glob>]... [--coverage-format lcov|cobertura|aut
   (`claude-code`, `cursor`, `copilot`, `codex`, `gemini`, ...); an unknown one exits `2`.
 - `--test-integrity <mode>` sets the test-integrity mode (`block`, `warn` or `off`; default `warn`). The
   `test_integrity.mode` config key can only make it stricter than the flag; an invalid value exits `2`.
+- `--policy-file <path>` applies an [org policy](#org-policy) document, relative to the repo root, over the flags and
+  the config. It can only tighten them; a path that is empty, absolute, outside the repo, through a symbolic link,
+  missing, over 1 MiB or not a valid policy exits `2`. `--no-policy` applies none and is the same as no flag; giving
+  both exits `2`. The CLI never fetches a policy.
 - `--format json` prints only the report to stdout, for agents and scripts.
 - Exit codes: `0` pass or warn, `1` fail, `2` usage or runtime error.
 
@@ -709,6 +789,42 @@ message `code`s, not on text:
 | `NO_AGENT_SETUP_FILES`          | The repo has none of the agent setup files pharn-ci looks for  |
 | `AGENT_SETUP_FILE_EMPTY`        | A listed agent setup file is empty in `HEAD` (`warn`)          |
 | `AGENT_SETUP_EXPECTED_MISSING`  | An expected agent tool has no setup file (`warn`; `error` when agent setup is required) |
+| `AGENT_CONFIG_SECRET_S01`       | A GitHub token is committed in an agent config file (`error`); the text names the id and up to 5 path and line locations, never the value |
+| `AGENT_CONFIG_SECRET_S02`       | An Anthropic API key is committed in an agent config file (`error`) |
+| `AGENT_CONFIG_SECRET_S03`       | An OpenAI API key is committed in an agent config file (`error`) |
+| `AGENT_CONFIG_SECRET_S04`       | A Google API key is committed in an agent config file (`error`) |
+| `AGENT_CONFIG_SECRET_S05`       | An AWS access key ID is committed in an agent config file (`error`) |
+| `AGENT_CONFIG_SECRET_S06`       | A Slack token is committed in an agent config file (`error`) |
+| `AGENT_CONFIG_SECRET_S07`       | A Stripe live key is committed in an agent config file (`error`) |
+| `AGENT_CONFIG_SECRET_S08`       | A private key is committed in an agent config file (`error`) |
+| `AGENT_CONFIG_SECRET_S09`       | A password or token is committed in a URL in an agent config file (`error`) |
+| `AGENT_CONFIG_SECRET_S10`       | A secret-like value sits under a secret-named key in an agent config file (`warn`) |
+| `AGENT_CONFIG_SECRET_S11`       | A literal value sits under a secret-named key in a file that loads its other secrets from the environment (`info`) |
+| `AGENT_CONFIG_SECRET_UNSCANNED` | Agent config files were not scanned for secrets: the sources were unavailable (`warn`), or a file was dropped as too large, over a cap or at an unsafe path (`error`), or as binary or missing (`warn`). The text names the files with a reason code each |
+| `POLICY_UNAVAILABLE`            | The [org policy](#org-policy) could not be fetched or used, so the check ran with the workflow inputs and `.pharn/ci.yml` (`warn`; `error` with `policy: required`, which fails the check). The text names the reason, the HTTP status when there is one and the request id the app sent |
+| `POLICY_OVERRIDE_IGNORED`       | Settings looser than the org policy, or not allowed from a policy file, were not applied; the policy's value applies (`warn`). The text names each setting and its layer (up to 20, then a count), with both numbers for a coverage threshold and never a pattern, root or label |
+
+### Agent PRs
+
+In the Action, `meta.isAgentPr` says whether the pull request counts as an agent PR, and `meta.agentHint`,
+`meta.prAuthor`, `meta.prLabels` and `meta.coAuthors` carry what it was read from. The detection is metadata only: it
+reads the pull request's author, labels and commits (their authors, committers and `Co-authored-by` trailers), never a
+file or the diff, and it changes no verdict, message, comment or exit code. A pull request counts as an agent PR when
+any of this holds:
+
+- its author is a bot (type `Bot`, or a login ending in `[bot]`, Dependabot included), a known agent or a login you
+  listed (`author-bot`, `author-known-agent`, `author-extra-login`);
+- one of its commits is authored or committed by such a login (`commit-bot`, `commit-known-agent`,
+  `commit-extra-login`);
+- a commit carries a `Co-authored-by` trailer of a known agent (`co-author-known-agent`, `co-author-extra-login`);
+- it carries one of the default labels `agent` or `ai-generated` (`label`).
+
+The known agents are Claude Code, Copilot, Codex, Devin, Cursor, Gemini and Jules. Evidence that cannot be read in full
+counts as an agent PR (fail closed): an unknown author, commits that cannot be listed, and a pull request of more than
+250 commits or whose commit count does not match the list. Only trailers of known agents are recorded, as a hint and an
+address; a human co-author never is. A run with no pull request records `isAgentPr: false`, and the CLI does not set the
+field. The lists cannot be changed from `.pharn/ci.yml` or an input. See
+[`docs/LIMITS.md`](docs/LIMITS.md) §9 and [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) (A5).
 
 Within v1, fields are only added and codes are never renamed or removed.
 
@@ -760,7 +876,9 @@ inclusive threshold (79.995% fails at 80); which known agent setup files are tra
   lower diff coverage.
 - **Files missing from the coverage report are invisible.** Configure your coverage tool to include
   all source files if untested files should count.
-- **The inventory is not a review.** pharn-ci lists agent setup files and never reads them. It is
+- **The inventory is not a review.** pharn-ci lists agent setup files; check A7 reads only the
+  machine-readable kinds, for committed secrets (never the Markdown kinds), and no file is reviewed for
+  what it tells an agent. Their contents stay in the job: never printed, never written, never sent. The inventory is
   informational (`NO_AGENT_SETUP_FILES` is `info`) unless `require-agent-setup` or `setup.require`
   is on, which makes it an `error` and the verdict `fail`. An expected tool counts as present when
   any setup kind it reads exists (`AGENTS.md` covers several tools).
@@ -779,8 +897,10 @@ inclusive threshold (79.995% fails at 80); which known agent setup files are tra
 pharn-ci runs inside other people's CI, on untrusted changes, with their token. It is built for
 that:
 
-- **Stateless.** No backend, no telemetry, no network calls except the GitHub API inside the
-  Action. What it reads, what it sends to your GitHub and what it stores is listed in
+- **Stateless.** No backend of its own, no telemetry, no network calls except the GitHub API inside the
+  Action and, only with `policy` set to `auto` or `required` and an OIDC token granted, one `GET` of the
+  pharn.dev policy endpoint that sends the OIDC token and the repository name ([Org policy](#org-policy)).
+  What it reads, what it sends to your GitHub and what it stores is listed in
   [Data handling](SECURITY.md#data-handling).
 - **Small token footprint.** `contents: read` plus `pull-requests: write`. It reads the compare API
   and the PR's comments, calls `GET /user` to learn which login its own comment has, and in

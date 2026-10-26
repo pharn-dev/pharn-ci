@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "coverage": { "exclude": ["", "./src/**", "/abs/**", "!keep/**", "dir/", "a//b", "..", "a/../b", "a\\b", "{a,b}", "a}", "[ab]", "a]"] },
+  "setup": { "forbidden_files": ["../x"] },
+  "agents": { "protected_paths": ["x/"] }
+}

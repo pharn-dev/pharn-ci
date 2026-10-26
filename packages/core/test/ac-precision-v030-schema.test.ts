@@ -12,8 +12,40 @@ const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const BASE = "b31de0c";
 const START = "TEST_INTEGRITY_TI15 (";
 
+// Re-pinned for the agent-config secrets change (E3 item 26): report.v2.json may also carry one appended text, the one
+// starting ` Codes added in v0.4.0:` right after the final sentence of the message-code description, which names the 12
+// AGENT_CONFIG_SECRET_ codes. It is cut out of the current schema before the comparison with b31de0c; everything else
+// is as before.
+const FINAL_SENTENCE = "No code is removed or renamed before 1.0.";
+const APPENDED_START = " Codes added in v0.4.0:";
+const SECRET_CODES = [
+  ...Array.from({ length: 11 }, (_, i) => `AGENT_CONFIG_SECRET_S${String(i + 1).padStart(2, "0")}`),
+  "AGENT_CONFIG_SECRET_UNSCANNED",
+  // Re-pinned for E3 item 20 (the org policy): the same appended text also names these two codes.
+  "POLICY_OVERRIDE_IGNORED",
+  "POLICY_UNAVAILABLE",
+];
+
+// agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property: the four lines it inserts after the
+// `agentHint` line of meta.properties.
+const IS_AGENT_PR_LINES = [
+  '        "isAgentPr": {',
+  '          "description": "true when the pull request counts as an agent PR, including when detection could not read all of its evidence; false when the run has no pull request.",',
+  '          "type": "boolean"',
+  "        },",
+  "",
+].join("\n");
+
 const readNow = (path: string) => readFileSync(join(ROOT, path));
 const readBase = (path: string) => execFileSync("git", ["show", `${BASE}:${path}`], { cwd: ROOT }) as Buffer;
+
+/** The text without the appended agent-config secrets text, and that text (to the end of the JSON string). */
+function cutAppended(text: string): { cut: string; appended: string } {
+  const at = text.indexOf(FINAL_SENTENCE) + FINAL_SENTENCE.length;
+  let end = at;
+  while (end < text.length && text[end] !== '"') end += text[end] === "\\" ? 2 : 1;
+  return { cut: text.slice(0, at) + text.slice(end), appended: text.slice(at, end) };
+}
 
 /** The [start, end) of the part from `TEST_INTEGRITY_TI15 (` to the next `TEST_INTEGRITY_` code, which must be unique. */
 function ti15Part(text: string, label: string): [number, number] {
@@ -31,7 +63,14 @@ describe("schema: only the TI15 level sentence changes", () => {
       "report.v1.json is byte-identical to its copy at b31de0c",
     ).toBe(true);
 
-    const now = readNow("schema/report.v2.json").toString("utf8");
+    // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property
+    // Its four inserted lines appear once in the current schema and are cut out before the comparison with the base.
+    const withIsAgentPr = readNow("schema/report.v2.json").toString("utf8");
+    expect(withIsAgentPr.split(IS_AGENT_PR_LINES).length - 1, "the four isAgentPr lines appear once").toBe(1);
+    const current = withIsAgentPr.replace(IS_AGENT_PR_LINES, "");
+    const { cut: now, appended } = cutAppended(current);
+    expect(appended.startsWith(APPENDED_START), "the appended text starts right after the final sentence").toBe(true);
+    for (const code of SECRET_CODES) expect(appended, `the appended text names ${code}`).toContain(code);
     const baseBytes = readBase("schema/report.v2.json");
     const base = baseBytes.toString("utf8");
     const [ns, ne] = ti15Part(now, "now");

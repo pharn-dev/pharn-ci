@@ -26,4 +26,12 @@ await run({
   warning: core.warning,
   setOutput: core.setOutput,
   setFailed: core.setFailed,
+  // The org policy: the runner's OIDC token for the audience pharn.dev, and the global fetch. Only a job that grants
+  // `id-token: write` has both request variables, and only then is a policy fetched (policy-fetch.ts).
+  fetch: (input, init) => fetch(input, init),
+  getIDToken: (audience) => core.getIDToken(audience),
+  setSecret: core.setSecret,
+  hasOidcEnv: Boolean(process.env.ACTIONS_ID_TOKEN_REQUEST_URL) && Boolean(process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN),
+  now: () => new Date(),
+  sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 });

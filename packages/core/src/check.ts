@@ -9,8 +9,11 @@ import { type DiffFile, parseUnifiedDiff } from "./diff/unified.js";
 import { computeDiffCoverage } from "./diffCoverage.js";
 import { binaryCoveredPaths, changedConfigPaths, trackedCoverageFile } from "./gateInputs.js";
 import { compileGlob } from "./glob.js";
+import { policyOverrideIgnoredMessage, policyUnavailableMessage } from "./policy/messages.js";
+import type { IgnoredSetting, ResolvedPolicy, SignalOverrides } from "./policy/resolved.js";
 import {
   buildReport,
+  type Message,
   type OmittedSignals,
   type Report,
   type ReportMeta,
@@ -19,8 +22,11 @@ import {
   type TestIndexUnavailable,
   type TestIntegritySignal,
 } from "./report.js";
+import { agentConfigSecretMessages } from "./secrets/messages.js";
+import { type AgentConfigSources, agentConfigSecretPaths } from "./secrets/scan.js";
 import { scanAgentSetup } from "./setup/scan.js";
 import { capFindings } from "./signals/findingCap.js";
+import { applySignalOverrides } from "./signals/overrides.js";
 import { keepSignalFileText, textCutSignalFiles } from "./signals/signalFiles.js";
 import { summarizeTestChanges } from "./signals/testChanges.js";
 import { matchTests } from "./signals/testMatch.js";
@@ -132,6 +138,25 @@ export interface CheckInput {
    * file means no interpreter was found.
    */
   pythonTestIndex?: PythonTestIndex;
+  /**
+   * The text of the agent config files (the machine-readable agent setup kinds) as committed at HEAD, gathered by the
+   * CLI and the Action for the secret scan of check A7: the files read and the files dropped with a reason, or why
+   * none could be read. Absent means nothing is scanned and the report is the one it was: no message.
+   */
+  agentConfigSources?: AgentConfigSources;
+  /**
+   * The org policy of the run (see `ResolvedPolicy`), after `applyPolicy` gave the effective settings the other fields
+   * carry. Only its `unavailable` reason is read here: it adds one POLICY_UNAVAILABLE message. Absent, or a policy of
+   * source `none` with no reason, adds nothing and the report is the one it was.
+   */
+  policy?: ResolvedPolicy;
+  /**
+   * The settings the policy beat or may not set (`PolicyApplication.ignored`). Together with the policy-file signal
+   * severities that were lower than the computed ones, they add one POLICY_OVERRIDE_IGNORED message. Absent or empty adds nothing.
+   */
+  policyIgnored?: readonly IgnoredSetting[];
+  /** Per-signal severities from the policy (`PolicyApplication.signalOverrides`), applied to the signals found. */
+  signalOverrides?: SignalOverrides;
 }
 
 const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
@@ -297,7 +322,30 @@ export function check(input: CheckInput): Report {
   const bytes = input.repoFileBytes;
   const emptyAgentSetupFiles =
     bytes === undefined ? [] : agentSetup.files.filter((file) => bytes.get(file.path) === 0).map((file) => file.path);
-  const omittedSignals: OmittedSignals[] = [...(comparison?.omitted ?? []), ...sourceMatches.omitted];
+  const omittedBeforePolicy: OmittedSignals[] = [...(comparison?.omitted ?? []), ...sourceMatches.omitted];
+  // Per-signal severities from the org policy, applied to what the detectors computed (mode off computed nothing).
+  const overridden =
+    input.signalOverrides === undefined || testIntegrity.mode === "off"
+      ? undefined
+      : applySignalOverrides(testIntegritySignals, omittedBeforePolicy, input.signalOverrides, testIntegrity.mode);
+  const finalSignals = overridden?.signals ?? testIntegritySignals;
+  const omittedSignals = overridden?.omitted ?? omittedBeforePolicy;
+  // The settings a policy beat, and the policy-file severities that were lower than the computed ones, as one message.
+  const policyIgnored: IgnoredSetting[] = [
+    ...(input.policyIgnored ?? []),
+    ...(overridden?.lowered ?? []).map(
+      (id): IgnoredSetting => ({ setting: `test_integrity.signals.${id}`, layer: "policy-file", reason: "looser" }),
+    ),
+  ];
+  const policyMessages: Message[] = [
+    ...(input.policy?.unavailable === undefined ? [] : [policyUnavailableMessage(input.policy.unavailable)]),
+    ...(policyIgnored.length === 0 ? [] : [policyOverrideIgnoredMessage(policyIgnored)]),
+  ];
+  // Check A7 does not depend on the mode or the diff: it rides on every report path, and only the sources start it.
+  const agentConfigMessages =
+    input.agentConfigSources === undefined
+      ? []
+      : agentConfigSecretMessages(input.agentConfigSources, agentConfigSecretPaths(agentSetup));
   const base = {
     version: input.version,
     threshold: input.threshold,
@@ -310,7 +358,7 @@ export function check(input: CheckInput): Report {
     ...(emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {}),
     ...(input.meta === undefined ? {} : { meta: input.meta }),
     testIntegrity,
-    ...(testIntegritySignals.length > 0 ? { testIntegritySignals } : {}),
+    ...(finalSignals.length > 0 ? { testIntegritySignals: finalSignals } : {}),
     ...(textTruncatedFiles.length > 0 ? { textTruncatedFiles } : {}),
     ...(comparison === null || comparison.languages.length === 0
       ? {}
@@ -319,6 +367,8 @@ export function check(input: CheckInput): Report {
     ...(comparison?.unavailable === undefined ? {} : { testIndexUnavailable: comparison.unavailable }),
     ...(testChanges === undefined ? {} : { testChanges }),
     ...(comparison?.configUnavailable === undefined ? {} : { testConfigUnavailable: comparison.configUnavailable }),
+    ...(agentConfigMessages.length === 0 ? {} : { agentConfigSecretMessages: agentConfigMessages }),
+    ...(policyMessages.length === 0 ? {} : { policyMessages }),
   };
 
   if ("kind" in coverageInput) {

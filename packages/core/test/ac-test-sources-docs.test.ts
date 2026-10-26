@@ -51,12 +51,17 @@ describe("test sources: documentation and schema", () => {
     // them taken out.
     const withoutEditedDescriptions = (schema: {
       $defs: { message: { properties: { code: { description?: string } } } };
-      properties: { testIntegrity: { properties: { languages: { description?: string }; changes?: unknown } } };
+      properties: {
+        testIntegrity: { properties: { languages: { description?: string }; changes?: unknown } };
+        meta: { properties: { isAgentPr?: unknown } };
+      };
     }) => {
       const copy = structuredClone(schema);
       delete copy.$defs.message.properties.code.description;
       delete copy.properties.testIntegrity.properties.languages.description;
       delete copy.properties.testIntegrity.properties.changes;
+      // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property
+      delete copy.properties.meta.properties.isAgentPr;
       return copy;
     };
     const v2 = "schema/report.v2.json";

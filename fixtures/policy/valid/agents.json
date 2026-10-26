@@ -1,0 +1,1 @@
+{"version":1,"agents":{"labels":["agent","ai-generated","bot: claude"],"extra_logins":["octocat","renovate[bot]","a-b-c"],"protected_paths":[".github/workflows/**","migrations/**"],"protected_paths_mode":"warn","require_human_approval":true,"max_files":50,"max_changed_lines":2000}}

@@ -117,12 +117,17 @@ describe("python-test-index: THREAT-MODEL, fixture layout, schemas and purity", 
     expect(sha256(readFileSync(join(ROOT, "schema/report.v1.json"))), "schema/report.v1.json").toBe(V1_AT_BASE);
     const v2 = JSON.parse(read("schema/report.v2.json")) as {
       $defs: { message: { properties: { code: { description?: string } } } };
-      properties: { testIntegrity: { properties: { languages: { description?: string }; changes?: unknown } } };
+      properties: {
+        testIntegrity: { properties: { languages: { description?: string }; changes?: unknown } };
+        meta: { properties: { isAgentPr?: unknown } };
+      };
     };
     delete v2.$defs.message.properties.code.description;
     delete v2.properties.testIntegrity.properties.languages.description;
     // ti07-tests-changed adds the optional testIntegrity.changes summary.
     delete v2.properties.testIntegrity.properties.changes;
+    // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property
+    delete v2.properties.meta.properties.isAgentPr;
     expect(
       sha256(Buffer.from(JSON.stringify(v2))),
       "schema/report.v2.json without the message-code and languages descriptions",

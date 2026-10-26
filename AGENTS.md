@@ -35,7 +35,10 @@ AI-agnostic and fully stateless (Phase 0): no backend, no telemetry.
 4. **Never weaken, skip or delete an existing test to make CI pass.** If a test is wrong, fix it
    and explain why in the PR description. Golden files (`fixtures/golden/*`) change only when the
    output intentionally changes; regenerate with `pnpm test -u` and review the diff.
-5. **No network calls except the GitHub API inside the action. No telemetry.**
+5. **No network calls except the GitHub API inside the action, and one GET of the pharn.dev policy endpoint. No telemetry.**
+   The policy GET happens only when the `policy` input is `auto` or `required` and the runner grants an OIDC token
+   (`id-token: write`); it sends the token and the repository name and nothing else, never a file, a diff, a coverage
+   file or a log. `policy: never` and `policy: file:<path>` make no call. The CLI makes none. No other host is called.
 6. **Keep dependencies minimal; justify every new one** in the PR. Direct runtime deps
    today: `@actions/core`, `@actions/github` (action only; bundled into `packages/action/dist` with
    their transitive dependencies). Parsers (lcov, Cobertura XML, diff, config YAML subset) are

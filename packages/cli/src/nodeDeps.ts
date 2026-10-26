@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import {
   GIT_TIMEOUT_MS,
   listDir,
+  lstatPath,
   oneChunk,
   readFile,
   readFileStream,
@@ -37,6 +38,7 @@ export function nodeDeps(
     git: realGit,
     readFile: realReadFile,
     listDir,
+    lstat: lstatPath,
     resolvePath: (...segments) => resolve(...segments),
     stdout: (text) => process.stdout.write(text),
     stderr: (text) => process.stderr.write(text),

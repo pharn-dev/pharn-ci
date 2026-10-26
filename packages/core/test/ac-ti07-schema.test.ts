@@ -123,6 +123,8 @@ describe("schema/report.v2.json: testIntegrity.changes and TEST_INTEGRITY_TI07",
       const copy = structuredClone(s) as Obj;
       ((((copy.$defs as Obj).message as Obj).properties as Obj).code as Obj).description = "<set aside>";
       delete (((copy.properties as Obj).testIntegrity as Obj).properties as Obj).changes;
+      // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property
+      delete (((copy.properties as Obj).meta as Obj).properties as Obj).isAgentPr;
       return copy;
     };
     expect(strip(head)).toEqual(strip(base));

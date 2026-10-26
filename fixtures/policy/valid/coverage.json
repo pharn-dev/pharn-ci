@@ -1,0 +1,1 @@
+{"version":1,"coverage":{"threshold":72.5,"exclude":["dist/**","**/*.generated.ts","src/?.ts","."],"root":"packages/core"}}
