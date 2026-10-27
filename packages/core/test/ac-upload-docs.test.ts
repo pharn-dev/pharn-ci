@@ -145,10 +145,10 @@ const row = (rows: string[], id: string) => rows.find((r) => new RegExp(`^\\| ${
 const boldTitle = (text: string) => /^\d+\. (\*\*.+?\*\*)/s.exec(text)?.[1];
 
 /** The `### <name>` subsections of CHANGELOG's Unreleased section: name -> bullets. */
-function unreleased(changelog: string): Map<string, string[]> {
+function unreleased(changelog: string, heading = "## [Unreleased]"): Map<string, string[]> {
   const lines = between(
     changelog.split("\n"),
-    (l) => l.startsWith("## [Unreleased]"),
+    (l) => l.startsWith(heading),
     (l) => l.startsWith("## ["),
   );
   const out = new Map<string, string[]>();
@@ -296,7 +296,7 @@ describe("upload documentation", { timeout: 60_000 }, () => {
     expect(paragraphs).toHaveLength(3);
     expect(paragraphs.join("\n")).toContain("upload: never");
 
-    const head = unreleased(read("CHANGELOG.md"));
+    const head = unreleased(read("CHANGELOG.md"), "## [0.4.0] - 2026-10-27");
     const base = unreleased(atBase("CHANGELOG.md"));
     const fresh = (name: string) => (head.get(name) ?? []).filter((b) => !(base.get(name) ?? []).includes(b));
     // Re-pinned for E3 item 22 (policy rules): Unreleased also gains exactly one Added bullet for the org policy rules,

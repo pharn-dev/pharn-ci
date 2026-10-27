@@ -11,7 +11,7 @@ leans on most: tests that actually run the new code, and the setup files that te
 behave. AI-agnostic, fully stateless, no telemetry.
 
 ```yaml
-- uses: pharn-dev/pharn-ci@v0.3.0
+- uses: pharn-dev/pharn-ci@v0.4.0
   with:
     coverage-file: coverage/lcov.info
     threshold: 80
@@ -26,7 +26,7 @@ behave. AI-agnostic, fully stateless, no telemetry.
 
 </div>
 
-> **Status:** pre-1.0; the latest release is `v0.3.0` ([changelog](CHANGELOG.md)). Pin the tag's
+> **Status:** pre-1.0; the latest release is `v0.4.0` ([changelog](CHANGELOG.md)). Pin the tag's
 > full commit SHA for integrity. The report schema is stable within a version (v2 from 0.2.0). Before 1.0, inputs, outputs and message
 > codes are never removed, and a renamed input keeps working under its old name, with a warning, for
 > at least one minor release; defaults change only in a minor release and the changelog says so. The
@@ -171,7 +171,7 @@ jobs:
           fetch-depth: 0
       # ...set up your toolchain and run tests with lcov or Cobertura output, e.g.:
       - run: npx vitest run --coverage --coverage.reporter=lcov
-      - uses: pharn-dev/pharn-ci@v0.3.0 # or, better, the tag's full commit SHA
+      - uses: pharn-dev/pharn-ci@v0.4.0 # or, better, the tag's full commit SHA
         timeout-minutes: 5
         with:
           coverage-file: coverage/lcov.info
@@ -323,7 +323,7 @@ flowchart LR
 >
 > ---
 >
-> <sub>pharn-ci 0.3.0 · report schema v2 · coverage format lcov</sub>
+> <sub>pharn-ci 0.4.0 · report schema v2 · coverage format lcov</sub>
 
 On PRs from forks the token cannot comment; pharn-ci then warns and uses the job summary only.
 
@@ -663,7 +663,7 @@ jobs:
           persist-credentials: false
       # ...set up your toolchain and run tests with lcov or Cobertura output, e.g.:
       - run: npx vitest run --coverage --coverage.reporter=lcov
-      - uses: pharn-dev/pharn-ci@v0.3.0 # or, better, the tag's full commit SHA
+      - uses: pharn-dev/pharn-ci@v0.4.0 # or, better, the tag's full commit SHA
         with:
           coverage-file: coverage/lcov.info
           threshold: 80
@@ -715,7 +715,7 @@ jobs:
         env:
           PR_FILE: ${{ runner.temp }}/pharn-ci-input/pr-number
         run: echo "number=$(tr -dc '0-9' < "$PR_FILE" | head -c 10)" >> "$GITHUB_OUTPUT"
-      - uses: pharn-dev/pharn-ci@v0.3.0 # or, better, the tag's full commit SHA
+      - uses: pharn-dev/pharn-ci@v0.4.0 # or, better, the tag's full commit SHA
         with:
           coverage-file: ${{ runner.temp }}/pharn-ci-input/coverage/lcov.info
           pr-number: ${{ steps.pr.outputs.number }}

@@ -81,7 +81,7 @@ describe("the docs for rule P11 and detection on every pull request run", () => 
 
     // CHANGELOG Unreleased: one Added, one Changed and one Security bullet.
     const changelog = read("CHANGELOG.md");
-    const unreleased = section(changelog, "## [Unreleased]");
+    const unreleased = section(changelog, "## [0.4.0] - 2026-10-27");
     const under = (heading: string) => bullets(section(unreleased, heading));
     expect(under("### Added").filter((b) => b.startsWith("- Org policy rule P11"))).toHaveLength(1);
     expect(

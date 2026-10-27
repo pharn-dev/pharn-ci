@@ -117,7 +117,7 @@ describe("docs, schema and sources for the policy rules", { timeout: 60_000 }, (
 
     // CHANGELOG: exactly one Unreleased bullet names the codes, both of them, and not OIDC.
     const changelog = read("CHANGELOG.md");
-    const start = changelog.indexOf("## [Unreleased]");
+    const start = changelog.indexOf("## [0.4.0] - 2026-10-27");
     expect(start).toBeGreaterThanOrEqual(0);
     const end = changelog.indexOf("\n## [", start + 1);
     const unreleased = changelog.slice(start, end === -1 ? undefined : end);

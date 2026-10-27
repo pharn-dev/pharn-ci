@@ -26,5 +26,5 @@ jobs:
         with:
           dotnet-version: 10.0.x
       - run: dotnet test --collect:"XPlat Code Coverage"
-      - uses: pharn-dev/pharn-ci@v0.3.0 # or, better, the tag's full commit SHA
+      - uses: pharn-dev/pharn-ci@v0.4.0 # or, better, the tag's full commit SHA
         timeout-minutes: 5

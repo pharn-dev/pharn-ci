@@ -115,7 +115,7 @@ describe("THREAT-MODEL, LIMITS and CHANGELOG for policy mode", () => {
 
     // CHANGELOG: exactly one Unreleased Added bullet for this item.
     const changelog = read("CHANGELOG.md");
-    const unreleased = section(changelog, "## [Unreleased]");
+    const unreleased = section(changelog, "## [0.4.0] - 2026-10-27");
     const addedSection = section(unreleased, "### Added");
     const bullets = addedSection
       .split("\n- ")

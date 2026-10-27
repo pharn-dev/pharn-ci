@@ -32,7 +32,13 @@ describe("release-030: CHANGELOG.md shape", () => {
     const base = lines(execFileSync("git", ["show", `${BASE}:CHANGELOG.md`], { cwd: ROOT, encoding: "utf8" }));
 
     const headings = all.filter((line) => line.startsWith("## ["));
-    expect(headings).toEqual(["## [Unreleased]", HEADING, "## [0.2.0] - 2026-10-25", "## [0.1.0] - 2026-10-19"]);
+    expect(headings).toEqual([
+      "## [Unreleased]",
+      "## [0.4.0] - 2026-10-27",
+      HEADING,
+      "## [0.2.0] - 2026-10-25",
+      "## [0.1.0] - 2026-10-19",
+    ]);
 
     const run = spawnSync(process.execPath, ["scripts/check-release-notes.mjs", "0.3.0", "CHANGELOG.md"], {
       cwd: ROOT,

@@ -93,7 +93,7 @@ describe("the docs for rule P07", () => {
     expect(applied).toContain("P07");
 
     // CHANGELOG Unreleased: one Added bullet and one Security bullet for P07.
-    const unreleased = section(read("CHANGELOG.md"), "## [Unreleased]");
+    const unreleased = section(read("CHANGELOG.md"), "## [0.4.0] - 2026-10-27");
     const under = (heading: string) => bullets(section(unreleased, heading));
     expect(under("### Added").filter((b) => b.startsWith("- Org policy rule P07"))).toHaveLength(1);
     expect(

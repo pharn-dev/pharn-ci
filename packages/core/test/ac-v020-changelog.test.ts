@@ -19,7 +19,7 @@ const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
 
 const RELEASE_HEADING = "## [0.2.0] - 2026-10-25";
 /** The release headings added above the 0.2.0 one since, newest first. */
-const LATER_RELEASES = ["## [0.3.0] - 2026-10-26"];
+const LATER_RELEASES = ["## [0.4.0] - 2026-10-27", "## [0.3.0] - 2026-10-26"];
 /**
  * The lines rewritten before the 0.2.0 tag: two said the testIntegrity block stays empty until signals ship, and two
  * said a test file renamed to a non-test path counts only when its removed lines define tests (a rename shows only

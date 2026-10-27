@@ -9,6 +9,19 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+### Changed
+
+### Security
+
+## [0.4.0] - 2026-10-27
+
+Org policy and the app link-up. The Action can fetch an org policy (`policy` input) and upload the redacted run bundle
+(`upload` input) to the pharn.dev app, a new policy mode reads agent settings and MCP configs (rules P01–P11), agent PRs
+are detected (`meta.isAgentPr`), and check A7 scans agent configs for secrets. With no policy and no app the report is
+the one 0.3.0 produced; nothing was removed or renamed. See **Security** for the new network surface and file reads.
+
+### Added
+
 - Org policy rules P02–P06, and policy mode: with a policy in force the CLI and the Action read the tracked agent
   settings files (`.claude/settings.json` and `.claude/settings.local.json`, root and nested) and, when the policy lists
   MCP servers, `.mcp.json`, `.cursor/mcp.json` and `.vscode/mcp.json`, at HEAD. P02 flags an allow rule that overlaps

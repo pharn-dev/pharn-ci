@@ -64,8 +64,9 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       expect(path, "a new fixture").toMatch(/^fixtures\/policy-rules\/p07\/[^/]+\/[^/]+$/);
     }
 
-    // No existing test file is deleted.
-    expect(git("diff", "--name-only", "--no-renames", "--diff-filter=D", BASE, "--", "packages/")).toBe("");
+    // No existing test file is deleted. A rename is not a deletion: the 0.4.0 release PR renamed the release-030 pin
+    // tests (version, dist, readme-pins, doc-pins) to release-040, with the version pins moved on.
+    expect(git("diff", "--name-only", "--diff-filter=D", BASE, "--", "packages/")).toBe("");
 
     // Each deliberate re-pin carries a comment naming this item.
     for (const path of DELIBERATE) {
