@@ -38,7 +38,21 @@ const INERT_TOOLS: ReadonlySet<string> = new Set(["Write", "NotebookEdit", "Glob
 const EDITISH: ReadonlySet<string> = new Set(["Edit", "Write", "NotebookEdit"]);
 const READISH: ReadonlySet<string> = new Set(["Read", "Glob", "Grep"]);
 /** ASCII whitespace: space, tab, LF, CR, FF, VT. */
-const ASCII_TRIM = /^[ \t\n\r\f\v]+|[ \t\n\r\f\v]+$/g;
+/** Space, tab, line feed, vertical tab, form feed and carriage return. */
+const isAsciiSpace = (code: number) => code === 0x20 || (code >= 0x09 && code <= 0x0d);
+
+/**
+ * The text without leading and trailing ASCII whitespace (space, \t, \n, \v, \f, \r). A loop, not a regular expression:
+ * a `[ \t…]+$` pattern is quadratic on a long run of whitespace that is not at the end, and the text comes from a pull
+ * request's settings file.
+ */
+export function asciiTrim(text: string): string {
+  let start = 0;
+  let end = text.length;
+  while (start < end && isAsciiSpace(text.charCodeAt(start))) start++;
+  while (end > start && isAsciiSpace(text.charCodeAt(end - 1))) end--;
+  return start === 0 && end === text.length ? text : text.slice(start, end);
+}
 
 // ---- parsing ----
 
@@ -157,7 +171,7 @@ function parseRule(text: string, policy: boolean): PermissionRule | "unknown" | 
 
 /** A settings-side entry. The allow side (broad) trims ASCII whitespace first; the deny side does not. */
 export function parsePermissionRule(text: string, side: "allow" | "deny"): ParsedSettingsRule {
-  const parsed = parseRule(side === "allow" ? text.replace(ASCII_TRIM, "") : text, false);
+  const parsed = parseRule(side === "allow" ? asciiTrim(text) : text, false);
   if (parsed === "unknown") return { kind: "unknown" };
   if (parsed === "inert") return { kind: "inert" };
   return { kind: "rule", rule: parsed };
@@ -304,7 +318,7 @@ export interface PreparedPolicyEntry {
 }
 
 export function prepareEntry(text: string, side: "allow" | "deny"): PreparedEntry {
-  return { text: side === "allow" ? text.replace(ASCII_TRIM, "") : text, parsed: parsePermissionRule(text, side) };
+  return { text: side === "allow" ? asciiTrim(text) : text, parsed: parsePermissionRule(text, side) };
 }
 
 export function preparePolicyEntry(text: string): PreparedPolicyEntry {
@@ -337,7 +351,7 @@ export function overlapsForbidden(allow: string, forbidden: string): boolean {
 
 /** The compare-budget family key: rules of different families are never compared. */
 export function ruleFamily(text: string): string {
-  const trimmed = text.replace(ASCII_TRIM, "");
+  const trimmed = asciiTrim(text);
   const open = trimmed.indexOf("(");
   const tool = open === -1 ? trimmed : trimmed.slice(0, open);
   if (EDITISH.has(tool)) return "Edit";

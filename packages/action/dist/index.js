@@ -238825,7 +238825,14 @@ var PATH_FORBIDDEN = /[[\]{}\\]/;
 var INERT_TOOLS = /* @__PURE__ */ new Set(["Write", "NotebookEdit", "Glob"]);
 var EDITISH = /* @__PURE__ */ new Set(["Edit", "Write", "NotebookEdit"]);
 var READISH = /* @__PURE__ */ new Set(["Read", "Glob", "Grep"]);
-var ASCII_TRIM = /^[ \t\n\r\f\v]+|[ \t\n\r\f\v]+$/g;
+var isAsciiSpace = (code2) => code2 === 32 || code2 >= 9 && code2 <= 13;
+function asciiTrim(text) {
+  let start = 0;
+  let end = text.length;
+  while (start < end && isAsciiSpace(text.charCodeAt(start))) start++;
+  while (end > start && isAsciiSpace(text.charCodeAt(end - 1))) end--;
+  return start === 0 && end === text.length ? text : text.slice(start, end);
+}
 function tokens(text) {
   const out = [];
   for (const ch of text) {
@@ -238931,7 +238938,7 @@ function parseRule(text, policy) {
   return { kind: "other", tool, spec };
 }
 function parsePermissionRule(text, side) {
-  const parsed = parseRule(side === "allow" ? text.replace(ASCII_TRIM, "") : text, false);
+  const parsed = parseRule(side === "allow" ? asciiTrim(text) : text, false);
   if (parsed === "unknown") return { kind: "unknown" };
   if (parsed === "inert") return { kind: "inert" };
   return { kind: "rule", rule: parsed };
@@ -239033,7 +239040,7 @@ function coversRule(covering, covered, reading) {
   }
 }
 function prepareEntry(text, side) {
-  return { text: side === "allow" ? text.replace(ASCII_TRIM, "") : text, parsed: parsePermissionRule(text, side) };
+  return { text: side === "allow" ? asciiTrim(text) : text, parsed: parsePermissionRule(text, side) };
 }
 function preparePolicyEntry(text) {
   return { text, normalized: normalizePolicyRule(text) };
@@ -239049,7 +239056,7 @@ function overlapsPrepared(allow, forbidden) {
   return coversRule(forbidden.normalized.rule, allow.parsed.rule, "broad");
 }
 function ruleFamily(text) {
-  const trimmed = text.replace(ASCII_TRIM, "");
+  const trimmed = asciiTrim(text);
   const open3 = trimmed.indexOf("(");
   const tool = open3 === -1 ? trimmed : trimmed.slice(0, open3);
   if (EDITISH.has(tool)) return "Edit";
@@ -239299,7 +239306,6 @@ function detectP05(model, forbidden) {
 
 // ../core/src/policy/rules/budget.ts
 var COMPARE_BUDGET = 2 ** 26;
-var ASCII_TRIM2 = /^[ \t\n\r\f\v]+|[ \t\n\r\f\v]+$/g;
 var sumsByFamily = (texts) => {
   const sums = /* @__PURE__ */ new Map();
   for (const text of texts) {
@@ -239318,7 +239324,7 @@ function compareUnits(model, setup2, active) {
   if (active.p02) {
     const allow = sumsByFamily(
       model.units.flatMap(
-        (unit) => unit.allow.filter((entry) => parsePermissionRule(entry.text, "allow").kind !== "inert").map((entry) => entry.text.replace(ASCII_TRIM2, ""))
+        (unit) => unit.allow.filter((entry) => parsePermissionRule(entry.text, "allow").kind !== "inert").map((entry) => asciiTrim(entry.text))
       )
     );
     total += pairUnits(allow, sumsByFamily(setup2?.forbidden_permissions ?? []));

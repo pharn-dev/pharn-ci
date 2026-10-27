@@ -1,12 +1,10 @@
 import type { SettingsModel } from "../settings/model.js";
-import { parsePermissionRule, ruleFamily } from "../settings/permissionRule.js";
+import { asciiTrim, parsePermissionRule, ruleFamily } from "../settings/permissionRule.js";
 import type { PolicySetup } from "../types.js";
 import { serverTargets } from "./p05.js";
 
 /** Above this many pair units P02, P03 and P05 compare nothing. */
 export const COMPARE_BUDGET = 2 ** 26;
-
-const ASCII_TRIM = /^[ \t\n\r\f\v]+|[ \t\n\r\f\v]+$/g;
 
 const sumsByFamily = (texts: readonly string[]): Map<string, number> => {
   const sums = new Map<string, number>();
@@ -39,7 +37,7 @@ export function compareUnits(
       model.units.flatMap((unit) =>
         unit.allow
           .filter((entry) => parsePermissionRule(entry.text, "allow").kind !== "inert")
-          .map((entry) => entry.text.replace(ASCII_TRIM, "")),
+          .map((entry) => asciiTrim(entry.text)),
       ),
     );
     total += pairUnits(allow, sumsByFamily(setup?.forbidden_permissions ?? []));

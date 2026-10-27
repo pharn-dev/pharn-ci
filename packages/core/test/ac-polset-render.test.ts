@@ -129,7 +129,7 @@ describe("the Policy section with P02–P06 and the Settings line", { timeout: 6
     expect(section.includes(HOSTILE)).toBe(false);
 
     // The Settings line and its hint, after the violations and before the Ignored line.
-    const settingsLine = `- ⚠️ Settings: ${SETTINGS_TEXT.replace(/`/g, "\\`")}`;
+    const settingsLine = `- ⚠️ Settings: ${SETTINGS_TEXT.replace(/[\\`]/g, "\\$&")}`;
     const at = lines.indexOf(settingsLine);
     expect(at, "the Settings line").toBeGreaterThan(-1);
     expect(lines[at + 1]).toBe(`  - Hint: ${INVALID_HINT}`);
@@ -167,7 +167,7 @@ describe("the Policy section with P02–P06 and the Settings line", { timeout: 6
     const errorSection = policySection(
       core.renderMarkdown({ ...report, messages: [...base.messages, { ...SETTINGS, level: "error" }, IGNORED] }),
     );
-    expect(errorSection.split("\n")).toContain(`- ❌ Settings: ${SETTINGS_TEXT.replace(/`/g, "\\`")}`);
+    expect(errorSection.split("\n")).toContain(`- ❌ Settings: ${SETTINGS_TEXT.replace(/[\\`]/g, "\\$&")}`);
     expect(errorSection.includes("- ⚠️ Settings:")).toBe(false);
   });
 });
