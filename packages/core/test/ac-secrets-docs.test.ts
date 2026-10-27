@@ -145,8 +145,8 @@ describe("A7 docs, schema and fixtures", () => {
     // CHANGELOG: the Unreleased section mentions A7.
     const changelog = read("CHANGELOG.md");
     const unreleased = changelog.slice(
-      changelog.indexOf("## [Unreleased]"),
-      changelog.indexOf("\n## [", changelog.indexOf("## [Unreleased]") + 1),
+      changelog.indexOf("## [0.4.0] - 2026-10-27"),
+      changelog.indexOf("\n## [", changelog.indexOf("## [0.4.0] - 2026-10-27") + 1),
     );
     expect(unreleased, "CHANGELOG Unreleased mentions A7").toContain("A7");
 

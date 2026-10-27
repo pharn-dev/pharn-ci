@@ -99,7 +99,7 @@ describe("agent-pr-detection: documentation", () => {
   it("AC-15: CHANGELOG [Unreleased] names meta.isAgentPr under Added and pulls/{n}/commits under Security", () => {
     const unreleased = between(
       read("CHANGELOG.md").split("\n"),
-      (l) => l.startsWith("## [Unreleased]"),
+      (l) => l.startsWith("## [0.4.0] - 2026-10-27"),
       (l) => l.startsWith("## ["),
     );
     const added = between(

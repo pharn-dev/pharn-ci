@@ -260,7 +260,7 @@ describe("org policy documentation and metadata", () => {
     // CHANGELOG: one Unreleased line for the org policy.
     const unreleased = between(
       read("CHANGELOG.md").split("\n"),
-      (l) => l.startsWith("## [Unreleased]"),
+      (l) => l.startsWith("## [0.4.0] - 2026-10-27"),
       (l) => l.startsWith("## ["),
     );
     expect(bullets(unreleased).filter((b) => b.includes("OIDC") && /policy/.test(b))).toHaveLength(1);

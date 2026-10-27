@@ -39,7 +39,7 @@ describe("policy v1 documentation", () => {
     const changelog = read("CHANGELOG.md").split("\n");
     const unreleased = between(
       changelog,
-      (l) => l.startsWith("## [Unreleased]"),
+      (l) => l.startsWith("## [0.4.0] - 2026-10-27"),
       (l) => l.startsWith("## ["),
     );
     const added = between(

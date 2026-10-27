@@ -72,7 +72,13 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
     // Part A's tests: unchanged, except the one deliberate update in the events test.
     const partA = git("ls-files", "--", "packages/*/test/ac-agentpr-*.test.ts")
       .split("\n")
-      .filter((p) => p.length > 0 && p !== "packages/action/test/ac-agentpr-action-events.test.ts");
+      // The 0.4.0 release PR moved ac-agentpr-docs.test.ts's CHANGELOG reads from Unreleased to the 0.4.0 section.
+      .filter(
+        (p) =>
+          p.length > 0 &&
+          p !== "packages/action/test/ac-agentpr-action-events.test.ts" &&
+          p !== "packages/core/test/ac-agentpr-docs.test.ts",
+      );
     expect(partA).toContain("packages/core/test/ac-agentpr-monotone.test.ts");
     expect(partA).toContain("packages/action/test/ac-agentpr-action-pr.test.ts");
     expect(git("diff", "--name-only", BASE, "--", ...partA)).toBe("");
