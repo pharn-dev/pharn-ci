@@ -944,19 +944,40 @@ applied once per run. What it does not do:
   is not, so the two reports then differ by one `POLICY_OVERRIDE_IGNORED` message.
 - **The `policy` and `app-url` inputs are the workflow's.** A pull request that edits the workflow can set them
   (THREAT-MODEL, items 22 and 24).
-- **Only some keys are applied.** `policy.rules` applies to P01, P08, P09 and P11 (P10 cannot be overridden), and
-  `setup.forbidden_files` feeds P08; of `agents`, only `agents.labels`, `agents.extra_logins`,
-  `agents.protected_paths` and `agents.protected_paths_mode` are applied (the first two add to the detection, the other
-  two feed P11). `dependencies`, `flaky`, the other `agents` keys and the other `setup` lists are validated and carried
-  in the document, not applied by this release.
+- **Only some keys are applied.** The `setup` lists are applied: `forbidden_files` feeds P08, `forbidden_permissions`,
+  `required_permissions_deny`, `allowed_mcp_servers`, `forbidden_mcp_servers` and `required_hooks` feed P02 to P06.
+  `policy.rules` applies to P01 to P06, P08, P09 and P11 (P10 cannot be overridden). Of `agents`, only `agents.labels`,
+  `agents.extra_logins`, `agents.protected_paths` and `agents.protected_paths_mode` are applied (the first two add to
+  the detection, the other two feed P11); `dependencies`, `flaky` and the other `agents` keys are validated and carried
+  in the document, not applied yet.
 - **What P09 sees, and what it misses.** P09 sees four kinds of edit in the diff: (1) the `file:` policy file itself,
   edited or renamed away; (2) the config in use, while `.pharn/ci.yml` holds a setting looser than the policy; (3) a
-  file under `.github/workflows/`, while a workflow input is looser than the policy; (4) `.claude/settings*.json` (root
-  or nested), `.mcp.json`, `.cursor/mcp.json` or `.vscode/mcp.json`, while the policy sets an agent-settings list. It
+  file under `.github/workflows/`, while a workflow input is looser than the policy; (4) `.claude/settings.json` or
+  `.claude/settings.local.json` and `.mcp.json`, `.cursor/mcp.json` or `.vscode/mcp.json`, at the root or nested. It
   cannot see a pull request that edits the workflow to `policy: never`, removes the pharn-ci step or changes
   `app-url`: the Action then does not run or does not ask for the policy, so nothing is checked against it. TI11 and
-  `CONFIG_CHANGED_IN_DIFF` flag such a workflow edit. Class 4 does not judge direction (a tightening edit warns too)
-  until a later release reads those files.
+  `CONFIG_CHANGED_IN_DIFF` flag such a workflow edit. Class 4 is judged when the files were read: a block when the
+  edited file fails P02 to P06 or could not be checked, a warn when it only warns or supplies a required deny rule or
+  hook, info when it complies; it stays a warn (direction not judged) when they were not read.
+
+### What P02–P06 miss
+
+P02 to P06 read the committed agent settings and MCP files in policy mode. They do not see:
+
+- **Settings and hooks outside the repository:** `~/.claude`, managed settings, plugins and the frontmatter of skills
+  and subagents can allow, hook or connect what the policy forbids; only the tracked files of the repository are read.
+- **Untracked files:** an untracked `settings.local.json` is not read, and a subdirectory Claude Code is started in
+  without its own `.claude/` is judged by no unit of its own.
+- **What a command does:** rules are compared with rules, never with what a command or a server does. A regex hook
+  matcher is never evaluated (two matchers are compared as plain `A|B` lists, otherwise by string equality), and a
+  partial overlap neither direction can prove is not flagged: `Bash(git *)` against `Bash(* --force)`, in either order.
+- **Two readings:** an allow rule is read broad and a deny rule narrow (grammar rows 15, 27, 38, 46 and 48 are decided by
+  it), so a `Write` allow rule overlaps a forbidden `Edit(…)` entry but a `Write` deny rule does not satisfy a required
+  one.
+- **JSON and JSONC:** the settings files and `.mcp.json` are read as strict JSON, `.cursor/mcp.json` and
+  `.vscode/mcp.json` as JSONC (comments and one trailing comma); a file that does not parse is `POLICY_SETTINGS_INVALID`.
+- **`defaultMode`:** `bypassPermissions` and `auto` are flagged whatever the Claude Code version.
+- **Sandboxing is the boundary.** None of this stops a command from doing what a rule's text did not name.
 
 ### What P11 misses
 

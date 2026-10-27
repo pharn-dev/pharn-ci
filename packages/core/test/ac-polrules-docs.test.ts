@@ -22,6 +22,10 @@ const APPENDED =
 const P11_TEXT =
   " POLICY_P11 (error, or warn when the org policy sets agents.protected_paths_mode or the rule to warn: an agent pull request changes paths the org policy protects, or could not be checked because the diff, or the policy file at the merge base, could not be read; the message names up to 20 paths and the evidence as fixed words, never a pattern, label or login) and AGENT_PR_DETECTION_INCOMPLETE (warn: the pull request counts as an agent PR because its evidence could not be read in full, and the org policy protects paths; the message names the reason as one fixed word).";
 
+// Re-pinned for E3 item 23 (policy settings): the description then gains exactly this text after the item 22 text.
+const POLICY_SETTINGS_TEXT =
+  " POLICY_P02, POLICY_P03, POLICY_P04, POLICY_P05 and POLICY_P06 (error, or warn for the additionalDirectories check of P02, or the level the org policy sets for the rule: the committed agent settings or MCP files break org policy rule P02, P03, P04, P05 or P06; the message names up to 20 locations as path and line, and the count; each reason is in policy.violations) and POLICY_SETTINGS_INVALID (warn, or error for a file pharn-ci could not read or a problem a required list depends on: the rules P02 to P06 could not fully use an agent settings or MCP file, or did not run; the message names up to 20 problems as path, line and reason, never file text).";
+
 const REPINNED = [
   "packages/core/test/ac-policy3-unchanged.test.ts",
   "packages/action/test/ac-policy3-outcomes.test.ts",
@@ -66,9 +70,20 @@ describe("docs, schema and sources for the policy rules", { timeout: 60_000 }, (
     const now = codeDescription(read("schema/report.v2.json"));
     expect(base.endsWith("the check ran in full).")).toBe(true);
     expect(now.startsWith(base)).toBe(true);
-    expect(now.slice(base.length)).toBe(APPENDED + P11_TEXT);
+    expect(now.slice(base.length)).toBe(APPENDED + P11_TEXT + POLICY_SETTINGS_TEXT);
     expect(words(now.slice(base.length))).toEqual(
-      ["AGENT_PR_DETECTION_INCOMPLETE", "POLICY_P08", "POLICY_P09", "POLICY_P11"].sort(),
+      [
+        "AGENT_PR_DETECTION_INCOMPLETE",
+        "POLICY_P02",
+        "POLICY_P03",
+        "POLICY_P04",
+        "POLICY_P05",
+        "POLICY_P06",
+        "POLICY_P08",
+        "POLICY_P09",
+        "POLICY_P11",
+        "POLICY_SETTINGS_INVALID",
+      ].sort(),
     );
 
     // report.ts MessageCode and the renderer's hints.

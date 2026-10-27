@@ -26,7 +26,7 @@ export function detectP11(input: PolicyRuleInput): RuleFinding[] {
   const severity = agentPolicy.severity;
   const findings: RuleFinding[] = [];
   if (input.diff === null) {
-    return [{ id: "P11", fallback: severity, path: null, detail: P11_DIFF_UNAVAILABLE_DETAIL }];
+    return [{ id: "P11", fallback: severity, path: null, line: null, detail: P11_DIFF_UNAVAILABLE_DETAIL }];
   }
   const matchers = agentPolicy.protectedPaths.map((glob) => compileGlob(glob));
   const protectedPath = (path: string) => matchers.some((matches) => matches(path));
@@ -34,10 +34,10 @@ export function detectP11(input: PolicyRuleInput): RuleFinding[] {
     let path: string | null = null;
     if (protectedPath(entry.path)) path = entry.path;
     else if (entry.oldPath !== entry.path && protectedPath(entry.oldPath)) path = entry.oldPath;
-    if (path !== null) findings.push({ id: "P11", fallback: severity, path, detail: P11_PATH_DETAIL });
+    if (path !== null) findings.push({ id: "P11", fallback: severity, path, line: null, detail: P11_PATH_DETAIL });
   }
   if (agentPolicy.listsIncomplete && agentPolicy.policyFileEdited === true) {
-    findings.push({ id: "P11", fallback: severity, path: null, detail: P11_BASE_UNREADABLE_DETAIL });
+    findings.push({ id: "P11", fallback: severity, path: null, line: null, detail: P11_BASE_UNREADABLE_DETAIL });
   }
   return findings;
 }

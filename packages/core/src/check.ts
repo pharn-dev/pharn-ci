@@ -17,6 +17,7 @@ import { evaluatePolicyRules } from "./policy/rules/evaluate.js";
 import { policyRuleMessages } from "./policy/rules/messages.js";
 import { NO_SETUP_DETAIL } from "./policy/rules/p01.js";
 import { levelOf, strongest } from "./policy/rules/severity.js";
+import type { PolicySettingsSources } from "./policy/settings/types.js";
 import {
   buildReport,
   type Message,
@@ -154,7 +155,7 @@ export interface CheckInput {
   agentConfigSources?: AgentConfigSources;
   /**
    * The org policy of the run (see `ResolvedPolicy`), after `applyPolicy` gave the effective settings the other fields
-   * carry. Its document runs the org-policy rules (P01, P08, P09, P10, P11), its `unavailable` reason adds one
+   * carry. Its document runs the org-policy rules (P01 to P06 and P08 to P11), its `unavailable` reason adds one
    * POLICY_UNAVAILABLE message, and the report carries a `policy` object for an app or file policy or an unavailable
    * one. Absent, or a policy of source `none` with no reason, adds nothing and the report is the one it was.
    */
@@ -164,6 +165,12 @@ export interface CheckInput {
    * severities that were lower than the computed ones, they add one POLICY_OVERRIDE_IGNORED message. Absent or empty adds nothing.
    */
   policyIgnored?: readonly IgnoredSetting[];
+  /**
+   * The committed agent settings and MCP files for policy mode, gathered by the CLI and the Action when a policy is in
+   * force (E3 item 23, policy settings). Absent: P02 to P06 emit nothing, there is no POLICY_SETTINGS_INVALID message,
+   * and P09 class 4 is item 22's warn.
+   */
+  policySettingsSources?: PolicySettingsSources;
   /** Per-signal severities from the policy (`PolicyApplication.signalOverrides`), applied to the signals found. */
   signalOverrides?: SignalOverrides;
   /**
@@ -368,7 +375,7 @@ export function check(input: CheckInput): Report {
           extraLogins: [...(agentFacts.extraLogins ?? []), ...agentPolicy.extraLogins],
           listsIncomplete: agentFacts.listsIncomplete === true || agentPolicy.listsIncomplete,
         });
-  // The org-policy rules (P01, P08, P09, P10, P11) run once, only when a policy was asked for.
+  // The org-policy rules (P01 to P06 and P08 to P11) run once, only when a policy was asked for.
   const policyEvaluation =
     input.policy === undefined
       ? null
@@ -381,6 +388,7 @@ export function check(input: CheckInput): Report {
           configPath: configRepoPath(input.configPath, input.repoRoot),
           ignored: input.policyIgnored ?? [],
           ...(detection === undefined || agentPolicy === undefined ? {} : { agentPr: detection, agentPolicy }),
+          ...(input.policySettingsSources === undefined ? {} : { settingsSources: input.policySettingsSources }),
         });
   // The settings a policy beat, and the policy-file severities that were lower than the computed ones (signals and
   // rules), as one message.

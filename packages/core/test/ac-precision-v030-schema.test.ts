@@ -33,6 +33,13 @@ const SECRET_CODES = [
   // (it uses toContain); adding them only states more.
   "POLICY_P11",
   "AGENT_PR_DETECTION_INCOMPLETE",
+  // Re-pinned for E3 item 23 (policy settings): the same appended text also names these six codes.
+  "POLICY_P02",
+  "POLICY_P03",
+  "POLICY_P04",
+  "POLICY_P05",
+  "POLICY_P06",
+  "POLICY_SETTINGS_INVALID",
 ];
 
 // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property: the four lines it inserts after the

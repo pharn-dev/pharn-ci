@@ -46,7 +46,12 @@ describe("the schema sentence and the hints for POLICY_P11 and AGENT_PR_DETECTIO
     const base = codeDescription(baseText);
     const now = codeDescription(nowText);
     expect(now.startsWith(base)).toBe(true);
-    const appended = now.slice(base.length);
+    // Re-pinned for E3 item 23 (policy settings): item 23's sentence (POLICY_P02 to POLICY_P06 and
+    // POLICY_SETTINGS_INVALID) follows this one. It is set aside here; ac-polrules-docs and ac-upload-schema pin it exactly.
+    const all = now.slice(base.length);
+    const item23 = all.indexOf(" POLICY_P02, POLICY_P03, POLICY_P04, POLICY_P05 and POLICY_P06 (");
+    expect(item23, "item 23's sentence follows the P11 one").toBeGreaterThan(0);
+    const appended = all.slice(0, item23);
     expect(appended.startsWith(" POLICY_P11 (error, or warn when"), appended).toBe(true);
     expect(appended.endsWith("names the reason as one fixed word)."), appended).toBe(true);
     expect(words(appended)).toEqual(["AGENT_PR_DETECTION_INCOMPLETE", "POLICY_P11"]);

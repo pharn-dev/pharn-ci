@@ -438,9 +438,9 @@ The shapes and the redaction helpers are exported from `@pharn-ci/core` (`findSe
 
 A policy sets one gate for every repository of an organization, so a pull request cannot loosen it. It is a JSON
 document ([`schema/policy.v1.json`](schema/policy.v1.json)) that the pharn.dev app serves, or that a pull request
-carries in a file. This release applies the coverage, setup and test-integrity keys, and `agents.labels`,
-`agents.extra_logins`, `agents.protected_paths` and `agents.protected_paths_mode`; the other keys are read and carried
-for later.
+carries in a file. This release applies the coverage, setup (including the lists that P02 to P06 check) and
+test-integrity keys, and `agents.labels`, `agents.extra_logins`, `agents.protected_paths` and
+`agents.protected_paths_mode`; the other `agents` keys, `dependencies` and `flaky` are validated but not applied yet.
 
 **What is sent.** With `policy: auto` (the default) or `required`, and only when the job grants `id-token: write`, the
 Action makes one `GET` of `/api/v1/policy?repo=<owner>/<name>` on the pharn.dev app. Only the OIDC token and the repository name
@@ -477,14 +477,20 @@ allowed from a file, and a value lower than the workflow inputs give is ignored;
 symbolic link and names a regular file of at most 1 MiB; anything else fails the step (the CLI exits `2`) with a fixed
 message that never names the path. What the policy does not cover is in [`docs/LIMITS.md`](docs/LIMITS.md).
 
-**Rules.** A policy also runs five rules over what the check already has (the agent setup inventory, the tracked
-files, the diff and the policy itself; never the contents of an agent setup file). Each finding is in the report's
+**Rules.** A policy also runs rules. P01, P08, P09, P10 and P11 read what the check already has (the agent setup
+inventory, the tracked files, the diff, the pull request's metadata and the policy itself). P02 to P06 read the agent
+settings and MCP files, and only in [policy mode](#policy-mode): the agent setup inventory never reads a setup file. Each finding is in the report's
 `policy.violations` and in the comment's Policy section. `policy.rules` sets a rule's severity (`block`, `warn`,
 `info` or `off`); a `file:` policy can only raise it.
 
 - **P01**, required agent setup: `setup.require` or `setup.expect` set by the policy and not met; it raises `NO_AGENT_SETUP_FILES` and `AGENT_SETUP_EXPECTED_MISSING` to the rule's severity (`error` by default).
+- **P02**, forbidden permission allowed: an `allow` rule of a settings file is equal to, broader than or inside a `setup.forbidden_permissions` entry, `permissions.defaultMode` is `bypassPermissions` or `auto`, or `permissions.additionalDirectories` is not empty (`POLICY_P02`, `error`; `warn` for `additionalDirectories`).
+- **P03**, required deny missing: a settings directory has no `deny` rule equal to or broader than a `setup.required_permissions_deny` entry (`POLICY_P03`, `error`).
+- **P04**, MCP server not allowlisted: a server of an MCP file, or an `enabledMcpjsonServers` name, is not in `setup.allowed_mcp_servers`, or `enableAllProjectMcpServers` is on (`POLICY_P04`, `error`).
+- **P05**, forbidden MCP server: a server's name, command, command line or URL matches a `setup.forbidden_mcp_servers` entry (`POLICY_P05`, `error`).
+- **P06**, required hook missing: a settings directory has no command hook for a `setup.required_hooks` event whose matcher covers the required one, or `disableAllHooks` is on (`POLICY_P06`, `error`).
 - **P08**, forbidden file tracked: a tracked file matches a `setup.forbidden_files` pattern (`POLICY_P08`, `error`).
-- **P09**, the pull request loosens the policy it is graded by: it edits the policy file, the config or a workflow that sets a value looser than the policy, or an agent settings file the policy checks (`POLICY_P09`, `error`; `warn` for an agent settings file until its direction is judged).
+- **P09**, the pull request loosens the policy it is graded by: it edits the policy file, the config or a workflow that sets a value looser than the policy, or an agent settings or MCP file the policy checks (`POLICY_P09`; `error` when the file fails P02 to P06 or could not be checked, `warn` when it only warns or supplies a required deny rule or hook, `info` when it complies, and `warn` when the files were not read).
 - **P10**, policy unavailable: the policy could not be read (`POLICY_UNAVAILABLE`).
 - **P11**, agent PR changes a protected path: an agent pull request changes a path that `agents.protected_paths` lists (`POLICY_P11`, `error`).
 
@@ -510,6 +516,28 @@ pull request whose diff is unavailable gets one violation that says so. A `file:
 file is also read at the merge base so that editing it removes nothing. Dependabot and Renovate count as agent PRs, so
 protecting `package.json` or a lockfile blocks them: do not protect files those bots must update. At most 50 violations
 are listed (the rest are counted in the message). The accept label never touches P11.
+
+### Policy mode
+
+With a policy in force, pharn-ci reads the tracked `.claude/settings.json` and `.claude/settings.local.json` files
+(at the root and in nested directories) and, when the policy lists MCP servers, `.mcp.json`, `.cursor/mcp.json` and
+`.vscode/mcp.json` (the last two are a cross-tool scan), all as committed at HEAD. It reads JSON only, never Markdown.
+A tracked symbolic link is never followed.
+
+- **P02** compares each `allow` rule with `setup.forbidden_permissions`; a deny rule never excuses an allow rule. Its fixed
+  checks need no list: `defaultMode` set to `bypassPermissions` or `auto`, and a non-empty `additionalDirectories`.
+- **P03** and **P06** judge each settings directory on its own (a nested `.claude/` gets no fallback from the root) and
+  report a missing deny rule or hook at its `settings.json`. A deny rule counts when it is equal to or broader than the
+  required one, a hook counts when it is a command hook without an `if` condition whose matcher covers the required one,
+  and `disableAllHooks` is one finding in place of the missing hooks.
+- **P04** and **P05** read the MCP servers: P04 also flags `enableAllProjectMcpServers`, and P05 never reads `env` or `headers`.
+
+Rules are compared with rules, never with what a command does. In a rule, `/x` is relative to the settings file's
+project directory and `//x` is absolute, so a policy forbids the system `/etc` with `Edit(//etc/**)`. Nothing read from a
+file leaves the job: a finding carries only the rule id, the path, the line, fixed words and the policy's own text. An
+unparseable file is `POLICY_SETTINGS_INVALID` (never a crash), and a file pharn-ci could not read counts against the
+policy. **P02–P06 are text guards, not a security boundary**: a `Bash(curl:*)` deny does not stop
+`/usr/bin/curl` or `sh -c`, and sandboxing is the boundary. What they miss is in [`docs/LIMITS.md`](docs/LIMITS.md).
 
 ---
 
@@ -875,9 +903,15 @@ message `code`s, not on text:
 | `POLICY_OVERRIDE_IGNORED`       | Settings looser than the org policy, or not allowed from a policy file, were not applied; the policy's value applies (`warn`). The text names each setting and its layer (up to 20, then a count), with both numbers for a coverage threshold and never a pattern, root or label |
 | `UPLOAD_TOO_LARGE`              | The run was not [uploaded to pharn.dev](#upload-to-pharndev-optional) because its report is larger than the upload limit (`warn`; the check ran in full). The text names the limit in bytes when the app gave one |
 | `POLICY_P08` | Tracked files match a forbidden file pattern of the [org policy](#org-policy) (`error`, or the level the policy sets for P08). The text names up to 20 paths and the count |
-| `POLICY_P09` | The change edits a file the org policy guards: the policy file, the config or a workflow while it sets a value looser than the policy, or an agent settings file (`error`; `warn` for an agent settings file whose direction is not judged yet). The text names up to 20 paths; each reason is in `policy.violations` |
+| `POLICY_P09` | The change edits a file the org policy guards: the policy file, the config or a workflow while it sets a value looser than the policy, or an agent settings or MCP file (`error` when the file fails P02 to P06 or could not be checked, `warn` when it only warns or supplies a required deny rule or hook or when the files were not read, `info` when it complies). The text names up to 20 paths; each reason is in `policy.violations` |
 | `POLICY_P11` | An agent pull request changes a path that the org policy's `agents.protected_paths` lists, or could not be checked because the diff, or the policy file at the merge base, could not be read (`error`; `warn` when the policy sets the mode or the rule to `warn`). The text names up to 20 paths and the evidence as fixed words, never a pattern, label or login |
 | `AGENT_PR_DETECTION_INCOMPLETE` | The pull request counts as an agent PR because its evidence could not be read in full, and the org policy protects paths (`warn`). The text names the reason as one fixed word |
+| `POLICY_P02` | The committed agent settings break org policy rule P02: an allow rule overlaps a forbidden permission, `defaultMode` is `bypassPermissions` or `auto`, or `additionalDirectories` is set (`error`; `warn` for `additionalDirectories`, or the level the policy sets). The text names up to 20 locations as path and line, and the count |
+| `POLICY_P03` | A settings directory lacks a deny rule the org policy requires (`error`, or the level the policy sets for P03). The text names up to 20 locations and the count |
+| `POLICY_P04` | An MCP server is not on the org policy's allowlist, or `enableAllProjectMcpServers` is set (`error`, or the level the policy sets for P04). The text names up to 20 locations and the count |
+| `POLICY_P05` | An MCP server matches an entry the org policy forbids, by name, command or URL (`error`, or the level the policy sets for P05). The text names up to 20 locations and the count |
+| `POLICY_P06` | A settings directory lacks a command hook the org policy requires, or `disableAllHooks` is set (`error`, or the level the policy sets for P06). The text names up to 20 locations and the count |
+| `POLICY_SETTINGS_INVALID` | P02 to P06 could not fully use an agent settings or MCP file, or did not run: the files were not read, a file was dropped, unparseable or has an entry the grammar does not know (`warn`; `error` for a file pharn-ci could not read or a problem a required list depends on). The text names up to 20 problems as path, line and reason, never file text |
 
 ### Agent PRs
 
@@ -955,8 +989,9 @@ inclusive threshold (79.995% fails at 80); which known agent setup files are tra
   lower diff coverage.
 - **Files missing from the coverage report are invisible.** Configure your coverage tool to include
   all source files if untested files should count.
-- **The inventory is not a review.** pharn-ci lists agent setup files; check A7 reads only the
-  machine-readable kinds, for committed secrets (never the Markdown kinds), and no file is reviewed for
+- **The inventory is not a review.** pharn-ci lists agent setup files (the inventory reads none of them); check A7 reads only the
+  machine-readable kinds, for committed secrets (never the Markdown kinds), and policy mode reads the agent settings and
+  MCP files for the org policy rules; no file is reviewed for
   what it tells an agent. Their contents stay in the job: never printed, never written, never sent. The inventory is
   informational (`NO_AGENT_SETUP_FILES` is `info`) unless `require-agent-setup` or `setup.require`
   is on, which makes it an `error` and the verdict `fail`. An expected tool counts as present when

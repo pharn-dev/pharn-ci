@@ -14,14 +14,14 @@ export function detectP01(input: PolicyRuleInput): RuleFinding[] {
   const setup = policy.document.setup;
   const findings: RuleFinding[] = [];
   if (setup?.require === true && input.agentSetupFileCount === 0) {
-    findings.push({ id: "P01", fallback: "block", path: null, detail: NO_SETUP_DETAIL });
+    findings.push({ id: "P01", fallback: "block", path: null, line: null, detail: NO_SETUP_DETAIL });
   }
   const seen = new Set<string>();
   for (const tool of setup?.expect ?? []) {
     if (seen.has(tool)) continue;
     seen.add(tool);
     if ((AGENT_TOOLS as readonly string[]).includes(tool) && !input.agentTools.includes(tool)) {
-      findings.push({ id: "P01", fallback: "block", path: null, detail: `no setup file for ${tool}` });
+      findings.push({ id: "P01", fallback: "block", path: null, line: null, detail: `no setup file for ${tool}` });
     }
   }
   return findings;

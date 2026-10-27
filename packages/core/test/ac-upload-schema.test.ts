@@ -43,6 +43,18 @@ const POLICY_RULE_CODES = ["POLICY_P08", "POLICY_P09"];
 const P11_TEXT =
   " POLICY_P11 (error, or warn when the org policy sets agents.protected_paths_mode or the rule to warn: an agent pull request changes paths the org policy protects, or could not be checked because the diff, or the policy file at the merge base, could not be read; the message names up to 20 paths and the evidence as fixed words, never a pattern, label or login) and AGENT_PR_DETECTION_INCOMPLETE (warn: the pull request counts as an agent PR because its evidence could not be read in full, and the org policy protects paths; the message names the reason as one fixed word).";
 const P11_CODES = ["POLICY_P11", "AGENT_PR_DETECTION_INCOMPLETE"];
+// Re-pinned for E3 item 23 (policy settings): the same description then gains exactly this text, which names the five
+// rule codes POLICY_P02 to POLICY_P06 and POLICY_SETTINGS_INVALID; report.ts gains those six MessageCode members.
+const POLICY_SETTINGS_TEXT =
+  " POLICY_P02, POLICY_P03, POLICY_P04, POLICY_P05 and POLICY_P06 (error, or warn for the additionalDirectories check of P02, or the level the org policy sets for the rule: the committed agent settings or MCP files break org policy rule P02, P03, P04, P05 or P06; the message names up to 20 locations as path and line, and the count; each reason is in policy.violations) and POLICY_SETTINGS_INVALID (warn, or error for a file pharn-ci could not read or a problem a required list depends on: the rules P02 to P06 could not fully use an agent settings or MCP file, or did not run; the message names up to 20 problems as path, line and reason, never file text).";
+const POLICY_SETTINGS_CODES = [
+  "POLICY_P02",
+  "POLICY_P03",
+  "POLICY_P04",
+  "POLICY_P05",
+  "POLICY_P06",
+  "POLICY_SETTINGS_INVALID",
+];
 
 /** Every object schema inside a JSON Schema document (by `type` naming object, or by `properties`). */
 function objectSchemas(value: unknown, path = "$", out: Array<[string, Json]> = []): Array<[string, Json]> {
@@ -132,7 +144,7 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
     const baseDescription = strings(JSON.parse(v2Base)).find((s) => s.includes(" Codes added in v0.4.0:"));
     expect(baseDescription, "control: the base has the v0.4.0 text").toBeDefined();
     const description = strings(JSON.parse(v2)).find((s) => s.includes(" Codes added in v0.4.0:"));
-    expect(description).toBe(`${baseDescription}${SENTENCE}${POLICY_RULES_TEXT}${P11_TEXT}`);
+    expect(description).toBe(`${baseDescription}${SENTENCE}${POLICY_RULES_TEXT}${P11_TEXT}${POLICY_SETTINGS_TEXT}`);
     expect(v2.split(" Codes added in v0.4.0:").length - 1).toBe(1);
 
     // Every other line is the base's.
@@ -147,13 +159,13 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
     expect(swap(v2, description as string, "X")).toEqual(swap(v2Base, baseDescription as string, "X"));
 
     expect(added(codeWords(v2), codeWords(v2Base))).toEqual(
-      [...POLICY_RULE_CODES, ...P11_CODES, "UPLOAD_TOO_LARGE"].sort(),
+      [...POLICY_RULE_CODES, ...P11_CODES, ...POLICY_SETTINGS_CODES, "UPLOAD_TOO_LARGE"].sort(),
     );
 
     const reportTsBase = atBase("packages/core/src/report.ts");
     const reportTs = read("packages/core/src/report.ts");
     expect(added(upperWords(reportTs), upperWords(reportTsBase))).toEqual(
-      [...POLICY_RULE_CODES, ...P11_CODES, "UPLOAD_TOO_LARGE"].sort(),
+      [...POLICY_RULE_CODES, ...P11_CODES, ...POLICY_SETTINGS_CODES, "UPLOAD_TOO_LARGE"].sort(),
     );
     const declaration = reportTs.slice(reportTs.indexOf("type MessageCode"));
     const union = declaration.slice(0, declaration.indexOf(";"));
