@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "tools": { "command": "node", "env": { "TOOL": "/usr/bin/curl" } }
+  }
+}

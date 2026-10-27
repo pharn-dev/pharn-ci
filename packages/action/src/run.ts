@@ -10,12 +10,16 @@ import {
   type InputErrorText,
   type PharnConfig,
   type PolicyFileBase,
+  type PolicySettingsSources,
   type PythonIndexRun,
   type PythonSourceFile,
   parseConfig,
   parseLsTreeSizes,
+  parseLsTreeSymlinks,
+  policySettingsPaths,
   type RawInputs,
   type Report,
+  type ResolvedPolicy,
   readDiffChunks,
   renderMarkdown,
   resolveInputs,
@@ -37,6 +41,7 @@ import {
   readCoverageFiles,
   readDiscoveredCoverage,
   readPolicyFileAt,
+  readPolicySettingsSources,
   readTestSources,
 } from "@pharn-ci/node-io";
 import { applyAcceptLabel } from "./accept-label.js";
@@ -365,6 +370,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const { diff, localBase } = await getDiff(input("base-ref"), deps, target, input("config"));
   const testSources = await gatherTestSources(deps, { diff, localBase, target, testIntegrityMode });
   const agentConfigSources = await gatherAgentConfigSources(deps, { repoFiles, diff, target });
+  const policySettingsSources = await gatherPolicySettingsSources(deps, { repoFiles, diff, target, policy, lsTree });
   // The Python test files of the sources, indexed by one interpreter run; nothing runs for JS/TS-only changes.
   const pythonTestIndex =
     testSources === undefined
@@ -415,6 +421,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
     ...(input("config") === "" ? {} : { configPath: input("config") }),
     ...(policy === undefined ? {} : { policy }),
+    ...(policySettingsSources === undefined ? {} : { policySettingsSources }),
     ...(application === undefined || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored }),
     ...(application?.signalOverrides === undefined ? {} : { signalOverrides: application.signalOverrides }),
     agentPrFacts,
@@ -584,6 +591,55 @@ async function gatherAgentConfigSources(
   if ("unavailable" in sources) {
     deps.info(
       `pharn-ci: could not read the agent config files from git, so they are not scanned for secrets: ${sources.unavailable}`,
+    );
+  }
+  return sources;
+}
+
+/**
+ * The committed agent settings and MCP files for policy mode (E3 item 23, policy settings), read only when a policy is in
+ * force and, as for the secret scan, only when the checkout is the pull request head: a diff taken from local git. Item
+ * 26's three guards come first and make no git call; each leaves the sources unavailable with a fixed sentence.
+ */
+async function gatherPolicySettingsSources(
+  deps: ActionDeps,
+  from: {
+    repoFiles: readonly string[];
+    diff: CheckInput["diff"];
+    target: PrNumberTarget | undefined;
+    policy: ResolvedPolicy | undefined;
+    lsTree: string | null;
+  },
+): Promise<PolicySettingsSources | undefined> {
+  const { policy } = from;
+  if (deps.gitBatch === undefined) return undefined;
+  if (policy === undefined || (policy.source !== "app" && policy.source !== "file") || policy.document === null) {
+    return undefined;
+  }
+  if (from.target) {
+    return {
+      unavailable:
+        "pr-number mode: the checkout is not the pull request head, so its committed agent settings files were not read",
+    };
+  }
+  if ("text" in from.diff) {
+    return {
+      unavailable: "the diff came from the GitHub compare API, so the checkout may not be the pull request head",
+    };
+  }
+  if ("unavailable" in from.diff) {
+    return { unavailable: "the diff is unavailable, so the checkout may not be the pull request head" };
+  }
+  const paths = policySettingsPaths(from.repoFiles, policy.document);
+  if (paths.length === 0) return { files: [], dropped: [] };
+  const sources = await readPolicySettingsSources(
+    { gitBatch: deps.gitBatch },
+    paths,
+    from.lsTree === null ? null : parseLsTreeSymlinks(from.lsTree),
+  );
+  if ("unavailable" in sources) {
+    deps.info(
+      `pharn-ci: could not read the agent settings files from git, so they are not checked against the org policy: ${sources.unavailable}`,
     );
   }
   return sources;

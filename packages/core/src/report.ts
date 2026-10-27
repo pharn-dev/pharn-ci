@@ -219,7 +219,13 @@ export type MessageCode =
   | "POLICY_P08"
   | "POLICY_P09"
   | "POLICY_P11"
-  | "AGENT_PR_DETECTION_INCOMPLETE";
+  | "AGENT_PR_DETECTION_INCOMPLETE"
+  | "POLICY_P02"
+  | "POLICY_P03"
+  | "POLICY_P04"
+  | "POLICY_P05"
+  | "POLICY_P06"
+  | "POLICY_SETTINGS_INVALID";
 
 export interface Message {
   level: MessageLevel;

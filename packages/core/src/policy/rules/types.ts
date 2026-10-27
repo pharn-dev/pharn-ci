@@ -3,6 +3,7 @@ import type { DiffFile } from "../../diff/unified.js";
 import type { AgentTool } from "../../setup/summary.js";
 import type { AgentPolicy } from "../agents.js";
 import type { IgnoredSetting, ResolvedPolicy } from "../resolved.js";
+import type { PolicySettingsOutcome, PolicySettingsSources } from "../settings/types.js";
 import type { PolicyRuleId } from "../types.js";
 
 export type PolicyViolationSeverity = "block" | "warn" | "info";
@@ -13,7 +14,10 @@ export interface PolicyViolation {
   id: PolicyRuleId;
   severity: PolicyViolationSeverity;
   path: string | null;
-  /** Always null for now: the rules judge files, not lines. */
+  /**
+   * The 1-based line of the entry or key the finding sits at; null when the finding is about a whole file, a missing
+   * item or no file.
+   */
   line: number | null;
   /** 1 to 300 characters; never file contents. */
   detail: string;
@@ -36,11 +40,16 @@ export interface PolicyRuleInput {
   agentPr?: AgentPrDetection | null;
   /** The effective agent policy (see `agentPolicyOf`); absent when no PR facts were given. */
   agentPolicy?: AgentPolicy;
+  /**
+   * The committed agent settings and MCP files, for P02 to P06 and P09's final levels (E3 item 23, policy settings).
+   * Absent: those rules emit nothing and P09 keeps its warn.
+   */
+  settingsSources?: PolicySettingsSources;
 }
 
 export interface PolicyEvaluation {
   violations: PolicyViolation[];
-  /** How many violations of a rule a cap left out; only P08 and P11 are capped. */
+  /** How many violations of a rule a cap left out; every rule id is capped at 50. */
   omitted: Partial<Record<PolicyRuleId, number>>;
   /** The rule ids a policy file asked to lower and that were not lowered; distinct, in id order. */
   lowered: PolicyRuleId[];
@@ -48,6 +57,11 @@ export interface PolicyEvaluation {
   ignored: IgnoredSetting[];
   /** The evidence and the incomplete reason of the detection, when one ran. */
   agentPr?: { evidence: AgentEvidence[]; incomplete: AgentPrIncomplete | null };
+  /**
+   * What the settings reader found. Present only when a policy is in force and the sources were given (files or
+   * unavailable); absent otherwise, never written as undefined or null.
+   */
+  settings?: PolicySettingsOutcome;
 }
 
 /** One raw finding of a rule before the policy's rule severities are applied. */
@@ -56,5 +70,7 @@ export interface RuleFinding {
   /** The default severity of this finding's class. */
   fallback: PolicyViolationSeverity;
   path: string | null;
+  /** The 1-based line of the entry or key; null for a whole file, a missing item or no file. */
+  line: number | null;
   detail: string;
 }

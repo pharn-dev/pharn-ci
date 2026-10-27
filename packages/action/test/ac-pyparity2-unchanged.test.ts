@@ -35,6 +35,13 @@ const SECRET_CODES = [
   // the pin allows.
   "POLICY_P11",
   "AGENT_PR_DETECTION_INCOMPLETE",
+  // Re-pinned for E3 item 23 (policy settings): the appended schema text and report.ts also gain these six codes.
+  "POLICY_P02",
+  "POLICY_P03",
+  "POLICY_P04",
+  "POLICY_P05",
+  "POLICY_P06",
+  "POLICY_SETTINGS_INVALID",
 ];
 
 const git = (...args: string[]) =>

@@ -115,9 +115,41 @@ export {
   type PolicyResponseValidation,
   validatePolicyResponse,
 } from "./policy/response.js";
-export { evaluatePolicyRules } from "./policy/rules/evaluate.js";
+export { evaluatePolicyRules, MAX_P08_VIOLATIONS, MAX_RULE_VIOLATIONS } from "./policy/rules/evaluate.js";
 export { policyRuleMessages } from "./policy/rules/messages.js";
 export type { PolicyEvaluation, PolicyRuleInput, PolicyViolation } from "./policy/rules/types.js";
+export { isCountingHandler, matcherCovers } from "./policy/settings/hooks.js";
+export { type JsonMember, type JsonValue, parseSettingsJson, type SettingsJsonResult } from "./policy/settings/json.js";
+export { mcpGlobMatches } from "./policy/settings/mcp.js";
+export {
+  type McpServer,
+  readSettingsModel,
+  type SettingsModel,
+  type SettingsUnit,
+} from "./policy/settings/model.js";
+export {
+  isPolicyMcpPath,
+  isPolicySettingsPath,
+  policySettingsPaths,
+  settingsUnitAnchor,
+} from "./policy/settings/paths.js";
+export {
+  covers,
+  type NormalizedPolicyRule,
+  normalizePolicyRule,
+  overlapsForbidden,
+  type ParsedSettingsRule,
+  type PermissionRule,
+  parsePermissionRule,
+} from "./policy/settings/permissionRule.js";
+export type {
+  PolicySettingsDrop,
+  PolicySettingsOutcome,
+  PolicySettingsProblem,
+  PolicySettingsSources,
+  SettingsProblem,
+  SettingsProblemReason,
+} from "./policy/settings/types.js";
 export type {
   PolicyAgents,
   PolicyCoverage,
@@ -183,7 +215,7 @@ export {
   type SetupRule,
   scanAgentSetup,
 } from "./setup/scan.js";
-export { parseLsTreeSizes } from "./setup/sizes.js";
+export { parseLsTreeSizes, parseLsTreeSymlinks } from "./setup/sizes.js";
 export { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
 export {
   coverageSourceLanguage,

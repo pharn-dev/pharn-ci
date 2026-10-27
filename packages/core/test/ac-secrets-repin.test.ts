@@ -28,7 +28,19 @@ const CODES = [
 // E3 item 20 (the org policy) adds two more codes to the same appended text and to report.ts. They join every exact
 // code-word comparison below; nothing is removed from the 12 above.
 // E3 item 22 (policy rules) adds the two rule codes POLICY_P08 and POLICY_P09 to the same appended text and report.ts.
-const POLICY_CODES = ["POLICY_OVERRIDE_IGNORED", "POLICY_UNAVAILABLE", "POLICY_P08", "POLICY_P09"];
+// E3 item 23 (policy settings) adds the six codes POLICY_P02 to POLICY_P06 and POLICY_SETTINGS_INVALID to them too.
+const POLICY_CODES = [
+  "POLICY_OVERRIDE_IGNORED",
+  "POLICY_UNAVAILABLE",
+  "POLICY_P08",
+  "POLICY_P09",
+  "POLICY_P02",
+  "POLICY_P03",
+  "POLICY_P04",
+  "POLICY_P05",
+  "POLICY_P06",
+  "POLICY_SETTINGS_INVALID",
+];
 // E3 item 21 (the run upload) adds one more, UPLOAD_TOO_LARGE, to the same appended text and to report.ts. It joins every
 // exact code-word comparison below too; nothing is removed.
 const UPLOAD_CODES = ["UPLOAD_TOO_LARGE"];

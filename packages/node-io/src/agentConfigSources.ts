@@ -2,6 +2,8 @@ import {
   type AgentConfigSources,
   decodeTestSourceText,
   isUnsafeTestSourcePath,
+  type PolicySettingsDrop,
+  type PolicySettingsSources,
   planTestSourceReads,
   type TestSourceDrop,
   type TestSourceFile,
@@ -56,4 +58,33 @@ export async function readAgentConfigSources(
   } catch (err) {
     return { unavailable: err instanceof StepFailed ? err.message : `git could not be read: ${firstLine(err)}` };
   }
+}
+
+/**
+ * The committed agent settings and MCP files policy mode reads (E3 item 23, policy settings), at `HEAD`. `symlinks` is
+ * the set of tracked symbolic links (`parseLsTreeSymlinks`), or null when `git ls-tree` failed: then nothing is read,
+ * because a link cannot be told from a file. A tracked symlink is dropped with reason `symlink` and never requested or
+ * followed; the rest go through `readAgentConfigSources` (its caps and drop reasons). `dropped` is sorted by path.
+ */
+export async function readPolicySettingsSources(
+  deps: AgentConfigGitDeps,
+  paths: readonly string[],
+  symlinks: ReadonlySet<string> | null,
+): Promise<PolicySettingsSources> {
+  if (symlinks === null) {
+    return {
+      unavailable: "git ls-tree failed, so symbolic links among the agent settings files could not be told apart",
+    };
+  }
+  const unique = [...new Set(paths)].sort(byCodeUnit);
+  const linked: PolicySettingsDrop[] = unique
+    .filter((path) => symlinks.has(path))
+    .map((path) => ({ path, reason: "symlink" }));
+  const rest = unique.filter((path) => !symlinks.has(path));
+  if (rest.length === 0) return { files: [], dropped: linked };
+  const read = await readAgentConfigSources(deps, rest);
+  if ("unavailable" in read) return read;
+  const dropped: PolicySettingsDrop[] = [...linked, ...read.dropped];
+  dropped.sort((a, b) => byCodeUnit(a.path, b.path));
+  return { files: read.files, dropped };
 }

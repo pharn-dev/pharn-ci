@@ -1,4 +1,4 @@
-export { type AgentConfigGitDeps, readAgentConfigSources } from "./agentConfigSources.js";
+export { type AgentConfigGitDeps, readAgentConfigSources, readPolicySettingsSources } from "./agentConfigSources.js";
 export { type FileChunkDeps, fileChunks, type GitChunkDeps, gitChunks, oneChunk } from "./chunks.js";
 export { type CoverageReadDeps, type ReadCoverageFilesOptions, readCoverageFiles } from "./coverage.js";
 export { discoverCoverage, type ReadDiscoveredCoverageOptions, readDiscoveredCoverage } from "./discovery.js";

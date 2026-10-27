@@ -55,7 +55,10 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       .split("\n")
       .filter((l) => l.length > 0);
     for (const line of changed) {
-      expect(line, "a fixture change").toMatch(/^A\tfixtures\/policy-rules\/p11\/[^/]+\/[^/]+$/);
+      // Re-pinned for E3 item 23 (policy settings): its new fixtures under fixtures/policy-settings/ are added too.
+      expect(line, "a fixture change").toMatch(
+        /^A\tfixtures\/policy-rules\/p11\/[^/]+\/[^/]+$|^A\tfixtures\/policy-settings\/[^\t]+$/,
+      );
     }
     const untracked = git("ls-files", "--others", "--exclude-standard", "--", "fixtures/")
       .split("\n")

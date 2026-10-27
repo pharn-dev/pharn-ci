@@ -12,6 +12,7 @@ export function detectP10(input: PolicyRuleInput): RuleFinding[] {
       id: "P10",
       fallback: unavailable.required ? "block" : "warn",
       path: null,
+      line: null,
       detail: `org policy could not be read (${unavailable.reason})`,
     },
   ];

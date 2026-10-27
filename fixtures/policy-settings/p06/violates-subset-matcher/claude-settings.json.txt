@@ -1,0 +1,5 @@
+{
+  "hooks": {
+    "PreToolUse": [{ "matcher": "Edit", "hooks": [{ "type": "command", "command": "./check.sh" }] }]
+  }
+}

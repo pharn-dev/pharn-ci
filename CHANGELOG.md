@@ -9,6 +9,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- Org policy rules P02–P06, and policy mode: with a policy in force the CLI and the Action read the tracked agent
+  settings files (`.claude/settings.json` and `.claude/settings.local.json`, root and nested) and, when the policy lists
+  MCP servers, `.mcp.json`, `.cursor/mcp.json` and `.vscode/mcp.json`, at HEAD. P02 flags an allow rule that overlaps
+  a forbidden permission, `defaultMode` `bypassPermissions` or `auto`, and `additionalDirectories`; P03 a missing
+  required deny rule; P04 an MCP server that is not allowlisted; P05 a forbidden MCP server; P06 a missing required
+  hook. New message codes `POLICY_P02` to `POLICY_P06` and `POLICY_SETTINGS_INVALID` (a file the rules could not fully
+  use, or did not read); P09 now judges those edits as a block, warn or info. Nothing read from a file is printed.
 - `meta.isAgentPr` in the Action's report, with `meta.prAuthor`, `meta.prLabels`, `meta.coAuthors` and `meta.agentHint`:
   whether the pull request counts as an agent PR, from its author, its commits' authors, committers and
   `Co-authored-by` trailers, and its labels (`agent` and `ai-generated` by default). Seven known agents are recognized.

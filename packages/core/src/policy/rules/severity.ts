@@ -12,7 +12,7 @@ const MAX_DETAIL = 300;
 /**
  * The severity a rule's finding gets: the policy's `policy.rules` value for the id, or the finding's default. `null`
  * means the rule is off, so there is no violation. A policy from the app replaces the default; a policy file can only
- * raise it, and a lower value is reported as `lowered` and not applied. Only P01, P08 and P09 reach this function.
+ * raise it, and a lower value is reported as `lowered` and not applied. Every rule but P10 reaches this function.
  */
 export function resolveSeverity(
   policy: ResolvedPolicy,

@@ -199251,9 +199251,9 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         start = timestamp();
         const isJsOnlyLocation = !insideJsDocTagTypeExpression && !insideJsDocImportTag && isSourceFileJS(sourceFile);
-        const tokens = getRelevantTokens(position, sourceFile);
-        const previousToken = tokens.previousToken;
-        let contextToken = tokens.contextToken;
+        const tokens2 = getRelevantTokens(position, sourceFile);
+        const previousToken = tokens2.previousToken;
+        let contextToken = tokens2.contextToken;
         log("getCompletionData: Get previous token: " + (timestamp() - start));
         let node = currentToken;
         let propertyAccessToConvert;
@@ -211681,8 +211681,8 @@ ${options.prefix}` : "\n" : options.prefix
             allTokens.push(token);
           }
         }
-        function anyTokenExcept(...tokens) {
-          return { tokens: allTokens.filter((t) => !tokens.some((t2) => t2 === t)), isSpecific: false };
+        function anyTokenExcept(...tokens2) {
+          return { tokens: allTokens.filter((t) => !tokens2.some((t2) => t2 === t)), isSpecific: false };
         }
         const anyToken = { tokens: allTokens, isSpecific: false };
         const anyTokenIncludingMultilineComments = tokenRangeFrom([
@@ -213119,20 +213119,20 @@ ${options.prefix}` : "\n" : options.prefix
       function rule2(debugName, left, right, context3, action, flags = 0) {
         return { leftTokenRange: toTokenRange(left), rightTokenRange: toTokenRange(right), rule: { debugName, context: context3, action, flags } };
       }
-      function tokenRangeFrom(tokens) {
-        return { tokens, isSpecific: true };
+      function tokenRangeFrom(tokens2) {
+        return { tokens: tokens2, isSpecific: true };
       }
       function toTokenRange(arg) {
         return typeof arg === "number" ? tokenRangeFrom([arg]) : isArray(arg) ? tokenRangeFrom(arg) : arg;
       }
       function tokenRangeFromRange(from, to, except = []) {
-        const tokens = [];
+        const tokens2 = [];
         for (let token = from; token <= to; token++) {
           if (!contains(except, token)) {
-            tokens.push(token);
+            tokens2.push(token);
           }
         }
-        return tokenRangeFrom(tokens);
+        return tokenRangeFrom(tokens2);
       }
       function optionEquals(optionName, optionValue) {
         return (context3) => context3.options && context3.options[optionName] === optionValue;
@@ -236207,23 +236207,23 @@ function hasGlobSyntax(entry) {
 }
 function compileSegment(segment) {
   if (segment === "**") return { globstar: true, matches: () => false };
-  const tokens = [];
+  const tokens2 = [];
   for (const cp of segment) {
     if (cp === "*") {
-      if (tokens[tokens.length - 1]?.kind !== "star") tokens.push({ kind: "star" });
+      if (tokens2[tokens2.length - 1]?.kind !== "star") tokens2.push({ kind: "star" });
     } else if (cp === "?") {
-      tokens.push({ kind: "any" });
+      tokens2.push({ kind: "any" });
     } else {
-      tokens.push({ kind: "lit", cp });
+      tokens2.push({ kind: "lit", cp });
     }
   }
-  if (tokens.every((t) => t.kind === "lit")) return { globstar: false, matches: (_cps, text) => text === segment };
-  const n = tokens.length;
+  if (tokens2.every((t) => t.kind === "lit")) return { globstar: false, matches: (_cps, text) => text === segment };
+  const n = tokens2.length;
   let active = new Uint8Array(n + 1);
   let next = new Uint8Array(n + 1);
   const closure = (set) => {
     for (let j = 0; j < n; j++) {
-      if (set[j] === 1 && tokens[j].kind === "star") set[j + 1] = 1;
+      if (set[j] === 1 && tokens2[j].kind === "star") set[j + 1] = 1;
     }
   };
   return {
@@ -236236,7 +236236,7 @@ function compileSegment(segment) {
         next.fill(0);
         for (let j = 0; j < n; j++) {
           if (active[j] !== 1) continue;
-          const token = tokens[j];
+          const token = tokens2[j];
           if (token.kind === "star") next[j] = 1;
           else if (token.kind === "any" || token.cp === cp) next[j + 1] = 1;
         }
@@ -238487,6 +238487,865 @@ function policyOverrideIgnoredMessage(ignored) {
   };
 }
 
+// ../core/src/policy/settings/hooks.ts
+var PLAIN_LIST = /^[A-Za-z0-9_]+(\|[A-Za-z0-9_]+)*$/;
+var isUniversal = (matcher) => matcher === void 0 || matcher === "" || matcher === "*";
+function matcherCovers(group, required) {
+  if (isUniversal(group)) return true;
+  if (isUniversal(required)) return false;
+  const g = group;
+  const r = required;
+  if (PLAIN_LIST.test(g) && PLAIN_LIST.test(r)) {
+    const names = new Set(g.split("|"));
+    return r.split("|").every((name) => names.has(name));
+  }
+  return g === r;
+}
+function isCountingHandler(value) {
+  if (value.type !== "object") return false;
+  const type = value.members.get("type")?.value;
+  const command = value.members.get("command")?.value;
+  return type?.type === "string" && type.value === "command" && command?.type === "string" && command.value !== "" && !value.members.has("if");
+}
+
+// ../core/src/policy/settings/json.ts
+var MAX_DEPTH = 64;
+var NUMBER = /-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/y;
+var HEX = /^[0-9a-fA-F]{4}$/;
+function parseSettingsJson(text, options) {
+  const jsonc = options.jsonc;
+  const src = text.charCodeAt(0) === 65279 ? text.slice(1) : text;
+  const end = src.length;
+  const notJson = () => ({ ok: false, reason: "not-json" });
+  const duplicates = [];
+  const stack = [];
+  let pos = 0;
+  let line = 1;
+  let root;
+  const skip = () => {
+    while (pos < end) {
+      const c = src.charCodeAt(pos);
+      if (c === 32 || c === 9) pos += 1;
+      else if (c === 10) {
+        line += 1;
+        pos += 1;
+      } else if (c === 13) {
+        if (src.charCodeAt(pos + 1) !== 10) line += 1;
+        pos += 1;
+      } else if (jsonc && c === 47) {
+        const next = src.charCodeAt(pos + 1);
+        if (next === 47) {
+          pos += 2;
+          while (pos < end && src.charCodeAt(pos) !== 10 && src.charCodeAt(pos) !== 13) pos += 1;
+        } else if (next === 42) {
+          pos += 2;
+          let closed = false;
+          while (pos < end) {
+            const d = src.charCodeAt(pos);
+            if (d === 42 && src.charCodeAt(pos + 1) === 47) {
+              pos += 2;
+              closed = true;
+              break;
+            }
+            if (d === 10) line += 1;
+            else if (d === 13 && src.charCodeAt(pos + 1) !== 10) line += 1;
+            pos += 1;
+          }
+          if (!closed) return false;
+        } else return true;
+      } else return true;
+    }
+    return true;
+  };
+  const readString2 = () => {
+    pos += 1;
+    let start = pos;
+    let out = "";
+    while (pos < end) {
+      const c = src.charCodeAt(pos);
+      if (c === 34) {
+        out += src.slice(start, pos);
+        pos += 1;
+        return out;
+      }
+      if (c < 32) return null;
+      if (c === 92) {
+        out += src.slice(start, pos);
+        const e = src[pos + 1];
+        pos += 2;
+        if (e === '"' || e === "\\" || e === "/") out += e;
+        else if (e === "b") out += "\b";
+        else if (e === "f") out += "\f";
+        else if (e === "n") out += "\n";
+        else if (e === "r") out += "\r";
+        else if (e === "t") out += "	";
+        else if (e === "u") {
+          const hex = src.slice(pos, pos + 4);
+          if (!HEX.test(hex)) return null;
+          out += String.fromCharCode(Number.parseInt(hex, 16));
+          pos += 4;
+        } else return null;
+        start = pos;
+      } else pos += 1;
+    }
+    return null;
+  };
+  const complete = (value) => {
+    const top = stack[stack.length - 1];
+    if (top === void 0) root = value;
+    else if (top.kind === "array") top.items.push(value);
+    else {
+      if (top.members.has(top.key)) duplicates.push({ reason: "duplicate-key", line: top.keyLine });
+      top.members.set(top.key, { keyLine: top.keyLine, value });
+    }
+  };
+  let mode = "value";
+  while (root === void 0) {
+    if (!skip()) return notJson();
+    if (pos >= end) return notJson();
+    const ch = src[pos];
+    if (mode === "objectFirst") {
+      if (ch === "}") {
+        const frame = stack.pop();
+        pos += 1;
+        complete({ type: "object", members: frame.members, line: frame.line });
+        mode = "after";
+        continue;
+      }
+      mode = "key";
+    }
+    if (mode === "arrayFirst") {
+      if (ch === "]") {
+        const frame = stack.pop();
+        pos += 1;
+        complete({ type: "array", items: frame.items, line: frame.line });
+        mode = "after";
+        continue;
+      }
+      mode = "value";
+    }
+    if (mode === "key") {
+      if (ch !== '"') return notJson();
+      const keyLine = line;
+      const key = readString2();
+      if (key === null) return notJson();
+      if (!skip() || src[pos] !== ":") return notJson();
+      pos += 1;
+      const top = stack[stack.length - 1];
+      top.key = key;
+      top.keyLine = keyLine;
+      mode = "value";
+      continue;
+    }
+    if (mode === "after") {
+      const top = stack[stack.length - 1];
+      if (top === void 0) return notJson();
+      const closer = top.kind === "array" ? "]" : "}";
+      if (ch === closer) {
+        stack.pop();
+        pos += 1;
+        complete(
+          top.kind === "array" ? { type: "array", items: top.items, line: top.line } : { type: "object", members: top.members, line: top.line }
+        );
+        continue;
+      }
+      if (ch !== ",") return notJson();
+      pos += 1;
+      if (jsonc) {
+        if (!skip()) return notJson();
+        if (src[pos] === closer) {
+          stack.pop();
+          pos += 1;
+          complete(
+            top.kind === "array" ? { type: "array", items: top.items, line: top.line } : { type: "object", members: top.members, line: top.line }
+          );
+          continue;
+        }
+      }
+      mode = top.kind === "array" ? "value" : "key";
+      continue;
+    }
+    const at = line;
+    if (ch === "{" || ch === "[") {
+      if (stack.length >= MAX_DEPTH) return { ok: false, reason: "too-deep" };
+      pos += 1;
+      if (ch === "[") {
+        stack.push({ kind: "array", items: [], line: at });
+        mode = "arrayFirst";
+      } else {
+        stack.push({ kind: "object", members: /* @__PURE__ */ new Map(), line: at, key: "", keyLine: at });
+        mode = "objectFirst";
+      }
+      continue;
+    }
+    if (ch === '"') {
+      const value = readString2();
+      if (value === null) return notJson();
+      complete({ type: "string", value, line: at });
+    } else if (ch === "-" || ch >= "0" && ch <= "9") {
+      NUMBER.lastIndex = pos;
+      const match = NUMBER.exec(src);
+      if (match === null) return notJson();
+      pos += match[0].length;
+      complete({ type: "number", value: Number(match[0]), line: at });
+    } else if (src.startsWith("true", pos)) {
+      pos += 4;
+      complete({ type: "boolean", value: true, line: at });
+    } else if (src.startsWith("false", pos)) {
+      pos += 5;
+      complete({ type: "boolean", value: false, line: at });
+    } else if (src.startsWith("null", pos)) {
+      pos += 4;
+      complete({ type: "null", line: at });
+    } else return notJson();
+    mode = "after";
+  }
+  if (!skip()) return notJson();
+  if (pos < end) return notJson();
+  return { ok: true, value: root, duplicates };
+}
+
+// ../core/src/policy/settings/mcp.ts
+function containerKeys(path) {
+  return /(?:^|\/)\.vscode\/mcp\.json$/.test(path) ? ["servers", "mcpServers"] : ["mcpServers"];
+}
+function mcpServersOf(path, root) {
+  const servers = [];
+  const wrongType = [];
+  if (root.type !== "object") return { servers, wrongType };
+  for (const key of containerKeys(path)) {
+    const container = root.members.get(key);
+    if (container === void 0) continue;
+    if (container.value.type !== "object") {
+      wrongType.push({ line: container.keyLine, scope: "container" });
+      continue;
+    }
+    for (const [name, member] of container.value.members) {
+      const server2 = {
+        name,
+        line: member.keyLine,
+        command: null,
+        args: null,
+        url: null,
+        isObject: false
+      };
+      servers.push(server2);
+      if (member.value.type !== "object") {
+        wrongType.push({ line: member.keyLine, scope: "container" });
+        continue;
+      }
+      server2.isObject = true;
+      const fields = member.value.members;
+      const command = fields.get("command");
+      if (command !== void 0) {
+        if (command.value.type === "string") server2.command = command.value.value;
+        else wrongType.push({ line: command.keyLine, scope: "field" });
+      }
+      const url = fields.get("url");
+      if (url !== void 0) {
+        if (url.value.type === "string") server2.url = url.value.value;
+        else wrongType.push({ line: url.keyLine, scope: "field" });
+      }
+      const args = fields.get("args");
+      if (args !== void 0) {
+        if (args.value.type !== "array") wrongType.push({ line: args.keyLine, scope: "field" });
+        else {
+          const kept = [];
+          for (const item of args.value.items) {
+            if (item.type === "string") kept.push(item.value);
+            else wrongType.push({ line: item.line, scope: "field" });
+          }
+          server2.args = kept;
+        }
+      }
+    }
+  }
+  return { servers, wrongType };
+}
+function mcpGlobMatches(entry, text) {
+  const e = Array.from(entry);
+  const t = Array.from(text);
+  let i = 0;
+  let j = 0;
+  let star = -1;
+  let mark = 0;
+  while (j < t.length) {
+    if (i < e.length && e[i] === "*") {
+      star = i;
+      mark = j;
+      i += 1;
+    } else if (i < e.length && (e[i] === "?" || e[i] === t[j])) {
+      i += 1;
+      j += 1;
+    } else if (star !== -1) {
+      i = star + 1;
+      mark += 1;
+      j = mark;
+    } else return false;
+  }
+  while (i < e.length && e[i] === "*") i += 1;
+  return i === e.length;
+}
+
+// ../core/src/policy/settings/paths.ts
+var SETTINGS_PATH = /^(?:.*\/)?\.claude\/settings(?:\.local)?\.json$/;
+var MCP_PATH = /^(?:.*\/)?(?:\.mcp\.json|\.cursor\/mcp\.json|\.vscode\/mcp\.json)$/;
+var JSONC_MCP_PATH = /^(?:.*\/)?(?:\.cursor|\.vscode)\/mcp\.json$/;
+var byCodeUnit4 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function isPolicySettingsPath(path) {
+  return SETTINGS_PATH.test(path);
+}
+function isPolicyMcpPath(path) {
+  return MCP_PATH.test(path);
+}
+function isJsoncMcpPath(path) {
+  return JSONC_MCP_PATH.test(path);
+}
+function policySettingsPaths(repoFiles, document2) {
+  const setup2 = document2.setup;
+  const mcp = (setup2?.allowed_mcp_servers?.length ?? 0) > 0 || (setup2?.forbidden_mcp_servers?.length ?? 0) > 0;
+  const paths = /* @__PURE__ */ new Set();
+  for (const path of repoFiles) {
+    if (isPolicySettingsPath(path) || mcp && isPolicyMcpPath(path)) paths.add(path);
+  }
+  return [...paths].sort(byCodeUnit4);
+}
+function settingsUnitAnchor(path) {
+  const at = path.lastIndexOf(".claude/settings");
+  return at === -1 ? "" : path.slice(0, at);
+}
+
+// ../core/src/policy/settings/permissionRule.ts
+var STAR = "";
+var TOOL = /^[A-Za-z][A-Za-z0-9_-]*$/;
+var MCP_SERVER = /^[A-Za-z0-9_.-]+$/;
+var MCP_TOOL = /^[A-Za-z0-9_-]+$/;
+var HOST = /^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*$/;
+var PATH_FORBIDDEN = /[[\]{}\\]/;
+var INERT_TOOLS = /* @__PURE__ */ new Set(["Write", "NotebookEdit", "Glob"]);
+var EDITISH = /* @__PURE__ */ new Set(["Edit", "Write", "NotebookEdit"]);
+var READISH = /* @__PURE__ */ new Set(["Read", "Glob", "Grep"]);
+var isAsciiSpace = (code2) => code2 === 32 || code2 >= 9 && code2 <= 13;
+function asciiTrim(text) {
+  let start = 0;
+  let end = text.length;
+  while (start < end && isAsciiSpace(text.charCodeAt(start))) start++;
+  while (end > start && isAsciiSpace(text.charCodeAt(end - 1))) end--;
+  return start === 0 && end === text.length ? text : text.slice(start, end);
+}
+function tokens(text) {
+  const out = [];
+  for (const ch of text) {
+    if (ch === "*") {
+      if (out[out.length - 1] !== STAR) out.push(STAR);
+    } else out.push(ch);
+  }
+  return out;
+}
+function parseBash(spec) {
+  if (spec.endsWith(":*")) {
+    const prefix = spec.slice(0, -2);
+    if (prefix.includes(":*")) return null;
+    return [tokens(prefix), [...tokens(prefix), " ", STAR]];
+  }
+  if (spec.includes(":*")) return null;
+  if (spec.endsWith(" *")) {
+    const prefix = spec.slice(0, -2);
+    return [tokens(prefix), [...tokens(prefix), " ", STAR]];
+  }
+  return [tokens(spec)];
+}
+var collapseGlobstars = (segments) => segments.filter((segment, i) => !(segment === "**" && segments[i - 1] === "**"));
+function parsePath(spec, tool) {
+  if (spec.startsWith("!")) return null;
+  let rest = spec;
+  let root = "ANCHOR";
+  let anchored = false;
+  if (rest.startsWith("//")) {
+    root = "ABS";
+    rest = rest.slice(2);
+    anchored = true;
+  } else if (rest.startsWith("~/")) {
+    root = "HOME";
+    rest = rest.slice(2);
+    anchored = true;
+  } else if (rest.startsWith("./")) {
+    rest = rest.slice(2);
+    anchored = true;
+  } else if (rest.startsWith("/")) {
+    rest = rest.slice(1);
+    anchored = true;
+  } else if (rest.slice(0, -1).includes("/")) anchored = true;
+  if (!anchored) rest = `**/${rest}`;
+  const dirOnly = rest.endsWith("/");
+  if (dirOnly) rest = rest.slice(0, -1);
+  const raw = rest.split("/");
+  for (const segment of raw) {
+    if (segment === "" || segment === "." || segment === ".." || PATH_FORBIDDEN.test(segment)) return null;
+  }
+  let segments = collapseGlobstars(
+    raw.map((segment) => segment === "**" ? segment : segment.replace(/\*{2,}/g, "*"))
+  );
+  const last = segments[segments.length - 1];
+  const literalEnd2 = !dirOnly && !last.includes("*") && !last.includes("?");
+  if (dirOnly) segments = collapseGlobstars([...segments, "**"]);
+  if (segments[segments.length - 1] === "**") segments = [...segments, "*"];
+  return { kind: "path", tool, root, dirOnly, segments, literalEnd: literalEnd2 };
+}
+function parseMcp(tool) {
+  const rest = tool.slice("mcp__".length);
+  const at = rest.indexOf("__");
+  const server2 = at === -1 ? rest : rest.slice(0, at);
+  if (server2 === "" || !MCP_SERVER.test(server2)) return null;
+  if (at === -1) return { kind: "mcp", server: server2, tool: null };
+  const name = rest.slice(at + 2);
+  if (name === "*") return { kind: "mcp", server: server2, tool: null };
+  if (!MCP_TOOL.test(name)) return null;
+  return { kind: "mcp", server: server2, tool: name };
+}
+function parseWebFetch(spec) {
+  if (!spec.startsWith("domain:")) return null;
+  let host = spec.slice("domain:".length);
+  const wildcard = host.startsWith("*.");
+  if (wildcard) host = host.slice(2);
+  if (!HOST.test(host)) return null;
+  return { kind: "webfetch", host: host.toLowerCase(), wildcard };
+}
+function parseRule(text, policy) {
+  const open3 = text.indexOf("(");
+  let tool = text;
+  let spec = null;
+  if (open3 !== -1) {
+    if (!text.endsWith(")")) return "unknown";
+    tool = text.slice(0, open3);
+    spec = text.slice(open3 + 1, -1);
+    if (spec === "") return "unknown";
+  }
+  if (tool.startsWith("mcp__")) return spec !== null ? "unknown" : parseMcp(tool) ?? "unknown";
+  if (!TOOL.test(tool)) return "unknown";
+  if (!policy && spec !== null && INERT_TOOLS.has(tool)) return "inert";
+  if (policy) {
+    if (tool === "Write" || tool === "NotebookEdit") tool = "Edit";
+    else if (tool === "Glob") tool = "Read";
+  }
+  if (spec === null) return { kind: "bare", tool };
+  if (tool === "Bash") {
+    const alternatives = parseBash(spec);
+    return alternatives === null ? "unknown" : { kind: "bash", alternatives };
+  }
+  if (tool === "Read" || tool === "Edit") return parsePath(spec, tool) ?? "unknown";
+  if (tool === "WebFetch") return parseWebFetch(spec) ?? "unknown";
+  return { kind: "other", tool, spec };
+}
+function parsePermissionRule(text, side) {
+  const parsed = parseRule(side === "allow" ? asciiTrim(text) : text, false);
+  if (parsed === "unknown") return { kind: "unknown" };
+  if (parsed === "inert") return { kind: "inert" };
+  return { kind: "rule", rule: parsed };
+}
+function normalizePolicyRule(text) {
+  const parsed = parseRule(text, true);
+  if (parsed === "unknown" || parsed === "inert") return { kind: "rejected", text };
+  return { kind: "rule", rule: parsed };
+}
+function bashAlternativeMatches(a, f) {
+  let prev = new Uint8Array(f.length + 1);
+  prev[0] = 1;
+  for (const token of a) {
+    const next = new Uint8Array(f.length + 1);
+    if (token === STAR) {
+      next[0] = prev[0];
+      for (let j = 1; j <= f.length; j++) next[j] = prev[j] | next[j - 1];
+    } else {
+      for (let j = 1; j <= f.length; j++) next[j] = prev[j - 1] & (f[j - 1] === token ? 1 : 0);
+    }
+    prev = next;
+  }
+  return prev[f.length] === 1;
+}
+function segmentCovers(a, f) {
+  if (a === f) return true;
+  const ac = Array.from(a);
+  const fc = Array.from(f);
+  let prev = new Uint8Array(fc.length + 1);
+  prev[0] = 1;
+  for (const token of ac) {
+    const next = new Uint8Array(fc.length + 1);
+    if (token === "*") {
+      next[0] = prev[0];
+      for (let j = 1; j <= fc.length; j++) next[j] = prev[j] | next[j - 1];
+    } else if (token === "?") {
+      for (let j = 1; j <= fc.length; j++) next[j] = prev[j - 1] & (fc[j - 1] === "*" ? 0 : 1);
+    } else {
+      for (let j = 1; j <= fc.length; j++) next[j] = prev[j - 1] & (fc[j - 1] === token ? 1 : 0);
+    }
+    prev = next;
+  }
+  return prev[fc.length] === 1;
+}
+function segmentsCover(a, f) {
+  let prev = new Uint8Array(f.length + 1);
+  prev[0] = 1;
+  for (const segment of a) {
+    const next = new Uint8Array(f.length + 1);
+    if (segment === "**") {
+      next[0] = prev[0];
+      for (let j = 1; j <= f.length; j++) next[j] = prev[j] | next[j - 1];
+    } else {
+      for (let j = 1; j <= f.length; j++) {
+        const other = f[j - 1];
+        next[j] = prev[j - 1] & (other !== "**" && segmentCovers(segment, other) ? 1 : 0);
+      }
+    }
+    prev = next;
+  }
+  return prev[f.length] === 1;
+}
+var toolOf = (rule2) => rule2.kind === "bare" || rule2.kind === "path" || rule2.kind === "other" ? rule2.tool : rule2.kind === "bash" ? "Bash" : rule2.kind === "webfetch" ? "WebFetch" : null;
+function coversRule(covering, covered, reading) {
+  const broad = reading === "broad";
+  switch (covering.kind) {
+    case "bare": {
+      const tool = toolOf(covered);
+      if (tool === null) return false;
+      if (covering.tool === tool) return true;
+      if (!broad) return false;
+      if (tool === "Edit" && EDITISH.has(covering.tool)) return true;
+      return tool === "Read" && READISH.has(covering.tool);
+    }
+    case "bash":
+      return covered.kind === "bash" && covered.alternatives.every((f) => covering.alternatives.some((a) => bashAlternativeMatches(a, f)));
+    case "path": {
+      if (covered.kind !== "path" || covered.tool !== covering.tool) return false;
+      if (covering.root !== covered.root) {
+        const universal = covering.segments.length === 2 && covering.segments[0] === "**" && covering.segments[1] === "*";
+        return covering.root === "ABS" && universal;
+      }
+      if (segmentsCover(covering.segments, covered.segments)) return true;
+      return broad && covering.literalEnd && segmentsCover([...covering.segments, "**", "*"], covered.segments);
+    }
+    case "webfetch": {
+      if (covered.kind !== "webfetch") return false;
+      if (covering.host === covered.host && covering.wildcard === covered.wildcard) return true;
+      return broad && covering.wildcard && covered.host.endsWith(`.${covering.host}`);
+    }
+    case "mcp":
+      return covered.kind === "mcp" && covering.server === covered.server && (covering.tool === null || covering.tool === covered.tool);
+    case "other": {
+      if (covered.kind === "other" && covered.tool === covering.tool) {
+        return covering.spec === covered.spec || broad && covering.spec === "*";
+      }
+      return broad && covering.spec === "*" && covered.kind === "bare" && covered.tool === covering.tool;
+    }
+  }
+}
+function prepareEntry(text, side) {
+  return { text: side === "allow" ? asciiTrim(text) : text, parsed: parsePermissionRule(text, side) };
+}
+function preparePolicyEntry(text) {
+  return { text, normalized: normalizePolicyRule(text) };
+}
+function coversPrepared(a, f, reading) {
+  if (f.normalized.kind === "rejected") return a.text === f.text;
+  if (a.parsed.kind !== "rule") return false;
+  return coversRule(a.parsed.rule, f.normalized.rule, reading === "p02" ? "broad" : "narrow");
+}
+function overlapsPrepared(allow, forbidden) {
+  if (coversPrepared(allow, forbidden, "p02")) return true;
+  if (forbidden.normalized.kind !== "rule" || allow.parsed.kind !== "rule") return false;
+  return coversRule(forbidden.normalized.rule, allow.parsed.rule, "broad");
+}
+function ruleFamily(text) {
+  const trimmed = asciiTrim(text);
+  const open3 = trimmed.indexOf("(");
+  const tool = open3 === -1 ? trimmed : trimmed.slice(0, open3);
+  if (EDITISH.has(tool)) return "Edit";
+  if (READISH.has(tool)) return "Read";
+  if (tool.startsWith("mcp__")) {
+    const rest = tool.slice("mcp__".length);
+    const at = rest.indexOf("__");
+    return `mcp__${at === -1 ? rest : rest.slice(0, at)}`;
+  }
+  return tool;
+}
+
+// ../core/src/policy/settings/model.ts
+var byCodeUnit5 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var ALL = ["P02", "P03", "P04", "P05", "P06"];
+var MCP_READERS = ["P04", "P05"];
+function newUnit(anchor) {
+  return {
+    anchor,
+    paths: [],
+    reportPath: `${anchor}.claude/settings.json`,
+    allow: [],
+    deny: [],
+    enabledMcpjsonServers: [],
+    hookGroups: [],
+    defaultModes: [],
+    additionalDirectories: [],
+    disableAllHooks: [],
+    enableAllProjectMcpServers: []
+  };
+}
+function readSettingsModel(sources, document2) {
+  const setup2 = document2.setup;
+  const readMcp = (setup2?.allowed_mcp_servers?.length ?? 0) > 0 || (setup2?.forbidden_mcp_servers?.length ?? 0) > 0;
+  const walked = new Set((setup2?.required_hooks ?? []).map((hook2) => hook2.event));
+  const problems = [];
+  const mcpServers = [];
+  const units = /* @__PURE__ */ new Map([["", newUnit("")]]);
+  const parsed = /* @__PURE__ */ new Map();
+  const problem = (path, line, reason, readers, problemClass) => problems.push({ path, line, reason, readers, problemClass });
+  const unitOf = (path) => {
+    const anchor = settingsUnitAnchor(path);
+    let unit = units.get(anchor);
+    if (unit === void 0) {
+      unit = newUnit(anchor);
+      units.set(anchor, unit);
+    }
+    return unit;
+  };
+  for (const drop of sources.dropped) {
+    if (drop.reason === "missing") continue;
+    const settings2 = isPolicySettingsPath(drop.path);
+    if (!settings2 && !isPolicyMcpPath(drop.path)) continue;
+    if (settings2) unitOf(drop.path).paths.push(drop.path);
+    if (drop.reason === "binary") {
+      problem(
+        drop.path,
+        null,
+        "binary",
+        settings2 ? ALL : MCP_READERS,
+        settings2 ? "unparseable-settings" : "unparseable-mcp"
+      );
+    } else problem(drop.path, null, drop.reason, settings2 ? ALL : MCP_READERS, "drop");
+  }
+  for (const file of sources.files) {
+    const settings2 = isPolicySettingsPath(file.path);
+    const mcp = !settings2 && readMcp && isPolicyMcpPath(file.path);
+    if (!settings2 && !mcp) continue;
+    if (settings2) unitOf(file.path).paths.push(file.path);
+    const readers = settings2 ? ALL : MCP_READERS;
+    const result = parseSettingsJson(file.text, { jsonc: mcp && isJsoncMcpPath(file.path) });
+    const unparseable = settings2 ? "unparseable-settings" : "unparseable-mcp";
+    if (!result.ok) {
+      problem(file.path, null, result.reason, readers, unparseable);
+      continue;
+    }
+    if (result.value.type !== "object") {
+      problem(file.path, null, "not-object", readers, unparseable);
+      continue;
+    }
+    for (const duplicate of result.duplicates) problem(file.path, duplicate.line, "duplicate-key", readers, "other");
+    parsed.set(file.path, result.value);
+  }
+  const readSettings = (unit, path, members) => {
+    const wrong = (line, readers, cls) => problem(path, line, "wrong-type", readers, cls);
+    const strings2 = (member, readers, cls) => {
+      if (member.value.type !== "array") {
+        wrong(member.keyLine, readers, cls);
+        return [];
+      }
+      const out = [];
+      for (const item of member.value.items) {
+        if (item.type === "string") out.push({ path, line: item.line, text: item.value });
+        else wrong(item.line, readers, cls);
+      }
+      return out;
+    };
+    const permissions = members.get("permissions");
+    if (permissions !== void 0) {
+      if (permissions.value.type !== "object") wrong(permissions.keyLine, ["P02", "P03"], "deny");
+      else {
+        const perms = permissions.value.members;
+        const allow = perms.get("allow");
+        if (allow !== void 0) {
+          for (const entry of strings2(allow, ["P02"], "other")) {
+            unit.allow.push(entry);
+            if (parsePermissionRule(entry.text, "allow").kind === "unknown") {
+              problem(path, entry.line, "unknown-rule-syntax", ["P02"], "allow-syntax");
+            }
+          }
+        }
+        const deny = perms.get("deny");
+        if (deny !== void 0) {
+          for (const entry of strings2(deny, ["P03"], "deny")) {
+            unit.deny.push(entry);
+            if (parsePermissionRule(entry.text, "deny").kind === "unknown") {
+              problem(path, entry.line, "unknown-rule-syntax", ["P03"], "deny");
+            }
+          }
+        }
+        const mode = perms.get("defaultMode");
+        if (mode !== void 0) {
+          if (mode.value.type === "string")
+            unit.defaultModes.push({ path, line: mode.value.line, value: mode.value.value });
+          else wrong(mode.keyLine, ["P02"], "other");
+        }
+        const dirs = perms.get("additionalDirectories");
+        if (dirs !== void 0) {
+          if (dirs.value.type !== "array") wrong(dirs.keyLine, ["P02"], "other");
+          else if (dirs.value.items.length > 0) unit.additionalDirectories.push({ path, line: dirs.keyLine });
+        }
+      }
+    }
+    const disable = members.get("disableAllHooks");
+    if (disable !== void 0) {
+      if (disable.value.type !== "boolean") wrong(disable.keyLine, ["P06"], "hooks");
+      else if (disable.value.value) unit.disableAllHooks.push({ path, line: disable.keyLine });
+    }
+    const enableAll = members.get("enableAllProjectMcpServers");
+    if (enableAll !== void 0) {
+      if (enableAll.value.type !== "boolean") wrong(enableAll.keyLine, ["P04"], "other");
+      else if (enableAll.value.value) unit.enableAllProjectMcpServers.push({ path, line: enableAll.keyLine });
+    }
+    const enabled = members.get("enabledMcpjsonServers");
+    if (enabled !== void 0) unit.enabledMcpjsonServers.push(...strings2(enabled, MCP_READERS, "other"));
+    const hooks = members.get("hooks");
+    if (hooks !== void 0) {
+      if (hooks.value.type !== "object") wrong(hooks.keyLine, ["P06"], "hooks");
+      else {
+        for (const [event, member] of hooks.value.members) {
+          if (!walked.has(event)) continue;
+          if (member.value.type !== "array") {
+            wrong(member.keyLine, ["P06"], "hooks");
+            continue;
+          }
+          for (const group of member.value.items) {
+            if (group.type !== "object") {
+              wrong(group.line, ["P06"], "hooks");
+              continue;
+            }
+            const matcher = group.members.get("matcher");
+            const handlers = group.members.get("hooks");
+            if (matcher !== void 0 && matcher.value.type !== "string") {
+              wrong(matcher.keyLine, ["P06"], "hooks");
+              continue;
+            }
+            if (handlers === void 0 || handlers.value.type !== "array") {
+              wrong(handlers === void 0 ? group.line : handlers.keyLine, ["P06"], "hooks");
+              continue;
+            }
+            unit.hookGroups.push({
+              path,
+              line: group.line,
+              event,
+              matcher: matcher?.value.type === "string" ? matcher.value.value : void 0,
+              counting: handlers.value.items.some(isCountingHandler)
+            });
+          }
+        }
+      }
+    }
+  };
+  for (const unit of units.values()) {
+    unit.paths = [...new Set(unit.paths)].sort(byCodeUnit5);
+    const main = `${unit.anchor}.claude/settings.json`;
+    const local = `${unit.anchor}.claude/settings.local.json`;
+    unit.reportPath = unit.paths.includes(main) ? main : unit.paths.includes(local) ? local : main;
+    for (const path of [main, local]) {
+      const root2 = parsed.get(path);
+      if (root2 !== void 0 && root2.type === "object") readSettings(unit, path, root2.members);
+    }
+  }
+  for (const file of [...sources.files].sort((a, b) => byCodeUnit5(a.path, b.path))) {
+    if (!readMcp || !isPolicyMcpPath(file.path) || isPolicySettingsPath(file.path)) continue;
+    const root2 = parsed.get(file.path);
+    if (root2 === void 0) continue;
+    const read = mcpServersOf(file.path, root2);
+    for (const server2 of read.servers) mcpServers.push({ path: file.path, ...server2 });
+    for (const wrong of read.wrongType) {
+      problem(file.path, wrong.line, "wrong-type", wrong.scope === "container" ? MCP_READERS : ["P05"], "other");
+    }
+  }
+  const root = units.get("");
+  const rest = [...units.values()].filter((unit) => unit !== root).sort((a, b) => byCodeUnit5(a.anchor, b.anchor));
+  return { units: [root, ...rest], mcpServers, problems };
+}
+
+// ../core/src/policy/rules/shown.ts
+var MAX_SHOWN = 80;
+function shownPattern(pattern) {
+  if (pattern.length <= MAX_SHOWN) return pattern;
+  const high = pattern.charCodeAt(MAX_SHOWN - 2);
+  const end = high >= 55296 && high <= 56319 ? MAX_SHOWN - 2 : MAX_SHOWN - 1;
+  return `${pattern.slice(0, end)}\u2026`;
+}
+
+// ../core/src/policy/rules/p05.ts
+function serverTargets(server2) {
+  const targets = [server2.name];
+  if (server2.command !== null) {
+    targets.push(server2.command, [server2.command, ...server2.args ?? []].join(" "));
+  }
+  if (server2.url !== null) targets.push(server2.url);
+  return targets;
+}
+function detectP05(model, forbidden) {
+  const findings = [];
+  const distinct = [...new Set(forbidden)];
+  const judge = (path, line, targets) => {
+    const hits = distinct.filter((entry) => targets.some((target) => mcpGlobMatches(entry, target)));
+    if (hits.length === 0) return;
+    const more = hits.length > 1 ? ` and ${hits.length - 1} more` : "";
+    findings.push({
+      id: "P05",
+      fallback: "block",
+      path,
+      line,
+      detail: `MCP server matches forbidden entry ${shownPattern(hits[0])}${more}`
+    });
+  };
+  for (const server2 of model.mcpServers) judge(server2.path, server2.line, serverTargets(server2));
+  for (const unit of model.units) {
+    for (const entry of unit.enabledMcpjsonServers) judge(entry.path, entry.line, [entry.text]);
+  }
+  return findings;
+}
+
+// ../core/src/policy/rules/budget.ts
+var COMPARE_BUDGET = 2 ** 26;
+var sumsByFamily = (texts) => {
+  const sums = /* @__PURE__ */ new Map();
+  for (const text of texts) {
+    const family = ruleFamily(text);
+    sums.set(family, (sums.get(family) ?? 0) + text.length + 1);
+  }
+  return sums;
+};
+var pairUnits = (a, f) => {
+  let total = 0;
+  for (const [family, sum] of a) total += sum * (f.get(family) ?? 0);
+  return total;
+};
+function compareUnits(model, setup2, active) {
+  let total = 0;
+  if (active.p02) {
+    const allow = sumsByFamily(
+      model.units.flatMap(
+        (unit) => unit.allow.filter((entry) => parsePermissionRule(entry.text, "allow").kind !== "inert").map((entry) => asciiTrim(entry.text))
+      )
+    );
+    total += pairUnits(allow, sumsByFamily(setup2?.forbidden_permissions ?? []));
+  }
+  if (active.p03) {
+    const required = sumsByFamily(setup2?.required_permissions_deny ?? []);
+    for (const unit of model.units) {
+      total += pairUnits(sumsByFamily(unit.deny.map((entry) => entry.text)), required);
+    }
+  }
+  if (active.p05) {
+    let forbidden = 0;
+    for (const entry of setup2?.forbidden_mcp_servers ?? []) forbidden += entry.length + 1;
+    let targets = 0;
+    for (const server2 of model.mcpServers) for (const target of serverTargets(server2)) targets += target.length + 1;
+    for (const unit of model.units) for (const entry of unit.enabledMcpjsonServers) targets += entry.text.length + 1;
+    total += forbidden * targets;
+  }
+  return total;
+}
+
 // ../core/src/policy/rules/p01.ts
 var NO_SETUP_DETAIL = "no agent setup files found";
 function detectP01(input) {
@@ -238495,28 +239354,183 @@ function detectP01(input) {
   const setup2 = policy.document.setup;
   const findings = [];
   if (setup2?.require === true && input.agentSetupFileCount === 0) {
-    findings.push({ id: "P01", fallback: "block", path: null, detail: NO_SETUP_DETAIL });
+    findings.push({ id: "P01", fallback: "block", path: null, line: null, detail: NO_SETUP_DETAIL });
   }
   const seen = /* @__PURE__ */ new Set();
   for (const tool of setup2?.expect ?? []) {
     if (seen.has(tool)) continue;
     seen.add(tool);
     if (AGENT_TOOLS.includes(tool) && !input.agentTools.includes(tool)) {
-      findings.push({ id: "P01", fallback: "block", path: null, detail: `no setup file for ${tool}` });
+      findings.push({ id: "P01", fallback: "block", path: null, line: null, detail: `no setup file for ${tool}` });
     }
   }
   return findings;
 }
 
-// ../core/src/policy/rules/p08.ts
-var MAX_SHOWN = 80;
-var byCodeUnit4 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-function shownPattern(pattern) {
-  if (pattern.length <= MAX_SHOWN) return pattern;
-  const high = pattern.charCodeAt(MAX_SHOWN - 2);
-  const end = high >= 55296 && high <= 56319 ? MAX_SHOWN - 2 : MAX_SHOWN - 1;
-  return `${pattern.slice(0, end)}\u2026`;
+// ../core/src/policy/rules/p02.ts
+function detectP02(model, forbidden) {
+  const findings = [];
+  const byFamily = /* @__PURE__ */ new Map();
+  for (const text of forbidden) {
+    const family = ruleFamily(text);
+    const list = byFamily.get(family);
+    const entry = preparePolicyEntry(text);
+    if (list === void 0) byFamily.set(family, [entry]);
+    else list.push(entry);
+  }
+  for (const unit of model.units) {
+    for (const entry of unit.allow) {
+      const candidates = byFamily.get(ruleFamily(entry.text));
+      if (candidates === void 0) continue;
+      const allow = prepareEntry(entry.text, "allow");
+      if (allow.parsed.kind !== "rule") continue;
+      const hits = [];
+      for (const candidate of candidates) {
+        if (!hits.includes(candidate.text) && overlapsPrepared(allow, candidate)) hits.push(candidate.text);
+      }
+      if (hits.length === 0) continue;
+      const more = hits.length > 1 ? ` and ${hits.length - 1} more` : "";
+      findings.push({
+        id: "P02",
+        fallback: "block",
+        path: entry.path,
+        line: entry.line,
+        detail: `allow rule overlaps forbidden permission ${shownPattern(hits[0])}${more}`
+      });
+    }
+    for (const mode of unit.defaultModes) {
+      if (mode.value === "bypassPermissions") {
+        findings.push({
+          id: "P02",
+          fallback: "block",
+          path: mode.path,
+          line: mode.line,
+          detail: "defaultMode bypassPermissions turns permission prompts off"
+        });
+      } else if (mode.value === "auto") {
+        findings.push({
+          id: "P02",
+          fallback: "block",
+          path: mode.path,
+          line: mode.line,
+          detail: "defaultMode auto lets a classifier approve actions"
+        });
+      }
+    }
+    for (const dirs of unit.additionalDirectories) {
+      findings.push({
+        id: "P02",
+        fallback: "warn",
+        path: dirs.path,
+        line: dirs.line,
+        detail: "additionalDirectories gives the agent file access outside the repository"
+      });
+    }
+  }
+  return findings;
 }
+
+// ../core/src/policy/rules/p03.ts
+function detectP03(model, required) {
+  const findings = [];
+  const supplying = /* @__PURE__ */ new Set();
+  const wanted = required.map((text) => ({ entry: preparePolicyEntry(text), family: ruleFamily(text) }));
+  for (const unit of model.units) {
+    const byFamily = /* @__PURE__ */ new Map();
+    for (const deny of unit.deny) {
+      const family = ruleFamily(deny.text);
+      const list = byFamily.get(family);
+      const item = { entry: prepareEntry(deny.text, "deny"), path: deny.path };
+      if (list === void 0) byFamily.set(family, [item]);
+      else list.push(item);
+    }
+    for (const need of wanted) {
+      const candidates = byFamily.get(need.family) ?? [];
+      let satisfied = false;
+      for (const candidate of candidates) {
+        if (coversPrepared(candidate.entry, need.entry, "p03")) {
+          satisfied = true;
+          supplying.add(candidate.path);
+        }
+      }
+      if (!satisfied) {
+        findings.push({
+          id: "P03",
+          fallback: "block",
+          path: unit.reportPath,
+          line: null,
+          detail: `required deny rule ${shownPattern(need.entry.text)} is missing`
+        });
+      }
+    }
+  }
+  return { findings, supplying: [...supplying] };
+}
+
+// ../core/src/policy/rules/p04.ts
+function detectP04(model, allowed) {
+  const listed2 = new Set(allowed);
+  const findings = [];
+  const notListed = (path, line) => findings.push({
+    id: "P04",
+    fallback: "block",
+    path,
+    line,
+    detail: "MCP server is not on the policy's allowlist"
+  });
+  for (const server2 of model.mcpServers) if (!listed2.has(server2.name)) notListed(server2.path, server2.line);
+  for (const unit of model.units) {
+    for (const entry of unit.enabledMcpjsonServers) if (!listed2.has(entry.text)) notListed(entry.path, entry.line);
+    for (const flag of unit.enableAllProjectMcpServers) {
+      findings.push({
+        id: "P04",
+        fallback: "block",
+        path: flag.path,
+        line: flag.line,
+        detail: "enableAllProjectMcpServers approves every project MCP server"
+      });
+    }
+  }
+  return findings;
+}
+
+// ../core/src/policy/rules/p06.ts
+function detectP06(model, required) {
+  const findings = [];
+  const supplying = /* @__PURE__ */ new Set();
+  for (const unit of model.units) {
+    const missing = [];
+    for (const need of required) {
+      const hits = unit.hookGroups.filter(
+        (group) => group.counting && group.event === need.event && matcherCovers(group.matcher, need.matcher)
+      );
+      for (const hit of hits) supplying.add(hit.path);
+      if (hits.length > 0) continue;
+      const any = need.matcher === void 0 || need.matcher === "" || need.matcher === "*";
+      missing.push({
+        id: "P06",
+        fallback: "block",
+        path: unit.reportPath,
+        line: null,
+        detail: `required hook ${shownPattern(need.event)} ${any ? "(any tool)" : shownPattern(need.matcher)} is missing`
+      });
+    }
+    const disabled = unit.disableAllHooks[0];
+    if (disabled !== void 0) {
+      findings.push({
+        id: "P06",
+        fallback: "block",
+        path: disabled.path,
+        line: disabled.line,
+        detail: "disableAllHooks turns every hook off"
+      });
+    } else findings.push(...missing);
+  }
+  return { findings, supplying: [...supplying] };
+}
+
+// ../core/src/policy/rules/p08.ts
+var byCodeUnit6 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function detectP08(input) {
   const { policy } = input;
   if (policy.source !== "app" && policy.source !== "file" || policy.document === null) return [];
@@ -238524,13 +239538,14 @@ function detectP08(input) {
   if (!Array.isArray(patterns) || patterns.length === 0) return [];
   const compiled = patterns.map((pattern) => ({ shown: shownPattern(pattern), matches: compileGlob(pattern) }));
   const findings = [];
-  for (const path of [...new Set(input.repoFiles)].sort(byCodeUnit4)) {
+  for (const path of [...new Set(input.repoFiles)].sort(byCodeUnit6)) {
     const hit = compiled.find((entry) => entry.matches(path));
     if (hit === void 0) continue;
     findings.push({
       id: "P08",
       fallback: "block",
       path,
+      line: null,
       detail: `tracked file matches forbidden pattern ${hit.shown}`
     });
   }
@@ -238539,8 +239554,6 @@ function detectP08(input) {
 
 // ../core/src/policy/rules/p09.ts
 var WORKFLOWS_DIR2 = ".github/workflows/";
-var CLAUDE_SETTINGS = /^(?:.*\/)?\.claude\/settings[^/]*\.json$/;
-var MCP_FILES = /* @__PURE__ */ new Set([".mcp.json", ".cursor/mcp.json", ".vscode/mcp.json"]);
 var MAX_SETTINGS = 5;
 var SETTINGS_LISTS = [
   "forbidden_permissions",
@@ -238549,15 +239562,15 @@ var SETTINGS_LISTS = [
   "forbidden_mcp_servers",
   "required_hooks"
 ];
-var byCodeUnit5 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit7 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function settings(ignored, layer) {
   const names = [...new Set(ignored.filter((record) => record.layer === layer).map((record) => record.setting))].sort(
-    byCodeUnit5
+    byCodeUnit7
   );
   const shown2 = names.slice(0, MAX_SETTINGS).join(", ");
   return names.length > MAX_SETTINGS ? `${shown2}, and ${names.length - MAX_SETTINGS} more` : shown2;
 }
-function detectP09(input) {
+function detectP09(input, view) {
   const { policy, diff } = input;
   if (policy.source !== "app" && policy.source !== "file" || policy.document === null || diff === null) return [];
   const touched = /* @__PURE__ */ new Set();
@@ -238571,6 +239584,7 @@ function detectP09(input) {
       id: "P09",
       fallback: "block",
       path: policy.path,
+      line: null,
       detail: "this change edits the policy file it is checked against"
     });
   }
@@ -238579,10 +239593,11 @@ function detectP09(input) {
       id: "P09",
       fallback: "block",
       path: input.configPath,
+      line: null,
       detail: `this change edits the config, which sets ${settings(input.ignored, "config")} looser than the policy`
     });
   }
-  const paths = [...touched].sort(byCodeUnit5);
+  const paths = [...touched].sort(byCodeUnit7);
   if (input.ignored.some((record) => record.layer === "input")) {
     for (const path of paths) {
       if (!path.startsWith(WORKFLOWS_DIR2)) continue;
@@ -238590,20 +239605,52 @@ function detectP09(input) {
         id: "P09",
         fallback: "block",
         path,
+        line: null,
         detail: `this change edits a workflow while a workflow input is looser than the policy (${settings(input.ignored, "input")})`
       });
     }
   }
   const setup2 = policy.document.setup;
   const guarded = setup2 !== void 0 && SETTINGS_LISTS.some((key) => (setup2[key]?.length ?? 0) > 0);
-  if (guarded) {
-    for (const path of paths) {
-      if (!CLAUDE_SETTINGS.test(path) && !MCP_FILES.has(path)) continue;
+  for (const path of paths) {
+    if (!isPolicySettingsPath(path) && !isPolicyMcpPath(path)) continue;
+    if (view === null) {
+      if (!guarded) continue;
       findings.push({
         id: "P09",
         fallback: "warn",
         path,
+        line: null,
         detail: "this change edits a file the policy checks; its direction is not judged yet"
+      });
+      continue;
+    }
+    const failing = view.failing.get(path);
+    if (failing !== void 0) {
+      const ids = [...new Set(failing.ids)].sort(byCodeUnit7);
+      findings.push({
+        id: "P09",
+        fallback: view.uncheckable.has(path) ? "block" : failing.severity,
+        path,
+        line: null,
+        detail: `this change edits a file that fails ${ids.join(", ")}`
+      });
+    } else if (view.uncheckable.has(path)) {
+      findings.push({
+        id: "P09",
+        fallback: "block",
+        path,
+        line: null,
+        detail: "this change edits a file the policy could not check"
+      });
+    } else if (guarded) {
+      const supplies = view.supplying.has(path);
+      findings.push({
+        id: "P09",
+        fallback: supplies ? "warn" : "info",
+        path,
+        line: null,
+        detail: supplies ? "this change edits a file that supplies a required deny rule or hook; a reviewer should confirm it" : "this change edits a file the policy checks; it complies"
       });
     }
   }
@@ -238619,6 +239666,7 @@ function detectP10(input) {
       id: "P10",
       fallback: unavailable2.required ? "block" : "warn",
       path: null,
+      line: null,
       detail: `org policy could not be read (${unavailable2.reason})`
     }
   ];
@@ -238637,7 +239685,7 @@ function detectP11(input) {
   const severity2 = agentPolicy.severity;
   const findings = [];
   if (input.diff === null) {
-    return [{ id: "P11", fallback: severity2, path: null, detail: P11_DIFF_UNAVAILABLE_DETAIL }];
+    return [{ id: "P11", fallback: severity2, path: null, line: null, detail: P11_DIFF_UNAVAILABLE_DETAIL }];
   }
   const matchers = agentPolicy.protectedPaths.map((glob) => compileGlob(glob));
   const protectedPath = (path) => matchers.some((matches) => matches(path));
@@ -238645,78 +239693,165 @@ function detectP11(input) {
     let path = null;
     if (protectedPath(entry.path)) path = entry.path;
     else if (entry.oldPath !== entry.path && protectedPath(entry.oldPath)) path = entry.oldPath;
-    if (path !== null) findings.push({ id: "P11", fallback: severity2, path, detail: P11_PATH_DETAIL });
+    if (path !== null) findings.push({ id: "P11", fallback: severity2, path, line: null, detail: P11_PATH_DETAIL });
   }
   if (agentPolicy.listsIncomplete && agentPolicy.policyFileEdited === true) {
-    findings.push({ id: "P11", fallback: severity2, path: null, detail: P11_BASE_UNREADABLE_DETAIL });
+    findings.push({ id: "P11", fallback: severity2, path: null, line: null, detail: P11_BASE_UNREADABLE_DETAIL });
   }
   return findings;
 }
 
+// ../core/src/policy/rules/problems.ts
+var byCodeUnit8 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function settingsProblemLevel(problem, setup2) {
+  const deny = (setup2?.required_permissions_deny?.length ?? 0) > 0;
+  const hooks = (setup2?.required_hooks?.length ?? 0) > 0;
+  switch (problem.problemClass) {
+    case "drop":
+      return "error";
+    case "unparseable-settings":
+      return deny || hooks ? "error" : "warn";
+    case "deny":
+      return deny ? "error" : "warn";
+    case "hooks":
+      return hooks ? "error" : "warn";
+    default:
+      return "warn";
+  }
+}
+function reportedProblems(problems, setup2, inForce) {
+  const kept = /* @__PURE__ */ new Map();
+  for (const problem of problems) {
+    if (!problem.readers.some((reader) => inForce.has(reader))) continue;
+    const level = settingsProblemLevel(problem, setup2);
+    const key = `${problem.path ?? "\0"}${problem.line ?? ""}${problem.reason}`;
+    const known2 = kept.get(key);
+    if (known2 === void 0) kept.set(key, { path: problem.path, line: problem.line, reason: problem.reason, level });
+    else if (level === "error") known2.level = "error";
+  }
+  return [...kept.values()].sort(
+    (a, b) => (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : byCodeUnit8(a.path, b.path)) || (a.line === b.line ? 0 : a.line === null ? -1 : b.line === null ? 1 : a.line - b.line) || byCodeUnit8(a.reason, b.reason)
+  );
+}
+
 // ../core/src/policy/rules/evaluate.ts
-var MAX_P08_VIOLATIONS = 50;
-var MAX_P11_VIOLATIONS = 50;
-var RULE_CAPS = { P08: MAX_P08_VIOLATIONS, P11: MAX_P11_VIOLATIONS };
-var byCodeUnit6 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var MAX_RULE_VIOLATIONS = 50;
+var byCodeUnit9 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var SETTINGS_READERS = ["P02", "P03", "P04", "P05", "P06"];
+var SETTINGS_RULES = SETTINGS_READERS;
 function evaluatePolicyRules(input) {
-  const findings = [
-    ...detectP01(input),
-    ...detectP08(input),
-    ...detectP09(input),
-    ...detectP10(input),
-    ...detectP11(input)
-  ];
+  const { policy } = input;
+  const document2 = policy.document;
+  const inForce = (policy.source === "app" || policy.source === "file") && document2 !== null;
   const lowered = /* @__PURE__ */ new Set();
   if (input.agentPolicy?.lowered === true) lowered.add("P11");
-  let violations = [];
-  for (const finding2 of findings) {
-    if (finding2.id === "P10") {
-      violations.push({
+  const resolve2 = (findings) => {
+    const out = [];
+    for (const finding2 of findings) {
+      if (finding2.id === "P10" || finding2.id === "P11") {
+        out.push({
+          id: finding2.id,
+          severity: finding2.fallback,
+          path: finding2.path,
+          line: finding2.line,
+          detail: boundDetail(finding2.detail)
+        });
+        continue;
+      }
+      const resolved = resolveSeverity(policy, finding2.id, finding2.fallback);
+      if (resolved.lowered) lowered.add(finding2.id);
+      if (resolved.severity === null) continue;
+      out.push({
         id: finding2.id,
-        severity: finding2.fallback,
+        severity: resolved.severity,
         path: finding2.path,
-        line: null,
-        detail: finding2.detail
-      });
-      continue;
-    }
-    if (finding2.id === "P11") {
-      violations.push({
-        id: finding2.id,
-        severity: finding2.fallback,
-        path: finding2.path,
-        line: null,
+        line: finding2.line,
         detail: boundDetail(finding2.detail)
       });
-      continue;
     }
-    const resolved = resolveSeverity(input.policy, finding2.id, finding2.fallback);
-    if (resolved.lowered) lowered.add(finding2.id);
-    if (resolved.severity === null) continue;
-    violations.push({
-      id: finding2.id,
-      severity: resolved.severity,
-      path: finding2.path,
-      line: null,
-      detail: boundDetail(finding2.detail)
-    });
+    return out;
+  };
+  const settingsFindings = [];
+  let settings2;
+  let view = null;
+  const supplying = /* @__PURE__ */ new Set();
+  const sources = input.settingsSources;
+  if (inForce && sources !== void 0) {
+    if ("unavailable" in sources) {
+      const required = policy.source === "app" && document2.policy?.required === true;
+      settings2 = { unavailable: { reason: sources.unavailable, level: required ? "error" : "warn" }, problems: [] };
+    } else {
+      const setup2 = document2.setup;
+      const on = (id, listed2) => listed2 && resolveSeverity(policy, id, "block").severity !== null;
+      const active = {
+        P02: on("P02", true),
+        P03: on("P03", (setup2?.required_permissions_deny?.length ?? 0) > 0),
+        P04: on("P04", (setup2?.allowed_mcp_servers?.length ?? 0) > 0),
+        P05: on("P05", (setup2?.forbidden_mcp_servers?.length ?? 0) > 0),
+        P06: on("P06", (setup2?.required_hooks?.length ?? 0) > 0)
+      };
+      const model = readSettingsModel(sources, document2);
+      const over = compareUnits(model, setup2, { p02: active.P02, p03: active.P03, p05: active.P05 }) > COMPARE_BUDGET;
+      if (active.P02 && !over) settingsFindings.push(...detectP02(model, setup2?.forbidden_permissions ?? []));
+      if (active.P03 && !over) {
+        const p03 = detectP03(model, setup2?.required_permissions_deny ?? []);
+        settingsFindings.push(...p03.findings);
+        for (const path of p03.supplying) supplying.add(path);
+      }
+      if (active.P04) settingsFindings.push(...detectP04(model, setup2?.allowed_mcp_servers ?? []));
+      if (active.P05 && !over) settingsFindings.push(...detectP05(model, setup2?.forbidden_mcp_servers ?? []));
+      if (active.P06) {
+        const p06 = detectP06(model, setup2?.required_hooks ?? []);
+        settingsFindings.push(...p06.findings);
+        for (const path of p06.supplying) supplying.add(path);
+      }
+      const readers = new Set(SETTINGS_READERS.filter((id) => active[id]));
+      const problems = reportedProblems(model.problems, setup2, readers);
+      if (over) problems.unshift({ path: null, line: null, reason: "compare-budget", level: "error" });
+      settings2 = { unavailable: null, problems };
+      const uncheckable = /* @__PURE__ */ new Set();
+      for (const problem of problems)
+        if (problem.path !== null && problem.level === "error") uncheckable.add(problem.path);
+      view = { failing: /* @__PURE__ */ new Map(), uncheckable, supplying };
+    }
   }
+  const first = resolve2([
+    ...detectP01(input),
+    ...detectP08(input),
+    ...settingsFindings,
+    ...detectP10(input),
+    ...detectP11(input)
+  ]);
+  if (view !== null) {
+    for (const violation of first) {
+      if (!SETTINGS_RULES.includes(violation.id) || violation.path === null) continue;
+      const known2 = view.failing.get(violation.path);
+      if (known2 === void 0) view.failing.set(violation.path, { ids: [violation.id], severity: violation.severity });
+      else {
+        known2.ids.push(violation.id);
+        known2.severity = strongest([known2.severity, violation.severity]);
+      }
+    }
+  }
+  let violations = [...first, ...resolve2(detectP09(input, view))];
   violations.sort(
-    (a, b) => byCodeUnit6(a.id, b.id) || (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : byCodeUnit6(a.path, b.path)) || byCodeUnit6(a.detail, b.detail)
+    (a, b) => byCodeUnit9(a.id, b.id) || (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : byCodeUnit9(a.path, b.path)) || (a.line === b.line ? 0 : a.line === null ? -1 : b.line === null ? 1 : a.line - b.line) || byCodeUnit9(a.detail, b.detail)
   );
   const omitted = {};
-  for (const [id, cap] of Object.entries(RULE_CAPS)) {
-    const own = violations.filter((violation) => violation.id === id);
-    if (own.length <= cap) continue;
-    const dropped = new Set(own.slice(cap));
-    violations = violations.filter((violation) => !dropped.has(violation));
-    omitted[id] = own.length - cap;
-  }
+  const seen = /* @__PURE__ */ new Map();
+  violations = violations.filter((violation) => {
+    const count2 = (seen.get(violation.id) ?? 0) + 1;
+    seen.set(violation.id, count2);
+    if (count2 <= MAX_RULE_VIOLATIONS) return true;
+    omitted[violation.id] = (omitted[violation.id] ?? 0) + 1;
+    return false;
+  });
   const evaluation = {
     violations,
     omitted,
-    lowered: [...lowered].sort(byCodeUnit6),
-    ignored: [...input.agentPolicy?.ignored ?? []]
+    lowered: [...lowered].sort(byCodeUnit9),
+    ignored: [...input.agentPolicy?.ignored ?? []],
+    ...settings2 === void 0 ? {} : { settings: settings2 }
   };
   if (input.agentPr !== null && input.agentPr !== void 0) {
     evaluation.agentPr = { evidence: [...input.agentPr.evidence], incomplete: input.agentPr.incomplete };
@@ -238726,7 +239861,7 @@ function evaluatePolicyRules(input) {
 
 // ../core/src/policy/rules/messages.ts
 var MAX_LISTED = 20;
-var byCodeUnit7 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit10 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function listOf(paths, total) {
   const named = paths.slice(0, MAX_LISTED).map(codeSpan).join(", ");
   return total > MAX_LISTED ? `${named} and ${total - MAX_LISTED} more` : named;
@@ -238745,6 +239880,23 @@ var EVIDENCE_WORDS = {
   "co-author-extra-login": "a Co-authored-by trailer of a login the policy lists",
   label: "an agent label"
 };
+function locsOf(violations, omitted) {
+  const seen = /* @__PURE__ */ new Set();
+  const locations2 = [];
+  for (const violation of violations) {
+    if (violation.path === null) continue;
+    const key = `${violation.path}\0${violation.line ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    locations2.push(
+      violation.line === null ? codeSpan(violation.path) : `${codeSpan(violation.path)} line ${violation.line}`
+    );
+  }
+  const more = locations2.length - Math.min(locations2.length, MAX_LISTED) + omitted;
+  const named = locations2.slice(0, MAX_LISTED).join(", ");
+  return more > 0 ? `${named} and ${more} more` : named;
+}
+var counted = (n, singular, plural) => n === 1 ? `1 ${singular}` : `${n} ${plural}`;
 var RULE_MESSAGES = {
   P11: (violations, omitted, evaluation) => {
     const sentences = [];
@@ -238771,6 +239923,14 @@ var RULE_MESSAGES = {
     sentences.push(`It counts as an agent PR by: ${words.join("; ")}.`);
     return sentences.join(" ");
   },
+  P02: (violations, omitted) => `P02 forbidden permission allowed: ${counted(violations.length + omitted, "finding", "findings")} at ${locsOf(violations, omitted)}. Each is an allow rule equal to, broader than or inside a permission the org policy forbids, a defaultMode of bypassPermissions or auto, or additionalDirectories.`,
+  P03: (violations, omitted) => `P03 required deny missing: ${counted(violations.length + omitted, "required deny rule", "required deny rules")} not covered by a deny rule at ${locsOf(violations, omitted)}. A deny rule counts when it is equal to or broader than the required one.`,
+  P04: (violations, omitted) => `P04 MCP server not allowlisted: ${counted(violations.length + omitted, "MCP server", "MCP servers")} at ${locsOf(violations, omitted)} not on the org policy's allowlist, or enableAllProjectMcpServers set while the policy has one.`,
+  P05: (violations, omitted) => {
+    const n = violations.length + omitted;
+    return `P05 forbidden MCP server: ${counted(n, "MCP server", "MCP servers")} at ${locsOf(violations, omitted)} ${n === 1 ? "matches" : "match"} an entry the org policy forbids, by name, command or URL.`;
+  },
+  P06: (violations, omitted) => `P06 required hook missing: ${counted(violations.length + omitted, "required hook", "required hooks")} missing at ${locsOf(violations, omitted)}, or disableAllHooks set while the policy requires hooks. Only a command hook with no if condition, whose matcher covers the required one, counts.`,
   P08: (violations, omitted) => {
     const kept = pathsOf(violations);
     const total = kept.length + omitted;
@@ -238778,16 +239938,36 @@ var RULE_MESSAGES = {
     const notListed = total > 50 ? ` ${total - 50} of ${total - 50 === 1 ? "them is" : "them are"} not listed in the report.` : "";
     return `${head}: ${listOf(kept, total)}.${notListed}`;
   },
-  P09: (violations) => {
-    const paths = pathsOf(violations).sort(byCodeUnit7);
-    const total = paths.length;
+  P09: (violations, omitted) => {
+    const paths = pathsOf(violations).sort(byCodeUnit10);
+    const total = paths.length + omitted;
     const head = total === 1 ? "This change edits 1 file that the org policy guards" : `This change edits ${total} files that the org policy guards`;
     return `${head}: ${listOf(paths, total)}. The reason for each is in the report's policy violations.`;
   }
 };
+function settingsInvalidMessage(settings2) {
+  if (settings2.unavailable !== null) {
+    return {
+      level: settings2.unavailable.level,
+      code: "POLICY_SETTINGS_INVALID",
+      text: `The agent settings files were not read (${settings2.unavailable.reason}), so P02\u2013P06 did not run.`
+    };
+  }
+  if (settings2.problems.length === 0) return null;
+  const items = settings2.problems.map(
+    (problem) => problem.path === null ? `the rule comparison (\`${problem.reason}\`)` : `${codeSpan(problem.path)}${problem.line === null ? "" : ` line ${problem.line}`} (\`${problem.reason}\`)`
+  );
+  const named = items.slice(0, MAX_LISTED).join(", ");
+  const listed2 = items.length > MAX_LISTED ? `${named} and ${items.length - MAX_LISTED} more` : named;
+  return {
+    level: settings2.problems.some((problem) => problem.level === "error") ? "error" : "warn",
+    code: "POLICY_SETTINGS_INVALID",
+    text: `P02\u2013P06 could not fully use these agent settings files: ${listed2}. Claude Code skips an unparseable file or entry; pharn-ci never guesses what it meant, and a file it could not read counts against the policy.`
+  };
+}
 function policyRuleMessages(evaluation) {
   const messages = [];
-  const ids = [...new Set(evaluation.violations.map((violation) => violation.id))].sort(byCodeUnit7);
+  const ids = [...new Set(evaluation.violations.map((violation) => violation.id))].sort(byCodeUnit10);
   for (const id of ids) {
     const text = RULE_MESSAGES[id];
     if (text === void 0) continue;
@@ -238797,6 +239977,10 @@ function policyRuleMessages(evaluation) {
       code: `POLICY_${id}`,
       text: text(own, evaluation.omitted[id] ?? 0, evaluation)
     });
+  }
+  if (evaluation.settings !== void 0) {
+    const invalid = settingsInvalidMessage(evaluation.settings);
+    if (invalid !== null) messages.push(invalid);
   }
   return messages;
 }
@@ -239155,7 +240339,7 @@ var SECRET_SCAN_KINDS = [
 ];
 var SCAN_KINDS = new Set(SECRET_SCAN_KINDS);
 var CONTINUE_CONFIG_EXTENSIONS = [".json", ".yaml", ".yml"];
-var byCodeUnit8 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit11 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function agentConfigSecretPaths(inventory) {
   const paths = /* @__PURE__ */ new Set();
   for (const file of inventory.files) {
@@ -239166,7 +240350,7 @@ function agentConfigSecretPaths(inventory) {
     }
     paths.add(file.path);
   }
-  return [...paths].sort(byCodeUnit8);
+  return [...paths].sort(byCodeUnit11);
 }
 var MIN_S11_CHARS = 8;
 function lineStarts(text) {
@@ -239213,7 +240397,7 @@ function scanAgentConfigSecrets(files) {
     for (const span of spans) add(span.id, span.start);
     for (const offset of literalFindings(pairs, spans)) add("S11", offset);
   }
-  return [...found.values()].sort((a, b) => byCodeUnit8(a.id, b.id) || byCodeUnit8(a.path, b.path) || a.line - b.line);
+  return [...found.values()].sort((a, b) => byCodeUnit11(a.id, b.id) || byCodeUnit11(a.path, b.path) || a.line - b.line);
 }
 
 // ../core/src/secrets/messages.ts
@@ -239251,7 +240435,7 @@ var FAIL_CLOSED_REASONS = /* @__PURE__ */ new Set([
   "over-total-cap",
   "unsafe-path"
 ]);
-var byCodeUnit9 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit12 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function levelOf2(id) {
   return id === "S10" ? "warn" : id === "S11" ? "info" : "error";
 }
@@ -239277,7 +240461,7 @@ function agentConfigSecretMessages(sources, selected) {
   }
   const messages = [];
   const findings = scanAgentConfigSecrets(sources.files);
-  const ids = [...new Set(findings.map((finding2) => finding2.id))].sort(byCodeUnit9);
+  const ids = [...new Set(findings.map((finding2) => finding2.id))].sort(byCodeUnit12);
   for (const id of ids) {
     const ofId = findings.filter((finding2) => finding2.id === id);
     messages.push({
@@ -239293,7 +240477,7 @@ function agentConfigSecretMessages(sources, selected) {
     if (!read.has(path) && !dropped.has(path)) unscanned.push({ path, reason: "not-read" });
   }
   if (unscanned.length > 0) {
-    unscanned.sort((a, b) => byCodeUnit9(a.path, b.path));
+    unscanned.sort((a, b) => byCodeUnit12(a.path, b.path));
     messages.push({
       level: unscanned.some((file) => FAIL_CLOSED_REASONS.has(file.reason)) ? "error" : "warn",
       code: "AGENT_CONFIG_SECRET_UNSCANNED",
@@ -239472,7 +240656,7 @@ function applySignalOverrides(signals, omitted, overrides, mode) {
 
 // ../core/src/testFiles.ts
 var TEST_DIRECTORIES = /* @__PURE__ */ new Set(["test", "tests", "__tests__"]);
-var byCodeUnit10 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit13 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var TEST_BASENAME = [
   /\.(?:test|spec)\.(?:js|jsx|ts|tsx|mjs|cjs)$/,
   /\.(?:e2e|pw)\.ts$/,
@@ -239523,7 +240707,7 @@ function deletedTestFiles(diff) {
     if (file.status === "deleted" && isTestFile(file.path)) found.add(file.path);
     else if (file.status === "renamed" && isTestFile(file.oldPath) && !isTestFile(file.path)) found.add(file.oldPath);
   }
-  return [...found].sort(byCodeUnit10);
+  return [...found].sort(byCodeUnit13);
 }
 
 // ../core/src/signals/pythonAliases.ts
@@ -240572,7 +241756,7 @@ function indexTestFile(path, text) {
 }
 
 // ../core/src/signals/testPairs.ts
-var byCodeUnit11 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit14 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var EXTENSION_LANGUAGE = /* @__PURE__ */ new Map([
   ["ts", "ts"],
   ["tsx", "ts"],
@@ -240650,7 +241834,7 @@ function indexTouchedTestFiles(diff, sources, python) {
   const pairs = [];
   const unavailable2 = [];
   const compared2 = [...comparedPaths.values()].sort(
-    (a, b) => byCodeUnit11(a.basePath, b.basePath) || byCodeUnit11(a.headPath, b.headPath)
+    (a, b) => byCodeUnit14(a.basePath, b.basePath) || byCodeUnit14(a.headPath, b.headPath)
   );
   for (const file of compared2) {
     const base = indexSide("base", file.basePath, file.language);
@@ -240669,19 +241853,19 @@ function indexTouchedTestFiles(diff, sources, python) {
       unavailable2.push({ path: file.headPath, reason });
     }
   }
-  unavailable2.sort((a, b) => byCodeUnit11(a.path, b.path));
+  unavailable2.sort((a, b) => byCodeUnit14(a.path, b.path));
   const added = [];
-  for (const [headPath, language] of [...addedPaths].sort((a, b) => byCodeUnit11(a[0], b[0]))) {
+  for (const [headPath, language] of [...addedPaths].sort((a, b) => byCodeUnit14(a[0], b[0]))) {
     const head = indexSide("head", headPath, language);
     if (head.ok) added.push({ headPath, head: head.tests, headMocks: head.mocks });
   }
-  return { pairs, added, unavailable: unavailable2, notRun: null, languages: [...languages].sort(byCodeUnit11) };
+  return { pairs, added, unavailable: unavailable2, notRun: null, languages: [...languages].sort(byCodeUnit14) };
 }
 
 // ../core/src/signals/testChanges.ts
 var MAX_TEST_CHANGE_ENTRIES = 200;
-var byCodeUnit12 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-var byEntry = (a, b) => byCodeUnit12(a.path, b.path) || a.line - b.line;
+var byCodeUnit15 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byEntry = (a, b) => byCodeUnit15(a.path, b.path) || a.line - b.line;
 var KINDS = ["removed", "modified", "renamed", "added"];
 var entryOf = (path, block) => ({
   path,
@@ -240744,7 +241928,7 @@ function summarizeTestChanges(touched, match) {
       modified: lists.modified.length,
       renamed: lists.renamed.length
     },
-    files: [...rows.values()].sort((a, b) => byCodeUnit12(a.path, b.path)),
+    files: [...rows.values()].sort((a, b) => byCodeUnit15(a.path, b.path)),
     added: kept.added,
     removed: kept.removed,
     modified: kept.modified,
@@ -240794,7 +241978,7 @@ function containsAtLeast(old, fresh, ratio) {
   if (old.size === 0) return true;
   return ratio.den * overlap(old, fresh) >= ratio.num * old.size;
 }
-var byCodeUnit13 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit16 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var CursorHeap = class {
   list = [];
   at = [];
@@ -240871,7 +242055,7 @@ var SimilarityIndex = class {
   }
   prefix(set) {
     const frequency = this.frequency;
-    const ordered = [...set].sort((a, b) => (frequency.get(a) ?? 0) - (frequency.get(b) ?? 0) || byCodeUnit13(a, b));
+    const ordered = [...set].sort((a, b) => (frequency.get(a) ?? 0) - (frequency.get(b) ?? 0) || byCodeUnit16(a, b));
     return ordered.slice(0, set.size - ceilRatio(set.size, this.ratio) + 1);
   }
   /**
@@ -241031,7 +242215,7 @@ function eachReplacements(candidates, fresh) {
 }
 
 // ../core/src/signals/testMatch.ts
-var byCodeUnit14 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit17 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var byLine = (a, b) => a.line - b.line;
 var leafName = (block) => block.path[block.path.length - 1] ?? "";
 var OtherFileList = class {
@@ -241089,7 +242273,7 @@ function matchTests(touched) {
   const left = [];
   const tokensOf = tokenSetMemo();
   const files = [...touched.pairs].sort(
-    (a, b) => byCodeUnit14(a.basePath, b.basePath) || byCodeUnit14(a.headPath, b.headPath)
+    (a, b) => byCodeUnit17(a.basePath, b.basePath) || byCodeUnit17(a.headPath, b.headPath)
   );
   let fileIndex = 0;
   for (const file of files) {
@@ -241200,13 +242384,13 @@ function matchTests(touched) {
     for (const entry of clearing) entry.used = true;
     for (const candidate of afterRename) if (!cleared.has(candidate.block)) left.push(candidate);
   }
-  for (const file of [...touched.added].sort((a, b) => byCodeUnit14(a.headPath, b.headPath))) {
+  for (const file of [...touched.added].sort((a, b) => byCodeUnit17(a.headPath, b.headPath))) {
     const index = fileIndex++;
     for (const block of [...file.head].sort(byLine)) {
       fresh.push({ fileIndex: index, path: file.headPath, block, order: 0, used: false });
     }
   }
-  fresh.sort((a, b) => byCodeUnit14(a.path, b.path) || a.block.line - b.block.line);
+  fresh.sort((a, b) => byCodeUnit17(a.path, b.path) || a.block.line - b.block.line);
   fresh.forEach((entry, at) => {
     entry.order = at;
   });
@@ -241298,7 +242482,7 @@ function matchTests(touched) {
 }
 
 // ../core/src/signals/ti01Moved.ts
-var byCodeUnit15 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit18 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var leafOf = (block) => block.path[block.path.length - 1] ?? "";
 function sameStemDeletions(diff) {
   const stems = /* @__PURE__ */ new Map();
@@ -241326,7 +242510,7 @@ function sameStemDeletions(diff) {
 function movedTestFiles(diff, sources, python, touched) {
   const moved = { files: /* @__PURE__ */ new Set(), compared: /* @__PURE__ */ new Set(), pairs: [] };
   if (touched.notRun !== null || "unavailable" in sources.base) return moved;
-  const deleted = diff.filter((file) => file.status === "deleted" && isTestFile(file.path) && file.binary !== true).map((file) => file.path).sort(byCodeUnit15);
+  const deleted = diff.filter((file) => file.status === "deleted" && isTestFile(file.path) && file.binary !== true).map((file) => file.path).sort(byCodeUnit18);
   if (deleted.length === 0) return moved;
   const texts = new Map(sources.base.files.map((file) => [file.path, file.text]));
   const pythonBase = python?.available ? new Map(python.base.map((file) => [file.path, file.result])) : null;
@@ -241358,7 +242542,7 @@ function movedTestFiles(diff, sources, python, touched) {
     }
   }
   if (fresh.length === 0) return moved;
-  fresh.sort((a, b) => byCodeUnit15(a.path, b.path) || a.block.line - b.block.line);
+  fresh.sort((a, b) => byCodeUnit18(a.path, b.path) || a.block.line - b.block.line);
   const leaves = /* @__PURE__ */ new Map();
   const groups = /* @__PURE__ */ new Set();
   for (const entry of fresh) {
@@ -241404,7 +242588,7 @@ function movedTestFiles(diff, sources, python, touched) {
 }
 
 // ../core/src/signals/ti01.ts
-var byCodeUnit16 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit19 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_DETAIL3 = 300;
 function removedTests(file) {
   if (file.hunks === void 0) return "unknown";
@@ -241453,7 +242637,7 @@ function detectTI01(diff, mode, moved = /* @__PURE__ */ new Set(), compared2 = /
     }
     found.set(path, { id: "TI01", severity: severity2, path, line: null, detail: detail.slice(0, MAX_DETAIL3) });
   }
-  return [...found.values()].sort((a, b) => byCodeUnit16(a.path, b.path));
+  return [...found.values()].sort((a, b) => byCodeUnit19(a.path, b.path));
 }
 
 // ../core/src/signals/ti02.ts
@@ -241468,7 +242652,7 @@ function detectTI02(match, mode) {
 }
 
 // ../core/src/signals/ti03.ts
-var byCodeUnit17 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit20 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE = 20;
 var DETAILS = {
   existing: "An unconditional skip was added to a test that the diff shows existed before this change, so that test no longer runs.",
@@ -241615,11 +242799,11 @@ function detectTI03(diff, mode, sources) {
       });
     }
   }
-  return signals.sort((a, b) => byCodeUnit17(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit20(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti04.ts
-var byCodeUnit18 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit21 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE2 = 20;
 var DETAIL = "A focused-run marker (`.only`, `fit` or `fdescribe`) was added, so the runner may skip the other tests of this file or of the whole run.";
 function detectTI04(diff, mode) {
@@ -241647,7 +242831,7 @@ function detectTI04(diff, mode) {
       signals.push({ id: "TI04", severity: mode, path: file.path, line, detail: DETAIL });
     }
   }
-  return signals.sort((a, b) => byCodeUnit18(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit21(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti05.ts
@@ -242381,7 +243565,7 @@ var MODIFIERS_THAT_EXCUSE2 = ["skip", "todo", "skipIf", "runIf"];
 var TAUTOLOGY_REASON = "an assertion that compares a literal with itself was added";
 var TRY_REASON = "an assertion moved into a try block that has a catch";
 var RETURN_REASON = "an assertion moved after an early return";
-var byCodeUnit19 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit22 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function counts(labels) {
   const map = /* @__PURE__ */ new Map();
   for (const label of labels) map.set(label, (map.get(label) ?? 0) + 1);
@@ -242390,7 +243574,7 @@ function counts(labels) {
 function surplus(from, other) {
   const own = counts(from);
   const against = counts(other);
-  return [...own].filter(([label, n]) => n > (against.get(label) ?? 0)).map(([label]) => label).sort(byCodeUnit19);
+  return [...own].filter(([label, n]) => n > (against.get(label) ?? 0)).map(([label]) => label).sort(byCodeUnit22);
 }
 function listed(labels, cut) {
   if (labels.length <= cut) return labels.join(", ");
@@ -242472,7 +243656,7 @@ function detectTI06(match) {
 var MAX_TEST_SOURCE_FILES = 200;
 var MAX_TEST_SOURCE_FILE_BYTES = 524288;
 var MAX_TEST_SOURCE_TOTAL_BYTES = 16777216;
-var byCodeUnit20 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit23 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var TEST_CONFIG_PREFIXES = [
   "vitest.config.",
   "vite.config.",
@@ -242506,7 +243690,7 @@ function selectTestSourcePaths(diff) {
       head.add(file.path);
     }
   }
-  return { base: [...base].sort(byCodeUnit20), head: [...head].sort(byCodeUnit20) };
+  return { base: [...base].sort(byCodeUnit23), head: [...head].sort(byCodeUnit23) };
 }
 function isUnsafeTestSourcePath(path) {
   if (path === "" || path.startsWith("/")) return true;
@@ -242521,7 +243705,7 @@ function planTestSourceReads(paths, objects) {
   const dropped = [];
   let total = 0;
   let tripped = false;
-  for (const path of [...new Set(paths)].sort(byCodeUnit20)) {
+  for (const path of [...new Set(paths)].sort(byCodeUnit23)) {
     if (isUnsafeTestSourcePath(path)) {
       dropped.push({ path, reason: "unsafe-path" });
       continue;
@@ -242607,7 +243791,7 @@ var UNITTEST = /* @__PURE__ */ new Set([
 ]);
 var JS_KEYWORD_LITERALS = /* @__PURE__ */ new Set(["true", "false", "null", "undefined"]);
 var PY_KEYWORD_LITERALS = /* @__PURE__ */ new Set(["True", "False", "None"]);
-var NUMBER = /^(?:0[xXoObB][0-9a-fA-F_]+n?|(?:\d[\d_]*(?:\.[\d_]*)?|\.\d[\d_]*)(?:[eE][+-]?\d+)?[njJ]?)/;
+var NUMBER2 = /^(?:0[xXoObB][0-9a-fA-F_]+n?|(?:\d[\d_]*(?:\.[\d_]*)?|\.\d[\d_]*)(?:[eE][+-]?\d+)?[njJ]?)/;
 var WORD2 = /^[A-Za-z_$][\w$]*/;
 var REGEX_BEFORE = /* @__PURE__ */ new Set([
   "(",
@@ -242741,7 +243925,7 @@ function lexJs(body) {
       continue;
     }
     const rest = body.slice(i, i + 64);
-    const number = /^[\d.]/.test(c) ? NUMBER.exec(rest) : null;
+    const number = /^[\d.]/.test(c) ? NUMBER2.exec(rest) : null;
     if (number !== null && number[0] !== ".") {
       out.push({ kind: "lit", text: number[0], value: `n:${number[0].replace(/_/g, "").toLowerCase()}` });
       i += number[0].length;
@@ -242798,7 +243982,7 @@ function lexPy(body) {
       continue;
     }
     const rest = body.slice(i, i + 64);
-    const number = /^[\d.]/.test(c) ? NUMBER.exec(rest) : null;
+    const number = /^[\d.]/.test(c) ? NUMBER2.exec(rest) : null;
     if (number !== null && number[0] !== ".") {
       out.push({ kind: "lit", text: number[0], value: `n:${number[0].replace(/_/g, "").toLowerCase()}` });
       i += number[0].length;
@@ -242826,10 +244010,10 @@ function lexPy(body) {
   return out;
 }
 var OPEN = { "(": ")", "[": "]", "{": "}" };
-function closeOf(tokens, open3) {
+function closeOf(tokens2, open3) {
   let depth = 0;
-  for (let i = open3; i < tokens.length; i++) {
-    const t = tokens[i];
+  for (let i = open3; i < tokens2.length; i++) {
+    const t = tokens2[i];
     if (t.kind !== "punct") continue;
     if (OPEN[t.text] !== void 0) depth++;
     else if (t.text === ")" || t.text === "]" || t.text === "}") {
@@ -242839,10 +244023,10 @@ function closeOf(tokens, open3) {
   }
   return -1;
 }
-function afterFirstComma(tokens, open3, close) {
+function afterFirstComma(tokens2, open3, close) {
   let depth = 0;
   for (let i = open3 + 1; i < close; i++) {
-    const t = tokens[i];
+    const t = tokens2[i];
     if (t.kind !== "punct") continue;
     if (OPEN[t.text] !== void 0) depth++;
     else if (t.text === ")" || t.text === "]" || t.text === "}") depth--;
@@ -242850,26 +244034,26 @@ function afterFirstComma(tokens, open3, close) {
   }
   return -1;
 }
-function pyOperandEnd(tokens, at) {
+function pyOperandEnd(tokens2, at) {
   let i = at;
-  if (tokens[i]?.text === "-" && tokens[i]?.kind === "punct") i++;
-  const first = tokens[i];
+  if (tokens2[i]?.text === "-" && tokens2[i]?.kind === "punct") i++;
+  const first = tokens2[i];
   if (first === void 0) return at;
   if (first.kind === "lit") return i + 1;
   if (first.kind === "punct" && OPEN[first.text] !== void 0) {
-    const close = closeOf(tokens, i);
+    const close = closeOf(tokens2, i);
     return close === -1 ? at : close + 1;
   }
   if (first.kind !== "word") return at;
   i++;
   for (; ; ) {
-    const t = tokens[i];
-    if (t?.kind === "punct" && t.text === "." && tokens[i + 1]?.kind === "word") {
+    const t = tokens2[i];
+    if (t?.kind === "punct" && t.text === "." && tokens2[i + 1]?.kind === "word") {
       i += 2;
       continue;
     }
     if (t?.kind === "punct" && (t.text === "(" || t.text === "[")) {
-      const close = closeOf(tokens, i);
+      const close = closeOf(tokens2, i);
       if (close === -1) return at;
       i = close + 1;
       continue;
@@ -242877,20 +244061,20 @@ function pyOperandEnd(tokens, at) {
     return i;
   }
 }
-function regionsOf(tokens, language) {
+function regionsOf(tokens2, language) {
   const regions = [];
-  for (let i = 0; i < tokens.length; i++) {
-    const t = tokens[i];
+  for (let i = 0; i < tokens2.length; i++) {
+    const t = tokens2[i];
     if (t.kind !== "word") continue;
-    const dotBefore = tokens[i - 1]?.kind === "punct" && tokens[i - 1]?.text === ".";
-    const open3 = tokens[i + 1]?.kind === "punct" && tokens[i + 1]?.text === "(" ? i + 1 : -1;
+    const dotBefore = tokens2[i - 1]?.kind === "punct" && tokens2[i - 1]?.text === ".";
+    const open3 = tokens2[i + 1]?.kind === "punct" && tokens2[i + 1]?.text === "(" ? i + 1 : -1;
     if (language === "js") {
       if (!dotBefore || open3 === -1) continue;
-      const close = closeOf(tokens, open3);
+      const close = closeOf(tokens2, open3);
       if (close === -1) continue;
-      if (tokens[i - 2]?.text === "assert" && tokens[i - 3]?.text !== ".") {
+      if (tokens2[i - 2]?.text === "assert" && tokens2[i - 3]?.text !== ".") {
         if (!NODE_ASSERT.has(t.text)) continue;
-        const from = afterFirstComma(tokens, open3, close);
+        const from = afterFirstComma(tokens2, open3, close);
         if (from !== -1) regions.push({ start: from, end: close, matcher: `assert.${t.text}` });
       } else if (JS_MATCHERS.has(t.text)) {
         regions.push({ start: open3 + 1, end: close, matcher: t.text });
@@ -242898,16 +244082,16 @@ function regionsOf(tokens, language) {
       continue;
     }
     if (dotBefore && open3 !== -1 && UNITTEST.has(t.text)) {
-      const close = closeOf(tokens, open3);
+      const close = closeOf(tokens2, open3);
       if (close === -1) continue;
-      const from = afterFirstComma(tokens, open3, close);
+      const from = afterFirstComma(tokens2, open3, close);
       if (from !== -1) regions.push({ start: from, end: close, matcher: t.text });
       continue;
     }
     if (!dotBefore && t.text === "assert") {
       let depth = 0;
-      for (let j = i + 1; j < tokens.length; j++) {
-        const u = tokens[j];
+      for (let j = i + 1; j < tokens2.length; j++) {
+        const u = tokens2[j];
         if (u.kind === "word" && u.text === "assert" && depth === 0) break;
         if (u.kind !== "punct") continue;
         if (OPEN[u.text] !== void 0) depth++;
@@ -242916,7 +244100,7 @@ function regionsOf(tokens, language) {
           depth--;
         } else if (depth === 0 && u.text === ",") break;
         else if (depth === 0 && u.text === "==") {
-          const end = pyOperandEnd(tokens, j + 1);
+          const end = pyOperandEnd(tokens2, j + 1);
           if (end > j + 1) regions.push({ start: j + 1, end, matcher: "assert ==" });
           break;
         }
@@ -242927,19 +244111,19 @@ function regionsOf(tokens, language) {
 }
 var AFTER_OPERAND_START = /* @__PURE__ */ new Set(["(", "[", "{", ",", ":", "=="]);
 function mask(body, language) {
-  const tokens = language === "py" ? lexPy(body) : lexJs(body);
-  const owner = new Array(tokens.length).fill(null);
-  for (const region of regionsOf(tokens, language)) {
+  const tokens2 = language === "py" ? lexPy(body) : lexJs(body);
+  const owner = new Array(tokens2.length).fill(null);
+  for (const region of regionsOf(tokens2, language)) {
     for (let i = region.start; i < region.end; i++) owner[i] ??= region.matcher;
   }
   const keys = [];
   const literals = [];
-  for (let i = 0; i < tokens.length; i++) {
-    const t = tokens[i];
+  for (let i = 0; i < tokens2.length; i++) {
+    const t = tokens2[i];
     const matcher = owner[i];
     if (matcher !== null && matcher !== void 0) {
-      const next = tokens[i + 1];
-      const previous = tokens[i - 1];
+      const next = tokens2[i + 1];
+      const previous = tokens2[i - 1];
       if (t.kind === "punct" && t.text === "-" && next?.kind === "lit" && next.value.startsWith("n:") && owner[i + 1] === matcher && (previous === void 0 || owner[i - 1] !== matcher || AFTER_OPERAND_START.has(previous.text))) {
         keys.push("\0lit");
         literals.push({ value: `n:-${next.value.slice(2)}`, matcher });
@@ -243010,7 +244194,7 @@ function escapeDetailText(text) {
 }
 
 // ../core/src/signals/ti10.ts
-var byCodeUnit21 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit24 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE3 = 20;
 var DETAILS2 = {
   "or-true": "A test script now ignores the exit status of a command, so it passes even when the tests fail.",
@@ -243151,18 +244335,18 @@ function detectTI10(diff, options) {
     for (const hook2 of removedHooks) {
       if (!addedKeys.has(hook2.key)) found.push({ line: hook2.line, kind: "hook-removed" });
     }
-    found.sort((a, b) => a.line - b.line || byCodeUnit21(DETAILS2[a.kind], DETAILS2[b.kind]));
+    found.sort((a, b) => a.line - b.line || byCodeUnit24(DETAILS2[a.kind], DETAILS2[b.kind]));
     for (const { line, kind } of found.slice(0, MAX_PER_FILE3)) {
       signals.push({ id: "TI10", severity: options.mode, path: file.path, line, detail: DETAILS2[kind] });
     }
   }
   return signals.sort(
-    (a, b) => byCodeUnit21(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit21(a.detail, b.detail)
+    (a, b) => byCodeUnit24(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit24(a.detail, b.detail)
   );
 }
 
 // ../core/src/signals/ti08.ts
-var byCodeUnit22 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit25 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_SNAPSHOT_FILES = 10;
 var MIN_INLINE_REWRITES = 10;
 var MAX_FLAG_SIGNALS_PER_FILE = 20;
@@ -243198,15 +244382,15 @@ function massChangeDetail(count2, firstPaths) {
   return `${head}${tail}`;
 }
 function detectSnapshotFiles(diff) {
-  const counted = [...new Set(diff.filter(countsAsChangedSnapshot).map((file) => file.path))].sort(byCodeUnit22);
-  if (counted.length <= MAX_SNAPSHOT_FILES) return [];
+  const counted2 = [...new Set(diff.filter(countsAsChangedSnapshot).map((file) => file.path))].sort(byCodeUnit25);
+  if (counted2.length <= MAX_SNAPSHOT_FILES) return [];
   return [
     {
       id: "TI08",
       severity: "warn",
-      path: counted[0],
+      path: counted2[0],
       line: null,
-      detail: massChangeDetail(counted.length, counted)
+      detail: massChangeDetail(counted2.length, counted2)
     }
   ];
 }
@@ -243316,7 +244500,7 @@ function detectTI08(diff) {
   const signals = [...detectSnapshotFiles(diff), ...detectInlineRewrites(diff)];
   for (const file of diff) signals.push(...detectScriptFlags(file), ...detectPytestFlag(file));
   return signals.sort(
-    (a, b) => byCodeUnit22(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit22(a.detail, b.detail)
+    (a, b) => byCodeUnit25(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit25(a.detail, b.detail)
   );
 }
 
@@ -243816,7 +245000,7 @@ var TABLE2 = /^\[\s*tool\s*\.\s*pytest\s*\.\s*ini_options\s*\]\s*(?:#.*)?$/;
 var NATIVE_TABLE = /^\[\s*tool\s*\.\s*pytest\s*\]\s*(?:#.*)?$/;
 var HEADER_LINE = /^\[\[?[A-Za-z0-9_.\s-]+\]\]?\s*(?:#.*)?$/;
 var KEY_LINE = /^([A-Za-z0-9_.-]+|"(?:[^"\\]|\\.)*"|'[^']*')\s*=([\s\S]*)$/;
-var NUMBER2 = /^[-+]?\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][-+]?\d+)?$/;
+var NUMBER3 = /^[-+]?\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][-+]?\d+)?$/;
 function stringEnd2(text, open3) {
   const quote = text[open3];
   for (let i = open3 + 1; i < text.length; i++) {
@@ -243853,7 +245037,7 @@ function scalar(text) {
   }
   if (text === "true") return { type: "boolean", value: true };
   if (text === "false") return { type: "boolean", value: false };
-  if (NUMBER2.test(text)) return { type: "number", value: Number(text.replace(/_/g, "")) };
+  if (NUMBER3.test(text)) return { type: "number", value: Number(text.replace(/_/g, "")) };
   return { type: "opaque", text: normalizeOpaque(text) };
 }
 function scanBrackets(text, from, depth) {
@@ -244231,7 +245415,7 @@ var LONG_FLAGS = /* @__PURE__ */ new Map([
   ["--stepwise", "--sw"]
 ]);
 function shellSplit(text) {
-  const tokens = [];
+  const tokens2 = [];
   let current = "";
   let inToken = false;
   let quote = null;
@@ -244251,7 +245435,7 @@ function shellSplit(text) {
       quote = ch;
       inToken = true;
     } else if (/\s/.test(ch)) {
-      if (inToken) tokens.push(current);
+      if (inToken) tokens2.push(current);
       current = "";
       inToken = false;
     } else {
@@ -244259,8 +245443,8 @@ function shellSplit(text) {
       inToken = true;
     }
   }
-  if (inToken) tokens.push(current);
-  return tokens;
+  if (inToken) tokens2.push(current);
+  return tokens2;
 }
 function splitAddopts(value) {
   if (value.type === "array") {
@@ -244268,16 +245452,16 @@ function splitAddopts(value) {
   }
   return value.type === "string" ? shellSplit(value.value) : [];
 }
-function deselectionPairs(tokens) {
+function deselectionPairs(tokens2) {
   const pairs = [];
-  for (let i = 0; i < tokens.length; i++) {
-    const token = tokens[i];
+  for (let i = 0; i < tokens2.length; i++) {
+    const token = tokens2[i];
     if (token === "--") break;
     if (token.startsWith("--")) {
       const equals = token.indexOf("=");
       const name = equals === -1 ? token : token.slice(0, equals);
       if (LONG_WITH_VALUE.has(name)) {
-        const value = equals === -1 ? tokens[++i] ?? "" : token.slice(equals + 1);
+        const value = equals === -1 ? tokens2[++i] ?? "" : token.slice(equals + 1);
         if (name === "--maxfail" && /^0*$/.test(value)) continue;
         pairs.push({ flag: name, value });
       } else {
@@ -244290,7 +245474,7 @@ function deselectionPairs(tokens) {
         const letter = cluster[j];
         if (VALUE_TAKING_SHORT.has(letter)) {
           const rest = cluster.slice(j + 1);
-          const value = rest === "" ? tokens[++i] ?? "" : rest;
+          const value = rest === "" ? tokens2[++i] ?? "" : rest;
           if (letter === "k" || letter === "m") pairs.push({ flag: `-${letter}`, value });
           else if (letter === "p" && value.startsWith("no:") && value !== "no:cacheprovider")
             pairs.push({ flag: "-p", value });
@@ -244831,7 +246015,7 @@ function evaluateRules(kind, base, head, mode) {
 }
 
 // ../core/src/signals/ti09.ts
-var byCodeUnit23 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit26 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function lookupOf2(side) {
   const texts = /* @__PURE__ */ new Map();
   const dropped = /* @__PURE__ */ new Map();
@@ -244880,7 +246064,7 @@ function detectTI09(diff, sources, mode) {
     }
     return readTestConfig(candidate.kind, path, text.text);
   };
-  const sorted = [...candidates].sort((a, b) => byCodeUnit23(a.path, b.path) || byCodeUnit23(a.oldPath, b.oldPath));
+  const sorted = [...candidates].sort((a, b) => byCodeUnit26(a.path, b.path) || byCodeUnit26(a.oldPath, b.oldPath));
   for (const candidate of sorted) {
     const base = candidate.added ? null : readSide(baseSide, candidate, candidate.oldPath);
     const head = readSide(headSide, candidate, candidate.path);
@@ -244917,13 +246101,13 @@ function detectTI09(diff, sources, mode) {
   }
   return {
     signals,
-    unavailable: [...unavailable2].map(([path, reason]) => ({ path, reason })).sort((a, b) => byCodeUnit23(a.path, b.path)),
+    unavailable: [...unavailable2].map(([path, reason]) => ({ path, reason })).sort((a, b) => byCodeUnit26(a.path, b.path)),
     notRun: null
   };
 }
 
 // ../core/src/signals/ti11.ts
-var byCodeUnit24 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit27 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var PM_FLAGS = String.raw`(?:\s+(?:-r|--recursive|-w|--workspace-root|-ws|--workspaces|--if-present|(?:--filter|-F|-C|--dir|--prefix|--workspace|--cwd)(?:=|\s+)\S+))*`;
 var JS_LAUNCHER = String.raw`(?:(?:npx|bunx|yarn|pnpm${PM_FLAGS}(?:\s+(?:exec|dlx))?|bun\s+x|npm\s+exec)\s+)?`;
 var PY_WRAPPER = String.raw`(?:(?:uv|poetry|pipenv|pdm|hatch|rye)\s+run\s+)?`;
@@ -244977,36 +246161,36 @@ var PM_VALUE_FLAGS = /* @__PURE__ */ new Set([
 ]);
 var PACKAGE_MANAGERS = /* @__PURE__ */ new Set(["npm", "pnpm", "yarn", "bun"]);
 var RUNNERS = /* @__PURE__ */ new Set(["vitest", "jest", "mocha"]);
-function runnerStart(tokens) {
-  const first = tokens[0];
+function runnerStart(tokens2) {
+  const first = tokens2[0];
   let start = -1;
   if (first === "npx" || first === "bunx") start = 1;
-  else if (first === "bun" || first === "npm") start = tokens[1] === (first === "bun" ? "x" : "exec") ? 2 : -1;
-  else if (first === "pnpm") start = tokens[1] === "exec" || tokens[1] === "dlx" ? 2 : 1;
+  else if (first === "bun" || first === "npm") start = tokens2[1] === (first === "bun" ? "x" : "exec") ? 2 : -1;
+  else if (first === "pnpm") start = tokens2[1] === "exec" || tokens2[1] === "dlx" ? 2 : 1;
   else if (first === "yarn") start = 1;
   else start = 0;
   if (start < 0) return -1;
-  const runner = tokens[start];
+  const runner = tokens2[start];
   if (runner === void 0) return -1;
-  if (RUNNERS.has(runner) || runner === "playwright" && tokens[start + 1] === "test") return start;
+  if (RUNNERS.has(runner) || runner === "playwright" && tokens2[start + 1] === "test") return start;
   return -1;
 }
 function keyOf2(part) {
-  const tokens = part.split(" ");
-  const runner = runnerStart(tokens);
-  if (runner >= 0) return tokens.slice(runner).join(" ");
-  const manager = tokens[0];
+  const tokens2 = part.split(" ");
+  const runner = runnerStart(tokens2);
+  if (runner >= 0) return tokens2.slice(runner).join(" ");
+  const manager = tokens2[0];
   if (!PACKAGE_MANAGERS.has(manager)) return part;
   let i = 1;
   const flags = [];
   for (; ; ) {
-    const token = tokens[i];
+    const token = tokens2[i];
     if (token === void 0) break;
     if (PM_PLAIN_FLAGS.has(token)) {
       flags.push(token);
       i += 1;
-    } else if (PM_VALUE_FLAGS.has(token) && tokens[i + 1] !== void 0) {
-      flags.push(token, tokens[i + 1]);
+    } else if (PM_VALUE_FLAGS.has(token) && tokens2[i + 1] !== void 0) {
+      flags.push(token, tokens2[i + 1]);
       i += 2;
     } else if (/^(?:--filter|-F|-C|--dir|--prefix|--workspace|--cwd)=\S+$/.test(token)) {
       flags.push(token);
@@ -245016,17 +246200,17 @@ function keyOf2(part) {
     }
   }
   let ran = false;
-  if (tokens[i] === "run" || manager === "npm" && tokens[i] === "run-script") {
+  if (tokens2[i] === "run" || manager === "npm" && tokens2[i] === "run-script") {
     ran = true;
     i += 1;
   }
-  let script = tokens[i];
+  let script = tokens2[i];
   if (script === void 0 || !/^(?:test|t)(?::[\w:-]+)?$/.test(script)) return part;
   if (manager === "bun" && !ran) return part;
   if (!ran && script === "t") script = "test";
   i += 1;
-  if (tokens[i] === "--") i += 1;
-  return ["run", ...flags, script, ...tokens.slice(i)].join(" ");
+  if (tokens2[i] === "--") i += 1;
+  return ["run", ...flags, script, ...tokens2.slice(i)].join(" ");
 }
 function testKeysOf(line) {
   const text = commandText(line);
@@ -245118,7 +246302,7 @@ function detectTI11(diff, mode) {
     if (rushed !== void 0) emit("warn", rushed.line, SENTENCES.timeout);
   }
   return signals.sort(
-    (a, b) => byCodeUnit24(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit24(a.detail, b.detail)
+    (a, b) => byCodeUnit27(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit27(a.detail, b.detail)
   );
 }
 
@@ -245277,7 +246461,7 @@ function detectTI12(touched, diff) {
 }
 
 // ../core/src/signals/ti13.ts
-var byCodeUnit25 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit28 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE4 = 20;
 var DETAILS3 = {
   istanbul: "An Istanbul coverage hint was added, so the code it marks leaves the coverage this check grades.",
@@ -245329,12 +246513,12 @@ function detectTI13(diff, mode) {
     }
   }
   return signals.sort(
-    (a, b) => byCodeUnit25(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit25(a.detail, b.detail)
+    (a, b) => byCodeUnit28(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit28(a.detail, b.detail)
   );
 }
 
 // ../core/src/signals/ti14.ts
-var byCodeUnit26 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit29 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var PLAIN_NUMBER = /^\d+(?:\.\d+)?$/;
 function normalizedPattern(item) {
   try {
@@ -245452,11 +246636,11 @@ function detectTI14(diff, options) {
       });
     }
   }
-  return signals.sort((a, b) => byCodeUnit26(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit29(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti15.ts
-var byCodeUnit27 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit30 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_CHANGE = 10;
 var MAX_DETAIL6 = 300;
 var MIN_STRING_LENGTH = 6;
@@ -245661,7 +246845,7 @@ function testLiterals(diff, manifests) {
           const key = keyOf3(literal);
           const roots = found.get(key) ?? /* @__PURE__ */ new Map();
           const first = roots.get(root);
-          if (first === void 0 || byCodeUnit27(file.path, first) < 0) roots.set(root, file.path);
+          if (first === void 0 || byCodeUnit30(file.path, first) < 0) roots.set(root, file.path);
           found.set(key, roots);
         }
       }
@@ -245713,7 +246897,7 @@ function detectTI15(diff, options) {
       }
     }
   }
-  findings.sort((a, b) => byCodeUnit27(a.path, b.path) || a.line - b.line || byCodeUnit27(a.detail, b.detail));
+  findings.sort((a, b) => byCodeUnit30(a.path, b.path) || a.line - b.line || byCodeUnit30(a.detail, b.detail));
   const signals = findings.slice(0, MAX_PER_CHANGE).map(({ path, line, detail }) => ({ id: "TI15", severity: "info", path, line, detail }));
   const counts2 = /* @__PURE__ */ new Map();
   for (const { path } of findings.slice(MAX_PER_CHANGE)) counts2.set(path, (counts2.get(path) ?? 0) + 1);
@@ -245723,11 +246907,11 @@ function detectTI15(diff, options) {
 
 // ../core/src/signals/ti16.ts
 var SLASH = "/";
-var STAR = "*";
+var STAR2 = "*";
 var HASH = "#";
 var LINE_OPENER = `${SLASH}${SLASH}`;
-var BLOCK_OPENER = `${SLASH}${STAR}`;
-var BLOCK_CLOSER = `${STAR}${SLASH}`;
+var BLOCK_OPENER = `${SLASH}${STAR2}`;
+var BLOCK_CLOSER = `${STAR2}${SLASH}`;
 var ESLINT = ["es", "lint-dis", "able"].join("");
 var OXLINT = ["ox", "lint-dis", "able"].join("");
 var BIOME = ["bio", "me-ig", "nore"].join("");
@@ -245817,7 +247001,7 @@ var markerOf2 = (text, language) => {
   const line = text.length > MAX_LINE2 ? text.slice(0, MAX_LINE2) : text;
   return language === "jsts" ? jsMarker(line) : pythonMarker(line);
 };
-var byCodeUnit28 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit31 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function detectTI16(diff) {
   const signals = [];
   for (const file of diff) {
@@ -245855,14 +247039,14 @@ function detectTI16(diff) {
       detail: `This test file adds ${count2} that switch off a linter or type checker, so the checks they silence no longer run on that code.`
     });
   }
-  return signals.sort((a, b) => byCodeUnit28(a.path, b.path));
+  return signals.sort((a, b) => byCodeUnit31(a.path, b.path));
 }
 
 // ../core/src/check.ts
-var byCodeUnit29 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit32 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function sortSignals(signals) {
   return signals.sort(
-    (a, b) => byCodeUnit29(a.id, b.id) || byCodeUnit29(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit29(a.detail, b.detail)
+    (a, b) => byCodeUnit32(a.id, b.id) || byCodeUnit32(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit32(a.detail, b.detail)
   );
 }
 function check(input) {
@@ -245984,7 +247168,8 @@ function check(input) {
     diff: parsedDiff,
     configPath: configRepoPath(input.configPath, input.repoRoot),
     ignored: input.policyIgnored ?? [],
-    ...detection === void 0 || agentPolicy === void 0 ? {} : { agentPr: detection, agentPolicy }
+    ...detection === void 0 || agentPolicy === void 0 ? {} : { agentPr: detection, agentPolicy },
+    ...input.policySettingsSources === void 0 ? {} : { settingsSources: input.policySettingsSources }
   });
   const policyIgnored = [
     ...input.policyIgnored ?? [],
@@ -246097,12 +247282,12 @@ function check(input) {
       const count2 = file.skipped;
       if (count2 !== void 0 && Number.isSafeInteger(count2) && count2 > 0) skippedLines += count2;
     } else {
-      const counted = parseCoverageCounted(file.text, choice.format, {
+      const counted2 = parseCoverageCounted(file.text, choice.format, {
         ...input.repoRoot === void 0 ? {} : { repoRoot: input.repoRoot },
         ...coverageRoot === void 0 ? {} : { coverageRoot }
       });
-      parsed = counted.map;
-      skippedLines += counted.skipped;
+      parsed = counted2.map;
+      skippedLines += counted2.skipped;
     }
     if (parsed.size === 0) {
       return buildReport({
@@ -246407,7 +247592,7 @@ function gitDiffArgs(base, head = "HEAD") {
 
 // ../core/src/policy/apply.ts
 var STRICTNESS2 = { off: 0, warn: 1, block: 2 };
-var byCodeUnit30 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit33 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function rootKey(root) {
   return root === void 0 || root === null ? "." : root;
 }
@@ -246447,7 +247632,7 @@ function applyPolicy(layers, policy) {
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
-  }).sort((a, b) => byCodeUnit30(a.setting, b.setting) || byCodeUnit30(a.layer, b.layer));
+  }).sort((a, b) => byCodeUnit33(a.setting, b.setting) || byCodeUnit33(a.layer, b.layer));
   return result;
 }
 function applyCoverage(layers, document2, app, inputs, ignored) {
@@ -247197,7 +248382,14 @@ var MESSAGE_HINTS = {
   POLICY_P08: "Stop tracking the file (`git rm --cached` it and add it to `.gitignore`); the org policy forbids it in the repository.",
   POLICY_P09: "Revert the edit, or ask the policy owner to make it; a pull request cannot loosen the check it is graded by.",
   POLICY_P11: "Agent PRs may not change these paths under the org policy. Move the change to a pull request by a person, or ask the policy owner to change `agents.protected_paths`.",
-  AGENT_PR_DETECTION_INCOMPLETE: "Re-run the job if the GitHub API failed. A pull request with more than 250 commits, an author GitHub does not name, or an edited policy file whose base cannot be read always counts as an agent PR."
+  AGENT_PR_DETECTION_INCOMPLETE: "Re-run the job if the GitHub API failed. A pull request with more than 250 commits, an author GitHub does not name, or an edited policy file whose base cannot be read always counts as an agent PR.",
+  // E3 item 23 (policy settings): the hints of P02 to P06 and of the settings problems.
+  POLICY_P02: "Narrow or remove the allow rule (or the defaultMode or additionalDirectories key) in the settings file, or ask the policy owner to change setup.forbidden_permissions.",
+  POLICY_P03: "Add a deny rule equal to or broader than the required one to the .claude/settings.json of each directory named.",
+  POLICY_P04: "Remove the server, or ask the policy owner to add it to setup.allowed_mcp_servers.",
+  POLICY_P05: "Remove the server from the MCP file.",
+  POLICY_P06: "Add a command hook for the event whose matcher covers the required one (`*` or the same tool names), without an if condition.",
+  POLICY_SETTINGS_INVALID: "Keep agent settings files valid JSON and regular files under 512 KiB, and run on a checkout of the pull request head, so the org policy can check them."
 };
 function hintFor(code2, label) {
   if (!Object.hasOwn(MESSAGE_HINTS, code2)) return void 0;
@@ -247392,6 +248584,13 @@ function policyLines(report, maxRows) {
       lines.push(`- _\u2026and ${violations.length - listed2.length} more violations in report.json._`);
     }
   }
+  const settingsInvalid = report.messages.find((m) => m.code === "POLICY_SETTINGS_INVALID");
+  if (settingsInvalid !== void 0) {
+    lines.push(
+      `- ${settingsInvalid.level === "error" ? "\u274C" : "\u26A0\uFE0F"} Settings: ${inlineText(settingsInvalid.text)}`,
+      `  - Hint: ${hintFor("POLICY_SETTINGS_INVALID", label)}`
+    );
+  }
   const ignored = report.messages.find((m) => m.code === "POLICY_OVERRIDE_IGNORED");
   if (ignored !== void 0) {
     lines.push(`- \u26A0\uFE0F Ignored: ${inlineText(ignored.text)}`, `  - Hint: ${hintFor("POLICY_OVERRIDE_IGNORED", label)}`);
@@ -247445,7 +248644,7 @@ function renderMarkdown(report, options = {}) {
   if (hasPolicy(report)) out.push(...policyLines(report, maxRows));
   const listedIds = new Set(report.testIntegrity.signals.map((s) => `TEST_INTEGRITY_${s.id}`));
   const policyListsP01 = hasPolicy(report) && policyViolationsOf(report).some((v) => v.id === "P01");
-  const inPolicySection = (code2) => hasPolicy(report) && (POLICY_RULE_MESSAGE_CODE.test(code2) || code2 === "POLICY_UNAVAILABLE" || code2 === "POLICY_OVERRIDE_IGNORED" || policyListsP01 && (code2 === "NO_AGENT_SETUP_FILES" || code2 === "AGENT_SETUP_EXPECTED_MISSING"));
+  const inPolicySection = (code2) => hasPolicy(report) && (POLICY_RULE_MESSAGE_CODE.test(code2) || code2 === "POLICY_UNAVAILABLE" || code2 === "POLICY_OVERRIDE_IGNORED" || code2 === "POLICY_SETTINGS_INVALID" || policyListsP01 && (code2 === "NO_AGENT_SETUP_FILES" || code2 === "AGENT_SETUP_EXPECTED_MISSING"));
   const messages = report.messages.filter(
     (m) => !(SIGNAL_MESSAGE_CODE.test(m.code) && listedIds.has(m.code)) && !inPolicySection(m.code)
   );
@@ -247643,6 +248842,20 @@ function truncateUtf8(text, maxBytes) {
 }
 
 // ../core/src/setup/sizes.ts
+function parseLsTreeSymlinks(text) {
+  const links = /* @__PURE__ */ new Set();
+  for (const record of text.split("\0")) {
+    if (record === "") continue;
+    const tab = record.indexOf("	");
+    if (tab === -1) continue;
+    const path = record.slice(tab + 1);
+    if (path === "") continue;
+    const meta = record.slice(0, tab).split(" ").filter((field) => field !== "");
+    if (meta.length !== 4) continue;
+    if (meta[0] === "120000") links.add(path);
+  }
+  return links;
+}
 function parseLsTreeSizes(text) {
   const sizes = /* @__PURE__ */ new Map();
   for (const record of text.split("\0")) {
@@ -248225,10 +249438,10 @@ async function batchRead(deps, oids) {
 }
 
 // ../node-io/src/agentConfigSources.ts
-var byCodeUnit31 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit34 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 async function readAgentConfigSources(deps, paths) {
   try {
-    const unique = [...new Set(paths)].sort(byCodeUnit31);
+    const unique = [...new Set(paths)].sort(byCodeUnit34);
     const requests = unique.filter((path) => !isUnsafeTestSourcePath(path)).map((path) => ({ oid: "HEAD", path }));
     const checked = await batchCheck(deps, requests);
     const objects = /* @__PURE__ */ new Map();
@@ -248241,7 +249454,7 @@ async function readAgentConfigSources(deps, paths) {
     const plan = planTestSourceReads(unique, objects);
     const wanted = /* @__PURE__ */ new Set();
     for (const path of plan.read) wanted.add(blobs.get(path));
-    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit31));
+    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit34));
     const files = [];
     const dropped = [...plan.dropped];
     for (const path of plan.read) {
@@ -248249,11 +249462,27 @@ async function readAgentConfigSources(deps, paths) {
       if (text === null) dropped.push({ path, reason: "binary" });
       else files.push({ path, text });
     }
-    dropped.sort((a, b) => byCodeUnit31(a.path, b.path));
+    dropped.sort((a, b) => byCodeUnit34(a.path, b.path));
     return { files, dropped };
   } catch (err) {
     return { unavailable: err instanceof StepFailed ? err.message : `git could not be read: ${firstLine(err)}` };
   }
+}
+async function readPolicySettingsSources(deps, paths, symlinks) {
+  if (symlinks === null) {
+    return {
+      unavailable: "git ls-tree failed, so symbolic links among the agent settings files could not be told apart"
+    };
+  }
+  const unique = [...new Set(paths)].sort(byCodeUnit34);
+  const linked = unique.filter((path) => symlinks.has(path)).map((path) => ({ path, reason: "symlink" }));
+  const rest = unique.filter((path) => !symlinks.has(path));
+  if (rest.length === 0) return { files: [], dropped: linked };
+  const read = await readAgentConfigSources(deps, rest);
+  if ("unavailable" in read) return read;
+  const dropped = [...linked, ...read.dropped];
+  dropped.sort((a, b) => byCodeUnit34(a.path, b.path));
+  return { files: read.files, dropped };
 }
 
 // ../node-io/src/chunks.ts
@@ -249303,7 +250532,7 @@ async function indexPythonTestSources(sources, index = (files) => indexPythonTes
 }
 
 // ../node-io/src/testSources.ts
-var byCodeUnit32 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit35 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 async function resolveRevision(deps, revision, label) {
   let out;
   try {
@@ -249354,7 +250583,7 @@ async function readTestSources(deps, options) {
     plans.forEach((plan, i) => {
       for (const path of plan.read) wanted.add(sides[i]?.blobs.get(path));
     });
-    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit32));
+    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit35));
     const decoded = /* @__PURE__ */ new Map();
     const build = (index) => {
       const plan = plans[index];
@@ -249370,7 +250599,7 @@ async function readTestSources(deps, options) {
         if (text === null) dropped.push({ path, reason: "binary" });
         else files.push({ path, text });
       }
-      dropped.sort((a, b) => byCodeUnit32(a.path, b.path));
+      dropped.sort((a, b) => byCodeUnit35(a.path, b.path));
       return { files, dropped };
     };
     return { base: build(0), head: build(1) };
@@ -250256,6 +251485,7 @@ async function runUnsafe(deps) {
   const { diff, localBase } = await getDiff(input("base-ref"), deps, target, input("config"));
   const testSources = await gatherTestSources(deps, { diff, localBase, target, testIntegrityMode });
   const agentConfigSources = await gatherAgentConfigSources(deps, { repoFiles, diff, target });
+  const policySettingsSources = await gatherPolicySettingsSources(deps, { repoFiles, diff, target, policy, lsTree });
   const pythonTestIndex = testSources === void 0 ? void 0 : await indexPythonTestSources(testSources, deps.indexPython ?? indexPythonTests);
   if (pythonTestIndex !== void 0 && !pythonTestIndex.available) {
     deps.info(
@@ -250291,6 +251521,7 @@ async function runUnsafe(deps) {
     ...coverageRoot === void 0 ? {} : { coverageRoot },
     ...input("config") === "" ? {} : { configPath: input("config") },
     ...policy === void 0 ? {} : { policy },
+    ...policySettingsSources === void 0 ? {} : { policySettingsSources },
     ...application === void 0 || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored },
     ...application?.signalOverrides === void 0 ? {} : { signalOverrides: application.signalOverrides },
     agentPrFacts,
@@ -250418,6 +251649,39 @@ async function gatherAgentConfigSources(deps, from) {
   if ("unavailable" in sources) {
     deps.info(
       `pharn-ci: could not read the agent config files from git, so they are not scanned for secrets: ${sources.unavailable}`
+    );
+  }
+  return sources;
+}
+async function gatherPolicySettingsSources(deps, from) {
+  const { policy } = from;
+  if (deps.gitBatch === void 0) return void 0;
+  if (policy === void 0 || policy.source !== "app" && policy.source !== "file" || policy.document === null) {
+    return void 0;
+  }
+  if (from.target) {
+    return {
+      unavailable: "pr-number mode: the checkout is not the pull request head, so its committed agent settings files were not read"
+    };
+  }
+  if ("text" in from.diff) {
+    return {
+      unavailable: "the diff came from the GitHub compare API, so the checkout may not be the pull request head"
+    };
+  }
+  if ("unavailable" in from.diff) {
+    return { unavailable: "the diff is unavailable, so the checkout may not be the pull request head" };
+  }
+  const paths = policySettingsPaths(from.repoFiles, policy.document);
+  if (paths.length === 0) return { files: [], dropped: [] };
+  const sources = await readPolicySettingsSources(
+    { gitBatch: deps.gitBatch },
+    paths,
+    from.lsTree === null ? null : parseLsTreeSymlinks(from.lsTree)
+  );
+  if ("unavailable" in sources) {
+    deps.info(
+      `pharn-ci: could not read the agent settings files from git, so they are not checked against the org policy: ${sources.unavailable}`
     );
   }
   return sources;

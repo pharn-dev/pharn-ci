@@ -1,18 +1,8 @@
 import { compileGlob } from "../../glob.js";
+import { shownPattern } from "./shown.js";
 import type { PolicyRuleInput, RuleFinding } from "./types.js";
 
-/** The longest pattern a detail shows, in UTF-16 code units. */
-const MAX_SHOWN = 80;
-
 const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
-
-/** The pattern as it is, or its first 79 code units (not inside a surrogate pair) and `…`. */
-function shownPattern(pattern: string): string {
-  if (pattern.length <= MAX_SHOWN) return pattern;
-  const high = pattern.charCodeAt(MAX_SHOWN - 2);
-  const end = high >= 0xd800 && high <= 0xdbff ? MAX_SHOWN - 2 : MAX_SHOWN - 1;
-  return `${pattern.slice(0, end)}…`;
-}
 
 /**
  * P08, forbidden file tracked: a tracked file matches a `setup.forbidden_files` pattern of the policy. One finding per
@@ -33,6 +23,7 @@ export function detectP08(input: PolicyRuleInput): RuleFinding[] {
       id: "P08",
       fallback: "block",
       path,
+      line: null,
       detail: `tracked file matches forbidden pattern ${hit.shown}`,
     });
   }

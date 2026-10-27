@@ -242,8 +242,18 @@ describe("upload documentation", { timeout: 60_000 }, () => {
 
     for (const id of ["A1", "B1"]) {
       expect(row(base.rows, id), `control: base ${id}`).toBeDefined();
+      if (id === "A1") continue;
       expect(row(head.rows, id), id).toBe(row(base.rows, id));
     }
+    // Re-pinned for E3 item 23 (policy settings): row A1's parse list gains the agent settings and MCP JSON (row C5).
+    // A1 stays pinned byte for byte apart from this one inserted phrase.
+    const OLD_A1 = "agent config text (JSON, TOML, YAML and shell, row C4))";
+    const NEW_A1 =
+      "agent config text (JSON, TOML, YAML and shell, row C4), agent settings and MCP JSON (policy mode, row C5))";
+    expect(row(base.rows, "A1"), "control: the base A1 holds the text the phrase is inserted after").toContain(OLD_A1);
+    expect(row(head.rows, "A1"), "A1 is the base's with the one phrase inserted").toBe(
+      (row(base.rows, "A1") as string).replace(OLD_A1, NEW_A1),
+    );
 
     const baseTitles = base.residuals.map((r) => [r.n, boldTitle(r.text)]);
     expect(baseTitles.at(-1)?.[0], "control: the base ends at residual 26").toBe(26);
@@ -301,7 +311,13 @@ describe("upload documentation", { timeout: 60_000 }, () => {
       b.startsWith("- A `file:` org policy that the pull request edits is also read at the merge base"),
     );
     expect(p11SecurityBullets).toHaveLength(1);
-    const addedBullets = fresh("Added").filter((b) => !policyRuleBullets.includes(b) && !p11Bullets.includes(b));
+    // Re-pinned for E3 item 23 (policy settings): Unreleased also gains exactly one Added bullet starting
+    // `- Org policy rules P02–P06`; it is asserted here and set aside the same way.
+    const policySettingsBullets = fresh("Added").filter((b) => b.startsWith("- Org policy rules P02–P06"));
+    expect(policySettingsBullets).toHaveLength(1);
+    const addedBullets = fresh("Added").filter(
+      (b) => !policyRuleBullets.includes(b) && !p11Bullets.includes(b) && !policySettingsBullets.includes(b),
+    );
     const securityBullets = fresh("Security").filter((b) => !p11SecurityBullets.includes(b));
     expect(addedBullets).toHaveLength(1);
     expect(securityBullets).toHaveLength(1);
