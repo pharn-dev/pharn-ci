@@ -71,6 +71,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   policy's `agents.labels` and `agents.extra_logins` now add to the default agent labels and logins. A pull request
   that counts as an agent PR only because its evidence could not be read gets one `AGENT_PR_DETECTION_INCOMPLETE`
   message (`warn`) that says why. CLI runs have no pull request, so P11 never fires there.
+- Org policy rule P07, agent instruction files that disagree. Under a policy, when two instruction files of one
+  directory (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules`, `.claude/rules`, `.github/copilot-instructions.md`
+  and the other instruction kinds) name different package managers (`npm`, `pnpm`, `yarn`, `bun`) or test runners
+  (`vitest`, `jest`) in inline code or shell blocks, each is a P07 violation with its path, its line and the tools as
+  fixed words, and one new `POLICY_P07` message names up to 20 files (`warn` by default; `setup.consistency` and
+  `policy.rules.P07` set the severity, and a `file:` policy can only raise it). Files that could not be read or compared
+  are reported too. Without a policy, or with P07 switched off, nothing is read and the report is the one it was.
 
 ### Changed
 
@@ -97,6 +104,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   and `meta.json` leave the job, never file contents, diffs, coverage files or logs; the token and the signed URL are
   masked and never logged, and nothing the app answers is quoted. `docs/THREAT-MODEL.md` has the new row D7 and residual
   risk 27: a same-repository pull request runs its code in the job that can mint the upload token.
+- Org policy rule P07 reads the committed text of the agent instruction files (the Markdown instruction kinds) at `HEAD`
+  from git objects, under a policy with P07 in effect, in memory only, with the same caps as check A7 (200 files, 512 KiB
+  each, 16 MiB in all) and a linear reader. The text is never written, logged, uploaded or put in the report: a violation
+  holds only fixed words, the tool words, a path and a line number. `docs/THREAT-MODEL.md` has the new row C6 and
+  residual risk 35.
 
 ## [0.3.0] - 2026-10-26
 

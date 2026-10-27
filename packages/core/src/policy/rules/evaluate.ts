@@ -8,6 +8,7 @@ import { detectP03 } from "./p03.js";
 import { detectP04 } from "./p04.js";
 import { detectP05 } from "./p05.js";
 import { detectP06 } from "./p06.js";
+import { consistencySeverity, detectP07 } from "./p07.js";
 import { detectP08 } from "./p08.js";
 import { detectP09, type SettingsView } from "./p09.js";
 import { detectP10 } from "./p10.js";
@@ -18,6 +19,8 @@ import type { PolicyEvaluation, PolicyRuleInput, PolicyViolation, RuleFinding } 
 
 /** The most violations of one rule id the report keeps; the rest are counted. */
 export const MAX_RULE_VIOLATIONS = 50;
+/** The P07 cap, the same value as `MAX_RULE_VIOLATIONS`. */
+export const MAX_P07_VIOLATIONS = 50;
 /** The P08 cap, which item 22 named first; the same value as `MAX_RULE_VIOLATIONS`. */
 export const MAX_P08_VIOLATIONS = 50;
 
@@ -26,21 +29,28 @@ const SETTINGS_READERS = ["P02", "P03", "P04", "P05", "P06"] as const satisfies 
 const SETTINGS_RULES: readonly string[] = SETTINGS_READERS;
 
 /**
- * Run the org-policy rules (P01 to P06 and P08 to P11) over what the check already has, apply the policy's rule
- * severities, sort, and cap every rule id at 50. Pure and deterministic; the input is never mutated.
+ * Run the org-policy rules (P01 to P11) over what the check already has, apply the policy's rule severities, sort,
+ * and cap every rule id at 50. Pure and deterministic; the input is never mutated.
  */
 export function evaluatePolicyRules(input: PolicyRuleInput): PolicyEvaluation {
   const { policy } = input;
   const document = policy.document;
   const inForce = (policy.source === "app" || policy.source === "file") && document !== null;
+  // P07 is evaluated only when the caller gave the instruction files; only then are its looser file values recorded.
+  const consistency =
+    input.agentInstructions === null || input.agentInstructions === undefined
+      ? null
+      : consistencySeverity(input.policy);
   const lowered = new Set<PolicyRuleId>();
   if (input.agentPolicy?.lowered === true) lowered.add("P11");
+  if (consistency?.lowered === true) lowered.add("P07");
 
   const resolve = (findings: readonly RuleFinding[]): PolicyViolation[] => {
     const out: PolicyViolation[] = [];
     for (const finding of findings) {
-      // P10 is fixed, and P11's severity is already resolved (`agentPolicy.severity`): the finding carries it.
-      if (finding.id === "P10" || finding.id === "P11") {
+      // P10 is fixed, and the severities of P07 (`consistencySeverity`) and P11 (`agentPolicy.severity`) are already
+      // resolved: the finding carries them.
+      if (finding.id === "P10" || finding.id === "P07" || finding.id === "P11") {
         out.push({
           id: finding.id,
           severity: finding.fallback,
@@ -115,6 +125,7 @@ export function evaluatePolicyRules(input: PolicyRuleInput): PolicyEvaluation {
     ...detectP01(input),
     ...detectP08(input),
     ...settingsFindings,
+    ...detectP07(input, consistency?.severity ?? null),
     ...detectP10(input),
     ...detectP11(input),
   ]);
@@ -153,7 +164,7 @@ export function evaluatePolicyRules(input: PolicyRuleInput): PolicyEvaluation {
     violations,
     omitted,
     lowered: [...lowered].sort(byCodeUnit),
-    ignored: [...(input.agentPolicy?.ignored ?? [])],
+    ignored: [...(input.agentPolicy?.ignored ?? []), ...(consistency?.ignored ?? [])],
     ...(settings === undefined ? {} : { settings }),
   };
   if (input.agentPr !== null && input.agentPr !== undefined) {

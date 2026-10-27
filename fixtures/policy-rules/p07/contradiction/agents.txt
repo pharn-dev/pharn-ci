@@ -1,0 +1,3 @@
+# Agents
+
+Run `pnpm install`, then `pnpm test`.

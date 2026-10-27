@@ -2,11 +2,13 @@ import { parseArgs } from "node:util";
 import {
   type AgentConfigSources,
   agentConfigSecretPaths,
+  agentInstructionPaths,
   applyPolicy,
   type CheckInput,
   COVERAGE_FORMAT_SELECTIONS,
   ConfigError,
   check,
+  consistencySeverity,
   type DiffFile,
   type DirEntry,
   gitDiffArgs,
@@ -360,6 +362,21 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     }
   }
 
+  // The committed text of the agent instruction files, for org-policy rule P07, always at HEAD and in a call of its own.
+  // Only under a policy with P07 in effect (--policy-file) and with a directory that holds two instruction files.
+  let agentInstructionSources: AgentConfigSources | undefined;
+  if (deps.gitBatch !== undefined && policy !== undefined && consistencySeverity(policy).severity !== null) {
+    const instructionPaths = agentInstructionPaths(scanAgentSetup(repoFiles));
+    if (instructionPaths.length > 0) {
+      agentInstructionSources = await readAgentConfigSources({ gitBatch: deps.gitBatch }, instructionPaths);
+      if ("unavailable" in agentInstructionSources) {
+        deps.stderr(
+          `pharn-ci: could not read the agent instruction files from git, so P07 did not compare them: ${agentInstructionSources.unavailable}\n`,
+        );
+      }
+    }
+  }
+
   // File sizes in HEAD, so an empty agent setup file can be reported. Optional: without them the check still runs. The
   // raw text is kept: policy mode tells the tracked symbolic links from it.
   let repoFileBytes: Map<string, number> | undefined;
@@ -407,6 +424,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     repoFiles,
     ...(repoFileBytes === undefined ? {} : { repoFileBytes }),
     ...(agentConfigSources === undefined ? {} : { agentConfigSources }),
+    ...(agentInstructionSources === undefined ? {} : { agentInstructionSources }),
     exclude,
     requireAgentSetup,
     ...(expectAgentSetup === undefined ? {} : { expectAgentSetup }),

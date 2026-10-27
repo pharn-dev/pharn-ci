@@ -1,9 +1,11 @@
 import {
   type AgentConfigSources,
   agentConfigSecretPaths,
+  agentInstructionPaths,
   applyPolicy,
   type CheckInput,
   check,
+  consistencySeverity,
   type DirEntry,
   detectAgentPr,
   gitDiffArgs,
@@ -371,6 +373,8 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const testSources = await gatherTestSources(deps, { diff, localBase, target, testIntegrityMode });
   const agentConfigSources = await gatherAgentConfigSources(deps, { repoFiles, diff, target });
   const policySettingsSources = await gatherPolicySettingsSources(deps, { repoFiles, diff, target, policy, lsTree });
+  // The agent instruction files (rule P07), in batch calls of their own, so check A7 never sees Markdown.
+  const agentInstructionSources = await gatherAgentInstructionSources(deps, { repoFiles, diff, target, policy });
   // The Python test files of the sources, indexed by one interpreter run; nothing runs for JS/TS-only changes.
   const pythonTestIndex =
     testSources === undefined
@@ -417,6 +421,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     ...(testIntegrityMode === undefined ? {} : { testIntegrityMode }),
     ...(testSources === undefined ? {} : { testSources }),
     ...(agentConfigSources === undefined ? {} : { agentConfigSources }),
+    ...(agentInstructionSources === undefined ? {} : { agentInstructionSources }),
     ...(pythonTestIndex === undefined ? {} : { pythonTestIndex }),
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
     ...(input("config") === "" ? {} : { configPath: input("config") }),
@@ -640,6 +645,49 @@ async function gatherPolicySettingsSources(
   if ("unavailable" in sources) {
     deps.info(
       `pharn-ci: could not read the agent settings files from git, so they are not checked against the org policy: ${sources.unavailable}`,
+    );
+  }
+  return sources;
+}
+
+/**
+ * The committed text of the agent instruction files, for org-policy rule P07; undefined when nothing is to be compared:
+ * no batch git runner, no policy with P07 in effect, or no directory with two instruction files. Like the agent config
+ * files, they are read at HEAD only from a diff parsed from local git; otherwise the sources are unavailable with a fixed
+ * sentence, and no git call, no GitHub API call and no log line is made. The paths go in batch calls of their own, and
+ * nothing read is logged.
+ */
+async function gatherAgentInstructionSources(
+  deps: ActionDeps,
+  from: {
+    repoFiles: readonly string[];
+    diff: CheckInput["diff"];
+    target: PrNumberTarget | undefined;
+    policy: ResolvedPolicy | undefined;
+  },
+): Promise<AgentConfigSources | undefined> {
+  if (deps.gitBatch === undefined) return undefined;
+  if (from.policy === undefined || consistencySeverity(from.policy).severity === null) return undefined;
+  const paths = agentInstructionPaths(scanAgentSetup(from.repoFiles));
+  if (paths.length === 0) return undefined;
+  if (from.target) {
+    return {
+      unavailable:
+        "pr-number mode: the checkout is not the pull request head, so its committed agent instruction files were not read",
+    };
+  }
+  if ("text" in from.diff) {
+    return {
+      unavailable: "the diff came from the GitHub compare API, so the checkout may not be the pull request head",
+    };
+  }
+  if ("unavailable" in from.diff) {
+    return { unavailable: "the diff is unavailable, so the checkout may not be the pull request head" };
+  }
+  const sources = await readAgentConfigSources({ gitBatch: deps.gitBatch }, paths);
+  if ("unavailable" in sources) {
+    deps.info(
+      `pharn-ci: could not read the agent instruction files from git, so P07 did not compare them: ${sources.unavailable}`,
     );
   }
   return sources;

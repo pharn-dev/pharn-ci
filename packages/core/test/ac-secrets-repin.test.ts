@@ -47,7 +47,10 @@ const UPLOAD_CODES = ["UPLOAD_TOO_LARGE"];
 // E3 item 24a part B (P11) adds two more, POLICY_P11 and AGENT_PR_DETECTION_INCOMPLETE, to the same appended text and to
 // report.ts. They join every exact code-word comparison below; nothing is removed.
 const AGENT_PR_CODES = ["POLICY_P11", "AGENT_PR_DETECTION_INCOMPLETE"];
-const ADDED_CODES = [...CODES, ...POLICY_CODES, ...UPLOAD_CODES, ...AGENT_PR_CODES];
+// E3 item 24 (P07) adds one more, POLICY_P07, to the same appended text and to report.ts. It joins every exact code-word
+// comparison below; nothing is removed.
+const P07_CODES = ["POLICY_P07"];
+const ADDED_CODES = [...CODES, ...POLICY_CODES, ...UPLOAD_CODES, ...AGENT_PR_CODES, ...P07_CODES];
 
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 const atCommit = (commit: string, path: string) =>

@@ -54,16 +54,20 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
     const changed = git("diff", "--name-status", "--no-renames", BASE, "--", "fixtures/")
       .split("\n")
       .filter((l) => l.length > 0);
+    // E3 item 24 (P07): the fixtures of rule P07 are new too, so the two patterns below also accept p07.
     for (const line of changed) {
-      // Re-pinned for E3 item 23 (policy settings): its new fixtures under fixtures/policy-settings/ are added too.
+      // Re-pinned for E3 item 23 (policy settings) and E3 item 24 (P07): their new fixtures under
+      // fixtures/policy-settings/ and fixtures/policy-rules/p07/ are added too.
       expect(line, "a fixture change").toMatch(
-        /^A\tfixtures\/policy-rules\/p11\/[^/]+\/[^/]+$|^A\tfixtures\/policy-settings\/[^\t]+$/,
+        /^A\tfixtures\/policy-rules\/(?:p11|p07)\/[^/]+\/[^/]+$|^A\tfixtures\/policy-settings\/[^\t]+$/,
       );
     }
     const untracked = git("ls-files", "--others", "--exclude-standard", "--", "fixtures/")
       .split("\n")
       .filter((l) => l.length > 0);
-    for (const path of untracked) expect(path, "a new fixture").toMatch(/^fixtures\/policy-rules\/p11\/[^/]+\/[^/]+$/);
+    for (const path of untracked) {
+      expect(path, "a new fixture").toMatch(/^fixtures\/policy-rules\/(?:p11|p07)\/[^/]+\/[^/]+$/);
+    }
 
     // Part A's tests: unchanged, except the one deliberate update in the events test.
     const partA = git("ls-files", "--", "packages/*/test/ac-agentpr-*.test.ts")

@@ -1,6 +1,7 @@
 import type { AgentEvidence } from "../../agents.js";
 import { codeSpan, type Message, type MessageCode } from "../../report.js";
 import type { PolicyRuleId } from "../types.js";
+import { P07_PACKAGE_MANAGER_PREFIX, P07_TEST_RUNNER_PREFIX, P07_UNREAD_DETAIL } from "./p07.js";
 import { P11_BASE_UNREADABLE_DETAIL, P11_DIFF_UNAVAILABLE_DETAIL } from "./p11.js";
 import { levelOf, strongest } from "./severity.js";
 import type { PolicyEvaluation, PolicyViolation } from "./types.js";
@@ -106,6 +107,40 @@ const RULE_MESSAGES: Partial<
   },
   P06: (violations, omitted) =>
     `P06 required hook missing: ${counted(violations.length + omitted, "required hook", "required hooks")} missing at ${locsOf(violations, omitted)}, or disableAllHooks set while the policy requires hooks. Only a command hook with no if condition, whose matcher covers the required one, counts.`,
+  P07: (violations, omitted) => {
+    const parts: string[] = [];
+    const contradictions = violations.filter(
+      (violation) =>
+        violation.detail.startsWith(P07_PACKAGE_MANAGER_PREFIX) || violation.detail.startsWith(P07_TEST_RUNNER_PREFIX),
+    );
+    const paths = pathsOf(contradictions);
+    if (paths.length > 0) {
+      const head =
+        paths.length === 1 ? "1 agent instruction file names" : `${paths.length} agent instruction files name`;
+      const notListed =
+        omitted > 0
+          ? ` ${omitted === 1 ? "1 of the violations is" : `${omitted} of the violations are`} not listed in the report.`
+          : "";
+      parts.push(
+        `${head} a different package manager or test runner than another file in the same directory: ${listOf(paths, paths.length)}.${notListed} Each file's line is in the report's policy violations.`,
+      );
+    }
+    // The drop and missing details start with the number of files; every other detail starts with a letter.
+    let notCompared = 0;
+    for (const violation of violations) {
+      const count = Number.parseInt(violation.detail, 10);
+      if (violation.path === null && Number.isInteger(count)) notCompared += count;
+    }
+    if (notCompared > 0) {
+      parts.push(
+        `${notCompared} agent instruction ${notCompared === 1 ? "file was" : "files were"} not compared: binary, too large, past the read caps, an unsafe path or not a file at HEAD.`,
+      );
+    }
+    if (violations.some((violation) => violation.detail === P07_UNREAD_DETAIL)) {
+      parts.push("The agent instruction files were not read, so they were not compared.");
+    }
+    return parts.join(" ");
+  },
   P08: (violations, omitted) => {
     const kept = pathsOf(violations);
     const total = kept.length + omitted;

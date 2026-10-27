@@ -42,6 +42,9 @@ const SECRET_CODES = [
   "POLICY_P05",
   "POLICY_P06",
   "POLICY_SETTINGS_INVALID",
+  // E3 item 24 (P07): the appended schema text and report.ts also gain this rule code; this only adds to what the pin
+  // allows.
+  "POLICY_P07",
 ];
 
 const git = (...args: string[]) =>

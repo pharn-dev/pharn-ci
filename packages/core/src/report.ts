@@ -225,7 +225,8 @@ export type MessageCode =
   | "POLICY_P04"
   | "POLICY_P05"
   | "POLICY_P06"
-  | "POLICY_SETTINGS_INVALID";
+  | "POLICY_SETTINGS_INVALID"
+  | "POLICY_P07";
 
 export interface Message {
   level: MessageLevel;

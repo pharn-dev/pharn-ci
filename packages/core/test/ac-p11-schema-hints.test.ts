@@ -47,7 +47,8 @@ describe("the schema sentence and the hints for POLICY_P11 and AGENT_PR_DETECTIO
     const now = codeDescription(nowText);
     expect(now.startsWith(base)).toBe(true);
     // Re-pinned for E3 item 23 (policy settings): item 23's sentence (POLICY_P02 to POLICY_P06 and
-    // POLICY_SETTINGS_INVALID) follows this one. It is set aside here; ac-polrules-docs and ac-upload-schema pin it exactly.
+    // POLICY_SETTINGS_INVALID) follows this one, and E3 item 24 (P07)'s after it. They are set aside here;
+    // ac-polrules-docs and ac-upload-schema pin them exactly.
     const all = now.slice(base.length);
     const item23 = all.indexOf(" POLICY_P02, POLICY_P03, POLICY_P04, POLICY_P05 and POLICY_P06 (");
     expect(item23, "item 23's sentence follows the P11 one").toBeGreaterThan(0);

@@ -837,7 +837,8 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
 
 - **It is an inventory, not a review.** pharn-ci lists agent setup files; the inventory itself reads
   none of them. Check A7 reads the machine-readable kinds for committed secrets
-  ([Secrets in agent configs](#secrets-in-agent-configs)). It does not validate their syntax, judge their
+  ([Secrets in agent configs](#secrets-in-agent-configs)). Under an org policy, P07 reads the instruction kinds
+  ([What P07 misses](#what-p07-misses)). It does not validate their syntax, judge their
   content, or check them for prompt injection.
 - **Only tracked files are seen.** The list comes from `git ls-files`, so untracked or ignored
   files (a typical `.claude/settings.local.json`) are not listed.
@@ -945,11 +946,11 @@ applied once per run. What it does not do:
 - **The `policy` and `app-url` inputs are the workflow's.** A pull request that edits the workflow can set them
   (THREAT-MODEL, items 22 and 24).
 - **Only some keys are applied.** The `setup` lists are applied: `forbidden_files` feeds P08, `forbidden_permissions`,
-  `required_permissions_deny`, `allowed_mcp_servers`, `forbidden_mcp_servers` and `required_hooks` feed P02 to P06.
-  `policy.rules` applies to P01 to P06, P08, P09 and P11 (P10 cannot be overridden). Of `agents`, only `agents.labels`,
-  `agents.extra_logins`, `agents.protected_paths` and `agents.protected_paths_mode` are applied (the first two add to
-  the detection, the other two feed P11); `dependencies`, `flaky` and the other `agents` keys are validated and carried
-  in the document, not applied yet.
+  `required_permissions_deny`, `allowed_mcp_servers`, `forbidden_mcp_servers` and `required_hooks` feed P02 to P06,
+  and `setup.consistency` feeds P07. `policy.rules` applies to P01 to P09 and P11 (P10 cannot be overridden). Of
+  `agents`, only `agents.labels`, `agents.extra_logins`, `agents.protected_paths` and `agents.protected_paths_mode` are
+  applied (the first two add to the detection, the other two feed P11); `dependencies`, `flaky` and the other `agents`
+  keys are validated and carried in the document, not applied yet.
 - **What P09 sees, and what it misses.** P09 sees four kinds of edit in the diff: (1) the `file:` policy file itself,
   edited or renamed away; (2) the config in use, while `.pharn/ci.yml` holds a setting looser than the policy; (3) a
   file under `.github/workflows/`, while a workflow input is looser than the policy; (4) `.claude/settings.json` or
@@ -996,6 +997,38 @@ P02 to P06 read the committed agent settings and MCP files in policy mode. They 
   protect files those bots must update.
 - **Other `agents` keys are not applied.** `require_human_approval`, `max_files` and `max_changed_lines` (rules P12 and
   P14) are validated and carried, not applied by this release.
+
+### What P07 misses
+
+P07 compares what the agent instruction files of one directory tell an agent to run. It is a heuristic at `warn`, not a
+review of the instructions. What it misses:
+
+- **Prose is never read.** Only inline code spans and shell blocks count. "We use pnpm" in a sentence declares nothing,
+  and neither does `pytest` or any other tool outside `npm`, `pnpm`, `yarn`, `bun`, `vitest` and `jest`: a Python
+  package's files are never compared on their own tools.
+- **Same-directory scope only.** A file is compared with the other instruction files of its own directory (a nested
+  `.cursor/rules/` or `.claude/rules/` belongs to the directory that holds it; every other kind belongs to the root).
+  A root file and a nested `AGENTS.md` that name different tools do not contradict.
+- **Tools in indented, non-shell or multi-line code are missed.** An indented code block, a `json`, `python` or other
+  non-shell fence, a command split over several lines and a command in a console line without a prompt declare nothing.
+- **Negation is a word heuristic.** A span after a cue word ("don't", "instead of", "never"), before "is not" or
+  "isn't", or under a heading with such a word is skipped. A list continuation (``Don't use `npm` or `yarn` ``) negates
+  only the first span, and a file that names pnpm among others never contradicts a pnpm file.
+- **Pattern-scoped files are skipped.** A file limited to path patterns (`globs`, `applyTo`, `paths` or
+  `fileMatchPattern` in its frontmatter, other than every file) is not compared; agent-requested and manual rules count.
+- **Skills, commands, agents and prompts are not read.** Only the instruction kinds are.
+- **`npx` and `bunx` and global installs declare nothing.** `npm i -g x` names no package manager, and `pnpm --filter x
+  vitest` is missed because the runner is not the first argument.
+- **A file that contradicts itself is not reported.** Only two files of one directory can contradict.
+- **A tracked symlink is read as its link text.** Nothing is followed.
+- **Caps.** At most 200 files, 512 KiB each and 16 MiB in all are read. A file dropped past a cap, as binary, as too
+  large or at an unsafe path is one path-less violation at P07's severity, because a pull request can cause it; a path
+  that is not a file at `HEAD` is `info`. At most 50 violations are listed (the rest are counted), and the message names
+  up to 20 files.
+- **The Action reads only with a local diff.** In PR-number mode and with a compare-API diff the checkout may not be the
+  pull request head, so nothing is read and one `info` violation says so.
+- **P07 runs only under a policy.** With no policy, `policy: never`, an unavailable policy or P07 switched off, no
+  instruction file is read. A `file:` policy never lowers it below `warn`.
 
 ## Upload to pharn.dev
 

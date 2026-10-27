@@ -55,6 +55,10 @@ const POLICY_SETTINGS_CODES = [
   "POLICY_P06",
   "POLICY_SETTINGS_INVALID",
 ];
+// Re-pinned for E3 item 24 (P07): the same description then gains exactly this text, which names the code POLICY_P07;
+// report.ts gains that MessageCode member. Nothing else may change.
+const P07_TEXT =
+  " POLICY_P07 (warn by default, error when the org policy sets setup.consistency or the rule to block, info when it sets info or the agent instruction files could not be read: agent instruction files in the same directory name different package managers or JavaScript test runners, or some of them could not be compared; the message names up to 20 files, and each violation a path, a line and the tools as fixed words, never the file's text).";
 
 /** Every object schema inside a JSON Schema document (by `type` naming object, or by `properties`). */
 function objectSchemas(value: unknown, path = "$", out: Array<[string, Json]> = []): Array<[string, Json]> {
@@ -144,7 +148,9 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
     const baseDescription = strings(JSON.parse(v2Base)).find((s) => s.includes(" Codes added in v0.4.0:"));
     expect(baseDescription, "control: the base has the v0.4.0 text").toBeDefined();
     const description = strings(JSON.parse(v2)).find((s) => s.includes(" Codes added in v0.4.0:"));
-    expect(description).toBe(`${baseDescription}${SENTENCE}${POLICY_RULES_TEXT}${P11_TEXT}${POLICY_SETTINGS_TEXT}`);
+    expect(description).toBe(
+      `${baseDescription}${SENTENCE}${POLICY_RULES_TEXT}${P11_TEXT}${POLICY_SETTINGS_TEXT}${P07_TEXT}`,
+    );
     expect(v2.split(" Codes added in v0.4.0:").length - 1).toBe(1);
 
     // Every other line is the base's.
@@ -159,13 +165,13 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
     expect(swap(v2, description as string, "X")).toEqual(swap(v2Base, baseDescription as string, "X"));
 
     expect(added(codeWords(v2), codeWords(v2Base))).toEqual(
-      [...POLICY_RULE_CODES, ...P11_CODES, ...POLICY_SETTINGS_CODES, "UPLOAD_TOO_LARGE"].sort(),
+      [...POLICY_RULE_CODES, ...P11_CODES, ...POLICY_SETTINGS_CODES, "POLICY_P07", "UPLOAD_TOO_LARGE"].sort(),
     );
 
     const reportTsBase = atBase("packages/core/src/report.ts");
     const reportTs = read("packages/core/src/report.ts");
     expect(added(upperWords(reportTs), upperWords(reportTsBase))).toEqual(
-      [...POLICY_RULE_CODES, ...P11_CODES, ...POLICY_SETTINGS_CODES, "UPLOAD_TOO_LARGE"].sort(),
+      [...POLICY_RULE_CODES, ...P11_CODES, ...POLICY_SETTINGS_CODES, "POLICY_P07", "UPLOAD_TOO_LARGE"].sort(),
     );
     const declaration = reportTs.slice(reportTs.indexOf("type MessageCode"));
     const union = declaration.slice(0, declaration.indexOf(";"));

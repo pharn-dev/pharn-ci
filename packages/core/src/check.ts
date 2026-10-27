@@ -154,8 +154,15 @@ export interface CheckInput {
    */
   agentConfigSources?: AgentConfigSources;
   /**
+   * The text of the agent instruction files at HEAD (the Markdown instruction kinds) for org-policy rule P07, gathered
+   * by the CLI and the Action only under a policy with P07 in effect: the files read and the files dropped with a
+   * reason, or why none could be read. It is never merged into `agentConfigSources`, so check A7 never sees Markdown.
+   * Absent means P07 adds nothing and the report is the one it was.
+   */
+  agentInstructionSources?: AgentConfigSources;
+  /**
    * The org policy of the run (see `ResolvedPolicy`), after `applyPolicy` gave the effective settings the other fields
-   * carry. Its document runs the org-policy rules (P01 to P06 and P08 to P11), its `unavailable` reason adds one
+   * carry. Its document runs the org-policy rules (P01 to P11), its `unavailable` reason adds one
    * POLICY_UNAVAILABLE message, and the report carries a `policy` object for an app or file policy or an unavailable
    * one. Absent, or a policy of source `none` with no reason, adds nothing and the report is the one it was.
    */
@@ -375,7 +382,7 @@ export function check(input: CheckInput): Report {
           extraLogins: [...(agentFacts.extraLogins ?? []), ...agentPolicy.extraLogins],
           listsIncomplete: agentFacts.listsIncomplete === true || agentPolicy.listsIncomplete,
         });
-  // The org-policy rules (P01 to P06 and P08 to P11) run once, only when a policy was asked for.
+  // The org-policy rules (P01 to P11) run once, only when a policy was asked for.
   const policyEvaluation =
     input.policy === undefined
       ? null
@@ -389,6 +396,7 @@ export function check(input: CheckInput): Report {
           ignored: input.policyIgnored ?? [],
           ...(detection === undefined || agentPolicy === undefined ? {} : { agentPr: detection, agentPolicy }),
           ...(input.policySettingsSources === undefined ? {} : { settingsSources: input.policySettingsSources }),
+          ...(input.agentInstructionSources === undefined ? {} : { agentInstructions: input.agentInstructionSources }),
         });
   // The settings a policy beat, and the policy-file severities that were lower than the computed ones (signals and
   // rules), as one message.
