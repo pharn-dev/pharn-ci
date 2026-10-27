@@ -31,6 +31,10 @@ const SECRET_CODES = [
   // Re-pinned for E3 item 22 (policy rules): the appended schema text and report.ts also gain these two rule codes.
   "POLICY_P08",
   "POLICY_P09",
+  // E3 item 24a part B (P11): the appended schema text and report.ts also gain these two codes; this only adds to what
+  // the pin allows.
+  "POLICY_P11",
+  "AGENT_PR_DETECTION_INCOMPLETE",
 ];
 
 const git = (...args: string[]) =>

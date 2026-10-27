@@ -9,6 +9,7 @@ import {
   gitDiffArgs,
   type InputErrorText,
   type PharnConfig,
+  type PolicyFileBase,
   type PythonIndexRun,
   type PythonSourceFile,
   parseConfig,
@@ -25,7 +26,6 @@ import {
   unavailableTestSources,
   VERSION,
   validateAcceptLabel,
-  withAgentPrMeta,
   withUploadOutcome,
 } from "@pharn-ci/core";
 import {
@@ -36,6 +36,7 @@ import {
   readAgentConfigSources,
   readCoverageFiles,
   readDiscoveredCoverage,
+  readPolicyFileAt,
   readTestSources,
 } from "@pharn-ci/node-io";
 import { applyAcceptLabel } from "./accept-label.js";
@@ -375,6 +376,27 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     );
   }
 
+  // The agent PR facts are gathered on every run, before check(): with them check() detects an agent PR once and uses it
+  // for the agent fields of `meta` and for the org policy's protected paths (rule P11). The org policy's lists add to
+  // the default lists inside check(); no input and no config entry changes them. The log line below uses the defaults.
+  const agentPrFacts = await gatherAgentPrFacts(deps, target);
+  const defaultDetection = detectAgentPr(agentPrFacts);
+  if (defaultDetection.incomplete !== null) {
+    deps.info(
+      `pharn-ci: agent PR detection could not read all of the pull request's evidence (${defaultDetection.incomplete}), so it counts as an agent PR`,
+    );
+  }
+  // A `file:` policy the pull request carries is also read at the merge base, from committed objects: the pull request
+  // cannot remove an agent label, login or protected path by editing the file. Only a local diff and a git batch reader
+  // make that possible; otherwise a file policy is unreadable there and core decides from the diff whether that matters.
+  let policyFileBase: PolicyFileBase | undefined;
+  if (policy?.source === "file") {
+    policyFileBase =
+      localBase !== undefined && deps.gitBatch !== undefined && policy.path !== undefined
+        ? await readPolicyFileAt({ gitBatch: deps.gitBatch }, { rev: localBase, path: policy.path })
+        : { kind: "unreadable" };
+  }
+
   const checkInput: CheckInput = {
     version: VERSION,
     coverage,
@@ -395,6 +417,8 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     ...(policy === undefined ? {} : { policy }),
     ...(application === undefined || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored }),
     ...(application?.signalOverrides === undefined ? {} : { signalOverrides: application.signalOverrides }),
+    agentPrFacts,
+    ...(policyFileBase === undefined ? {} : { policyFileBase }),
   };
   const meta = runMeta(deps.context, { baseRef: input("base-ref"), ...(target === undefined ? {} : { target }) });
   if (meta === undefined) deps.info("run metadata is incomplete, so report.json carries no meta");
@@ -411,19 +435,8 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     else deps.warning("pharn-ci: the org policy's accept label is not usable here, so the accept-label input applies");
   }
   const labelled = await applyAcceptLabel(deps, checked, label, signoffNumber);
-  // Agent PR detection is metadata only: it needs the report's `meta`, and the verdict, the messages, the summary and the
-  // comment never read what it adds. It uses the default lists only; no input and no config entry changes them.
+  // The agent PR detection ran inside check() (see the facts above): its agent fields are already in `meta`.
   let report = labelled;
-  if (labelled.meta !== undefined) {
-    const facts = await gatherAgentPrFacts(deps, target);
-    const detection = detectAgentPr(facts);
-    if (detection.incomplete !== null) {
-      deps.info(
-        `pharn-ci: agent PR detection could not read all of the pull request's evidence (${detection.incomplete}), so it counts as an agent PR`,
-      );
-    }
-    report = withAgentPrMeta(labelled, detection, facts);
-  }
   // The upload is the last thing that reads the report before it is rendered and written: its outcome is part of it.
   // It never throws and never changes the step's pass or fail (a too-large report only adds a warning).
   const issueNumber = pr?.number ?? target?.number;

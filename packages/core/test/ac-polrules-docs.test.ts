@@ -17,6 +17,11 @@ const atCommit = (commit: string, path: string) =>
 const APPENDED =
   " POLICY_P08 (error, or the level the org policy sets for P08: tracked files match a forbidden file pattern of the org policy; the message names up to 20 paths and the count) and POLICY_P09 (error, or warn for an agent settings file whose direction is not judged yet: the change edits a file the org policy guards; the message names up to 20 paths and the count; each reason is in policy.violations).";
 
+// E3 item 24a part B (P11): the same description then gains exactly this text after APPENDED, which names the two codes
+// POLICY_P11 and AGENT_PR_DETECTION_INCOMPLETE. It is an exact appended-text pin, so it only adds.
+const P11_TEXT =
+  " POLICY_P11 (error, or warn when the org policy sets agents.protected_paths_mode or the rule to warn: an agent pull request changes paths the org policy protects, or could not be checked because the diff, or the policy file at the merge base, could not be read; the message names up to 20 paths and the evidence as fixed words, never a pattern, label or login) and AGENT_PR_DETECTION_INCOMPLETE (warn: the pull request counts as an agent PR because its evidence could not be read in full, and the org policy protects paths; the message names the reason as one fixed word).";
+
 const REPINNED = [
   "packages/core/test/ac-policy3-unchanged.test.ts",
   "packages/action/test/ac-policy3-outcomes.test.ts",
@@ -61,8 +66,10 @@ describe("docs, schema and sources for the policy rules", { timeout: 60_000 }, (
     const now = codeDescription(read("schema/report.v2.json"));
     expect(base.endsWith("the check ran in full).")).toBe(true);
     expect(now.startsWith(base)).toBe(true);
-    expect(now.slice(base.length)).toBe(APPENDED);
-    expect(words(now.slice(base.length))).toEqual(["POLICY_P08", "POLICY_P09"]);
+    expect(now.slice(base.length)).toBe(APPENDED + P11_TEXT);
+    expect(words(now.slice(base.length))).toEqual(
+      ["AGENT_PR_DETECTION_INCOMPLETE", "POLICY_P08", "POLICY_P09", "POLICY_P11"].sort(),
+    );
 
     // report.ts MessageCode and the renderer's hints.
     const report = read("packages/core/src/report.ts");

@@ -1,5 +1,7 @@
+import type { AgentEvidence, AgentPrDetection, AgentPrIncomplete } from "../../agents.js";
 import type { DiffFile } from "../../diff/unified.js";
 import type { AgentTool } from "../../setup/summary.js";
+import type { AgentPolicy } from "../agents.js";
 import type { IgnoredSetting, ResolvedPolicy } from "../resolved.js";
 import type { PolicyRuleId } from "../types.js";
 
@@ -30,14 +32,22 @@ export interface PolicyRuleInput {
   configPath: string | null;
   /** The settings the policy beat or may not set (the policy application's `ignored`). */
   ignored: readonly IgnoredSetting[];
+  /** The agent PR detection of the run (one detection per check); absent when no PR facts were given. */
+  agentPr?: AgentPrDetection | null;
+  /** The effective agent policy (see `agentPolicyOf`); absent when no PR facts were given. */
+  agentPolicy?: AgentPolicy;
 }
 
 export interface PolicyEvaluation {
   violations: PolicyViolation[];
-  /** How many violations of a rule a cap left out; only P08 is capped. */
+  /** How many violations of a rule a cap left out; only P08 and P11 are capped. */
   omitted: Partial<Record<PolicyRuleId, number>>;
   /** The rule ids a policy file asked to lower and that were not lowered; distinct, in id order. */
   lowered: PolicyRuleId[];
+  /** The agent policy settings a policy file asked to lower and that were not applied. */
+  ignored: IgnoredSetting[];
+  /** The evidence and the incomplete reason of the detection, when one ran. */
+  agentPr?: { evidence: AgentEvidence[]; incomplete: AgentPrIncomplete | null };
 }
 
 /** One raw finding of a rule before the policy's rule severities are applied. */

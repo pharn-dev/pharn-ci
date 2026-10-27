@@ -217,7 +217,9 @@ export type MessageCode =
   | "POLICY_OVERRIDE_IGNORED"
   | "UPLOAD_TOO_LARGE"
   | "POLICY_P08"
-  | "POLICY_P09";
+  | "POLICY_P09"
+  | "POLICY_P11"
+  | "AGENT_PR_DETECTION_INCOMPLETE";
 
 export interface Message {
   level: MessageLevel;

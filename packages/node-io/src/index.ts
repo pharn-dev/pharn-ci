@@ -10,6 +10,7 @@ export {
   type PolicyFileDeps,
   PolicyFileError,
   readPolicyFile,
+  readPolicyFileAt,
 } from "./policyFile.js";
 export {
   indexPythonTests,

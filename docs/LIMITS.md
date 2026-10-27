@@ -944,9 +944,11 @@ applied once per run. What it does not do:
   is not, so the two reports then differ by one `POLICY_OVERRIDE_IGNORED` message.
 - **The `policy` and `app-url` inputs are the workflow's.** A pull request that edits the workflow can set them
   (THREAT-MODEL, items 22 and 24).
-- **Only some keys are applied.** `policy.rules` applies to P01, P08 and P09 (P10 cannot be overridden), and
-  `setup.forbidden_files` feeds P08; `agents`, `dependencies`, `flaky` and the other `setup` lists are validated and
-  carried in the document, not applied by this release.
+- **Only some keys are applied.** `policy.rules` applies to P01, P08, P09 and P11 (P10 cannot be overridden), and
+  `setup.forbidden_files` feeds P08; of `agents`, only `agents.labels`, `agents.extra_logins`,
+  `agents.protected_paths` and `agents.protected_paths_mode` are applied (the first two add to the detection, the other
+  two feed P11). `dependencies`, `flaky`, the other `agents` keys and the other `setup` lists are validated and carried
+  in the document, not applied by this release.
 - **What P09 sees, and what it misses.** P09 sees four kinds of edit in the diff: (1) the `file:` policy file itself,
   edited or renamed away; (2) the config in use, while `.pharn/ci.yml` holds a setting looser than the policy; (3) a
   file under `.github/workflows/`, while a workflow input is looser than the policy; (4) `.claude/settings*.json` (root
@@ -955,6 +957,24 @@ applied once per run. What it does not do:
   `app-url`: the Action then does not run or does not ask for the policy, so nothing is checked against it. TI11 and
   `CONFIG_CHANGED_IN_DIFF` flag such a workflow edit. Class 4 does not judge direction (a tightening edit warns too)
   until a later release reads those files.
+
+### What P11 misses
+
+- **Only agent PRs that identify themselves.** P11 runs for a pull request the detection counts as an agent PR (§9). An
+  agent that commits through a person's account with no trailer, label or known login is judged as a person's.
+- **Paths only.** The globs are the ones of `coverage.exclude`; P11 matches the path of each diff entry (and a rename's
+  old path), never what changed in the file.
+- **A `file:` policy always blocks.** A lower `protected_paths_mode` or `policy.rules.P11` is named in
+  `POLICY_OVERRIDE_IGNORED` and not applied, because the pull request carries the file.
+- **The CLI has no pull request.** It gathers no agent PR facts, so P11 never fires there.
+- **At most 50 violations are listed.** The rest are counted in the `POLICY_P11` text, which names up to 20 paths.
+- **The merge-base read needs a local diff.** The `file:` policy is read at the merge base only for a diff from the
+  local checkout. PR-number mode and the compare API fail closed: an edited policy file then makes the pull request an
+  agent PR (`policy-lists-unreadable`).
+- **Dependabot and Renovate count as agent PRs.** Protecting `package.json` or a lockfile blocks their updates: do not
+  protect files those bots must update.
+- **Other `agents` keys are not applied.** `require_human_approval`, `max_files` and `max_changed_lines` (rules P12 and
+  P14) are validated and carried, not applied by this release.
 
 ## Upload to pharn.dev
 
@@ -1149,8 +1169,10 @@ limited by git, Node or GitHub alone.
 - **The known-agent list holds only the seven verified entries** (Claude Code, Copilot, Codex, Devin, Cursor, Gemini and
   Jules). Another agent is recognized only by a `[bot]` login, a label or a `Co-authored-by` trailer of a login on the
   list.
-- **The lists cannot be changed from `.pharn/ci.yml`.** No `agents:` key is read, and no input sets one: a setting the
-  pull request carries cannot loosen or tighten the detection.
+- **Only the org policy adds labels and logins.** `agents.labels` and `agents.extra_logins` of the org policy add to the
+  defaults and never remove one; no `.pharn/ci.yml` key and no input does. A `file:` policy the pull request edits
+  counts with the lists it has at the merge base too, and when that version cannot be read the pull request counts as
+  an agent PR.
 - **A human co-author is never recorded.** Only trailers of known agents reach the report, as a hint and an address.
-- **The CLI does not set it.** Only the Action gathers pull request facts, and the detection changes no verdict, message,
-  comment or exit code.
+- **The CLI does not set it.** Only the Action gathers pull request facts. On its own the detection changes no verdict,
+  message, comment or exit code; under a policy with protected paths, rule P11 uses it (see Org policy).

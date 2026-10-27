@@ -1,5 +1,7 @@
+import type { AgentEvidence } from "../../agents.js";
 import { codeSpan, type Message, type MessageCode } from "../../report.js";
 import type { PolicyRuleId } from "../types.js";
+import { P11_BASE_UNREADABLE_DETAIL, P11_DIFF_UNAVAILABLE_DETAIL } from "./p11.js";
 import { levelOf, strongest } from "./severity.js";
 import type { PolicyEvaluation, PolicyViolation } from "./types.js";
 
@@ -19,11 +21,55 @@ function pathsOf(violations: readonly PolicyViolation[]): string[] {
   return [...new Set(violations.flatMap((violation) => (violation.path === null ? [] : [violation.path])))];
 }
 
+/** The fixed words that name each kind of agent evidence in the P11 message; no label, login or file text is ever quoted. */
+const EVIDENCE_WORDS: Record<AgentEvidence, string> = {
+  "author-bot": "a bot author",
+  "author-known-agent": "a known agent as author",
+  "author-extra-login": "an author login the policy lists",
+  "commit-bot": "a bot commit",
+  "commit-known-agent": "a commit by a known agent",
+  "commit-extra-login": "a commit by a login the policy lists",
+  "co-author-known-agent": "a known agent's Co-authored-by trailer",
+  "co-author-extra-login": "a Co-authored-by trailer of a login the policy lists",
+  label: "an agent label",
+};
+
 /**
- * The message of each rule that has one, from its violations and the number a cap left out. P01 and P10 have no row:
- * P01 raises the agent setup messages and P10 is the POLICY_UNAVAILABLE message.
+ * The message of each rule that has one, from its violations, the number a cap left out and the whole evaluation. P01
+ * and P10 have no row: P01 raises the agent setup messages and P10 is the POLICY_UNAVAILABLE message.
  */
-const RULE_MESSAGES: Partial<Record<PolicyRuleId, (violations: PolicyViolation[], omitted: number) => string>> = {
+const RULE_MESSAGES: Partial<
+  Record<PolicyRuleId, (violations: PolicyViolation[], omitted: number, evaluation: PolicyEvaluation) => string>
+> = {
+  P11: (violations, omitted, evaluation) => {
+    const sentences: string[] = [];
+    const kept = pathsOf(violations);
+    const total = kept.length + omitted;
+    if (total > 0) {
+      const head =
+        total === 1
+          ? "This agent pull request changes 1 path the org policy protects"
+          : `This agent pull request changes ${total} paths the org policy protects`;
+      const notListed =
+        omitted > 0 ? ` ${omitted} of ${omitted === 1 ? "them is" : "them are"} not listed in the report.` : "";
+      sentences.push(`${head}: ${listOf(kept, total)}.${notListed}`);
+    }
+    if (violations.some((violation) => violation.detail === P11_DIFF_UNAVAILABLE_DETAIL)) {
+      sentences.push(
+        "This agent pull request could not be checked against the paths the org policy protects, because the diff is unavailable.",
+      );
+    }
+    if (violations.some((violation) => violation.detail === P11_BASE_UNREADABLE_DETAIL)) {
+      sentences.push(
+        "This agent pull request edits the policy file, and its version at the merge base could not be read, so the paths that version protects could not be checked.",
+      );
+    }
+    const words = (evaluation.agentPr?.evidence ?? []).map((kind) => EVIDENCE_WORDS[kind]);
+    const incomplete = evaluation.agentPr?.incomplete ?? null;
+    if (incomplete !== null) words.push(`evidence it could not read (${codeSpan(incomplete)})`);
+    sentences.push(`It counts as an agent PR by: ${words.join("; ")}.`);
+    return sentences.join(" ");
+  },
   P08: (violations, omitted) => {
     const kept = pathsOf(violations);
     const total = kept.length + omitted;
@@ -60,7 +106,7 @@ export function policyRuleMessages(evaluation: PolicyEvaluation): Message[] {
     messages.push({
       level: levelOf(strongest(own.map((violation) => violation.severity))),
       code: `POLICY_${id}` as MessageCode,
-      text: text(own, evaluation.omitted[id] ?? 0),
+      text: text(own, evaluation.omitted[id] ?? 0, evaluation),
     });
   }
   return messages;

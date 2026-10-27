@@ -56,10 +56,27 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   (P10) stays `POLICY_UNAVAILABLE`. `policy.rules` sets each rule's severity, and a `file:` policy can only raise it.
   The findings are in the report's `policy` object and a new Policy section of the PR comment; without a policy the
   report and the comment are the ones they were.
+- Org policy rule P11, an agent pull request that changes a protected path. A policy that lists `agents.protected_paths`
+  makes every path of an agent PR's diff that matches one of the globs (a rename counts by both its paths) a P11
+  violation, and one new `POLICY_P11` message names up to 20 paths and the evidence that made the pull request an agent
+  PR, as fixed words. `agents.protected_paths_mode` and `policy.rules.P11` set the severity (`block` by default; a
+  `file:` policy always blocks); a person's pull request is never subject to it, and a missing diff fails closed. The
+  policy's `agents.labels` and `agents.extra_logins` now add to the default agent labels and logins. A pull request
+  that counts as an agent PR only because its evidence could not be read gets one `AGENT_PR_DETECTION_INCOMPLETE`
+  message (`warn`) that says why. CLI runs have no pull request, so P11 never fires there.
 
 ### Changed
 
+- Agent PR detection runs on every pull request run, not only on runs whose report carries `meta`, so the Action reads the
+  pull request's commits (`GET /repos/{owner}/{repo}/pulls/{n}/commits`) on every pull request run. On its own the flag
+  still changes no verdict, message, comment or exit code; under a policy with protected paths, P11 uses it.
+
 ### Security
+
+- A `file:` org policy that the pull request edits is also read at the merge base, from committed git objects only
+  (never the working tree, no symbolic link followed, at most 1 MiB), and its labels, logins and protected paths count
+  together with the pull request's own: a pull request cannot remove a protected path or an agent label by editing the
+  policy file. When the merge-base version cannot be read, an edited policy file makes the pull request an agent PR.
 
 - The Action makes one new read-only GitHub API call, `GET /repos/{owner}/{repo}/pulls/{n}/commits` (at most 3 pages of
   100), and reads the text of the pull request's commit messages in memory for the agent PR detection. A message is
