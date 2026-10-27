@@ -1,3 +1,4 @@
+import { type AgentPrFacts, agentPrMetaFields, detectAgentPr } from "./agents.js";
 import { parseAgentToolNames, parseCoverageRoot, parseExcludePattern } from "./config.js";
 import { chooseCoverageFormat, type DetectedCoverageFormat } from "./coverage/detect.js";
 import { parseCoverageCounted } from "./coverage/index.js";
@@ -9,7 +10,8 @@ import { type DiffFile, parseUnifiedDiff } from "./diff/unified.js";
 import { computeDiffCoverage } from "./diffCoverage.js";
 import { binaryCoveredPaths, changedConfigPaths, configRepoPath, trackedCoverageFile } from "./gateInputs.js";
 import { compileGlob } from "./glob.js";
-import { policyOverrideIgnoredMessage, policyUnavailableMessage } from "./policy/messages.js";
+import { agentPolicyOf, type PolicyFileBase } from "./policy/agents.js";
+import { agentPrIncompleteMessage, policyOverrideIgnoredMessage, policyUnavailableMessage } from "./policy/messages.js";
 import type { IgnoredSetting, ResolvedPolicy, SignalOverrides } from "./policy/resolved.js";
 import { evaluatePolicyRules } from "./policy/rules/evaluate.js";
 import { policyRuleMessages } from "./policy/rules/messages.js";
@@ -152,7 +154,7 @@ export interface CheckInput {
   agentConfigSources?: AgentConfigSources;
   /**
    * The org policy of the run (see `ResolvedPolicy`), after `applyPolicy` gave the effective settings the other fields
-   * carry. Its document runs the org-policy rules (P01, P08, P09, P10), its `unavailable` reason adds one
+   * carry. Its document runs the org-policy rules (P01, P08, P09, P10, P11), its `unavailable` reason adds one
    * POLICY_UNAVAILABLE message, and the report carries a `policy` object for an app or file policy or an unavailable
    * one. Absent, or a policy of source `none` with no reason, adds nothing and the report is the one it was.
    */
@@ -164,6 +166,19 @@ export interface CheckInput {
   policyIgnored?: readonly IgnoredSetting[];
   /** Per-signal severities from the policy (`PolicyApplication.signalOverrides`), applied to the signals found. */
   signalOverrides?: SignalOverrides;
+  /**
+   * What the Action read of the pull request (see `AgentPrFacts`). Absent means no facts were gathered: no agent PR
+   * detection runs, so there is no P11, no AGENT_PR_DETECTION_INCOMPLETE message and `meta` is left as it was.
+   * `{ pr: null }` means a run with no pull request. With facts, one detection (the default lists united with the org
+   * policy's `agents.labels` and `agents.extra_logins`) feeds the agent fields of `meta`, rule P11 and the message.
+   */
+  agentPrFacts?: AgentPrFacts;
+  /**
+   * The `file:` policy as the merge base has it (see `PolicyFileBase`), read by the Action from committed objects. Its
+   * lists are united with the head lists; an unreadable one with an edited policy file makes the pull request an agent PR.
+   * Absent means it was not read.
+   */
+  policyFileBase?: PolicyFileBase;
 }
 
 const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
@@ -337,7 +352,23 @@ export function check(input: CheckInput): Report {
       : applySignalOverrides(testIntegritySignals, omittedBeforePolicy, input.signalOverrides, testIntegrity.mode);
   const finalSignals = overridden?.signals ?? testIntegritySignals;
   const omittedSignals = overridden?.omitted ?? omittedBeforePolicy;
-  // The org-policy rules (P01, P08, P09, P10) run once, only when a policy was asked for.
+  // The agent PR detection runs once, only when the caller gathered the facts: one detection feeds `meta`, rule P11 and
+  // the incomplete message. The org policy's lists add to the defaults and to the lists the caller passed.
+  const agentFacts = input.agentPrFacts;
+  const agentPolicy =
+    agentFacts === undefined
+      ? undefined
+      : agentPolicyOf(input.policy, { base: input.policyFileBase, diff: parsedDiff });
+  const detection =
+    agentFacts === undefined || agentPolicy === undefined
+      ? undefined
+      : detectAgentPr({
+          ...agentFacts,
+          labels: [...(agentFacts.labels ?? []), ...agentPolicy.labels],
+          extraLogins: [...(agentFacts.extraLogins ?? []), ...agentPolicy.extraLogins],
+          listsIncomplete: agentFacts.listsIncomplete === true || agentPolicy.listsIncomplete,
+        });
+  // The org-policy rules (P01, P08, P09, P10, P11) run once, only when a policy was asked for.
   const policyEvaluation =
     input.policy === undefined
       ? null
@@ -349,6 +380,7 @@ export function check(input: CheckInput): Report {
           diff: parsedDiff,
           configPath: configRepoPath(input.configPath, input.repoRoot),
           ignored: input.policyIgnored ?? [],
+          ...(detection === undefined || agentPolicy === undefined ? {} : { agentPr: detection, agentPolicy }),
         });
   // The settings a policy beat, and the policy-file severities that were lower than the computed ones (signals and
   // rules), as one message.
@@ -360,10 +392,24 @@ export function check(input: CheckInput): Report {
     ...(policyEvaluation?.lowered ?? []).map(
       (id): IgnoredSetting => ({ setting: `policy.rules.${id}`, layer: "policy-file", reason: "looser" }),
     ),
+    ...(policyEvaluation?.ignored ?? []),
   ];
+  // The incomplete message is for a pull request that counts as an agent PR only because evidence could not be read,
+  // and only where the org policy's protected paths are in effect.
+  const incompleteMessage =
+    agentFacts?.pr !== null &&
+    agentFacts?.pr !== undefined &&
+    detection?.incomplete !== null &&
+    detection?.incomplete !== undefined &&
+    agentPolicy !== undefined &&
+    agentPolicy.severity !== null &&
+    agentPolicy.protectedPaths.length > 0
+      ? [agentPrIncompleteMessage(detection.incomplete)]
+      : [];
   const policyMessages: Message[] = [
     ...(input.policy?.unavailable === undefined ? [] : [policyUnavailableMessage(input.policy.unavailable)]),
     ...(policyEvaluation === null ? [] : policyRuleMessages(policyEvaluation)),
+    ...incompleteMessage,
     ...(policyIgnored.length === 0 ? [] : [policyOverrideIgnoredMessage(policyIgnored)]),
   ];
   // P01 sets the levels of the agent setup messages for the settings the policy requires.
@@ -420,7 +466,14 @@ export function check(input: CheckInput): Report {
     ...(testPaths.length > 0 ? { deletedTestFiles: testPaths } : {}),
     ...(trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage }),
     ...(emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {}),
-    ...(input.meta === undefined ? {} : { meta: input.meta }),
+    ...(input.meta === undefined
+      ? {}
+      : {
+          meta:
+            detection === undefined || agentFacts === undefined
+              ? input.meta
+              : { ...input.meta, ...agentPrMetaFields(detection, agentFacts) },
+        }),
     testIntegrity,
     ...(finalSignals.length > 0 ? { testIntegritySignals: finalSignals } : {}),
     ...(textTruncatedFiles.length > 0 ? { textTruncatedFiles } : {}),

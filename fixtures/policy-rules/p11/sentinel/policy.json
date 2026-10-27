@@ -1,0 +1,1 @@
+{"version":1,"agents":{"labels":["label-SENTINEL"],"extra_logins":["login-sentinel"],"protected_paths":["src/**","secret-SENTINEL-glob/**"]}}

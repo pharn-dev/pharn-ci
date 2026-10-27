@@ -1,3 +1,4 @@
+import type { AgentPrIncomplete } from "../agents.js";
 import { formatNumber, type Message } from "../report.js";
 import type { IgnoredSetting, ResolvedPolicy } from "./resolved.js";
 
@@ -20,6 +21,19 @@ export function policyUnavailableMessage(unavailable: NonNullable<ResolvedPolicy
     ? `${head} The workflow requires a policy (policy: required), so this check fails. It ran with the workflow inputs and .pharn/ci.yml.`
     : `${head} The check ran with the workflow inputs and .pharn/ci.yml.`;
   return { level: unavailable.required ? "error" : "warn", code: "POLICY_UNAVAILABLE", text };
+}
+
+/**
+ * The AGENT_PR_DETECTION_INCOMPLETE message: the pull request counts as an agent PR because the detection could not
+ * read all of its evidence, so the org policy's protected paths apply to it. A warning that names the reason as one
+ * fixed word and nothing else.
+ */
+export function agentPrIncompleteMessage(reason: AgentPrIncomplete): Message {
+  return {
+    level: "warn",
+    code: "AGENT_PR_DETECTION_INCOMPLETE",
+    text: `This pull request counts as an agent PR because pharn-ci could not read all of its evidence (\`${reason}\`), so the org policy's protected paths apply to it.`,
+  };
 }
 
 /**

@@ -1,0 +1,18 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 1111111..2222222 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -2,0 +3 @@
++x
+diff --git a/src/we`ird<!--|x.ts b/src/we`ird<!--|x.ts
+index 1111111..2222222 100644
+--- a/src/we`ird<!--|x.ts
++++ b/src/we`ird<!--|x.ts
+@@ -2,0 +3 @@
++x
+diff --git a/.pharn/policy.json b/.pharn/policy.json
+index 1111111..2222222 100644
+--- a/.pharn/policy.json
++++ b/.pharn/policy.json
+@@ -2,0 +3 @@
++x

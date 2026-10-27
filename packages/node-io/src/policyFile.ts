@@ -1,5 +1,12 @@
 import { lstat } from "node:fs/promises";
-import { parsePolicyJson, type ResolvedPolicy } from "@pharn-ci/core";
+import {
+  decodeTestSourceText,
+  isUnsafeTestSourcePath,
+  type PolicyFileBase,
+  parsePolicyJson,
+  type ResolvedPolicy,
+} from "@pharn-ci/core";
+import { batchCheck, batchRead, type GitBatchDeps } from "./gitBlobs.js";
 
 /** The largest policy file read, in bytes, judged by its size on disk before it is read. */
 export const POLICY_FILE_MAX_BYTES = 1_048_576;
@@ -102,4 +109,51 @@ export async function readPolicyFile(
     throw fail(`is not a valid policy document:\n${lines.join("\n")}`);
   }
   return { source: "file", version: null, path: segments.join("/"), document: parsed.policy };
+}
+
+/** A revision that may be given to git as `<rev>:<path>`: non-empty, no leading `-`, no `:`, whitespace or control character. */
+function isUsableRevision(rev: string): boolean {
+  if (rev === "" || rev.startsWith("-")) return false;
+  for (let i = 0; i < rev.length; i++) {
+    const code = rev.charCodeAt(i);
+    if (code <= 0x20 || (code >= 0x7f && code <= 0xa0) || code === 0x3a) return false;
+  }
+  return true;
+}
+
+/**
+ * The `file:` policy as it is at a git revision (the merge base of the pull request), read from committed objects only:
+ * never the working tree, and no symbolic link is followed (`cat-file` without `--follow-symlinks` gives a link's blob,
+ * which holds the target's name and fails to parse). One `cat-file --batch-check` asks for the revision's root tree and
+ * for the path; a missing root tree means the revision does not exist. A missing path is `absent`. Anything else that is
+ * not a blob of at most 1 MiB holding a valid policy document (`parsePolicyJson`) is `unreadable`. A path with a control
+ * character or a `.` or `..` segment, and a revision git could read as an option or a range, never reach git. This
+ * never rejects and never returns error text.
+ */
+export async function readPolicyFileAt(
+  deps: GitBatchDeps,
+  options: { rev: string; path: string },
+): Promise<PolicyFileBase> {
+  const unreadable: PolicyFileBase = { kind: "unreadable" };
+  try {
+    const { rev, path } = options;
+    if (typeof rev !== "string" || typeof path !== "string") return unreadable;
+    if (isUnsafeTestSourcePath(path) || !isUsableRevision(rev)) return unreadable;
+    const [root, object] = await batchCheck(deps, [
+      { oid: rev, path: "" },
+      { oid: rev, path },
+    ]);
+    if (root === null || root === undefined) return unreadable;
+    if (object === null || object === undefined) return { kind: "absent" };
+    if (object.object.type !== "blob" || object.object.size > POLICY_FILE_MAX_BYTES) return unreadable;
+    const contents = await batchRead(deps, [object.oid]);
+    const bytes = contents.get(object.oid);
+    if (bytes === undefined) return unreadable;
+    const text = decodeTestSourceText(bytes);
+    if (text === null) return unreadable;
+    const parsed = parsePolicyJson(text);
+    return parsed.ok ? { kind: "document", document: parsed.policy } : unreadable;
+  } catch {
+    return unreadable;
+  }
 }

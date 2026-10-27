@@ -291,8 +291,18 @@ describe("upload documentation", { timeout: 60_000 }, () => {
     const policyRuleBullets = fresh("Added").filter((b) => b.startsWith("- Org policy rules P01, P08, P09 and P10."));
     expect(policyRuleBullets).toHaveLength(1);
     expect(policyRuleBullets[0]).toContain("POLICY_P08");
-    const addedBullets = fresh("Added").filter((b) => !policyRuleBullets.includes(b));
-    const securityBullets = fresh("Security");
+    // Re-pinned for E3 item 24a part B (P11): Unreleased also gains exactly one Added bullet starting `- Org policy rule
+    // P11` (it names POLICY_P11) and exactly one Security bullet about the merge-base read of a `file:` policy. Both are
+    // asserted here and set aside, and the upload bullets are judged as before.
+    const p11Bullets = fresh("Added").filter((b) => b.startsWith("- Org policy rule P11"));
+    expect(p11Bullets).toHaveLength(1);
+    expect(p11Bullets[0]).toContain("POLICY_P11");
+    const p11SecurityBullets = fresh("Security").filter((b) =>
+      b.startsWith("- A `file:` org policy that the pull request edits is also read at the merge base"),
+    );
+    expect(p11SecurityBullets).toHaveLength(1);
+    const addedBullets = fresh("Added").filter((b) => !policyRuleBullets.includes(b) && !p11Bullets.includes(b));
+    const securityBullets = fresh("Security").filter((b) => !p11SecurityBullets.includes(b));
     expect(addedBullets).toHaveLength(1);
     expect(securityBullets).toHaveLength(1);
     for (const bullet of [...addedBullets, ...securityBullets]) expect(bullet).not.toContain("OIDC");

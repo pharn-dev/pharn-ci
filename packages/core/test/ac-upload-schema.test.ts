@@ -38,6 +38,11 @@ const SENTENCE =
 const POLICY_RULES_TEXT =
   " POLICY_P08 (error, or the level the org policy sets for P08: tracked files match a forbidden file pattern of the org policy; the message names up to 20 paths and the count) and POLICY_P09 (error, or warn for an agent settings file whose direction is not judged yet: the change edits a file the org policy guards; the message names up to 20 paths and the count; each reason is in policy.violations).";
 const POLICY_RULE_CODES = ["POLICY_P08", "POLICY_P09"];
+// Re-pinned for E3 item 24a part B (P11): the same description then gains exactly this text, which names the two codes
+// POLICY_P11 and AGENT_PR_DETECTION_INCOMPLETE; report.ts gains those two MessageCode members. Nothing else may change.
+const P11_TEXT =
+  " POLICY_P11 (error, or warn when the org policy sets agents.protected_paths_mode or the rule to warn: an agent pull request changes paths the org policy protects, or could not be checked because the diff, or the policy file at the merge base, could not be read; the message names up to 20 paths and the evidence as fixed words, never a pattern, label or login) and AGENT_PR_DETECTION_INCOMPLETE (warn: the pull request counts as an agent PR because its evidence could not be read in full, and the org policy protects paths; the message names the reason as one fixed word).";
+const P11_CODES = ["POLICY_P11", "AGENT_PR_DETECTION_INCOMPLETE"];
 
 /** Every object schema inside a JSON Schema document (by `type` naming object, or by `properties`). */
 function objectSchemas(value: unknown, path = "$", out: Array<[string, Json]> = []): Array<[string, Json]> {
@@ -127,7 +132,7 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
     const baseDescription = strings(JSON.parse(v2Base)).find((s) => s.includes(" Codes added in v0.4.0:"));
     expect(baseDescription, "control: the base has the v0.4.0 text").toBeDefined();
     const description = strings(JSON.parse(v2)).find((s) => s.includes(" Codes added in v0.4.0:"));
-    expect(description).toBe(`${baseDescription}${SENTENCE}${POLICY_RULES_TEXT}`);
+    expect(description).toBe(`${baseDescription}${SENTENCE}${POLICY_RULES_TEXT}${P11_TEXT}`);
     expect(v2.split(" Codes added in v0.4.0:").length - 1).toBe(1);
 
     // Every other line is the base's.
@@ -141,12 +146,14 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
       JSON.parse(text, (_key, value) => (value === from ? to : value)) as unknown;
     expect(swap(v2, description as string, "X")).toEqual(swap(v2Base, baseDescription as string, "X"));
 
-    expect(added(codeWords(v2), codeWords(v2Base))).toEqual([...POLICY_RULE_CODES, "UPLOAD_TOO_LARGE"].sort());
+    expect(added(codeWords(v2), codeWords(v2Base))).toEqual(
+      [...POLICY_RULE_CODES, ...P11_CODES, "UPLOAD_TOO_LARGE"].sort(),
+    );
 
     const reportTsBase = atBase("packages/core/src/report.ts");
     const reportTs = read("packages/core/src/report.ts");
     expect(added(upperWords(reportTs), upperWords(reportTsBase))).toEqual(
-      [...POLICY_RULE_CODES, "UPLOAD_TOO_LARGE"].sort(),
+      [...POLICY_RULE_CODES, ...P11_CODES, "UPLOAD_TOO_LARGE"].sort(),
     );
     const declaration = reportTs.slice(reportTs.indexOf("type MessageCode"));
     const union = declaration.slice(0, declaration.indexOf(";"));

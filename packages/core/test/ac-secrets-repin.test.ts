@@ -32,7 +32,10 @@ const POLICY_CODES = ["POLICY_OVERRIDE_IGNORED", "POLICY_UNAVAILABLE", "POLICY_P
 // E3 item 21 (the run upload) adds one more, UPLOAD_TOO_LARGE, to the same appended text and to report.ts. It joins every
 // exact code-word comparison below too; nothing is removed.
 const UPLOAD_CODES = ["UPLOAD_TOO_LARGE"];
-const ADDED_CODES = [...CODES, ...POLICY_CODES, ...UPLOAD_CODES];
+// E3 item 24a part B (P11) adds two more, POLICY_P11 and AGENT_PR_DETECTION_INCOMPLETE, to the same appended text and to
+// report.ts. They join every exact code-word comparison below; nothing is removed.
+const AGENT_PR_CODES = ["POLICY_P11", "AGENT_PR_DETECTION_INCOMPLETE"];
+const ADDED_CODES = [...CODES, ...POLICY_CODES, ...UPLOAD_CODES, ...AGENT_PR_CODES];
 
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 const atCommit = (commit: string, path: string) =>

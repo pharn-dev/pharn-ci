@@ -438,8 +438,9 @@ The shapes and the redaction helpers are exported from `@pharn-ci/core` (`findSe
 
 A policy sets one gate for every repository of an organization, so a pull request cannot loosen it. It is a JSON
 document ([`schema/policy.v1.json`](schema/policy.v1.json)) that the pharn.dev app serves, or that a pull request
-carries in a file. This release applies the coverage, setup and test-integrity keys; the other keys are read and
-carried for later.
+carries in a file. This release applies the coverage, setup and test-integrity keys, and `agents.labels`,
+`agents.extra_logins`, `agents.protected_paths` and `agents.protected_paths_mode`; the other keys are read and carried
+for later.
 
 **What is sent.** With `policy: auto` (the default) or `required`, and only when the job grants `id-token: write`, the
 Action makes one `GET` of `/api/v1/policy?repo=<owner>/<name>` on the pharn.dev app. Only the OIDC token and the repository name
@@ -476,7 +477,7 @@ allowed from a file, and a value lower than the workflow inputs give is ignored;
 symbolic link and names a regular file of at most 1 MiB; anything else fails the step (the CLI exits `2`) with a fixed
 message that never names the path. What the policy does not cover is in [`docs/LIMITS.md`](docs/LIMITS.md).
 
-**Rules.** A policy also runs four rules over what the check already has (the agent setup inventory, the tracked
+**Rules.** A policy also runs five rules over what the check already has (the agent setup inventory, the tracked
 files, the diff and the policy itself; never the contents of an agent setup file). Each finding is in the report's
 `policy.violations` and in the comment's Policy section. `policy.rules` sets a rule's severity (`block`, `warn`,
 `info` or `off`); a `file:` policy can only raise it.
@@ -485,6 +486,30 @@ files, the diff and the policy itself; never the contents of an agent setup file
 - **P08**, forbidden file tracked: a tracked file matches a `setup.forbidden_files` pattern (`POLICY_P08`, `error`).
 - **P09**, the pull request loosens the policy it is graded by: it edits the policy file, the config or a workflow that sets a value looser than the policy, or an agent settings file the policy checks (`POLICY_P09`, `error`; `warn` for an agent settings file until its direction is judged).
 - **P10**, policy unavailable: the policy could not be read (`POLICY_UNAVAILABLE`).
+- **P11**, agent PR changes a protected path: an agent pull request changes a path that `agents.protected_paths` lists (`POLICY_P11`, `error`).
+
+**P11.** `agents.protected_paths` is a list of globs (the syntax of `coverage.exclude`) of the paths an agent pull
+request may not change, and `agents.protected_paths_mode` (`block` or `warn`, default `block`) sets the severity; the
+stricter of it and `policy.rules.P11` applies, and `off` in `policy.rules.P11` alone switches the rule off.
+
+```json
+{
+  "version": 1,
+  "agents": {
+    "protected_paths": [".github/workflows/**", "migrations/**", "**/*.lock"],
+    "protected_paths_mode": "block"
+  }
+}
+```
+
+Every path of the diff that matches a glob is one violation (a rename counts by both its old and its new path), and one
+`POLICY_P11` message names up to 20 of them and the evidence that made the pull request an agent PR, as fixed words,
+never a glob, label or login. A person's pull request is never subject to P11. A missing diff fails closed: an agent
+pull request whose diff is unavailable gets one violation that says so. A `file:` policy always blocks: a lower
+`protected_paths_mode` or `policy.rules.P11` is named in `POLICY_OVERRIDE_IGNORED` and does not apply, and the policy
+file is also read at the merge base so that editing it removes nothing. Dependabot and Renovate count as agent PRs, so
+protecting `package.json` or a lockfile blocks them: do not protect files those bots must update. At most 50 violations
+are listed (the rest are counted in the message). The accept label never touches P11.
 
 ---
 
@@ -851,14 +876,17 @@ message `code`s, not on text:
 | `UPLOAD_TOO_LARGE`              | The run was not [uploaded to pharn.dev](#upload-to-pharndev-optional) because its report is larger than the upload limit (`warn`; the check ran in full). The text names the limit in bytes when the app gave one |
 | `POLICY_P08` | Tracked files match a forbidden file pattern of the [org policy](#org-policy) (`error`, or the level the policy sets for P08). The text names up to 20 paths and the count |
 | `POLICY_P09` | The change edits a file the org policy guards: the policy file, the config or a workflow while it sets a value looser than the policy, or an agent settings file (`error`; `warn` for an agent settings file whose direction is not judged yet). The text names up to 20 paths; each reason is in `policy.violations` |
+| `POLICY_P11` | An agent pull request changes a path that the org policy's `agents.protected_paths` lists, or could not be checked because the diff, or the policy file at the merge base, could not be read (`error`; `warn` when the policy sets the mode or the rule to `warn`). The text names up to 20 paths and the evidence as fixed words, never a pattern, label or login |
+| `AGENT_PR_DETECTION_INCOMPLETE` | The pull request counts as an agent PR because its evidence could not be read in full, and the org policy protects paths (`warn`). The text names the reason as one fixed word |
 
 ### Agent PRs
 
 In the Action, `meta.isAgentPr` says whether the pull request counts as an agent PR, and `meta.agentHint`,
 `meta.prAuthor`, `meta.prLabels` and `meta.coAuthors` carry what it was read from. The detection is metadata only: it
 reads the pull request's author, labels and commits (their authors, committers and `Co-authored-by` trailers), never a
-file or the diff, and it changes no verdict, message, comment or exit code. A pull request counts as an agent PR when
-any of this holds:
+file or the diff. Detection runs on every pull request run. On its own the flag changes no verdict, message, comment or
+exit code; under an org policy with `agents.protected_paths`, rule P11 uses it (see [Org policy](#org-policy)). A pull
+request counts as an agent PR when any of this holds:
 
 - its author is a bot (type `Bot`, or a login ending in `[bot]`, Dependabot included), a known agent or a login you
   listed (`author-bot`, `author-known-agent`, `author-extra-login`);
@@ -868,10 +896,13 @@ any of this holds:
 - it carries one of the default labels `agent` or `ai-generated` (`label`).
 
 The known agents are Claude Code, Copilot, Codex, Devin, Cursor, Gemini and Jules. Evidence that cannot be read in full
-counts as an agent PR (fail closed): an unknown author, commits that cannot be listed, and a pull request of more than
-250 commits or whose commit count does not match the list. Only trailers of known agents are recorded, as a hint and an
-address; a human co-author never is. A run with no pull request records `isAgentPr: false`, and the CLI does not set the
-field. The lists cannot be changed from `.pharn/ci.yml` or an input. See
+counts as an agent PR (fail closed): an unknown author, commits that cannot be listed, a pull request of more than
+250 commits or whose commit count does not match the list, and an edited policy file whose base cannot be read (a
+`file:` policy that the pull request edits and that cannot be read at the merge base). Only trailers of known agents are
+recorded, as a hint and an address; a human co-author never is. A run with no pull request records `isAgentPr: false`,
+and the CLI does not set the field. The org policy's `agents.labels` and `agents.extra_logins` add to the defaults (for
+a `file:` policy that the pull request edits, the lists at the merge base and at head both count). Only the org policy
+adds to the lists; `.pharn/ci.yml` and the inputs cannot change them. See
 [`docs/LIMITS.md`](docs/LIMITS.md) §9 and [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) (A5).
 
 Within v1, fields are only added and codes are never renamed or removed.
@@ -937,6 +968,8 @@ inclusive threshold (79.995% fails at 80); which known agent setup files are tra
   alters its test setup can produce a favorable one.
 - **Exclusions come from the PR.** The config and workflow a PR carries decide which of its files
   are left out of the measurement ([Excluding files](#excluding-files)).
+- **P11 guards paths, not authors.** It sees only agent PRs that identify themselves (by author, commits, trailers or
+  labels) and matches paths, not content: an agent PR that does not identify itself is judged as a person's.
 
 ---
 

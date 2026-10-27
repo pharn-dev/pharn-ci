@@ -29,6 +29,10 @@ const SECRET_CODES = [
   // Re-pinned for E3 item 22 (policy rules): the same appended text also names these two rule codes.
   "POLICY_P08",
   "POLICY_P09",
+  // E3 item 24a part B (P11): the same appended text also names these two codes. This test would stay green without them
+  // (it uses toContain); adding them only states more.
+  "POLICY_P11",
+  "AGENT_PR_DETECTION_INCOMPLETE",
 ];
 
 // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property: the four lines it inserts after the
