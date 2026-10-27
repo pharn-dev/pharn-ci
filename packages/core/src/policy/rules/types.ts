@@ -1,5 +1,6 @@
 import type { AgentEvidence, AgentPrDetection, AgentPrIncomplete } from "../../agents.js";
 import type { DiffFile } from "../../diff/unified.js";
+import type { AgentConfigSources } from "../../secrets/scan.js";
 import type { AgentTool } from "../../setup/summary.js";
 import type { AgentPolicy } from "../agents.js";
 import type { IgnoredSetting, ResolvedPolicy } from "../resolved.js";
@@ -45,6 +46,11 @@ export interface PolicyRuleInput {
    * Absent: those rules emit nothing and P09 keeps its warn.
    */
   settingsSources?: PolicySettingsSources;
+  /**
+   * The text of the agent instruction files at HEAD for P07, or why it could not be read; absent or null means P07 was
+   * not asked to compare them and adds nothing.
+   */
+  agentInstructions?: AgentConfigSources | null;
 }
 
 export interface PolicyEvaluation {

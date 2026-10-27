@@ -413,7 +413,8 @@ Check A7 reads the machine-readable agent config files the inventory finds (`.mc
 `.vscode/mcp.json`, `.claude/settings.json`, `.claude/settings.local.json`, `.codex/config.toml`,
 `.gemini/settings.json`, `opencode.json`, `.aider.conf.yml`, the files under `.claude/hooks/`, and the `.json`, `.yaml`
 and `.yml` files under `.continue/rules/`) and looks for committed secrets. The Markdown kinds (instructions, rules,
-skills, commands) are never read. It reads the committed text at `HEAD` (`git cat-file`), never the working tree and never
+skills, commands) are never read by A7 (P07 reads the instruction kinds under an org policy; see
+[Policy mode: agent instruction files](#policy-mode-agent-instruction-files)). It reads the committed text at `HEAD` (`git cat-file`), never the working tree and never
 a file a symlink points to, with the test-source caps: 200 files, 512 KiB each, 16 MiB in all.
 
 Ten shapes are looked for by their prefix or position: S01 a GitHub token, S02 an Anthropic API key, S03 an OpenAI API key,
@@ -438,9 +439,10 @@ The shapes and the redaction helpers are exported from `@pharn-ci/core` (`findSe
 
 A policy sets one gate for every repository of an organization, so a pull request cannot loosen it. It is a JSON
 document ([`schema/policy.v1.json`](schema/policy.v1.json)) that the pharn.dev app serves, or that a pull request
-carries in a file. This release applies the coverage, setup (including the lists that P02 to P06 check) and
-test-integrity keys, and `agents.labels`, `agents.extra_logins`, `agents.protected_paths` and
-`agents.protected_paths_mode`; the other `agents` keys, `dependencies` and `flaky` are validated but not applied yet.
+carries in a file. This release applies the coverage, setup (including the lists that P02 to P06 check, and
+`setup.consistency` for P07) and test-integrity keys, and `agents.labels`, `agents.extra_logins`,
+`agents.protected_paths` and `agents.protected_paths_mode`; the other `agents` keys, `dependencies` and `flaky` are
+validated but not applied yet.
 
 **What is sent.** With `policy: auto` (the default) or `required`, and only when the job grants `id-token: write`, the
 Action makes one `GET` of `/api/v1/policy?repo=<owner>/<name>` on the pharn.dev app. Only the OIDC token and the repository name
@@ -479,7 +481,8 @@ message that never names the path. What the policy does not cover is in [`docs/L
 
 **Rules.** A policy also runs rules. P01, P08, P09, P10 and P11 read what the check already has (the agent setup
 inventory, the tracked files, the diff, the pull request's metadata and the policy itself). P02 to P06 read the agent
-settings and MCP files, and only in [policy mode](#policy-mode): the agent setup inventory never reads a setup file. Each finding is in the report's
+settings and MCP files, and P07 reads the inline code and shell blocks of the agent instruction files, only in
+[policy mode](#policy-mode): the agent setup inventory never reads a setup file. Each finding is in the report's
 `policy.violations` and in the comment's Policy section. `policy.rules` sets a rule's severity (`block`, `warn`,
 `info` or `off`); a `file:` policy can only raise it.
 
@@ -489,6 +492,7 @@ settings and MCP files, and only in [policy mode](#policy-mode): the agent setup
 - **P04**, MCP server not allowlisted: a server of an MCP file, or an `enabledMcpjsonServers` name, is not in `setup.allowed_mcp_servers`, or `enableAllProjectMcpServers` is on (`POLICY_P04`, `error`).
 - **P05**, forbidden MCP server: a server's name, command, command line or URL matches a `setup.forbidden_mcp_servers` entry (`POLICY_P05`, `error`).
 - **P06**, required hook missing: a settings directory has no command hook for a `setup.required_hooks` event whose matcher covers the required one, or `disableAllHooks` is on (`POLICY_P06`, `error`).
+- **P07**, agent instruction files disagree: instruction files in one directory name different package managers or JavaScript test runners (`POLICY_P07`, `warn`; `setup.consistency` sets its severity). See [Policy mode](#policy-mode).
 - **P08**, forbidden file tracked: a tracked file matches a `setup.forbidden_files` pattern (`POLICY_P08`, `error`).
 - **P09**, the pull request loosens the policy it is graded by: it edits the policy file, the config or a workflow that sets a value looser than the policy, or an agent settings or MCP file the policy checks (`POLICY_P09`; `error` when the file fails P02 to P06 or could not be checked, `warn` when it only warns or supplies a required deny rule or hook, `info` when it complies, and `warn` when the files were not read).
 - **P10**, policy unavailable: the policy could not be read (`POLICY_UNAVAILABLE`).
@@ -521,7 +525,9 @@ are listed (the rest are counted in the message). The accept label never touches
 
 With a policy in force, pharn-ci reads the tracked `.claude/settings.json` and `.claude/settings.local.json` files
 (at the root and in nested directories) and, when the policy lists MCP servers, `.mcp.json`, `.cursor/mcp.json` and
-`.vscode/mcp.json` (the last two are a cross-tool scan), all as committed at HEAD. It reads JSON only, never Markdown.
+`.vscode/mcp.json` (the last two are a cross-tool scan), all as committed at HEAD. For P02 to P06 it reads JSON only;
+P07's read of the Markdown instruction files is described in
+[Policy mode: agent instruction files](#policy-mode-agent-instruction-files).
 A tracked symbolic link is never followed.
 
 - **P02** compares each `allow` rule with `setup.forbidden_permissions`; a deny rule never excuses an allow rule. Its fixed
@@ -905,6 +911,7 @@ message `code`s, not on text:
 | `POLICY_P08` | Tracked files match a forbidden file pattern of the [org policy](#org-policy) (`error`, or the level the policy sets for P08). The text names up to 20 paths and the count |
 | `POLICY_P09` | The change edits a file the org policy guards: the policy file, the config or a workflow while it sets a value looser than the policy, or an agent settings or MCP file (`error` when the file fails P02 to P06 or could not be checked, `warn` when it only warns or supplies a required deny rule or hook or when the files were not read, `info` when it complies). The text names up to 20 paths; each reason is in `policy.violations` |
 | `POLICY_P11` | An agent pull request changes a path that the org policy's `agents.protected_paths` lists, or could not be checked because the diff, or the policy file at the merge base, could not be read (`error`; `warn` when the policy sets the mode or the rule to `warn`). The text names up to 20 paths and the evidence as fixed words, never a pattern, label or login |
+| `POLICY_P07` | Agent instruction files in the same directory name different package managers or JavaScript test runners, or some of them could not be compared (`warn` by default; `error` when the policy sets `setup.consistency` or the rule to `block`; `info` when it sets `info` or the files could not be read). The text names up to 20 files; each violation has a path, a line and the tools as fixed words, never the file's text |
 | `AGENT_PR_DETECTION_INCOMPLETE` | The pull request counts as an agent PR because its evidence could not be read in full, and the org policy protects paths (`warn`). The text names the reason as one fixed word |
 | `POLICY_P02` | The committed agent settings break org policy rule P02: an allow rule overlaps a forbidden permission, `defaultMode` is `bypassPermissions` or `auto`, or `additionalDirectories` is set (`error`; `warn` for `additionalDirectories`, or the level the policy sets). The text names up to 20 locations as path and line, and the count |
 | `POLICY_P03` | A settings directory lacks a deny rule the org policy requires (`error`, or the level the policy sets for P03). The text names up to 20 locations and the count |
@@ -992,7 +999,9 @@ inclusive threshold (79.995% fails at 80); which known agent setup files are tra
 - **The inventory is not a review.** pharn-ci lists agent setup files (the inventory reads none of them); check A7 reads only the
   machine-readable kinds, for committed secrets (never the Markdown kinds), and policy mode reads the agent settings and
   MCP files for the org policy rules; no file is reviewed for
-  what it tells an agent. Their contents stay in the job: never printed, never written, never sent. The inventory is
+  what it tells an agent. Under an org policy, P07 reads the inline code and shell blocks of the instruction files for
+  package manager and test runner commands and nothing else of them. Their contents stay in the job: never printed,
+  never written, never sent. The inventory is
   informational (`NO_AGENT_SETUP_FILES` is `info`) unless `require-agent-setup` or `setup.require`
   is on, which makes it an `error` and the verdict `fail`. An expected tool counts as present when
   any setup kind it reads exists (`AGENTS.md` covers several tools).
@@ -1005,6 +1014,20 @@ inclusive threshold (79.995% fails at 80); which known agent setup files are tra
   are left out of the measurement ([Excluding files](#excluding-files)).
 - **P11 guards paths, not authors.** It sees only agent PRs that identify themselves (by author, commits, trailers or
   labels) and matches paths, not content: an agent PR that does not identify itself is judged as a person's.
+
+### Policy mode: agent instruction files
+
+Under an org policy with P07 in effect (`policy: auto`, `required` or `file:<path>`, and the CLI's `--policy-file`),
+pharn-ci reads the committed text of the agent instruction files (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules`,
+`.claude/rules`, `.github/copilot-instructions.md` and the other instruction kinds of the inventory) in directories that
+hold at least two of them. It reads them at `HEAD` (`git cat-file`), never the working tree and never a file a symlink
+points to, with the same caps as A7: 200 files, 512 KiB each, 16 MiB in all. Nothing is read without such a policy.
+
+P07 takes only the package managers (`npm`, `pnpm`, `yarn`, `bun`) and the test runners (`vitest`, `jest`) that a file names in an
+inline code span or a shell block, and reports when two files of one directory name different ones. Nothing it reads is
+uploaded or printed: the report holds the rule id, the path, the line number and the tools as fixed words. P07 is a
+heuristic at `warn`: prose is never read, and what it misses is in [`docs/LIMITS.md`](docs/LIMITS.md). The Action reads
+the files only when the diff came from the local checkout.
 
 ---
 

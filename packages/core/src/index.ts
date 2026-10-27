@@ -117,6 +117,7 @@ export {
 } from "./policy/response.js";
 export { evaluatePolicyRules, MAX_P08_VIOLATIONS, MAX_RULE_VIOLATIONS } from "./policy/rules/evaluate.js";
 export { policyRuleMessages } from "./policy/rules/messages.js";
+export { consistencySeverity } from "./policy/rules/p07.js";
 export type { PolicyEvaluation, PolicyRuleInput, PolicyViolation } from "./policy/rules/types.js";
 export { isCountingHandler, matcherCovers } from "./policy/settings/hooks.js";
 export { type JsonMember, type JsonValue, parseSettingsJson, type SettingsJsonResult } from "./policy/settings/json.js";
@@ -206,6 +207,13 @@ export {
   scanAgentConfigSecrets,
 } from "./secrets/scan.js";
 export { findSecretSpans, type SecretId, type SecretSpan } from "./secrets/spans.js";
+export {
+  agentInstructionPaths,
+  INSTRUCTION_KINDS,
+  type InstructionDeclarations,
+  instructionDeclarations,
+  instructionScope,
+} from "./setup/instructions.js";
 export {
   type AgentSetupFile,
   type AgentSetupInventory,

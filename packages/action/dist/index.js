@@ -11233,8 +11233,8 @@ var require_pluralizer = __commonJS({
       pluralize(count2) {
         const one = count2 === 1;
         const keys = one ? singulars : plurals;
-        const noun = one ? this.singular : this.plural;
-        return { ...keys, count: count2, noun };
+        const noun2 = one ? this.singular : this.plural;
+        return { ...keys, count: count2, noun: noun2 };
       }
     };
   }
@@ -183033,8 +183033,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         function chooseOverlappingClassLike(span, node, result) {
           var _a2, _b, _c;
-          const overlaps = (n) => textRangeIntersectsWithTextSpan(n, span);
-          if (((_a2 = node.modifiers) == null ? void 0 : _a2.some(overlaps)) || node.name && overlaps(node.name) || ((_b = node.typeParameters) == null ? void 0 : _b.some(overlaps)) || ((_c = node.heritageClauses) == null ? void 0 : _c.some(overlaps))) {
+          const overlaps2 = (n) => textRangeIntersectsWithTextSpan(n, span);
+          if (((_a2 = node.modifiers) == null ? void 0 : _a2.some(overlaps2)) || node.name && overlaps2(node.name) || ((_b = node.typeParameters) == null ? void 0 : _b.some(overlaps2)) || ((_c = node.heritageClauses) == null ? void 0 : _c.some(overlaps2))) {
             addSourceElement(node, result);
             return true;
           }
@@ -239529,8 +239529,637 @@ function detectP06(model, required) {
   return { findings, supplying: [...supplying] };
 }
 
-// ../core/src/policy/rules/p08.ts
+// ../core/src/setup/instructions.ts
+var INSTRUCTION_KINDS = [
+  "claude-md",
+  "claude-local-md",
+  "agents-md",
+  "gemini-md",
+  "goosehints",
+  "cursor-rules",
+  "claude-rule",
+  "copilot-instructions",
+  "copilot-instructions-scoped",
+  "windsurf-rules",
+  "cline-rules",
+  "conventions-md",
+  "continue-rules",
+  "roo-rules",
+  "amazonq-rules",
+  "junie-guidelines",
+  "zed-rules",
+  "augment-rules",
+  "kiro-steering"
+];
+var INSTRUCTION_KIND_SET = new Set(INSTRUCTION_KINDS);
+var DIRECTORY_KINDS = /* @__PURE__ */ new Set([
+  "claude-md",
+  "claude-local-md",
+  "agents-md",
+  "gemini-md",
+  "goosehints"
+]);
+var CONTINUE_CONFIG_EXTENSIONS = [".json", ".yaml", ".yml"];
 var byCodeUnit6 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function isInstructionFile(file) {
+  if (!INSTRUCTION_KIND_SET.has(file.kind)) return false;
+  if (file.kind === "continue-rules") {
+    const lower = file.path.toLowerCase();
+    return !CONTINUE_CONFIG_EXTENSIONS.some((extension) => lower.endsWith(extension));
+  }
+  return true;
+}
+function beforeAnchor(path, anchor) {
+  let from = 0;
+  for (; ; ) {
+    const i = path.indexOf(anchor, from);
+    if (i === -1) return "";
+    if (i === 0 || path[i - 1] === "/") return path.slice(0, i);
+    from = i + 1;
+  }
+}
+function instructionScope(file) {
+  if (DIRECTORY_KINDS.has(file.kind)) return file.path.slice(0, file.path.lastIndexOf("/") + 1);
+  if (file.kind === "cursor-rules") return beforeAnchor(file.path, ".cursor/rules/");
+  if (file.kind === "claude-rule") return beforeAnchor(file.path, ".claude/rules/");
+  return "";
+}
+function agentInstructionPaths(inventory) {
+  const scopes = /* @__PURE__ */ new Map();
+  for (const file of inventory.files) {
+    if (!isInstructionFile(file)) continue;
+    const scope = instructionScope(file);
+    const paths = scopes.get(scope);
+    if (paths === void 0) scopes.set(scope, /* @__PURE__ */ new Set([file.path]));
+    else paths.add(file.path);
+  }
+  const kept = [];
+  for (const paths of scopes.values()) if (paths.size >= 2) kept.push(...paths);
+  return [...new Set(kept)].sort(byCodeUnit6);
+}
+var PACKAGE_MANAGERS = ["npm", "pnpm", "yarn", "bun"];
+var TEST_RUNNERS = ["vitest", "jest"];
+var MAX_FRONTMATTER_LINE = 50;
+var SCOPE_KEYS = ["globs:", "applyTo:", "paths:", "fileMatchPattern:"];
+var ALL_FILES_VALUES = /* @__PURE__ */ new Set(["**", "**/*", "*"]);
+var CUE_WORDS = /* @__PURE__ */ new Set([
+  "not",
+  "never",
+  "don't",
+  "dont",
+  "avoid",
+  "instead",
+  "rather",
+  "without",
+  "deprecated",
+  "forbidden",
+  "nor",
+  "no"
+]);
+var AFTER_VERBS = /* @__PURE__ */ new Set(["is", "are", "was"]);
+var AFTER_NEGATIONS = /* @__PURE__ */ new Set(["not", "never", "deprecated", "forbidden", "unsupported"]);
+var AFTER_CONTRACTIONS = /* @__PURE__ */ new Set(["isn't", "aren't"]);
+var SHELL_INFO = /* @__PURE__ */ new Set([
+  "",
+  "sh",
+  "bash",
+  "shell",
+  "zsh",
+  "fish",
+  "console",
+  "terminal",
+  "shell-session",
+  "shellsession",
+  "powershell",
+  "pwsh",
+  "ps1",
+  "cmd",
+  "bat"
+]);
+var SESSION_INFO = /* @__PURE__ */ new Set(["console", "terminal", "shell-session", "shellsession"]);
+var WRAPPER_WORDS = /* @__PURE__ */ new Set(["sudo", "time", "env"]);
+var RUNNER_LAUNCHERS = /* @__PURE__ */ new Set(["npx", "bunx", "npm", "pnpm", "yarn", "bun"]);
+var RUNNER_SKIPPED = /* @__PURE__ */ new Set(["exec", "dlx", "run", "x", "--"]);
+var GLOBAL_FLAGS = /* @__PURE__ */ new Set(["-g", "--global", "--location=global"]);
+var MAX_PS_PROMPT = 64;
+var isSpaceCode = (code2) => code2 === 32 || code2 >= 9 && code2 <= 13 || code2 === 160;
+var isAsciiLetter2 = (code2) => code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122;
+var isAsciiWordStart = (code2) => isAsciiLetter2(code2) || code2 === 95;
+var isAsciiNameChar = (code2) => isAsciiWordStart(code2) || code2 >= 48 && code2 <= 57;
+function isLetter(char) {
+  const code2 = char.charCodeAt(0);
+  if (code2 < 128) return isAsciiLetter2(code2);
+  return new RegExp("\\p{L}", "u").test(char);
+}
+function firstNonSpace(line, from = 0) {
+  let i = from;
+  while (i < line.length && (line.charCodeAt(i) === 32 || line.charCodeAt(i) === 9)) i++;
+  return i;
+}
+function normalizeWord(word) {
+  return word.split("\u2019").join("'").toLowerCase();
+}
+function wordsIn(line, from, to, limit) {
+  const words = [];
+  let start = -1;
+  let i = from;
+  while (i < to && words.length < limit) {
+    const first = line.codePointAt(i);
+    const char = String.fromCodePoint(first);
+    const width = char.length;
+    const inWord = char === "'" || char === "\u2019" || isLetter(char);
+    if (inWord && start === -1) start = i;
+    if (!inWord && start !== -1) {
+      words.push(normalizeWord(line.slice(start, i)));
+      start = -1;
+    }
+    i += width;
+  }
+  if (start !== -1 && words.length < limit) words.push(normalizeWord(line.slice(start, to)));
+  return words;
+}
+function hasCueWord(line, from, to) {
+  let start = -1;
+  let i = from;
+  const flush = (end) => {
+    const word = normalizeWord(line.slice(start, end));
+    start = -1;
+    return CUE_WORDS.has(word);
+  };
+  while (i < to) {
+    const char = String.fromCodePoint(line.codePointAt(i));
+    const inWord = char === "'" || char === "\u2019" || isLetter(char);
+    if (inWord && start === -1) start = i;
+    if (!inWord && start !== -1 && flush(i)) return true;
+    i += char.length;
+  }
+  return start !== -1 && flush(to);
+}
+function splitWords(text) {
+  const words = [];
+  let start = -1;
+  for (let i = 0; i < text.length; i++) {
+    const space = isSpaceCode(text.charCodeAt(i));
+    if (!space && start === -1) start = i;
+    if (space && start !== -1) {
+      words.push(text.slice(start, i));
+      start = -1;
+    }
+  }
+  if (start !== -1) words.push(text.slice(start));
+  return words;
+}
+function isAssignment(word) {
+  if (word.length === 0 || !isAsciiWordStart(word.charCodeAt(0))) return false;
+  let i = 1;
+  while (i < word.length && isAsciiNameChar(word.charCodeAt(i))) i++;
+  return i < word.length && word[i] === "=";
+}
+function commandSegments(text) {
+  const segments = [];
+  let from = 0;
+  let i = 0;
+  while (i < text.length) {
+    const char = text[i];
+    const next = text[i + 1];
+    if (char === "&" && next === "&" || char === "|" && next === "|") {
+      segments.push(text.slice(from, i));
+      i += 2;
+      from = i;
+    } else if (char === ";" || char === "|") {
+      segments.push(text.slice(from, i));
+      i += 1;
+      from = i;
+    } else {
+      i += 1;
+    }
+  }
+  segments.push(text.slice(from));
+  return segments;
+}
+function declareCommand(commandLine, lineNumber, found) {
+  for (const segment of commandSegments(commandLine)) {
+    let text = segment.trim();
+    if (text.startsWith("(")) text = text.slice(1);
+    if (text.endsWith(")")) text = text.slice(0, -1);
+    const all = splitWords(text);
+    let at = 0;
+    while (at < all.length) {
+      const word = all[at];
+      if (!isAssignment(word) && !WRAPPER_WORDS.has(word)) break;
+      at++;
+    }
+    const first = all[at];
+    if (first === void 0) continue;
+    const manager = PACKAGE_MANAGERS.find((tool) => tool === first);
+    if (manager !== void 0 && !all.some((word) => GLOBAL_FLAGS.has(word)) && !(first === "yarn" && all[at + 1] === "global")) {
+      found.packageManagers.add(manager);
+      if (found.packageManagerLine === null) found.packageManagerLine = lineNumber;
+    }
+    let runner = TEST_RUNNERS.find((tool) => tool === first);
+    if (runner === void 0 && RUNNER_LAUNCHERS.has(first)) {
+      for (let i = at + 1; i < all.length; i++) {
+        const word = all[i];
+        if (word.startsWith("-") || RUNNER_SKIPPED.has(word)) continue;
+        runner = TEST_RUNNERS.find((tool) => tool === word);
+        break;
+      }
+    }
+    if (runner !== void 0) {
+      found.testRunners.add(runner);
+      if (found.testRunnerLine === null) found.testRunnerLine = lineNumber;
+    }
+  }
+}
+function shellLine(line, session) {
+  const start = firstNonSpace(line);
+  if (session) {
+    const rest2 = line.slice(start);
+    if (rest2.startsWith("$ ") || rest2.startsWith("% ") || rest2.startsWith("> ")) return rest2.slice(2);
+    if (rest2.startsWith("PS")) {
+      const limit = Math.min(rest2.length, 2 + MAX_PS_PROMPT + 1);
+      for (let i = 2; i < limit; i++) {
+        if (rest2[i] !== ">") continue;
+        return rest2[i + 1] === " " ? rest2.slice(i + 2) : null;
+      }
+    }
+    return null;
+  }
+  let rest = line.slice(start);
+  if (rest.startsWith("$ ") || rest.startsWith("% ") || rest.startsWith("> ")) rest = rest.slice(2);
+  const body = firstNonSpace(rest);
+  if (rest[body] === "#") return null;
+  return rest;
+}
+function backtickRuns(line) {
+  const runs = [];
+  let i = line.indexOf("`");
+  while (i !== -1) {
+    let end = i + 1;
+    while (end < line.length && line[end] === "`") end++;
+    runs.push([i, end - i]);
+    i = line.indexOf("`", end);
+  }
+  return runs;
+}
+function negatedAfter(line, from, to) {
+  const [first, second] = wordsIn(line, from, to, 2);
+  if (first === void 0) return false;
+  if (AFTER_CONTRACTIONS.has(first)) return true;
+  return AFTER_VERBS.has(first) && second !== void 0 && AFTER_NEGATIONS.has(second);
+}
+function declareSpans(line, lineNumber, found) {
+  const runs = backtickRuns(line);
+  if (runs.length < 2) return;
+  const partner = new Array(runs.length).fill(-1);
+  const nextOfLength = /* @__PURE__ */ new Map();
+  for (let i = runs.length - 1; i >= 0; i--) {
+    const length = runs[i][1];
+    partner[i] = nextOfLength.get(length) ?? -1;
+    nextOfLength.set(length, i);
+  }
+  const spans = [];
+  for (let i = 0; i < runs.length; ) {
+    const j = partner[i];
+    if (j === -1) {
+      i++;
+      continue;
+    }
+    const [openAt, length] = runs[i];
+    const [closeAt] = runs[j];
+    spans.push({ from: openAt + length, to: closeAt, open: openAt, close: closeAt + length });
+    i = j + 1;
+  }
+  let gapStart = 0;
+  spans.forEach((span, index) => {
+    const next = spans[index + 1];
+    const before = hasCueWord(line, gapStart, span.open);
+    const negated = before || negatedAfter(line, span.close, next === void 0 ? line.length : next.open);
+    gapStart = span.close;
+    if (!negated) declareCommand(line.slice(span.from, span.to).trim(), lineNumber, found);
+  });
+}
+function frontmatterScoped(lines, close) {
+  for (let i = 1; i < close; i++) {
+    const line = lines[i];
+    const key = SCOPE_KEYS.find((candidate) => line.startsWith(candidate));
+    if (key === void 0) continue;
+    let value = line.slice(key.length).trim();
+    const quote = value[0];
+    if (value.length >= 2 && (quote === '"' || quote === "'") && value.endsWith(quote)) value = value.slice(1, -1);
+    if (value !== "") {
+      if (!ALL_FILES_VALUES.has(value)) return true;
+      continue;
+    }
+    const nextLine = i + 1 < close ? lines[i + 1] : "";
+    if (nextLine.slice(firstNonSpace(nextLine)).startsWith("- ")) return true;
+  }
+  return false;
+}
+function withoutComments(line, state) {
+  let pos = 0;
+  if (state.open) {
+    const end = line.indexOf("-->");
+    if (end === -1) return null;
+    state.open = false;
+    pos = end + 3;
+  }
+  let out = "";
+  for (; ; ) {
+    const open3 = line.indexOf("<!--", pos);
+    if (open3 === -1) return out + line.slice(pos);
+    out += line.slice(pos, open3);
+    const close = line.indexOf("-->", open3 + 4);
+    if (close === -1) {
+      state.open = true;
+      return out;
+    }
+    out += " ";
+    pos = close + 3;
+  }
+}
+function instructionDeclarations(text) {
+  const lines = (text.charCodeAt(0) === 65279 ? text.slice(1) : text).split("\n").map((line) => line.endsWith("\r") ? line.slice(0, -1) : line);
+  const found = {
+    packageManagers: /* @__PURE__ */ new Set(),
+    packageManagerLine: null,
+    testRunners: /* @__PURE__ */ new Set(),
+    testRunnerLine: null
+  };
+  let start = 0;
+  let patternScoped = false;
+  if (lines[0] === "---") {
+    for (let i = 1; i < Math.min(lines.length, MAX_FRONTMATTER_LINE); i++) {
+      if (lines[i] !== "---") continue;
+      patternScoped = frontmatterScoped(lines, i);
+      start = i + 1;
+      break;
+    }
+  }
+  const comment = { open: false };
+  let fence = null;
+  let ignored = false;
+  let previousBlank = true;
+  let previousIndented = false;
+  for (let index = start; index < lines.length; index++) {
+    const raw = lines[index];
+    const lineNumber = index + 1;
+    if (fence !== null) {
+      const at2 = firstNonSpace(raw);
+      let run2 = 0;
+      while (raw[at2 + run2] === fence.char) run2++;
+      if (run2 >= fence.length) {
+        fence = null;
+        previousBlank = false;
+        previousIndented = false;
+      } else if (fence.counted && !ignored) {
+        const command = shellLine(raw, fence.session);
+        if (command !== null) declareCommand(command, lineNumber, found);
+      }
+      continue;
+    }
+    const line = withoutComments(raw, comment);
+    if (line === null) {
+      previousBlank = false;
+      previousIndented = false;
+      continue;
+    }
+    const at = firstNonSpace(line);
+    const char = line[at];
+    if (char === "`" || char === "~") {
+      let run2 = 0;
+      while (line[at + run2] === char) run2++;
+      if (run2 >= 3) {
+        const info2 = line.slice(at + run2).trim();
+        let end = 0;
+        while (end < info2.length && !isSpaceCode(info2.charCodeAt(end))) end++;
+        const word = info2.slice(0, end).toLowerCase();
+        fence = { char, length: run2, counted: SHELL_INFO.has(word), session: SESSION_INFO.has(word) };
+        previousBlank = false;
+        previousIndented = false;
+        continue;
+      }
+    }
+    if (char === "#") {
+      ignored = hasCueWord(line, at, line.length);
+      previousBlank = false;
+      previousIndented = false;
+      if (ignored) continue;
+    }
+    const indented = line.startsWith("    ") || line.startsWith("	");
+    const asCode = indented && (previousBlank || previousIndented);
+    previousBlank = at >= line.length;
+    previousIndented = asCode;
+    if (asCode || ignored) continue;
+    declareSpans(line, lineNumber, found);
+  }
+  const order = (vocabulary, seen) => vocabulary.filter((tool) => seen.has(tool));
+  return {
+    patternScoped,
+    packageManagers: {
+      tools: order(PACKAGE_MANAGERS, found.packageManagers),
+      line: found.packageManagerLine
+    },
+    testRunners: { tools: order(TEST_RUNNERS, found.testRunners), line: found.testRunnerLine }
+  };
+}
+
+// ../core/src/setup/scan.ts
+function underNested(path, anchor) {
+  let from = 0;
+  for (; ; ) {
+    const i = path.indexOf(anchor, from);
+    if (i === -1) return false;
+    if ((i === 0 || path[i - 1] === "/") && path.length > i + anchor.length) return true;
+    from = i + 1;
+  }
+}
+function underRoot(path, prefix) {
+  return path.startsWith(prefix) && path.length > prefix.length;
+}
+function baseName(path) {
+  return path.slice(path.lastIndexOf("/") + 1);
+}
+function underRooModeDir(path) {
+  const prefix = ".roo/rules-";
+  if (!path.startsWith(prefix)) return false;
+  const slash = path.indexOf("/", prefix.length);
+  return slash > prefix.length && path.length > slash + 1;
+}
+function isRooModeFile(path) {
+  const prefix = ".roorules-";
+  return path.startsWith(prefix) && path.length > prefix.length && !path.includes("/");
+}
+var INSTRUCTIONS_DIR = ".github/instructions/";
+var INSTRUCTIONS_SUFFIX = ".instructions.md";
+function hasNodeModulesSegment(path) {
+  return path.split("/").includes("node_modules");
+}
+function isPlaceholderName(name) {
+  if (name.startsWith(".")) return true;
+  const lower = name.toLowerCase();
+  return lower === "readme" || lower.startsWith("readme.");
+}
+var SETUP_RULES = [
+  // Directory and full-path rules that also apply in nested directories (the .claude/ kinds, claude-rule
+  // among them, and cursor-rules). The settings and MCP files are not here: they count at the repo root only.
+  { kind: "claude-skill", matches: (p) => underNested(p, ".claude/skills/"), directory: true },
+  { kind: "claude-hook", matches: (p) => underNested(p, ".claude/hooks/"), directory: true },
+  { kind: "claude-agent", matches: (p) => underNested(p, ".claude/agents/"), directory: true },
+  { kind: "claude-command", matches: (p) => underNested(p, ".claude/commands/"), directory: true },
+  { kind: "claude-rule", matches: (p) => underNested(p, ".claude/rules/"), directory: true },
+  { kind: "cursor-rules", matches: (p) => underNested(p, ".cursor/rules/"), directory: true },
+  // Directory and full-path rules for the repo root only (including the claude-settings, claude-settings-local,
+  // mcp-config, aider, continue, roo, amazonq, junie, zed, augment, kiro, opencode and gemini-settings kinds).
+  { kind: "claude-settings", matches: (p) => p === ".claude/settings.json" },
+  { kind: "claude-settings-local", matches: (p) => p === ".claude/settings.local.json" },
+  { kind: "mcp-config", matches: (p) => p === ".mcp.json" },
+  { kind: "cursor-rules", matches: (p) => p === ".cursorrules" },
+  { kind: "copilot-instructions", matches: (p) => p === ".github/copilot-instructions.md" },
+  {
+    kind: "copilot-instructions-scoped",
+    matches: (p) => p.startsWith(INSTRUCTIONS_DIR) && p.endsWith(INSTRUCTIONS_SUFFIX) && p.length > INSTRUCTIONS_DIR.length + INSTRUCTIONS_SUFFIX.length
+  },
+  { kind: "copilot-agents", matches: (p) => underRoot(p, ".github/agents/"), directory: true },
+  { kind: "copilot-prompts", matches: (p) => underRoot(p, ".github/prompts/"), directory: true },
+  { kind: "cursor-mcp", matches: (p) => p === ".cursor/mcp.json" },
+  { kind: "vscode-mcp", matches: (p) => p === ".vscode/mcp.json" },
+  { kind: "codex-config", matches: (p) => p === ".codex/config.toml" },
+  { kind: "windsurf-rules", matches: (p) => p === ".windsurfrules" },
+  { kind: "windsurf-rules", matches: (p) => underRoot(p, ".windsurf/rules/"), directory: true },
+  { kind: "cline-rules", matches: (p) => p === ".clinerules" },
+  { kind: "cline-rules", matches: (p) => underRoot(p, ".clinerules/"), directory: true },
+  { kind: "aider-config", matches: (p) => p === ".aider.conf.yml" },
+  { kind: "conventions-md", matches: (p) => p === "CONVENTIONS.md" },
+  { kind: "continue-rules", matches: (p) => underRoot(p, ".continue/rules/"), directory: true },
+  { kind: "continue-rules", matches: (p) => p === ".continuerules" },
+  { kind: "roo-rules", matches: (p) => p === ".roorules" },
+  { kind: "roo-rules", matches: isRooModeFile },
+  { kind: "roo-rules", matches: (p) => underRoot(p, ".roo/rules/"), directory: true },
+  { kind: "roo-rules", matches: underRooModeDir, directory: true },
+  { kind: "amazonq-rules", matches: (p) => underRoot(p, ".amazonq/rules/"), directory: true },
+  { kind: "junie-guidelines", matches: (p) => p === ".junie/guidelines.md" },
+  { kind: "zed-rules", matches: (p) => p === ".rules" },
+  { kind: "augment-rules", matches: (p) => underRoot(p, ".augment/rules/"), directory: true },
+  { kind: "augment-rules", matches: (p) => p === ".augment-guidelines" },
+  { kind: "kiro-steering", matches: (p) => underRoot(p, ".kiro/steering/"), directory: true },
+  { kind: "opencode-config", matches: (p) => p === "opencode.json" },
+  { kind: "opencode-config", matches: (p) => p === "opencode.jsonc" },
+  { kind: "gemini-settings", matches: (p) => p === ".gemini/settings.json" },
+  // File-name rules: these files are hierarchical, so tools read them from any directory (goosehints included).
+  { kind: "claude-md", matches: (p) => baseName(p) === "CLAUDE.md" },
+  { kind: "claude-local-md", matches: (p) => baseName(p) === "CLAUDE.local.md" },
+  { kind: "agents-md", matches: (p) => baseName(p) === "AGENTS.md" },
+  { kind: "gemini-md", matches: (p) => baseName(p) === "GEMINI.md" },
+  { kind: "goosehints", matches: (p) => baseName(p) === ".goosehints" }
+];
+function classifySetupPath(path) {
+  if (hasNodeModulesSegment(path)) return null;
+  for (const rule2 of SETUP_RULES) {
+    if (!rule2.matches(path)) continue;
+    if (rule2.directory === true && isPlaceholderName(baseName(path))) return null;
+    return rule2.kind;
+  }
+  return null;
+}
+function scanAgentSetup(paths) {
+  const files = [];
+  for (const path of new Set(paths)) {
+    const kind = classifySetupPath(path);
+    if (kind) files.push({ path, kind });
+  }
+  files.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  return { files };
+}
+
+// ../core/src/policy/rules/p07.ts
+var P07_UNREAD_DETAIL = "agent instruction files were not read; P07 did not compare them";
+var P07_PACKAGE_MANAGER_PREFIX = "package manager: ";
+var P07_TEST_RUNNER_PREFIX = "test runner: ";
+var noun = (n) => n === 1 ? "file was" : "files were";
+function p07DroppedDetail(n) {
+  return `${n} agent instruction ${noun(n)} not compared (binary, too large, past the read caps or an unsafe path)`;
+}
+function p07MissingDetail(n) {
+  return `${n} agent instruction ${noun(n)} not compared (not a file at HEAD)`;
+}
+function consistencySeverity(policy) {
+  if (policy.source !== "app" && policy.source !== "file" || policy.document === null || policy.document === void 0) {
+    return { severity: null, ignored: [], lowered: false };
+  }
+  return resolveKeyedSeverity(policy, "P07", {
+    featureValue: policy.document.setup?.consistency,
+    featureSetting: "setup.consistency",
+    fallback: "warn"
+  });
+}
+var byCodeUnit7 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var overlaps = (a, b) => a.some((tool) => b.includes(tool));
+function classFindings(files, prefix, severity2) {
+  const sorted = [...files].sort((a, b) => byCodeUnit7(a.path, b.path));
+  const findings = [];
+  for (const file of sorted) {
+    const others = sorted.filter((other) => other !== file && !overlaps(file.tools, other.tools));
+    const first = others[0];
+    if (first === void 0) continue;
+    const more = others.length - 1;
+    const tail = more === 0 ? "" : more === 1 ? " and 1 other file" : ` and ${more} other files`;
+    findings.push({
+      id: "P07",
+      fallback: severity2,
+      path: file.path,
+      line: file.line,
+      detail: `${prefix}${file.tools.join("/")} here, ${first.tools.join("/")} in ${first.path}:${first.line}${tail}`
+    });
+  }
+  return findings;
+}
+function detectP07(input, severity2) {
+  const sources = input.agentInstructions;
+  if (severity2 === null || sources === null || sources === void 0) return [];
+  if ("unavailable" in sources)
+    return [{ id: "P07", fallback: "info", path: null, line: null, detail: P07_UNREAD_DETAIL }];
+  const findings = [];
+  const missing = sources.dropped.filter((drop) => drop.reason === "missing").length;
+  const dropped = sources.dropped.length - missing;
+  if (dropped > 0)
+    findings.push({ id: "P07", fallback: severity2, path: null, line: null, detail: p07DroppedDetail(dropped) });
+  if (missing > 0)
+    findings.push({ id: "P07", fallback: "info", path: null, line: null, detail: p07MissingDetail(missing) });
+  const scopes = /* @__PURE__ */ new Map();
+  const seen = /* @__PURE__ */ new Set();
+  for (const file of sources.files) {
+    if (seen.has(file.path)) continue;
+    seen.add(file.path);
+    const kind = classifySetupPath(file.path);
+    if (kind === null) continue;
+    const setupFile = { path: file.path, kind };
+    if (!isInstructionFile(setupFile)) continue;
+    const declared = instructionDeclarations(file.text);
+    if (declared.patternScoped) continue;
+    const scope = instructionScope(setupFile);
+    let group = scopes.get(scope);
+    if (group === void 0) {
+      group = { managers: [], runners: [] };
+      scopes.set(scope, group);
+    }
+    const { packageManagers, testRunners } = declared;
+    if (packageManagers.line !== null) {
+      group.managers.push({ path: file.path, tools: packageManagers.tools, line: packageManagers.line });
+    }
+    if (testRunners.line !== null) {
+      group.runners.push({ path: file.path, tools: testRunners.tools, line: testRunners.line });
+    }
+  }
+  for (const group of scopes.values()) {
+    findings.push(...classFindings(group.managers, P07_PACKAGE_MANAGER_PREFIX, severity2));
+    findings.push(...classFindings(group.runners, P07_TEST_RUNNER_PREFIX, severity2));
+  }
+  return findings;
+}
+
+// ../core/src/policy/rules/p08.ts
+var byCodeUnit8 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function detectP08(input) {
   const { policy } = input;
   if (policy.source !== "app" && policy.source !== "file" || policy.document === null) return [];
@@ -239538,7 +240167,7 @@ function detectP08(input) {
   if (!Array.isArray(patterns) || patterns.length === 0) return [];
   const compiled = patterns.map((pattern) => ({ shown: shownPattern(pattern), matches: compileGlob(pattern) }));
   const findings = [];
-  for (const path of [...new Set(input.repoFiles)].sort(byCodeUnit6)) {
+  for (const path of [...new Set(input.repoFiles)].sort(byCodeUnit8)) {
     const hit = compiled.find((entry) => entry.matches(path));
     if (hit === void 0) continue;
     findings.push({
@@ -239562,10 +240191,10 @@ var SETTINGS_LISTS = [
   "forbidden_mcp_servers",
   "required_hooks"
 ];
-var byCodeUnit7 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit9 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function settings(ignored, layer) {
   const names = [...new Set(ignored.filter((record) => record.layer === layer).map((record) => record.setting))].sort(
-    byCodeUnit7
+    byCodeUnit9
   );
   const shown2 = names.slice(0, MAX_SETTINGS).join(", ");
   return names.length > MAX_SETTINGS ? `${shown2}, and ${names.length - MAX_SETTINGS} more` : shown2;
@@ -239597,7 +240226,7 @@ function detectP09(input, view) {
       detail: `this change edits the config, which sets ${settings(input.ignored, "config")} looser than the policy`
     });
   }
-  const paths = [...touched].sort(byCodeUnit7);
+  const paths = [...touched].sort(byCodeUnit9);
   if (input.ignored.some((record) => record.layer === "input")) {
     for (const path of paths) {
       if (!path.startsWith(WORKFLOWS_DIR2)) continue;
@@ -239627,7 +240256,7 @@ function detectP09(input, view) {
     }
     const failing = view.failing.get(path);
     if (failing !== void 0) {
-      const ids = [...new Set(failing.ids)].sort(byCodeUnit7);
+      const ids = [...new Set(failing.ids)].sort(byCodeUnit9);
       findings.push({
         id: "P09",
         fallback: view.uncheckable.has(path) ? "block" : failing.severity,
@@ -239702,7 +240331,7 @@ function detectP11(input) {
 }
 
 // ../core/src/policy/rules/problems.ts
-var byCodeUnit8 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit10 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function settingsProblemLevel(problem, setup2) {
   const deny = (setup2?.required_permissions_deny?.length ?? 0) > 0;
   const hooks = (setup2?.required_hooks?.length ?? 0) > 0;
@@ -239730,25 +240359,27 @@ function reportedProblems(problems, setup2, inForce) {
     else if (level === "error") known2.level = "error";
   }
   return [...kept.values()].sort(
-    (a, b) => (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : byCodeUnit8(a.path, b.path)) || (a.line === b.line ? 0 : a.line === null ? -1 : b.line === null ? 1 : a.line - b.line) || byCodeUnit8(a.reason, b.reason)
+    (a, b) => (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : byCodeUnit10(a.path, b.path)) || (a.line === b.line ? 0 : a.line === null ? -1 : b.line === null ? 1 : a.line - b.line) || byCodeUnit10(a.reason, b.reason)
   );
 }
 
 // ../core/src/policy/rules/evaluate.ts
 var MAX_RULE_VIOLATIONS = 50;
-var byCodeUnit9 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit11 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var SETTINGS_READERS = ["P02", "P03", "P04", "P05", "P06"];
 var SETTINGS_RULES = SETTINGS_READERS;
 function evaluatePolicyRules(input) {
   const { policy } = input;
   const document2 = policy.document;
   const inForce = (policy.source === "app" || policy.source === "file") && document2 !== null;
+  const consistency = input.agentInstructions === null || input.agentInstructions === void 0 ? null : consistencySeverity(input.policy);
   const lowered = /* @__PURE__ */ new Set();
   if (input.agentPolicy?.lowered === true) lowered.add("P11");
+  if (consistency?.lowered === true) lowered.add("P07");
   const resolve2 = (findings) => {
     const out = [];
     for (const finding2 of findings) {
-      if (finding2.id === "P10" || finding2.id === "P11") {
+      if (finding2.id === "P10" || finding2.id === "P07" || finding2.id === "P11") {
         out.push({
           id: finding2.id,
           severity: finding2.fallback,
@@ -239819,6 +240450,7 @@ function evaluatePolicyRules(input) {
     ...detectP01(input),
     ...detectP08(input),
     ...settingsFindings,
+    ...detectP07(input, consistency?.severity ?? null),
     ...detectP10(input),
     ...detectP11(input)
   ]);
@@ -239835,7 +240467,7 @@ function evaluatePolicyRules(input) {
   }
   let violations = [...first, ...resolve2(detectP09(input, view))];
   violations.sort(
-    (a, b) => byCodeUnit9(a.id, b.id) || (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : byCodeUnit9(a.path, b.path)) || (a.line === b.line ? 0 : a.line === null ? -1 : b.line === null ? 1 : a.line - b.line) || byCodeUnit9(a.detail, b.detail)
+    (a, b) => byCodeUnit11(a.id, b.id) || (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : byCodeUnit11(a.path, b.path)) || (a.line === b.line ? 0 : a.line === null ? -1 : b.line === null ? 1 : a.line - b.line) || byCodeUnit11(a.detail, b.detail)
   );
   const omitted = {};
   const seen = /* @__PURE__ */ new Map();
@@ -239849,8 +240481,8 @@ function evaluatePolicyRules(input) {
   const evaluation = {
     violations,
     omitted,
-    lowered: [...lowered].sort(byCodeUnit9),
-    ignored: [...input.agentPolicy?.ignored ?? []],
+    lowered: [...lowered].sort(byCodeUnit11),
+    ignored: [...input.agentPolicy?.ignored ?? [], ...consistency?.ignored ?? []],
     ...settings2 === void 0 ? {} : { settings: settings2 }
   };
   if (input.agentPr !== null && input.agentPr !== void 0) {
@@ -239861,7 +240493,7 @@ function evaluatePolicyRules(input) {
 
 // ../core/src/policy/rules/messages.ts
 var MAX_LISTED = 20;
-var byCodeUnit10 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit12 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function listOf(paths, total) {
   const named = paths.slice(0, MAX_LISTED).map(codeSpan).join(", ");
   return total > MAX_LISTED ? `${named} and ${total - MAX_LISTED} more` : named;
@@ -239931,6 +240563,34 @@ var RULE_MESSAGES = {
     return `P05 forbidden MCP server: ${counted(n, "MCP server", "MCP servers")} at ${locsOf(violations, omitted)} ${n === 1 ? "matches" : "match"} an entry the org policy forbids, by name, command or URL.`;
   },
   P06: (violations, omitted) => `P06 required hook missing: ${counted(violations.length + omitted, "required hook", "required hooks")} missing at ${locsOf(violations, omitted)}, or disableAllHooks set while the policy requires hooks. Only a command hook with no if condition, whose matcher covers the required one, counts.`,
+  P07: (violations, omitted) => {
+    const parts = [];
+    const contradictions = violations.filter(
+      (violation) => violation.detail.startsWith(P07_PACKAGE_MANAGER_PREFIX) || violation.detail.startsWith(P07_TEST_RUNNER_PREFIX)
+    );
+    const paths = pathsOf(contradictions);
+    if (paths.length > 0) {
+      const head = paths.length === 1 ? "1 agent instruction file names" : `${paths.length} agent instruction files name`;
+      const notListed = omitted > 0 ? ` ${omitted === 1 ? "1 of the violations is" : `${omitted} of the violations are`} not listed in the report.` : "";
+      parts.push(
+        `${head} a different package manager or test runner than another file in the same directory: ${listOf(paths, paths.length)}.${notListed} Each file's line is in the report's policy violations.`
+      );
+    }
+    let notCompared = 0;
+    for (const violation of violations) {
+      const count2 = Number.parseInt(violation.detail, 10);
+      if (violation.path === null && Number.isInteger(count2)) notCompared += count2;
+    }
+    if (notCompared > 0) {
+      parts.push(
+        `${notCompared} agent instruction ${notCompared === 1 ? "file was" : "files were"} not compared: binary, too large, past the read caps, an unsafe path or not a file at HEAD.`
+      );
+    }
+    if (violations.some((violation) => violation.detail === P07_UNREAD_DETAIL)) {
+      parts.push("The agent instruction files were not read, so they were not compared.");
+    }
+    return parts.join(" ");
+  },
   P08: (violations, omitted) => {
     const kept = pathsOf(violations);
     const total = kept.length + omitted;
@@ -239939,7 +240599,7 @@ var RULE_MESSAGES = {
     return `${head}: ${listOf(kept, total)}.${notListed}`;
   },
   P09: (violations, omitted) => {
-    const paths = pathsOf(violations).sort(byCodeUnit10);
+    const paths = pathsOf(violations).sort(byCodeUnit12);
     const total = paths.length + omitted;
     const head = total === 1 ? "This change edits 1 file that the org policy guards" : `This change edits ${total} files that the org policy guards`;
     return `${head}: ${listOf(paths, total)}. The reason for each is in the report's policy violations.`;
@@ -239967,7 +240627,7 @@ function settingsInvalidMessage(settings2) {
 }
 function policyRuleMessages(evaluation) {
   const messages = [];
-  const ids = [...new Set(evaluation.violations.map((violation) => violation.id))].sort(byCodeUnit10);
+  const ids = [...new Set(evaluation.violations.map((violation) => violation.id))].sort(byCodeUnit12);
   for (const id of ids) {
     const text = RULE_MESSAGES[id];
     if (text === void 0) continue;
@@ -240338,19 +240998,19 @@ var SECRET_SCAN_KINDS = [
   "continue-rules"
 ];
 var SCAN_KINDS = new Set(SECRET_SCAN_KINDS);
-var CONTINUE_CONFIG_EXTENSIONS = [".json", ".yaml", ".yml"];
-var byCodeUnit11 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var CONTINUE_CONFIG_EXTENSIONS2 = [".json", ".yaml", ".yml"];
+var byCodeUnit13 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function agentConfigSecretPaths(inventory) {
   const paths = /* @__PURE__ */ new Set();
   for (const file of inventory.files) {
     if (!SCAN_KINDS.has(file.kind)) continue;
     if (file.kind === "continue-rules") {
       const lower = file.path.toLowerCase();
-      if (!CONTINUE_CONFIG_EXTENSIONS.some((extension) => lower.endsWith(extension))) continue;
+      if (!CONTINUE_CONFIG_EXTENSIONS2.some((extension) => lower.endsWith(extension))) continue;
     }
     paths.add(file.path);
   }
-  return [...paths].sort(byCodeUnit11);
+  return [...paths].sort(byCodeUnit13);
 }
 var MIN_S11_CHARS = 8;
 function lineStarts(text) {
@@ -240397,7 +241057,7 @@ function scanAgentConfigSecrets(files) {
     for (const span of spans) add(span.id, span.start);
     for (const offset of literalFindings(pairs, spans)) add("S11", offset);
   }
-  return [...found.values()].sort((a, b) => byCodeUnit11(a.id, b.id) || byCodeUnit11(a.path, b.path) || a.line - b.line);
+  return [...found.values()].sort((a, b) => byCodeUnit13(a.id, b.id) || byCodeUnit13(a.path, b.path) || a.line - b.line);
 }
 
 // ../core/src/secrets/messages.ts
@@ -240435,7 +241095,7 @@ var FAIL_CLOSED_REASONS = /* @__PURE__ */ new Set([
   "over-total-cap",
   "unsafe-path"
 ]);
-var byCodeUnit12 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit14 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function levelOf2(id) {
   return id === "S10" ? "warn" : id === "S11" ? "info" : "error";
 }
@@ -240461,7 +241121,7 @@ function agentConfigSecretMessages(sources, selected) {
   }
   const messages = [];
   const findings = scanAgentConfigSecrets(sources.files);
-  const ids = [...new Set(findings.map((finding2) => finding2.id))].sort(byCodeUnit12);
+  const ids = [...new Set(findings.map((finding2) => finding2.id))].sort(byCodeUnit14);
   for (const id of ids) {
     const ofId = findings.filter((finding2) => finding2.id === id);
     messages.push({
@@ -240477,7 +241137,7 @@ function agentConfigSecretMessages(sources, selected) {
     if (!read.has(path) && !dropped.has(path)) unscanned.push({ path, reason: "not-read" });
   }
   if (unscanned.length > 0) {
-    unscanned.sort((a, b) => byCodeUnit12(a.path, b.path));
+    unscanned.sort((a, b) => byCodeUnit14(a.path, b.path));
     messages.push({
       level: unscanned.some((file) => FAIL_CLOSED_REASONS.has(file.reason)) ? "error" : "warn",
       code: "AGENT_CONFIG_SECRET_UNSCANNED",
@@ -240485,114 +241145,6 @@ function agentConfigSecretMessages(sources, selected) {
     });
   }
   return messages;
-}
-
-// ../core/src/setup/scan.ts
-function underNested(path, anchor) {
-  let from = 0;
-  for (; ; ) {
-    const i = path.indexOf(anchor, from);
-    if (i === -1) return false;
-    if ((i === 0 || path[i - 1] === "/") && path.length > i + anchor.length) return true;
-    from = i + 1;
-  }
-}
-function underRoot(path, prefix) {
-  return path.startsWith(prefix) && path.length > prefix.length;
-}
-function baseName(path) {
-  return path.slice(path.lastIndexOf("/") + 1);
-}
-function underRooModeDir(path) {
-  const prefix = ".roo/rules-";
-  if (!path.startsWith(prefix)) return false;
-  const slash = path.indexOf("/", prefix.length);
-  return slash > prefix.length && path.length > slash + 1;
-}
-function isRooModeFile(path) {
-  const prefix = ".roorules-";
-  return path.startsWith(prefix) && path.length > prefix.length && !path.includes("/");
-}
-var INSTRUCTIONS_DIR = ".github/instructions/";
-var INSTRUCTIONS_SUFFIX = ".instructions.md";
-function hasNodeModulesSegment(path) {
-  return path.split("/").includes("node_modules");
-}
-function isPlaceholderName(name) {
-  if (name.startsWith(".")) return true;
-  const lower = name.toLowerCase();
-  return lower === "readme" || lower.startsWith("readme.");
-}
-var SETUP_RULES = [
-  // Directory and full-path rules that also apply in nested directories (the .claude/ kinds, claude-rule
-  // among them, and cursor-rules). The settings and MCP files are not here: they count at the repo root only.
-  { kind: "claude-skill", matches: (p) => underNested(p, ".claude/skills/"), directory: true },
-  { kind: "claude-hook", matches: (p) => underNested(p, ".claude/hooks/"), directory: true },
-  { kind: "claude-agent", matches: (p) => underNested(p, ".claude/agents/"), directory: true },
-  { kind: "claude-command", matches: (p) => underNested(p, ".claude/commands/"), directory: true },
-  { kind: "claude-rule", matches: (p) => underNested(p, ".claude/rules/"), directory: true },
-  { kind: "cursor-rules", matches: (p) => underNested(p, ".cursor/rules/"), directory: true },
-  // Directory and full-path rules for the repo root only (including the claude-settings, claude-settings-local,
-  // mcp-config, aider, continue, roo, amazonq, junie, zed, augment, kiro, opencode and gemini-settings kinds).
-  { kind: "claude-settings", matches: (p) => p === ".claude/settings.json" },
-  { kind: "claude-settings-local", matches: (p) => p === ".claude/settings.local.json" },
-  { kind: "mcp-config", matches: (p) => p === ".mcp.json" },
-  { kind: "cursor-rules", matches: (p) => p === ".cursorrules" },
-  { kind: "copilot-instructions", matches: (p) => p === ".github/copilot-instructions.md" },
-  {
-    kind: "copilot-instructions-scoped",
-    matches: (p) => p.startsWith(INSTRUCTIONS_DIR) && p.endsWith(INSTRUCTIONS_SUFFIX) && p.length > INSTRUCTIONS_DIR.length + INSTRUCTIONS_SUFFIX.length
-  },
-  { kind: "copilot-agents", matches: (p) => underRoot(p, ".github/agents/"), directory: true },
-  { kind: "copilot-prompts", matches: (p) => underRoot(p, ".github/prompts/"), directory: true },
-  { kind: "cursor-mcp", matches: (p) => p === ".cursor/mcp.json" },
-  { kind: "vscode-mcp", matches: (p) => p === ".vscode/mcp.json" },
-  { kind: "codex-config", matches: (p) => p === ".codex/config.toml" },
-  { kind: "windsurf-rules", matches: (p) => p === ".windsurfrules" },
-  { kind: "windsurf-rules", matches: (p) => underRoot(p, ".windsurf/rules/"), directory: true },
-  { kind: "cline-rules", matches: (p) => p === ".clinerules" },
-  { kind: "cline-rules", matches: (p) => underRoot(p, ".clinerules/"), directory: true },
-  { kind: "aider-config", matches: (p) => p === ".aider.conf.yml" },
-  { kind: "conventions-md", matches: (p) => p === "CONVENTIONS.md" },
-  { kind: "continue-rules", matches: (p) => underRoot(p, ".continue/rules/"), directory: true },
-  { kind: "continue-rules", matches: (p) => p === ".continuerules" },
-  { kind: "roo-rules", matches: (p) => p === ".roorules" },
-  { kind: "roo-rules", matches: isRooModeFile },
-  { kind: "roo-rules", matches: (p) => underRoot(p, ".roo/rules/"), directory: true },
-  { kind: "roo-rules", matches: underRooModeDir, directory: true },
-  { kind: "amazonq-rules", matches: (p) => underRoot(p, ".amazonq/rules/"), directory: true },
-  { kind: "junie-guidelines", matches: (p) => p === ".junie/guidelines.md" },
-  { kind: "zed-rules", matches: (p) => p === ".rules" },
-  { kind: "augment-rules", matches: (p) => underRoot(p, ".augment/rules/"), directory: true },
-  { kind: "augment-rules", matches: (p) => p === ".augment-guidelines" },
-  { kind: "kiro-steering", matches: (p) => underRoot(p, ".kiro/steering/"), directory: true },
-  { kind: "opencode-config", matches: (p) => p === "opencode.json" },
-  { kind: "opencode-config", matches: (p) => p === "opencode.jsonc" },
-  { kind: "gemini-settings", matches: (p) => p === ".gemini/settings.json" },
-  // File-name rules: these files are hierarchical, so tools read them from any directory (goosehints included).
-  { kind: "claude-md", matches: (p) => baseName(p) === "CLAUDE.md" },
-  { kind: "claude-local-md", matches: (p) => baseName(p) === "CLAUDE.local.md" },
-  { kind: "agents-md", matches: (p) => baseName(p) === "AGENTS.md" },
-  { kind: "gemini-md", matches: (p) => baseName(p) === "GEMINI.md" },
-  { kind: "goosehints", matches: (p) => baseName(p) === ".goosehints" }
-];
-function classifySetupPath(path) {
-  if (hasNodeModulesSegment(path)) return null;
-  for (const rule2 of SETUP_RULES) {
-    if (!rule2.matches(path)) continue;
-    if (rule2.directory === true && isPlaceholderName(baseName(path))) return null;
-    return rule2.kind;
-  }
-  return null;
-}
-function scanAgentSetup(paths) {
-  const files = [];
-  for (const path of new Set(paths)) {
-    const kind = classifySetupPath(path);
-    if (kind) files.push({ path, kind });
-  }
-  files.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
-  return { files };
 }
 
 // ../core/src/signals/findingCap.ts
@@ -240656,7 +241208,7 @@ function applySignalOverrides(signals, omitted, overrides, mode) {
 
 // ../core/src/testFiles.ts
 var TEST_DIRECTORIES = /* @__PURE__ */ new Set(["test", "tests", "__tests__"]);
-var byCodeUnit13 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit15 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var TEST_BASENAME = [
   /\.(?:test|spec)\.(?:js|jsx|ts|tsx|mjs|cjs)$/,
   /\.(?:e2e|pw)\.ts$/,
@@ -240707,7 +241259,7 @@ function deletedTestFiles(diff) {
     if (file.status === "deleted" && isTestFile(file.path)) found.add(file.path);
     else if (file.status === "renamed" && isTestFile(file.oldPath) && !isTestFile(file.path)) found.add(file.oldPath);
   }
-  return [...found].sort(byCodeUnit13);
+  return [...found].sort(byCodeUnit15);
 }
 
 // ../core/src/signals/pythonAliases.ts
@@ -241756,7 +242308,7 @@ function indexTestFile(path, text) {
 }
 
 // ../core/src/signals/testPairs.ts
-var byCodeUnit14 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit16 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var EXTENSION_LANGUAGE = /* @__PURE__ */ new Map([
   ["ts", "ts"],
   ["tsx", "ts"],
@@ -241834,7 +242386,7 @@ function indexTouchedTestFiles(diff, sources, python) {
   const pairs = [];
   const unavailable2 = [];
   const compared2 = [...comparedPaths.values()].sort(
-    (a, b) => byCodeUnit14(a.basePath, b.basePath) || byCodeUnit14(a.headPath, b.headPath)
+    (a, b) => byCodeUnit16(a.basePath, b.basePath) || byCodeUnit16(a.headPath, b.headPath)
   );
   for (const file of compared2) {
     const base = indexSide("base", file.basePath, file.language);
@@ -241853,19 +242405,19 @@ function indexTouchedTestFiles(diff, sources, python) {
       unavailable2.push({ path: file.headPath, reason });
     }
   }
-  unavailable2.sort((a, b) => byCodeUnit14(a.path, b.path));
+  unavailable2.sort((a, b) => byCodeUnit16(a.path, b.path));
   const added = [];
-  for (const [headPath, language] of [...addedPaths].sort((a, b) => byCodeUnit14(a[0], b[0]))) {
+  for (const [headPath, language] of [...addedPaths].sort((a, b) => byCodeUnit16(a[0], b[0]))) {
     const head = indexSide("head", headPath, language);
     if (head.ok) added.push({ headPath, head: head.tests, headMocks: head.mocks });
   }
-  return { pairs, added, unavailable: unavailable2, notRun: null, languages: [...languages].sort(byCodeUnit14) };
+  return { pairs, added, unavailable: unavailable2, notRun: null, languages: [...languages].sort(byCodeUnit16) };
 }
 
 // ../core/src/signals/testChanges.ts
 var MAX_TEST_CHANGE_ENTRIES = 200;
-var byCodeUnit15 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-var byEntry = (a, b) => byCodeUnit15(a.path, b.path) || a.line - b.line;
+var byCodeUnit17 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byEntry = (a, b) => byCodeUnit17(a.path, b.path) || a.line - b.line;
 var KINDS = ["removed", "modified", "renamed", "added"];
 var entryOf = (path, block) => ({
   path,
@@ -241928,7 +242480,7 @@ function summarizeTestChanges(touched, match) {
       modified: lists.modified.length,
       renamed: lists.renamed.length
     },
-    files: [...rows.values()].sort((a, b) => byCodeUnit15(a.path, b.path)),
+    files: [...rows.values()].sort((a, b) => byCodeUnit17(a.path, b.path)),
     added: kept.added,
     removed: kept.removed,
     modified: kept.modified,
@@ -241978,7 +242530,7 @@ function containsAtLeast(old, fresh, ratio) {
   if (old.size === 0) return true;
   return ratio.den * overlap(old, fresh) >= ratio.num * old.size;
 }
-var byCodeUnit16 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit18 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var CursorHeap = class {
   list = [];
   at = [];
@@ -242055,7 +242607,7 @@ var SimilarityIndex = class {
   }
   prefix(set) {
     const frequency = this.frequency;
-    const ordered = [...set].sort((a, b) => (frequency.get(a) ?? 0) - (frequency.get(b) ?? 0) || byCodeUnit16(a, b));
+    const ordered = [...set].sort((a, b) => (frequency.get(a) ?? 0) - (frequency.get(b) ?? 0) || byCodeUnit18(a, b));
     return ordered.slice(0, set.size - ceilRatio(set.size, this.ratio) + 1);
   }
   /**
@@ -242215,7 +242767,7 @@ function eachReplacements(candidates, fresh) {
 }
 
 // ../core/src/signals/testMatch.ts
-var byCodeUnit17 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit19 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var byLine = (a, b) => a.line - b.line;
 var leafName = (block) => block.path[block.path.length - 1] ?? "";
 var OtherFileList = class {
@@ -242273,7 +242825,7 @@ function matchTests(touched) {
   const left = [];
   const tokensOf = tokenSetMemo();
   const files = [...touched.pairs].sort(
-    (a, b) => byCodeUnit17(a.basePath, b.basePath) || byCodeUnit17(a.headPath, b.headPath)
+    (a, b) => byCodeUnit19(a.basePath, b.basePath) || byCodeUnit19(a.headPath, b.headPath)
   );
   let fileIndex = 0;
   for (const file of files) {
@@ -242384,13 +242936,13 @@ function matchTests(touched) {
     for (const entry of clearing) entry.used = true;
     for (const candidate of afterRename) if (!cleared.has(candidate.block)) left.push(candidate);
   }
-  for (const file of [...touched.added].sort((a, b) => byCodeUnit17(a.headPath, b.headPath))) {
+  for (const file of [...touched.added].sort((a, b) => byCodeUnit19(a.headPath, b.headPath))) {
     const index = fileIndex++;
     for (const block of [...file.head].sort(byLine)) {
       fresh.push({ fileIndex: index, path: file.headPath, block, order: 0, used: false });
     }
   }
-  fresh.sort((a, b) => byCodeUnit17(a.path, b.path) || a.block.line - b.block.line);
+  fresh.sort((a, b) => byCodeUnit19(a.path, b.path) || a.block.line - b.block.line);
   fresh.forEach((entry, at) => {
     entry.order = at;
   });
@@ -242482,7 +243034,7 @@ function matchTests(touched) {
 }
 
 // ../core/src/signals/ti01Moved.ts
-var byCodeUnit18 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit20 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var leafOf = (block) => block.path[block.path.length - 1] ?? "";
 function sameStemDeletions(diff) {
   const stems = /* @__PURE__ */ new Map();
@@ -242510,7 +243062,7 @@ function sameStemDeletions(diff) {
 function movedTestFiles(diff, sources, python, touched) {
   const moved = { files: /* @__PURE__ */ new Set(), compared: /* @__PURE__ */ new Set(), pairs: [] };
   if (touched.notRun !== null || "unavailable" in sources.base) return moved;
-  const deleted = diff.filter((file) => file.status === "deleted" && isTestFile(file.path) && file.binary !== true).map((file) => file.path).sort(byCodeUnit18);
+  const deleted = diff.filter((file) => file.status === "deleted" && isTestFile(file.path) && file.binary !== true).map((file) => file.path).sort(byCodeUnit20);
   if (deleted.length === 0) return moved;
   const texts = new Map(sources.base.files.map((file) => [file.path, file.text]));
   const pythonBase = python?.available ? new Map(python.base.map((file) => [file.path, file.result])) : null;
@@ -242542,7 +243094,7 @@ function movedTestFiles(diff, sources, python, touched) {
     }
   }
   if (fresh.length === 0) return moved;
-  fresh.sort((a, b) => byCodeUnit18(a.path, b.path) || a.block.line - b.block.line);
+  fresh.sort((a, b) => byCodeUnit20(a.path, b.path) || a.block.line - b.block.line);
   const leaves = /* @__PURE__ */ new Map();
   const groups = /* @__PURE__ */ new Set();
   for (const entry of fresh) {
@@ -242588,7 +243140,7 @@ function movedTestFiles(diff, sources, python, touched) {
 }
 
 // ../core/src/signals/ti01.ts
-var byCodeUnit19 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit21 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_DETAIL3 = 300;
 function removedTests(file) {
   if (file.hunks === void 0) return "unknown";
@@ -242637,7 +243189,7 @@ function detectTI01(diff, mode, moved = /* @__PURE__ */ new Set(), compared2 = /
     }
     found.set(path, { id: "TI01", severity: severity2, path, line: null, detail: detail.slice(0, MAX_DETAIL3) });
   }
-  return [...found.values()].sort((a, b) => byCodeUnit19(a.path, b.path));
+  return [...found.values()].sort((a, b) => byCodeUnit21(a.path, b.path));
 }
 
 // ../core/src/signals/ti02.ts
@@ -242652,7 +243204,7 @@ function detectTI02(match, mode) {
 }
 
 // ../core/src/signals/ti03.ts
-var byCodeUnit20 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit22 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE = 20;
 var DETAILS = {
   existing: "An unconditional skip was added to a test that the diff shows existed before this change, so that test no longer runs.",
@@ -242799,11 +243351,11 @@ function detectTI03(diff, mode, sources) {
       });
     }
   }
-  return signals.sort((a, b) => byCodeUnit20(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit22(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti04.ts
-var byCodeUnit21 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit23 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE2 = 20;
 var DETAIL = "A focused-run marker (`.only`, `fit` or `fdescribe`) was added, so the runner may skip the other tests of this file or of the whole run.";
 function detectTI04(diff, mode) {
@@ -242831,7 +243383,7 @@ function detectTI04(diff, mode) {
       signals.push({ id: "TI04", severity: mode, path: file.path, line, detail: DETAIL });
     }
   }
-  return signals.sort((a, b) => byCodeUnit21(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit23(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti05.ts
@@ -243565,7 +244117,7 @@ var MODIFIERS_THAT_EXCUSE2 = ["skip", "todo", "skipIf", "runIf"];
 var TAUTOLOGY_REASON = "an assertion that compares a literal with itself was added";
 var TRY_REASON = "an assertion moved into a try block that has a catch";
 var RETURN_REASON = "an assertion moved after an early return";
-var byCodeUnit22 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit24 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function counts(labels) {
   const map = /* @__PURE__ */ new Map();
   for (const label of labels) map.set(label, (map.get(label) ?? 0) + 1);
@@ -243574,7 +244126,7 @@ function counts(labels) {
 function surplus(from, other) {
   const own = counts(from);
   const against = counts(other);
-  return [...own].filter(([label, n]) => n > (against.get(label) ?? 0)).map(([label]) => label).sort(byCodeUnit22);
+  return [...own].filter(([label, n]) => n > (against.get(label) ?? 0)).map(([label]) => label).sort(byCodeUnit24);
 }
 function listed(labels, cut) {
   if (labels.length <= cut) return labels.join(", ");
@@ -243656,7 +244208,7 @@ function detectTI06(match) {
 var MAX_TEST_SOURCE_FILES = 200;
 var MAX_TEST_SOURCE_FILE_BYTES = 524288;
 var MAX_TEST_SOURCE_TOTAL_BYTES = 16777216;
-var byCodeUnit23 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit25 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var TEST_CONFIG_PREFIXES = [
   "vitest.config.",
   "vite.config.",
@@ -243690,7 +244242,7 @@ function selectTestSourcePaths(diff) {
       head.add(file.path);
     }
   }
-  return { base: [...base].sort(byCodeUnit23), head: [...head].sort(byCodeUnit23) };
+  return { base: [...base].sort(byCodeUnit25), head: [...head].sort(byCodeUnit25) };
 }
 function isUnsafeTestSourcePath(path) {
   if (path === "" || path.startsWith("/")) return true;
@@ -243705,7 +244257,7 @@ function planTestSourceReads(paths, objects) {
   const dropped = [];
   let total = 0;
   let tripped = false;
-  for (const path of [...new Set(paths)].sort(byCodeUnit23)) {
+  for (const path of [...new Set(paths)].sort(byCodeUnit25)) {
     if (isUnsafeTestSourcePath(path)) {
       dropped.push({ path, reason: "unsafe-path" });
       continue;
@@ -244194,7 +244746,7 @@ function escapeDetailText(text) {
 }
 
 // ../core/src/signals/ti10.ts
-var byCodeUnit24 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit26 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE3 = 20;
 var DETAILS2 = {
   "or-true": "A test script now ignores the exit status of a command, so it passes even when the tests fail.",
@@ -244335,18 +244887,18 @@ function detectTI10(diff, options) {
     for (const hook2 of removedHooks) {
       if (!addedKeys.has(hook2.key)) found.push({ line: hook2.line, kind: "hook-removed" });
     }
-    found.sort((a, b) => a.line - b.line || byCodeUnit24(DETAILS2[a.kind], DETAILS2[b.kind]));
+    found.sort((a, b) => a.line - b.line || byCodeUnit26(DETAILS2[a.kind], DETAILS2[b.kind]));
     for (const { line, kind } of found.slice(0, MAX_PER_FILE3)) {
       signals.push({ id: "TI10", severity: options.mode, path: file.path, line, detail: DETAILS2[kind] });
     }
   }
   return signals.sort(
-    (a, b) => byCodeUnit24(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit24(a.detail, b.detail)
+    (a, b) => byCodeUnit26(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit26(a.detail, b.detail)
   );
 }
 
 // ../core/src/signals/ti08.ts
-var byCodeUnit25 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit27 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_SNAPSHOT_FILES = 10;
 var MIN_INLINE_REWRITES = 10;
 var MAX_FLAG_SIGNALS_PER_FILE = 20;
@@ -244382,7 +244934,7 @@ function massChangeDetail(count2, firstPaths) {
   return `${head}${tail}`;
 }
 function detectSnapshotFiles(diff) {
-  const counted2 = [...new Set(diff.filter(countsAsChangedSnapshot).map((file) => file.path))].sort(byCodeUnit25);
+  const counted2 = [...new Set(diff.filter(countsAsChangedSnapshot).map((file) => file.path))].sort(byCodeUnit27);
   if (counted2.length <= MAX_SNAPSHOT_FILES) return [];
   return [
     {
@@ -244500,7 +245052,7 @@ function detectTI08(diff) {
   const signals = [...detectSnapshotFiles(diff), ...detectInlineRewrites(diff)];
   for (const file of diff) signals.push(...detectScriptFlags(file), ...detectPytestFlag(file));
   return signals.sort(
-    (a, b) => byCodeUnit25(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit25(a.detail, b.detail)
+    (a, b) => byCodeUnit27(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit27(a.detail, b.detail)
   );
 }
 
@@ -246015,7 +246567,7 @@ function evaluateRules(kind, base, head, mode) {
 }
 
 // ../core/src/signals/ti09.ts
-var byCodeUnit26 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit28 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function lookupOf2(side) {
   const texts = /* @__PURE__ */ new Map();
   const dropped = /* @__PURE__ */ new Map();
@@ -246064,7 +246616,7 @@ function detectTI09(diff, sources, mode) {
     }
     return readTestConfig(candidate.kind, path, text.text);
   };
-  const sorted = [...candidates].sort((a, b) => byCodeUnit26(a.path, b.path) || byCodeUnit26(a.oldPath, b.oldPath));
+  const sorted = [...candidates].sort((a, b) => byCodeUnit28(a.path, b.path) || byCodeUnit28(a.oldPath, b.oldPath));
   for (const candidate of sorted) {
     const base = candidate.added ? null : readSide(baseSide, candidate, candidate.oldPath);
     const head = readSide(headSide, candidate, candidate.path);
@@ -246101,13 +246653,13 @@ function detectTI09(diff, sources, mode) {
   }
   return {
     signals,
-    unavailable: [...unavailable2].map(([path, reason]) => ({ path, reason })).sort((a, b) => byCodeUnit26(a.path, b.path)),
+    unavailable: [...unavailable2].map(([path, reason]) => ({ path, reason })).sort((a, b) => byCodeUnit28(a.path, b.path)),
     notRun: null
   };
 }
 
 // ../core/src/signals/ti11.ts
-var byCodeUnit27 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit29 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var PM_FLAGS = String.raw`(?:\s+(?:-r|--recursive|-w|--workspace-root|-ws|--workspaces|--if-present|(?:--filter|-F|-C|--dir|--prefix|--workspace|--cwd)(?:=|\s+)\S+))*`;
 var JS_LAUNCHER = String.raw`(?:(?:npx|bunx|yarn|pnpm${PM_FLAGS}(?:\s+(?:exec|dlx))?|bun\s+x|npm\s+exec)\s+)?`;
 var PY_WRAPPER = String.raw`(?:(?:uv|poetry|pipenv|pdm|hatch|rye)\s+run\s+)?`;
@@ -246159,7 +246711,7 @@ var PM_VALUE_FLAGS = /* @__PURE__ */ new Set([
   "--workspace",
   "--cwd"
 ]);
-var PACKAGE_MANAGERS = /* @__PURE__ */ new Set(["npm", "pnpm", "yarn", "bun"]);
+var PACKAGE_MANAGERS2 = /* @__PURE__ */ new Set(["npm", "pnpm", "yarn", "bun"]);
 var RUNNERS = /* @__PURE__ */ new Set(["vitest", "jest", "mocha"]);
 function runnerStart(tokens2) {
   const first = tokens2[0];
@@ -246180,7 +246732,7 @@ function keyOf2(part) {
   const runner = runnerStart(tokens2);
   if (runner >= 0) return tokens2.slice(runner).join(" ");
   const manager = tokens2[0];
-  if (!PACKAGE_MANAGERS.has(manager)) return part;
+  if (!PACKAGE_MANAGERS2.has(manager)) return part;
   let i = 1;
   const flags = [];
   for (; ; ) {
@@ -246302,7 +246854,7 @@ function detectTI11(diff, mode) {
     if (rushed !== void 0) emit("warn", rushed.line, SENTENCES.timeout);
   }
   return signals.sort(
-    (a, b) => byCodeUnit27(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit27(a.detail, b.detail)
+    (a, b) => byCodeUnit29(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit29(a.detail, b.detail)
   );
 }
 
@@ -246461,7 +247013,7 @@ function detectTI12(touched, diff) {
 }
 
 // ../core/src/signals/ti13.ts
-var byCodeUnit28 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit30 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE4 = 20;
 var DETAILS3 = {
   istanbul: "An Istanbul coverage hint was added, so the code it marks leaves the coverage this check grades.",
@@ -246513,12 +247065,12 @@ function detectTI13(diff, mode) {
     }
   }
   return signals.sort(
-    (a, b) => byCodeUnit28(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit28(a.detail, b.detail)
+    (a, b) => byCodeUnit30(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit30(a.detail, b.detail)
   );
 }
 
 // ../core/src/signals/ti14.ts
-var byCodeUnit29 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit31 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var PLAIN_NUMBER = /^\d+(?:\.\d+)?$/;
 function normalizedPattern(item) {
   try {
@@ -246636,11 +247188,11 @@ function detectTI14(diff, options) {
       });
     }
   }
-  return signals.sort((a, b) => byCodeUnit29(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit31(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti15.ts
-var byCodeUnit30 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit32 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_CHANGE = 10;
 var MAX_DETAIL6 = 300;
 var MIN_STRING_LENGTH = 6;
@@ -246845,7 +247397,7 @@ function testLiterals(diff, manifests) {
           const key = keyOf3(literal);
           const roots = found.get(key) ?? /* @__PURE__ */ new Map();
           const first = roots.get(root);
-          if (first === void 0 || byCodeUnit30(file.path, first) < 0) roots.set(root, file.path);
+          if (first === void 0 || byCodeUnit32(file.path, first) < 0) roots.set(root, file.path);
           found.set(key, roots);
         }
       }
@@ -246897,7 +247449,7 @@ function detectTI15(diff, options) {
       }
     }
   }
-  findings.sort((a, b) => byCodeUnit30(a.path, b.path) || a.line - b.line || byCodeUnit30(a.detail, b.detail));
+  findings.sort((a, b) => byCodeUnit32(a.path, b.path) || a.line - b.line || byCodeUnit32(a.detail, b.detail));
   const signals = findings.slice(0, MAX_PER_CHANGE).map(({ path, line, detail }) => ({ id: "TI15", severity: "info", path, line, detail }));
   const counts2 = /* @__PURE__ */ new Map();
   for (const { path } of findings.slice(MAX_PER_CHANGE)) counts2.set(path, (counts2.get(path) ?? 0) + 1);
@@ -247001,7 +247553,7 @@ var markerOf2 = (text, language) => {
   const line = text.length > MAX_LINE2 ? text.slice(0, MAX_LINE2) : text;
   return language === "jsts" ? jsMarker(line) : pythonMarker(line);
 };
-var byCodeUnit31 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit33 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function detectTI16(diff) {
   const signals = [];
   for (const file of diff) {
@@ -247039,14 +247591,14 @@ function detectTI16(diff) {
       detail: `This test file adds ${count2} that switch off a linter or type checker, so the checks they silence no longer run on that code.`
     });
   }
-  return signals.sort((a, b) => byCodeUnit31(a.path, b.path));
+  return signals.sort((a, b) => byCodeUnit33(a.path, b.path));
 }
 
 // ../core/src/check.ts
-var byCodeUnit32 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit34 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function sortSignals(signals) {
   return signals.sort(
-    (a, b) => byCodeUnit32(a.id, b.id) || byCodeUnit32(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit32(a.detail, b.detail)
+    (a, b) => byCodeUnit34(a.id, b.id) || byCodeUnit34(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit34(a.detail, b.detail)
   );
 }
 function check(input) {
@@ -247169,7 +247721,8 @@ function check(input) {
     configPath: configRepoPath(input.configPath, input.repoRoot),
     ignored: input.policyIgnored ?? [],
     ...detection === void 0 || agentPolicy === void 0 ? {} : { agentPr: detection, agentPolicy },
-    ...input.policySettingsSources === void 0 ? {} : { settingsSources: input.policySettingsSources }
+    ...input.policySettingsSources === void 0 ? {} : { settingsSources: input.policySettingsSources },
+    ...input.agentInstructionSources === void 0 ? {} : { agentInstructions: input.agentInstructionSources }
   });
   const policyIgnored = [
     ...input.policyIgnored ?? [],
@@ -247592,7 +248145,7 @@ function gitDiffArgs(base, head = "HEAD") {
 
 // ../core/src/policy/apply.ts
 var STRICTNESS2 = { off: 0, warn: 1, block: 2 };
-var byCodeUnit33 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit35 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function rootKey(root) {
   return root === void 0 || root === null ? "." : root;
 }
@@ -247632,7 +248185,7 @@ function applyPolicy(layers, policy) {
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
-  }).sort((a, b) => byCodeUnit33(a.setting, b.setting) || byCodeUnit33(a.layer, b.layer));
+  }).sort((a, b) => byCodeUnit35(a.setting, b.setting) || byCodeUnit35(a.layer, b.layer));
   return result;
 }
 function applyCoverage(layers, document2, app, inputs, ignored) {
@@ -248382,6 +248935,7 @@ var MESSAGE_HINTS = {
   POLICY_P08: "Stop tracking the file (`git rm --cached` it and add it to `.gitignore`); the org policy forbids it in the repository.",
   POLICY_P09: "Revert the edit, or ask the policy owner to make it; a pull request cannot loosen the check it is graded by.",
   POLICY_P11: "Agent PRs may not change these paths under the org policy. Move the change to a pull request by a person, or ask the policy owner to change `agents.protected_paths`.",
+  POLICY_P07: "Make the instruction files in one directory name the same package manager and test runner, or move a file into the package it describes; an agent follows whichever file it reads first.",
   AGENT_PR_DETECTION_INCOMPLETE: "Re-run the job if the GitHub API failed. A pull request with more than 250 commits, an author GitHub does not name, or an edited policy file whose base cannot be read always counts as an agent PR.",
   // E3 item 23 (policy settings): the hints of P02 to P06 and of the settings problems.
   POLICY_P02: "Narrow or remove the allow rule (or the defaultMode or additionalDirectories key) in the settings file, or ask the policy owner to change setup.forbidden_permissions.",
@@ -249438,10 +249992,10 @@ async function batchRead(deps, oids) {
 }
 
 // ../node-io/src/agentConfigSources.ts
-var byCodeUnit34 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit36 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 async function readAgentConfigSources(deps, paths) {
   try {
-    const unique = [...new Set(paths)].sort(byCodeUnit34);
+    const unique = [...new Set(paths)].sort(byCodeUnit36);
     const requests = unique.filter((path) => !isUnsafeTestSourcePath(path)).map((path) => ({ oid: "HEAD", path }));
     const checked = await batchCheck(deps, requests);
     const objects = /* @__PURE__ */ new Map();
@@ -249454,7 +250008,7 @@ async function readAgentConfigSources(deps, paths) {
     const plan = planTestSourceReads(unique, objects);
     const wanted = /* @__PURE__ */ new Set();
     for (const path of plan.read) wanted.add(blobs.get(path));
-    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit34));
+    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit36));
     const files = [];
     const dropped = [...plan.dropped];
     for (const path of plan.read) {
@@ -249462,7 +250016,7 @@ async function readAgentConfigSources(deps, paths) {
       if (text === null) dropped.push({ path, reason: "binary" });
       else files.push({ path, text });
     }
-    dropped.sort((a, b) => byCodeUnit34(a.path, b.path));
+    dropped.sort((a, b) => byCodeUnit36(a.path, b.path));
     return { files, dropped };
   } catch (err) {
     return { unavailable: err instanceof StepFailed ? err.message : `git could not be read: ${firstLine(err)}` };
@@ -249474,14 +250028,14 @@ async function readPolicySettingsSources(deps, paths, symlinks) {
       unavailable: "git ls-tree failed, so symbolic links among the agent settings files could not be told apart"
     };
   }
-  const unique = [...new Set(paths)].sort(byCodeUnit34);
+  const unique = [...new Set(paths)].sort(byCodeUnit36);
   const linked = unique.filter((path) => symlinks.has(path)).map((path) => ({ path, reason: "symlink" }));
   const rest = unique.filter((path) => !symlinks.has(path));
   if (rest.length === 0) return { files: [], dropped: linked };
   const read = await readAgentConfigSources(deps, rest);
   if ("unavailable" in read) return read;
   const dropped = [...linked, ...read.dropped];
-  dropped.sort((a, b) => byCodeUnit34(a.path, b.path));
+  dropped.sort((a, b) => byCodeUnit36(a.path, b.path));
   return { files: read.files, dropped };
 }
 
@@ -250532,7 +251086,7 @@ async function indexPythonTestSources(sources, index = (files) => indexPythonTes
 }
 
 // ../node-io/src/testSources.ts
-var byCodeUnit35 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byCodeUnit37 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 async function resolveRevision(deps, revision, label) {
   let out;
   try {
@@ -250583,7 +251137,7 @@ async function readTestSources(deps, options) {
     plans.forEach((plan, i) => {
       for (const path of plan.read) wanted.add(sides[i]?.blobs.get(path));
     });
-    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit35));
+    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit37));
     const decoded = /* @__PURE__ */ new Map();
     const build = (index) => {
       const plan = plans[index];
@@ -250599,7 +251153,7 @@ async function readTestSources(deps, options) {
         if (text === null) dropped.push({ path, reason: "binary" });
         else files.push({ path, text });
       }
-      dropped.sort((a, b) => byCodeUnit35(a.path, b.path));
+      dropped.sort((a, b) => byCodeUnit37(a.path, b.path));
       return { files, dropped };
     };
     return { base: build(0), head: build(1) };
@@ -251486,6 +252040,7 @@ async function runUnsafe(deps) {
   const testSources = await gatherTestSources(deps, { diff, localBase, target, testIntegrityMode });
   const agentConfigSources = await gatherAgentConfigSources(deps, { repoFiles, diff, target });
   const policySettingsSources = await gatherPolicySettingsSources(deps, { repoFiles, diff, target, policy, lsTree });
+  const agentInstructionSources = await gatherAgentInstructionSources(deps, { repoFiles, diff, target, policy });
   const pythonTestIndex = testSources === void 0 ? void 0 : await indexPythonTestSources(testSources, deps.indexPython ?? indexPythonTests);
   if (pythonTestIndex !== void 0 && !pythonTestIndex.available) {
     deps.info(
@@ -251517,6 +252072,7 @@ async function runUnsafe(deps) {
     ...testIntegrityMode === void 0 ? {} : { testIntegrityMode },
     ...testSources === void 0 ? {} : { testSources },
     ...agentConfigSources === void 0 ? {} : { agentConfigSources },
+    ...agentInstructionSources === void 0 ? {} : { agentInstructionSources },
     ...pythonTestIndex === void 0 ? {} : { pythonTestIndex },
     ...coverageRoot === void 0 ? {} : { coverageRoot },
     ...input("config") === "" ? {} : { configPath: input("config") },
@@ -251682,6 +252238,32 @@ async function gatherPolicySettingsSources(deps, from) {
   if ("unavailable" in sources) {
     deps.info(
       `pharn-ci: could not read the agent settings files from git, so they are not checked against the org policy: ${sources.unavailable}`
+    );
+  }
+  return sources;
+}
+async function gatherAgentInstructionSources(deps, from) {
+  if (deps.gitBatch === void 0) return void 0;
+  if (from.policy === void 0 || consistencySeverity(from.policy).severity === null) return void 0;
+  const paths = agentInstructionPaths(scanAgentSetup(from.repoFiles));
+  if (paths.length === 0) return void 0;
+  if (from.target) {
+    return {
+      unavailable: "pr-number mode: the checkout is not the pull request head, so its committed agent instruction files were not read"
+    };
+  }
+  if ("text" in from.diff) {
+    return {
+      unavailable: "the diff came from the GitHub compare API, so the checkout may not be the pull request head"
+    };
+  }
+  if ("unavailable" in from.diff) {
+    return { unavailable: "the diff is unavailable, so the checkout may not be the pull request head" };
+  }
+  const sources = await readAgentConfigSources({ gitBatch: deps.gitBatch }, paths);
+  if ("unavailable" in sources) {
+    deps.info(
+      `pharn-ci: could not read the agent instruction files from git, so P07 did not compare them: ${sources.unavailable}`
     );
   }
   return sources;

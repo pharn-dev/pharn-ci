@@ -144,6 +144,8 @@ const MESSAGE_HINTS: Record<MessageCode, Hint> = {
     "Revert the edit, or ask the policy owner to make it; a pull request cannot loosen the check it is graded by.",
   POLICY_P11:
     "Agent PRs may not change these paths under the org policy. Move the change to a pull request by a person, or ask the policy owner to change `agents.protected_paths`.",
+  POLICY_P07:
+    "Make the instruction files in one directory name the same package manager and test runner, or move a file into the package it describes; an agent follows whichever file it reads first.",
   AGENT_PR_DETECTION_INCOMPLETE:
     "Re-run the job if the GitHub API failed. A pull request with more than 250 commits, an author GitHub does not name, or an edited policy file whose base cannot be read always counts as an agent PR.",
   // E3 item 23 (policy settings): the hints of P02 to P06 and of the settings problems.

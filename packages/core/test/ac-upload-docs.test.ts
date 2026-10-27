@@ -246,12 +246,15 @@ describe("upload documentation", { timeout: 60_000 }, () => {
       expect(row(head.rows, id), id).toBe(row(base.rows, id));
     }
     // Re-pinned for E3 item 23 (policy settings): row A1's parse list gains the agent settings and MCP JSON (row C5).
-    // A1 stays pinned byte for byte apart from this one inserted phrase.
+    // Re-pinned for E3 item 24 (P07): it also names the agent instruction text (row C6). A1 stays pinned byte for byte
+    // apart from these two inserted phrases.
     const OLD_A1 = "agent config text (JSON, TOML, YAML and shell, row C4))";
     const NEW_A1 =
-      "agent config text (JSON, TOML, YAML and shell, row C4), agent settings and MCP JSON (policy mode, row C5))";
-    expect(row(base.rows, "A1"), "control: the base A1 holds the text the phrase is inserted after").toContain(OLD_A1);
-    expect(row(head.rows, "A1"), "A1 is the base's with the one phrase inserted").toBe(
+      "agent config text (JSON, TOML, YAML and shell, row C4), agent settings and MCP JSON (policy mode, row C5), agent instruction text (Markdown, P07, row C6))";
+    expect(row(base.rows, "A1"), "control: the base A1 holds the text the phrases are inserted after").toContain(
+      OLD_A1,
+    );
+    expect(row(head.rows, "A1"), "A1 is the base's with the two phrases inserted").toBe(
       (row(base.rows, "A1") as string).replace(OLD_A1, NEW_A1),
     );
 
@@ -315,10 +318,26 @@ describe("upload documentation", { timeout: 60_000 }, () => {
     // `- Org policy rules P02–P06`; it is asserted here and set aside the same way.
     const policySettingsBullets = fresh("Added").filter((b) => b.startsWith("- Org policy rules P02–P06"));
     expect(policySettingsBullets).toHaveLength(1);
-    const addedBullets = fresh("Added").filter(
-      (b) => !policyRuleBullets.includes(b) && !p11Bullets.includes(b) && !policySettingsBullets.includes(b),
+    // Re-pinned for E3 item 24 (P07): Unreleased also gains exactly one Added bullet starting `- Org policy rule P07` (it
+    // names POLICY_P07) and exactly one Security bullet about reading the committed text of the agent instruction files.
+    // Both are asserted here and set aside, the way the P11 bullets are.
+    const p07Bullets = fresh("Added").filter((b) => b.startsWith("- Org policy rule P07"));
+    expect(p07Bullets).toHaveLength(1);
+    expect(p07Bullets[0]).toContain("POLICY_P07");
+    const p07SecurityBullets = fresh("Security").filter((b) =>
+      b.startsWith("- Org policy rule P07 reads the committed text of the agent instruction files"),
     );
-    const securityBullets = fresh("Security").filter((b) => !p11SecurityBullets.includes(b));
+    expect(p07SecurityBullets).toHaveLength(1);
+    const addedBullets = fresh("Added").filter(
+      (b) =>
+        !policyRuleBullets.includes(b) &&
+        !p11Bullets.includes(b) &&
+        !policySettingsBullets.includes(b) &&
+        !p07Bullets.includes(b),
+    );
+    const securityBullets = fresh("Security").filter(
+      (b) => !p11SecurityBullets.includes(b) && !p07SecurityBullets.includes(b),
+    );
     expect(addedBullets).toHaveLength(1);
     expect(securityBullets).toHaveLength(1);
     for (const bullet of [...addedBullets, ...securityBullets]) expect(bullet).not.toContain("OIDC");

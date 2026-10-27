@@ -40,6 +40,8 @@ const SECRET_CODES = [
   "POLICY_P05",
   "POLICY_P06",
   "POLICY_SETTINGS_INVALID",
+  // E3 item 24 (P07): the same appended text also names this rule code. This only states more (toContain).
+  "POLICY_P07",
 ];
 
 // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property: the four lines it inserts after the

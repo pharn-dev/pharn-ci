@@ -1,0 +1,8 @@
+# SENTINEL-P07-7f3a agents
+
+SENTINEL-P07-7f3a is the project name. Run `SENTINEL-P07-7f3a` first, then `pnpm install`.
+
+```sh
+SENTINEL-P07-7f3a install
+pnpm run SENTINEL-P07-7f3a
+```
