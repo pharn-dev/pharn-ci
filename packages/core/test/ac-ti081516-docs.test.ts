@@ -165,7 +165,8 @@ describe("TI08, TI15 and TI16: schemas and documents", () => {
 
     // action.yml declares no new input. Re-pinned for the org policy (E3 item 20), which adds exactly the `policy` and
     // `app-url` inputs: both must be declared, and with them set aside the inputs are the base's, in order.
-    const POLICY_INPUTS = ["policy", "app-url"];
+    // Re-pinned again for the run upload (E3 item 21), which adds exactly the `upload` input to the same set-aside.
+    const POLICY_INPUTS = ["policy", "app-url", "upload"];
     const inputsNow = actionInputs(read("action.yml"));
     for (const name of POLICY_INPUTS) expect(inputsNow, `action.yml declares ${name}`).toContain(name);
     expect(inputsNow.filter((name) => !POLICY_INPUTS.includes(name))).toEqual(

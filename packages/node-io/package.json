@@ -1,6 +1,6 @@
 {
   "name": "@pharn-ci/node-io",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Node I/O shared by the pharn-ci CLI and Action: git, file reads, directory listing, coverage-file reading.",
   "license": "Apache-2.0",
   "private": true,

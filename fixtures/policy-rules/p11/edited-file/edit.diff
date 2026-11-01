@@ -1,0 +1,12 @@
+diff --git a/.pharn/policy.json b/.pharn/policy.json
+index 1111111..2222222 100644
+--- a/.pharn/policy.json
++++ b/.pharn/policy.json
+@@ -2,0 +3 @@
++x
+diff --git a/migrations/002.sql b/migrations/002.sql
+index 1111111..2222222 100644
+--- a/migrations/002.sql
++++ b/migrations/002.sql
+@@ -2,0 +3 @@
++x

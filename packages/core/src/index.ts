@@ -105,6 +105,7 @@ export {
 } from "./inputs.js";
 export { createLineSplitter, splitLines, splitLinesAsync } from "./lines.js";
 export { normalizePath } from "./paths.js";
+export { type AgentPolicy, agentPolicyOf, type PolicyFileBase } from "./policy/agents.js";
 export { applyPolicy, type PolicyApplication, type PolicyLayers } from "./policy/apply.js";
 export { POLICY_MAX_CHARS, POLICY_MAX_ERRORS } from "./policy/limits.js";
 export { parsePolicyJson } from "./policy/parse.js";
@@ -114,6 +115,42 @@ export {
   type PolicyResponseValidation,
   validatePolicyResponse,
 } from "./policy/response.js";
+export { evaluatePolicyRules, MAX_P08_VIOLATIONS, MAX_RULE_VIOLATIONS } from "./policy/rules/evaluate.js";
+export { policyRuleMessages } from "./policy/rules/messages.js";
+export { consistencySeverity } from "./policy/rules/p07.js";
+export type { PolicyEvaluation, PolicyRuleInput, PolicyViolation } from "./policy/rules/types.js";
+export { isCountingHandler, matcherCovers } from "./policy/settings/hooks.js";
+export { type JsonMember, type JsonValue, parseSettingsJson, type SettingsJsonResult } from "./policy/settings/json.js";
+export { mcpGlobMatches } from "./policy/settings/mcp.js";
+export {
+  type McpServer,
+  readSettingsModel,
+  type SettingsModel,
+  type SettingsUnit,
+} from "./policy/settings/model.js";
+export {
+  isPolicyMcpPath,
+  isPolicySettingsPath,
+  policySettingsPaths,
+  settingsUnitAnchor,
+} from "./policy/settings/paths.js";
+export {
+  covers,
+  type NormalizedPolicyRule,
+  normalizePolicyRule,
+  overlapsForbidden,
+  type ParsedSettingsRule,
+  type PermissionRule,
+  parsePermissionRule,
+} from "./policy/settings/permissionRule.js";
+export type {
+  PolicySettingsDrop,
+  PolicySettingsOutcome,
+  PolicySettingsProblem,
+  PolicySettingsSources,
+  SettingsProblem,
+  SettingsProblemReason,
+} from "./policy/settings/types.js";
 export type {
   PolicyAgents,
   PolicyCoverage,
@@ -146,6 +183,8 @@ export {
   type ReportDiffCoverage,
   type ReportMeta,
   type ReportMetaEvent,
+  type ReportPolicy,
+  type ReportPolicyViolation,
   type ReportTestChange,
   type ReportTestChanges,
   type ReportTestChangesFile,
@@ -169,6 +208,13 @@ export {
 } from "./secrets/scan.js";
 export { findSecretSpans, type SecretId, type SecretSpan } from "./secrets/spans.js";
 export {
+  agentInstructionPaths,
+  INSTRUCTION_KINDS,
+  type InstructionDeclarations,
+  instructionDeclarations,
+  instructionScope,
+} from "./setup/instructions.js";
+export {
   type AgentSetupFile,
   type AgentSetupInventory,
   type AgentSetupKind,
@@ -177,7 +223,7 @@ export {
   type SetupRule,
   scanAgentSetup,
 } from "./setup/scan.js";
-export { parseLsTreeSizes } from "./setup/sizes.js";
+export { parseLsTreeSizes, parseLsTreeSymlinks } from "./setup/sizes.js";
 export { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
 export {
   coverageSourceLanguage,
@@ -277,4 +323,8 @@ export {
   unavailableTestSources,
 } from "./testSources.js";
 export { decodeTestSourceText } from "./testSourceText.js";
+export { buildUploadBundle } from "./upload/bundle.js";
+export { buildUploadMeta, type UploadMeta } from "./upload/meta.js";
+export { UPLOAD_REPORT_MAX_BYTES, type UploadOutcome, withUploadOutcome } from "./upload/outcome.js";
+export { buildUploadTar } from "./upload/tar.js";
 export { VERSION } from "./version.js";

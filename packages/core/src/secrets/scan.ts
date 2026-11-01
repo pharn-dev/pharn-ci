@@ -5,7 +5,7 @@ import { findSecretSpansWith, type SecretId } from "./spans.js";
 
 /**
  * The agent setup kinds whose files are machine-readable config and are read for committed secrets. The Markdown kinds
- * (instructions, rules, skills, commands) are never read.
+ * (instructions, rules, skills, commands) are never read by the secret scan.
  */
 export const SECRET_SCAN_KINDS: readonly AgentSetupKind[] = [
   "mcp-config",

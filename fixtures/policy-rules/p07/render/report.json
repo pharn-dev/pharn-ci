@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 2,
+  "tool": {
+    "name": "pharn-ci",
+    "version": "0.4.0"
+  },
+  "verdict": "warn",
+  "diffCoverage": null,
+  "agentSetup": {
+    "files": [],
+    "summary": {
+      "byKind": {},
+      "tools": []
+    }
+  },
+  "messages": [
+    {
+      "level": "warn",
+      "code": "COVERAGE_FILE_MISSING",
+      "text": "Coverage file not found: coverage/lcov.info"
+    },
+    {
+      "level": "info",
+      "code": "NO_AGENT_SETUP_FILES",
+      "text": "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found."
+    },
+    {
+      "level": "warn",
+      "code": "POLICY_P07",
+      "text": "3 agent instruction files name a different package manager or test runner than another file in the same directory: `AGENTS.md`, `CLAUDE.md`, `packages/we'ird<!--|x/AGENTS.md`. Each file's line is in the report's policy violations. 1 agent instruction file was not compared: binary, too large, past the read caps, an unsafe path or not a file at HEAD."
+    }
+  ],
+  "testIntegrity": {
+    "mode": "warn",
+    "source": "default",
+    "verdict": "pass",
+    "signals": [],
+    "languages": []
+  },
+  "policy": {
+    "source": "app",
+    "version": 3,
+    "fetchedAt": "2026-10-26T12:00:00.000Z",
+    "violations": [
+      {
+        "id": "P07",
+        "severity": "warn",
+        "path": null,
+        "line": null,
+        "detail": "1 agent instruction file was not compared (binary, too large, past the read caps or an unsafe path)"
+      },
+      {
+        "id": "P07",
+        "severity": "warn",
+        "path": "AGENTS.md",
+        "line": 3,
+        "detail": "package manager: pnpm here, npm in CLAUDE.md:4"
+      },
+      {
+        "id": "P07",
+        "severity": "warn",
+        "path": "CLAUDE.md",
+        "line": 4,
+        "detail": "package manager: npm here, pnpm in AGENTS.md:3"
+      },
+      {
+        "id": "P07",
+        "severity": "warn",
+        "path": "packages/we`ird<!--|x/AGENTS.md",
+        "line": 2,
+        "detail": "test runner: jest here, vitest in packages/web/AGENTS.md:2"
+      }
+    ]
+  }
+}

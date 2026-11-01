@@ -9,6 +9,26 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+### Changed
+
+### Security
+
+## [0.4.0] - 2026-10-27
+
+Org policy and the app link-up. The Action can fetch an org policy (`policy` input) and upload the redacted run bundle
+(`upload` input) to the pharn.dev app, a new policy mode reads agent settings and MCP configs (rules P01–P11), agent PRs
+are detected (`meta.isAgentPr`), and check A7 scans agent configs for secrets. With no policy and no app the report is
+the one 0.3.0 produced; nothing was removed or renamed. See **Security** for the new network surface and file reads.
+
+### Added
+
+- Org policy rules P02–P06, and policy mode: with a policy in force the CLI and the Action read the tracked agent
+  settings files (`.claude/settings.json` and `.claude/settings.local.json`, root and nested) and, when the policy lists
+  MCP servers, `.mcp.json`, `.cursor/mcp.json` and `.vscode/mcp.json`, at HEAD. P02 flags an allow rule that overlaps
+  a forbidden permission, `defaultMode` `bypassPermissions` or `auto`, and `additionalDirectories`; P03 a missing
+  required deny rule; P04 an MCP server that is not allowlisted; P05 a forbidden MCP server; P06 a missing required
+  hook. New message codes `POLICY_P02` to `POLICY_P06` and `POLICY_SETTINGS_INVALID` (a file the rules could not fully
+  use, or did not read); P09 now judges those edits as a block, warn or info. Nothing read from a file is printed.
 - `meta.isAgentPr` in the Action's report, with `meta.prAuthor`, `meta.prLabels`, `meta.coAuthors` and `meta.agentHint`:
   whether the pull request counts as an agent PR, from its author, its commits' authors, committers and
   `Co-authored-by` trailers, and its labels (`agent` and `ai-generated` by default). Seven known agents are recognized.
@@ -41,10 +61,49 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   a diff from the local checkout; in PR-number mode and for a compare-API diff the message says nothing was read.
 - A redaction module in `@pharn-ci/core`: `findSecretSpans`, `redactSecrets`, `truncateUtf8`, `redactMessage` and
   `MESSAGE_MAX_BYTES`. Nothing outside check A7 uses it yet.
+- Upload of the run to pharn.dev. The Action takes an `upload` input (`auto` or `never`, default `auto`) and sets a
+  `run-url` output. With `auto`, a job that grants `id-token: write` and an organization that installed the Pharn
+  GitHub App get the redacted `report.json` and a new `meta.json` uploaded; the App then comments on the pull request,
+  so the Action posts no comment of its own, and a `404` from the app puts an install hint under the comment and the
+  summary. A failed upload never fails the check; a report over the limit adds the `UPLOAD_TOO_LARGE` message code
+  (`warn`). `schema/upload-meta.v1.json` describes `meta.json`. In core: `buildUploadMeta`, `buildUploadBundle`,
+  `buildUploadTar`, `withUploadOutcome` and `UPLOAD_REPORT_MAX_BYTES`.
+- Org policy rules P01, P08, P09 and P10. A policy that sets `setup.require` or `setup.expect` (P01) raises
+  `NO_AGENT_SETUP_FILES` and `AGENT_SETUP_EXPECTED_MISSING` to the rule's severity; a tracked file that matches a
+  `setup.forbidden_files` pattern (P08) is a new `POLICY_P08` error; a pull request that edits the policy file it is
+  checked against, the config or a workflow while it sets a value looser than the policy, or an agent settings file
+  the policy checks (P09) is a new `POLICY_P09` error (a warning for an agent settings file); an unreadable policy
+  (P10) stays `POLICY_UNAVAILABLE`. `policy.rules` sets each rule's severity, and a `file:` policy can only raise it.
+  The findings are in the report's `policy` object and a new Policy section of the PR comment; without a policy the
+  report and the comment are the ones they were.
+- Org policy rule P11, an agent pull request that changes a protected path. A policy that lists `agents.protected_paths`
+  makes every path of an agent PR's diff that matches one of the globs (a rename counts by both its paths) a P11
+  violation, and one new `POLICY_P11` message names up to 20 paths and the evidence that made the pull request an agent
+  PR, as fixed words. `agents.protected_paths_mode` and `policy.rules.P11` set the severity (`block` by default; a
+  `file:` policy always blocks); a person's pull request is never subject to it, and a missing diff fails closed. The
+  policy's `agents.labels` and `agents.extra_logins` now add to the default agent labels and logins. A pull request
+  that counts as an agent PR only because its evidence could not be read gets one `AGENT_PR_DETECTION_INCOMPLETE`
+  message (`warn`) that says why. CLI runs have no pull request, so P11 never fires there.
+- Org policy rule P07, agent instruction files that disagree. Under a policy, when two instruction files of one
+  directory (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules`, `.claude/rules`, `.github/copilot-instructions.md`
+  and the other instruction kinds) name different package managers (`npm`, `pnpm`, `yarn`, `bun`) or test runners
+  (`vitest`, `jest`) in inline code or shell blocks, each is a P07 violation with its path, its line and the tools as
+  fixed words, and one new `POLICY_P07` message names up to 20 files (`warn` by default; `setup.consistency` and
+  `policy.rules.P07` set the severity, and a `file:` policy can only raise it). Files that could not be read or compared
+  are reported too. Without a policy, or with P07 switched off, nothing is read and the report is the one it was.
 
 ### Changed
 
+- Agent PR detection runs on every pull request run, not only on runs whose report carries `meta`, so the Action reads the
+  pull request's commits (`GET /repos/{owner}/{repo}/pulls/{n}/commits`) on every pull request run. On its own the flag
+  still changes no verdict, message, comment or exit code; under a policy with protected paths, P11 uses it.
+
 ### Security
+
+- A `file:` org policy that the pull request edits is also read at the merge base, from committed git objects only
+  (never the working tree, no symbolic link followed, at most 1 MiB), and its labels, logins and protected paths count
+  together with the pull request's own: a pull request cannot remove a protected path or an agent label by editing the
+  policy file. When the merge-base version cannot be read, an edited policy file makes the pull request an agent PR.
 
 - The Action makes one new read-only GitHub API call, `GET /repos/{owner}/{repo}/pulls/{n}/commits` (at most 3 pages of
   100), and reads the text of the pull request's commit messages in memory for the agent PR detection. A message is
@@ -53,6 +112,16 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   surface A5 and residual risks 22 and 23.
 - No A7 message, and nothing else the report, the comment or the summary carries, names a secret's value, its key or
   any other text of an agent config file: a message holds the shape id, a path in a code span and a line number.
+- The upload is a new network surface of the Action: two `POST` requests to the app origin and one `PUT` to a signed
+  storage URL, only with `upload` not `never` and a job that grants `id-token: write`. Only the redacted `report.json`
+  and `meta.json` leave the job, never file contents, diffs, coverage files or logs; the token and the signed URL are
+  masked and never logged, and nothing the app answers is quoted. `docs/THREAT-MODEL.md` has the new row D7 and residual
+  risk 27: a same-repository pull request runs its code in the job that can mint the upload token.
+- Org policy rule P07 reads the committed text of the agent instruction files (the Markdown instruction kinds) at `HEAD`
+  from git objects, under a policy with P07 in effect, in memory only, with the same caps as check A7 (200 files, 512 KiB
+  each, 16 MiB in all) and a linear reader. The text is never written, logged, uploaded or put in the report: a violation
+  holds only fixed words, the tool words, a path and a line number. `docs/THREAT-MODEL.md` has the new row C6 and
+  residual risk 35.
 
 ## [0.3.0] - 2026-10-26
 

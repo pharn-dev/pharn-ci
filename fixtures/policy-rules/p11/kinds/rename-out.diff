@@ -1,0 +1,4 @@
+diff --git a/migrations/001.sql b/archive/001.sql
+similarity index 100%
+rename from migrations/001.sql
+rename to archive/001.sql

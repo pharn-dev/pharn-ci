@@ -1,0 +1,23 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 3333333..4444444 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -1,2 +1,2 @@
+-# CI
++# CI for every pull request
+ name: ci
+diff --git a/.pharn/ci.yml b/.pharn/ci.yml
+index 5555555..6666666 100644
+--- a/.pharn/ci.yml
++++ b/.pharn/ci.yml
+@@ -1,2 +1,2 @@
+-# pharn-ci config
++# pharn-ci config for this repository
+ coverage:
+diff --git a/policy/org.json b/policy/org.json
+index 7777777..8888888 100644
+--- a/policy/org.json
++++ b/policy/org.json
+@@ -1 +1 @@
+-{"version": 1}
++{ "version": 1 }

@@ -12,14 +12,17 @@ coordinated disclosure of any vulnerability in this repository.
 - **The GitHub Action** (`action.yml`, `packages/action`): runs in a consumer's workflow with their
   `GITHUB_TOKEN`. It makes no network calls except to the GitHub API and, only when the `policy` input is `auto`
   or `required` and the job grants `id-token: write`, one `GET /api/v1/policy` to the `app-url` origin (https only,
-  default `https://pharn.dev`) to read the org policy. It has no telemetry.
+  default `https://pharn.dev`) to read the org policy and, unless the `upload` input is `never` and only when the job
+  grants `id-token: write`, the upload of the run to pharn.dev: two `POST` requests to the same origin and one `PUT`
+  of the redacted `report.json` and `meta.json` to a signed storage URL it names (`upload: never` turns that off). It
+  has no telemetry.
 - **Input parsing** (`packages/core`): lcov, Cobertura XML, unified diffs and the config file are
   untrusted input, parsed by hand-written parsers. A crafted file must not crash, hang or exhaust memory in the
   consumer's CI.
 - **The CLI** (`packages/cli`): reads files and runs `git` in the working directory.
 - **Release integrity**: `packages/action/dist` is committed and must match a build of the sources
   (CI fails if it is stale), and consumers pin exact release tags such as
-  `pharn-dev/pharn-ci@v0.3.0`, or their commit SHA. Tags matching `v*` are never moved or deleted
+  `pharn-dev/pharn-ci@v0.4.0`, or their commit SHA. Tags matching `v*` are never moved or deleted
   (enforced by a ruleset), and releases are cut from verified `main` commits
   ([`docs/RELEASING.md`](./docs/RELEASING.md)). Release tags are unsigned lightweight tags, so the
   full commit SHA, not the tag, is what a consumer can verify.

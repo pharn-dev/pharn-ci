@@ -26,5 +26,5 @@ jobs:
           node-version: 24
       - run: npm ci
       - run: npx jest --coverage --coverageReporters=lcov
-      - uses: pharn-dev/pharn-ci@v0.3.0 # or, better, the tag's full commit SHA
+      - uses: pharn-dev/pharn-ci@v0.4.0 # or, better, the tag's full commit SHA
         timeout-minutes: 5

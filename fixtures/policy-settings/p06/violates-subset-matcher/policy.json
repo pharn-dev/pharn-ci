@@ -1,0 +1,1 @@
+{ "version": 1, "setup": { "required_hooks": [{ "event": "PreToolUse", "matcher": "Write|Edit" }] } }

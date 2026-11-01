@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "tool": {
+    "name": "pharn-ci",
+    "version": "0.0.0-fixture"
+  },
+  "createdAt": "2026-10-26T12:00:00.000Z",
+  "event": "pull_request",
+  "repository": "acme/widgets",
+  "repositoryId": 4242,
+  "prNumber": 7,
+  "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+  "scope": "ci/check",
+  "runId": 123456789,
+  "runAttempt": 1,
+  "actor": "octocat",
+  "prAuthor": {
+    "login": "claude[bot]",
+    "type": "Bot"
+  },
+  "prLabels": [
+    "agent",
+    "ready"
+  ],
+  "coAuthors": [
+    "claude-code noreply@anthropic.com"
+  ],
+  "agentHint": "claude-code",
+  "isAgentPr": true,
+  "commentUrl": "https://github.com/acme/widgets/pull/7#issuecomment-1"
+}

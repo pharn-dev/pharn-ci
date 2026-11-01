@@ -11,7 +11,7 @@ leans on most: tests that actually run the new code, and the setup files that te
 behave. AI-agnostic, fully stateless, no telemetry.
 
 ```yaml
-- uses: pharn-dev/pharn-ci@v0.3.0
+- uses: pharn-dev/pharn-ci@v0.4.0
   with:
     coverage-file: coverage/lcov.info
     threshold: 80
@@ -26,7 +26,7 @@ behave. AI-agnostic, fully stateless, no telemetry.
 
 </div>
 
-> **Status:** pre-1.0; the latest release is `v0.3.0` ([changelog](CHANGELOG.md)). Pin the tag's
+> **Status:** pre-1.0; the latest release is `v0.4.0` ([changelog](CHANGELOG.md)). Pin the tag's
 > full commit SHA for integrity. The report schema is stable within a version (v2 from 0.2.0). Before 1.0, inputs, outputs and message
 > codes are never removed, and a renamed input keeps working under its old name, with a warning, for
 > at least one minor release; defaults change only in a minor release and the changelog says so. The
@@ -44,6 +44,7 @@ behave. AI-agnostic, fully stateless, no telemetry.
 - [Test integrity](#test-integrity)
 - [Secrets in agent configs](#secrets-in-agent-configs)
 - [Org policy](#org-policy)
+- [Upload to pharn.dev (optional)](#upload-to-pharndev-optional)
 - [Action reference](#action-reference)
 - [CLI](#cli)
 - [Config](#config)
@@ -170,7 +171,7 @@ jobs:
           fetch-depth: 0
       # ...set up your toolchain and run tests with lcov or Cobertura output, e.g.:
       - run: npx vitest run --coverage --coverage.reporter=lcov
-      - uses: pharn-dev/pharn-ci@v0.3.0 # or, better, the tag's full commit SHA
+      - uses: pharn-dev/pharn-ci@v0.4.0 # or, better, the tag's full commit SHA
         timeout-minutes: 5
         with:
           coverage-file: coverage/lcov.info
@@ -322,7 +323,7 @@ flowchart LR
 >
 > ---
 >
-> <sub>pharn-ci 0.3.0 · report schema v2 · coverage format lcov</sub>
+> <sub>pharn-ci 0.4.0 · report schema v2 · coverage format lcov</sub>
 
 On PRs from forks the token cannot comment; pharn-ci then warns and uses the job summary only.
 
@@ -412,7 +413,8 @@ Check A7 reads the machine-readable agent config files the inventory finds (`.mc
 `.vscode/mcp.json`, `.claude/settings.json`, `.claude/settings.local.json`, `.codex/config.toml`,
 `.gemini/settings.json`, `opencode.json`, `.aider.conf.yml`, the files under `.claude/hooks/`, and the `.json`, `.yaml`
 and `.yml` files under `.continue/rules/`) and looks for committed secrets. The Markdown kinds (instructions, rules,
-skills, commands) are never read. It reads the committed text at `HEAD` (`git cat-file`), never the working tree and never
+skills, commands) are never read by A7 (P07 reads the instruction kinds under an org policy; see
+[Policy mode: agent instruction files](#policy-mode-agent-instruction-files)). It reads the committed text at `HEAD` (`git cat-file`), never the working tree and never
 a file a symlink points to, with the test-source caps: 200 files, 512 KiB each, 16 MiB in all.
 
 Ten shapes are looked for by their prefix or position: S01 a GitHub token, S02 an Anthropic API key, S03 an OpenAI API key,
@@ -437,8 +439,10 @@ The shapes and the redaction helpers are exported from `@pharn-ci/core` (`findSe
 
 A policy sets one gate for every repository of an organization, so a pull request cannot loosen it. It is a JSON
 document ([`schema/policy.v1.json`](schema/policy.v1.json)) that the pharn.dev app serves, or that a pull request
-carries in a file. This release applies the coverage, setup and test-integrity keys; the other keys are read and
-carried for later.
+carries in a file. This release applies the coverage, setup (including the lists that P02 to P06 check, and
+`setup.consistency` for P07) and test-integrity keys, and `agents.labels`, `agents.extra_logins`,
+`agents.protected_paths` and `agents.protected_paths_mode`; the other `agents` keys, `dependencies` and `flaky` are
+validated but not applied yet.
 
 **What is sent.** With `policy: auto` (the default) or `required`, and only when the job grants `id-token: write`, the
 Action makes one `GET` of `/api/v1/policy?repo=<owner>/<name>` on the pharn.dev app. Only the OIDC token and the repository name
@@ -475,6 +479,104 @@ allowed from a file, and a value lower than the workflow inputs give is ignored;
 symbolic link and names a regular file of at most 1 MiB; anything else fails the step (the CLI exits `2`) with a fixed
 message that never names the path. What the policy does not cover is in [`docs/LIMITS.md`](docs/LIMITS.md).
 
+**Rules.** A policy also runs rules. P01, P08, P09, P10 and P11 read what the check already has (the agent setup
+inventory, the tracked files, the diff, the pull request's metadata and the policy itself). P02 to P06 read the agent
+settings and MCP files, and P07 reads the inline code and shell blocks of the agent instruction files, only in
+[policy mode](#policy-mode): the agent setup inventory never reads a setup file. Each finding is in the report's
+`policy.violations` and in the comment's Policy section. `policy.rules` sets a rule's severity (`block`, `warn`,
+`info` or `off`); a `file:` policy can only raise it.
+
+- **P01**, required agent setup: `setup.require` or `setup.expect` set by the policy and not met; it raises `NO_AGENT_SETUP_FILES` and `AGENT_SETUP_EXPECTED_MISSING` to the rule's severity (`error` by default).
+- **P02**, forbidden permission allowed: an `allow` rule of a settings file is equal to, broader than or inside a `setup.forbidden_permissions` entry, `permissions.defaultMode` is `bypassPermissions` or `auto`, or `permissions.additionalDirectories` is not empty (`POLICY_P02`, `error`; `warn` for `additionalDirectories`).
+- **P03**, required deny missing: a settings directory has no `deny` rule equal to or broader than a `setup.required_permissions_deny` entry (`POLICY_P03`, `error`).
+- **P04**, MCP server not allowlisted: a server of an MCP file, or an `enabledMcpjsonServers` name, is not in `setup.allowed_mcp_servers`, or `enableAllProjectMcpServers` is on (`POLICY_P04`, `error`).
+- **P05**, forbidden MCP server: a server's name, command, command line or URL matches a `setup.forbidden_mcp_servers` entry (`POLICY_P05`, `error`).
+- **P06**, required hook missing: a settings directory has no command hook for a `setup.required_hooks` event whose matcher covers the required one, or `disableAllHooks` is on (`POLICY_P06`, `error`).
+- **P07**, agent instruction files disagree: instruction files in one directory name different package managers or JavaScript test runners (`POLICY_P07`, `warn`; `setup.consistency` sets its severity). See [Policy mode](#policy-mode).
+- **P08**, forbidden file tracked: a tracked file matches a `setup.forbidden_files` pattern (`POLICY_P08`, `error`).
+- **P09**, the pull request loosens the policy it is graded by: it edits the policy file, the config or a workflow that sets a value looser than the policy, or an agent settings or MCP file the policy checks (`POLICY_P09`; `error` when the file fails P02 to P06 or could not be checked, `warn` when it only warns or supplies a required deny rule or hook, `info` when it complies, and `warn` when the files were not read).
+- **P10**, policy unavailable: the policy could not be read (`POLICY_UNAVAILABLE`).
+- **P11**, agent PR changes a protected path: an agent pull request changes a path that `agents.protected_paths` lists (`POLICY_P11`, `error`).
+
+**P11.** `agents.protected_paths` is a list of globs (the syntax of `coverage.exclude`) of the paths an agent pull
+request may not change, and `agents.protected_paths_mode` (`block` or `warn`, default `block`) sets the severity; the
+stricter of it and `policy.rules.P11` applies, and `off` in `policy.rules.P11` alone switches the rule off.
+
+```json
+{
+  "version": 1,
+  "agents": {
+    "protected_paths": [".github/workflows/**", "migrations/**", "**/*.lock"],
+    "protected_paths_mode": "block"
+  }
+}
+```
+
+Every path of the diff that matches a glob is one violation (a rename counts by both its old and its new path), and one
+`POLICY_P11` message names up to 20 of them and the evidence that made the pull request an agent PR, as fixed words,
+never a glob, label or login. A person's pull request is never subject to P11. A missing diff fails closed: an agent
+pull request whose diff is unavailable gets one violation that says so. A `file:` policy always blocks: a lower
+`protected_paths_mode` or `policy.rules.P11` is named in `POLICY_OVERRIDE_IGNORED` and does not apply, and the policy
+file is also read at the merge base so that editing it removes nothing. Dependabot and Renovate count as agent PRs, so
+protecting `package.json` or a lockfile blocks them: do not protect files those bots must update. At most 50 violations
+are listed (the rest are counted in the message). The accept label never touches P11.
+
+### Policy mode
+
+With a policy in force, pharn-ci reads the tracked `.claude/settings.json` and `.claude/settings.local.json` files
+(at the root and in nested directories) and, when the policy lists MCP servers, `.mcp.json`, `.cursor/mcp.json` and
+`.vscode/mcp.json` (the last two are a cross-tool scan), all as committed at HEAD. For P02 to P06 it reads JSON only;
+P07's read of the Markdown instruction files is described in
+[Policy mode: agent instruction files](#policy-mode-agent-instruction-files).
+A tracked symbolic link is never followed.
+
+- **P02** compares each `allow` rule with `setup.forbidden_permissions`; a deny rule never excuses an allow rule. Its fixed
+  checks need no list: `defaultMode` set to `bypassPermissions` or `auto`, and a non-empty `additionalDirectories`.
+- **P03** and **P06** judge each settings directory on its own (a nested `.claude/` gets no fallback from the root) and
+  report a missing deny rule or hook at its `settings.json`. A deny rule counts when it is equal to or broader than the
+  required one, a hook counts when it is a command hook without an `if` condition whose matcher covers the required one,
+  and `disableAllHooks` is one finding in place of the missing hooks.
+- **P04** and **P05** read the MCP servers: P04 also flags `enableAllProjectMcpServers`, and P05 never reads `env` or `headers`.
+
+Rules are compared with rules, never with what a command does. In a rule, `/x` is relative to the settings file's
+project directory and `//x` is absolute, so a policy forbids the system `/etc` with `Edit(//etc/**)`. Nothing read from a
+file leaves the job: a finding carries only the rule id, the path, the line, fixed words and the policy's own text. An
+unparseable file is `POLICY_SETTINGS_INVALID` (never a crash), and a file pharn-ci could not read counts against the
+policy. **P02–P06 are text guards, not a security boundary**: a `Bash(curl:*)` deny does not stop
+`/usr/bin/curl` or `sh -c`, and sandboxing is the boundary. What they miss is in [`docs/LIMITS.md`](docs/LIMITS.md).
+
+---
+
+## Upload to pharn.dev (optional)
+
+When the job grants `id-token: write` and the organization installed the Pharn GitHub App, the Action uploads the run
+to pharn.dev, so the app can keep the history of runs and comment on the pull request itself. The `upload` input
+(`auto` by default, or `never`) is in the [Action reference](#action-reference); it is read only from the workflow,
+never from `.pharn/ci.yml`, so a pull request cannot turn it on or off.
+
+**What is sent.** One gzip archive of two files, `report.json` and `meta.json`, and three requests: one `POST` to ask
+the app for a signed storage URL, one `PUT` of the archive to that URL, and one `POST` to register the run. Only the OIDC
+token (to the app, never to storage) and these two files leave the job. `report.json` is the report with every string
+redacted by the [secret shapes](#secrets-in-agent-configs), every message and signal text cut to 2048 bytes, and the
+test-integrity excerpts (`base` and `head`) dropped. `meta.json` is the run metadata ([`schema/upload-meta.v1.json`](schema/upload-meta.v1.json)).
+Never file contents, diffs, coverage files or logs. The archive is limited to 5 MiB of `report.json` and to the size
+the app names; a larger report is not uploaded and adds one `UPLOAD_TOO_LARGE` warning (the check ran in full).
+
+**What the job sees.** The signed URL and the token are masked and never logged. An upload that succeeds sets the
+`run-url` output and logs one line without a URL. The App then comments on the pull request, so `pharn-ci` posts no
+comment of its own and the job summary and `report.json` still carry the report. An upload fails open: whatever goes
+wrong (a timeout, a non-2xx answer, an unexpected answer, an exception) ends in one warning that names a reason, never
+fails the check and never changes its verdict, except that `UPLOAD_TOO_LARGE` can turn a pass into a warn.
+
+**When nothing is uploaded.** With `upload: never`, without `id-token: write` (a fork pull request never gets it), or
+when the run has no metadata, nothing is sent and the report says `meta.upload.status: skipped`. When the app answers
+that the organization has not installed the Pharn GitHub App for the repository, the PR comment and the job summary
+end with a one-line hint to install it, and nothing else changes.
+
+What this does not cover is in [`docs/LIMITS.md`](docs/LIMITS.md), and the trust boundaries are in
+[`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md). The app comments as `pharn[bot]`; the comment of the Action and the one
+of the App never both appear for one upload.
+
 ---
 
 ## Action reference
@@ -495,6 +597,7 @@ message that never names the path. What the policy does not cover is in [`docs/L
 | `accept-label`      | `pharn/accepted`            | Name of the pull request label a reviewer who is not the PR author applies to sign off `test-integrity: block` findings, at most 50 characters. Read only from this input, never from `.pharn/ci.yml`. See [Accept label](#accept-label) |
 | `policy`            | `auto`                      | Where the [org policy](#org-policy) comes from: `auto` fetches it from the pharn.dev app when the job grants `id-token: write` (only the OIDC token and the repo name are sent; no policy or no token is silent), `never` uses none, `required` fails the check when no policy can be fetched, `file:<path>` reads a policy document from the workspace (the pull request can change it, so it can only tighten; nothing is fetched). Any other value fails the step |
 | `app-url`           | `https://pharn.dev`         | Origin of the pharn.dev app the policy is fetched from. `https` only, with no credentials, path, query or fragment; the OIDC audience stays `pharn.dev` whatever it is |
+| `upload`            | `auto`                      | Whether to [upload the run to pharn.dev](#upload-to-pharndev-optional): `auto` uploads `report.json` and `meta.json` (redacted) when the job grants `id-token: write` and the organization installed the Pharn GitHub App, `never` turns it off. A failed upload never fails the check. Not read from `.pharn/ci.yml`. Any other value fails the step |
 | `comment`           | `true`                      | Post/update one sticky PR comment per workflow and job |
 | `fail-on-threshold` | `true`                      | Fail the step when the verdict is `fail` |
 | `config`            | `.pharn/ci.yml`, may be absent | Config file path; a file named here that does not exist fails the step |
@@ -505,6 +608,7 @@ message that never names the path. What the policy does not cover is in [`docs/L
 | `report-path`   | Path to `report.json` (Report v2)                     |
 | `verdict`       | `pass`, `warn` or `fail`                              |
 | `diff-coverage` | Diff coverage percent, or empty when not computed     |
+| `run-url`       | Page of the uploaded run on pharn.dev; set only when the run was uploaded |
 
 ### Accept label
 
@@ -559,7 +663,7 @@ jobs:
           persist-credentials: false
       # ...set up your toolchain and run tests with lcov or Cobertura output, e.g.:
       - run: npx vitest run --coverage --coverage.reporter=lcov
-      - uses: pharn-dev/pharn-ci@v0.3.0 # or, better, the tag's full commit SHA
+      - uses: pharn-dev/pharn-ci@v0.4.0 # or, better, the tag's full commit SHA
         with:
           coverage-file: coverage/lcov.info
           threshold: 80
@@ -611,7 +715,7 @@ jobs:
         env:
           PR_FILE: ${{ runner.temp }}/pharn-ci-input/pr-number
         run: echo "number=$(tr -dc '0-9' < "$PR_FILE" | head -c 10)" >> "$GITHUB_OUTPUT"
-      - uses: pharn-dev/pharn-ci@v0.3.0 # or, better, the tag's full commit SHA
+      - uses: pharn-dev/pharn-ci@v0.4.0 # or, better, the tag's full commit SHA
         with:
           coverage-file: ${{ runner.temp }}/pharn-ci-input/coverage/lcov.info
           pr-number: ${{ steps.pr.outputs.number }}
@@ -803,14 +907,27 @@ message `code`s, not on text:
 | `AGENT_CONFIG_SECRET_UNSCANNED` | Agent config files were not scanned for secrets: the sources were unavailable (`warn`), or a file was dropped as too large, over a cap or at an unsafe path (`error`), or as binary or missing (`warn`). The text names the files with a reason code each |
 | `POLICY_UNAVAILABLE`            | The [org policy](#org-policy) could not be fetched or used, so the check ran with the workflow inputs and `.pharn/ci.yml` (`warn`; `error` with `policy: required`, which fails the check). The text names the reason, the HTTP status when there is one and the request id the app sent |
 | `POLICY_OVERRIDE_IGNORED`       | Settings looser than the org policy, or not allowed from a policy file, were not applied; the policy's value applies (`warn`). The text names each setting and its layer (up to 20, then a count), with both numbers for a coverage threshold and never a pattern, root or label |
+| `UPLOAD_TOO_LARGE`              | The run was not [uploaded to pharn.dev](#upload-to-pharndev-optional) because its report is larger than the upload limit (`warn`; the check ran in full). The text names the limit in bytes when the app gave one |
+| `POLICY_P08` | Tracked files match a forbidden file pattern of the [org policy](#org-policy) (`error`, or the level the policy sets for P08). The text names up to 20 paths and the count |
+| `POLICY_P09` | The change edits a file the org policy guards: the policy file, the config or a workflow while it sets a value looser than the policy, or an agent settings or MCP file (`error` when the file fails P02 to P06 or could not be checked, `warn` when it only warns or supplies a required deny rule or hook or when the files were not read, `info` when it complies). The text names up to 20 paths; each reason is in `policy.violations` |
+| `POLICY_P11` | An agent pull request changes a path that the org policy's `agents.protected_paths` lists, or could not be checked because the diff, or the policy file at the merge base, could not be read (`error`; `warn` when the policy sets the mode or the rule to `warn`). The text names up to 20 paths and the evidence as fixed words, never a pattern, label or login |
+| `POLICY_P07` | Agent instruction files in the same directory name different package managers or JavaScript test runners, or some of them could not be compared (`warn` by default; `error` when the policy sets `setup.consistency` or the rule to `block`; `info` when it sets `info` or the files could not be read). The text names up to 20 files; each violation has a path, a line and the tools as fixed words, never the file's text |
+| `AGENT_PR_DETECTION_INCOMPLETE` | The pull request counts as an agent PR because its evidence could not be read in full, and the org policy protects paths (`warn`). The text names the reason as one fixed word |
+| `POLICY_P02` | The committed agent settings break org policy rule P02: an allow rule overlaps a forbidden permission, `defaultMode` is `bypassPermissions` or `auto`, or `additionalDirectories` is set (`error`; `warn` for `additionalDirectories`, or the level the policy sets). The text names up to 20 locations as path and line, and the count |
+| `POLICY_P03` | A settings directory lacks a deny rule the org policy requires (`error`, or the level the policy sets for P03). The text names up to 20 locations and the count |
+| `POLICY_P04` | An MCP server is not on the org policy's allowlist, or `enableAllProjectMcpServers` is set (`error`, or the level the policy sets for P04). The text names up to 20 locations and the count |
+| `POLICY_P05` | An MCP server matches an entry the org policy forbids, by name, command or URL (`error`, or the level the policy sets for P05). The text names up to 20 locations and the count |
+| `POLICY_P06` | A settings directory lacks a command hook the org policy requires, or `disableAllHooks` is set (`error`, or the level the policy sets for P06). The text names up to 20 locations and the count |
+| `POLICY_SETTINGS_INVALID` | P02 to P06 could not fully use an agent settings or MCP file, or did not run: the files were not read, a file was dropped, unparseable or has an entry the grammar does not know (`warn`; `error` for a file pharn-ci could not read or a problem a required list depends on). The text names up to 20 problems as path, line and reason, never file text |
 
 ### Agent PRs
 
 In the Action, `meta.isAgentPr` says whether the pull request counts as an agent PR, and `meta.agentHint`,
 `meta.prAuthor`, `meta.prLabels` and `meta.coAuthors` carry what it was read from. The detection is metadata only: it
 reads the pull request's author, labels and commits (their authors, committers and `Co-authored-by` trailers), never a
-file or the diff, and it changes no verdict, message, comment or exit code. A pull request counts as an agent PR when
-any of this holds:
+file or the diff. Detection runs on every pull request run. On its own the flag changes no verdict, message, comment or
+exit code; under an org policy with `agents.protected_paths`, rule P11 uses it (see [Org policy](#org-policy)). A pull
+request counts as an agent PR when any of this holds:
 
 - its author is a bot (type `Bot`, or a login ending in `[bot]`, Dependabot included), a known agent or a login you
   listed (`author-bot`, `author-known-agent`, `author-extra-login`);
@@ -820,10 +937,13 @@ any of this holds:
 - it carries one of the default labels `agent` or `ai-generated` (`label`).
 
 The known agents are Claude Code, Copilot, Codex, Devin, Cursor, Gemini and Jules. Evidence that cannot be read in full
-counts as an agent PR (fail closed): an unknown author, commits that cannot be listed, and a pull request of more than
-250 commits or whose commit count does not match the list. Only trailers of known agents are recorded, as a hint and an
-address; a human co-author never is. A run with no pull request records `isAgentPr: false`, and the CLI does not set the
-field. The lists cannot be changed from `.pharn/ci.yml` or an input. See
+counts as an agent PR (fail closed): an unknown author, commits that cannot be listed, a pull request of more than
+250 commits or whose commit count does not match the list, and an edited policy file whose base cannot be read (a
+`file:` policy that the pull request edits and that cannot be read at the merge base). Only trailers of known agents are
+recorded, as a hint and an address; a human co-author never is. A run with no pull request records `isAgentPr: false`,
+and the CLI does not set the field. The org policy's `agents.labels` and `agents.extra_logins` add to the defaults (for
+a `file:` policy that the pull request edits, the lists at the merge base and at head both count). Only the org policy
+adds to the lists; `.pharn/ci.yml` and the inputs cannot change them. See
 [`docs/LIMITS.md`](docs/LIMITS.md) §9 and [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) (A5).
 
 Within v1, fields are only added and codes are never renamed or removed.
@@ -876,9 +996,12 @@ inclusive threshold (79.995% fails at 80); which known agent setup files are tra
   lower diff coverage.
 - **Files missing from the coverage report are invisible.** Configure your coverage tool to include
   all source files if untested files should count.
-- **The inventory is not a review.** pharn-ci lists agent setup files; check A7 reads only the
-  machine-readable kinds, for committed secrets (never the Markdown kinds), and no file is reviewed for
-  what it tells an agent. Their contents stay in the job: never printed, never written, never sent. The inventory is
+- **The inventory is not a review.** pharn-ci lists agent setup files (the inventory reads none of them); check A7 reads only the
+  machine-readable kinds, for committed secrets (never the Markdown kinds), and policy mode reads the agent settings and
+  MCP files for the org policy rules; no file is reviewed for
+  what it tells an agent. Under an org policy, P07 reads the inline code and shell blocks of the instruction files for
+  package manager and test runner commands and nothing else of them. Their contents stay in the job: never printed,
+  never written, never sent. The inventory is
   informational (`NO_AGENT_SETUP_FILES` is `info`) unless `require-agent-setup` or `setup.require`
   is on, which makes it an `error` and the verdict `fail`. An expected tool counts as present when
   any setup kind it reads exists (`AGENTS.md` covers several tools).
@@ -889,6 +1012,22 @@ inclusive threshold (79.995% fails at 80); which known agent setup files are tra
   alters its test setup can produce a favorable one.
 - **Exclusions come from the PR.** The config and workflow a PR carries decide which of its files
   are left out of the measurement ([Excluding files](#excluding-files)).
+- **P11 guards paths, not authors.** It sees only agent PRs that identify themselves (by author, commits, trailers or
+  labels) and matches paths, not content: an agent PR that does not identify itself is judged as a person's.
+
+### Policy mode: agent instruction files
+
+Under an org policy with P07 in effect (`policy: auto`, `required` or `file:<path>`, and the CLI's `--policy-file`),
+pharn-ci reads the committed text of the agent instruction files (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules`,
+`.claude/rules`, `.github/copilot-instructions.md` and the other instruction kinds of the inventory) in directories that
+hold at least two of them. It reads them at `HEAD` (`git cat-file`), never the working tree and never a file a symlink
+points to, with the same caps as A7: 200 files, 512 KiB each, 16 MiB in all. Nothing is read without such a policy.
+
+P07 takes only the package managers (`npm`, `pnpm`, `yarn`, `bun`) and the test runners (`vitest`, `jest`) that a file names in an
+inline code span or a shell block, and reports when two files of one directory name different ones. Nothing it reads is
+uploaded or printed: the report holds the rule id, the path, the line number and the tools as fixed words. P07 is a
+heuristic at `warn`: prose is never read, and what it misses is in [`docs/LIMITS.md`](docs/LIMITS.md). The Action reads
+the files only when the diff came from the local checkout.
 
 ---
 
@@ -899,7 +1038,9 @@ that:
 
 - **Stateless.** No backend of its own, no telemetry, no network calls except the GitHub API inside the
   Action and, only with `policy` set to `auto` or `required` and an OIDC token granted, one `GET` of the
-  pharn.dev policy endpoint that sends the OIDC token and the repository name ([Org policy](#org-policy)).
+  pharn.dev policy endpoint that sends the OIDC token and the repository name ([Org policy](#org-policy)), and,
+  with `upload` not set to `never` and an OIDC token granted, the redacted `report.json` and `meta.json` of the run to
+  pharn.dev ([Upload](#upload-to-pharndev-optional)).
   What it reads, what it sends to your GitHub and what it stores is listed in
   [Data handling](SECURITY.md#data-handling).
 - **Small token footprint.** `contents: read` plus `pull-requests: write`. It reads the compare API

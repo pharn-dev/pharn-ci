@@ -82,8 +82,8 @@ describe("examples/workflows/: the shape of each example", () => {
       const uses = lines
         .map((line, index) => ({ index, match: USES_LINE.exec(line) }))
         .filter((entry): entry is { index: number; match: RegExpExecArray } => entry.match !== null);
-      const pharn = uses.filter(({ match }) => refOf(match[1] ?? "") === "pharn-dev/pharn-ci@v0.3.0");
-      expect(pharn, `${name}: exactly one pharn-dev/pharn-ci@v0.3.0 step`).toHaveLength(1);
+      const pharn = uses.filter(({ match }) => refOf(match[1] ?? "") === "pharn-dev/pharn-ci@v0.4.0");
+      expect(pharn, `${name}: exactly one pharn-dev/pharn-ci@v0.4.0 step`).toHaveLength(1);
       const step = stepOf(lines, pharn[0]?.index ?? -1);
       expect(
         step.some((line) => /^\s*(?:-\s+)?timeout-minutes:\s*5\s*$/.test(line)),

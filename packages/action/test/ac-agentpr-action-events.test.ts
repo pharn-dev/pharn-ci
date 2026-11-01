@@ -69,7 +69,9 @@ describe("action: agent PR detection on other events and unusual authors", { tim
     expect(commitCalls).toEqual([]);
   });
 
-  it("AC-13: a run without meta (no runId) makes no commits call and records no isAgentPr, unlike the same run with meta", async () => {
+  // E3 item 24a part B (P11): detection now runs inside check() on every pull request run, so the run without meta also
+  // makes the commits call. It still records no isAgentPr: there is no meta, and no isAgentPr in the text.
+  it("AC-13: a run without meta (no runId) makes the commits call on every pull request run and records no isAgentPr, like the same run with meta", async () => {
     const withMeta = await prRun(PULL_REQUEST);
     expect(withMeta.report.meta.isAgentPr, "the same pull request with meta is detected").toBe(false);
     expect(withMeta.commitCalls).toEqual([[7, 1]]);
@@ -81,7 +83,7 @@ describe("action: agent PR detection on other events and unusual authors", { tim
       ...noRunId,
       payload: { repository: REPOSITORY, pull_request: PULL_REQUEST },
     });
-    expect(withoutMeta.commitCalls).toEqual([]);
+    expect(withoutMeta.commitCalls).toEqual([[7, 1]]);
     expect(withoutMeta.report.meta).toBeUndefined();
     expect(withoutMeta.text).not.toContain("isAgentPr");
   });

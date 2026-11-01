@@ -24,6 +24,24 @@ const SECRET_CODES = [
   // Re-pinned for E3 item 20 (the org policy): the same appended text also names these two codes.
   "POLICY_OVERRIDE_IGNORED",
   "POLICY_UNAVAILABLE",
+  // Re-pinned for E3 item 21 (the run upload): the same appended text also names this code.
+  "UPLOAD_TOO_LARGE",
+  // Re-pinned for E3 item 22 (policy rules): the same appended text also names these two rule codes.
+  "POLICY_P08",
+  "POLICY_P09",
+  // E3 item 24a part B (P11): the same appended text also names these two codes. This test would stay green without them
+  // (it uses toContain); adding them only states more.
+  "POLICY_P11",
+  "AGENT_PR_DETECTION_INCOMPLETE",
+  // Re-pinned for E3 item 23 (policy settings): the same appended text also names these six codes.
+  "POLICY_P02",
+  "POLICY_P03",
+  "POLICY_P04",
+  "POLICY_P05",
+  "POLICY_P06",
+  "POLICY_SETTINGS_INVALID",
+  // E3 item 24 (P07): the same appended text also names this rule code. This only states more (toContain).
+  "POLICY_P07",
 ];
 
 // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property: the four lines it inserts after the

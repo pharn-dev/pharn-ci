@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 2,
+  "tool": {
+    "name": "pharn-ci",
+    "version": "0.0.0-fixture"
+  },
+  "verdict": "fail",
+  "diffCoverage": {
+    "format": "lcov",
+    "percent": 71.43,
+    "threshold": 80,
+    "coveredLines": 5,
+    "coverableLines": 7,
+    "files": [
+      {
+        "path": "src/math.ts",
+        "percent": 75,
+        "coveredLines": 3,
+        "coverableLines": 4,
+        "uncoveredLines": [
+          10
+        ]
+      },
+      {
+        "path": "src/new.ts",
+        "percent": 50,
+        "coveredLines": 1,
+        "coverableLines": 2,
+        "uncoveredLines": [
+          5
+        ]
+      },
+      {
+        "path": "src/utils/new-name.ts",
+        "percent": 100,
+        "coveredLines": 1,
+        "coverableLines": 1,
+        "uncoveredLines": []
+      }
+    ]
+  },
+  "agentSetup": {
+    "files": [
+      {
+        "path": ".claude/settings.json",
+        "kind": "claude-settings"
+      },
+      {
+        "path": "AGENTS.md",
+        "kind": "agents-md"
+      },
+      {
+        "path": "CLAUDE.md",
+        "kind": "claude-md"
+      }
+    ],
+    "summary": {
+      "byKind": {
+        "agents-md": 1,
+        "claude-md": 1,
+        "claude-settings": 1
+      },
+      "tools": [
+        "amp",
+        "claude-code",
+        "codex",
+        "jules",
+        "opencode",
+        "zed"
+      ]
+    }
+  },
+  "messages": [
+    {
+      "level": "error",
+      "code": "DIFF_COVERAGE_BELOW_THRESHOLD",
+      "text": "Diff coverage 71.43% is below the threshold of 80%."
+    },
+    {
+      "level": "warn",
+      "code": "TEST_INTEGRITY_TI03",
+      "text": "This change skips tests or marks them as expected to fail: `src/math.test.ts`. Check that each skip was meant."
+    },
+    {
+      "level": "info",
+      "code": "COVERAGE_PATHS_PARTIALLY_UNMATCHED",
+      "text": "1 file path in the coverage report is not a tracked file in the repository; its coverage is not used."
+    }
+  ],
+  "testIntegrity": {
+    "mode": "warn",
+    "source": "default",
+    "verdict": "warn",
+    "signals": [
+      {
+        "id": "TI03",
+        "severity": "warn",
+        "path": "src/math.test.ts",
+        "line": 12,
+        "detail": "it.skip(\"adds two numbers\") was added",
+        "base": "it(\"adds two numbers\", () => {",
+        "head": "it.skip(\"adds two numbers\", () => {"
+      },
+      {
+        "id": "TI10",
+        "severity": "info",
+        "path": "package.json",
+        "line": null,
+        "detail": "a test script was changed"
+      }
+    ],
+    "languages": [
+      "ts"
+    ]
+  },
+  "meta": {
+    "event": "pull_request",
+    "repository": "acme/widgets",
+    "repositoryId": 4242,
+    "prNumber": 7,
+    "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+    "scope": "ci/check",
+    "runId": 123456789,
+    "runAttempt": 1,
+    "actor": "octocat",
+    "prAuthor": {
+      "login": "claude[bot]",
+      "type": "Bot"
+    },
+    "prLabels": [
+      "agent",
+      "ready"
+    ],
+    "coAuthors": [
+      "claude-code noreply@anthropic.com"
+    ],
+    "agentHint": "claude-code",
+    "isAgentPr": true,
+    "upload": {
+      "status": "skipped"
+    }
+  }
+}

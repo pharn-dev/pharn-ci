@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "fetcher": { "command": "/usr/bin/curl" }
+  }
+}

@@ -158,7 +158,11 @@ describe("org policy documentation and metadata", () => {
     expect(inputs.has("app-url")).toBe(true);
     expect(defaultOf(inputs.get("policy"))).toBe("auto");
     expect(defaultOf(inputs.get("app-url"))).toBe("https://pharn.dev");
-    expect([...yamlSection(actionYml, "outputs").keys()].sort()).toEqual(OUTPUTS_AT_BASE);
+    // Re-pinned for the run upload (E3 item 21), which adds exactly the `run-url` output: it must be declared, and with
+    // it set aside the outputs are the base's.
+    const outputsNow = [...yamlSection(actionYml, "outputs").keys()].sort();
+    expect(outputsNow).toContain("run-url");
+    expect(outputsNow.filter((name) => name !== "run-url")).toEqual(OUTPUTS_AT_BASE);
 
     // README.
     const readme = read("README.md");
@@ -256,7 +260,7 @@ describe("org policy documentation and metadata", () => {
     // CHANGELOG: one Unreleased line for the org policy.
     const unreleased = between(
       read("CHANGELOG.md").split("\n"),
-      (l) => l.startsWith("## [Unreleased]"),
+      (l) => l.startsWith("## [0.4.0] - 2026-10-27"),
       (l) => l.startsWith("## ["),
     );
     expect(bullets(unreleased).filter((b) => b.includes("OIDC") && /policy/.test(b))).toHaveLength(1);

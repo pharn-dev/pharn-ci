@@ -2,21 +2,26 @@ import { parseArgs } from "node:util";
 import {
   type AgentConfigSources,
   agentConfigSecretPaths,
+  agentInstructionPaths,
   applyPolicy,
   type CheckInput,
   COVERAGE_FORMAT_SELECTIONS,
   ConfigError,
   check,
+  consistencySeverity,
   type DiffFile,
   type DirEntry,
   gitDiffArgs,
   type InputErrorText,
   type PharnConfig,
+  type PolicySettingsSources,
   type PythonIndexRun,
   type PythonSourceFile,
   type PythonTestIndex,
   parseConfig,
   parseLsTreeSizes,
+  parseLsTreeSymlinks,
+  policySettingsPaths,
   type RawInputs,
   readDiffChunks,
   renderMarkdown,
@@ -37,6 +42,7 @@ import {
   readCoverageFiles,
   readDiscoveredCoverage,
   readPolicyFile,
+  readPolicySettingsSources,
   readTestSources,
 } from "@pharn-ci/node-io";
 
@@ -356,13 +362,57 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     }
   }
 
-  // File sizes in HEAD, so an empty agent setup file can be reported. Optional: without them the check still runs.
+  // The committed text of the agent instruction files, for org-policy rule P07, always at HEAD and in a call of its own.
+  // Only under a policy with P07 in effect (--policy-file) and with a directory that holds two instruction files.
+  let agentInstructionSources: AgentConfigSources | undefined;
+  if (deps.gitBatch !== undefined && policy !== undefined && consistencySeverity(policy).severity !== null) {
+    const instructionPaths = agentInstructionPaths(scanAgentSetup(repoFiles));
+    if (instructionPaths.length > 0) {
+      agentInstructionSources = await readAgentConfigSources({ gitBatch: deps.gitBatch }, instructionPaths);
+      if ("unavailable" in agentInstructionSources) {
+        deps.stderr(
+          `pharn-ci: could not read the agent instruction files from git, so P07 did not compare them: ${agentInstructionSources.unavailable}\n`,
+        );
+      }
+    }
+  }
+
+  // File sizes in HEAD, so an empty agent setup file can be reported. Optional: without them the check still runs. The
+  // raw text is kept: policy mode tells the tracked symbolic links from it.
   let repoFileBytes: Map<string, number> | undefined;
+  let lsTreeText: string | null = null;
   try {
-    repoFileBytes = parseLsTreeSizes(await deps.git(["ls-tree", "-r", "-l", "-z", "--full-tree", "HEAD"]));
+    lsTreeText = await deps.git(["ls-tree", "-r", "-l", "-z", "--full-tree", "HEAD"]);
+    repoFileBytes = parseLsTreeSizes(lsTreeText);
   } catch (err) {
+    lsTreeText = null;
     const firstLine = errorMessage(err).trim().split("\n")[0] ?? "";
     deps.stderr(`pharn-ci: git ls-tree failed, so empty agent setup files are not reported: ${firstLine}\n`);
+  }
+
+  // E3 item 23 (policy settings): with a policy in force, the committed agent settings and MCP files, always at HEAD,
+  // for the rules P02 to P06. Nothing is read without a policy or a batch git runner.
+  let policySettingsSources: PolicySettingsSources | undefined;
+  if (
+    deps.gitBatch !== undefined &&
+    policy !== undefined &&
+    (policy.source === "app" || policy.source === "file") &&
+    policy.document !== null
+  ) {
+    const paths = policySettingsPaths(repoFiles, policy.document);
+    policySettingsSources =
+      paths.length === 0
+        ? { files: [], dropped: [] }
+        : await readPolicySettingsSources(
+            { gitBatch: deps.gitBatch },
+            paths,
+            lsTreeText === null ? null : parseLsTreeSymlinks(lsTreeText),
+          );
+    if ("unavailable" in policySettingsSources) {
+      deps.stderr(
+        `pharn-ci: could not read the agent settings files from git, so they are not checked against the org policy: ${policySettingsSources.unavailable}\n`,
+      );
+    }
   }
 
   const input: CheckInput = {
@@ -374,6 +424,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     repoFiles,
     ...(repoFileBytes === undefined ? {} : { repoFileBytes }),
     ...(agentConfigSources === undefined ? {} : { agentConfigSources }),
+    ...(agentInstructionSources === undefined ? {} : { agentInstructionSources }),
     exclude,
     requireAgentSetup,
     ...(expectAgentSetup === undefined ? {} : { expectAgentSetup }),
@@ -384,6 +435,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     // Absolute: core makes it repo-relative against repoRoot, or finds it outside the repo.
     ...(values.config === undefined ? {} : { configPath: deps.resolvePath(deps.cwd, values.config) }),
     ...(policy === undefined ? {} : { policy }),
+    ...(policySettingsSources === undefined ? {} : { policySettingsSources }),
     ...(application === undefined || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored }),
     ...(application?.signalOverrides === undefined ? {} : { signalOverrides: application.signalOverrides }),
   };

@@ -1,20 +1,27 @@
 import {
   type AgentConfigSources,
   agentConfigSecretPaths,
+  agentInstructionPaths,
   applyPolicy,
   type CheckInput,
   check,
+  consistencySeverity,
   type DirEntry,
   detectAgentPr,
   gitDiffArgs,
   type InputErrorText,
   type PharnConfig,
+  type PolicyFileBase,
+  type PolicySettingsSources,
   type PythonIndexRun,
   type PythonSourceFile,
   parseConfig,
   parseLsTreeSizes,
+  parseLsTreeSymlinks,
+  policySettingsPaths,
   type RawInputs,
   type Report,
+  type ResolvedPolicy,
   readDiffChunks,
   renderMarkdown,
   resolveInputs,
@@ -25,7 +32,7 @@ import {
   unavailableTestSources,
   VERSION,
   validateAcceptLabel,
-  withAgentPrMeta,
+  withUploadOutcome,
 } from "@pharn-ci/core";
 import {
   gitChunks,
@@ -35,6 +42,8 @@ import {
   readAgentConfigSources,
   readCoverageFiles,
   readDiscoveredCoverage,
+  readPolicyFileAt,
+  readPolicySettingsSources,
   readTestSources,
 } from "@pharn-ci/node-io";
 import { applyAcceptLabel } from "./accept-label.js";
@@ -44,6 +53,8 @@ import { parsePolicyInput } from "./policy-input.js";
 import { obtainPolicy } from "./policy-source.js";
 import { type PrNumberTarget, parsePrNumberInputs, resolvePrNumberTarget } from "./pr-number.js";
 import { runMeta } from "./run-meta.js";
+import { runUpload } from "./upload.js";
+import { parseUploadInput } from "./upload-input.js";
 
 /** Identifies the single sticky comment pharn-ci owns on a PR. */
 export const COMMENT_MARKER = "<!-- pharn-ci -->";
@@ -66,6 +77,8 @@ export interface IssueComment {
   id: number;
   body?: string | null | undefined;
   user?: { login: string } | null | undefined;
+  /** The comment's page on GitHub, as the API returns it; untrusted, so the upload checks it before using it. */
+  html_url?: string | null | undefined;
 }
 
 /** The slice of the GitHub API the action uses. */
@@ -273,6 +286,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   // Also validated before the config is read or anything is fetched: the errors are fixed texts, never the values.
   const policyChoice = parsePolicyInput(input("policy"));
   const appOrigin = parseAppUrl(input("app-url"));
+  const uploadChoice = parseUploadInput(input("upload"));
   const config = await loadConfig(input("config") || undefined, deps);
 
   // An empty input is not given: the config, then the default, applies.
@@ -358,6 +372,9 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const { diff, localBase } = await getDiff(input("base-ref"), deps, target, input("config"));
   const testSources = await gatherTestSources(deps, { diff, localBase, target, testIntegrityMode });
   const agentConfigSources = await gatherAgentConfigSources(deps, { repoFiles, diff, target });
+  const policySettingsSources = await gatherPolicySettingsSources(deps, { repoFiles, diff, target, policy, lsTree });
+  // The agent instruction files (rule P07), in batch calls of their own, so check A7 never sees Markdown.
+  const agentInstructionSources = await gatherAgentInstructionSources(deps, { repoFiles, diff, target, policy });
   // The Python test files of the sources, indexed by one interpreter run; nothing runs for JS/TS-only changes.
   const pythonTestIndex =
     testSources === undefined
@@ -367,6 +384,27 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     deps.info(
       `pharn-ci: the Python test index is unavailable (${pythonTestIndex.reason}), so .py test files are not compared`,
     );
+  }
+
+  // The agent PR facts are gathered on every run, before check(): with them check() detects an agent PR once and uses it
+  // for the agent fields of `meta` and for the org policy's protected paths (rule P11). The org policy's lists add to
+  // the default lists inside check(); no input and no config entry changes them. The log line below uses the defaults.
+  const agentPrFacts = await gatherAgentPrFacts(deps, target);
+  const defaultDetection = detectAgentPr(agentPrFacts);
+  if (defaultDetection.incomplete !== null) {
+    deps.info(
+      `pharn-ci: agent PR detection could not read all of the pull request's evidence (${defaultDetection.incomplete}), so it counts as an agent PR`,
+    );
+  }
+  // A `file:` policy the pull request carries is also read at the merge base, from committed objects: the pull request
+  // cannot remove an agent label, login or protected path by editing the file. Only a local diff and a git batch reader
+  // make that possible; otherwise a file policy is unreadable there and core decides from the diff whether that matters.
+  let policyFileBase: PolicyFileBase | undefined;
+  if (policy?.source === "file") {
+    policyFileBase =
+      localBase !== undefined && deps.gitBatch !== undefined && policy.path !== undefined
+        ? await readPolicyFileAt({ gitBatch: deps.gitBatch }, { rev: localBase, path: policy.path })
+        : { kind: "unreadable" };
   }
 
   const checkInput: CheckInput = {
@@ -383,12 +421,16 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     ...(testIntegrityMode === undefined ? {} : { testIntegrityMode }),
     ...(testSources === undefined ? {} : { testSources }),
     ...(agentConfigSources === undefined ? {} : { agentConfigSources }),
+    ...(agentInstructionSources === undefined ? {} : { agentInstructionSources }),
     ...(pythonTestIndex === undefined ? {} : { pythonTestIndex }),
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
     ...(input("config") === "" ? {} : { configPath: input("config") }),
     ...(policy === undefined ? {} : { policy }),
+    ...(policySettingsSources === undefined ? {} : { policySettingsSources }),
     ...(application === undefined || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored }),
     ...(application?.signalOverrides === undefined ? {} : { signalOverrides: application.signalOverrides }),
+    agentPrFacts,
+    ...(policyFileBase === undefined ? {} : { policyFileBase }),
   };
   const meta = runMeta(deps.context, { baseRef: input("base-ref"), ...(target === undefined ? {} : { target }) });
   if (meta === undefined) deps.info("run metadata is incomplete, so report.json carries no meta");
@@ -405,23 +447,29 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     else deps.warning("pharn-ci: the org policy's accept label is not usable here, so the accept-label input applies");
   }
   const labelled = await applyAcceptLabel(deps, checked, label, signoffNumber);
-  // Agent PR detection is metadata only: it needs the report's `meta`, and the verdict, the messages, the summary and the
-  // comment never read what it adds. It uses the default lists only; no input and no config entry changes them.
+  // The agent PR detection ran inside check() (see the facts above): its agent fields are already in `meta`.
   let report = labelled;
-  if (labelled.meta !== undefined) {
-    const facts = await gatherAgentPrFacts(deps, target);
-    const detection = detectAgentPr(facts);
-    if (detection.incomplete !== null) {
-      deps.info(
-        `pharn-ci: agent PR detection could not read all of the pull request's evidence (${detection.incomplete}), so it counts as an agent PR`,
-      );
-    }
-    report = withAgentPrMeta(labelled, detection, facts);
-  }
+  // The upload is the last thing that reads the report before it is rendered and written: its outcome is part of it.
+  // It never throws and never changes the step's pass or fail (a too-large report only adds a warning).
+  const issueNumber = pr?.number ?? target?.number;
+  const scopeLine = commentScopeLine(deps.context.workflow ?? "", deps.context.job ?? "");
+  const commentNumber = comment ? issueNumber : undefined;
+  const outcome = await runUpload(deps, {
+    choice: uploadChoice,
+    report,
+    appOrigin,
+    ...(target !== undefined && headSha !== undefined ? { prHeadShaExpected: headSha } : {}),
+    ...(commentNumber === undefined ? {} : { findOwnComment: () => findOwnComment(deps, commentNumber, scopeLine) }),
+  });
+  report = withUploadOutcome(report, outcome);
+  // Only a run that found the org has not installed the app gets the install hint.
+  const render =
+    outcome.status === "skipped" && outcome.reason === "no-installation" ? { render: { appHint: true } } : {};
   const summary = fitMarkdown(report, {
     prefix: "",
     note: SUMMARY_TRUNCATED_NOTE,
     fits: (text) => utf8Bytes(text) <= MAX_SUMMARY_BYTES,
+    ...render,
   });
 
   const reportPath = deps.resolvePath(deps.tempDir, "pharn-ci", "report.json");
@@ -429,16 +477,19 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   deps.setOutput("report-path", reportPath);
   deps.setOutput("verdict", report.verdict);
   deps.setOutput("diff-coverage", report.diffCoverage?.percent?.toString() ?? "");
+  if (outcome.status === "ok") deps.setOutput("run-url", outcome.runUrl);
 
   await deps.writeSummary(summary).catch((err: unknown) => deps.warning(`could not write job summary: ${String(err)}`));
 
-  const issueNumber = pr?.number ?? target?.number;
-  if (comment && issueNumber !== undefined) {
-    const scopeLine = commentScopeLine(deps.context.workflow ?? "", deps.context.job ?? "");
+  if (outcome.status === "ok") {
+    // The app comments on the pull request for an uploaded run; a second comment would only repeat it.
+    deps.info("pharn-ci: the Pharn GitHub App comments on the pull request for this run, so pharn-ci posts no comment");
+  } else if (comment && issueNumber !== undefined) {
     const body = fitMarkdown(report, {
       prefix: `${COMMENT_MARKER}\n${scopeLine}\n`,
       note: TRUNCATED_NOTE,
       fits: (text) => text.length <= MAX_COMMENT_LENGTH,
+      ...render,
     });
     await upsertComment(deps, issueNumber, body, scopeLine);
   }
@@ -545,6 +596,98 @@ async function gatherAgentConfigSources(
   if ("unavailable" in sources) {
     deps.info(
       `pharn-ci: could not read the agent config files from git, so they are not scanned for secrets: ${sources.unavailable}`,
+    );
+  }
+  return sources;
+}
+
+/**
+ * The committed agent settings and MCP files for policy mode (E3 item 23, policy settings), read only when a policy is in
+ * force and, as for the secret scan, only when the checkout is the pull request head: a diff taken from local git. Item
+ * 26's three guards come first and make no git call; each leaves the sources unavailable with a fixed sentence.
+ */
+async function gatherPolicySettingsSources(
+  deps: ActionDeps,
+  from: {
+    repoFiles: readonly string[];
+    diff: CheckInput["diff"];
+    target: PrNumberTarget | undefined;
+    policy: ResolvedPolicy | undefined;
+    lsTree: string | null;
+  },
+): Promise<PolicySettingsSources | undefined> {
+  const { policy } = from;
+  if (deps.gitBatch === undefined) return undefined;
+  if (policy === undefined || (policy.source !== "app" && policy.source !== "file") || policy.document === null) {
+    return undefined;
+  }
+  if (from.target) {
+    return {
+      unavailable:
+        "pr-number mode: the checkout is not the pull request head, so its committed agent settings files were not read",
+    };
+  }
+  if ("text" in from.diff) {
+    return {
+      unavailable: "the diff came from the GitHub compare API, so the checkout may not be the pull request head",
+    };
+  }
+  if ("unavailable" in from.diff) {
+    return { unavailable: "the diff is unavailable, so the checkout may not be the pull request head" };
+  }
+  const paths = policySettingsPaths(from.repoFiles, policy.document);
+  if (paths.length === 0) return { files: [], dropped: [] };
+  const sources = await readPolicySettingsSources(
+    { gitBatch: deps.gitBatch },
+    paths,
+    from.lsTree === null ? null : parseLsTreeSymlinks(from.lsTree),
+  );
+  if ("unavailable" in sources) {
+    deps.info(
+      `pharn-ci: could not read the agent settings files from git, so they are not checked against the org policy: ${sources.unavailable}`,
+    );
+  }
+  return sources;
+}
+
+/**
+ * The committed text of the agent instruction files, for org-policy rule P07; undefined when nothing is to be compared:
+ * no batch git runner, no policy with P07 in effect, or no directory with two instruction files. Like the agent config
+ * files, they are read at HEAD only from a diff parsed from local git; otherwise the sources are unavailable with a fixed
+ * sentence, and no git call, no GitHub API call and no log line is made. The paths go in batch calls of their own, and
+ * nothing read is logged.
+ */
+async function gatherAgentInstructionSources(
+  deps: ActionDeps,
+  from: {
+    repoFiles: readonly string[];
+    diff: CheckInput["diff"];
+    target: PrNumberTarget | undefined;
+    policy: ResolvedPolicy | undefined;
+  },
+): Promise<AgentConfigSources | undefined> {
+  if (deps.gitBatch === undefined) return undefined;
+  if (from.policy === undefined || consistencySeverity(from.policy).severity === null) return undefined;
+  const paths = agentInstructionPaths(scanAgentSetup(from.repoFiles));
+  if (paths.length === 0) return undefined;
+  if (from.target) {
+    return {
+      unavailable:
+        "pr-number mode: the checkout is not the pull request head, so its committed agent instruction files were not read",
+    };
+  }
+  if ("text" in from.diff) {
+    return {
+      unavailable: "the diff came from the GitHub compare API, so the checkout may not be the pull request head",
+    };
+  }
+  if ("unavailable" in from.diff) {
+    return { unavailable: "the diff is unavailable, so the checkout may not be the pull request head" };
+  }
+  const sources = await readAgentConfigSources({ gitBatch: deps.gitBatch }, paths);
+  if ("unavailable" in sources) {
+    deps.info(
+      `pharn-ci: could not read the agent instruction files from git, so P07 did not compare them: ${sources.unavailable}`,
     );
   }
   return sources;
@@ -670,14 +813,14 @@ const utf8Bytes = (text: string): number => Buffer.byteLength(text, "utf8");
  */
 export function fitMarkdown(
   report: Report,
-  fit: { prefix: string; note: string; fits(text: string): boolean },
+  fit: { prefix: string; note: string; fits(text: string): boolean; render?: { appHint?: boolean } },
 ): string {
-  const full = fit.prefix + renderMarkdown(report);
+  const full = fit.prefix + renderMarkdown(report, { ...fit.render });
   if (fit.fits(full)) return full;
 
   let minimal = "";
   for (const maxRows of FALLBACK_ROWS) {
-    minimal = fit.prefix + renderMarkdown(report, { maxRows });
+    minimal = fit.prefix + renderMarkdown(report, { ...fit.render, maxRows });
     const text = minimal + fit.note;
     if (fit.fits(text)) return text;
   }
@@ -769,6 +912,19 @@ function ownComments(comments: IssueComment[], viewer: string | null, scopeLine:
       return scope === "same" ? login.endsWith("[bot]") : login === DEFAULT_TOKEN_LOGIN;
     })
     .sort((a, b) => a.id - b.id);
+}
+
+/**
+ * This run's own pull request comment (the oldest, see ownComments), for the link the upload carries. Rejects when the
+ * comments cannot be read; the upload turns that into "no link".
+ */
+async function findOwnComment(
+  deps: Pick<ActionDeps, "api">,
+  issueNumber: number,
+  scopeLine: string,
+): Promise<IssueComment | undefined> {
+  const [comments, viewer] = await Promise.all([deps.api.listComments(issueNumber), deps.api.viewerLogin()]);
+  return ownComments(comments, viewer, scopeLine)[0];
 }
 
 /**

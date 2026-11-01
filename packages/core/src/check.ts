@@ -1,3 +1,4 @@
+import { type AgentPrFacts, agentPrMetaFields, detectAgentPr } from "./agents.js";
 import { parseAgentToolNames, parseCoverageRoot, parseExcludePattern } from "./config.js";
 import { chooseCoverageFormat, type DetectedCoverageFormat } from "./coverage/detect.js";
 import { parseCoverageCounted } from "./coverage/index.js";
@@ -7,16 +8,23 @@ import type { CoverageFormat, CoverageFormatSelection, CoverageMap } from "./cov
 import type { CoverageDiscoveryNotFound } from "./coverageDiscovery.js";
 import { type DiffFile, parseUnifiedDiff } from "./diff/unified.js";
 import { computeDiffCoverage } from "./diffCoverage.js";
-import { binaryCoveredPaths, changedConfigPaths, trackedCoverageFile } from "./gateInputs.js";
+import { binaryCoveredPaths, changedConfigPaths, configRepoPath, trackedCoverageFile } from "./gateInputs.js";
 import { compileGlob } from "./glob.js";
-import { policyOverrideIgnoredMessage, policyUnavailableMessage } from "./policy/messages.js";
+import { agentPolicyOf, type PolicyFileBase } from "./policy/agents.js";
+import { agentPrIncompleteMessage, policyOverrideIgnoredMessage, policyUnavailableMessage } from "./policy/messages.js";
 import type { IgnoredSetting, ResolvedPolicy, SignalOverrides } from "./policy/resolved.js";
+import { evaluatePolicyRules } from "./policy/rules/evaluate.js";
+import { policyRuleMessages } from "./policy/rules/messages.js";
+import { NO_SETUP_DETAIL } from "./policy/rules/p01.js";
+import { levelOf, strongest } from "./policy/rules/severity.js";
+import type { PolicySettingsSources } from "./policy/settings/types.js";
 import {
   buildReport,
   type Message,
   type OmittedSignals,
   type Report,
   type ReportMeta,
+  type ReportPolicy,
   type ReportTestChanges,
   type TestConfigUnavailable,
   type TestIndexUnavailable,
@@ -25,6 +33,7 @@ import {
 import { agentConfigSecretMessages } from "./secrets/messages.js";
 import { type AgentConfigSources, agentConfigSecretPaths } from "./secrets/scan.js";
 import { scanAgentSetup } from "./setup/scan.js";
+import { summarizeAgentSetup } from "./setup/summary.js";
 import { capFindings } from "./signals/findingCap.js";
 import { applySignalOverrides } from "./signals/overrides.js";
 import { keepSignalFileText, textCutSignalFiles } from "./signals/signalFiles.js";
@@ -145,9 +154,17 @@ export interface CheckInput {
    */
   agentConfigSources?: AgentConfigSources;
   /**
+   * The text of the agent instruction files at HEAD (the Markdown instruction kinds) for org-policy rule P07, gathered
+   * by the CLI and the Action only under a policy with P07 in effect: the files read and the files dropped with a
+   * reason, or why none could be read. It is never merged into `agentConfigSources`, so check A7 never sees Markdown.
+   * Absent means P07 adds nothing and the report is the one it was.
+   */
+  agentInstructionSources?: AgentConfigSources;
+  /**
    * The org policy of the run (see `ResolvedPolicy`), after `applyPolicy` gave the effective settings the other fields
-   * carry. Only its `unavailable` reason is read here: it adds one POLICY_UNAVAILABLE message. Absent, or a policy of
-   * source `none` with no reason, adds nothing and the report is the one it was.
+   * carry. Its document runs the org-policy rules (P01 to P11), its `unavailable` reason adds one
+   * POLICY_UNAVAILABLE message, and the report carries a `policy` object for an app or file policy or an unavailable
+   * one. Absent, or a policy of source `none` with no reason, adds nothing and the report is the one it was.
    */
   policy?: ResolvedPolicy;
   /**
@@ -155,8 +172,27 @@ export interface CheckInput {
    * severities that were lower than the computed ones, they add one POLICY_OVERRIDE_IGNORED message. Absent or empty adds nothing.
    */
   policyIgnored?: readonly IgnoredSetting[];
+  /**
+   * The committed agent settings and MCP files for policy mode, gathered by the CLI and the Action when a policy is in
+   * force (E3 item 23, policy settings). Absent: P02 to P06 emit nothing, there is no POLICY_SETTINGS_INVALID message,
+   * and P09 class 4 is item 22's warn.
+   */
+  policySettingsSources?: PolicySettingsSources;
   /** Per-signal severities from the policy (`PolicyApplication.signalOverrides`), applied to the signals found. */
   signalOverrides?: SignalOverrides;
+  /**
+   * What the Action read of the pull request (see `AgentPrFacts`). Absent means no facts were gathered: no agent PR
+   * detection runs, so there is no P11, no AGENT_PR_DETECTION_INCOMPLETE message and `meta` is left as it was.
+   * `{ pr: null }` means a run with no pull request. With facts, one detection (the default lists united with the org
+   * policy's `agents.labels` and `agents.extra_logins`) feeds the agent fields of `meta`, rule P11 and the message.
+   */
+  agentPrFacts?: AgentPrFacts;
+  /**
+   * The `file:` policy as the merge base has it (see `PolicyFileBase`), read by the Action from committed objects. Its
+   * lists are united with the head lists; an unreadable one with an edited policy file makes the pull request an agent PR.
+   * Absent means it was not read.
+   */
+  policyFileBase?: PolicyFileBase;
 }
 
 const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
@@ -330,17 +366,105 @@ export function check(input: CheckInput): Report {
       : applySignalOverrides(testIntegritySignals, omittedBeforePolicy, input.signalOverrides, testIntegrity.mode);
   const finalSignals = overridden?.signals ?? testIntegritySignals;
   const omittedSignals = overridden?.omitted ?? omittedBeforePolicy;
-  // The settings a policy beat, and the policy-file severities that were lower than the computed ones, as one message.
+  // The agent PR detection runs once, only when the caller gathered the facts: one detection feeds `meta`, rule P11 and
+  // the incomplete message. The org policy's lists add to the defaults and to the lists the caller passed.
+  const agentFacts = input.agentPrFacts;
+  const agentPolicy =
+    agentFacts === undefined
+      ? undefined
+      : agentPolicyOf(input.policy, { base: input.policyFileBase, diff: parsedDiff });
+  const detection =
+    agentFacts === undefined || agentPolicy === undefined
+      ? undefined
+      : detectAgentPr({
+          ...agentFacts,
+          labels: [...(agentFacts.labels ?? []), ...agentPolicy.labels],
+          extraLogins: [...(agentFacts.extraLogins ?? []), ...agentPolicy.extraLogins],
+          listsIncomplete: agentFacts.listsIncomplete === true || agentPolicy.listsIncomplete,
+        });
+  // The org-policy rules (P01 to P11) run once, only when a policy was asked for.
+  const policyEvaluation =
+    input.policy === undefined
+      ? null
+      : evaluatePolicyRules({
+          policy: input.policy,
+          agentSetupFileCount: agentSetup.files.length,
+          agentTools: summarizeAgentSetup(agentSetup.files).tools,
+          repoFiles: input.repoFiles,
+          diff: parsedDiff,
+          configPath: configRepoPath(input.configPath, input.repoRoot),
+          ignored: input.policyIgnored ?? [],
+          ...(detection === undefined || agentPolicy === undefined ? {} : { agentPr: detection, agentPolicy }),
+          ...(input.policySettingsSources === undefined ? {} : { settingsSources: input.policySettingsSources }),
+          ...(input.agentInstructionSources === undefined ? {} : { agentInstructions: input.agentInstructionSources }),
+        });
+  // The settings a policy beat, and the policy-file severities that were lower than the computed ones (signals and
+  // rules), as one message.
   const policyIgnored: IgnoredSetting[] = [
     ...(input.policyIgnored ?? []),
     ...(overridden?.lowered ?? []).map(
       (id): IgnoredSetting => ({ setting: `test_integrity.signals.${id}`, layer: "policy-file", reason: "looser" }),
     ),
+    ...(policyEvaluation?.lowered ?? []).map(
+      (id): IgnoredSetting => ({ setting: `policy.rules.${id}`, layer: "policy-file", reason: "looser" }),
+    ),
+    ...(policyEvaluation?.ignored ?? []),
   ];
+  // The incomplete message is for a pull request that counts as an agent PR only because evidence could not be read,
+  // and only where the org policy's protected paths are in effect.
+  const incompleteMessage =
+    agentFacts?.pr !== null &&
+    agentFacts?.pr !== undefined &&
+    detection?.incomplete !== null &&
+    detection?.incomplete !== undefined &&
+    agentPolicy !== undefined &&
+    agentPolicy.severity !== null &&
+    agentPolicy.protectedPaths.length > 0
+      ? [agentPrIncompleteMessage(detection.incomplete)]
+      : [];
   const policyMessages: Message[] = [
     ...(input.policy?.unavailable === undefined ? [] : [policyUnavailableMessage(input.policy.unavailable)]),
+    ...(policyEvaluation === null ? [] : policyRuleMessages(policyEvaluation)),
+    ...incompleteMessage,
     ...(policyIgnored.length === 0 ? [] : [policyOverrideIgnoredMessage(policyIgnored)]),
   ];
+  // P01 sets the levels of the agent setup messages for the settings the policy requires.
+  const p01 = (policyEvaluation?.violations ?? []).filter((violation) => violation.id === "P01");
+  const noFilesViolation = p01.find((violation) => violation.detail === NO_SETUP_DETAIL);
+  const expectedViolations = p01.filter((violation) => violation.detail !== NO_SETUP_DETAIL);
+  const agentSetupLevels: NonNullable<Parameters<typeof buildReport>[0]["agentSetupLevels"]> = {
+    ...(noFilesViolation === undefined ? {} : { noFiles: levelOf(noFilesViolation.severity) }),
+    ...(expectedViolations.length === 0
+      ? {}
+      : { expectedMissing: levelOf(strongest(expectedViolations.map((violation) => violation.severity))) }),
+  };
+  // With the policy's expected tools in the report, a direct caller that did not pass them as `expectAgentSetup` still
+  // gets the expected-tools message (and the verdict) for a P01 violation.
+  const reportedTools =
+    agentSetupLevels.expectedMissing === undefined
+      ? expectedAgentTools
+      : [...new Set([...expectedAgentTools, ...(input.policy?.document?.setup?.expect ?? [])])];
+  // The report's `policy` object: for an app or file policy, or an unavailable one; not for a bare `none`.
+  const policySource = input.policy?.source;
+  const reportPolicy: ReportPolicy | undefined =
+    input.policy === undefined || policyEvaluation === null
+      ? undefined
+      : policySource === "app" || policySource === "file" || input.policy.unavailable !== undefined
+        ? {
+            source: policySource === "app" ? "app" : policySource === "file" ? "input" : "none",
+            version: policySource === "app" ? input.policy.version : null,
+            ...(policySource === "app" && input.policy.fetchedAt !== undefined
+              ? { fetchedAt: input.policy.fetchedAt }
+              : {}),
+            violations: policyEvaluation.violations.map(({ id, severity, path, line, detail }) => ({
+              id,
+              severity,
+              path,
+              line,
+              detail,
+            })),
+          }
+        : undefined;
   // Check A7 does not depend on the mode or the diff: it rides on every report path, and only the sources start it.
   const agentConfigMessages =
     input.agentConfigSources === undefined
@@ -351,12 +475,21 @@ export function check(input: CheckInput): Report {
     threshold: input.threshold,
     agentSetup,
     requireAgentSetup: input.requireAgentSetup === true,
-    ...(expectedAgentTools.length > 0 ? { expectedAgentTools } : {}),
+    ...(reportedTools.length > 0 ? { expectedAgentTools: reportedTools } : {}),
+    ...(Object.keys(agentSetupLevels).length > 0 ? { agentSetupLevels } : {}),
+    ...(reportPolicy === undefined ? {} : { policy: reportPolicy }),
     ...(configPaths.length > 0 ? { changedConfigPaths: configPaths } : {}),
     ...(testPaths.length > 0 ? { deletedTestFiles: testPaths } : {}),
     ...(trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage }),
     ...(emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {}),
-    ...(input.meta === undefined ? {} : { meta: input.meta }),
+    ...(input.meta === undefined
+      ? {}
+      : {
+          meta:
+            detection === undefined || agentFacts === undefined
+              ? input.meta
+              : { ...input.meta, ...agentPrMetaFields(detection, agentFacts) },
+        }),
     testIntegrity,
     ...(finalSignals.length > 0 ? { testIntegritySignals: finalSignals } : {}),
     ...(textTruncatedFiles.length > 0 ? { textTruncatedFiles } : {}),

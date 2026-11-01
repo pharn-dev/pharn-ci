@@ -96,9 +96,21 @@ describe("reports with no policy, or a policy of source none", () => {
       expect(last?.level, dir).toBe("warn");
       expect(last?.text, dir).toContain("timeout");
       // The verdict may move from pass to warn with the added warning; every other field is the plain report's.
-      expect({ ...timedOut, verdict: plain.verdict, messages: timedOut.messages.slice(0, -1) }, dir).toEqual(plain);
+      // E3 item 22 (policy rules): an unavailable policy now also carries the `policy` object with its one P10 warn
+      // violation. It is asserted here, and every other field is still the plain report's.
+      const { policy, ...rest } = timedOut;
+      expect(policy, dir).toEqual({
+        source: "none",
+        version: null,
+        violations: [
+          { id: "P10", severity: "warn", path: null, line: null, detail: "org policy could not be read (timeout)" },
+        ],
+      });
+      expect({ ...rest, verdict: plain.verdict, messages: timedOut.messages.slice(0, -1) }, dir).toEqual(plain);
     }
 
     for (const [file, assertion] of WHOLE_REPORT_ASSERTIONS) expect(read(file), file).toContain(assertion);
-  });
+    // The test spends 3 to 4 s on git calls and four full check runs per golden; 30 s keeps it from timing out when the
+    // host is loaded (no assertion is changed by this).
+  }, 30_000);
 });

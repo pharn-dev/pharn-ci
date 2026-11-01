@@ -1,0 +1,6 @@
+diff --git a/a/b/c.lock b/a/b/c.lock
+index 1111111..2222222 100644
+--- a/a/b/c.lock
++++ b/a/b/c.lock
+@@ -2,0 +3 @@
++x

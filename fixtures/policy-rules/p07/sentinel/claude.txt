@@ -1,0 +1,9 @@
+# SENTINEL-P07-7f3a claude
+
+SENTINEL-P07-7f3a is the project name. Run `SENTINEL-P07-7f3a` first.
+
+```bash
+SENTINEL-P07-7f3a install
+npm install
+npm run SENTINEL-P07-7f3a
+```

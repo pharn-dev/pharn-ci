@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 2,
+  "tool": {
+    "name": "pharn-ci",
+    "version": "0.3.0"
+  },
+  "verdict": "fail",
+  "diffCoverage": null,
+  "agentSetup": {
+    "files": [],
+    "summary": {
+      "byKind": {},
+      "tools": []
+    }
+  },
+  "messages": [
+    {
+      "level": "warn",
+      "code": "COVERAGE_FILE_MISSING",
+      "text": "Coverage file not found: coverage/lcov.info"
+    },
+    {
+      "level": "warn",
+      "code": "CONFIG_CHANGED_IN_DIFF",
+      "text": "This change edits files that configure this check: `.github/workflows/ci.yml`. Review them before trusting the verdict."
+    },
+    {
+      "level": "info",
+      "code": "NO_AGENT_SETUP_FILES",
+      "text": "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found."
+    },
+    {
+      "level": "error",
+      "code": "POLICY_P09",
+      "text": "This change edits 1 file that the org policy guards: `.pharn/policy.json`. The reason for each is in the report's policy violations."
+    },
+    {
+      "level": "error",
+      "code": "POLICY_P11",
+      "text": "This agent pull request changes 2 paths the org policy protects: `.github/workflows/ci.yml`, `src/we'ird<!--|x.ts`. This agent pull request edits the policy file, and its version at the merge base could not be read, so the paths that version protects could not be checked. It counts as an agent PR by: an agent label; evidence it could not read (`commits-unreadable`)."
+    },
+    {
+      "level": "warn",
+      "code": "AGENT_PR_DETECTION_INCOMPLETE",
+      "text": "This pull request counts as an agent PR because pharn-ci could not read all of its evidence (`commits-unreadable`), so the org policy's protected paths apply to it."
+    }
+  ],
+  "testIntegrity": {
+    "mode": "warn",
+    "source": "default",
+    "verdict": "pass",
+    "signals": [],
+    "languages": []
+  },
+  "policy": {
+    "source": "input",
+    "version": null,
+    "violations": [
+      {
+        "id": "P09",
+        "severity": "block",
+        "path": ".pharn/policy.json",
+        "line": null,
+        "detail": "this change edits the policy file it is checked against"
+      },
+      {
+        "id": "P11",
+        "severity": "block",
+        "path": null,
+        "line": null,
+        "detail": "policy file edited and unreadable at the merge base; protected paths could not be checked"
+      },
+      {
+        "id": "P11",
+        "severity": "block",
+        "path": ".github/workflows/ci.yml",
+        "line": null,
+        "detail": "agent PR changes a protected path"
+      },
+      {
+        "id": "P11",
+        "severity": "block",
+        "path": "src/we`ird<!--|x.ts",
+        "line": null,
+        "detail": "agent PR changes a protected path"
+      }
+    ]
+  }
+}

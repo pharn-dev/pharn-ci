@@ -117,6 +117,11 @@ export interface AgentPrFacts {
   labels?: readonly string[];
   /** Extra agent logins. */
   extraLogins?: readonly string[];
+  /**
+   * `true`: a `file:` policy the pull request may have edited could not be read at the merge base; makes the pull
+   * request an agent PR.
+   */
+  listsIncomplete?: boolean;
 }
 
 export type AgentEvidence =
@@ -144,7 +149,11 @@ const EVIDENCE_ORDER: readonly AgentEvidence[] = [
 ];
 
 /** Why detection could not read all of the evidence; any of these makes the pull request an agent PR. */
-export type AgentPrIncomplete = "author-unknown" | "commits-unreadable" | "commits-truncated";
+export type AgentPrIncomplete =
+  | "author-unknown"
+  | "commits-unreadable"
+  | "commits-truncated"
+  | "policy-lists-unreadable";
 
 export interface AgentPrDetection {
   isAgentPr: boolean;
@@ -262,6 +271,7 @@ export function detectAgentPr(facts: AgentPrFacts, agents: readonly KnownAgent[]
   if (author === null) incomplete = "author-unknown";
   else if (!Array.isArray(commits)) incomplete = "commits-unreadable";
   else if (pr.commitsIncomplete === true) incomplete = "commits-truncated";
+  else if (facts.listsIncomplete === true) incomplete = "policy-lists-unreadable";
 
   const evidence = EVIDENCE_ORDER.filter((kind) => found.has(kind));
   return {

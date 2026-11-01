@@ -1,6 +1,6 @@
 # pharn-ci — Limits
 
-What pharn-ci does **not** guarantee, stated plainly. pharn-ci is pre-1.0 (latest release: `v0.3.0`).
+What pharn-ci does **not** guarantee, stated plainly. pharn-ci is pre-1.0 (latest release: `v0.4.0`).
 These are the design's inherent limits and the known gaps in what is built. For the security design
 see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
 
@@ -837,7 +837,8 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
 
 - **It is an inventory, not a review.** pharn-ci lists agent setup files; the inventory itself reads
   none of them. Check A7 reads the machine-readable kinds for committed secrets
-  ([Secrets in agent configs](#secrets-in-agent-configs)). It does not validate their syntax, judge their
+  ([Secrets in agent configs](#secrets-in-agent-configs)). Under an org policy, P07 reads the instruction kinds
+  ([What P07 misses](#what-p07-misses)). It does not validate their syntax, judge their
   content, or check them for prompt injection.
 - **Only tracked files are seen.** The list comes from `git ls-files`, so untracked or ignored
   files (a typical `.claude/settings.local.json`) are not listed.
@@ -944,8 +945,119 @@ applied once per run. What it does not do:
   is not, so the two reports then differ by one `POLICY_OVERRIDE_IGNORED` message.
 - **The `policy` and `app-url` inputs are the workflow's.** A pull request that edits the workflow can set them
   (THREAT-MODEL, items 22 and 24).
-- **Only some keys are applied.** `policy.rules`, `agents`, `dependencies`, `flaky`, `setup.forbidden_files` and the
-  other `setup` lists are validated and carried in the document, not applied by this release.
+- **Only some keys are applied.** The `setup` lists are applied: `forbidden_files` feeds P08, `forbidden_permissions`,
+  `required_permissions_deny`, `allowed_mcp_servers`, `forbidden_mcp_servers` and `required_hooks` feed P02 to P06,
+  and `setup.consistency` feeds P07. `policy.rules` applies to P01 to P09 and P11 (P10 cannot be overridden). Of
+  `agents`, only `agents.labels`, `agents.extra_logins`, `agents.protected_paths` and `agents.protected_paths_mode` are
+  applied (the first two add to the detection, the other two feed P11); `dependencies`, `flaky` and the other `agents`
+  keys are validated and carried in the document, not applied yet.
+- **What P09 sees, and what it misses.** P09 sees four kinds of edit in the diff: (1) the `file:` policy file itself,
+  edited or renamed away; (2) the config in use, while `.pharn/ci.yml` holds a setting looser than the policy; (3) a
+  file under `.github/workflows/`, while a workflow input is looser than the policy; (4) `.claude/settings.json` or
+  `.claude/settings.local.json` and `.mcp.json`, `.cursor/mcp.json` or `.vscode/mcp.json`, at the root or nested. It
+  cannot see a pull request that edits the workflow to `policy: never`, removes the pharn-ci step or changes
+  `app-url`: the Action then does not run or does not ask for the policy, so nothing is checked against it. TI11 and
+  `CONFIG_CHANGED_IN_DIFF` flag such a workflow edit. Class 4 is judged when the files were read: a block when the
+  edited file fails P02 to P06 or could not be checked, a warn when it only warns or supplies a required deny rule or
+  hook, info when it complies; it stays a warn (direction not judged) when they were not read.
+
+### What P02–P06 miss
+
+P02 to P06 read the committed agent settings and MCP files in policy mode. They do not see:
+
+- **Settings and hooks outside the repository:** `~/.claude`, managed settings, plugins and the frontmatter of skills
+  and subagents can allow, hook or connect what the policy forbids; only the tracked files of the repository are read.
+- **Untracked files:** an untracked `settings.local.json` is not read, and a subdirectory Claude Code is started in
+  without its own `.claude/` is judged by no unit of its own.
+- **What a command does:** rules are compared with rules, never with what a command or a server does. A regex hook
+  matcher is never evaluated (two matchers are compared as plain `A|B` lists, otherwise by string equality), and a
+  partial overlap neither direction can prove is not flagged: `Bash(git *)` against `Bash(* --force)`, in either order.
+- **Two readings:** an allow rule is read broad and a deny rule narrow (grammar rows 15, 27, 38, 46 and 48 are decided by
+  it), so a `Write` allow rule overlaps a forbidden `Edit(…)` entry but a `Write` deny rule does not satisfy a required
+  one.
+- **JSON and JSONC:** the settings files and `.mcp.json` are read as strict JSON, `.cursor/mcp.json` and
+  `.vscode/mcp.json` as JSONC (comments and one trailing comma); a file that does not parse is `POLICY_SETTINGS_INVALID`.
+- **`defaultMode`:** `bypassPermissions` and `auto` are flagged whatever the Claude Code version.
+- **Sandboxing is the boundary.** None of this stops a command from doing what a rule's text did not name.
+
+### What P11 misses
+
+- **Only agent PRs that identify themselves.** P11 runs for a pull request the detection counts as an agent PR (§9). An
+  agent that commits through a person's account with no trailer, label or known login is judged as a person's.
+- **Paths only.** The globs are the ones of `coverage.exclude`; P11 matches the path of each diff entry (and a rename's
+  old path), never what changed in the file.
+- **A `file:` policy always blocks.** A lower `protected_paths_mode` or `policy.rules.P11` is named in
+  `POLICY_OVERRIDE_IGNORED` and not applied, because the pull request carries the file.
+- **The CLI has no pull request.** It gathers no agent PR facts, so P11 never fires there.
+- **At most 50 violations are listed.** The rest are counted in the `POLICY_P11` text, which names up to 20 paths.
+- **The merge-base read needs a local diff.** The `file:` policy is read at the merge base only for a diff from the
+  local checkout. PR-number mode and the compare API fail closed: an edited policy file then makes the pull request an
+  agent PR (`policy-lists-unreadable`).
+- **Dependabot and Renovate count as agent PRs.** Protecting `package.json` or a lockfile blocks their updates: do not
+  protect files those bots must update.
+- **Other `agents` keys are not applied.** `require_human_approval`, `max_files` and `max_changed_lines` (rules P12 and
+  P14) are validated and carried, not applied by this release.
+
+### What P07 misses
+
+P07 compares what the agent instruction files of one directory tell an agent to run. It is a heuristic at `warn`, not a
+review of the instructions. What it misses:
+
+- **Prose is never read.** Only inline code spans and shell blocks count. "We use pnpm" in a sentence declares nothing,
+  and neither does `pytest` or any other tool outside `npm`, `pnpm`, `yarn`, `bun`, `vitest` and `jest`: a Python
+  package's files are never compared on their own tools.
+- **Same-directory scope only.** A file is compared with the other instruction files of its own directory (a nested
+  `.cursor/rules/` or `.claude/rules/` belongs to the directory that holds it; every other kind belongs to the root).
+  A root file and a nested `AGENTS.md` that name different tools do not contradict.
+- **Tools in indented, non-shell or multi-line code are missed.** An indented code block, a `json`, `python` or other
+  non-shell fence, a command split over several lines and a command in a console line without a prompt declare nothing.
+- **Negation is a word heuristic.** A span after a cue word ("don't", "instead of", "never"), before "is not" or
+  "isn't", or under a heading with such a word is skipped. A list continuation (``Don't use `npm` or `yarn` ``) negates
+  only the first span, and a file that names pnpm among others never contradicts a pnpm file.
+- **Pattern-scoped files are skipped.** A file limited to path patterns (`globs`, `applyTo`, `paths` or
+  `fileMatchPattern` in its frontmatter, other than every file) is not compared; agent-requested and manual rules count.
+- **Skills, commands, agents and prompts are not read.** Only the instruction kinds are.
+- **`npx` and `bunx` and global installs declare nothing.** `npm i -g x` names no package manager, and `pnpm --filter x
+  vitest` is missed because the runner is not the first argument.
+- **A file that contradicts itself is not reported.** Only two files of one directory can contradict.
+- **A tracked symlink is read as its link text.** Nothing is followed.
+- **Caps.** At most 200 files, 512 KiB each and 16 MiB in all are read. A file dropped past a cap, as binary, as too
+  large or at an unsafe path is one path-less violation at P07's severity, because a pull request can cause it; a path
+  that is not a file at `HEAD` is `info`. At most 50 violations are listed (the rest are counted), and the message names
+  up to 20 files.
+- **The Action reads only with a local diff.** In PR-number mode and with a compare-API diff the checkout may not be the
+  pull request head, so nothing is read and one `info` violation says so.
+- **P07 runs only under a policy.** With no policy, `policy: never`, an unavailable policy or P07 switched off, no
+  instruction file is read. A `file:` policy never lowers it below `warn`.
+
+## Upload to pharn.dev
+
+The upload (`upload: auto`; see the README, Upload to pharn.dev) sends the redacted `report.json` and `meta.json` of a
+run. What it does not do:
+
+- **No connect timeout of its own.** Each request has one timeout for the whole exchange, response body included (60 s
+  for the two requests to the app, 120 s for the `PUT`); there is no separate connect timeout, so a host that accepts
+  the connection and then stalls costs the full timeout. The two app requests are retried once after a network error or
+  a `5xx`; the `PUT` is never retried.
+- **One upload per job run, not per matrix leg.** The report and the upload are those of one job. A matrix of jobs
+  uploads once per leg, and the run identity the Action sends is the run id, the run attempt and the `scope`
+  (`<workflow>/<job>`), none of which carries the matrix values: two legs of one job share all three, so the app may
+  treat them as one run.
+- **A `404` from the app is "not installed", whatever the cause.** The app answers `404` when the organization has not
+  installed the Pharn GitHub App for the repository, and also for a repository it does not know. The Action cannot
+  tell them apart, so it logs that the app is not installed and adds the install hint to the comment and the summary.
+- **The hint is not a policy check.** The line under the summary (`Install the Pharn GitHub App for org policy, history
+  and flaky detection.`) appears only after that `404`; it says nothing about whether a policy exists, and a run
+  without an OIDC token (a fork pull request, a job without `id-token: write`) gets no hint.
+- **Redaction misses what it does not know.** The report is redacted with the ten secret shapes of the agent config
+  scan (README, Secrets in agent configs) and cut to 2048 bytes per message; a secret of another shape, split across
+  strings or encoded, is not found. Paths and test names are not secrets to it and are sent as they are.
+- **The CLI never uploads.** Only the Action does; the CLI makes no network call.
+- **A report over the limit is not uploaded.** A `report.json` over 5 MiB (5242880 bytes), a gzip archive over the
+  `maxBytes` the app names, or a `413` from the app ends in `UPLOAD_TOO_LARGE`; the check ran in full and only the
+  history misses the run. A `413` is also what the app answers to a size it will never take.
+- **No retry of a registered run.** The register request can reach the app twice when its first answer is lost to a
+  network error or a `5xx`; the app answers a repeated run with `200` and the upload counts as `ok` then.
 
 ## 5. Security limits
 
@@ -1111,8 +1223,10 @@ limited by git, Node or GitHub alone.
 - **The known-agent list holds only the seven verified entries** (Claude Code, Copilot, Codex, Devin, Cursor, Gemini and
   Jules). Another agent is recognized only by a `[bot]` login, a label or a `Co-authored-by` trailer of a login on the
   list.
-- **The lists cannot be changed from `.pharn/ci.yml`.** No `agents:` key is read, and no input sets one: a setting the
-  pull request carries cannot loosen or tighten the detection.
+- **Only the org policy adds labels and logins.** `agents.labels` and `agents.extra_logins` of the org policy add to the
+  defaults and never remove one; no `.pharn/ci.yml` key and no input does. A `file:` policy the pull request edits
+  counts with the lists it has at the merge base too, and when that version cannot be read the pull request counts as
+  an agent PR.
 - **A human co-author is never recorded.** Only trailers of known agents reach the report, as a hint and an address.
-- **The CLI does not set it.** Only the Action gathers pull request facts, and the detection changes no verdict, message,
-  comment or exit code.
+- **The CLI does not set it.** Only the Action gathers pull request facts. On its own the detection changes no verdict,
+  message, comment or exit code; under a policy with protected paths, rule P11 uses it (see Org policy).

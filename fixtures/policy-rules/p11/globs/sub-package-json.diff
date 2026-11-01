@@ -1,0 +1,6 @@
+diff --git a/sub/package.json b/sub/package.json
+index 1111111..2222222 100644
+--- a/sub/package.json
++++ b/sub/package.json
+@@ -2,0 +3 @@
++x

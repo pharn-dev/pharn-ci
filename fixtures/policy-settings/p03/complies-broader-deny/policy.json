@@ -1,0 +1,1 @@
+{ "version": 1, "setup": { "required_permissions_deny": ["Bash(rm -rf:*)"] } }

@@ -379,7 +379,17 @@ describe("the org policy fetch outcomes", () => {
       }
       expect(report.diffCoverage?.threshold, c.name).toBe(75);
       // Every other effective setting is the policy: never run's: the reports differ by the one message only.
-      expect({ ...report, messages: report.messages.filter((m) => m !== message) }, c.name).toEqual(never);
+      // E3 item 22 (policy rules): the report now also carries the `policy` object with its one P10 warn violation; it
+      // is asserted here, and the rest of the report is still the policy: never report.
+      const { policy, ...rest } = report;
+      expect(policy, c.name).toEqual({
+        source: "none",
+        version: null,
+        violations: [
+          { id: "P10", severity: "warn", path: null, line: null, detail: `org policy could not be read (${c.reason})` },
+        ],
+      });
+      expect({ ...rest, messages: rest.messages.filter((m) => m !== message) }, c.name).toEqual(never);
     }
   });
 
