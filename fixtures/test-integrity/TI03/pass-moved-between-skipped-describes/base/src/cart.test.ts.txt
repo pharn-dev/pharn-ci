@@ -1,0 +1,18 @@
+import { describe, expect, it } from "vitest";
+import { subtotal, total } from "./cart.js";
+
+describe.skip("legacy", () => {
+  it("old totals", () => {
+    expect(total([], 0)).toBe(0);
+  });
+
+  it("subs", () => {
+    expect(subtotal([1, 2])).toBe(3);
+  });
+});
+
+describe.skip("parked", () => {
+  it("parked one", () => {
+    expect(total([2], 1)).toBe(2);
+  });
+});

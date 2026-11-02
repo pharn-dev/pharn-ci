@@ -110,6 +110,12 @@ const BEFORE: Record<string, string[]> = {
 // Re-pinned by the name-only-moves change: only the two TI01 migration records changed (info to block, new detail),
 // because TI01's same-stem rule now needs body evidence, not a name alone.
 const BEFORE_DIGEST = "2d53c938ed49833ee2610162d1b132659240cc54537935f8e6fb017e2bb1d8c3";
+// ti03-skip-evasion (review B1) rewords the one TI03 sentence for a skip the diff shows as new. The records put the
+// earlier sentence back before they are hashed, so BEFORE_DIGEST still pins every other byte of the outputs.
+const TI03_ADDS_NOW =
+  "A skip was added to a test that no removed line of this file opens, so the diff shows it as new.";
+const TI03_ADDS_BEFORE = "A skip was added to a test that this change adds, so no test that ran before stops running.";
+const asBefore = (json: string) => json.split(TI03_ADDS_NOW).join(TI03_ADDS_BEFORE);
 
 async function run(diff: string, exclude: string[] = [], files = "test-files-deleted/files.txt") {
   const { check } = await import("../src/check.js");
@@ -185,7 +191,11 @@ describe("TI10 and TI13 leave the earlier signals and fixtures alone", () => {
       expect(summary(report), name).toEqual(expected);
       records.push({ fixture: name, signals: earlierSignals(report), messages: earlierMessages(report) });
     }
-    expect(createHash("sha256").update(JSON.stringify(records)).digest("hex")).toBe(BEFORE_DIGEST);
+    expect(
+      createHash("sha256")
+        .update(asBefore(JSON.stringify(records)))
+        .digest("hex"),
+    ).toBe(BEFORE_DIGEST);
 
     // The golden diff weakens no test script and adds no coverage hint.
     const golden = await run(fixture("golden/pr.diff"), [], "golden/files.txt");

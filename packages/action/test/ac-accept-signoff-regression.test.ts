@@ -133,6 +133,13 @@ function excludeFor(name: string, text: string): string[] {
 
 const sha256 = (data: string | Buffer) => createHash("sha256").update(data).digest("hex");
 
+// ti03-skip-evasion (review B1) rewords the one TI03 sentence for a skip the diff shows as new. The records put the
+// earlier sentence back before they are hashed, so BEFORE_DIGEST still pins every other byte of the outputs.
+const TI03_ADDS_NOW =
+  "A skip was added to a test that no removed line of this file opens, so the diff shows it as new.";
+const TI03_ADDS_BEFORE = "A skip was added to a test that this change adds, so no test that ran before stops running.";
+const asBefore = (json: string) => json.split(TI03_ADDS_NOW).join(TI03_ADDS_BEFORE);
+
 /** The summary table without the Test integrity column, as it was at the base commit. Throws if the table is missing. */
 function foldIntegrityColumn(markdown: string): string {
   const lines = markdown.split("\n");
@@ -212,6 +219,6 @@ describe("the accept label leaves the existing signals, hints, golden outputs an
       }
     }
     expect(records).toHaveLength(BEFORE_COUNT);
-    expect(sha256(JSON.stringify(records))).toBe(BEFORE_DIGEST);
+    expect(sha256(asBefore(JSON.stringify(records)))).toBe(BEFORE_DIGEST);
   }, 120_000);
 });

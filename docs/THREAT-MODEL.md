@@ -163,9 +163,13 @@ These are accepted, not hidden:
     are given per file. Nothing from that text reaches the report: a finding holds the path, a line number, a
     severity and one fixed sentence per category, with no test name, skip reason, condition or line text. A PR cannot
     use these findings to lower its own gate: they only add findings, and the mode rules of residual 12 still apply.
-    **Residual:** a PR can write a skip or a focused-run marker in a form the scans do not read, or keep a matching
-    line in the removed side of the file to excuse an added one; the findings are recorded prompts for a reviewer, and
-    `docs/LIMITS.md` lists what TI03 and TI04 miss.
+    When the test index compared the test files, TI03 also reads the base-to-head test pairs and the `describe`,
+    test-class and `pytestmark` modifiers around each test (the Python index reads `pytestmark` with `ast`, nothing
+    run), so a renamed, wrapped or moved test that is now skipped is found whatever its line says; this too only adds
+    findings, with the same fixed sentences, one per line. **Residual:** a PR can write a skip or a focused-run marker
+    in a form the scans and the index do not read, or, where the index cannot run, keep a matching line in the removed
+    side of the file to excuse an added one; the findings are recorded prompts for a reviewer, and `docs/LIMITS.md`
+    lists what TI03 and TI04 miss.
 16. **TI10 and TI13 make the diff reader keep the text of source files and `package.json`.** The diff parser now
     also keeps the text of added and removed lines (same caps as in 13: 5000 lines per file, 400 characters per line)
     for every `package.json` and every JavaScript, TypeScript and Python source file, so a PR that changes many source

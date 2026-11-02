@@ -1,0 +1,9 @@
+import pytest
+
+from user import full_name
+
+pytestmark = pytest.mark.skip(reason="wip")
+
+
+def test_draft_name():
+    assert full_name("a", "b") == "a b"

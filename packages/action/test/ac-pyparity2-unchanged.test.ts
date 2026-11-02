@@ -64,10 +64,12 @@ const PINNED = [
  * The files the name-only-moves change re-pins on purpose (TI01's same-stem rule and TI02's phase-2 leaf pick now need
  * body evidence): for exactly these, the new sha256 of the file is accepted instead of the base bytes.
  */
+// Re-pinned again by ti03-skip-evasion (review B1): both files put the earlier TI03 sentence for a skip the diff shows
+// as new back into their records before hashing, so their output digests are unchanged; these are the edited files.
 const NAME_ONLY_REPINNED: Record<string, string> = {
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "d3b2fef3e8d8dc20e52dafbf368375f370cba211969987cfd1cb6e6e7fb24077",
-  "packages/core/test/ac-ti0205-regression.test.ts": "0e7ec98bf36dc000fb3419b35c0889b9ad23952826984145ee29be1561b5497d",
+    "c54599f987667dd60cc1e1ef8f751cdecb8269ff7d72a55c1a5649854e8ca99c",
+  "packages/core/test/ac-ti0205-regression.test.ts": "558080bf57efbc276c0554c2ba0e5f204acc6a1c2d1e50de05b65ac656cf48e2",
 };
 /** The digests of ac-ti06-ti12-unchanged.test.ts the name-only-moves change re-pins; every other one is as at the base. */
 const NAME_ONLY_DIGESTS: Record<string, string> = {

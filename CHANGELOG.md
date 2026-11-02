@@ -11,6 +11,17 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- TI03 now blocks an unconditional skip added to a test that exists at base however the change writes it (review
+  B1): a test renamed to `it.skip(…)` or `it.skipIf(true)(…)` with the same body, a `describe.skip` wrapped around
+  existing tests, an existing test moved into a skipped `describe`, and `pytestmark = pytest.mark.skip(…)` added at
+  module level or in a test class. When the test index compared the files, TI03 now also reads the base-to-head test
+  pairs TI05 reads and the `describe`, test-class and `pytestmark` modifiers around each test, giving one finding per
+  line. The Python index and the line reader read `pytestmark`. Deliberate precision change: an unguarded in-body
+  `pytest.skip()`, `pytest.xfail()` or `self.skipTest()` added to an existing test now blocks when the Python index ran
+  (it warned). The line reader's sentence for a skip in a test the diff shows as new now says only what the diff
+  shows: "A skip was added to a test that no removed line of this file opens, so the diff shows it as new." No schema
+  change and no new message code.
+
 ### Security
 
 ## [0.4.0] - 2026-10-27

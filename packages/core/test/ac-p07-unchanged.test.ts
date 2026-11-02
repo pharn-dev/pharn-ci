@@ -56,12 +56,16 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
     // Fixtures: no tracked file under fixtures/ is modified or deleted; anything new is under fixtures/policy-rules/p07/.
     for (const line of nonEmpty(git("diff", "--name-status", "--no-renames", BASE, "--", "fixtures/"))) {
       // Re-pinned on the rebase onto E3 item 23 (policy settings): its fixtures under fixtures/policy-settings/ are new too.
+      // Re-pinned for ti03-skip-evasion (review B1): its new case directories under fixtures/test-integrity/TI03/ are
+      // added too; an existing TI03 fixture that changed would still show as modified, not added.
       expect(line, "a fixture change").toMatch(
-        /^A\tfixtures\/policy-rules\/p07\/[^/]+\/[^/]+$|^A\tfixtures\/policy-settings\/[^\t]+$/,
+        /^A\tfixtures\/policy-rules\/p07\/[^/]+\/[^/]+$|^A\tfixtures\/policy-settings\/[^\t]+$|^A\tfixtures\/test-integrity\/TI03\/[^\t]+$/,
       );
     }
     for (const path of nonEmpty(git("ls-files", "--others", "--exclude-standard", "--", "fixtures/"))) {
-      expect(path, "a new fixture").toMatch(/^fixtures\/policy-rules\/p07\/[^/]+\/[^/]+$/);
+      expect(path, "a new fixture").toMatch(
+        /^fixtures\/policy-rules\/p07\/[^/]+\/[^/]+$|^fixtures\/test-integrity\/TI03\/[^\t]+$/,
+      );
     }
 
     // No existing test file is deleted. A rename is not a deletion: the 0.4.0 release PR renamed the release-030 pin

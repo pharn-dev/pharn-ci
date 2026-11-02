@@ -58,15 +58,19 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
     for (const line of changed) {
       // Re-pinned for E3 item 23 (policy settings) and E3 item 24 (P07): their new fixtures under
       // fixtures/policy-settings/ and fixtures/policy-rules/p07/ are added too.
+      // Re-pinned for ti03-skip-evasion (review B1): its new case directories under fixtures/test-integrity/TI03/ are
+      // added too; an existing TI03 fixture that changed would still show as modified, not added.
       expect(line, "a fixture change").toMatch(
-        /^A\tfixtures\/policy-rules\/(?:p11|p07)\/[^/]+\/[^/]+$|^A\tfixtures\/policy-settings\/[^\t]+$/,
+        /^A\tfixtures\/policy-rules\/(?:p11|p07)\/[^/]+\/[^/]+$|^A\tfixtures\/policy-settings\/[^\t]+$|^A\tfixtures\/test-integrity\/TI03\/[^\t]+$/,
       );
     }
     const untracked = git("ls-files", "--others", "--exclude-standard", "--", "fixtures/")
       .split("\n")
       .filter((l) => l.length > 0);
     for (const path of untracked) {
-      expect(path, "a new fixture").toMatch(/^fixtures\/policy-rules\/(?:p11|p07)\/[^/]+\/[^/]+$/);
+      expect(path, "a new fixture").toMatch(
+        /^fixtures\/policy-rules\/(?:p11|p07)\/[^/]+\/[^/]+$|^fixtures\/test-integrity\/TI03\/[^\t]+$/,
+      );
     }
 
     // Part A's tests: unchanged, except the one deliberate update in the events test.

@@ -3732,19 +3732,19 @@ var require_webidl = __commonJS({
     });
     webidl.util.ConvertToInt = function(V, bitLength, signedness, opts) {
       let upperBound;
-      let lowerBound;
+      let lowerBound2;
       if (bitLength === 64) {
         upperBound = Math.pow(2, 53) - 1;
         if (signedness === "unsigned") {
-          lowerBound = 0;
+          lowerBound2 = 0;
         } else {
-          lowerBound = Math.pow(-2, 53) + 1;
+          lowerBound2 = Math.pow(-2, 53) + 1;
         }
       } else if (signedness === "unsigned") {
-        lowerBound = 0;
+        lowerBound2 = 0;
         upperBound = Math.pow(2, bitLength) - 1;
       } else {
-        lowerBound = Math.pow(-2, bitLength) - 1;
+        lowerBound2 = Math.pow(-2, bitLength) - 1;
         upperBound = Math.pow(2, bitLength - 1) - 1;
       }
       let x = Number(V);
@@ -3759,16 +3759,16 @@ var require_webidl = __commonJS({
           });
         }
         x = webidl.util.IntegerPart(x);
-        if (x < lowerBound || x > upperBound) {
+        if (x < lowerBound2 || x > upperBound) {
           throw webidl.errors.exception({
             header: "Integer conversion",
-            message: `Value must be between ${lowerBound}-${upperBound}, got ${x}.`
+            message: `Value must be between ${lowerBound2}-${upperBound}, got ${x}.`
           });
         }
         return x;
       }
       if (!Number.isNaN(x) && opts?.clamp === true) {
-        x = Math.min(Math.max(x, lowerBound), upperBound);
+        x = Math.min(Math.max(x, lowerBound2), upperBound);
         if (Math.floor(x) % 2 === 0) {
           x = Math.floor(x);
         } else {
@@ -20157,7 +20157,7 @@ var require_typescript = __commonJS({
         concatenate: () => concatenate,
         concatenateDiagnosticMessageChains: () => concatenateDiagnosticMessageChains,
         consumesNodeCoreModules: () => consumesNodeCoreModules,
-        contains: () => contains,
+        contains: () => contains2,
         containsIgnoredPath: () => containsIgnoredPath,
         containsObjectRestOrSpread: () => containsObjectRestOrSpread,
         containsParseError: () => containsParseError,
@@ -22244,7 +22244,7 @@ var require_typescript = __commonJS({
         }
         return -1;
       }
-      function contains(array, value, equalityComparer = equateValues) {
+      function contains2(array, value, equalityComparer = equateValues) {
         if (array !== void 0) {
           for (let i = 0; i < array.length; i++) {
             if (equalityComparer(array[i], value)) {
@@ -22256,7 +22256,7 @@ var require_typescript = __commonJS({
       }
       function indexOfAnyCharCode(text, charCodes, start) {
         for (let i = start ?? 0; i < text.length; i++) {
-          if (contains(charCodes, text.charCodeAt(i))) {
+          if (contains2(charCodes, text.charCodeAt(i))) {
             return i;
           }
         }
@@ -22714,7 +22714,7 @@ var require_typescript = __commonJS({
         return to;
       }
       function pushIfUnique(array, toAdd, equalityComparer) {
-        if (contains(array, toAdd, equalityComparer)) {
+        if (contains2(array, toAdd, equalityComparer)) {
           return false;
         } else {
           array.push(toAdd);
@@ -23072,7 +23072,7 @@ var require_typescript = __commonJS({
             const hash = getHashCode(element);
             if (!multiMap.has(hash)) return false;
             const candidates = multiMap.get(hash);
-            if (isArray(candidates)) return contains(candidates, element, equals);
+            if (isArray(candidates)) return contains2(candidates, element, equals);
             return equals(candidates, element);
           },
           add(element) {
@@ -23080,7 +23080,7 @@ var require_typescript = __commonJS({
             if (multiMap.has(hash)) {
               const values = multiMap.get(hash);
               if (isArray(values)) {
-                if (!contains(values, element, equals)) {
+                if (!contains2(values, element, equals)) {
                   values.push(element);
                   size++;
                 }
@@ -28489,7 +28489,7 @@ ${lanes.join("\n")}
             },
             enableCPUProfiler,
             disableCPUProfiler,
-            cpuProfilingEnabled: () => !!activeSession || contains(process.execArgv, "--cpu-prof") || contains(process.execArgv, "--prof"),
+            cpuProfilingEnabled: () => !!activeSession || contains2(process.execArgv, "--cpu-prof") || contains2(process.execArgv, "--prof"),
             realpath,
             debugMode: !!process.env.NODE_INSPECTOR_IPC || !!process.env.VSCODE_INSPECTOR_OPTIONS || some(process.execArgv, (arg) => /^--(?:inspect|debug)(?:-brk)?(?:=\d+)?$/i.test(arg)) || !!process.recordreplay,
             tryEnableSourceMapsForHost() {
@@ -31868,8 +31868,8 @@ ${lanes.join("\n")}
           character: position - lineStarts2[lineNumber]
         };
       }
-      function computeLineOfPosition(lineStarts2, position, lowerBound) {
-        let lineNumber = binarySearch(lineStarts2, position, identity, compareValues, lowerBound);
+      function computeLineOfPosition(lineStarts2, position, lowerBound2) {
+        let lineNumber = binarySearch(lineStarts2, position, identity, compareValues, lowerBound2);
         if (lineNumber < 0) {
           lineNumber = ~lineNumber - 1;
           Debug.assert(lineNumber !== -1, "position cannot precede the beginning of the file");
@@ -35130,7 +35130,7 @@ ${lanes.join("\n")}
         }
         const language = matchResult[1];
         const territory = matchResult[2];
-        if (contains(supportedLocaleDirectories, lowerCaseLocale) && !trySetLanguageAndTerritory(language, territory, errors)) {
+        if (contains2(supportedLocaleDirectories, lowerCaseLocale) && !trySetLanguageAndTerritory(language, territory, errors)) {
           trySetLanguageAndTerritory(
             language,
             /*territory*/
@@ -36804,7 +36804,7 @@ ${lanes.join("\n")}
       }
       function isGrammarErrorElement(nodeArray, child, isElement) {
         if (!nodeArray || isArray(child) || !isElement(child)) return false;
-        return contains(nodeArray, child);
+        return contains2(nodeArray, child);
       }
       function insertStatementsAfterPrologue(to, from, isPrologueDirective2) {
         if (from === void 0 || from.length === 0) return to;
@@ -38188,7 +38188,7 @@ ${lanes.join("\n")}
               case 214:
               case 215:
               case 216:
-                return contains(parent2.typeArguments, node);
+                return contains2(parent2.typeArguments, node);
             }
           }
         }
@@ -68336,7 +68336,7 @@ ${lanes.join("\n")}
               /*considerPackageJson*/
               true
             );
-            return resolved2 && toSearchResult({ resolved: resolved2, isExternalLibraryImport: contains(parts, "node_modules") });
+            return resolved2 && toSearchResult({ resolved: resolved2, isExternalLibraryImport: contains2(parts, "node_modules") });
           }
         }
       }
@@ -68706,7 +68706,7 @@ ${lanes.join("\n")}
             }
           } else if (typeof target === "object" && target !== null) {
             return forEach(getOwnKeys(target), (key) => {
-              if (key === "default" || contains(state.conditions, key) || isApplicableVersionedTypesKey(state.conditions, key)) {
+              if (key === "default" || contains2(state.conditions, key) || isApplicableVersionedTypesKey(state.conditions, key)) {
                 loadEntrypointsFromTargetExports(target[key]);
                 return true;
               }
@@ -70603,7 +70603,7 @@ ${lanes.join("\n")}
           flow.flags |= flow.flags & 2048 ? 4096 : 2048;
         }
         function addAntecedent(label, antecedent) {
-          if (!(antecedent.flags & 1) && !contains(label.antecedent, antecedent)) {
+          if (!(antecedent.flags & 1) && !contains2(label.antecedent, antecedent)) {
             (label.antecedent || (label.antecedent = [])).push(antecedent);
             setFlowNodeReferenced(antecedent);
           }
@@ -79828,7 +79828,7 @@ ${lanes.join("\n")}
               return type.node ? visitAndTransformType(type, typeReferenceToTypeNode) : typeReferenceToTypeNode(type);
             }
             if (type.flags & 262144 || objectFlags & 3) {
-              if (type.flags & 262144 && contains(context3.inferTypeParameters, type)) {
+              if (type.flags & 262144 && contains2(context3.inferTypeParameters, type)) {
                 context3.approximateLength += symbolName(type.symbol).length + 6;
                 let constraintNode;
                 const constraint = getConstraintOfTypeParameter(type);
@@ -80616,7 +80616,7 @@ ${lanes.join("\n")}
           function shouldUsePlaceholderForProperty(propertySymbol, context3) {
             var _a;
             const depth = 3;
-            return !!(getCheckFlags(propertySymbol) & 8192) && (contains(context3.reverseMappedStack, propertySymbol) || ((_a = context3.reverseMappedStack) == null ? void 0 : _a[0]) && !(getObjectFlags(last(context3.reverseMappedStack).links.propertyType) & 16) || isDeeplyNestedReverseMappedTypeProperty());
+            return !!(getCheckFlags(propertySymbol) & 8192) && (contains2(context3.reverseMappedStack, propertySymbol) || ((_a = context3.reverseMappedStack) == null ? void 0 : _a[0]) && !(getObjectFlags(last(context3.reverseMappedStack).links.propertyType) & 16) || isDeeplyNestedReverseMappedTypeProperty());
             function isDeeplyNestedReverseMappedTypeProperty() {
               var _a2;
               if ((((_a2 = context3.reverseMappedStack) == null ? void 0 : _a2.length) ?? 0) < depth) {
@@ -87917,7 +87917,7 @@ ${lanes.join("\n")}
               }
               let result;
               const identity2 = getRecursionIdentity(t);
-              if (stack.length < 10 || stack.length < 50 && !contains(stack, identity2)) {
+              if (stack.length < 10 || stack.length < 50 && !contains2(stack, identity2)) {
                 stack.push(identity2);
                 result = computeBaseConstraint(getSimplifiedType(
                   t,
@@ -88261,7 +88261,7 @@ ${lanes.join("\n")}
               continue;
             }
             commonDeclarations.forEach((declaration) => {
-              if (!contains(symbol.declarations, declaration)) {
+              if (!contains2(symbol.declarations, declaration)) {
                 commonDeclarations.delete(declaration);
               }
             });
@@ -90896,7 +90896,7 @@ ${lanes.join("\n")}
           const typeSet = arrayFrom(typeMembershipMap.values());
           let objectFlags = 0;
           if (includes & 131072) {
-            return contains(typeSet, silentNeverType) ? silentNeverType : neverType;
+            return contains2(typeSet, silentNeverType) ? silentNeverType : neverType;
           }
           if (strictNullChecks && includes & 98304 && includes & (524288 | 67108864 | 16777216) || includes & 67108864 && includes & (469892092 & ~67108864) || includes & 402653316 && includes & (469892092 & ~402653316) || includes & 296 && includes & (469892092 & ~296) || includes & 2112 && includes & (469892092 & ~2112) || includes & 12288 && includes & (469892092 & ~12288) || includes & 49152 && includes & (469892092 & ~49152)) {
             return neverType;
@@ -91201,7 +91201,7 @@ ${lanes.join("\n")}
           if (unionIndex >= 0) {
             return checkCrossProductUnion(types) ? mapType(types[unionIndex], (t) => getTemplateLiteralType(texts, replaceElement(types, unionIndex, t))) : errorType;
           }
-          if (contains(types, wildcardType)) {
+          if (contains2(types, wildcardType)) {
             return wildcardType;
           }
           const newTypes = [];
@@ -92800,7 +92800,7 @@ ${lanes.join("\n")}
           const modifiers = getMappedTypeModifiers(mappedType);
           const newElementFlags = modifiers & 4 ? map(elementFlags, (f) => f & 1 ? 2 : f) : modifiers & 8 ? map(elementFlags, (f) => f & 2 ? 1 : f) : elementFlags;
           const newReadonly = getModifiedReadonlyState(tupleType.target.readonly, getMappedTypeModifiers(mappedType));
-          return contains(newElementTypes, errorType) ? errorType : createTupleType(newElementTypes, newElementFlags, newReadonly, tupleType.target.labeledElementDeclarations);
+          return contains2(newElementTypes, errorType) ? errorType : createTupleType(newElementTypes, newElementFlags, newReadonly, tupleType.target.labeledElementDeclarations);
         }
         function instantiateMappedArrayType(arrayType, mappedType, mapper) {
           const elementType = instantiateMappedTypeTemplate(
@@ -94532,7 +94532,7 @@ ${lanes.join("\n")}
               const targetTypes = target2.types;
               const intrinsicAttributes = getJsxType(JsxNames.IntrinsicAttributes, errorNode);
               const intrinsicClassAttributes = getJsxType(JsxNames.IntrinsicClassAttributes, errorNode);
-              if (!isErrorType(intrinsicAttributes) && !isErrorType(intrinsicClassAttributes) && (contains(targetTypes, intrinsicAttributes) || contains(targetTypes, intrinsicClassAttributes))) {
+              if (!isErrorType(intrinsicAttributes) && !isErrorType(intrinsicClassAttributes) && (contains2(targetTypes, intrinsicAttributes) || contains2(targetTypes, intrinsicClassAttributes))) {
                 return;
               }
             } else {
@@ -94672,11 +94672,11 @@ ${lanes.join("\n")}
             if (source2.flags & 1048576) {
               if (target2.flags & 1048576) {
                 const sourceOrigin = source2.origin;
-                if (sourceOrigin && sourceOrigin.flags & 2097152 && target2.aliasSymbol && contains(sourceOrigin.types, target2)) {
+                if (sourceOrigin && sourceOrigin.flags & 2097152 && target2.aliasSymbol && contains2(sourceOrigin.types, target2)) {
                   return -1;
                 }
                 const targetOrigin = target2.origin;
-                if (targetOrigin && targetOrigin.flags & 1048576 && source2.aliasSymbol && contains(targetOrigin.types, source2)) {
+                if (targetOrigin && targetOrigin.flags & 1048576 && source2.aliasSymbol && contains2(targetOrigin.types, source2)) {
                   return -1;
                 }
               }
@@ -96658,7 +96658,7 @@ ${lanes.join("\n")}
               }
             }
           }
-          const filtered = contains(
+          const filtered = contains2(
             include,
             0
             /* False */
@@ -98162,11 +98162,11 @@ ${lanes.join("\n")}
                   }
                   if (priority === inference.priority) {
                     if (contravariant && !bivariant) {
-                      if (!contains(inference.contraCandidates, candidate)) {
+                      if (!contains2(inference.contraCandidates, candidate)) {
                         inference.contraCandidates = append(inference.contraCandidates, candidate);
                         clearCachedInferences(inferences);
                       }
-                    } else if (!contains(inference.candidates, candidate)) {
+                    } else if (!contains2(inference.candidates, candidate)) {
                       inference.candidates = append(inference.candidates, candidate);
                       clearCachedInferences(inferences);
                     }
@@ -98325,8 +98325,8 @@ ${lanes.join("\n")}
               }
             }
             return [
-              matchedSources ? filter(sources, (t) => !contains(matchedSources, t)) : sources,
-              matchedTargets ? filter(targets, (t) => !contains(matchedTargets, t)) : targets
+              matchedSources ? filter(sources, (t) => !contains2(matchedSources, t)) : sources,
+              matchedTargets ? filter(targets, (t) => !contains2(matchedTargets, t)) : targets
             ];
           }
           function inferFromTypeArguments(sourceTypes, targetTypes, variances) {
@@ -99460,12 +99460,12 @@ ${lanes.join("\n")}
           const witnesses = [];
           for (const clause of switchStatement.caseBlock.clauses) {
             const text = clause.kind === 297 ? clause.expression.text : void 0;
-            witnesses.push(text && !contains(witnesses, text) ? text : void 0);
+            witnesses.push(text && !contains2(witnesses, text) ? text : void 0);
           }
           return witnesses;
         }
         function eachTypeContainedIn(source, types) {
-          return source.flags & 1048576 ? !forEach(source.types, (t) => !contains(types, t)) : contains(types, source);
+          return source.flags & 1048576 ? !forEach(source.types, (t) => !contains2(types, t)) : contains2(types, source);
         }
         function isTypeSubsetOf(source, target) {
           return !!(source === target || source.flags & 131072 || target.flags & 1048576 && isTypeSubsetOfUnion(source, target));
@@ -100239,7 +100239,7 @@ ${lanes.join("\n")}
             if (bypassFlow) {
               const flowType = getTypeAtFlowNode(bypassFlow);
               const type = getTypeFromFlowType(flowType);
-              if (!(type.flags & 131072) && !contains(antecedentTypes, type) && !isExhaustiveSwitchStatement(bypassFlow.node.switchStatement)) {
+              if (!(type.flags & 131072) && !contains2(antecedentTypes, type) && !isExhaustiveSwitchStatement(bypassFlow.node.switchStatement)) {
                 if (type === declaredType && declaredType === initialType) {
                   return type;
                 }
@@ -100719,7 +100719,7 @@ ${lanes.join("\n")}
               return type;
             }
             const clauseTypes = switchTypes.slice(clauseStart, clauseEnd);
-            const hasDefaultClause = clauseStart === clauseEnd || contains(clauseTypes, neverType);
+            const hasDefaultClause = clauseStart === clauseEnd || contains2(clauseTypes, neverType);
             if (type.flags & 2 && !hasDefaultClause) {
               let groundClauseTypes;
               for (let i = 0; i < clauseTypes.length; i += 1) {
@@ -100744,7 +100744,7 @@ ${lanes.join("\n")}
             if (!hasDefaultClause) {
               return caseType;
             }
-            const defaultType = filterType(type, (t) => !(isUnitLikeType(t) && contains(switchTypes, t.flags & 32768 ? undefinedType : getRegularTypeOfLiteralType(extractUnitType(t)))));
+            const defaultType = filterType(type, (t) => !(isUnitLikeType(t) && contains2(switchTypes, t.flags & 32768 ? undefinedType : getRegularTypeOfLiteralType(extractUnitType(t)))));
             return caseType.flags & 131072 ? defaultType : getUnionType([caseType, defaultType]);
           }
           function narrowTypeByTypeName(type, typeName) {
@@ -101898,7 +101898,7 @@ ${lanes.join("\n")}
           const localOrExportSymbol = getExportSymbolOfValueSymbolIfExported(symbol);
           let declaration = localOrExportSymbol.valueDeclaration;
           const immediateDeclaration = declaration;
-          if (declaration && declaration.kind === 209 && contains(contextualBindingPatterns, declaration.parent) && findAncestor(node, (parent2) => parent2 === declaration.parent)) {
+          if (declaration && declaration.kind === 209 && contains2(contextualBindingPatterns, declaration.parent) && findAncestor(node, (parent2) => parent2 === declaration.parent)) {
             return nonInferrableAnyType;
           }
           let type = getNarrowedTypeOfSymbol(localOrExportSymbol, node);
@@ -102048,7 +102048,7 @@ ${lanes.join("\n")}
         }
         function isBindingCapturedByNode(node, decl) {
           const links = getNodeLinks(node);
-          return !!links && contains(links.capturedBlockScopeBindings, getSymbolOfDeclaration(decl));
+          return !!links && contains2(links.capturedBlockScopeBindings, getSymbolOfDeclaration(decl));
         }
         function isAssignedInBodyOfForStatement(node, container) {
           let current = node;
@@ -105429,7 +105429,7 @@ ${lanes.join("\n")}
           const typeFeatures = allFeatures.get(containingTypeName);
           if (typeFeatures) {
             for (const [libTarget, featuresOfType] of typeFeatures) {
-              if (contains(featuresOfType, missingProperty)) {
+              if (contains2(featuresOfType, missingProperty)) {
                 return libTarget;
               }
             }
@@ -147011,7 +147011,7 @@ ${lanes.join("\n")}
       function getDeclarationDiagnostics(host, resolver, file) {
         const compilerOptions = host.getCompilerOptions();
         const files = filter(getSourceFilesToEmit(host, file), isSourceFileNotJson);
-        return contains(files, file) ? transformNodes(
+        return contains2(files, file) ? transformNodes(
           resolver,
           host,
           factory,
@@ -147351,7 +147351,7 @@ ${lanes.join("\n")}
               if (file.isDeclarationFile) {
                 declFileName = file.fileName;
               } else {
-                if (isBundledEmit && contains(node.sourceFiles, file)) return;
+                if (isBundledEmit && contains2(node.sourceFiles, file)) return;
                 const paths = getOutputPathsFor(
                   file,
                   host,
@@ -149416,7 +149416,7 @@ ${lanes.join("\n")}
       }
       function getOutputFileNames(commandLine, inputFileName, ignoreCase) {
         inputFileName = normalizePath3(inputFileName);
-        Debug.assert(contains(commandLine.fileNames, inputFileName), `Expected fileName to be present in command line`);
+        Debug.assert(contains2(commandLine.fileNames, inputFileName), `Expected fileName to be present in command line`);
         const { addOutput, getOutputs } = createAddOutput();
         if (commandLine.options.outFile) {
           getSingleOutputFileNames(commandLine, addOutput);
@@ -155703,7 +155703,7 @@ ${lanes.join("\n")}
         }
         function resolvedProjectReferenceUptoDate(oldResolvedRef, oldRef) {
           if (oldResolvedRef) {
-            if (contains(seenResolvedRefs, oldResolvedRef)) return true;
+            if (contains2(seenResolvedRefs, oldResolvedRef)) return true;
             const refPath2 = resolveProjectReferencePath(oldRef);
             const newParsedCommandLine = getParsedCommandLine(refPath2);
             if (!newParsedCommandLine) return false;
@@ -156509,7 +156509,7 @@ ${lanes.join("\n")}
             }
             if (resolveToOwnAmbientModule) {
               const name = nameAndModeGetter.getName(entry);
-              if (contains(containingSourceFile.ambientModuleNames, name)) {
+              if (contains2(containingSourceFile.ambientModuleNames, name)) {
                 if (isTraceEnabled(options, host)) {
                   trace(
                     host,
@@ -162377,7 +162377,7 @@ ${lanes.join("\n")}
         };
       }
       function clearScreenIfNotWatchingForFileChanges(system, diagnostic, options) {
-        if (system.clearScreen && !options.preserveWatchOutput && !options.extendedDiagnostics && !options.diagnostics && contains(screenStartingMessageCodes, diagnostic.code)) {
+        if (system.clearScreen && !options.preserveWatchOutput && !options.extendedDiagnostics && !options.diagnostics && contains2(screenStartingMessageCodes, diagnostic.code)) {
           system.clearScreen();
           return true;
         }
@@ -162388,7 +162388,7 @@ ${lanes.join("\n")}
         Diagnostics.File_change_detected_Starting_incremental_compilation.code
       ];
       function getPlainDiagnosticFollowingNewLines(diagnostic, newLine) {
-        return contains(screenStartingMessageCodes, diagnostic.code) ? newLine + newLine : newLine;
+        return contains2(screenStartingMessageCodes, diagnostic.code) ? newLine + newLine : newLine;
       }
       function getLocaleTimeString(system) {
         return !system.now ? (/* @__PURE__ */ new Date()).toLocaleTimeString() : (
@@ -165772,7 +165772,7 @@ ${lanes.join("\n")}
           const ignoredDescriptions = [void 0, "false", "n/a"];
           const defaultValueDescription2 = option2.defaultValueDescription;
           if (option2.category === Diagnostics.Command_line_Options) return false;
-          if (contains(ignoreValues, valueCandidates2 == null ? void 0 : valueCandidates2.possibleValues) && contains(ignoredDescriptions, defaultValueDescription2)) {
+          if (contains2(ignoreValues, valueCandidates2 == null ? void 0 : valueCandidates2.possibleValues) && contains2(ignoredDescriptions, defaultValueDescription2)) {
             return false;
           }
           return true;
@@ -165910,7 +165910,7 @@ ${lanes.join("\n")}
         example("tsc --help --all", Diagnostics.An_expanded_version_of_this_information_showing_all_possible_compiler_options);
         example(["tsc --noEmit", "tsc --target esnext"], Diagnostics.Compiles_the_current_project_with_additional_settings);
         const cliCommands = simpleOptions.filter((opt) => opt.isCommandLineOnly || opt.category === Diagnostics.Command_line_Options);
-        const configOpts = simpleOptions.filter((opt) => !contains(cliCommands, opt));
+        const configOpts = simpleOptions.filter((opt) => !contains2(cliCommands, opt));
         output = [
           ...output,
           ...generateSectionOptionsOutput(
@@ -169237,7 +169237,7 @@ ${lanes.join("\n")}
       }
       function findContainingList(node) {
         const syntaxList = find(node.parent.getChildren(), (c) => isSyntaxList(c) && rangeContainsRange(c, node));
-        Debug.assert(!syntaxList || contains(syntaxList.getChildren(), node));
+        Debug.assert(!syntaxList || contains2(syntaxList.getChildren(), node));
         return syntaxList;
       }
       function isDefaultModifier2(node) {
@@ -169356,7 +169356,7 @@ ${lanes.join("\n")}
       }
       function getAdjustedLocation(node, forRename) {
         const { parent: parent2 } = node;
-        if (isModifier(node) && (forRename || node.kind !== 90) ? canHaveModifiers(parent2) && contains(parent2.modifiers, node) : node.kind === 86 ? isClassDeclaration(parent2) || isClassExpression(node) : node.kind === 100 ? isFunctionDeclaration(parent2) || isFunctionExpression(node) : node.kind === 120 ? isInterfaceDeclaration(parent2) : node.kind === 94 ? isEnumDeclaration(parent2) : node.kind === 156 ? isTypeAliasDeclaration(parent2) : node.kind === 145 || node.kind === 144 ? isModuleDeclaration(parent2) : node.kind === 102 ? isImportEqualsDeclaration(parent2) : node.kind === 139 ? isGetAccessorDeclaration(parent2) : node.kind === 153 && isSetAccessorDeclaration(parent2)) {
+        if (isModifier(node) && (forRename || node.kind !== 90) ? canHaveModifiers(parent2) && contains2(parent2.modifiers, node) : node.kind === 86 ? isClassDeclaration(parent2) || isClassExpression(node) : node.kind === 100 ? isFunctionDeclaration(parent2) || isFunctionExpression(node) : node.kind === 120 ? isInterfaceDeclaration(parent2) : node.kind === 94 ? isEnumDeclaration(parent2) : node.kind === 156 ? isTypeAliasDeclaration(parent2) : node.kind === 145 || node.kind === 144 ? isModuleDeclaration(parent2) : node.kind === 102 ? isImportEqualsDeclaration(parent2) : node.kind === 139 ? isGetAccessorDeclaration(parent2) : node.kind === 153 && isSetAccessorDeclaration(parent2)) {
           const location = getAdjustedLocationForDeclaration(parent2, forRename);
           if (location) {
             return location;
@@ -170082,7 +170082,7 @@ ${lanes.join("\n")}
         /* UnknownKeyword */
       ];
       function isTypeKeyword(kind) {
-        return contains(typeKeywords, kind);
+        return contains2(typeKeywords, kind);
       }
       function isTypeKeywordToken(node) {
         return node.kind === 156;
@@ -171236,7 +171236,7 @@ ${lanes.join("\n")}
         return some(sourceFile.imports, ({ text }) => nodeCoreModules.has(text));
       }
       function isInsideNodeModules(fileOrDirectory) {
-        return contains(getPathComponents(fileOrDirectory), "node_modules");
+        return contains2(getPathComponents(fileOrDirectory), "node_modules");
       }
       function isDiagnosticWithLocation(diagnostic) {
         return diagnostic.file !== void 0 && diagnostic.start !== void 0 && diagnostic.length !== void 0;
@@ -173099,7 +173099,7 @@ ${lanes.join("\n")}
           function getFromAllDeclarations(nodeTest, keywords) {
             return useParent(node.parent, nodeTest, (decl) => {
               var _a;
-              return mapDefined((_a = tryCast(decl, canHaveSymbol)) == null ? void 0 : _a.symbol.declarations, (d) => nodeTest(d) ? find(d.getChildren(sourceFile), (c) => contains(keywords, c.kind)) : void 0);
+              return mapDefined((_a = tryCast(decl, canHaveSymbol)) == null ? void 0 : _a.symbol.declarations, (d) => nodeTest(d) ? find(d.getChildren(sourceFile), (c) => contains2(keywords, c.kind)) : void 0);
             });
           }
           function useParent(node2, nodeTest, getNodes4) {
@@ -173210,7 +173210,7 @@ ${lanes.join("\n")}
           }
         }
         function pushKeywordIf(keywordList, token, ...expected) {
-          if (token && contains(expected, token.kind)) {
+          if (token && contains2(expected, token.kind)) {
             keywordList.push(token);
             return true;
           }
@@ -175734,7 +175734,7 @@ interface Symbol {
       function isOwnChild(n, parent2) {
         if (n.parent === void 0) return false;
         const par = isModuleBlock(n.parent) ? n.parent.parent : n.parent;
-        return par === parent2.node || contains(parent2.additionalNodes, par);
+        return par === parent2.node || contains2(parent2.additionalNodes, par);
       }
       function areSameModule(a, b) {
         if (!a.body || !b.body) {
@@ -177013,7 +177013,7 @@ interface Symbol {
       }
       function deleteUnusedOldImports(oldFile, toMove, toDelete, importAdder) {
         for (const statement of oldFile.statements) {
-          if (contains(toMove, statement)) continue;
+          if (contains2(toMove, statement)) continue;
           forEachImportInStatement(statement, (i) => {
             forEachAliasDeclarationInImportOrRequire(i, (decl) => {
               if (toDelete.has(decl.symbol)) {
@@ -177522,7 +177522,7 @@ interface Symbol {
         }
         const oldFileImportsFromTargetFile = /* @__PURE__ */ new Map();
         for (const statement of oldFile.statements) {
-          if (contains(toMove, statement)) continue;
+          if (contains2(toMove, statement)) continue;
           if (jsxNamespaceSymbol && !!(statement.transformFlags & 2)) {
             unusedImportsFromOldFile.delete(jsxNamespaceSymbol);
           }
@@ -177696,7 +177696,7 @@ interface Symbol {
       function getOverloadRangeToMove(sourceFile, statement) {
         if (isFunctionLikeDeclaration(statement)) {
           const declarations = statement.symbol.declarations;
-          if (declarations === void 0 || length(declarations) <= 1 || !contains(declarations, statement)) {
+          if (declarations === void 0 || length(declarations) <= 1 || !contains2(declarations, statement)) {
             return void 0;
           }
           const firstDecl = declarations[0];
@@ -178653,7 +178653,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         if (!every(
           groupedReferences.declarations,
           /*callback*/
-          (decl) => contains(names, decl)
+          (decl) => contains2(names, decl)
         )) {
           groupedReferences.valid = false;
         }
@@ -178670,7 +178670,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               groupedReferences2.valid = false;
               continue;
             }
-            if (contains(contextualSymbols, getSymbolTargetAtLocation(entry.node))) {
+            if (contains2(contextualSymbols, getSymbolTargetAtLocation(entry.node))) {
               if (isValidMethodSignature(entry.node.parent)) {
                 groupedReferences2.signature = entry.node.parent;
                 continue;
@@ -178682,14 +178682,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               }
             }
             const contextualSymbol = getSymbolForContextualType(entry.node, checker);
-            if (contextualSymbol && contains(contextualSymbols, contextualSymbol)) {
+            if (contextualSymbol && contains2(contextualSymbols, contextualSymbol)) {
               const decl = entryToDeclaration(entry);
               if (decl) {
                 groupedReferences2.declarations.push(decl);
                 continue;
               }
             }
-            if (contains(functionSymbols, getSymbolTargetAtLocation(entry.node)) || isNewExpressionTarget(entry.node)) {
+            if (contains2(functionSymbols, getSymbolTargetAtLocation(entry.node)) || isNewExpressionTarget(entry.node)) {
               const importOrExportReference = entryToImportOrExport(entry);
               if (importOrExportReference) {
                 continue;
@@ -178705,7 +178705,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
                 continue;
               }
             }
-            if (isConstructor && contains(classSymbols, getSymbolTargetAtLocation(entry.node))) {
+            if (isConstructor && contains2(classSymbols, getSymbolTargetAtLocation(entry.node))) {
               const importOrExportReference = entryToImportOrExport(entry);
               if (importOrExportReference) {
                 continue;
@@ -179987,7 +179987,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               case 252: {
                 const label = node2.label;
                 if (label) {
-                  if (!contains(seenLabels, label.escapedText)) {
+                  if (!contains2(seenLabels, label.escapedText)) {
                     (errors2 || (errors2 = [])).push(createDiagnosticForNode(node2, Messages.cannotExtractRangeContainingLabeledBreakOrContinueStatementWithTargetOutsideOfTheRange));
                   }
                 } else {
@@ -185162,7 +185162,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         const { errorCodes: errorCodes68 } = registration;
         let maybeFixableDiagnostics = 0;
         for (const diag2 of diagnostics) {
-          if (contains(errorCodes68, diag2.code)) maybeFixableDiagnostics++;
+          if (contains2(errorCodes68, diag2.code)) maybeFixableDiagnostics++;
           if (maybeFixableDiagnostics > 1) break;
         }
         const fixAllUnavailable = maybeFixableDiagnostics < 2;
@@ -185191,7 +185191,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       }
       function eachDiagnostic(context3, errorCodes68, cb) {
         for (const diag2 of getDiagnostics(context3)) {
-          if (contains(errorCodes68, diag2.code)) {
+          if (contains2(errorCodes68, diag2.code)) {
             cb(diag2);
           }
         }
@@ -185496,7 +185496,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       function symbolReferenceIsAlsoMissingAwait(reference, diagnostics, sourceFile, checker) {
         const errorNode = isPropertyAccessExpression(reference.parent) ? reference.parent.name : isBinaryExpression(reference.parent) ? reference.parent : reference;
         const diagnostic = find(diagnostics, (diagnostic2) => diagnostic2.start === errorNode.getStart(sourceFile) && diagnostic2.start + diagnostic2.length === errorNode.getEnd());
-        return diagnostic && contains(errorCodes3, diagnostic.code) || // A Promise is usually not correct in a binary expression (it's not valid
+        return diagnostic && contains2(errorCodes3, diagnostic.code) || // A Promise is usually not correct in a binary expression (it's not valid
         // in an arithmetic expression and an equality comparison seems unusual),
         // but if the other side of the binary expression has an error, the side
         // is typed `any` which will squash the error that would identify this
@@ -185546,7 +185546,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             factory.createParenthesizedExpression(factory.createAwaitExpression(insertionSite.parent.expression))
           );
           insertLeadingSemicolonIfNeeded(changeTracker, insertionSite.parent.expression, sourceFile);
-        } else if (contains(callableConstructableErrorCodes, errorCode) && isCallOrNewExpression(insertionSite.parent)) {
+        } else if (contains2(callableConstructableErrorCodes, errorCode) && isCallOrNewExpression(insertionSite.parent)) {
           if (fixedDeclarations && isIdentifier2(insertionSite)) {
             const symbol = checker.getSymbolAtLocation(insertionSite);
             if (symbol && fixedDeclarations.has(getSymbolId(symbol))) {
@@ -187773,7 +187773,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             exportDeclaration.modifiers,
             /*isTypeOnly*/
             false,
-            factory.updateNamedExports(exportClause, filter(exportClause.elements, (e) => !contains(typeExportSpecifiers, e))),
+            factory.updateNamedExports(exportClause, filter(exportClause.elements, (e) => !contains2(typeExportSpecifiers, e))),
             exportDeclaration.moduleSpecifier,
             /*attributes*/
             void 0
@@ -201557,9 +201557,9 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               }
               const alreadyUsedTypes = getAlreadyUsedTypesInStringLiteralUnion(grandParent, parent2);
               if (result.kind === 1) {
-                return { kind: 1, symbols: result.symbols.filter((sym) => !contains(alreadyUsedTypes, sym.name)), hasIndexSignature: result.hasIndexSignature };
+                return { kind: 1, symbols: result.symbols.filter((sym) => !contains2(alreadyUsedTypes, sym.name)), hasIndexSignature: result.hasIndexSignature };
               }
-              return { kind: 2, types: result.types.filter((t) => !contains(alreadyUsedTypes, t.value)), isNewIdentifier: false };
+              return { kind: 2, types: result.types.filter((t) => !contains2(alreadyUsedTypes, t.value)), isNewIdentifier: false };
             }
             default:
               return void 0;
@@ -202249,7 +202249,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           if (!tryDirectoryExists(host, directory)) return;
           for (const typeDirectoryName of tryGetDirectories(host, directory)) {
             const packageName = unmangleScopedPackageName(typeDirectoryName);
-            if (options.types && !contains(options.types, packageName)) continue;
+            if (options.types && !contains2(options.types, packageName)) continue;
             if (fragmentDirectory === void 0) {
               if (!seen.has(packageName)) {
                 result.add(nameAndKind(
@@ -203266,7 +203266,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             }
           } else if (isImportSpecifier(parent2) && !parent2.propertyName) {
             const originalSymbol = isExportSpecifier(originalNode.parent) ? checker.getExportSpecifierLocalTargetSymbol(originalNode.parent) : checker.getSymbolAtLocation(originalNode);
-            return contains(originalSymbol.declarations, parent2) ? { prefixText: name + " as " } : emptyOptions;
+            return contains2(originalSymbol.declarations, parent2) ? { prefixText: name + " as " } : emptyOptions;
           } else if (isExportSpecifier(parent2) && !parent2.propertyName) {
             return originalNode === entry.node || checker.getSymbolAtLocation(originalNode) === checker.getSymbolAtLocation(entry.node) ? { prefixText: name + " as " } : { suffixText: " as " + name };
           }
@@ -203757,7 +203757,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               search,
               state,
               /*addReferencesHere*/
-              !(isSourceFile(scope) && !contains(state.sourceFiles, scope))
+              !(isSourceFile(scope) && !contains2(state.sourceFiles, scope))
             );
           } else {
             for (const sourceFile of state.sourceFiles) {
@@ -203842,7 +203842,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             } = searchOptions;
             const escapedText = escapeLeadingUnderscores(text);
             const parents = this.options.implementations && location ? getParentSymbolsOfPropertyAccess(location, symbol, this.checker) : void 0;
-            return { symbol, comingFrom, text, escapedText, parents, allSearchSymbols, includes: (sym) => contains(allSearchSymbols, sym) };
+            return { symbol, comingFrom, text, escapedText, parents, allSearchSymbols, includes: (sym) => contains2(allSearchSymbols, sym) };
           }
           /**
            * Callback to add references for a particular searched symbol.
@@ -206400,7 +206400,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             if (inheritDoc && inheritDoc.comment) {
               newparts = newparts.concat(getDisplayPartsFromComment(inheritDoc.comment, checker));
             }
-            if (!contains(parts, newparts, isIdenticalListOfDisplayParts)) {
+            if (!contains2(parts, newparts, isIdenticalListOfDisplayParts)) {
               parts.push(newparts);
             }
           }
@@ -208215,10 +208215,10 @@ ${content}
         const invocationChildren = node.getChildren(sourceFile);
         switch (startingToken.kind) {
           case 21:
-            return contains(invocationChildren, startingToken);
+            return contains2(invocationChildren, startingToken);
           case 28: {
             const containingList = findContainingList(startingToken);
-            return !!containingList && contains(invocationChildren, containingList);
+            return !!containingList && contains2(invocationChildren, containingList);
           }
           case 30:
             return containsPrecedingToken(startingToken, sourceFile, node.expression);
@@ -208843,7 +208843,7 @@ ${content}
           ];
         }
         if (isPropertySignature(node)) {
-          const children = groupChildren(node.getChildren(), (child) => child === node.name || contains(node.modifiers, child));
+          const children = groupChildren(node.getChildren(), (child) => child === node.name || contains2(node.modifiers, child));
           const firstJSDocChild = ((_a = children[0]) == null ? void 0 : _a.kind) === 321 ? children[0] : void 0;
           const withJSDocSeparated = firstJSDocChild ? children.slice(1) : children;
           const splittedChildren = splitChildren(
@@ -209117,7 +209117,7 @@ ${content}
             signature = typeChecker.getResolvedSignature(callExpressionLike);
             const useConstructSignatures = callExpressionLike.kind === 215 || isCallExpression(callExpressionLike) && callExpressionLike.expression.kind === 108;
             const allSignatures = useConstructSignatures ? type.getConstructSignatures() : type.getCallSignatures();
-            if (signature && !contains(allSignatures, signature.target) && !contains(allSignatures, signature)) {
+            if (signature && !contains2(allSignatures, signature.target) && !contains2(allSignatures, signature)) {
               signature = allSignatures.length ? allSignatures[0] : void 0;
             }
             if (signature) {
@@ -211225,7 +211225,7 @@ ${options.prefix}` : "\n" : options.prefix
                 deleteNode(changes, sourceFile, node);
               } else if (isImportClause(node.parent) && node.parent.name === node) {
                 deleteDefaultImport(changes, sourceFile, node.parent);
-              } else if (isCallExpression(node.parent) && contains(node.parent.arguments, node)) {
+              } else if (isCallExpression(node.parent) && contains2(node.parent.arguments, node)) {
                 deleteNodeInList(changes, deletedNodesInLists, sourceFile, node);
               } else {
                 deleteNode(changes, sourceFile, node);
@@ -213128,7 +213128,7 @@ ${options.prefix}` : "\n" : options.prefix
       function tokenRangeFromRange(from, to, except = []) {
         const tokens2 = [];
         for (let token = from; token <= to; token++) {
-          if (!contains(except, token)) {
+          if (!contains2(except, token)) {
             tokens2.push(token);
           }
         }
@@ -214912,7 +214912,7 @@ ${options.prefix}` : "\n" : options.prefix
           return sourceFile.getLineAndCharacterOfPosition(n.getStart(sourceFile));
         }
         function isArgumentAndStartLineOverlapsExpressionBeingCalled(parent2, child, childStartLine, sourceFile) {
-          if (!(isCallExpression(parent2) && contains(parent2.arguments, child))) {
+          if (!(isCallExpression(parent2) && contains2(parent2.arguments, child))) {
             return false;
           }
           const expressionOfCallExpressionEnd = parent2.expression.getEnd();
@@ -215660,7 +215660,7 @@ ${options.prefix}` : "\n" : options.prefix
         concatenate: () => concatenate,
         concatenateDiagnosticMessageChains: () => concatenateDiagnosticMessageChains,
         consumesNodeCoreModules: () => consumesNodeCoreModules,
-        contains: () => contains,
+        contains: () => contains2,
         containsIgnoredPath: () => containsIgnoredPath,
         containsObjectRestOrSpread: () => containsObjectRestOrSpread,
         containsParseError: () => containsParseError,
@@ -218896,7 +218896,7 @@ ${options.prefix}` : "\n" : options.prefix
             case 2:
               return this.containingProjects[0] === project || this.containingProjects[1] === project;
             default:
-              return contains(this.containingProjects, project);
+              return contains2(this.containingProjects, project);
           }
         }
         detachFromProject(project) {
@@ -223777,7 +223777,7 @@ All files are: ${JSON.stringify(names)}`,
                   if (!projects) {
                     projects = createMultiMap();
                     projects.add(toAddInfo.path, project);
-                  } else if (!forEachEntry(projects, (projs, path) => path === toAddInfo.path ? false : contains(projs, project))) {
+                  } else if (!forEachEntry(projects, (projs, path) => path === toAddInfo.path ? false : contains2(projs, project))) {
                     projects.add(toAddInfo.path, project);
                   }
                 }
@@ -224776,7 +224776,7 @@ Dynamic files must always be opened with service's current directory or service 
         tryInvokeWildCardDirectories(info2) {
           this.configFileExistenceInfoCache.forEach((configFileExistenceInfo, config) => {
             var _a, _b;
-            if (!((_a = configFileExistenceInfo.config) == null ? void 0 : _a.parsedCommandLine) || contains(
+            if (!((_a = configFileExistenceInfo.config) == null ? void 0 : _a.parsedCommandLine) || contains2(
               configFileExistenceInfo.config.parsedCommandLine.fileNames,
               info2.fileName,
               !this.host.useCaseSensitiveFileNames ? equateStringsCaseInsensitive : equateStringsCaseSensitive
@@ -241569,6 +241569,8 @@ var PYTHON_DECORATORS = /* @__PURE__ */ new Map([
   ["unittest.expectedFailure", "never"]
 ]);
 var PYTHON_CALLS = /* @__PURE__ */ new Set(["pytest.skip", "pytest.xfail"]);
+var PYTEST_MARKS = /* @__PURE__ */ new Set(["pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail"]);
+var PYTESTMARK = "pytestmark";
 function canonicalPython(written, table, aliases) {
   if (table.has(written)) return written;
   if (aliases === void 0) return null;
@@ -241587,6 +241589,30 @@ function isKeywordArg(arg) {
   while (isSpace3(arg.charAt(i))) i++;
   return arg.charAt(i) === "=" && arg.charAt(i + 1) !== "=";
 }
+function isConditional(rule2, arg) {
+  return rule2 === "always" || rule2 === "by-argument" && arg !== "" && stringContent(arg, true) === null && !isKeywordArg(arg);
+}
+function parsePytestmark(line, aliases) {
+  let i = PYTESTMARK.length;
+  if (i < line.length && isWordCode(line.charCodeAt(i))) return null;
+  while (isSpace3(line.charAt(i))) i++;
+  if (line.charAt(i) !== "=" || line.charAt(i + 1) === "=") return null;
+  i++;
+  while (isSpace3(line.charAt(i))) i++;
+  if (line.charAt(i) === "[" || line.charAt(i) === "(") {
+    i++;
+    while (isSpace3(line.charAt(i))) i++;
+  }
+  const end = dottedEnd(line, i);
+  if (end === i) return null;
+  const token = canonicalPython(line.slice(i, end), PYTEST_MARKS, aliases);
+  const rule2 = token === null ? void 0 : PYTHON_DECORATORS.get(token);
+  if (token === null || rule2 === void 0) return null;
+  let j = end;
+  while (isSpace3(line.charAt(j))) j++;
+  const arg = line.charAt(j) === "(" ? scanArg(line, j + 1).text : "";
+  return { kind: "mark", token, name: argName(arg, true), conditional: isConditional(rule2, arg) };
+}
 function parsePythonSkip(text, aliases) {
   const line = text.trimStart();
   if (line.startsWith("@")) {
@@ -241598,9 +241624,9 @@ function parsePythonSkip(text, aliases) {
     let i2 = end;
     while (isSpace3(line.charAt(i2))) i2++;
     const arg = line.charAt(i2) === "(" ? scanArg(line, i2 + 1).text : "";
-    const conditional = rule2 === "always" || rule2 === "by-argument" && arg !== "" && stringContent(arg, true) === null && !isKeywordArg(arg);
-    return { kind: "decorator", token, name: argName(arg, true), conditional };
+    return { kind: "decorator", token, name: argName(arg, true), conditional: isConditional(rule2, arg) };
   }
+  if (line.startsWith(PYTESTMARK)) return parsePytestmark(line, aliases);
   const callEnd = dottedEnd(line, 0);
   const call = canonicalPython(line.slice(0, callEnd), PYTHON_CALLS, aliases);
   if (call === null) return null;
@@ -242336,7 +242362,12 @@ function lookupOf(side) {
   return { texts, dropped };
 }
 function testsOf(result) {
-  return result.parsed ? { ok: true, tests: result.tests.filter((block) => block.kind === "test"), mocks: result.mocks } : { ok: false, reason: result.reason };
+  return result.parsed ? {
+    ok: true,
+    tests: result.tests.filter((block) => block.kind === "test"),
+    groups: result.tests.filter((block) => block.kind === "describe"),
+    mocks: result.mocks
+  } : { ok: false, reason: result.reason };
 }
 function pythonLookupOf(index) {
   const mapOf = (files) => new Map(files.map((file) => [file.path, file.result]));
@@ -242398,7 +242429,9 @@ function indexTouchedTestFiles(diff, sources, python) {
         base: base.tests,
         head: head.tests,
         baseMocks: base.mocks,
-        headMocks: head.mocks
+        headMocks: head.mocks,
+        baseGroups: base.groups,
+        headGroups: head.groups
       });
     } else {
       const reason = base.ok ? head.reason : base.reason;
@@ -242409,7 +242442,7 @@ function indexTouchedTestFiles(diff, sources, python) {
   const added = [];
   for (const [headPath, language] of [...addedPaths].sort((a, b) => byCodeUnit16(a[0], b[0]))) {
     const head = indexSide("head", headPath, language);
-    if (head.ok) added.push({ headPath, head: head.tests, headMocks: head.mocks });
+    if (head.ok) added.push({ headPath, head: head.tests, headMocks: head.mocks, headGroups: head.groups });
   }
   return { pairs, added, unavailable: unavailable2, notRun: null, languages: [...languages].sort(byCodeUnit16) };
 }
@@ -243060,7 +243093,8 @@ function sameStemDeletions(diff) {
   return linked;
 }
 function movedTestFiles(diff, sources, python, touched) {
-  const moved = { files: /* @__PURE__ */ new Set(), compared: /* @__PURE__ */ new Set(), pairs: [] };
+  const describes = /* @__PURE__ */ new Map();
+  const moved = { files: /* @__PURE__ */ new Set(), compared: /* @__PURE__ */ new Set(), pairs: [], groups: describes };
   if (touched.notRun !== null || "unavailable" in sources.base) return moved;
   const deleted = diff.filter((file) => file.status === "deleted" && isTestFile(file.path) && file.binary !== true).map((file) => file.path).sort(byCodeUnit20);
   if (deleted.length === 0) return moved;
@@ -243077,6 +243111,10 @@ function movedTestFiles(diff, sources, python, touched) {
     }
     if (result === void 0 || !result.parsed) continue;
     moved.compared.add(path);
+    describes.set(
+      path,
+      result.tests.filter((block) => block.kind === "describe")
+    );
     const tests = result.tests.filter((block) => block.kind === "test").sort((a, b) => a.line - b.line);
     if (tests.length > 0) indexed.push({ path, tests });
   }
@@ -243210,8 +243248,9 @@ var DETAILS = {
   existing: "An unconditional skip was added to a test that the diff shows existed before this change, so that test no longer runs.",
   conditional: "A conditional skip was added; the test is skipped only where its condition holds.",
   "cannot-place": "A skip was added inside a test body or hook, where the diff cannot tell which test it stops or whether a condition guards it.",
-  adds: "A skip was added to a test that this change adds, so no test that ran before stops running."
+  adds: "A skip was added to a test that no removed line of this file opens, so the diff shows it as new."
 };
+var STRENGTH = { existing: 3, conditional: 2, "cannot-place": 1, adds: 0 };
 var keyOf = (token, name) => `${token}\0${name}`;
 function jsSkip(parsed) {
   const { token, name, condition } = parsed;
@@ -243236,13 +243275,18 @@ function jsSkip(parsed) {
 }
 function pythonSkip(text, aliases) {
   let parsed = parsePythonSkip(text);
-  if (parsed === null && aliases !== void 0 && (text.includes("@") || text.includes("("))) {
+  const shaped = text.includes("@") || text.includes("(") || text.trimStart().startsWith("pytestmark");
+  if (parsed === null && aliases !== void 0 && shaped) {
     const map = aliases();
     if (map !== void 0) parsed = parsePythonSkip(text, map);
   }
   if (parsed === null) return null;
+  if (parsed.kind === "call") return { key: keyOf(parsed.token, parsed.name), shape: "in-body", name: parsed.name };
+  if (parsed.kind === "mark") {
+    const key2 = keyOf(`pytestmark ${parsed.token}`, parsed.name);
+    return { key: key2, shape: parsed.conditional ? "conditional" : "module", name: parsed.name };
+  }
   const key = keyOf(parsed.token, parsed.name);
-  if (parsed.kind === "call") return { key, shape: "in-body", name: parsed.name };
   return { key, shape: parsed.conditional ? "conditional" : "decorator", name: parsed.name };
 }
 function goSkip(text) {
@@ -243324,34 +243368,242 @@ function findingsOf(file, hunks, language, aliases) {
       else if (skip.shape === "conditional") category = "conditional";
       else if (skip.shape === "in-body") category = "cannot-place";
       else if (skip.shape === "named") category = openings.has(skip.name) ? "existing" : "adds";
+      else if (skip.shape === "module") category = "existing";
       else category = decoratedTest(hunk, index);
       found.push({ line: entry.line, category });
     });
   }
   return found;
 }
-function detectTI03(diff, mode, sources) {
-  const signals = [];
+function detectTI03(diff, mode, sources, pairs = []) {
+  const byPath = /* @__PURE__ */ new Map();
+  const note = (path, line, category) => {
+    let lines = byPath.get(path);
+    if (lines === void 0) {
+      lines = /* @__PURE__ */ new Map();
+      byPath.set(path, lines);
+    }
+    const held = lines.get(line);
+    if (held === void 0 || STRENGTH[category] > STRENGTH[held]) lines.set(line, category);
+  };
   const texts = { base: textsOf(sources?.base), head: textsOf(sources?.head) };
   for (const file of diff) {
     if (file.hunks === void 0 || file.binary === true || !isTestFile(file.path)) continue;
     const language = testLanguage(file.path);
     if (language === null) continue;
-    const rank = (category) => category === "existing" ? 0 : 1;
-    const found = findingsOf(file, file.hunks, language, aliasesOf(file, language, texts)).sort(
-      (a, b) => rank(a.category) - rank(b.category) || a.line - b.line
-    );
+    for (const { line, category } of findingsOf(file, file.hunks, language, aliasesOf(file, language, texts))) {
+      note(file.path, line, category);
+    }
+  }
+  for (const { path, line, category } of pairs) note(path, line, category);
+  const rank = (category) => category === "existing" ? 0 : 1;
+  const signals = [];
+  for (const [path, lines] of byPath) {
+    const found = [...lines].map(([line, category]) => ({ line, category })).sort((a, b) => rank(a.category) - rank(b.category) || a.line - b.line);
     for (const { line, category } of found.slice(0, MAX_PER_FILE)) {
       signals.push({
         id: "TI03",
         severity: category === "existing" ? mode : "warn",
-        path: file.path,
+        path,
         line,
         detail: DETAILS[category]
       });
     }
   }
   return signals.sort((a, b) => byCodeUnit22(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+}
+
+// ../core/src/signals/ti03Pairs.ts
+var NONE = 0;
+var CONDITIONAL = 1;
+var UNCONDITIONAL = 2;
+var stronger = (a, b) => a > b ? a : b;
+var contains = (outer, inner) => outer.line <= inner.line && inner.endLine <= outer.endLine;
+function jsConstant(text) {
+  if (text === void 0) return null;
+  const parsed = parseJsTestCall(text);
+  if (parsed === null || parsed.kind !== "call") return null;
+  if (parsed.token === "skipIf") {
+    return parsed.condition === "true" ? UNCONDITIONAL : parsed.condition === "false" ? NONE : null;
+  }
+  if (parsed.token === "runIf") {
+    return parsed.condition === "false" ? UNCONDITIONAL : parsed.condition === "true" ? NONE : null;
+  }
+  return null;
+}
+function ownState(block, view) {
+  const modifiers = block.modifiers;
+  if (modifiers.includes("skip") || modifiers.includes("todo")) return UNCONDITIONAL;
+  if (modifiers.includes("fails") && !(view.python && modifiers.includes("skipIf"))) return UNCONDITIONAL;
+  if (!modifiers.includes("skipIf") && !modifiers.includes("runIf")) return NONE;
+  if (view.python) return CONDITIONAL;
+  return jsConstant(view.lines?.[block.line - 1]) ?? CONDITIONAL;
+}
+function viewOf(path, groups, text) {
+  const python = languageOf(path) === "py";
+  const lines = text === void 0 ? null : text.split(/\r\n|\r|\n/);
+  const sorted = [...groups].sort((a, b) => a.line - b.line || b.endLine - a.endLine);
+  const parent = new Int32Array(sorted.length).fill(-1);
+  const groupState = [];
+  const open3 = [];
+  sorted.forEach((group, index) => {
+    while (open3.length > 0 && !contains(sorted[open3[open3.length - 1]], group)) open3.pop();
+    const up = open3.length > 0 ? open3[open3.length - 1] : -1;
+    parent[index] = up;
+    groupState[index] = stronger(ownState(group, { python, lines }), up === -1 ? NONE : groupState[up]);
+    open3.push(index);
+  });
+  return { python, lines, groups: sorted, parent, groupState };
+}
+function innermost(view, block) {
+  let lo = 0;
+  let hi = view.groups.length;
+  while (lo < hi) {
+    const mid = lo + hi >>> 1;
+    if (view.groups[mid].line <= block.line) lo = mid + 1;
+    else hi = mid;
+  }
+  let at = lo - 1;
+  while (at !== -1 && !contains(view.groups[at], block)) at = view.parent[at];
+  return at;
+}
+function effective(view, block) {
+  const at = innermost(view, block);
+  return stronger(ownState(block, view), at === -1 ? NONE : view.groupState[at]);
+}
+function textsOf2(side) {
+  const texts = /* @__PURE__ */ new Map();
+  if ("files" in side) for (const file of side.files) texts.set(file.path, file.text);
+  return texts;
+}
+function lowerBound(sorted, value) {
+  let lo = 0;
+  let hi = sorted.length;
+  while (lo < hi) {
+    const mid = lo + hi >>> 1;
+    if (sorted[mid] < value) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+var indentOf = (text) => text.length - text.trimStart().length;
+var fits = (parsed, target) => parsed.kind === "call" || (target === UNCONDITIONAL ? !parsed.conditional : parsed.conditional);
+function detectTI03Pairs(input) {
+  const groups = { base: /* @__PURE__ */ new Map(), head: /* @__PURE__ */ new Map() };
+  for (const file of input.touched.pairs) {
+    groups.base.set(file.basePath, file.baseGroups ?? []);
+    groups.head.set(file.headPath, file.headGroups ?? []);
+  }
+  for (const file of input.touched.added) groups.head.set(file.headPath, file.headGroups ?? []);
+  for (const [path, list] of input.movedGroups ?? []) if (!groups.base.has(path)) groups.base.set(path, list);
+  const texts = { base: textsOf2(input.sources.base), head: textsOf2(input.sources.head) };
+  const added = /* @__PURE__ */ new Map();
+  for (const file of input.diff) if (file.status !== "deleted") added.set(file.path, file.addedLines);
+  const views = { base: /* @__PURE__ */ new Map(), head: /* @__PURE__ */ new Map() };
+  const view = (side, path) => {
+    let found = views[side].get(path);
+    if (found === void 0) {
+      found = viewOf(path, groups[side].get(path) ?? [], texts[side].get(path));
+      views[side].set(path, found);
+    }
+    return found;
+  };
+  const aliasMaps = /* @__PURE__ */ new Map();
+  const aliasesOf2 = (path) => {
+    if (!aliasMaps.has(path)) {
+      const text = texts.head.get(path);
+      aliasMaps.set(path, text === void 0 ? void 0 : pythonImportAliases(text));
+    }
+    return aliasMaps.get(path);
+  };
+  const readPython = (path, text) => {
+    const literal = parsePythonSkip(text);
+    if (literal !== null) return literal;
+    const aliases = aliasesOf2(path);
+    return aliases === void 0 ? null : parsePythonSkip(text, aliases);
+  };
+  const carrierSite = (headView, path, carrier, target) => {
+    const lines = added.get(path) ?? [];
+    const isAdded = (line) => {
+      const at = lowerBound(lines, line);
+      return at < lines.length && lines[at] === line;
+    };
+    let best = isAdded(carrier.line) ? carrier.line : null;
+    const text = headView.lines;
+    if (!headView.python || text === null) return best;
+    const take = (line) => {
+      if (best === null || line < best) best = line;
+    };
+    const indent = indentOf(text[carrier.line - 1] ?? "");
+    for (let k = carrier.line - 1; k >= 1; k--) {
+      const line = text[k - 1] ?? "";
+      const trimmed = line.trimStart();
+      if (trimmed === "" || trimmed.startsWith("#")) continue;
+      const own = indentOf(line);
+      if (own > indent) continue;
+      if (own < indent || !trimmed.startsWith("@")) break;
+      if (!isAdded(k)) continue;
+      const parsed = readPython(path, line);
+      if (parsed !== null && parsed.kind === "decorator" && fits(parsed, target)) take(k);
+    }
+    for (let i = lowerBound(lines, carrier.line + 1); i < lines.length && lines[i] <= carrier.endLine; i++) {
+      const k = lines[i];
+      const parsed = readPython(path, text[k - 1] ?? "");
+      if (parsed === null) continue;
+      if (carrier.kind === "describe" ? parsed.kind === "mark" && fits(parsed, target) : parsed.kind === "call")
+        take(k);
+    }
+    return best;
+  };
+  const carrierSites = /* @__PURE__ */ new Map();
+  const moduleMarks = /* @__PURE__ */ new Map();
+  const moduleMark = (headView, path, target) => {
+    const key = `${target}:${path}`;
+    const known2 = moduleMarks.get(key);
+    if (known2 !== void 0) return known2;
+    let found = null;
+    for (const k of headView.lines === null ? [] : added.get(path) ?? []) {
+      const line = headView.lines[k - 1] ?? "";
+      if (!line.startsWith("pytestmark")) continue;
+      const parsed = readPython(path, line);
+      if (parsed !== null && parsed.kind === "mark" && fits(parsed, target)) {
+        found = k;
+        break;
+      }
+    }
+    moduleMarks.set(key, found);
+    return found;
+  };
+  const siteOf = (headView, path, test, target) => {
+    const chain = [test];
+    for (let at = innermost(headView, test); at !== -1; at = headView.parent[at]) {
+      chain.push(headView.groups[at]);
+    }
+    for (const carrier of chain) {
+      if (ownState(carrier, headView) !== target) continue;
+      let line = carrierSites.get(carrier);
+      if (line === void 0) {
+        line = carrierSite(headView, path, carrier, target);
+        carrierSites.set(carrier, line);
+      }
+      if (line !== null) return line;
+    }
+    const mark = headView.python ? moduleMark(headView, path, target) : null;
+    return mark ?? test.line;
+  };
+  const findings = [];
+  for (const pair of [...input.match.pairs, ...input.match.moved, ...input.match.replaced]) {
+    const headView = view("head", pair.headPath);
+    const now = effective(headView, pair.head);
+    if (now === NONE) continue;
+    const was = effective(view("base", pair.basePath), pair.base);
+    let category = null;
+    if (now === UNCONDITIONAL && was !== UNCONDITIONAL) category = "existing";
+    else if (now === CONDITIONAL && was === NONE) category = "conditional";
+    if (category === null) continue;
+    findings.push({ path: pair.headPath, line: siteOf(headView, pair.headPath, pair.head, now), category });
+  }
+  return findings;
 }
 
 // ../core/src/signals/ti04.ts
@@ -245806,7 +246058,7 @@ function scalarText(value) {
     return text.slice(1, -1).replace(/''/g, "'").trim();
   return text;
 }
-function indentOf(line) {
+function indentOf2(line) {
   let n = 0;
   while (n < line.length && line[n] === " ") n++;
   return n;
@@ -245819,7 +246071,7 @@ function keyValue(line) {
   return {
     key: rawKey.startsWith('"') || rawKey.startsWith("'") ? rawKey.slice(1, -1) : rawKey,
     value: (match[3] ?? "").trim(),
-    indent: indentOf(line) + (match[1] === void 0 ? 0 : match[1].length)
+    indent: indentOf2(line) + (match[1] === void 0 ? 0 : match[1].length)
   };
 }
 function listItem(line) {
@@ -245869,7 +246121,7 @@ function inlineValue(text) {
   if (/^[{|>&*!%@`]/.test(trimmed)) return { type: "opaque", text: trimmed };
   return plain(trimmed);
 }
-var isIndented = (line) => indentOf(line) > 0 || line.startsWith("	");
+var isIndented = (line) => indentOf2(line) > 0 || line.startsWith("	");
 function readYaml(text) {
   if (text.length > MAX_CONFIG_CHARS) return { ok: false, reason: "too-large" };
   const lines = text.split(/\r\n|\r|\n/);
@@ -247102,7 +247354,7 @@ function addedExclusions(hunks, known2) {
         if (flow !== null) for (const value of flow) found.push({ value, line: entry.line });
         else if (kv.value === "") owner = { indent: kv.indent };
       } else if (item !== null) {
-        if (owner !== null && consecutive && indentOf(entry.text) >= owner.indent) {
+        if (owner !== null && consecutive && indentOf2(entry.text) >= owner.indent) {
           found.push({ value: item, line: entry.line });
         } else if (known2.has(normalizedPattern(item))) {
           found.push({ value: item, line: entry.line });
@@ -247616,7 +247868,6 @@ function check(input) {
   const sourceMatches = parsedDiff === null || testIntegrity2.mode === "off" ? { signals: [], omitted: [] } : detectTI15(parsedDiff, { repoFiles: input.repoFiles });
   const testIntegritySignals = parsedDiff === null || testIntegrity2.mode === "off" ? [] : sortSignals([
     ...detectTI01(parsedDiff, testIntegrity2.mode, movedTests?.files, movedTests?.compared),
-    ...detectTI03(parsedDiff, testIntegrity2.mode, input.testSources),
     ...detectTI04(parsedDiff, testIntegrity2.mode),
     ...detectTI08(parsedDiff),
     ...detectTI10(parsedDiff, { repoFiles: input.repoFiles, mode: testIntegrity2.mode }),
@@ -247634,6 +247885,7 @@ function check(input) {
   let comparison = null;
   const comparedMode = testIntegrity2.mode;
   let testChanges;
+  let ti03Pairs = [];
   if (parsedDiff !== null && comparedMode !== "off" && input.testSources !== void 0 && touched !== null) {
     const configs = detectTI09(parsedDiff, input.testSources, comparedMode);
     const configUnavailable = configs.notRun !== null ? { notRun: configs.notRun } : configs.unavailable.length > 0 ? { files: configs.unavailable } : void 0;
@@ -247652,6 +247904,13 @@ function check(input) {
       const matchedHeads = new Set([...match.pairs, ...match.moved, ...match.replaced].map((pair) => pair.head));
       const movedPairs = (movedTests?.pairs ?? []).filter((pair) => !matchedHeads.has(pair.head));
       const judged = movedPairs.length === 0 ? match : { ...match, pairs: [...match.pairs, ...movedPairs] };
+      ti03Pairs = detectTI03Pairs({
+        match: judged,
+        touched,
+        ...movedTests?.groups === void 0 ? {} : { movedGroups: movedTests.groups },
+        diff: parsedDiff,
+        sources: input.testSources
+      });
       const capped = capFindings([
         ...detectTI02(match, comparedMode),
         ...detectTI05(judged, comparedMode),
@@ -247671,6 +247930,10 @@ function check(input) {
   }
   if (comparison !== null && comparison.signals.length > 0) {
     testIntegritySignals.push(...comparison.signals);
+    sortSignals(testIntegritySignals);
+  }
+  if (parsedDiff !== null && testIntegrity2.mode !== "off") {
+    testIntegritySignals.push(...detectTI03(parsedDiff, testIntegrity2.mode, input.testSources, ti03Pairs));
     sortSignals(testIntegritySignals);
   }
   const textTruncatedFiles = parsedDiff === null || testIntegrity2.mode === "off" ? [] : textCutSignalFiles(parsedDiff, input.configPath, input.repoRoot);
@@ -250414,6 +250677,7 @@ DECORATOR_MODIFIERS = {
 FIXTURES = ("pytest.fixture", "fixture")
 APPROX = ("pytest.approx", "approx")
 BODY_CALLS = ("pytest.skip", "pytest.xfail")
+SKIP_MODIFIERS = ("skip", "skipIf", "runIf", "fails")
 CLASS_HOOKS = (
     "setup_method", "teardown_method", "setup_class", "teardown_class",
     "setUp", "tearDown", "setUpClass", "tearDownClass", "asyncSetUp", "asyncTearDown",
@@ -250510,6 +250774,23 @@ def decorator_modifiers(decorators, aliases):
             if conditional or any(keyword.arg == "condition" for keyword in call.keywords):
                 mods.append("skipIf")
     return mods
+
+
+def pytestmark_modifiers(body, aliases):
+    """The skip modifiers of the last pytestmark assignment directly in a module or class body: one mark, or a list or
+    tuple of marks, each read as a decorator is; [] when there is none."""
+    value = None
+    for node in body:
+        if isinstance(node, ast.Assign):
+            if any(isinstance(target, ast.Name) and target.id == "pytestmark" for target in node.targets):
+                value = node.value
+        elif isinstance(node, ast.AnnAssign):
+            if isinstance(node.target, ast.Name) and node.target.id == "pytestmark" and node.value is not None:
+                value = node.value
+    if value is None:
+        return []
+    marks = list(value.elts) if isinstance(value, (ast.List, ast.Tuple)) else [value]
+    return [mod for mod in decorator_modifiers(marks, aliases) if mod in SKIP_MODIFIERS]
 
 
 def has_decorator(decorators, names, aliases):
@@ -250746,6 +251027,7 @@ def build(text):
         return {"parsed": False, "reason": "too-deep"}
     source = Source(text)
     aliases = import_aliases(tree)
+    module_marks = pytestmark_modifiers(tree.body, aliases)
 
     blocks = []
     mocks = []
@@ -250785,7 +251067,8 @@ def build(text):
                 stack.extend((child, ctx) for child in getattr(node, field, ()))
             if scope < 2 and is_test_class(node):
                 chain = ctx[CHAIN] + (node.name,)
-                entry = new_block(source, node, "describe", chain, decorator_modifiers(node.decorator_list, aliases))
+                mods = decorator_modifiers(node.decorator_list, aliases) + pytestmark_modifiers(node.body, aliases)
+                entry = new_block(source, node, "describe", chain, mods)
                 blocks.append(entry)
                 inner = (entry, 1, chain, None, False, False, False, ctx[FSTR])
             else:
@@ -250850,6 +251133,10 @@ def build(text):
                         if ctx[COND]:
                             block["mods"].append("skipIf")
         stack.extend((child, child_ctx) for child in ast.iter_child_nodes(node))
+
+    if module_marks:
+        for block in blocks:
+            block["mods"].extend(module_marks)
 
     for block, line, col, chain, is_awaited, ctx in assertions:
         function = ctx[FN]
@@ -251993,7 +252280,7 @@ async function runUnsafe(deps) {
   if (!resolved.ok) throw resolved.errors[0];
   const policy = await obtainPolicy(deps, policyChoice, appOrigin);
   const application = policy === void 0 ? void 0 : applyPolicy({ config, raw: rawInputs, resolved: resolved.inputs }, policy);
-  const effective = application?.inputs ?? resolved.inputs;
+  const effective2 = application?.inputs ?? resolved.inputs;
   const {
     coverageFormat: format,
     threshold,
@@ -252002,7 +252289,7 @@ async function runUnsafe(deps) {
     requireAgentSetup,
     expectAgentSetup,
     testIntegrityMode
-  } = effective;
+  } = effective2;
   const failOnThreshold = parseBool(input("fail-on-threshold"), "fail-on-threshold") ?? true;
   const comment = parseBool(input("comment"), "comment") ?? true;
   const target = !pr && prNumber !== void 0 ? await resolvePrNumberTarget(deps, { prNumber, headSha }) : void 0;

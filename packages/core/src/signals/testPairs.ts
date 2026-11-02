@@ -42,6 +42,9 @@ export interface ComparedTestFile {
   head: TestBlock[];
   baseMocks: TestModuleMock[];
   headMocks: TestModuleMock[];
+  /** The describe blocks (kind `describe`) at the base path and at the head path, for TI03's pair pass. */
+  baseGroups?: TestBlock[];
+  headGroups?: TestBlock[];
 }
 
 /** A test file the change adds: the tests and the module mocks it holds at head. */
@@ -49,6 +52,8 @@ export interface AddedTestFile {
   headPath: string;
   head: TestBlock[];
   headMocks: TestModuleMock[];
+  /** The describe blocks (kind `describe`) it holds at head, for TI03's pair pass. */
+  headGroups?: TestBlock[];
 }
 
 /** A compared file that could not be compared, and why: a drop reason, `missing`, or a refusal or Python reason. */
@@ -70,7 +75,9 @@ export interface TouchedTests {
   languages: TestLanguage[];
 }
 
-type SideIndex = { ok: true; tests: TestBlock[]; mocks: TestModuleMock[] } | { ok: false; reason: string };
+type SideIndex =
+  | { ok: true; tests: TestBlock[]; groups: TestBlock[]; mocks: TestModuleMock[] }
+  | { ok: false; reason: string };
 
 interface SideLookup {
   texts: Map<string, string>;
@@ -89,7 +96,12 @@ function lookupOf(side: TestSourceSide): SideLookup {
 
 function testsOf(result: TestIndexResult): SideIndex {
   return result.parsed
-    ? { ok: true, tests: result.tests.filter((block) => block.kind === "test"), mocks: result.mocks }
+    ? {
+        ok: true,
+        tests: result.tests.filter((block) => block.kind === "test"),
+        groups: result.tests.filter((block) => block.kind === "describe"),
+        mocks: result.mocks,
+      }
     : { ok: false, reason: result.reason };
 }
 
@@ -179,6 +191,8 @@ export function indexTouchedTestFiles(
         head: head.tests,
         baseMocks: base.mocks,
         headMocks: head.mocks,
+        baseGroups: base.groups,
+        headGroups: head.groups,
       });
     } else {
       const reason = base.ok ? (head as { reason: string }).reason : base.reason;
@@ -190,7 +204,7 @@ export function indexTouchedTestFiles(
   const added: AddedTestFile[] = [];
   for (const [headPath, language] of [...addedPaths].sort((a, b) => byCodeUnit(a[0], b[0]))) {
     const head = indexSide("head", headPath, language);
-    if (head.ok) added.push({ headPath, head: head.tests, headMocks: head.mocks });
+    if (head.ok) added.push({ headPath, head: head.tests, headMocks: head.mocks, headGroups: head.groups });
   }
   return { pairs, added, unavailable, notRun: null, languages: [...languages].sort(byCodeUnit) };
 }

@@ -1,0 +1,14 @@
+diff --git a/src/cart.test.ts b/src/cart.test.ts
+index 1111111..2222222 100644
+--- a/src/cart.test.ts
++++ b/src/cart.test.ts
+@@ -8,4 +7,0 @@
+-
+-  it("subs", () => {
+-    expect(subtotal([1, 2])).toBe(3);
+-  });
+@@ -17,0 +14,4 @@
++
++  it("subs", () => {
++    expect(subtotal([1, 2])).toBe(3);
++  });

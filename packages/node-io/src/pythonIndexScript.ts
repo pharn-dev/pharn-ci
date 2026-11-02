@@ -52,6 +52,7 @@ DECORATOR_MODIFIERS = {
 FIXTURES = ("pytest.fixture", "fixture")
 APPROX = ("pytest.approx", "approx")
 BODY_CALLS = ("pytest.skip", "pytest.xfail")
+SKIP_MODIFIERS = ("skip", "skipIf", "runIf", "fails")
 CLASS_HOOKS = (
     "setup_method", "teardown_method", "setup_class", "teardown_class",
     "setUp", "tearDown", "setUpClass", "tearDownClass", "asyncSetUp", "asyncTearDown",
@@ -148,6 +149,23 @@ def decorator_modifiers(decorators, aliases):
             if conditional or any(keyword.arg == "condition" for keyword in call.keywords):
                 mods.append("skipIf")
     return mods
+
+
+def pytestmark_modifiers(body, aliases):
+    """The skip modifiers of the last pytestmark assignment directly in a module or class body: one mark, or a list or
+    tuple of marks, each read as a decorator is; [] when there is none."""
+    value = None
+    for node in body:
+        if isinstance(node, ast.Assign):
+            if any(isinstance(target, ast.Name) and target.id == "pytestmark" for target in node.targets):
+                value = node.value
+        elif isinstance(node, ast.AnnAssign):
+            if isinstance(node.target, ast.Name) and node.target.id == "pytestmark" and node.value is not None:
+                value = node.value
+    if value is None:
+        return []
+    marks = list(value.elts) if isinstance(value, (ast.List, ast.Tuple)) else [value]
+    return [mod for mod in decorator_modifiers(marks, aliases) if mod in SKIP_MODIFIERS]
 
 
 def has_decorator(decorators, names, aliases):
@@ -384,6 +402,7 @@ def build(text):
         return {"parsed": False, "reason": "too-deep"}
     source = Source(text)
     aliases = import_aliases(tree)
+    module_marks = pytestmark_modifiers(tree.body, aliases)
 
     blocks = []
     mocks = []
@@ -423,7 +442,8 @@ def build(text):
                 stack.extend((child, ctx) for child in getattr(node, field, ()))
             if scope < 2 and is_test_class(node):
                 chain = ctx[CHAIN] + (node.name,)
-                entry = new_block(source, node, "describe", chain, decorator_modifiers(node.decorator_list, aliases))
+                mods = decorator_modifiers(node.decorator_list, aliases) + pytestmark_modifiers(node.body, aliases)
+                entry = new_block(source, node, "describe", chain, mods)
                 blocks.append(entry)
                 inner = (entry, 1, chain, None, False, False, False, ctx[FSTR])
             else:
@@ -488,6 +508,10 @@ def build(text):
                         if ctx[COND]:
                             block["mods"].append("skipIf")
         stack.extend((child, child_ctx) for child in ast.iter_child_nodes(node))
+
+    if module_marks:
+        for block in blocks:
+            block["mods"].extend(module_marks)
 
     for block, line, col, chain, is_awaited, ctx in assertions:
         function = ctx[FN]
