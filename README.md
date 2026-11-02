@@ -1041,7 +1041,7 @@ that:
   pharn.dev policy endpoint that sends the OIDC token and the repository name ([Org policy](#org-policy)), and,
   with `upload` not set to `never` and an OIDC token granted, the redacted `report.json` and `meta.json` of the run to
   pharn.dev ([Upload](#upload-to-pharndev-optional)).
-  What it reads, what it sends to your GitHub and what it stores is listed in
+  What it reads, what it sends to your GitHub and to pharn.dev, and what it stores is listed in
   [Data handling](SECURITY.md#data-handling).
 - **Small token footprint.** `contents: read` plus `pull-requests: write`. It reads the compare API
   and the PR's comments, calls `GET /user` to learn which login its own comment has, and in

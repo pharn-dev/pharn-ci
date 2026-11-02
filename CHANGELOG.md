@@ -36,6 +36,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   Data handling table now says check A7 reads the machine-readable agent config files at `HEAD` for committed secrets
   and policy mode reads the settings, MCP and instruction files, and a new row says where that text goes: it stays in
   the job and never reaches the comment, the summary, the log, `report.json` or the upload. Documentation only.
+- `SECURITY.md`'s Data handling table now names the run upload to pharn.dev (review HIGH 5). It said the org policy
+  request was the only thing sent to Pharn and that nothing else was; a new row lists the run upload's two `POST`
+  requests to the `app-url` origin and their body fields, the `PUT` of `report.json` and `meta.json` to the signed
+  storage URL, every `meta.json` field (including `commentUrl`), how `report.json` is redacted and capped, the one
+  retry, that the first request goes out before pharn-ci knows whether the Pharn GitHub App is installed, and how to
+  turn it off. The README's security section now says that table lists what goes to pharn.dev too. Documentation
+  only.
 
 ## [0.4.0] - 2026-10-27
 

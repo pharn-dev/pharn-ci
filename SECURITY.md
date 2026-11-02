@@ -62,9 +62,10 @@ The security design, with each mitigation tied to the test that enforces it, is 
 ## Data handling
 
 pharn-ci has no backend of its own in the Action. Everything it reads stays on the runner, and everything it writes
-goes to your own GitHub: the PR comment, the job summary, the step log and a file in `RUNNER_TEMP`. The one exception
-is the org policy request (row below), which sends only an OIDC token and the repository name. The table describes
-the GitHub Action; the CLI makes no network calls and prints to your terminal.
+goes to your own GitHub: the PR comment, the job summary, the step log and a file in `RUNNER_TEMP`. Two things go to
+Pharn, and both only when the job grants `id-token: write`: the org policy request, which sends an OIDC token and the
+repository name, and the run upload, which sends the redacted `report.json` and `meta.json` of the run (rows below).
+The table describes the GitHub Action; the CLI makes no network calls and prints to your terminal.
 
 | Data | Where it goes | Retention |
 | ---- | ------------- | --------- |
@@ -82,7 +83,8 @@ the GitHub Action; the CLI makes no network calls and prints to your terminal.
 | Step log | Progress lines (coverage format, verdict, comment id) and warnings, which can include `git` or GitHub API error text. | Your log retention. |
 | `report.json` | Written to `$RUNNER_TEMP/pharn-ci/report.json` (the `report-path` output): the same data as the comment, untruncated. | Ephemeral: the runner clears `RUNNER_TEMP` after the job, unless your workflow uploads the file. |
 | Org policy request (`policy: auto` or `required`, only with `id-token: write`) | One `GET <app-url>/api/v1/policy?repo=<owner>/<name>` with a GitHub OIDC token (audience `pharn.dev`, masked in the log, sent only to the https `app-url` origin, never on a redirect) as the `Authorization` header, `Accept` and a `User-Agent: pharn-ci/<version>`. Nothing else: no file contents, diff, coverage or log. Fork PRs and jobs without `id-token: write` get no token, so nothing is sent. With `policy: never` or `file:<path>`, nothing is sent. | Per the app's own policy. |
-| Anything else sent to Pharn | Nothing. No telemetry, no license check, no update check. | Nothing to retain. |
+| Run upload (`upload: auto`, only with `id-token: write`) | Three requests after the check. (1) `POST <app-url>/api/v1/runs/upload-url` with a JSON body of `repository`, `headSha`, `runId`, `runAttempt`, `scope` and the bundle `sizes`. It goes out before pharn-ci knows whether the Pharn GitHub App is installed for the repository: a `404` means it is not, and nothing more is sent. (2) One `PUT` of a gzip tar of `report.json` and `meta.json` to the signed https storage URL the app names in its answer, with only `Content-Type` and `User-Agent` headers: never the token, no redirect followed, never retried. (3) `POST <app-url>/api/v1/runs` with a JSON body of `objectKey`, `repository`, `repositoryId`, `prNumber`, `headSha`, `baseSha`, `scope`, `runId`, `runAttempt`, `event` and `prHeadShaExpected`. Both POSTs go to the https `app-url` origin only (default `https://pharn.dev`), never on a redirect, with the GitHub OIDC token (audience `pharn.dev`, masked in the log) as the `Authorization` header, `Accept`, `Content-Type` and a `User-Agent: pharn-ci/<version>`, and each is retried once after a network error or a 5xx answer. `meta.json` holds `schemaVersion`, `tool`, `createdAt`, `event`, `repository`, `repositoryId`, `prNumber`, `headSha`, `baseSha`, `mergeBase`, `scope`, `runId`, `runAttempt`, `actor`, `prAuthor`, `prLabels`, `coAuthors`, `agentHint`, `isAgentPr` and `commentUrl` (the link to this job's own PR comment) — `schema/upload-meta.v1.json`. `report.json` is the report above with every string redacted for secret-shaped text, each message and test-integrity signal text cut to 2048 bytes, and no test-integrity base or head excerpt. Never file contents, a diff, a coverage file or a log. Fork PRs and jobs without `id-token: write` get no token, so nothing is sent; `upload: never` turns the upload off. | Per the app's own policy. |
+| Anything else sent to Pharn | No other request: no telemetry, no license check, no update check. | Nothing to retain. |
 
 ## Supported versions
 
