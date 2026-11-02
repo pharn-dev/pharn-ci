@@ -35,14 +35,19 @@ AI-agnostic and fully stateless (Phase 0): no backend, no telemetry.
 4. **Never weaken, skip or delete an existing test to make CI pass.** If a test is wrong, fix it
    and explain why in the PR description. Golden files (`fixtures/golden/*`) change only when the
    output intentionally changes; regenerate with `pnpm test -u` and review the diff.
-5. **No network calls except the GitHub API inside the action, and one GET of the pharn.dev policy endpoint. No telemetry.**
+5. **No network calls except the GitHub API inside the action and the pharn.dev calls named here. No telemetry.**
    The policy GET happens only when the `policy` input is `auto` or `required` and the runner grants an OIDC token
-   (`id-token: write`); it sends the token and the repository name and nothing else, never a file, a diff, a coverage
-   file or a log. `policy: never` and `policy: file:<path>` make no call. The CLI makes none. No other host is called.
+   (`id-token: write`); it is retried once on a network error or a 5xx, and it sends the token and the repository name
+   and nothing else, never a file, a diff, a coverage file or a log. `policy: never` and `policy: file:<path>` make no
+   call. With `upload: auto` and the same token, the action also sends `POST /api/v1/runs/upload-url`, a `PUT` of the
+   redacted `report.json` and `meta.json` to the signed URL the app returns, and `POST /api/v1/runs` (SECURITY.md, Data
+   handling); `upload: never` makes none of them. The CLI makes none. No other host is called.
 6. **Keep dependencies minimal; justify every new one** in the PR. Direct runtime deps
    today: `@actions/core`, `@actions/github` (action only; bundled into `packages/action/dist` with
-   their transitive dependencies). Parsers (lcov, Cobertura XML, diff, config YAML subset) are
-   hand-written on purpose.
+   their transitive dependencies) and `typescript5` (core; `npm:typescript@5.9.3`, separate from the
+   TypeScript 7 compiler the repo builds with, used only through `createSourceFile` to parse JS/TS test
+   and config files, never to compile or run them, and bundled into both dists; docs/THREAT-MODEL.md
+   residual 19). Parsers (lcov, Cobertura XML, diff, config YAML subset) are hand-written on purpose.
 7. **`packages/action/dist` is committed.** Run `pnpm build` before committing any change that
    affects the action (including core). CI fails if dist is stale.
 

@@ -701,8 +701,8 @@ Caught:
   source file, so the test agrees with the code. TI07 warns and never blocks; it does not say that the new value is
   wrong.
 
-Not caught. Each of these names the signal that is planned for it; most of the planned signals do not exist yet, and TI15
-exists but misses its own case:
+Not caught. Each of these names the signal meant for it: TI15 exists and misses its case, and TI17 is only a
+proposal:
 
 - `hard-coded-answer` — missed; planned: TI15. The source returns the expected value for the test's input. TI15 now
   exists and still misses it, because the change adds no test line to match against and its numbers are one digit.
@@ -780,6 +780,10 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
   pytest.
 - `[tool.pytest]` and `[tool.pytest.ini_options]` in one `pyproject.toml` are merged into one table in which the native
   value wins, which is not necessarily what pytest does; a header written with a quoted or dotted key is not read.
+- Results depend on the runner's Python. Test files are parsed by the runner's own `python3` (or `python`), so a file
+  that uses syntax newer than that interpreter (for example a `match` statement on Python 3.8 or 3.9) may not parse
+  there; it is then named in `TEST_INTEGRITY_INDEX_UNAVAILABLE` (`warn`) and not compared. Pin the Python version
+  in the workflow to get the same result on every runner.
 
 ## 2. When an input is missing
 
@@ -1143,7 +1147,8 @@ run. What it does not do:
 
 ## 6. Distribution
 
-- **Pre-1.0.** Report v1 is stable within v1 (fields are only added; codes are never renamed).
+- **Pre-1.0.** Each report version, v1 and v2, is stable within itself (fields are only added; codes are never
+  renamed).
   Inputs, outputs and message codes are never removed before 1.0, and a renamed input keeps its old
   name, with a warning, for at least one minor release. Defaults may still change, but only in a
   minor release listed under **Changed** in the changelog, and the comment layout may change in any

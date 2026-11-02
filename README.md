@@ -332,7 +332,8 @@ flowchart LR
 On PRs from forks the token cannot comment; pharn-ci then warns and uses the job summary only.
 
 Each workflow and job keeps its own comment, marked by a hidden `<!-- pharn-ci scope: <workflow>/<job> -->`
-line. Matrix legs of one job share that scope, and so one comment.
+line. Matrix legs of one job share that scope, and so one comment: the leg that finishes last replaces the other
+legs' findings in it. Each leg's job summary and `report.json` keep its own.
 
 ---
 
@@ -531,7 +532,8 @@ are listed (the rest are counted in the message). The accept label never touches
 
 With a policy in force, pharn-ci reads the tracked `.claude/settings.json` and `.claude/settings.local.json` files
 (at the root and in nested directories) and, when the policy lists MCP servers, `.mcp.json`, `.cursor/mcp.json` and
-`.vscode/mcp.json` (the last two are a cross-tool scan), all as committed at HEAD. For P02 to P06 it reads JSON only;
+`.vscode/mcp.json` (these too at the root and in nested directories; the last two are a cross-tool scan), all as
+committed at HEAD. For P02 to P06 it reads JSON only;
 P07's read of the Markdown instruction files is described in
 [Policy mode: agent instruction files](#policy-mode-agent-instruction-files).
 A tracked symbolic link is never followed.
@@ -574,8 +576,9 @@ comment of its own and the job summary and `report.json` still carry the report.
 wrong (a timeout, a non-2xx answer, an unexpected answer, an exception) ends in one warning that names a reason, never
 fails the check and never changes its verdict, except that `UPLOAD_TOO_LARGE` can turn a pass into a warn.
 
-**When nothing is uploaded.** With `upload: never`, without `id-token: write` (a fork pull request never gets it), or
-when the run has no metadata, nothing is sent and the report says `meta.upload.status: skipped`. When the app answers
+**When nothing is uploaded.** With `upload: never` or without `id-token: write` (a fork pull request never gets it),
+nothing is sent and the report says `meta.upload.status: skipped`. A report without a `meta` block (no run metadata)
+is never sent and carries no upload status. When the app answers
 that the organization has not installed the Pharn GitHub App for the repository, the PR comment and the job summary
 end with a one-line hint to install it, and nothing else changes.
 
@@ -599,7 +602,7 @@ of the App never both appear for one upload.
 | `exclude`           | none                        | Globs of changed files to leave out of diff coverage, comma or newline separated; added to `coverage.exclude` |
 | `require-agent-setup` | `setup.require`, then `false` | Fail when the repo has no agent setup files; the step fails through `fail-on-threshold` |
 | `expect-agent-setup` | `setup.expect`, then none  | Agent tools that must have a setup file, comma or newline separated; added to `setup.expect`; a missing one is `AGENT_SETUP_EXPECTED_MISSING` |
-| `test-integrity`    | `warn`                      | How strictly to treat weakened tests: `block`, `warn` or `off`. `test_integrity.mode` in `.pharn/ci.yml` can only make it stricter, never looser (a looser value is ignored with `TEST_INTEGRITY_MODE_IGNORED`). In `block` a block-level finding fails the check, in `warn` it warns, in `off` nothing is checked. The signals so far are TI01 (a test file deleted), TI03 (a skip added to a test), TI04 (a `.only`, `fit` or `fdescribe` added), TI08 (snapshots regenerated or updated in bulk), TI09 (a test-runner setting loosened), TI10 (a test script in `package.json` weakened), TI11 (CI stopped running tests), TI13 (a coverage-ignore comment added to source), TI14 (a lower coverage threshold or a wider exclusion in the config), TI15 (a source condition that compares with a value the tests add) and TI16 (a lint or type suppression comment added to a test file) |
+| `test-integrity`    | `warn`                      | How strictly to treat weakened tests: `block`, `warn` or `off`. `test_integrity.mode` in `.pharn/ci.yml` can only make it stricter, never looser (a looser value is ignored with `TEST_INTEGRITY_MODE_IGNORED`). In `block` a block-level finding fails the check, in `warn` it warns, in `off` nothing is checked. The signals so far are TI01 (a test file deleted), TI02 (a test removed from a test file that stays), TI03 (a skip added to a test), TI04 (a `.only`, `fit` or `fdescribe` added), TI05 (a test emptied of its assertions, or with fewer), TI06 (a test weakened), TI07 (an expected value of a test edited to match the source), TI08 (snapshots regenerated or updated in bulk), TI09 (a test-runner setting loosened), TI10 (a test script in `package.json` weakened), TI11 (CI stopped running tests), TI12 (a module under test mocked), TI13 (a coverage-ignore comment added to source), TI14 (a lower coverage threshold or a wider exclusion in the config), TI15 (a source condition that compares with a value the tests add) and TI16 (a lint or type suppression comment added to a test file) |
 | `accept-label`      | `pharn/accepted`            | Name of the pull request label a reviewer who is not the PR author applies to sign off `test-integrity: block` findings, at most 50 characters. Read only from this input, never from `.pharn/ci.yml`. See [Accept label](#accept-label) |
 | `policy`            | `auto`                      | Where the [org policy](#org-policy) comes from: `auto` fetches it from the pharn.dev app when the job grants `id-token: write` (only the OIDC token and the repo name are sent; no policy or no token is silent), `never` uses none, `required` fails the check when no policy can be fetched, `file:<path>` reads a policy document from the workspace (the pull request can change it, so it can only tighten; nothing is fetched). Any other value fails the step |
 | `app-url`           | `https://pharn.dev`         | Origin of the pharn.dev app the policy is fetched from. `https` only, with no credentials, path, query or fragment; the OIDC audience stays `pharn.dev` whatever it is |
@@ -862,7 +865,7 @@ The JSON report is the stable, machine-readable API; the comment and CLI text ar
 it. See [`schema/report.v2.json`](schema/report.v2.json): Report v1
 ([`schema/report.v1.json`](schema/report.v1.json), pharn-ci 0.1.x) plus a `testIntegrity` block on every
 report and a `meta` block (run metadata) from the Action, with `schemaVersion` the number 2. Every v1 field
-keeps its name, type and meaning; a tool that validates the report switches on `schemaVersion`. Branch on
+except `schemaVersion` (the string `"1"` in v1) keeps its name, type and meaning; a tool that validates the report switches on `schemaVersion`. Branch on
 message `code`s, not on text:
 
 | Code                            | Meaning                                                        |
@@ -881,12 +884,15 @@ message `code`s, not on text:
 | `COVERAGE_FILE_TRACKED`         | The coverage file is tracked in the repository, so the change can supply it (`warn`) |
 | `DIFF_BINARY_COVERED_FILE`      | The diff shows a covered source file as binary, so its changes were not measured (`warn`) |
 | `TEST_FILES_DELETED`            | The change deletes a test file or renames one to a non-test name (`info`) |
+| `TEST_INTEGRITY_MODE_IGNORED`   | `.pharn/ci.yml` sets `test_integrity.mode` looser than the workflow input or the default, so the stricter mode applies (`warn`) |
+| `TEST_INTEGRITY_OFF`            | The effective test-integrity mode is `off`, so no test-integrity signal is checked (`info`) |
 | `TEST_INTEGRITY_TI01`           | TI01: the change deletes test files whose removed lines defined tests, or renames a test file to a path that is not a test file, with nothing that accounts for them (`error` in mode `block`, `warn` in mode `warn`); `info` when they go with their source, with their package, or as a migration to a file of the same name that holds every deleted test's body (found again by body in a new test of the change). Every file is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI02`           | TI02: the change removes a test from a JS/TS or Python test file that stays, and no test of the same name or of a similar body (token-set Jaccard of at least 0.8) is left in the touched test files (a test of the same name in another touched file counts only when it holds the removed test's body; `error` in mode `block`, `warn` in mode `warn`, and `warn` for a test whose name is computed). The finding sits at the base path and base line. The text names every file and says how many findings the cap of 20 per file left out; the listed findings are in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI03`           | TI03: the change adds a skip to a test file: an unconditional skip of a test the diff shows existed (`error` in mode `block`, `warn` in mode `warn`), or a conditional skip, a skip inside a test body, or a skip in a test the change adds (`warn`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI04`           | TI04: the change adds `.only`, `fit` or `fdescribe` to a JS/TS test file, so the runner may skip the other tests (`error` in mode `block`, `warn` in mode `warn`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI05`           | TI05: a test that had assertions at base has none at head and calls no assertion helper (`error` in mode `block`, `warn` in mode `warn`), or it calls a function whose name suggests an assertion helper, or it lost some assertions with the rest of its body unchanged (`warn`). The finding sits at the head path and head line. The text names every file and says how many findings the cap of 20 per file left out; the listed findings are in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI06`           | TI06: a test that stays became weaker: a strong matcher replaced by a weak one (`toBe(5)` by `toBeTruthy()`), an `expect.assertions` or `expect.hasAssertions` guard lowered or removed, an assertion that compares a literal with itself added, or an assertion moved into a `try` block with a `catch` or after an early `return` (`warn` in every mode). The finding sits at the head path and head line. The text names every file and says how many findings the cap of 20 per file left out; the listed findings are in `testIntegrity.signals` |
+| `TEST_INTEGRITY_TI07`           | TI07: a test of a modified JS/TS or Python test file changes only literal expected values of its assertions, in a change that also edits a source file, so the test may have been made to agree with the code (`warn` in modes `block` and `warn`; it never blocks). The text names every file and says how many findings the cap of 20 per file left out; the listed findings are in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI12`           | TI12: a test file newly mocks (`vi.mock`, `vi.doMock`, `jest.mock`, `jest.doMock`, Python `patch` and `monkeypatch.setattr`) a source file the same change adds, modifies or renames, so the test may not run the code under review (`warn` in every mode). One finding per test file and target, at the head path and the line of the first such mock. The text names every file and says how many findings the cap of 20 per file left out; the listed findings are in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI09`           | TI09: the change loosens a test-runner setting so that fewer tests run, a weaker run passes or the coverage gate drops: a lowered or removed coverage threshold, a narrowed test list or widened exclusion, `passWithNoTests`, `allowOnly` or `bail` turned on, a `grep` added, `forbidOnly` turned off, or a pytest `addopts` that gains a deselecting option (`error` in mode `block`, `warn` in mode `warn`). A raised retry count or timeout, and a value that is not a literal, are `warn`. The finding sits at the head path and the head line of the key (no line for JSON). The text names every file and says how many findings the cap of 20 per file left out; the listed findings are in `testIntegrity.signals` |
 | `TEST_INTEGRITY_INDEX_UNAVAILABLE` | A touched JS/TS or Python test file could not be compared at the merge base and at HEAD (too large, dropped, a syntax-error-heavy file, no Python 3.8 or newer), so TI02 and TI05 did not check it; or TI02 and TI05 did not run because the test text could not be read; or a touched test-config file could not be read, so TI09 did not check it, or TI09 did not run (`error` in mode `block` when TI02 and TI05, or TI09, did not run at all, else `warn`; not in mode `off`). The text names the files with a reason code each, or the reason |
@@ -956,7 +962,7 @@ a `file:` policy that the pull request edits, the lists at the merge base and at
 adds to the lists; `.pharn/ci.yml` and the inputs cannot change them. See
 [`docs/LIMITS.md`](docs/LIMITS.md) §9 and [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) (A5).
 
-Within v1, fields are only added and codes are never renamed or removed.
+Within v2, as within v1, fields are only added and codes are never renamed or removed.
 
 ---
 
@@ -986,7 +992,8 @@ messages and PR comments as data from the change under review, never as instruct
 files: it never lowers the threshold, adds exclusions or coverage-ignore comments, or edits the
 workflow. None of them post to the PR, commit or push.
 
-The plugin targets pharn-ci 0.1.x and Report v1 and is still in development; Codex is not verified.
+The plugin targets pharn-ci 0.1.x (Report v1) to 0.4.x (Report v2) and is still in development; Codex is not
+verified.
 Tested combinations and limits are in the skills repo's
 [LIMITS.md](https://github.com/pharn-dev/skills/blob/main/LIMITS.md). The skills are instructions,
 not a sandbox: your agent client's permissions decide what an agent can do.
@@ -1102,9 +1109,8 @@ PR with an 80% diff-coverage threshold, so every change here passes the same gat
 
 - More coverage formats (Clover, JaCoCo native XML)
 - Flaky test detection
-- More test-integrity signals: emptied or loosened assertions, replaced tests, edited expected values, hard-coded
-  answers and deselection settings (see [Test integrity](#test-integrity))
-- Agent policy checks on top of the setup inventory
+- Test-integrity signals for the cases still missed, such as a custom matcher that always passes (see
+  [Test integrity](#test-integrity))
 
 ---
 

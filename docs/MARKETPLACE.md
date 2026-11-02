@@ -8,7 +8,7 @@ pharn-ci
 
 ## One-line description
 
-Check whether AI coding agents can safely work in your repo — diff coverage gate and agent setup inventory.
+Check whether AI coding agents can safely work in your repo — diff coverage, test integrity, agent setup and policy.
 
 ## Description
 
