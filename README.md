@@ -407,8 +407,8 @@ This is the "Test integrity" section of the report for a change that turns `it(`
 The benchmark for this is Skylos's list of nine ways to hide a failing test. The nine cases are reproduced in vitest
 under `fixtures/skylos-nine/` and pinned by tests: the signals of this release catch **7 of 9** (`deleted-test` by TI01,
 `added-skip` by TI03, `emptied-assertion` by TI05, `deselect-setting` by TI09, `replaced-test` by TI02,
-`loosened-assertion` by TI06 and `edited-expected-value` by TI07). The other two are planned signals that do not exist
-yet (TI15 exists and misses its case). What each signal misses is in [docs/LIMITS.md](./docs/LIMITS.md#what-test-integrity-does-not-catch).
+`loosened-assertion` by TI06 and `edited-expected-value` by TI07). The other two are missed: TI15 exists and misses
+`hard-coded-answer`, and `always-true-matcher` has only a proposal (TI17). What each signal misses is in [docs/LIMITS.md](./docs/LIMITS.md#what-test-integrity-does-not-catch).
 
 The same nine are reproduced for pytest under `fixtures/skylos-nine-pytest/`, where the signals catch **8 of 9**; the
 case-by-case table is in [docs/PRECISION.md](./docs/PRECISION.md#3-skylos-nine-what-pharn-ci-catches).

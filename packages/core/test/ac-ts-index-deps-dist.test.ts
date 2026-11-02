@@ -26,7 +26,9 @@ function expectParser(label: string, bundle: Buffer, limit: number): void {
 }
 
 describe("the typescript5 dependency and the dists", () => {
-  it("AC-14: core depends on typescript5 at npm:typescript@5.9.3 and both dists stay free of the parser", () => {
+  // review LOW (AC-14 title): the title said the dists stay free of the parser, while the assertions check that both
+  // dists carry it under the size limit; only the title changed.
+  it("AC-14: core depends on typescript5 at npm:typescript@5.9.3 and both dists carry the parser within the size limit", () => {
     expect(manifest("packages/core/package.json").dependencies?.typescript5).toBe("npm:typescript@5.9.3");
     expect(manifest("package.json").devDependencies?.typescript).toBe("~7.0.2");
 

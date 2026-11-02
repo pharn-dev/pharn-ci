@@ -248523,11 +248523,7 @@ function rootKey(root) {
   return root === void 0 || root === null ? "." : root;
 }
 function normalizedRoot(root) {
-  try {
-    return parseCoverageRoot(root, "coverage root");
-  } catch {
-    return root;
-  }
+  return parseCoverageRoot(root, "the org policy's coverage.root");
 }
 function applyPolicy(layers, policy) {
   const document2 = policy.document;

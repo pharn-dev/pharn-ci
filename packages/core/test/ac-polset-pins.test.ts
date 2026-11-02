@@ -44,8 +44,11 @@ const UNCHANGED = [
   "packages/core/test/ac-test-sources-golden.test.ts",
   "packages/core/test/ac-verdict-callout-golden.test.ts",
   "packages/action/test/ac-accept-signoff-default-golden.test.ts",
-  "packages/core/test/ac-ts-index-deps-dist.test.ts",
 ];
+// Re-pinned by the review LOW batch: ac-ts-index-deps-dist.test.ts had its AC-14 title corrected on purpose (the title
+// contradicted the assertions, which are unchanged). It is no longer byte-identical to the base; it must carry the
+// marker, and it still runs in the child vitest below.
+const EDITED_BY_REVIEW_LOW = ["packages/core/test/ac-ts-index-deps-dist.test.ts"];
 // Re-pinned by block-fails-closed-unavailable (review HIGH 4): the two stream tests are edited on purpose (a failed local
 // diff against a base that resolves now fails the step instead of falling back to the compare API). They are no
 // longer byte-identical to the base; each must carry the marker, and both still run in the child vitest below.
@@ -56,6 +59,7 @@ const EDITED_BY_BLOCK_FAILS_CLOSED = [
 const RUN = [
   ...Object.keys(EDITED).filter((f) => !f.endsWith("ac-pyparity2-unchanged.test.ts")),
   ...EDITED_BY_BLOCK_FAILS_CLOSED,
+  ...EDITED_BY_REVIEW_LOW,
   ...UNCHANGED,
 ];
 const MANIFESTS = [
@@ -93,6 +97,11 @@ describe("the pins of E3 item 23", () => {
       const text = read(file);
       expect(text === git("show", `${BASE}:${file}`), `${file} carries its deliberate edit`).toBe(false);
       expect(text, `${file}: the new comment names the change`).toContain("block-fails-closed-unavailable");
+    }
+    for (const file of EDITED_BY_REVIEW_LOW) {
+      const text = read(file);
+      expect(text === git("show", `${BASE}:${file}`), `${file} carries its deliberate edit`).toBe(false);
+      expect(text, `${file}: the new comment names the change`).toContain("review LOW (AC-14 title)");
     }
     for (const file of UNCHANGED) {
       expect(read(file) === git("show", `${BASE}:${file}`), `${file} is unchanged`).toBe(true);

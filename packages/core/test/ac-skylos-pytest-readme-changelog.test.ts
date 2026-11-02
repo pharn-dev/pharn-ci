@@ -11,6 +11,10 @@ import { describe, expect, it } from "vitest";
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 /** Current main before this increment: the base for the "unchanged" checks. */
 const BASE = "f1b252eb1183caff8699301c992bb8e4c81454a7";
+/** The one sentence of the Skylos paragraph corrected by the review LOW batch, as wrapped in the README. */
+const SKYLOS_OLD = "The other two are planned signals that do not exist\nyet (TI15 exists and misses its case).";
+const SKYLOS_NEW =
+  "The other two are missed: TI15 exists and misses\n`hard-coded-answer`, and `always-true-matcher` has only a proposal (TI17).";
 
 const read = (path: string) => readFileSync(`${ROOT}${path}`, "utf8");
 const readBase = (path: string) => execFileSync("git", ["show", `${BASE}:${path}`], { cwd: ROOT, encoding: "utf8" });
@@ -75,7 +79,14 @@ describe("README.md and CHANGELOG.md name the pytest Skylos result", () => {
 
     const skylos = paragraphs(base).filter((p) => p.join("\n").includes("catch **7 of 9**"));
     expect(skylos, "the base README holds one catch **7 of 9** paragraph").toHaveLength(1);
-    expect(containsBlock(now, skylos[0] as string[]), "the Skylos paragraph is kept as it was").toBe(true);
+    // review LOW (Skylos sentence): one sentence of the paragraph is corrected on purpose. It said both misses are
+    // planned signals that do not exist yet, while TI15 exists and misses its case; the rest is kept as it was.
+    const based = (skylos[0] as string[]).join("\n");
+    expect(based, "the base paragraph holds the sentence being corrected").toContain(SKYLOS_OLD);
+    const kept = based.replace(SKYLOS_OLD, SKYLOS_NEW).split("\n");
+    expect(containsBlock(now, kept), "the Skylos paragraph is kept as it was, with its one corrected sentence").toBe(
+      true,
+    );
     expect(normalize(now.join("\n")), "catch **7 of 9**").toContain("catch **7 of 9**");
 
     const baseLines = new Set(base);

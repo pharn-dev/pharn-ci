@@ -1232,8 +1232,10 @@ limited by git, Node or GitHub alone.
   A diff from the GitHub compare API (the Action's fallback) or from PR-number mode gets no text: both sides are
   marked unavailable and nothing is fetched. When git fails, both sides are unavailable, the CLI writes one line to
   stderr and the Action one log line naming the failed git step, and TI02 and TI05 do not run. In a partial clone a
-  blob that is not local is `missing`, never fetched (`GIT_NO_LAZY_FETCH=1`; an older git ignores the variable). A
-  symlink test file is read as its link target path. TI02 and TI05 read this text for the JavaScript, TypeScript and
+  blob that is not local is `missing`, never fetched (`GIT_NO_LAZY_FETCH=1`; an older git ignores the variable). The
+  diff itself (`git diff`) runs without that variable, so in a partial clone (`filter: blob:none`) git fetches the
+  blobs the diff needs from the remote: that is how such a checkout gets a diff at all. Without the network that
+  diff fails, and so does the step. A symlink test file is read as its link target path. TI02 and TI05 read this text for the JavaScript, TypeScript and
   Python test files the diff modifies (and the added ones, as places a test can move to). A touched test file that has
   no text on a side (any drop reason above), or that the test index refuses, is not compared: the report names it in
   `TEST_INTEGRITY_INDEX_UNAVAILABLE` with the reason code, and when a side of the sources is unavailable and the diff

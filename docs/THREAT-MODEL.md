@@ -226,7 +226,7 @@ and the tests cite them.
     Loading `typescript` builds its `sys` object (it requires Node builtins when the module loads), but
     `createSourceFile` reads no file. The index is wired into `check()`, so the parser is bundled into the action and CLI
     dists, which are about 11 MB (`ac-ts-index-deps-dist.test.ts › AC-14: core depends on typescript5 at
-    npm:typescript@5.9.3 and both dists stay free of the parser`). Only test names, paths and line numbers from the parsed
+    npm:typescript@5.9.3 and both dists carry the parser within the size limit`). Only test names, paths and line numbers from the parsed
     text reach the report. **Residual:** text inside the caps can still cost the parser's time and memory; only the
     limits test holds that, by linear growth and a hang ceiling rather than a wall-clock budget
     (`limits.test.ts › AC-12: indexing %s takes less than 8 times as long as a quarter of it`,

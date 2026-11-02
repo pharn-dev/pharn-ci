@@ -36,12 +36,13 @@ function rootKey(root: string | null | undefined): string {
   return root === undefined || root === null ? "." : root;
 }
 
+/**
+ * The app policy's `coverage.root`, normalized. `validatePolicy` has already held it to the ROOT grammar, which is
+ * stricter than `parseCoverageRoot`, so this does not throw for a served policy; if it ever did, the error names the
+ * policy's setting instead of being swallowed and failing later as the run's own "coverage root".
+ */
 function normalizedRoot(root: string): string {
-  try {
-    return parseCoverageRoot(root, "coverage root");
-  } catch {
-    return root;
-  }
+  return parseCoverageRoot(root, "the org policy's coverage.root");
 }
 
 /**
