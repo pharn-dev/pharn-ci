@@ -24,6 +24,15 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Security
 
+- Unparseable or binary agent settings and MCP files are now errors whatever the policy lists (review A3-F2). A
+  settings or MCP file that is too deep, not JSON, not an object or binary used to be only a warning unless the policy
+  set a required deny list or hook list (settings) or an MCP list (MCP files), so a pull request could pad
+  `.claude/settings.json` or `.mcp.json` past the parser's depth limit, keep it valid for Claude Code and loosen the
+  policy without a block. Now `POLICY_SETTINGS_INVALID` is an `error` and the verdict fails, and P09 blocks an edit to
+  such a file. This is a deliberate tightening: a repository with an already broken settings or MCP file under a policy
+  that reads it now fails where it warned (P02 is in force under every policy, so this applies to any policy
+  document). No schema change and no new message code.
+
 ## [0.4.0] - 2026-10-27
 
 Org policy and the app link-up. The Action can fetch an org policy (`policy` input) and upload the redacted run bundle

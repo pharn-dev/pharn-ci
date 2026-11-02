@@ -240337,9 +240337,9 @@ function settingsProblemLevel(problem, setup2) {
   const hooks = (setup2?.required_hooks?.length ?? 0) > 0;
   switch (problem.problemClass) {
     case "drop":
-      return "error";
     case "unparseable-settings":
-      return deny || hooks ? "error" : "warn";
+    case "unparseable-mcp":
+      return "error";
     case "deny":
       return deny ? "error" : "warn";
     case "hooks":

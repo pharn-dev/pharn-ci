@@ -63,8 +63,10 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       );
     }
     for (const path of nonEmpty(git("ls-files", "--others", "--exclude-standard", "--", "fixtures/"))) {
+      // Re-pinned for settings-unparseable-fails-closed (review A3-F2): its new case directories under
+      // fixtures/policy-settings/unparseable/ are untracked until committed.
       expect(path, "a new fixture").toMatch(
-        /^fixtures\/policy-rules\/p07\/[^/]+\/[^/]+$|^fixtures\/test-integrity\/TI03\/[^\t]+$/,
+        /^fixtures\/policy-rules\/p07\/[^/]+\/[^/]+$|^fixtures\/test-integrity\/TI03\/[^\t]+$|^fixtures\/policy-settings\/unparseable\/[^\t]+$/,
       );
     }
 
