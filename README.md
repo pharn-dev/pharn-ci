@@ -191,8 +191,9 @@ fallback: a `merge_group` event has no PR number, so without it every queue entr
 and cancels the others' required check.
 
 Each GitHub API request pharn-ci makes is aborted after 30 s, and a 5xx, a network error or a rate
-limit that asks for at most 60 s is retried once; each `git` call is killed after 2 minutes. A run
-makes a handful of requests, so `timeout-minutes: 5` on the step bounds even a slow GitHub without
+limit that asks for at most 60 s is retried once; each `git` call is killed after 2 minutes. The OIDC
+token request (only with `id-token: write`) is given up after 30 s, and the run goes on as if the runner offered no
+token. A run makes a handful of requests, so `timeout-minutes: 5` on the step bounds even a slow GitHub without
 cutting a normal run short; without it, a stuck step runs until the job's 6-hour limit.
 
 Release tags are exact versions (`v0.1.0`), never moved or deleted, but they are unsigned

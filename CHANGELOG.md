@@ -11,6 +11,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- The OIDC token request (for the org policy and the upload, only with `id-token: write`) now gives up after
+  30 s, and the run goes on as if the runner offered no token; `@actions/core` alone retried it up to ten times
+  with a 3-minute socket timeout each (review LOW 21). No schema change and no new message code.
+- `meta.scope` in `report.json` and in the upload is cut to 200 code points with control characters removed, like
+  the other run metadata a pull request can influence: the workflow `name:` in it comes from the pull request's
+  workflow file (review LOW). No schema change.
 - Test integrity in `block` now fails closed when it cannot see the change (review HIGH 4): `DIFF_UNAVAILABLE` and a
   `TEST_INTEGRITY_INDEX_UNAVAILABLE` for which TI02 and TI05, or TI09, did not run at all are now errors in
   `test-integrity: block` (they were warnings; the per-file form stays a warning). The Action now fails the step when
