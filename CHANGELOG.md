@@ -11,6 +11,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- A `pull_request_target` run is never uploaded to pharn.dev: it asks for no upload token and sends nothing, and
+  `meta.upload.status` is `skipped` (pharn-ci refuses to measure its base-branch checkout, so the app would record a
+  run that measured nothing). The report, comment, summary, verdict and policy request are unchanged. No schema change.
+- The install hint (`Install the Pharn GitHub App …`) now also ends the PR comment and the job summary when the org
+  policy request is answered `404`, for example with `upload: never`; a run whose policy request and upload both get
+  a `404` shows it once, and a `204` (no policy yet) shows none. No schema change.
 - The OIDC token request (for the org policy and the upload, only with `id-token: write`) now gives up after
   30 s, and the run goes on as if the runner offered no token; `@actions/core` alone retried it up to ten times
   with a 3-minute socket timeout each (review LOW 21). No schema change and no new message code.

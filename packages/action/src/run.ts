@@ -456,15 +456,18 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const commentNumber = comment ? issueNumber : undefined;
   const outcome = await runUpload(deps, {
     choice: uploadChoice,
+    ...(deps.context.eventName === "pull_request_target" ? { pullRequestTarget: true } : {}),
     report,
     appOrigin,
     ...(target !== undefined && headSha !== undefined ? { prHeadShaExpected: headSha } : {}),
     ...(commentNumber === undefined ? {} : { findOwnComment: () => findOwnComment(deps, commentNumber, scopeLine) }),
   });
   report = withUploadOutcome(report, outcome);
-  // Only a run that found the org has not installed the app gets the install hint.
-  const render =
-    outcome.status === "skipped" && outcome.reason === "no-installation" ? { render: { appHint: true } } : {};
+  // Only a run that found the org has not installed the app gets the install hint: the policy request or the upload
+  // was answered 404. Either way it is one line.
+  const notInstalled =
+    policy?.noInstallation === true || (outcome.status === "skipped" && outcome.reason === "no-installation");
+  const render = notInstalled ? { render: { appHint: true } } : {};
   const summary = fitMarkdown(report, {
     prefix: "",
     note: SUMMARY_TRUNCATED_NOTE,

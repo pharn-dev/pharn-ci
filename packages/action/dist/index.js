@@ -251934,6 +251934,7 @@ async function fetchPolicy(deps, options) {
       version: null,
       document: null,
       ...extra.noApp === true ? { noApp: true } : {},
+      ...extra.noInstallation === true ? { noInstallation: true } : {},
       unavailable: {
         reason,
         ...extra.status === void 0 ? {} : { status: extra.status },
@@ -251946,7 +251947,8 @@ async function fetchPolicy(deps, options) {
     source: "none",
     version: null,
     document: null,
-    ...extra.noApp === true ? { noApp: true } : {}
+    ...extra.noApp === true ? { noApp: true } : {},
+    ...extra.noInstallation === true ? { noInstallation: true } : {}
   });
   if (oidcOffered(deps) && !REPOSITORY.test(options.repository)) return unavailable2("no-repository");
   const token = await requestAppToken(deps);
@@ -251961,7 +251963,8 @@ async function fetchPolicy(deps, options) {
   if (status === 204)
     return required ? unavailable2("no-policy", { status, noApp: true, ...id }) : silent({ noApp: true });
   if (status === 404) {
-    return required ? unavailable2("installation_not_found", { status, noApp: true, ...id }) : silent({ noApp: true });
+    const notInstalled = { noApp: true, noInstallation: true };
+    return required ? unavailable2("installation_not_found", { status, ...notInstalled, ...id }) : silent(notInstalled);
   }
   if (status === 401) return unavailable2("token_invalid", { status, ...id });
   if (status === 403) return unavailable2("repo_not_in_installation", { status, ...id });
@@ -252106,6 +252109,7 @@ function runMeta(context3, opts) {
 import { gzipSync } from "node:zlib";
 var UPLOAD_NO_TOKEN_LINE = "pharn-ci: the run is not uploaded to pharn.dev: no OIDC token is available";
 var NO_INSTALLATION_LINE = "pharn-ci: the run is not uploaded to pharn.dev: the Pharn GitHub App is not installed for this repository";
+var PULL_REQUEST_TARGET_LINE = "pharn-ci: the run is not uploaded to pharn.dev: a pull_request_target run is never uploaded";
 var NO_COMMENT_LINE = "pharn-ci: could not read the pull request comments, so the upload carries no comment link";
 var PUT_TIMEOUT_MS = 12e4;
 var REQUEST_TIMEOUT_MS = 6e4;
@@ -252129,6 +252133,7 @@ function logOutcome(deps, step) {
     deps.info(`pharn-ci: the run was uploaded to pharn.dev${id === void 0 ? "" : ` (request id ${id})`}`);
   } else if (outcome.status === "skipped") {
     if (outcome.reason === "no-installation") deps.info(NO_INSTALLATION_LINE);
+    else if (outcome.reason === "pull-request-target") deps.info(PULL_REQUEST_TARGET_LINE);
   } else if (outcome.status === "failed") {
     const detail = id === void 0 ? "" : `, request id ${id}`;
     deps.warning(
@@ -252140,6 +252145,7 @@ function logOutcome(deps, step) {
 }
 async function uploadSteps(deps, input) {
   if (input.choice === "never") return { outcome: { status: "skipped", reason: "input-never" } };
+  if (input.pullRequestTarget === true) return { outcome: { status: "skipped", reason: "pull-request-target" } };
   if (input.report.meta === void 0) return { outcome: { status: "skipped", reason: "no-meta" } };
   const token = await requestAppToken(deps, UPLOAD_NO_TOKEN_LINE);
   if (token === null) return { outcome: { status: "skipped", reason: "no-oidc" } };
@@ -252510,13 +252516,15 @@ async function runUnsafe(deps) {
   const commentNumber = comment ? issueNumber : void 0;
   const outcome = await runUpload(deps, {
     choice: uploadChoice,
+    ...deps.context.eventName === "pull_request_target" ? { pullRequestTarget: true } : {},
     report,
     appOrigin,
     ...target !== void 0 && headSha !== void 0 ? { prHeadShaExpected: headSha } : {},
     ...commentNumber === void 0 ? {} : { findOwnComment: () => findOwnComment(deps, commentNumber, scopeLine) }
   });
   report = withUploadOutcome(report, outcome);
-  const render = outcome.status === "skipped" && outcome.reason === "no-installation" ? { render: { appHint: true } } : {};
+  const notInstalled = policy?.noInstallation === true || outcome.status === "skipped" && outcome.reason === "no-installation";
+  const render = notInstalled ? { render: { appHint: true } } : {};
   const summary2 = fitMarkdown(report, {
     prefix: "",
     note: SUMMARY_TRUNCATED_NOTE,

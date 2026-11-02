@@ -472,8 +472,9 @@ tighten. A served policy:
 A setting of the workflow inputs or `.pharn/ci.yml` that the policy beat is named in one `POLICY_OVERRIDE_IGNORED`
 warning (a threshold with both numbers; never a pattern, root or label).
 
-**No policy, or no way to read it.** A repository with no policy (`204` or `404`) is silent under `auto` and the same as
-`policy: never`. Any other failure (a network error, a timeout, a `429`, a `5xx`, a response over 1 MiB, one that does
+**No policy, or no way to read it.** A repository with no policy (`204` or `404`) is silent under `auto` and its report is the
+same as with `policy: never`; after a `404` (the Pharn GitHub App is not installed) the PR comment and the job summary
+end with the install hint. Any other failure (a network error, a timeout, a `429`, a `5xx`, a response over 1 MiB, one that does
 not validate) is one `POLICY_UNAVAILABLE` warning, last in the report, and the check runs with the workflow inputs and
 `.pharn/ci.yml`. With `policy: required` every one of these, and a missing token, is a `POLICY_UNAVAILABLE` error and
 the check fails. A request is retried once after a network error or a `5xx`; it never follows a redirect, and nothing the
@@ -577,11 +578,12 @@ comment of its own and the job summary and `report.json` still carry the report.
 wrong (a timeout, a non-2xx answer, an unexpected answer, an exception) ends in one warning that names a reason, never
 fails the check and never changes its verdict, except that `UPLOAD_TOO_LARGE` can turn a pass into a warn.
 
-**When nothing is uploaded.** With `upload: never` or without `id-token: write` (a fork pull request never gets it),
+**When nothing is uploaded.** With `upload: never`, without `id-token: write` (a fork pull request never gets it), or
+on a `pull_request_target` run (its default checkout is the base branch, which pharn-ci refuses to measure),
 nothing is sent and the report says `meta.upload.status: skipped`. A report without a `meta` block (no run metadata)
-is never sent and carries no upload status. When the app answers
-that the organization has not installed the Pharn GitHub App for the repository, the PR comment and the job summary
-end with a one-line hint to install it, and nothing else changes.
+is never sent and carries no upload status. When the app answers the policy request or the upload with `404`
+(the organization has not installed the Pharn GitHub App for the repository), the PR comment and the job summary
+end with a one-line hint to install it, once, and nothing else changes.
 
 What this does not cover is in [`docs/LIMITS.md`](docs/LIMITS.md), and the trust boundaries are in
 [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md). The app comments as `pharn[bot]`; the comment of the Action and the one
