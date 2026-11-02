@@ -262,6 +262,10 @@ These are accepted, not hidden:
     set `policy: never`, point `file:` at a document of its own, or drop `id-token: write`, so the app's policy does
     not apply to that run. `policy: required` does not help, since the same edit removes it. The gate is only as
     honest as the workflow file, as with the accept label (item 17); protect `.github/workflows/` with CODEOWNERS.
+    The same edit can also drop `fetch-depth: 0`. A shallow checkout now fails `test-integrity: block` when the
+    change touches a test file or a test-runner config, because the test text cannot be read and a gate that cannot
+    see the change fails closed; in mode `warn` it stays a warning. A local `git diff` that fails against a base in
+    the checkout now fails the step in every mode, instead of degrading to a compare-API diff and a warning.
 25. **A run with no token has no policy.** A fork pull request and a job without `id-token: write` get no OIDC
     token, so under `policy: auto` the check runs with the workflow inputs and `.pharn/ci.yml` alone, with one
     info line and no message. Only `policy: required` turns a missing token, and every other reason no policy could

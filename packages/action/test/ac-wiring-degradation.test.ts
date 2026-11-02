@@ -35,19 +35,23 @@ describe("action run() degradation paths", () => {
     expect(h.comments).toHaveLength(1);
   });
 
-  it("AC-1: falls back to the GitHub compare API when the base resolves locally but git diff rejects", async () => {
+  // block-fails-closed-unavailable (review HIGH 4): a base that resolves locally but whose git diff rejects now fails
+  // the step instead of falling back to the compare API (which cannot give the test text).
+  it("AC-1: fails the step when the base resolves locally but git diff rejects, with no compare API call", async () => {
     const { run } = await import("../src/run.js");
     const { harness } = await import("./harness.js");
     const h = harness({ diffError: new Error("fatal: bad revision") });
 
     const report = await run(h.deps);
 
-    // The base resolved locally (rev-parse succeeded) and the local diff was attempted before the fallback.
+    // The base resolved locally (rev-parse succeeded) and the local diff was attempted.
     expect(h.gitCalls.some((a) => a[0] === "diff")).toBe(true);
-    expect(h.infos.join("\n")).toContain("local git diff failed, falling back to the GitHub API");
-    expect(h.apiCalls).toContain(`compare ${BASE_SHA}...merge000`);
-    // The compare fixture (fixtures/golden/pr.diff against fixtures/golden/coverage.info) measures 71.43%.
-    expect(report?.diffCoverage?.percent).toBe(71.43);
+    expect(h.failed).toHaveLength(1);
+    expect(h.failed[0]).toContain(BASE_SHA);
+    expect(h.failed[0]).toContain("fatal: bad revision");
+    expect(h.failed[0]).toContain("fetch-depth: 0");
+    expect(h.apiCalls.filter((c) => c.startsWith("compare"))).toEqual([]);
+    expect(report).toBeUndefined();
   });
 
   it("AC-1: fails the step with the config path and the parser's message when .pharn/ci.yml does not parse", async () => {

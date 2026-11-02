@@ -35,8 +35,6 @@ const UNCHANGED = [
   "packages/core/test/ac-polrules-p09-settings.test.ts",
   "packages/core/test/ac-polrules-render-list.test.ts",
   "packages/core/test/ac-polrules-render-table.test.ts",
-  "packages/action/test/ac-stream-action.test.ts",
-  "packages/cli/test/ac-stream-adapters.test.ts",
   "packages/core/test/golden.test.ts",
   "packages/core/test/exclusions-golden.test.ts",
   "packages/core/test/ac-format-golden.test.ts",
@@ -48,7 +46,18 @@ const UNCHANGED = [
   "packages/action/test/ac-accept-signoff-default-golden.test.ts",
   "packages/core/test/ac-ts-index-deps-dist.test.ts",
 ];
-const RUN = [...Object.keys(EDITED).filter((f) => !f.endsWith("ac-pyparity2-unchanged.test.ts")), ...UNCHANGED];
+// Re-pinned by block-fails-closed-unavailable (review HIGH 4): the two stream tests are edited on purpose (a failed local
+// diff against a base that resolves now fails the step instead of falling back to the compare API). They are no
+// longer byte-identical to the base; each must carry the marker, and both still run in the child vitest below.
+const EDITED_BY_BLOCK_FAILS_CLOSED = [
+  "packages/action/test/ac-stream-action.test.ts",
+  "packages/cli/test/ac-stream-adapters.test.ts",
+];
+const RUN = [
+  ...Object.keys(EDITED).filter((f) => !f.endsWith("ac-pyparity2-unchanged.test.ts")),
+  ...EDITED_BY_BLOCK_FAILS_CLOSED,
+  ...UNCHANGED,
+];
 const MANIFESTS = [
   "package.json",
   "packages/action/package.json",
@@ -79,6 +88,11 @@ describe("the pins of E3 item 23", () => {
       expect(text === git("show", `${BASE}:${file}`), `${file} carries its deliberate edit`).toBe(false);
       for (const word of words) expect(text, `${file} names ${word}`).toContain(word);
       expect(text, `${file}: the new comment names the item`).toContain("E3 item 23 (policy settings)");
+    }
+    for (const file of EDITED_BY_BLOCK_FAILS_CLOSED) {
+      const text = read(file);
+      expect(text === git("show", `${BASE}:${file}`), `${file} carries its deliberate edit`).toBe(false);
+      expect(text, `${file}: the new comment names the change`).toContain("block-fails-closed-unavailable");
     }
     for (const file of UNCHANGED) {
       expect(read(file) === git("show", `${BASE}:${file}`), `${file} is unchanged`).toBe(true);

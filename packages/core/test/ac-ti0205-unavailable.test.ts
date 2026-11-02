@@ -173,7 +173,9 @@ describe("TEST_INTEGRITY_INDEX_UNAVAILABLE: a touched test file that could not b
     const modified = await run({ diff: { text: removal("src/a.test.ts") }, testSources }, "block");
     const messages = unavailableOf(modified);
     expect(messages).toHaveLength(1);
-    expect(messages[0]?.level).toBe("warn");
+    // block-fails-closed-unavailable (review HIGH 4): both sides unavailable is the whole-run form, an error in block
+    // (it was a warn). The per-file cases above stay warn.
+    expect(messages[0]?.level).toBe("error");
     expect(messages[0]?.text).toContain("TI02");
     expect(messages[0]?.text).toContain("TI05");
     expect(messages[0]?.text, "it says why").toContain("git cat-file failed");

@@ -309,13 +309,17 @@ export interface BuildReportInput {
   testIntegrityLanguages?: readonly ("ts" | "js" | "py" | "go")[];
   /** Findings the per-file cap left out of `testIntegrity.signals`; the TI02, TI05, TI06, TI09 and TI12 messages say how many. */
   omittedSignals?: readonly OmittedSignals[];
-  /** Touched test files TI02 and TI05 could not compare, or why they did not run; adds one warn message. */
+  /**
+   * Touched test files TI02 and TI05 could not compare, or why they did not run; adds one message: a warn, except an
+   * error in mode `block` when they did not run at all (the `{ notRun }` form).
+   */
   testIndexUnavailable?: TestIndexUnavailable;
   /** The tests-changed summary (see `summarizeTestChanges`); fills `testIntegrity.changes`. Absent adds nothing. */
   testChanges?: ReportTestChanges;
   /**
    * Touched test-config files TI09 could not read, or why it did not run. Adds one TI09 sentence to the one
-   * `TEST_INTEGRITY_INDEX_UNAVAILABLE` message, after the TI02 and TI05 sentence when there is one.
+   * `TEST_INTEGRITY_INDEX_UNAVAILABLE` message, after the TI02 and TI05 sentence when there is one. The `{ notRun }`
+   * form makes that message an error in mode `block`.
    */
   testConfigUnavailable?: TestConfigUnavailable;
   /**
@@ -516,6 +520,10 @@ export function buildReport(input: BuildReportInput): Report {
     // threshold the user asked for a gate, and a gate that cannot measure must fail closed, so this is an error
     // (threshold 0 included). Without a threshold pharn-ci only reports, so it stays a warning.
     const level: MessageLevel = input.threshold === null ? "warn" : "error";
+    // The unavailable diff itself also fails closed in test-integrity mode block: block asked for a test-integrity
+    // gate, and a gate that cannot see the change must not pass it (pre-sale review item 4).
+    const diffLevel: MessageLevel =
+      input.threshold !== null || input.testIntegrity?.mode === "block" ? "error" : "warn";
     if (missing.reason === "coverage-file-missing") {
       messages.push({
         level,
@@ -543,7 +551,7 @@ export function buildReport(input: BuildReportInput): Report {
       messages.push({ level, code: "COVERAGE_PATHS_UNMATCHED", text: unmatchedText(missing) });
     } else {
       messages.push({
-        level,
+        level: diffLevel,
         code: "DIFF_UNAVAILABLE",
         text: `Diff coverage was not computed: ${missing.detail}`,
       });
@@ -640,7 +648,13 @@ export function buildReport(input: BuildReportInput): Report {
   messages.push(...testIntegritySignalMessages(signals, { omitted: input.omittedSignals ?? [] }));
   if (testIntegrity?.mode !== "off") {
     const text = indexUnavailableText(input.testIndexUnavailable, input.testConfigUnavailable);
-    if (text !== null) messages.push({ level: "warn", code: "TEST_INTEGRITY_INDEX_UNAVAILABLE", text });
+    if (text !== null) {
+      messages.push({
+        level: indexUnavailableLevel(testIntegrity?.mode, input.testIndexUnavailable, input.testConfigUnavailable),
+        code: "TEST_INTEGRITY_INDEX_UNAVAILABLE",
+        text,
+      });
+    }
   }
   const cut = input.textTruncatedFiles ?? [];
   if (cut.length > 0 && testIntegrity?.mode !== "off") {
@@ -745,6 +759,23 @@ export function oneLine(text: string): string {
 
 function isHighSurrogate(code: number): boolean {
   return code >= 0xd800 && code <= 0xdbff;
+}
+
+/**
+ * The level of the `TEST_INTEGRITY_INDEX_UNAVAILABLE` message. In mode `block` it is an error when TI02 and TI05, or TI09,
+ * did not run at all (the `{ notRun }` form): block asked for a test-integrity gate, and a gate that could not read the
+ * touched test text fails closed (pre-sale review item 4). The per-file `{ files }` form and every other mode stay a warning.
+ */
+function indexUnavailableLevel(
+  mode: string | undefined,
+  unavailable: TestIndexUnavailable | undefined,
+  configUnavailable: TestConfigUnavailable | undefined,
+): MessageLevel {
+  if (mode !== "block") return "warn";
+  const notRun =
+    (unavailable !== undefined && "notRun" in unavailable) ||
+    (configUnavailable !== undefined && "notRun" in configUnavailable);
+  return notRun ? "error" : "warn";
 }
 
 /**

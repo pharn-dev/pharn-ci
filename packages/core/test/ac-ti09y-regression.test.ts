@@ -21,8 +21,10 @@ const DIST_BOUND = 12_000_000;
 // each), so these are the digests of those edited files.
 // Re-pinned again by ti03-skip-evasion (review B1): both files put the earlier TI03 sentence for a skip the diff shows
 // as new back into their records before hashing, so their output digests are unchanged; these are the edited files.
+// Re-pinned again by block-fails-closed-unavailable (review HIGH 4): ac-ti0205-regression is edited on purpose (a
+// whole-run unavailable message is an error in block, was a warn), so this is the digest of the edited file.
 const PINNED: Record<string, string> = {
-  "packages/core/test/ac-ti0205-regression.test.ts": "558080bf57efbc276c0554c2ba0e5f204acc6a1c2d1e50de05b65ac656cf48e2",
+  "packages/core/test/ac-ti0205-regression.test.ts": "5318cbd56bfde9c0194e219c89c6c53e8e246d9f7b1c920c3ee3bd12546aa754",
   "packages/action/test/ac-accept-signoff-regression.test.ts":
     "c54599f987667dd60cc1e1ef8f751cdecb8269ff7d72a55c1a5649854e8ca99c",
 };

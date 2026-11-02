@@ -694,8 +694,10 @@ async function gatherAgentInstructionSources(
 }
 
 /**
- * Diff of the change under test: base...HEAD, from local git if possible, else the GitHub API. `localBase` is the
- * revision the local git diff was taken against; set only when the diff was parsed from local git.
+ * Diff of the change under test: base...HEAD from local git; the GitHub compare API is used only for a base that does
+ * not resolve locally (a shallow checkout) or in PR-number mode. A base that resolves but whose local diff fails fails
+ * the step. `localBase` is the revision the local git diff was taken against; set only when the diff was parsed from
+ * local git.
  */
 async function getDiff(
   baseRefInput: string,
@@ -747,15 +749,22 @@ async function getDiff(
       const options = { configPath: configInput === "" ? undefined : configInput, repoRoot: deps.workspace };
       return { diff: { parsed: await readDiffChunks(gitChunks(deps, gitDiffArgs(localBase)), options) }, localBase };
     } catch (err) {
-      deps.info(`local git diff failed, falling back to the GitHub API: ${String(err)}`);
+      // The base is in the checkout, so a failed local diff means a broken or partial checkout. Falling back to the
+      // compare API would hand the test-integrity signals a diff without readable test text, so fail the step instead
+      // (block-fails-closed-unavailable, review HIGH 4).
+      throw new Error(
+        `the local git diff against "${base}" failed (${String(err)}); ` +
+          "check out full history with actions/checkout and fetch-depth: 0",
+      );
     }
   }
+  // Reached only for a base that does not resolve locally (a shallow checkout).
   try {
     return { diff: { text: await deps.api.compareDiff(`${base}...${head}`) } };
   } catch (err) {
     // An explicit base-ref found neither locally nor by the API is most likely a typo: fail the
     // step like the CLI does, instead of reporting DIFF_UNAVAILABLE (a warning without a threshold).
-    if (baseRefInput && !localBase) {
+    if (baseRefInput) {
       throw new Error(
         `base-ref "${baseRefInput}" was not found in the checkout or through the GitHub API (${String(err)}); ` +
           "check the ref name, or use actions/checkout with fetch-depth: 0",

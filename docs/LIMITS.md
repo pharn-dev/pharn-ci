@@ -786,17 +786,28 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
 - **A missing input fails only with a threshold.** `COVERAGE_FILE_MISSING`, `COVERAGE_FILE_EMPTY`,
   `COVERAGE_FORMAT_UNSUPPORTED`, `COVERAGE_PATHS_UNMATCHED` and `DIFF_UNAVAILABLE` are errors, and the verdict is `fail`, when a
   threshold is set (0 included): a gate that cannot measure fails closed. Without a threshold they
-  are warnings.
+  are warnings. `DIFF_UNAVAILABLE` is also an error in `test-integrity: block`, threshold or not: block
+  asked for a test-integrity gate, and a gate that cannot see the change fails closed.
 - **`DIFF_UNAVAILABLE` has several causes.** It is reported when there is no base to diff against (a
   push without a previous commit, or no `base-ref` outside a pull request or merge queue), when
   neither local git nor the GitHub API can produce the diff (for example a shallow checkout and an
   API error), when the diff is over the size limit, and when a `pull_request_target` run checked out
   the base branch (that run is refused, not measured: checking out the PR head to measure it would
   run fork code with a write token; see `SECURITY.md`).
-  Use `fetch-depth: 0` (or let the GitHub API fallback fetch the diff) and a `pull_request` trigger
-  and this does not happen in practice. A `base-ref` you set that is found neither in the checkout
-  nor through the GitHub API is not `DIFF_UNAVAILABLE`: it fails the step, like a bad `--base` in
-  the CLI.
+  Use `fetch-depth: 0` and a `pull_request` trigger and this does not happen in practice. The GitHub
+  compare API is not an equivalent of `fetch-depth: 0`: its diff carries no readable test text, so
+  the signals that compare test text do not run on it. A local `git diff` that fails against a base
+  that is in the checkout fails the step in every mode, and the compare API is not tried. A
+  `base-ref` you set that is found neither in the checkout nor through the GitHub API is not
+  `DIFF_UNAVAILABLE`: it fails the step, like a bad `--base` in the CLI.
+- **Test integrity in `block` fails closed on an unreadable change, with these limits.**
+  `TEST_INTEGRITY_INDEX_UNAVAILABLE` is an error in mode `block` only when TI02 and TI05, or TI09, did
+  not run at all (the test text could not be read and a test file or a test-runner config is
+  modified). The per-file form, where some touched files could not be compared, stays a warning in
+  block. With no coverage file and no diff, block reports the coverage problem (a warning without a
+  threshold). A7 and P02–P07 need a local diff (`fetch-depth: 0`), and their "did not run" levels
+  are unchanged. In `pr-number` mode the test text is never available, so block fails there when a
+  test file or a test-runner config is modified; use `test-integrity: warn` for that flow.
 - **`fail-on-threshold: false` makes the step report, not gate.** The verdict and outputs are still
   set.
 

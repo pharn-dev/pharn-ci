@@ -108,7 +108,14 @@ describe("the accept label is only looked at in mode block, with a block signal,
     const warnOnly = await signoffRun({ mode: "block", diff: acceptFixture("warn-only.diff") });
     expectNotAsked(warnOnly);
     expect(severities(warnOnly.report)).toEqual(["TI03 warn"]);
-    expect(warnOnly.h.failed).toEqual([]);
+    // block-fails-closed-unavailable (review HIGH 4): warn-only.diff modifies a test file and this harness has no
+    // gitBatch, so the test text is unavailable and block fails closed on TEST_INTEGRITY_INDEX_UNAVAILABLE. The label
+    // is still not asked, and it cannot lift that error.
+    expect(warnOnly.h.failed).toHaveLength(1);
+    expect(warnOnly.h.failed[0]).toContain("TI02 and TI05 did not run");
+    const unavailable = codes(warnOnly.report, "TEST_INTEGRITY_INDEX_UNAVAILABLE");
+    expect(unavailable).toHaveLength(1);
+    expect(unavailable[0]?.level).toBe("error");
 
     const none = await signoffRun({ mode: "block", diff: acceptFixture("no-signal.diff") });
     expectNotAsked(none);

@@ -11,6 +11,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- Test integrity in `block` now fails closed when it cannot see the change (review HIGH 4): `DIFF_UNAVAILABLE` and a
+  `TEST_INTEGRITY_INDEX_UNAVAILABLE` for which TI02 and TI05, or TI09, did not run at all are now errors in
+  `test-integrity: block` (they were warnings; the per-file form stays a warning). The Action now fails the step when
+  a local `git diff` against a base that resolves fails, naming the base and `fetch-depth: 0`, instead of falling back
+  to the GitHub compare API. In `pr-number` mode, `block` fails when a test file or a test-runner config is modified
+  (use `warn` there). No schema change and no new message code.
 - TI03 now blocks an unconditional skip added to a test that exists at base however the change writes it (review
   B1): a test renamed to `it.skip(…)` or `it.skipIf(true)(…)` with the same body, a `describe.skip` wrapped around
   existing tests, an existing test moved into a skipped `describe`, and `pytestmark = pytest.mark.skip(…)` added at

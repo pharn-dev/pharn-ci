@@ -236801,6 +236801,7 @@ function buildReport(input) {
   if (dc === null) {
     const missing = input.missing ?? { reason: "diff-unavailable", detail: "no diff coverage data" };
     const level = input.threshold === null ? "warn" : "error";
+    const diffLevel = input.threshold !== null || input.testIntegrity?.mode === "block" ? "error" : "warn";
     if (missing.reason === "coverage-file-missing") {
       messages.push({
         level,
@@ -236827,7 +236828,7 @@ function buildReport(input) {
       messages.push({ level, code: "COVERAGE_PATHS_UNMATCHED", text: unmatchedText(missing) });
     } else {
       messages.push({
-        level,
+        level: diffLevel,
         code: "DIFF_UNAVAILABLE",
         text: `Diff coverage was not computed: ${missing.detail}`
       });
@@ -236910,7 +236911,13 @@ function buildReport(input) {
   messages.push(...testIntegritySignalMessages(signals, { omitted: input.omittedSignals ?? [] }));
   if (testIntegrity2?.mode !== "off") {
     const text = indexUnavailableText(input.testIndexUnavailable, input.testConfigUnavailable);
-    if (text !== null) messages.push({ level: "warn", code: "TEST_INTEGRITY_INDEX_UNAVAILABLE", text });
+    if (text !== null) {
+      messages.push({
+        level: indexUnavailableLevel(testIntegrity2?.mode, input.testIndexUnavailable, input.testConfigUnavailable),
+        code: "TEST_INTEGRITY_INDEX_UNAVAILABLE",
+        text
+      });
+    }
   }
   const cut = input.textTruncatedFiles ?? [];
   if (cut.length > 0 && testIntegrity2?.mode !== "off") {
@@ -236993,6 +237000,11 @@ function oneLine(text) {
 }
 function isHighSurrogate(code2) {
   return code2 >= 55296 && code2 <= 56319;
+}
+function indexUnavailableLevel(mode, unavailable2, configUnavailable) {
+  if (mode !== "block") return "warn";
+  const notRun = unavailable2 !== void 0 && "notRun" in unavailable2 || configUnavailable !== void 0 && "notRun" in configUnavailable;
+  return notRun ? "error" : "warn";
 }
 function indexUnavailableText(unavailable2, configUnavailable) {
   const parts = [];
@@ -252668,13 +252680,15 @@ async function getDiff(baseRefInput, deps, target, configInput = "") {
       const options = { configPath: configInput === "" ? void 0 : configInput, repoRoot: deps.workspace };
       return { diff: { parsed: await readDiffChunks(gitChunks(deps, gitDiffArgs(localBase)), options) }, localBase };
     } catch (err) {
-      deps.info(`local git diff failed, falling back to the GitHub API: ${String(err)}`);
+      throw new Error(
+        `the local git diff against "${base}" failed (${String(err)}); check out full history with actions/checkout and fetch-depth: 0`
+      );
     }
   }
   try {
     return { diff: { text: await deps.api.compareDiff(`${base}...${head}`) } };
   } catch (err) {
-    if (baseRefInput && !localBase) {
+    if (baseRefInput) {
       throw new Error(
         `base-ref "${baseRefInput}" was not found in the checkout or through the GitHub API (${String(err)}); check the ref name, or use actions/checkout with fetch-depth: 0`
       );

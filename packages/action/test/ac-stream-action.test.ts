@@ -179,7 +179,10 @@ describe("action: streamed inputs", () => {
     expect(action.infos.filter((line) => line.startsWith("coverage: "))).toEqual(["coverage: lcov (auto-detected)"]);
   });
 
-  it("AC-12: a failed streamed local diff and a failed compare API give DIFF_UNAVAILABLE and fail the step", async () => {
+  // block-fails-closed-unavailable (review HIGH 4): a streamed local diff that fails against a base that resolves now
+  // fails the step with a message naming the base and `fetch-depth: 0`; the compare API is never tried (it was, and the
+  // run reported DIFF_UNAVAILABLE). compare-diff.test.ts and run.test.ts still cover the compare-failure path.
+  it("AC-12: a failed streamed local diff fails the step naming the base and fetch-depth: 0, with no compare API call and no report", async () => {
     const action = await runAction({
       inputs: { "coverage-file": COVERAGE, threshold: "80" },
       files: { [COVERAGE]: fixture("golden/coverage.info") },
@@ -188,19 +191,14 @@ describe("action: streamed inputs", () => {
       compare: new Error("Sorry, the diff exceeded the maximum number of files (300)"),
     });
 
-    // The local diff was attempted through the stream, and the compare API was tried after it failed.
+    // The local diff was attempted once through the stream, and the compare API was never tried.
     expect(action.streamCalls.filter((args) => args[0] === "diff")).toHaveLength(1);
-    expect(action.compareCalls).toHaveLength(1);
-
-    const report = action.report();
-    expectValidReport(report);
-    expect(report.diffCoverage).toBeNull();
-    expect(report.verdict).toBe("fail");
-    const unavailable = report.messages.filter((message: { code: string }) => message.code === "DIFF_UNAVAILABLE");
-    expect(unavailable).toHaveLength(1);
-    expect(unavailable[0].level).toBe("error");
+    expect(action.compareCalls).toEqual([]);
 
     expect(action.failed).toHaveLength(1);
-    expect(action.failed[0]).toContain(unavailable[0].text);
+    expect(action.failed[0]).toContain(BASE_SHA);
+    expect(action.failed[0]).toContain(`fatal: bad object ${BASE_SHA}`);
+    expect(action.failed[0]).toContain("fetch-depth: 0");
+    expect(() => action.report(), "no report is written").toThrow();
   });
 });

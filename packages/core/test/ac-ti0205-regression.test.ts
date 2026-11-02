@@ -181,7 +181,9 @@ describe("TI02 and TI05 change the earlier outputs only where they mean to", () 
       if (compared) {
         modifying++;
         expect(added, `${name}: one ${UNAVAILABLE} message`).toHaveLength(1);
-        expect(added[0]?.level).toBe("warn");
+        // block-fails-closed-unavailable (review HIGH 4): these runs are in block mode, where a whole-run
+        // unavailable message is an error (it was a warn).
+        expect(added[0]?.level).toBe("error");
       } else {
         expect(added, `${name}: no ${UNAVAILABLE} message`).toEqual([]);
       }

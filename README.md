@@ -178,8 +178,12 @@ jobs:
           threshold: 80
 ```
 
-`fetch-depth: 0` lets pharn-ci diff against the PR base locally. Without a threshold, pharn-ci
-reports and never fails the step. With a merge queue, add `merge_group` to `on:`; pharn-ci diffs
+`fetch-depth: 0` lets pharn-ci diff against the PR base locally, and it is required for TI02, TI05, TI06, TI07, TI09,
+TI12, A7 and P02–P07, which read the text of the change. Without it the diff comes from the GitHub compare API and
+that text cannot be read: this is a warning in `test-integrity: warn`, and a failed check in `test-integrity: block`
+when the change modifies a test file or a test-runner config. A local `git diff` that fails against a base that is in
+the checkout fails the step in every mode. Without a threshold, pharn-ci never fails the step on coverage alone, but
+`test-integrity: block` can fail it. With a merge queue, add `merge_group` to `on:`; pharn-ci diffs
 the queued change against the queue's base (`merge_group.base_sha`). The `concurrency` group
 cancels an older run when a new commit is pushed; without it, two runs that each post the sticky
 comment are cleaned up to one, but the older run may write last. Keep the `|| github.ref`
@@ -382,7 +386,9 @@ reviewer who is not the author can sign off block findings with the accept label
 
 Python test files are parsed with the runner's own `python3` (or `python`), 3.8 or newer, and only when the change
 modifies one. Without it, those files are named in `TEST_INTEGRITY_INDEX_UNAVAILABLE` (warn), the signals that compare
-test text skip them, and the diff-only signals still run.
+test text skip them, and the diff-only signals still run. When TI02 and TI05, or TI09, did not run at all because the
+test text could not be read (a shallow checkout, or `pr-number` mode), that message is an error in `test-integrity:
+block`, so the check fails closed; the per-file form stays a warning.
 
 The block signals were measured on 600 merged pull requests of three open-source vitest repositories: TI01, TI02 and
 TI11 each falsely block 1 of 600 (0.17 %). The method, the reviewed findings and the warn and info signals' sampled
@@ -731,6 +737,10 @@ PR code is checked out or run. What it cannot check is that the coverage file is
 produced: a fork can upload a coverage file that flatters its own PR. The comment reports what the
 `pull_request` run uploaded, and that run's verdict is the gate.
 
+The test text cannot be read in `pr-number` mode, so with `test-integrity: block` a PR that modifies a test file or a
+test-runner config fails the check there (`TEST_INTEGRITY_INDEX_UNAVAILABLE`, an error). Use `test-integrity: warn` for
+that flow and keep the block gate on the `pull_request` run.
+
 ---
 
 ## CLI
@@ -863,7 +873,7 @@ message `code`s, not on text:
 | `COVERAGE_FILE_MISSING`         | The coverage file does not exist                               |
 | `COVERAGE_FILE_EMPTY`           | The coverage file has no usable records                        |
 | `COVERAGE_FORMAT_UNSUPPORTED`   | The coverage file is not lcov or Cobertura XML (format `auto`) |
-| `DIFF_UNAVAILABLE`              | No diff could be produced, so diff coverage was not computed   |
+| `DIFF_UNAVAILABLE`              | No diff could be produced, so diff coverage was not computed (`error` with a threshold or in `test-integrity: block`, else `warn`) |
 | `COVERAGE_PATHS_UNMATCHED`      | None of the coverage report's file paths is a tracked file, so diff coverage was not computed |
 | `COVERAGE_PATHS_PARTIALLY_UNMATCHED` | Some coverage paths are not tracked files; their coverage is not used (`info`) |
 | `COVERAGE_LINES_SKIPPED`        | Malformed lcov `DA` records or Cobertura `<line>` elements were skipped; the text gives their number (`info`) |
@@ -879,7 +889,7 @@ message `code`s, not on text:
 | `TEST_INTEGRITY_TI06`           | TI06: a test that stays became weaker: a strong matcher replaced by a weak one (`toBe(5)` by `toBeTruthy()`), an `expect.assertions` or `expect.hasAssertions` guard lowered or removed, an assertion that compares a literal with itself added, or an assertion moved into a `try` block with a `catch` or after an early `return` (`warn` in every mode). The finding sits at the head path and head line. The text names every file and says how many findings the cap of 20 per file left out; the listed findings are in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI12`           | TI12: a test file newly mocks (`vi.mock`, `vi.doMock`, `jest.mock`, `jest.doMock`, Python `patch` and `monkeypatch.setattr`) a source file the same change adds, modifies or renames, so the test may not run the code under review (`warn` in every mode). One finding per test file and target, at the head path and the line of the first such mock. The text names every file and says how many findings the cap of 20 per file left out; the listed findings are in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI09`           | TI09: the change loosens a test-runner setting so that fewer tests run, a weaker run passes or the coverage gate drops: a lowered or removed coverage threshold, a narrowed test list or widened exclusion, `passWithNoTests`, `allowOnly` or `bail` turned on, a `grep` added, `forbidOnly` turned off, or a pytest `addopts` that gains a deselecting option (`error` in mode `block`, `warn` in mode `warn`). A raised retry count or timeout, and a value that is not a literal, are `warn`. The finding sits at the head path and the head line of the key (no line for JSON). The text names every file and says how many findings the cap of 20 per file left out; the listed findings are in `testIntegrity.signals` |
-| `TEST_INTEGRITY_INDEX_UNAVAILABLE` | A touched JS/TS or Python test file could not be compared at the merge base and at HEAD (too large, dropped, a syntax-error-heavy file, no Python 3.8 or newer), so TI02 and TI05 did not check it; or TI02 and TI05 did not run because the test text could not be read; or a touched test-config file could not be read, so TI09 did not check it, or TI09 did not run (`warn`; not in mode `off`). The text names the files with a reason code each, or the reason |
+| `TEST_INTEGRITY_INDEX_UNAVAILABLE` | A touched JS/TS or Python test file could not be compared at the merge base and at HEAD (too large, dropped, a syntax-error-heavy file, no Python 3.8 or newer), so TI02 and TI05 did not check it; or TI02 and TI05 did not run because the test text could not be read; or a touched test-config file could not be read, so TI09 did not check it, or TI09 did not run (`error` in mode `block` when TI02 and TI05, or TI09, did not run at all, else `warn`; not in mode `off`). The text names the files with a reason code each, or the reason |
 | `TEST_INTEGRITY_TI10`           | TI10: the change weakens a test script in `package.json` (`\|\| true`, `; true`, `echo` or `exit 0` in place of the run, `--passWithNoTests`, a path or name filter, or a removed `pretest` or `posttest`), so the test run can pass without the tests passing (`error` in mode `block`, `warn` in mode `warn`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI11`           | TI11: a workflow edit may stop CI from running tests: a removed test command or `pull_request` trigger (`error` in mode `block`, `warn` in mode `warn`), or a shrunk matrix, an added `continue-on-error: true`, a disabling `if:` or a `timeout-minutes` of 0 or 1 (`warn`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI13`           | TI13: the change adds a comment that leaves code out of coverage (an Istanbul, V8 or C8 ignore hint in a JS/TS file, or a `# pragma: no cover` in a Python file that is not a test file) (`error` in mode `block`, `warn` in mode `warn`). Every finding is in `testIntegrity.signals` |

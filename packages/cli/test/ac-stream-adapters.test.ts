@@ -275,7 +275,10 @@ describe("streamed inputs in the CLI and the Action: early stops and failures", 
     expect(actionState.pulled).toBeLessThan(20_000);
   });
 
-  it("AC-11: a streamed git diff that fails after valid lines exits 2 in the CLI and falls back to the API in the Action", async () => {
+  // block-fails-closed-unavailable (review HIGH 4): in the Action a streamed local diff that fails against a base that
+  // resolves now fails the step (naming the base and fetch-depth: 0) instead of falling back to the compare API. The
+  // golden-report line moves to a control run with a clean diff stream.
+  it("AC-11: a streamed git diff that fails after valid lines exits 2 in the CLI and fails the step in the Action", async () => {
     const golden = fixture("golden/pr.diff");
     const coverage = fixture("golden/coverage.info");
 
@@ -297,7 +300,8 @@ describe("streamed inputs in the CLI and the Action: early stops and failures", 
     expect(cli.stderr).not.toContain("whole-text git call");
     expect(cli.stdout).toBe("");
 
-    // Action: valid lines of a diff the API does not hold, then git's failure; the compare API holds the golden diff.
+    // Action: valid lines of a diff the API does not hold, then git's failure; the compare API would give the golden
+    // diff, but it is never called.
     const leak = [
       "diff --git a/src/leak.ts b/src/leak.ts",
       "new file mode 100644",
@@ -311,7 +315,7 @@ describe("streamed inputs in the CLI and the Action: early stops and failures", 
       "",
     ].join("\n");
     const actionSource: ChunkSource = { chunks: cut(leak, 9), error: new Error("fatal: bad object") };
-    const action = await runAction(
+    const failedRun = await runAction(
       { "coverage-file": COVERAGE, threshold: "80" },
       {
         files: { [COVERAGE]: coverage },
@@ -322,12 +326,27 @@ describe("streamed inputs in the CLI and the Action: early stops and failures", 
       },
     );
     expect(actionSource.reachedEnd).toBe(true);
-    expect(action.compareCalls).toHaveLength(1);
-    const fallback = action.infos.filter((line) => line.includes("local git diff failed"));
-    expect(fallback).toHaveLength(1);
-    expect(fallback[0]).toContain("falling back to the GitHub API");
-    expect(fallback[0]).not.toContain("whole-text git call");
-    // The report is the one for the API diff alone: the golden report, with nothing of the failed local diff.
+    expect(failedRun.compareCalls).toEqual([]);
+    expect(failedRun.failed).toHaveLength(1);
+    expect(failedRun.failed[0]).toContain(BASE_SHA);
+    expect(failedRun.failed[0]).toContain("fatal: bad object");
+    expect(failedRun.failed[0]).toContain("fetch-depth: 0");
+    expect(failedRun.failed[0]).not.toContain("whole-text git call");
+
+    // Control: the same run with a clean diff stream (the golden diff) gives the golden report, and the compare API,
+    // set to throw, is never called.
+    const cleanSource: ChunkSource = { chunks: cut(golden, 9) };
+    const action = await runAction(
+      { "coverage-file": COVERAGE, threshold: "80" },
+      {
+        files: { [COVERAGE]: coverage },
+        streams: { [COVERAGE]: { chunks: cut(coverage, 64) } },
+        diff: new Error("the whole-text git call was used for the diff"),
+        diffStream: cleanSource,
+        compare: new Error("the compare API was called"),
+      },
+    );
+    expect(action.compareCalls).toEqual([]);
     expect(action.report()).toEqual(goldenReport());
   });
 
