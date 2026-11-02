@@ -18,6 +18,11 @@ updates:
           - "@actions/*"
       dev-dependencies:
         dependency-type: development
+    ignore:
+      # The types follow the Node major the Action runs on (engines, action.yml `runs.using`, the esbuild
+      # target): node24. A new major of @types/node would type APIs that runtime does not have.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: "/"
