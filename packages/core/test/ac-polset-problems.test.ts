@@ -98,7 +98,8 @@ const DROP_PROBLEMS: Problem[] = DROPS.filter((d) => d.reason !== "missing").map
 
 describe("POLICY_SETTINGS_INVALID: the problem table", { timeout: 60_000 }, () => {
   it("AC-13: one message lists each problem as path, line and reason in sort order, at the strongest level of the table; a missing drop and a problem no rule in force reads are not listed", async () => {
-    // Drops and unparseable files, every list set: drops and unparseable settings files are errors, MCP files warn.
+    // Drops and unparseable files, every list set: drops and unparseable settings and MCP files are errors
+    // (re-pinned by settings-unparseable-fails-closed, review A3-F2: an MCP file used to warn).
     const full = await invalidOf({ ...FULL }, { ...UNPARSEABLE_SETTINGS, ...UNPARSEABLE_MCP }, [
       ...DROPS,
       SETTINGS_BINARY,
@@ -119,9 +120,10 @@ describe("POLICY_SETTINGS_INVALID: the problem table", { timeout: 60_000 }, () =
       ["error", textOf([...DROP_PROBLEMS, ...SETTINGS_FILE_PROBLEMS])],
     ]);
 
-    // Unparseable settings files without a required list are warnings.
-    const settingsWarn = await invalidOf(P02_ONLY, UNPARSEABLE_SETTINGS, [SETTINGS_BINARY]);
-    expect(settingsWarn.map((m) => [m.level, m.text])).toEqual([["warn", textOf(SETTINGS_FILE_PROBLEMS)]]);
+    // Unparseable settings files are errors without a required list too (re-pinned by settings-unparseable-fails-closed,
+    // review A3-F2: this used to be a warning).
+    const settingsNoList = await invalidOf(P02_ONLY, UNPARSEABLE_SETTINGS, [SETTINGS_BINARY]);
+    expect(settingsNoList.map((m) => [m.level, m.text])).toEqual([["error", textOf(SETTINGS_FILE_PROBLEMS)]]);
     const settingsError = await invalidOf(
       { version: 1, setup: { required_hooks: [{ event: "Stop" }] } },
       UNPARSEABLE_SETTINGS,
@@ -129,11 +131,12 @@ describe("POLICY_SETTINGS_INVALID: the problem table", { timeout: 60_000 }, () =
     );
     expect(settingsError.map((m) => [m.level, m.text])).toEqual([["error", textOf(SETTINGS_FILE_PROBLEMS)]]);
 
-    // An unparseable MCP file is a warning.
-    const mcpWarn = await invalidOf({ version: 1, setup: { allowed_mcp_servers: ["github"] } }, UNPARSEABLE_MCP, [
+    // An unparseable MCP file is an error (re-pinned by settings-unparseable-fails-closed, review A3-F2: this used to be
+    // a warning).
+    const mcpError = await invalidOf({ version: 1, setup: { allowed_mcp_servers: ["github"] } }, UNPARSEABLE_MCP, [
       MCP_BINARY,
     ]);
-    expect(mcpWarn.map((m) => [m.level, m.text])).toEqual([["warn", textOf(MCP_FILE_PROBLEMS)]]);
+    expect(mcpError.map((m) => [m.level, m.text])).toEqual([["error", textOf(MCP_FILE_PROBLEMS)]]);
 
     // Entries: unknown syntax, wrong types and a duplicate key.
     const settings = doc([

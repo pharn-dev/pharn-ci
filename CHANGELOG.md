@@ -24,6 +24,14 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Security
 
+- Unparseable or binary agent settings and MCP files are now errors whatever the policy lists (review A3-F2). A
+  settings file that is too deep, not JSON, not an object or binary used to be only a warning unless the policy set a
+  required deny list or hook list, and such an MCP file was always only a warning, so a pull request could pad
+  `.claude/settings.json` or `.mcp.json` past the parser's depth limit, keep it valid for Claude Code and loosen the
+  policy without a block. Now `POLICY_SETTINGS_INVALID` is an `error` and the verdict fails, and P09 blocks an edit to
+  such a file. This is a deliberate tightening: a repository with an already broken settings or MCP file under a policy
+  that reads it now fails where it warned (P02 is in force under every policy, so this applies to any policy
+  document). No schema change and no new message code.
 - `SECURITY.md` and the Marketplace listing text no longer say agent setup files are never read (review A7-F1). The
   Data handling table now says check A7 reads the machine-readable agent config files at `HEAD` for committed secrets
   and policy mode reads the settings, MCP and instruction files, and a new row says where that text goes: it stays in
