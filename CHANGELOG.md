@@ -27,7 +27,9 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 - The undici bundled into the Action moves from 6.29.0 to 6.29.1 (review HIGH 6). It carries every GitHub API request
   and the OIDC token request, and 6.29.0 has three high and two moderate advisories (GHSA-xjj6-f33q-929c,
   GHSA-2m5v-pch6-74hx, GHSA-qrxm-fqhp-jwvm, GHSA-4qv8-2p9j-2685, GHSA-9fm3-97px-rjf6). It is a lockfile-only change
-  with a rebuilt `packages/action/dist`: no source, input or output change.
+  with a rebuilt `packages/action/dist`: no source, input or output change. CI and the release job now run
+  `pnpm audit --prod --audit-level=high` after install, so a high or critical advisory in a production dependency fails
+  the build before it can ship.
 - Unparseable or binary agent settings and MCP files are now errors whatever the policy lists (review A3-F2). A
   settings file that is too deep, not JSON, not an object or binary used to be only a warning unless the policy set a
   required deny list or hook list, and such an MCP file was always only a warning, so a pull request could pad

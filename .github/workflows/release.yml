@@ -90,6 +90,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # No release ships a bundle with a known high or critical advisory in a production dependency.
+      - run: pnpm audit --prod --audit-level=high
+
       - run: pnpm lint
 
       # version.test.ts also keeps packages/core/src/version.ts equal to every package.json version.
