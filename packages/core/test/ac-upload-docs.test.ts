@@ -242,9 +242,21 @@ describe("upload documentation", { timeout: 60_000 }, () => {
 
     for (const id of ["A1", "B1"]) {
       expect(row(base.rows, id), `control: base ${id}`).toBeDefined();
-      if (id === "A1") continue;
-      expect(row(head.rows, id), id).toBe(row(base.rows, id));
     }
+    // Re-pinned for report-control-chars (review finding 23): row B1 names the invisible and bidirectional characters
+    // that report.json now neutralizes like the comment. B1 stays pinned byte for byte apart from one reworded phrase
+    // and one inserted passage.
+    const OLD_B1 = "the report JSON keeps the text as given (";
+    const NEW_B1 = "the report JSON keeps the markdown characters as given (";
+    const B1_ANCHOR = "and the markdown gets no line, heading or tag from it`).";
+    const B1_INSERT =
+      " The comment neutralizes, and the report JSON neutralizes wherever it cleans untrusted text, the same set of characters: the control characters (U+0000 to U+001F, U+007F to U+009F), the zero-width and directional marks (U+200B to U+200F), the line and paragraph separators and the bidirectional embeddings and overrides (U+2028 to U+202E), the bidirectional isolates (U+2066 to U+2069) and the byte order mark (U+FEFF), so the text cannot be hidden or reordered (Trojan Source). In `report.json` (and so in the upload) each becomes a space in one-line message text (such as a git error), signal details and test names, and U+FFFD in message code spans and test-config values, one code unit for one, so cut lengths do not change; the set is defined once in `packages/core/src/text.ts` (`report-unsafe-chars.test.ts`, and `text.test.ts › every character the comment renderer strips from message text today is in the set`).";
+    const baseB1 = row(base.rows, "B1") as string;
+    expect(baseB1, "control: the base B1 holds the reworded phrase").toContain(OLD_B1);
+    expect(baseB1, "control: the base B1 holds the anchor of the inserted passage").toContain(B1_ANCHOR);
+    expect(row(head.rows, "B1"), "B1 is the base's with the phrase reworded and the passage inserted").toBe(
+      baseB1.replace(OLD_B1, NEW_B1).replace(B1_ANCHOR, `${B1_ANCHOR}${B1_INSERT}`),
+    );
     // Re-pinned for E3 item 23 (policy settings): row A1's parse list gains the agent settings and MCP JSON (row C5).
     // Re-pinned for E3 item 24 (P07): it also names the agent instruction text (row C6). A1 stays pinned byte for byte
     // apart from these two inserted phrases.

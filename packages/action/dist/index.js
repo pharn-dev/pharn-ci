@@ -236675,6 +236675,25 @@ function summarizeAgentSetup(files) {
   return { byKind, tools: [...tools].sort() };
 }
 
+// ../core/src/text.ts
+var UNSAFE_RANGES = [
+  [0, 31],
+  [127, 159],
+  [8203, 8207],
+  [8232, 8238],
+  [8294, 8297],
+  [65279, 65279]
+];
+var unicodeEscape = (code2) => `\\u${code2.toString(16).padStart(4, "0")}`;
+var classPart = ([from, to]) => from === to ? unicodeEscape(from) : `${unicodeEscape(from)}-${unicodeEscape(to)}`;
+var UNSAFE_PATTERN = new RegExp(`[${UNSAFE_RANGES.map(classPart).join("")}]`, "g");
+function isUnsafeCode(code2) {
+  return UNSAFE_RANGES.some(([from, to]) => code2 >= from && code2 <= to);
+}
+function replaceUnsafeChars(text, replacement) {
+  return text.replace(UNSAFE_PATTERN, replacement);
+}
+
 // ../core/src/report.ts
 function emptyTestIntegrity() {
   return { mode: "warn", source: "default", verdict: "pass", signals: [], languages: [] };
@@ -236993,7 +237012,7 @@ function buildReport(input) {
 }
 var MAX_REASON_CHARS = 200;
 function oneLine(text) {
-  const line = text.replace(CONTROL_CHARS, " ").replace(/\s+/g, " ").trim();
+  const line = replaceUnsafeChars(text, " ").replace(/\s+/g, " ").trim();
   if (line.length <= MAX_REASON_CHARS) return line;
   const end = isHighSurrogate(line.charCodeAt(MAX_REASON_CHARS - 1)) ? MAX_REASON_CHARS - 1 : MAX_REASON_CHARS;
   return line.slice(0, end);
@@ -237049,10 +237068,9 @@ function pathList(paths) {
   return more > 0 ? `${named} and ${more} more` : named;
 }
 function codeSpan(text) {
-  const safe = text.replace(CONTROL_CHARS, "\uFFFD").replace(/`/g, "'");
+  const safe = replaceUnsafeChars(text, "\uFFFD").replace(/`/g, "'");
   return `\`${safe}\``;
 }
-var CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
 function verdictOf(messages) {
   if (messages.some((m) => m.level === "error")) return "fail";
   if (messages.some((m) => m.level === "warn")) return "warn";
@@ -241797,13 +241815,8 @@ function textCutSignalFiles(diff, configPath, repoRoot) {
 // ../core/src/signals/testName.ts
 var NAME_SEPARATOR = " \u203A ";
 var MAX_DETAIL2 = 300;
-function isControl(code2) {
-  return code2 <= 31 || code2 >= 127 && code2 <= 159 || code2 === 8232 || code2 === 8233;
-}
 function withoutControls(text) {
-  let out = "";
-  for (let i = 0; i < text.length; i++) out += isControl(text.charCodeAt(i)) ? " " : text[i];
-  return out;
+  return replaceUnsafeChars(text, " ");
 }
 function fullTestName(block) {
   return block.path.join(NAME_SEPARATOR);
@@ -245493,7 +245506,7 @@ function replaceUnsafe(text) {
       }
     } else if (unit >= 56320 && unit <= 57343) {
       out += "\uFFFD";
-    } else if (unit <= 31 || unit >= 127 && unit <= 159 || unit === 8232 || unit === 8233) {
+    } else if (isUnsafeCode(unit)) {
       out += "\uFFFD";
     } else {
       out += text[i];
@@ -249320,7 +249333,7 @@ function hintFor(code2, label) {
   return typeof hint === "function" ? hint(labelSpan(label)) : hint;
 }
 function labelSpan(text) {
-  const safe = text.replace(CONTROL_CHARS2, "\uFFFD");
+  const safe = text.replace(CONTROL_CHARS, "\uFFFD");
   const longest = Math.max(0, ...(safe.match(/`+/g) ?? []).map((run2) => run2.length));
   const fence = "`".repeat(longest + 1);
   const pad = /^[` ]|[` ]$/.test(safe) ? " " : "";
@@ -249706,14 +249719,14 @@ function rangeParts(lines) {
   }
   return parts;
 }
-var CONTROL_CHARS2 = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069\ufeff]/g;
+var CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069\ufeff]/g;
 function code(path) {
-  const safe = path.replace(CONTROL_CHARS2, "\uFFFD").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/`/g, "'");
+  const safe = path.replace(CONTROL_CHARS, "\uFFFD").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/`/g, "'");
   return `\`${safe}\``;
 }
 var MARKDOWN_ACTIVE = /[\\`*_[\]#!|~]/g;
 function inlineText(text) {
-  return text.replace(CONTROL_CHARS2, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(MARKDOWN_ACTIVE, "\\$&").replace(/@/g, "@\u200B").replace(/:\/\//g, ":\\/\\/").replace(/(www)\./gi, "$1\\.");
+  return text.replace(CONTROL_CHARS, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(MARKDOWN_ACTIVE, "\\$&").replace(/@/g, "@\u200B").replace(/:\/\//g, ":\\/\\/").replace(/(www)\./gi, "$1\\.");
 }
 
 // ../core/src/secrets/redact.ts

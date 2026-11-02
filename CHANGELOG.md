@@ -11,6 +11,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- `report.json` and the upload now neutralize the same invisible and bidirectional characters the PR comment does
+  (U+200B to U+200F, U+202A to U+202E, U+2066 to U+2069 and U+FEFF), besides the control characters: in message
+  text, signal details, test names and test-config values each becomes a space or U+FFFD, as control characters
+  already did there, so hidden or reordered text from a pull request cannot reach a consumer of the report (review
+  finding 23). No schema change and no new message code.
 - The OIDC token request (for the org policy and the upload, only with `id-token: write`) now gives up after
   30 s, and the run goes on as if the runner offered no token; `@actions/core` alone retried it up to ten times
   with a 3-minute socket timeout each (review LOW 21). No schema change and no new message code.

@@ -1,3 +1,5 @@
+import { isUnsafeCode } from "../text.js";
+
 /** Values nested deeper than this are read as opaque. */
 export const MAX_CONFIG_VALUE_DEPTH = 64;
 /** The longest config text (in UTF-16 code units) TI09 reads; longer text is refused as `too-large`. */
@@ -57,7 +59,7 @@ export function lookup(root: ConfigValue, path: readonly string[]): Lookup {
   return entry === null ? "unset" : { found: entry };
 }
 
-/** Replaces each control character and each lone surrogate with U+FFFD. */
+/** Replaces each control, invisible or bidirectional character (see text.ts) and each lone surrogate with U+FFFD. */
 function replaceUnsafe(text: string): string {
   let out = "";
   for (let i = 0; i < text.length; i++) {
@@ -72,7 +74,7 @@ function replaceUnsafe(text: string): string {
       }
     } else if (unit >= 0xdc00 && unit <= 0xdfff) {
       out += "�";
-    } else if (unit <= 0x1f || (unit >= 0x7f && unit <= 0x9f) || unit === 0x2028 || unit === 0x2029) {
+    } else if (isUnsafeCode(unit)) {
       out += "�";
     } else {
       out += text[i];

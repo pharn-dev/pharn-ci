@@ -1,4 +1,5 @@
 import type { TestBlock } from "../testIndex/types.js";
+import { replaceUnsafeChars } from "../text.js";
 
 /** Joins the names of a test and its enclosing blocks. */
 const NAME_SEPARATOR = " › ";
@@ -6,16 +7,12 @@ const NAME_SEPARATOR = " › ";
 /** The longest `detail` of a signal, in UTF-16 code units. */
 const MAX_DETAIL = 300;
 
-/** Control characters (U+0000 to U+001F, U+007F to U+009F) and the line and paragraph separators (U+2028, U+2029). */
-function isControl(code: number): boolean {
-  return code <= 0x1f || (code >= 0x7f && code <= 0x9f) || code === 0x2028 || code === 0x2029;
-}
-
-/** The text with each control character turned into a space. */
+/**
+ * The text with each control, invisible or bidirectional character (see text.ts) turned into a space, one code unit
+ * for one, so the length is kept.
+ */
 function withoutControls(text: string): string {
-  let out = "";
-  for (let i = 0; i < text.length; i++) out += isControl(text.charCodeAt(i)) ? " " : (text[i] as string);
-  return out;
+  return replaceUnsafeChars(text, " ");
 }
 
 /** The full name of a test block: the names of its enclosing blocks and its own, outermost first, joined with ` › `. */
