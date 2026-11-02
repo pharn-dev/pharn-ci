@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { withoutSchemaLevelEdits } from "./level-edits.js";
 
 // precision-v030: the only schema change is the TEST_INTEGRITY_TI15 part of the report v2 message-code description,
 // which now states the level `info` in modes block and warn. report.v1.json and every other byte of report.v2.json
@@ -83,7 +84,9 @@ describe("schema: only the TI15 level sentence changes", () => {
 
     // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property
     // Its four inserted lines appear once in the current schema and are cut out before the comparison with the base.
-    const withIsAgentPr = readNow("schema/report.v2.json").toString("utf8");
+    // Re-pinned by docs-schema-levels: the two insertions that state the block-mode levels of DIFF_UNAVAILABLE and
+    // TEST_INTEGRITY_INDEX_UNAVAILABLE are taken out first (level-edits.ts); every other byte stays pinned.
+    const withIsAgentPr = withoutSchemaLevelEdits(readNow("schema/report.v2.json").toString("utf8"));
     expect(withIsAgentPr.split(IS_AGENT_PR_LINES).length - 1, "the four isAgentPr lines appear once").toBe(1);
     const current = withIsAgentPr.replace(IS_AGENT_PR_LINES, "");
     const { cut: now, appended } = cutAppended(current);

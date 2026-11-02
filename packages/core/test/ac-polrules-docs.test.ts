@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { withoutSchemaLevelEdits } from "./level-edits.js";
 
 // E3 item 22 (policy rules), AC-18. Reads the repository's docs, schema and sources as text, and the schema at the
 // base commit with git; nothing the build adds is loaded. The base is c8fdc65 (E3 item 21, which appended
@@ -72,7 +73,9 @@ describe("docs, schema and sources for the policy rules", { timeout: 60_000 }, (
   it("AC-18: the schema appends exactly the two codes, report.ts, the hints, README, LIMITS and CHANGELOG name them, and each re-pinned test names E3 item 22", () => {
     // Schema: the message-code description is the base one with exactly the appended text.
     const base = codeDescription(atCommit(BASE, "schema/report.v2.json"));
-    const now = codeDescription(read("schema/report.v2.json"));
+    // Re-pinned by docs-schema-levels: the two insertions that state the block-mode levels of DIFF_UNAVAILABLE and
+    // TEST_INTEGRITY_INDEX_UNAVAILABLE are taken out first (level-edits.ts); every other byte stays pinned.
+    const now = codeDescription(withoutSchemaLevelEdits(read("schema/report.v2.json")));
     expect(base.endsWith("the check ran in full).")).toBe(true);
     expect(now.startsWith(base)).toBe(true);
     expect(now.slice(base.length)).toBe(APPENDED + P11_TEXT + POLICY_SETTINGS_TEXT + P07_TEXT);

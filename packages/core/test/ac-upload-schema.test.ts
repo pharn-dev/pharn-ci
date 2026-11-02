@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
+import { withoutSchemaLevelEdits } from "./level-edits.js";
 
 // The schemas, report.ts and fixtures/upload/bundle-golden/meta.json are read inside each test body: the build writes
 // or changes them after this test. The base is main at f563d7d, read with git.
@@ -144,7 +145,9 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
     expect(read("schema/report.v1.json")).toBe(atBase("schema/report.v1.json"));
 
     const v2Base = atBase("schema/report.v2.json");
-    const v2 = read("schema/report.v2.json");
+    // Re-pinned by docs-schema-levels: the two insertions that state the block-mode levels of DIFF_UNAVAILABLE and
+    // TEST_INTEGRITY_INDEX_UNAVAILABLE are taken out first (level-edits.ts); every other byte stays pinned.
+    const v2 = withoutSchemaLevelEdits(read("schema/report.v2.json"));
     const baseDescription = strings(JSON.parse(v2Base)).find((s) => s.includes(" Codes added in v0.4.0:"));
     expect(baseDescription, "control: the base has the v0.4.0 text").toBeDefined();
     const description = strings(JSON.parse(v2)).find((s) => s.includes(" Codes added in v0.4.0:"));

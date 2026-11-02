@@ -97,6 +97,11 @@ These are accepted, not hidden:
    report and the comment so a reviewer can see them; protect `.pharn/ci.yml` and the workflow with
    CODEOWNERS. **Closed when an app policy sets `coverage.exclude`:** the app's list replaces the PR's, and
    `POLICY_OVERRIDE_IGNORED` says the PR's exclusions were not applied.
+
+There is no residual 7: the gate's soft spot on an unavailable diff was closed before 0.1.0 (`DIFF_UNAVAILABLE`
+became an error with a threshold), and the residuals below keep their numbers because this document, the CHANGELOG
+and the tests cite them.
+
 8. **The agent setup requirement comes from the PR.** `setup.require` lives in the PR-carried
    `.pharn/ci.yml`, so a PR can switch the requirement off (and it is off by default). The Action's
    `require-agent-setup` input in the workflow file is the stronger setting; protect both with

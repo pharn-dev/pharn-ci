@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
+import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { expectValidReport } from "./schema.js";
 
 // E3 item 24a part B (P11), AC-22. Reads the schemas as text, and at the base commit with git; check() and
@@ -42,7 +43,9 @@ describe("the schema sentence and the hints for POLICY_P11 and AGENT_PR_DETECTIO
   it("AC-22: report.v2.json appends exactly one sentence naming the two codes and changes no other byte; report.v1.json is unchanged; reports with either code validate; the two hints are the fixed texts", async () => {
     // report.v2.json: the code description is the base one plus the one appended sentence; nothing else changes.
     const baseText = atCommit(BASE, "schema/report.v2.json");
-    const nowText = read("schema/report.v2.json");
+    // Re-pinned by docs-schema-levels: the two insertions that state the block-mode levels of DIFF_UNAVAILABLE and
+    // TEST_INTEGRITY_INDEX_UNAVAILABLE are taken out first (level-edits.ts); every other byte stays pinned.
+    const nowText = withoutSchemaLevelEdits(read("schema/report.v2.json"));
     const base = codeDescription(baseText);
     const now = codeDescription(nowText);
     expect(now.startsWith(base)).toBe(true);

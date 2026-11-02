@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { withoutSchemaLevelEdits } from "../../core/test/level-edits.js";
 
 // Reads the repository and the base commit with git; nothing the build adds is loaded. The base is the commit this
 // increment starts from. The committed action dist must be a fresh bundle that carries the alias reader, so this test
@@ -145,7 +146,9 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
         "        },",
         "",
       ].join("\n");
-      const withIsAgentPr = read(`schema/${name}`);
+      // Re-pinned by docs-schema-levels: the two insertions that state the block-mode levels of DIFF_UNAVAILABLE and
+      // TEST_INTEGRITY_INDEX_UNAVAILABLE are taken out first (level-edits.ts); every other byte stays pinned.
+      const withIsAgentPr = withoutSchemaLevelEdits(read(`schema/${name}`));
       expect(withIsAgentPr.split(isAgentPrLines).length - 1, "the four isAgentPr lines appear once").toBe(1);
       const currentText = withIsAgentPr.replace(isAgentPrLines, "");
       const sentenceEnd = currentText.indexOf(FINAL_SENTENCE) + FINAL_SENTENCE.length;
