@@ -1,7 +1,7 @@
 version: 2
 updates:
   - package-ecosystem: npm
-    directory: '/'
+    directory: "/"
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
@@ -15,12 +15,12 @@ updates:
       # branch (CONTRIBUTING.md, "Dependabot PRs"). Grouped to keep that to one PR a week.
       actions-runtime:
         patterns:
-          - '@actions/*'
+          - "@actions/*"
       dev-dependencies:
         dependency-type: development
 
   - package-ecosystem: github-actions
-    directory: '/'
+    directory: "/"
     schedule:
       interval: weekly
     labels:
@@ -32,4 +32,4 @@ updates:
     groups:
       actions:
         patterns:
-          - '*'
+          - "*"
