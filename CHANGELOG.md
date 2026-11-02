@@ -27,6 +27,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   (it warned). The line reader's sentence for a skip in a test the diff shows as new now says only what the diff
   shows: "A skip was added to a test that no removed line of this file opens, so the diff shows it as new." No schema
   change and no new message code.
+- Docs: the report.v2 schema now says `DIFF_UNAVAILABLE` is an error with a coverage threshold or in
+  `test-integrity: block`, and `TEST_INTEGRITY_INDEX_UNAVAILABLE` is an error in `block` when TI02 and TI05, or TI09,
+  did not run at all (the levels #126 shipped). `docs/THREAT-MODEL.md` §3 now renders residual numbers 8 to 35 as
+  written, the numbers the docs and tests cite. No code change.
 
 ### Security
 

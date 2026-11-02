@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { withoutSchemaLevelEdits } from "./level-edits.js";
 
 // Reads the repository and two fixed commits with git; nothing the build adds is loaded. b31de0c is the commit the
 // precision-v030 pin compares schema/report.v2.json with; e13765681e… is the one the pyparity2 pin compares the schema
@@ -94,7 +95,9 @@ describe("the v0.4.0 codes are the only schema and report.ts additions, and the 
       "        },",
       "",
     ].join("\n");
-    const schemaWithIsAgentPr = read("schema/report.v2.json");
+    // Re-pinned by docs-schema-levels: the two insertions that state the block-mode levels of DIFF_UNAVAILABLE and
+    // TEST_INTEGRITY_INDEX_UNAVAILABLE are taken out first (level-edits.ts); every other byte stays pinned.
+    const schemaWithIsAgentPr = withoutSchemaLevelEdits(read("schema/report.v2.json"));
     expect(schemaWithIsAgentPr.split(isAgentPrLines).length - 1, "the four isAgentPr lines appear once").toBe(1);
     const schema = schemaWithIsAgentPr.replace(isAgentPrLines, "");
 
