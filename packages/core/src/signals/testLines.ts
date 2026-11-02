@@ -193,12 +193,13 @@ export function parseJsTestCall(text: string): JsTestLine | null {
 }
 
 export interface PythonSkipLine {
-  kind: "decorator" | "call";
-  /** The decorator (`pytest.mark.skip`) or the call (`pytest.skip`) as written. */
+  /** `mark` is a `pytestmark = …` line (`parsePytestmark`). */
+  kind: "decorator" | "call" | "mark";
+  /** The decorator (`pytest.mark.skip`), the call (`pytest.skip`) or the mark (`pytest.mark.skip`), by its table name. */
   token: string;
   /** The first argument by `argName`; the empty string when there is none. */
   name: string;
-  /** For a decorator: whether its effect depends on a condition. Always false for a call. */
+  /** For a decorator or a mark: whether its effect depends on a condition. Always false for a call. */
   conditional: boolean;
 }
 
@@ -215,6 +216,10 @@ const PYTHON_DECORATORS: ReadonlyMap<string, "always" | "never" | "by-argument">
 
 /** The Python calls in a test body that stop or fail the test they sit in. */
 const PYTHON_CALLS: ReadonlySet<string> = new Set(["pytest.skip", "pytest.xfail"]);
+
+/** The marks a `pytestmark = …` line is read for: the pytest skip decorators, without the `@`. */
+const PYTEST_MARKS: ReadonlySet<string> = new Set(["pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail"]);
+const PYTESTMARK = "pytestmark";
 
 /**
  * The name `written` is in `table`: literally first (so `@pytest.mark.skip` matches whatever `pytest` is bound to), then,
@@ -247,8 +252,44 @@ function isKeywordArg(arg: string): boolean {
   return arg.charAt(i) === "=" && arg.charAt(i + 1) !== "=";
 }
 
+/** Whether a decorator or a mark with this rule and first argument depends on a condition (`xfail` by its argument). */
+function isConditional(rule: "always" | "never" | "by-argument", arg: string): boolean {
+  return (
+    rule === "always" ||
+    (rule === "by-argument" && arg !== "" && stringContent(arg, true) === null && !isKeywordArg(arg))
+  );
+}
+
 /**
- * Reads a Python skip decorator, or `pytest.skip(` / `pytest.xfail(`, at the start of a line; null for anything else.
+ * Reads `pytestmark = <mark>`, or the first element of `pytestmark = [<mark>, …]` or `( … )`, at the start of a line:
+ * a mark that is `pytest.mark.skip`, `skipif` or `xfail`, literally or through `aliases`, else null. A list the line
+ * does not close is read from its first line only.
+ */
+function parsePytestmark(line: string, aliases: ReadonlyMap<string, string> | undefined): PythonSkipLine | null {
+  let i = PYTESTMARK.length;
+  if (i < line.length && isWordCode(line.charCodeAt(i))) return null;
+  while (isSpace(line.charAt(i))) i++;
+  if (line.charAt(i) !== "=" || line.charAt(i + 1) === "=") return null;
+  i++;
+  while (isSpace(line.charAt(i))) i++;
+  if (line.charAt(i) === "[" || line.charAt(i) === "(") {
+    i++;
+    while (isSpace(line.charAt(i))) i++;
+  }
+  const end = dottedEnd(line, i);
+  if (end === i) return null;
+  const token = canonicalPython(line.slice(i, end), PYTEST_MARKS, aliases);
+  const rule = token === null ? undefined : PYTHON_DECORATORS.get(token);
+  if (token === null || rule === undefined) return null;
+  let j = end;
+  while (isSpace(line.charAt(j))) j++;
+  const arg = line.charAt(j) === "(" ? scanArg(line, j + 1).text : "";
+  return { kind: "mark", token, name: argName(arg, true), conditional: isConditional(rule, arg) };
+}
+
+/**
+ * Reads a Python skip decorator, a `pytestmark = …` line, or `pytest.skip(` / `pytest.xfail(`, at the start of a line;
+ * null for anything else.
  * With `aliases` (the file's top-level imports, see `pythonImportAliases`) a name that is not in the tables as written
  * is also tried with its first segment replaced (`@pt.mark.skip` under `import pytest as pt`, `sk("r")` under `from
  * pytest import skip as sk`). The `token` returned is the table's name, whatever the spelling.
@@ -264,11 +305,9 @@ export function parsePythonSkip(text: string, aliases?: ReadonlyMap<string, stri
     let i = end;
     while (isSpace(line.charAt(i))) i++;
     const arg = line.charAt(i) === "(" ? scanArg(line, i + 1).text : "";
-    const conditional =
-      rule === "always" ||
-      (rule === "by-argument" && arg !== "" && stringContent(arg, true) === null && !isKeywordArg(arg));
-    return { kind: "decorator", token, name: argName(arg, true), conditional };
+    return { kind: "decorator", token, name: argName(arg, true), conditional: isConditional(rule, arg) };
   }
+  if (line.startsWith(PYTESTMARK)) return parsePytestmark(line, aliases);
   const callEnd = dottedEnd(line, 0);
   const call = canonicalPython(line.slice(0, callEnd), PYTHON_CALLS, aliases);
   if (call === null) return null;

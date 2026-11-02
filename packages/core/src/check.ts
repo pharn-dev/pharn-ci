@@ -44,6 +44,7 @@ import { detectTI01 } from "./signals/ti01.js";
 import { movedTestFiles } from "./signals/ti01Moved.js";
 import { detectTI02 } from "./signals/ti02.js";
 import { detectTI03 } from "./signals/ti03.js";
+import { detectTI03Pairs, type Ti03Finding } from "./signals/ti03Pairs.js";
 import { detectTI04 } from "./signals/ti04.js";
 import { detectTI05 } from "./signals/ti05.js";
 import { detectTI06 } from "./signals/ti06.js";
@@ -248,7 +249,6 @@ export function check(input: CheckInput): Report {
       ? []
       : sortSignals([
           ...detectTI01(parsedDiff, testIntegrity.mode, movedTests?.files, movedTests?.compared),
-          ...detectTI03(parsedDiff, testIntegrity.mode, input.testSources),
           ...detectTI04(parsedDiff, testIntegrity.mode),
           ...detectTI08(parsedDiff),
           ...detectTI10(parsedDiff, { repoFiles: input.repoFiles, mode: testIntegrity.mode }),
@@ -274,6 +274,7 @@ export function check(input: CheckInput): Report {
   } | null = null;
   const comparedMode = testIntegrity.mode;
   let testChanges: ReportTestChanges | undefined;
+  let ti03Pairs: Ti03Finding[] = [];
   if (parsedDiff !== null && comparedMode !== "off" && input.testSources !== undefined && touched !== null) {
     const configs = detectTI09(parsedDiff, input.testSources, comparedMode);
     const configUnavailable: TestConfigUnavailable | undefined =
@@ -299,6 +300,13 @@ export function check(input: CheckInput): Report {
       const matchedHeads = new Set([...match.pairs, ...match.moved, ...match.replaced].map((pair) => pair.head));
       const movedPairs = (movedTests?.pairs ?? []).filter((pair) => !matchedHeads.has(pair.head));
       const judged = movedPairs.length === 0 ? match : { ...match, pairs: [...match.pairs, ...movedPairs] };
+      ti03Pairs = detectTI03Pairs({
+        match: judged,
+        touched,
+        ...(movedTests?.groups === undefined ? {} : { movedGroups: movedTests.groups }),
+        diff: parsedDiff,
+        sources: input.testSources,
+      });
       const capped = capFindings([
         ...detectTI02(match, comparedMode),
         ...detectTI05(judged, comparedMode),
@@ -318,6 +326,12 @@ export function check(input: CheckInput): Report {
   }
   if (comparison !== null && comparison.signals.length > 0) {
     testIntegritySignals.push(...comparison.signals);
+    sortSignals(testIntegritySignals);
+  }
+  // TI03 runs after the comparison: its line pass and, when the test files were compared, its pair pass give one
+  // finding per line.
+  if (parsedDiff !== null && testIntegrity.mode !== "off") {
+    testIntegritySignals.push(...detectTI03(parsedDiff, testIntegrity.mode, input.testSources, ti03Pairs));
     sortSignals(testIntegritySignals);
   }
   // A file whose kept text was cut can hide a finding past the cut; the report names it rather than stay silent.

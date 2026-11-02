@@ -1,0 +1,15 @@
+import sys
+
+import pytest
+
+from user import full_name
+
+pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="posix")
+
+
+def test_full_name():
+    assert full_name("ada", "lovelace") == "ada lovelace"
+
+
+def test_empty_names():
+    assert full_name("", "") == " "

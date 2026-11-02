@@ -216,13 +216,36 @@ whether a test is still good.
 ### What TI03 misses
 
 TI03 reads the added and removed lines of test files, one line at a time, in JS/TS, Python and Go. The local diff is
-`--unified=0`, so there are no context lines.
+`--unified=0`, so there are no context lines. When the test index compared a JS/TS or Python test file at the merge
+base and at HEAD, TI03 also reads the test pairs the base-to-head match finds (the pairs TI05 reads, moves and
+replacements included): a test that is skipped at head, by its own modifiers or by a `describe`, a test class or a
+`pytestmark` whose lines hold it, and was not skipped at base is an existing-test skip, whatever its name became.
+Both readings give one finding per line, the stronger one kept.
 
+- **Without the test index, line by line.** When the index cannot run for a file (no test sources, a side that cannot
+  be read, a file the index refuses, no Python 3.8 or newer), only the line reading runs, as before: a test renamed to
+  a skipped name or wrapped in an added `describe.skip` reads as a skip in a test no removed line opens (`warn`), and
+  a test moved into an existing skipped `describe` gives nothing. Go has no test index, so Go is always read line by
+  line.
 - **No context lines.** A skip is judged from its own line and the lines the diff shows next to it. A Python decorator
   is judged by the added lines directly below it: a `def` or `class` there is a test the change adds (`warn`) unless a
   removed line of the same hunk opened a test of the same name (an edited `def` line); nothing added directly below it
-  means it sits on a test the diff does not show, a test that existed. A skip inside a test body cannot be
-  tied to the test it stops or to the `if` that guards it, so it is `warn`.
+  means it sits on a test the diff does not show, a test that existed. A skip inside a JS/TS or Go test body, or a
+  Python one when the Python index did not run, cannot be tied to the test it stops or to the `if` that guards it, so
+  it is `warn`. When the Python index ran, an unguarded in-body `pytest.skip()`, `pytest.xfail()` or `self.skipTest()`
+  added to a test that exists at base is an existing-test skip and blocks (a deliberate change: it warned before); a
+  guarded one stays a conditional `warn`.
+- **`pytestmark`.** A `pytestmark = …` assignment at module level, or directly in a test class, is read as a skip of
+  every test it covers: one mark, or the first element of a list or tuple on the same line (the Python index reads the
+  whole list). A `pytestmark` set in `conftest.py`, through an assignment chain (`m = pytest.mark.skip` then
+  `pytestmark = m`) or with `request.node.add_marker` is not read, and the line reading reads a multi-line list from
+  its first line only. The line reading counts an added `pytestmark` skip in a file the change modifies as an
+  existing-test skip whatever its indentation, so a class-level one added together with a new class blocks too.
+- **What the pair reading trusts.** Python skips come from the Python index's decorator table, which also counts a
+  bare `@skip`, `@skipIf`, `@expectedFailure` or `@mark.skip` whatever module binds the name. JS/TS constants are read
+  only as `skipIf(true)`, `skipIf(false)`, `runIf(true)` and `runIf(false)` on the block's opening line; a Python
+  `skipif(True)` stays conditional. A `describe` is matched to its tests by line range, so two sibling `describe`
+  blocks opened on one line read as holding each other's tests.
 - **Forms at the start of a line.** A form is recognised only at the start of a line after white space, so a one-line
   `if (slow) this.skip()`, a skip written after another statement on the same line and a skip built through a helper
   are missed. A call wrapped over lines is read from its first line only: `it` alone with `.skip(...)` on the next line
@@ -244,17 +267,19 @@ TI03 reads the added and removed lines of test files, one line at a time, in JS/
   tried first, so `@pytest.mark.skip` under `import foo as pytest` still counts; a binding the reader gets wrong can
   only add a match, never take one away.
 - **Python forms.** `@unittest.expectedFailure` (and its aliases) is an unconditional skip like `@unittest.skip`, and
-  `pytest.xfail(` in a body is read like `pytest.skip(`: a skip inside a body, `warn`. A skip written through
+  `pytest.xfail(` in a body is read like `pytest.skip(`: a skip inside a body, `warn` unless the Python index ran
+  (see "No context lines" above). A skip written through
   `request.node.add_marker(pytest.mark.skip)`, `pytest.mark.skip` assigned to a name and used as `@name`, or a marker
   set in `conftest.py` is not read.
-- **A skip moved to another file** reads as added, because the removed line is looked for in the same file only. A
-  rename that edits the skip is judged against the old file's lines.
+- **A skip moved to another file** reads as added without the test index, because the removed line is looked for in
+  the same file only. A rename that edits the skip is judged against the old file's lines. With the index, a test the
+  match finds again in another file is judged by its pair.
 - **Names by content.** A test is matched by the text of its first argument, so two tests with the same name in a file
   are one, and a name built from an expression (`describe.skip.each(table)`) is compared by that text. A nameless
   `.skip(cond)` is read as conditional.
 - **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8); at most 20 signals are
-  given per file, the unconditional skips of existing tests first, so warn findings never push a block finding out.
-  A diff that reaches `check()` already parsed without kept text yields no TI03.
+  given per file, one per line, the unconditional skips of existing tests first, so warn findings never push a block
+  finding out. A diff that reaches `check()` already parsed without kept text yields no line reading.
 
 ### What TI04 misses
 

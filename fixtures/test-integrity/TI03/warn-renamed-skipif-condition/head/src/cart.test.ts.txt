@@ -1,0 +1,11 @@
+import { describe, expect, it } from "vitest";
+import { subtotal, total } from "./cart.js";
+const isCI = Boolean(process.env.CI);
+
+it("subs", () => {
+  expect(subtotal([1, 2])).toBe(3);
+});
+
+it.skipIf(isCI)("totals2", () => {
+  expect(total([1, 2], 0.5)).toBe(1.5);
+});

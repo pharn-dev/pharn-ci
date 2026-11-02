@@ -24,6 +24,8 @@ export interface MovedTests {
   compared: Set<string>;
   /** Base path is the deleted file, head path the file that holds the test now; for TI05, TI06 and TI07. */
   pairs: MatchedPair[];
+  /** The describe blocks of each file in `compared`, by path: the base side of `pairs` for TI03's pair pass. */
+  groups?: Map<string, TestBlock[]>;
 }
 
 /** A new-at-head test with an assertion: a place a deleted test may have moved to. */
@@ -82,7 +84,8 @@ export function movedTestFiles(
   python: PythonTestIndex | undefined,
   touched: Pick<TouchedTests, "pairs" | "added" | "notRun">,
 ): MovedTests {
-  const moved: MovedTests = { files: new Set(), compared: new Set(), pairs: [] };
+  const describes = new Map<string, TestBlock[]>();
+  const moved: MovedTests = { files: new Set(), compared: new Set(), pairs: [], groups: describes };
   if (touched.notRun !== null || "unavailable" in sources.base) return moved;
 
   const deleted = diff
@@ -105,6 +108,10 @@ export function movedTestFiles(
     }
     if (result === undefined || !result.parsed) continue;
     moved.compared.add(path);
+    describes.set(
+      path,
+      result.tests.filter((block) => block.kind === "describe"),
+    );
     const tests = result.tests.filter((block) => block.kind === "test").sort((a, b) => a.line - b.line);
     if (tests.length > 0) indexed.push({ path, tests });
   }

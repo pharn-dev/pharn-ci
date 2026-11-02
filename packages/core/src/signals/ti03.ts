@@ -12,6 +12,7 @@ import {
   type TestLanguage,
   testLanguage,
 } from "./testLines.js";
+import type { Ti03Category, Ti03Finding } from "./ti03Pairs.js";
 
 const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -21,7 +22,7 @@ const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
  */
 const MAX_PER_FILE = 20;
 
-type Category = "existing" | "conditional" | "cannot-place" | "adds";
+type Category = Ti03Category;
 
 /** One fixed sentence per category. None holds test text, a reason or a condition. */
 const DETAILS: Readonly<Record<Category, string>> = {
@@ -30,14 +31,18 @@ const DETAILS: Readonly<Record<Category, string>> = {
   conditional: "A conditional skip was added; the test is skipped only where its condition holds.",
   "cannot-place":
     "A skip was added inside a test body or hook, where the diff cannot tell which test it stops or whether a condition guards it.",
-  adds: "A skip was added to a test that this change adds, so no test that ran before stops running.",
+  adds: "A skip was added to a test that no removed line of this file opens, so the diff shows it as new.",
 };
+
+/** Which category wins when both passes, or two findings, fall on one line. */
+const STRENGTH: Readonly<Record<Category, number>> = { existing: 3, conditional: 2, "cannot-place": 1, adds: 0 };
 
 /**
  * What a skip line is before the file is considered. `named` is a skip of a test the line itself names (JS/TS);
- * `decorator` is a Python decorator above a test the line does not show.
+ * `decorator` is a Python decorator above a test the line does not show; `module` is a Python `pytestmark` line, which
+ * skips every test of its module or class.
  */
-type Shape = "conditional" | "in-body" | "named" | "decorator";
+type Shape = "conditional" | "in-body" | "named" | "decorator" | "module";
 
 interface SkipLine {
   /** What the line does, with the name: two lines with the same token and name are the same skip. */
@@ -79,13 +84,19 @@ function jsSkip(parsed: JsTestLine): SkipLine | null {
  */
 function pythonSkip(text: string, aliases: AliasSource | undefined): SkipLine | null {
   let parsed = parsePythonSkip(text);
-  if (parsed === null && aliases !== undefined && (text.includes("@") || text.includes("("))) {
+  const shaped = text.includes("@") || text.includes("(") || text.trimStart().startsWith("pytestmark");
+  if (parsed === null && aliases !== undefined && shaped) {
     const map = aliases();
     if (map !== undefined) parsed = parsePythonSkip(text, map);
   }
   if (parsed === null) return null;
+  if (parsed.kind === "call") return { key: keyOf(parsed.token, parsed.name), shape: "in-body", name: parsed.name };
+  if (parsed.kind === "mark") {
+    // A mark keeps a key of its own, so a decorator turned into a `pytestmark` (a skip widened to a module) is not excused.
+    const key = keyOf(`pytestmark ${parsed.token}`, parsed.name);
+    return { key, shape: parsed.conditional ? "conditional" : "module", name: parsed.name };
+  }
   const key = keyOf(parsed.token, parsed.name);
-  if (parsed.kind === "call") return { key, shape: "in-body", name: parsed.name };
   return { key, shape: parsed.conditional ? "conditional" : "decorator", name: parsed.name };
 }
 
@@ -210,6 +221,7 @@ function findingsOf(
       else if (skip.shape === "conditional") category = "conditional";
       else if (skip.shape === "in-body") category = "cannot-place";
       else if (skip.shape === "named") category = openings.has(skip.name) ? "existing" : "adds";
+      else if (skip.shape === "module") category = "existing";
       else category = decoratedTest(hunk, index);
       found.push({ line: entry.line, category });
     });
@@ -218,15 +230,22 @@ function findingsOf(
 }
 
 /**
- * TI03, a skip added to a test file. An added line that starts with a skip form is one signal, at its line in the new
- * file: JS/TS `.skip`, `x`-prefixed heads, `.todo`, `.fails`, `skipIf(true)`, `runIf(false)` and the conditional
+ * TI03, a skip added to a test file, in two passes merged into one finding per line.
+ *
+ * The line pass: an added line that starts with a skip form is one finding, at its line in the new file: JS/TS
+ * `.skip`, `x`-prefixed heads, `.todo`, `.fails`, `skipIf(true)`, `runIf(false)` and the conditional
  * `skipIf`/`runIf`/nameless `.skip(cond)`, `this.skip(`; Python `@pytest.mark.skip`, `skipif`, `xfail`,
- * `@unittest.skip*`, `@unittest.expectedFailure`, `pytest.skip(` and `pytest.xfail(`; Go `t.Skip(`, `t.Skipf(`,
- * `t.SkipNow(`. A removed line of the same file with the same form and name (an edit or a move) accounts for it. The rest
- * is sorted in this order: a file the change adds, a conditional skip, a skip inside a body, a skip of a test the change
- * adds (all `warn`), and an unconditional skip of a test the diff shows existed (the mode as its severity). At most 20
- * per file: the skips of existing tests first, then the rest, each on the lowest line numbers. The detail is one fixed
- * sentence per category; no test text reaches a signal.
+ * `@unittest.skip*`, `@unittest.expectedFailure`, `pytest.skip(`, `pytest.xfail(` and `pytestmark = ` a
+ * `pytest.mark.skip`, `skipif` or `xfail` (or a list starting with one); Go `t.Skip(`, `t.Skipf(`, `t.SkipNow(`. A
+ * removed line of the same file with the same form and name (an edit or a move) accounts for it. The rest is sorted in
+ * this order: a file the change adds, a conditional skip, a skip inside a body, a skip of a test no removed line opens
+ * (all `warn`), and an unconditional skip of a test the diff shows existed or an unconditional `pytestmark` in a file
+ * the change does not add (the mode as its severity).
+ *
+ * The pair pass is `pairs`: what `detectTI03Pairs` found in the base-to-head test pairs, when the test files were
+ * compared. Both passes give one finding per line, the stronger category winning (existing, conditional, cannot-place,
+ * adds). At most 20 per file: the existing ones first, then the rest, each on the lowest line numbers. The detail is one
+ * fixed sentence per category; no test text reaches a signal.
  *
  * A Python line is also read through the aliases the test file binds with its own top-level `import` / `from` lines
  * (`import pytest as pt`, `from pytest import mark as m`, `from unittest import skipIf as si`), taken from `sources`:
@@ -238,22 +257,39 @@ export function detectTI03(
   diff: readonly DiffFile[],
   mode: "block" | "warn",
   sources?: TestSources,
+  pairs: readonly Ti03Finding[] = [],
 ): TestIntegritySignal[] {
-  const signals: TestIntegritySignal[] = [];
+  const byPath = new Map<string, Map<number, Category>>();
+  const note = (path: string, line: number, category: Category) => {
+    let lines = byPath.get(path);
+    if (lines === undefined) {
+      lines = new Map();
+      byPath.set(path, lines);
+    }
+    const held = lines.get(line);
+    if (held === undefined || STRENGTH[category] > STRENGTH[held]) lines.set(line, category);
+  };
   const texts = { base: textsOf(sources?.base), head: textsOf(sources?.head) };
   for (const file of diff) {
     if (file.hunks === undefined || file.binary === true || !isTestFile(file.path)) continue;
     const language = testLanguage(file.path);
     if (language === null) continue;
-    const rank = (category: Category) => (category === "existing" ? 0 : 1);
-    const found = findingsOf(file, file.hunks, language, aliasesOf(file, language, texts)).sort(
-      (a, b) => rank(a.category) - rank(b.category) || a.line - b.line,
-    );
+    for (const { line, category } of findingsOf(file, file.hunks, language, aliasesOf(file, language, texts))) {
+      note(file.path, line, category);
+    }
+  }
+  for (const { path, line, category } of pairs) note(path, line, category);
+  const rank = (category: Category) => (category === "existing" ? 0 : 1);
+  const signals: TestIntegritySignal[] = [];
+  for (const [path, lines] of byPath) {
+    const found = [...lines]
+      .map(([line, category]) => ({ line, category }))
+      .sort((a, b) => rank(a.category) - rank(b.category) || a.line - b.line);
     for (const { line, category } of found.slice(0, MAX_PER_FILE)) {
       signals.push({
         id: "TI03",
         severity: category === "existing" ? mode : "warn",
-        path: file.path,
+        path,
         line,
         detail: DETAILS[category],
       });

@@ -19,10 +19,12 @@ const DIST_BOUND = 12_000_000;
  */
 // Re-pinned again by the name-only-moves change: both files are edited on purpose (a re-pinned digest and a comment
 // each), so these are the digests of those edited files.
+// Re-pinned again by ti03-skip-evasion (review B1): both files put the earlier TI03 sentence for a skip the diff shows
+// as new back into their records before hashing, so their output digests are unchanged; these are the edited files.
 const PINNED: Record<string, string> = {
-  "packages/core/test/ac-ti0205-regression.test.ts": "0e7ec98bf36dc000fb3419b35c0889b9ad23952826984145ee29be1561b5497d",
+  "packages/core/test/ac-ti0205-regression.test.ts": "558080bf57efbc276c0554c2ba0e5f204acc6a1c2d1e50de05b65ac656cf48e2",
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "d3b2fef3e8d8dc20e52dafbf368375f370cba211969987cfd1cb6e6e7fb24077",
+    "c54599f987667dd60cc1e1ef8f751cdecb8269ff7d72a55c1a5649854e8ca99c",
 };
 
 /** The Skylos-count tests that record the move, and the count literal each one asserts. */

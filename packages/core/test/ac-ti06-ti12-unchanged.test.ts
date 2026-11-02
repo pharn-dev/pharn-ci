@@ -45,6 +45,12 @@ const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
 /** The digest ac-ti0205-regression.test.ts pins for the earlier fixtures without sources. */
 // Re-pinned by the name-only-moves change, with ac-ti0205-regression.test.ts: the two TI01 migration records changed.
 const EARLIER_DIGEST = "0197e0cfe0e50e9dfc8c453e5bfa978147632c47ab09dfc073d770cd965bb04f";
+// ti03-skip-evasion (review B1) rewords the one TI03 sentence for a skip the diff shows as new. The earlier records put
+// the earlier sentence back before they are hashed, so EARLIER_DIGEST still pins every other byte of the outputs.
+const TI03_ADDS_NOW =
+  "A skip was added to a test that no removed line of this file opens, so the diff shows it as new.";
+const TI03_ADDS_BEFORE = "A skip was added to a test that this change adds, so no test that ran before stops running.";
+const asBefore = (json: string) => json.split(TI03_ADDS_NOW).join(TI03_ADDS_BEFORE);
 /**
  * sha256 of the JSON list of { fixture, signals, messages } over the TI02 and TI05 cases with their sources, in
  * directory then case order, as check() gave them at the base commit 98693cf.
@@ -244,7 +250,9 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
     }
     expect(earlier.length).toBeGreaterThan(100);
     expect(
-      createHash("sha256").update(JSON.stringify(earlier)).digest("hex"),
+      createHash("sha256")
+        .update(asBefore(JSON.stringify(earlier)))
+        .digest("hex"),
       "the earlier fixtures without sources give what they gave before",
     ).toBe(EARLIER_DIGEST);
 

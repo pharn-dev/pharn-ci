@@ -4,15 +4,19 @@ import type { PolicySetup } from "../types.js";
 
 const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
-/** The level of a problem: a file Claude Code would read and pharn-ci did not is an error; the rest depends on the lists. */
+/**
+ * The level of a problem. A file Claude Code would read and pharn-ci did not, or could not parse (too deep, not JSON,
+ * not an object, binary), is an error whatever the lists (review A3-F2, settings-unparseable-fails-closed). Deny and
+ * hooks problems depend on their required list; the rest warn.
+ */
 export function settingsProblemLevel(problem: SettingsModelProblem, setup: PolicySetup | undefined): "error" | "warn" {
   const deny = (setup?.required_permissions_deny?.length ?? 0) > 0;
   const hooks = (setup?.required_hooks?.length ?? 0) > 0;
   switch (problem.problemClass) {
     case "drop":
-      return "error";
     case "unparseable-settings":
-      return deny || hooks ? "error" : "warn";
+    case "unparseable-mcp":
+      return "error";
     case "deny":
       return deny ? "error" : "warn";
     case "hooks":

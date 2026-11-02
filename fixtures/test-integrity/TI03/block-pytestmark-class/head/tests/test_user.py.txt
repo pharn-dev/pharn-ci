@@ -1,0 +1,13 @@
+import pytest
+
+from user import full_name
+
+
+class TestUser:
+    pytestmark = pytest.mark.skip(reason="flaky")
+
+    def test_full_name(self):
+        assert full_name("ada", "lovelace") == "ada lovelace"
+
+    def test_empty_names(self):
+        assert full_name("", "") == " "

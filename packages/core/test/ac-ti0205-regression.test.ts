@@ -34,6 +34,12 @@ const UNAVAILABLE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 // Re-pinned by the name-only-moves change: only the two TI01 migration records changed (info to block, new detail),
 // because TI01's same-stem rule now needs body evidence, not a name alone.
 const BEFORE_DIGEST = "0197e0cfe0e50e9dfc8c453e5bfa978147632c47ab09dfc073d770cd965bb04f";
+// ti03-skip-evasion (review B1) rewords the one TI03 sentence for a skip the diff shows as new. The records put the
+// earlier sentence back before they are hashed, so BEFORE_DIGEST still pins every other byte of the outputs.
+const TI03_ADDS_NOW =
+  "A skip was added to a test that no removed line of this file opens, so the diff shows it as new.";
+const TI03_ADDS_BEFORE = "A skip was added to a test that this change adds, so no test that ran before stops running.";
+const asBefore = (json: string) => json.split(TI03_ADDS_NOW).join(TI03_ADDS_BEFORE);
 
 const asFile = (report: unknown) => `${JSON.stringify(report, null, 2)}\n`;
 const lines = (path: string) => fixture(path).trim().split("\n");
@@ -148,7 +154,9 @@ describe("TI02 and TI05 change the earlier outputs only where they mean to", () 
     }
     expect(records.length).toBeGreaterThan(100);
     expect(
-      createHash("sha256").update(JSON.stringify(records)).digest("hex"),
+      createHash("sha256")
+        .update(asBefore(JSON.stringify(records)))
+        .digest("hex"),
       "the earlier fixtures without sources give what they gave at the base commit",
     ).toBe(BEFORE_DIGEST);
 
