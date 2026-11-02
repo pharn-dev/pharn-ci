@@ -1,5 +1,6 @@
 import type { AgentEvidence } from "../../agents.js";
 import { codeSpan, type Message, type MessageCode } from "../../report.js";
+import { replaceUnsafeChars } from "../../text.js";
 import type { PolicyRuleId } from "../types.js";
 import { P07_PACKAGE_MANAGER_PREFIX, P07_TEST_RUNNER_PREFIX, P07_UNREAD_DETAIL } from "./p07.js";
 import { P11_BASE_UNREADABLE_DETAIL, P11_DIFF_UNAVAILABLE_DETAIL } from "./p11.js";
@@ -169,7 +170,8 @@ function settingsInvalidMessage(settings: NonNullable<PolicyEvaluation["settings
     return {
       level: settings.unavailable.level,
       code: "POLICY_SETTINGS_INVALID",
-      text: `The agent settings files were not read (${settings.unavailable.reason}), so P02–P06 did not run.`,
+      // The reason can carry git text: control, invisible and bidirectional characters become spaces (see text.ts).
+      text: `The agent settings files were not read (${replaceUnsafeChars(settings.unavailable.reason, " ")}), so P02–P06 did not run.`,
     };
   }
   if (settings.problems.length === 0) return null;

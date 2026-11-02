@@ -1,6 +1,7 @@
 import { instructionDeclarations, instructionScope, isInstructionFile } from "../../setup/instructions.js";
 import type { AgentSetupFile } from "../../setup/scan.js";
 import { classifySetupPath } from "../../setup/scan.js";
+import { replaceUnsafeChars } from "../../text.js";
 import type { IgnoredSetting, ResolvedPolicy } from "../resolved.js";
 import { resolveKeyedSeverity } from "./severity.js";
 import type { PolicyRuleInput, PolicyViolationSeverity, RuleFinding } from "./types.js";
@@ -73,7 +74,8 @@ function classFindings(files: readonly Declaring[], prefix: string, severity: Po
       fallback: severity,
       path: file.path,
       line: file.line,
-      detail: `${prefix}${file.tools.join("/")} here, ${first.tools.join("/")} in ${first.path}:${first.line}${tail}`,
+      // The other file's path is a tracked path: control, invisible and bidirectional characters become U+FFFD.
+      detail: `${prefix}${file.tools.join("/")} here, ${first.tools.join("/")} in ${replaceUnsafeChars(first.path, "�")}:${first.line}${tail}`,
     });
   }
   return findings;

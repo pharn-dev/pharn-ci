@@ -25,6 +25,12 @@ export function isUnsafeCode(code: number): boolean {
   return UNSAFE_RANGES.some(([from, to]) => code >= from && code <= to);
 }
 
+/** True when the text holds a control, invisible or bidirectional character. */
+export function hasUnsafeChar(text: string): boolean {
+  for (let i = 0; i < text.length; i++) if (isUnsafeCode(text.charCodeAt(i))) return true;
+  return false;
+}
+
 /** The text with each control, invisible or bidirectional character replaced by `replacement`. */
 export function replaceUnsafeChars(text: string, replacement: string): string {
   return text.replace(UNSAFE_PATTERN, replacement);

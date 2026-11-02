@@ -529,20 +529,22 @@ export function buildReport(input: BuildReportInput): Report {
       messages.push({
         level,
         code: "COVERAGE_FILE_MISSING",
-        text: `Coverage file not found: ${missing.coverageFile}`,
+        text: `Coverage file not found: ${barePath(missing.coverageFile)}`,
       });
     } else if (missing.reason === "coverage-not-discovered") {
       // The existing code: no coverage file, here because none of the auto-discovery candidates exists.
       messages.push({ level, code: "COVERAGE_FILE_MISSING", text: coverageNotDiscoveredText() });
     } else if (missing.reason === "coverage-file-empty") {
-      const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${missing.coverageFile}`;
+      const where =
+        missing.coverageFile === null ? "The coverage report" : `Coverage file ${barePath(missing.coverageFile)}`;
       messages.push({
         level,
         code: "COVERAGE_FILE_EMPTY",
         text: `${where} contains no coverage records; check its format and that the tests wrote it.`,
       });
     } else if (missing.reason === "coverage-format-unsupported") {
-      const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${missing.coverageFile}`;
+      const where =
+        missing.coverageFile === null ? "The coverage report" : `Coverage file ${barePath(missing.coverageFile)}`;
       messages.push({
         level,
         code: "COVERAGE_FORMAT_UNSUPPORTED",
@@ -554,7 +556,8 @@ export function buildReport(input: BuildReportInput): Report {
       messages.push({
         level: diffLevel,
         code: "DIFF_UNAVAILABLE",
-        text: `Diff coverage was not computed: ${missing.detail}`,
+        // The detail is a fixed sentence from the caller around a base ref or git text: only those characters change.
+        text: `Diff coverage was not computed: ${replaceUnsafeChars(missing.detail, " ")}`,
       });
     }
   } else if (dc.coverableLines === 0) {
@@ -859,6 +862,14 @@ function pathList(paths: readonly string[]): string {
 export function codeSpan(text: string): string {
   const safe = replaceUnsafeChars(text, "\uFFFD").replace(/`/g, "'");
   return `\`${safe}\``;
+}
+
+/**
+ * A coverage file path as the coverage messages name it, without a code span (their text predates the spans): each
+ * control, invisible or bidirectional character (see text.ts) becomes U+FFFD; any other path is kept as it is.
+ */
+function barePath(path: string): string {
+  return replaceUnsafeChars(path, "�");
 }
 
 export function verdictOf(messages: readonly Message[]): Verdict {

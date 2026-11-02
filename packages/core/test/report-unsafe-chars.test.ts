@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { validateAcceptLabel } from "../src/acceptLabel.js";
 import { check } from "../src/check.js";
+import { shownPattern } from "../src/policy/rules/shown.js";
 import { codeSpan, oneLine } from "../src/report.js";
 import { removedTestDetail, summaryTestName } from "../src/signals/testName.js";
 import { cutDetail, cutValue, keyText } from "../src/testConfig/value.js";
@@ -210,5 +212,168 @@ describe("report.json drops the invisible and bidirectional characters the comme
     expect(cutValue("plain value 😀")).toBe("plain value 😀");
     expect(codeSpan(plain)).toBe(`\`${plain}\``);
     expect(oneLine("a\n\tb  c")).toBe("a b c");
+  });
+});
+
+/** check() with only coverage and diff varied; everything else plain. */
+function coverageReport(coverage: unknown, diff: unknown = { text: diffOf("src/cart.ts", "a\n", "b\n") }) {
+  const report = check({
+    version: "0.1.0",
+    coverage,
+    diff,
+    repoRoot: REPO_ROOT,
+    threshold: 80,
+    repoFiles: ["src/cart.ts"],
+  } as never);
+  expectValidReport(report);
+  return report;
+}
+
+const textOf = (report: { messages: { code: string; text: string }[] }, code: string) =>
+  report.messages.find((m) => m.code === code)?.text;
+
+const SETTINGS = ".claude/settings.json";
+/** check() under a policy file that requires the deny rule `rule`, with settings sources as given. */
+function policyReport(rule: string, sources: unknown) {
+  const report = check({
+    version: "0.1.0",
+    coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
+    diff: { text: fixture("diff/empty.diff") },
+    repoRoot: REPO_ROOT,
+    threshold: null,
+    repoFiles: ["AGENTS.md", "src/a.ts", SETTINGS],
+    policy: {
+      source: "file",
+      version: null,
+      path: "policy/org.json",
+      document: { version: 1, setup: { required_permissions_deny: [rule] } },
+    },
+    policySettingsSources: sources,
+  } as never);
+  expectValidReport(report);
+  return report;
+}
+
+/** check() under an app policy with two instruction files in `dir` that name different package managers. */
+function p07Report(dir: string) {
+  const report = check({
+    version: "0.1.0",
+    coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
+    diff: { text: fixture("diff/empty.diff") },
+    repoRoot: REPO_ROOT,
+    threshold: null,
+    repoFiles: ["AGENTS.md", `${dir}/AGENTS.md`, `${dir}/CLAUDE.md`, "src/a.ts"],
+    policy: { source: "app", version: 3, fetchedAt: "2026-10-26T12:00:00.000Z", document: { version: 1 } },
+    agentInstructionSources: {
+      files: [
+        { path: `${dir}/AGENTS.md`, text: "# Agents\n\nRun `pnpm install`, then `pnpm test`.\n" },
+        { path: `${dir}/CLAUDE.md`, text: "# Claude\n\n```sh\nnpm install\nnpm test\n```\n" },
+      ],
+      dropped: [],
+    },
+  } as never);
+  expectValidReport(report);
+  return report;
+}
+
+describe("the other message and detail sites drop them too", () => {
+  it("DIFF_UNAVAILABLE: the detail (a base ref, git text) carries none of them, each a space; a plain detail is unchanged", () => {
+    const report = coverageReport(
+      { text: fixture("golden/coverage.info"), format: "lcov" },
+      { unavailable: `could not get the diff for ma${INVISIBLE}in...abc (use actions/checkout with fetch-depth: 0)` },
+    );
+    expectNoAdded(report, "diff unavailable");
+    expect(textOf(report, "DIFF_UNAVAILABLE")).toBe(
+      `Diff coverage was not computed: could not get the diff for ma${SPACES}in...abc (use actions/checkout with fetch-depth: 0)`,
+    );
+    // Control: a plain detail longer than 200 characters is kept whole and byte-identical (no cut, unlike oneLine).
+    const plain = `could not get the diff for ${"b".repeat(220)}...abc (use actions/checkout with fetch-depth: 0)`;
+    const plainReport = coverageReport(
+      { text: fixture("golden/coverage.info"), format: "lcov" },
+      { unavailable: plain },
+    );
+    expect(textOf(plainReport, "DIFF_UNAVAILABLE")).toBe(`Diff coverage was not computed: ${plain}`);
+  });
+
+  it("COVERAGE_FILE_MISSING, COVERAGE_FILE_EMPTY and COVERAGE_FORMAT_UNSUPPORTED: the path carries none of them, each U+FFFD; a plain path is unchanged", () => {
+    const odd = `cov/lc${INVISIBLE}ov.info`;
+    const shown = `cov/lc${REPLACEMENTS}ov.info`;
+    const cases: [code: string, coverage: (path: string) => unknown, text: (path: string) => string][] = [
+      ["COVERAGE_FILE_MISSING", (path) => ({ missingFile: path }), (path) => `Coverage file not found: ${path}`],
+      [
+        "COVERAGE_FILE_EMPTY",
+        (path) => ({ text: "", format: "auto", file: path }),
+        (path) => `Coverage file ${path} contains no coverage records; check its format and that the tests wrote it.`,
+      ],
+      [
+        "COVERAGE_FORMAT_UNSUPPORTED",
+        (path) => ({ text: "not a coverage report\n", format: "auto", file: path }),
+        (path) =>
+          `Coverage file ${path} is not in a recognized coverage format; pharn-ci reads lcov and Cobertura XML.`,
+      ],
+    ];
+    for (const [code, coverage, text] of cases) {
+      const report = coverageReport(coverage(odd));
+      expectNoAdded(report, code);
+      expect(textOf(report, code), code).toBe(text(shown));
+      // Control: a plain path is named as it is.
+      expect(textOf(coverageReport(coverage("coverage/lcov.info")), code), `${code} plain`).toBe(
+        text("coverage/lcov.info"),
+      );
+    }
+  });
+
+  it("POLICY_SETTINGS_INVALID: the reason the settings files were not read (git text) carries none of them, each a space", () => {
+    const report = policyReport("Bash(rm:*)", { unavailable: `git cat-file failed${INVISIBLE}here` });
+    expectNoAdded(report, "settings unavailable");
+    expect(textOf(report, "POLICY_SETTINGS_INVALID")).toBe(
+      `The agent settings files were not read (git cat-file failed${SPACES}here), so P02–P06 did not run.`,
+    );
+    // Control: a plain reason is named as it is.
+    expect(
+      textOf(policyReport("Bash(rm:*)", { unavailable: "git cat-file failed here" }), "POLICY_SETTINGS_INVALID"),
+    ).toBe("The agent settings files were not read (git cat-file failed here), so P02–P06 did not run.");
+  });
+
+  it("a policy violation detail: a pattern from the policy and a tracked path carry none of them, each U+FFFD", () => {
+    const sources = { files: [{ path: SETTINGS, text: '{ "permissions": {} }\n' }], dropped: [] };
+    const report = policyReport(`Bash(rm${INVISIBLE}:*)`, sources);
+    expectNoAdded(report, "required deny rule");
+    const p03 = (report.policy?.violations ?? []).filter((v) => String(v.id) === "P03").map((v) => v.detail);
+    expect(p03).toEqual([`required deny rule Bash(rm${REPLACEMENTS}:*) is missing`]);
+    // Control: a plain pattern is shown as it is.
+    const plain = policyReport("Bash(rm:*)", sources).policy?.violations.filter((v) => String(v.id) === "P03");
+    expect(plain?.map((v) => v.detail)).toEqual(["required deny rule Bash(rm:*) is missing"]);
+    // The cut falls where it did: one code unit for one.
+    expect(shownPattern(`${"p".repeat(70)}${INVISIBLE}`)).toBe(shownPattern(`${"p".repeat(70)}${REPLACEMENTS}`));
+    expect(shownPattern(`${"p".repeat(70)}${INVISIBLE}`)).toBe(`${"p".repeat(70)}${"�".repeat(9)}…`);
+
+    // P07 names the other instruction file by its path; the violation's own path field stays the exact tracked path.
+    const dir = `pk${INVISIBLE}g`;
+    const details = (p07Report(dir).policy?.violations ?? [])
+      .filter((v) => String(v.id) === "P07")
+      .map((v) => v.detail);
+    expect(details).toEqual([
+      `package manager: pnpm here, npm in pk${REPLACEMENTS}g/CLAUDE.md:4`,
+      `package manager: npm here, pnpm in pk${REPLACEMENTS}g/AGENTS.md:3`,
+    ]);
+    const plainDetails = (p07Report("pkg").policy?.violations ?? [])
+      .filter((v) => String(v.id) === "P07")
+      .map((v) => v.detail);
+    expect(plainDetails).toEqual([
+      "package manager: pnpm here, npm in pkg/CLAUDE.md:4",
+      "package manager: npm here, pnpm in pkg/AGENTS.md:3",
+    ]);
+  });
+
+  it("the accept label is refused when it holds any character of the set, line and paragraph separators included", () => {
+    for (const code of [...ADDED, 0x2028, 0x2029]) {
+      const result = validateAcceptLabel(`ship${String.fromCharCode(code)}it`);
+      expect(result.ok, `U+${code.toString(16)} is refused`).toBe(false);
+    }
+    // Control: a plain label, one with other scripts and the default are accepted as they are.
+    expect(validateAcceptLabel("ship-it")).toEqual({ ok: true, label: "ship-it" });
+    expect(validateAcceptLabel("zatwierdź ✅")).toEqual({ ok: true, label: "zatwierdź ✅" });
+    expect(validateAcceptLabel("")).toEqual({ ok: true, label: "pharn/accepted" });
   });
 });
