@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -30,15 +30,17 @@ function isBelowFixed(version: string): boolean {
 
 describe("the committed action dist bundles a fixed undici", () => {
   it("AC-2: every node_modules/.pnpm/undici@<version>/ comment in packages/action/dist is at least 6.29.1, one exists, and the dist is below 12,000,000 bytes", () => {
-    const files = readdirSync(DIST, { recursive: true, encoding: "utf8" })
-      .map((rel) => join(DIST, rel))
-      .filter((path) => statSync(path).isFile());
+    const files = readdirSync(DIST, { recursive: true, withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => join(entry.parentPath, entry.name));
 
+    // Read each file once and take its size from the bytes read, so the size and the scan see the same content.
     const versions: string[] = [];
     let totalBytes = 0;
     for (const path of files) {
-      totalBytes += statSync(path).size;
-      versions.push(...bundledUndiciVersions(readFileSync(path, "utf8")));
+      const bytes = readFileSync(path);
+      totalBytes += bytes.length;
+      versions.push(...bundledUndiciVersions(bytes.toString("utf8")));
     }
 
     expect(versions.length, "packages/action/dist holds at least one undici path comment").toBeGreaterThan(0);
