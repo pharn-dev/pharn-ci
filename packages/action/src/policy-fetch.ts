@@ -25,7 +25,7 @@ export async function fetchPolicy(
   const required = options.mode === "required";
   const unavailable = (
     reason: PolicyUnavailableReason,
-    extra: { status?: number; requestId?: string; noApp?: boolean } = {},
+    extra: { status?: number; requestId?: string; noApp?: boolean; noInstallation?: boolean } = {},
   ): ResolvedPolicy => {
     if (extra.requestId !== undefined)
       deps.info(`pharn-ci: the org policy request failed (request id ${extra.requestId})`);
@@ -34,6 +34,7 @@ export async function fetchPolicy(
       version: null,
       document: null,
       ...(extra.noApp === true ? { noApp: true } : {}),
+      ...(extra.noInstallation === true ? { noInstallation: true } : {}),
       unavailable: {
         reason,
         ...(extra.status === undefined ? {} : { status: extra.status }),
@@ -42,11 +43,12 @@ export async function fetchPolicy(
       },
     };
   };
-  const silent = (extra: { noApp?: boolean } = {}): ResolvedPolicy => ({
+  const silent = (extra: { noApp?: boolean; noInstallation?: boolean } = {}): ResolvedPolicy => ({
     source: "none",
     version: null,
     document: null,
     ...(extra.noApp === true ? { noApp: true } : {}),
+    ...(extra.noInstallation === true ? { noInstallation: true } : {}),
   });
 
   // With no OIDC offered at all there is nothing to send and nothing to ask for: that is the no-token answer below,
@@ -65,8 +67,10 @@ export async function fetchPolicy(
   const id = result.requestId === undefined ? {} : { requestId: result.requestId };
   if (status === 204)
     return required ? unavailable("no-policy", { status, noApp: true, ...id }) : silent({ noApp: true });
+  // A 404 is "the app is not installed" (a 204 is "installed, no policy yet"): only it gets the install hint.
   if (status === 404) {
-    return required ? unavailable("installation_not_found", { status, noApp: true, ...id }) : silent({ noApp: true });
+    const notInstalled = { noApp: true, noInstallation: true };
+    return required ? unavailable("installation_not_found", { status, ...notInstalled, ...id }) : silent(notInstalled);
   }
   if (status === 401) return unavailable("token_invalid", { status, ...id });
   if (status === 403) return unavailable("repo_not_in_installation", { status, ...id });

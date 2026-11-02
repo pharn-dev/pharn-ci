@@ -34,6 +34,11 @@ export interface ResolvedPolicy {
   document: PolicyDocument | null;
   /** True when the app answered that there is no policy for this repository (204 or 404). */
   noApp?: boolean;
+  /**
+   * True when the app answered 404: the Pharn GitHub App is not installed for this repository. A 204 (installed, no
+   * policy yet) never sets it. The Action shows the install hint for it; the report never carries it.
+   */
+  noInstallation?: boolean;
   /** Set when no policy could be used. `required` is whether the workflow demanded one. */
   unavailable?: { reason: PolicyUnavailableReason; status?: number; requestId?: string; required: boolean };
 }

@@ -1087,8 +1087,13 @@ run. What it does not do:
   installed the Pharn GitHub App for the repository, and also for a repository it does not know. The Action cannot
   tell them apart, so it logs that the app is not installed and adds the install hint to the comment and the summary.
 - **The hint is not a policy check.** The line under the summary (`Install the Pharn GitHub App for org policy, history
-  and flaky detection.`) appears only after that `404`; it says nothing about whether a policy exists, and a run
-  without an OIDC token (a fork pull request, a job without `id-token: write`) gets no hint.
+  and flaky detection.`) appears only after a `404` to the policy request or to the upload, once when both get one;
+  it says nothing about whether a policy exists (a `204`, no policy yet, gets no hint), and a run without an OIDC
+  token (a fork pull request, a job without `id-token: write`) gets no hint.
+- **A `pull_request_target` run is never uploaded.** Its default checkout is the base branch, which pharn-ci refuses to
+  measure (`DIFF_UNAVAILABLE`), so the Action asks for no upload token and sends nothing on that event, whatever
+  `upload` says and whatever was checked out; the report says `meta.upload.status: skipped`. The org policy request of
+  such a run still happens.
 - **Redaction misses what it does not know.** The report is redacted with the ten secret shapes of the agent config
   scan (README, Secrets in agent configs) and cut to 2048 bytes per message; a secret of another shape, split across
   strings or encoded, is not found. Paths and test names are not secrets to it and are sent as they are.
