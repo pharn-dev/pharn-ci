@@ -3670,18 +3670,18 @@ var require_webidl = __commonJS({
     webidl.errors.exception = function(message) {
       return new TypeError(`${message.header}: ${message.message}`);
     };
-    webidl.errors.conversionFailed = function(context4) {
-      const plural = context4.types.length === 1 ? "" : " one of";
-      const message = `${context4.argument} could not be converted to${plural}: ${context4.types.join(", ")}.`;
+    webidl.errors.conversionFailed = function(context3) {
+      const plural = context3.types.length === 1 ? "" : " one of";
+      const message = `${context3.argument} could not be converted to${plural}: ${context3.types.join(", ")}.`;
       return webidl.errors.exception({
-        header: context4.prefix,
+        header: context3.prefix,
         message
       });
     };
-    webidl.errors.invalidArgument = function(context4) {
+    webidl.errors.invalidArgument = function(context3) {
       return webidl.errors.exception({
-        header: context4.prefix,
-        message: `"${context4.value}" is an invalid ${context4.type}.`
+        header: context3.prefix,
+        message: `"${context3.value}" is an invalid ${context3.type}.`
       });
     };
     webidl.brandCheck = function(V, I, opts) {
@@ -9876,17 +9876,17 @@ var require_api_request = __commonJS({
           }
         }
       }
-      onConnect(abort, context4) {
+      onConnect(abort, context3) {
         if (this.reason) {
           abort(this.reason);
           return;
         }
         assert(this.callback);
         this.abort = abort;
-        this.context = context4;
+        this.context = context3;
       }
       onHeaders(statusCode, rawHeaders, resume, statusMessage) {
-        const { callback, opaque, abort, context: context4, responseHeaders, highWaterMark } = this;
+        const { callback, opaque, abort, context: context3, responseHeaders, highWaterMark } = this;
         const headers = responseHeaders === "raw" ? util.parseRawHeaders(rawHeaders) : util.parseHeaders(rawHeaders);
         if (statusCode < 200) {
           if (this.onInfo) {
@@ -9923,7 +9923,7 @@ var require_api_request = __commonJS({
               trailers: this.trailers,
               opaque,
               body: res,
-              context: context4
+              context: context3
             });
           }
         }
@@ -10092,17 +10092,17 @@ var require_api_stream = __commonJS({
         }
         addSignal(this, signal);
       }
-      onConnect(abort, context4) {
+      onConnect(abort, context3) {
         if (this.reason) {
           abort(this.reason);
           return;
         }
         assert(this.callback);
         this.abort = abort;
-        this.context = context4;
+        this.context = context3;
       }
       onHeaders(statusCode, rawHeaders, resume, statusMessage) {
-        const { factory, opaque, context: context4, callback, responseHeaders } = this;
+        const { factory, opaque, context: context3, callback, responseHeaders } = this;
         const headers = responseHeaders === "raw" ? util.parseRawHeaders(rawHeaders) : util.parseHeaders(rawHeaders);
         if (statusCode < 200) {
           if (this.onInfo) {
@@ -10130,7 +10130,7 @@ var require_api_stream = __commonJS({
             statusCode,
             headers,
             opaque,
-            context: context4
+            context: context3
           });
           if (!res || typeof res.write !== "function" || typeof res.end !== "function" || typeof res.on !== "function") {
             throw new InvalidReturnValueError("expected Writable");
@@ -10322,7 +10322,7 @@ var require_api_pipeline = __commonJS({
         this.res = null;
         addSignal(this, signal);
       }
-      onConnect(abort, context4) {
+      onConnect(abort, context3) {
         const { ret, res } = this;
         if (this.reason) {
           abort(this.reason);
@@ -10331,10 +10331,10 @@ var require_api_pipeline = __commonJS({
         assert(!res, "pipeline cannot be retried");
         assert(!ret.destroyed);
         this.abort = abort;
-        this.context = context4;
+        this.context = context3;
       }
       onHeaders(statusCode, rawHeaders, resume) {
-        const { opaque, handler: handler2, context: context4 } = this;
+        const { opaque, handler: handler2, context: context3 } = this;
         if (statusCode < 200) {
           if (this.onInfo) {
             const headers = this.responseHeaders === "raw" ? util.parseRawHeaders(rawHeaders) : util.parseHeaders(rawHeaders);
@@ -10352,7 +10352,7 @@ var require_api_pipeline = __commonJS({
             headers,
             opaque,
             body: this.res,
-            context: context4
+            context: context3
           });
         } catch (err) {
           this.res.on("error", util.nop);
@@ -10436,7 +10436,7 @@ var require_api_upgrade = __commonJS({
         this.context = null;
         addSignal(this, signal);
       }
-      onConnect(abort, context4) {
+      onConnect(abort, context3) {
         if (this.reason) {
           abort(this.reason);
           return;
@@ -10450,7 +10450,7 @@ var require_api_upgrade = __commonJS({
       }
       onUpgrade(statusCode, rawHeaders, socket) {
         assert(statusCode === 101);
-        const { callback, opaque, context: context4 } = this;
+        const { callback, opaque, context: context3 } = this;
         removeSignal(this);
         this.callback = null;
         const headers = this.responseHeaders === "raw" ? util.parseRawHeaders(rawHeaders) : util.parseHeaders(rawHeaders);
@@ -10458,7 +10458,7 @@ var require_api_upgrade = __commonJS({
           headers,
           socket,
           opaque,
-          context: context4
+          context: context3
         });
       }
       onError(err) {
@@ -10527,20 +10527,20 @@ var require_api_connect = __commonJS({
         this.abort = null;
         addSignal(this, signal);
       }
-      onConnect(abort, context4) {
+      onConnect(abort, context3) {
         if (this.reason) {
           abort(this.reason);
           return;
         }
         assert(this.callback);
         this.abort = abort;
-        this.context = context4;
+        this.context = context3;
       }
       onHeaders() {
         throw new SocketError("bad connect", null);
       }
       onUpgrade(statusCode, rawHeaders, socket) {
-        const { callback, opaque, context: context4 } = this;
+        const { callback, opaque, context: context3 } = this;
         removeSignal(this);
         this.callback = null;
         let headers = rawHeaders;
@@ -10552,7 +10552,7 @@ var require_api_connect = __commonJS({
           headers,
           socket,
           opaque,
-          context: context4
+          context: context3
         });
       }
       onError(err) {
@@ -50987,8 +50987,8 @@ ${lanes.join("\n")}
         PrivateIdentifierKind2["Accessor"] = "a";
         return PrivateIdentifierKind2;
       })(PrivateIdentifierKind || {});
-      function createEmitHelperFactory(context4) {
-        const factory2 = context4.factory;
+      function createEmitHelperFactory(context3) {
+        const factory2 = context3.factory;
         const immutableTrue = memoize(() => setInternalEmitFlags(
           factory2.createTrue(),
           8
@@ -51052,7 +51052,7 @@ ${lanes.join("\n")}
           );
         }
         function createDecorateHelper(decoratorExpressions, target, memberName, descriptor) {
-          context4.requestEmitHelper(decorateHelper);
+          context3.requestEmitHelper(decorateHelper);
           const argumentsArray = [];
           argumentsArray.push(factory2.createArrayLiteralExpression(
             decoratorExpressions,
@@ -51074,7 +51074,7 @@ ${lanes.join("\n")}
           );
         }
         function createMetadataHelper(metadataKey, metadataValue) {
-          context4.requestEmitHelper(metadataHelper);
+          context3.requestEmitHelper(metadataHelper);
           return factory2.createCallExpression(
             getUnscopedHelperName("__metadata"),
             /*typeArguments*/
@@ -51086,7 +51086,7 @@ ${lanes.join("\n")}
           );
         }
         function createParamHelper(expression, parameterOffset, location) {
-          context4.requestEmitHelper(paramHelper);
+          context3.requestEmitHelper(paramHelper);
           return setTextRange(
             factory2.createCallExpression(
               getUnscopedHelperName("__param"),
@@ -51222,7 +51222,7 @@ ${lanes.join("\n")}
           return contextIn.kind === "class" ? createESDecorateClassContextObject(contextIn) : createESDecorateClassElementContextObject(contextIn);
         }
         function createESDecorateHelper(ctor, descriptorIn, decorators, contextIn, initializers, extraInitializers) {
-          context4.requestEmitHelper(esDecorateHelper);
+          context3.requestEmitHelper(esDecorateHelper);
           return factory2.createCallExpression(
             getUnscopedHelperName("__esDecorate"),
             /*typeArguments*/
@@ -51238,7 +51238,7 @@ ${lanes.join("\n")}
           );
         }
         function createRunInitializersHelper(thisArg, initializers, value) {
-          context4.requestEmitHelper(runInitializersHelper);
+          context3.requestEmitHelper(runInitializersHelper);
           return factory2.createCallExpression(
             getUnscopedHelperName("__runInitializers"),
             /*typeArguments*/
@@ -51247,7 +51247,7 @@ ${lanes.join("\n")}
           );
         }
         function createAssignHelper(attributesSegments) {
-          if (getEmitScriptTarget(context4.getCompilerOptions()) >= 2) {
+          if (getEmitScriptTarget(context3.getCompilerOptions()) >= 2) {
             return factory2.createCallExpression(
               factory2.createPropertyAccessExpression(factory2.createIdentifier("Object"), "assign"),
               /*typeArguments*/
@@ -51255,7 +51255,7 @@ ${lanes.join("\n")}
               attributesSegments
             );
           }
-          context4.requestEmitHelper(assignHelper);
+          context3.requestEmitHelper(assignHelper);
           return factory2.createCallExpression(
             getUnscopedHelperName("__assign"),
             /*typeArguments*/
@@ -51264,7 +51264,7 @@ ${lanes.join("\n")}
           );
         }
         function createAwaitHelper(expression) {
-          context4.requestEmitHelper(awaitHelper);
+          context3.requestEmitHelper(awaitHelper);
           return factory2.createCallExpression(
             getUnscopedHelperName("__await"),
             /*typeArguments*/
@@ -51273,8 +51273,8 @@ ${lanes.join("\n")}
           );
         }
         function createAsyncGeneratorHelper(generatorFunc, hasLexicalThis) {
-          context4.requestEmitHelper(awaitHelper);
-          context4.requestEmitHelper(asyncGeneratorHelper);
+          context3.requestEmitHelper(awaitHelper);
+          context3.requestEmitHelper(asyncGeneratorHelper);
           (generatorFunc.emitNode || (generatorFunc.emitNode = {})).flags |= 524288 | 1048576;
           return factory2.createCallExpression(
             getUnscopedHelperName("__asyncGenerator"),
@@ -51288,8 +51288,8 @@ ${lanes.join("\n")}
           );
         }
         function createAsyncDelegatorHelper(expression) {
-          context4.requestEmitHelper(awaitHelper);
-          context4.requestEmitHelper(asyncDelegator);
+          context3.requestEmitHelper(awaitHelper);
+          context3.requestEmitHelper(asyncDelegator);
           return factory2.createCallExpression(
             getUnscopedHelperName("__asyncDelegator"),
             /*typeArguments*/
@@ -51298,7 +51298,7 @@ ${lanes.join("\n")}
           );
         }
         function createAsyncValuesHelper(expression) {
-          context4.requestEmitHelper(asyncValues);
+          context3.requestEmitHelper(asyncValues);
           return factory2.createCallExpression(
             getUnscopedHelperName("__asyncValues"),
             /*typeArguments*/
@@ -51307,7 +51307,7 @@ ${lanes.join("\n")}
           );
         }
         function createRestHelper(value, elements, computedTempVariables, location) {
-          context4.requestEmitHelper(restHelper);
+          context3.requestEmitHelper(restHelper);
           const propertyNames = [];
           let computedTempVariableOffset = 0;
           for (let i = 0; i < elements.length - 1; i++) {
@@ -51347,7 +51347,7 @@ ${lanes.join("\n")}
           );
         }
         function createAwaiterHelper(hasLexicalThis, argumentsExpression, promiseConstructor, parameters, body) {
-          context4.requestEmitHelper(awaiterHelper);
+          context3.requestEmitHelper(awaiterHelper);
           const generatorFunc = factory2.createFunctionExpression(
             /*modifiers*/
             void 0,
@@ -51378,7 +51378,7 @@ ${lanes.join("\n")}
           );
         }
         function createExtendsHelper(name) {
-          context4.requestEmitHelper(extendsHelper);
+          context3.requestEmitHelper(extendsHelper);
           return factory2.createCallExpression(
             getUnscopedHelperName("__extends"),
             /*typeArguments*/
@@ -51391,7 +51391,7 @@ ${lanes.join("\n")}
           );
         }
         function createTemplateObjectHelper(cooked, raw) {
-          context4.requestEmitHelper(templateObjectHelper);
+          context3.requestEmitHelper(templateObjectHelper);
           return factory2.createCallExpression(
             getUnscopedHelperName("__makeTemplateObject"),
             /*typeArguments*/
@@ -51400,7 +51400,7 @@ ${lanes.join("\n")}
           );
         }
         function createSpreadArrayHelper(to, from, packFrom) {
-          context4.requestEmitHelper(spreadArrayHelper);
+          context3.requestEmitHelper(spreadArrayHelper);
           return factory2.createCallExpression(
             getUnscopedHelperName("__spreadArray"),
             /*typeArguments*/
@@ -51409,7 +51409,7 @@ ${lanes.join("\n")}
           );
         }
         function createPropKeyHelper(expr) {
-          context4.requestEmitHelper(propKeyHelper);
+          context3.requestEmitHelper(propKeyHelper);
           return factory2.createCallExpression(
             getUnscopedHelperName("__propKey"),
             /*typeArguments*/
@@ -51418,16 +51418,16 @@ ${lanes.join("\n")}
           );
         }
         function createSetFunctionNameHelper(f, name, prefix) {
-          context4.requestEmitHelper(setFunctionNameHelper);
-          return context4.factory.createCallExpression(
+          context3.requestEmitHelper(setFunctionNameHelper);
+          return context3.factory.createCallExpression(
             getUnscopedHelperName("__setFunctionName"),
             /*typeArguments*/
             void 0,
-            prefix ? [f, name, context4.factory.createStringLiteral(prefix)] : [f, name]
+            prefix ? [f, name, context3.factory.createStringLiteral(prefix)] : [f, name]
           );
         }
         function createValuesHelper(expression) {
-          context4.requestEmitHelper(valuesHelper);
+          context3.requestEmitHelper(valuesHelper);
           return factory2.createCallExpression(
             getUnscopedHelperName("__values"),
             /*typeArguments*/
@@ -51436,7 +51436,7 @@ ${lanes.join("\n")}
           );
         }
         function createReadHelper(iteratorRecord, count2) {
-          context4.requestEmitHelper(readHelper);
+          context3.requestEmitHelper(readHelper);
           return factory2.createCallExpression(
             getUnscopedHelperName("__read"),
             /*typeArguments*/
@@ -51445,7 +51445,7 @@ ${lanes.join("\n")}
           );
         }
         function createGeneratorHelper(body) {
-          context4.requestEmitHelper(generatorHelper);
+          context3.requestEmitHelper(generatorHelper);
           return factory2.createCallExpression(
             getUnscopedHelperName("__generator"),
             /*typeArguments*/
@@ -51454,7 +51454,7 @@ ${lanes.join("\n")}
           );
         }
         function createImportStarHelper(expression) {
-          context4.requestEmitHelper(importStarHelper);
+          context3.requestEmitHelper(importStarHelper);
           return factory2.createCallExpression(
             getUnscopedHelperName("__importStar"),
             /*typeArguments*/
@@ -51463,11 +51463,11 @@ ${lanes.join("\n")}
           );
         }
         function createImportStarCallbackHelper() {
-          context4.requestEmitHelper(importStarHelper);
+          context3.requestEmitHelper(importStarHelper);
           return getUnscopedHelperName("__importStar");
         }
         function createImportDefaultHelper(expression) {
-          context4.requestEmitHelper(importDefaultHelper);
+          context3.requestEmitHelper(importDefaultHelper);
           return factory2.createCallExpression(
             getUnscopedHelperName("__importDefault"),
             /*typeArguments*/
@@ -51476,8 +51476,8 @@ ${lanes.join("\n")}
           );
         }
         function createExportStarHelper(moduleExpression, exportsExpression = factory2.createIdentifier("exports")) {
-          context4.requestEmitHelper(exportStarHelper);
-          context4.requestEmitHelper(createBindingHelper);
+          context3.requestEmitHelper(exportStarHelper);
+          context3.requestEmitHelper(createBindingHelper);
           return factory2.createCallExpression(
             getUnscopedHelperName("__exportStar"),
             /*typeArguments*/
@@ -51486,7 +51486,7 @@ ${lanes.join("\n")}
           );
         }
         function createClassPrivateFieldGetHelper(receiver, state, kind, f) {
-          context4.requestEmitHelper(classPrivateFieldGetHelper);
+          context3.requestEmitHelper(classPrivateFieldGetHelper);
           let args;
           if (!f) {
             args = [receiver, state, factory2.createStringLiteral(kind)];
@@ -51501,7 +51501,7 @@ ${lanes.join("\n")}
           );
         }
         function createClassPrivateFieldSetHelper(receiver, state, value, kind, f) {
-          context4.requestEmitHelper(classPrivateFieldSetHelper);
+          context3.requestEmitHelper(classPrivateFieldSetHelper);
           let args;
           if (!f) {
             args = [receiver, state, value, factory2.createStringLiteral(kind)];
@@ -51516,7 +51516,7 @@ ${lanes.join("\n")}
           );
         }
         function createClassPrivateFieldInHelper(state, receiver) {
-          context4.requestEmitHelper(classPrivateFieldInHelper);
+          context3.requestEmitHelper(classPrivateFieldInHelper);
           return factory2.createCallExpression(
             getUnscopedHelperName("__classPrivateFieldIn"),
             /*typeArguments*/
@@ -51525,7 +51525,7 @@ ${lanes.join("\n")}
           );
         }
         function createAddDisposableResourceHelper(envBinding, value, async) {
-          context4.requestEmitHelper(addDisposableResourceHelper);
+          context3.requestEmitHelper(addDisposableResourceHelper);
           return factory2.createCallExpression(
             getUnscopedHelperName("__addDisposableResource"),
             /*typeArguments*/
@@ -51534,7 +51534,7 @@ ${lanes.join("\n")}
           );
         }
         function createDisposeResourcesHelper(envBinding) {
-          context4.requestEmitHelper(disposeResourcesHelper);
+          context3.requestEmitHelper(disposeResourcesHelper);
           return factory2.createCallExpression(
             getUnscopedHelperName("__disposeResources"),
             /*typeArguments*/
@@ -51543,12 +51543,12 @@ ${lanes.join("\n")}
           );
         }
         function createRewriteRelativeImportExtensionsHelper(expression) {
-          context4.requestEmitHelper(rewriteRelativeImportExtensionsHelper);
+          context3.requestEmitHelper(rewriteRelativeImportExtensionsHelper);
           return factory2.createCallExpression(
             getUnscopedHelperName("__rewriteRelativeImportExtension"),
             /*typeArguments*/
             void 0,
-            context4.getCompilerOptions().jsx === 1 ? [expression, factory2.createTrue()] : [expression]
+            context3.getCompilerOptions().jsx === 1 ? [expression, factory2.createTrue()] : [expression]
           );
         }
       }
@@ -55605,8 +55605,8 @@ ${lanes.join("\n")}
             /* AwaitContext */
           );
         }
-        function doOutsideOfContext(context4, func) {
-          const contextFlagsToClear = context4 & contextFlags;
+        function doOutsideOfContext(context3, func) {
+          const contextFlagsToClear = context3 & contextFlags;
           if (contextFlagsToClear) {
             setContextFlag(
               /*val*/
@@ -55623,8 +55623,8 @@ ${lanes.join("\n")}
           }
           return func();
         }
-        function doInsideOfContext(context4, func) {
-          const contextFlagsToSet = context4 & ~contextFlags;
+        function doInsideOfContext(context3, func) {
+          const contextFlagsToSet = context3 & ~contextFlags;
           if (contextFlagsToSet) {
             setContextFlag(
               /*val*/
@@ -56651,8 +56651,8 @@ ${lanes.join("\n")}
           nextToken();
           return false;
         }
-        function parsingContextErrors(context4) {
-          switch (context4) {
+        function parsingContextErrors(context3) {
+          switch (context3) {
             case 0:
               return token() === 90 ? parseErrorAtCurrentToken(Diagnostics._0_expected, tokenToString(
                 95
@@ -56715,7 +56715,7 @@ ${lanes.join("\n")}
               return Debug.fail("ParsingContext.Count used as a context");
             // Not a real context, only a marker.
             default:
-              Debug.assertNever(context4);
+              Debug.assertNever(context3);
           }
         }
         function parseDelimitedList(kind, parseElement, considerSemicolonAsDelimiter) {
@@ -63407,44 +63407,44 @@ ${lanes.join("\n")}
         reportDiagnostic(pos, end - pos, Diagnostics.resolution_mode_should_be_either_require_or_import);
         return void 0;
       }
-      function processCommentPragmas(context4, sourceText) {
+      function processCommentPragmas(context3, sourceText) {
         const pragmas = [];
         for (const range of getLeadingCommentRanges(sourceText, 0) || emptyArray) {
           const comment = sourceText.substring(range.pos, range.end);
           extractPragmas(pragmas, range, comment);
         }
-        context4.pragmas = /* @__PURE__ */ new Map();
+        context3.pragmas = /* @__PURE__ */ new Map();
         for (const pragma of pragmas) {
-          if (context4.pragmas.has(pragma.name)) {
-            const currentValue = context4.pragmas.get(pragma.name);
+          if (context3.pragmas.has(pragma.name)) {
+            const currentValue = context3.pragmas.get(pragma.name);
             if (currentValue instanceof Array) {
               currentValue.push(pragma.args);
             } else {
-              context4.pragmas.set(pragma.name, [currentValue, pragma.args]);
+              context3.pragmas.set(pragma.name, [currentValue, pragma.args]);
             }
             continue;
           }
-          context4.pragmas.set(pragma.name, pragma.args);
+          context3.pragmas.set(pragma.name, pragma.args);
         }
       }
-      function processPragmasIntoFields(context4, reportDiagnostic) {
-        context4.checkJsDirective = void 0;
-        context4.referencedFiles = [];
-        context4.typeReferenceDirectives = [];
-        context4.libReferenceDirectives = [];
-        context4.amdDependencies = [];
-        context4.hasNoDefaultLib = false;
-        context4.pragmas.forEach((entryOrList, key) => {
+      function processPragmasIntoFields(context3, reportDiagnostic) {
+        context3.checkJsDirective = void 0;
+        context3.referencedFiles = [];
+        context3.typeReferenceDirectives = [];
+        context3.libReferenceDirectives = [];
+        context3.amdDependencies = [];
+        context3.hasNoDefaultLib = false;
+        context3.pragmas.forEach((entryOrList, key) => {
           switch (key) {
             case "reference": {
-              const referencedFiles = context4.referencedFiles;
-              const typeReferenceDirectives = context4.typeReferenceDirectives;
-              const libReferenceDirectives = context4.libReferenceDirectives;
+              const referencedFiles = context3.referencedFiles;
+              const typeReferenceDirectives = context3.typeReferenceDirectives;
+              const libReferenceDirectives = context3.libReferenceDirectives;
               forEach(toArray(entryOrList), (arg) => {
                 const { types, lib, path, ["resolution-mode"]: res, preserve: _preserve } = arg.arguments;
                 const preserve = _preserve === "true" ? true : void 0;
                 if (arg.arguments["no-default-lib"] === "true") {
-                  context4.hasNoDefaultLib = true;
+                  context3.hasNoDefaultLib = true;
                 } else if (types) {
                   const parsed = parseResolutionMode(res, types.pos, types.end, reportDiagnostic);
                   typeReferenceDirectives.push({ pos: types.pos, end: types.end, fileName: types.value, ...parsed ? { resolutionMode: parsed } : {}, ...preserve ? { preserve } : {} });
@@ -63459,7 +63459,7 @@ ${lanes.join("\n")}
               break;
             }
             case "amd-dependency": {
-              context4.amdDependencies = map(
+              context3.amdDependencies = map(
                 toArray(entryOrList),
                 (x) => ({ name: x.arguments.name, path: x.arguments.path })
               );
@@ -63468,21 +63468,21 @@ ${lanes.join("\n")}
             case "amd-module": {
               if (entryOrList instanceof Array) {
                 for (const entry of entryOrList) {
-                  if (context4.moduleName) {
+                  if (context3.moduleName) {
                     reportDiagnostic(entry.range.pos, entry.range.end - entry.range.pos, Diagnostics.An_AMD_module_cannot_have_multiple_name_assignments);
                   }
-                  context4.moduleName = entry.arguments.name;
+                  context3.moduleName = entry.arguments.name;
                 }
               } else {
-                context4.moduleName = entryOrList.arguments.name;
+                context3.moduleName = entryOrList.arguments.name;
               }
               break;
             }
             case "ts-nocheck":
             case "ts-check": {
               forEach(toArray(entryOrList), (entry) => {
-                if (!context4.checkJsDirective || entry.range.pos > context4.checkJsDirective.pos) {
-                  context4.checkJsDirective = {
+                if (!context3.checkJsDirective || entry.range.pos > context3.checkJsDirective.pos) {
+                  context3.checkJsDirective = {
                     enabled: key === "ts-check",
                     end: entry.range.end,
                     pos: entry.range.pos
@@ -79129,11 +79129,11 @@ ${lanes.join("\n")}
             evaluateEntityNameExpression,
             isExpandoFunctionDeclaration,
             hasLateBindableName,
-            shouldRemoveDeclaration(context4, node) {
-              return !(context4.internalFlags & 8 && isEntityNameExpression(node.name.expression) && checkComputedPropertyName(node.name).flags & 1);
+            shouldRemoveDeclaration(context3, node) {
+              return !(context3.internalFlags & 8 && isEntityNameExpression(node.name.expression) && checkComputedPropertyName(node.name).flags & 1);
             },
-            createRecoveryBoundary(context4) {
-              return createRecoveryBoundary(context4);
+            createRecoveryBoundary(context3) {
+              return createRecoveryBoundary(context3);
             },
             isDefinitelyReferenceToGlobalSymbolObject,
             getAllAccessorDeclarations: getAllAccessorDeclarationsForDeclaration,
@@ -79157,75 +79157,75 @@ ${lanes.join("\n")}
             isUndefinedIdentifierExpression(node) {
               return getSymbolAtLocation(node) === undefinedSymbol;
             },
-            isEntityNameVisible(context4, entityName, shouldComputeAliasToMakeVisible) {
-              return isEntityNameVisible(entityName, context4.enclosingDeclaration, shouldComputeAliasToMakeVisible);
+            isEntityNameVisible(context3, entityName, shouldComputeAliasToMakeVisible) {
+              return isEntityNameVisible(entityName, context3.enclosingDeclaration, shouldComputeAliasToMakeVisible);
             },
-            serializeExistingTypeNode(context4, typeNode, addUndefined) {
-              return serializeExistingTypeNode(context4, typeNode, !!addUndefined);
+            serializeExistingTypeNode(context3, typeNode, addUndefined) {
+              return serializeExistingTypeNode(context3, typeNode, !!addUndefined);
             },
             serializeReturnTypeForSignature(syntacticContext, signatureDeclaration, symbol) {
-              const context4 = syntacticContext;
+              const context3 = syntacticContext;
               const signature = getSignatureFromDeclaration(signatureDeclaration);
               symbol ?? (symbol = getSymbolOfDeclaration(signatureDeclaration));
-              const returnType = context4.enclosingSymbolTypes.get(getSymbolId(symbol)) ?? instantiateType(getReturnTypeOfSignature(signature), context4.mapper);
-              return serializeInferredReturnTypeForSignature(context4, signature, returnType);
+              const returnType = context3.enclosingSymbolTypes.get(getSymbolId(symbol)) ?? instantiateType(getReturnTypeOfSignature(signature), context3.mapper);
+              return serializeInferredReturnTypeForSignature(context3, signature, returnType);
             },
             serializeTypeOfExpression(syntacticContext, expr) {
-              const context4 = syntacticContext;
-              const type = instantiateType(getWidenedType(getRegularTypeOfExpression(expr)), context4.mapper);
-              return typeToTypeNodeHelper(type, context4);
+              const context3 = syntacticContext;
+              const type = instantiateType(getWidenedType(getRegularTypeOfExpression(expr)), context3.mapper);
+              return typeToTypeNodeHelper(type, context3);
             },
             serializeTypeOfDeclaration(syntacticContext, declaration, symbol) {
               var _a;
-              const context4 = syntacticContext;
+              const context3 = syntacticContext;
               symbol ?? (symbol = getSymbolOfDeclaration(declaration));
-              let type = (_a = context4.enclosingSymbolTypes) == null ? void 0 : _a.get(getSymbolId(symbol));
+              let type = (_a = context3.enclosingSymbolTypes) == null ? void 0 : _a.get(getSymbolId(symbol));
               if (type === void 0) {
-                type = symbol.flags & 98304 && declaration.kind === 179 ? instantiateType(getWriteTypeOfSymbol(symbol), context4.mapper) : symbol && !(symbol.flags & (2048 | 131072)) ? instantiateType(getWidenedLiteralType(getTypeOfSymbol(symbol)), context4.mapper) : errorType;
+                type = symbol.flags & 98304 && declaration.kind === 179 ? instantiateType(getWriteTypeOfSymbol(symbol), context3.mapper) : symbol && !(symbol.flags & (2048 | 131072)) ? instantiateType(getWidenedLiteralType(getTypeOfSymbol(symbol)), context3.mapper) : errorType;
               }
-              const addUndefinedForParameter = declaration && (isParameter(declaration) || isJSDocParameterTag(declaration)) && requiresAddingImplicitUndefined(declaration, context4.enclosingDeclaration);
+              const addUndefinedForParameter = declaration && (isParameter(declaration) || isJSDocParameterTag(declaration)) && requiresAddingImplicitUndefined(declaration, context3.enclosingDeclaration);
               if (addUndefinedForParameter) {
                 type = getOptionalType(type);
               }
-              return serializeInferredTypeForDeclaration(symbol, context4, type);
+              return serializeInferredTypeForDeclaration(symbol, context3, type);
             },
-            serializeNameOfParameter(context4, parameter) {
-              return parameterToParameterDeclarationName(getSymbolOfDeclaration(parameter), parameter, context4);
+            serializeNameOfParameter(context3, parameter) {
+              return parameterToParameterDeclarationName(getSymbolOfDeclaration(parameter), parameter, context3);
             },
             serializeEntityName(syntacticContext, node) {
-              const context4 = syntacticContext;
+              const context3 = syntacticContext;
               const symbol = getSymbolAtLocation(
                 node,
                 /*ignoreErrors*/
                 true
               );
               if (!symbol) return void 0;
-              if (!isValueSymbolAccessible(symbol, context4.enclosingDeclaration)) return void 0;
+              if (!isValueSymbolAccessible(symbol, context3.enclosingDeclaration)) return void 0;
               return symbolToExpression(
                 symbol,
-                context4,
+                context3,
                 111551 | 1048576
                 /* ExportValue */
               );
             },
-            serializeTypeName(context4, node, isTypeOf, typeArguments) {
-              return serializeTypeName(context4, node, isTypeOf, typeArguments);
+            serializeTypeName(context3, node, isTypeOf, typeArguments) {
+              return serializeTypeName(context3, node, isTypeOf, typeArguments);
             },
             getJsDocPropertyOverride(syntacticContext, jsDocTypeLiteral, jsDocProperty) {
-              const context4 = syntacticContext;
+              const context3 = syntacticContext;
               const name = isIdentifier2(jsDocProperty.name) ? jsDocProperty.name : jsDocProperty.name.right;
-              const typeViaParent = getTypeOfPropertyOfType(getTypeFromTypeNode2(context4, jsDocTypeLiteral), name.escapedText);
-              const overrideTypeNode = typeViaParent && jsDocProperty.typeExpression && getTypeFromTypeNode2(context4, jsDocProperty.typeExpression.type) !== typeViaParent ? typeToTypeNodeHelper(typeViaParent, context4) : void 0;
+              const typeViaParent = getTypeOfPropertyOfType(getTypeFromTypeNode2(context3, jsDocTypeLiteral), name.escapedText);
+              const overrideTypeNode = typeViaParent && jsDocProperty.typeExpression && getTypeFromTypeNode2(context3, jsDocProperty.typeExpression.type) !== typeViaParent ? typeToTypeNodeHelper(typeViaParent, context3) : void 0;
               return overrideTypeNode;
             },
-            enterNewScope(context4, node) {
+            enterNewScope(context3, node) {
               if (isFunctionLike(node) || isJSDocSignature(node)) {
                 const signature = getSignatureFromDeclaration(node);
-                return enterNewScope(context4, node, signature.parameters, signature.typeParameters);
+                return enterNewScope(context3, node, signature.parameters, signature.typeParameters);
               } else {
                 const typeParameters = isConditionalTypeNode(node) ? getInferTypeParameters(node) : [getDeclaredTypeOfTypeParameter(getSymbolOfDeclaration(node.typeParameter))];
                 return enterNewScope(
-                  context4,
+                  context3,
                   node,
                   /*expandedParams*/
                   void 0,
@@ -79233,47 +79233,47 @@ ${lanes.join("\n")}
                 );
               }
             },
-            markNodeReuse(context4, range, location) {
-              return setTextRange2(context4, range, location);
+            markNodeReuse(context3, range, location) {
+              return setTextRange2(context3, range, location);
             },
-            trackExistingEntityName(context4, node) {
-              return trackExistingEntityName(node, context4);
+            trackExistingEntityName(context3, node) {
+              return trackExistingEntityName(node, context3);
             },
-            trackComputedName(context4, accessExpression) {
-              trackComputedName(accessExpression, context4.enclosingDeclaration, context4);
+            trackComputedName(context3, accessExpression) {
+              trackComputedName(accessExpression, context3.enclosingDeclaration, context3);
             },
             getModuleSpecifierOverride(syntacticContext, parent2, lit) {
-              const context4 = syntacticContext;
-              if (context4.bundled || context4.enclosingFile !== getSourceFileOfNode(lit)) {
+              const context3 = syntacticContext;
+              if (context3.bundled || context3.enclosingFile !== getSourceFileOfNode(lit)) {
                 let name = lit.text;
                 const originalName = name;
                 const nodeSymbol = getNodeLinks(parent2).resolvedSymbol;
                 const meaning = parent2.isTypeOf ? 111551 : 788968;
                 const parentSymbol = nodeSymbol && isSymbolAccessible(
                   nodeSymbol,
-                  context4.enclosingDeclaration,
+                  context3.enclosingDeclaration,
                   meaning,
                   /*shouldComputeAliasesToMakeVisible*/
                   false
                 ).accessibility === 0 && lookupSymbolChain(
                   nodeSymbol,
-                  context4,
+                  context3,
                   meaning,
                   /*yieldModuleSymbol*/
                   true
                 )[0];
                 if (parentSymbol && isExternalModuleSymbol(parentSymbol)) {
-                  name = getSpecifierForModuleSymbol(parentSymbol, context4);
+                  name = getSpecifierForModuleSymbol(parentSymbol, context3);
                 } else {
                   const targetFile = getExternalModuleFileFromDeclaration(parent2);
                   if (targetFile) {
-                    name = getSpecifierForModuleSymbol(targetFile.symbol, context4);
+                    name = getSpecifierForModuleSymbol(targetFile.symbol, context3);
                   }
                 }
                 if (name.includes("/node_modules/")) {
-                  context4.encounteredError = true;
-                  if (context4.tracker.reportLikelyUnsafeImportRequiredError) {
-                    context4.tracker.reportLikelyUnsafeImportRequiredError(name);
+                  context3.encounteredError = true;
+                  if (context3.tracker.reportLikelyUnsafeImportRequiredError) {
+                    context3.tracker.reportLikelyUnsafeImportRequiredError(name);
                   }
                 }
                 if (name !== originalName) {
@@ -79281,15 +79281,15 @@ ${lanes.join("\n")}
                 }
               }
             },
-            canReuseTypeNode(context4, typeNode) {
-              return canReuseTypeNode(context4, typeNode);
+            canReuseTypeNode(context3, typeNode) {
+              return canReuseTypeNode(context3, typeNode);
             },
             canReuseTypeNodeAnnotation(syntacticContext, node, existing, symbol, requiresAddingUndefined) {
               var _a;
-              const context4 = syntacticContext;
-              if (context4.enclosingDeclaration === void 0) return false;
+              const context3 = syntacticContext;
+              if (context3.enclosingDeclaration === void 0) return false;
               symbol ?? (symbol = getSymbolOfDeclaration(node));
-              let type = (_a = context4.enclosingSymbolTypes) == null ? void 0 : _a.get(getSymbolId(symbol));
+              let type = (_a = context3.enclosingSymbolTypes) == null ? void 0 : _a.get(getSymbolId(symbol));
               if (type === void 0) {
                 if (symbol.flags & 98304) {
                   type = node.kind === 179 ? getWriteTypeOfSymbol(symbol) : getTypeOfAccessors(symbol);
@@ -79311,7 +79311,7 @@ ${lanes.join("\n")}
           };
           return {
             syntacticBuilderResolver,
-            typeToTypeNode: (type, enclosingDeclaration, flags, internalFlags, tracker, maximumLength, verbosityLevel, out) => withContext2(enclosingDeclaration, flags, internalFlags, tracker, maximumLength, verbosityLevel, (context4) => typeToTypeNodeHelper(type, context4), out),
+            typeToTypeNode: (type, enclosingDeclaration, flags, internalFlags, tracker, maximumLength, verbosityLevel, out) => withContext2(enclosingDeclaration, flags, internalFlags, tracker, maximumLength, verbosityLevel, (context3) => typeToTypeNodeHelper(type, context3), out),
             typePredicateToTypePredicateNode: (typePredicate, enclosingDeclaration, flags, internalFlags, tracker) => withContext2(
               enclosingDeclaration,
               flags,
@@ -79321,7 +79321,7 @@ ${lanes.join("\n")}
               void 0,
               /*verbosityLevel*/
               void 0,
-              (context4) => typePredicateToTypePredicateNodeHelper(typePredicate, context4)
+              (context3) => typePredicateToTypePredicateNodeHelper(typePredicate, context3)
             ),
             serializeTypeForDeclaration: (declaration, symbol, enclosingDeclaration, flags, internalFlags, tracker) => withContext2(
               enclosingDeclaration,
@@ -79332,7 +79332,7 @@ ${lanes.join("\n")}
               void 0,
               /*verbosityLevel*/
               void 0,
-              (context4) => syntacticNodeBuilder.serializeTypeOfDeclaration(declaration, symbol, context4)
+              (context3) => syntacticNodeBuilder.serializeTypeOfDeclaration(declaration, symbol, context3)
             ),
             serializeReturnTypeForSignature: (signature, enclosingDeclaration, flags, internalFlags, tracker) => withContext2(
               enclosingDeclaration,
@@ -79343,7 +79343,7 @@ ${lanes.join("\n")}
               void 0,
               /*verbosityLevel*/
               void 0,
-              (context4) => syntacticNodeBuilder.serializeReturnTypeForSignature(signature, getSymbolOfDeclaration(signature), context4)
+              (context3) => syntacticNodeBuilder.serializeReturnTypeForSignature(signature, getSymbolOfDeclaration(signature), context3)
             ),
             serializeTypeForExpression: (expr, enclosingDeclaration, flags, internalFlags, tracker) => withContext2(
               enclosingDeclaration,
@@ -79354,7 +79354,7 @@ ${lanes.join("\n")}
               void 0,
               /*verbosityLevel*/
               void 0,
-              (context4) => syntacticNodeBuilder.serializeTypeOfExpression(expr, context4)
+              (context3) => syntacticNodeBuilder.serializeTypeOfExpression(expr, context3)
             ),
             indexInfoToIndexSignatureDeclaration: (indexInfo, enclosingDeclaration, flags, internalFlags, tracker) => withContext2(
               enclosingDeclaration,
@@ -79365,14 +79365,14 @@ ${lanes.join("\n")}
               void 0,
               /*verbosityLevel*/
               void 0,
-              (context4) => indexInfoToIndexSignatureDeclarationHelper(
+              (context3) => indexInfoToIndexSignatureDeclarationHelper(
                 indexInfo,
-                context4,
+                context3,
                 /*typeNode*/
                 void 0
               )
             ),
-            signatureToSignatureDeclaration: (signature, kind, enclosingDeclaration, flags, internalFlags, tracker, maximumLength, verbosityLevel, out) => withContext2(enclosingDeclaration, flags, internalFlags, tracker, maximumLength, verbosityLevel, (context4) => signatureToSignatureDeclarationHelper(signature, kind, context4), out),
+            signatureToSignatureDeclaration: (signature, kind, enclosingDeclaration, flags, internalFlags, tracker, maximumLength, verbosityLevel, out) => withContext2(enclosingDeclaration, flags, internalFlags, tracker, maximumLength, verbosityLevel, (context3) => signatureToSignatureDeclarationHelper(signature, kind, context3), out),
             symbolToEntityName: (symbol, meaning, enclosingDeclaration, flags, internalFlags, tracker) => withContext2(
               enclosingDeclaration,
               flags,
@@ -79382,9 +79382,9 @@ ${lanes.join("\n")}
               void 0,
               /*verbosityLevel*/
               void 0,
-              (context4) => symbolToName(
+              (context3) => symbolToName(
                 symbol,
-                context4,
+                context3,
                 meaning,
                 /*expectsIdentifier*/
                 false
@@ -79399,7 +79399,7 @@ ${lanes.join("\n")}
               void 0,
               /*verbosityLevel*/
               void 0,
-              (context4) => symbolToExpression(symbol, context4, meaning)
+              (context3) => symbolToExpression(symbol, context3, meaning)
             ),
             symbolToTypeParameterDeclarations: (symbol, enclosingDeclaration, flags, internalFlags, tracker) => withContext2(
               enclosingDeclaration,
@@ -79410,7 +79410,7 @@ ${lanes.join("\n")}
               void 0,
               /*verbosityLevel*/
               void 0,
-              (context4) => typeParametersToTypeParameterDeclarations(symbol, context4)
+              (context3) => typeParametersToTypeParameterDeclarations(symbol, context3)
             ),
             symbolToParameterDeclaration: (symbol, enclosingDeclaration, flags, internalFlags, tracker) => withContext2(
               enclosingDeclaration,
@@ -79421,9 +79421,9 @@ ${lanes.join("\n")}
               void 0,
               /*verbosityLevel*/
               void 0,
-              (context4) => symbolToParameterDeclaration(symbol, context4)
+              (context3) => symbolToParameterDeclaration(symbol, context3)
             ),
-            typeParameterToDeclaration: (parameter, enclosingDeclaration, flags, internalFlags, tracker, maximumLength, verbosityLevel, out) => withContext2(enclosingDeclaration, flags, internalFlags, tracker, maximumLength, verbosityLevel, (context4) => typeParameterToDeclaration(parameter, context4), out),
+            typeParameterToDeclaration: (parameter, enclosingDeclaration, flags, internalFlags, tracker, maximumLength, verbosityLevel, out) => withContext2(enclosingDeclaration, flags, internalFlags, tracker, maximumLength, verbosityLevel, (context3) => typeParameterToDeclaration(parameter, context3), out),
             symbolTableToDeclarationStatements: (symbolTable, enclosingDeclaration, flags, internalFlags, tracker) => withContext2(
               enclosingDeclaration,
               flags,
@@ -79433,7 +79433,7 @@ ${lanes.join("\n")}
               void 0,
               /*verbosityLevel*/
               void 0,
-              (context4) => symbolTableToDeclarationStatements(symbolTable, context4)
+              (context3) => symbolTableToDeclarationStatements(symbolTable, context3)
             ),
             symbolToNode: (symbol, meaning, enclosingDeclaration, flags, internalFlags, tracker) => withContext2(
               enclosingDeclaration,
@@ -79444,18 +79444,18 @@ ${lanes.join("\n")}
               void 0,
               /*verbosityLevel*/
               void 0,
-              (context4) => symbolToNode(symbol, context4, meaning)
+              (context3) => symbolToNode(symbol, context3, meaning)
             ),
             symbolToDeclarations
           };
-          function getTypeFromTypeNode2(context4, node, noMappedTypes) {
+          function getTypeFromTypeNode2(context3, node, noMappedTypes) {
             const type = getTypeFromTypeNodeWithoutContext(node);
-            if (!context4.mapper) return type;
-            const mappedType = instantiateType(type, context4.mapper);
+            if (!context3.mapper) return type;
+            const mappedType = instantiateType(type, context3.mapper);
             return noMappedTypes && mappedType !== type ? void 0 : mappedType;
           }
-          function setTextRange2(context4, range, location) {
-            if (!nodeIsSynthesized(range) || !(range.flags & 16) || !context4.enclosingFile || context4.enclosingFile !== getSourceFileOfNode(getOriginalNode(range))) {
+          function setTextRange2(context3, range, location) {
+            if (!nodeIsSynthesized(range) || !(range.flags & 16) || !context3.enclosingFile || context3.enclosingFile !== getSourceFileOfNode(getOriginalNode(range))) {
               range = factory.cloneNode(range);
             }
             if (range === location) return range;
@@ -79469,24 +79469,24 @@ ${lanes.join("\n")}
             if (!original) {
               setOriginalNode(range, location);
             }
-            if (context4.enclosingFile && context4.enclosingFile === getSourceFileOfNode(getOriginalNode(location))) {
+            if (context3.enclosingFile && context3.enclosingFile === getSourceFileOfNode(getOriginalNode(location))) {
               return setTextRange(range, location);
             }
             return range;
           }
-          function symbolToNode(symbol, context4, meaning) {
-            if (context4.internalFlags & 1) {
+          function symbolToNode(symbol, context3, meaning) {
+            if (context3.internalFlags & 1) {
               if (symbol.valueDeclaration) {
                 const name = getNameOfDeclaration(symbol.valueDeclaration);
                 if (name && isComputedPropertyName(name)) return name;
               }
               const nameType = getSymbolLinks(symbol).nameType;
               if (nameType && nameType.flags & (1024 | 8192)) {
-                context4.enclosingDeclaration = nameType.symbol.valueDeclaration;
-                return factory.createComputedPropertyName(symbolToExpression(nameType.symbol, context4, meaning));
+                context3.enclosingDeclaration = nameType.symbol.valueDeclaration;
+                return factory.createComputedPropertyName(symbolToExpression(nameType.symbol, context3, meaning));
               }
             }
-            return symbolToExpression(symbol, context4, meaning);
+            return symbolToExpression(symbol, context3, meaning);
           }
           function symbolToDeclarations(symbol, meaning, flags, maximumLength, verbosityLevel, out) {
             const nodes = withContext2(
@@ -79499,7 +79499,7 @@ ${lanes.join("\n")}
               void 0,
               maximumLength,
               verbosityLevel,
-              (context4) => symbolToDeclarationsWorker(symbol, context4),
+              (context3) => symbolToDeclarationsWorker(symbol, context3),
               out
             );
             return mapDefined(nodes, (node) => {
@@ -79547,21 +79547,21 @@ ${lanes.join("\n")}
             }
             return simplifyModifiers(interfaceDecl, isInterfaceDeclaration, symbol);
           }
-          function symbolToDeclarationsWorker(symbol, context4) {
+          function symbolToDeclarationsWorker(symbol, context3) {
             const type = getDeclaredTypeOfSymbol(symbol);
-            context4.typeStack.push(type.id);
-            context4.typeStack.push(-1);
+            context3.typeStack.push(type.id);
+            context3.typeStack.push(-1);
             const table = createSymbolTable([symbol]);
-            const statements = symbolTableToDeclarationStatements(table, context4);
-            context4.typeStack.pop();
-            context4.typeStack.pop();
+            const statements = symbolTableToDeclarationStatements(table, context3);
+            context3.typeStack.pop();
+            context3.typeStack.pop();
             return statements;
           }
           function withContext2(enclosingDeclaration, flags, internalFlags, tracker, maximumLength, verbosityLevel, cb, out) {
             const moduleResolverHost = (tracker == null ? void 0 : tracker.trackSymbol) ? tracker.moduleResolverHost : (internalFlags || 0) & 4 ? createBasicNodeBuilderModuleSpecifierResolutionHost(host) : void 0;
             flags = flags || 0;
             const maxTruncationLength = maximumLength || (flags & 1 ? noTruncationMaximumTruncationLength : defaultMaximumTruncationLength);
-            const context4 = {
+            const context3 = {
               enclosingDeclaration,
               enclosingFile: enclosingDeclaration && getSourceFileOfNode(enclosingDeclaration),
               flags,
@@ -79598,104 +79598,104 @@ ${lanes.join("\n")}
                 truncated: false
               }
             };
-            context4.tracker = new SymbolTrackerImpl(context4, tracker, moduleResolverHost);
-            const resultingNode = cb(context4);
-            if (context4.truncating && context4.flags & 1) {
-              context4.tracker.reportTruncationError();
+            context3.tracker = new SymbolTrackerImpl(context3, tracker, moduleResolverHost);
+            const resultingNode = cb(context3);
+            if (context3.truncating && context3.flags & 1) {
+              context3.tracker.reportTruncationError();
             }
             if (out) {
-              out.canIncreaseExpansionDepth = context4.out.canIncreaseExpansionDepth;
-              out.truncated = context4.out.truncated;
+              out.canIncreaseExpansionDepth = context3.out.canIncreaseExpansionDepth;
+              out.truncated = context3.out.truncated;
             }
-            return context4.encounteredError ? void 0 : resultingNode;
+            return context3.encounteredError ? void 0 : resultingNode;
           }
-          function addSymbolTypeToContext(context4, symbol, type) {
+          function addSymbolTypeToContext(context3, symbol, type) {
             const id = getSymbolId(symbol);
-            const oldType = context4.enclosingSymbolTypes.get(id);
-            context4.enclosingSymbolTypes.set(id, type);
+            const oldType = context3.enclosingSymbolTypes.get(id);
+            context3.enclosingSymbolTypes.set(id, type);
             return restore;
             function restore() {
               if (oldType) {
-                context4.enclosingSymbolTypes.set(id, oldType);
+                context3.enclosingSymbolTypes.set(id, oldType);
               } else {
-                context4.enclosingSymbolTypes.delete(id);
+                context3.enclosingSymbolTypes.delete(id);
               }
             }
           }
-          function saveRestoreFlags(context4) {
-            const flags = context4.flags;
-            const internalFlags = context4.internalFlags;
-            const depth = context4.depth;
+          function saveRestoreFlags(context3) {
+            const flags = context3.flags;
+            const internalFlags = context3.internalFlags;
+            const depth = context3.depth;
             return restore;
             function restore() {
-              context4.flags = flags;
-              context4.internalFlags = internalFlags;
-              context4.depth = depth;
+              context3.flags = flags;
+              context3.internalFlags = internalFlags;
+              context3.depth = depth;
             }
           }
-          function checkTruncationLengthIfExpanding(context4) {
-            return context4.maxExpansionDepth >= 0 && checkTruncationLength(context4);
+          function checkTruncationLengthIfExpanding(context3) {
+            return context3.maxExpansionDepth >= 0 && checkTruncationLength(context3);
           }
-          function checkTruncationLength(context4) {
-            if (context4.truncating) return context4.truncating;
-            return context4.truncating = context4.approximateLength > context4.maxTruncationLength;
+          function checkTruncationLength(context3) {
+            if (context3.truncating) return context3.truncating;
+            return context3.truncating = context3.approximateLength > context3.maxTruncationLength;
           }
-          function canPossiblyExpandType(type, context4) {
-            for (let i = 0; i < context4.typeStack.length - 1; i++) {
-              if (context4.typeStack[i] === type.id) {
+          function canPossiblyExpandType(type, context3) {
+            for (let i = 0; i < context3.typeStack.length - 1; i++) {
+              if (context3.typeStack[i] === type.id) {
                 return false;
               }
             }
-            return context4.depth < context4.maxExpansionDepth || context4.depth === context4.maxExpansionDepth && !context4.out.canIncreaseExpansionDepth;
+            return context3.depth < context3.maxExpansionDepth || context3.depth === context3.maxExpansionDepth && !context3.out.canIncreaseExpansionDepth;
           }
-          function shouldExpandType(type, context4, isAlias = false) {
+          function shouldExpandType(type, context3, isAlias = false) {
             if (!isAlias && isLibType(type)) {
               return false;
             }
-            for (let i = 0; i < context4.typeStack.length - 1; i++) {
-              if (context4.typeStack[i] === type.id) {
+            for (let i = 0; i < context3.typeStack.length - 1; i++) {
+              if (context3.typeStack[i] === type.id) {
                 return false;
               }
             }
-            const result = context4.depth < context4.maxExpansionDepth;
+            const result = context3.depth < context3.maxExpansionDepth;
             if (!result) {
-              context4.out.canIncreaseExpansionDepth = true;
+              context3.out.canIncreaseExpansionDepth = true;
             }
             return result;
           }
-          function typeToTypeNodeHelper(type, context4) {
-            const restoreFlags = saveRestoreFlags(context4);
-            if (type) context4.typeStack.push(type.id);
-            const typeNode = typeToTypeNodeWorker(type, context4);
-            if (type) context4.typeStack.pop();
+          function typeToTypeNodeHelper(type, context3) {
+            const restoreFlags = saveRestoreFlags(context3);
+            if (type) context3.typeStack.push(type.id);
+            const typeNode = typeToTypeNodeWorker(type, context3);
+            if (type) context3.typeStack.pop();
             restoreFlags();
             return typeNode;
           }
-          function typeToTypeNodeWorker(type, context4) {
+          function typeToTypeNodeWorker(type, context3) {
             var _a, _b;
             if (cancellationToken && cancellationToken.throwIfCancellationRequested) {
               cancellationToken.throwIfCancellationRequested();
             }
-            const inTypeAlias = context4.flags & 8388608;
-            context4.flags &= ~8388608;
+            const inTypeAlias = context3.flags & 8388608;
+            context3.flags &= ~8388608;
             let expandingEnum = false;
             if (!type) {
-              if (!(context4.flags & 262144)) {
-                context4.encounteredError = true;
+              if (!(context3.flags & 262144)) {
+                context3.encounteredError = true;
                 return void 0;
               }
-              context4.approximateLength += 3;
+              context3.approximateLength += 3;
               return factory.createKeywordTypeNode(
                 133
                 /* AnyKeyword */
               );
             }
-            if (!(context4.flags & 536870912)) {
+            if (!(context3.flags & 536870912)) {
               type = getReducedType(type);
             }
             if (type.flags & 1) {
               if (type.aliasSymbol) {
-                return factory.createTypeReferenceNode(symbolToEntityNameNode(type.aliasSymbol), mapToTypeNodes(type.aliasTypeArguments, context4));
+                return factory.createTypeReferenceNode(symbolToEntityNameNode(type.aliasSymbol), mapToTypeNodes(type.aliasTypeArguments, context3));
               }
               if (type === unresolvedType) {
                 return addSyntheticLeadingComment(factory.createKeywordTypeNode(
@@ -79703,7 +79703,7 @@ ${lanes.join("\n")}
                   /* AnyKeyword */
                 ), 3, "unresolved");
               }
-              context4.approximateLength += 3;
+              context3.approximateLength += 3;
               return factory.createKeywordTypeNode(
                 type === intrinsicMarkerType ? 141 : 133
                 /* AnyKeyword */
@@ -79716,28 +79716,28 @@ ${lanes.join("\n")}
               );
             }
             if (type.flags & 4) {
-              context4.approximateLength += 6;
+              context3.approximateLength += 6;
               return factory.createKeywordTypeNode(
                 154
                 /* StringKeyword */
               );
             }
             if (type.flags & 8) {
-              context4.approximateLength += 6;
+              context3.approximateLength += 6;
               return factory.createKeywordTypeNode(
                 150
                 /* NumberKeyword */
               );
             }
             if (type.flags & 64) {
-              context4.approximateLength += 6;
+              context3.approximateLength += 6;
               return factory.createKeywordTypeNode(
                 163
                 /* BigIntKeyword */
               );
             }
             if (type.flags & 16 && !type.aliasSymbol) {
-              context4.approximateLength += 7;
+              context3.approximateLength += 7;
               return factory.createKeywordTypeNode(
                 136
                 /* BooleanKeyword */
@@ -79748,7 +79748,7 @@ ${lanes.join("\n")}
                 const parentSymbol = getParentOfSymbol(type.symbol);
                 const parentName = symbolToTypeNode(
                   parentSymbol,
-                  context4,
+                  context3,
                   788968
                   /* Type */
                 );
@@ -79779,10 +79779,10 @@ ${lanes.join("\n")}
                   return Debug.fail("Unhandled type node kind returned from `symbolToTypeNode`.");
                 }
               }
-              if (!shouldExpandType(type, context4)) {
+              if (!shouldExpandType(type, context3)) {
                 return symbolToTypeNode(
                   type.symbol,
-                  context4,
+                  context3,
                   788968
                   /* Type */
                 );
@@ -79791,117 +79791,117 @@ ${lanes.join("\n")}
               }
             }
             if (type.flags & 128) {
-              context4.approximateLength += type.value.length + 2;
+              context3.approximateLength += type.value.length + 2;
               return factory.createLiteralTypeNode(setEmitFlags(
-                factory.createStringLiteral(type.value, !!(context4.flags & 268435456)),
+                factory.createStringLiteral(type.value, !!(context3.flags & 268435456)),
                 16777216
                 /* NoAsciiEscaping */
               ));
             }
             if (type.flags & 256) {
               const value = type.value;
-              context4.approximateLength += ("" + value).length;
+              context3.approximateLength += ("" + value).length;
               return factory.createLiteralTypeNode(value < 0 ? factory.createPrefixUnaryExpression(41, factory.createNumericLiteral(-value)) : factory.createNumericLiteral(value));
             }
             if (type.flags & 2048) {
-              context4.approximateLength += pseudoBigIntToString(type.value).length + 1;
+              context3.approximateLength += pseudoBigIntToString(type.value).length + 1;
               return factory.createLiteralTypeNode(factory.createBigIntLiteral(type.value));
             }
             if (type.flags & 512) {
-              context4.approximateLength += type.intrinsicName.length;
+              context3.approximateLength += type.intrinsicName.length;
               return factory.createLiteralTypeNode(type.intrinsicName === "true" ? factory.createTrue() : factory.createFalse());
             }
             if (type.flags & 8192) {
-              if (!(context4.flags & 1048576)) {
-                if (isValueSymbolAccessible(type.symbol, context4.enclosingDeclaration)) {
-                  context4.approximateLength += 6;
+              if (!(context3.flags & 1048576)) {
+                if (isValueSymbolAccessible(type.symbol, context3.enclosingDeclaration)) {
+                  context3.approximateLength += 6;
                   return symbolToTypeNode(
                     type.symbol,
-                    context4,
+                    context3,
                     111551
                     /* Value */
                   );
                 }
-                if (context4.tracker.reportInaccessibleUniqueSymbolError) {
-                  context4.tracker.reportInaccessibleUniqueSymbolError();
+                if (context3.tracker.reportInaccessibleUniqueSymbolError) {
+                  context3.tracker.reportInaccessibleUniqueSymbolError();
                 }
               }
-              context4.approximateLength += 13;
+              context3.approximateLength += 13;
               return factory.createTypeOperatorNode(158, factory.createKeywordTypeNode(
                 155
                 /* SymbolKeyword */
               ));
             }
             if (type.flags & 16384) {
-              context4.approximateLength += 4;
+              context3.approximateLength += 4;
               return factory.createKeywordTypeNode(
                 116
                 /* VoidKeyword */
               );
             }
             if (type.flags & 32768) {
-              context4.approximateLength += 9;
+              context3.approximateLength += 9;
               return factory.createKeywordTypeNode(
                 157
                 /* UndefinedKeyword */
               );
             }
             if (type.flags & 65536) {
-              context4.approximateLength += 4;
+              context3.approximateLength += 4;
               return factory.createLiteralTypeNode(factory.createNull());
             }
             if (type.flags & 131072) {
-              context4.approximateLength += 5;
+              context3.approximateLength += 5;
               return factory.createKeywordTypeNode(
                 146
                 /* NeverKeyword */
               );
             }
             if (type.flags & 4096) {
-              context4.approximateLength += 6;
+              context3.approximateLength += 6;
               return factory.createKeywordTypeNode(
                 155
                 /* SymbolKeyword */
               );
             }
             if (type.flags & 67108864) {
-              context4.approximateLength += 6;
+              context3.approximateLength += 6;
               return factory.createKeywordTypeNode(
                 151
                 /* ObjectKeyword */
               );
             }
             if (isThisTypeParameter(type)) {
-              if (context4.flags & 4194304) {
-                if (!context4.encounteredError && !(context4.flags & 32768)) {
-                  context4.encounteredError = true;
+              if (context3.flags & 4194304) {
+                if (!context3.encounteredError && !(context3.flags & 32768)) {
+                  context3.encounteredError = true;
                 }
-                (_b = (_a = context4.tracker).reportInaccessibleThisError) == null ? void 0 : _b.call(_a);
+                (_b = (_a = context3.tracker).reportInaccessibleThisError) == null ? void 0 : _b.call(_a);
               }
-              context4.approximateLength += 4;
+              context3.approximateLength += 4;
               return factory.createThisTypeNode();
             }
-            if (!inTypeAlias && type.aliasSymbol && (context4.flags & 16384 || isTypeSymbolAccessible(type.aliasSymbol, context4.enclosingDeclaration))) {
+            if (!inTypeAlias && type.aliasSymbol && (context3.flags & 16384 || isTypeSymbolAccessible(type.aliasSymbol, context3.enclosingDeclaration))) {
               if (!shouldExpandType(
                 type,
-                context4,
+                context3,
                 /*isAlias*/
                 true
               )) {
-                const typeArgumentNodes = mapToTypeNodes(type.aliasTypeArguments, context4);
+                const typeArgumentNodes = mapToTypeNodes(type.aliasTypeArguments, context3);
                 if (isReservedMemberName(type.aliasSymbol.escapedName) && !(type.aliasSymbol.flags & 32)) return factory.createTypeReferenceNode(factory.createIdentifier(""), typeArgumentNodes);
                 if (length(typeArgumentNodes) === 1 && type.aliasSymbol === globalArrayType.symbol) {
                   return factory.createArrayTypeNode(typeArgumentNodes[0]);
                 }
-                return symbolToTypeNode(type.aliasSymbol, context4, 788968, typeArgumentNodes);
+                return symbolToTypeNode(type.aliasSymbol, context3, 788968, typeArgumentNodes);
               }
-              context4.depth += 1;
+              context3.depth += 1;
             }
             const objectFlags = getObjectFlags(type);
             if (objectFlags & 4) {
               Debug.assert(!!(type.flags & 524288));
-              if (shouldExpandType(type, context4)) {
-                context4.depth += 1;
+              if (shouldExpandType(type, context3)) {
+                context3.depth += 1;
                 return createAnonymousTypeNode(
                   type,
                   /*forceClassExpansion*/
@@ -79913,8 +79913,8 @@ ${lanes.join("\n")}
               return type.node ? visitAndTransformType(type, typeReferenceToTypeNode) : typeReferenceToTypeNode(type);
             }
             if (type.flags & 262144 || objectFlags & 3) {
-              if (type.flags & 262144 && contains2(context4.inferTypeParameters, type)) {
-                context4.approximateLength += symbolName(type.symbol).length + 6;
+              if (type.flags & 262144 && contains2(context3.inferTypeParameters, type)) {
+                context3.approximateLength += symbolName(type.symbol).length + 6;
                 let constraintNode;
                 const constraint = getConstraintOfTypeParameter(type);
                 if (constraint) {
@@ -79924,23 +79924,23 @@ ${lanes.join("\n")}
                     true
                   );
                   if (!(inferredConstraint && isTypeIdenticalTo(constraint, inferredConstraint))) {
-                    context4.approximateLength += 9;
-                    constraintNode = constraint && typeToTypeNodeHelper(constraint, context4);
+                    context3.approximateLength += 9;
+                    constraintNode = constraint && typeToTypeNodeHelper(constraint, context3);
                   }
                 }
-                return factory.createInferTypeNode(typeParameterToDeclarationWithConstraint(type, context4, constraintNode));
+                return factory.createInferTypeNode(typeParameterToDeclarationWithConstraint(type, context3, constraintNode));
               }
-              if (context4.flags & 4 && type.flags & 262144) {
-                const name2 = typeParameterToName(type, context4);
-                context4.approximateLength += idText(name2).length;
+              if (context3.flags & 4 && type.flags & 262144) {
+                const name2 = typeParameterToName(type, context3);
+                context3.approximateLength += idText(name2).length;
                 return factory.createTypeReferenceNode(
                   factory.createIdentifier(idText(name2)),
                   /*typeArguments*/
                   void 0
                 );
               }
-              if (objectFlags & 3 && shouldExpandType(type, context4)) {
-                context4.depth += 1;
+              if (objectFlags & 3 && shouldExpandType(type, context3)) {
+                context3.depth += 1;
                 return createAnonymousTypeNode(
                   type,
                   /*forceClassExpansion*/
@@ -79952,7 +79952,7 @@ ${lanes.join("\n")}
               if (type.symbol) {
                 return symbolToTypeNode(
                   type.symbol,
-                  context4,
+                  context3,
                   788968
                   /* Type */
                 );
@@ -79970,19 +79970,19 @@ ${lanes.join("\n")}
             if (type.flags & (1048576 | 2097152)) {
               const types = type.flags & 1048576 ? formatUnionTypes(type.types, expandingEnum) : type.types;
               if (length(types) === 1) {
-                return typeToTypeNodeHelper(types[0], context4);
+                return typeToTypeNodeHelper(types[0], context3);
               }
               const typeNodes = mapToTypeNodes(
                 types,
-                context4,
+                context3,
                 /*isBareList*/
                 true
               );
               if (typeNodes && typeNodes.length > 0) {
                 return type.flags & 1048576 ? factory.createUnionTypeNode(typeNodes) : factory.createIntersectionTypeNode(typeNodes);
               } else {
-                if (!context4.encounteredError && !(context4.flags & 262144)) {
-                  context4.encounteredError = true;
+                if (!context3.encounteredError && !(context3.flags & 262144)) {
+                  context3.encounteredError = true;
                 }
                 return void 0;
               }
@@ -79993,8 +79993,8 @@ ${lanes.join("\n")}
             }
             if (type.flags & 4194304) {
               const indexedType = type.type;
-              context4.approximateLength += 6;
-              const indexTypeNode = typeToTypeNodeHelper(indexedType, context4);
+              context3.approximateLength += 6;
+              const indexTypeNode = typeToTypeNodeHelper(indexedType, context3);
               return factory.createTypeOperatorNode(143, indexTypeNode);
             }
             if (type.flags & 134217728) {
@@ -80003,51 +80003,51 @@ ${lanes.join("\n")}
               const templateHead = factory.createTemplateHead(texts[0]);
               const templateSpans = factory.createNodeArray(
                 map(types, (t, i) => factory.createTemplateLiteralTypeSpan(
-                  typeToTypeNodeHelper(t, context4),
+                  typeToTypeNodeHelper(t, context3),
                   (i < types.length - 1 ? factory.createTemplateMiddle : factory.createTemplateTail)(texts[i + 1])
                 ))
               );
-              context4.approximateLength += 2;
+              context3.approximateLength += 2;
               return factory.createTemplateLiteralType(templateHead, templateSpans);
             }
             if (type.flags & 268435456) {
-              const typeNode = typeToTypeNodeHelper(type.type, context4);
-              return symbolToTypeNode(type.symbol, context4, 788968, [typeNode]);
+              const typeNode = typeToTypeNodeHelper(type.type, context3);
+              return symbolToTypeNode(type.symbol, context3, 788968, [typeNode]);
             }
             if (type.flags & 8388608) {
-              const objectTypeNode = typeToTypeNodeHelper(type.objectType, context4);
-              const indexTypeNode = typeToTypeNodeHelper(type.indexType, context4);
-              context4.approximateLength += 2;
+              const objectTypeNode = typeToTypeNodeHelper(type.objectType, context3);
+              const indexTypeNode = typeToTypeNodeHelper(type.indexType, context3);
+              context3.approximateLength += 2;
               return factory.createIndexedAccessTypeNode(objectTypeNode, indexTypeNode);
             }
             if (type.flags & 16777216) {
               return visitAndTransformType(type, (type2) => conditionalTypeToTypeNode(type2));
             }
             if (type.flags & 33554432) {
-              const typeNode = typeToTypeNodeHelper(type.baseType, context4);
+              const typeNode = typeToTypeNodeHelper(type.baseType, context3);
               const noInferSymbol = isNoInferType(type) && getGlobalTypeSymbol(
                 "NoInfer",
                 /*reportErrors*/
                 false
               );
-              return noInferSymbol ? symbolToTypeNode(noInferSymbol, context4, 788968, [typeNode]) : typeNode;
+              return noInferSymbol ? symbolToTypeNode(noInferSymbol, context3, 788968, [typeNode]) : typeNode;
             }
             return Debug.fail("Should be unreachable.");
             function conditionalTypeToTypeNode(type2) {
-              const checkTypeNode = typeToTypeNodeHelper(type2.checkType, context4);
-              context4.approximateLength += 15;
-              if (context4.flags & 4 && type2.root.isDistributive && !(type2.checkType.flags & 262144)) {
+              const checkTypeNode = typeToTypeNodeHelper(type2.checkType, context3);
+              context3.approximateLength += 15;
+              if (context3.flags & 4 && type2.root.isDistributive && !(type2.checkType.flags & 262144)) {
                 const newParam = createTypeParameter(createSymbol(262144, "T"));
-                const name = typeParameterToName(newParam, context4);
+                const name = typeParameterToName(newParam, context3);
                 const newTypeVariable = factory.createTypeReferenceNode(name);
-                context4.approximateLength += 37;
+                context3.approximateLength += 37;
                 const newMapper = prependTypeMapping(type2.root.checkType, newParam, type2.mapper);
-                const saveInferTypeParameters2 = context4.inferTypeParameters;
-                context4.inferTypeParameters = type2.root.inferTypeParameters;
-                const extendsTypeNode2 = typeToTypeNodeHelper(instantiateType(type2.root.extendsType, newMapper), context4);
-                context4.inferTypeParameters = saveInferTypeParameters2;
-                const trueTypeNode2 = typeToTypeNodeOrCircularityElision(instantiateType(getTypeFromTypeNode2(context4, type2.root.node.trueType), newMapper));
-                const falseTypeNode2 = typeToTypeNodeOrCircularityElision(instantiateType(getTypeFromTypeNode2(context4, type2.root.node.falseType), newMapper));
+                const saveInferTypeParameters2 = context3.inferTypeParameters;
+                context3.inferTypeParameters = type2.root.inferTypeParameters;
+                const extendsTypeNode2 = typeToTypeNodeHelper(instantiateType(type2.root.extendsType, newMapper), context3);
+                context3.inferTypeParameters = saveInferTypeParameters2;
+                const trueTypeNode2 = typeToTypeNodeOrCircularityElision(instantiateType(getTypeFromTypeNode2(context3, type2.root.node.trueType), newMapper));
+                const falseTypeNode2 = typeToTypeNodeOrCircularityElision(instantiateType(getTypeFromTypeNode2(context3, type2.root.node.falseType), newMapper));
                 return factory.createConditionalTypeNode(
                   checkTypeNode,
                   factory.createInferTypeNode(factory.createTypeParameterDeclaration(
@@ -80057,7 +80057,7 @@ ${lanes.join("\n")}
                   )),
                   factory.createConditionalTypeNode(
                     factory.createTypeReferenceNode(factory.cloneNode(name)),
-                    typeToTypeNodeHelper(type2.checkType, context4),
+                    typeToTypeNodeHelper(type2.checkType, context3),
                     factory.createConditionalTypeNode(newTypeVariable, extendsTypeNode2, trueTypeNode2, falseTypeNode2),
                     factory.createKeywordTypeNode(
                       146
@@ -80070,10 +80070,10 @@ ${lanes.join("\n")}
                   )
                 );
               }
-              const saveInferTypeParameters = context4.inferTypeParameters;
-              context4.inferTypeParameters = type2.root.inferTypeParameters;
-              const extendsTypeNode = typeToTypeNodeHelper(type2.extendsType, context4);
-              context4.inferTypeParameters = saveInferTypeParameters;
+              const saveInferTypeParameters = context3.inferTypeParameters;
+              context3.inferTypeParameters = type2.root.inferTypeParameters;
+              const extendsTypeNode = typeToTypeNodeHelper(type2.extendsType, context3);
+              context3.inferTypeParameters = saveInferTypeParameters;
               const trueTypeNode = typeToTypeNodeOrCircularityElision(getTrueTypeFromConditionalType(type2));
               const falseTypeNode = typeToTypeNodeOrCircularityElision(getFalseTypeFromConditionalType(type2));
               return factory.createConditionalTypeNode(checkTypeNode, extendsTypeNode, trueTypeNode, falseTypeNode);
@@ -80081,16 +80081,16 @@ ${lanes.join("\n")}
             function typeToTypeNodeOrCircularityElision(type2) {
               var _a2, _b2, _c;
               if (type2.flags & 1048576) {
-                if ((_a2 = context4.visitedTypes) == null ? void 0 : _a2.has(getTypeId(type2))) {
-                  if (!(context4.flags & 131072)) {
-                    context4.encounteredError = true;
-                    (_c = (_b2 = context4.tracker) == null ? void 0 : _b2.reportCyclicStructureError) == null ? void 0 : _c.call(_b2);
+                if ((_a2 = context3.visitedTypes) == null ? void 0 : _a2.has(getTypeId(type2))) {
+                  if (!(context3.flags & 131072)) {
+                    context3.encounteredError = true;
+                    (_c = (_b2 = context3.tracker) == null ? void 0 : _b2.reportCyclicStructureError) == null ? void 0 : _c.call(_b2);
                   }
-                  return createElidedInformationPlaceholder(context4);
+                  return createElidedInformationPlaceholder(context3);
                 }
-                return visitAndTransformType(type2, (type3) => typeToTypeNodeHelper(type3, context4));
+                return visitAndTransformType(type2, (type3) => typeToTypeNodeHelper(type3, context3));
               }
-              return typeToTypeNodeHelper(type2, context4);
+              return typeToTypeNodeHelper(type2, context3);
             }
             function isMappedTypeHomomorphic(type2) {
               return !!getHomomorphicTypeVariable(type2);
@@ -80107,11 +80107,11 @@ ${lanes.join("\n")}
               let newTypeVariable;
               let templateType = getTemplateTypeFromMappedType(type2);
               const typeParameter = getTypeParameterFromMappedType(type2);
-              const needsModifierPreservingWrapper = !isMappedTypeWithKeyofConstraintDeclaration(type2) && !(getModifiersTypeFromMappedType(type2).flags & 2) && context4.flags & 4 && !(getConstraintTypeFromMappedType(type2).flags & 262144 && ((_a2 = getConstraintOfTypeParameter(getConstraintTypeFromMappedType(type2))) == null ? void 0 : _a2.flags) & 4194304);
+              const needsModifierPreservingWrapper = !isMappedTypeWithKeyofConstraintDeclaration(type2) && !(getModifiersTypeFromMappedType(type2).flags & 2) && context3.flags & 4 && !(getConstraintTypeFromMappedType(type2).flags & 262144 && ((_a2 = getConstraintOfTypeParameter(getConstraintTypeFromMappedType(type2))) == null ? void 0 : _a2.flags) & 4194304);
               if (isMappedTypeWithKeyofConstraintDeclaration(type2)) {
-                if (isHomomorphicMappedTypeWithNonHomomorphicInstantiation(type2) && context4.flags & 4) {
+                if (isHomomorphicMappedTypeWithNonHomomorphicInstantiation(type2) && context3.flags & 4) {
                   const newConstraintParam = createTypeParameter(createSymbol(262144, "T"));
-                  const name = typeParameterToName(newConstraintParam, context4);
+                  const name = typeParameterToName(newConstraintParam, context3);
                   const target = type2.target;
                   newTypeVariable = factory.createTypeReferenceNode(name);
                   templateType = instantiateType(
@@ -80119,25 +80119,25 @@ ${lanes.join("\n")}
                     makeArrayTypeMapper([getTypeParameterFromMappedType(target), getModifiersTypeFromMappedType(target)], [typeParameter, newConstraintParam])
                   );
                 }
-                appropriateConstraintTypeNode = factory.createTypeOperatorNode(143, newTypeVariable || typeToTypeNodeHelper(getModifiersTypeFromMappedType(type2), context4));
+                appropriateConstraintTypeNode = factory.createTypeOperatorNode(143, newTypeVariable || typeToTypeNodeHelper(getModifiersTypeFromMappedType(type2), context3));
               } else if (needsModifierPreservingWrapper) {
                 const newParam = createTypeParameter(createSymbol(262144, "T"));
-                const name = typeParameterToName(newParam, context4);
+                const name = typeParameterToName(newParam, context3);
                 newTypeVariable = factory.createTypeReferenceNode(name);
                 appropriateConstraintTypeNode = newTypeVariable;
               } else {
-                appropriateConstraintTypeNode = typeToTypeNodeHelper(getConstraintTypeFromMappedType(type2), context4);
+                appropriateConstraintTypeNode = typeToTypeNodeHelper(getConstraintTypeFromMappedType(type2), context3);
               }
-              const typeParameterNode = typeParameterToDeclarationWithConstraint(typeParameter, context4, appropriateConstraintTypeNode);
+              const typeParameterNode = typeParameterToDeclarationWithConstraint(typeParameter, context3, appropriateConstraintTypeNode);
               const cleanup = enterNewScope(
-                context4,
+                context3,
                 type2.declaration,
                 /*expandedParams*/
                 void 0,
                 [getDeclaredTypeOfTypeParameter(getSymbolOfDeclaration(type2.declaration.typeParameter))]
               );
-              const nameTypeNode = type2.declaration.nameType ? typeToTypeNodeHelper(getNameTypeFromMappedType(type2), context4) : void 0;
-              const templateTypeNode = typeToTypeNodeHelper(removeMissingType(templateType, !!(getMappedTypeModifiers(type2) & 4)), context4);
+              const nameTypeNode = type2.declaration.nameType ? typeToTypeNodeHelper(getNameTypeFromMappedType(type2), context3) : void 0;
+              const templateTypeNode = typeToTypeNodeHelper(removeMissingType(templateType, !!(getMappedTypeModifiers(type2) & 4)), context3);
               cleanup();
               const mappedTypeNode = factory.createMappedTypeNode(
                 readonlyToken,
@@ -80148,21 +80148,21 @@ ${lanes.join("\n")}
                 /*members*/
                 void 0
               );
-              context4.approximateLength += 10;
+              context3.approximateLength += 10;
               const result = setEmitFlags(
                 mappedTypeNode,
                 1
                 /* SingleLine */
               );
-              if (isHomomorphicMappedTypeWithNonHomomorphicInstantiation(type2) && context4.flags & 4) {
-                const originalConstraint = instantiateType(getConstraintOfTypeParameter(getTypeFromTypeNode2(context4, type2.declaration.typeParameter.constraint.type)) || unknownType, type2.mapper);
+              if (isHomomorphicMappedTypeWithNonHomomorphicInstantiation(type2) && context3.flags & 4) {
+                const originalConstraint = instantiateType(getConstraintOfTypeParameter(getTypeFromTypeNode2(context3, type2.declaration.typeParameter.constraint.type)) || unknownType, type2.mapper);
                 return factory.createConditionalTypeNode(
-                  typeToTypeNodeHelper(getModifiersTypeFromMappedType(type2), context4),
+                  typeToTypeNodeHelper(getModifiersTypeFromMappedType(type2), context3),
                   factory.createInferTypeNode(factory.createTypeParameterDeclaration(
                     /*modifiers*/
                     void 0,
                     factory.cloneNode(newTypeVariable.typeName),
-                    originalConstraint.flags & 2 ? void 0 : typeToTypeNodeHelper(originalConstraint, context4)
+                    originalConstraint.flags & 2 ? void 0 : typeToTypeNodeHelper(originalConstraint, context3)
                   )),
                   result,
                   factory.createKeywordTypeNode(
@@ -80172,12 +80172,12 @@ ${lanes.join("\n")}
                 );
               } else if (needsModifierPreservingWrapper) {
                 return factory.createConditionalTypeNode(
-                  typeToTypeNodeHelper(getConstraintTypeFromMappedType(type2), context4),
+                  typeToTypeNodeHelper(getConstraintTypeFromMappedType(type2), context3),
                   factory.createInferTypeNode(factory.createTypeParameterDeclaration(
                     /*modifiers*/
                     void 0,
                     factory.cloneNode(newTypeVariable.typeName),
-                    factory.createTypeOperatorNode(143, typeToTypeNodeHelper(getModifiersTypeFromMappedType(type2), context4))
+                    factory.createTypeOperatorNode(143, typeToTypeNodeHelper(getModifiersTypeFromMappedType(type2), context3))
                   )),
                   result,
                   factory.createKeywordTypeNode(
@@ -80197,44 +80197,44 @@ ${lanes.join("\n")}
                 if (isInstantiationExpressionType) {
                   const instantiationExpressionType = type2;
                   const existing = instantiationExpressionType.node;
-                  if (isTypeQueryNode(existing) && getTypeFromTypeNode2(context4, existing) === type2) {
-                    const typeNode = syntacticNodeBuilder.tryReuseExistingTypeNode(context4, existing);
+                  if (isTypeQueryNode(existing) && getTypeFromTypeNode2(context3, existing) === type2) {
+                    const typeNode = syntacticNodeBuilder.tryReuseExistingTypeNode(context3, existing);
                     if (typeNode) {
                       return typeNode;
                     }
                   }
-                  if ((_a2 = context4.visitedTypes) == null ? void 0 : _a2.has(typeId)) {
-                    return createElidedInformationPlaceholder(context4);
+                  if ((_a2 = context3.visitedTypes) == null ? void 0 : _a2.has(typeId)) {
+                    return createElidedInformationPlaceholder(context3);
                   }
                   return visitAndTransformType(type2, createTypeNodeFromObjectType);
                 }
                 const isInstanceType = isClassInstanceSide(type2) ? 788968 : 111551;
                 if (isJSConstructor(symbol.valueDeclaration)) {
-                  return symbolToTypeNode(symbol, context4, isInstanceType);
-                } else if (!forceExpansion && (symbol.flags & 32 && !forceClassExpansion && !getBaseTypeVariableOfClass(symbol) && !(symbol.valueDeclaration && isClassLike(symbol.valueDeclaration) && context4.flags & 2048 && (!isClassDeclaration(symbol.valueDeclaration) || isSymbolAccessible(
+                  return symbolToTypeNode(symbol, context3, isInstanceType);
+                } else if (!forceExpansion && (symbol.flags & 32 && !forceClassExpansion && !getBaseTypeVariableOfClass(symbol) && !(symbol.valueDeclaration && isClassLike(symbol.valueDeclaration) && context3.flags & 2048 && (!isClassDeclaration(symbol.valueDeclaration) || isSymbolAccessible(
                   symbol,
-                  context4.enclosingDeclaration,
+                  context3.enclosingDeclaration,
                   isInstanceType,
                   /*shouldComputeAliasesToMakeVisible*/
                   false
                 ).accessibility !== 0)) || symbol.flags & (384 | 512) || shouldWriteTypeOfFunctionSymbol())) {
-                  if (shouldExpandType(type2, context4)) {
-                    context4.depth += 1;
+                  if (shouldExpandType(type2, context3)) {
+                    context3.depth += 1;
                   } else {
-                    return symbolToTypeNode(symbol, context4, isInstanceType);
+                    return symbolToTypeNode(symbol, context3, isInstanceType);
                   }
                 }
-                if ((_b2 = context4.visitedTypes) == null ? void 0 : _b2.has(typeId)) {
+                if ((_b2 = context3.visitedTypes) == null ? void 0 : _b2.has(typeId)) {
                   const typeAlias = getTypeAliasForTypeLiteral(type2);
                   if (typeAlias) {
                     return symbolToTypeNode(
                       typeAlias,
-                      context4,
+                      context3,
                       788968
                       /* Type */
                     );
                   } else {
-                    return createElidedInformationPlaceholder(context4);
+                    return createElidedInformationPlaceholder(context3);
                   }
                 } else {
                   return visitAndTransformType(type2, createTypeNodeFromObjectType);
@@ -80253,8 +80253,8 @@ ${lanes.join("\n")}
                   /* ModuleBlock */
                 ));
                 if (isStaticMethodSymbol || isNonLocalFunctionSymbol) {
-                  return (!!(context4.flags & 4096) || ((_a3 = context4.visitedTypes) == null ? void 0 : _a3.has(typeId))) && // it is type of the symbol uses itself recursively
-                  (!(context4.flags & 8) || isValueSymbolAccessible(symbol, context4.enclosingDeclaration));
+                  return (!!(context3.flags & 4096) || ((_a3 = context3.visitedTypes) == null ? void 0 : _a3.has(typeId))) && // it is type of the symbol uses itself recursively
+                  (!(context3.flags & 8) || isValueSymbolAccessible(symbol, context3.enclosingDeclaration));
                 }
               }
             }
@@ -80263,65 +80263,65 @@ ${lanes.join("\n")}
               const typeId = type2.id;
               const isConstructorObject = getObjectFlags(type2) & 16 && type2.symbol && type2.symbol.flags & 32;
               const id = getObjectFlags(type2) & 4 && type2.node ? "N" + getNodeId(type2.node) : type2.flags & 16777216 ? "N" + getNodeId(type2.root.node) : type2.symbol ? (isConstructorObject ? "+" : "") + getSymbolId(type2.symbol) : void 0;
-              if (!context4.visitedTypes) {
-                context4.visitedTypes = /* @__PURE__ */ new Set();
+              if (!context3.visitedTypes) {
+                context3.visitedTypes = /* @__PURE__ */ new Set();
               }
-              if (id && !context4.symbolDepth) {
-                context4.symbolDepth = /* @__PURE__ */ new Map();
+              if (id && !context3.symbolDepth) {
+                context3.symbolDepth = /* @__PURE__ */ new Map();
               }
-              const links = context4.maxExpansionDepth >= 0 ? void 0 : context4.enclosingDeclaration && getNodeLinks(context4.enclosingDeclaration);
-              const key = `${getTypeId(type2)}|${context4.flags}|${context4.internalFlags}`;
+              const links = context3.maxExpansionDepth >= 0 ? void 0 : context3.enclosingDeclaration && getNodeLinks(context3.enclosingDeclaration);
+              const key = `${getTypeId(type2)}|${context3.flags}|${context3.internalFlags}`;
               if (links) {
                 links.serializedTypes || (links.serializedTypes = /* @__PURE__ */ new Map());
               }
               const cachedResult = (_a2 = links == null ? void 0 : links.serializedTypes) == null ? void 0 : _a2.get(key);
               if (cachedResult) {
                 (_b2 = cachedResult.trackedSymbols) == null ? void 0 : _b2.forEach(
-                  ([symbol, enclosingDeclaration, meaning]) => context4.tracker.trackSymbol(
+                  ([symbol, enclosingDeclaration, meaning]) => context3.tracker.trackSymbol(
                     symbol,
                     enclosingDeclaration,
                     meaning
                   )
                 );
                 if (cachedResult.truncating) {
-                  context4.truncating = true;
+                  context3.truncating = true;
                 }
-                context4.approximateLength += cachedResult.addedLength;
+                context3.approximateLength += cachedResult.addedLength;
                 return deepCloneOrReuseNode(cachedResult.node);
               }
               let depth;
               if (id) {
-                depth = context4.symbolDepth.get(id) || 0;
+                depth = context3.symbolDepth.get(id) || 0;
                 if (depth > 10) {
-                  return createElidedInformationPlaceholder(context4);
+                  return createElidedInformationPlaceholder(context3);
                 }
-                context4.symbolDepth.set(id, depth + 1);
+                context3.symbolDepth.set(id, depth + 1);
               }
-              context4.visitedTypes.add(typeId);
-              const prevTrackedSymbols = context4.trackedSymbols;
-              context4.trackedSymbols = void 0;
-              const startLength = context4.approximateLength;
+              context3.visitedTypes.add(typeId);
+              const prevTrackedSymbols = context3.trackedSymbols;
+              context3.trackedSymbols = void 0;
+              const startLength = context3.approximateLength;
               const result = transform2(type2);
-              const addedLength = context4.approximateLength - startLength;
-              if (!context4.reportedDiagnostic && !context4.encounteredError) {
+              const addedLength = context3.approximateLength - startLength;
+              if (!context3.reportedDiagnostic && !context3.encounteredError) {
                 (_c = links == null ? void 0 : links.serializedTypes) == null ? void 0 : _c.set(key, {
                   node: result,
-                  truncating: context4.truncating,
+                  truncating: context3.truncating,
                   addedLength,
-                  trackedSymbols: context4.trackedSymbols
+                  trackedSymbols: context3.trackedSymbols
                 });
               }
-              context4.visitedTypes.delete(typeId);
+              context3.visitedTypes.delete(typeId);
               if (id) {
-                context4.symbolDepth.set(id, depth);
+                context3.symbolDepth.set(id, depth);
               }
-              context4.trackedSymbols = prevTrackedSymbols;
+              context3.trackedSymbols = prevTrackedSymbols;
               return result;
               function deepCloneOrReuseNode(node) {
                 if (!nodeIsSynthesized(node) && getParseTreeNode(node) === node) {
                   return node;
                 }
-                return setTextRange2(context4, factory.cloneNode(visitEachChild(
+                return setTextRange2(context3, factory.cloneNode(visitEachChild(
                   node,
                   deepCloneOrReuseNode,
                   /*context*/
@@ -80348,7 +80348,7 @@ ${lanes.join("\n")}
               const resolved = resolveStructuredTypeMembers(type2);
               if (!resolved.properties.length && !resolved.indexInfos.length) {
                 if (!resolved.callSignatures.length && !resolved.constructSignatures.length) {
-                  context4.approximateLength += 2;
+                  context3.approximateLength += 2;
                   return setEmitFlags(
                     factory.createTypeLiteralNode(
                       /*members*/
@@ -80360,12 +80360,12 @@ ${lanes.join("\n")}
                 }
                 if (resolved.callSignatures.length === 1 && !resolved.constructSignatures.length) {
                   const signature = resolved.callSignatures[0];
-                  const signatureNode = signatureToSignatureDeclarationHelper(signature, 185, context4);
+                  const signatureNode = signatureToSignatureDeclarationHelper(signature, 185, context3);
                   return signatureNode;
                 }
                 if (resolved.constructSignatures.length === 1 && !resolved.callSignatures.length) {
                   const signature = resolved.constructSignatures[0];
-                  const signatureNode = signatureToSignatureDeclarationHelper(signature, 186, context4);
+                  const signatureNode = signatureToSignatureDeclarationHelper(signature, 186, context3);
                   return signatureNode;
                 }
               }
@@ -80374,21 +80374,21 @@ ${lanes.join("\n")}
                 const types = map(abstractSignatures, getOrCreateTypeFromSignature);
                 const typeElementCount = resolved.callSignatures.length + (resolved.constructSignatures.length - abstractSignatures.length) + resolved.indexInfos.length + // exclude `prototype` when writing a class expression as a type literal, as per
                 // the logic in `createTypeNodesFromResolvedType`.
-                (context4.flags & 2048 ? countWhere2(resolved.properties, (p) => !(p.flags & 4194304)) : length(resolved.properties));
+                (context3.flags & 2048 ? countWhere2(resolved.properties, (p) => !(p.flags & 4194304)) : length(resolved.properties));
                 if (typeElementCount) {
                   types.push(getResolvedTypeWithoutAbstractConstructSignatures(resolved));
                 }
-                return typeToTypeNodeHelper(getIntersectionType(types), context4);
+                return typeToTypeNodeHelper(getIntersectionType(types), context3);
               }
-              const restoreFlags = saveRestoreFlags(context4);
-              context4.flags |= 4194304;
+              const restoreFlags = saveRestoreFlags(context3);
+              context3.flags |= 4194304;
               const members = createTypeNodesFromResolvedType(resolved);
               restoreFlags();
               const typeLiteralNode = factory.createTypeLiteralNode(members);
-              context4.approximateLength += 2;
+              context3.approximateLength += 2;
               setEmitFlags(
                 typeLiteralNode,
-                context4.flags & 1024 ? 0 : 1
+                context3.flags & 1024 ? 0 : 1
                 /* SingleLine */
               );
               return typeLiteralNode;
@@ -80396,18 +80396,18 @@ ${lanes.join("\n")}
             function typeReferenceToTypeNode(type2) {
               let typeArguments = getTypeArguments(type2);
               if (type2.target === globalArrayType || type2.target === globalReadonlyArrayType) {
-                if (context4.flags & 2) {
-                  const typeArgumentNode = typeToTypeNodeHelper(typeArguments[0], context4);
+                if (context3.flags & 2) {
+                  const typeArgumentNode = typeToTypeNodeHelper(typeArguments[0], context3);
                   return factory.createTypeReferenceNode(type2.target === globalArrayType ? "Array" : "ReadonlyArray", [typeArgumentNode]);
                 }
-                const elementType = typeToTypeNodeHelper(typeArguments[0], context4);
+                const elementType = typeToTypeNodeHelper(typeArguments[0], context3);
                 const arrayType = factory.createArrayTypeNode(elementType);
                 return type2.target === globalArrayType ? arrayType : factory.createTypeOperatorNode(148, arrayType);
               } else if (type2.target.objectFlags & 8) {
                 typeArguments = sameMap(typeArguments, (t, i) => removeMissingType(t, !!(type2.target.elementFlags[i] & 2)));
                 if (typeArguments.length > 0) {
                   const arity = getTypeReferenceArity(type2);
-                  const tupleConstituentNodes = mapToTypeNodes(typeArguments.slice(0, arity), context4);
+                  const tupleConstituentNodes = mapToTypeNodes(typeArguments.slice(0, arity), context3);
                   if (tupleConstituentNodes) {
                     const { labeledElementDeclarations } = type2.target;
                     for (let i = 0; i < tupleConstituentNodes.length; i++) {
@@ -80438,7 +80438,7 @@ ${lanes.join("\n")}
                     return type2.target.readonly ? factory.createTypeOperatorNode(148, tupleTypeNode) : tupleTypeNode;
                   }
                 }
-                if (context4.encounteredError || context4.flags & 524288) {
+                if (context3.encounteredError || context3.flags & 524288) {
                   const tupleTypeNode = setEmitFlags(
                     factory.createTupleTypeNode([]),
                     1
@@ -80446,9 +80446,9 @@ ${lanes.join("\n")}
                   );
                   return type2.target.readonly ? factory.createTypeOperatorNode(148, tupleTypeNode) : tupleTypeNode;
                 }
-                context4.encounteredError = true;
+                context3.encounteredError = true;
                 return void 0;
-              } else if (context4.flags & 2048 && type2.symbol.valueDeclaration && isClassLike(type2.symbol.valueDeclaration) && !isValueSymbolAccessible(type2.symbol, context4.enclosingDeclaration)) {
+              } else if (context3.flags & 2048 && type2.symbol.valueDeclaration && isClassLike(type2.symbol.valueDeclaration) && !isValueSymbolAccessible(type2.symbol, context3.enclosingDeclaration)) {
                 return createAnonymousTypeNode(type2);
               } else {
                 const outerTypeParameters = type2.target.outerTypeParameters;
@@ -80463,10 +80463,10 @@ ${lanes.join("\n")}
                       i++;
                     } while (i < length2 && getParentSymbolOfTypeParameter(outerTypeParameters[i]) === parent2);
                     if (!rangeEquals(outerTypeParameters, typeArguments, start, i)) {
-                      const typeArgumentSlice = mapToTypeNodes(typeArguments.slice(start, i), context4);
-                      const restoreFlags2 = saveRestoreFlags(context4);
-                      context4.flags |= 16;
-                      const ref = symbolToTypeNode(parent2, context4, 788968, typeArgumentSlice);
+                      const typeArgumentSlice = mapToTypeNodes(typeArguments.slice(start, i), context3);
+                      const restoreFlags2 = saveRestoreFlags(context3);
+                      context3.flags |= 16;
+                      const ref = symbolToTypeNode(parent2, context3, 788968, typeArgumentSlice);
                       restoreFlags2();
                       resultType = !resultType ? ref : appendReferenceToType(resultType, ref);
                     }
@@ -80503,11 +80503,11 @@ ${lanes.join("\n")}
                       }
                     }
                   }
-                  typeArgumentNodes = mapToTypeNodes(typeArguments.slice(i, typeParameterCount), context4);
+                  typeArgumentNodes = mapToTypeNodes(typeArguments.slice(i, typeParameterCount), context3);
                 }
-                const restoreFlags = saveRestoreFlags(context4);
-                context4.flags |= 16;
-                const finalRef = symbolToTypeNode(type2.symbol, context4, 788968, typeArgumentNodes);
+                const restoreFlags = saveRestoreFlags(context3);
+                context3.flags |= 16;
+                const finalRef = symbolToTypeNode(type2.symbol, context3, 788968, typeArgumentNodes);
                 restoreFlags();
                 return !resultType ? finalRef : appendReferenceToType(resultType, finalRef);
               }
@@ -80613,9 +80613,9 @@ ${lanes.join("\n")}
               return [indexInfoToIndexSignatureDeclarationHelper(indexInfo, context22, typeNode)];
             }
             function createTypeNodesFromResolvedType(resolvedType) {
-              if (checkTruncationLength(context4)) {
-                context4.out.truncated = true;
-                if (context4.flags & 1) {
+              if (checkTruncationLength(context3)) {
+                context3.out.truncated = true;
+                if (context3.flags & 1) {
                   return [addSyntheticTrailingComment(factory.createNotEmittedTypeElement(), 3, "elided")];
                 }
                 return [factory.createPropertySignature(
@@ -80628,40 +80628,40 @@ ${lanes.join("\n")}
                   void 0
                 )];
               }
-              context4.typeStack.push(-1);
+              context3.typeStack.push(-1);
               const typeElements = [];
               for (const signature of resolvedType.callSignatures) {
-                typeElements.push(signatureToSignatureDeclarationHelper(signature, 180, context4));
+                typeElements.push(signatureToSignatureDeclarationHelper(signature, 180, context3));
               }
               for (const signature of resolvedType.constructSignatures) {
                 if (signature.flags & 4) continue;
-                typeElements.push(signatureToSignatureDeclarationHelper(signature, 181, context4));
+                typeElements.push(signatureToSignatureDeclarationHelper(signature, 181, context3));
               }
               for (const info2 of resolvedType.indexInfos) {
-                typeElements.push(...indexInfoToObjectComputedNamesOrSignatureDeclaration(info2, context4, resolvedType.objectFlags & 1024 ? createElidedInformationPlaceholder(context4) : void 0));
+                typeElements.push(...indexInfoToObjectComputedNamesOrSignatureDeclaration(info2, context3, resolvedType.objectFlags & 1024 ? createElidedInformationPlaceholder(context3) : void 0));
               }
               const properties = resolvedType.properties;
               if (!properties) {
-                context4.typeStack.pop();
+                context3.typeStack.pop();
                 return typeElements;
               }
               let i = 0;
               for (const propertySymbol of properties) {
-                if (isExpanding(context4) && propertySymbol.flags & 4194304) {
+                if (isExpanding(context3) && propertySymbol.flags & 4194304) {
                   continue;
                 }
                 i++;
-                if (context4.flags & 2048) {
+                if (context3.flags & 2048) {
                   if (propertySymbol.flags & 4194304) {
                     continue;
                   }
-                  if (getDeclarationModifierFlagsFromSymbol(propertySymbol) & (2 | 4) && context4.tracker.reportPrivateInBaseOfClassExpression) {
-                    context4.tracker.reportPrivateInBaseOfClassExpression(unescapeLeadingUnderscores(propertySymbol.escapedName));
+                  if (getDeclarationModifierFlagsFromSymbol(propertySymbol) & (2 | 4) && context3.tracker.reportPrivateInBaseOfClassExpression) {
+                    context3.tracker.reportPrivateInBaseOfClassExpression(unescapeLeadingUnderscores(propertySymbol.escapedName));
                   }
                 }
-                if (checkTruncationLength(context4) && i + 2 < properties.length - 1) {
-                  context4.out.truncated = true;
-                  if (context4.flags & 1) {
+                if (checkTruncationLength(context3) && i + 2 < properties.length - 1) {
+                  context3.out.truncated = true;
+                  if (context3.flags & 1) {
                     const typeElement = typeElements.pop();
                     typeElements.push(addSyntheticTrailingComment(typeElement, 3, `... ${properties.length - i} more elided ...`));
                   } else {
@@ -80675,18 +80675,18 @@ ${lanes.join("\n")}
                       void 0
                     ));
                   }
-                  addPropertyToElementList(properties[properties.length - 1], context4, typeElements);
+                  addPropertyToElementList(properties[properties.length - 1], context3, typeElements);
                   break;
                 }
-                addPropertyToElementList(propertySymbol, context4, typeElements);
+                addPropertyToElementList(propertySymbol, context3, typeElements);
               }
-              context4.typeStack.pop();
+              context3.typeStack.pop();
               return typeElements.length ? typeElements : void 0;
             }
           }
-          function createElidedInformationPlaceholder(context4) {
-            context4.approximateLength += 3;
-            if (!(context4.flags & 1)) {
+          function createElidedInformationPlaceholder(context3) {
+            context3.approximateLength += 3;
+            if (!(context3.flags & 1)) {
               return factory.createTypeReferenceNode(
                 factory.createIdentifier("..."),
                 /*typeArguments*/
@@ -80698,17 +80698,17 @@ ${lanes.join("\n")}
               /* AnyKeyword */
             ), 3, "elided");
           }
-          function shouldUsePlaceholderForProperty(propertySymbol, context4) {
+          function shouldUsePlaceholderForProperty(propertySymbol, context3) {
             var _a;
             const depth = 3;
-            return !!(getCheckFlags(propertySymbol) & 8192) && (contains2(context4.reverseMappedStack, propertySymbol) || ((_a = context4.reverseMappedStack) == null ? void 0 : _a[0]) && !(getObjectFlags(last(context4.reverseMappedStack).links.propertyType) & 16) || isDeeplyNestedReverseMappedTypeProperty());
+            return !!(getCheckFlags(propertySymbol) & 8192) && (contains2(context3.reverseMappedStack, propertySymbol) || ((_a = context3.reverseMappedStack) == null ? void 0 : _a[0]) && !(getObjectFlags(last(context3.reverseMappedStack).links.propertyType) & 16) || isDeeplyNestedReverseMappedTypeProperty());
             function isDeeplyNestedReverseMappedTypeProperty() {
               var _a2;
-              if ((((_a2 = context4.reverseMappedStack) == null ? void 0 : _a2.length) ?? 0) < depth) {
+              if ((((_a2 = context3.reverseMappedStack) == null ? void 0 : _a2.length) ?? 0) < depth) {
                 return false;
               }
               for (let i = 0; i < depth; i++) {
-                const prop = context4.reverseMappedStack[context4.reverseMappedStack.length - 1 - i];
+                const prop = context3.reverseMappedStack[context3.reverseMappedStack.length - 1 - i];
                 if (prop.links.mappedType.symbol !== propertySymbol.links.mappedType.symbol) {
                   return false;
                 }
@@ -80716,33 +80716,33 @@ ${lanes.join("\n")}
               return true;
             }
           }
-          function addPropertyToElementList(propertySymbol, context4, typeElements) {
+          function addPropertyToElementList(propertySymbol, context3, typeElements) {
             var _a;
             const propertyIsReverseMapped = !!(getCheckFlags(propertySymbol) & 8192);
-            const propertyType = shouldUsePlaceholderForProperty(propertySymbol, context4) ? anyType : getNonMissingTypeOfSymbol(propertySymbol);
-            const saveEnclosingDeclaration = context4.enclosingDeclaration;
-            context4.enclosingDeclaration = void 0;
-            if (context4.tracker.canTrackSymbol && isLateBoundName(propertySymbol.escapedName)) {
+            const propertyType = shouldUsePlaceholderForProperty(propertySymbol, context3) ? anyType : getNonMissingTypeOfSymbol(propertySymbol);
+            const saveEnclosingDeclaration = context3.enclosingDeclaration;
+            context3.enclosingDeclaration = void 0;
+            if (context3.tracker.canTrackSymbol && isLateBoundName(propertySymbol.escapedName)) {
               if (propertySymbol.declarations) {
                 const decl = first(propertySymbol.declarations);
                 if (hasLateBindableName(decl)) {
                   if (isBinaryExpression(decl)) {
                     const name = getNameOfDeclaration(decl);
                     if (name && isElementAccessExpression(name) && isPropertyAccessEntityNameExpression(name.argumentExpression)) {
-                      trackComputedName(name.argumentExpression, saveEnclosingDeclaration, context4);
+                      trackComputedName(name.argumentExpression, saveEnclosingDeclaration, context3);
                     }
                   } else {
-                    trackComputedName(decl.name.expression, saveEnclosingDeclaration, context4);
+                    trackComputedName(decl.name.expression, saveEnclosingDeclaration, context3);
                   }
                 }
               } else {
-                context4.tracker.reportNonSerializableProperty(symbolToString(propertySymbol));
+                context3.tracker.reportNonSerializableProperty(symbolToString(propertySymbol));
               }
             }
-            context4.enclosingDeclaration = propertySymbol.valueDeclaration || ((_a = propertySymbol.declarations) == null ? void 0 : _a[0]) || saveEnclosingDeclaration;
-            const propertyName = getPropertyNameNodeForSymbol(propertySymbol, context4);
-            context4.enclosingDeclaration = saveEnclosingDeclaration;
-            context4.approximateLength += symbolName(propertySymbol).length + 1;
+            context3.enclosingDeclaration = propertySymbol.valueDeclaration || ((_a = propertySymbol.declarations) == null ? void 0 : _a[0]) || saveEnclosingDeclaration;
+            const propertyName = getPropertyNameNodeForSymbol(propertySymbol, context3);
+            context3.enclosingDeclaration = saveEnclosingDeclaration;
+            context3.approximateLength += symbolName(propertySymbol).length + 1;
             if (propertySymbol.flags & 98304) {
               const writeType = getWriteTypeOfSymbol(propertySymbol);
               if (!isErrorType(propertyType) && !isErrorType(writeType)) {
@@ -80762,8 +80762,8 @@ ${lanes.join("\n")}
                     const getterSignature = getSignatureFromDeclaration(getterDeclaration);
                     typeElements.push(
                       setCommentRange2(
-                        context4,
-                        signatureToSignatureDeclarationHelper(symbolMapper ? instantiateSignature(getterSignature, symbolMapper) : getterSignature, 178, context4, { name: propertyName }),
+                        context3,
+                        signatureToSignatureDeclarationHelper(symbolMapper ? instantiateSignature(getterSignature, symbolMapper) : getterSignature, 178, context3, { name: propertyName }),
                         getterDeclaration
                       )
                     );
@@ -80777,8 +80777,8 @@ ${lanes.join("\n")}
                     const setterSignature = getSignatureFromDeclaration(setterDeclaration);
                     typeElements.push(
                       setCommentRange2(
-                        context4,
-                        signatureToSignatureDeclarationHelper(symbolMapper ? instantiateSignature(setterSignature, symbolMapper) : setterSignature, 179, context4, { name: propertyName }),
+                        context3,
+                        signatureToSignatureDeclarationHelper(symbolMapper ? instantiateSignature(setterSignature, symbolMapper) : setterSignature, 179, context3, { name: propertyName }),
                         setterDeclaration
                       )
                     );
@@ -80803,8 +80803,8 @@ ${lanes.join("\n")}
                   );
                   typeElements.push(
                     setCommentRange2(
-                      context4,
-                      signatureToSignatureDeclarationHelper(fakeGetterSignature, 178, context4, { name: propertyName }),
+                      context3,
+                      signatureToSignatureDeclarationHelper(fakeGetterSignature, 178, context3, { name: propertyName }),
                       propDeclaration
                     )
                   );
@@ -80826,7 +80826,7 @@ ${lanes.join("\n")}
                     /* None */
                   );
                   typeElements.push(
-                    signatureToSignatureDeclarationHelper(fakeSetterSignature, 179, context4, { name: propertyName })
+                    signatureToSignatureDeclarationHelper(fakeSetterSignature, 179, context3, { name: propertyName })
                   );
                   return;
                 }
@@ -80843,7 +80843,7 @@ ${lanes.join("\n")}
                 /* Call */
               );
               for (const signature of signatures) {
-                const methodDeclaration = signatureToSignatureDeclarationHelper(signature, 174, context4, { name: propertyName, questionToken: optionalToken });
+                const methodDeclaration = signatureToSignatureDeclarationHelper(signature, 174, context3, { name: propertyName, questionToken: optionalToken });
                 typeElements.push(preserveCommentsOn(methodDeclaration, signature.declaration || propertySymbol.valueDeclaration));
               }
               if (signatures.length || !optionalToken) {
@@ -80851,15 +80851,15 @@ ${lanes.join("\n")}
               }
             }
             let propertyTypeNode;
-            if (shouldUsePlaceholderForProperty(propertySymbol, context4)) {
-              propertyTypeNode = createElidedInformationPlaceholder(context4);
+            if (shouldUsePlaceholderForProperty(propertySymbol, context3)) {
+              propertyTypeNode = createElidedInformationPlaceholder(context3);
             } else {
               if (propertyIsReverseMapped) {
-                context4.reverseMappedStack || (context4.reverseMappedStack = []);
-                context4.reverseMappedStack.push(propertySymbol);
+                context3.reverseMappedStack || (context3.reverseMappedStack = []);
+                context3.reverseMappedStack.push(propertySymbol);
               }
               propertyTypeNode = propertyType ? serializeTypeForDeclaration(
-                context4,
+                context3,
                 /*declaration*/
                 void 0,
                 propertyType,
@@ -80869,7 +80869,7 @@ ${lanes.join("\n")}
                 /* AnyKeyword */
               );
               if (propertyIsReverseMapped) {
-                context4.reverseMappedStack.pop();
+                context3.reverseMappedStack.pop();
               }
             }
             const modifiers = isReadonlySymbol(propertySymbol) ? [factory.createToken(
@@ -80877,7 +80877,7 @@ ${lanes.join("\n")}
               /* ReadonlyKeyword */
             )] : void 0;
             if (modifiers) {
-              context4.approximateLength += 9;
+              context3.approximateLength += 9;
             }
             const propertySignature = factory.createPropertySignature(
               modifiers,
@@ -80898,24 +80898,24 @@ ${lanes.join("\n")}
                   setSyntheticLeadingComments(node, [{ kind: 3, text: "*\n * " + commentText.replace(/\n/g, "\n * ") + "\n ", pos: -1, end: -1, hasTrailingNewLine: true }]);
                 }
               } else if (range) {
-                setCommentRange2(context4, node, range);
+                setCommentRange2(context3, node, range);
               }
               return node;
             }
           }
-          function setCommentRange2(context4, node, range) {
-            if (context4.enclosingFile && context4.enclosingFile === getSourceFileOfNode(range)) {
+          function setCommentRange2(context3, node, range) {
+            if (context3.enclosingFile && context3.enclosingFile === getSourceFileOfNode(range)) {
               return setCommentRange(node, range);
             }
             return node;
           }
-          function mapToTypeNodes(types, context4, isBareList) {
+          function mapToTypeNodes(types, context3, isBareList) {
             if (some(types)) {
-              if (checkTruncationLength(context4)) {
-                context4.out.truncated = true;
+              if (checkTruncationLength(context3)) {
+                context3.out.truncated = true;
                 if (!isBareList) {
                   return [
-                    context4.flags & 1 ? addSyntheticLeadingComment(factory.createKeywordTypeNode(
+                    context3.flags & 1 ? addSyntheticLeadingComment(factory.createKeywordTypeNode(
                       133
                       /* AnyKeyword */
                     ), 3, "elided") : factory.createTypeReferenceNode(
@@ -80926,8 +80926,8 @@ ${lanes.join("\n")}
                   ];
                 } else if (types.length > 2) {
                   return [
-                    typeToTypeNodeHelper(types[0], context4),
-                    context4.flags & 1 ? addSyntheticLeadingComment(factory.createKeywordTypeNode(
+                    typeToTypeNodeHelper(types[0], context3),
+                    context3.flags & 1 ? addSyntheticLeadingComment(factory.createKeywordTypeNode(
                       133
                       /* AnyKeyword */
                     ), 3, `... ${types.length - 2} more elided ...`) : factory.createTypeReferenceNode(
@@ -80935,20 +80935,20 @@ ${lanes.join("\n")}
                       /*typeArguments*/
                       void 0
                     ),
-                    typeToTypeNodeHelper(types[types.length - 1], context4)
+                    typeToTypeNodeHelper(types[types.length - 1], context3)
                   ];
                 }
               }
-              const mayHaveNameCollisions = !(context4.flags & 64);
+              const mayHaveNameCollisions = !(context3.flags & 64);
               const seenNames = mayHaveNameCollisions ? createMultiMap() : void 0;
               const result = [];
               let i = 0;
               for (const type of types) {
                 i++;
-                if (checkTruncationLength(context4) && i + 2 < types.length - 1) {
-                  context4.out.truncated = true;
+                if (checkTruncationLength(context3) && i + 2 < types.length - 1) {
+                  context3.out.truncated = true;
                   result.push(
-                    context4.flags & 1 ? addSyntheticLeadingComment(factory.createKeywordTypeNode(
+                    context3.flags & 1 ? addSyntheticLeadingComment(factory.createKeywordTypeNode(
                       133
                       /* AnyKeyword */
                     ), 3, `... ${types.length - i} more elided ...`) : factory.createTypeReferenceNode(
@@ -80957,14 +80957,14 @@ ${lanes.join("\n")}
                       void 0
                     )
                   );
-                  const typeNode2 = typeToTypeNodeHelper(types[types.length - 1], context4);
+                  const typeNode2 = typeToTypeNodeHelper(types[types.length - 1], context3);
                   if (typeNode2) {
                     result.push(typeNode2);
                   }
                   break;
                 }
-                context4.approximateLength += 2;
-                const typeNode = typeToTypeNodeHelper(type, context4);
+                context3.approximateLength += 2;
+                const typeNode = typeToTypeNodeHelper(type, context3);
                 if (typeNode) {
                   result.push(typeNode);
                   if (seenNames && isIdentifierTypeReference(typeNode)) {
@@ -80973,12 +80973,12 @@ ${lanes.join("\n")}
                 }
               }
               if (seenNames) {
-                const restoreFlags = saveRestoreFlags(context4);
-                context4.flags |= 64;
+                const restoreFlags = saveRestoreFlags(context3);
+                context3.flags |= 64;
                 seenNames.forEach((types2) => {
                   if (!arrayIsHomogeneous(types2, ([a], [b]) => typesAreSameReference(a, b))) {
                     for (const [type, resultIndex] of types2) {
-                      result[resultIndex] = typeToTypeNodeHelper(type, context4);
+                      result[resultIndex] = typeToTypeNodeHelper(type, context3);
                     }
                   }
                 });
@@ -80990,9 +80990,9 @@ ${lanes.join("\n")}
           function typesAreSameReference(a, b) {
             return a === b || !!a.symbol && a.symbol === b.symbol || !!a.aliasSymbol && a.aliasSymbol === b.aliasSymbol;
           }
-          function indexInfoToIndexSignatureDeclarationHelper(indexInfo, context4, typeNode) {
+          function indexInfoToIndexSignatureDeclarationHelper(indexInfo, context3, typeNode) {
             const name = getNameFromIndexInfo(indexInfo) || "x";
-            const indexerTypeNode = typeToTypeNodeHelper(indexInfo.keyType, context4);
+            const indexerTypeNode = typeToTypeNodeHelper(indexInfo.keyType, context3);
             const indexingParameter = factory.createParameterDeclaration(
               /*modifiers*/
               void 0,
@@ -81006,12 +81006,12 @@ ${lanes.join("\n")}
               void 0
             );
             if (!typeNode) {
-              typeNode = typeToTypeNodeHelper(indexInfo.type || anyType, context4);
+              typeNode = typeToTypeNodeHelper(indexInfo.type || anyType, context3);
             }
-            if (!indexInfo.type && !(context4.flags & 2097152)) {
-              context4.encounteredError = true;
+            if (!indexInfo.type && !(context3.flags & 2097152)) {
+              context3.encounteredError = true;
             }
-            context4.approximateLength += name.length + 4;
+            context3.approximateLength += name.length + 4;
             return factory.createIndexSignature(
               indexInfo.isReadonly ? [factory.createToken(
                 148
@@ -81021,7 +81021,7 @@ ${lanes.join("\n")}
               typeNode
             );
           }
-          function signatureToSignatureDeclarationHelper(signature, kind, context4, options) {
+          function signatureToSignatureDeclarationHelper(signature, kind, context3, options) {
             var _a;
             let typeParameters;
             let typeArguments;
@@ -81030,27 +81030,27 @@ ${lanes.join("\n")}
               /*skipUnionExpanding*/
               true
             )[0];
-            const cleanup = enterNewScope(context4, signature.declaration, expandedParams, signature.typeParameters, signature.parameters, signature.mapper);
-            context4.approximateLength += 3;
-            if (context4.flags & 32 && signature.target && signature.mapper && signature.target.typeParameters) {
-              typeArguments = signature.target.typeParameters.map((parameter) => typeToTypeNodeHelper(instantiateType(parameter, signature.mapper), context4));
+            const cleanup = enterNewScope(context3, signature.declaration, expandedParams, signature.typeParameters, signature.parameters, signature.mapper);
+            context3.approximateLength += 3;
+            if (context3.flags & 32 && signature.target && signature.mapper && signature.target.typeParameters) {
+              typeArguments = signature.target.typeParameters.map((parameter) => typeToTypeNodeHelper(instantiateType(parameter, signature.mapper), context3));
             } else {
-              typeParameters = signature.typeParameters && signature.typeParameters.map((parameter) => typeParameterToDeclaration(parameter, context4));
+              typeParameters = signature.typeParameters && signature.typeParameters.map((parameter) => typeParameterToDeclaration(parameter, context3));
             }
-            const restoreFlags = saveRestoreFlags(context4);
-            context4.flags &= ~256;
+            const restoreFlags = saveRestoreFlags(context3);
+            context3.flags &= ~256;
             const parameters = (some(expandedParams, (p) => p !== expandedParams[expandedParams.length - 1] && !!(getCheckFlags(p) & 32768)) ? signature.parameters : expandedParams).map((parameter) => symbolToParameterDeclaration(
               parameter,
-              context4,
+              context3,
               kind === 177
               /* Constructor */
             ));
-            const thisParameter = context4.flags & 33554432 ? void 0 : tryGetThisParameterDeclaration(signature, context4);
+            const thisParameter = context3.flags & 33554432 ? void 0 : tryGetThisParameterDeclaration(signature, context3);
             if (thisParameter) {
               parameters.unshift(thisParameter);
             }
             restoreFlags();
-            const returnTypeNode = serializeReturnTypeForSignature(context4, signature);
+            const returnTypeNode = serializeReturnTypeForSignature(context3, signature);
             let modifiers = options == null ? void 0 : options.modifiers;
             if (kind === 186 && signature.flags & 4) {
               const flags = modifiersToFlags(modifiers);
@@ -81137,18 +81137,18 @@ ${lanes.join("\n")}
             cleanup == null ? void 0 : cleanup();
             return node;
           }
-          function createRecoveryBoundary(context4) {
+          function createRecoveryBoundary(context3) {
             if (cancellationToken && cancellationToken.throwIfCancellationRequested) {
               cancellationToken.throwIfCancellationRequested();
             }
             let trackedSymbols;
             let unreportedErrors;
             let hadError = false;
-            const oldTracker = context4.tracker;
-            const oldTrackedSymbols = context4.trackedSymbols;
-            context4.trackedSymbols = void 0;
-            const oldEncounteredError = context4.encounteredError;
-            context4.tracker = new SymbolTrackerImpl(context4, {
+            const oldTracker = context3.tracker;
+            const oldTrackedSymbols = context3.trackedSymbols;
+            context3.trackedSymbols = void 0;
+            const oldEncounteredError = context3.encounteredError;
+            context3.tracker = new SymbolTrackerImpl(context3, {
               ...oldTracker.inner,
               reportCyclicStructureError() {
                 markError(() => oldTracker.reportCyclicStructureError());
@@ -81172,8 +81172,8 @@ ${lanes.join("\n")}
                 (trackedSymbols ?? (trackedSymbols = [])).push([sym, decl, meaning]);
                 return false;
               },
-              moduleResolverHost: context4.tracker.moduleResolverHost
-            }, context4.tracker.moduleResolverHost);
+              moduleResolverHost: context3.tracker.moduleResolverHost
+            }, context3.tracker.moduleResolverHost);
             return {
               startRecoveryScope,
               finalizeBoundary,
@@ -81200,15 +81200,15 @@ ${lanes.join("\n")}
               };
             }
             function finalizeBoundary() {
-              context4.tracker = oldTracker;
-              context4.trackedSymbols = oldTrackedSymbols;
-              context4.encounteredError = oldEncounteredError;
+              context3.tracker = oldTracker;
+              context3.trackedSymbols = oldTrackedSymbols;
+              context3.encounteredError = oldEncounteredError;
               unreportedErrors == null ? void 0 : unreportedErrors.forEach((fn) => fn());
               if (hadError) {
                 return false;
               }
               trackedSymbols == null ? void 0 : trackedSymbols.forEach(
-                ([symbol, enclosingDeclaration, meaning]) => context4.tracker.trackSymbol(
+                ([symbol, enclosingDeclaration, meaning]) => context3.tracker.trackSymbol(
                   symbol,
                   enclosingDeclaration,
                   meaning
@@ -81217,23 +81217,23 @@ ${lanes.join("\n")}
               return true;
             }
           }
-          function enterNewScope(context4, declaration, expandedParams, typeParameters, originalParameters, mapper) {
-            const cleanupContext = cloneNodeBuilderContext(context4);
+          function enterNewScope(context3, declaration, expandedParams, typeParameters, originalParameters, mapper) {
+            const cleanupContext = cloneNodeBuilderContext(context3);
             let cleanupParams;
             let cleanupTypeParams;
-            const oldEnclosingDecl = context4.enclosingDeclaration;
-            const oldMapper = context4.mapper;
+            const oldEnclosingDecl = context3.enclosingDeclaration;
+            const oldMapper = context3.mapper;
             if (mapper) {
-              context4.mapper = mapper;
+              context3.mapper = mapper;
             }
-            if (context4.enclosingDeclaration && declaration) {
+            if (context3.enclosingDeclaration && declaration) {
               let pushFakeScope2 = function(kind, addAll) {
-                Debug.assert(context4.enclosingDeclaration);
+                Debug.assert(context3.enclosingDeclaration);
                 let existingFakeScope;
-                if (getNodeLinks(context4.enclosingDeclaration).fakeScopeForSignatureDeclaration === kind) {
-                  existingFakeScope = context4.enclosingDeclaration;
-                } else if (context4.enclosingDeclaration.parent && getNodeLinks(context4.enclosingDeclaration.parent).fakeScopeForSignatureDeclaration === kind) {
-                  existingFakeScope = context4.enclosingDeclaration.parent;
+                if (getNodeLinks(context3.enclosingDeclaration).fakeScopeForSignatureDeclaration === kind) {
+                  existingFakeScope = context3.enclosingDeclaration;
+                } else if (context3.enclosingDeclaration.parent && getNodeLinks(context3.enclosingDeclaration.parent).fakeScopeForSignatureDeclaration === kind) {
+                  existingFakeScope = context3.enclosingDeclaration.parent;
                 }
                 Debug.assertOptionalNode(existingFakeScope, isBlock);
                 const locals = (existingFakeScope == null ? void 0 : existingFakeScope.locals) ?? createSymbolTable();
@@ -81254,8 +81254,8 @@ ${lanes.join("\n")}
                   const fakeScope = factory.createBlock(emptyArray);
                   getNodeLinks(fakeScope).fakeScopeForSignatureDeclaration = kind;
                   fakeScope.locals = locals;
-                  setParent(fakeScope, context4.enclosingDeclaration);
-                  context4.enclosingDeclaration = fakeScope;
+                  setParent(fakeScope, context3.enclosingDeclaration);
+                  context3.enclosingDeclaration = fakeScope;
                 } else {
                   return function undo() {
                     forEach(newLocals, (s) => locals.delete(s));
@@ -81307,12 +81307,12 @@ ${lanes.join("\n")}
                   }
                 }
               );
-              if (context4.flags & 4 && some(typeParameters)) {
+              if (context3.flags & 4 && some(typeParameters)) {
                 cleanupTypeParams = pushFakeScope2(
                   "typeParams",
                   (add) => {
                     for (const typeParam of typeParameters ?? emptyArray) {
-                      const typeParamName = typeParameterToName(typeParam, context4).escapedText;
+                      const typeParamName = typeParameterToName(typeParam, context3).escapedText;
                       add(typeParamName, typeParam.symbol);
                     }
                   }
@@ -81323,13 +81323,13 @@ ${lanes.join("\n")}
               cleanupParams == null ? void 0 : cleanupParams();
               cleanupTypeParams == null ? void 0 : cleanupTypeParams();
               cleanupContext();
-              context4.enclosingDeclaration = oldEnclosingDecl;
-              context4.mapper = oldMapper;
+              context3.enclosingDeclaration = oldEnclosingDecl;
+              context3.mapper = oldMapper;
             };
           }
-          function tryGetThisParameterDeclaration(signature, context4) {
+          function tryGetThisParameterDeclaration(signature, context3) {
             if (signature.thisParameter) {
-              return symbolToParameterDeclaration(signature.thisParameter, context4);
+              return symbolToParameterDeclaration(signature.thisParameter, context3);
             }
             if (signature.declaration && isInJSFile(signature.declaration)) {
               const thisTag = getJSDocThisTag(signature.declaration);
@@ -81342,29 +81342,29 @@ ${lanes.join("\n")}
                   "this",
                   /*questionToken*/
                   void 0,
-                  typeToTypeNodeHelper(getTypeFromTypeNode2(context4, thisTag.typeExpression), context4)
+                  typeToTypeNodeHelper(getTypeFromTypeNode2(context3, thisTag.typeExpression), context3)
                 );
               }
             }
           }
-          function typeParameterToDeclarationWithConstraint(type, context4, constraintNode) {
-            const restoreFlags = saveRestoreFlags(context4);
-            context4.flags &= ~512;
+          function typeParameterToDeclarationWithConstraint(type, context3, constraintNode) {
+            const restoreFlags = saveRestoreFlags(context3);
+            context3.flags &= ~512;
             const modifiers = factory.createModifiersFromModifierFlags(getTypeParameterModifiers(type));
-            const name = typeParameterToName(type, context4);
+            const name = typeParameterToName(type, context3);
             const defaultParameter = getDefaultFromTypeParameter(type);
-            const defaultParameterNode = defaultParameter && typeToTypeNodeHelper(defaultParameter, context4);
+            const defaultParameterNode = defaultParameter && typeToTypeNodeHelper(defaultParameter, context3);
             restoreFlags();
             return factory.createTypeParameterDeclaration(modifiers, name, constraintNode, defaultParameterNode);
           }
-          function typeToTypeNodeHelperWithPossibleReusableTypeNode(type, typeNode, context4) {
-            return !canPossiblyExpandType(type, context4) && typeNode && getTypeFromTypeNode2(context4, typeNode) === type && syntacticNodeBuilder.tryReuseExistingTypeNode(context4, typeNode) || typeToTypeNodeHelper(type, context4);
+          function typeToTypeNodeHelperWithPossibleReusableTypeNode(type, typeNode, context3) {
+            return !canPossiblyExpandType(type, context3) && typeNode && getTypeFromTypeNode2(context3, typeNode) === type && syntacticNodeBuilder.tryReuseExistingTypeNode(context3, typeNode) || typeToTypeNodeHelper(type, context3);
           }
-          function typeParameterToDeclaration(type, context4, constraint = getConstraintOfTypeParameter(type)) {
-            const constraintNode = constraint && typeToTypeNodeHelperWithPossibleReusableTypeNode(constraint, getConstraintDeclaration(type), context4);
-            return typeParameterToDeclarationWithConstraint(type, context4, constraintNode);
+          function typeParameterToDeclaration(type, context3, constraint = getConstraintOfTypeParameter(type)) {
+            const constraintNode = constraint && typeToTypeNodeHelperWithPossibleReusableTypeNode(constraint, getConstraintDeclaration(type), context3);
+            return typeParameterToDeclarationWithConstraint(type, context3, constraintNode);
           }
-          function typePredicateToTypePredicateNodeHelper(typePredicate, context4) {
+          function typePredicateToTypePredicateNodeHelper(typePredicate, context3) {
             const assertsModifier = typePredicate.kind === 2 || typePredicate.kind === 3 ? factory.createToken(
               131
               /* AssertsKeyword */
@@ -81374,7 +81374,7 @@ ${lanes.join("\n")}
               16777216
               /* NoAsciiEscaping */
             ) : factory.createThisTypeNode();
-            const typeNode = typePredicate.type && typeToTypeNodeHelper(typePredicate.type, context4);
+            const typeNode = typePredicate.type && typeToTypeNodeHelper(typePredicate.type, context3);
             return factory.createTypePredicateNode(assertsModifier, parameterName, typeNode);
           }
           function getEffectiveParameterDeclaration(parameterSymbol) {
@@ -81394,17 +81394,17 @@ ${lanes.join("\n")}
               );
             }
           }
-          function symbolToParameterDeclaration(parameterSymbol, context4, preserveModifierFlags) {
+          function symbolToParameterDeclaration(parameterSymbol, context3, preserveModifierFlags) {
             const parameterDeclaration = getEffectiveParameterDeclaration(parameterSymbol);
             const parameterType = getTypeOfSymbol(parameterSymbol);
-            const parameterTypeNode = serializeTypeForDeclaration(context4, parameterDeclaration, parameterType, parameterSymbol);
-            const modifiers = !(context4.flags & 8192) && preserveModifierFlags && parameterDeclaration && canHaveModifiers(parameterDeclaration) ? map(getModifiers(parameterDeclaration), factory.cloneNode) : void 0;
+            const parameterTypeNode = serializeTypeForDeclaration(context3, parameterDeclaration, parameterType, parameterSymbol);
+            const modifiers = !(context3.flags & 8192) && preserveModifierFlags && parameterDeclaration && canHaveModifiers(parameterDeclaration) ? map(getModifiers(parameterDeclaration), factory.cloneNode) : void 0;
             const isRest = parameterDeclaration && isRestParameter(parameterDeclaration) || getCheckFlags(parameterSymbol) & 32768;
             const dotDotDotToken = isRest ? factory.createToken(
               26
               /* DotDotDotToken */
             ) : void 0;
-            const name = parameterToParameterDeclarationName(parameterSymbol, parameterDeclaration, context4);
+            const name = parameterToParameterDeclarationName(parameterSymbol, parameterDeclaration, context3);
             const isOptional = parameterDeclaration && isOptionalParameter(parameterDeclaration) || getCheckFlags(parameterSymbol) & 16384;
             const questionToken = isOptional ? factory.createToken(
               58
@@ -81419,10 +81419,10 @@ ${lanes.join("\n")}
               /*initializer*/
               void 0
             );
-            context4.approximateLength += symbolName(parameterSymbol).length + 3;
+            context3.approximateLength += symbolName(parameterSymbol).length + 3;
             return parameterNode;
           }
-          function parameterToParameterDeclarationName(parameterSymbol, parameterDeclaration, context4) {
+          function parameterToParameterDeclarationName(parameterSymbol, parameterDeclaration, context3) {
             return parameterDeclaration ? parameterDeclaration.name ? parameterDeclaration.name.kind === 80 ? setEmitFlags(
               factory.cloneNode(parameterDeclaration.name),
               16777216
@@ -81435,8 +81435,8 @@ ${lanes.join("\n")}
             function cloneBindingName(node) {
               return elideInitializerAndSetEmitFlags(node);
               function elideInitializerAndSetEmitFlags(node2) {
-                if (context4.tracker.canTrackSymbol && isComputedPropertyName(node2) && isLateBindableName(node2)) {
-                  trackComputedName(node2.expression, context4.enclosingDeclaration, context4);
+                if (context3.tracker.canTrackSymbol && isComputedPropertyName(node2) && isLateBindableName(node2)) {
+                  trackComputedName(node2.expression, context3.enclosingDeclaration, context3);
                 }
                 let visited = visitEachChild(
                   node2,
@@ -81468,8 +81468,8 @@ ${lanes.join("\n")}
               }
             }
           }
-          function trackComputedName(accessExpression, enclosingDeclaration, context4) {
-            if (!context4.tracker.canTrackSymbol) return;
+          function trackComputedName(accessExpression, enclosingDeclaration, context3) {
+            if (!context3.tracker.canTrackSymbol) return;
             const firstIdentifier = getFirstIdentifier(accessExpression);
             const name = resolveName(
               enclosingDeclaration,
@@ -81481,7 +81481,7 @@ ${lanes.join("\n")}
               true
             );
             if (name) {
-              context4.tracker.trackSymbol(
+              context3.tracker.trackSymbol(
                 name,
                 enclosingDeclaration,
                 111551
@@ -81498,7 +81498,7 @@ ${lanes.join("\n")}
                 true
               );
               if (fallback) {
-                context4.tracker.trackSymbol(
+                context3.tracker.trackSymbol(
                   fallback,
                   enclosingDeclaration,
                   111551
@@ -81507,14 +81507,14 @@ ${lanes.join("\n")}
               }
             }
           }
-          function lookupSymbolChain(symbol, context4, meaning, yieldModuleSymbol) {
-            context4.tracker.trackSymbol(symbol, context4.enclosingDeclaration, meaning);
-            return lookupSymbolChainWorker(symbol, context4, meaning, yieldModuleSymbol);
+          function lookupSymbolChain(symbol, context3, meaning, yieldModuleSymbol) {
+            context3.tracker.trackSymbol(symbol, context3.enclosingDeclaration, meaning);
+            return lookupSymbolChainWorker(symbol, context3, meaning, yieldModuleSymbol);
           }
-          function lookupSymbolChainWorker(symbol, context4, meaning, yieldModuleSymbol) {
+          function lookupSymbolChainWorker(symbol, context3, meaning, yieldModuleSymbol) {
             let chain;
             const isTypeParameter = symbol.flags & 262144;
-            if (!isTypeParameter && (context4.enclosingDeclaration || context4.flags & 64) && !(context4.internalFlags & 4)) {
+            if (!isTypeParameter && (context3.enclosingDeclaration || context3.flags & 64) && !(context3.internalFlags & 4)) {
               chain = Debug.checkDefined(getSymbolChain(
                 symbol,
                 meaning,
@@ -81527,13 +81527,13 @@ ${lanes.join("\n")}
             }
             return chain;
             function getSymbolChain(symbol2, meaning2, endOfChain) {
-              let accessibleSymbolChain = getAccessibleSymbolChain(symbol2, context4.enclosingDeclaration, meaning2, !!(context4.flags & 128));
+              let accessibleSymbolChain = getAccessibleSymbolChain(symbol2, context3.enclosingDeclaration, meaning2, !!(context3.flags & 128));
               let parentSpecifiers;
-              if (!accessibleSymbolChain || needsQualification(accessibleSymbolChain[0], context4.enclosingDeclaration, accessibleSymbolChain.length === 1 ? meaning2 : getQualifiedLeftMeaning(meaning2))) {
-                const parents = getContainersOfSymbol(accessibleSymbolChain ? accessibleSymbolChain[0] : symbol2, context4.enclosingDeclaration, meaning2);
+              if (!accessibleSymbolChain || needsQualification(accessibleSymbolChain[0], context3.enclosingDeclaration, accessibleSymbolChain.length === 1 ? meaning2 : getQualifiedLeftMeaning(meaning2))) {
+                const parents = getContainersOfSymbol(accessibleSymbolChain ? accessibleSymbolChain[0] : symbol2, context3.enclosingDeclaration, meaning2);
                 if (length(parents)) {
                   parentSpecifiers = parents.map(
-                    (symbol3) => some(symbol3.declarations, hasNonGlobalAugmentationExternalModuleSymbol) ? getSpecifierForModuleSymbol(symbol3, context4) : void 0
+                    (symbol3) => some(symbol3.declarations, hasNonGlobalAugmentationExternalModuleSymbol) ? getSpecifierForModuleSymbol(symbol3, context3) : void 0
                   );
                   const indices = parents.map((_, i) => i);
                   indices.sort(sortByBestName);
@@ -81592,38 +81592,38 @@ ${lanes.join("\n")}
               }
             }
           }
-          function typeParametersToTypeParameterDeclarations(symbol, context4) {
+          function typeParametersToTypeParameterDeclarations(symbol, context3) {
             let typeParameterNodes;
             const targetSymbol = getTargetSymbol(symbol);
             if (targetSymbol.flags & (32 | 64 | 524288)) {
-              typeParameterNodes = factory.createNodeArray(map(getLocalTypeParametersOfClassOrInterfaceOrTypeAlias(symbol), (tp) => typeParameterToDeclaration(tp, context4)));
+              typeParameterNodes = factory.createNodeArray(map(getLocalTypeParametersOfClassOrInterfaceOrTypeAlias(symbol), (tp) => typeParameterToDeclaration(tp, context3)));
             }
             return typeParameterNodes;
           }
-          function lookupTypeParameterNodes(chain, index, context4) {
+          function lookupTypeParameterNodes(chain, index, context3) {
             var _a;
             Debug.assert(chain && 0 <= index && index < chain.length);
             const symbol = chain[index];
             const symbolId = getSymbolId(symbol);
-            if ((_a = context4.typeParameterSymbolList) == null ? void 0 : _a.has(symbolId)) {
+            if ((_a = context3.typeParameterSymbolList) == null ? void 0 : _a.has(symbolId)) {
               return void 0;
             }
-            if (context4.mustCreateTypeParameterSymbolList) {
-              context4.mustCreateTypeParameterSymbolList = false;
-              context4.typeParameterSymbolList = new Set(context4.typeParameterSymbolList);
+            if (context3.mustCreateTypeParameterSymbolList) {
+              context3.mustCreateTypeParameterSymbolList = false;
+              context3.typeParameterSymbolList = new Set(context3.typeParameterSymbolList);
             }
-            context4.typeParameterSymbolList.add(symbolId);
+            context3.typeParameterSymbolList.add(symbolId);
             let typeParameterNodes;
-            if (context4.flags & 512 && index < chain.length - 1) {
+            if (context3.flags & 512 && index < chain.length - 1) {
               const parentSymbol = symbol;
               const nextSymbol = chain[index + 1];
               if (getCheckFlags(nextSymbol) & 1) {
                 const params = getTypeParametersOfClassOrInterface(
                   parentSymbol.flags & 2097152 ? resolveAlias(parentSymbol) : parentSymbol
                 );
-                typeParameterNodes = mapToTypeNodes(map(params, (t) => getMappedType(t, nextSymbol.links.mapper)), context4);
+                typeParameterNodes = mapToTypeNodes(map(params, (t) => getMappedType(t, nextSymbol.links.mapper)), context3);
               } else {
-                typeParameterNodes = typeParametersToTypeParameterDeclarations(symbol, context4);
+                typeParameterNodes = typeParametersToTypeParameterDeclarations(symbol, context3);
               }
             }
             return typeParameterNodes;
@@ -81634,7 +81634,7 @@ ${lanes.join("\n")}
             }
             return top;
           }
-          function getSpecifierForModuleSymbol(symbol, context4, overrideImportMode) {
+          function getSpecifierForModuleSymbol(symbol, context3, overrideImportMode) {
             let file = getDeclarationOfKind(
               symbol,
               308
@@ -81658,22 +81658,22 @@ ${lanes.join("\n")}
                 return symbol.escapedName.substring(1, symbol.escapedName.length - 1);
               }
             }
-            if (!context4.enclosingFile || !context4.tracker.moduleResolverHost) {
+            if (!context3.enclosingFile || !context3.tracker.moduleResolverHost) {
               if (ambientModuleSymbolRegex.test(symbol.escapedName)) {
                 return symbol.escapedName.substring(1, symbol.escapedName.length - 1);
               }
               return getSourceFileOfNode(getNonAugmentationDeclaration(symbol)).fileName;
             }
-            const enclosingDeclaration = getOriginalNode(context4.enclosingDeclaration);
+            const enclosingDeclaration = getOriginalNode(context3.enclosingDeclaration);
             const originalModuleSpecifier = canHaveModuleSpecifier(enclosingDeclaration) ? tryGetModuleSpecifierFromDeclaration(enclosingDeclaration) : void 0;
-            const contextFile = context4.enclosingFile;
+            const contextFile = context3.enclosingFile;
             const resolutionMode = overrideImportMode || originalModuleSpecifier && host.getModeForUsageLocation(contextFile, originalModuleSpecifier) || contextFile && host.getDefaultResolutionModeForFile(contextFile);
             const cacheKey = createModeAwareCacheKey(contextFile.path, resolutionMode);
             const links = getSymbolLinks(symbol);
             let specifier = links.specifierCache && links.specifierCache.get(cacheKey);
             if (!specifier) {
               const isBundle2 = !!compilerOptions.outFile;
-              const { moduleResolverHost } = context4.tracker;
+              const { moduleResolverHost } = context3.tracker;
               const specifierCompilerOptions = isBundle2 ? { ...compilerOptions, baseUrl: moduleResolverHost.getCommonSourceDirectory() } : compilerOptions;
               specifier = first(getModuleSpecifiers(
                 symbol,
@@ -81696,13 +81696,13 @@ ${lanes.join("\n")}
             const identifier = factory.createIdentifier(unescapeLeadingUnderscores(symbol.escapedName));
             return symbol.parent ? factory.createQualifiedName(symbolToEntityNameNode(symbol.parent), identifier) : identifier;
           }
-          function symbolToTypeNode(symbol, context4, meaning, overrideTypeArguments) {
-            const chain = lookupSymbolChain(symbol, context4, meaning, !(context4.flags & 16384));
+          function symbolToTypeNode(symbol, context3, meaning, overrideTypeArguments) {
+            const chain = lookupSymbolChain(symbol, context3, meaning, !(context3.flags & 16384));
             const isTypeOf = meaning === 111551;
             if (some(chain[0].declarations, hasNonGlobalAugmentationExternalModuleSymbol)) {
               const nonRootParts = chain.length > 1 ? createAccessFromSymbolChain(chain, chain.length - 1, 1) : void 0;
-              const typeParameterNodes = overrideTypeArguments || lookupTypeParameterNodes(chain, 0, context4);
-              const contextFile = getSourceFileOfNode(getOriginalNode(context4.enclosingDeclaration));
+              const typeParameterNodes = overrideTypeArguments || lookupTypeParameterNodes(chain, 0, context3);
+              const contextFile = getSourceFileOfNode(getOriginalNode(context3.enclosingDeclaration));
               const targetFile = getSourceFileOfModule(chain[0]);
               let specifier;
               let attributes;
@@ -81710,7 +81710,7 @@ ${lanes.join("\n")}
                 if ((targetFile == null ? void 0 : targetFile.impliedNodeFormat) === 99 && targetFile.impliedNodeFormat !== (contextFile == null ? void 0 : contextFile.impliedNodeFormat)) {
                   specifier = getSpecifierForModuleSymbol(
                     chain[0],
-                    context4,
+                    context3,
                     99
                     /* ESNext */
                   );
@@ -81725,13 +81725,13 @@ ${lanes.join("\n")}
                 }
               }
               if (!specifier) {
-                specifier = getSpecifierForModuleSymbol(chain[0], context4);
+                specifier = getSpecifierForModuleSymbol(chain[0], context3);
               }
-              if (!(context4.flags & 67108864) && getEmitModuleResolutionKind(compilerOptions) !== 1 && specifier.includes("/node_modules/")) {
+              if (!(context3.flags & 67108864) && getEmitModuleResolutionKind(compilerOptions) !== 1 && specifier.includes("/node_modules/")) {
                 const oldSpecifier = specifier;
                 if (getEmitModuleResolutionKind(compilerOptions) === 3 || getEmitModuleResolutionKind(compilerOptions) === 99) {
                   const swappedMode = (contextFile == null ? void 0 : contextFile.impliedNodeFormat) === 99 ? 1 : 99;
-                  specifier = getSpecifierForModuleSymbol(chain[0], context4, swappedMode);
+                  specifier = getSpecifierForModuleSymbol(chain[0], context3, swappedMode);
                   if (specifier.includes("/node_modules/")) {
                     specifier = oldSpecifier;
                   } else {
@@ -81746,14 +81746,14 @@ ${lanes.join("\n")}
                   }
                 }
                 if (!attributes) {
-                  context4.encounteredError = true;
-                  if (context4.tracker.reportLikelyUnsafeImportRequiredError) {
-                    context4.tracker.reportLikelyUnsafeImportRequiredError(oldSpecifier);
+                  context3.encounteredError = true;
+                  if (context3.tracker.reportLikelyUnsafeImportRequiredError) {
+                    context3.tracker.reportLikelyUnsafeImportRequiredError(oldSpecifier);
                   }
                 }
               }
               const lit = factory.createLiteralTypeNode(factory.createStringLiteral(specifier));
-              context4.approximateLength += specifier.length + 10;
+              context3.approximateLength += specifier.length + 10;
               if (!nonRootParts || isEntityName(nonRootParts)) {
                 if (nonRootParts) {
                   const lastId = isIdentifier2(nonRootParts) ? nonRootParts : nonRootParts.right;
@@ -81787,15 +81787,15 @@ ${lanes.join("\n")}
               return factory.createTypeReferenceNode(entityName, lastTypeArgs);
             }
             function createAccessFromSymbolChain(chain2, index, stopper) {
-              const typeParameterNodes = index === chain2.length - 1 ? overrideTypeArguments : lookupTypeParameterNodes(chain2, index, context4);
+              const typeParameterNodes = index === chain2.length - 1 ? overrideTypeArguments : lookupTypeParameterNodes(chain2, index, context3);
               const symbol2 = chain2[index];
               const parent2 = chain2[index - 1];
               let symbolName2;
               if (index === 0) {
-                context4.flags |= 16777216;
-                symbolName2 = getNameOfSymbolAsWritten(symbol2, context4);
-                context4.approximateLength += (symbolName2 ? symbolName2.length : 0) + 1;
-                context4.flags ^= 16777216;
+                context3.flags |= 16777216;
+                symbolName2 = getNameOfSymbolAsWritten(symbol2, context3);
+                context3.approximateLength += (symbolName2 ? symbolName2.length : 0) + 1;
+                context3.flags ^= 16777216;
               } else {
                 if (parent2 && getExportsOfSymbol(parent2)) {
                   const exports2 = getExportsOfSymbol(parent2);
@@ -81816,10 +81816,10 @@ ${lanes.join("\n")}
                   }
                   return LHS;
                 }
-                symbolName2 = getNameOfSymbolAsWritten(symbol2, context4);
+                symbolName2 = getNameOfSymbolAsWritten(symbol2, context3);
               }
-              context4.approximateLength += symbolName2.length + 1;
-              if (!(context4.flags & 16) && parent2 && getMembersOfSymbol(parent2) && getMembersOfSymbol(parent2).get(symbol2.escapedName) && getSymbolIfSameReference(getMembersOfSymbol(parent2).get(symbol2.escapedName), symbol2)) {
+              context3.approximateLength += symbolName2.length + 1;
+              if (!(context3.flags & 16) && parent2 && getMembersOfSymbol(parent2) && getMembersOfSymbol(parent2).get(symbol2.escapedName) && getSymbolIfSameReference(getMembersOfSymbol(parent2).get(symbol2.escapedName), symbol2)) {
                 const LHS = createAccessFromSymbolChain(chain2, index - 1, stopper);
                 if (isIndexedAccessTypeNode(LHS)) {
                   return factory.createIndexedAccessTypeNode(LHS, factory.createLiteralTypeNode(factory.createStringLiteral(symbolName2)));
@@ -81844,9 +81844,9 @@ ${lanes.join("\n")}
               return identifier;
             }
           }
-          function typeParameterShadowsOtherTypeParameterInScope(escapedName, context4, type) {
+          function typeParameterShadowsOtherTypeParameterInScope(escapedName, context3, type) {
             const result = resolveName(
-              context4.enclosingDeclaration,
+              context3.enclosingDeclaration,
               escapedName,
               788968,
               /*nameNotFoundMessage*/
@@ -81859,17 +81859,17 @@ ${lanes.join("\n")}
             }
             return false;
           }
-          function typeParameterToName(type, context4) {
+          function typeParameterToName(type, context3) {
             var _a, _b, _c, _d;
-            if (context4.flags & 4 && context4.typeParameterNames) {
-              const cached = context4.typeParameterNames.get(getTypeId(type));
+            if (context3.flags & 4 && context3.typeParameterNames) {
+              const cached = context3.typeParameterNames.get(getTypeId(type));
               if (cached) {
                 return cached;
               }
             }
             let result = symbolToName(
               type.symbol,
-              context4,
+              context3,
               788968,
               /*expectsIdentifier*/
               true
@@ -81879,13 +81879,13 @@ ${lanes.join("\n")}
             }
             const decl = (_b = (_a = type.symbol) == null ? void 0 : _a.declarations) == null ? void 0 : _b[0];
             if (decl && isTypeParameterDeclaration(decl)) {
-              result = setTextRange2(context4, result, decl.name);
+              result = setTextRange2(context3, result, decl.name);
             }
-            if (context4.flags & 4) {
+            if (context3.flags & 4) {
               const rawtext = result.escapedText;
-              let i = ((_c = context4.typeParameterNamesByTextNextNameCount) == null ? void 0 : _c.get(rawtext)) || 0;
+              let i = ((_c = context3.typeParameterNamesByTextNextNameCount) == null ? void 0 : _c.get(rawtext)) || 0;
               let text = rawtext;
-              while (((_d = context4.typeParameterNamesByText) == null ? void 0 : _d.has(text)) || typeParameterShadowsOtherTypeParameterInScope(text, context4, type)) {
+              while (((_d = context3.typeParameterNamesByText) == null ? void 0 : _d.has(text)) || typeParameterShadowsOtherTypeParameterInScope(text, context3, type)) {
                 i++;
                 text = `${rawtext}_${i}`;
               }
@@ -81894,33 +81894,33 @@ ${lanes.join("\n")}
                 result = factory.createIdentifier(text);
                 setIdentifierTypeArguments(result, typeArguments);
               }
-              if (context4.mustCreateTypeParametersNamesLookups) {
-                context4.mustCreateTypeParametersNamesLookups = false;
-                context4.typeParameterNames = new Map(context4.typeParameterNames);
-                context4.typeParameterNamesByTextNextNameCount = new Map(context4.typeParameterNamesByTextNextNameCount);
-                context4.typeParameterNamesByText = new Set(context4.typeParameterNamesByText);
+              if (context3.mustCreateTypeParametersNamesLookups) {
+                context3.mustCreateTypeParametersNamesLookups = false;
+                context3.typeParameterNames = new Map(context3.typeParameterNames);
+                context3.typeParameterNamesByTextNextNameCount = new Map(context3.typeParameterNamesByTextNextNameCount);
+                context3.typeParameterNamesByText = new Set(context3.typeParameterNamesByText);
               }
-              context4.typeParameterNamesByTextNextNameCount.set(rawtext, i);
-              context4.typeParameterNames.set(getTypeId(type), result);
-              context4.typeParameterNamesByText.add(text);
+              context3.typeParameterNamesByTextNextNameCount.set(rawtext, i);
+              context3.typeParameterNames.set(getTypeId(type), result);
+              context3.typeParameterNamesByText.add(text);
             }
             return result;
           }
-          function symbolToName(symbol, context4, meaning, expectsIdentifier) {
-            const chain = lookupSymbolChain(symbol, context4, meaning);
-            if (expectsIdentifier && chain.length !== 1 && !context4.encounteredError && !(context4.flags & 65536)) {
-              context4.encounteredError = true;
+          function symbolToName(symbol, context3, meaning, expectsIdentifier) {
+            const chain = lookupSymbolChain(symbol, context3, meaning);
+            if (expectsIdentifier && chain.length !== 1 && !context3.encounteredError && !(context3.flags & 65536)) {
+              context3.encounteredError = true;
             }
             return createEntityNameFromSymbolChain(chain, chain.length - 1);
             function createEntityNameFromSymbolChain(chain2, index) {
-              const typeParameterNodes = lookupTypeParameterNodes(chain2, index, context4);
+              const typeParameterNodes = lookupTypeParameterNodes(chain2, index, context3);
               const symbol2 = chain2[index];
               if (index === 0) {
-                context4.flags |= 16777216;
+                context3.flags |= 16777216;
               }
-              const symbolName2 = getNameOfSymbolAsWritten(symbol2, context4);
+              const symbolName2 = getNameOfSymbolAsWritten(symbol2, context3);
               if (index === 0) {
-                context4.flags ^= 16777216;
+                context3.flags ^= 16777216;
               }
               const identifier = setEmitFlags(
                 factory.createIdentifier(symbolName2),
@@ -81932,23 +81932,23 @@ ${lanes.join("\n")}
               return index > 0 ? factory.createQualifiedName(createEntityNameFromSymbolChain(chain2, index - 1), identifier) : identifier;
             }
           }
-          function symbolToExpression(symbol, context4, meaning) {
-            const chain = lookupSymbolChain(symbol, context4, meaning);
+          function symbolToExpression(symbol, context3, meaning) {
+            const chain = lookupSymbolChain(symbol, context3, meaning);
             return createExpressionFromSymbolChain(chain, chain.length - 1);
             function createExpressionFromSymbolChain(chain2, index) {
-              const typeParameterNodes = lookupTypeParameterNodes(chain2, index, context4);
+              const typeParameterNodes = lookupTypeParameterNodes(chain2, index, context3);
               const symbol2 = chain2[index];
               if (index === 0) {
-                context4.flags |= 16777216;
+                context3.flags |= 16777216;
               }
-              let symbolName2 = getNameOfSymbolAsWritten(symbol2, context4);
+              let symbolName2 = getNameOfSymbolAsWritten(symbol2, context3);
               if (index === 0) {
-                context4.flags ^= 16777216;
+                context3.flags ^= 16777216;
               }
               let firstChar = symbolName2.charCodeAt(0);
               if (isSingleOrDoubleQuote(firstChar) && some(symbol2.declarations, hasNonGlobalAugmentationExternalModuleSymbol)) {
-                const specifier = getSpecifierForModuleSymbol(symbol2, context4);
-                context4.approximateLength += 2 + specifier.length;
+                const specifier = getSpecifierForModuleSymbol(symbol2, context3);
+                context3.approximateLength += 2 + specifier.length;
                 return factory.createStringLiteral(specifier);
               }
               if (index === 0 || canUsePropertyAccess(symbolName2, languageVersion)) {
@@ -81959,7 +81959,7 @@ ${lanes.join("\n")}
                 );
                 if (typeParameterNodes) setIdentifierTypeArguments(identifier, factory.createNodeArray(typeParameterNodes));
                 identifier.symbol = symbol2;
-                context4.approximateLength += 1 + symbolName2.length;
+                context3.approximateLength += 1 + symbolName2.length;
                 return index > 0 ? factory.createPropertyAccessExpression(createExpressionFromSymbolChain(chain2, index - 1), identifier) : identifier;
               } else {
                 if (firstChar === 91) {
@@ -81969,14 +81969,14 @@ ${lanes.join("\n")}
                 let expression;
                 if (isSingleOrDoubleQuote(firstChar) && !(symbol2.flags & 8)) {
                   const literalText = stripQuotes(symbolName2).replace(/\\./g, (s) => s.substring(1));
-                  context4.approximateLength += literalText.length + 2;
+                  context3.approximateLength += literalText.length + 2;
                   expression = factory.createStringLiteral(
                     literalText,
                     firstChar === 39
                     /* singleQuote */
                   );
                 } else if ("" + +symbolName2 === symbolName2) {
-                  context4.approximateLength += symbolName2.length;
+                  context3.approximateLength += symbolName2.length;
                   expression = factory.createNumericLiteral(+symbolName2);
                 }
                 if (!expression) {
@@ -81987,10 +81987,10 @@ ${lanes.join("\n")}
                   );
                   if (typeParameterNodes) setIdentifierTypeArguments(identifier, factory.createNodeArray(typeParameterNodes));
                   identifier.symbol = symbol2;
-                  context4.approximateLength += symbolName2.length;
+                  context3.approximateLength += symbolName2.length;
                   expression = identifier;
                 }
-                context4.approximateLength += 2;
+                context3.approximateLength += 2;
                 return factory.createElementAccessExpression(createExpressionFromSymbolChain(chain2, index - 1), expression);
               }
             }
@@ -82018,10 +82018,10 @@ ${lanes.join("\n")}
               false
             ), "'")));
           }
-          function getPropertyNameNodeForSymbol(symbol, context4) {
+          function getPropertyNameNodeForSymbol(symbol, context3) {
             const hashPrivateName = getClonedHashPrivateName(symbol);
             if (hashPrivateName) {
-              const shouldEmitErroneousFieldName = !!context4.tracker.reportPrivateInBaseOfClassExpression && context4.flags & 2048;
+              const shouldEmitErroneousFieldName = !!context3.tracker.reportPrivateInBaseOfClassExpression && context3.flags & 2048;
               if (!shouldEmitErroneousFieldName) {
                 return hashPrivateName;
               } else {
@@ -82041,14 +82041,14 @@ ${lanes.join("\n")}
             const stringNamed = !!length(symbol.declarations) && every(symbol.declarations, isStringNamed);
             const singleQuote = !!length(symbol.declarations) && every(symbol.declarations, isSingleQuotedStringNamed);
             const isMethod = !!(symbol.flags & 8192);
-            const fromNameType = getPropertyNameNodeForSymbolFromNameType(symbol, context4, singleQuote, stringNamed, isMethod);
+            const fromNameType = getPropertyNameNodeForSymbolFromNameType(symbol, context3, singleQuote, stringNamed, isMethod);
             if (fromNameType) {
               return fromNameType;
             }
             const rawName = unescapeLeadingUnderscores(symbol.escapedName);
             return createPropertyNameNodeForIdentifierOrLiteral(rawName, getEmitScriptTarget(compilerOptions), singleQuote, stringNamed, isMethod);
           }
-          function getPropertyNameNodeForSymbolFromNameType(symbol, context4, singleQuote, stringNamed, isMethod) {
+          function getPropertyNameNodeForSymbolFromNameType(symbol, context3, singleQuote, stringNamed, isMethod) {
             const nameType = getSymbolLinks(symbol).nameType;
             if (nameType) {
               if (nameType.flags & 384) {
@@ -82064,29 +82064,29 @@ ${lanes.join("\n")}
               if (nameType.flags & 8192) {
                 return factory.createComputedPropertyName(symbolToExpression(
                   nameType.symbol,
-                  context4,
+                  context3,
                   111551
                   /* Value */
                 ));
               }
             }
           }
-          function cloneNodeBuilderContext(context4) {
-            const oldMustCreateTypeParameterSymbolList = context4.mustCreateTypeParameterSymbolList;
-            const oldMustCreateTypeParametersNamesLookups = context4.mustCreateTypeParametersNamesLookups;
-            context4.mustCreateTypeParameterSymbolList = true;
-            context4.mustCreateTypeParametersNamesLookups = true;
-            const oldTypeParameterNames = context4.typeParameterNames;
-            const oldTypeParameterNamesByText = context4.typeParameterNamesByText;
-            const oldTypeParameterNamesByTextNextNameCount = context4.typeParameterNamesByTextNextNameCount;
-            const oldTypeParameterSymbolList = context4.typeParameterSymbolList;
+          function cloneNodeBuilderContext(context3) {
+            const oldMustCreateTypeParameterSymbolList = context3.mustCreateTypeParameterSymbolList;
+            const oldMustCreateTypeParametersNamesLookups = context3.mustCreateTypeParametersNamesLookups;
+            context3.mustCreateTypeParameterSymbolList = true;
+            context3.mustCreateTypeParametersNamesLookups = true;
+            const oldTypeParameterNames = context3.typeParameterNames;
+            const oldTypeParameterNamesByText = context3.typeParameterNamesByText;
+            const oldTypeParameterNamesByTextNextNameCount = context3.typeParameterNamesByTextNextNameCount;
+            const oldTypeParameterSymbolList = context3.typeParameterSymbolList;
             return () => {
-              context4.typeParameterNames = oldTypeParameterNames;
-              context4.typeParameterNamesByText = oldTypeParameterNamesByText;
-              context4.typeParameterNamesByTextNextNameCount = oldTypeParameterNamesByTextNextNameCount;
-              context4.typeParameterSymbolList = oldTypeParameterSymbolList;
-              context4.mustCreateTypeParameterSymbolList = oldMustCreateTypeParameterSymbolList;
-              context4.mustCreateTypeParametersNamesLookups = oldMustCreateTypeParametersNamesLookups;
+              context3.typeParameterNames = oldTypeParameterNames;
+              context3.typeParameterNamesByText = oldTypeParameterNamesByText;
+              context3.typeParameterNamesByTextNextNameCount = oldTypeParameterNamesByTextNextNameCount;
+              context3.typeParameterSymbolList = oldTypeParameterSymbolList;
+              context3.mustCreateTypeParameterSymbolList = oldMustCreateTypeParameterSymbolList;
+              context3.mustCreateTypeParametersNamesLookups = oldMustCreateTypeParametersNamesLookups;
             };
           }
           function getDeclarationWithTypeAnnotation(symbol, enclosingDeclaration) {
@@ -82107,24 +82107,24 @@ ${lanes.join("\n")}
             }
             return enclosingDeclaration;
           }
-          function serializeInferredTypeForDeclaration(symbol, context4, type) {
-            if (type.flags & 8192 && type.symbol === symbol && (!context4.enclosingDeclaration || some(symbol.declarations, (d) => getSourceFileOfNode(d) === context4.enclosingFile))) {
-              context4.flags |= 1048576;
+          function serializeInferredTypeForDeclaration(symbol, context3, type) {
+            if (type.flags & 8192 && type.symbol === symbol && (!context3.enclosingDeclaration || some(symbol.declarations, (d) => getSourceFileOfNode(d) === context3.enclosingFile))) {
+              context3.flags |= 1048576;
             }
-            const result = typeToTypeNodeHelper(type, context4);
+            const result = typeToTypeNodeHelper(type, context3);
             return result;
           }
-          function serializeTypeForDeclaration(context4, declaration, type, symbol) {
+          function serializeTypeForDeclaration(context3, declaration, type, symbol) {
             var _a;
             let result;
-            const addUndefinedForParameter = declaration && (isParameter(declaration) || isJSDocParameterTag(declaration)) && requiresAddingImplicitUndefined(declaration, context4.enclosingDeclaration);
+            const addUndefinedForParameter = declaration && (isParameter(declaration) || isJSDocParameterTag(declaration)) && requiresAddingImplicitUndefined(declaration, context3.enclosingDeclaration);
             const decl = declaration ?? symbol.valueDeclaration ?? getDeclarationWithTypeAnnotation(symbol) ?? ((_a = symbol.declarations) == null ? void 0 : _a[0]);
-            if (!canPossiblyExpandType(type, context4) && decl) {
-              const restore = addSymbolTypeToContext(context4, symbol, type);
+            if (!canPossiblyExpandType(type, context3) && decl) {
+              const restore = addSymbolTypeToContext(context3, symbol, type);
               if (isAccessor(decl)) {
-                result = syntacticNodeBuilder.serializeTypeOfAccessor(decl, symbol, context4);
+                result = syntacticNodeBuilder.serializeTypeOfAccessor(decl, symbol, context3);
               } else if (hasInferredType(decl) && !nodeIsSynthesized(decl) && !(getObjectFlags(type) & 196608)) {
-                result = syntacticNodeBuilder.serializeTypeOfDeclaration(decl, symbol, context4);
+                result = syntacticNodeBuilder.serializeTypeOfDeclaration(decl, symbol, context3);
               }
               restore();
             }
@@ -82132,7 +82132,7 @@ ${lanes.join("\n")}
               if (addUndefinedForParameter) {
                 type = getOptionalType(type);
               }
-              result = serializeInferredTypeForDeclaration(symbol, context4, type);
+              result = serializeInferredTypeForDeclaration(symbol, context3, type);
             }
             return result ?? factory.createKeywordTypeNode(
               133
@@ -82162,21 +82162,21 @@ ${lanes.join("\n")}
             }
             return false;
           }
-          function serializeReturnTypeForSignature(context4, signature) {
-            const suppressAny = context4.flags & 256;
-            const restoreFlags = saveRestoreFlags(context4);
-            if (suppressAny) context4.flags &= ~256;
+          function serializeReturnTypeForSignature(context3, signature) {
+            const suppressAny = context3.flags & 256;
+            const restoreFlags = saveRestoreFlags(context3);
+            if (suppressAny) context3.flags &= ~256;
             let returnTypeNode;
             const returnType = getReturnTypeOfSignature(signature);
             if (!(suppressAny && isTypeAny(returnType))) {
-              if (signature.declaration && !nodeIsSynthesized(signature.declaration) && !canPossiblyExpandType(returnType, context4)) {
+              if (signature.declaration && !nodeIsSynthesized(signature.declaration) && !canPossiblyExpandType(returnType, context3)) {
                 const declarationSymbol = getSymbolOfDeclaration(signature.declaration);
-                const restore = addSymbolTypeToContext(context4, declarationSymbol, returnType);
-                returnTypeNode = syntacticNodeBuilder.serializeReturnTypeForSignature(signature.declaration, declarationSymbol, context4);
+                const restore = addSymbolTypeToContext(context3, declarationSymbol, returnType);
+                returnTypeNode = syntacticNodeBuilder.serializeReturnTypeForSignature(signature.declaration, declarationSymbol, context3);
                 restore();
               }
               if (!returnTypeNode) {
-                returnTypeNode = serializeInferredReturnTypeForSignature(context4, signature, returnType);
+                returnTypeNode = serializeInferredReturnTypeForSignature(context3, signature, returnType);
               }
             }
             if (!returnTypeNode && !suppressAny) {
@@ -82188,15 +82188,15 @@ ${lanes.join("\n")}
             restoreFlags();
             return returnTypeNode;
           }
-          function serializeInferredReturnTypeForSignature(context4, signature, returnType) {
-            const oldSuppressReportInferenceFallback = context4.suppressReportInferenceFallback;
-            context4.suppressReportInferenceFallback = true;
+          function serializeInferredReturnTypeForSignature(context3, signature, returnType) {
+            const oldSuppressReportInferenceFallback = context3.suppressReportInferenceFallback;
+            context3.suppressReportInferenceFallback = true;
             const typePredicate = getTypePredicateOfSignature(signature);
-            const returnTypeNode = typePredicate ? typePredicateToTypePredicateNodeHelper(context4.mapper ? instantiateTypePredicate(typePredicate, context4.mapper) : typePredicate, context4) : typeToTypeNodeHelper(returnType, context4);
-            context4.suppressReportInferenceFallback = oldSuppressReportInferenceFallback;
+            const returnTypeNode = typePredicate ? typePredicateToTypePredicateNodeHelper(context3.mapper ? instantiateTypePredicate(typePredicate, context3.mapper) : typePredicate, context3) : typeToTypeNodeHelper(returnType, context3);
+            context3.suppressReportInferenceFallback = oldSuppressReportInferenceFallback;
             return returnTypeNode;
           }
-          function trackExistingEntityName(node, context4, enclosingDeclaration = context4.enclosingDeclaration) {
+          function trackExistingEntityName(node, context3, enclosingDeclaration = context3.enclosingDeclaration) {
             let introducesError = false;
             const leftmost = getFirstIdentifier(node);
             if (isInJSFile(node) && (isExportsIdentifier(leftmost) || isModuleExportsAccessExpression(leftmost.parent) || isQualifiedName(leftmost.parent) && isModuleIdentifier(leftmost.parent.left) && isExportsIdentifier(leftmost.parent.right))) {
@@ -82221,7 +82221,7 @@ ${lanes.join("\n")}
                 false
               ).accessibility !== 0) {
                 introducesError = true;
-                context4.tracker.reportInaccessibleThisError();
+                context3.tracker.reportInaccessibleThisError();
               }
               return { introducesError, node: attachSymbolToLeftmostIdentifier(node) };
             }
@@ -82233,7 +82233,7 @@ ${lanes.join("\n")}
               /*dontResolveAlias*/
               true
             );
-            if (context4.enclosingDeclaration && !(sym && sym.flags & 262144)) {
+            if (context3.enclosingDeclaration && !(sym && sym.flags & 262144)) {
               sym = getExportSymbolOfValueSymbolIfExported(sym);
               const symAtLocation = resolveEntityName(
                 leftmost,
@@ -82242,7 +82242,7 @@ ${lanes.join("\n")}
                 true,
                 /*dontResolveAlias*/
                 true,
-                context4.enclosingDeclaration
+                context3.enclosingDeclaration
               );
               if (
                 // Check for unusable parameters symbols
@@ -82251,7 +82251,7 @@ ${lanes.join("\n")}
                 symAtLocation && sym && !getSymbolIfSameReference(getExportSymbolOfValueSymbolIfExported(symAtLocation), sym)
               ) {
                 if (symAtLocation !== unknownSymbol) {
-                  context4.tracker.reportInferenceFallback(node);
+                  context3.tracker.reportInferenceFallback(node);
                 }
                 introducesError = true;
                 return { introducesError, node, sym };
@@ -82273,10 +82273,10 @@ ${lanes.join("\n")}
                 /*shouldComputeAliasesToMakeVisible*/
                 false
               ).accessibility !== 0) {
-                context4.tracker.reportInferenceFallback(node);
+                context3.tracker.reportInferenceFallback(node);
                 introducesError = true;
               } else {
-                context4.tracker.trackSymbol(sym, enclosingDeclaration, meaning);
+                context3.tracker.trackSymbol(sym, enclosingDeclaration, meaning);
               }
               return { introducesError, node: attachSymbolToLeftmostIdentifier(node) };
             }
@@ -82284,9 +82284,9 @@ ${lanes.join("\n")}
             function attachSymbolToLeftmostIdentifier(node2) {
               if (node2 === leftmost) {
                 const type = getDeclaredTypeOfSymbol(sym);
-                const name = sym.flags & 262144 ? typeParameterToName(type, context4) : factory.cloneNode(node2);
+                const name = sym.flags & 262144 ? typeParameterToName(type, context3) : factory.cloneNode(node2);
                 name.symbol = sym;
-                return setTextRange2(context4, setEmitFlags(
+                return setTextRange2(context3, setEmitFlags(
                   name,
                   16777216
                   /* NoAsciiEscaping */
@@ -82298,10 +82298,10 @@ ${lanes.join("\n")}
                 /*context*/
                 void 0
               );
-              return setTextRange2(context4, updated, node2);
+              return setTextRange2(context3, updated, node2);
             }
           }
-          function serializeTypeName(context4, node, isTypeOf, typeArguments) {
+          function serializeTypeName(context3, node, isTypeOf, typeArguments) {
             const meaning = isTypeOf ? 111551 : 788968;
             const symbol = resolveEntityName(
               node,
@@ -82313,16 +82313,16 @@ ${lanes.join("\n")}
             const resolvedSymbol = symbol.flags & 2097152 ? resolveAlias(symbol) : symbol;
             if (isSymbolAccessible(
               symbol,
-              context4.enclosingDeclaration,
+              context3.enclosingDeclaration,
               meaning,
               /*shouldComputeAliasesToMakeVisible*/
               false
             ).accessibility !== 0) return void 0;
-            return symbolToTypeNode(resolvedSymbol, context4, meaning, typeArguments);
+            return symbolToTypeNode(resolvedSymbol, context3, meaning, typeArguments);
           }
-          function canReuseTypeNode(context4, existing) {
+          function canReuseTypeNode(context3, existing) {
             const type = getTypeFromTypeNode2(
-              context4,
+              context3,
               existing,
               /*noMappedTypes*/
               true
@@ -82345,22 +82345,22 @@ ${lanes.join("\n")}
               if (!symbol) return false;
               if (symbol.flags & 262144) {
                 const declaredType = getDeclaredTypeOfSymbol(symbol);
-                return !(context4.mapper && getMappedType(declaredType, context4.mapper) !== declaredType);
+                return !(context3.mapper && getMappedType(declaredType, context3.mapper) !== declaredType);
               }
               if (isInJSDoc(existing)) {
                 return existingTypeNodeIsNotReferenceOrIsReferenceWithCompatibleTypeArgumentCount(existing, type) && !getIntendedTypeFromJSDocTypeReference(existing) && !!(symbol.flags & 788968);
               }
             }
             if (isTypeOperatorNode(existing) && existing.operator === 158 && existing.type.kind === 155) {
-              const effectiveEnclosingContext = context4.enclosingDeclaration && getEnclosingDeclarationIgnoringFakeScope(context4.enclosingDeclaration);
+              const effectiveEnclosingContext = context3.enclosingDeclaration && getEnclosingDeclarationIgnoringFakeScope(context3.enclosingDeclaration);
               return !!findAncestor(existing, (n) => n === effectiveEnclosingContext);
             }
             return true;
           }
-          function serializeExistingTypeNode(context4, typeNode, addUndefined) {
-            const type = getTypeFromTypeNode2(context4, typeNode);
-            if (addUndefined && !someType(type, (t) => !!(t.flags & 32768)) && canReuseTypeNode(context4, typeNode)) {
-              const clone2 = syntacticNodeBuilder.tryReuseExistingTypeNode(context4, typeNode);
+          function serializeExistingTypeNode(context3, typeNode, addUndefined) {
+            const type = getTypeFromTypeNode2(context3, typeNode);
+            if (addUndefined && !someType(type, (t) => !!(t.flags & 32768)) && canReuseTypeNode(context3, typeNode)) {
+              const clone2 = syntacticNodeBuilder.tryReuseExistingTypeNode(context3, typeNode);
               if (clone2) {
                 return factory.createUnionTypeNode([clone2, factory.createKeywordTypeNode(
                   157
@@ -82368,9 +82368,9 @@ ${lanes.join("\n")}
                 )]);
               }
             }
-            return typeToTypeNodeHelper(type, context4);
+            return typeToTypeNodeHelper(type, context3);
           }
-          function symbolTableToDeclarationStatements(symbolTable, context4) {
+          function symbolTableToDeclarationStatements(symbolTable, context3) {
             var _a;
             const serializePropertySymbolForClass = makeSerializePropertySymbol(
               factory.createPropertyDeclaration,
@@ -82384,12 +82384,12 @@ ${lanes.join("\n")}
               /*useAccessors*/
               false
             );
-            const enclosingDeclaration = context4.enclosingDeclaration;
+            const enclosingDeclaration = context3.enclosingDeclaration;
             let results = [];
             const visitedSymbols = /* @__PURE__ */ new Set();
             const deferredPrivatesStack = [];
-            const oldcontext = context4;
-            context4 = {
+            const oldcontext = context3;
+            context3 = {
               ...oldcontext,
               usedSymbolNames: new Set(oldcontext.usedSymbolNames),
               remappedSymbolNames: /* @__PURE__ */ new Map(),
@@ -82400,7 +82400,7 @@ ${lanes.join("\n")}
               ...oldcontext.tracker.inner,
               trackSymbol: (sym, decl, meaning) => {
                 var _a2, _b;
-                if ((_a2 = context4.remappedSymbolNames) == null ? void 0 : _a2.has(getSymbolId(sym))) return false;
+                if ((_a2 = context3.remappedSymbolNames) == null ? void 0 : _a2.has(getSymbolId(sym))) return false;
                 const accessibleResult = isSymbolAccessible(
                   sym,
                   decl,
@@ -82409,7 +82409,7 @@ ${lanes.join("\n")}
                   false
                 );
                 if (accessibleResult.accessibility === 0) {
-                  const chain = lookupSymbolChainWorker(sym, context4, meaning);
+                  const chain = lookupSymbolChainWorker(sym, context3, meaning);
                   if (!(sym.flags & 4)) {
                     const root = chain[0];
                     const contextFile = getSourceFileOfNode(oldcontext.enclosingDeclaration);
@@ -82423,12 +82423,12 @@ ${lanes.join("\n")}
                 return false;
               }
             };
-            context4.tracker = new SymbolTrackerImpl(context4, tracker, oldcontext.tracker.moduleResolverHost);
+            context3.tracker = new SymbolTrackerImpl(context3, tracker, oldcontext.tracker.moduleResolverHost);
             forEachEntry(symbolTable, (symbol, name) => {
               const baseName2 = unescapeLeadingUnderscores(name);
               void getInternalSymbolName(symbol, baseName2);
             });
-            let addingDeclare = !context4.bundled;
+            let addingDeclare = !context3.bundled;
             const exportEquals = symbolTable.get(
               "export="
               /* ExportEquals */
@@ -82605,8 +82605,8 @@ ${lanes.join("\n")}
               const symbols = Array.from(symbolTable2.values());
               for (const symbol of symbols) {
                 i++;
-                if (checkTruncationLengthIfExpanding(context4) && i + 2 < symbolTable2.size - 1) {
-                  context4.out.truncated = true;
+                if (checkTruncationLengthIfExpanding(context3) && i + 2 < symbolTable2.size - 1) {
+                  context3.out.truncated = true;
                   results.push(createTruncationStatement(`... (${symbolTable2.size - i} more ...)`));
                   serializeSymbol(
                     symbols[symbols.length - 1],
@@ -82644,10 +82644,10 @@ ${lanes.join("\n")}
               visitedSymbols.add(getSymbolId(visitedSym));
               const skipMembershipCheck = !isPrivate;
               if (skipMembershipCheck || !!length(symbol.declarations) && some(symbol.declarations, (d) => !!findAncestor(d, (n) => n === enclosingDeclaration))) {
-                const scopeCleanup = cloneNodeBuilderContext(context4);
-                context4.tracker.pushErrorFallbackNode(find(symbol.declarations, (d) => getSourceFileOfNode(d) === context4.enclosingFile));
+                const scopeCleanup = cloneNodeBuilderContext(context3);
+                context3.tracker.pushErrorFallbackNode(find(symbol.declarations, (d) => getSourceFileOfNode(d) === context3.enclosingFile));
                 serializeSymbolWorker(symbol, isPrivate, propertyAsAlias);
-                context4.tracker.popErrorFallbackNode();
+                context3.tracker.popErrorFallbackNode();
                 scopeCleanup();
               }
             }
@@ -82655,8 +82655,8 @@ ${lanes.join("\n")}
               var _a2, _b, _c, _d, _e, _f, _g;
               const symbolName2 = unescapeLeadingUnderscores(escapedSymbolName);
               const isDefault = escapedSymbolName === "default";
-              if (isPrivate && !(context4.flags & 131072) && isStringANonContextualKeyword(symbolName2) && !isDefault) {
-                context4.encounteredError = true;
+              if (isPrivate && !(context3.flags & 131072) && isStringANonContextualKeyword(symbolName2) && !isDefault) {
+                context3.encounteredError = true;
                 return;
               }
               let needsPostExportDefault = isDefault && !!(symbol.flags & -113 || symbol.flags & 16 && length(getPropertiesOfType(getTypeOfSymbol(symbol)))) && !(symbol.flags & 2097152);
@@ -82684,12 +82684,12 @@ ${lanes.join("\n")}
                   const type = getTypeOfSymbol(symbol);
                   const localName = getInternalSymbolName(symbol, symbolName2);
                   if (type.symbol && type.symbol !== symbol && type.symbol.flags & 16 && some(type.symbol.declarations, isFunctionExpressionOrArrowFunction) && (((_a2 = type.symbol.members) == null ? void 0 : _a2.size) || ((_b = type.symbol.exports) == null ? void 0 : _b.size))) {
-                    if (!context4.remappedSymbolReferences) {
-                      context4.remappedSymbolReferences = /* @__PURE__ */ new Map();
+                    if (!context3.remappedSymbolReferences) {
+                      context3.remappedSymbolReferences = /* @__PURE__ */ new Map();
                     }
-                    context4.remappedSymbolReferences.set(getSymbolId(type.symbol), symbol);
+                    context3.remappedSymbolReferences.set(getSymbolId(type.symbol), symbol);
                     serializeSymbolWorker(type.symbol, isPrivate, propertyAsAlias, escapedSymbolName);
-                    context4.remappedSymbolReferences.delete(getSymbolId(type.symbol));
+                    context3.remappedSymbolReferences.delete(getSymbolId(type.symbol));
                   } else if (!(symbol.flags & 16) && isTypeRepresentableAsFunctionNamespaceMerge(type, symbol)) {
                     serializeAsFunctionNamespaceMerge(type, symbol, localName, modifierFlags);
                   } else {
@@ -82702,7 +82702,7 @@ ${lanes.join("\n")}
                     const propertyAccessRequire = (_e = symbol.declarations) == null ? void 0 : _e.find(isPropertyAccessExpression);
                     if (propertyAccessRequire && isBinaryExpression(propertyAccessRequire.parent) && isIdentifier2(propertyAccessRequire.parent.right) && ((_f = type.symbol) == null ? void 0 : _f.valueDeclaration) && isSourceFile(type.symbol.valueDeclaration)) {
                       const alias = localName === propertyAccessRequire.parent.right.escapedText ? void 0 : propertyAccessRequire.parent.right;
-                      context4.approximateLength += 12 + (((_g = alias == null ? void 0 : alias.escapedText) == null ? void 0 : _g.length) ?? 0);
+                      context3.approximateLength += 12 + (((_g = alias == null ? void 0 : alias.escapedText) == null ? void 0 : _g.length) ?? 0);
                       addResult(
                         factory.createExportDeclaration(
                           /*modifiers*/
@@ -82719,15 +82719,15 @@ ${lanes.join("\n")}
                         0
                         /* None */
                       );
-                      context4.tracker.trackSymbol(
+                      context3.tracker.trackSymbol(
                         type.symbol,
-                        context4.enclosingDeclaration,
+                        context3.enclosingDeclaration,
                         111551
                         /* Value */
                       );
                     } else {
                       const statement = setTextRange2(
-                        context4,
+                        context3,
                         factory.createVariableStatement(
                           /*modifiers*/
                           void 0,
@@ -82737,7 +82737,7 @@ ${lanes.join("\n")}
                               /*exclamationToken*/
                               void 0,
                               serializeTypeForDeclaration(
-                                context4,
+                                context3,
                                 /*declaration*/
                                 void 0,
                                 type,
@@ -82748,10 +82748,10 @@ ${lanes.join("\n")}
                         ),
                         textRange
                       );
-                      context4.approximateLength += 7 + name.length;
+                      context3.approximateLength += 7 + name.length;
                       addResult(statement, name !== localName ? modifierFlags & ~32 : modifierFlags);
                       if (name !== localName && !isPrivate) {
-                        context4.approximateLength += 16 + name.length + localName.length;
+                        context3.approximateLength += 16 + name.length + localName.length;
                         addResult(
                           factory.createExportDeclaration(
                             /*modifiers*/
@@ -82803,8 +82803,8 @@ ${lanes.join("\n")}
                     const resolvedModule = resolveExternalModuleName(node, node.moduleSpecifier);
                     if (!resolvedModule) continue;
                     const isTypeOnly = node.isTypeOnly;
-                    const specifier = getSpecifierForModuleSymbol(resolvedModule, context4);
-                    context4.approximateLength += 17 + specifier.length;
+                    const specifier = getSpecifierForModuleSymbol(resolvedModule, context3);
+                    context3.approximateLength += 17 + specifier.length;
                     addResult(
                       factory.createExportDeclaration(
                         /*modifiers*/
@@ -82822,7 +82822,7 @@ ${lanes.join("\n")}
               }
               if (needsPostExportDefault) {
                 const internalSymbolName = getInternalSymbolName(symbol, symbolName2);
-                context4.approximateLength += 16 + internalSymbolName.length;
+                context3.approximateLength += 16 + internalSymbolName.length;
                 addResult(
                   factory.createExportAssignment(
                     /*modifiers*/
@@ -82836,7 +82836,7 @@ ${lanes.join("\n")}
                 );
               } else if (needsExportDeclaration) {
                 const internalSymbolName = getInternalSymbolName(symbol, symbolName2);
-                context4.approximateLength += 22 + symbolName2.length + internalSymbolName.length;
+                context3.approximateLength += 22 + symbolName2.length + internalSymbolName.length;
                 addResult(
                   factory.createExportDeclaration(
                     /*modifiers*/
@@ -82869,7 +82869,7 @@ ${lanes.join("\n")}
               if (canHaveModifiers(node)) {
                 const oldModifierFlags = getEffectiveModifierFlags(node);
                 let newModifierFlags = 0;
-                const enclosingDeclaration2 = context4.enclosingDeclaration && (isJSDocTypeAlias(context4.enclosingDeclaration) ? getSourceFileOfNode(context4.enclosingDeclaration) : context4.enclosingDeclaration);
+                const enclosingDeclaration2 = context3.enclosingDeclaration && (isJSDocTypeAlias(context3.enclosingDeclaration) ? getSourceFileOfNode(context3.enclosingDeclaration) : context3.enclosingDeclaration);
                 if (additionalModifierFlags & 32 && enclosingDeclaration2 && (isExportingScope(enclosingDeclaration2) || isModuleDeclaration(enclosingDeclaration2)) && canHaveExportModifier(node)) {
                   newModifierFlags |= 32;
                 }
@@ -82882,7 +82882,7 @@ ${lanes.join("\n")}
                 if (newModifierFlags) {
                   node = factory.replaceModifiers(node, newModifierFlags | oldModifierFlags);
                 }
-                context4.approximateLength += modifiersLength(newModifierFlags | oldModifierFlags);
+                context3.approximateLength += modifiersLength(newModifierFlags | oldModifierFlags);
               }
               results.push(node);
             }
@@ -82890,16 +82890,16 @@ ${lanes.join("\n")}
               var _a2;
               const aliasType = getDeclaredTypeOfTypeAlias(symbol);
               const typeParams = getSymbolLinks(symbol).typeParameters;
-              const typeParamDecls = map(typeParams, (p) => typeParameterToDeclaration(p, context4));
+              const typeParamDecls = map(typeParams, (p) => typeParameterToDeclaration(p, context3));
               const jsdocAliasDecl = (_a2 = symbol.declarations) == null ? void 0 : _a2.find(isJSDocTypeAlias);
               const commentText = getTextOfJSDocComment(jsdocAliasDecl ? jsdocAliasDecl.comment || jsdocAliasDecl.parent.comment : void 0);
-              const restoreFlags = saveRestoreFlags(context4);
-              context4.flags |= 8388608;
-              const oldEnclosingDecl = context4.enclosingDeclaration;
-              context4.enclosingDeclaration = jsdocAliasDecl;
-              const typeNode = jsdocAliasDecl && jsdocAliasDecl.typeExpression && isJSDocTypeExpression(jsdocAliasDecl.typeExpression) && syntacticNodeBuilder.tryReuseExistingTypeNode(context4, jsdocAliasDecl.typeExpression.type) || typeToTypeNodeHelper(aliasType, context4);
+              const restoreFlags = saveRestoreFlags(context3);
+              context3.flags |= 8388608;
+              const oldEnclosingDecl = context3.enclosingDeclaration;
+              context3.enclosingDeclaration = jsdocAliasDecl;
+              const typeNode = jsdocAliasDecl && jsdocAliasDecl.typeExpression && isJSDocTypeExpression(jsdocAliasDecl.typeExpression) && syntacticNodeBuilder.tryReuseExistingTypeNode(context3, jsdocAliasDecl.typeExpression.type) || typeToTypeNodeHelper(aliasType, context3);
               const internalSymbolName = getInternalSymbolName(symbol, symbolName2);
-              context4.approximateLength += 8 + ((commentText == null ? void 0 : commentText.length) ?? 0) + internalSymbolName.length;
+              context3.approximateLength += 8 + ((commentText == null ? void 0 : commentText.length) ?? 0) + internalSymbolName.length;
               addResult(
                 setSyntheticLeadingComments(
                   factory.createTypeAliasDeclaration(
@@ -82914,14 +82914,14 @@ ${lanes.join("\n")}
                 modifierFlags
               );
               restoreFlags();
-              context4.enclosingDeclaration = oldEnclosingDecl;
+              context3.enclosingDeclaration = oldEnclosingDecl;
             }
             function serializeInterface(symbol, symbolName2, modifierFlags) {
               const internalSymbolName = getInternalSymbolName(symbol, symbolName2);
-              context4.approximateLength += 14 + internalSymbolName.length;
+              context3.approximateLength += 14 + internalSymbolName.length;
               const interfaceType = getDeclaredTypeOfClassOrInterface(symbol);
               const localParams = getLocalTypeParametersOfClassOrInterfaceOrTypeAlias(symbol);
-              const typeParamDecls = map(localParams, (p) => typeParameterToDeclaration(p, context4));
+              const typeParamDecls = map(localParams, (p) => typeParameterToDeclaration(p, context3));
               const baseTypes = getBaseTypes(interfaceType);
               const baseType = length(baseTypes) ? getIntersectionType(baseTypes) : void 0;
               const members = serializePropertySymbolsForClassOrInterface(
@@ -82967,8 +82967,8 @@ ${lanes.join("\n")}
               let i = 0;
               for (const prop of props) {
                 i++;
-                if (checkTruncationLengthIfExpanding(context4) && i + 2 < props.length - 1) {
-                  context4.out.truncated = true;
+                if (checkTruncationLengthIfExpanding(context3) && i + 2 < props.length - 1) {
+                  context3.out.truncated = true;
                   const placeholder = createTruncationProperty(`... ${props.length - i} more ... `, isClass);
                   elements.push(placeholder);
                   const result2 = isClass ? serializePropertySymbolForClass(props[props.length - 1], isStatic2, baseType) : serializePropertySymbolForInterface(props[props.length - 1], baseType);
@@ -82979,7 +82979,7 @@ ${lanes.join("\n")}
                   }
                   break;
                 }
-                context4.approximateLength += 1;
+                context3.approximateLength += 1;
                 const result = isClass ? serializePropertySymbolForClass(prop, isStatic2, baseType) : serializePropertySymbolForInterface(prop, baseType);
                 if (isArray(result)) {
                   elements.push(...result);
@@ -82990,7 +82990,7 @@ ${lanes.join("\n")}
               return elements;
             }
             function createTruncationProperty(dotDotDotText, isClass) {
-              if (context4.flags & 1) {
+              if (context3.flags & 1) {
                 return addSyntheticLeadingComment(factory.createNotEmittedTypeElement(), 3, dotDotDotText);
               }
               return isClass ? factory.createPropertyDeclaration(
@@ -83036,32 +83036,32 @@ ${lanes.join("\n")}
             }
             function serializeModule(symbol, symbolName2, modifierFlags) {
               const members = getNamespaceMembersForSerialization(symbol);
-              const expanding = isExpanding(context4);
+              const expanding = isExpanding(context3);
               const locationMap = arrayToMultiMap(members, (m) => m.parent && m.parent === symbol || expanding ? "real" : "merged");
               const realMembers = locationMap.get("real") || emptyArray;
               const mergedMembers = locationMap.get("merged") || emptyArray;
               if (length(realMembers) || expanding) {
                 let localName;
                 if (expanding) {
-                  const oldFlags = context4.flags;
-                  context4.flags |= 512 | 2;
+                  const oldFlags = context3.flags;
+                  context3.flags |= 512 | 2;
                   localName = symbolToNode(
                     symbol,
-                    context4,
+                    context3,
                     /*meaning*/
                     -1
                     /* All */
                   );
-                  context4.flags = oldFlags;
+                  context3.flags = oldFlags;
                 } else {
                   const localText = getInternalSymbolName(symbol, symbolName2);
                   localName = factory.createIdentifier(localText);
-                  context4.approximateLength += localText.length;
+                  context3.approximateLength += localText.length;
                 }
                 serializeAsNamespaceDeclaration(realMembers, localName, modifierFlags, !!(symbol.flags & (16 | 67108864)));
               }
               if (length(mergedMembers)) {
-                const containingFile = getSourceFileOfNode(context4.enclosingDeclaration);
+                const containingFile = getSourceFileOfNode(context3.enclosingDeclaration);
                 const localName = getInternalSymbolName(symbol, symbolName2);
                 const nsBody = factory.createModuleBlock([factory.createExportDeclaration(
                   /*modifiers*/
@@ -83078,7 +83078,7 @@ ${lanes.join("\n")}
                     const localName2 = getInternalSymbolName(s, name);
                     const aliasDecl = s.declarations && getDeclarationOfAliasSymbol(s);
                     if (containingFile && (aliasDecl ? containingFile !== getSourceFileOfNode(aliasDecl) : !some(s.declarations, (d) => getSourceFileOfNode(d) === containingFile))) {
-                      (_b = (_a2 = context4.tracker) == null ? void 0 : _a2.reportNonlocalAugmentation) == null ? void 0 : _b.call(_a2, containingFile, symbol, s);
+                      (_b = (_a2 = context3.tracker) == null ? void 0 : _a2.reportNonlocalAugmentation) == null ? void 0 : _b.call(_a2, containingFile, symbol, s);
                       return void 0;
                     }
                     const target = aliasDecl && getTargetOfAliasDeclaration(
@@ -83112,14 +83112,14 @@ ${lanes.join("\n")}
             }
             function serializeEnum(symbol, symbolName2, modifierFlags) {
               const internalSymbolName = getInternalSymbolName(symbol, symbolName2);
-              context4.approximateLength += 9 + internalSymbolName.length;
+              context3.approximateLength += 9 + internalSymbolName.length;
               const members = [];
               const memberProps = filter(getPropertiesOfType(getTypeOfSymbol(symbol)), (p) => !!(p.flags & 8));
               let i = 0;
               for (const p of memberProps) {
                 i++;
-                if (checkTruncationLengthIfExpanding(context4) && i + 2 < memberProps.length - 1) {
-                  context4.out.truncated = true;
+                if (checkTruncationLengthIfExpanding(context3) && i + 2 < memberProps.length - 1) {
+                  context3.out.truncated = true;
                   members.push(factory.createEnumMember(` ... ${memberProps.length - i} more ... `));
                   const last2 = memberProps[memberProps.length - 1];
                   const initializedValue = last2.declarations && last2.declarations[0] && isEnumMember(last2.declarations[0]) ? getConstantValue2(last2.declarations[0]) : void 0;
@@ -83135,7 +83135,7 @@ ${lanes.join("\n")}
                 const memberDecl = p.declarations && p.declarations[0] && isEnumMember(p.declarations[0]) ? p.declarations[0] : void 0;
                 let initializer;
                 let initializerLength;
-                if (isExpanding(context4) && memberDecl && memberDecl.initializer) {
+                if (isExpanding(context3) && memberDecl && memberDecl.initializer) {
                   initializer = getSynthesizedDeepClone(memberDecl.initializer);
                   initializerLength = memberDecl.initializer.end - memberDecl.initializer.pos;
                 } else {
@@ -83144,7 +83144,7 @@ ${lanes.join("\n")}
                   initializerLength = (initializer == null ? void 0 : initializer.text.length) ?? 0;
                 }
                 const memberName = unescapeLeadingUnderscores(p.escapedName);
-                context4.approximateLength += 4 + memberName.length + initializerLength;
+                context3.approximateLength += 4 + memberName.length + initializerLength;
                 const member = factory.createEnumMember(
                   memberName,
                   initializer
@@ -83167,13 +83167,13 @@ ${lanes.join("\n")}
                 /* Call */
               );
               for (const sig of signatures) {
-                context4.approximateLength += 1;
-                const decl = signatureToSignatureDeclarationHelper(sig, 263, context4, { name: factory.createIdentifier(localName) });
-                addResult(setTextRange2(context4, decl, getSignatureTextRangeLocation(sig)), modifierFlags);
+                context3.approximateLength += 1;
+                const decl = signatureToSignatureDeclarationHelper(sig, 263, context3, { name: factory.createIdentifier(localName) });
+                addResult(setTextRange2(context3, decl, getSignatureTextRangeLocation(sig)), modifierFlags);
               }
               if (!(symbol.flags & (512 | 1024) && !!symbol.exports && !!symbol.exports.size)) {
                 const props = filter(getPropertiesOfType(type), isNamespaceMember);
-                context4.approximateLength += localName.length;
+                context3.approximateLength += localName.length;
                 serializeAsNamespaceDeclaration(
                   props,
                   factory.createIdentifier(localName),
@@ -83184,7 +83184,7 @@ ${lanes.join("\n")}
               }
             }
             function createTruncationStatement(dotDotDotText) {
-              if (context4.flags & 1) {
+              if (context3.flags & 1) {
                 return addSyntheticLeadingComment(factory.createEmptyStatement(), 3, dotDotDotText);
               }
               return factory.createExpressionStatement(factory.createIdentifier(dotDotDotText));
@@ -83202,10 +83202,10 @@ ${lanes.join("\n")}
             }
             function serializeAsNamespaceDeclaration(props, localName, modifierFlags, suppressNewPrivateContext) {
               const nodeFlags = isIdentifier2(localName) ? 32 : 0;
-              const expanding = isExpanding(context4);
+              const expanding = isExpanding(context3);
               if (length(props)) {
-                context4.approximateLength += 14;
-                const localVsRemoteMap = arrayToMultiMap(props, (p) => !length(p.declarations) || some(p.declarations, (d) => getSourceFileOfNode(d) === getSourceFileOfNode(context4.enclosingDeclaration)) || expanding ? "local" : "remote");
+                context3.approximateLength += 14;
+                const localVsRemoteMap = arrayToMultiMap(props, (p) => !length(p.declarations) || some(p.declarations, (d) => getSourceFileOfNode(d) === getSourceFileOfNode(context3.enclosingDeclaration)) || expanding ? "local" : "remote");
                 const localProps = localVsRemoteMap.get("local") || emptyArray;
                 let fakespace = parseNodeFactory.createModuleDeclaration(
                   /*modifiers*/
@@ -83221,16 +83221,16 @@ ${lanes.join("\n")}
                 results = [];
                 const oldAddingDeclare = addingDeclare;
                 addingDeclare = false;
-                const subcontext = { ...context4, enclosingDeclaration: fakespace };
-                const oldContext = context4;
-                context4 = subcontext;
+                const subcontext = { ...context3, enclosingDeclaration: fakespace };
+                const oldContext = context3;
+                context3 = subcontext;
                 visitSymbolTable(
                   createSymbolTable(localProps),
                   suppressNewPrivateContext,
                   /*propertyAsAlias*/
                   true
                 );
-                context4 = oldContext;
+                context3 = oldContext;
                 addingDeclare = oldAddingDeclare;
                 const declarations = results;
                 results = oldResults;
@@ -83262,7 +83262,7 @@ ${lanes.join("\n")}
                 );
                 addResult(fakespace, modifierFlags);
               } else if (expanding) {
-                context4.approximateLength += 14;
+                context3.approximateLength += 14;
                 addResult(
                   factory.createModuleDeclaration(
                     /*modifiers*/
@@ -83280,8 +83280,8 @@ ${lanes.join("\n")}
             }
             function sanitizeJSDocImplements(clauses) {
               const result = mapDefined(clauses, (e) => {
-                const oldEnclosing = context4.enclosingDeclaration;
-                context4.enclosingDeclaration = e;
+                const oldEnclosing = context3.enclosingDeclaration;
+                context3.enclosingDeclaration = e;
                 let expr = e.expression;
                 if (isEntityNameExpression(expr)) {
                   if (isIdentifier2(expr) && idText(expr) === "") {
@@ -83291,7 +83291,7 @@ ${lanes.join("\n")}
                     );
                   }
                   let introducesError;
-                  ({ introducesError, node: expr } = trackExistingEntityName(expr, context4));
+                  ({ introducesError, node: expr } = trackExistingEntityName(expr, context3));
                   if (introducesError) {
                     return cleanup(
                       /*result*/
@@ -83301,10 +83301,10 @@ ${lanes.join("\n")}
                 }
                 return cleanup(factory.createExpressionWithTypeArguments(
                   expr,
-                  map(e.typeArguments, (a) => syntacticNodeBuilder.tryReuseExistingTypeNode(context4, a) || typeToTypeNodeHelper(getTypeFromTypeNode2(context4, a), context4))
+                  map(e.typeArguments, (a) => syntacticNodeBuilder.tryReuseExistingTypeNode(context3, a) || typeToTypeNodeHelper(getTypeFromTypeNode2(context3, a), context3))
                 ));
                 function cleanup(result2) {
-                  context4.enclosingDeclaration = oldEnclosing;
+                  context3.enclosingDeclaration = oldEnclosing;
                   return result2;
                 }
               });
@@ -83315,13 +83315,13 @@ ${lanes.join("\n")}
             }
             function serializeAsClass(symbol, localName, modifierFlags) {
               var _a2, _b;
-              context4.approximateLength += 9 + localName.length;
+              context3.approximateLength += 9 + localName.length;
               const originalDecl = (_a2 = symbol.declarations) == null ? void 0 : _a2.find(isClassLike);
-              const oldEnclosing = context4.enclosingDeclaration;
-              context4.enclosingDeclaration = originalDecl || oldEnclosing;
+              const oldEnclosing = context3.enclosingDeclaration;
+              context3.enclosingDeclaration = originalDecl || oldEnclosing;
               const localParams = getLocalTypeParametersOfClassOrInterfaceOrTypeAlias(symbol);
-              const typeParamDecls = map(localParams, (p) => typeParameterToDeclaration(p, context4));
-              forEach(localParams, (p) => context4.approximateLength += symbolName(p.symbol).length);
+              const typeParamDecls = map(localParams, (p) => typeParameterToDeclaration(p, context3));
+              forEach(localParams, (p) => context3.approximateLength += symbolName(p.symbol).length);
               const classType = getTypeWithThisArgument(getDeclaredTypeOfClassOrInterface(symbol));
               const baseTypes = getBaseTypes(classType);
               const originalImplements = originalDecl && getEffectiveImplementsTypeNodes(originalDecl);
@@ -83329,7 +83329,7 @@ ${lanes.join("\n")}
               const staticType = getTypeOfSymbol(symbol);
               const isClass = !!((_b = staticType.symbol) == null ? void 0 : _b.valueDeclaration) && isClassLike(staticType.symbol.valueDeclaration);
               const staticBaseType = isClass ? getBaseConstructorTypeOfClass(staticType) : anyType;
-              context4.approximateLength += (length(baseTypes) ? 8 : 0) + (length(implementsExpressions) ? 11 : 0);
+              context3.approximateLength += (length(baseTypes) ? 8 : 0) + (length(implementsExpressions) ? 11 : 0);
               const heritageClauses = [
                 ...!length(baseTypes) ? [] : [factory.createHeritageClause(96, map(baseTypes, (b) => serializeBaseType(b, staticBaseType, localName)))],
                 ...!length(implementsExpressions) ? [] : [factory.createHeritageClause(119, implementsExpressions)]
@@ -83337,7 +83337,7 @@ ${lanes.join("\n")}
               const symbolProps = getNonInheritedProperties(classType, baseTypes, getPropertiesOfType(classType));
               const publicSymbolProps = filter(symbolProps, (s) => !isHashPrivate(s));
               const hasPrivateIdentifier = some(symbolProps, isHashPrivate);
-              const privateProperties = hasPrivateIdentifier ? isExpanding(context4) ? serializePropertySymbolsForClassOrInterface(
+              const privateProperties = hasPrivateIdentifier ? isExpanding(context3) ? serializePropertySymbolsForClassOrInterface(
                 filter(symbolProps, isHashPrivate),
                 /*isClass*/
                 true,
@@ -83355,8 +83355,8 @@ ${lanes.join("\n")}
                 /*initializer*/
                 void 0
               )] : emptyArray;
-              if (hasPrivateIdentifier && !isExpanding(context4)) {
-                context4.approximateLength += 9;
+              if (hasPrivateIdentifier && !isExpanding(context3)) {
+                context3.approximateLength += 9;
               }
               const publicProperties = serializePropertySymbolsForClassOrInterface(
                 publicSymbolProps,
@@ -83379,7 +83379,7 @@ ${lanes.join("\n")}
                 1
                 /* Construct */
               ));
-              if (isNonConstructableClassLikeInJsFile) context4.approximateLength += 21;
+              if (isNonConstructableClassLikeInJsFile) context3.approximateLength += 21;
               const constructors = isNonConstructableClassLikeInJsFile ? [factory.createConstructorDeclaration(
                 factory.createModifiersFromModifierFlags(
                   2
@@ -83396,10 +83396,10 @@ ${lanes.join("\n")}
                 /* Constructor */
               );
               const indexSignatures = serializeIndexSignatures(classType, baseTypes[0]);
-              context4.enclosingDeclaration = oldEnclosing;
+              context3.enclosingDeclaration = oldEnclosing;
               addResult(
                 setTextRange2(
-                  context4,
+                  context3,
                   factory.createClassDeclaration(
                     /*modifiers*/
                     void 0,
@@ -83454,10 +83454,10 @@ ${lanes.join("\n")}
               switch (node.kind) {
                 case 209:
                   if (((_b = (_a2 = node.parent) == null ? void 0 : _a2.parent) == null ? void 0 : _b.kind) === 261) {
-                    const specifier2 = getSpecifierForModuleSymbol(target.parent || target, context4);
+                    const specifier2 = getSpecifierForModuleSymbol(target.parent || target, context3);
                     const { propertyName } = node;
                     const propertyNameText = propertyName && isIdentifier2(propertyName) ? idText(propertyName) : void 0;
-                    context4.approximateLength += 24 + localName.length + specifier2.length + ((propertyNameText == null ? void 0 : propertyNameText.length) ?? 0);
+                    context3.approximateLength += 24 + localName.length + specifier2.length + ((propertyNameText == null ? void 0 : propertyNameText.length) ?? 0);
                     addResult(
                       factory.createImportDeclaration(
                         /*modifiers*/
@@ -83497,8 +83497,8 @@ ${lanes.join("\n")}
                   if (isPropertyAccessExpression(node.initializer)) {
                     const initializer = node.initializer;
                     const uniqueName = factory.createUniqueName(localName);
-                    const specifier2 = getSpecifierForModuleSymbol(target.parent || target, context4);
-                    context4.approximateLength += 22 + specifier2.length + idText(uniqueName).length;
+                    const specifier2 = getSpecifierForModuleSymbol(target.parent || target, context3);
+                    context3.approximateLength += 22 + specifier2.length + idText(uniqueName).length;
                     addResult(
                       factory.createImportEqualsDeclaration(
                         /*modifiers*/
@@ -83511,7 +83511,7 @@ ${lanes.join("\n")}
                       0
                       /* None */
                     );
-                    context4.approximateLength += 12 + localName.length + idText(uniqueName).length + idText(initializer.name).length;
+                    context3.approximateLength += 12 + localName.length + idText(uniqueName).length + idText(initializer.name).length;
                     addResult(
                       factory.createImportEqualsDeclaration(
                         /*modifiers*/
@@ -83532,7 +83532,7 @@ ${lanes.join("\n")}
                     break;
                   }
                   const isLocalImport = !(target.flags & 512) && !isVariableDeclaration(node);
-                  context4.approximateLength += 11 + localName.length + unescapeLeadingUnderscores(target.escapedName).length;
+                  context3.approximateLength += 11 + localName.length + unescapeLeadingUnderscores(target.escapedName).length;
                   addResult(
                     factory.createImportEqualsDeclaration(
                       /*modifiers*/
@@ -83542,11 +83542,11 @@ ${lanes.join("\n")}
                       factory.createIdentifier(localName),
                       isLocalImport ? symbolToName(
                         target,
-                        context4,
+                        context3,
                         -1,
                         /*expectsIdentifier*/
                         false
-                      ) : factory.createExternalModuleReference(factory.createStringLiteral(getSpecifierForModuleSymbol(target, context4)))
+                      ) : factory.createExternalModuleReference(factory.createStringLiteral(getSpecifierForModuleSymbol(target, context3)))
                     ),
                     isLocalImport ? modifierFlags : 0
                     /* None */
@@ -83560,11 +83560,11 @@ ${lanes.join("\n")}
                   );
                   break;
                 case 274: {
-                  const generatedSpecifier = getSpecifierForModuleSymbol(target.parent || target, context4);
-                  const specifier2 = context4.bundled ? factory.createStringLiteral(generatedSpecifier) : node.parent.moduleSpecifier;
+                  const generatedSpecifier = getSpecifierForModuleSymbol(target.parent || target, context3);
+                  const specifier2 = context3.bundled ? factory.createStringLiteral(generatedSpecifier) : node.parent.moduleSpecifier;
                   const attributes = isImportDeclaration(node.parent) ? node.parent.attributes : void 0;
                   const isTypeOnly = isJSDocImportTag(node.parent);
-                  context4.approximateLength += 14 + localName.length + 3 + (isTypeOnly ? 4 : 0);
+                  context3.approximateLength += 14 + localName.length + 3 + (isTypeOnly ? 4 : 0);
                   addResult(
                     factory.createImportDeclaration(
                       /*modifiers*/
@@ -83585,10 +83585,10 @@ ${lanes.join("\n")}
                   break;
                 }
                 case 275: {
-                  const generatedSpecifier = getSpecifierForModuleSymbol(target.parent || target, context4);
-                  const specifier2 = context4.bundled ? factory.createStringLiteral(generatedSpecifier) : node.parent.parent.moduleSpecifier;
+                  const generatedSpecifier = getSpecifierForModuleSymbol(target.parent || target, context3);
+                  const specifier2 = context3.bundled ? factory.createStringLiteral(generatedSpecifier) : node.parent.parent.moduleSpecifier;
                   const isTypeOnly = isJSDocImportTag(node.parent.parent);
-                  context4.approximateLength += 19 + localName.length + 3 + (isTypeOnly ? 4 : 0);
+                  context3.approximateLength += 19 + localName.length + 3 + (isTypeOnly ? 4 : 0);
                   addResult(
                     factory.createImportDeclaration(
                       /*modifiers*/
@@ -83609,7 +83609,7 @@ ${lanes.join("\n")}
                   break;
                 }
                 case 281:
-                  context4.approximateLength += 19 + localName.length + 3;
+                  context3.approximateLength += 19 + localName.length + 3;
                   addResult(
                     factory.createExportDeclaration(
                       /*modifiers*/
@@ -83617,17 +83617,17 @@ ${lanes.join("\n")}
                       /*isTypeOnly*/
                       false,
                       factory.createNamespaceExport(factory.createIdentifier(localName)),
-                      factory.createStringLiteral(getSpecifierForModuleSymbol(target, context4))
+                      factory.createStringLiteral(getSpecifierForModuleSymbol(target, context3))
                     ),
                     0
                     /* None */
                   );
                   break;
                 case 277: {
-                  const generatedSpecifier = getSpecifierForModuleSymbol(target.parent || target, context4);
-                  const specifier2 = context4.bundled ? factory.createStringLiteral(generatedSpecifier) : node.parent.parent.parent.moduleSpecifier;
+                  const generatedSpecifier = getSpecifierForModuleSymbol(target.parent || target, context3);
+                  const specifier2 = context3.bundled ? factory.createStringLiteral(generatedSpecifier) : node.parent.parent.parent.moduleSpecifier;
                   const isTypeOnly = isJSDocImportTag(node.parent.parent.parent);
-                  context4.approximateLength += 19 + localName.length + 3 + (isTypeOnly ? 4 : 0);
+                  context3.approximateLength += 19 + localName.length + 3 + (isTypeOnly ? 4 : 0);
                   addResult(
                     factory.createImportDeclaration(
                       /*modifiers*/
@@ -83685,7 +83685,7 @@ ${lanes.join("\n")}
               }
             }
             function serializeExportSpecifier(localName, targetName, specifier) {
-              context4.approximateLength += 16 + localName.length + (localName !== targetName ? targetName.length : 0);
+              context3.approximateLength += 16 + localName.length + (localName !== targetName ? targetName.length : 0);
               addResult(
                 factory.createExportDeclaration(
                   /*modifiers*/
@@ -83734,17 +83734,17 @@ ${lanes.join("\n")}
                 if (referenced || target) {
                   includePrivateSymbol(referenced || target);
                 }
-                const prevDisableTrackSymbol = context4.tracker.disableTrackSymbol;
-                context4.tracker.disableTrackSymbol = true;
+                const prevDisableTrackSymbol = context3.tracker.disableTrackSymbol;
+                context3.tracker.disableTrackSymbol = true;
                 if (isExportAssignmentCompatibleSymbolName) {
-                  context4.approximateLength += 10;
+                  context3.approximateLength += 10;
                   results.push(factory.createExportAssignment(
                     /*modifiers*/
                     void 0,
                     isExportEquals,
                     symbolToExpression(
                       target,
-                      context4,
+                      context3,
                       -1
                       /* All */
                     )
@@ -83756,7 +83756,7 @@ ${lanes.join("\n")}
                     serializeExportSpecifier(name, getInternalSymbolName(target, symbolName(target)));
                   } else {
                     const varName = getUnusedName(name, symbol);
-                    context4.approximateLength += varName.length + 10;
+                    context3.approximateLength += varName.length + 10;
                     addResult(
                       factory.createImportEqualsDeclaration(
                         /*modifiers*/
@@ -83766,7 +83766,7 @@ ${lanes.join("\n")}
                         factory.createIdentifier(varName),
                         symbolToName(
                           target,
-                          context4,
+                          context3,
                           -1,
                           /*expectsIdentifier*/
                           false
@@ -83778,7 +83778,7 @@ ${lanes.join("\n")}
                     serializeExportSpecifier(name, varName);
                   }
                 }
-                context4.tracker.disableTrackSymbol = prevDisableTrackSymbol;
+                context3.tracker.disableTrackSymbol = prevDisableTrackSymbol;
                 return true;
               } else {
                 const varName = getUnusedName(name, symbol);
@@ -83792,8 +83792,8 @@ ${lanes.join("\n")}
                     /* Export */
                   );
                 } else {
-                  const flags = ((_a2 = context4.enclosingDeclaration) == null ? void 0 : _a2.kind) === 268 && (!(symbol.flags & 98304) || symbol.flags & 65536) ? 1 : 2;
-                  context4.approximateLength += varName.length + 5;
+                  const flags = ((_a2 = context3.enclosingDeclaration) == null ? void 0 : _a2.kind) === 268 && (!(symbol.flags & 98304) || symbol.flags & 65536) ? 1 : 2;
+                  context3.approximateLength += varName.length + 5;
                   const statement = factory.createVariableStatement(
                     /*modifiers*/
                     void 0,
@@ -83803,7 +83803,7 @@ ${lanes.join("\n")}
                         /*exclamationToken*/
                         void 0,
                         serializeTypeForDeclaration(
-                          context4,
+                          context3,
                           /*declaration*/
                           void 0,
                           typeToSerialize,
@@ -83819,7 +83819,7 @@ ${lanes.join("\n")}
                   );
                 }
                 if (isExportAssignmentCompatibleSymbolName) {
-                  context4.approximateLength += varName.length + 10;
+                  context3.approximateLength += varName.length + 10;
                   results.push(factory.createExportAssignment(
                     /*modifiers*/
                     void 0,
@@ -83836,7 +83836,7 @@ ${lanes.join("\n")}
             }
             function isTypeRepresentableAsFunctionNamespaceMerge(typeToSerialize, hostSymbol) {
               var _a2;
-              const ctxSrc = getSourceFileOfNode(context4.enclosingDeclaration);
+              const ctxSrc = getSourceFileOfNode(context3.enclosingDeclaration);
               return getObjectFlags(typeToSerialize) & (16 | 32) && !some((_a2 = typeToSerialize.symbol) == null ? void 0 : _a2.declarations, isTypeNode) && // If the type comes straight from a type node, we shouldn't try to break it up
               !length(getIndexInfosOfType(typeToSerialize)) && !isClassInstanceSide(typeToSerialize) && // While a class instance is potentially representable as a NS, prefer printing a reference to the instance type and serializing the class
               !!(length(filter(getPropertiesOfType(typeToSerialize), isNamespaceMember)) || length(getSignaturesOfType(
@@ -83862,7 +83862,7 @@ ${lanes.join("\n")}
               return function serializePropertySymbol(p, isStatic2, baseType) {
                 var _a2, _b, _c, _d, _e, _f;
                 const modifierFlags = getDeclarationModifierFlagsFromSymbol(p);
-                const omitType = !!(modifierFlags & 2) && !isExpanding(context4);
+                const omitType = !!(modifierFlags & 2) && !isExpanding(context3);
                 if (isStatic2 && p.flags & (788968 | 1920 | 2097152)) {
                   return [];
                 }
@@ -83870,7 +83870,7 @@ ${lanes.join("\n")}
                   return [];
                 }
                 const flag = modifierFlags & ~1024 | (isStatic2 ? 256 : 0);
-                const name = getPropertyNameNodeForSymbol(p, context4);
+                const name = getPropertyNameNodeForSymbol(p, context3);
                 const firstPropertyLikeDecl = (_a2 = p.declarations) == null ? void 0 : _a2.find(or(isPropertyDeclaration, isAccessor, isVariableDeclaration, isPropertySignature, isBinaryExpression, isPropertyAccessExpression));
                 if (p.flags & 98304 && useAccessors) {
                   const result = [];
@@ -83891,9 +83891,9 @@ ${lanes.join("\n")}
                     Debug.assert(!!setter);
                     const paramSymbol = isFunctionLikeDeclaration(setter) ? getSignatureFromDeclaration(setter).parameters[0] : void 0;
                     const setterDeclaration = (_b = p.declarations) == null ? void 0 : _b.find(isSetAccessor);
-                    context4.approximateLength += modifiersLength(flag) + 7 + (paramSymbol ? symbolName(paramSymbol).length : 5) + (omitType ? 0 : 2);
+                    context3.approximateLength += modifiersLength(flag) + 7 + (paramSymbol ? symbolName(paramSymbol).length : 5) + (omitType ? 0 : 2);
                     result.push(setTextRange2(
-                      context4,
+                      context3,
                       factory.createSetAccessorDeclaration(
                         factory.createModifiersFromModifierFlags(flag),
                         name,
@@ -83902,10 +83902,10 @@ ${lanes.join("\n")}
                           void 0,
                           /*dotDotDotToken*/
                           void 0,
-                          paramSymbol ? parameterToParameterDeclarationName(paramSymbol, getEffectiveParameterDeclaration(paramSymbol), context4) : "value",
+                          paramSymbol ? parameterToParameterDeclarationName(paramSymbol, getEffectiveParameterDeclaration(paramSymbol), context3) : "value",
                           /*questionToken*/
                           void 0,
-                          omitType ? void 0 : serializeTypeForDeclaration(context4, setterDeclaration, getWriteTypeOfSymbol(p), p)
+                          omitType ? void 0 : serializeTypeForDeclaration(context3, setterDeclaration, getWriteTypeOfSymbol(p), p)
                         )],
                         /*body*/
                         void 0
@@ -83915,14 +83915,14 @@ ${lanes.join("\n")}
                   }
                   if (p.flags & 32768) {
                     const getterDeclaration = (_c = p.declarations) == null ? void 0 : _c.find(isGetAccessor);
-                    context4.approximateLength += modifiersLength(flag) + 8 + (omitType ? 0 : 2);
+                    context3.approximateLength += modifiersLength(flag) + 8 + (omitType ? 0 : 2);
                     result.push(setTextRange2(
-                      context4,
+                      context3,
                       factory.createGetAccessorDeclaration(
                         factory.createModifiersFromModifierFlags(flag),
                         name,
                         [],
-                        omitType ? void 0 : serializeTypeForDeclaration(context4, getterDeclaration, getTypeOfSymbol(p), p),
+                        omitType ? void 0 : serializeTypeForDeclaration(context3, getterDeclaration, getTypeOfSymbol(p), p),
                         /*body*/
                         void 0
                       ),
@@ -83932,9 +83932,9 @@ ${lanes.join("\n")}
                   return result;
                 } else if (p.flags & (4 | 3 | 98304)) {
                   const modifierFlags2 = (isReadonlySymbol(p) ? 8 : 0) | flag;
-                  context4.approximateLength += 2 + (omitType ? 0 : 2) + modifiersLength(modifierFlags2);
+                  context3.approximateLength += 2 + (omitType ? 0 : 2) + modifiersLength(modifierFlags2);
                   return setTextRange2(
-                    context4,
+                    context3,
                     createProperty2(
                       factory.createModifiersFromModifierFlags(modifierFlags2),
                       name,
@@ -83942,7 +83942,7 @@ ${lanes.join("\n")}
                         58
                         /* QuestionToken */
                       ) : void 0,
-                      omitType ? void 0 : serializeTypeForDeclaration(context4, (_d = p.declarations) == null ? void 0 : _d.find(isSetAccessorDeclaration), getWriteTypeOfSymbol(p), p),
+                      omitType ? void 0 : serializeTypeForDeclaration(context3, (_d = p.declarations) == null ? void 0 : _d.find(isSetAccessorDeclaration), getWriteTypeOfSymbol(p), p),
                       // TODO: https://github.com/microsoft/TypeScript/pull/32372#discussion_r328386357
                       // interface members can't have initializers, however class members _can_
                       /*initializer*/
@@ -83960,9 +83960,9 @@ ${lanes.join("\n")}
                   );
                   if (omitType) {
                     const modifierFlags2 = (isReadonlySymbol(p) ? 8 : 0) | flag;
-                    context4.approximateLength += 1 + modifiersLength(modifierFlags2);
+                    context3.approximateLength += 1 + modifiersLength(modifierFlags2);
                     return setTextRange2(
-                      context4,
+                      context3,
                       createProperty2(
                         factory.createModifiersFromModifierFlags(modifierFlags2),
                         name,
@@ -83980,11 +83980,11 @@ ${lanes.join("\n")}
                   }
                   const results2 = [];
                   for (const sig of signatures) {
-                    context4.approximateLength += 1;
+                    context3.approximateLength += 1;
                     const decl = signatureToSignatureDeclarationHelper(
                       sig,
                       methodKind,
-                      context4,
+                      context3,
                       {
                         name,
                         questionToken: p.flags & 16777216 ? factory.createToken(
@@ -83995,7 +83995,7 @@ ${lanes.join("\n")}
                       }
                     );
                     const location = sig.declaration && isPrototypePropertyAssignment(sig.declaration.parent) ? sig.declaration.parent : sig.declaration;
-                    results2.push(setTextRange2(context4, decl, location));
+                    results2.push(setTextRange2(context3, decl, location));
                   }
                   return results2;
                 }
@@ -84079,7 +84079,7 @@ ${lanes.join("\n")}
                 }
                 if (privateProtected) {
                   return [setTextRange2(
-                    context4,
+                    context3,
                     factory.createConstructorDeclaration(
                       factory.createModifiersFromModifierFlags(privateProtected),
                       /*parameters*/
@@ -84093,9 +84093,9 @@ ${lanes.join("\n")}
               }
               const results2 = [];
               for (const sig of signatures) {
-                context4.approximateLength += 1;
-                const decl = signatureToSignatureDeclarationHelper(sig, outputKind, context4);
-                results2.push(setTextRange2(context4, decl, sig.declaration));
+                context3.approximateLength += 1;
+                const decl = signatureToSignatureDeclarationHelper(sig, outputKind, context3);
+                results2.push(setTextRange2(context3, decl, sig.declaration));
               }
               return results2;
             }
@@ -84112,7 +84112,7 @@ ${lanes.join("\n")}
                 }
                 results2.push(indexInfoToIndexSignatureDeclarationHelper(
                   info2,
-                  context4,
+                  context3,
                   /*typeNode*/
                   void 0
                 ));
@@ -84138,7 +84138,7 @@ ${lanes.join("\n")}
                       tempName,
                       /*exclamationToken*/
                       void 0,
-                      typeToTypeNodeHelper(staticType, context4)
+                      typeToTypeNodeHelper(staticType, context3)
                     )
                   ],
                   2
@@ -84160,17 +84160,17 @@ ${lanes.join("\n")}
               let typeArgs;
               let reference;
               if (t.target && isSymbolAccessibleByFlags(t.target.symbol, enclosingDeclaration, flags)) {
-                typeArgs = map(getTypeArguments(t), (t2) => typeToTypeNodeHelper(t2, context4));
+                typeArgs = map(getTypeArguments(t), (t2) => typeToTypeNodeHelper(t2, context3));
                 reference = symbolToExpression(
                   t.target.symbol,
-                  context4,
+                  context3,
                   788968
                   /* Type */
                 );
               } else if (t.symbol && isSymbolAccessibleByFlags(t.symbol, enclosingDeclaration, flags)) {
                 reference = symbolToExpression(
                   t.symbol,
-                  context4,
+                  context3,
                   788968
                   /* Type */
                 );
@@ -84192,7 +84192,7 @@ ${lanes.join("\n")}
                 return factory.createExpressionWithTypeArguments(
                   symbolToExpression(
                     t.symbol,
-                    context4,
+                    context3,
                     788968
                     /* Type */
                   ),
@@ -84205,8 +84205,8 @@ ${lanes.join("\n")}
               var _a2, _b;
               const id = symbol ? getSymbolId(symbol) : void 0;
               if (id) {
-                if (context4.remappedSymbolNames.has(id)) {
-                  return context4.remappedSymbolNames.get(id);
+                if (context3.remappedSymbolNames.has(id)) {
+                  return context3.remappedSymbolNames.get(id);
                 }
               }
               if (symbol) {
@@ -84214,21 +84214,21 @@ ${lanes.join("\n")}
               }
               let i = 0;
               const original = input;
-              while ((_a2 = context4.usedSymbolNames) == null ? void 0 : _a2.has(input)) {
+              while ((_a2 = context3.usedSymbolNames) == null ? void 0 : _a2.has(input)) {
                 i++;
                 input = `${original}_${i}`;
               }
-              (_b = context4.usedSymbolNames) == null ? void 0 : _b.add(input);
+              (_b = context3.usedSymbolNames) == null ? void 0 : _b.add(input);
               if (id) {
-                context4.remappedSymbolNames.set(id, input);
+                context3.remappedSymbolNames.set(id, input);
               }
               return input;
             }
             function getNameCandidateWorker(symbol, localName) {
               if (localName === "default" || localName === "__class" || localName === "__function") {
-                const restoreFlags = saveRestoreFlags(context4);
-                context4.flags |= 16777216;
-                const nameCandidate = getNameOfSymbolAsWritten(symbol, context4);
+                const restoreFlags = saveRestoreFlags(context3);
+                context3.flags |= 16777216;
+                const nameCandidate = getNameOfSymbolAsWritten(symbol, context3);
                 restoreFlags();
                 localName = nameCandidate.length > 0 && isSingleOrDoubleQuote(nameCandidate.charCodeAt(0)) ? stripQuotes(nameCandidate) : nameCandidate;
               }
@@ -84242,16 +84242,16 @@ ${lanes.join("\n")}
             }
             function getInternalSymbolName(symbol, localName) {
               const id = getSymbolId(symbol);
-              if (context4.remappedSymbolNames.has(id)) {
-                return context4.remappedSymbolNames.get(id);
+              if (context3.remappedSymbolNames.has(id)) {
+                return context3.remappedSymbolNames.get(id);
               }
               localName = getNameCandidateWorker(symbol, localName);
-              context4.remappedSymbolNames.set(id, localName);
+              context3.remappedSymbolNames.set(id, localName);
               return localName;
             }
           }
-          function isExpanding(context4) {
-            return context4.maxExpansionDepth !== -1;
+          function isExpanding(context3) {
+            return context3.maxExpansionDepth !== -1;
           }
           function isHashPrivate(s) {
             return !!s.valueDeclaration && isNamedDeclaration(s.valueDeclaration) && isPrivateIdentifier(s.valueDeclaration.name);
@@ -84334,7 +84334,7 @@ ${lanes.join("\n")}
         function isDefaultBindingContext(location) {
           return location.kind === 308 || isAmbientModule(location);
         }
-        function getNameOfSymbolFromNameType(symbol, context4) {
+        function getNameOfSymbolFromNameType(symbol, context3) {
           const nameType = getSymbolLinks(symbol).nameType;
           if (nameType) {
             if (nameType.flags & 384) {
@@ -84352,19 +84352,19 @@ ${lanes.join("\n")}
               return name;
             }
             if (nameType.flags & 8192) {
-              return `[${getNameOfSymbolAsWritten(nameType.symbol, context4)}]`;
+              return `[${getNameOfSymbolAsWritten(nameType.symbol, context3)}]`;
             }
           }
         }
-        function getNameOfSymbolAsWritten(symbol, context4) {
+        function getNameOfSymbolAsWritten(symbol, context3) {
           var _a;
-          if ((_a = context4 == null ? void 0 : context4.remappedSymbolReferences) == null ? void 0 : _a.has(getSymbolId(symbol))) {
-            symbol = context4.remappedSymbolReferences.get(getSymbolId(symbol));
+          if ((_a = context3 == null ? void 0 : context3.remappedSymbolReferences) == null ? void 0 : _a.has(getSymbolId(symbol))) {
+            symbol = context3.remappedSymbolReferences.get(getSymbolId(symbol));
           }
-          if (context4 && symbol.escapedName === "default" && !(context4.flags & 16384) && // If it's not the first part of an entity name, it must print as `default`
-          (!(context4.flags & 16777216) || // if the symbol is synthesized, it will only be referenced externally it must print as `default`
+          if (context3 && symbol.escapedName === "default" && !(context3.flags & 16384) && // If it's not the first part of an entity name, it must print as `default`
+          (!(context3.flags & 16777216) || // if the symbol is synthesized, it will only be referenced externally it must print as `default`
           !symbol.declarations || // if not in the same binding context (source file, module declaration), it must print as `default`
-          context4.enclosingDeclaration && findAncestor(symbol.declarations[0], isDefaultBindingContext) !== findAncestor(context4.enclosingDeclaration, isDefaultBindingContext))) {
+          context3.enclosingDeclaration && findAncestor(symbol.declarations[0], isDefaultBindingContext) !== findAncestor(context3.enclosingDeclaration, isDefaultBindingContext))) {
             return "default";
           }
           if (symbol.declarations && symbol.declarations.length) {
@@ -84377,7 +84377,7 @@ ${lanes.join("\n")}
               if (isComputedPropertyName(name2) && !(getCheckFlags(symbol) & 4096)) {
                 const nameType = getSymbolLinks(symbol).nameType;
                 if (nameType && nameType.flags & 384) {
-                  const result = getNameOfSymbolFromNameType(symbol, context4);
+                  const result = getNameOfSymbolFromNameType(symbol, context3);
                   if (result !== void 0) {
                     return result;
                   }
@@ -84395,13 +84395,13 @@ ${lanes.join("\n")}
               case 232:
               case 219:
               case 220:
-                if (context4 && !context4.encounteredError && !(context4.flags & 131072)) {
-                  context4.encounteredError = true;
+                if (context3 && !context3.encounteredError && !(context3.flags & 131072)) {
+                  context3.encounteredError = true;
                 }
                 return declaration.kind === 232 ? "(Anonymous class)" : "(Anonymous function)";
             }
           }
-          const name = getNameOfSymbolFromNameType(symbol, context4);
+          const name = getNameOfSymbolFromNameType(symbol, context3);
           return name !== void 0 ? name : symbolName(symbol);
         }
         function isDeclarationVisible(node) {
@@ -91917,7 +91917,7 @@ ${lanes.join("\n")}
             const checkTypeDeferred = isDeferredType(checkType, checkTuples);
             let combinedMapper;
             if (root.inferTypeParameters) {
-              const context4 = createInferenceContext(
+              const context3 = createInferenceContext(
                 root.inferTypeParameters,
                 /*signature*/
                 void 0,
@@ -91925,18 +91925,18 @@ ${lanes.join("\n")}
                 /* None */
               );
               if (mapper) {
-                context4.nonFixingMapper = combineTypeMappers(context4.nonFixingMapper, mapper);
+                context3.nonFixingMapper = combineTypeMappers(context3.nonFixingMapper, mapper);
               }
               if (!checkTypeDeferred) {
                 inferTypes(
-                  context4.inferences,
+                  context3.inferences,
                   checkType,
                   extendsType,
                   512 | 1024
                   /* AlwaysStrict */
                 );
               }
-              combinedMapper = mapper ? combineTypeMappers(context4.mapper, mapper) : context4.mapper;
+              combinedMapper = mapper ? combineTypeMappers(context3.mapper, mapper) : context3.mapper;
             }
             const inferredExtendsType = combinedMapper ? instantiateType(root.extendsType, combinedMapper) : extendsType;
             if (!checkTypeDeferred && !isDeferredType(inferredExtendsType, checkTuples)) {
@@ -92646,12 +92646,12 @@ ${lanes.join("\n")}
             void 0
           );
         }
-        function createBackreferenceMapper(context4, index) {
-          const forwardInferences = context4.inferences.slice(index);
+        function createBackreferenceMapper(context3, index) {
+          const forwardInferences = context3.inferences.slice(index);
           return createTypeMapper(map(forwardInferences, (i) => i.typeParameter), map(forwardInferences, () => unknownType));
         }
-        function createOuterReturnMapper(context4) {
-          return context4.outerReturnMapper ?? (context4.outerReturnMapper = mergeTypeMappers(context4.returnMapper, cloneInferenceContext(context4).mapper));
+        function createOuterReturnMapper(context3) {
+          return context3.outerReturnMapper ?? (context3.outerReturnMapper = mergeTypeMappers(context3.returnMapper, cloneInferenceContext(context3).mapper));
         }
         function combineTypeMappers(mapper1, mapper2) {
           return mapper1 ? makeCompositeTypeMapper(4, mapper1, mapper2) : mapper2;
@@ -97441,12 +97441,12 @@ ${lanes.join("\n")}
         function createWideningContext(parent2, propertyName, siblings) {
           return { parent: parent2, propertyName, siblings, resolvedProperties: void 0 };
         }
-        function getSiblingsOfContext(context4) {
-          if (!context4.siblings) {
+        function getSiblingsOfContext(context3) {
+          if (!context3.siblings) {
             const siblings = [];
-            for (const type of getSiblingsOfContext(context4.parent)) {
+            for (const type of getSiblingsOfContext(context3.parent)) {
               if (isObjectLiteralType2(type)) {
-                const prop = getPropertyOfObjectType(type, context4.propertyName);
+                const prop = getPropertyOfObjectType(type, context3.propertyName);
                 if (prop) {
                   forEachType(getTypeOfSymbol(prop), (t) => {
                     siblings.push(t);
@@ -97454,31 +97454,31 @@ ${lanes.join("\n")}
                 }
               }
             }
-            context4.siblings = siblings;
+            context3.siblings = siblings;
           }
-          return context4.siblings;
+          return context3.siblings;
         }
-        function getPropertiesOfContext(context4) {
-          if (!context4.resolvedProperties) {
+        function getPropertiesOfContext(context3) {
+          if (!context3.resolvedProperties) {
             const names = /* @__PURE__ */ new Map();
-            for (const t of getSiblingsOfContext(context4)) {
+            for (const t of getSiblingsOfContext(context3)) {
               if (isObjectLiteralType2(t) && !(getObjectFlags(t) & 2097152)) {
                 for (const prop of getPropertiesOfType(t)) {
                   names.set(prop.escapedName, prop);
                 }
               }
             }
-            context4.resolvedProperties = arrayFrom(names.values());
+            context3.resolvedProperties = arrayFrom(names.values());
           }
-          return context4.resolvedProperties;
+          return context3.resolvedProperties;
         }
-        function getWidenedProperty(prop, context4) {
+        function getWidenedProperty(prop, context3) {
           if (!(prop.flags & 4)) {
             return prop;
           }
           const original = getTypeOfSymbol(prop);
-          const propContext = context4 && createWideningContext(
-            context4,
+          const propContext = context3 && createWideningContext(
+            context3,
             prop.escapedName,
             /*siblings*/
             void 0
@@ -97496,13 +97496,13 @@ ${lanes.join("\n")}
           undefinedProperties.set(prop.escapedName, result);
           return result;
         }
-        function getWidenedTypeOfObjectLiteral(type, context4) {
+        function getWidenedTypeOfObjectLiteral(type, context3) {
           const members = createSymbolTable();
           for (const prop of getPropertiesOfObjectType(type)) {
-            members.set(prop.escapedName, getWidenedProperty(prop, context4));
+            members.set(prop.escapedName, getWidenedProperty(prop, context3));
           }
-          if (context4) {
-            for (const prop of getPropertiesOfContext(context4)) {
+          if (context3) {
+            for (const prop of getPropertiesOfContext(context3)) {
               if (!members.has(prop.escapedName)) {
                 members.set(prop.escapedName, getUndefinedProperty(prop));
               }
@@ -97519,18 +97519,18 @@ ${lanes.join("\n")}
             void 0
           );
         }
-        function getWidenedTypeWithContext(type, context4) {
+        function getWidenedTypeWithContext(type, context3) {
           if (getObjectFlags(type) & 196608) {
-            if (context4 === void 0 && type.widened) {
+            if (context3 === void 0 && type.widened) {
               return type.widened;
             }
             let result;
             if (type.flags & (1 | 98304)) {
               result = anyType;
             } else if (isObjectLiteralType2(type)) {
-              result = getWidenedTypeOfObjectLiteral(type, context4);
+              result = getWidenedTypeOfObjectLiteral(type, context3);
             } else if (type.flags & 1048576) {
-              const unionContext = context4 || createWideningContext(
+              const unionContext = context3 || createWideningContext(
                 /*parent*/
                 void 0,
                 /*propertyName*/
@@ -97548,7 +97548,7 @@ ${lanes.join("\n")}
             } else if (isArrayOrTupleType(type)) {
               result = createTypeReference(type.target, sameMap(getTypeArguments(type), getWidenedType));
             }
-            if (result && context4 === void 0) {
+            if (result && context3 === void 0) {
               type.widened = result;
             }
             return result || type;
@@ -97744,11 +97744,11 @@ ${lanes.join("\n")}
         function createInferenceContext(typeParameters, signature, flags, compareTypes) {
           return createInferenceContextWorker(typeParameters.map(createInferenceInfo), signature, flags, compareTypes || compareTypesAssignable);
         }
-        function cloneInferenceContext(context4, extraFlags = 0) {
-          return context4 && createInferenceContextWorker(map(context4.inferences, cloneInferenceInfo), context4.signature, context4.flags | extraFlags, context4.compareTypes);
+        function cloneInferenceContext(context3, extraFlags = 0) {
+          return context3 && createInferenceContextWorker(map(context3.inferences, cloneInferenceInfo), context3.signature, context3.flags | extraFlags, context3.compareTypes);
         }
         function createInferenceContextWorker(inferences, signature, flags, compareTypes) {
-          const context4 = {
+          const context3 = {
             inferences,
             signature,
             flags,
@@ -97757,28 +97757,28 @@ ${lanes.join("\n")}
             // initialize to a noop mapper so the context object is available, but the underlying object shape is right upon construction
             nonFixingMapper: reportUnmeasurableMapper
           };
-          context4.mapper = makeFixingMapperForContext(context4);
-          context4.nonFixingMapper = makeNonFixingMapperForContext(context4);
-          return context4;
+          context3.mapper = makeFixingMapperForContext(context3);
+          context3.nonFixingMapper = makeNonFixingMapperForContext(context3);
+          return context3;
         }
-        function makeFixingMapperForContext(context4) {
+        function makeFixingMapperForContext(context3) {
           return makeDeferredTypeMapper(
-            map(context4.inferences, (i) => i.typeParameter),
-            map(context4.inferences, (inference, i) => () => {
+            map(context3.inferences, (i) => i.typeParameter),
+            map(context3.inferences, (inference, i) => () => {
               if (!inference.isFixed) {
-                inferFromIntraExpressionSites(context4);
-                clearCachedInferences(context4.inferences);
+                inferFromIntraExpressionSites(context3);
+                clearCachedInferences(context3.inferences);
                 inference.isFixed = true;
               }
-              return getInferredType(context4, i);
+              return getInferredType(context3, i);
             })
           );
         }
-        function makeNonFixingMapperForContext(context4) {
+        function makeNonFixingMapperForContext(context3) {
           return makeDeferredTypeMapper(
-            map(context4.inferences, (i) => i.typeParameter),
-            map(context4.inferences, (_, i) => () => {
-              return getInferredType(context4, i);
+            map(context3.inferences, (i) => i.typeParameter),
+            map(context3.inferences, (_, i) => () => {
+              return getInferredType(context3, i);
             })
           );
         }
@@ -97789,12 +97789,12 @@ ${lanes.join("\n")}
             }
           }
         }
-        function addIntraExpressionInferenceSite(context4, node, type) {
-          (context4.intraExpressionInferenceSites ?? (context4.intraExpressionInferenceSites = [])).push({ node, type });
+        function addIntraExpressionInferenceSite(context3, node, type) {
+          (context3.intraExpressionInferenceSites ?? (context3.intraExpressionInferenceSites = [])).push({ node, type });
         }
-        function inferFromIntraExpressionSites(context4) {
-          if (context4.intraExpressionInferenceSites) {
-            for (const { node, type } of context4.intraExpressionInferenceSites) {
+        function inferFromIntraExpressionSites(context3) {
+          if (context3.intraExpressionInferenceSites) {
+            for (const { node, type } of context3.intraExpressionInferenceSites) {
               const contextualType = node.kind === 175 ? getContextualTypeForObjectLiteralMethod(
                 node,
                 2
@@ -97805,10 +97805,10 @@ ${lanes.join("\n")}
                 /* NoConstraints */
               );
               if (contextualType) {
-                inferTypes(context4.inferences, type, contextualType);
+                inferTypes(context3.inferences, type, contextualType);
               }
             }
-            context4.intraExpressionInferenceSites = void 0;
+            context3.intraExpressionInferenceSites = void 0;
           }
         }
         function createInferenceInfo(typeParameter) {
@@ -97835,12 +97835,12 @@ ${lanes.join("\n")}
             impliedArity: inference.impliedArity
           };
         }
-        function cloneInferredPartOfContext(context4) {
-          const inferences = filter(context4.inferences, hasInferenceCandidates);
-          return inferences.length ? createInferenceContextWorker(map(inferences, cloneInferenceInfo), context4.signature, context4.flags, context4.compareTypes) : void 0;
+        function cloneInferredPartOfContext(context3) {
+          const inferences = filter(context3.inferences, hasInferenceCandidates);
+          return inferences.length ? createInferenceContextWorker(map(inferences, cloneInferenceInfo), context3.signature, context3.flags, context3.compareTypes) : void 0;
         }
-        function getMapperFromContext(context4) {
-          return context4 && context4.mapper;
+        function getMapperFromContext(context3) {
+          return context3 && context3.mapper;
         }
         function couldContainTypeVariables(type) {
           const objectFlags = getObjectFlags(type);
@@ -98864,35 +98864,35 @@ ${lanes.join("\n")}
           ) : getCommonSupertype(baseCandidates);
           return getWidenedType(unwidenedType);
         }
-        function getInferredType(context4, index) {
-          const inference = context4.inferences[index];
+        function getInferredType(context3, index) {
+          const inference = context3.inferences[index];
           if (!inference.inferredType) {
             let inferredType;
             let fallbackType;
-            if (context4.signature) {
-              const inferredCovariantType = inference.candidates ? getCovariantInference(inference, context4.signature) : void 0;
+            if (context3.signature) {
+              const inferredCovariantType = inference.candidates ? getCovariantInference(inference, context3.signature) : void 0;
               const inferredContravariantType = inference.contraCandidates ? getContravariantInference(inference) : void 0;
               if (inferredCovariantType || inferredContravariantType) {
-                const preferCovariantType = inferredCovariantType && (!inferredContravariantType || !(inferredCovariantType.flags & (131072 | 1)) && some(inference.contraCandidates, (t) => isTypeAssignableTo(inferredCovariantType, t)) && every(context4.inferences, (other) => other !== inference && getConstraintOfTypeParameter(other.typeParameter) !== inference.typeParameter || every(other.candidates, (t) => isTypeAssignableTo(t, inferredCovariantType))));
+                const preferCovariantType = inferredCovariantType && (!inferredContravariantType || !(inferredCovariantType.flags & (131072 | 1)) && some(inference.contraCandidates, (t) => isTypeAssignableTo(inferredCovariantType, t)) && every(context3.inferences, (other) => other !== inference && getConstraintOfTypeParameter(other.typeParameter) !== inference.typeParameter || every(other.candidates, (t) => isTypeAssignableTo(t, inferredCovariantType))));
                 inferredType = preferCovariantType ? inferredCovariantType : inferredContravariantType;
                 fallbackType = preferCovariantType ? inferredContravariantType : inferredCovariantType;
-              } else if (context4.flags & 1) {
+              } else if (context3.flags & 1) {
                 inferredType = silentNeverType;
               } else {
                 const defaultType = getDefaultFromTypeParameter(inference.typeParameter);
                 if (defaultType) {
-                  inferredType = instantiateType(defaultType, mergeTypeMappers(createBackreferenceMapper(context4, index), context4.nonFixingMapper));
+                  inferredType = instantiateType(defaultType, mergeTypeMappers(createBackreferenceMapper(context3, index), context3.nonFixingMapper));
                 }
               }
             } else {
               inferredType = getTypeFromInference(inference);
             }
-            inference.inferredType = inferredType || getDefaultTypeArgumentType(!!(context4.flags & 2));
+            inference.inferredType = inferredType || getDefaultTypeArgumentType(!!(context3.flags & 2));
             const constraint = getConstraintOfTypeParameter(inference.typeParameter);
             if (constraint) {
-              const instantiatedConstraint = instantiateType(constraint, context4.nonFixingMapper);
-              if (!inferredType || !context4.compareTypes(inferredType, getTypeWithThisArgument(instantiatedConstraint, inferredType))) {
-                inference.inferredType = fallbackType && context4.compareTypes(fallbackType, getTypeWithThisArgument(instantiatedConstraint, fallbackType)) ? fallbackType : instantiatedConstraint;
+              const instantiatedConstraint = instantiateType(constraint, context3.nonFixingMapper);
+              if (!inferredType || !context3.compareTypes(inferredType, getTypeWithThisArgument(instantiatedConstraint, inferredType))) {
+                inference.inferredType = fallbackType && context3.compareTypes(fallbackType, getTypeWithThisArgument(instantiatedConstraint, fallbackType)) ? fallbackType : instantiatedConstraint;
               }
             }
             clearActiveMapperCaches();
@@ -98902,10 +98902,10 @@ ${lanes.join("\n")}
         function getDefaultTypeArgumentType(isInJavaScriptFile) {
           return isInJavaScriptFile ? anyType : unknownType;
         }
-        function getInferredTypes(context4) {
+        function getInferredTypes(context3) {
           const result = [];
-          for (let i = 0; i < context4.inferences.length; i++) {
-            result.push(getInferredType(context4, i));
+          for (let i = 0; i < context3.inferences.length; i++) {
+            result.push(getInferredType(context3, i));
           }
           return result;
         }
@@ -103527,10 +103527,10 @@ ${lanes.join("\n")}
         function getEffectiveFirstArgumentForJsxSignature(signature, node) {
           return isJsxOpeningFragment(node) || getJsxReferenceKind(node) !== 0 ? getJsxPropsTypeFromCallSignature(signature, node) : getJsxPropsTypeFromClassType(signature, node);
         }
-        function getJsxPropsTypeFromCallSignature(sig, context4) {
+        function getJsxPropsTypeFromCallSignature(sig, context3) {
           let propsType = getTypeOfFirstParameterOfSignatureWithFallback(sig, unknownType);
-          propsType = getJsxManagedAttributesFromLocatedAttributes(context4, getJsxNamespaceAt(context4), propsType);
-          const intrinsicAttribs = getJsxType(JsxNames.IntrinsicAttributes, context4);
+          propsType = getJsxManagedAttributesFromLocatedAttributes(context3, getJsxNamespaceAt(context3), propsType);
+          const intrinsicAttribs = getJsxType(JsxNames.IntrinsicAttributes, context3);
           if (!isErrorType(intrinsicAttribs)) {
             propsType = intersectTypes(intrinsicAttribs, propsType);
           }
@@ -103555,62 +103555,62 @@ ${lanes.join("\n")}
           const instanceType = getReturnTypeOfSignature(sig);
           return isTypeAny(instanceType) ? instanceType : getTypeOfPropertyOfType(instanceType, forcedLookupLocation);
         }
-        function getStaticTypeOfReferencedJsxConstructor(context4) {
-          if (isJsxOpeningFragment(context4)) return getJSXFragmentType(context4);
-          if (isJsxIntrinsicTagName(context4.tagName)) {
-            const result = getIntrinsicAttributesTypeFromJsxOpeningLikeElement(context4);
-            const fakeSignature = createSignatureForJSXIntrinsic(context4, result);
+        function getStaticTypeOfReferencedJsxConstructor(context3) {
+          if (isJsxOpeningFragment(context3)) return getJSXFragmentType(context3);
+          if (isJsxIntrinsicTagName(context3.tagName)) {
+            const result = getIntrinsicAttributesTypeFromJsxOpeningLikeElement(context3);
+            const fakeSignature = createSignatureForJSXIntrinsic(context3, result);
             return getOrCreateTypeFromSignature(fakeSignature);
           }
-          const tagType = checkExpressionCached(context4.tagName);
+          const tagType = checkExpressionCached(context3.tagName);
           if (tagType.flags & 128) {
-            const result = getIntrinsicAttributesTypeFromStringLiteralType(tagType, context4);
+            const result = getIntrinsicAttributesTypeFromStringLiteralType(tagType, context3);
             if (!result) {
               return errorType;
             }
-            const fakeSignature = createSignatureForJSXIntrinsic(context4, result);
+            const fakeSignature = createSignatureForJSXIntrinsic(context3, result);
             return getOrCreateTypeFromSignature(fakeSignature);
           }
           return tagType;
         }
-        function getJsxManagedAttributesFromLocatedAttributes(context4, ns, attributesType) {
+        function getJsxManagedAttributesFromLocatedAttributes(context3, ns, attributesType) {
           const managedSym = getJsxLibraryManagedAttributes(ns);
           if (managedSym) {
-            const ctorType = getStaticTypeOfReferencedJsxConstructor(context4);
-            const result = instantiateAliasOrInterfaceWithDefaults(managedSym, isInJSFile(context4), ctorType, attributesType);
+            const ctorType = getStaticTypeOfReferencedJsxConstructor(context3);
+            const result = instantiateAliasOrInterfaceWithDefaults(managedSym, isInJSFile(context3), ctorType, attributesType);
             if (result) {
               return result;
             }
           }
           return attributesType;
         }
-        function getJsxPropsTypeFromClassType(sig, context4) {
-          const ns = getJsxNamespaceAt(context4);
+        function getJsxPropsTypeFromClassType(sig, context3) {
+          const ns = getJsxNamespaceAt(context3);
           const forcedLookupLocation = getJsxElementPropertiesName(ns);
           let attributesType = forcedLookupLocation === void 0 ? getTypeOfFirstParameterOfSignatureWithFallback(sig, unknownType) : forcedLookupLocation === "" ? getReturnTypeOfSignature(sig) : getJsxPropsTypeForSignatureFromMember(sig, forcedLookupLocation);
           if (!attributesType) {
-            if (!!forcedLookupLocation && !!length(context4.attributes.properties)) {
-              error22(context4, Diagnostics.JSX_element_class_does_not_support_attributes_because_it_does_not_have_a_0_property, unescapeLeadingUnderscores(forcedLookupLocation));
+            if (!!forcedLookupLocation && !!length(context3.attributes.properties)) {
+              error22(context3, Diagnostics.JSX_element_class_does_not_support_attributes_because_it_does_not_have_a_0_property, unescapeLeadingUnderscores(forcedLookupLocation));
             }
             return unknownType;
           }
-          attributesType = getJsxManagedAttributesFromLocatedAttributes(context4, ns, attributesType);
+          attributesType = getJsxManagedAttributesFromLocatedAttributes(context3, ns, attributesType);
           if (isTypeAny(attributesType)) {
             return attributesType;
           } else {
             let apparentAttributesType = attributesType;
-            const intrinsicClassAttribs = getJsxType(JsxNames.IntrinsicClassAttributes, context4);
+            const intrinsicClassAttribs = getJsxType(JsxNames.IntrinsicClassAttributes, context3);
             if (!isErrorType(intrinsicClassAttribs)) {
               const typeParams = getLocalTypeParametersOfClassOrInterfaceOrTypeAlias(intrinsicClassAttribs.symbol);
               const hostClassType = getReturnTypeOfSignature(sig);
               let libraryManagedAttributeType;
               if (typeParams) {
-                const inferredArgs = fillMissingTypeArguments([hostClassType], typeParams, getMinTypeArgumentCount(typeParams), isInJSFile(context4));
+                const inferredArgs = fillMissingTypeArguments([hostClassType], typeParams, getMinTypeArgumentCount(typeParams), isInJSFile(context3));
                 libraryManagedAttributeType = instantiateType(intrinsicClassAttribs, createTypeMapper(typeParams, inferredArgs));
               } else libraryManagedAttributeType = intrinsicClassAttribs;
               apparentAttributesType = intersectTypes(libraryManagedAttributeType, apparentAttributesType);
             }
-            const intrinsicAttribs = getJsxType(JsxNames.IntrinsicAttributes, context4);
+            const intrinsicAttribs = getJsxType(JsxNames.IntrinsicAttributes, context3);
             if (!isErrorType(intrinsicAttribs)) {
               apparentAttributesType = intersectTypes(intrinsicAttribs, apparentAttributesType);
             }
@@ -105964,17 +105964,17 @@ ${lanes.join("\n")}
           return void 0;
         }
         function instantiateSignatureInContextOf(signature, contextualSignature, inferenceContext, compareTypes) {
-          const context4 = createInferenceContext(getTypeParametersForMapper(signature), signature, 0, compareTypes);
+          const context3 = createInferenceContext(getTypeParametersForMapper(signature), signature, 0, compareTypes);
           const restType = getEffectiveRestType(contextualSignature);
           const mapper = inferenceContext && (restType && restType.flags & 262144 ? inferenceContext.nonFixingMapper : inferenceContext.mapper);
           const sourceSignature = mapper ? instantiateSignature(contextualSignature, mapper) : contextualSignature;
           applyToParameterTypes(sourceSignature, signature, (source, target) => {
-            inferTypes(context4.inferences, source, target);
+            inferTypes(context3.inferences, source, target);
           });
           if (!inferenceContext) {
             applyToReturnTypes(contextualSignature, signature, (source, target) => {
               inferTypes(
-                context4.inferences,
+                context3.inferences,
                 source,
                 target,
                 128
@@ -105982,13 +105982,13 @@ ${lanes.join("\n")}
               );
             });
           }
-          return getSignatureInstantiation(signature, getInferredTypes(context4), isInJSFile(contextualSignature.declaration));
+          return getSignatureInstantiation(signature, getInferredTypes(context3), isInJSFile(contextualSignature.declaration));
         }
-        function inferJsxTypeArguments(node, signature, checkMode, context4) {
+        function inferJsxTypeArguments(node, signature, checkMode, context3) {
           const paramType = getEffectiveFirstArgumentForJsxSignature(signature, node);
-          const checkAttrType = checkExpressionWithContextualType(node.attributes, paramType, context4, checkMode);
-          inferTypes(context4.inferences, checkAttrType, paramType);
-          return getInferredTypes(context4);
+          const checkAttrType = checkExpressionWithContextualType(node.attributes, paramType, context3, checkMode);
+          inferTypes(context3.inferences, checkAttrType, paramType);
+          return getInferredTypes(context3);
         }
         function getThisArgumentType(thisArgumentNode) {
           if (!thisArgumentNode) {
@@ -105997,9 +105997,9 @@ ${lanes.join("\n")}
           const thisArgumentType = checkExpression(thisArgumentNode);
           return isRightSideOfInstanceofExpression(thisArgumentNode) ? thisArgumentType : isOptionalChainRoot(thisArgumentNode.parent) ? getNonNullableType(thisArgumentType) : isOptionalChain(thisArgumentNode.parent) ? removeOptionalTypeMarker(thisArgumentType) : thisArgumentType;
         }
-        function inferTypeArguments(node, signature, args, checkMode, context4) {
+        function inferTypeArguments(node, signature, args, checkMode, context3) {
           if (isJsxOpeningLikeElement(node)) {
-            return inferJsxTypeArguments(node, signature, checkMode, context4);
+            return inferJsxTypeArguments(node, signature, checkMode, context3);
           }
           if (node.kind !== 171 && node.kind !== 227) {
             const skipBindingPatterns = every(signature.typeParameters, (p) => !!getDefaultFromTypeParameter(p));
@@ -106027,24 +106027,24 @@ ${lanes.join("\n")}
                   const contextualSignature = getSingleCallSignature(instantiatedType);
                   const inferenceSourceType = contextualSignature && contextualSignature.typeParameters ? getOrCreateTypeFromSignature(getSignatureInstantiationWithoutFillingInTypeArguments(contextualSignature, contextualSignature.typeParameters)) : instantiatedType;
                   inferTypes(
-                    context4.inferences,
+                    context3.inferences,
                     inferenceSourceType,
                     inferenceTargetType,
                     128
                     /* ReturnType */
                   );
                 }
-                const returnContext = createInferenceContext(signature.typeParameters, signature, context4.flags);
+                const returnContext = createInferenceContext(signature.typeParameters, signature, context3.flags);
                 const returnSourceType = instantiateType(contextualType, outerContext && createOuterReturnMapper(outerContext));
                 inferTypes(returnContext.inferences, returnSourceType, inferenceTargetType);
-                context4.returnMapper = some(returnContext.inferences, hasInferenceCandidates) ? getMapperFromContext(cloneInferredPartOfContext(returnContext)) : void 0;
+                context3.returnMapper = some(returnContext.inferences, hasInferenceCandidates) ? getMapperFromContext(cloneInferredPartOfContext(returnContext)) : void 0;
               }
             }
           }
           const restType = getNonArrayRestType(signature);
           const argCount = restType ? Math.min(getParameterCount(signature) - 1, args.length) : args.length;
           if (restType && restType.flags & 262144) {
-            const info2 = find(context4.inferences, (info22) => info22.typeParameter === restType);
+            const info2 = find(context3.inferences, (info22) => info22.typeParameter === restType);
             if (info2) {
               info2.impliedArity = findIndex(args, isSpreadArgument, argCount) < 0 ? args.length - argCount : void 0;
             }
@@ -106052,23 +106052,23 @@ ${lanes.join("\n")}
           const thisType = getThisTypeOfSignature(signature);
           if (thisType && couldContainTypeVariables(thisType)) {
             const thisArgumentNode = getThisArgumentOfCall(node);
-            inferTypes(context4.inferences, getThisArgumentType(thisArgumentNode), thisType);
+            inferTypes(context3.inferences, getThisArgumentType(thisArgumentNode), thisType);
           }
           for (let i = 0; i < argCount; i++) {
             const arg = args[i];
             if (arg.kind !== 233) {
               const paramType = getTypeAtPosition(signature, i);
               if (couldContainTypeVariables(paramType)) {
-                const argType = checkExpressionWithContextualType(arg, paramType, context4, checkMode);
-                inferTypes(context4.inferences, argType, paramType);
+                const argType = checkExpressionWithContextualType(arg, paramType, context3, checkMode);
+                inferTypes(context3.inferences, argType, paramType);
               }
             }
           }
           if (restType && couldContainTypeVariables(restType)) {
-            const spreadType = getSpreadArgumentType(args, argCount, args.length, restType, context4, checkMode);
-            inferTypes(context4.inferences, spreadType, restType);
+            const spreadType = getSpreadArgumentType(args, argCount, args.length, restType, context3, checkMode);
+            inferTypes(context3.inferences, spreadType, restType);
           }
-          return getInferredTypes(context4);
+          return getInferredTypes(context3);
         }
         function getMutableArrayOrTupleType(type) {
           return type.flags & 1048576 ? mapType(type, getMutableArrayOrTupleType) : type.flags & 1 || isMutableArrayOrTuple(getBaseConstraintOfType(type) || type) ? type : isTupleType(type) ? createTupleType(
@@ -106082,12 +106082,12 @@ ${lanes.join("\n")}
             /* Variadic */
           ]);
         }
-        function getSpreadArgumentType(args, index, argCount, restType, context4, checkMode) {
+        function getSpreadArgumentType(args, index, argCount, restType, context3, checkMode) {
           const inConstContext = isConstTypeVariable(restType);
           if (index >= argCount - 1) {
             const arg = args[argCount - 1];
             if (isSpreadArgument(arg)) {
-              const spreadType = arg.kind === 238 ? arg.type : checkExpressionWithContextualType(arg.expression, restType, context4, checkMode);
+              const spreadType = arg.kind === 238 ? arg.type : checkExpressionWithContextualType(arg.expression, restType, context3, checkMode);
               if (isArrayLikeType(spreadType)) {
                 return getMutableArrayOrTupleType(spreadType);
               }
@@ -106121,7 +106121,7 @@ ${lanes.join("\n")}
                 256
                 /* Contextual */
               );
-              const argType = checkExpressionWithContextualType(arg, contextualType, context4, checkMode);
+              const argType = checkExpressionWithContextualType(arg, contextualType, context3, checkMode);
               const hasPrimitiveContextualType = inConstContext || maybeTypeOfKind(
                 contextualType,
                 402784252 | 4194304 | 134217728 | 268435456
@@ -108630,7 +108630,7 @@ ${lanes.join("\n")}
         function getTypeOfFirstParameterOfSignatureWithFallback(signature, fallbackType) {
           return signature.parameters.length > 0 ? getTypeAtPosition(signature, 0) : fallbackType;
         }
-        function inferFromAnnotatedParametersAndReturn(signature, context4, inferenceContext) {
+        function inferFromAnnotatedParametersAndReturn(signature, context3, inferenceContext) {
           const len = signature.parameters.length - (signatureHasRestParameter(signature) ? 1 : 0);
           for (let i = 0; i < len; i++) {
             const declaration = signature.parameters[i].valueDeclaration;
@@ -108642,36 +108642,36 @@ ${lanes.join("\n")}
                 false,
                 isOptionalDeclaration(declaration)
               );
-              const target = getTypeAtPosition(context4, i);
+              const target = getTypeAtPosition(context3, i);
               inferTypes(inferenceContext.inferences, source, target);
             }
           }
           const typeNode = signature.declaration && getEffectiveReturnTypeNode(signature.declaration);
           if (typeNode) {
             const source = getTypeFromTypeNode(typeNode);
-            const target = getReturnTypeOfSignature(context4);
+            const target = getReturnTypeOfSignature(context3);
             inferTypes(inferenceContext.inferences, source, target);
           }
         }
-        function assignContextualParameterTypes(signature, context4) {
-          if (context4.typeParameters) {
+        function assignContextualParameterTypes(signature, context3) {
+          if (context3.typeParameters) {
             if (!signature.typeParameters) {
-              signature.typeParameters = context4.typeParameters;
+              signature.typeParameters = context3.typeParameters;
             } else {
               return;
             }
           }
-          if (context4.thisParameter) {
+          if (context3.thisParameter) {
             const parameter = signature.thisParameter;
             if (!parameter || parameter.valueDeclaration && !parameter.valueDeclaration.type) {
               if (!parameter) {
                 signature.thisParameter = createSymbolWithType(
-                  context4.thisParameter,
+                  context3.thisParameter,
                   /*type*/
                   void 0
                 );
               }
-              assignParameterType(signature.thisParameter, getTypeOfSymbol(context4.thisParameter));
+              assignParameterType(signature.thisParameter, getTypeOfSymbol(context3.thisParameter));
             }
           }
           const len = signature.parameters.length - (signatureHasRestParameter(signature) ? 1 : 0);
@@ -108679,7 +108679,7 @@ ${lanes.join("\n")}
             const parameter = signature.parameters[i];
             const declaration = parameter.valueDeclaration;
             if (!getEffectiveTypeAnnotationNode(declaration)) {
-              let type = tryGetTypeAtPosition(context4, i);
+              let type = tryGetTypeAtPosition(context3, i);
               if (type && declaration.initializer) {
                 let initializerType = checkDeclarationInitializer(
                   declaration,
@@ -108696,7 +108696,7 @@ ${lanes.join("\n")}
           if (signatureHasRestParameter(signature)) {
             const parameter = last(signature.parameters);
             if (parameter.valueDeclaration ? !getEffectiveTypeAnnotationNode(parameter.valueDeclaration) : !!(getCheckFlags(parameter) & 65536)) {
-              const contextualParameterType = getRestTypeAtPosition(context4, len);
+              const contextualParameterType = getRestTypeAtPosition(context3, len);
               assignParameterType(parameter, contextualParameterType);
             }
           }
@@ -111387,13 +111387,13 @@ ${lanes.join("\n")}
                     skippedGenericFunction(node, checkMode);
                     return anyFunctionType;
                   }
-                  const context4 = getInferenceContext(node);
-                  const returnType = context4.signature && getReturnTypeOfSignature(context4.signature);
+                  const context3 = getInferenceContext(node);
+                  const returnType = context3.signature && getReturnTypeOfSignature(context3.signature);
                   const returnSignature = returnType && getSingleCallOrConstructSignature(returnType);
-                  if (returnSignature && !returnSignature.typeParameters && !every(context4.inferences, hasInferenceCandidates)) {
-                    const uniqueTypeParameters = getUniqueTypeParameters(context4, signature.typeParameters);
+                  if (returnSignature && !returnSignature.typeParameters && !every(context3.inferences, hasInferenceCandidates)) {
+                    const uniqueTypeParameters = getUniqueTypeParameters(context3, signature.typeParameters);
                     const instantiatedSignature = getSignatureInstantiationWithoutFillingInTypeArguments(signature, uniqueTypeParameters);
-                    const inferences = map(context4.inferences, (info2) => createInferenceInfo(info2.typeParameter));
+                    const inferences = map(context3.inferences, (info2) => createInferenceInfo(info2.typeParameter));
                     applyToParameterTypes(instantiatedSignature, contextualSignature, (source, target) => {
                       inferTypes(
                         inferences,
@@ -111409,14 +111409,14 @@ ${lanes.join("\n")}
                       applyToReturnTypes(instantiatedSignature, contextualSignature, (source, target) => {
                         inferTypes(inferences, source, target);
                       });
-                      if (!hasOverlappingInferences(context4.inferences, inferences)) {
-                        mergeInferences(context4.inferences, inferences);
-                        context4.inferredTypeParameters = concatenate(context4.inferredTypeParameters, uniqueTypeParameters);
+                      if (!hasOverlappingInferences(context3.inferences, inferences)) {
+                        mergeInferences(context3.inferences, inferences);
+                        context3.inferredTypeParameters = concatenate(context3.inferredTypeParameters, uniqueTypeParameters);
                         return getOrCreateTypeFromSignature(instantiatedSignature);
                       }
                     }
                   }
-                  return getOrCreateTypeFromSignature(instantiateSignatureInContextOf(signature, contextualSignature, context4));
+                  return getOrCreateTypeFromSignature(instantiateSignatureInContextOf(signature, contextualSignature, context3));
                 }
               }
             }
@@ -111425,8 +111425,8 @@ ${lanes.join("\n")}
         }
         function skippedGenericFunction(node, checkMode) {
           if (checkMode & 2) {
-            const context4 = getInferenceContext(node);
-            context4.flags |= 4;
+            const context3 = getInferenceContext(node);
+            context3.flags |= 4;
           }
         }
         function hasInferenceCandidates(info2) {
@@ -111450,14 +111450,14 @@ ${lanes.join("\n")}
             }
           }
         }
-        function getUniqueTypeParameters(context4, typeParameters) {
+        function getUniqueTypeParameters(context3, typeParameters) {
           const result = [];
           let oldTypeParameters;
           let newTypeParameters;
           for (const tp of typeParameters) {
             const name = tp.symbol.escapedName;
-            if (hasTypeParameterByName(context4.inferredTypeParameters, name) || hasTypeParameterByName(result, name)) {
-              const newName = getUniqueTypeParameterName(concatenate(context4.inferredTypeParameters, result), name);
+            if (hasTypeParameterByName(context3.inferredTypeParameters, name) || hasTypeParameterByName(result, name)) {
+              const newName = getUniqueTypeParameterName(concatenate(context3.inferredTypeParameters, result), name);
               const symbol = createSymbol(262144, newName);
               const newTypeParameter = createTypeParameter(symbol);
               newTypeParameter.target = tp;
@@ -117733,8 +117733,8 @@ ${lanes.join("\n")}
             Debug.assert(!links.deferredNodes, "A type-checked file should have no deferred nodes.");
           }
         }
-        function checkDeferredNodes(context4) {
-          const links = getNodeLinks(context4);
+        function checkDeferredNodes(context3) {
+          const links = getNodeLinks(context3);
           if (links.deferredNodes) {
             links.deferredNodes.forEach(checkDeferredNode);
           }
@@ -121684,7 +121684,7 @@ ${lanes.join("\n")}
         };
       }
       var SymbolTrackerImpl = class _SymbolTrackerImpl {
-        constructor(context4, tracker, moduleResolverHost) {
+        constructor(context3, tracker, moduleResolverHost) {
           this.moduleResolverHost = void 0;
           this.inner = void 0;
           this.disableTrackSymbol = false;
@@ -121694,7 +121694,7 @@ ${lanes.join("\n")}
           }
           this.inner = tracker;
           this.moduleResolverHost = moduleResolverHost;
-          this.context = context4;
+          this.context = context3;
           this.canTrackSymbol = !!((_a = this.inner) == null ? void 0 : _a.trackSymbol);
         }
         trackSymbol(symbol, enclosingDeclaration, meaning) {
@@ -121874,47 +121874,47 @@ ${lanes.join("\n")}
         Debug.assertEachNode(nodes, test);
         return nodes;
       }
-      function visitLexicalEnvironment(statements, visitor, context4, start, ensureUseStrict, nodesVisitor = visitNodes2) {
-        context4.startLexicalEnvironment();
+      function visitLexicalEnvironment(statements, visitor, context3, start, ensureUseStrict, nodesVisitor = visitNodes2) {
+        context3.startLexicalEnvironment();
         statements = nodesVisitor(statements, visitor, isStatement, start);
-        if (ensureUseStrict) statements = context4.factory.ensureUseStrict(statements);
-        return factory.mergeLexicalEnvironment(statements, context4.endLexicalEnvironment());
+        if (ensureUseStrict) statements = context3.factory.ensureUseStrict(statements);
+        return factory.mergeLexicalEnvironment(statements, context3.endLexicalEnvironment());
       }
-      function visitParameterList(nodes, visitor, context4, nodesVisitor = visitNodes2) {
+      function visitParameterList(nodes, visitor, context3, nodesVisitor = visitNodes2) {
         let updated;
-        context4.startLexicalEnvironment();
+        context3.startLexicalEnvironment();
         if (nodes) {
-          context4.setLexicalEnvironmentFlags(1, true);
+          context3.setLexicalEnvironmentFlags(1, true);
           updated = nodesVisitor(nodes, visitor, isParameter);
-          if (context4.getLexicalEnvironmentFlags() & 2 && getEmitScriptTarget(context4.getCompilerOptions()) >= 2) {
-            updated = addDefaultValueAssignmentsIfNeeded(updated, context4);
+          if (context3.getLexicalEnvironmentFlags() & 2 && getEmitScriptTarget(context3.getCompilerOptions()) >= 2) {
+            updated = addDefaultValueAssignmentsIfNeeded(updated, context3);
           }
-          context4.setLexicalEnvironmentFlags(1, false);
+          context3.setLexicalEnvironmentFlags(1, false);
         }
-        context4.suspendLexicalEnvironment();
+        context3.suspendLexicalEnvironment();
         return updated;
       }
-      function addDefaultValueAssignmentsIfNeeded(parameters, context4) {
+      function addDefaultValueAssignmentsIfNeeded(parameters, context3) {
         let result;
         for (let i = 0; i < parameters.length; i++) {
           const parameter = parameters[i];
-          const updated = addDefaultValueAssignmentIfNeeded(parameter, context4);
+          const updated = addDefaultValueAssignmentIfNeeded(parameter, context3);
           if (result || updated !== parameter) {
             if (!result) result = parameters.slice(0, i);
             result[i] = updated;
           }
         }
         if (result) {
-          return setTextRange(context4.factory.createNodeArray(result, parameters.hasTrailingComma), parameters);
+          return setTextRange(context3.factory.createNodeArray(result, parameters.hasTrailingComma), parameters);
         }
         return parameters;
       }
-      function addDefaultValueAssignmentIfNeeded(parameter, context4) {
-        return parameter.dotDotDotToken ? parameter : isBindingPattern(parameter.name) ? addDefaultValueAssignmentForBindingPattern(parameter, context4) : parameter.initializer ? addDefaultValueAssignmentForInitializer(parameter, parameter.name, parameter.initializer, context4) : parameter;
+      function addDefaultValueAssignmentIfNeeded(parameter, context3) {
+        return parameter.dotDotDotToken ? parameter : isBindingPattern(parameter.name) ? addDefaultValueAssignmentForBindingPattern(parameter, context3) : parameter.initializer ? addDefaultValueAssignmentForInitializer(parameter, parameter.name, parameter.initializer, context3) : parameter;
       }
-      function addDefaultValueAssignmentForBindingPattern(parameter, context4) {
-        const { factory: factory2 } = context4;
-        context4.addInitializationStatement(
+      function addDefaultValueAssignmentForBindingPattern(parameter, context3) {
+        const { factory: factory2 } = context3;
+        context3.addInitializationStatement(
           factory2.createVariableStatement(
             /*modifiers*/
             void 0,
@@ -121951,9 +121951,9 @@ ${lanes.join("\n")}
           void 0
         );
       }
-      function addDefaultValueAssignmentForInitializer(parameter, name, initializer, context4) {
-        const factory2 = context4.factory;
-        context4.addInitializationStatement(
+      function addDefaultValueAssignmentForInitializer(parameter, name, initializer, context3) {
+        const factory2 = context3.factory;
+        context3.addInitializationStatement(
           factory2.createIfStatement(
             factory2.createTypeCheck(factory2.cloneNode(name), "undefined"),
             setEmitFlags(
@@ -121999,32 +121999,32 @@ ${lanes.join("\n")}
           void 0
         );
       }
-      function visitFunctionBody(node, visitor, context4, nodeVisitor = visitNode) {
-        context4.resumeLexicalEnvironment();
+      function visitFunctionBody(node, visitor, context3, nodeVisitor = visitNode) {
+        context3.resumeLexicalEnvironment();
         const updated = nodeVisitor(node, visitor, isConciseBody);
-        const declarations = context4.endLexicalEnvironment();
+        const declarations = context3.endLexicalEnvironment();
         if (some(declarations)) {
           if (!updated) {
-            return context4.factory.createBlock(declarations);
+            return context3.factory.createBlock(declarations);
           }
-          const block = context4.factory.converters.convertToFunctionBlock(updated);
+          const block = context3.factory.converters.convertToFunctionBlock(updated);
           const statements = factory.mergeLexicalEnvironment(block.statements, declarations);
-          return context4.factory.updateBlock(block, statements);
+          return context3.factory.updateBlock(block, statements);
         }
         return updated;
       }
-      function visitIterationBody(body, visitor, context4, nodeVisitor = visitNode) {
-        context4.startBlockScope();
-        const updated = nodeVisitor(body, visitor, isStatement, context4.factory.liftToBlock);
+      function visitIterationBody(body, visitor, context3, nodeVisitor = visitNode) {
+        context3.startBlockScope();
+        const updated = nodeVisitor(body, visitor, isStatement, context3.factory.liftToBlock);
         Debug.assert(updated);
-        const declarations = context4.endBlockScope();
+        const declarations = context3.endBlockScope();
         if (some(declarations)) {
           if (isBlock(updated)) {
             declarations.push(...updated.statements);
-            return context4.factory.updateBlock(updated, declarations);
+            return context3.factory.updateBlock(updated, declarations);
           }
           declarations.push(updated);
-          return context4.factory.createBlock(declarations);
+          return context3.factory.createBlock(declarations);
         }
         return updated;
       }
@@ -122040,19 +122040,19 @@ ${lanes.join("\n")}
           return discarded ? discardVisitor(node) : visitor(node);
         }, isExpression);
       }
-      function visitEachChild(node, visitor, context4 = nullTransformationContext, nodesVisitor = visitNodes2, tokenVisitor, nodeVisitor = visitNode) {
+      function visitEachChild(node, visitor, context3 = nullTransformationContext, nodesVisitor = visitNodes2, tokenVisitor, nodeVisitor = visitNode) {
         if (node === void 0) {
           return void 0;
         }
         const fn = visitEachChildTable[node.kind];
-        return fn === void 0 ? node : fn(node, visitor, context4, nodesVisitor, nodeVisitor, tokenVisitor);
+        return fn === void 0 ? node : fn(node, visitor, context3, nodesVisitor, nodeVisitor, tokenVisitor);
       }
       var visitEachChildTable = {
         [
           167
           /* QualifiedName */
-        ]: function visitEachChildOfQualifiedName(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateQualifiedName(
+        ]: function visitEachChildOfQualifiedName(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateQualifiedName(
             node,
             Debug.checkDefined(nodeVisitor(node.left, visitor, isEntityName)),
             Debug.checkDefined(nodeVisitor(node.right, visitor, isIdentifier2))
@@ -122061,8 +122061,8 @@ ${lanes.join("\n")}
         [
           168
           /* ComputedPropertyName */
-        ]: function visitEachChildOfComputedPropertyName(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateComputedPropertyName(
+        ]: function visitEachChildOfComputedPropertyName(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateComputedPropertyName(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression))
           );
@@ -122071,8 +122071,8 @@ ${lanes.join("\n")}
         [
           169
           /* TypeParameter */
-        ]: function visitEachChildOfTypeParameterDeclaration(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateTypeParameterDeclaration(
+        ]: function visitEachChildOfTypeParameterDeclaration(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateTypeParameterDeclaration(
             node,
             nodesVisitor(node.modifiers, visitor, isModifier),
             Debug.checkDefined(nodeVisitor(node.name, visitor, isIdentifier2)),
@@ -122083,8 +122083,8 @@ ${lanes.join("\n")}
         [
           170
           /* Parameter */
-        ]: function visitEachChildOfParameterDeclaration(node, visitor, context4, nodesVisitor, nodeVisitor, tokenVisitor) {
-          return context4.factory.updateParameterDeclaration(
+        ]: function visitEachChildOfParameterDeclaration(node, visitor, context3, nodesVisitor, nodeVisitor, tokenVisitor) {
+          return context3.factory.updateParameterDeclaration(
             node,
             nodesVisitor(node.modifiers, visitor, isModifierLike),
             tokenVisitor ? nodeVisitor(node.dotDotDotToken, tokenVisitor, isDotDotDotToken) : node.dotDotDotToken,
@@ -122097,8 +122097,8 @@ ${lanes.join("\n")}
         [
           171
           /* Decorator */
-        ]: function visitEachChildOfDecorator(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateDecorator(
+        ]: function visitEachChildOfDecorator(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateDecorator(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression))
           );
@@ -122107,8 +122107,8 @@ ${lanes.join("\n")}
         [
           172
           /* PropertySignature */
-        ]: function visitEachChildOfPropertySignature(node, visitor, context4, nodesVisitor, nodeVisitor, tokenVisitor) {
-          return context4.factory.updatePropertySignature(
+        ]: function visitEachChildOfPropertySignature(node, visitor, context3, nodesVisitor, nodeVisitor, tokenVisitor) {
+          return context3.factory.updatePropertySignature(
             node,
             nodesVisitor(node.modifiers, visitor, isModifier),
             Debug.checkDefined(nodeVisitor(node.name, visitor, isPropertyName)),
@@ -122119,8 +122119,8 @@ ${lanes.join("\n")}
         [
           173
           /* PropertyDeclaration */
-        ]: function visitEachChildOfPropertyDeclaration(node, visitor, context4, nodesVisitor, nodeVisitor, tokenVisitor) {
-          return context4.factory.updatePropertyDeclaration(
+        ]: function visitEachChildOfPropertyDeclaration(node, visitor, context3, nodesVisitor, nodeVisitor, tokenVisitor) {
+          return context3.factory.updatePropertyDeclaration(
             node,
             nodesVisitor(node.modifiers, visitor, isModifierLike),
             Debug.checkDefined(nodeVisitor(node.name, visitor, isPropertyName)),
@@ -122133,8 +122133,8 @@ ${lanes.join("\n")}
         [
           174
           /* MethodSignature */
-        ]: function visitEachChildOfMethodSignature(node, visitor, context4, nodesVisitor, nodeVisitor, tokenVisitor) {
-          return context4.factory.updateMethodSignature(
+        ]: function visitEachChildOfMethodSignature(node, visitor, context3, nodesVisitor, nodeVisitor, tokenVisitor) {
+          return context3.factory.updateMethodSignature(
             node,
             nodesVisitor(node.modifiers, visitor, isModifier),
             Debug.checkDefined(nodeVisitor(node.name, visitor, isPropertyName)),
@@ -122147,71 +122147,71 @@ ${lanes.join("\n")}
         [
           175
           /* MethodDeclaration */
-        ]: function visitEachChildOfMethodDeclaration(node, visitor, context4, nodesVisitor, nodeVisitor, tokenVisitor) {
-          return context4.factory.updateMethodDeclaration(
+        ]: function visitEachChildOfMethodDeclaration(node, visitor, context3, nodesVisitor, nodeVisitor, tokenVisitor) {
+          return context3.factory.updateMethodDeclaration(
             node,
             nodesVisitor(node.modifiers, visitor, isModifierLike),
             tokenVisitor ? nodeVisitor(node.asteriskToken, tokenVisitor, isAsteriskToken) : node.asteriskToken,
             Debug.checkDefined(nodeVisitor(node.name, visitor, isPropertyName)),
             tokenVisitor ? nodeVisitor(node.questionToken, tokenVisitor, isQuestionToken) : node.questionToken,
             nodesVisitor(node.typeParameters, visitor, isTypeParameterDeclaration),
-            visitParameterList(node.parameters, visitor, context4, nodesVisitor),
+            visitParameterList(node.parameters, visitor, context3, nodesVisitor),
             nodeVisitor(node.type, visitor, isTypeNode),
-            visitFunctionBody(node.body, visitor, context4, nodeVisitor)
+            visitFunctionBody(node.body, visitor, context3, nodeVisitor)
           );
         },
         [
           177
           /* Constructor */
-        ]: function visitEachChildOfConstructorDeclaration(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateConstructorDeclaration(
+        ]: function visitEachChildOfConstructorDeclaration(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateConstructorDeclaration(
             node,
             nodesVisitor(node.modifiers, visitor, isModifierLike),
-            visitParameterList(node.parameters, visitor, context4, nodesVisitor),
-            visitFunctionBody(node.body, visitor, context4, nodeVisitor)
+            visitParameterList(node.parameters, visitor, context3, nodesVisitor),
+            visitFunctionBody(node.body, visitor, context3, nodeVisitor)
           );
         },
         [
           178
           /* GetAccessor */
-        ]: function visitEachChildOfGetAccessorDeclaration(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateGetAccessorDeclaration(
+        ]: function visitEachChildOfGetAccessorDeclaration(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateGetAccessorDeclaration(
             node,
             nodesVisitor(node.modifiers, visitor, isModifierLike),
             Debug.checkDefined(nodeVisitor(node.name, visitor, isPropertyName)),
-            visitParameterList(node.parameters, visitor, context4, nodesVisitor),
+            visitParameterList(node.parameters, visitor, context3, nodesVisitor),
             nodeVisitor(node.type, visitor, isTypeNode),
-            visitFunctionBody(node.body, visitor, context4, nodeVisitor)
+            visitFunctionBody(node.body, visitor, context3, nodeVisitor)
           );
         },
         [
           179
           /* SetAccessor */
-        ]: function visitEachChildOfSetAccessorDeclaration(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateSetAccessorDeclaration(
+        ]: function visitEachChildOfSetAccessorDeclaration(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateSetAccessorDeclaration(
             node,
             nodesVisitor(node.modifiers, visitor, isModifierLike),
             Debug.checkDefined(nodeVisitor(node.name, visitor, isPropertyName)),
-            visitParameterList(node.parameters, visitor, context4, nodesVisitor),
-            visitFunctionBody(node.body, visitor, context4, nodeVisitor)
+            visitParameterList(node.parameters, visitor, context3, nodesVisitor),
+            visitFunctionBody(node.body, visitor, context3, nodeVisitor)
           );
         },
         [
           176
           /* ClassStaticBlockDeclaration */
-        ]: function visitEachChildOfClassStaticBlockDeclaration(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          context4.startLexicalEnvironment();
-          context4.suspendLexicalEnvironment();
-          return context4.factory.updateClassStaticBlockDeclaration(
+        ]: function visitEachChildOfClassStaticBlockDeclaration(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          context3.startLexicalEnvironment();
+          context3.suspendLexicalEnvironment();
+          return context3.factory.updateClassStaticBlockDeclaration(
             node,
-            visitFunctionBody(node.body, visitor, context4, nodeVisitor)
+            visitFunctionBody(node.body, visitor, context3, nodeVisitor)
           );
         },
         [
           180
           /* CallSignature */
-        ]: function visitEachChildOfCallSignatureDeclaration(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateCallSignature(
+        ]: function visitEachChildOfCallSignatureDeclaration(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateCallSignature(
             node,
             nodesVisitor(node.typeParameters, visitor, isTypeParameterDeclaration),
             nodesVisitor(node.parameters, visitor, isParameter),
@@ -122221,8 +122221,8 @@ ${lanes.join("\n")}
         [
           181
           /* ConstructSignature */
-        ]: function visitEachChildOfConstructSignatureDeclaration(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateConstructSignature(
+        ]: function visitEachChildOfConstructSignatureDeclaration(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateConstructSignature(
             node,
             nodesVisitor(node.typeParameters, visitor, isTypeParameterDeclaration),
             nodesVisitor(node.parameters, visitor, isParameter),
@@ -122232,8 +122232,8 @@ ${lanes.join("\n")}
         [
           182
           /* IndexSignature */
-        ]: function visitEachChildOfIndexSignatureDeclaration(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateIndexSignature(
+        ]: function visitEachChildOfIndexSignatureDeclaration(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateIndexSignature(
             node,
             nodesVisitor(node.modifiers, visitor, isModifierLike),
             nodesVisitor(node.parameters, visitor, isParameter),
@@ -122244,8 +122244,8 @@ ${lanes.join("\n")}
         [
           183
           /* TypePredicate */
-        ]: function visitEachChildOfTypePredicateNode(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateTypePredicateNode(
+        ]: function visitEachChildOfTypePredicateNode(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateTypePredicateNode(
             node,
             nodeVisitor(node.assertsModifier, visitor, isAssertsKeyword),
             Debug.checkDefined(nodeVisitor(node.parameterName, visitor, isIdentifierOrThisTypeNode)),
@@ -122255,8 +122255,8 @@ ${lanes.join("\n")}
         [
           184
           /* TypeReference */
-        ]: function visitEachChildOfTypeReferenceNode(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateTypeReferenceNode(
+        ]: function visitEachChildOfTypeReferenceNode(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateTypeReferenceNode(
             node,
             Debug.checkDefined(nodeVisitor(node.typeName, visitor, isEntityName)),
             nodesVisitor(node.typeArguments, visitor, isTypeNode)
@@ -122265,8 +122265,8 @@ ${lanes.join("\n")}
         [
           185
           /* FunctionType */
-        ]: function visitEachChildOfFunctionTypeNode(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateFunctionTypeNode(
+        ]: function visitEachChildOfFunctionTypeNode(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateFunctionTypeNode(
             node,
             nodesVisitor(node.typeParameters, visitor, isTypeParameterDeclaration),
             nodesVisitor(node.parameters, visitor, isParameter),
@@ -122276,8 +122276,8 @@ ${lanes.join("\n")}
         [
           186
           /* ConstructorType */
-        ]: function visitEachChildOfConstructorTypeNode(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateConstructorTypeNode(
+        ]: function visitEachChildOfConstructorTypeNode(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateConstructorTypeNode(
             node,
             nodesVisitor(node.modifiers, visitor, isModifier),
             nodesVisitor(node.typeParameters, visitor, isTypeParameterDeclaration),
@@ -122288,8 +122288,8 @@ ${lanes.join("\n")}
         [
           187
           /* TypeQuery */
-        ]: function visitEachChildOfTypeQueryNode(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateTypeQueryNode(
+        ]: function visitEachChildOfTypeQueryNode(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateTypeQueryNode(
             node,
             Debug.checkDefined(nodeVisitor(node.exprName, visitor, isEntityName)),
             nodesVisitor(node.typeArguments, visitor, isTypeNode)
@@ -122298,8 +122298,8 @@ ${lanes.join("\n")}
         [
           188
           /* TypeLiteral */
-        ]: function visitEachChildOfTypeLiteralNode(node, visitor, context4, nodesVisitor, _nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateTypeLiteralNode(
+        ]: function visitEachChildOfTypeLiteralNode(node, visitor, context3, nodesVisitor, _nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateTypeLiteralNode(
             node,
             nodesVisitor(node.members, visitor, isTypeElement)
           );
@@ -122307,8 +122307,8 @@ ${lanes.join("\n")}
         [
           189
           /* ArrayType */
-        ]: function visitEachChildOfArrayTypeNode(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateArrayTypeNode(
+        ]: function visitEachChildOfArrayTypeNode(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateArrayTypeNode(
             node,
             Debug.checkDefined(nodeVisitor(node.elementType, visitor, isTypeNode))
           );
@@ -122316,8 +122316,8 @@ ${lanes.join("\n")}
         [
           190
           /* TupleType */
-        ]: function visitEachChildOfTupleTypeNode(node, visitor, context4, nodesVisitor, _nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateTupleTypeNode(
+        ]: function visitEachChildOfTupleTypeNode(node, visitor, context3, nodesVisitor, _nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateTupleTypeNode(
             node,
             nodesVisitor(node.elements, visitor, isTypeNode)
           );
@@ -122325,8 +122325,8 @@ ${lanes.join("\n")}
         [
           191
           /* OptionalType */
-        ]: function visitEachChildOfOptionalTypeNode(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateOptionalTypeNode(
+        ]: function visitEachChildOfOptionalTypeNode(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateOptionalTypeNode(
             node,
             Debug.checkDefined(nodeVisitor(node.type, visitor, isTypeNode))
           );
@@ -122334,8 +122334,8 @@ ${lanes.join("\n")}
         [
           192
           /* RestType */
-        ]: function visitEachChildOfRestTypeNode(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateRestTypeNode(
+        ]: function visitEachChildOfRestTypeNode(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateRestTypeNode(
             node,
             Debug.checkDefined(nodeVisitor(node.type, visitor, isTypeNode))
           );
@@ -122343,8 +122343,8 @@ ${lanes.join("\n")}
         [
           193
           /* UnionType */
-        ]: function visitEachChildOfUnionTypeNode(node, visitor, context4, nodesVisitor, _nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateUnionTypeNode(
+        ]: function visitEachChildOfUnionTypeNode(node, visitor, context3, nodesVisitor, _nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateUnionTypeNode(
             node,
             nodesVisitor(node.types, visitor, isTypeNode)
           );
@@ -122352,8 +122352,8 @@ ${lanes.join("\n")}
         [
           194
           /* IntersectionType */
-        ]: function visitEachChildOfIntersectionTypeNode(node, visitor, context4, nodesVisitor, _nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateIntersectionTypeNode(
+        ]: function visitEachChildOfIntersectionTypeNode(node, visitor, context3, nodesVisitor, _nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateIntersectionTypeNode(
             node,
             nodesVisitor(node.types, visitor, isTypeNode)
           );
@@ -122361,8 +122361,8 @@ ${lanes.join("\n")}
         [
           195
           /* ConditionalType */
-        ]: function visitEachChildOfConditionalTypeNode(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateConditionalTypeNode(
+        ]: function visitEachChildOfConditionalTypeNode(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateConditionalTypeNode(
             node,
             Debug.checkDefined(nodeVisitor(node.checkType, visitor, isTypeNode)),
             Debug.checkDefined(nodeVisitor(node.extendsType, visitor, isTypeNode)),
@@ -122373,8 +122373,8 @@ ${lanes.join("\n")}
         [
           196
           /* InferType */
-        ]: function visitEachChildOfInferTypeNode(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateInferTypeNode(
+        ]: function visitEachChildOfInferTypeNode(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateInferTypeNode(
             node,
             Debug.checkDefined(nodeVisitor(node.typeParameter, visitor, isTypeParameterDeclaration))
           );
@@ -122382,8 +122382,8 @@ ${lanes.join("\n")}
         [
           206
           /* ImportType */
-        ]: function visitEachChildOfImportTypeNode(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateImportTypeNode(
+        ]: function visitEachChildOfImportTypeNode(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateImportTypeNode(
             node,
             Debug.checkDefined(nodeVisitor(node.argument, visitor, isTypeNode)),
             nodeVisitor(node.attributes, visitor, isImportAttributes),
@@ -122395,8 +122395,8 @@ ${lanes.join("\n")}
         [
           303
           /* ImportTypeAssertionContainer */
-        ]: function visitEachChildOfImportTypeAssertionContainer(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateImportTypeAssertionContainer(
+        ]: function visitEachChildOfImportTypeAssertionContainer(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateImportTypeAssertionContainer(
             node,
             Debug.checkDefined(nodeVisitor(node.assertClause, visitor, isAssertClause)),
             node.multiLine
@@ -122405,8 +122405,8 @@ ${lanes.join("\n")}
         [
           203
           /* NamedTupleMember */
-        ]: function visitEachChildOfNamedTupleMember(node, visitor, context4, _nodesVisitor, nodeVisitor, tokenVisitor) {
-          return context4.factory.updateNamedTupleMember(
+        ]: function visitEachChildOfNamedTupleMember(node, visitor, context3, _nodesVisitor, nodeVisitor, tokenVisitor) {
+          return context3.factory.updateNamedTupleMember(
             node,
             tokenVisitor ? nodeVisitor(node.dotDotDotToken, tokenVisitor, isDotDotDotToken) : node.dotDotDotToken,
             Debug.checkDefined(nodeVisitor(node.name, visitor, isIdentifier2)),
@@ -122417,8 +122417,8 @@ ${lanes.join("\n")}
         [
           197
           /* ParenthesizedType */
-        ]: function visitEachChildOfParenthesizedType(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateParenthesizedType(
+        ]: function visitEachChildOfParenthesizedType(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateParenthesizedType(
             node,
             Debug.checkDefined(nodeVisitor(node.type, visitor, isTypeNode))
           );
@@ -122426,8 +122426,8 @@ ${lanes.join("\n")}
         [
           199
           /* TypeOperator */
-        ]: function visitEachChildOfTypeOperatorNode(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateTypeOperatorNode(
+        ]: function visitEachChildOfTypeOperatorNode(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateTypeOperatorNode(
             node,
             Debug.checkDefined(nodeVisitor(node.type, visitor, isTypeNode))
           );
@@ -122435,8 +122435,8 @@ ${lanes.join("\n")}
         [
           200
           /* IndexedAccessType */
-        ]: function visitEachChildOfIndexedAccessType(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateIndexedAccessTypeNode(
+        ]: function visitEachChildOfIndexedAccessType(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateIndexedAccessTypeNode(
             node,
             Debug.checkDefined(nodeVisitor(node.objectType, visitor, isTypeNode)),
             Debug.checkDefined(nodeVisitor(node.indexType, visitor, isTypeNode))
@@ -122445,8 +122445,8 @@ ${lanes.join("\n")}
         [
           201
           /* MappedType */
-        ]: function visitEachChildOfMappedType(node, visitor, context4, nodesVisitor, nodeVisitor, tokenVisitor) {
-          return context4.factory.updateMappedTypeNode(
+        ]: function visitEachChildOfMappedType(node, visitor, context3, nodesVisitor, nodeVisitor, tokenVisitor) {
+          return context3.factory.updateMappedTypeNode(
             node,
             tokenVisitor ? nodeVisitor(node.readonlyToken, tokenVisitor, isReadonlyKeywordOrPlusOrMinusToken) : node.readonlyToken,
             Debug.checkDefined(nodeVisitor(node.typeParameter, visitor, isTypeParameterDeclaration)),
@@ -122459,8 +122459,8 @@ ${lanes.join("\n")}
         [
           202
           /* LiteralType */
-        ]: function visitEachChildOfLiteralTypeNode(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateLiteralTypeNode(
+        ]: function visitEachChildOfLiteralTypeNode(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateLiteralTypeNode(
             node,
             Debug.checkDefined(nodeVisitor(node.literal, visitor, isLiteralTypeLiteral))
           );
@@ -122468,8 +122468,8 @@ ${lanes.join("\n")}
         [
           204
           /* TemplateLiteralType */
-        ]: function visitEachChildOfTemplateLiteralType(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateTemplateLiteralType(
+        ]: function visitEachChildOfTemplateLiteralType(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateTemplateLiteralType(
             node,
             Debug.checkDefined(nodeVisitor(node.head, visitor, isTemplateHead)),
             nodesVisitor(node.templateSpans, visitor, isTemplateLiteralTypeSpan)
@@ -122478,8 +122478,8 @@ ${lanes.join("\n")}
         [
           205
           /* TemplateLiteralTypeSpan */
-        ]: function visitEachChildOfTemplateLiteralTypeSpan(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateTemplateLiteralTypeSpan(
+        ]: function visitEachChildOfTemplateLiteralTypeSpan(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateTemplateLiteralTypeSpan(
             node,
             Debug.checkDefined(nodeVisitor(node.type, visitor, isTypeNode)),
             Debug.checkDefined(nodeVisitor(node.literal, visitor, isTemplateMiddleOrTemplateTail))
@@ -122489,8 +122489,8 @@ ${lanes.join("\n")}
         [
           207
           /* ObjectBindingPattern */
-        ]: function visitEachChildOfObjectBindingPattern(node, visitor, context4, nodesVisitor, _nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateObjectBindingPattern(
+        ]: function visitEachChildOfObjectBindingPattern(node, visitor, context3, nodesVisitor, _nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateObjectBindingPattern(
             node,
             nodesVisitor(node.elements, visitor, isBindingElement)
           );
@@ -122498,8 +122498,8 @@ ${lanes.join("\n")}
         [
           208
           /* ArrayBindingPattern */
-        ]: function visitEachChildOfArrayBindingPattern(node, visitor, context4, nodesVisitor, _nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateArrayBindingPattern(
+        ]: function visitEachChildOfArrayBindingPattern(node, visitor, context3, nodesVisitor, _nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateArrayBindingPattern(
             node,
             nodesVisitor(node.elements, visitor, isArrayBindingElement)
           );
@@ -122507,8 +122507,8 @@ ${lanes.join("\n")}
         [
           209
           /* BindingElement */
-        ]: function visitEachChildOfBindingElement(node, visitor, context4, _nodesVisitor, nodeVisitor, tokenVisitor) {
-          return context4.factory.updateBindingElement(
+        ]: function visitEachChildOfBindingElement(node, visitor, context3, _nodesVisitor, nodeVisitor, tokenVisitor) {
+          return context3.factory.updateBindingElement(
             node,
             tokenVisitor ? nodeVisitor(node.dotDotDotToken, tokenVisitor, isDotDotDotToken) : node.dotDotDotToken,
             nodeVisitor(node.propertyName, visitor, isPropertyName),
@@ -122520,8 +122520,8 @@ ${lanes.join("\n")}
         [
           210
           /* ArrayLiteralExpression */
-        ]: function visitEachChildOfArrayLiteralExpression(node, visitor, context4, nodesVisitor, _nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateArrayLiteralExpression(
+        ]: function visitEachChildOfArrayLiteralExpression(node, visitor, context3, nodesVisitor, _nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateArrayLiteralExpression(
             node,
             nodesVisitor(node.elements, visitor, isExpression)
           );
@@ -122529,8 +122529,8 @@ ${lanes.join("\n")}
         [
           211
           /* ObjectLiteralExpression */
-        ]: function visitEachChildOfObjectLiteralExpression(node, visitor, context4, nodesVisitor, _nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateObjectLiteralExpression(
+        ]: function visitEachChildOfObjectLiteralExpression(node, visitor, context3, nodesVisitor, _nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateObjectLiteralExpression(
             node,
             nodesVisitor(node.properties, visitor, isObjectLiteralElementLike)
           );
@@ -122538,13 +122538,13 @@ ${lanes.join("\n")}
         [
           212
           /* PropertyAccessExpression */
-        ]: function visitEachChildOfPropertyAccessExpression(node, visitor, context4, _nodesVisitor, nodeVisitor, tokenVisitor) {
-          return isPropertyAccessChain(node) ? context4.factory.updatePropertyAccessChain(
+        ]: function visitEachChildOfPropertyAccessExpression(node, visitor, context3, _nodesVisitor, nodeVisitor, tokenVisitor) {
+          return isPropertyAccessChain(node) ? context3.factory.updatePropertyAccessChain(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression)),
             tokenVisitor ? nodeVisitor(node.questionDotToken, tokenVisitor, isQuestionDotToken) : node.questionDotToken,
             Debug.checkDefined(nodeVisitor(node.name, visitor, isMemberName))
-          ) : context4.factory.updatePropertyAccessExpression(
+          ) : context3.factory.updatePropertyAccessExpression(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression)),
             Debug.checkDefined(nodeVisitor(node.name, visitor, isMemberName))
@@ -122553,13 +122553,13 @@ ${lanes.join("\n")}
         [
           213
           /* ElementAccessExpression */
-        ]: function visitEachChildOfElementAccessExpression(node, visitor, context4, _nodesVisitor, nodeVisitor, tokenVisitor) {
-          return isElementAccessChain(node) ? context4.factory.updateElementAccessChain(
+        ]: function visitEachChildOfElementAccessExpression(node, visitor, context3, _nodesVisitor, nodeVisitor, tokenVisitor) {
+          return isElementAccessChain(node) ? context3.factory.updateElementAccessChain(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression)),
             tokenVisitor ? nodeVisitor(node.questionDotToken, tokenVisitor, isQuestionDotToken) : node.questionDotToken,
             Debug.checkDefined(nodeVisitor(node.argumentExpression, visitor, isExpression))
-          ) : context4.factory.updateElementAccessExpression(
+          ) : context3.factory.updateElementAccessExpression(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression)),
             Debug.checkDefined(nodeVisitor(node.argumentExpression, visitor, isExpression))
@@ -122568,14 +122568,14 @@ ${lanes.join("\n")}
         [
           214
           /* CallExpression */
-        ]: function visitEachChildOfCallExpression(node, visitor, context4, nodesVisitor, nodeVisitor, tokenVisitor) {
-          return isCallChain(node) ? context4.factory.updateCallChain(
+        ]: function visitEachChildOfCallExpression(node, visitor, context3, nodesVisitor, nodeVisitor, tokenVisitor) {
+          return isCallChain(node) ? context3.factory.updateCallChain(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression)),
             tokenVisitor ? nodeVisitor(node.questionDotToken, tokenVisitor, isQuestionDotToken) : node.questionDotToken,
             nodesVisitor(node.typeArguments, visitor, isTypeNode),
             nodesVisitor(node.arguments, visitor, isExpression)
-          ) : context4.factory.updateCallExpression(
+          ) : context3.factory.updateCallExpression(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression)),
             nodesVisitor(node.typeArguments, visitor, isTypeNode),
@@ -122585,8 +122585,8 @@ ${lanes.join("\n")}
         [
           215
           /* NewExpression */
-        ]: function visitEachChildOfNewExpression(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateNewExpression(
+        ]: function visitEachChildOfNewExpression(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateNewExpression(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression)),
             nodesVisitor(node.typeArguments, visitor, isTypeNode),
@@ -122596,8 +122596,8 @@ ${lanes.join("\n")}
         [
           216
           /* TaggedTemplateExpression */
-        ]: function visitEachChildOfTaggedTemplateExpression(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateTaggedTemplateExpression(
+        ]: function visitEachChildOfTaggedTemplateExpression(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateTaggedTemplateExpression(
             node,
             Debug.checkDefined(nodeVisitor(node.tag, visitor, isExpression)),
             nodesVisitor(node.typeArguments, visitor, isTypeNode),
@@ -122607,8 +122607,8 @@ ${lanes.join("\n")}
         [
           217
           /* TypeAssertionExpression */
-        ]: function visitEachChildOfTypeAssertionExpression(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateTypeAssertion(
+        ]: function visitEachChildOfTypeAssertionExpression(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateTypeAssertion(
             node,
             Debug.checkDefined(nodeVisitor(node.type, visitor, isTypeNode)),
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression))
@@ -122617,8 +122617,8 @@ ${lanes.join("\n")}
         [
           218
           /* ParenthesizedExpression */
-        ]: function visitEachChildOfParenthesizedExpression(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateParenthesizedExpression(
+        ]: function visitEachChildOfParenthesizedExpression(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateParenthesizedExpression(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression))
           );
@@ -122626,37 +122626,37 @@ ${lanes.join("\n")}
         [
           219
           /* FunctionExpression */
-        ]: function visitEachChildOfFunctionExpression(node, visitor, context4, nodesVisitor, nodeVisitor, tokenVisitor) {
-          return context4.factory.updateFunctionExpression(
+        ]: function visitEachChildOfFunctionExpression(node, visitor, context3, nodesVisitor, nodeVisitor, tokenVisitor) {
+          return context3.factory.updateFunctionExpression(
             node,
             nodesVisitor(node.modifiers, visitor, isModifier),
             tokenVisitor ? nodeVisitor(node.asteriskToken, tokenVisitor, isAsteriskToken) : node.asteriskToken,
             nodeVisitor(node.name, visitor, isIdentifier2),
             nodesVisitor(node.typeParameters, visitor, isTypeParameterDeclaration),
-            visitParameterList(node.parameters, visitor, context4, nodesVisitor),
+            visitParameterList(node.parameters, visitor, context3, nodesVisitor),
             nodeVisitor(node.type, visitor, isTypeNode),
-            visitFunctionBody(node.body, visitor, context4, nodeVisitor)
+            visitFunctionBody(node.body, visitor, context3, nodeVisitor)
           );
         },
         [
           220
           /* ArrowFunction */
-        ]: function visitEachChildOfArrowFunction(node, visitor, context4, nodesVisitor, nodeVisitor, tokenVisitor) {
-          return context4.factory.updateArrowFunction(
+        ]: function visitEachChildOfArrowFunction(node, visitor, context3, nodesVisitor, nodeVisitor, tokenVisitor) {
+          return context3.factory.updateArrowFunction(
             node,
             nodesVisitor(node.modifiers, visitor, isModifier),
             nodesVisitor(node.typeParameters, visitor, isTypeParameterDeclaration),
-            visitParameterList(node.parameters, visitor, context4, nodesVisitor),
+            visitParameterList(node.parameters, visitor, context3, nodesVisitor),
             nodeVisitor(node.type, visitor, isTypeNode),
             tokenVisitor ? Debug.checkDefined(nodeVisitor(node.equalsGreaterThanToken, tokenVisitor, isEqualsGreaterThanToken)) : node.equalsGreaterThanToken,
-            visitFunctionBody(node.body, visitor, context4, nodeVisitor)
+            visitFunctionBody(node.body, visitor, context3, nodeVisitor)
           );
         },
         [
           221
           /* DeleteExpression */
-        ]: function visitEachChildOfDeleteExpression(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateDeleteExpression(
+        ]: function visitEachChildOfDeleteExpression(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateDeleteExpression(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression))
           );
@@ -122664,8 +122664,8 @@ ${lanes.join("\n")}
         [
           222
           /* TypeOfExpression */
-        ]: function visitEachChildOfTypeOfExpression(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateTypeOfExpression(
+        ]: function visitEachChildOfTypeOfExpression(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateTypeOfExpression(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression))
           );
@@ -122673,8 +122673,8 @@ ${lanes.join("\n")}
         [
           223
           /* VoidExpression */
-        ]: function visitEachChildOfVoidExpression(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateVoidExpression(
+        ]: function visitEachChildOfVoidExpression(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateVoidExpression(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression))
           );
@@ -122682,8 +122682,8 @@ ${lanes.join("\n")}
         [
           224
           /* AwaitExpression */
-        ]: function visitEachChildOfAwaitExpression(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateAwaitExpression(
+        ]: function visitEachChildOfAwaitExpression(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateAwaitExpression(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression))
           );
@@ -122691,8 +122691,8 @@ ${lanes.join("\n")}
         [
           225
           /* PrefixUnaryExpression */
-        ]: function visitEachChildOfPrefixUnaryExpression(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updatePrefixUnaryExpression(
+        ]: function visitEachChildOfPrefixUnaryExpression(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updatePrefixUnaryExpression(
             node,
             Debug.checkDefined(nodeVisitor(node.operand, visitor, isExpression))
           );
@@ -122700,8 +122700,8 @@ ${lanes.join("\n")}
         [
           226
           /* PostfixUnaryExpression */
-        ]: function visitEachChildOfPostfixUnaryExpression(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updatePostfixUnaryExpression(
+        ]: function visitEachChildOfPostfixUnaryExpression(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updatePostfixUnaryExpression(
             node,
             Debug.checkDefined(nodeVisitor(node.operand, visitor, isExpression))
           );
@@ -122709,8 +122709,8 @@ ${lanes.join("\n")}
         [
           227
           /* BinaryExpression */
-        ]: function visitEachChildOfBinaryExpression(node, visitor, context4, _nodesVisitor, nodeVisitor, tokenVisitor) {
-          return context4.factory.updateBinaryExpression(
+        ]: function visitEachChildOfBinaryExpression(node, visitor, context3, _nodesVisitor, nodeVisitor, tokenVisitor) {
+          return context3.factory.updateBinaryExpression(
             node,
             Debug.checkDefined(nodeVisitor(node.left, visitor, isExpression)),
             tokenVisitor ? Debug.checkDefined(nodeVisitor(node.operatorToken, tokenVisitor, isBinaryOperatorToken)) : node.operatorToken,
@@ -122720,8 +122720,8 @@ ${lanes.join("\n")}
         [
           228
           /* ConditionalExpression */
-        ]: function visitEachChildOfConditionalExpression(node, visitor, context4, _nodesVisitor, nodeVisitor, tokenVisitor) {
-          return context4.factory.updateConditionalExpression(
+        ]: function visitEachChildOfConditionalExpression(node, visitor, context3, _nodesVisitor, nodeVisitor, tokenVisitor) {
+          return context3.factory.updateConditionalExpression(
             node,
             Debug.checkDefined(nodeVisitor(node.condition, visitor, isExpression)),
             tokenVisitor ? Debug.checkDefined(nodeVisitor(node.questionToken, tokenVisitor, isQuestionToken)) : node.questionToken,
@@ -122733,8 +122733,8 @@ ${lanes.join("\n")}
         [
           229
           /* TemplateExpression */
-        ]: function visitEachChildOfTemplateExpression(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateTemplateExpression(
+        ]: function visitEachChildOfTemplateExpression(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateTemplateExpression(
             node,
             Debug.checkDefined(nodeVisitor(node.head, visitor, isTemplateHead)),
             nodesVisitor(node.templateSpans, visitor, isTemplateSpan)
@@ -122743,8 +122743,8 @@ ${lanes.join("\n")}
         [
           230
           /* YieldExpression */
-        ]: function visitEachChildOfYieldExpression(node, visitor, context4, _nodesVisitor, nodeVisitor, tokenVisitor) {
-          return context4.factory.updateYieldExpression(
+        ]: function visitEachChildOfYieldExpression(node, visitor, context3, _nodesVisitor, nodeVisitor, tokenVisitor) {
+          return context3.factory.updateYieldExpression(
             node,
             tokenVisitor ? nodeVisitor(node.asteriskToken, tokenVisitor, isAsteriskToken) : node.asteriskToken,
             nodeVisitor(node.expression, visitor, isExpression)
@@ -122753,8 +122753,8 @@ ${lanes.join("\n")}
         [
           231
           /* SpreadElement */
-        ]: function visitEachChildOfSpreadElement(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateSpreadElement(
+        ]: function visitEachChildOfSpreadElement(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateSpreadElement(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression))
           );
@@ -122762,8 +122762,8 @@ ${lanes.join("\n")}
         [
           232
           /* ClassExpression */
-        ]: function visitEachChildOfClassExpression(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateClassExpression(
+        ]: function visitEachChildOfClassExpression(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateClassExpression(
             node,
             nodesVisitor(node.modifiers, visitor, isModifierLike),
             nodeVisitor(node.name, visitor, isIdentifier2),
@@ -122775,8 +122775,8 @@ ${lanes.join("\n")}
         [
           234
           /* ExpressionWithTypeArguments */
-        ]: function visitEachChildOfExpressionWithTypeArguments(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateExpressionWithTypeArguments(
+        ]: function visitEachChildOfExpressionWithTypeArguments(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateExpressionWithTypeArguments(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression)),
             nodesVisitor(node.typeArguments, visitor, isTypeNode)
@@ -122785,8 +122785,8 @@ ${lanes.join("\n")}
         [
           235
           /* AsExpression */
-        ]: function visitEachChildOfAsExpression(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateAsExpression(
+        ]: function visitEachChildOfAsExpression(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateAsExpression(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression)),
             Debug.checkDefined(nodeVisitor(node.type, visitor, isTypeNode))
@@ -122795,8 +122795,8 @@ ${lanes.join("\n")}
         [
           239
           /* SatisfiesExpression */
-        ]: function visitEachChildOfSatisfiesExpression(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateSatisfiesExpression(
+        ]: function visitEachChildOfSatisfiesExpression(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateSatisfiesExpression(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression)),
             Debug.checkDefined(nodeVisitor(node.type, visitor, isTypeNode))
@@ -122805,11 +122805,11 @@ ${lanes.join("\n")}
         [
           236
           /* NonNullExpression */
-        ]: function visitEachChildOfNonNullExpression(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return isOptionalChain(node) ? context4.factory.updateNonNullChain(
+        ]: function visitEachChildOfNonNullExpression(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return isOptionalChain(node) ? context3.factory.updateNonNullChain(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression))
-          ) : context4.factory.updateNonNullExpression(
+          ) : context3.factory.updateNonNullExpression(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression))
           );
@@ -122817,8 +122817,8 @@ ${lanes.join("\n")}
         [
           237
           /* MetaProperty */
-        ]: function visitEachChildOfMetaProperty(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateMetaProperty(
+        ]: function visitEachChildOfMetaProperty(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateMetaProperty(
             node,
             Debug.checkDefined(nodeVisitor(node.name, visitor, isIdentifier2))
           );
@@ -122827,8 +122827,8 @@ ${lanes.join("\n")}
         [
           240
           /* TemplateSpan */
-        ]: function visitEachChildOfTemplateSpan(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateTemplateSpan(
+        ]: function visitEachChildOfTemplateSpan(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateTemplateSpan(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression)),
             Debug.checkDefined(nodeVisitor(node.literal, visitor, isTemplateMiddleOrTemplateTail))
@@ -122838,8 +122838,8 @@ ${lanes.join("\n")}
         [
           242
           /* Block */
-        ]: function visitEachChildOfBlock(node, visitor, context4, nodesVisitor, _nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateBlock(
+        ]: function visitEachChildOfBlock(node, visitor, context3, nodesVisitor, _nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateBlock(
             node,
             nodesVisitor(node.statements, visitor, isStatement)
           );
@@ -122847,8 +122847,8 @@ ${lanes.join("\n")}
         [
           244
           /* VariableStatement */
-        ]: function visitEachChildOfVariableStatement(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateVariableStatement(
+        ]: function visitEachChildOfVariableStatement(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateVariableStatement(
             node,
             nodesVisitor(node.modifiers, visitor, isModifierLike),
             Debug.checkDefined(nodeVisitor(node.declarationList, visitor, isVariableDeclarationList))
@@ -122857,8 +122857,8 @@ ${lanes.join("\n")}
         [
           245
           /* ExpressionStatement */
-        ]: function visitEachChildOfExpressionStatement(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateExpressionStatement(
+        ]: function visitEachChildOfExpressionStatement(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateExpressionStatement(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression))
           );
@@ -122866,74 +122866,74 @@ ${lanes.join("\n")}
         [
           246
           /* IfStatement */
-        ]: function visitEachChildOfIfStatement(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateIfStatement(
+        ]: function visitEachChildOfIfStatement(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateIfStatement(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression)),
-            Debug.checkDefined(nodeVisitor(node.thenStatement, visitor, isStatement, context4.factory.liftToBlock)),
-            nodeVisitor(node.elseStatement, visitor, isStatement, context4.factory.liftToBlock)
+            Debug.checkDefined(nodeVisitor(node.thenStatement, visitor, isStatement, context3.factory.liftToBlock)),
+            nodeVisitor(node.elseStatement, visitor, isStatement, context3.factory.liftToBlock)
           );
         },
         [
           247
           /* DoStatement */
-        ]: function visitEachChildOfDoStatement(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateDoStatement(
+        ]: function visitEachChildOfDoStatement(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateDoStatement(
             node,
-            visitIterationBody(node.statement, visitor, context4, nodeVisitor),
+            visitIterationBody(node.statement, visitor, context3, nodeVisitor),
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression))
           );
         },
         [
           248
           /* WhileStatement */
-        ]: function visitEachChildOfWhileStatement(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateWhileStatement(
+        ]: function visitEachChildOfWhileStatement(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateWhileStatement(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression)),
-            visitIterationBody(node.statement, visitor, context4, nodeVisitor)
+            visitIterationBody(node.statement, visitor, context3, nodeVisitor)
           );
         },
         [
           249
           /* ForStatement */
-        ]: function visitEachChildOfForStatement(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateForStatement(
+        ]: function visitEachChildOfForStatement(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateForStatement(
             node,
             nodeVisitor(node.initializer, visitor, isForInitializer),
             nodeVisitor(node.condition, visitor, isExpression),
             nodeVisitor(node.incrementor, visitor, isExpression),
-            visitIterationBody(node.statement, visitor, context4, nodeVisitor)
+            visitIterationBody(node.statement, visitor, context3, nodeVisitor)
           );
         },
         [
           250
           /* ForInStatement */
-        ]: function visitEachChildOfForInStatement(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateForInStatement(
+        ]: function visitEachChildOfForInStatement(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateForInStatement(
             node,
             Debug.checkDefined(nodeVisitor(node.initializer, visitor, isForInitializer)),
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression)),
-            visitIterationBody(node.statement, visitor, context4, nodeVisitor)
+            visitIterationBody(node.statement, visitor, context3, nodeVisitor)
           );
         },
         [
           251
           /* ForOfStatement */
-        ]: function visitEachChildOfForOfStatement(node, visitor, context4, _nodesVisitor, nodeVisitor, tokenVisitor) {
-          return context4.factory.updateForOfStatement(
+        ]: function visitEachChildOfForOfStatement(node, visitor, context3, _nodesVisitor, nodeVisitor, tokenVisitor) {
+          return context3.factory.updateForOfStatement(
             node,
             tokenVisitor ? nodeVisitor(node.awaitModifier, tokenVisitor, isAwaitKeyword) : node.awaitModifier,
             Debug.checkDefined(nodeVisitor(node.initializer, visitor, isForInitializer)),
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression)),
-            visitIterationBody(node.statement, visitor, context4, nodeVisitor)
+            visitIterationBody(node.statement, visitor, context3, nodeVisitor)
           );
         },
         [
           252
           /* ContinueStatement */
-        ]: function visitEachChildOfContinueStatement(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateContinueStatement(
+        ]: function visitEachChildOfContinueStatement(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateContinueStatement(
             node,
             nodeVisitor(node.label, visitor, isIdentifier2)
           );
@@ -122941,8 +122941,8 @@ ${lanes.join("\n")}
         [
           253
           /* BreakStatement */
-        ]: function visitEachChildOfBreakStatement(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateBreakStatement(
+        ]: function visitEachChildOfBreakStatement(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateBreakStatement(
             node,
             nodeVisitor(node.label, visitor, isIdentifier2)
           );
@@ -122950,8 +122950,8 @@ ${lanes.join("\n")}
         [
           254
           /* ReturnStatement */
-        ]: function visitEachChildOfReturnStatement(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateReturnStatement(
+        ]: function visitEachChildOfReturnStatement(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateReturnStatement(
             node,
             nodeVisitor(node.expression, visitor, isExpression)
           );
@@ -122959,18 +122959,18 @@ ${lanes.join("\n")}
         [
           255
           /* WithStatement */
-        ]: function visitEachChildOfWithStatement(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateWithStatement(
+        ]: function visitEachChildOfWithStatement(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateWithStatement(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression)),
-            Debug.checkDefined(nodeVisitor(node.statement, visitor, isStatement, context4.factory.liftToBlock))
+            Debug.checkDefined(nodeVisitor(node.statement, visitor, isStatement, context3.factory.liftToBlock))
           );
         },
         [
           256
           /* SwitchStatement */
-        ]: function visitEachChildOfSwitchStatement(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateSwitchStatement(
+        ]: function visitEachChildOfSwitchStatement(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateSwitchStatement(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression)),
             Debug.checkDefined(nodeVisitor(node.caseBlock, visitor, isCaseBlock))
@@ -122979,18 +122979,18 @@ ${lanes.join("\n")}
         [
           257
           /* LabeledStatement */
-        ]: function visitEachChildOfLabeledStatement(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateLabeledStatement(
+        ]: function visitEachChildOfLabeledStatement(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateLabeledStatement(
             node,
             Debug.checkDefined(nodeVisitor(node.label, visitor, isIdentifier2)),
-            Debug.checkDefined(nodeVisitor(node.statement, visitor, isStatement, context4.factory.liftToBlock))
+            Debug.checkDefined(nodeVisitor(node.statement, visitor, isStatement, context3.factory.liftToBlock))
           );
         },
         [
           258
           /* ThrowStatement */
-        ]: function visitEachChildOfThrowStatement(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateThrowStatement(
+        ]: function visitEachChildOfThrowStatement(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateThrowStatement(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression))
           );
@@ -122998,8 +122998,8 @@ ${lanes.join("\n")}
         [
           259
           /* TryStatement */
-        ]: function visitEachChildOfTryStatement(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateTryStatement(
+        ]: function visitEachChildOfTryStatement(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateTryStatement(
             node,
             Debug.checkDefined(nodeVisitor(node.tryBlock, visitor, isBlock)),
             nodeVisitor(node.catchClause, visitor, isCatchClause),
@@ -123009,8 +123009,8 @@ ${lanes.join("\n")}
         [
           261
           /* VariableDeclaration */
-        ]: function visitEachChildOfVariableDeclaration(node, visitor, context4, _nodesVisitor, nodeVisitor, tokenVisitor) {
-          return context4.factory.updateVariableDeclaration(
+        ]: function visitEachChildOfVariableDeclaration(node, visitor, context3, _nodesVisitor, nodeVisitor, tokenVisitor) {
+          return context3.factory.updateVariableDeclaration(
             node,
             Debug.checkDefined(nodeVisitor(node.name, visitor, isBindingName)),
             tokenVisitor ? nodeVisitor(node.exclamationToken, tokenVisitor, isExclamationToken) : node.exclamationToken,
@@ -123021,8 +123021,8 @@ ${lanes.join("\n")}
         [
           262
           /* VariableDeclarationList */
-        ]: function visitEachChildOfVariableDeclarationList(node, visitor, context4, nodesVisitor, _nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateVariableDeclarationList(
+        ]: function visitEachChildOfVariableDeclarationList(node, visitor, context3, nodesVisitor, _nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateVariableDeclarationList(
             node,
             nodesVisitor(node.declarations, visitor, isVariableDeclaration)
           );
@@ -123030,23 +123030,23 @@ ${lanes.join("\n")}
         [
           263
           /* FunctionDeclaration */
-        ]: function visitEachChildOfFunctionDeclaration(node, visitor, context4, nodesVisitor, nodeVisitor, tokenVisitor) {
-          return context4.factory.updateFunctionDeclaration(
+        ]: function visitEachChildOfFunctionDeclaration(node, visitor, context3, nodesVisitor, nodeVisitor, tokenVisitor) {
+          return context3.factory.updateFunctionDeclaration(
             node,
             nodesVisitor(node.modifiers, visitor, isModifier),
             tokenVisitor ? nodeVisitor(node.asteriskToken, tokenVisitor, isAsteriskToken) : node.asteriskToken,
             nodeVisitor(node.name, visitor, isIdentifier2),
             nodesVisitor(node.typeParameters, visitor, isTypeParameterDeclaration),
-            visitParameterList(node.parameters, visitor, context4, nodesVisitor),
+            visitParameterList(node.parameters, visitor, context3, nodesVisitor),
             nodeVisitor(node.type, visitor, isTypeNode),
-            visitFunctionBody(node.body, visitor, context4, nodeVisitor)
+            visitFunctionBody(node.body, visitor, context3, nodeVisitor)
           );
         },
         [
           264
           /* ClassDeclaration */
-        ]: function visitEachChildOfClassDeclaration(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateClassDeclaration(
+        ]: function visitEachChildOfClassDeclaration(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateClassDeclaration(
             node,
             nodesVisitor(node.modifiers, visitor, isModifierLike),
             nodeVisitor(node.name, visitor, isIdentifier2),
@@ -123058,8 +123058,8 @@ ${lanes.join("\n")}
         [
           265
           /* InterfaceDeclaration */
-        ]: function visitEachChildOfInterfaceDeclaration(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateInterfaceDeclaration(
+        ]: function visitEachChildOfInterfaceDeclaration(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateInterfaceDeclaration(
             node,
             nodesVisitor(node.modifiers, visitor, isModifierLike),
             Debug.checkDefined(nodeVisitor(node.name, visitor, isIdentifier2)),
@@ -123071,8 +123071,8 @@ ${lanes.join("\n")}
         [
           266
           /* TypeAliasDeclaration */
-        ]: function visitEachChildOfTypeAliasDeclaration(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateTypeAliasDeclaration(
+        ]: function visitEachChildOfTypeAliasDeclaration(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateTypeAliasDeclaration(
             node,
             nodesVisitor(node.modifiers, visitor, isModifierLike),
             Debug.checkDefined(nodeVisitor(node.name, visitor, isIdentifier2)),
@@ -123083,8 +123083,8 @@ ${lanes.join("\n")}
         [
           267
           /* EnumDeclaration */
-        ]: function visitEachChildOfEnumDeclaration(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateEnumDeclaration(
+        ]: function visitEachChildOfEnumDeclaration(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateEnumDeclaration(
             node,
             nodesVisitor(node.modifiers, visitor, isModifierLike),
             Debug.checkDefined(nodeVisitor(node.name, visitor, isIdentifier2)),
@@ -123094,8 +123094,8 @@ ${lanes.join("\n")}
         [
           268
           /* ModuleDeclaration */
-        ]: function visitEachChildOfModuleDeclaration(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateModuleDeclaration(
+        ]: function visitEachChildOfModuleDeclaration(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateModuleDeclaration(
             node,
             nodesVisitor(node.modifiers, visitor, isModifierLike),
             Debug.checkDefined(nodeVisitor(node.name, visitor, isModuleName)),
@@ -123105,8 +123105,8 @@ ${lanes.join("\n")}
         [
           269
           /* ModuleBlock */
-        ]: function visitEachChildOfModuleBlock(node, visitor, context4, nodesVisitor, _nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateModuleBlock(
+        ]: function visitEachChildOfModuleBlock(node, visitor, context3, nodesVisitor, _nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateModuleBlock(
             node,
             nodesVisitor(node.statements, visitor, isStatement)
           );
@@ -123114,8 +123114,8 @@ ${lanes.join("\n")}
         [
           270
           /* CaseBlock */
-        ]: function visitEachChildOfCaseBlock(node, visitor, context4, nodesVisitor, _nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateCaseBlock(
+        ]: function visitEachChildOfCaseBlock(node, visitor, context3, nodesVisitor, _nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateCaseBlock(
             node,
             nodesVisitor(node.clauses, visitor, isCaseOrDefaultClause)
           );
@@ -123123,8 +123123,8 @@ ${lanes.join("\n")}
         [
           271
           /* NamespaceExportDeclaration */
-        ]: function visitEachChildOfNamespaceExportDeclaration(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateNamespaceExportDeclaration(
+        ]: function visitEachChildOfNamespaceExportDeclaration(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateNamespaceExportDeclaration(
             node,
             Debug.checkDefined(nodeVisitor(node.name, visitor, isIdentifier2))
           );
@@ -123132,8 +123132,8 @@ ${lanes.join("\n")}
         [
           272
           /* ImportEqualsDeclaration */
-        ]: function visitEachChildOfImportEqualsDeclaration(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateImportEqualsDeclaration(
+        ]: function visitEachChildOfImportEqualsDeclaration(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateImportEqualsDeclaration(
             node,
             nodesVisitor(node.modifiers, visitor, isModifierLike),
             node.isTypeOnly,
@@ -123144,8 +123144,8 @@ ${lanes.join("\n")}
         [
           273
           /* ImportDeclaration */
-        ]: function visitEachChildOfImportDeclaration(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateImportDeclaration(
+        ]: function visitEachChildOfImportDeclaration(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateImportDeclaration(
             node,
             nodesVisitor(node.modifiers, visitor, isModifierLike),
             nodeVisitor(node.importClause, visitor, isImportClause),
@@ -123156,8 +123156,8 @@ ${lanes.join("\n")}
         [
           301
           /* ImportAttributes */
-        ]: function visitEachChildOfImportAttributes(node, visitor, context4, nodesVisitor, _nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateImportAttributes(
+        ]: function visitEachChildOfImportAttributes(node, visitor, context3, nodesVisitor, _nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateImportAttributes(
             node,
             nodesVisitor(node.elements, visitor, isImportAttribute),
             node.multiLine
@@ -123166,8 +123166,8 @@ ${lanes.join("\n")}
         [
           302
           /* ImportAttribute */
-        ]: function visitEachChildOfImportAttribute(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateImportAttribute(
+        ]: function visitEachChildOfImportAttribute(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateImportAttribute(
             node,
             Debug.checkDefined(nodeVisitor(node.name, visitor, isImportAttributeName)),
             Debug.checkDefined(nodeVisitor(node.value, visitor, isExpression))
@@ -123176,8 +123176,8 @@ ${lanes.join("\n")}
         [
           274
           /* ImportClause */
-        ]: function visitEachChildOfImportClause(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateImportClause(
+        ]: function visitEachChildOfImportClause(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateImportClause(
             node,
             node.phaseModifier,
             nodeVisitor(node.name, visitor, isIdentifier2),
@@ -123187,8 +123187,8 @@ ${lanes.join("\n")}
         [
           275
           /* NamespaceImport */
-        ]: function visitEachChildOfNamespaceImport(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateNamespaceImport(
+        ]: function visitEachChildOfNamespaceImport(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateNamespaceImport(
             node,
             Debug.checkDefined(nodeVisitor(node.name, visitor, isIdentifier2))
           );
@@ -123196,8 +123196,8 @@ ${lanes.join("\n")}
         [
           281
           /* NamespaceExport */
-        ]: function visitEachChildOfNamespaceExport(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateNamespaceExport(
+        ]: function visitEachChildOfNamespaceExport(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateNamespaceExport(
             node,
             Debug.checkDefined(nodeVisitor(node.name, visitor, isIdentifier2))
           );
@@ -123205,8 +123205,8 @@ ${lanes.join("\n")}
         [
           276
           /* NamedImports */
-        ]: function visitEachChildOfNamedImports(node, visitor, context4, nodesVisitor, _nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateNamedImports(
+        ]: function visitEachChildOfNamedImports(node, visitor, context3, nodesVisitor, _nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateNamedImports(
             node,
             nodesVisitor(node.elements, visitor, isImportSpecifier)
           );
@@ -123214,8 +123214,8 @@ ${lanes.join("\n")}
         [
           277
           /* ImportSpecifier */
-        ]: function visitEachChildOfImportSpecifier(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateImportSpecifier(
+        ]: function visitEachChildOfImportSpecifier(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateImportSpecifier(
             node,
             node.isTypeOnly,
             nodeVisitor(node.propertyName, visitor, isModuleExportName),
@@ -123225,8 +123225,8 @@ ${lanes.join("\n")}
         [
           278
           /* ExportAssignment */
-        ]: function visitEachChildOfExportAssignment(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateExportAssignment(
+        ]: function visitEachChildOfExportAssignment(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateExportAssignment(
             node,
             nodesVisitor(node.modifiers, visitor, isModifierLike),
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression))
@@ -123235,8 +123235,8 @@ ${lanes.join("\n")}
         [
           279
           /* ExportDeclaration */
-        ]: function visitEachChildOfExportDeclaration(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateExportDeclaration(
+        ]: function visitEachChildOfExportDeclaration(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateExportDeclaration(
             node,
             nodesVisitor(node.modifiers, visitor, isModifierLike),
             node.isTypeOnly,
@@ -123248,8 +123248,8 @@ ${lanes.join("\n")}
         [
           280
           /* NamedExports */
-        ]: function visitEachChildOfNamedExports(node, visitor, context4, nodesVisitor, _nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateNamedExports(
+        ]: function visitEachChildOfNamedExports(node, visitor, context3, nodesVisitor, _nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateNamedExports(
             node,
             nodesVisitor(node.elements, visitor, isExportSpecifier)
           );
@@ -123257,8 +123257,8 @@ ${lanes.join("\n")}
         [
           282
           /* ExportSpecifier */
-        ]: function visitEachChildOfExportSpecifier(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateExportSpecifier(
+        ]: function visitEachChildOfExportSpecifier(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateExportSpecifier(
             node,
             node.isTypeOnly,
             nodeVisitor(node.propertyName, visitor, isModuleExportName),
@@ -123269,8 +123269,8 @@ ${lanes.join("\n")}
         [
           284
           /* ExternalModuleReference */
-        ]: function visitEachChildOfExternalModuleReference(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateExternalModuleReference(
+        ]: function visitEachChildOfExternalModuleReference(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateExternalModuleReference(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression))
           );
@@ -123279,8 +123279,8 @@ ${lanes.join("\n")}
         [
           285
           /* JsxElement */
-        ]: function visitEachChildOfJsxElement(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateJsxElement(
+        ]: function visitEachChildOfJsxElement(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateJsxElement(
             node,
             Debug.checkDefined(nodeVisitor(node.openingElement, visitor, isJsxOpeningElement)),
             nodesVisitor(node.children, visitor, isJsxChild),
@@ -123290,8 +123290,8 @@ ${lanes.join("\n")}
         [
           286
           /* JsxSelfClosingElement */
-        ]: function visitEachChildOfJsxSelfClosingElement(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateJsxSelfClosingElement(
+        ]: function visitEachChildOfJsxSelfClosingElement(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateJsxSelfClosingElement(
             node,
             Debug.checkDefined(nodeVisitor(node.tagName, visitor, isJsxTagNameExpression)),
             nodesVisitor(node.typeArguments, visitor, isTypeNode),
@@ -123301,8 +123301,8 @@ ${lanes.join("\n")}
         [
           287
           /* JsxOpeningElement */
-        ]: function visitEachChildOfJsxOpeningElement(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateJsxOpeningElement(
+        ]: function visitEachChildOfJsxOpeningElement(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateJsxOpeningElement(
             node,
             Debug.checkDefined(nodeVisitor(node.tagName, visitor, isJsxTagNameExpression)),
             nodesVisitor(node.typeArguments, visitor, isTypeNode),
@@ -123312,8 +123312,8 @@ ${lanes.join("\n")}
         [
           288
           /* JsxClosingElement */
-        ]: function visitEachChildOfJsxClosingElement(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateJsxClosingElement(
+        ]: function visitEachChildOfJsxClosingElement(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateJsxClosingElement(
             node,
             Debug.checkDefined(nodeVisitor(node.tagName, visitor, isJsxTagNameExpression))
           );
@@ -123321,8 +123321,8 @@ ${lanes.join("\n")}
         [
           296
           /* JsxNamespacedName */
-        ]: function forEachChildInJsxNamespacedName2(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateJsxNamespacedName(
+        ]: function forEachChildInJsxNamespacedName2(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateJsxNamespacedName(
             node,
             Debug.checkDefined(nodeVisitor(node.namespace, visitor, isIdentifier2)),
             Debug.checkDefined(nodeVisitor(node.name, visitor, isIdentifier2))
@@ -123331,8 +123331,8 @@ ${lanes.join("\n")}
         [
           289
           /* JsxFragment */
-        ]: function visitEachChildOfJsxFragment(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateJsxFragment(
+        ]: function visitEachChildOfJsxFragment(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateJsxFragment(
             node,
             Debug.checkDefined(nodeVisitor(node.openingFragment, visitor, isJsxOpeningFragment)),
             nodesVisitor(node.children, visitor, isJsxChild),
@@ -123342,8 +123342,8 @@ ${lanes.join("\n")}
         [
           292
           /* JsxAttribute */
-        ]: function visitEachChildOfJsxAttribute(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateJsxAttribute(
+        ]: function visitEachChildOfJsxAttribute(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateJsxAttribute(
             node,
             Debug.checkDefined(nodeVisitor(node.name, visitor, isJsxAttributeName)),
             nodeVisitor(node.initializer, visitor, isStringLiteralOrJsxExpression)
@@ -123352,8 +123352,8 @@ ${lanes.join("\n")}
         [
           293
           /* JsxAttributes */
-        ]: function visitEachChildOfJsxAttributes(node, visitor, context4, nodesVisitor, _nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateJsxAttributes(
+        ]: function visitEachChildOfJsxAttributes(node, visitor, context3, nodesVisitor, _nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateJsxAttributes(
             node,
             nodesVisitor(node.properties, visitor, isJsxAttributeLike)
           );
@@ -123361,8 +123361,8 @@ ${lanes.join("\n")}
         [
           294
           /* JsxSpreadAttribute */
-        ]: function visitEachChildOfJsxSpreadAttribute(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateJsxSpreadAttribute(
+        ]: function visitEachChildOfJsxSpreadAttribute(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateJsxSpreadAttribute(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression))
           );
@@ -123370,8 +123370,8 @@ ${lanes.join("\n")}
         [
           295
           /* JsxExpression */
-        ]: function visitEachChildOfJsxExpression(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateJsxExpression(
+        ]: function visitEachChildOfJsxExpression(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateJsxExpression(
             node,
             nodeVisitor(node.expression, visitor, isExpression)
           );
@@ -123380,8 +123380,8 @@ ${lanes.join("\n")}
         [
           297
           /* CaseClause */
-        ]: function visitEachChildOfCaseClause(node, visitor, context4, nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateCaseClause(
+        ]: function visitEachChildOfCaseClause(node, visitor, context3, nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateCaseClause(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression)),
             nodesVisitor(node.statements, visitor, isStatement)
@@ -123390,8 +123390,8 @@ ${lanes.join("\n")}
         [
           298
           /* DefaultClause */
-        ]: function visitEachChildOfDefaultClause(node, visitor, context4, nodesVisitor, _nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateDefaultClause(
+        ]: function visitEachChildOfDefaultClause(node, visitor, context3, nodesVisitor, _nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateDefaultClause(
             node,
             nodesVisitor(node.statements, visitor, isStatement)
           );
@@ -123399,8 +123399,8 @@ ${lanes.join("\n")}
         [
           299
           /* HeritageClause */
-        ]: function visitEachChildOfHeritageClause(node, visitor, context4, nodesVisitor, _nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateHeritageClause(
+        ]: function visitEachChildOfHeritageClause(node, visitor, context3, nodesVisitor, _nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateHeritageClause(
             node,
             nodesVisitor(node.types, visitor, isExpressionWithTypeArguments)
           );
@@ -123408,8 +123408,8 @@ ${lanes.join("\n")}
         [
           300
           /* CatchClause */
-        ]: function visitEachChildOfCatchClause(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateCatchClause(
+        ]: function visitEachChildOfCatchClause(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateCatchClause(
             node,
             nodeVisitor(node.variableDeclaration, visitor, isVariableDeclaration),
             Debug.checkDefined(nodeVisitor(node.block, visitor, isBlock))
@@ -123419,8 +123419,8 @@ ${lanes.join("\n")}
         [
           304
           /* PropertyAssignment */
-        ]: function visitEachChildOfPropertyAssignment(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updatePropertyAssignment(
+        ]: function visitEachChildOfPropertyAssignment(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updatePropertyAssignment(
             node,
             Debug.checkDefined(nodeVisitor(node.name, visitor, isPropertyName)),
             Debug.checkDefined(nodeVisitor(node.initializer, visitor, isExpression))
@@ -123429,8 +123429,8 @@ ${lanes.join("\n")}
         [
           305
           /* ShorthandPropertyAssignment */
-        ]: function visitEachChildOfShorthandPropertyAssignment(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateShorthandPropertyAssignment(
+        ]: function visitEachChildOfShorthandPropertyAssignment(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateShorthandPropertyAssignment(
             node,
             Debug.checkDefined(nodeVisitor(node.name, visitor, isIdentifier2)),
             nodeVisitor(node.objectAssignmentInitializer, visitor, isExpression)
@@ -123439,8 +123439,8 @@ ${lanes.join("\n")}
         [
           306
           /* SpreadAssignment */
-        ]: function visitEachChildOfSpreadAssignment(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateSpreadAssignment(
+        ]: function visitEachChildOfSpreadAssignment(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateSpreadAssignment(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression))
           );
@@ -123449,8 +123449,8 @@ ${lanes.join("\n")}
         [
           307
           /* EnumMember */
-        ]: function visitEachChildOfEnumMember(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateEnumMember(
+        ]: function visitEachChildOfEnumMember(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateEnumMember(
             node,
             Debug.checkDefined(nodeVisitor(node.name, visitor, isPropertyName)),
             nodeVisitor(node.initializer, visitor, isExpression)
@@ -123460,18 +123460,18 @@ ${lanes.join("\n")}
         [
           308
           /* SourceFile */
-        ]: function visitEachChildOfSourceFile(node, visitor, context4, _nodesVisitor, _nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateSourceFile(
+        ]: function visitEachChildOfSourceFile(node, visitor, context3, _nodesVisitor, _nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateSourceFile(
             node,
-            visitLexicalEnvironment(node.statements, visitor, context4)
+            visitLexicalEnvironment(node.statements, visitor, context3)
           );
         },
         // Transformation nodes
         [
           356
           /* PartiallyEmittedExpression */
-        ]: function visitEachChildOfPartiallyEmittedExpression(node, visitor, context4, _nodesVisitor, nodeVisitor, _tokenVisitor) {
-          return context4.factory.updatePartiallyEmittedExpression(
+        ]: function visitEachChildOfPartiallyEmittedExpression(node, visitor, context3, _nodesVisitor, nodeVisitor, _tokenVisitor) {
+          return context3.factory.updatePartiallyEmittedExpression(
             node,
             Debug.checkDefined(nodeVisitor(node.expression, visitor, isExpression))
           );
@@ -123479,8 +123479,8 @@ ${lanes.join("\n")}
         [
           357
           /* CommaListExpression */
-        ]: function visitEachChildOfCommaListExpression(node, visitor, context4, nodesVisitor, _nodeVisitor, _tokenVisitor) {
-          return context4.factory.updateCommaListExpression(
+        ]: function visitEachChildOfCommaListExpression(node, visitor, context3, nodesVisitor, _nodeVisitor, _tokenVisitor) {
+          return context3.factory.updateCommaListExpression(
             node,
             nodesVisitor(node.elements, visitor, isExpression)
           );
@@ -124048,13 +124048,13 @@ ${lanes.join("\n")}
       function isNamedDefaultReference(e) {
         return moduleExportNameIsDefault(e.propertyName || e.name);
       }
-      function chainBundle(context4, transformSourceFile) {
+      function chainBundle(context3, transformSourceFile) {
         return transformSourceFileOrBundle;
         function transformSourceFileOrBundle(node) {
           return node.kind === 308 ? transformSourceFile(node) : transformBundle(node);
         }
         function transformBundle(node) {
-          return context4.factory.createBundle(map(node.sourceFiles, transformSourceFile));
+          return context3.factory.createBundle(map(node.sourceFiles, transformSourceFile));
         }
       }
       function getExportNeedsImportStarHelper(node) {
@@ -124080,9 +124080,9 @@ ${lanes.join("\n")}
       function getImportNeedsImportDefaultHelper(node) {
         return !getImportNeedsImportStarHelper(node) && (isDefaultImport(node) || !!node.importClause && isNamedImports(node.importClause.namedBindings) && containsDefaultReference(node.importClause.namedBindings));
       }
-      function collectExternalModuleInfo(context4, sourceFile) {
-        const resolver = context4.getEmitResolver();
-        const compilerOptions = context4.getCompilerOptions();
+      function collectExternalModuleInfo(context3, sourceFile) {
+        const resolver = context3.getEmitResolver();
+        const compilerOptions = context3.getCompilerOptions();
         const externalImports = [];
         const exportSpecifiers = new IdentifierNameMultiMap();
         const exportedBindings = [];
@@ -124181,7 +124181,7 @@ ${lanes.join("\n")}
                   /* Default */
                 )) {
                   if (!hasExportDefault) {
-                    multiMapSparseArrayAdd(exportedBindings, getOriginalNodeId(node), context4.factory.getDeclarationName(node));
+                    multiMapSparseArrayAdd(exportedBindings, getOriginalNodeId(node), context3.factory.getDeclarationName(node));
                     hasExportDefault = true;
                   }
                 } else {
@@ -124196,7 +124196,7 @@ ${lanes.join("\n")}
               break;
           }
         }
-        const externalHelpersImportDeclaration = createExternalHelpersImportDeclarationIfNeeded(context4.factory, context4.getEmitHelperFactory(), sourceFile, compilerOptions, hasExportStarsToExportValues, hasImportStar, hasImportDefault);
+        const externalHelpersImportDeclaration = createExternalHelpersImportDeclarationIfNeeded(context3.factory, context3.getEmitHelperFactory(), sourceFile, compilerOptions, hasExportStarsToExportValues, hasImportStar, hasImportDefault);
         if (externalHelpersImportDeclaration) {
           externalImports.unshift(externalHelpersImportDeclaration);
         }
@@ -124228,7 +124228,7 @@ ${lanes.join("\n")}
           exportedFunctions.add(getOriginalNode(node, isFunctionDeclaration));
           if (isDefault) {
             if (!hasExportDefault) {
-              multiMapSparseArrayAdd(exportedBindings, getOriginalNodeId(node), name ?? context4.factory.getDeclarationName(node));
+              multiMapSparseArrayAdd(exportedBindings, getOriginalNodeId(node), name ?? context3.factory.getDeclarationName(node));
               hasExportDefault = true;
             }
           } else {
@@ -124575,7 +124575,7 @@ ${lanes.join("\n")}
         FlattenLevel2[FlattenLevel2["ObjectRest"] = 1] = "ObjectRest";
         return FlattenLevel2;
       })(FlattenLevel || {});
-      function flattenDestructuringAssignment(node, visitor, context4, level, needsValue, createAssignmentCallback) {
+      function flattenDestructuringAssignment(node, visitor, context3, level, needsValue, createAssignmentCallback) {
         let location = node;
         let value;
         if (isDestructuringAssignment(node)) {
@@ -124591,14 +124591,14 @@ ${lanes.join("\n")}
         }
         let expressions;
         const flattenContext = {
-          context: context4,
+          context: context3,
           level,
-          downlevelIteration: !!context4.getCompilerOptions().downlevelIteration,
+          downlevelIteration: !!context3.getCompilerOptions().downlevelIteration,
           hoistTempVariables: true,
           emitExpression,
           emitBindingOrAssignment,
-          createArrayBindingOrAssignmentPattern: (elements) => makeArrayAssignmentPattern(context4.factory, elements),
-          createObjectBindingOrAssignmentPattern: (elements) => makeObjectAssignmentPattern(context4.factory, elements),
+          createArrayBindingOrAssignmentPattern: (elements) => makeArrayAssignmentPattern(context3.factory, elements),
+          createObjectBindingOrAssignmentPattern: (elements) => makeObjectAssignmentPattern(context3.factory, elements),
           createArrayBindingOrAssignmentElement: makeAssignmentElement,
           visitor
         };
@@ -124639,14 +124639,14 @@ ${lanes.join("\n")}
           }
           expressions.push(value);
         }
-        return context4.factory.inlineExpressions(expressions) || context4.factory.createOmittedExpression();
+        return context3.factory.inlineExpressions(expressions) || context3.factory.createOmittedExpression();
         function emitExpression(expression) {
           expressions = append(expressions, expression);
         }
         function emitBindingOrAssignment(target, value2, location2, original) {
           Debug.assertNode(target, createAssignmentCallback ? isIdentifier2 : isExpression);
           const expression = createAssignmentCallback ? createAssignmentCallback(target, value2, location2) : setTextRange(
-            context4.factory.createAssignment(Debug.checkDefined(visitNode(target, visitor, isExpression)), value2),
+            context3.factory.createAssignment(Debug.checkDefined(visitNode(target, visitor, isExpression)), value2),
             location2
           );
           expression.original = original;
@@ -124682,20 +124682,20 @@ ${lanes.join("\n")}
       function bindingOrAssignmentPatternContainsNonLiteralComputedName(pattern) {
         return !!forEach(getElementsOfBindingOrAssignmentPattern(pattern), bindingOrAssignmentElementContainsNonLiteralComputedName);
       }
-      function flattenDestructuringBinding(node, visitor, context4, level, rval, hoistTempVariables = false, skipInitializer) {
+      function flattenDestructuringBinding(node, visitor, context3, level, rval, hoistTempVariables = false, skipInitializer) {
         let pendingExpressions;
         const pendingDeclarations = [];
         const declarations = [];
         const flattenContext = {
-          context: context4,
+          context: context3,
           level,
-          downlevelIteration: !!context4.getCompilerOptions().downlevelIteration,
+          downlevelIteration: !!context3.getCompilerOptions().downlevelIteration,
           hoistTempVariables,
           emitExpression,
           emitBindingOrAssignment,
-          createArrayBindingOrAssignmentPattern: (elements) => makeArrayBindingPattern(context4.factory, elements),
-          createObjectBindingOrAssignmentPattern: (elements) => makeObjectBindingPattern(context4.factory, elements),
-          createArrayBindingOrAssignmentElement: (name) => makeBindingElement(context4.factory, name),
+          createArrayBindingOrAssignmentPattern: (elements) => makeArrayBindingPattern(context3.factory, elements),
+          createObjectBindingOrAssignmentPattern: (elements) => makeObjectBindingPattern(context3.factory, elements),
+          createArrayBindingOrAssignmentElement: (name) => makeBindingElement(context3.factory, name),
           visitor
         };
         if (isVariableDeclaration(node)) {
@@ -124708,7 +124708,7 @@ ${lanes.join("\n")}
               false,
               initializer
             );
-            node = context4.factory.updateVariableDeclaration(
+            node = context3.factory.updateVariableDeclaration(
               node,
               node.name,
               /*exclamationToken*/
@@ -124721,12 +124721,12 @@ ${lanes.join("\n")}
         }
         flattenBindingOrAssignmentElement(flattenContext, node, rval, node, skipInitializer);
         if (pendingExpressions) {
-          const temp = context4.factory.createTempVariable(
+          const temp = context3.factory.createTempVariable(
             /*recordTempVariable*/
             void 0
           );
           if (hoistTempVariables) {
-            const value = context4.factory.inlineExpressions(pendingExpressions);
+            const value = context3.factory.inlineExpressions(pendingExpressions);
             pendingExpressions = void 0;
             emitBindingOrAssignment(
               temp,
@@ -124737,24 +124737,24 @@ ${lanes.join("\n")}
               void 0
             );
           } else {
-            context4.hoistVariableDeclaration(temp);
+            context3.hoistVariableDeclaration(temp);
             const pendingDeclaration = last(pendingDeclarations);
             pendingDeclaration.pendingExpressions = append(
               pendingDeclaration.pendingExpressions,
-              context4.factory.createAssignment(temp, pendingDeclaration.value)
+              context3.factory.createAssignment(temp, pendingDeclaration.value)
             );
             addRange(pendingDeclaration.pendingExpressions, pendingExpressions);
             pendingDeclaration.value = temp;
           }
         }
         for (const { pendingExpressions: pendingExpressions2, name, value, location, original } of pendingDeclarations) {
-          const variable = context4.factory.createVariableDeclaration(
+          const variable = context3.factory.createVariableDeclaration(
             name,
             /*exclamationToken*/
             void 0,
             /*type*/
             void 0,
-            pendingExpressions2 ? context4.factory.inlineExpressions(append(pendingExpressions2, value)) : value
+            pendingExpressions2 ? context3.factory.inlineExpressions(append(pendingExpressions2, value)) : value
           );
           variable.original = original;
           setTextRange(variable, location);
@@ -124767,7 +124767,7 @@ ${lanes.join("\n")}
         function emitBindingOrAssignment(target, value, location, original) {
           Debug.assertNode(target, isBindingName);
           if (pendingExpressions) {
-            value = context4.factory.inlineExpressions(append(pendingExpressions, value));
+            value = context3.factory.inlineExpressions(append(pendingExpressions, value));
             pendingExpressions = void 0;
           }
           pendingDeclarations.push({ pendingExpressions, name: target, value, location, original });
@@ -125092,8 +125092,8 @@ ${lanes.join("\n")}
         }
         return factory2.createStringLiteralFromNode(name);
       }
-      function getAssignedNameOfPropertyName(context4, name, assignedNameText) {
-        const { factory: factory2 } = context4;
+      function getAssignedNameOfPropertyName(context3, name, assignedNameText) {
+        const { factory: factory2 } = context3;
         if (assignedNameText !== void 0) {
           const assignedName2 = factory2.createStringLiteral(assignedNameText);
           return { assignedName: assignedName2, name };
@@ -125107,15 +125107,15 @@ ${lanes.join("\n")}
           return { assignedName: assignedName2, name };
         }
         const assignedName = factory2.getGeneratedNameForNode(name);
-        context4.hoistVariableDeclaration(assignedName);
-        const key = context4.getEmitHelperFactory().createPropKeyHelper(name.expression);
+        context3.hoistVariableDeclaration(assignedName);
+        const key = context3.getEmitHelperFactory().createPropKeyHelper(name.expression);
         const assignment = factory2.createAssignment(assignedName, key);
         const updatedName = factory2.updateComputedPropertyName(name, assignment);
         return { assignedName, name: updatedName };
       }
-      function createClassNamedEvaluationHelperBlock(context4, assignedName, thisExpression = context4.factory.createThis()) {
-        const { factory: factory2 } = context4;
-        const expression = context4.getEmitHelperFactory().createSetFunctionNameHelper(thisExpression, assignedName);
+      function createClassNamedEvaluationHelperBlock(context3, assignedName, thisExpression = context3.factory.createThis()) {
+        const { factory: factory2 } = context3;
+        const expression = context3.getEmitHelperFactory().createSetFunctionNameHelper(thisExpression, assignedName);
         const statement = factory2.createExpressionStatement(expression);
         const body = factory2.createBlock(
           [statement],
@@ -125141,12 +125141,12 @@ ${lanes.join("\n")}
       function classHasDeclaredOrExplicitlyAssignedName(node) {
         return !!node.name || classHasExplicitlyAssignedName(node);
       }
-      function injectClassNamedEvaluationHelperBlockIfMissing(context4, node, assignedName, thisExpression) {
+      function injectClassNamedEvaluationHelperBlockIfMissing(context3, node, assignedName, thisExpression) {
         if (classHasExplicitlyAssignedName(node)) {
           return node;
         }
-        const { factory: factory2 } = context4;
-        const namedEvaluationBlock = createClassNamedEvaluationHelperBlock(context4, assignedName, thisExpression);
+        const { factory: factory2 } = context3;
+        const namedEvaluationBlock = createClassNamedEvaluationHelperBlock(context3, assignedName, thisExpression);
         if (node.name) {
           setSourceMapRange(namedEvaluationBlock.body.statements[0], node.name);
         }
@@ -125173,39 +125173,39 @@ ${lanes.join("\n")}
         getOrCreateEmitNode(node).assignedName = assignedName;
         return node;
       }
-      function finishTransformNamedEvaluation(context4, expression, assignedName, ignoreEmptyStringLiteral) {
+      function finishTransformNamedEvaluation(context3, expression, assignedName, ignoreEmptyStringLiteral) {
         if (ignoreEmptyStringLiteral && isStringLiteral(assignedName) && isEmptyStringLiteral(assignedName)) {
           return expression;
         }
-        const { factory: factory2 } = context4;
+        const { factory: factory2 } = context3;
         const innerExpression = skipOuterExpressions(expression);
-        const updatedExpression = isClassExpression(innerExpression) ? cast(injectClassNamedEvaluationHelperBlockIfMissing(context4, innerExpression, assignedName), isClassExpression) : context4.getEmitHelperFactory().createSetFunctionNameHelper(innerExpression, assignedName);
+        const updatedExpression = isClassExpression(innerExpression) ? cast(injectClassNamedEvaluationHelperBlockIfMissing(context3, innerExpression, assignedName), isClassExpression) : context3.getEmitHelperFactory().createSetFunctionNameHelper(innerExpression, assignedName);
         return factory2.restoreOuterExpressions(expression, updatedExpression);
       }
-      function transformNamedEvaluationOfPropertyAssignment(context4, node, ignoreEmptyStringLiteral, assignedNameText) {
-        const { factory: factory2 } = context4;
-        const { assignedName, name } = getAssignedNameOfPropertyName(context4, node.name, assignedNameText);
-        const initializer = finishTransformNamedEvaluation(context4, node.initializer, assignedName, ignoreEmptyStringLiteral);
+      function transformNamedEvaluationOfPropertyAssignment(context3, node, ignoreEmptyStringLiteral, assignedNameText) {
+        const { factory: factory2 } = context3;
+        const { assignedName, name } = getAssignedNameOfPropertyName(context3, node.name, assignedNameText);
+        const initializer = finishTransformNamedEvaluation(context3, node.initializer, assignedName, ignoreEmptyStringLiteral);
         return factory2.updatePropertyAssignment(
           node,
           name,
           initializer
         );
       }
-      function transformNamedEvaluationOfShorthandAssignmentProperty(context4, node, ignoreEmptyStringLiteral, assignedNameText) {
-        const { factory: factory2 } = context4;
+      function transformNamedEvaluationOfShorthandAssignmentProperty(context3, node, ignoreEmptyStringLiteral, assignedNameText) {
+        const { factory: factory2 } = context3;
         const assignedName = assignedNameText !== void 0 ? factory2.createStringLiteral(assignedNameText) : getAssignedNameOfIdentifier(factory2, node.name, node.objectAssignmentInitializer);
-        const objectAssignmentInitializer = finishTransformNamedEvaluation(context4, node.objectAssignmentInitializer, assignedName, ignoreEmptyStringLiteral);
+        const objectAssignmentInitializer = finishTransformNamedEvaluation(context3, node.objectAssignmentInitializer, assignedName, ignoreEmptyStringLiteral);
         return factory2.updateShorthandPropertyAssignment(
           node,
           node.name,
           objectAssignmentInitializer
         );
       }
-      function transformNamedEvaluationOfVariableDeclaration(context4, node, ignoreEmptyStringLiteral, assignedNameText) {
-        const { factory: factory2 } = context4;
+      function transformNamedEvaluationOfVariableDeclaration(context3, node, ignoreEmptyStringLiteral, assignedNameText) {
+        const { factory: factory2 } = context3;
         const assignedName = assignedNameText !== void 0 ? factory2.createStringLiteral(assignedNameText) : getAssignedNameOfIdentifier(factory2, node.name, node.initializer);
-        const initializer = finishTransformNamedEvaluation(context4, node.initializer, assignedName, ignoreEmptyStringLiteral);
+        const initializer = finishTransformNamedEvaluation(context3, node.initializer, assignedName, ignoreEmptyStringLiteral);
         return factory2.updateVariableDeclaration(
           node,
           node.name,
@@ -125214,10 +125214,10 @@ ${lanes.join("\n")}
           initializer
         );
       }
-      function transformNamedEvaluationOfParameterDeclaration(context4, node, ignoreEmptyStringLiteral, assignedNameText) {
-        const { factory: factory2 } = context4;
+      function transformNamedEvaluationOfParameterDeclaration(context3, node, ignoreEmptyStringLiteral, assignedNameText) {
+        const { factory: factory2 } = context3;
         const assignedName = assignedNameText !== void 0 ? factory2.createStringLiteral(assignedNameText) : getAssignedNameOfIdentifier(factory2, node.name, node.initializer);
-        const initializer = finishTransformNamedEvaluation(context4, node.initializer, assignedName, ignoreEmptyStringLiteral);
+        const initializer = finishTransformNamedEvaluation(context3, node.initializer, assignedName, ignoreEmptyStringLiteral);
         return factory2.updateParameterDeclaration(
           node,
           node.modifiers,
@@ -125228,10 +125228,10 @@ ${lanes.join("\n")}
           initializer
         );
       }
-      function transformNamedEvaluationOfBindingElement(context4, node, ignoreEmptyStringLiteral, assignedNameText) {
-        const { factory: factory2 } = context4;
+      function transformNamedEvaluationOfBindingElement(context3, node, ignoreEmptyStringLiteral, assignedNameText) {
+        const { factory: factory2 } = context3;
         const assignedName = assignedNameText !== void 0 ? factory2.createStringLiteral(assignedNameText) : getAssignedNameOfIdentifier(factory2, node.name, node.initializer);
-        const initializer = finishTransformNamedEvaluation(context4, node.initializer, assignedName, ignoreEmptyStringLiteral);
+        const initializer = finishTransformNamedEvaluation(context3, node.initializer, assignedName, ignoreEmptyStringLiteral);
         return factory2.updateBindingElement(
           node,
           node.dotDotDotToken,
@@ -125240,10 +125240,10 @@ ${lanes.join("\n")}
           initializer
         );
       }
-      function transformNamedEvaluationOfPropertyDeclaration(context4, node, ignoreEmptyStringLiteral, assignedNameText) {
-        const { factory: factory2 } = context4;
-        const { assignedName, name } = getAssignedNameOfPropertyName(context4, node.name, assignedNameText);
-        const initializer = finishTransformNamedEvaluation(context4, node.initializer, assignedName, ignoreEmptyStringLiteral);
+      function transformNamedEvaluationOfPropertyDeclaration(context3, node, ignoreEmptyStringLiteral, assignedNameText) {
+        const { factory: factory2 } = context3;
+        const { assignedName, name } = getAssignedNameOfPropertyName(context3, node.name, assignedNameText);
+        const initializer = finishTransformNamedEvaluation(context3, node.initializer, assignedName, ignoreEmptyStringLiteral);
         return factory2.updatePropertyDeclaration(
           node,
           node.modifiers,
@@ -125253,10 +125253,10 @@ ${lanes.join("\n")}
           initializer
         );
       }
-      function transformNamedEvaluationOfAssignmentExpression(context4, node, ignoreEmptyStringLiteral, assignedNameText) {
-        const { factory: factory2 } = context4;
+      function transformNamedEvaluationOfAssignmentExpression(context3, node, ignoreEmptyStringLiteral, assignedNameText) {
+        const { factory: factory2 } = context3;
         const assignedName = assignedNameText !== void 0 ? factory2.createStringLiteral(assignedNameText) : getAssignedNameOfIdentifier(factory2, node.left, node.right);
-        const right = finishTransformNamedEvaluation(context4, node.right, assignedName, ignoreEmptyStringLiteral);
+        const right = finishTransformNamedEvaluation(context3, node.right, assignedName, ignoreEmptyStringLiteral);
         return factory2.updateBinaryExpression(
           node,
           node.left,
@@ -125264,34 +125264,34 @@ ${lanes.join("\n")}
           right
         );
       }
-      function transformNamedEvaluationOfExportAssignment(context4, node, ignoreEmptyStringLiteral, assignedNameText) {
-        const { factory: factory2 } = context4;
+      function transformNamedEvaluationOfExportAssignment(context3, node, ignoreEmptyStringLiteral, assignedNameText) {
+        const { factory: factory2 } = context3;
         const assignedName = assignedNameText !== void 0 ? factory2.createStringLiteral(assignedNameText) : factory2.createStringLiteral(node.isExportEquals ? "" : "default");
-        const expression = finishTransformNamedEvaluation(context4, node.expression, assignedName, ignoreEmptyStringLiteral);
+        const expression = finishTransformNamedEvaluation(context3, node.expression, assignedName, ignoreEmptyStringLiteral);
         return factory2.updateExportAssignment(
           node,
           node.modifiers,
           expression
         );
       }
-      function transformNamedEvaluation(context4, node, ignoreEmptyStringLiteral, assignedName) {
+      function transformNamedEvaluation(context3, node, ignoreEmptyStringLiteral, assignedName) {
         switch (node.kind) {
           case 304:
-            return transformNamedEvaluationOfPropertyAssignment(context4, node, ignoreEmptyStringLiteral, assignedName);
+            return transformNamedEvaluationOfPropertyAssignment(context3, node, ignoreEmptyStringLiteral, assignedName);
           case 305:
-            return transformNamedEvaluationOfShorthandAssignmentProperty(context4, node, ignoreEmptyStringLiteral, assignedName);
+            return transformNamedEvaluationOfShorthandAssignmentProperty(context3, node, ignoreEmptyStringLiteral, assignedName);
           case 261:
-            return transformNamedEvaluationOfVariableDeclaration(context4, node, ignoreEmptyStringLiteral, assignedName);
+            return transformNamedEvaluationOfVariableDeclaration(context3, node, ignoreEmptyStringLiteral, assignedName);
           case 170:
-            return transformNamedEvaluationOfParameterDeclaration(context4, node, ignoreEmptyStringLiteral, assignedName);
+            return transformNamedEvaluationOfParameterDeclaration(context3, node, ignoreEmptyStringLiteral, assignedName);
           case 209:
-            return transformNamedEvaluationOfBindingElement(context4, node, ignoreEmptyStringLiteral, assignedName);
+            return transformNamedEvaluationOfBindingElement(context3, node, ignoreEmptyStringLiteral, assignedName);
           case 173:
-            return transformNamedEvaluationOfPropertyDeclaration(context4, node, ignoreEmptyStringLiteral, assignedName);
+            return transformNamedEvaluationOfPropertyDeclaration(context3, node, ignoreEmptyStringLiteral, assignedName);
           case 227:
-            return transformNamedEvaluationOfAssignmentExpression(context4, node, ignoreEmptyStringLiteral, assignedName);
+            return transformNamedEvaluationOfAssignmentExpression(context3, node, ignoreEmptyStringLiteral, assignedName);
           case 278:
-            return transformNamedEvaluationOfExportAssignment(context4, node, ignoreEmptyStringLiteral, assignedName);
+            return transformNamedEvaluationOfExportAssignment(context3, node, ignoreEmptyStringLiteral, assignedName);
         }
       }
       var ProcessLevel = /* @__PURE__ */ ((ProcessLevel2) => {
@@ -125299,7 +125299,7 @@ ${lanes.join("\n")}
         ProcessLevel2[ProcessLevel2["All"] = 1] = "All";
         return ProcessLevel2;
       })(ProcessLevel || {});
-      function processTaggedTemplateExpression(context4, node, visitor, currentSourceFile, recordTaggedTemplateString, level) {
+      function processTaggedTemplateExpression(context3, node, visitor, currentSourceFile, recordTaggedTemplateString, level) {
         const tag = visitNode(node.tag, visitor, isExpression);
         Debug.assert(tag);
         const templateArguments = [void 0];
@@ -125307,9 +125307,9 @@ ${lanes.join("\n")}
         const rawStrings = [];
         const template = node.template;
         if (level === 0 && !hasInvalidEscape(template)) {
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
-        const { factory: factory2 } = context4;
+        const { factory: factory2 } = context3;
         if (isNoSubstitutionTemplateLiteral(template)) {
           cookedStrings.push(createTemplateCooked(factory2, template));
           rawStrings.push(getRawLiteral(factory2, template, currentSourceFile));
@@ -125322,7 +125322,7 @@ ${lanes.join("\n")}
             templateArguments.push(Debug.checkDefined(visitNode(templateSpan.expression, visitor, isExpression)));
           }
         }
-        const helperCall = context4.getEmitHelperFactory().createTemplateObjectHelper(
+        const helperCall = context3.getEmitHelperFactory().createTemplateObjectHelper(
           factory2.createArrayLiteralExpression(cookedStrings),
           factory2.createArrayLiteralExpression(rawStrings)
         );
@@ -125361,7 +125361,7 @@ ${lanes.join("\n")}
         return setTextRange(factory2.createStringLiteral(text), node);
       }
       var USE_NEW_TYPE_METADATA_FORMAT = false;
-      function transformTypeScript(context4) {
+      function transformTypeScript(context3) {
         const {
           factory: factory2,
           getEmitHelperFactory: emitHelpers,
@@ -125369,22 +125369,22 @@ ${lanes.join("\n")}
           resumeLexicalEnvironment,
           endLexicalEnvironment,
           hoistVariableDeclaration
-        } = context4;
-        const resolver = context4.getEmitResolver();
-        const compilerOptions = context4.getCompilerOptions();
+        } = context3;
+        const resolver = context3.getEmitResolver();
+        const compilerOptions = context3.getCompilerOptions();
         const languageVersion = getEmitScriptTarget(compilerOptions);
         const moduleKind = getEmitModuleKind(compilerOptions);
         const legacyDecorators = !!compilerOptions.experimentalDecorators;
-        const typeSerializer = compilerOptions.emitDecoratorMetadata ? createRuntimeTypeSerializer(context4) : void 0;
-        const previousOnEmitNode = context4.onEmitNode;
-        const previousOnSubstituteNode = context4.onSubstituteNode;
-        context4.onEmitNode = onEmitNode;
-        context4.onSubstituteNode = onSubstituteNode;
-        context4.enableSubstitution(
+        const typeSerializer = compilerOptions.emitDecoratorMetadata ? createRuntimeTypeSerializer(context3) : void 0;
+        const previousOnEmitNode = context3.onEmitNode;
+        const previousOnSubstituteNode = context3.onSubstituteNode;
+        context3.onEmitNode = onEmitNode;
+        context3.onSubstituteNode = onSubstituteNode;
+        context3.enableSubstitution(
           212
           /* PropertyAccessExpression */
         );
-        context4.enableSubstitution(
+        context3.enableSubstitution(
           213
           /* ElementAccessExpression */
         );
@@ -125413,7 +125413,7 @@ ${lanes.join("\n")}
           }
           currentSourceFile = node;
           const visited = saveStateAndInvoke(node, visitSourceFile);
-          addEmitHelpers(visited, context4.readEmitHelpers());
+          addEmitHelpers(visited, context3.readEmitHelpers());
           currentSourceFile = void 0;
           return visited;
         }
@@ -125526,7 +125526,7 @@ ${lanes.join("\n")}
         function visitElidableStatement(node) {
           if (isElisionBlocked(node)) {
             if (node.transformFlags & 1) {
-              return visitEachChild(node, visitor, context4);
+              return visitEachChild(node, visitor, context3);
             }
             return node;
           }
@@ -125574,7 +125574,7 @@ ${lanes.join("\n")}
             case 175:
               return visitMethodDeclaration(node, parent2);
             case 176:
-              return visitEachChild(node, visitor, context4);
+              return visitEachChild(node, visitor, context3);
             case 241:
               return node;
             case 182:
@@ -125734,7 +125734,7 @@ ${lanes.join("\n")}
             case 287:
               return visitJsxJsxOpeningElement(node);
             default:
-              return visitEachChild(node, visitor, context4);
+              return visitEachChild(node, visitor, context3);
           }
         }
         function visitSourceFile(node) {
@@ -125744,7 +125744,7 @@ ${lanes.join("\n")}
             visitLexicalEnvironment(
               node.statements,
               sourceElementVisitor,
-              context4,
+              context3,
               /*start*/
               0,
               alwaysStrict
@@ -125796,7 +125796,7 @@ ${lanes.join("\n")}
             );
           }
           if (promoteToIIFE) {
-            context4.startLexicalEnvironment();
+            context3.startLexicalEnvironment();
           }
           const moveModifiers = promoteToIIFE || facts & 8;
           let modifiers = moveModifiers ? visitNodes2(node.modifiers, modifierElidingVisitor, isModifierLike) : visitNodes2(node.modifiers, visitor, isModifierLike);
@@ -125843,7 +125843,7 @@ ${lanes.join("\n")}
               /* NoTokenSourceMaps */
             );
             statements.push(returnStatement);
-            insertStatementsAfterStandardPrologue(statements, context4.endLexicalEnvironment());
+            insertStatementsAfterStandardPrologue(statements, context3.endLexicalEnvironment());
             const iife = factory2.createImmediatelyInvokedArrowFunction(statements);
             setInternalEmitFlags(
               iife,
@@ -126123,7 +126123,7 @@ ${lanes.join("\n")}
           if (node.token === 119) {
             return void 0;
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitExpressionWithTypeArguments(node) {
           return factory2.updateExpressionWithTypeArguments(
@@ -126182,7 +126182,7 @@ ${lanes.join("\n")}
             node,
             /*modifiers*/
             void 0,
-            visitParameterList(node.parameters, visitor, context4),
+            visitParameterList(node.parameters, visitor, context3),
             transformConstructorBody(node.body, node)
           );
         }
@@ -126218,7 +126218,7 @@ ${lanes.join("\n")}
         function transformConstructorBody(body, constructor) {
           const parametersWithPropertyAssignments = constructor && filter(constructor.parameters, (p) => isParameterPropertyDeclaration(p, constructor));
           if (!some(parametersWithPropertyAssignments)) {
-            return visitFunctionBody(body, visitor, context4);
+            return visitFunctionBody(body, visitor, context3);
           }
           let statements = [];
           resumeLexicalEnvironment();
@@ -126317,10 +126317,10 @@ ${lanes.join("\n")}
             void 0,
             /*typeParameters*/
             void 0,
-            visitParameterList(node.parameters, visitor, context4),
+            visitParameterList(node.parameters, visitor, context3),
             /*type*/
             void 0,
-            visitFunctionBody(node.body, visitor, context4)
+            visitFunctionBody(node.body, visitor, context3)
           );
         }
         function shouldEmitAccessorDeclaration(node) {
@@ -126343,10 +126343,10 @@ ${lanes.join("\n")}
             node,
             modifiers,
             visitPropertyNameOfClassElement(node),
-            visitParameterList(node.parameters, visitor, context4),
+            visitParameterList(node.parameters, visitor, context3),
             /*type*/
             void 0,
-            visitFunctionBody(node.body, visitor, context4) || factory2.createBlock([])
+            visitFunctionBody(node.body, visitor, context3) || factory2.createBlock([])
           );
         }
         function visitSetAccessor(node, parent2) {
@@ -126362,8 +126362,8 @@ ${lanes.join("\n")}
             node,
             modifiers,
             visitPropertyNameOfClassElement(node),
-            visitParameterList(node.parameters, visitor, context4),
-            visitFunctionBody(node.body, visitor, context4) || factory2.createBlock([])
+            visitParameterList(node.parameters, visitor, context3),
+            visitFunctionBody(node.body, visitor, context3) || factory2.createBlock([])
           );
         }
         function visitFunctionDeclaration(node) {
@@ -126377,10 +126377,10 @@ ${lanes.join("\n")}
             node.name,
             /*typeParameters*/
             void 0,
-            visitParameterList(node.parameters, visitor, context4),
+            visitParameterList(node.parameters, visitor, context3),
             /*type*/
             void 0,
-            visitFunctionBody(node.body, visitor, context4) || factory2.createBlock([])
+            visitFunctionBody(node.body, visitor, context3) || factory2.createBlock([])
           );
           if (isExportOfNamespace(node)) {
             const statements = [updated];
@@ -126400,10 +126400,10 @@ ${lanes.join("\n")}
             node.name,
             /*typeParameters*/
             void 0,
-            visitParameterList(node.parameters, visitor, context4),
+            visitParameterList(node.parameters, visitor, context3),
             /*type*/
             void 0,
-            visitFunctionBody(node.body, visitor, context4) || factory2.createBlock([])
+            visitFunctionBody(node.body, visitor, context3) || factory2.createBlock([])
           );
           return updated;
         }
@@ -126413,11 +126413,11 @@ ${lanes.join("\n")}
             visitNodes2(node.modifiers, modifierVisitor, isModifier),
             /*typeParameters*/
             void 0,
-            visitParameterList(node.parameters, visitor, context4),
+            visitParameterList(node.parameters, visitor, context3),
             /*type*/
             void 0,
             node.equalsGreaterThanToken,
-            visitFunctionBody(node.body, visitor, context4)
+            visitFunctionBody(node.body, visitor, context3)
           );
           return updated;
         }
@@ -126463,7 +126463,7 @@ ${lanes.join("\n")}
               node
             );
           } else {
-            return visitEachChild(node, visitor, context4);
+            return visitEachChild(node, visitor, context3);
           }
         }
         function transformInitializedVariable(node) {
@@ -126472,7 +126472,7 @@ ${lanes.join("\n")}
             return flattenDestructuringAssignment(
               node,
               visitor,
-              context4,
+              context3,
               0,
               /*needsValue*/
               false,
@@ -126511,7 +126511,7 @@ ${lanes.join("\n")}
             Debug.assert(expression);
             return factory2.createPartiallyEmittedExpression(expression, node);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitAssertionExpression(node) {
           const expression = visitNode(node.expression, visitor, isExpression);
@@ -126964,7 +126964,7 @@ ${lanes.join("\n")}
           return !node.isTypeOnly && shouldEmitAliasDeclaration(node) ? node : void 0;
         }
         function visitExportAssignment(node) {
-          return compilerOptions.verbatimModuleSyntax || resolver.isValueAliasDeclaration(node) ? visitEachChild(node, visitor, context4) : void 0;
+          return compilerOptions.verbatimModuleSyntax || resolver.isValueAliasDeclaration(node) ? visitEachChild(node, visitor, context3) : void 0;
         }
         function visitExportDeclaration(node) {
           if (node.isTypeOnly) {
@@ -127020,7 +127020,7 @@ ${lanes.join("\n")}
             if (!shouldEmitAliasDeclaration(node)) {
               return void 0;
             }
-            return visitEachChild(node, visitor, context4);
+            return visitEachChild(node, visitor, context3);
           }
           if (!shouldEmitImportEqualsDeclaration(node)) {
             return void 0;
@@ -127155,7 +127155,7 @@ ${lanes.join("\n")}
         function enableSubstitutionForNonQualifiedEnumMembers() {
           if ((enabledSubstitutions & 8) === 0) {
             enabledSubstitutions |= 8;
-            context4.enableSubstitution(
+            context3.enableSubstitution(
               80
               /* Identifier */
             );
@@ -127164,15 +127164,15 @@ ${lanes.join("\n")}
         function enableSubstitutionForNamespaceExports() {
           if ((enabledSubstitutions & 2) === 0) {
             enabledSubstitutions |= 2;
-            context4.enableSubstitution(
+            context3.enableSubstitution(
               80
               /* Identifier */
             );
-            context4.enableSubstitution(
+            context3.enableSubstitution(
               305
               /* ShorthandPropertyAssignment */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               268
               /* ModuleDeclaration */
             );
@@ -127289,7 +127289,7 @@ ${lanes.join("\n")}
           return compilerOptions.verbatimModuleSyntax || isInJSFile(node) || resolver.isReferencedAliasDeclaration(node);
         }
       }
-      function transformClassFields(context4) {
+      function transformClassFields(context3) {
         const {
           factory: factory2,
           getEmitHelperFactory: emitHelpers,
@@ -127298,9 +127298,9 @@ ${lanes.join("\n")}
           startLexicalEnvironment,
           resumeLexicalEnvironment,
           addBlockScopedVariable
-        } = context4;
-        const resolver = context4.getEmitResolver();
-        const compilerOptions = context4.getCompilerOptions();
+        } = context3;
+        const resolver = context3.getEmitResolver();
+        const compilerOptions = context3.getCompilerOptions();
         const languageVersion = getEmitScriptTarget(compilerOptions);
         const useDefineForClassFields = getUseDefineForClassFields(compilerOptions);
         const legacyDecorators = !!compilerOptions.experimentalDecorators;
@@ -127312,10 +127312,10 @@ ${lanes.join("\n")}
         const shouldTransformThisInStaticInitializers = languageVersion < 9;
         const shouldTransformSuperInStaticInitializers = shouldTransformThisInStaticInitializers && languageVersion >= 2;
         const shouldTransformAnything = shouldTransformInitializers || shouldTransformPrivateElementsOrClassStaticBlocks || shouldTransformAutoAccessors === -1;
-        const previousOnSubstituteNode = context4.onSubstituteNode;
-        context4.onSubstituteNode = onSubstituteNode;
-        const previousOnEmitNode = context4.onEmitNode;
-        context4.onEmitNode = onEmitNode;
+        const previousOnSubstituteNode = context3.onSubstituteNode;
+        context3.onSubstituteNode = onSubstituteNode;
+        const previousOnEmitNode = context3.onEmitNode;
+        context3.onEmitNode = onEmitNode;
         let shouldTransformPrivateStaticElementsInFile = false;
         let enabledSubstitutions = 0;
         let classAliases;
@@ -127328,7 +127328,7 @@ ${lanes.join("\n")}
         let currentClassElement;
         let shouldSubstituteThisWithClassThis = false;
         let previousShouldSubstituteThisWithClassThis = false;
-        return chainBundle(context4, transformSourceFile);
+        return chainBundle(context3, transformSourceFile);
         function transformSourceFile(node) {
           if (node.isDeclarationFile) {
             return node;
@@ -127338,8 +127338,8 @@ ${lanes.join("\n")}
           if (!shouldTransformAnything && !shouldTransformPrivateStaticElementsInFile) {
             return node;
           }
-          const visited = visitEachChild(node, visitor, context4);
-          addEmitHelpers(visited, context4.readEmitHelpers());
+          const visited = visitEachChild(node, visitor, context3);
+          addEmitHelpers(visited, context3.readEmitHelpers());
           return visited;
         }
         function modifierVisitor(node) {
@@ -127432,7 +127432,7 @@ ${lanes.join("\n")}
           }
         }
         function fallbackVisitor(node) {
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function discardedValueVisitor(node) {
           switch (node.kind) {
@@ -127468,7 +127468,7 @@ ${lanes.join("\n")}
         function heritageClauseVisitor(node) {
           switch (node.kind) {
             case 299:
-              return visitEachChild(node, heritageClauseVisitor, context4);
+              return visitEachChild(node, heritageClauseVisitor, context3);
             case 234:
               return visitExpressionWithTypeArgumentsInHeritageClause(node);
             default:
@@ -127558,51 +127558,51 @@ ${lanes.join("\n")}
               node
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitPropertyAssignment(node) {
           if (isNamedEvaluation(node, isAnonymousClassNeedingAssignedName)) {
-            node = transformNamedEvaluation(context4, node);
+            node = transformNamedEvaluation(context3, node);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitVariableStatement(node) {
           const savedPendingStatements = pendingStatements;
           pendingStatements = [];
-          const visitedNode = visitEachChild(node, visitor, context4);
+          const visitedNode = visitEachChild(node, visitor, context3);
           const statement = some(pendingStatements) ? [visitedNode, ...pendingStatements] : visitedNode;
           pendingStatements = savedPendingStatements;
           return statement;
         }
         function visitVariableDeclaration(node) {
           if (isNamedEvaluation(node, isAnonymousClassNeedingAssignedName)) {
-            node = transformNamedEvaluation(context4, node);
+            node = transformNamedEvaluation(context3, node);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitParameterDeclaration(node) {
           if (isNamedEvaluation(node, isAnonymousClassNeedingAssignedName)) {
-            node = transformNamedEvaluation(context4, node);
+            node = transformNamedEvaluation(context3, node);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitBindingElement(node) {
           if (isNamedEvaluation(node, isAnonymousClassNeedingAssignedName)) {
-            node = transformNamedEvaluation(context4, node);
+            node = transformNamedEvaluation(context3, node);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitExportAssignment(node) {
           if (isNamedEvaluation(node, isAnonymousClassNeedingAssignedName)) {
             node = transformNamedEvaluation(
-              context4,
+              context3,
               node,
               /*ignoreEmptyStringLiteral*/
               true,
               node.isExportEquals ? "" : "default"
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function injectPendingExpressions(expression) {
           if (some(pendingExpressions)) {
@@ -127635,7 +127635,7 @@ ${lanes.join("\n")}
         function visitMethodOrAccessorDeclaration(node) {
           Debug.assert(!hasDecorators(node));
           if (!isPrivateIdentifierClassElementDeclaration(node) || !shouldTransformClassElementToWeakMap(node)) {
-            return visitEachChild(node, classElementVisitor, context4);
+            return visitEachChild(node, classElementVisitor, context3);
           }
           const info2 = accessPrivateIdentifier2(node.name);
           Debug.assert(info2, "Undeclared private name for property declaration.");
@@ -127653,10 +127653,10 @@ ${lanes.join("\n")}
                   functionName,
                   /*typeParameters*/
                   void 0,
-                  visitParameterList(node.parameters, visitor, context4),
+                  visitParameterList(node.parameters, visitor, context3),
                   /*type*/
                   void 0,
-                  visitFunctionBody(node.body, visitor, context4)
+                  visitFunctionBody(node.body, visitor, context3)
                 )
               )
             );
@@ -127772,7 +127772,7 @@ ${lanes.join("\n")}
             );
           }
           if (isNamedEvaluation(node, isAnonymousClassNeedingAssignedName)) {
-            node = transformNamedEvaluation(context4, node);
+            node = transformNamedEvaluation(context3, node);
           }
           return factory2.updatePropertyDeclaration(
             node,
@@ -127910,7 +127910,7 @@ ${lanes.join("\n")}
               return superProperty;
             }
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitElementAccessExpression(node) {
           if (shouldTransformSuperInStaticInitializers && currentClassElement && isSuperProperty(node) && isStaticPropertyDeclarationOrClassStaticBlock(currentClassElement) && (lexicalEnvironment == null ? void 0 : lexicalEnvironment.data)) {
@@ -127929,7 +127929,7 @@ ${lanes.join("\n")}
               return superProperty;
             }
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitPreOrPostfixUnaryExpression(node, discarded) {
           if (node.operator === 46 || node.operator === 47) {
@@ -127996,7 +127996,7 @@ ${lanes.join("\n")}
               }
             }
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitForStatement(node) {
           return factory2.updateForStatement(
@@ -128004,7 +128004,7 @@ ${lanes.join("\n")}
             visitNode(node.initializer, discardedValueVisitor, isForInitializer),
             visitNode(node.condition, visitor, isExpression),
             visitNode(node.incrementor, discardedValueVisitor, isExpression),
-            visitIterationBody(node.statement, visitor, context4)
+            visitIterationBody(node.statement, visitor, context3)
           );
         }
         function visitExpressionStatement(node) {
@@ -128058,7 +128058,7 @@ ${lanes.join("\n")}
             setTextRange(invocation, node);
             return invocation;
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitTaggedTemplateExpression(node) {
           var _a;
@@ -128093,7 +128093,7 @@ ${lanes.join("\n")}
               visitNode(node.template, visitor, isTemplateLiteral)
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function transformClassStaticBlockDeclaration(node) {
           if (lexicalEnvironment) {
@@ -128160,7 +128160,7 @@ ${lanes.join("\n")}
           }
           if (isAssignmentExpression(node)) {
             if (isNamedEvaluation(node, isAnonymousClassNeedingAssignedName)) {
-              node = transformNamedEvaluation(context4, node);
+              node = transformNamedEvaluation(context3, node);
               Debug.assertNode(node, isAssignmentExpression);
             }
             const left = skipOuterExpressions(
@@ -128238,7 +128238,7 @@ ${lanes.join("\n")}
           if (isPrivateIdentifierInExpression(node)) {
             return transformPrivateIdentifierInInExpression(node);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitCommaListExpression(node, discarded) {
           const elements = discarded ? visitCommaListElements(node.elements, discardedValueVisitor) : visitCommaListElements(node.elements, visitor, discardedValueVisitor);
@@ -128377,7 +128377,7 @@ ${lanes.join("\n")}
               void 0
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitInNewClassLexicalEnvironment(node, visitor2) {
           var _a;
@@ -128614,7 +128614,7 @@ ${lanes.join("\n")}
         }
         function visitClassStaticBlockDeclaration(node) {
           if (!shouldTransformPrivateElementsOrClassStaticBlocks) {
-            return visitEachChild(node, visitor, context4);
+            return visitEachChild(node, visitor, context3);
           }
           return void 0;
         }
@@ -128742,7 +128742,7 @@ ${lanes.join("\n")}
           }
           const extendsClauseElement = getEffectiveBaseTypeNode(container);
           const isDerivedClass = !!(extendsClauseElement && skipOuterExpressions(extendsClauseElement.expression).kind !== 106);
-          const parameters = visitParameterList(constructor ? constructor.parameters : void 0, visitor, context4);
+          const parameters = visitParameterList(constructor ? constructor.parameters : void 0, visitor, context3);
           const body = transformConstructorBody(container, constructor, isDerivedClass);
           if (!body) {
             return constructor;
@@ -128831,7 +128831,7 @@ ${lanes.join("\n")}
               /*node*/
               void 0,
               visitor,
-              context4
+              context3
             );
           }
           resumeLexicalEnvironment();
@@ -129002,7 +129002,7 @@ ${lanes.join("\n")}
         function transformPropertyWorker(property, receiver) {
           const emitAssignment = !useDefineForClassFields;
           if (isNamedEvaluation(property, isAnonymousClassNeedingAssignedName)) {
-            property = transformNamedEvaluation(context4, property);
+            property = transformNamedEvaluation(context3, property);
           }
           const propertyName = hasAccessorModifier(property) ? factory2.getGeneratedPrivateNameForNode(property.name) : isComputedPropertyName(property.name) && !isSimpleInlineableExpression(property.name.expression) ? factory2.updateComputedPropertyName(property.name, factory2.getGeneratedNameForNode(property.name)) : property.name;
           if (hasStaticModifier(property)) {
@@ -129093,7 +129093,7 @@ ${lanes.join("\n")}
         function enableSubstitutionForClassAliases() {
           if ((enabledSubstitutions & 1) === 0) {
             enabledSubstitutions |= 1;
-            context4.enableSubstitution(
+            context3.enableSubstitution(
               80
               /* Identifier */
             );
@@ -129103,39 +129103,39 @@ ${lanes.join("\n")}
         function enableSubstitutionForClassStaticThisOrSuperReference() {
           if ((enabledSubstitutions & 2) === 0) {
             enabledSubstitutions |= 2;
-            context4.enableSubstitution(
+            context3.enableSubstitution(
               110
               /* ThisKeyword */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               263
               /* FunctionDeclaration */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               219
               /* FunctionExpression */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               177
               /* Constructor */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               178
               /* GetAccessor */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               179
               /* SetAccessor */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               175
               /* MethodDeclaration */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               173
               /* PropertyDeclaration */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               168
               /* ComputedPropertyName */
             );
@@ -129354,7 +129354,7 @@ ${lanes.join("\n")}
           const parameter = factory2.getGeneratedNameForNode(node);
           const info2 = accessPrivateIdentifier2(node.name);
           if (!info2) {
-            return visitEachChild(node, visitor, context4);
+            return visitEachChild(node, visitor, context3);
           }
           let receiver = node.expression;
           if (isThisProperty(node) || isSuperProperty(node) || !isSimpleCopiableExpression(node.expression)) {
@@ -129405,11 +129405,11 @@ ${lanes.join("\n")}
               }
             }
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitAssignmentElement(node) {
           if (isNamedEvaluation(node, isAnonymousClassNeedingAssignedName)) {
-            node = transformNamedEvaluation(context4, node);
+            node = transformNamedEvaluation(context3, node);
           }
           if (isAssignmentExpression(
             node,
@@ -129427,14 +129427,14 @@ ${lanes.join("\n")}
             const expression = visitDestructuringAssignmentTarget(node.expression);
             return factory2.updateSpreadElement(node, expression);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitArrayAssignmentElement(node) {
           if (isArrayBindingOrAssignmentElement(node)) {
             if (isSpreadElement(node)) return visitAssignmentRestElement(node);
             if (!isOmittedExpression(node)) return visitAssignmentElement(node);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitAssignmentProperty(node) {
           const name = visitNode(node.name, visitor, isPropertyName);
@@ -129450,27 +129450,27 @@ ${lanes.join("\n")}
             const assignmentElement = visitDestructuringAssignmentTarget(node.initializer);
             return factory2.updatePropertyAssignment(node, name, assignmentElement);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitShorthandAssignmentProperty(node) {
           if (isNamedEvaluation(node, isAnonymousClassNeedingAssignedName)) {
-            node = transformNamedEvaluation(context4, node);
+            node = transformNamedEvaluation(context3, node);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitAssignmentRestProperty(node) {
           if (isLeftHandSideExpression(node.expression)) {
             const expression = visitDestructuringAssignmentTarget(node.expression);
             return factory2.updateSpreadAssignment(node, expression);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitObjectAssignmentElement(node) {
           Debug.assertNode(node, isObjectBindingOrAssignmentElement);
           if (isSpreadAssignment(node)) return visitAssignmentRestProperty(node);
           if (isShorthandPropertyAssignment(node)) return visitShorthandAssignmentProperty(node);
           if (isPropertyAssignment(node)) return visitAssignmentProperty(node);
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitAssignmentPattern(node) {
           if (isArrayLiteralExpression(node)) {
@@ -129632,13 +129632,13 @@ ${lanes.join("\n")}
       function isStaticPropertyDeclarationOrClassStaticBlock(node) {
         return isClassStaticBlockDeclaration(node) || isStaticPropertyDeclaration2(node);
       }
-      function createRuntimeTypeSerializer(context4) {
+      function createRuntimeTypeSerializer(context3) {
         const {
           factory: factory2,
           hoistVariableDeclaration
-        } = context4;
-        const resolver = context4.getEmitResolver();
-        const compilerOptions = context4.getCompilerOptions();
+        } = context3;
+        const resolver = context3.getEmitResolver();
+        const compilerOptions = context3.getCompilerOptions();
         const languageVersion = getEmitScriptTarget(compilerOptions);
         const strictNullChecks = getStrictOptionValue(compilerOptions, "strictNullChecks");
         let currentLexicalScope;
@@ -130003,22 +130003,22 @@ ${lanes.join("\n")}
           return languageVersion < minLanguageVersion ? getGlobalConstructorWithFallback(name) : factory2.createIdentifier(name);
         }
       }
-      function transformLegacyDecorators(context4) {
+      function transformLegacyDecorators(context3) {
         const {
           factory: factory2,
           getEmitHelperFactory: emitHelpers,
           hoistVariableDeclaration
-        } = context4;
-        const resolver = context4.getEmitResolver();
-        const compilerOptions = context4.getCompilerOptions();
+        } = context3;
+        const resolver = context3.getEmitResolver();
+        const compilerOptions = context3.getCompilerOptions();
         const languageVersion = getEmitScriptTarget(compilerOptions);
-        const previousOnSubstituteNode = context4.onSubstituteNode;
-        context4.onSubstituteNode = onSubstituteNode;
+        const previousOnSubstituteNode = context3.onSubstituteNode;
+        context3.onSubstituteNode = onSubstituteNode;
         let classAliases;
-        return chainBundle(context4, transformSourceFile);
+        return chainBundle(context3, transformSourceFile);
         function transformSourceFile(node) {
-          const visited = visitEachChild(node, visitor, context4);
-          addEmitHelpers(visited, context4.readEmitHelpers());
+          const visited = visitEachChild(node, visitor, context3);
+          addEmitHelpers(visited, context3.readEmitHelpers());
           return visited;
         }
         function modifierVisitor(node) {
@@ -130048,7 +130048,7 @@ ${lanes.join("\n")}
             case 170:
               return visitParameterDeclaration(node);
             default:
-              return visitEachChild(node, visitor, context4);
+              return visitEachChild(node, visitor, context3);
           }
         }
         function visitClassDeclaration(node) {
@@ -130061,7 +130061,7 @@ ${lanes.join("\n")}
             true,
             node
           ))) {
-            return visitEachChild(node, visitor, context4);
+            return visitEachChild(node, visitor, context3);
           }
           const statements = classOrConstructorParameterIsDecorated(
             /*useLegacyDecorators*/
@@ -130503,7 +130503,7 @@ ${lanes.join("\n")}
         }
         function enableSubstitutionForClassAliases() {
           if (!classAliases) {
-            context4.enableSubstitution(
+            context3.enableSubstitution(
               80
               /* Identifier */
             );
@@ -130568,27 +130568,27 @@ ${lanes.join("\n")}
           return void 0;
         }
       }
-      function transformESDecorators(context4) {
+      function transformESDecorators(context3) {
         const {
           factory: factory2,
           getEmitHelperFactory: emitHelpers,
           startLexicalEnvironment,
           endLexicalEnvironment,
           hoistVariableDeclaration
-        } = context4;
-        const languageVersion = getEmitScriptTarget(context4.getCompilerOptions());
+        } = context3;
+        const languageVersion = getEmitScriptTarget(context3.getCompilerOptions());
         let top;
         let classInfo;
         let classThis;
         let classSuper;
         let pendingExpressions;
         let shouldTransformPrivateStaticElementsInFile;
-        return chainBundle(context4, transformSourceFile);
+        return chainBundle(context3, transformSourceFile);
         function transformSourceFile(node) {
           top = void 0;
           shouldTransformPrivateStaticElementsInFile = false;
-          const visited = visitEachChild(node, visitor, context4);
-          addEmitHelpers(visited, context4.readEmitHelpers());
+          const visited = visitEachChild(node, visitor, context3);
+          addEmitHelpers(visited, context3.readEmitHelpers());
           if (shouldTransformPrivateStaticElementsInFile) {
             addInternalEmitFlags(
               visited,
@@ -130767,12 +130767,12 @@ ${lanes.join("\n")}
             case 219:
             case 263: {
               enterOther();
-              const result = visitEachChild(node, fallbackVisitor, context4);
+              const result = visitEachChild(node, fallbackVisitor, context3);
               exitOther();
               return result;
             }
             default:
-              return visitEachChild(node, fallbackVisitor, context4);
+              return visitEachChild(node, fallbackVisitor, context3);
           }
         }
         function fallbackVisitor(node) {
@@ -130981,7 +130981,7 @@ ${lanes.join("\n")}
             false,
             node
           )) {
-            node = injectClassNamedEvaluationHelperBlockIfMissing(context4, node, factory2.createStringLiteral(""));
+            node = injectClassNamedEvaluationHelperBlockIfMissing(context3, node, factory2.createStringLiteral(""));
           }
           const classReference = factory2.getLocalName(
             node,
@@ -131082,7 +131082,7 @@ ${lanes.join("\n")}
                     }
                     return outerThis;
                   default:
-                    return visitEachChild(node2, thisVisitor, context4);
+                    return visitEachChild(node2, thisVisitor, context3);
                 }
               }, isExpression);
               const statement = factory2.createExpressionStatement(expression);
@@ -131335,7 +131335,7 @@ ${lanes.join("\n")}
               /* Default */
             );
             if (!node.name) {
-              node = injectClassNamedEvaluationHelperBlockIfMissing(context4, node, className);
+              node = injectClassNamedEvaluationHelperBlockIfMissing(context3, node, className);
             }
             if (isExport && isDefault) {
               const iife = transformClassLike(node);
@@ -131720,14 +131720,14 @@ ${lanes.join("\n")}
           enterClassElement(node);
           let result;
           if (isClassNamedEvaluationHelperBlock(node)) {
-            result = visitEachChild(node, visitor, context4);
+            result = visitEachChild(node, visitor, context3);
           } else if (isClassThisAssignmentBlock(node)) {
             const savedClassThis = classThis;
             classThis = void 0;
-            result = visitEachChild(node, visitor, context4);
+            result = visitEachChild(node, visitor, context3);
             classThis = savedClassThis;
           } else {
-            node = visitEachChild(node, visitor, context4);
+            node = visitEachChild(node, visitor, context3);
             result = node;
             if (classInfo) {
               classInfo.hasStaticInitializers = true;
@@ -131754,7 +131754,7 @@ ${lanes.join("\n")}
         }
         function visitPropertyDeclaration(node) {
           if (isNamedEvaluation(node, isAnonymousClassNeedingAssignedName)) {
-            node = transformNamedEvaluation(context4, node, canIgnoreEmptyStringLiteralInAssignedName(node.initializer));
+            node = transformNamedEvaluation(context3, node, canIgnoreEmptyStringLiteralInAssignedName(node.initializer));
           }
           enterClassElement(node);
           Debug.assert(!isAmbientPropertyDeclaration(node), "Not yet implemented.");
@@ -131882,7 +131882,7 @@ ${lanes.join("\n")}
             setTextRange(invocation, node);
             return invocation;
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitTaggedTemplateExpression(node) {
           if (isSuperProperty(node.tag) && classThis) {
@@ -131899,7 +131899,7 @@ ${lanes.join("\n")}
               template
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitPropertyAccessExpression(node) {
           if (isSuperProperty(node) && isIdentifier2(node.name) && classThis && classSuper) {
@@ -131909,7 +131909,7 @@ ${lanes.join("\n")}
             setTextRange(superProperty, node.expression);
             return superProperty;
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitElementAccessExpression(node) {
           if (isSuperProperty(node) && classThis && classSuper) {
@@ -131919,11 +131919,11 @@ ${lanes.join("\n")}
             setTextRange(superProperty, node.expression);
             return superProperty;
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitParameterDeclaration(node) {
           if (isNamedEvaluation(node, isAnonymousClassNeedingAssignedName)) {
-            node = transformNamedEvaluation(context4, node, canIgnoreEmptyStringLiteralInAssignedName(node.initializer));
+            node = transformNamedEvaluation(context3, node, canIgnoreEmptyStringLiteralInAssignedName(node.initializer));
           }
           const updated = factory2.updateParameterDeclaration(
             node,
@@ -131966,11 +131966,11 @@ ${lanes.join("\n")}
             visitNode(node.initializer, discardedValueVisitor, isForInitializer),
             visitNode(node.condition, visitor, isExpression),
             visitNode(node.incrementor, discardedValueVisitor, isExpression),
-            visitIterationBody(node.statement, visitor, context4)
+            visitIterationBody(node.statement, visitor, context3)
           );
         }
         function visitExpressionStatement(node) {
-          return visitEachChild(node, discardedValueVisitor, context4);
+          return visitEachChild(node, discardedValueVisitor, context3);
         }
         function visitBinaryExpression(node, discarded) {
           if (isDestructuringAssignment(node)) {
@@ -131980,8 +131980,8 @@ ${lanes.join("\n")}
           }
           if (isAssignmentExpression(node)) {
             if (isNamedEvaluation(node, isAnonymousClassNeedingAssignedName)) {
-              node = transformNamedEvaluation(context4, node, canIgnoreEmptyStringLiteralInAssignedName(node.right));
-              return visitEachChild(node, visitor, context4);
+              node = transformNamedEvaluation(context3, node, canIgnoreEmptyStringLiteralInAssignedName(node.right));
+              return visitEachChild(node, visitor, context3);
             }
             if (isSuperProperty(node.left) && classThis && classSuper) {
               let setterName = isElementAccessExpression(node.left) ? visitNode(node.left.argumentExpression, visitor, isExpression) : isIdentifier2(node.left.name) ? factory2.createStringLiteralFromNode(node.left.name) : void 0;
@@ -132033,7 +132033,7 @@ ${lanes.join("\n")}
             const right = visitNode(node.right, discarded ? discardedValueVisitor : visitor, isExpression);
             return factory2.updateBinaryExpression(node, left, node.operatorToken, right);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitPreOrPostfixUnaryExpression(node, discarded) {
           if (node.operator === 46 || node.operator === 47) {
@@ -132062,7 +132062,7 @@ ${lanes.join("\n")}
               }
             }
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitCommaListExpression(node, discarded) {
           const elements = discarded ? visitCommaListElements(node.elements, discardedValueVisitor) : visitCommaListElements(node.elements, visitor, discardedValueVisitor);
@@ -132101,21 +132101,21 @@ ${lanes.join("\n")}
         }
         function visitPropertyAssignment(node) {
           if (isNamedEvaluation(node, isAnonymousClassNeedingAssignedName)) {
-            node = transformNamedEvaluation(context4, node, canIgnoreEmptyStringLiteralInAssignedName(node.initializer));
+            node = transformNamedEvaluation(context3, node, canIgnoreEmptyStringLiteralInAssignedName(node.initializer));
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitVariableDeclaration(node) {
           if (isNamedEvaluation(node, isAnonymousClassNeedingAssignedName)) {
-            node = transformNamedEvaluation(context4, node, canIgnoreEmptyStringLiteralInAssignedName(node.initializer));
+            node = transformNamedEvaluation(context3, node, canIgnoreEmptyStringLiteralInAssignedName(node.initializer));
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitBindingElement(node) {
           if (isNamedEvaluation(node, isAnonymousClassNeedingAssignedName)) {
-            node = transformNamedEvaluation(context4, node, canIgnoreEmptyStringLiteralInAssignedName(node.initializer));
+            node = transformNamedEvaluation(context3, node, canIgnoreEmptyStringLiteralInAssignedName(node.initializer));
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitDestructuringAssignmentTarget(node) {
           if (isObjectLiteralExpression(node) || isArrayLiteralExpression(node)) {
@@ -132142,7 +132142,7 @@ ${lanes.join("\n")}
               return expression;
             }
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitAssignmentElement(node) {
           if (isAssignmentExpression(
@@ -132151,7 +132151,7 @@ ${lanes.join("\n")}
             true
           )) {
             if (isNamedEvaluation(node, isAnonymousClassNeedingAssignedName)) {
-              node = transformNamedEvaluation(context4, node, canIgnoreEmptyStringLiteralInAssignedName(node.right));
+              node = transformNamedEvaluation(context3, node, canIgnoreEmptyStringLiteralInAssignedName(node.right));
             }
             const assignmentTarget = visitDestructuringAssignmentTarget(node.left);
             const initializer = visitNode(node.right, visitor, isExpression);
@@ -132165,13 +132165,13 @@ ${lanes.join("\n")}
             const expression = visitDestructuringAssignmentTarget(node.expression);
             return factory2.updateSpreadElement(node, expression);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitArrayAssignmentElement(node) {
           Debug.assertNode(node, isArrayBindingOrAssignmentElement);
           if (isSpreadElement(node)) return visitAssignmentRestElement(node);
           if (!isOmittedExpression(node)) return visitAssignmentElement(node);
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitAssignmentProperty(node) {
           const name = visitNode(node.name, visitor, isPropertyName);
@@ -132187,27 +132187,27 @@ ${lanes.join("\n")}
             const assignmentElement = visitDestructuringAssignmentTarget(node.initializer);
             return factory2.updatePropertyAssignment(node, name, assignmentElement);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitShorthandAssignmentProperty(node) {
           if (isNamedEvaluation(node, isAnonymousClassNeedingAssignedName)) {
-            node = transformNamedEvaluation(context4, node, canIgnoreEmptyStringLiteralInAssignedName(node.objectAssignmentInitializer));
+            node = transformNamedEvaluation(context3, node, canIgnoreEmptyStringLiteralInAssignedName(node.objectAssignmentInitializer));
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitAssignmentRestProperty(node) {
           if (isLeftHandSideExpression(node.expression)) {
             const expression = visitDestructuringAssignmentTarget(node.expression);
             return factory2.updateSpreadAssignment(node, expression);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitObjectAssignmentElement(node) {
           Debug.assertNode(node, isObjectBindingOrAssignmentElement);
           if (isSpreadAssignment(node)) return visitAssignmentRestProperty(node);
           if (isShorthandPropertyAssignment(node)) return visitShorthandAssignmentProperty(node);
           if (isPropertyAssignment(node)) return visitAssignmentProperty(node);
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitAssignmentPattern(node) {
           if (isArrayLiteralExpression(node)) {
@@ -132220,9 +132220,9 @@ ${lanes.join("\n")}
         }
         function visitExportAssignment(node) {
           if (isNamedEvaluation(node, isAnonymousClassNeedingAssignedName)) {
-            node = transformNamedEvaluation(context4, node, canIgnoreEmptyStringLiteralInAssignedName(node.expression));
+            node = transformNamedEvaluation(context3, node, canIgnoreEmptyStringLiteralInAssignedName(node.expression));
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitParenthesizedExpression(node, discarded) {
           const visitorFunc = discarded ? discardedValueVisitor : visitor;
@@ -132554,16 +132554,16 @@ ${lanes.join("\n")}
           );
         }
       }
-      function transformES2017(context4) {
+      function transformES2017(context3) {
         const {
           factory: factory2,
           getEmitHelperFactory: emitHelpers,
           resumeLexicalEnvironment,
           endLexicalEnvironment,
           hoistVariableDeclaration
-        } = context4;
-        const resolver = context4.getEmitResolver();
-        const compilerOptions = context4.getCompilerOptions();
+        } = context3;
+        const resolver = context3.getEmitResolver();
+        const compilerOptions = context3.getCompilerOptions();
         const languageVersion = getEmitScriptTarget(compilerOptions);
         let enabledSubstitutions = 0;
         let enclosingSuperContainerFlags = 0;
@@ -132573,19 +132573,19 @@ ${lanes.join("\n")}
         let lexicalArgumentsBinding;
         const substitutedSuperAccessors = [];
         let contextFlags = 0;
-        const previousOnEmitNode = context4.onEmitNode;
-        const previousOnSubstituteNode = context4.onSubstituteNode;
-        context4.onEmitNode = onEmitNode;
-        context4.onSubstituteNode = onSubstituteNode;
-        return chainBundle(context4, transformSourceFile);
+        const previousOnEmitNode = context3.onEmitNode;
+        const previousOnSubstituteNode = context3.onSubstituteNode;
+        context3.onEmitNode = onEmitNode;
+        context3.onSubstituteNode = onSubstituteNode;
+        return chainBundle(context3, transformSourceFile);
         function transformSourceFile(node) {
           if (node.isDeclarationFile) {
             return node;
           }
           setContextFlag(1, false);
           setContextFlag(2, !isEffectiveStrictModeSourceFile(node, compilerOptions));
-          const visited = visitEachChild(node, visitor, context4);
-          addEmitHelpers(visited, context4.readEmitHelpers());
+          const visited = visitEachChild(node, visitor, context3);
+          addEmitHelpers(visited, context3.readEmitHelpers());
           return visited;
         }
         function setContextFlag(flag, val) {
@@ -132625,7 +132625,7 @@ ${lanes.join("\n")}
           return cb(value);
         }
         function visitDefault(node) {
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function argumentsVisitor(node) {
           switch (node.kind) {
@@ -132646,7 +132646,7 @@ ${lanes.join("\n")}
               }
               break;
           }
-          return visitEachChild(node, argumentsVisitor, context4);
+          return visitEachChild(node, argumentsVisitor, context3);
         }
         function visitor(node) {
           if ((node.transformFlags & 256) === 0) {
@@ -132669,12 +132669,12 @@ ${lanes.join("\n")}
               if (capturedSuperProperties && isPropertyAccessExpression(node) && node.expression.kind === 108) {
                 capturedSuperProperties.add(node.name.escapedText);
               }
-              return visitEachChild(node, visitor, context4);
+              return visitEachChild(node, visitor, context3);
             case 213:
               if (capturedSuperProperties && node.expression.kind === 108) {
                 hasSuperElementAccess = true;
               }
-              return visitEachChild(node, visitor, context4);
+              return visitEachChild(node, visitor, context3);
             case 178:
               return doWithContext(1 | 2, visitGetAccessorDeclaration, node);
             case 179:
@@ -132685,7 +132685,7 @@ ${lanes.join("\n")}
             case 232:
               return doWithContext(1 | 2, visitDefault, node);
             default:
-              return visitEachChild(node, visitor, context4);
+              return visitEachChild(node, visitor, context3);
           }
         }
         function asyncBodyVisitor(node) {
@@ -132712,7 +132712,7 @@ ${lanes.join("\n")}
               case 246:
               case 255:
               case 257:
-                return visitEachChild(node, asyncBodyVisitor, context4);
+                return visitEachChild(node, asyncBodyVisitor, context3);
               default:
                 return Debug.assertNever(node, "Unhandled node.");
             }
@@ -132734,11 +132734,11 @@ ${lanes.join("\n")}
           if (catchClauseUnshadowedNames) {
             const savedEnclosingFunctionParameterNames = enclosingFunctionParameterNames;
             enclosingFunctionParameterNames = catchClauseUnshadowedNames;
-            const result = visitEachChild(node, asyncBodyVisitor, context4);
+            const result = visitEachChild(node, asyncBodyVisitor, context3);
             enclosingFunctionParameterNames = savedEnclosingFunctionParameterNames;
             return result;
           } else {
-            return visitEachChild(node, asyncBodyVisitor, context4);
+            return visitEachChild(node, asyncBodyVisitor, context3);
           }
         }
         function visitVariableStatementInAsyncBody(node) {
@@ -132750,7 +132750,7 @@ ${lanes.join("\n")}
             );
             return expression ? factory2.createExpressionStatement(expression) : void 0;
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitForInStatementInAsyncBody(node) {
           return factory2.updateForInStatement(
@@ -132761,7 +132761,7 @@ ${lanes.join("\n")}
               true
             ) : Debug.checkDefined(visitNode(node.initializer, visitor, isForInitializer)),
             Debug.checkDefined(visitNode(node.expression, visitor, isExpression)),
-            visitIterationBody(node.statement, asyncBodyVisitor, context4)
+            visitIterationBody(node.statement, asyncBodyVisitor, context3)
           );
         }
         function visitForOfStatementInAsyncBody(node) {
@@ -132774,7 +132774,7 @@ ${lanes.join("\n")}
               true
             ) : Debug.checkDefined(visitNode(node.initializer, visitor, isForInitializer)),
             Debug.checkDefined(visitNode(node.expression, visitor, isExpression)),
-            visitIterationBody(node.statement, asyncBodyVisitor, context4)
+            visitIterationBody(node.statement, asyncBodyVisitor, context3)
           );
         }
         function visitForStatementInAsyncBody(node) {
@@ -132788,12 +132788,12 @@ ${lanes.join("\n")}
             ) : visitNode(node.initializer, visitor, isForInitializer),
             visitNode(node.condition, visitor, isExpression),
             visitNode(node.incrementor, visitor, isExpression),
-            visitIterationBody(node.statement, asyncBodyVisitor, context4)
+            visitIterationBody(node.statement, asyncBodyVisitor, context3)
           );
         }
         function visitAwaitExpression(node) {
           if (inTopLevelContext()) {
-            return visitEachChild(node, visitor, context4);
+            return visitEachChild(node, visitor, context3);
           }
           return setOriginalNode(
             setTextRange(
@@ -132813,7 +132813,7 @@ ${lanes.join("\n")}
           const updated = factory2.updateConstructorDeclaration(
             node,
             visitNodes2(node.modifiers, visitor, isModifier),
-            visitParameterList(node.parameters, visitor, context4),
+            visitParameterList(node.parameters, visitor, context3),
             transformMethodBody(node)
           );
           lexicalArgumentsBinding = savedLexicalArgumentsBinding;
@@ -132833,7 +132833,7 @@ ${lanes.join("\n")}
             void 0,
             /*typeParameters*/
             void 0,
-            parameters = functionFlags & 2 ? transformAsyncFunctionParameterList(node) : visitParameterList(node.parameters, visitor, context4),
+            parameters = functionFlags & 2 ? transformAsyncFunctionParameterList(node) : visitParameterList(node.parameters, visitor, context3),
             /*type*/
             void 0,
             functionFlags & 2 ? transformAsyncFunctionBody(node, parameters) : transformMethodBody(node)
@@ -132848,7 +132848,7 @@ ${lanes.join("\n")}
             node,
             visitNodes2(node.modifiers, visitor, isModifierLike),
             node.name,
-            visitParameterList(node.parameters, visitor, context4),
+            visitParameterList(node.parameters, visitor, context3),
             /*type*/
             void 0,
             transformMethodBody(node)
@@ -132863,7 +132863,7 @@ ${lanes.join("\n")}
             node,
             visitNodes2(node.modifiers, visitor, isModifierLike),
             node.name,
-            visitParameterList(node.parameters, visitor, context4),
+            visitParameterList(node.parameters, visitor, context3),
             transformMethodBody(node)
           );
           lexicalArgumentsBinding = savedLexicalArgumentsBinding;
@@ -132881,10 +132881,10 @@ ${lanes.join("\n")}
             node.name,
             /*typeParameters*/
             void 0,
-            parameters = functionFlags & 2 ? transformAsyncFunctionParameterList(node) : visitParameterList(node.parameters, visitor, context4),
+            parameters = functionFlags & 2 ? transformAsyncFunctionParameterList(node) : visitParameterList(node.parameters, visitor, context3),
             /*type*/
             void 0,
-            functionFlags & 2 ? transformAsyncFunctionBody(node, parameters) : visitFunctionBody(node.body, visitor, context4)
+            functionFlags & 2 ? transformAsyncFunctionBody(node, parameters) : visitFunctionBody(node.body, visitor, context3)
           );
           lexicalArgumentsBinding = savedLexicalArgumentsBinding;
           return updated;
@@ -132901,10 +132901,10 @@ ${lanes.join("\n")}
             node.name,
             /*typeParameters*/
             void 0,
-            parameters = functionFlags & 2 ? transformAsyncFunctionParameterList(node) : visitParameterList(node.parameters, visitor, context4),
+            parameters = functionFlags & 2 ? transformAsyncFunctionParameterList(node) : visitParameterList(node.parameters, visitor, context3),
             /*type*/
             void 0,
-            functionFlags & 2 ? transformAsyncFunctionBody(node, parameters) : visitFunctionBody(node.body, visitor, context4)
+            functionFlags & 2 ? transformAsyncFunctionBody(node, parameters) : visitFunctionBody(node.body, visitor, context3)
           );
           lexicalArgumentsBinding = savedLexicalArgumentsBinding;
           return updated;
@@ -132917,11 +132917,11 @@ ${lanes.join("\n")}
             visitNodes2(node.modifiers, visitor, isModifier),
             /*typeParameters*/
             void 0,
-            parameters = functionFlags & 2 ? transformAsyncFunctionParameterList(node) : visitParameterList(node.parameters, visitor, context4),
+            parameters = functionFlags & 2 ? transformAsyncFunctionParameterList(node) : visitParameterList(node.parameters, visitor, context3),
             /*type*/
             void 0,
             node.equalsGreaterThanToken,
-            functionFlags & 2 ? transformAsyncFunctionBody(node, parameters) : visitFunctionBody(node.body, visitor, context4)
+            functionFlags & 2 ? transformAsyncFunctionBody(node, parameters) : visitFunctionBody(node.body, visitor, context3)
           );
         }
         function recordDeclarationName({ name }, names) {
@@ -132991,7 +132991,7 @@ ${lanes.join("\n")}
           const savedHasSuperElementAccess = hasSuperElementAccess;
           capturedSuperProperties = /* @__PURE__ */ new Set();
           hasSuperElementAccess = false;
-          let updated = visitFunctionBody(node.body, visitor, context4);
+          let updated = visitFunctionBody(node.body, visitor, context3);
           const originalMethod = getOriginalNode(node, isFunctionLikeDeclaration);
           const emitSuperHelpers = languageVersion >= 2 && (resolver.hasNodeCheckFlag(
             node,
@@ -133056,7 +133056,7 @@ ${lanes.join("\n")}
         }
         function transformAsyncFunctionParameterList(node) {
           if (isSimpleParameterList(node.parameters)) {
-            return visitParameterList(node.parameters, visitor, context4);
+            return visitParameterList(node.parameters, visitor, context3);
           }
           const newParameters = [];
           for (const parameter of node.parameters) {
@@ -133097,7 +133097,7 @@ ${lanes.join("\n")}
           return newParametersArray;
         }
         function transformAsyncFunctionBody(node, outerParameters) {
-          const innerParameters = !isSimpleParameterList(node.parameters) ? visitParameterList(node.parameters, visitor, context4) : void 0;
+          const innerParameters = !isSimpleParameterList(node.parameters) ? visitParameterList(node.parameters, visitor, context3) : void 0;
           resumeLexicalEnvironment();
           const original = getOriginalNode(node, isFunctionLike);
           const nodeType = original.type;
@@ -133246,39 +133246,39 @@ ${lanes.join("\n")}
         function enableSubstitutionForAsyncMethodsWithSuper() {
           if ((enabledSubstitutions & 1) === 0) {
             enabledSubstitutions |= 1;
-            context4.enableSubstitution(
+            context3.enableSubstitution(
               214
               /* CallExpression */
             );
-            context4.enableSubstitution(
+            context3.enableSubstitution(
               212
               /* PropertyAccessExpression */
             );
-            context4.enableSubstitution(
+            context3.enableSubstitution(
               213
               /* ElementAccessExpression */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               264
               /* ClassDeclaration */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               175
               /* MethodDeclaration */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               178
               /* GetAccessor */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               179
               /* SetAccessor */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               177
               /* Constructor */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               244
               /* VariableStatement */
             );
@@ -133539,21 +133539,21 @@ ${lanes.join("\n")}
           )
         );
       }
-      function transformES2018(context4) {
+      function transformES2018(context3) {
         const {
           factory: factory2,
           getEmitHelperFactory: emitHelpers,
           resumeLexicalEnvironment,
           endLexicalEnvironment,
           hoistVariableDeclaration
-        } = context4;
-        const resolver = context4.getEmitResolver();
-        const compilerOptions = context4.getCompilerOptions();
+        } = context3;
+        const resolver = context3.getEmitResolver();
+        const compilerOptions = context3.getCompilerOptions();
         const languageVersion = getEmitScriptTarget(compilerOptions);
-        const previousOnEmitNode = context4.onEmitNode;
-        context4.onEmitNode = onEmitNode;
-        const previousOnSubstituteNode = context4.onSubstituteNode;
-        context4.onSubstituteNode = onSubstituteNode;
+        const previousOnEmitNode = context3.onEmitNode;
+        context3.onEmitNode = onEmitNode;
+        const previousOnSubstituteNode = context3.onSubstituteNode;
+        context3.onSubstituteNode = onSubstituteNode;
         let exportedVariableStatement = false;
         let enabledSubstitutions = 0;
         let enclosingFunctionFlags;
@@ -133565,7 +133565,7 @@ ${lanes.join("\n")}
         let capturedSuperProperties;
         let hasSuperElementAccess;
         const substitutedSuperAccessors = [];
-        return chainBundle(context4, transformSourceFile);
+        return chainBundle(context3, transformSourceFile);
         function affectsSubtree(excludeFacts, includeFacts) {
           return hierarchyFacts !== (hierarchyFacts & ~excludeFacts | includeFacts);
         }
@@ -133589,7 +133589,7 @@ ${lanes.join("\n")}
           }
           currentSourceFile = node;
           const visited = visitSourceFile(node);
-          addEmitHelpers(visited, context4.readEmitHelpers());
+          addEmitHelpers(visited, context3.readEmitHelpers());
           currentSourceFile = void 0;
           taggedTemplateStringDeclarations = void 0;
           return visited;
@@ -133624,7 +133624,7 @@ ${lanes.join("\n")}
           return cb(value);
         }
         function visitDefault(node) {
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitorWorker(node, expressionResultIsUnused2) {
           if ((node.transformFlags & 128) === 0) {
@@ -133745,12 +133745,12 @@ ${lanes.join("\n")}
               if (capturedSuperProperties && isPropertyAccessExpression(node) && node.expression.kind === 108) {
                 capturedSuperProperties.add(node.name.escapedText);
               }
-              return visitEachChild(node, visitor, context4);
+              return visitEachChild(node, visitor, context3);
             case 213:
               if (capturedSuperProperties && node.expression.kind === 108) {
                 hasSuperElementAccess = true;
               }
-              return visitEachChild(node, visitor, context4);
+              return visitEachChild(node, visitor, context3);
             case 264:
             case 232:
               return doWithHierarchyFacts(
@@ -133761,7 +133761,7 @@ ${lanes.join("\n")}
                 /* ClassOrFunctionIncludes */
               );
             default:
-              return visitEachChild(node, visitor, context4);
+              return visitEachChild(node, visitor, context3);
           }
         }
         function visitAwaitExpression(node) {
@@ -133779,7 +133779,7 @@ ${lanes.join("\n")}
               node
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitYieldExpression(node) {
           if (enclosingFunctionFlags & 2 && enclosingFunctionFlags & 1) {
@@ -133825,7 +133825,7 @@ ${lanes.join("\n")}
               node
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitReturnStatement(node) {
           if (enclosingFunctionFlags & 2 && enclosingFunctionFlags & 1) {
@@ -133836,7 +133836,7 @@ ${lanes.join("\n")}
               )
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitLabeledStatement(node) {
           if (enclosingFunctionFlags & 2) {
@@ -133846,7 +133846,7 @@ ${lanes.join("\n")}
             }
             return factory2.restoreEnclosingLabel(visitNode(statement, visitor, isStatement, factory2.liftToBlock), node);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function chunkObjectLiteralElements(elements) {
           let chunkObject;
@@ -133887,13 +133887,13 @@ ${lanes.join("\n")}
               return emitHelpers().createAssignHelper(objects);
             }
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitExpressionStatement(node) {
-          return visitEachChild(node, visitorWithUnusedExpressionResult, context4);
+          return visitEachChild(node, visitorWithUnusedExpressionResult, context3);
         }
         function visitParenthesizedExpression(node, expressionResultIsUnused2) {
-          return visitEachChild(node, expressionResultIsUnused2 ? visitorWithUnusedExpressionResult : visitor, context4);
+          return visitEachChild(node, expressionResultIsUnused2 ? visitorWithUnusedExpressionResult : visitor, context3);
         }
         function visitSourceFile(node) {
           const ancestorFacts = enterSubtree(
@@ -133902,7 +133902,7 @@ ${lanes.join("\n")}
             /* SourceFileIncludes */
           );
           exportedVariableStatement = false;
-          const visited = visitEachChild(node, visitor, context4);
+          const visited = visitEachChild(node, visitor, context3);
           const statement = concatenate(
             visited.statements,
             taggedTemplateStringDeclarations && [
@@ -133919,7 +133919,7 @@ ${lanes.join("\n")}
         }
         function visitTaggedTemplateExpression(node) {
           return processTaggedTemplateExpression(
-            context4,
+            context3,
             node,
             visitor,
             currentSourceFile,
@@ -133933,7 +133933,7 @@ ${lanes.join("\n")}
             return flattenDestructuringAssignment(
               node,
               visitor,
-              context4,
+              context3,
               1,
               !expressionResultIsUnused2
             );
@@ -133946,11 +133946,11 @@ ${lanes.join("\n")}
               visitNode(node.right, expressionResultIsUnused2 ? visitorWithUnusedExpressionResult : visitor, isExpression)
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitCommaListExpression(node, expressionResultIsUnused2) {
           if (expressionResultIsUnused2) {
-            return visitEachChild(node, visitorWithUnusedExpressionResult, context4);
+            return visitEachChild(node, visitorWithUnusedExpressionResult, context3);
           }
           let result;
           for (let i = 0; i < node.elements.length; i++) {
@@ -133979,7 +133979,7 @@ ${lanes.join("\n")}
             const visitedBindings = flattenDestructuringBinding(
               updatedDecl,
               visitor,
-              context4,
+              context3,
               1
               /* ObjectRest */
             );
@@ -134009,7 +134009,7 @@ ${lanes.join("\n")}
               block
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitVariableStatement(node) {
           if (hasSyntacticModifier(
@@ -134019,11 +134019,11 @@ ${lanes.join("\n")}
           )) {
             const savedExportedVariableStatement = exportedVariableStatement;
             exportedVariableStatement = true;
-            const visited = visitEachChild(node, visitor, context4);
+            const visited = visitEachChild(node, visitor, context3);
             exportedVariableStatement = savedExportedVariableStatement;
             return visited;
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitVariableDeclaration(node) {
           if (exportedVariableStatement) {
@@ -134048,14 +134048,14 @@ ${lanes.join("\n")}
             return flattenDestructuringBinding(
               node,
               visitor,
-              context4,
+              context3,
               1,
               /*rval*/
               void 0,
               exportedVariableStatement2
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitForStatement(node) {
           return factory2.updateForStatement(
@@ -134063,11 +134063,11 @@ ${lanes.join("\n")}
             visitNode(node.initializer, visitorWithUnusedExpressionResult, isForInitializer),
             visitNode(node.condition, visitor, isExpression),
             visitNode(node.incrementor, visitorWithUnusedExpressionResult, isExpression),
-            visitIterationBody(node.statement, visitor, context4)
+            visitIterationBody(node.statement, visitor, context3)
           );
         }
         function visitVoidExpression(node) {
-          return visitEachChild(node, visitorWithUnusedExpressionResult, context4);
+          return visitEachChild(node, visitorWithUnusedExpressionResult, context3);
         }
         function visitForOfStatement(node, outermostLabeledStatement) {
           const ancestorFacts = enterSubtree(
@@ -134078,7 +134078,7 @@ ${lanes.join("\n")}
           if (node.initializer.transformFlags & 65536 || isAssignmentPattern(node.initializer) && containsObjectRestOrSpread(node.initializer)) {
             node = transformForOfStatementWithObjectRest(node);
           }
-          const result = node.awaitModifier ? transformForAwaitOfStatement(node, outermostLabeledStatement, ancestorFacts) : factory2.restoreEnclosingLabel(visitEachChild(node, visitor, context4), outermostLabeledStatement);
+          const result = node.awaitModifier ? transformForAwaitOfStatement(node, outermostLabeledStatement, ancestorFacts) : factory2.restoreEnclosingLabel(visitEachChild(node, visitor, context3), outermostLabeledStatement);
           exitSubtree(ancestorFacts);
           return result;
         }
@@ -134140,7 +134140,7 @@ ${lanes.join("\n")}
           statements.push(visitNode(binding, visitor, isStatement));
           let bodyLocation;
           let statementsLocation;
-          const statement = visitIterationBody(node.statement, visitor, context4);
+          const statement = visitIterationBody(node.statement, visitor, context3);
           if (isBlock(statement)) {
             addRange(statements, statement.statements);
             bodyLocation = statement;
@@ -134349,7 +134349,7 @@ ${lanes.join("\n")}
               visitNode(node.initializer, visitor, isExpression)
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function collectParametersWithPrecedingObjectRestOrSpread(node) {
           let parameters;
@@ -134370,7 +134370,7 @@ ${lanes.join("\n")}
           const updated = factory2.updateConstructorDeclaration(
             node,
             node.modifiers,
-            visitParameterList(node.parameters, parameterVisitor, context4),
+            visitParameterList(node.parameters, parameterVisitor, context3),
             transformFunctionBody2(node)
           );
           enclosingFunctionFlags = savedEnclosingFunctionFlags;
@@ -134386,7 +134386,7 @@ ${lanes.join("\n")}
             node,
             node.modifiers,
             visitNode(node.name, visitor, isPropertyName),
-            visitParameterList(node.parameters, parameterVisitor, context4),
+            visitParameterList(node.parameters, parameterVisitor, context3),
             /*type*/
             void 0,
             transformFunctionBody2(node)
@@ -134404,7 +134404,7 @@ ${lanes.join("\n")}
             node,
             node.modifiers,
             visitNode(node.name, visitor, isPropertyName),
-            visitParameterList(node.parameters, parameterVisitor, context4),
+            visitParameterList(node.parameters, parameterVisitor, context3),
             transformFunctionBody2(node)
           );
           enclosingFunctionFlags = savedEnclosingFunctionFlags;
@@ -134429,7 +134429,7 @@ ${lanes.join("\n")}
             ),
             /*typeParameters*/
             void 0,
-            enclosingFunctionFlags & 2 && enclosingFunctionFlags & 1 ? transformAsyncGeneratorFunctionParameterList(node) : visitParameterList(node.parameters, parameterVisitor, context4),
+            enclosingFunctionFlags & 2 && enclosingFunctionFlags & 1 ? transformAsyncGeneratorFunctionParameterList(node) : visitParameterList(node.parameters, parameterVisitor, context3),
             /*type*/
             void 0,
             enclosingFunctionFlags & 2 && enclosingFunctionFlags & 1 ? transformAsyncGeneratorFunctionBody(node) : transformFunctionBody2(node)
@@ -134450,7 +134450,7 @@ ${lanes.join("\n")}
             node.name,
             /*typeParameters*/
             void 0,
-            enclosingFunctionFlags & 2 && enclosingFunctionFlags & 1 ? transformAsyncGeneratorFunctionParameterList(node) : visitParameterList(node.parameters, parameterVisitor, context4),
+            enclosingFunctionFlags & 2 && enclosingFunctionFlags & 1 ? transformAsyncGeneratorFunctionParameterList(node) : visitParameterList(node.parameters, parameterVisitor, context3),
             /*type*/
             void 0,
             enclosingFunctionFlags & 2 && enclosingFunctionFlags & 1 ? transformAsyncGeneratorFunctionBody(node) : transformFunctionBody2(node)
@@ -134469,7 +134469,7 @@ ${lanes.join("\n")}
             node.modifiers,
             /*typeParameters*/
             void 0,
-            visitParameterList(node.parameters, parameterVisitor, context4),
+            visitParameterList(node.parameters, parameterVisitor, context3),
             /*type*/
             void 0,
             node.equalsGreaterThanToken,
@@ -134491,7 +134491,7 @@ ${lanes.join("\n")}
             node.name,
             /*typeParameters*/
             void 0,
-            enclosingFunctionFlags & 2 && enclosingFunctionFlags & 1 ? transformAsyncGeneratorFunctionParameterList(node) : visitParameterList(node.parameters, parameterVisitor, context4),
+            enclosingFunctionFlags & 2 && enclosingFunctionFlags & 1 ? transformAsyncGeneratorFunctionParameterList(node) : visitParameterList(node.parameters, parameterVisitor, context3),
             /*type*/
             void 0,
             enclosingFunctionFlags & 2 && enclosingFunctionFlags & 1 ? transformAsyncGeneratorFunctionBody(node) : transformFunctionBody2(node)
@@ -134502,7 +134502,7 @@ ${lanes.join("\n")}
         }
         function transformAsyncGeneratorFunctionParameterList(node) {
           if (isSimpleParameterList(node.parameters)) {
-            return visitParameterList(node.parameters, visitor, context4);
+            return visitParameterList(node.parameters, visitor, context3);
           }
           const newParameters = [];
           for (const parameter of node.parameters) {
@@ -134527,7 +134527,7 @@ ${lanes.join("\n")}
           return newParametersArray;
         }
         function transformAsyncGeneratorFunctionBody(node) {
-          const innerParameters = !isSimpleParameterList(node.parameters) ? visitParameterList(node.parameters, visitor, context4) : void 0;
+          const innerParameters = !isSimpleParameterList(node.parameters) ? visitParameterList(node.parameters, visitor, context3) : void 0;
           resumeLexicalEnvironment();
           const savedCapturedSuperProperties = capturedSuperProperties;
           const savedHasSuperElementAccess = hasSuperElementAccess;
@@ -134633,7 +134633,7 @@ ${lanes.join("\n")}
                   const declarations = flattenDestructuringBinding(
                     parameter,
                     visitor,
-                    context4,
+                    context3,
                     0,
                     factory2.getGeneratedNameForNode(parameter)
                   );
@@ -134707,7 +134707,7 @@ ${lanes.join("\n")}
               const declarations = flattenDestructuringBinding(
                 parameter,
                 visitor,
-                context4,
+                context3,
                 1,
                 factory2.getGeneratedNameForNode(parameter),
                 /*hoistTempVariables*/
@@ -134736,39 +134736,39 @@ ${lanes.join("\n")}
         function enableSubstitutionForAsyncMethodsWithSuper() {
           if ((enabledSubstitutions & 1) === 0) {
             enabledSubstitutions |= 1;
-            context4.enableSubstitution(
+            context3.enableSubstitution(
               214
               /* CallExpression */
             );
-            context4.enableSubstitution(
+            context3.enableSubstitution(
               212
               /* PropertyAccessExpression */
             );
-            context4.enableSubstitution(
+            context3.enableSubstitution(
               213
               /* ElementAccessExpression */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               264
               /* ClassDeclaration */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               175
               /* MethodDeclaration */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               178
               /* GetAccessor */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               179
               /* SetAccessor */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               177
               /* Constructor */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               244
               /* VariableStatement */
             );
@@ -134891,14 +134891,14 @@ ${lanes.join("\n")}
           }
         }
       }
-      function transformES2019(context4) {
-        const factory2 = context4.factory;
-        return chainBundle(context4, transformSourceFile);
+      function transformES2019(context3) {
+        const factory2 = context3.factory;
+        return chainBundle(context3, transformSourceFile);
         function transformSourceFile(node) {
           if (node.isDeclarationFile) {
             return node;
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitor(node) {
           if ((node.transformFlags & 64) === 0) {
@@ -134908,7 +134908,7 @@ ${lanes.join("\n")}
             case 300:
               return visitCatchClause(node);
             default:
-              return visitEachChild(node, visitor, context4);
+              return visitEachChild(node, visitor, context3);
           }
         }
         function visitCatchClause(node) {
@@ -134922,20 +134922,20 @@ ${lanes.join("\n")}
               visitNode(node.block, visitor, isBlock)
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
       }
-      function transformES2020(context4) {
+      function transformES2020(context3) {
         const {
           factory: factory2,
           hoistVariableDeclaration
-        } = context4;
-        return chainBundle(context4, transformSourceFile);
+        } = context3;
+        return chainBundle(context3, transformSourceFile);
         function transformSourceFile(node) {
           if (node.isDeclarationFile) {
             return node;
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitor(node) {
           if ((node.transformFlags & 32) === 0) {
@@ -134964,16 +134964,16 @@ ${lanes.join("\n")}
                 Debug.assertNotNode(updated, isSyntheticReference);
                 return updated;
               }
-              return visitEachChild(node, visitor, context4);
+              return visitEachChild(node, visitor, context3);
             case 227:
               if (node.operatorToken.kind === 61) {
                 return transformNullishCoalescingExpression(node);
               }
-              return visitEachChild(node, visitor, context4);
+              return visitEachChild(node, visitor, context3);
             case 221:
               return visitDeleteExpression(node);
             default:
-              return visitEachChild(node, visitor, context4);
+              return visitEachChild(node, visitor, context3);
           }
         }
         function flattenChain(chain) {
@@ -135040,7 +135040,7 @@ ${lanes.join("\n")}
               args
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitNonOptionalExpression(node, captureThisArg, isDelete) {
           switch (node.kind) {
@@ -135203,17 +135203,17 @@ ${lanes.join("\n")}
           ), node) : factory2.updateDeleteExpression(node, visitNode(node.expression, visitor, isExpression));
         }
       }
-      function transformES2021(context4) {
+      function transformES2021(context3) {
         const {
           hoistVariableDeclaration,
           factory: factory2
-        } = context4;
-        return chainBundle(context4, transformSourceFile);
+        } = context3;
+        return chainBundle(context3, transformSourceFile);
         function transformSourceFile(node) {
           if (node.isDeclarationFile) {
             return node;
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitor(node) {
           if ((node.transformFlags & 16) === 0) {
@@ -135222,7 +135222,7 @@ ${lanes.join("\n")}
           if (isLogicalOrCoalescingAssignmentExpression(node)) {
             return transformLogicalAssignment(node);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function transformLogicalAssignment(binaryExpression) {
           const operator = binaryExpression.operatorToken;
@@ -135274,25 +135274,25 @@ ${lanes.join("\n")}
           );
         }
       }
-      function transformESNext(context4) {
+      function transformESNext(context3) {
         const {
           factory: factory2,
           getEmitHelperFactory: emitHelpers,
           hoistVariableDeclaration,
           startLexicalEnvironment,
           endLexicalEnvironment
-        } = context4;
+        } = context3;
         let exportBindings;
         let exportVars;
         let defaultExportBinding;
         let exportEqualsBinding;
-        return chainBundle(context4, transformSourceFile);
+        return chainBundle(context3, transformSourceFile);
         function transformSourceFile(node) {
           if (node.isDeclarationFile) {
             return node;
           }
           const visited = visitNode(node, visitor, isSourceFile);
-          addEmitHelpers(visited, context4.readEmitHelpers());
+          addEmitHelpers(visited, context3.readEmitHelpers());
           exportVars = void 0;
           exportBindings = void 0;
           defaultExportBinding = void 0;
@@ -135314,7 +135314,7 @@ ${lanes.join("\n")}
             case 256:
               return visitSwitchStatement(node);
             default:
-              return visitEachChild(node, visitor, context4);
+              return visitEachChild(node, visitor, context3);
           }
         }
         function visitSourceFile(node) {
@@ -135383,7 +135383,7 @@ ${lanes.join("\n")}
             }
             return factory2.updateSourceFile(node, topLevelStatements);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitBlock(node) {
           const usingKind = getUsingKindOfStatements(node.statements);
@@ -135410,7 +135410,7 @@ ${lanes.join("\n")}
               ]
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitForStatement(node) {
           if (node.initializer && isUsingVariableDeclarationList(node.initializer)) {
@@ -135434,7 +135434,7 @@ ${lanes.join("\n")}
               isStatement
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitForOfStatement(node) {
           if (isUsingVariableDeclarationList(node.initializer)) {
@@ -135492,7 +135492,7 @@ ${lanes.join("\n")}
               isStatement
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitCaseOrDefaultClause(node, envBinding) {
           if (getUsingKindOfStatements(node.statements) !== 0) {
@@ -135525,7 +135525,7 @@ ${lanes.join("\n")}
               );
             }
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitSwitchStatement(node) {
           const usingKind = getUsingKindOfCaseOrDefaultClauses(node.caseBlock.clauses);
@@ -135547,7 +135547,7 @@ ${lanes.join("\n")}
               /* Async */
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function transformUsingDeclarations(statementsIn, start, end, envBinding, topLevelStatements) {
           const statements = [];
@@ -135563,7 +135563,7 @@ ${lanes.join("\n")}
                   break;
                 }
                 if (isNamedEvaluation(declaration)) {
-                  declaration = transformNamedEvaluation(context4, declaration);
+                  declaration = transformNamedEvaluation(context3, declaration);
                 }
                 const initializer = visitNode(declaration.initializer, visitor, isExpression) ?? factory2.createVoidZero();
                 declarations.push(factory2.updateVariableDeclaration(
@@ -135655,7 +135655,7 @@ ${lanes.join("\n")}
           let innerExpression = skipOuterExpressions(expression);
           if (isNamedEvaluation(innerExpression)) {
             innerExpression = transformNamedEvaluation(
-              context4,
+              context3,
               innerExpression,
               /*ignoreEmptyStringLiteral*/
               false,
@@ -135705,7 +135705,7 @@ ${lanes.join("\n")}
             expression = factory2.createAssignment(factory2.getDeclarationName(node), expression);
             if (isNamedEvaluation(expression)) {
               expression = transformNamedEvaluation(
-                context4,
+                context3,
                 expression,
                 /*ignoreEmptyStringLiteral*/
                 false
@@ -135731,7 +135731,7 @@ ${lanes.join("\n")}
             expression = factory2.createAssignment(defaultExportBinding, expression);
             if (isNamedEvaluation(expression)) {
               expression = transformNamedEvaluation(
-                context4,
+                context3,
                 expression,
                 /*ignoreEmptyStringLiteral*/
                 false,
@@ -135960,15 +135960,15 @@ ${lanes.join("\n")}
         }
         return result;
       }
-      function transformJsx(context4) {
+      function transformJsx(context3) {
         const {
           factory: factory2,
           getEmitHelperFactory: emitHelpers
-        } = context4;
-        const compilerOptions = context4.getCompilerOptions();
+        } = context3;
+        const compilerOptions = context3.getCompilerOptions();
         let currentSourceFile;
         let currentFileState;
-        return chainBundle(context4, transformSourceFile);
+        return chainBundle(context3, transformSourceFile);
         function getCurrentFileNameExpression() {
           if (currentFileState.filenameDeclaration) {
             return currentFileState.filenameDeclaration.name;
@@ -136035,8 +136035,8 @@ ${lanes.join("\n")}
           currentSourceFile = node;
           currentFileState = {};
           currentFileState.importSpecifier = getJSXImplicitImportBase(compilerOptions, node);
-          let visited = visitEachChild(node, visitor, context4);
-          addEmitHelpers(visited, context4.readEmitHelpers());
+          let visited = visitEachChild(node, visitor, context3);
+          addEmitHelpers(visited, context3.readEmitHelpers());
           let statements = visited.statements;
           if (currentFileState.filenameDeclaration) {
             statements = insertStatementAfterCustomPrologue(statements.slice(), factory2.createVariableStatement(
@@ -136147,7 +136147,7 @@ ${lanes.join("\n")}
             case 295:
               return visitJsxExpression(node);
             default:
-              return visitEachChild(node, visitor, context4);
+              return visitEachChild(node, visitor, context3);
           }
         }
         function transformJsxChildToExpression(node) {
@@ -136300,7 +136300,7 @@ ${lanes.join("\n")}
           const objectProperties = length(attrs) ? transformJsxAttributesToObjectProps(attrs) : factory2.createNull();
           const callee = currentFileState.importSpecifier === void 0 ? createJsxFactoryExpression(
             factory2,
-            context4.getEmitResolver().getJsxFactoryEntity(currentSourceFile),
+            context3.getEmitResolver().getJsxFactoryEntity(currentSourceFile),
             compilerOptions.reactNamespace,
             // TODO: GH#18217
             node
@@ -136339,8 +136339,8 @@ ${lanes.join("\n")}
         function visitJsxOpeningFragmentCreateElement(node, children, isChild, location) {
           const element = createExpressionForJsxFragment(
             factory2,
-            context4.getEmitResolver().getJsxFactoryEntity(currentSourceFile),
-            context4.getEmitResolver().getJsxFragmentFactoryEntity(currentSourceFile),
+            context3.getEmitResolver().getJsxFactoryEntity(currentSourceFile),
+            context3.getEmitResolver().getJsxFragmentFactoryEntity(currentSourceFile),
             compilerOptions.reactNamespace,
             // TODO: GH#18217
             mapDefined(children, transformJsxChildToExpression),
@@ -136775,17 +136775,17 @@ ${lanes.join("\n")}
         hearts: 9829,
         diams: 9830
       }));
-      function transformES2016(context4) {
+      function transformES2016(context3) {
         const {
           factory: factory2,
           hoistVariableDeclaration
-        } = context4;
-        return chainBundle(context4, transformSourceFile);
+        } = context3;
+        return chainBundle(context3, transformSourceFile);
         function transformSourceFile(node) {
           if (node.isDeclarationFile) {
             return node;
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitor(node) {
           if ((node.transformFlags & 512) === 0) {
@@ -136795,7 +136795,7 @@ ${lanes.join("\n")}
             case 227:
               return visitBinaryExpression(node);
             default:
-              return visitEachChild(node, visitor, context4);
+              return visitEachChild(node, visitor, context3);
           }
         }
         function visitBinaryExpression(node) {
@@ -136805,7 +136805,7 @@ ${lanes.join("\n")}
             case 43:
               return visitExponentiationExpression(node);
             default:
-              return visitEachChild(node, visitor, context4);
+              return visitEachChild(node, visitor, context3);
           }
         }
         function visitExponentiationAssignmentExpression(node) {
@@ -136867,7 +136867,7 @@ ${lanes.join("\n")}
       function createSpreadSegment(kind, expression) {
         return { kind, expression };
       }
-      function transformES2015(context4) {
+      function transformES2015(context3) {
         const {
           factory: factory2,
           getEmitHelperFactory: emitHelpers,
@@ -136875,13 +136875,13 @@ ${lanes.join("\n")}
           resumeLexicalEnvironment,
           endLexicalEnvironment,
           hoistVariableDeclaration
-        } = context4;
-        const compilerOptions = context4.getCompilerOptions();
-        const resolver = context4.getEmitResolver();
-        const previousOnSubstituteNode = context4.onSubstituteNode;
-        const previousOnEmitNode = context4.onEmitNode;
-        context4.onEmitNode = onEmitNode;
-        context4.onSubstituteNode = onSubstituteNode;
+        } = context3;
+        const compilerOptions = context3.getCompilerOptions();
+        const resolver = context3.getEmitResolver();
+        const previousOnSubstituteNode = context3.onSubstituteNode;
+        const previousOnEmitNode = context3.onEmitNode;
+        context3.onEmitNode = onEmitNode;
+        context3.onSubstituteNode = onSubstituteNode;
         let currentSourceFile;
         let currentText;
         let hierarchyFacts;
@@ -136894,7 +136894,7 @@ ${lanes.join("\n")}
         }
         let convertedLoopState;
         let enabledSubstitutions = 0;
-        return chainBundle(context4, transformSourceFile);
+        return chainBundle(context3, transformSourceFile);
         function transformSourceFile(node) {
           if (node.isDeclarationFile) {
             return node;
@@ -136902,7 +136902,7 @@ ${lanes.join("\n")}
           currentSourceFile = node;
           currentText = node.text;
           const visited = visitSourceFile(node);
-          addEmitHelpers(visited, context4.readEmitHelpers());
+          addEmitHelpers(visited, context3.readEmitHelpers());
           currentSourceFile = void 0;
           currentText = void 0;
           taggedTemplateStringDeclarations = void 0;
@@ -137112,7 +137112,7 @@ ${lanes.join("\n")}
             case 223:
               return visitVoidExpression(node);
             default:
-              return visitEachChild(node, visitor, context4);
+              return visitEachChild(node, visitor, context3);
           }
         }
         function visitSourceFile(node) {
@@ -137158,11 +137158,11 @@ ${lanes.join("\n")}
           if (convertedLoopState !== void 0) {
             const savedAllowedNonLabeledJumps = convertedLoopState.allowedNonLabeledJumps;
             convertedLoopState.allowedNonLabeledJumps |= 2;
-            const result = visitEachChild(node, visitor, context4);
+            const result = visitEachChild(node, visitor, context3);
             convertedLoopState.allowedNonLabeledJumps = savedAllowedNonLabeledJumps;
             return result;
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitCaseBlock(node) {
           const ancestorFacts = enterSubtree(
@@ -137170,7 +137170,7 @@ ${lanes.join("\n")}
             0
             /* BlockScopeIncludes */
           );
-          const updated = visitEachChild(node, visitor, context4);
+          const updated = visitEachChild(node, visitor, context3);
           exitSubtree(
             ancestorFacts,
             0,
@@ -137208,7 +137208,7 @@ ${lanes.join("\n")}
           } else if (isReturnVoidStatementInConstructorWithCapturedSuper(node)) {
             return returnCapturedThis(node);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitThisKeyword(node) {
           hierarchyFacts |= 65536;
@@ -137225,7 +137225,7 @@ ${lanes.join("\n")}
           return node;
         }
         function visitVoidExpression(node) {
-          return visitEachChild(node, visitorWithUnusedExpressionResult, context4);
+          return visitEachChild(node, visitorWithUnusedExpressionResult, context3);
         }
         function visitIdentifier(node) {
           if (convertedLoopState) {
@@ -137301,7 +137301,7 @@ ${lanes.join("\n")}
               return factory2.createReturnStatement(returnExpression);
             }
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitClassDeclaration(node) {
           const variable = factory2.createVariableDeclaration(
@@ -137499,7 +137499,7 @@ ${lanes.join("\n")}
           convertedLoopState = savedConvertedLoopState;
         }
         function transformConstructorParameters(constructor, hasSynthesizedSuper) {
-          return visitParameterList(constructor && !hasSynthesizedSuper ? constructor.parameters : void 0, visitor, context4) || [];
+          return visitParameterList(constructor && !hasSynthesizedSuper ? constructor.parameters : void 0, visitor, context3) || [];
         }
         function createDefaultConstructorBody(node, isDerivedClass) {
           const statements = [];
@@ -137973,7 +137973,7 @@ ${lanes.join("\n")}
                     flattenDestructuringBinding(
                       parameter,
                       visitor,
-                      context4,
+                      context3,
                       0,
                       factory2.getGeneratedNameForNode(parameter)
                     )
@@ -138147,7 +138147,7 @@ ${lanes.join("\n")}
                     /*modifiers*/
                     void 0,
                     factory2.createVariableDeclarationList(
-                      flattenDestructuringBinding(parameter, visitor, context4, 0, expressionName)
+                      flattenDestructuringBinding(parameter, visitor, context3, 0, expressionName)
                     )
                   ),
                   parameter
@@ -138318,7 +138318,7 @@ ${lanes.join("\n")}
           const propertyName = visitNode(member.name, visitor, isPropertyName);
           Debug.assert(propertyName);
           let e;
-          if (!isPrivateIdentifier(propertyName) && getUseDefineForClassFields(context4.getCompilerOptions())) {
+          if (!isPrivateIdentifier(propertyName) && getUseDefineForClassFields(context3.getCompilerOptions())) {
             const name = isComputedPropertyName(propertyName) ? propertyName.expression : isIdentifier2(propertyName) ? factory2.createStringLiteral(unescapeLeadingUnderscores(propertyName.escapedText)) : propertyName;
             e = factory2.createObjectDefinePropertyCall(receiver, name, factory2.createPropertyDescriptor({ value: memberFunction, enumerable: false, writable: true, configurable: true }));
           } else {
@@ -138469,7 +138469,7 @@ ${lanes.join("\n")}
             void 0,
             /*typeParameters*/
             void 0,
-            visitParameterList(node.parameters, visitor, context4),
+            visitParameterList(node.parameters, visitor, context3),
             /*type*/
             void 0,
             transformFunctionBody2(node)
@@ -138502,7 +138502,7 @@ ${lanes.join("\n")}
           );
           const savedConvertedLoopState = convertedLoopState;
           convertedLoopState = void 0;
-          const parameters = visitParameterList(node.parameters, visitor, context4);
+          const parameters = visitParameterList(node.parameters, visitor, context3);
           const body = transformFunctionBody2(node);
           const name = hierarchyFacts & 32768 ? factory2.getLocalName(node) : node.name;
           exitSubtree(
@@ -138534,7 +138534,7 @@ ${lanes.join("\n")}
             65
             /* FunctionIncludes */
           );
-          const parameters = visitParameterList(node.parameters, visitor, context4);
+          const parameters = visitParameterList(node.parameters, visitor, context3);
           const body = transformFunctionBody2(node);
           const name = hierarchyFacts & 32768 ? factory2.getLocalName(node) : node.name;
           exitSubtree(
@@ -138569,7 +138569,7 @@ ${lanes.join("\n")}
             65
             /* FunctionIncludes */
           );
-          const parameters = visitParameterList(node.parameters, visitor, context4);
+          const parameters = visitParameterList(node.parameters, visitor, context3);
           const body = transformFunctionBody2(node);
           if (hierarchyFacts & 32768 && !name && (node.kind === 263 || node.kind === 219)) {
             name = factory2.getGeneratedNameForNode(node);
@@ -138689,7 +138689,7 @@ ${lanes.join("\n")}
         }
         function visitBlock(node, isFunctionBody2) {
           if (isFunctionBody2) {
-            return visitEachChild(node, visitor, context4);
+            return visitEachChild(node, visitor, context3);
           }
           const ancestorFacts = hierarchyFacts & 256 ? enterSubtree(
             7104,
@@ -138700,7 +138700,7 @@ ${lanes.join("\n")}
             128
             /* BlockIncludes */
           );
-          const updated = visitEachChild(node, visitor, context4);
+          const updated = visitEachChild(node, visitor, context3);
           exitSubtree(
             ancestorFacts,
             0,
@@ -138710,17 +138710,17 @@ ${lanes.join("\n")}
           return updated;
         }
         function visitExpressionStatement(node) {
-          return visitEachChild(node, visitorWithUnusedExpressionResult, context4);
+          return visitEachChild(node, visitorWithUnusedExpressionResult, context3);
         }
         function visitParenthesizedExpression(node, expressionResultIsUnused2) {
-          return visitEachChild(node, expressionResultIsUnused2 ? visitorWithUnusedExpressionResult : visitor, context4);
+          return visitEachChild(node, expressionResultIsUnused2 ? visitorWithUnusedExpressionResult : visitor, context3);
         }
         function visitBinaryExpression(node, expressionResultIsUnused2) {
           if (isDestructuringAssignment(node)) {
             return flattenDestructuringAssignment(
               node,
               visitor,
-              context4,
+              context3,
               0,
               !expressionResultIsUnused2
             );
@@ -138733,11 +138733,11 @@ ${lanes.join("\n")}
               Debug.checkDefined(visitNode(node.right, expressionResultIsUnused2 ? visitorWithUnusedExpressionResult : visitor, isExpression))
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitCommaListExpression(node, expressionResultIsUnused2) {
           if (expressionResultIsUnused2) {
-            return visitEachChild(node, visitorWithUnusedExpressionResult, context4);
+            return visitEachChild(node, visitorWithUnusedExpressionResult, context3);
           }
           let result;
           for (let i = 0; i < node.elements.length; i++) {
@@ -138776,7 +138776,7 @@ ${lanes.join("\n")}
                   assignment = flattenDestructuringAssignment(
                     decl,
                     visitor,
-                    context4,
+                    context3,
                     0
                     /* All */
                   );
@@ -138793,7 +138793,7 @@ ${lanes.join("\n")}
               updated = void 0;
             }
           } else {
-            updated = visitEachChild(node, visitor, context4);
+            updated = visitEachChild(node, visitor, context3);
           }
           exitSubtree(
             ancestorFacts,
@@ -138822,7 +138822,7 @@ ${lanes.join("\n")}
             }
             return declarationList;
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function getRangeUnion(declarations) {
           let pos = -1, end = -1;
@@ -138863,7 +138863,7 @@ ${lanes.join("\n")}
               factory2.createVoidZero()
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitVariableDeclaration(node) {
           const ancestorFacts = enterSubtree(
@@ -138876,14 +138876,14 @@ ${lanes.join("\n")}
             updated = flattenDestructuringBinding(
               node,
               visitor,
-              context4,
+              context3,
               0,
               /*rval*/
               void 0,
               (ancestorFacts & 32) !== 0
             );
           } else {
-            updated = visitEachChild(node, visitor, context4);
+            updated = visitEachChild(node, visitor, context3);
           }
           exitSubtree(
             ancestorFacts,
@@ -138992,7 +138992,7 @@ ${lanes.join("\n")}
               const declarations = flattenDestructuringBinding(
                 firstOriginalDeclaration,
                 visitor,
-                context4,
+                context3,
                 0,
                 boundValue
               );
@@ -139296,7 +139296,7 @@ ${lanes.join("\n")}
             }
           }
           if (numInitialProperties < 0) {
-            return visitEachChild(node, visitor, context4);
+            return visitEachChild(node, visitor, context3);
           }
           const temp = factory2.createTempVariable(hoistVariableDeclaration);
           const expressions = [];
@@ -139375,7 +139375,7 @@ ${lanes.join("\n")}
               void 0,
               ancestorFacts
             ) : factory2.restoreEnclosingLabel(
-              isForStatement(node) ? visitEachChildOfForStatement2(node) : visitEachChild(node, visitor, context4),
+              isForStatement(node) ? visitEachChildOfForStatement2(node) : visitEachChild(node, visitor, context3),
               outermostLabeledStatement,
               convertedLoopState && resetLabel
             );
@@ -140034,7 +140034,7 @@ ${lanes.join("\n")}
             const vars = flattenDestructuringBinding(
               node.variableDeclaration,
               visitor,
-              context4,
+              context3,
               0,
               temp
             );
@@ -140047,7 +140047,7 @@ ${lanes.join("\n")}
             );
             updated = factory2.updateCatchClause(node, newVariableDeclaration, addStatementToStartOfBlock(node.block, destructure));
           } else {
-            updated = visitEachChild(node, visitor, context4);
+            updated = visitEachChild(node, visitor, context3);
           }
           exitSubtree(
             ancestorFacts,
@@ -140092,7 +140092,7 @@ ${lanes.join("\n")}
             /* FunctionIncludes */
           );
           let updated;
-          const parameters = visitParameterList(node.parameters, visitor, context4);
+          const parameters = visitParameterList(node.parameters, visitor, context3);
           const body = transformFunctionBody2(node);
           if (node.kind === 178) {
             updated = factory2.updateGetAccessorDeclaration(node, node.modifiers, node.name, parameters, node.type, body);
@@ -140119,10 +140119,10 @@ ${lanes.join("\n")}
           );
         }
         function visitComputedPropertyName(node) {
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitYieldExpression(node) {
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitArrayLiteralExpression(node) {
           if (some(node.elements, isSpreadElement)) {
@@ -140135,7 +140135,7 @@ ${lanes.join("\n")}
               !!node.elements.hasTrailingComma
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitCallExpression(node) {
           if (getInternalEmitFlags(node) & 1) {
@@ -140301,7 +140301,7 @@ ${lanes.join("\n")}
           if (isSuperCall(node)) {
             hierarchyFacts |= 131072;
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitNewExpression(node) {
           if (some(node.arguments, isSpreadElement)) {
@@ -140325,7 +140325,7 @@ ${lanes.join("\n")}
               []
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function transformAndSpreadElements(elements, isArgumentList, multiLine, hasTrailingComma) {
           const numElements = elements.length;
@@ -140403,7 +140403,7 @@ ${lanes.join("\n")}
         }
         function visitTaggedTemplateExpression(node) {
           return processTaggedTemplateExpression(
-            context4,
+            context3,
             node,
             visitor,
             currentSourceFile,
@@ -140474,7 +140474,7 @@ ${lanes.join("\n")}
         function enableSubstitutionsForBlockScopedBindings() {
           if ((enabledSubstitutions & 2) === 0) {
             enabledSubstitutions |= 2;
-            context4.enableSubstitution(
+            context3.enableSubstitution(
               80
               /* Identifier */
             );
@@ -140483,35 +140483,35 @@ ${lanes.join("\n")}
         function enableSubstitutionsForCapturedThis() {
           if ((enabledSubstitutions & 1) === 0) {
             enabledSubstitutions |= 1;
-            context4.enableSubstitution(
+            context3.enableSubstitution(
               110
               /* ThisKeyword */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               177
               /* Constructor */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               175
               /* MethodDeclaration */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               178
               /* GetAccessor */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               179
               /* SetAccessor */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               220
               /* ArrowFunction */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               219
               /* FunctionExpression */
             );
-            context4.enableEmitNotification(
+            context3.enableEmitNotification(
               263
               /* FunctionDeclaration */
             );
@@ -140633,7 +140633,7 @@ ${lanes.join("\n")}
             return void 0;
         }
       }
-      function transformGenerators(context4) {
+      function transformGenerators(context3) {
         const {
           factory: factory2,
           getEmitHelperFactory: emitHelpers,
@@ -140641,12 +140641,12 @@ ${lanes.join("\n")}
           endLexicalEnvironment,
           hoistFunctionDeclaration,
           hoistVariableDeclaration
-        } = context4;
-        const compilerOptions = context4.getCompilerOptions();
+        } = context3;
+        const compilerOptions = context3.getCompilerOptions();
         const languageVersion = getEmitScriptTarget(compilerOptions);
-        const resolver = context4.getEmitResolver();
-        const previousOnSubstituteNode = context4.onSubstituteNode;
-        context4.onSubstituteNode = onSubstituteNode;
+        const resolver = context3.getEmitResolver();
+        const previousOnSubstituteNode = context3.onSubstituteNode;
+        context3.onSubstituteNode = onSubstituteNode;
         let renamedCatchVariables;
         let renamedCatchVariableDeclarations;
         let inGeneratorFunctionBody;
@@ -140672,13 +140672,13 @@ ${lanes.join("\n")}
         let exceptionBlockStack;
         let currentExceptionBlock;
         let withBlockStack;
-        return chainBundle(context4, transformSourceFile);
+        return chainBundle(context3, transformSourceFile);
         function transformSourceFile(node) {
           if (node.isDeclarationFile || (node.transformFlags & 2048) === 0) {
             return node;
           }
-          const visited = visitEachChild(node, visitor, context4);
-          addEmitHelpers(visited, context4.readEmitHelpers());
+          const visited = visitEachChild(node, visitor, context3);
+          addEmitHelpers(visited, context3.readEmitHelpers());
           return visited;
         }
         function visitor(node) {
@@ -140690,7 +140690,7 @@ ${lanes.join("\n")}
           } else if (isFunctionLikeDeclaration(node) && node.asteriskToken) {
             return visitGenerator(node);
           } else if (transformFlags & 2048) {
-            return visitEachChild(node, visitor, context4);
+            return visitEachChild(node, visitor, context3);
           } else {
             return node;
           }
@@ -140734,7 +140734,7 @@ ${lanes.join("\n")}
               if (node.transformFlags & 1048576) {
                 return visitJavaScriptContainingYield(node);
               } else if (node.transformFlags & (2048 | 4194304)) {
-                return visitEachChild(node, visitor, context4);
+                return visitEachChild(node, visitor, context3);
               } else {
                 return node;
               }
@@ -140761,7 +140761,7 @@ ${lanes.join("\n")}
             case 215:
               return visitNewExpression(node);
             default:
-              return visitEachChild(node, visitor, context4);
+              return visitEachChild(node, visitor, context3);
           }
         }
         function visitGenerator(node) {
@@ -140785,7 +140785,7 @@ ${lanes.join("\n")}
                   node.name,
                   /*typeParameters*/
                   void 0,
-                  visitParameterList(node.parameters, visitor, context4),
+                  visitParameterList(node.parameters, visitor, context3),
                   /*type*/
                   void 0,
                   transformGeneratorFunctionBody(node.body)
@@ -140800,7 +140800,7 @@ ${lanes.join("\n")}
             const savedInStatementContainingYield = inStatementContainingYield;
             inGeneratorFunctionBody = false;
             inStatementContainingYield = false;
-            node = visitEachChild(node, visitor, context4);
+            node = visitEachChild(node, visitor, context3);
             inGeneratorFunctionBody = savedInGeneratorFunctionBody;
             inStatementContainingYield = savedInStatementContainingYield;
           }
@@ -140823,7 +140823,7 @@ ${lanes.join("\n")}
                   node.name,
                   /*typeParameters*/
                   void 0,
-                  visitParameterList(node.parameters, visitor, context4),
+                  visitParameterList(node.parameters, visitor, context3),
                   /*type*/
                   void 0,
                   transformGeneratorFunctionBody(node.body)
@@ -140838,7 +140838,7 @@ ${lanes.join("\n")}
             const savedInStatementContainingYield = inStatementContainingYield;
             inGeneratorFunctionBody = false;
             inStatementContainingYield = false;
-            node = visitEachChild(node, visitor, context4);
+            node = visitEachChild(node, visitor, context3);
             inGeneratorFunctionBody = savedInGeneratorFunctionBody;
             inStatementContainingYield = savedInStatementContainingYield;
           }
@@ -140849,7 +140849,7 @@ ${lanes.join("\n")}
           const savedInStatementContainingYield = inStatementContainingYield;
           inGeneratorFunctionBody = false;
           inStatementContainingYield = false;
-          node = visitEachChild(node, visitor, context4);
+          node = visitEachChild(node, visitor, context3);
           inGeneratorFunctionBody = savedInGeneratorFunctionBody;
           inStatementContainingYield = savedInStatementContainingYield;
           return node;
@@ -140987,7 +140987,7 @@ ${lanes.join("\n")}
               return factory2.updateBinaryExpression(node, target, node.operatorToken, Debug.checkDefined(visitNode(right, visitor, isExpression)));
             }
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitLeftAssociativeBinaryExpression(node) {
           if (containsYield(node.right)) {
@@ -140998,7 +140998,7 @@ ${lanes.join("\n")}
             }
             return factory2.updateBinaryExpression(node, cacheExpression(Debug.checkDefined(visitNode(node.left, visitor, isExpression))), node.operatorToken, Debug.checkDefined(visitNode(node.right, visitor, isExpression)));
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitCommaExpression(node) {
           let pendingExpressions = [];
@@ -141094,7 +141094,7 @@ ${lanes.join("\n")}
             markLabel(resultLabel);
             return resultLocal;
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitYieldExpression(node) {
           const resumeLabel = defineLabel();
@@ -141206,7 +141206,7 @@ ${lanes.join("\n")}
           if (containsYield(node.argumentExpression)) {
             return factory2.updateElementAccessExpression(node, cacheExpression(Debug.checkDefined(visitNode(node.expression, visitor, isLeftHandSideExpression))), Debug.checkDefined(visitNode(node.argumentExpression, visitor, isExpression)));
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitCallExpression(node) {
           if (!isImportCall(node) && forEach(node.arguments, containsYield)) {
@@ -141229,7 +141229,7 @@ ${lanes.join("\n")}
               node
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitNewExpression(node) {
           if (forEach(node.arguments, containsYield)) {
@@ -141255,7 +141255,7 @@ ${lanes.join("\n")}
               node
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function transformAndEmitStatements(statements2, start = 0) {
           const numStatements = statements2.length;
@@ -141404,11 +141404,11 @@ ${lanes.join("\n")}
         function visitDoStatement(node) {
           if (inStatementContainingYield) {
             beginScriptLoopBlock();
-            node = visitEachChild(node, visitor, context4);
+            node = visitEachChild(node, visitor, context3);
             endLoopBlock();
             return node;
           } else {
-            return visitEachChild(node, visitor, context4);
+            return visitEachChild(node, visitor, context3);
           }
         }
         function transformAndEmitWhileStatement(node) {
@@ -141427,11 +141427,11 @@ ${lanes.join("\n")}
         function visitWhileStatement(node) {
           if (inStatementContainingYield) {
             beginScriptLoopBlock();
-            node = visitEachChild(node, visitor, context4);
+            node = visitEachChild(node, visitor, context3);
             endLoopBlock();
             return node;
           } else {
-            return visitEachChild(node, visitor, context4);
+            return visitEachChild(node, visitor, context3);
           }
         }
         function transformAndEmitForStatement(node) {
@@ -141491,10 +141491,10 @@ ${lanes.join("\n")}
               variables.length > 0 ? factory2.inlineExpressions(map(variables, transformInitializedVariable)) : void 0,
               visitNode(node.condition, visitor, isExpression),
               visitNode(node.incrementor, visitor, isExpression),
-              visitIterationBody(node.statement, visitor, context4)
+              visitIterationBody(node.statement, visitor, context3)
             );
           } else {
-            node = visitEachChild(node, visitor, context4);
+            node = visitEachChild(node, visitor, context3);
           }
           if (inStatementContainingYield) {
             endLoopBlock();
@@ -141564,7 +141564,7 @@ ${lanes.join("\n")}
             }
             node = factory2.updateForInStatement(node, initializer.declarations[0].name, Debug.checkDefined(visitNode(node.expression, visitor, isExpression)), Debug.checkDefined(visitNode(node.statement, visitor, isStatement, factory2.liftToBlock)));
           } else {
-            node = visitEachChild(node, visitor, context4);
+            node = visitEachChild(node, visitor, context3);
           }
           if (inStatementContainingYield) {
             endLoopBlock();
@@ -141594,7 +141594,7 @@ ${lanes.join("\n")}
               );
             }
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function transformAndEmitBreakStatement(node) {
           const label = findBreakTarget(node.label ? idText(node.label) : void 0);
@@ -141619,7 +141619,7 @@ ${lanes.join("\n")}
               );
             }
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function transformAndEmitReturnStatement(node) {
           emitReturn(
@@ -141713,7 +141713,7 @@ ${lanes.join("\n")}
           if (inStatementContainingYield) {
             beginScriptSwitchBlock();
           }
-          node = visitEachChild(node, visitor, context4);
+          node = visitEachChild(node, visitor, context3);
           if (inStatementContainingYield) {
             endSwitchBlock();
           }
@@ -141732,7 +141732,7 @@ ${lanes.join("\n")}
           if (inStatementContainingYield) {
             beginScriptLabeledBlock(idText(node.label));
           }
-          node = visitEachChild(node, visitor, context4);
+          node = visitEachChild(node, visitor, context3);
           if (inStatementContainingYield) {
             endLabeledBlock();
           }
@@ -141759,7 +141759,7 @@ ${lanes.join("\n")}
             }
             endExceptionBlock();
           } else {
-            emitStatement(visitEachChild(node, visitor, context4));
+            emitStatement(visitEachChild(node, visitor, context3));
           }
         }
         function containsYield(node) {
@@ -141917,7 +141917,7 @@ ${lanes.join("\n")}
             if (!renamedCatchVariables) {
               renamedCatchVariables = /* @__PURE__ */ new Map();
               renamedCatchVariableDeclarations = [];
-              context4.enableSubstitution(
+              context3.enableSubstitution(
                 80
                 /* Identifier */
               );
@@ -142683,7 +142683,7 @@ ${lanes.join("\n")}
           );
         }
       }
-      function transformModule(context4) {
+      function transformModule(context3) {
         function getTransformModuleDelegate(moduleKind2) {
           switch (moduleKind2) {
             case 2:
@@ -142700,37 +142700,37 @@ ${lanes.join("\n")}
           startLexicalEnvironment,
           endLexicalEnvironment,
           hoistVariableDeclaration
-        } = context4;
-        const compilerOptions = context4.getCompilerOptions();
-        const resolver = context4.getEmitResolver();
-        const host = context4.getEmitHost();
+        } = context3;
+        const compilerOptions = context3.getCompilerOptions();
+        const resolver = context3.getEmitResolver();
+        const host = context3.getEmitHost();
         const languageVersion = getEmitScriptTarget(compilerOptions);
         const moduleKind = getEmitModuleKind(compilerOptions);
-        const previousOnSubstituteNode = context4.onSubstituteNode;
-        const previousOnEmitNode = context4.onEmitNode;
-        context4.onSubstituteNode = onSubstituteNode;
-        context4.onEmitNode = onEmitNode;
-        context4.enableSubstitution(
+        const previousOnSubstituteNode = context3.onSubstituteNode;
+        const previousOnEmitNode = context3.onEmitNode;
+        context3.onSubstituteNode = onSubstituteNode;
+        context3.onEmitNode = onEmitNode;
+        context3.enableSubstitution(
           214
           /* CallExpression */
         );
-        context4.enableSubstitution(
+        context3.enableSubstitution(
           216
           /* TaggedTemplateExpression */
         );
-        context4.enableSubstitution(
+        context3.enableSubstitution(
           80
           /* Identifier */
         );
-        context4.enableSubstitution(
+        context3.enableSubstitution(
           227
           /* BinaryExpression */
         );
-        context4.enableSubstitution(
+        context3.enableSubstitution(
           305
           /* ShorthandPropertyAssignment */
         );
-        context4.enableEmitNotification(
+        context3.enableEmitNotification(
           308
           /* SourceFile */
         );
@@ -142740,13 +142740,13 @@ ${lanes.join("\n")}
         let importsAndRequiresToRewriteOrShim;
         const noSubstitution = [];
         let needUMDDynamicImportHelper;
-        return chainBundle(context4, transformSourceFile);
+        return chainBundle(context3, transformSourceFile);
         function transformSourceFile(node) {
           if (node.isDeclarationFile || !(isEffectiveExternalModule(node, compilerOptions) || node.transformFlags & 8388608 || isJsonSourceFile(node) && hasJsonModuleEmitEnabled(compilerOptions) && compilerOptions.outFile)) {
             return node;
           }
           currentSourceFile = node;
-          currentModuleInfo = collectExternalModuleInfo(context4, node);
+          currentModuleInfo = collectExternalModuleInfo(context3, node);
           moduleInfoMap[getOriginalNodeId(node)] = currentModuleInfo;
           if (compilerOptions.rewriteRelativeImportExtensions) {
             forEachDynamicImportOrRequireCall(
@@ -142813,7 +142813,7 @@ ${lanes.join("\n")}
           );
           insertStatementsAfterStandardPrologue(statements, endLexicalEnvironment());
           const updated = factory2.updateSourceFile(node, setTextRange(factory2.createNodeArray(statements), node.statements));
-          addEmitHelpers(updated, context4.readEmitHelpers());
+          addEmitHelpers(updated, context3.readEmitHelpers());
           return updated;
         }
         function transformAMDModule(node) {
@@ -142889,7 +142889,7 @@ ${lanes.join("\n")}
               node.statements
             )
           );
-          addEmitHelpers(updated, context4.readEmitHelpers());
+          addEmitHelpers(updated, context3.readEmitHelpers());
           return updated;
         }
         function transformUMDModule(node) {
@@ -143051,7 +143051,7 @@ ${lanes.join("\n")}
               node.statements
             )
           );
-          addEmitHelpers(updated, context4.readEmitHelpers());
+          addEmitHelpers(updated, context3.readEmitHelpers());
           return updated;
         }
         function collectAsynchronousDependencies(node, includeNonAmdDependencies) {
@@ -143282,7 +143282,7 @@ ${lanes.join("\n")}
             case 226:
               return visitPreOrPostfixUnaryExpression(node, valueIsDiscarded);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitor(node) {
           return visitorWorker(
@@ -143342,9 +143342,9 @@ ${lanes.join("\n")}
         }
         function visitDestructuringAssignment(node, valueIsDiscarded) {
           if (destructuringNeedsFlattening(node.left)) {
-            return flattenDestructuringAssignment(node, visitor, context4, 0, !valueIsDiscarded, createAllExportExpressions);
+            return flattenDestructuringAssignment(node, visitor, context3, 0, !valueIsDiscarded, createAllExportExpressions);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitForStatement(node, isTopLevel) {
           if (isTopLevel && node.initializer && isVariableDeclarationList(node.initializer) && !(node.initializer.flags & 7)) {
@@ -143367,7 +143367,7 @@ ${lanes.join("\n")}
               addRange(statements, exportStatements);
               const condition = visitNode(node.condition, visitor, isExpression);
               const incrementor = visitNode(node.incrementor, discardedValueVisitor, isExpression);
-              const body = visitIterationBody(node.statement, isTopLevel ? topLevelNestedVisitor : visitor, context4);
+              const body = visitIterationBody(node.statement, isTopLevel ? topLevelNestedVisitor : visitor, context3);
               statements.push(factory2.updateForStatement(
                 node,
                 /*initializer*/
@@ -143384,7 +143384,7 @@ ${lanes.join("\n")}
             visitNode(node.initializer, discardedValueVisitor, isForInitializer),
             visitNode(node.condition, visitor, isExpression),
             visitNode(node.incrementor, discardedValueVisitor, isExpression),
-            visitIterationBody(node.statement, isTopLevel ? topLevelNestedVisitor : visitor, context4)
+            visitIterationBody(node.statement, isTopLevel ? topLevelNestedVisitor : visitor, context3)
           );
         }
         function visitForInStatement(node) {
@@ -143399,7 +143399,7 @@ ${lanes.join("\n")}
             if (some(exportStatements)) {
               const initializer = visitNode(node.initializer, discardedValueVisitor, isForInitializer);
               const expression = visitNode(node.expression, visitor, isExpression);
-              const body = visitIterationBody(node.statement, topLevelNestedVisitor, context4);
+              const body = visitIterationBody(node.statement, topLevelNestedVisitor, context3);
               const mergedBody = isBlock(body) ? factory2.updateBlock(body, [...exportStatements, ...body.statements]) : factory2.createBlock(
                 [...exportStatements, body],
                 /*multiLine*/
@@ -143412,7 +143412,7 @@ ${lanes.join("\n")}
             node,
             visitNode(node.initializer, discardedValueVisitor, isForInitializer),
             visitNode(node.expression, visitor, isExpression),
-            visitIterationBody(node.statement, topLevelNestedVisitor, context4)
+            visitIterationBody(node.statement, topLevelNestedVisitor, context3)
           );
         }
         function visitForOfStatement(node) {
@@ -143426,7 +143426,7 @@ ${lanes.join("\n")}
             );
             const initializer = visitNode(node.initializer, discardedValueVisitor, isForInitializer);
             const expression = visitNode(node.expression, visitor, isExpression);
-            let body = visitIterationBody(node.statement, topLevelNestedVisitor, context4);
+            let body = visitIterationBody(node.statement, topLevelNestedVisitor, context3);
             if (some(exportStatements)) {
               body = isBlock(body) ? factory2.updateBlock(body, [...exportStatements, ...body.statements]) : factory2.createBlock(
                 [...exportStatements, body],
@@ -143441,13 +143441,13 @@ ${lanes.join("\n")}
             node.awaitModifier,
             visitNode(node.initializer, discardedValueVisitor, isForInitializer),
             visitNode(node.expression, visitor, isExpression),
-            visitIterationBody(node.statement, topLevelNestedVisitor, context4)
+            visitIterationBody(node.statement, topLevelNestedVisitor, context3)
           );
         }
         function visitDoStatement(node) {
           return factory2.updateDoStatement(
             node,
-            visitIterationBody(node.statement, topLevelNestedVisitor, context4),
+            visitIterationBody(node.statement, topLevelNestedVisitor, context3),
             visitNode(node.expression, visitor, isExpression)
           );
         }
@@ -143455,7 +143455,7 @@ ${lanes.join("\n")}
           return factory2.updateWhileStatement(
             node,
             visitNode(node.expression, visitor, isExpression),
-            visitIterationBody(node.statement, topLevelNestedVisitor, context4)
+            visitIterationBody(node.statement, topLevelNestedVisitor, context3)
           );
         }
         function visitLabeledStatement(node) {
@@ -143501,10 +143501,10 @@ ${lanes.join("\n")}
           );
         }
         function visitDefaultClause(node) {
-          return visitEachChild(node, topLevelNestedVisitor, context4);
+          return visitEachChild(node, topLevelNestedVisitor, context3);
         }
         function visitTryStatement(node) {
-          return visitEachChild(node, topLevelNestedVisitor, context4);
+          return visitEachChild(node, topLevelNestedVisitor, context3);
         }
         function visitCatchClause(node) {
           return factory2.updateCatchClause(
@@ -143514,7 +143514,7 @@ ${lanes.join("\n")}
           );
         }
         function visitBlock(node) {
-          node = visitEachChild(node, topLevelNestedVisitor, context4);
+          node = visitEachChild(node, topLevelNestedVisitor, context3);
           return node;
         }
         function visitExpressionStatement(node) {
@@ -143560,7 +143560,7 @@ ${lanes.join("\n")}
               return expression;
             }
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function shimOrRewriteImportOrRequireCall(node) {
           return factory2.updateCallExpression(
@@ -143578,7 +143578,7 @@ ${lanes.join("\n")}
         }
         function visitImportCallExpression(node, rewriteOrShim) {
           if (moduleKind === 0 && languageVersion >= 7) {
-            return visitEachChild(node, visitor, context4);
+            return visitEachChild(node, visitor, context3);
           }
           const externalModuleName = getExternalModuleNameLiteral(factory2, node, currentSourceFile, host, resolver, compilerOptions);
           const firstArgument = visitNode(firstOrUndefined(node.arguments), visitor, isExpression);
@@ -144138,7 +144138,7 @@ ${lanes.join("\n")}
                     visitNodes2(node.parameters, visitor, isParameter),
                     /*type*/
                     void 0,
-                    visitEachChild(node.body, visitor, context4)
+                    visitEachChild(node.body, visitor, context3)
                   ),
                   /*location*/
                   node
@@ -144148,7 +144148,7 @@ ${lanes.join("\n")}
               )
             );
           } else {
-            statements = append(statements, visitEachChild(node, visitor, context4));
+            statements = append(statements, visitEachChild(node, visitor, context3));
           }
           return singleOrMany(statements);
         }
@@ -144183,7 +144183,7 @@ ${lanes.join("\n")}
               )
             );
           } else {
-            statements = append(statements, visitEachChild(node, visitor, context4));
+            statements = append(statements, visitEachChild(node, visitor, context3));
           }
           statements = appendExportsOfHoistedDeclaration(statements, node);
           return singleOrMany(statements);
@@ -144259,7 +144259,7 @@ ${lanes.join("\n")}
               statements = append(statements, statement);
             }
           } else {
-            statements = append(statements, visitEachChild(node, visitor, context4));
+            statements = append(statements, visitEachChild(node, visitor, context3));
           }
           statements = appendExportsOfVariableStatement(statements, node);
           return singleOrMany(statements);
@@ -144290,7 +144290,7 @@ ${lanes.join("\n")}
             return flattenDestructuringAssignment(
               visitNode(node, visitor, isInitializedVariable),
               visitor,
-              context4,
+              context3,
               0,
               /*needsValue*/
               false,
@@ -144725,37 +144725,37 @@ ${lanes.join("\n")}
         text: `
             var __syncRequire = typeof module === "object" && typeof module.exports === "object";`
       };
-      function transformSystemModule(context4) {
+      function transformSystemModule(context3) {
         const {
           factory: factory2,
           startLexicalEnvironment,
           endLexicalEnvironment,
           hoistVariableDeclaration
-        } = context4;
-        const compilerOptions = context4.getCompilerOptions();
-        const resolver = context4.getEmitResolver();
-        const host = context4.getEmitHost();
-        const previousOnSubstituteNode = context4.onSubstituteNode;
-        const previousOnEmitNode = context4.onEmitNode;
-        context4.onSubstituteNode = onSubstituteNode;
-        context4.onEmitNode = onEmitNode;
-        context4.enableSubstitution(
+        } = context3;
+        const compilerOptions = context3.getCompilerOptions();
+        const resolver = context3.getEmitResolver();
+        const host = context3.getEmitHost();
+        const previousOnSubstituteNode = context3.onSubstituteNode;
+        const previousOnEmitNode = context3.onEmitNode;
+        context3.onSubstituteNode = onSubstituteNode;
+        context3.onEmitNode = onEmitNode;
+        context3.enableSubstitution(
           80
           /* Identifier */
         );
-        context4.enableSubstitution(
+        context3.enableSubstitution(
           305
           /* ShorthandPropertyAssignment */
         );
-        context4.enableSubstitution(
+        context3.enableSubstitution(
           227
           /* BinaryExpression */
         );
-        context4.enableSubstitution(
+        context3.enableSubstitution(
           237
           /* MetaProperty */
         );
-        context4.enableEmitNotification(
+        context3.enableEmitNotification(
           308
           /* SourceFile */
         );
@@ -144770,7 +144770,7 @@ ${lanes.join("\n")}
         let hoistedStatements;
         let enclosingBlockScopedContainer;
         let noSubstitution;
-        return chainBundle(context4, transformSourceFile);
+        return chainBundle(context3, transformSourceFile);
         function transformSourceFile(node) {
           if (node.isDeclarationFile || !(isEffectiveExternalModule(node, compilerOptions) || node.transformFlags & 8388608)) {
             return node;
@@ -144778,7 +144778,7 @@ ${lanes.join("\n")}
           const id = getOriginalNodeId(node);
           currentSourceFile = node;
           enclosingBlockScopedContainer = node;
-          moduleInfo = moduleInfoMap[id] = collectExternalModuleInfo(context4, node);
+          moduleInfo = moduleInfoMap[id] = collectExternalModuleInfo(context3, node);
           exportFunction = factory2.createUniqueName("exports");
           exportFunctionsMap[id] = exportFunction;
           contextObject = contextObjectMap[id] = factory2.createUniqueName("context");
@@ -145307,7 +145307,7 @@ ${lanes.join("\n")}
               )
             );
           } else {
-            hoistedStatements = append(hoistedStatements, visitEachChild(node, visitor, context4));
+            hoistedStatements = append(hoistedStatements, visitEachChild(node, visitor, context3));
           }
           hoistedStatements = appendExportsOfHoistedDeclaration(hoistedStatements, node);
           return void 0;
@@ -145414,7 +145414,7 @@ ${lanes.join("\n")}
           return isBindingPattern(node.name) ? flattenDestructuringAssignment(
             node,
             visitor,
-            context4,
+            context3,
             0,
             /*needsValue*/
             false,
@@ -145628,7 +145628,7 @@ ${lanes.join("\n")}
             visitNode(node.initializer, isTopLevel ? visitForInitializer : discardedValueVisitor, isForInitializer),
             visitNode(node.condition, visitor, isExpression),
             visitNode(node.incrementor, discardedValueVisitor, isExpression),
-            visitIterationBody(node.statement, isTopLevel ? topLevelNestedVisitor : visitor, context4)
+            visitIterationBody(node.statement, isTopLevel ? topLevelNestedVisitor : visitor, context3)
           );
           enclosingBlockScopedContainer = savedEnclosingBlockScopedContainer;
           return node;
@@ -145640,7 +145640,7 @@ ${lanes.join("\n")}
             node,
             visitForInitializer(node.initializer),
             visitNode(node.expression, visitor, isExpression),
-            visitIterationBody(node.statement, topLevelNestedVisitor, context4)
+            visitIterationBody(node.statement, topLevelNestedVisitor, context3)
           );
           enclosingBlockScopedContainer = savedEnclosingBlockScopedContainer;
           return node;
@@ -145653,7 +145653,7 @@ ${lanes.join("\n")}
             node.awaitModifier,
             visitForInitializer(node.initializer),
             visitNode(node.expression, visitor, isExpression),
-            visitIterationBody(node.statement, topLevelNestedVisitor, context4)
+            visitIterationBody(node.statement, topLevelNestedVisitor, context3)
           );
           enclosingBlockScopedContainer = savedEnclosingBlockScopedContainer;
           return node;
@@ -145682,7 +145682,7 @@ ${lanes.join("\n")}
         function visitDoStatement(node) {
           return factory2.updateDoStatement(
             node,
-            visitIterationBody(node.statement, topLevelNestedVisitor, context4),
+            visitIterationBody(node.statement, topLevelNestedVisitor, context3),
             visitNode(node.expression, visitor, isExpression)
           );
         }
@@ -145690,7 +145690,7 @@ ${lanes.join("\n")}
           return factory2.updateWhileStatement(
             node,
             visitNode(node.expression, visitor, isExpression),
-            visitIterationBody(node.statement, topLevelNestedVisitor, context4)
+            visitIterationBody(node.statement, topLevelNestedVisitor, context3)
           );
         }
         function visitLabeledStatement(node) {
@@ -145740,10 +145740,10 @@ ${lanes.join("\n")}
           );
         }
         function visitDefaultClause(node) {
-          return visitEachChild(node, topLevelNestedVisitor, context4);
+          return visitEachChild(node, topLevelNestedVisitor, context3);
         }
         function visitTryStatement(node) {
-          return visitEachChild(node, topLevelNestedVisitor, context4);
+          return visitEachChild(node, topLevelNestedVisitor, context3);
         }
         function visitCatchClause(node) {
           const savedEnclosingBlockScopedContainer = enclosingBlockScopedContainer;
@@ -145759,7 +145759,7 @@ ${lanes.join("\n")}
         function visitBlock(node) {
           const savedEnclosingBlockScopedContainer = enclosingBlockScopedContainer;
           enclosingBlockScopedContainer = node;
-          node = visitEachChild(node, topLevelNestedVisitor, context4);
+          node = visitEachChild(node, topLevelNestedVisitor, context3);
           enclosingBlockScopedContainer = savedEnclosingBlockScopedContainer;
           return node;
         }
@@ -145794,7 +145794,7 @@ ${lanes.join("\n")}
             case 226:
               return visitPrefixOrPostfixUnaryExpression(node, valueIsDiscarded);
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function visitor(node) {
           return visitorWorker(
@@ -145838,12 +145838,12 @@ ${lanes.join("\n")}
             return flattenDestructuringAssignment(
               node,
               visitor,
-              context4,
+              context3,
               0,
               !valueIsDiscarded
             );
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function hasExportedReferenceInDestructuringTarget(node) {
           if (isAssignmentExpression(
@@ -145897,7 +145897,7 @@ ${lanes.join("\n")}
               return expression;
             }
           }
-          return visitEachChild(node, visitor, context4);
+          return visitEachChild(node, visitor, context3);
         }
         function modifierVisitor(node) {
           switch (node.kind) {
@@ -146094,24 +146094,24 @@ ${lanes.join("\n")}
           return noSubstitution && node.id && noSubstitution[node.id];
         }
       }
-      function transformECMAScriptModule(context4) {
+      function transformECMAScriptModule(context3) {
         const {
           factory: factory2,
           getEmitHelperFactory: emitHelpers
-        } = context4;
-        const host = context4.getEmitHost();
-        const resolver = context4.getEmitResolver();
-        const compilerOptions = context4.getCompilerOptions();
+        } = context3;
+        const host = context3.getEmitHost();
+        const resolver = context3.getEmitResolver();
+        const compilerOptions = context3.getCompilerOptions();
         const languageVersion = getEmitScriptTarget(compilerOptions);
-        const previousOnEmitNode = context4.onEmitNode;
-        const previousOnSubstituteNode = context4.onSubstituteNode;
-        context4.onEmitNode = onEmitNode;
-        context4.onSubstituteNode = onSubstituteNode;
-        context4.enableEmitNotification(
+        const previousOnEmitNode = context3.onEmitNode;
+        const previousOnSubstituteNode = context3.onSubstituteNode;
+        context3.onEmitNode = onEmitNode;
+        context3.onSubstituteNode = onSubstituteNode;
+        context3.enableEmitNotification(
           308
           /* SourceFile */
         );
-        context4.enableSubstitution(
+        context3.enableSubstitution(
           80
           /* Identifier */
         );
@@ -146120,7 +146120,7 @@ ${lanes.join("\n")}
         let helperNameSubstitutions;
         let currentSourceFile;
         let importRequireStatements;
-        return chainBundle(context4, transformSourceFile);
+        return chainBundle(context3, transformSourceFile);
         function transformSourceFile(node) {
           if (node.isDeclarationFile) {
             return node;
@@ -146143,7 +146143,7 @@ ${lanes.join("\n")}
               );
             }
             let result = updateExternalModule(node);
-            addEmitHelpers(result, context4.readEmitHelpers());
+            addEmitHelpers(result, context3.readEmitHelpers());
             currentSourceFile = void 0;
             if (importRequireStatements) {
               result = factory2.updateSourceFile(
@@ -146173,7 +146173,7 @@ ${lanes.join("\n")}
               setTextRange(factory2.createNodeArray(statements), node.statements)
             );
           } else {
-            return visitEachChild(node, visitor, context4);
+            return visitEachChild(node, visitor, context3);
           }
         }
         function visitor(node) {
@@ -146194,7 +146194,7 @@ ${lanes.join("\n")}
             // fallthrough
             default:
               if ((importsAndRequiresToRewriteOrShim == null ? void 0 : importsAndRequiresToRewriteOrShim.length) && rangeContainsRange(node, importsAndRequiresToRewriteOrShim[0])) {
-                return visitEachChild(node, visitor, context4);
+                return visitEachChild(node, visitor, context3);
               }
           }
           return node;
@@ -146477,25 +146477,25 @@ ${lanes.join("\n")}
           return node;
         }
       }
-      function transformImpliedNodeFormatDependentModule(context4) {
-        const previousOnSubstituteNode = context4.onSubstituteNode;
-        const previousOnEmitNode = context4.onEmitNode;
-        const esmTransform = transformECMAScriptModule(context4);
-        const esmOnSubstituteNode = context4.onSubstituteNode;
-        const esmOnEmitNode = context4.onEmitNode;
-        context4.onSubstituteNode = previousOnSubstituteNode;
-        context4.onEmitNode = previousOnEmitNode;
-        const cjsTransform = transformModule(context4);
-        const cjsOnSubstituteNode = context4.onSubstituteNode;
-        const cjsOnEmitNode = context4.onEmitNode;
-        const getEmitModuleFormatOfFile2 = (file) => context4.getEmitHost().getEmitModuleFormatOfFile(file);
-        context4.onSubstituteNode = onSubstituteNode;
-        context4.onEmitNode = onEmitNode;
-        context4.enableSubstitution(
+      function transformImpliedNodeFormatDependentModule(context3) {
+        const previousOnSubstituteNode = context3.onSubstituteNode;
+        const previousOnEmitNode = context3.onEmitNode;
+        const esmTransform = transformECMAScriptModule(context3);
+        const esmOnSubstituteNode = context3.onSubstituteNode;
+        const esmOnEmitNode = context3.onEmitNode;
+        context3.onSubstituteNode = previousOnSubstituteNode;
+        context3.onEmitNode = previousOnEmitNode;
+        const cjsTransform = transformModule(context3);
+        const cjsOnSubstituteNode = context3.onSubstituteNode;
+        const cjsOnEmitNode = context3.onEmitNode;
+        const getEmitModuleFormatOfFile2 = (file) => context3.getEmitHost().getEmitModuleFormatOfFile(file);
+        context3.onSubstituteNode = onSubstituteNode;
+        context3.onEmitNode = onEmitNode;
+        context3.enableSubstitution(
           308
           /* SourceFile */
         );
-        context4.enableEmitNotification(
+        context3.enableEmitNotification(
           308
           /* SourceFile */
         );
@@ -146544,7 +146544,7 @@ ${lanes.join("\n")}
           return node.kind === 308 ? transformSourceFile(node) : transformBundle(node);
         }
         function transformBundle(node) {
-          return context4.factory.createBundle(map(node.sourceFiles, transformSourceFile));
+          return context3.factory.createBundle(map(node.sourceFiles, transformSourceFile));
         }
       }
       function canProduceDiagnostics(node) {
@@ -147109,7 +147109,7 @@ ${lanes.join("\n")}
       }
       var declarationEmitNodeBuilderFlags = 1024 | 2048 | 4096 | 8 | 524288 | 4 | 1;
       var declarationEmitInternalNodeBuilderFlags = 8;
-      function transformDeclarations(context4) {
+      function transformDeclarations(context3) {
         const throwDiagnostic = () => Debug.fail("Diagnostic emitted without context");
         let getSymbolAccessibilityDiagnostic = throwDiagnostic;
         let needsDeclare = true;
@@ -147121,8 +147121,8 @@ ${lanes.join("\n")}
         let lateMarkedStatements;
         let lateStatementReplacementMap;
         let suppressNewDiagnosticContexts;
-        const { factory: factory2 } = context4;
-        const host = context4.getEmitHost();
+        const { factory: factory2 } = context3;
+        const host = context3.getEmitHost();
         let restoreFallbackNode = () => void 0;
         const symbolTracker = {
           trackSymbol,
@@ -147155,8 +147155,8 @@ ${lanes.join("\n")}
         let rawReferencedFiles;
         let rawTypeReferenceDirectives;
         let rawLibReferenceDirectives;
-        const resolver = context4.getEmitResolver();
-        const options = context4.getCompilerOptions();
+        const resolver = context3.getEmitResolver();
+        const options = context3.getCompilerOptions();
         const getIsolatedDeclarationError = createGetIsolatedDeclarationErrors(resolver);
         const { stripInternal, isolatedDeclarations } = options;
         return transformRoot;
@@ -147164,7 +147164,7 @@ ${lanes.join("\n")}
           resolver.getPropertiesOfContainerFunction(node).forEach((p) => {
             if (isExpandoPropertyDeclaration(p.valueDeclaration)) {
               const errorTarget = isBinaryExpression(p.valueDeclaration) ? p.valueDeclaration.left : p.valueDeclaration;
-              context4.addDiagnostic(createDiagnosticForNode(
+              context3.addDiagnostic(createDiagnosticForNode(
                 errorTarget,
                 Diagnostics.Assigning_properties_to_functions_without_declaring_them_is_not_supported_with_isolatedDeclarations_Add_an_explicit_declaration_for_the_properties_assigned_to_this_function
               ));
@@ -147177,7 +147177,7 @@ ${lanes.join("\n")}
           if (isVariableDeclaration(node) && resolver.isExpandoFunctionDeclaration(node)) {
             reportExpandoFunctionErrors(node);
           } else {
-            context4.addDiagnostic(getIsolatedDeclarationError(node));
+            context3.addDiagnostic(getIsolatedDeclarationError(node));
           }
         }
         function handleSymbolAccessibilityError(symbolAccessibilityResult) {
@@ -147195,9 +147195,9 @@ ${lanes.join("\n")}
             const errorInfo = getSymbolAccessibilityDiagnostic(symbolAccessibilityResult);
             if (errorInfo) {
               if (errorInfo.typeName) {
-                context4.addDiagnostic(createDiagnosticForNode(symbolAccessibilityResult.errorNode || errorInfo.errorNode, errorInfo.diagnosticMessage, getTextOfNode(errorInfo.typeName), symbolAccessibilityResult.errorSymbolName, symbolAccessibilityResult.errorModuleName));
+                context3.addDiagnostic(createDiagnosticForNode(symbolAccessibilityResult.errorNode || errorInfo.errorNode, errorInfo.diagnosticMessage, getTextOfNode(errorInfo.typeName), symbolAccessibilityResult.errorSymbolName, symbolAccessibilityResult.errorModuleName));
               } else {
-                context4.addDiagnostic(createDiagnosticForNode(symbolAccessibilityResult.errorNode || errorInfo.errorNode, errorInfo.diagnosticMessage, symbolAccessibilityResult.errorSymbolName, symbolAccessibilityResult.errorModuleName));
+                context3.addDiagnostic(createDiagnosticForNode(symbolAccessibilityResult.errorNode || errorInfo.errorNode, errorInfo.diagnosticMessage, symbolAccessibilityResult.errorSymbolName, symbolAccessibilityResult.errorModuleName));
               }
               return true;
             }
@@ -147217,7 +147217,7 @@ ${lanes.join("\n")}
         }
         function reportPrivateInBaseOfClassExpression(propertyName) {
           if (errorNameNode || errorFallbackNode) {
-            context4.addDiagnostic(
+            context3.addDiagnostic(
               addRelatedInfo(
                 createDiagnosticForNode(errorNameNode || errorFallbackNode, Diagnostics.Property_0_of_exported_anonymous_class_type_may_not_be_private_or_protected, propertyName),
                 ...isVariableDeclaration((errorNameNode || errorFallbackNode).parent) ? [createDiagnosticForNode(errorNameNode || errorFallbackNode, Diagnostics.Add_a_type_annotation_to_the_variable_0, errorDeclarationNameWithFallback())] : []
@@ -147230,27 +147230,27 @@ ${lanes.join("\n")}
         }
         function reportInaccessibleUniqueSymbolError() {
           if (errorNameNode || errorFallbackNode) {
-            context4.addDiagnostic(createDiagnosticForNode(errorNameNode || errorFallbackNode, Diagnostics.The_inferred_type_of_0_references_an_inaccessible_1_type_A_type_annotation_is_necessary, errorDeclarationNameWithFallback(), "unique symbol"));
+            context3.addDiagnostic(createDiagnosticForNode(errorNameNode || errorFallbackNode, Diagnostics.The_inferred_type_of_0_references_an_inaccessible_1_type_A_type_annotation_is_necessary, errorDeclarationNameWithFallback(), "unique symbol"));
           }
         }
         function reportCyclicStructureError() {
           if (errorNameNode || errorFallbackNode) {
-            context4.addDiagnostic(createDiagnosticForNode(errorNameNode || errorFallbackNode, Diagnostics.The_inferred_type_of_0_references_a_type_with_a_cyclic_structure_which_cannot_be_trivially_serialized_A_type_annotation_is_necessary, errorDeclarationNameWithFallback()));
+            context3.addDiagnostic(createDiagnosticForNode(errorNameNode || errorFallbackNode, Diagnostics.The_inferred_type_of_0_references_a_type_with_a_cyclic_structure_which_cannot_be_trivially_serialized_A_type_annotation_is_necessary, errorDeclarationNameWithFallback()));
           }
         }
         function reportInaccessibleThisError() {
           if (errorNameNode || errorFallbackNode) {
-            context4.addDiagnostic(createDiagnosticForNode(errorNameNode || errorFallbackNode, Diagnostics.The_inferred_type_of_0_references_an_inaccessible_1_type_A_type_annotation_is_necessary, errorDeclarationNameWithFallback(), "this"));
+            context3.addDiagnostic(createDiagnosticForNode(errorNameNode || errorFallbackNode, Diagnostics.The_inferred_type_of_0_references_an_inaccessible_1_type_A_type_annotation_is_necessary, errorDeclarationNameWithFallback(), "this"));
           }
         }
         function reportLikelyUnsafeImportRequiredError(specifier) {
           if (errorNameNode || errorFallbackNode) {
-            context4.addDiagnostic(createDiagnosticForNode(errorNameNode || errorFallbackNode, Diagnostics.The_inferred_type_of_0_cannot_be_named_without_a_reference_to_1_This_is_likely_not_portable_A_type_annotation_is_necessary, errorDeclarationNameWithFallback(), specifier));
+            context3.addDiagnostic(createDiagnosticForNode(errorNameNode || errorFallbackNode, Diagnostics.The_inferred_type_of_0_cannot_be_named_without_a_reference_to_1_This_is_likely_not_portable_A_type_annotation_is_necessary, errorDeclarationNameWithFallback(), specifier));
           }
         }
         function reportTruncationError() {
           if (errorNameNode || errorFallbackNode) {
-            context4.addDiagnostic(createDiagnosticForNode(errorNameNode || errorFallbackNode, Diagnostics.The_inferred_type_of_this_node_exceeds_the_maximum_length_the_compiler_will_serialize_An_explicit_type_annotation_is_needed));
+            context3.addDiagnostic(createDiagnosticForNode(errorNameNode || errorFallbackNode, Diagnostics.The_inferred_type_of_this_node_exceeds_the_maximum_length_the_compiler_will_serialize_An_explicit_type_annotation_is_needed));
           }
         }
         function reportNonlocalAugmentation(containingFile, parentSymbol, symbol) {
@@ -147259,7 +147259,7 @@ ${lanes.join("\n")}
           const augmentingDeclarations = filter(symbol.declarations, (d) => getSourceFileOfNode(d) !== containingFile);
           if (primaryDeclaration && augmentingDeclarations) {
             for (const augmentations of augmentingDeclarations) {
-              context4.addDiagnostic(addRelatedInfo(
+              context3.addDiagnostic(addRelatedInfo(
                 createDiagnosticForNode(augmentations, Diagnostics.Declaration_augments_declaration_in_another_file_This_cannot_be_serialized),
                 createDiagnosticForNode(primaryDeclaration, Diagnostics.This_is_the_declaration_being_augmented_Consider_moving_the_augmenting_declaration_into_the_same_file)
               ));
@@ -147268,7 +147268,7 @@ ${lanes.join("\n")}
         }
         function reportNonSerializableProperty(propertyName) {
           if (errorNameNode || errorFallbackNode) {
-            context4.addDiagnostic(createDiagnosticForNode(errorNameNode || errorFallbackNode, Diagnostics.The_type_of_this_node_cannot_be_serialized_because_its_property_0_cannot_be_serialized, propertyName));
+            context3.addDiagnostic(createDiagnosticForNode(errorNameNode || errorFallbackNode, Diagnostics.The_type_of_this_node_cannot_be_serialized_because_its_property_0_cannot_be_serialized, propertyName));
           }
         }
         function transformDeclarationsForJS(sourceFile) {
@@ -147315,7 +147315,7 @@ ${lanes.join("\n")}
                         138
                         /* DeclareKeyword */
                       )],
-                      factory2.createStringLiteral(getResolvedExternalModuleName(context4.getEmitHost(), sourceFile)),
+                      factory2.createStringLiteral(getResolvedExternalModuleName(context3.getEmitHost(), sourceFile)),
                       factory2.createModuleBlock(setTextRange(factory2.createNodeArray(transformAndReplaceLatePaintedStatements(statements)), sourceFile.statements))
                     )],
                     /*isDeclarationFile*/
@@ -147677,7 +147677,7 @@ ${lanes.join("\n")}
           resultHasExternalModuleIndicator = resultHasExternalModuleIndicator || parent2.kind !== 268 && parent2.kind !== 206;
           if (isStringLiteralLike(input)) {
             if (isBundledEmit) {
-              const newName = getExternalModuleNameFromDeclaration(context4.getEmitHost(), resolver, parent2);
+              const newName = getExternalModuleNameFromDeclaration(context3.getEmitHost(), resolver, parent2);
               if (newName) {
                 return factory2.createStringLiteral(newName);
               }
@@ -147766,7 +147766,7 @@ ${lanes.join("\n")}
           }
           if (resolver.isImportRequiredByAugmentation(decl)) {
             if (isolatedDeclarations) {
-              context4.addDiagnostic(createDiagnosticForNode(decl, Diagnostics.Declaration_emit_for_this_file_requires_preserving_this_import_for_augmentations_This_is_not_supported_with_isolatedDeclarations));
+              context3.addDiagnostic(createDiagnosticForNode(decl, Diagnostics.Declaration_emit_for_this_file_requires_preserving_this_import_for_augmentations_This_is_not_supported_with_isolatedDeclarations));
             }
             return factory2.updateImportDeclaration(
               decl,
@@ -147823,13 +147823,13 @@ ${lanes.join("\n")}
               if (isolatedDeclarations) {
                 if (!resolver.isDefinitelyReferenceToGlobalSymbolObject(input.name.expression)) {
                   if (isClassDeclaration(input.parent) || isObjectLiteralExpression(input.parent)) {
-                    context4.addDiagnostic(createDiagnosticForNode(input, Diagnostics.Computed_property_names_on_class_or_object_literals_cannot_be_inferred_with_isolatedDeclarations));
+                    context3.addDiagnostic(createDiagnosticForNode(input, Diagnostics.Computed_property_names_on_class_or_object_literals_cannot_be_inferred_with_isolatedDeclarations));
                     return;
                   } else if (
                     // Type declarations just need to double-check that the input computed name is an entity name expression
                     (isInterfaceDeclaration(input.parent) || isTypeLiteralNode(input.parent)) && !isEntityNameExpression(input.name.expression)
                   ) {
-                    context4.addDiagnostic(createDiagnosticForNode(input, Diagnostics.Computed_properties_must_be_number_or_string_literals_variables_or_dotted_expressions_with_isolatedDeclarations));
+                    context3.addDiagnostic(createDiagnosticForNode(input, Diagnostics.Computed_properties_must_be_number_or_string_literals_variables_or_dotted_expressions_with_isolatedDeclarations));
                     return;
                   }
                 }
@@ -147883,12 +147883,12 @@ ${lanes.join("\n")}
                 if (isEntityName(input.expression) || isEntityNameExpression(input.expression)) {
                   checkEntityNameVisibility(input.expression, enclosingDeclaration);
                 }
-                const node = visitEachChild(input, visitDeclarationSubtree, context4);
+                const node = visitEachChild(input, visitDeclarationSubtree, context3);
                 return cleanup(factory2.updateExpressionWithTypeArguments(node, node.expression, node.typeArguments));
               }
               case 184: {
                 checkEntityNameVisibility(input.typeName, enclosingDeclaration);
-                const node = visitEachChild(input, visitDeclarationSubtree, context4);
+                const node = visitEachChild(input, visitDeclarationSubtree, context3);
                 return cleanup(factory2.updateTypeReferenceNode(node, node.typeName, node.typeArguments));
               }
               case 181:
@@ -148069,7 +148069,7 @@ ${lanes.join("\n")}
                     void 0
                   ));
                 }
-                return cleanup(visitEachChild(input, visitDeclarationSubtree, context4));
+                return cleanup(visitEachChild(input, visitDeclarationSubtree, context3));
               }
               case 195: {
                 const checkType = visitNode(input.checkType, visitDeclarationSubtree, isTypeNode);
@@ -148124,7 +148124,7 @@ ${lanes.join("\n")}
               /* SingleLine */
             );
           }
-          return cleanup(visitEachChild(input, visitDeclarationSubtree, context4));
+          return cleanup(visitEachChild(input, visitDeclarationSubtree, context3));
           function cleanup(returnValue) {
             if (returnValue && canProduceDiagnostic && hasDynamicName(input)) {
               checkName(input);
@@ -148628,7 +148628,7 @@ ${lanes.join("\n")}
                   const constValue = enumValue == null ? void 0 : enumValue.value;
                   if (isolatedDeclarations && m.initializer && (enumValue == null ? void 0 : enumValue.hasExternalReferences) && // This will be its own compiler error instead, so don't report.
                   !isComputedPropertyName(m.name)) {
-                    context4.addDiagnostic(createDiagnosticForNode(m, Diagnostics.Enum_member_initializers_must_be_computable_without_references_to_external_symbols_with_isolatedDeclarations));
+                    context3.addDiagnostic(createDiagnosticForNode(m, Diagnostics.Enum_member_initializers_must_be_computable_without_references_to_external_symbols_with_isolatedDeclarations));
                   }
                   const newInitializer = constValue === void 0 ? void 0 : typeof constValue === "string" ? factory2.createStringLiteral(constValue) : constValue < 0 ? factory2.createPrefixUnaryExpression(41, factory2.createNumericLiteral(-constValue)) : factory2.createNumericLiteral(constValue);
                   return preserveJsDoc(factory2.updateEnumMember(m, m.name, newInitializer), m);
@@ -148916,9 +148916,9 @@ ${lanes.join("\n")}
         return (node) => isBundle(node) ? transformer.transformBundle(node) : transformer.transformSourceFile(node);
       }
       function wrapCustomTransformerFactory(transformer, handleDefault) {
-        return (context4) => {
-          const customTransformer = transformer(context4);
-          return typeof customTransformer === "function" ? handleDefault(context4, customTransformer) : wrapCustomTransformer(customTransformer);
+        return (context3) => {
+          const customTransformer = transformer(context3);
+          return typeof customTransformer === "function" ? handleDefault(context3, customTransformer) : wrapCustomTransformer(customTransformer);
         };
       }
       function wrapScriptTransformerFactory(transformer) {
@@ -148957,14 +148957,14 @@ ${lanes.join("\n")}
         let onEmitNode = noEmitNotification;
         let state = 0;
         const diagnostics = [];
-        const context4 = {
+        const context3 = {
           factory: factory2,
           getCompilerOptions: () => options,
           getEmitResolver: () => resolver,
           // TODO: GH#18217
           getEmitHost: () => host,
           // TODO: GH#18217
-          getEmitHelperFactory: memoize(() => createEmitHelperFactory(context4)),
+          getEmitHelperFactory: memoize(() => createEmitHelperFactory(context3)),
           startLexicalEnvironment,
           suspendLexicalEnvironment,
           resumeLexicalEnvironment,
@@ -149007,7 +149007,7 @@ ${lanes.join("\n")}
           disposeEmitNodes(getSourceFileOfNode(getParseTreeNode(node)));
         }
         mark("beforeTransform");
-        const transformersWithContext = transformers.map((t) => t(context4));
+        const transformersWithContext = transformers.map((t) => t(context3));
         const transformation = (node) => {
           for (const transform2 of transformersWithContext) {
             node = transform2(node);
@@ -155452,11 +155452,11 @@ ${lanes.join("\n")}
         if (hasMoreThanFiveLines) {
           gutterWidth = Math.max(ellipsis.length, gutterWidth);
         }
-        let context4 = "";
+        let context3 = "";
         for (let i = firstLine2; i <= lastLine2; i++) {
-          context4 += host.getNewLine();
+          context3 += host.getNewLine();
           if (hasMoreThanFiveLines && firstLine2 + 1 < i && i < lastLine2 - 1) {
-            context4 += indent3 + formatColorAndReset(ellipsis.padStart(gutterWidth), gutterStyleSequence) + gutterSeparator + host.getNewLine();
+            context3 += indent3 + formatColorAndReset(ellipsis.padStart(gutterWidth), gutterStyleSequence) + gutterSeparator + host.getNewLine();
             i = lastLine2 - 1;
           }
           const lineStart = getPositionOfLineAndCharacter(file, i, 0);
@@ -155464,22 +155464,22 @@ ${lanes.join("\n")}
           let lineContent = file.text.slice(lineStart, lineEnd);
           lineContent = lineContent.trimEnd();
           lineContent = lineContent.replace(/\t/g, " ");
-          context4 += indent3 + formatColorAndReset((i + 1 + "").padStart(gutterWidth), gutterStyleSequence) + gutterSeparator;
-          context4 += lineContent + host.getNewLine();
-          context4 += indent3 + formatColorAndReset("".padStart(gutterWidth), gutterStyleSequence) + gutterSeparator;
-          context4 += squiggleColor;
+          context3 += indent3 + formatColorAndReset((i + 1 + "").padStart(gutterWidth), gutterStyleSequence) + gutterSeparator;
+          context3 += lineContent + host.getNewLine();
+          context3 += indent3 + formatColorAndReset("".padStart(gutterWidth), gutterStyleSequence) + gutterSeparator;
+          context3 += squiggleColor;
           if (i === firstLine2) {
             const lastCharForLine = i === lastLine2 ? lastLineChar : void 0;
-            context4 += lineContent.slice(0, firstLineChar).replace(/\S/g, " ");
-            context4 += lineContent.slice(firstLineChar, lastCharForLine).replace(/./g, "~");
+            context3 += lineContent.slice(0, firstLineChar).replace(/\S/g, " ");
+            context3 += lineContent.slice(firstLineChar, lastCharForLine).replace(/./g, "~");
           } else if (i === lastLine2) {
-            context4 += lineContent.slice(0, lastLineChar).replace(/./g, "~");
+            context3 += lineContent.slice(0, lastLineChar).replace(/./g, "~");
           } else {
-            context4 += lineContent.replace(/./g, "~");
+            context3 += lineContent.replace(/./g, "~");
           }
-          context4 += resetEscapeSequence;
+          context3 += resetEscapeSequence;
         }
-        return context4;
+        return context3;
       }
       function formatLocation(file, start, host, color = formatColorAndReset) {
         const { line: firstLine2, character: firstLineChar } = getLineAndCharacterOfPosition(file, start);
@@ -166877,38 +166877,38 @@ ${lanes.join("\n")}
           serializeReturnTypeForSignature,
           serializeTypeOfExpression,
           serializeTypeOfAccessor,
-          tryReuseExistingTypeNode(context4, existing) {
-            if (!resolver.canReuseTypeNode(context4, existing)) {
+          tryReuseExistingTypeNode(context3, existing) {
+            if (!resolver.canReuseTypeNode(context3, existing)) {
               return void 0;
             }
-            return tryReuseExistingTypeNode(context4, existing);
+            return tryReuseExistingTypeNode(context3, existing);
           }
         };
-        function reuseNode(context4, node, range = node) {
-          return node === void 0 ? void 0 : resolver.markNodeReuse(context4, node.flags & 16 ? node : factory.cloneNode(node), range ?? node);
+        function reuseNode(context3, node, range = node) {
+          return node === void 0 ? void 0 : resolver.markNodeReuse(context3, node.flags & 16 ? node : factory.cloneNode(node), range ?? node);
         }
-        function tryReuseExistingTypeNode(context4, existing) {
-          const { finalizeBoundary, startRecoveryScope, hadError, markError } = resolver.createRecoveryBoundary(context4);
+        function tryReuseExistingTypeNode(context3, existing) {
+          const { finalizeBoundary, startRecoveryScope, hadError, markError } = resolver.createRecoveryBoundary(context3);
           const transformed = visitNode(existing, visitExistingNodeTreeSymbols, isTypeNode);
           if (!finalizeBoundary()) {
             return void 0;
           }
-          context4.approximateLength += existing.end - existing.pos;
+          context3.approximateLength += existing.end - existing.pos;
           return transformed;
           function visitExistingNodeTreeSymbols(node) {
             if (hadError()) return node;
             const recover = startRecoveryScope();
-            const onExitNewScope = isNewScopeNode(node) ? resolver.enterNewScope(context4, node) : void 0;
+            const onExitNewScope = isNewScopeNode(node) ? resolver.enterNewScope(context3, node) : void 0;
             const result = visitExistingNodeTreeSymbolsWorker(node);
             onExitNewScope == null ? void 0 : onExitNewScope();
             if (hadError()) {
               if (isTypeNode(node) && !isTypePredicateNode(node)) {
                 recover();
-                return resolver.serializeExistingTypeNode(context4, node);
+                return resolver.serializeExistingTypeNode(context3, node);
               }
               return node;
             }
-            return result ? resolver.markNodeReuse(context4, result, node) : void 0;
+            return result ? resolver.markNodeReuse(context3, result, node) : void 0;
           }
           function tryVisitSimpleTypeNode(node) {
             const innerNode = skipTypeParentheses(node);
@@ -166947,7 +166947,7 @@ ${lanes.join("\n")}
             return factory.updateTypeOperatorNode(node, type);
           }
           function tryVisitTypeQuery(node) {
-            const { introducesError, node: exprName } = resolver.trackExistingEntityName(context4, node.exprName);
+            const { introducesError, node: exprName } = resolver.trackExistingEntityName(context3, node.exprName);
             if (!introducesError) {
               return factory.updateTypeQueryNode(
                 node,
@@ -166956,18 +166956,18 @@ ${lanes.join("\n")}
               );
             }
             const serializedName = resolver.serializeTypeName(
-              context4,
+              context3,
               node.exprName,
               /*isTypeOf*/
               true
             );
             if (serializedName) {
-              return resolver.markNodeReuse(context4, serializedName, node.exprName);
+              return resolver.markNodeReuse(context3, serializedName, node.exprName);
             }
           }
           function tryVisitTypeReference(node) {
-            if (resolver.canReuseTypeNode(context4, node)) {
-              const { introducesError, node: newName } = resolver.trackExistingEntityName(context4, node.typeName);
+            if (resolver.canReuseTypeNode(context3, node)) {
+              const { introducesError, node: newName } = resolver.trackExistingEntityName(context3, node.typeName);
               const typeArguments = visitNodes2(node.typeArguments, visitExistingNodeTreeSymbols, isTypeNode);
               if (!introducesError) {
                 const updated = factory.updateTypeReferenceNode(
@@ -166975,17 +166975,17 @@ ${lanes.join("\n")}
                   newName,
                   typeArguments
                 );
-                return resolver.markNodeReuse(context4, updated, node);
+                return resolver.markNodeReuse(context3, updated, node);
               } else {
                 const serializedName = resolver.serializeTypeName(
-                  context4,
+                  context3,
                   node.typeName,
                   /*isTypeOf*/
                   false,
                   typeArguments
                 );
                 if (serializedName) {
-                  return resolver.markNodeReuse(context4, serializedName, node.typeName);
+                  return resolver.markNodeReuse(context3, serializedName, node.typeName);
                 }
               }
             }
@@ -167025,7 +167025,7 @@ ${lanes.join("\n")}
             if (isJSDocTypeLiteral(node)) {
               return factory.createTypeLiteralNode(map(node.jsDocPropertyTags, (t) => {
                 const name = visitNode(isIdentifier2(t.name) ? t.name : t.name.right, visitExistingNodeTreeSymbols, isIdentifier2);
-                const overrideTypeNode = resolver.getJsDocPropertyOverride(context4, node, t);
+                const overrideTypeNode = resolver.getJsDocPropertyOverride(context3, node, t);
                 return factory.createPropertySignature(
                   /*modifiers*/
                   void 0,
@@ -167075,7 +167075,7 @@ ${lanes.join("\n")}
                     /*modifiers*/
                     void 0,
                     getEffectiveDotDotDotForParameter(p),
-                    resolver.markNodeReuse(context4, factory.createIdentifier(getNameForJSDocFunctionParameter(p, i)), p),
+                    resolver.markNodeReuse(context3, factory.createIdentifier(getNameForJSDocFunctionParameter(p, i)), p),
                     factory.cloneNode(p.questionToken),
                     visitNode(p.type, visitExistingNodeTreeSymbols, isTypeNode),
                     /*initializer*/
@@ -167093,7 +167093,7 @@ ${lanes.join("\n")}
                     /*modifiers*/
                     void 0,
                     getEffectiveDotDotDotForParameter(p),
-                    resolver.markNodeReuse(context4, factory.createIdentifier(getNameForJSDocFunctionParameter(p, i)), p),
+                    resolver.markNodeReuse(context3, factory.createIdentifier(getNameForJSDocFunctionParameter(p, i)), p),
                     factory.cloneNode(p.questionToken),
                     visitNode(p.type, visitExistingNodeTreeSymbols, isTypeNode),
                     /*initializer*/
@@ -167107,14 +167107,14 @@ ${lanes.join("\n")}
               }
             }
             if (isThisTypeNode(node)) {
-              if (resolver.canReuseTypeNode(context4, node)) {
+              if (resolver.canReuseTypeNode(context3, node)) {
                 return node;
               }
               markError();
               return node;
             }
             if (isTypeParameterDeclaration(node)) {
-              const { node: newName } = resolver.trackExistingEntityName(context4, node.name);
+              const { node: newName } = resolver.trackExistingEntityName(context3, node.name);
               return factory.updateTypeParameterDeclaration(
                 node,
                 visitNodes2(node.modifiers, visitExistingNodeTreeSymbols, isModifier),
@@ -167145,14 +167145,14 @@ ${lanes.join("\n")}
                 markError();
                 return node;
               }
-              if (!resolver.canReuseTypeNode(context4, node)) {
-                return resolver.serializeExistingTypeNode(context4, node);
+              if (!resolver.canReuseTypeNode(context3, node)) {
+                return resolver.serializeExistingTypeNode(context3, node);
               }
               const specifier = rewriteModuleSpecifier2(node, node.argument.literal);
-              const literal = specifier === node.argument.literal ? reuseNode(context4, node.argument.literal) : specifier;
+              const literal = specifier === node.argument.literal ? reuseNode(context3, node.argument.literal) : specifier;
               return factory.updateImportTypeNode(
                 node,
-                literal === node.argument.literal ? reuseNode(context4, node.argument) : factory.createLiteralTypeNode(literal),
+                literal === node.argument.literal ? reuseNode(context3, node.argument) : factory.createLiteralTypeNode(literal),
                 visitNode(node.attributes, visitExistingNodeTreeSymbols, isImportAttributes),
                 visitNode(node.qualifier, visitExistingNodeTreeSymbols, isEntityName),
                 visitNodes2(node.typeArguments, visitExistingNodeTreeSymbols, isTypeNode),
@@ -167163,14 +167163,14 @@ ${lanes.join("\n")}
               if (!hasDynamicName(node)) {
                 return visitEachChild2(node, visitExistingNodeTreeSymbols);
               }
-              if (resolver.shouldRemoveDeclaration(context4, node)) {
+              if (resolver.shouldRemoveDeclaration(context3, node)) {
                 return void 0;
               }
             }
             if (isFunctionLike(node) && !node.type || isPropertyDeclaration(node) && !node.type && !node.initializer || isPropertySignature(node) && !node.type && !node.initializer || isParameter(node) && !node.type && !node.initializer) {
               let visited = visitEachChild2(node, visitExistingNodeTreeSymbols);
               if (visited === node) {
-                visited = resolver.markNodeReuse(context4, factory.cloneNode(node), node);
+                visited = resolver.markNodeReuse(context3, factory.cloneNode(node), node);
               }
               visited.type = factory.createKeywordTypeNode(
                 133
@@ -167190,11 +167190,11 @@ ${lanes.join("\n")}
               return result;
             }
             if (isComputedPropertyName(node) && isEntityNameExpression(node.expression)) {
-              const { node: result, introducesError } = resolver.trackExistingEntityName(context4, node.expression);
+              const { node: result, introducesError } = resolver.trackExistingEntityName(context3, node.expression);
               if (!introducesError) {
                 return factory.updateComputedPropertyName(node, result);
               } else {
-                const computedPropertyNameType = resolver.serializeTypeOfExpression(context4, node.expression);
+                const computedPropertyNameType = resolver.serializeTypeOfExpression(context3, node.expression);
                 let literal;
                 if (isLiteralTypeNode(computedPropertyNameType)) {
                   literal = computedPropertyNameType.literal;
@@ -167211,7 +167211,7 @@ ${lanes.join("\n")}
                   ) : void 0;
                   if (!literalNode) {
                     if (isImportTypeNode(computedPropertyNameType)) {
-                      resolver.trackComputedName(context4, node.expression);
+                      resolver.trackComputedName(context3, node.expression);
                     }
                     return node;
                   }
@@ -167229,7 +167229,7 @@ ${lanes.join("\n")}
             if (isTypePredicateNode(node)) {
               let parameterName;
               if (isIdentifier2(node.parameterName)) {
-                const { node: result, introducesError } = resolver.trackExistingEntityName(context4, node.parameterName);
+                const { node: result, introducesError } = resolver.trackExistingEntityName(context3, node.parameterName);
                 if (introducesError) markError();
                 parameterName = result;
               } else {
@@ -167239,19 +167239,19 @@ ${lanes.join("\n")}
             }
             if (isTupleTypeNode(node) || isTypeLiteralNode(node) || isMappedTypeNode(node)) {
               const visited = visitEachChild2(node, visitExistingNodeTreeSymbols);
-              const clone2 = resolver.markNodeReuse(context4, visited === node ? factory.cloneNode(node) : visited, node);
+              const clone2 = resolver.markNodeReuse(context3, visited === node ? factory.cloneNode(node) : visited, node);
               const flags = getEmitFlags(clone2);
-              setEmitFlags(clone2, flags | (context4.flags & 1024 && isTypeLiteralNode(node) ? 0 : 1));
+              setEmitFlags(clone2, flags | (context3.flags & 1024 && isTypeLiteralNode(node) ? 0 : 1));
               return clone2;
             }
-            if (isStringLiteral(node) && !!(context4.flags & 268435456) && !node.singleQuote) {
+            if (isStringLiteral(node) && !!(context3.flags & 268435456) && !node.singleQuote) {
               const clone2 = factory.cloneNode(node);
               clone2.singleQuote = true;
               return clone2;
             }
             if (isConditionalTypeNode(node)) {
               const checkType = visitNode(node.checkType, visitExistingNodeTreeSymbols, isTypeNode);
-              const disposeScope = resolver.enterNewScope(context4, node);
+              const disposeScope = resolver.enterNewScope(context3, node);
               const extendType = visitNode(node.extendsType, visitExistingNodeTreeSymbols, isTypeNode);
               const trueType = visitNode(node.trueType, visitExistingNodeTreeSymbols, isTypeNode);
               disposeScope();
@@ -167266,7 +167266,7 @@ ${lanes.join("\n")}
             }
             if (isTypeOperatorNode(node)) {
               if (node.operator === 158 && node.type.kind === 155) {
-                if (!resolver.canReuseTypeNode(context4, node)) {
+                if (!resolver.canReuseTypeNode(context3, node)) {
                   markError();
                   return node;
                 }
@@ -167281,7 +167281,7 @@ ${lanes.join("\n")}
             }
             return visitEachChild2(node, visitExistingNodeTreeSymbols);
             function visitEachChild2(node2, visitor) {
-              const nonlocalNode = !context4.enclosingFile || context4.enclosingFile !== getSourceFileOfNode(node2);
+              const nonlocalNode = !context3.enclosingFile || context3.enclosingFile !== getSourceFileOfNode(node2);
               return visitEachChild(
                 node2,
                 visitor,
@@ -167312,33 +167312,33 @@ ${lanes.join("\n")}
               return p.name && isIdentifier2(p.name) && p.name.escapedText === "this" ? "this" : getEffectiveDotDotDotForParameter(p) ? `args` : `arg${index}`;
             }
             function rewriteModuleSpecifier2(parent2, lit) {
-              const newName = resolver.getModuleSpecifierOverride(context4, parent2, lit);
+              const newName = resolver.getModuleSpecifierOverride(context3, parent2, lit);
               return newName ? setOriginalNode(factory.createStringLiteral(newName), lit) : lit;
             }
           }
         }
-        function serializeExistingTypeNode(typeNode, context4, addUndefined) {
+        function serializeExistingTypeNode(typeNode, context3, addUndefined) {
           if (!typeNode) return void 0;
           let result;
-          if ((!addUndefined || canAddUndefined(typeNode)) && resolver.canReuseTypeNode(context4, typeNode)) {
-            result = tryReuseExistingTypeNode(context4, typeNode);
+          if ((!addUndefined || canAddUndefined(typeNode)) && resolver.canReuseTypeNode(context3, typeNode)) {
+            result = tryReuseExistingTypeNode(context3, typeNode);
             if (result !== void 0) {
               result = addUndefinedIfNeeded(
                 result,
                 addUndefined,
                 /*owner*/
                 void 0,
-                context4
+                context3
               );
             }
           }
           return result;
         }
-        function serializeTypeAnnotationOfDeclaration(declaredType, context4, node, symbol, requiresAddingUndefined, useFallback = requiresAddingUndefined !== void 0) {
+        function serializeTypeAnnotationOfDeclaration(declaredType, context3, node, symbol, requiresAddingUndefined, useFallback = requiresAddingUndefined !== void 0) {
           if (!declaredType) return void 0;
-          if (!resolver.canReuseTypeNodeAnnotation(context4, node, declaredType, symbol, requiresAddingUndefined)) {
+          if (!resolver.canReuseTypeNodeAnnotation(context3, node, declaredType, symbol, requiresAddingUndefined)) {
             if (!requiresAddingUndefined || !resolver.canReuseTypeNodeAnnotation(
-              context4,
+              context3,
               node,
               declaredType,
               symbol,
@@ -167350,60 +167350,60 @@ ${lanes.join("\n")}
           }
           let result;
           if (!requiresAddingUndefined || canAddUndefined(declaredType)) {
-            result = serializeExistingTypeNode(declaredType, context4, requiresAddingUndefined);
+            result = serializeExistingTypeNode(declaredType, context3, requiresAddingUndefined);
           }
           if (result !== void 0 || !useFallback) {
             return result;
           }
-          context4.tracker.reportInferenceFallback(node);
-          return resolver.serializeExistingTypeNode(context4, declaredType, requiresAddingUndefined) ?? factory.createKeywordTypeNode(
+          context3.tracker.reportInferenceFallback(node);
+          return resolver.serializeExistingTypeNode(context3, declaredType, requiresAddingUndefined) ?? factory.createKeywordTypeNode(
             133
             /* AnyKeyword */
           );
         }
-        function serializeExistingTypeNodeWithFallback(typeNode, context4, addUndefined, targetNode) {
+        function serializeExistingTypeNodeWithFallback(typeNode, context3, addUndefined, targetNode) {
           if (!typeNode) return void 0;
-          const result = serializeExistingTypeNode(typeNode, context4, addUndefined);
+          const result = serializeExistingTypeNode(typeNode, context3, addUndefined);
           if (result !== void 0) {
             return result;
           }
-          context4.tracker.reportInferenceFallback(targetNode ?? typeNode);
-          return resolver.serializeExistingTypeNode(context4, typeNode, addUndefined) ?? factory.createKeywordTypeNode(
+          context3.tracker.reportInferenceFallback(targetNode ?? typeNode);
+          return resolver.serializeExistingTypeNode(context3, typeNode, addUndefined) ?? factory.createKeywordTypeNode(
             133
             /* AnyKeyword */
           );
         }
-        function serializeTypeOfAccessor(accessor, symbol, context4) {
-          return typeFromAccessor(accessor, symbol, context4) ?? inferAccessorType(accessor, resolver.getAllAccessorDeclarations(accessor), context4, symbol);
+        function serializeTypeOfAccessor(accessor, symbol, context3) {
+          return typeFromAccessor(accessor, symbol, context3) ?? inferAccessorType(accessor, resolver.getAllAccessorDeclarations(accessor), context3, symbol);
         }
-        function serializeTypeOfExpression(expr, context4, addUndefined, preserveLiterals) {
+        function serializeTypeOfExpression(expr, context3, addUndefined, preserveLiterals) {
           const result = typeFromExpression(
             expr,
-            context4,
+            context3,
             /*isConstContext*/
             false,
             addUndefined,
             preserveLiterals
           );
-          return result.type !== void 0 ? result.type : inferExpressionType(expr, context4, result.reportFallback);
+          return result.type !== void 0 ? result.type : inferExpressionType(expr, context3, result.reportFallback);
         }
-        function serializeTypeOfDeclaration(node, symbol, context4) {
+        function serializeTypeOfDeclaration(node, symbol, context3) {
           switch (node.kind) {
             case 170:
             case 342:
-              return typeFromParameter(node, symbol, context4);
+              return typeFromParameter(node, symbol, context3);
             case 261:
-              return typeFromVariable(node, symbol, context4);
+              return typeFromVariable(node, symbol, context3);
             case 172:
             case 349:
             case 173:
-              return typeFromProperty(node, symbol, context4);
+              return typeFromProperty(node, symbol, context3);
             case 209:
-              return inferTypeOfDeclaration(node, symbol, context4);
+              return inferTypeOfDeclaration(node, symbol, context3);
             case 278:
               return serializeTypeOfExpression(
                 node.expression,
-                context4,
+                context3,
                 /*addUndefined*/
                 void 0,
                 /*preserveLiterals*/
@@ -167412,39 +167412,39 @@ ${lanes.join("\n")}
             case 212:
             case 213:
             case 227:
-              return typeFromExpandoProperty(node, symbol, context4);
+              return typeFromExpandoProperty(node, symbol, context3);
             case 304:
             case 305:
-              return typeFromPropertyAssignment(node, symbol, context4);
+              return typeFromPropertyAssignment(node, symbol, context3);
             default:
               Debug.assertNever(node, `Node needs to be an inferrable node, found ${Debug.formatSyntaxKind(node.kind)}`);
           }
         }
-        function typeFromPropertyAssignment(node, symbol, context4) {
+        function typeFromPropertyAssignment(node, symbol, context3) {
           const typeAnnotation = getEffectiveTypeAnnotationNode(node);
           let result;
-          if (typeAnnotation && resolver.canReuseTypeNodeAnnotation(context4, node, typeAnnotation, symbol)) {
-            result = serializeExistingTypeNode(typeAnnotation, context4);
+          if (typeAnnotation && resolver.canReuseTypeNodeAnnotation(context3, node, typeAnnotation, symbol)) {
+            result = serializeExistingTypeNode(typeAnnotation, context3);
           }
           if (!result && node.kind === 304) {
             const initializer = node.initializer;
             const assertionNode = isJSDocTypeAssertion(initializer) ? getJSDocTypeAssertionType(initializer) : initializer.kind === 235 || initializer.kind === 217 ? initializer.type : void 0;
-            if (assertionNode && !isConstTypeReference(assertionNode) && resolver.canReuseTypeNodeAnnotation(context4, node, assertionNode, symbol)) {
-              result = serializeExistingTypeNode(assertionNode, context4);
+            if (assertionNode && !isConstTypeReference(assertionNode) && resolver.canReuseTypeNodeAnnotation(context3, node, assertionNode, symbol)) {
+              result = serializeExistingTypeNode(assertionNode, context3);
             }
           }
           return result ?? inferTypeOfDeclaration(
             node,
             symbol,
-            context4,
+            context3,
             /*reportFallback*/
             false
           );
         }
-        function serializeReturnTypeForSignature(node, symbol, context4) {
+        function serializeReturnTypeForSignature(node, symbol, context3) {
           switch (node.kind) {
             case 178:
-              return serializeTypeOfAccessor(node, symbol, context4);
+              return serializeTypeOfAccessor(node, symbol, context3);
             case 175:
             case 263:
             case 181:
@@ -167459,7 +167459,7 @@ ${lanes.join("\n")}
             case 220:
             case 318:
             case 324:
-              return createReturnFromSignature(node, symbol, context4);
+              return createReturnFromSignature(node, symbol, context3);
             default:
               Debug.assertNever(node, `Node needs to be an inferrable node, found ${Debug.formatSyntaxKind(node.kind)}`);
           }
@@ -167479,28 +167479,28 @@ ${lanes.join("\n")}
           }
           return accessorType;
         }
-        function typeFromAccessor(node, symbol, context4) {
+        function typeFromAccessor(node, symbol, context3) {
           const accessorDeclarations = resolver.getAllAccessorDeclarations(node);
           const accessorType = getTypeAnnotationFromAllAccessorDeclarations(node, accessorDeclarations);
           if (accessorType && !isTypePredicateNode(accessorType)) {
-            return withNewScope(context4, node, () => serializeTypeAnnotationOfDeclaration(accessorType, context4, node, symbol) ?? inferTypeOfDeclaration(node, symbol, context4));
+            return withNewScope(context3, node, () => serializeTypeAnnotationOfDeclaration(accessorType, context3, node, symbol) ?? inferTypeOfDeclaration(node, symbol, context3));
           }
           if (accessorDeclarations.getAccessor) {
-            return withNewScope(context4, accessorDeclarations.getAccessor, () => createReturnFromSignature(accessorDeclarations.getAccessor, symbol, context4));
+            return withNewScope(context3, accessorDeclarations.getAccessor, () => createReturnFromSignature(accessorDeclarations.getAccessor, symbol, context3));
           }
           return void 0;
         }
-        function typeFromVariable(node, symbol, context4) {
+        function typeFromVariable(node, symbol, context3) {
           var _a;
           const declaredType = getEffectiveTypeAnnotationNode(node);
           let resultType = failed2;
           if (declaredType) {
-            resultType = syntacticResult(serializeTypeAnnotationOfDeclaration(declaredType, context4, node, symbol));
+            resultType = syntacticResult(serializeTypeAnnotationOfDeclaration(declaredType, context3, node, symbol));
           } else if (node.initializer && (((_a = symbol.declarations) == null ? void 0 : _a.length) === 1 || countWhere2(symbol.declarations, isVariableDeclaration) === 1)) {
             if (!resolver.isExpandoFunctionDeclaration(node) && !isContextuallyTyped(node)) {
               resultType = typeFromExpression(
                 node.initializer,
-                context4,
+                context3,
                 /*isConstContext*/
                 void 0,
                 /*requiresAddingUndefined*/
@@ -167509,65 +167509,65 @@ ${lanes.join("\n")}
               );
             }
           }
-          return resultType.type !== void 0 ? resultType.type : inferTypeOfDeclaration(node, symbol, context4, resultType.reportFallback);
+          return resultType.type !== void 0 ? resultType.type : inferTypeOfDeclaration(node, symbol, context3, resultType.reportFallback);
         }
-        function typeFromParameter(node, symbol, context4) {
+        function typeFromParameter(node, symbol, context3) {
           const parent2 = node.parent;
           if (parent2.kind === 179) {
             return serializeTypeOfAccessor(
               parent2,
               /*symbol*/
               void 0,
-              context4
+              context3
             );
           }
           const declaredType = getEffectiveTypeAnnotationNode(node);
-          const addUndefined = resolver.requiresAddingImplicitUndefined(node, symbol, context4.enclosingDeclaration);
+          const addUndefined = resolver.requiresAddingImplicitUndefined(node, symbol, context3.enclosingDeclaration);
           let resultType = failed2;
           if (declaredType) {
-            resultType = syntacticResult(serializeTypeAnnotationOfDeclaration(declaredType, context4, node, symbol, addUndefined));
+            resultType = syntacticResult(serializeTypeAnnotationOfDeclaration(declaredType, context3, node, symbol, addUndefined));
           } else if (isParameter(node) && node.initializer && isIdentifier2(node.name) && !isContextuallyTyped(node)) {
             resultType = typeFromExpression(
               node.initializer,
-              context4,
+              context3,
               /*isConstContext*/
               void 0,
               addUndefined
             );
           }
-          return resultType.type !== void 0 ? resultType.type : inferTypeOfDeclaration(node, symbol, context4, resultType.reportFallback);
+          return resultType.type !== void 0 ? resultType.type : inferTypeOfDeclaration(node, symbol, context3, resultType.reportFallback);
         }
-        function typeFromExpandoProperty(node, symbol, context4) {
+        function typeFromExpandoProperty(node, symbol, context3) {
           const declaredType = getEffectiveTypeAnnotationNode(node);
           let result;
           if (declaredType) {
-            result = serializeTypeAnnotationOfDeclaration(declaredType, context4, node, symbol);
+            result = serializeTypeAnnotationOfDeclaration(declaredType, context3, node, symbol);
           }
-          const oldSuppressReportInferenceFallback = context4.suppressReportInferenceFallback;
-          context4.suppressReportInferenceFallback = true;
+          const oldSuppressReportInferenceFallback = context3.suppressReportInferenceFallback;
+          context3.suppressReportInferenceFallback = true;
           const resultType = result ?? inferTypeOfDeclaration(
             node,
             symbol,
-            context4,
+            context3,
             /*reportFallback*/
             false
           );
-          context4.suppressReportInferenceFallback = oldSuppressReportInferenceFallback;
+          context3.suppressReportInferenceFallback = oldSuppressReportInferenceFallback;
           return resultType;
         }
-        function typeFromProperty(node, symbol, context4) {
+        function typeFromProperty(node, symbol, context3) {
           const declaredType = getEffectiveTypeAnnotationNode(node);
-          const requiresAddingUndefined = resolver.requiresAddingImplicitUndefined(node, symbol, context4.enclosingDeclaration);
+          const requiresAddingUndefined = resolver.requiresAddingImplicitUndefined(node, symbol, context3.enclosingDeclaration);
           let resultType = failed2;
           if (declaredType) {
-            resultType = syntacticResult(serializeTypeAnnotationOfDeclaration(declaredType, context4, node, symbol, requiresAddingUndefined));
+            resultType = syntacticResult(serializeTypeAnnotationOfDeclaration(declaredType, context3, node, symbol, requiresAddingUndefined));
           } else {
             const initializer = isPropertyDeclaration(node) ? node.initializer : void 0;
             if (initializer && !isContextuallyTyped(node)) {
               const isReadonly = isDeclarationReadonly(node);
               resultType = typeFromExpression(
                 initializer,
-                context4,
+                context3,
                 /*isConstContext*/
                 void 0,
                 requiresAddingUndefined,
@@ -167575,90 +167575,90 @@ ${lanes.join("\n")}
               );
             }
           }
-          return resultType.type !== void 0 ? resultType.type : inferTypeOfDeclaration(node, symbol, context4, resultType.reportFallback);
+          return resultType.type !== void 0 ? resultType.type : inferTypeOfDeclaration(node, symbol, context3, resultType.reportFallback);
         }
-        function inferTypeOfDeclaration(node, symbol, context4, reportFallback = true) {
+        function inferTypeOfDeclaration(node, symbol, context3, reportFallback = true) {
           if (reportFallback) {
-            context4.tracker.reportInferenceFallback(node);
+            context3.tracker.reportInferenceFallback(node);
           }
-          if (context4.noInferenceFallback === true) {
+          if (context3.noInferenceFallback === true) {
             return factory.createKeywordTypeNode(
               133
               /* AnyKeyword */
             );
           }
-          return resolver.serializeTypeOfDeclaration(context4, node, symbol);
+          return resolver.serializeTypeOfDeclaration(context3, node, symbol);
         }
-        function inferExpressionType(node, context4, reportFallback = true, requiresAddingUndefined) {
+        function inferExpressionType(node, context3, reportFallback = true, requiresAddingUndefined) {
           Debug.assert(!requiresAddingUndefined);
           if (reportFallback) {
-            context4.tracker.reportInferenceFallback(node);
+            context3.tracker.reportInferenceFallback(node);
           }
-          if (context4.noInferenceFallback === true) {
+          if (context3.noInferenceFallback === true) {
             return factory.createKeywordTypeNode(
               133
               /* AnyKeyword */
             );
           }
-          return resolver.serializeTypeOfExpression(context4, node) ?? factory.createKeywordTypeNode(
+          return resolver.serializeTypeOfExpression(context3, node) ?? factory.createKeywordTypeNode(
             133
             /* AnyKeyword */
           );
         }
-        function inferReturnTypeOfSignatureSignature(node, context4, symbol, reportFallback) {
+        function inferReturnTypeOfSignatureSignature(node, context3, symbol, reportFallback) {
           if (reportFallback) {
-            context4.tracker.reportInferenceFallback(node);
+            context3.tracker.reportInferenceFallback(node);
           }
-          if (context4.noInferenceFallback === true) {
+          if (context3.noInferenceFallback === true) {
             return factory.createKeywordTypeNode(
               133
               /* AnyKeyword */
             );
           }
-          return resolver.serializeReturnTypeForSignature(context4, node, symbol) ?? factory.createKeywordTypeNode(
+          return resolver.serializeReturnTypeForSignature(context3, node, symbol) ?? factory.createKeywordTypeNode(
             133
             /* AnyKeyword */
           );
         }
-        function inferAccessorType(node, allAccessors, context4, symbol, reportFallback = true) {
+        function inferAccessorType(node, allAccessors, context3, symbol, reportFallback = true) {
           if (node.kind === 178) {
-            return createReturnFromSignature(node, symbol, context4, reportFallback);
+            return createReturnFromSignature(node, symbol, context3, reportFallback);
           } else {
             if (reportFallback) {
-              context4.tracker.reportInferenceFallback(node);
+              context3.tracker.reportInferenceFallback(node);
             }
-            const result = allAccessors.getAccessor && createReturnFromSignature(allAccessors.getAccessor, symbol, context4, reportFallback);
-            return result ?? resolver.serializeTypeOfDeclaration(context4, node, symbol) ?? factory.createKeywordTypeNode(
+            const result = allAccessors.getAccessor && createReturnFromSignature(allAccessors.getAccessor, symbol, context3, reportFallback);
+            return result ?? resolver.serializeTypeOfDeclaration(context3, node, symbol) ?? factory.createKeywordTypeNode(
               133
               /* AnyKeyword */
             );
           }
         }
-        function withNewScope(context4, node, fn) {
-          const cleanup = resolver.enterNewScope(context4, node);
+        function withNewScope(context3, node, fn) {
+          const cleanup = resolver.enterNewScope(context3, node);
           const result = fn();
           cleanup();
           return result;
         }
-        function typeFromTypeAssertion(expression, type, context4, requiresAddingUndefined) {
+        function typeFromTypeAssertion(expression, type, context3, requiresAddingUndefined) {
           if (isConstTypeReference(type)) {
             return typeFromExpression(
               expression,
-              context4,
+              context3,
               /*isConstContext*/
               true,
               requiresAddingUndefined
             );
           }
-          return syntacticResult(serializeExistingTypeNodeWithFallback(type, context4, requiresAddingUndefined));
+          return syntacticResult(serializeExistingTypeNodeWithFallback(type, context3, requiresAddingUndefined));
         }
-        function typeFromExpression(node, context4, isConstContext = false, requiresAddingUndefined = false, preserveLiterals = false) {
+        function typeFromExpression(node, context3, isConstContext = false, requiresAddingUndefined = false, preserveLiterals = false) {
           switch (node.kind) {
             case 218:
               if (isJSDocTypeAssertion(node)) {
-                return typeFromTypeAssertion(node.expression, getJSDocTypeAssertionType(node), context4, requiresAddingUndefined);
+                return typeFromTypeAssertion(node.expression, getJSDocTypeAssertionType(node), context3, requiresAddingUndefined);
               }
-              return typeFromExpression(node.expression, context4, isConstContext, requiresAddingUndefined);
+              return typeFromExpression(node.expression, context3, isConstContext, requiresAddingUndefined);
             case 80:
               if (resolver.isUndefinedIdentifierExpression(node)) {
                 return syntacticResult(createUndefinedTypeNode());
@@ -167666,7 +167666,7 @@ ${lanes.join("\n")}
               break;
             case 106:
               if (strictNullChecks) {
-                return syntacticResult(addUndefinedIfNeeded(factory.createLiteralTypeNode(factory.createNull()), requiresAddingUndefined, node, context4));
+                return syntacticResult(addUndefinedIfNeeded(factory.createLiteralTypeNode(factory.createNull()), requiresAddingUndefined, node, context3));
               } else {
                 return syntacticResult(factory.createKeywordTypeNode(
                   133
@@ -167676,31 +167676,31 @@ ${lanes.join("\n")}
             case 220:
             case 219:
               Debug.type(node);
-              return withNewScope(context4, node, () => typeFromFunctionLikeExpression(node, context4));
+              return withNewScope(context3, node, () => typeFromFunctionLikeExpression(node, context3));
             case 217:
             case 235:
               const asExpression = node;
-              return typeFromTypeAssertion(asExpression.expression, asExpression.type, context4, requiresAddingUndefined);
+              return typeFromTypeAssertion(asExpression.expression, asExpression.type, context3, requiresAddingUndefined);
             case 225:
               const unaryExpression = node;
               if (isPrimitiveLiteralValue(unaryExpression)) {
                 return typeFromPrimitiveLiteral(
                   unaryExpression.operator === 40 ? unaryExpression.operand : unaryExpression,
                   unaryExpression.operand.kind === 10 ? 163 : 150,
-                  context4,
+                  context3,
                   isConstContext || preserveLiterals,
                   requiresAddingUndefined
                 );
               }
               break;
             case 210:
-              return typeFromArrayLiteral(node, context4, isConstContext, requiresAddingUndefined);
+              return typeFromArrayLiteral(node, context3, isConstContext, requiresAddingUndefined);
             case 211:
-              return typeFromObjectLiteral(node, context4, isConstContext, requiresAddingUndefined);
+              return typeFromObjectLiteral(node, context3, isConstContext, requiresAddingUndefined);
             case 232:
               return syntacticResult(inferExpressionType(
                 node,
-                context4,
+                context3,
                 /*reportFallback*/
                 true,
                 requiresAddingUndefined
@@ -167736,20 +167736,20 @@ ${lanes.join("\n")}
                   break;
               }
               if (typeKind) {
-                return typeFromPrimitiveLiteral(primitiveNode, typeKind, context4, isConstContext || preserveLiterals, requiresAddingUndefined);
+                return typeFromPrimitiveLiteral(primitiveNode, typeKind, context3, isConstContext || preserveLiterals, requiresAddingUndefined);
               }
           }
           return failed2;
         }
-        function typeFromFunctionLikeExpression(fnNode, context4) {
+        function typeFromFunctionLikeExpression(fnNode, context3) {
           const returnType = createReturnFromSignature(
             fnNode,
             /*symbol*/
             void 0,
-            context4
+            context3
           );
-          const typeParameters = reuseTypeParameters(fnNode.typeParameters, context4);
-          const parameters = fnNode.parameters.map((p) => ensureParameter(p, context4));
+          const typeParameters = reuseTypeParameters(fnNode.typeParameters, context3);
+          const parameters = fnNode.parameters.map((p) => ensureParameter(p, context3));
           return syntacticResult(
             factory.createFunctionTypeNode(
               typeParameters,
@@ -167758,34 +167758,34 @@ ${lanes.join("\n")}
             )
           );
         }
-        function canGetTypeFromArrayLiteral(arrayLiteral, context4, isConstContext) {
+        function canGetTypeFromArrayLiteral(arrayLiteral, context3, isConstContext) {
           if (!isConstContext) {
-            context4.tracker.reportInferenceFallback(arrayLiteral);
+            context3.tracker.reportInferenceFallback(arrayLiteral);
             return false;
           }
           for (const element of arrayLiteral.elements) {
             if (element.kind === 231) {
-              context4.tracker.reportInferenceFallback(element);
+              context3.tracker.reportInferenceFallback(element);
               return false;
             }
           }
           return true;
         }
-        function typeFromArrayLiteral(arrayLiteral, context4, isConstContext, requiresAddingUndefined) {
-          if (!canGetTypeFromArrayLiteral(arrayLiteral, context4, isConstContext)) {
+        function typeFromArrayLiteral(arrayLiteral, context3, isConstContext, requiresAddingUndefined) {
+          if (!canGetTypeFromArrayLiteral(arrayLiteral, context3, isConstContext)) {
             if (requiresAddingUndefined || isDeclaration(walkUpParenthesizedExpressions(arrayLiteral).parent)) {
               return alreadyReported;
             }
             return syntacticResult(inferExpressionType(
               arrayLiteral,
-              context4,
+              context3,
               /*reportFallback*/
               false,
               requiresAddingUndefined
             ));
           }
-          const oldNoInferenceFallback = context4.noInferenceFallback;
-          context4.noInferenceFallback = true;
+          const oldNoInferenceFallback = context3.noInferenceFallback;
+          context3.noInferenceFallback = true;
           const elementTypesInfo = [];
           for (const element of arrayLiteral.elements) {
             Debug.assert(
@@ -167797,17 +167797,17 @@ ${lanes.join("\n")}
                 createUndefinedTypeNode()
               );
             } else {
-              const expressionType = typeFromExpression(element, context4, isConstContext);
-              const elementType = expressionType.type !== void 0 ? expressionType.type : inferExpressionType(element, context4, expressionType.reportFallback);
+              const expressionType = typeFromExpression(element, context3, isConstContext);
+              const elementType = expressionType.type !== void 0 ? expressionType.type : inferExpressionType(element, context3, expressionType.reportFallback);
               elementTypesInfo.push(elementType);
             }
           }
           const tupleType = factory.createTupleTypeNode(elementTypesInfo);
           tupleType.emitNode = { flags: 1, autoGenerate: void 0, internalFlags: 0 };
-          context4.noInferenceFallback = oldNoInferenceFallback;
+          context3.noInferenceFallback = oldNoInferenceFallback;
           return notImplemented2;
         }
-        function canGetTypeFromObjectLiteral(objectLiteral, context4) {
+        function canGetTypeFromObjectLiteral(objectLiteral, context3) {
           let result = true;
           for (const prop of objectLiteral.properties) {
             if (prop.flags & 262144) {
@@ -167815,7 +167815,7 @@ ${lanes.join("\n")}
               break;
             }
             if (prop.kind === 305 || prop.kind === 306) {
-              context4.tracker.reportInferenceFallback(prop);
+              context3.tracker.reportInferenceFallback(prop);
               result = false;
             } else if (prop.name.flags & 262144) {
               result = false;
@@ -167829,45 +167829,45 @@ ${lanes.join("\n")}
                 /*includeBigInt*/
                 false
               ) && !resolver.isDefinitelyReferenceToGlobalSymbolObject(expression)) {
-                context4.tracker.reportInferenceFallback(prop.name);
+                context3.tracker.reportInferenceFallback(prop.name);
                 result = false;
               }
             }
           }
           return result;
         }
-        function typeFromObjectLiteral(objectLiteral, context4, isConstContext, requiresAddingUndefined) {
-          if (!canGetTypeFromObjectLiteral(objectLiteral, context4)) {
+        function typeFromObjectLiteral(objectLiteral, context3, isConstContext, requiresAddingUndefined) {
+          if (!canGetTypeFromObjectLiteral(objectLiteral, context3)) {
             if (requiresAddingUndefined || isDeclaration(walkUpParenthesizedExpressions(objectLiteral).parent)) {
               return alreadyReported;
             }
             return syntacticResult(inferExpressionType(
               objectLiteral,
-              context4,
+              context3,
               /*reportFallback*/
               false,
               requiresAddingUndefined
             ));
           }
-          const oldNoInferenceFallback = context4.noInferenceFallback;
-          context4.noInferenceFallback = true;
+          const oldNoInferenceFallback = context3.noInferenceFallback;
+          context3.noInferenceFallback = true;
           const properties = [];
-          const oldFlags = context4.flags;
-          context4.flags |= 4194304;
+          const oldFlags = context3.flags;
+          context3.flags |= 4194304;
           for (const prop of objectLiteral.properties) {
             Debug.assert(!isShorthandPropertyAssignment(prop) && !isSpreadAssignment(prop));
             const name = prop.name;
             let newProp;
             switch (prop.kind) {
               case 175:
-                newProp = withNewScope(context4, prop, () => typeFromObjectLiteralMethod(prop, name, context4, isConstContext));
+                newProp = withNewScope(context3, prop, () => typeFromObjectLiteralMethod(prop, name, context3, isConstContext));
                 break;
               case 304:
-                newProp = typeFromObjectLiteralPropertyAssignment(prop, name, context4, isConstContext);
+                newProp = typeFromObjectLiteralPropertyAssignment(prop, name, context3, isConstContext);
                 break;
               case 179:
               case 178:
-                newProp = typeFromObjectLiteralAccessor(prop, name, context4);
+                newProp = typeFromObjectLiteralAccessor(prop, name, context3);
                 break;
             }
             if (newProp) {
@@ -167875,46 +167875,46 @@ ${lanes.join("\n")}
               properties.push(newProp);
             }
           }
-          context4.flags = oldFlags;
+          context3.flags = oldFlags;
           const typeNode = factory.createTypeLiteralNode(properties);
-          if (!(context4.flags & 1024)) {
+          if (!(context3.flags & 1024)) {
             setEmitFlags(
               typeNode,
               1
               /* SingleLine */
             );
           }
-          context4.noInferenceFallback = oldNoInferenceFallback;
+          context3.noInferenceFallback = oldNoInferenceFallback;
           return notImplemented2;
         }
-        function typeFromObjectLiteralPropertyAssignment(prop, name, context4, isConstContext) {
+        function typeFromObjectLiteralPropertyAssignment(prop, name, context3, isConstContext) {
           const modifiers = isConstContext ? [factory.createModifier(
             148
             /* ReadonlyKeyword */
           )] : [];
-          const expressionResult = typeFromExpression(prop.initializer, context4, isConstContext);
+          const expressionResult = typeFromExpression(prop.initializer, context3, isConstContext);
           const typeNode = expressionResult.type !== void 0 ? expressionResult.type : inferTypeOfDeclaration(
             prop,
             /*symbol*/
             void 0,
-            context4,
+            context3,
             expressionResult.reportFallback
           );
           return factory.createPropertySignature(
             modifiers,
-            reuseNode(context4, name),
+            reuseNode(context3, name),
             /*questionToken*/
             void 0,
             typeNode
           );
         }
-        function ensureParameter(p, context4) {
+        function ensureParameter(p, context3) {
           return factory.updateParameterDeclaration(
             p,
             /*modifiers*/
             void 0,
-            reuseNode(context4, p.dotDotDotToken),
-            resolver.serializeNameOfParameter(context4, p),
+            reuseNode(context3, p.dotDotDotToken),
+            resolver.serializeNameOfParameter(context3, p),
             resolver.isOptionalParameter(p) ? factory.createToken(
               58
               /* QuestionToken */
@@ -167923,43 +167923,43 @@ ${lanes.join("\n")}
               p,
               /*symbol*/
               void 0,
-              context4
+              context3
             ),
             // Ignore private param props, since this type is going straight back into a param
             /*initializer*/
             void 0
           );
         }
-        function reuseTypeParameters(typeParameters, context4) {
+        function reuseTypeParameters(typeParameters, context3) {
           return typeParameters == null ? void 0 : typeParameters.map((tp) => {
             var _a;
-            const { node: tpName } = resolver.trackExistingEntityName(context4, tp.name);
+            const { node: tpName } = resolver.trackExistingEntityName(context3, tp.name);
             return factory.updateTypeParameterDeclaration(
               tp,
-              (_a = tp.modifiers) == null ? void 0 : _a.map((m) => reuseNode(context4, m)),
+              (_a = tp.modifiers) == null ? void 0 : _a.map((m) => reuseNode(context3, m)),
               tpName,
-              serializeExistingTypeNodeWithFallback(tp.constraint, context4),
-              serializeExistingTypeNodeWithFallback(tp.default, context4)
+              serializeExistingTypeNodeWithFallback(tp.constraint, context3),
+              serializeExistingTypeNodeWithFallback(tp.default, context3)
             );
           });
         }
-        function typeFromObjectLiteralMethod(method, name, context4, isConstContext) {
+        function typeFromObjectLiteralMethod(method, name, context3, isConstContext) {
           const returnType = createReturnFromSignature(
             method,
             /*symbol*/
             void 0,
-            context4
+            context3
           );
-          const typeParameters = reuseTypeParameters(method.typeParameters, context4);
-          const parameters = method.parameters.map((p) => ensureParameter(p, context4));
+          const typeParameters = reuseTypeParameters(method.typeParameters, context3);
+          const parameters = method.parameters.map((p) => ensureParameter(p, context3));
           if (isConstContext) {
             return factory.createPropertySignature(
               [factory.createModifier(
                 148
                 /* ReadonlyKeyword */
               )],
-              reuseNode(context4, name),
-              reuseNode(context4, method.questionToken),
+              reuseNode(context3, name),
+              reuseNode(context3, method.questionToken),
               factory.createFunctionTypeNode(
                 typeParameters,
                 parameters,
@@ -167972,28 +167972,28 @@ ${lanes.join("\n")}
             }
             return factory.createMethodSignature(
               [],
-              reuseNode(context4, name),
-              reuseNode(context4, method.questionToken),
+              reuseNode(context3, name),
+              reuseNode(context3, method.questionToken),
               typeParameters,
               parameters,
               returnType
             );
           }
         }
-        function typeFromObjectLiteralAccessor(accessor, name, context4) {
+        function typeFromObjectLiteralAccessor(accessor, name, context3) {
           const allAccessors = resolver.getAllAccessorDeclarations(accessor);
           const getAccessorType = allAccessors.getAccessor && getTypeAnnotationFromAccessor(allAccessors.getAccessor);
           const setAccessorType = allAccessors.setAccessor && getTypeAnnotationFromAccessor(allAccessors.setAccessor);
           if (getAccessorType !== void 0 && setAccessorType !== void 0) {
-            return withNewScope(context4, accessor, () => {
-              const parameters = accessor.parameters.map((p) => ensureParameter(p, context4));
+            return withNewScope(context3, accessor, () => {
+              const parameters = accessor.parameters.map((p) => ensureParameter(p, context3));
               if (isGetAccessor(accessor)) {
                 return factory.updateGetAccessorDeclaration(
                   accessor,
                   [],
-                  reuseNode(context4, name),
+                  reuseNode(context3, name),
                   parameters,
-                  serializeExistingTypeNodeWithFallback(getAccessorType, context4),
+                  serializeExistingTypeNodeWithFallback(getAccessorType, context3),
                   /*body*/
                   void 0
                 );
@@ -168001,7 +168001,7 @@ ${lanes.join("\n")}
                 return factory.updateSetAccessorDeclaration(
                   accessor,
                   [],
-                  reuseNode(context4, name),
+                  reuseNode(context3, name),
                   parameters,
                   /*body*/
                   void 0
@@ -168009,11 +168009,11 @@ ${lanes.join("\n")}
               }
             });
           } else if (allAccessors.firstAccessor === accessor) {
-            const foundType = getAccessorType ? withNewScope(context4, allAccessors.getAccessor, () => serializeExistingTypeNodeWithFallback(getAccessorType, context4)) : setAccessorType ? withNewScope(context4, allAccessors.setAccessor, () => serializeExistingTypeNodeWithFallback(setAccessorType, context4)) : void 0;
+            const foundType = getAccessorType ? withNewScope(context3, allAccessors.getAccessor, () => serializeExistingTypeNodeWithFallback(getAccessorType, context3)) : setAccessorType ? withNewScope(context3, allAccessors.setAccessor, () => serializeExistingTypeNodeWithFallback(setAccessorType, context3)) : void 0;
             const propertyType = foundType ?? inferAccessorType(
               accessor,
               allAccessors,
-              context4,
+              context3,
               /*symbol*/
               void 0
             );
@@ -168022,7 +168022,7 @@ ${lanes.join("\n")}
                 148
                 /* ReadonlyKeyword */
               )] : [],
-              reuseNode(context4, name),
+              reuseNode(context3, name),
               /*questionToken*/
               void 0,
               propertyType
@@ -168043,24 +168043,24 @@ ${lanes.join("\n")}
             );
           }
         }
-        function typeFromPrimitiveLiteral(node, baseType, context4, preserveLiterals, requiresAddingUndefined) {
+        function typeFromPrimitiveLiteral(node, baseType, context3, preserveLiterals, requiresAddingUndefined) {
           let result;
           if (preserveLiterals) {
             if (node.kind === 225 && node.operator === 40) {
-              result = factory.createLiteralTypeNode(reuseNode(context4, node.operand));
+              result = factory.createLiteralTypeNode(reuseNode(context3, node.operand));
             }
-            result = factory.createLiteralTypeNode(reuseNode(context4, node));
+            result = factory.createLiteralTypeNode(reuseNode(context3, node));
           } else {
             result = factory.createKeywordTypeNode(baseType);
           }
-          return syntacticResult(addUndefinedIfNeeded(result, requiresAddingUndefined, node, context4));
+          return syntacticResult(addUndefinedIfNeeded(result, requiresAddingUndefined, node, context3));
         }
-        function addUndefinedIfNeeded(node, addUndefined, owner, context4) {
+        function addUndefinedIfNeeded(node, addUndefined, owner, context3) {
           const parentDeclaration = owner && walkUpParenthesizedExpressions(owner).parent;
           const optionalDeclaration = parentDeclaration && isDeclaration(parentDeclaration) && isOptionalDeclaration(parentDeclaration);
           if (!strictNullChecks || !(addUndefined || optionalDeclaration)) return node;
           if (!canAddUndefined(node)) {
-            context4.tracker.reportInferenceFallback(node);
+            context3.tracker.reportInferenceFallback(node);
           }
           if (isUnionTypeNode(node)) {
             return factory.createUnionTypeNode([...node.types, factory.createKeywordTypeNode(
@@ -168086,17 +168086,17 @@ ${lanes.join("\n")}
           }
           return false;
         }
-        function createReturnFromSignature(fn, symbol, context4, reportFallback = true) {
+        function createReturnFromSignature(fn, symbol, context3, reportFallback = true) {
           let returnType = failed2;
           const returnTypeNode = isJSDocConstructSignature(fn) ? getEffectiveTypeAnnotationNode(fn.parameters[0]) : getEffectiveReturnTypeNode(fn);
           if (returnTypeNode) {
-            returnType = syntacticResult(serializeTypeAnnotationOfDeclaration(returnTypeNode, context4, fn, symbol));
+            returnType = syntacticResult(serializeTypeAnnotationOfDeclaration(returnTypeNode, context3, fn, symbol));
           } else if (isValueSignatureDeclaration(fn)) {
-            returnType = typeFromSingleReturnExpression(fn, context4);
+            returnType = typeFromSingleReturnExpression(fn, context3);
           }
-          return returnType.type !== void 0 ? returnType.type : inferReturnTypeOfSignatureSignature(fn, context4, symbol, reportFallback && returnType.reportFallback && !returnTypeNode);
+          return returnType.type !== void 0 ? returnType.type : inferReturnTypeOfSignatureSignature(fn, context3, symbol, reportFallback && returnType.reportFallback && !returnTypeNode);
         }
-        function typeFromSingleReturnExpression(declaration, context4) {
+        function typeFromSingleReturnExpression(declaration, context3) {
           let candidateExpr;
           if (declaration && !nodeIsMissing(declaration.body)) {
             const flags = getFunctionFlags(declaration);
@@ -168123,10 +168123,10 @@ ${lanes.join("\n")}
             if (isContextuallyTyped(candidateExpr)) {
               const type = isJSDocTypeAssertion(candidateExpr) ? getJSDocTypeAssertionType(candidateExpr) : isAsExpression(candidateExpr) || isTypeAssertionExpression(candidateExpr) ? candidateExpr.type : void 0;
               if (type && !isConstTypeReference(type)) {
-                return syntacticResult(serializeExistingTypeNode(type, context4));
+                return syntacticResult(serializeExistingTypeNode(type, context3));
               }
             } else {
-              return typeFromExpression(candidateExpr, context4);
+              return typeFromExpression(candidateExpr, context3);
             }
           }
           return failed2;
@@ -171041,8 +171041,8 @@ ${lanes.join("\n")}
         const endLine = sourceFile.getLineAndCharacterOfPosition(nextToken.getStart(sourceFile)).line;
         return startLine !== endLine;
       }
-      function positionIsASICandidate(pos, context4, sourceFile) {
-        const contextAncestor = findAncestor(context4, (ancestor) => {
+      function positionIsASICandidate(pos, context3, sourceFile) {
+        const contextAncestor = findAncestor(context3, (ancestor) => {
           if (ancestor.end !== pos) {
             return "quit";
           }
@@ -176109,15 +176109,15 @@ interface Symbol {
       function registerRefactor(name, refactor2) {
         refactors.set(name, refactor2);
       }
-      function getApplicableRefactors(context4, includeInteractiveActions) {
+      function getApplicableRefactors(context3, includeInteractiveActions) {
         return arrayFrom(flatMapIterator(refactors.values(), (refactor2) => {
           var _a;
-          return context4.cancellationToken && context4.cancellationToken.isCancellationRequested() || !((_a = refactor2.kinds) == null ? void 0 : _a.some((kind) => refactorKindBeginsWith(kind, context4.kind))) ? void 0 : refactor2.getAvailableActions(context4, includeInteractiveActions);
+          return context3.cancellationToken && context3.cancellationToken.isCancellationRequested() || !((_a = refactor2.kinds) == null ? void 0 : _a.some((kind) => refactorKindBeginsWith(kind, context3.kind))) ? void 0 : refactor2.getAvailableActions(context3, includeInteractiveActions);
         }));
       }
-      function getEditsForRefactor(context4, refactorName14, actionName2, interactiveRefactorArguments) {
+      function getEditsForRefactor(context3, refactorName14, actionName2, interactiveRefactorArguments) {
         const refactor2 = refactors.get(refactorName14);
-        return refactor2 && refactor2.getEditsForAction(context4, actionName2, interactiveRefactorArguments);
+        return refactor2 && refactor2.getEditsForAction(context3, actionName2, interactiveRefactorArguments);
       }
       var refactorName = "Convert export";
       var defaultToNamedAction = {
@@ -176135,14 +176135,14 @@ interface Symbol {
           defaultToNamedAction.kind,
           namedToDefaultAction.kind
         ],
-        getAvailableActions: function getRefactorActionsToConvertBetweenNamedAndDefaultExports(context4) {
-          const info2 = getInfo2(context4, context4.triggerReason === "invoked");
+        getAvailableActions: function getRefactorActionsToConvertBetweenNamedAndDefaultExports(context3) {
+          const info2 = getInfo2(context3, context3.triggerReason === "invoked");
           if (!info2) return emptyArray;
           if (!isRefactorErrorInfo(info2)) {
             const action = info2.wasDefault ? defaultToNamedAction : namedToDefaultAction;
             return [{ name: refactorName, description: action.description, actions: [action] }];
           }
-          if (context4.preferences.provideRefactorNotApplicableReason) {
+          if (context3.preferences.provideRefactorNotApplicableReason) {
             return [
               {
                 name: refactorName,
@@ -176156,17 +176156,17 @@ interface Symbol {
           }
           return emptyArray;
         },
-        getEditsForAction: function getRefactorEditsToConvertBetweenNamedAndDefaultExports(context4, actionName2) {
+        getEditsForAction: function getRefactorEditsToConvertBetweenNamedAndDefaultExports(context3, actionName2) {
           Debug.assert(actionName2 === defaultToNamedAction.name || actionName2 === namedToDefaultAction.name, "Unexpected action name");
-          const info2 = getInfo2(context4);
+          const info2 = getInfo2(context3);
           Debug.assert(info2 && !isRefactorErrorInfo(info2), "Expected applicable refactor info");
-          const edits = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange(context4.file, context4.program, info2, t, context4.cancellationToken));
+          const edits = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange(context3.file, context3.program, info2, t, context3.cancellationToken));
           return { edits, renameFilename: void 0, renameLocation: void 0 };
         }
       });
-      function getInfo2(context4, considerPartialSpans = true) {
-        const { file, program } = context4;
-        const span = getRefactorContextSpan(context4);
+      function getInfo2(context3, considerPartialSpans = true) {
+        const { file, program } = context3;
+        const span = getRefactorContextSpan(context3);
         const token = getTokenAtPosition(file, span.start);
         const exportNode = !!(token.parent && getSyntacticModifierFlags(token.parent) & 32) && considerPartialSpans ? token.parent : getParentNodeInSpan(token, file, span);
         if (!exportNode || !isSourceFile(exportNode.parent) && !(isModuleBlock(exportNode.parent) && isAmbientModule(exportNode.parent.parent))) {
@@ -176405,14 +176405,14 @@ interface Symbol {
       };
       registerRefactor(refactorName2, {
         kinds: getOwnValues(actions).map((a) => a.kind),
-        getAvailableActions: function getRefactorActionsToConvertBetweenNamedAndNamespacedImports(context4) {
-          const info2 = getImportConversionInfo(context4, context4.triggerReason === "invoked");
+        getAvailableActions: function getRefactorActionsToConvertBetweenNamedAndNamespacedImports(context3) {
+          const info2 = getImportConversionInfo(context3, context3.triggerReason === "invoked");
           if (!info2) return emptyArray;
           if (!isRefactorErrorInfo(info2)) {
             const action = actions[info2.convertTo];
             return [{ name: refactorName2, description: action.description, actions: [action] }];
           }
-          if (context4.preferences.provideRefactorNotApplicableReason) {
+          if (context3.preferences.provideRefactorNotApplicableReason) {
             return getOwnValues(actions).map((action) => ({
               name: refactorName2,
               description: action.description,
@@ -176421,17 +176421,17 @@ interface Symbol {
           }
           return emptyArray;
         },
-        getEditsForAction: function getRefactorEditsToConvertBetweenNamedAndNamespacedImports(context4, actionName2) {
+        getEditsForAction: function getRefactorEditsToConvertBetweenNamedAndNamespacedImports(context3, actionName2) {
           Debug.assert(some(getOwnValues(actions), (action) => action.name === actionName2), "Unexpected action name");
-          const info2 = getImportConversionInfo(context4);
+          const info2 = getImportConversionInfo(context3);
           Debug.assert(info2 && !isRefactorErrorInfo(info2), "Expected applicable refactor info");
-          const edits = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange2(context4.file, context4.program, t, info2));
+          const edits = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange2(context3.file, context3.program, t, info2));
           return { edits, renameFilename: void 0, renameLocation: void 0 };
         }
       });
-      function getImportConversionInfo(context4, considerPartialSpans = true) {
-        const { file } = context4;
-        const span = getRefactorContextSpan(context4);
+      function getImportConversionInfo(context3, considerPartialSpans = true) {
+        const { file } = context3;
+        const span = getRefactorContextSpan(context3);
         const token = getTokenAtPosition(file, span.start);
         const importDecl = considerPartialSpans ? findAncestor(token, or(isImportDeclaration, isJSDocImportTag)) : getParentNodeInSpan(token, file, span);
         if (importDecl === void 0 || !(isImportDeclaration(importDecl) || isJSDocImportTag(importDecl))) return { error: "Selection is not an import declaration." };
@@ -176448,7 +176448,7 @@ interface Symbol {
         if (importClause.namedBindings.kind === 275) {
           return { convertTo: 0, import: importClause.namedBindings };
         }
-        const shouldUseDefault = getShouldUseDefault(context4.program, importClause);
+        const shouldUseDefault = getShouldUseDefault(context3.program, importClause);
         return shouldUseDefault ? { convertTo: 1, import: importClause.namedBindings } : { convertTo: 2, import: importClause.namedBindings };
       }
       function getShouldUseDefault(program, importClause) {
@@ -176639,8 +176639,8 @@ interface Symbol {
           extractToInterfaceAction.kind,
           extractToTypeDefAction.kind
         ],
-        getAvailableActions: function getRefactorActionsToExtractType(context4) {
-          const { info: info2, affectedTextRange } = getRangeToExtract(context4, context4.triggerReason === "invoked");
+        getAvailableActions: function getRefactorActionsToExtractType(context3) {
+          const { info: info2, affectedTextRange } = getRangeToExtract(context3, context3.triggerReason === "invoked");
           if (!info2) return emptyArray;
           if (!isRefactorErrorInfo(info2)) {
             const refactorInfo = [{
@@ -176653,13 +176653,13 @@ interface Symbol {
               actions: info22.actions.map((action) => ({
                 ...action,
                 range: affectedTextRange ? {
-                  start: { line: getLineAndCharacterOfPosition(context4.file, affectedTextRange.pos).line, offset: getLineAndCharacterOfPosition(context4.file, affectedTextRange.pos).character },
-                  end: { line: getLineAndCharacterOfPosition(context4.file, affectedTextRange.end).line, offset: getLineAndCharacterOfPosition(context4.file, affectedTextRange.end).character }
+                  start: { line: getLineAndCharacterOfPosition(context3.file, affectedTextRange.pos).line, offset: getLineAndCharacterOfPosition(context3.file, affectedTextRange.pos).character },
+                  end: { line: getLineAndCharacterOfPosition(context3.file, affectedTextRange.end).line, offset: getLineAndCharacterOfPosition(context3.file, affectedTextRange.end).character }
                 } : void 0
               }))
             }));
           }
-          if (context4.preferences.provideRefactorNotApplicableReason) {
+          if (context3.preferences.provideRefactorNotApplicableReason) {
             return [{
               name: refactorName3,
               description: getLocaleSpecificMessage(Diagnostics.Extract_type),
@@ -176672,19 +176672,19 @@ interface Symbol {
           }
           return emptyArray;
         },
-        getEditsForAction: function getRefactorEditsToExtractType(context4, actionName2) {
-          const { file } = context4;
-          const { info: info2 } = getRangeToExtract(context4);
+        getEditsForAction: function getRefactorEditsToExtractType(context3, actionName2) {
+          const { file } = context3;
+          const { info: info2 } = getRangeToExtract(context3);
           Debug.assert(info2 && !isRefactorErrorInfo(info2), "Expected to find a range to extract");
           const name = getUniqueName("NewType", file);
-          const edits = ts_textChanges_exports.ChangeTracker.with(context4, (changes) => {
+          const edits = ts_textChanges_exports.ChangeTracker.with(context3, (changes) => {
             switch (actionName2) {
               case extractToTypeAliasAction.name:
                 Debug.assert(!info2.isJS, "Invalid actionName/JS combo");
                 return doTypeAliasChange(changes, file, name, info2);
               case extractToTypeDefAction.name:
                 Debug.assert(info2.isJS, "Invalid actionName/JS combo");
-                return doTypedefChange(changes, context4, file, name, info2);
+                return doTypedefChange(changes, context3, file, name, info2);
               case extractToInterfaceAction.name:
                 Debug.assert(!info2.isJS && !!info2.typeElements, "Invalid actionName/JS combo");
                 return doInterfaceChange(changes, file, name, info2);
@@ -176703,14 +176703,14 @@ interface Symbol {
           return { edits, renameFilename, renameLocation };
         }
       });
-      function getRangeToExtract(context4, considerEmptySpans = true) {
-        const { file, startPosition } = context4;
+      function getRangeToExtract(context3, considerEmptySpans = true) {
+        const { file, startPosition } = context3;
         const isJS = isSourceFileJS(file);
-        const range = createTextRangeFromSpan(getRefactorContextSpan(context4));
+        const range = createTextRangeFromSpan(getRefactorContextSpan(context3));
         const isCursorRequest = range.pos === range.end && considerEmptySpans;
         const firstType = getFirstTypeAt(file, startPosition, range, isCursorRequest);
         if (!firstType || !isTypeNode(firstType)) return { info: { error: getLocaleSpecificMessage(Diagnostics.Selection_is_not_a_valid_type_node) }, affectedTextRange: void 0 };
-        const checker = context4.program.getTypeChecker();
+        const checker = context3.program.getTypeChecker();
         const enclosingNode = getEnclosingNode(firstType, isJS);
         if (enclosingNode === void 0) return { info: { error: getLocaleSpecificMessage(Diagnostics.No_type_could_be_extracted_from_this_type_node) }, affectedTextRange: void 0 };
         const expandedFirstType = getExpandedSelectionNode(firstType, enclosingNode);
@@ -176903,7 +176903,7 @@ interface Symbol {
           void 0
         ))), { leadingTriviaOption: ts_textChanges_exports.LeadingTriviaOption.Exclude, trailingTriviaOption: ts_textChanges_exports.TrailingTriviaOption.ExcludeWhitespace });
       }
-      function doTypedefChange(changes, context4, file, name, info2) {
+      function doTypedefChange(changes, context3, file, name, info2) {
         var _a;
         toArray(info2.selection).forEach((typeNode) => {
           setEmitFlags(
@@ -176941,7 +176941,7 @@ interface Symbol {
         );
         if (isJSDoc(enclosingNode)) {
           const pos = enclosingNode.getStart(file);
-          const newLineCharacter = getNewLineOrDefaultFromHost(context4.host, (_a = context4.formatContext) == null ? void 0 : _a.options);
+          const newLineCharacter = getNewLineOrDefaultFromHost(context3.host, (_a = context3.formatContext) == null ? void 0 : _a.options);
           changes.insertNodeAt(file, enclosingNode.getStart(file), jsDoc, {
             suffix: newLineCharacter + newLineCharacter + file.text.slice(getPrecedingNonSpaceCharacterPosition(file.text, pos - 1), pos)
           });
@@ -176995,42 +176995,42 @@ interface Symbol {
       };
       registerRefactor(refactorNameForMoveToFile, {
         kinds: [moveToFileAction.kind],
-        getAvailableActions: function getRefactorActionsToMoveToFile(context4, interactiveRefactorArguments) {
-          const file = context4.file;
-          const statements = getStatementsToMove(context4);
+        getAvailableActions: function getRefactorActionsToMoveToFile(context3, interactiveRefactorArguments) {
+          const file = context3.file;
+          const statements = getStatementsToMove(context3);
           if (!interactiveRefactorArguments) {
             return emptyArray;
           }
-          if (context4.triggerReason === "implicit" && context4.endPosition !== void 0) {
-            const startNodeAncestor = findAncestor(getTokenAtPosition(file, context4.startPosition), isBlockLike);
-            const endNodeAncestor = findAncestor(getTokenAtPosition(file, context4.endPosition), isBlockLike);
+          if (context3.triggerReason === "implicit" && context3.endPosition !== void 0) {
+            const startNodeAncestor = findAncestor(getTokenAtPosition(file, context3.startPosition), isBlockLike);
+            const endNodeAncestor = findAncestor(getTokenAtPosition(file, context3.endPosition), isBlockLike);
             if (startNodeAncestor && !isSourceFile(startNodeAncestor) && endNodeAncestor && !isSourceFile(endNodeAncestor)) {
               return emptyArray;
             }
           }
-          if (context4.preferences.allowTextChangesInNewFiles && statements) {
+          if (context3.preferences.allowTextChangesInNewFiles && statements) {
             const affectedTextRange = {
               start: { line: getLineAndCharacterOfPosition(file, statements.all[0].getStart(file)).line, offset: getLineAndCharacterOfPosition(file, statements.all[0].getStart(file)).character },
               end: { line: getLineAndCharacterOfPosition(file, last(statements.all).end).line, offset: getLineAndCharacterOfPosition(file, last(statements.all).end).character }
             };
             return [{ name: refactorNameForMoveToFile, description, actions: [{ ...moveToFileAction, range: affectedTextRange }] }];
           }
-          if (context4.preferences.provideRefactorNotApplicableReason) {
+          if (context3.preferences.provideRefactorNotApplicableReason) {
             return [{ name: refactorNameForMoveToFile, description, actions: [{ ...moveToFileAction, notApplicableReason: getLocaleSpecificMessage(Diagnostics.Selection_is_not_a_valid_statement_or_statements) }] }];
           }
           return emptyArray;
         },
-        getEditsForAction: function getRefactorEditsToMoveToFile(context4, actionName2, interactiveRefactorArguments) {
+        getEditsForAction: function getRefactorEditsToMoveToFile(context3, actionName2, interactiveRefactorArguments) {
           Debug.assert(actionName2 === refactorNameForMoveToFile, "Wrong refactor invoked");
-          const statements = Debug.checkDefined(getStatementsToMove(context4));
-          const { host, program } = context4;
+          const statements = Debug.checkDefined(getStatementsToMove(context3));
+          const { host, program } = context3;
           Debug.assert(interactiveRefactorArguments, "No interactive refactor arguments available");
           const targetFile = interactiveRefactorArguments.targetFile;
           if (hasJSFileExtension(targetFile) || hasTSFileExtension(targetFile)) {
             if (host.fileExists(targetFile) && program.getSourceFile(targetFile) === void 0) {
               return error2(getLocaleSpecificMessage(Diagnostics.Cannot_move_statements_to_the_selected_file));
             }
-            const edits = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange3(context4, context4.file, interactiveRefactorArguments.targetFile, context4.program, statements, t, context4.host, context4.preferences));
+            const edits = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange3(context3, context3.file, interactiveRefactorArguments.targetFile, context3.program, statements, t, context3.host, context3.preferences));
             return { edits, renameFilename: void 0, renameLocation: void 0 };
           }
           return error2(getLocaleSpecificMessage(Diagnostics.Cannot_move_to_file_selected_file_is_invalid));
@@ -177039,12 +177039,12 @@ interface Symbol {
       function error2(notApplicableReason) {
         return { edits: [], renameFilename: void 0, renameLocation: void 0, notApplicableReason };
       }
-      function doChange3(context4, oldFile, targetFile, program, toMove, changes, host, preferences) {
+      function doChange3(context3, oldFile, targetFile, program, toMove, changes, host, preferences) {
         const checker = program.getTypeChecker();
         const isForNewFile = !host.fileExists(targetFile);
         const targetSourceFile = isForNewFile ? createFutureSourceFile(targetFile, oldFile.externalModuleIndicator ? 99 : oldFile.commonJsModuleIndicator ? 1 : void 0, program, host) : Debug.checkDefined(program.getSourceFile(targetFile));
-        const importAdderForOldFile = ts_codefix_exports.createImportAdder(oldFile, context4.program, context4.preferences, context4.host);
-        const importAdderForNewFile = ts_codefix_exports.createImportAdder(targetSourceFile, context4.program, context4.preferences, context4.host);
+        const importAdderForOldFile = ts_codefix_exports.createImportAdder(oldFile, context3.program, context3.preferences, context3.host);
+        const importAdderForNewFile = ts_codefix_exports.createImportAdder(targetSourceFile, context3.program, context3.preferences, context3.host);
         getNewStatementsAndRemoveFromOldFile(oldFile, targetSourceFile, getUsageInfo(oldFile, toMove.all, checker, isForNewFile ? void 0 : getExistingLocals(targetSourceFile, toMove.all, checker)), changes, toMove, program, host, preferences, importAdderForNewFile, importAdderForOldFile);
         if (isForNewFile) {
           addNewFileToTsconfig(program, changes, oldFile.fileName, targetFile, hostGetCanonicalFileName(host));
@@ -177504,9 +177504,9 @@ interface Symbol {
         }
         return "";
       }
-      function getRangeToMove(context4) {
-        const { file } = context4;
-        const range = createTextRangeFromSpan(getRefactorContextSpan(context4));
+      function getRangeToMove(context3) {
+        const { file } = context3;
+        const range = createTextRangeFromSpan(getRefactorContextSpan(context3));
         const { statements } = file;
         let startNodeIndex = findIndex(statements, (s) => s.end > range.pos);
         if (startNodeIndex === -1) return void 0;
@@ -177528,8 +177528,8 @@ interface Symbol {
           afterLast: endNodeIndex === -1 ? void 0 : statements[endNodeIndex + 1]
         };
       }
-      function getStatementsToMove(context4) {
-        const rangeToMove = getRangeToMove(context4);
+      function getStatementsToMove(context3) {
+        const rangeToMove = getRangeToMove(context3);
         if (rangeToMove === void 0) return void 0;
         const all = [];
         const ranges = [];
@@ -177870,14 +177870,14 @@ interface Symbol {
       };
       registerRefactor(refactorName4, {
         kinds: [inlineVariableAction.kind],
-        getAvailableActions(context4) {
+        getAvailableActions(context3) {
           const {
             file,
             program,
             preferences,
             startPosition,
             triggerReason
-          } = context4;
+          } = context3;
           const info2 = getInliningInfo(file, startPosition, triggerReason === "invoked", program);
           if (!info2) {
             return emptyArray;
@@ -177901,9 +177901,9 @@ interface Symbol {
           }
           return emptyArray;
         },
-        getEditsForAction(context4, actionName2) {
+        getEditsForAction(context3, actionName2) {
           Debug.assert(actionName2 === refactorName4, "Unexpected refactor invoked");
-          const { file, program, startPosition } = context4;
+          const { file, program, startPosition } = context3;
           const info2 = getInliningInfo(
             file,
             startPosition,
@@ -177915,7 +177915,7 @@ interface Symbol {
             return void 0;
           }
           const { references, declaration, replacement } = info2;
-          const edits = ts_textChanges_exports.ChangeTracker.with(context4, (tracker) => {
+          const edits = ts_textChanges_exports.ChangeTracker.with(context3, (tracker) => {
             for (const node of references) {
               const closestStringIdentifierParent = isStringLiteral(replacement) && isIdentifier2(node) && walkUpParenthesizedExpressions(node.parent);
               if (closestStringIdentifierParent && isTemplateSpan(closestStringIdentifierParent) && !isTaggedTemplateExpression(closestStringIdentifierParent.parent.parent)) {
@@ -178033,43 +178033,43 @@ interface Symbol {
       };
       registerRefactor(refactorName5, {
         kinds: [moveToNewFileAction.kind],
-        getAvailableActions: function getRefactorActionsToMoveToNewFile(context4) {
-          const statements = getStatementsToMove(context4);
-          const file = context4.file;
-          if (context4.triggerReason === "implicit" && context4.endPosition !== void 0) {
-            const startNodeAncestor = findAncestor(getTokenAtPosition(file, context4.startPosition), isBlockLike);
-            const endNodeAncestor = findAncestor(getTokenAtPosition(file, context4.endPosition), isBlockLike);
+        getAvailableActions: function getRefactorActionsToMoveToNewFile(context3) {
+          const statements = getStatementsToMove(context3);
+          const file = context3.file;
+          if (context3.triggerReason === "implicit" && context3.endPosition !== void 0) {
+            const startNodeAncestor = findAncestor(getTokenAtPosition(file, context3.startPosition), isBlockLike);
+            const endNodeAncestor = findAncestor(getTokenAtPosition(file, context3.endPosition), isBlockLike);
             if (startNodeAncestor && !isSourceFile(startNodeAncestor) && endNodeAncestor && !isSourceFile(endNodeAncestor)) {
               return emptyArray;
             }
           }
-          if (context4.preferences.allowTextChangesInNewFiles && statements) {
-            const file2 = context4.file;
+          if (context3.preferences.allowTextChangesInNewFiles && statements) {
+            const file2 = context3.file;
             const affectedTextRange = {
               start: { line: getLineAndCharacterOfPosition(file2, statements.all[0].getStart(file2)).line, offset: getLineAndCharacterOfPosition(file2, statements.all[0].getStart(file2)).character },
               end: { line: getLineAndCharacterOfPosition(file2, last(statements.all).end).line, offset: getLineAndCharacterOfPosition(file2, last(statements.all).end).character }
             };
             return [{ name: refactorName5, description: description2, actions: [{ ...moveToNewFileAction, range: affectedTextRange }] }];
           }
-          if (context4.preferences.provideRefactorNotApplicableReason) {
+          if (context3.preferences.provideRefactorNotApplicableReason) {
             return [{ name: refactorName5, description: description2, actions: [{ ...moveToNewFileAction, notApplicableReason: getLocaleSpecificMessage(Diagnostics.Selection_is_not_a_valid_statement_or_statements) }] }];
           }
           return emptyArray;
         },
-        getEditsForAction: function getRefactorEditsToMoveToNewFile(context4, actionName2) {
+        getEditsForAction: function getRefactorEditsToMoveToNewFile(context3, actionName2) {
           Debug.assert(actionName2 === refactorName5, "Wrong refactor invoked");
-          const statements = Debug.checkDefined(getStatementsToMove(context4));
-          const edits = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange4(context4.file, context4.program, statements, t, context4.host, context4, context4.preferences));
+          const statements = Debug.checkDefined(getStatementsToMove(context3));
+          const edits = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange4(context3.file, context3.program, statements, t, context3.host, context3, context3.preferences));
           return { edits, renameFilename: void 0, renameLocation: void 0 };
         }
       });
-      function doChange4(oldFile, program, toMove, changes, host, context4, preferences) {
+      function doChange4(oldFile, program, toMove, changes, host, context3, preferences) {
         const checker = program.getTypeChecker();
         const usage = getUsageInfo(oldFile, toMove.all, checker);
         const newFilename = createNewFileName(oldFile, program, host, toMove);
         const newSourceFile = createFutureSourceFile(newFilename, oldFile.externalModuleIndicator ? 99 : oldFile.commonJsModuleIndicator ? 1 : void 0, program, host);
-        const importAdderForOldFile = ts_codefix_exports.createImportAdder(oldFile, context4.program, context4.preferences, context4.host);
-        const importAdderForNewFile = ts_codefix_exports.createImportAdder(newSourceFile, context4.program, context4.preferences, context4.host);
+        const importAdderForOldFile = ts_codefix_exports.createImportAdder(oldFile, context3.program, context3.preferences, context3.host);
+        const importAdderForNewFile = ts_codefix_exports.createImportAdder(newSourceFile, context3.program, context3.preferences, context3.host);
         getNewStatementsAndRemoveFromOldFile(oldFile, newSourceFile, usage, changes, toMove, program, host, preferences, importAdderForNewFile, importAdderForOldFile);
         addNewFileToTsconfig(program, changes, oldFile.fileName, newFilename, hostGetCanonicalFileName(host));
       }
@@ -178086,8 +178086,8 @@ interface Symbol {
         getEditsForAction: getRefactorEditsToConvertOverloadsToOneSignature,
         getAvailableActions: getRefactorActionsToConvertOverloadsToOneSignature
       });
-      function getRefactorActionsToConvertOverloadsToOneSignature(context4) {
-        const { file, startPosition, program } = context4;
+      function getRefactorActionsToConvertOverloadsToOneSignature(context3) {
+        const { file, startPosition, program } = context3;
         const info2 = getConvertableOverloadListAtPosition(file, startPosition, program);
         if (!info2) return emptyArray;
         return [{
@@ -178096,8 +178096,8 @@ interface Symbol {
           actions: [functionOverloadAction]
         }];
       }
-      function getRefactorEditsToConvertOverloadsToOneSignature(context4) {
-        const { file, startPosition, program } = context4;
+      function getRefactorEditsToConvertOverloadsToOneSignature(context3) {
+        const { file, startPosition, program } = context3;
         const signatureDecls = getConvertableOverloadListAtPosition(file, startPosition, program);
         if (!signatureDecls) return void 0;
         const checker = program.getTypeChecker();
@@ -178176,7 +178176,7 @@ interface Symbol {
         if (updated === lastDeclaration) {
           return;
         }
-        const edits = ts_textChanges_exports.ChangeTracker.with(context4, (t) => {
+        const edits = ts_textChanges_exports.ChangeTracker.with(context3, (t) => {
           t.replaceNodeRange(file, signatureDecls[0], signatureDecls[signatureDecls.length - 1], updated);
         });
         return { renameFilename: void 0, renameLocation: void 0, edits };
@@ -178312,8 +178312,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         getEditsForAction: getRefactorEditsToRemoveFunctionBraces,
         getAvailableActions: getRefactorActionsToRemoveFunctionBraces
       });
-      function getRefactorActionsToRemoveFunctionBraces(context4) {
-        const { file, startPosition, triggerReason } = context4;
+      function getRefactorActionsToRemoveFunctionBraces(context3) {
+        const { file, startPosition, triggerReason } = context3;
         const info2 = getConvertibleArrowFunctionAtPosition(file, startPosition, triggerReason === "invoked");
         if (!info2) return emptyArray;
         if (!isRefactorErrorInfo(info2)) {
@@ -178325,7 +178325,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             ]
           }];
         }
-        if (context4.preferences.provideRefactorNotApplicableReason) {
+        if (context3.preferences.provideRefactorNotApplicableReason) {
           return [{
             name: refactorName7,
             description: refactorDescription3,
@@ -178337,8 +178337,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         return emptyArray;
       }
-      function getRefactorEditsToRemoveFunctionBraces(context4, actionName2) {
-        const { file, startPosition } = context4;
+      function getRefactorEditsToRemoveFunctionBraces(context3, actionName2) {
+        const { file, startPosition } = context3;
         const info2 = getConvertibleArrowFunctionAtPosition(file, startPosition);
         Debug.assert(info2 && !isRefactorErrorInfo(info2), "Expected applicable refactor info");
         const { expression, returnStatement, func } = info2;
@@ -178388,7 +178388,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         } else {
           Debug.fail("invalid action");
         }
-        const edits = ts_textChanges_exports.ChangeTracker.with(context4, (t) => {
+        const edits = ts_textChanges_exports.ChangeTracker.with(context3, (t) => {
           t.replaceNode(file, func.body, body);
         });
         return { renameFilename: void 0, renameLocation: void 0, edits };
@@ -178451,8 +178451,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         getEditsForAction: getRefactorEditsToConvertFunctionExpressions,
         getAvailableActions: getRefactorActionsToConvertFunctionExpressions
       });
-      function getRefactorActionsToConvertFunctionExpressions(context4) {
-        const { file, startPosition, program, kind } = context4;
+      function getRefactorActionsToConvertFunctionExpressions(context3) {
+        const { file, startPosition, program, kind } = context3;
         const info2 = getFunctionInfo(file, startPosition, program);
         if (!info2) return emptyArray;
         const { selectedVariableDeclaration, func } = info2;
@@ -178485,27 +178485,27 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         return [{
           name: refactorName8,
           description: refactorDescription4,
-          actions: possibleActions.length === 0 && context4.preferences.provideRefactorNotApplicableReason ? errors : possibleActions
+          actions: possibleActions.length === 0 && context3.preferences.provideRefactorNotApplicableReason ? errors : possibleActions
         }];
       }
-      function getRefactorEditsToConvertFunctionExpressions(context4, actionName2) {
-        const { file, startPosition, program } = context4;
+      function getRefactorEditsToConvertFunctionExpressions(context3, actionName2) {
+        const { file, startPosition, program } = context3;
         const info2 = getFunctionInfo(file, startPosition, program);
         if (!info2) return void 0;
         const { func } = info2;
         const edits = [];
         switch (actionName2) {
           case toAnonymousFunctionAction.name:
-            edits.push(...getEditInfoForConvertToAnonymousFunction(context4, func));
+            edits.push(...getEditInfoForConvertToAnonymousFunction(context3, func));
             break;
           case toNamedFunctionAction.name:
             const variableInfo = getVariableInfo(func);
             if (!variableInfo) return void 0;
-            edits.push(...getEditInfoForConvertToNamedFunction(context4, func, variableInfo));
+            edits.push(...getEditInfoForConvertToNamedFunction(context3, func, variableInfo));
             break;
           case toArrowFunctionAction.name:
             if (!isFunctionExpression(func)) return void 0;
-            edits.push(...getEditInfoForConvertToArrowFunction(context4, func));
+            edits.push(...getEditInfoForConvertToArrowFunction(context3, func));
             break;
           default:
             return Debug.fail("invalid action");
@@ -178585,8 +178585,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         if (!isVariableDeclarationList(variableDeclarationList) || !isVariableStatement(statement) || !isIdentifier2(variableDeclaration.name)) return void 0;
         return { variableDeclaration, variableDeclarationList, statement, name: variableDeclaration.name };
       }
-      function getEditInfoForConvertToAnonymousFunction(context4, func) {
-        const { file } = context4;
+      function getEditInfoForConvertToAnonymousFunction(context3, func) {
+        const { file } = context3;
         const body = convertToBlock(func.body);
         const newNode = factory.createFunctionExpression(
           func.modifiers,
@@ -178598,10 +178598,10 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           func.type,
           body
         );
-        return ts_textChanges_exports.ChangeTracker.with(context4, (t) => t.replaceNode(file, func, newNode));
+        return ts_textChanges_exports.ChangeTracker.with(context3, (t) => t.replaceNode(file, func, newNode));
       }
-      function getEditInfoForConvertToNamedFunction(context4, func, variableInfo) {
-        const { file } = context4;
+      function getEditInfoForConvertToNamedFunction(context3, func, variableInfo) {
+        const { file } = context3;
         const body = convertToBlock(func.body);
         const { variableDeclaration, variableDeclarationList, statement, name } = variableInfo;
         suppressLeadingTrivia(statement);
@@ -178609,16 +178609,16 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         const modifiers = factory.createModifiersFromModifierFlags(modifiersFlags);
         const newNode = factory.createFunctionDeclaration(length(modifiers) ? modifiers : void 0, func.asteriskToken, name, func.typeParameters, func.parameters, func.type, body);
         if (variableDeclarationList.declarations.length === 1) {
-          return ts_textChanges_exports.ChangeTracker.with(context4, (t) => t.replaceNode(file, statement, newNode));
+          return ts_textChanges_exports.ChangeTracker.with(context3, (t) => t.replaceNode(file, statement, newNode));
         } else {
-          return ts_textChanges_exports.ChangeTracker.with(context4, (t) => {
+          return ts_textChanges_exports.ChangeTracker.with(context3, (t) => {
             t.delete(file, variableDeclaration);
             t.insertNodeAfter(file, statement, newNode);
           });
         }
       }
-      function getEditInfoForConvertToArrowFunction(context4, func) {
-        const { file } = context4;
+      function getEditInfoForConvertToArrowFunction(context3, func) {
+        const { file } = context3;
         const statements = func.body.statements;
         const head = statements[0];
         let body;
@@ -178633,7 +178633,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           39
           /* EqualsGreaterThanToken */
         ), body);
-        return ts_textChanges_exports.ChangeTracker.with(context4, (t) => t.replaceNode(file, func, newNode));
+        return ts_textChanges_exports.ChangeTracker.with(context3, (t) => t.replaceNode(file, func, newNode));
       }
       function canBeConvertedToExpression(body, head) {
         return body.statements.length === 1 && (isReturnStatement(head) && !!head.expression);
@@ -178655,11 +178655,11 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         getEditsForAction: getRefactorEditsToConvertParametersToDestructuredObject,
         getAvailableActions: getRefactorActionsToConvertParametersToDestructuredObject
       });
-      function getRefactorActionsToConvertParametersToDestructuredObject(context4) {
-        const { file, startPosition } = context4;
+      function getRefactorActionsToConvertParametersToDestructuredObject(context3) {
+        const { file, startPosition } = context3;
         const isJSFile = isSourceFileJS(file);
         if (isJSFile) return emptyArray;
-        const functionDeclaration = getFunctionDeclarationAtPosition(file, startPosition, context4.program.getTypeChecker());
+        const functionDeclaration = getFunctionDeclarationAtPosition(file, startPosition, context3.program.getTypeChecker());
         if (!functionDeclaration) return emptyArray;
         return [{
           name: refactorName9,
@@ -178667,14 +178667,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           actions: [toDestructuredAction]
         }];
       }
-      function getRefactorEditsToConvertParametersToDestructuredObject(context4, actionName2) {
+      function getRefactorEditsToConvertParametersToDestructuredObject(context3, actionName2) {
         Debug.assert(actionName2 === refactorName9, "Unexpected action name");
-        const { file, startPosition, program, cancellationToken, host } = context4;
+        const { file, startPosition, program, cancellationToken, host } = context3;
         const functionDeclaration = getFunctionDeclarationAtPosition(file, startPosition, program.getTypeChecker());
         if (!functionDeclaration || !cancellationToken) return void 0;
         const groupedReferences = getGroupedReferences(functionDeclaration, program, cancellationToken);
         if (groupedReferences.valid) {
-          const edits = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange5(file, program, host, t, functionDeclaration, groupedReferences));
+          const edits = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange5(file, program, host, t, functionDeclaration, groupedReferences));
           return { renameFilename: void 0, renameLocation: void 0, edits };
         }
         return { edits: [] };
@@ -179205,19 +179205,19 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         getEditsForAction: getRefactorEditsToConvertToTemplateString,
         getAvailableActions: getRefactorActionsToConvertToTemplateString
       });
-      function getRefactorActionsToConvertToTemplateString(context4) {
-        const { file, startPosition } = context4;
+      function getRefactorActionsToConvertToTemplateString(context3) {
+        const { file, startPosition } = context3;
         const node = getNodeOrParentOfParentheses(file, startPosition);
         const maybeBinary = getParentBinaryExpression(node);
         const nodeIsStringLiteral = isStringLiteral(maybeBinary);
         const refactorInfo = { name: refactorName10, description: refactorDescription6, actions: [] };
-        if (nodeIsStringLiteral && context4.triggerReason !== "invoked") {
+        if (nodeIsStringLiteral && context3.triggerReason !== "invoked") {
           return emptyArray;
         }
         if (isExpressionNode(maybeBinary) && (nodeIsStringLiteral || isBinaryExpression(maybeBinary) && treeToArray(maybeBinary).isValidConcatenation)) {
           refactorInfo.actions.push(convertStringAction);
           return [refactorInfo];
-        } else if (context4.preferences.provideRefactorNotApplicableReason) {
+        } else if (context3.preferences.provideRefactorNotApplicableReason) {
           refactorInfo.actions.push({ ...convertStringAction, notApplicableReason: getLocaleSpecificMessage(Diagnostics.Can_only_convert_string_concatenations_and_string_literals) });
           return [refactorInfo];
         }
@@ -179232,30 +179232,30 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         return node;
       }
-      function getRefactorEditsToConvertToTemplateString(context4, actionName2) {
-        const { file, startPosition } = context4;
+      function getRefactorEditsToConvertToTemplateString(context3, actionName2) {
+        const { file, startPosition } = context3;
         const node = getNodeOrParentOfParentheses(file, startPosition);
         switch (actionName2) {
           case refactorDescription6:
-            return { edits: getEditsForToTemplateLiteral(context4, node) };
+            return { edits: getEditsForToTemplateLiteral(context3, node) };
           default:
             return Debug.fail("invalid action");
         }
       }
-      function getEditsForToTemplateLiteral(context4, node) {
+      function getEditsForToTemplateLiteral(context3, node) {
         const maybeBinary = getParentBinaryExpression(node);
-        const file = context4.file;
+        const file = context3.file;
         const templateLiteral = nodesToTemplate(treeToArray(maybeBinary), file);
         const trailingCommentRanges = getTrailingCommentRanges(file.text, maybeBinary.end);
         if (trailingCommentRanges) {
           const lastComment = trailingCommentRanges[trailingCommentRanges.length - 1];
           const trailingRange = { pos: trailingCommentRanges[0].pos, end: lastComment.end };
-          return ts_textChanges_exports.ChangeTracker.with(context4, (t) => {
+          return ts_textChanges_exports.ChangeTracker.with(context3, (t) => {
             t.deleteRange(file, trailingRange);
             t.replaceNode(file, maybeBinary, templateLiteral);
           });
         } else {
-          return ts_textChanges_exports.ChangeTracker.with(context4, (t) => t.replaceNode(file, maybeBinary, templateLiteral));
+          return ts_textChanges_exports.ChangeTracker.with(context3, (t) => t.replaceNode(file, maybeBinary, templateLiteral));
         }
       }
       function isNotEqualsOperator(node) {
@@ -179424,8 +179424,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         getEditsForAction: getRefactorEditsToConvertToOptionalChain,
         getAvailableActions: getRefactorActionsToConvertToOptionalChain
       });
-      function getRefactorActionsToConvertToOptionalChain(context4) {
-        const info2 = getInfo3(context4, context4.triggerReason === "invoked");
+      function getRefactorActionsToConvertToOptionalChain(context3) {
+        const info2 = getInfo3(context3, context3.triggerReason === "invoked");
         if (!info2) return emptyArray;
         if (!isRefactorErrorInfo(info2)) {
           return [{
@@ -179434,7 +179434,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             actions: [toOptionalChainAction]
           }];
         }
-        if (context4.preferences.provideRefactorNotApplicableReason) {
+        if (context3.preferences.provideRefactorNotApplicableReason) {
           return [{
             name: refactorName11,
             description: convertToOptionalChainExpressionMessage,
@@ -179443,10 +179443,10 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         return emptyArray;
       }
-      function getRefactorEditsToConvertToOptionalChain(context4, actionName2) {
-        const info2 = getInfo3(context4);
+      function getRefactorEditsToConvertToOptionalChain(context3, actionName2) {
+        const info2 = getInfo3(context3);
         Debug.assert(info2 && !isRefactorErrorInfo(info2), "Expected applicable refactor info");
-        const edits = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange6(context4.file, context4.program.getTypeChecker(), t, info2, actionName2));
+        const edits = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange6(context3.file, context3.program.getTypeChecker(), t, info2, actionName2));
         return { edits, renameFilename: void 0, renameLocation: void 0 };
       }
       function isValidExpression(node) {
@@ -179458,9 +179458,9 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       function isValidExpressionOrStatement(node) {
         return isValidExpression(node) || isValidStatement(node);
       }
-      function getInfo3(context4, considerEmptySpans = true) {
-        const { file, program } = context4;
-        const span = getRefactorContextSpan(context4);
+      function getInfo3(context3, considerEmptySpans = true) {
+        const { file, program } = context3;
+        const span = getRefactorContextSpan(context3);
         const forEmptySpan = span.length === 0;
         if (forEmptySpan && !considerEmptySpans) return void 0;
         const startToken = getTokenAtPosition(file, span.start);
@@ -179646,12 +179646,12 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         getEditsForAction: getRefactorEditsToExtractSymbol,
         getAvailableActions: getRefactorActionsToExtractSymbol
       });
-      function getRefactorActionsToExtractSymbol(context4) {
-        const requestedRefactor = context4.kind;
-        const rangeToExtract = getRangeToExtract2(context4.file, getRefactorContextSpan(context4), context4.triggerReason === "invoked");
+      function getRefactorActionsToExtractSymbol(context3) {
+        const requestedRefactor = context3.kind;
+        const rangeToExtract = getRangeToExtract2(context3.file, getRefactorContextSpan(context3), context3.triggerReason === "invoked");
         const targetRange = rangeToExtract.targetRange;
         if (targetRange === void 0) {
-          if (!rangeToExtract.errors || rangeToExtract.errors.length === 0 || !context4.preferences.provideRefactorNotApplicableReason) {
+          if (!rangeToExtract.errors || rangeToExtract.errors.length === 0 || !context3.preferences.provideRefactorNotApplicableReason) {
             return emptyArray;
           }
           const errors = [];
@@ -179671,7 +179671,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           }
           return errors;
         }
-        const { affectedTextRange, extractions } = getPossibleExtractions(targetRange, context4);
+        const { affectedTextRange, extractions } = getPossibleExtractions(targetRange, context3);
         if (extractions === void 0) {
           return emptyArray;
         }
@@ -179693,8 +179693,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
                   name: `function_scope_${i}`,
                   kind: extractFunctionAction.kind,
                   range: {
-                    start: { line: getLineAndCharacterOfPosition(context4.file, affectedTextRange.pos).line, offset: getLineAndCharacterOfPosition(context4.file, affectedTextRange.pos).character },
-                    end: { line: getLineAndCharacterOfPosition(context4.file, affectedTextRange.end).line, offset: getLineAndCharacterOfPosition(context4.file, affectedTextRange.end).character }
+                    start: { line: getLineAndCharacterOfPosition(context3.file, affectedTextRange.pos).line, offset: getLineAndCharacterOfPosition(context3.file, affectedTextRange.pos).character },
+                    end: { line: getLineAndCharacterOfPosition(context3.file, affectedTextRange.end).line, offset: getLineAndCharacterOfPosition(context3.file, affectedTextRange.end).character }
                   }
                 });
               }
@@ -179717,8 +179717,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
                   name: `constant_scope_${i}`,
                   kind: extractConstantAction.kind,
                   range: {
-                    start: { line: getLineAndCharacterOfPosition(context4.file, affectedTextRange.pos).line, offset: getLineAndCharacterOfPosition(context4.file, affectedTextRange.pos).character },
-                    end: { line: getLineAndCharacterOfPosition(context4.file, affectedTextRange.end).line, offset: getLineAndCharacterOfPosition(context4.file, affectedTextRange.end).character }
+                    start: { line: getLineAndCharacterOfPosition(context3.file, affectedTextRange.pos).line, offset: getLineAndCharacterOfPosition(context3.file, affectedTextRange.pos).character },
+                    end: { line: getLineAndCharacterOfPosition(context3.file, affectedTextRange.end).line, offset: getLineAndCharacterOfPosition(context3.file, affectedTextRange.end).character }
                   }
                 });
               }
@@ -179740,7 +179740,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             description: getLocaleSpecificMessage(Diagnostics.Extract_function),
             actions: functionActions
           });
-        } else if (context4.preferences.provideRefactorNotApplicableReason && innermostErrorFunctionAction) {
+        } else if (context3.preferences.provideRefactorNotApplicableReason && innermostErrorFunctionAction) {
           infos.push({
             name: refactorName12,
             description: getLocaleSpecificMessage(Diagnostics.Extract_function),
@@ -179753,7 +179753,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             description: getLocaleSpecificMessage(Diagnostics.Extract_constant),
             actions: constantActions
           });
-        } else if (context4.preferences.provideRefactorNotApplicableReason && innermostErrorConstantAction) {
+        } else if (context3.preferences.provideRefactorNotApplicableReason && innermostErrorConstantAction) {
           infos.push({
             name: refactorName12,
             description: getLocaleSpecificMessage(Diagnostics.Extract_constant),
@@ -179769,20 +179769,20 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           return error22;
         }
       }
-      function getRefactorEditsToExtractSymbol(context4, actionName2) {
-        const rangeToExtract = getRangeToExtract2(context4.file, getRefactorContextSpan(context4));
+      function getRefactorEditsToExtractSymbol(context3, actionName2) {
+        const rangeToExtract = getRangeToExtract2(context3.file, getRefactorContextSpan(context3));
         const targetRange = rangeToExtract.targetRange;
         const parsedFunctionIndexMatch = /^function_scope_(\d+)$/.exec(actionName2);
         if (parsedFunctionIndexMatch) {
           const index = +parsedFunctionIndexMatch[1];
           Debug.assert(isFinite(index), "Expected to parse a finite number from the function scope index");
-          return getFunctionExtractionAtIndex(targetRange, context4, index);
+          return getFunctionExtractionAtIndex(targetRange, context3, index);
         }
         const parsedConstantIndexMatch = /^constant_scope_(\d+)$/.exec(actionName2);
         if (parsedConstantIndexMatch) {
           const index = +parsedConstantIndexMatch[1];
           Debug.assert(isFinite(index), "Expected to parse a finite number from the constant scope index");
-          return getConstantExtractionAtIndex(targetRange, context4, index);
+          return getConstantExtractionAtIndex(targetRange, context3, index);
         }
         Debug.fail("Unrecognized action name");
       }
@@ -180149,22 +180149,22 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           }
         }
       }
-      function getFunctionExtractionAtIndex(targetRange, context4, requestedChangesIndex) {
-        const { scopes, readsAndWrites: { target, usagesPerScope, functionErrorsPerScope, exposedVariableDeclarations } } = getPossibleExtractionsWorker(targetRange, context4);
+      function getFunctionExtractionAtIndex(targetRange, context3, requestedChangesIndex) {
+        const { scopes, readsAndWrites: { target, usagesPerScope, functionErrorsPerScope, exposedVariableDeclarations } } = getPossibleExtractionsWorker(targetRange, context3);
         Debug.assert(!functionErrorsPerScope[requestedChangesIndex].length, "The extraction went missing? How?");
-        context4.cancellationToken.throwIfCancellationRequested();
-        return extractFunctionInScope(target, scopes[requestedChangesIndex], usagesPerScope[requestedChangesIndex], exposedVariableDeclarations, targetRange, context4);
+        context3.cancellationToken.throwIfCancellationRequested();
+        return extractFunctionInScope(target, scopes[requestedChangesIndex], usagesPerScope[requestedChangesIndex], exposedVariableDeclarations, targetRange, context3);
       }
-      function getConstantExtractionAtIndex(targetRange, context4, requestedChangesIndex) {
-        const { scopes, readsAndWrites: { target, usagesPerScope, constantErrorsPerScope, exposedVariableDeclarations } } = getPossibleExtractionsWorker(targetRange, context4);
+      function getConstantExtractionAtIndex(targetRange, context3, requestedChangesIndex) {
+        const { scopes, readsAndWrites: { target, usagesPerScope, constantErrorsPerScope, exposedVariableDeclarations } } = getPossibleExtractionsWorker(targetRange, context3);
         Debug.assert(!constantErrorsPerScope[requestedChangesIndex].length, "The extraction went missing? How?");
         Debug.assert(exposedVariableDeclarations.length === 0, "Extract constant accepted a range containing a variable declaration?");
-        context4.cancellationToken.throwIfCancellationRequested();
+        context3.cancellationToken.throwIfCancellationRequested();
         const expression = isExpression(target) ? target : target.statements[0].expression;
-        return extractConstantInScope(expression, scopes[requestedChangesIndex], usagesPerScope[requestedChangesIndex], targetRange.facts, context4);
+        return extractConstantInScope(expression, scopes[requestedChangesIndex], usagesPerScope[requestedChangesIndex], targetRange.facts, context3);
       }
-      function getPossibleExtractions(targetRange, context4) {
-        const { scopes, affectedTextRange, readsAndWrites: { functionErrorsPerScope, constantErrorsPerScope } } = getPossibleExtractionsWorker(targetRange, context4);
+      function getPossibleExtractions(targetRange, context3) {
+        const { scopes, affectedTextRange, readsAndWrites: { functionErrorsPerScope, constantErrorsPerScope } } = getPossibleExtractionsWorker(targetRange, context3);
         const extractions = scopes.map((scope, i) => {
           const functionDescriptionPart = getDescriptionForFunctionInScope(scope);
           const constantDescriptionPart = getDescriptionForConstantInScope(scope);
@@ -180197,8 +180197,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         });
         return { affectedTextRange, extractions };
       }
-      function getPossibleExtractionsWorker(targetRange, context4) {
-        const { file: sourceFile } = context4;
+      function getPossibleExtractionsWorker(targetRange, context3) {
+        const { file: sourceFile } = context3;
         const scopes = collectEnclosingScopes(targetRange);
         const enclosingTextRange = getEnclosingTextRange(targetRange, sourceFile);
         const readsAndWrites = collectReadsAndWrites(
@@ -180206,8 +180206,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           scopes,
           enclosingTextRange,
           sourceFile,
-          context4.program.getTypeChecker(),
-          context4.cancellationToken
+          context3.program.getTypeChecker(),
+          context3.cancellationToken
         );
         return { scopes, affectedTextRange: enclosingTextRange, readsAndWrites };
       }
@@ -180242,10 +180242,10 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       function getDescriptionForModuleLikeDeclaration(scope) {
         return scope.kind === 269 ? `namespace '${scope.parent.name.getText()}'` : scope.externalModuleIndicator ? 0 : 1;
       }
-      function extractFunctionInScope(node, scope, { usages: usagesInScope, typeParameterUsages, substitutions }, exposedVariableDeclarations, range, context4) {
-        const checker = context4.program.getTypeChecker();
-        const scriptTarget = getEmitScriptTarget(context4.program.getCompilerOptions());
-        const importAdder = ts_codefix_exports.createImportAdder(context4.file, context4.program, context4.preferences, context4.host);
+      function extractFunctionInScope(node, scope, { usages: usagesInScope, typeParameterUsages, substitutions }, exposedVariableDeclarations, range, context3) {
+        const checker = context3.program.getTypeChecker();
+        const scriptTarget = getEmitScriptTarget(context3.program.getCompilerOptions());
+        const importAdder = ts_codefix_exports.createImportAdder(context3.file, context3.program, context3.preferences, context3.host);
         const file = scope.getSourceFile();
         const functionNameText = getUniqueName(isClassLike(scope) ? "newMethod" : "newFunction", file);
         const isJS = isInJSFile(scope);
@@ -180287,7 +180287,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           }
           callArguments.push(factory.createIdentifier(name));
         });
-        const typeParametersAndDeclarations = arrayFrom(typeParameterUsages.values(), (type) => ({ type, declaration: getFirstDeclarationBeforePosition(type, context4.startPosition) }));
+        const typeParametersAndDeclarations = arrayFrom(typeParameterUsages.values(), (type) => ({ type, declaration: getFirstDeclarationBeforePosition(type, context3.startPosition) }));
         typeParametersAndDeclarations.sort(compareTypesByDeclarationOrder);
         const typeParameters = typeParametersAndDeclarations.length === 0 ? void 0 : mapDefined(typeParametersAndDeclarations, ({ declaration }) => declaration);
         const callTypeArguments = typeParameters !== void 0 ? typeParameters.map((decl) => factory.createTypeReferenceNode(
@@ -180380,19 +180380,19 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             body
           );
         }
-        const changeTracker = ts_textChanges_exports.ChangeTracker.fromContext(context4);
+        const changeTracker = ts_textChanges_exports.ChangeTracker.fromContext(context3);
         const minInsertionPos = (isReadonlyArray(range.range) ? last(range.range) : range.range).end;
         const nodeToInsertBefore = getNodeToInsertFunctionBefore(minInsertionPos, scope);
         if (nodeToInsertBefore) {
           changeTracker.insertNodeBefore(
-            context4.file,
+            context3.file,
             nodeToInsertBefore,
             newFunction,
             /*blankLineBetween*/
             true
           );
         } else {
-          changeTracker.insertNodeAtEndOfScope(context4.file, scope, newFunction);
+          changeTracker.insertNodeAtEndOfScope(context3.file, scope, newFunction);
         }
         importAdder.writeFixes(changeTracker);
         const newNodes = [];
@@ -180569,9 +180569,9 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           }
         }
         if (isReadonlyArray(range.range)) {
-          changeTracker.replaceNodeRangeWithNodes(context4.file, first(range.range), last(range.range), newNodes);
+          changeTracker.replaceNodeRangeWithNodes(context3.file, first(range.range), last(range.range), newNodes);
         } else {
-          changeTracker.replaceNodeWithNodes(context4.file, range.range, newNodes);
+          changeTracker.replaceNodeWithNodes(context3.file, range.range, newNodes);
         }
         const edits = changeTracker.getChanges();
         const renameRange = isReadonlyArray(range.range) ? first(range.range) : range.range;
@@ -180603,8 +180603,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           )]);
         }
       }
-      function extractConstantInScope(node, scope, { substitutions }, rangeFacts, context4) {
-        const checker = context4.program.getTypeChecker();
+      function extractConstantInScope(node, scope, { substitutions }, rangeFacts, context3) {
+        const checker = context3.program.getTypeChecker();
         const file = scope.getSourceFile();
         const localNameText = getIdentifierForNode(node, scope, checker, file);
         const isJS = isInJSFile(scope);
@@ -180618,7 +180618,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         let initializer = transformConstantInitializer(skipParentheses(node), substitutions);
         ({ variableType, initializer } = transformFunctionInitializerAndType(variableType, initializer));
         suppressLeadingAndTrailingTrivia(initializer);
-        const changeTracker = ts_textChanges_exports.ChangeTracker.fromContext(context4);
+        const changeTracker = ts_textChanges_exports.ChangeTracker.fromContext(context3);
         if (isClassLike(scope)) {
           Debug.assert(!isJS, "Cannot extract to a JS class");
           const modifiers = [];
@@ -180658,13 +180658,13 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           const maxInsertionPos = node.pos;
           const nodeToInsertBefore = getNodeToInsertPropertyBefore(maxInsertionPos, scope);
           changeTracker.insertNodeBefore(
-            context4.file,
+            context3.file,
             nodeToInsertBefore,
             newVariable,
             /*blankLineBetween*/
             true
           );
-          changeTracker.replaceNode(context4.file, node, localReference);
+          changeTracker.replaceNode(context3.file, node, localReference);
         } else {
           const newVariableDeclaration = factory.createVariableDeclaration(
             localNameText,
@@ -180675,9 +180675,9 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           );
           const oldVariableDeclaration = getContainingVariableDeclarationIfInList(node, scope);
           if (oldVariableDeclaration) {
-            changeTracker.insertNodeBefore(context4.file, oldVariableDeclaration, newVariableDeclaration);
+            changeTracker.insertNodeBefore(context3.file, oldVariableDeclaration, newVariableDeclaration);
             const localReference = factory.createIdentifier(localNameText);
-            changeTracker.replaceNode(context4.file, node, localReference);
+            changeTracker.replaceNode(context3.file, node, localReference);
           } else if (node.parent.kind === 245 && scope === findAncestor(node, isScope)) {
             const newVariableStatement = factory.createVariableStatement(
               /*modifiers*/
@@ -180688,7 +180688,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
                 /* Const */
               )
             );
-            changeTracker.replaceNode(context4.file, node.parent, newVariableStatement);
+            changeTracker.replaceNode(context3.file, node.parent, newVariableStatement);
           } else {
             const newVariableStatement = factory.createVariableStatement(
               /*modifiers*/
@@ -180702,14 +180702,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             const nodeToInsertBefore = getNodeToInsertConstantBefore(node, scope);
             if (nodeToInsertBefore.pos === 0) {
               changeTracker.insertNodeAtTopOfFile(
-                context4.file,
+                context3.file,
                 newVariableStatement,
                 /*blankLineBetween*/
                 false
               );
             } else {
               changeTracker.insertNodeBefore(
-                context4.file,
+                context3.file,
                 nodeToInsertBefore,
                 newVariableStatement,
                 /*blankLineBetween*/
@@ -180717,7 +180717,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               );
             }
             if (node.parent.kind === 245) {
-              changeTracker.delete(context4.file, node.parent);
+              changeTracker.delete(context3.file, node.parent);
             } else {
               let localReference = factory.createIdentifier(localNameText);
               if (isInJSXContent(node)) {
@@ -180727,7 +180727,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
                   localReference
                 );
               }
-              changeTracker.replaceNode(context4.file, node, localReference);
+              changeTracker.replaceNode(context3.file, node, localReference);
             }
           }
         }
@@ -181320,13 +181320,13 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       };
       registerRefactor(actionName, {
         kinds: [generateGetSetAction.kind],
-        getEditsForAction: function getRefactorActionsToGenerateGetAndSetAccessors(context4, actionName2) {
-          if (!context4.endPosition) return void 0;
-          const info2 = ts_codefix_exports.getAccessorConvertiblePropertyAtPosition(context4.file, context4.program, context4.startPosition, context4.endPosition);
+        getEditsForAction: function getRefactorActionsToGenerateGetAndSetAccessors(context3, actionName2) {
+          if (!context3.endPosition) return void 0;
+          const info2 = ts_codefix_exports.getAccessorConvertiblePropertyAtPosition(context3.file, context3.program, context3.startPosition, context3.endPosition);
           Debug.assert(info2 && !isRefactorErrorInfo(info2), "Expected applicable refactor info");
-          const edits = ts_codefix_exports.generateAccessorFromProperty(context4.file, context4.program, context4.startPosition, context4.endPosition, context4, actionName2);
+          const edits = ts_codefix_exports.generateAccessorFromProperty(context3.file, context3.program, context3.startPosition, context3.endPosition, context3, actionName2);
           if (!edits) return void 0;
-          const renameFilename = context4.file.fileName;
+          const renameFilename = context3.file.fileName;
           const nameNeedRename = info2.renameAccessor ? info2.accessorName : info2.fieldName;
           const renameLocationOffset = isIdentifier2(nameNeedRename) ? 0 : -1;
           const renameLocation = renameLocationOffset + getRenameLocation(
@@ -181338,9 +181338,9 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           );
           return { renameFilename, renameLocation, edits };
         },
-        getAvailableActions(context4) {
-          if (!context4.endPosition) return emptyArray;
-          const info2 = ts_codefix_exports.getAccessorConvertiblePropertyAtPosition(context4.file, context4.program, context4.startPosition, context4.endPosition, context4.triggerReason === "invoked");
+        getAvailableActions(context3) {
+          if (!context3.endPosition) return emptyArray;
+          const info2 = ts_codefix_exports.getAccessorConvertiblePropertyAtPosition(context3.file, context3.program, context3.startPosition, context3.endPosition, context3.triggerReason === "invoked");
           if (!info2) return emptyArray;
           if (!isRefactorErrorInfo(info2)) {
             return [{
@@ -181349,7 +181349,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               actions: [generateGetSetAction]
             }];
           }
-          if (context4.preferences.provideRefactorNotApplicableReason) {
+          if (context3.preferences.provideRefactorNotApplicableReason) {
             return [{
               name: actionName,
               description: actionDescription,
@@ -181372,16 +181372,16 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         getEditsForAction: getRefactorEditsToInferReturnType,
         getAvailableActions: getRefactorActionsToInferReturnType
       });
-      function getRefactorEditsToInferReturnType(context4) {
-        const info2 = getInfo4(context4);
+      function getRefactorEditsToInferReturnType(context3) {
+        const info2 = getInfo4(context3);
         if (info2 && !isRefactorErrorInfo(info2)) {
-          const edits = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange7(context4.file, t, info2.declaration, info2.returnTypeNode));
+          const edits = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange7(context3.file, t, info2.declaration, info2.returnTypeNode));
           return { renameFilename: void 0, renameLocation: void 0, edits };
         }
         return void 0;
       }
-      function getRefactorActionsToInferReturnType(context4) {
-        const info2 = getInfo4(context4);
+      function getRefactorActionsToInferReturnType(context3) {
+        const info2 = getInfo4(context3);
         if (!info2) return emptyArray;
         if (!isRefactorErrorInfo(info2)) {
           return [{
@@ -181390,7 +181390,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             actions: [inferReturnTypeAction]
           }];
         }
-        if (context4.preferences.provideRefactorNotApplicableReason) {
+        if (context3.preferences.provideRefactorNotApplicableReason) {
           return [{
             name: refactorName13,
             description: refactorDescription7,
@@ -181417,14 +181417,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           changes.insertNodeAt(sourceFile, endNode2.end, typeNode, { prefix: ": " });
         }
       }
-      function getInfo4(context4) {
-        if (isInJSFile(context4.file) || !refactorKindBeginsWith(inferReturnTypeAction.kind, context4.kind)) return;
-        const token = getTouchingPropertyName(context4.file, context4.startPosition);
+      function getInfo4(context3) {
+        if (isInJSFile(context3.file) || !refactorKindBeginsWith(inferReturnTypeAction.kind, context3.kind)) return;
+        const token = getTouchingPropertyName(context3.file, context3.startPosition);
         const declaration = findAncestor(token, (n) => isBlock(n) || n.parent && isArrowFunction(n.parent) && (n.kind === 39 || n.parent.body === n) ? "quit" : isConvertibleDeclaration(n));
         if (!declaration || !declaration.body || declaration.type) {
           return { error: getLocaleSpecificMessage(Diagnostics.Return_type_must_be_inferred_from_a_function) };
         }
-        const typeChecker = context4.program.getTypeChecker();
+        const typeChecker = context3.program.getTypeChecker();
         let returnType;
         if (typeChecker.isImplementationOfOverload(declaration)) {
           const signatures = typeChecker.getTypeAtLocation(declaration).getCallSignatures();
@@ -182041,9 +182041,9 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           }
           return this.documentationComment;
         }
-        getContextualDocumentationComment(context4, checker) {
-          if (context4) {
-            if (isGetAccessor(context4)) {
+        getContextualDocumentationComment(context3, checker) {
+          if (context3) {
+            if (isGetAccessor(context3)) {
               if (!this.contextualGetAccessorDocumentationComment) {
                 this.contextualGetAccessorDocumentationComment = emptyArray;
                 this.contextualGetAccessorDocumentationComment = getDocumentationComment(filter(this.declarations, isGetAccessor), checker);
@@ -182052,7 +182052,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
                 return this.contextualGetAccessorDocumentationComment;
               }
             }
-            if (isSetAccessor(context4)) {
+            if (isSetAccessor(context3)) {
               if (!this.contextualSetAccessorDocumentationComment) {
                 this.contextualSetAccessorDocumentationComment = emptyArray;
                 this.contextualSetAccessorDocumentationComment = getDocumentationComment(filter(this.declarations, isSetAccessor), checker);
@@ -182071,9 +182071,9 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           }
           return this.tags;
         }
-        getContextualJsDocTags(context4, checker) {
-          if (context4) {
-            if (isGetAccessor(context4)) {
+        getContextualJsDocTags(context3, checker) {
+          if (context3) {
+            if (isGetAccessor(context3)) {
               if (!this.contextualGetAccessorTags) {
                 this.contextualGetAccessorTags = emptyArray;
                 this.contextualGetAccessorTags = getJsDocTagsOfDeclarations(filter(this.declarations, isGetAccessor), checker);
@@ -182082,7 +182082,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
                 return this.contextualGetAccessorTags;
               }
             }
-            if (isSetAccessor(context4)) {
+            if (isSetAccessor(context3)) {
               if (!this.contextualSetAccessorTags) {
                 this.contextualSetAccessorTags = emptyArray;
                 this.contextualSetAccessorTags = getJsDocTagsOfDeclarations(filter(this.declarations, isSetAccessor), checker);
@@ -185255,13 +185255,13 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           return fixAllUnavailable ? action : { ...action, fixId: fixId56, fixAllDescription };
         };
       }
-      function getFixes(context4) {
-        const diagnostics = getDiagnostics(context4);
-        const registrations = errorCodeToFixes.get(String(context4.errorCode));
-        return flatMap(registrations, (f) => map(f.getCodeActions(context4), removeFixIdIfFixAllUnavailable(f, diagnostics)));
+      function getFixes(context3) {
+        const diagnostics = getDiagnostics(context3);
+        const registrations = errorCodeToFixes.get(String(context3.errorCode));
+        return flatMap(registrations, (f) => map(f.getCodeActions(context3), removeFixIdIfFixAllUnavailable(f, diagnostics)));
       }
-      function getAllFixes(context4) {
-        return fixIdToRegistration.get(cast(context4.fixId, isString)).getAllCodeActions(context4);
+      function getAllFixes(context3) {
+        return fixIdToRegistration.get(cast(context3.fixId, isString)).getAllCodeActions(context3);
       }
       function createCombinedCodeActions(changes, commands) {
         return { changes, commands };
@@ -185269,13 +185269,13 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       function createFileTextChanges(fileName, textChanges2) {
         return { fileName, textChanges: textChanges2 };
       }
-      function codeFixAll(context4, errorCodes68, use) {
+      function codeFixAll(context3, errorCodes68, use) {
         const commands = [];
-        const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => eachDiagnostic(context4, errorCodes68, (diag2) => use(t, diag2, commands)));
+        const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => eachDiagnostic(context3, errorCodes68, (diag2) => use(t, diag2, commands)));
         return createCombinedCodeActions(changes, commands.length === 0 ? void 0 : commands);
       }
-      function eachDiagnostic(context4, errorCodes68, cb) {
-        for (const diag2 of getDiagnostics(context4)) {
+      function eachDiagnostic(context3, errorCodes68, cb) {
+        for (const diag2 of getDiagnostics(context3)) {
           if (contains2(errorCodes68, diag2.code)) {
             cb(diag2);
           }
@@ -185298,14 +185298,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes = [Diagnostics.Conversion_of_type_0_to_type_1_may_be_a_mistake_because_neither_type_sufficiently_overlaps_with_the_other_If_this_was_intentional_convert_the_expression_to_unknown_first.code];
       registerCodeFix({
         errorCodes,
-        getCodeActions: function getCodeActionsToAddConvertToUnknownForNonOverlappingTypes(context4) {
-          const assertion = getAssertion(context4.sourceFile, context4.span.start);
+        getCodeActions: function getCodeActionsToAddConvertToUnknownForNonOverlappingTypes(context3) {
+          const assertion = getAssertion(context3.sourceFile, context3.span.start);
           if (assertion === void 0) return void 0;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => makeChange(t, context4.sourceFile, assertion));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => makeChange(t, context3.sourceFile, assertion));
           return [createCodeFixAction(fixId, changes, Diagnostics.Add_unknown_conversion_for_non_overlapping_types, fixId, Diagnostics.Add_unknown_to_all_conversions_of_non_overlapping_types)];
         },
         fixIds: [fixId],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes, (changes, diag2) => {
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes, (changes, diag2) => {
           const assertion = getAssertion(diag2.file, diag2.start);
           if (assertion) {
             makeChange(changes, diag2.file, assertion);
@@ -185332,9 +185332,9 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           Diagnostics.await_using_statements_are_only_allowed_at_the_top_level_of_a_file_when_that_file_is_a_module_but_this_file_has_no_imports_or_exports_Consider_adding_an_empty_export_to_make_this_file_a_module.code,
           Diagnostics.for_await_loops_are_only_allowed_at_the_top_level_of_a_file_when_that_file_is_a_module_but_this_file_has_no_imports_or_exports_Consider_adding_an_empty_export_to_make_this_file_a_module.code
         ],
-        getCodeActions: function getCodeActionsToAddEmptyExportDeclaration(context4) {
-          const { sourceFile } = context4;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (changes2) => {
+        getCodeActions: function getCodeActionsToAddEmptyExportDeclaration(context3) {
+          const { sourceFile } = context3;
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (changes2) => {
             const exportDeclaration = factory.createExportDeclaration(
               /*modifiers*/
               void 0,
@@ -185358,33 +185358,33 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       registerCodeFix({
         fixIds: [fixId2],
         errorCodes: errorCodes2,
-        getCodeActions: function getCodeActionsToAddMissingAsync(context4) {
-          const { sourceFile, errorCode, cancellationToken, program, span } = context4;
+        getCodeActions: function getCodeActionsToAddMissingAsync(context3) {
+          const { sourceFile, errorCode, cancellationToken, program, span } = context3;
           const diagnostic = find(program.getTypeChecker().getDiagnostics(sourceFile, cancellationToken), getIsMatchingAsyncError(span, errorCode));
           const directSpan = diagnostic && diagnostic.relatedInformation && find(diagnostic.relatedInformation, (r) => r.code === Diagnostics.Did_you_mean_to_mark_this_function_as_async.code);
           const decl = getFixableErrorSpanDeclaration(sourceFile, directSpan);
           if (!decl) {
             return;
           }
-          const trackChanges = (cb) => ts_textChanges_exports.ChangeTracker.with(context4, cb);
-          return [getFix(context4, decl, trackChanges)];
+          const trackChanges = (cb) => ts_textChanges_exports.ChangeTracker.with(context3, cb);
+          return [getFix(context3, decl, trackChanges)];
         },
-        getAllCodeActions: (context4) => {
-          const { sourceFile } = context4;
+        getAllCodeActions: (context3) => {
+          const { sourceFile } = context3;
           const fixedDeclarations = /* @__PURE__ */ new Set();
-          return codeFixAll(context4, errorCodes2, (t, diagnostic) => {
+          return codeFixAll(context3, errorCodes2, (t, diagnostic) => {
             const span = diagnostic.relatedInformation && find(diagnostic.relatedInformation, (r) => r.code === Diagnostics.Did_you_mean_to_mark_this_function_as_async.code);
             const decl = getFixableErrorSpanDeclaration(sourceFile, span);
             if (!decl) {
               return;
             }
             const trackChanges = (cb) => (cb(t), []);
-            return getFix(context4, decl, trackChanges, fixedDeclarations);
+            return getFix(context3, decl, trackChanges, fixedDeclarations);
           });
         }
       });
-      function getFix(context4, decl, trackChanges, fixedDeclarations) {
-        const changes = trackChanges((t) => makeChange2(t, context4.sourceFile, decl, fixedDeclarations));
+      function getFix(context3, decl, trackChanges, fixedDeclarations) {
+        const changes = trackChanges((t) => makeChange2(t, context3.sourceFile, decl, fixedDeclarations));
         return createCodeFixAction(fixId2, changes, Diagnostics.Add_async_modifier_to_containing_function, fixId2, Diagnostics.Add_all_missing_async_modifiers);
       }
       function makeChange2(changeTracker, sourceFile, insertionSite, fixedDeclarations) {
@@ -185453,30 +185453,30 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       registerCodeFix({
         fixIds: [fixId3],
         errorCodes: errorCodes3,
-        getCodeActions: function getCodeActionsToAddMissingAwait(context4) {
-          const { sourceFile, errorCode, span, cancellationToken, program } = context4;
+        getCodeActions: function getCodeActionsToAddMissingAwait(context3) {
+          const { sourceFile, errorCode, span, cancellationToken, program } = context3;
           const expression = getAwaitErrorSpanExpression(sourceFile, errorCode, span, cancellationToken, program);
           if (!expression) {
             return;
           }
-          const checker = context4.program.getTypeChecker();
-          const trackChanges = (cb) => ts_textChanges_exports.ChangeTracker.with(context4, cb);
+          const checker = context3.program.getTypeChecker();
+          const trackChanges = (cb) => ts_textChanges_exports.ChangeTracker.with(context3, cb);
           return compact([
-            getDeclarationSiteFix(context4, expression, errorCode, checker, trackChanges),
-            getUseSiteFix(context4, expression, errorCode, checker, trackChanges)
+            getDeclarationSiteFix(context3, expression, errorCode, checker, trackChanges),
+            getUseSiteFix(context3, expression, errorCode, checker, trackChanges)
           ]);
         },
-        getAllCodeActions: (context4) => {
-          const { sourceFile, program, cancellationToken } = context4;
-          const checker = context4.program.getTypeChecker();
+        getAllCodeActions: (context3) => {
+          const { sourceFile, program, cancellationToken } = context3;
+          const checker = context3.program.getTypeChecker();
           const fixedDeclarations = /* @__PURE__ */ new Set();
-          return codeFixAll(context4, errorCodes3, (t, diagnostic) => {
+          return codeFixAll(context3, errorCodes3, (t, diagnostic) => {
             const expression = getAwaitErrorSpanExpression(sourceFile, diagnostic.code, diagnostic, cancellationToken, program);
             if (!expression) {
               return;
             }
             const trackChanges = (cb) => (cb(t), []);
-            return getDeclarationSiteFix(context4, expression, diagnostic.code, checker, trackChanges, fixedDeclarations) || getUseSiteFix(context4, expression, diagnostic.code, checker, trackChanges, fixedDeclarations);
+            return getDeclarationSiteFix(context3, expression, diagnostic.code, checker, trackChanges, fixedDeclarations) || getUseSiteFix(context3, expression, diagnostic.code, checker, trackChanges, fixedDeclarations);
           });
         }
       });
@@ -185484,8 +185484,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         const expression = getFixableErrorSpanExpression(sourceFile, span);
         return expression && isMissingAwaitError(sourceFile, errorCode, span, cancellationToken, program) && isInsideAwaitableBody(expression) ? expression : void 0;
       }
-      function getDeclarationSiteFix(context4, expression, errorCode, checker, trackChanges, fixedDeclarations) {
-        const { sourceFile, program, cancellationToken } = context4;
+      function getDeclarationSiteFix(context3, expression, errorCode, checker, trackChanges, fixedDeclarations) {
+        const { sourceFile, program, cancellationToken } = context3;
         const awaitableInitializers = findAwaitableInitializers(expression, sourceFile, cancellationToken, program, checker);
         if (awaitableInitializers) {
           const initializerChanges = trackChanges((t) => {
@@ -185501,8 +185501,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           );
         }
       }
-      function getUseSiteFix(context4, expression, errorCode, checker, trackChanges, fixedDeclarations) {
-        const changes = trackChanges((t) => makeChange3(t, errorCode, context4.sourceFile, checker, expression, fixedDeclarations));
+      function getUseSiteFix(context3, expression, errorCode, checker, trackChanges, fixedDeclarations) {
+        const changes = trackChanges((t) => makeChange3(t, errorCode, context3.sourceFile, checker, expression, fixedDeclarations));
         return createCodeFixAction(fixId3, changes, Diagnostics.Add_await, fixId3, Diagnostics.Fix_all_expressions_possibly_missing_await);
       }
       function isMissingAwaitError(sourceFile, errorCode, span, cancellationToken, program) {
@@ -185663,16 +185663,16 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       ];
       registerCodeFix({
         errorCodes: errorCodes4,
-        getCodeActions: function getCodeActionsToAddMissingConst(context4) {
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => makeChange4(t, context4.sourceFile, context4.span.start, context4.program));
+        getCodeActions: function getCodeActionsToAddMissingConst(context3) {
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => makeChange4(t, context3.sourceFile, context3.span.start, context3.program));
           if (changes.length > 0) {
             return [createCodeFixAction(fixId4, changes, Diagnostics.Add_const_to_unresolved_variable, fixId4, Diagnostics.Add_const_to_all_unresolved_variables)];
           }
         },
         fixIds: [fixId4],
-        getAllCodeActions: (context4) => {
+        getAllCodeActions: (context3) => {
           const fixedNodes = /* @__PURE__ */ new Set();
-          return codeFixAll(context4, errorCodes4, (changes, diag2) => makeChange4(changes, diag2.file, diag2.start, context4.program, fixedNodes));
+          return codeFixAll(context3, errorCodes4, (changes, diag2) => makeChange4(changes, diag2.file, diag2.start, context3.program, fixedNodes));
         }
       });
       function makeChange4(changeTracker, sourceFile, pos, program, fixedNodes) {
@@ -185749,16 +185749,16 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       ];
       registerCodeFix({
         errorCodes: errorCodes5,
-        getCodeActions: function getCodeActionsToAddMissingDeclareOnProperty(context4) {
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => makeChange5(t, context4.sourceFile, context4.span.start));
+        getCodeActions: function getCodeActionsToAddMissingDeclareOnProperty(context3) {
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => makeChange5(t, context3.sourceFile, context3.span.start));
           if (changes.length > 0) {
             return [createCodeFixAction(fixId5, changes, Diagnostics.Prefix_with_declare, fixId5, Diagnostics.Prefix_all_incorrect_property_declarations_with_declare)];
           }
         },
         fixIds: [fixId5],
-        getAllCodeActions: (context4) => {
+        getAllCodeActions: (context3) => {
           const fixedNodes = /* @__PURE__ */ new Set();
-          return codeFixAll(context4, errorCodes5, (changes, diag2) => makeChange5(changes, diag2.file, diag2.start, fixedNodes));
+          return codeFixAll(context3, errorCodes5, (changes, diag2) => makeChange5(changes, diag2.file, diag2.start, fixedNodes));
         }
       });
       function makeChange5(changeTracker, sourceFile, pos, fixedNodes) {
@@ -185775,12 +185775,12 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes6 = [Diagnostics._0_accepts_too_few_arguments_to_be_used_as_a_decorator_here_Did_you_mean_to_call_it_first_and_write_0.code];
       registerCodeFix({
         errorCodes: errorCodes6,
-        getCodeActions: function getCodeActionsToAddMissingInvocationForDecorator(context4) {
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => makeChange6(t, context4.sourceFile, context4.span.start));
+        getCodeActions: function getCodeActionsToAddMissingInvocationForDecorator(context3) {
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => makeChange6(t, context3.sourceFile, context3.span.start));
           return [createCodeFixAction(fixId6, changes, Diagnostics.Call_decorator_expression, fixId6, Diagnostics.Add_to_all_uncalled_decorators)];
         },
         fixIds: [fixId6],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes6, (changes, diag2) => makeChange6(changes, diag2.file, diag2.start))
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes6, (changes, diag2) => makeChange6(changes, diag2.file, diag2.start))
       });
       function makeChange6(changeTracker, sourceFile, pos) {
         const token = getTokenAtPosition(sourceFile, pos);
@@ -185802,12 +185802,12 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       ];
       registerCodeFix({
         errorCodes: errorCodes7,
-        getCodeActions: function getCodeActionsToAddMissingResolutionModeImportAttribute(context4) {
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => makeChange7(t, context4.sourceFile, context4.span.start, context4.program, context4.host, context4.preferences));
+        getCodeActions: function getCodeActionsToAddMissingResolutionModeImportAttribute(context3) {
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => makeChange7(t, context3.sourceFile, context3.span.start, context3.program, context3.host, context3.preferences));
           return [createCodeFixAction(fixId7, changes, Diagnostics.Add_resolution_mode_import_attribute, fixId7, Diagnostics.Add_resolution_mode_import_attribute_to_all_type_only_imports_that_need_it)];
         },
         fixIds: [fixId7],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes7, (changes, diag2) => makeChange7(changes, diag2.file, diag2.start, context4.program, context4.host, context4.preferences))
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes7, (changes, diag2) => makeChange7(changes, diag2.file, diag2.start, context3.program, context3.host, context3.preferences))
       });
       function makeChange7(changeTracker, sourceFile, pos, program, host, preferences) {
         var _a, _b, _c;
@@ -185878,12 +185878,12 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes8 = [Diagnostics.Parameter_has_a_name_but_no_type_Did_you_mean_0_Colon_1.code];
       registerCodeFix({
         errorCodes: errorCodes8,
-        getCodeActions: function getCodeActionsToAddNameToNamelessParameter(context4) {
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => makeChange8(t, context4.sourceFile, context4.span.start));
+        getCodeActions: function getCodeActionsToAddNameToNamelessParameter(context3) {
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => makeChange8(t, context3.sourceFile, context3.span.start));
           return [createCodeFixAction(fixId8, changes, Diagnostics.Add_parameter_name, fixId8, Diagnostics.Add_names_to_all_parameters_without_names)];
         },
         fixIds: [fixId8],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes8, (changes, diag2) => makeChange8(changes, diag2.file, diag2.start))
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes8, (changes, diag2) => makeChange8(changes, diag2.file, diag2.start))
       });
       function makeChange8(changeTracker, sourceFile, start) {
         const token = getTokenAtPosition(sourceFile, start);
@@ -185931,13 +185931,13 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       ];
       registerCodeFix({
         errorCodes: errorCodes9,
-        getCodeActions(context4) {
-          const typeChecker = context4.program.getTypeChecker();
-          const toAdd = getPropertiesToAdd(context4.sourceFile, context4.span, typeChecker);
+        getCodeActions(context3) {
+          const typeChecker = context3.program.getTypeChecker();
+          const toAdd = getPropertiesToAdd(context3.sourceFile, context3.span, typeChecker);
           if (!toAdd.length) {
             return void 0;
           }
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => addUndefinedToOptionalProperty(t, toAdd));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => addUndefinedToOptionalProperty(t, toAdd));
           return [createCodeFixActionWithoutFixAll(addOptionalPropertyUndefined, changes, Diagnostics.Add_undefined_to_optional_property_type)];
         },
         fixIds: [addOptionalPropertyUndefined]
@@ -186003,14 +186003,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes10 = [Diagnostics.JSDoc_types_may_be_moved_to_TypeScript_types.code];
       registerCodeFix({
         errorCodes: errorCodes10,
-        getCodeActions(context4) {
-          const decl = getDeclaration(context4.sourceFile, context4.span.start);
+        getCodeActions(context3) {
+          const decl = getDeclaration(context3.sourceFile, context3.span.start);
           if (!decl) return;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange8(t, context4.sourceFile, decl));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange8(t, context3.sourceFile, decl));
           return [createCodeFixAction(fixId9, changes, Diagnostics.Annotate_with_type_from_JSDoc, fixId9, Diagnostics.Annotate_everything_with_types_from_JSDoc)];
         },
         fixIds: [fixId9],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes10, (changes, diag2) => {
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes10, (changes, diag2) => {
           const decl = getDeclaration(diag2.file, diag2.start);
           if (decl) doChange8(changes, diag2.file, decl);
         })
@@ -186199,12 +186199,12 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes11 = [Diagnostics.This_constructor_function_may_be_converted_to_a_class_declaration.code];
       registerCodeFix({
         errorCodes: errorCodes11,
-        getCodeActions(context4) {
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange9(t, context4.sourceFile, context4.span.start, context4.program.getTypeChecker(), context4.preferences, context4.program.getCompilerOptions()));
+        getCodeActions(context3) {
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange9(t, context3.sourceFile, context3.span.start, context3.program.getTypeChecker(), context3.preferences, context3.program.getCompilerOptions()));
           return [createCodeFixAction(fixId10, changes, Diagnostics.Convert_function_to_an_ES2015_class, fixId10, Diagnostics.Convert_all_constructor_functions_to_classes)];
         },
         fixIds: [fixId10],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes11, (changes, err) => doChange9(changes, err.file, err.start, context4.program.getTypeChecker(), context4.preferences, context4.program.getCompilerOptions()))
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes11, (changes, err) => doChange9(changes, err.file, err.start, context3.program.getTypeChecker(), context3.preferences, context3.program.getCompilerOptions()))
       });
       function doChange9(changes, sourceFile, position, checker, preferences, compilerOptions) {
         const ctorSymbol = checker.getSymbolAtLocation(getTokenAtPosition(sourceFile, position));
@@ -186502,13 +186502,13 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var codeActionSucceeded = true;
       registerCodeFix({
         errorCodes: errorCodes12,
-        getCodeActions(context4) {
+        getCodeActions(context3) {
           codeActionSucceeded = true;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => convertToAsyncFunction(t, context4.sourceFile, context4.span.start, context4.program.getTypeChecker()));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => convertToAsyncFunction(t, context3.sourceFile, context3.span.start, context3.program.getTypeChecker()));
           return codeActionSucceeded ? [createCodeFixAction(fixId11, changes, Diagnostics.Convert_to_async_function, fixId11, Diagnostics.Convert_all_to_async_functions)] : [];
         },
         fixIds: [fixId11],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes12, (changes, err) => convertToAsyncFunction(changes, err.file, err.start, context4.program.getTypeChecker()))
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes12, (changes, err) => convertToAsyncFunction(changes, err.file, err.start, context3.program.getTypeChecker()))
       });
       function convertToAsyncFunction(changes, sourceFile, position, checker) {
         const tokenAtPosition = getTokenAtPosition(sourceFile, position);
@@ -187224,9 +187224,9 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       }
       registerCodeFix({
         errorCodes: [Diagnostics.File_is_a_CommonJS_module_it_may_be_converted_to_an_ES_module.code],
-        getCodeActions(context4) {
-          const { sourceFile, program, preferences } = context4;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (changes2) => {
+        getCodeActions(context3) {
+          const { sourceFile, program, preferences } = context3;
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (changes2) => {
             const moduleExportsChangedToDefault = convertFileToEsModule(sourceFile, program.getTypeChecker(), changes2, getEmitScriptTarget(program.getCompilerOptions()), getQuotePreference(sourceFile, preferences));
             if (moduleExportsChangedToDefault) {
               for (const importingFile of program.getSourceFiles()) {
@@ -187787,15 +187787,15 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes13 = [Diagnostics.Cannot_access_0_1_because_0_is_a_type_but_not_a_namespace_Did_you_mean_to_retrieve_the_type_of_the_property_1_in_0_with_0_1.code];
       registerCodeFix({
         errorCodes: errorCodes13,
-        getCodeActions(context4) {
-          const qualifiedName = getQualifiedName(context4.sourceFile, context4.span.start);
+        getCodeActions(context3) {
+          const qualifiedName = getQualifiedName(context3.sourceFile, context3.span.start);
           if (!qualifiedName) return void 0;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange10(t, context4.sourceFile, qualifiedName));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange10(t, context3.sourceFile, qualifiedName));
           const newText = `${qualifiedName.left.text}["${qualifiedName.right.text}"]`;
           return [createCodeFixAction(fixId12, changes, [Diagnostics.Rewrite_as_the_indexed_access_type_0, newText], fixId12, Diagnostics.Rewrite_all_as_indexed_access_types)];
         },
         fixIds: [fixId12],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes13, (changes, diag2) => {
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes13, (changes, diag2) => {
           const q = getQualifiedName(diag2.file, diag2.start);
           if (q) {
             doChange10(changes, diag2.file, q);
@@ -187823,19 +187823,19 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var fixId13 = "convertToTypeOnlyExport";
       registerCodeFix({
         errorCodes: errorCodes14,
-        getCodeActions: function getCodeActionsToConvertToTypeOnlyExport(context4) {
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => fixSingleExportDeclaration(t, getExportSpecifierForDiagnosticSpan(context4.span, context4.sourceFile), context4));
+        getCodeActions: function getCodeActionsToConvertToTypeOnlyExport(context3) {
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => fixSingleExportDeclaration(t, getExportSpecifierForDiagnosticSpan(context3.span, context3.sourceFile), context3));
           if (changes.length) {
             return [createCodeFixAction(fixId13, changes, Diagnostics.Convert_to_type_only_export, fixId13, Diagnostics.Convert_all_re_exported_types_to_type_only_exports)];
           }
         },
         fixIds: [fixId13],
-        getAllCodeActions: function getAllCodeActionsToConvertToTypeOnlyExport(context4) {
+        getAllCodeActions: function getAllCodeActionsToConvertToTypeOnlyExport(context3) {
           const fixedExportDeclarations = /* @__PURE__ */ new Set();
-          return codeFixAll(context4, errorCodes14, (changes, diag2) => {
-            const exportSpecifier = getExportSpecifierForDiagnosticSpan(diag2, context4.sourceFile);
+          return codeFixAll(context3, errorCodes14, (changes, diag2) => {
+            const exportSpecifier = getExportSpecifierForDiagnosticSpan(diag2, context3.sourceFile);
             if (exportSpecifier && addToSeen(fixedExportDeclarations, getNodeId(exportSpecifier.parent.parent))) {
-              fixSingleExportDeclaration(changes, exportSpecifier, context4);
+              fixSingleExportDeclaration(changes, exportSpecifier, context3);
             }
           });
         }
@@ -187843,15 +187843,15 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       function getExportSpecifierForDiagnosticSpan(span, sourceFile) {
         return tryCast(getTokenAtPosition(sourceFile, span.start).parent, isExportSpecifier);
       }
-      function fixSingleExportDeclaration(changes, exportSpecifier, context4) {
+      function fixSingleExportDeclaration(changes, exportSpecifier, context3) {
         if (!exportSpecifier) {
           return;
         }
         const exportClause = exportSpecifier.parent;
         const exportDeclaration = exportClause.parent;
-        const typeExportSpecifiers = getTypeExportSpecifiers(exportSpecifier, context4);
+        const typeExportSpecifiers = getTypeExportSpecifiers(exportSpecifier, context3);
         if (typeExportSpecifiers.length === exportClause.elements.length) {
-          changes.insertModifierBefore(context4.sourceFile, 156, exportClause);
+          changes.insertModifierBefore(context3.sourceFile, 156, exportClause);
         } else {
           const valueExportDeclaration = factory.updateExportDeclaration(
             exportDeclaration,
@@ -187873,21 +187873,21 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             /*attributes*/
             void 0
           );
-          changes.replaceNode(context4.sourceFile, exportDeclaration, valueExportDeclaration, {
+          changes.replaceNode(context3.sourceFile, exportDeclaration, valueExportDeclaration, {
             leadingTriviaOption: ts_textChanges_exports.LeadingTriviaOption.IncludeAll,
             trailingTriviaOption: ts_textChanges_exports.TrailingTriviaOption.Exclude
           });
-          changes.insertNodeAfter(context4.sourceFile, exportDeclaration, typeExportDeclaration);
+          changes.insertNodeAfter(context3.sourceFile, exportDeclaration, typeExportDeclaration);
         }
       }
-      function getTypeExportSpecifiers(originExportSpecifier, context4) {
+      function getTypeExportSpecifiers(originExportSpecifier, context3) {
         const exportClause = originExportSpecifier.parent;
         if (exportClause.elements.length === 1) {
           return exportClause.elements;
         }
         const diagnostics = getDiagnosticsWithinSpan(
           createTextSpanFromNode(exportClause),
-          context4.program.getSemanticDiagnostics(context4.sourceFile, context4.cancellationToken)
+          context3.program.getSemanticDiagnostics(context3.sourceFile, context3.cancellationToken)
         );
         return filter(exportClause.elements, (element) => {
           var _a;
@@ -187901,12 +187901,12 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var fixId14 = "convertToTypeOnlyImport";
       registerCodeFix({
         errorCodes: errorCodes15,
-        getCodeActions: function getCodeActionsToConvertToTypeOnlyImport(context4) {
+        getCodeActions: function getCodeActionsToConvertToTypeOnlyImport(context3) {
           var _a;
-          const declaration = getDeclaration2(context4.sourceFile, context4.span.start);
+          const declaration = getDeclaration2(context3.sourceFile, context3.span.start);
           if (declaration) {
-            const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange11(t, context4.sourceFile, declaration));
-            const importDeclarationChanges = declaration.kind === 277 && isImportDeclaration(declaration.parent.parent.parent) && canConvertImportDeclarationForSpecifier(declaration, context4.sourceFile, context4.program) ? ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange11(t, context4.sourceFile, declaration.parent.parent.parent)) : void 0;
+            const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange11(t, context3.sourceFile, declaration));
+            const importDeclarationChanges = declaration.kind === 277 && isImportDeclaration(declaration.parent.parent.parent) && canConvertImportDeclarationForSpecifier(declaration, context3.sourceFile, context3.program) ? ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange11(t, context3.sourceFile, declaration.parent.parent.parent)) : void 0;
             const mainAction = createCodeFixAction(
               fixId14,
               changes,
@@ -187925,14 +187925,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           return void 0;
         },
         fixIds: [fixId14],
-        getAllCodeActions: function getAllCodeActionsToConvertToTypeOnlyImport(context4) {
+        getAllCodeActions: function getAllCodeActionsToConvertToTypeOnlyImport(context3) {
           const fixedImportDeclarations = /* @__PURE__ */ new Set();
-          return codeFixAll(context4, errorCodes15, (changes, diag2) => {
+          return codeFixAll(context3, errorCodes15, (changes, diag2) => {
             const errorDeclaration = getDeclaration2(diag2.file, diag2.start);
             if ((errorDeclaration == null ? void 0 : errorDeclaration.kind) === 273 && !fixedImportDeclarations.has(errorDeclaration)) {
               doChange11(changes, diag2.file, errorDeclaration);
               fixedImportDeclarations.add(errorDeclaration);
-            } else if ((errorDeclaration == null ? void 0 : errorDeclaration.kind) === 277 && isImportDeclaration(errorDeclaration.parent.parent.parent) && !fixedImportDeclarations.has(errorDeclaration.parent.parent.parent) && canConvertImportDeclarationForSpecifier(errorDeclaration, diag2.file, context4.program)) {
+            } else if ((errorDeclaration == null ? void 0 : errorDeclaration.kind) === 277 && isImportDeclaration(errorDeclaration.parent.parent.parent) && !fixedImportDeclarations.has(errorDeclaration.parent.parent.parent) && canConvertImportDeclarationForSpecifier(errorDeclaration, diag2.file, context3.program)) {
               doChange11(changes, diag2.file, errorDeclaration.parent.parent.parent);
               fixedImportDeclarations.add(errorDeclaration.parent.parent.parent);
             } else if ((errorDeclaration == null ? void 0 : errorDeclaration.kind) === 277) {
@@ -188055,14 +188055,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       registerCodeFix({
         fixIds: [fixId15],
         errorCodes: errorCodes16,
-        getCodeActions(context4) {
-          const newLineCharacter = getNewLineOrDefaultFromHost(context4.host, context4.formatContext.options);
+        getCodeActions(context3) {
+          const newLineCharacter = getNewLineOrDefaultFromHost(context3.host, context3.formatContext.options);
           const node = getTokenAtPosition(
-            context4.sourceFile,
-            context4.span.start
+            context3.sourceFile,
+            context3.span.start
           );
           if (!node) return;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange12(t, node, context4.sourceFile, newLineCharacter));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange12(t, node, context3.sourceFile, newLineCharacter));
           if (changes.length > 0) {
             return [
               createCodeFixAction(
@@ -188075,11 +188075,11 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             ];
           }
         },
-        getAllCodeActions: (context4) => codeFixAll(
-          context4,
+        getAllCodeActions: (context3) => codeFixAll(
+          context3,
           errorCodes16,
           (changes, diag2) => {
-            const newLineCharacter = getNewLineOrDefaultFromHost(context4.host, context4.formatContext.options);
+            const newLineCharacter = getNewLineOrDefaultFromHost(context3.host, context3.formatContext.options);
             const node = getTokenAtPosition(diag2.file, diag2.start);
             const fixAll = true;
             if (node) doChange12(changes, node, diag2.file, newLineCharacter, fixAll);
@@ -188225,18 +188225,18 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes17 = [Diagnostics._0_only_refers_to_a_type_but_is_being_used_as_a_value_here_Did_you_mean_to_use_1_in_0.code];
       registerCodeFix({
         errorCodes: errorCodes17,
-        getCodeActions: function getCodeActionsToConvertLiteralTypeToMappedType(context4) {
-          const { sourceFile, span } = context4;
+        getCodeActions: function getCodeActionsToConvertLiteralTypeToMappedType(context3) {
+          const { sourceFile, span } = context3;
           const info2 = getInfo5(sourceFile, span.start);
           if (!info2) {
             return void 0;
           }
           const { name, constraint } = info2;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange13(t, sourceFile, info2));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange13(t, sourceFile, info2));
           return [createCodeFixAction(fixId16, changes, [Diagnostics.Convert_0_to_1_in_0, constraint, name], fixId16, Diagnostics.Convert_all_type_literals_to_mapped_type)];
         },
         fixIds: [fixId16],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes17, (changes, diag2) => {
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes17, (changes, diag2) => {
           const info2 = getInfo5(diag2.file, diag2.start);
           if (info2) {
             doChange13(changes, diag2.file, info2);
@@ -188287,22 +188287,22 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var fixId17 = "fixClassIncorrectlyImplementsInterface";
       registerCodeFix({
         errorCodes: errorCodes18,
-        getCodeActions(context4) {
-          const { sourceFile, span } = context4;
+        getCodeActions(context3) {
+          const { sourceFile, span } = context3;
           const classDeclaration = getClass(sourceFile, span.start);
           return mapDefined(getEffectiveImplementsTypeNodes(classDeclaration), (implementedTypeNode) => {
-            const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => addMissingDeclarations(context4, implementedTypeNode, sourceFile, classDeclaration, t, context4.preferences));
+            const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => addMissingDeclarations(context3, implementedTypeNode, sourceFile, classDeclaration, t, context3.preferences));
             return changes.length === 0 ? void 0 : createCodeFixAction(fixId17, changes, [Diagnostics.Implement_interface_0, implementedTypeNode.getText(sourceFile)], fixId17, Diagnostics.Implement_all_unimplemented_interfaces);
           });
         },
         fixIds: [fixId17],
-        getAllCodeActions(context4) {
+        getAllCodeActions(context3) {
           const seenClassDeclarations = /* @__PURE__ */ new Set();
-          return codeFixAll(context4, errorCodes18, (changes, diag2) => {
+          return codeFixAll(context3, errorCodes18, (changes, diag2) => {
             const classDeclaration = getClass(diag2.file, diag2.start);
             if (addToSeen(seenClassDeclarations, getNodeId(classDeclaration))) {
               for (const implementedTypeNode of getEffectiveImplementsTypeNodes(classDeclaration)) {
-                addMissingDeclarations(context4, implementedTypeNode, diag2.file, classDeclaration, changes, context4.preferences);
+                addMissingDeclarations(context3, implementedTypeNode, diag2.file, classDeclaration, changes, context3.preferences);
               }
             }
           });
@@ -188314,8 +188314,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       function symbolPointsToNonPrivateMember(symbol) {
         return !symbol.valueDeclaration || !(getEffectiveModifierFlags(symbol.valueDeclaration) & 2);
       }
-      function addMissingDeclarations(context4, implementedTypeNode, sourceFile, classDeclaration, changeTracker, preferences) {
-        const checker = context4.program.getTypeChecker();
+      function addMissingDeclarations(context3, implementedTypeNode, sourceFile, classDeclaration, changeTracker, preferences) {
+        const checker = context3.program.getTypeChecker();
         const maybeHeritageClauseSymbol = getHeritageClauseSymbolTable(classDeclaration, checker);
         const implementedType = checker.getTypeAtLocation(implementedTypeNode);
         const implementedTypeSymbols = checker.getPropertiesOfType(implementedType);
@@ -188336,8 +188336,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             /* String */
           );
         }
-        const importAdder = createImportAdder(sourceFile, context4.program, preferences, context4.host);
-        createMissingMemberNodes(classDeclaration, nonPrivateAndNotExistedInHeritageClauseMembers, sourceFile, context4, preferences, importAdder, (member) => insertInterfaceMemberNode(sourceFile, classDeclaration, member));
+        const importAdder = createImportAdder(sourceFile, context3.program, preferences, context3.host);
+        createMissingMemberNodes(classDeclaration, nonPrivateAndNotExistedInHeritageClauseMembers, sourceFile, context3, preferences, importAdder, (member) => insertInterfaceMemberNode(sourceFile, classDeclaration, member));
         importAdder.writeFixes(changeTracker);
         function createMissingIndexSignatureDeclaration(type, kind) {
           const indexInfoOfKind = checker.getIndexInfoOfType(type, kind);
@@ -188349,7 +188349,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               void 0,
               /*internalFlags*/
               void 0,
-              getNoopSymbolTrackerWithResolver(context4)
+              getNoopSymbolTrackerWithResolver(context3)
             ));
           }
         }
@@ -188395,10 +188395,10 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       ];
       registerCodeFix({
         errorCodes: errorCodes19,
-        getCodeActions(context4) {
-          const { errorCode, preferences, sourceFile, span, program } = context4;
+        getCodeActions(context3) {
+          const { errorCode, preferences, sourceFile, span, program } = context3;
           const info2 = getFixInfos(
-            context4,
+            context3,
             errorCode,
             span.start,
             /*useAutoImportProvider*/
@@ -188407,7 +188407,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           if (!info2) return void 0;
           return info2.map(
             ({ fix, symbolName: symbolName2, errorIdentifierText }) => codeActionForFix(
-              context4,
+              context3,
               sourceFile,
               symbolName2,
               fix,
@@ -188419,8 +188419,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           );
         },
         fixIds: [importFixId],
-        getAllCodeActions: (context4) => {
-          const { sourceFile, program, preferences, host, cancellationToken } = context4;
+        getAllCodeActions: (context3) => {
+          const { sourceFile, program, preferences, host, cancellationToken } = context3;
           const importAdder = createImportAdderWorker(
             sourceFile,
             program,
@@ -188430,8 +188430,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             host,
             cancellationToken
           );
-          eachDiagnostic(context4, errorCodes19, (diag2) => importAdder.addImportFromDiagnostic(diag2, context4));
-          return createCombinedCodeActions(ts_textChanges_exports.ChangeTracker.with(context4, importAdder.writeFixes));
+          eachDiagnostic(context3, errorCodes19, (diag2) => importAdder.addImportFromDiagnostic(diag2, context3));
+          return createCombinedCodeActions(ts_textChanges_exports.ChangeTracker.with(context3, importAdder.writeFixes));
         }
       });
       function createImportAdder(sourceFile, program, preferences, host, cancellationToken) {
@@ -188457,13 +188457,13 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         function addVerbatimImport(declaration) {
           verbatimImports.add(declaration);
         }
-        function addImportForUnresolvedIdentifier(context4, symbolToken, useAutoImportProvider2) {
-          const info2 = getFixInfosWithoutDiagnostic(context4, symbolToken, useAutoImportProvider2);
+        function addImportForUnresolvedIdentifier(context3, symbolToken, useAutoImportProvider2) {
+          const info2 = getFixInfosWithoutDiagnostic(context3, symbolToken, useAutoImportProvider2);
           if (!info2 || !info2.length) return;
           addImport(first(info2));
         }
-        function addImportFromDiagnostic(diagnostic, context4) {
-          const info2 = getFixInfos(context4, diagnostic.code, diagnostic.start, useAutoImportProvider);
+        function addImportFromDiagnostic(diagnostic, context3) {
+          const info2 = getFixInfos(context3, diagnostic.code, diagnostic.start, useAutoImportProvider);
           if (!info2 || !info2.length) return;
           addImport(first(info2));
         }
@@ -189337,31 +189337,31 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           return { kind: 3, moduleSpecifierKind: void 0, moduleSpecifier, importKind, addAsTypeOnly, useRequire };
         }
       }
-      function getFixInfos(context4, errorCode, pos, useAutoImportProvider) {
-        const symbolToken = getTokenAtPosition(context4.sourceFile, pos);
+      function getFixInfos(context3, errorCode, pos, useAutoImportProvider) {
+        const symbolToken = getTokenAtPosition(context3.sourceFile, pos);
         let info2;
         if (errorCode === Diagnostics._0_refers_to_a_UMD_global_but_the_current_file_is_a_module_Consider_adding_an_import_instead.code) {
-          info2 = getFixesInfoForUMDImport(context4, symbolToken);
+          info2 = getFixesInfoForUMDImport(context3, symbolToken);
         } else if (!isIdentifier2(symbolToken)) {
           return void 0;
         } else if (errorCode === Diagnostics._0_cannot_be_used_as_a_value_because_it_was_imported_using_import_type.code) {
-          const symbolName2 = single(getSymbolNamesToImport(context4.sourceFile, context4.program.getTypeChecker(), symbolToken, context4.program.getCompilerOptions()));
-          const fix = getTypeOnlyPromotionFix(context4.sourceFile, symbolToken, symbolName2, context4.program);
+          const symbolName2 = single(getSymbolNamesToImport(context3.sourceFile, context3.program.getTypeChecker(), symbolToken, context3.program.getCompilerOptions()));
+          const fix = getTypeOnlyPromotionFix(context3.sourceFile, symbolToken, symbolName2, context3.program);
           return fix && [{ fix, symbolName: symbolName2, errorIdentifierText: symbolToken.text }];
         } else {
-          info2 = getFixesInfoForNonUMDImport(context4, symbolToken, useAutoImportProvider);
+          info2 = getFixesInfoForNonUMDImport(context3, symbolToken, useAutoImportProvider);
         }
-        const packageJsonImportFilter = createPackageJsonImportFilter(context4.sourceFile, context4.preferences, context4.host);
-        return info2 && sortFixInfo(info2, context4.sourceFile, context4.program, packageJsonImportFilter, context4.host, context4.preferences);
+        const packageJsonImportFilter = createPackageJsonImportFilter(context3.sourceFile, context3.preferences, context3.host);
+        return info2 && sortFixInfo(info2, context3.sourceFile, context3.program, packageJsonImportFilter, context3.host, context3.preferences);
       }
       function sortFixInfo(fixes, sourceFile, program, packageJsonImportFilter, host, preferences) {
         const _toPath = (fileName) => toPath(fileName, host.getCurrentDirectory(), hostGetCanonicalFileName(host));
         return toSorted(fixes, (a, b) => compareBooleans(!!a.isJsxNamespaceFix, !!b.isJsxNamespaceFix) || compareValues(a.fix.kind, b.fix.kind) || compareModuleSpecifiers(a.fix, b.fix, sourceFile, program, preferences, packageJsonImportFilter.allowsImportingSpecifier, _toPath));
       }
-      function getFixInfosWithoutDiagnostic(context4, symbolToken, useAutoImportProvider) {
-        const info2 = getFixesInfoForNonUMDImport(context4, symbolToken, useAutoImportProvider);
-        const packageJsonImportFilter = createPackageJsonImportFilter(context4.sourceFile, context4.preferences, context4.host);
-        return info2 && sortFixInfo(info2, context4.sourceFile, context4.program, packageJsonImportFilter, context4.host, context4.preferences);
+      function getFixInfosWithoutDiagnostic(context3, symbolToken, useAutoImportProvider) {
+        const info2 = getFixesInfoForNonUMDImport(context3, symbolToken, useAutoImportProvider);
+        const packageJsonImportFilter = createPackageJsonImportFilter(context3.sourceFile, context3.preferences, context3.host);
+        return info2 && sortFixInfo(info2, context3.sourceFile, context3.program, packageJsonImportFilter, context3.host, context3.preferences);
       }
       function getBestFix(fixes, sourceFile, program, packageJsonImportFilter, host, preferences) {
         if (!some(fixes)) return;
@@ -189618,9 +189618,9 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         return allowSyntheticDefaults ? 1 : 3;
       }
-      function codeActionForFix(context4, sourceFile, symbolName2, fix, includeSymbolNameInDescription, program, preferences) {
+      function codeActionForFix(context3, sourceFile, symbolName2, fix, includeSymbolNameInDescription, program, preferences) {
         let diag2;
-        const changes = ts_textChanges_exports.ChangeTracker.with(context4, (tracker) => {
+        const changes = ts_textChanges_exports.ChangeTracker.with(context3, (tracker) => {
           diag2 = codeActionForFixWorker(tracker, sourceFile, symbolName2, fix, includeSymbolNameInDescription, program, preferences);
         });
         return createCodeFixAction(importFixName, changes, diag2, importFixId, Diagnostics.Add_all_missing_imports);
@@ -190017,19 +190017,19 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       ];
       registerCodeFix({
         errorCodes: errorCodes20,
-        getCodeActions(context4) {
-          const { sourceFile, span, program, preferences, host } = context4;
+        getCodeActions(context3) {
+          const { sourceFile, span, program, preferences, host } = context3;
           const info2 = getInfo6(program, sourceFile, span);
           if (info2 === void 0) return;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => addMissingConstraint(t, program, preferences, host, sourceFile, info2));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => addMissingConstraint(t, program, preferences, host, sourceFile, info2));
           return [createCodeFixAction(fixId18, changes, Diagnostics.Add_extends_constraint, fixId18, Diagnostics.Add_extends_constraint_to_all_type_parameters)];
         },
         fixIds: [fixId18],
-        getAllCodeActions: (context4) => {
-          const { program, preferences, host } = context4;
+        getAllCodeActions: (context3) => {
+          const { program, preferences, host } = context3;
           const seen = /* @__PURE__ */ new Set();
-          return createCombinedCodeActions(ts_textChanges_exports.ChangeTracker.with(context4, (changes) => {
-            eachDiagnostic(context4, errorCodes20, (diag2) => {
+          return createCombinedCodeActions(ts_textChanges_exports.ChangeTracker.with(context3, (changes) => {
+            eachDiagnostic(context3, errorCodes20, (diag2) => {
               const info2 = getInfo6(program, diag2.file, createTextSpan(diag2.start, diag2.length));
               if (info2) {
                 if (addToSeen(seen, getNodeId(info2.declaration))) {
@@ -190174,39 +190174,39 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       };
       registerCodeFix({
         errorCodes: errorCodes21,
-        getCodeActions: function getCodeActionsToFixOverrideModifierIssues(context4) {
-          const { errorCode, span } = context4;
+        getCodeActions: function getCodeActionsToFixOverrideModifierIssues(context3) {
+          const { errorCode, span } = context3;
           const info2 = errorCodeFixIdMap[errorCode];
           if (!info2) return emptyArray;
           const { descriptions, fixId: fixId56, fixAllDescriptions } = info2;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (changes2) => dispatchChanges(changes2, context4, errorCode, span.start));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (changes2) => dispatchChanges(changes2, context3, errorCode, span.start));
           return [
             createCodeFixActionMaybeFixAll(fixName, changes, descriptions, fixId56, fixAllDescriptions)
           ];
         },
         fixIds: [fixName, fixAddOverrideId, fixRemoveOverrideId],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes21, (changes, diag2) => {
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes21, (changes, diag2) => {
           const { code: code2, start } = diag2;
           const info2 = errorCodeFixIdMap[code2];
-          if (!info2 || info2.fixId !== context4.fixId) {
+          if (!info2 || info2.fixId !== context3.fixId) {
             return;
           }
-          dispatchChanges(changes, context4, code2, start);
+          dispatchChanges(changes, context3, code2, start);
         })
       });
-      function dispatchChanges(changeTracker, context4, errorCode, pos) {
+      function dispatchChanges(changeTracker, context3, errorCode, pos) {
         switch (errorCode) {
           case Diagnostics.This_member_must_have_an_override_modifier_because_it_overrides_a_member_in_the_base_class_0.code:
           case Diagnostics.This_member_must_have_a_JSDoc_comment_with_an_override_tag_because_it_overrides_a_member_in_the_base_class_0.code:
           case Diagnostics.This_member_must_have_an_override_modifier_because_it_overrides_an_abstract_method_that_is_declared_in_the_base_class_0.code:
           case Diagnostics.This_parameter_property_must_have_an_override_modifier_because_it_overrides_a_member_in_base_class_0.code:
           case Diagnostics.This_parameter_property_must_have_a_JSDoc_comment_with_an_override_tag_because_it_overrides_a_member_in_the_base_class_0.code:
-            return doAddOverrideModifierChange(changeTracker, context4.sourceFile, pos);
+            return doAddOverrideModifierChange(changeTracker, context3.sourceFile, pos);
           case Diagnostics.This_member_cannot_have_an_override_modifier_because_it_is_not_declared_in_the_base_class_0.code:
           case Diagnostics.This_member_cannot_have_a_JSDoc_comment_with_an_override_tag_because_it_is_not_declared_in_the_base_class_0.code:
           case Diagnostics.This_member_cannot_have_an_override_modifier_because_its_containing_class_0_does_not_extend_another_class.code:
           case Diagnostics.This_member_cannot_have_a_JSDoc_comment_with_an_override_tag_because_its_containing_class_0_does_not_extend_another_class.code:
-            return doRemoveOverrideModifierChange(changeTracker, context4.sourceFile, pos);
+            return doRemoveOverrideModifierChange(changeTracker, context3.sourceFile, pos);
           default:
             Debug.fail("Unexpected error code: " + errorCode);
         }
@@ -190266,13 +190266,13 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       registerCodeFix({
         errorCodes: errorCodes22,
         fixIds: [fixId19],
-        getCodeActions(context4) {
-          const { sourceFile, span, preferences } = context4;
+        getCodeActions(context3) {
+          const { sourceFile, span, preferences } = context3;
           const property = getPropertyAccessExpression(sourceFile, span.start);
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange14(t, context4.sourceFile, property, preferences));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange14(t, context3.sourceFile, property, preferences));
           return [createCodeFixAction(fixId19, changes, [Diagnostics.Use_element_access_for_0, property.name.text], fixId19, Diagnostics.Use_element_access_for_all_undeclared_properties)];
         },
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes22, (changes, diag2) => doChange14(changes, diag2.file, getPropertyAccessExpression(diag2.file, diag2.start), context4.preferences))
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes22, (changes, diag2) => doChange14(changes, diag2.file, getPropertyAccessExpression(diag2.file, diag2.start), context3.preferences))
       });
       function doChange14(changes, sourceFile, node, preferences) {
         const quotePreference = getQuotePreference(sourceFile, preferences);
@@ -190294,17 +190294,17 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes23 = [Diagnostics.this_implicitly_has_type_any_because_it_does_not_have_a_type_annotation.code];
       registerCodeFix({
         errorCodes: errorCodes23,
-        getCodeActions: function getCodeActionsToFixImplicitThis(context4) {
-          const { sourceFile, program, span } = context4;
+        getCodeActions: function getCodeActionsToFixImplicitThis(context3) {
+          const { sourceFile, program, span } = context3;
           let diagnostic;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => {
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => {
             diagnostic = doChange15(t, sourceFile, span.start, program.getTypeChecker());
           });
           return diagnostic ? [createCodeFixAction(fixId20, changes, diagnostic, fixId20, Diagnostics.Fix_all_implicit_this_errors)] : emptyArray;
         },
         fixIds: [fixId20],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes23, (changes, diag2) => {
-          doChange15(changes, diag2.file, diag2.start, context4.program.getTypeChecker());
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes23, (changes, diag2) => {
+          doChange15(changes, diag2.file, diag2.start, context3.program.getTypeChecker());
         })
       });
       function doChange15(changes, sourceFile, pos, checker) {
@@ -190356,18 +190356,18 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       registerCodeFix({
         errorCodes: errorCodes24,
         fixIds: [fixId21],
-        getCodeActions(context4) {
-          const { sourceFile, span, program } = context4;
+        getCodeActions(context3) {
+          const { sourceFile, span, program } = context3;
           const info2 = getInfo7(sourceFile, span.start, program);
           if (info2 === void 0) return void 0;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange16(t, program, info2));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange16(t, program, info2));
           return [createCodeFixAction(fixId21, changes, [Diagnostics.Export_0_from_module_1, info2.exportName.node.text, info2.moduleSpecifier], fixId21, Diagnostics.Export_all_referenced_locals)];
         },
-        getAllCodeActions(context4) {
-          const { program } = context4;
-          return createCombinedCodeActions(ts_textChanges_exports.ChangeTracker.with(context4, (changes) => {
+        getAllCodeActions(context3) {
+          const { program } = context3;
+          return createCombinedCodeActions(ts_textChanges_exports.ChangeTracker.with(context3, (changes) => {
             const exports2 = /* @__PURE__ */ new Map();
-            eachDiagnostic(context4, errorCodes24, (diag2) => {
+            eachDiagnostic(context3, errorCodes24, (diag2) => {
               const info2 = getInfo7(diag2.file, diag2.start, program);
               if (info2 === void 0) return void 0;
               const { exportName, node, moduleSourceFile } = info2;
@@ -190512,10 +190512,10 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       ];
       registerCodeFix({
         errorCodes: errorCodes25,
-        getCodeActions: function getCodeActionsToFixIncorrectNamedTupleSyntax(context4) {
-          const { sourceFile, span } = context4;
+        getCodeActions: function getCodeActionsToFixIncorrectNamedTupleSyntax(context3) {
+          const { sourceFile, span } = context3;
           const namedTupleMember = getNamedTupleMember(sourceFile, span.start);
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange17(t, sourceFile, namedTupleMember));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange17(t, sourceFile, namedTupleMember));
           return [createCodeFixAction(fixId22, changes, Diagnostics.Move_labeled_tuple_element_modifiers_to_labels, fixId22, Diagnostics.Move_labeled_tuple_element_modifiers_to_labels)];
         },
         fixIds: [fixId22]
@@ -190580,27 +190580,27 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       ];
       registerCodeFix({
         errorCodes: errorCodes26,
-        getCodeActions(context4) {
-          const { sourceFile, errorCode } = context4;
-          const info2 = getInfo8(sourceFile, context4.span.start, context4, errorCode);
+        getCodeActions(context3) {
+          const { sourceFile, errorCode } = context3;
+          const info2 = getInfo8(sourceFile, context3.span.start, context3, errorCode);
           if (!info2) return void 0;
           const { node, suggestedSymbol } = info2;
-          const target = getEmitScriptTarget(context4.host.getCompilationSettings());
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange18(t, sourceFile, node, suggestedSymbol, target));
+          const target = getEmitScriptTarget(context3.host.getCompilationSettings());
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange18(t, sourceFile, node, suggestedSymbol, target));
           return [createCodeFixAction("spelling", changes, [Diagnostics.Change_spelling_to_0, symbolName(suggestedSymbol)], fixId23, Diagnostics.Fix_all_detected_spelling_errors)];
         },
         fixIds: [fixId23],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes26, (changes, diag2) => {
-          const info2 = getInfo8(diag2.file, diag2.start, context4, diag2.code);
-          const target = getEmitScriptTarget(context4.host.getCompilationSettings());
-          if (info2) doChange18(changes, context4.sourceFile, info2.node, info2.suggestedSymbol, target);
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes26, (changes, diag2) => {
+          const info2 = getInfo8(diag2.file, diag2.start, context3, diag2.code);
+          const target = getEmitScriptTarget(context3.host.getCompilationSettings());
+          if (info2) doChange18(changes, context3.sourceFile, info2.node, info2.suggestedSymbol, target);
         })
       });
-      function getInfo8(sourceFile, pos, context4, errorCode) {
+      function getInfo8(sourceFile, pos, context3, errorCode) {
         const node = getTokenAtPosition(sourceFile, pos);
         const parent2 = node.parent;
         if ((errorCode === Diagnostics.No_overload_matches_this_call.code || errorCode === Diagnostics.Type_0_is_not_assignable_to_type_1.code) && !isJsxAttribute(parent2)) return void 0;
-        const checker = context4.program.getTypeChecker();
+        const checker = context3.program.getTypeChecker();
         let suggestedSymbol;
         if (isPropertyAccessExpression(parent2) && parent2.name === node) {
           Debug.assert(isMemberName(node), "Expected an identifier for spelling (property access)");
@@ -190620,7 +190620,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         } else if (isImportSpecifier(parent2) && parent2.name === node) {
           Debug.assertNode(node, isIdentifier2, "Expected an identifier for spelling (import)");
           const importDeclaration = findAncestor(node, isImportDeclaration);
-          const resolvedSourceFile = getResolvedSourceFileFromImportDeclaration(context4, importDeclaration, sourceFile);
+          const resolvedSourceFile = getResolvedSourceFileFromImportDeclaration(context3, importDeclaration, sourceFile);
           if (resolvedSourceFile && resolvedSourceFile.symbol) {
             suggestedSymbol = checker.getSuggestedSymbolForNonexistentModule(node, resolvedSourceFile.symbol);
           }
@@ -190670,12 +190670,12 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         return flags;
       }
-      function getResolvedSourceFileFromImportDeclaration(context4, importDeclaration, importingFile) {
+      function getResolvedSourceFileFromImportDeclaration(context3, importDeclaration, importingFile) {
         var _a;
         if (!importDeclaration || !isStringLiteralLike(importDeclaration.moduleSpecifier)) return void 0;
-        const resolvedModule = (_a = context4.program.getResolvedModuleFromModuleSpecifier(importDeclaration.moduleSpecifier, importingFile)) == null ? void 0 : _a.resolvedModule;
+        const resolvedModule = (_a = context3.program.getResolvedModuleFromModuleSpecifier(importDeclaration.moduleSpecifier, importingFile)) == null ? void 0 : _a.resolvedModule;
         if (!resolvedModule) return void 0;
-        return context4.program.getSourceFile(resolvedModule.resolvedFileName);
+        return context3.program.getSourceFile(resolvedModule.resolvedFileName);
       }
       var fixId24 = "returnValueCorrect";
       var fixIdAddReturnStatement = "fixAddReturnStatement";
@@ -190689,23 +190689,23 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       registerCodeFix({
         errorCodes: errorCodes27,
         fixIds: [fixIdAddReturnStatement, fixRemoveBracesFromArrowFunctionBody, fixIdWrapTheBlockWithParen],
-        getCodeActions: function getCodeActionsToCorrectReturnValue(context4) {
-          const { program, sourceFile, span: { start }, errorCode } = context4;
+        getCodeActions: function getCodeActionsToCorrectReturnValue(context3) {
+          const { program, sourceFile, span: { start }, errorCode } = context3;
           const info2 = getInfo9(program.getTypeChecker(), sourceFile, start, errorCode);
           if (!info2) return void 0;
           if (info2.kind === 0) {
             return append(
-              [getActionForfixAddReturnStatement(context4, info2.expression, info2.statement)],
-              isArrowFunction(info2.declaration) ? getActionForFixRemoveBracesFromArrowFunctionBody(context4, info2.declaration, info2.expression, info2.commentSource) : void 0
+              [getActionForfixAddReturnStatement(context3, info2.expression, info2.statement)],
+              isArrowFunction(info2.declaration) ? getActionForFixRemoveBracesFromArrowFunctionBody(context3, info2.declaration, info2.expression, info2.commentSource) : void 0
             );
           } else {
-            return [getActionForfixWrapTheBlockWithParen(context4, info2.declaration, info2.expression)];
+            return [getActionForfixWrapTheBlockWithParen(context3, info2.declaration, info2.expression)];
           }
         },
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes27, (changes, diag2) => {
-          const info2 = getInfo9(context4.program.getTypeChecker(), diag2.file, diag2.start, diag2.code);
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes27, (changes, diag2) => {
+          const info2 = getInfo9(context3.program.getTypeChecker(), diag2.file, diag2.start, diag2.code);
           if (!info2) return void 0;
-          switch (context4.fixId) {
+          switch (context3.fixId) {
             case fixIdAddReturnStatement:
               addReturnStatement(changes, diag2.file, info2.expression, info2.statement);
               break;
@@ -190726,7 +190726,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               wrapBlockWithParen(changes, diag2.file, info2.declaration, info2.expression);
               break;
             default:
-              Debug.fail(JSON.stringify(context4.fixId));
+              Debug.fail(JSON.stringify(context3.fixId));
           }
         })
       });
@@ -190903,14 +190903,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       function wrapBlockWithParen(changes, sourceFile, declaration, expression) {
         changes.replaceNode(sourceFile, declaration.body, factory.createParenthesizedExpression(expression));
       }
-      function getActionForfixAddReturnStatement(context4, expression, statement) {
-        const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => addReturnStatement(t, context4.sourceFile, expression, statement));
+      function getActionForfixAddReturnStatement(context3, expression, statement) {
+        const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => addReturnStatement(t, context3.sourceFile, expression, statement));
         return createCodeFixAction(fixId24, changes, Diagnostics.Add_a_return_statement, fixIdAddReturnStatement, Diagnostics.Add_all_missing_return_statement);
       }
-      function getActionForFixRemoveBracesFromArrowFunctionBody(context4, declaration, expression, commentSource) {
-        const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => removeBlockBodyBrace(
+      function getActionForFixRemoveBracesFromArrowFunctionBody(context3, declaration, expression, commentSource) {
+        const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => removeBlockBodyBrace(
           t,
-          context4.sourceFile,
+          context3.sourceFile,
           declaration,
           expression,
           commentSource,
@@ -190919,8 +190919,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         ));
         return createCodeFixAction(fixId24, changes, Diagnostics.Remove_braces_from_arrow_function_body, fixRemoveBracesFromArrowFunctionBody, Diagnostics.Remove_braces_from_all_arrow_function_bodies_with_relevant_issues);
       }
-      function getActionForfixWrapTheBlockWithParen(context4, declaration, expression) {
-        const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => wrapBlockWithParen(t, context4.sourceFile, declaration, expression));
+      function getActionForfixWrapTheBlockWithParen(context3, declaration, expression) {
+        const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => wrapBlockWithParen(t, context3.sourceFile, declaration, expression));
         return createCodeFixAction(fixId24, changes, Diagnostics.Wrap_the_following_body_with_parentheses_which_should_be_an_object_literal, fixIdWrapTheBlockWithParen, Diagnostics.Wrap_all_object_literal_with_parentheses);
       }
       var fixMissingMember = "fixMissingMember";
@@ -190939,48 +190939,48 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       ];
       registerCodeFix({
         errorCodes: errorCodes28,
-        getCodeActions(context4) {
-          const typeChecker = context4.program.getTypeChecker();
-          const info2 = getInfo10(context4.sourceFile, context4.span.start, context4.errorCode, typeChecker, context4.program);
+        getCodeActions(context3) {
+          const typeChecker = context3.program.getTypeChecker();
+          const info2 = getInfo10(context3.sourceFile, context3.span.start, context3.errorCode, typeChecker, context3.program);
           if (!info2) {
             return void 0;
           }
           if (info2.kind === 3) {
-            const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => addObjectLiteralProperties(t, context4, info2));
+            const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => addObjectLiteralProperties(t, context3, info2));
             return [createCodeFixAction(fixMissingProperties, changes, Diagnostics.Add_missing_properties, fixMissingProperties, Diagnostics.Add_all_missing_properties)];
           }
           if (info2.kind === 4) {
-            const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => addJsxAttributes(t, context4, info2));
+            const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => addJsxAttributes(t, context3, info2));
             return [createCodeFixAction(fixMissingAttributes, changes, Diagnostics.Add_missing_attributes, fixMissingAttributes, Diagnostics.Add_all_missing_attributes)];
           }
           if (info2.kind === 2 || info2.kind === 5) {
-            const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => addFunctionDeclaration(t, context4, info2));
+            const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => addFunctionDeclaration(t, context3, info2));
             return [createCodeFixAction(fixMissingFunctionDeclaration, changes, [Diagnostics.Add_missing_function_declaration_0, info2.token.text], fixMissingFunctionDeclaration, Diagnostics.Add_all_missing_function_declarations)];
           }
           if (info2.kind === 1) {
-            const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => addEnumMemberDeclaration(t, context4.program.getTypeChecker(), info2));
+            const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => addEnumMemberDeclaration(t, context3.program.getTypeChecker(), info2));
             return [createCodeFixAction(fixMissingMember, changes, [Diagnostics.Add_missing_enum_member_0, info2.token.text], fixMissingMember, Diagnostics.Add_all_missing_members)];
           }
-          return concatenate(getActionsForMissingMethodDeclaration(context4, info2), getActionsForMissingMemberDeclaration(context4, info2));
+          return concatenate(getActionsForMissingMethodDeclaration(context3, info2), getActionsForMissingMemberDeclaration(context3, info2));
         },
         fixIds: [fixMissingMember, fixMissingFunctionDeclaration, fixMissingProperties, fixMissingAttributes],
-        getAllCodeActions: (context4) => {
-          const { program, fixId: fixId56 } = context4;
+        getAllCodeActions: (context3) => {
+          const { program, fixId: fixId56 } = context3;
           const checker = program.getTypeChecker();
           const seen = /* @__PURE__ */ new Set();
           const typeDeclToMembers = /* @__PURE__ */ new Map();
-          return createCombinedCodeActions(ts_textChanges_exports.ChangeTracker.with(context4, (changes) => {
-            eachDiagnostic(context4, errorCodes28, (diag2) => {
-              const info2 = getInfo10(diag2.file, diag2.start, diag2.code, checker, context4.program);
+          return createCombinedCodeActions(ts_textChanges_exports.ChangeTracker.with(context3, (changes) => {
+            eachDiagnostic(context3, errorCodes28, (diag2) => {
+              const info2 = getInfo10(diag2.file, diag2.start, diag2.code, checker, context3.program);
               if (info2 === void 0) return;
               const nodeId = getNodeId(info2.parentDeclaration) + "#" + (info2.kind === 3 ? info2.identifier || getNodeId(info2.token) : info2.token.text);
               if (!addToSeen(seen, nodeId)) return;
               if (fixId56 === fixMissingFunctionDeclaration && (info2.kind === 2 || info2.kind === 5)) {
-                addFunctionDeclaration(changes, context4, info2);
+                addFunctionDeclaration(changes, context3, info2);
               } else if (fixId56 === fixMissingProperties && info2.kind === 3) {
-                addObjectLiteralProperties(changes, context4, info2);
+                addObjectLiteralProperties(changes, context3, info2);
               } else if (fixId56 === fixMissingAttributes && info2.kind === 4) {
-                addJsxAttributes(changes, context4, info2);
+                addJsxAttributes(changes, context3, info2);
               } else {
                 if (info2.kind === 1) {
                   addEnumMemberDeclaration(changes, checker, info2);
@@ -191003,7 +191003,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
                 })) continue;
                 const { parentDeclaration, declSourceFile, modifierFlags, token, call, isJSFile } = info2;
                 if (call && !isPrivateIdentifier(token)) {
-                  addMethodDeclaration(context4, changes, call, token, modifierFlags & 256, parentDeclaration, declSourceFile);
+                  addMethodDeclaration(context3, changes, call, token, modifierFlags & 256, parentDeclaration, declSourceFile);
                 } else {
                   if (isJSFile && !isInterfaceDeclaration(parentDeclaration) && !isTypeLiteralNode(parentDeclaration)) {
                     addMissingMemberInJs(changes, declSourceFile, parentDeclaration, token, !!(modifierFlags & 256));
@@ -191133,14 +191133,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         return void 0;
       }
-      function getActionsForMissingMemberDeclaration(context4, info2) {
-        return info2.isJSFile ? singleElementArray(createActionForAddMissingMemberInJavascriptFile(context4, info2)) : createActionsForAddMissingMemberInTypeScriptFile(context4, info2);
+      function getActionsForMissingMemberDeclaration(context3, info2) {
+        return info2.isJSFile ? singleElementArray(createActionForAddMissingMemberInJavascriptFile(context3, info2)) : createActionsForAddMissingMemberInTypeScriptFile(context3, info2);
       }
-      function createActionForAddMissingMemberInJavascriptFile(context4, { parentDeclaration, declSourceFile, modifierFlags, token }) {
+      function createActionForAddMissingMemberInJavascriptFile(context3, { parentDeclaration, declSourceFile, modifierFlags, token }) {
         if (isInterfaceDeclaration(parentDeclaration) || isTypeLiteralNode(parentDeclaration)) {
           return void 0;
         }
-        const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => addMissingMemberInJs(t, declSourceFile, parentDeclaration, token, !!(modifierFlags & 256)));
+        const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => addMissingMemberInJs(t, declSourceFile, parentDeclaration, token, !!(modifierFlags & 256)));
         if (changes.length === 0) {
           return void 0;
         }
@@ -191186,11 +191186,11 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       function initializePropertyToUndefined(obj, propertyName) {
         return factory.createExpressionStatement(factory.createAssignment(factory.createPropertyAccessExpression(obj, propertyName), createUndefined()));
       }
-      function createActionsForAddMissingMemberInTypeScriptFile(context4, { parentDeclaration, declSourceFile, modifierFlags, token }) {
+      function createActionsForAddMissingMemberInTypeScriptFile(context3, { parentDeclaration, declSourceFile, modifierFlags, token }) {
         const memberName = token.text;
         const isStatic2 = modifierFlags & 256;
-        const typeNode = getTypeNode2(context4.program.getTypeChecker(), parentDeclaration, token);
-        const addPropertyDeclarationChanges = (modifierFlags2) => ts_textChanges_exports.ChangeTracker.with(context4, (t) => addPropertyDeclaration(t, declSourceFile, parentDeclaration, memberName, typeNode, modifierFlags2));
+        const typeNode = getTypeNode2(context3.program.getTypeChecker(), parentDeclaration, token);
+        const addPropertyDeclarationChanges = (modifierFlags2) => ts_textChanges_exports.ChangeTracker.with(context3, (t) => addPropertyDeclaration(t, declSourceFile, parentDeclaration, memberName, typeNode, modifierFlags2));
         const actions2 = [createCodeFixAction(fixMissingMember, addPropertyDeclarationChanges(
           modifierFlags & 256
           /* Static */
@@ -191204,7 +191204,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             /* Private */
           ), [Diagnostics.Declare_private_property_0, memberName]));
         }
-        actions2.push(createAddIndexSignatureAction(context4, declSourceFile, parentDeclaration, token.text, typeNode));
+        actions2.push(createAddIndexSignatureAction(context3, declSourceFile, parentDeclaration, token.text, typeNode));
         return actions2;
       }
       function getTypeNode2(checker, node, token) {
@@ -191269,7 +191269,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         return res;
       }
-      function createAddIndexSignatureAction(context4, sourceFile, node, tokenName, typeNode) {
+      function createAddIndexSignatureAction(context3, sourceFile, node, tokenName, typeNode) {
         const stringTypeNode = factory.createKeywordTypeNode(
           154
           /* StringKeyword */
@@ -191292,16 +191292,16 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           [indexingParameter],
           typeNode
         );
-        const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => t.insertMemberAtStart(sourceFile, node, indexSignature));
+        const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => t.insertMemberAtStart(sourceFile, node, indexSignature));
         return createCodeFixActionWithoutFixAll(fixMissingMember, changes, [Diagnostics.Add_index_signature_for_property_0, tokenName]);
       }
-      function getActionsForMissingMethodDeclaration(context4, info2) {
+      function getActionsForMissingMethodDeclaration(context3, info2) {
         const { parentDeclaration, declSourceFile, modifierFlags, token, call } = info2;
         if (call === void 0) {
           return void 0;
         }
         const methodName = token.text;
-        const addMethodDeclarationChanges = (modifierFlags2) => ts_textChanges_exports.ChangeTracker.with(context4, (t) => addMethodDeclaration(context4, t, call, token, modifierFlags2, parentDeclaration, declSourceFile));
+        const addMethodDeclarationChanges = (modifierFlags2) => ts_textChanges_exports.ChangeTracker.with(context3, (t) => addMethodDeclaration(context3, t, call, token, modifierFlags2, parentDeclaration, declSourceFile));
         const actions2 = [createCodeFixAction(fixMissingMember, addMethodDeclarationChanges(
           modifierFlags & 256
           /* Static */
@@ -191314,10 +191314,10 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         return actions2;
       }
-      function addMethodDeclaration(context4, changes, callExpression, name, modifierFlags, parentDeclaration, sourceFile) {
-        const importAdder = createImportAdder(sourceFile, context4.program, context4.preferences, context4.host);
+      function addMethodDeclaration(context3, changes, callExpression, name, modifierFlags, parentDeclaration, sourceFile) {
+        const importAdder = createImportAdder(sourceFile, context3.program, context3.preferences, context3.host);
         const kind = isClassLike(parentDeclaration) ? 175 : 174;
-        const signatureDeclaration = createSignatureDeclarationFromCallExpression(kind, context4, importAdder, callExpression, name, modifierFlags, parentDeclaration);
+        const signatureDeclaration = createSignatureDeclarationFromCallExpression(kind, context3, importAdder, callExpression, name, modifierFlags, parentDeclaration);
         const containingMethodDeclaration = tryGetContainingMethodDeclaration(parentDeclaration, callExpression);
         if (containingMethodDeclaration) {
           changes.insertNodeAfter(sourceFile, containingMethodDeclaration, signatureDeclaration);
@@ -191340,12 +191340,12 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           changes.insertMemberAtStart(sourceFile, parentDeclaration, enumMember);
         }
       }
-      function addFunctionDeclaration(changes, context4, info2) {
-        const quotePreference = getQuotePreference(context4.sourceFile, context4.preferences);
-        const importAdder = createImportAdder(context4.sourceFile, context4.program, context4.preferences, context4.host);
-        const functionDeclaration = info2.kind === 2 ? createSignatureDeclarationFromCallExpression(263, context4, importAdder, info2.call, idText(info2.token), info2.modifierFlags, info2.parentDeclaration) : createSignatureDeclarationFromSignature(
+      function addFunctionDeclaration(changes, context3, info2) {
+        const quotePreference = getQuotePreference(context3.sourceFile, context3.preferences);
+        const importAdder = createImportAdder(context3.sourceFile, context3.program, context3.preferences, context3.host);
+        const functionDeclaration = info2.kind === 2 ? createSignatureDeclarationFromCallExpression(263, context3, importAdder, info2.call, idText(info2.token), info2.modifierFlags, info2.parentDeclaration) : createSignatureDeclarationFromSignature(
           263,
-          context4,
+          context3,
           quotePreference,
           info2.signature,
           createStubbedBody(Diagnostics.Function_not_implemented.message, quotePreference),
@@ -191370,14 +191370,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         ) : changes.insertNodeAtEndOfScope(info2.sourceFile, info2.parentDeclaration, functionDeclaration);
         importAdder.writeFixes(changes);
       }
-      function addJsxAttributes(changes, context4, info2) {
-        const importAdder = createImportAdder(context4.sourceFile, context4.program, context4.preferences, context4.host);
-        const quotePreference = getQuotePreference(context4.sourceFile, context4.preferences);
-        const checker = context4.program.getTypeChecker();
+      function addJsxAttributes(changes, context3, info2) {
+        const importAdder = createImportAdder(context3.sourceFile, context3.program, context3.preferences, context3.host);
+        const quotePreference = getQuotePreference(context3.sourceFile, context3.preferences);
+        const checker = context3.program.getTypeChecker();
         const jsxAttributesNode = info2.parentDeclaration.attributes;
         const hasSpreadAttribute = some(jsxAttributesNode.properties, isJsxSpreadAttribute);
         const attrs = map(info2.attributes, (attr) => {
-          const value = tryGetValueFromType(context4, checker, importAdder, quotePreference, checker.getTypeOfSymbol(attr), info2.parentDeclaration);
+          const value = tryGetValueFromType(context3, checker, importAdder, quotePreference, checker.getTypeOfSymbol(attr), info2.parentDeclaration);
           const name = factory.createIdentifier(attr.name);
           const jsxAttribute = factory.createJsxAttribute(name, factory.createJsxExpression(
             /*dotDotDotToken*/
@@ -191389,16 +191389,16 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         });
         const jsxAttributes = factory.createJsxAttributes(hasSpreadAttribute ? [...attrs, ...jsxAttributesNode.properties] : [...jsxAttributesNode.properties, ...attrs]);
         const options = { prefix: jsxAttributesNode.pos === jsxAttributesNode.end ? " " : void 0 };
-        changes.replaceNode(context4.sourceFile, jsxAttributesNode, jsxAttributes, options);
+        changes.replaceNode(context3.sourceFile, jsxAttributesNode, jsxAttributes, options);
         importAdder.writeFixes(changes);
       }
-      function addObjectLiteralProperties(changes, context4, info2) {
-        const importAdder = createImportAdder(context4.sourceFile, context4.program, context4.preferences, context4.host);
-        const quotePreference = getQuotePreference(context4.sourceFile, context4.preferences);
-        const target = getEmitScriptTarget(context4.program.getCompilerOptions());
-        const checker = context4.program.getTypeChecker();
+      function addObjectLiteralProperties(changes, context3, info2) {
+        const importAdder = createImportAdder(context3.sourceFile, context3.program, context3.preferences, context3.host);
+        const quotePreference = getQuotePreference(context3.sourceFile, context3.preferences);
+        const target = getEmitScriptTarget(context3.program.getCompilerOptions());
+        const checker = context3.program.getTypeChecker();
         const props = map(info2.properties, (prop) => {
-          const initializer = tryGetValueFromType(context4, checker, importAdder, quotePreference, checker.getTypeOfSymbol(prop), info2.parentDeclaration);
+          const initializer = tryGetValueFromType(context3, checker, importAdder, quotePreference, checker.getTypeOfSymbol(prop), info2.parentDeclaration);
           return factory.createPropertyAssignment(createPropertyNameFromSymbol(prop, target, quotePreference, checker), initializer);
         });
         const options = {
@@ -191406,14 +191406,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           trailingTriviaOption: ts_textChanges_exports.TrailingTriviaOption.Exclude,
           indentation: info2.indentation
         };
-        changes.replaceNode(context4.sourceFile, info2.parentDeclaration, factory.createObjectLiteralExpression(
+        changes.replaceNode(context3.sourceFile, info2.parentDeclaration, factory.createObjectLiteralExpression(
           [...info2.parentDeclaration.properties, ...props],
           /*multiLine*/
           true
         ), options);
         importAdder.writeFixes(changes);
       }
-      function tryGetValueFromType(context4, checker, importAdder, quotePreference, type, enclosingDeclaration) {
+      function tryGetValueFromType(context3, checker, importAdder, quotePreference, type, enclosingDeclaration) {
         if (type.flags & 3) {
           return createUndefined();
         }
@@ -191472,7 +191472,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           return factory.createNull();
         }
         if (type.flags & 1048576) {
-          const expression = firstDefined(type.types, (t) => tryGetValueFromType(context4, checker, importAdder, quotePreference, t, enclosingDeclaration));
+          const expression = firstDefined(type.types, (t) => tryGetValueFromType(context3, checker, importAdder, quotePreference, t, enclosingDeclaration));
           return expression ?? createUndefined();
         }
         if (checker.isArrayLikeType(type)) {
@@ -191480,7 +191480,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         if (isObjectLiteralType(type)) {
           const props = map(checker.getPropertiesOfType(type), (prop) => {
-            const initializer = tryGetValueFromType(context4, checker, importAdder, quotePreference, checker.getTypeOfSymbol(prop), enclosingDeclaration);
+            const initializer = tryGetValueFromType(context3, checker, importAdder, quotePreference, checker.getTypeOfSymbol(prop), enclosingDeclaration);
             return factory.createPropertyAssignment(prop.name, initializer);
           });
           return factory.createObjectLiteralExpression(
@@ -191500,7 +191500,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           if (signature === void 0) return createUndefined();
           const func = createSignatureDeclarationFromSignature(
             219,
-            context4,
+            context3,
             quotePreference,
             signature[0],
             createStubbedBody(Diagnostics.Function_not_implemented.message, quotePreference),
@@ -191617,13 +191617,13 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes29 = [Diagnostics.Value_of_type_0_is_not_callable_Did_you_mean_to_include_new.code];
       registerCodeFix({
         errorCodes: errorCodes29,
-        getCodeActions(context4) {
-          const { sourceFile, span } = context4;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => addMissingNewOperator(t, sourceFile, span));
+        getCodeActions(context3) {
+          const { sourceFile, span } = context3;
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => addMissingNewOperator(t, sourceFile, span));
           return [createCodeFixAction(fixId25, changes, Diagnostics.Add_missing_new_operator_to_call, fixId25, Diagnostics.Add_missing_new_operator_to_all_calls)];
         },
         fixIds: [fixId25],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes29, (changes, diag2) => addMissingNewOperator(changes, context4.sourceFile, diag2))
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes29, (changes, diag2) => addMissingNewOperator(changes, context3.sourceFile, diag2))
       });
       function addMissingNewOperator(changes, sourceFile, span) {
         const call = cast(findAncestorMatchingSpan2(sourceFile, span), isCallExpression);
@@ -191644,8 +191644,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       registerCodeFix({
         errorCodes: errorCodes30,
         fixIds: [addMissingParamFixId, addOptionalParamFixId],
-        getCodeActions(context4) {
-          const info2 = getInfo11(context4.sourceFile, context4.program, context4.span.start);
+        getCodeActions(context3) {
+          const info2 = getInfo11(context3.sourceFile, context3.program, context3.span.start);
           if (info2 === void 0) return void 0;
           const { name, declarations, newParameters, newOptionalParameters } = info2;
           const actions2 = [];
@@ -191654,7 +191654,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               actions2,
               createCodeFixAction(
                 addMissingParamFixId,
-                ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange19(t, context4.program, context4.preferences, context4.host, declarations, newParameters)),
+                ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange19(t, context3.program, context3.preferences, context3.host, declarations, newParameters)),
                 [length(newParameters) > 1 ? Diagnostics.Add_missing_parameters_to_0 : Diagnostics.Add_missing_parameter_to_0, name],
                 addMissingParamFixId,
                 Diagnostics.Add_all_missing_parameters
@@ -191666,7 +191666,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               actions2,
               createCodeFixAction(
                 addOptionalParamFixId,
-                ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange19(t, context4.program, context4.preferences, context4.host, declarations, newOptionalParameters)),
+                ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange19(t, context3.program, context3.preferences, context3.host, declarations, newOptionalParameters)),
                 [length(newOptionalParameters) > 1 ? Diagnostics.Add_optional_parameters_to_0 : Diagnostics.Add_optional_parameter_to_0, name],
                 addOptionalParamFixId,
                 Diagnostics.Add_all_optional_parameters
@@ -191675,15 +191675,15 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           }
           return actions2;
         },
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes30, (changes, diag2) => {
-          const info2 = getInfo11(context4.sourceFile, context4.program, diag2.start);
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes30, (changes, diag2) => {
+          const info2 = getInfo11(context3.sourceFile, context3.program, diag2.start);
           if (info2) {
             const { declarations, newParameters, newOptionalParameters } = info2;
-            if (context4.fixId === addMissingParamFixId) {
-              doChange19(changes, context4.program, context4.preferences, context4.host, declarations, newParameters);
+            if (context3.fixId === addMissingParamFixId) {
+              doChange19(changes, context3.program, context3.preferences, context3.host, declarations, newParameters);
             }
-            if (context4.fixId === addOptionalParamFixId) {
-              doChange19(changes, context4.program, context4.preferences, context4.host, declarations, newOptionalParameters);
+            if (context3.fixId === addOptionalParamFixId) {
+              doChange19(changes, context3.program, context3.preferences, context3.host, declarations, newOptionalParameters);
             }
           }
         })
@@ -191899,9 +191899,9 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       ];
       registerCodeFix({
         errorCodes: errorCodes31,
-        getCodeActions: function getCodeActionsToFixNotFoundModule(context4) {
-          const { host, sourceFile, span: { start }, errorCode } = context4;
-          const packageName = errorCode === errorCannotFindImplicitJsxImport ? getJSXImplicitImportBase(context4.program.getCompilerOptions(), sourceFile) : tryGetImportedPackageName(sourceFile, start);
+        getCodeActions: function getCodeActionsToFixNotFoundModule(context3) {
+          const { host, sourceFile, span: { start }, errorCode } = context3;
+          const packageName = errorCode === errorCannotFindImplicitJsxImport ? getJSXImplicitImportBase(context3.program.getCompilerOptions(), sourceFile) : tryGetImportedPackageName(sourceFile, start);
           if (packageName === void 0) return void 0;
           const typesPackageName = getTypesPackageNameToInstall(packageName, host, errorCode);
           return typesPackageName === void 0 ? [] : [createCodeFixAction(
@@ -191915,20 +191915,20 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           )];
         },
         fixIds: [fixIdInstallTypesPackage],
-        getAllCodeActions: (context4) => {
-          return codeFixAll(context4, errorCodes31, (_changes, diag2, commands) => {
+        getAllCodeActions: (context3) => {
+          return codeFixAll(context3, errorCodes31, (_changes, diag2, commands) => {
             const packageName = tryGetImportedPackageName(diag2.file, diag2.start);
             if (packageName === void 0) return void 0;
-            switch (context4.fixId) {
+            switch (context3.fixId) {
               case fixIdInstallTypesPackage: {
-                const pkg = getTypesPackageNameToInstall(packageName, context4.host, diag2.code);
+                const pkg = getTypesPackageNameToInstall(packageName, context3.host, diag2.code);
                 if (pkg) {
                   commands.push(getInstallCommand(diag2.file.fileName, pkg));
                 }
                 break;
               }
               default:
-                Debug.fail(`Bad fixId: ${context4.fixId}`);
+                Debug.fail(`Bad fixId: ${context3.fixId}`);
             }
           });
         }
@@ -191958,18 +191958,18 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var fixId26 = "fixClassDoesntImplementInheritedAbstractMember";
       registerCodeFix({
         errorCodes: errorCodes32,
-        getCodeActions: function getCodeActionsToFixClassNotImplementingInheritedMembers(context4) {
-          const { sourceFile, span } = context4;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => addMissingMembers(getClass2(sourceFile, span.start), sourceFile, context4, t, context4.preferences));
+        getCodeActions: function getCodeActionsToFixClassNotImplementingInheritedMembers(context3) {
+          const { sourceFile, span } = context3;
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => addMissingMembers(getClass2(sourceFile, span.start), sourceFile, context3, t, context3.preferences));
           return changes.length === 0 ? void 0 : [createCodeFixAction(fixId26, changes, Diagnostics.Implement_inherited_abstract_class, fixId26, Diagnostics.Implement_all_inherited_abstract_classes)];
         },
         fixIds: [fixId26],
-        getAllCodeActions: function getAllCodeActionsToFixClassDoesntImplementInheritedAbstractMember(context4) {
+        getAllCodeActions: function getAllCodeActionsToFixClassDoesntImplementInheritedAbstractMember(context3) {
           const seenClassDeclarations = /* @__PURE__ */ new Set();
-          return codeFixAll(context4, errorCodes32, (changes, diag2) => {
+          return codeFixAll(context3, errorCodes32, (changes, diag2) => {
             const classDeclaration = getClass2(diag2.file, diag2.start);
             if (addToSeen(seenClassDeclarations, getNodeId(classDeclaration))) {
-              addMissingMembers(classDeclaration, context4.sourceFile, context4, changes, context4.preferences);
+              addMissingMembers(classDeclaration, context3.sourceFile, context3, changes, context3.preferences);
             }
           });
         }
@@ -191978,13 +191978,13 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         const token = getTokenAtPosition(sourceFile, pos);
         return cast(token.parent, isClassLike);
       }
-      function addMissingMembers(classDeclaration, sourceFile, context4, changeTracker, preferences) {
+      function addMissingMembers(classDeclaration, sourceFile, context3, changeTracker, preferences) {
         const extendsNode = getEffectiveBaseTypeNode(classDeclaration);
-        const checker = context4.program.getTypeChecker();
+        const checker = context3.program.getTypeChecker();
         const instantiatedExtendsType = checker.getTypeAtLocation(extendsNode);
         const abstractAndNonPrivateExtendsSymbols = checker.getPropertiesOfType(instantiatedExtendsType).filter(symbolPointsToNonPrivateAndAbstractMember);
-        const importAdder = createImportAdder(sourceFile, context4.program, preferences, context4.host);
-        createMissingMemberNodes(classDeclaration, abstractAndNonPrivateExtendsSymbols, sourceFile, context4, preferences, importAdder, (member) => changeTracker.insertMemberAtStart(sourceFile, classDeclaration, member));
+        const importAdder = createImportAdder(sourceFile, context3.program, preferences, context3.host);
+        createMissingMemberNodes(classDeclaration, abstractAndNonPrivateExtendsSymbols, sourceFile, context3, preferences, importAdder, (member) => changeTracker.insertMemberAtStart(sourceFile, classDeclaration, member));
         importAdder.writeFixes(changeTracker);
       }
       function symbolPointsToNonPrivateAndAbstractMember(symbol) {
@@ -191995,19 +191995,19 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes33 = [Diagnostics.super_must_be_called_before_accessing_this_in_the_constructor_of_a_derived_class.code];
       registerCodeFix({
         errorCodes: errorCodes33,
-        getCodeActions(context4) {
-          const { sourceFile, span } = context4;
+        getCodeActions(context3) {
+          const { sourceFile, span } = context3;
           const nodes = getNodes(sourceFile, span.start);
           if (!nodes) return void 0;
           const { constructor, superCall } = nodes;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange20(t, sourceFile, constructor, superCall));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange20(t, sourceFile, constructor, superCall));
           return [createCodeFixAction(fixId27, changes, Diagnostics.Make_super_call_the_first_statement_in_the_constructor, fixId27, Diagnostics.Make_all_super_calls_the_first_statement_in_their_constructor)];
         },
         fixIds: [fixId27],
-        getAllCodeActions(context4) {
-          const { sourceFile } = context4;
+        getAllCodeActions(context3) {
+          const { sourceFile } = context3;
           const seenClasses = /* @__PURE__ */ new Set();
-          return codeFixAll(context4, errorCodes33, (changes, diag2) => {
+          return codeFixAll(context3, errorCodes33, (changes, diag2) => {
             const nodes = getNodes(diag2.file, diag2.start);
             if (!nodes) return;
             const { constructor, superCall } = nodes;
@@ -192035,14 +192035,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes34 = [Diagnostics.Constructors_for_derived_classes_must_contain_a_super_call.code];
       registerCodeFix({
         errorCodes: errorCodes34,
-        getCodeActions(context4) {
-          const { sourceFile, span } = context4;
+        getCodeActions(context3) {
+          const { sourceFile, span } = context3;
           const ctr = getNode(sourceFile, span.start);
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange21(t, sourceFile, ctr));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange21(t, sourceFile, ctr));
           return [createCodeFixAction(fixId28, changes, Diagnostics.Add_missing_super_call, fixId28, Diagnostics.Add_all_missing_super_calls)];
         },
         fixIds: [fixId28],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes34, (changes, diag2) => doChange21(changes, context4.sourceFile, getNode(diag2.file, diag2.start)))
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes34, (changes, diag2) => doChange21(changes, context3.sourceFile, getNode(diag2.file, diag2.start)))
       });
       function getNode(sourceFile, pos) {
         const token = getTokenAtPosition(sourceFile, pos);
@@ -192063,19 +192063,19 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes35 = [Diagnostics.Cannot_use_JSX_unless_the_jsx_flag_is_provided.code];
       registerCodeFix({
         errorCodes: errorCodes35,
-        getCodeActions: function getCodeActionsToFixEnableJsxFlag(context4) {
-          const { configFile } = context4.program.getCompilerOptions();
+        getCodeActions: function getCodeActionsToFixEnableJsxFlag(context3) {
+          const { configFile } = context3.program.getCompilerOptions();
           if (configFile === void 0) {
             return void 0;
           }
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (changeTracker) => doChange22(changeTracker, configFile));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (changeTracker) => doChange22(changeTracker, configFile));
           return [
             createCodeFixActionWithoutFixAll(fixID, changes, Diagnostics.Enable_the_jsx_flag_in_your_configuration_file)
           ];
         },
         fixIds: [fixID],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes35, (changes) => {
-          const { configFile } = context4.program.getCompilerOptions();
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes35, (changes) => {
+          const { configFile } = context3.program.getCompilerOptions();
           if (configFile === void 0) {
             return void 0;
           }
@@ -192091,18 +192091,18 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       ];
       registerCodeFix({
         errorCodes: errorCodes36,
-        getCodeActions(context4) {
-          const { sourceFile, span, program } = context4;
+        getCodeActions(context3) {
+          const { sourceFile, span, program } = context3;
           const info2 = getInfo12(program, sourceFile, span);
           if (info2 === void 0) return;
           const { suggestion, expression, arg } = info2;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange23(t, sourceFile, arg, expression));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange23(t, sourceFile, arg, expression));
           return [createCodeFixAction(fixId29, changes, [Diagnostics.Use_0, suggestion], fixId29, Diagnostics.Use_Number_isNaN_in_all_conditions)];
         },
         fixIds: [fixId29],
-        getAllCodeActions: (context4) => {
-          return codeFixAll(context4, errorCodes36, (changes, diag2) => {
-            const info2 = getInfo12(context4.program, diag2.file, createTextSpan(diag2.start, diag2.length));
+        getAllCodeActions: (context3) => {
+          return codeFixAll(context3, errorCodes36, (changes, diag2) => {
+            const info2 = getInfo12(context3.program, diag2.file, createTextSpan(diag2.start, diag2.length));
             if (info2) {
               doChange23(changes, diag2.file, info2.arg, info2.expression);
             }
@@ -192145,8 +192145,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           Diagnostics.Top_level_await_using_statements_are_only_allowed_when_the_module_option_is_set_to_es2022_esnext_system_node16_node18_node20_nodenext_or_preserve_and_the_target_option_is_set_to_es2017_or_higher.code,
           Diagnostics.Top_level_for_await_loops_are_only_allowed_when_the_module_option_is_set_to_es2022_esnext_system_node16_node18_node20_nodenext_or_preserve_and_the_target_option_is_set_to_es2017_or_higher.code
         ],
-        getCodeActions: function getCodeActionsToFixModuleAndTarget(context4) {
-          const compilerOptions = context4.program.getCompilerOptions();
+        getCodeActions: function getCodeActionsToFixModuleAndTarget(context3) {
+          const compilerOptions = context3.program.getCompilerOptions();
           const { configFile } = compilerOptions;
           if (configFile === void 0) {
             return void 0;
@@ -192155,7 +192155,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           const moduleKind = getEmitModuleKind(compilerOptions);
           const moduleOutOfRange = moduleKind >= 5 && moduleKind < 99;
           if (moduleOutOfRange) {
-            const changes = ts_textChanges_exports.ChangeTracker.with(context4, (changes2) => {
+            const changes = ts_textChanges_exports.ChangeTracker.with(context3, (changes2) => {
               setJsonCompilerOptionValue(changes2, configFile, "module", factory.createStringLiteral("esnext"));
             });
             codeFixes.push(createCodeFixActionWithoutFixAll("fixModuleOption", changes, [Diagnostics.Set_the_module_option_in_your_configuration_file_to_0, "esnext"]));
@@ -192163,7 +192163,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           const target = getEmitScriptTarget(compilerOptions);
           const targetOutOfRange = target < 4 || target > 99;
           if (targetOutOfRange) {
-            const changes = ts_textChanges_exports.ChangeTracker.with(context4, (tracker) => {
+            const changes = ts_textChanges_exports.ChangeTracker.with(context3, (tracker) => {
               const configObject = getTsConfigObjectLiteralExpression(configFile);
               if (!configObject) return;
               const options = [["target", factory.createStringLiteral("es2017")]];
@@ -192184,13 +192184,13 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       registerCodeFix({
         errorCodes: errorCodes37,
         fixIds: [fixId30],
-        getCodeActions(context4) {
-          const { sourceFile, span } = context4;
+        getCodeActions(context3) {
+          const { sourceFile, span } = context3;
           const property = getProperty2(sourceFile, span.start);
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange24(t, context4.sourceFile, property));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange24(t, context3.sourceFile, property));
           return [createCodeFixAction(fixId30, changes, [Diagnostics.Change_0_to_1, "=", ":"], fixId30, [Diagnostics.Switch_each_misused_0_to_1, "=", ":"])];
         },
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes37, (changes, diag2) => doChange24(changes, diag2.file, getProperty2(diag2.file, diag2.start)))
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes37, (changes, diag2) => doChange24(changes, diag2.file, getProperty2(diag2.file, diag2.start)))
       });
       function doChange24(changes, sourceFile, node) {
         changes.replaceNode(sourceFile, node, factory.createPropertyAssignment(node.name, node.objectAssignmentInitializer));
@@ -192202,16 +192202,16 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes38 = [Diagnostics.Cannot_extend_an_interface_0_Did_you_mean_implements.code];
       registerCodeFix({
         errorCodes: errorCodes38,
-        getCodeActions(context4) {
-          const { sourceFile } = context4;
-          const nodes = getNodes2(sourceFile, context4.span.start);
+        getCodeActions(context3) {
+          const { sourceFile } = context3;
+          const nodes = getNodes2(sourceFile, context3.span.start);
           if (!nodes) return void 0;
           const { extendsToken, heritageClauses } = nodes;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChanges2(t, sourceFile, extendsToken, heritageClauses));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChanges2(t, sourceFile, extendsToken, heritageClauses));
           return [createCodeFixAction(fixId31, changes, Diagnostics.Change_extends_to_implements, fixId31, Diagnostics.Change_all_extended_interfaces_to_implements)];
         },
         fixIds: [fixId31],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes38, (changes, diag2) => {
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes38, (changes, diag2) => {
           const nodes = getNodes2(diag2.file, diag2.start);
           if (nodes) doChanges2(changes, diag2.file, nodes.extendsToken, nodes.heritageClauses);
         })
@@ -192251,19 +192251,19 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       ];
       registerCodeFix({
         errorCodes: errorCodes39,
-        getCodeActions(context4) {
-          const { sourceFile } = context4;
-          const info2 = getInfo13(sourceFile, context4.span.start, context4.errorCode);
+        getCodeActions(context3) {
+          const { sourceFile } = context3;
+          const info2 = getInfo13(sourceFile, context3.span.start, context3.errorCode);
           if (!info2) {
             return void 0;
           }
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange25(t, sourceFile, info2));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange25(t, sourceFile, info2));
           return [createCodeFixAction(fixId32, changes, [Diagnostics.Add_0_to_unresolved_variable, info2.className || "this"], fixId32, Diagnostics.Add_qualifier_to_all_unresolved_variables_matching_a_member_name)];
         },
         fixIds: [fixId32],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes39, (changes, diag2) => {
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes39, (changes, diag2) => {
           const info2 = getInfo13(diag2.file, diag2.start, diag2.code);
-          if (info2) doChange25(changes, context4.sourceFile, info2);
+          if (info2) doChange25(changes, context3.sourceFile, info2);
         })
       });
       function getInfo13(sourceFile, pos, diagCode) {
@@ -192285,9 +192285,9 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       registerCodeFix({
         errorCodes: errorCodes40,
         fixIds: [fixIdExpression, fixIdHtmlEntity],
-        getCodeActions(context4) {
-          const { sourceFile, preferences, span } = context4;
-          const changeToExpression = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange26(
+        getCodeActions(context3) {
+          const { sourceFile, preferences, span } = context3;
+          const changeToExpression = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange26(
             t,
             preferences,
             sourceFile,
@@ -192295,7 +192295,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             /*useHtmlEntity*/
             false
           ));
-          const changeToHtmlEntity = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange26(
+          const changeToHtmlEntity = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange26(
             t,
             preferences,
             sourceFile,
@@ -192308,8 +192308,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             createCodeFixAction(fixIdHtmlEntity, changeToHtmlEntity, Diagnostics.Convert_invalid_character_to_its_html_entity_code, fixIdHtmlEntity, Diagnostics.Convert_all_invalid_characters_to_HTML_entity_code)
           ];
         },
-        getAllCodeActions(context4) {
-          return codeFixAll(context4, errorCodes40, (changes, diagnostic) => doChange26(changes, context4.preferences, diagnostic.file, diagnostic.start, context4.fixId === fixIdHtmlEntity));
+        getAllCodeActions(context3) {
+          return codeFixAll(context3, errorCodes40, (changes, diagnostic) => doChange26(changes, context3.preferences, diagnostic.file, diagnostic.start, context3.fixId === fixIdHtmlEntity));
         }
       });
       var htmlEntity = {
@@ -192335,28 +192335,28 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       registerCodeFix({
         fixIds: [deleteUnmatchedParameter, renameUnmatchedParameter],
         errorCodes: errorCodes41,
-        getCodeActions: function getCodeActionsToFixUnmatchedParameter(context4) {
-          const { sourceFile, span } = context4;
+        getCodeActions: function getCodeActionsToFixUnmatchedParameter(context3) {
+          const { sourceFile, span } = context3;
           const actions2 = [];
           const info2 = getInfo14(sourceFile, span.start);
           if (info2) {
-            append(actions2, getDeleteAction(context4, info2));
-            append(actions2, getRenameAction(context4, info2));
+            append(actions2, getDeleteAction(context3, info2));
+            append(actions2, getRenameAction(context3, info2));
             return actions2;
           }
           return void 0;
         },
-        getAllCodeActions: function getAllCodeActionsToFixUnmatchedParameter(context4) {
+        getAllCodeActions: function getAllCodeActionsToFixUnmatchedParameter(context3) {
           const tagsToSignature = /* @__PURE__ */ new Map();
-          return createCombinedCodeActions(ts_textChanges_exports.ChangeTracker.with(context4, (changes) => {
-            eachDiagnostic(context4, errorCodes41, ({ file, start }) => {
+          return createCombinedCodeActions(ts_textChanges_exports.ChangeTracker.with(context3, (changes) => {
+            eachDiagnostic(context3, errorCodes41, ({ file, start }) => {
               const info2 = getInfo14(file, start);
               if (info2) {
                 tagsToSignature.set(info2.signature, append(tagsToSignature.get(info2.signature), info2.jsDocParameterTag));
               }
             });
             tagsToSignature.forEach((tags, signature) => {
-              if (context4.fixId === deleteUnmatchedParameter) {
+              if (context3.fixId === deleteUnmatchedParameter) {
                 const tagsSet = new Set(tags);
                 changes.filterJSDocTags(signature.getSourceFile(), signature, (t) => !tagsSet.has(t));
               }
@@ -192364,19 +192364,19 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           }));
         }
       });
-      function getDeleteAction(context4, { name, jsDocHost, jsDocParameterTag }) {
-        const changes = ts_textChanges_exports.ChangeTracker.with(context4, (changeTracker) => changeTracker.filterJSDocTags(context4.sourceFile, jsDocHost, (t) => t !== jsDocParameterTag));
+      function getDeleteAction(context3, { name, jsDocHost, jsDocParameterTag }) {
+        const changes = ts_textChanges_exports.ChangeTracker.with(context3, (changeTracker) => changeTracker.filterJSDocTags(context3.sourceFile, jsDocHost, (t) => t !== jsDocParameterTag));
         return createCodeFixAction(
           deleteUnmatchedParameter,
           changes,
-          [Diagnostics.Delete_unused_param_tag_0, name.getText(context4.sourceFile)],
+          [Diagnostics.Delete_unused_param_tag_0, name.getText(context3.sourceFile)],
           deleteUnmatchedParameter,
           Diagnostics.Delete_all_unused_param_tags
         );
       }
-      function getRenameAction(context4, { name, jsDocHost, signature, jsDocParameterTag }) {
+      function getRenameAction(context3, { name, jsDocHost, signature, jsDocParameterTag }) {
         if (!length(signature.parameters)) return void 0;
-        const sourceFile = context4.sourceFile;
+        const sourceFile = context3.sourceFile;
         const tags = getJSDocTags(signature);
         const names = /* @__PURE__ */ new Set();
         for (const tag of tags) {
@@ -192395,7 +192395,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           jsDocParameterTag.isNameFirst,
           jsDocParameterTag.comment
         );
-        const changes = ts_textChanges_exports.ChangeTracker.with(context4, (changeTracker) => changeTracker.replaceJSDocComment(sourceFile, jsDocHost, map(tags, (t) => t === jsDocParameterTag ? newJSDocParameterTag : t)));
+        const changes = ts_textChanges_exports.ChangeTracker.with(context3, (changeTracker) => changeTracker.replaceJSDocComment(sourceFile, jsDocHost, map(tags, (t) => t === jsDocParameterTag ? newJSDocParameterTag : t)));
         return createCodeFixActionWithoutFixAll(renameUnmatchedParameter, changes, [Diagnostics.Rename_param_tag_name_0_to_1, name.getText(sourceFile), parameterName]);
       }
       function getInfo14(sourceFile, pos) {
@@ -192414,11 +192414,11 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes42 = [Diagnostics.A_type_referenced_in_a_decorated_signature_must_be_imported_with_import_type_or_a_namespace_import_when_isolatedModules_and_emitDecoratorMetadata_are_enabled.code];
       registerCodeFix({
         errorCodes: errorCodes42,
-        getCodeActions: (context4) => {
-          const importDeclaration = getImportDeclaration(context4.sourceFile, context4.program, context4.span.start);
+        getCodeActions: (context3) => {
+          const importDeclaration = getImportDeclaration(context3.sourceFile, context3.program, context3.span.start);
           if (!importDeclaration) return;
-          const namespaceChanges = ts_textChanges_exports.ChangeTracker.with(context4, (t) => importDeclaration.kind === 277 && doNamespaceImportChange(t, context4.sourceFile, importDeclaration, context4.program));
-          const typeOnlyChanges = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doTypeOnlyImportChange(t, context4.sourceFile, importDeclaration, context4.program));
+          const namespaceChanges = ts_textChanges_exports.ChangeTracker.with(context3, (t) => importDeclaration.kind === 277 && doNamespaceImportChange(t, context3.sourceFile, importDeclaration, context3.program));
+          const typeOnlyChanges = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doTypeOnlyImportChange(t, context3.sourceFile, importDeclaration, context3.program));
           let actions2;
           if (namespaceChanges.length) {
             actions2 = append(actions2, createCodeFixActionWithoutFixAll(fixId33, namespaceChanges, Diagnostics.Convert_named_imports_to_namespace_import));
@@ -192474,24 +192474,24 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       ];
       registerCodeFix({
         errorCodes: errorCodes43,
-        getCodeActions(context4) {
-          const { errorCode, sourceFile, program, cancellationToken } = context4;
+        getCodeActions(context3) {
+          const { errorCode, sourceFile, program, cancellationToken } = context3;
           const checker = program.getTypeChecker();
           const sourceFiles = program.getSourceFiles();
-          const token = getTokenAtPosition(sourceFile, context4.span.start);
+          const token = getTokenAtPosition(sourceFile, context3.span.start);
           if (isJSDocTemplateTag(token)) {
-            return [createDeleteFix(ts_textChanges_exports.ChangeTracker.with(context4, (t) => t.delete(sourceFile, token)), Diagnostics.Remove_template_tag)];
+            return [createDeleteFix(ts_textChanges_exports.ChangeTracker.with(context3, (t) => t.delete(sourceFile, token)), Diagnostics.Remove_template_tag)];
           }
           if (token.kind === 30) {
-            const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => deleteTypeParameters(t, sourceFile, token));
+            const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => deleteTypeParameters(t, sourceFile, token));
             return [createDeleteFix(changes, Diagnostics.Remove_type_parameters)];
           }
           const importDecl = tryGetFullImport(token);
           if (importDecl) {
-            const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => t.delete(sourceFile, importDecl));
+            const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => t.delete(sourceFile, importDecl));
             return [createCodeFixAction(fixName3, changes, [Diagnostics.Remove_import_from_0, showModuleSpecifier(importDecl)], fixIdDeleteImports, Diagnostics.Delete_all_unused_imports)];
           } else if (isImport(token)) {
-            const deletion = ts_textChanges_exports.ChangeTracker.with(context4, (t) => tryDeleteDeclaration(
+            const deletion = ts_textChanges_exports.ChangeTracker.with(context3, (t) => tryDeleteDeclaration(
               sourceFile,
               token,
               t,
@@ -192514,28 +192514,28 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
                 map(elements, (e) => e.getText(sourceFile)).join(", ")
               ];
               return [
-                createDeleteFix(ts_textChanges_exports.ChangeTracker.with(context4, (t) => deleteDestructuringElements(t, sourceFile, token.parent)), diagnostic)
+                createDeleteFix(ts_textChanges_exports.ChangeTracker.with(context3, (t) => deleteDestructuringElements(t, sourceFile, token.parent)), diagnostic)
               ];
             }
             return [
-              createDeleteFix(ts_textChanges_exports.ChangeTracker.with(context4, (t) => deleteDestructuring(context4, t, sourceFile, token.parent)), Diagnostics.Remove_unused_destructuring_declaration)
+              createDeleteFix(ts_textChanges_exports.ChangeTracker.with(context3, (t) => deleteDestructuring(context3, t, sourceFile, token.parent)), Diagnostics.Remove_unused_destructuring_declaration)
             ];
           }
           if (canDeleteEntireVariableStatement(sourceFile, token)) {
             return [
-              createDeleteFix(ts_textChanges_exports.ChangeTracker.with(context4, (t) => deleteEntireVariableStatement(t, sourceFile, token.parent)), Diagnostics.Remove_variable_statement)
+              createDeleteFix(ts_textChanges_exports.ChangeTracker.with(context3, (t) => deleteEntireVariableStatement(t, sourceFile, token.parent)), Diagnostics.Remove_variable_statement)
             ];
           }
           if (isIdentifier2(token) && isFunctionDeclaration(token.parent)) {
-            return [createDeleteFix(ts_textChanges_exports.ChangeTracker.with(context4, (t) => deleteFunctionLikeDeclaration(t, sourceFile, token.parent)), [Diagnostics.Remove_unused_declaration_for_Colon_0, token.getText(sourceFile)])];
+            return [createDeleteFix(ts_textChanges_exports.ChangeTracker.with(context3, (t) => deleteFunctionLikeDeclaration(t, sourceFile, token.parent)), [Diagnostics.Remove_unused_declaration_for_Colon_0, token.getText(sourceFile)])];
           }
           const result = [];
           if (token.kind === 140) {
-            const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => changeInferToUnknown(t, sourceFile, token));
+            const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => changeInferToUnknown(t, sourceFile, token));
             const name = cast(token.parent, isInferTypeNode).typeParameter.name.text;
             result.push(createCodeFixAction(fixName3, changes, [Diagnostics.Replace_infer_0_with_unknown, name], fixIdInfer, Diagnostics.Replace_all_unused_infer_with_unknown));
           } else {
-            const deletion = ts_textChanges_exports.ChangeTracker.with(context4, (t) => tryDeleteDeclaration(
+            const deletion = ts_textChanges_exports.ChangeTracker.with(context3, (t) => tryDeleteDeclaration(
               sourceFile,
               token,
               t,
@@ -192551,20 +192551,20 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               result.push(createDeleteFix(deletion, [Diagnostics.Remove_unused_declaration_for_Colon_0, name.getText(sourceFile)]));
             }
           }
-          const prefix = ts_textChanges_exports.ChangeTracker.with(context4, (t) => tryPrefixDeclaration(t, errorCode, sourceFile, token));
+          const prefix = ts_textChanges_exports.ChangeTracker.with(context3, (t) => tryPrefixDeclaration(t, errorCode, sourceFile, token));
           if (prefix.length) {
             result.push(createCodeFixAction(fixName3, prefix, [Diagnostics.Prefix_0_with_an_underscore, token.getText(sourceFile)], fixIdPrefix, Diagnostics.Prefix_all_unused_declarations_with_where_possible));
           }
           return result;
         },
         fixIds: [fixIdPrefix, fixIdDelete, fixIdDeleteImports, fixIdInfer],
-        getAllCodeActions: (context4) => {
-          const { sourceFile, program, cancellationToken } = context4;
+        getAllCodeActions: (context3) => {
+          const { sourceFile, program, cancellationToken } = context3;
           const checker = program.getTypeChecker();
           const sourceFiles = program.getSourceFiles();
-          return codeFixAll(context4, errorCodes43, (changes, diag2) => {
+          return codeFixAll(context3, errorCodes43, (changes, diag2) => {
             const token = getTokenAtPosition(sourceFile, diag2.start);
-            switch (context4.fixId) {
+            switch (context3.fixId) {
               case fixIdPrefix:
                 tryPrefixDeclaration(changes, diag2.code, sourceFile, token);
                 break;
@@ -192627,7 +192627,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
                 }
                 break;
               default:
-                Debug.fail(JSON.stringify(context4.fixId));
+                Debug.fail(JSON.stringify(context3.fixId));
             }
           });
         }
@@ -192659,7 +192659,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       function deleteDestructuringElements(changes, sourceFile, node) {
         forEach(node.elements, (n) => changes.delete(sourceFile, n));
       }
-      function deleteDestructuring(context4, changes, sourceFile, { parent: parent2 }) {
+      function deleteDestructuring(context3, changes, sourceFile, { parent: parent2 }) {
         if (isVariableDeclaration(parent2) && parent2.initializer && isCallLikeExpression(parent2.initializer)) {
           if (isVariableDeclarationList(parent2.parent) && length(parent2.parent.declarations) > 1) {
             const varStatement = parent2.parent.parent;
@@ -192667,7 +192667,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             const end = varStatement.end;
             changes.delete(sourceFile, parent2);
             changes.insertNodeAt(sourceFile, end, parent2.initializer, {
-              prefix: getNewLineOrDefaultFromHost(context4.host, context4.formatContext.options) + sourceFile.text.slice(getPrecedingNonSpaceCharacterPosition(sourceFile.text, pos - 1), pos),
+              prefix: getNewLineOrDefaultFromHost(context3.host, context3.formatContext.options) + sourceFile.text.slice(getPrecedingNonSpaceCharacterPosition(sourceFile.text, pos - 1), pos),
               suffix: probablyUsesSemicolons(sourceFile) ? ";" : ""
             });
           } else {
@@ -192809,14 +192809,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes44 = [Diagnostics.Unreachable_code_detected.code];
       registerCodeFix({
         errorCodes: errorCodes44,
-        getCodeActions(context4) {
-          const syntacticDiagnostics = context4.program.getSyntacticDiagnostics(context4.sourceFile, context4.cancellationToken);
+        getCodeActions(context3) {
+          const syntacticDiagnostics = context3.program.getSyntacticDiagnostics(context3.sourceFile, context3.cancellationToken);
           if (syntacticDiagnostics.length) return;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange27(t, context4.sourceFile, context4.span.start, context4.span.length, context4.errorCode));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange27(t, context3.sourceFile, context3.span.start, context3.span.length, context3.errorCode));
           return [createCodeFixAction(fixId34, changes, Diagnostics.Remove_unreachable_code, fixId34, Diagnostics.Remove_all_unreachable_code)];
         },
         fixIds: [fixId34],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes44, (changes, diag2) => doChange27(changes, diag2.file, diag2.start, diag2.length, diag2.code))
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes44, (changes, diag2) => doChange27(changes, diag2.file, diag2.start, diag2.length, diag2.code))
       });
       function doChange27(changes, sourceFile, start, length2, errorCode) {
         const token = getTokenAtPosition(sourceFile, start);
@@ -192870,12 +192870,12 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes45 = [Diagnostics.Unused_label.code];
       registerCodeFix({
         errorCodes: errorCodes45,
-        getCodeActions(context4) {
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange28(t, context4.sourceFile, context4.span.start));
+        getCodeActions(context3) {
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange28(t, context3.sourceFile, context3.span.start));
           return [createCodeFixAction(fixId35, changes, Diagnostics.Remove_unused_label, fixId35, Diagnostics.Remove_all_unused_labels)];
         },
         fixIds: [fixId35],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes45, (changes, diag2) => doChange28(changes, diag2.file, diag2.start))
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes45, (changes, diag2) => doChange28(changes, diag2.file, diag2.start))
       });
       function doChange28(changes, sourceFile, start) {
         const token = getTokenAtPosition(sourceFile, start);
@@ -192899,10 +192899,10 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       ];
       registerCodeFix({
         errorCodes: errorCodes46,
-        getCodeActions(context4) {
-          const { sourceFile } = context4;
-          const checker = context4.program.getTypeChecker();
-          const info2 = getInfo15(sourceFile, context4.span.start, checker);
+        getCodeActions(context3) {
+          const { sourceFile } = context3;
+          const checker = context3.program.getTypeChecker();
+          const info2 = getInfo15(sourceFile, context3.span.start, checker);
           if (!info2) return void 0;
           const { typeNode, type } = info2;
           const original = typeNode.getText(sourceFile);
@@ -192912,15 +192912,15 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           }
           return actions2;
           function fix(type2, fixId56, fixAllDescription) {
-            const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange29(t, sourceFile, typeNode, type2, checker));
+            const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange29(t, sourceFile, typeNode, type2, checker));
             return createCodeFixAction("jdocTypes", changes, [Diagnostics.Change_0_to_1, original, checker.typeToString(type2)], fixId56, fixAllDescription);
           }
         },
         fixIds: [fixIdPlain, fixIdNullable],
-        getAllCodeActions(context4) {
-          const { fixId: fixId56, program, sourceFile } = context4;
+        getAllCodeActions(context3) {
+          const { fixId: fixId56, program, sourceFile } = context3;
           const checker = program.getTypeChecker();
-          return codeFixAll(context4, errorCodes46, (changes, err) => {
+          return codeFixAll(context3, errorCodes46, (changes, err) => {
             const info2 = getInfo15(err.file, err.start, checker);
             if (!info2) return;
             const { typeNode, type } = info2;
@@ -192989,14 +192989,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       registerCodeFix({
         errorCodes: errorCodes47,
         fixIds: [fixId36],
-        getCodeActions(context4) {
-          const { sourceFile, span } = context4;
+        getCodeActions(context3) {
+          const { sourceFile, span } = context3;
           const callName = getCallName(sourceFile, span.start);
           if (!callName) return;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange30(t, context4.sourceFile, callName));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange30(t, context3.sourceFile, callName));
           return [createCodeFixAction(fixId36, changes, Diagnostics.Add_missing_call_parentheses, fixId36, Diagnostics.Add_all_missing_call_parentheses)];
         },
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes47, (changes, diag2) => {
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes47, (changes, diag2) => {
           const callName = getCallName(diag2.file, diag2.start);
           if (callName) doChange30(changes, diag2.file, callName);
         })
@@ -193065,28 +193065,28 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       registerCodeFix({
         errorCodes: errorCodes48,
         fixIds: [fixId37],
-        getCodeActions(context4) {
+        getCodeActions(context3) {
           const fixes = [];
-          addCodeAction(addAnnotationFix, fixes, context4, 0, (f) => f.addTypeAnnotation(context4.span));
-          addCodeAction(addAnnotationFix, fixes, context4, 1, (f) => f.addTypeAnnotation(context4.span));
-          addCodeAction(addAnnotationFix, fixes, context4, 2, (f) => f.addTypeAnnotation(context4.span));
-          addCodeAction(addInlineTypeAssertion, fixes, context4, 0, (f) => f.addInlineAssertion(context4.span));
-          addCodeAction(addInlineTypeAssertion, fixes, context4, 1, (f) => f.addInlineAssertion(context4.span));
-          addCodeAction(addInlineTypeAssertion, fixes, context4, 2, (f) => f.addInlineAssertion(context4.span));
-          addCodeAction(extractExpression, fixes, context4, 0, (f) => f.extractAsVariable(context4.span));
+          addCodeAction(addAnnotationFix, fixes, context3, 0, (f) => f.addTypeAnnotation(context3.span));
+          addCodeAction(addAnnotationFix, fixes, context3, 1, (f) => f.addTypeAnnotation(context3.span));
+          addCodeAction(addAnnotationFix, fixes, context3, 2, (f) => f.addTypeAnnotation(context3.span));
+          addCodeAction(addInlineTypeAssertion, fixes, context3, 0, (f) => f.addInlineAssertion(context3.span));
+          addCodeAction(addInlineTypeAssertion, fixes, context3, 1, (f) => f.addInlineAssertion(context3.span));
+          addCodeAction(addInlineTypeAssertion, fixes, context3, 2, (f) => f.addInlineAssertion(context3.span));
+          addCodeAction(extractExpression, fixes, context3, 0, (f) => f.extractAsVariable(context3.span));
           return fixes;
         },
-        getAllCodeActions: (context4) => {
-          const changes = withContext(context4, 0, (f) => {
-            eachDiagnostic(context4, errorCodes48, (diag2) => {
+        getAllCodeActions: (context3) => {
+          const changes = withContext(context3, 0, (f) => {
+            eachDiagnostic(context3, errorCodes48, (diag2) => {
               f.addTypeAnnotation(diag2);
             });
           });
           return createCombinedCodeActions(changes.textChanges);
         }
       });
-      function addCodeAction(fixName8, fixes, context4, typePrintMode, cb) {
-        const changes = withContext(context4, typePrintMode, cb);
+      function addCodeAction(fixName8, fixes, context3, typePrintMode, cb) {
+        const changes = withContext(context3, typePrintMode, cb);
         if (changes.result && changes.textChanges.length) {
           fixes.push(createCodeFixAction(
             fixName8,
@@ -193097,14 +193097,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           ));
         }
       }
-      function withContext(context4, typePrintMode, cb) {
+      function withContext(context3, typePrintMode, cb) {
         const emptyInferenceResult = { typeNode: void 0, mutatedTarget: false };
-        const changeTracker = ts_textChanges_exports.ChangeTracker.fromContext(context4);
-        const sourceFile = context4.sourceFile;
-        const program = context4.program;
+        const changeTracker = ts_textChanges_exports.ChangeTracker.fromContext(context3);
+        const sourceFile = context3.sourceFile;
+        const program = context3.program;
         const typeChecker = program.getTypeChecker();
         const scriptTarget = getEmitScriptTarget(program.getCompilerOptions());
-        const importAdder = createImportAdder(context4.sourceFile, context4.program, context4.preferences, context4.host);
+        const importAdder = createImportAdder(context3.sourceFile, context3.program, context3.preferences, context3.host);
         const fixedNodes = /* @__PURE__ */ new Set();
         const expandoPropertiesAdded = /* @__PURE__ */ new Set();
         const typePrinter = createPrinter({
@@ -193117,7 +193117,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           textChanges: changeTracker.getChanges()
         };
         function addTypeAnnotation(span) {
-          context4.cancellationToken.throwIfCancellationRequested();
+          context3.cancellationToken.throwIfCancellationRequested();
           const nodeWithDiag = getTokenAtPosition(sourceFile, span.start);
           const expandoFunction = findExpandoFunction(nodeWithDiag);
           if (expandoFunction) {
@@ -193202,7 +193202,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           return factory.createAsExpression(factory.createSatisfiesExpression(node, getSynthesizedDeepClone(type)), type);
         }
         function addInlineAssertion(span) {
-          context4.cancellationToken.throwIfCancellationRequested();
+          context3.cancellationToken.throwIfCancellationRequested();
           const nodeWithDiag = getTokenAtPosition(sourceFile, span.start);
           const expandoFunction = findExpandoFunction(nodeWithDiag);
           if (expandoFunction) return;
@@ -193260,7 +193260,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           return [Diagnostics.Add_satisfies_and_an_inline_type_assertion_with_0, typeToStringForDiag(typeNode)];
         }
         function extractAsVariable(span) {
-          context4.cancellationToken.throwIfCancellationRequested();
+          context3.cancellationToken.throwIfCancellationRequested();
           const nodeWithDiag = getTokenAtPosition(sourceFile, span.start);
           const targetNode = findBestFittingNode(nodeWithDiag, span);
           if (!targetNode || isValueSignatureDeclaration(targetNode) || isValueSignatureDeclaration(targetNode.parent)) return;
@@ -194002,20 +194002,20 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       ];
       registerCodeFix({
         errorCodes: errorCodes49,
-        getCodeActions(context4) {
-          const { sourceFile, span } = context4;
+        getCodeActions(context3) {
+          const { sourceFile, span } = context3;
           const nodes = getNodes3(sourceFile, span.start);
           if (!nodes) return void 0;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange31(t, sourceFile, nodes));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange31(t, sourceFile, nodes));
           return [createCodeFixAction(fixId38, changes, Diagnostics.Add_async_modifier_to_containing_function, fixId38, Diagnostics.Add_all_missing_async_modifiers)];
         },
         fixIds: [fixId38],
-        getAllCodeActions: function getAllCodeActionsToFixAwaitInSyncFunction(context4) {
+        getAllCodeActions: function getAllCodeActionsToFixAwaitInSyncFunction(context3) {
           const seen = /* @__PURE__ */ new Set();
-          return codeFixAll(context4, errorCodes49, (changes, diag2) => {
+          return codeFixAll(context3, errorCodes49, (changes, diag2) => {
             const nodes = getNodes3(diag2.file, diag2.start);
             if (!nodes || !addToSeen(seen, getNodeId(nodes.insertBefore))) return;
-            doChange31(changes, context4.sourceFile, nodes);
+            doChange31(changes, context3.sourceFile, nodes);
           });
         }
       });
@@ -194070,30 +194070,30 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var fixId39 = "fixPropertyOverrideAccessor";
       registerCodeFix({
         errorCodes: errorCodes50,
-        getCodeActions(context4) {
-          const edits = doChange32(context4.sourceFile, context4.span.start, context4.span.length, context4.errorCode, context4);
+        getCodeActions(context3) {
+          const edits = doChange32(context3.sourceFile, context3.span.start, context3.span.length, context3.errorCode, context3);
           if (edits) {
             return [createCodeFixAction(fixId39, edits, Diagnostics.Generate_get_and_set_accessors, fixId39, Diagnostics.Generate_get_and_set_accessors_for_all_overriding_properties)];
           }
         },
         fixIds: [fixId39],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes50, (changes, diag2) => {
-          const edits = doChange32(diag2.file, diag2.start, diag2.length, diag2.code, context4);
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes50, (changes, diag2) => {
+          const edits = doChange32(diag2.file, diag2.start, diag2.length, diag2.code, context3);
           if (edits) {
             for (const edit of edits) {
-              changes.pushRaw(context4.sourceFile, edit);
+              changes.pushRaw(context3.sourceFile, edit);
             }
           }
         })
       });
-      function doChange32(file, start, length2, code2, context4) {
+      function doChange32(file, start, length2, code2, context3) {
         let startPosition;
         let endPosition;
         if (code2 === Diagnostics._0_is_defined_as_an_accessor_in_class_1_but_is_overridden_here_in_2_as_an_instance_property.code) {
           startPosition = start;
           endPosition = start + length2;
         } else if (code2 === Diagnostics._0_is_defined_as_a_property_in_class_1_but_is_overridden_here_in_2_as_an_accessor.code) {
-          const checker = context4.program.getTypeChecker();
+          const checker = context3.program.getTypeChecker();
           const node = getTokenAtPosition(file, start).parent;
           if (isComputedPropertyName(node)) {
             return;
@@ -194115,7 +194115,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         } else {
           Debug.fail("fixPropertyOverrideAccessor codefix got unexpected error code " + code2);
         }
-        return generateAccessorFromProperty(file, context4.program, startPosition, endPosition, context4, Diagnostics.Generate_get_and_set_accessors.message);
+        return generateAccessorFromProperty(file, context3.program, startPosition, endPosition, context3, Diagnostics.Generate_get_and_set_accessors.message);
       }
       var fixId40 = "inferFromUsage";
       var errorCodes51 = [
@@ -194153,11 +194153,11 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       ];
       registerCodeFix({
         errorCodes: errorCodes51,
-        getCodeActions(context4) {
-          const { sourceFile, program, span: { start }, errorCode, cancellationToken, host, preferences } = context4;
+        getCodeActions(context3) {
+          const { sourceFile, program, span: { start }, errorCode, cancellationToken, host, preferences } = context3;
           const token = getTokenAtPosition(sourceFile, start);
           let declaration;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (changes2) => {
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (changes2) => {
             declaration = doChange33(
               changes2,
               sourceFile,
@@ -194175,10 +194175,10 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           return !name || changes.length === 0 ? void 0 : [createCodeFixAction(fixId40, changes, [getDiagnostic(errorCode, token), getTextOfNode(name)], fixId40, Diagnostics.Infer_all_types_from_usage)];
         },
         fixIds: [fixId40],
-        getAllCodeActions(context4) {
-          const { sourceFile, program, cancellationToken, host, preferences } = context4;
+        getAllCodeActions(context3) {
+          const { sourceFile, program, cancellationToken, host, preferences } = context3;
           const markSeen = nodeSeenTracker();
-          return codeFixAll(context4, errorCodes51, (changes, err) => {
+          return codeFixAll(context3, errorCodes51, (changes, err) => {
             doChange33(changes, sourceFile, getTokenAtPosition(err.file, err.start), err.code, program, cancellationToken, markSeen, host, preferences);
           });
         }
@@ -195193,15 +195193,15 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       registerCodeFix({
         errorCodes: errorCodes52,
         fixIds: [fixId41],
-        getCodeActions: function getCodeActionsToFixReturnTypeInAsyncFunction(context4) {
-          const { sourceFile, program, span } = context4;
+        getCodeActions: function getCodeActionsToFixReturnTypeInAsyncFunction(context3) {
+          const { sourceFile, program, span } = context3;
           const checker = program.getTypeChecker();
           const info2 = getInfo16(sourceFile, program.getTypeChecker(), span.start);
           if (!info2) {
             return void 0;
           }
           const { returnTypeNode, returnType, promisedTypeNode, promisedType } = info2;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange34(t, sourceFile, returnTypeNode, promisedTypeNode));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange34(t, sourceFile, returnTypeNode, promisedTypeNode));
           return [createCodeFixAction(
             fixId41,
             changes,
@@ -195210,8 +195210,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             Diagnostics.Fix_all_incorrect_return_type_of_an_async_functions
           )];
         },
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes52, (changes, diag2) => {
-          const info2 = getInfo16(diag2.file, context4.program.getTypeChecker(), diag2.start);
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes52, (changes, diag2) => {
+          const info2 = getInfo16(diag2.file, context3.program.getTypeChecker(), diag2.start);
           if (info2) {
             doChange34(changes, diag2.file, info2.returnTypeNode, info2.promisedTypeNode);
           }
@@ -195251,8 +195251,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       });
       registerCodeFix({
         errorCodes: errorCodes53,
-        getCodeActions: function getCodeActionsToDisableJsDiagnostics(context4) {
-          const { sourceFile, program, span, host, formatContext } = context4;
+        getCodeActions: function getCodeActionsToDisableJsDiagnostics(context3) {
+          const { sourceFile, program, span, host, formatContext } = context3;
           if (!isInJSFile(sourceFile) || !isCheckJsEnabledForFile(sourceFile, program.getCompilerOptions())) {
             return void 0;
           }
@@ -195271,14 +195271,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             )
           ];
           if (ts_textChanges_exports.isValidLocationToAddComment(sourceFile, span.start)) {
-            fixes.unshift(createCodeFixAction(fixName4, ts_textChanges_exports.ChangeTracker.with(context4, (t) => makeChange9(t, sourceFile, span.start)), Diagnostics.Ignore_this_error_message, fixId42, Diagnostics.Add_ts_ignore_to_all_error_messages));
+            fixes.unshift(createCodeFixAction(fixName4, ts_textChanges_exports.ChangeTracker.with(context3, (t) => makeChange9(t, sourceFile, span.start)), Diagnostics.Ignore_this_error_message, fixId42, Diagnostics.Add_ts_ignore_to_all_error_messages));
           }
           return fixes;
         },
         fixIds: [fixId42],
-        getAllCodeActions: (context4) => {
+        getAllCodeActions: (context3) => {
           const seenLines = /* @__PURE__ */ new Set();
-          return codeFixAll(context4, errorCodes53, (changes, diag2) => {
+          return codeFixAll(context3, errorCodes53, (changes, diag2) => {
             if (ts_textChanges_exports.isValidLocationToAddComment(diag2.file, diag2.start)) {
               makeChange9(changes, diag2.file, diag2.start, seenLines);
             }
@@ -195291,7 +195291,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           changes.insertCommentBeforeLine(sourceFile, lineNumber, position, " @ts-ignore");
         }
       }
-      function createMissingMemberNodes(classDeclaration, possiblyMissingSymbols, sourceFile, context4, preferences, importAdder, addClassElement) {
+      function createMissingMemberNodes(classDeclaration, possiblyMissingSymbols, sourceFile, context3, preferences, importAdder, addClassElement) {
         const classMembers = classDeclaration.symbol.members;
         for (const symbol of possiblyMissingSymbols) {
           if (!classMembers.has(symbol.escapedName)) {
@@ -195299,7 +195299,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               symbol,
               classDeclaration,
               sourceFile,
-              context4,
+              context3,
               preferences,
               importAdder,
               addClassElement,
@@ -195309,10 +195309,10 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           }
         }
       }
-      function getNoopSymbolTrackerWithResolver(context4) {
+      function getNoopSymbolTrackerWithResolver(context3) {
         return {
           trackSymbol: () => false,
-          moduleResolverHost: getModuleSpecifierResolverHost(context4.program, context4.host)
+          moduleResolverHost: getModuleSpecifierResolverHost(context3.program, context3.host)
         };
       }
       var PreserveOptionalFlags = /* @__PURE__ */ ((PreserveOptionalFlags2) => {
@@ -195321,11 +195321,11 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         PreserveOptionalFlags2[PreserveOptionalFlags2["All"] = 3] = "All";
         return PreserveOptionalFlags2;
       })(PreserveOptionalFlags || {});
-      function addNewNodeForMemberSymbol(symbol, enclosingDeclaration, sourceFile, context4, preferences, importAdder, addClassElement, body, preserveOptional = 3, isAmbient = false) {
+      function addNewNodeForMemberSymbol(symbol, enclosingDeclaration, sourceFile, context3, preferences, importAdder, addClassElement, body, preserveOptional = 3, isAmbient = false) {
         const declarations = symbol.getDeclarations();
         const declaration = firstOrUndefined(declarations);
-        const checker = context4.program.getTypeChecker();
-        const scriptTarget = getEmitScriptTarget(context4.program.getCompilerOptions());
+        const checker = context3.program.getTypeChecker();
+        const scriptTarget = getEmitScriptTarget(context3.program.getCompilerOptions());
         const kind = (declaration == null ? void 0 : declaration.kind) ?? 172;
         const declarationName = createDeclarationName(symbol, declaration);
         const effectiveModifierFlags = declaration ? getEffectiveModifierFlags(declaration) : 0;
@@ -195343,7 +195343,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         switch (kind) {
           case 172:
           case 173:
-            let typeNode = checker.typeToTypeNode(type, enclosingDeclaration, flags, 8, getNoopSymbolTrackerWithResolver(context4));
+            let typeNode = checker.typeToTypeNode(type, enclosingDeclaration, flags, 8, getNoopSymbolTrackerWithResolver(context3));
             if (importAdder) {
               const importableReference = tryGetAutoImportableReferenceFromTypeNode(typeNode, scriptTarget);
               if (importableReference) {
@@ -195372,7 +195372,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               flags,
               /*internalFlags*/
               void 0,
-              getNoopSymbolTrackerWithResolver(context4)
+              getNoopSymbolTrackerWithResolver(context3)
             );
             const allAccessors = getAllAccessorDeclarations(declarations, declaration);
             const orderedAccessors = allAccessors.secondAccessor ? [allAccessors.firstAccessor, allAccessors.secondAccessor] : [allAccessors.firstAccessor];
@@ -195438,13 +195438,13 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
                 outputMethod(quotePreference, signature, modifiers, createName(declarationName), createBody(body, quotePreference));
               } else {
                 Debug.assert(declarations.length === signatures.length, "Declarations and signatures should match count");
-                addClassElement(createMethodImplementingSignatures(checker, context4, enclosingDeclaration, signatures, createName(declarationName), optional && !!(preserveOptional & 1), modifiers, quotePreference, body));
+                addClassElement(createMethodImplementingSignatures(checker, context3, enclosingDeclaration, signatures, createName(declarationName), optional && !!(preserveOptional & 1), modifiers, quotePreference, body));
               }
             }
             break;
         }
         function outputMethod(quotePreference2, signature, modifiers2, name, body2) {
-          const method = createSignatureDeclarationFromSignature(175, context4, quotePreference2, signature, body2, name, modifiers2, optional && !!(preserveOptional & 1), enclosingDeclaration, importAdder);
+          const method = createSignatureDeclarationFromSignature(175, context3, quotePreference2, signature, body2, name, modifiers2, optional && !!(preserveOptional & 1), enclosingDeclaration, importAdder);
           if (method) addClassElement(method);
         }
         function createModifiers() {
@@ -195461,7 +195461,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           return modifiers2 && factory.createNodeArray(modifiers2);
         }
         function shouldAddOverrideKeyword() {
-          return !!(context4.program.getCompilerOptions().noImplicitOverride && declaration && hasAbstractModifier(declaration));
+          return !!(context3.program.getCompilerOptions().noImplicitOverride && declaration && hasAbstractModifier(declaration));
         }
         function createName(node) {
           if (isIdentifier2(node) && node.escapedText === "constructor") {
@@ -195505,13 +195505,13 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           );
         }
       }
-      function createSignatureDeclarationFromSignature(kind, context4, quotePreference, signature, body, name, modifiers, optional, enclosingDeclaration, importAdder) {
-        const program = context4.program;
+      function createSignatureDeclarationFromSignature(kind, context3, quotePreference, signature, body, name, modifiers, optional, enclosingDeclaration, importAdder) {
+        const program = context3.program;
         const checker = program.getTypeChecker();
         const scriptTarget = getEmitScriptTarget(program.getCompilerOptions());
         const isJs = isInJSFile(enclosingDeclaration);
         const flags = 1 | 256 | 524288 | (quotePreference === 0 ? 268435456 : 0);
-        const signatureDeclaration = checker.signatureToSignatureDeclaration(signature, kind, enclosingDeclaration, flags, 8, getNoopSymbolTrackerWithResolver(context4));
+        const signatureDeclaration = checker.signatureToSignatureDeclaration(signature, kind, enclosingDeclaration, flags, 8, getNoopSymbolTrackerWithResolver(context3));
         if (!signatureDeclaration) {
           return void 0;
         }
@@ -195598,11 +195598,11 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         return void 0;
       }
-      function createSignatureDeclarationFromCallExpression(kind, context4, importAdder, call, name, modifierFlags, contextNode) {
-        const quotePreference = getQuotePreference(context4.sourceFile, context4.preferences);
-        const scriptTarget = getEmitScriptTarget(context4.program.getCompilerOptions());
-        const tracker = getNoopSymbolTrackerWithResolver(context4);
-        const checker = context4.program.getTypeChecker();
+      function createSignatureDeclarationFromCallExpression(kind, context3, importAdder, call, name, modifierFlags, contextNode) {
+        const quotePreference = getQuotePreference(context3.sourceFile, context3.preferences);
+        const scriptTarget = getEmitScriptTarget(context3.program.getCompilerOptions());
+        const tracker = getNoopSymbolTrackerWithResolver(context3);
+        const checker = context3.program.getTypeChecker();
         const isJs = isInJSFile(contextNode);
         const { typeArguments, arguments: args, parent: parent2 } = call;
         const contextualType = isJs ? void 0 : checker.getContextualType(call);
@@ -195854,7 +195854,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         return parameters;
       }
-      function createMethodImplementingSignatures(checker, context4, enclosingDeclaration, signatures, name, optional, modifiers, quotePreference, body) {
+      function createMethodImplementingSignatures(checker, context3, enclosingDeclaration, signatures, name, optional, modifiers, quotePreference, body) {
         let maxArgsSignature = signatures[0];
         let minArgumentCount = signatures[0].minArgumentCount;
         let someSigHasRestParameter = false;
@@ -195908,15 +195908,15 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           /*typeParameters*/
           void 0,
           parameters,
-          getReturnTypeFromSignatures(signatures, checker, context4, enclosingDeclaration),
+          getReturnTypeFromSignatures(signatures, checker, context3, enclosingDeclaration),
           quotePreference,
           body
         );
       }
-      function getReturnTypeFromSignatures(signatures, checker, context4, enclosingDeclaration) {
+      function getReturnTypeFromSignatures(signatures, checker, context3, enclosingDeclaration) {
         if (length(signatures)) {
           const type = checker.getUnionType(map(signatures, checker.getReturnTypeOfSignature));
-          return checker.typeToTypeNode(type, enclosingDeclaration, 1, 8, getNoopSymbolTrackerWithResolver(context4));
+          return checker.typeToTypeNode(type, enclosingDeclaration, 1, 8, getNoopSymbolTrackerWithResolver(context3));
         }
       }
       function createStubbedMethod(modifiers, name, optional, typeParameters, parameters, returnType, quotePreference, body) {
@@ -196051,10 +196051,10 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         return token;
       }
-      function generateAccessorFromProperty(file, program, start, end, context4, _actionName) {
+      function generateAccessorFromProperty(file, program, start, end, context3, _actionName) {
         const fieldInfo = getAccessorConvertiblePropertyAtPosition(file, program, start, end);
         if (!fieldInfo || ts_refactor_exports.isRefactorErrorInfo(fieldInfo)) return void 0;
-        const changeTracker = ts_textChanges_exports.ChangeTracker.fromContext(context4);
+        const changeTracker = ts_textChanges_exports.ChangeTracker.fromContext(context3);
         const { isStatic: isStatic2, isReadonly, fieldName, accessorName, originalName, type, container, declaration } = fieldInfo;
         suppressLeadingAndTrailingTrivia(fieldName);
         suppressLeadingAndTrailingTrivia(accessorName);
@@ -196263,21 +196263,21 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         return typeNode;
       }
       var fixName5 = "invalidImportSyntax";
-      function getCodeFixesForImportDeclaration(context4, node) {
+      function getCodeFixesForImportDeclaration(context3, node) {
         const sourceFile = getSourceFileOfNode(node);
         const namespace = getNamespaceDeclarationNode(node);
-        const opts = context4.program.getCompilerOptions();
+        const opts = context3.program.getCompilerOptions();
         const variations = [];
-        variations.push(createAction(context4, sourceFile, node, makeImport(
+        variations.push(createAction(context3, sourceFile, node, makeImport(
           namespace.name,
           /*namedImports*/
           void 0,
           node.moduleSpecifier,
-          getQuotePreference(sourceFile, context4.preferences)
+          getQuotePreference(sourceFile, context3.preferences)
         )));
         if (getEmitModuleKind(opts) === 1) {
           variations.push(createAction(
-            context4,
+            context3,
             sourceFile,
             node,
             factory.createImportEqualsDeclaration(
@@ -196292,8 +196292,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         return variations;
       }
-      function createAction(context4, sourceFile, node, replacement) {
-        const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => t.replaceNode(sourceFile, node, replacement));
+      function createAction(context3, sourceFile, node, replacement) {
+        const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => t.replaceNode(sourceFile, node, replacement));
         return createCodeFixActionWithoutFixAll(fixName5, changes, [Diagnostics.Replace_import_with_0, changes[0].textChanges[0].newText]);
       }
       registerCodeFix({
@@ -196303,15 +196303,15 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         ],
         getCodeActions: getActionsForUsageOfInvalidImport
       });
-      function getActionsForUsageOfInvalidImport(context4) {
-        const sourceFile = context4.sourceFile;
-        const targetKind = Diagnostics.This_expression_is_not_callable.code === context4.errorCode ? 214 : 215;
-        const node = findAncestor(getTokenAtPosition(sourceFile, context4.span.start), (a) => a.kind === targetKind);
+      function getActionsForUsageOfInvalidImport(context3) {
+        const sourceFile = context3.sourceFile;
+        const targetKind = Diagnostics.This_expression_is_not_callable.code === context3.errorCode ? 214 : 215;
+        const node = findAncestor(getTokenAtPosition(sourceFile, context3.span.start), (a) => a.kind === targetKind);
         if (!node) {
           return [];
         }
         const expr = node.expression;
-        return getImportCodeFixesForExpression(context4, expr);
+        return getImportCodeFixesForExpression(context3, expr);
       }
       registerCodeFix({
         errorCodes: [
@@ -196330,27 +196330,27 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         ],
         getCodeActions: getActionsForInvalidImportLocation
       });
-      function getActionsForInvalidImportLocation(context4) {
-        const sourceFile = context4.sourceFile;
-        const node = findAncestor(getTokenAtPosition(sourceFile, context4.span.start), (a) => a.getStart() === context4.span.start && a.getEnd() === context4.span.start + context4.span.length);
+      function getActionsForInvalidImportLocation(context3) {
+        const sourceFile = context3.sourceFile;
+        const node = findAncestor(getTokenAtPosition(sourceFile, context3.span.start), (a) => a.getStart() === context3.span.start && a.getEnd() === context3.span.start + context3.span.length);
         if (!node) {
           return [];
         }
-        return getImportCodeFixesForExpression(context4, node);
+        return getImportCodeFixesForExpression(context3, node);
       }
-      function getImportCodeFixesForExpression(context4, expr) {
-        const type = context4.program.getTypeChecker().getTypeAtLocation(expr);
+      function getImportCodeFixesForExpression(context3, expr) {
+        const type = context3.program.getTypeChecker().getTypeAtLocation(expr);
         if (!(type.symbol && isTransientSymbol(type.symbol) && type.symbol.links.originatingImport)) {
           return [];
         }
         const fixes = [];
         const relatedImport = type.symbol.links.originatingImport;
         if (!isImportCall(relatedImport)) {
-          addRange(fixes, getCodeFixesForImportDeclaration(context4, relatedImport));
+          addRange(fixes, getCodeFixesForImportDeclaration(context3, relatedImport));
         }
         if (isExpression(expr) && !(isNamedDeclaration(expr.parent) && expr.parent.name === expr)) {
-          const sourceFile = context4.sourceFile;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => t.replaceNode(sourceFile, expr, factory.createPropertyAccessExpression(expr, "default"), {}));
+          const sourceFile = context3.sourceFile;
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => t.replaceNode(sourceFile, expr, factory.createPropertyAccessExpression(expr, "default"), {}));
           fixes.push(createCodeFixActionWithoutFixAll(fixName5, changes, Diagnostics.Use_synthetic_default_member));
         }
         return fixes;
@@ -196362,21 +196362,21 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes54 = [Diagnostics.Property_0_has_no_initializer_and_is_not_definitely_assigned_in_the_constructor.code];
       registerCodeFix({
         errorCodes: errorCodes54,
-        getCodeActions: function getCodeActionsForStrictClassInitializationErrors(context4) {
-          const info2 = getInfo17(context4.sourceFile, context4.span.start);
+        getCodeActions: function getCodeActionsForStrictClassInitializationErrors(context3) {
+          const info2 = getInfo17(context3.sourceFile, context3.span.start);
           if (!info2) return;
           const result = [];
-          append(result, getActionForAddMissingUndefinedType(context4, info2));
-          append(result, getActionForAddMissingDefiniteAssignmentAssertion(context4, info2));
-          append(result, getActionForAddMissingInitializer(context4, info2));
+          append(result, getActionForAddMissingUndefinedType(context3, info2));
+          append(result, getActionForAddMissingDefiniteAssignmentAssertion(context3, info2));
+          append(result, getActionForAddMissingInitializer(context3, info2));
           return result;
         },
         fixIds: [fixIdAddDefiniteAssignmentAssertions, fixIdAddUndefinedType, fixIdAddInitializer],
-        getAllCodeActions: (context4) => {
-          return codeFixAll(context4, errorCodes54, (changes, diag2) => {
+        getAllCodeActions: (context3) => {
+          return codeFixAll(context3, errorCodes54, (changes, diag2) => {
             const info2 = getInfo17(diag2.file, diag2.start);
             if (!info2) return;
-            switch (context4.fixId) {
+            switch (context3.fixId) {
               case fixIdAddDefiniteAssignmentAssertions:
                 addDefiniteAssignmentAssertion(changes, diag2.file, info2.prop);
                 break;
@@ -196384,13 +196384,13 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
                 addUndefinedType(changes, diag2.file, info2);
                 break;
               case fixIdAddInitializer:
-                const checker = context4.program.getTypeChecker();
+                const checker = context3.program.getTypeChecker();
                 const initializer = getInitializer(checker, info2.prop);
                 if (!initializer) return;
                 addInitializer(changes, diag2.file, info2.prop, initializer);
                 break;
               default:
-                Debug.fail(JSON.stringify(context4.fixId));
+                Debug.fail(JSON.stringify(context3.fixId));
             }
           });
         }
@@ -196405,9 +196405,9 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         }
         return void 0;
       }
-      function getActionForAddMissingDefiniteAssignmentAssertion(context4, info2) {
+      function getActionForAddMissingDefiniteAssignmentAssertion(context3, info2) {
         if (info2.isJs) return void 0;
-        const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => addDefiniteAssignmentAssertion(t, context4.sourceFile, info2.prop));
+        const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => addDefiniteAssignmentAssertion(t, context3.sourceFile, info2.prop));
         return createCodeFixAction(fixName6, changes, [Diagnostics.Add_definite_assignment_assertion_to_property_0, info2.prop.getText()], fixIdAddDefiniteAssignmentAssertions, Diagnostics.Add_definite_assignment_assertions_to_all_uninitialized_properties);
       }
       function addDefiniteAssignmentAssertion(changeTracker, propertyDeclarationSourceFile, propertyDeclaration) {
@@ -196425,8 +196425,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         );
         changeTracker.replaceNode(propertyDeclarationSourceFile, propertyDeclaration, property);
       }
-      function getActionForAddMissingUndefinedType(context4, info2) {
-        const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => addUndefinedType(t, context4.sourceFile, info2));
+      function getActionForAddMissingUndefinedType(context3, info2) {
+        const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => addUndefinedType(t, context3.sourceFile, info2));
         return createCodeFixAction(fixName6, changes, [Diagnostics.Add_undefined_type_to_property_0, info2.prop.name.getText()], fixIdAddUndefinedType, Diagnostics.Add_undefined_type_to_all_uninitialized_properties);
       }
       function addUndefinedType(changeTracker, sourceFile, info2) {
@@ -196446,12 +196446,12 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           changeTracker.replaceNode(sourceFile, info2.type, unionTypeNode);
         }
       }
-      function getActionForAddMissingInitializer(context4, info2) {
+      function getActionForAddMissingInitializer(context3, info2) {
         if (info2.isJs) return void 0;
-        const checker = context4.program.getTypeChecker();
+        const checker = context3.program.getTypeChecker();
         const initializer = getInitializer(checker, info2.prop);
         if (!initializer) return void 0;
-        const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => addInitializer(t, context4.sourceFile, info2.prop, initializer));
+        const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => addInitializer(t, context3.sourceFile, info2.prop, initializer));
         return createCodeFixAction(fixName6, changes, [Diagnostics.Add_initializer_to_property_0, info2.prop.name.getText()], fixIdAddInitializer, Diagnostics.Add_initializers_to_all_uninitialized_properties);
       }
       function addInitializer(changeTracker, propertyDeclarationSourceFile, propertyDeclaration, initializer) {
@@ -196508,19 +196508,19 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes55 = [Diagnostics.require_call_may_be_converted_to_an_import.code];
       registerCodeFix({
         errorCodes: errorCodes55,
-        getCodeActions(context4) {
-          const info2 = getInfo18(context4.sourceFile, context4.program, context4.span.start, context4.preferences);
+        getCodeActions(context3) {
+          const info2 = getInfo18(context3.sourceFile, context3.program, context3.span.start, context3.preferences);
           if (!info2) {
             return void 0;
           }
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange35(t, context4.sourceFile, info2));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange35(t, context3.sourceFile, info2));
           return [createCodeFixAction(fixId43, changes, Diagnostics.Convert_require_to_import, fixId43, Diagnostics.Convert_all_require_to_import)];
         },
         fixIds: [fixId43],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes55, (changes, diag2) => {
-          const info2 = getInfo18(diag2.file, context4.program, diag2.start, context4.preferences);
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes55, (changes, diag2) => {
+          const info2 = getInfo18(diag2.file, context3.program, diag2.start, context3.preferences);
           if (info2) {
-            doChange35(changes, context4.sourceFile, info2);
+            doChange35(changes, context3.sourceFile, info2);
           }
         })
       });
@@ -196600,17 +196600,17 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes56 = [Diagnostics.Import_may_be_converted_to_a_default_import.code];
       registerCodeFix({
         errorCodes: errorCodes56,
-        getCodeActions(context4) {
-          const { sourceFile, span: { start } } = context4;
+        getCodeActions(context3) {
+          const { sourceFile, span: { start } } = context3;
           const info2 = getInfo19(sourceFile, start);
           if (!info2) return void 0;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange36(t, sourceFile, info2, context4.preferences));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange36(t, sourceFile, info2, context3.preferences));
           return [createCodeFixAction(fixId44, changes, Diagnostics.Convert_to_default_import, fixId44, Diagnostics.Convert_all_to_default_imports)];
         },
         fixIds: [fixId44],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes56, (changes, diag2) => {
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes56, (changes, diag2) => {
           const info2 = getInfo19(diag2.file, diag2.start);
-          if (info2) doChange36(changes, diag2.file, info2, context4.preferences);
+          if (info2) doChange36(changes, diag2.file, info2, context3.preferences);
         })
       });
       function getInfo19(sourceFile, pos) {
@@ -196639,15 +196639,15 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       ];
       registerCodeFix({
         errorCodes: errorCodes57,
-        getCodeActions: function getCodeActionsToUseBigintLiteral(context4) {
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => makeChange10(t, context4.sourceFile, context4.span));
+        getCodeActions: function getCodeActionsToUseBigintLiteral(context3) {
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => makeChange10(t, context3.sourceFile, context3.span));
           if (changes.length > 0) {
             return [createCodeFixAction(fixId45, changes, Diagnostics.Convert_to_a_bigint_numeric_literal, fixId45, Diagnostics.Convert_all_to_bigint_numeric_literals)];
           }
         },
         fixIds: [fixId45],
-        getAllCodeActions: (context4) => {
-          return codeFixAll(context4, errorCodes57, (changes, diag2) => makeChange10(changes, diag2.file, diag2));
+        getAllCodeActions: (context3) => {
+          return codeFixAll(context3, errorCodes57, (changes, diag2) => makeChange10(changes, diag2.file, diag2));
         }
       });
       function makeChange10(changeTracker, sourceFile, span) {
@@ -196663,14 +196663,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes58 = [Diagnostics.Module_0_does_not_refer_to_a_type_but_is_used_as_a_type_here_Did_you_mean_typeof_import_0.code];
       registerCodeFix({
         errorCodes: errorCodes58,
-        getCodeActions: function getCodeActionsToAddMissingTypeof(context4) {
-          const { sourceFile, span } = context4;
+        getCodeActions: function getCodeActionsToAddMissingTypeof(context3) {
+          const { sourceFile, span } = context3;
           const importType = getImportTypeNode(sourceFile, span.start);
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange37(t, sourceFile, importType));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange37(t, sourceFile, importType));
           return [createCodeFixAction(fixId46, changes, Diagnostics.Add_missing_typeof, fixId46, Diagnostics.Add_missing_typeof)];
         },
         fixIds: [fixId46],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes58, (changes, diag2) => doChange37(changes, context4.sourceFile, getImportTypeNode(diag2.file, diag2.start)))
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes58, (changes, diag2) => doChange37(changes, context3.sourceFile, getImportTypeNode(diag2.file, diag2.start)))
       });
       function getImportTypeNode(sourceFile, pos) {
         const token = getTokenAtPosition(sourceFile, pos);
@@ -196694,18 +196694,18 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes59 = [Diagnostics.JSX_expressions_must_have_one_parent_element.code];
       registerCodeFix({
         errorCodes: errorCodes59,
-        getCodeActions: function getCodeActionsToWrapJsxInFragment(context4) {
-          const { sourceFile, span } = context4;
+        getCodeActions: function getCodeActionsToWrapJsxInFragment(context3) {
+          const { sourceFile, span } = context3;
           const node = findNodeToFix(sourceFile, span.start);
           if (!node) return void 0;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange38(t, sourceFile, node));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange38(t, sourceFile, node));
           return [createCodeFixAction(fixID2, changes, Diagnostics.Wrap_in_JSX_fragment, fixID2, Diagnostics.Wrap_all_unparented_JSX_in_JSX_fragment)];
         },
         fixIds: [fixID2],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes59, (changes, diag2) => {
-          const node = findNodeToFix(context4.sourceFile, diag2.start);
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes59, (changes, diag2) => {
+          const node = findNodeToFix(context3.sourceFile, diag2.start);
           if (!node) return void 0;
-          doChange38(changes, context4.sourceFile, node);
+          doChange38(changes, context3.sourceFile, node);
         })
       });
       function findNodeToFix(sourceFile, pos) {
@@ -196743,12 +196743,12 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes60 = [Diagnostics.Expression_must_be_enclosed_in_parentheses_to_be_used_as_a_decorator.code];
       registerCodeFix({
         errorCodes: errorCodes60,
-        getCodeActions: function getCodeActionsToWrapDecoratorExpressionInParentheses(context4) {
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => makeChange11(t, context4.sourceFile, context4.span.start));
+        getCodeActions: function getCodeActionsToWrapDecoratorExpressionInParentheses(context3) {
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => makeChange11(t, context3.sourceFile, context3.span.start));
           return [createCodeFixAction(fixId47, changes, Diagnostics.Wrap_in_parentheses, fixId47, Diagnostics.Wrap_all_invalid_decorator_expressions_in_parentheses)];
         },
         fixIds: [fixId47],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes60, (changes, diag2) => makeChange11(changes, diag2.file, diag2.start))
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes60, (changes, diag2) => makeChange11(changes, diag2.file, diag2.start))
       });
       function makeChange11(changeTracker, sourceFile, pos) {
         const token = getTokenAtPosition(sourceFile, pos);
@@ -196761,16 +196761,16 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes61 = [Diagnostics.An_index_signature_parameter_type_cannot_be_a_literal_type_or_generic_type_Consider_using_a_mapped_object_type_instead.code];
       registerCodeFix({
         errorCodes: errorCodes61,
-        getCodeActions: function getCodeActionsToConvertToMappedTypeObject(context4) {
-          const { sourceFile, span } = context4;
+        getCodeActions: function getCodeActionsToConvertToMappedTypeObject(context3) {
+          const { sourceFile, span } = context3;
           const info2 = getInfo20(sourceFile, span.start);
           if (!info2) return void 0;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange39(t, sourceFile, info2));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange39(t, sourceFile, info2));
           const name = idText(info2.container.name);
           return [createCodeFixAction(fixId48, changes, [Diagnostics.Convert_0_to_mapped_object_type, name], fixId48, [Diagnostics.Convert_0_to_mapped_object_type, name])];
         },
         fixIds: [fixId48],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes61, (changes, diag2) => {
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes61, (changes, diag2) => {
           const info2 = getInfo20(diag2.file, diag2.start);
           if (info2) doChange39(changes, diag2.file, info2);
         })
@@ -196822,13 +196822,13 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       ];
       registerCodeFix({
         errorCodes: errorCodes62,
-        getCodeActions(context4) {
-          const callExpression = findAncestor(getTokenAtPosition(context4.sourceFile, context4.span.start), isCallExpression);
+        getCodeActions(context3) {
+          const callExpression = findAncestor(getTokenAtPosition(context3.sourceFile, context3.span.start), isCallExpression);
           if (!callExpression) {
             return void 0;
           }
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => {
-            t.deleteRange(context4.sourceFile, { pos: callExpression.expression.end, end: callExpression.end });
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => {
+            t.deleteRange(context3.sourceFile, { pos: callExpression.expression.end, end: callExpression.end });
           });
           return [createCodeFixActionWithoutFixAll(fixId49, changes, Diagnostics.Remove_parentheses)];
         },
@@ -196840,15 +196840,15 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       ];
       registerCodeFix({
         errorCodes: errorCodes63,
-        getCodeActions: function getCodeActionsToRemoveUnnecessaryAwait(context4) {
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => makeChange12(t, context4.sourceFile, context4.span));
+        getCodeActions: function getCodeActionsToRemoveUnnecessaryAwait(context3) {
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => makeChange12(t, context3.sourceFile, context3.span));
           if (changes.length > 0) {
             return [createCodeFixAction(fixId50, changes, Diagnostics.Remove_unnecessary_await, fixId50, Diagnostics.Remove_all_unnecessary_uses_of_await)];
           }
         },
         fixIds: [fixId50],
-        getAllCodeActions: (context4) => {
-          return codeFixAll(context4, errorCodes63, (changes, diag2) => makeChange12(changes, diag2.file, diag2));
+        getAllCodeActions: (context3) => {
+          return codeFixAll(context3, errorCodes63, (changes, diag2) => makeChange12(changes, diag2.file, diag2));
         }
       });
       function makeChange12(changeTracker, sourceFile, span) {
@@ -196883,28 +196883,28 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       registerCodeFix({
         errorCodes: errorCodes64,
         fixIds: [fixId51],
-        getCodeActions: function getCodeActionsToSplitTypeOnlyImport(context4) {
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => {
-            return splitTypeOnlyImport(t, getImportDeclaration2(context4.sourceFile, context4.span), context4);
+        getCodeActions: function getCodeActionsToSplitTypeOnlyImport(context3) {
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => {
+            return splitTypeOnlyImport(t, getImportDeclaration2(context3.sourceFile, context3.span), context3);
           });
           if (changes.length) {
             return [createCodeFixAction(fixId51, changes, Diagnostics.Split_into_two_separate_import_declarations, fixId51, Diagnostics.Split_all_invalid_type_only_imports)];
           }
         },
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes64, (changes, error22) => {
-          splitTypeOnlyImport(changes, getImportDeclaration2(context4.sourceFile, error22), context4);
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes64, (changes, error22) => {
+          splitTypeOnlyImport(changes, getImportDeclaration2(context3.sourceFile, error22), context3);
         })
       });
       function getImportDeclaration2(sourceFile, span) {
         return findAncestor(getTokenAtPosition(sourceFile, span.start), isImportDeclaration);
       }
-      function splitTypeOnlyImport(changes, importDeclaration, context4) {
+      function splitTypeOnlyImport(changes, importDeclaration, context3) {
         if (!importDeclaration) {
           return;
         }
         const importClause = Debug.checkDefined(importDeclaration.importClause);
         changes.replaceNode(
-          context4.sourceFile,
+          context3.sourceFile,
           importDeclaration,
           factory.updateImportDeclaration(
             importDeclaration,
@@ -196921,7 +196921,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           )
         );
         changes.insertNodeAfter(
-          context4.sourceFile,
+          context3.sourceFile,
           importDeclaration,
           factory.createImportDeclaration(
             /*modifiers*/
@@ -196942,18 +196942,18 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes65 = [Diagnostics.Cannot_assign_to_0_because_it_is_a_constant.code];
       registerCodeFix({
         errorCodes: errorCodes65,
-        getCodeActions: function getCodeActionsToConvertConstToLet(context4) {
-          const { sourceFile, span, program } = context4;
+        getCodeActions: function getCodeActionsToConvertConstToLet(context3) {
+          const { sourceFile, span, program } = context3;
           const info2 = getInfo21(sourceFile, span.start, program);
           if (info2 === void 0) return;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange40(t, sourceFile, info2.token));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange40(t, sourceFile, info2.token));
           return [createCodeFixActionMaybeFixAll(fixId52, changes, Diagnostics.Convert_const_to_let, fixId52, Diagnostics.Convert_all_const_to_let)];
         },
-        getAllCodeActions: (context4) => {
-          const { program } = context4;
+        getAllCodeActions: (context3) => {
+          const { program } = context3;
           const seen = /* @__PURE__ */ new Set();
-          return createCombinedCodeActions(ts_textChanges_exports.ChangeTracker.with(context4, (changes) => {
-            eachDiagnostic(context4, errorCodes65, (diag2) => {
+          return createCombinedCodeActions(ts_textChanges_exports.ChangeTracker.with(context3, (changes) => {
+            eachDiagnostic(context3, errorCodes65, (diag2) => {
               const info2 = getInfo21(diag2.file, diag2.start, program);
               if (info2) {
                 if (addToSeen(seen, getSymbolId(info2.symbol))) {
@@ -196988,11 +196988,11 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       var errorCodes66 = [expectedErrorCode];
       registerCodeFix({
         errorCodes: errorCodes66,
-        getCodeActions(context4) {
-          const { sourceFile } = context4;
-          const info2 = getInfo22(sourceFile, context4.span.start, context4.errorCode);
+        getCodeActions(context3) {
+          const { sourceFile } = context3;
+          const info2 = getInfo22(sourceFile, context3.span.start, context3.errorCode);
           if (!info2) return void 0;
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => doChange41(t, sourceFile, info2));
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => doChange41(t, sourceFile, info2));
           return [createCodeFixAction(
             fixId53,
             changes,
@@ -197002,9 +197002,9 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           )];
         },
         fixIds: [fixId53],
-        getAllCodeActions: (context4) => codeFixAll(context4, errorCodes66, (changes, diag2) => {
+        getAllCodeActions: (context3) => codeFixAll(context3, errorCodes66, (changes, diag2) => {
           const info2 = getInfo22(diag2.file, diag2.start, diag2.code);
-          if (info2) doChange41(changes, context4.sourceFile, info2);
+          if (info2) doChange41(changes, context3.sourceFile, info2);
         })
       });
       function getInfo22(sourceFile, pos, _) {
@@ -197027,14 +197027,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       registerCodeFix({
         errorCodes: errorCodes67,
         fixIds: [fixId54],
-        getCodeActions(context4) {
-          const changes = ts_textChanges_exports.ChangeTracker.with(context4, (t) => makeChange13(t, context4.sourceFile, context4.span, context4.program));
+        getCodeActions(context3) {
+          const changes = ts_textChanges_exports.ChangeTracker.with(context3, (t) => makeChange13(t, context3.sourceFile, context3.span, context3.program));
           if (changes.length > 0) {
             return [createCodeFixAction(fixName7, changes, Diagnostics.Add_void_to_Promise_resolved_without_a_value, fixId54, Diagnostics.Add_void_to_all_Promises_resolved_without_a_value)];
           }
         },
-        getAllCodeActions(context4) {
-          return codeFixAll(context4, errorCodes67, (changes, diag2) => makeChange13(changes, diag2.file, diag2, context4.program, /* @__PURE__ */ new Set()));
+        getAllCodeActions(context3) {
+          return codeFixAll(context3, errorCodes67, (changes, diag2) => makeChange13(changes, diag2.file, diag2, context3.program, /* @__PURE__ */ new Set()));
         }
       });
       function makeChange13(changes, sourceFile, span, program, seen) {
@@ -197374,7 +197374,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           /*isForImportStatementCompletion*/
           false,
           isValidTypeOnlyAliasUseSite(location),
-          (context4) => {
+          (context3) => {
             const entries = mapDefined(previousResponse.entries, (entry) => {
               var _a;
               if (!entry.hasAction || !entry.source || !entry.data || completionEntryDataIsResolved(entry.data)) {
@@ -197385,7 +197385,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               }
               const { origin } = Debug.checkDefined(getAutoImportSymbolFromCompletionEntryData(entry.name, entry.data, program, host));
               const info2 = exportMap.get(file.path, entry.data.exportMapKey);
-              const result = info2 && context4.tryResolve(info2, !isExternalModuleNameRelative(stripQuotes(origin.moduleSymbol.name)));
+              const result = info2 && context3.tryResolve(info2, !isExternalModuleNameRelative(stripQuotes(origin.moduleSymbol.name)));
               if (result === "skipped") return entry;
               if (!result || result === "failed") {
                 (_a = host.log) == null ? void 0 : _a.call(host, `Unexpected failure resolving auto import for '${entry.name}' from '${entry.source}'`);
@@ -197401,7 +197401,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               entry.sourceDisplay = [textPart(newOrigin.moduleSpecifier)];
               return entry;
             });
-            if (!context4.skippedAny()) {
+            if (!context3.skippedAny()) {
               previousResponse.isIncomplete = void 0;
             }
             return entries;
@@ -199925,7 +199925,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             preferences,
             !!importStatementCompletion,
             isValidTypeOnlyAliasUseSite(location),
-            (context4) => {
+            (context3) => {
               exportInfo.search(
                 sourceFile.path,
                 /*preferCapitalized*/
@@ -199948,7 +199948,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
                   if (!info2.length) {
                     return;
                   }
-                  const result = context4.tryResolve(info2, isFromAmbientModule) || {};
+                  const result = context3.tryResolve(info2, isFromAmbientModule) || {};
                   if (result === "failed") return;
                   let exportInfo2 = info2[0], moduleSpecifier;
                   if (result !== "skipped") {
@@ -199969,9 +199969,9 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
                   });
                 }
               );
-              hasUnresolvedAutoImports = context4.skippedAny();
-              flags |= context4.resolvedAny() ? 8 : 0;
-              flags |= context4.resolvedBeyondLimit() ? 16 : 0;
+              hasUnresolvedAutoImports = context3.skippedAny();
+              flags |= context3.resolvedAny() ? 8 : 0;
+              flags |= context3.resolvedBeyondLimit() ? 16 : 0;
             }
           );
           function isImportableExportInfo(info2) {
@@ -203103,9 +203103,9 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             return node;
         }
       }
-      function toContextSpan(textSpan, sourceFile, context4) {
-        if (!context4) return void 0;
-        const contextSpan = isContextWithStartAndEndNode(context4) ? getTextSpan(context4.start, sourceFile, context4.end) : getTextSpan(context4, sourceFile);
+      function toContextSpan(textSpan, sourceFile, context3) {
+        if (!context3) return void 0;
+        const contextSpan = isContextWithStartAndEndNode(context3) ? getTextSpan(context3.start, sourceFile, context3.end) : getTextSpan(context3, sourceFile);
         return contextSpan.start !== textSpan.start || contextSpan.length !== textSpan.length ? { contextSpan } : void 0;
       }
       var FindReferencesUse = /* @__PURE__ */ ((FindReferencesUse2) => {
@@ -203264,7 +203264,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               return Debug.assertNever(def);
           }
         })();
-        const { sourceFile, textSpan, name, kind, displayParts, context: context4 } = info2;
+        const { sourceFile, textSpan, name, kind, displayParts, context: context3 } = info2;
         return {
           containerKind: "",
           containerName: "",
@@ -203273,7 +203273,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
           name,
           textSpan,
           displayParts,
-          ...toContextSpan(textSpan, sourceFile, context4)
+          ...toContextSpan(textSpan, sourceFile, context3)
         };
       }
       function getFileAndTextSpanFromNode(node) {
@@ -205582,8 +205582,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       function shouldUseInteractiveInlayHints(preferences) {
         return preferences.interactiveInlayHints === true;
       }
-      function provideInlayHints(context4) {
-        const { file, program, span, cancellationToken, preferences } = context4;
+      function provideInlayHints(context3) {
+        const { file, program, span, cancellationToken, preferences } = context3;
         const sourceFileText = file.text;
         const compilerOptions = program.getCompilerOptions();
         const quotePreference = getQuotePreference(file, preferences);
@@ -210176,11 +210176,11 @@ ${content}
           this.classesWithNodesInsertedAtStart = /* @__PURE__ */ new Map();
           this.deletedNodes = [];
         }
-        static fromContext(context4) {
-          return new _ChangeTracker(getNewLineOrDefaultFromHost(context4.host, context4.formatContext.options), context4.formatContext);
+        static fromContext(context3) {
+          return new _ChangeTracker(getNewLineOrDefaultFromHost(context3.host, context3.formatContext.options), context3.formatContext);
         }
-        static with(context4, cb) {
-          const tracker = _ChangeTracker.fromContext(context4);
+        static with(context3, cb) {
+          const tracker = _ChangeTracker.fromContext(context3);
           cb(tracker);
           return tracker.getChanges();
         }
@@ -213201,8 +213201,8 @@ ${options.prefix}` : "\n" : options.prefix
           ...lowPriorityCommonRules
         ];
       }
-      function rule2(debugName, left, right, context4, action, flags = 0) {
-        return { leftTokenRange: toTokenRange(left), rightTokenRange: toTokenRange(right), rule: { debugName, context: context4, action, flags } };
+      function rule2(debugName, left, right, context3, action, flags = 0) {
+        return { leftTokenRange: toTokenRange(left), rightTokenRange: toTokenRange(right), rule: { debugName, context: context3, action, flags } };
       }
       function tokenRangeFrom(tokens2) {
         return { tokens: tokens2, isSpecific: true };
@@ -213220,33 +213220,33 @@ ${options.prefix}` : "\n" : options.prefix
         return tokenRangeFrom(tokens2);
       }
       function optionEquals(optionName, optionValue) {
-        return (context4) => context4.options && context4.options[optionName] === optionValue;
+        return (context3) => context3.options && context3.options[optionName] === optionValue;
       }
       function isOptionEnabled(optionName) {
-        return (context4) => context4.options && hasProperty(context4.options, optionName) && !!context4.options[optionName];
+        return (context3) => context3.options && hasProperty(context3.options, optionName) && !!context3.options[optionName];
       }
       function isOptionDisabled(optionName) {
-        return (context4) => context4.options && hasProperty(context4.options, optionName) && !context4.options[optionName];
+        return (context3) => context3.options && hasProperty(context3.options, optionName) && !context3.options[optionName];
       }
       function isOptionDisabledOrUndefined(optionName) {
-        return (context4) => !context4.options || !hasProperty(context4.options, optionName) || !context4.options[optionName];
+        return (context3) => !context3.options || !hasProperty(context3.options, optionName) || !context3.options[optionName];
       }
       function isOptionDisabledOrUndefinedOrTokensOnSameLine(optionName) {
-        return (context4) => !context4.options || !hasProperty(context4.options, optionName) || !context4.options[optionName] || context4.TokensAreOnSameLine();
+        return (context3) => !context3.options || !hasProperty(context3.options, optionName) || !context3.options[optionName] || context3.TokensAreOnSameLine();
       }
       function isOptionEnabledOrUndefined(optionName) {
-        return (context4) => !context4.options || !hasProperty(context4.options, optionName) || !!context4.options[optionName];
+        return (context3) => !context3.options || !hasProperty(context3.options, optionName) || !!context3.options[optionName];
       }
-      function isForContext(context4) {
-        return context4.contextNode.kind === 249;
+      function isForContext(context3) {
+        return context3.contextNode.kind === 249;
       }
-      function isNotForContext(context4) {
-        return !isForContext(context4);
+      function isNotForContext(context3) {
+        return !isForContext(context3);
       }
-      function isBinaryOpContext(context4) {
-        switch (context4.contextNode.kind) {
+      function isBinaryOpContext(context3) {
+        switch (context3.contextNode.kind) {
           case 227:
-            return context4.contextNode.operatorToken.kind !== 28;
+            return context3.contextNode.operatorToken.kind !== 28;
           case 228:
           case 195:
           case 235:
@@ -213277,58 +213277,58 @@ ${options.prefix}` : "\n" : options.prefix
           case 307:
           case 173:
           case 172:
-            return context4.currentTokenSpan.kind === 64 || context4.nextTokenSpan.kind === 64;
+            return context3.currentTokenSpan.kind === 64 || context3.nextTokenSpan.kind === 64;
           // "in" keyword in for (let x in []) { }
           case 250:
           // "in" keyword in [P in keyof T]: T[P]
           // falls through
           case 169:
-            return context4.currentTokenSpan.kind === 103 || context4.nextTokenSpan.kind === 103 || context4.currentTokenSpan.kind === 64 || context4.nextTokenSpan.kind === 64;
+            return context3.currentTokenSpan.kind === 103 || context3.nextTokenSpan.kind === 103 || context3.currentTokenSpan.kind === 64 || context3.nextTokenSpan.kind === 64;
           // Technically, "of" is not a binary operator, but format it the same way as "in"
           case 251:
-            return context4.currentTokenSpan.kind === 165 || context4.nextTokenSpan.kind === 165;
+            return context3.currentTokenSpan.kind === 165 || context3.nextTokenSpan.kind === 165;
         }
         return false;
       }
-      function isNotBinaryOpContext(context4) {
-        return !isBinaryOpContext(context4);
+      function isNotBinaryOpContext(context3) {
+        return !isBinaryOpContext(context3);
       }
-      function isNotTypeAnnotationContext(context4) {
-        return !isTypeAnnotationContext(context4);
+      function isNotTypeAnnotationContext(context3) {
+        return !isTypeAnnotationContext(context3);
       }
-      function isTypeAnnotationContext(context4) {
-        const contextKind = context4.contextNode.kind;
+      function isTypeAnnotationContext(context3) {
+        const contextKind = context3.contextNode.kind;
         return contextKind === 173 || contextKind === 172 || contextKind === 170 || contextKind === 261 || isFunctionLikeKind(contextKind);
       }
-      function isOptionalPropertyContext(context4) {
-        return isPropertyDeclaration(context4.contextNode) && context4.contextNode.questionToken;
+      function isOptionalPropertyContext(context3) {
+        return isPropertyDeclaration(context3.contextNode) && context3.contextNode.questionToken;
       }
-      function isNonOptionalPropertyContext(context4) {
-        return !isOptionalPropertyContext(context4);
+      function isNonOptionalPropertyContext(context3) {
+        return !isOptionalPropertyContext(context3);
       }
-      function isConditionalOperatorContext(context4) {
-        return context4.contextNode.kind === 228 || context4.contextNode.kind === 195;
+      function isConditionalOperatorContext(context3) {
+        return context3.contextNode.kind === 228 || context3.contextNode.kind === 195;
       }
-      function isSameLineTokenOrBeforeBlockContext(context4) {
-        return context4.TokensAreOnSameLine() || isBeforeBlockContext(context4);
+      function isSameLineTokenOrBeforeBlockContext(context3) {
+        return context3.TokensAreOnSameLine() || isBeforeBlockContext(context3);
       }
-      function isBraceWrappedContext(context4) {
-        return context4.contextNode.kind === 207 || context4.contextNode.kind === 201 || isSingleLineBlockContext(context4);
+      function isBraceWrappedContext(context3) {
+        return context3.contextNode.kind === 207 || context3.contextNode.kind === 201 || isSingleLineBlockContext(context3);
       }
-      function isBeforeMultilineBlockContext(context4) {
-        return isBeforeBlockContext(context4) && !(context4.NextNodeAllOnSameLine() || context4.NextNodeBlockIsOnOneLine());
+      function isBeforeMultilineBlockContext(context3) {
+        return isBeforeBlockContext(context3) && !(context3.NextNodeAllOnSameLine() || context3.NextNodeBlockIsOnOneLine());
       }
-      function isMultilineBlockContext(context4) {
-        return isBlockContext(context4) && !(context4.ContextNodeAllOnSameLine() || context4.ContextNodeBlockIsOnOneLine());
+      function isMultilineBlockContext(context3) {
+        return isBlockContext(context3) && !(context3.ContextNodeAllOnSameLine() || context3.ContextNodeBlockIsOnOneLine());
       }
-      function isSingleLineBlockContext(context4) {
-        return isBlockContext(context4) && (context4.ContextNodeAllOnSameLine() || context4.ContextNodeBlockIsOnOneLine());
+      function isSingleLineBlockContext(context3) {
+        return isBlockContext(context3) && (context3.ContextNodeAllOnSameLine() || context3.ContextNodeBlockIsOnOneLine());
       }
-      function isBlockContext(context4) {
-        return nodeIsBlockContext(context4.contextNode);
+      function isBlockContext(context3) {
+        return nodeIsBlockContext(context3.contextNode);
       }
-      function isBeforeBlockContext(context4) {
-        return nodeIsBlockContext(context4.nextTokenParent);
+      function isBeforeBlockContext(context3) {
+        return nodeIsBlockContext(context3.nextTokenParent);
       }
       function nodeIsBlockContext(node) {
         if (nodeIsTypeScriptDeclWithBlockContext(node)) {
@@ -213343,8 +213343,8 @@ ${options.prefix}` : "\n" : options.prefix
         }
         return false;
       }
-      function isFunctionDeclContext(context4) {
-        switch (context4.contextNode.kind) {
+      function isFunctionDeclContext(context3) {
+        switch (context3.contextNode.kind) {
           case 263:
           case 175:
           case 174:
@@ -213367,14 +213367,14 @@ ${options.prefix}` : "\n" : options.prefix
         }
         return false;
       }
-      function isNotFunctionDeclContext(context4) {
-        return !isFunctionDeclContext(context4);
+      function isNotFunctionDeclContext(context3) {
+        return !isFunctionDeclContext(context3);
       }
-      function isFunctionDeclarationOrFunctionExpressionContext(context4) {
-        return context4.contextNode.kind === 263 || context4.contextNode.kind === 219;
+      function isFunctionDeclarationOrFunctionExpressionContext(context3) {
+        return context3.contextNode.kind === 263 || context3.contextNode.kind === 219;
       }
-      function isTypeScriptDeclWithBlockContext(context4) {
-        return nodeIsTypeScriptDeclWithBlockContext(context4.contextNode);
+      function isTypeScriptDeclWithBlockContext(context3) {
+        return nodeIsTypeScriptDeclWithBlockContext(context3.contextNode);
       }
       function nodeIsTypeScriptDeclWithBlockContext(node) {
         switch (node.kind) {
@@ -213392,8 +213392,8 @@ ${options.prefix}` : "\n" : options.prefix
         }
         return false;
       }
-      function isAfterCodeBlockContext(context4) {
-        switch (context4.currentTokenParent.kind) {
+      function isAfterCodeBlockContext(context3) {
+        switch (context3.currentTokenParent.kind) {
           case 264:
           case 268:
           case 267:
@@ -213402,7 +213402,7 @@ ${options.prefix}` : "\n" : options.prefix
           case 256:
             return true;
           case 242: {
-            const blockParent = context4.currentTokenParent.parent;
+            const blockParent = context3.currentTokenParent.parent;
             if (!blockParent || blockParent.kind !== 220 && blockParent.kind !== 219) {
               return true;
             }
@@ -213410,8 +213410,8 @@ ${options.prefix}` : "\n" : options.prefix
         }
         return false;
       }
-      function isControlDeclContext(context4) {
-        switch (context4.contextNode.kind) {
+      function isControlDeclContext(context3) {
+        switch (context3.contextNode.kind) {
           case 246:
           case 256:
           case 249:
@@ -213430,65 +213430,65 @@ ${options.prefix}` : "\n" : options.prefix
             return false;
         }
       }
-      function isObjectContext(context4) {
-        return context4.contextNode.kind === 211;
+      function isObjectContext(context3) {
+        return context3.contextNode.kind === 211;
       }
-      function isFunctionCallContext(context4) {
-        return context4.contextNode.kind === 214;
+      function isFunctionCallContext(context3) {
+        return context3.contextNode.kind === 214;
       }
-      function isNewContext(context4) {
-        return context4.contextNode.kind === 215;
+      function isNewContext(context3) {
+        return context3.contextNode.kind === 215;
       }
-      function isFunctionCallOrNewContext(context4) {
-        return isFunctionCallContext(context4) || isNewContext(context4);
+      function isFunctionCallOrNewContext(context3) {
+        return isFunctionCallContext(context3) || isNewContext(context3);
       }
-      function isPreviousTokenNotComma(context4) {
-        return context4.currentTokenSpan.kind !== 28;
+      function isPreviousTokenNotComma(context3) {
+        return context3.currentTokenSpan.kind !== 28;
       }
-      function isNextTokenNotCloseBracket(context4) {
-        return context4.nextTokenSpan.kind !== 24;
+      function isNextTokenNotCloseBracket(context3) {
+        return context3.nextTokenSpan.kind !== 24;
       }
-      function isNextTokenNotCloseParen(context4) {
-        return context4.nextTokenSpan.kind !== 22;
+      function isNextTokenNotCloseParen(context3) {
+        return context3.nextTokenSpan.kind !== 22;
       }
-      function isArrowFunctionContext(context4) {
-        return context4.contextNode.kind === 220;
+      function isArrowFunctionContext(context3) {
+        return context3.contextNode.kind === 220;
       }
-      function isImportTypeContext(context4) {
-        return context4.contextNode.kind === 206;
+      function isImportTypeContext(context3) {
+        return context3.contextNode.kind === 206;
       }
-      function isNonJsxSameLineTokenContext(context4) {
-        return context4.TokensAreOnSameLine() && context4.contextNode.kind !== 12;
+      function isNonJsxSameLineTokenContext(context3) {
+        return context3.TokensAreOnSameLine() && context3.contextNode.kind !== 12;
       }
-      function isNonJsxTextContext(context4) {
-        return context4.contextNode.kind !== 12;
+      function isNonJsxTextContext(context3) {
+        return context3.contextNode.kind !== 12;
       }
-      function isNonJsxElementOrFragmentContext(context4) {
-        return context4.contextNode.kind !== 285 && context4.contextNode.kind !== 289;
+      function isNonJsxElementOrFragmentContext(context3) {
+        return context3.contextNode.kind !== 285 && context3.contextNode.kind !== 289;
       }
-      function isJsxExpressionContext(context4) {
-        return context4.contextNode.kind === 295 || context4.contextNode.kind === 294;
+      function isJsxExpressionContext(context3) {
+        return context3.contextNode.kind === 295 || context3.contextNode.kind === 294;
       }
-      function isNextTokenParentJsxAttribute(context4) {
-        return context4.nextTokenParent.kind === 292 || context4.nextTokenParent.kind === 296 && context4.nextTokenParent.parent.kind === 292;
+      function isNextTokenParentJsxAttribute(context3) {
+        return context3.nextTokenParent.kind === 292 || context3.nextTokenParent.kind === 296 && context3.nextTokenParent.parent.kind === 292;
       }
-      function isJsxAttributeContext(context4) {
-        return context4.contextNode.kind === 292;
+      function isJsxAttributeContext(context3) {
+        return context3.contextNode.kind === 292;
       }
-      function isNextTokenParentNotJsxNamespacedName(context4) {
-        return context4.nextTokenParent.kind !== 296;
+      function isNextTokenParentNotJsxNamespacedName(context3) {
+        return context3.nextTokenParent.kind !== 296;
       }
-      function isNextTokenParentJsxNamespacedName(context4) {
-        return context4.nextTokenParent.kind === 296;
+      function isNextTokenParentJsxNamespacedName(context3) {
+        return context3.nextTokenParent.kind === 296;
       }
-      function isJsxSelfClosingElementContext(context4) {
-        return context4.contextNode.kind === 286;
+      function isJsxSelfClosingElementContext(context3) {
+        return context3.contextNode.kind === 286;
       }
-      function isNotBeforeBlockInFunctionDeclarationContext(context4) {
-        return !isFunctionDeclContext(context4) && !isBeforeBlockContext(context4);
+      function isNotBeforeBlockInFunctionDeclarationContext(context3) {
+        return !isFunctionDeclContext(context3) && !isBeforeBlockContext(context3);
       }
-      function isEndOfDecoratorContextOnSameLine(context4) {
-        return context4.TokensAreOnSameLine() && hasDecorators(context4.contextNode) && nodeIsInDecoratorContext(context4.currentTokenParent) && !nodeIsInDecoratorContext(context4.nextTokenParent);
+      function isEndOfDecoratorContextOnSameLine(context3) {
+        return context3.TokensAreOnSameLine() && hasDecorators(context3.contextNode) && nodeIsInDecoratorContext(context3.currentTokenParent) && !nodeIsInDecoratorContext(context3.nextTokenParent);
       }
       function nodeIsInDecoratorContext(node) {
         while (node && isExpression(node)) {
@@ -213496,20 +213496,20 @@ ${options.prefix}` : "\n" : options.prefix
         }
         return node && node.kind === 171;
       }
-      function isStartOfVariableDeclarationList(context4) {
-        return context4.currentTokenParent.kind === 262 && context4.currentTokenParent.getStart(context4.sourceFile) === context4.currentTokenSpan.pos;
+      function isStartOfVariableDeclarationList(context3) {
+        return context3.currentTokenParent.kind === 262 && context3.currentTokenParent.getStart(context3.sourceFile) === context3.currentTokenSpan.pos;
       }
-      function isNotFormatOnEnter(context4) {
-        return context4.formattingRequestKind !== 2;
+      function isNotFormatOnEnter(context3) {
+        return context3.formattingRequestKind !== 2;
       }
-      function isModuleDeclContext(context4) {
-        return context4.contextNode.kind === 268;
+      function isModuleDeclContext(context3) {
+        return context3.contextNode.kind === 268;
       }
-      function isObjectTypeContext(context4) {
-        return context4.contextNode.kind === 188;
+      function isObjectTypeContext(context3) {
+        return context3.contextNode.kind === 188;
       }
-      function isConstructorSignatureContext(context4) {
-        return context4.contextNode.kind === 181;
+      function isConstructorSignatureContext(context3) {
+        return context3.contextNode.kind === 181;
       }
       function isTypeArgumentOrParameterOrAssertion(token, parent2) {
         if (token.kind !== 30 && token.kind !== 32) {
@@ -213537,29 +213537,29 @@ ${options.prefix}` : "\n" : options.prefix
             return false;
         }
       }
-      function isTypeArgumentOrParameterOrAssertionContext(context4) {
-        return isTypeArgumentOrParameterOrAssertion(context4.currentTokenSpan, context4.currentTokenParent) || isTypeArgumentOrParameterOrAssertion(context4.nextTokenSpan, context4.nextTokenParent);
+      function isTypeArgumentOrParameterOrAssertionContext(context3) {
+        return isTypeArgumentOrParameterOrAssertion(context3.currentTokenSpan, context3.currentTokenParent) || isTypeArgumentOrParameterOrAssertion(context3.nextTokenSpan, context3.nextTokenParent);
       }
-      function isTypeAssertionContext(context4) {
-        return context4.contextNode.kind === 217;
+      function isTypeAssertionContext(context3) {
+        return context3.contextNode.kind === 217;
       }
-      function isNonTypeAssertionContext(context4) {
-        return !isTypeAssertionContext(context4);
+      function isNonTypeAssertionContext(context3) {
+        return !isTypeAssertionContext(context3);
       }
-      function isVoidOpContext(context4) {
-        return context4.currentTokenSpan.kind === 116 && context4.currentTokenParent.kind === 223;
+      function isVoidOpContext(context3) {
+        return context3.currentTokenSpan.kind === 116 && context3.currentTokenParent.kind === 223;
       }
-      function isYieldOrYieldStarWithOperand(context4) {
-        return context4.contextNode.kind === 230 && context4.contextNode.expression !== void 0;
+      function isYieldOrYieldStarWithOperand(context3) {
+        return context3.contextNode.kind === 230 && context3.contextNode.expression !== void 0;
       }
-      function isNonNullAssertionContext(context4) {
-        return context4.contextNode.kind === 236;
+      function isNonNullAssertionContext(context3) {
+        return context3.contextNode.kind === 236;
       }
-      function isNotStatementConditionContext(context4) {
-        return !isStatementConditionContext(context4);
+      function isNotStatementConditionContext(context3) {
+        return !isStatementConditionContext(context3);
       }
-      function isStatementConditionContext(context4) {
-        switch (context4.contextNode.kind) {
+      function isStatementConditionContext(context3) {
+        switch (context3.contextNode.kind) {
           case 246:
           case 249:
           case 250:
@@ -213571,45 +213571,45 @@ ${options.prefix}` : "\n" : options.prefix
             return false;
         }
       }
-      function isSemicolonDeletionContext(context4) {
-        let nextTokenKind = context4.nextTokenSpan.kind;
-        let nextTokenStart = context4.nextTokenSpan.pos;
+      function isSemicolonDeletionContext(context3) {
+        let nextTokenKind = context3.nextTokenSpan.kind;
+        let nextTokenStart = context3.nextTokenSpan.pos;
         if (isTrivia(nextTokenKind)) {
-          const nextRealToken = context4.nextTokenParent === context4.currentTokenParent ? findNextToken(
-            context4.currentTokenParent,
-            findAncestor(context4.currentTokenParent, (a) => !a.parent),
-            context4.sourceFile
-          ) : context4.nextTokenParent.getFirstToken(context4.sourceFile);
+          const nextRealToken = context3.nextTokenParent === context3.currentTokenParent ? findNextToken(
+            context3.currentTokenParent,
+            findAncestor(context3.currentTokenParent, (a) => !a.parent),
+            context3.sourceFile
+          ) : context3.nextTokenParent.getFirstToken(context3.sourceFile);
           if (!nextRealToken) {
             return true;
           }
           nextTokenKind = nextRealToken.kind;
-          nextTokenStart = nextRealToken.getStart(context4.sourceFile);
+          nextTokenStart = nextRealToken.getStart(context3.sourceFile);
         }
-        const startLine = context4.sourceFile.getLineAndCharacterOfPosition(context4.currentTokenSpan.pos).line;
-        const endLine = context4.sourceFile.getLineAndCharacterOfPosition(nextTokenStart).line;
+        const startLine = context3.sourceFile.getLineAndCharacterOfPosition(context3.currentTokenSpan.pos).line;
+        const endLine = context3.sourceFile.getLineAndCharacterOfPosition(nextTokenStart).line;
         if (startLine === endLine) {
           return nextTokenKind === 20 || nextTokenKind === 1;
         }
-        if (nextTokenKind === 27 && context4.currentTokenSpan.kind === 27) {
+        if (nextTokenKind === 27 && context3.currentTokenSpan.kind === 27) {
           return true;
         }
         if (nextTokenKind === 241 || nextTokenKind === 27) {
           return false;
         }
-        if (context4.contextNode.kind === 265 || context4.contextNode.kind === 266) {
-          return !isPropertySignature(context4.currentTokenParent) || !!context4.currentTokenParent.type || nextTokenKind !== 21;
+        if (context3.contextNode.kind === 265 || context3.contextNode.kind === 266) {
+          return !isPropertySignature(context3.currentTokenParent) || !!context3.currentTokenParent.type || nextTokenKind !== 21;
         }
-        if (isPropertyDeclaration(context4.currentTokenParent)) {
-          return !context4.currentTokenParent.initializer;
+        if (isPropertyDeclaration(context3.currentTokenParent)) {
+          return !context3.currentTokenParent.initializer;
         }
-        return context4.currentTokenParent.kind !== 249 && context4.currentTokenParent.kind !== 243 && context4.currentTokenParent.kind !== 241 && nextTokenKind !== 23 && nextTokenKind !== 21 && nextTokenKind !== 40 && nextTokenKind !== 41 && nextTokenKind !== 44 && nextTokenKind !== 14 && nextTokenKind !== 28 && nextTokenKind !== 229 && nextTokenKind !== 16 && nextTokenKind !== 15 && nextTokenKind !== 25;
+        return context3.currentTokenParent.kind !== 249 && context3.currentTokenParent.kind !== 243 && context3.currentTokenParent.kind !== 241 && nextTokenKind !== 23 && nextTokenKind !== 21 && nextTokenKind !== 40 && nextTokenKind !== 41 && nextTokenKind !== 44 && nextTokenKind !== 14 && nextTokenKind !== 28 && nextTokenKind !== 229 && nextTokenKind !== 16 && nextTokenKind !== 15 && nextTokenKind !== 25;
       }
-      function isSemicolonInsertionContext(context4) {
-        return positionIsASICandidate(context4.currentTokenSpan.end, context4.currentTokenParent, context4.sourceFile);
+      function isSemicolonInsertionContext(context3) {
+        return positionIsASICandidate(context3.currentTokenSpan.end, context3.currentTokenParent, context3.sourceFile);
       }
-      function isNotPropertyAccessOnIntegerLiteral(context4) {
-        return !isPropertyAccessExpression(context4.contextNode) || !isNumericLiteral(context4.contextNode.expression) || context4.contextNode.expression.getText().includes(".");
+      function isNotPropertyAccessOnIntegerLiteral(context3) {
+        return !isPropertyAccessExpression(context3.contextNode) || !isNumericLiteral(context3.contextNode.expression) || context3.contextNode.expression.getText().includes(".");
       }
       function getFormatContext(options, host) {
         return { options, getRules: getRulesMap(), host };
@@ -213639,14 +213639,14 @@ ${options.prefix}` : "\n" : options.prefix
       }
       function createRulesMap(rules) {
         const map2 = buildMap(rules);
-        return (context4) => {
-          const bucket = map2[getRuleBucketIndex(context4.currentTokenSpan.kind, context4.nextTokenSpan.kind)];
+        return (context3) => {
+          const bucket = map2[getRuleBucketIndex(context3.currentTokenSpan.kind, context3.nextTokenSpan.kind)];
           if (bucket) {
             const rules2 = [];
             let ruleActionMask = 0;
             for (const rule22 of bucket) {
               const acceptRuleActions = ~getRuleActionExclusion(ruleActionMask);
-              if (rule22.action & acceptRuleActions && every(rule22.context, (c) => c(context4))) {
+              if (rule22.action & acceptRuleActions && every(rule22.context, (c) => c(context3))) {
                 rules2.push(rule22);
                 ruleActionMask |= rule22.action;
               }
@@ -215386,7 +215386,7 @@ ${options.prefix}` : "\n" : options.prefix
             addExportsInOldFile(copiedFrom.file, usage.targetFileImportsFromOldFile, changes, useEsModuleSyntax);
             addTargetFileImports(copiedFrom.file, usage.oldImportsNeededByTargetFile, usage.targetFileImportsFromOldFile, originalProgramTypeChecker, updatedProgram, importAdder);
           } else {
-            const context4 = {
+            const context3 = {
               sourceFile: updatedFile,
               program: originalProgram,
               cancellationToken,
@@ -215403,7 +215403,7 @@ ${options.prefix}` : "\n" : options.prefix
               const range = { pos: startPos, end: endPos };
               offset += textToBePasted.length - oldTextLength;
               const enclosingNode = findAncestor(
-                getTokenAtPosition(context4.sourceFile, range.pos),
+                getTokenAtPosition(context3.sourceFile, range.pos),
                 (ancestorNode) => rangeContainsRange(ancestorNode, range)
               );
               if (!enclosingNode) return;
@@ -215417,7 +215417,7 @@ ${options.prefix}` : "\n" : options.prefix
                 ));
                 if (isImportCandidate) {
                   return importAdder.addImportForUnresolvedIdentifier(
-                    context4,
+                    context3,
                     node,
                     /*useAutoImportProvider*/
                     true
@@ -228070,8 +228070,8 @@ Project '${project.projectName}' (${ProjectKind[project.projectKind]}) ${counter
         }
         toFileSpanWithContext(fileName, textSpan, contextSpan, project) {
           const fileSpan = this.toFileSpan(fileName, textSpan, project);
-          const context4 = contextSpan && this.toFileSpan(fileName, contextSpan, project);
-          return context4 ? { ...fileSpan, contextStart: context4.start, contextEnd: context4.end } : fileSpan;
+          const context3 = contextSpan && this.toFileSpan(fileName, contextSpan, project);
+          return context3 ? { ...fileSpan, contextStart: context3.start, contextEnd: context3.end } : fileSpan;
         }
         getTypeDefinition(args) {
           const { file, project } = this.getFileAndProject(args);
@@ -232363,8 +232363,8 @@ function isDefined(value) {
 function isKeyOperator(operator) {
   return operator === ";" || operator === "&" || operator === "?";
 }
-function getValues(context4, operator, key, modifier) {
-  var value = context4[key], result = [];
+function getValues(context3, operator, key, modifier) {
+  var value = context3[key], result = [];
   if (isDefined(value) && value !== "") {
     if (typeof value === "string" || typeof value === "number" || typeof value === "bigint" || typeof value === "boolean") {
       value = value.toString();
@@ -232428,7 +232428,7 @@ function parseUrl(template) {
     expand: expand.bind(null, template)
   };
 }
-function expand(template, context4) {
+function expand(template, context3) {
   var operators = ["+", "#", ".", "/", ";", "?", "&"];
   template = template.replace(
     /\{([^\{\}]+)\}|([^\{\}]+)/g,
@@ -232442,7 +232442,7 @@ function expand(template, context4) {
         }
         expression.split(/,/g).forEach(function(variable) {
           var tmp = /([^:\*]*)(?::(\d+)|(\*))?/.exec(variable);
-          values.push(getValues(context4, operator, tmp[1], tmp[2] || tmp[3]));
+          values.push(getValues(context3, operator, tmp[1], tmp[2] || tmp[3]));
         });
         if (operator && operator !== "+") {
           var separator = ",";
@@ -232952,7 +232952,7 @@ var isContextSourceSupported = () => {
   try {
     const result = JSON.parse(
       "1",
-      (_, __, context4) => !!context4?.source && context4.source === "1"
+      (_, __, context3) => !!context3?.source && context3.source === "1"
     );
     featureCache.set(parseFingerprint, result);
     return result;
@@ -232961,26 +232961,26 @@ var isContextSourceSupported = () => {
     return false;
   }
 };
-var convertMarkedBigIntsReviver = (key, value, context4, userReviver) => {
+var convertMarkedBigIntsReviver = (key, value, context3, userReviver) => {
   const isCustomFormatBigInt = typeof value === "string" && customFormat.test(value);
   if (isCustomFormatBigInt) return BigInt(value.slice(0, -1));
   const isNoiseValue = typeof value === "string" && noiseValue.test(value);
   if (isNoiseValue) return value.slice(0, -1);
   const hasUserReviver = typeof userReviver === "function";
   if (!hasUserReviver) return value;
-  return userReviver(key, value, context4);
+  return userReviver(key, value, context3);
 };
 var JSONParseV2 = (text, reviver) => {
-  return JSON.parse(text, (key, value, context4) => {
+  return JSON.parse(text, (key, value, context3) => {
     const isNumber = typeof value === "number";
     const isOutOfBounds = value > Number.MAX_SAFE_INTEGER || value < Number.MIN_SAFE_INTEGER;
     const isBigNumber = isNumber && isOutOfBounds;
-    const isInt = context4 && intRegex.test(context4.source);
+    const isInt = context3 && intRegex.test(context3.source);
     const isBigInt = isBigNumber && isInt;
-    if (isBigInt) return BigInt(context4.source);
+    if (isBigInt) return BigInt(context3.source);
     const hasCustomReviver = typeof reviver === "function";
     if (!hasCustomReviver) return value;
-    return reviver(key, value, context4);
+    return reviver(key, value, context3);
   });
 };
 var MAX_INT = Number.MAX_SAFE_INTEGER.toString();
@@ -233051,7 +233051,7 @@ var JSONParse = (text, reviver) => {
     const serializedData = serializeBigInts(text);
     return originalParse(
       serializedData,
-      (key, value, context4) => convertMarkedBigIntsReviver(key, value, context4, reviver)
+      (key, value, context3) => convertMarkedBigIntsReviver(key, value, context3, reviver)
     );
   } catch (error2) {
     if (error2 instanceof RangeError) {
@@ -252059,13 +252059,13 @@ var CONTROL2 = new RegExp("\\p{Cc}", "gu");
 function metaScope(workflow, job) {
   return Array.from(`${workflow}/${job}`.replace(CONTROL2, "")).slice(0, MAX_META_SCOPE_CODE_POINTS).join("");
 }
-function runMeta(context4, opts) {
-  const repository = context4.payload.repository?.full_name;
-  const { runId, runAttempt } = context4;
+function runMeta(context3, opts) {
+  const repository = context3.payload.repository?.full_name;
+  const { runId, runAttempt } = context3;
   if (typeof repository !== "string" || repository === "") return void 0;
   if (!Number.isInteger(runId) || !Number.isInteger(runAttempt) || runAttempt < 1) return void 0;
-  const pr = context4.payload.pull_request;
-  const mergeGroup = context4.payload.merge_group;
+  const pr = context3.payload.pull_request;
+  const mergeGroup = context3.payload.merge_group;
   let headSha;
   let baseSha;
   let prNumber;
@@ -252082,15 +252082,15 @@ function runMeta(context4, opts) {
     baseSha = mergeGroup.base_sha;
     prNumber = null;
   } else {
-    headSha = context4.sha;
-    const before = context4.payload.before;
+    headSha = context3.sha;
+    const before = context3.payload.before;
     const baseRef = opts.baseRef?.toLowerCase();
     baseSha = baseRef && SHA.test(baseRef) ? baseRef : before && !ZERO_SHA.test(before) ? before : null;
     prNumber = null;
   }
   if (!SHA.test(headSha)) return void 0;
-  const event = EVENTS.find((name) => name === context4.eventName) ?? "other";
-  const repositoryId = context4.payload.repository?.id;
+  const event = EVENTS.find((name) => name === context3.eventName) ?? "other";
+  const repositoryId = context3.payload.repository?.id;
   return {
     event,
     repository,
@@ -252098,10 +252098,10 @@ function runMeta(context4, opts) {
     prNumber,
     headSha,
     baseSha,
-    scope: metaScope(context4.workflow ?? "", context4.job ?? ""),
+    scope: metaScope(context3.workflow ?? "", context3.job ?? ""),
     runId,
     runAttempt,
-    ...context4.actor ? { actor: context4.actor } : {},
+    ...context3.actor ? { actor: context3.actor } : {},
     upload: { status: "skipped" }
   };
 }
@@ -252685,13 +252685,13 @@ async function gatherAgentInstructionSources(deps, from) {
 async function getDiff(baseRefInput, deps, target, configInput = "") {
   if (baseRefInput.startsWith("-")) throw new Error(`base-ref "${baseRefInput}" must not start with "-"`);
   if (target) return { diff: await getTargetDiff(baseRefInput, target, deps) };
-  const { context: context4 } = deps;
-  const pr = context4.payload.pull_request;
-  const mergeGroup = context4.payload.merge_group;
-  const base = baseRefInput || pr?.base.sha || mergeGroup?.base_sha || (context4.payload.before && !ZERO_SHA2.test(context4.payload.before) ? context4.payload.before : "");
+  const { context: context3 } = deps;
+  const pr = context3.payload.pull_request;
+  const mergeGroup = context3.payload.merge_group;
+  const base = baseRefInput || pr?.base.sha || mergeGroup?.base_sha || (context3.payload.before && !ZERO_SHA2.test(context3.payload.before) ? context3.payload.before : "");
   if (!base) return { diff: { unavailable: "no base to diff against (not a pull request; set the base-ref input)" } };
-  const head = context4.eventName === "pull_request_target" && pr ? pr.head.sha : mergeGroup?.head_sha || context4.sha;
-  if (context4.eventName === "pull_request_target" && pr) {
+  const head = context3.eventName === "pull_request_target" && pr ? pr.head.sha : mergeGroup?.head_sha || context3.sha;
+  if (context3.eventName === "pull_request_target" && pr) {
     const localHead = await deps.git(["rev-parse", "HEAD"]).then(
       (out) => out.trim(),
       () => null
@@ -252877,7 +252877,6 @@ function parseBool(value, name) {
 }
 
 // src/index.ts
-var context3 = context2;
 var workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
 var api = createGitHubApi({
   token: getInput("github-token"),
@@ -252887,7 +252886,7 @@ var api = createGitHubApi({
 });
 await run({
   getInput: (name) => getInput(name),
-  context: context3,
+  context: context2,
   workspace,
   tempDir: process.env.RUNNER_TEMP ?? tmpdir2(),
   api,

@@ -4,14 +4,7 @@ import * as github from "@actions/github";
 import { createGitHubApi } from "./api.js";
 import { createNodeIo } from "./node-io.js";
 import { withRequestPolicy } from "./request-policy.js";
-import { type ActionContext, run } from "./run.js";
-
-/**
- * `github.context` as the run context run() reads. Every field but the payload is type-checked (`satisfies`). The
- * payload is GitHub's event JSON, which @actions/github types as `WebhookPayload` without a pull request's `base` and
- * `head`, so it is narrowed (not cast to an unrelated type): run() reads those as GitHub sends them on a pull_request event.
- */
-const context = github.context satisfies Omit<ActionContext, "payload"> as typeof github.context & ActionContext;
+import { run } from "./run.js";
 
 const workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
 // Built lazily: a run that needs no API call (comment: false, local diff) needs no token.
@@ -24,7 +17,7 @@ const api = createGitHubApi({
 
 await run({
   getInput: (name) => core.getInput(name),
-  context,
+  context: github.context as never,
   workspace,
   tempDir: process.env.RUNNER_TEMP ?? tmpdir(),
   api,
