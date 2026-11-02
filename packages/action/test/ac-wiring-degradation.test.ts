@@ -54,6 +54,26 @@ describe("action run() degradation paths", () => {
     expect(report).toBeUndefined();
   });
 
+  // block-fails-closed-unavailable (review HIGH 4): the compare-API fallback stays for a base that does not resolve
+  // locally (a shallow checkout); only a failed local diff against a base that resolves stopped falling back.
+  it("AC-1: falls back to the GitHub compare API when the base does not resolve locally (a shallow checkout)", async () => {
+    const { run } = await import("../src/run.js");
+    const { harness } = await import("./harness.js");
+    // A local git diff would reject too, so a run that tried one would fail the step instead of reaching the API.
+    const h = harness({ localGit: false, diffError: new Error("fatal: bad revision") });
+
+    const report = await run(h.deps);
+
+    // The base did not resolve locally (rev-parse rejected), so no local diff was attempted before the fallback, and
+    // the old "local diff failed" fallback line is never written.
+    expect(h.gitCalls.some((a) => a[0] === "rev-parse")).toBe(true);
+    expect(h.gitCalls.some((a) => a[0] === "diff")).toBe(false);
+    expect(h.infos.join("\n")).not.toContain("local git diff failed, falling back to the GitHub API");
+    expect(h.apiCalls).toContain(`compare ${BASE_SHA}...merge000`);
+    // The compare fixture (fixtures/golden/pr.diff against fixtures/golden/coverage.info) measures 71.43%.
+    expect(report?.diffCoverage?.percent).toBe(71.43);
+  });
+
   it("AC-1: fails the step with the config path and the parser's message when .pharn/ci.yml does not parse", async () => {
     const { run } = await import("../src/run.js");
     const { harness, WORKSPACE } = await import("./harness.js");
