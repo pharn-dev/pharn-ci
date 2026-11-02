@@ -140,8 +140,14 @@ function familyOf(kind: TestConfigKind): Family {
       return { rules: PLAYWRIGHT_RULES, prefix: [], mocha: false };
     case "mocha":
       return { rules: MOCHA_RULES, prefix: [], mocha: true };
-    default:
+    case "pytest-ini":
+    case "tox-ini":
+    case "setup-cfg":
+    case "pyproject":
       return { rules: PYTEST_RULES, prefix: [], mocha: false };
+    default:
+      // Exhaustive: a new kind fails to compile here instead of silently reading as pytest.
+      throw new Error(`unknown test config kind: ${kind satisfies never}`);
   }
 }
 

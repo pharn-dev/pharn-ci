@@ -23,6 +23,11 @@ export const DEFAULT_APP_URL = "https://pharn.dev";
 export const APP_TIMEOUT_MS = 10_000;
 /** The wait before the one retry. */
 export const APP_RETRY_WAIT_MS = 1000;
+/**
+ * The OIDC token request is given up after this long, and the run goes on as if no token were offered. `@actions/core`
+ * has no deadline of its own: it retries up to ten times, each with a three-minute socket timeout.
+ */
+export const APP_TOKEN_TIMEOUT_MS = 30_000;
 /** The most bytes of a response body read; a longer body is refused. */
 export const APP_MAX_BODY_BYTES = 1_048_576;
 
@@ -38,6 +43,8 @@ export interface AppClientDeps {
   timeoutMs?: number | undefined;
   /** Waits for the given milliseconds. */
   sleep?: ((ms: number) => Promise<void>) | undefined;
+  /** How long the OIDC token request may take, in milliseconds; `APP_TOKEN_TIMEOUT_MS` when absent. */
+  tokenTimeoutMs?: number | undefined;
 }
 
 const APP_URL_ERROR =
@@ -78,9 +85,25 @@ export function oidcOffered(deps: AppClientDeps): boolean {
 }
 
 /**
+ * `getIDToken(APP_AUDIENCE)`, or a rejection once `ms` have passed without an answer. The timer is cleared either way,
+ * so it never holds the process open; a late answer or rejection of the request is ignored.
+ */
+async function tokenWithin(getIDToken: (audience?: string) => Promise<string>, ms: number): Promise<string> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error("the OIDC token request timed out")), ms);
+  });
+  try {
+    return await Promise.race([getIDToken(APP_AUDIENCE), deadline]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
  * The OIDC token for the audience `pharn.dev`, registered as a secret before anything else sees it. Null, with one
- * fixed info line, when the runner offers no OIDC, or `getIDToken` rejects or answers nothing: the error text is
- * never logged.
+ * fixed info line, when the runner offers no OIDC, or `getIDToken` rejects, answers nothing or does not answer within
+ * `deps.tokenTimeoutMs` (`APP_TOKEN_TIMEOUT_MS`): the error text is never logged.
  */
 export async function requestAppToken(
   deps: AppClientDeps,
@@ -93,7 +116,7 @@ export async function requestAppToken(
   }
   let token: string;
   try {
-    token = await getIDToken(APP_AUDIENCE);
+    token = await tokenWithin(getIDToken, deps.tokenTimeoutMs ?? APP_TOKEN_TIMEOUT_MS);
   } catch {
     deps.info(noTokenLine);
     return null;

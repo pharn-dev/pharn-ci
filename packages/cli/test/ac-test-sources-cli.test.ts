@@ -59,6 +59,13 @@ afterAll(() => {
 });
 
 describe("pharn-ci check: test sources", () => {
+  it("the check() mock is a spy on the real check(), not a stub", async () => {
+    const core = await import("@pharn-ci/core");
+    const actual = await vi.importActual<{ check(input: unknown): unknown }>("@pharn-ci/core");
+    expect(vi.isMockFunction(core.check)).toBe(true);
+    expect(vi.mocked(core.check).getMockImplementation()).toBe(actual.check);
+  });
+
   it("AC-13: gathers base and head text by default, gathers nothing under --test-integrity off, and prints the same report", async () => {
     const { main } = await import("../src/main.js");
     const { nodeDeps } = await import("../src/nodeDeps.js");

@@ -27,6 +27,14 @@ export interface RunMetaTarget {
 const EVENTS: readonly ReportMetaEvent[] = ["pull_request", "merge_group", "push", "workflow_run", "workflow_dispatch"];
 const SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const ZERO_SHA = /^0+$/;
+/** The code points kept of `meta.scope`. The workflow's `name:` is part of it, and a pull request can edit that. */
+export const MAX_META_SCOPE_CODE_POINTS = 200;
+const CONTROL = /\p{Cc}/gu;
+
+/** `workflow/job` with control characters removed, cut to `MAX_META_SCOPE_CODE_POINTS` at a code-point boundary. */
+function metaScope(workflow: string, job: string): string {
+  return Array.from(`${workflow}/${job}`.replace(CONTROL, "")).slice(0, MAX_META_SCOPE_CODE_POINTS).join("");
+}
 
 /**
  * The report's `meta` for this run: what ran, where, and which commits it compared. Undefined when a field the
@@ -78,7 +86,7 @@ export function runMeta(
     prNumber,
     headSha,
     baseSha,
-    scope: `${context.workflow ?? ""}/${context.job ?? ""}`,
+    scope: metaScope(context.workflow ?? "", context.job ?? ""),
     runId: runId as number,
     runAttempt: runAttempt as number,
     ...(context.actor ? { actor: context.actor } : {}),

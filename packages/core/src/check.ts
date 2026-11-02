@@ -134,10 +134,13 @@ export interface CheckInput {
   testIntegrityMode?: TestIntegrityModeSettings;
   /**
    * The text of the test and test-config files the change touches, at the merge base and at HEAD, gathered by the
-   * CLI and the Action for the base-and-head test-integrity signals (TI02, TI05, TI06, TI09 and TI12). TI02, TI05, TI06
-   * and TI12 compare the JS/TS (and, with `pythonTestIndex`, Python) test files the diff modifies; TI09 compares the
-   * touched test-runner config files. TI03 reads the top-level imports of the Python test files in it, to resolve
-   * `import pytest as pt` style aliases; without them it reads the literal spellings only. Without it, or in mode off,
+   * CLI and the Action for the base-and-head test-integrity signals (TI02, TI05, TI06, TI07, TI09 and TI12) and for
+   * TI01's moved-test check. TI02, TI05, TI06, TI07 and TI12 compare the JS/TS (and, with `pythonTestIndex`, Python)
+   * test files the diff modifies, and the report's `testChanges` summarizes that comparison; TI09 compares the touched
+   * test-runner config files. TI01 indexes the base text of a deleted test file to find its tests again in a new test
+   * of this change (`movedTestFiles`), which makes the deletion `info`. TI03 judges the compared test pairs, and reads the top-level imports of
+   * the Python test files in it to resolve `import pytest as pt` style aliases; without them it reads the literal
+   * spellings only. Without it, or in mode off,
    * nothing is compared and the report is the one it was before: no signal, no message, no language. With a side
    * unavailable and a modified test file, the report carries one `TEST_INTEGRITY_INDEX_UNAVAILABLE` message.
    */

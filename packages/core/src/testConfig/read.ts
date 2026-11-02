@@ -54,7 +54,16 @@ export function readTestConfig(kind: TestConfigKind, path: string, text: string)
       return nested(root, "jest");
     case "vitest-workspace":
       return root.type === "array" ? { container: root } : { notFound: true };
-    default:
+    case "jest":
+    case "playwright":
+    case "mocha":
+    case "pytest-ini":
+    case "tox-ini":
+    case "setup-cfg":
+    case "pyproject":
       return root.type === "object" ? { container: root } : { notFound: true };
+    default:
+      // Exhaustive: a new kind fails to compile here instead of silently reading its root as the container.
+      throw new Error(`unknown test config kind: ${kind satisfies never}`);
   }
 }

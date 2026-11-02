@@ -87,8 +87,6 @@ export {
   MAX_KEPT_LINE_CHARS,
   MAX_KEPT_LINES,
   parseUnifiedDiff,
-  parseUnifiedDiffLines,
-  parseUnifiedDiffLinesAsync,
   type UnifiedDiffOptions,
 } from "./diff/unified.js";
 export { computeDiffCoverage, type DiffCoverageFile, type DiffCoverageResult } from "./diffCoverage.js";

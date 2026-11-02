@@ -93,6 +93,13 @@ const gathersNothing = (calls: string[][]) =>
   calls.filter((args) => args[0] === "merge-base" || args[0] === "cat-file");
 
 describe("action: test sources", () => {
+  it("the check() mock is a spy on the real check(), not a stub", async () => {
+    const core = await import("@pharn-ci/core");
+    const actual = await vi.importActual<{ check(input: unknown): unknown }>("@pharn-ci/core");
+    expect(vi.isMockFunction(core.check)).toBe(true);
+    expect(vi.mocked(core.check).getMockImplementation()).toBe(actual.check);
+  });
+
   it("AC-14: a local-git diff passes sources with base and head text, and test-integrity off gathers nothing", async () => {
     const { run, createNodeIo, spy } = await load();
 

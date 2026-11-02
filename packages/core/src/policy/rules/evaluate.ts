@@ -19,8 +19,6 @@ import type { PolicyEvaluation, PolicyRuleInput, PolicyViolation, RuleFinding } 
 
 /** The most violations of one rule id the report keeps; the rest are counted. */
 export const MAX_RULE_VIOLATIONS = 50;
-/** The P07 cap, the same value as `MAX_RULE_VIOLATIONS`. */
-export const MAX_P07_VIOLATIONS = 50;
 /** The P08 cap, which item 22 named first; the same value as `MAX_RULE_VIOLATIONS`. */
 export const MAX_P08_VIOLATIONS = 50;
 
