@@ -56,14 +56,10 @@ describe("check(): coverage paths that match no tracked file", () => {
     expect(warnMessages[0]?.text).toContain("coverage-root");
     expect(codes(warning.messages)).not.toContain("NO_COVERABLE_CHANGES");
 
-    // Asserted before the file snapshots, so a wrong report fails here instead of being written as a new snapshot.
-    await expect(asFile(failing)).toMatchFileSnapshot("../../../fixtures/coverage-paths/package-relative/report.json");
-    await expect(renderMarkdown(failing)).toMatchFileSnapshot(
-      "../../../fixtures/coverage-paths/package-relative/report.md",
-    );
-    await expect(asFile(warning)).toMatchFileSnapshot(
-      "../../../fixtures/coverage-paths/package-relative/report-warn.json",
-    );
+    // The committed files, compared byte for byte (never through a file snapshot, which -u could rewrite).
+    expect(asFile(failing)).toBe(fixture("coverage-paths/package-relative/report.json"));
+    expect(renderMarkdown(failing)).toBe(fixture("coverage-paths/package-relative/report.md"));
+    expect(asFile(warning)).toBe(fixture("coverage-paths/package-relative/report-warn.json"));
   });
 
   it("AC-2: an absolute path from another root stays unmatched, with or without a coverage root, and is named", async () => {

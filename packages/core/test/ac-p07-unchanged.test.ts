@@ -64,6 +64,9 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
         expect(foldCoverageBar(read(barred[1] as string)), line).toBe(git("show", `${BASE}:${barred[1]}`));
         continue;
       }
+      // Re-pinned for markdown-byte-compare (review SPEC finding 29): markdown.test.ts's two snapshots moved, unchanged,
+      // into these two new committed files.
+      if (/^A\tfixtures\/markdown\/(?:missing|no-coverable)\.md$/.test(line)) continue;
       // Re-pinned on the rebase onto E3 item 23 (policy settings): its fixtures under fixtures/policy-settings/ are new too.
       // Re-pinned for the 2026-11-01 review fixes: their new TI10 and TI14 fixture files are added too.
       // Re-pinned for ti03-skip-evasion (review B1): its new case directories under fixtures/test-integrity/TI03/ are
@@ -79,7 +82,9 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       // Re-pinned for settings-unparseable-fails-closed (review A3-F2): its new case directories under
       // fixtures/policy-settings/unparseable/ are untracked until committed. Re-pinned for fix/ti09-opaque-head (review
       // finding 22): so are its four new TI09 case directories. Re-pinned for js-ts-extensions (review 2026-11-01,
-      // finding 13): so are its new TI01, TI04 and TI13 case directories.
+      // finding 13): so are its new TI01, TI04 and TI13 case directories. Re-pinned for markdown-byte-compare (review
+      // SPEC finding 29): so are the two files markdown.test.ts's snapshots moved into.
+      if (/^fixtures\/markdown\/(?:missing|no-coverable)\.md$/.test(path)) continue;
       expect(path, "a new fixture").toMatch(
         /^fixtures\/policy-rules\/p07\/[^/]+\/[^/]+$|^fixtures\/test-integrity\/TI03\/[^\t]+$|^fixtures\/test-integrity\/(?:TI10\/(?:block-colon-only|block-true-only|block-true-or-run|pass-true-then-run)|TI14\/block-threshold-(?:emptied|lowered-nbsp-comment|padded-past-cap))\.diff$|^fixtures\/policy-settings\/unparseable\/[^\t]+$|^fixtures\/test-integrity\/(?:TI01\/(?:block-test-mts-deleted|block-spec-cts-deleted)|TI04\/block-test-mts-it-only|TI13\/pass-test-mts-istanbul)\/[^\t]+$|^fixtures\/test-integrity\/TI09\/(?:block-opaque-head|block-too-deep-head|pass-added-opaque-config|pass-opaque-base-and-head)\/[^\t]+$/,
       );
@@ -89,9 +94,12 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
     // rename of any similar file added under packages/. The only deletions allowed are the four release-030 pin tests
     // (version, dist, readme-pins, doc-pins): the 0.4.0 release PR replaced them with release-040 tests, with the
     // version pins moved on. Re-pinned for review finding 15: the release commit had dropped --no-renames here.
+    // Re-pinned for markdown-byte-compare (review SPEC finding 29): markdown.test.ts's snapshot file goes, its two
+    // snapshots moved unchanged into fixtures/markdown/ and compared byte for byte; no test case is dropped.
     expect(
       nonEmpty(git("diff", "--name-only", "--no-renames", "--diff-filter=D", BASE, "--", "packages/")).sort(),
     ).toEqual([
+      "packages/core/test/__snapshots__/markdown.test.ts.snap",
       "packages/core/test/ac-release030-dist.test.ts",
       "packages/core/test/ac-release030-doc-pins.test.ts",
       "packages/core/test/ac-release030-readme-pins.test.ts",

@@ -23,7 +23,9 @@ describe("renderMarkdown", () => {
       missing: { reason: "coverage-file-missing", coverageFile: "coverage/lcov.info" },
       agentSetup: { files: [] },
     });
-    expect(renderMarkdown(report)).toMatchSnapshot();
+    expectValidReport(report);
+    // The committed file, compared byte for byte (never through a snapshot, which -u could rewrite).
+    expect(renderMarkdown(report)).toBe(fixture("markdown/missing.md"));
   });
 
   it("renders the no-coverable-changes state", () => {
@@ -40,7 +42,9 @@ describe("renderMarkdown", () => {
       },
       agentSetup: { files: [{ path: "AGENTS.md", kind: "agents-md" }] },
     });
-    expect(renderMarkdown(report)).toMatchSnapshot();
+    expectValidReport(report);
+    // The committed file, compared byte for byte (never through a snapshot, which -u could rewrite).
+    expect(renderMarkdown(report)).toBe(fixture("markdown/no-coverable.md"));
   });
 
   it("truncates long tables and escapes paths", () => {

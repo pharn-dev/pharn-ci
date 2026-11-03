@@ -164,6 +164,9 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   above the "**N%** of changed lines covered" line. No schema change.
 - The TI03 hint leads with the fix, as the other block hints do: "Remove the skip so the test runs again, or say in
   the PR why it must stay", then the accept label (review 2026-11-01, A4-F5).
+- Test-only (review SPEC finding 29): the markdown render tests compare with committed files byte for byte
+  (`fixtures/markdown/`, `fixtures/coverage-paths/package-relative/`) instead of snapshots that `pnpm test -u` could
+  silently rewrite. No output changes.
 
 ### Security
 
