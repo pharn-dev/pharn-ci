@@ -67,12 +67,14 @@ const PINNED = [
  */
 // Re-pinned again by ti03-skip-evasion (review B1): both files put the earlier TI03 sentence for a skip the diff shows
 // as new back into their records before hashing, so their output digests are unchanged; these are the edited files.
+// Re-pinned again by the 2026-11-01 review fixes: both files leave the review's new TI10 and TI14 fixtures out
+// of their loops (their output digests are unchanged); these are the edited files.
 // Re-pinned again by block-fails-closed-unavailable (review HIGH 4): ac-ti0205-regression is edited on purpose (a
 // whole-run unavailable message is an error in block, was a warn), so this is the digest of the edited file.
 const NAME_ONLY_REPINNED: Record<string, string> = {
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "c54599f987667dd60cc1e1ef8f751cdecb8269ff7d72a55c1a5649854e8ca99c",
-  "packages/core/test/ac-ti0205-regression.test.ts": "5318cbd56bfde9c0194e219c89c6c53e8e246d9f7b1c920c3ee3bd12546aa754",
+    "1477c2ea6da9c812e990fdeb7ddcdac581496dace41b38ddf42ea9569c7cc43d",
+  "packages/core/test/ac-ti0205-regression.test.ts": "79db683306a83595cefac76da0df8fda2d80afa6d55cc28264672f0e9adf9405",
 };
 /** The digests of ac-ti06-ti12-unchanged.test.ts the name-only-moves change re-pins; every other one is as at the base. */
 const NAME_ONLY_DIGESTS: Record<string, string> = {
