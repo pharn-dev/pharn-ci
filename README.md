@@ -195,8 +195,9 @@ and cancels the others' required check.
 Each GitHub API request pharn-ci makes is aborted after 30 s, and a 5xx, a network error or a rate
 limit that asks for at most 60 s is retried once; each `git` call is killed after 2 minutes. The OIDC
 token request (only with `id-token: write`) is given up after 30 s, and the run goes on as if the runner offered no
-token. A run makes a handful of requests, so `timeout-minutes: 5` on the step bounds even a slow GitHub without
-cutting a normal run short; without it, a stuck step runs until the job's 6-hour limit.
+token. A run makes a handful of requests, and the upload to pharn.dev ends within 90 s whatever the app does, so
+`timeout-minutes: 5` on the step bounds even a slow GitHub or pharn.dev without cutting a normal run short; without
+it, a stuck step runs until the job's 6-hour limit.
 
 Release tags are exact versions (`v0.1.0`), never moved or deleted, but they are unsigned
 lightweight tags, so there is no tag signature to verify. Pinning the tag's full commit SHA is the
@@ -580,9 +581,13 @@ the app names; a larger report is not uploaded and adds one `UPLOAD_TOO_LARGE` w
 
 **What the job sees.** The signed URL and the token are masked and never logged. An upload that succeeds sets the
 `run-url` output and logs one line without a URL. The App then comments on the pull request, so `pharn-ci` posts no
-comment of its own and the job summary and `report.json` still carry the report. An upload fails open: whatever goes
-wrong (a timeout, a non-2xx answer, an unexpected answer, an exception) ends in one warning that names a reason, never
-fails the check and never changes its verdict, except that `UPLOAD_TOO_LARGE` can turn a pass into a warn.
+comment of its own; a comment an earlier run of the same workflow and job left is updated to one line that points to
+the run on pharn.dev, so the pull request never shows that run's verdict beside the App's comment. The job summary
+and `report.json` still carry the report. An upload fails open: whatever goes wrong (a timeout, a non-2xx answer, an
+unexpected answer, an exception) ends in one warning that names a reason, never fails the check and never changes its
+verdict, except that `UPLOAD_TOO_LARGE` can turn a pass into a warn. The whole upload ends within 90 s of its start:
+each request and the `PUT` is cut off at the time left, and running out is one more failed upload (a reason ending
+in `:deadline`).
 
 **When nothing is uploaded.** With `upload: never`, without `id-token: write` (a fork pull request never gets it), or
 on a `pull_request_target` run (its default checkout is the base branch, which pharn-ci refuses to measure),

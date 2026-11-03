@@ -810,7 +810,9 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
   neither local git nor the GitHub API can produce the diff (for example a shallow checkout and an
   API error), when the diff is over the size limit, and when a `pull_request_target` run checked out
   the base branch (that run is refused, not measured: checking out the PR head to measure it would
-  run fork code with a write token; see `SECURITY.md`).
+  run fork code with a write token; see `SECURITY.md`). It is also reported when the base is HEAD or a
+  descendant of it (`base-ref: HEAD`, the run's own sha, or the CLI's `--base HEAD`): the diff is empty and
+  nothing would be measured, so it is not a `NO_COVERABLE_CHANGES` pass.
   Use `fetch-depth: 0` and a `pull_request` trigger and this does not happen in practice. The GitHub
   compare API is not an equivalent of `fetch-depth: 0`: its diff carries no readable test text, so
   the signals that compare test text do not run on it. A local `git diff` that fails against a base
@@ -1062,8 +1064,8 @@ P08 matches the tracked paths of the repository against `setup.forbidden_files`.
   rule: `*.pem` matches a file at the root only, `**/*.pem` one in any directory, and neither matches `key.PEM`.
 - **The whole tree, not the diff.** Every tracked path that matches is a violation, files the pull request did not
   touch included, so a pattern added to the policy blocks every pull request until the file is removed.
-- **A failed listing.** When `git ls-files` (or the tree request) fails, the Action warns that the agent setup scan was
-  skipped and P08 finds nothing; the CLI fails the run instead. A tree the GitHub API truncates (a very large
+- **A failed listing.** When `git ls-files` (or the tree request in PR-number mode) fails, the Action step fails and
+  the CLI exits 2: no report is built on an empty file list. A tree the GitHub API truncates (a very large
   repository) lists part of the repository, with a warning.
 - **At most 50 violations are listed.** The `POLICY_P08` text counts the rest.
 
@@ -1123,9 +1125,12 @@ The upload (`upload: auto`; see the README, Upload to pharn.dev) sends the redac
 run. What it does not do:
 
 - **No connect timeout of its own.** Each request has one timeout for the whole exchange, response body included (60 s
-  for the two requests to the app, 120 s for the `PUT`); there is no separate connect timeout, so a host that accepts
-  the connection and then stalls costs the full timeout. The two app requests are retried once after a network error or
-  a `5xx`; the `PUT` is never retried.
+  for the two requests to the app, 120 s for the `PUT`), and the whole upload ends within 90 s of its start: a request
+  or the `PUT` is cut off at the smaller of its timeout and the time left, and a step with no time left does not
+  start. There is no separate connect timeout, so a host that accepts the connection and then stalls uses up the time
+  left. The two app requests are retried once after a network error or a `5xx` when at least 2 s are left; the `PUT`
+  is never retried. The lookup of the pull request comment (GitHub API) counts toward the 90 s but has no timeout of
+  its own.
 - **One upload per job run, not per matrix leg.** The report and the upload are those of one job. A matrix of jobs
   uploads once per leg, and the run identity the Action sends is the run id, the run attempt and the `scope`
   (`<workflow>/<job>`), none of which carries the matrix values: two legs of one job share all three, so the app may
@@ -1230,8 +1235,8 @@ run. What it does not do:
 - **Absolute paths from another root are reported, not remapped.** A Docker build's `/app/src/a.ts`
   stays unmatched, and so do paths through a symlinked workspace. Write coverage paths relative to
   the repository, or as absolute paths under the checkout path.
-- **Both checks are skipped when the tracked-files list is empty**, which is what the Action does
-  when `git ls-files` fails (it warns). The report is then what it was before these checks.
+- **Both checks are skipped when the tracked-files list is empty** (a repository with no tracked file). A failed
+  `git ls-files` no longer gives an empty list: the Action step fails, as the CLI does.
 - **A changed file missing from the coverage report is never looked at here.** The checks read the
   coverage report's paths only, so a docs-only change with mapped coverage still passes as
   `NO_COVERABLE_CHANGES`.
@@ -1264,8 +1269,8 @@ limited by git, Node or GitHub alone.
   report that large.
 - **The config.** `.pharn/ci.yml` is read whole. A file past what Node can read as text fails with
   Node's own error: the CLI exits 2 and the Action step fails.
-- **The `git ls-files` output.** It is read through a 256 MiB buffer. Past it the CLI exits 2, and
-  the Action warns and skips the agent setup scan and the coverage path checks.
+- **The `git ls-files` output.** It is read through a 256 MiB buffer. Past it the CLI exits 2 and
+  the Action step fails.
 - **The `git ls-tree` output.** It is read through a 256 MiB buffer and is optional. Past it, empty
   agent setup files are not reported, and the rest of the check runs.
 - **The text of the test and test-config files.** For a diff read from local git, the CLI and the Action

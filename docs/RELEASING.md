@@ -99,8 +99,11 @@ that worked on the previous release. Before 1.0 the rules are:
    - **Release smoke.** After `Release publish`, the `Release smoke` job checks out the new tag and runs
      `node scripts/smoke-release.mjs .`. It builds a throwaway repository from `fixtures/smoke/`, runs the tagged
      bundle with no token and no event, and checks the exit code, the `verdict` output, the job summary and the
-     footer version. If `Release smoke` is red, skip the Marketplace step and fix it with a new patch release (tags
-     never move).
+     footer version. It then runs the same bundle a second time with the network forbidden (the OIDC variables
+     point at a closed loopback port, `fetch` always fails, and a synthetic run context lets the org policy and
+     the upload reach their token request) and checks that the exit code, the verdict and `report.json` match the
+     first run apart from the `meta` only the second run has. If `Release smoke` is red, skip the Marketplace
+     step and fix it with a new patch release (tags never move).
 4. **The Marketplace.** The workflow creates the release through the API, which does not list it on
    the GitHub Marketplace. Open the new release, choose **Edit**, tick **Publish this Action to the
    GitHub Marketplace** (the first time, accept the agreement and pick the categories) and save.
