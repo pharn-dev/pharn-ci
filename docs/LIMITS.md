@@ -1147,8 +1147,24 @@ run. What it does not do:
   `upload` says and whatever was checked out; the report says `meta.upload.status: skipped`. The org policy request of
   such a run still happens.
 - **Redaction misses what it does not know.** The report is redacted with the ten secret shapes of the agent config
-  scan (README, Secrets in agent configs) and cut to 2048 bytes per message; a secret of another shape, split across
-  strings or encoded, is not found. Paths and test names are not secrets to it and are sent as they are.
+  scan (README, Secrets in agent configs) and cut to the upload's message cap per message and signal detail; a secret
+  of another shape, split across strings or encoded, is not found. Paths and test names are not secrets to it and are
+  sent as they are. The cap is the smaller of 2048 bytes and the org's `settings.messageMaxBytes` from the same run's
+  policy response, used only when that response was a `200` that validated whole (never under `policy: never` or a
+  `file:` policy, never from a refused or missing response); the app can lower the cap, never raise it.
+- **The app's other settings are validated and not applied.** `settings.uploadJunit` and `settings.redactMessages`, and
+  the response's `quarantine` list, are checked as part of the envelope and then ignored: the Action sends no JUnit,
+  never turns redaction off, and applies no quarantine.
+- **`meta.mergeBase` is the fork point of the pull request's head, and `null` means "not known to the Action".** When
+  the run has a local diff, the Action records the merge base of the resolved base and the run's head commit
+  `meta.headSha` (the pull request's head, not GitHub's merge commit that `pull_request` checks out, so on that event it
+  is where the pull request forked, not the base tip). `null` is not "these commits share no history". It means the
+  Action did not learn it: the diff did not come from local git (the compare API, `pr-number` mode, no base, or a base
+  at or past `HEAD`), the run has no run metadata, or `git merge-base` failed because the head commit or the base
+  history is not in the checkout (a shallow `actions/checkout`; `fetch-depth: 0` fixes it). A shallow checkout can
+  also make git print a common ancestor that is not the real merge base, and the Action cannot tell it from the real
+  one; the fork point is an answer of the checkout, only as deep as the history there. It never fails the run or
+  changes the verdict.
 - **The CLI never uploads.** Only the Action does; the CLI makes no network call.
 - **A report over the limit is not uploaded.** A `report.json` over 5 MiB (5242880 bytes), a gzip archive over the
   `maxBytes` the app names, or a `413` from the app ends in `UPLOAD_TOO_LARGE`; the check ran in full and only the

@@ -1,7 +1,7 @@
 import { type PolicyUnavailableReason, type ResolvedPolicy, validatePolicyResponse } from "@pharn-ci/core";
 import { type AppClientDeps, appRequest, oidcOffered, requestAppToken } from "./app-client.js";
 
-/** What `fetchPolicy` reads from the Action's deps: the app client's, and the clock. */
+/** What `fetchPolicy` and `fetchAppPolicy` read from the Action's deps: the app client's, and the clock. */
 export interface PolicyFetchDeps extends AppClientDeps {
   now?: (() => Date) | undefined;
 }
@@ -11,6 +11,27 @@ const REPOSITORY = /^[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}$/;
 
 const JSON_CONTENT_TYPE = /^application\/json\s*(?:;|$)/i;
 
+/** What `fetchAppPolicy` returns: the policy, and the one app setting the upload uses, beside it. */
+export interface AppPolicyResult {
+  policy: ResolvedPolicy;
+  /**
+   * The org's `settings.messageMaxBytes` (an integer 256..65536, validated), set only when the app answered 200 with an
+   * envelope `validatePolicyResponse` accepted whole. Every other answer leaves it unset. It rides beside the policy
+   * because `ResolvedPolicy` stays the shape the report projects.
+   */
+  messageMaxBytes?: number;
+}
+
+/**
+ * Fetches the org policy of a repository: `fetchAppPolicy`'s policy, for a caller that needs nothing else.
+ */
+export async function fetchPolicy(
+  deps: PolicyFetchDeps,
+  options: { mode: "auto" | "required"; origin: URL; repository: string },
+): Promise<ResolvedPolicy> {
+  return (await fetchAppPolicy(deps, options)).policy;
+}
+
 /**
  * Fetches the org policy of a repository: one GET of `/api/v1/policy?repo=<owner/name>` on the app origin, with the
  * OIDC token. Under `auto` a missing token or policy is silent (source `none`); under `required` every reason there is
@@ -18,9 +39,22 @@ const JSON_CONTENT_TYPE = /^application\/json\s*(?:;|$)/i;
  * response that passes `validatePolicyResponse` whole is used, and nothing of a failing response is quoted. A request
  * id the app sent is logged once and carried in `unavailable.requestId` when it is a sane one.
  */
-export async function fetchPolicy(
+export async function fetchAppPolicy(
   deps: PolicyFetchDeps,
   options: { mode: "auto" | "required"; origin: URL; repository: string },
+): Promise<AppPolicyResult> {
+  let messageMaxBytes: number | undefined;
+  const policy = await requestPolicy(deps, options, (value) => {
+    messageMaxBytes = value;
+  });
+  return messageMaxBytes === undefined ? { policy } : { policy, messageMaxBytes };
+}
+
+/** The request and its answer; `onSettings` is called with the validated `messageMaxBytes` on the one 200 path only. */
+async function requestPolicy(
+  deps: PolicyFetchDeps,
+  options: { mode: "auto" | "required"; origin: URL; repository: string },
+  onSettings: (messageMaxBytes: number) => void,
 ): Promise<ResolvedPolicy> {
   const required = options.mode === "required";
   const unavailable = (
@@ -89,6 +123,7 @@ export async function fetchPolicy(
   }
   const validated = validatePolicyResponse(parsed);
   if (!validated.ok) return unavailable("invalid-response", { status, ...id });
+  onSettings(validated.response.settings.messageMaxBytes);
   return {
     source: "app",
     version: validated.response.version,

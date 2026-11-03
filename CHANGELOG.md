@@ -17,6 +17,17 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- The Action applies two things the pharn.dev app contract already named (review finding 15 f and g). No schema change,
+  no new input, no new message code and no new host.
+  - The app's `settings.messageMaxBytes` now lowers the upload's per-message cap: the cap is the smaller of 2048 bytes
+    and that setting, taken only from a policy response that validated whole in the same run (never under
+    `policy: never` or a `file:` policy). The app's other settings (`uploadJunit`, `redactMessages`) and its
+    `quarantine` list are validated and still not applied.
+  - `meta.mergeBase` is recorded for a run with a local diff: the merge base of the resolved base and `meta.headSha`
+    (the pull request's head, so on a `pull_request` run the fork point, not the base tip), one extra local
+    `git merge-base` per run at most. Every other run, and a `git merge-base` that fails or prints no object id (a
+    shallow checkout), records `null` and changes nothing else. Matrix legs of one job remain a documented limit
+    (`docs/LIMITS.md`).
 - The Action's `packages/action/dist/index.js` shrinks from about 11.7 MB to about 1.7 MB: the TypeScript parser no
   longer sits inside it. `scripts/bundle.mjs` copies `typescript@5.9.3`'s `lib/typescript.js` byte for byte beside the
   bundle as `packages/action/dist/typescript.js` (9.1 MB, the dist's second committed file), and the Action loads it

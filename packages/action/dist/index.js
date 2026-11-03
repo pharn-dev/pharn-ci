@@ -41274,7 +41274,14 @@ function parsePolicyInput(value) {
 // src/policy-fetch.ts
 var REPOSITORY = /^[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}$/;
 var JSON_CONTENT_TYPE = /^application\/json\s*(?:;|$)/i;
-async function fetchPolicy(deps, options) {
+async function fetchAppPolicy(deps, options) {
+  let messageMaxBytes;
+  const policy = await requestPolicy(deps, options, (value) => {
+    messageMaxBytes = value;
+  });
+  return messageMaxBytes === void 0 ? { policy } : { policy, messageMaxBytes };
+}
+async function requestPolicy(deps, options, onSettings) {
   const required = options.mode === "required";
   const unavailable2 = (reason, extra = {}) => {
     if (extra.requestId !== void 0)
@@ -41332,6 +41339,7 @@ async function fetchPolicy(deps, options) {
   }
   const validated = validatePolicyResponse(parsed);
   if (!validated.ok) return unavailable2("invalid-response", { status, ...id });
+  onSettings(validated.response.settings.messageMaxBytes);
   return {
     source: "app",
     version: validated.response.version,
@@ -41342,15 +41350,22 @@ async function fetchPolicy(deps, options) {
 
 // src/policy-source.ts
 async function obtainPolicy(deps, choice, origin) {
-  if (choice.kind === "never") return void 0;
+  if (choice.kind === "never") return { policy: void 0 };
   if (choice.kind === "file") {
-    return readPolicyFile(
-      { readFile: deps.readFile, resolvePath: deps.resolvePath, lstat: deps.lstat ?? lstatPath },
-      { root: deps.workspace, path: choice.path, label: "the policy input" }
-    );
+    return {
+      policy: await readPolicyFile(
+        { readFile: deps.readFile, resolvePath: deps.resolvePath, lstat: deps.lstat ?? lstatPath },
+        { root: deps.workspace, path: choice.path, label: "the policy input" }
+      )
+    };
   }
   const repository = deps.context.payload.repository?.full_name;
-  return fetchPolicy(deps, { mode: choice.kind, origin, repository: typeof repository === "string" ? repository : "" });
+  const { policy, messageMaxBytes } = await fetchAppPolicy(deps, {
+    mode: choice.kind,
+    origin,
+    repository: typeof repository === "string" ? repository : ""
+  });
+  return messageMaxBytes === void 0 ? { policy } : { policy, uploadMessageMaxBytes: messageMaxBytes };
 }
 
 // src/pr-number.ts
@@ -41448,6 +41463,9 @@ function runMeta(context3, opts) {
     prNumber,
     headSha,
     baseSha,
+    // The merge base is a local git answer, which this pure, synchronous function cannot have: the Action fills it in
+    // for a run with a local diff (run.ts), and every other run records null.
+    mergeBase: null,
     scope: metaScope(context3.workflow ?? "", context3.job ?? ""),
     runId,
     runAttempt,
@@ -41516,7 +41534,11 @@ async function uploadSteps(deps, input, remainingMs) {
   const createdAt = (deps.now?.() ?? /* @__PURE__ */ new Date()).toISOString();
   const meta = buildUploadMeta(input.report, { version: VERSION7, createdAt, commentUrl });
   if (meta === null) return { outcome: { status: "skipped", reason: "no-meta" } };
-  const { reportJson, metaJson } = buildUploadBundle(input.report, meta);
+  const { reportJson, metaJson } = buildUploadBundle(
+    input.report,
+    meta,
+    input.messageMaxBytes === void 0 ? void 0 : { messageMaxBytes: input.messageMaxBytes }
+  );
   if (Buffer.byteLength(reportJson, "utf8") > UPLOAD_REPORT_MAX_BYTES) {
     return { outcome: { status: "too_large", maxBytes: UPLOAD_REPORT_MAX_BYTES } };
   }
@@ -41779,7 +41801,7 @@ async function runUnsafe(deps) {
     { discoverCoverage: true }
   );
   if (!resolved.ok) throw resolved.errors[0];
-  const policy = await obtainPolicy(deps, policyChoice, appOrigin);
+  const { policy, uploadMessageMaxBytes } = await obtainPolicy(deps, policyChoice, appOrigin);
   const application = policy === void 0 ? void 0 : applyPolicy({ config, raw: rawInputs, resolved: resolved.inputs }, policy);
   const effective2 = application?.inputs ?? resolved.inputs;
   const {
@@ -41871,8 +41893,10 @@ async function runUnsafe(deps) {
     agentPrFacts,
     ...policyFileBase === void 0 ? {} : { policyFileBase }
   };
-  const meta = runMeta(deps.context, { baseRef: baseRefInput, ...target === void 0 ? {} : { target } });
-  if (meta === void 0) deps.info("run metadata is incomplete, so report.json carries no meta");
+  const runMetaBase = runMeta(deps.context, { baseRef: baseRefInput, ...target === void 0 ? {} : { target } });
+  if (runMetaBase === void 0) deps.info("run metadata is incomplete, so report.json carries no meta");
+  const mergeBase = runMetaBase === void 0 || localBase === void 0 ? null : await forkPoint(localBase, runMetaBase.headSha, deps);
+  const meta = runMetaBase === void 0 || mergeBase === null ? runMetaBase : { ...runMetaBase, mergeBase };
   const checked = check(meta === void 0 ? checkInput : { ...checkInput, meta });
   const parserFailure = deps.parserLoadFailure?.();
   if (parserFailure !== void 0) throw new Error(parserFailure);
@@ -41902,6 +41926,7 @@ async function runUnsafe(deps) {
     ...deps.context.eventName === "pull_request_target" ? { pullRequestTarget: true } : {},
     report,
     appOrigin,
+    ...uploadMessageMaxBytes === void 0 ? {} : { messageMaxBytes: uploadMessageMaxBytes },
     ...target !== void 0 && headSha !== void 0 ? { prHeadShaExpected: headSha } : {},
     ...commentNumber === void 0 ? {} : { findOwnComment: () => findOwn(commentNumber) }
   });
@@ -42159,6 +42184,14 @@ async function headIsInBase(base, deps) {
     return OBJECT_ID2.test(mergeBase) && mergeBase === head;
   } catch {
     return false;
+  }
+}
+async function forkPoint(base, head, deps) {
+  try {
+    const mergeBase = (await deps.git(["merge-base", "--end-of-options", base, head])).trim();
+    return OBJECT_ID2.test(mergeBase) ? mergeBase : null;
+  } catch {
+    return null;
   }
 }
 async function resolveLocal(base, deps) {

@@ -101,6 +101,9 @@ export function runMeta(
     prNumber,
     headSha,
     baseSha,
+    // The merge base is a local git answer, which this pure, synchronous function cannot have: the Action fills it in
+    // for a run with a local diff (run.ts), and every other run records null.
+    mergeBase: null,
     scope: metaScope(context.workflow ?? "", context.job ?? ""),
     runId: runId as number,
     runAttempt: runAttempt as number,

@@ -64,6 +64,8 @@ export interface UploadInput {
   pullRequestTarget?: boolean;
   report: Report;
   appOrigin: URL;
+  /** From the org's policy response of this run; only lowers the 2048-byte cap on a message or signal detail. */
+  messageMaxBytes?: number;
   /** The head commit the run was asked to measure (the `head-sha` input in pr-number mode); the report's otherwise. */
   prHeadShaExpected?: string;
   /** Finds this run's own pull request comment, when the run may have one. A rejection means no comment link. */
@@ -149,7 +151,11 @@ async function uploadSteps(deps: UploadDeps, input: UploadInput, remainingMs: ()
   const createdAt = (deps.now?.() ?? new Date()).toISOString();
   const meta = buildUploadMeta(input.report, { version: VERSION, createdAt, commentUrl });
   if (meta === null) return { outcome: { status: "skipped", reason: "no-meta" } };
-  const { reportJson, metaJson } = buildUploadBundle(input.report, meta);
+  const { reportJson, metaJson } = buildUploadBundle(
+    input.report,
+    meta,
+    input.messageMaxBytes === undefined ? undefined : { messageMaxBytes: input.messageMaxBytes },
+  );
   if (Buffer.byteLength(reportJson, "utf8") > UPLOAD_REPORT_MAX_BYTES) {
     return { outcome: { status: "too_large", maxBytes: UPLOAD_REPORT_MAX_BYTES } };
   }

@@ -326,7 +326,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   if (!resolved.ok) throw resolved.errors[0];
   // The org policy is obtained after the config and before anything is read or measured, and applied over the layers.
   // A `file:` problem throws here; an unavailable app policy never does: the check then runs with the inputs and the config.
-  const policy = await obtainPolicy(deps, policyChoice, appOrigin);
+  const { policy, uploadMessageMaxBytes } = await obtainPolicy(deps, policyChoice, appOrigin);
   const application =
     policy === undefined ? undefined : applyPolicy({ config, raw: rawInputs, resolved: resolved.inputs }, policy);
   const effective = application?.inputs ?? resolved.inputs;
@@ -448,8 +448,15 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     agentPrFacts,
     ...(policyFileBase === undefined ? {} : { policyFileBase }),
   };
-  const meta = runMeta(deps.context, { baseRef: baseRefInput, ...(target === undefined ? {} : { target }) });
-  if (meta === undefined) deps.info("run metadata is incomplete, so report.json carries no meta");
+  const runMetaBase = runMeta(deps.context, { baseRef: baseRefInput, ...(target === undefined ? {} : { target }) });
+  if (runMetaBase === undefined) deps.info("run metadata is incomplete, so report.json carries no meta");
+  // The fork point of the pull request's head commit (`meta.headSha`, not HEAD) off the base the local diff used. This is
+  // a different question from `headIsInBase` (base vs HEAD): on a `pull_request` checkout HEAD is GitHub's merge commit,
+  // whose merge base with the base is the base tip, so the two calls must stay two calls. It runs before check() and
+  // only for a run with a local diff and a meta; a failed or odd answer leaves `mergeBase` null and changes nothing else.
+  const mergeBase =
+    runMetaBase === undefined || localBase === undefined ? null : await forkPoint(localBase, runMetaBase.headSha, deps);
+  const meta = runMetaBase === undefined || mergeBase === null ? runMetaBase : { ...runMetaBase, mergeBase };
   const checked = check(meta === undefined ? checkInput : { ...checkInput, meta });
   // The backstop of the escape path: the first read of the parser sits outside the `try` of its parse, so a load failure
   // normally throws out of check() by itself. Wherever that read ends up, a failed load must fail the step before
@@ -494,6 +501,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     ...(deps.context.eventName === "pull_request_target" ? { pullRequestTarget: true } : {}),
     report,
     appOrigin,
+    ...(uploadMessageMaxBytes === undefined ? {} : { messageMaxBytes: uploadMessageMaxBytes }),
     ...(target !== undefined && headSha !== undefined ? { prHeadShaExpected: headSha } : {}),
     ...(commentNumber === undefined ? {} : { findOwnComment: () => findOwn(commentNumber) }),
   });
@@ -878,6 +886,20 @@ async function headIsInBase(base: string, deps: ActionDeps): Promise<boolean> {
     return OBJECT_ID.test(mergeBase) && mergeBase === head;
   } catch {
     return false;
+  }
+}
+
+/**
+ * The fork point of `head` off `base`, as `git merge-base` prints it; null for any failure (a shallow clone without the
+ * base history, a head commit that is not in the checkout) or any answer that is not a full object id. Silent: the
+ * verdict and the run never depend on it. `head` is `meta.headSha`, a validated full commit SHA.
+ */
+async function forkPoint(base: string, head: string, deps: ActionDeps): Promise<string | null> {
+  try {
+    const mergeBase = (await deps.git(["merge-base", "--end-of-options", base, head])).trim();
+    return OBJECT_ID.test(mergeBase) ? mergeBase : null;
+  } catch {
+    return null;
   }
 }
 
