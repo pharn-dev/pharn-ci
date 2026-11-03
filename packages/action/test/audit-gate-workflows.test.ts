@@ -4,11 +4,11 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 // Production dependencies are bundled into packages/action/dist and run in every consumer's workflow, so CI and the
-// release job both fail on a high or critical advisory in one (review HIGH 6). This keeps the step from being dropped
+// release job both fail on a moderate, high or critical advisory in one (review HIGH 6). This keeps the step from being dropped
 // or moved before the install it needs.
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
-const AUDIT = "- run: pnpm audit --prod --audit-level=high";
+const AUDIT = "- run: pnpm audit --prod --audit-level=moderate";
 const INSTALL = "- run: pnpm install --frozen-lockfile";
 
 function stepLines(workflow: string): string[] {

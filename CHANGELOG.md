@@ -101,6 +101,9 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   the character. TI14 also fails closed when a removed threshold is replaced by a value it cannot read as a plain
   number, such as one padded past the 400-character kept-line cap. A config that relied on such a space before `#`
   now fails with that error; replace the character with a space.
+- The dependency audit in CI and in the release job runs at `--audit-level=moderate` instead of `high` (second
+  review, HIGH 3): the Action bundles its production dependencies into `packages/action/dist`, and two of the five
+  undici 6.29.0 advisories were moderate. A known moderate advisory in a production dependency now fails the build.
 
 - The undici bundled into the Action moves from 6.29.0 to 6.29.1 (review HIGH 6). It carries every GitHub API request
   and the OIDC token request, and 6.29.0 has three high and two moderate advisories (GHSA-xjj6-f33q-929c,
