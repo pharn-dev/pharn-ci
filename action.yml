@@ -81,6 +81,8 @@ outputs:
   run-url:
     description: Page of the uploaded run on pharn.dev; set only when the run was uploaded.
 
+# Requirements: Node 24 (the runner's), git, and for pull requests that modify Python test files a python3 (or python)
+# of 3.8 or newer on PATH; without it TI02 and TI05 do not run for those files (README, Python test files).
 runs:
   using: node24
   main: packages/action/dist/index.js

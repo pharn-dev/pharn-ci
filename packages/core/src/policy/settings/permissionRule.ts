@@ -37,8 +37,7 @@ const PATH_FORBIDDEN = /[[\]{}\\]/;
 const INERT_TOOLS: ReadonlySet<string> = new Set(["Write", "NotebookEdit", "Glob"]);
 const EDITISH: ReadonlySet<string> = new Set(["Edit", "Write", "NotebookEdit"]);
 const READISH: ReadonlySet<string> = new Set(["Read", "Glob", "Grep"]);
-/** ASCII whitespace: space, tab, LF, CR, FF, VT. */
-/** Space, tab, line feed, vertical tab, form feed and carriage return. */
+/** ASCII whitespace: space, tab, line feed, vertical tab, form feed and carriage return. */
 const isAsciiSpace = (code: number) => code === 0x20 || (code >= 0x09 && code <= 0x0d);
 
 /**

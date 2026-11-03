@@ -122,6 +122,9 @@ export function parseYamlSubset(text: string): YamlMap {
     const match = /^([A-Za-z0-9_-]+|"[^"]*"|'[^']*')\s*:(?:\s+(.*))?$/.exec(content);
     if (!match) throw new ConfigError(`line ${lineNo}: expected "key: value"`);
     const key = unquoteScalarKey(match[1] as string);
+    // The maps are plain objects: `__proto__` would set the prototype (so `__proto__:\n  coverage:` would supply a
+    // `coverage` no key check sees) instead of a key.
+    if (key === "__proto__") throw new ConfigError(`line ${lineNo}: the key "__proto__" is not allowed`);
     if (Object.hasOwn(top.map, key)) throw new ConfigError(`line ${lineNo}: duplicate key "${key}"`);
     const value = match[2];
     if (value === undefined || value === "") {

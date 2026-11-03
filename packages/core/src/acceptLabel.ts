@@ -19,7 +19,11 @@ export const DEFAULT_ACCEPT_LABEL = "pharn/accepted";
 /** Most code points an `accept-label` value may have. */
 export const MAX_ACCEPT_LABEL_LENGTH = 50;
 
-/** What a GitHub user login looks like: 1 to 39 characters of letters, digits and hyphens, not starting with a hyphen. */
+/**
+ * What a GitHub user login looks like: 1 to 39 characters of letters, digits and hyphens, not starting with a hyphen.
+ * No `[bot]` suffix on purpose: only a user account other than the author can accept (`LOGIN_PATTERN` in agents.ts
+ * is the author pattern, Apps included).
+ */
 export const GITHUB_LOGIN = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/;
 
 const INVALID_LABEL =

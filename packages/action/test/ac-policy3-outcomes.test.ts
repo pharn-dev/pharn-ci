@@ -261,6 +261,14 @@ const FAILURES: FailureCase[] = [
     status: "418",
     body: BODY_MARKER,
   },
+  // The statuses API-SPEC names for the run endpoints: on the policy request each is just an unexpected status.
+  ...(["409", "413", "422"] as const).map((status) => ({
+    name: status,
+    answers: () => [respond(Number(status), `{"detail":"${BODY_MARKER}"}`)],
+    reason: "unexpected-status",
+    status,
+    body: BODY_MARKER,
+  })),
   { name: "timeout", answers: () => [hang], reason: "timeout", timeoutMs: 30 },
   {
     name: "body over 1 MiB",

@@ -490,6 +490,7 @@ export function check(input: CheckInput): Report {
   const base = {
     version: input.version,
     threshold: input.threshold,
+    ...(input.configPath === undefined ? {} : { configRepoPath: configRepoPath(input.configPath, input.repoRoot) }),
     agentSetup,
     requireAgentSetup: input.requireAgentSetup === true,
     ...(reportedTools.length > 0 ? { expectedAgentTools: reportedTools } : {}),

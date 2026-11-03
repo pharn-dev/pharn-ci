@@ -113,6 +113,11 @@ describe("runs that do not upload", { timeout: 60_000 }, () => {
     expect(control.tokenCalls.length, "control: with upload auto the token is requested").toBeGreaterThan(0);
 
     const r = await skipRun({ inputs: { upload: "never" } });
+    // The upload changes nothing in the report but meta.upload: the uploaded run's report is the offline one.
+    const withoutUpload = (report: Report) => ({ ...report, meta: { ...report.meta, upload: undefined } });
+    expect(withoutUpload(control.report), "the uploaded report is the offline one but meta.upload").toEqual(
+      withoutUpload(r.report),
+    );
     expect(r.calls).toEqual([]);
     expect(r.tokenCalls).toEqual([]);
     expect(r.report.meta?.upload).toEqual({ status: "skipped" });

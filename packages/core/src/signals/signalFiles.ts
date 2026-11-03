@@ -16,7 +16,8 @@ const PYTEST_CONFIG_NAMES: ReadonlySet<string> = new Set(["pytest.ini", "pyproje
 
 /**
  * Whether a repo-relative path is a pytest config file: its basename is exactly `pytest.ini`, `pyproject.toml`,
- * `setup.cfg` or `tox.ini`, at the root or nested. The list is this module's own (`testSources.ts` keeps its own).
+ * `setup.cfg` or `tox.ini`, at the root or nested. The list is this module's own (`testSources.ts` keeps a wider list of test-config names, `conftest.py` and
+ * `package.json` included).
  */
 export function isPytestConfigFile(path: string): boolean {
   return PYTEST_CONFIG_NAMES.has(path.slice(path.lastIndexOf("/") + 1));

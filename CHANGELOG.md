@@ -40,6 +40,19 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 - TI10 reports a test script replaced by a lone `true` or `:` (`"test": "true"`, or `true || vitest run`) as forcing a
   successful exit, like `exit 0` (second review, HIGH 5). `docs/LIMITS.md` lists what TI10 still misses:
   `node -e "process.exit(0)"`, a positional path filter, `--dir` and `--project`.
+- `.pharn/ci.yml` refuses a `__proto__` key, bare, quoted or nested: it set the prototype of the parsed map, so a
+  `coverage` block under it escaped the unknown-key check (second review, finding 26).
+- Every local git call (`git diff`, `ls-tree`, `ls-files`, not only `cat-file --batch`) runs with
+  `GIT_NO_LAZY_FETCH=1`, so a partial clone never fetches from the remote (finding 36).
+- The PR comment shows the accepted line once: `TEST_INTEGRITY_ACCEPTED` is no longer repeated under Messages when the
+  Test integrity section shows the accepted line, and its hint moves under that line (finding 32).
+- `TEST_INTEGRITY_MODE_IGNORED` names the config in use when the `config` input points elsewhere than
+  `.pharn/ci.yml`; the upload bundle redacts secrets in object keys too; `action.yml` states the `python3`
+  requirement; the comment renderer uses the shared unsafe-character set, and the Action reads logins with core's
+  `LOGIN_PATTERN` (findings 45, 46 and 48, cleanups). No schema change.
+- Tests (findings 12, 35, 41): the uploaded run's report equals the offline one apart from `meta.upload`; every
+  declared input and output must be in the never-removed list (`test-integrity` and `accept-label` were missing); the
+  policy request treats 409, 413 and 422 as unexpected statuses.
 - The PR comment no longer hides a test-integrity finding id whose findings all fall past the 20 it lists: that
   id's `TEST_INTEGRITY_<id>` message now stays under Messages (review finding 10). No schema change.
 - No hint tells the reader to loosen the gate (review finding 11): the `POLICY_UNAVAILABLE` hint (also under a P10

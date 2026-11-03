@@ -24,7 +24,14 @@ function redactLeaves(root: Container): void {
     const node = next as Record<string, unknown>;
     for (const key of Object.keys(node)) {
       const value = node[key];
-      if (typeof value === "string") node[key] = redactSecrets(value);
+      // Keys are redacted too: the schema closes every object today, but an open map (a path-keyed one, say) must not
+      // carry a secret out of the job as a key. Arrays have index keys, which never change.
+      const safeKey = Array.isArray(node) ? key : redactSecrets(key);
+      if (safeKey !== key) {
+        delete node[key];
+        node[safeKey] = value;
+      }
+      if (typeof value === "string") node[safeKey] = redactSecrets(value);
       else if (isContainer(value)) stack.push(value);
     }
   }

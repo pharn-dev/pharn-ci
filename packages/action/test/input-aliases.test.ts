@@ -37,6 +37,9 @@ const SHIPPED_INPUTS = [
   "fail-on-threshold",
   "config",
   "github-token",
+  // Added by E2 (test integrity) and its accept label.
+  "test-integrity",
+  "accept-label",
   // Added by E3 item 20 (the org policy).
   "policy",
   "app-url",
@@ -101,5 +104,13 @@ describe("input aliases (F-19)", () => {
   it("never removes a shipped input or output from action.yml", () => {
     expect(declared("inputs")).toEqual(expect.arrayContaining(SHIPPED_INPUTS));
     expect(declared("outputs")).toEqual(expect.arrayContaining(SHIPPED_OUTPUTS));
+    // The other way round too: an input or output action.yml declares is shipped once released, so it must be listed
+    // here, or a later change could drop it with no test noticing.
+    expect(SHIPPED_INPUTS, "every declared input is in SHIPPED_INPUTS").toEqual(
+      expect.arrayContaining(declared("inputs")),
+    );
+    expect(SHIPPED_OUTPUTS, "every declared output is in SHIPPED_OUTPUTS").toEqual(
+      expect.arrayContaining(declared("outputs")),
+    );
   });
 });

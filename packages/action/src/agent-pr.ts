@@ -1,4 +1,4 @@
-import type { AgentPrFacts } from "@pharn-ci/core";
+import { type AgentPrFacts, LOGIN_PATTERN } from "@pharn-ci/core";
 import type { PrNumberTarget } from "./pr-number.js";
 import type { ActionDeps } from "./run.js";
 
@@ -11,7 +11,6 @@ export const MAX_PR_COMMITS = 250;
 const MAX_MESSAGE_UNITS = 65_536;
 
 /** A GitHub login, with the `[bot]` suffix of an App. */
-const LOGIN_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?$/;
 
 type Pr = NonNullable<AgentPrFacts["pr"]>;
 type Author = NonNullable<Pr["author"]>;

@@ -19,8 +19,8 @@ import type { PolicyEvaluation, PolicyRuleInput, PolicyViolation, RuleFinding } 
 
 /** The most violations of one rule id the report keeps; the rest are counted. */
 export const MAX_RULE_VIOLATIONS = 50;
-/** The P08 cap, which item 22 named first; the same value as `MAX_RULE_VIOLATIONS`. */
-export const MAX_P08_VIOLATIONS = 50;
+/** The P08 cap, which item 22 named first; kept as a name for `MAX_RULE_VIOLATIONS`, which applies to every rule. */
+export const MAX_P08_VIOLATIONS = MAX_RULE_VIOLATIONS;
 
 const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 const SETTINGS_READERS = ["P02", "P03", "P04", "P05", "P06"] as const satisfies readonly SettingsReader[];

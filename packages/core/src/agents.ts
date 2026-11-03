@@ -39,8 +39,11 @@ const MAX_META_LABEL_CODE_POINTS = 50;
 
 const TRAILER_PREFIX = "co-authored-by:";
 
-/** A pull request author's login, as GitHub allows it, with the `[bot]` suffix of an App. */
-const LOGIN_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?$/;
+/**
+ * A pull request author's login, as GitHub allows it, with the `[bot]` suffix of an App. The one definition: the Action
+ * reads authors and commit logins with it too (`GITHUB_LOGIN` in acceptLabel.ts is users only, on purpose).
+ */
+export const LOGIN_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?$/;
 /** A GitHub noreply address; the login is group 1. Run only on an e-mail the trailer parser already bounded. */
 const NOREPLY_PATTERN = /^(?:[0-9]+\+)?([^@+]+)@users\.noreply\.github\.com$/i;
 

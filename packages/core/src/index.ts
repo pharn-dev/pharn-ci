@@ -24,6 +24,7 @@ export {
   detectAgentPr,
   KNOWN_AGENTS,
   type KnownAgent,
+  LOGIN_PATTERN,
   parseCoAuthorTrailers,
   withAgentPrMeta,
 } from "./agents.js";

@@ -42,6 +42,7 @@ export interface ReportPolicyViolation {
 
 /** The `policy` object of the report: where the policy came from and what the rules found. */
 export interface ReportPolicy {
+  /** `config` is reserved by the schema and never produced: no policy is read from `.pharn/ci.yml`. */
   source: "app" | "input" | "config" | "none";
   version: number | null;
   fetchedAt?: string;
@@ -75,7 +76,7 @@ export interface ReportTestIntegrity {
    */
   acceptLabel?: string;
   signals: TestIntegritySignal[];
-  /** Which detectors ran. */
+  /** Which detectors ran. `go` is reserved by the schema and never produced: no detector reads Go test text yet. */
   languages: ("ts" | "js" | "py" | "go")[];
   /** The tests the touched test files add, remove, modify or rename; present only when at least one test changed. */
   changes?: ReportTestChanges;
@@ -257,6 +258,8 @@ export interface BuildReportInput {
   diffCoverage: DiffCoverageResult | null;
   /** Threshold that applies even when diff coverage could not be computed. */
   threshold: number | null;
+  /** The pharn-ci config in use, as a repo path (null outside the repo); absent means `.pharn/ci.yml`. */
+  configRepoPath?: string | null;
   /** The format the coverage file was read as; carried into `diffCoverage.format` when given. */
   coverageFormat?: CoverageFormat;
   /** Why diff coverage is missing, when it is. */
@@ -637,7 +640,7 @@ export function buildReport(input: BuildReportInput): Report {
     messages.push({
       level: "warn",
       code: "TEST_INTEGRITY_MODE_IGNORED",
-      text: `.pharn/ci.yml sets test_integrity.mode to ${testIntegrity.ignoredConfig}, which is looser than ${against}, so ${against} applies: the config can only make the check stricter.`,
+      text: `${configName(input.configRepoPath)} sets test_integrity.mode to ${testIntegrity.ignoredConfig}, which is looser than ${against}, so ${against} applies: the config can only make the check stricter.`,
     });
   }
   if (testIntegrity?.mode === "off") {
@@ -848,6 +851,12 @@ function unmatchedText(missing: { total: number; example: string; suggestedRoot:
 const MAX_NAMED_PATHS = 5;
 
 /** The first few paths as code spans joined with `, `, then ` and N more` when there are more. */
+/** The config in use as a message names it: `.pharn/ci.yml` as plain text, any other path as a code span. */
+function configName(path: string | null | undefined): string {
+  if (path === undefined || path === ".pharn/ci.yml") return ".pharn/ci.yml";
+  return path === null ? "The pharn-ci config" : codeSpan(path);
+}
+
 function pathList(paths: readonly string[]): string {
   const named = paths.slice(0, MAX_NAMED_PATHS).map(codeSpan).join(", ");
   const more = paths.length - MAX_NAMED_PATHS;

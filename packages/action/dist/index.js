@@ -155154,9 +155154,9 @@ ${lanes.join("\n")}
       function closeFileWatcherOf(objWithWatcher) {
         objWithWatcher.watcher.close();
       }
-      function findConfigFile(searchPath, fileExists, configName = "tsconfig.json") {
+      function findConfigFile(searchPath, fileExists, configName2 = "tsconfig.json") {
         return forEachAncestorDirectory(searchPath, (ancestor) => {
-          const fileName = combinePaths(ancestor, configName);
+          const fileName = combinePaths(ancestor, configName2);
           return fileExists(fileName) ? fileName : void 0;
         });
       }
@@ -236921,7 +236921,7 @@ function buildReport(input) {
     messages.push({
       level: "warn",
       code: "TEST_INTEGRITY_MODE_IGNORED",
-      text: `.pharn/ci.yml sets test_integrity.mode to ${testIntegrity2.ignoredConfig}, which is looser than ${against}, so ${against} applies: the config can only make the check stricter.`
+      text: `${configName(input.configRepoPath)} sets test_integrity.mode to ${testIntegrity2.ignoredConfig}, which is looser than ${against}, so ${against} applies: the config can only make the check stricter.`
     });
   }
   if (testIntegrity2?.mode === "off") {
@@ -237067,6 +237067,10 @@ function unmatchedText(missing) {
   return `${head} (for example ${codeSpan(missing.example)}), so diff coverage was not measured. ${hint}`;
 }
 var MAX_NAMED_PATHS = 5;
+function configName(path) {
+  if (path === void 0 || path === ".pharn/ci.yml") return ".pharn/ci.yml";
+  return path === null ? "The pharn-ci config" : codeSpan(path);
+}
 function pathList(paths) {
   const named = paths.slice(0, MAX_NAMED_PATHS).map(codeSpan).join(", ");
   const more = paths.length - MAX_NAMED_PATHS;
@@ -237640,6 +237644,7 @@ function parseYamlSubset(text) {
     const match = /^([A-Za-z0-9_-]+|"[^"]*"|'[^']*')\s*:(?:\s+(.*))?$/.exec(content);
     if (!match) throw new ConfigError(`line ${lineNo}: expected "key: value"`);
     const key = unquoteScalarKey(match[1]);
+    if (key === "__proto__") throw new ConfigError(`line ${lineNo}: the key "__proto__" is not allowed`);
     if (Object.hasOwn(top.map, key)) throw new ConfigError(`line ${lineNo}: duplicate key "${key}"`);
     const value = match[2];
     if (value === void 0 || value === "") {
@@ -248177,6 +248182,7 @@ function check(input) {
   const base = {
     version: input.version,
     threshold: input.threshold,
+    ...input.configPath === void 0 ? {} : { configRepoPath: configRepoPath(input.configPath, input.repoRoot) },
     agentSetup,
     requireAgentSetup: input.requireAgentSetup === true,
     ...reportedTools.length > 0 ? { expectedAgentTools: reportedTools } : {},
@@ -249358,7 +249364,7 @@ function hintFor(code2, label) {
   return typeof hint === "function" ? hint(labelSpan(label)) : hint;
 }
 function labelSpan(text) {
-  const safe = text.replace(CONTROL_CHARS, "\uFFFD");
+  const safe = replaceUnsafeChars(text, "\uFFFD");
   const longest = Math.max(0, ...(safe.match(/`+/g) ?? []).map((run2) => run2.length));
   const fence = "`".repeat(longest + 1);
   const pad = /^[` ]|[` ]$/.test(safe) ? " " : "";
@@ -249432,11 +249438,17 @@ function testIntegrityLines(report) {
     }
   }
   const accepted = report.testIntegrity.accepted;
-  if (typeof accepted === "object" && accepted !== null && typeof accepted.label === "string") {
+  if (acceptedShown(report) && typeof accepted === "object" && accepted !== null) {
     const by = typeof accepted.by === "string" && GITHUB_LOGIN.test(accepted.by) ? ` by @${accepted.by}` : "";
     lines.push("", `Accepted via label ${labelSpan(accepted.label)}${by}`);
+    const hint = hintFor("TEST_INTEGRITY_ACCEPTED", label);
+    if (hint !== void 0) lines.push(`- Hint: ${hint}`);
   }
   return lines;
+}
+function acceptedShown(report) {
+  const accepted = report.testIntegrity.accepted;
+  return typeof accepted === "object" && accepted !== null && typeof accepted.label === "string";
 }
 var count = (n) => typeof n === "number" && Number.isSafeInteger(n) && n >= 0 ? n : 0;
 function testChangesLines(report, maxRows) {
@@ -249610,7 +249622,7 @@ function renderMarkdown(report, options = {}) {
   const policyListsP01 = hasPolicy(report) && policyViolationsOf(report).some((v) => v.id === "P01");
   const inPolicySection = (code2) => hasPolicy(report) && (POLICY_RULE_MESSAGE_CODE.test(code2) || code2 === "POLICY_UNAVAILABLE" || code2 === "POLICY_OVERRIDE_IGNORED" || code2 === "POLICY_SETTINGS_INVALID" || policyListsP01 && (code2 === "NO_AGENT_SETUP_FILES" || code2 === "AGENT_SETUP_EXPECTED_MISSING"));
   const messages = report.messages.filter(
-    (m) => !(SIGNAL_MESSAGE_CODE.test(m.code) && listedIds.has(m.code)) && !inPolicySection(m.code)
+    (m) => !(SIGNAL_MESSAGE_CODE.test(m.code) && listedIds.has(m.code)) && !inPolicySection(m.code) && !(m.code === "TEST_INTEGRITY_ACCEPTED" && acceptedShown(report))
   );
   if (messages.length > 0) {
     out.push(`### \u{1F4AC} Messages (${messages.length})`, "");
@@ -249747,14 +249759,13 @@ function rangeParts(lines) {
   }
   return parts;
 }
-var CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069\ufeff]/g;
 function code(path) {
-  const safe = path.replace(CONTROL_CHARS, "\uFFFD").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/`/g, "'");
+  const safe = replaceUnsafeChars(path, "\uFFFD").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/`/g, "'");
   return `\`${safe}\``;
 }
 var MARKDOWN_ACTIVE = /[\\`*_[\]#!|~]/g;
 function inlineText(text) {
-  return text.replace(CONTROL_CHARS, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(MARKDOWN_ACTIVE, "\\$&").replace(/@/g, "@\u200B").replace(/:\/\//g, ":\\/\\/").replace(/(www)\./gi, "$1\\.");
+  return replaceUnsafeChars(text, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(MARKDOWN_ACTIVE, "\\$&").replace(/@/g, "@\u200B").replace(/:\/\//g, ":\\/\\/").replace(/(www)\./gi, "$1\\.");
 }
 
 // ../core/src/secrets/redact.ts
@@ -250180,7 +250191,12 @@ function redactLeaves(root) {
     const node = next;
     for (const key of Object.keys(node)) {
       const value = node[key];
-      if (typeof value === "string") node[key] = redactSecrets(value);
+      const safeKey = Array.isArray(node) ? key : redactSecrets(key);
+      if (safeKey !== key) {
+        delete node[key];
+        node[safeKey] = value;
+      }
+      if (typeof value === "string") node[safeKey] = redactSecrets(value);
       else if (isContainer(value)) stack.push(value);
     }
   }
@@ -250572,9 +250588,12 @@ function localGitArgs(args) {
   }
   return safe;
 }
+function gitEnv() {
+  return { ...process.env, GIT_NO_LAZY_FETCH: "1" };
+}
 async function* streamGit(cwd, gitArgs, timeoutMs = GIT_TIMEOUT_MS) {
   const args = localGitArgs(gitArgs);
-  const child = spawn("git", args, { cwd, stdio: ["pipe", "pipe", "pipe"] });
+  const child = spawn("git", args, { cwd, stdio: ["pipe", "pipe", "pipe"], env: gitEnv() });
   let stderr = "";
   let timedOut = false;
   child.stdin.on("error", () => {
@@ -250614,7 +250633,7 @@ function runGit(cwd, gitArgs, timeoutMs = GIT_TIMEOUT_MS) {
     execFile(
       "git",
       args,
-      { cwd, maxBuffer: 256 * 1024 * 1024, encoding: "utf8", timeout: timeoutMs },
+      { cwd, maxBuffer: 256 * 1024 * 1024, encoding: "utf8", timeout: timeoutMs, env: gitEnv() },
       (err, stdout, stderr) => {
         if (err?.killed) fail2(new Error(`git ${args[0] ?? ""} timed out after ${timeoutMs / 1e3} s`));
         else if (err) fail2(new Error(stderr || err.message));
@@ -250640,7 +250659,7 @@ function runGitBatch(cwd, gitArgs, input, timeoutMs = GIT_TIMEOUT_MS) {
         maxBuffer: GIT_BATCH_MAX_BUFFER,
         encoding: "buffer",
         timeout: timeoutMs,
-        env: { ...process.env, GIT_NO_LAZY_FETCH: "1" }
+        env: gitEnv()
       },
       (err, stdout, stderr) => {
         if (err?.killed) fail2(new Error(`git ${args[0] ?? ""} timed out after ${timeoutMs / 1e3} s`));
@@ -251734,7 +251753,6 @@ async function readEvents(deps, pullNumber) {
 var MAX_COMMIT_PAGES = 3;
 var MAX_PR_COMMITS = 250;
 var MAX_MESSAGE_UNITS2 = 65536;
-var LOGIN_PATTERN2 = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?$/;
 async function gatherAgentPrFacts(deps, target) {
   const payloadPr = deps.context.payload.pull_request;
   if (payloadPr === void 0 && target === void 0) return { pr: null };
@@ -251776,7 +251794,7 @@ async function gatherAgentPrFacts(deps, target) {
 function authorOf(user) {
   if (typeof user !== "object" || user === null) return null;
   const { login, type } = user;
-  if (typeof login !== "string" || !LOGIN_PATTERN2.test(login)) return null;
+  if (typeof login !== "string" || !LOGIN_PATTERN.test(login)) return null;
   if (type !== "User" && type !== "Bot" && type !== "Organization") return null;
   return { login, type };
 }
@@ -251792,7 +251810,7 @@ function labelsOf(labels) {
 function loginOf2(user) {
   if (typeof user !== "object" || user === null) return null;
   const login = user.login;
-  return typeof login === "string" && LOGIN_PATTERN2.test(login) ? login : null;
+  return typeof login === "string" && LOGIN_PATTERN.test(login) ? login : null;
 }
 async function listCommits(deps, number) {
   const commits = [];

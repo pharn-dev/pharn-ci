@@ -3,6 +3,7 @@ import type { CoverageFormat } from "../coverage/types.js";
 import type { PolicyUnavailableReason } from "../policy/resolved.js";
 import { formatNumber, type Message, type MessageCode, type Report, type ReportPolicyViolation } from "../report.js";
 import { summarizeAgentSetup } from "../setup/summary.js";
+import { replaceUnsafeChars } from "../text.js";
 import { logoMarkup } from "./logo.js";
 
 export interface RenderMarkdownOptions {
@@ -176,7 +177,7 @@ function hintFor(code: string, label: string): string | undefined {
  * the text starts or ends with a backtick or a space (CommonMark strips one from each side).
  */
 function labelSpan(text: string): string {
-  const safe = text.replace(CONTROL_CHARS, "�");
+  const safe = replaceUnsafeChars(text, "�");
   const longest = Math.max(0, ...(safe.match(/`+/g) ?? []).map((run) => run.length));
   const fence = "`".repeat(longest + 1);
   const pad = /^[` ]|[` ]$/.test(safe) ? " " : "";
@@ -277,14 +278,23 @@ function testIntegrityLines(report: Report): string[] {
     }
   }
   const accepted = report.testIntegrity.accepted;
-  if (typeof accepted === "object" && accepted !== null && typeof accepted.label === "string") {
+  if (acceptedShown(report) && typeof accepted === "object" && accepted !== null) {
     // The login is shown only when it has the shape of one; anything else (an older or another producer's report)
     // leaves the line without a name rather than printing free text.
     const by = typeof accepted.by === "string" && GITHUB_LOGIN.test(accepted.by) ? ` by @${accepted.by}` : "";
     // A blank line first: right after a list item, the text would read as a continuation of its hint.
     lines.push("", `Accepted via label ${labelSpan(accepted.label)}${by}`);
+    // The TEST_INTEGRITY_ACCEPTED message says the same, so Messages leaves it out and its hint is shown here.
+    const hint = hintFor("TEST_INTEGRITY_ACCEPTED", label);
+    if (hint !== undefined) lines.push(`- Hint: ${hint}`);
   }
   return lines;
+}
+
+/** Whether the Test integrity section shows the accepted line (a report with an accept label that has a label). */
+function acceptedShown(report: Report): boolean {
+  const accepted = report.testIntegrity.accepted;
+  return typeof accepted === "object" && accepted !== null && typeof accepted.label === "string";
 }
 
 /** A count cell: a safe non-negative integer, else 0, so a hostile cell in a hand-built report renders as 0. */
@@ -517,7 +527,10 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
       code === "POLICY_SETTINGS_INVALID" ||
       (policyListsP01 && (code === "NO_AGENT_SETUP_FILES" || code === "AGENT_SETUP_EXPECTED_MISSING")));
   const messages = report.messages.filter(
-    (m) => !(SIGNAL_MESSAGE_CODE.test(m.code) && listedIds.has(m.code)) && !inPolicySection(m.code),
+    (m) =>
+      !(SIGNAL_MESSAGE_CODE.test(m.code) && listedIds.has(m.code)) &&
+      !inPolicySection(m.code) &&
+      !(m.code === "TEST_INTEGRITY_ACCEPTED" && acceptedShown(report)),
   );
   if (messages.length > 0) {
     out.push(`### 💬 Messages (${messages.length})`, "");
@@ -700,12 +713,11 @@ function rangeParts(lines: readonly number[]): string[] {
 // Control characters, line and paragraph separators, and the invisible format characters that reorder or hide text
 // (zero-width marks, bidirectional overrides and isolates, the byte order mark): each becomes U+FFFD.
 // biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point.
-const CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069\ufeff]/g;
 
 function code(path: string): string {
   // Pipes would break the table; backticks would break the code span. Backslashes are escaped first,
   // so a name ending in "\" cannot turn the following "\|" into "\\" plus a real cell separator.
-  const safe = path.replace(CONTROL_CHARS, "\uFFFD").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/`/g, "'");
+  const safe = replaceUnsafeChars(path, "\uFFFD").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/`/g, "'");
   return `\`${safe}\``;
 }
 
@@ -718,8 +730,7 @@ const MARKDOWN_ACTIVE = /[\\`*_[\]#!|~]/g;
 
 /** Message text on one line, with HTML, markdown, mentions and autolinks neutralized. */
 function inlineText(text: string): string {
-  return text
-    .replace(CONTROL_CHARS, " ")
+  return replaceUnsafeChars(text, " ")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
