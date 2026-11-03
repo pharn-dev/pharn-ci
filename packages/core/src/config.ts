@@ -3,6 +3,7 @@ import { hasGlobSyntax } from "./glob.js";
 import { isAbsolutePath } from "./paths.js";
 import type { TestIntegrityMode } from "./report.js";
 import { AGENT_TOOLS, type AgentTool } from "./setup/summary.js";
+import { findComment } from "./signals/yamlLines.js";
 import { isTestIntegrityMode, testIntegrityModeError } from "./testIntegrityMode.js";
 
 /** Shape of `.pharn/ci.yml`. Every field is optional; CLI/Action inputs override it. */
@@ -77,7 +78,7 @@ export function parseYamlSubset(text: string): YamlMap {
     const lineNo = i + 1;
     // trimEnd, not /\s+$/: the regex is quadratic on a long run of inner whitespace, and the
     // config file comes from the PR.
-    const raw = stripComment(lines[i] as string).trimEnd();
+    const raw = stripComment(lines[i] as string, lineNo).trimEnd();
     if (raw.trim() === "") continue;
     if (raw.trim() === "---" && i === 0) continue;
     if (/^\s*\t/.test(raw)) {
@@ -156,19 +157,20 @@ function recordNumberText(map: YamlMap, key: string, text: string): void {
   texts.set(key, text);
 }
 
-function stripComment(line: string): string {
-  let quote: string | null = null;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (quote) {
-      if (ch === quote) quote = null;
-    } else if (ch === '"' || ch === "'") {
-      quote = ch;
-    } else if (ch === "#" && (i === 0 || /\s/.test(line[i - 1] as string))) {
-      return line.slice(0, i);
-    }
+/**
+ * The line without its `# comment`, by the YAML rule the test-integrity readers use (`findComment`). A `#` that
+ * follows a Unicode space YAML does not count (U+00A0, U+3000, ...) is an error, not text: `threshold: 50<U+00A0># x`
+ * would otherwise be read here as one value and by TI14 as another.
+ */
+function stripComment(line: string, lineNo: number): string {
+  const { start, lookalike } = findComment(line);
+  if (lookalike !== -1) {
+    const code = (line.codePointAt(lookalike - 1) as number).toString(16).toUpperCase().padStart(4, "0");
+    throw new ConfigError(
+      `line ${lineNo}: a "#" comment must follow a space or a tab, not U+${code}; replace the character before "#" with a space`,
+    );
   }
-  return line;
+  return start === -1 ? line : line.slice(0, start);
 }
 
 function unquoteScalarKey(key: string): string {

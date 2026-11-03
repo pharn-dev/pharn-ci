@@ -237455,6 +237455,97 @@ function isDriveRoot(root) {
   return first >= "A" && first <= "Z" && root.charAt(1) === ":" && root.charAt(2) === "/";
 }
 
+// ../core/src/signals/yamlLines.ts
+var MAX_LINE = 400;
+function findComment(line) {
+  let quote = null;
+  let lookalike = -1;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (quote !== null) {
+      if (ch === quote) quote = null;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === "#") {
+      const before = line[i - 1];
+      if (before === void 0 || before === " " || before === "	") return { start: i, lookalike };
+      if (lookalike === -1 && /\s/.test(before)) lookalike = i;
+    }
+  }
+  return { start: -1, lookalike };
+}
+function stripComment(line) {
+  const text = line.slice(0, MAX_LINE);
+  const { start } = findComment(text);
+  return (start === -1 ? text : text.slice(0, start)).trim();
+}
+function unquote2(value) {
+  const text = value.trim();
+  if (text.length >= 2) {
+    const first = text[0];
+    if ((first === '"' || first === "'") && text[text.length - 1] === first) return text.slice(1, -1).trim();
+  }
+  return text;
+}
+function scalarText(value) {
+  const text = value.trim();
+  if (text.length >= 2 && text.startsWith('"') && text.endsWith('"')) {
+    try {
+      const decoded = JSON.parse(text);
+      return typeof decoded === "string" ? decoded.trim() : text;
+    } catch {
+      return text;
+    }
+  }
+  if (text.length >= 2 && text.startsWith("'") && text.endsWith("'"))
+    return text.slice(1, -1).replace(/''/g, "'").trim();
+  return text;
+}
+function indentOf(line) {
+  let n = 0;
+  while (n < line.length && line[n] === " ") n++;
+  return n;
+}
+function keyValue(line) {
+  const text = stripComment(line);
+  const match = /^(-\s+)?([A-Za-z0-9_.-]+|"[^"]*"|'[^']*')\s*:(?:\s+(.*))?$/.exec(text);
+  if (match === null) return null;
+  const rawKey = match[2];
+  return {
+    key: rawKey.startsWith('"') || rawKey.startsWith("'") ? rawKey.slice(1, -1) : rawKey,
+    value: (match[3] ?? "").trim(),
+    indent: indentOf(line) + (match[1] === void 0 ? 0 : match[1].length)
+  };
+}
+function listItem(line) {
+  const text = stripComment(line);
+  if (!/^-\s+\S/.test(text)) return null;
+  return unquote2(text.slice(1));
+}
+function flowItems(value) {
+  const text = value.trim();
+  if (!text.startsWith("[") || !text.endsWith("]")) return null;
+  const items = [];
+  let current = "";
+  let quote = null;
+  for (const ch of text.slice(1, -1)) {
+    if (quote !== null) {
+      current += ch;
+      if (ch === quote) quote = null;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+      current += ch;
+    } else if (ch === ",") {
+      items.push(unquote2(current));
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  items.push(unquote2(current));
+  return items.filter((item) => item !== "");
+}
+
 // ../core/src/testIntegrityMode.ts
 var TEST_INTEGRITY_MODES = ["block", "warn", "off"];
 var STRICTNESS = { off: 0, warn: 1, block: 2 };
@@ -237510,7 +237601,7 @@ function parseYamlSubset(text) {
   const lines = text.replace(/^﻿/, "").split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
     const lineNo = i + 1;
-    const raw = stripComment(lines[i]).trimEnd();
+    const raw = stripComment2(lines[i], lineNo).trimEnd();
     if (raw.trim() === "") continue;
     if (raw.trim() === "---" && i === 0) continue;
     if (/^\s*\t/.test(raw)) {
@@ -237576,19 +237667,15 @@ function recordNumberText(map, key, text) {
   }
   texts.set(key, text);
 }
-function stripComment(line) {
-  let quote = null;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (quote) {
-      if (ch === quote) quote = null;
-    } else if (ch === '"' || ch === "'") {
-      quote = ch;
-    } else if (ch === "#" && (i === 0 || /\s/.test(line[i - 1]))) {
-      return line.slice(0, i);
-    }
+function stripComment2(line, lineNo) {
+  const { start, lookalike } = findComment(line);
+  if (lookalike !== -1) {
+    const code2 = line.codePointAt(lookalike - 1).toString(16).toUpperCase().padStart(4, "0");
+    throw new ConfigError(
+      `line ${lineNo}: a "#" comment must follow a space or a tab, not U+${code2}; replace the character before "#" with a space`
+    );
   }
-  return line;
+  return start === -1 ? line : line.slice(0, start);
 }
 function unquoteScalarKey(key) {
   return /^["']/.test(key) ? key.slice(1, -1) : key;
@@ -243606,7 +243693,7 @@ function lowerBound(sorted, value) {
   }
   return lo;
 }
-var indentOf = (text) => text.length - text.trimStart().length;
+var indentOf2 = (text) => text.length - text.trimStart().length;
 var fits = (parsed, target) => parsed.kind === "call" || (target === UNCONDITIONAL ? !parsed.conditional : parsed.conditional);
 function detectTI03Pairs(input) {
   const groups = { base: /* @__PURE__ */ new Map(), head: /* @__PURE__ */ new Map() };
@@ -243654,12 +243741,12 @@ function detectTI03Pairs(input) {
     const take = (line) => {
       if (best === null || line < best) best = line;
     };
-    const indent = indentOf(text[carrier.line - 1] ?? "");
+    const indent = indentOf2(text[carrier.line - 1] ?? "");
     for (let k = carrier.line - 1; k >= 1; k--) {
       const line = text[k - 1] ?? "";
       const trimmed = line.trimStart();
       if (trimmed === "" || trimmed.startsWith("#")) continue;
-      const own = indentOf(line);
+      const own = indentOf2(line);
       if (own > indent) continue;
       if (own < indent || !trimmed.startsWith("@")) break;
       if (!isAdded(k)) continue;
@@ -246139,90 +246226,6 @@ function readToml(text) {
   return { ok: true, root: { type: "object", entries, open: false, extras: [] } };
 }
 
-// ../core/src/signals/yamlLines.ts
-var MAX_LINE = 400;
-function stripComment2(line) {
-  const text = line.slice(0, MAX_LINE);
-  let quote = null;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (quote !== null) {
-      if (ch === quote) quote = null;
-    } else if (ch === '"' || ch === "'") {
-      quote = ch;
-    } else if (ch === "#" && (i === 0 || text[i - 1] === " " || text[i - 1] === "	")) {
-      return text.slice(0, i).trim();
-    }
-  }
-  return text.trim();
-}
-function unquote2(value) {
-  const text = value.trim();
-  if (text.length >= 2) {
-    const first = text[0];
-    if ((first === '"' || first === "'") && text[text.length - 1] === first) return text.slice(1, -1).trim();
-  }
-  return text;
-}
-function scalarText(value) {
-  const text = value.trim();
-  if (text.length >= 2 && text.startsWith('"') && text.endsWith('"')) {
-    try {
-      const decoded = JSON.parse(text);
-      return typeof decoded === "string" ? decoded.trim() : text;
-    } catch {
-      return text;
-    }
-  }
-  if (text.length >= 2 && text.startsWith("'") && text.endsWith("'"))
-    return text.slice(1, -1).replace(/''/g, "'").trim();
-  return text;
-}
-function indentOf2(line) {
-  let n = 0;
-  while (n < line.length && line[n] === " ") n++;
-  return n;
-}
-function keyValue(line) {
-  const text = stripComment2(line);
-  const match = /^(-\s+)?([A-Za-z0-9_.-]+|"[^"]*"|'[^']*')\s*:(?:\s+(.*))?$/.exec(text);
-  if (match === null) return null;
-  const rawKey = match[2];
-  return {
-    key: rawKey.startsWith('"') || rawKey.startsWith("'") ? rawKey.slice(1, -1) : rawKey,
-    value: (match[3] ?? "").trim(),
-    indent: indentOf2(line) + (match[1] === void 0 ? 0 : match[1].length)
-  };
-}
-function listItem(line) {
-  const text = stripComment2(line);
-  if (!/^-\s+\S/.test(text)) return null;
-  return unquote2(text.slice(1));
-}
-function flowItems(value) {
-  const text = value.trim();
-  if (!text.startsWith("[") || !text.endsWith("]")) return null;
-  const items = [];
-  let current = "";
-  let quote = null;
-  for (const ch of text.slice(1, -1)) {
-    if (quote !== null) {
-      current += ch;
-      if (ch === quote) quote = null;
-    } else if (ch === '"' || ch === "'") {
-      quote = ch;
-      current += ch;
-    } else if (ch === ",") {
-      items.push(unquote2(current));
-      current = "";
-    } else {
-      current += ch;
-    }
-  }
-  items.push(unquote2(current));
-  return items.filter((item) => item !== "");
-}
-
 // ../core/src/testConfig/readYaml.ts
 function plain(text) {
   if (/^(?:true|True|TRUE)$/.test(text)) return { type: "boolean", value: true };
@@ -246241,7 +246244,7 @@ function inlineValue(text) {
   if (/^[{|>&*!%@`]/.test(trimmed)) return { type: "opaque", text: trimmed };
   return plain(trimmed);
 }
-var isIndented = (line) => indentOf2(line) > 0 || line.startsWith("	");
+var isIndented = (line) => indentOf(line) > 0 || line.startsWith("	");
 function readYaml(text) {
   if (text.length > MAX_CONFIG_CHARS) return { ok: false, reason: "too-large" };
   const lines = text.split(/\r\n|\r|\n/);
@@ -246249,7 +246252,7 @@ function readYaml(text) {
   let i = 0;
   while (i < lines.length) {
     const raw = lines[i];
-    const stripped = stripComment2(raw);
+    const stripped = stripComment(raw);
     if (stripped === "" || stripped === "---" || stripped === "...") {
       i++;
       continue;
@@ -246261,7 +246264,7 @@ function readYaml(text) {
     let j = i + 1;
     while (j < lines.length) {
       const next = lines[j];
-      const nextStripped = stripComment2(next);
+      const nextStripped = stripComment(next);
       if (nextStripped === "") {
         j++;
       } else if (isIndented(next) || pair.value === "" && nextStripped.startsWith("-")) {
@@ -246273,12 +246276,12 @@ function readYaml(text) {
     }
     let value;
     if (pair.value !== "") {
-      value = children.length === 0 ? inlineValue(pair.value) : { type: "opaque", text: [pair.value, ...children.map((child) => stripComment2(child))].join(" ") };
+      value = children.length === 0 ? inlineValue(pair.value) : { type: "opaque", text: [pair.value, ...children.map((child) => stripComment(child))].join(" ") };
     } else if (children.length === 0) {
       value = { type: "null" };
     } else {
       const items = children.map((child) => listItem(child));
-      value = items.every((item) => item !== null) ? { type: "array", items: items.map(plain) } : { type: "opaque", text: children.map((child) => stripComment2(child)).join(" ") };
+      value = items.every((item) => item !== null) ? { type: "array", items: items.map(plain) } : { type: "opaque", text: children.map((child) => stripComment(child)).join(" ") };
     }
     entries.set(pair.key, { value, line: i + 1 });
     i = j;
@@ -247073,7 +247076,7 @@ var NOT_A_MATRIX_KEY = /* @__PURE__ */ new Set([
 ]);
 var PULL_REQUEST_TOKEN = /(?<![\w-])pull_request(?:_target)?(?![\w-])/;
 function commandText(line) {
-  const text = stripComment2(line).replace(/^-\s+/, "").replace(/^run\s*:\s*/, "");
+  const text = stripComment(line).replace(/^-\s+/, "").replace(/^run\s*:\s*/, "");
   return text.replace(/\s+/g, " ").trim();
 }
 var PM_PLAIN_FLAGS = /* @__PURE__ */ new Set([
@@ -247153,7 +247156,7 @@ function testKeysOf(line) {
   return text.split(/\s*(?:&&|;)\s*/).filter((part) => TEST_COMMAND.test(part)).map(keyOf2);
 }
 function carriesPullRequestTrigger(line) {
-  const text = stripComment2(line);
+  const text = stripComment(line);
   if (/^['"]?pull_request(?:_target)?['"]?\s*:/.test(text)) return true;
   if (/^-\s+['"]?pull_request(?:_target)?['"]?$/.test(text)) return true;
   const on = /^(?:on|"on"|'on')\s*:\s*(.+)$/.exec(text);
@@ -247485,7 +247488,7 @@ function addedExclusions(hunks, known2) {
         if (flow !== null) for (const value of flow) found.push({ value, line: entry.line });
         else if (kv.value === "") owner = { indent: kv.indent };
       } else if (item !== null) {
-        if (owner !== null && consecutive && indentOf2(entry.text) >= owner.indent) {
+        if (owner !== null && consecutive && indentOf(entry.text) >= owner.indent) {
           found.push({ value: item, line: entry.line });
         } else if (known2.has(normalizedPattern(item))) {
           found.push({ value: item, line: entry.line });
@@ -247525,6 +247528,7 @@ function detectTI14(diff, options) {
     const path = file.path === config ? file.path : file.oldPath;
     const removedNumbers = [];
     const addedNumbers = [];
+    let lastAdded;
     let addedThresholdLine = false;
     for (const hunk of file.hunks) {
       for (const entry of hunk.removed) {
@@ -247535,6 +247539,7 @@ function detectTI14(diff, options) {
         const value = thresholdOf(entry.text);
         if (value === null) continue;
         addedThresholdLine = true;
+        lastAdded = { value, line: entry.line };
         if (value !== "") addedNumbers.push({ value, line: entry.line });
       }
     }
@@ -247547,6 +247552,14 @@ function detectTI14(diff, options) {
         path,
         line: after.line,
         detail: `Coverage threshold lowered from ${before.value} to ${after.value}.`
+      });
+    } else if (before !== void 0 && lastAdded !== void 0 && lastAdded.value === "") {
+      signals.push({
+        id: "TI14",
+        severity: options.mode,
+        path,
+        line: lastAdded.line,
+        detail: `Coverage threshold changed from ${before.value} to a value this check cannot compare.`
       });
     } else if (before !== void 0 && !addedThresholdLine) {
       signals.push({

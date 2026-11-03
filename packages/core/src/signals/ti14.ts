@@ -101,8 +101,8 @@ function removedValues(hunks: ReadonlyArray<{ removed: DiffLineText[] }>): Set<s
 
 /**
  * TI14, the diff-coverage exclusions widened or the threshold lowered in the pharn-ci config in use. It reads only the
- * added and removed lines of that file. A `threshold:` line removed with a smaller one added, or removed with none
- * added (a deleted or renamed-away config included), is one finding; an exclusion pattern the base did not have (an
+ * added and removed lines of that file. A `threshold:` line removed with a smaller one added, with one whose value it
+ * cannot read as a plain number, or with none added (a deleted or renamed-away config included), is one finding; an exclusion pattern the base did not have (an
  * `exclude: [..]` flow list, block items after an added `exclude:` key, or an added list item that is one of the
  * patterns the check was given) is another. Both take the effective mode as their severity. One signal per rule, on its
  * first matching line; the detail is a fixed sentence plus, for the threshold, the two numbers.
@@ -120,6 +120,8 @@ export function detectTI14(diff: readonly DiffFile[], options: TI14Options): Tes
 
     const removedNumbers: Array<{ value: string; line: number }> = [];
     const addedNumbers: Array<{ value: string; line: number }> = [];
+    // The last added `threshold:` line, read or not: the config keeps the last value it reads.
+    let lastAdded: { value: string; line: number } | undefined;
     let addedThresholdLine = false;
     for (const hunk of file.hunks) {
       for (const entry of hunk.removed) {
@@ -130,6 +132,7 @@ export function detectTI14(diff: readonly DiffFile[], options: TI14Options): Tes
         const value = thresholdOf(entry.text);
         if (value === null) continue;
         addedThresholdLine = true;
+        lastAdded = { value, line: entry.line };
         if (value !== "") addedNumbers.push({ value, line: entry.line });
       }
     }
@@ -142,6 +145,16 @@ export function detectTI14(diff: readonly DiffFile[], options: TI14Options): Tes
         path,
         line: after.line,
         detail: `Coverage threshold lowered from ${before.value} to ${after.value}.`,
+      });
+    } else if (before !== undefined && lastAdded !== undefined && lastAdded.value === "") {
+      // A threshold replaced by a value this line reader cannot compare (cut at the kept-line cap, an empty value, a
+      // form it does not read) fails closed: the config may still read it as a lower number.
+      signals.push({
+        id: "TI14",
+        severity: options.mode,
+        path,
+        line: lastAdded.line,
+        detail: `Coverage threshold changed from ${before.value} to a value this check cannot compare.`,
       });
     } else if (before !== undefined && !addedThresholdLine) {
       signals.push({

@@ -94,6 +94,14 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Security
 
+- A pull request can no longer lower the coverage threshold past TI14 by putting a Unicode space before the comment
+  (`threshold: 50<U+00A0># lowered`): the config reader opened a comment after any `\s` character and set the gate
+  to 50, while TI14 read the line by YAML's rule (space or tab only), saw no number and stayed silent. Both now share
+  one comment rule (`findComment`), and the config refuses a `#` that follows any other space, with an error naming
+  the character. TI14 also fails closed when a removed threshold is replaced by a value it cannot read as a plain
+  number, such as one padded past the 400-character kept-line cap. A config that relied on such a space before `#`
+  now fails with that error; replace the character with a space.
+
 - The undici bundled into the Action moves from 6.29.0 to 6.29.1 (review HIGH 6). It carries every GitHub API request
   and the OIDC token request, and 6.29.0 has three high and two moderate advisories (GHSA-xjj6-f33q-929c,
   GHSA-2m5v-pch6-74hx, GHSA-qrxm-fqhp-jwvm, GHSA-4qv8-2p9j-2685, GHSA-9fm3-97px-rjf6). It is a lockfile-only change

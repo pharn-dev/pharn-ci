@@ -111,7 +111,13 @@ TI14 reads the added and removed lines of the pharn-ci config in use, one line a
 - **Threshold by line.** Only a plain decimal number on a `threshold:` line counts, read as the config reads it:
   the key and the value may be quoted, a double-quoted value is decoded (`"\u0037\u0030"` is 70), and any number of
   decimals is read. A value moved onto another key, and a threshold set by the workflow input (which beats the config
-  and is out of the diff's reach) are not seen. A config renamed with no edits shows no lines.
+  and is out of the diff's reach) are not seen. A config renamed with no edits shows no lines. A removed threshold
+  whose replacement the line cannot be read as a plain number (an empty value, a value padded past the 400-character
+  kept-line cap) is a finding too: TI14 fails closed rather than guess what the config read.
+- **One comment rule.** TI14 and the config reader end a value at the same `#`: one that starts the line or follows a
+  space or a tab, as YAML says. A `#` after any other Unicode space (U+00A0, U+3000, U+FEFF, ...) is not a comment
+  to YAML, and the config refuses it with an error naming the character, so `threshold: 50<U+00A0># lowered` can no
+  longer set a gate TI14 does not see.
 - **Any new pattern counts.** An exclusion that swaps one generated directory for another is reported like one that
   hides source; the finding is a prompt for a reviewer, and the exclusion's pattern is not judged.
 - **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8). A diff that reaches

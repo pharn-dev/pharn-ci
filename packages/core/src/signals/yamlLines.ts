@@ -1,21 +1,37 @@
 /** Longest part of one line the helpers read; the diff reader already cuts kept lines at this length. */
 const MAX_LINE = 400;
 
-/** The line without a trailing `# comment` (a `#` outside quotes that starts the line or follows a space), trimmed. */
-export function stripComment(line: string): string {
-  const text = line.slice(0, MAX_LINE);
+/**
+ * Where a YAML comment starts on one line: the first `#` outside quotes that starts the line or follows a space or a
+ * tab (YAML's only white space; a Unicode space such as U+00A0 is text). `start` is its index, -1 when there is none.
+ * `lookalike` is the index of the first `#` before it that follows any other `\s` character (a no-break space, an
+ * ideographic space, U+FEFF), -1 when there is none: text to YAML, but easy to read as a comment. This is the one
+ * comment rule: the pharn-ci config reader and the test-integrity readers both call it, so they cannot disagree on
+ * where a value ends.
+ */
+export function findComment(line: string): { start: number; lookalike: number } {
   let quote: string | null = null;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
+  let lookalike = -1;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
     if (quote !== null) {
       if (ch === quote) quote = null;
     } else if (ch === '"' || ch === "'") {
       quote = ch;
-    } else if (ch === "#" && (i === 0 || text[i - 1] === " " || text[i - 1] === "\t")) {
-      return text.slice(0, i).trim();
+    } else if (ch === "#") {
+      const before = line[i - 1];
+      if (before === undefined || before === " " || before === "\t") return { start: i, lookalike };
+      if (lookalike === -1 && /\s/.test(before)) lookalike = i;
     }
   }
-  return text.trim();
+  return { start: -1, lookalike };
+}
+
+/** The line without a trailing `# comment` (see `findComment`), cut at `MAX_LINE` and trimmed. */
+export function stripComment(line: string): string {
+  const text = line.slice(0, MAX_LINE);
+  const { start } = findComment(text);
+  return (start === -1 ? text : text.slice(0, start)).trim();
 }
 
 /** A scalar without one pair of matching surrounding quotes, trimmed. */
