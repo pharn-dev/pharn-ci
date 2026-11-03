@@ -162,6 +162,8 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   that equals its base now exits 1.
 - The PR comment and the job summary show a 20-cell bar of the diff-coverage percentage (`▰` covered, `▱` not)
   above the "**N%** of changed lines covered" line. No schema change.
+- The TI03 hint leads with the fix, as the other block hints do: "Remove the skip so the test runs again, or say in
+  the PR why it must stay", then the accept label (review 2026-11-01, A4-F5).
 
 ### Security
 

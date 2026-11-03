@@ -114,6 +114,10 @@ describe("the TI03, TI10 and TI13 hints name the accept label", () => {
         for (const word of KEPT_WORDS[id] ?? []) expect(hint, `${id} ${word}`).toMatch(word);
       }
     }
+    // The TI03 hint leads with the fix, as the other block hints do, then the accept label (review 2026-11-01, A4-F5).
+    for (const hint of [...hintsOf(custom, "TI03"), ...hintsOf(plain, "TI03")]) {
+      expect(hint.startsWith("  - Hint: Remove the skip"), hint).toBe(true);
+    }
 
     // A label holding a backtick, an HTML comment opener, an at-mention and a pipe: every line holding it is one
     // line with the label inside a single code span.
