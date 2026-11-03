@@ -5,6 +5,7 @@ import { createGitHubApi } from "./api.js";
 import { createNodeIo } from "./node-io.js";
 import { withRequestPolicy } from "./request-policy.js";
 import { run } from "./run.js";
+import { vendoredTypeScriptFailure } from "./vendored-typescript.js";
 
 const workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
 // Built lazily: a run that needs no API call (comment: false, local diff) needs no token.
@@ -36,4 +37,6 @@ await run({
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   // RUNNER_DEBUG=1: a run (or re-run) with debug logging, where an internal upload error fails the step (upload.ts).
   debug: core.isDebug(),
+  // The vendored TypeScript parser, loaded on the first parse of a test file: a failed load fails the step (run.ts).
+  parserLoadFailure: vendoredTypeScriptFailure,
 });

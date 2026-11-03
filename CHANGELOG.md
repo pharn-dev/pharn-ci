@@ -17,6 +17,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- The Action's `packages/action/dist/index.js` shrinks from about 11.7 MB to about 1.7 MB: the TypeScript parser no
+  longer sits inside it. `scripts/bundle.mjs` copies `typescript@5.9.3`'s `lib/typescript.js` byte for byte beside the
+  bundle as `packages/action/dist/typescript.js` (9.1 MB, the dist's second committed file), and the Action loads it
+  only when a pull request makes it parse a test file or test config, after checking its sha256 against a pin in
+  `packages/action/src/vendored-typescript-pin.ts`. A file that does not match the pin fails the step with an error
+  naming the file and both hashes, and nothing is reported. A run that parses no test file never reads it. The CLI
+  still inlines the parser. No schema change and no new message code. See `docs/THREAT-MODEL.md`, G1.
 - The Action's `run.ts` items of the 2026-11-01 review. No schema change and no new message code.
   - A PR comment or job summary cut as a last resort (the messages alone over the limit) now closes every collapsed
     `<details>` section it cuts into before the truncation note, so the note is no longer hidden inside it (37).

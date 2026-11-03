@@ -2,4 +2,7 @@
 # statistics) but deliberately NOT linguist-generated: generated files are collapsed in PR diffs, and
 # review of the dist diff is the backstop named in docs/THREAT-MODEL.md (G1).
 packages/action/dist/** linguist-generated=false linguist-vendored=true
+# packages/action/dist/typescript.js is pinned by sha256 (packages/action/src/vendored-typescript-pin.ts): a checkout with
+# core.autocrlf=true would turn its LF endings into CRLF and the pin would refuse the file.
+packages/action/dist/typescript.js -text
 fixtures/** -text

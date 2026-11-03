@@ -5,6 +5,9 @@
   "license": "Apache-2.0",
   "private": true,
   "type": "module",
+  "pharnBundle": {
+    "typescript5": "src/vendored-typescript.ts"
+  },
   "scripts": {
     "build": "tsc --noEmit && node ../../scripts/bundle.mjs src/index.ts dist/index.js",
     "typecheck": "tsc --noEmit"

@@ -9,7 +9,8 @@ import { describe, expect, it } from "vitest";
 // The committed action dist is read, and a fresh bundle of packages/action/src/index.ts is made with
 // scripts/bundle.mjs into a temp directory, inside the test body: the AC test is written before the build rebuilds the
 // dist with TI01's new same-stem details. The freshness check is the one CI runs in spirit (`pnpm build`, then no diff
-// under packages/action/dist): the committed dist must be byte-identical to a fresh bundle of the sources.
+// under packages/action/dist): the committed dist must be byte-identical to a fresh bundle of the sources, and so must
+// its second file, typescript.js, which the bundler copies beside the bundle (action-bundle-size).
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const DETAILS = [
@@ -32,6 +33,10 @@ describe("the committed action dist carries the same-stem details and is fresh",
         cwd: join(ROOT, "packages/action"),
       });
       expect(sha256(committed), "the committed dist is a fresh bundle").toBe(sha256(readFileSync(outfile, "utf8")));
+      expect(
+        sha256(readFileSync(join(ROOT, "packages/action/dist/typescript.js"))),
+        "the committed typescript.js is the one a fresh bundle writes",
+      ).toBe(sha256(readFileSync(join(out, "typescript.js"))));
     } finally {
       rmSync(out, { recursive: true, force: true });
     }

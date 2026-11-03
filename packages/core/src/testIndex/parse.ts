@@ -1,12 +1,30 @@
 import ts from "typescript5";
 import type { TestScriptKind } from "./scriptKind.js";
 
-const KIND: Record<TestScriptKind, { scriptKind: ts.ScriptKind; fileName: string }> = {
-  ts: { scriptKind: ts.ScriptKind.TS, fileName: "index.ts" },
-  tsx: { scriptKind: ts.ScriptKind.TSX, fileName: "index.tsx" },
-  js: { scriptKind: ts.ScriptKind.JS, fileName: "index.js" },
-  jsx: { scriptKind: ts.ScriptKind.JSX, fileName: "index.jsx" },
+const FILE_NAME: Record<TestScriptKind, string> = {
+  ts: "index.ts",
+  tsx: "index.tsx",
+  js: "index.js",
+  jsx: "index.jsx",
 };
+
+/**
+ * The parser's script kind for ours. A function, not a module-level table: reading `ts.ScriptKind` at module
+ * evaluation would load TypeScript as soon as this module is imported, and the Action's bundle loads it lazily, on the
+ * first parse of a test file or test config (packages/action/src/vendored-typescript.ts).
+ */
+function tsScriptKind(kind: TestScriptKind): ts.ScriptKind {
+  switch (kind) {
+    case "ts":
+      return ts.ScriptKind.TS;
+    case "tsx":
+      return ts.ScriptKind.TSX;
+    case "js":
+      return ts.ScriptKind.JS;
+    case "jsx":
+      return ts.ScriptKind.JSX;
+  }
+}
 
 /** `parseDiagnostics` is internal to TypeScript and absent from its .d.ts; this is the one place that reads it. */
 function parseDiagnosticCount(sourceFile: ts.SourceFile): number {
@@ -28,7 +46,11 @@ export type ParsedTestFile =
  * diagnostics read after the parse) throws out of this function.
  */
 export function parseTestFile(kind: TestScriptKind, text: string): ParsedTestFile {
-  const { scriptKind, fileName } = KIND[kind];
+  // The first read of the parser in a run, and deliberately outside the `try` below: the Action loads TypeScript on
+  // that read, and a failure to load must throw out of here, never come back as `{ ok: false }` and be refused as a
+  // parser throw (packages/core/test/parse-load-order.test.ts pins this placement).
+  const scriptKind = tsScriptKind(kind);
+  const fileName = FILE_NAME[kind];
   let sourceFile: ts.SourceFile;
   try {
     sourceFile = ts.createSourceFile(

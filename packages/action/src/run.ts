@@ -208,6 +208,11 @@ export interface ActionDeps {
   sleep?: ((ms: number) => Promise<void>) | undefined;
   /** The runner has debug logging on (`RUNNER_DEBUG=1`): an internal upload error then fails the step (upload.ts). */
   debug?: boolean | undefined;
+  /**
+   * The error text of a failed load of the vendored TypeScript parser, or undefined (index.ts wires
+   * `vendoredTypeScriptFailure`). Absent: no parser is vendored.
+   */
+  parserLoadFailure?: (() => string | undefined) | undefined;
 }
 
 /** Config file read when the config input is empty. */
@@ -446,6 +451,11 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const meta = runMeta(deps.context, { baseRef: baseRefInput, ...(target === undefined ? {} : { target }) });
   if (meta === undefined) deps.info("run metadata is incomplete, so report.json carries no meta");
   const checked = check(meta === undefined ? checkInput : { ...checkInput, meta });
+  // The backstop of the escape path: the first read of the parser sits outside the `try` of its parse, so a load failure
+  // normally throws out of check() by itself. Wherever that read ends up, a failed load must fail the step before
+  // anything is written, never be refused by the test index as an ordinary parser throw (docs/THREAT-MODEL.md, G1).
+  const parserFailure = deps.parserLoadFailure?.();
+  if (parserFailure !== undefined) throw new Error(parserFailure);
   // The accept label is the Action's alone: check() and the CLI never see it. Only a pull_request event with its
   // payload, or a pr-number target, is a pull request run (not pull_request_target, push or merge_group).
   const signoffNumber = deps.context.eventName === "pull_request" && pr ? pr.number : target?.number;

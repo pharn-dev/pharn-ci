@@ -49,8 +49,10 @@ policy from pharn.dev and uploads the redacted report there (rule 5).
    today: `@actions/core`, `@actions/github` (action only; bundled into `packages/action/dist` with
    their transitive dependencies) and `typescript5` (core; `npm:typescript@5.9.3`, separate from the
    TypeScript 7 compiler the repo builds with, used only through `createSourceFile` to parse JS/TS test
-   and config files, never to compile or run them, and bundled into both dists; docs/THREAT-MODEL.md
-   residual 19). Parsers (lcov, Cobertura XML, diff, config YAML subset) are hand-written on purpose.
+   and config files, never to compile or run them, and inlined into the CLI dist only: the Action ships it
+   as the sha256-pinned `packages/action/dist/typescript.js`, loaded on the first parse, and bumping
+   `typescript5` means refreshing `packages/action/src/vendored-typescript-pin.ts`; docs/THREAT-MODEL.md
+   G1 and residual 19). Parsers (lcov, Cobertura XML, diff, config YAML subset) are hand-written on purpose.
 7. **`packages/action/dist` is committed.** Run `pnpm build` before committing any change that
    affects the action (including core). CI fails if dist is stale.
 
