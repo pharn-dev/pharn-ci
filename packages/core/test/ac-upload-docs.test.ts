@@ -254,8 +254,15 @@ describe("upload documentation", { timeout: 60_000 }, () => {
     expect(row(base.rows, "A1"), "control: the base A1 holds the text the phrases are inserted after").toContain(
       OLD_A1,
     );
+    // Re-pinned for fix/ti09-opaque-head (review finding 22): A1's refused-file sentence now names the TI09 exception (a
+    // config read at base and refused, dropped or not found at HEAD gives a finding at the mode's level).
+    const OLD_A1_REFUSED =
+      "a refused file gives no finding and is named in `TEST_INTEGRITY_INDEX_UNAVAILABLE` with its reason code (`ac-ti09y-unreadable.test.ts`).";
+    const NEW_A1_REFUSED =
+      "a refused file is named in `TEST_INTEGRITY_INDEX_UNAVAILABLE` with its reason code and gives no finding, except that a TI09 config whose settings were read at the merge base and that is refused, dropped or not found at HEAD gives one `(config)` finding at the mode's level, so a PR cannot pad or wrap its config to turn a block into a warning (`ac-ti09y-unreadable.test.ts`, `ac-ti09-opaque-head.test.ts`).";
+    expect(row(base.rows, "A1"), "control: the base A1 holds the refused-file sentence").toContain(OLD_A1_REFUSED);
     expect(row(head.rows, "A1"), "A1 is the base's with the two phrases inserted").toBe(
-      (row(base.rows, "A1") as string).replace(OLD_A1, NEW_A1),
+      (row(base.rows, "A1") as string).replace(OLD_A1, NEW_A1).replace(OLD_A1_REFUSED, NEW_A1_REFUSED),
     );
 
     const baseTitles = base.residuals.map((r) => [r.n, boldTitle(r.text)]);

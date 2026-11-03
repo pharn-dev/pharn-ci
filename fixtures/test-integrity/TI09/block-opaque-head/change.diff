@@ -1,0 +1,18 @@
+diff --git a/vitest.config.ts b/vitest.config.ts
+index 1111111..2222222 100644
+--- a/vitest.config.ts
++++ b/vitest.config.ts
+@@ -3,6 +3,7 @@ import { defineConfig } from "vitest/config";
+-export default defineConfig({
+-  test: {
+-    include: ["src/**/*.test.ts"],
+-    environment: "node",
+-  },
+-});
++export default (() =>
++  defineConfig({
++    test: {
++      include: ["src/**/*.fast.test.ts"],
++      environment: "node",
++    },
++  }))();

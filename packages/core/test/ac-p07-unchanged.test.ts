@@ -58,15 +58,17 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       // Re-pinned on the rebase onto E3 item 23 (policy settings): its fixtures under fixtures/policy-settings/ are new too.
       // Re-pinned for ti03-skip-evasion (review B1): its new case directories under fixtures/test-integrity/TI03/ are
       // added too; an existing TI03 fixture that changed would still show as modified, not added.
+      // Re-pinned for fix/ti09-opaque-head (review finding 22): its four new TI09 case directories are added too.
       expect(line, "a fixture change").toMatch(
-        /^A\tfixtures\/policy-rules\/p07\/[^/]+\/[^/]+$|^A\tfixtures\/policy-settings\/[^\t]+$|^A\tfixtures\/test-integrity\/TI03\/[^\t]+$/,
+        /^A\tfixtures\/policy-rules\/p07\/[^/]+\/[^/]+$|^A\tfixtures\/policy-settings\/[^\t]+$|^A\tfixtures\/test-integrity\/TI03\/[^\t]+$|^A\tfixtures\/test-integrity\/TI09\/(?:block-opaque-head|block-too-deep-head|pass-added-opaque-config|pass-opaque-base-and-head)\/[^\t]+$/,
       );
     }
     for (const path of nonEmpty(git("ls-files", "--others", "--exclude-standard", "--", "fixtures/"))) {
       // Re-pinned for settings-unparseable-fails-closed (review A3-F2): its new case directories under
-      // fixtures/policy-settings/unparseable/ are untracked until committed.
+      // fixtures/policy-settings/unparseable/ are untracked until committed. Re-pinned for fix/ti09-opaque-head (review
+      // finding 22): so are its four new TI09 case directories.
       expect(path, "a new fixture").toMatch(
-        /^fixtures\/policy-rules\/p07\/[^/]+\/[^/]+$|^fixtures\/test-integrity\/TI03\/[^\t]+$|^fixtures\/policy-settings\/unparseable\/[^\t]+$/,
+        /^fixtures\/policy-rules\/p07\/[^/]+\/[^/]+$|^fixtures\/test-integrity\/TI03\/[^\t]+$|^fixtures\/policy-settings\/unparseable\/[^\t]+$|^fixtures\/test-integrity\/TI09\/(?:block-opaque-head|block-too-deep-head|pass-added-opaque-config|pass-opaque-base-and-head)\/[^\t]+$/,
       );
     }
 

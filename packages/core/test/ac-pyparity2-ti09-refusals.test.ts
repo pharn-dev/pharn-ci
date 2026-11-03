@@ -5,8 +5,8 @@ import { expectValidReport } from "./schema.js";
 
 // check() is loaded inside the test body: the AC test is written before TI09 reads the native [tool.pytest] table, so
 // nothing the build adds may run while the file loads. Every text is generated here. A native table that cannot be
-// read is refused as the [tool.pytest.ini_options] table is today: no TI09 and a TEST_INTEGRITY_INDEX_UNAVAILABLE
-// message naming pyproject.toml with its reason. Each hostile size is run once to warm up, then measured on this
+// read is refused as the [tool.pytest.ini_options] table is: a TEST_INTEGRITY_INDEX_UNAVAILABLE message naming
+// pyproject.toml with its reason, and, because the base table was read, one (config) TI09 at the mode's level. Each hostile size is run once to warm up, then measured on this
 // thread's CPU time with measureGrowth (growth.ts).
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
@@ -15,7 +15,7 @@ const CODE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 const CAP = 524288;
 
 interface Report {
-  testIntegrity: { signals: { id: string; path: string }[] };
+  testIntegrity: { signals: { id: string; path: string; severity: string; detail: string }[] };
   messages: { code: string; level: string; text: string }[];
 }
 
@@ -95,14 +95,18 @@ function hostile(size: number): string {
 }
 
 describe("TI09 refuses a native [tool.pytest] table it cannot read, in linear time", () => {
-  it("AC-16: a native table over the cap, with a non key = value line, or with an unclosed array gives no TI09 and a TEST_INTEGRITY_INDEX_UNAVAILABLE naming pyproject.toml with too-large, invalid-toml and invalid-toml; a hostile native table just under the cap reads in less than 8 times a quarter-size one", async () => {
+  it("AC-16: a native table over the cap, with a non key = value line, or with an unclosed array gives one block (config) TI09 and a TEST_INTEGRITY_INDEX_UNAVAILABLE naming pyproject.toml with too-large, invalid-toml and invalid-toml; a hostile native table just under the cap reads in less than 8 times a quarter-size one", async () => {
     expect((UNREADABLE[0] as { head: string }).head.length, "over the cap").toBeGreaterThan(CAP);
     for (const { label, head, reason } of UNREADABLE) {
       const { report } = await run(BASE, head);
+      // Edited by fix/ti09-opaque-head (review finding 22): the base table was read, so a head table that cannot be
+      // read is one (config) TI09 at the mode's level (block), not silence; it stays named in the message below.
       expect(
-        report.testIntegrity.signals.filter((s) => String(s.id) === "TI09" && s.path === PATH),
-        `${label}: no TI09 for ${PATH}`,
-      ).toEqual([]);
+        report.testIntegrity.signals
+          .filter((s) => String(s.id) === "TI09" && s.path === PATH)
+          .map((s) => [s.severity, s.detail.slice(0, 8)]),
+        `${label}: one block (config) TI09 for ${PATH}`,
+      ).toEqual([["block", "(config)"]]);
       const messages = report.messages.filter((m) => String(m.code) === CODE);
       expect(messages, `${label}: one ${CODE} message`).toHaveLength(1);
       expect(messages[0]?.text, `${label}: names ${PATH}`).toContain(PATH);

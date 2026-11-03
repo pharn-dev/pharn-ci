@@ -64,14 +64,23 @@ const sideText = (side: SideLookup, path: string): { text: string } | { reason: 
   return text === undefined ? { reason: side.dropped.get(path) ?? "missing" } : { text };
 };
 
+/** The finding for a config whose settings were read at base and that is not found or not read at head. */
+const lostAtHead = (mode: "block" | "warn", what: "not found" | "could not be read"): RuleFinding => ({
+  severity: mode,
+  line: null,
+  detail: `(config) could no longer be compared at head: the config was read at base but ${what} at head.`,
+});
+
 /**
  * TI09, a test-runner config loosened. Reads the base and head text of the touched config files (vitest, vite, jest,
  * playwright, mocha, `package.json`, pytest settings) and compares the keys of a fixed table; see `evaluateRules`. The
  * path is the head path, the line the head line of the key (null for JSON and for a key gone at head), and severity the
  * mode, or `warn` for a raised retry count or timeout and for a value that cannot be compared. A config that cannot be
- * read gives no signal and is listed in `unavailable`; when a side of the sources is unavailable and a dedicated
- * config is touched, nothing is read and `notRun` says why. A `package.json`, `pyproject.toml`, `setup.cfg` or `tox.ini`
- * in neither list of a side is skipped without a word.
+ * read is listed in `unavailable`; it gives no signal, except that a modified or renamed config whose settings were
+ * read at base and that is not found or not read at head gives one `(config)` signal at the mode's severity, so that
+ * an opaque wrapper or a padded head cannot turn a block into a warn. When a side of the sources is unavailable and a
+ * dedicated config is touched, nothing is read and `notRun` says why. A `package.json`, `pyproject.toml`, `setup.cfg`
+ * or `tox.ini` in neither list of a side is skipped without a word.
  */
 export function detectTI09(diff: readonly DiffFile[], sources: TestSources, mode: "block" | "warn"): TI09Result {
   const candidates = candidatesOf(diff);
@@ -105,24 +114,20 @@ export function detectTI09(diff: readonly DiffFile[], sources: TestSources, mode
     const base = candidate.added ? null : readSide(baseSide, candidate, candidate.oldPath);
     const head = readSide(headSide, candidate, candidate.path);
     if (base === "skip" || head === "skip") continue;
+    const baseContainer = base !== null && "container" in base ? base.container : null;
     const refusal = base !== null && "refused" in base ? base : "refused" in head ? head : null;
-    if (refusal !== null) {
-      if (!unavailable.has(candidate.path)) unavailable.set(candidate.path, (refusal as { refused: string }).refused);
-      continue;
-    }
+    if (refusal !== null && !unavailable.has(candidate.path)) unavailable.set(candidate.path, refusal.refused);
 
     let findings: RuleFinding[] = [];
-    if ("container" in head) {
-      const baseContainer = base !== null && "container" in base ? base.container : null;
+    if (refusal !== null) {
+      // A head the reader refuses (padded past a cap, nested too deep, broken) after a base it read: at the mode's
+      // severity, so a PR cannot dodge the comparison by making its config unreadable.
+      if (baseContainer !== null) findings = [lostAtHead(mode, "could not be read")];
+    } else if ("container" in head) {
       findings = evaluateRules(candidate.kind, baseContainer, head.container, mode);
-    } else if ("notFound" in head && base !== null && "container" in base) {
-      findings = [
-        {
-          severity: "warn",
-          line: null,
-          detail: "(config) cannot be compared: the config was read at base but not found at head.",
-        },
-      ];
+    } else if ("notFound" in head && baseContainer !== null) {
+      // An opaque wrapper at head (an IIFE, an unknown call) around a config read at base: at the mode's severity.
+      findings = [lostAtHead(mode, "not found")];
     }
     for (const found of findings) {
       signals.push({

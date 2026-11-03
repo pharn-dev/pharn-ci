@@ -1,0 +1,7 @@
+import { makeConfig } from "./make-config";
+
+export default makeConfig({
+  test: {
+    include: ["src/**/*.fast.test.ts"],
+  },
+});

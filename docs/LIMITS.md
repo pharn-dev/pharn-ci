@@ -468,7 +468,10 @@ TI09 compares a fixed list of settings of the test-runner config files the chang
   is not a top-level `const` is opaque: the setting is compared by its normalized text, and a changed opaque value
   gives at most a `warn` ("cannot be compared"), because TI09 cannot say whether it loosens anything. A config whose
   default export is a call to anything other than `defineConfig`, `defineProject`, `defineWorkspace` or `mergeConfig`
-  is not found at all, and a config found at base but not at head gives one `warn` for `(config)`.
+  is not found at all. A modified or renamed config whose settings were read at base and that is not found at head
+  (an IIFE or any other opaque wrapper) gives one finding for `(config)` at the mode's level (`block` in mode `block`),
+  so a one-line wrapper cannot turn a narrowed setting into a warning; nothing in the head is compared then. An added
+  config that is not found, and a config not found or not read at base, give nothing.
 - **Shared config packages and imports.** An imported base config, a spread (`...shared`) and a
   `mergeConfig(base, …)` argument that is not an object literal are never resolved, so a setting that lives there is not
   seen. A key that an open object (a spread, a shorthand property, a `mergeConfig` result) may set is `warn` when it
@@ -518,7 +521,9 @@ TI09 compares a fixed list of settings of the test-runner config files the chang
   mocha). Glob comparison covers one level of `{a,b}` braces (at most 64 alternatives) and the glob subset of
   `exclude`; a regex list is compared by equality only, so a regex rewritten to match the same files is a widening.
 - **Caps.** At most 20 findings per file; a config of more than 524288 characters, or a syntax tree deeper than 1000, is
-  not read (`too-large`, `too-deep`) and is named in `TEST_INTEGRITY_INDEX_UNAVAILABLE`.
+  not read (`too-large`, `too-deep`) and is named in `TEST_INTEGRITY_INDEX_UNAVAILABLE`. When such a head (or any
+  head that cannot be read or was dropped) follows a base whose settings were read, it also gives one `(config)`
+  finding at the mode's level, so padding the config past a cap does not dodge TI09.
 
 ### What TI10 misses
 

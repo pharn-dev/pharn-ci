@@ -116,7 +116,7 @@ const JS_ONLY_TEXT =
   "TI02 and TI05 could not compare these touched test files, so they are not checked for removed tests or emptied assertions: `src/a.test.ts` (`too-large`).";
 
 describe("TI09: touched config files whose text cannot be read", () => {
-  it("AC-14: five unreadable configs give no TI09 and are named with their reason codes in the one index-unavailable message, an unavailable side says TI09 did not run, a JS-only drop keeps today's text, and an unlisted package.json is skipped silently", async () => {
+  it("AC-14: five configs read at base and unreadable at head give one block (config) TI09 each and are named with their reason codes in the one index-unavailable message, an unavailable side says TI09 did not run, a JS-only drop keeps today's text, and an unlisted package.json is skipped silently", async () => {
     // 1. Five configs whose head text cannot be read, in one diff.
     expect(UNREADABLE.find((u) => u.reason === "too-large")?.head.length).toBeGreaterThan(524288);
     const diff = UNREADABLE.map(({ path, base, head }) =>
@@ -130,7 +130,12 @@ describe("TI09: touched config files whose text cannot be read", () => {
       { base: { files: files("base"), dropped: [] }, head: { files: files("head"), dropped: [] } },
       UNREADABLE.map((u) => u.path),
     );
-    expect(ti09(first), "no TI09 signal for an unreadable config").toEqual([]);
+    // Edited by fix/ti09-opaque-head (review finding 22): each base was read, so a head that cannot be read is one
+    // (config) TI09 at the mode's level (block), not silence; the files stay named in the message below.
+    expect(
+      ti09(first).map((s) => [s.path, s.severity, s.line, s.detail.startsWith("(config) could no longer be compared")]),
+      "one block (config) TI09 per config unreadable at head",
+    ).toEqual(UNREADABLE.map((u) => [u.path, "block", null, true]).sort((a, b) => (`${a[0]}` < `${b[0]}` ? -1 : 1)));
     const firstMessages = unavailable(first);
     expect(firstMessages, `one ${CODE} message`).toHaveLength(1);
     expect(firstMessages[0]?.level).toBe("warn");

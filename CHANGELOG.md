@@ -11,6 +11,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- TI09 no longer lets a test-runner config made unreadable at HEAD turn a block into a warning (review finding 22):
+  a modified or renamed config whose settings were read at the merge base and that is not found at HEAD (an IIFE or
+  other opaque wrapper) or cannot be read there (padded past the size cap, nested too deep, a syntax error, dropped)
+  is now one `(config)` finding at the mode's level (`block` in `test-integrity: block`; it was a `warn`, or no
+  finding for a refused head). An added config and a config already unreadable at base are unchanged. No schema
+  change and no new message code.
 - The OIDC token request (for the org policy and the upload, only with `id-token: write`) now gives up after
   30 s, and the run goes on as if the runner offered no token; `@actions/core` alone retried it up to ten times
   with a 3-minute socket timeout each (review LOW 21). No schema change and no new message code.

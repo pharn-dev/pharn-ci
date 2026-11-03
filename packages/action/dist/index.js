@@ -246957,6 +246957,11 @@ var sideText = (side, path) => {
   const text = side.texts.get(path);
   return text === void 0 ? { reason: side.dropped.get(path) ?? "missing" } : { text };
 };
+var lostAtHead = (mode, what) => ({
+  severity: mode,
+  line: null,
+  detail: `(config) could no longer be compared at head: the config was read at base but ${what} at head.`
+});
 function detectTI09(diff, sources, mode) {
   const candidates = candidatesOf(diff);
   if (candidates.length === 0) return { signals: [], unavailable: [], notRun: null };
@@ -246983,23 +246988,16 @@ function detectTI09(diff, sources, mode) {
     const base = candidate.added ? null : readSide(baseSide, candidate, candidate.oldPath);
     const head = readSide(headSide, candidate, candidate.path);
     if (base === "skip" || head === "skip") continue;
+    const baseContainer = base !== null && "container" in base ? base.container : null;
     const refusal = base !== null && "refused" in base ? base : "refused" in head ? head : null;
-    if (refusal !== null) {
-      if (!unavailable2.has(candidate.path)) unavailable2.set(candidate.path, refusal.refused);
-      continue;
-    }
+    if (refusal !== null && !unavailable2.has(candidate.path)) unavailable2.set(candidate.path, refusal.refused);
     let findings = [];
-    if ("container" in head) {
-      const baseContainer = base !== null && "container" in base ? base.container : null;
+    if (refusal !== null) {
+      if (baseContainer !== null) findings = [lostAtHead(mode, "could not be read")];
+    } else if ("container" in head) {
       findings = evaluateRules(candidate.kind, baseContainer, head.container, mode);
-    } else if ("notFound" in head && base !== null && "container" in base) {
-      findings = [
-        {
-          severity: "warn",
-          line: null,
-          detail: "(config) cannot be compared: the config was read at base but not found at head."
-        }
-      ];
+    } else if ("notFound" in head && baseContainer !== null) {
+      findings = [lostAtHead(mode, "not found")];
     }
     for (const found of findings) {
       signals.push({

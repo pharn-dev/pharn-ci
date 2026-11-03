@@ -55,7 +55,7 @@ const IMPORT = 'import { configDefaults, defineConfig, mergeConfig } from "vites
 const BASE = `${IMPORT}\n\nexport default defineConfig({\n  test: {\n    include: ["src/**/*.test.ts"],\n  },\n});\n`;
 
 describe("TI09: values that are not literals", () => {
-  it("AC-7: an imported include, a spread test object and a mergeConfig head without test each give one warn cannot-be-compared TI09, an identical opaque spread gives none, and an unknown default-export call gives one warn (config) TI09", async () => {
+  it("AC-7: an imported include, a spread test object and a mergeConfig head without test each give one warn cannot-be-compared TI09, an identical opaque spread gives none, and an unknown default-export call gives one (config) TI09 at the mode's level", async () => {
     const heads: { label: string; head: string; names?: string }[] = [
       {
         label: "include from an import",
@@ -88,7 +88,9 @@ describe("TI09: values that are not literals", () => {
       `import { makeConfig } from "./make-config";\n\nexport default makeConfig({\n  test: {\n    include: ["src/**/*.test.ts"],\n  },\n});\n`,
     );
     expect(unknown, "an unknown default-export call: one TI09 signal").toHaveLength(1);
-    expect(unknown[0]?.severity).toBe("warn");
+    // Edited by fix/ti09-opaque-head (review finding 22): a config read at base and not found at head is at the mode's
+    // level (block here), no longer a warn, so an opaque wrapper cannot turn a block into a warn.
+    expect(unknown[0]?.severity).toBe("block");
     expect(unknown[0]?.detail, "the key is (config)").toContain("(config)");
   });
 });
