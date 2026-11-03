@@ -347,6 +347,16 @@ and the tests cite them.
     does not see a threshold the workflow file changes. Protect `.pharn/ci.yml` and the workflow with CODEOWNERS, or
     set the `threshold` input. **Closed when an app policy sets `coverage.threshold`:** the larger value applies, and
     `POLICY_OVERRIDE_IGNORED` names the lower layer it beat.
+38. **`base-ref` lives in the workflow file the PR can edit.** A pull request that changes the workflow can point
+    `base-ref` at another commit. A base that is HEAD or a descendant of it (`base-ref: HEAD`, or the run's own sha)
+    measures nothing: when the local diff is empty and the merge base of the base and HEAD is HEAD itself, the report
+    says `DIFF_UNAVAILABLE`, an error with a threshold or in `test-integrity: block`, never a `NO_COVERABLE_CHANGES`
+    pass (`packages/action/test/ac-review-medium-inputs.test.ts`; the CLI's `--base HEAD` in
+    `packages/cli/test/ac-review-medium-cli-base.test.ts`). A base that is an ancestor of HEAD still measures only
+    the commits after it, so a base moved closer to HEAD shrinks the diff, and a workflow edit before the new base is
+    outside it, as are the signals that read the diff (`CONFIG_CHANGED_IN_DIFF`, TI11, TI14, P09, P11).
+    **Residual:** the base is as honest as the workflow file that names it; review workflow changes, and protect the
+    workflow path with P11 or CODEOWNERS.
 
 ## 4. Keeping this document honest
 

@@ -113,6 +113,21 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   did not run at all (the levels #126 shipped). `docs/THREAT-MODEL.md` §3 now renders residual numbers 8 to 35 as
   written, the numbers the docs and tests cite. No code change.
 
+- After a successful upload to pharn.dev, the PR comment an earlier run of the same workflow and job left is updated
+  to one line pointing to the run on pharn.dev, instead of keeping its old verdict beside the Pharn GitHub App's
+  comment (review finding 7). Nothing is created or deleted; a failed update is a warning.
+- The upload to pharn.dev now ends within 90 s of its start (review finding 8): each request and the `PUT` is cut off
+  at the time left, the retry happens only when enough time is left, and running out is a failed upload (reason
+  `…:deadline`) that never fails the check. A slow pharn.dev could take about 6 minutes, past the recommended
+  `timeout-minutes: 5`. No schema change.
+- A failed `git ls-files` (or, in PR-number mode, a failed listing of the PR head's tree) now fails the Action step,
+  as it already failed the CLI. It used to warn and run the agent setup, secret and policy checks on an empty file
+  list, which passed them and skipped the coverage path check (review finding 9).
+- A base that resolves to HEAD or a descendant of it (`base-ref: HEAD`, `base-ref: ${{ github.sha }}`, or the CLI's
+  `--base HEAD`) is now `DIFF_UNAVAILABLE`, an error with a threshold or in `test-integrity: block`, instead of a
+  `NO_COVERABLE_CHANGES` pass on an empty diff (review finding 13). Running the CLI with a threshold on a branch
+  that equals its base now exits 1.
+
 ### Security
 
 - A pull request can no longer lower the coverage threshold past TI14 by putting a Unicode space before the comment

@@ -29,16 +29,32 @@ const NO_COMMENT_LINE = "pharn-ci: could not read the pull request comments, so 
 const PUT_TIMEOUT_MS = 120_000;
 /** The upload-url and runs requests are each cut off after this long when `deps.timeoutMs` is not set. */
 const REQUEST_TIMEOUT_MS = 60_000;
+/**
+ * The whole upload ends within this long of its start (`deps.uploadDeadlineMs` when set): the token, the comment
+ * lookup, every request with its retry and the PUT. Each request and the PUT is cut off at the smaller of its own
+ * timeout and the time left, a step with no time left does not start, and running out is `failed` with a reason that
+ * ends in `:deadline`. It keeps a slow app inside a job's `timeout-minutes: 5`.
+ */
+export const UPLOAD_DEADLINE_MS = 90_000;
 
 const JSON_CONTENT_TYPE = /^application\/json\s*(?:;|$)/i;
 const OBJECT_KEY = /^[A-Za-z0-9/_.=-]{1,512}$/;
 /** The PUT statuses that mean storage took the bundle. */
 const PUT_OK = [200, 201, 204];
 
-/** What `runUpload` reads from the Action's deps: the app client's, and the clock. No new `ActionDeps` field. */
+/** What `runUpload` reads from the Action's deps: the app client's, the clock and the upload's deadline. */
 export type UploadDeps = Pick<
   ActionDeps,
-  "fetch" | "getIDToken" | "setSecret" | "hasOidcEnv" | "now" | "timeoutMs" | "sleep" | "info" | "warning"
+  | "fetch"
+  | "getIDToken"
+  | "setSecret"
+  | "hasOidcEnv"
+  | "now"
+  | "timeoutMs"
+  | "uploadDeadlineMs"
+  | "sleep"
+  | "info"
+  | "warning"
 >;
 
 export interface UploadInput {
@@ -67,7 +83,9 @@ interface Step {
 export async function runUpload(deps: UploadDeps, input: UploadInput): Promise<UploadOutcome> {
   let step: Step;
   try {
-    step = await uploadSteps(deps, input);
+    const clock = () => (deps.now?.() ?? new Date()).getTime();
+    const deadlineAt = clock() + (deps.uploadDeadlineMs ?? UPLOAD_DEADLINE_MS);
+    step = await uploadSteps(deps, input, () => deadlineAt - clock());
   } catch {
     step = { outcome: { status: "failed", reason: "internal" } };
   }
@@ -97,7 +115,8 @@ function logOutcome(deps: UploadDeps, step: Step): void {
   }
 }
 
-async function uploadSteps(deps: UploadDeps, input: UploadInput): Promise<Step> {
+/** `remainingMs` is the time left of the upload's deadline (see UPLOAD_DEADLINE_MS). */
+async function uploadSteps(deps: UploadDeps, input: UploadInput, remainingMs: () => number): Promise<Step> {
   if (input.choice === "never") return { outcome: { status: "skipped", reason: "input-never" } };
   // Before the token is asked for: a pull_request_target run sends nothing, so the app records no run for it.
   if (input.pullRequestTarget === true) return { outcome: { status: "skipped", reason: "pull-request-target" } };
@@ -125,11 +144,13 @@ async function uploadSteps(deps: UploadDeps, input: UploadInput): Promise<Step> 
   const m = JSON.parse(metaJson) as Record<string, unknown>;
 
   // 1. The signed URL.
+  if (remainingMs() <= 0) return failed("upload-url:deadline", {});
   const urlResult = await appRequest(deps, {
     url: new URL("/api/v1/runs/upload-url", input.appOrigin),
     token,
     method: "POST",
     timeoutMs: REQUEST_TIMEOUT_MS,
+    remainingMs,
     body: JSON.stringify({
       repository: m.repository,
       headSha: m.headSha,
@@ -147,7 +168,7 @@ async function uploadSteps(deps: UploadDeps, input: UploadInput): Promise<Step> 
     return { outcome: { status: "too_large", maxBytes: null }, ...urlId };
   }
   if (urlResult.kind !== "response" || urlResult.status !== 200) {
-    return failed(failReason("upload-url", urlResult), urlId);
+    return failed(failReason("upload-url", urlResult, remainingMs()), urlId);
   }
   const urlAnswer = readUploadUrlAnswer(urlResult);
   if (urlAnswer === null) return failed("upload-url:malformed", urlId);
@@ -157,15 +178,18 @@ async function uploadSteps(deps: UploadDeps, input: UploadInput): Promise<Step> 
 
   // 2. The bundle, to storage. The signed URL is a secret from here on, and the PUT is never retried.
   deps.setSecret?.(urlAnswer.uploadUrl);
-  const putFailure = await putBundle(deps, urlAnswer.uploadUrl, gz);
+  if (remainingMs() <= 0) return failed("put:deadline", {});
+  const putFailure = await putBundle(deps, urlAnswer.uploadUrl, gz, remainingMs);
   if (putFailure !== null) return failed(putFailure, {});
 
   // 3. The run is registered.
+  if (remainingMs() <= 0) return failed("runs:deadline", {});
   const runsResult = await appRequest(deps, {
     url: new URL("/api/v1/runs", input.appOrigin),
     token,
     method: "POST",
     timeoutMs: REQUEST_TIMEOUT_MS,
+    remainingMs,
     body: JSON.stringify({
       objectKey: urlAnswer.objectKey,
       repository: m.repository,
@@ -182,7 +206,7 @@ async function uploadSteps(deps: UploadDeps, input: UploadInput): Promise<Step> 
   });
   const runsId = requestIdOf(runsResult);
   if (runsResult.kind !== "response" || ![200, 201, 202].includes(runsResult.status)) {
-    return failed(failReason("runs", runsResult), runsId);
+    return failed(failReason("runs", runsResult, remainingMs()), runsId);
   }
   const runUrl = readRunsAnswer(runsResult, input.appOrigin);
   if (runUrl === null) return failed("runs:malformed", runsId);
@@ -195,9 +219,12 @@ function requestIdOf(result: AppResult): { requestId?: string } {
   return result.kind === "response" && result.requestId !== undefined ? { requestId: result.requestId } : {};
 }
 
-/** The reason of a request that did not end in an answer the step accepts: the status, or timeout and network. */
-function failReason(step: "upload-url" | "runs", result: AppResult): string {
-  if (result.kind === "timeout") return `${step}:timeout`;
+/**
+ * The reason of a request that did not end in an answer the step accepts: the status, or timeout and network. A
+ * timeout with none of the upload's deadline left (`remaining`) is `deadline`.
+ */
+function failReason(step: "upload-url" | "runs", result: AppResult, remaining: number): string {
+  if (result.kind === "timeout") return remaining <= 0 ? `${step}:deadline` : `${step}:timeout`;
   if (result.kind === "network") return `${step}:network`;
   switch (result.status) {
     case 401:
@@ -278,12 +305,18 @@ function readRunsAnswer(result: Extract<AppResult, { kind: "response" }>, origin
 
 /**
  * One PUT of the gzip bytes to the signed URL: exactly `Content-Type` and `User-Agent`, never an `Authorization` header
- * (the OIDC token goes to the app origin only), no redirect, a timeout and no retry. Null when storage answered 200,
- * 201 or 204, else the reason. The URL never reaches a log line or the reason.
+ * (the OIDC token goes to the app origin only), no redirect, a timeout (the smaller of its own and what is left of the
+ * upload's deadline) and no retry. Null when storage answered 200, 201 or 204, else the reason. The URL never reaches a
+ * log line or the reason.
  */
-async function putBundle(deps: UploadDeps, url: string, bytes: Uint8Array): Promise<string | null> {
+async function putBundle(
+  deps: UploadDeps,
+  url: string,
+  bytes: Uint8Array,
+  remainingMs: () => number,
+): Promise<string | null> {
   if (deps.fetch === undefined) return "put:network";
-  const signal = AbortSignal.timeout(deps.timeoutMs ?? PUT_TIMEOUT_MS);
+  const signal = AbortSignal.timeout(Math.min(deps.timeoutMs ?? PUT_TIMEOUT_MS, remainingMs()));
   let response: Response;
   try {
     response = await deps.fetch(url, {
@@ -294,7 +327,8 @@ async function putBundle(deps: UploadDeps, url: string, bytes: Uint8Array): Prom
       signal,
     });
   } catch {
-    return signal.aborted ? "put:timeout" : "put:network";
+    if (!signal.aborted) return "put:network";
+    return remainingMs() <= 0 ? "put:deadline" : "put:timeout";
   }
   await response.body?.cancel().catch(() => {});
   return PUT_OK.includes(response.status) ? null : `put:status-${response.status}`;

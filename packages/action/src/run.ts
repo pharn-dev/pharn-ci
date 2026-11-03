@@ -6,6 +6,7 @@ import {
   type CheckInput,
   check,
   consistencySeverity,
+  type DiffFile,
   type DirEntry,
   detectAgentPr,
   gitDiffArgs,
@@ -202,6 +203,8 @@ export interface ActionDeps {
   hasOidcEnv?: boolean | undefined;
   now?: (() => Date) | undefined;
   timeoutMs?: number | undefined;
+  /** The upload's overall deadline in milliseconds, read with `now`; `UPLOAD_DEADLINE_MS` (upload.ts) when absent. */
+  uploadDeadlineMs?: number | undefined;
   sleep?: ((ms: number) => Promise<void>) | undefined;
 }
 
@@ -454,13 +457,19 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const issueNumber = pr?.number ?? target?.number;
   const scopeLine = commentScopeLine(deps.context.workflow ?? "", deps.context.job ?? "");
   const commentNumber = comment ? issueNumber : undefined;
+  // One lookup of this run's own comment serves both the upload's comment link and, after an ok upload, the pointer.
+  let ownLookup: Promise<IssueComment | undefined> | undefined;
+  const findOwn = (n: number) => {
+    ownLookup ??= findOwnComment(deps, n, scopeLine);
+    return ownLookup;
+  };
   const outcome = await runUpload(deps, {
     choice: uploadChoice,
     ...(deps.context.eventName === "pull_request_target" ? { pullRequestTarget: true } : {}),
     report,
     appOrigin,
     ...(target !== undefined && headSha !== undefined ? { prHeadShaExpected: headSha } : {}),
-    ...(commentNumber === undefined ? {} : { findOwnComment: () => findOwnComment(deps, commentNumber, scopeLine) }),
+    ...(commentNumber === undefined ? {} : { findOwnComment: () => findOwn(commentNumber) }),
   });
   report = withUploadOutcome(report, outcome);
   // Only a run that found the org has not installed the app gets the install hint: the policy request or the upload
@@ -487,6 +496,10 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   if (outcome.status === "ok") {
     // The app comments on the pull request for an uploaded run; a second comment would only repeat it.
     deps.info("pharn-ci: the Pharn GitHub App comments on the pull request for this run, so pharn-ci posts no comment");
+    // An own comment an earlier run left would still show its old verdict beside the app's: it becomes a pointer.
+    if (commentNumber !== undefined) {
+      await pointOwnComment(deps, findOwn(commentNumber), `${COMMENT_MARKER}\n${scopeLine}\n`, outcome.runUrl);
+    }
   } else if (comment && issueNumber !== undefined) {
     const body = fitMarkdown(report, {
       prefix: `${COMMENT_MARKER}\n${scopeLine}\n`,
@@ -508,30 +521,40 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
 /**
  * The repo's file paths. Normally `git ls-files` of the checkout; in PR-number mode the checkout is not the PR, so
  * the paths come from the git tree of the PR head, through the GitHub API.
+ *
+ * A listing that fails fails the step, as the CLI does (review finding 9). An empty list would not skip the checks
+ * that use it but run them on nothing: the agent setup scan, the secret scan and the org-policy rules would find no
+ * file and pass, and the coverage-paths-unmatched guard would not run.
  */
 async function trackedFiles(target: PrNumberTarget | undefined, deps: ActionDeps): Promise<string[]> {
   if (!target) {
-    const out = await deps.git(["ls-files", "-z"]).catch((err: unknown) => {
-      deps.warning(`git ls-files failed, agent setup scan skipped: ${String(err)}`);
-      return "";
-    });
-    return out.split("\0").filter((p) => p !== "");
-  }
-  try {
-    const tree = await deps.api.listTree(target.headSha);
-    if (tree.truncated) {
-      deps.warning(
-        "the file list of the PR head is truncated by the GitHub API (very large repository); " +
-          "the agent setup scan may miss files",
+    let out: string;
+    try {
+      out = await deps.git(["ls-files", "-z"]);
+    } catch (err) {
+      throw new Error(
+        `git ls-files failed (${String(err)}), so the files of the repository are unknown and the agent setup, ` +
+          "secret and coverage path checks cannot run; check that the workspace is a git checkout (actions/checkout)",
       );
     }
-    return tree.paths;
-  } catch (err) {
-    deps.warning(
-      `could not list the files of the PR head through the GitHub API, agent setup scan skipped: ${String(err)}`,
-    );
-    return [];
+    return out.split("\0").filter((p) => p !== "");
   }
+  let tree: { paths: string[]; truncated: boolean };
+  try {
+    tree = await deps.api.listTree(target.headSha);
+  } catch (err) {
+    throw new Error(
+      `could not list the files of the PR head through the GitHub API (${String(err)}), so the files of the ` +
+        "pull request are unknown and the agent setup, secret and coverage path checks cannot run",
+    );
+  }
+  if (tree.truncated) {
+    deps.warning(
+      "the file list of the PR head is truncated by the GitHub API (very large repository); " +
+        "the agent setup scan may miss files",
+    );
+  }
+  return tree.paths;
 }
 
 /**
@@ -747,10 +770,11 @@ async function getDiff(
 
   const localBase = await resolveLocal(base, deps);
   if (localBase) {
+    let parsed: DiffFile[];
     try {
       // The config in use decides which file's text the reader keeps, so a custom `config` input works as it does for check().
       const options = { configPath: configInput === "" ? undefined : configInput, repoRoot: deps.workspace };
-      return { diff: { parsed: await readDiffChunks(gitChunks(deps, gitDiffArgs(localBase)), options) }, localBase };
+      parsed = await readDiffChunks(gitChunks(deps, gitDiffArgs(localBase)), options);
     } catch (err) {
       // The base is in the checkout, so a failed local diff means a broken or partial checkout. Falling back to the
       // compare API would hand the test-integrity signals a diff without readable test text, so fail the step instead
@@ -760,6 +784,20 @@ async function getDiff(
           "check out full history with actions/checkout and fetch-depth: 0",
       );
     }
+    // A base that is HEAD or a descendant of it (base-ref: HEAD, or ${{ github.sha }}) gives an empty diff, which would
+    // pass as NO_COVERABLE_CHANGES and hide every change from the diff-based checks (review finding 13). Only an empty
+    // diff can mean that, so git is asked only then.
+    if (parsed.length === 0 && (await headIsInBase(localBase, deps))) {
+      const named = baseRefInput ? `base-ref "${baseRefInput}"` : `the base ${base}`;
+      return {
+        diff: {
+          unavailable:
+            `${named} resolves to HEAD or a descendant of HEAD, so there is no change to measure` +
+            (baseRefInput ? "; set base-ref to the branch or commit the change is based on" : ""),
+        },
+      };
+    }
+    return { diff: { parsed }, localBase };
   }
   // Reached only for a base that does not resolve locally (a shallow checkout).
   try {
@@ -799,6 +837,25 @@ async function getTargetDiff(
     }
     deps.warning(`could not fetch the diff from the GitHub API: ${String(err)}`);
     return { unavailable: `could not get the diff for ${base}...${target.headSha} from the GitHub API` };
+  }
+}
+
+/** A full git object id (SHA-1 or SHA-256), as git prints it. */
+const OBJECT_ID = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+
+/**
+ * True only when git says HEAD has no commit the base lacks: the merge base of the base and HEAD is HEAD itself, so
+ * the base is HEAD or a descendant of it. Asked with `merge-base` and `rev-parse`, which the shared git runner allows
+ * (it refuses `rev-list`). Only two printed commit ids that are equal count; any other answer, or a failed call, is
+ * unknown and false: the diff is then used as it is.
+ */
+async function headIsInBase(base: string, deps: ActionDeps): Promise<boolean> {
+  try {
+    const mergeBase = (await deps.git(["merge-base", "--end-of-options", base, "HEAD"])).trim();
+    const head = (await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", "HEAD^{commit}"])).trim();
+    return OBJECT_ID.test(mergeBase) && mergeBase === head;
+  } catch {
+    return false;
   }
 }
 
@@ -937,6 +994,33 @@ async function findOwnComment(
 ): Promise<IssueComment | undefined> {
   const [comments, viewer] = await Promise.all([deps.api.listComments(issueNumber), deps.api.viewerLogin()]);
   return ownComments(comments, viewer, scopeLine)[0];
+}
+
+/** The line that replaces an earlier run's verdict in its own comment once a run is uploaded. */
+export const APP_POINTER_LINE = "This run is reported by the Pharn GitHub App:";
+
+/**
+ * After an ok upload: the own comment of this scope that an earlier run left (`lookup`, the one the upload's comment
+ * link came from) is updated to `prefix` plus one line with the run's page, so the pull request shows no stale verdict
+ * beside the app's comment. Updated, never deleted (the upload's comment link points at it), and nothing is created
+ * when there is none. A failure is one warning; the step's result does not change.
+ */
+async function pointOwnComment(
+  deps: Pick<ActionDeps, "api" | "info" | "warning">,
+  lookup: Promise<IssueComment | undefined>,
+  prefix: string,
+  runUrl: string,
+): Promise<void> {
+  try {
+    const existing = await lookup;
+    if (existing === undefined) return;
+    await deps.api.updateComment(existing.id, `${prefix}${APP_POINTER_LINE} ${runUrl}\n`);
+    deps.info(`updated pharn-ci comment ${existing.id} to point to the run on pharn.dev`);
+  } catch (err) {
+    deps.warning(
+      `could not update the earlier pharn-ci comment (${errorText(err)}); it may still show an earlier run's verdict`,
+    );
+  }
 }
 
 /**

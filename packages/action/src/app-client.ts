@@ -24,6 +24,11 @@ export const APP_TIMEOUT_MS = 10_000;
 /** The wait before the one retry. */
 export const APP_RETRY_WAIT_MS = 1000;
 /**
+ * The least time the retry attempt is given. A request with `remainingMs` is not retried when less than the wait plus
+ * this much is left: the first answer is final.
+ */
+export const APP_RETRY_MIN_MS = 1000;
+/**
  * The OIDC token request is given up after this long, and the run goes on as if no token were offered. `@actions/core`
  * has no deadline of its own: it retries up to ten times, each with a three-minute socket timeout.
  */
@@ -138,6 +143,12 @@ export interface AppRequest {
   body?: string;
   /** The timeout of one attempt when `deps.timeoutMs` is absent; `APP_TIMEOUT_MS` when both are. */
   timeoutMs?: number;
+  /**
+   * The milliseconds left of the caller's overall deadline, read before each attempt. When present, an attempt is cut
+   * off at the smaller of its own timeout and what is left, no attempt starts with nothing left (that is a timeout),
+   * and the retry happens only when the wait and `APP_RETRY_MIN_MS` still fit. Absent: no deadline (the policy fetch).
+   */
+  remainingMs?: () => number;
 }
 
 /** The outcome of one request: how it ended, or the status and what could be read of the answer. */
@@ -164,12 +175,14 @@ const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => set
  * One GET or POST of the app. Each attempt has its own timeout (`AbortSignal.timeout`), never follows a redirect (a
  * redirect rejects, which is a network error), and sends exactly the headers `Accept`, `Authorization` and
  * `User-Agent`, and for a POST `Content-Type` and the body; a GET has no body. A network error or a 5xx on the first attempt waits `APP_RETRY_WAIT_MS` and tries once more; a timeout, a 429
- * and any other answer are final.
+ * and any other answer are final. With `request.remainingMs`, the caller's deadline bounds both attempts and the retry
+ * happens only when enough of it is left.
  */
 export async function appRequest(deps: AppClientDeps, request: AppRequest): Promise<AppResult> {
   const first = await attempt(deps, request);
   const retry = first.kind === "network" || (first.kind === "response" && first.status >= 500);
   if (!retry) return first;
+  if (request.remainingMs !== undefined && request.remainingMs() < APP_RETRY_WAIT_MS + APP_RETRY_MIN_MS) return first;
   await (deps.sleep ?? defaultSleep)(APP_RETRY_WAIT_MS);
   return attempt(deps, request);
 }
@@ -177,7 +190,13 @@ export async function appRequest(deps: AppClientDeps, request: AppRequest): Prom
 async function attempt(deps: AppClientDeps, request: AppRequest): Promise<AppResult> {
   const doFetch = deps.fetch;
   if (doFetch === undefined) return { kind: "network" };
-  const signal = AbortSignal.timeout(deps.timeoutMs ?? request.timeoutMs ?? APP_TIMEOUT_MS);
+  let timeoutMs = deps.timeoutMs ?? request.timeoutMs ?? APP_TIMEOUT_MS;
+  if (request.remainingMs !== undefined) {
+    const left = request.remainingMs();
+    if (left <= 0) return { kind: "timeout" };
+    timeoutMs = Math.min(timeoutMs, left);
+  }
+  const signal = AbortSignal.timeout(timeoutMs);
   const post = request.method === "POST";
   let response: Response;
   try {

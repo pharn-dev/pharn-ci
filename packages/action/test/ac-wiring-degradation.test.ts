@@ -7,6 +7,9 @@ import { describe, expect, it } from "vitest";
 const BASE_SHA = "a".repeat(40);
 
 describe("action run() degradation paths", () => {
+  // Review finding 9: this test pinned the bug. A rejected `git ls-files` used to warn and report on an empty file list,
+  // which passed the agent setup, secret and policy checks on nothing. It now fails the step, as the CLI does; the name
+  // is kept so the test keeps its identity (packages/action/test/ac-review-medium-inputs.test.ts covers the new rule).
   it("AC-1: warns and still reports and sets outputs when git ls-files rejects", async () => {
     const { run } = await import("../src/run.js");
     const { harness } = await import("./harness.js");
@@ -14,10 +17,11 @@ describe("action run() degradation paths", () => {
 
     const report = await run(h.deps);
 
-    expect(report).toBeDefined();
-    expect(h.warnings.join("\n")).toContain("git ls-files failed, agent setup scan skipped");
-    expect(h.outputs.verdict).toBe(report?.verdict);
-    expect(h.outputs["report-path"]).toBe("/tmp/runner/pharn-ci/report.json");
+    expect(report).toBeUndefined();
+    expect(h.failed).toHaveLength(1);
+    expect(h.failed[0]).toContain("git ls-files failed");
+    expect(h.failed[0]).toContain("fatal: not a git repository");
+    expect(h.outputs.verdict).toBeUndefined();
   });
 
   it("AC-1: warns, still sets outputs and still posts the PR comment when the job summary write rejects", async () => {

@@ -251839,6 +251839,7 @@ var APP_AUDIENCE = "pharn.dev";
 var DEFAULT_APP_URL = "https://pharn.dev";
 var APP_TIMEOUT_MS = 1e4;
 var APP_RETRY_WAIT_MS = 1e3;
+var APP_RETRY_MIN_MS = 1e3;
 var APP_TOKEN_TIMEOUT_MS = 3e4;
 var APP_MAX_BODY_BYTES = 1048576;
 var APP_URL_ERROR = "the app-url input must be an https origin such as https://pharn.dev, with no credentials, path, query or fragment";
@@ -251897,13 +251898,20 @@ async function appRequest(deps, request2) {
   const first = await attempt(deps, request2);
   const retry = first.kind === "network" || first.kind === "response" && first.status >= 500;
   if (!retry) return first;
+  if (request2.remainingMs !== void 0 && request2.remainingMs() < APP_RETRY_WAIT_MS + APP_RETRY_MIN_MS) return first;
   await (deps.sleep ?? defaultSleep)(APP_RETRY_WAIT_MS);
   return attempt(deps, request2);
 }
 async function attempt(deps, request2) {
   const doFetch = deps.fetch;
   if (doFetch === void 0) return { kind: "network" };
-  const signal = AbortSignal.timeout(deps.timeoutMs ?? request2.timeoutMs ?? APP_TIMEOUT_MS);
+  let timeoutMs = deps.timeoutMs ?? request2.timeoutMs ?? APP_TIMEOUT_MS;
+  if (request2.remainingMs !== void 0) {
+    const left = request2.remainingMs();
+    if (left <= 0) return { kind: "timeout" };
+    timeoutMs = Math.min(timeoutMs, left);
+  }
+  const signal = AbortSignal.timeout(timeoutMs);
   const post = request2.method === "POST";
   let response;
   try {
@@ -252169,13 +252177,16 @@ var PULL_REQUEST_TARGET_LINE = "pharn-ci: the run is not uploaded to pharn.dev: 
 var NO_COMMENT_LINE = "pharn-ci: could not read the pull request comments, so the upload carries no comment link";
 var PUT_TIMEOUT_MS = 12e4;
 var REQUEST_TIMEOUT_MS = 6e4;
+var UPLOAD_DEADLINE_MS = 9e4;
 var JSON_CONTENT_TYPE2 = /^application\/json\s*(?:;|$)/i;
 var OBJECT_KEY = /^[A-Za-z0-9/_.=-]{1,512}$/;
 var PUT_OK = [200, 201, 204];
 async function runUpload(deps, input) {
   let step;
   try {
-    step = await uploadSteps(deps, input);
+    const clock = () => (deps.now?.() ?? /* @__PURE__ */ new Date()).getTime();
+    const deadlineAt = clock() + (deps.uploadDeadlineMs ?? UPLOAD_DEADLINE_MS);
+    step = await uploadSteps(deps, input, () => deadlineAt - clock());
   } catch {
     step = { outcome: { status: "failed", reason: "internal" } };
   }
@@ -252199,7 +252210,7 @@ function logOutcome(deps, step) {
     deps.warning("pharn-ci: the run was not uploaded to pharn.dev (too_large); the check is not affected");
   }
 }
-async function uploadSteps(deps, input) {
+async function uploadSteps(deps, input, remainingMs) {
   if (input.choice === "never") return { outcome: { status: "skipped", reason: "input-never" } };
   if (input.pullRequestTarget === true) return { outcome: { status: "skipped", reason: "pull-request-target" } };
   if (input.report.meta === void 0) return { outcome: { status: "skipped", reason: "no-meta" } };
@@ -252221,11 +252232,13 @@ async function uploadSteps(deps, input) {
     { level: 9 }
   );
   const m = JSON.parse(metaJson);
+  if (remainingMs() <= 0) return failed("upload-url:deadline", {});
   const urlResult = await appRequest(deps, {
     url: new URL("/api/v1/runs/upload-url", input.appOrigin),
     token,
     method: "POST",
     timeoutMs: REQUEST_TIMEOUT_MS,
+    remainingMs,
     body: JSON.stringify({
       repository: m.repository,
       headSha: m.headSha,
@@ -252243,7 +252256,7 @@ async function uploadSteps(deps, input) {
     return { outcome: { status: "too_large", maxBytes: null }, ...urlId };
   }
   if (urlResult.kind !== "response" || urlResult.status !== 200) {
-    return failed(failReason("upload-url", urlResult), urlId);
+    return failed(failReason("upload-url", urlResult, remainingMs()), urlId);
   }
   const urlAnswer = readUploadUrlAnswer(urlResult);
   if (urlAnswer === null) return failed("upload-url:malformed", urlId);
@@ -252251,13 +252264,16 @@ async function uploadSteps(deps, input) {
     return { outcome: { status: "too_large", maxBytes: urlAnswer.maxBytes }, ...urlId };
   }
   deps.setSecret?.(urlAnswer.uploadUrl);
-  const putFailure = await putBundle(deps, urlAnswer.uploadUrl, gz);
+  if (remainingMs() <= 0) return failed("put:deadline", {});
+  const putFailure = await putBundle(deps, urlAnswer.uploadUrl, gz, remainingMs);
   if (putFailure !== null) return failed(putFailure, {});
+  if (remainingMs() <= 0) return failed("runs:deadline", {});
   const runsResult = await appRequest(deps, {
     url: new URL("/api/v1/runs", input.appOrigin),
     token,
     method: "POST",
     timeoutMs: REQUEST_TIMEOUT_MS,
+    remainingMs,
     body: JSON.stringify({
       objectKey: urlAnswer.objectKey,
       repository: m.repository,
@@ -252274,7 +252290,7 @@ async function uploadSteps(deps, input) {
   });
   const runsId = requestIdOf(runsResult);
   if (runsResult.kind !== "response" || ![200, 201, 202].includes(runsResult.status)) {
-    return failed(failReason("runs", runsResult), runsId);
+    return failed(failReason("runs", runsResult, remainingMs()), runsId);
   }
   const runUrl = readRunsAnswer(runsResult, input.appOrigin);
   if (runUrl === null) return failed("runs:malformed", runsId);
@@ -252284,8 +252300,8 @@ var failed = (reason, id) => ({ outcome: { status: "failed", reason }, ...id });
 function requestIdOf(result) {
   return result.kind === "response" && result.requestId !== void 0 ? { requestId: result.requestId } : {};
 }
-function failReason(step, result) {
-  if (result.kind === "timeout") return `${step}:timeout`;
+function failReason(step, result, remaining) {
+  if (result.kind === "timeout") return remaining <= 0 ? `${step}:deadline` : `${step}:timeout`;
   if (result.kind === "network") return `${step}:network`;
   switch (result.status) {
     case 401:
@@ -252343,9 +252359,9 @@ function readRunsAnswer(result, origin) {
   const url = httpsUrl(answer.url, 2048);
   return url !== null && url.origin === origin.origin ? url.href : null;
 }
-async function putBundle(deps, url, bytes) {
+async function putBundle(deps, url, bytes, remainingMs) {
   if (deps.fetch === void 0) return "put:network";
-  const signal = AbortSignal.timeout(deps.timeoutMs ?? PUT_TIMEOUT_MS);
+  const signal = AbortSignal.timeout(Math.min(deps.timeoutMs ?? PUT_TIMEOUT_MS, remainingMs()));
   let response;
   try {
     response = await deps.fetch(url, {
@@ -252356,7 +252372,8 @@ async function putBundle(deps, url, bytes) {
       signal
     });
   } catch {
-    return signal.aborted ? "put:timeout" : "put:network";
+    if (!signal.aborted) return "put:network";
+    return remainingMs() <= 0 ? "put:deadline" : "put:timeout";
   }
   await response.body?.cancel().catch(() => {
   });
@@ -252570,13 +252587,18 @@ async function runUnsafe(deps) {
   const issueNumber = pr?.number ?? target?.number;
   const scopeLine = commentScopeLine(deps.context.workflow ?? "", deps.context.job ?? "");
   const commentNumber = comment ? issueNumber : void 0;
+  let ownLookup;
+  const findOwn = (n) => {
+    ownLookup ??= findOwnComment(deps, n, scopeLine);
+    return ownLookup;
+  };
   const outcome = await runUpload(deps, {
     choice: uploadChoice,
     ...deps.context.eventName === "pull_request_target" ? { pullRequestTarget: true } : {},
     report,
     appOrigin,
     ...target !== void 0 && headSha !== void 0 ? { prHeadShaExpected: headSha } : {},
-    ...commentNumber === void 0 ? {} : { findOwnComment: () => findOwnComment(deps, commentNumber, scopeLine) }
+    ...commentNumber === void 0 ? {} : { findOwnComment: () => findOwn(commentNumber) }
   });
   report = withUploadOutcome(report, outcome);
   const notInstalled = policy?.noInstallation === true || outcome.status === "skipped" && outcome.reason === "no-installation";
@@ -252597,6 +252619,11 @@ async function runUnsafe(deps) {
   await deps.writeSummary(summary2).catch((err) => deps.warning(`could not write job summary: ${String(err)}`));
   if (outcome.status === "ok") {
     deps.info("pharn-ci: the Pharn GitHub App comments on the pull request for this run, so pharn-ci posts no comment");
+    if (commentNumber !== void 0) {
+      await pointOwnComment(deps, findOwn(commentNumber), `${COMMENT_MARKER}
+${scopeLine}
+`, outcome.runUrl);
+    }
   } else if (comment && issueNumber !== void 0) {
     const body = fitMarkdown(report, {
       prefix: `${COMMENT_MARKER}
@@ -252617,26 +252644,30 @@ ${scopeLine}
 }
 async function trackedFiles(target, deps) {
   if (!target) {
-    const out = await deps.git(["ls-files", "-z"]).catch((err) => {
-      deps.warning(`git ls-files failed, agent setup scan skipped: ${String(err)}`);
-      return "";
-    });
-    return out.split("\0").filter((p) => p !== "");
-  }
-  try {
-    const tree = await deps.api.listTree(target.headSha);
-    if (tree.truncated) {
-      deps.warning(
-        "the file list of the PR head is truncated by the GitHub API (very large repository); the agent setup scan may miss files"
+    let out;
+    try {
+      out = await deps.git(["ls-files", "-z"]);
+    } catch (err) {
+      throw new Error(
+        `git ls-files failed (${String(err)}), so the files of the repository are unknown and the agent setup, secret and coverage path checks cannot run; check that the workspace is a git checkout (actions/checkout)`
       );
     }
-    return tree.paths;
-  } catch (err) {
-    deps.warning(
-      `could not list the files of the PR head through the GitHub API, agent setup scan skipped: ${String(err)}`
-    );
-    return [];
+    return out.split("\0").filter((p) => p !== "");
   }
+  let tree;
+  try {
+    tree = await deps.api.listTree(target.headSha);
+  } catch (err) {
+    throw new Error(
+      `could not list the files of the PR head through the GitHub API (${String(err)}), so the files of the pull request are unknown and the agent setup, secret and coverage path checks cannot run`
+    );
+  }
+  if (tree.truncated) {
+    deps.warning(
+      "the file list of the PR head is truncated by the GitHub API (very large repository); the agent setup scan may miss files"
+    );
+  }
+  return tree.paths;
 }
 async function gatherTestSources(deps, from) {
   if (resolveTestIntegrityMode(from.testIntegrityMode).mode === "off") return void 0;
@@ -252766,14 +252797,24 @@ async function getDiff(baseRefInput, deps, target, configInput = "") {
   }
   const localBase = await resolveLocal(base, deps);
   if (localBase) {
+    let parsed;
     try {
       const options = { configPath: configInput === "" ? void 0 : configInput, repoRoot: deps.workspace };
-      return { diff: { parsed: await readDiffChunks(gitChunks(deps, gitDiffArgs(localBase)), options) }, localBase };
+      parsed = await readDiffChunks(gitChunks(deps, gitDiffArgs(localBase)), options);
     } catch (err) {
       throw new Error(
         `the local git diff against "${base}" failed (${String(err)}); check out full history with actions/checkout and fetch-depth: 0`
       );
     }
+    if (parsed.length === 0 && await headIsInBase(localBase, deps)) {
+      const named = baseRefInput ? `base-ref "${baseRefInput}"` : `the base ${base}`;
+      return {
+        diff: {
+          unavailable: `${named} resolves to HEAD or a descendant of HEAD, so there is no change to measure` + (baseRefInput ? "; set base-ref to the branch or commit the change is based on" : "")
+        }
+      };
+    }
+    return { diff: { parsed }, localBase };
   }
   try {
     return { diff: { text: await deps.api.compareDiff(`${base}...${head}`) } };
@@ -252803,6 +252844,16 @@ async function getTargetDiff(baseRefInput, target, deps) {
     }
     deps.warning(`could not fetch the diff from the GitHub API: ${String(err)}`);
     return { unavailable: `could not get the diff for ${base}...${target.headSha} from the GitHub API` };
+  }
+}
+var OBJECT_ID2 = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+async function headIsInBase(base, deps) {
+  try {
+    const mergeBase = (await deps.git(["merge-base", "--end-of-options", base, "HEAD"])).trim();
+    const head = (await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", "HEAD^{commit}"])).trim();
+    return OBJECT_ID2.test(mergeBase) && mergeBase === head;
+  } catch {
+    return false;
   }
 }
 async function resolveLocal(base, deps) {
@@ -252880,6 +252931,20 @@ function ownComments(comments, viewer, scopeLine) {
 async function findOwnComment(deps, issueNumber, scopeLine) {
   const [comments, viewer] = await Promise.all([deps.api.listComments(issueNumber), deps.api.viewerLogin()]);
   return ownComments(comments, viewer, scopeLine)[0];
+}
+var APP_POINTER_LINE = "This run is reported by the Pharn GitHub App:";
+async function pointOwnComment(deps, lookup2, prefix, runUrl) {
+  try {
+    const existing = await lookup2;
+    if (existing === void 0) return;
+    await deps.api.updateComment(existing.id, `${prefix}${APP_POINTER_LINE} ${runUrl}
+`);
+    deps.info(`updated pharn-ci comment ${existing.id} to point to the run on pharn.dev`);
+  } catch (err) {
+    deps.warning(
+      `could not update the earlier pharn-ci comment (${errorText(err)}); it may still show an earlier run's verdict`
+    );
+  }
 }
 async function removeRaceDuplicates(deps, issueNumber, createdLogin, body, scopeLine) {
   try {
