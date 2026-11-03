@@ -11,6 +11,9 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- Docs (review findings 28 and 30): `docs/LIMITS.md` gains "What P08 misses"; `docs/RELEASING.md` says the
+  release PR is the last change merged before the dispatch and that `schemaVersion` is the one v1 field whose
+  type changed in Report v2; `CONTRIBUTING.md` names the fixture naming rule and its two historical exceptions.
 - TI09 no longer lets a test-runner config made unreadable at HEAD turn a block into a warning (review finding 22):
   a modified or renamed config whose settings were read at the merge base and that is not found at HEAD (an IIFE or
   other opaque wrapper) or cannot be read there (padded past the size cap, nested too deep, a syntax error, dropped)

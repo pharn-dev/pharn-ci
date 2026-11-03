@@ -1025,6 +1025,25 @@ P02 to P06 read the committed agent settings and MCP files in policy mode. They 
 - **`defaultMode`:** `bypassPermissions` and `auto` are flagged whatever the Claude Code version.
 - **Sandboxing is the boundary.** None of this stops a command from doing what a rule's text did not name.
 
+### What P08 misses
+
+P08 matches the tracked paths of the repository against `setup.forbidden_files`. It does not see:
+
+- **Tracked files only.** The paths come from `git ls-files` of the checkout (in PR-number mode, from the git tree of
+  the pull request head through the GitHub API). An untracked or git-ignored file, a file the job creates and a file
+  outside the repository are not listed, and a submodule is one path (its gitlink): the files inside it are not.
+- **Paths only.** A file is never read, so a forbidden value inside a file with an allowed name is not P08's (check A7
+  reads the machine-readable agent config files for committed secrets). A tracked symlink is matched by its own path;
+  its target is not followed.
+- **The globs of `coverage.exclude`.** Matching is case-sensitive and anchored at the repository root, with no dotfile
+  rule: `*.pem` matches a file at the root only, `**/*.pem` one in any directory, and neither matches `key.PEM`.
+- **The whole tree, not the diff.** Every tracked path that matches is a violation, files the pull request did not
+  touch included, so a pattern added to the policy blocks every pull request until the file is removed.
+- **A failed listing.** When `git ls-files` (or the tree request) fails, the Action warns that the agent setup scan was
+  skipped and P08 finds nothing; the CLI fails the run instead. A tree the GitHub API truncates (a very large
+  repository) lists part of the repository, with a warning.
+- **At most 50 violations are listed.** The `POLICY_P08` text counts the rest.
+
 ### What P11 misses
 
 - **Only agent PRs that identify themselves.** P11 runs for a pull request the detection counts as an agent PR (§9). An

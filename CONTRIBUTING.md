@@ -51,6 +51,11 @@ The branch must be up to date with `main` before it can merge.
   outputs, and any report a test produces is validated against the schema with `expectValidReport`.
 - Golden files (`fixtures/golden/*`) change only when the output intentionally changes. Regenerate
   them with `pnpm test -u` and review the diff.
+- Test-integrity fixtures under `fixtures/test-integrity/<id>/` are named for the result they pin, with a
+  `block-`, `warn-`, `info-` or `pass-` prefix. Two keep historical names, and their tests say so:
+  `TI15/warn-*.diff` give `info` since TI15 became an info signal (0.3.0), and
+  `TI02/pass-moved-to-other-file` gives one TI02 block since a cross-file move needs body evidence.
+  Renaming them would re-pin the fixture digests of several base-pinned tests.
 - Never weaken, skip or delete an existing test to make CI pass. If a test is wrong, fix it and say
   why in the PR description.
 - Bug fixes include a regression test.

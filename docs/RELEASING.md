@@ -24,7 +24,7 @@ npm yet.
 
 **v0.2.0 is a breaking release for report consumers.** It ships Report v2 (`schema/report.v2.json`):
 `schemaVersion` becomes the number 2 (Report v1 used the string "1"), and the report gains optional top-level
-objects (`testIntegrity`, and `meta` from the Action). Every v1 field keeps its name, type and meaning, but
+objects (`testIntegrity`, and `meta` from the Action). Every v1 field except `schemaVersion` keeps its name, type and meaning, but
 `schema/report.v1.json` has `additionalProperties: false`, so a v2 report does not validate against it. Tools
 that validate `report.json` must switch on `schemaVersion`. Inputs, outputs and message codes are unchanged.
 
@@ -71,7 +71,10 @@ that worked on the previous release. Before 1.0 the rules are:
      the **Status** note under the badges so it no longer says the release has not been cut. The
      docs tests fail when a pin disagrees with the package version.
    - Run `pnpm build` (the version is compiled into `packages/action/dist`) and commit the result.
-   - Merge with all required checks green, then dispatch `release.yml` (steps 2 and 3).
+   - Merge with all required checks green, then dispatch `release.yml` (steps 2 and 3). The release PR is the
+     last change merged before the dispatch: a PR merged in between lands in the tag but not in its dated
+     CHANGELOG section (v0.2.0 was tagged four PRs after its release PR, and its dated section was amended
+     afterwards).
 2. **Dry run.** Actions → **release** → **Run workflow**, branch `main`, version `X.Y.Z`, leave
    **dry_run** ticked. The `Release verify` job refuses anything but `main`, a strict `X.Y.Z` equal
    to the package version, an untagged version and a non-empty `CHANGELOG.md` section under an
