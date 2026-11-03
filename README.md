@@ -154,7 +154,7 @@ on: pull_request
 permissions:
   contents: read
   pull-requests: write
-  id-token: write # lets pharn-ci fetch your org policy (see Org policy); leave it out to run without one
+  id-token: write # lets pharn-ci fetch your org policy and, with the default upload: auto, upload the redacted report and run metadata to pharn.dev; leave it out and only GitHub is called
 
 # One run per PR at a time, so concurrent pushes do not race on the sticky comment. The github.ref
 # fallback gives each merge-queue entry its own group, since merge_group events have no PR number.
@@ -614,7 +614,7 @@ of the App never both appear for one upload.
 | `comment`           | `true`                      | Post/update one sticky PR comment per workflow and job |
 | `fail-on-threshold` | `true`                      | Fail the step when the verdict is `fail` |
 | `config`            | `.pharn/ci.yml`, may be absent | Config file path; a file named here that does not exist fails the step |
-| `github-token`      | `github.token`              | Token for the comment and diff fallback, and in `pr-number` mode always for reading the pull request, its diff and its file tree; `pull-requests: write` for the comment (`pull-requests: read` is enough for `pr-number` mode without one), may be empty with `comment: false` and a local diff outside `pr-number` mode. With `test-integrity: block` the [accept label](#accept-label) also reads the pull request and its issue events (`GET /repos/{owner}/{repo}/issues/{issue_number}/events`), which `pull-requests: read` (or `issues: read`) allows |
+| `github-token`      | `github.token`              | Token for the comment and diff fallback, and in `pr-number` mode always for reading the pull request, its diff and its file tree; `pull-requests: write` for the comment (`pull-requests: read` is enough for `pr-number` mode without one), may be empty with `comment: false` and a local diff outside `pr-number` mode. On every `pull_request` run it also lists the pull request's commits (`GET /repos/{owner}/{repo}/pulls/{n}/commits`, at most 3 pages) for [agent-PR detection](#agent-prs), which needs `pull-requests: read`; with an empty or under-scoped token the commits cannot be read and every pull request counts as an agent PR. With `test-integrity: block` the [accept label](#accept-label) also reads the pull request and its issue events (`GET /repos/{owner}/{repo}/issues/{issue_number}/events`), which `pull-requests: read` (or `issues: read`) allows |
 
 | Output          |                                                       |
 | --------------- | ----------------------------------------------------- |
@@ -1064,9 +1064,11 @@ that:
   pharn.dev ([Upload](#upload-to-pharndev-optional)).
   What it reads, what it sends to your GitHub and to pharn.dev, and what it stores is listed in
   [Data handling](SECURITY.md#data-handling).
-- **Small token footprint.** `contents: read` plus `pull-requests: write`. It reads the compare API
-  and the PR's comments, calls `GET /user` to learn which login its own comment has, and in
-  `pr-number` mode also reads the pull request and its git tree. It updates only a comment its own
+- **Small token footprint.** `contents: read` plus `pull-requests: write`, and `id-token: write` only for
+  the org policy and the upload to pharn.dev. It reads the compare API and the PR's comments, calls
+  `GET /user` to learn which login its own comment has, lists the pull request's commits for agent-PR
+  detection on every `pull_request` run, and in `pr-number` mode also reads the pull request and its
+  git tree. It updates only a comment its own
   login (or, when the token cannot read its login, a bot) wrote for this workflow and job. It deletes a comment only when concurrent runs left
   duplicates of that own marker comment.
 - **Untrusted input stays data.** Parsers are hand-written, pure and non-recursive. File names

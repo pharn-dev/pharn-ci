@@ -11,6 +11,17 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- The PR comment no longer hides a test-integrity finding id whose findings all fall past the 20 it lists: that
+  id's `TEST_INTEGRITY_<id>` message now stays under Messages (review finding 10). No schema change.
+- No hint tells the reader to loosen the gate (review finding 11): the `POLICY_UNAVAILABLE` hint (also under a P10
+  violation) no longer offers `policy: never`, and the `AGENT_SETUP_EXPECTED_MISSING` hint (also under a P01
+  violation) asks whoever owns `setup.expect` to change it instead of suggesting removing the tool from it.
+- A `file:` policy's looser `test_integrity.mode` is now named in `POLICY_OVERRIDE_IGNORED` when neither the
+  `test-integrity` input nor `.pharn/ci.yml` sets a mode (review finding 14). The mode in force is unchanged.
+- Docs (review findings 17 and 18): README and `SECURITY.md` name the pull request commits read made on every
+  `pull_request` run for agent-PR detection (with an empty or under-scoped token every pull request counts as an
+  agent PR), the accept-label reads and every git subcommand; the quick start's `id-token: write` comment and
+  the token-footprint bullet say the permission also turns the upload to pharn.dev on.
 - Docs (review findings 28 and 30): `docs/LIMITS.md` gains "What P08 misses"; `docs/RELEASING.md` says the
   release PR is the last change merged before the dispatch and that `schemaVersion` is the one v1 field whose
   type changed in Report v2; `CONTRIBUTING.md` names the fixture naming rule and its two historical exceptions.
