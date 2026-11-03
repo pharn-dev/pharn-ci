@@ -111,8 +111,9 @@ describe("TI10 and TI13: docs, schema and fixtures", () => {
     const ti13Lower = ti13.toLowerCase();
     expect(ti13, "other tools' markers").toMatch(/node:coverage|no branch|exclude_lines/);
     expect(ti13Lower, "markers in test files").toContain("test file");
-    expect(ti13, "*.test.mts counted as source").toContain(".test.mts");
-    expect(ti13, "*.test.cts counted as source").toContain(".test.cts");
+    expect(ti13, "a test file by name (section 1) gives nothing").toMatch(
+      /test file by name \(section 1\) gives nothing/,
+    );
     expect(ti13Lower, "a marker inside a string").toContain("string");
     expect(ti13Lower, "a block comment's later line").toContain("block comment");
     expect(ti13, "the kept-text caps").toMatch(/5[ ,]?000|\b400\b/);

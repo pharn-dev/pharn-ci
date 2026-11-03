@@ -1,5 +1,6 @@
 import type { DiffFile } from "../diff/unified.js";
 import { configRepoPath } from "../gateInputs.js";
+import { JS_TS_EXTENSIONS } from "../jsTsExtensions.js";
 import { isTestFile, keepTestFileText } from "../testFiles.js";
 import { testLanguage } from "./testLines.js";
 
@@ -34,7 +35,7 @@ export function isSnapshotFile(path: string): boolean {
   return segments.slice(0, -1).includes("__snapshots__");
 }
 
-const JS_TS_EXTENSIONS: ReadonlySet<string> = new Set(["js", "jsx", "ts", "tsx", "mjs", "cjs", "mts", "cts"]);
+const JS_TS_EXTENSION_SET: ReadonlySet<string> = new Set(JS_TS_EXTENSIONS);
 
 /** Whether a repo-relative path is a `package.json`: its basename is exactly that, at the root or nested. */
 export function isPackageJsonFile(path: string): boolean {
@@ -51,7 +52,7 @@ export function coverageSourceLanguage(path: string): "jsts" | "python" | null {
   if (dot <= 0) return null;
   const extension = basename.slice(dot + 1);
   if (extension === "py") return "python";
-  return JS_TS_EXTENSIONS.has(extension) ? "jsts" : null;
+  return JS_TS_EXTENSION_SET.has(extension) ? "jsts" : null;
 }
 
 /**

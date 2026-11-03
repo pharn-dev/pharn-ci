@@ -1,4 +1,5 @@
 import type { DiffFile } from "../diff/unified.js";
+import { JS_TS_EXTENSIONS, type JsTsExtension, jsTsFlavor } from "../jsTsExtensions.js";
 import { isTestFile } from "../testFiles.js";
 import type { TestModuleMock } from "../testIndex/types.js";
 
@@ -11,9 +12,18 @@ const PYTHON_CALLEES: ReadonlySet<string> = new Set([
   "monkeypatch.setattr",
 ]);
 
-/** The eight extensions of a JavaScript or TypeScript module, in the order candidates are tried. */
-const EXTENSIONS = ["ts", "tsx", "mts", "cts", "js", "jsx", "mjs", "cjs"] as const;
-const TS_TWIN: Readonly<Record<string, string>> = { js: "ts", jsx: "tsx", mjs: "mts", cjs: "cts" };
+/** The eight extensions of a JavaScript or TypeScript module, in the order candidates are tried: TypeScript, then JavaScript. */
+const EXTENSIONS: readonly JsTsExtension[] = [
+  ...JS_TS_EXTENSIONS.filter((extension) => jsTsFlavor(extension) === "ts"),
+  ...JS_TS_EXTENSIONS.filter((extension) => jsTsFlavor(extension) === "js"),
+];
+/** Each JavaScript extension's TypeScript spelling (`js`→`ts`, `mjs`→`mts`), by respelling its `j` as a `t`. */
+const TS_TWIN: Readonly<Record<string, string>> = Object.fromEntries(
+  JS_TS_EXTENSIONS.filter((extension) => jsTsFlavor(extension) === "js").map((extension) => [
+    extension,
+    extension.replace("j", "t"),
+  ]),
+);
 
 /**
  * The source files the change adds, modifies or renames: each new path maps to itself, and a renamed file's old path to

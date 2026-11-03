@@ -13,9 +13,9 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   does not lower diff coverage. pharn-ci names a deleted test file, or one renamed to a name that is
   not a test file, in `TEST_FILES_DELETED` (info only; the verdict is unchanged), and reports the
   ones whose removed lines define tests as TI01 (see "What TI01 misses" below). A test file is
-  recognized only by name: `.test.` or `.spec.` with a JavaScript or TypeScript extension, `.e2e.ts`,
-  `.pw.ts`, `test_*.py`, `*_test.py`, `*_test.go`, or any file in a `test`, `tests` or `__tests__`
-  directory. An added skip or focus marker in a test file is TI03 or TI04. A test case deleted from a file that stays is
+  recognized only by name: `.test.` or `.spec.` with a JavaScript or TypeScript extension (`.js`, `.jsx`, `.ts`,
+  `.tsx`, `.mjs`, `.cjs`, `.mts` or `.cts`), `.e2e.ts`, `.pw.ts`, `test_*.py`, `*_test.py`, `*_test.go`, or any file in a
+  `test`, `tests` or `__tests__` directory. An added skip or focus marker in a test file is TI03 or TI04. A test case deleted from a file that stays is
   TI02, an emptied test body or fewer assertions TI05, and a weakened assertion TI06 (see "What TI02 misses", "What
   TI05 misses" and "What TI06 misses" below).
 - **What TI01 misses.** TI01 reads line patterns, not syntax. (1) A test file counts only if its
@@ -566,8 +566,7 @@ TI13 reads the added and removed lines of JS/TS and Python source files that are
   (`# pragma: no cover`, `#pragma nocover` and the other spellings its default pattern reads) are read. `node:coverage` hints, `# pragma: no branch`, a custom `exclude_lines` pattern, `.coveragerc` and `.nycrc`
   settings and an exclusion in a config file are not.
 - **Markers in test files.** A file that is a test file by name (section 1) gives nothing, and so does any file that is
-  not JS/TS or Python. `*.test.mts` and `*.test.cts` files are not test files by the existing detection, so they count as
-  source and fire.
+  not JS/TS or Python.
 - **A marker inside a string fires,** because the scan sees a comment start in the text of the line, not the syntax. A
   marker on a later line of a block comment (without its own comment start) is missed.
 - **Moves and one-to-one matching.** A removed marker of the same text accounts for one added marker of the same file; a

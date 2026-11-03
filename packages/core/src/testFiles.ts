@@ -1,4 +1,5 @@
 import type { DiffFile } from "./diff/unified.js";
+import { JS_TS_EXTENSIONS } from "./jsTsExtensions.js";
 
 const TEST_DIRECTORIES: ReadonlySet<string> = new Set(["test", "tests", "__tests__"]);
 
@@ -6,7 +7,7 @@ const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /** Basename patterns of the test-integrity spec's test globs. Each is anchored at the end and runs in linear time. */
 const TEST_BASENAME: readonly RegExp[] = [
-  /\.(?:test|spec)\.(?:js|jsx|ts|tsx|mjs|cjs)$/,
+  new RegExp(`\\.(?:test|spec)\\.(?:${JS_TS_EXTENSIONS.join("|")})$`),
   /\.(?:e2e|pw)\.ts$/,
   /^test_.+\.py$/,
   /_test\.py$/,
@@ -15,8 +16,8 @@ const TEST_BASENAME: readonly RegExp[] = [
 
 /**
  * Whether a repo-relative path is a test file, by the test globs of the test-integrity spec: a basename `*.test.*` or
- * `*.spec.*` with a JavaScript or TypeScript extension, `*.e2e.ts`, `*.pw.ts`, Python `test_*.py` and `*_test.py`, Go
- * `*_test.go`, or any file below a directory that is exactly `test`, `tests` or `__tests__`. Case-sensitive, whole
+ * `*.spec.*` with one of the eight JavaScript or TypeScript extensions (`JS_TS_EXTENSIONS`), `*.e2e.ts`, `*.pw.ts`,
+ * Python `test_*.py` and `*_test.py`, Go `*_test.go`, or any file below a directory that is exactly `test`, `tests` or `__tests__`. Case-sensitive, whole
  * segments only. By name only: it reads no file.
  */
 export function isTestFile(path: string): boolean {

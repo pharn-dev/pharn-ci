@@ -241439,11 +241439,30 @@ function applySignalOverrides(signals, omitted, overrides, mode) {
   };
 }
 
+// ../core/src/jsTsExtensions.ts
+var JS_TS_EXTENSIONS = Object.freeze(["js", "jsx", "ts", "tsx", "mjs", "cjs", "mts", "cts"]);
+function isJsTsExtension(ext) {
+  return JS_TS_EXTENSIONS.includes(ext);
+}
+var FLAVOR = Object.freeze({
+  js: "js",
+  jsx: "js",
+  ts: "ts",
+  tsx: "ts",
+  mjs: "js",
+  cjs: "js",
+  mts: "ts",
+  cts: "ts"
+});
+function jsTsFlavor(ext) {
+  return FLAVOR[ext];
+}
+
 // ../core/src/testFiles.ts
 var TEST_DIRECTORIES = /* @__PURE__ */ new Set(["test", "tests", "__tests__"]);
 var byCodeUnit15 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var TEST_BASENAME = [
-  /\.(?:test|spec)\.(?:js|jsx|ts|tsx|mjs|cjs)$/,
+  new RegExp(`\\.(?:test|spec)\\.(?:${JS_TS_EXTENSIONS.join("|")})$`),
   /\.(?:e2e|pw)\.ts$/,
   /^test_.+\.py$/,
   /_test\.py$/,
@@ -241672,7 +241691,7 @@ function resolvePythonName(name, aliases) {
 }
 
 // ../core/src/signals/testLines.ts
-var JS_EXTENSIONS = [".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"];
+var JS_EXTENSIONS = JS_TS_EXTENSIONS.map((extension) => `.${extension}`);
 function testLanguage(path) {
   if (path.endsWith("_test.go")) return "go";
   if (path.endsWith(".py")) return "python";
@@ -241901,7 +241920,7 @@ function isSnapshotFile(path) {
   if (basename.endsWith(".snap") || basename.endsWith(".ambr")) return true;
   return segments.slice(0, -1).includes("__snapshots__");
 }
-var JS_TS_EXTENSIONS = /* @__PURE__ */ new Set(["js", "jsx", "ts", "tsx", "mjs", "cjs", "mts", "cts"]);
+var JS_TS_EXTENSION_SET = new Set(JS_TS_EXTENSIONS);
 function isPackageJsonFile(path) {
   return path.slice(path.lastIndexOf("/") + 1) === "package.json";
 }
@@ -241911,7 +241930,7 @@ function coverageSourceLanguage(path) {
   if (dot <= 0) return null;
   const extension = basename.slice(dot + 1);
   if (extension === "py") return "python";
-  return JS_TS_EXTENSIONS.has(extension) ? "jsts" : null;
+  return JS_TS_EXTENSION_SET.has(extension) ? "jsts" : null;
 }
 function keepSignalFileText(configPath, repoRoot) {
   const config = configRepoPath(configPath, repoRoot);
@@ -242042,18 +242061,10 @@ function scriptKindOf(path) {
   const base = path.slice(slash + 1);
   const dot = base.lastIndexOf(".");
   if (dot === -1) return "ts";
-  switch (base.slice(dot + 1).toLowerCase()) {
-    case "tsx":
-      return "tsx";
-    case "js":
-    case "mjs":
-    case "cjs":
-      return "js";
-    case "jsx":
-      return "jsx";
-    default:
-      return "ts";
-  }
+  const extension = base.slice(dot + 1).toLowerCase();
+  if (!isJsTsExtension(extension)) return "ts";
+  if (extension === "tsx" || extension === "jsx") return extension;
+  return jsTsFlavor(extension);
 }
 
 // ../core/src/testIndex/types.ts
@@ -242563,15 +242574,8 @@ function indexTestFile(path, text) {
 
 // ../core/src/signals/testPairs.ts
 var byCodeUnit16 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-var EXTENSION_LANGUAGE = /* @__PURE__ */ new Map([
-  ["ts", "ts"],
-  ["tsx", "ts"],
-  ["mts", "ts"],
-  ["cts", "ts"],
-  ["js", "js"],
-  ["jsx", "js"],
-  ["mjs", "js"],
-  ["cjs", "js"],
+var EXTENSION_LANGUAGE = new Map([
+  ...JS_TS_EXTENSIONS.map((extension) => [extension, jsTsFlavor(extension)]),
   ["py", "py"]
 ]);
 function languageOf(path) {
@@ -247276,8 +247280,16 @@ var PYTHON_CALLEES = /* @__PURE__ */ new Set([
   "mocker.patch",
   "monkeypatch.setattr"
 ]);
-var EXTENSIONS = ["ts", "tsx", "mts", "cts", "js", "jsx", "mjs", "cjs"];
-var TS_TWIN = { js: "ts", jsx: "tsx", mjs: "mts", cjs: "cts" };
+var EXTENSIONS = [
+  ...JS_TS_EXTENSIONS.filter((extension) => jsTsFlavor(extension) === "ts"),
+  ...JS_TS_EXTENSIONS.filter((extension) => jsTsFlavor(extension) === "js")
+];
+var TS_TWIN = Object.fromEntries(
+  JS_TS_EXTENSIONS.filter((extension) => jsTsFlavor(extension) === "js").map((extension) => [
+    extension,
+    extension.replace("j", "t")
+  ])
+);
 function changedSources(diff) {
   const sources = /* @__PURE__ */ new Map();
   for (const file of diff) {

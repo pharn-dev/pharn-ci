@@ -5,14 +5,15 @@
  * comment, a string, `if (x) this.skip()`, `solver.fit(x)`) is not read.
  */
 
+import { JS_TS_EXTENSIONS } from "../jsTsExtensions.js";
 import { resolvePythonName } from "./pythonAliases.js";
 
 /** The language a test file's one-line forms are read in. */
 export type TestLanguage = "jsts" | "python" | "go";
 
-const JS_EXTENSIONS: readonly string[] = [".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"];
+const JS_EXTENSIONS: readonly string[] = JS_TS_EXTENSIONS.map((extension) => `.${extension}`);
 
-/** The language of a test file by its path: JS/TS by extension, Python `.py`, Go `_test.go`; null for anything else. */
+/** The language of a test file by its path: JS/TS by the shared extension list, Python `.py`, Go `_test.go`; null for anything else. */
 export function testLanguage(path: string): TestLanguage | null {
   if (path.endsWith("_test.go")) return "go";
   if (path.endsWith(".py")) return "python";

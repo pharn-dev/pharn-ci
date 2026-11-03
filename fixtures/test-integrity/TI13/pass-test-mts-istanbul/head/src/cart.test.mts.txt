@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { addItem } from "./cart.js";
+
+describe("cart", () => {
+  it("adds an item", () => {
+    expect(addItem([], 1)).toEqual([1]);
+    /* istanbul ignore next */
+  });
+  it("keeps the order", () => {
+    expect(addItem([1], 2)).toEqual([1, 2]);
+  });
+});

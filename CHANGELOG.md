@@ -142,6 +142,9 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   `test-integrity: block`, and `TEST_INTEGRITY_INDEX_UNAVAILABLE` is an error in `block` when TI02 and TI05, or TI09,
   did not run at all (the levels #126 shipped). `docs/THREAT-MODEL.md` §3 now renders residual numbers 8 to 35 as
   written, the numbers the docs and tests cite. No code change.
+- `*.test.mts`, `*.spec.mts`, `*.test.cts` and `*.spec.cts` files are test files, so TI01, TI03, TI04 and the other
+  test-file signals read them, and TI13 no longer fires in them (review 2026-11-01, finding 13). The eight JS/TS
+  extensions are one exported list, `JS_TS_EXTENSIONS` in `@pharn-ci/core`, that every site derives from.
 
 - After a successful upload to pharn.dev, the PR comment an earlier run of the same workflow and job left is updated
   to one line pointing to the run on pharn.dev, instead of keeping its old verdict beside the Pharn GitHub App's

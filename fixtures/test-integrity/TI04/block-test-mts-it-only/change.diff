@@ -1,0 +1,7 @@
+diff --git a/src/cart.test.mts b/src/cart.test.mts
+index 1111111..2222222 100644
+--- a/src/cart.test.mts
++++ b/src/cart.test.mts
+@@ -5 +5 @@ describe("cart", () => {
+-  it("adds an item", () => {
++  it.only("adds an item", () => {

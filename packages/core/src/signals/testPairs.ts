@@ -1,4 +1,5 @@
 import type { DiffFile } from "../diff/unified.js";
+import { JS_TS_EXTENSIONS, jsTsFlavor } from "../jsTsExtensions.js";
 import { isTestFile } from "../testFiles.js";
 import { indexTestFile } from "../testIndex/indexTestFile.js";
 import type { PythonTestIndex } from "../testIndex/pythonSides.js";
@@ -11,15 +12,8 @@ const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 /** The language of a test file the base-and-head signals read. */
 export type TestLanguage = "ts" | "js" | "py";
 
-const EXTENSION_LANGUAGE: ReadonlyMap<string, TestLanguage> = new Map([
-  ["ts", "ts"],
-  ["tsx", "ts"],
-  ["mts", "ts"],
-  ["cts", "ts"],
-  ["js", "js"],
-  ["jsx", "js"],
-  ["mjs", "js"],
-  ["cjs", "js"],
+const EXTENSION_LANGUAGE: ReadonlyMap<string, TestLanguage> = new Map<string, TestLanguage>([
+  ...JS_TS_EXTENSIONS.map((extension): [string, TestLanguage] => [extension, jsTsFlavor(extension)]),
   ["py", "py"],
 ]);
 

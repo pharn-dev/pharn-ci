@@ -102,6 +102,7 @@ export {
   type ResolveInputsResult,
   resolveInputs,
 } from "./inputs.js";
+export { JS_TS_EXTENSIONS, type JsTsExtension } from "./jsTsExtensions.js";
 export { createLineSplitter, splitLines, splitLinesAsync } from "./lines.js";
 export { normalizePath } from "./paths.js";
 export { type AgentPolicy, agentPolicyOf, type PolicyFileBase } from "./policy/agents.js";
@@ -233,6 +234,7 @@ export {
   keepSignalFileText,
 } from "./signals/signalFiles.js";
 export { MAX_TEST_CHANGE_ENTRIES, summarizeTestChanges } from "./signals/testChanges.js";
+export { type TestLanguage, testLanguage } from "./signals/testLines.js";
 export { type MatchCandidate, type MatchedPair, matchTests, type TestMatch } from "./signals/testMatch.js";
 export { detectTI01 } from "./signals/ti01.js";
 export { movedTestFiles } from "./signals/ti01Moved.js";

@@ -1,0 +1,17 @@
+diff --git a/src/cart.test.mts b/src/cart.test.mts
+deleted file mode 100644
+index 5555555..0000000
+--- a/src/cart.test.mts
++++ /dev/null
+@@ -1,11 +0,0 @@
+-import { describe, expect, it } from "vitest";
+-import { addItem } from "./cart.js";
+-
+-describe("cart", () => {
+-  it("adds an item", () => {
+-    expect(addItem([], 1)).toEqual([1]);
+-  });
+-  it("keeps the order", () => {
+-    expect(addItem([1], 2)).toEqual([1, 2]);
+-  });
+-});
