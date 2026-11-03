@@ -94,7 +94,8 @@ export function runsMocha(value: string): boolean {
  * after `||` or `;` (not after `&&` or a single `|`, because the script still fails when the runner fails). An `echo`
  * counts only when the script's exit status can be its own: it is not followed by `&&`, `|`, `&` or `;` (so
  * `echo start && vitest run` is a banner, not a weakening). `true` or `:` after `||` or `;` ignores the status before
- * it. `-t` is a name filter except in a script that runs mocha.
+ * it; at the start, with nothing after it or only `||`, it is the whole status (`"test": "true"`), read as `exit 0`.
+ * `-t` is a name filter except in a script that runs mocha.
  */
 function scanKinds(value: string): Set<Kind> {
   const found = new Set<Kind>();
@@ -112,6 +113,9 @@ function scanKinds(value: string): Set<Kind> {
     const atCommandPosition = operator === "" || operator === "||" || operator === ";";
     if (atCommandPosition && words[0] === "echo" && (next === "" || next === "||")) found.add("echo");
     if (atCommandPosition && words[0] === "exit" && words[1] === "0") found.add("exit-0");
+    // A lone `true` or `:` as the whole script, or before `||`, is the script's status: nothing runs the tests.
+    const noop = words.length === 1 && (words[0] === "true" || words[0] === ":");
+    if (operator === "" && noop && (next === "" || next === "||")) found.add("exit-0");
     if ((operator === "||" || operator === ";") && words.length === 1 && (words[0] === "true" || words[0] === ":")) {
       found.add("or-true");
     }

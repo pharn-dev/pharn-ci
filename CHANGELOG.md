@@ -30,6 +30,16 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 - Test-only, recorded late: 0.4.0 (#111) moved the growth tests to CPU time and raised four vitest timeouts to 300 s
   (`ac-ti0205-growth`, `ac-ti06-ti12-linear`, `ac-py-index-growth`, `limits`); the growth ceilings themselves did not
   change.
+- An org policy that requires a deny rule or a hook (`setup.required_permissions_deny` or `setup.required_hooks`,
+  with P03 or P06 at block) now fails the check when the agent settings files could not be read, instead of warning
+  (second review, HIGH 4). The files are unread whenever the diff came from the compare API (a shallow checkout, the
+  `actions/checkout` default; `pr-number` mode; a failed local diff), so before this a default checkout turned the
+  policy's block into a warning and the step passed with the requirement unchecked. `POLICY_SETTINGS_INVALID` is now
+  `error` there, as it already was under `policy.required`; use `fetch-depth: 0`. A rule the policy sets to `warn` or
+  `off` keeps the warning.
+- TI10 reports a test script replaced by a lone `true` or `:` (`"test": "true"`, or `true || vitest run`) as forcing a
+  successful exit, like `exit 0` (second review, HIGH 5). `docs/LIMITS.md` lists what TI10 still misses:
+  `node -e "process.exit(0)"`, a positional path filter, `--dir` and `--project`.
 - The PR comment no longer hides a test-integrity finding id whose findings all fall past the 20 it lists: that
   id's `TEST_INTEGRITY_<id>` message now stays under Messages (review finding 10). No schema change.
 - No hint tells the reader to loosen the gate (review finding 11): the `POLICY_UNAVAILABLE` hint (also under a P10

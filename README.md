@@ -943,7 +943,7 @@ message `code`s, not on text:
 | `POLICY_P04` | An MCP server is not on the org policy's allowlist, or `enableAllProjectMcpServers` is set (`error`, or the level the policy sets for P04). The text names up to 20 locations and the count |
 | `POLICY_P05` | An MCP server matches an entry the org policy forbids, by name, command or URL (`error`, or the level the policy sets for P05). The text names up to 20 locations and the count |
 | `POLICY_P06` | A settings directory lacks a command hook the org policy requires, or `disableAllHooks` is set (`error`, or the level the policy sets for P06). The text names up to 20 locations and the count |
-| `POLICY_SETTINGS_INVALID` | P02 to P06 could not fully use an agent settings or MCP file, or did not run: the files were not read, a file was dropped, unparseable or has an entry the grammar does not know (`warn`; `error` for a file pharn-ci could not read or a problem a required list depends on). The text names up to 20 problems as path, line and reason, never file text |
+| `POLICY_SETTINGS_INVALID` | P02 to P06 could not fully use an agent settings or MCP file, or did not run: the files were not read, a file was dropped, unparseable or has an entry the grammar does not know (`warn`; `error` for a file pharn-ci could not read, a problem a required list depends on, or settings not read at all under a required app policy or a policy that lists `required_permissions_deny` or `required_hooks` at block). The text names up to 20 problems as path, line and reason, never file text |
 
 ### Agent PRs
 

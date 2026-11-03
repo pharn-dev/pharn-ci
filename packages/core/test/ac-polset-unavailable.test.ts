@@ -24,6 +24,7 @@ const DIFF = [
   "",
 ].join("\n");
 const SETUP = { forbidden_permissions: ["Bash(curl:*)"], required_hooks: [{ event: "Stop" }] };
+const FORBID_ONLY = { forbidden_permissions: ["Bash(curl:*)"] };
 
 async function run(policy: unknown): Promise<Report> {
   const { check } = await import("@pharn-ci/core");
@@ -44,15 +45,30 @@ async function run(policy: unknown): Promise<Report> {
 const app = (document: unknown) => ({ source: "app", version: 3, fetchedAt: "2026-10-26T12:00:00.000Z", document });
 
 describe("POLICY_SETTINGS_INVALID: the files were not read", { timeout: 60_000 }, () => {
-  it("AC-14: unavailable sources give no P02–P06 violation, one message naming the reason (warn, error for a required app policy), and P09 keeps item 22's warn", async () => {
+  it("AC-14: unavailable sources give no P02–P06 violation, one message naming the reason (warn; error for a required app policy or a required deny rule or hook at block), and P09 keeps item 22's warn", async () => {
     const cases: [label: string, policy: unknown, level: string][] = [
       [
         "file policy",
-        { source: "file", version: null, path: "policy/org.json", document: { version: 1, setup: SETUP } },
+        { source: "file", version: null, path: "policy/org.json", document: { version: 1, setup: FORBID_ONLY } },
         "warn",
       ],
-      ["app policy", app({ version: 1, setup: SETUP }), "warn"],
-      ["required app policy", app({ version: 1, setup: SETUP, policy: { required: true } }), "error"],
+      ["app policy", app({ version: 1, setup: FORBID_ONLY }), "warn"],
+      ["required app policy", app({ version: 1, setup: FORBID_ONLY, policy: { required: true } }), "error"],
+      // A required deny rule or hook that cannot be checked is not met: an error even when the policy is not required.
+      ["app policy with required_hooks", app({ version: 1, setup: SETUP }), "error"],
+      [
+        "file policy with required_hooks",
+        { source: "file", version: null, path: "policy/org.json", document: { version: 1, setup: SETUP } },
+        "error",
+      ],
+      [
+        "app policy with required_permissions_deny",
+        app({ version: 1, setup: { required_permissions_deny: ["Bash(rm:*)"] } }),
+        "error",
+      ],
+      // The demand counts only at block: an app policy that turns P06 off or down to warn keeps the warn.
+      ["app policy with P06 off", app({ version: 1, setup: SETUP, policy: { rules: { P06: "off" } } }), "warn"],
+      ["app policy with P06 at warn", app({ version: 1, setup: SETUP, policy: { rules: { P06: "warn" } } }), "warn"],
     ];
     for (const [label, policy, level] of cases) {
       const report = await run(policy);
@@ -69,6 +85,7 @@ describe("POLICY_SETTINGS_INVALID: the files were not read", { timeout: 60_000 }
           text: `The agent settings files were not read (${REASON}), so P02–P06 did not run.`,
         },
       ]);
+      if (level === "error") expect(report.verdict, `${label}: an error message fails the verdict`).toBe("fail");
       expect(
         violations.filter((v) => v.id === "P09"),
         `${label}: P09 class 4 keeps item 22's warn`,

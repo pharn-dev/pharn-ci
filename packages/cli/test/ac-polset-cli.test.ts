@@ -173,9 +173,11 @@ describe("pharn-ci check: policy mode reads the committed agent settings files",
     expect(failed.err).toContain(
       `pharn-ci: could not read the agent settings files from git, so they are not checked against the org policy: ${UNREAD}\n`,
     );
+    // The policy requires a deny rule (P03 at block), and a requirement that cannot be checked is not met, so the
+    // unread files are an error (review HIGH 4, 2026-11-01; it was a warning, which let a block pass unchecked).
     expect(failed.report.messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID")).toEqual([
       {
-        level: "warn",
+        level: "error",
         code: "POLICY_SETTINGS_INVALID",
         text: `The agent settings files were not read (${UNREAD}), so P02–P06 did not run.`,
       },

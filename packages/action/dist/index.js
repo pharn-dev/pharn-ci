@@ -240620,7 +240620,9 @@ function evaluatePolicyRules(input) {
   const sources = input.settingsSources;
   if (inForce && sources !== void 0) {
     if ("unavailable" in sources) {
-      const required = policy.source === "app" && document2.policy?.required === true;
+      const setup2 = document2.setup;
+      const demands = (id, listed2) => listed2 && resolveSeverity(policy, id, "block").severity === "block";
+      const required = policy.source === "app" && document2.policy?.required === true || demands("P03", (setup2?.required_permissions_deny?.length ?? 0) > 0) || demands("P06", (setup2?.required_hooks?.length ?? 0) > 0);
       settings2 = { unavailable: { reason: sources.unavailable, level: required ? "error" : "warn" }, problems: [] };
     } else {
       const setup2 = document2.setup;
@@ -245277,6 +245279,8 @@ function scanKinds(value) {
     const atCommandPosition = operator === "" || operator === "||" || operator === ";";
     if (atCommandPosition && words[0] === "echo" && (next === "" || next === "||")) found.add("echo");
     if (atCommandPosition && words[0] === "exit" && words[1] === "0") found.add("exit-0");
+    const noop3 = words.length === 1 && (words[0] === "true" || words[0] === ":");
+    if (operator === "" && noop3 && (next === "" || next === "||")) found.add("exit-0");
     if ((operator === "||" || operator === ";") && words.length === 1 && (words[0] === "true" || words[0] === ":")) {
       found.add("or-true");
     }

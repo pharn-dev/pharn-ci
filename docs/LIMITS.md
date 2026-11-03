@@ -545,8 +545,10 @@ parser.
 - **Other weakening forms are not named.** `|| true`, `|| :`, `; true`, `; :`, `echo` or `exit 0` as a command,
   `--passWithNoTests`, `--testPathPattern`, `-t` and `--testNamePattern` are caught; `--bail 0`, `--silent`,
   `--if-present`, a wrapper script that swallows the exit code, `--test-name-pattern` of `node --test`, a changed `test`
-  command in `pyproject.toml`, a Makefile or tox are not. `exit 0` counts only as a command at the start, after `||` or
-  after `;`. `echo` counts there too, and only when no `&&`, `|`, `&` or `;` follows it, so a banner such as
+  command in `pyproject.toml`, a Makefile or tox are not; neither are `node -e "process.exit(0)"` or any other program
+  that exits 0 without running the tests, a positional path filter (`vitest run src/one.test.ts`), `--dir` or
+  `--project`. A lone `true` or `:` as the whole script, or before `||`, is read as `exit 0`. `exit 0` counts only as a
+  command at the start, after `||` or after `;`. `echo` counts there too, and only when no `&&`, `|`, `&` or `;` follows it, so a banner such as
   `echo start && vitest run` is not a finding. `-t` is not a name filter in a script that runs `mocha`, where it is
   `--timeout`.
 - **A weakening that was already there is excused by key.** A removed line of the same key with the same form accounts
@@ -820,8 +822,11 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
   not run at all (the test text could not be read and a test file or a test-runner config is
   modified). The per-file form, where some touched files could not be compared, stays a warning in
   block. With no coverage file and no diff, block reports the coverage problem (a warning without a
-  threshold). A7 and P02–P07 need a local diff (`fetch-depth: 0`), and their "did not run" levels
-  are unchanged. In `pr-number` mode the test text is never available, so block fails there when a
+  threshold). A7 and P02–P07 need a local diff (`fetch-depth: 0`). Their "did not run" message is
+  a warning, except that `POLICY_SETTINGS_INVALID` for unread settings is an error under a required
+  app policy or a policy that lists `required_permissions_deny` or `required_hooks` at block (P03,
+  P06): a demand that cannot be checked is not met, so a shallow checkout or `pr-number` mode fails
+  the step there. In `pr-number` mode the test text is never available, so block fails there when a
   test file or a test-runner config is modified; use `test-integrity: warn` for that flow.
 - **`fail-on-threshold: false` makes the step report, not gate.** Despite the name it covers every
   cause of a `fail` verdict: diff coverage, test-integrity blocks and org policy violations and errors,

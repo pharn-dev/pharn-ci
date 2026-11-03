@@ -80,7 +80,15 @@ export function evaluatePolicyRules(input: PolicyRuleInput): PolicyEvaluation {
 
   if (inForce && sources !== undefined) {
     if ("unavailable" in sources) {
-      const required = policy.source === "app" && document.policy?.required === true;
+      // An error when the policy is required, or when it demands a deny rule or a hook (P03, P06) at block: a
+      // demand that cannot be checked is not met, so a default shallow checkout must not turn the block into a warn.
+      const setup = document.setup;
+      const demands = (id: PolicyRuleId, listed: boolean) =>
+        listed && resolveSeverity(policy, id, "block").severity === "block";
+      const required =
+        (policy.source === "app" && document.policy?.required === true) ||
+        demands("P03", (setup?.required_permissions_deny?.length ?? 0) > 0) ||
+        demands("P06", (setup?.required_hooks?.length ?? 0) > 0);
       settings = { unavailable: { reason: sources.unavailable, level: required ? "error" : "warn" }, problems: [] };
     } else {
       const setup = document.setup;
