@@ -74,7 +74,8 @@ that worked on the previous release. Before 1.0 the rules are:
    - Merge with all required checks green, then dispatch `release.yml` (steps 2 and 3). The release PR is the
      last change merged before the dispatch: a PR merged in between lands in the tag but not in its dated
      CHANGELOG section (v0.2.0 was tagged four PRs after its release PR, and its dated section was amended
-     afterwards).
+     afterwards). `Release verify` enforces it: it refuses a run whose `HEAD` subject is not
+     `chore: release X.Y.Z (#N)`.
 2. **Dry run.** Actions → **release** → **Run workflow**, branch `main`, version `X.Y.Z`, leave
    **dry_run** ticked. The `Release verify` job refuses anything but `main`, a strict `X.Y.Z` equal
    to the package version, an untagged version and a non-empty `CHANGELOG.md` section under an

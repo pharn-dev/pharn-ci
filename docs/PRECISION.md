@@ -397,7 +397,12 @@ Skylos publishes a list of nine ways to hide a failing test. The same nine are r
 places: `fixtures/skylos-nine/` for vitest (with `fixtures/skylos-nine-sources/` holding the base and head text of the
 five cases that need it) and `fixtures/skylos-nine-pytest/` for pytest, where the `always-true-matcher` case has a second
 variant, `always-true-matcher-any`. Every cell below is pinned by a test that runs `check()` over the case in mode
-`block`, so the table cannot drift from the signals. A `warn` cell never blocks a merge. `missed` means no signal fires.
+`block`, so the table cannot drift from the signals. The fixtures themselves are pinned by sha256
+(`ac-skylos-nine-fixture-pins.test.ts`), so the benchmark cannot move under the result either; a deliberate edit
+re-pins the file with a one-line reason. Two `change.diff` files were edited before the pins existed, in the same
+change as the signal that catches them: `replaced-test` with TI02 (the replacement got a different body, so it is not
+a rename TI02 excuses) and `edited-expected-value` with TI07 (the source change the new value matches was added). Both
+cases have a must-not-trigger pair, so neither edit loosened a detector. A `warn` cell never blocks a merge. `missed` means no signal fires.
 
 | Case | vitest | pytest | Notes |
 | --- | --- | --- | --- |

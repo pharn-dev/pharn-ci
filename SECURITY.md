@@ -145,7 +145,10 @@ unless you ask to remain anonymous.
 
 1. **Pin the Action to a commit SHA**, not only to a tag (release tags are not signed), and keep
    `permissions:` minimal (`contents: read`, plus `pull-requests: write` only if you want the PR
-   comment).
+   comment). Grant `id-token: write` only if you want the org policy and the run upload: with it the Action
+   fetches the policy and, with the default `upload: auto`, sends the redacted report and run metadata to
+   pharn.dev. A same-repository pull request can edit the workflow that grants it, so protect
+   `.github/workflows/` with CODEOWNERS and required reviews (docs/THREAT-MODEL.md, residuals 26 and 27).
 2. **Do not run it on `pull_request_target`.** That event runs in the base repository's context with a
    write token. Its default checkout is the base branch, so the PR cannot be measured, and checking
    out the PR head to measure it would run fork code with that token. pharn-ci reports the diff as

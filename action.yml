@@ -60,14 +60,14 @@ inputs:
     required: false
     default: "true"
   fail-on-threshold:
-    description: Fail the step when the verdict is "fail".
+    description: Fail the step when the verdict is "fail", whatever made it fail - diff coverage, a test-integrity block or an org policy violation or error, a required policy included. With false the step reports and never gates.
     required: false
     default: "true"
   config:
     description: Path to the pharn-ci config file, relative to the workspace. Defaults to .pharn/ci.yml, which may be absent; a file named here that does not exist fails the step.
     required: false
   github-token:
-    description: Token for the GitHub API, used for the PR comment, the diff fallback and, in pr-number mode, always to read the pull request, its diff and its file tree. Needs contents read, plus pull-requests read in pr-number mode and pull-requests write for the comment. With test-integrity block it also reads the pull request and its issue events (GET /repos/{owner}/{repo}/issues/{issue_number}/events) for the accept label, which needs pull-requests read or issues read. May be empty with comment false and a local diff, outside pr-number mode.
+    description: Token for the GitHub API, used for the PR comment, the diff fallback and, in pr-number mode, always to read the pull request, its diff and its file tree. Needs contents read, plus pull-requests read in pr-number mode and pull-requests write for the comment. With test-integrity block it also reads the pull request and its issue events (GET /repos/{owner}/{repo}/issues/{issue_number}/events) for the accept label, which needs pull-requests read or issues read. On every pull_request run it lists the pull request's commits for agent-PR detection (pull-requests read); an empty or under-scoped token makes that detection fail closed, so under an org policy every pull request counts as an agent PR. May be empty with comment false and a local diff, outside pr-number mode.
     required: false
     default: ${{ github.token }}
 

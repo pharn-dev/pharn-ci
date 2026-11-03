@@ -11,6 +11,25 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- Docs and metadata (second review, 2026-11-01): README says nothing phones home only without `id-token: write`, the
+  quick precedence sentence no longer claims `.pharn/ci.yml` "can only tighten" (only the test-integrity mode is
+  merged; an input replaces the config's threshold, file, root, format and `setup.require`), the token-footprint
+  bullet names the accept-label reads, and the AI-agnostic and "fully stateless" sentences name P11 and the opt-in
+  upload. `SECURITY.md` best practices name what `id-token: write` turns on. `docs/THREAT-MODEL.md` §1 names the
+  pharn.dev app, its responses, `app-url` and the OIDC token, and §3 gains item 37 (the threshold comes from the PR).
+  `docs/LIMITS.md` §1 points at TI02, TI05 and TI06 instead of "not detected yet", gains "What P01 misses", and says
+  `fail-on-threshold: false` un-gates every cause of a `fail` verdict; `action.yml` says so too, and its
+  `github-token` text names the commits read and its fail-closed agent-PR detection. `AGENTS.md` describes Report v2,
+  the schemas, the Python index subprocess and the opt-in pharn.dev calls. `docs/MARKETPLACE.md` no longer says the
+  listing is refreshed on each release: the Action is not listed yet. `CONTRIBUTING.md` says why secret-pattern
+  tests build tokens at test time.
+- `Release verify` refuses a run whose `HEAD` is not the `chore: release X.Y.Z (#N)` merge commit, so a tag can no
+  longer land on a later PR (v0.2.0 was tagged four PRs after its release PR).
+- The skylos-nine fixture pins now cover `fixtures/skylos-nine-pytest/` and `fixtures/skylos-nine-sources/` too, and
+  name the commits and reasons of the two `change.diff` edits made before the pins existed (`docs/PRECISION.md` §3).
+- Test-only, recorded late: 0.4.0 (#111) moved the growth tests to CPU time and raised four vitest timeouts to 300 s
+  (`ac-ti0205-growth`, `ac-ti06-ti12-linear`, `ac-py-index-growth`, `limits`); the growth ceilings themselves did not
+  change.
 - The PR comment no longer hides a test-integrity finding id whose findings all fall past the 20 it lists: that
   id's `TEST_INTEGRITY_<id>` message now stays under Messages (review finding 10). No schema change.
 - No hint tells the reader to loosen the gate (review finding 11): the `POLICY_UNAVAILABLE` hint (also under a P10

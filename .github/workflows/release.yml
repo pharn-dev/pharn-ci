@@ -83,6 +83,10 @@ jobs:
             echo "::error::tag v$VERSION already exists; tags never move, release a new version"
             exit 1
           fi
+          # The release PR is the last change merged before the dispatch: HEAD must be its squash commit, so the tag
+          # never lands on a later PR that edited the released notes (v0.2.0 was tagged four PRs late).
+          SUBJECT="$(git log -1 --format=%s)"
+          [[ "$SUBJECT" =~ ^chore:\ release\ ${VERSION//./\\.}\ \(#[0-9]+\)$ ]] || { echo "::error::HEAD is '$SUBJECT', not the 'chore: release $VERSION (#N)' merge commit"; exit 1; }
           grep -q "^## \[${VERSION//./\\.}\]" CHANGELOG.md || { echo "::error::CHANGELOG.md has no '## [$VERSION]' section"; exit 1; }
           # Exactly one '## [X.Y.Z] - <real date>' heading, and notes free of the YYYY-MM-DD placeholder
           # and the maintainer's instruction sentence. Node built-ins only; nothing is installed yet.

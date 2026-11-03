@@ -21,10 +21,14 @@ Test names below are `file › test`; files are under `packages/*/test/`.
 ## 1. Trust assumptions
 
 - **Trusted:** the maintainers of the consumer's repository who write the workflow that runs
-  pharn-ci and choose its permissions; GitHub itself; the GitHub-hosted runner.
+  pharn-ci and choose its permissions; GitHub itself; the GitHub-hosted runner, and the OIDC token it
+  mints for the audience `pharn.dev` when the job grants `id-token: write` (beside `GITHUB_TOKEN`); the
+  pharn.dev app at `app-url`, for the policy it serves (validated for shape, not sense: residual 26) and as
+  the recipient of the upload.
 - **Not trusted:** everything the change under review controls: the coverage file and the test run
   that produced it, `.pharn/ci.yml`, file names, diff content, refs passed as inputs; other users'
-  PR comments; and every dependency, build step and release artifact in pharn-ci's own supply chain.
+  PR comments; the bodies of the app's responses until validated (rows A4, A6, A7, D6); the `app-url` and `policy`
+  inputs when a same-repository PR can edit the workflow file (residuals 24, 26 and 27); and every dependency, build step and release artifact in pharn-ci's own supply chain.
 - **Out of scope:** the PR's own code running in the same job (on `pull_request` its tests run
   before pharn-ci; pharn-ci cannot protect the job from them), a consumer workflow that grants
   broader permissions than documented, and an attacker who already controls the runner.
@@ -336,6 +340,13 @@ and the tests cite them.
     new comment instead of updating its own. **Residual:** a bot installed on the repository can have its marker comments overwritten or deleted by
     pharn-ci, and pharn-ci's report then sits in a comment that bot can edit; install only bots you trust with pull
     request comments.
+37. **The threshold comes from the PR.** With no `threshold` input, `coverage.threshold` in the PR-carried
+    `.pharn/ci.yml` is the gate, so a PR can lower it or delete it (no threshold, no gate). An input replaces the
+    config's value rather than taking the larger one, so the input is the stronger setting. TI14 reports a lowered,
+    removed or unreadable `threshold:` line at the mode's level, but in mode `warn` or `off` it does not block, and it
+    does not see a threshold the workflow file changes. Protect `.pharn/ci.yml` and the workflow with CODEOWNERS, or
+    set the `threshold` input. **Closed when an app policy sets `coverage.threshold`:** the larger value applies, and
+    `POLICY_OVERRIDE_IGNORED` names the lower layer it beat.
 
 ## 4. Keeping this document honest
 

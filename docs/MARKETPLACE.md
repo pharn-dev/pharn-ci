@@ -1,6 +1,6 @@
 # GitHub Marketplace listing
 
-The text for the GitHub Marketplace listing of the pharn-ci Action. A test checks it against `action.yml`, and it is refreshed on each release ([`docs/RELEASING.md`](./RELEASING.md)).
+The text for the GitHub Marketplace listing of the pharn-ci Action. A test checks it against `action.yml`. The Action is not listed on the Marketplace yet: the listing is published by hand from a release (step 4 of [`docs/RELEASING.md`](./RELEASING.md)), and from then on each release refreshes it.
 
 ## Name
 

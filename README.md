@@ -8,7 +8,7 @@
 
 A GitHub Action and CLI that checks every pull request for the two things an agent-written change
 leans on most: tests that actually run the new code, and the setup files that tell agents how to
-behave. AI-agnostic, fully stateless, no telemetry.
+behave. AI-agnostic, no telemetry, and stateless unless you opt in to the upload to pharn.dev.
 
 ```yaml
 - uses: pharn-dev/pharn-ci@v0.4.0
@@ -114,8 +114,10 @@ Placeholders do not count: a dot-file (such as `.gitkeep`) or a README under a d
 is not listed, and neither is any path with a `node_modules` directory. A listed file that is empty in
 `HEAD` gets an `AGENT_SETUP_FILE_EMPTY` warning, and stays in the inventory.
 
-It is **AI-agnostic**: it looks at your code, tests and setup files, never at which tool wrote the
-code. Claude Code, Cursor, Copilot, Codex and hand-written changes are measured the same way.
+It is **AI-agnostic**: it measures your code, tests and setup files, never which tool wrote the code.
+Claude Code, Cursor, Copilot, Codex and hand-written changes are measured the same way. The one exception is opt-in:
+under an org policy with protected paths, rule P11 applies those paths to pull requests it detects as agent-written
+(see [Agent PRs](#agent-prs)).
 
 The output is one sticky PR comment, the job summary, a pass/warn/fail verdict, and a JSON report
 with a published schema that agents and scripts can read.
@@ -461,8 +463,11 @@ check runs with the workflow inputs and `.pharn/ci.yml`. The `policy` and `app-u
 [Action reference](#action-reference). `app-url` takes an `https` origin only: no credentials, path, query or fragment.
 The CLI never fetches a policy.
 
-**Precedence.** The app's policy beats the workflow inputs, which beat `.pharn/ci.yml`; `.pharn/ci.yml` can only
-tighten. A served policy:
+**Precedence.** The app's policy beats the workflow inputs, which beat `.pharn/ci.yml`. Only the test-integrity mode
+is merged to the stricter value: an input replaces the config's `coverage.threshold`, `file`, `root`, `format` and
+`setup.require`, and with no input the config's values apply as written, a lower threshold or a wider `exclude`
+included. `.pharn/ci.yml` comes from the pull request, so pin a threshold you rely on with the `threshold` input or a
+policy (docs/THREAT-MODEL.md §3, item 37). A served policy:
 
 - raises `coverage.threshold` (the larger value applies) and `setup.require` (`true` wins), and raises the
   test-integrity mode above the input and the config (`block > warn > off`);
@@ -612,7 +617,7 @@ of the App never both appear for one upload.
 | `app-url`           | `https://pharn.dev`         | Origin of the pharn.dev app the policy is fetched from. `https` only, with no credentials, path, query or fragment; the OIDC audience stays `pharn.dev` whatever it is |
 | `upload`            | `auto`                      | Whether to [upload the run to pharn.dev](#upload-to-pharndev-optional): `auto` uploads `report.json` and `meta.json` (redacted) when the job grants `id-token: write` and the organization installed the Pharn GitHub App, `never` turns it off. A failed upload never fails the check. Not read from `.pharn/ci.yml`. Any other value fails the step |
 | `comment`           | `true`                      | Post/update one sticky PR comment per workflow and job |
-| `fail-on-threshold` | `true`                      | Fail the step when the verdict is `fail` |
+| `fail-on-threshold` | `true`                      | Fail the step when the verdict is `fail`, whatever made it fail: diff coverage, a test-integrity block, or an org policy violation or error (a required policy included). With `false` the step reports and never gates |
 | `config`            | `.pharn/ci.yml`, may be absent | Config file path; a file named here that does not exist fails the step |
 | `github-token`      | `github.token`              | Token for the comment and diff fallback, and in `pr-number` mode always for reading the pull request, its diff and its file tree; `pull-requests: write` for the comment (`pull-requests: read` is enough for `pr-number` mode without one), may be empty with `comment: false` and a local diff outside `pr-number` mode. On every `pull_request` run it also lists the pull request's commits (`GET /repos/{owner}/{repo}/pulls/{n}/commits`, at most 3 pages) for [agent-PR detection](#agent-prs), which needs `pull-requests: read`; with an empty or under-scoped token the commits cannot be read and every pull request counts as an agent PR. With `test-integrity: block` the [accept label](#accept-label) also reads the pull request and its issue events (`GET /repos/{owner}/{repo}/issues/{issue_number}/events`), which `pull-requests: read` (or `issues: read`) allows |
 
@@ -1067,8 +1072,9 @@ that:
 - **Small token footprint.** `contents: read` plus `pull-requests: write`, and `id-token: write` only for
   the org policy and the upload to pharn.dev. It reads the compare API and the PR's comments, calls
   `GET /user` to learn which login its own comment has, lists the pull request's commits for agent-PR
-  detection on every `pull_request` run, and in `pr-number` mode also reads the pull request and its
-  git tree. It updates only a comment its own
+  detection on every `pull_request` run, with `test-integrity: block` reads the pull request and its
+  issue events (`GET /issues/{n}/events`) for the accept label, and in `pr-number` mode also reads the
+  pull request and its git tree. It updates only a comment its own
   login (or, when the token cannot read its login, a bot) wrote for this workflow and job. It deletes a comment only when concurrent runs left
   duplicates of that own marker comment.
 - **Untrusted input stays data.** Parsers are hand-written, pure and non-recursive. File names
@@ -1103,7 +1109,9 @@ pharn-ci does not need PHARN installed and does not read its artifacts. It is us
 any repo with an lcov- or Cobertura-producing test run.
 
 **pharn-ci is free, and stays free.** It is the free part of Pharn: Apache-2.0, with no account,
-license key, usage limit or paid tier, and nothing in it phones home. Pharn's paid product is
+license key, usage limit or paid tier, and nothing in it phones home unless the job grants `id-token: write`:
+then it fetches your org policy and uploads the redacted report to pharn.dev (`policy: never` and `upload: never` turn
+each off). Pharn's paid product is
 separate; pharn-ci never needs it and is never restricted to push you towards it.
 
 **pharn-ci checks pharn-ci.** This repository's own `ci` job runs the Action from source on every

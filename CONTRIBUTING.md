@@ -56,6 +56,9 @@ The branch must be up to date with `main` before it can merge.
   `TI15/warn-*.diff` give `info` since TI15 became an info signal (0.3.0), and
   `TI02/pass-moved-to-other-file` gives one TI02 block since a cross-file move needs body evidence.
   Renaming them would re-pin the fixture digests of several base-pinned tests.
+- Secret-pattern tests (S01–S11) build their tokens at test time, inline or from `fixtures/secrets/`, and never
+  commit a whole token, so gitleaks and GitHub push protection never see one. That is why they are not fixture files
+  like the test-integrity cases.
 - Never weaken, skip or delete an existing test to make CI pass. If a test is wrong, fix it and say
   why in the PR description.
 - Bug fixes include a regression test.

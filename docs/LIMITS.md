@@ -15,9 +15,9 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   ones whose removed lines define tests as TI01 (see "What TI01 misses" below). A test file is
   recognized only by name: `.test.` or `.spec.` with a JavaScript or TypeScript extension, `.e2e.ts`,
   `.pw.ts`, `test_*.py`, `*_test.py`, `*_test.go`, or any file in a `test`, `tests` or `__tests__`
-  directory. An added skip or focus marker in a test file is TI03 or TI04. A weakened assertion, an emptied test
-  body and a test case deleted from a file that stays are not detected yet (see "What test integrity does not
-  catch" below).
+  directory. An added skip or focus marker in a test file is TI03 or TI04. A test case deleted from a file that stays is
+  TI02, an emptied test body or fewer assertions TI05, and a weakened assertion TI06 (see "What TI02 misses", "What
+  TI05 misses" and "What TI06 misses" below).
 - **What TI01 misses.** TI01 reads line patterns, not syntax. (1) A test file counts only if its
   removed lines start with `it(`, `test(`, `describe(`, `context(`, `specify(`, `def test_` or
   `func Test`; a test written another way (a custom wrapper, a `Deno.test(` call) reads as not
@@ -25,8 +25,8 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   finding `info`, so an unrelated `foo.ts` deleted beside `foo.test.ts` exempts it. (3) A rename
   shows only the lines it edits, never the tests the file keeps, so a test renamed to a path that is
   not a test file counts on its path alone, edited or not, and a helper renamed out of `tests/`
-  counts too. (4) A test file emptied but not deleted is not seen (TI02 and
-  TI05 in a later release). (5) Text is kept for at most 5000 lines per file and 400 characters per
+  counts too. (4) A test file emptied but not deleted is not TI01; TI02 reports
+  the tests it removed. (5) Text is kept for at most 5000 lines per file and 400 characters per
   line; a deleted JS/TS, Python or Go file cut at that bound with no test-defining line kept still
   counts, so a huge test file is never waved through, while a cut fixture, snapshot or data file
   under a test directory does not. (6) A package that is the repository root never exempts a deletion.
@@ -817,8 +817,9 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
   threshold). A7 and P02–P07 need a local diff (`fetch-depth: 0`), and their "did not run" levels
   are unchanged. In `pr-number` mode the test text is never available, so block fails there when a
   test file or a test-runner config is modified; use `test-integrity: warn` for that flow.
-- **`fail-on-threshold: false` makes the step report, not gate.** The verdict and outputs are still
-  set.
+- **`fail-on-threshold: false` makes the step report, not gate.** Despite the name it covers every
+  cause of a `fail` verdict: diff coverage, test-integrity blocks and org policy violations and errors,
+  a required policy included. The verdict and outputs are still set.
 
 ## 3. Coverage formats
 
@@ -1005,6 +1006,17 @@ applied once per run. What it does not do:
   `CONFIG_CHANGED_IN_DIFF` flag such a workflow edit. Class 4 is judged when the files were read: a block when the
   edited file fails P02 to P06 or could not be checked, a warn when it only warns or supplies a required deny rule or
   hook, info when it complies; it stays a warn (direction not judged) when they were not read.
+
+### What P01 misses
+
+- **Only the policy's own requirement counts.** P01 fires for `setup.require` and `setup.expect` in the policy
+  document. The same requirement from the `require-agent-setup` input or `.pharn/ci.yml` is checked by the setup scan,
+  not by P01.
+- **Presence, not content.** A file counts when the inventory lists it: tracked in `HEAD`, by path. An empty file
+  counts (it gets `AGENT_SETUP_FILE_EMPTY`), and what a file says is never read.
+- **Unknown names are skipped.** A tool name in `setup.expect` that is not on the fixed agent tool list gives no
+  finding (the policy validator rejects one in a served or `file:` policy first).
+- **Tracked files only.** A file that is not committed, or that `git ls-files` could not list, is not seen.
 
 ### What P02–P06 miss
 
