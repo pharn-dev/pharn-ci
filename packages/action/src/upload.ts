@@ -20,6 +20,9 @@ export const UPLOAD_NO_TOKEN_LINE = "pharn-ci: the run is not uploaded to pharn.
 
 const NO_INSTALLATION_LINE =
   "pharn-ci: the run is not uploaded to pharn.dev: the Pharn GitHub App is not installed for this repository";
+/** The info line of a `pull_request_target` run, which never uploads. */
+export const PULL_REQUEST_TARGET_LINE =
+  "pharn-ci: the run is not uploaded to pharn.dev: a pull_request_target run is never uploaded";
 const NO_COMMENT_LINE = "pharn-ci: could not read the pull request comments, so the upload carries no comment link";
 
 /** The PUT of the bundle is cut off after this long when `deps.timeoutMs` is not set. */
@@ -40,6 +43,8 @@ export type UploadDeps = Pick<
 
 export interface UploadInput {
   choice: UploadChoice;
+  /** True on a `pull_request_target` event: the checkout is the base branch, so the run measured nothing to upload. */
+  pullRequestTarget?: boolean;
   report: Report;
   appOrigin: URL;
   /** The head commit the run was asked to measure (the `head-sha` input in pr-number mode); the report's otherwise. */
@@ -70,7 +75,10 @@ export async function runUpload(deps: UploadDeps, input: UploadInput): Promise<U
   return step.outcome;
 }
 
-/** The one log line of an outcome that reached the token request; the other outcomes log nothing here. */
+/**
+ * The one log line of an outcome that reached the token request, or of a `pull_request_target` run; the other outcomes
+ * log nothing here.
+ */
 function logOutcome(deps: UploadDeps, step: Step): void {
   const { outcome } = step;
   const id = step.requestId;
@@ -78,6 +86,7 @@ function logOutcome(deps: UploadDeps, step: Step): void {
     deps.info(`pharn-ci: the run was uploaded to pharn.dev${id === undefined ? "" : ` (request id ${id})`}`);
   } else if (outcome.status === "skipped") {
     if (outcome.reason === "no-installation") deps.info(NO_INSTALLATION_LINE);
+    else if (outcome.reason === "pull-request-target") deps.info(PULL_REQUEST_TARGET_LINE);
   } else if (outcome.status === "failed") {
     const detail = id === undefined ? "" : `, request id ${id}`;
     deps.warning(
@@ -90,6 +99,8 @@ function logOutcome(deps: UploadDeps, step: Step): void {
 
 async function uploadSteps(deps: UploadDeps, input: UploadInput): Promise<Step> {
   if (input.choice === "never") return { outcome: { status: "skipped", reason: "input-never" } };
+  // Before the token is asked for: a pull_request_target run sends nothing, so the app records no run for it.
+  if (input.pullRequestTarget === true) return { outcome: { status: "skipped", reason: "pull-request-target" } };
   if (input.report.meta === undefined) return { outcome: { status: "skipped", reason: "no-meta" } };
 
   const token = await requestAppToken(deps, UPLOAD_NO_TOKEN_LINE);

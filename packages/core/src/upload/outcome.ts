@@ -6,7 +6,7 @@ export const UPLOAD_REPORT_MAX_BYTES = 5_242_880;
 /** How the upload of a run ended. `reason` is for the log; the report carries only the status (and the URL). */
 export type UploadOutcome =
   | { status: "ok"; runUrl: string }
-  | { status: "skipped"; reason: "input-never" | "no-meta" | "no-oidc" | "no-installation" }
+  | { status: "skipped"; reason: "input-never" | "pull-request-target" | "no-meta" | "no-oidc" | "no-installation" }
   | { status: "failed"; reason: string }
   | { status: "too_large"; maxBytes: number | null };
 
