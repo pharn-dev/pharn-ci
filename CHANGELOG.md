@@ -160,6 +160,8 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   `--base HEAD`) is now `DIFF_UNAVAILABLE`, an error with a threshold or in `test-integrity: block`, instead of a
   `NO_COVERABLE_CHANGES` pass on an empty diff (review finding 13). Running the CLI with a threshold on a branch
   that equals its base now exits 1.
+- The PR comment and the job summary show a 20-cell bar of the diff-coverage percentage (`▰` covered, `▱` not)
+  above the "**N%** of changed lines covered" line. No schema change.
 
 ### Security
 

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { foldCoverageBar } from "./helpers.js";
 
 // E3 item 24 (P07), AC-23. Reads the tree with git against the base commit and runs the named whole-report tests, the
 // render goldens and every ac-p11-* and ac-polrules-* test in a child vitest; nothing the build adds is loaded here.
@@ -55,6 +56,14 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
   it("AC-23: only new fixtures under fixtures/policy-rules/p07/, no test file deleted, every deliberate re-pin marked, and the whole-report, render-golden, ac-p11-* and ac-polrules-* tests pass", () => {
     // Fixtures: no tracked file under fixtures/ is modified or deleted; anything new is under fixtures/policy-rules/p07/.
     for (const line of nonEmpty(git("diff", "--name-status", "--no-renames", BASE, "--", "fixtures/"))) {
+      // Re-pinned for comment-coverage-bar (the diff-coverage bar in the PR comment): the four golden report.md files
+      // gained the bar line on purpose. Each must be modified, never added or deleted, and folding the bar line (and
+      // the empty line under it) back out must give its content at the base byte for byte.
+      const barred = /^M\t(fixtures\/golden(?:-cobertura|-exclusions|-multi)?\/report\.md)$/.exec(line);
+      if (barred !== null) {
+        expect(foldCoverageBar(read(barred[1] as string)), line).toBe(git("show", `${BASE}:${barred[1]}`));
+        continue;
+      }
       // Re-pinned on the rebase onto E3 item 23 (policy settings): its fixtures under fixtures/policy-settings/ are new too.
       // Re-pinned for the 2026-11-01 review fixes: their new TI10 and TI14 fixture files are added too.
       // Re-pinned for ti03-skip-evasion (review B1): its new case directories under fixtures/test-integrity/TI03/ are

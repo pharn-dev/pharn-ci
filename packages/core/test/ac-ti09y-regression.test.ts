@@ -25,10 +25,12 @@ const DIST_BOUND = 12_000_000;
 // of their loops (their output digests are unchanged); these are the edited files.
 // Re-pinned again by block-fails-closed-unavailable (review HIGH 4): ac-ti0205-regression is edited on purpose (a
 // whole-run unavailable message is an error in block, was a warn), so this is the digest of the edited file.
+// Re-pinned again by comment-coverage-bar: ac-accept-signoff-regression folds the new diff-coverage bar line out of
+// fixtures/golden/report.md before hashing it (its golden digest is unchanged); this is the digest of the edited file.
 const PINNED: Record<string, string> = {
   "packages/core/test/ac-ti0205-regression.test.ts": "79db683306a83595cefac76da0df8fda2d80afa6d55cc28264672f0e9adf9405",
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "1477c2ea6da9c812e990fdeb7ddcdac581496dace41b38ddf42ea9569c7cc43d",
+    "cf611d3c9bb955ec82b2acf8dab562e77921d012f653a61067fc0c34e4806eef",
 };
 
 /** The Skylos-count tests that record the move, and the count literal each one asserts. */

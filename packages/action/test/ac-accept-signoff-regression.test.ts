@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { foldCoverageBar } from "../../core/test/helpers.js";
 
 // check() and renderMarkdown() are loaded inside the test body: the AC tests are written before the accept label
 // exists, so nothing the build adds may run while the file loads. The committed dist must hold the accept label, so
@@ -187,8 +188,9 @@ describe("the accept label leaves the existing signals, hints, golden outputs an
     for (const name of goldenNames) {
       const bytes = readFileSync(new URL(`fixtures/golden/${name}`, ROOT));
       // The comment-layout change added the summary table's Test integrity column on purpose: it is folded out of
-      // report.md before the hash, so every other byte is still the base commit's.
-      const asAtBase = name === "report.md" ? foldIntegrityColumn(bytes.toString("utf8")) : bytes;
+      // report.md before the hash, so every other byte is still the base commit's. The comment-coverage-bar change
+      // added the diff-coverage bar line on purpose: it is folded out too.
+      const asAtBase = name === "report.md" ? foldIntegrityColumn(foldCoverageBar(bytes.toString("utf8"))) : bytes;
       expect(sha256(asAtBase), name).toBe(GOLDEN_AT_BASE[name]);
     }
 

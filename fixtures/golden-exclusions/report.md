@@ -11,6 +11,8 @@
 
 ### 🧪 Diff coverage
 
+`▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▱▱▱▱` 80%
+
 **80%** of changed lines covered (4/5, threshold 80%)
 
 <details>

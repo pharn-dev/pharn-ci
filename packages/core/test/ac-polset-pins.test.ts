@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { foldCoverageBar } from "./helpers.js";
 
 // E3 item 23 (policy settings), AC-31. The pin test files are read inside the test body, and a child vitest runs the
 // ones that must pass: the build edits some of them after this test is written. The base is main at 93376a9 (E3 item
@@ -37,13 +38,25 @@ const UNCHANGED = [
   "packages/core/test/ac-polrules-render-table.test.ts",
   "packages/core/test/golden.test.ts",
   "packages/core/test/exclusions-golden.test.ts",
-  "packages/core/test/ac-format-golden.test.ts",
   "packages/core/test/ac-globs-golden.test.ts",
-  "packages/core/test/ac-header-logo-golden.test.ts",
   "packages/core/test/ac-report-v2-golden.test.ts",
   "packages/core/test/ac-test-sources-golden.test.ts",
-  "packages/core/test/ac-verdict-callout-golden.test.ts",
   "packages/action/test/ac-accept-signoff-default-golden.test.ts",
+];
+// Re-pinned by comment-coverage-bar (the diff-coverage bar in the PR comment): the three golden hash tests below fold the
+// new bar line back out before hashing, on purpose. They are no longer byte-identical to the base; each must carry the
+// marker, and all three still run in the child vitest below.
+const EDITED_BY_COVERAGE_BAR = [
+  "packages/core/test/ac-format-golden.test.ts",
+  "packages/core/test/ac-header-logo-golden.test.ts",
+  "packages/core/test/ac-verdict-callout-golden.test.ts",
+];
+/** The goldens comment-coverage-bar changed: each gained the bar line and nothing else. */
+const BARRED_GOLDENS = [
+  "fixtures/golden-cobertura/report.md",
+  "fixtures/golden-exclusions/report.md",
+  "fixtures/golden-multi/report.md",
+  "fixtures/golden/report.md",
 ];
 // Re-pinned by the review LOW batch: ac-ts-index-deps-dist.test.ts had its AC-14 title corrected on purpose (the title
 // contradicted the assertions, which are unchanged). It is no longer byte-identical to the base; it must carry the
@@ -60,6 +73,7 @@ const RUN = [
   ...Object.keys(EDITED).filter((f) => !f.endsWith("ac-pyparity2-unchanged.test.ts")),
   ...EDITED_BY_BLOCK_FAILS_CLOSED,
   ...EDITED_BY_REVIEW_LOW,
+  ...EDITED_BY_COVERAGE_BAR,
   ...UNCHANGED,
 ];
 const MANIFESTS = [
@@ -103,6 +117,11 @@ describe("the pins of E3 item 23", () => {
       expect(text === git("show", `${BASE}:${file}`), `${file} carries its deliberate edit`).toBe(false);
       expect(text, `${file}: the new comment names the change`).toContain("review LOW (AC-14 title)");
     }
+    for (const file of EDITED_BY_COVERAGE_BAR) {
+      const text = read(file);
+      expect(text === git("show", `${BASE}:${file}`), `${file} carries its deliberate edit`).toBe(false);
+      expect(text, `${file}: the new comment names the change`).toContain("comment-coverage-bar");
+    }
     for (const file of UNCHANGED) {
       expect(read(file) === git("show", `${BASE}:${file}`), `${file} is unchanged`).toBe(true);
     }
@@ -116,7 +135,14 @@ describe("the pins of E3 item 23", () => {
       "fixtures/golden-exclusions",
       "fixtures/golden-multi",
     );
-    expect(goldens.trim(), "no golden under fixtures/golden* changed").toBe("");
+    // Re-pinned by comment-coverage-bar: the four golden report.md files gained the bar line on purpose; folding it
+    // back out must give each one's content at the base byte for byte. No other golden changed.
+    expect(goldens.trim().split("\n").sort(), "only the barred goldens under fixtures/golden* changed").toEqual(
+      BARRED_GOLDENS,
+    );
+    for (const file of BARRED_GOLDENS) {
+      expect(foldCoverageBar(read(file)), `${file}: only the bar line added`).toBe(git("show", `${BASE}:${file}`));
+    }
 
     for (const manifest of MANIFESTS) {
       const now = JSON.parse(read(manifest)) as Record<string, Record<string, string> | undefined>;

@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { foldCoverageBar } from "../../core/test/helpers.js";
 import { withoutSchemaLevelEdits } from "../../core/test/level-edits.js";
 
 // Reads the repository and the base commit with git; nothing the build adds is loaded. The base is the commit this
@@ -71,9 +72,11 @@ const PINNED = [
 // of their loops (their output digests are unchanged); these are the edited files.
 // Re-pinned again by block-fails-closed-unavailable (review HIGH 4): ac-ti0205-regression is edited on purpose (a
 // whole-run unavailable message is an error in block, was a warn), so this is the digest of the edited file.
+// Re-pinned again by comment-coverage-bar: ac-accept-signoff-regression folds the new diff-coverage bar line out of
+// fixtures/golden/report.md before hashing it (its golden digest is unchanged); this is the digest of the edited file.
 const NAME_ONLY_REPINNED: Record<string, string> = {
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "1477c2ea6da9c812e990fdeb7ddcdac581496dace41b38ddf42ea9569c7cc43d",
+    "cf611d3c9bb955ec82b2acf8dab562e77921d012f653a61067fc0c34e4806eef",
   "packages/core/test/ac-ti0205-regression.test.ts": "79db683306a83595cefac76da0df8fda2d80afa6d55cc28264672f0e9adf9405",
 };
 /** The digests of ac-ti06-ti12-unchanged.test.ts the name-only-moves change re-pins; every other one is as at the base. */
@@ -229,8 +232,16 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
     const statuses = git("diff", "--name-status", "--no-renames", BASE, "--", "fixtures/")
       .split("\n")
       .filter((l) => l !== "");
+    // Re-pinned for comment-coverage-bar (the diff-coverage bar in the PR comment): the four golden report.md files
+    // gained the bar line on purpose. They are the only modified fixtures, and folding the bar line (and the empty line
+    // under it) back out must give each one's content at the base byte for byte.
+    const barred = /^M\t(fixtures\/golden(?:-cobertura|-exclusions|-multi)?\/report\.md)$/;
+    for (const line of statuses) {
+      const path = barred.exec(line)?.[1];
+      if (path !== undefined) expect(foldCoverageBar(read(path)), line).toBe(atBase(path));
+    }
     expect(
-      statuses.filter((l) => !l.startsWith("A\t")),
+      statuses.filter((l) => !l.startsWith("A\t") && !barred.test(l)),
       "no fixture of the base is modified or deleted",
     ).toEqual([]);
 

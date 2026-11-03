@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { foldCoverageBar } from "./helpers.js";
 
 // E3 item 24a part B (P11), AC-25. Reads the tree with git against the base commit and runs four existing whole-report
 // test files in a child vitest; nothing the build adds is loaded here. The child's PHARN_TEST_RESULTS is removed, so
@@ -56,6 +57,14 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       .filter((l) => l.length > 0);
     // E3 item 24 (P07): the fixtures of rule P07 are new too, so the two patterns below also accept p07.
     for (const line of changed) {
+      // Re-pinned for comment-coverage-bar (the diff-coverage bar in the PR comment): the four golden report.md files
+      // gained the bar line on purpose. Each must be modified, never added or deleted, and folding the bar line (and
+      // the empty line under it) back out must give its content at the base byte for byte.
+      const barred = /^M\t(fixtures\/golden(?:-cobertura|-exclusions|-multi)?\/report\.md)$/.exec(line);
+      if (barred !== null) {
+        expect(foldCoverageBar(read(barred[1] as string)), line).toBe(git("show", `${BASE}:${barred[1]}`));
+        continue;
+      }
       // Re-pinned for E3 item 23 (policy settings) and E3 item 24 (P07): their new fixtures under
       // fixtures/policy-settings/ and fixtures/policy-rules/p07/ are added too.
       // Re-pinned for the 2026-11-01 review fixes: their new TI10 and TI14 fixture files are added too.

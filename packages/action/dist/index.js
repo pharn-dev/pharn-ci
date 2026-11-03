@@ -249613,6 +249613,7 @@ function renderMarkdown(report, options = {}) {
     out.push("_No coverable lines changed._", "");
   } else {
     const threshold = dc.threshold === null ? "no threshold" : `threshold ${formatNumber(dc.threshold)}%`;
+    out.push(`${coverageBar(dc.percent)} ${formatNumber(dc.percent)}%`, "");
     out.push(
       `**${formatNumber(dc.percent)}%** of changed lines covered (${dc.coveredLines}/${dc.coverableLines}, ${threshold})`,
       ""
@@ -249682,6 +249683,11 @@ function renderMarkdown(report, options = {}) {
   out.push(`<sub>pharn-ci ${report.tool.version} \xB7 report schema v${report.schemaVersion}${formatNote}</sub>`);
   return `${out.join("\n")}
 `;
+}
+var BAR_CELLS = 20;
+function coverageBar(percent) {
+  const filled = Math.max(0, Math.min(BAR_CELLS, Math.round(percent / 100 * BAR_CELLS)));
+  return `\`${"\u25B0".repeat(filled)}${"\u25B1".repeat(BAR_CELLS - filled)}\``;
 }
 function countFiles(n) {
   return n === 1 ? "1 file" : `${n} files`;

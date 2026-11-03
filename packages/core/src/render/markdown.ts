@@ -477,6 +477,7 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
     out.push("_No coverable lines changed._", "");
   } else {
     const threshold = dc.threshold === null ? "no threshold" : `threshold ${formatNumber(dc.threshold)}%`;
+    out.push(`${coverageBar(dc.percent)} ${formatNumber(dc.percent)}%`, "");
     out.push(
       `**${formatNumber(dc.percent)}%** of changed lines covered (${dc.coveredLines}/${dc.coverableLines}, ${threshold})`,
       "",
@@ -576,6 +577,14 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
   out.push("---", "");
   out.push(`<sub>pharn-ci ${report.tool.version} · report schema v${report.schemaVersion}${formatNote}</sub>`);
   return `${out.join("\n")}\n`;
+}
+
+const BAR_CELLS = 20;
+
+/** A fixed-width bar for a percentage: only `▰`/`▱` and a clamped integer count, nothing input-derived. */
+function coverageBar(percent: number): string {
+  const filled = Math.max(0, Math.min(BAR_CELLS, Math.round((percent / 100) * BAR_CELLS)));
+  return `\`${"▰".repeat(filled)}${"▱".repeat(BAR_CELLS - filled)}\``;
 }
 
 function countFiles(n: number): string {
