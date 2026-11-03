@@ -19,7 +19,6 @@ const ONE_MIB = 1_048_576;
 
 const INPUT_DEFAULTS: Record<string, string> = {
   comment: "false",
-  "fail-on-threshold": "true",
   config: "",
 };
 

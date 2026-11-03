@@ -63,7 +63,6 @@ async function runCli(config: Config, flag: boolean) {
 // What the runner passes when an input is not set: the action.yml default, else "" (require-agent-setup has none).
 const INPUT_DEFAULTS: Record<string, string> = {
   comment: "false",
-  "fail-on-threshold": "true",
   config: "",
 };
 

@@ -17,7 +17,6 @@ const DEFAULT_BRANCH_TIP = "4444444444444444444444444444444444444444";
 // What the runner passes when an input is not set: the action.yml default, else "".
 const INPUT_DEFAULTS: Record<string, string> = {
   comment: "true",
-  "fail-on-threshold": "true",
   config: "",
   "github-token": "test-token",
 };

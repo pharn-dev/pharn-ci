@@ -15,7 +15,8 @@ export interface PrNumberInputs {
 }
 
 const PR_NUMBER = /^[1-9][0-9]{0,9}$/;
-const COMMIT_SHA = /^([0-9a-f]{40}|[0-9a-f]{64})$/i;
+/** A full commit SHA: 40 hexadecimal characters (SHA-1) or 64 (SHA-256), either case. */
+export const COMMIT_SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i;
 
 /** Written so that this source does not itself contain an expression (and so a linter sees no template in a string). */
 const HEAD_SHA_EXPRESSION = ["$", "{{ github.event.workflow_run.head_sha }}"].join("");

@@ -50,7 +50,6 @@ async function runOnce(store: Store, viewer: string | null, createdLogin: string
   const inputs: Record<string, string> = {
     "coverage-file": "coverage/lcov.info",
     comment: "true",
-    "fail-on-threshold": "true",
     config: "",
   };
   const files: Record<string, string> = { [`${WORKSPACE}/coverage/lcov.info`]: fixture("golden/coverage.info") };

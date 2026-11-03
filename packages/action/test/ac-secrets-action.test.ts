@@ -108,7 +108,6 @@ const TREE_PATHS = [".mcp.json", "README.md", "src/math.ts", "src/new.ts", "src/
 const LOCAL_PATHS = [".mcp.json", "README.md", "src/math.ts"];
 const INPUT_DEFAULTS: Record<string, string> = {
   comment: "true",
-  "fail-on-threshold": "true",
   config: "",
   "github-token": "test-token",
 };

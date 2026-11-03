@@ -40,7 +40,6 @@ async function runCheck(file: string | undefined, tracked: string): Promise<Repo
 // What the runner passes when an input is not set: the action.yml default, else "".
 const INPUT_DEFAULTS: Record<string, string> = {
   comment: "false",
-  "fail-on-threshold": "true",
   config: "",
 };
 

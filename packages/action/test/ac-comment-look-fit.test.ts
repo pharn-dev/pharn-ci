@@ -16,7 +16,6 @@ const HEAD_SHA = "2222222222222222222222222222222222222222";
 
 const INPUTS: Record<string, string> = {
   comment: "true",
-  "fail-on-threshold": "true",
   config: "",
   "coverage-file": "coverage.info",
   threshold: "80",

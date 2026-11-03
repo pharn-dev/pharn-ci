@@ -34,4 +34,6 @@ await run({
   hasOidcEnv: Boolean(process.env.ACTIONS_ID_TOKEN_REQUEST_URL) && Boolean(process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN),
   now: () => new Date(),
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  // RUNNER_DEBUG=1: a run (or re-run) with debug logging, where an internal upload error fails the step (upload.ts).
+  debug: core.isDebug(),
 });

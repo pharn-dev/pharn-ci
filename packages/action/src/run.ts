@@ -52,8 +52,8 @@ import { gatherAgentPrFacts } from "./agent-pr.js";
 import { parseAppUrl } from "./app-client.js";
 import { parsePolicyInput } from "./policy-input.js";
 import { obtainPolicy } from "./policy-source.js";
-import { type PrNumberTarget, parsePrNumberInputs, resolvePrNumberTarget } from "./pr-number.js";
-import { runMeta } from "./run-meta.js";
+import { COMMIT_SHA, type PrNumberTarget, parsePrNumberInputs, resolvePrNumberTarget } from "./pr-number.js";
+import { resolveBase, runMeta } from "./run-meta.js";
 import { runUpload } from "./upload.js";
 import { parseUploadInput } from "./upload-input.js";
 
@@ -206,9 +206,9 @@ export interface ActionDeps {
   /** The upload's overall deadline in milliseconds, read with `now`; `UPLOAD_DEADLINE_MS` (upload.ts) when absent. */
   uploadDeadlineMs?: number | undefined;
   sleep?: ((ms: number) => Promise<void>) | undefined;
+  /** The runner has debug logging on (`RUNNER_DEBUG=1`): an internal upload error then fails the step (upload.ts). */
+  debug?: boolean | undefined;
 }
-
-const ZERO_SHA = /^0+$/;
 
 /** Config file read when the config input is empty. */
 const DEFAULT_CONFIG = ".pharn/ci.yml";
@@ -247,9 +247,14 @@ export async function run(deps: ActionDeps): Promise<Report | undefined> {
 /**
  * Renamed Action inputs: old name -> current name. Before 1.0 an input is never removed; a renamed
  * one keeps its old name here, and declared in action.yml, for at least one minor release
- * (docs/RELEASING.md, "Inputs, outputs and message codes"). Empty while no input has been renamed.
+ * (docs/RELEASING.md, "Inputs, outputs and message codes").
+ *
+ * `fail-on-threshold` became `fail-on-verdict`: it gates on the verdict, whatever made it fail (diff coverage, a
+ * test-integrity block or an org policy finding), not only on the coverage threshold.
  */
-export const INPUT_ALIASES: Readonly<Record<string, string>> = Object.freeze({});
+export const INPUT_ALIASES: Readonly<Record<string, string>> = Object.freeze({
+  "fail-on-threshold": "fail-on-verdict",
+});
 
 /**
  * The trimmed value of an input, falling back to any old name it was renamed from. An old name
@@ -290,7 +295,10 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const policyChoice = parsePolicyInput(input("policy"));
   const appOrigin = parseAppUrl(input("app-url"));
   const uploadChoice = parseUploadInput(input("upload"));
-  const config = await loadConfig(input("config") || undefined, deps);
+  // Read once: the config, the diff reader and check() all name the same file.
+  const configInput = input("config");
+  const baseRefInput = input("base-ref");
+  const config = await loadConfig(configInput || undefined, deps);
 
   // An empty input is not given: the config, then the default, applies.
   const rawInputs: RawInputs = {
@@ -318,6 +326,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     policy === undefined ? undefined : applyPolicy({ config, raw: rawInputs, resolved: resolved.inputs }, policy);
   const effective = application?.inputs ?? resolved.inputs;
   const {
+    coverageFile,
     coverageFormat: format,
     threshold,
     exclude,
@@ -326,14 +335,13 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     expectAgentSetup,
     testIntegrityMode,
   } = effective;
-  const failOnThreshold = parseBool(input("fail-on-threshold"), "fail-on-threshold") ?? true;
+  const failOnVerdict = parseBool(input("fail-on-verdict"), failOnVerdictName(deps)) ?? true;
   const comment = parseBool(input("comment"), "comment") ?? true;
 
   // PR-number mode: no pull_request payload, the pr-number input names the PR. Resolved before anything is read or
   // measured, so a stale or forged target fails first.
   const target = !pr && prNumber !== undefined ? await resolvePrNumberTarget(deps, { prNumber, headSha }) : undefined;
 
-  const { coverageFile } = resolved.inputs;
   let coverage: CheckInput["coverage"];
   if ("discover" in coverageFile) {
     // An ambiguity throws here, before the diff, the summary and the comment, so run() fails the step.
@@ -372,7 +380,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
         return null;
       });
 
-  const { diff, localBase } = await getDiff(input("base-ref"), deps, target, input("config"));
+  const { diff, localBase } = await getDiff(baseRefInput, deps, target, configInput);
   const testSources = await gatherTestSources(deps, { diff, localBase, target, testIntegrityMode });
   const agentConfigSources = await gatherAgentConfigSources(deps, { repoFiles, diff, target });
   const policySettingsSources = await gatherPolicySettingsSources(deps, { repoFiles, diff, target, policy, lsTree });
@@ -427,7 +435,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     ...(agentInstructionSources === undefined ? {} : { agentInstructionSources }),
     ...(pythonTestIndex === undefined ? {} : { pythonTestIndex }),
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
-    ...(input("config") === "" ? {} : { configPath: input("config") }),
+    ...(configInput === "" ? {} : { configPath: configInput }),
     ...(policy === undefined ? {} : { policy }),
     ...(policySettingsSources === undefined ? {} : { policySettingsSources }),
     ...(application === undefined || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored }),
@@ -435,7 +443,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     agentPrFacts,
     ...(policyFileBase === undefined ? {} : { policyFileBase }),
   };
-  const meta = runMeta(deps.context, { baseRef: input("base-ref"), ...(target === undefined ? {} : { target }) });
+  const meta = runMeta(deps.context, { baseRef: baseRefInput, ...(target === undefined ? {} : { target }) });
   if (meta === undefined) deps.info("run metadata is incomplete, so report.json carries no meta");
   const checked = check(meta === undefined ? checkInput : { ...checkInput, meta });
   // The accept label is the Action's alone: check() and the CLI never see it. Only a pull_request event with its
@@ -453,16 +461,24 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   // The agent PR detection ran inside check() (see the facts above): its agent fields are already in `meta`.
   let report = labelled;
   // The upload is the last thing that reads the report before it is rendered and written: its outcome is part of it.
-  // It never throws and never changes the step's pass or fail (a too-large report only adds a warning).
+  // It never throws and never changes the step's pass or fail (a too-large report only adds a warning), except under
+  // debug logging, where an internal error of the upload fails the step so it can be found.
   const issueNumber = pr?.number ?? target?.number;
   const scopeLine = commentScopeLine(deps.context.workflow ?? "", deps.context.job ?? "");
   const commentNumber = comment ? issueNumber : undefined;
-  // One lookup of this run's own comment serves both the upload's comment link and, after an ok upload, the pointer.
-  let ownLookup: Promise<IssueComment | undefined> | undefined;
-  const findOwn = (n: number) => {
-    ownLookup ??= findOwnComment(deps, n, scopeLine);
-    return ownLookup;
+  // The pull request's comments and the token's login are read at most once: the upload's comment link, the pointer
+  // after an ok upload and the sticky comment all start from the same listing.
+  let listing: Promise<CommentListing> | undefined;
+  const listOnce = (n: number) => {
+    // A failed listing is not kept: the next reader asks again, as it did before the listing was shared.
+    listing ??= listCommentsAndViewer(deps, n).catch((err: unknown) => {
+      listing = undefined;
+      throw err;
+    });
+    return listing;
   };
+  const findOwn = (n: number) =>
+    listOnce(n).then(({ comments, viewer }) => ownComments(comments, viewer, scopeLine)[0]);
   const outcome = await runUpload(deps, {
     choice: uploadChoice,
     ...(deps.context.eventName === "pull_request_target" ? { pullRequestTarget: true } : {}),
@@ -507,11 +523,11 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
       fits: (text) => text.length <= MAX_COMMENT_LENGTH,
       ...render,
     });
-    await upsertComment(deps, issueNumber, body, scopeLine);
+    await upsertComment(deps, issueNumber, body, scopeLine, listOnce(issueNumber));
   }
 
   deps.info(`pharn-ci verdict: ${report.verdict}`);
-  if (report.verdict === "fail" && failOnThreshold) {
+  if (report.verdict === "fail" && failOnVerdict) {
     const errors = report.messages.filter((m) => m.level === "error").map((m) => m.text);
     deps.setFailed(`pharn-ci: ${errors.join(" ")}`);
   }
@@ -551,7 +567,7 @@ async function trackedFiles(target: PrNumberTarget | undefined, deps: ActionDeps
   if (tree.truncated) {
     deps.warning(
       "the file list of the PR head is truncated by the GitHub API (very large repository); " +
-        "the agent setup scan may miss files",
+        "the agent setup scan, the secret scan and the org policy's forbidden-file rule (P08) may miss files",
     );
   }
   return tree.paths;
@@ -738,11 +754,7 @@ async function getDiff(
   const { context } = deps;
   const pr = context.payload.pull_request;
   const mergeGroup = context.payload.merge_group;
-  const base =
-    baseRefInput ||
-    pr?.base.sha ||
-    mergeGroup?.base_sha ||
-    (context.payload.before && !ZERO_SHA.test(context.payload.before) ? context.payload.before : "");
+  const base = resolveBase(context, { baseRef: baseRefInput }).ref;
   if (!base) return { diff: { unavailable: "no base to diff against (not a pull request; set the base-ref input)" } };
 
   // pull_request checks out the merge commit (context.sha); pull_request_target checks out the base;
@@ -826,7 +838,7 @@ async function getTargetDiff(
   target: PrNumberTarget,
   deps: ActionDeps,
 ): Promise<CheckInput["diff"]> {
-  const base = baseRefInput || target.baseSha;
+  const base = resolveBase(deps.context, { baseRef: baseRefInput, target }).ref;
   try {
     return { text: await deps.api.compareDiff(`${base}...${target.headSha}`) };
   } catch (err) {
@@ -860,7 +872,9 @@ async function headIsInBase(base: string, deps: ActionDeps): Promise<boolean> {
 }
 
 async function resolveLocal(base: string, deps: ActionDeps): Promise<string | null> {
-  const candidates = /^[0-9a-f]{40}$/i.test(base) ? [base] : [`origin/${base}`, base];
+  // A full commit SHA (SHA-1 or SHA-256) names one commit; anything else may be a branch the checkout has only as
+  // origin/<name>.
+  const candidates = COMMIT_SHA.test(base) ? [base] : [`origin/${base}`, base];
   for (const ref of candidates) {
     try {
       await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", `${ref}^{commit}`]);
@@ -894,20 +908,37 @@ export function fitMarkdown(
     if (fit.fits(text)) return text;
   }
 
-  // Last resort: the longest prefix of the minimal render that fits with the note.
-  const fitsAt = (length: number) => fit.fits(minimal.slice(0, length) + fit.note);
+  // Last resort: the longest prefix of the minimal render that fits with the note. A cut inside a collapsed section
+  // closes that section first, or the note would be hidden inside it.
+  const cutAt = (length: number) => closeOpenDetails(minimal.slice(0, length)) + fit.note;
   let low = 0;
   let high = minimal.length;
   while (low < high) {
     const mid = Math.ceil((low + high) / 2);
-    if (fitsAt(mid)) low = mid;
+    if (fit.fits(cutAt(mid))) low = mid;
     else high = mid - 1;
   }
-  const lineBreak = minimal.lastIndexOf("\n", low);
-  let end = lineBreak > fit.prefix.length ? lineBreak : low;
+  // Prefer a cut at a line break; closing tags make the length not quite monotonic, so step back until it fits.
+  let end = low;
+  for (let lineBreak = minimal.lastIndexOf("\n", low); lineBreak > fit.prefix.length; ) {
+    if (fit.fits(cutAt(lineBreak))) {
+      end = lineBreak;
+      break;
+    }
+    lineBreak = minimal.lastIndexOf("\n", lineBreak - 1);
+  }
   // Do not leave half of a surrogate pair at the cut.
   if (end === low && end > 0 && /[\uD800-\uDBFF]/.test(minimal.charAt(end - 1))) end--;
-  return minimal.slice(0, end) + fit.note;
+  return cutAt(end);
+}
+
+const DETAILS_OPEN = /<details(?:\s[^>]*)?>/g;
+const DETAILS_CLOSE = /<\/details>/g;
+
+/** `text` with a `</details>` added for each `<details>` it opens and does not close. */
+export function closeOpenDetails(text: string): string {
+  const open = (text.match(DETAILS_OPEN)?.length ?? 0) - (text.match(DETAILS_CLOSE)?.length ?? 0);
+  return open > 0 ? text + "\n\n</details>".repeat(open) : text;
 }
 
 /**
@@ -922,9 +953,11 @@ export async function upsertComment(
   issueNumber: number,
   body: string,
   scopeLine: string,
+  /** The run's one listing of the comments and the login (see run()); read here when absent. */
+  listed: Promise<CommentListing> = listCommentsAndViewer(deps, issueNumber),
 ) {
   try {
-    const [comments, viewer] = await Promise.all([deps.api.listComments(issueNumber), deps.api.viewerLogin()]);
+    const { comments, viewer } = await listed;
     const [existing, ...rest] = ownComments(comments, viewer, scopeLine);
     if (existing) {
       await deps.api.updateComment(existing.id, body);
@@ -983,17 +1016,19 @@ function ownComments(comments: IssueComment[], viewer: string | null, scopeLine:
     .sort((a, b) => a.id - b.id);
 }
 
+/** A pull request's comments and the login the token comments as (null when unknown, see GitHubApi.viewerLogin). */
+export interface CommentListing {
+  comments: IssueComment[];
+  viewer: string | null;
+}
+
 /**
- * This run's own pull request comment (the oldest, see ownComments), for the link the upload carries. Rejects when the
- * comments cannot be read; the upload turns that into "no link".
+ * The comments and the viewer login, in two parallel requests. Rejects when the comments cannot be read: the upload
+ * turns that into "no link", the pointer and the sticky comment into one warning each.
  */
-async function findOwnComment(
-  deps: Pick<ActionDeps, "api">,
-  issueNumber: number,
-  scopeLine: string,
-): Promise<IssueComment | undefined> {
+async function listCommentsAndViewer(deps: Pick<ActionDeps, "api">, issueNumber: number): Promise<CommentListing> {
   const [comments, viewer] = await Promise.all([deps.api.listComments(issueNumber), deps.api.viewerLogin()]);
-  return ownComments(comments, viewer, scopeLine)[0];
+  return { comments, viewer };
 }
 
 /** The line that replaces an earlier run's verdict in its own comment once a run is uploaded. */
@@ -1107,6 +1142,12 @@ function splitLines(value: string): string | string[] | undefined {
     .map((entry) => entry.trim())
     .filter((entry) => entry !== "");
   return entries.length > 1 ? entries : entries[0];
+}
+
+/** The name of the input the fail-on-verdict value came from, for its error: the old name only when it alone is set. */
+function failOnVerdictName(deps: Pick<ActionDeps, "getInput">): string {
+  const current = deps.getInput("fail-on-verdict").trim();
+  return current === "" && deps.getInput("fail-on-threshold").trim() !== "" ? "fail-on-threshold" : "fail-on-verdict";
 }
 
 /** An empty input is not given (undefined). */

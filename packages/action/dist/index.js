@@ -231975,6 +231975,9 @@ function setFailed(message) {
   process.exitCode = ExitCode.Failure;
   error(message);
 }
+function isDebug() {
+  return process.env["RUNNER_DEBUG"] === "1";
+}
 function debug(message) {
   issueCommand("debug", {}, message);
 }
@@ -236175,6 +236178,19 @@ function createGitHubApi(opts) {
     }
     return client;
   };
+  const pulls = /* @__PURE__ */ new Map();
+  const getPull = (pullNumber) => {
+    let pending = pulls.get(pullNumber);
+    if (pending === void 0) {
+      pending = (async () => {
+        const { octokit, owner, repo } = connect();
+        return (await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber })).data;
+      })();
+      pulls.set(pullNumber, pending);
+      pending.catch(() => pulls.delete(pullNumber));
+    }
+    return pending;
+  };
   return {
     async compareDiff(basehead) {
       const { octokit, owner, repo } = connect();
@@ -236187,13 +236203,11 @@ function createGitHubApi(opts) {
       return diffText(res.data);
     },
     async getPullRequest(pullNumber) {
-      const { octokit, owner, repo } = connect();
-      const { data } = await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber });
+      const data = await getPull(pullNumber);
       return { baseSha: data.base.sha, headSha: data.head.sha };
     },
     async getPullRequestSignoff(pullNumber) {
-      const { octokit, owner, repo } = connect();
-      const { data } = await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber });
+      const data = await getPull(pullNumber);
       return { author: data.user, labels: data.labels, commits: data.commits };
     },
     async listPullRequestCommits(pullNumber, page) {
@@ -252069,7 +252083,7 @@ async function obtainPolicy(deps, choice, origin) {
 
 // src/pr-number.ts
 var PR_NUMBER = /^[1-9][0-9]{0,9}$/;
-var COMMIT_SHA = /^([0-9a-f]{40}|[0-9a-f]{64})$/i;
+var COMMIT_SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i;
 var HEAD_SHA_EXPRESSION = ["$", "{{ github.event.workflow_run.head_sha }}"].join("");
 function parsePrNumberInputs(prNumberRaw, headShaRaw) {
   const prNumberText = prNumberRaw.trim();
@@ -252122,6 +252136,13 @@ var CONTROL = new RegExp("\\p{Cc}", "gu");
 function metaScope(workflow, job) {
   return Array.from(`${workflow}/${job}`.replace(CONTROL, "")).slice(0, MAX_META_SCOPE_CODE_POINTS).join("");
 }
+function resolveBase(context3, opts) {
+  const baseRef = opts.baseRef ?? "";
+  if (baseRef !== "") return { ref: baseRef, sha: COMMIT_SHA.test(baseRef) ? baseRef.toLowerCase() : null };
+  const { pull_request: pr, merge_group: mergeGroup, before } = context3.payload;
+  const fallback = opts.target?.baseSha || pr?.base.sha || mergeGroup?.base_sha || (before && !ZERO_SHA.test(before) ? before : "");
+  return { ref: fallback, sha: fallback === "" ? null : fallback };
+}
 function runMeta(context3, opts) {
   const repository = context3.payload.repository?.full_name;
   const { runId, runAttempt } = context3;
@@ -252130,27 +252151,21 @@ function runMeta(context3, opts) {
   const pr = context3.payload.pull_request;
   const mergeGroup = context3.payload.merge_group;
   let headSha;
-  let baseSha;
   let prNumber;
   if (opts.target) {
     headSha = opts.target.headSha;
-    baseSha = opts.target.baseSha;
     prNumber = opts.target.number;
   } else if (pr) {
     headSha = pr.head.sha;
-    baseSha = pr.base.sha;
     prNumber = pr.number;
   } else if (mergeGroup) {
     headSha = mergeGroup.head_sha;
-    baseSha = mergeGroup.base_sha;
     prNumber = null;
   } else {
     headSha = context3.sha;
-    const before = context3.payload.before;
-    const baseRef = opts.baseRef?.toLowerCase();
-    baseSha = baseRef && SHA.test(baseRef) ? baseRef : before && !ZERO_SHA.test(before) ? before : null;
     prNumber = null;
   }
+  const baseSha = resolveBase(context3, opts).sha;
   if (!SHA.test(headSha)) return void 0;
   const event = EVENTS.find((name) => name === context3.eventName) ?? "other";
   const repositoryId = context3.payload.repository?.id;
@@ -252181,16 +252196,25 @@ var UPLOAD_DEADLINE_MS = 9e4;
 var JSON_CONTENT_TYPE2 = /^application\/json\s*(?:;|$)/i;
 var OBJECT_KEY = /^[A-Za-z0-9/_.=-]{1,512}$/;
 var PUT_OK = [200, 201, 204];
+var ERROR_CLASS = /^[A-Za-z_$][A-Za-z0-9_$]{0,63}$/;
+function errorClassOf(err) {
+  if (typeof err !== "object" || err === null) return typeof err;
+  const name = err.constructor?.name;
+  return typeof name === "string" && ERROR_CLASS.test(name) ? name : "unknown";
+}
 async function runUpload(deps, input) {
   let step;
+  let thrown;
   try {
     const clock = () => (deps.now?.() ?? /* @__PURE__ */ new Date()).getTime();
     const deadlineAt = clock() + (deps.uploadDeadlineMs ?? UPLOAD_DEADLINE_MS);
     step = await uploadSteps(deps, input, () => deadlineAt - clock());
-  } catch {
-    step = { outcome: { status: "failed", reason: "internal" } };
+  } catch (err) {
+    step = { outcome: { status: "failed", reason: "internal" }, errorClass: errorClassOf(err) };
+    thrown = { err };
   }
   logOutcome(deps, step);
+  if (thrown !== void 0 && deps.debug === true) throw thrown.err;
   return step.outcome;
 }
 function logOutcome(deps, step) {
@@ -252202,7 +252226,7 @@ function logOutcome(deps, step) {
     if (outcome.reason === "no-installation") deps.info(NO_INSTALLATION_LINE);
     else if (outcome.reason === "pull-request-target") deps.info(PULL_REQUEST_TARGET_LINE);
   } else if (outcome.status === "failed") {
-    const detail = id === void 0 ? "" : `, request id ${id}`;
+    const detail = (step.errorClass === void 0 ? "" : `, ${step.errorClass}`) + (id === void 0 ? "" : `, request id ${id}`);
     deps.warning(
       `pharn-ci: the run was not uploaded to pharn.dev (failed: ${outcome.reason}${detail}); the check is not affected`
     );
@@ -252379,11 +252403,11 @@ async function putBundle(deps, url, bytes, remainingMs) {
   });
   return PUT_OK.includes(response.status) ? null : `put:status-${response.status}`;
 }
-async function findCommentUrl(deps, findOwnComment2) {
-  if (findOwnComment2 === void 0) return null;
+async function findCommentUrl(deps, findOwnComment) {
+  if (findOwnComment === void 0) return null;
   let comment;
   try {
-    comment = await findOwnComment2();
+    comment = await findOwnComment();
   } catch {
     deps.info(NO_COMMENT_LINE);
     return null;
@@ -252408,7 +252432,6 @@ var DEFAULT_TOKEN_LOGIN = "github-actions[bot]";
 function commentScopeLine(workflow, job) {
   return `${SCOPE_LINE_PREFIX} ${encodeURIComponent(workflow)}/${encodeURIComponent(job)} -->`;
 }
-var ZERO_SHA2 = /^0+$/;
 var DEFAULT_CONFIG = ".pharn/ci.yml";
 var INPUT_ERRORS = {
   coverageFormat: (value) => `coverage-format "${value}" is not supported (supported: lcov, cobertura, auto)`,
@@ -252433,7 +252456,9 @@ async function run(deps) {
     return void 0;
   }
 }
-var INPUT_ALIASES = Object.freeze({});
+var INPUT_ALIASES = Object.freeze({
+  "fail-on-threshold": "fail-on-verdict"
+});
 function readInput(deps, name, aliases = INPUT_ALIASES) {
   const value = deps.getInput(name).trim();
   for (const [oldName, current] of Object.entries(aliases)) {
@@ -252461,7 +252486,9 @@ async function runUnsafe(deps) {
   const policyChoice = parsePolicyInput(input("policy"));
   const appOrigin = parseAppUrl(input("app-url"));
   const uploadChoice = parseUploadInput(input("upload"));
-  const config = await loadConfig(input("config") || void 0, deps);
+  const configInput = input("config");
+  const baseRefInput = input("base-ref");
+  const config = await loadConfig(configInput || void 0, deps);
   const rawInputs = {
     coverageFile: splitLines(input("coverage-file")),
     coverageFormat: input("coverage-format") || void 0,
@@ -252484,6 +252511,7 @@ async function runUnsafe(deps) {
   const application = policy === void 0 ? void 0 : applyPolicy({ config, raw: rawInputs, resolved: resolved.inputs }, policy);
   const effective2 = application?.inputs ?? resolved.inputs;
   const {
+    coverageFile,
     coverageFormat: format,
     threshold,
     exclude,
@@ -252492,10 +252520,9 @@ async function runUnsafe(deps) {
     expectAgentSetup,
     testIntegrityMode
   } = effective2;
-  const failOnThreshold = parseBool(input("fail-on-threshold"), "fail-on-threshold") ?? true;
+  const failOnVerdict = parseBool(input("fail-on-verdict"), failOnVerdictName(deps)) ?? true;
   const comment = parseBool(input("comment"), "comment") ?? true;
   const target = !pr && prNumber !== void 0 ? await resolvePrNumberTarget(deps, { prNumber, headSha }) : void 0;
-  const { coverageFile } = resolved.inputs;
   let coverage2;
   if ("discover" in coverageFile) {
     coverage2 = await readDiscoveredCoverage(deps, {
@@ -252525,7 +252552,7 @@ async function runUnsafe(deps) {
     deps.warning(`git ls-tree failed, so empty agent setup files are not reported: ${String(err)}`);
     return null;
   });
-  const { diff, localBase } = await getDiff(input("base-ref"), deps, target, input("config"));
+  const { diff, localBase } = await getDiff(baseRefInput, deps, target, configInput);
   const testSources = await gatherTestSources(deps, { diff, localBase, target, testIntegrityMode });
   const agentConfigSources = await gatherAgentConfigSources(deps, { repoFiles, diff, target });
   const policySettingsSources = await gatherPolicySettingsSources(deps, { repoFiles, diff, target, policy, lsTree });
@@ -252564,7 +252591,7 @@ async function runUnsafe(deps) {
     ...agentInstructionSources === void 0 ? {} : { agentInstructionSources },
     ...pythonTestIndex === void 0 ? {} : { pythonTestIndex },
     ...coverageRoot === void 0 ? {} : { coverageRoot },
-    ...input("config") === "" ? {} : { configPath: input("config") },
+    ...configInput === "" ? {} : { configPath: configInput },
     ...policy === void 0 ? {} : { policy },
     ...policySettingsSources === void 0 ? {} : { policySettingsSources },
     ...application === void 0 || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored },
@@ -252572,7 +252599,7 @@ async function runUnsafe(deps) {
     agentPrFacts,
     ...policyFileBase === void 0 ? {} : { policyFileBase }
   };
-  const meta = runMeta(deps.context, { baseRef: input("base-ref"), ...target === void 0 ? {} : { target } });
+  const meta = runMeta(deps.context, { baseRef: baseRefInput, ...target === void 0 ? {} : { target } });
   if (meta === void 0) deps.info("run metadata is incomplete, so report.json carries no meta");
   const checked = check(meta === void 0 ? checkInput : { ...checkInput, meta });
   const signoffNumber = deps.context.eventName === "pull_request" && pr ? pr.number : target?.number;
@@ -252587,11 +252614,15 @@ async function runUnsafe(deps) {
   const issueNumber = pr?.number ?? target?.number;
   const scopeLine = commentScopeLine(deps.context.workflow ?? "", deps.context.job ?? "");
   const commentNumber = comment ? issueNumber : void 0;
-  let ownLookup;
-  const findOwn = (n) => {
-    ownLookup ??= findOwnComment(deps, n, scopeLine);
-    return ownLookup;
+  let listing;
+  const listOnce = (n) => {
+    listing ??= listCommentsAndViewer(deps, n).catch((err) => {
+      listing = void 0;
+      throw err;
+    });
+    return listing;
   };
+  const findOwn = (n) => listOnce(n).then(({ comments, viewer }) => ownComments(comments, viewer, scopeLine)[0]);
   const outcome = await runUpload(deps, {
     choice: uploadChoice,
     ...deps.context.eventName === "pull_request_target" ? { pullRequestTarget: true } : {},
@@ -252633,10 +252664,10 @@ ${scopeLine}
       fits: (text) => text.length <= MAX_COMMENT_LENGTH,
       ...render
     });
-    await upsertComment(deps, issueNumber, body, scopeLine);
+    await upsertComment(deps, issueNumber, body, scopeLine, listOnce(issueNumber));
   }
   deps.info(`pharn-ci verdict: ${report.verdict}`);
-  if (report.verdict === "fail" && failOnThreshold) {
+  if (report.verdict === "fail" && failOnVerdict) {
     const errors = report.messages.filter((m) => m.level === "error").map((m) => m.text);
     deps.setFailed(`pharn-ci: ${errors.join(" ")}`);
   }
@@ -252664,7 +252695,7 @@ async function trackedFiles(target, deps) {
   }
   if (tree.truncated) {
     deps.warning(
-      "the file list of the PR head is truncated by the GitHub API (very large repository); the agent setup scan may miss files"
+      "the file list of the PR head is truncated by the GitHub API (very large repository); the agent setup scan, the secret scan and the org policy's forbidden-file rule (P08) may miss files"
     );
   }
   return tree.paths;
@@ -252779,7 +252810,7 @@ async function getDiff(baseRefInput, deps, target, configInput = "") {
   const { context: context3 } = deps;
   const pr = context3.payload.pull_request;
   const mergeGroup = context3.payload.merge_group;
-  const base = baseRefInput || pr?.base.sha || mergeGroup?.base_sha || (context3.payload.before && !ZERO_SHA2.test(context3.payload.before) ? context3.payload.before : "");
+  const base = resolveBase(context3, { baseRef: baseRefInput }).ref;
   if (!base) return { diff: { unavailable: "no base to diff against (not a pull request; set the base-ref input)" } };
   const head = context3.eventName === "pull_request_target" && pr ? pr.head.sha : mergeGroup?.head_sha || context3.sha;
   if (context3.eventName === "pull_request_target" && pr) {
@@ -252833,7 +252864,7 @@ async function getDiff(baseRefInput, deps, target, configInput = "") {
   }
 }
 async function getTargetDiff(baseRefInput, target, deps) {
-  const base = baseRefInput || target.baseSha;
+  const base = resolveBase(deps.context, { baseRef: baseRefInput, target }).ref;
   try {
     return { text: await deps.api.compareDiff(`${base}...${target.headSha}`) };
   } catch (err) {
@@ -252857,7 +252888,7 @@ async function headIsInBase(base, deps) {
   }
 }
 async function resolveLocal(base, deps) {
-  const candidates = /^[0-9a-f]{40}$/i.test(base) ? [base] : [`origin/${base}`, base];
+  const candidates = COMMIT_SHA.test(base) ? [base] : [`origin/${base}`, base];
   for (const ref of candidates) {
     try {
       await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", `${ref}^{commit}`]);
@@ -252877,22 +252908,34 @@ function fitMarkdown(report, fit) {
     const text = minimal + fit.note;
     if (fit.fits(text)) return text;
   }
-  const fitsAt = (length) => fit.fits(minimal.slice(0, length) + fit.note);
+  const cutAt = (length) => closeOpenDetails(minimal.slice(0, length)) + fit.note;
   let low = 0;
   let high = minimal.length;
   while (low < high) {
     const mid = Math.ceil((low + high) / 2);
-    if (fitsAt(mid)) low = mid;
+    if (fit.fits(cutAt(mid))) low = mid;
     else high = mid - 1;
   }
-  const lineBreak = minimal.lastIndexOf("\n", low);
-  let end = lineBreak > fit.prefix.length ? lineBreak : low;
+  let end = low;
+  for (let lineBreak = minimal.lastIndexOf("\n", low); lineBreak > fit.prefix.length; ) {
+    if (fit.fits(cutAt(lineBreak))) {
+      end = lineBreak;
+      break;
+    }
+    lineBreak = minimal.lastIndexOf("\n", lineBreak - 1);
+  }
   if (end === low && end > 0 && /[\uD800-\uDBFF]/.test(minimal.charAt(end - 1))) end--;
-  return minimal.slice(0, end) + fit.note;
+  return cutAt(end);
 }
-async function upsertComment(deps, issueNumber, body, scopeLine) {
+var DETAILS_OPEN = /<details(?:\s[^>]*)?>/g;
+var DETAILS_CLOSE = /<\/details>/g;
+function closeOpenDetails(text) {
+  const open3 = (text.match(DETAILS_OPEN)?.length ?? 0) - (text.match(DETAILS_CLOSE)?.length ?? 0);
+  return open3 > 0 ? text + "\n\n</details>".repeat(open3) : text;
+}
+async function upsertComment(deps, issueNumber, body, scopeLine, listed2 = listCommentsAndViewer(deps, issueNumber)) {
   try {
-    const [comments, viewer] = await Promise.all([deps.api.listComments(issueNumber), deps.api.viewerLogin()]);
+    const { comments, viewer } = await listed2;
     const [existing, ...rest] = ownComments(comments, viewer, scopeLine);
     if (existing) {
       await deps.api.updateComment(existing.id, body);
@@ -252928,9 +252971,9 @@ function ownComments(comments, viewer, scopeLine) {
     return scope === "same" ? login.endsWith("[bot]") : login === DEFAULT_TOKEN_LOGIN;
   }).sort((a, b) => a.id - b.id);
 }
-async function findOwnComment(deps, issueNumber, scopeLine) {
+async function listCommentsAndViewer(deps, issueNumber) {
   const [comments, viewer] = await Promise.all([deps.api.listComments(issueNumber), deps.api.viewerLogin()]);
-  return ownComments(comments, viewer, scopeLine)[0];
+  return { comments, viewer };
 }
 var APP_POINTER_LINE = "This run is reported by the Pharn GitHub App:";
 async function pointOwnComment(deps, lookup2, prefix, runUrl) {
@@ -252994,6 +253037,10 @@ function splitLines(value) {
   const entries = value.split(/\r?\n/).map((entry) => entry.trim()).filter((entry) => entry !== "");
   return entries.length > 1 ? entries : entries[0];
 }
+function failOnVerdictName(deps) {
+  const current = deps.getInput("fail-on-verdict").trim();
+  return current === "" && deps.getInput("fail-on-threshold").trim() !== "" ? "fail-on-threshold" : "fail-on-verdict";
+}
 function parseBool(value, name) {
   if (value === "") return void 0;
   if (/^(true|yes|on|1)$/i.test(value)) return true;
@@ -253027,7 +253074,9 @@ await run({
   setSecret,
   hasOidcEnv: Boolean(process.env.ACTIONS_ID_TOKEN_REQUEST_URL) && Boolean(process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN),
   now: () => /* @__PURE__ */ new Date(),
-  sleep: (ms) => new Promise((resolve2) => setTimeout(resolve2, ms))
+  sleep: (ms) => new Promise((resolve2) => setTimeout(resolve2, ms)),
+  // RUNNER_DEBUG=1: a run (or re-run) with debug logging, where an internal upload error fails the step (upload.ts).
+  debug: isDebug()
 });
 /*! Bundled license information:
 

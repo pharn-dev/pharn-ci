@@ -350,10 +350,31 @@ describe("action run", () => {
     });
   });
 
-  it("does not fail the step when fail-on-threshold is false", async () => {
+  it("does not fail the step when fail-on-verdict is false", async () => {
+    const h = harness({ inputs: { threshold: "80", "fail-on-verdict": "false" } });
+    expect((await run(h.deps))?.verdict).toBe("fail");
+    expect(h.failed).toEqual([]);
+    expect(h.warnings.join("\n")).not.toContain("deprecated");
+  });
+
+  it("still reads fail-on-threshold, the old name of fail-on-verdict, with a deprecation warning", async () => {
     const h = harness({ inputs: { threshold: "80", "fail-on-threshold": "false" } });
     expect((await run(h.deps))?.verdict).toBe("fail");
     expect(h.failed).toEqual([]);
+    expect(h.warnings).toContain('input "fail-on-threshold" is deprecated; rename it to "fail-on-verdict"');
+  });
+
+  it("fails the step on a fail verdict when neither fail-on-verdict nor fail-on-threshold is set", async () => {
+    const h = harness({ inputs: { threshold: "80" } });
+    expect((await run(h.deps))?.verdict).toBe("fail");
+    expect(h.failed).toHaveLength(1);
+  });
+
+  it("prefers fail-on-verdict over fail-on-threshold when both are set", async () => {
+    const h = harness({ inputs: { threshold: "80", "fail-on-verdict": "true", "fail-on-threshold": "false" } });
+    expect((await run(h.deps))?.verdict).toBe("fail");
+    expect(h.failed).toHaveLength(1);
+    expect(h.warnings.join("\n")).toContain('input "fail-on-threshold" is deprecated and ignored');
   });
 
   it("reads defaults from .pharn/ci.yml, with inputs overriding them", async () => {
@@ -457,6 +478,7 @@ describe("action run", () => {
     [{ "coverage-format": "clover" }, 'coverage-format "clover" is not supported (supported: lcov, cobertura, auto)'],
     [{ threshold: "abc" }, "threshold must be a number"],
     [{ comment: "maybe" }, "comment must be true or false"],
+    [{ "fail-on-verdict": "maybe" }, 'fail-on-verdict must be true or false, got "maybe"'],
     [{ "fail-on-threshold": "maybe" }, 'fail-on-threshold must be true or false, got "maybe"'],
     [{ "require-agent-setup": "maybe" }, 'require-agent-setup must be true or false, got "maybe"'],
     [{ exclude: "src/**, /abs" }, 'exclude "/abs" must not start with "/"'],

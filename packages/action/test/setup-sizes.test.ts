@@ -13,7 +13,7 @@ const BASE_SHA = "1111111111111111111111111111111111111111";
 const HEAD_SHA = "2222222222222222222222222222222222222222";
 const BLOB = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391";
 
-const INPUT_DEFAULTS: Record<string, string> = { comment: "false", "fail-on-threshold": "true", config: "" };
+const INPUT_DEFAULTS: Record<string, string> = { comment: "false", config: "" };
 
 const lsTreeOutput = () =>
   fixture("golden/files.txt")

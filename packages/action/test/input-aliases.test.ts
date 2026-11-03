@@ -45,6 +45,8 @@ const SHIPPED_INPUTS = [
   "app-url",
   // Added by E3 item 21 (the run upload).
   "upload",
+  // The current name of fail-on-threshold (review 2026-11-01, finding 27).
+  "fail-on-verdict",
 ];
 // "run-url" was added by E3 item 21 (the run upload).
 const SHIPPED_OUTPUTS = ["report-path", "verdict", "diff-coverage", "run-url"];
@@ -86,11 +88,16 @@ describe("input aliases (F-19)", () => {
     expect(h.warnings).toEqual([]);
   });
 
-  it("uses INPUT_ALIASES by default, which is empty while no input has been renamed", () => {
-    expect(INPUT_ALIASES).toEqual({});
+  it("uses INPUT_ALIASES by default, where fail-on-threshold is the old name of fail-on-verdict", () => {
+    // The base test's assertions, kept: an alias of one input is never applied to another.
     const h = deps({ "old-threshold": "75" });
     expect(readInput(h.deps, "threshold")).toBe("");
     expect(h.warnings).toEqual([]);
+    // INPUT_ALIASES is no longer empty: it holds the one rename so far, applied by default.
+    expect(INPUT_ALIASES).toEqual({ "fail-on-threshold": "fail-on-verdict" });
+    const renamed = deps({ "fail-on-threshold": "false" });
+    expect(readInput(renamed.deps, "fail-on-verdict")).toBe("false");
+    expect(renamed.warnings).toEqual(['input "fail-on-threshold" is deprecated; rename it to "fail-on-verdict"']);
   });
 
   it("keeps every alias declared in action.yml, old name and current name", () => {
@@ -98,6 +105,12 @@ describe("input aliases (F-19)", () => {
     for (const [oldName, current] of Object.entries(INPUT_ALIASES)) {
       expect(inputs, `old input ${oldName} stays declared`).toContain(oldName);
       expect(inputs, `current input ${current} is declared`).toContain(current);
+      // Neither has a default: one on the current name would make it always "set", and the old name always ignored.
+      for (const name of [oldName, current]) {
+        const block = actionYml.split(`\n  ${name}:\n`)[1]?.split(/\n {2}\S/)[0] ?? "";
+        expect(block, `${name} is declared`).not.toBe("");
+        expect(block, `${name} has no default`).not.toMatch(/^ {4}default:/m);
+      }
     }
   });
 

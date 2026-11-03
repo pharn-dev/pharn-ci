@@ -9,7 +9,37 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- The Action input `fail-on-verdict`, the new name of `fail-on-threshold` (review 2026-11-01, finding 27): it gates on
+  the verdict, whatever made it fail, not only on the coverage threshold. `fail-on-threshold` still works when
+  `fail-on-verdict` is not set, with a deprecation warning, and is ignored (with a warning) when both are; both stay
+  declared in `action.yml`, which no longer gives either a default (the default, `true`, is applied in code, so a set
+  old name is never shadowed).
+
 ### Changed
+
+- The Action's `run.ts` items of the 2026-11-01 review. No schema change and no new message code.
+  - A PR comment or job summary cut as a last resort (the messages alone over the limit) now closes every collapsed
+    `<details>` section it cuts into before the truncation note, so the note is no longer hidden inside it (37).
+  - Fewer GitHub API calls (47): a pull request is read once per run (in `pr-number` mode it was read up to three
+    times: the target, the agent PR detection and the accept label), and the comments and the token's login are
+    listed once for the upload's comment link, the pointer and the sticky comment (they were listed twice when an
+    upload was tried, including when the app answered `404`). A failed listing is still asked again by the next
+    reader. The `config` and `base-ref` inputs are read once, and the coverage file is read from the inputs after the
+    org policy, as the CLI reads it.
+  - The base is decided once for the diff and for `report.json` (45): `meta.baseSha` is now the base the diff was taken
+    against, recorded only when it is a full commit SHA. With a `base-ref` branch name, a `pull_request` run used to
+    record the PR base and a `push` run the previous commit; both now record `null`. A 64-character (SHA-256) commit
+    SHA as `base-ref` is no longer also tried as `origin/<sha>`.
+  - The warning for a truncated PR-head file list in `pr-number` mode names what may miss files: the agent setup scan,
+    the secret scan and the org policy's forbidden-file rule (P08) (48). `docs/THREAT-MODEL.md` residual 36 records
+    why a bot's marker comment still counts as pharn-ci's own when the token's login is unknown: no API names an
+    installation token's own login.
+  - An unexpected exception in the upload is still `failed` with the reason `internal` and never changes the check,
+    and its log line now names the error class (never its message); with debug logging (`RUNNER_DEBUG=1`) it then
+    fails the step with the message, so it can be found (28). A `413` from the app is still read without its body:
+    the app's API defines none, so `maxBytes` stays `null` (29, `docs/LIMITS.md`).
+  - Not changed: finding 39 (the two test-sources tests `vi.mock("@pharn-ci/core")`) is dropped. The mock is a pinned
+    spy-through to the real `check()`; replacing it would delete the test that pins it, which TI02 correctly blocks.
 
 - Docs and metadata (second review, 2026-11-01): README says nothing phones home only without `id-token: write`, the
   quick precedence sentence no longer claims `.pharn/ci.yml` "can only tighten" (only the test-integrity mode is

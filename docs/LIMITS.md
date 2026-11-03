@@ -830,9 +830,10 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
   P06): a demand that cannot be checked is not met, so a shallow checkout or `pr-number` mode fails
   the step there. In `pr-number` mode the test text is never available, so block fails there when a
   test file or a test-runner config is modified; use `test-integrity: warn` for that flow.
-- **`fail-on-threshold: false` makes the step report, not gate.** Despite the name it covers every
-  cause of a `fail` verdict: diff coverage, test-integrity blocks and org policy violations and errors,
-  a required policy included. The verdict and outputs are still set.
+- **`fail-on-verdict: false` makes the step report, not gate.** As its old name `fail-on-threshold` did not say,
+  it covers every cause of a `fail` verdict: diff coverage, test-integrity blocks and org policy violations and
+  errors, a required policy included. The verdict and outputs are still set. The old name is still read (with a
+  deprecation warning) when `fail-on-verdict` is not set.
 
 ## 3. Coverage formats
 
@@ -1152,7 +1153,8 @@ run. What it does not do:
 - **The CLI never uploads.** Only the Action does; the CLI makes no network call.
 - **A report over the limit is not uploaded.** A `report.json` over 5 MiB (5242880 bytes), a gzip archive over the
   `maxBytes` the app names, or a `413` from the app ends in `UPLOAD_TOO_LARGE`; the check ran in full and only the
-  history misses the run. A `413` is also what the app answers to a size it will never take.
+  history misses the run. A `413` is also what the app answers to a size it will never take; its body is not read, so
+  the upload names no limit then (`maxBytes: null`): the app's API defines no body for a `413`.
 - **No retry of a registered run.** The register request can reach the app twice when its first answer is lost to a
   network error or a `5xx`; the app answers a repeated run with `200` and the upload counts as `ok` then.
 
@@ -1198,7 +1200,8 @@ run. What it does not do:
 - **PR-number mode depends on the GitHub API.** With the `pr-number` input, the diff comes from the
   compare API, so it is subject to GitHub's size limit for compare diffs (a diff over it is
   `DIFF_UNAVAILABLE`), and the file list comes from the git trees API. For a very large repository
-  that listing is truncated: pharn-ci warns, and the agent setup scan may miss files. The coverage
+  that listing is truncated: pharn-ci warns, and the agent setup scan, the secret scan and the org policy's
+  forbidden-file rule (P08) may miss files. The coverage
   file still comes from the workflow, so a forged one can flatter its own PR; the `pull_request`
   run's verdict is the gate, not the comment.
 

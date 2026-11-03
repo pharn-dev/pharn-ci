@@ -101,9 +101,9 @@ describe("the upload fails open", { timeout: 60_000 }, () => {
     expect(passing.h.failed).toEqual([]);
     expect(Object.hasOwn(passing.h.outputs, "run-url")).toBe(false);
 
-    // A failing report with fail-on-threshold: failed exactly as the run with the upload off.
-    const failing = await throwingClockRun({ threshold: "80", "fail-on-threshold": "true" });
-    const off = await throwingClockRun({ threshold: "80", "fail-on-threshold": "true", upload: "never" });
+    // A failing report with fail-on-verdict: failed exactly as the run with the upload off.
+    const failing = await throwingClockRun({ threshold: "80" });
+    const off = await throwingClockRun({ threshold: "80", upload: "never" });
     expect(failing.report.verdict).toBe("fail");
     expect(off.h.failed.length, "control: the run with the upload off is failed").toBeGreaterThan(0);
     expect(failing.h.failed).toEqual(off.h.failed);

@@ -77,7 +77,6 @@ export function harness(opts: HarnessOptions = {}): Harness {
   const inputs: Record<string, string> = {
     "coverage-file": "coverage/lcov.info",
     comment: "true",
-    "fail-on-threshold": "true",
     config: "",
     ...opts.inputs,
   };

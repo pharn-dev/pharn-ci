@@ -53,6 +53,7 @@ export type UploadDeps = Pick<
   | "timeoutMs"
   | "uploadDeadlineMs"
   | "sleep"
+  | "debug"
   | "info"
   | "warning"
 >;
@@ -73,23 +74,41 @@ export interface UploadInput {
 interface Step {
   outcome: UploadOutcome;
   requestId?: string;
+  /** For an `internal` failure: the class of what was thrown (never its message), for the log line. */
+  errorClass?: string;
+}
+
+/** A constructor name as a log line may carry it; anything else reads as `unknown`. */
+const ERROR_CLASS = /^[A-Za-z_$][A-Za-z0-9_$]{0,63}$/;
+
+/** The class name of a thrown value: an Error subclass's constructor name, or its `typeof`. Never its message. */
+function errorClassOf(err: unknown): string {
+  if (typeof err !== "object" || err === null) return typeof err;
+  const name = (err as { constructor?: { name?: unknown } }).constructor?.name;
+  return typeof name === "string" && ERROR_CLASS.test(name) ? name : "unknown";
 }
 
 /**
  * Uploads the run to pharn.dev and says how it went. It never throws and never fails the check: whatever goes wrong is
- * an outcome (and one log line), and an exception is `failed` with the reason `internal`. Nothing here puts the token,
- * the signed URL or what the app answered into a log line, an error or the outcome.
+ * an outcome (and one log line), and an exception is `failed` with the reason `internal`, its class named in the log
+ * line. Nothing here puts the token, the signed URL or what the app answered into a log line, an error or the outcome.
+ *
+ * The one exception is debug logging (`deps.debug`, set from `RUNNER_DEBUG=1`, a run re-run with debug logging): there
+ * an exception is logged as above and then thrown, so the step fails with its message and the bug can be found.
  */
 export async function runUpload(deps: UploadDeps, input: UploadInput): Promise<UploadOutcome> {
   let step: Step;
+  let thrown: { err: unknown } | undefined;
   try {
     const clock = () => (deps.now?.() ?? new Date()).getTime();
     const deadlineAt = clock() + (deps.uploadDeadlineMs ?? UPLOAD_DEADLINE_MS);
     step = await uploadSteps(deps, input, () => deadlineAt - clock());
-  } catch {
-    step = { outcome: { status: "failed", reason: "internal" } };
+  } catch (err) {
+    step = { outcome: { status: "failed", reason: "internal" }, errorClass: errorClassOf(err) };
+    thrown = { err };
   }
   logOutcome(deps, step);
+  if (thrown !== undefined && deps.debug === true) throw thrown.err;
   return step.outcome;
 }
 
@@ -106,7 +125,8 @@ function logOutcome(deps: UploadDeps, step: Step): void {
     if (outcome.reason === "no-installation") deps.info(NO_INSTALLATION_LINE);
     else if (outcome.reason === "pull-request-target") deps.info(PULL_REQUEST_TARGET_LINE);
   } else if (outcome.status === "failed") {
-    const detail = id === undefined ? "" : `, request id ${id}`;
+    const detail =
+      (step.errorClass === undefined ? "" : `, ${step.errorClass}`) + (id === undefined ? "" : `, request id ${id}`);
     deps.warning(
       `pharn-ci: the run was not uploaded to pharn.dev (failed: ${outcome.reason}${detail}); the check is not affected`,
     );
@@ -164,6 +184,8 @@ async function uploadSteps(deps: UploadDeps, input: UploadInput, remainingMs: ()
   if (urlResult.kind === "response" && urlResult.status === 404) {
     return { outcome: { status: "skipped", reason: "no-installation" }, ...urlId };
   }
+  // A 413's body is not read for the app's limit: the app's API (v1) defines no body for a 413, only for the 200 answer,
+  // and a number read from an undefined shape would be a guess reported as the limit. `maxBytes` stays null.
   if (urlResult.kind === "response" && urlResult.status === 413) {
     return { outcome: { status: "too_large", maxBytes: null }, ...urlId };
   }

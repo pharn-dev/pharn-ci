@@ -69,7 +69,6 @@ async function runOnce(store: Store, opts: RunOptions): Promise<Calls> {
   const inputs: Record<string, string> = {
     "coverage-file": "coverage/lcov.info",
     comment: "true",
-    "fail-on-threshold": "true",
     config: "",
   };
   const files: Record<string, string> = { [`${WORKSPACE}/coverage/lcov.info`]: fixture("golden/coverage.info") };

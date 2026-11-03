@@ -19,7 +19,6 @@ const TRUNCATED_LINE = "_Truncated: the full report is in the job summary and re
 
 const INPUT_DEFAULTS: Record<string, string> = {
   comment: "true",
-  "fail-on-threshold": "true",
   config: "",
 };
 

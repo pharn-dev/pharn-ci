@@ -68,7 +68,6 @@ async function runCli(argv: string[], files: Record<string, string>, diff: strin
 // What the runner passes when an input is not set: the action.yml default, else "".
 const INPUT_DEFAULTS: Record<string, string> = {
   comment: "false",
-  "fail-on-threshold": "true",
   config: "",
 };
 

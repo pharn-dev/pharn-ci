@@ -18,7 +18,6 @@ const GUID = "6f1c2b9e-3d4a-4c8e-9b7f-0a1e2d3c4b5a";
 // What the runner passes when an input is not set: the action.yml default, else "".
 const INPUT_DEFAULTS: Record<string, string> = {
   comment: "false",
-  "fail-on-threshold": "true",
   config: "",
 };
 

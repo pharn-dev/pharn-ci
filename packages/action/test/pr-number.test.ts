@@ -13,7 +13,7 @@ const BASE_SHA = "1".repeat(40);
 const HEAD_SHA = "2".repeat(40);
 const LOCAL_TIP = "4".repeat(40);
 
-const INPUT_DEFAULTS: Record<string, string> = { comment: "true", "fail-on-threshold": "true", config: "" };
+const INPUT_DEFAULTS: Record<string, string> = { comment: "true", config: "" };
 
 interface Options {
   eventName?: string;

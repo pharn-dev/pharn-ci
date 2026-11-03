@@ -26,7 +26,6 @@ const LOCAL_PATHS = ["README.md", "src/math.ts", ".cursor/rules/style.mdc"];
 // What the runner passes when an input is not set: the action.yml default, else "".
 const INPUT_DEFAULTS: Record<string, string> = {
   comment: "true",
-  "fail-on-threshold": "true",
   config: "",
   "github-token": "test-token",
 };

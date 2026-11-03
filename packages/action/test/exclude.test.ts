@@ -32,7 +32,6 @@ function harness(inputs: Record<string, string>, files: Record<string, string> =
   const allInputs: Record<string, string> = {
     "coverage-file": "coverage/lcov.info",
     comment: "false",
-    "fail-on-threshold": "true",
     config: "",
     ...inputs,
   };

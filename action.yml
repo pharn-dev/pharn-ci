@@ -59,10 +59,12 @@ inputs:
     description: Post or update one sticky PR comment with the report.
     required: false
     default: "true"
-  fail-on-threshold:
-    description: Fail the step when the verdict is "fail", whatever made it fail - diff coverage, a test-integrity block or an org policy violation or error, a required policy included. With false the step reports and never gates.
+  fail-on-verdict:
+    description: Fail the step when the verdict is "fail", whatever made it fail - diff coverage, a test-integrity block or an org policy violation or error, a required policy included. With false the step reports and never gates. Defaults to true.
     required: false
-    default: "true"
+  fail-on-threshold:
+    description: Deprecated old name of fail-on-verdict, still read (with a warning) when fail-on-verdict is not set.
+    required: false
   config:
     description: Path to the pharn-ci config file, relative to the workspace. Defaults to .pharn/ci.yml, which may be absent; a file named here that does not exist fails the step.
     required: false

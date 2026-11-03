@@ -75,4 +75,40 @@ describe("run(): the verdict callout in a sticky comment that has to be shortene
       for (const line of messages) expect(bodyLines, `${label}: message line ${line}`).toContain(line);
     }
   });
+
+  it("review finding 37: a last-resort cut inside a collapsed section closes it before the note", async () => {
+    const { run, fitMarkdown } = await import("../src/run.js");
+    const { renderMarkdown } = await import("@pharn-ci/core");
+    const h = harness({
+      inputs: { threshold: "80" },
+      lsFiles: [...fixture("golden/files.txt").trim().split("\n"), ...LONG_SETUP_FILES],
+    });
+    const report = await run(h.deps);
+    expect(report).toBeDefined();
+    if (report === undefined) return;
+
+    const note = "\n\n_Truncated._\n";
+    const minimal = renderMarkdown(report, { maxRows: 0 });
+    const opens = [...minimal.matchAll(/<details(?:\s[^>]*)?>/g)].map((m) => m.index);
+    const closes = [...minimal.matchAll(/<\/details>/g)].map((m) => m.index);
+    expect(opens.length, "the minimal render has collapsed sections").toBeGreaterThanOrEqual(2);
+    const count = (text: string, re: RegExp) => text.match(re)?.length ?? 0;
+
+    // Limits that end the text between a section's opening and closing tag, for each section.
+    for (const [index, open] of opens.entries()) {
+      const close = closes[index] as number;
+      const limit = Math.floor((open + close) / 2) + note.length;
+      expect(minimal.length + note.length, "the minimal render does not fit").toBeGreaterThan(limit);
+      const body = fitMarkdown(report, { prefix: "", note, fits: (text) => text.length <= limit });
+      expect(body.length, `section ${index}: within the limit`).toBeLessThanOrEqual(limit);
+      expect(body.endsWith(note), `section ${index}: ends with the note`).toBe(true);
+      const kept = body.slice(0, -note.length);
+      expect(count(kept, /<details(?:\s[^>]*)?>/g), `section ${index}: every section is closed`).toBe(
+        count(kept, /<\/details>/g),
+      );
+      expect(kept.lastIndexOf("</details>"), `section ${index}: the section is closed`).toBeGreaterThan(
+        kept.lastIndexOf("<details"),
+      );
+    }
+  });
 });

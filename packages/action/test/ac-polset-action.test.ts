@@ -112,7 +112,6 @@ const HEAD_SHA = "2222222222222222222222222222222222222222";
 const DEFAULT_BRANCH_TIP = "4444444444444444444444444444444444444444";
 const INPUT_DEFAULTS: Record<string, string> = {
   comment: "true",
-  "fail-on-threshold": "true",
   config: "",
   "github-token": "test-token",
 };

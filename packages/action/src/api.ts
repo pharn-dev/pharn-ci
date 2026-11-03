@@ -2,6 +2,7 @@ import type { getOctokit } from "@actions/github";
 import type { GitHubApi } from "./run.js";
 
 type Octokit = ReturnType<typeof getOctokit>;
+type PullRequest = Awaited<ReturnType<Octokit["rest"]["pulls"]["get"]>>["data"];
 
 export interface GitHubApiOptions {
   /** The github-token input; may be empty when no API call is needed. */
@@ -48,6 +49,21 @@ export function createGitHubApi(opts: GitHubApiOptions): GitHubApi {
     }
     return client;
   };
+  // One `GET /pulls/{n}` per pull request for the client's life (one run): the PR-number target, the agent PR detection
+  // and the accept label all read the same pull request. A failed read is not kept, so a later caller asks again.
+  const pulls = new Map<number, Promise<PullRequest>>();
+  const getPull = (pullNumber: number): Promise<PullRequest> => {
+    let pending = pulls.get(pullNumber);
+    if (pending === undefined) {
+      pending = (async () => {
+        const { octokit, owner, repo } = connect();
+        return (await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber })).data;
+      })();
+      pulls.set(pullNumber, pending);
+      pending.catch(() => pulls.delete(pullNumber));
+    }
+    return pending;
+  };
 
   return {
     async compareDiff(basehead) {
@@ -61,13 +77,11 @@ export function createGitHubApi(opts: GitHubApiOptions): GitHubApi {
       return diffText(res.data);
     },
     async getPullRequest(pullNumber) {
-      const { octokit, owner, repo } = connect();
-      const { data } = await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber });
+      const data = await getPull(pullNumber);
       return { baseSha: data.base.sha, headSha: data.head.sha };
     },
     async getPullRequestSignoff(pullNumber) {
-      const { octokit, owner, repo } = connect();
-      const { data } = await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber });
+      const data = await getPull(pullNumber);
       return { author: data.user, labels: data.labels, commits: data.commits };
     },
     async listPullRequestCommits(pullNumber, page) {

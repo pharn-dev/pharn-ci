@@ -337,7 +337,10 @@ and the tests cite them.
     points to it), and newer copies by that same bot count as duplicates and are deleted. A person cannot: GitHub does
     not allow `[bot]` in a user login. This is accepted because an App token comments as `<app>[bot]`, not as
     `github-actions[bot]`: matching only `github-actions[bot]` would make every run of an App-token workflow create a
-    new comment instead of updating its own. **Residual:** a bot installed on the repository can have its marker comments overwritten or deleted by
+    new comment instead of updating its own. The 2026-11-01 review reconsidered narrowing it and kept it: an
+    installation token has no API that names its own `<app>[bot]` login (`GET /user` refuses it and `GET /app` needs
+    the App's JWT), and the login a created comment returns is known only within that run, so no narrower rule lets a
+    later run find its comment. **Residual:** a bot installed on the repository can have its marker comments overwritten or deleted by
     pharn-ci, and pharn-ci's report then sits in a comment that bot can edit; install only bots you trust with pull
     request comments.
 37. **The threshold comes from the PR.** With no `threshold` input, `coverage.threshold` in the PR-carried
