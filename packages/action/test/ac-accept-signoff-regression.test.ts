@@ -33,6 +33,14 @@ const BEFORE_COUNT = 216;
  * fixtures: ac-ti081516-fixtures).
  */
 const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
+  // Review 2026-11-01 (TI10 no-op script, TI14 comment rule): asserted by ac-ti1013-docs and ac-ti14-comment-rule.
+  "TI10/block-colon-only.diff",
+  "TI10/block-true-only.diff",
+  "TI10/block-true-or-run.diff",
+  "TI10/pass-true-then-run.diff",
+  "TI14/block-threshold-emptied.diff",
+  "TI14/block-threshold-lowered-nbsp-comment.diff",
+  "TI14/block-threshold-padded-past-cap.diff",
   "TI01/block-rename-away-edited.diff",
   "TI01/pass-rename-to-test-edited.diff",
   "TI03/block-behind-twenty-warns.diff",

@@ -20,6 +20,16 @@ import { expectValidReport } from "./schema.js";
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const EARLIER_DIRS = ["TI01", "TI03", "TI04", "TI10", "TI11", "TI13", "TI14"];
+/** Fixtures the 2026-11-01 review fixes add (TI10 no-op script, TI14 comment rule); left out of the digest. */
+const REVIEW_1101_ADDED: ReadonlySet<string> = new Set([
+  "TI10/block-colon-only.diff",
+  "TI10/block-true-only.diff",
+  "TI10/block-true-or-run.diff",
+  "TI10/pass-true-then-run.diff",
+  "TI14/block-threshold-emptied.diff",
+  "TI14/block-threshold-lowered-nbsp-comment.diff",
+  "TI14/block-threshold-padded-past-cap.diff",
+]);
 const PAIR_DIRS = ["TI02", "TI05"];
 /** The TI11 fixtures the signal-precision increment adds; the digest below predates them, so the loop leaves them out. */
 const NEW_TI11 = new Set([
@@ -227,7 +237,12 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
     const earlier: Array<{ fixture: string; signals: unknown[]; messages: unknown[] }> = [];
     for (const dir of EARLIER_DIRS) {
       const names = readdirSync(`${FIXTURES}test-integrity/${dir}`)
-        .filter((name) => name.endsWith(".diff") && !(dir === "TI11" && NEW_TI11.has(name)))
+        .filter(
+          (name) =>
+            name.endsWith(".diff") &&
+            !(dir === "TI11" && NEW_TI11.has(name)) &&
+            !REVIEW_1101_ADDED.has(`${dir}/${name}`),
+        )
         .sort();
       for (const file of names) {
         const name = `${dir}/${file}`;
