@@ -87,6 +87,17 @@ describe("applyPolicy and check(): the test-integrity mode", () => {
         [{ setting: "test_integrity.mode", layer: "config", reason: "looser" }],
       ],
       ["file block over the default", {}, undefined, file("block"), "block", "policy", []],
+      // Review finding 14: a looser file mode over the default is named in POLICY_OVERRIDE_IGNORED too; the mode in
+      // force stays the default warn.
+      [
+        "file off over the default",
+        {},
+        undefined,
+        file("off"),
+        "warn",
+        "default",
+        [{ setting: "test_integrity.mode", layer: "policy-file", reason: "looser" }],
+      ],
       [
         "file off under input warn",
         {},

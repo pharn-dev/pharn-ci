@@ -248681,7 +248681,7 @@ function applyMode(layers, document2, app, ignored) {
   } else {
     const inForce = given?.input ?? "warn";
     const today = given?.config !== void 0 && STRICTNESS2[given.config] > STRICTNESS2[inForce] ? given.config : inForce;
-    if ((given?.input !== void 0 || given?.config !== void 0) && STRICTNESS2[mode] < STRICTNESS2[today]) {
+    if (STRICTNESS2[mode] < STRICTNESS2[today]) {
       ignored.push({ setting: "test_integrity.mode", layer: "policy-file", reason: "looser" });
     }
   }
@@ -249284,7 +249284,7 @@ var MESSAGE_HINTS = {
   TEST_FILES_DELETED: "Check that the deleted or renamed tests were meant to go, or that their cases moved to a file the test runner still runs.",
   NO_AGENT_SETUP_FILES: "Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test.",
   AGENT_SETUP_FILE_EMPTY: "Fill in the empty file or delete it; an agent reads nothing from an empty file.",
-  AGENT_SETUP_EXPECTED_MISSING: "Add a setup file for each missing tool (for example AGENTS.md, CLAUDE.md or .cursor/rules/), or remove it from `setup.expect`.",
+  AGENT_SETUP_EXPECTED_MISSING: "Add a setup file for each missing tool (for example AGENTS.md, CLAUDE.md or .cursor/rules/), or ask whoever owns `setup.expect` (the org policy owner, or the maintainers for `.pharn/ci.yml`) to change it.",
   TEST_INTEGRITY_MODE_IGNORED: "Set the mode with the `test-integrity` input in the workflow; `test_integrity.mode` in `.pharn/ci.yml` can only make the check stricter, so remove the looser value.",
   TEST_INTEGRITY_OFF: "Set the `test-integrity` input to `warn` or `block` in the workflow to check for weakened tests.",
   TEST_INTEGRITY_TI01: "Restore the deleted tests, or say in the PR why they go so a reviewer can confirm it.",
@@ -249319,7 +249319,7 @@ var MESSAGE_HINTS = {
   AGENT_CONFIG_SECRET_S10: "If the value is a real secret, revoke it at its provider, remove it from the file and from git history, and load it from an environment variable or a secret store. If it is not a secret, a reviewer can confirm that.",
   AGENT_CONFIG_SECRET_S11: "Move the literal value into the environment, like the other secrets in the same file, so no secret is committed.",
   AGENT_CONFIG_SECRET_UNSCANNED: "Keep agent config files text, under 512 KiB and inside the repository, and run on a checkout of the pull request head (not PR-number mode or a compare-API diff), so they can be scanned for committed secrets.",
-  POLICY_UNAVAILABLE: "Give the job `permissions: id-token: write` (fork pull requests get no OIDC token), check that the pharn.dev app is installed for this repository, or set `policy: never` to run without the org policy.",
+  POLICY_UNAVAILABLE: "Give the job `permissions: id-token: write` (fork pull requests get no OIDC token) and check that the pharn.dev app is installed for this repository.",
   POLICY_OVERRIDE_IGNORED: "The org policy's value applies. Raise the setting in the workflow inputs or `.pharn/ci.yml` to match, or ask the policy owner to change the policy.",
   UPLOAD_TOO_LARGE: "Nothing in the pull request needs fixing; the full report is in the job summary and report.json.",
   POLICY_P08: "Stop tracking the file (`git rm --cached` it and add it to `.gitignore`); the org policy forbids it in the repository.",
@@ -249375,6 +249375,9 @@ function bySeverity(signals) {
   const rank = (s) => SEVERITY_RANK[s.severity] ?? 3;
   return signals.map((signal, index) => ({ signal, index })).sort((a, b) => rank(a.signal) - rank(b.signal) || a.index - b.index).map(({ signal }) => signal);
 }
+function listedSignals(report) {
+  return bySeverity(report.testIntegrity.signals).slice(0, MAX_FINDINGS);
+}
 var SIGNAL_MESSAGE_CODE = /^TEST_INTEGRITY_TI\d\d$/;
 var SEVERITY_ICON = { block: LEVEL_ICON.error, warn: LEVEL_ICON.warn, info: LEVEL_ICON.info };
 function testIntegrityLines(report) {
@@ -249384,7 +249387,7 @@ function testIntegrityLines(report) {
   if (signals.length === 0) {
     lines.push(mode === "off" ? "Test integrity is off for this run." : `No test-integrity findings (mode: ${mode}).`);
   } else {
-    const listed2 = bySeverity(signals).slice(0, MAX_FINDINGS);
+    const listed2 = listedSignals(report);
     const findingLines = (signal) => {
       const location = signal.line === null ? code(signal.path) : code(`${signal.path}:${signal.line}`);
       const out = [
@@ -249586,7 +249589,7 @@ function renderMarkdown(report, options = {}) {
   }
   out.push("### \u{1F50D} Test integrity", "", ...testIntegrityLines(report), "", ...testChangesLines(report, maxRows));
   if (hasPolicy(report)) out.push(...policyLines(report, maxRows));
-  const listedIds = new Set(report.testIntegrity.signals.map((s) => `TEST_INTEGRITY_${s.id}`));
+  const listedIds = new Set(listedSignals(report).map((s) => `TEST_INTEGRITY_${s.id}`));
   const policyListsP01 = hasPolicy(report) && policyViolationsOf(report).some((v) => v.id === "P01");
   const inPolicySection = (code2) => hasPolicy(report) && (POLICY_RULE_MESSAGE_CODE.test(code2) || code2 === "POLICY_UNAVAILABLE" || code2 === "POLICY_OVERRIDE_IGNORED" || code2 === "POLICY_SETTINGS_INVALID" || policyListsP01 && (code2 === "NO_AGENT_SETUP_FILES" || code2 === "AGENT_SETUP_EXPECTED_MISSING"));
   const messages = report.messages.filter(

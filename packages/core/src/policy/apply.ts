@@ -230,10 +230,11 @@ function applyMode(
     }
   } else {
     // What the input and the config already give (the config can only raise the input, which defaults to warn).
+    // A looser file mode is recorded over the default too, not only over a set input or config (review finding 14).
     const inForce = given?.input ?? "warn";
     const today =
       given?.config !== undefined && STRICTNESS[given.config] > STRICTNESS[inForce] ? given.config : inForce;
-    if ((given?.input !== undefined || given?.config !== undefined) && STRICTNESS[mode] < STRICTNESS[today]) {
+    if (STRICTNESS[mode] < STRICTNESS[today]) {
       ignored.push({ setting: "test_integrity.mode", layer: "policy-file", reason: "looser" });
     }
   }

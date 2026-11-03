@@ -72,9 +72,18 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       );
     }
 
-    // No existing test file is deleted. A rename is not a deletion: the 0.4.0 release PR renamed the release-030 pin
-    // tests (version, dist, readme-pins, doc-pins) to release-040, with the version pins moved on.
-    expect(git("diff", "--name-only", "--diff-filter=D", BASE, "--", "packages/")).toBe("");
+    // No existing test file is deleted. Renames are not detected (--no-renames), so a deleted test cannot pass as a
+    // rename of any similar file added under packages/. The only deletions allowed are the four release-030 pin tests
+    // (version, dist, readme-pins, doc-pins): the 0.4.0 release PR replaced them with release-040 tests, with the
+    // version pins moved on. Re-pinned for review finding 15: the release commit had dropped --no-renames here.
+    expect(
+      nonEmpty(git("diff", "--name-only", "--no-renames", "--diff-filter=D", BASE, "--", "packages/")).sort(),
+    ).toEqual([
+      "packages/core/test/ac-release030-dist.test.ts",
+      "packages/core/test/ac-release030-doc-pins.test.ts",
+      "packages/core/test/ac-release030-readme-pins.test.ts",
+      "packages/core/test/ac-release030-version.test.ts",
+    ]);
 
     // Each deliberate re-pin carries a comment naming this item.
     for (const path of DELIBERATE) {

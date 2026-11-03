@@ -42,9 +42,10 @@ const SECRET_HINT =
 /**
  * One-line remediation per message code, added at render time so message text (which consumers may
  * match on) stays as it is. Fixed strings only: nothing input-derived. The TI03, TI10 and TI13 hints name the
- * accept label, so they are functions of its code span.
+ * accept label, so they are functions of its code span. No hint tells the reader to loosen the gate it reports on
+ * (review finding 11). Exported for tests only; not part of the package index.
  */
-const MESSAGE_HINTS: Record<MessageCode, Hint> = {
+export const MESSAGE_HINTS: Readonly<Record<MessageCode, Hint>> = {
   DIFF_COVERAGE_BELOW_THRESHOLD: "Add tests that exercise the uncovered lines listed in the table above.",
   DIFF_COVERAGE_UNGATED:
     "To gate diff coverage, set a threshold above 0 (`coverage.threshold`, `threshold` or `--threshold`).",
@@ -75,7 +76,7 @@ const MESSAGE_HINTS: Record<MessageCode, Hint> = {
   NO_AGENT_SETUP_FILES: "Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test.",
   AGENT_SETUP_FILE_EMPTY: "Fill in the empty file or delete it; an agent reads nothing from an empty file.",
   AGENT_SETUP_EXPECTED_MISSING:
-    "Add a setup file for each missing tool (for example AGENTS.md, CLAUDE.md or .cursor/rules/), or remove it from `setup.expect`.",
+    "Add a setup file for each missing tool (for example AGENTS.md, CLAUDE.md or .cursor/rules/), or ask whoever owns `setup.expect` (the org policy owner, or the maintainers for `.pharn/ci.yml`) to change it.",
   TEST_INTEGRITY_MODE_IGNORED:
     "Set the mode with the `test-integrity` input in the workflow; `test_integrity.mode` in `.pharn/ci.yml` can only make the check stricter, so remove the looser value.",
   TEST_INTEGRITY_OFF:
@@ -134,7 +135,7 @@ const MESSAGE_HINTS: Record<MessageCode, Hint> = {
   AGENT_CONFIG_SECRET_UNSCANNED:
     "Keep agent config files text, under 512 KiB and inside the repository, and run on a checkout of the pull request head (not PR-number mode or a compare-API diff), so they can be scanned for committed secrets.",
   POLICY_UNAVAILABLE:
-    "Give the job `permissions: id-token: write` (fork pull requests get no OIDC token), check that the pharn.dev app is installed for this repository, or set `policy: never` to run without the org policy.",
+    "Give the job `permissions: id-token: write` (fork pull requests get no OIDC token) and check that the pharn.dev app is installed for this repository.",
   POLICY_OVERRIDE_IGNORED:
     "The org policy's value applies. Raise the setting in the workflow inputs or `.pharn/ci.yml` to match, or ask the policy owner to change the policy.",
   UPLOAD_TOO_LARGE: "Nothing in the pull request needs fixing; the full report is in the job summary and report.json.",
@@ -223,6 +224,14 @@ function bySeverity<T extends { severity: string }>(signals: readonly T[]): T[] 
     .map(({ signal }) => signal);
 }
 
+/**
+ * The signals the Test integrity section lists: blocks first, cut at MAX_FINDINGS. The 💬 Messages filter uses the
+ * same list, so a signal id whose findings are all cut keeps its message there (review finding 10).
+ */
+function listedSignals(report: Report): Report["testIntegrity"]["signals"] {
+  return bySeverity(report.testIntegrity.signals).slice(0, MAX_FINDINGS);
+}
+
 /** A `TEST_INTEGRITY_<id>` message of a signal: its findings and hints are in the Test integrity section. */
 const SIGNAL_MESSAGE_CODE = /^TEST_INTEGRITY_TI\d\d$/;
 
@@ -240,7 +249,7 @@ function testIntegrityLines(report: Report): string[] {
     lines.push(mode === "off" ? "Test integrity is off for this run." : `No test-integrity findings (mode: ${mode}).`);
   } else {
     // Blocks first, so the findings that decide the verdict are never the ones collapsed or cut.
-    const listed = bySeverity(signals).slice(0, MAX_FINDINGS);
+    const listed = listedSignals(report);
     const findingLines = (signal: (typeof signals)[number]) => {
       const location = signal.line === null ? code(signal.path) : code(`${signal.path}:${signal.line}`);
       const out = [
@@ -494,8 +503,9 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
   // Before the agent setup inventory: when the Action has to drop rows to fit a size limit, the
   // reason for the verdict is never what goes.
   // A signal's message repeats what the Test integrity section lists with its hint, so it is left out here when the
-  // section lists that signal id; report.json and the job's verdict still carry it.
-  const listedIds = new Set(report.testIntegrity.signals.map((s) => `TEST_INTEGRITY_${s.id}`));
+  // section lists that signal id; report.json and the job's verdict still carry it. Only the listed signals count: an
+  // id whose findings were all cut keeps its message.
+  const listedIds = new Set(listedSignals(report).map((s) => `TEST_INTEGRITY_${s.id}`));
   // With a policy, the Policy section lists its findings, so the policy messages are left out here the same way (and
   // the agent setup messages P01 raised, when the section lists a P01 finding).
   const policyListsP01 = hasPolicy(report) && policyViolationsOf(report).some((v) => v.id === "P01");
