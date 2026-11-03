@@ -202,6 +202,8 @@ export interface ActionDeps {
   hasOidcEnv?: boolean | undefined;
   now?: (() => Date) | undefined;
   timeoutMs?: number | undefined;
+  /** The upload's overall deadline in milliseconds, read with `now`; `UPLOAD_DEADLINE_MS` (upload.ts) when absent. */
+  uploadDeadlineMs?: number | undefined;
   sleep?: ((ms: number) => Promise<void>) | undefined;
 }
 
@@ -454,13 +456,19 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const issueNumber = pr?.number ?? target?.number;
   const scopeLine = commentScopeLine(deps.context.workflow ?? "", deps.context.job ?? "");
   const commentNumber = comment ? issueNumber : undefined;
+  // One lookup of this run's own comment serves both the upload's comment link and, after an ok upload, the pointer.
+  let ownLookup: Promise<IssueComment | undefined> | undefined;
+  const findOwn = (n: number) => {
+    ownLookup ??= findOwnComment(deps, n, scopeLine);
+    return ownLookup;
+  };
   const outcome = await runUpload(deps, {
     choice: uploadChoice,
     ...(deps.context.eventName === "pull_request_target" ? { pullRequestTarget: true } : {}),
     report,
     appOrigin,
     ...(target !== undefined && headSha !== undefined ? { prHeadShaExpected: headSha } : {}),
-    ...(commentNumber === undefined ? {} : { findOwnComment: () => findOwnComment(deps, commentNumber, scopeLine) }),
+    ...(commentNumber === undefined ? {} : { findOwnComment: () => findOwn(commentNumber) }),
   });
   report = withUploadOutcome(report, outcome);
   // Only a run that found the org has not installed the app gets the install hint: the policy request or the upload
@@ -487,6 +495,10 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   if (outcome.status === "ok") {
     // The app comments on the pull request for an uploaded run; a second comment would only repeat it.
     deps.info("pharn-ci: the Pharn GitHub App comments on the pull request for this run, so pharn-ci posts no comment");
+    // An own comment an earlier run left would still show its old verdict beside the app's: it becomes a pointer.
+    if (commentNumber !== undefined) {
+      await pointOwnComment(deps, findOwn(commentNumber), `${COMMENT_MARKER}\n${scopeLine}\n`, outcome.runUrl);
+    }
   } else if (comment && issueNumber !== undefined) {
     const body = fitMarkdown(report, {
       prefix: `${COMMENT_MARKER}\n${scopeLine}\n`,
@@ -937,6 +949,33 @@ async function findOwnComment(
 ): Promise<IssueComment | undefined> {
   const [comments, viewer] = await Promise.all([deps.api.listComments(issueNumber), deps.api.viewerLogin()]);
   return ownComments(comments, viewer, scopeLine)[0];
+}
+
+/** The line that replaces an earlier run's verdict in its own comment once a run is uploaded. */
+export const APP_POINTER_LINE = "This run is reported by the Pharn GitHub App:";
+
+/**
+ * After an ok upload: the own comment of this scope that an earlier run left (`lookup`, the one the upload's comment
+ * link came from) is updated to `prefix` plus one line with the run's page, so the pull request shows no stale verdict
+ * beside the app's comment. Updated, never deleted (the upload's comment link points at it), and nothing is created
+ * when there is none. A failure is one warning; the step's result does not change.
+ */
+async function pointOwnComment(
+  deps: Pick<ActionDeps, "api" | "info" | "warning">,
+  lookup: Promise<IssueComment | undefined>,
+  prefix: string,
+  runUrl: string,
+): Promise<void> {
+  try {
+    const existing = await lookup;
+    if (existing === undefined) return;
+    await deps.api.updateComment(existing.id, `${prefix}${APP_POINTER_LINE} ${runUrl}\n`);
+    deps.info(`updated pharn-ci comment ${existing.id} to point to the run on pharn.dev`);
+  } catch (err) {
+    deps.warning(
+      `could not update the earlier pharn-ci comment (${errorText(err)}); it may still show an earlier run's verdict`,
+    );
+  }
 }
 
 /**

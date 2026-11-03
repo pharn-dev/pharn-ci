@@ -197,8 +197,12 @@ describe("a successful upload", { timeout: 60_000 }, () => {
     expect(r.calls.map(kindOf)).toEqual(["upload-url", "put", "runs"]);
     expect(r.report.meta?.upload).toEqual({ status: "ok", runUrl });
     expect(r.h.outputs["run-url"]).toBe(runUrl);
-    expect(commentCalls(r.h.apiCalls)).toEqual([]);
-    expect(r.h.posted).toEqual([]);
+    // No comment of its own is posted; the earlier run's comment 5 no longer shows its stale verdict beside the app's
+    // comment: it is updated to point to the run (review finding 7).
+    expect(commentCalls(r.h.apiCalls)).toEqual(["update 5"]);
+    expect(r.h.posted).toEqual([
+      `${MARKER}\n${commentScopeLine("ci", "check")}\nThis run is reported by the Pharn GitHub App: ${runUrl}\n`,
+    ]);
     expect(r.h.infos.filter((line) => /Pharn GitHub App comments on the pull request/.test(line))).toHaveLength(1);
     expect(r.h.summary).toHaveLength(1);
     expect(r.h.summary[0]?.length ?? 0).toBeGreaterThan(0);
