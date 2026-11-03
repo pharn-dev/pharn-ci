@@ -250588,12 +250588,9 @@ function localGitArgs(args) {
   }
   return safe;
 }
-function gitEnv() {
-  return { ...process.env, GIT_NO_LAZY_FETCH: "1" };
-}
 async function* streamGit(cwd, gitArgs, timeoutMs = GIT_TIMEOUT_MS) {
   const args = localGitArgs(gitArgs);
-  const child = spawn("git", args, { cwd, stdio: ["pipe", "pipe", "pipe"], env: gitEnv() });
+  const child = spawn("git", args, { cwd, stdio: ["pipe", "pipe", "pipe"] });
   let stderr = "";
   let timedOut = false;
   child.stdin.on("error", () => {
@@ -250633,7 +250630,7 @@ function runGit(cwd, gitArgs, timeoutMs = GIT_TIMEOUT_MS) {
     execFile(
       "git",
       args,
-      { cwd, maxBuffer: 256 * 1024 * 1024, encoding: "utf8", timeout: timeoutMs, env: gitEnv() },
+      { cwd, maxBuffer: 256 * 1024 * 1024, encoding: "utf8", timeout: timeoutMs },
       (err, stdout, stderr) => {
         if (err?.killed) fail2(new Error(`git ${args[0] ?? ""} timed out after ${timeoutMs / 1e3} s`));
         else if (err) fail2(new Error(stderr || err.message));
@@ -250659,7 +250656,7 @@ function runGitBatch(cwd, gitArgs, input, timeoutMs = GIT_TIMEOUT_MS) {
         maxBuffer: GIT_BATCH_MAX_BUFFER,
         encoding: "buffer",
         timeout: timeoutMs,
-        env: gitEnv()
+        env: { ...process.env, GIT_NO_LAZY_FETCH: "1" }
       },
       (err, stdout, stderr) => {
         if (err?.killed) fail2(new Error(`git ${args[0] ?? ""} timed out after ${timeoutMs / 1e3} s`));

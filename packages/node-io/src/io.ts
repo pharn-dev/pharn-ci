@@ -56,14 +56,6 @@ export function localGitArgs(args: readonly string[]): string[] {
 }
 
 /**
- * The environment of every git call: the process's own, with `GIT_NO_LAZY_FETCH=1`, so a partial clone never fetches
- * a missing object from the remote and every call stays local. Read at call time.
- */
-export function gitEnv(): NodeJS.ProcessEnv {
-  return { ...process.env, GIT_NO_LAZY_FETCH: "1" };
-}
-
-/**
  * git's stdout as UTF-8 text chunks, with no buffer limit. Iteration throws git's stderr when git fails, and says
  * that git timed out when the timer killed it. Stdin stays an open pipe, as with `execFile`. Only a call
  * `localGitArgs` allows is run; any other throws on the first iteration, before git starts.
@@ -74,7 +66,7 @@ export async function* streamGit(
   timeoutMs: number = GIT_TIMEOUT_MS,
 ): AsyncGenerator<string> {
   const args = localGitArgs(gitArgs);
-  const child = spawn("git", args, { cwd, stdio: ["pipe", "pipe", "pipe"], env: gitEnv() });
+  const child = spawn("git", args, { cwd, stdio: ["pipe", "pipe", "pipe"] });
   let stderr = "";
   let timedOut = false;
   // Nothing is written to stdin; a broken pipe on it must not become an uncaught error.
@@ -120,7 +112,7 @@ export function runGit(cwd: string, gitArgs: string[], timeoutMs: number = GIT_T
     execFile(
       "git",
       args,
-      { cwd, maxBuffer: 256 * 1024 * 1024, encoding: "utf8", timeout: timeoutMs, env: gitEnv() },
+      { cwd, maxBuffer: 256 * 1024 * 1024, encoding: "utf8", timeout: timeoutMs },
       (err, stdout, stderr) => {
         if (err?.killed) fail(new Error(`git ${args[0] ?? ""} timed out after ${timeoutMs / 1000} s`));
         else if (err) fail(new Error(stderr || err.message));
@@ -160,7 +152,7 @@ export function runGitBatch(
         maxBuffer: GIT_BATCH_MAX_BUFFER,
         encoding: "buffer",
         timeout: timeoutMs,
-        env: gitEnv(),
+        env: { ...process.env, GIT_NO_LAZY_FETCH: "1" },
       },
       (err, stdout, stderr) => {
         if (err?.killed) fail(new Error(`git ${args[0] ?? ""} timed out after ${timeoutMs / 1000} s`));

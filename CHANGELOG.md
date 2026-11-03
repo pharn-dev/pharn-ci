@@ -42,8 +42,6 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   `node -e "process.exit(0)"`, a positional path filter, `--dir` and `--project`.
 - `.pharn/ci.yml` refuses a `__proto__` key, bare, quoted or nested: it set the prototype of the parsed map, so a
   `coverage` block under it escaped the unknown-key check (second review, finding 26).
-- Every local git call (`git diff`, `ls-tree`, `ls-files`, not only `cat-file --batch`) runs with
-  `GIT_NO_LAZY_FETCH=1`, so a partial clone never fetches from the remote (finding 36).
 - The PR comment shows the accepted line once: `TEST_INTEGRITY_ACCEPTED` is no longer repeated under Messages when the
   Test integrity section shows the accepted line, and its hint moves under that line (finding 32).
 - `TEST_INTEGRITY_MODE_IGNORED` names the config in use when the `config` input points elsewhere than
