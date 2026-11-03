@@ -236675,6 +236675,29 @@ function summarizeAgentSetup(files) {
   return { byKind, tools: [...tools].sort() };
 }
 
+// ../core/src/text.ts
+var UNSAFE_RANGES = [
+  [0, 31],
+  [127, 159],
+  [8203, 8207],
+  [8232, 8238],
+  [8294, 8297],
+  [65279, 65279]
+];
+var unicodeEscape = (code2) => `\\u${code2.toString(16).padStart(4, "0")}`;
+var classPart = ([from, to]) => from === to ? unicodeEscape(from) : `${unicodeEscape(from)}-${unicodeEscape(to)}`;
+var UNSAFE_PATTERN = new RegExp(`[${UNSAFE_RANGES.map(classPart).join("")}]`, "g");
+function isUnsafeCode(code2) {
+  return UNSAFE_RANGES.some(([from, to]) => code2 >= from && code2 <= to);
+}
+function hasUnsafeChar(text) {
+  for (let i = 0; i < text.length; i++) if (isUnsafeCode(text.charCodeAt(i))) return true;
+  return false;
+}
+function replaceUnsafeChars(text, replacement) {
+  return text.replace(UNSAFE_PATTERN, replacement);
+}
+
 // ../core/src/report.ts
 function emptyTestIntegrity() {
   return { mode: "warn", source: "default", verdict: "pass", signals: [], languages: [] };
@@ -236806,19 +236829,19 @@ function buildReport(input) {
       messages.push({
         level,
         code: "COVERAGE_FILE_MISSING",
-        text: `Coverage file not found: ${missing.coverageFile}`
+        text: `Coverage file not found: ${barePath(missing.coverageFile)}`
       });
     } else if (missing.reason === "coverage-not-discovered") {
       messages.push({ level, code: "COVERAGE_FILE_MISSING", text: coverageNotDiscoveredText() });
     } else if (missing.reason === "coverage-file-empty") {
-      const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${missing.coverageFile}`;
+      const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${barePath(missing.coverageFile)}`;
       messages.push({
         level,
         code: "COVERAGE_FILE_EMPTY",
         text: `${where} contains no coverage records; check its format and that the tests wrote it.`
       });
     } else if (missing.reason === "coverage-format-unsupported") {
-      const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${missing.coverageFile}`;
+      const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${barePath(missing.coverageFile)}`;
       messages.push({
         level,
         code: "COVERAGE_FORMAT_UNSUPPORTED",
@@ -236830,7 +236853,8 @@ function buildReport(input) {
       messages.push({
         level: diffLevel,
         code: "DIFF_UNAVAILABLE",
-        text: `Diff coverage was not computed: ${missing.detail}`
+        // The detail is a fixed sentence from the caller around a base ref or git text: only those characters change.
+        text: `Diff coverage was not computed: ${replaceUnsafeChars(missing.detail, " ")}`
       });
     }
   } else if (dc.coverableLines === 0) {
@@ -236993,7 +237017,7 @@ function buildReport(input) {
 }
 var MAX_REASON_CHARS = 200;
 function oneLine(text) {
-  const line = text.replace(CONTROL_CHARS, " ").replace(/\s+/g, " ").trim();
+  const line = replaceUnsafeChars(text, " ").replace(/\s+/g, " ").trim();
   if (line.length <= MAX_REASON_CHARS) return line;
   const end = isHighSurrogate(line.charCodeAt(MAX_REASON_CHARS - 1)) ? MAX_REASON_CHARS - 1 : MAX_REASON_CHARS;
   return line.slice(0, end);
@@ -237049,10 +237073,12 @@ function pathList(paths) {
   return more > 0 ? `${named} and ${more} more` : named;
 }
 function codeSpan(text) {
-  const safe = text.replace(CONTROL_CHARS, "\uFFFD").replace(/`/g, "'");
+  const safe = replaceUnsafeChars(text, "\uFFFD").replace(/`/g, "'");
   return `\`${safe}\``;
 }
-var CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
+function barePath(path) {
+  return replaceUnsafeChars(path, "\uFFFD");
+}
 function verdictOf(messages) {
   if (messages.some((m) => m.level === "error")) return "fail";
   if (messages.some((m) => m.level === "warn")) return "warn";
@@ -237066,12 +237092,11 @@ function formatNumber(n) {
 var DEFAULT_ACCEPT_LABEL = "pharn/accepted";
 var MAX_ACCEPT_LABEL_LENGTH = 50;
 var GITHUB_LOGIN = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/;
-var CONTROL = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/;
 var INVALID_LABEL = "the accept-label input must be at most 50 characters and must not contain control or invisible formatting characters";
 function validateAcceptLabel(raw) {
   const label = raw.trim();
   if (label === "") return { ok: true, label: DEFAULT_ACCEPT_LABEL };
-  if ([...label].length > MAX_ACCEPT_LABEL_LENGTH || CONTROL.test(label)) return { ok: false, error: INVALID_LABEL };
+  if ([...label].length > MAX_ACCEPT_LABEL_LENGTH || hasUnsafeChar(label)) return { ok: false, error: INVALID_LABEL };
   return { ok: true, label: isDefaultAcceptLabel(label) ? DEFAULT_ACCEPT_LABEL : label };
 }
 function isDefaultAcceptLabel(label) {
@@ -239363,7 +239388,8 @@ function readSettingsModel(sources, document2) {
 
 // ../core/src/policy/rules/shown.ts
 var MAX_SHOWN = 80;
-function shownPattern(pattern) {
+function shownPattern(text) {
+  const pattern = replaceUnsafeChars(text, "\uFFFD");
   if (pattern.length <= MAX_SHOWN) return pattern;
   const high = pattern.charCodeAt(MAX_SHOWN - 2);
   const end = high >= 55296 && high <= 56319 ? MAX_SHOWN - 2 : MAX_SHOWN - 1;
@@ -240206,7 +240232,8 @@ function classFindings(files, prefix, severity2) {
       fallback: severity2,
       path: file.path,
       line: file.line,
-      detail: `${prefix}${file.tools.join("/")} here, ${first.tools.join("/")} in ${first.path}:${first.line}${tail}`
+      // The other file's path is a tracked path: control, invisible and bidirectional characters become U+FFFD.
+      detail: `${prefix}${file.tools.join("/")} here, ${first.tools.join("/")} in ${replaceUnsafeChars(first.path, "\uFFFD")}:${first.line}${tail}`
     });
   }
   return findings;
@@ -240707,7 +240734,8 @@ function settingsInvalidMessage(settings2) {
     return {
       level: settings2.unavailable.level,
       code: "POLICY_SETTINGS_INVALID",
-      text: `The agent settings files were not read (${settings2.unavailable.reason}), so P02\u2013P06 did not run.`
+      // The reason can carry git text: control, invisible and bidirectional characters become spaces (see text.ts).
+      text: `The agent settings files were not read (${replaceUnsafeChars(settings2.unavailable.reason, " ")}), so P02\u2013P06 did not run.`
     };
   }
   if (settings2.problems.length === 0) return null;
@@ -241797,13 +241825,8 @@ function textCutSignalFiles(diff, configPath, repoRoot) {
 // ../core/src/signals/testName.ts
 var NAME_SEPARATOR = " \u203A ";
 var MAX_DETAIL2 = 300;
-function isControl(code2) {
-  return code2 <= 31 || code2 >= 127 && code2 <= 159 || code2 === 8232 || code2 === 8233;
-}
 function withoutControls(text) {
-  let out = "";
-  for (let i = 0; i < text.length; i++) out += isControl(text.charCodeAt(i)) ? " " : text[i];
-  return out;
+  return replaceUnsafeChars(text, " ");
 }
 function fullTestName(block) {
   return block.path.join(NAME_SEPARATOR);
@@ -245493,7 +245516,7 @@ function replaceUnsafe(text) {
       }
     } else if (unit >= 56320 && unit <= 57343) {
       out += "\uFFFD";
-    } else if (unit <= 31 || unit >= 127 && unit <= 159 || unit === 8232 || unit === 8233) {
+    } else if (isUnsafeCode(unit)) {
       out += "\uFFFD";
     } else {
       out += text[i];
@@ -249318,7 +249341,7 @@ function hintFor(code2, label) {
   return typeof hint === "function" ? hint(labelSpan(label)) : hint;
 }
 function labelSpan(text) {
-  const safe = text.replace(CONTROL_CHARS2, "\uFFFD");
+  const safe = text.replace(CONTROL_CHARS, "\uFFFD");
   const longest = Math.max(0, ...(safe.match(/`+/g) ?? []).map((run2) => run2.length));
   const fence = "`".repeat(longest + 1);
   const pad = /^[` ]|[` ]$/.test(safe) ? " " : "";
@@ -249704,14 +249727,14 @@ function rangeParts(lines) {
   }
   return parts;
 }
-var CONTROL_CHARS2 = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069\ufeff]/g;
+var CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069\ufeff]/g;
 function code(path) {
-  const safe = path.replace(CONTROL_CHARS2, "\uFFFD").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/`/g, "'");
+  const safe = path.replace(CONTROL_CHARS, "\uFFFD").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/`/g, "'");
   return `\`${safe}\``;
 }
 var MARKDOWN_ACTIVE = /[\\`*_[\]#!|~]/g;
 function inlineText(text) {
-  return text.replace(CONTROL_CHARS2, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(MARKDOWN_ACTIVE, "\\$&").replace(/@/g, "@\u200B").replace(/:\/\//g, ":\\/\\/").replace(/(www)\./gi, "$1\\.");
+  return text.replace(CONTROL_CHARS, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(MARKDOWN_ACTIVE, "\\$&").replace(/@/g, "@\u200B").replace(/:\/\//g, ":\\/\\/").replace(/(www)\./gi, "$1\\.");
 }
 
 // ../core/src/secrets/redact.ts
@@ -252052,9 +252075,9 @@ var EVENTS = ["pull_request", "merge_group", "push", "workflow_run", "workflow_d
 var SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 var ZERO_SHA = /^0+$/;
 var MAX_META_SCOPE_CODE_POINTS = 200;
-var CONTROL2 = new RegExp("\\p{Cc}", "gu");
+var CONTROL = new RegExp("\\p{Cc}", "gu");
 function metaScope(workflow, job) {
-  return Array.from(`${workflow}/${job}`.replace(CONTROL2, "")).slice(0, MAX_META_SCOPE_CODE_POINTS).join("");
+  return Array.from(`${workflow}/${job}`.replace(CONTROL, "")).slice(0, MAX_META_SCOPE_CODE_POINTS).join("");
 }
 function runMeta(context3, opts) {
   const repository = context3.payload.repository?.full_name;

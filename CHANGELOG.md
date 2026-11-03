@@ -17,6 +17,15 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   is now one `(config)` finding at the mode's level (`block` in `test-integrity: block`; it was a `warn`, or no
   finding for a refused head). An added config and a config already unreadable at base are unchanged. No schema
   change and no new message code.
+- `report.json` and the upload now neutralize the same invisible and bidirectional characters the PR comment does
+  (U+200B to U+200F, U+202A to U+202E, U+2066 to U+2069 and U+FEFF), besides the control characters: in message
+  text, signal details, test names, test-config values and policy violation details each becomes a space or U+FFFD,
+  so hidden or reordered text from a pull request cannot reach a consumer of the report (review finding 23). The
+  `DIFF_UNAVAILABLE` detail, the coverage file path in `COVERAGE_FILE_MISSING`, `COVERAGE_FILE_EMPTY` and
+  `COVERAGE_FORMAT_UNSUPPORTED`, and the reason in `POLICY_SETTINGS_INVALID` are now cleaned too (control characters
+  included); text without such characters is unchanged. The `accept-label` input (and a policy's accept label) is
+  now also refused when it holds a line or paragraph separator (U+2028, U+2029). No schema change and no new message
+  code.
 - A `pull_request_target` run is never uploaded to pharn.dev: it asks for no upload token and sends nothing, and
   `meta.upload.status` is `skipped` (pharn-ci refuses to measure its base-branch checkout, so the app would record a
   run that measured nothing). The report, comment, summary, verdict and policy request are unchanged. No schema change.

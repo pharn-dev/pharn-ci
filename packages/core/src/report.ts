@@ -5,6 +5,7 @@ import type { DiffCoverageFile, DiffCoverageResult } from "./diffCoverage.js";
 import type { AgentSetupFile, AgentSetupInventory } from "./setup/scan.js";
 import { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
 import type { ResolvedTestIntegrityMode } from "./testIntegrityMode.js";
+import { replaceUnsafeChars } from "./text.js";
 
 /**
  * TypeScript mirror of schema/report.v2.json, which is Report v1 (schema/report.v1.json) plus optional top-level
@@ -528,20 +529,22 @@ export function buildReport(input: BuildReportInput): Report {
       messages.push({
         level,
         code: "COVERAGE_FILE_MISSING",
-        text: `Coverage file not found: ${missing.coverageFile}`,
+        text: `Coverage file not found: ${barePath(missing.coverageFile)}`,
       });
     } else if (missing.reason === "coverage-not-discovered") {
       // The existing code: no coverage file, here because none of the auto-discovery candidates exists.
       messages.push({ level, code: "COVERAGE_FILE_MISSING", text: coverageNotDiscoveredText() });
     } else if (missing.reason === "coverage-file-empty") {
-      const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${missing.coverageFile}`;
+      const where =
+        missing.coverageFile === null ? "The coverage report" : `Coverage file ${barePath(missing.coverageFile)}`;
       messages.push({
         level,
         code: "COVERAGE_FILE_EMPTY",
         text: `${where} contains no coverage records; check its format and that the tests wrote it.`,
       });
     } else if (missing.reason === "coverage-format-unsupported") {
-      const where = missing.coverageFile === null ? "The coverage report" : `Coverage file ${missing.coverageFile}`;
+      const where =
+        missing.coverageFile === null ? "The coverage report" : `Coverage file ${barePath(missing.coverageFile)}`;
       messages.push({
         level,
         code: "COVERAGE_FORMAT_UNSUPPORTED",
@@ -553,7 +556,8 @@ export function buildReport(input: BuildReportInput): Report {
       messages.push({
         level: diffLevel,
         code: "DIFF_UNAVAILABLE",
-        text: `Diff coverage was not computed: ${missing.detail}`,
+        // The detail is a fixed sentence from the caller around a base ref or git text: only those characters change.
+        text: `Diff coverage was not computed: ${replaceUnsafeChars(missing.detail, " ")}`,
       });
     }
   } else if (dc.coverableLines === 0) {
@@ -749,9 +753,12 @@ export function buildReport(input: BuildReportInput): Report {
 /** The most characters of a sources reason a message quotes. */
 const MAX_REASON_CHARS = 200;
 
-/** Text from outside on one line: control characters and runs of whitespace become one space; cut, not inside a pair. */
+/**
+ * Text from outside on one line: control, invisible and bidirectional characters (see text.ts) and runs of whitespace
+ * become one space; cut, not inside a pair.
+ */
 export function oneLine(text: string): string {
-  const line = text.replace(CONTROL_CHARS, " ").replace(/\s+/g, " ").trim();
+  const line = replaceUnsafeChars(text, " ").replace(/\s+/g, " ").trim();
   if (line.length <= MAX_REASON_CHARS) return line;
   const end = isHighSurrogate(line.charCodeAt(MAX_REASON_CHARS - 1)) ? MAX_REASON_CHARS - 1 : MAX_REASON_CHARS;
   return line.slice(0, end);
@@ -849,16 +856,21 @@ function pathList(paths: readonly string[]): string {
 
 /**
  * Quote untrusted text (a coverage path, or a directory name from the tracked files) as one code span on
- * one line: control characters and line breaks become U+FFFD and backticks become `'`, so the text cannot
- * end its span or start a new line.
+ * one line: control characters, line breaks and the invisible and bidirectional characters (see text.ts) become
+ * U+FFFD and backticks become `'`, so the text cannot end its span, start a new line, or hide or reorder its text.
  */
 export function codeSpan(text: string): string {
-  const safe = text.replace(CONTROL_CHARS, "\uFFFD").replace(/`/g, "'");
+  const safe = replaceUnsafeChars(text, "\uFFFD").replace(/`/g, "'");
   return `\`${safe}\``;
 }
 
-// biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point.
-const CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
+/**
+ * A coverage file path as the coverage messages name it, without a code span (their text predates the spans): each
+ * control, invisible or bidirectional character (see text.ts) becomes U+FFFD; any other path is kept as it is.
+ */
+function barePath(path: string): string {
+  return replaceUnsafeChars(path, "�");
+}
 
 export function verdictOf(messages: readonly Message[]): Verdict {
   if (messages.some((m) => m.level === "error")) return "fail";
