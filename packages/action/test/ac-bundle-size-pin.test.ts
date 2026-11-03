@@ -88,6 +88,15 @@ function buildRepository(repo: string): void {
 }
 
 /** Copies the committed Action into `<dir>/action` and returns its bundle and its vendored TypeScript path. */
+/** The bytes of a file the built Action must ship; read once, never checked first (no check-then-use race). */
+function readShipped(path: string): Buffer {
+  try {
+    return readFileSync(path);
+  } catch (error) {
+    throw new Error(`the built Action ships packages/action/dist/typescript.js: ${String(error)}`);
+  }
+}
+
 function copyAction(dir: string): { bundle: string; vendored: string } {
   const action = join(dir, "action/packages/action");
   mkdirSync(action, { recursive: true });
@@ -148,8 +157,7 @@ describe("action-bundle-size: the built Action refuses a vendored TypeScript fil
       const repo = join(tmp, "repo");
       buildRepository(repo);
       const action = copyAction(join(tmp, "tampered"));
-      expect(existsSync(action.vendored), "the built Action ships packages/action/dist/typescript.js").toBe(true);
-      const bytes = readFileSync(action.vendored);
+      const bytes = readShipped(action.vendored);
       const at = Math.floor(bytes.length / 2);
       bytes[at] = (bytes[at] as number) ^ 0x01;
       writeFileSync(action.vendored, bytes);
@@ -185,7 +193,7 @@ describe("action-bundle-size: the built Action refuses a vendored TypeScript fil
       const run = runBundle(action.bundle, repo, join(tmp, "intact"));
       expect(run.status, `the run with the intact file exits 0\n${run.output}`).toBe(0);
       expect(run.stdout, "the run reports no error").not.toMatch(/^::error::/m);
-      expect(existsSync(run.reportPath), "report.json is written").toBe(true);
+      // report.json is written: the read below throws when it is absent (read once, never checked first).
       const report = JSON.parse(readFileSync(run.reportPath, "utf8")) as {
         testIntegrity?: {
           mode?: unknown;

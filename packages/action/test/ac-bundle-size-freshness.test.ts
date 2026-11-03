@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -42,6 +42,15 @@ function git(cwd: string, ...args: string[]): void {
 }
 
 /** Writes the Action bundle (and whatever the bundler writes beside it) to `<repo>/packages/action/dist/index.js`. */
+/** The bytes the bundler must write; read once, never checked first (no check-then-use race). */
+function readWritten(path: string): Buffer {
+  try {
+    return readFileSync(path);
+  } catch (error) {
+    throw new Error(`the bundler writes packages/action/dist/typescript.js: ${String(error)}`);
+  }
+}
+
 function bundleInto(repo: string): void {
   execFileSync(process.execPath, ["../../scripts/bundle.mjs", "src/index.ts", join(repo, DIST, "index.js")], {
     cwd: ACTION,
@@ -97,8 +106,7 @@ function staleRepository(): string {
   git(repo, "init", "-q");
   bundleInto(repo);
   const vendored = join(repo, DIST, "typescript.js");
-  expect(existsSync(vendored), "the bundler writes packages/action/dist/typescript.js").toBe(true);
-  const fresh = readFileSync(vendored);
+  const fresh = readWritten(vendored);
   const edited = Buffer.from(fresh);
   const at = Math.floor(edited.length / 2);
   edited[at] = (edited[at] as number) ^ 0x01;
