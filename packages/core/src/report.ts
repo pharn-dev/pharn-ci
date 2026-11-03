@@ -5,7 +5,7 @@ import type { DiffCoverageFile, DiffCoverageResult } from "./diffCoverage.js";
 import type { AgentSetupFile, AgentSetupInventory } from "./setup/scan.js";
 import { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
 import type { ResolvedTestIntegrityMode } from "./testIntegrityMode.js";
-import { replaceUnsafeChars } from "./text.js";
+import { cutCodeUnits, replaceUnsafeChars } from "./text.js";
 
 /**
  * TypeScript mirror of schema/report.v2.json, which is Report v1 (schema/report.v1.json) plus optional top-level
@@ -762,13 +762,7 @@ const MAX_REASON_CHARS = 200;
  */
 export function oneLine(text: string): string {
   const line = replaceUnsafeChars(text, " ").replace(/\s+/g, " ").trim();
-  if (line.length <= MAX_REASON_CHARS) return line;
-  const end = isHighSurrogate(line.charCodeAt(MAX_REASON_CHARS - 1)) ? MAX_REASON_CHARS - 1 : MAX_REASON_CHARS;
-  return line.slice(0, end);
-}
-
-function isHighSurrogate(code: number): boolean {
-  return code >= 0xd800 && code <= 0xdbff;
+  return cutCodeUnits(line, MAX_REASON_CHARS, { marker: false });
 }
 
 /**

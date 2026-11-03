@@ -1,3 +1,4 @@
+import { cutCodeUnits } from "../text.js";
 import { MAX_TEST_NAME_CHARS } from "./types.js";
 
 /** Every run of JavaScript whitespace becomes one space. */
@@ -5,9 +6,9 @@ export function collapseWhitespace(text: string): string {
   return text.replace(/\s+/g, " ");
 }
 
-/** A name, or a path entry built from one, cut to 500 UTF-16 code units. */
+/** A name, or a path entry built from one, cut to 500 UTF-16 code units, never inside a surrogate pair. */
 export function cutName(name: string): string {
-  return name.length > MAX_TEST_NAME_CHARS ? name.slice(0, MAX_TEST_NAME_CHARS) : name;
+  return cutCodeUnits(name, MAX_TEST_NAME_CHARS, { marker: false });
 }
 
 /**

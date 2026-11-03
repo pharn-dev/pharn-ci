@@ -1,4 +1,4 @@
-import { utf8ByteLength } from "./pythonPlan.js";
+import { utf8ByteLength } from "../text.js";
 import { pythonIndexFromRaw } from "./pythonRaw.js";
 import {
   MAX_PYTHON_DETAIL_CHARS,

@@ -1,4 +1,5 @@
 import type { DiffFile } from "../diff/unified.js";
+import { byCodeUnit } from "../text.js";
 import type { IgnoredSetting, ResolvedPolicy } from "./resolved.js";
 import { resolveKeyedSeverity } from "./rules/severity.js";
 import type { PolicyViolationSeverity } from "./rules/types.js";
@@ -32,8 +33,6 @@ export interface AgentPolicy {
   /** True when a policy file's `policy.rules.P11` asked for less than block and was not applied. */
   lowered: boolean;
 }
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /** The strings of a list, distinct and sorted by code unit. */
 function tidy(...lists: (readonly unknown[] | undefined)[]): string[] {

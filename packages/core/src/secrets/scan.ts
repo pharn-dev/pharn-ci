@@ -1,5 +1,6 @@
 import type { AgentSetupInventory, AgentSetupKind } from "../setup/scan.js";
 import type { TestSourceFile, TestSourceSide } from "../testSources.js";
+import { byCodeUnit } from "../text.js";
 import { isEnvReference, isPathValue, isUrlValue, type KeyValue, secretKeyValues } from "./keys.js";
 import { findSecretSpansWith, type SecretId } from "./spans.js";
 
@@ -23,8 +24,6 @@ export const SECRET_SCAN_KINDS: readonly AgentSetupKind[] = [
 
 const SCAN_KINDS: ReadonlySet<AgentSetupKind> = new Set(SECRET_SCAN_KINDS);
 const CONTINUE_CONFIG_EXTENSIONS: readonly string[] = [".json", ".yaml", ".yml"];
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
  * The paths of the inventory's files whose kind is in `SECRET_SCAN_KINDS`, de-duplicated and sorted in code-unit order.

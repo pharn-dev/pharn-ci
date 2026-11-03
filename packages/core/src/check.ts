@@ -62,6 +62,7 @@ import { deletedTestFiles } from "./testFiles.js";
 import type { PythonTestIndex } from "./testIndex/pythonSides.js";
 import { resolveTestIntegrityMode, type TestIntegrityModeSettings } from "./testIntegrityMode.js";
 import type { TestSources } from "./testSources.js";
+import { byCodeUnit } from "./text.js";
 
 /**
  * One coverage file of a multi-file input: its contents (and the path it came from, for messages); or the map an
@@ -198,8 +199,6 @@ export interface CheckInput {
    */
   policyFileBase?: PolicyFileBase;
 }
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /** Signals sorted by id, then path, then line (none first), then detail, in code-unit order. */
 function sortSignals(signals: TestIntegritySignal[]): TestIntegritySignal[] {

@@ -1,10 +1,9 @@
+import { byCodeUnit } from "../../text.js";
 import type { PolicyDocument } from "../types.js";
 
 const SETTINGS_PATH = /^(?:.*\/)?\.claude\/settings(?:\.local)?\.json$/;
 const MCP_PATH = /^(?:.*\/)?(?:\.mcp\.json|\.cursor\/mcp\.json|\.vscode\/mcp\.json)$/;
 const JSONC_MCP_PATH = /^(?:.*\/)?(?:\.cursor|\.vscode)\/mcp\.json$/;
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /** `.claude/settings.json` or `.claude/settings.local.json`, at the root or nested. */
 export function isPolicySettingsPath(path: string): boolean {

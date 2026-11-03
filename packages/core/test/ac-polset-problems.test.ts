@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -39,11 +40,10 @@ async function invalidOf(document: unknown, files: Record<string, string>, dropp
   return (report as unknown as Report).messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID");
 }
 
-const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 const byProblem = (a: Problem, b: Problem) =>
-  (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : cmp(a.path, b.path)) ||
+  (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : byCodeUnit(a.path, b.path)) ||
   (a.line === b.line ? 0 : a.line === null ? -1 : b.line === null ? 1 : a.line - b.line) ||
-  cmp(a.reason, b.reason);
+  byCodeUnit(a.reason, b.reason);
 const item = (p: Problem) =>
   p.path === null
     ? `the rule comparison (\`${p.reason}\`)`

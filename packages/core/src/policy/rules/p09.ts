@@ -1,3 +1,4 @@
+import { byCodeUnit } from "../../text.js";
 import type { IgnoredSetting } from "../resolved.js";
 import { isPolicyMcpPath, isPolicySettingsPath } from "../settings/paths.js";
 import type { PolicyRuleId, PolicySetup } from "../types.js";
@@ -15,8 +16,6 @@ const SETTINGS_LISTS = [
   "forbidden_mcp_servers",
   "required_hooks",
 ] as const satisfies readonly (keyof PolicySetup)[];
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /** The distinct settings of one layer's ignored records, sorted: the first 5, then how many more. */
 function settings(ignored: readonly IgnoredSetting[], layer: IgnoredSetting["layer"]): string {

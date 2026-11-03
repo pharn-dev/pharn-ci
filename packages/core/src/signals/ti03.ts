@@ -2,6 +2,7 @@ import type { DiffFile, DiffHunk } from "../diff/unified.js";
 import type { TestIntegritySignal } from "../report.js";
 import { isTestFile } from "../testFiles.js";
 import type { TestSourceSide, TestSources } from "../testSources.js";
+import { byCodeUnit } from "../text.js";
 import { pythonImportAliases } from "./pythonAliases.js";
 import {
   type JsTestLine,
@@ -13,8 +14,6 @@ import {
   testLanguage,
 } from "./testLines.js";
 import type { Ti03Category, Ti03Finding } from "./ti03Pairs.js";
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
  * The most TI03 signals one file gives. The unconditional skips of existing tests (the ones that take the mode as their

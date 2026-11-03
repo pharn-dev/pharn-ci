@@ -1,3 +1,4 @@
+import { byCodeUnit } from "../text.js";
 import type { AgentSetupFile, AgentSetupInventory, AgentSetupKind } from "./scan.js";
 
 /**
@@ -36,8 +37,6 @@ const DIRECTORY_KINDS: ReadonlySet<AgentSetupKind> = new Set([
   "goosehints",
 ]);
 const CONTINUE_CONFIG_EXTENSIONS: readonly string[] = [".json", ".yaml", ".yml"];
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
  * True when the file is an instruction file. A `continue-rules` file that is JSON or YAML is config (check A7 reads it),

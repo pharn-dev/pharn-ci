@@ -1,12 +1,11 @@
 import type { DiffFile } from "../diff/unified.js";
 import type { TestIntegritySignal } from "../report.js";
 import { isTestFile } from "../testFiles.js";
+import { byCodeUnit } from "../text.js";
 import { escapeDetailText } from "./detailText.js";
 import { isPackageJsonFile, isPytestConfigFile, isSnapshotFile } from "./signalFiles.js";
 import { testLanguage } from "./testLines.js";
 import { parseScriptLine, runsMocha } from "./ti10.js";
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /** More snapshot files than this, changed in one change, give the mass-change signal. */
 const MAX_SNAPSHOT_FILES = 10;

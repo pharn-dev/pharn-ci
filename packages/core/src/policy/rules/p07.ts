@@ -1,7 +1,7 @@
 import { instructionDeclarations, instructionScope, isInstructionFile } from "../../setup/instructions.js";
 import type { AgentSetupFile } from "../../setup/scan.js";
 import { classifySetupPath } from "../../setup/scan.js";
-import { replaceUnsafeChars } from "../../text.js";
+import { byCodeUnit, replaceUnsafeChars } from "../../text.js";
 import type { IgnoredSetting, ResolvedPolicy } from "../resolved.js";
 import { resolveKeyedSeverity } from "./severity.js";
 import type { PolicyRuleInput, PolicyViolationSeverity, RuleFinding } from "./types.js";
@@ -47,8 +47,6 @@ export function consistencySeverity(policy: ResolvedPolicy): {
     fallback: "warn",
   });
 }
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /** One compared file: its path and what it declares in one class of tool. */
 interface Declaring {

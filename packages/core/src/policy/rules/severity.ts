@@ -1,4 +1,5 @@
 import type { MessageLevel } from "../../report.js";
+import { cutCodeUnits } from "../../text.js";
 import type { IgnoredSetting, ResolvedPolicy } from "../resolved.js";
 import type { PolicyRuleId, PolicySeverity } from "../types.js";
 import type { PolicyViolationSeverity } from "./types.js";
@@ -90,8 +91,5 @@ export function strongest(severities: readonly PolicyViolationSeverity[]): Polic
 
 /** Text of at most 300 characters: a longer one is cut (not inside a surrogate pair) and ends with `…`. */
 export function boundDetail(text: string): string {
-  if (text.length <= MAX_DETAIL) return text;
-  const high = (code: number) => code >= 0xd800 && code <= 0xdbff;
-  const end = high(text.charCodeAt(MAX_DETAIL - 2)) ? MAX_DETAIL - 2 : MAX_DETAIL - 1;
-  return `${text.slice(0, end)}…`;
+  return cutCodeUnits(text, MAX_DETAIL);
 }

@@ -1,4 +1,5 @@
 import { compileGlob } from "./glob.js";
+import { byCodeUnit } from "./text.js";
 
 /**
  * Coverage auto-discovery: which coverage report a run reads when no path is set (no `--coverage` flag, no
@@ -43,11 +44,6 @@ function inSkippedDirectory(path: string): boolean {
   return path.split("/").some((segment) => segment === ".git" || segment === "node_modules");
 }
 
-/** Code-unit order, like `Array.prototype.sort` without a comparator. */
-function codeUnitOrder(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
-
 /**
  * The choice rule over any set of existing repo-relative paths (forward slashes). One candidate kind with
  * matches is the answer, several kinds are ambiguous, none is not-found. Paths are de-duplicated.
@@ -59,7 +55,7 @@ export function chooseDiscoveredCoverage(paths: Iterable<string>): CoverageDisco
     if (candidate === GLOB_CANDIDATE) {
       const matches = [...present]
         .filter((path) => !inSkippedDirectory(path) && matchesGlobCandidate(path))
-        .sort(codeUnitOrder);
+        .sort(byCodeUnit);
       if (matches.length > 0) kinds.push(matches);
     } else if (present.has(candidate)) {
       kinds.push([candidate]);

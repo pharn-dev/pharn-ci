@@ -4,6 +4,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { byCodeUnit } from "../src/text.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -80,8 +81,6 @@ function sideFiles(dir: string): SourceFile[] {
     .sort(byPath);
 }
 
-const byName = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
-
 async function existingOutputs(): Promise<string> {
   const { check } = await import("../src/check.js");
   type Input = Parameters<typeof check>[0];
@@ -100,14 +99,14 @@ async function existingOutputs(): Promise<string> {
   };
   const ti01 = readdirSync(`${FIXTURES}test-integrity/TI01`)
     .filter((n) => n.endsWith(".diff"))
-    .sort(byName);
+    .sort(byCodeUnit);
   for (const name of ti01) {
     run(`TI01/${name}`, {
       diff: { text: fixture(`test-integrity/TI01/${name}`) },
       repoFiles: fixture("test-files-deleted/files.txt").trim().split("\n"),
     });
   }
-  const ti02 = readdirSync(`${FIXTURES}test-integrity/TI02`).sort(byName);
+  const ti02 = readdirSync(`${FIXTURES}test-integrity/TI02`).sort(byCodeUnit);
   for (const name of ti02) {
     const root = `${FIXTURES}test-integrity/TI02/${name}/`;
     const base = sideFiles(`${root}base`);

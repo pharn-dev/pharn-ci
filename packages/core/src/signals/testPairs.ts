@@ -6,8 +6,7 @@ import type { PythonTestIndex } from "../testIndex/pythonSides.js";
 import type { PythonIndexFile } from "../testIndex/pythonTypes.js";
 import type { TestBlock, TestIndexResult, TestModuleMock } from "../testIndex/types.js";
 import type { TestSourceSide, TestSources } from "../testSources.js";
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+import { byCodeUnit } from "../text.js";
 
 /** The language of a test file the base-and-head signals read. */
 export type TestLanguage = "ts" | "js" | "py";

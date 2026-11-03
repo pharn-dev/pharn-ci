@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
 
 // The merge module, the lcov parser and the fixtures are loaded inside the test body: the AC test is written before
@@ -11,7 +12,7 @@ type Map2 = Map<string, Map<number, number>>;
 const toObject = (map: Map2) =>
   Object.fromEntries(
     [...map.entries()]
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .sort(([a], [b]) => byCodeUnit(a, b))
       .map(([path, hits]) => [path, Object.fromEntries([...hits.entries()].sort(([a], [b]) => a - b))]),
   );
 

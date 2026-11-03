@@ -1,9 +1,8 @@
 import type { DiffFile } from "../diff/unified.js";
 import type { TestIntegritySignal } from "../report.js";
 import { isTestFile } from "../testFiles.js";
+import { byCodeUnit } from "../text.js";
 import { coverageSourceLanguage } from "./signalFiles.js";
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /** The most TI13 signals one file gives; the rest are dropped, keeping the lowest line numbers. */
 const MAX_PER_FILE = 20;

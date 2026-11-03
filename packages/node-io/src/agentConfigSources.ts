@@ -1,5 +1,6 @@
 import {
   type AgentConfigSources,
+  byCodeUnit,
   decodeTestSourceText,
   isUnsafeTestSourcePath,
   type PolicySettingsDrop,
@@ -13,8 +14,6 @@ import { batchCheck, batchRead, firstLine, type GitBatchDeps, StepFailed } from 
 
 /** The one git call the reader makes: bytes out for a call that is given stdin. */
 export type AgentConfigGitDeps = GitBatchDeps;
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
  * The text of the agent config files `paths` names, as committed at `HEAD`: one `cat-file --batch-check` for the

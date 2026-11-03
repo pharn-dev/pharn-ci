@@ -1,12 +1,11 @@
 import type { CoverageMap } from "./coverage/types.js";
 import type { DiffFile } from "./diff/unified.js";
 import { isAbsolutePath, normalizePath } from "./paths.js";
+import { byCodeUnit } from "./text.js";
 
 /** Config file read when no `--config` / `config` input names another. */
 const DEFAULT_CONFIG_PATH = ".pharn/ci.yml";
 const WORKFLOWS_DIR = ".github/workflows/";
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
  * The repo-relative path of the pharn-ci config in use (`.pharn/ci.yml` when none is named), or null when the

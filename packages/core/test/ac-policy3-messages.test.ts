@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -32,8 +33,7 @@ const IGNORED: Ignored[] = [
 ];
 
 /** Code-unit order, by setting then layer. */
-const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
-const sorted = [...IGNORED].sort((a, b) => compare(a.setting, b.setting) || compare(a.layer, b.layer));
+const sorted = [...IGNORED].sort((a, b) => byCodeUnit(a.setting, b.setting) || byCodeUnit(a.layer, b.layer));
 /** A fixed shuffle, so the order check() is given is not the sorted one. */
 const shuffled = IGNORED.map((record, i) => ({ record, key: (i * 7919) % 23 }))
   .sort((a, b) => a.key - b.key)

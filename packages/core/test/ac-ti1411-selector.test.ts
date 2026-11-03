@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { byCodeUnit } from "../src/text.js";
 
 // The selector and the parser are loaded inside the test body: the AC tests are written before the selector exists,
 // so nothing the build adds may run while the file loads.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 function hunk(start: number, removed: string[], added: string[]): string[] {
   const oldPart = removed.length === 0 ? `${start - 1},0` : `${start},${removed.length}`;

@@ -1,3 +1,5 @@
+import { byCodeUnit } from "../text.js";
+
 /** The tokens of a normalized test body: maximal runs of `[A-Za-z0-9_$]`, and each other non-space character. */
 const TOKEN = /[A-Za-z0-9_$]+|[^\sA-Za-z0-9_$]/g;
 
@@ -70,8 +72,6 @@ export function containsAtLeast(old: ReadonlySet<string>, fresh: ReadonlySet<str
   if (old.size === 0) return true;
   return ratio.den * overlap(old, fresh) >= ratio.num * old.size;
 }
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /** A minimal binary min-heap of posting cursors, ordered by the head index each one points at. */
 class CursorHeap {

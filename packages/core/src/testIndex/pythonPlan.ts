@@ -1,30 +1,6 @@
 import { MAX_TEST_SOURCE_FILE_BYTES, MAX_TEST_SOURCE_FILES, MAX_TEST_SOURCE_TOTAL_BYTES } from "../testSources.js";
+import { utf8ByteLength } from "../text.js";
 import type { PythonSourceFile } from "./pythonTypes.js";
-
-/** The UTF-8 length of a string, counting a lone surrogate as 3 bytes (it is written as U+FFFD). */
-export function utf8ByteLength(text: string): number {
-  let bytes = 0;
-  const n = text.length;
-  for (let i = 0; i < n; i++) {
-    const code = text.charCodeAt(i);
-    if (code < 0x80) {
-      bytes += 1;
-    } else if (code < 0x800) {
-      bytes += 2;
-    } else if (code >= 0xd800 && code <= 0xdbff && i + 1 < n) {
-      const next = text.charCodeAt(i + 1);
-      if (next >= 0xdc00 && next <= 0xdfff) {
-        bytes += 4;
-        i++;
-      } else {
-        bytes += 3;
-      }
-    } else {
-      bytes += 3;
-    }
-  }
-  return bytes;
-}
 
 /** What is sent to the interpreter, and what each `.py` input file became. */
 export interface PythonIndexPlan {

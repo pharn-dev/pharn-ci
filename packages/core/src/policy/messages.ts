@@ -1,11 +1,10 @@
 import type { AgentPrIncomplete } from "../agents.js";
 import { formatNumber, type Message } from "../report.js";
+import { byCodeUnit } from "../text.js";
 import type { IgnoredSetting, ResolvedPolicy } from "./resolved.js";
 
 /** The most settings POLICY_OVERRIDE_IGNORED names; the rest are counted. */
 const MAX_NAMED_SETTINGS = 20;
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
  * The POLICY_UNAVAILABLE message: why no org policy was used. A warning, or an error when the workflow demanded a

@@ -1,8 +1,7 @@
 import { compileGlob } from "../../glob.js";
+import { byCodeUnit } from "../../text.js";
 import { shownPattern } from "./shown.js";
 import type { PolicyRuleInput, RuleFinding } from "./types.js";
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
  * P08, forbidden file tracked: a tracked file matches a `setup.forbidden_files` pattern of the policy. One finding per

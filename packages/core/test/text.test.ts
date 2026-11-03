@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { check } from "../src/check.js";
 import { renderMarkdown } from "../src/render/markdown.js";
-import { isUnsafeCode, replaceUnsafeChars } from "../src/text.js";
+import { byCodeUnit, cutCodeUnits, isUnsafeCode, replaceUnsafeChars, utf8ByteLength } from "../src/text.js";
+import { buildUploadTar } from "../src/upload/tar.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -101,5 +102,93 @@ describe("text.ts: the control, invisible and bidirectional character set", () =
     for (const code of [0x200a, 0x2010, 0x2030, 0x2065, 0x206a, 0xfefe, 0xff00]) {
       expect(stripped, `${hex(code)} is kept by the comment`).not.toContain(code);
     }
+  });
+});
+
+describe("text.ts: byCodeUnit", () => {
+  it("orders strings the way Array.prototype.sort does without a comparator, astral and BMP characters included", () => {
+    const mixed = ["b", "😀", "￿", "A", "a", "é", "", "a😀", "a￿", "ab", "\ud83d", "\ude00", "日本語", "😀😀", "ａ"];
+    expect([...mixed].sort(byCodeUnit)).toEqual([...mixed].sort());
+    expect(byCodeUnit("😀", "￿"), "a surrogate sorts before U+FFFF, unlike code point order").toBe(-1);
+    expect(byCodeUnit("a", "a")).toBe(0);
+    expect(byCodeUnit("", "a")).toBe(-1);
+  });
+});
+
+describe("text.ts: utf8ByteLength", () => {
+  it.each([
+    ["", 0],
+    ["abc", 3],
+    ["é", 2],
+    ["日", 3],
+    ["😀", 4],
+    ["a😀é日", 10],
+    ["\ud83d", 3],
+    ["\ude00", 3],
+    ["a\ud83d", 4],
+    ["\ud83db", 4],
+    ["\ude00\ud83d", 6],
+  ])("counts %j as %i bytes", (text, bytes) => {
+    expect(utf8ByteLength(text)).toBe(bytes);
+  });
+
+  it("agrees with the size the upload tar writes for the same text", () => {
+    const fixtures = [
+      "",
+      "abc",
+      "é",
+      "日本語",
+      "😀",
+      "a😀é日",
+      "\ud83d",
+      "\ude00",
+      "x\ud83d",
+      "\ud83dx",
+      "😀".repeat(200),
+    ];
+    for (const text of fixtures) {
+      const tar = buildUploadTar([{ name: "a.txt", text }]);
+      const size = Number.parseInt(new TextDecoder().decode(tar.subarray(124, 135)), 8);
+      expect(size, JSON.stringify(text)).toBe(utf8ByteLength(text));
+    }
+  });
+});
+
+describe("text.ts: cutCodeUnits", () => {
+  it("returns text that fits, even exactly at the limit, as it is", () => {
+    expect(cutCodeUnits("abcd", 4)).toBe("abcd");
+    expect(cutCodeUnits("abcd", 4, { marker: false })).toBe("abcd");
+    expect(cutCodeUnits("ab😀", 4)).toBe("ab😀");
+    expect(cutCodeUnits("", 0)).toBe("");
+  });
+
+  it("keeps the … inside the limit and, without the marker, cuts at the limit", () => {
+    expect(cutCodeUnits("abcdef", 4)).toBe("abc…");
+    expect(cutCodeUnits("abcdef", 4, { marker: false })).toBe("abcd");
+    expect(cutCodeUnits("abcdef", 4).length).toBe(4);
+  });
+
+  it("never ends inside a pair: it steps back one unit, with or without the marker", () => {
+    // limit 4 with the marker keeps 3 units: "ab" + high surrogate would split the pair.
+    expect(cutCodeUnits("ab😀cd", 4)).toBe("ab…");
+    // limit 3 without the marker keeps 3 units, the third a high surrogate.
+    expect(cutCodeUnits("ab😀cd", 3, { marker: false })).toBe("ab");
+    // The pair fits whole when the cut falls after it.
+    expect(cutCodeUnits("ab😀cd", 5)).toBe("ab😀…");
+  });
+
+  it("keeps a lone low surrogate at the cut, since it splits no pair", () => {
+    expect(cutCodeUnits("ab\ude00cd", 4)).toBe("ab\ude00…");
+    expect(cutCodeUnits("ab\ude00cd", 3, { marker: false })).toBe("ab\ude00");
+  });
+
+  it("clamps the limit: 0 or less keeps nothing, so the marker cut is … alone (the one case longer than the limit)", () => {
+    expect(cutCodeUnits("abc", 0)).toBe("…");
+    expect(cutCodeUnits("abc", 1)).toBe("…");
+    expect(cutCodeUnits("😀😀", 1)).toBe("…");
+    expect(cutCodeUnits("abc", -5)).toBe("…");
+    expect(cutCodeUnits("abc", 0, { marker: false })).toBe("");
+    expect(cutCodeUnits("abc", -5, { marker: false })).toBe("");
+    expect(cutCodeUnits("😀", 1, { marker: false }), "a pair is not split, so nothing is kept").toBe("");
   });
 });

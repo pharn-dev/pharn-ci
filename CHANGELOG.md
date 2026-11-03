@@ -24,6 +24,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   `packages/action/src/vendored-typescript-pin.ts`. A file that does not match the pin fails the step with an error
   naming the file and both hashes, and nothing is reported. A run that parses no test file never reads it. The CLI
   still inlines the parser. No schema change and no new message code. See `docs/THREAT-MODEL.md`, G1.
+- One source for three text rules in `@pharn-ci/core` (`text.ts`): the code-unit comparator `byCodeUnit` (about 50
+  copies, in core, node-io and the tests, are gone), the surrogate-safe cut `cutCodeUnits` (the `…` inside the limit,
+  an option for a cut without it, never inside a surrogate pair) and `utf8ByteLength`. No limit number, message code
+  or schema changes. Two byte-level effects: a TI09 value (`base`/`head`) is now cut to at most 80 code units, `…`
+  included (it was 81), and a key text to at most 100 (it was 101); and the three cuts that could leave a lone
+  surrogate (TI01 and TI06 details, the 500-unit test name) no longer do.
+
 - The Action's `run.ts` items of the 2026-11-01 review. No schema change and no new message code.
   - A PR comment or job summary cut as a last resort (the messages alone over the limit) now closes every collapsed
     `<details>` section it cuts into before the truncation note, so the note is no longer hidden inside it (37).

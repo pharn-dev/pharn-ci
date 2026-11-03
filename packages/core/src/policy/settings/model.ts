@@ -1,4 +1,5 @@
 import type { TestSourceFile } from "../../testSources.js";
+import { byCodeUnit } from "../../text.js";
 import type { PolicyDocument } from "../types.js";
 import { isCountingHandler } from "./hooks.js";
 import { type JsonMember, type JsonValue, parseSettingsJson } from "./json.js";
@@ -70,8 +71,6 @@ export interface SettingsModel {
   mcpServers: McpServer[];
   problems: SettingsModelProblem[];
 }
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 const ALL: SettingsReader[] = ["P02", "P03", "P04", "P05", "P06"];
 const MCP_READERS: SettingsReader[] = ["P04", "P05"];

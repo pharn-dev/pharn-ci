@@ -4,13 +4,13 @@ import { indexTestFile } from "../testIndex/indexTestFile.js";
 import type { PythonTestIndex } from "../testIndex/pythonSides.js";
 import type { TestBlock, TestIndexResult } from "../testIndex/types.js";
 import type { TestSources } from "../testSources.js";
+import { byCodeUnit } from "../text.js";
 import { FOUR_FIFTHS, MAX_SIMILARITY_PROBES, SimilarityIndex, tokenSetMemo } from "./bodyTokens.js";
 import { holdsBody } from "./sameGroupRules.js";
 import type { MatchedPair } from "./testMatch.js";
 import { fullTestName } from "./testName.js";
 import { languageOf, type TouchedTests } from "./testPairs.js";
 
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 const leafOf = (block: TestBlock): string => block.path[block.path.length - 1] ?? "";
 
 /** The deleted test files whose every test moved, and each moved test paired with the new test that holds it. */

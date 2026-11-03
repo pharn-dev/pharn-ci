@@ -1,9 +1,8 @@
 import type { DiffFile } from "../diff/unified.js";
 import type { TestIntegritySignal } from "../report.js";
 import { deletedTestFiles, isTestFile } from "../testFiles.js";
+import { byCodeUnit } from "../text.js";
 import { isPackageJsonFile } from "./signalFiles.js";
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /** The most TI10 signals one file gives; the rest are dropped, keeping the lowest line numbers. */
 const MAX_PER_FILE = 20;

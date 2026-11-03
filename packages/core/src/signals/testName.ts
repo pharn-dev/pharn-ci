@@ -1,5 +1,5 @@
 import type { TestBlock } from "../testIndex/types.js";
-import { replaceUnsafeChars } from "../text.js";
+import { cutCodeUnits, replaceUnsafeChars } from "../text.js";
 
 /** Joins the names of a test and its enclosing blocks. */
 const NAME_SEPARATOR = " › ";
@@ -20,10 +20,6 @@ export function fullTestName(block: TestBlock): string {
   return block.path.join(NAME_SEPARATOR);
 }
 
-function isHighSurrogate(code: number): boolean {
-  return code >= 0xd800 && code <= 0xdbff;
-}
-
 /**
  * A finding detail made of fixed text around a test name taken from the pull request. Control characters in the name
  * become spaces. A name that does not fit is cut, never inside a surrogate pair, with `…` appended, so the whole detail
@@ -33,9 +29,7 @@ export function detailWithName(before: string, name: string, after: string): str
   const clean = withoutControls(name);
   const room = MAX_DETAIL - before.length - after.length;
   if (clean.length <= room) return `${before}${clean}${after}`;
-  let end = Math.max(0, room - 1);
-  if (end > 0 && isHighSurrogate(clean.charCodeAt(end - 1))) end--;
-  return `${before}${clean.slice(0, end)}…${after}`;
+  return `${before}${cutCodeUnits(clean, room)}${after}`;
 }
 
 /** TI02: a test of a static name that is gone at head. `line` is the line in the base file. */
@@ -89,10 +83,7 @@ export const MAX_SUMMARY_NAME = 120;
 /** A test name for the tests-changed summary: control characters become spaces; cut to 120 with `…`, never in a pair. */
 export function summaryTestName(name: string): string {
   const clean = withoutControls(name);
-  if (clean.length <= MAX_SUMMARY_NAME) return clean;
-  let end = MAX_SUMMARY_NAME - 1;
-  if (isHighSurrogate(clean.charCodeAt(end - 1))) end--;
-  return `${clean.slice(0, end)}…`;
+  return cutCodeUnits(clean, MAX_SUMMARY_NAME);
 }
 
 /** TI05: a test that lost some assertions with the rest of its body unchanged. */

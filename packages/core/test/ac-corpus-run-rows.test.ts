@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
+import { byCodeUnit } from "../src/text.js";
 
 // corpus-run-script: scripts/corpus-run.mjs runs a CLI bundled here over a local upstream git repository with three
 // PR-like base/head commit pairs, and writes the review CSV. The upstream, the bundle and the corpus JSON are built in
@@ -228,13 +229,12 @@ const rowsOf = (text: string): Row[] => {
 
 const rowsFor = (rows: Row[], number: number) => rows.filter((row) => row.repo === REPO && row.pr === String(number));
 
-const byString = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 const byLine = (a: string, b: string) => (a === b ? 0 : a === "" ? -1 : b === "" ? 1 : Number(a) - Number(b));
 const compareRows = (a: Row, b: Row) =>
-  byString(a.repo, b.repo) ||
+  byCodeUnit(a.repo, b.repo) ||
   Number(a.pr) - Number(b.pr) ||
-  byString(a.signal, b.signal) ||
-  byString(a.path, b.path) ||
+  byCodeUnit(a.signal, b.signal) ||
+  byCodeUnit(a.path, b.path) ||
   byLine(a.line, b.line);
 
 describe("corpus-run-script: the review CSV of a corpus run", () => {

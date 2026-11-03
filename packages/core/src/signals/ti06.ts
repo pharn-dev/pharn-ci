@@ -1,5 +1,6 @@
 import type { TestIntegritySignal } from "../report.js";
 import type { TestBlock } from "../testIndex/types.js";
+import { byCodeUnit, cutCodeUnits } from "../text.js";
 import { type Labelled, labelledAssertions } from "./matcherStrength.js";
 import { countTautologies } from "./tautology.js";
 import type { TestMatch } from "./testMatch.js";
@@ -14,8 +15,6 @@ const MODIFIERS_THAT_EXCUSE = ["skip", "todo", "skipIf", "runIf"] as const;
 const TAUTOLOGY_REASON = "an assertion that compares a literal with itself was added";
 const TRY_REASON = "an assertion moved into a try block that has a catch";
 const RETURN_REASON = "an assertion moved after an early return";
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 function counts(labels: readonly string[]): Map<string, number> {
   const map = new Map<string, number>();
@@ -112,7 +111,7 @@ function detailOf(reasons: ReadonlyArray<(cut: number) => string>): string {
     detail = `The test was weakened: ${reasons.map((reason) => reason(cut)).join("; ")}.`;
     if (detail.length <= MAX_DETAIL) return detail;
   }
-  return `${detail.slice(0, MAX_DETAIL - 1)}…`;
+  return cutCodeUnits(detail, MAX_DETAIL);
 }
 
 /**

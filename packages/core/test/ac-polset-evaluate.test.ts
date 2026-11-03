@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
 
 // E3 item 23 (policy settings), AC-20. evaluatePolicyRules() and the cap constants are loaded inside the test body,
@@ -14,13 +15,12 @@ interface Core {
   MAX_P08_VIOLATIONS: number;
 }
 
-const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 /** By id, then path (null first), then line (null first, ascending), then detail, in code-unit order. */
 const order = (a: Violation, b: Violation) =>
-  cmp(a.id, b.id) ||
-  (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : cmp(a.path, b.path)) ||
+  byCodeUnit(a.id, b.id) ||
+  (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : byCodeUnit(a.path, b.path)) ||
   (a.line === b.line ? 0 : a.line === null ? -1 : b.line === null ? 1 : a.line - b.line) ||
-  cmp(a.detail, b.detail);
+  byCodeUnit(a.detail, b.detail);
 
 const FILE = (document: unknown) => ({ source: "file", version: null, path: "policy/org.json", document });
 const allowFile = (rules: string[]) =>
@@ -86,7 +86,7 @@ describe("evaluatePolicyRules: lines, order and the per-rule cap", { timeout: 60
       [4, "allow rule overlaps forbidden permission Bash(zz)"],
       [5, "allow rule overlaps forbidden permission Bash(aa)"],
     ]);
-    expect(mixed.violations.map((v) => v.id)).toEqual([...mixed.violations.map((v) => v.id)].sort(cmp));
+    expect(mixed.violations.map((v) => v.id)).toEqual([...mixed.violations.map((v) => v.id)].sort(byCodeUnit));
 
     // P08 for item 22's input is what it was.
     expect(mixed.violations.filter((v) => v.id === "P08")).toEqual([

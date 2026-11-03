@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { scanAgentSetup } from "../src/index.js";
+import { byCodeUnit } from "../src/text.js";
 import { FIXTURES } from "./helpers.js";
 
 // agentConfigSecretPaths(), SECRET_SCAN_KINDS and scanAgentConfigSecrets() are loaded inside each test body: the AC
@@ -68,7 +69,6 @@ async function load(): Promise<Scanner> {
   return (await import("../src/index.js")) as unknown as Scanner;
 }
 
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 const byFinding = (a: Finding, b: Finding) => byCodeUnit(a.id, b.id) || byCodeUnit(a.path, b.path) || a.line - b.line;
 const plain = (findings: Finding[]) => findings.map(({ id, path, line }) => ({ id, path, line }));
 

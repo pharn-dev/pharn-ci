@@ -25608,6 +25608,66 @@ function compileSegment(segment) {
   };
 }
 
+// ../core/src/text.ts
+var UNSAFE_RANGES = [
+  [0, 31],
+  [127, 159],
+  [8203, 8207],
+  [8232, 8238],
+  [8294, 8297],
+  [65279, 65279]
+];
+var unicodeEscape = (code2) => `\\u${code2.toString(16).padStart(4, "0")}`;
+var classPart = ([from, to]) => from === to ? unicodeEscape(from) : `${unicodeEscape(from)}-${unicodeEscape(to)}`;
+var UNSAFE_PATTERN = new RegExp(`[${UNSAFE_RANGES.map(classPart).join("")}]`, "g");
+function isUnsafeCode(code2) {
+  return UNSAFE_RANGES.some(([from, to]) => code2 >= from && code2 <= to);
+}
+function hasUnsafeChar(text) {
+  for (let i = 0; i < text.length; i++) if (isUnsafeCode(text.charCodeAt(i))) return true;
+  return false;
+}
+function replaceUnsafeChars(text, replacement) {
+  return text.replace(UNSAFE_PATTERN, replacement);
+}
+function byCodeUnit(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+function isHighSurrogate(code2) {
+  return code2 >= 55296 && code2 <= 56319;
+}
+function cutCodeUnits(text, limit, options = {}) {
+  const max = Math.max(0, limit);
+  if (text.length <= max) return text;
+  const marker = options.marker ?? true;
+  let end = marker ? Math.max(0, max - 1) : max;
+  if (end > 0 && isHighSurrogate(text.charCodeAt(end - 1))) end--;
+  return marker ? `${text.slice(0, end)}\u2026` : text.slice(0, end);
+}
+function utf8ByteLength(text) {
+  let bytes = 0;
+  const n = text.length;
+  for (let i = 0; i < n; i++) {
+    const code2 = text.charCodeAt(i);
+    if (code2 < 128) {
+      bytes += 1;
+    } else if (code2 < 2048) {
+      bytes += 2;
+    } else if (code2 >= 55296 && code2 <= 56319 && i + 1 < n) {
+      const next = text.charCodeAt(i + 1);
+      if (next >= 56320 && next <= 57343) {
+        bytes += 4;
+        i++;
+      } else {
+        bytes += 3;
+      }
+    } else {
+      bytes += 3;
+    }
+  }
+  return bytes;
+}
+
 // ../core/src/coverageDiscovery.ts
 var COVERAGE_DISCOVERY_CANDIDATES = Object.freeze([
   "coverage/lcov.info",
@@ -25621,15 +25681,12 @@ var matchesGlobCandidate = compileGlob(GLOB_CANDIDATE);
 function inSkippedDirectory(path) {
   return path.split("/").some((segment) => segment === ".git" || segment === "node_modules");
 }
-function codeUnitOrder(a, b) {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
 function chooseDiscoveredCoverage(paths) {
   const present = new Set(paths);
   const kinds = [];
   for (const candidate of COVERAGE_DISCOVERY_CANDIDATES) {
     if (candidate === GLOB_CANDIDATE) {
-      const matches = [...present].filter((path) => !inSkippedDirectory(path) && matchesGlobCandidate(path)).sort(codeUnitOrder);
+      const matches = [...present].filter((path) => !inSkippedDirectory(path) && matchesGlobCandidate(path)).sort(byCodeUnit);
       if (matches.length > 0) kinds.push(matches);
     } else if (present.has(candidate)) {
       kinds.push([candidate]);
@@ -25941,34 +25998,11 @@ function summarizeAgentSetup(files) {
   for (const f of files) counts2.set(f.kind, (counts2.get(f.kind) ?? 0) + 1);
   const byKind = {};
   const tools = /* @__PURE__ */ new Set();
-  for (const [kind, count2] of [...counts2].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
+  for (const [kind, count2] of [...counts2].sort(([a], [b]) => byCodeUnit(a, b))) {
     byKind[kind] = count2;
     for (const tool of KIND_TOOLS[kind] ?? []) tools.add(tool);
   }
   return { byKind, tools: [...tools].sort() };
-}
-
-// ../core/src/text.ts
-var UNSAFE_RANGES = [
-  [0, 31],
-  [127, 159],
-  [8203, 8207],
-  [8232, 8238],
-  [8294, 8297],
-  [65279, 65279]
-];
-var unicodeEscape = (code2) => `\\u${code2.toString(16).padStart(4, "0")}`;
-var classPart = ([from, to]) => from === to ? unicodeEscape(from) : `${unicodeEscape(from)}-${unicodeEscape(to)}`;
-var UNSAFE_PATTERN = new RegExp(`[${UNSAFE_RANGES.map(classPart).join("")}]`, "g");
-function isUnsafeCode(code2) {
-  return UNSAFE_RANGES.some(([from, to]) => code2 >= from && code2 <= to);
-}
-function hasUnsafeChar(text) {
-  for (let i = 0; i < text.length; i++) if (isUnsafeCode(text.charCodeAt(i))) return true;
-  return false;
-}
-function replaceUnsafeChars(text, replacement) {
-  return text.replace(UNSAFE_PATTERN, replacement);
 }
 
 // ../core/src/report.ts
@@ -26291,12 +26325,7 @@ function buildReport(input) {
 var MAX_REASON_CHARS = 200;
 function oneLine(text) {
   const line = replaceUnsafeChars(text, " ").replace(/\s+/g, " ").trim();
-  if (line.length <= MAX_REASON_CHARS) return line;
-  const end = isHighSurrogate(line.charCodeAt(MAX_REASON_CHARS - 1)) ? MAX_REASON_CHARS - 1 : MAX_REASON_CHARS;
-  return line.slice(0, end);
-}
-function isHighSurrogate(code2) {
-  return code2 >= 55296 && code2 <= 56319;
+  return cutCodeUnits(line, MAX_REASON_CHARS, { marker: false });
 }
 function indexUnavailableLevel(mode, unavailable2, configUnavailable) {
   if (mode !== "block") return "warn";
@@ -27750,8 +27779,7 @@ function computeDiffCoverage(diff, coverage2, threshold, isExcluded = () => fals
       uncoveredLines: uncovered.sort((a, b) => a - b)
     });
   }
-  const byPath = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-  files.sort((a, b) => byPath(a.path, b.path));
+  files.sort((a, b) => byCodeUnit(a.path, b.path));
   const meetsThreshold = threshold === null || coverable === 0 || atLeast(covered, coverable, threshold);
   let percent = percentOf(covered, coverable);
   if (!meetsThreshold && percent !== null && threshold !== null && percent >= threshold) {
@@ -27763,7 +27791,7 @@ function computeDiffCoverage(diff, coverage2, threshold, isExcluded = () => fals
     coveredLines: covered,
     coverableLines: coverable,
     files,
-    ...excluded.size > 0 ? { excludedFiles: [...excluded].sort(byPath) } : {},
+    ...excluded.size > 0 ? { excludedFiles: [...excluded].sort(byCodeUnit) } : {},
     meetsThreshold
   };
 }
@@ -27786,7 +27814,6 @@ function atLeast(covered, total, threshold) {
 // ../core/src/gateInputs.ts
 var DEFAULT_CONFIG_PATH = ".pharn/ci.yml";
 var WORKFLOWS_DIR = ".github/workflows/";
-var byCodeUnit = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function configRepoPath(configPath, repoRoot) {
   const config = normalizePath(configPath ?? DEFAULT_CONFIG_PATH, repoRoot);
   const inRepo = !isAbsolutePath(config) && config !== ".." && !config.startsWith("../");
@@ -27870,21 +27897,17 @@ function strongest(severities) {
   return top;
 }
 function boundDetail(text) {
-  if (text.length <= MAX_DETAIL) return text;
-  const high = (code2) => code2 >= 55296 && code2 <= 56319;
-  const end = high(text.charCodeAt(MAX_DETAIL - 2)) ? MAX_DETAIL - 2 : MAX_DETAIL - 1;
-  return `${text.slice(0, end)}\u2026`;
+  return cutCodeUnits(text, MAX_DETAIL);
 }
 
 // ../core/src/policy/agents.ts
-var byCodeUnit2 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function tidy(...lists) {
   const out = /* @__PURE__ */ new Set();
   for (const list of lists) {
     if (!Array.isArray(list)) continue;
     for (const value of list) if (typeof value === "string") out.add(value);
   }
-  return [...out].sort(byCodeUnit2);
+  return [...out].sort(byCodeUnit);
 }
 function agentPolicyOf(policy, from) {
   const empty = {
@@ -27937,7 +27960,6 @@ function agentPolicyOf(policy, from) {
 
 // ../core/src/policy/messages.ts
 var MAX_NAMED_SETTINGS = 20;
-var byCodeUnit3 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function policyUnavailableMessage(unavailable2) {
   const status = unavailable2.status === void 0 ? "" : `, status ${String(unavailable2.status)}`;
   const requestId = unavailable2.requestId === void 0 ? "" : `, request id ${unavailable2.requestId}`;
@@ -27960,7 +27982,7 @@ function policyOverrideIgnoredMessage(ignored) {
     seen.add(key);
     return true;
   });
-  unique.sort((a, b) => byCodeUnit3(a.setting, b.setting) || byCodeUnit3(a.layer, b.layer));
+  unique.sort((a, b) => byCodeUnit(a.setting, b.setting) || byCodeUnit(a.layer, b.layer));
   const named = unique.slice(0, MAX_NAMED_SETTINGS).map((record) => {
     const numbers = record.given !== void 0 && record.applied !== void 0 ? ` ${formatNumber(record.given)} \u2192 ${formatNumber(record.applied)}` : "";
     return `${record.setting} (${record.layer})${numbers}`;
@@ -28278,7 +28300,6 @@ function mcpGlobMatches(entry, text) {
 var SETTINGS_PATH = /^(?:.*\/)?\.claude\/settings(?:\.local)?\.json$/;
 var MCP_PATH = /^(?:.*\/)?(?:\.mcp\.json|\.cursor\/mcp\.json|\.vscode\/mcp\.json)$/;
 var JSONC_MCP_PATH = /^(?:.*\/)?(?:\.cursor|\.vscode)\/mcp\.json$/;
-var byCodeUnit4 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function isPolicySettingsPath(path) {
   return SETTINGS_PATH.test(path);
 }
@@ -28295,7 +28316,7 @@ function policySettingsPaths(repoFiles, document2) {
   for (const path of repoFiles) {
     if (isPolicySettingsPath(path) || mcp && isPolicyMcpPath(path)) paths.add(path);
   }
-  return [...paths].sort(byCodeUnit4);
+  return [...paths].sort(byCodeUnit);
 }
 function settingsUnitAnchor(path) {
   const at = path.lastIndexOf(".claude/settings");
@@ -28557,7 +28578,6 @@ function ruleFamily(text) {
 }
 
 // ../core/src/policy/settings/model.ts
-var byCodeUnit5 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var ALL = ["P02", "P03", "P04", "P05", "P06"];
 var MCP_READERS = ["P04", "P05"];
 function newUnit(anchor) {
@@ -28727,7 +28747,7 @@ function readSettingsModel(sources, document2) {
     }
   };
   for (const unit of units.values()) {
-    unit.paths = [...new Set(unit.paths)].sort(byCodeUnit5);
+    unit.paths = [...new Set(unit.paths)].sort(byCodeUnit);
     const main = `${unit.anchor}.claude/settings.json`;
     const local = `${unit.anchor}.claude/settings.local.json`;
     unit.reportPath = unit.paths.includes(main) ? main : unit.paths.includes(local) ? local : main;
@@ -28736,7 +28756,7 @@ function readSettingsModel(sources, document2) {
       if (root2 !== void 0 && root2.type === "object") readSettings(unit, path, root2.members);
     }
   }
-  for (const file of [...sources.files].sort((a, b) => byCodeUnit5(a.path, b.path))) {
+  for (const file of [...sources.files].sort((a, b) => byCodeUnit(a.path, b.path))) {
     if (!readMcp || !isPolicyMcpPath(file.path) || isPolicySettingsPath(file.path)) continue;
     const root2 = parsed.get(file.path);
     if (root2 === void 0) continue;
@@ -28747,7 +28767,7 @@ function readSettingsModel(sources, document2) {
     }
   }
   const root = units.get("");
-  const rest = [...units.values()].filter((unit) => unit !== root).sort((a, b) => byCodeUnit5(a.anchor, b.anchor));
+  const rest = [...units.values()].filter((unit) => unit !== root).sort((a, b) => byCodeUnit(a.anchor, b.anchor));
   return { units: [root, ...rest], mcpServers, problems };
 }
 
@@ -28755,10 +28775,7 @@ function readSettingsModel(sources, document2) {
 var MAX_SHOWN = 80;
 function shownPattern(text) {
   const pattern = replaceUnsafeChars(text, "\uFFFD");
-  if (pattern.length <= MAX_SHOWN) return pattern;
-  const high = pattern.charCodeAt(MAX_SHOWN - 2);
-  const end = high >= 55296 && high <= 56319 ? MAX_SHOWN - 2 : MAX_SHOWN - 1;
-  return `${pattern.slice(0, end)}\u2026`;
+  return cutCodeUnits(pattern, MAX_SHOWN);
 }
 
 // ../core/src/policy/rules/p05.ts
@@ -29048,7 +29065,6 @@ var DIRECTORY_KINDS = /* @__PURE__ */ new Set([
   "goosehints"
 ]);
 var CONTINUE_CONFIG_EXTENSIONS = [".json", ".yaml", ".yml"];
-var byCodeUnit6 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function isInstructionFile(file) {
   if (!INSTRUCTION_KIND_SET.has(file.kind)) return false;
   if (file.kind === "continue-rules") {
@@ -29083,7 +29099,7 @@ function agentInstructionPaths(inventory) {
   }
   const kept = [];
   for (const paths of scopes.values()) if (paths.size >= 2) kept.push(...paths);
-  return [...new Set(kept)].sort(byCodeUnit6);
+  return [...new Set(kept)].sort(byCodeUnit);
 }
 var PACKAGE_MANAGERS = ["npm", "pnpm", "yarn", "bun"];
 var TEST_RUNNERS = ["vitest", "jest"];
@@ -29581,10 +29597,9 @@ function consistencySeverity(policy) {
     fallback: "warn"
   });
 }
-var byCodeUnit7 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var overlaps = (a, b) => a.some((tool) => b.includes(tool));
 function classFindings(files, prefix, severity2) {
-  const sorted = [...files].sort((a, b) => byCodeUnit7(a.path, b.path));
+  const sorted = [...files].sort((a, b) => byCodeUnit(a.path, b.path));
   const findings = [];
   for (const file of sorted) {
     const others = sorted.filter((other) => other !== file && !overlaps(file.tools, other.tools));
@@ -29648,7 +29663,6 @@ function detectP07(input, severity2) {
 }
 
 // ../core/src/policy/rules/p08.ts
-var byCodeUnit8 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function detectP08(input) {
   const { policy } = input;
   if (policy.source !== "app" && policy.source !== "file" || policy.document === null) return [];
@@ -29656,7 +29670,7 @@ function detectP08(input) {
   if (!Array.isArray(patterns) || patterns.length === 0) return [];
   const compiled = patterns.map((pattern) => ({ shown: shownPattern(pattern), matches: compileGlob(pattern) }));
   const findings = [];
-  for (const path of [...new Set(input.repoFiles)].sort(byCodeUnit8)) {
+  for (const path of [...new Set(input.repoFiles)].sort(byCodeUnit)) {
     const hit = compiled.find((entry) => entry.matches(path));
     if (hit === void 0) continue;
     findings.push({
@@ -29680,10 +29694,9 @@ var SETTINGS_LISTS = [
   "forbidden_mcp_servers",
   "required_hooks"
 ];
-var byCodeUnit9 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function settings(ignored, layer) {
   const names = [...new Set(ignored.filter((record) => record.layer === layer).map((record) => record.setting))].sort(
-    byCodeUnit9
+    byCodeUnit
   );
   const shown2 = names.slice(0, MAX_SETTINGS).join(", ");
   return names.length > MAX_SETTINGS ? `${shown2}, and ${names.length - MAX_SETTINGS} more` : shown2;
@@ -29715,7 +29728,7 @@ function detectP09(input, view) {
       detail: `this change edits the config, which sets ${settings(input.ignored, "config")} looser than the policy`
     });
   }
-  const paths = [...touched].sort(byCodeUnit9);
+  const paths = [...touched].sort(byCodeUnit);
   if (input.ignored.some((record) => record.layer === "input")) {
     for (const path of paths) {
       if (!path.startsWith(WORKFLOWS_DIR2)) continue;
@@ -29745,7 +29758,7 @@ function detectP09(input, view) {
     }
     const failing = view.failing.get(path);
     if (failing !== void 0) {
-      const ids = [...new Set(failing.ids)].sort(byCodeUnit9);
+      const ids = [...new Set(failing.ids)].sort(byCodeUnit);
       findings.push({
         id: "P09",
         fallback: view.uncheckable.has(path) ? "block" : failing.severity,
@@ -29820,7 +29833,6 @@ function detectP11(input) {
 }
 
 // ../core/src/policy/rules/problems.ts
-var byCodeUnit10 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function settingsProblemLevel(problem, setup2) {
   const deny = (setup2?.required_permissions_deny?.length ?? 0) > 0;
   const hooks = (setup2?.required_hooks?.length ?? 0) > 0;
@@ -29848,13 +29860,12 @@ function reportedProblems(problems, setup2, inForce) {
     else if (level === "error") known2.level = "error";
   }
   return [...kept.values()].sort(
-    (a, b) => (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : byCodeUnit10(a.path, b.path)) || (a.line === b.line ? 0 : a.line === null ? -1 : b.line === null ? 1 : a.line - b.line) || byCodeUnit10(a.reason, b.reason)
+    (a, b) => (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : byCodeUnit(a.path, b.path)) || (a.line === b.line ? 0 : a.line === null ? -1 : b.line === null ? 1 : a.line - b.line) || byCodeUnit(a.reason, b.reason)
   );
 }
 
 // ../core/src/policy/rules/evaluate.ts
 var MAX_RULE_VIOLATIONS = 50;
-var byCodeUnit11 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var SETTINGS_READERS = ["P02", "P03", "P04", "P05", "P06"];
 var SETTINGS_RULES = SETTINGS_READERS;
 function evaluatePolicyRules(input) {
@@ -29958,7 +29969,7 @@ function evaluatePolicyRules(input) {
   }
   let violations = [...first, ...resolve2(detectP09(input, view))];
   violations.sort(
-    (a, b) => byCodeUnit11(a.id, b.id) || (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : byCodeUnit11(a.path, b.path)) || (a.line === b.line ? 0 : a.line === null ? -1 : b.line === null ? 1 : a.line - b.line) || byCodeUnit11(a.detail, b.detail)
+    (a, b) => byCodeUnit(a.id, b.id) || (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : byCodeUnit(a.path, b.path)) || (a.line === b.line ? 0 : a.line === null ? -1 : b.line === null ? 1 : a.line - b.line) || byCodeUnit(a.detail, b.detail)
   );
   const omitted = {};
   const seen = /* @__PURE__ */ new Map();
@@ -29972,7 +29983,7 @@ function evaluatePolicyRules(input) {
   const evaluation = {
     violations,
     omitted,
-    lowered: [...lowered].sort(byCodeUnit11),
+    lowered: [...lowered].sort(byCodeUnit),
     ignored: [...input.agentPolicy?.ignored ?? [], ...consistency?.ignored ?? []],
     ...settings2 === void 0 ? {} : { settings: settings2 }
   };
@@ -29984,7 +29995,6 @@ function evaluatePolicyRules(input) {
 
 // ../core/src/policy/rules/messages.ts
 var MAX_LISTED = 20;
-var byCodeUnit12 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function listOf(paths, total) {
   const named = paths.slice(0, MAX_LISTED).map(codeSpan).join(", ");
   return total > MAX_LISTED ? `${named} and ${total - MAX_LISTED} more` : named;
@@ -30090,7 +30100,7 @@ var RULE_MESSAGES = {
     return `${head}: ${listOf(kept, total)}.${notListed}`;
   },
   P09: (violations, omitted) => {
-    const paths = pathsOf(violations).sort(byCodeUnit12);
+    const paths = pathsOf(violations).sort(byCodeUnit);
     const total = paths.length + omitted;
     const head = total === 1 ? "This change edits 1 file that the org policy guards" : `This change edits ${total} files that the org policy guards`;
     return `${head}: ${listOf(paths, total)}. The reason for each is in the report's policy violations.`;
@@ -30119,7 +30129,7 @@ function settingsInvalidMessage(settings2) {
 }
 function policyRuleMessages(evaluation) {
   const messages = [];
-  const ids = [...new Set(evaluation.violations.map((violation) => violation.id))].sort(byCodeUnit12);
+  const ids = [...new Set(evaluation.violations.map((violation) => violation.id))].sort(byCodeUnit);
   for (const id of ids) {
     const text = RULE_MESSAGES[id];
     if (text === void 0) continue;
@@ -30491,7 +30501,6 @@ var SECRET_SCAN_KINDS = [
 ];
 var SCAN_KINDS = new Set(SECRET_SCAN_KINDS);
 var CONTINUE_CONFIG_EXTENSIONS2 = [".json", ".yaml", ".yml"];
-var byCodeUnit13 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function agentConfigSecretPaths(inventory) {
   const paths = /* @__PURE__ */ new Set();
   for (const file of inventory.files) {
@@ -30502,7 +30511,7 @@ function agentConfigSecretPaths(inventory) {
     }
     paths.add(file.path);
   }
-  return [...paths].sort(byCodeUnit13);
+  return [...paths].sort(byCodeUnit);
 }
 var MIN_S11_CHARS = 8;
 function lineStarts(text) {
@@ -30549,7 +30558,7 @@ function scanAgentConfigSecrets(files) {
     for (const span of spans) add(span.id, span.start);
     for (const offset of literalFindings(pairs, spans)) add("S11", offset);
   }
-  return [...found.values()].sort((a, b) => byCodeUnit13(a.id, b.id) || byCodeUnit13(a.path, b.path) || a.line - b.line);
+  return [...found.values()].sort((a, b) => byCodeUnit(a.id, b.id) || byCodeUnit(a.path, b.path) || a.line - b.line);
 }
 
 // ../core/src/secrets/messages.ts
@@ -30587,7 +30596,6 @@ var FAIL_CLOSED_REASONS = /* @__PURE__ */ new Set([
   "over-total-cap",
   "unsafe-path"
 ]);
-var byCodeUnit14 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function levelOf2(id) {
   return id === "S10" ? "warn" : id === "S11" ? "info" : "error";
 }
@@ -30613,7 +30621,7 @@ function agentConfigSecretMessages(sources, selected) {
   }
   const messages = [];
   const findings = scanAgentConfigSecrets(sources.files);
-  const ids = [...new Set(findings.map((finding2) => finding2.id))].sort(byCodeUnit14);
+  const ids = [...new Set(findings.map((finding2) => finding2.id))].sort(byCodeUnit);
   for (const id of ids) {
     const ofId = findings.filter((finding2) => finding2.id === id);
     messages.push({
@@ -30629,7 +30637,7 @@ function agentConfigSecretMessages(sources, selected) {
     if (!read.has(path) && !dropped.has(path)) unscanned.push({ path, reason: "not-read" });
   }
   if (unscanned.length > 0) {
-    unscanned.sort((a, b) => byCodeUnit14(a.path, b.path));
+    unscanned.sort((a, b) => byCodeUnit(a.path, b.path));
     messages.push({
       level: unscanned.some((file) => FAIL_CLOSED_REASONS.has(file.reason)) ? "error" : "warn",
       code: "AGENT_CONFIG_SECRET_UNSCANNED",
@@ -30719,7 +30727,6 @@ function jsTsFlavor(ext) {
 
 // ../core/src/testFiles.ts
 var TEST_DIRECTORIES = /* @__PURE__ */ new Set(["test", "tests", "__tests__"]);
-var byCodeUnit15 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var TEST_BASENAME = [
   new RegExp(`\\.(?:test|spec)\\.(?:${JS_TS_EXTENSIONS.join("|")})$`),
   /\.(?:e2e|pw)\.ts$/,
@@ -30770,7 +30777,7 @@ function deletedTestFiles(diff) {
     if (file.status === "deleted" && isTestFile(file.path)) found.add(file.path);
     else if (file.status === "renamed" && isTestFile(file.oldPath) && !isTestFile(file.path)) found.add(file.oldPath);
   }
-  return [...found].sort(byCodeUnit15);
+  return [...found].sort(byCodeUnit);
 }
 
 // ../core/src/signals/pythonAliases.ts
@@ -31205,7 +31212,7 @@ function textCutSignalFiles(diff, configPath, repoRoot) {
     const read = test && testLanguage(path) !== null || isWorkflowFile(path) || isPackageJsonFile(path) && file.status !== "added" || isPytestConfigFile(path) || !test && coverageSourceLanguage(path) !== null || config !== null && path === config;
     if (read) cut.add(path);
   }
-  return [...cut].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+  return [...cut].sort(byCodeUnit);
 }
 
 // ../core/src/signals/testName.ts
@@ -31217,16 +31224,11 @@ function withoutControls(text) {
 function fullTestName(block) {
   return block.path.join(NAME_SEPARATOR);
 }
-function isHighSurrogate2(code2) {
-  return code2 >= 55296 && code2 <= 56319;
-}
 function detailWithName(before, name, after) {
   const clean = withoutControls(name);
   const room = MAX_DETAIL2 - before.length - after.length;
   if (clean.length <= room) return `${before}${clean}${after}`;
-  let end = Math.max(0, room - 1);
-  if (end > 0 && isHighSurrogate2(clean.charCodeAt(end - 1))) end--;
-  return `${before}${clean.slice(0, end)}\u2026${after}`;
+  return `${before}${cutCodeUnits(clean, room)}${after}`;
 }
 function removedTestDetail(name, line) {
   return detailWithName(
@@ -31266,10 +31268,7 @@ function expectedValueEditedDetail(name, matcher) {
 var MAX_SUMMARY_NAME = 120;
 function summaryTestName(name) {
   const clean = withoutControls(name);
-  if (clean.length <= MAX_SUMMARY_NAME) return clean;
-  let end = MAX_SUMMARY_NAME - 1;
-  if (isHighSurrogate2(clean.charCodeAt(end - 1))) end--;
-  return `${clean.slice(0, end)}\u2026`;
+  return cutCodeUnits(clean, MAX_SUMMARY_NAME);
 }
 function droppedAssertionsDetail(name, baseCount, headCount) {
   return detailWithName(
@@ -31451,7 +31450,7 @@ function collapseWhitespace(text) {
   return text.replace(/\s+/g, " ");
 }
 function cutName(name) {
-  return name.length > MAX_TEST_NAME_CHARS ? name.slice(0, MAX_TEST_NAME_CHARS) : name;
+  return cutCodeUnits(name, MAX_TEST_NAME_CHARS, { marker: false });
 }
 function isJsSpace(code2) {
   return code2 === 32 || code2 >= 9 && code2 <= 13 || code2 === 160 || code2 === 5760 || code2 >= 8192 && code2 <= 8202 || code2 === 8232 || code2 === 8233 || code2 === 8239 || code2 === 8287 || code2 === 12288 || code2 === 65279;
@@ -31916,7 +31915,6 @@ function indexTestFile(path, text) {
 }
 
 // ../core/src/signals/testPairs.ts
-var byCodeUnit16 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var EXTENSION_LANGUAGE = new Map([
   ...JS_TS_EXTENSIONS.map((extension) => [extension, jsTsFlavor(extension)]),
   ["py", "py"]
@@ -31992,7 +31990,7 @@ function indexTouchedTestFiles(diff, sources, python) {
   const pairs = [];
   const unavailable2 = [];
   const compared2 = [...comparedPaths.values()].sort(
-    (a, b) => byCodeUnit16(a.basePath, b.basePath) || byCodeUnit16(a.headPath, b.headPath)
+    (a, b) => byCodeUnit(a.basePath, b.basePath) || byCodeUnit(a.headPath, b.headPath)
   );
   for (const file of compared2) {
     const base = indexSide("base", file.basePath, file.language);
@@ -32013,19 +32011,18 @@ function indexTouchedTestFiles(diff, sources, python) {
       unavailable2.push({ path: file.headPath, reason });
     }
   }
-  unavailable2.sort((a, b) => byCodeUnit16(a.path, b.path));
+  unavailable2.sort((a, b) => byCodeUnit(a.path, b.path));
   const added = [];
-  for (const [headPath, language] of [...addedPaths].sort((a, b) => byCodeUnit16(a[0], b[0]))) {
+  for (const [headPath, language] of [...addedPaths].sort((a, b) => byCodeUnit(a[0], b[0]))) {
     const head = indexSide("head", headPath, language);
     if (head.ok) added.push({ headPath, head: head.tests, headMocks: head.mocks, headGroups: head.groups });
   }
-  return { pairs, added, unavailable: unavailable2, notRun: null, languages: [...languages].sort(byCodeUnit16) };
+  return { pairs, added, unavailable: unavailable2, notRun: null, languages: [...languages].sort(byCodeUnit) };
 }
 
 // ../core/src/signals/testChanges.ts
 var MAX_TEST_CHANGE_ENTRIES = 200;
-var byCodeUnit17 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-var byEntry = (a, b) => byCodeUnit17(a.path, b.path) || a.line - b.line;
+var byEntry = (a, b) => byCodeUnit(a.path, b.path) || a.line - b.line;
 var KINDS = ["removed", "modified", "renamed", "added"];
 var entryOf = (path, block) => ({
   path,
@@ -32088,7 +32085,7 @@ function summarizeTestChanges(touched, match) {
       modified: lists.modified.length,
       renamed: lists.renamed.length
     },
-    files: [...rows.values()].sort((a, b) => byCodeUnit17(a.path, b.path)),
+    files: [...rows.values()].sort((a, b) => byCodeUnit(a.path, b.path)),
     added: kept.added,
     removed: kept.removed,
     modified: kept.modified,
@@ -32138,7 +32135,6 @@ function containsAtLeast(old, fresh, ratio) {
   if (old.size === 0) return true;
   return ratio.den * overlap(old, fresh) >= ratio.num * old.size;
 }
-var byCodeUnit18 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var CursorHeap = class {
   list = [];
   at = [];
@@ -32215,7 +32211,7 @@ var SimilarityIndex = class {
   }
   prefix(set) {
     const frequency = this.frequency;
-    const ordered = [...set].sort((a, b) => (frequency.get(a) ?? 0) - (frequency.get(b) ?? 0) || byCodeUnit18(a, b));
+    const ordered = [...set].sort((a, b) => (frequency.get(a) ?? 0) - (frequency.get(b) ?? 0) || byCodeUnit(a, b));
     return ordered.slice(0, set.size - ceilRatio(set.size, this.ratio) + 1);
   }
   /**
@@ -32375,7 +32371,6 @@ function eachReplacements(candidates, fresh) {
 }
 
 // ../core/src/signals/testMatch.ts
-var byCodeUnit19 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var byLine = (a, b) => a.line - b.line;
 var leafName = (block) => block.path[block.path.length - 1] ?? "";
 var OtherFileList = class {
@@ -32433,7 +32428,7 @@ function matchTests(touched) {
   const left = [];
   const tokensOf = tokenSetMemo();
   const files = [...touched.pairs].sort(
-    (a, b) => byCodeUnit19(a.basePath, b.basePath) || byCodeUnit19(a.headPath, b.headPath)
+    (a, b) => byCodeUnit(a.basePath, b.basePath) || byCodeUnit(a.headPath, b.headPath)
   );
   let fileIndex = 0;
   for (const file of files) {
@@ -32544,13 +32539,13 @@ function matchTests(touched) {
     for (const entry of clearing) entry.used = true;
     for (const candidate of afterRename) if (!cleared.has(candidate.block)) left.push(candidate);
   }
-  for (const file of [...touched.added].sort((a, b) => byCodeUnit19(a.headPath, b.headPath))) {
+  for (const file of [...touched.added].sort((a, b) => byCodeUnit(a.headPath, b.headPath))) {
     const index = fileIndex++;
     for (const block of [...file.head].sort(byLine)) {
       fresh.push({ fileIndex: index, path: file.headPath, block, order: 0, used: false });
     }
   }
-  fresh.sort((a, b) => byCodeUnit19(a.path, b.path) || a.block.line - b.block.line);
+  fresh.sort((a, b) => byCodeUnit(a.path, b.path) || a.block.line - b.block.line);
   fresh.forEach((entry, at) => {
     entry.order = at;
   });
@@ -32642,7 +32637,6 @@ function matchTests(touched) {
 }
 
 // ../core/src/signals/ti01Moved.ts
-var byCodeUnit20 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var leafOf = (block) => block.path[block.path.length - 1] ?? "";
 function sameStemDeletions(diff) {
   const stems = /* @__PURE__ */ new Map();
@@ -32671,7 +32665,7 @@ function movedTestFiles(diff, sources, python, touched) {
   const describes = /* @__PURE__ */ new Map();
   const moved = { files: /* @__PURE__ */ new Set(), compared: /* @__PURE__ */ new Set(), pairs: [], groups: describes };
   if (touched.notRun !== null || "unavailable" in sources.base) return moved;
-  const deleted = diff.filter((file) => file.status === "deleted" && isTestFile(file.path) && file.binary !== true).map((file) => file.path).sort(byCodeUnit20);
+  const deleted = diff.filter((file) => file.status === "deleted" && isTestFile(file.path) && file.binary !== true).map((file) => file.path).sort(byCodeUnit);
   if (deleted.length === 0) return moved;
   const texts = new Map(sources.base.files.map((file) => [file.path, file.text]));
   const pythonBase = python?.available ? new Map(python.base.map((file) => [file.path, file.result])) : null;
@@ -32707,7 +32701,7 @@ function movedTestFiles(diff, sources, python, touched) {
     }
   }
   if (fresh.length === 0) return moved;
-  fresh.sort((a, b) => byCodeUnit20(a.path, b.path) || a.block.line - b.block.line);
+  fresh.sort((a, b) => byCodeUnit(a.path, b.path) || a.block.line - b.block.line);
   const leaves = /* @__PURE__ */ new Map();
   const groups = /* @__PURE__ */ new Set();
   for (const entry of fresh) {
@@ -32753,7 +32747,6 @@ function movedTestFiles(diff, sources, python, touched) {
 }
 
 // ../core/src/signals/ti01.ts
-var byCodeUnit21 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_DETAIL3 = 300;
 function removedTests(file) {
   if (file.hunks === void 0) return "unknown";
@@ -32800,9 +32793,9 @@ function detectTI01(diff, mode, moved = /* @__PURE__ */ new Set(), compared2 = /
       severity2 = "info";
       detail = "Test file deleted; every test it held is found again, by name and body, in another test file of this change.";
     }
-    found.set(path, { id: "TI01", severity: severity2, path, line: null, detail: detail.slice(0, MAX_DETAIL3) });
+    found.set(path, { id: "TI01", severity: severity2, path, line: null, detail: cutCodeUnits(detail, MAX_DETAIL3) });
   }
-  return [...found.values()].sort((a, b) => byCodeUnit21(a.path, b.path));
+  return [...found.values()].sort((a, b) => byCodeUnit(a.path, b.path));
 }
 
 // ../core/src/signals/ti02.ts
@@ -32817,7 +32810,6 @@ function detectTI02(match, mode) {
 }
 
 // ../core/src/signals/ti03.ts
-var byCodeUnit22 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE = 20;
 var DETAILS = {
   existing: "An unconditional skip was added to a test that the diff shows existed before this change, so that test no longer runs.",
@@ -32985,7 +32977,7 @@ function detectTI03(diff, mode, sources, pairs = []) {
       });
     }
   }
-  return signals.sort((a, b) => byCodeUnit22(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti03Pairs.ts
@@ -33182,7 +33174,6 @@ function detectTI03Pairs(input) {
 }
 
 // ../core/src/signals/ti04.ts
-var byCodeUnit23 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE2 = 20;
 var DETAIL = "A focused-run marker (`.only`, `fit` or `fdescribe`) was added, so the runner may skip the other tests of this file or of the whole run.";
 function detectTI04(diff, mode) {
@@ -33210,7 +33201,7 @@ function detectTI04(diff, mode) {
       signals.push({ id: "TI04", severity: mode, path: file.path, line, detail: DETAIL });
     }
   }
-  return signals.sort((a, b) => byCodeUnit23(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti05.ts
@@ -33944,7 +33935,6 @@ var MODIFIERS_THAT_EXCUSE2 = ["skip", "todo", "skipIf", "runIf"];
 var TAUTOLOGY_REASON = "an assertion that compares a literal with itself was added";
 var TRY_REASON = "an assertion moved into a try block that has a catch";
 var RETURN_REASON = "an assertion moved after an early return";
-var byCodeUnit24 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function counts(labels) {
   const map = /* @__PURE__ */ new Map();
   for (const label of labels) map.set(label, (map.get(label) ?? 0) + 1);
@@ -33953,7 +33943,7 @@ function counts(labels) {
 function surplus(from, other) {
   const own = counts(from);
   const against = counts(other);
-  return [...own].filter(([label, n]) => n > (against.get(label) ?? 0)).map(([label]) => label).sort(byCodeUnit24);
+  return [...own].filter(([label, n]) => n > (against.get(label) ?? 0)).map(([label]) => label).sort(byCodeUnit);
 }
 function listed(labels, cut) {
   if (labels.length <= cut) return labels.join(", ");
@@ -34018,7 +34008,7 @@ function detailOf(reasons) {
     detail = `The test was weakened: ${reasons.map((reason) => reason(cut)).join("; ")}.`;
     if (detail.length <= MAX_DETAIL4) return detail;
   }
-  return `${detail.slice(0, MAX_DETAIL4 - 1)}\u2026`;
+  return cutCodeUnits(detail, MAX_DETAIL4);
 }
 function detectTI06(match) {
   const found = [];
@@ -34035,7 +34025,6 @@ function detectTI06(match) {
 var MAX_TEST_SOURCE_FILES = 200;
 var MAX_TEST_SOURCE_FILE_BYTES = 524288;
 var MAX_TEST_SOURCE_TOTAL_BYTES = 16777216;
-var byCodeUnit25 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var TEST_CONFIG_PREFIXES = [
   "vitest.config.",
   "vite.config.",
@@ -34069,7 +34058,7 @@ function selectTestSourcePaths(diff) {
       head.add(file.path);
     }
   }
-  return { base: [...base].sort(byCodeUnit25), head: [...head].sort(byCodeUnit25) };
+  return { base: [...base].sort(byCodeUnit), head: [...head].sort(byCodeUnit) };
 }
 function isUnsafeTestSourcePath(path) {
   if (path === "" || path.startsWith("/")) return true;
@@ -34084,7 +34073,7 @@ function planTestSourceReads(paths, objects) {
   const dropped = [];
   let total = 0;
   let tripped = false;
-  for (const path of [...new Set(paths)].sort(byCodeUnit25)) {
+  for (const path of [...new Set(paths)].sort(byCodeUnit)) {
     if (isUnsafeTestSourcePath(path)) {
       dropped.push({ path, reason: "unsafe-path" });
       continue;
@@ -34573,7 +34562,6 @@ function escapeDetailText(text) {
 }
 
 // ../core/src/signals/ti10.ts
-var byCodeUnit26 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE3 = 20;
 var DETAILS2 = {
   "or-true": "A test script now ignores the exit status of a command, so it passes even when the tests fail.",
@@ -34716,18 +34704,17 @@ function detectTI10(diff, options) {
     for (const hook2 of removedHooks) {
       if (!addedKeys.has(hook2.key)) found.push({ line: hook2.line, kind: "hook-removed" });
     }
-    found.sort((a, b) => a.line - b.line || byCodeUnit26(DETAILS2[a.kind], DETAILS2[b.kind]));
+    found.sort((a, b) => a.line - b.line || byCodeUnit(DETAILS2[a.kind], DETAILS2[b.kind]));
     for (const { line, kind } of found.slice(0, MAX_PER_FILE3)) {
       signals.push({ id: "TI10", severity: options.mode, path: file.path, line, detail: DETAILS2[kind] });
     }
   }
   return signals.sort(
-    (a, b) => byCodeUnit26(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit26(a.detail, b.detail)
+    (a, b) => byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit(a.detail, b.detail)
   );
 }
 
 // ../core/src/signals/ti08.ts
-var byCodeUnit27 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_SNAPSHOT_FILES = 10;
 var MIN_INLINE_REWRITES = 10;
 var MAX_FLAG_SIGNALS_PER_FILE = 20;
@@ -34763,7 +34750,7 @@ function massChangeDetail(count2, firstPaths) {
   return `${head}${tail}`;
 }
 function detectSnapshotFiles(diff) {
-  const counted2 = [...new Set(diff.filter(countsAsChangedSnapshot).map((file) => file.path))].sort(byCodeUnit27);
+  const counted2 = [...new Set(diff.filter(countsAsChangedSnapshot).map((file) => file.path))].sort(byCodeUnit);
   if (counted2.length <= MAX_SNAPSHOT_FILES) return [];
   return [
     {
@@ -34881,7 +34868,7 @@ function detectTI08(diff) {
   const signals = [...detectSnapshotFiles(diff), ...detectInlineRewrites(diff)];
   for (const file of diff) signals.push(...detectScriptFlags(file), ...detectPytestFlag(file));
   return signals.sort(
-    (a, b) => byCodeUnit27(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit27(a.detail, b.detail)
+    (a, b) => byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit(a.detail, b.detail)
   );
 }
 
@@ -34981,21 +34968,11 @@ function replaceUnsafe(text) {
   }
   return out;
 }
-function cutText(text, limit) {
-  const safe = replaceUnsafe(text);
-  if (safe.length <= limit) return safe;
-  const high = safe.charCodeAt(limit - 1);
-  const end = high >= 55296 && high <= 56319 ? limit - 1 : limit;
-  return `${safe.slice(0, end)}\u2026`;
-}
 function cutValue(text) {
-  return cutText(text, MAX_VALUE_CHARS2);
+  return cutCodeUnits(replaceUnsafe(text), MAX_VALUE_CHARS2);
 }
 function cutDetail(text) {
-  const safe = replaceUnsafe(text);
-  if (safe.length <= 300) return safe;
-  const high = safe.charCodeAt(298);
-  return `${safe.slice(0, high >= 55296 && high <= 56319 ? 298 : 299)}\u2026`;
+  return cutCodeUnits(replaceUnsafe(text), 300);
 }
 var IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
 var DIGITS = /^\d+$/;
@@ -35005,7 +34982,7 @@ function keyText(segments) {
     if (IDENTIFIER.test(segment) || DIGITS.test(segment)) out += out === "" ? segment : `.${segment}`;
     else out += `[${JSON.stringify(segment)}]`;
   }
-  return cutText(out, MAX_KEY_CHARS2);
+  return cutCodeUnits(replaceUnsafe(out), MAX_KEY_CHARS2);
 }
 var isIdentChar2 = (ch) => ch !== void 0 && (/[\w$]/.test(ch) || ch.charCodeAt(0) > 127);
 function normalizeOpaque(source) {
@@ -35058,7 +35035,7 @@ function printValue(value) {
     case "array":
       return `[${value.items.map(printValue).join(",")}]`;
     case "object": {
-      const keys = [...value.entries.keys()].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+      const keys = [...value.entries.keys()].sort(byCodeUnit);
       const parts = keys.map(
         (key) => `${JSON.stringify(key)}:${printValue(value.entries.get(key).value)}`
       );
@@ -36323,7 +36300,6 @@ function evaluateRules(kind, base, head, mode) {
 }
 
 // ../core/src/signals/ti09.ts
-var byCodeUnit28 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function lookupOf2(side) {
   const texts = /* @__PURE__ */ new Map();
   const dropped = /* @__PURE__ */ new Map();
@@ -36377,7 +36353,7 @@ function detectTI09(diff, sources, mode) {
     }
     return readTestConfig(candidate.kind, path, text.text);
   };
-  const sorted = [...candidates].sort((a, b) => byCodeUnit28(a.path, b.path) || byCodeUnit28(a.oldPath, b.oldPath));
+  const sorted = [...candidates].sort((a, b) => byCodeUnit(a.path, b.path) || byCodeUnit(a.oldPath, b.oldPath));
   for (const candidate of sorted) {
     const base = candidate.added ? null : readSide(baseSide, candidate, candidate.oldPath);
     const head = readSide(headSide, candidate, candidate.path);
@@ -36407,13 +36383,12 @@ function detectTI09(diff, sources, mode) {
   }
   return {
     signals,
-    unavailable: [...unavailable2].map(([path, reason]) => ({ path, reason })).sort((a, b) => byCodeUnit28(a.path, b.path)),
+    unavailable: [...unavailable2].map(([path, reason]) => ({ path, reason })).sort((a, b) => byCodeUnit(a.path, b.path)),
     notRun: null
   };
 }
 
 // ../core/src/signals/ti11.ts
-var byCodeUnit29 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var PM_FLAGS = String.raw`(?:\s+(?:-r|--recursive|-w|--workspace-root|-ws|--workspaces|--if-present|(?:--filter|-F|-C|--dir|--prefix|--workspace|--cwd)(?:=|\s+)\S+))*`;
 var JS_LAUNCHER = String.raw`(?:(?:npx|bunx|yarn|pnpm${PM_FLAGS}(?:\s+(?:exec|dlx))?|bun\s+x|npm\s+exec)\s+)?`;
 var PY_WRAPPER = String.raw`(?:(?:uv|poetry|pipenv|pdm|hatch|rye)\s+run\s+)?`;
@@ -36608,7 +36583,7 @@ function detectTI11(diff, mode) {
     if (rushed !== void 0) emit("warn", rushed.line, SENTENCES.timeout);
   }
   return signals.sort(
-    (a, b) => byCodeUnit29(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit29(a.detail, b.detail)
+    (a, b) => byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit(a.detail, b.detail)
   );
 }
 
@@ -36721,15 +36696,9 @@ function resolveMock(testPath, mock, changed) {
 
 // ../core/src/signals/ti12.ts
 var MAX_SPECIFIER = 120;
-function isHighSurrogate3(code2) {
-  return code2 >= 55296 && code2 <= 56319;
-}
 function shownSpecifier(specifier) {
   const clean = detailWithName("", specifier, "");
-  if (clean.length <= MAX_SPECIFIER) return clean;
-  let end = MAX_SPECIFIER - 1;
-  if (end > 0 && isHighSurrogate3(clean.charCodeAt(end - 1))) end--;
-  return `${clean.slice(0, end)}\u2026`;
+  return cutCodeUnits(clean, MAX_SPECIFIER);
 }
 function detailOf2(mock, target) {
   return detailWithName(
@@ -36775,7 +36744,6 @@ function detectTI12(touched, diff) {
 }
 
 // ../core/src/signals/ti13.ts
-var byCodeUnit30 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_FILE4 = 20;
 var DETAILS3 = {
   istanbul: "An Istanbul coverage hint was added, so the code it marks leaves the coverage this check grades.",
@@ -36827,12 +36795,11 @@ function detectTI13(diff, mode) {
     }
   }
   return signals.sort(
-    (a, b) => byCodeUnit30(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit30(a.detail, b.detail)
+    (a, b) => byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit(a.detail, b.detail)
   );
 }
 
 // ../core/src/signals/ti14.ts
-var byCodeUnit31 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var PLAIN_NUMBER = /^\d+(?:\.\d+)?$/;
 function normalizedPattern(item) {
   try {
@@ -36960,11 +36927,10 @@ function detectTI14(diff, options) {
       });
     }
   }
-  return signals.sort((a, b) => byCodeUnit31(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return signals.sort((a, b) => byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti15.ts
-var byCodeUnit32 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var MAX_PER_CHANGE = 10;
 var MAX_DETAIL6 = 300;
 var MIN_STRING_LENGTH = 6;
@@ -37169,7 +37135,7 @@ function testLiterals(diff, manifests) {
           const key = keyOf3(literal);
           const roots = found.get(key) ?? /* @__PURE__ */ new Map();
           const first = roots.get(root);
-          if (first === void 0 || byCodeUnit32(file.path, first) < 0) roots.set(root, file.path);
+          if (first === void 0 || byCodeUnit(file.path, first) < 0) roots.set(root, file.path);
           found.set(key, roots);
         }
       }
@@ -37221,7 +37187,7 @@ function detectTI15(diff, options) {
       }
     }
   }
-  findings.sort((a, b) => byCodeUnit32(a.path, b.path) || a.line - b.line || byCodeUnit32(a.detail, b.detail));
+  findings.sort((a, b) => byCodeUnit(a.path, b.path) || a.line - b.line || byCodeUnit(a.detail, b.detail));
   const signals = findings.slice(0, MAX_PER_CHANGE).map(({ path, line, detail }) => ({ id: "TI15", severity: "info", path, line, detail }));
   const counts2 = /* @__PURE__ */ new Map();
   for (const { path } of findings.slice(MAX_PER_CHANGE)) counts2.set(path, (counts2.get(path) ?? 0) + 1);
@@ -37325,7 +37291,6 @@ var markerOf2 = (text, language) => {
   const line = text.length > MAX_LINE2 ? text.slice(0, MAX_LINE2) : text;
   return language === "jsts" ? jsMarker(line) : pythonMarker(line);
 };
-var byCodeUnit33 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function detectTI16(diff) {
   const signals = [];
   for (const file of diff) {
@@ -37363,14 +37328,13 @@ function detectTI16(diff) {
       detail: `This test file adds ${count2} that switch off a linter or type checker, so the checks they silence no longer run on that code.`
     });
   }
-  return signals.sort((a, b) => byCodeUnit33(a.path, b.path));
+  return signals.sort((a, b) => byCodeUnit(a.path, b.path));
 }
 
 // ../core/src/check.ts
-var byCodeUnit34 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function sortSignals(signals) {
   return signals.sort(
-    (a, b) => byCodeUnit34(a.id, b.id) || byCodeUnit34(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit34(a.detail, b.detail)
+    (a, b) => byCodeUnit(a.id, b.id) || byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit(a.detail, b.detail)
   );
 }
 function check(input) {
@@ -37929,7 +37893,6 @@ function gitDiffArgs(base, head = "HEAD") {
 
 // ../core/src/policy/apply.ts
 var STRICTNESS2 = { off: 0, warn: 1, block: 2 };
-var byCodeUnit35 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function rootKey(root) {
   return root === void 0 || root === null ? "." : root;
 }
@@ -37965,7 +37928,7 @@ function applyPolicy(layers, policy) {
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
-  }).sort((a, b) => byCodeUnit35(a.setting, b.setting) || byCodeUnit35(a.layer, b.layer));
+  }).sort((a, b) => byCodeUnit(a.setting, b.setting) || byCodeUnit(a.layer, b.layer));
   return result;
 }
 function applyCoverage(layers, document2, app, inputs, ignored) {
@@ -39149,36 +39112,21 @@ function redactSecrets(text) {
   }
   return out;
 }
-function codePointAt(text, i) {
-  const c = text.charCodeAt(i);
-  if (c < 128) return { bytes: 1, units: 1 };
-  if (c < 2048) return { bytes: 2, units: 1 };
-  if (c >= 55296 && c <= 56319) {
-    const next = text.charCodeAt(i + 1);
-    if (next >= 56320 && next <= 57343) return { bytes: 4, units: 2 };
-  }
-  return { bytes: 3, units: 1 };
-}
 var digitsOf = (n) => String(n).length;
 function truncateUtf8(text, maxBytes) {
   if (!Number.isSafeInteger(maxBytes) || maxBytes < MIN_BUDGET_BYTES) {
     throw new RangeError(`maxBytes must be a safe integer of at least ${MIN_BUDGET_BYTES}`);
   }
-  let total = 0;
-  for (let i = 0; i < text.length; ) {
-    const point = codePointAt(text, i);
-    total += point.bytes;
-    i += point.units;
-  }
+  const total = utf8ByteLength(text);
   if (total <= maxBytes) return text;
   let keepUnits = 0;
   let keepBytes = 0;
   for (let i = 0; i < text.length; ) {
-    const point = codePointAt(text, i);
-    const bytes = keepBytes + point.bytes;
+    const units = text.codePointAt(i) > 65535 ? 2 : 1;
+    const bytes = keepBytes + utf8ByteLength(text.slice(i, i + units));
     if (bytes + SUFFIX_FIXED_BYTES + digitsOf(total - bytes) > maxBytes) break;
     keepBytes = bytes;
-    i += point.units;
+    i += units;
     keepUnits = i;
   }
   return `${text.slice(0, keepUnits)}\u2026[+${total - keepBytes} bytes]`;
@@ -39216,55 +39164,6 @@ function parseLsTreeSizes(text) {
     sizes.set(path, size);
   }
   return sizes;
-}
-
-// ../core/src/testIndex/pythonPlan.ts
-function utf8ByteLength(text) {
-  let bytes = 0;
-  const n = text.length;
-  for (let i = 0; i < n; i++) {
-    const code2 = text.charCodeAt(i);
-    if (code2 < 128) {
-      bytes += 1;
-    } else if (code2 < 2048) {
-      bytes += 2;
-    } else if (code2 >= 55296 && code2 <= 56319 && i + 1 < n) {
-      const next = text.charCodeAt(i + 1);
-      if (next >= 56320 && next <= 57343) {
-        bytes += 4;
-        i++;
-      } else {
-        bytes += 3;
-      }
-    } else {
-      bytes += 3;
-    }
-  }
-  return bytes;
-}
-function planPythonIndex(files) {
-  const entries = [];
-  const send = [];
-  let total = 0;
-  let tripped = false;
-  for (const file of files) {
-    if (!file.path.endsWith(".py")) continue;
-    const size = utf8ByteLength(file.text);
-    if (size > MAX_TEST_SOURCE_FILE_BYTES || send.length >= MAX_TEST_SOURCE_FILES) {
-      entries.push({ path: file.path, refused: "too-large" });
-    } else if (tripped || total + size > MAX_TEST_SOURCE_TOTAL_BYTES) {
-      tripped = true;
-      entries.push({ path: file.path, refused: "too-large" });
-    } else {
-      total += size;
-      entries.push({ path: file.path, id: send.length });
-      send.push({ id: send.length, text: file.text });
-    }
-  }
-  return { entries, send };
-}
-function pythonIndexStdin(send) {
-  return JSON.stringify(send.map((entry) => ({ id: entry.id, text: entry.text })));
 }
 
 // ../core/src/testIndex/pythonTypes.ts
@@ -39474,6 +39373,32 @@ function pythonRunOutcome(result, count2, command) {
   }
   const mapped = pythonIndexFromRaw(result.stdout, count2);
   return mapped.available ? mapped : unavailable(mapped.reason, mapped.detail);
+}
+
+// ../core/src/testIndex/pythonPlan.ts
+function planPythonIndex(files) {
+  const entries = [];
+  const send = [];
+  let total = 0;
+  let tripped = false;
+  for (const file of files) {
+    if (!file.path.endsWith(".py")) continue;
+    const size = utf8ByteLength(file.text);
+    if (size > MAX_TEST_SOURCE_FILE_BYTES || send.length >= MAX_TEST_SOURCE_FILES) {
+      entries.push({ path: file.path, refused: "too-large" });
+    } else if (tripped || total + size > MAX_TEST_SOURCE_TOTAL_BYTES) {
+      tripped = true;
+      entries.push({ path: file.path, refused: "too-large" });
+    } else {
+      total += size;
+      entries.push({ path: file.path, id: send.length });
+      send.push({ id: send.length, text: file.text });
+    }
+  }
+  return { entries, send };
+}
+function pythonIndexStdin(send) {
+  return JSON.stringify(send.map((entry) => ({ id: entry.id, text: entry.text })));
 }
 
 // ../core/src/testIndex/pythonSides.ts
@@ -39786,10 +39711,9 @@ async function batchRead(deps, oids) {
 }
 
 // ../node-io/src/agentConfigSources.ts
-var byCodeUnit36 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 async function readAgentConfigSources(deps, paths) {
   try {
-    const unique = [...new Set(paths)].sort(byCodeUnit36);
+    const unique = [...new Set(paths)].sort(byCodeUnit);
     const requests = unique.filter((path) => !isUnsafeTestSourcePath(path)).map((path) => ({ oid: "HEAD", path }));
     const checked = await batchCheck(deps, requests);
     const objects = /* @__PURE__ */ new Map();
@@ -39802,7 +39726,7 @@ async function readAgentConfigSources(deps, paths) {
     const plan = planTestSourceReads(unique, objects);
     const wanted = /* @__PURE__ */ new Set();
     for (const path of plan.read) wanted.add(blobs.get(path));
-    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit36));
+    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit));
     const files = [];
     const dropped = [...plan.dropped];
     for (const path of plan.read) {
@@ -39810,7 +39734,7 @@ async function readAgentConfigSources(deps, paths) {
       if (text === null) dropped.push({ path, reason: "binary" });
       else files.push({ path, text });
     }
-    dropped.sort((a, b) => byCodeUnit36(a.path, b.path));
+    dropped.sort((a, b) => byCodeUnit(a.path, b.path));
     return { files, dropped };
   } catch (err) {
     return { unavailable: err instanceof StepFailed ? err.message : `git could not be read: ${firstLine(err)}` };
@@ -39822,14 +39746,14 @@ async function readPolicySettingsSources(deps, paths, symlinks) {
       unavailable: "git ls-tree failed, so symbolic links among the agent settings files could not be told apart"
     };
   }
-  const unique = [...new Set(paths)].sort(byCodeUnit36);
+  const unique = [...new Set(paths)].sort(byCodeUnit);
   const linked = unique.filter((path) => symlinks.has(path)).map((path) => ({ path, reason: "symlink" }));
   const rest = unique.filter((path) => !symlinks.has(path));
   if (rest.length === 0) return { files: [], dropped: linked };
   const read = await readAgentConfigSources(deps, rest);
   if ("unavailable" in read) return read;
   const dropped = [...linked, ...read.dropped];
-  dropped.sort((a, b) => byCodeUnit36(a.path, b.path));
+  dropped.sort((a, b) => byCodeUnit(a.path, b.path));
   return { files: read.files, dropped };
 }
 
@@ -40899,7 +40823,6 @@ async function indexPythonTestSources(sources, index = (files) => indexPythonTes
 }
 
 // ../node-io/src/testSources.ts
-var byCodeUnit37 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 async function resolveRevision(deps, revision, label) {
   let out;
   try {
@@ -40950,7 +40873,7 @@ async function readTestSources(deps, options) {
     plans.forEach((plan, i) => {
       for (const path of plan.read) wanted.add(sides[i]?.blobs.get(path));
     });
-    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit37));
+    const contents = await batchRead(deps, [...wanted].sort(byCodeUnit));
     const decoded = /* @__PURE__ */ new Map();
     const build = (index) => {
       const plan = plans[index];
@@ -40966,7 +40889,7 @@ async function readTestSources(deps, options) {
         if (text === null) dropped.push({ path, reason: "binary" });
         else files.push({ path, text });
       }
-      dropped.sort((a, b) => byCodeUnit37(a.path, b.path));
+      dropped.sort((a, b) => byCodeUnit(a.path, b.path));
       return { files, dropped };
     };
     return { base: build(0), head: build(1) };

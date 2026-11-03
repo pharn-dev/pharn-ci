@@ -2,6 +2,7 @@ import { type PharnConfig, parseCoverageRoot } from "../config.js";
 import type { RawInputs, ResolvedInputs } from "../inputs.js";
 import type { TestIntegrityMode } from "../report.js";
 import type { TestIntegrityModeSettings } from "../testIntegrityMode.js";
+import { byCodeUnit } from "../text.js";
 import type { IgnoredSetting, ResolvedPolicy, SignalOverrides } from "./resolved.js";
 import type { PolicyDocument } from "./types.js";
 
@@ -28,8 +29,6 @@ export interface PolicyApplication {
 }
 
 const STRICTNESS: Readonly<Record<TestIntegrityMode, number>> = { off: 0, warn: 1, block: 2 };
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /** A root as a comparable string: the repo root (undefined, null or `.`) is `.`. */
 function rootKey(root: string | null | undefined): string {

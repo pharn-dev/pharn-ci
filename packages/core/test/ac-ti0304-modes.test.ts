@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -56,8 +57,6 @@ const ours = (report: Report) =>
     .map((s) => `${s.id} ${s.severity} ${s.path}:${s.line}`);
 const levels = (report: Report, code: string) =>
   report.messages.filter((m) => (m.code as string) === code).map((m) => m.level);
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 describe("TI03 and TI04 in the three modes", () => {
   it("AC-11: block sorts and fails, warn shows every signal as warn, off computes nothing, a conditional skip alone warns", async () => {

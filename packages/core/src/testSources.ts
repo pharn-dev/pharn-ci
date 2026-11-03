@@ -1,5 +1,6 @@
 import type { DiffFile } from "./diff/unified.js";
 import { isSnapFile, isTestFile } from "./testFiles.js";
+import { byCodeUnit } from "./text.js";
 
 /** Why a selected test or test-config file has no text in the sources. */
 export type TestSourceDropReason =
@@ -50,8 +51,6 @@ export const MAX_TEST_SOURCE_FILES = 200;
 export const MAX_TEST_SOURCE_FILE_BYTES = 524288;
 /** At most this many bytes are read per side, counting the files that turn out to be binary. */
 export const MAX_TEST_SOURCE_TOTAL_BYTES = 16777216;
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 const TEST_CONFIG_PREFIXES: readonly string[] = [
   "vitest.config.",

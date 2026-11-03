@@ -1,16 +1,13 @@
 import type { DiffFile } from "../diff/unified.js";
 import type { TestIntegritySignal } from "../report.js";
 import type { TestModuleMock } from "../testIndex/types.js";
+import { cutCodeUnits } from "../text.js";
 import { changedSources, resolveMock } from "./mockTargets.js";
 import { detailWithName } from "./testName.js";
 import type { TouchedTests } from "./testPairs.js";
 
 /** The longest specifier the detail shows, `…` included, in UTF-16 code units. */
 const MAX_SPECIFIER = 120;
-
-function isHighSurrogate(code: number): boolean {
-  return code >= 0xd800 && code <= 0xdbff;
-}
 
 /**
  * The specifier as the detail shows it: every control character a space (the rule `detailWithName` applies to a name),
@@ -19,10 +16,7 @@ function isHighSurrogate(code: number): boolean {
  */
 function shownSpecifier(specifier: string): string {
   const clean = detailWithName("", specifier, "");
-  if (clean.length <= MAX_SPECIFIER) return clean;
-  let end = MAX_SPECIFIER - 1;
-  if (end > 0 && isHighSurrogate(clean.charCodeAt(end - 1))) end--;
-  return `${clean.slice(0, end)}…`;
+  return cutCodeUnits(clean, MAX_SPECIFIER);
 }
 
 function detailOf(mock: TestModuleMock, target: string): string {

@@ -1,9 +1,8 @@
 import type { DiffFile } from "./diff/unified.js";
 import { JS_TS_EXTENSIONS } from "./jsTsExtensions.js";
+import { byCodeUnit } from "./text.js";
 
 const TEST_DIRECTORIES: ReadonlySet<string> = new Set(["test", "tests", "__tests__"]);
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /** Basename patterns of the test-integrity spec's test globs. Each is anchored at the end and runs in linear time. */
 const TEST_BASENAME: readonly RegExp[] = [

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -22,12 +23,11 @@ const DOCUMENT = {
   },
 };
 
-const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 const order = (a: Violation, b: Violation) =>
-  cmp(a.id, b.id) ||
-  (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : cmp(a.path, b.path)) ||
+  byCodeUnit(a.id, b.id) ||
+  (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : byCodeUnit(a.path, b.path)) ||
   (a.line === b.line ? 0 : a.line === null ? -1 : b.line === null ? 1 : a.line - b.line) ||
-  cmp(a.detail, b.detail);
+  byCodeUnit(a.detail, b.detail);
 
 type Handler = Record<string, unknown>;
 type Group = { matcher?: string; hooks: Handler[] };

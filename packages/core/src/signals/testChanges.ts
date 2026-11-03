@@ -1,5 +1,6 @@
 import type { ReportTestChange, ReportTestChanges, ReportTestChangesFile } from "../report.js";
 import type { TestBlock } from "../testIndex/types.js";
+import { byCodeUnit } from "../text.js";
 import type { TestMatch } from "./testMatch.js";
 import { fullTestName, summaryTestName } from "./testName.js";
 import { languageOf, type TouchedTests } from "./testPairs.js";
@@ -7,7 +8,6 @@ import { languageOf, type TouchedTests } from "./testPairs.js";
 /** The most test entries the summary lists across its four lists; the totals and the file rows count every test. */
 export const MAX_TEST_CHANGE_ENTRIES = 200;
 
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 const byEntry = (a: ReportTestChange, b: ReportTestChange) => byCodeUnit(a.path, b.path) || a.line - b.line;
 
 type Kind = "added" | "removed" | "modified" | "renamed";

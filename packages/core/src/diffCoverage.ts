@@ -1,5 +1,6 @@
 import type { CoverageMap } from "./coverage/types.js";
 import type { DiffFile } from "./diff/unified.js";
+import { byCodeUnit } from "./text.js";
 
 export interface DiffCoverageFile {
   path: string;
@@ -75,8 +76,7 @@ export function computeDiffCoverage(
     });
   }
 
-  const byPath = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
-  files.sort((a, b) => byPath(a.path, b.path));
+  files.sort((a, b) => byCodeUnit(a.path, b.path));
   const meetsThreshold = threshold === null || coverable === 0 || atLeast(covered, coverable, threshold);
   let percent = percentOf(covered, coverable);
   if (!meetsThreshold && percent !== null && threshold !== null && percent >= threshold) {
@@ -89,7 +89,7 @@ export function computeDiffCoverage(
     coveredLines: covered,
     coverableLines: coverable,
     files,
-    ...(excluded.size > 0 ? { excludedFiles: [...excluded].sort(byPath) } : {}),
+    ...(excluded.size > 0 ? { excludedFiles: [...excluded].sort(byCodeUnit) } : {}),
     meetsThreshold,
   };
 }

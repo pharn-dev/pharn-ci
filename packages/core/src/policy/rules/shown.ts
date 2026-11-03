@@ -1,4 +1,4 @@
-import { replaceUnsafeChars } from "../../text.js";
+import { cutCodeUnits, replaceUnsafeChars } from "../../text.js";
 
 /** The longest pattern a detail shows, in UTF-16 code units. */
 const MAX_SHOWN = 80;
@@ -9,8 +9,5 @@ const MAX_SHOWN = 80;
  */
 export function shownPattern(text: string): string {
   const pattern = replaceUnsafeChars(text, "�");
-  if (pattern.length <= MAX_SHOWN) return pattern;
-  const high = pattern.charCodeAt(MAX_SHOWN - 2);
-  const end = high >= 0xd800 && high <= 0xdbff ? MAX_SHOWN - 2 : MAX_SHOWN - 1;
-  return `${pattern.slice(0, end)}…`;
+  return cutCodeUnits(pattern, MAX_SHOWN);
 }

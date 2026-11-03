@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { byCodeUnit } from "../src/text.js";
 
 // E3 item 23 (policy settings), AC-3. The path predicates are loaded inside the test body: the AC test is written
 // before the build adds them, so nothing the build adds may run while this file loads.
@@ -19,8 +20,6 @@ const NEITHER = [
   "mcp.json",
   "README.md",
 ];
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 describe("policy settings paths", () => {
   it("AC-3: exactly the settings and MCP paths of the two regexes are selected, MCP paths only when an MCP list is non-empty, sorted in code-unit order", async () => {

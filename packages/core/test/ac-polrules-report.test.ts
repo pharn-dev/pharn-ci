@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -34,12 +35,11 @@ const META = {
   upload: { status: "skipped" },
 };
 
-const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 /** By id, then path (null first), then detail, in code-unit order. */
 const order = (a: Violation, b: Violation) =>
-  cmp(a.id, b.id) ||
-  (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : cmp(a.path, b.path)) ||
-  cmp(a.detail, b.detail);
+  byCodeUnit(a.id, b.id) ||
+  (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : byCodeUnit(a.path, b.path)) ||
+  byCodeUnit(a.detail, b.detail);
 
 describe("the report's policy object", { timeout: 60_000 }, () => {
   it("AC-12: app, file and unavailable policies write source, version, fetchedAt and sorted violations right before meta, and evaluatePolicyRules returns the same violations", async () => {

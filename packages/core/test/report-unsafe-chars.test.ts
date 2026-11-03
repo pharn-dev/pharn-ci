@@ -197,7 +197,7 @@ describe("report.json drops the invisible and bidirectional characters the comme
     expect(summaryTestName(long(INVISIBLE))).toBe(summaryTestName(long(SPACES)));
     const value = (fill: string) => `${"v".repeat(70)}${fill}`;
     expect(cutValue(value(INVISIBLE))).toBe(cutValue(value(REPLACEMENTS)));
-    expect(cutValue(value(INVISIBLE))).toBe(`${"v".repeat(70)}${"�".repeat(10)}…`);
+    expect(cutValue(value(INVISIBLE))).toBe(`${"v".repeat(70)}${"�".repeat(9)}…`);
     expect(cutDetail(long(INVISIBLE))).toBe(cutDetail(long(REPLACEMENTS)));
     expect(keyText(["test", `in${INVISIBLE}clude`])).toBe(keyText(["test", `in${REPLACEMENTS}clude`]));
     expect(codeSpan(`a${INVISIBLE}b`)).toBe(`\`a${REPLACEMENTS}b\``);

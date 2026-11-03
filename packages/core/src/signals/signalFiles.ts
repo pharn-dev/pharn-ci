@@ -2,6 +2,7 @@ import type { DiffFile } from "../diff/unified.js";
 import { configRepoPath } from "../gateInputs.js";
 import { JS_TS_EXTENSIONS } from "../jsTsExtensions.js";
 import { isTestFile, keepTestFileText } from "../testFiles.js";
+import { byCodeUnit } from "../text.js";
 import { testLanguage } from "./testLines.js";
 
 const WORKFLOWS_DIR = ".github/workflows/";
@@ -104,5 +105,5 @@ export function textCutSignalFiles(diff: readonly DiffFile[], configPath?: strin
       (config !== null && path === config);
     if (read) cut.add(path);
   }
-  return [...cut].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  return [...cut].sort(byCodeUnit);
 }

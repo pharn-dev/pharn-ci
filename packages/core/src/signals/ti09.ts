@@ -4,8 +4,7 @@ import { isDedicatedTestConfig, type TestConfigKind, testConfigKind } from "../t
 import { type ReadOutcome, readTestConfig } from "../testConfig/read.js";
 import { evaluateRules, type RuleFinding } from "../testConfig/rules.js";
 import type { TestSourceSide, TestSources } from "../testSources.js";
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+import { byCodeUnit } from "../text.js";
 
 /** A touched test-config file that was not read, and why: a drop reason, `missing`, or a reader refusal code. */
 export interface UnreadConfigFile {

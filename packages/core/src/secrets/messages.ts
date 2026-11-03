@@ -1,4 +1,5 @@
 import { codeSpan, type Message, type MessageCode, oneLine } from "../report.js";
+import { byCodeUnit } from "../text.js";
 import { type AgentConfigSecretFinding, type AgentConfigSources, scanAgentConfigSecrets } from "./scan.js";
 
 /** The most locations one message names; the rest are counted. */
@@ -41,8 +42,6 @@ const FAIL_CLOSED_REASONS: ReadonlySet<string> = new Set([
   "over-total-cap",
   "unsafe-path",
 ]);
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 function levelOf(id: string): Message["level"] {
   return id === "S10" ? "warn" : id === "S11" ? "info" : "error";

@@ -1,3 +1,4 @@
+import { byCodeUnit } from "../../text.js";
 import { readSettingsModel, type SettingsReader } from "../settings/model.js";
 import type { PolicySettingsOutcome } from "../settings/types.js";
 import type { PolicyRuleId } from "../types.js";
@@ -22,7 +23,6 @@ export const MAX_RULE_VIOLATIONS = 50;
 /** The P08 cap, which item 22 named first; kept as a name for `MAX_RULE_VIOLATIONS`, which applies to every rule. */
 export const MAX_P08_VIOLATIONS = MAX_RULE_VIOLATIONS;
 
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 const SETTINGS_READERS = ["P02", "P03", "P04", "P05", "P06"] as const satisfies readonly SettingsReader[];
 const SETTINGS_RULES: readonly string[] = SETTINGS_READERS;
 

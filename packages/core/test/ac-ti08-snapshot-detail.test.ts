@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { byCodeUnit } from "../src/text.js";
 import { runDiff, signalsOf } from "./ac-e1-fix-shared.js";
 
 // check() is loaded inside the test body (through runDiff): the AC tests are written before TI08 exists, so nothing
@@ -19,8 +20,6 @@ function modify(path: string): string {
     '+exports[`view renders 1`] = `"new"`;',
   ].join("\n")}\n`;
 }
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
  * Twelve snapshot names in mixed case: code-unit order puts upper case before lower case, which a locale-aware sort

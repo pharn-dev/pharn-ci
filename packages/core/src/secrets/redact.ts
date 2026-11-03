@@ -1,3 +1,4 @@
+import { utf8ByteLength } from "../text.js";
 import { findSecretSpans } from "./spans.js";
 
 /** The default byte budget of a message after redaction. */
@@ -22,19 +23,6 @@ export function redactSecrets(text: string): string {
   return out;
 }
 
-/** The UTF-8 length in bytes of the code point that starts at `i`, and its length in UTF-16 units. */
-function codePointAt(text: string, i: number): { bytes: number; units: number } {
-  const c = text.charCodeAt(i);
-  if (c < 0x80) return { bytes: 1, units: 1 };
-  if (c < 0x800) return { bytes: 2, units: 1 };
-  if (c >= 0xd800 && c <= 0xdbff) {
-    const next = text.charCodeAt(i + 1);
-    if (next >= 0xdc00 && next <= 0xdfff) return { bytes: 4, units: 2 };
-  }
-  // Any other unit, a lone surrogate included (U+FFFD replacement writes 3 bytes).
-  return { bytes: 3, units: 1 };
-}
-
 const digitsOf = (n: number): number => String(n).length;
 
 /**
@@ -46,23 +34,19 @@ export function truncateUtf8(text: string, maxBytes: number): string {
   if (!Number.isSafeInteger(maxBytes) || maxBytes < MIN_BUDGET_BYTES) {
     throw new RangeError(`maxBytes must be a safe integer of at least ${MIN_BUDGET_BYTES}`);
   }
-  let total = 0;
-  for (let i = 0; i < text.length; ) {
-    const point = codePointAt(text, i);
-    total += point.bytes;
-    i += point.units;
-  }
+  const total = utf8ByteLength(text);
   if (total <= maxBytes) return text;
   // The cost of keeping a prefix of b bytes never falls as b grows (a code point adds at least one byte, and the digits
   // of the dropped count fall by at most one), so the first prefix that does not fit ends the search.
   let keepUnits = 0;
   let keepBytes = 0;
   for (let i = 0; i < text.length; ) {
-    const point = codePointAt(text, i);
-    const bytes = keepBytes + point.bytes;
+    // A surrogate pair is one code point of two units; a lone surrogate or any other unit is one.
+    const units = (text.codePointAt(i) as number) > 0xffff ? 2 : 1;
+    const bytes = keepBytes + utf8ByteLength(text.slice(i, i + units));
     if (bytes + SUFFIX_FIXED_BYTES + digitsOf(total - bytes) > maxBytes) break;
     keepBytes = bytes;
-    i += point.units;
+    i += units;
     keepUnits = i;
   }
   return `${text.slice(0, keepUnits)}…[+${total - keepBytes} bytes]`;

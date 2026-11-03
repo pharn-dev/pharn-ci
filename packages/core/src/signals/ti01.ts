@@ -1,11 +1,10 @@
 import type { DiffFile } from "../diff/unified.js";
 import type { TestIntegritySignal } from "../report.js";
 import { definesTests, isSnapFile, isTestFile, testPackageDir, testStem } from "../testFiles.js";
+import { byCodeUnit, cutCodeUnits } from "../text.js";
 import { coverageSourceLanguage } from "./signalFiles.js";
 import { testLanguage } from "./testLines.js";
 import { sameStemDeletions } from "./ti01Moved.js";
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 const MAX_DETAIL = 300;
 
@@ -92,7 +91,7 @@ export function detectTI01(
         "Test file deleted; every test it held is found again, by name and body, in another test file of this change.";
     }
 
-    found.set(path, { id: "TI01", severity, path, line: null, detail: detail.slice(0, MAX_DETAIL) });
+    found.set(path, { id: "TI01", severity, path, line: null, detail: cutCodeUnits(detail, MAX_DETAIL) });
   }
   return [...found.values()].sort((a, b) => byCodeUnit(a.path, b.path));
 }

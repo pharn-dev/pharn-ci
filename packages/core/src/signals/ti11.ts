@@ -1,9 +1,8 @@
 import type { DiffFile, DiffLineText } from "../diff/unified.js";
 import type { TestIntegritySignal } from "../report.js";
+import { byCodeUnit } from "../text.js";
 import { isWorkflowFile } from "./signalFiles.js";
 import { flowItems, keyValue, stripComment, unquote } from "./yamlLines.js";
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /** Workspace flags a package manager takes before the script name: `-r`, `-w`, `--filter core`, `-C pkg`, ... */
 const PM_FLAGS = String.raw`(?:\s+(?:-r|--recursive|-w|--workspace-root|-ws|--workspaces|--if-present|(?:--filter|-F|-C|--dir|--prefix|--workspace|--cwd)(?:=|\s+)\S+))*`;

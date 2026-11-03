@@ -1,6 +1,6 @@
 import type { AgentEvidence } from "../../agents.js";
 import { codeSpan, type Message, type MessageCode } from "../../report.js";
-import { replaceUnsafeChars } from "../../text.js";
+import { byCodeUnit, replaceUnsafeChars } from "../../text.js";
 import type { PolicyRuleId } from "../types.js";
 import { P07_PACKAGE_MANAGER_PREFIX, P07_TEST_RUNNER_PREFIX, P07_UNREAD_DETAIL } from "./p07.js";
 import { P11_BASE_UNREADABLE_DETAIL, P11_DIFF_UNAVAILABLE_DETAIL } from "./p11.js";
@@ -9,8 +9,6 @@ import type { PolicyEvaluation, PolicyViolation } from "./types.js";
 
 /** The most paths a rule message names; the rest are counted. */
 const MAX_LISTED = 20;
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /** The first 20 paths as code spans joined with `, `, then ` and N more` when there are more than 20. */
 function listOf(paths: readonly string[], total: number): string {

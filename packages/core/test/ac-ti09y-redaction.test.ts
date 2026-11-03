@@ -4,8 +4,11 @@ import { expectValidReport } from "./schema.js";
 
 // check() is loaded inside the test body: the AC test is written before TI09 exists, so nothing that depends on it
 // may run while the file loads. The config texts are written here: the long include entry holds a raw tab, a \n
-// escape and emoji from the 78th code unit on, so code unit 80 falls inside an emoji, and another key holds a secret
-// that does not change.
+// escape and emoji from the 78th code unit on, so code unit 80 of the RAW value falls inside an emoji, and another key
+// holds a secret that does not change. The value a finding reports is not the raw entry but its printed JSON text
+// (`["…"]`, the tab and the newline written as two units each), which shifts the emoji to unit 81 on: the 80-unit cut
+// of that text keeps ASCII only and never steps back over a surrogate pair, so this test checks the cut length and the
+// absence of a lone surrogate, not the pair step itself (the AC-2 and AC-3 tests drive that).
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const PATH = "vitest.config.ts";
@@ -83,15 +86,14 @@ function hasLoneSurrogate(text: string): boolean {
   return false;
 }
 
-function expectCut(text: string | undefined, label: string) {
+/** A reported value: at most 80 code units (the `…` inside them), ending with `…` exactly when it was cut. */
+function expectCut(text: string | undefined, label: string, cut: boolean) {
   expect(text, `${label} is present`).toBeDefined();
   const value = text as string;
   expect(hasControl(value), `${label} holds no control character`).toBe(false);
   expect(hasLoneSurrogate(value), `${label} holds no lone surrogate`).toBe(false);
-  if (value.length > 80) {
-    expect(value.endsWith("…"), `${label} past 80 code units ends with …`).toBe(true);
-    expect(value.length - 1, `${label} keeps at most 80 code units`).toBeLessThanOrEqual(80);
-  }
+  expect(value.length, `${label} is at most 80 code units`).toBeLessThanOrEqual(80);
+  expect(value.endsWith("…"), cut ? `${label} was cut and ends with …` : `${label} was not cut`).toBe(cut);
 }
 
 describe("TI09: what a finding carries from the config text", () => {
@@ -129,9 +131,9 @@ describe("TI09: what a finding carries from the config text", () => {
     expect(signal.detail.length, "the detail is at most 300 code units").toBeLessThanOrEqual(300);
     expect(hasControl(signal.detail), "the detail holds no control character").toBe(false);
     expect(hasLoneSurrogate(signal.detail), "the detail holds no lone surrogate").toBe(false);
-    expectCut(signal.base, "base");
-    expectCut(signal.head, "head");
-    expect(signal.head?.length, "the head value is cut").toBeGreaterThan(80);
+    expectCut(signal.base, "base", false);
+    expectCut(signal.head, "head", true);
+    expect(signal.head?.length, "the head value is cut to exactly 80 code units, the … included").toBe(80);
 
     expect(JSON.stringify(report), "the unchanged secret is not in the report").not.toContain(SECRET);
   });

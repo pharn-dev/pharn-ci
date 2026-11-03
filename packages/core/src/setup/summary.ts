@@ -1,3 +1,4 @@
+import { byCodeUnit } from "../text.js";
 import type { AgentSetupFile, AgentSetupKind } from "./scan.js";
 
 /** The agent tools a setup file can configure. A fixed list: summaries never carry input-derived names. */
@@ -78,7 +79,7 @@ export function summarizeAgentSetup(files: readonly AgentSetupFile[]): AgentSetu
 
   const byKind: Partial<Record<AgentSetupKind, number>> = {};
   const tools = new Set<AgentTool>();
-  for (const [kind, count] of [...counts].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+  for (const [kind, count] of [...counts].sort(([a], [b]) => byCodeUnit(a, b))) {
     byKind[kind] = count;
     for (const tool of KIND_TOOLS[kind] ?? []) tools.add(tool);
   }

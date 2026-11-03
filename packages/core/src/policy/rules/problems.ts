@@ -1,8 +1,7 @@
+import { byCodeUnit } from "../../text.js";
 import type { SettingsModelProblem, SettingsReader } from "../settings/model.js";
 import type { PolicySettingsProblem } from "../settings/types.js";
 import type { PolicySetup } from "../types.js";
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
  * The level of a problem. A file Claude Code would read and pharn-ci did not, or could not parse (too deep, not JSON,

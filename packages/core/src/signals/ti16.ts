@@ -1,6 +1,7 @@
 import type { DiffFile } from "../diff/unified.js";
 import type { TestIntegritySignal } from "../report.js";
 import { isTestFile } from "../testFiles.js";
+import { byCodeUnit } from "../text.js";
 import { testLanguage } from "./testLines.js";
 
 // The marker words are built from parts, so that this file and the bundle built from it hold no marker after a comment
@@ -122,8 +123,6 @@ const markerOf = (text: string, language: "jsts" | "python"): string | null => {
   const line = text.length > MAX_LINE ? text.slice(0, MAX_LINE) : text;
   return language === "jsts" ? jsMarker(line) : pythonMarker(line);
 };
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
  * TI16, a lint or type suppression comment added to a test file; always severity `info`. In a JavaScript, TypeScript or

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
+import { byCodeUnit } from "../src/text.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -55,7 +56,6 @@ const REPINNED = [
 
 const git = (...args: string[]) =>
   execFileSync("git", args, { cwd: ROOT, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
-const byName = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /** From the base commit to the working tree while this file is not committed, else the commit that added it. */
 function changeRange(): { from: string; to: string | null } {
@@ -214,7 +214,7 @@ async function casesAt(rev: string, index: PyIndexer): Promise<Case[]> {
   )
     .split("\n")
     .filter((p) => p !== "")
-    .sort(byName);
+    .sort(byCodeUnit);
   const out: Case[] = [];
   for (const path of paths) {
     const diffFile = /^fixtures\/(test-integrity(?:-precision)?\/TI\d\d\/[^/]+\.diff)$/.exec(path);
@@ -247,7 +247,7 @@ async function skylosAt(rev: string, index: PyIndexer): Promise<Case[]> {
     .split("\n")
     .map((p) => /^fixtures\/(skylos-nine(?:-pytest)?\/[^/]+)\/change\.diff$/.exec(p)?.[1])
     .filter((p): p is string => p !== undefined)
-    .sort(byName);
+    .sort(byCodeUnit);
   const out: Case[] = [];
   for (const name of dirs) {
     const files = () => fixture(`${name}/files.txt`).trim().split("\n");
@@ -318,8 +318,8 @@ describe("name-only moves change exactly four existing results", () => {
         tests.filter((c) => c.status !== "M"),
         "no existing test file is deleted or renamed",
       ).toEqual([]);
-      expect(tests.map((c) => c.path).sort(byName), "the existing test files changed are D7's re-pins").toEqual(
-        [...REPINNED].sort(byName),
+      expect(tests.map((c) => c.path).sort(byCodeUnit), "the existing test files changed are D7's re-pins").toEqual(
+        [...REPINNED].sort(byCodeUnit),
       );
       const revs = range.to === null ? [range.from] : [range.from, range.to];
       for (const path of REPINNED) {
@@ -372,7 +372,7 @@ describe("name-only moves change exactly four existing results", () => {
         results.set(c.name, result);
         if (JSON.stringify(result.before) !== JSON.stringify(result.after)) differing.push(c.name);
       }
-      expect(differing.sort(byName), "the cases whose report changes").toEqual([...CHANGED].sort(byName));
+      expect(differing.sort(byCodeUnit), "the cases whose report changes").toEqual([...CHANGED].sort(byCodeUnit));
 
       // The migration diffs: TI01 info becomes block with the not-available detail; nothing else moves.
       for (const name of MIGRATIONS) {

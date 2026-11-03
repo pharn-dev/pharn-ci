@@ -265,7 +265,7 @@ export {
 } from "./testFiles.js";
 export { indexTestFile } from "./testIndex/indexTestFile.js";
 export { oneLineDetail, pythonRunOutcome } from "./testIndex/pythonOutcome.js";
-export { type PythonIndexPlan, planPythonIndex, pythonIndexStdin, utf8ByteLength } from "./testIndex/pythonPlan.js";
+export { type PythonIndexPlan, planPythonIndex, pythonIndexStdin } from "./testIndex/pythonPlan.js";
 export { pythonIndexFromRaw } from "./testIndex/pythonRaw.js";
 export { type PythonTestIndex, pythonTestIndexFromRun, pythonTestSourceFiles } from "./testIndex/pythonSides.js";
 export {
@@ -324,6 +324,7 @@ export {
   unavailableTestSources,
 } from "./testSources.js";
 export { decodeTestSourceText } from "./testSourceText.js";
+export { byCodeUnit, utf8ByteLength } from "./text.js";
 export { buildUploadBundle } from "./upload/bundle.js";
 export { buildUploadMeta, type UploadMeta } from "./upload/meta.js";
 export { UPLOAD_REPORT_MAX_BYTES, type UploadOutcome, withUploadOutcome } from "./upload/outcome.js";

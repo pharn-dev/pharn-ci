@@ -1,4 +1,5 @@
 import type { TestBlock } from "../testIndex/types.js";
+import { byCodeUnit } from "../text.js";
 import {
   containsAtLeast,
   FOUR_FIFTHS,
@@ -41,7 +42,6 @@ export interface TestMatch {
   replaced: MatchedPair[];
 }
 
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 const byLine = (a: TestBlock, b: TestBlock) => a.line - b.line;
 
 /** A test that is new at head: it has no base test of its name, or its name is computed. */

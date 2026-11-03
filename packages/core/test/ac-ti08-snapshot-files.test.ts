@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { byCodeUnit } from "../src/text.js";
 import { runDiff, signalsOf } from "./ac-e1-fix-shared.js";
 
 // check() is loaded inside each test body (through runDiff): the AC tests are written before TI08 exists, so nothing
@@ -66,8 +67,6 @@ const range = (from: number, to: number) => Array.from({ length: to - from + 1 }
 
 /** Snapshot paths with a `__snapshots__` segment; listed in the diff in reverse, so diff order is not sorted order. */
 const snap = (i: number) => `src/__snapshots__/view-${pad(i)}.ts.snap`;
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 type Case = { label: string; diff: string; counted: string[] };
 

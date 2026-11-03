@@ -1,4 +1,4 @@
-import { isUnsafeCode } from "../text.js";
+import { byCodeUnit, cutCodeUnits, isUnsafeCode } from "../text.js";
 
 /** Values nested deeper than this are read as opaque. */
 export const MAX_CONFIG_VALUE_DEPTH = 64;
@@ -6,9 +6,9 @@ export const MAX_CONFIG_VALUE_DEPTH = 64;
 export const MAX_CONFIG_CHARS = 524_288;
 /** The most top-level `const` names followed from one identifier. */
 export const MAX_CONFIG_IDENT_HOPS = 8;
-/** The longest value text a finding carries, in UTF-16 code units, before the cut mark. */
+/** The longest value text a finding carries, in UTF-16 code units, the cut mark included. */
 export const MAX_VALUE_CHARS = 80;
-/** The longest key text a finding carries, in UTF-16 code units, before the cut mark. */
+/** The longest key text a finding carries, in UTF-16 code units, the cut mark included. */
 export const MAX_KEY_CHARS = 100;
 
 /** One property of an object value: its value and the 1-based line of its name in that side's text (null when unknown). */
@@ -83,26 +83,14 @@ function replaceUnsafe(text: string): string {
   return out;
 }
 
-/** The text with unsafe characters replaced, cut past `limit` code units (one fewer when the cut would split a pair). */
-function cutText(text: string, limit: number): string {
-  const safe = replaceUnsafe(text);
-  if (safe.length <= limit) return safe;
-  const high = safe.charCodeAt(limit - 1);
-  const end = high >= 0xd800 && high <= 0xdbff ? limit - 1 : limit;
-  return `${safe.slice(0, end)}…`;
-}
-
-/** A value text for a finding: control characters and lone surrogates become U+FFFD, then cut past 80 code units. */
+/** A value text for a finding: control characters and lone surrogates become U+FFFD, then cut to 80 units, `…` in. */
 export function cutValue(text: string): string {
-  return cutText(text, MAX_VALUE_CHARS);
+  return cutCodeUnits(replaceUnsafe(text), MAX_VALUE_CHARS);
 }
 
-/** A detail sentence of at most the 300 code units the report allows: past that, 299 and the cut mark. */
+/** A detail sentence of at most the 300 code units the report allows, `…` included when it is cut. */
 export function cutDetail(text: string): string {
-  const safe = replaceUnsafe(text);
-  if (safe.length <= 300) return safe;
-  const high = safe.charCodeAt(298);
-  return `${safe.slice(0, high >= 0xd800 && high <= 0xdbff ? 298 : 299)}…`;
+  return cutCodeUnits(replaceUnsafe(text), 300);
 }
 
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
@@ -110,7 +98,7 @@ const DIGITS = /^\d+$/;
 
 /**
  * The dotted key text of a path. A segment that is not an identifier or all digits is written `["…"]` with JSON quoting.
- * Control characters are replaced and the whole is cut past 100 code units.
+ * Control characters are replaced and the whole is cut to 100 code units, `…` included.
  */
 export function keyText(segments: readonly string[]): string {
   let out = "";
@@ -118,7 +106,7 @@ export function keyText(segments: readonly string[]): string {
     if (IDENTIFIER.test(segment) || DIGITS.test(segment)) out += out === "" ? segment : `.${segment}`;
     else out += `[${JSON.stringify(segment)}]`;
   }
-  return cutText(out, MAX_KEY_CHARS);
+  return cutCodeUnits(replaceUnsafe(out), MAX_KEY_CHARS);
 }
 
 const isIdentChar = (ch: string | undefined): boolean =>
@@ -184,7 +172,7 @@ export function printValue(value: ConfigValue): string {
     case "array":
       return `[${value.items.map(printValue).join(",")}]`;
     case "object": {
-      const keys = [...value.entries.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+      const keys = [...value.entries.keys()].sort(byCodeUnit);
       const parts = keys.map(
         (key) => `${JSON.stringify(key)}:${printValue((value.entries.get(key) as ConfigEntry).value)}`,
       );

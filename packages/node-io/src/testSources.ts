@@ -1,4 +1,5 @@
 import {
+  byCodeUnit,
   type DiffFile,
   decodeTestSourceText,
   isUnsafeTestSourcePath,
@@ -27,8 +28,6 @@ export interface ReadTestSourcesOptions {
   /** The parsed diff of the change under review. */
   diff: readonly DiffFile[];
 }
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 async function resolveRevision(deps: TestSourceGitDeps, revision: string, label: string): Promise<string> {
   let out: string;

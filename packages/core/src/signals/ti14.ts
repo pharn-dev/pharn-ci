@@ -2,9 +2,8 @@ import { parseExcludePattern } from "../config.js";
 import type { DiffFile, DiffLineText } from "../diff/unified.js";
 import { configRepoPath } from "../gateInputs.js";
 import type { TestIntegritySignal } from "../report.js";
+import { byCodeUnit } from "../text.js";
 import { flowItems, indentOf, keyValue, listItem, scalarText } from "./yamlLines.js";
-
-const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 export interface TI14Options {
   /** The `configPath` the check was given; absent means `.pharn/ci.yml`. */
