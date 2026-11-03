@@ -15,19 +15,31 @@ function parseDiagnosticCount(sourceFile: ts.SourceFile): number {
   return diagnostics.length;
 }
 
+/** What `parseTestFile` gives back: the parse, or the value TypeScript's parser threw (a stack overflow, say). */
+export type ParsedTestFile =
+  | { ok: true; sourceFile: ts.SourceFile; syntaxErrors: number }
+  | { ok: false; threw: unknown };
+
 /**
  * The one parse of the test index: syntax only, so nothing is resolved, checked or evaluated. The parser gets a
  * synthetic file name for the kind, never the caller's path: a path ending `.d.ts` would switch it into declaration
- * mode, and a path may hold lone surrogates.
+ * mode, and a path may hold lone surrogates. The only `try` is around TypeScript's `createSourceFile`: a throw from
+ * the parser is returned as `{ ok: false, threw }` for the caller to refuse, while a broken invariant of ours (the
+ * diagnostics read after the parse) throws out of this function.
  */
-export function parseTestFile(kind: TestScriptKind, text: string): { sourceFile: ts.SourceFile; syntaxErrors: number } {
+export function parseTestFile(kind: TestScriptKind, text: string): ParsedTestFile {
   const { scriptKind, fileName } = KIND[kind];
-  const sourceFile = ts.createSourceFile(
-    fileName,
-    text,
-    { languageVersion: ts.ScriptTarget.Latest, jsDocParsingMode: ts.JSDocParsingMode.ParseNone },
-    true,
-    scriptKind,
-  );
-  return { sourceFile, syntaxErrors: parseDiagnosticCount(sourceFile) };
+  let sourceFile: ts.SourceFile;
+  try {
+    sourceFile = ts.createSourceFile(
+      fileName,
+      text,
+      { languageVersion: ts.ScriptTarget.Latest, jsDocParsingMode: ts.JSDocParsingMode.ParseNone },
+      true,
+      scriptKind,
+    );
+  } catch (threw) {
+    return { ok: false, threw };
+  }
+  return { ok: true, sourceFile, syntaxErrors: parseDiagnosticCount(sourceFile) };
 }

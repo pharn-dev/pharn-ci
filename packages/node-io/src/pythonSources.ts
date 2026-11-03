@@ -11,8 +11,9 @@ import { indexPythonTests } from "./pythonIndex.js";
 /**
  * Indexes the `.py` test files of the test sources (base files, then head files) with one Python run, and gives
  * `check()` the plain-data result. Undefined, and `index` never called, when the sources hold no `.py` test file. A
- * throw from `index` is `{ available: false, reason: "python-failed" }`. The run's `detail` is dropped; nothing is
- * logged here.
+ * failed run is the run's own `{ available: false, … }`; a throw from `index` is pharn-ci's own failure and rejects
+ * this function, so the caller's top-level handler fails the run. The run's `detail` is dropped; nothing is logged
+ * here.
  */
 export async function indexPythonTestSources(
   sources: TestSources,
@@ -20,11 +21,6 @@ export async function indexPythonTestSources(
 ): Promise<PythonTestIndex | undefined> {
   const files = pythonTestSourceFiles(sources);
   if (files.length === 0) return undefined;
-  let run: PythonIndexRun;
-  try {
-    run = await index(files);
-  } catch {
-    return { available: false, reason: "python-failed" };
-  }
+  const run: PythonIndexRun = await index(files);
   return pythonTestIndexFromRun(sources, run);
 }

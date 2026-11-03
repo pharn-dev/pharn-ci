@@ -199,6 +199,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   retry, that the first request goes out before pharn-ci knows whether the Pharn GitHub App is installed, and how to
   turn it off. The README's security section now says that table lists what goes to pharn.dev too. Documentation
   only.
+- A bug in pharn-ci's own code no longer reads as bad input (review finding 28). The test-file index, the JS and JSON
+  test-config readers and the Python output mapper caught every exception and reported it as `parser-threw`,
+  `too-deep`, `syntax-error`, `invalid-json` or `bad-output`, and the policy validator and `indexPythonTestSources`
+  turned it into an invalid policy or `python-failed`; a fault in them now escapes and fails the run (Action step
+  failed, CLI exit 2), while a file the parser genuinely throws on is refused as before. Only the third-party call
+  (`createSourceFile`, `JSON.parse`) stays inside a `try`. The unused `couldNotValidate` message is removed.
 
 ## [0.4.0] - 2026-10-27
 

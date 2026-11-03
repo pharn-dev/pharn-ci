@@ -131,7 +131,8 @@ function spawnOptions(): PythonSpawnOptions {
  * Indexes the `.py` files of `files` (every other path is left out) with the interpreter's own parser, in one run.
  * Which files are sent and the caps are decided in core (`planPythonIndex`); the interpreter gets an id and the text
  * of each file, never a path. A missing interpreter, a version older than 3.8, a failed or killed run and unreadable
- * output all give `{ available: false, reason, detail }`. Never throws.
+ * output that breaks the format all give `{ available: false, reason, detail }`. An exception from pharn-ci's own
+ * mapping of a well-formed output is a bug of ours and escapes.
  */
 export async function indexPythonTests(
   files: readonly PythonSourceFile[],

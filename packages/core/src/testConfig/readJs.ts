@@ -259,17 +259,15 @@ class JsConfigReader {
 /**
  * Reads a JS or TS test-runner config: the config object behind the first default export or the last CommonJS export
  * assignment. Syntax only; nothing is evaluated, imported or resolved outside the file. Refuses a text that is too
- * large, has a syntax error or is nested too deep.
+ * large, has a syntax error or is nested too deep, or that the parser threw on. It throws only when pharn-ci's own
+ * code fails, so a bug of ours is never reported as a refusal of the config.
  */
 export function readJs(path: string, text: string): ReadResult {
   if (text.length > MAX_CONFIG_CHARS) return { ok: false, reason: "too-large" };
-  try {
-    const { sourceFile, syntaxErrors } = parseTestFile(scriptKindOf(path), text);
-    if (syntaxErrors > 0) return { ok: false, reason: "syntax-error" };
-    if (tooDeep(sourceFile)) return { ok: false, reason: "too-deep" };
-    return { ok: true, root: new JsConfigReader(sourceFile).root() };
-  } catch (error) {
-    if (error instanceof RangeError) return { ok: false, reason: "too-deep" };
-    return { ok: false, reason: "syntax-error" };
-  }
+  const parsed = parseTestFile(scriptKindOf(path), text);
+  if (!parsed.ok) return { ok: false, reason: parsed.threw instanceof RangeError ? "too-deep" : "syntax-error" };
+  const { sourceFile, syntaxErrors } = parsed;
+  if (syntaxErrors > 0) return { ok: false, reason: "syntax-error" };
+  if (tooDeep(sourceFile)) return { ok: false, reason: "too-deep" };
+  return { ok: true, root: new JsConfigReader(sourceFile).root() };
 }

@@ -43,14 +43,19 @@ function toValue(json: unknown, depth: number): ConfigValue {
   return { type: "object", entries, open: false, extras: [] };
 }
 
-/** Reads a JSON test-runner config. Every line is null. Refuses a text that is too large, too deep or not JSON. */
+/**
+ * Reads a JSON test-runner config. Every line is null. Refuses a text that is too large, too deep or not JSON. Only
+ * `JSON.parse` is inside the `try`, so a fault in `toValue` (ours) throws instead of reading as `invalid-json`.
+ */
 export function readJson(text: string): ReadResult {
   if (text.length > MAX_CONFIG_CHARS) return { ok: false, reason: "too-large" };
   if (tooDeep(text)) return { ok: false, reason: "too-deep" };
+  const source = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+  let json: unknown;
   try {
-    const source = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
-    return { ok: true, root: toValue(JSON.parse(source), 0) };
+    json = JSON.parse(source);
   } catch {
     return { ok: false, reason: "invalid-json" };
   }
+  return { ok: true, root: toValue(json, 0) };
 }

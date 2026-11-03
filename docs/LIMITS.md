@@ -1193,6 +1193,14 @@ run. What it does not do:
   A hostile file can make the job slow or run out of memory; it cannot make pharn-ci write anywhere
   but `report.json`, the job summary and its PR comment. Section 8 lists what each input costs and
   how it fails.
+- **A bug in pharn-ci's own code fails the run.** Only the call to a third-party function that can fail on the
+  input (TypeScript's `createSourceFile`, `JSON.parse`) is wrapped in a `try`; a file the parser throws on is refused
+  as before (`too-deep`, `parser-threw`, `syntax-error`, `invalid-json`). An exception from pharn-ci's own test-file
+  walk, test-config readers, Python output mapping or policy validator is not caught: it escapes `check()` (or the
+  step that runs before it), so the Action step fails and the CLI exits 2, and that run's report, comment and upload
+  are lost. That is the accepted trade: a failed run, not a gate that passes or an index reported unavailable because
+  of a bug. One catch-all remains: `readPolicyFileAt` (the merge-base copy of an edited `file:` policy) reads any
+  failure as `unreadable`.
 - **pharn-ci cannot protect the job from the PR.** On `pull_request`, the PR's own code (its tests)
   runs in the same job before pharn-ci does. pharn-ci's guarantees are about what pharn-ci itself
   does with the token and with the input it reads.

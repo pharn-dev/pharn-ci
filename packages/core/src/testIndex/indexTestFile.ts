@@ -48,19 +48,18 @@ function buildBlocks(text: string, walked: WalkResult): TestBlock[] {
 /**
  * Indexes a JS or TS test file: its describe, test and hook blocks with names, modifiers, bodies and assertion
  * chains, and its module mocks. Syntax only: the text is parsed with TypeScript's `createSourceFile` and nothing is
- * evaluated, resolved or type-checked. Never throws: a file that cannot be indexed comes back as
- * `{ parsed: false, reason }`.
+ * evaluated, resolved or type-checked. A file that cannot be indexed because of its content (not a string, too large,
+ * too deep, too many syntax errors, or one the parser threw on) comes back as `{ parsed: false, reason }`. It throws
+ * only when pharn-ci's own code fails, so a bug of ours is never reported as a refusal of the file.
  */
 export function indexTestFile(path: string, text: string): TestIndexResult {
-  try {
-    if (typeof path !== "string" || typeof text !== "string") return refuse("parser-threw");
-    if (text.length > MAX_TEST_INDEX_CHARS) return refuse("too-large");
-    const { sourceFile, syntaxErrors } = parseTestFile(scriptKindOf(path), text);
-    if (syntaxErrors > MAX_TEST_INDEX_SYNTAX_ERRORS) return refuse("syntax-error-heavy");
-    const walked = walkTestFile(sourceFile);
-    if (walked === "too-deep") return refuse("too-deep");
-    return { parsed: true, syntaxErrors, tests: buildBlocks(text, walked), mocks: walked.mocks };
-  } catch (error) {
-    return refuse(isStackOverflow(error) ? "too-deep" : "parser-threw");
-  }
+  if (typeof path !== "string" || typeof text !== "string") return refuse("parser-threw");
+  if (text.length > MAX_TEST_INDEX_CHARS) return refuse("too-large");
+  const parsed = parseTestFile(scriptKindOf(path), text);
+  if (!parsed.ok) return refuse(isStackOverflow(parsed.threw) ? "too-deep" : "parser-threw");
+  const { sourceFile, syntaxErrors } = parsed;
+  if (syntaxErrors > MAX_TEST_INDEX_SYNTAX_ERRORS) return refuse("syntax-error-heavy");
+  const walked = walkTestFile(sourceFile);
+  if (walked === "too-deep") return refuse("too-deep");
+  return { parsed: true, syntaxErrors, tests: buildBlocks(text, walked), mocks: walked.mocks };
 }

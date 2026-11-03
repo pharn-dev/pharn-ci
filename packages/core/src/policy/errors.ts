@@ -25,7 +25,6 @@ export const MESSAGES = {
   perm: "is not a permission rule such as Tool or Tool(pattern)",
   login: "is not a GitHub login",
   event: "must contain only the letters A-Z and a-z",
-  couldNotValidate: "policy could not be validated",
   textNotString: "policy text must be a string",
   textNotJson: "policy text is not valid JSON",
 } as const;

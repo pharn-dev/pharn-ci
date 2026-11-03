@@ -167,7 +167,7 @@ function mapEntry(value: unknown, index: number): TestIndexResult {
  * Validates the interpreter's raw output strictly and maps it to one `TestIndexResult` per sent file. Anything that
  * breaks the format (non-JSON, a wrong type, an extra or missing key, an out-of-range number, an unknown enum value,
  * ids that are not 0..count-1 in order, an array over 524,288 entries) gives `bad-output` with a fixed one-line detail.
- * Never throws.
+ * Only a format break is `bad-output`: an exception from the mapping itself (a bug of ours) escapes.
  */
 export function pythonIndexFromRaw(
   stdout: string,
@@ -185,7 +185,7 @@ export function pythonIndexFromRaw(
     const results = entries.map((entry, index) => mapEntry(entry, index));
     return { available: true, results };
   } catch (error) {
-    const detail = error instanceof BadOutput ? error.detail : "the output could not be read";
-    return { available: false, reason: "bad-output", detail };
+    if (!(error instanceof BadOutput)) throw error;
+    return { available: false, reason: "bad-output", detail: error.detail };
   }
 }

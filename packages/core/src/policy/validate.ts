@@ -253,18 +253,16 @@ const document = objectOf(
 );
 
 /**
- * Validates a value against the policy document, version 1. Pure and total: it never throws, never repeats a value
- * from the document in an error, and walks only the schema's own shape, so its work is bounded by the input's size
- * whatever the input's depth, cycles or unknown subtrees. A valid result holds fresh objects and arrays with exactly
- * the input's keys and values: nothing is normalized and no default is filled.
+ * Validates a value against the policy document, version 1. It never throws on a value `JSON.parse` returns or on the
+ * hostile values its suite lists, never repeats a value from the document in an error, and walks only the schema's
+ * own shape, so its work is bounded by the input's size whatever the input's depth, cycles or unknown subtrees. A
+ * throw would be a bug of the validator itself and escapes: nothing here turns it into an invalid policy. A valid
+ * result holds fresh objects and arrays with exactly the input's keys and values: nothing is normalized and no
+ * default is filled.
  */
 export function validatePolicy(value: unknown): PolicyValidation {
-  try {
-    const errors = new ErrorCollector();
-    const out = document(value, "", errors);
-    if (errors.total === 0) return { ok: true, policy: out as PolicyDocument };
-    return { ok: false, errors: errors.finish() };
-  } catch {
-    return { ok: false, errors: [{ path: "", message: MESSAGES.couldNotValidate }] };
-  }
+  const errors = new ErrorCollector();
+  const out = document(value, "", errors);
+  if (errors.total === 0) return { ok: true, policy: out as PolicyDocument };
+  return { ok: false, errors: errors.finish() };
 }

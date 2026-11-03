@@ -242045,14 +242045,19 @@ function parseDiagnosticCount(sourceFile) {
 }
 function parseTestFile(kind, text) {
   const { scriptKind, fileName } = KIND[kind];
-  const sourceFile = import_typescript5.default.createSourceFile(
-    fileName,
-    text,
-    { languageVersion: import_typescript5.default.ScriptTarget.Latest, jsDocParsingMode: import_typescript5.default.JSDocParsingMode.ParseNone },
-    true,
-    scriptKind
-  );
-  return { sourceFile, syntaxErrors: parseDiagnosticCount(sourceFile) };
+  let sourceFile;
+  try {
+    sourceFile = import_typescript5.default.createSourceFile(
+      fileName,
+      text,
+      { languageVersion: import_typescript5.default.ScriptTarget.Latest, jsDocParsingMode: import_typescript5.default.JSDocParsingMode.ParseNone },
+      true,
+      scriptKind
+    );
+  } catch (threw) {
+    return { ok: false, threw };
+  }
+  return { ok: true, sourceFile, syntaxErrors: parseDiagnosticCount(sourceFile) };
 }
 
 // ../core/src/testIndex/scriptKind.ts
@@ -242559,17 +242564,15 @@ function buildBlocks(text, walked) {
   });
 }
 function indexTestFile(path, text) {
-  try {
-    if (typeof path !== "string" || typeof text !== "string") return refuse("parser-threw");
-    if (text.length > MAX_TEST_INDEX_CHARS) return refuse("too-large");
-    const { sourceFile, syntaxErrors } = parseTestFile(scriptKindOf(path), text);
-    if (syntaxErrors > MAX_TEST_INDEX_SYNTAX_ERRORS) return refuse("syntax-error-heavy");
-    const walked = walkTestFile(sourceFile);
-    if (walked === "too-deep") return refuse("too-deep");
-    return { parsed: true, syntaxErrors, tests: buildBlocks(text, walked), mocks: walked.mocks };
-  } catch (error2) {
-    return refuse(isStackOverflow(error2) ? "too-deep" : "parser-threw");
-  }
+  if (typeof path !== "string" || typeof text !== "string") return refuse("parser-threw");
+  if (text.length > MAX_TEST_INDEX_CHARS) return refuse("too-large");
+  const parsed = parseTestFile(scriptKindOf(path), text);
+  if (!parsed.ok) return refuse(isStackOverflow(parsed.threw) ? "too-deep" : "parser-threw");
+  const { sourceFile, syntaxErrors } = parsed;
+  if (syntaxErrors > MAX_TEST_INDEX_SYNTAX_ERRORS) return refuse("syntax-error-heavy");
+  const walked = walkTestFile(sourceFile);
+  if (walked === "too-deep") return refuse("too-deep");
+  return { parsed: true, syntaxErrors, tests: buildBlocks(text, walked), mocks: walked.mocks };
 }
 
 // ../core/src/signals/testPairs.ts
@@ -245978,15 +245981,12 @@ var JsConfigReader = class {
 };
 function readJs(path, text) {
   if (text.length > MAX_CONFIG_CHARS) return { ok: false, reason: "too-large" };
-  try {
-    const { sourceFile, syntaxErrors } = parseTestFile(scriptKindOf(path), text);
-    if (syntaxErrors > 0) return { ok: false, reason: "syntax-error" };
-    if (tooDeep(sourceFile)) return { ok: false, reason: "too-deep" };
-    return { ok: true, root: new JsConfigReader(sourceFile).root() };
-  } catch (error2) {
-    if (error2 instanceof RangeError) return { ok: false, reason: "too-deep" };
-    return { ok: false, reason: "syntax-error" };
-  }
+  const parsed = parseTestFile(scriptKindOf(path), text);
+  if (!parsed.ok) return { ok: false, reason: parsed.threw instanceof RangeError ? "too-deep" : "syntax-error" };
+  const { sourceFile, syntaxErrors } = parsed;
+  if (syntaxErrors > 0) return { ok: false, reason: "syntax-error" };
+  if (tooDeep(sourceFile)) return { ok: false, reason: "too-deep" };
+  return { ok: true, root: new JsConfigReader(sourceFile).root() };
 }
 
 // ../core/src/testConfig/readJson.ts
@@ -246025,12 +246025,14 @@ function toValue(json, depth) {
 function readJson(text) {
   if (text.length > MAX_CONFIG_CHARS) return { ok: false, reason: "too-large" };
   if (tooDeep2(text)) return { ok: false, reason: "too-deep" };
+  const source = text.charCodeAt(0) === 65279 ? text.slice(1) : text;
+  let json;
   try {
-    const source = text.charCodeAt(0) === 65279 ? text.slice(1) : text;
-    return { ok: true, root: toValue(JSON.parse(source), 0) };
+    json = JSON.parse(source);
   } catch {
     return { ok: false, reason: "invalid-json" };
   }
+  return { ok: true, root: toValue(json, 0) };
 }
 
 // ../core/src/testConfig/readToml.ts
@@ -248818,7 +248820,6 @@ var MESSAGES = {
   perm: "is not a permission rule such as Tool or Tool(pattern)",
   login: "is not a GitHub login",
   event: "must contain only the letters A-Z and a-z",
-  couldNotValidate: "policy could not be validated",
   textNotString: "policy text must be a string",
   textNotJson: "policy text is not valid JSON"
 };
@@ -249122,14 +249123,10 @@ var document = objectOf(
   ["version"]
 );
 function validatePolicy(value) {
-  try {
-    const errors = new ErrorCollector();
-    const out = document(value, "", errors);
-    if (errors.total === 0) return { ok: true, policy: out };
-    return { ok: false, errors: errors.finish() };
-  } catch {
-    return { ok: false, errors: [{ path: "", message: MESSAGES.couldNotValidate }] };
-  }
+  const errors = new ErrorCollector();
+  const out = document(value, "", errors);
+  if (errors.total === 0) return { ok: true, policy: out };
+  return { ok: false, errors: errors.finish() };
 }
 
 // ../core/src/policy/parse.ts
@@ -250076,8 +250073,8 @@ function pythonIndexFromRaw(stdout, count2) {
     const results = entries.map((entry, index) => mapEntry(entry, index));
     return { available: true, results };
   } catch (error2) {
-    const detail = error2 instanceof BadOutput ? error2.detail : "the output could not be read";
-    return { available: false, reason: "bad-output", detail };
+    if (!(error2 instanceof BadOutput)) throw error2;
+    return { available: false, reason: "bad-output", detail: error2.detail };
   }
 }
 
@@ -251552,12 +251549,7 @@ async function indexPythonTests(files, deps = {}) {
 async function indexPythonTestSources(sources, index = (files) => indexPythonTests(files)) {
   const files = pythonTestSourceFiles(sources);
   if (files.length === 0) return void 0;
-  let run2;
-  try {
-    run2 = await index(files);
-  } catch {
-    return { available: false, reason: "python-failed" };
-  }
+  const run2 = await index(files);
   return pythonTestIndexFromRun(sources, run2);
 }
 
