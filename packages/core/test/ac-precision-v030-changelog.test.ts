@@ -66,6 +66,12 @@ describe("CHANGELOG.md records TI15 to info and the official precision results",
 
     const headings = (all: string[]) => all.filter((line) => line.startsWith("## ["));
     const [unreleasedHeading, ...released] = headings(base);
-    expect(headings(now)).toEqual([unreleasedHeading, "## [0.4.0] - 2026-10-27", RELEASE_HEADING, ...released]);
+    expect(headings(now)).toEqual([
+      unreleasedHeading,
+      "## [0.5.0] - 2026-11-03",
+      "## [0.4.0] - 2026-10-27",
+      RELEASE_HEADING,
+      ...released,
+    ]);
   });
 });

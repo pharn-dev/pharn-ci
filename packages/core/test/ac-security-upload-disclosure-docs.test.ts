@@ -40,11 +40,14 @@ function openingParagraph(): string {
   return (table === -1 ? lines : lines.slice(0, table)).join(" ").replace(/\s+/g, " ").trim();
 }
 
-/** The bullets of the `## [Unreleased]` section of CHANGELOG.md, each joined with its continuation lines. */
+/**
+ * The bullets of the `## [0.5.0] - 2026-11-03` section of CHANGELOG.md, each joined with its continuation lines. The
+ * 0.5.0 release PR moved the Unreleased entries, this one's included, under that heading.
+ */
 function unreleasedBullets(): string[] {
   const lines = read("CHANGELOG.md").split("\n");
-  const from = lines.indexOf("## [Unreleased]");
-  expect(from, "CHANGELOG.md has a ## [Unreleased] section").toBeGreaterThanOrEqual(0);
+  const from = lines.indexOf("## [0.5.0] - 2026-11-03");
+  expect(from, "CHANGELOG.md has a ## [0.5.0] - 2026-11-03 section").toBeGreaterThanOrEqual(0);
   const rest = lines.slice(from + 1);
   const to = rest.findIndex((line) => line.startsWith("## ["));
   const body = to === -1 ? rest : rest.slice(0, to);

@@ -9,6 +9,20 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+### Changed
+
+### Security
+
+## [0.5.0] - 2026-11-03
+
+The fixes of the 2026-11-01 review. Test integrity in `block` fails closed when it cannot see the change, TI03 blocks
+the ways a skip was written to slip past it, unreadable agent settings and MCP files are errors, and the upload to
+pharn.dev is bounded in time and never sent from a `pull_request_target` run. The Action input `fail-on-threshold` is
+renamed `fail-on-verdict`; the old name still works, with a warning. Some warnings become errors on purpose: see
+**Changed** and **Security**. No schema field or message code was added, removed or renamed.
+
+### Added
+
 - The Action input `fail-on-verdict`, the new name of `fail-on-threshold` (review 2026-11-01, finding 27): it gates on
   the verdict, whatever made it fail, not only on the coverage threshold. `fail-on-threshold` still works when
   `fail-on-verdict` is not set, with a deprecation warning, and is ignored (with a warning) when both are; both stay

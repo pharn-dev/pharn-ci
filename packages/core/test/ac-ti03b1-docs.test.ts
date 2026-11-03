@@ -27,9 +27,10 @@ describe("TI03 skip evasions: docs", () => {
     expect(misses, "a multi-line pytestmark list").toMatch(/multi-line/i);
     expect(misses, "is read from its first line only").toMatch(/first line only/i);
 
+    // Shipped in 0.5.0: the release PR moved the Unreleased entries under `## [0.5.0] - 2026-11-03`.
     const changelog = read("CHANGELOG.md");
-    const start = changelog.indexOf("## [Unreleased]");
-    expect(start, "an Unreleased section").toBeGreaterThan(-1);
+    const start = changelog.indexOf("## [0.5.0] - 2026-11-03");
+    expect(start, "the 0.5.0 section").toBeGreaterThan(-1);
     const end = changelog.indexOf("\n## [", start + 1);
     const unreleased = changelog.slice(start, end === -1 ? undefined : end);
     expect(unreleased, "Unreleased names TI03").toContain("TI03");

@@ -17,16 +17,19 @@ function c5Row(): string {
   return row;
 }
 
-/** The bullets of `## [Unreleased]` → `### Security`, each folded onto one line. */
+/**
+ * The bullets of `## [0.5.0] - 2026-11-03` → `### Security`, each folded onto one line. Shipped in 0.5.0: the release
+ * PR moved the Unreleased entries under that heading.
+ */
 function unreleasedSecurityBullets(): string[] {
   const lines = read("CHANGELOG.md").split("\n");
-  const start = lines.indexOf("## [Unreleased]");
-  if (start === -1) throw new Error("CHANGELOG.md has no ## [Unreleased] section");
+  const start = lines.indexOf("## [0.5.0] - 2026-11-03");
+  if (start === -1) throw new Error("CHANGELOG.md has no ## [0.5.0] - 2026-11-03 section");
   const after = lines.slice(start + 1);
   const end = after.findIndex((line) => /^## /.test(line));
   const section = end === -1 ? after : after.slice(0, end);
   const security = section.indexOf("### Security");
-  if (security === -1) throw new Error("## [Unreleased] has no ### Security subsection");
+  if (security === -1) throw new Error("## [0.5.0] - 2026-11-03 has no ### Security subsection");
   const rest = section.slice(security + 1);
   const stop = rest.findIndex((line) => /^### /.test(line));
   const body = stop === -1 ? rest : rest.slice(0, stop);
