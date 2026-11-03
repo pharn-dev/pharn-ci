@@ -1,0 +1,20 @@
+diff --git a/tests/test_c.py b/tests/test_c.py
+index 1111111..2222222 100644
+--- a/tests/test_c.py
++++ b/tests/test_c.py
+@@ -6,4 +4,0 @@
+-
+-
+-def test_empty():
+-    assert total([]) == 0
+diff --git a/tests/test_new.py b/tests/test_new.py
+new file mode 100644
+index 0000000..3333333
+--- /dev/null
++++ b/tests/test_new.py
+@@ -0,0 +1,5 @@
++from cart import total
++
++
++def test_one_price():
++    assert total([4]) == 4

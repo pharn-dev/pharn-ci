@@ -213,7 +213,9 @@ whether a test is still good.
   `.js`, `.jsx`, `.mjs`, `.cjs` and `.py` files. A deleted or renamed-away file is TI01's, not TI02's.
 - **No run, no resolution.** The tests are parsed, never run, and a test the framework generates (a loop that calls
   `it`, a parametrized Python test) is one block or none. A syntax-error-heavy, oversized or deeply nested file is not
-  compared (`TEST_INTEGRITY_INDEX_UNAVAILABLE`).
+  compared (`TEST_INTEGRITY_INDEX_UNAVAILABLE`). An added test file the index refuses (or that has no text at HEAD,
+  or no Python index) holds no test any signal reads: a test cannot be found to have moved into it, and its own
+  tests are not checked. The same message names it in a sentence of its own, as a warning in every mode.
 - **Caps.** At most 20 findings per file; the matching probes at most 256 candidates per test (section 8).
 - **Order of the rules.** Name pairs and phase 1 (4/5), then the rename in place, the `.each` replacement, the exact
   cross-file body hash or leaf name with a body that holds the old one (body evidence) and, last, the cross-file
@@ -821,8 +823,8 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
 - **Test integrity in `block` fails closed on an unreadable change, with these limits.**
   `TEST_INTEGRITY_INDEX_UNAVAILABLE` is an error in mode `block` only when TI02 and TI05, or TI09, did
   not run at all (the test text could not be read and a test file or a test-runner config is
-  modified). The per-file form, where some touched files could not be compared, stays a warning in
-  block. With no coverage file and no diff, block reports the coverage problem (a warning without a
+  modified). The per-file form, where some touched files could not be compared or some added test
+  files could not be read, stays a warning in block. With no coverage file and no diff, block reports the coverage problem (a warning without a
   threshold). A7 and P02–P07 need a local diff (`fetch-depth: 0`). Their "did not run" message is
   a warning, except that `POLICY_SETTINGS_INVALID` for unread settings is an error under a required
   app policy or a policy that lists `required_permissions_deny` or `required_hooks` at block (P03,
@@ -1321,8 +1323,10 @@ limited by git, Node or GitHub alone.
   diff fails, and so does the step. A symlink test file is read as its link target path. TI02 and TI05 read this text for the JavaScript, TypeScript and
   Python test files the diff modifies (and the added ones, as places a test can move to). A touched test file that has
   no text on a side (any drop reason above), or that the test index refuses, is not compared: the report names it in
-  `TEST_INTEGRITY_INDEX_UNAVAILABLE` with the reason code, and when a side of the sources is unavailable and the diff
-  modifies a test file, the same message says that TI02 and TI05 did not run. The test index adds its own refusals:
+  `TEST_INTEGRITY_INDEX_UNAVAILABLE` with the reason code, an added one in a sentence of its own (its tests are not
+  checked), and when a side of the sources is unavailable and the diff modifies a test file, the same message says
+  that TI02 and TI05 did not run. When the sources are unavailable and the diff only adds test files, nothing is
+  named: no file has text, and an added file cannot hide a weakened existing test. The test index adds its own refusals:
   more than 524288 UTF-16 code units of text (`too-large`), more than ten syntax errors (`syntax-error-heavy`) and a
   syntax tree deeper than 1000 nodes (`too-deep`); the Python index adds the 30 s interpreter timeout, 64 MiB of
   output and its own caps of 200 files, 512 KiB per file and 16 MiB in all, shared by the base and head files of one

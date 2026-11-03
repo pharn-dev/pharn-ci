@@ -246,8 +246,13 @@ export interface OmittedSignals {
   count: number;
 }
 
-/** Test files that TI02 and TI05 could not compare, or why they did not run at all. */
-export type TestIndexUnavailable = { files: readonly { path: string; reason: string }[] } | { notRun: string };
+/**
+ * Test files that TI02 and TI05 could not compare, or why they did not run at all. The `{ files }` form also carries the
+ * added test files whose tests could not be read (`added`): nothing that reads an added file's tests checked them.
+ */
+export type TestIndexUnavailable =
+  | { files: readonly { path: string; reason: string }[]; added?: readonly { path: string; reason: string }[] }
+  | { notRun: string };
 
 /** Touched test-config files that TI09 could not read, or why it did not run at all. */
 export type TestConfigUnavailable = { files: readonly { path: string; reason: string }[] } | { notRun: string };
@@ -768,7 +773,8 @@ export function oneLine(text: string): string {
 /**
  * The level of the `TEST_INTEGRITY_INDEX_UNAVAILABLE` message. In mode `block` it is an error when TI02 and TI05, or TI09,
  * did not run at all (the `{ notRun }` form): block asked for a test-integrity gate, and a gate that could not read the
- * touched test text fails closed (pre-sale review item 4). The per-file `{ files }` form and every other mode stay a warning.
+ * touched test text fails closed (pre-sale review item 4). The per-file `{ files }` form (its unread added files
+ * included: an added file cannot hide a weakened existing test) and every other mode stay a warning.
  */
 function indexUnavailableLevel(
   mode: string | undefined,
@@ -783,11 +789,12 @@ function indexUnavailableLevel(
 }
 
 /**
- * The text of the one `TEST_INTEGRITY_INDEX_UNAVAILABLE` message: the TI02 and TI05 sentence, then the TI09 sentence, joined
- * by one space, each only when it has something to say. The TI02 and TI05 sentence names the touched test files that
- * could not be compared with a code for each (at most 5, then a count), or says they did not run, with the sources
- * reason as one code span. The TI09 sentence does the same for the touched test-config files. Neither a Python run's
- * detail nor any file content is in it. Null when there is nothing to say.
+ * The text of the one `TEST_INTEGRITY_INDEX_UNAVAILABLE` message: the TI02 and TI05 sentence, then the added-files
+ * sentence, then the TI09 sentence, joined by one space, each only when it has something to say. The TI02 and TI05
+ * sentence names the touched test files that could not be compared with a code for each (at most 5, then a count), or
+ * says they did not run, with the sources reason as one code span. The added-files sentence names, the same way, the
+ * added test files whose tests could not be read. The TI09 sentence does the same for the touched test-config files.
+ * Neither a Python run's detail nor any file content is in it. Null when there is nothing to say.
  */
 function indexUnavailableText(
   unavailable: TestIndexUnavailable | undefined,
@@ -799,10 +806,17 @@ function indexUnavailableText(
       parts.push(
         `TI02 and TI05 did not run: the text of the touched test files could not be read (${codeSpan(oneLine(unavailable.notRun))}), so removed tests and emptied assertions are not checked.`,
       );
-    } else if (unavailable.files.length > 0) {
-      parts.push(
-        `TI02 and TI05 could not compare these touched test files, so they are not checked for removed tests or emptied assertions: ${namedFiles(unavailable.files)}.`,
-      );
+    } else {
+      if (unavailable.files.length > 0) {
+        parts.push(
+          `TI02 and TI05 could not compare these touched test files, so they are not checked for removed tests or emptied assertions: ${namedFiles(unavailable.files)}.`,
+        );
+      }
+      if (unavailable.added !== undefined && unavailable.added.length > 0) {
+        parts.push(
+          `The tests in these added test files could not be read, so they are not checked: ${namedFiles(unavailable.added)}.`,
+        );
+      }
     }
   }
   if (configUnavailable !== undefined) {

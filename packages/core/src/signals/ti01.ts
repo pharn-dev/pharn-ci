@@ -26,16 +26,17 @@ function removedTests(file: DiffFile): "yes" | "no" | "unknown" {
  * deletes other files of the package that holds the test (never the repository root), or (for a deleted file in
  * `moved`, see `movedTestFiles`) when every test it held is found again, by body, in a new test of this change. A
  * deleted file with a same-stem test file added or renamed to (`sameStemDeletions`) needs no name match, only the body
- * evidence; without it the file stays `block` and the detail says whether its tests were compared (`compared`) or the
- * text was not available. A renamed-away file is never softened by a same-stem file. A snapshot (`.snap`) path is never
- * a candidate: it holds no test, only stored output. One signal per file, sorted by path. No file content reaches a
- * signal.
+ * evidence; without it the file stays `block` and the detail says whether its tests were compared (`compared`), its
+ * base text was read but could not be parsed (`unparsed`), or the text was not available. A renamed-away file is never
+ * softened by a same-stem file. A snapshot (`.snap`) path is never a candidate: it holds no test, only stored output.
+ * One signal per file, sorted by path. No file content reaches a signal.
  */
 export function detectTI01(
   diff: readonly DiffFile[],
   mode: "block" | "warn",
   moved: ReadonlySet<string> = new Set(),
   compared: ReadonlySet<string> = new Set(),
+  unparsed: ReadonlySet<string> = new Set(),
 ): TestIntegritySignal[] {
   const deletedSources = diff.filter((file) => file.status === "deleted" && !isTestFile(file.path));
   const sourceStems = new Set(deletedSources.map((file) => testStem(file.path)));
@@ -81,6 +82,9 @@ export function detectTI01(
       } else if (compared.has(path)) {
         detail =
           "Test file deleted; a test file of the same name was added, but not every test it held is found again by body.";
+      } else if (unparsed.has(path)) {
+        detail =
+          "Test file deleted; a test file of the same name was added, but its text at the merge base could not be parsed to compare their tests.";
       } else {
         detail =
           "Test file deleted; a test file of the same name was added, but the text to compare their tests was not available.";

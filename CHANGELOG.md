@@ -11,6 +11,15 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- An added test file pharn-ci cannot read (the test index refuses it as `syntax-error-heavy`, `too-deep` or
+  `parser-threw`, its text was dropped or missing at HEAD, or there is no Python index for a `.py` file) is now named in
+  `TEST_INTEGRITY_INDEX_UNAVAILABLE` with its reason code, in a sentence of its own after the TI02 and TI05 one: "The
+  tests in these added test files could not be read, so they are not checked: …". It was dropped with no trace, so
+  its tests were checked by nothing and the report did not say so. The message stays a warning in every mode, is not
+  given in mode `off`, and is unchanged when no added file is unread. No new message code and no schema change.
+- TI01's detail for a deleted test file with a same-stem test file added now says the base text "could not be parsed"
+  when it was read but the test index refused it, instead of saying it was not available. The severity is unchanged.
+
 ### Security
 
 ## [0.5.0] - 2026-11-03

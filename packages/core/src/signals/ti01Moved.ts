@@ -22,6 +22,12 @@ export interface MovedTests {
    * the touched files could not be compared, when the base side is unavailable, and for a Python file with no index.
    */
   compared: Set<string>;
+  /**
+   * The deleted test files whose base text was kept (or, for Python, indexed) but that the test index refused
+   * (`syntax-error-heavy`, `too-deep`, `parser-threw`, ...): never in `compared`. TI01 says their text could not be
+   * parsed, not that it was not available. Empty in the same cases as `compared`.
+   */
+  unparsed: Set<string>;
   /** Base path is the deleted file, head path the file that holds the test now; for TI05, TI06 and TI07. */
   pairs: MatchedPair[];
   /** The describe blocks of each file in `compared`, by path: the base side of `pairs` for TI03's pair pass. */
@@ -76,7 +82,8 @@ export function sameStemDeletions(diff: readonly DiffFile[]): Set<string> {
  * (`sameStemDeletions`) needs no name check: its tests are held by body only. `files` and `pairs` are empty when the
  * touched files could not be compared (`touched.notRun`), when the base side of the sources is unavailable, or when no
  * deleted file qualifies; a deleted Python file needs the Python index. A name alone never qualifies a file: the
- * test's code has to be found again. `compared` lists every deleted file whose text was indexed, qualifying or not.
+ * test's code has to be found again. `compared` lists every deleted file whose text was indexed, qualifying or not, and
+ * `unparsed` every deleted file whose text was there but the index refused.
  */
 export function movedTestFiles(
   diff: readonly DiffFile[],
@@ -85,7 +92,13 @@ export function movedTestFiles(
   touched: Pick<TouchedTests, "pairs" | "added" | "notRun">,
 ): MovedTests {
   const describes = new Map<string, TestBlock[]>();
-  const moved: MovedTests = { files: new Set(), compared: new Set(), pairs: [], groups: describes };
+  const moved: MovedTests = {
+    files: new Set(),
+    compared: new Set(),
+    unparsed: new Set(),
+    pairs: [],
+    groups: describes,
+  };
   if (touched.notRun !== null || "unavailable" in sources.base) return moved;
 
   const deleted = diff
@@ -106,7 +119,11 @@ export function movedTestFiles(
       const text = texts.get(path);
       if (text !== undefined) result = indexTestFile(path, text);
     }
-    if (result === undefined || !result.parsed) continue;
+    if (result === undefined) continue;
+    if (!result.parsed) {
+      moved.unparsed.add(path);
+      continue;
+    }
     moved.compared.add(path);
     describes.set(
       path,

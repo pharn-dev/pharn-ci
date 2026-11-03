@@ -1,0 +1,55 @@
+diff --git a/src/cart.test.ts b/src/cart.test.ts
+deleted file mode 100644
+index 5555555..0000000
+--- a/src/cart.test.ts
++++ /dev/null
+@@ -1,37 +0,0 @@
+-import { expect, it } from "vitest";
+-import { total } from "./cart.js";
+-
+-it("adds the prices", () => {
+-  expect(total([2, 3])).toBe(5);
+-});
+-
+-const = 0 ) ] }
+-const = 1 ) ] }
+-const = 2 ) ] }
+-const = 3 ) ] }
+-const = 4 ) ] }
+-const = 5 ) ] }
+-const = 6 ) ] }
+-const = 7 ) ] }
+-const = 8 ) ] }
+-const = 9 ) ] }
+-const = 10 ) ] }
+-const = 11 ) ] }
+-const = 12 ) ] }
+-const = 13 ) ] }
+-const = 14 ) ] }
+-const = 15 ) ] }
+-const = 16 ) ] }
+-const = 17 ) ] }
+-const = 18 ) ] }
+-const = 19 ) ] }
+-const = 20 ) ] }
+-const = 21 ) ] }
+-const = 22 ) ] }
+-const = 23 ) ] }
+-const = 24 ) ] }
+-const = 25 ) ] }
+-const = 26 ) ] }
+-const = 27 ) ] }
+-const = 28 ) ] }
+-const = 29 ) ] }
+diff --git a/src/cart.spec.ts b/src/cart.spec.ts
+new file mode 100644
+index 0000000..3333333
+--- /dev/null
++++ b/src/cart.spec.ts
+@@ -0,0 +1,6 @@
++import { expect, it } from "vitest";
++import { total } from "./cart.js";
++
++it("adds the prices", () => {
++  expect(total([2, 3])).toBe(5);
++});

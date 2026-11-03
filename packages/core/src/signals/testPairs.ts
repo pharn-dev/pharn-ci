@@ -49,7 +49,10 @@ export interface AddedTestFile {
   headGroups?: TestBlock[];
 }
 
-/** A compared file that could not be compared, and why: a drop reason, `missing`, or a refusal or Python reason. */
+/**
+ * A compared file that could not be compared, or an added file whose tests could not be read, and why: a drop reason,
+ * `missing`, or a refusal or Python reason.
+ */
 export interface UncomparedTestFile {
   path: string;
   reason: string;
@@ -62,6 +65,13 @@ export interface TouchedTests {
   added: AddedTestFile[];
   /** Sorted by path. */
   unavailable: UncomparedTestFile[];
+  /**
+   * The added test files whose head side could not be indexed (dropped, missing, refused by the test index, or no
+   * Python index), sorted by path. They are in no other list, so nothing that reads `added` checks their tests; the
+   * report names them. Empty when `notRun` is set, and when the head side of the sources is unavailable: then no file
+   * has text, the CLI and the Action log why, and an added file cannot hide a weakened existing test.
+   */
+  unreadAdded: UncomparedTestFile[];
   /** Why no file was compared (a side of the sources is unavailable and a compared file exists), else null. */
   notRun: string | null;
   /** The sorted languages of every file a parser accepted on either side. */
@@ -117,9 +127,11 @@ function pythonLookupOf(index: PythonTestIndex | undefined): PythonLookup {
  *
  * A compared file is a diff entry that is `modified`, or `renamed` with a test-file path on both sides, whose new path
  * has a JavaScript or TypeScript extension or ends in `.py`; it is read at its old path on the base side and its new
- * path on the head side. An added test file of those languages is indexed on the head side only. A deleted file is not
- * indexed (TI01 owns it). JavaScript and TypeScript text goes to `indexTestFile`; Python results come from `python`.
- * When a side of the sources is unavailable and a compared file exists, nothing is indexed and `notRun` says why.
+ * path on the head side. An added test file of those languages is indexed on the head side only; one that does not
+ * index goes to `unreadAdded` with its reason, so it is reported, not dropped. A deleted file is not indexed (TI01 owns
+ * it). JavaScript and TypeScript text goes to `indexTestFile`; Python results come from `python`. When a side of the
+ * sources is unavailable and a compared file exists, nothing is indexed and `notRun` says why; when the head side is
+ * unavailable and no compared file exists, nothing is indexed or named.
  */
 export function indexTouchedTestFiles(
   diff: readonly DiffFile[],
@@ -142,7 +154,11 @@ export function indexTouchedTestFiles(
     const why = [
       ...new Set([sources.base, sources.head].flatMap((side) => ("unavailable" in side ? [side.unavailable] : []))),
     ];
-    if (why.length > 0) return { pairs: [], added: [], unavailable: [], notRun: why.join("; "), languages: [] };
+    if (why.length > 0) {
+      return { pairs: [], added: [], unavailable: [], unreadAdded: [], notRun: why.join("; "), languages: [] };
+    }
+  } else if ("unavailable" in sources.head) {
+    return { pairs: [], added: [], unavailable: [], unreadAdded: [], notRun: null, languages: [] };
   }
 
   const baseSide = lookupOf(sources.base);
@@ -195,9 +211,18 @@ export function indexTouchedTestFiles(
   unavailable.sort((a, b) => byCodeUnit(a.path, b.path));
 
   const added: AddedTestFile[] = [];
+  const unreadAdded: UncomparedTestFile[] = [];
   for (const [headPath, language] of [...addedPaths].sort((a, b) => byCodeUnit(a[0], b[0]))) {
     const head = indexSide("head", headPath, language);
     if (head.ok) added.push({ headPath, head: head.tests, headMocks: head.mocks, headGroups: head.groups });
+    else unreadAdded.push({ path: headPath, reason: head.reason });
   }
-  return { pairs, added, unavailable, notRun: null, languages: [...languages].sort(byCodeUnit) };
+  return {
+    pairs,
+    added,
+    unavailable,
+    unreadAdded,
+    notRun: null,
+    languages: [...languages].sort(byCodeUnit),
+  };
 }

@@ -143,7 +143,9 @@ export interface CheckInput {
    * the Python test files in it to resolve `import pytest as pt` style aliases; without them it reads the literal
    * spellings only. Without it, or in mode off,
    * nothing is compared and the report is the one it was before: no signal, no message, no language. With a side
-   * unavailable and a modified test file, the report carries one `TEST_INTEGRITY_INDEX_UNAVAILABLE` message.
+   * unavailable and a modified test file, the report carries one `TEST_INTEGRITY_INDEX_UNAVAILABLE` message; the same
+   * message names a modified test file that could not be compared and an added test file whose tests could not be
+   * read.
    */
   testSources?: TestSources;
   /**
@@ -250,7 +252,7 @@ export function check(input: CheckInput): Report {
     parsedDiff === null || testIntegrity.mode === "off"
       ? []
       : sortSignals([
-          ...detectTI01(parsedDiff, testIntegrity.mode, movedTests?.files, movedTests?.compared),
+          ...detectTI01(parsedDiff, testIntegrity.mode, movedTests?.files, movedTests?.compared, movedTests?.unparsed),
           ...detectTI04(parsedDiff, testIntegrity.mode),
           ...detectTI08(parsedDiff),
           ...detectTI10(parsedDiff, { repoFiles: input.repoFiles, mode: testIntegrity.mode }),
@@ -321,7 +323,13 @@ export function check(input: CheckInput): Report {
         signals: capped.kept,
         omitted: capped.omitted,
         languages: touched.languages,
-        unavailable: touched.unavailable.length > 0 ? { files: touched.unavailable } : undefined,
+        unavailable:
+          touched.unavailable.length > 0 || touched.unreadAdded.length > 0
+            ? {
+                files: touched.unavailable,
+                ...(touched.unreadAdded.length > 0 ? { added: touched.unreadAdded } : {}),
+              }
+            : undefined,
         configUnavailable,
       };
     }

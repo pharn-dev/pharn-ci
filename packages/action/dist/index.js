@@ -26339,10 +26339,17 @@ function indexUnavailableText(unavailable2, configUnavailable) {
       parts.push(
         `TI02 and TI05 did not run: the text of the touched test files could not be read (${codeSpan(oneLine(unavailable2.notRun))}), so removed tests and emptied assertions are not checked.`
       );
-    } else if (unavailable2.files.length > 0) {
-      parts.push(
-        `TI02 and TI05 could not compare these touched test files, so they are not checked for removed tests or emptied assertions: ${namedFiles(unavailable2.files)}.`
-      );
+    } else {
+      if (unavailable2.files.length > 0) {
+        parts.push(
+          `TI02 and TI05 could not compare these touched test files, so they are not checked for removed tests or emptied assertions: ${namedFiles(unavailable2.files)}.`
+        );
+      }
+      if (unavailable2.added !== void 0 && unavailable2.added.length > 0) {
+        parts.push(
+          `The tests in these added test files could not be read, so they are not checked: ${namedFiles(unavailable2.added)}.`
+        );
+      }
     }
   }
   if (configUnavailable !== void 0) {
@@ -31964,7 +31971,11 @@ function indexTouchedTestFiles(diff, sources, python) {
     const why = [
       ...new Set([sources.base, sources.head].flatMap((side) => "unavailable" in side ? [side.unavailable] : []))
     ];
-    if (why.length > 0) return { pairs: [], added: [], unavailable: [], notRun: why.join("; "), languages: [] };
+    if (why.length > 0) {
+      return { pairs: [], added: [], unavailable: [], unreadAdded: [], notRun: why.join("; "), languages: [] };
+    }
+  } else if ("unavailable" in sources.head) {
+    return { pairs: [], added: [], unavailable: [], unreadAdded: [], notRun: null, languages: [] };
   }
   const baseSide = lookupOf(sources.base);
   const headSide = lookupOf(sources.head);
@@ -32013,11 +32024,20 @@ function indexTouchedTestFiles(diff, sources, python) {
   }
   unavailable2.sort((a, b) => byCodeUnit(a.path, b.path));
   const added = [];
+  const unreadAdded = [];
   for (const [headPath, language] of [...addedPaths].sort((a, b) => byCodeUnit(a[0], b[0]))) {
     const head = indexSide("head", headPath, language);
     if (head.ok) added.push({ headPath, head: head.tests, headMocks: head.mocks, headGroups: head.groups });
+    else unreadAdded.push({ path: headPath, reason: head.reason });
   }
-  return { pairs, added, unavailable: unavailable2, notRun: null, languages: [...languages].sort(byCodeUnit) };
+  return {
+    pairs,
+    added,
+    unavailable: unavailable2,
+    unreadAdded,
+    notRun: null,
+    languages: [...languages].sort(byCodeUnit)
+  };
 }
 
 // ../core/src/signals/testChanges.ts
@@ -32663,7 +32683,13 @@ function sameStemDeletions(diff) {
 }
 function movedTestFiles(diff, sources, python, touched) {
   const describes = /* @__PURE__ */ new Map();
-  const moved = { files: /* @__PURE__ */ new Set(), compared: /* @__PURE__ */ new Set(), pairs: [], groups: describes };
+  const moved = {
+    files: /* @__PURE__ */ new Set(),
+    compared: /* @__PURE__ */ new Set(),
+    unparsed: /* @__PURE__ */ new Set(),
+    pairs: [],
+    groups: describes
+  };
   if (touched.notRun !== null || "unavailable" in sources.base) return moved;
   const deleted = diff.filter((file) => file.status === "deleted" && isTestFile(file.path) && file.binary !== true).map((file) => file.path).sort(byCodeUnit);
   if (deleted.length === 0) return moved;
@@ -32678,7 +32704,11 @@ function movedTestFiles(diff, sources, python, touched) {
       const text = texts.get(path);
       if (text !== void 0) result = indexTestFile(path, text);
     }
-    if (result === void 0 || !result.parsed) continue;
+    if (result === void 0) continue;
+    if (!result.parsed) {
+      moved.unparsed.add(path);
+      continue;
+    }
     moved.compared.add(path);
     describes.set(
       path,
@@ -32755,7 +32785,7 @@ function removedTests(file) {
   }
   return "no";
 }
-function detectTI01(diff, mode, moved = /* @__PURE__ */ new Set(), compared2 = /* @__PURE__ */ new Set()) {
+function detectTI01(diff, mode, moved = /* @__PURE__ */ new Set(), compared2 = /* @__PURE__ */ new Set(), unparsed = /* @__PURE__ */ new Set()) {
   const deletedSources = diff.filter((file) => file.status === "deleted" && !isTestFile(file.path));
   const sourceStems = new Set(deletedSources.map((file) => testStem(file.path)));
   const sameStem = sameStemDeletions(diff);
@@ -32786,6 +32816,8 @@ function detectTI01(diff, mode, moved = /* @__PURE__ */ new Set(), compared2 = /
         detail = "Test file replaced by a test file of the same name; every test it held is found again, by body, in a new test of this change.";
       } else if (compared2.has(path)) {
         detail = "Test file deleted; a test file of the same name was added, but not every test it held is found again by body.";
+      } else if (unparsed.has(path)) {
+        detail = "Test file deleted; a test file of the same name was added, but its text at the merge base could not be parsed to compare their tests.";
       } else {
         detail = "Test file deleted; a test file of the same name was added, but the text to compare their tests was not available.";
       }
@@ -37351,7 +37383,7 @@ function check(input) {
   const movedTests = touched === null || parsedDiff === null || input.testSources === void 0 ? void 0 : movedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex, touched);
   const sourceMatches = parsedDiff === null || testIntegrity2.mode === "off" ? { signals: [], omitted: [] } : detectTI15(parsedDiff, { repoFiles: input.repoFiles });
   const testIntegritySignals = parsedDiff === null || testIntegrity2.mode === "off" ? [] : sortSignals([
-    ...detectTI01(parsedDiff, testIntegrity2.mode, movedTests?.files, movedTests?.compared),
+    ...detectTI01(parsedDiff, testIntegrity2.mode, movedTests?.files, movedTests?.compared, movedTests?.unparsed),
     ...detectTI04(parsedDiff, testIntegrity2.mode),
     ...detectTI08(parsedDiff),
     ...detectTI10(parsedDiff, { repoFiles: input.repoFiles, mode: testIntegrity2.mode }),
@@ -37407,7 +37439,10 @@ function check(input) {
         signals: capped.kept,
         omitted: capped.omitted,
         languages: touched.languages,
-        unavailable: touched.unavailable.length > 0 ? { files: touched.unavailable } : void 0,
+        unavailable: touched.unavailable.length > 0 || touched.unreadAdded.length > 0 ? {
+          files: touched.unavailable,
+          ...touched.unreadAdded.length > 0 ? { added: touched.unreadAdded } : {}
+        } : void 0,
         configUnavailable
       };
     }
