@@ -6,6 +6,13 @@
 //   verdict  the `verdict` output is `pass`
 //   summary  every line of fixtures/smoke/expected-summary.txt is a whole line of the job summary
 //   footer   the summary footer names `pharn-ci <version>`, the version in <action-dir>/packages/action/package.json
+//   offline  a second run of the same bundle in the same repository, with the network forbidden, ends the same: the
+//            OIDC request variables are set (the token URL is a closed 127.0.0.1 port), a run context (a synthetic
+//            event file with a repository name, a run id and the head SHA) lets the org policy and the upload reach
+//            their token request, and a preload makes the global fetch throw. It must exit as the first run did, with
+//            the same `verdict`, log that the upload found no OIDC token, and write a report.json equal to the first
+//            run's except `meta`: only this run has a run context, so only its report has `meta`, and `meta.upload`
+//            must be `skipped`.
 // Node built-ins only, no network. Needs git on PATH. The temporary directory (under TMPDIR) is removed on every exit.
 // Run from the repo root:
 //   node scripts/smoke-release.mjs <action-dir>
@@ -14,8 +21,16 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, write
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 
 const RUN_TIMEOUT_MS = 90_000;
+/** The OIDC token URL of the offline run: port 1 of the loopback address, where nothing listens. */
+const DEAD_TOKEN_URL = "http://127.0.0.1:1/token";
+/** A preload for the offline run: every call of the global fetch rejects, as it does with no network. */
+const NO_FETCH_PRELOAD =
+  "data:text/javascript,globalThis.fetch = async () => { throw new TypeError('smoke: the network is forbidden'); };";
+/** The line the upload logs when it asked for an OIDC token and got none. */
+const UPLOAD_NO_TOKEN_LINE = "pharn-ci: the run is not uploaded to pharn.dev: no OIDC token is available";
 const GIT_TIMEOUT_MS = 30_000;
 const FIXTURES = fileURLToPath(new URL("../fixtures/smoke/", import.meta.url));
 
@@ -100,15 +115,51 @@ function smoke(tmp) {
   if (!existsSync(bundle)) return { check: "exit", detail: `no bundle at ${bundle}` };
 
   const repo = join(tmp, "repo");
-  const summaryPath = join(tmp, "summary.md");
-  const outputPath = join(tmp, "output.txt");
-  const runnerTemp = join(tmp, "runner-temp");
   buildRepository(repo);
+
+  const first = runBundle(repo, join(tmp, "online"));
+  const fail = (check, detail) => ({ check, detail, bundleOutput: first.output });
+
+  if (first.status !== 0) return fail("exit", `${exitText(first)}, expected 0`);
+
+  const verdict = first.verdict();
+  if (verdict !== "pass") return fail("verdict", `verdict "${verdict ?? ""}", expected "pass"`);
+
+  const summaryLines = readFileSync(first.summaryPath, "utf8")
+    .split("\n")
+    .map((line) => line.replace(/\r$/, ""));
+  const expected = readFileSync(join(FIXTURES, "expected-summary.txt"), "utf8")
+    .split("\n")
+    .map((line) => line.replace(/\r$/, ""))
+    .filter((line) => line.trim() !== "");
+  const missing = expected.find((line) => !summaryLines.includes(line));
+  if (missing !== undefined) return fail("summary", `the job summary has no line "${missing}"`);
+
+  const footer = new RegExp(`pharn-ci ${version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![0-9.])`);
+  if (!summaryLines.some((line) => footer.test(line))) {
+    return fail("footer", `footer: no "pharn-ci ${version}" in the job summary`);
+  }
+
+  const offline = offlineCheck(repo, join(tmp, "offline"), first);
+  if (offline !== null) return offline;
+
+  return {
+    ok: `ok pharn-ci ${version}: exit 0, verdict pass, ${expected.length} summary lines, footer, offline run matches`,
+  };
+}
+
+/**
+ * Runs the bundle once in `repo` with the six inputs and four runner paths (under `dir`), plus `extraEnv`, and node
+ * flags `nodeArgs`. Returns the exit, the output, and readers of the `verdict` output and of report.json.
+ */
+function runBundle(repo, dir, extraEnv = {}, nodeArgs = []) {
+  const summaryPath = join(dir, "summary.md");
+  const outputPath = join(dir, "output.txt");
+  const runnerTemp = join(dir, "runner-temp");
+  mkdirSync(runnerTemp, { recursive: true });
   writeFileSync(summaryPath, "");
   writeFileSync(outputPath, "");
-  mkdirSync(runnerTemp, { recursive: true });
-
-  const run = spawnSync(process.execPath, [bundle], {
+  const run = spawnSync(process.execPath, [...nodeArgs, bundle], {
     cwd: repo,
     encoding: "utf8",
     timeout: RUN_TIMEOUT_MS,
@@ -124,35 +175,79 @@ function smoke(tmp) {
       GITHUB_STEP_SUMMARY: summaryPath,
       GITHUB_OUTPUT: outputPath,
       RUNNER_TEMP: runnerTemp,
+      ...extraEnv,
     },
   });
-  const bundleOutput = `${run.stdout ?? ""}${run.stderr ?? ""}`;
-  const fail = (check, detail) => ({ check, detail, bundleOutput });
+  return {
+    status: run.status,
+    signal: run.signal,
+    output: `${run.stdout ?? ""}${run.stderr ?? ""}`,
+    summaryPath,
+    verdict: () => parseOutputs(readFileSync(outputPath, "utf8")).get("verdict"),
+    /** The parsed report.json, or null when it is missing or not JSON. */
+    report: () => {
+      try {
+        return JSON.parse(readFileSync(join(runnerTemp, "pharn-ci/report.json"), "utf8"));
+      } catch {
+        return null;
+      }
+    },
+  };
+}
 
-  if (run.status !== 0) {
-    const how = run.status === null ? `signal ${run.signal ?? "unknown"}` : `exit code ${run.status}`;
-    return fail("exit", `${how}, expected 0`);
+function exitText(run) {
+  return run.status === null ? `signal ${run.signal ?? "unknown"}` : `exit code ${run.status}`;
+}
+
+/**
+ * The offline run (see the header): null when it ends as `first` did, else the failure. The run context is what lets
+ * the policy and the upload get as far as the token request; without a repository name the policy stops earlier.
+ */
+function offlineCheck(repo, dir, first) {
+  mkdirSync(dir, { recursive: true });
+  const eventPath = join(dir, "event.json");
+  writeFileSync(eventPath, `${JSON.stringify({ repository: { full_name: "pharn-ci-smoke/repo" } })}\n`);
+  const headSha = execFileSync("git", ["rev-parse", "HEAD"], {
+    cwd: repo,
+    env: baseEnv,
+    encoding: "utf8",
+    timeout: GIT_TIMEOUT_MS,
+  }).trim();
+  const run = runBundle(
+    repo,
+    dir,
+    {
+      ACTIONS_ID_TOKEN_REQUEST_URL: DEAD_TOKEN_URL,
+      ACTIONS_ID_TOKEN_REQUEST_TOKEN: "smoke-not-a-token",
+      GITHUB_EVENT_PATH: eventPath,
+      GITHUB_RUN_ID: "1",
+      GITHUB_RUN_ATTEMPT: "1",
+      GITHUB_SHA: headSha,
+    },
+    [`--import=${NO_FETCH_PRELOAD}`],
+  );
+  const fail = (detail) => ({ check: "offline", detail, bundleOutput: run.output });
+
+  if (run.status !== first.status) return fail(`${exitText(run)}, expected ${exitText(first)} as the first run`);
+  const verdict = run.verdict();
+  const firstVerdict = first.verdict();
+  if (verdict !== firstVerdict) return fail(`verdict "${verdict ?? ""}", expected "${firstVerdict}" as the first run`);
+  if (!run.output.split("\n").some((line) => line.replace(/\r$/, "") === UPLOAD_NO_TOKEN_LINE)) {
+    return fail(`no line "${UPLOAD_NO_TOKEN_LINE}": the upload did not reach its token request`);
   }
-
-  const verdict = parseOutputs(readFileSync(outputPath, "utf8")).get("verdict");
-  if (verdict !== "pass") return fail("verdict", `verdict "${verdict ?? ""}", expected "pass"`);
-
-  const summaryLines = readFileSync(summaryPath, "utf8")
-    .split("\n")
-    .map((line) => line.replace(/\r$/, ""));
-  const expected = readFileSync(join(FIXTURES, "expected-summary.txt"), "utf8")
-    .split("\n")
-    .map((line) => line.replace(/\r$/, ""))
-    .filter((line) => line.trim() !== "");
-  const missing = expected.find((line) => !summaryLines.includes(line));
-  if (missing !== undefined) return fail("summary", `the job summary has no line "${missing}"`);
-
-  const footer = new RegExp(`pharn-ci ${version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![0-9.])`);
-  if (!summaryLines.some((line) => footer.test(line))) {
-    return fail("footer", `footer: no "pharn-ci ${version}" in the job summary`);
+  const report = run.report();
+  const firstReport = first.report();
+  if (report === null || firstReport === null) return fail("a run wrote no readable report.json");
+  if (report.meta?.upload?.status !== "skipped") return fail("report.json meta.upload is not skipped");
+  if ("meta" in firstReport) return fail("the first run's report.json has meta, expected none");
+  const { meta: _meta, ...rest } = report;
+  if (!isDeepStrictEqual(rest, firstReport)) {
+    const keys = [...new Set([...Object.keys(rest), ...Object.keys(firstReport)])].filter(
+      (key) => !isDeepStrictEqual(rest[key], firstReport[key]),
+    );
+    return fail(`report.json differs from the first run's beyond meta, in: ${keys.join(", ")}`);
   }
-
-  return { ok: `ok pharn-ci ${version}: exit 0, verdict pass, ${expected.length} summary lines, footer` };
+  return null;
 }
 
 const tmp = mkdtempSync(join(tmpdir(), "pharn-ci-smoke-"));
