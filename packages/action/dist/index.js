@@ -252644,26 +252644,30 @@ ${scopeLine}
 }
 async function trackedFiles(target, deps) {
   if (!target) {
-    const out = await deps.git(["ls-files", "-z"]).catch((err) => {
-      deps.warning(`git ls-files failed, agent setup scan skipped: ${String(err)}`);
-      return "";
-    });
-    return out.split("\0").filter((p) => p !== "");
-  }
-  try {
-    const tree = await deps.api.listTree(target.headSha);
-    if (tree.truncated) {
-      deps.warning(
-        "the file list of the PR head is truncated by the GitHub API (very large repository); the agent setup scan may miss files"
+    let out;
+    try {
+      out = await deps.git(["ls-files", "-z"]);
+    } catch (err) {
+      throw new Error(
+        `git ls-files failed (${String(err)}), so the files of the repository are unknown and the agent setup, secret and coverage path checks cannot run; check that the workspace is a git checkout (actions/checkout)`
       );
     }
-    return tree.paths;
-  } catch (err) {
-    deps.warning(
-      `could not list the files of the PR head through the GitHub API, agent setup scan skipped: ${String(err)}`
-    );
-    return [];
+    return out.split("\0").filter((p) => p !== "");
   }
+  let tree;
+  try {
+    tree = await deps.api.listTree(target.headSha);
+  } catch (err) {
+    throw new Error(
+      `could not list the files of the PR head through the GitHub API (${String(err)}), so the files of the pull request are unknown and the agent setup, secret and coverage path checks cannot run`
+    );
+  }
+  if (tree.truncated) {
+    deps.warning(
+      "the file list of the PR head is truncated by the GitHub API (very large repository); the agent setup scan may miss files"
+    );
+  }
+  return tree.paths;
 }
 async function gatherTestSources(deps, from) {
   if (resolveTestIntegrityMode(from.testIntegrityMode).mode === "off") return void 0;
@@ -252793,14 +252797,24 @@ async function getDiff(baseRefInput, deps, target, configInput = "") {
   }
   const localBase = await resolveLocal(base, deps);
   if (localBase) {
+    let parsed;
     try {
       const options = { configPath: configInput === "" ? void 0 : configInput, repoRoot: deps.workspace };
-      return { diff: { parsed: await readDiffChunks(gitChunks(deps, gitDiffArgs(localBase)), options) }, localBase };
+      parsed = await readDiffChunks(gitChunks(deps, gitDiffArgs(localBase)), options);
     } catch (err) {
       throw new Error(
         `the local git diff against "${base}" failed (${String(err)}); check out full history with actions/checkout and fetch-depth: 0`
       );
     }
+    if (parsed.length === 0 && await headIsInBase(localBase, deps)) {
+      const named = baseRefInput ? `base-ref "${baseRefInput}"` : `the base ${base}`;
+      return {
+        diff: {
+          unavailable: `${named} resolves to HEAD or a descendant of HEAD, so there is no change to measure` + (baseRefInput ? "; set base-ref to the branch or commit the change is based on" : "")
+        }
+      };
+    }
+    return { diff: { parsed }, localBase };
   }
   try {
     return { diff: { text: await deps.api.compareDiff(`${base}...${head}`) } };
@@ -252830,6 +252844,16 @@ async function getTargetDiff(baseRefInput, target, deps) {
     }
     deps.warning(`could not fetch the diff from the GitHub API: ${String(err)}`);
     return { unavailable: `could not get the diff for ${base}...${target.headSha} from the GitHub API` };
+  }
+}
+var OBJECT_ID2 = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+async function headIsInBase(base, deps) {
+  try {
+    const mergeBase = (await deps.git(["merge-base", "--end-of-options", base, "HEAD"])).trim();
+    const head = (await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", "HEAD^{commit}"])).trim();
+    return OBJECT_ID2.test(mergeBase) && mergeBase === head;
+  } catch {
+    return false;
   }
 }
 async function resolveLocal(base, deps) {

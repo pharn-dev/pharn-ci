@@ -66,6 +66,8 @@ async function runWith(opts: Options) {
     },
     git: async (args: string[]) => {
       calls.git.push(args);
+      // Only a run outside PR-number mode lists the checkout's files; a failed listing now fails the step (finding 9).
+      if (args[0] === "ls-files") return "src/math.ts\0AGENTS.md\0";
       throw new Error(`unexpected git ${args.join(" ")}`);
     },
     readFile: async (path: string) => files.get(path) ?? null,
@@ -102,12 +104,15 @@ describe("PR-number mode", () => {
     expect(r.calls.compare).toEqual([]);
   });
 
+  // Review finding 9: this test pinned the bug. A tree listing that failed used to warn and report on an empty file list,
+  // which passed the agent setup, secret and policy checks on nothing. It now fails the step, as the CLI does; the name
+  // is kept so the test keeps its identity (packages/action/test/ac-review-medium-inputs.test.ts covers the new rule).
   it("warns and still reports when the file list cannot be read", async () => {
     const r = await runWith({ inputs: { "pr-number": "42", "head-sha": HEAD_SHA }, listTreeError: new Error("boom") });
-    expect(r.failed).toEqual([]);
-    expect(r.warnings.some((w) => w.includes("boom"))).toBe(true);
-    expect(r.report?.agentSetup.files).toEqual([]);
-    expect(r.calls.created).toHaveLength(1);
+    expect(r.failed).toHaveLength(1);
+    expect(r.failed[0]).toContain("boom");
+    expect(r.report).toBeUndefined();
+    expect(r.calls.created).toEqual([]);
   });
 
   it("reports DIFF_UNAVAILABLE when the compare fails and no base-ref was given", async () => {
@@ -153,7 +158,7 @@ describe("PR-number mode", () => {
       payload: { pull_request: { number: 7, base: { sha: BASE_SHA }, head: { sha: HEAD_SHA } } },
       inputs: { "pr-number": "7", "head-sha": HEAD_SHA },
     });
-    // Local git is not faked here, so the diff comes from the compare API, and the file list from git (which fails).
+    // Local git is not faked here beyond ls-files, so the diff comes from the compare API, and the file list from git.
     expect(r.failed).toEqual([]);
     expect(r.calls.tree).toEqual([]);
     expect(r.calls.compare).toEqual([`${BASE_SHA}...${LOCAL_TIP}`]);

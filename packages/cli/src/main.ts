@@ -322,11 +322,25 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   } catch (err) {
     throw gitFailure(diffArgs, `could not diff against "${base}" (fetch it, or pass --base <ref>)`, err);
   }
+  // A base that is HEAD or a descendant of it (--base HEAD) gives an empty diff, which would pass as NO_COVERABLE_CHANGES
+  // and hide every change from the diff-based checks (review finding 13). Only an empty diff can mean that, so git is
+  // asked only then. The diff is of commits only (base...HEAD), never of the working tree, as in the action.
+  let diff: CheckInput["diff"] = { parsed: diffFiles };
+  if (diffFiles.length === 0 && (await headIsInBase(base, deps))) {
+    const named = values.base === undefined ? `the base "${base}"` : `--base "${base}"`;
+    diff = {
+      unavailable:
+        `${named} resolves to HEAD or a descendant of HEAD, so there is no change to measure; ` +
+        "pass --base with the branch or commit the change is based on",
+    };
+  }
   // The text of the touched test and test-config files, for the base-and-head signals. Mode off reads nothing.
   let testSources: TestSources | undefined;
   let pythonTestIndex: PythonTestIndex | undefined;
   if (resolveTestIntegrityMode(testIntegrityMode).mode !== "off") {
-    if (deps.gitBatch === undefined) {
+    if ("unavailable" in diff) {
+      testSources = unavailableTestSources("the diff is unavailable");
+    } else if (deps.gitBatch === undefined) {
       testSources = unavailableTestSources("reading git objects is not available");
     } else {
       testSources = await readTestSources(
@@ -418,7 +432,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   const input: CheckInput = {
     version: VERSION,
     coverage,
-    diff: { parsed: diffFiles },
+    diff,
     repoRoot,
     threshold,
     repoFiles,
@@ -465,6 +479,25 @@ async function git(deps: CliDeps, args: string[], context: string): Promise<stri
     return await deps.git(args);
   } catch (err) {
     throw gitFailure(args, context, err);
+  }
+}
+
+/** A full git object id (SHA-1 or SHA-256), as git prints it. */
+const OBJECT_ID = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+
+/**
+ * True only when git says HEAD has no commit the base lacks: the merge base of the base and HEAD is HEAD itself, so
+ * the base is HEAD or a descendant of it. Asked with `merge-base` and `rev-parse`, which the shared git runner allows
+ * (it refuses `rev-list`). Only two printed commit ids that are equal count; any other answer, or a failed call, is
+ * unknown and false: the diff is then used as it is.
+ */
+async function headIsInBase(base: string, deps: CliDeps): Promise<boolean> {
+  try {
+    const mergeBase = (await deps.git(["merge-base", "--end-of-options", base, "HEAD"])).trim();
+    const head = (await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", "HEAD^{commit}"])).trim();
+    return OBJECT_ID.test(mergeBase) && mergeBase === head;
+  } catch {
+    return false;
   }
 }
 
