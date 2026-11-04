@@ -1,0 +1,281 @@
+{
+  "feature": "ti14-ti11-ci-config-signals",
+  "gates": {
+    "build": 0,
+    "instruction-growth": 0,
+    "lint": 0,
+    "reconcile": 0,
+    "test": 0
+  },
+  "verdict": "PASS",
+  "failing_gates": [],
+  "gate_run": {
+    "stamp_sha256": "f0940ebfd37581380056b5a57abe687ba72493c124af4f2ec70ccaeaa70652b4",
+    "source": "discover",
+    "fingerprint": {
+      "algo": "worktree-fingerprint/2+sha256",
+      "final": "90b724e0f9870a052f10dbc823659aa0c2f5286fb503040a5f607e87b79e7d65"
+    }
+  },
+  "ac_gate": {
+    "mode": "test-first",
+    "verdict": "PASS",
+    "reason": null,
+    "evidence": [],
+    "acs": [
+      {
+        "id": "AC-1",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-ti1411-selector.test.ts::keepSignalFileText(): which files keep their line text › AC-1: the config in use, the workflow files and the test files keep text, nothing else does"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-2",
+        "level": "integration",
+        "tests": [
+          "packages/cli/test/ac-ti1411-stream.test.ts::TI14 and TI11 through the streaming diff reader › AC-2: the streamed and the whole-text diff give the same testIntegrity block and messages, given the config path"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-3",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti14-threshold.test.ts::TI14: the coverage threshold lowered › AC-3: a lowered, removed or deleted threshold is a block finding; raised, moved, added and quoted values are not"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-4",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti14-exclusion.test.ts::TI14: a coverage exclusion added › AC-4: a flow list, an exclude key with items, and an appended known pattern are block findings; the controls are not"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-5",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti14-config-path.test.ts::TI14: which file is the config › AC-5: the config named by the config path is read; a config path outside the repository gives nothing"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-6",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti11-test-step.test.ts::TI11: a test step removed from a workflow › AC-6: a removed test command or a deleted workflow with one is a block finding; a comment, a move, a reflow and a rename are not"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-7",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti11-trigger.test.ts::TI11: the pull request trigger removed › AC-7: a removed pull_request trigger is a block finding; a kept one is not"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-8",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti11-matrix.test.ts::TI11: the matrix reduced › AC-8: a reduced flow-list matrix is a warn finding in mode block; a grown one is not"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-9",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti11-continue-on-error.test.ts::TI11: continue-on-error added › AC-9: only a literal true added is a warn finding, at its new-file line"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-10",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti11-if-condition.test.ts::TI11: a step or job disabled by a condition › AC-10: a literal false or an event-name test that leaves pull requests out is a warn finding; other conditions are not"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-11",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti11-timeout.test.ts::TI11: a near-zero timeout, and the edits that fire nothing › AC-11: timeout-minutes 0 or 1 is a warn finding; 15, an expression, and edits that touch none of the rules are not"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-12",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti1411-modes.test.ts::TI14 and TI11 in the three modes › AC-12: block mode sorts the signals and raises the verdict, warn mode shows every signal as warn, off computes nothing"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-13",
+        "level": "integration",
+        "tests": [
+          "packages/cli/test/ac-ti1411-render.test.ts::TI14 and TI11 in the PR comment and the CLI › AC-13: the section lists each signal with path:line, a hint per id, the empty state stays, and the CLI JSON holds the signal"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-14",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti1411-regression.test.ts::TI14 and TI11 leave the earlier signals and fixtures alone › AC-14: the old config and workflow fixtures keep their messages, the TI01 fixtures keep their signals"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-15",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-ti1411-docs.test.ts::TI14 and TI11: docs, schema and fixtures › AC-15: at least five must-trigger and five must-not-trigger diffs exist for each id, and they behave",
+          "packages/core/test/ac-ti1411-docs.test.ts::TI14 and TI11: docs, schema and fixtures › AC-15: the changelog, README, limits and threat model name TI14 and TI11",
+          "packages/core/test/ac-ti1411-docs.test.ts::TI14 and TI11: docs, schema and fixtures › AC-15: the v2 schema names both message codes and the v1 schema is byte-identical to the base commit's"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      }
+    ],
+    "unmapped_anomalies": [],
+    "note": "an AC is delivered = a locked, once-red test titled AC-<n>:, in a file mapped to AC-<n>, passed on this head run. PHARN does not judge whether that test fully captures the AC's intent."
+  },
+  "completeness": {
+    "plan": "pharn/features/ti14-ti11-ci-config-signals/PLAN.md",
+    "repoDir": ".",
+    "declared": [
+      "packages/core/src/gateInputs.ts",
+      "packages/core/src/signals/signalFiles.ts",
+      "packages/core/src/signals/yamlLines.ts",
+      "packages/core/src/signals/ti14.ts",
+      "packages/core/src/signals/ti11.ts",
+      "packages/core/src/check.ts",
+      "packages/core/src/chunkInputs.ts",
+      "packages/core/src/report.ts",
+      "packages/core/src/render/markdown.ts",
+      "packages/core/src/index.ts",
+      "packages/cli/src/main.ts",
+      "packages/action/src/run.ts",
+      "schema/report.v2.json",
+      "packages/core/test/ac-stream-check.test.ts",
+      "packages/cli/test/ac-config-changed.test.ts",
+      "fixtures/test-integrity/TI14/block-threshold-lowered.diff",
+      "fixtures/test-integrity/TI14/block-threshold-removed.diff",
+      "fixtures/test-integrity/TI14/block-config-deleted.diff",
+      "fixtures/test-integrity/TI14/block-exclude-flow.diff",
+      "fixtures/test-integrity/TI14/block-exclude-block.diff",
+      "fixtures/test-integrity/TI14/block-exclude-appended.diff",
+      "fixtures/test-integrity/TI14/pass-threshold-raised.diff",
+      "fixtures/test-integrity/TI14/pass-threshold-moved.diff",
+      "fixtures/test-integrity/TI14/pass-threshold-added.diff",
+      "fixtures/test-integrity/TI14/pass-exclude-removed.diff",
+      "fixtures/test-integrity/TI14/pass-exclude-moved.diff",
+      "fixtures/test-integrity/TI14/pass-unrelated-setup.diff",
+      "fixtures/test-integrity/TI14/pass-file-item-added.diff",
+      "fixtures/test-integrity/TI11/block-test-step-removed.diff",
+      "fixtures/test-integrity/TI11/block-workflow-deleted.diff",
+      "fixtures/test-integrity/TI11/block-trigger-removed.diff",
+      "fixtures/test-integrity/TI11/block-trigger-flow.diff",
+      "fixtures/test-integrity/TI11/warn-matrix-reduced.diff",
+      "fixtures/test-integrity/TI11/warn-continue-on-error.diff",
+      "fixtures/test-integrity/TI11/warn-if-false.diff",
+      "fixtures/test-integrity/TI11/warn-if-event.diff",
+      "fixtures/test-integrity/TI11/warn-timeout-one.diff",
+      "fixtures/test-integrity/TI11/pass-step-moved.diff",
+      "fixtures/test-integrity/TI11/pass-step-reflowed.diff",
+      "fixtures/test-integrity/TI11/pass-comment-removed.diff",
+      "fixtures/test-integrity/TI11/pass-trigger-kept.diff",
+      "fixtures/test-integrity/TI11/pass-matrix-grown.diff",
+      "fixtures/test-integrity/TI11/pass-continue-expression.diff",
+      "fixtures/test-integrity/TI11/pass-if-always.diff",
+      "fixtures/test-integrity/TI11/pass-timeout-fifteen.diff",
+      "fixtures/test-integrity/TI11/pass-action-bump.diff",
+      "fixtures/test-integrity/TI11/pass-pure-rename.diff",
+      "fixtures/test-integrity/TI11/pass-non-workflow.diff",
+      "CHANGELOG.md",
+      "README.md",
+      "docs/LIMITS.md",
+      "docs/THREAT-MODEL.md",
+      "packages/action/dist/index.js"
+    ],
+    "skipped": [],
+    "missing": [],
+    "deletions": [],
+    "undeleted": [],
+    "complete": true,
+    "verdict": "complete"
+  },
+  "verifiers": {
+    "registered": 0,
+    "findings": []
+  },
+  "gate_reuse": {
+    "reused": [
+      {
+        "id": "build",
+        "stage": "regress",
+        "side": "head",
+        "seq": 1
+      }
+    ]
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "reconcile_detail": {
+    "state": "parsed",
+    "exit": 0,
+    "verdict": "CLEAN",
+    "escapes": [],
+    "escapes_total": 0,
+    "merged_count": 0
+  }
+}

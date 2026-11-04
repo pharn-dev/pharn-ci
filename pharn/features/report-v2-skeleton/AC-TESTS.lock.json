@@ -1,0 +1,146 @@
+{
+  "schema": "ac-tests-lock/6",
+  "feature": "report-v2-skeleton",
+  "mode": "test-first",
+  "spec": {
+    "spec_id": "report-v2-skeleton",
+    "spec_content_hash": "857eeaf250c6967df6efe40ff22283f2110bab459691055564d288d627684c30"
+  },
+  "mapping": {
+    "path": "pharn/features/report-v2-skeleton/AC-TESTS.md",
+    "sha256": "f9e26fc47ade0373a0023fcbd4a1cdec3663facc6f48d7846ab28cf59f0409a6"
+  },
+  "files": [
+    {
+      "path": "packages/action/test/ac-report-v2-meta.test.ts",
+      "sha256": "771f38ae3be6171fc1908fede8c76d6c994e66196c42c317c26b55431f007ff5"
+    },
+    {
+      "path": "packages/cli/test/ac-report-v2-cli.test.ts",
+      "sha256": "947ba710e4507b0992685ad4ddb4d99bc58f9eab573c433a58f33f10820f29eb"
+    },
+    {
+      "path": "packages/core/test/ac-report-v2-check.test.ts",
+      "sha256": "8547d38fb21515e1cbca823ab3ad381bbf15fa4b5d506aa0051483cc275f8d64"
+    },
+    {
+      "path": "packages/core/test/ac-report-v2-docs.test.ts",
+      "sha256": "866d3da9ebdc7e3d9d978dd7f477c2539603616171cffa630420b3099138d9f7"
+    },
+    {
+      "path": "packages/core/test/ac-report-v2-golden.test.ts",
+      "sha256": "427d2066dc102a1154c39bd05b118d2091063573328377d3aa136296c7a9317c"
+    },
+    {
+      "path": "packages/core/test/ac-report-v2-schema.test.ts",
+      "sha256": "4012fcdf6c01aac19e8fa0ed7759baaa2d636a8e1da560e4cc07ffc22acf48a3"
+    }
+  ],
+  "bootstrap": null,
+  "red_run": {
+    "stamp_sha256": "708b7c8ccf4325fafaaa281f99ed9e5eb09202374ff662352ed1b662c1c327b7",
+    "files_sha256": "a5ef1296b83b06d0757c1293fd51b314b2ea4c03f7dd9ce510e1dfe2e0079bbe",
+    "gates": [
+      {
+        "gate": "test",
+        "results_sha256": "3985dc688c9761dc2f965093600edaf393f61f06cba5c94432d87777e1eb8771"
+      }
+    ],
+    "acs": [
+      {
+        "id": "AC-1",
+        "tests": [
+          "packages/core/test/ac-report-v2-schema.test.ts::schema/report.v2.json › AC-1: compiles under a strict 2020-12 validator with v1 added, and leaves report.v1.json byte-identical"
+        ]
+      },
+      {
+        "id": "AC-2",
+        "tests": [
+          "packages/core/test/ac-report-v2-check.test.ts::check() emits Report v2 › AC-2: schemaVersion 2, the empty testIntegrity block, no meta, and the v1 fields unchanged"
+        ]
+      },
+      {
+        "id": "AC-3",
+        "tests": [
+          "packages/core/test/ac-report-v2-check.test.ts::check() emits Report v2 › AC-3: carries a given meta object into the report unchanged, and the report is valid v2"
+        ]
+      },
+      {
+        "id": "AC-4",
+        "tests": [
+          "packages/core/test/ac-report-v2-schema.test.ts::schema/report.v2.json › AC-4: accepts check()'s v2 report and rejects a string or v1 schemaVersion, an unknown testIntegrity key and TI17"
+        ]
+      },
+      {
+        "id": "AC-5",
+        "tests": [
+          "packages/core/test/ac-report-v2-golden.test.ts::golden and fixture reports are Report v2 › AC-5: every golden and fixture report passes the v2 schema, and the footer reads report schema v2"
+        ]
+      },
+      {
+        "id": "AC-6",
+        "tests": [
+          "packages/cli/test/ac-report-v2-cli.test.ts::pharn-ci check --format json › AC-6: prints a Report v2 with an empty testIntegrity block and no meta"
+        ]
+      },
+      {
+        "id": "AC-7",
+        "tests": [
+          "packages/action/test/ac-report-v2-meta.test.ts::action report.json is Report v2 with meta › AC-7: a pull_request run writes meta from the run context"
+        ]
+      },
+      {
+        "id": "AC-8",
+        "tests": [
+          "packages/action/test/ac-report-v2-meta.test.ts::action report.json is Report v2 with meta › AC-8: an event outside the schema's list is recorded as other"
+        ]
+      },
+      {
+        "id": "AC-9",
+        "tests": [
+          "packages/core/test/ac-report-v2-docs.test.ts::Report v2 is documented as a breaking release for report consumers › AC-9: RELEASING.md, the CHANGELOG's Unreleased section and action.yml name Report v2"
+        ]
+      }
+    ]
+  },
+  "test_infra": {
+    "levels": [
+      "integration",
+      "unit"
+    ],
+    "gates": [
+      {
+        "id": "test",
+        "script": "vitest run",
+        "pre": null,
+        "post": null,
+        "results": "vitest-json"
+      }
+    ],
+    "chained": [],
+    "configs": [
+      {
+        "path": "vitest.config.ts",
+        "sha256": "84fef4870fed6a1d5156f5260cd8fcc9b6d1dcca7cc76e8de3c86a978b336fec"
+      }
+    ],
+    "script_files": [],
+    "jest": null,
+    "exclude": [],
+    "other_gates": [
+      {
+        "id": "build",
+        "script": "pnpm -r build",
+        "pre": null,
+        "post": null
+      },
+      {
+        "id": "lint",
+        "script": "biome check . && pnpm -r typecheck",
+        "pre": null,
+        "post": null
+      }
+    ],
+    "other_chained": []
+  }
+}

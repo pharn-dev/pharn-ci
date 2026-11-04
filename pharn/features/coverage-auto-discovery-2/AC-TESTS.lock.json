@@ -1,0 +1,230 @@
+{
+  "schema": "ac-tests-lock/5",
+  "feature": "coverage-auto-discovery-2",
+  "mode": "test-first",
+  "spec": {
+    "spec_id": "coverage-auto-discovery-2",
+    "spec_content_hash": "dc7b704a6189f76a899c60e89eb8a5bc739de793fb98e1d677b0bee43642808f"
+  },
+  "mapping": {
+    "path": "pharn/features/coverage-auto-discovery-2/AC-TESTS.md",
+    "sha256": "bc2c9d0940670a4b2b69a0c382d64667732b380d771302cf15499ad1b94a068f"
+  },
+  "files": [
+    {
+      "path": "packages/action/test/ac-discovery-action-ambiguous.test.ts",
+      "sha256": "1bedb87be211a90e71429f16ca014d4713ee6ad3527b2ae74e27348ca31e540b"
+    },
+    {
+      "path": "packages/action/test/ac-discovery-action-found.test.ts",
+      "sha256": "16afb0335a5f819aa1eab569b9846e153ac33a0b2bd25b8593bb062f4f90c320"
+    },
+    {
+      "path": "packages/action/test/ac-discovery-action-none.test.ts",
+      "sha256": "84a4a6659e8ce37a2873e8b0258d45aad659e413c9896f0910c5d5db31ce47e5"
+    },
+    {
+      "path": "packages/cli/test/ac-discovery-cli-ambiguous.test.ts",
+      "sha256": "1bce133d204c0a435b6f7211f749e107a935fd371ca9180c66102e48abd17b7b"
+    },
+    {
+      "path": "packages/cli/test/ac-discovery-cli-explicit.test.ts",
+      "sha256": "11920ae47e521b6ebb2005aead36b3262445501ac30c65bbba764b3eedcced86"
+    },
+    {
+      "path": "packages/cli/test/ac-discovery-cli-found.test.ts",
+      "sha256": "c4cdd4505adb0ccbbb7609c3441596d5d12f086d2c718a846f3be18977bd6742"
+    },
+    {
+      "path": "packages/cli/test/ac-discovery-cli-none.test.ts",
+      "sha256": "214b7102ed161b8328a2e169f5397d0a59bf151e2e9eb4d8391faea731d53396"
+    },
+    {
+      "path": "packages/core/test/ac-discovery-check-missing.test.ts",
+      "sha256": "131d035e62ff730ad02bb776da1ed762c7f5c4a59d074bc0972109edb779b51d"
+    },
+    {
+      "path": "packages/core/test/ac-discovery-choose-ambiguous.test.ts",
+      "sha256": "89837df9e0b9175ed67f1eb915159619ab88dd2c0e85515f828533159e19f5fd"
+    },
+    {
+      "path": "packages/core/test/ac-discovery-choose-dotnet.test.ts",
+      "sha256": "2ec954483a155cd7bb5ba82a5454929d03c8ff664f1f55f53c4380c4055a5513"
+    },
+    {
+      "path": "packages/core/test/ac-discovery-choose-none.test.ts",
+      "sha256": "7346cc0ac891b0a1a44b0b024a93395f9da334f7f8d9dc439b13b38d03f1384e"
+    },
+    {
+      "path": "packages/core/test/ac-discovery-choose-single.test.ts",
+      "sha256": "f21340aba2e9eccfc7e315fa32b8db51ef71d9607c66c3c06a5ffbd7c1c5db10"
+    },
+    {
+      "path": "packages/core/test/ac-discovery-docs.test.ts",
+      "sha256": "4524c50b54783c7b09ac780daa61dcdfe8359bcecfc99694890c292b8da37a51"
+    },
+    {
+      "path": "packages/core/test/ac-discovery-examples-runs.test.ts",
+      "sha256": "469075d57407cc6a9bd4ec3d406a6967060e8d1578207e49efb0406c7981a6e5"
+    },
+    {
+      "path": "packages/core/test/ac-discovery-examples-shape.test.ts",
+      "sha256": "ed962d61b8dd8b9fa7eb23e27478bd25f3b8cdc0641f64092f258a71f770ff69"
+    },
+    {
+      "path": "packages/node-io/test/ac-discovery-fixtures.test.ts",
+      "sha256": "eae8e11292a84c9091a8e731b17ddac3a73e237d7f9862f7cb4d063a8bcd9933"
+    },
+    {
+      "path": "packages/node-io/test/ac-discovery-walk-rules.test.ts",
+      "sha256": "098a041236ca8a30141722a5cc703bdea3e6966df38c019eca43154d40595a00"
+    }
+  ],
+  "bootstrap": null,
+  "red_run": {
+    "stamp_sha256": "613de0435113fda89f1e4581dff6b61b1c0990ad67e94f3bb13571201b22f359",
+    "files_sha256": "57b3e3a9496f30353d709078ab2961b2363120af04ff3be4c91776adb9ac05fe",
+    "gates": [
+      {
+        "gate": "test",
+        "results_sha256": "dfafa4f9cef1e39f089f0604b33f5df22e0aa2c94e132383bb5ed904cca03e03"
+      }
+    ],
+    "acs": [
+      {
+        "id": "AC-1",
+        "tests": [
+          "packages/core/test/ac-discovery-choose-single.test.ts::chooseDiscoveredCoverage: exactly one candidate › AC-1: one candidate of each kind among unrelated paths is found, and is the only file",
+          "packages/core/test/ac-discovery-choose-single.test.ts::chooseDiscoveredCoverage: exactly one candidate › AC-1: the choice does not depend on where the candidate sits in the input"
+        ]
+      },
+      {
+        "id": "AC-2",
+        "tests": [
+          "packages/core/test/ac-discovery-choose-dotnet.test.ts::chooseDiscoveredCoverage: several .NET coverlet files › AC-2: every coverage.cobertura.xml match is one candidate, found with all its files sorted"
+        ]
+      },
+      {
+        "id": "AC-3",
+        "tests": [
+          "packages/core/test/ac-discovery-choose-ambiguous.test.ts::chooseDiscoveredCoverage: different candidates found › AC-3: two or more different candidates are ambiguous, list every found path and choose no file"
+        ]
+      },
+      {
+        "id": "AC-4",
+        "tests": [
+          "packages/core/test/ac-discovery-choose-none.test.ts::chooseDiscoveredCoverage: no candidate › AC-4: an empty set and a set of only unrelated paths are not-found",
+          "packages/core/test/ac-discovery-choose-none.test.ts::chooseDiscoveredCoverage: no candidate › AC-4: the exported candidate list is exactly the five candidates, in order"
+        ]
+      },
+      {
+        "id": "AC-5",
+        "tests": [
+          "packages/core/test/ac-discovery-check-missing.test.ts::check(): no coverage report discovered › AC-5: one COVERAGE_FILE_MISSING naming the candidates, warn without a threshold and fail with 80"
+        ]
+      },
+      {
+        "id": "AC-6",
+        "tests": [
+          "packages/node-io/test/ac-discovery-fixtures.test.ts::discoverCoverage over fixtures/coverage-discovery/ › AC-6: each fixture directory gives the same result as core's choice, and the expected one"
+        ]
+      },
+      {
+        "id": "AC-7",
+        "tests": [
+          "packages/node-io/test/ac-discovery-walk-rules.test.ts::discoverCoverage: node_modules, directories and symbolic links › AC-7: no file under node_modules, no directory and no symbolic link counts as a candidate"
+        ]
+      },
+      {
+        "id": "AC-8",
+        "tests": [
+          "packages/cli/test/ac-discovery-cli-found.test.ts::pharn-ci check with no coverage path and coverage/lcov.info on disk › AC-8: discovers coverage/lcov.info from the repo root and from a subdirectory, and measures from it"
+        ]
+      },
+      {
+        "id": "AC-9",
+        "tests": [
+          "packages/cli/test/ac-discovery-cli-ambiguous.test.ts::pharn-ci check with no coverage path and two different candidates on disk › AC-9: exits 2 with nothing on stdout, and stderr names both found files and --coverage"
+        ]
+      },
+      {
+        "id": "AC-10",
+        "tests": [
+          "packages/cli/test/ac-discovery-cli-none.test.ts::pharn-ci check with no coverage path and no candidate on disk › AC-10: reports COVERAGE_FILE_MISSING naming the candidates, exit 0 without a threshold and 1 with 80"
+        ]
+      },
+      {
+        "id": "AC-11",
+        "tests": [
+          "packages/cli/test/ac-discovery-cli-explicit.test.ts::pharn-ci check with an explicit coverage path while a candidate is on disk › AC-11: --coverage missing.info wins over the discoverable coverage/lcov.info",
+          "packages/cli/test/ac-discovery-cli-explicit.test.ts::pharn-ci check with an explicit coverage path while a candidate is on disk › AC-11: coverage.file: missing.info in .pharn/ci.yml wins over the discoverable coverage/lcov.info"
+        ]
+      },
+      {
+        "id": "AC-12",
+        "tests": [
+          "packages/action/test/ac-discovery-action-found.test.ts::action: no coverage-file input and only coverage.xml in the workspace › AC-12: discovers coverage.xml, logs it, measures Cobertura from it and does not fail the step"
+        ]
+      },
+      {
+        "id": "AC-13",
+        "tests": [
+          "packages/action/test/ac-discovery-action-ambiguous.test.ts::action: no coverage-file input and two different candidates in the workspace › AC-13: fails the step naming both found files and coverage-file, and posts no comment"
+        ]
+      },
+      {
+        "id": "AC-14",
+        "tests": [
+          "packages/action/test/ac-discovery-action-none.test.ts::action: no coverage-file input and no candidate in the workspace › AC-14: coverage-file missing.info wins over a discoverable coverage/lcov.info, with no auto-discovered line",
+          "packages/action/test/ac-discovery-action-none.test.ts::action: no coverage-file input and no candidate in the workspace › AC-14: reports COVERAGE_FILE_MISSING naming the candidates, and fails the step only with threshold 80"
+        ]
+      },
+      {
+        "id": "AC-15",
+        "tests": [
+          "packages/core/test/ac-discovery-examples-shape.test.ts::examples/workflows/: the shape of each example › AC-15: each example checks out with fetch-depth 0, has the permissions and concurrency, and runs pharn-ci with no with:"
+        ]
+      },
+      {
+        "id": "AC-16",
+        "tests": [
+          "packages/core/test/ac-discovery-examples-runs.test.ts::examples/workflows/: each example's test command › AC-16: each example runs the command that writes its report to a discovery candidate"
+        ]
+      },
+      {
+        "id": "AC-17",
+        "tests": [
+          "packages/core/test/ac-discovery-docs.test.ts::docs: coverage auto-discovery › AC-17: CHANGELOG.md has a line under Unreleased naming coverage auto-discovery",
+          "packages/core/test/ac-discovery-docs.test.ts::docs: coverage auto-discovery › AC-17: action.yml's coverage-file description says the path is auto-discovered when unset",
+          "packages/core/test/ac-discovery-docs.test.ts::docs: coverage auto-discovery › AC-17: docs/THREAT-MODEL.md names coverage auto-discovery and the test that covers it",
+          "packages/core/test/ac-discovery-docs.test.ts::docs: coverage auto-discovery › AC-17: the README Quick start and CLI sections mention auto-discovery and examples/workflows/"
+        ]
+      }
+    ]
+  },
+  "test_infra": {
+    "levels": [
+      "integration",
+      "unit"
+    ],
+    "gates": [
+      {
+        "id": "test",
+        "script": "vitest run",
+        "pre": null,
+        "post": null,
+        "results": "vitest-json"
+      }
+    ],
+    "chained": [],
+    "configs": [
+      {
+        "path": "vitest.config.ts",
+        "sha256": "84fef4870fed6a1d5156f5260cd8fcc9b6d1dcca7cc76e8de3c86a978b336fec"
+      }
+    ],
+    "script_files": [],
+    "jest": null,
+    "exclude": []
+  }
+}

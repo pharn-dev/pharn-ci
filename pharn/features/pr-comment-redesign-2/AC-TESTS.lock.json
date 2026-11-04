@@ -1,0 +1,123 @@
+{
+  "schema": "ac-tests-lock/5",
+  "feature": "pr-comment-redesign-2",
+  "mode": "test-first",
+  "spec": {
+    "spec_id": "pr-comment-redesign-2",
+    "spec_content_hash": "41dbaff389d1e28ee45db56e21d106c4d660802fa7eecf8b84eb5679a522288f"
+  },
+  "mapping": {
+    "path": "pharn/features/pr-comment-redesign-2/AC-TESTS.md",
+    "sha256": "6fd06a12f7ec5bf722965623e6449ced952e30a60ced0aaa7c20de7a36d26d39"
+  },
+  "files": [
+    {
+      "path": "packages/action/test/ac-comment-look-fit.test.ts",
+      "sha256": "4bca9a70b0196313b69a9274613d3d7b88194cb7ebc9b9bd7531a1e8a1f2a77e"
+    },
+    {
+      "path": "packages/core/test/ac-comment-look-collapse.test.ts",
+      "sha256": "59d65de0ff34cf397551bef99d89956536734ac278d14298c2698d68470660b3"
+    },
+    {
+      "path": "packages/core/test/ac-comment-look-data.test.ts",
+      "sha256": "a668b436ff484ae21f477430a79e1f7fa08cf389dbdac6e9dd9c521cdcf77fa0"
+    },
+    {
+      "path": "packages/core/test/ac-comment-look-footer.test.ts",
+      "sha256": "57c9ade1cdefc111cb13b4f805bd6ac1cf6ba049c31e1e8e477b34114e8067c6"
+    },
+    {
+      "path": "packages/core/test/ac-comment-look-header.test.ts",
+      "sha256": "a5441f1697a8ddf1b6d3d2bb9f2689f82ea291462afcb22a6c39e2290b9786c4"
+    },
+    {
+      "path": "packages/core/test/ac-comment-look-hostile.test.ts",
+      "sha256": "40c0e005ba5c67db3d42e869c0cd868be590acabd9376ab9b881109e6a6716cd"
+    },
+    {
+      "path": "packages/core/test/ac-comment-look-summary.test.ts",
+      "sha256": "a3a420190a30214784f2c2646e03c9893979868eab37339ad47ccf2b8fb82dcf"
+    }
+  ],
+  "bootstrap": null,
+  "red_run": {
+    "stamp_sha256": "467193fbcb126620f156006c152c6d94ac3ac6c5f8cc78a40b8884e9ded6f3ad",
+    "files_sha256": "1c15615d8bf09ef235edefdfc259ce6154ae422719338a7825c20922e37e877e",
+    "gates": [
+      {
+        "gate": "test",
+        "results_sha256": "457ebbe5de0f730fbefb1b09e8f6a1a0bce6ba9360418c0e651bac283861355c"
+      }
+    ],
+    "acs": [
+      {
+        "id": "AC-1",
+        "tests": [
+          "packages/core/test/ac-comment-look-header.test.ts::PR comment look: verdict header and summary block (pr-comment-redesign-2) › AC-1: opens with the verdict header and a summary block before the diff coverage section"
+        ]
+      },
+      {
+        "id": "AC-2",
+        "tests": [
+          "packages/core/test/ac-comment-look-summary.test.ts::PR comment look: summary block edge states (pr-comment-redesign-2) › AC-2: shows not computed, no coverable lines, no threshold, none and 1 file"
+        ]
+      },
+      {
+        "id": "AC-3",
+        "tests": [
+          "packages/core/test/ac-comment-look-collapse.test.ts::PR comment look: section order and collapsed long tables (pr-comment-redesign-2) › AC-3: keeps the section order, collapses 30-file tables, never collapses messages, and leaves 25 open"
+        ]
+      },
+      {
+        "id": "AC-4",
+        "tests": [
+          "packages/core/test/ac-comment-look-footer.test.ts::PR comment look: compact footer and no image (pr-comment-redesign-2) › AC-4: ends with the <sub> footer and carries no image or URL, with an empty logo slot"
+        ]
+      },
+      {
+        "id": "AC-5",
+        "tests": [
+          "packages/core/test/ac-comment-look-hostile.test.ts::PR comment look: hostile paths and message text stay inert (pr-comment-redesign-2) › AC-5: keeps the summary block fixed, tables aligned, no live <img and inert message lines"
+        ]
+      },
+      {
+        "id": "AC-6",
+        "tests": [
+          "packages/action/test/ac-comment-look-fit.test.ts::action: redesigned PR comment fitted under the size limit (pr-comment-redesign-2) › AC-6: keeps the marker, scope line, verdict header, summary block and every message line"
+        ]
+      },
+      {
+        "id": "AC-7",
+        "tests": [
+          "packages/core/test/ac-comment-look-data.test.ts::PR comment look: report data unchanged (pr-comment-redesign-2) › AC-7: check() on the golden inputs deep-equals the committed report.json, and the new look shows its values"
+        ]
+      }
+    ]
+  },
+  "test_infra": {
+    "levels": [
+      "integration",
+      "unit"
+    ],
+    "gates": [
+      {
+        "id": "test",
+        "script": "vitest run",
+        "pre": null,
+        "post": null,
+        "results": "vitest-json"
+      }
+    ],
+    "chained": [],
+    "configs": [
+      {
+        "path": "vitest.config.ts",
+        "sha256": "84fef4870fed6a1d5156f5260cd8fcc9b6d1dcca7cc76e8de3c86a978b336fec"
+      }
+    ],
+    "script_files": [],
+    "jest": null,
+    "exclude": []
+  }
+}

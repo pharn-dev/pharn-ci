@@ -1,0 +1,137 @@
+{
+  "base": "438461ea337756be4b2eb7260851365547c53702",
+  "inside": [
+    "CHANGELOG.md",
+    "README.md",
+    "biome.json",
+    "fixtures/coverage-paths/package-relative/report.md",
+    "fixtures/golden-cobertura/report.md",
+    "fixtures/golden-exclusions/report.md",
+    "fixtures/golden-multi/report.md",
+    "fixtures/golden/report.md",
+    "packages/action/dist/index.js",
+    "packages/core/src/render/markdown.ts",
+    "packages/core/test/__snapshots__/markdown.test.ts.snap",
+    "packages/core/test/ac-format-golden.test.ts",
+    "packages/core/test/ac-paths-partial.test.ts",
+    ".agents/skills/source-command-pharn-build/SKILL.md",
+    ".agents/skills/source-command-pharn-grill/SKILL.md",
+    ".agents/skills/source-command-pharn-loop-close/SKILL.md",
+    ".agents/skills/source-command-pharn-loop-quick/SKILL.md",
+    ".agents/skills/source-command-pharn-loop/SKILL.md",
+    ".agents/skills/source-command-pharn-memory-promote/SKILL.md",
+    ".agents/skills/source-command-pharn-plan/SKILL.md",
+    ".agents/skills/source-command-pharn-regress/SKILL.md",
+    ".agents/skills/source-command-pharn-review/SKILL.md",
+    ".agents/skills/source-command-pharn-ship-close/SKILL.md",
+    ".agents/skills/source-command-pharn-ship-quick/SKILL.md",
+    ".agents/skills/source-command-pharn-ship/SKILL.md",
+    ".agents/skills/source-command-pharn-spec/SKILL.md",
+    ".agents/skills/source-command-pharn-test/SKILL.md",
+    ".agents/skills/source-command-pharn-verify/SKILL.md",
+    ".codex/hooks.json",
+    ".codex/hooks/enforce-writes-scope.cjs",
+    ".codex/hooks/protect-trusted-paths.cjs",
+    ".codex/hooks/require-loop-record.cjs",
+    ".codex/hooks/set-writes-scope.cjs",
+    "packages/action/test/ac-comment-look-fit.test.ts",
+    "packages/core/src/render/logo.ts",
+    "packages/core/test/ac-comment-look-collapse.test.ts",
+    "packages/core/test/ac-comment-look-data.test.ts",
+    "packages/core/test/ac-comment-look-footer.test.ts",
+    "packages/core/test/ac-comment-look-header.test.ts",
+    "packages/core/test/ac-comment-look-hostile.test.ts",
+    "packages/core/test/ac-comment-look-summary.test.ts"
+  ],
+  "outside_gates": {
+    "build": {
+      "base": 0,
+      "head": 0
+    },
+    "test": {
+      "base": 0,
+      "head": 0
+    }
+  },
+  "regressions": [],
+  "pre_existing": [],
+  "verdict": "no-regressions",
+  "gate_run": {
+    "base": {
+      "stamp_sha256": "81523062a6d9e4eb8cd7a49626b625444674c781c38836ed0c8efa0b8e220cd5",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "b9765d1178e8dc87ee2182485d9a4a1bed6c6a96c2cb1e6b3581d6a5595aa5a3"
+      }
+    },
+    "head": {
+      "stamp_sha256": "5211f53ccef7740ea40ccb275aca008232f044134c8ea4b3fd1449cc7d737511",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "8c580571d6cc3fddadf66e190e71a4a71d6bdf4fc44bb376471f69b95f5a70d6"
+      }
+    }
+  },
+  "base_evidence": {
+    "reused": false,
+    "miss": "other-run",
+    "requirement_sha256": "0c2d2f0e74294dd11aaa3a6db43084eeb0e2571d63aa50a7545d7922b055ae25",
+    "recorded": true,
+    "source": "fresh",
+    "entry": {
+      "used": false,
+      "miss": "start-dirty",
+      "offer_sha256": null,
+      "entry_stamp_sha256": null,
+      "base": null,
+      "run": {
+        "command": "pharn-loop",
+        "marker_sha256": "9821653ea7bdf8e534698fb94aced41fa5117965867f6095e5c2fb4e65fb417e"
+      },
+      "reused_ids": [],
+      "no_files_ids": [],
+      "ignored_ids": []
+    }
+  },
+  "pre_run_snapshot": {
+    "status": "applied",
+    "unchanged": [
+      "biome.json",
+      ".agents/skills/source-command-pharn-build/SKILL.md",
+      ".agents/skills/source-command-pharn-grill/SKILL.md",
+      ".agents/skills/source-command-pharn-loop-close/SKILL.md",
+      ".agents/skills/source-command-pharn-loop-quick/SKILL.md",
+      ".agents/skills/source-command-pharn-loop/SKILL.md",
+      ".agents/skills/source-command-pharn-memory-promote/SKILL.md",
+      ".agents/skills/source-command-pharn-plan/SKILL.md",
+      ".agents/skills/source-command-pharn-regress/SKILL.md",
+      ".agents/skills/source-command-pharn-review/SKILL.md",
+      ".agents/skills/source-command-pharn-ship-close/SKILL.md",
+      ".agents/skills/source-command-pharn-ship-quick/SKILL.md",
+      ".agents/skills/source-command-pharn-ship/SKILL.md",
+      ".agents/skills/source-command-pharn-spec/SKILL.md",
+      ".agents/skills/source-command-pharn-test/SKILL.md",
+      ".agents/skills/source-command-pharn-verify/SKILL.md",
+      ".codex/hooks.json",
+      ".codex/hooks/enforce-writes-scope.cjs",
+      ".codex/hooks/protect-trusted-paths.cjs",
+      ".codex/hooks/require-loop-record.cjs",
+      ".codex/hooks/set-writes-scope.cjs"
+    ]
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "base_source": "explicit"
+}

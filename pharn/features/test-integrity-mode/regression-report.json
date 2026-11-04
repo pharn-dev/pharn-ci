@@ -1,0 +1,106 @@
+{
+  "base": "e39cda3780c7df9c14c84018d187c2c9adfc7f9a",
+  "inside": [
+    "CHANGELOG.md",
+    "README.md",
+    "action.yml",
+    "docs/THREAT-MODEL.md",
+    "fixtures/coverage-paths/package-relative/report.md",
+    "fixtures/golden-cobertura/report.md",
+    "fixtures/golden-exclusions/report.md",
+    "fixtures/golden-multi/report.md",
+    "fixtures/golden/report.md",
+    "packages/action/dist/index.js",
+    "packages/action/src/run.ts",
+    "packages/cli/src/main.ts",
+    "packages/core/src/check.ts",
+    "packages/core/src/config.ts",
+    "packages/core/src/index.ts",
+    "packages/core/src/inputs.ts",
+    "packages/core/src/render/markdown.ts",
+    "packages/core/src/report.ts",
+    "packages/core/test/__snapshots__/markdown.test.ts.snap",
+    "packages/core/test/ac-comment-bold-sections.test.ts",
+    "packages/core/test/ac-format-golden.test.ts",
+    "packages/core/test/ac-header-logo-golden.test.ts",
+    "packages/core/test/ac-paths-partial.test.ts",
+    "packages/core/test/ac-verdict-callout-golden.test.ts",
+    "schema/report.v2.json",
+    "packages/action/test/ac-test-integrity-mode-action.test.ts",
+    "packages/cli/test/ac-test-integrity-mode-cli.test.ts",
+    "packages/core/src/testIntegrityMode.ts",
+    "packages/core/test/ac-test-integrity-mode-docs.test.ts",
+    "packages/core/test/ac-test-integrity-mode-render.test.ts",
+    "packages/core/test/ac-test-integrity-mode-resolve.test.ts",
+    "packages/core/test/ac-test-integrity-mode-validate.test.ts"
+  ],
+  "outside_gates": {
+    "build": {
+      "base": 0,
+      "head": 0
+    },
+    "test": {
+      "base": 0,
+      "head": 0
+    }
+  },
+  "regressions": [],
+  "pre_existing": [],
+  "verdict": "no-regressions",
+  "gate_run": {
+    "base": {
+      "stamp_sha256": "ef22177b88e2a7f31766a896da4214cede92f48995e14459d191f2b529c13e6a",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "4993d100c61a48ff354f0d0c97093dc35c772eecdf542adcac1891d155ea198c"
+      }
+    },
+    "head": {
+      "stamp_sha256": "9db11450555e4d66fd55c7782910c5c61135e1735a400fc7fcfc4a3ccb9d36de",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "82db67a1d3fa8c8d1f11bd9c5ea3904dd850aabecf2ef68897187ea399aef53c"
+      }
+    }
+  },
+  "base_evidence": {
+    "reused": false,
+    "miss": "no-record",
+    "requirement_sha256": "670ac9deb5b09fe64da3f7919e5b88cea5ffd1bfa74354a46c32ef89c5236346",
+    "recorded": true,
+    "source": "fresh",
+    "entry": {
+      "used": false,
+      "miss": "shape-mismatch",
+      "offer_sha256": null,
+      "entry_stamp_sha256": null,
+      "base": null,
+      "run": {
+        "command": "pharn-loop",
+        "marker_sha256": "781e332f5a603a4b6796c7acf7f9a8562b11f3a4273566c8c998e1878b9a2d59"
+      },
+      "reused_ids": [],
+      "no_files_ids": [],
+      "ignored_ids": []
+    }
+  },
+  "pre_run_snapshot": {
+    "status": "applied",
+    "unchanged": []
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "base_source": "explicit"
+}

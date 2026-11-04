@@ -1,0 +1,190 @@
+{
+  "schema": "ac-tests-lock/6",
+  "feature": "ti10-ti13-script-and-coverage-ignore-signals",
+  "mode": "test-first",
+  "spec": {
+    "spec_id": "ti10-ti13-script-and-coverage-ignore-signals",
+    "spec_content_hash": "077a9dded5b29e2f9a12a0a4a61cc590d4f4bea50955299ab0d7d32c4f1fd6f6"
+  },
+  "mapping": {
+    "path": "pharn/features/ti10-ti13-script-and-coverage-ignore-signals/AC-TESTS.md",
+    "sha256": "a79831129bb7d6c7f721c729d230b3f45ed775a19afe061812b84c49e59ca623"
+  },
+  "files": [
+    {
+      "path": "packages/cli/test/ac-ti1013-render.test.ts",
+      "sha256": "38926b202fb41c7dc2a553935064dfa6e4fa823783136a0365cbdd83c15b5cc1"
+    },
+    {
+      "path": "packages/core/test/ac-ti10-details.test.ts",
+      "sha256": "3947ad7c2eadf5eec3fe850a3d1bdeb7c344fec68273b76a637971d88020e6dc"
+    },
+    {
+      "path": "packages/core/test/ac-ti10-no-signal.test.ts",
+      "sha256": "0b847dfe6743734cba6e6b7ce67e10cb099d66536ec0e6d4f4ce1f21c9cc265c"
+    },
+    {
+      "path": "packages/core/test/ac-ti10-no-tests-exemption.test.ts",
+      "sha256": "5d7ac2844d96a90662468737b1f7c301c616a60ee2b761107a2b9beb906b776a"
+    },
+    {
+      "path": "packages/core/test/ac-ti10-weakened.test.ts",
+      "sha256": "552e18801e1d3eb0967d4f7ca0408043b5b5f7e2af9687beebd36fbbc327afc1"
+    },
+    {
+      "path": "packages/core/test/ac-ti1013-docs.test.ts",
+      "sha256": "214ff807c5caa6d5c35530522dc33ec75418ff7b254707f4f5ef3e14fabda650"
+    },
+    {
+      "path": "packages/core/test/ac-ti1013-modes.test.ts",
+      "sha256": "00ec34c2007d10858a70b61bcc5608a871c4809ea7ad0b9929fcbe1aec4a4387"
+    },
+    {
+      "path": "packages/core/test/ac-ti1013-regression.test.ts",
+      "sha256": "1eab0142bd6ac5b1a0d2b022936ed996d7df118e171b7e29635db7747db8bbf9"
+    },
+    {
+      "path": "packages/core/test/ac-ti1013-selector.test.ts",
+      "sha256": "12ae7eaf72c545ecea02e7203d733de74f56f8ecddf1a01b03e8f95b87cbf344"
+    },
+    {
+      "path": "packages/core/test/ac-ti13-added.test.ts",
+      "sha256": "636231fef29df8b6072f715a4016f094001705ff6fa0a26cb12bd41dfee54436"
+    },
+    {
+      "path": "packages/core/test/ac-ti13-details.test.ts",
+      "sha256": "9ee2e36c6f5e3b0faf16cb77ed38f4c52679cbe0f6b8b22c1f2c188bd25c6db2"
+    },
+    {
+      "path": "packages/core/test/ac-ti13-no-signal.test.ts",
+      "sha256": "e69f08a7d438f2af84a6091fe85b03de841c46f348a8fb5b96f370ef96f5e742"
+    }
+  ],
+  "bootstrap": null,
+  "red_run": {
+    "stamp_sha256": "e09bffe70d4370a8b9553026a868d89fbf1cb4de1e1c29ea448f7a6aeac01727",
+    "files_sha256": "36c8a4d04f34565d99537a697907c0608882519f7421430826e3e207b689cec6",
+    "gates": [
+      {
+        "gate": "test",
+        "results_sha256": "c2453f36ab7dda5ebda8932c8dc2418869dcadaf2e2fc6bf75af5001b3537e0c"
+      }
+    ],
+    "acs": [
+      {
+        "id": "AC-1",
+        "tests": [
+          "packages/core/test/ac-ti1013-selector.test.ts::the diff reader keeps the text of package.json and source files › AC-1: package.json files, JS/TS and Python sources keep their line text within the existing bounds; lockfile, Markdown and dependabot keep none"
+        ]
+      },
+      {
+        "id": "AC-2",
+        "tests": [
+          "packages/core/test/ac-ti10-weakened.test.ts::TI10: a test script in package.json weakened › AC-2: each weakening of a test* script, and each removed pretest or posttest, gives one TI10 signal at its line with the mode's severity"
+        ]
+      },
+      {
+        "id": "AC-3",
+        "tests": [
+          "packages/core/test/ac-ti10-no-signal.test.ts::TI10: script edits that do not weaken a test script › AC-3: pre-existing weakenings, unrelated scripts, stricter scripts, an edited pretest, added and deleted package.json files and a non-package.json give no TI10"
+        ]
+      },
+      {
+        "id": "AC-4",
+        "tests": [
+          "packages/core/test/ac-ti10-no-tests-exemption.test.ts::TI10: --passWithNoTests in a repository with no test files › AC-4: it fires with test files, not without them, again when the diff deletes a test file, and when the tracked-file list is empty"
+        ]
+      },
+      {
+        "id": "AC-5",
+        "tests": [
+          "packages/core/test/ac-ti10-details.test.ts::TI10: one signal per kind, the cap, and the fixed details › AC-5: two kinds on one line give two signals, 21 weakened scripts give 20, and each of the seven kinds has its own fixed sentence with no line text"
+        ]
+      },
+      {
+        "id": "AC-6",
+        "tests": [
+          "packages/core/test/ac-ti13-added.test.ts::TI13: a coverage-ignore comment added to source › AC-6: each added istanbul, v8, c8 or pragma: no cover comment gives one TI13 signal at its line with the mode's severity"
+        ]
+      },
+      {
+        "id": "AC-7",
+        "tests": [
+          "packages/core/test/ac-ti13-no-signal.test.ts::TI13: comments and edits that add no coverage-ignore marker to source › AC-7: moved and removed markers, markers in test files, markdown or the other language, and look-alikes give no TI13"
+        ]
+      },
+      {
+        "id": "AC-8",
+        "tests": [
+          "packages/core/test/ac-ti13-details.test.ts::TI13: one-to-one matching, the cap, and the fixed details › AC-8: one removed and two added markers give one signal at the higher line, 21 give 20, and each of the four families has its own fixed sentence with no comment text"
+        ]
+      },
+      {
+        "id": "AC-9",
+        "tests": [
+          "packages/core/test/ac-ti1013-modes.test.ts::TI10 and TI13 in the three modes › AC-9: block sorts and fails with error messages, warn shows every signal as warn, off computes nothing"
+        ]
+      },
+      {
+        "id": "AC-10",
+        "tests": [
+          "packages/cli/test/ac-ti1013-render.test.ts::TI10 and TI13 in the PR comment, the streaming reader and the CLI › AC-10: the section lists each signal with a hint, both message hints exist, streamed equals whole text, the CLI JSON holds TI10"
+        ]
+      },
+      {
+        "id": "AC-11",
+        "tests": [
+          "packages/core/test/ac-ti1013-regression.test.ts::TI10 and TI13 leave the earlier signals and fixtures alone › AC-11: the TI01, TI03, TI04, TI11 and TI14 fixtures give the same signals and messages as before, and the golden diff stays quiet"
+        ]
+      },
+      {
+        "id": "AC-12",
+        "tests": [
+          "packages/core/test/ac-ti1013-docs.test.ts::TI10 and TI13: docs, schema and fixtures › AC-12: at least five must-trigger and five must-not-trigger diffs per id, the named cases among them, and they behave",
+          "packages/core/test/ac-ti1013-docs.test.ts::TI10 and TI13: docs, schema and fixtures › AC-12: the changelog, README, limits and threat model name TI10 and TI13",
+          "packages/core/test/ac-ti1013-docs.test.ts::TI10 and TI13: docs, schema and fixtures › AC-12: the v2 schema names both message codes and the v1 schema is byte-identical to the base commit's"
+        ]
+      }
+    ]
+  },
+  "test_infra": {
+    "levels": [
+      "integration",
+      "unit"
+    ],
+    "gates": [
+      {
+        "id": "test",
+        "script": "vitest run",
+        "pre": null,
+        "post": null,
+        "results": "vitest-json"
+      }
+    ],
+    "chained": [],
+    "configs": [
+      {
+        "path": "vitest.config.ts",
+        "sha256": "84fef4870fed6a1d5156f5260cd8fcc9b6d1dcca7cc76e8de3c86a978b336fec"
+      }
+    ],
+    "script_files": [],
+    "jest": null,
+    "exclude": [],
+    "other_gates": [
+      {
+        "id": "build",
+        "script": "pnpm -r build",
+        "pre": null,
+        "post": null
+      },
+      {
+        "id": "lint",
+        "script": "biome check . && pnpm -r typecheck",
+        "pre": null,
+        "post": null
+      }
+    ],
+    "other_chained": []
+  }
+}

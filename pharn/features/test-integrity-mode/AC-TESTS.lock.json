@@ -1,0 +1,165 @@
+{
+  "schema": "ac-tests-lock/6",
+  "feature": "test-integrity-mode",
+  "mode": "test-first",
+  "spec": {
+    "spec_id": "test-integrity-mode",
+    "spec_content_hash": "0e8a13f6f3f8ccf53cffc89816b5147ecec7c674dc86603e81a4a4170f33753f"
+  },
+  "mapping": {
+    "path": "pharn/features/test-integrity-mode/AC-TESTS.md",
+    "sha256": "855f08ea9f077fc90483cef466a4c79ae40aa50907a47854afe5e4d01de82ae3"
+  },
+  "files": [
+    {
+      "path": "packages/action/test/ac-test-integrity-mode-action.test.ts",
+      "sha256": "0cc67bc522705a3d03a6c60557d1c310271a22412f5275f019af4d251f6847e6"
+    },
+    {
+      "path": "packages/cli/test/ac-test-integrity-mode-cli.test.ts",
+      "sha256": "5d4d11b88290464ea3d4f4909ca6e776e4ae42e160cde7e031c1a8b9f2974d0e"
+    },
+    {
+      "path": "packages/core/test/ac-test-integrity-mode-docs.test.ts",
+      "sha256": "9aabce36db3139aa687aa7798f820f35abe43067beaea1db955b44c2ea205e03"
+    },
+    {
+      "path": "packages/core/test/ac-test-integrity-mode-render.test.ts",
+      "sha256": "1eae117361be9ce69d8e7608205478a671c18ef11009eacb939170d53a42e3c2"
+    },
+    {
+      "path": "packages/core/test/ac-test-integrity-mode-resolve.test.ts",
+      "sha256": "7d60d2c323ef652213e847be77fe1ec12decd57e57b376e813ce71d3e3372764"
+    },
+    {
+      "path": "packages/core/test/ac-test-integrity-mode-validate.test.ts",
+      "sha256": "60d4b2cd69d4dd27fbe4ca1d541613dbba1d1d7c42923e6c898dfcc89108e84e"
+    }
+  ],
+  "bootstrap": null,
+  "red_run": {
+    "stamp_sha256": "3457208e990cb2c10da5e4c8d4f8858ceb025b7c3f26868f231775cb257b78a3",
+    "files_sha256": "a9f9a561ae513e82f1445e61b99975153de22c560141b4d93314ad80ce4d6049",
+    "gates": [
+      {
+        "gate": "test",
+        "results_sha256": "f711f58fbed688bb59045da81002c5742b0e0503daa7cf1b6e0cccb455813575"
+      }
+    ],
+    "acs": [
+      {
+        "id": "AC-1",
+        "tests": [
+          "packages/core/test/ac-test-integrity-mode-resolve.test.ts::test-integrity mode precedence through check() › AC-1: with no input and no config the mode is warn from the default and no mode message is added"
+        ]
+      },
+      {
+        "id": "AC-2",
+        "tests": [
+          "packages/core/test/ac-test-integrity-mode-resolve.test.ts::test-integrity mode precedence through check() › AC-2: the input wins over the default and over a looser config, and a loosening config is reported"
+        ]
+      },
+      {
+        "id": "AC-3",
+        "tests": [
+          "packages/core/test/ac-test-integrity-mode-resolve.test.ts::test-integrity mode precedence through check() › AC-3: a stricter config raises the default and a warn input to block, with source config"
+        ]
+      },
+      {
+        "id": "AC-4",
+        "tests": [
+          "packages/core/test/ac-test-integrity-mode-resolve.test.ts::test-integrity mode precedence through check() › AC-4: a config looser than the base is ignored with exactly one message; an equal one adds none"
+        ]
+      },
+      {
+        "id": "AC-5",
+        "tests": [
+          "packages/core/test/ac-test-integrity-mode-resolve.test.ts::test-integrity mode precedence through check() › AC-5: an effective mode of off adds one info message and leaves the verdict of the block at pass"
+        ]
+      },
+      {
+        "id": "AC-6",
+        "tests": [
+          "packages/core/test/ac-test-integrity-mode-validate.test.ts::test-integrity setting validation › AC-6: a bad test_integrity.mode or an unknown key under test_integrity is a ConfigError",
+          "packages/core/test/ac-test-integrity-mode-validate.test.ts::test-integrity setting validation › AC-6: an input other than block, warn or off is an error naming the allowed values",
+          "packages/core/test/ac-test-integrity-mode-validate.test.ts::test-integrity setting validation › AC-6: surrounding whitespace is trimmed and an empty or whitespace-only input counts as not given",
+          "packages/core/test/ac-test-integrity-mode-validate.test.ts::test-integrity setting validation › AC-6: test_integrity.mode in the config is read and handed to resolveInputs as the config value"
+        ]
+      },
+      {
+        "id": "AC-7",
+        "tests": [
+          "packages/core/test/ac-test-integrity-mode-render.test.ts::renderMarkdown: the Test integrity section › AC-7: sits after Diff coverage and before Messages and Agent setup, with one fixed line per mode"
+        ]
+      },
+      {
+        "id": "AC-8",
+        "tests": [
+          "packages/core/test/ac-test-integrity-mode-render.test.ts::renderMarkdown: the Test integrity section › AC-8: with no testIntegrityMode the report JSON is the golden one and the markdown differs by only the section"
+        ]
+      },
+      {
+        "id": "AC-9",
+        "tests": [
+          "packages/action/test/ac-test-integrity-mode-action.test.ts::action input test-integrity › AC-9: an input value outside block, warn and off fails the step naming the allowed values",
+          "packages/action/test/ac-test-integrity-mode-action.test.ts::action input test-integrity › AC-9: the input beats a looser .pharn/ci.yml, shows in report.json and the comment, and does not fail the step"
+        ]
+      },
+      {
+        "id": "AC-10",
+        "tests": [
+          "packages/cli/test/ac-test-integrity-mode-cli.test.ts::pharn-ci check --test-integrity › AC-10: --test-integrity block gives mode block from the input, in a report that passes the v2 schema",
+          "packages/cli/test/ac-test-integrity-mode-cli.test.ts::pharn-ci check --test-integrity › AC-10: --test-integrity maybe exits 2 with nothing on stdout and the allowed values on stderr"
+        ]
+      },
+      {
+        "id": "AC-11",
+        "tests": [
+          "packages/core/test/ac-test-integrity-mode-docs.test.ts::test-integrity mode: docs and schema › AC-11: action.yml declares the test-integrity input and says what it takes and that the config can only tighten",
+          "packages/core/test/ac-test-integrity-mode-docs.test.ts::test-integrity mode: docs and schema › AC-11: report.v2.json lists both new codes and report.v1.json is byte-identical to the base commit's",
+          "packages/core/test/ac-test-integrity-mode-docs.test.ts::test-integrity mode: docs and schema › AC-11: the changelog, README and threat model name the input, the config key and the tighten-only rule"
+        ]
+      }
+    ]
+  },
+  "test_infra": {
+    "levels": [
+      "integration",
+      "unit"
+    ],
+    "gates": [
+      {
+        "id": "test",
+        "script": "vitest run",
+        "pre": null,
+        "post": null,
+        "results": "vitest-json"
+      }
+    ],
+    "chained": [],
+    "configs": [
+      {
+        "path": "vitest.config.ts",
+        "sha256": "84fef4870fed6a1d5156f5260cd8fcc9b6d1dcca7cc76e8de3c86a978b336fec"
+      }
+    ],
+    "script_files": [],
+    "jest": null,
+    "exclude": [],
+    "other_gates": [
+      {
+        "id": "build",
+        "script": "pnpm -r build",
+        "pre": null,
+        "post": null
+      },
+      {
+        "id": "lint",
+        "script": "biome check . && pnpm -r typecheck",
+        "pre": null,
+        "post": null
+      }
+    ],
+    "other_chained": []
+  }
+}

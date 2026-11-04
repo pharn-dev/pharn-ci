@@ -1,0 +1,172 @@
+{
+  "base": "dd2a03b41299c2cdb4da03bc790da6c96e526804",
+  "inside": [
+    "CHANGELOG.md",
+    "README.md",
+    "action.yml",
+    "docs/THREAT-MODEL.md",
+    "packages/action/dist/index.js",
+    "packages/action/src/run.ts",
+    "packages/action/test/run.test.ts",
+    "packages/cli/src/main.ts",
+    "packages/cli/test/main.test.ts",
+    "packages/core/src/check.ts",
+    "packages/core/src/index.ts",
+    "packages/core/src/inputs.ts",
+    "packages/core/src/report.ts",
+    "packages/node-io/src/coverage.ts",
+    "packages/node-io/src/index.ts",
+    ".agents/skills/source-command-pharn-build/SKILL.md",
+    ".agents/skills/source-command-pharn-grill/SKILL.md",
+    ".agents/skills/source-command-pharn-loop-close/SKILL.md",
+    ".agents/skills/source-command-pharn-loop-quick/SKILL.md",
+    ".agents/skills/source-command-pharn-loop/SKILL.md",
+    ".agents/skills/source-command-pharn-memory-promote/SKILL.md",
+    ".agents/skills/source-command-pharn-plan/SKILL.md",
+    ".agents/skills/source-command-pharn-regress/SKILL.md",
+    ".agents/skills/source-command-pharn-review/SKILL.md",
+    ".agents/skills/source-command-pharn-ship-close/SKILL.md",
+    ".agents/skills/source-command-pharn-ship-quick/SKILL.md",
+    ".agents/skills/source-command-pharn-ship/SKILL.md",
+    ".agents/skills/source-command-pharn-spec/SKILL.md",
+    ".agents/skills/source-command-pharn-test/SKILL.md",
+    ".agents/skills/source-command-pharn-verify/SKILL.md",
+    ".codex/hooks.json",
+    ".codex/hooks/enforce-writes-scope.cjs",
+    ".codex/hooks/protect-trusted-paths.cjs",
+    ".codex/hooks/require-loop-record.cjs",
+    ".codex/hooks/set-writes-scope.cjs",
+    "examples/workflows/cargo.yml",
+    "examples/workflows/dotnet.yml",
+    "examples/workflows/jest.yml",
+    "examples/workflows/pytest.yml",
+    "examples/workflows/vitest.yml",
+    "fixtures/coverage-discovery/cobertura-coverage/coverage/cobertura-coverage.xml",
+    "fixtures/coverage-discovery/cobertura-coverage/src/a.ts",
+    "fixtures/coverage-discovery/coverage-lcov/coverage/lcov.info",
+    "fixtures/coverage-discovery/coverage-lcov/src/a.ts",
+    "fixtures/coverage-discovery/coverage-xml/coverage.xml",
+    "fixtures/coverage-discovery/coverage-xml/src/a.ts",
+    "fixtures/coverage-discovery/dotnet-many/src/a.ts",
+    "fixtures/coverage-discovery/dotnet-many/tests/App.Tests/TestResults/a1/coverage.cobertura.xml",
+    "fixtures/coverage-discovery/dotnet-many/tests/App.Tests/TestResults/b2/coverage.cobertura.xml",
+    "fixtures/coverage-discovery/dotnet-many/tests/App.Tests/TestResults/c3/coverage.cobertura.xml",
+    "fixtures/coverage-discovery/dotnet-one/src/a.ts",
+    "fixtures/coverage-discovery/dotnet-one/tests/App.Tests/TestResults/abc/coverage.cobertura.xml",
+    "fixtures/coverage-discovery/lcov-root/lcov.info",
+    "fixtures/coverage-discovery/lcov-root/src/a.ts",
+    "fixtures/coverage-discovery/none/src/a.ts",
+    "fixtures/coverage-discovery/two-kinds/coverage/lcov.info",
+    "fixtures/coverage-discovery/two-kinds/lcov.info",
+    "fixtures/coverage-discovery/two-kinds/src/a.ts",
+    "packages/action/test/ac-discovery-action-ambiguous.test.ts",
+    "packages/action/test/ac-discovery-action-found.test.ts",
+    "packages/action/test/ac-discovery-action-none.test.ts",
+    "packages/cli/test/ac-discovery-cli-ambiguous.test.ts",
+    "packages/cli/test/ac-discovery-cli-explicit.test.ts",
+    "packages/cli/test/ac-discovery-cli-found.test.ts",
+    "packages/cli/test/ac-discovery-cli-none.test.ts",
+    "packages/core/src/coverageDiscovery.ts",
+    "packages/core/test/ac-discovery-check-missing.test.ts",
+    "packages/core/test/ac-discovery-choose-ambiguous.test.ts",
+    "packages/core/test/ac-discovery-choose-dotnet.test.ts",
+    "packages/core/test/ac-discovery-choose-none.test.ts",
+    "packages/core/test/ac-discovery-choose-single.test.ts",
+    "packages/core/test/ac-discovery-docs.test.ts",
+    "packages/core/test/ac-discovery-examples-runs.test.ts",
+    "packages/core/test/ac-discovery-examples-shape.test.ts",
+    "packages/node-io/src/discovery.ts",
+    "packages/node-io/test/ac-discovery-fixtures.test.ts",
+    "packages/node-io/test/ac-discovery-walk-rules.test.ts"
+  ],
+  "outside_gates": {
+    "build": {
+      "base": 0,
+      "head": 0
+    },
+    "test": {
+      "base": 0,
+      "head": 0
+    }
+  },
+  "regressions": [],
+  "pre_existing": [],
+  "verdict": "no-regressions",
+  "gate_run": {
+    "base": {
+      "stamp_sha256": "ade3e43acb8ee4c83d145817553cff2efdeb43333b46c12fbe9f9a0d2ffcd97c",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "79b87e04c6d85be07a65e9c3ce34c095da8864c353e5f17d68597708c0c0ec4b"
+      }
+    },
+    "head": {
+      "stamp_sha256": "a0ae8aef1654d3a1a18acafd6d45a7d92299ba09a2e7ffade835959bfd78a504",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "13a6d1df88f92103162b9816d5da65554b6d8fb68bb1bd4d8dc8ba7259f08961"
+      }
+    }
+  },
+  "base_evidence": {
+    "reused": false,
+    "miss": "other-run",
+    "requirement_sha256": "5264614ddda0ded382ffde2a3873edcf294539266c4bfd008e960b1f28698148",
+    "recorded": true,
+    "source": "fresh",
+    "entry": {
+      "used": false,
+      "miss": "start-dirty",
+      "offer_sha256": null,
+      "entry_stamp_sha256": null,
+      "base": null,
+      "run": {
+        "command": "pharn-loop",
+        "marker_sha256": "29be7888a6eb0f51fa873eb13bfa41e45d021d07844555518409d03a7cfa6d45"
+      },
+      "reused_ids": [],
+      "no_files_ids": [],
+      "ignored_ids": []
+    }
+  },
+  "pre_run_snapshot": {
+    "status": "applied",
+    "unchanged": [
+      ".agents/skills/source-command-pharn-build/SKILL.md",
+      ".agents/skills/source-command-pharn-grill/SKILL.md",
+      ".agents/skills/source-command-pharn-loop-close/SKILL.md",
+      ".agents/skills/source-command-pharn-loop-quick/SKILL.md",
+      ".agents/skills/source-command-pharn-loop/SKILL.md",
+      ".agents/skills/source-command-pharn-memory-promote/SKILL.md",
+      ".agents/skills/source-command-pharn-plan/SKILL.md",
+      ".agents/skills/source-command-pharn-regress/SKILL.md",
+      ".agents/skills/source-command-pharn-review/SKILL.md",
+      ".agents/skills/source-command-pharn-ship-close/SKILL.md",
+      ".agents/skills/source-command-pharn-ship-quick/SKILL.md",
+      ".agents/skills/source-command-pharn-ship/SKILL.md",
+      ".agents/skills/source-command-pharn-spec/SKILL.md",
+      ".agents/skills/source-command-pharn-test/SKILL.md",
+      ".agents/skills/source-command-pharn-verify/SKILL.md",
+      ".codex/hooks.json",
+      ".codex/hooks/enforce-writes-scope.cjs",
+      ".codex/hooks/protect-trusted-paths.cjs",
+      ".codex/hooks/require-loop-record.cjs",
+      ".codex/hooks/set-writes-scope.cjs"
+    ]
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "base_source": "explicit"
+}

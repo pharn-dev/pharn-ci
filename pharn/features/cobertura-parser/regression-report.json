@@ -1,0 +1,111 @@
+{
+  "base": "e546f912022443757bae015a618da1fc8076f4fa",
+  "inside": [
+    "CHANGELOG.md",
+    "docs/LIMITS.md",
+    "docs/THREAT-MODEL.md",
+    "packages/action/dist/index.js",
+    "packages/core/src/coverage/cobertura.ts",
+    "packages/core/src/paths.ts",
+    "packages/core/test/lcov.test.ts",
+    "packages/core/test/paths.test.ts",
+    "fixtures/cobertura/absolute-filenames.xml",
+    "fixtures/cobertura/climb.xml",
+    "fixtures/cobertura/coveragepy.xml",
+    "fixtures/cobertura/coverlet.xml",
+    "fixtures/cobertura/empty.xml",
+    "fixtures/cobertura/entities.xml",
+    "fixtures/cobertura/forms-base.xml",
+    "fixtures/cobertura/forms-decorated.xml",
+    "fixtures/cobertura/forms-variant.xml",
+    "fixtures/cobertura/garbage.xml",
+    "fixtures/cobertura/invalid-lines.xml",
+    "fixtures/cobertura/jacoco.xml",
+    "fixtures/cobertura/methods-branches.xml",
+    "fixtures/cobertura/multi-source.xml",
+    "fixtures/cobertura/no-lines.xml",
+    "fixtures/cobertura/no-sources.xml",
+    "fixtures/cobertura/partial-valid.xml",
+    "fixtures/cobertura/pytest-cov.xml",
+    "fixtures/cobertura/sources-outside.xml",
+    "packages/core/src/coverage/xml.ts",
+    "packages/core/test/cobertura-check.test.ts",
+    "packages/core/test/cobertura-hostile.test.ts",
+    "packages/core/test/cobertura.test.ts",
+    "pharn/features/cobertura-parser/AC-TESTS.lock.json",
+    "pharn/features/cobertura-parser/AC-TESTS.md",
+    "pharn/features/cobertura-parser/BUILD.md",
+    "pharn/features/cobertura-parser/GRILL.md",
+    "pharn/features/cobertura-parser/PLAN.md",
+    "pharn/features/cobertura-parser/SPEC.md"
+  ],
+  "outside_gates": {
+    "build": {
+      "base": 0,
+      "head": 0
+    },
+    "test": {
+      "base": 0,
+      "head": 0
+    }
+  },
+  "regressions": [],
+  "pre_existing": [],
+  "verdict": "no-regressions",
+  "gate_run": {
+    "base": {
+      "stamp_sha256": "a3ce1e762a44e22df9473bad4c3caef1d074c1de3ad5babd64c75f6ec316f734",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "dc8629e1d474cf8e752d129b8ac73eece6d1704b24fabefdc0e5fe22fbcc33af"
+      }
+    },
+    "head": {
+      "stamp_sha256": "539ed478a5c49e2d86ba5070f3ece614b99f43c2b96e348a3982dfafab35ec72",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "4d99a8bae9c515d309e2e5ab906ba97ff6b6c64e1522bd9d7076acd1bbcc84ca"
+      }
+    }
+  },
+  "base_evidence": {
+    "reused": false,
+    "miss": "no-record",
+    "requirement_sha256": "d194a09fcf861ee233ba51ade1bf105da48e5cbc5a9b5f11c557ebca89d95cc3",
+    "recorded": true,
+    "source": "fresh",
+    "entry": {
+      "used": false,
+      "miss": "shape-mismatch",
+      "offer_sha256": null,
+      "entry_stamp_sha256": null,
+      "base": null,
+      "run": {
+        "command": "pharn-loop",
+        "marker_sha256": "9dc2111d5e8eaf52bceaee48407b2a7b503a736451abc070ce5e9ffc9b697b5e"
+      },
+      "reused_ids": [],
+      "no_files_ids": [],
+      "ignored_ids": []
+    }
+  },
+  "pre_run_snapshot": {
+    "status": "applied",
+    "unchanged": []
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "base_source": "explicit"
+}

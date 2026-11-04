@@ -1,0 +1,201 @@
+{
+  "schema": "ac-tests-lock/5",
+  "feature": "coverage-format-selection",
+  "mode": "test-first",
+  "spec": {
+    "spec_id": "coverage-format-selection",
+    "spec_content_hash": "734e074e751d0e556c0e297ef80316589d1943d7b96d66bf0ef8bdd12b0d75a1"
+  },
+  "mapping": {
+    "path": "pharn/features/coverage-format-selection/AC-TESTS.md",
+    "sha256": "56b1fc3ffac259fd3805eac7c2bb1e3cf1a4dd91d4d4faefd4a0fff9a3fc348b"
+  },
+  "files": [
+    {
+      "path": "packages/action/test/ac-coverage-format.test.ts",
+      "sha256": "38f99d42996dc756783c96152bc9b044ee2390d31eb4467bfb5ba27c268efb45"
+    },
+    {
+      "path": "packages/cli/test/ac-coverage-format.test.ts",
+      "sha256": "dcbc5bb6438a13be576ad1a7287d756d4fabebdaae194c40f3901c1c6ba66899"
+    },
+    {
+      "path": "packages/core/test/ac-format-check.test.ts",
+      "sha256": "6f19a06905624d18a5146326703ff1455e5c3bfc8e23843201a85a70fabe0b55"
+    },
+    {
+      "path": "packages/core/test/ac-format-config.test.ts",
+      "sha256": "430ed11ddb203b8d075a086be9f5a7b983c7108eddf6122a3e8c53a062afc6c9"
+    },
+    {
+      "path": "packages/core/test/ac-format-detect.test.ts",
+      "sha256": "c18f0e988c75727a4dfa37fc08aca2e5bd20125394d775e01e814b3e0c24d396"
+    },
+    {
+      "path": "packages/core/test/ac-format-golden.test.ts",
+      "sha256": "4efc7dec04db3ac4bef342bf533959754fe5f2b2083c8ba7a4a23e8a4ff959ff"
+    },
+    {
+      "path": "packages/core/test/ac-format-schema.test.ts",
+      "sha256": "6cf14ac4a58736ff681a1cab5de9d12729ce68616e0d9429cf8eabbf59b94a8f"
+    }
+  ],
+  "bootstrap": null,
+  "red_run": {
+    "stamp_sha256": "5f6b2da3cd3aa04647b684344f54ff212004b58b15fdb1bdda3ab0d9ca2feccd",
+    "files_sha256": "7863944900ee509a1a4f3b42902094fd7c32a5cc0ef219955cf083dbd60727e1",
+    "gates": [
+      {
+        "gate": "test",
+        "results_sha256": "055103a1cdb27148e8cb3c6abeb39d0700e24ce1bb125dd9d8f6e3d2a9666e7a"
+      }
+    ],
+    "acs": [
+      {
+        "id": "AC-1",
+        "tests": [
+          "packages/core/test/ac-format-detect.test.ts::detectCoverageFormat: recognized reports › AC-1: detects every Cobertura fixture as cobertura"
+        ]
+      },
+      {
+        "id": "AC-2",
+        "tests": [
+          "packages/core/test/ac-format-detect.test.ts::detectCoverageFormat: recognized reports › AC-2: detects every lcov fixture and the golden coverage.info as lcov"
+        ]
+      },
+      {
+        "id": "AC-3",
+        "tests": [
+          "packages/core/test/ac-format-detect.test.ts::detectCoverageFormat: recognized reports › AC-3: detects both formats through a byte-order mark, leading whitespace, CRLF and an XML prolog"
+        ]
+      },
+      {
+        "id": "AC-4",
+        "tests": [
+          "packages/core/test/ac-format-detect.test.ts::detectCoverageFormat: look-alikes and unknown text › AC-4: does not take Clover look-alikes for Cobertura or lcov"
+        ]
+      },
+      {
+        "id": "AC-5",
+        "tests": [
+          "packages/core/test/ac-format-detect.test.ts::detectCoverageFormat: look-alikes and unknown text › AC-5: does not take JaCoCo native XML, garbage, <coverageReport> or a root past 1 KiB for a known format"
+        ]
+      },
+      {
+        "id": "AC-6",
+        "tests": [
+          "packages/core/test/ac-format-detect.test.ts::detectCoverageFormat: look-alikes and unknown text › AC-6: returns quickly, without throwing, on several megabytes of hostile text"
+        ]
+      },
+      {
+        "id": "AC-7",
+        "tests": [
+          "packages/core/test/ac-format-check.test.ts::check(): coverage format selection › AC-7: reports Clover and JaCoCo native XML under auto as COVERAGE_FORMAT_UNSUPPORTED"
+        ]
+      },
+      {
+        "id": "AC-8",
+        "tests": [
+          "packages/core/test/ac-format-check.test.ts::check(): coverage format selection › AC-8: reports empty text, a BOM with whitespace and <coverage/> under auto as COVERAGE_FILE_EMPTY"
+        ]
+      },
+      {
+        "id": "AC-9",
+        "tests": [
+          "packages/core/test/ac-format-check.test.ts::check(): coverage format selection › AC-9: gives the same report for the golden lcov inputs under auto and lcov, with diffCoverage.format lcov"
+        ]
+      },
+      {
+        "id": "AC-10",
+        "tests": [
+          "packages/core/test/ac-format-check.test.ts::check(): coverage format selection › AC-10: gives the same report for a Cobertura fixture under auto and cobertura, with diffCoverage.format cobertura"
+        ]
+      },
+      {
+        "id": "AC-11",
+        "tests": [
+          "packages/core/test/ac-format-check.test.ts::check(): coverage format selection › AC-11: an explicit format skips detection, so it never yields COVERAGE_FORMAT_UNSUPPORTED"
+        ]
+      },
+      {
+        "id": "AC-12",
+        "tests": [
+          "packages/core/test/ac-format-schema.test.ts::schema/report.v1.json: diffCoverage.format and COVERAGE_FORMAT_UNSUPPORTED › AC-12: accepts the lcov, cobertura and absent formats and the new code, and rejects clover"
+        ]
+      },
+      {
+        "id": "AC-13",
+        "tests": [
+          "packages/core/test/ac-format-golden.test.ts::golden reports and the coverage format › AC-13: the golden Cobertura inputs give the expected report and markdown"
+        ]
+      },
+      {
+        "id": "AC-14",
+        "tests": [
+          "packages/core/test/ac-format-golden.test.ts::golden reports and the coverage format › AC-14: the lcov golden markdown is unchanged and its JSON gains only diffCoverage.format lcov"
+        ]
+      },
+      {
+        "id": "AC-15",
+        "tests": [
+          "packages/core/test/ac-format-config.test.ts::parseConfig: coverage.format › AC-15: accepts lcov, cobertura and auto, and rejects clover naming the three accepted values"
+        ]
+      },
+      {
+        "id": "AC-16",
+        "tests": [
+          "packages/cli/test/ac-coverage-format.test.ts::pharn-ci check --coverage-format › AC-16: auto-detects the golden Cobertura file and logs one format line on stderr"
+        ]
+      },
+      {
+        "id": "AC-17",
+        "tests": [
+          "packages/cli/test/ac-coverage-format.test.ts::pharn-ci check --coverage-format › AC-17: an explicit format from the flag or the config is logged as configured, the flag winning"
+        ]
+      },
+      {
+        "id": "AC-18",
+        "tests": [
+          "packages/cli/test/ac-coverage-format.test.ts::pharn-ci check --coverage-format › AC-18: stdout carries only the JSON report, and an unknown --coverage-format exits 2 naming the value"
+        ]
+      },
+      {
+        "id": "AC-19",
+        "tests": [
+          "packages/action/test/ac-coverage-format.test.ts::action: coverage-format input › AC-19: reads a Cobertura file with coverage-format cobertura and with no format at all"
+        ]
+      },
+      {
+        "id": "AC-20",
+        "tests": [
+          "packages/action/test/ac-coverage-format.test.ts::action: coverage-format input › AC-20: fails on coverage-format clover, and fails the verdict on a Clover file under auto"
+        ]
+      }
+    ]
+  },
+  "test_infra": {
+    "levels": [
+      "integration",
+      "unit"
+    ],
+    "gates": [
+      {
+        "id": "test",
+        "script": "vitest run",
+        "pre": null,
+        "post": null,
+        "results": "vitest-json"
+      }
+    ],
+    "chained": [],
+    "configs": [
+      {
+        "path": "vitest.config.ts",
+        "sha256": "84fef4870fed6a1d5156f5260cd8fcc9b6d1dcca7cc76e8de3c86a978b336fec"
+      }
+    ],
+    "script_files": [],
+    "jest": null,
+    "exclude": []
+  }
+}

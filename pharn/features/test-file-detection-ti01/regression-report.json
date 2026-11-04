@@ -1,0 +1,112 @@
+{
+  "base": "b145a7f3e7ad2b8b13af7b591a3186128a355cc6",
+  "inside": [
+    "CHANGELOG.md",
+    "README.md",
+    "docs/LIMITS.md",
+    "docs/THREAT-MODEL.md",
+    "packages/action/dist/index.js",
+    "packages/core/src/check.ts",
+    "packages/core/src/chunkInputs.ts",
+    "packages/core/src/diff/unified.ts",
+    "packages/core/src/index.ts",
+    "packages/core/src/render/markdown.ts",
+    "packages/core/src/report.ts",
+    "packages/core/src/testFiles.ts",
+    "packages/core/test/ac-test-files-deleted-check.test.ts",
+    "schema/report.v2.json",
+    "fixtures/test-integrity/TI01/block-code-stays.diff",
+    "fixtures/test-integrity/TI01/block-rename-away.diff",
+    "fixtures/test-integrity/TI01/block-root-tests.diff",
+    "fixtures/test-integrity/TI01/info-migration-mjs.diff",
+    "fixtures/test-integrity/TI01/info-migration-ts.diff",
+    "fixtures/test-integrity/TI01/info-package-removed.diff",
+    "fixtures/test-integrity/TI01/info-with-source.diff",
+    "fixtures/test-integrity/TI01/pass-binary.diff",
+    "fixtures/test-integrity/TI01/pass-fixture-json.diff",
+    "fixtures/test-integrity/TI01/pass-helper.diff",
+    "fixtures/test-integrity/TI01/pass-init-py.diff",
+    "packages/cli/test/ac-ti01-cli.test.ts",
+    "packages/core/src/signals/ti01.ts",
+    "packages/core/test/ac-ti01-block.test.ts",
+    "packages/core/test/ac-ti01-counted.test.ts",
+    "packages/core/test/ac-ti01-diff-caps.test.ts",
+    "packages/core/test/ac-ti01-diff-hunks.test.ts",
+    "packages/core/test/ac-ti01-docs.test.ts",
+    "packages/core/test/ac-ti01-exemptions.test.ts",
+    "packages/core/test/ac-ti01-files-deleted-compat.test.ts",
+    "packages/core/test/ac-ti01-modes.test.ts",
+    "packages/core/test/ac-ti01-not-counted.test.ts",
+    "packages/core/test/ac-ti01-render.test.ts",
+    "packages/core/test/ac-ti01-test-file-globs.test.ts"
+  ],
+  "outside_gates": {
+    "build": {
+      "base": 0,
+      "head": 0
+    },
+    "test": {
+      "base": 0,
+      "head": 0
+    }
+  },
+  "regressions": [],
+  "pre_existing": [],
+  "verdict": "no-regressions",
+  "gate_run": {
+    "base": {
+      "stamp_sha256": "deca84b2a570b904c92de6862d922d6ff61f35268c50fa74e597f6aa7f3f59b6",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "82db67a1d3fa8c8d1f11bd9c5ea3904dd850aabecf2ef68897187ea399aef53c"
+      }
+    },
+    "head": {
+      "stamp_sha256": "2f24e554215896dabe38feffadb13c5875a05a41fdb03b80eaeb172efe1c8349",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "fdff7e511cc9a12d9d54a6944fe85cad2baa7a82fa7e20922410964870ff717f"
+      }
+    }
+  },
+  "base_evidence": {
+    "reused": false,
+    "miss": "other-run",
+    "requirement_sha256": "efa9bb5e26d6423fa88eef596562c3c919373bda20cebdf725f5f12cc3f2ff94",
+    "recorded": true,
+    "source": "fresh",
+    "entry": {
+      "used": false,
+      "miss": "shape-mismatch",
+      "offer_sha256": null,
+      "entry_stamp_sha256": null,
+      "base": null,
+      "run": {
+        "command": "pharn-loop",
+        "marker_sha256": "d20872b6e1a0d9b6de946169d9104d2549609b770804030b6c391da1a8dc5e70"
+      },
+      "reused_ids": [],
+      "no_files_ids": [],
+      "ignored_ids": []
+    }
+  },
+  "pre_run_snapshot": {
+    "status": "applied",
+    "unchanged": []
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "base_source": "explicit"
+}

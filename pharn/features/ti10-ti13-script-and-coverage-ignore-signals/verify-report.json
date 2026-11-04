@@ -1,0 +1,242 @@
+{
+  "feature": "ti10-ti13-script-and-coverage-ignore-signals",
+  "gates": {
+    "build": 0,
+    "instruction-growth": 0,
+    "lint": 0,
+    "reconcile": 0,
+    "test": 0
+  },
+  "verdict": "PASS",
+  "failing_gates": [],
+  "gate_run": {
+    "stamp_sha256": "e2b8c34306e9d2ddc3088e8eb429930530e1f595e017da64b62da4fd8bff1e7b",
+    "source": "discover",
+    "fingerprint": {
+      "algo": "worktree-fingerprint/2+sha256",
+      "final": "ac01f0eb10a3371359ff1f82b680fdd5cdf13572c0223fccd5a3ca9ae26f720f"
+    }
+  },
+  "ac_gate": {
+    "mode": "test-first",
+    "verdict": "PASS",
+    "reason": null,
+    "evidence": [],
+    "acs": [
+      {
+        "id": "AC-1",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-ti1013-selector.test.ts::the diff reader keeps the text of package.json and source files › AC-1: package.json files, JS/TS and Python sources keep their line text within the existing bounds; lockfile, Markdown and dependabot keep none"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-2",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti10-weakened.test.ts::TI10: a test script in package.json weakened › AC-2: each weakening of a test* script, and each removed pretest or posttest, gives one TI10 signal at its line with the mode's severity"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-3",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti10-no-signal.test.ts::TI10: script edits that do not weaken a test script › AC-3: pre-existing weakenings, unrelated scripts, stricter scripts, an edited pretest, added and deleted package.json files and a non-package.json give no TI10"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-4",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti10-no-tests-exemption.test.ts::TI10: --passWithNoTests in a repository with no test files › AC-4: it fires with test files, not without them, again when the diff deletes a test file, and when the tracked-file list is empty"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-5",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti10-details.test.ts::TI10: one signal per kind, the cap, and the fixed details › AC-5: two kinds on one line give two signals, 21 weakened scripts give 20, and each of the seven kinds has its own fixed sentence with no line text"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-6",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti13-added.test.ts::TI13: a coverage-ignore comment added to source › AC-6: each added istanbul, v8, c8 or pragma: no cover comment gives one TI13 signal at its line with the mode's severity"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-7",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti13-no-signal.test.ts::TI13: comments and edits that add no coverage-ignore marker to source › AC-7: moved and removed markers, markers in test files, markdown or the other language, and look-alikes give no TI13"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-8",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti13-details.test.ts::TI13: one-to-one matching, the cap, and the fixed details › AC-8: one removed and two added markers give one signal at the higher line, 21 give 20, and each of the four families has its own fixed sentence with no comment text"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-9",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti1013-modes.test.ts::TI10 and TI13 in the three modes › AC-9: block sorts and fails with error messages, warn shows every signal as warn, off computes nothing"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-10",
+        "level": "integration",
+        "tests": [
+          "packages/cli/test/ac-ti1013-render.test.ts::TI10 and TI13 in the PR comment, the streaming reader and the CLI › AC-10: the section lists each signal with a hint, both message hints exist, streamed equals whole text, the CLI JSON holds TI10"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-11",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti1013-regression.test.ts::TI10 and TI13 leave the earlier signals and fixtures alone › AC-11: the TI01, TI03, TI04, TI11 and TI14 fixtures give the same signals and messages as before, and the golden diff stays quiet"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-12",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-ti1013-docs.test.ts::TI10 and TI13: docs, schema and fixtures › AC-12: at least five must-trigger and five must-not-trigger diffs per id, the named cases among them, and they behave",
+          "packages/core/test/ac-ti1013-docs.test.ts::TI10 and TI13: docs, schema and fixtures › AC-12: the changelog, README, limits and threat model name TI10 and TI13",
+          "packages/core/test/ac-ti1013-docs.test.ts::TI10 and TI13: docs, schema and fixtures › AC-12: the v2 schema names both message codes and the v1 schema is byte-identical to the base commit's"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      }
+    ],
+    "unmapped_anomalies": [],
+    "note": "an AC is delivered = a locked, once-red test titled AC-<n>:, in a file mapped to AC-<n>, passed on this head run. PHARN does not judge whether that test fully captures the AC's intent."
+  },
+  "completeness": {
+    "plan": "pharn/features/ti10-ti13-script-and-coverage-ignore-signals/PLAN.md",
+    "repoDir": ".",
+    "declared": [
+      "packages/core/src/signals/signalFiles.ts",
+      "packages/core/src/signals/ti10.ts",
+      "packages/core/src/signals/ti13.ts",
+      "packages/core/src/check.ts",
+      "packages/core/src/report.ts",
+      "packages/core/src/render/markdown.ts",
+      "packages/core/src/index.ts",
+      "packages/core/src/chunkInputs.ts",
+      "schema/report.v2.json",
+      "packages/core/test/ac-ti1411-selector.test.ts",
+      "fixtures/test-integrity/TI10/block-or-true.diff",
+      "fixtures/test-integrity/TI10/block-echo-in-place.diff",
+      "fixtures/test-integrity/TI10/block-pass-with-no-tests.diff",
+      "fixtures/test-integrity/TI10/block-path-filter.diff",
+      "fixtures/test-integrity/TI10/block-name-filter.diff",
+      "fixtures/test-integrity/TI10/block-pretest-removed.diff",
+      "fixtures/test-integrity/TI10/block-nested-exit-zero.diff",
+      "fixtures/test-integrity/TI10/pass-pre-existing-or-true.diff",
+      "fixtures/test-integrity/TI10/pass-unrelated-script.diff",
+      "fixtures/test-integrity/TI10/pass-build-echo.diff",
+      "fixtures/test-integrity/TI10/pass-stricter.diff",
+      "fixtures/test-integrity/TI10/pass-and-echo.diff",
+      "fixtures/test-integrity/TI10/pass-new-package.diff",
+      "fixtures/test-integrity/TI10/pass-no-test-files.diff",
+      "fixtures/test-integrity/TI10/pass-no-test-files.files.txt",
+      "fixtures/test-integrity/TI13/block-istanbul-next.diff",
+      "fixtures/test-integrity/TI13/block-istanbul-inline.diff",
+      "fixtures/test-integrity/TI13/block-v8-next.diff",
+      "fixtures/test-integrity/TI13/block-c8-line.diff",
+      "fixtures/test-integrity/TI13/block-pragma-no-cover.diff",
+      "fixtures/test-integrity/TI13/block-new-file.diff",
+      "fixtures/test-integrity/TI13/pass-moved.diff",
+      "fixtures/test-integrity/TI13/pass-removed.diff",
+      "fixtures/test-integrity/TI13/pass-test-file.diff",
+      "fixtures/test-integrity/TI13/pass-py-istanbul.diff",
+      "fixtures/test-integrity/TI13/pass-string.diff",
+      "fixtures/test-integrity/TI13/pass-v8-ignored-word.diff",
+      "fixtures/test-integrity/TI13/pass-pragma-no-branch.diff",
+      "fixtures/test-integrity/TI13/pass-markdown.diff",
+      "CHANGELOG.md",
+      "README.md",
+      "docs/LIMITS.md",
+      "docs/THREAT-MODEL.md",
+      "packages/action/dist/index.js"
+    ],
+    "skipped": [],
+    "missing": [],
+    "deletions": [],
+    "undeleted": [],
+    "complete": true,
+    "verdict": "complete"
+  },
+  "verifiers": {
+    "registered": 0,
+    "findings": []
+  },
+  "gate_reuse": {
+    "reused": [
+      {
+        "id": "build",
+        "stage": "regress",
+        "side": "head",
+        "seq": 1
+      }
+    ]
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "reconcile_detail": {
+    "state": "parsed",
+    "exit": 0,
+    "verdict": "CLEAN",
+    "escapes": [],
+    "escapes_total": 0,
+    "merged_count": 0
+  }
+}

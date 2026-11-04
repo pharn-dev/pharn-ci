@@ -1,0 +1,150 @@
+{
+  "base": "69721ddfc02501561e7e0e9c74e471db5fe376b1",
+  "inside": [
+    "CHANGELOG.md",
+    "README.md",
+    "docs/THREAT-MODEL.md",
+    "fixtures/coverage-paths/package-relative/report.md",
+    "fixtures/golden-cobertura/report.md",
+    "fixtures/golden-exclusions/report.md",
+    "fixtures/golden-multi/report.md",
+    "fixtures/golden/report.md",
+    "packages/action/dist/index.js",
+    "packages/action/test/ac-comment-bold-fit.test.ts",
+    "packages/action/test/ac-comment-look-fit.test.ts",
+    "packages/action/test/run.test.ts",
+    "packages/core/src/render/logo.ts",
+    "packages/core/test/__snapshots__/markdown.test.ts.snap",
+    "packages/core/test/ac-comment-bold-footer.test.ts",
+    "packages/core/test/ac-comment-bold-header.test.ts",
+    "packages/core/test/ac-comment-bold-hostile.test.ts",
+    "packages/core/test/ac-comment-bold-overview.test.ts",
+    "packages/core/test/ac-comment-look-collapse.test.ts",
+    "packages/core/test/ac-comment-look-footer.test.ts",
+    "packages/core/test/ac-comment-look-header.test.ts",
+    "packages/core/test/ac-comment-look-hostile.test.ts",
+    "packages/core/test/ac-comment-look-summary.test.ts",
+    "packages/core/test/ac-format-golden.test.ts",
+    "packages/core/test/ac-paths-partial.test.ts",
+    "packages/core/test/exclusions-report.test.ts",
+    "packages/core/test/markdown.test.ts",
+    ".agents/skills/source-command-pharn-build/SKILL.md",
+    ".agents/skills/source-command-pharn-grill/SKILL.md",
+    ".agents/skills/source-command-pharn-loop-close/SKILL.md",
+    ".agents/skills/source-command-pharn-loop-quick/SKILL.md",
+    ".agents/skills/source-command-pharn-loop/SKILL.md",
+    ".agents/skills/source-command-pharn-memory-promote/SKILL.md",
+    ".agents/skills/source-command-pharn-plan/SKILL.md",
+    ".agents/skills/source-command-pharn-regress/SKILL.md",
+    ".agents/skills/source-command-pharn-review/SKILL.md",
+    ".agents/skills/source-command-pharn-ship-close/SKILL.md",
+    ".agents/skills/source-command-pharn-ship-quick/SKILL.md",
+    ".agents/skills/source-command-pharn-ship/SKILL.md",
+    ".agents/skills/source-command-pharn-spec/SKILL.md",
+    ".agents/skills/source-command-pharn-test/SKILL.md",
+    ".agents/skills/source-command-pharn-verify/SKILL.md",
+    ".codex/hooks.json",
+    ".codex/hooks/enforce-writes-scope.cjs",
+    ".codex/hooks/protect-trusted-paths.cjs",
+    ".codex/hooks/require-loop-record.cjs",
+    ".codex/hooks/set-writes-scope.cjs",
+    "packages/action/test/ac-header-logo-fit.test.ts",
+    "packages/action/test/ac-header-logo-run.test.ts",
+    "packages/cli/test/ac-header-logo-cli.test.ts",
+    "packages/core/test/ac-header-logo-asset.test.ts",
+    "packages/core/test/ac-header-logo-data.test.ts",
+    "packages/core/test/ac-header-logo-golden.test.ts",
+    "packages/core/test/ac-header-logo-markup.test.ts",
+    "packages/core/test/ac-header-logo-reports.test.ts"
+  ],
+  "outside_gates": {
+    "build": {
+      "base": 0,
+      "head": 0
+    },
+    "test": {
+      "base": 0,
+      "head": 0
+    }
+  },
+  "regressions": [],
+  "pre_existing": [],
+  "verdict": "no-regressions",
+  "gate_run": {
+    "base": {
+      "stamp_sha256": "f7b1d1bd0afa6d2d634b568b0ce0a7b4521fccbf1ed2fa45ecbc8271712d92f6",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "15acfab16c65a262320591c589e33509a24a6492e17ab934366db5e7e21d8053"
+      }
+    },
+    "head": {
+      "stamp_sha256": "99cce1f9718703342d18c8a1d6fb091a2de47ff3d93650ae17185c68c3a34990",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "935f15769a866b423de6f9fac0fe44220fd4288ce082e549d0add55e6a1f82bb"
+      }
+    }
+  },
+  "base_evidence": {
+    "reused": false,
+    "miss": "other-run",
+    "requirement_sha256": "585d551bfced8e7d5f4d68157a7790d6e724e9a61ff409d7236dbd9137b7693c",
+    "recorded": true,
+    "source": "fresh",
+    "entry": {
+      "used": false,
+      "miss": "start-dirty",
+      "offer_sha256": null,
+      "entry_stamp_sha256": null,
+      "base": null,
+      "run": {
+        "command": "pharn-loop",
+        "marker_sha256": "d0ca826e6e4dd9d51dca28929274409f8ca77c9ef75353f0899049f8f02d360b"
+      },
+      "reused_ids": [],
+      "no_files_ids": [],
+      "ignored_ids": []
+    }
+  },
+  "pre_run_snapshot": {
+    "status": "applied",
+    "unchanged": [
+      ".agents/skills/source-command-pharn-build/SKILL.md",
+      ".agents/skills/source-command-pharn-grill/SKILL.md",
+      ".agents/skills/source-command-pharn-loop-close/SKILL.md",
+      ".agents/skills/source-command-pharn-loop-quick/SKILL.md",
+      ".agents/skills/source-command-pharn-loop/SKILL.md",
+      ".agents/skills/source-command-pharn-memory-promote/SKILL.md",
+      ".agents/skills/source-command-pharn-plan/SKILL.md",
+      ".agents/skills/source-command-pharn-regress/SKILL.md",
+      ".agents/skills/source-command-pharn-review/SKILL.md",
+      ".agents/skills/source-command-pharn-ship-close/SKILL.md",
+      ".agents/skills/source-command-pharn-ship-quick/SKILL.md",
+      ".agents/skills/source-command-pharn-ship/SKILL.md",
+      ".agents/skills/source-command-pharn-spec/SKILL.md",
+      ".agents/skills/source-command-pharn-test/SKILL.md",
+      ".agents/skills/source-command-pharn-verify/SKILL.md",
+      ".codex/hooks.json",
+      ".codex/hooks/enforce-writes-scope.cjs",
+      ".codex/hooks/protect-trusted-paths.cjs",
+      ".codex/hooks/require-loop-record.cjs",
+      ".codex/hooks/set-writes-scope.cjs"
+    ]
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "base_source": "explicit"
+}

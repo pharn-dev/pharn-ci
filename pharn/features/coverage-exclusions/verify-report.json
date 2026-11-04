@@ -1,0 +1,309 @@
+{
+  "feature": "coverage-exclusions",
+  "gates": {
+    "build": 0,
+    "instruction-growth": 0,
+    "lint": 0,
+    "reconcile": 0,
+    "test": 0
+  },
+  "verdict": "PASS",
+  "failing_gates": [],
+  "gate_run": {
+    "stamp_sha256": "e05e77d557bfe0b3dfe9f7fe5cc14caf14aea77e90cf503fa2fc7ef623b841cc",
+    "source": "discover",
+    "fingerprint": {
+      "algo": "worktree-fingerprint/2+sha256",
+      "final": "2b297ad95b0caff08818d177b33e0598282dde5bb1c2209a0c593cd77f604994"
+    }
+  },
+  "ac_gate": {
+    "mode": "test-first",
+    "verdict": "PASS",
+    "reason": null,
+    "evidence": [],
+    "acs": [
+      {
+        "id": "AC-1",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/glob.test.ts::matchGlob › AC-1: matches the glob subset anchored at the root, case-sensitively, and everything else literally"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-2",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/glob.test.ts::matchGlob › AC-2: accepts ./src/** as src/** and rejects unsupported patterns with a ConfigError naming them"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-3",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/glob.test.ts::matchGlob › AC-3: matches paths a pull request can name as given, without normalizing or throwing"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-4",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/glob.test.ts::matchGlob › AC-4: matches 100,000-character paths in linear time"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-5",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/config-exclude.test.ts::parseConfig: coverage.exclude › AC-5: reads coverage.exclude as a block list of quoted and plain strings, in order"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-6",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/config-exclude.test.ts::parseConfig: coverage.exclude › AC-6: rejects coverage.exclude values that are not a list of valid glob strings"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-7",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/config-exclude.test.ts::parseConfig: coverage.exclude › AC-7: parses 100,000 items and a 100,000-character pattern in linear time"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-8",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/exclusions-check.test.ts::check(): exclusions › AC-8: leaves excluded changed files out of every diff coverage count and lists them sorted"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-9",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/exclusions-check.test.ts::check(): exclusions › AC-9: lists unknown and renamed-into files, never deleted or renamed-out-of files"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-10",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/exclusions-check.test.ts::check(): exclusions › AC-10: passes with NO_COVERABLE_CHANGES when every changed file with coverable lines is excluded"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-11",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/exclusions-check.test.ts::check(): exclusions › AC-11: has no excludedFiles property when no changed file is excluded"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-12",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/exclusions-check.test.ts::check(): exclusions › AC-12: never changes the agent setup inventory, even when ** excludes every changed file"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-13",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/exclusions-check.test.ts::check(): exclusions › AC-13: throws a ConfigError naming a pattern the validation rejects"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-14",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/exclusions-report.test.ts::report schema: diffCoverage.excludedFiles › AC-14: accepts an optional array of non-empty path strings"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-15",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/exclusions-report.test.ts::renderMarkdown: excluded files › AC-15: summarizes excluded files in a <details> block inside the Diff coverage section"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-16",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/exclusions-report.test.ts::renderMarkdown: excluded files › AC-16: keeps hostile excluded paths from adding lines, headings or raw HTML"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-17",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/exclusions-golden.test.ts::golden: fixture diff + lcov + exclusions -> Report v1 › AC-17: excludes the fixture's generated files and matches the golden JSON and markdown"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-18",
+        "level": "integration",
+        "tests": [
+          "packages/cli/test/exclude.test.ts::pharn-ci check --exclude › AC-18: lists --exclude <glob> in the help",
+          "packages/cli/test/exclude.test.ts::pharn-ci check --exclude › AC-18: merges --exclude flags with coverage.exclude and recomputes coverage and the exit code"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-19",
+        "level": "integration",
+        "tests": [
+          "packages/cli/test/exclude.test.ts::pharn-ci check --exclude › AC-19: exits 2 naming a rejected pattern from --exclude or from coverage.exclude"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-20",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/exclude.test.ts::action input exclude › AC-20: merges the exclude input with coverage.exclude, ignoring blank entries"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-21",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/exclude.test.ts::action input exclude › AC-21: fails the step naming a rejected pattern in the exclude input"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      }
+    ],
+    "unmapped_anomalies": [],
+    "note": "an AC is delivered = a locked, once-red test titled AC-<n>:, in a file mapped to AC-<n>, passed on this head run. PHARN does not judge whether that test fully captures the AC's intent."
+  },
+  "completeness": {
+    "plan": "pharn/features/coverage-exclusions/PLAN.md",
+    "repoDir": ".",
+    "declared": [
+      "packages/core/src/glob.ts",
+      "packages/core/src/config.ts",
+      "packages/core/src/diffCoverage.ts",
+      "packages/core/src/report.ts",
+      "packages/core/src/check.ts",
+      "packages/core/src/render/markdown.ts",
+      "packages/core/src/index.ts",
+      "schema/report.v1.json",
+      "packages/cli/src/main.ts",
+      "packages/action/src/run.ts",
+      "action.yml",
+      "fixtures/golden-exclusions/ci.yml",
+      "fixtures/golden-exclusions/pr.diff",
+      "fixtures/golden-exclusions/coverage.info",
+      "fixtures/golden-exclusions/files.txt",
+      "fixtures/golden-exclusions/report.json",
+      "fixtures/golden-exclusions/report.md",
+      "README.md",
+      "docs/LIMITS.md",
+      "docs/THREAT-MODEL.md",
+      "CHANGELOG.md",
+      "packages/action/dist/index.js"
+    ],
+    "skipped": [],
+    "missing": [],
+    "deletions": [],
+    "undeleted": [],
+    "complete": true,
+    "verdict": "complete"
+  },
+  "verifiers": {
+    "registered": 0,
+    "findings": []
+  },
+  "gate_reuse": {
+    "reused": [
+      {
+        "id": "build",
+        "stage": "regress",
+        "side": "head",
+        "seq": 1
+      }
+    ]
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "reconcile_detail": {
+    "state": "parsed",
+    "exit": 0,
+    "verdict": "CLEAN",
+    "escapes": [],
+    "escapes_total": 0,
+    "merged_count": 0
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "base": "feb9cae77215c8a1cf34415addd972d9017427d8",
+  "inside": [
+    "fixtures/skylos-nine/added-skip/change.diff",
+    "fixtures/skylos-nine/added-skip/files.txt",
+    "fixtures/skylos-nine/always-true-matcher/change.diff",
+    "fixtures/skylos-nine/always-true-matcher/files.txt",
+    "fixtures/skylos-nine/deleted-test/change.diff",
+    "fixtures/skylos-nine/deleted-test/files.txt",
+    "fixtures/skylos-nine/deselect-setting/change.diff",
+    "fixtures/skylos-nine/deselect-setting/files.txt",
+    "fixtures/skylos-nine/edited-expected-value/change.diff",
+    "fixtures/skylos-nine/edited-expected-value/files.txt",
+    "fixtures/skylos-nine/emptied-assertion/change.diff",
+    "fixtures/skylos-nine/emptied-assertion/files.txt",
+    "fixtures/skylos-nine/hard-coded-answer/change.diff",
+    "fixtures/skylos-nine/hard-coded-answer/files.txt",
+    "fixtures/skylos-nine/loosened-assertion/change.diff",
+    "fixtures/skylos-nine/loosened-assertion/files.txt",
+    "fixtures/skylos-nine/replaced-test/change.diff",
+    "fixtures/skylos-nine/replaced-test/files.txt",
+    "packages/core/test/ac-skylos-nine-added-skip.test.ts",
+    "packages/core/test/ac-skylos-nine-deleted-test.test.ts",
+    "packages/core/test/ac-skylos-nine-diffs.test.ts",
+    "packages/core/test/ac-skylos-nine-fixtures.test.ts",
+    "packages/core/test/ac-skylos-nine-misses.test.ts",
+    "packages/core/test/ac-skylos-nine-table.test.ts"
+  ],
+  "outside_gates": {
+    "build": {
+      "base": 0,
+      "head": 0
+    },
+    "test": {
+      "base": 0,
+      "head": 0
+    }
+  },
+  "regressions": [],
+  "pre_existing": [],
+  "verdict": "no-regressions",
+  "gate_run": {
+    "base": {
+      "stamp_sha256": "aa62ed21da70311e787ee1feac7d4a635c4d86a6dcf651f66972afb87cbb44ff",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256+entry-feature-dir",
+        "final": "64d2909e68d7db7ce9952e8452b80293c07d806f5f44e28141b54a9512392b4e"
+      }
+    },
+    "head": {
+      "stamp_sha256": "ea8d51b18461d11e6b6a803acff4e550091ad8682249a8ace7d1c777ca143bf0",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "4fbc2b91bf7355e19f51eef9d931cc5eb03dd0935893f05383a797289477f156"
+      }
+    }
+  },
+  "base_evidence": {
+    "reused": false,
+    "miss": "other-run",
+    "requirement_sha256": "0c722f07f4f473ee55d79b32674ae9644bf52c3c414327bf0d5d7142794698de",
+    "recorded": false,
+    "source": "entry",
+    "entry": {
+      "used": true,
+      "miss": null,
+      "offer_sha256": "7989116311734a25af5601eb9f4ee5685e3b7a5afb77aa95eebe7fe2bad3e2be",
+      "entry_stamp_sha256": "f5ffbc146ff6da36b5541b89d4e7ee5682e7fb4b9fa51391e732bb2695012996",
+      "base": "feb9cae77215c8a1cf34415addd972d9017427d8",
+      "run": {
+        "command": "pharn-loop",
+        "marker_sha256": "dd52f96491d73a8fa79d6fe666a812c7e1e8f5c11e17b139bf1c584b61c8dc50"
+      },
+      "reused_ids": [
+        "test",
+        "build"
+      ],
+      "no_files_ids": [],
+      "ignored_ids": [
+        "lint",
+        "test"
+      ]
+    }
+  },
+  "pre_run_snapshot": {
+    "status": "applied",
+    "unchanged": []
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "base_source": "explicit"
+}

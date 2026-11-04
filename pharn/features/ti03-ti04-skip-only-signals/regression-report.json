@@ -1,0 +1,143 @@
+{
+  "base": "be11155dc701478902b77983a2fa7a5db358a806",
+  "inside": [
+    "CHANGELOG.md",
+    "README.md",
+    "docs/LIMITS.md",
+    "docs/THREAT-MODEL.md",
+    "packages/action/dist/index.js",
+    "packages/core/src/check.ts",
+    "packages/core/src/index.ts",
+    "packages/core/src/render/markdown.ts",
+    "packages/core/src/report.ts",
+    "schema/report.v2.json",
+    "fixtures/test-integrity/TI03/block-it-skip-existing.diff",
+    "fixtures/test-integrity/TI03/block-pytest-decorator.diff",
+    "fixtures/test-integrity/TI03/block-skipif-true.diff",
+    "fixtures/test-integrity/TI03/block-todo-existing.diff",
+    "fixtures/test-integrity/TI03/block-xdescribe-existing.diff",
+    "fixtures/test-integrity/TI03/pass-comment.diff",
+    "fixtures/test-integrity/TI03/pass-fails-async-edit.diff",
+    "fixtures/test-integrity/TI03/pass-fixme.diff",
+    "fixtures/test-integrity/TI03/pass-non-test-file.diff",
+    "fixtures/test-integrity/TI03/pass-skip-moved.diff",
+    "fixtures/test-integrity/TI03/pass-skipif-false.diff",
+    "fixtures/test-integrity/TI03/pass-xit-respelled.diff",
+    "fixtures/test-integrity/TI03/warn-conditional-mobile.diff",
+    "fixtures/test-integrity/TI03/warn-go-skip-root.diff",
+    "fixtures/test-integrity/TI03/warn-pytest-skip-fixture.diff",
+    "fixtures/test-integrity/TI03/warn-pytest-skip-redis.diff",
+    "fixtures/test-integrity/TI03/warn-skip-new-file.diff",
+    "fixtures/test-integrity/TI03/warn-skipif-camera.diff",
+    "fixtures/test-integrity/TI03/warn-skipif-docker.diff",
+    "fixtures/test-integrity/TI03/warn-skipif-openssl.diff",
+    "fixtures/test-integrity/TI03/warn-skipunless-windows.diff",
+    "fixtures/test-integrity/TI03/warn-xfail-new-test.diff",
+    "fixtures/test-integrity/TI04/block-describe-only.diff",
+    "fixtures/test-integrity/TI04/block-fdescribe.diff",
+    "fixtures/test-integrity/TI04/block-fit.diff",
+    "fixtures/test-integrity/TI04/block-it-only.diff",
+    "fixtures/test-integrity/TI04/block-only-renamed.diff",
+    "fixtures/test-integrity/TI04/block-test-describe-only.diff",
+    "fixtures/test-integrity/TI04/pass-comment.diff",
+    "fixtures/test-integrity/TI04/pass-go-fit.diff",
+    "fixtures/test-integrity/TI04/pass-json-fixture.diff",
+    "fixtures/test-integrity/TI04/pass-non-test-file.diff",
+    "fixtures/test-integrity/TI04/pass-only-async-edit.diff",
+    "fixtures/test-integrity/TI04/pass-only-moved.diff",
+    "fixtures/test-integrity/TI04/pass-python-def-fit.diff",
+    "fixtures/test-integrity/TI04/pass-solver-fit.diff",
+    "packages/cli/test/ac-ti0304-render.test.ts",
+    "packages/core/src/signals/testLines.ts",
+    "packages/core/src/signals/ti03.ts",
+    "packages/core/src/signals/ti04.ts",
+    "packages/core/test/ac-ti03-added-test.test.ts",
+    "packages/core/test/ac-ti03-conditional.test.ts",
+    "packages/core/test/ac-ti03-in-body.test.ts",
+    "packages/core/test/ac-ti03-js-existing.test.ts",
+    "packages/core/test/ac-ti03-no-signal.test.ts",
+    "packages/core/test/ac-ti03-python-existing.test.ts",
+    "packages/core/test/ac-ti0304-details.test.ts",
+    "packages/core/test/ac-ti0304-docs.test.ts",
+    "packages/core/test/ac-ti0304-modes.test.ts",
+    "packages/core/test/ac-ti0304-regression.test.ts",
+    "packages/core/test/ac-ti04-narrowed.test.ts",
+    "packages/core/test/ac-ti04-not-a-test-call.test.ts",
+    "packages/core/test/ac-ti04-pre-existing.test.ts"
+  ],
+  "outside_gates": {
+    "build": {
+      "base": 0,
+      "head": 0
+    },
+    "test": {
+      "base": 0,
+      "head": 0
+    }
+  },
+  "regressions": [],
+  "pre_existing": [],
+  "verdict": "no-regressions",
+  "gate_run": {
+    "base": {
+      "stamp_sha256": "cfb6a56b16a0defd9a6e0282934c404833f691ee01699daf359d748320b5e0a5",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256+entry-feature-dir",
+        "final": "90b724e0f9870a052f10dbc823659aa0c2f5286fb503040a5f607e87b79e7d65"
+      }
+    },
+    "head": {
+      "stamp_sha256": "4ef8e2e9915679607930212cee27011952b684c8afae6dc436c8c9ff5eb80c41",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "0ca3a3891b6dc198a10c87fa7411339b234b166c4a84c407856aad96dd853701"
+      }
+    }
+  },
+  "base_evidence": {
+    "reused": false,
+    "miss": "other-run",
+    "requirement_sha256": "93fb960ce9399d019ce8bbcb5ccb5bd7eb9e6c114bf8aa9a749a597b677494d0",
+    "recorded": false,
+    "source": "entry",
+    "entry": {
+      "used": true,
+      "miss": null,
+      "offer_sha256": "abeee27c80d6affa3697cbd8d825d9fd7f3dfd679db80ba6e7845972d8d514a6",
+      "entry_stamp_sha256": "27dbcdf16638cce2b492d93528612d6c16b15c176aab1595b3c6ed0197972caa",
+      "base": "be11155dc701478902b77983a2fa7a5db358a806",
+      "run": {
+        "command": "pharn-loop",
+        "marker_sha256": "231bbf9db694e2930d12f05f479791698c811d214b91d020b68304325c2e4a8b"
+      },
+      "reused_ids": [
+        "test",
+        "build"
+      ],
+      "no_files_ids": [],
+      "ignored_ids": [
+        "lint",
+        "test"
+      ]
+    }
+  },
+  "pre_run_snapshot": {
+    "status": "applied",
+    "unchanged": []
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "base_source": "explicit"
+}

@@ -1,0 +1,100 @@
+{
+  "base": "b2c3a56373046ee6b64f913581a645f98240310c",
+  "inside": [
+    "CHANGELOG.md",
+    "README.md",
+    "docs/LIMITS.md",
+    "docs/RELEASING.md",
+    "fixtures/smoke/base/src/math.js",
+    "fixtures/smoke/coverage.lcov",
+    "fixtures/smoke/expected-summary.txt",
+    "fixtures/smoke/head/src/math.js",
+    "fixtures/smoke/head/src/math.test.js",
+    "packages/core/test/ac-v020-changelog.test.ts",
+    "packages/core/test/ac-v020-limits.test.ts",
+    "packages/core/test/ac-v020-readme.test.ts",
+    "packages/core/test/ac-v020-releasing.test.ts",
+    "packages/core/test/ac-v020-skylos-count.test.ts",
+    "packages/core/test/ac-v020-smoke-broken.test.ts",
+    "packages/core/test/ac-v020-smoke-env.test.ts",
+    "packages/core/test/ac-v020-smoke-fixture.test.ts",
+    "packages/core/test/ac-v020-smoke-imports.test.ts",
+    "packages/core/test/ac-v020-smoke-run.test.ts",
+    "scripts/smoke-release.mjs"
+  ],
+  "outside_gates": {
+    "build": {
+      "base": 0,
+      "head": 0
+    },
+    "test": {
+      "base": 0,
+      "head": 0
+    }
+  },
+  "regressions": [],
+  "pre_existing": [],
+  "verdict": "no-regressions",
+  "gate_run": {
+    "base": {
+      "stamp_sha256": "cf96cd1162a7591391cd81540987a47eb27e0e75da1c3812cb3f4786436a166e",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256+entry-feature-dir",
+        "final": "4fbc2b91bf7355e19f51eef9d931cc5eb03dd0935893f05383a797289477f156"
+      }
+    },
+    "head": {
+      "stamp_sha256": "522d7c88174c470f64e6369dadde26f81c77147f98699c7f90ef52ed357dbf15",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "8b943861aac19768d730ce003105610272d0c525b3a0a9287845da2383d41b09"
+      }
+    }
+  },
+  "base_evidence": {
+    "reused": false,
+    "miss": "no-record",
+    "requirement_sha256": "8229d8a610e4802a11cc5d87c8e372d7ed47c3a492de089a62fdab30926036c1",
+    "recorded": false,
+    "source": "entry",
+    "entry": {
+      "used": true,
+      "miss": null,
+      "offer_sha256": "59283d9ba5b13137efab24d515511c2589f930e6cb0241c3b7540c3e4cfe446d",
+      "entry_stamp_sha256": "a9dd661cbd2c7bb47bdc7624c0ba2c3e6e5b5b3e57ec6799877466f2fa081407",
+      "base": "b2c3a56373046ee6b64f913581a645f98240310c",
+      "run": {
+        "command": "pharn-loop",
+        "marker_sha256": "4256e84b9edeef094900f2a1eb7f17b3d447bdc05198d922717cd634a921cb0a"
+      },
+      "reused_ids": [
+        "test",
+        "build"
+      ],
+      "no_files_ids": [],
+      "ignored_ids": [
+        "lint",
+        "test"
+      ]
+    }
+  },
+  "pre_run_snapshot": {
+    "status": "applied",
+    "unchanged": []
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "base_source": "explicit"
+}

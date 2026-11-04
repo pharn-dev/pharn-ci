@@ -1,0 +1,200 @@
+{
+  "feature": "pr-comment-bold-look",
+  "gates": {
+    "build": 0,
+    "instruction-growth": 0,
+    "lint": 0,
+    "reconcile": 0,
+    "test": 0
+  },
+  "verdict": "PASS",
+  "failing_gates": [],
+  "gate_run": {
+    "stamp_sha256": "da62addba128e23546058bbc9dd8723d9da030f13e2d9453bba9f076dca9880b",
+    "source": "discover",
+    "fingerprint": {
+      "algo": "worktree-fingerprint/2+sha256",
+      "final": "e957ed588d9e9a0779dda092c443495c69fa531b2da384510ae733494b443e69"
+    }
+  },
+  "ac_gate": {
+    "mode": "test-first",
+    "verdict": "PASS",
+    "reason": null,
+    "evidence": [],
+    "acs": [
+      {
+        "id": "AC-1",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-comment-bold-header.test.ts::renderMarkdown(): the branded header block › AC-1: opens with the brand and verdict heading, the overview sentence and the summary table, above Diff coverage"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-2",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-comment-bold-overview.test.ts::renderMarkdown(): the heading and the overview sentence › AC-2: a passing report has the Pass heading",
+          "packages/core/test/ac-comment-bold-overview.test.ts::renderMarkdown(): the heading and the overview sentence › AC-2: a warning report has the Warn heading",
+          "packages/core/test/ac-comment-bold-overview.test.ts::renderMarkdown(): the heading and the overview sentence › AC-2: diff coverage not computed starts the sentence with 'Diff coverage was not computed;'",
+          "packages/core/test/ac-comment-bold-overview.test.ts::renderMarkdown(): the heading and the overview sentence › AC-2: no agent setup files ends the sentence with '; no agent setup files found.'",
+          "packages/core/test/ac-comment-bold-overview.test.ts::renderMarkdown(): the heading and the overview sentence › AC-2: no coverable changed lines starts the sentence with 'This change adds no coverable lines;'",
+          "packages/core/test/ac-comment-bold-overview.test.ts::renderMarkdown(): the heading and the overview sentence › AC-2: no threshold puts ', with no threshold set;' in the sentence",
+          "packages/core/test/ac-comment-bold-overview.test.ts::renderMarkdown(): the heading and the overview sentence › AC-2: one agent setup file ends the sentence with '; 1 agent setup file found.'"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-3",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-comment-bold-sections.test.ts::renderMarkdown(): emoji section headings with counts › AC-3: the sections are Diff coverage, Messages (N) and Agent setup (N files), in that order, with no other heading"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-4",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-comment-bold-details.test.ts::renderMarkdown(): per-file detail collapsed in <details> blocks › AC-4: the file tables sit in <details> blocks, the diff one open below the threshold, and the summary lines and messages stay visible"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-5",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-comment-bold-footer.test.ts::renderMarkdown(): the footer › AC-5: ends with a thematic break and a footer naming the version, the schema and the coverage format, and carries no image or URL"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-6",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-comment-bold-hostile.test.ts::renderMarkdown(): the new header, summaries and footer with hostile paths and message text › AC-6: no image, no broken table row, no input text in the fixed lines, and inert message lines"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-7",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-comment-bold-data.test.ts::check() and renderMarkdown(): report data and message text unchanged › AC-7: the golden report equals the committed report.json, and the Messages section carries the committed message and hint lines"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-8",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-comment-bold-fit.test.ts::run(): the new header block in a sticky comment that has to be shortened › AC-8: a report too long for one comment keeps the heading, the overview sentence, the summary row and every message"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-9",
+        "level": "integration",
+        "tests": [
+          "packages/cli/test/ac-comment-bold-cli.test.ts::pharn-ci check: markdown output › AC-9: a passing check exits 0 and prints the branded Pass heading and the Diff coverage section"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      }
+    ],
+    "unmapped_anomalies": [],
+    "note": "an AC is delivered = a locked, once-red test titled AC-<n>:, in a file mapped to AC-<n>, passed on this head run. PHARN does not judge whether that test fully captures the AC's intent."
+  },
+  "completeness": {
+    "plan": "pharn/features/pr-comment-bold-look/PLAN.md",
+    "repoDir": ".",
+    "declared": [
+      "packages/core/src/render/markdown.ts",
+      "fixtures/golden/report.md",
+      "fixtures/golden-cobertura/report.md",
+      "fixtures/golden-exclusions/report.md",
+      "fixtures/golden-multi/report.md",
+      "fixtures/coverage-paths/package-relative/report.md",
+      "packages/core/test/__snapshots__/markdown.test.ts.snap",
+      "packages/core/test/markdown.test.ts",
+      "packages/core/test/ac-format-golden.test.ts",
+      "packages/core/test/ac-paths-partial.test.ts",
+      "packages/core/test/ac-setup-render.test.ts",
+      "packages/core/test/ac-setup-expect-render.test.ts",
+      "packages/core/test/ac-markdown-order-cap.test.ts",
+      "packages/core/test/exclusions-report.test.ts",
+      "packages/core/test/ac-comment-look-header.test.ts",
+      "packages/core/test/ac-comment-look-summary.test.ts",
+      "packages/core/test/ac-comment-look-collapse.test.ts",
+      "packages/core/test/ac-comment-look-footer.test.ts",
+      "packages/core/test/ac-comment-look-hostile.test.ts",
+      "packages/core/test/ac-comment-look-data.test.ts",
+      "packages/action/test/ac-comment-look-fit.test.ts",
+      "packages/action/test/ac-comment-fit.test.ts",
+      "packages/action/test/ac-summary-fit.test.ts",
+      "packages/action/test/run.test.ts",
+      "packages/cli/test/main.test.ts",
+      "README.md",
+      "CHANGELOG.md",
+      "packages/action/dist/index.js"
+    ],
+    "skipped": [],
+    "missing": [],
+    "deletions": [],
+    "undeleted": [],
+    "complete": true,
+    "verdict": "complete"
+  },
+  "verifiers": {
+    "registered": 0,
+    "findings": []
+  },
+  "gate_reuse": {
+    "reused": [
+      {
+        "id": "build",
+        "stage": "regress",
+        "side": "head",
+        "seq": 1
+      }
+    ]
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "reconcile_detail": {
+    "state": "parsed",
+    "exit": 0,
+    "verdict": "CLEAN",
+    "escapes": [],
+    "escapes_total": 0,
+    "merged_count": 0
+  }
+}

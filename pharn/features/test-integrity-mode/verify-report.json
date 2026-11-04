@@ -1,0 +1,223 @@
+{
+  "feature": "test-integrity-mode",
+  "gates": {
+    "build": 0,
+    "instruction-growth": 0,
+    "lint": 0,
+    "reconcile": 0,
+    "test": 0
+  },
+  "verdict": "PASS",
+  "failing_gates": [],
+  "gate_run": {
+    "stamp_sha256": "40ea47c703ec24749cd91c69ea0a36082b4769697c5f0aff51f4547e008413f4",
+    "source": "discover",
+    "fingerprint": {
+      "algo": "worktree-fingerprint/2+sha256",
+      "final": "82db67a1d3fa8c8d1f11bd9c5ea3904dd850aabecf2ef68897187ea399aef53c"
+    }
+  },
+  "ac_gate": {
+    "mode": "test-first",
+    "verdict": "PASS",
+    "reason": null,
+    "evidence": [],
+    "acs": [
+      {
+        "id": "AC-1",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-test-integrity-mode-resolve.test.ts::test-integrity mode precedence through check() › AC-1: with no input and no config the mode is warn from the default and no mode message is added"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-2",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-test-integrity-mode-resolve.test.ts::test-integrity mode precedence through check() › AC-2: the input wins over the default and over a looser config, and a loosening config is reported"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-3",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-test-integrity-mode-resolve.test.ts::test-integrity mode precedence through check() › AC-3: a stricter config raises the default and a warn input to block, with source config"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-4",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-test-integrity-mode-resolve.test.ts::test-integrity mode precedence through check() › AC-4: a config looser than the base is ignored with exactly one message; an equal one adds none"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-5",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-test-integrity-mode-resolve.test.ts::test-integrity mode precedence through check() › AC-5: an effective mode of off adds one info message and leaves the verdict of the block at pass"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-6",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-test-integrity-mode-validate.test.ts::test-integrity setting validation › AC-6: a bad test_integrity.mode or an unknown key under test_integrity is a ConfigError",
+          "packages/core/test/ac-test-integrity-mode-validate.test.ts::test-integrity setting validation › AC-6: an input other than block, warn or off is an error naming the allowed values",
+          "packages/core/test/ac-test-integrity-mode-validate.test.ts::test-integrity setting validation › AC-6: surrounding whitespace is trimmed and an empty or whitespace-only input counts as not given",
+          "packages/core/test/ac-test-integrity-mode-validate.test.ts::test-integrity setting validation › AC-6: test_integrity.mode in the config is read and handed to resolveInputs as the config value"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-7",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-test-integrity-mode-render.test.ts::renderMarkdown: the Test integrity section › AC-7: sits after Diff coverage and before Messages and Agent setup, with one fixed line per mode"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-8",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-test-integrity-mode-render.test.ts::renderMarkdown: the Test integrity section › AC-8: with no testIntegrityMode the report JSON is the golden one and the markdown differs by only the section"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-9",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-test-integrity-mode-action.test.ts::action input test-integrity › AC-9: an input value outside block, warn and off fails the step naming the allowed values",
+          "packages/action/test/ac-test-integrity-mode-action.test.ts::action input test-integrity › AC-9: the input beats a looser .pharn/ci.yml, shows in report.json and the comment, and does not fail the step"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-10",
+        "level": "integration",
+        "tests": [
+          "packages/cli/test/ac-test-integrity-mode-cli.test.ts::pharn-ci check --test-integrity › AC-10: --test-integrity block gives mode block from the input, in a report that passes the v2 schema",
+          "packages/cli/test/ac-test-integrity-mode-cli.test.ts::pharn-ci check --test-integrity › AC-10: --test-integrity maybe exits 2 with nothing on stdout and the allowed values on stderr"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-11",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-test-integrity-mode-docs.test.ts::test-integrity mode: docs and schema › AC-11: action.yml declares the test-integrity input and says what it takes and that the config can only tighten",
+          "packages/core/test/ac-test-integrity-mode-docs.test.ts::test-integrity mode: docs and schema › AC-11: report.v2.json lists both new codes and report.v1.json is byte-identical to the base commit's",
+          "packages/core/test/ac-test-integrity-mode-docs.test.ts::test-integrity mode: docs and schema › AC-11: the changelog, README and threat model name the input, the config key and the tighten-only rule"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      }
+    ],
+    "unmapped_anomalies": [],
+    "note": "an AC is delivered = a locked, once-red test titled AC-<n>:, in a file mapped to AC-<n>, passed on this head run. PHARN does not judge whether that test fully captures the AC's intent."
+  },
+  "completeness": {
+    "plan": "pharn/features/test-integrity-mode/PLAN.md",
+    "repoDir": ".",
+    "declared": [
+      "packages/core/src/testIntegrityMode.ts",
+      "packages/core/src/index.ts",
+      "packages/core/src/config.ts",
+      "packages/core/src/inputs.ts",
+      "packages/core/src/report.ts",
+      "packages/core/src/check.ts",
+      "packages/core/src/render/markdown.ts",
+      "packages/cli/src/main.ts",
+      "packages/action/src/run.ts",
+      "packages/action/dist/index.js",
+      "action.yml",
+      "schema/report.v2.json",
+      "README.md",
+      "CHANGELOG.md",
+      "docs/THREAT-MODEL.md",
+      "fixtures/golden/report.md",
+      "fixtures/golden-cobertura/report.md",
+      "fixtures/golden-exclusions/report.md",
+      "fixtures/golden-multi/report.md",
+      "fixtures/coverage-paths/package-relative/report.md",
+      "packages/core/test/__snapshots__/markdown.test.ts.snap",
+      "packages/core/test/ac-header-logo-golden.test.ts",
+      "packages/core/test/ac-verdict-callout-golden.test.ts",
+      "packages/core/test/ac-paths-partial.test.ts",
+      "packages/core/test/ac-format-golden.test.ts",
+      "packages/core/test/ac-comment-bold-data.test.ts",
+      "packages/core/test/ac-comment-bold-sections.test.ts",
+      "packages/core/test/ac-markdown-order-cap.test.ts",
+      "packages/core/test/markdown.test.ts",
+      "packages/core/test/ac-paths-unmatched-check.test.ts"
+    ],
+    "skipped": [],
+    "missing": [],
+    "deletions": [],
+    "undeleted": [],
+    "complete": true,
+    "verdict": "complete"
+  },
+  "verifiers": {
+    "registered": 0,
+    "findings": []
+  },
+  "gate_reuse": {
+    "reused": [
+      {
+        "id": "build",
+        "stage": "regress",
+        "side": "head",
+        "seq": 1
+      }
+    ]
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "reconcile_detail": {
+    "state": "parsed",
+    "exit": 0,
+    "verdict": "CLEAN",
+    "escapes": [],
+    "escapes_total": 0,
+    "merged_count": 0
+  }
+}

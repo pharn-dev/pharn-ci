@@ -1,0 +1,121 @@
+{
+  "base": "a1089fdeaddbf166996856eb59b632adc2d93827",
+  "inside": [
+    "CHANGELOG.md",
+    "README.md",
+    "action.yml",
+    "docs/LIMITS.md",
+    "docs/THREAT-MODEL.md",
+    "packages/action/dist/index.js",
+    "packages/action/src/api.ts",
+    "packages/action/src/run.ts",
+    "packages/cli/test/ac-ti0304-render.test.ts",
+    "packages/cli/test/ac-ti1013-render.test.ts",
+    "packages/core/src/config.ts",
+    "packages/core/src/index.ts",
+    "packages/core/src/render/markdown.ts",
+    "packages/core/src/report.ts",
+    "schema/report.v2.json",
+    "fixtures/accept-label/block.diff",
+    "fixtures/accept-label/events-applied-twice-author-last.json",
+    "fixtures/accept-label/events-applied-twice-reviewer-last.json",
+    "fixtures/accept-label/events-author.json",
+    "fixtures/accept-label/events-bot.json",
+    "fixtures/accept-label/events-hostile-login.json",
+    "fixtures/accept-label/events-human.json",
+    "fixtures/accept-label/events-no-actor.json",
+    "fixtures/accept-label/events-no-matching-event.json",
+    "fixtures/accept-label/events-organization.json",
+    "fixtures/accept-label/events-unreadable.json",
+    "fixtures/accept-label/files.txt",
+    "fixtures/accept-label/no-signal.diff",
+    "fixtures/accept-label/or-true.diff",
+    "fixtures/accept-label/warn-only.diff",
+    "packages/action/src/accept-label.ts",
+    "packages/action/test/ac-accept-signoff-actor.test.ts",
+    "packages/action/test/ac-accept-signoff-custom.test.ts",
+    "packages/action/test/ac-accept-signoff-default-golden.test.ts",
+    "packages/action/test/ac-accept-signoff-fail-closed.test.ts",
+    "packages/action/test/ac-accept-signoff-history.test.ts",
+    "packages/action/test/ac-accept-signoff-honoured.test.ts",
+    "packages/action/test/ac-accept-signoff-input.test.ts",
+    "packages/action/test/ac-accept-signoff-not-asked.test.ts",
+    "packages/action/test/ac-accept-signoff-regression.test.ts",
+    "packages/cli/test/ac-accept-signoff-cli.test.ts",
+    "packages/cli/test/ac-accept-signoff-config.test.ts",
+    "packages/core/src/acceptLabel.ts",
+    "packages/core/test/ac-accept-signoff-docs.test.ts",
+    "packages/core/test/ac-accept-signoff-hints.test.ts",
+    "packages/core/test/ac-accept-signoff-line.test.ts",
+    "packages/core/test/ac-accept-signoff-schema.test.ts"
+  ],
+  "outside_gates": {
+    "build": {
+      "base": 0,
+      "head": 0
+    },
+    "test": {
+      "base": 0,
+      "head": 0
+    }
+  },
+  "regressions": [],
+  "pre_existing": [],
+  "verdict": "no-regressions",
+  "gate_run": {
+    "base": {
+      "stamp_sha256": "e32150911c2e2924db50fa67163cf802be94aa53757248f3d2272f7540174f19",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "ac01f0eb10a3371359ff1f82b680fdd5cdf13572c0223fccd5a3ca9ae26f720f"
+      }
+    },
+    "head": {
+      "stamp_sha256": "af21e7e559f999a5ef9e3bb4bf1868646da472d816938cbd0eb50e21ee3aa307",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "64d2909e68d7db7ce9952e8452b80293c07d806f5f44e28141b54a9512392b4e"
+      }
+    }
+  },
+  "base_evidence": {
+    "reused": false,
+    "miss": "other-run",
+    "requirement_sha256": "ba9b9d38be8d0a6498fbbc3e38d7bccd4a882dd2e8494dcd52368b60952c8ffc",
+    "recorded": true,
+    "source": "fresh",
+    "entry": {
+      "used": false,
+      "miss": "shape-mismatch",
+      "offer_sha256": null,
+      "entry_stamp_sha256": null,
+      "base": null,
+      "run": {
+        "command": "pharn-loop",
+        "marker_sha256": "81f92d381a8418a66f8f32f6ea65bb11b12c65f588a822cfd405c919e2838c78"
+      },
+      "reused_ids": [],
+      "no_files_ids": [],
+      "ignored_ids": []
+    }
+  },
+  "pre_run_snapshot": {
+    "status": "applied",
+    "unchanged": []
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "base_source": "explicit"
+}

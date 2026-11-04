@@ -1,0 +1,130 @@
+{
+  "base": "73ed546bc52c926fdf86c6d3ce12f5de86e4d82c",
+  "inside": [
+    "CHANGELOG.md",
+    "README.md",
+    "docs/LIMITS.md",
+    "docs/THREAT-MODEL.md",
+    "packages/action/dist/index.js",
+    "packages/core/src/check.ts",
+    "packages/core/src/chunkInputs.ts",
+    "packages/core/src/index.ts",
+    "packages/core/src/render/markdown.ts",
+    "packages/core/src/report.ts",
+    "packages/core/src/signals/signalFiles.ts",
+    "packages/core/test/ac-ti1411-selector.test.ts",
+    "schema/report.v2.json",
+    "fixtures/test-integrity/TI10/block-echo-in-place.diff",
+    "fixtures/test-integrity/TI10/block-name-filter.diff",
+    "fixtures/test-integrity/TI10/block-nested-exit-zero.diff",
+    "fixtures/test-integrity/TI10/block-or-true.diff",
+    "fixtures/test-integrity/TI10/block-pass-with-no-tests.diff",
+    "fixtures/test-integrity/TI10/block-path-filter.diff",
+    "fixtures/test-integrity/TI10/block-pretest-removed.diff",
+    "fixtures/test-integrity/TI10/pass-and-echo.diff",
+    "fixtures/test-integrity/TI10/pass-build-echo.diff",
+    "fixtures/test-integrity/TI10/pass-new-package.diff",
+    "fixtures/test-integrity/TI10/pass-no-test-files.diff",
+    "fixtures/test-integrity/TI10/pass-no-test-files.files.txt",
+    "fixtures/test-integrity/TI10/pass-pre-existing-or-true.diff",
+    "fixtures/test-integrity/TI10/pass-stricter.diff",
+    "fixtures/test-integrity/TI10/pass-unrelated-script.diff",
+    "fixtures/test-integrity/TI13/block-c8-line.diff",
+    "fixtures/test-integrity/TI13/block-istanbul-inline.diff",
+    "fixtures/test-integrity/TI13/block-istanbul-next.diff",
+    "fixtures/test-integrity/TI13/block-new-file.diff",
+    "fixtures/test-integrity/TI13/block-pragma-no-cover.diff",
+    "fixtures/test-integrity/TI13/block-v8-next.diff",
+    "fixtures/test-integrity/TI13/pass-markdown.diff",
+    "fixtures/test-integrity/TI13/pass-moved.diff",
+    "fixtures/test-integrity/TI13/pass-pragma-no-branch.diff",
+    "fixtures/test-integrity/TI13/pass-py-istanbul.diff",
+    "fixtures/test-integrity/TI13/pass-removed.diff",
+    "fixtures/test-integrity/TI13/pass-string.diff",
+    "fixtures/test-integrity/TI13/pass-test-file.diff",
+    "fixtures/test-integrity/TI13/pass-v8-ignored-word.diff",
+    "packages/cli/test/ac-ti1013-render.test.ts",
+    "packages/core/src/signals/ti10.ts",
+    "packages/core/src/signals/ti13.ts",
+    "packages/core/test/ac-ti10-details.test.ts",
+    "packages/core/test/ac-ti10-no-signal.test.ts",
+    "packages/core/test/ac-ti10-no-tests-exemption.test.ts",
+    "packages/core/test/ac-ti10-weakened.test.ts",
+    "packages/core/test/ac-ti1013-docs.test.ts",
+    "packages/core/test/ac-ti1013-modes.test.ts",
+    "packages/core/test/ac-ti1013-regression.test.ts",
+    "packages/core/test/ac-ti1013-selector.test.ts",
+    "packages/core/test/ac-ti13-added.test.ts",
+    "packages/core/test/ac-ti13-details.test.ts",
+    "packages/core/test/ac-ti13-no-signal.test.ts"
+  ],
+  "outside_gates": {
+    "build": {
+      "base": 0,
+      "head": 0
+    },
+    "test": {
+      "base": 0,
+      "head": 0
+    }
+  },
+  "regressions": [],
+  "pre_existing": [],
+  "verdict": "no-regressions",
+  "gate_run": {
+    "base": {
+      "stamp_sha256": "f7002b61046faf1fbb9d5bf90b71652b81936dcd16f5580454022803abb9a0fd",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "0ca3a3891b6dc198a10c87fa7411339b234b166c4a84c407856aad96dd853701"
+      }
+    },
+    "head": {
+      "stamp_sha256": "7237fbd2bd44202385a2088f8bbd195c1d8ebdff80e579c9938b04c465e1fe52",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "ac01f0eb10a3371359ff1f82b680fdd5cdf13572c0223fccd5a3ca9ae26f720f"
+      }
+    }
+  },
+  "base_evidence": {
+    "reused": false,
+    "miss": "no-record",
+    "requirement_sha256": "68d886f442c8bb0bbf9bdaf2b8423c5c36c102371c62951b7fe42f3d4a79fb97",
+    "recorded": true,
+    "source": "fresh",
+    "entry": {
+      "used": false,
+      "miss": "shape-mismatch",
+      "offer_sha256": null,
+      "entry_stamp_sha256": null,
+      "base": null,
+      "run": {
+        "command": "pharn-loop",
+        "marker_sha256": "ee9e425ad14647577316afe00051ce3139035d5a9a5a505d588d38c1bd868719"
+      },
+      "reused_ids": [],
+      "no_files_ids": [],
+      "ignored_ids": []
+    }
+  },
+  "pre_run_snapshot": {
+    "status": "applied",
+    "unchanged": []
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "base_source": "explicit"
+}

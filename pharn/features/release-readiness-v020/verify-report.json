@@ -1,0 +1,229 @@
+{
+  "feature": "release-readiness-v020",
+  "gates": {
+    "build": 0,
+    "instruction-growth": 0,
+    "lint": 0,
+    "reconcile": 0,
+    "test": 0
+  },
+  "verdict": "PASS",
+  "failing_gates": [],
+  "gate_run": {
+    "stamp_sha256": "0542b00d07558cc02aa055a577678f86bc1e5d51061a1888d6414e5d4e39ee32",
+    "source": "discover",
+    "fingerprint": {
+      "algo": "worktree-fingerprint/2+sha256",
+      "final": "8b943861aac19768d730ce003105610272d0c525b3a0a9287845da2383d41b09"
+    }
+  },
+  "ac_gate": {
+    "mode": "test-first",
+    "verdict": "PASS",
+    "reason": null,
+    "evidence": [],
+    "acs": [
+      {
+        "id": "AC-1",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-v020-limits.test.ts::release-readiness-v020: docs/LIMITS.md › AC-1: one 'What test integrity does not catch' section after the accept-label misses, naming the seven signals, the accept label, Skylos 2 of 9, the two caught cases and the seven missed cases with their planned signals"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-2",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-v020-limits.test.ts::release-readiness-v020: docs/LIMITS.md › AC-2: the section names a same-name replacement with a trivial body, toEqual(expectedFromOutput), mocks in setup files, and calls the unbuilt signals planned"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-3",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-v020-skylos-count.test.ts::release-readiness-v020: the LIMITS 2-of-9 figure matches check() › AC-3: exactly the two cases LIMITS lists as caught give a signal (only their named id), the seven it lists as missed give none, so the live count is 2 of 9"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-4",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-v020-limits.test.ts::release-readiness-v020: docs/LIMITS.md › AC-4: the stale 'not detected yet' sentence is gone and every ## and ### heading of the base copy is still present"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-5",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-v020-readme.test.ts::release-readiness-v020: README.md › AC-5: one ## Test integrity heading, its Contents line, the section's words and links, no uses: line, and the Status note and uses: pins unchanged"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-6",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-v020-readme.test.ts::release-readiness-v020: README.md › AC-6: every non-blank line of the rendered added-skip Test integrity section appears, in order, in the README section with its > quote removed"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-7",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-v020-readme.test.ts::release-readiness-v020: README.md › AC-7: the Roadmap no longer says deleted test files are already named by…, and links to #test-integrity"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-8",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-v020-changelog.test.ts::release-readiness-v020: CHANGELOG.md › AC-8: Unreleased names Skylos, 2 of 9 and docs/LIMITS.md, keeps the Report v2 line and every earlier line, and the ## [ headings are unchanged"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-9",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-v020-releasing.test.ts::release-readiness-v020: docs/RELEASING.md › AC-9: a fork / job summary / comment item comes before **Release.**, the Release smoke and dry-run smoke steps are written, and every earlier ## heading and item lead is kept"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-10",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-v020-smoke-fixture.test.ts::release-readiness-v020: the smoke fixture's expected summary › AC-10: expected-summary.txt holds the Test integrity heading and the no-findings line, and no line with pharn-ci followed by a version"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-11",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-v020-smoke-run.test.ts::release-readiness-v020: release smoke on the committed bundle › AC-11: node scripts/smoke-release.mjs . exits 0, prints exactly one non-blank line starting ok, and leaves TMPDIR empty"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-12",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-v020-smoke-broken.test.ts::release-readiness-v020: the release smoke fails on a broken setup › AC-12: a bundle that exits 1 fails the smoke at exit",
+          "packages/core/test/ac-v020-smoke-broken.test.ts::release-readiness-v020: the release smoke fails on a broken setup › AC-12: a bundle that writes verdict fail and exits 0 fails the smoke at verdict",
+          "packages/core/test/ac-v020-smoke-broken.test.ts::release-readiness-v020: the release smoke fails on a broken setup › AC-12: a copied script and fixtures/smoke/ whose expected-summary.txt has an extra line fail the smoke naming that line",
+          "packages/core/test/ac-v020-smoke-broken.test.ts::release-readiness-v020: the release smoke fails on a broken setup › AC-12: the committed bundle under packages/action/package.json version 9.9.9 fails the smoke naming 9.9.9"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-13",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-v020-smoke-env.test.ts::release-readiness-v020: the release smoke's bundle environment › AC-13: the bundle sees none of the parent's GITHUB_EVENT_NAME, GITHUB_EVENT_PATH, GITHUB_TOKEN or INPUT_PR-NUMBER, exactly the six INPUT_ values, and runner paths inside TMPDIR"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-14",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-v020-smoke-imports.test.ts::release-readiness-v020: the release smoke script's imports › AC-14: every import and require specifier starts node:, none is a network module, and the text has no fetch("
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      }
+    ],
+    "unmapped_anomalies": [],
+    "note": "an AC is delivered = a locked, once-red test titled AC-<n>:, in a file mapped to AC-<n>, passed on this head run. PHARN does not judge whether that test fully captures the AC's intent."
+  },
+  "completeness": {
+    "plan": "pharn/features/release-readiness-v020/PLAN.md",
+    "repoDir": ".",
+    "declared": [
+      "docs/LIMITS.md",
+      "README.md",
+      "CHANGELOG.md",
+      "docs/RELEASING.md",
+      "scripts/smoke-release.mjs",
+      "fixtures/smoke/base/src/math.js",
+      "fixtures/smoke/head/src/math.js",
+      "fixtures/smoke/head/src/math.test.js",
+      "fixtures/smoke/coverage.lcov",
+      "fixtures/smoke/expected-summary.txt"
+    ],
+    "skipped": [],
+    "missing": [],
+    "deletions": [],
+    "undeleted": [],
+    "complete": true,
+    "verdict": "complete"
+  },
+  "verifiers": {
+    "registered": 0,
+    "findings": []
+  },
+  "gate_reuse": {
+    "reused": [
+      {
+        "id": "build",
+        "stage": "regress",
+        "side": "head",
+        "seq": 1
+      }
+    ]
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "reconcile_detail": {
+    "state": "parsed",
+    "exit": 0,
+    "verdict": "CLEAN",
+    "escapes": [],
+    "escapes_total": 0,
+    "merged_count": 0
+  }
+}

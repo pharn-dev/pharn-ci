@@ -1,0 +1,195 @@
+{
+  "schema": "ac-tests-lock/6",
+  "feature": "release-readiness-v020",
+  "mode": "test-first",
+  "spec": {
+    "spec_id": "release-readiness-v020",
+    "spec_content_hash": "e13ec17d9897917aeb7d50b2a15f64613230e92abce855f87be158d4b48e7a10"
+  },
+  "mapping": {
+    "path": "pharn/features/release-readiness-v020/AC-TESTS.md",
+    "sha256": "d54dd5038610205c413c8db49840f764aaf4ff6ffa8a31804016284139cb2b24"
+  },
+  "files": [
+    {
+      "path": "packages/core/test/ac-v020-changelog.test.ts",
+      "sha256": "c253f3efb7ac977d801f748996e51ea6d746c314d768c0f989a4cb10219058e5"
+    },
+    {
+      "path": "packages/core/test/ac-v020-limits.test.ts",
+      "sha256": "8e4d0912e140d4c65b44a2e9cbbbfb85f9d91c9c42256670eea3bc47cfcb3953"
+    },
+    {
+      "path": "packages/core/test/ac-v020-readme.test.ts",
+      "sha256": "ba644038a7971da963915736664412420e9966ce3a93170eced1455cf6fa29b9"
+    },
+    {
+      "path": "packages/core/test/ac-v020-releasing.test.ts",
+      "sha256": "6c18e2f0e7275cdcc984ff192c3b40510f9ea0e9b9c183584744b866403da5ca"
+    },
+    {
+      "path": "packages/core/test/ac-v020-skylos-count.test.ts",
+      "sha256": "12300ef1695d3166ad103384a5339f53767029b826cf0e9a9460e0e8cd048125"
+    },
+    {
+      "path": "packages/core/test/ac-v020-smoke-broken.test.ts",
+      "sha256": "8ff44409a62e89cb8854f6a592525a260fc634cdc8c8daa28fed479c96945bc1"
+    },
+    {
+      "path": "packages/core/test/ac-v020-smoke-env.test.ts",
+      "sha256": "e25646ae36be3e0dff571af15e0002bd6bca37efa257533e097e8521db6cf26a"
+    },
+    {
+      "path": "packages/core/test/ac-v020-smoke-fixture.test.ts",
+      "sha256": "030caf03c5542dae6d68e39f8f84780e51fafa200b4c9ceb2b92c4578d745fd9"
+    },
+    {
+      "path": "packages/core/test/ac-v020-smoke-imports.test.ts",
+      "sha256": "a1c340b7b83e44d1578d1b94144bfb361efb859cadc79f9c3927959ce6b3b49d"
+    },
+    {
+      "path": "packages/core/test/ac-v020-smoke-run.test.ts",
+      "sha256": "0d24db3a053b9ee965918581956e197edfc3210ca3c854270b196940f0c73eee"
+    }
+  ],
+  "bootstrap": null,
+  "red_run": {
+    "stamp_sha256": "8b7b2a47e7c3ee48d2673729b2d34ff0372226fc38f050656d0137816e36387e",
+    "files_sha256": "8a99418ece1c48119fdeb8daca72335fcb556a7870cd7eb6e86153fc362dbf30",
+    "gates": [
+      {
+        "gate": "test",
+        "results_sha256": "2493920a68c1f6b4a984940a098c8828a91b7d7d5d51ef47496f878d44e3544c"
+      }
+    ],
+    "acs": [
+      {
+        "id": "AC-1",
+        "tests": [
+          "packages/core/test/ac-v020-limits.test.ts::release-readiness-v020: docs/LIMITS.md › AC-1: one 'What test integrity does not catch' section after the accept-label misses, naming the seven signals, the accept label, Skylos 2 of 9, the two caught cases and the seven missed cases with their planned signals"
+        ]
+      },
+      {
+        "id": "AC-2",
+        "tests": [
+          "packages/core/test/ac-v020-limits.test.ts::release-readiness-v020: docs/LIMITS.md › AC-2: the section names a same-name replacement with a trivial body, toEqual(expectedFromOutput), mocks in setup files, and calls the unbuilt signals planned"
+        ]
+      },
+      {
+        "id": "AC-3",
+        "tests": [
+          "packages/core/test/ac-v020-skylos-count.test.ts::release-readiness-v020: the LIMITS 2-of-9 figure matches check() › AC-3: exactly the two cases LIMITS lists as caught give a signal (only their named id), the seven it lists as missed give none, so the live count is 2 of 9"
+        ]
+      },
+      {
+        "id": "AC-4",
+        "tests": [
+          "packages/core/test/ac-v020-limits.test.ts::release-readiness-v020: docs/LIMITS.md › AC-4: the stale 'not detected yet' sentence is gone and every ## and ### heading of the base copy is still present"
+        ]
+      },
+      {
+        "id": "AC-5",
+        "tests": [
+          "packages/core/test/ac-v020-readme.test.ts::release-readiness-v020: README.md › AC-5: one ## Test integrity heading, its Contents line, the section's words and links, no uses: line, and the Status note and uses: pins unchanged"
+        ]
+      },
+      {
+        "id": "AC-6",
+        "tests": [
+          "packages/core/test/ac-v020-readme.test.ts::release-readiness-v020: README.md › AC-6: every non-blank line of the rendered added-skip Test integrity section appears, in order, in the README section with its > quote removed"
+        ]
+      },
+      {
+        "id": "AC-7",
+        "tests": [
+          "packages/core/test/ac-v020-readme.test.ts::release-readiness-v020: README.md › AC-7: the Roadmap no longer says deleted test files are already named by…, and links to #test-integrity"
+        ]
+      },
+      {
+        "id": "AC-8",
+        "tests": [
+          "packages/core/test/ac-v020-changelog.test.ts::release-readiness-v020: CHANGELOG.md › AC-8: Unreleased names Skylos, 2 of 9 and docs/LIMITS.md, keeps the Report v2 line and every earlier line, and the ## [ headings are unchanged"
+        ]
+      },
+      {
+        "id": "AC-9",
+        "tests": [
+          "packages/core/test/ac-v020-releasing.test.ts::release-readiness-v020: docs/RELEASING.md › AC-9: a fork / job summary / comment item comes before **Release.**, the Release smoke and dry-run smoke steps are written, and every earlier ## heading and item lead is kept"
+        ]
+      },
+      {
+        "id": "AC-10",
+        "tests": [
+          "packages/core/test/ac-v020-smoke-fixture.test.ts::release-readiness-v020: the smoke fixture's expected summary › AC-10: expected-summary.txt holds the Test integrity heading and the no-findings line, and no line with pharn-ci followed by a version"
+        ]
+      },
+      {
+        "id": "AC-11",
+        "tests": [
+          "packages/core/test/ac-v020-smoke-run.test.ts::release-readiness-v020: release smoke on the committed bundle › AC-11: node scripts/smoke-release.mjs . exits 0, prints exactly one non-blank line starting ok, and leaves TMPDIR empty"
+        ]
+      },
+      {
+        "id": "AC-12",
+        "tests": [
+          "packages/core/test/ac-v020-smoke-broken.test.ts::release-readiness-v020: the release smoke fails on a broken setup › AC-12: a bundle that exits 1 fails the smoke at exit",
+          "packages/core/test/ac-v020-smoke-broken.test.ts::release-readiness-v020: the release smoke fails on a broken setup › AC-12: a bundle that writes verdict fail and exits 0 fails the smoke at verdict",
+          "packages/core/test/ac-v020-smoke-broken.test.ts::release-readiness-v020: the release smoke fails on a broken setup › AC-12: a copied script and fixtures/smoke/ whose expected-summary.txt has an extra line fail the smoke naming that line",
+          "packages/core/test/ac-v020-smoke-broken.test.ts::release-readiness-v020: the release smoke fails on a broken setup › AC-12: the committed bundle under packages/action/package.json version 9.9.9 fails the smoke naming 9.9.9"
+        ]
+      },
+      {
+        "id": "AC-13",
+        "tests": [
+          "packages/core/test/ac-v020-smoke-env.test.ts::release-readiness-v020: the release smoke's bundle environment › AC-13: the bundle sees none of the parent's GITHUB_EVENT_NAME, GITHUB_EVENT_PATH, GITHUB_TOKEN or INPUT_PR-NUMBER, exactly the six INPUT_ values, and runner paths inside TMPDIR"
+        ]
+      },
+      {
+        "id": "AC-14",
+        "tests": [
+          "packages/core/test/ac-v020-smoke-imports.test.ts::release-readiness-v020: the release smoke script's imports › AC-14: every import and require specifier starts node:, none is a network module, and the text has no fetch("
+        ]
+      }
+    ]
+  },
+  "test_infra": {
+    "levels": [
+      "integration",
+      "unit"
+    ],
+    "gates": [
+      {
+        "id": "test",
+        "script": "vitest run",
+        "pre": null,
+        "post": null,
+        "results": "vitest-json"
+      }
+    ],
+    "chained": [],
+    "configs": [
+      {
+        "path": "vitest.config.ts",
+        "sha256": "84fef4870fed6a1d5156f5260cd8fcc9b6d1dcca7cc76e8de3c86a978b336fec"
+      }
+    ],
+    "script_files": [],
+    "jest": null,
+    "exclude": [],
+    "other_gates": [
+      {
+        "id": "build",
+        "script": "pnpm -r build",
+        "pre": null,
+        "post": null
+      },
+      {
+        "id": "lint",
+        "script": "biome check . && pnpm -r typecheck",
+        "pre": null,
+        "post": null
+      }
+    ],
+    "other_chained": []
+  }
+}

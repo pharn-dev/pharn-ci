@@ -1,0 +1,245 @@
+{
+  "feature": "report-v2-skeleton",
+  "gates": {
+    "build": 0,
+    "instruction-growth": 0,
+    "lint": 0,
+    "reconcile": 1,
+    "test": 0
+  },
+  "verdict": "FAIL",
+  "failing_gates": [
+    "reconcile"
+  ],
+  "gate_run": {
+    "stamp_sha256": "36769c47018c87e94358e1166f3c4db262560384ad46baa74456809c4256e0fb",
+    "source": "discover",
+    "fingerprint": {
+      "algo": "worktree-fingerprint/2+sha256",
+      "final": "4993d100c61a48ff354f0d0c97093dc35c772eecdf542adcac1891d155ea198c"
+    }
+  },
+  "ac_gate": {
+    "mode": "test-first",
+    "verdict": "PASS",
+    "reason": null,
+    "evidence": [],
+    "acs": [
+      {
+        "id": "AC-1",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-report-v2-schema.test.ts::schema/report.v2.json › AC-1: compiles under a strict 2020-12 validator with v1 added, and leaves report.v1.json byte-identical"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-2",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-report-v2-check.test.ts::check() emits Report v2 › AC-2: schemaVersion 2, the empty testIntegrity block, no meta, and the v1 fields unchanged"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-3",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-report-v2-check.test.ts::check() emits Report v2 › AC-3: carries a given meta object into the report unchanged, and the report is valid v2"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-4",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-report-v2-schema.test.ts::schema/report.v2.json › AC-4: accepts check()'s v2 report and rejects a string or v1 schemaVersion, an unknown testIntegrity key and TI17"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-5",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-report-v2-golden.test.ts::golden and fixture reports are Report v2 › AC-5: every golden and fixture report passes the v2 schema, and the footer reads report schema v2"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-6",
+        "level": "integration",
+        "tests": [
+          "packages/cli/test/ac-report-v2-cli.test.ts::pharn-ci check --format json › AC-6: prints a Report v2 with an empty testIntegrity block and no meta"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-7",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-report-v2-meta.test.ts::action report.json is Report v2 with meta › AC-7: a pull_request run writes meta from the run context"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-8",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-report-v2-meta.test.ts::action report.json is Report v2 with meta › AC-8: an event outside the schema's list is recorded as other"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-9",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-report-v2-docs.test.ts::Report v2 is documented as a breaking release for report consumers › AC-9: RELEASING.md, the CHANGELOG's Unreleased section and action.yml name Report v2"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      }
+    ],
+    "unmapped_anomalies": [],
+    "note": "an AC is delivered = a locked, once-red test titled AC-<n>:, in a file mapped to AC-<n>, passed on this head run. PHARN does not judge whether that test fully captures the AC's intent."
+  },
+  "completeness": {
+    "plan": "pharn/features/report-v2-skeleton/PLAN.md",
+    "repoDir": ".",
+    "declared": [
+      "schema/report.v2.json",
+      "packages/core/src/report.ts",
+      "packages/core/src/check.ts",
+      "packages/core/src/index.ts",
+      "packages/core/src/version.ts",
+      "packages/core/src/render/markdown.ts",
+      "packages/action/src/run-meta.ts",
+      "packages/action/src/run.ts",
+      "packages/action/dist/index.js",
+      "action.yml",
+      "packages/core/test/schema.ts",
+      "packages/core/test/report.test.ts",
+      "packages/core/test/exclusions-report.test.ts",
+      "packages/core/test/golden.test.ts",
+      "packages/core/test/exclusions-golden.test.ts",
+      "packages/core/test/ac-comment-bold-footer.test.ts",
+      "packages/core/test/ac-comment-look-footer.test.ts",
+      "packages/core/test/ac-format-golden.test.ts",
+      "packages/core/test/ac-format-schema.test.ts",
+      "packages/core/test/ac-paths-schema.test.ts",
+      "packages/core/test/__snapshots__/markdown.test.ts.snap",
+      "packages/core/test/ac-comment-bold-data.test.ts",
+      "packages/core/test/ac-header-logo-data.test.ts",
+      "packages/core/test/ac-header-logo-golden.test.ts",
+      "packages/core/test/ac-paths-partial.test.ts",
+      "packages/core/test/ac-verdict-callout-data.test.ts",
+      "packages/core/test/ac-verdict-callout-golden.test.ts",
+      "packages/cli/test/ac-coverage-format.test.ts",
+      "fixtures/golden/report.json",
+      "fixtures/golden/report.md",
+      "fixtures/golden-cobertura/report.json",
+      "fixtures/golden-cobertura/report.md",
+      "fixtures/golden-exclusions/report.json",
+      "fixtures/golden-exclusions/report.md",
+      "fixtures/golden-multi/report.json",
+      "fixtures/golden-multi/report.md",
+      "fixtures/coverage-paths/package-relative/report.json",
+      "fixtures/coverage-paths/package-relative/report-warn.json",
+      "fixtures/coverage-paths/package-relative/report.md",
+      "fixtures/setup-expect/report-files-missing.json",
+      "fixtures/setup-expect/report-no-files-missing.json",
+      "docs/RELEASING.md",
+      "CHANGELOG.md",
+      "README.md",
+      "docs/MARKETPLACE.md",
+      "docs/THREAT-MODEL.md",
+      ".github/PULL_REQUEST_TEMPLATE.md"
+    ],
+    "skipped": [],
+    "missing": [],
+    "deletions": [],
+    "undeleted": [],
+    "complete": true,
+    "verdict": "complete"
+  },
+  "verifiers": {
+    "registered": 0,
+    "findings": []
+  },
+  "gate_reuse": {
+    "reused": []
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "reconcile_detail": {
+    "state": "parsed",
+    "exit": 1,
+    "verdict": "ESCAPE",
+    "escapes": [
+      {
+        "file": "packages/core/test/ac-comment-bold-data.test.ts",
+        "denied_by": "writes-scope (snapshot)",
+        "reason": "plan-widened-after-anchor",
+        "scope_set_by": "pharn/features/report-v2-skeleton/PLAN.md"
+      },
+      {
+        "file": "packages/core/test/ac-header-logo-data.test.ts",
+        "denied_by": "writes-scope (snapshot)",
+        "reason": "plan-widened-after-anchor",
+        "scope_set_by": "pharn/features/report-v2-skeleton/PLAN.md"
+      },
+      {
+        "file": "packages/core/test/ac-header-logo-golden.test.ts",
+        "denied_by": "writes-scope (snapshot)",
+        "reason": "plan-widened-after-anchor",
+        "scope_set_by": "pharn/features/report-v2-skeleton/PLAN.md"
+      },
+      {
+        "file": "packages/core/test/ac-paths-partial.test.ts",
+        "denied_by": "writes-scope (snapshot)",
+        "reason": "plan-widened-after-anchor",
+        "scope_set_by": "pharn/features/report-v2-skeleton/PLAN.md"
+      },
+      {
+        "file": "packages/core/test/ac-verdict-callout-data.test.ts",
+        "denied_by": "writes-scope (snapshot)",
+        "reason": "plan-widened-after-anchor",
+        "scope_set_by": "pharn/features/report-v2-skeleton/PLAN.md"
+      },
+      {
+        "file": "packages/core/test/ac-verdict-callout-golden.test.ts",
+        "denied_by": "writes-scope (snapshot)",
+        "reason": "plan-widened-after-anchor",
+        "scope_set_by": "pharn/features/report-v2-skeleton/PLAN.md"
+      }
+    ],
+    "escapes_total": 6,
+    "merged_count": 0
+  }
+}

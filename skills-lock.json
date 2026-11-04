@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "pharn-cli": {
+      "source": "pharn-dev/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/pharn/skills/pharn-cli/SKILL.md",
+      "computedHash": "ba9e4c07e5b2833601a8e2a0dd4403757fe2c8cc02d99b8a03aa9500a64097e9"
+    }
+  }
+}

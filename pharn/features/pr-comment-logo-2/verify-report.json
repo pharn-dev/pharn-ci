@@ -1,0 +1,183 @@
+{
+  "feature": "pr-comment-logo-2",
+  "gates": {
+    "build": 0,
+    "instruction-growth": 0,
+    "lint": 0,
+    "reconcile": 0,
+    "test": 0
+  },
+  "verdict": "PASS",
+  "failing_gates": [],
+  "gate_run": {
+    "stamp_sha256": "c0dd6db20f551ec5b422423e3042bd2b1674a0013f9dffcb479dcbb67ff35ea3",
+    "source": "discover",
+    "fingerprint": {
+      "algo": "worktree-fingerprint/2+sha256",
+      "final": "935f15769a866b423de6f9fac0fe44220fd4288ce082e549d0add55e6a1f82bb"
+    }
+  },
+  "ac_gate": {
+    "mode": "test-first",
+    "verdict": "PASS",
+    "reason": null,
+    "evidence": [],
+    "acs": [
+      {
+        "id": "AC-1",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-header-logo-markup.test.ts::logoMarkup(): the fixed pharn logo line › AC-1: returns exactly the fixed <img> line for the pharn logo on the raw main URL"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-2",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-header-logo-golden.test.ts::renderMarkdown(): the golden report opens with the logo line › AC-2: the golden rendering is the logo line, an empty line, then the committed report.md unchanged"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-3",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-header-logo-reports.test.ts::renderMarkdown(): the logo line opens every rendering, and is the only image or URL › AC-3: every rendering starts with the logo line, an empty line and the heading; nothing else carries an image or URL"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-4",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-header-logo-asset.test.ts::logoMarkup(): the logo URL names a committed SVG › AC-4: the path after the raw main URL is a file in the repository whose content starts with <svg"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-5",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-header-logo-data.test.ts::check(): report data unchanged by the header logo › AC-5: the golden report equals the committed report.json and validates against the schema"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-6",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-header-logo-fit.test.ts::action: the fitted sticky comment keeps the logo and heading › AC-6: an oversized comment fits the limit and still opens with marker, scope line, logo line, empty line and heading"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-7",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-header-logo-run.test.ts::action: the posted PR comment opens with the logo › AC-7: a failing PR posts a comment that starts with marker, scope line, logo line, empty line and the Fail heading"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-8",
+        "level": "integration",
+        "tests": [
+          "packages/cli/test/ac-header-logo-cli.test.ts::pharn-ci check: markdown output opens with the logo › AC-8: a passing check exits 0 and prints the logo line first, then the Pass heading and the Diff coverage section"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      }
+    ],
+    "unmapped_anomalies": [],
+    "note": "an AC is delivered = a locked, once-red test titled AC-<n>:, in a file mapped to AC-<n>, passed on this head run. PHARN does not judge whether that test fully captures the AC's intent."
+  },
+  "completeness": {
+    "plan": "pharn/features/pr-comment-logo-2/PLAN.md",
+    "repoDir": ".",
+    "declared": [
+      "packages/core/src/render/logo.ts",
+      "fixtures/golden/report.md",
+      "fixtures/golden-cobertura/report.md",
+      "fixtures/golden-exclusions/report.md",
+      "fixtures/golden-multi/report.md",
+      "fixtures/coverage-paths/package-relative/report.md",
+      "packages/core/test/__snapshots__/markdown.test.ts.snap",
+      "packages/core/test/markdown.test.ts",
+      "packages/core/test/exclusions-report.test.ts",
+      "packages/core/test/ac-format-golden.test.ts",
+      "packages/core/test/ac-paths-partial.test.ts",
+      "packages/core/test/ac-comment-bold-overview.test.ts",
+      "packages/core/test/ac-comment-bold-header.test.ts",
+      "packages/core/test/ac-comment-bold-footer.test.ts",
+      "packages/core/test/ac-comment-bold-hostile.test.ts",
+      "packages/core/test/ac-comment-look-header.test.ts",
+      "packages/core/test/ac-comment-look-summary.test.ts",
+      "packages/core/test/ac-comment-look-collapse.test.ts",
+      "packages/core/test/ac-comment-look-footer.test.ts",
+      "packages/core/test/ac-comment-look-hostile.test.ts",
+      "packages/action/test/run.test.ts",
+      "packages/action/test/ac-comment-look-fit.test.ts",
+      "packages/action/test/ac-comment-bold-fit.test.ts",
+      "README.md",
+      "CHANGELOG.md",
+      "docs/THREAT-MODEL.md",
+      "packages/action/dist/index.js"
+    ],
+    "skipped": [],
+    "missing": [],
+    "deletions": [],
+    "undeleted": [],
+    "complete": true,
+    "verdict": "complete"
+  },
+  "verifiers": {
+    "registered": 0,
+    "findings": []
+  },
+  "gate_reuse": {
+    "reused": [
+      {
+        "id": "build",
+        "stage": "regress",
+        "side": "head",
+        "seq": 1
+      }
+    ]
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "reconcile_detail": {
+    "state": "parsed",
+    "exit": 0,
+    "verdict": "CLEAN",
+    "escapes": [],
+    "escapes_total": 0,
+    "merged_count": 0
+  }
+}

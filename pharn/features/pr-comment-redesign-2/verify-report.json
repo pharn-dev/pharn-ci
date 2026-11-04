@@ -1,0 +1,159 @@
+{
+  "feature": "pr-comment-redesign-2",
+  "gates": {
+    "build": 0,
+    "instruction-growth": 0,
+    "lint": 0,
+    "reconcile": 0,
+    "test": 0
+  },
+  "verdict": "PASS",
+  "failing_gates": [],
+  "gate_run": {
+    "stamp_sha256": "f25b90e04850e24ee6bcb92bdfc5ab7bf71fadf8c8599f94b95344f2974dd1f4",
+    "source": "discover",
+    "fingerprint": {
+      "algo": "worktree-fingerprint/2+sha256",
+      "final": "8c580571d6cc3fddadf66e190e71a4a71d6bdf4fc44bb376471f69b95f5a70d6"
+    }
+  },
+  "ac_gate": {
+    "mode": "test-first",
+    "verdict": "PASS",
+    "reason": null,
+    "evidence": [],
+    "acs": [
+      {
+        "id": "AC-1",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-comment-look-header.test.ts::PR comment look: verdict header and summary block (pr-comment-redesign-2) › AC-1: opens with the verdict header and a summary block before the diff coverage section"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-2",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-comment-look-summary.test.ts::PR comment look: summary block edge states (pr-comment-redesign-2) › AC-2: shows not computed, no coverable lines, no threshold, none and 1 file"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-3",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-comment-look-collapse.test.ts::PR comment look: section order and collapsed long tables (pr-comment-redesign-2) › AC-3: keeps the section order, collapses 30-file tables, never collapses messages, and leaves 25 open"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-4",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-comment-look-footer.test.ts::PR comment look: compact footer and no image (pr-comment-redesign-2) › AC-4: ends with the <sub> footer and carries no image or URL, with an empty logo slot"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-5",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-comment-look-hostile.test.ts::PR comment look: hostile paths and message text stay inert (pr-comment-redesign-2) › AC-5: keeps the summary block fixed, tables aligned, no live <img and inert message lines"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-6",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-comment-look-fit.test.ts::action: redesigned PR comment fitted under the size limit (pr-comment-redesign-2) › AC-6: keeps the marker, scope line, verdict header, summary block and every message line"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-7",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-comment-look-data.test.ts::PR comment look: report data unchanged (pr-comment-redesign-2) › AC-7: check() on the golden inputs deep-equals the committed report.json, and the new look shows its values"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      }
+    ],
+    "unmapped_anomalies": [],
+    "note": "an AC is delivered = a locked, once-red test titled AC-<n>:, in a file mapped to AC-<n>, passed on this head run. PHARN does not judge whether that test fully captures the AC's intent."
+  },
+  "completeness": {
+    "plan": "pharn/features/pr-comment-redesign-2/PLAN.md",
+    "repoDir": ".",
+    "declared": [
+      "packages/core/src/render/logo.ts",
+      "packages/core/src/render/markdown.ts",
+      "fixtures/golden/report.md",
+      "fixtures/golden-cobertura/report.md",
+      "fixtures/golden-exclusions/report.md",
+      "fixtures/golden-multi/report.md",
+      "fixtures/coverage-paths/package-relative/report.md",
+      "packages/core/test/__snapshots__/markdown.test.ts.snap",
+      "packages/core/test/ac-format-golden.test.ts",
+      "packages/core/test/ac-paths-partial.test.ts",
+      "README.md",
+      "CHANGELOG.md",
+      "packages/action/dist/index.js"
+    ],
+    "skipped": [],
+    "missing": [],
+    "deletions": [],
+    "undeleted": [],
+    "complete": true,
+    "verdict": "complete"
+  },
+  "verifiers": {
+    "registered": 0,
+    "findings": []
+  },
+  "gate_reuse": {
+    "reused": [
+      {
+        "id": "build",
+        "stage": "regress",
+        "side": "head",
+        "seq": 1
+      }
+    ]
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "reconcile_detail": {
+    "state": "parsed",
+    "exit": 0,
+    "verdict": "CLEAN",
+    "escapes": [],
+    "escapes_total": 0,
+    "merged_count": 0
+  }
+}

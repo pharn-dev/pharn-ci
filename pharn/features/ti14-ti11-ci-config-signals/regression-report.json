@@ -1,0 +1,141 @@
+{
+  "base": "54804ba8c6e67f6bb757a97a04c1691431cd2c90",
+  "inside": [
+    "CHANGELOG.md",
+    "README.md",
+    "docs/LIMITS.md",
+    "docs/THREAT-MODEL.md",
+    "packages/action/dist/index.js",
+    "packages/action/src/run.ts",
+    "packages/cli/src/main.ts",
+    "packages/core/src/check.ts",
+    "packages/core/src/chunkInputs.ts",
+    "packages/core/src/gateInputs.ts",
+    "packages/core/src/index.ts",
+    "packages/core/src/render/markdown.ts",
+    "packages/core/src/report.ts",
+    "packages/core/test/ac-stream-check.test.ts",
+    "schema/report.v2.json",
+    "fixtures/test-integrity/TI11/block-test-step-removed.diff",
+    "fixtures/test-integrity/TI11/block-trigger-flow.diff",
+    "fixtures/test-integrity/TI11/block-trigger-removed.diff",
+    "fixtures/test-integrity/TI11/block-workflow-deleted.diff",
+    "fixtures/test-integrity/TI11/pass-action-bump.diff",
+    "fixtures/test-integrity/TI11/pass-comment-removed.diff",
+    "fixtures/test-integrity/TI11/pass-continue-expression.diff",
+    "fixtures/test-integrity/TI11/pass-if-always.diff",
+    "fixtures/test-integrity/TI11/pass-matrix-grown.diff",
+    "fixtures/test-integrity/TI11/pass-non-workflow.diff",
+    "fixtures/test-integrity/TI11/pass-pure-rename.diff",
+    "fixtures/test-integrity/TI11/pass-step-moved.diff",
+    "fixtures/test-integrity/TI11/pass-step-reflowed.diff",
+    "fixtures/test-integrity/TI11/pass-timeout-fifteen.diff",
+    "fixtures/test-integrity/TI11/pass-trigger-kept.diff",
+    "fixtures/test-integrity/TI11/warn-continue-on-error.diff",
+    "fixtures/test-integrity/TI11/warn-if-event.diff",
+    "fixtures/test-integrity/TI11/warn-if-false.diff",
+    "fixtures/test-integrity/TI11/warn-matrix-reduced.diff",
+    "fixtures/test-integrity/TI11/warn-timeout-one.diff",
+    "fixtures/test-integrity/TI14/block-config-deleted.diff",
+    "fixtures/test-integrity/TI14/block-exclude-appended.diff",
+    "fixtures/test-integrity/TI14/block-exclude-block.diff",
+    "fixtures/test-integrity/TI14/block-exclude-flow.diff",
+    "fixtures/test-integrity/TI14/block-threshold-lowered.diff",
+    "fixtures/test-integrity/TI14/block-threshold-removed.diff",
+    "fixtures/test-integrity/TI14/pass-exclude-moved.diff",
+    "fixtures/test-integrity/TI14/pass-exclude-removed.diff",
+    "fixtures/test-integrity/TI14/pass-file-item-added.diff",
+    "fixtures/test-integrity/TI14/pass-threshold-added.diff",
+    "fixtures/test-integrity/TI14/pass-threshold-moved.diff",
+    "fixtures/test-integrity/TI14/pass-threshold-raised.diff",
+    "fixtures/test-integrity/TI14/pass-unrelated-setup.diff",
+    "packages/cli/test/ac-ti1411-render.test.ts",
+    "packages/cli/test/ac-ti1411-stream.test.ts",
+    "packages/core/src/signals/signalFiles.ts",
+    "packages/core/src/signals/ti11.ts",
+    "packages/core/src/signals/ti14.ts",
+    "packages/core/src/signals/yamlLines.ts",
+    "packages/core/test/ac-ti11-continue-on-error.test.ts",
+    "packages/core/test/ac-ti11-if-condition.test.ts",
+    "packages/core/test/ac-ti11-matrix.test.ts",
+    "packages/core/test/ac-ti11-test-step.test.ts",
+    "packages/core/test/ac-ti11-timeout.test.ts",
+    "packages/core/test/ac-ti11-trigger.test.ts",
+    "packages/core/test/ac-ti14-config-path.test.ts",
+    "packages/core/test/ac-ti14-exclusion.test.ts",
+    "packages/core/test/ac-ti14-threshold.test.ts",
+    "packages/core/test/ac-ti1411-docs.test.ts",
+    "packages/core/test/ac-ti1411-modes.test.ts",
+    "packages/core/test/ac-ti1411-regression.test.ts",
+    "packages/core/test/ac-ti1411-selector.test.ts"
+  ],
+  "outside_gates": {
+    "build": {
+      "base": 0,
+      "head": 0
+    },
+    "test": {
+      "base": 0,
+      "head": 0
+    }
+  },
+  "regressions": [],
+  "pre_existing": [],
+  "verdict": "no-regressions",
+  "gate_run": {
+    "base": {
+      "stamp_sha256": "ab0a803b04bab037d6f0fb19a656c7a17fa7ec2b35a8f082abd22db70f400cdb",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "fdff7e511cc9a12d9d54a6944fe85cad2baa7a82fa7e20922410964870ff717f"
+      }
+    },
+    "head": {
+      "stamp_sha256": "785388935488da996608078ff3bcf0efb37d56f71c068e2dde5e36c4d0c83304",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/2+sha256",
+        "final": "90b724e0f9870a052f10dbc823659aa0c2f5286fb503040a5f607e87b79e7d65"
+      }
+    }
+  },
+  "base_evidence": {
+    "reused": false,
+    "miss": "other-run",
+    "requirement_sha256": "33257cce9889ca22bef5eb70564ffe7787895786ba55f385eb079e098d70fe1d",
+    "recorded": true,
+    "source": "fresh",
+    "entry": {
+      "used": false,
+      "miss": "shape-mismatch",
+      "offer_sha256": null,
+      "entry_stamp_sha256": null,
+      "base": null,
+      "run": {
+        "command": "pharn-loop",
+        "marker_sha256": "668bba329613ed539002442f3d37b9f56e4369372243ab5cd275d1d8a67ef52b"
+      },
+      "reused_ids": [],
+      "no_files_ids": [],
+      "ignored_ids": []
+    }
+  },
+  "pre_run_snapshot": {
+    "status": "applied",
+    "unchanged": []
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "base_source": "explicit"
+}

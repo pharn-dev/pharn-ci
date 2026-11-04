@@ -1,0 +1,281 @@
+{
+  "feature": "accept-label-human-signoff-4",
+  "gates": {
+    "build": 0,
+    "instruction-growth": 0,
+    "lint": 0,
+    "reconcile": 0,
+    "test": 0
+  },
+  "verdict": "PASS",
+  "failing_gates": [],
+  "gate_run": {
+    "stamp_sha256": "0e313fd51c50166ade56ca09c5958d9c2850818b7b7eaa8454b39a3736bdafcb",
+    "source": "discover",
+    "fingerprint": {
+      "algo": "worktree-fingerprint/2+sha256",
+      "final": "64d2909e68d7db7ce9952e8452b80293c07d806f5f44e28141b54a9512392b4e"
+    }
+  },
+  "ac_gate": {
+    "mode": "test-first",
+    "verdict": "PASS",
+    "reason": null,
+    "evidence": [],
+    "acs": [
+      {
+        "id": "AC-1",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-accept-signoff-input.test.ts::action input accept-label › AC-1: a 50-code-point name and a padded name are written as acceptLabel, the default spellings are not",
+          "packages/action/test/ac-accept-signoff-input.test.ts::action input accept-label › AC-1: a value with 51 code points fails the step with one error naming accept-label, before any comment",
+          "packages/action/test/ac-accept-signoff-input.test.ts::action input accept-label › AC-1: a value with U+0007 between other characters fails the step with one error naming accept-label, before any comment",
+          "packages/action/test/ac-accept-signoff-input.test.ts::action input accept-label › AC-1: a value with a line feed between other characters fails the step with one error naming accept-label, before any comment",
+          "packages/action/test/ac-accept-signoff-input.test.ts::action input accept-label › AC-1: a value with a tab between other characters fails the step with one error naming accept-label, before any comment"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-2",
+        "level": "integration",
+        "tests": [
+          "packages/cli/test/ac-accept-signoff-config.test.ts::test_integrity.accept_label in .pharn/ci.yml never sets the label › AC-2: accept_label alone: the Action step fails pointing at the accept-label input and accepts nothing",
+          "packages/cli/test/ac-accept-signoff-config.test.ts::test_integrity.accept_label in .pharn/ci.yml never sets the label › AC-2: accept_label with mode block: the Action step fails pointing at the accept-label input and accepts nothing"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-3",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-accept-signoff-not-asked.test.ts::the accept label is only looked at in mode block, with a block signal, on a pull request that carries it › AC-3: control: the same `|| true` diff in mode block on the labelled pull request is accepted",
+          "packages/action/test/ac-accept-signoff-not-asked.test.ts::the accept label is only looked at in mode block, with a block signal, on a pull request that carries it › AC-3: mode block on the labelled pull request with only a warn signal, or no signal, asks nothing",
+          "packages/action/test/ac-accept-signoff-not-asked.test.ts::the accept label is only looked at in mode block, with a block signal, on a pull request that carries it › AC-3: mode block with a block signal on an unlabelled pull request, a push and a merge_group run keeps the block and fails",
+          "packages/action/test/ac-accept-signoff-not-asked.test.ts::the accept label is only looked at in mode block, with a block signal, on a pull request that carries it › AC-3: modes warn and off on the labelled pull request ask nothing and keep their severities"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-4",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-accept-signoff-honoured.test.ts::the accept label applied by a reviewer who is not the PR author › AC-4: a pr-number run downgrades every block to warn, records who accepted it and passes as warn",
+          "packages/action/test/ac-accept-signoff-honoured.test.ts::the accept label applied by a reviewer who is not the PR author › AC-4: a pull_request run downgrades every block to warn, records who accepted it and passes as warn"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-5",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-accept-signoff-custom.test.ts::a configured accept label, label case, and a failing diff coverage › AC-5: PHARN/Accepted on the pull request and Pharn/accepted in the newest event match the default label",
+          "packages/action/test/ac-accept-signoff-custom.test.ts::a configured accept label, label case, and a failing diff coverage › AC-5: a pull request carrying the configured label team/tests-ok is accepted under that name",
+          "packages/action/test/ac-accept-signoff-custom.test.ts::a configured accept label, label case, and a failing diff coverage › AC-5: an accepted run whose diff coverage is below the threshold still fails on the coverage",
+          "packages/action/test/ac-accept-signoff-custom.test.ts::a configured accept label, label case, and a failing diff coverage › AC-5: with team/tests-ok configured, a pull request carrying only pharn/accepted asks nothing and keeps its blocks"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-6",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-accept-signoff-actor.test.ts::the newest labeling event made by the PR author or by an account that is not a user › AC-6: a label applied by a Bot account is ignored, the blocks stay and the step fails",
+          "packages/action/test/ac-accept-signoff-actor.test.ts::the newest labeling event made by the PR author or by an account that is not a user › AC-6: a label applied by an Organization account is ignored, the blocks stay and the step fails",
+          "packages/action/test/ac-accept-signoff-actor.test.ts::the newest labeling event made by the PR author or by an account that is not a user › AC-6: a label applied by the PR author (OCTO-Author, another case of octo-author) is ignored, the blocks stay and the step fails"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-7",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-accept-signoff-fail-closed.test.ts::anything the Action cannot read about who applied the label fails closed › AC-7: no labeling event for the label, only other labels and an unlabeled event: the blocks stay, the step fails and the message names only the label",
+          "packages/action/test/ac-accept-signoff-fail-closed.test.ts::anything the Action cannot read about who applied the label fails closed › AC-7: reading the pull request itself fails: the blocks stay, the step fails and the message names only the label",
+          "packages/action/test/ac-accept-signoff-fail-closed.test.ts::anything the Action cannot read about who applied the label fails closed › AC-7: the event list is longer than 1,000 events: the blocks stay, the step fails and the message names only the label",
+          "packages/action/test/ac-accept-signoff-fail-closed.test.ts::anything the Action cannot read about who applied the label fails closed › AC-7: the events request rejects with HTTP 403: the blocks stay, the step fails and the message names only the label",
+          "packages/action/test/ac-accept-signoff-fail-closed.test.ts::anything the Action cannot read about who applied the label fails closed › AC-7: the events request times out: the blocks stay, the step fails and the message names only the label",
+          "packages/action/test/ac-accept-signoff-fail-closed.test.ts::anything the Action cannot read about who applied the label fails closed › AC-7: the events response is not a list: the blocks stay, the step fails and the message names only the label",
+          "packages/action/test/ac-accept-signoff-fail-closed.test.ts::anything the Action cannot read about who applied the label fails closed › AC-7: the newest labeling event has no actor (a deleted account): the blocks stay, the step fails and the message names only the label",
+          "packages/action/test/ac-accept-signoff-fail-closed.test.ts::anything the Action cannot read about who applied the label fails closed › AC-7: the newest labeling event's actor is a User with a 40-character login: the blocks stay, the step fails and the message names only the label",
+          "packages/action/test/ac-accept-signoff-fail-closed.test.ts::anything the Action cannot read about who applied the label fails closed › AC-7: the newest labeling event's actor is a User with the login a<b>c: the blocks stay, the step fails and the message names only the label"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-8",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-accept-signoff-history.test.ts::the newest labeling event decides › AC-8: Reviewer-1 labels, the author unlabels and labels again: not honoured, the PR author applied it",
+          "packages/action/test/ac-accept-signoff-history.test.ts::the newest labeling event decides › AC-8: the author labels and unlabels, then Reviewer-1 labels: honoured, accepted by Reviewer-1"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-9",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-accept-signoff-hints.test.ts::the TI03, TI10 and TI13 hints name the accept label › AC-9: the hints name the configured label, or pharn/accepted, keep their words, and hostile labels stay in one code span"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-10",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-accept-signoff-line.test.ts::the accepted line in the Test integrity section › AC-10: an accepted report has one line naming the label and @Reviewer-1 after the findings; a null one has none"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-11",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-accept-signoff-schema.test.ts::Report v2 with the accept label › AC-11: the accepted, ignored and labelled reports validate, a numeric acceptLabel does not, v2 documents the additions and v1 is unchanged"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-12",
+        "level": "integration",
+        "tests": [
+          "packages/cli/test/ac-accept-signoff-cli.test.ts::pharn-ci check never honours the accept label › AC-12: mode block on a `|| true` diff exits 1 with TI10 block and no accept fields; --accept-label is an unknown option"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-13",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-accept-signoff-default-golden.test.ts::a default Action run's report is the golden report › AC-13: with accept-label unset the report has no acceptLabel and equals fixtures/golden/report.json"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-14",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-accept-signoff-regression.test.ts::the accept label leaves the existing signals, hints, golden outputs and dist alone › AC-14: the dist is a fresh bundle holding the accept label; fixtures, hints and golden outputs are as before"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-15",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-accept-signoff-docs.test.ts::the accept label in action.yml, the docs and the fixtures › AC-15: action.yml, README, CHANGELOG, THREAT-MODEL, LIMITS and fixtures/accept-label/ describe the accept label"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      }
+    ],
+    "unmapped_anomalies": [],
+    "note": "an AC is delivered = a locked, once-red test titled AC-<n>:, in a file mapped to AC-<n>, passed on this head run. PHARN does not judge whether that test fully captures the AC's intent."
+  },
+  "completeness": {
+    "plan": "pharn/features/accept-label-human-signoff-4/PLAN.md",
+    "repoDir": ".",
+    "declared": [
+      "packages/core/src/acceptLabel.ts",
+      "packages/core/src/report.ts",
+      "packages/core/src/render/markdown.ts",
+      "packages/core/src/config.ts",
+      "packages/core/src/index.ts",
+      "packages/action/src/api.ts",
+      "packages/action/src/accept-label.ts",
+      "packages/action/src/run.ts",
+      "action.yml",
+      "schema/report.v2.json",
+      "README.md",
+      "CHANGELOG.md",
+      "docs/THREAT-MODEL.md",
+      "docs/LIMITS.md",
+      "packages/cli/test/ac-ti1013-render.test.ts",
+      "packages/cli/test/ac-ti0304-render.test.ts",
+      "fixtures/accept-label/files.txt",
+      "fixtures/accept-label/block.diff",
+      "fixtures/accept-label/or-true.diff",
+      "fixtures/accept-label/warn-only.diff",
+      "fixtures/accept-label/no-signal.diff",
+      "fixtures/accept-label/events-human.json",
+      "fixtures/accept-label/events-author.json",
+      "fixtures/accept-label/events-bot.json",
+      "fixtures/accept-label/events-organization.json",
+      "fixtures/accept-label/events-no-matching-event.json",
+      "fixtures/accept-label/events-applied-twice-author-last.json",
+      "fixtures/accept-label/events-applied-twice-reviewer-last.json",
+      "fixtures/accept-label/events-no-actor.json",
+      "fixtures/accept-label/events-hostile-login.json",
+      "fixtures/accept-label/events-unreadable.json",
+      "packages/action/dist/index.js"
+    ],
+    "skipped": [],
+    "missing": [],
+    "deletions": [],
+    "undeleted": [],
+    "complete": true,
+    "verdict": "complete"
+  },
+  "verifiers": {
+    "registered": 0,
+    "findings": []
+  },
+  "gate_reuse": {
+    "reused": [
+      {
+        "id": "build",
+        "stage": "regress",
+        "side": "head",
+        "seq": 1
+      }
+    ]
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "reconcile_detail": {
+    "state": "parsed",
+    "exit": 0,
+    "verdict": "CLEAN",
+    "escapes": [],
+    "escapes_total": 0,
+    "merged_count": 0
+  }
+}

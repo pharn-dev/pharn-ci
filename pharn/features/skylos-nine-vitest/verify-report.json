@@ -1,0 +1,171 @@
+{
+  "feature": "skylos-nine-vitest",
+  "gates": {
+    "build": 0,
+    "instruction-growth": 0,
+    "lint": 0,
+    "reconcile": 0,
+    "test": 0
+  },
+  "verdict": "PASS",
+  "failing_gates": [],
+  "gate_run": {
+    "stamp_sha256": "c1c5e2a84f353c11d5f3d95607539144b5292dc50b93c4891162cd39fc603e3e",
+    "source": "discover",
+    "fingerprint": {
+      "algo": "worktree-fingerprint/2+sha256",
+      "final": "4fbc2b91bf7355e19f51eef9d931cc5eb03dd0935893f05383a797289477f156"
+    }
+  },
+  "ac_gate": {
+    "mode": "test-first",
+    "verdict": "PASS",
+    "reason": null,
+    "evidence": [],
+    "acs": [
+      {
+        "id": "AC-1",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-skylos-nine-deleted-test.test.ts::Skylos nine: the deleted-test case is caught by TI01 › AC-1: deleting a vitest test file while its source stays gives one TI01 block signal, a fail verdict and a rendered **TI01** line with the path"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-2",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-skylos-nine-added-skip.test.ts::Skylos nine: the added-skip case is caught by TI03 › AC-2: turning an existing it( into it.skip( with the same name gives one TI03 block signal, a fail verdict and a rendered **TI03** line with path:line"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-3",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-skylos-nine-misses.test.ts::Skylos nine: the seven expected misses run cleanly and give no signal › AC-3: always-true-matcher — check() and the renderer do not throw, the report is valid and has no test-integrity signal",
+          "packages/core/test/ac-skylos-nine-misses.test.ts::Skylos nine: the seven expected misses run cleanly and give no signal › AC-3: deselect-setting — check() and the renderer do not throw, the report is valid and has no test-integrity signal",
+          "packages/core/test/ac-skylos-nine-misses.test.ts::Skylos nine: the seven expected misses run cleanly and give no signal › AC-3: edited-expected-value — check() and the renderer do not throw, the report is valid and has no test-integrity signal",
+          "packages/core/test/ac-skylos-nine-misses.test.ts::Skylos nine: the seven expected misses run cleanly and give no signal › AC-3: emptied-assertion — check() and the renderer do not throw, the report is valid and has no test-integrity signal",
+          "packages/core/test/ac-skylos-nine-misses.test.ts::Skylos nine: the seven expected misses run cleanly and give no signal › AC-3: hard-coded-answer — check() and the renderer do not throw, the report is valid and has no test-integrity signal",
+          "packages/core/test/ac-skylos-nine-misses.test.ts::Skylos nine: the seven expected misses run cleanly and give no signal › AC-3: loosened-assertion — check() and the renderer do not throw, the report is valid and has no test-integrity signal",
+          "packages/core/test/ac-skylos-nine-misses.test.ts::Skylos nine: the seven expected misses run cleanly and give no signal › AC-3: replaced-test — check() and the renderer do not throw, the report is valid and has no test-integrity signal"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-4",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-skylos-nine-table.test.ts::Skylos nine: the case table and the headline › AC-4: exactly deleted-test and added-skip give a signal, each only its table id, and the other seven give none",
+          "packages/core/test/ac-skylos-nine-table.test.ts::Skylos nine: the case table and the headline › AC-4: the headline — nine cases, 2 caught, 7 expected misses",
+          "packages/core/test/ac-skylos-nine-table.test.ts::Skylos nine: the case table and the headline › AC-4: the table maps the nine cases to TI01, TI03, TI05, TI09, TI15, none, TI02, TI06 and TI07, one entry per fixture directory"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-5",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-skylos-nine-fixtures.test.ts::Skylos nine: the fixture directory › AC-5: every change.diff is a non-empty unified diff with no context lines that touches only .ts, .tsx, .js or .mjs paths",
+          "packages/core/test/ac-skylos-nine-fixtures.test.ts::Skylos nine: the fixture directory › AC-5: every files.txt is non-empty with one repository-relative path per line",
+          "packages/core/test/ac-skylos-nine-fixtures.test.ts::Skylos nine: the fixture directory › AC-5: fixtures/skylos-nine holds exactly the nine case directories, each with exactly change.diff and files.txt",
+          "packages/core/test/ac-skylos-nine-fixtures.test.ts::Skylos nine: the fixture directory › AC-5: no change.diff or files.txt holds pytest or a .py path"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-6",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-skylos-nine-diffs.test.ts::Skylos nine: each miss case's diff shows its cheat › AC-6: always-true-matcher adds an expect.extend( line",
+          "packages/core/test/ac-skylos-nine-diffs.test.ts::Skylos nine: each miss case's diff shows its cheat › AC-6: deselect-setting touches only vitest.config.ts and changes an include or exclude line",
+          "packages/core/test/ac-skylos-nine-diffs.test.ts::Skylos nine: each miss case's diff shows its cheat › AC-6: edited-expected-value removes and adds a line with the same matcher and a different expected literal",
+          "packages/core/test/ac-skylos-nine-diffs.test.ts::Skylos nine: each miss case's diff shows its cheat › AC-6: emptied-assertion removes an expect( line from a test file and adds none",
+          "packages/core/test/ac-skylos-nine-diffs.test.ts::Skylos nine: each miss case's diff shows its cheat › AC-6: hard-coded-answer touches only files that are not test files and adds an if",
+          "packages/core/test/ac-skylos-nine-diffs.test.ts::Skylos nine: each miss case's diff shows its cheat › AC-6: loosened-assertion removes a toBe( or toEqual( line and adds a toBeTruthy() line",
+          "packages/core/test/ac-skylos-nine-diffs.test.ts::Skylos nine: each miss case's diff shows its cheat › AC-6: replaced-test modifies one test file still at head, swapping one test opening line for one with another name"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      }
+    ],
+    "unmapped_anomalies": [],
+    "note": "an AC is delivered = a locked, once-red test titled AC-<n>:, in a file mapped to AC-<n>, passed on this head run. PHARN does not judge whether that test fully captures the AC's intent."
+  },
+  "completeness": {
+    "plan": "pharn/features/skylos-nine-vitest/PLAN.md",
+    "repoDir": ".",
+    "declared": [
+      "fixtures/skylos-nine/deleted-test/change.diff",
+      "fixtures/skylos-nine/deleted-test/files.txt",
+      "fixtures/skylos-nine/added-skip/change.diff",
+      "fixtures/skylos-nine/added-skip/files.txt",
+      "fixtures/skylos-nine/emptied-assertion/change.diff",
+      "fixtures/skylos-nine/emptied-assertion/files.txt",
+      "fixtures/skylos-nine/deselect-setting/change.diff",
+      "fixtures/skylos-nine/deselect-setting/files.txt",
+      "fixtures/skylos-nine/hard-coded-answer/change.diff",
+      "fixtures/skylos-nine/hard-coded-answer/files.txt",
+      "fixtures/skylos-nine/always-true-matcher/change.diff",
+      "fixtures/skylos-nine/always-true-matcher/files.txt",
+      "fixtures/skylos-nine/replaced-test/change.diff",
+      "fixtures/skylos-nine/replaced-test/files.txt",
+      "fixtures/skylos-nine/loosened-assertion/change.diff",
+      "fixtures/skylos-nine/loosened-assertion/files.txt",
+      "fixtures/skylos-nine/edited-expected-value/change.diff",
+      "fixtures/skylos-nine/edited-expected-value/files.txt"
+    ],
+    "skipped": [],
+    "missing": [],
+    "deletions": [],
+    "undeleted": [],
+    "complete": true,
+    "verdict": "complete"
+  },
+  "verifiers": {
+    "registered": 0,
+    "findings": []
+  },
+  "gate_reuse": {
+    "reused": [
+      {
+        "id": "build",
+        "stage": "regress",
+        "side": "head",
+        "seq": 1
+      }
+    ]
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "reconcile_detail": {
+    "state": "parsed",
+    "exit": 0,
+    "verdict": "CLEAN",
+    "escapes": [],
+    "escapes_total": 0,
+    "merged_count": 0
+  }
+}

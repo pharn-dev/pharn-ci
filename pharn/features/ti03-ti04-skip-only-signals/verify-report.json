@@ -1,0 +1,267 @@
+{
+  "feature": "ti03-ti04-skip-only-signals",
+  "gates": {
+    "build": 0,
+    "instruction-growth": 0,
+    "lint": 0,
+    "reconcile": 0,
+    "test": 0
+  },
+  "verdict": "PASS",
+  "failing_gates": [],
+  "gate_run": {
+    "stamp_sha256": "144dd53912cf1837d02fe48def95a7f9f782f7409fbe28d0b20d51946e851bfa",
+    "source": "discover",
+    "fingerprint": {
+      "algo": "worktree-fingerprint/2+sha256",
+      "final": "0ca3a3891b6dc198a10c87fa7411339b234b166c4a84c407856aad96dd853701"
+    }
+  },
+  "ac_gate": {
+    "mode": "test-first",
+    "verdict": "PASS",
+    "reason": null,
+    "evidence": [],
+    "acs": [
+      {
+        "id": "AC-1",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti04-narrowed.test.ts::TI04: a narrowing marker added to a JS/TS test file › AC-1: seven added .only, fit and fdescribe lines give seven block TI04 signals with one fixed detail"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-2",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti04-not-a-test-call.test.ts::TI04: lines that only look like a narrowing marker › AC-2: method calls, assignments, comments, Python, Go, non-test and JSON files give no TI04 signal"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-3",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti04-pre-existing.test.ts::TI04: a marker that was already there, a renamed one, and the per-file cap › AC-3: an edit to async and a move give nothing, a rename gives one signal, 21 added markers give 20"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-4",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti03-js-existing.test.ts::TI03: an unconditional skip on a test the diff shows existed › AC-4: each JS/TS skip of an existing test is one TI03 signal, block in mode block and warn in mode warn"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-5",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti03-python-existing.test.ts::TI03: an unconditional Python skip decorator above an unchanged test › AC-5: each decorator added alone above an unchanged def test_x or class TestUser is one block TI03 signal"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-6",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti03-conditional.test.ts::TI03: a conditional skip › AC-6: each conditional JS/TS skip, skipIf or runIf and Python skipif, skipIf, skipUnless or xfail(cond) is one warn TI03 signal"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-7",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti03-in-body.test.ts::TI03: a skip inside a test body › AC-7: pytest.skip, t.Skip, t.Skipf, t.SkipNow, test.skip(), test.skip(true) and this.skip() are warn; the if lines give nothing"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-8",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti03-added-test.test.ts::TI03: a skip in a test the change adds › AC-8: a decorator above an added test, a skip on an added test name and skips in added files are warn"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-9",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti03-no-signal.test.ts::TI03: edits that keep a skip, non-skips, comments, strings and non-test files › AC-9: none of these diffs gives a TI03 signal"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-10",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti0304-details.test.ts::TI03 and TI04: the fixed details › AC-10: one detail per TI03 category, four different ones, all at most 300 characters, no fixture text in details or messages"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-11",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti0304-modes.test.ts::TI03 and TI04 in the three modes › AC-11: block sorts and fails, warn shows every signal as warn, off computes nothing, a conditional skip alone warns"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-12",
+        "level": "integration",
+        "tests": [
+          "packages/cli/test/ac-ti0304-render.test.ts::TI03 and TI04 in the PR comment, the streaming reader and the CLI › AC-12: the section lists each signal with a hint, both message hints exist, streamed equals whole text, the CLI JSON holds TI03"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-13",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti0304-regression.test.ts::TI03 and TI04 leave the earlier signals and fixtures alone › AC-13: the TI01, TI11 and TI14 fixtures give the same signals and messages as before, and the golden diff stays quiet"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-14",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-ti0304-docs.test.ts::TI03 and TI04: docs, schema and fixtures › AC-14: at least five must-trigger and five must-not-trigger diffs per id, the PRECISION cases among them, and they behave",
+          "packages/core/test/ac-ti0304-docs.test.ts::TI03 and TI04: docs, schema and fixtures › AC-14: the changelog, README, limits and threat model name TI03 and TI04",
+          "packages/core/test/ac-ti0304-docs.test.ts::TI03 and TI04: docs, schema and fixtures › AC-14: the v2 schema names both message codes and the v1 schema is byte-identical to the base commit's"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      }
+    ],
+    "unmapped_anomalies": [],
+    "note": "an AC is delivered = a locked, once-red test titled AC-<n>:, in a file mapped to AC-<n>, passed on this head run. PHARN does not judge whether that test fully captures the AC's intent."
+  },
+  "completeness": {
+    "plan": "pharn/features/ti03-ti04-skip-only-signals/PLAN.md",
+    "repoDir": ".",
+    "declared": [
+      "packages/core/src/signals/testLines.ts",
+      "packages/core/src/signals/ti03.ts",
+      "packages/core/src/signals/ti04.ts",
+      "packages/core/src/check.ts",
+      "packages/core/src/report.ts",
+      "packages/core/src/render/markdown.ts",
+      "packages/core/src/index.ts",
+      "schema/report.v2.json",
+      "fixtures/test-integrity/TI03/block-it-skip-existing.diff",
+      "fixtures/test-integrity/TI03/block-xdescribe-existing.diff",
+      "fixtures/test-integrity/TI03/block-todo-existing.diff",
+      "fixtures/test-integrity/TI03/block-skipif-true.diff",
+      "fixtures/test-integrity/TI03/block-pytest-decorator.diff",
+      "fixtures/test-integrity/TI03/warn-conditional-mobile.diff",
+      "fixtures/test-integrity/TI03/warn-skipif-camera.diff",
+      "fixtures/test-integrity/TI03/warn-skipif-docker.diff",
+      "fixtures/test-integrity/TI03/warn-skipif-openssl.diff",
+      "fixtures/test-integrity/TI03/warn-skipunless-windows.diff",
+      "fixtures/test-integrity/TI03/warn-pytest-skip-redis.diff",
+      "fixtures/test-integrity/TI03/warn-pytest-skip-fixture.diff",
+      "fixtures/test-integrity/TI03/warn-go-skip-root.diff",
+      "fixtures/test-integrity/TI03/warn-xfail-new-test.diff",
+      "fixtures/test-integrity/TI03/warn-skip-new-file.diff",
+      "fixtures/test-integrity/TI03/pass-fails-async-edit.diff",
+      "fixtures/test-integrity/TI03/pass-skip-moved.diff",
+      "fixtures/test-integrity/TI03/pass-xit-respelled.diff",
+      "fixtures/test-integrity/TI03/pass-skipif-false.diff",
+      "fixtures/test-integrity/TI03/pass-fixme.diff",
+      "fixtures/test-integrity/TI03/pass-comment.diff",
+      "fixtures/test-integrity/TI03/pass-non-test-file.diff",
+      "fixtures/test-integrity/TI04/block-it-only.diff",
+      "fixtures/test-integrity/TI04/block-describe-only.diff",
+      "fixtures/test-integrity/TI04/block-test-describe-only.diff",
+      "fixtures/test-integrity/TI04/block-fit.diff",
+      "fixtures/test-integrity/TI04/block-fdescribe.diff",
+      "fixtures/test-integrity/TI04/block-only-renamed.diff",
+      "fixtures/test-integrity/TI04/pass-solver-fit.diff",
+      "fixtures/test-integrity/TI04/pass-python-def-fit.diff",
+      "fixtures/test-integrity/TI04/pass-go-fit.diff",
+      "fixtures/test-integrity/TI04/pass-only-async-edit.diff",
+      "fixtures/test-integrity/TI04/pass-only-moved.diff",
+      "fixtures/test-integrity/TI04/pass-comment.diff",
+      "fixtures/test-integrity/TI04/pass-non-test-file.diff",
+      "fixtures/test-integrity/TI04/pass-json-fixture.diff",
+      "CHANGELOG.md",
+      "README.md",
+      "docs/LIMITS.md",
+      "docs/THREAT-MODEL.md",
+      "packages/action/dist/index.js"
+    ],
+    "skipped": [],
+    "missing": [],
+    "deletions": [],
+    "undeleted": [],
+    "complete": true,
+    "verdict": "complete"
+  },
+  "verifiers": {
+    "registered": 0,
+    "findings": []
+  },
+  "gate_reuse": {
+    "reused": [
+      {
+        "id": "build",
+        "stage": "regress",
+        "side": "head",
+        "seq": 1
+      }
+    ]
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "reconcile_detail": {
+    "state": "parsed",
+    "exit": 0,
+    "verdict": "CLEAN",
+    "escapes": [],
+    "escapes_total": 0,
+    "merged_count": 0
+  }
+}

@@ -1,0 +1,293 @@
+{
+  "feature": "coverage-auto-discovery-2",
+  "gates": {
+    "build": 0,
+    "instruction-growth": 0,
+    "lint": 0,
+    "reconcile": 0,
+    "test": 0
+  },
+  "verdict": "PASS",
+  "failing_gates": [],
+  "gate_run": {
+    "stamp_sha256": "feb2eda2a8ea19660e1377e40b9ab5f2ff26d209cde1117d47af6f14acb43eb5",
+    "source": "discover",
+    "fingerprint": {
+      "algo": "worktree-fingerprint/2+sha256",
+      "final": "13a6d1df88f92103162b9816d5da65554b6d8fb68bb1bd4d8dc8ba7259f08961"
+    }
+  },
+  "ac_gate": {
+    "mode": "test-first",
+    "verdict": "PASS",
+    "reason": null,
+    "evidence": [],
+    "acs": [
+      {
+        "id": "AC-1",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-discovery-choose-single.test.ts::chooseDiscoveredCoverage: exactly one candidate › AC-1: one candidate of each kind among unrelated paths is found, and is the only file",
+          "packages/core/test/ac-discovery-choose-single.test.ts::chooseDiscoveredCoverage: exactly one candidate › AC-1: the choice does not depend on where the candidate sits in the input"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-2",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-discovery-choose-dotnet.test.ts::chooseDiscoveredCoverage: several .NET coverlet files › AC-2: every coverage.cobertura.xml match is one candidate, found with all its files sorted"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-3",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-discovery-choose-ambiguous.test.ts::chooseDiscoveredCoverage: different candidates found › AC-3: two or more different candidates are ambiguous, list every found path and choose no file"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-4",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-discovery-choose-none.test.ts::chooseDiscoveredCoverage: no candidate › AC-4: an empty set and a set of only unrelated paths are not-found",
+          "packages/core/test/ac-discovery-choose-none.test.ts::chooseDiscoveredCoverage: no candidate › AC-4: the exported candidate list is exactly the five candidates, in order"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-5",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-discovery-check-missing.test.ts::check(): no coverage report discovered › AC-5: one COVERAGE_FILE_MISSING naming the candidates, warn without a threshold and fail with 80"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-6",
+        "level": "integration",
+        "tests": [
+          "packages/node-io/test/ac-discovery-fixtures.test.ts::discoverCoverage over fixtures/coverage-discovery/ › AC-6: each fixture directory gives the same result as core's choice, and the expected one"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-7",
+        "level": "integration",
+        "tests": [
+          "packages/node-io/test/ac-discovery-walk-rules.test.ts::discoverCoverage: node_modules, directories and symbolic links › AC-7: no file under node_modules, no directory and no symbolic link counts as a candidate"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-8",
+        "level": "integration",
+        "tests": [
+          "packages/cli/test/ac-discovery-cli-found.test.ts::pharn-ci check with no coverage path and coverage/lcov.info on disk › AC-8: discovers coverage/lcov.info from the repo root and from a subdirectory, and measures from it"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-9",
+        "level": "integration",
+        "tests": [
+          "packages/cli/test/ac-discovery-cli-ambiguous.test.ts::pharn-ci check with no coverage path and two different candidates on disk › AC-9: exits 2 with nothing on stdout, and stderr names both found files and --coverage"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-10",
+        "level": "integration",
+        "tests": [
+          "packages/cli/test/ac-discovery-cli-none.test.ts::pharn-ci check with no coverage path and no candidate on disk › AC-10: reports COVERAGE_FILE_MISSING naming the candidates, exit 0 without a threshold and 1 with 80"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-11",
+        "level": "integration",
+        "tests": [
+          "packages/cli/test/ac-discovery-cli-explicit.test.ts::pharn-ci check with an explicit coverage path while a candidate is on disk › AC-11: --coverage missing.info wins over the discoverable coverage/lcov.info",
+          "packages/cli/test/ac-discovery-cli-explicit.test.ts::pharn-ci check with an explicit coverage path while a candidate is on disk › AC-11: coverage.file: missing.info in .pharn/ci.yml wins over the discoverable coverage/lcov.info"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-12",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-discovery-action-found.test.ts::action: no coverage-file input and only coverage.xml in the workspace › AC-12: discovers coverage.xml, logs it, measures Cobertura from it and does not fail the step"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-13",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-discovery-action-ambiguous.test.ts::action: no coverage-file input and two different candidates in the workspace › AC-13: fails the step naming both found files and coverage-file, and posts no comment"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-14",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-discovery-action-none.test.ts::action: no coverage-file input and no candidate in the workspace › AC-14: coverage-file missing.info wins over a discoverable coverage/lcov.info, with no auto-discovered line",
+          "packages/action/test/ac-discovery-action-none.test.ts::action: no coverage-file input and no candidate in the workspace › AC-14: reports COVERAGE_FILE_MISSING naming the candidates, and fails the step only with threshold 80"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-15",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-discovery-examples-shape.test.ts::examples/workflows/: the shape of each example › AC-15: each example checks out with fetch-depth 0, has the permissions and concurrency, and runs pharn-ci with no with:"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-16",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-discovery-examples-runs.test.ts::examples/workflows/: each example's test command › AC-16: each example runs the command that writes its report to a discovery candidate"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-17",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-discovery-docs.test.ts::docs: coverage auto-discovery › AC-17: CHANGELOG.md has a line under Unreleased naming coverage auto-discovery",
+          "packages/core/test/ac-discovery-docs.test.ts::docs: coverage auto-discovery › AC-17: action.yml's coverage-file description says the path is auto-discovered when unset",
+          "packages/core/test/ac-discovery-docs.test.ts::docs: coverage auto-discovery › AC-17: docs/THREAT-MODEL.md names coverage auto-discovery and the test that covers it",
+          "packages/core/test/ac-discovery-docs.test.ts::docs: coverage auto-discovery › AC-17: the README Quick start and CLI sections mention auto-discovery and examples/workflows/"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      }
+    ],
+    "unmapped_anomalies": [],
+    "note": "an AC is delivered = a locked, once-red test titled AC-<n>:, in a file mapped to AC-<n>, passed on this head run. PHARN does not judge whether that test fully captures the AC's intent."
+  },
+  "completeness": {
+    "plan": "pharn/features/coverage-auto-discovery-2/PLAN.md",
+    "repoDir": ".",
+    "declared": [
+      "packages/core/src/coverageDiscovery.ts",
+      "packages/core/src/index.ts",
+      "packages/core/src/inputs.ts",
+      "packages/core/src/check.ts",
+      "packages/core/src/report.ts",
+      "packages/node-io/src/coverage.ts",
+      "packages/node-io/src/discovery.ts",
+      "packages/node-io/src/index.ts",
+      "packages/cli/src/main.ts",
+      "packages/action/src/run.ts",
+      "packages/action/dist/index.js",
+      "packages/cli/test/main.test.ts",
+      "packages/action/test/run.test.ts",
+      "fixtures/coverage-discovery/coverage-lcov/coverage/lcov.info",
+      "fixtures/coverage-discovery/coverage-lcov/src/a.ts",
+      "fixtures/coverage-discovery/lcov-root/lcov.info",
+      "fixtures/coverage-discovery/lcov-root/src/a.ts",
+      "fixtures/coverage-discovery/coverage-xml/coverage.xml",
+      "fixtures/coverage-discovery/coverage-xml/src/a.ts",
+      "fixtures/coverage-discovery/cobertura-coverage/coverage/cobertura-coverage.xml",
+      "fixtures/coverage-discovery/cobertura-coverage/src/a.ts",
+      "fixtures/coverage-discovery/dotnet-one/tests/App.Tests/TestResults/abc/coverage.cobertura.xml",
+      "fixtures/coverage-discovery/dotnet-one/src/a.ts",
+      "fixtures/coverage-discovery/dotnet-many/tests/App.Tests/TestResults/a1/coverage.cobertura.xml",
+      "fixtures/coverage-discovery/dotnet-many/tests/App.Tests/TestResults/b2/coverage.cobertura.xml",
+      "fixtures/coverage-discovery/dotnet-many/tests/App.Tests/TestResults/c3/coverage.cobertura.xml",
+      "fixtures/coverage-discovery/dotnet-many/src/a.ts",
+      "fixtures/coverage-discovery/two-kinds/coverage/lcov.info",
+      "fixtures/coverage-discovery/two-kinds/lcov.info",
+      "fixtures/coverage-discovery/two-kinds/src/a.ts",
+      "fixtures/coverage-discovery/none/src/a.ts",
+      "examples/workflows/vitest.yml",
+      "examples/workflows/jest.yml",
+      "examples/workflows/pytest.yml",
+      "examples/workflows/dotnet.yml",
+      "examples/workflows/cargo.yml",
+      "README.md",
+      "action.yml",
+      "CHANGELOG.md",
+      "docs/THREAT-MODEL.md"
+    ],
+    "skipped": [],
+    "missing": [],
+    "deletions": [],
+    "undeleted": [],
+    "complete": true,
+    "verdict": "complete"
+  },
+  "verifiers": {
+    "registered": 0,
+    "findings": []
+  },
+  "gate_reuse": {
+    "reused": [
+      {
+        "id": "build",
+        "stage": "regress",
+        "side": "head",
+        "seq": 1
+      }
+    ]
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "reconcile_detail": {
+    "state": "parsed",
+    "exit": 0,
+    "verdict": "CLEAN",
+    "escapes": [],
+    "escapes_total": 0,
+    "merged_count": 0
+  }
+}

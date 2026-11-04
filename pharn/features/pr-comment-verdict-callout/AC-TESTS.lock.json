@@ -1,0 +1,133 @@
+{
+  "schema": "ac-tests-lock/5",
+  "feature": "pr-comment-verdict-callout",
+  "mode": "test-first",
+  "spec": {
+    "spec_id": "pr-comment-verdict-callout",
+    "spec_content_hash": "753a92961e678febec24a1771a68b2226be8c00edf1ed5a754c690128bfe32b9"
+  },
+  "mapping": {
+    "path": "pharn/features/pr-comment-verdict-callout/AC-TESTS.md",
+    "sha256": "b4d4791b2431d781fec18a61418d7262371ea1273fccac0296aafced8b9e501e"
+  },
+  "files": [
+    {
+      "path": "packages/action/test/ac-verdict-callout-fit.test.ts",
+      "sha256": "1a343763ce182beac5ed3b110bbac934ea3cdcb4684377c2bc1fe77bf281d5f4"
+    },
+    {
+      "path": "packages/action/test/ac-verdict-callout-run.test.ts",
+      "sha256": "b9cf636ec4967289533b81f0a68eaff33bbd975a27430aac14459d88518254c0"
+    },
+    {
+      "path": "packages/cli/test/ac-verdict-callout-cli.test.ts",
+      "sha256": "a18cd47106cfce1f2519724d3b6407f52740abed5cd925ec7615847b9355e97e"
+    },
+    {
+      "path": "packages/core/test/ac-verdict-callout-data.test.ts",
+      "sha256": "7a104f8c0688963aaef4b3e226b37db418f85baa20b4ba5366fa6d89ad3a6c0c"
+    },
+    {
+      "path": "packages/core/test/ac-verdict-callout-golden.test.ts",
+      "sha256": "7329b1fb4f90d3ca3145389827a1553f019d8932f92037afbf7125419116a631"
+    },
+    {
+      "path": "packages/core/test/ac-verdict-callout-hostile.test.ts",
+      "sha256": "744d54696a4f2b817245d54ccf3051d18b828e98662f71a299f6ce208a1ec6f6"
+    },
+    {
+      "path": "packages/core/test/ac-verdict-callout-no-coverable.test.ts",
+      "sha256": "2eaf8e3123ff446f595365a6305041b32f1d2284baa0c5e7887639551bea52e5"
+    },
+    {
+      "path": "packages/core/test/ac-verdict-callout-verdicts.test.ts",
+      "sha256": "8cfe8548e9367c1c3a6c210ebdd303a232170b834187e55675d1bdc7dca516a4"
+    }
+  ],
+  "bootstrap": null,
+  "red_run": {
+    "stamp_sha256": "deafd22b9a179352f6026fdf541b7638aa09bcf1e9c94eb8ba2b12ad9a8fa5f6",
+    "files_sha256": "b21b2d4b82ec5d2200f9d0e47939f8b04c6c5f3274005e493f5ff094cb7f42e2",
+    "gates": [
+      {
+        "gate": "test",
+        "results_sha256": "4b6b3999af4f70524cba3879e4a6c7d2e9317baecd5eb4bb75552237010a935d"
+      }
+    ],
+    "acs": [
+      {
+        "id": "AC-1",
+        "tests": [
+          "packages/core/test/ac-verdict-callout-golden.test.ts::renderMarkdown(): the golden renderings gain the verdict callout and nothing else › AC-1: each golden rendering is the committed file with its overview line replaced by the two callout lines"
+        ]
+      },
+      {
+        "id": "AC-2",
+        "tests": [
+          "packages/core/test/ac-verdict-callout-verdicts.test.ts::renderMarkdown(): the verdict callout under the heading › AC-2: pass, warn and fail reports each open with their alert marker and the labelled overview sentence"
+        ]
+      },
+      {
+        "id": "AC-3",
+        "tests": [
+          "packages/core/test/ac-verdict-callout-no-coverable.test.ts::renderMarkdown(): the verdict callout for a change with no coverable lines › AC-3: the callout's content line carries the verdict label and the no-coverable-lines sentence"
+        ]
+      },
+      {
+        "id": "AC-4",
+        "tests": [
+          "packages/core/test/ac-verdict-callout-hostile.test.ts::renderMarkdown(): the verdict callout carries no input-derived text › AC-4: a hostile rendering has exactly two lines starting with >, the alert marker and a fixed-text content line"
+        ]
+      },
+      {
+        "id": "AC-5",
+        "tests": [
+          "packages/core/test/ac-verdict-callout-data.test.ts::check(): report data unchanged by the verdict callout › AC-5: the golden report equals the committed report.json and validates against the schema"
+        ]
+      },
+      {
+        "id": "AC-6",
+        "tests": [
+          "packages/action/test/ac-verdict-callout-fit.test.ts::run(): the verdict callout in a sticky comment that has to be shortened › AC-6: a fitted comment opens with marker, scope, logo, heading and the CAUTION callout, and keeps the content line, value row and messages"
+        ]
+      },
+      {
+        "id": "AC-7",
+        "tests": [
+          "packages/action/test/ac-verdict-callout-run.test.ts::action: the posted PR comment shows the verdict callout › AC-7: a failing PR posts a comment whose Fail heading is followed by an empty line and the CAUTION callout"
+        ]
+      },
+      {
+        "id": "AC-8",
+        "tests": [
+          "packages/cli/test/ac-verdict-callout-cli.test.ts::pharn-ci check: markdown output shows the verdict callout › AC-8: a passing check exits 0 and prints the Pass heading, an empty line and the TIP callout"
+        ]
+      }
+    ]
+  },
+  "test_infra": {
+    "levels": [
+      "integration",
+      "unit"
+    ],
+    "gates": [
+      {
+        "id": "test",
+        "script": "vitest run",
+        "pre": null,
+        "post": null,
+        "results": "vitest-json"
+      }
+    ],
+    "chained": [],
+    "configs": [
+      {
+        "path": "vitest.config.ts",
+        "sha256": "84fef4870fed6a1d5156f5260cd8fcc9b6d1dcca7cc76e8de3c86a978b336fec"
+      }
+    ],
+    "script_files": [],
+    "jest": null,
+    "exclude": []
+  }
+}

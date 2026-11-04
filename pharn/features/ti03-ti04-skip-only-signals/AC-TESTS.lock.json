@@ -1,0 +1,210 @@
+{
+  "schema": "ac-tests-lock/6",
+  "feature": "ti03-ti04-skip-only-signals",
+  "mode": "test-first",
+  "spec": {
+    "spec_id": "ti03-ti04-skip-only-signals",
+    "spec_content_hash": "0a2f5453feb9546096db6b24cdd964b89262996dc17fc4f7df715708ba05ecd1"
+  },
+  "mapping": {
+    "path": "pharn/features/ti03-ti04-skip-only-signals/AC-TESTS.md",
+    "sha256": "232df097f9e22bffd5c70ecd3c7421eb7d4ef4ce869c925b2f868f91f15b4a0d"
+  },
+  "files": [
+    {
+      "path": "packages/cli/test/ac-ti0304-render.test.ts",
+      "sha256": "58522f0b074cd4115d262f8bd090c05b210d6a40496ce7b77b744115c2cc4d05"
+    },
+    {
+      "path": "packages/core/test/ac-ti03-added-test.test.ts",
+      "sha256": "8549593c46b3f897d5c5b7c654485e942a97931291700fc8a9cbb41cb6c3da43"
+    },
+    {
+      "path": "packages/core/test/ac-ti03-conditional.test.ts",
+      "sha256": "578153dc2cc235b7fc3505a289f11042ea012677ea054c67b6af398da876d395"
+    },
+    {
+      "path": "packages/core/test/ac-ti03-in-body.test.ts",
+      "sha256": "282b4fc21dda708262161d376e8b8a0ceaaca846637a9085e2c3db95f98b9a8a"
+    },
+    {
+      "path": "packages/core/test/ac-ti03-js-existing.test.ts",
+      "sha256": "702182f595132705a13f5ecae885f86416e7f9a965be0fe36a2d6374ddfd5b88"
+    },
+    {
+      "path": "packages/core/test/ac-ti03-no-signal.test.ts",
+      "sha256": "b61814f628ee3c600918b77866415f20f136a8f42003bbef6c12bcf71ca007e0"
+    },
+    {
+      "path": "packages/core/test/ac-ti03-python-existing.test.ts",
+      "sha256": "9378908cc9334af16b5ba6c7423626e3558421544700ebce62e2473c97dac605"
+    },
+    {
+      "path": "packages/core/test/ac-ti0304-details.test.ts",
+      "sha256": "b984c2a8fc3a625c971bcb1d41e208018c8d7b3b1ab47a883a46319cf9619266"
+    },
+    {
+      "path": "packages/core/test/ac-ti0304-docs.test.ts",
+      "sha256": "c4fbb8bf2ffcd1f6e68a84d9fd15d9416dd590c3fe0f48bd235a96fa81dd100c"
+    },
+    {
+      "path": "packages/core/test/ac-ti0304-modes.test.ts",
+      "sha256": "5cee81933de417afb9b85b085acd67f88a16b94f678aee0720bf364ffdaa3bb6"
+    },
+    {
+      "path": "packages/core/test/ac-ti0304-regression.test.ts",
+      "sha256": "f0772fb05ffdcdc92c5d33b00a50e68c49bedf46b8ae983d567c37f5b1f9eabf"
+    },
+    {
+      "path": "packages/core/test/ac-ti04-narrowed.test.ts",
+      "sha256": "386920e5d938e6998731365724dcac69e19daca909c3c57e8518314dd95c5960"
+    },
+    {
+      "path": "packages/core/test/ac-ti04-not-a-test-call.test.ts",
+      "sha256": "323332a15155c95e8f48d8e11df1fcb19065bf7b417f85c10ddb51fe683219f4"
+    },
+    {
+      "path": "packages/core/test/ac-ti04-pre-existing.test.ts",
+      "sha256": "6ab4e278ff70c9ecd62c48a9f804fb252b33ce5244ff2c5428a01628cb122c70"
+    }
+  ],
+  "bootstrap": null,
+  "red_run": {
+    "stamp_sha256": "c0528f69fb2a5aa59fb6fc0ca3220983bc3dd4621ea475885355d2ddc274cb06",
+    "files_sha256": "8226db6eef9e59faa27309696938e2c187316d514c8b3cde24bdf5ec2da6b60e",
+    "gates": [
+      {
+        "gate": "test",
+        "results_sha256": "661bf7a2ac84993f0c2b6901535c32bc279f355e3f4ab35b5cf04edb24435c7f"
+      }
+    ],
+    "acs": [
+      {
+        "id": "AC-1",
+        "tests": [
+          "packages/core/test/ac-ti04-narrowed.test.ts::TI04: a narrowing marker added to a JS/TS test file › AC-1: seven added .only, fit and fdescribe lines give seven block TI04 signals with one fixed detail"
+        ]
+      },
+      {
+        "id": "AC-2",
+        "tests": [
+          "packages/core/test/ac-ti04-not-a-test-call.test.ts::TI04: lines that only look like a narrowing marker › AC-2: method calls, assignments, comments, Python, Go, non-test and JSON files give no TI04 signal"
+        ]
+      },
+      {
+        "id": "AC-3",
+        "tests": [
+          "packages/core/test/ac-ti04-pre-existing.test.ts::TI04: a marker that was already there, a renamed one, and the per-file cap › AC-3: an edit to async and a move give nothing, a rename gives one signal, 21 added markers give 20"
+        ]
+      },
+      {
+        "id": "AC-4",
+        "tests": [
+          "packages/core/test/ac-ti03-js-existing.test.ts::TI03: an unconditional skip on a test the diff shows existed › AC-4: each JS/TS skip of an existing test is one TI03 signal, block in mode block and warn in mode warn"
+        ]
+      },
+      {
+        "id": "AC-5",
+        "tests": [
+          "packages/core/test/ac-ti03-python-existing.test.ts::TI03: an unconditional Python skip decorator above an unchanged test › AC-5: each decorator added alone above an unchanged def test_x or class TestUser is one block TI03 signal"
+        ]
+      },
+      {
+        "id": "AC-6",
+        "tests": [
+          "packages/core/test/ac-ti03-conditional.test.ts::TI03: a conditional skip › AC-6: each conditional JS/TS skip, skipIf or runIf and Python skipif, skipIf, skipUnless or xfail(cond) is one warn TI03 signal"
+        ]
+      },
+      {
+        "id": "AC-7",
+        "tests": [
+          "packages/core/test/ac-ti03-in-body.test.ts::TI03: a skip inside a test body › AC-7: pytest.skip, t.Skip, t.Skipf, t.SkipNow, test.skip(), test.skip(true) and this.skip() are warn; the if lines give nothing"
+        ]
+      },
+      {
+        "id": "AC-8",
+        "tests": [
+          "packages/core/test/ac-ti03-added-test.test.ts::TI03: a skip in a test the change adds › AC-8: a decorator above an added test, a skip on an added test name and skips in added files are warn"
+        ]
+      },
+      {
+        "id": "AC-9",
+        "tests": [
+          "packages/core/test/ac-ti03-no-signal.test.ts::TI03: edits that keep a skip, non-skips, comments, strings and non-test files › AC-9: none of these diffs gives a TI03 signal"
+        ]
+      },
+      {
+        "id": "AC-10",
+        "tests": [
+          "packages/core/test/ac-ti0304-details.test.ts::TI03 and TI04: the fixed details › AC-10: one detail per TI03 category, four different ones, all at most 300 characters, no fixture text in details or messages"
+        ]
+      },
+      {
+        "id": "AC-11",
+        "tests": [
+          "packages/core/test/ac-ti0304-modes.test.ts::TI03 and TI04 in the three modes › AC-11: block sorts and fails, warn shows every signal as warn, off computes nothing, a conditional skip alone warns"
+        ]
+      },
+      {
+        "id": "AC-12",
+        "tests": [
+          "packages/cli/test/ac-ti0304-render.test.ts::TI03 and TI04 in the PR comment, the streaming reader and the CLI › AC-12: the section lists each signal with a hint, both message hints exist, streamed equals whole text, the CLI JSON holds TI03"
+        ]
+      },
+      {
+        "id": "AC-13",
+        "tests": [
+          "packages/core/test/ac-ti0304-regression.test.ts::TI03 and TI04 leave the earlier signals and fixtures alone › AC-13: the TI01, TI11 and TI14 fixtures give the same signals and messages as before, and the golden diff stays quiet"
+        ]
+      },
+      {
+        "id": "AC-14",
+        "tests": [
+          "packages/core/test/ac-ti0304-docs.test.ts::TI03 and TI04: docs, schema and fixtures › AC-14: at least five must-trigger and five must-not-trigger diffs per id, the PRECISION cases among them, and they behave",
+          "packages/core/test/ac-ti0304-docs.test.ts::TI03 and TI04: docs, schema and fixtures › AC-14: the changelog, README, limits and threat model name TI03 and TI04",
+          "packages/core/test/ac-ti0304-docs.test.ts::TI03 and TI04: docs, schema and fixtures › AC-14: the v2 schema names both message codes and the v1 schema is byte-identical to the base commit's"
+        ]
+      }
+    ]
+  },
+  "test_infra": {
+    "levels": [
+      "integration",
+      "unit"
+    ],
+    "gates": [
+      {
+        "id": "test",
+        "script": "vitest run",
+        "pre": null,
+        "post": null,
+        "results": "vitest-json"
+      }
+    ],
+    "chained": [],
+    "configs": [
+      {
+        "path": "vitest.config.ts",
+        "sha256": "84fef4870fed6a1d5156f5260cd8fcc9b6d1dcca7cc76e8de3c86a978b336fec"
+      }
+    ],
+    "script_files": [],
+    "jest": null,
+    "exclude": [],
+    "other_gates": [
+      {
+        "id": "build",
+        "script": "pnpm -r build",
+        "pre": null,
+        "post": null
+      },
+      {
+        "id": "lint",
+        "script": "biome check . && pnpm -r typecheck",
+        "pre": null,
+        "post": null
+      }
+    ],
+    "other_chained": []
+  }
+}

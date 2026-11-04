@@ -1,0 +1,216 @@
+{
+  "schema": "ac-tests-lock/6",
+  "feature": "test-file-detection-ti01",
+  "mode": "test-first",
+  "spec": {
+    "spec_id": "test-file-detection-ti01",
+    "spec_content_hash": "2c38d211d99a424d8df0abed2c9412290a0012448900ddb18ad3149d2f009181"
+  },
+  "mapping": {
+    "path": "pharn/features/test-file-detection-ti01/AC-TESTS.md",
+    "sha256": "6b99610e14fafbb8e864bb7bff890db1cfff04f46d38071fcc33f115f1b08bb0"
+  },
+  "files": [
+    {
+      "path": "packages/cli/test/ac-ti01-cli.test.ts",
+      "sha256": "7bc5cdd40210d8608d13d8cfd2bd7d924ddd488b749739bc555d8708d10450ee"
+    },
+    {
+      "path": "packages/core/test/ac-ti01-block.test.ts",
+      "sha256": "38435e988779ee843e485d0714e8fbafee930e50984884e0965ab9507639a641"
+    },
+    {
+      "path": "packages/core/test/ac-ti01-counted.test.ts",
+      "sha256": "d95784281fc936292ccf2046394279e34b7cc9ff61bc89f00dd6b7b1e676fb56"
+    },
+    {
+      "path": "packages/core/test/ac-ti01-diff-caps.test.ts",
+      "sha256": "532c9d532ed259ba9a89f76b2317c7885cbfaeb2c1d1135ed41873d9c4237d70"
+    },
+    {
+      "path": "packages/core/test/ac-ti01-diff-hunks.test.ts",
+      "sha256": "8f8259bda5fe2e9d2737a0f25a07b686a9bb21c27901ba36fbd6d3ab0b475f78"
+    },
+    {
+      "path": "packages/core/test/ac-ti01-docs.test.ts",
+      "sha256": "53fe936451e86fd131f0844e42d696e2742d0d9ae7892e661aa5e0843e527d6b"
+    },
+    {
+      "path": "packages/core/test/ac-ti01-exemptions.test.ts",
+      "sha256": "8754bc6d992132d28ff090332ceb18157428101453f08eaa6c6f7f7dc80aab57"
+    },
+    {
+      "path": "packages/core/test/ac-ti01-files-deleted-compat.test.ts",
+      "sha256": "f5df4b9615c55557cd1039e3845d00a159c41aa78b19a73a7e3b20e8ae4c42c7"
+    },
+    {
+      "path": "packages/core/test/ac-ti01-modes.test.ts",
+      "sha256": "59d9bf2259e9a0046c9ccaef1e0d9dc346f71a44dec02ba53462178f79af8a1e"
+    },
+    {
+      "path": "packages/core/test/ac-ti01-not-counted.test.ts",
+      "sha256": "e13ab2c211ef11c96502bc03d167575c8bef9f406ee3b11151fe5249a104f1dc"
+    },
+    {
+      "path": "packages/core/test/ac-ti01-render.test.ts",
+      "sha256": "23f375bdda759e2e72658701c846b080990dd1f7704d08f749ace52b153a576e"
+    },
+    {
+      "path": "packages/core/test/ac-ti01-test-file-globs.test.ts",
+      "sha256": "4dfac35af36dece2b67fab027a43ffa4dc85b8982aee86a2c33c5f1ade74cd9e"
+    }
+  ],
+  "bootstrap": null,
+  "red_run": {
+    "stamp_sha256": "93523bad3b5de8f680ab6c4be242ed6bdfb65a805538b51275ae0e47353862ed",
+    "files_sha256": "db9e3c55b5fedb47418b7471708910e7b2146804ea624f1bb9c12a5671148801",
+    "gates": [
+      {
+        "gate": "test",
+        "results_sha256": "fe1e0fe03690fb07a5948bf5c3148f1d39b087d354bd46bef6529f4e20b523b4"
+      }
+    ],
+    "acs": [
+      {
+        "id": "AC-1",
+        "tests": [
+          "packages/core/test/ac-ti01-test-file-globs.test.ts::isTestFile(): the test-file globs › AC-1: the spec's test paths are test files, the near misses are not, and the existing fixtures' paths stay test files"
+        ]
+      },
+      {
+        "id": "AC-2",
+        "tests": [
+          "packages/core/test/ac-ti01-diff-hunks.test.ts::unified diff parser: line text per hunk › AC-2: addedLines of every file equal what a parse without the option returns",
+          "packages/core/test/ac-ti01-diff-hunks.test.ts::unified diff parser: line text per hunk › AC-2: parseUnifiedDiff keeps added and removed text with line numbers for the selected files only",
+          "packages/core/test/ac-ti01-diff-hunks.test.ts::unified diff parser: line text per hunk › AC-2: the line-by-line reader gives the same result"
+        ]
+      },
+      {
+        "id": "AC-3",
+        "tests": [
+          "packages/core/test/ac-ti01-diff-caps.test.ts::unified diff parser: bounds on the kept text › AC-3: 6000 removed lines keep at most 5000, each at most 400 characters, and mark the file truncated",
+          "packages/core/test/ac-ti01-diff-caps.test.ts::unified diff parser: bounds on the kept text › AC-3: a 100-line deletion of the same shape is kept whole and is not marked truncated"
+        ]
+      },
+      {
+        "id": "AC-4",
+        "tests": [
+          "packages/core/test/ac-ti01-block.test.ts::check(): TI01 in mode block › AC-4: a deleted test file that defines tests while its source stays is a block signal and fails the report"
+        ]
+      },
+      {
+        "id": "AC-5",
+        "tests": [
+          "packages/core/test/ac-ti01-modes.test.ts::check(): TI01 in the default mode and in mode off › AC-5: with mode off no signal is computed, the block stays pass and the OFF message is present",
+          "packages/core/test/ac-ti01-modes.test.ts::check(): TI01 in the default mode and in mode off › AC-5: with no mode given the signal is warn and the report warns"
+        ]
+      },
+      {
+        "id": "AC-6",
+        "tests": [
+          "packages/core/test/ac-ti01-not-counted.test.ts::check(): files TI01 does not count › AC-6: pass-binary.diff deletes tests/img.test.ts and yields no TI01 signal",
+          "packages/core/test/ac-ti01-not-counted.test.ts::check(): files TI01 does not count › AC-6: pass-fixture-json.diff deletes tests/fixtures/data.json and yields no TI01 signal",
+          "packages/core/test/ac-ti01-not-counted.test.ts::check(): files TI01 does not count › AC-6: pass-helper.diff deletes tests/helpers.ts and yields no TI01 signal",
+          "packages/core/test/ac-ti01-not-counted.test.ts::check(): files TI01 does not count › AC-6: pass-init-py.diff deletes tests/__init__.py and yields no TI01 signal"
+        ]
+      },
+      {
+        "id": "AC-7",
+        "tests": [
+          "packages/core/test/ac-ti01-exemptions.test.ts::check(): TI01 exemptions make the finding info › AC-7: info-migration-mjs.diff leaves lib/x.test.js as an info signal",
+          "packages/core/test/ac-ti01-exemptions.test.ts::check(): TI01 exemptions make the finding info › AC-7: info-migration-ts.diff leaves lib/x.test.js as an info signal",
+          "packages/core/test/ac-ti01-exemptions.test.ts::check(): TI01 exemptions make the finding info › AC-7: info-package-removed.diff leaves packages/a/__tests__/y.test.ts as an info signal",
+          "packages/core/test/ac-ti01-exemptions.test.ts::check(): TI01 exemptions make the finding info › AC-7: info-with-source.diff leaves src/foo.test.ts as an info signal"
+        ]
+      },
+      {
+        "id": "AC-8",
+        "tests": [
+          "packages/core/test/ac-ti01-counted.test.ts::check(): files TI01 counts as block › AC-8: a deleted test file whose kept text was truncated before any test-defining line counts",
+          "packages/core/test/ac-ti01-counted.test.ts::check(): files TI01 counts as block › AC-8: a repository-root tests folder deleted with an unrelated source file",
+          "packages/core/test/ac-ti01-counted.test.ts::check(): files TI01 counts as block › AC-8: a test deleted while its source stays",
+          "packages/core/test/ac-ti01-counted.test.ts::check(): files TI01 counts as block › AC-8: a test renamed away to a non-test path with no hunk"
+        ]
+      },
+      {
+        "id": "AC-9",
+        "tests": [
+          "packages/core/test/ac-ti01-files-deleted-compat.test.ts::check(): TEST_FILES_DELETED is unchanged by TI01 › AC-9: every existing deleted-test fixture still yields one info TEST_FILES_DELETED, and with the mode off the verdict of the baseline"
+        ]
+      },
+      {
+        "id": "AC-10",
+        "tests": [
+          "packages/cli/test/ac-ti01-cli.test.ts::TI01 through the CLI and the streaming diff reader › AC-10: the CLI JSON output holds the TI01 block signal for the deleted test file",
+          "packages/cli/test/ac-ti01-cli.test.ts::TI01 through the CLI and the streaming diff reader › AC-10: the streamed diff and the whole text give the same testIntegrity block and messages"
+        ]
+      },
+      {
+        "id": "AC-11",
+        "tests": [
+          "packages/core/test/ac-ti01-render.test.ts::renderMarkdown(): the Test integrity section lists TI01 findings › AC-11: a check() report with a block signal lists it with a hint, and the Messages hint does not name an accept label",
+          "packages/core/test/ac-ti01-render.test.ts::renderMarkdown(): the Test integrity section lists TI01 findings › AC-11: the report without signals keeps exactly the four lines of the empty state, where a report with one lists it",
+          "packages/core/test/ac-ti01-render.test.ts::renderMarkdown(): the Test integrity section lists TI01 findings › AC-11: three signals of severity block, warn and info give three finding lines, each with its hint line"
+        ]
+      },
+      {
+        "id": "AC-12",
+        "tests": [
+          "packages/core/test/ac-ti01-docs.test.ts::TI01: docs, schema and fixtures › AC-12: fixtures/test-integrity/TI01/block-code-stays.diff exists",
+          "packages/core/test/ac-ti01-docs.test.ts::TI01: docs, schema and fixtures › AC-12: fixtures/test-integrity/TI01/block-rename-away.diff exists",
+          "packages/core/test/ac-ti01-docs.test.ts::TI01: docs, schema and fixtures › AC-12: fixtures/test-integrity/TI01/block-root-tests.diff exists",
+          "packages/core/test/ac-ti01-docs.test.ts::TI01: docs, schema and fixtures › AC-12: fixtures/test-integrity/TI01/info-migration-mjs.diff exists",
+          "packages/core/test/ac-ti01-docs.test.ts::TI01: docs, schema and fixtures › AC-12: fixtures/test-integrity/TI01/info-migration-ts.diff exists",
+          "packages/core/test/ac-ti01-docs.test.ts::TI01: docs, schema and fixtures › AC-12: fixtures/test-integrity/TI01/info-package-removed.diff exists",
+          "packages/core/test/ac-ti01-docs.test.ts::TI01: docs, schema and fixtures › AC-12: fixtures/test-integrity/TI01/info-with-source.diff exists",
+          "packages/core/test/ac-ti01-docs.test.ts::TI01: docs, schema and fixtures › AC-12: fixtures/test-integrity/TI01/pass-binary.diff exists",
+          "packages/core/test/ac-ti01-docs.test.ts::TI01: docs, schema and fixtures › AC-12: fixtures/test-integrity/TI01/pass-fixture-json.diff exists",
+          "packages/core/test/ac-ti01-docs.test.ts::TI01: docs, schema and fixtures › AC-12: fixtures/test-integrity/TI01/pass-helper.diff exists",
+          "packages/core/test/ac-ti01-docs.test.ts::TI01: docs, schema and fixtures › AC-12: fixtures/test-integrity/TI01/pass-init-py.diff exists",
+          "packages/core/test/ac-ti01-docs.test.ts::TI01: docs, schema and fixtures › AC-12: the changelog, README, limits and threat model name TI01",
+          "packages/core/test/ac-ti01-docs.test.ts::TI01: docs, schema and fixtures › AC-12: the v2 schema names TEST_INTEGRITY_TI01 and the v1 schema is byte-identical to the base commit's"
+        ]
+      }
+    ]
+  },
+  "test_infra": {
+    "levels": [
+      "integration",
+      "unit"
+    ],
+    "gates": [
+      {
+        "id": "test",
+        "script": "vitest run",
+        "pre": null,
+        "post": null,
+        "results": "vitest-json"
+      }
+    ],
+    "chained": [],
+    "configs": [
+      {
+        "path": "vitest.config.ts",
+        "sha256": "84fef4870fed6a1d5156f5260cd8fcc9b6d1dcca7cc76e8de3c86a978b336fec"
+      }
+    ],
+    "script_files": [],
+    "jest": null,
+    "exclude": [],
+    "other_gates": [
+      {
+        "id": "build",
+        "script": "pnpm -r build",
+        "pre": null,
+        "post": null
+      },
+      {
+        "id": "lint",
+        "script": "biome check . && pnpm -r typecheck",
+        "pre": null,
+        "post": null
+      }
+    ],
+    "other_chained": []
+  }
+}

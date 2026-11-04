@@ -1,0 +1,220 @@
+{
+  "schema": "ac-tests-lock/6",
+  "feature": "ti14-ti11-ci-config-signals",
+  "mode": "test-first",
+  "spec": {
+    "spec_id": "ti14-ti11-ci-config-signals",
+    "spec_content_hash": "1a16131eba572490379738a594cc41f1dc91d04469fb694e90bccc5a91287835"
+  },
+  "mapping": {
+    "path": "pharn/features/ti14-ti11-ci-config-signals/AC-TESTS.md",
+    "sha256": "fdc5872b7982ea2b310e5059dda9d1b80c06ae084ee8c31896d787e424f00b05"
+  },
+  "files": [
+    {
+      "path": "packages/cli/test/ac-ti1411-render.test.ts",
+      "sha256": "cc01c0c2cbfb0bfe3912433fa32f360967faff2b6bb13b99e26340ce9021765e"
+    },
+    {
+      "path": "packages/cli/test/ac-ti1411-stream.test.ts",
+      "sha256": "4e01b6a17b171a34f4ba48bf8b367754ac1ab93df593bc70b65988e12827a031"
+    },
+    {
+      "path": "packages/core/test/ac-ti11-continue-on-error.test.ts",
+      "sha256": "a0f51dd66a1f472d95b3e0ca9250a150d2c6732b68183f75912a9201d4eee535"
+    },
+    {
+      "path": "packages/core/test/ac-ti11-if-condition.test.ts",
+      "sha256": "86124e67396a0d5499e30f5616c1ee7098d7cddd8d81bb198b99644dd2b72b7a"
+    },
+    {
+      "path": "packages/core/test/ac-ti11-matrix.test.ts",
+      "sha256": "17b8649e71ccc7ae70ee858fb8192689c78b4915575f7f50a8c759353860fa9e"
+    },
+    {
+      "path": "packages/core/test/ac-ti11-test-step.test.ts",
+      "sha256": "82f113922ab810d131f48822f88f3c85870fdc454c1ecd68d0f02bb1f5c1de23"
+    },
+    {
+      "path": "packages/core/test/ac-ti11-timeout.test.ts",
+      "sha256": "f0c288c3f1b628ed39cddaa642322fe03ff75e3fd607aa2aa2f3c6750d52bd61"
+    },
+    {
+      "path": "packages/core/test/ac-ti11-trigger.test.ts",
+      "sha256": "ee4b685c12f4be6fd36c805d4f372062ca75b6a027e20698722b7ac78a871949"
+    },
+    {
+      "path": "packages/core/test/ac-ti14-config-path.test.ts",
+      "sha256": "c4c0d598ec6d5ba1ba0ec0dac2b29142b50dc68aa5bb4a4104b318517672f256"
+    },
+    {
+      "path": "packages/core/test/ac-ti14-exclusion.test.ts",
+      "sha256": "d48e4e297ab7a2cbdb5edcc097b871d5ed4387e90bb6e8f4ada78b7a98c79c1a"
+    },
+    {
+      "path": "packages/core/test/ac-ti14-threshold.test.ts",
+      "sha256": "c856b778705cf26d5cc8725e7ba915b29af9fd8da701c5588bd59e05c2522553"
+    },
+    {
+      "path": "packages/core/test/ac-ti1411-docs.test.ts",
+      "sha256": "9c856b86057f7fbd6ac1cd70bf1ae931cfb7dc19f2592ce5bf77086364cfc6b5"
+    },
+    {
+      "path": "packages/core/test/ac-ti1411-modes.test.ts",
+      "sha256": "88906154ea3630138929f19984745483182469b146686b0fe158e1edc3edc39c"
+    },
+    {
+      "path": "packages/core/test/ac-ti1411-regression.test.ts",
+      "sha256": "8a6dc2f4d7bf8128623eb3e6dd55d64cb97548f651682bd4629c58485a3629f7"
+    },
+    {
+      "path": "packages/core/test/ac-ti1411-selector.test.ts",
+      "sha256": "ddf14b2cbd44ab583f7572e5e22c65ce5d4a3028c3e949b1de53e4c8763303c5"
+    }
+  ],
+  "bootstrap": null,
+  "red_run": {
+    "stamp_sha256": "b22bc2708ab97355ff924611a4d42600b217456b9054831c38a5f506234121ce",
+    "files_sha256": "0d5057dfc48029d6c39be5217c5772bc1bbf8a62ddf09f1d59a7955d61c65e8e",
+    "gates": [
+      {
+        "gate": "test",
+        "results_sha256": "e1a1ee74b27e2f55a906b277b5bf9de575f13f9767bd5948bea428fca7e6edb7"
+      }
+    ],
+    "acs": [
+      {
+        "id": "AC-1",
+        "tests": [
+          "packages/core/test/ac-ti1411-selector.test.ts::keepSignalFileText(): which files keep their line text › AC-1: the config in use, the workflow files and the test files keep text, nothing else does"
+        ]
+      },
+      {
+        "id": "AC-2",
+        "tests": [
+          "packages/cli/test/ac-ti1411-stream.test.ts::TI14 and TI11 through the streaming diff reader › AC-2: the streamed and the whole-text diff give the same testIntegrity block and messages, given the config path"
+        ]
+      },
+      {
+        "id": "AC-3",
+        "tests": [
+          "packages/core/test/ac-ti14-threshold.test.ts::TI14: the coverage threshold lowered › AC-3: a lowered, removed or deleted threshold is a block finding; raised, moved, added and quoted values are not"
+        ]
+      },
+      {
+        "id": "AC-4",
+        "tests": [
+          "packages/core/test/ac-ti14-exclusion.test.ts::TI14: a coverage exclusion added › AC-4: a flow list, an exclude key with items, and an appended known pattern are block findings; the controls are not"
+        ]
+      },
+      {
+        "id": "AC-5",
+        "tests": [
+          "packages/core/test/ac-ti14-config-path.test.ts::TI14: which file is the config › AC-5: the config named by the config path is read; a config path outside the repository gives nothing"
+        ]
+      },
+      {
+        "id": "AC-6",
+        "tests": [
+          "packages/core/test/ac-ti11-test-step.test.ts::TI11: a test step removed from a workflow › AC-6: a removed test command or a deleted workflow with one is a block finding; a comment, a move, a reflow and a rename are not"
+        ]
+      },
+      {
+        "id": "AC-7",
+        "tests": [
+          "packages/core/test/ac-ti11-trigger.test.ts::TI11: the pull request trigger removed › AC-7: a removed pull_request trigger is a block finding; a kept one is not"
+        ]
+      },
+      {
+        "id": "AC-8",
+        "tests": [
+          "packages/core/test/ac-ti11-matrix.test.ts::TI11: the matrix reduced › AC-8: a reduced flow-list matrix is a warn finding in mode block; a grown one is not"
+        ]
+      },
+      {
+        "id": "AC-9",
+        "tests": [
+          "packages/core/test/ac-ti11-continue-on-error.test.ts::TI11: continue-on-error added › AC-9: only a literal true added is a warn finding, at its new-file line"
+        ]
+      },
+      {
+        "id": "AC-10",
+        "tests": [
+          "packages/core/test/ac-ti11-if-condition.test.ts::TI11: a step or job disabled by a condition › AC-10: a literal false or an event-name test that leaves pull requests out is a warn finding; other conditions are not"
+        ]
+      },
+      {
+        "id": "AC-11",
+        "tests": [
+          "packages/core/test/ac-ti11-timeout.test.ts::TI11: a near-zero timeout, and the edits that fire nothing › AC-11: timeout-minutes 0 or 1 is a warn finding; 15, an expression, and edits that touch none of the rules are not"
+        ]
+      },
+      {
+        "id": "AC-12",
+        "tests": [
+          "packages/core/test/ac-ti1411-modes.test.ts::TI14 and TI11 in the three modes › AC-12: block mode sorts the signals and raises the verdict, warn mode shows every signal as warn, off computes nothing"
+        ]
+      },
+      {
+        "id": "AC-13",
+        "tests": [
+          "packages/cli/test/ac-ti1411-render.test.ts::TI14 and TI11 in the PR comment and the CLI › AC-13: the section lists each signal with path:line, a hint per id, the empty state stays, and the CLI JSON holds the signal"
+        ]
+      },
+      {
+        "id": "AC-14",
+        "tests": [
+          "packages/core/test/ac-ti1411-regression.test.ts::TI14 and TI11 leave the earlier signals and fixtures alone › AC-14: the old config and workflow fixtures keep their messages, the TI01 fixtures keep their signals"
+        ]
+      },
+      {
+        "id": "AC-15",
+        "tests": [
+          "packages/core/test/ac-ti1411-docs.test.ts::TI14 and TI11: docs, schema and fixtures › AC-15: at least five must-trigger and five must-not-trigger diffs exist for each id, and they behave",
+          "packages/core/test/ac-ti1411-docs.test.ts::TI14 and TI11: docs, schema and fixtures › AC-15: the changelog, README, limits and threat model name TI14 and TI11",
+          "packages/core/test/ac-ti1411-docs.test.ts::TI14 and TI11: docs, schema and fixtures › AC-15: the v2 schema names both message codes and the v1 schema is byte-identical to the base commit's"
+        ]
+      }
+    ]
+  },
+  "test_infra": {
+    "levels": [
+      "integration",
+      "unit"
+    ],
+    "gates": [
+      {
+        "id": "test",
+        "script": "vitest run",
+        "pre": null,
+        "post": null,
+        "results": "vitest-json"
+      }
+    ],
+    "chained": [],
+    "configs": [
+      {
+        "path": "vitest.config.ts",
+        "sha256": "84fef4870fed6a1d5156f5260cd8fcc9b6d1dcca7cc76e8de3c86a978b336fec"
+      }
+    ],
+    "script_files": [],
+    "jest": null,
+    "exclude": [],
+    "other_gates": [
+      {
+        "id": "build",
+        "script": "pnpm -r build",
+        "pre": null,
+        "post": null
+      },
+      {
+        "id": "lint",
+        "script": "biome check . && pnpm -r typecheck",
+        "pre": null,
+        "post": null
+      }
+    ],
+    "other_chained": []
+  }
+}

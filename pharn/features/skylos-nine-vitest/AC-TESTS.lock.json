@@ -1,0 +1,144 @@
+{
+  "schema": "ac-tests-lock/6",
+  "feature": "skylos-nine-vitest",
+  "mode": "test-first",
+  "spec": {
+    "spec_id": "skylos-nine-vitest",
+    "spec_content_hash": "8d82e785c11ef5ab12637d03353475aaa1151401d7fa681b2ed920d89981de94"
+  },
+  "mapping": {
+    "path": "pharn/features/skylos-nine-vitest/AC-TESTS.md",
+    "sha256": "b670cb2f271c528ff78591e2e4163dbcac21623205ffaca8139579e8b32f149c"
+  },
+  "files": [
+    {
+      "path": "packages/core/test/ac-skylos-nine-added-skip.test.ts",
+      "sha256": "c09517f3c045a60b71cd2909c14cd7600f1830a83c9395e28b8c60258f0b3572"
+    },
+    {
+      "path": "packages/core/test/ac-skylos-nine-deleted-test.test.ts",
+      "sha256": "3e5db18596a604b744dddd770f47b45a9fa3ff99e2dd305db45e18f7af719aac"
+    },
+    {
+      "path": "packages/core/test/ac-skylos-nine-diffs.test.ts",
+      "sha256": "7166c19888a4e6de391cf39df3da973ec2dc973733114d964e6f4b74587044f5"
+    },
+    {
+      "path": "packages/core/test/ac-skylos-nine-fixtures.test.ts",
+      "sha256": "51b58ed48672f4a7cc162f7007275862584b1f2be2e3f33a72819e71cb597eb0"
+    },
+    {
+      "path": "packages/core/test/ac-skylos-nine-misses.test.ts",
+      "sha256": "4ac6b345434cb916cfad2e185927d7457a03581626f1a814ab38bb60bf55344a"
+    },
+    {
+      "path": "packages/core/test/ac-skylos-nine-table.test.ts",
+      "sha256": "848bafaa12413f47e803f2eed30fbdf6b092c8c697abfca8a4a0149c5810ae6e"
+    }
+  ],
+  "bootstrap": null,
+  "red_run": {
+    "stamp_sha256": "1a29e68e94ec8e741af0617b449076c259413edde0feab4eae64a17bbeea1fbf",
+    "files_sha256": "c6a6c7d02f28e57a25434ab1ebc594b19adccb5e302f3585cbe30825016f56b6",
+    "gates": [
+      {
+        "gate": "test",
+        "results_sha256": "53743752dce9f64cd51387faa8b8b7efc9d7b0f537ce610d0539817a8e8bdca1"
+      }
+    ],
+    "acs": [
+      {
+        "id": "AC-1",
+        "tests": [
+          "packages/core/test/ac-skylos-nine-deleted-test.test.ts::Skylos nine: the deleted-test case is caught by TI01 › AC-1: deleting a vitest test file while its source stays gives one TI01 block signal, a fail verdict and a rendered **TI01** line with the path"
+        ]
+      },
+      {
+        "id": "AC-2",
+        "tests": [
+          "packages/core/test/ac-skylos-nine-added-skip.test.ts::Skylos nine: the added-skip case is caught by TI03 › AC-2: turning an existing it( into it.skip( with the same name gives one TI03 block signal, a fail verdict and a rendered **TI03** line with path:line"
+        ]
+      },
+      {
+        "id": "AC-3",
+        "tests": [
+          "packages/core/test/ac-skylos-nine-misses.test.ts::Skylos nine: the seven expected misses run cleanly and give no signal › AC-3: always-true-matcher — check() and the renderer do not throw, the report is valid and has no test-integrity signal",
+          "packages/core/test/ac-skylos-nine-misses.test.ts::Skylos nine: the seven expected misses run cleanly and give no signal › AC-3: deselect-setting — check() and the renderer do not throw, the report is valid and has no test-integrity signal",
+          "packages/core/test/ac-skylos-nine-misses.test.ts::Skylos nine: the seven expected misses run cleanly and give no signal › AC-3: edited-expected-value — check() and the renderer do not throw, the report is valid and has no test-integrity signal",
+          "packages/core/test/ac-skylos-nine-misses.test.ts::Skylos nine: the seven expected misses run cleanly and give no signal › AC-3: emptied-assertion — check() and the renderer do not throw, the report is valid and has no test-integrity signal",
+          "packages/core/test/ac-skylos-nine-misses.test.ts::Skylos nine: the seven expected misses run cleanly and give no signal › AC-3: hard-coded-answer — check() and the renderer do not throw, the report is valid and has no test-integrity signal",
+          "packages/core/test/ac-skylos-nine-misses.test.ts::Skylos nine: the seven expected misses run cleanly and give no signal › AC-3: loosened-assertion — check() and the renderer do not throw, the report is valid and has no test-integrity signal",
+          "packages/core/test/ac-skylos-nine-misses.test.ts::Skylos nine: the seven expected misses run cleanly and give no signal › AC-3: replaced-test — check() and the renderer do not throw, the report is valid and has no test-integrity signal"
+        ]
+      },
+      {
+        "id": "AC-4",
+        "tests": [
+          "packages/core/test/ac-skylos-nine-table.test.ts::Skylos nine: the case table and the headline › AC-4: exactly deleted-test and added-skip give a signal, each only its table id, and the other seven give none",
+          "packages/core/test/ac-skylos-nine-table.test.ts::Skylos nine: the case table and the headline › AC-4: the headline — nine cases, 2 caught, 7 expected misses",
+          "packages/core/test/ac-skylos-nine-table.test.ts::Skylos nine: the case table and the headline › AC-4: the table maps the nine cases to TI01, TI03, TI05, TI09, TI15, none, TI02, TI06 and TI07, one entry per fixture directory"
+        ]
+      },
+      {
+        "id": "AC-5",
+        "tests": [
+          "packages/core/test/ac-skylos-nine-fixtures.test.ts::Skylos nine: the fixture directory › AC-5: every change.diff is a non-empty unified diff with no context lines that touches only .ts, .tsx, .js or .mjs paths",
+          "packages/core/test/ac-skylos-nine-fixtures.test.ts::Skylos nine: the fixture directory › AC-5: every files.txt is non-empty with one repository-relative path per line",
+          "packages/core/test/ac-skylos-nine-fixtures.test.ts::Skylos nine: the fixture directory › AC-5: fixtures/skylos-nine holds exactly the nine case directories, each with exactly change.diff and files.txt",
+          "packages/core/test/ac-skylos-nine-fixtures.test.ts::Skylos nine: the fixture directory › AC-5: no change.diff or files.txt holds pytest or a .py path"
+        ]
+      },
+      {
+        "id": "AC-6",
+        "tests": [
+          "packages/core/test/ac-skylos-nine-diffs.test.ts::Skylos nine: each miss case's diff shows its cheat › AC-6: always-true-matcher adds an expect.extend( line",
+          "packages/core/test/ac-skylos-nine-diffs.test.ts::Skylos nine: each miss case's diff shows its cheat › AC-6: deselect-setting touches only vitest.config.ts and changes an include or exclude line",
+          "packages/core/test/ac-skylos-nine-diffs.test.ts::Skylos nine: each miss case's diff shows its cheat › AC-6: edited-expected-value removes and adds a line with the same matcher and a different expected literal",
+          "packages/core/test/ac-skylos-nine-diffs.test.ts::Skylos nine: each miss case's diff shows its cheat › AC-6: emptied-assertion removes an expect( line from a test file and adds none",
+          "packages/core/test/ac-skylos-nine-diffs.test.ts::Skylos nine: each miss case's diff shows its cheat › AC-6: hard-coded-answer touches only files that are not test files and adds an if",
+          "packages/core/test/ac-skylos-nine-diffs.test.ts::Skylos nine: each miss case's diff shows its cheat › AC-6: loosened-assertion removes a toBe( or toEqual( line and adds a toBeTruthy() line",
+          "packages/core/test/ac-skylos-nine-diffs.test.ts::Skylos nine: each miss case's diff shows its cheat › AC-6: replaced-test modifies one test file still at head, swapping one test opening line for one with another name"
+        ]
+      }
+    ]
+  },
+  "test_infra": {
+    "levels": [
+      "unit"
+    ],
+    "gates": [
+      {
+        "id": "test",
+        "script": "vitest run",
+        "pre": null,
+        "post": null,
+        "results": "vitest-json"
+      }
+    ],
+    "chained": [],
+    "configs": [
+      {
+        "path": "vitest.config.ts",
+        "sha256": "84fef4870fed6a1d5156f5260cd8fcc9b6d1dcca7cc76e8de3c86a978b336fec"
+      }
+    ],
+    "script_files": [],
+    "jest": null,
+    "exclude": [],
+    "other_gates": [
+      {
+        "id": "build",
+        "script": "pnpm -r build",
+        "pre": null,
+        "post": null
+      },
+      {
+        "id": "lint",
+        "script": "biome check . && pnpm -r typecheck",
+        "pre": null,
+        "post": null
+      }
+    ],
+    "other_chained": []
+  }
+}

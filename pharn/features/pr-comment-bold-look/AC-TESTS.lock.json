@@ -1,0 +1,149 @@
+{
+  "schema": "ac-tests-lock/5",
+  "feature": "pr-comment-bold-look",
+  "mode": "test-first",
+  "spec": {
+    "spec_id": "pr-comment-bold-look",
+    "spec_content_hash": "d94a11a5a085725de92fa94b6894bbb319186ac5fb7c026f1cb09944aeb90df2"
+  },
+  "mapping": {
+    "path": "pharn/features/pr-comment-bold-look/AC-TESTS.md",
+    "sha256": "6a96a7c7ef267fb9d087727a15033e1df19675a299dc8aa589ad14557002218d"
+  },
+  "files": [
+    {
+      "path": "packages/action/test/ac-comment-bold-fit.test.ts",
+      "sha256": "0f67f7b31eab0145ab70517381276ee34da36a764bdee2e007d1f5c3cc1f0461"
+    },
+    {
+      "path": "packages/cli/test/ac-comment-bold-cli.test.ts",
+      "sha256": "01bbf7106d5fea4039320ba5c6ce9a16bbec74dc1f71d8b87d3071cd7b0bcbf9"
+    },
+    {
+      "path": "packages/core/test/ac-comment-bold-data.test.ts",
+      "sha256": "e41a6ececb92d59652f62a643245f7d62b9db5107bb7bbbdad79cebeefc567a6"
+    },
+    {
+      "path": "packages/core/test/ac-comment-bold-details.test.ts",
+      "sha256": "1bd02dc76574cf9d080284799f42767fbdf3176cd970429e1e22d3f2355077da"
+    },
+    {
+      "path": "packages/core/test/ac-comment-bold-footer.test.ts",
+      "sha256": "891d7ef3542eded961b5a3bb863dd2cc6764346cba9c470fc15b753cd3111975"
+    },
+    {
+      "path": "packages/core/test/ac-comment-bold-header.test.ts",
+      "sha256": "955bd4827723fdd9ea8d29acf6adda5b1cdbfe89fc95dcfa84699c638641da74"
+    },
+    {
+      "path": "packages/core/test/ac-comment-bold-hostile.test.ts",
+      "sha256": "b8bb65d1219352ff2ce391d006ee4c07ab321a16ae363fe055734436126b76a4"
+    },
+    {
+      "path": "packages/core/test/ac-comment-bold-overview.test.ts",
+      "sha256": "9e78ab2f3c27172fc068c3d8b849f9663b882bdd45c031085627af321670c6fe"
+    },
+    {
+      "path": "packages/core/test/ac-comment-bold-sections.test.ts",
+      "sha256": "a70818105769b2a647c92760da924774845e7986c4460411ae3b6459e6d3f406"
+    }
+  ],
+  "bootstrap": null,
+  "red_run": {
+    "stamp_sha256": "ec09ccd0da217be066a0a4a9a51471584ab2557283bb31fcd2c69338760863ba",
+    "files_sha256": "3c59a52c14df5de7b774d9e82d166b817d049e40e96bb60cafebde4f4934bd6f",
+    "gates": [
+      {
+        "gate": "test",
+        "results_sha256": "45acaf49cb4d646a9f59bace0019992939acc2b4d944fa4866d2553b6a2a6b3b"
+      }
+    ],
+    "acs": [
+      {
+        "id": "AC-1",
+        "tests": [
+          "packages/core/test/ac-comment-bold-header.test.ts::renderMarkdown(): the branded header block › AC-1: opens with the brand and verdict heading, the overview sentence and the summary table, above Diff coverage"
+        ]
+      },
+      {
+        "id": "AC-2",
+        "tests": [
+          "packages/core/test/ac-comment-bold-overview.test.ts::renderMarkdown(): the heading and the overview sentence › AC-2: a passing report has the Pass heading",
+          "packages/core/test/ac-comment-bold-overview.test.ts::renderMarkdown(): the heading and the overview sentence › AC-2: a warning report has the Warn heading",
+          "packages/core/test/ac-comment-bold-overview.test.ts::renderMarkdown(): the heading and the overview sentence › AC-2: diff coverage not computed starts the sentence with 'Diff coverage was not computed;'",
+          "packages/core/test/ac-comment-bold-overview.test.ts::renderMarkdown(): the heading and the overview sentence › AC-2: no agent setup files ends the sentence with '; no agent setup files found.'",
+          "packages/core/test/ac-comment-bold-overview.test.ts::renderMarkdown(): the heading and the overview sentence › AC-2: no coverable changed lines starts the sentence with 'This change adds no coverable lines;'",
+          "packages/core/test/ac-comment-bold-overview.test.ts::renderMarkdown(): the heading and the overview sentence › AC-2: no threshold puts ', with no threshold set;' in the sentence",
+          "packages/core/test/ac-comment-bold-overview.test.ts::renderMarkdown(): the heading and the overview sentence › AC-2: one agent setup file ends the sentence with '; 1 agent setup file found.'"
+        ]
+      },
+      {
+        "id": "AC-3",
+        "tests": [
+          "packages/core/test/ac-comment-bold-sections.test.ts::renderMarkdown(): emoji section headings with counts › AC-3: the sections are Diff coverage, Messages (N) and Agent setup (N files), in that order, with no other heading"
+        ]
+      },
+      {
+        "id": "AC-4",
+        "tests": [
+          "packages/core/test/ac-comment-bold-details.test.ts::renderMarkdown(): per-file detail collapsed in <details> blocks › AC-4: the file tables sit in <details> blocks, the diff one open below the threshold, and the summary lines and messages stay visible"
+        ]
+      },
+      {
+        "id": "AC-5",
+        "tests": [
+          "packages/core/test/ac-comment-bold-footer.test.ts::renderMarkdown(): the footer › AC-5: ends with a thematic break and a footer naming the version, the schema and the coverage format, and carries no image or URL"
+        ]
+      },
+      {
+        "id": "AC-6",
+        "tests": [
+          "packages/core/test/ac-comment-bold-hostile.test.ts::renderMarkdown(): the new header, summaries and footer with hostile paths and message text › AC-6: no image, no broken table row, no input text in the fixed lines, and inert message lines"
+        ]
+      },
+      {
+        "id": "AC-7",
+        "tests": [
+          "packages/core/test/ac-comment-bold-data.test.ts::check() and renderMarkdown(): report data and message text unchanged › AC-7: the golden report equals the committed report.json, and the Messages section carries the committed message and hint lines"
+        ]
+      },
+      {
+        "id": "AC-8",
+        "tests": [
+          "packages/action/test/ac-comment-bold-fit.test.ts::run(): the new header block in a sticky comment that has to be shortened › AC-8: a report too long for one comment keeps the heading, the overview sentence, the summary row and every message"
+        ]
+      },
+      {
+        "id": "AC-9",
+        "tests": [
+          "packages/cli/test/ac-comment-bold-cli.test.ts::pharn-ci check: markdown output › AC-9: a passing check exits 0 and prints the branded Pass heading and the Diff coverage section"
+        ]
+      }
+    ]
+  },
+  "test_infra": {
+    "levels": [
+      "integration",
+      "unit"
+    ],
+    "gates": [
+      {
+        "id": "test",
+        "script": "vitest run",
+        "pre": null,
+        "post": null,
+        "results": "vitest-json"
+      }
+    ],
+    "chained": [],
+    "configs": [
+      {
+        "path": "vitest.config.ts",
+        "sha256": "84fef4870fed6a1d5156f5260cd8fcc9b6d1dcca7cc76e8de3c86a978b336fec"
+      }
+    ],
+    "script_files": [],
+    "jest": null,
+    "exclude": []
+  }
+}

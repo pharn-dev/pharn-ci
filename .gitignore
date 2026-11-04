@@ -8,26 +8,12 @@ packages/cli/dist/
 *.tsbuildinfo
 .DS_Store
 
-# PHARN workflow run state (keep the pharn-ci config file tracked)
-.pharn/*
-!.pharn/ci.yml
 # Claude Code agent worktrees
 .claude/worktrees/
-
-# PHARN workflow tooling: the maintainer's local install, not part of the product. Kept out of the
-# repo so it does not ship with `uses: pharn-dev/pharn-ci@...`.
-/pharn/
-/pharn.config.json
-/pharn.records.json
-/LIMITS.md
-/THREAT-MODEL.md
-/.claude/commands/pharn-*.md
-/.claude/hooks/
-/.claude/settings.json
-/.claude/skills/
-/.agents/
-/skills-lock.json
 
 # Private product context (not part of the open-source Action)
 product/
 CLAUDE.local.md
+# PHARN run state and update backups (added by pharn)
+pharn/.run/
+pharn/.backup/
