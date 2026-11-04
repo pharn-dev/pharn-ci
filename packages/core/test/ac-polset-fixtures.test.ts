@@ -12,6 +12,8 @@ const BASE = "93376a9";
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const git = (...args: string[]) =>
   execFileSync("git", args, { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+// This committed PHARN workflow guard is not a product fixture added by E3 item 23.
+const PHARN_WORKFLOW_SETTINGS = ".claude/settings.json";
 const AGENT_SETTINGS =
   /(?:^|\/)(?:\.claude\/settings\.json|\.claude\/settings\.local\.json|\.mcp\.json|\.cursor\/mcp\.json|\.vscode\/mcp\.json)$/;
 const FIXTURES = "fixtures/policy-settings";
@@ -37,7 +39,7 @@ describe("the fixtures of E3 item 23", () => {
     );
     expect(now.length).toBeGreaterThan(0);
     expect(
-      now.filter((p) => AGENT_SETTINGS.test(p) && !before.has(p)),
+      now.filter((p) => AGENT_SETTINGS.test(p) && p !== PHARN_WORKFLOW_SETTINGS && !before.has(p)),
       "no new path ends in an agent settings or MCP file name",
     ).toEqual([]);
 
