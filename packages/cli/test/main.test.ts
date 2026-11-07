@@ -64,7 +64,7 @@ describe("cli main", () => {
     expect(deps.gitCalls).toEqual([]);
   });
 
-  it("reads .pharn/ci.yml from the repo root, with CLI flags overriding it", async () => {
+  it("reads .pharn/ci.yml from the repo root; a stricter --threshold raises its threshold, a looser one does not lower it", async () => {
     const files = {
       "/repo/.pharn/ci.yml": "coverage:\n  file: cov/lcov.info\n  threshold: 90\n",
       "/repo/cov/lcov.info": coverage["/repo/sub/lcov.info"],
@@ -73,9 +73,19 @@ describe("cli main", () => {
     expect(await main(["check", "--format", "json"], fromConfig)).toBe(EXIT_FAIL);
     expect(JSON.parse(fromConfig.out).diffCoverage.threshold).toBe(90);
 
-    const overridden = fakeDeps(files);
-    expect(await main(["check", "--format", "json", "--threshold", "50"], overridden)).toBe(EXIT_OK);
-    expect(JSON.parse(overridden.out).diffCoverage.threshold).toBe(50);
+    // ci.yml may only tighten: the config's 90 stays over a looser --threshold 50.
+    const looser = fakeDeps(files);
+    expect(await main(["check", "--format", "json", "--threshold", "50"], looser)).toBe(EXIT_FAIL);
+    expect(JSON.parse(looser.out).diffCoverage.threshold).toBe(90);
+
+    const stricter = fakeDeps(files);
+    expect(await main(["check", "--format", "json", "--threshold", "95"], stricter)).toBe(EXIT_FAIL);
+    expect(JSON.parse(stricter.out).diffCoverage.threshold).toBe(95);
+
+    // Without a config threshold, the flag alone decides.
+    const flagOnly = fakeDeps({ ...files, "/repo/.pharn/ci.yml": "coverage:\n  file: cov/lcov.info\n" });
+    expect(await main(["check", "--format", "json", "--threshold", "50"], flagOnly)).toBe(EXIT_OK);
+    expect(JSON.parse(flagOnly.out).diffCoverage.threshold).toBe(50);
   });
 
   it("reports a missing coverage file in the report", async () => {
@@ -220,9 +230,12 @@ describe("cli end to end against a real git repo", () => {
     deps.stdout = (t) => {
       out += t;
     };
+    // The repo's .pharn/ci.yml sets threshold 75, which is stricter than --threshold 60, so it applies (ci.yml may only
+    // tighten): 66.67% fails. The coverage path relative to the subdirectory is still found and measured.
     expect(
       await main(["check", "--base", "main", "--coverage", "../coverage/lcov.info", "--threshold", "60"], deps),
-    ).toBe(EXIT_OK);
+    ).toBe(EXIT_FAIL);
     expect(out).toContain("**66.67%**");
+    expect(out).toContain("75%");
   });
 });

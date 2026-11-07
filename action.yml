@@ -13,7 +13,7 @@ inputs:
     description: Coverage report format, "lcov", "cobertura" or "auto" (detect it from the start of the file). Defaults to coverage.format in .pharn/ci.yml, then auto.
     required: false
   threshold:
-    description: Minimum diff coverage percent (0-100, inclusive). Defaults to coverage.threshold in .pharn/ci.yml; no gate if unset.
+    description: Minimum diff coverage percent (0-100, inclusive). Defaults to coverage.threshold in .pharn/ci.yml; when both are set, the larger applies (the config may raise this input, never lower it); no gate if neither is set.
     required: false
   base-ref:
     description: Ref or SHA to diff against (merge-base with HEAD). Defaults to the pull request base; in a merge queue (merge_group), the queue base; on push, the previous commit. A base-ref found neither in the checkout nor through the GitHub API fails the step.
@@ -31,7 +31,7 @@ inputs:
     description: Directory, relative to the repository root, that relative coverage paths start from (for package-relative coverage in a monorepo). Defaults to coverage.root in .pharn/ci.yml, then the repository root.
     required: false
   require-agent-setup:
-    description: Fail the check when the repo has no agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...). Defaults to setup.require in .pharn/ci.yml, then false.
+    description: Fail the check when the repo has no agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...). Defaults to setup.require in .pharn/ci.yml, then false; false does not turn off a setup.require true.
     required: false
   expect-agent-setup:
     description: Agent tools (for example claude-code, cursor) the report names when no agent setup file configures them, separated by commas or newlines. Added to setup.expect in .pharn/ci.yml, never replacing it.

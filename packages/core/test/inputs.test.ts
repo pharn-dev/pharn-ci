@@ -27,7 +27,7 @@ describe("resolveInputs", () => {
     });
   });
 
-  it("lets inputs override the config, and adds input exclusions after the config's", () => {
+  it("lets inputs override the config, except that an input false keeps a config setup.require true, and adds input exclusions after the config's", () => {
     const resolved = resolveInputs(
       config,
       {
@@ -46,7 +46,8 @@ describe("resolveInputs", () => {
         coverageFormat: "lcov",
         threshold: 90.5,
         exclude: ["src/generated/**", "vendor/**", "*.gen.ts"],
-        requireAgentSetup: false,
+        // The config's setup.require: true stays on: ci.yml may only tighten.
+        requireAgentSetup: true,
       },
     });
   });

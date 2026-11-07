@@ -60,11 +60,16 @@ export interface ResolvedInputs {
    */
   coverageFile: { path: string | readonly string[]; fromConfig: boolean } | { discover: true };
   coverageFormat: CoverageFormatSelection;
+  /**
+   * The larger of the input's and the config's threshold, or the one that is given; null when neither is. The config
+   * comes from the pull request, so it may only raise the input, never lower it.
+   */
   threshold: number | null;
   /** Config patterns first, then the input's; all validated and normalized. */
   exclude: string[];
   /** Normalized repo-relative directory relative coverage paths start from; undefined means the repo root. */
   coverageRoot: string | undefined;
+  /** True when the input or the config turns the requirement on; neither can turn off the other's. */
   requireAgentSetup: boolean;
   /**
    * Config `setup.expect` first, then the input's; validated and de-duplicated, first occurrence kept.
@@ -122,10 +127,16 @@ export function resolveInputs(
     errors.push(new InputError("coverageFormat", text.coverageFormat(coverageFormat)));
   }
 
+  // The input is the trusted floor; the PR-carried config may raise it, never lower it.
+  const inputThreshold =
+    raw.threshold !== undefined ? attempt("threshold", () => parseThreshold(raw.threshold, text.threshold)) : undefined;
+  const configThreshold = config.coverage?.threshold;
   const threshold =
-    raw.threshold !== undefined
-      ? attempt("threshold", () => parseThreshold(raw.threshold, text.threshold))
-      : (config.coverage?.threshold ?? null);
+    inputThreshold === undefined
+      ? (configThreshold ?? null)
+      : configThreshold === undefined
+        ? inputThreshold
+        : Math.max(inputThreshold, configThreshold);
 
   const givenCoverageFile =
     typeof raw.coverageFile === "object" && raw.coverageFile.length === 0 ? undefined : raw.coverageFile;
@@ -183,8 +194,8 @@ export function resolveInputs(
       threshold: threshold as number | null,
       exclude: [...(config.coverage?.exclude ?? []), ...(exclude as string[])],
       coverageRoot,
-      // Absent, setup.require decides, then off. The CLI flag can only turn it on.
-      requireAgentSetup: raw.requireAgentSetup ?? config.setup?.require ?? false,
+      // On when the input or setup.require says so: an input false does not turn off a config true.
+      requireAgentSetup: raw.requireAgentSetup === true || config.setup?.require === true,
       // The config's tools first, then the input's, each once.
       ...(expectedTools.length > 0 ? { expectAgentSetup: expectedTools } : {}),
       ...(modeSettings.input === undefined && modeSettings.config === undefined

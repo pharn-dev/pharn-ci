@@ -105,7 +105,7 @@ function applyCoverage(
   const coverage = document.coverage;
   if (coverage === undefined) return;
 
-  // Threshold: the largest of the policy's and the value in force (the input, else the config).
+  // Threshold: the largest of the policy's and the value in force (the larger of the input and the config).
   if (coverage.threshold !== undefined) {
     const theirs = coverage.threshold;
     const inForce = resolved.threshold;
@@ -113,9 +113,12 @@ function applyCoverage(
       inputs.threshold = theirs;
     } else {
       if (app && inForce < theirs) {
+        // The layer whose value was in force: the input's, unless the config's was larger (a tie names the input).
+        const inputValue = raw.threshold === undefined ? undefined : Number(raw.threshold.trim());
+        const inputInForce = inputValue !== undefined && !(inputValue < inForce);
         ignored.push({
           setting: "coverage.threshold",
-          layer: raw.threshold !== undefined ? "input" : "config",
+          layer: inputInForce ? "input" : "config",
           reason: "looser",
           given: inForce,
           applied: theirs,
@@ -187,10 +190,12 @@ function applySetup(
   // setup.require: true wins over any lower false; false changes nothing.
   if (setup.require !== undefined) {
     if (setup.require) {
-      const inputGiven = raw.requireAgentSetup !== undefined;
-      const lower = inputGiven ? raw.requireAgentSetup : config.setup?.require;
-      if (app && lower === false) {
-        ignored.push({ setting: "setup.require", layer: inputGiven ? "input" : "config", reason: "looser" });
+      // Only a false in force is beaten: when either layer says true, the requirement was already on. The input's
+      // false is named first, as it was when both say false.
+      if (app && !resolved.requireAgentSetup) {
+        const layer =
+          raw.requireAgentSetup === false ? "input" : config.setup?.require === false ? "config" : undefined;
+        if (layer !== undefined) ignored.push({ setting: "setup.require", layer, reason: "looser" });
       }
       inputs.requireAgentSetup = true;
     } else if (!app && resolved.requireAgentSetup) {

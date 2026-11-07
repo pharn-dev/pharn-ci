@@ -106,7 +106,7 @@ Options:
   --coverage-format <f>  lcov, cobertura or auto. Default: coverage.format, then auto
   --coverage-root <dir>  Directory relative coverage paths start from. Default: coverage.root, then the repo root
   --base <ref>         Base to diff against (merge-base with HEAD). Default: origin/main
-  --threshold <n>      Minimum diff coverage percent (0-100). Default: coverage.threshold
+  --threshold <n>      Minimum diff coverage percent (0-100). Default: coverage.threshold; a higher coverage.threshold applies over it
   --format <md|json>   Output format. Default: md
   --exclude <glob>     Leave matching changed files out of diff coverage (repeatable; adds to coverage.exclude)
   --require-agent-setup  Fail when the repo has no agent setup files. Default: setup.require, then off

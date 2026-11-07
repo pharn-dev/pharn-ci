@@ -152,7 +152,10 @@ describe("require-agent-setup: CLI flag and Action input", () => {
       ["", "false", "info"],
       ["true", "false", "error"],
       ["true", "none", "error"],
-      ["false", "true", "info"],
+      // ci.yml may only tighten: an input false no longer turns off setup.require: true (was "info").
+      ["false", "true", "error"],
+      ["false", "false", "info"],
+      ["false", "none", "info"],
     ] as const) {
       const label = `input "${input}", config ${config}`;
       const action = await runAction(input, config);

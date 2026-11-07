@@ -93,7 +93,7 @@ describe("action run", () => {
     ]);
   });
 
-  it("lets the require-agent-setup input override setup.require either way, and empty fall back to it", async () => {
+  it("lets the require-agent-setup input turn setup.require on but not off, and empty fall back to it", async () => {
     const level = async (config: string, value: string) => {
       const h = harness({
         inputs: { "require-agent-setup": value },
@@ -104,7 +104,8 @@ describe("action run", () => {
       return report?.messages.find((m) => m.code === "NO_AGENT_SETUP_FILES")?.level;
     };
     expect(await level("setup:\n  require: true\n", "")).toBe("error");
-    expect(await level("setup:\n  require: true\n", "false")).toBe("info");
+    // ci.yml may only tighten: an input false no longer turns off a config true.
+    expect(await level("setup:\n  require: true\n", "false")).toBe("error");
     expect(await level("setup:\n  require: false\n", "")).toBe("info");
     expect(await level("setup:\n  require: false\n", "yes")).toBe("error");
   });
@@ -377,15 +378,26 @@ describe("action run", () => {
     expect(h.warnings.join("\n")).toContain('input "fail-on-threshold" is deprecated and ignored');
   });
 
-  it("reads defaults from .pharn/ci.yml, with inputs overriding them", async () => {
+  it("reads defaults from .pharn/ci.yml; a stricter threshold input raises its threshold, a looser one does not lower it", async () => {
     const files = {
       [`${WORKSPACE}/.pharn/ci.yml`]: "coverage:\n  file: cov.info\n  threshold: 90\n",
       [`${WORKSPACE}/cov.info`]: fixture("golden/coverage.info"),
     };
     const fromConfig = harness({ files, inputs: { "coverage-file": "" } });
     expect((await run(fromConfig.deps))?.diffCoverage?.threshold).toBe(90);
-    const overridden = harness({ files, inputs: { "coverage-file": "", threshold: "70" } });
-    expect((await run(overridden.deps))?.verdict).toBe("pass");
+    // ci.yml may only tighten: the config's 90 stays over a looser input of 70, and 71.43% fails it.
+    const looser = harness({ files, inputs: { "coverage-file": "", threshold: "70" } });
+    const looserReport = await run(looser.deps);
+    expect(looserReport?.diffCoverage?.threshold).toBe(90);
+    expect(looserReport?.verdict).toBe("fail");
+    const stricter = harness({ files, inputs: { "coverage-file": "", threshold: "95" } });
+    expect((await run(stricter.deps))?.diffCoverage?.threshold).toBe(95);
+    // Without a config threshold, the input alone decides.
+    const inputOnly = harness({
+      files: { ...files, [`${WORKSPACE}/.pharn/ci.yml`]: "coverage:\n  file: cov.info\n" },
+      inputs: { "coverage-file": "", threshold: "70" },
+    });
+    expect((await run(inputOnly.deps))?.verdict).toBe("pass");
   });
 
   it("fails the step when the config input names a file that does not exist", async () => {

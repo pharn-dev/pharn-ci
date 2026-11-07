@@ -467,11 +467,12 @@ check runs with the workflow inputs and `.pharn/ci.yml`. The `policy` and `app-u
 [Action reference](#action-reference). `app-url` takes an `https` origin only: no credentials, path, query or fragment.
 The CLI never fetches a policy.
 
-**Precedence.** The app's policy beats the workflow inputs, which beat `.pharn/ci.yml`. Only the test-integrity mode
-is merged to the stricter value: an input replaces the config's `coverage.threshold`, `file`, `root`, `format` and
-`setup.require`, and with no input the config's values apply as written, a lower threshold or a wider `exclude`
-included. `.pharn/ci.yml` comes from the pull request, so pin a threshold you rely on with the `threshold` input or a
-policy (docs/THREAT-MODEL.md §3, item 37). A served policy:
+**Precedence.** The app's policy beats the workflow inputs, which beat `.pharn/ci.yml`. `coverage.threshold` (the
+larger value applies), `setup.require` (`true` wins) and the test-integrity mode are merged to the stricter value, so
+for these three the config may raise an input but never lower it. An input still replaces the config's `file`, `root`
+and `format`, and `coverage.exclude` is the config's patterns plus the input's. With no input the config's values apply
+as written, a lower threshold or a wider `exclude` included. `.pharn/ci.yml` comes from the pull request, so pin a
+threshold you rely on with the `threshold` input or a policy (docs/THREAT-MODEL.md §3, item 37). A served policy:
 
 - raises `coverage.threshold` (the larger value applies) and `setup.require` (`true` wins), and raises the
   test-integrity mode above the input and the config (`block > warn > off`);
@@ -612,12 +613,12 @@ of the App never both appear for one upload.
 | `coverage-file`     | `coverage.file` from config | Coverage report paths or globs (`*`, `**`, `?`), one per line, relative to the workspace; all are merged ([Coverage per ecosystem](#coverage-per-ecosystem)) |
 | `coverage-format`   | `coverage.format`, then `auto` | `lcov`, `cobertura` or `auto` (detect it from the start of the file) |
 | `coverage-root`     | `coverage.root`, then the repo root | Directory relative coverage paths start from, e.g. `packages/core` in a monorepo |
-| `threshold`         | `coverage.threshold` from config, then none | Minimum diff coverage %, inclusive       |
+| `threshold`         | `coverage.threshold` from config, then none | Minimum diff coverage %, inclusive. A higher `coverage.threshold` in `.pharn/ci.yml` applies over it |
 | `base-ref`          | PR base; merge queue base; on `push`, the previous head (`before`) | Ref or SHA to diff against. A `base-ref` found neither in the checkout nor through the GitHub API fails the step |
 | `pr-number`         | none                        | Pull request to measure when the event has no `pull_request` payload (`workflow_run`, `workflow_dispatch`). The PR, its diff and its file list come from the GitHub API and no PR code is checked out. See [Fork PRs](#fork-prs-comment-from-workflow_run) |
 | `head-sha`          | none                        | Commit SHA the PR head must be; the step fails otherwise. Set it to `${{ github.event.workflow_run.head_sha }}`. Only valid with `pr-number` |
 | `exclude`           | none                        | Globs of changed files to leave out of diff coverage, comma or newline separated; added to `coverage.exclude` |
-| `require-agent-setup` | `setup.require`, then `false` | Fail when the repo has no agent setup files; the step fails through `fail-on-verdict` |
+| `require-agent-setup` | `setup.require`, then `false` | Fail when the repo has no agent setup files; the step fails through `fail-on-verdict`. `false` does not turn off a `setup.require: true` in `.pharn/ci.yml` |
 | `expect-agent-setup` | `setup.expect`, then none  | Agent tools that must have a setup file, comma or newline separated; added to `setup.expect`; a missing one is `AGENT_SETUP_EXPECTED_MISSING` |
 | `test-integrity`    | `warn`                      | How strictly to treat weakened tests: `block`, `warn` or `off`. `test_integrity.mode` in `.pharn/ci.yml` can only make it stricter, never looser (a looser value is ignored with `TEST_INTEGRITY_MODE_IGNORED`). In `block` a block-level finding fails the check, in `warn` it warns, in `off` nothing is checked. The signals so far are TI01 (a test file deleted), TI02 (a test removed from a test file that stays), TI03 (a skip added to a test), TI04 (a `.only`, `fit` or `fdescribe` added), TI05 (a test emptied of its assertions, or with fewer), TI06 (a test weakened), TI07 (an expected value of a test edited to match the source), TI08 (snapshots regenerated or updated in bulk), TI09 (a test-runner setting loosened), TI10 (a test script in `package.json` weakened), TI11 (CI stopped running tests), TI12 (a module under test mocked), TI13 (a coverage-ignore comment added to source), TI14 (a lower coverage threshold or a wider exclusion in the config), TI15 (a source condition that compares with a value the tests add) and TI16 (a lint or type suppression comment added to a test file) |
 | `accept-label`      | `pharn/accepted`            | Name of the pull request label a reviewer who is not the PR author applies to sign off `test-integrity: block` findings, at most 50 characters. Read only from this input, never from `.pharn/ci.yml`. See [Accept label](#accept-label) |
@@ -794,6 +795,8 @@ pharn-ci check [--coverage <file|glob>]... [--coverage-format lcov|cobertura|aut
   or Cobertura XML from the start of the file. The chosen format is printed on stderr, for example
   `coverage: cobertura (auto-detected)`.
 - `--base` defaults to `origin/main`; the diff is `git diff --unified=0 <base>...HEAD`.
+- `--threshold <n>` defaults to `coverage.threshold` from the config. When both are set the larger applies: the config
+  may raise the flag, never lower it.
 - `--exclude <glob>` leaves matching changed files out of diff coverage. Repeat it for several
   patterns; they are added to `coverage.exclude`, never replacing it
   ([Excluding files](#excluding-files)).
@@ -1042,7 +1045,8 @@ inclusive threshold (79.995% fails at 80); which known agent setup files are tra
   any setup kind it reads exists (`AGENTS.md` covers several tools).
 - **The setup requirement and expectations come from the PR.** The `.pharn/ci.yml` a PR carries can
   switch `setup.require` off and drop tools from `setup.expect`, so protect it with CODEOWNERS. The
-  `expect-agent-setup` input in the workflow is the stronger, additive setting.
+  `require-agent-setup: true` and `expect-agent-setup` inputs in the workflow are the stronger settings: the config
+  cannot turn the one off or drop tools from the other.
 - **pharn-ci trusts the coverage file.** The PR's own tests write it in the same job; a PR that
   alters its test setup can produce a favorable one.
 - **Exclusions come from the PR.** The config and workflow a PR carries decide which of its files

@@ -110,7 +110,8 @@ and the tests cite them.
 
 8. **The agent setup requirement comes from the PR.** `setup.require` lives in the PR-carried
    `.pharn/ci.yml`, so a PR can switch the requirement off (and it is off by default). The Action's
-   `require-agent-setup` input in the workflow file is the stronger setting; protect both with
+   `require-agent-setup: true` input in the workflow file is the stronger setting: the config cannot turn it off, and
+   an input `false` no longer turns off a config `true` either (the config may only tighten); protect both with
    CODEOWNERS. **Closed when an app policy sets `setup.require: true`:** it wins over any lower `false`, and
    `POLICY_OVERRIDE_IGNORED` names the layer it beat.
 9. **The coverage root comes from the PR.** `coverage.root` lives in the PR-carried
@@ -355,8 +356,8 @@ and the tests cite them.
     pharn-ci, and pharn-ci's report then sits in a comment that bot can edit; install only bots you trust with pull
     request comments.
 37. **The threshold comes from the PR.** With no `threshold` input, `coverage.threshold` in the PR-carried
-    `.pharn/ci.yml` is the gate, so a PR can lower it or delete it (no threshold, no gate). An input replaces the
-    config's value rather than taking the larger one, so the input is the stronger setting. TI14 reports a lowered,
+    `.pharn/ci.yml` is the gate, so a PR can lower it or delete it (no threshold, no gate). With both set, the
+    larger applies: the config may raise the input, never lower it, so the input is the trusted floor. TI14 reports a lowered,
     removed or unreadable `threshold:` line at the mode's level, but in mode `warn` or `off` it does not block, and it
     does not see a threshold the workflow file changes. Protect `.pharn/ci.yml` and the workflow with CODEOWNERS, or
     set the `threshold` input. **Closed when an app policy sets `coverage.threshold`:** the larger value applies, and

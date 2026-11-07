@@ -13,7 +13,12 @@ describe("docs say what the code does (review 2026-11-01)", () => {
     const readme = flat(read("README.md"));
     expect(readme).toContain("nothing in it phones home unless the job grants `id-token: write`");
     expect(readme).not.toContain("`.pharn/ci.yml` can only tighten");
-    expect(readme).toContain("Only the test-integrity mode is merged to the stricter value");
+    // Updated for fix/ci-yml-only-tightens: the threshold and setup.require now merge to the stricter value too, so
+    // the sentence names all three and what an input still replaces; the blanket claim above stays absent.
+    expect(readme).toContain(
+      "`coverage.threshold` (the larger value applies), `setup.require` (`true` wins) and the test-integrity mode are merged to the stricter value",
+    );
+    expect(readme).toContain("An input still replaces the config's `file`, `root` and `format`");
     expect(readme).not.toContain("fully stateless");
   });
 

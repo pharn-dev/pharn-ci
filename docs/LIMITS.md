@@ -110,8 +110,8 @@ TI14 reads the added and removed lines of the pharn-ci config in use, one line a
   it).
 - **Threshold by line.** Only a plain decimal number on a `threshold:` line counts, read as the config reads it:
   the key and the value may be quoted, a double-quoted value is decoded (`"\u0037\u0030"` is 70), and any number of
-  decimals is read. A value moved onto another key, and a threshold set by the workflow input (which beats the config
-  and is out of the diff's reach) are not seen. A config renamed with no edits shows no lines. A removed threshold
+  decimals is read. A value moved onto another key, and a threshold set by the workflow input (which the config can
+  only raise, and which is out of the diff's reach) are not seen. A config renamed with no edits shows no lines. A removed threshold
   whose replacement the line cannot be read as a plain number (an empty value, a value padded past the 400-character
   kept-line cap) is a finding too: TI14 fails closed rather than guess what the config read.
 - **One comment rule.** TI14 and the config reader end a value at the same `#`: one that starts the line or follows a

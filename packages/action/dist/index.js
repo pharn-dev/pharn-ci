@@ -37865,7 +37865,9 @@ function resolveInputs(config, raw, text, options = {}) {
   if (!isCoverageFormatSelection(coverageFormat)) {
     errors.push(new InputError("coverageFormat", text.coverageFormat(coverageFormat)));
   }
-  const threshold = raw.threshold !== void 0 ? attempt2("threshold", () => parseThreshold(raw.threshold, text.threshold)) : config.coverage?.threshold ?? null;
+  const inputThreshold = raw.threshold !== void 0 ? attempt2("threshold", () => parseThreshold(raw.threshold, text.threshold)) : void 0;
+  const configThreshold = config.coverage?.threshold;
+  const threshold = inputThreshold === void 0 ? configThreshold ?? null : configThreshold === void 0 ? inputThreshold : Math.max(inputThreshold, configThreshold);
   const givenCoverageFile = typeof raw.coverageFile === "object" && raw.coverageFile.length === 0 ? void 0 : raw.coverageFile;
   if (givenCoverageFile !== void 0) {
     attempt2(
@@ -37904,8 +37906,8 @@ function resolveInputs(config, raw, text, options = {}) {
       threshold,
       exclude: [...config.coverage?.exclude ?? [], ...exclude],
       coverageRoot,
-      // Absent, setup.require decides, then off. The CLI flag can only turn it on.
-      requireAgentSetup: raw.requireAgentSetup ?? config.setup?.require ?? false,
+      // On when the input or setup.require says so: an input false does not turn off a config true.
+      requireAgentSetup: raw.requireAgentSetup === true || config.setup?.require === true,
       // The config's tools first, then the input's, each once.
       ...expectedTools.length > 0 ? { expectAgentSetup: expectedTools } : {},
       ...modeSettings.input === void 0 && modeSettings.config === void 0 ? {} : { testIntegrityMode: modeSettings }
@@ -37977,9 +37979,11 @@ function applyCoverage(layers, document2, app, inputs, ignored) {
       inputs.threshold = theirs;
     } else {
       if (app && inForce < theirs) {
+        const inputValue = raw.threshold === void 0 ? void 0 : Number(raw.threshold.trim());
+        const inputInForce = inputValue !== void 0 && !(inputValue < inForce);
         ignored.push({
           setting: "coverage.threshold",
-          layer: raw.threshold !== void 0 ? "input" : "config",
+          layer: inputInForce ? "input" : "config",
           reason: "looser",
           given: inForce,
           applied: theirs
@@ -38038,10 +38042,9 @@ function applySetup(layers, document2, app, inputs, ignored) {
   if (setup2 === void 0) return;
   if (setup2.require !== void 0) {
     if (setup2.require) {
-      const inputGiven = raw.requireAgentSetup !== void 0;
-      const lower = inputGiven ? raw.requireAgentSetup : config.setup?.require;
-      if (app && lower === false) {
-        ignored.push({ setting: "setup.require", layer: inputGiven ? "input" : "config", reason: "looser" });
+      if (app && !resolved.requireAgentSetup) {
+        const layer = raw.requireAgentSetup === false ? "input" : config.setup?.require === false ? "config" : void 0;
+        if (layer !== void 0) ignored.push({ setting: "setup.require", layer, reason: "looser" });
       }
       inputs.requireAgentSetup = true;
     } else if (!app && resolved.requireAgentSetup) {

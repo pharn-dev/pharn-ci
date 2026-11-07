@@ -11,6 +11,14 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- `.pharn/ci.yml` may now only tighten the coverage threshold and the agent setup requirement, as it already did the
+  test-integrity mode. A stricter `coverage.threshold` now applies over a looser `threshold` input or `--threshold`
+  flag (with both set, the larger applies; it was the input's), and `setup.require: true` now stays on when the
+  `require-agent-setup` input is `false` (it was turned off). This is a behaviour change: a workflow that set a lower
+  threshold or `require-agent-setup: false` to relax a stricter config now gets the config's value. An org policy that
+  raises the threshold over a config value that was in force names `config` in `POLICY_OVERRIDE_IGNORED`. The file,
+  root and format inputs still replace the config's, and exclusions are still the config's plus the input's. No new
+  message code and no schema change.
 - An added test file pharn-ci cannot read (the test index refuses it as `syntax-error-heavy`, `too-deep` or
   `parser-threw`, its text was dropped or missing at HEAD, or there is no Python index for a `.py` file) is now named in
   `TEST_INTEGRITY_INDEX_UNAVAILABLE` with its reason code, in a sentence of its own after the TI02 and TI05 one: "The
