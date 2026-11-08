@@ -1090,7 +1090,7 @@ a text filter for content aimed at the next agent, not a judgement of what a tex
   new jailbreak is missed until the list (or an app policy's `injection.phrases`) names it. PH13 and PH14 (the persona
   switch: *you are now* followed by *a* or *an*) also match an ordinary sentence that tells a reader their new role,
   which is a `warn` to dismiss.
-- **No decoding.** Text in base64, hex, ROT13, URL encoding, HTML entities (`&#x202E;`), JSON escapes (`‮`) or
+- **No decoding.** Text in base64, hex, ROT13, URL encoding, HTML entities (`&#x202E;`), JSON escapes (a backslash, `u` and four hex digits) or
   any other encoding is not decoded; PI04 only flags a long base64 or hex run, and only in agent instruction files.
 - **No homoglyphs or confusables.** A Cyrillic `а` in place of a Latin `a`, full-width letters, or mixed-script names
   are not flagged; only the listed invisible and bidirectional characters are.
