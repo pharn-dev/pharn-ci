@@ -44981,7 +44981,7 @@ function buildUploadTar(entries) {
 }
 
 // ../core/src/version.ts
-var VERSION7 = "0.9.0";
+var VERSION7 = "0.9.1";
 
 // ../node-io/src/gitBlobs.ts
 var OBJECT_ID = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;

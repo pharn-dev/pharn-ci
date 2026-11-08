@@ -16,10 +16,11 @@ name: release
 #     release notes to the next job as an artifact.
 #   - `publish` is the ONLY job with `contents: write`, and runs in the `release` environment (give
 #     it a required reviewer). It checks out nothing and installs nothing, so no dependency code runs
-#     while a write token exists. It creates the tag at exactly the commit `verify` checked.
+#     while a write token exists. It creates the tag at exactly the commit `verify` checked, and the
+#     GitHub Release as a draft that the maintainer publishes with the Marketplace box ticked.
 #   - `smoke` runs after `publish` with read-only permission. It checks out the released commit, confirms the
 #     tag points at it, and runs scripts/smoke-release.mjs against that checkout's bundle. Red means: do not
-#     do the Marketplace step (docs/RELEASING.md). `verify` runs the same script on the committed bundle, so
+#     publish the draft (docs/RELEASING.md). `verify` runs the same script on the committed bundle, so
 #     a broken smoke is caught in the dry run, before any tag exists.
 #
 # Job names must not collide with the required check names in ci.yml. This workflow never runs on a
@@ -158,25 +159,32 @@ jobs:
     timeout-minutes: 10
     environment: release
     permissions:
-      contents: write # create the tag and the GitHub Release. THIS job only.
+      contents: write # create the tag and the draft GitHub Release. THIS job only.
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: release-notes
           path: ${{ runner.temp }}/notes
 
-      # `gh` ships with the runner image; nothing is installed here. --target is the exact commit
-      # `verify` checked out and tested, not the branch, so a push to main in between changes nothing.
-      - name: Create tag and GitHub Release
+      # `gh` ships with the runner image; nothing is installed here. The tag is created at $GITHUB_SHA, the exact
+      # commit `verify` checked out and tested, not the branch, so a push to main in between changes nothing.
+      # The release is a DRAFT on purpose: immutable releases lock a published release, and the Marketplace
+      # checkbox exists only on the form that publishes it, so the maintainer publishes the draft by hand with
+      # the box ticked (docs/RELEASING.md, step 4). A draft creates no tag, hence the explicit tag first.
+      - name: Create tag and draft GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::version \"$VERSION\" is not X.Y.Z"; exit 1; }
+          gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f ref="refs/tags/v$VERSION" \
+            -f sha="$GITHUB_SHA" > /dev/null
           gh release create "v$VERSION" \
             --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
+            --verify-tag \
+            --draft \
             --title "v$VERSION" \
             --notes-file "$RUNNER_TEMP/notes/notes.md"
 

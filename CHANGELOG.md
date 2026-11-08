@@ -13,6 +13,17 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Security
 
+## [0.9.1] - 2026-11-08
+
+A release-process fix so pharn-ci can be listed on the GitHub Marketplace. The Action is unchanged from 0.9.0 apart from its version number.
+
+### Changed
+
+- The release workflow now creates each GitHub Release as a draft, which the maintainer publishes with the
+  Marketplace box ticked, so pharn-ci can be listed on the GitHub Marketplace (immutable releases lock a published
+  release, and v0.9.0 could not be listed). The tag is still created at the verified commit; nothing in the Action
+  changed.
+
 ## [0.9.0] - 2026-11-08
 
 Fix hints an agent can act on. Every message and every finding of Report v2 now carries an optional `fix` object that

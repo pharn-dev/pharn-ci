@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-// release-090: README.md pins v0.9.0 in its four `uses: pharn-dev/pharn-ci@` lines (the top snippet, the Quick start
-// workflow and the two "Fork PRs: comment from workflow_run" workflows), its Status note names v0.9.0 as the latest
-// release, and the example comment's footer reads pharn-ci 0.9.0. README.md is read inside the test body.
+// release-091: README.md pins v0.9.1 in its four `uses: pharn-dev/pharn-ci@` lines (the top snippet, the Quick start
+// workflow and the two "Fork PRs: comment from workflow_run" workflows), its Status note names v0.9.1 as the latest
+// release, and the example comment's footer reads pharn-ci 0.9.1. README.md is read inside the test body.
 
 const read = (path: string) => readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8");
 const lines = (text: string) => text.split("\n").map((line) => line.replace(/\r$/, ""));
@@ -17,27 +17,27 @@ function statusNote(all: string[]): string {
   return [all[start] as string, ...(end === -1 ? rest : rest.slice(0, end))].join(" ").replace(/\s+/g, " ");
 }
 
-describe("release-090: README.md pins and Status note", () => {
-  it("AC-4: the four uses: pharn-dev/pharn-ci@ lines pin v0.9.0, the Status note names v0.9.0 as the latest release and no earlier one, no v0.8.0 pin is left, and the example footer reads pharn-ci 0.9.0", () => {
+describe("release-091: README.md pins and Status note", () => {
+  it("AC-4: the four uses: pharn-dev/pharn-ci@ lines pin v0.9.1, the Status note names v0.9.1 as the latest release and no earlier one, no v0.9.0 pin is left, and the example footer reads pharn-ci 0.9.1", () => {
     const all = lines(read("README.md"));
 
     const pins = all
       .map((line) => /^\s*(?:- )?uses:\s*pharn-dev\/pharn-ci@(\S+)/.exec(line)?.[1])
       .filter((ref): ref is string => ref !== undefined);
-    expect(pins).toEqual(["v0.9.0", "v0.9.0", "v0.9.0", "v0.9.0"]);
-    expect(all.filter((line) => line.includes("pharn-ci@v0.8.0"))).toEqual([]);
+    expect(pins).toEqual(["v0.9.1", "v0.9.1", "v0.9.1", "v0.9.1"]);
+    expect(all.filter((line) => line.includes("pharn-ci@v0.9.0"))).toEqual([]);
 
     const status = statusNote(all);
-    expect(status, "the Status note names v0.9.0 as the latest release").toContain("the latest release is `v0.9.0`");
+    expect(status, "the Status note names v0.9.1 as the latest release").toContain("the latest release is `v0.9.1`");
     const tags = [...new Set(status.match(/\bv0\.\d+\.\d+\b/g) ?? [])];
-    expect(tags, "the Status note names no other v0.x.y tag").toEqual(["v0.9.0"]);
+    expect(tags, "the Status note names no other v0.x.y tag").toEqual(["v0.9.1"]);
     expect(status, "and does not say the release is still to come").not.toMatch(
       /not (?:yet |been )?(?:cut|released|tagged)|unreleased/i,
     );
 
     const footers = all.filter((line) => /<sub>pharn-ci \d+\.\d+\.\d+ · /.test(line));
     expect(footers, "the example comment footer").toEqual([
-      "> <sub>pharn-ci 0.9.0 · report schema v2 · coverage format lcov</sub>",
+      "> <sub>pharn-ci 0.9.1 · report schema v2 · coverage format lcov</sub>",
     ]);
   });
 });

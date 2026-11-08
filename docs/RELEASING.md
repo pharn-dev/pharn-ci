@@ -13,8 +13,8 @@ npm yet.
   ([`.github/rulesets/release-tags.json`](../.github/rulesets/release-tags.json)) forbids updating,
   force-pushing or deleting any `v*` tag, with no bypass. A broken release is fixed by releasing a
   new patch version.
-- **Tags are not signed.** Release tags are created by `gh release create` in the `Release publish`
-  job, through the GitHub API, so they are lightweight and not signed: there is no tag signature to
+- **Tags are not signed.** Release tags are created by the `Release publish` job through the GitHub
+  REST API (`git/refs`), so they are lightweight and not signed: there is no tag signature to
   verify. The `main` ruleset's signed-commits rule covers commits, not tags. The integrity control
   is the commit SHA: consumers should pin the full commit SHA the tag points at, not the tag name,
   and can check that the commit is on `main` and that its bundle rebuilds from the sources
@@ -94,20 +94,24 @@ that worked on the previous release. Before 1.0 the rules are:
    `Release publish` waits for approval in the `release` environment (today the maintainer approves
    their own release; see [`SECURITY.md`](../SECURITY.md#maintainer-model-one-person-today)), then
    creates the tag `vX.Y.Z`
-   at exactly the commit that was verified and the GitHub Release with the changelog section as its
-   notes. The publishing job has `contents: write` and checks out and installs nothing.
+   at exactly the commit that was verified and a **draft** GitHub Release with the changelog section as
+   its notes. The publishing job has `contents: write` and checks out and installs nothing.
    - **Release smoke.** After `Release publish`, the `Release smoke` job checks out the new tag and runs
      `node scripts/smoke-release.mjs .`. It builds a throwaway repository from `fixtures/smoke/`, runs the tagged
      bundle with no token and no event, and checks the exit code, the `verdict` output, the job summary and the
      footer version. It then runs the same bundle a second time with the network forbidden (the OIDC variables
      point at a closed loopback port, `fetch` always fails, and a synthetic run context lets the org policy and
      the upload reach their token request) and checks that the exit code, the verdict and `report.json` match the
-     first run apart from the `meta` only the second run has. If `Release smoke` is red, skip the Marketplace
-     step and fix it with a new patch release (tags never move).
-4. **The Marketplace.** The workflow creates the release through the API, which does not list it on
-   the GitHub Marketplace. Open the new release, choose **Edit**, tick **Publish this Action to the
-   GitHub Marketplace** (the first time, accept the agreement and pick the categories) and save.
-   Check that the Marketplace page shows the new version.
+     first run apart from the `meta` only the second run has. If `Release smoke` is red, do not publish
+     the draft or list it on the Marketplace; fix it with a new patch release (tags never move).
+4. **The Marketplace.** Publish the draft and list it in one step. Open the draft release on the Releases page, choose
+   **Edit**, tick **Publish this Action to the GitHub Marketplace** (the first time, accept the
+   agreement), pick the categories from [`docs/MARKETPLACE.md`](./MARKETPLACE.md) (Continuous
+   integration, then Testing), leave the title, notes and the **Latest** label as they are, and choose
+   **Publish release**. This has to happen on the draft: immutable releases lock a release once it is
+   published, and GitHub offers the Marketplace box only on the form that publishes it, so a release
+   published without it can never be listed (v0.9.0 could not be). Check that the Marketplace page shows the new
+   version.
 
 ## Verify the release
 

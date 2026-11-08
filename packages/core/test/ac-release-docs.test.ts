@@ -230,9 +230,9 @@ describe("release readiness: docs/RELEASING.md release steps and tag signing", (
     expect(pins, "the pins come before the dispatch").toBeLessThan(dispatch);
   });
 
-  it("says release tags are created by gh release create, are not signed, and consumers pin the full commit SHA", () => {
+  it("says release tags are created through the REST API, are not signed, and consumers pin the full commit SHA", () => {
     const policy = section(read("docs/RELEASING.md"), "Tag policy").join(" ").replace(/\s+/g, " ").toLowerCase();
-    expect(policy).toContain("created by `gh release create`");
+    expect(policy).toContain("created by the `release publish` job through the github rest api");
     expect(policy).toContain("not signed");
     expect(policy).toContain("pin the full commit sha");
   });
