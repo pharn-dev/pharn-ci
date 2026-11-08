@@ -121,8 +121,11 @@ describe("TI08, TI15 and TI16: schemas and documents", () => {
     const isAgentPr = ["properties", "meta", "properties", "isAgentPr"];
     // A8 step 1 (TESTS_NOT_EXERCISING_CHANGES) adds the optional testIntegrity.exercise property: set aside the same way.
     const exercise = ["properties", "testIntegrity", "properties", "exercise"];
-    expect(setAside(now, [...paths, languages, changes, isAgentPr, exercise])).toEqual(
-      setAside(before, [...paths, languages, changes, isAgentPr, exercise]),
+    // Re-pinned for stale instructions (Horizon 2 item H3), which adds the optional top-level setupHealth object: set
+    // aside on both sides the same way.
+    const setupHealth = ["properties", "setupHealth"];
+    expect(setAside(now, [...paths, languages, changes, isAgentPr, exercise, setupHealth])).toEqual(
+      setAside(before, [...paths, languages, changes, isAgentPr, exercise, setupHealth]),
     );
     const [path] = paths as [string[]];
     const beforeText = getAt(before, path) as string;

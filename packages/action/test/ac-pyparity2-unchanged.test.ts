@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { foldCoverageBar } from "../../core/test/helpers.js";
 import { withoutSchemaLevelEdits } from "../../core/test/level-edits.js";
-import { withoutV070ExerciseSchema } from "../../core/test/v070-codes.js";
+import { withoutV070Properties } from "../../core/test/v070-codes.js";
 
 // Reads the repository and the base commit with git; nothing the build adds is loaded. The base is the commit this
 // increment starts from. The committed action dist must be a fresh bundle that carries the alias reader, so this test
@@ -57,6 +57,12 @@ const SECRET_CODES = [
   // Re-pinned for A8 step 1: the schema's message-code description (in a " Codes added in v0.7.0:" text) and report.ts
   // also gain this code; this only adds to what the pin allows.
   "TESTS_NOT_EXERCISING_CHANGES",
+  // Re-pinned for stale instructions (Horizon 2 item H3): the same " Codes added in v0.7.0:" text and report.ts also gain
+  // these four codes; this only adds to what the pin allows.
+  "SETUP_STALE_SI01",
+  "SETUP_STALE_SI02",
+  "SETUP_STALE_SI03",
+  "SETUP_STALE_SI04",
 ];
 
 const git = (...args: string[]) =>
@@ -168,7 +174,9 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
       // TEST_INTEGRITY_INDEX_UNAVAILABLE are taken out first (level-edits.ts); every other byte stays pinned.
       // Re-pinned for A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): the optional testIntegrity.exercise property is taken
       // out too (v070-codes.ts pins it exactly); its code is in the appended text cut out below.
-      const withIsAgentPr = withoutSchemaLevelEdits(withoutV070ExerciseSchema(read(`schema/${name}`)));
+      // Re-pinned for stale instructions (Horizon 2 item H3): its top-level setupHealth property is taken out the same
+      // way.
+      const withIsAgentPr = withoutSchemaLevelEdits(withoutV070Properties(read(`schema/${name}`)));
       expect(withIsAgentPr.split(isAgentPrLines).length - 1, "the four isAgentPr lines appear once").toBe(1);
       const currentText = withIsAgentPr.replace(isAgentPrLines, "");
       const sentenceEnd = currentText.indexOf(FINAL_SENTENCE) + FINAL_SENTENCE.length;

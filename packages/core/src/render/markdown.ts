@@ -1,7 +1,14 @@
 import { DEFAULT_ACCEPT_LABEL, GITHUB_LOGIN } from "../acceptLabel.js";
 import type { CoverageFormat } from "../coverage/types.js";
 import type { PolicyUnavailableReason } from "../policy/resolved.js";
-import { formatNumber, type Message, type MessageCode, type Report, type ReportPolicyViolation } from "../report.js";
+import {
+  formatNumber,
+  type Message,
+  type MessageCode,
+  type Report,
+  type ReportPolicyViolation,
+  type ReportStaleInstruction,
+} from "../report.js";
 import { summarizeAgentSetup } from "../setup/summary.js";
 import { replaceUnsafeChars } from "../text.js";
 import { logoMarkup } from "./logo.js";
@@ -167,6 +174,13 @@ export const MESSAGE_HINTS: Readonly<Record<MessageCode, Hint>> = {
     "Split the agent pull request into smaller ones, one per area named, or ask the policy owner to change `agents.max_files` or `agents.max_changed_lines`. Lockfiles, snapshots and `*.generated.*` files do not count.",
   TESTS_NOT_EXERCISING_CHANGES:
     "Add or update a test that imports each listed file and asserts on the changed behaviour, or say in the PR why no test changes. This is a warning only.",
+  // Stale instructions (H3): the instruction file is what to fix, never the check.
+  SETUP_STALE_SI01:
+    "Make the command match a script in the root package.json or a target in the root Makefile, or remove it from the instruction file.",
+  SETUP_STALE_SI02: "Point the instruction at the path where the file now lives, or remove the line.",
+  SETUP_STALE_SI03: "Point the link or `@` import at a file that exists, or remove it.",
+  SETUP_STALE_SI04:
+    "Read the instruction file next to the files this change edits, and update it where it no longer matches.",
 };
 
 /** The hint text for a message code, or undefined when it has none. `label` is the report's accept label. */
@@ -501,6 +515,72 @@ function policyLines(report: Report, maxRows: number): string[] {
   return lines;
 }
 
+const STALE_IDS: readonly string[] = ["SI01", "SI02", "SI03", "SI04"];
+/** Fixed words per kind; the token, when the report carries one, is a code span. */
+const STALE_WORDS: Readonly<Record<string, (token: string) => string>> = {
+  command: (token) => `command${token} is not defined in the root package.json or Makefile`,
+  path: (token) => `path${token} is not in the repository`,
+  file: (token) => `file${token} to read is not in the repository`,
+};
+
+/** The stale-instruction findings a report carries; a hand-built report is untrusted, so only well-formed entries count. */
+function staleFindingsOf(report: Report): ReportStaleInstruction[] {
+  const stale: unknown = report.setupHealth?.stale;
+  if (!Array.isArray(stale)) return [];
+  return (stale as ReportStaleInstruction[]).filter(
+    (finding) =>
+      typeof finding === "object" &&
+      finding !== null &&
+      STALE_IDS.includes(finding.id) &&
+      typeof finding.path === "string" &&
+      Number.isSafeInteger(finding.line) &&
+      typeof finding.kind === "string" &&
+      Object.hasOwn(STALE_WORDS, finding.kind),
+  );
+}
+
+/**
+ * The Instructions section: each stale-instruction finding (warnings first) as the id, `path:line` and fixed words with
+ * the token as a code span, then one hint per id found. Nothing but the report's paths, numbers and tokens.
+ */
+function staleLines(report: Report, maxRows: number): string[] {
+  const findings = staleFindingsOf(report);
+  if (findings.length === 0) return [];
+  const label = acceptLabelOf(report);
+  const lines: string[] = ["### 📄 Instructions", ""];
+  const ordered = [...findings.filter((f) => f.id !== "SI04"), ...findings.filter((f) => f.id === "SI04")];
+  const listed = ordered.slice(0, Math.min(MAX_FINDINGS, maxRows));
+  const findingLine = (finding: ReportStaleInstruction): string => {
+    const token = typeof finding.token === "string" ? ` ${code(finding.token)}` : "";
+    const words =
+      finding.id === "SI04"
+        ? `last changed more than 90 days ago, and names${token === "" ? " a file" : token}, which this change edits`
+        : (STALE_WORDS[finding.kind] as (token: string) => string)(token);
+    const icon = finding.id === "SI04" ? LEVEL_ICON.info : LEVEL_ICON.warn;
+    return `- ${icon} **${finding.id}** ${code(`${finding.path}:${finding.line}`)} — ${words}`;
+  };
+  for (const finding of listed.slice(0, OPEN_FINDINGS)) lines.push(findingLine(finding));
+  const folded = listed.slice(OPEN_FINDINGS);
+  if (folded.length > 0) {
+    lines.push(
+      "",
+      `<details><summary>${countOf(folded.length, "more finding", "more findings")}</summary>`,
+      "",
+      ...folded.map(findingLine),
+      "",
+      "</details>",
+      "",
+    );
+  }
+  if (findings.length > listed.length) lines.push(`- _…and ${findings.length - listed.length} more in report.json._`);
+  for (const id of STALE_IDS) {
+    if (findings.some((finding) => finding.id === id))
+      lines.push(`- ${id} hint: ${hintFor(`SETUP_STALE_${id}`, label)}`);
+  }
+  lines.push("");
+  return lines;
+}
+
 /** Render a Report as GitHub-flavored markdown (PR comment, job summary, CLI). */
 export function renderMarkdown(report: Report, options: RenderMarkdownOptions = {}): string {
   const maxRows = options.maxRows ?? 50;
@@ -560,6 +640,8 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
     ...testChangesLines(report, maxRows),
   );
   if (hasPolicy(report)) out.push(...policyLines(report, maxRows));
+  const stale = staleLines(report, maxRows);
+  out.push(...stale);
 
   // Before the agent setup inventory: when the Action has to drop rows to fit a size limit, the
   // reason for the verdict is never what goes.
@@ -581,6 +663,7 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
     (m) =>
       !(SIGNAL_MESSAGE_CODE.test(m.code) && listedIds.has(m.code)) &&
       !inPolicySection(m.code) &&
+      !(stale.length > 0 && m.code.startsWith("SETUP_STALE_")) &&
       !(m.code === "TEST_INTEGRITY_ACCEPTED" && acceptedShown(report)) &&
       !(m.code === "TESTS_NOT_EXERCISING_CHANGES" && exercisePaths(report) !== null),
   );

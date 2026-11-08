@@ -1,0 +1,43 @@
+---
+globs: src/**/*.ts
+description: `missing/frontmatter.ts`
+---
+# Guards
+
+Docs live at `https://example.com/docs/guide.md` and `http://x.test/a.md`.
+Match files with `src/**/*.ts`, `*.test.ts`, `src/?.ts` and `{a,b}/c.ts`.
+Replace `<package>/src/index.ts` and `path/to/<file>.md`.
+Set `$HOME/config.yml`, `${ROOT}/x.md` and `%APPDATA%/y.md`.
+Your settings are in `~/.config/tool/config.json` and `/etc/hosts.conf`.
+Installed code sits in `node_modules/foo/index.js`; builds go to `dist/index.js` and `coverage/lcov.info`.
+Pass `--config.json` or `-f`; versions `v1.2.3`, `1.2.3`, `node@24`.
+Import `@scope/pkg/index.js` and `next/link`; run on `Node.js`; see `owner/repo`.
+Copy `.env.example` to `.env`, and keep `.claude/settings.local.json` on your machine.
+State lives in `cache/.state/run.json`.
+Do not edit `src/generated/schema.ts` by hand.
+The `scripts/old-release.sh` script was removed.
+
+## Deprecated commands
+
+Run `npm run legacy-build` and see `old/place.md`.
+
+## Snippets
+
+```ts
+import { x } from "./missing/example.ts";
+```
+
+```json
+{ "path": "missing/config.json", "script": "pnpm run json-missing" }
+```
+
+    indented `missing/indented.md` and `pnpm run indented-missing`
+
+<!-- `missing/commented.md` and [a link](missing/commented-link.md) -->
+
+Builtins and binaries: `pnpm install`, `pnpm add -D vitest`, `pnpm dlx create-x`, `pnpm exec tsc`,
+`pnpm vitest run`, `pnpm tsc --noEmit`, `yarn`, `yarn add x`, `npx missing-tool`, `pnpm -r build-all`,
+`pnpm --filter web dev-web`, `npm run storybook --workspace web`, `cd packages/web && pnpm run web-only`,
+`bun run scripts/seed.ts`, `make`, `make -C sub sub-target`, `make -f other.mk other`, `pnpm test`, `yarn test`.
+Links that are not files: [top](#top), [mail](mailto:a@example.com), [site](https://example.com/a.md).
+Emails like a@b.md and handles like @someone or @types/node stay prose.

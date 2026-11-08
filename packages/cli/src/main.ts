@@ -27,6 +27,7 @@ import {
   renderMarkdown,
   resolveInputs,
   resolveTestIntegrityMode,
+  type StaleInstructionSources,
   scanAgentSetup,
   type TestSources,
   unavailableTestSources,
@@ -43,6 +44,7 @@ import {
   readDiscoveredCoverage,
   readPolicyFile,
   readPolicySettingsSources,
+  readStaleInstructionSources,
   readTestSources,
 } from "@pharn-ci/node-io";
 
@@ -391,6 +393,21 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     }
   }
 
+  // Stale instructions (SI01 to SI04): the committed instruction files, the root package.json and Makefile, and SI04's
+  // commit times, in calls of their own. Only with a batch git runner and a diff; nothing read is printed.
+  let staleInstructionSources: StaleInstructionSources | undefined;
+  if (deps.gitBatch !== undefined && "parsed" in diff) {
+    staleInstructionSources = await readStaleInstructionSources(
+      { gitBatch: deps.gitBatch, git: (args) => deps.git(args) },
+      { repoFiles, diff: diff.parsed, base },
+    );
+    if (staleInstructionSources !== undefined && "unavailable" in staleInstructionSources.instructions) {
+      deps.stderr(
+        `pharn-ci: could not read the agent instruction files from git, so stale instructions are not checked: ${staleInstructionSources.instructions.unavailable}\n`,
+      );
+    }
+  }
+
   // File sizes in HEAD, so an empty agent setup file can be reported. Optional: without them the check still runs. The
   // raw text is kept: policy mode tells the tracked symbolic links from it.
   let repoFileBytes: Map<string, number> | undefined;
@@ -439,6 +456,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     ...(repoFileBytes === undefined ? {} : { repoFileBytes }),
     ...(agentConfigSources === undefined ? {} : { agentConfigSources }),
     ...(agentInstructionSources === undefined ? {} : { agentInstructionSources }),
+    ...(staleInstructionSources === undefined ? {} : { staleInstructionSources }),
     exclude,
     requireAgentSetup,
     ...(expectAgentSetup === undefined ? {} : { expectAgentSetup }),

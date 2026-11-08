@@ -5,7 +5,7 @@ import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { V060_CODE_TEXT, V060_CODES } from "./v060-codes.js";
-import { V070_CODE_TEXT, V070_CODES, withoutV070ExerciseSchema } from "./v070-codes.js";
+import { V070_CODE_TEXT, V070_CODES, withoutV070Properties } from "./v070-codes.js";
 
 // The schemas, report.ts and fixtures/upload/bundle-golden/meta.json are read inside each test body: the build writes
 // or changes them after this test. The base is main at f563d7d, read with git.
@@ -151,7 +151,9 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
     // TEST_INTEGRITY_INDEX_UNAVAILABLE are taken out first (level-edits.ts); every other byte stays pinned.
     // Re-pinned for A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): the optional testIntegrity.exercise property is taken out
     // too (v070-codes.ts pins it exactly), and the v0.7.0 code text joins the description and its code the added words.
-    const v2 = withoutSchemaLevelEdits(withoutV070ExerciseSchema(read("schema/report.v2.json")));
+    // Re-pinned for stale instructions (Horizon 2 item H3): its top-level setupHealth property is taken out the same
+    // way; its codes join V070_CODES and report.ts also gains the SI ids below.
+    const v2 = withoutSchemaLevelEdits(withoutV070Properties(read("schema/report.v2.json")));
     const baseDescription = strings(JSON.parse(v2Base)).find((s) => s.includes(" Codes added in v0.4.0:"));
     expect(baseDescription, "control: the base has the v0.4.0 text").toBeDefined();
     const description = strings(JSON.parse(v2)).find((s) => s.includes(" Codes added in v0.4.0:"));
@@ -196,6 +198,10 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
         "POLICY_P07",
         ...V060_CODES,
         ...V070_CODES,
+        "SI01",
+        "SI02",
+        "SI03",
+        "SI04",
         "UPLOAD_TOO_LARGE",
       ].sort(),
     );

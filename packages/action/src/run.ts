@@ -27,6 +27,7 @@ import {
   renderMarkdown,
   resolveInputs,
   resolveTestIntegrityMode,
+  type StaleInstructionSources,
   scanAgentSetup,
   selectSelfModificationPaths,
   type TestIntegrityModeSettings,
@@ -46,6 +47,7 @@ import {
   readDiscoveredCoverage,
   readPolicyFileAt,
   readPolicySettingsSources,
+  readStaleInstructionSources,
   readTestSources,
 } from "@pharn-ci/node-io";
 import { applyAcceptLabel } from "./accept-label.js";
@@ -394,6 +396,8 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const agentInstructionSources = await gatherAgentInstructionSources(deps, { repoFiles, diff, target, policy });
   // The merge-base and head text of the agent settings, MCP, workflow and CODEOWNERS files the change touches (rule P13).
   const selfModificationSources = await gatherSelfModificationSources(deps, { diff, localBase, target, policy });
+  // Stale instructions (SI01 to SI04): the committed instruction files, the root manifests and SI04's commit times.
+  const staleInstructionSources = await gatherStaleInstructionSources(deps, { repoFiles, diff, localBase, target });
   // The Python test files of the sources, indexed by one interpreter run; nothing runs for JS/TS-only changes.
   const pythonTestIndex =
     testSources === undefined
@@ -451,6 +455,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     agentPrFacts,
     ...(policyFileBase === undefined ? {} : { policyFileBase }),
     ...(selfModificationSources === undefined ? {} : { selfModificationSources }),
+    ...(staleInstructionSources === undefined ? {} : { staleInstructionSources }),
   };
   const runMetaBase = runMeta(deps.context, { baseRef: baseRefInput, ...(target === undefined ? {} : { target }) });
   if (runMetaBase === undefined) deps.info("run metadata is incomplete, so report.json carries no meta");
@@ -793,6 +798,37 @@ async function gatherAgentInstructionSources(
   if ("unavailable" in sources) {
     deps.info(
       `pharn-ci: could not read the agent instruction files from git, so P07 did not compare them: ${sources.unavailable}`,
+    );
+  }
+  return sources;
+}
+
+/**
+ * What the stale-instruction signals (SI01 to SI04) read; undefined when they do not run: no batch git runner, PR-number
+ * mode, or a diff that did not come from the local checkout (the compare API, or none), since the checkout may then not
+ * be the pull request head. The reads are of committed objects in calls of their own, and nothing read is logged.
+ */
+async function gatherStaleInstructionSources(
+  deps: ActionDeps,
+  from: {
+    repoFiles: readonly string[];
+    diff: CheckInput["diff"];
+    localBase: string | undefined;
+    target: PrNumberTarget | undefined;
+  },
+): Promise<StaleInstructionSources | undefined> {
+  if (deps.gitBatch === undefined || from.target || !("parsed" in from.diff)) return undefined;
+  const sources = await readStaleInstructionSources(
+    { gitBatch: deps.gitBatch, git: (args) => deps.git(args) },
+    {
+      repoFiles: from.repoFiles,
+      diff: from.diff.parsed,
+      ...(from.localBase === undefined ? {} : { base: from.localBase }),
+    },
+  );
+  if (sources !== undefined && "unavailable" in sources.instructions) {
+    deps.info(
+      `pharn-ci: could not read the agent instruction files from git, so stale instructions are not checked: ${sources.instructions.unavailable}`,
     );
   }
   return sources;

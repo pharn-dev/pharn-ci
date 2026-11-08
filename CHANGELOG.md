@@ -20,10 +20,24 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   re-exports and per-test coverage are not followed (docs/LIMITS.md). It reads only the touched test files' text the
   signals already read, and is silent in mode `off`, without a diff and without that text. Report v2 gains the message
   code and the optional field; nothing was removed or renamed.
+- Stale agent instructions, signals SI01 to SI04: on a change that touches an agent instruction file (`CLAUDE.md`,
+  `AGENTS.md`, `.cursor/rules`, `.github/copilot-instructions.md` and the other instruction kinds), or that deletes,
+  renames or removes what one names, pharn-ci reports a backticked command whose script is not in the root
+  `package.json` or whose target is not in the root `Makefile` (SI01, `SETUP_STALE_SI01`), a backticked path that is not
+  tracked (SI02), a linked or `@`-imported file that is not tracked (SI03), all `warn`, and an instruction file last
+  changed more than 90 days before HEAD's commit that names a file the change edits (SI04, `info`). Report v2 gains the
+  optional `setupHealth.stale` list and the four codes; the PR comment gains a **📄 Instructions** section. No finding
+  fails the check, and without a diff nothing is checked.
 
 ### Changed
 
 ### Security
+
+- The CLI and the Action now read the committed text of the agent instruction files (at most 50, 256 KiB scanned
+  each), the root `package.json` and `Makefile`, and `git log` times of up to 20 instruction files on every run with a
+  local diff, with or without an org policy. Only inline code, shell blocks, link targets and `@` imports are read; a
+  finding names a path or command made of repo-path characters only, and nothing else of the files leaves the job
+  (`docs/THREAT-MODEL.md` row C8, residual 40).
 
 ## [0.6.0] - 2026-11-08
 

@@ -1025,6 +1025,56 @@ for ten shapes of secret by prefix and position. It is a heuristic, not a secret
   no A7 message.
 - **A finding is not a removal.** A secret already in git history stays there after the file is fixed; revoke it.
 
+## Stale agent instructions
+
+SI01 to SI04 (`SETUP_STALE_*`) compare the commands and paths the agent instruction files name with the tracked files,
+the root `package.json` and the root `Makefile`. They are a heuristic at `warn` (SI04 `info`), not a review of the
+instructions, and they never fail the check. What they miss:
+
+- **Prose without backticks is never read.** "Run the build script" or a path written in a sentence names nothing; only
+  inline code spans, shell-fenced (or unmarked) blocks, Markdown link targets and `@path` imports count. HTML links
+  (`<a href>`, `<img src>`) and reference-style links used before their definition line are not read.
+- **Only root scripts and targets.** SI01 compares commands with the root `package.json` scripts and the root `Makefile`
+  targets, and only for instruction files that apply to the whole repository. A nested `package.json` in a monorepo,
+  scripts defined in a workspace package, a non-root `Makefile`, a `Taskfile`, a `justfile`, `turbo` or `nx` tasks,
+  `composer`, `cargo`, `poetry` and `npx` commands are not compared. A command with a workspace flag (`--filter`, `-w`,
+  `-r`, `--prefix`, `-C`) or after a `cd` is skipped.
+- **Builtins and binaries are guessed.** pnpm's and yarn's own commands and a fixed list of common binaries
+  (`tsc`, `eslint`, `vitest`, ...) plus every dependency name are never called missing scripts, so `pnpm misspelled`
+  is reported only when it is none of those. `npm run x`, `bun run x`, `pnpm run x` and `yarn run x` always name a
+  script. A `Makefile` with an `include`, a pattern rule (`%`) or a target built from a variable is not judged.
+- **Script names with unusual characters are skipped.** A script or target with a character outside letters, digits and
+  `. _ - + / : @` is not compared, and a path with a space or a non-ASCII character is not read.
+- **Paths are matched by name, not by meaning.** A token counts as present when it is a tracked file or directory from
+  the root or from the instruction file's directory, or the end of any tracked path (`src/check.ts` matches
+  `packages/core/src/check.ts`), so a stale path that happens to exist elsewhere is missed, and a bare file name is
+  present when any tracked file has it.
+- **Untracked on purpose is not stale.** Paths under `node_modules`, `dist`, `build`, `out`, `coverage`, `target` and
+  other build-output or cache directories, `.env` files, names with `.local`, paths through a dot directory that is not
+  tracked (`pharn/.run/x`), extensionless tokens whose first segment is not a tracked entry or is a dependency name
+  (`next/link`, `owner/repo`) and files a tool creates later are never reported, even when an instruction tells the
+  agent to read them.
+- **Examples and negations are word heuristics.** A fenced block in any language but a shell is an example and is not
+  read; an indented block, an HTML comment and frontmatter are not read; a line or a section under a heading with
+  `not`, `never`, `don't`, `avoid`, `instead`, `deprecated`, `removed`, `legacy`, `example` or a similar word is
+  skipped. A legacy name in a line without such a word ("equivalent to `middleware.ts`") is still read.
+- **Diff-aware by design.** A stale token in an instruction file the change does not touch is reported only when the
+  change deletes or renames the path or file it names, or removes the script or target from the root manifest. A
+  repository whose instructions went stale over many past pull requests shows nothing until one of those files is
+  edited. Without a diff nothing is checked.
+- **SI04 needs history and is coarse.** The instruction file's last commit is read with `git log -1 --format=%ct`; on a
+  shallow checkout (the `actions/checkout` default) every file's last commit is HEAD, so SI04 is silent; use
+  `fetch-depth: 0`. A file is old after 90 days, a fixed value. Only exact paths count as named, and at most 20
+  instruction files are timed. An old file that still describes the code is reported all the same (`info`).
+- **Caps.** At most 50 instruction files (in path order), the first 256 KiB of each and 2000 tokens per file are read;
+  the root `package.json` and `Makefile` are read up to 512 KiB. At most 20 findings per file and signal and 100 in
+  all are listed; the messages count the rest. The tracked files are read from `git ls-files`.
+- **The Action reads only with a local diff.** In PR-number mode, with a compare-API diff or without a batch git
+  runner nothing is read and nothing is reported. A failed read of the instruction files writes one log line and
+  reports nothing; a failed manifest read leaves SI01 out, a failed `git log` leaves SI04 out.
+- **The org policy does not set these levels yet.** `test_integrity.signals` and the policy rules do not name SI01 to
+  SI04, so a policy cannot raise them to `error`.
+
 ## Org policy
 
 The org policy (`policy: auto`, `required` or `file:<path>`; see the README, Org policy) is fetched, validated and

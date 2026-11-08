@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
-import { V070_CODES, withoutV070ExerciseSchema } from "./v070-codes.js";
+import { V070_CODES, withoutV070Properties } from "./v070-codes.js";
 
 // Reads the repository and two fixed commits with git; nothing the build adds is loaded. b31de0c is the commit the
 // precision-v030 pin compares schema/report.v2.json with; e13765681e… is the one the pyparity2 pin compares the schema
@@ -116,7 +116,9 @@ describe("the v0.4.0 codes are the only schema and report.ts additions, and the 
     // Re-pinned by docs-schema-levels: the two insertions that state the block-mode levels of DIFF_UNAVAILABLE and
     // TEST_INTEGRITY_INDEX_UNAVAILABLE are taken out first (level-edits.ts); every other byte stays pinned.
     // Re-pinned for A8 step 1: the optional testIntegrity.exercise property is taken out too (v070-codes.ts pins it).
-    const schemaWithIsAgentPr = withoutSchemaLevelEdits(withoutV070ExerciseSchema(read("schema/report.v2.json")));
+    // Re-pinned for stale instructions (Horizon 2 item H3): its top-level setupHealth property is taken out the same
+    // way, and its four SETUP_STALE_ codes join V070_CODES.
+    const schemaWithIsAgentPr = withoutSchemaLevelEdits(withoutV070Properties(read("schema/report.v2.json")));
     expect(schemaWithIsAgentPr.split(isAgentPrLines).length - 1, "the four isAgentPr lines appear once").toBe(1);
     const schema = schemaWithIsAgentPr.replace(isAgentPrLines, "");
 

@@ -33,6 +33,7 @@ import {
 import { agentConfigSecretMessages } from "./secrets/messages.js";
 import { type AgentConfigSources, agentConfigSecretPaths } from "./secrets/scan.js";
 import { scanAgentSetup } from "./setup/scan.js";
+import { detectStaleInstructions, type StaleInstructionSources, staleInstructionMessages } from "./setup/stale.js";
 import { summarizeAgentSetup } from "./setup/summary.js";
 import { detectUnexercisedChanges } from "./signals/exercise.js";
 import { capFindings } from "./signals/findingCap.js";
@@ -209,6 +210,13 @@ export interface CheckInput {
    * means P13 adds nothing and the report is the one it was.
    */
   selfModificationSources?: TestSources;
+  /**
+   * What the stale-instruction signals (SI01 to SI04) read, gathered by the CLI and the Action when the diff is
+   * available: the instruction files at HEAD, the root package.json and Makefile, and SI04's commit times (see
+   * `StaleInstructionSources`). Only a diff starts them, and a finding is kept only when the change touches the
+   * instruction file or removes what it names. Absent means the signals add nothing and the report is the one it was.
+   */
+  staleInstructionSources?: StaleInstructionSources;
 }
 
 /** Signals sorted by id, then path, then line (none first), then detail, in code-unit order. */
@@ -516,6 +524,17 @@ export function check(input: CheckInput): Report {
     input.agentConfigSources === undefined
       ? []
       : agentConfigSecretMessages(input.agentConfigSources, agentConfigSecretPaths(agentSetup));
+  // Stale instructions (SI01 to SI04) need the diff: without one nothing runs, so there is no finding and no message.
+  const stale =
+    parsedDiff === null || input.staleInstructionSources === undefined
+      ? null
+      : detectStaleInstructions({
+          sources: input.staleInstructionSources,
+          diff: parsedDiff,
+          repoFiles: input.repoFiles,
+          agentSetup,
+        });
+  const staleMessages = stale === null ? [] : staleInstructionMessages(stale.findings, stale.omitted);
   const base = {
     version: input.version,
     threshold: input.threshold,
@@ -548,6 +567,8 @@ export function check(input: CheckInput): Report {
     ...(testChanges === undefined ? {} : { testChanges }),
     ...(testExercise === undefined ? {} : { testExercise }),
     ...(comparison?.configUnavailable === undefined ? {} : { testConfigUnavailable: comparison.configUnavailable }),
+    ...(stale === null || stale.findings.length === 0 ? {} : { staleInstructions: stale.findings }),
+    ...(staleMessages.length === 0 ? {} : { staleInstructionMessages: staleMessages }),
     ...(agentConfigMessages.length === 0 ? {} : { agentConfigSecretMessages: agentConfigMessages }),
     ...(policyMessages.length === 0 ? {} : { policyMessages }),
   };

@@ -101,7 +101,10 @@ describe("pharn-ci check: P07 under --policy-file", { timeout: 120_000 }, () => 
     expect(without.report.policy).toBeUndefined();
     expect(p07(without.report)).toEqual([]);
     expect(without.report.messages.filter((m) => m.code === "POLICY_P07")).toEqual([]);
-    expect(namingInstructions(without.calls)).toEqual([]);
+    // Re-pinned for stale instructions (Horizon 2 item H3): without a policy the one call that names the instruction
+    // files is the stale-instruction read (a batch check of its own); with the policy file P07 adds a second one.
+    expect(namingInstructions(without.calls)).toHaveLength(1);
+    expect(namingInstructions(withPolicy.calls)).toHaveLength(2);
 
     const failing = await runCli(["--policy-file", POLICY_PATH], true);
     expect(namingInstructions(failing.calls).length).toBeGreaterThan(0);

@@ -1,0 +1,16 @@
+.PHONY: build test lint
+VERSION := 1.0
+CC = gcc
+URL = http://example.com:8080
+ASSIGN ::= value
+
+build: src/index.ts
+	echo build
+
+test lint:
+	echo test
+
+# deploy:
+clean::
+	rm -rf out \
+	  publish: still the recipe

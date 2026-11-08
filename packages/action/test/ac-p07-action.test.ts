@@ -195,9 +195,14 @@ describe("action: the agent instruction files are read for P07 only in policy mo
     // pull_request, local diff, file: policy.
     const local = await actionRun({ inputs: { policy: `file:${POLICY_PATH}` } });
     const instructionCalls = namingInstructions(local.batchCalls);
-    expect(instructionCalls, JSON.stringify(local.batchCalls)).toHaveLength(1);
-    expect(instructionCalls[0]?.args).toEqual(["cat-file", "--batch-check"]);
-    expect(linesOf(instructionCalls[0] as BatchCall)).toEqual(INSTRUCTION_LINES);
+    // Re-pinned for stale instructions (Horizon 2 item H3): on every local-diff run the stale-instruction signals read
+    // the instruction files too, in a batch call of their own after P07's, so there are two such calls; each is a
+    // batch check that names exactly the two instruction files.
+    expect(instructionCalls, JSON.stringify(local.batchCalls)).toHaveLength(2);
+    for (const call of instructionCalls) {
+      expect(call.args).toEqual(["cat-file", "--batch-check"]);
+      expect(linesOf(call)).toEqual(INSTRUCTION_LINES);
+    }
     const configCalls = local.batchCalls.filter((c) => linesOf(c).some((l) => l.endsWith(":.mcp.json")));
     expect(configCalls.length, JSON.stringify(local.batchCalls)).toBeGreaterThan(0);
     for (const call of configCalls) expect(linesOf(call)).toEqual(["HEAD:.mcp.json"]);
@@ -212,13 +217,16 @@ describe("action: the agent instruction files are read for P07 only in policy mo
       appPolicy: { version: 1, policy: { rules: { P07: "off" } } },
     });
     expect(off.report.policy, "the app policy applied").toBeDefined();
-    expect(namingInstructions(off.batchCalls)).toEqual([]);
+    // Re-pinned for stale instructions (Horizon 2 item H3): the one remaining call is the stale-instruction read; P07
+    // adds none (two calls with P07 on, above).
+    expect(namingInstructions(off.batchCalls)).toHaveLength(1);
     expect(p07(off.report)).toEqual([]);
     expect(p07Messages(off.report)).toEqual([]);
 
     // policy: never.
     const never = await actionRun({ inputs: { policy: "never" } });
-    expect(namingInstructions(never.batchCalls)).toEqual([]);
+    // Re-pinned for stale instructions (Horizon 2 item H3): only the stale-instruction read, as above.
+    expect(namingInstructions(never.batchCalls)).toHaveLength(1);
     expect(p07(never.report)).toEqual([]);
     expect(p07Messages(never.report)).toEqual([]);
     expect(never.report.policy).toBeUndefined();

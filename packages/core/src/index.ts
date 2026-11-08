@@ -192,6 +192,8 @@ export {
   type ReportMetaEvent,
   type ReportPolicy,
   type ReportPolicyViolation,
+  type ReportSetupHealth,
+  type ReportStaleInstruction,
   type ReportTestChange,
   type ReportTestChanges,
   type ReportTestChangesFile,
@@ -232,6 +234,29 @@ export {
   scanAgentSetup,
 } from "./setup/scan.js";
 export { parseLsTreeSizes, parseLsTreeSymlinks } from "./setup/sizes.js";
+export {
+  detectStaleInstructions,
+  MAX_INSTRUCTION_FILES,
+  MAX_STALE_FINDINGS,
+  MAX_STALE_PER_FILE,
+  MAX_TIMESTAMP_FILES,
+  STALE_AGE_SECONDS,
+  type StaleFinding,
+  type StaleId,
+  type StaleInstructionSources,
+  type StaleKind,
+  staleInstructionMessages,
+  staleInstructionPaths,
+  staleTimestampPaths,
+} from "./setup/stale.js";
+export { type PackageScripts, parseMakeTargets, parsePackageScripts } from "./setup/staleManifests.js";
+export {
+  type InstructionCommand,
+  type InstructionReference,
+  type InstructionTokens,
+  MAX_SCAN_CHARS,
+  scanInstructionTokens,
+} from "./setup/staleScan.js";
 export { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
 export {
   detectUnexercisedChanges,

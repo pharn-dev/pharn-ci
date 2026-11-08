@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { expectValidReport } from "./schema.js";
-import { withoutV070ExerciseSchema } from "./v070-codes.js";
+import { withoutV070Properties } from "./v070-codes.js";
 
 // E3 item 24a part B (P11), AC-22. Reads the schemas as text, and at the base commit with git; check() and
 // renderMarkdown() are loaded inside the test body: the AC test is written before the build adds the two codes, so
@@ -48,7 +48,8 @@ describe("the schema sentence and the hints for POLICY_P11 and AGENT_PR_DETECTIO
     // TEST_INTEGRITY_INDEX_UNAVAILABLE are taken out first (level-edits.ts); every other byte stays pinned.
     // Re-pinned for A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): the optional testIntegrity.exercise property is taken out
     // first (v070-codes.ts pins it exactly); its code text joins the description set aside below.
-    const nowText = withoutSchemaLevelEdits(withoutV070ExerciseSchema(read("schema/report.v2.json")));
+    // Re-pinned for stale instructions (Horizon 2 item H3): its top-level setupHealth property is taken out the same way.
+    const nowText = withoutSchemaLevelEdits(withoutV070Properties(read("schema/report.v2.json")));
     const base = codeDescription(baseText);
     const now = codeDescription(nowText);
     expect(now.startsWith(base)).toBe(true);

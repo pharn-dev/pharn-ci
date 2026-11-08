@@ -54,6 +54,7 @@ describe("test sources: documentation and schema", () => {
       properties: {
         testIntegrity: { properties: { languages: { description?: string }; changes?: unknown; exercise?: unknown } };
         meta: { properties: { isAgentPr?: unknown } };
+        setupHealth?: unknown;
       };
     }) => {
       const copy = structuredClone(schema);
@@ -64,6 +65,8 @@ describe("test sources: documentation and schema", () => {
       delete copy.properties.testIntegrity.properties.changes;
       // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property
       delete copy.properties.meta.properties.isAgentPr;
+      // Re-pinned for stale instructions (Horizon 2 item H3), which adds the optional top-level setupHealth object.
+      delete copy.properties.setupHealth;
       return copy;
     };
     const v2 = "schema/report.v2.json";

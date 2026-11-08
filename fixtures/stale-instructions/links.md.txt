@@ -1,0 +1,8 @@
+# Web
+
+See [the app](./src/app.ts), [the root guide](../../docs/guide.md) and [the gone page](./src/gone.ts).
+The logo: ![logo](./assets/logo.png "Logo").
+[guide]: ../../docs/missing-ref.md
+Run `pnpm run web-missing` from this package.
+Paths from the package: `src/app.ts` exists and `src/missing.ts` is gone.
+@./README.md

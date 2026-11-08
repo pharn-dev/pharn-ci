@@ -1,0 +1,27 @@
+# Shell
+
+```bash
+pnpm install
+pnpm run build
+pnpm run missing-shell
+# pnpm run commented-out
+make test && make missing-target
+cat docs/not-here.md
+```
+
+```console
+$ npm run another-missing
+npm run output-line-missing
+```
+
+```sh
+FOO=1 pnpm run env-missing
+```
+
+```python
+os.system("pnpm run python-missing")
+```
+
+```
+yarn run untagged-missing
+```

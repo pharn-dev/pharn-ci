@@ -1,0 +1,17 @@
+# Project guide
+
+Build with `pnpm build` and run the unit tests with `pnpm run test:unit`.
+Format with `pnpm format` before you commit.
+Check the types with `npm run typecheck`.
+Use `yarn run e2e` for the browser tests.
+Start the docs site with `bun run docs`.
+Run `make lint` or `make deploy`.
+
+The entry point is `src/index.ts`; string helpers live in `src/util/strings.ts` and `src/util`.
+Release notes are written by `scripts/changelog.sh`.
+See `docs/guide.md` and the config in `config/app.yml`.
+Edit `strings.ts` and `missing-helper.ts` together.
+
+Read [the setup guide](docs/setup.md) and [the install guide](docs/install.md).
+@docs/conventions.md
+@AGENTS.md

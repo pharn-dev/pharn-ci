@@ -43,6 +43,7 @@ behave. AI-agnostic, no telemetry, and stateless unless you opt in to the upload
 - [Example PR comment](#example-pr-comment)
 - [Test integrity](#test-integrity)
 - [Secrets in agent configs](#secrets-in-agent-configs)
+- [Stale agent instructions](#stale-agent-instructions)
 - [Org policy](#org-policy)
 - [Upload to pharn.dev (optional)](#upload-to-pharndev-optional)
 - [Action reference](#action-reference)
@@ -442,7 +443,8 @@ Check A7 reads the machine-readable agent config files the inventory finds (`.mc
 `.gemini/settings.json`, `opencode.json`, `.aider.conf.yml`, the files under `.claude/hooks/`, and the `.json`, `.yaml`
 and `.yml` files under `.continue/rules/`) and looks for committed secrets. The Markdown kinds (instructions, rules,
 skills, commands) are never read by A7 (P07 reads the instruction kinds under an org policy; see
-[Policy mode: agent instruction files](#policy-mode-agent-instruction-files)). It reads the committed text at `HEAD` (`git cat-file`), never the working tree and never
+[Policy mode: agent instruction files](#policy-mode-agent-instruction-files); the
+[stale-instruction check](#stale-agent-instructions) reads their code spans, links and imports). It reads the committed text at `HEAD` (`git cat-file`), never the working tree and never
 a file a symlink points to, with the test-source caps: 200 files, 512 KiB each, 16 MiB in all.
 
 Ten shapes are looked for by their prefix or position: S01 a GitHub token, S02 an Anthropic API key, S03 an OpenAI API key,
@@ -460,6 +462,46 @@ be the pull request head, so the message says so and nothing is read. What the s
 
 The shapes and the redaction helpers are exported from `@pharn-ci/core` (`findSecretSpans`, `redactSecrets`,
 `truncateUtf8`, `redactMessage`, `MESSAGE_MAX_BYTES`).
+
+---
+
+## Stale agent instructions
+
+Agents follow their instruction files literally, so an instruction that names a script, path or file the repository no
+longer has produces a confidently wrong PR. pharn-ci checks the agent instruction files the inventory finds (the
+instruction kinds: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules`, `.claude/rules`,
+`.github/copilot-instructions.md`, `CONVENTIONS.md` and the others in the table above; at most 50 files):
+
+- **SI01** (`warn`): a command in an inline code span or a shell block whose script is not in the root `package.json`
+  (`npm run x`, `pnpm x`, `pnpm run x`, `yarn x`, `yarn run x`, `bun run x`) or whose target is not in the root
+  `Makefile` (`make x`). pnpm's and yarn's own commands (`install`, `test`, `add`, `exec`, `dlx`, ...) and the binaries
+  of the dependencies (`pnpm vitest`) are not scripts. Only the instruction files that apply to the whole repository
+  are compared, and only when the root manifest exists and can be read.
+- **SI02** (`warn`): a path in an inline code span (a token with a `/` or a known file extension) that is not a tracked
+  file or directory, from the root or from the file's directory, or as the end of a tracked path (`src/check.ts`
+  matches `packages/core/src/check.ts`).
+- **SI03** (`warn`): a file the instructions tell the agent to read that is not tracked: a relative Markdown link
+  `[text](path)` and a Claude-style `@path` import.
+- **SI04** (`info`): an instruction file whose last commit is more than 90 days older than HEAD's commit, while the
+  change edits a file it names. It needs the history (`fetch-depth: 0`); on a shallow checkout every file looks new.
+
+**Diff-aware.** A finding is reported only when the change touches the instruction file itself, or deletes or renames
+the path or file an instruction names, or removes the `package.json` script or `Makefile` target it names. Otherwise
+the section stays empty, so the same repo-wide notes do not repeat on every pull request. Without a diff nothing is
+checked. The findings are in the report's `setupHealth.stale` (the instruction file, the line, the kind, the signal id
+and the command or path when it is made of repo-path characters only), one `SETUP_STALE_<ID>` message per signal names
+up to 5 locations, and the comment lists them under **📄 Instructions**. A `warn` never fails the check.
+
+**What is read.** This is a read of the Markdown instruction files: their committed text at `HEAD` (`git cat-file`,
+never the working tree, never a file a symlink points to; 50 files, 256 KiB each), the root `package.json` and
+`Makefile` at `HEAD` (and at the merge base when the change edits them), and, for SI04, `git log -1 --format=%ct` of
+at most 20 instruction files. Only inline code spans, shell-fenced blocks, link targets and `@` imports are read;
+prose, other fenced blocks (examples), indented code, HTML comments, frontmatter and lines or sections with words
+such as `not`, `never`, `deprecated`, `removed` or `example` are not. URLs, globs, `<placeholders>`, `$VARS`, `~/`
+and absolute paths, `node_modules` and build output, flags, versions, scoped package names and `.env` or `.local`
+files are never read as paths. Nothing read leaves the job except the paths, line numbers and the command or path the
+report names. The Action reads the files only when the diff came from the local checkout. What the check misses is in
+[docs/LIMITS.md](./docs/LIMITS.md#stale-agent-instructions).
 
 ---
 
@@ -1010,6 +1052,10 @@ message `code`s, not on text:
 | `NO_AGENT_SETUP_FILES`          | The repo has none of the agent setup files pharn-ci looks for  |
 | `AGENT_SETUP_FILE_EMPTY`        | A listed agent setup file is empty in `HEAD` (`warn`)          |
 | `AGENT_SETUP_EXPECTED_MISSING`  | An expected agent tool has no setup file (`warn`; `error` when agent setup is required) |
+| `SETUP_STALE_SI01` | An agent instruction file names a script the root `package.json` or a target the root `Makefile` does not define, and the change touches that file or removes the script or target (`warn`). The text names up to 5 path and line locations and the count; each finding is in `setupHealth.stale` |
+| `SETUP_STALE_SI02` | An agent instruction file names a path, in an inline code span, that is not in the repository, and the change touches that file or removes the path (`warn`) |
+| `SETUP_STALE_SI03` | An agent instruction file links to or `@`-imports a file that is not in the repository, and the change touches that file or removes the file (`warn`) |
+| `SETUP_STALE_SI04` | An agent instruction file last changed more than 90 days before HEAD's commit names a file this change edits (`info`) |
 | `AGENT_CONFIG_SECRET_S01`       | A GitHub token is committed in an agent config file (`error`); the text names the id and up to 5 path and line locations, never the value |
 | `AGENT_CONFIG_SECRET_S02`       | An Anthropic API key is committed in an agent config file (`error`) |
 | `AGENT_CONFIG_SECRET_S03`       | An OpenAI API key is committed in an agent config file (`error`) |
@@ -1120,8 +1166,11 @@ inclusive threshold (79.995% fails at 80); which known agent setup files are tra
   machine-readable kinds, for committed secrets (never the Markdown kinds), and policy mode reads the agent settings and
   MCP files for the org policy rules; no file is reviewed for
   what it tells an agent. Under an org policy, P07 reads the inline code and shell blocks of the instruction files for
-  package manager and test runner commands and nothing else of them. Their contents stay in the job: never printed,
-  never written, never sent. The inventory is
+  package manager and test runner commands and nothing else of them. On every run with a diff, the
+  [stale-instruction check](#stale-agent-instructions) reads their inline code, shell blocks, link targets and `@`
+  imports for commands and paths, and nothing else of them. Their contents stay in the job: never printed, never
+  written, never sent, except the paths, line numbers and the commands or paths the stale-instruction findings name.
+  The inventory is
   informational (`NO_AGENT_SETUP_FILES` is `info`) unless `require-agent-setup` or `setup.require`
   is on, which makes it an `error` and the verdict `fail`. An expected tool counts as present when
   any setup kind it reads exists (`AGENTS.md` covers several tools).
@@ -1147,7 +1196,9 @@ Under an org policy with P07 in effect (`policy: auto`, `required` or `file:<pat
 pharn-ci reads the committed text of the agent instruction files (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules`,
 `.claude/rules`, `.github/copilot-instructions.md` and the other instruction kinds of the inventory) in directories that
 hold at least two of them. It reads them at `HEAD` (`git cat-file`), never the working tree and never a file a symlink
-points to, with the same caps as A7: 200 files, 512 KiB each, 16 MiB in all. Nothing is read without such a policy.
+points to, with the same caps as A7: 200 files, 512 KiB each, 16 MiB in all. P07 reads nothing without such a policy
+(the [stale-instruction check](#stale-agent-instructions) reads the same files, in a read of its own, for commands and
+paths).
 
 P07 takes only the package managers (`npm`, `pnpm`, `yarn`, `bun`) and the test runners (`vitest`, `jest`) that a file names in an
 inline code span or a shell block, and reports when two files of one directory name different ones. Nothing it reads is

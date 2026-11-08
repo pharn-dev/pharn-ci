@@ -273,8 +273,16 @@ describe("upload documentation", { timeout: 60_000 }, () => {
     const NEW_A1_REFUSED =
       "a refused file is named in `TEST_INTEGRITY_INDEX_UNAVAILABLE` with its reason code and gives no finding, except that a TI09 config whose settings were read at the merge base and that is refused, dropped or not found at HEAD gives one `(config)` finding at the mode's level, so a PR cannot pad or wrap its config to turn a block into a warning (`ac-ti09y-unreadable.test.ts`, `ac-ti09-opaque-head.test.ts`).";
     expect(row(base.rows, "A1"), "control: the base A1 holds the refused-file sentence").toContain(OLD_A1_REFUSED);
+    // Re-pinned for stale instructions (Horizon 2 item H3): the parse list also names the stale-instruction read of the
+    // instruction text and of the root package.json and Makefile (row C8), inserted after the P07 phrase.
+    const OLD_A1_STALE = "agent instruction text (Markdown, P07, row C6))";
+    const NEW_A1_STALE =
+      "agent instruction text (Markdown, P07, row C6; stale instructions, row C8), the root `package.json` and `Makefile` (stale instructions, row C8))";
     expect(row(head.rows, "A1"), "A1 is the base's with the two phrases inserted").toBe(
-      (row(base.rows, "A1") as string).replace(OLD_A1, NEW_A1).replace(OLD_A1_REFUSED, NEW_A1_REFUSED),
+      (row(base.rows, "A1") as string)
+        .replace(OLD_A1, NEW_A1)
+        .replace(OLD_A1_REFUSED, NEW_A1_REFUSED)
+        .replace(OLD_A1_STALE, NEW_A1_STALE),
     );
 
     const baseTitles = base.residuals.map((r) => [r.n, boldTitle(r.text)]);

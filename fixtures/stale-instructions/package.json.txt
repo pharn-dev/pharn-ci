@@ -1,0 +1,16 @@
+{
+  "name": "stale-fixture",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:unit": "vitest run unit",
+    "lint": "biome check .",
+    "dev": "vite"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.4",
+    "typescript": "5.9.3",
+    "vitest": "5.0.5"
+  }
+}

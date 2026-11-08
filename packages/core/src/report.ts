@@ -27,8 +27,28 @@ export interface Report {
   testIntegrity: ReportTestIntegrity;
   /** The org policy's findings; present only when a policy was asked for and is in force or unavailable. */
   policy?: ReportPolicy;
+  /** Stale agent instructions (SI01 to SI04); present only when there is at least one finding. */
+  setupHealth?: ReportSetupHealth;
   /** Run metadata; present only when the caller (the Action) gave it. */
   meta?: ReportMeta;
+}
+
+/**
+ * One stale-instruction finding: the instruction file, the 1-based line, what it names (`command`, `path` or `file`) and
+ * the signal id. `token` is the command in canonical form (`pnpm run build`, `make test`) or the path, present only
+ * when every character is a repo-path character (plus `:` and `@` in a script name) and it is at most 200 long.
+ */
+export interface ReportStaleInstruction {
+  id: "SI01" | "SI02" | "SI03" | "SI04";
+  path: string;
+  line: number;
+  kind: "command" | "path" | "file";
+  token?: string;
+}
+
+/** The `setupHealth` object of the report. */
+export interface ReportSetupHealth {
+  stale: ReportStaleInstruction[];
 }
 
 /** One finding of an org-policy rule, as the report carries it. */
@@ -245,7 +265,11 @@ export type MessageCode =
   | "POLICY_P07"
   | "POLICY_P13"
   | "POLICY_P14"
-  | "TESTS_NOT_EXERCISING_CHANGES";
+  | "TESTS_NOT_EXERCISING_CHANGES"
+  | "SETUP_STALE_SI01"
+  | "SETUP_STALE_SI02"
+  | "SETUP_STALE_SI03"
+  | "SETUP_STALE_SI04";
 
 export interface Message {
   level: MessageLevel;
@@ -354,6 +378,16 @@ export interface BuildReportInput {
    * form makes that message an error in mode `block`.
    */
   testConfigUnavailable?: TestConfigUnavailable;
+  /**
+   * The stale-instruction findings (see `detectStaleInstructions`), copied into `setupHealth.stale`; absent or empty adds
+   * no key.
+   */
+  staleInstructions?: readonly ReportStaleInstruction[];
+  /**
+   * The stale-instruction messages (see `staleInstructionMessages`), appended after the agent setup messages and before
+   * the agent config secret messages, as given. Absent or empty adds nothing.
+   */
+  staleInstructionMessages?: readonly Message[];
   /**
    * The messages of the agent config secret check (see `agentConfigSecretMessages`), appended after the agent setup
    * messages as given. They name a shape id, paths and line numbers, never a value. Absent or empty adds nothing.
@@ -744,6 +778,7 @@ export function buildReport(input: BuildReportInput): Report {
     messages.push({ level: "warn", code: "AGENT_SETUP_FILE_EMPTY", text });
   }
 
+  messages.push(...(input.staleInstructionMessages ?? []));
   messages.push(...(input.agentConfigSecretMessages ?? []));
   messages.push(...(input.policyMessages ?? []));
 
@@ -785,6 +820,9 @@ export function buildReport(input: BuildReportInput): Report {
       ...(exercise === undefined ? {} : { exercise: reportExercise(exercise) }),
     },
     ...(input.policy === undefined ? {} : { policy: input.policy }),
+    ...(input.staleInstructions === undefined || input.staleInstructions.length === 0
+      ? {}
+      : { setupHealth: { stale: [...input.staleInstructions] } }),
     ...(input.meta === undefined ? {} : { meta: input.meta }),
   };
 }

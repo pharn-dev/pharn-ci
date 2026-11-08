@@ -120,8 +120,11 @@ describe("python-test-index: THREAT-MODEL, fixture layout, schemas and purity", 
       properties: {
         testIntegrity: { properties: { languages: { description?: string }; changes?: unknown; exercise?: unknown } };
         meta: { properties: { isAgentPr?: unknown } };
+        setupHealth?: unknown;
       };
     };
+    // Re-pinned for stale instructions (Horizon 2 item H3), which adds the optional top-level setupHealth object.
+    delete v2.properties.setupHealth;
     delete v2.$defs.message.properties.code.description;
     // A8 step 1 (TESTS_NOT_EXERCISING_CHANGES) adds the optional testIntegrity.exercise property.
     delete v2.properties.testIntegrity.properties.exercise;
