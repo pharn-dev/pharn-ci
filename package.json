@@ -13,7 +13,10 @@
     "test:coverage": "vitest run --coverage",
     "lint": "biome check . && pnpm -r typecheck",
     "format": "biome check --write .",
-    "pharn-ci": "node packages/cli/dist/index.js"
+    "pharn-ci": "node packages/cli/dist/index.js",
+    "phargus:install": "npm install --prefix .phargus --no-save --no-package-lock --ignore-scripts --no-audit --no-fund @pharn-dev/phargus@0.1.0",
+    "phargus:check": "PHARGUS_OUTPUT=\"$PWD/.phargus/raw.ndjson\" PHARGUS_INTERVAL_MS=100 node --import ./.phargus/node_modules/@pharn-dev/phargus/dist/esm/agent/auto.js packages/cli/dist/index.js check",
+    "phargus:collect": "node .phargus/tools/phargus.mjs collect --project \"$PWD/.phargus\" --file \"$PWD/.phargus/raw.ndjson\" --follow"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.4",

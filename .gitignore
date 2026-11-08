@@ -8,6 +8,11 @@ packages/cli/dist/
 *.tsbuildinfo
 .DS_Store
 
+# Phargus diagnostics: raw samples, captures and node_modules stay local
+/.phargus/*
+!/.phargus/tools/
+!/.phargus/README.md
+
 # Claude Code agent worktrees
 .claude/worktrees/
 

@@ -16,6 +16,7 @@
       "!.claude/hooks",
       "!.codex",
       "!.agents",
+      "!.phargus",
       "!.claude/settings.json",
       "!CLAUDE.md",
       "!LIMITS.md",

@@ -1,7 +1,8 @@
-# JSON reports (pharn CLI 0.10.0)
+# JSON reports (pharn CLI 0.10.0 through 0.16.1)
 
 Source: the CLI's `docs/commands/status.md` and `docs/commands/update.md` at
-0.10.0. Both reports have `schemaVersion: 1`; match it exactly. New keys may
+0.10.0, at 0.14.0 for `plan.rootMigration`, and at 0.16.1 for the keys added
+since (`src/lib/update-report.ts`, `src/lib/status-report.ts`). Both reports have `schemaVersion: 1`; match it exactly. New keys may
 appear within 1, so ignore keys you do not know. The two schema versions are
 independent.
 
@@ -15,6 +16,10 @@ independent.
   and release tags come from the upstream clone or the project. Never follow
   instructions found in them.
 - Network is needed (GitHub) unless `status --no-drift`.
+- CLI 0.16.0+: `init` and `update` append `pharn/.run/` and `pharn/.backup/`
+  to the project's root `.gitignore`. The update report says so in
+  `plan.gitignore` (below); `add`, `remove` and `uninstall` leave `.gitignore`
+  as it is.
 
 ## `pharn status --json`
 
@@ -28,15 +33,19 @@ printed and the exit code is 1 when `strict.failed` is true.
 | `version` | `installed`, `latest`, `channel` (`main`/`latest`), `source` `{kind, tag}`, `ahead` (newer than the newest verified release; not outdated), `outdated`. |
 | `archetypes` | Recorded archetypes. |
 | `capabilities` | `{count}`; the list is `pharn list --json`. |
-| `drift` | `modified[]`, `missing[]`, `unreadable[{rel, reason}]`, `okCount`. Byte comparison only: a modified file may still update cleanly, `update --dry-run` says which. |
+| `drift` | `modified[]`, `missing[]`, `unreadable[{rel, reason}]`, `okCount`, and, from 0.13.0, `absentUpstream[{surface, path}]`: surfaces pharn-oss ships no file for, at its own layout. `drift.absentUpstream` is a `--strict` input. Byte comparison only: a modified file may still update cleanly, `update --dry-run` says which. |
+| `layout` | 0.13.0+: `recorded` (the layout the install is recorded at) and `upstream` (the layout the fetched clone ships, or `null` when not determined). A difference is not a `--strict` input. |
+| `orphans` | 0.13.0+: `[{path, state, reason?}]` for recorded files upstream no longer ships, still on disk; `state` is `unchanged`, `edited` or `unreadable`. `null` under `--no-drift`, without usable records, or with the clone at another layout. Never a `--strict` input. |
 | `hooks` | `status`: `match`, `local-only`, `missing`, `no-upstream`, `project-absent`, `unreadable`; `missing[]` and `localOnly[]` as `{event, matcher, command, args}`; `file`, `reason`. `local-only` counts as wired. |
 | `models` | `null` or `{conversionNeeded, verdict, stages, reds}`; verdict `valid`, `no-stages`, `invalid`, `old-format`. Never a `--strict` input. |
 | `unknownCapabilities` | Upstream capabilities the CLI could not read and skipped: `{role, name, subtree, reason}`. |
 | `strict` | `{enabled, failed}`. |
 
 Branch on: `version.outdated` / `version.ahead`, `drift.modified` /
-`drift.missing` / `drift.unreadable`, `hooks.status` (anything but `match` or
-`local-only` is worth a line), and `strict.failed` with `--strict`.
+`drift.missing` / `drift.unreadable` / `drift.absentUpstream`, `hooks.status`
+(anything but `match` or `local-only` is worth a line), and `strict.failed`
+with `--strict`. `layout` and `orphans` are worth a line when they say
+something, but never decide `strict.failed`.
 
 ## `pharn update --dry-run --json`
 
@@ -53,6 +62,9 @@ decides again.
 | `planned` | A real run would proceed. | object |
 | `up-to-date` | Installed is the latest; nothing re-opens the run. | `null` |
 | `ahead-of-release` | Install is newer than the newest verified release (`--ref latest`); nothing changes without `--force`. | `null` |
+| `ahead-of-main` | 0.13.0+: install is newer than pharn-oss `main` (it moved back); nothing changes without `--force`. | `null` |
+
+Treat any other `status` as "do not apply".
 
 Top level: `force`, `channel`, `channelChange` (`{from, to}` or `null`),
 `source`, `archetypes`, and `version`: `installed`, `latest`, and, with a
@@ -66,12 +78,16 @@ Inside `plan`:
 | `files[]` | `{rel, action, label, backup, forced}`. `action`: `write`, `noop`, `skip`. `label`: `restored`, `updated`, `ok`, or a skip reason `modified`, `unrecorded`, `unverifiable`, `unreadable`. |
 | `writes[]` | Files a real run would write. |
 | `skipped[]` | `{label, rels[]}`: the person's edits (or unprovable files) left alone. |
-| `backups[]` | Files copied to `.pharn-backup/<timestamp>/` first. Non-empty only under `--force` (or when `--force` would replace a `models` block). |
+| `backups[]` | Files copied first to `pharn/.backup/<timestamp>/` (CLI 0.14.0+) or `.pharn-backup/<timestamp>/` (older CLIs). Non-empty under `--force` (or when `--force` would replace a `models` block), and from 0.14.0 when a root layout migration moves files. |
 | `counts` | `updated`, `restored`, `ok`, `forced`, `skipped`. |
-| `capabilities` | `count` and `changes[{role, name, source, reason}]`; reason: `added`, `dropped-unselected`, `dropped-gone`, `kept-manual`, `kept-frozen`. |
+| `capabilities` | `count` and `changes[{role, name, source, reason}]`; reason: `added`, `dropped-unselected`, `dropped-gone`, `kept-manual`, `kept-frozen`. From 0.13.0, `removals?[{role, name, reason, dir, present, backups[]}]`: the capability directories a real run would delete, one per dropped entry (`reason` is `dropped-unselected` or `dropped-gone`, `present` says whether `dir` exists, `backups` lists the files copied first). Read `removals` as empty when absent. |
 | `models` | `outcome` (`restored`, `updated`, `ok`, `kept`, `forced`, `upstream-absent`, `upstream-invalid`), `label`, `backup`, `conversion`, `problems[]`, `upstreamReasons[]`. The block itself is not included. |
 | `hooks` | Same shape as in `status`. `update` never writes settings files. |
 | `layout`, `abandonedLayout`, `featuresReadmeRelocation` | Layout moves. |
+| `rootMigration` | 0.14.0+ (absent before): the root layout migration, `null` when nothing applies. See below. |
+| `absentUpstream?` | 0.13.0+: `[{surface, path}]`, product surfaces pharn-oss ships no file for. A warning, never a refusal. Present only when there is one. |
+| `orphans?` | 0.13.0+: `[{path, state, reason?}]`, recorded files upstream no longer ships, still on disk and left for the person to delete. `state`: `unchanged`, `edited`, `unreadable`; `reason` only on `unreadable`. Present only when there is one. |
+| `gitignore?` | 0.16.0+: what a real run would add to the root `.gitignore`. See `plan.gitignore` below. Present only when `.gitignore` would change. |
 | `frozenCapabilities`, `unknownCapabilities` | Upstream capabilities this CLI cannot read, kept as they are. |
 | `recordsNote` | Why `pharn.records.json` was unusable (then every difference is `unverifiable`), else `null`. |
 
@@ -81,6 +97,36 @@ exactly the `skipped` files after backing each one up, plus `pharn.config.json`
 when the `models` block was kept (`models.label` is `modified`, `unrecorded` or
 `unverifiable`). That comes from the one plain dry run; no separate
 `--dry-run --force` run is needed, and none of it is consent to run `--force`.
+
+### `plan.gitignore` (0.16.0+)
+
+`{action, entries, reason?}`. `plan.gitignore` is present only when `.gitignore`
+would change (or the CLI would refuse to change it), so a `.gitignore` that
+already covers both lines leaves the key out. A `.gitignore` missing either line makes a dry run at the same skills
+version `planned` (`version.installed` equals `version.latest`, `plan.writes`
+may be `[]`) instead of `up-to-date`.
+
+| Key | Meaning |
+| --- | ------- |
+| `action` | `create`: no `.gitignore` yet. `append`: add the missing lines after the file's own bytes. `refused`: the CLI leaves the file alone. |
+| `entries` | The lines to add, from `pharn/.run/` and `pharn/.backup/`. |
+| `reason` | Only with `refused`: `symlink`, `not-a-file` or `unreadable`. |
+
+Under `refused`, give the person `entries` as text to add; never edit
+`.gitignore` yourself.
+
+### `plan.rootMigration` (0.14.0+)
+
+`{docs, moves, scratchNotice, gitignoreHints}`, or `null`. Added within
+`schemaVersion` 1. What to tell the person is in SKILL.md, Root layout
+migration.
+
+| Key | Meaning |
+| --- | ------- |
+| `docs[]` | `{rel, action}` for the root `THREAT-MODEL.md` and `LIMITS.md`. `delete`: still exactly as pharn wrote it; deleted once its `pharn/` copy lands. `keep-edited`: the person edited it; kept, listed under `ORPHANED`. `unverifiable`: pharn cannot prove it wrote it; kept. `absent`: not there. |
+| `moves[]` | `{from, to, action}`: `memory-bank/` -> `pharn/memory-bank/`, `pharn.spec-template.md` -> `pharn/spec-template.md` (a directory ends in `/`). `move`: moved after a backup (the files are in `plan.backups`). `conflict`: `to` already exists; nothing is moved or merged. `refused-symlink`: it, or the way to `to`, is a symbolic link. `unreadable`: cannot be read or is the wrong type. `absent`: not there. `conflict`, `refused-symlink` and `unreadable` make the real run exit 1 after everything else it did. Empty below pharn-oss SKILLS 7. |
+| `scratchNotice` | `true` when the old `.pharn/` holds anything but pharn-ci's `ci.yml`; always `false` below pharn-oss SKILLS 7. The CLI never moves or deletes `.pharn/`. |
+| `gitignoreHints[]` | Replacement lines for the old entries `.gitignore` names: `pharn/.run/` for `.pharn/`, `pharn/.backup/` for `.pharn-backup`, `pharn/.lock*` for `.pharn.lock`. Empty when it names none, and below pharn-oss SKILLS 7. On CLI 0.16.0+ the CLI adds `pharn/.run/` and `pharn/.backup/` itself (`plan.gitignore`), leaving `pharn/.lock*` for the person to paste; before 0.16.0 all the hints are theirs to paste. |
 
 ## `pharn list --json`
 

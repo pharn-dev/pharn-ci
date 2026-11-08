@@ -25,6 +25,11 @@ only that confirm. `--dry-run` does not exist here.
 - When anything was skipped the recorded version does not advance, so
   `status` keeps saying an update is available. That is the honest report.
 - Never pass `--force` without the consent rule in SKILL.md.
+- If it stops with `This pharn is too old for the current
+  github.com/pharn-dev/pharn-oss`, nothing was written: follow
+  [MIN_CLI refusal](commands.md#min_cli-refusal).
+- These CLIs keep the lock at `.pharn.lock` and backups in `.pharn-backup/`,
+  and never run the 0.14.0 root layout migration.
 - Afterwards show `git status --short`. Never commit.
 
 Whenever you use this flow, tell the person that
