@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type CheckInput, check } from "../src/check.js";
-import type { Report } from "../src/report.js";
+import { buildReport, type Report } from "../src/report.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -156,6 +156,28 @@ describe("TESTS_NOT_EXERCISING_CHANGES, when it runs", () => {
     });
     expect(report.testIntegrity.exercise).toEqual({ checked: 2, notExercised: ["src/cart.ts", "src/tax.ts"] });
     expect(report.messages.map((message) => message.code)).toContain("TEST_INTEGRITY_INDEX_UNAVAILABLE");
+  });
+});
+
+describe("buildReport and the tests-exercise result", () => {
+  const base = { version: "0.1.0", diffCoverage: null, threshold: null, agentSetup: { files: [] } };
+  const result = { checked: 3, notExercised: ["src/a.ts", "src/b.ts"] };
+
+  it("adds the message and the field only when a file is not exercised and the mode is not off", () => {
+    const made = buildReport({ ...base, testExercise: result });
+    expectValidReport(made);
+    expect(exerciseOf(made).map((message) => message.level)).toEqual(["warn"]);
+    expect(made.testIntegrity.exercise).toEqual(result);
+    for (const [label, extra] of [
+      ["absent", {}],
+      ["every file exercised", { testExercise: { checked: 3, notExercised: [] } }],
+      ["mode off", { testExercise: result, testIntegrity: { mode: "off", source: "input" } }],
+    ] as const) {
+      const report = buildReport({ ...base, ...extra });
+      expectValidReport(report);
+      expect(exerciseOf(report), label).toEqual([]);
+      expect("exercise" in report.testIntegrity, label).toBe(false);
+    }
   });
 });
 

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { MAX_TEST_IMPORTS } from "../src/testIndex/imports.js";
 import { indexTestFile, indexTestFileWithImports } from "../src/testIndex/indexTestFile.js";
+import { parseTestFile } from "../src/testIndex/parse.js";
+import { walkTestFile } from "../src/testIndex/walk.js";
 import { fixture } from "./helpers.js";
 
 // A8 step 1 (tests exercise the changed lines): the test index also records the module specifiers a JS/TS test file
@@ -52,6 +54,14 @@ describe("the module specifiers of a test file", () => {
     expect(indexTestFileWithImports("src/all-forms.test.ts", text).result).toEqual(
       indexTestFile("src/all-forms.test.ts", text),
     );
+  });
+
+  it("comes from the walk of the one parse", () => {
+    const parsed = parseTestFile("ts", 'import "./a";\nexport * from "./b";\nimport type { C } from "./c";\n');
+    if (!parsed.ok) throw new Error("the parse failed");
+    const walked = walkTestFile(parsed.sourceFile);
+    if (walked === "too-deep") throw new Error("the walk refused");
+    expect(walked.imports).toEqual(["./a", "./b"]);
   });
 
   it("records nothing for a refused file", () => {
