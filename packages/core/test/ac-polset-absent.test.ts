@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // E3 item 23 (policy settings), AC-21. check() is loaded inside the test body, and item 22's fixtures/policy-rules/
 // are read there too: the AC test is written before the build adds policySettingsSources, so nothing the build adds
@@ -33,7 +34,8 @@ async function run(input: { policy?: unknown; repoFiles: string[]; diff: string;
 const file = (document: unknown) => ({ source: "file", version: null, path: "policy/org.json", document });
 const settingsIds = (report: Report) =>
   (report.policy?.violations ?? []).filter((v) => /^P0[2-6]$/.test(v.id)).map((v) => v.id);
-const newCodes = (report: Report) => report.messages.filter((m) => NEW_CODES.includes(m.code));
+// fix-hints (H6): every message and finding now carries a `fix`; the pinned literals are unchanged, so these read without it.
+const newCodes = (report: Report) => withoutFix(report.messages.filter((m) => NEW_CODES.includes(m.code)));
 
 describe("policySettingsSources absent: item 22's reports", { timeout: 60_000 }, () => {
   it("AC-21: without sources item 22's fixtures give no P02–P06 violation and no new message, P09 class 4 keeps its warn, no policy gives no policy object, and the same policy with sources does run P02", async () => {
@@ -73,7 +75,7 @@ describe("policySettingsSources absent: item 22's reports", { timeout: 60_000 },
     }
 
     const p09 = await run(cases[2] as (typeof cases)[number]);
-    expect((p09.policy?.violations ?? []).filter((v) => v.id === "P09")).toEqual(
+    expect(withoutFix((p09.policy?.violations ?? []).filter((v) => v.id === "P09"))).toEqual(
       [".claude/settings.json", ".mcp.json", "packages/a/.claude/settings.local.json"].map((path) => ({
         id: "P09",
         severity: "warn",

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
+import { withoutFix } from "./v090-codes.js";
 
 const ROOT = new URL("../../../", import.meta.url);
 const readRoot = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
@@ -76,7 +77,8 @@ describe("check() emits Report v2", () => {
       verdict: report.verdict,
       diffCoverage: report.diffCoverage,
       agentSetup: report.agentSetup,
-      messages: report.messages,
+      // fix-hints (H6): the messages now carry a `fix`; it is taken out, so the digest still pins the v1 fields.
+      messages: withoutFix(report.messages),
     };
     expect(createHash("sha256").update(canonical(v1Fields)).digest("hex")).toBe(V1_GOLDEN_FIELDS_SHA256);
   });

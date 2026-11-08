@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // E3 item 22 (policy rules), AC-1. check() is loaded inside the test body and fixtures/policy-rules/ is read there
 // too: the AC test is written before the build adds the rules and the fixtures, so nothing the build adds may run
@@ -37,14 +38,15 @@ describe("org policy rule P01: setup.require", { timeout: 60_000 }, () => {
     expect(document.setup?.require).toBe(true);
 
     const report = await run(lines("policy-rules/p01-violates/files.txt"), document);
-    expect(report.policy?.violations).toContainEqual({
+    // fix-hints (H6): every message and finding now carries a `fix`; the pinned literals are unchanged, so they are read without it.
+    expect(withoutFix(report.policy?.violations)).toContainEqual({
       id: "P01",
       severity: "block",
       path: null,
       line: null,
       detail: "no agent setup files found",
     });
-    const noFiles = report.messages.filter((m) => m.code === "NO_AGENT_SETUP_FILES");
+    const noFiles = withoutFix(report.messages.filter((m) => m.code === "NO_AGENT_SETUP_FILES"));
     expect(noFiles).toEqual([{ level: "error", code: "NO_AGENT_SETUP_FILES", text: ORG_TEXT }]);
     expect(report.verdict).toBe("fail");
 

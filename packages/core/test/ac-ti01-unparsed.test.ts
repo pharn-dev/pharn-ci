@@ -5,6 +5,7 @@ import { check } from "../src/check.js";
 import { indexTestFile } from "../src/testIndex/indexTestFile.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // fix/unparsed-added-test-file, part 2: a deleted test file with a same-stem test file added keeps TI01 at the mode's
 // level when its tests cannot be compared by body. When the base text was read but the test index refused it, the
@@ -55,8 +56,9 @@ function run(name: string, sides: { base: Side; head: Side } | undefined, mode: 
   expectValidReport(report);
   return {
     report,
-    ti01: report.testIntegrity.signals.filter((signal) => signal.id === "TI01"),
-    unavailable: report.messages.filter((message) => message.code === "TEST_INTEGRITY_INDEX_UNAVAILABLE"),
+    // fix-hints (H6): every message and finding now carries a `fix`; the pinned literals are unchanged, so these read without it.
+    ti01: withoutFix(report.testIntegrity.signals.filter((signal) => signal.id === "TI01")),
+    unavailable: withoutFix(report.messages.filter((message) => message.code === "TEST_INTEGRITY_INDEX_UNAVAILABLE")),
   };
 }
 

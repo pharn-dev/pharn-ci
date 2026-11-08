@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
+import { withoutFix } from "../../core/test/v090-codes.js";
 
 // F-10, inventory quality: an empty agent setup file. main() is loaded inside each test body: the AC tests are written
 // before the build, so nothing that depends on the new `git ls-tree` wiring may run while the file loads. The CLI runs
@@ -81,7 +82,8 @@ describe("inventory quality: empty agent setup files through the CLI", () => {
     const cli = await runCli("sizes");
     const report: Report = JSON.parse(cli.stdout);
     expectValidReport(report);
-    expect(emptyMessages(report)).toEqual([
+    // fix-hints (H6): the message now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+    expect(withoutFix(emptyMessages(report))).toEqual([
       { level: "warn", code: "AGENT_SETUP_FILE_EMPTY", text: "1 agent setup file is empty: `CLAUDE.md`." },
     ]);
     expect(report.agentSetup.files.map((file) => file.path)).toContain("CLAUDE.md");

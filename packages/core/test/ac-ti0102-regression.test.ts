@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { byCodeUnit } from "../src/text.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // git, check() and the fixtures run inside the test body: the AC test is written before the new TI01 and TI02 rules
 // and the rebuilt dist exist. git reads this increment's own change: from the base commit 5860ba4 to the working tree
@@ -118,7 +119,8 @@ async function existingOutputs(): Promise<string> {
     });
   }
   expect(out.length, "the existing TI01 and TI02 fixtures ran").toBeGreaterThan(30);
-  return sha256(JSON.stringify(out));
+  // fix-hints (H6): the signals and messages now carry a `fix`; it is taken out, so the digest still pins the base outputs.
+  return sha256(JSON.stringify(withoutFix(out)));
 }
 
 describe("TI01 and TI02 precision leave the existing suite, goldens and schemas alone", () => {

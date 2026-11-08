@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DiffCoverageResult } from "../src/diffCoverage.js";
 import { buildReport, formatNumber, verdictOf } from "../src/report.js";
 import { expectValidReport, validateReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 const dc = (overrides: Partial<DiffCoverageResult> = {}): DiffCoverageResult => ({
   percent: 90,
@@ -31,7 +32,8 @@ describe("buildReport", () => {
       diffCoverage: dc({ percent: 66.67, coveredLines: 2, coverableLines: 3, meetsThreshold: false }),
     });
     expect(report.verdict).toBe("fail");
-    expect(report.messages).toEqual([
+    // fix-hints (H6): every message now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+    expect(withoutFix(report.messages)).toEqual([
       {
         level: "error",
         code: "DIFF_COVERAGE_BELOW_THRESHOLD",
@@ -61,7 +63,7 @@ describe("buildReport", () => {
     });
     expect(report.verdict).toBe("fail");
     expect(report.diffCoverage).toBeNull();
-    expect(report.messages[0]).toEqual({
+    expect(withoutFix(report.messages[0])).toEqual({
       level: "error",
       code: "COVERAGE_FILE_MISSING",
       text: "Coverage file not found: coverage/lcov.info",

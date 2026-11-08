@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // E3 item 23 (policy settings), AC-14. check() is loaded inside the test body: the AC test is written before the build
 // adds the settings rules, so nothing the build adds may run while this file loads.
@@ -77,7 +78,8 @@ describe("POLICY_SETTINGS_INVALID: the files were not read", { timeout: 60_000 }
         violations.filter((v) => /^P0[2-6]$/.test(v.id)),
         `${label}: no P02–P06 violation`,
       ).toEqual([]);
-      const invalid = report.messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID");
+      // fix-hints (H6): every message now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+      const invalid = withoutFix(report.messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID"));
       expect(invalid, label).toEqual([
         {
           level,
@@ -87,7 +89,7 @@ describe("POLICY_SETTINGS_INVALID: the files were not read", { timeout: 60_000 }
       ]);
       if (level === "error") expect(report.verdict, `${label}: an error message fails the verdict`).toBe("fail");
       expect(
-        violations.filter((v) => v.id === "P09"),
+        withoutFix(violations.filter((v) => v.id === "P09")),
         `${label}: P09 class 4 keeps item 22's warn`,
       ).toEqual([
         {

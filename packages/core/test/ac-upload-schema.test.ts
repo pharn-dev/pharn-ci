@@ -7,6 +7,7 @@ import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { V060_CODE_TEXT, V060_CODES } from "./v060-codes.js";
 import { V070_CODE_TEXT, V070_CODES, withoutV070Properties } from "./v070-codes.js";
 import { V080_CODE_TEXT, V080_CODES, withoutV080Properties } from "./v080-codes.js";
+import { withoutV090SchemaEdits } from "./v090-codes.js";
 
 // The schemas, report.ts and fixtures/upload/bundle-golden/meta.json are read inside each test body: the build writes
 // or changes them after this test. The base is main at f563d7d, read with git.
@@ -158,7 +159,11 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
     // (v080-codes.ts) joins the description and its codes the added words.
     // Re-pinned for dependency safety (A13, v0.8.0): withoutV080Properties also takes out its top-level `dependencies`
     // object, and its part of the v0.8.0 code text and its codes (in V080_CODES) join the same way.
-    const v2 = withoutSchemaLevelEdits(withoutV080Properties(withoutV070Properties(read("schema/report.v2.json"))));
+    // Re-pinned for fix-hints (H6): the `$defs.fix` object and the six `fix` properties are taken out first
+    // (v090-codes.ts pins them exactly).
+    const v2 = withoutSchemaLevelEdits(
+      withoutV080Properties(withoutV070Properties(withoutV090SchemaEdits(read("schema/report.v2.json")))),
+    );
     const baseDescription = strings(JSON.parse(v2Base)).find((s) => s.includes(" Codes added in v0.4.0:"));
     expect(baseDescription, "control: the base has the v0.4.0 text").toBeDefined();
     const description = strings(JSON.parse(v2)).find((s) => s.includes(" Codes added in v0.4.0:"));

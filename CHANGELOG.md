@@ -9,6 +9,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- Fix hints: every message and every finding of Report v2 carries an optional `fix` object (`kind`, `hint` and, on a
+  finding, `target`), one of eight kinds and one fixed sentence per message code or signal id, so an agent can tell what
+  kind of change would fix a finding. No kind lowers a gate; the PR comment is unchanged.
+
 ### Changed
 
 ### Security

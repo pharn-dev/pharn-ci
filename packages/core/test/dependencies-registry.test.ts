@@ -12,6 +12,7 @@ import { resolveDependencySettings } from "../src/dependencies/settings.js";
 import { parseUnifiedDiff } from "../src/diff/unified.js";
 import { dependencyCase, run } from "./dependencies-helpers.js";
 import { fixture } from "./helpers.js";
+import { withoutFix } from "./v090-codes.js";
 
 // A13 (dependency safety), D01 to D03: the registry answers are recorded fixtures (fixtures/dependencies/registry/), never
 // the live network. The Action makes the requests; core plans them and judges the answers.
@@ -209,7 +210,8 @@ describe("lookups through check()", () => {
     );
     expect(report.dependencies?.lookups).toBe("unavailable");
     expect(report.dependencies?.signals.map((s) => s.id)).toEqual(["D01", "D01", "D03"]);
-    expect(report.messages.find((m) => m.code === "DEPENDENCY_LOOKUP_UNAVAILABLE")).toEqual({
+    // fix-hints (H6): the message now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+    expect(withoutFix(report.messages.find((m) => m.code === "DEPENDENCY_LOOKUP_UNAVAILABLE"))).toEqual({
       level: "warn",
       code: "DEPENDENCY_LOOKUP_UNAVAILABLE",
       text: "Registry lookups did not complete for 2 of 7 added packages, so D01 to D03 were not checked for them: 2 got no usable answer from the registry (a timeout, a network error or an error status).",

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // withUploadOutcome() and UPLOAD_REPORT_MAX_BYTES are loaded from @pharn-ci/core inside each test body: the AC tests
 // are written before the upload module exists, so nothing the build adds may run while this file loads.
@@ -90,7 +91,8 @@ describe("the upload outcome in the report", { timeout: 60_000 }, () => {
 
         if (outcome.status === "too_large") {
           const text = outcome.maxBytes === null ? TOO_LARGE_TEXT : tooLargeText(outcome.maxBytes);
-          expect(result.messages, label).toEqual([
+          // fix-hints (H6): the added message now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+          expect(withoutFix(result.messages), label).toEqual([
             ...(input.messages as Message[]),
             { level: "warn", code: "UPLOAD_TOO_LARGE", text },
           ]);

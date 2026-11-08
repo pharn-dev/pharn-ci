@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { AGENT_FACTS, appPolicy, filePolicy, HUMAN_FACTS, p14, p14Messages, policyFixture, runP14 } from "./p14-run.js";
+import {
+  AGENT_FACTS,
+  appPolicy,
+  filePolicy,
+  HUMAN_FACTS,
+  p14Messages,
+  p14 as p14WithFix,
+  policyFixture,
+  runP14,
+} from "./p14-run.js";
+import { withoutFix } from "./v090-codes.js";
+
+// fix-hints (H6): every finding now carries a `fix`; the pinned literals are unchanged, so p14 reads without it.
+const p14 = (report: Parameters<typeof p14WithFix>[0]) => withoutFix(p14WithFix(report));
 
 // Policy rule P14 (agent PR size cap): the caps at their boundary, who and what the rule applies to, its severity, the
 // areas a detail names and a missing diff. Every report is validated against schema/report.v2.json.

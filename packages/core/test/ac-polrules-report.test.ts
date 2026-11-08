@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // E3 item 22 (policy rules), AC-12. check(), evaluatePolicyRules() and the helpers they share are loaded inside the
 // test body and fixtures/policy-rules/ is read there too: the AC test is written before the build adds the rules and
@@ -86,7 +87,8 @@ describe("the report's policy object", { timeout: 60_000 }, () => {
 
     const none = run(JSON.parse(fixture("policy-rules/p10-violates/resolved.json")));
     expect(Object.keys(none.policy ?? {})).toEqual(["source", "version", "violations"]);
-    expect(none.policy).toEqual({
+    // fix-hints (H6): every finding now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+    expect(withoutFix(none.policy)).toEqual({
       source: "none",
       version: null,
       violations: [
@@ -112,7 +114,8 @@ describe("the report's policy object", { timeout: 60_000 }, () => {
       configPath: ".pharn/ci.yml",
       ignored: [],
     });
-    expect(evaluation.violations).toEqual(violations);
+    // The evaluator gives violations with no `fix`; the report's carry one (fix-hints, H6), so they are read without it.
+    expect(evaluation.violations).toEqual(withoutFix(violations));
     expect(evaluation.lowered).toEqual([]);
   });
 });

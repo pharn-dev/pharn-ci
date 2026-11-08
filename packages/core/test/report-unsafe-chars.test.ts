@@ -7,6 +7,7 @@ import { removedTestDetail, summaryTestName } from "../src/signals/testName.js";
 import { cutDetail, cutValue, keyText } from "../src/testConfig/value.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // report.json used to drop only the control characters; it now also drops the invisible and bidirectional characters
 // the PR comment drops (text.ts). Each site keeps its own replacement: a space for one-line text and test names, U+FFFD
@@ -190,7 +191,8 @@ describe("report.json drops the invisible and bidirectional characters the comme
     // finding for the invisible characters (an INJECTION_PI01 message and the injection object), which the U+FFFD
     // control has not. The finding names the first character and a count, never the value; with it taken out the two
     // reports are still equal byte for byte.
-    expect(report.injection?.signals).toEqual([
+    // fix-hints (H6): every finding now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+    expect(withoutFix(report.injection?.signals)).toEqual([
       {
         id: "PI01",
         severity: "block",

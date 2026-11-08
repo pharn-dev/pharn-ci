@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { foldCoverageBar } from "./helpers.js";
+import { withoutFixJson } from "./v090-codes.js";
 
 // E3 item 23 (policy settings), AC-31. The pin test files are read inside the test body, and a child vitest runs the
 // ones that must pass: the build edits some of them after this test is written. The base is main at 93376a9 (E3 item
@@ -33,13 +34,19 @@ const EDITED: Record<string, string[]> = {
 };
 /** The pin tests that must pass with no edit. */
 const UNCHANGED = [
-  "packages/core/test/ac-polrules-p09-settings.test.ts",
   "packages/core/test/ac-polrules-render-list.test.ts",
   "packages/core/test/ac-polrules-render-table.test.ts",
-  "packages/core/test/golden.test.ts",
   "packages/core/test/exclusions-golden.test.ts",
   "packages/core/test/ac-globs-golden.test.ts",
   "packages/core/test/ac-report-v2-golden.test.ts",
+];
+// Re-pinned by fix-hints (H6): every message and finding of a report now carries a `fix`, so these three tests read a
+// report without it (or hash the committed golden without it) before comparing it with their pinned literal or digest.
+// They are no longer byte-identical to the base; each must carry the marker, and all three still run in the child vitest
+// below. The committed report JSON goldens changed the same way (see GOLDENS_WITH_FIX).
+const EDITED_BY_FIX_HINTS = [
+  "packages/core/test/ac-polrules-p09-settings.test.ts",
+  "packages/core/test/golden.test.ts",
   "packages/action/test/ac-accept-signoff-default-golden.test.ts",
 ];
 // Re-pinned by A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): with readable test sources check() also runs the tests-exercise
@@ -62,6 +69,12 @@ const BARRED_GOLDENS = [
   "fixtures/golden-multi/report.md",
   "fixtures/golden/report.md",
 ];
+/** The report JSON goldens fix-hints changed: each gained a `fix` on each message and nothing else. */
+const GOLDENS_WITH_FIX = [
+  "fixtures/golden-cobertura/report.json",
+  "fixtures/golden-multi/report.json",
+  "fixtures/golden/report.json",
+];
 // Re-pinned by the review LOW batch: ac-ts-index-deps-dist.test.ts had its AC-14 title corrected on purpose (the title
 // contradicted the assertions, which are unchanged). It is no longer byte-identical to the base; it must carry the
 // marker, and it still runs in the child vitest below.
@@ -79,6 +92,7 @@ const RUN = [
   ...EDITED_BY_REVIEW_LOW,
   ...EDITED_BY_COVERAGE_BAR,
   ...EDITED_BY_EXERCISE,
+  ...EDITED_BY_FIX_HINTS,
   ...UNCHANGED,
 ];
 const MANIFESTS = [
@@ -132,6 +146,11 @@ describe("the pins of E3 item 23", () => {
       expect(text === git("show", `${BASE}:${file}`), `${file} carries its deliberate edit`).toBe(false);
       expect(text, `${file}: the new comment names the change`).toContain("A8 step 1");
     }
+    for (const file of EDITED_BY_FIX_HINTS) {
+      const text = read(file);
+      expect(text === git("show", `${BASE}:${file}`), `${file} carries its deliberate edit`).toBe(false);
+      expect(text, `${file}: the new comment names the change`).toContain("fix-hints (H6)");
+    }
     for (const file of UNCHANGED) {
       expect(read(file) === git("show", `${BASE}:${file}`), `${file} is unchanged`).toBe(true);
     }
@@ -147,11 +166,18 @@ describe("the pins of E3 item 23", () => {
     );
     // Re-pinned by comment-coverage-bar: the four golden report.md files gained the bar line on purpose; folding it
     // back out must give each one's content at the base byte for byte. No other golden changed.
-    expect(goldens.trim().split("\n").sort(), "only the barred goldens under fixtures/golden* changed").toEqual(
-      BARRED_GOLDENS,
-    );
+    // Re-pinned by fix-hints (H6): three report JSON goldens gained a `fix` on each message on purpose; with their `fix`
+    // objects taken out each must be its content at the base byte for byte (golden-exclusions has no message, so it is
+    // unchanged).
+    expect(
+      goldens.trim().split("\n").sort(),
+      "only the barred goldens and the goldens with fix under fixtures/golden* changed",
+    ).toEqual([...BARRED_GOLDENS, ...GOLDENS_WITH_FIX].sort());
     for (const file of BARRED_GOLDENS) {
       expect(foldCoverageBar(read(file)), `${file}: only the bar line added`).toBe(git("show", `${BASE}:${file}`));
+    }
+    for (const file of GOLDENS_WITH_FIX) {
+      expect(withoutFixJson(read(file)), `${file}: only the fix objects added`).toBe(git("show", `${BASE}:${file}`));
     }
 
     for (const manifest of MANIFESTS) {

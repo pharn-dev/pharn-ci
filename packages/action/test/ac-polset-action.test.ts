@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
+import { withoutFix } from "../../core/test/v090-codes.js";
 import { runGitBatch } from "../../node-io/src/io.js";
 import { harness } from "./harness.js";
 
@@ -193,7 +194,8 @@ describe("action: policy mode reads the committed agent settings files", () => {
       local.h.apiCalls.filter((c) => c.startsWith("compare ")),
       "control: the diff came from local git",
     ).toEqual([]);
-    expect((local.report.policy?.violations ?? []).filter((v) => v.id === "P02")).toEqual([
+    // fix-hints (H6): every finding now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+    expect(withoutFix((local.report.policy?.violations ?? []).filter((v) => v.id === "P02"))).toEqual([
       {
         id: "P02",
         severity: "block",
@@ -206,7 +208,7 @@ describe("action: policy mode reads the committed agent settings files", () => {
 
     // PR-number mode: the checkout is not the PR head.
     const prNumber = await prNumberRun();
-    expect(prNumber.report.messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID")).toEqual(
+    expect(withoutFix(prNumber.report.messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID"))).toEqual(
       unread(
         "pr-number mode: the checkout is not the pull request head, so its committed agent settings files were not read",
       ),
@@ -222,7 +224,7 @@ describe("action: policy mode reads the committed agent settings files", () => {
       compare.h.apiCalls.some((c) => c.startsWith("compare ")),
       "control: the compare API",
     ).toBe(true);
-    expect(compare.report.messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID")).toEqual(
+    expect(withoutFix(compare.report.messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID"))).toEqual(
       unread("the diff came from the GitHub compare API, so the checkout may not be the pull request head"),
     );
     expect(naming(compare.calls, ".claude/settings")).toEqual([]);
@@ -233,7 +235,7 @@ describe("action: policy mode reads the committed agent settings files", () => {
       localGit: false,
       compareError: new Error("the diff is too large"),
     });
-    expect(unavailable.report.messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID")).toEqual(
+    expect(withoutFix(unavailable.report.messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID"))).toEqual(
       unread("the diff is unavailable, so the checkout may not be the pull request head"),
     );
     expect(naming(unavailable.calls, ".claude/settings")).toEqual([]);

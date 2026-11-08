@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { foldCoverageBar } from "../../core/test/helpers.js";
+import { withoutFix, withoutFixJson } from "../../core/test/v090-codes.js";
 
 // check() and renderMarkdown() are loaded inside the test body: the AC tests are written before the accept label
 // exists, so nothing the build adds may run while the file loads. The committed dist must hold the accept label, so
@@ -190,7 +191,13 @@ describe("the accept label leaves the existing signals, hints, golden outputs an
       // The comment-layout change added the summary table's Test integrity column on purpose: it is folded out of
       // report.md before the hash, so every other byte is still the base commit's. The comment-coverage-bar change
       // added the diff-coverage bar line on purpose: it is folded out too.
-      const asAtBase = name === "report.md" ? foldIntegrityColumn(foldCoverageBar(bytes.toString("utf8"))) : bytes;
+      // fix-hints (H6): report.json now carries a `fix` on each message; it is taken out too, so its base bytes stay pinned.
+      const asAtBase =
+        name === "report.md"
+          ? foldIntegrityColumn(foldCoverageBar(bytes.toString("utf8")))
+          : name === "report.json"
+            ? withoutFixJson(bytes.toString("utf8"))
+            : bytes;
       expect(sha256(asAtBase), name).toBe(GOLDEN_AT_BASE[name]);
     }
 
@@ -229,6 +236,6 @@ describe("the accept label leaves the existing signals, hints, golden outputs an
       }
     }
     expect(records).toHaveLength(BEFORE_COUNT);
-    expect(sha256(asBefore(JSON.stringify(records)))).toBe(BEFORE_DIGEST);
+    expect(sha256(asBefore(JSON.stringify(withoutFix(records))))).toBe(BEFORE_DIGEST);
   }, 120_000);
 });

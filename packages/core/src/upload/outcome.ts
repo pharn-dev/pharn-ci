@@ -1,3 +1,4 @@
+import { withMessageFix } from "../fix/attach.js";
 import { type Message, type Report, verdictOf } from "../report.js";
 
 /** The largest `report.json` the Action offers for upload, in bytes of the gzip-free archive text. */
@@ -34,7 +35,11 @@ export function withUploadOutcome(report: Report, outcome: UploadOutcome): Repor
     return { ...report, flaky: { ...report.flaky, uploaded: true }, meta };
   }
   if (outcome.status !== "too_large") return { ...report, meta };
-  const message: Message = { level: "warn", code: "UPLOAD_TOO_LARGE", text: tooLargeText(outcome.maxBytes) };
+  const message: Message = withMessageFix({
+    level: "warn",
+    code: "UPLOAD_TOO_LARGE",
+    text: tooLargeText(outcome.maxBytes),
+  });
   const messages = [...report.messages, message];
   // The verdict only rises: a passing run gets the warning's level, a warn or fail stays.
   const verdict = report.verdict === "pass" ? verdictOf(messages) : report.verdict;

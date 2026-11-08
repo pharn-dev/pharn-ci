@@ -9,6 +9,7 @@ import { foldCoverageBar } from "../../core/test/helpers.js";
 import { withoutSchemaLevelEdits } from "../../core/test/level-edits.js";
 import { V070_INJECTION_CODES, withoutV070Properties } from "../../core/test/v070-codes.js";
 import { V080_CODES, withoutV080Properties } from "../../core/test/v080-codes.js";
+import { withoutFixJson, withoutV090SchemaEdits } from "../../core/test/v090-codes.js";
 
 // Reads the repository and the base commit with git; nothing the build adds is loaded. The base is the commit this
 // increment starts from. The committed action dist must be a fresh bundle that carries the alias reader, so this test
@@ -100,13 +101,16 @@ const PINNED = [
 // whole-run unavailable message is an error in block, was a warn), so this is the digest of the edited file.
 // Re-pinned again by comment-coverage-bar: ac-accept-signoff-regression folds the new diff-coverage bar line out of
 // fixtures/golden/report.md before hashing it (its golden digest is unchanged); this is the digest of the edited file.
+// Re-pinned again by fix-hints (H6): ac-accept-signoff-regression and ac-ti0205-regression take the `fix` objects out of
+// the reports and goldens before hashing them (their output digests are unchanged); these are the digests of the edited
+// files.
 const NAME_ONLY_REPINNED: Record<string, string> = {
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "cf611d3c9bb955ec82b2acf8dab562e77921d012f653a61067fc0c34e4806eef",
+    "638b8bae1e0c8efcd4df8f922e1ce4684a836610635064ed177ede565c15b9a3",
   // Re-pinned again by A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): ac-ti0205-regression takes the tests-exercise message
   // and testIntegrity.exercise out of the golden reports made with sources before comparing (exercise-repin.ts); this
   // is the digest of the edited file.
-  "packages/core/test/ac-ti0205-regression.test.ts": "fc539d32fd9fd3f12dea5f0883d2c6d0f6dd3307d9bde6603ca2433675a08aff",
+  "packages/core/test/ac-ti0205-regression.test.ts": "7583e11f397f59d04123ebdb7afea818d37f5a4b3522e32d3badd26fe104369b",
 };
 /** The digests of ac-ti06-ti12-unchanged.test.ts the name-only-moves change re-pins; every other one is as at the base. */
 const NAME_ONLY_DIGESTS: Record<string, string> = {
@@ -189,8 +193,10 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
       // Re-pinned for flaky tests (A6, v0.8.0): the flaky description is taken out the same way (v080-codes.ts).
       // Re-pinned for dependency safety (A13, v0.8.0): withoutV080Properties also takes out its top-level
       // `dependencies` object (v080-codes.ts pins it exactly); its part of the v0.8.0 code text is in the appended text.
+      // Re-pinned for fix-hints (H6): the `$defs.fix` object and the six `fix` properties are taken out first
+      // (v090-codes.ts pins them exactly).
       const withIsAgentPr = withoutSchemaLevelEdits(
-        withoutV080Properties(withoutV070Properties(read(`schema/${name}`))),
+        withoutV080Properties(withoutV070Properties(withoutV090SchemaEdits(read(`schema/${name}`)))),
       );
       expect(withIsAgentPr.split(isAgentPrLines).length - 1, "the four isAgentPr lines appear once").toBe(1);
       const currentText = withIsAgentPr.replace(isAgentPrLines, "");
@@ -274,12 +280,19 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
     // gained the bar line on purpose. They are the only modified fixtures, and folding the bar line (and the empty line
     // under it) back out must give each one's content at the base byte for byte.
     const barred = /^M\t(fixtures\/golden(?:-cobertura|-exclusions|-multi)?\/report\.md)$/;
+    // Re-pinned for fix-hints (H6): the five committed report JSON goldens that carry a message gained a `fix` on each
+    // message on purpose. They are modified, never added or deleted, and with their `fix` objects taken out each one is
+    // its content at the base byte for byte.
+    const fixed =
+      /^M\t(fixtures\/(?:golden|golden-cobertura|golden-multi|coverage-paths\/package-relative)\/report(?:-warn)?\.json)$/;
     for (const line of statuses) {
       const path = barred.exec(line)?.[1];
       if (path !== undefined) expect(foldCoverageBar(read(path)), line).toBe(atBase(path));
+      const fixedPath = fixed.exec(line)?.[1];
+      if (fixedPath !== undefined) expect(withoutFixJson(read(fixedPath)), line).toBe(atBase(fixedPath));
     }
     expect(
-      statuses.filter((l) => !l.startsWith("A\t") && !barred.test(l)),
+      statuses.filter((l) => !l.startsWith("A\t") && !barred.test(l) && !fixed.test(l)),
       "no fixture of the base is modified or deleted",
     ).toEqual([]);
 

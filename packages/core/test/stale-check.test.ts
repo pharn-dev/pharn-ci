@@ -14,6 +14,7 @@ import {
 } from "../src/index.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // Stale instructions (Horizon 2 item H3) through check(): the report's setupHealth object and SETUP_STALE_* messages,
 // validated against schema/report.v2.json; nothing without a diff or without the sources.
@@ -92,7 +93,8 @@ describe("check() and stale instructions", () => {
     };
     const report = check(input({ parsed: [modified("src/index.ts")] }, sources));
     expectValidReport(report);
-    expect(report.setupHealth?.stale).toEqual([
+    // fix-hints (H6): every finding now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+    expect(withoutFix(report.setupHealth?.stale)).toEqual([
       { id: "SI04", path: "AGENTS.md", line: 1, kind: "path", token: "src/index.ts" },
     ]);
     expect(report.messages.filter((m) => m.code.startsWith("SETUP_STALE_")).map((m) => m.level)).toEqual(["info"]);

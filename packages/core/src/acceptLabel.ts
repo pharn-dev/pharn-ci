@@ -1,3 +1,4 @@
+import { withMessageFix } from "./fix/attach.js";
 import {
   type Message,
   type Report,
@@ -154,13 +155,13 @@ export function acceptTestIntegrity(report: Report, accepted: { label: string; b
   const signals = report.testIntegrity.signals.map((s) =>
     s.severity === "block" ? { ...s, severity: "warn" as const } : s,
   );
-  const accepting: Message = {
+  const accepting: Message = withMessageFix({
     level: "info",
     code: "TEST_INTEGRITY_ACCEPTED",
     text: `The accept label "${accepted.label}" was applied by ${accepted.by}, who is not the PR author, so the block findings above are warnings.`,
-  };
+  });
   // The TI02 and TI05 messages keep their text (and the "not listed" counts only the report held); their level follows.
-  const rebuilt = testIntegritySignalMessages(signals, { previous: report.messages });
+  const rebuilt = testIntegritySignalMessages(signals, { previous: report.messages }).map(withMessageFix);
   const messages: Message[] = [];
   let placed = false;
   for (const message of report.messages) {
@@ -199,11 +200,11 @@ const IGNORED_BECAUSE: Record<AcceptIgnoredReason, string> = {
  * a fixed sentence and the label; no login and nothing the API returned goes in it. Returns a new report.
  */
 export function ignoreAcceptLabel(report: Report, label: string, reason: AcceptIgnoredReason): Report {
-  const ignored: Message = {
+  const ignored: Message = withMessageFix({
     level: "warn",
     code: "TEST_INTEGRITY_ACCEPT_IGNORED",
     text: `The accept label "${label}" was ignored: ${IGNORED_BECAUSE[reason]}.`,
-  };
+  });
   const messages = insertAfterSignalMessages(report.messages, [ignored]);
   return { ...report, verdict: verdictOf(messages), messages };
 }

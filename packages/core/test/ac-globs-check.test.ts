@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // check() and the fixtures are loaded inside each test body: the AC tests are written before the multi-file coverage
 // input and fixtures/coverage-multi/ exist, so nothing that depends on them may run while the file loads.
@@ -118,7 +119,8 @@ describe("check(): several coverage files", () => {
       expectValidReport(report);
       expect(report.diffCoverage, label).toBeNull();
       expect(report.verdict, label).toBe(verdict);
-      expect(report.messages, label).toEqual([
+      // fix-hints (H6): every message now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+      expect(withoutFix(report.messages), label).toEqual([
         { level, code: "COVERAGE_FILE_MISSING", text: "Coverage file not found: coverage/missing/lcov.info" },
       ]);
     }
@@ -150,7 +152,8 @@ describe("check(): several coverage files", () => {
       expectValidReport(report);
       expect(report.diffCoverage, file).toBeNull();
       expect(report.verdict, file).toBe("fail");
-      expect(report.messages, file).toEqual([{ level: "error", code, text }]);
+      // fix-hints (H6): every message now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+      expect(withoutFix(report.messages), file).toEqual([{ level: "error", code, text }]);
       expect(report.messages[0]?.text, file).not.toContain("valid.info");
     }
   });

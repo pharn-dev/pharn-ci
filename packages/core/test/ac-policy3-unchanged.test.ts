@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix, withoutFixJson } from "./v090-codes.js";
 
 // check() is loaded inside the test body: the AC test is written before CheckInput has `policy`, so nothing the
 // build adds may run while the file loads. The golden inputs are passed as the existing golden tests pass them
@@ -77,7 +78,9 @@ describe("reports with no policy, or a policy of source none", () => {
     };
     for (const dir of Object.keys(GOLDENS_AT_BASE)) {
       const golden = read(`fixtures/${dir}/report.json`);
-      expect(createHash("sha256").update(golden).digest("hex"), dir).toBe(GOLDENS_AT_BASE[dir]);
+      // Re-pinned for fix-hints (H6): the committed goldens gained a `fix` on each message; the digest is taken without
+      // them, so the base commit's bytes stay pinned.
+      expect(createHash("sha256").update(withoutFixJson(golden)).digest("hex"), dir).toBe(GOLDENS_AT_BASE[dir]);
       const inputs = goldenInputs(dir);
 
       const plain = check(inputs as never);
@@ -99,7 +102,7 @@ describe("reports with no policy, or a policy of source none", () => {
       // E3 item 22 (policy rules): an unavailable policy now also carries the `policy` object with its one P10 warn
       // violation. It is asserted here, and every other field is still the plain report's.
       const { policy, ...rest } = timedOut;
-      expect(policy, dir).toEqual({
+      expect(withoutFix(policy), dir).toEqual({
         source: "none",
         version: null,
         violations: [

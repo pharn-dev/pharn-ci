@@ -30,10 +30,12 @@ const DIST_BOUND = 12_000_000;
 // Re-pinned again by A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): ac-ti0205-regression takes the tests-exercise message
 // and testIntegrity.exercise out of the golden reports made with sources before comparing (exercise-repin.ts); this is
 // the digest of the edited file.
+// Re-pinned again by fix-hints (H6): both files compare reports through withoutFix (v090-codes.ts), so the optional
+// fix object every message and finding now carries is left out; these are the digests of the edited files.
 const PINNED: Record<string, string> = {
-  "packages/core/test/ac-ti0205-regression.test.ts": "fc539d32fd9fd3f12dea5f0883d2c6d0f6dd3307d9bde6603ca2433675a08aff",
+  "packages/core/test/ac-ti0205-regression.test.ts": "7583e11f397f59d04123ebdb7afea818d37f5a4b3522e32d3badd26fe104369b",
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "cf611d3c9bb955ec82b2acf8dab562e77921d012f653a61067fc0c34e4806eef",
+    "638b8bae1e0c8efcd4df8f922e1ce4684a836610635064ed177ede565c15b9a3",
 };
 
 /** The Skylos-count tests that record the move, and the count literal each one asserts. */

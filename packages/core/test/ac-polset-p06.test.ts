@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // E3 item 23 (policy settings), AC-12. check() is loaded inside the test body: the AC test is written before the build
 // adds the settings rules, so nothing the build adds may run while this file loads. Each case is its own settings
@@ -81,7 +82,8 @@ describe("org policy rule P06: required hook missing", { timeout: 60_000 }, () =
       policySettingsSources: { files: Object.entries(files).map(([path, text]) => ({ path, text })), dropped: [] },
     } as never);
     expectValidReport(report);
-    const p06 = ((report as unknown as Report).policy?.violations ?? []).filter((v) => v.id === "P06");
+    // fix-hints (H6): every finding now carries a `fix`; the pinned literals are unchanged, so they are read without it.
+    const p06 = withoutFix(((report as unknown as Report).policy?.violations ?? []).filter((v) => v.id === "P06"));
 
     const missing = (unit: string, what: string): Violation => ({
       id: "P06",

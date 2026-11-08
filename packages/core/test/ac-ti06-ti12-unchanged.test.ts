@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { exerciseMessages, withoutExerciseCheck } from "./exercise-repin.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // check() and the core entry point are loaded inside each test body: the AC tests are written before TI06 and TI12
 // exist, so nothing that depends on them may run while the file loads.
@@ -268,9 +269,10 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
       }
     }
     expect(earlier.length).toBeGreaterThan(100);
+    // fix-hints (H6): the signals and messages now carry a `fix`; it is taken out, so the digests still pin the base outputs.
     expect(
       createHash("sha256")
-        .update(asBefore(JSON.stringify(earlier)))
+        .update(asBefore(JSON.stringify(withoutFix(earlier))))
         .digest("hex"),
       "the earlier fixtures without sources give what they gave before",
     ).toBe(EARLIER_DIGEST);
@@ -311,7 +313,9 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
     }
     expect(pairs.length).toBeGreaterThan(30);
     expect(
-      createHash("sha256").update(JSON.stringify(pairs)).digest("hex"),
+      createHash("sha256")
+        .update(JSON.stringify(withoutFix(pairs)))
+        .digest("hex"),
       "the TI02 and TI05 cases give what they gave at the base commit",
     ).toBe(PAIR_DIGEST);
   }, 60_000);

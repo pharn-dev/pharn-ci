@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { withoutFix } from "../../core/test/v090-codes.js";
 
 // run() is loaded inside each test body, like the other action tests. The action runs against in-memory deps for a
 // pull_request event whose diff comes from the compare API; `git ls-tree` answers with sizes or fails.
@@ -88,7 +89,8 @@ async function runAction(lsTree: "sizes" | "fails") {
 describe("action: empty agent setup files", () => {
   it("reports an empty CLAUDE.md found by git ls-tree", async () => {
     const { report, warnings } = await runAction("sizes");
-    expect(report.messages.filter((m) => m.code === "AGENT_SETUP_FILE_EMPTY")).toEqual([
+    // fix-hints (H6): the message now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+    expect(withoutFix(report.messages.filter((m) => m.code === "AGENT_SETUP_FILE_EMPTY"))).toEqual([
       { level: "warn", code: "AGENT_SETUP_FILE_EMPTY", text: "1 agent setup file is empty: `CLAUDE.md`." },
     ]);
     expect(report.verdict).toBe("warn");

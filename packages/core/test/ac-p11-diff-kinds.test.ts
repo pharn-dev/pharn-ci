@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // E3 item 24a part B (P11), AC-3. check() is loaded inside the test body and fixtures/policy-rules/p11/ is read there
 // too: the AC test is written before the build adds rule P11 and its fixtures, so nothing the build adds may run while
@@ -40,7 +41,8 @@ async function run(diffName: string): Promise<Report> {
   return report as unknown as Report;
 }
 
-const p11 = (report: Report) => (report.policy?.violations ?? []).filter((v) => v.id === "P11");
+// fix-hints (H6): every finding now carries a `fix`; the pinned literals are unchanged, so this reads without it.
+const p11 = (report: Report) => withoutFix((report.policy?.violations ?? []).filter((v) => v.id === "P11"));
 
 describe("org policy rule P11: renames, deletions, mode-only and binary changes", { timeout: 60_000 }, () => {
   it("AC-3: a rename out names the old path, a rename in the head path, and a deletion, a mode-only change and a binary change each name the touched path, one violation each", async () => {

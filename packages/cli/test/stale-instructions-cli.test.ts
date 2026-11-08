@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
+import { withoutFix } from "../../core/test/v090-codes.js";
 
 // Stale instructions (Horizon 2 item H3) in the CLI: `pharn-ci check` with its real Node deps on a temporary repository
 // whose feature branch edits CLAUDE.md. Without a policy the instruction files are read and the stale tokens reported;
@@ -84,7 +85,8 @@ describe("pharn-ci check: stale instructions", { timeout: 120_000 }, () => {
   it("reports the stale script and path of the edited CLAUDE.md without a policy, as warnings that exit 0", async () => {
     const { code, report, err } = await runCli();
     expect(code).toBe(0);
-    expect(report.setupHealth?.stale).toEqual([
+    // fix-hints (H6): every finding now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+    expect(withoutFix(report.setupHealth?.stale)).toEqual([
       { id: "SI01", path: "CLAUDE.md", line: 3, kind: "command", token: "pnpm run lint" },
       { id: "SI02", path: "CLAUDE.md", line: 4, kind: "path", token: "src/gone.ts" },
     ]);

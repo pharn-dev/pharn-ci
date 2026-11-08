@@ -1,3 +1,5 @@
+import type { FixHint } from "../fix/table.js";
+
 /** The package ecosystems dependency safety reads (A13). Go is not read yet (docs/LIMITS.md). */
 export type DependencyEcosystem = "npm" | "pypi";
 
@@ -22,6 +24,8 @@ export interface DependencySignal {
   /** 1-based line at HEAD, or null. */
   line: number | null;
   detail: string;
+  /** How to fix it (since 0.9.0); set by `buildReport`. */
+  fix?: FixHint;
 }
 
 /** Where a dependency comes from: a registry, or a source outside every registry (the D05 kinds). */

@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { withoutV090SchemaEdits } from "./v090-codes.js";
 
 // The documents are read inside the test body, so the file loads whatever they say.
 
@@ -109,7 +110,9 @@ describe("TI08, TI15 and TI16: schemas and documents", () => {
     // schema/report.v2.json equals the base once the message-code description is set aside on both sides, and the
     // `languages` description, which TI02 and TI05 (ti02-ti05, merged before this change) edit.
     const before = JSON.parse(atBase(base, "schema/report.v2.json").toString("utf8")) as Json;
-    const now = JSON.parse(read("schema/report.v2.json")) as Json;
+    // Re-pinned for fix-hints (H6): the `$defs.fix` object and the six `fix` properties are taken out first
+    // (v090-codes.ts pins them exactly).
+    const now = JSON.parse(withoutV090SchemaEdits(read("schema/report.v2.json"))) as Json;
     const paths = codeDescriptionPaths(before);
     expect(paths.map((p) => p.join("/"))).toHaveLength(1);
     const languages = ["properties", "testIntegrity", "properties", "languages", "description"];

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // E3 item 24a part B (P11), AC-13. check() is loaded inside the test body and fixtures/policy-rules/p11/ is read there
 // too: the AC test is written before the build adds rule P11 and its fixtures, so nothing the build adds may run while
@@ -52,8 +53,9 @@ async function run(policy: unknown, agentPrFacts: unknown): Promise<Report> {
   return report as unknown as Report;
 }
 
-const p11 = (report: Report) => (report.policy?.violations ?? []).filter((v) => v.id === "P11");
-const withCode = (report: Report, code: string) => report.messages.filter((m) => m.code === code);
+// fix-hints (H6): every message and finding now carries a `fix`; the pinned literals are unchanged, so these read without it.
+const p11 = (report: Report) => withoutFix((report.policy?.violations ?? []).filter((v) => v.id === "P11"));
+const withCode = (report: Report, code: string) => withoutFix(report.messages.filter((m) => m.code === code));
 const app = (document: unknown) => ({ source: "app", version: 3, fetchedAt: FETCHED_AT, document });
 
 describe("the AGENT_PR_DETECTION_INCOMPLETE message", { timeout: 60_000 }, () => {

@@ -127,6 +127,16 @@ export {
   type UnifiedDiffOptions,
 } from "./diff/unified.js";
 export { computeDiffCoverage, type DiffCoverageFile, type DiffCoverageResult } from "./diffCoverage.js";
+export { fixTarget, messageFix, withFixHints, withMessageFix } from "./fix/attach.js";
+export {
+  FIX_KINDS,
+  type FixEntry,
+  type FixHint,
+  type FixKind,
+  type FixSignalId,
+  MESSAGE_FIXES,
+  SIGNAL_FIXES,
+} from "./fix/table.js";
 export { compileGlob, hasGlobSyntax, matchGlob } from "./glob.js";
 export { type DirEntry, type ListDir, type WalkBudget, WalkLimitError, walkGlob } from "./globWalk.js";
 export { injectionMessages } from "./injection/messages.js";

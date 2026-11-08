@@ -1,0 +1,214 @@
+{
+  "schema": "ac-tests-lock/6",
+  "feature": "fix-hints",
+  "mode": "test-first",
+  "spec": {
+    "spec_id": "fix-hints",
+    "spec_content_hash": "9910a4706db7a62b038f38bedba0ce7bd74805e94fef5fbd8a6be09b4608fa88"
+  },
+  "mapping": {
+    "path": "pharn/features/fix-hints/AC-TESTS.md",
+    "sha256": "aaee8f7009fc46b3d1734c4d4c142d37c8c981bc9b2e86dc5fd49a466b2dfa42"
+  },
+  "files": [
+    {
+      "path": "packages/action/test/ac-fix-hints-action.test.ts",
+      "sha256": "2df5344b16563ee280d777253dede348a61927b384683b867458d3ed5aec3030"
+    },
+    {
+      "path": "packages/cli/test/ac-fix-hints-golden.test.ts",
+      "sha256": "5a0458655c403d65570470f0beaaa8d998245551c596b8131fb6f4e998640f38"
+    },
+    {
+      "path": "packages/core/test/ac-fix-hints-docs.test.ts",
+      "sha256": "418099d55c204d340861aa4d8fccca6bc188b27f9360af3497bd9509c49a3017"
+    },
+    {
+      "path": "packages/core/test/ac-fix-hints-findings.test.ts",
+      "sha256": "7635d7f5476a2c46e9098a6d4b7a8e98914e370c3dc95bf9e830e374162d80e1"
+    },
+    {
+      "path": "packages/core/test/ac-fix-hints-kinds.test.ts",
+      "sha256": "8c1dccf023c7e90ff8b504f2bb206f88f05c8be6fffe268723365f5fcec7bcfe"
+    },
+    {
+      "path": "packages/core/test/ac-fix-hints-mapping.test.ts",
+      "sha256": "a32149ddedeaef3949b83f48e0209602ec9d47d73caf7b3e2a58bef9fbe65973"
+    },
+    {
+      "path": "packages/core/test/ac-fix-hints-messages.test.ts",
+      "sha256": "b748bf01ddf5951800aae7ddaab6668275078322cc70d5f8dd4112895c69e4ac"
+    },
+    {
+      "path": "packages/core/test/ac-fix-hints-no-leak.test.ts",
+      "sha256": "ecc6ff3d9514c602eef25e67a1fceec8f41292f9adcece1118155ec28821d48b"
+    },
+    {
+      "path": "packages/core/test/ac-fix-hints-pins.test.ts",
+      "sha256": "f0646045268460d08c50d1cce9cf3d3253f2699c823d65928a0eba9d050ba7b4"
+    },
+    {
+      "path": "packages/core/test/ac-fix-hints-schema.test.ts",
+      "sha256": "3ae50af30584c8179568c7bd3784b449ed99278744e16027aee9e9ca4175b4cc"
+    },
+    {
+      "path": "packages/core/test/ac-fix-hints-table.test.ts",
+      "sha256": "ecb85338a1c1ec406384b8c3c32c8bc5f7d0d9e44ccade439cd65158862cd95f"
+    },
+    {
+      "path": "packages/core/test/ac-fix-hints-upload.test.ts",
+      "sha256": "9990c830c57ab21701c4d8c1d74a489c8abcbbfd2445e2b4656a49341498eb9c"
+    },
+    {
+      "path": "packages/core/test/ac-fix-hints-words.test.ts",
+      "sha256": "44348e8e7e83b5bfdff3f36416fef48f0db429a2d3f8ef7e019725605d9b2ec2"
+    }
+  ],
+  "bootstrap": null,
+  "red_run": {
+    "stamp_sha256": "d78e3b09146f762a1c3ab5a80226f021349cea87f3c6205ec490bb2a5acbbb8d",
+    "files_sha256": "0e6b9d23869717eff4cd233bb7a3ffad1da6928d57b125511fcdcc082ca1fd7f",
+    "gates": [
+      {
+        "gate": "test",
+        "results_sha256": "03df9aecf8d8e611d5c4a164cd36ccc53fe06d2557519e6f25d93d0efb46b9a8"
+      }
+    ],
+    "acs": [
+      {
+        "id": "AC-1",
+        "tests": [
+          "packages/core/test/ac-fix-hints-kinds.test.ts::fix hints: the closed list of kinds › AC-1: the core's FIX_KINDS and the schema's fix.kind enum are exactly the eight kinds, in order"
+        ]
+      },
+      {
+        "id": "AC-2",
+        "tests": [
+          "packages/core/test/ac-fix-hints-table.test.ts::fix hints: a table entry for every documented code and signal id › AC-2: every message code the schema documents has an entry with a closed kind and a non-empty hint of at most 200 characters",
+          "packages/core/test/ac-fix-hints-table.test.ts::fix hints: a table entry for every documented code and signal id › AC-2: every signal id the schema documents (TI01-TI16, the P ids core produces, SI01-SI04, PI01-PI05, D01-D05) has an entry with a closed kind and a non-empty hint of at most 200 characters"
+        ]
+      },
+      {
+        "id": "AC-3",
+        "tests": [
+          "packages/core/test/ac-fix-hints-words.test.ts::fix hints: the words a hint may use › AC-3: no hint contains a placeholder: the path, line and id of a finding go only into target",
+          "packages/core/test/ac-fix-hints-words.test.ts::fix hints: the words a hint may use › AC-3: no hint contains exclude, excluding, exclusion, lower, skip, threshold, ignore, disable, exempt or exemption (case-insensitive, word boundaries)"
+        ]
+      },
+      {
+        "id": "AC-4",
+        "tests": [
+          "packages/core/test/ac-fix-hints-mapping.test.ts::fix hints: the kind of every code and signal id › AC-4: every message code has the kind of the SPEC's Data mapping, each signal-family message the kind of its signal, and the table has no other code",
+          "packages/core/test/ac-fix-hints-mapping.test.ts::fix hints: the kind of every code and signal id › AC-4: every signal id has the kind of the SPEC's Data mapping, and the table has no other id",
+          "packages/core/test/ac-fix-hints-mapping.test.ts::fix hints: the kind of every code and signal id › AC-4: the named cases of the criterion"
+        ]
+      },
+      {
+        "id": "AC-5",
+        "tests": [
+          "packages/core/test/ac-fix-hints-findings.test.ts::fix hints on every finding of a report › AC-5: dependency signals D04 and D05 carry the table's kind and hint and path:line as target",
+          "packages/core/test/ac-fix-hints-findings.test.ts::fix hints on every finding of a report › AC-5: prompt-injection signals carry the table's kind and hint and path:line as target",
+          "packages/core/test/ac-fix-hints-findings.test.ts::fix hints on every finding of a report › AC-5: stale-instruction findings carry the table's kind and hint and path:line as target",
+          "packages/core/test/ac-fix-hints-findings.test.ts::fix hints on every finding of a report › AC-5: test-integrity signals (TI01, TI05, TI14, TI11) carry the table's kind and hint and their path or path:line as target; the reports validate",
+          "packages/core/test/ac-fix-hints-findings.test.ts::fix hints on every finding of a report › AC-5: the P11 and P14 violations of an agent pull request carry the table's kind and hint, and their path or path:line as target"
+        ]
+      },
+      {
+        "id": "AC-6",
+        "tests": [
+          "packages/core/test/ac-fix-hints-messages.test.ts::fix hints on every message of a report › AC-6: a message whose code has no honest action still carries a none fix with a non-empty hint",
+          "packages/core/test/ac-fix-hints-messages.test.ts::fix hints on every message of a report › AC-6: every message carries fix with the table's kind and hint for its code and no target",
+          "packages/core/test/ac-fix-hints-messages.test.ts::fix hints on every message of a report › AC-6: the TEST_INTEGRITY_<id> message of each signal id present carries fix with its signal's kind"
+        ]
+      },
+      {
+        "id": "AC-7",
+        "tests": [
+          "packages/core/test/ac-fix-hints-no-leak.test.ts::fix hints never carry file text, diff text, test names or package names › AC-7: a test name and an added line holding a unique token and a secret-shaped string never reach fix.hint or fix.target; two TI03 findings differ in fix only by target",
+          "packages/core/test/ac-fix-hints-no-leak.test.ts::fix hints never carry file text, diff text, test names or package names › AC-7: the names of the packages a change adds never reach fix.hint or fix.target; three D05 findings differ in fix only by target"
+        ]
+      },
+      {
+        "id": "AC-8",
+        "tests": [
+          "packages/core/test/ac-fix-hints-schema.test.ts::schema/report.v2.json: the optional fix object › AC-8: every required list is unchanged from the base commit, a report without fix still validates, and schema/report.v1.json is byte-identical to the base commit",
+          "packages/core/test/ac-fix-hints-schema.test.ts::schema/report.v2.json: the optional fix object › AC-8: the message definition and the five finding item schemas each carry an optional, closed fix object with required kind and hint, optional target, kind the closed enum and hint at most 200 characters, each described as never lowering a gate"
+        ]
+      },
+      {
+        "id": "AC-9",
+        "tests": [
+          "packages/cli/test/ac-fix-hints-golden.test.ts::the goldens with fix hints › AC-9: pharn-ci check --format json on each golden fixture equals its regenerated report.json, every message carries fix, and every golden markdown is byte-identical to the base commit"
+        ]
+      },
+      {
+        "id": "AC-10",
+        "tests": [
+          "packages/core/test/ac-fix-hints-upload.test.ts::the upload bundle keeps fix hints › AC-10: the bundle's report.json carries every fix unchanged in kind, target and hint, through redaction and the byte caps, and validates"
+        ]
+      },
+      {
+        "id": "AC-11",
+        "tests": [
+          "packages/action/test/ac-fix-hints-action.test.ts::the Action and the CLI write fix hints › AC-11: the Action on a streamed local diff and lcov, and the CLI on the same inputs, both equal the regenerated golden report, carry fix on every message, and make no compare API call"
+        ]
+      },
+      {
+        "id": "AC-12",
+        "tests": [
+          "packages/core/test/ac-fix-hints-pins.test.ts::existing tests are re-pinned through one shared helper, never weakened › AC-12: no existing test file is deleted, none gains a skip, focus or todo marker, every edited one names fix-hints (H6), the helper is shared, and every edited test passes in a child run",
+          "packages/core/test/ac-fix-hints-pins.test.ts::existing tests are re-pinned through one shared helper, never weakened › AC-12: withoutV090SchemaEdits takes out exactly the fix additions, giving the base commit's schema byte for byte, and withoutFix takes the fix objects out of a report"
+        ]
+      },
+      {
+        "id": "AC-13",
+        "tests": [
+          "packages/core/test/ac-fix-hints-docs.test.ts::documentation of fix hints › AC-13: docs/LIMITS.md has a section on fix hints saying they are generic, per code or id, and never prove that the fix was made or was right",
+          "packages/core/test/ac-fix-hints-docs.test.ts::documentation of fix hints › AC-13: the CHANGELOG Unreleased section names the fix object",
+          "packages/core/test/ac-fix-hints-docs.test.ts::documentation of fix hints › AC-13: the README has a section headed \"Fix hints\" that lists the eight kinds, says what an agent may do with a hint and states that no hint lowers a gate",
+          "packages/core/test/ac-fix-hints-docs.test.ts::documentation of fix hints › AC-13: the schema's descriptions of fix, kind, target and hint say what each holds and never holds"
+        ]
+      }
+    ]
+  },
+  "test_infra": {
+    "levels": [
+      "integration",
+      "unit"
+    ],
+    "gates": [
+      {
+        "id": "test",
+        "script": "vitest run",
+        "pre": null,
+        "post": null,
+        "results": "vitest-json"
+      }
+    ],
+    "chained": [],
+    "configs": [
+      {
+        "path": "vitest.config.ts",
+        "sha256": "84fef4870fed6a1d5156f5260cd8fcc9b6d1dcca7cc76e8de3c86a978b336fec"
+      }
+    ],
+    "script_files": [],
+    "jest": null,
+    "exclude": [],
+    "other_gates": [
+      {
+        "id": "build",
+        "script": "pnpm -r build",
+        "pre": null,
+        "post": null
+      },
+      {
+        "id": "lint",
+        "script": "biome check . && pnpm -r typecheck",
+        "pre": null,
+        "post": null
+      }
+    ],
+    "other_chained": []
+  }
+}

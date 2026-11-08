@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { V070_CODES, withoutV070Properties } from "./v070-codes.js";
 import { V080_CODES, withoutV080Properties } from "./v080-codes.js";
+import { withoutV090SchemaEdits } from "./v090-codes.js";
 
 // Reads the repository and two fixed commits with git; nothing the build adds is loaded. b31de0c is the commit the
 // precision-v030 pin compares schema/report.v2.json with; e13765681e… is the one the pyparity2 pin compares the schema
@@ -126,8 +127,10 @@ describe("the v0.4.0 codes are the only schema and report.ts additions, and the 
     // Re-pinned for flaky tests (A6, v0.8.0): the flaky description is taken out the same way (v080-codes.ts).
     // Re-pinned for dependency safety (A13, v0.8.0): withoutV080Properties also takes out its top-level `dependencies`
     // object (v080-codes.ts pins it exactly).
+    // Re-pinned for fix-hints (H6): the `$defs.fix` object and the six `fix` properties are taken out first
+    // (v090-codes.ts pins them exactly).
     const schemaWithIsAgentPr = withoutSchemaLevelEdits(
-      withoutV080Properties(withoutV070Properties(read("schema/report.v2.json"))),
+      withoutV080Properties(withoutV070Properties(withoutV090SchemaEdits(read("schema/report.v2.json")))),
     );
     expect(schemaWithIsAgentPr.split(isAgentPrLines).length - 1, "the four isAgentPr lines appear once").toBe(1);
     const schema = schemaWithIsAgentPr.replace(isAgentPrLines, "");

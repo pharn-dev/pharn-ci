@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { exerciseMessages, withoutExerciseCheck } from "./exercise-repin.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // check(), the config parser, the diff parser and the core helpers are loaded inside the test body: the AC test is
 // written before check() compares test files, so nothing that depends on that may run while the file loads.
@@ -172,9 +173,10 @@ describe("TI02 and TI05 change the earlier outputs only where they mean to", () 
       }
     }
     expect(records.length).toBeGreaterThan(100);
+    // fix-hints (H6): the signals and messages now carry a `fix`; it is taken out, so the digest still pins the base outputs.
     expect(
       createHash("sha256")
-        .update(asBefore(JSON.stringify(records)))
+        .update(asBefore(JSON.stringify(withoutFix(records))))
         .digest("hex"),
       "the earlier fixtures without sources give what they gave at the base commit",
     ).toBe(BEFORE_DIGEST);

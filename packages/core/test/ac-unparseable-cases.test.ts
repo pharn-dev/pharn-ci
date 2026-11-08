@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // settings-unparseable-fails-closed (review A3-F2), AC-2 to AC-6. Each case under fixtures/policy-settings/unparseable/
 // holds policy.json, files.json (repo path → text file in the case directory) and edits.json (the repo paths the change
@@ -64,8 +65,9 @@ async function run(c: Case, files: { path: string; text: string }[], dropped: Dr
 }
 
 const textFiles = (c: Case) => Object.entries(c.map).map(([path, from]) => ({ path, text: c.read(from) }));
-const p09 = (report: Report) => (report.policy?.violations ?? []).filter((v) => v.id === "P09");
-const invalid = (report: Report) => report.messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID");
+// fix-hints (H6): every message and finding now carries a `fix`; the pinned literals are unchanged, so these read without it.
+const p09 = (report: Report) => withoutFix((report.policy?.violations ?? []).filter((v) => v.id === "P09"));
+const invalid = (report: Report) => withoutFix(report.messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID"));
 const finding = (severity: string, path: string, detail: string): Violation => ({
   id: "P09",
   severity,

@@ -1275,6 +1275,32 @@ message `code`s, not on text:
 The optional `flaky` object (since 0.8.0) holds `uploaded`, `testCount`, `failed`, `quarantined` (up to 200 ids),
 `quarantinedFailures` and `unquarantinedFailures`; it is present when at least one JUnit file was parsed.
 
+### Fix hints
+
+Since 0.9.0 every message and every finding of the report (`testIntegrity.signals`, `policy.violations`,
+`setupHealth.stale`, `injection.signals` and `dependencies.signals`) carries an optional `fix` object: `kind` (one of the
+eight below), `hint` (one fixed English sentence, at most 200 characters) and, on a finding only, `target` (the path, or
+`path:line`, the finding already names). The kind and the hint come from two fixed tables in the core, one entry per
+message code and one per signal id. They are never written by a model and never look at the code, so two findings of one
+id differ only in `target`.
+
+| Kind                | What it asks                                                                         |
+| ------------------- | ------------------------------------------------------------------------------------ |
+| `add-test`          | Add tests that run the changed code                                                  |
+| `restore-test`      | Restore a test that was deleted, removed or turned off                               |
+| `restore-assertion` | Restore the assertions or expected values a test had                                 |
+| `revert-config`     | Revert the change to a config, script, workflow or settings file                     |
+| `remove-dependency` | Remove the dependency the change adds                                                |
+| `request-review`    | A person should look at the change and confirm it; an agent cannot decide that       |
+| `split-pr`          | Split the change into smaller pull requests                                          |
+| `none`              | No code change fixes this; the hint says what to check (an operational message)      |
+
+An agent may act on `fix.kind`, and should still read the `hint` and the rest of the report. The PR comment and the job
+summary do not change: the human `Hint:` text in the comment stays as it was. No kind or hint lowers a gate: none says to
+lower a limit, add an exclusion, turn a test off, add an exemption or edit a policy. A hint says what to change, never
+that the change was made or was right; the next run's report is the only check. See
+[`docs/LIMITS.md`](docs/LIMITS.md), Fix hints.
+
 ### Agent PRs
 
 In the Action, `meta.isAgentPr` says whether the pull request counts as an agent PR, and `meta.agentHint`,

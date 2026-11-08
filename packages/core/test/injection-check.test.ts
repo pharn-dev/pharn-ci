@@ -3,6 +3,7 @@ import { check, MAX_ADDED_TEXT_CHARS, MAX_ADDED_TEXT_LINES, type Report, readDif
 import { fixture } from "./helpers.js";
 import { addedFileDiff, injectionFixture } from "./injection-fixture.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // H4 through check(): the optional `injection` object and the INJECTION_ messages, PI01's block failing the verdict,
 // the streamed and whole-text diff giving the same result, the cut-scan warning, and no trace of the scan on a clean
@@ -36,7 +37,8 @@ describe("the prompt-injection scan in check()", { timeout: 120_000 }, () => {
   it("fails the check on a Trojan Source sample: PI01 blocks, with an error message naming paths and lines", () => {
     const report = run({ text: injectionFixture("trojan-source.diff.txt") });
     expect(report.verdict).toBe("fail");
-    expect(report.injection).toEqual({
+    // fix-hints (H6): every message and finding now carries a `fix`; the pinned literals are unchanged, so they are read without it.
+    expect(withoutFix(report.injection)).toEqual({
       signals: [
         {
           id: "PI01",
@@ -54,7 +56,7 @@ describe("the prompt-injection scan in check()", { timeout: 120_000 }, () => {
         },
       ],
     });
-    const message = report.messages.find((m) => m.code === "INJECTION_PI01");
+    const message = withoutFix(report.messages.find((m) => m.code === "INJECTION_PI01"));
     expect(message).toEqual({
       level: "error",
       code: "INJECTION_PI01",
@@ -65,7 +67,7 @@ describe("the prompt-injection scan in check()", { timeout: 120_000 }, () => {
   it("warns on a published injection sample: PI02 and PI03 are warnings, one message per signal", () => {
     const report = run({ text: injectionFixture("literature-sample.diff.txt") });
     expect(report.verdict).not.toBe("pass");
-    expect(report.messages.filter((m) => m.code.startsWith("INJECTION_"))).toEqual([
+    expect(withoutFix(report.messages.filter((m) => m.code.startsWith("INJECTION_")))).toEqual([
       {
         level: "warn",
         code: "INJECTION_PI02",
@@ -144,7 +146,7 @@ describe("the prompt-injection scan in check()", { timeout: 120_000 }, () => {
   it("warns when a file has more added lines than the scan reads", () => {
     const lines = Array.from({ length: MAX_ADDED_TEXT_LINES + 1 }, (_, i) => `line ${i}`);
     const report = run({ text: addedFileDiff("docs/huge.md", lines) });
-    const message = report.messages.find((m) => m.code === "INJECTION_TEXT_TRUNCATED");
+    const message = withoutFix(report.messages.find((m) => m.code === "INJECTION_TEXT_TRUNCATED"));
     expect(message).toEqual({
       level: "warn",
       code: "INJECTION_TEXT_TRUNCATED",
