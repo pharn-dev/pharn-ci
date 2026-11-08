@@ -1162,8 +1162,9 @@ text guard on what the files declare, not a sandbox. What it misses:
   in the README, and an MCP change to `env` or `headers`, is not a widening. An MCP server's name is its identity: a
   server renamed is one added.
 - **Workflows are read line by line, not as YAML.** The reader follows block mappings; a file with an anchor, alias,
-  merge key or tag, tab indentation, a second document, or `jobs` or a job written as a flow mapping cannot be compared
-  and is one violation (fail closed). A multi-line flow list or quoted scalar that spells a key is read as written.
+  merge key or tag, tab indentation, a second document, `jobs` or a job written as a flow mapping, or a U+0085, U+2028
+  or U+2029 anywhere (a YAML 1.1 parser breaks lines there, this reader does not) cannot be compared and is one
+  violation (fail closed). A multi-line flow list or quoted scalar that spells a key is read as written.
   Secret references are counted anywhere in the text, comments and run scripts included, and a `pull_request_target`
   outside comments and block scalars counts as the trigger, so a mention can count (the cost falls on agent PRs only).
 - **What a workflow does elsewhere.** A reusable workflow called from another repository, a composite action, an
@@ -1173,7 +1174,9 @@ text guard on what the files declare, not a sandbox. What it misses:
   scalar such as `read-all`, or a value that is not a level.
 - **Deleted workflows.** A deleted workflow, and a deleted job, widens nothing: it no longer runs.
 - **CODEOWNERS adds are allowed.** Owners added to an unchanged rule line pass, even the agent's own account; every
-  other change, an added and a deleted CODEOWNERS included, counts. Branch protection and rulesets, which decide
+  other change, an added and a deleted CODEOWNERS included, counts. A line with white space other than a space or a tab
+  (a no-break space, U+FEFF) or with U+0085, U+2028 or U+2029 in it, a comment line included, passes only when it is
+  unchanged: GitHub may split it into owners or lines differently. Branch protection and rulesets, which decide
   whether code owners must approve, are outside it.
 - **Renames are a deletion and an addition.** A renamed settings file loses its deny rules and hooks at the old path and
   gains its allow rules at the new one, so a pure rename counts.

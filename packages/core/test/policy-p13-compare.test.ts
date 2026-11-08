@@ -150,6 +150,37 @@ describe("P13 workflow comparison", () => {
     expect(workflowWidenings(base, `${base}---\nname: other\n`)).toBeNull();
     expect(workflowWidenings(base, `${base}  flow: { runs-on: x, permissions: write-all }\n`)).toBeNull();
   });
+
+  it("a U+0085, U+2028 or U+2029 anywhere, on either side, makes the workflow uncompared (fail closed), never a silent pass", () => {
+    for (const separator of ["\x85", "\u{2028}", "\u{2029}"]) {
+      const code = separator.charCodeAt(0).toString(16);
+      // A YAML 1.1 parser reads the separator as a line break: `permissions: write-all` becomes a key of its own.
+      const smuggled = base.replace(
+        "  contents: read\njobs:",
+        `  contents: read${separator}permissions: write-all\njobs:`,
+      );
+      expect(smuggled, code).not.toBe(base);
+      expect(workflowWidenings(base, smuggled), code).toBeNull();
+      expect(workflowWidenings(smuggled, base), code).toBeNull();
+      expect(workflowWidenings(null, smuggled), code).toBeNull();
+      // In a comment, a run script or the CodeQL witness line, too.
+      expect(workflowWidenings(base, `${base}# note${separator}x\n`), code).toBeNull();
+      expect(workflowWidenings(base, `${base}-:\t\t\t${separator}x\n`), code).toBeNull();
+    }
+  });
+
+  it("a key line reads the same with the linear pattern: tabs or spaces after the colon, a quoted key, a list item", () => {
+    const jobs = p13("workflow/jobs.yml.txt");
+    expect(workflowWidenings(jobs, jobs.replace("jobs:\n", "permissions:\t\t write-all\njobs:\n"))).toEqual([
+      "permissions widened",
+    ]);
+    expect(workflowWidenings(jobs, jobs.replace("jobs:\n", '"permissions":   read-all   \njobs:\n'))).toEqual([
+      "permissions widened",
+    ]);
+    expect(workflowWidenings(jobs, jobs.replace("jobs:\n", "permissions:\n  contents:\t\tread\njobs:\n"))).toEqual([]);
+    // `key:value` with no white space after the colon is not a pair, as before.
+    expect(workflowWidenings(jobs, jobs.replace("jobs:\n", "permissions:write-all\njobs:\n"))).toEqual([]);
+  });
 });
 
 describe("P13 CODEOWNERS comparison", () => {
@@ -164,6 +195,40 @@ describe("P13 CODEOWNERS comparison", () => {
     expect(codeownersWidenings(base, p13("codeowners/line-added.txt"))).toEqual(["rules changed"]);
     expect(codeownersWidenings(null, base)).toEqual(["file added"]);
     expect(codeownersWidenings(base, null)).toEqual(["file deleted"]);
+  });
+
+  it("an owner joined by U+0085, U+2028, U+2029 or a no-break space loosens: GitHub may not split it off; never a silent pass", () => {
+    const line = "/.claude/           @acme/platform @acme/security";
+    for (const space of ["\x85", "\u{2028}", "\u{2029}", "\xa0", "\u{feff}"]) {
+      const code = space.charCodeAt(0).toString(16);
+      // Read by white space, the head only adds @agent; to GitHub the last owner may be one token, or two lines.
+      expect(codeownersWidenings(base, base.replace(line, `${line}${space}@agent`)), code).toEqual(["rules changed"]);
+      expect(
+        codeownersWidenings(base, base.replace(line, line.replace(" @acme/security", `${space}@acme/security`))),
+        code,
+      ).toEqual(["rules changed"]);
+    }
+  });
+
+  it("a comment line with U+2028 in it counts as a rule line: added, it loosens; unchanged, it loosens nothing", () => {
+    for (const separator of ["\x85", "\u{2028}", "\u{2029}"]) {
+      const code = separator.charCodeAt(0).toString(16);
+      const withNote = `${base}# note${separator}/.claude/ @agent\n`;
+      expect(codeownersWidenings(base, withNote), code).toEqual(["rules changed"]);
+      expect(codeownersWidenings(withNote, base), code).toEqual(["rules changed"]);
+      expect(codeownersWidenings(withNote, withNote), code).toEqual([]);
+      const appended = `${p13("codeowners/owners-appended.txt")}# note${separator}/.claude/ @agent\n`;
+      expect(codeownersWidenings(withNote, appended), code).toEqual([]);
+    }
+  });
+
+  it("the comment strip is unchanged for ordinary lines: the first # not after a backslash starts the comment", () => {
+    // `\#` is part of the pattern; a trailing comment and a comment edit loosen nothing.
+    expect(codeownersWidenings("/a\\#b/ @x # one\n", "/a\\#b/ @x @y # two\n")).toEqual([]);
+    expect(codeownersWidenings("/a\\#b/ @x\n", "/a\\#c/ @x\n")).toEqual(["rules changed"]);
+    // A `#` right after a character other than a backslash starts a comment too, so both patterns read `/a`.
+    expect(codeownersWidenings("/a#b @x\n", "/a#c @x\n")).toEqual([]);
+    expect(codeownersWidenings("* @x\n", "#* @x\n")).toEqual(["rules changed"]);
   });
 });
 

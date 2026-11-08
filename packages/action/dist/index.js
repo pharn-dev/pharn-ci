@@ -29854,15 +29854,31 @@ function detectP11(input) {
 }
 
 // ../core/src/policy/selfmod/codeowners.ts
+function commentStart(line) {
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === "#" && (i === 0 || line[i - 1] !== "\\")) return i;
+  }
+  return -1;
+}
+var OTHER_SPACE = /[^\S \t]/;
+var OTHER_LINE_BREAK = /[\x85\u{2028}\u{2029}]/u;
 function rulesOf(text) {
   const rules = [];
   for (const line of text.split(/\r\n|\n|\r/)) {
-    const bare = line.replace(/(^|[^\\])#.*$/, "$1").trim();
+    if (OTHER_LINE_BREAK.test(line)) {
+      rules.push({ pattern: "", owners: /* @__PURE__ */ new Set(), raw: line, opaque: true });
+      continue;
+    }
+    const at = commentStart(line);
+    const raw = at === -1 ? line : line.slice(0, at);
+    const bare = raw.trim();
     if (bare === "") continue;
     const tokens2 = bare.split(/(?<!\\)\s+/);
     rules.push({
       pattern: tokens2[0],
-      owners: new Set(tokens2.slice(1).map((owner) => owner.toLowerCase()))
+      owners: new Set(tokens2.slice(1).map((owner) => owner.toLowerCase())),
+      raw,
+      opaque: OTHER_SPACE.test(raw)
     });
   }
   return rules;
@@ -29877,6 +29893,10 @@ function codeownersWidenings(base, head) {
   for (let i = 0; i < before.length; i++) {
     const b = before[i];
     const a = after[i];
+    if (a.opaque || b.opaque) {
+      if (a.raw !== b.raw) return ["rules changed"];
+      continue;
+    }
     if (a.pattern !== b.pattern) return ["rules changed"];
     for (const owner of b.owners) if (!a.owners.has(owner)) return ["rules changed"];
   }
@@ -30572,7 +30592,7 @@ function withoutComment(line) {
 }
 function pairOf(line) {
   const text = withoutComment(line).trim();
-  const match = /^(-\s+)?([A-Za-z0-9_.<-]+|"[^"]*"|'[^']*')\s*:(?:\s+(.*))?$/.exec(text);
+  const match = /^(-\s+)?([A-Za-z0-9_.<-]+|"[^"]*"|'[^']*')\s*:(?:\s([\s\S]*))?$/.exec(text);
   if (match === null) return null;
   const rawKey = match[2];
   return {
@@ -30597,7 +30617,9 @@ var SECRET_NAME = /(?<![\w-])secrets\s*\.\s*([A-Za-z0-9_-]+)/gi;
 var SECRET_INDEX = /(?<![\w-])secrets\s*\[\s*(['"])([^'"\r\n]*)\1\s*\]/gi;
 var SECRET_CONTEXT = /(?<![\w.-])secrets(?!\s*[.[\w-])/i;
 var PULL_REQUEST_TARGET = /(?<![\w-])pull_request_target(?![\w-])/;
+var OTHER_LINE_BREAK2 = /[\x85\u{2028}\u{2029}]/u;
 function workflowFacts(text) {
+  if (OTHER_LINE_BREAK2.test(text)) return null;
   const facts = {
     secrets: /* @__PURE__ */ new Set(),
     permissions: /* @__PURE__ */ new Map(),

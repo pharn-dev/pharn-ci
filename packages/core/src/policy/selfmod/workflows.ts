@@ -4,7 +4,8 @@ import { findComment, indentOf, unquote } from "../../signals/yamlLines.js";
  * The facts rule P13 reads from a GitHub Actions workflow, line by line (not a YAML parser): the secrets it references,
  * its `permissions:` blocks at the workflow and job level, its job ids, and whether it names `pull_request_target`. A
  * file whose structure this reader cannot follow (tab indentation, an anchor, alias or merge key, a second document, a
- * root that is not a block mapping, or `jobs` or `permissions` written as a flow mapping across lines) gives null, so
+ * root that is not a block mapping, `jobs` or `permissions` written as a flow mapping across lines, or a U+0085,
+ * U+2028 or U+2029 anywhere, which a YAML 1.1 parser reads as a line break and this reader does not) gives null, so
  * the rule fails closed. Nothing here returns file text.
  */
 
@@ -60,10 +61,14 @@ function withoutComment(line: string): string {
   return start === -1 ? line : line.slice(0, start);
 }
 
-/** `key: value` on one line (an optional `- ` before the key), read in full; null when the line is not one. */
+/**
+ * `key: value` on one line (an optional `- ` before the key), read in full; null when the line is not one. Linear: no
+ * two adjacent quantifiers can match the same character (one white-space character after the colon, then the rest of
+ * the line as it is, trimmed below), and the tail `[\s\S]*` always reaches the end, so `$` never fails into a retry.
+ */
 function pairOf(line: string): { key: string; value: string; indent: number } | null {
   const text = withoutComment(line).trim();
-  const match = /^(-\s+)?([A-Za-z0-9_.<-]+|"[^"]*"|'[^']*')\s*:(?:\s+(.*))?$/.exec(text);
+  const match = /^(-\s+)?([A-Za-z0-9_.<-]+|"[^"]*"|'[^']*')\s*:(?:\s([\s\S]*))?$/.exec(text);
   if (match === null) return null;
   const rawKey = match[2] as string;
   return {
@@ -91,9 +96,13 @@ const SECRET_NAME = /(?<![\w-])secrets\s*\.\s*([A-Za-z0-9_-]+)/gi;
 const SECRET_INDEX = /(?<![\w-])secrets\s*\[\s*(['"])([^'"\r\n]*)\1\s*\]/gi;
 const SECRET_CONTEXT = /(?<![\w.-])secrets(?!\s*[.[\w-])/i;
 const PULL_REQUEST_TARGET = /(?<![\w-])pull_request_target(?![\w-])/;
+/** The characters a YAML 1.1 parser breaks lines at besides CR and LF; this reader splits at CR and LF only. */
+const OTHER_LINE_BREAK = /[\x85\u{2028}\u{2029}]/u;
 
 /** The workflow facts of one side, or null when the reader cannot follow the file. */
 export function workflowFacts(text: string): WorkflowFacts | null {
+  // A line this reader would read as one can be two to GitHub's parser, hiding a key: fail closed.
+  if (OTHER_LINE_BREAK.test(text)) return null;
   const facts: WorkflowFacts = {
     secrets: new Set(),
     permissions: new Map(),
