@@ -1,6 +1,6 @@
 # GitHub Marketplace listing
 
-The text for the GitHub Marketplace listing of the pharn-ci Action. A test checks it against `action.yml`. The Action is not listed on the Marketplace yet: the listing is published by hand from a release (step 4 of [`docs/RELEASING.md`](./RELEASING.md)), and from then on each release refreshes it.
+The text for the GitHub Marketplace listing of the pharn-ci Action. A test checks it against `action.yml`. The Action is listed at <https://github.com/marketplace/actions/pharn-ci> since v0.9.1. Each release is listed by hand: the release workflow creates a draft, and the maintainer publishes it with **Publish this Action to the GitHub Marketplace** ticked (step 4 of [`docs/RELEASING.md`](./RELEASING.md)). A release published without that box can never be listed later, which is why v0.9.0 is not on the Marketplace.
 
 ## Name
 

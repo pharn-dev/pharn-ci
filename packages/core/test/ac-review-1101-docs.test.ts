@@ -58,10 +58,13 @@ describe("docs say what the code does (review 2026-11-01)", () => {
     expect(action).toContain("an empty or under-scoped token makes that detection fail closed");
   });
 
-  it("MARKETPLACE.md does not claim a listing that does not exist", () => {
+  // The listing went live with v0.9.1, so the doc now names it; it must still not claim that releases list themselves.
+  it("MARKETPLACE.md names the live listing and says each release is listed by hand", () => {
     const listing = read("docs/MARKETPLACE.md");
     expect(listing).not.toContain("it is refreshed on each release");
-    expect(listing).toContain("not listed on the Marketplace yet");
+    expect(listing).not.toContain("not listed on the Marketplace yet");
+    expect(listing).toContain("https://github.com/marketplace/actions/pharn-ci");
+    expect(listing).toContain("Each release is listed by hand");
   });
 
   it("Release verify refuses a HEAD that is not the release merge commit", () => {
