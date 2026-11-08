@@ -9,6 +9,31 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+### Changed
+
+### Security
+
+## [0.8.0] - 2026-11-08
+
+Two checks on what a pull request brings in and on how its tests ran. Dependency safety, signals D01 to D05
+(`DEPENDENCY_D01` to `DEPENDENCY_D05`, the report's `dependencies` object), checks the npm and Python dependencies a
+pull request adds or changes: offline and on by default, D04 flags lockfile drift and D05 a dependency from a git
+repository, a URL outside the npm and PyPI registries or a local file; with `dependencies: lookup` the Action also asks
+the registries whether an added package exists (D01), is young (D02) or is rarely downloaded (D03). Flaky tests: the new
+`junit-paths` input (CLI `--junit`) reads the JUnit XML the test step wrote, fills the report's `flaky` object and a
+🧫 Flaky comment section and applies the org's quarantine list, and the new `pharn-ci test` command runs a test command
+and exits 0 when only quarantined tests failed; test results never change the verdict. A behaviour change: dependency
+safety runs by default (`dependencies: auto`) and D04 and D05 are errors, so a pull request that changes a manifest's
+dependencies without its lockfile, or adds a git, URL or local-file dependency, now fails the check where it passed;
+set `dependencies: never` to get the old behaviour back. A Dependabot bump and a lockfile-only refresh give no finding.
+The CLI and the Action now read the committed text of the manifests and lockfiles a change touches, and with
+`dependencies: lookup` the Action sends the names of added unscoped packages to `registry.npmjs.org`, `api.npmjs.org` and
+`pypi.org`, the first hosts other than GitHub and pharn.dev it calls (Security below). A run upload also carries a
+redacted `junit/results.xml`. Report v2 gains the optional `dependencies` object, fills the optional `flaky` object and
+adds the new message codes; no field, input or code was removed or renamed.
+
+### Added
+
 - Flaky tests (A6): the new `junit-paths` input (CLI: `--junit`, repeatable) reads the JUnit XML the test step wrote,
   with a hand-written, linear reader that refuses any DOCTYPE and expands no entity, capped at 50 files, 25 MiB and
   20,000 test cases. Report v2 fills its optional `flaky` object (counts, and up to 200 quarantined test ids that
@@ -38,8 +63,6 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   `DEPENDENCY_D01` to `DEPENDENCY_D05`, `DEPENDENCY_LOOKUP_UNAVAILABLE` and `DEPENDENCY_CHECK_INCOMPLETE`; the PR comment
   gains a **📦 Dependencies** section. A block finding fails the verdict like an agent config secret. A Dependabot bump
   and a lockfile-only refresh give no finding. Limits in docs/LIMITS.md, Dependency safety.
-
-### Changed
 
 ### Security
 

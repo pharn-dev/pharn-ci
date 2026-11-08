@@ -41,7 +41,10 @@ describe("flaky tests: schema and documents", () => {
     );
     expect(threat).toContain("`junit/results.xml`");
     expect(read("SECURITY.md")).toContain("| JUnit XML the test step wrote (`junit-paths`; CLI `--junit`) |");
-    const unreleased = read("CHANGELOG.md").split("## [Unreleased]")[1]?.split("\n## [")[0] ?? "";
+    // Shipped in 0.8.0: the release PR moved the Unreleased entries under `## [0.8.0] - 2026-11-08`.
+    const changelog = read("CHANGELOG.md");
+    expect(changelog, "the 0.8.0 section").toContain("## [0.8.0] - 2026-11-08");
+    const unreleased = changelog.split("## [0.8.0] - 2026-11-08")[1]?.split("\n## [")[0] ?? "";
     expect(unreleased).toContain("Flaky tests (A6)");
     expect(read("action.yml")).toMatch(/^ {2}junit-paths:$/m);
   });
