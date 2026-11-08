@@ -16,7 +16,8 @@ policy from pharn.dev and uploads the redacted report there (rule 5).
 - `packages/cli` — `pharn-ci check`: reads files, runs git, calls core, prints output.
 - `packages/action` — thin GitHub Action wrapper: inputs, PR diff, sticky comment, job summary, exit code.
 - `packages/node-io` — private shared Node I/O for cli and action: git, file reads, directory listing, the
-  coverage-file reading loop, and the `python3` subprocess that indexes Python test files; bundled into their dists.
+  coverage-file reading loop, the `python3` subprocess that indexes Python test files, and the spawn of the command
+  `pharn-ci test` wraps (`runCommand`); bundled into their dists.
 - `schema/` — JSON Schemas: `report.v2.json` (the report the tools write; `report.v1.json` is the earlier version),
   `policy.v1.json` (the org policy) and `upload-meta.v1.json` (the upload's `meta.json`). **Source of truth for all
   output.**
@@ -44,7 +45,11 @@ policy from pharn.dev and uploads the redacted report there (rule 5).
    and nothing else, never a file, a diff, a coverage file or a log. `policy: never` and `policy: file:<path>` make no
    call. With `upload: auto` and the same token, the action also sends `POST /api/v1/runs/upload-url`, a `PUT` of the
    redacted `report.json` and `meta.json` to the signed URL the app returns, and `POST /api/v1/runs` (SECURITY.md, Data
-   handling); `upload: never` makes none of them. The CLI makes none. No other host is called.
+   handling); `upload: never` makes none of them. With the `dependencies` mode `lookup` (the input, `.pharn/ci.yml`
+   `dependencies.lookup: true`, or an org policy), the action also sends one `GET` per added unscoped package to
+   `registry.npmjs.org/<name>`, `api.npmjs.org/downloads/point/last-week/<name>` or `pypi.org/pypi/<name>/json`: the
+   package name in the path and nothing else (no token, no repository name); `auto` and `never` make none (SECURITY.md,
+   Data handling; THREAT-MODEL row D8). The CLI makes none. No other host is called.
 6. **Keep dependencies minimal; justify every new one** in the PR. Direct runtime deps
    today: `@actions/core`, `@actions/github` (action only; bundled into `packages/action/dist` with
    their transitive dependencies) and `typescript5` (core; `npm:typescript@5.9.3`, separate from the
