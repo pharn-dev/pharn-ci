@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": ["Bash(pnpm test:*)", "Read(./src/**)"],
+    "deny": ["Bash(curl:*)", "Read(./.env)"],
+    "defaultMode": "default",
+    "additionalDirectories": ["../SENTINEL-DIR-7f3a"]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "node .claude/hooks/guard.cjs" },
+          { "type": "command", "command": "node .claude/hooks/log.cjs" }
+        ]
+      }
+    ],
+    "Stop": [{ "hooks": [{ "type": "command", "command": "node .claude/hooks/stop.cjs" }] }]
+  },
+  "disableAllHooks": true,
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": ["docs", "SENTINEL-SERVER-7f3a"],
+  "disabledMcpjsonServers": []
+}

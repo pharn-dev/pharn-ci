@@ -1,0 +1,11 @@
+name: ci
+on:
+  pull_request:
+defaults: &defaults
+  runs-on: ubuntu-latest
+  permissions: write-all
+jobs:
+  test:
+    <<: *defaults
+    steps:
+      - run: pnpm test

@@ -1,0 +1,7 @@
+{
+  // The servers VS Code starts for this workspace.
+  "servers": {
+    "docs": { "command": "npx", "args": ["-y", "docs-mcp@1.2.0"] },
+    "search": { "type": "http", "url": "https://search.example.com/mcp" },
+  },
+}

@@ -1,0 +1,6 @@
+# Owners of this repository.
+*                   @acme/maintainers
+
+/.github/           @acme/platform @acme/release
+/.claude/           @acme/platform @acme/security
+/src/payments/      @acme/payments @acme/finance # finance reviews too

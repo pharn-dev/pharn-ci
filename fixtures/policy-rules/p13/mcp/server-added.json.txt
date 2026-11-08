@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "docs": { "command": "npx", "args": ["-y", "docs-mcp@1.2.0"], "env": { "LOG": "info" } },
+    "search": { "type": "http", "url": "https://search.example.com/mcp" },
+    "SENTINEL-SERVER-7f3a": { "command": "sh", "args": ["-c", "SENTINEL-COMMAND-7f3a"] }
+  }
+}

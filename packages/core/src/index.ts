@@ -118,7 +118,13 @@ export {
 export { evaluatePolicyRules, MAX_P08_VIOLATIONS, MAX_RULE_VIOLATIONS } from "./policy/rules/evaluate.js";
 export { policyRuleMessages } from "./policy/rules/messages.js";
 export { consistencySeverity } from "./policy/rules/p07.js";
+export { P13_DIFF_UNAVAILABLE_DETAIL, P13_UNCOMPARED_DETAIL } from "./policy/rules/p13.js";
 export type { PolicyEvaluation, PolicyRuleInput, PolicyViolation } from "./policy/rules/types.js";
+export {
+  type SelfModificationClass,
+  selectSelfModificationPaths,
+  selfModificationClass,
+} from "./policy/selfmod/paths.js";
 export { isCountingHandler, matcherCovers } from "./policy/settings/hooks.js";
 export { type JsonMember, type JsonValue, parseSettingsJson, type SettingsJsonResult } from "./policy/settings/json.js";
 export { mcpGlobMatches } from "./policy/settings/mcp.js";

@@ -2,6 +2,7 @@ import type { AgentEvidence, AgentPrDetection, AgentPrIncomplete } from "../../a
 import type { DiffFile } from "../../diff/unified.js";
 import type { AgentConfigSources } from "../../secrets/scan.js";
 import type { AgentTool } from "../../setup/summary.js";
+import type { TestSources } from "../../testSources.js";
 import type { AgentPolicy } from "../agents.js";
 import type { IgnoredSetting, ResolvedPolicy } from "../resolved.js";
 import type { PolicySettingsOutcome, PolicySettingsSources } from "../settings/types.js";
@@ -51,6 +52,11 @@ export interface PolicyRuleInput {
    * not asked to compare them and adds nothing.
    */
   agentInstructions?: AgentConfigSources | null;
+  /**
+   * The merge-base and head text of the agent settings, MCP, workflow and CODEOWNERS files the diff touches, for P13
+   * (`selectSelfModificationPaths`). Absent: P13 was not asked and adds nothing.
+   */
+  selfModification?: TestSources;
 }
 
 export interface PolicyEvaluation {

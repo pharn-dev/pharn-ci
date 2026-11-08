@@ -1,0 +1,6 @@
+{
+  "mcpServers": {
+    "docs": { "command": "npx", "args": ["-y", "docs-mcp@1.2.0"], "env": { "LOG": "info" } },
+    "search": { "type": "http", "url": "https://search.example.com/mcp" }
+  }
+}

@@ -28,6 +28,7 @@ import {
   resolveInputs,
   resolveTestIntegrityMode,
   scanAgentSetup,
+  selectSelfModificationPaths,
   type TestIntegrityModeSettings,
   type TestSources,
   unavailableTestSources,
@@ -391,6 +392,8 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const policySettingsSources = await gatherPolicySettingsSources(deps, { repoFiles, diff, target, policy, lsTree });
   // The agent instruction files (rule P07), in batch calls of their own, so check A7 never sees Markdown.
   const agentInstructionSources = await gatherAgentInstructionSources(deps, { repoFiles, diff, target, policy });
+  // The merge-base and head text of the agent settings, MCP, workflow and CODEOWNERS files the change touches (rule P13).
+  const selfModificationSources = await gatherSelfModificationSources(deps, { diff, localBase, target, policy });
   // The Python test files of the sources, indexed by one interpreter run; nothing runs for JS/TS-only changes.
   const pythonTestIndex =
     testSources === undefined
@@ -447,6 +450,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     ...(application?.signalOverrides === undefined ? {} : { signalOverrides: application.signalOverrides }),
     agentPrFacts,
     ...(policyFileBase === undefined ? {} : { policyFileBase }),
+    ...(selfModificationSources === undefined ? {} : { selfModificationSources }),
   };
   const runMetaBase = runMeta(deps.context, { baseRef: baseRefInput, ...(target === undefined ? {} : { target }) });
   if (runMetaBase === undefined) deps.info("run metadata is incomplete, so report.json carries no meta");
@@ -620,6 +624,47 @@ async function gatherTestSources(
   if ("unavailable" in sources.base) {
     deps.info(
       `pharn-ci: could not read the test and test-config files from git, so they are not compared: ${sources.base.unavailable}`,
+    );
+  }
+  return sources;
+}
+
+/**
+ * The merge-base and head text of the agent settings, MCP, workflow and CODEOWNERS files the change touches, for
+ * org-policy rule P13; undefined when the deps carry no batch git runner or no policy is in force (P13 is not asked).
+ * Like the test sources, only a diff parsed from local git can be read from committed objects: PR-number mode, the
+ * compare API and a missing diff give an unavailable marker (P13 then fails closed), and no GitHub API call is made. A
+ * diff that touches none of those files makes no git call.
+ */
+async function gatherSelfModificationSources(
+  deps: ActionDeps,
+  from: {
+    diff: CheckInput["diff"];
+    localBase: string | undefined;
+    target: PrNumberTarget | undefined;
+    policy: ResolvedPolicy | undefined;
+  },
+): Promise<TestSources | undefined> {
+  const { policy, diff, localBase } = from;
+  if (deps.gitBatch === undefined) return undefined;
+  if (policy === undefined || (policy.source !== "app" && policy.source !== "file") || policy.document === null) {
+    return undefined;
+  }
+  if (from.target) return unavailableTestSources("pr-number mode: the diff came from the GitHub API");
+  if ("text" in diff) return unavailableTestSources("the diff came from the GitHub compare API");
+  if ("unavailable" in diff) return unavailableTestSources("the diff is unavailable");
+  if (localBase === undefined) return unavailableTestSources("reading git objects is not available");
+  const selected = selectSelfModificationPaths(diff.parsed);
+  if (selected.base.length === 0 && selected.head.length === 0) {
+    return { base: { files: [], dropped: [] }, head: { files: [], dropped: [] } };
+  }
+  const sources = await readTestSources(
+    { git: (args) => deps.git(args), gitBatch: deps.gitBatch },
+    { base: localBase, head: "HEAD", diff: diff.parsed, select: selectSelfModificationPaths },
+  );
+  if ("unavailable" in sources.base) {
+    deps.info(
+      `pharn-ci: could not read the agent settings, MCP, workflow and CODEOWNERS files from git, so rule P13 could not compare them: ${sources.base.unavailable}`,
     );
   }
   return sources;

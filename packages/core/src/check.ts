@@ -200,6 +200,12 @@ export interface CheckInput {
    * Absent means it was not read.
    */
   policyFileBase?: PolicyFileBase;
+  /**
+   * The text of the agent settings, MCP, workflow and CODEOWNERS files the change touches, at the merge base and at
+   * HEAD (`selectSelfModificationPaths`), gathered by the Action under a policy in force for org-policy rule P13. Absent
+   * means P13 adds nothing and the report is the one it was.
+   */
+  selfModificationSources?: TestSources;
 }
 
 /** Signals sorted by id, then path, then line (none first), then detail, in code-unit order. */
@@ -421,6 +427,7 @@ export function check(input: CheckInput): Report {
           ...(detection === undefined || agentPolicy === undefined ? {} : { agentPr: detection, agentPolicy }),
           ...(input.policySettingsSources === undefined ? {} : { settingsSources: input.policySettingsSources }),
           ...(input.agentInstructionSources === undefined ? {} : { agentInstructions: input.agentInstructionSources }),
+          ...(input.selfModificationSources === undefined ? {} : { selfModification: input.selfModificationSources }),
         });
   // The settings a policy beat, and the policy-file severities that were lower than the computed ones (signals and
   // rules), as one message.

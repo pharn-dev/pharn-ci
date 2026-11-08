@@ -29839,6 +29839,932 @@ function detectP11(input) {
   return findings;
 }
 
+// ../core/src/policy/selfmod/codeowners.ts
+function rulesOf(text) {
+  const rules = [];
+  for (const line of text.split(/\r\n|\n|\r/)) {
+    const bare = line.replace(/(^|[^\\])#.*$/, "$1").trim();
+    if (bare === "") continue;
+    const tokens2 = bare.split(/(?<!\\)\s+/);
+    rules.push({
+      pattern: tokens2[0],
+      owners: new Set(tokens2.slice(1).map((owner) => owner.toLowerCase()))
+    });
+  }
+  return rules;
+}
+function codeownersWidenings(base, head) {
+  if (base === null && head === null) return [];
+  if (base === null) return ["file added"];
+  if (head === null) return ["file deleted"];
+  const before = rulesOf(base);
+  const after = rulesOf(head);
+  if (before.length !== after.length) return ["rules changed"];
+  for (let i = 0; i < before.length; i++) {
+    const b = before[i];
+    const a = after[i];
+    if (a.pattern !== b.pattern) return ["rules changed"];
+    for (const owner of b.owners) if (!a.owners.has(owner)) return ["rules changed"];
+  }
+  return [];
+}
+
+// ../core/src/policy/selfmod/jsonFiles.ts
+var SETTINGS_WIDENINGS = [
+  "permissions.allow grew",
+  "permissions.deny shrank",
+  "permissions.defaultMode changed",
+  "permissions.additionalDirectories grew",
+  "hooks changed",
+  "disableAllHooks turned on",
+  "enableAllProjectMcpServers turned on",
+  "enabledMcpjsonServers grew",
+  "disabledMcpjsonServers shrank"
+];
+var MCP_WIDENINGS = ["server added", "server changed"];
+function canon(value, unordered = false) {
+  if (value === void 0) return "";
+  switch (value.type) {
+    case "string":
+      return JSON.stringify(value.value);
+    case "number":
+      return `n:${value.value}`;
+    case "boolean":
+      return value.value ? "true" : "false";
+    case "null":
+      return "null";
+    case "array": {
+      const items = value.items.map((item) => canon(item, unordered));
+      if (unordered) items.sort(byCodeUnit);
+      return `[${items.join(",")}]`;
+    }
+    case "object": {
+      const keys = [...value.members.keys()].sort(byCodeUnit);
+      return `{${keys.map((key) => `${JSON.stringify(key)}:${canon(value.members.get(key)?.value, unordered)}`).join(",")}}`;
+    }
+  }
+}
+function itemSet(value) {
+  if (value === void 0) return /* @__PURE__ */ new Set();
+  if (value.type === "array") return new Set(value.items.map((item) => canon(item)));
+  return /* @__PURE__ */ new Set([canon(value)]);
+}
+var grew = (base, head) => [...head].some((item) => !base.has(item));
+var isTrue = (value) => value?.type === "boolean" && value.value;
+function rootMembers(side) {
+  if (side === null) return /* @__PURE__ */ new Map();
+  return side.type === "object" ? side.members : null;
+}
+function parseSide(text, jsonc) {
+  if (text === null) return null;
+  const parsed = parseSettingsJson(text, { jsonc });
+  return parsed.ok ? parsed.value : void 0;
+}
+function settingsWidenings(base, head) {
+  const b = rootMembers(base);
+  const h = rootMembers(head);
+  if (b === null || h === null) return null;
+  const permissionsOf = (members) => {
+    const value = members.get("permissions")?.value;
+    if (value === void 0) return /* @__PURE__ */ new Map();
+    return value.type === "object" ? value.members : null;
+  };
+  const bp = permissionsOf(b);
+  const hp = permissionsOf(h);
+  if (bp === null || hp === null) return null;
+  const found = /* @__PURE__ */ new Set();
+  if (grew(itemSet(bp.get("allow")?.value), itemSet(hp.get("allow")?.value))) found.add("permissions.allow grew");
+  if (grew(itemSet(hp.get("deny")?.value), itemSet(bp.get("deny")?.value))) found.add("permissions.deny shrank");
+  const headMode = hp.get("defaultMode")?.value;
+  if (headMode !== void 0 && canon(headMode) !== canon(bp.get("defaultMode")?.value)) {
+    found.add("permissions.defaultMode changed");
+  }
+  if (grew(itemSet(bp.get("additionalDirectories")?.value), itemSet(hp.get("additionalDirectories")?.value))) {
+    found.add("permissions.additionalDirectories grew");
+  }
+  const hooks = (members) => {
+    const value = members.get("hooks")?.value;
+    return value === void 0 ? "{}" : canon(value, true);
+  };
+  if (hooks(b) !== hooks(h)) found.add("hooks changed");
+  if (isTrue(h.get("disableAllHooks")?.value) && !isTrue(b.get("disableAllHooks")?.value)) {
+    found.add("disableAllHooks turned on");
+  }
+  if (isTrue(h.get("enableAllProjectMcpServers")?.value) && !isTrue(b.get("enableAllProjectMcpServers")?.value)) {
+    found.add("enableAllProjectMcpServers turned on");
+  }
+  if (grew(itemSet(b.get("enabledMcpjsonServers")?.value), itemSet(h.get("enabledMcpjsonServers")?.value))) {
+    found.add("enabledMcpjsonServers grew");
+  }
+  if (grew(itemSet(h.get("disabledMcpjsonServers")?.value), itemSet(b.get("disabledMcpjsonServers")?.value))) {
+    found.add("disabledMcpjsonServers shrank");
+  }
+  return SETTINGS_WIDENINGS.filter((word) => found.has(word));
+}
+var SERVER_FIELDS = ["command", "args", "url", "type"];
+function containerKeys2(path) {
+  return /(?:^|\/)\.vscode\/mcp\.json$/.test(path) ? ["servers", "mcpServers"] : ["mcpServers"];
+}
+function serversOf(path, members) {
+  const servers = /* @__PURE__ */ new Map();
+  for (const key of containerKeys2(path)) {
+    const container = members.get(key)?.value;
+    if (container === void 0) continue;
+    if (container.type !== "object") return null;
+    for (const [name, member] of container.members) {
+      const value = member.value;
+      const text = value.type === "object" ? SERVER_FIELDS.map((field) => `${field}=${canon(value.members.get(field)?.value)}`).join(";") : canon(value);
+      const list = servers.get(name) ?? [];
+      list.push(text);
+      servers.set(name, list);
+    }
+  }
+  const out = /* @__PURE__ */ new Map();
+  for (const [name, list] of servers) out.set(name, list.sort(byCodeUnit).join("\0"));
+  return out;
+}
+function mcpWidenings(path, base, head) {
+  const b = rootMembers(base);
+  const h = rootMembers(head);
+  if (b === null || h === null) return null;
+  const bs = serversOf(path, b);
+  const hs = serversOf(path, h);
+  if (bs === null || hs === null) return null;
+  const found = /* @__PURE__ */ new Set();
+  for (const [name, text] of hs) {
+    const before = bs.get(name);
+    if (before === void 0) found.add("server added");
+    else if (before !== text) found.add("server changed");
+  }
+  return MCP_WIDENINGS.filter((word) => found.has(word));
+}
+
+// ../core/src/jsTsExtensions.ts
+var JS_TS_EXTENSIONS = Object.freeze(["js", "jsx", "ts", "tsx", "mjs", "cjs", "mts", "cts"]);
+function isJsTsExtension(ext) {
+  return JS_TS_EXTENSIONS.includes(ext);
+}
+var FLAVOR = Object.freeze({
+  js: "js",
+  jsx: "js",
+  ts: "ts",
+  tsx: "ts",
+  mjs: "js",
+  cjs: "js",
+  mts: "ts",
+  cts: "ts"
+});
+function jsTsFlavor(ext) {
+  return FLAVOR[ext];
+}
+
+// ../core/src/testFiles.ts
+var TEST_DIRECTORIES = /* @__PURE__ */ new Set(["test", "tests", "__tests__"]);
+var TEST_BASENAME = [
+  new RegExp(`\\.(?:test|spec)\\.(?:${JS_TS_EXTENSIONS.join("|")})$`),
+  /\.(?:e2e|pw)\.ts$/,
+  /^test_.+\.py$/,
+  /_test\.py$/,
+  /_test\.go$/
+];
+function isTestFile(path) {
+  const segments = path.split("/");
+  const basename = segments[segments.length - 1] ?? "";
+  if (TEST_BASENAME.some((pattern) => pattern.test(basename))) return true;
+  return segments.slice(0, -1).some((segment) => TEST_DIRECTORIES.has(segment));
+}
+function isSnapFile(path) {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  return basename.length > ".snap".length && basename.endsWith(".snap");
+}
+function keepTestFileText(file) {
+  return isTestFile(file.path) || isTestFile(file.oldPath);
+}
+function testStem(path) {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  const dot = basename.lastIndexOf(".");
+  let stem = dot > 0 ? basename.slice(0, dot) : basename;
+  stem = stem.replace(/\.(?:test|spec|e2e|pw)$/, "");
+  if (stem.startsWith("test_") && stem.length > "test_".length) stem = stem.slice("test_".length);
+  if (stem.endsWith("_test") && stem.length > "_test".length) stem = stem.slice(0, -"_test".length);
+  return stem;
+}
+function testPackageDir(path) {
+  const directories = path.split("/").slice(0, -1);
+  let nearest = -1;
+  for (let i = directories.length - 1; i >= 0; i--) {
+    if (TEST_DIRECTORIES.has(directories[i])) {
+      nearest = i;
+      break;
+    }
+  }
+  return (nearest === -1 ? directories : directories.slice(0, nearest)).join("/");
+}
+var DEFINES_TEST = /^(?:(?:it|test|describe|context|specify)(?:\.[A-Za-z]+)*\s*[(`]|(?:async\s+)?def\s+test_|func\s+Test)/;
+function definesTests(text) {
+  return DEFINES_TEST.test(text.slice(0, 400).trimStart());
+}
+function deletedTestFiles(diff) {
+  const found = /* @__PURE__ */ new Set();
+  for (const file of diff) {
+    if (file.status === "deleted" && isTestFile(file.path)) found.add(file.path);
+    else if (file.status === "renamed" && isTestFile(file.oldPath) && !isTestFile(file.path)) found.add(file.oldPath);
+  }
+  return [...found].sort(byCodeUnit);
+}
+
+// ../core/src/signals/pythonAliases.ts
+var isIdentStart = (code2) => code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122 || code2 === 95;
+var isIdentChar = (code2) => isIdentStart(code2) || code2 >= 48 && code2 <= 57;
+function identEnd(text, start) {
+  if (start >= text.length || !isIdentStart(text.charCodeAt(start))) return start;
+  let i = start + 1;
+  while (i < text.length && isIdentChar(text.charCodeAt(i))) i++;
+  return i;
+}
+var isBlank = (c) => c === " " || c === "	";
+function skipBlanks(text, start) {
+  let i = start;
+  while (i < text.length && isBlank(text.charAt(i))) i++;
+  return i;
+}
+function closeTriple(line, from, quote) {
+  for (let i = from; i < line.length; i++) {
+    const c = line.charAt(i);
+    if (c === "\\") i++;
+    else if (c === quote && line.charAt(i + 1) === quote && line.charAt(i + 2) === quote) return i;
+  }
+  return -1;
+}
+function scanCode(line, from) {
+  for (let i = from; i < line.length; i++) {
+    const c = line.charAt(i);
+    if (c === "#") return "";
+    if (c !== '"' && c !== "'") continue;
+    if (line.charAt(i + 1) === c && line.charAt(i + 2) === c) {
+      const end = closeTriple(line, i + 3, c);
+      if (end < 0) return c + c + c;
+      i = end + 2;
+      continue;
+    }
+    let j = i + 1;
+    while (j < line.length && line.charAt(j) !== c) j += line.charAt(j) === "\\" ? 2 : 1;
+    i = j;
+  }
+  return "";
+}
+var isStatementEnd = (code2) => code2 === 59 || code2 === 35 || code2 === 34 || code2 === 39;
+function startsStatement(line) {
+  if (line.startsWith("import") && isBlank(line.charAt(6))) return true;
+  return line.startsWith("from") && isBlank(line.charAt(4));
+}
+function fromItem(piece) {
+  const nameEnd = identEnd(piece, 0);
+  if (nameEnd === 0) return null;
+  const name = piece.slice(0, nameEnd);
+  if (nameEnd === piece.length) return [name, name];
+  const asAt = skipBlanks(piece, nameEnd);
+  if (asAt === nameEnd || !piece.startsWith("as", asAt)) return null;
+  const localAt = skipBlanks(piece, asAt + 2);
+  if (localAt === asAt + 2) return null;
+  const localEnd = identEnd(piece, localAt);
+  if (localEnd === localAt || localEnd !== piece.length) return null;
+  return [name, piece.slice(localAt, localEnd)];
+}
+function importItem(piece) {
+  let end = identEnd(piece, 0);
+  if (end === 0) return null;
+  const first = piece.slice(0, end);
+  while (piece.charAt(end) === ".") {
+    const next = identEnd(piece, end + 1);
+    if (next === end + 1) return null;
+    end = next;
+  }
+  const dotted = piece.slice(0, end);
+  if (end === piece.length) return [first, first];
+  const asAt = skipBlanks(piece, end);
+  if (asAt === end || !piece.startsWith("as", asAt)) return null;
+  const localAt = skipBlanks(piece, asAt + 2);
+  if (localAt === asAt + 2) return null;
+  const localEnd = identEnd(piece, localAt);
+  if (localEnd === localAt || localEnd !== piece.length) return null;
+  return [piece.slice(localAt, localEnd), dotted];
+}
+function pieces(segment) {
+  const out = [];
+  for (const piece of segment.split(",")) {
+    const trimmed = piece.trim();
+    if (trimmed !== "") out.push(trimmed);
+  }
+  return out;
+}
+var fromTarget = (module, name) => `${module}.${name}`;
+function pythonImportAliases(text) {
+  const aliases = /* @__PURE__ */ new Map();
+  const lines = text.split("\n");
+  const state = { triple: "", group: null };
+  const readGroup = (line, from) => {
+    const open3 = state.group;
+    let stop = from;
+    while (stop < line.length) {
+      const code2 = line.charCodeAt(stop);
+      if (code2 === 41 || isStatementEnd(code2)) break;
+      stop++;
+    }
+    for (const piece of pieces(line.slice(from, stop))) {
+      const item = fromItem(piece);
+      if (item !== null) open3.pending.push([item[1], fromTarget(open3.module, item[0])]);
+    }
+    const c = line.charAt(stop);
+    if (c === ")") {
+      for (const [local, target] of open3.pending) aliases.set(local, target);
+      state.group = null;
+      state.triple = scanCode(line, stop + 1);
+    } else if (c === "#" || stop >= line.length) {
+    } else {
+      state.group = null;
+      state.triple = scanCode(line, stop);
+    }
+  };
+  const readStatement = (line) => {
+    let end = 0;
+    while (end < line.length && !isStatementEnd(line.charCodeAt(end))) end++;
+    const body = end === line.length ? line : line.slice(0, end);
+    if (body.startsWith("import")) {
+      for (const piece of pieces(body.slice(6))) {
+        const item = importItem(piece);
+        if (item !== null) aliases.set(item[0], item[1]);
+      }
+    } else {
+      const moduleAt = skipBlanks(body, 4);
+      let moduleEnd = moduleAt;
+      while (moduleEnd < body.length && (body.charAt(moduleEnd) === "." || isIdentChar(body.charCodeAt(moduleEnd)))) {
+        moduleEnd++;
+      }
+      const module = body.slice(moduleAt, moduleEnd);
+      const importAt = skipBlanks(body, moduleEnd);
+      const listAt = importAt + 6;
+      if (module !== "" && importAt > moduleEnd && body.startsWith("import", importAt) && isBlank(body.charAt(listAt))) {
+        const rest = skipBlanks(body, listAt);
+        if (body.charAt(rest) === "(") {
+          state.group = { module, pending: [] };
+          readGroup(line, rest + 1);
+          return;
+        }
+        for (const piece of pieces(body.slice(rest))) {
+          const item = fromItem(piece);
+          if (item !== null) aliases.set(item[1], fromTarget(module, item[0]));
+        }
+      }
+    }
+    state.triple = line.charAt(end) === ";" ? scanCode(line, end + 1) : scanCode(line, end);
+  };
+  for (let n = 0; n < lines.length; n++) {
+    let line = lines[n];
+    if (n === 0 && line.charCodeAt(0) === 65279) line = line.slice(1);
+    if (line.endsWith("\r")) line = line.slice(0, -1);
+    if (state.triple !== "") {
+      const close = closeTriple(line, 0, state.triple.charAt(0));
+      if (close < 0) continue;
+      state.triple = scanCode(line, close + 3);
+      continue;
+    }
+    if (state.group !== null) {
+      if (!startsStatement(line)) {
+        readGroup(line, 0);
+        continue;
+      }
+      state.group = null;
+    }
+    if (startsStatement(line)) readStatement(line);
+    else state.triple = scanCode(line, 0);
+  }
+  return aliases;
+}
+function resolvePythonName(name, aliases) {
+  const dot = name.indexOf(".");
+  const head = dot < 0 ? name : name.slice(0, dot);
+  const target = aliases.get(head);
+  if (target === void 0) return null;
+  return dot < 0 ? target : target + name.slice(dot);
+}
+
+// ../core/src/signals/testLines.ts
+var JS_EXTENSIONS = JS_TS_EXTENSIONS.map((extension) => `.${extension}`);
+function testLanguage(path) {
+  if (path.endsWith("_test.go")) return "go";
+  if (path.endsWith(".py")) return "python";
+  for (const extension of JS_EXTENSIONS) if (path.endsWith(extension)) return "jsts";
+  return null;
+}
+var MAX_NAME = 120;
+var isSpace3 = (c) => c === " " || c === "	";
+function isWordCode(code2) {
+  return code2 >= 48 && code2 <= 57 || // 0-9
+  code2 >= 65 && code2 <= 90 || // A-Z
+  code2 >= 97 && code2 <= 122 || // a-z
+  code2 === 95 || // _
+  code2 === 36;
+}
+function wordEnd(text, start) {
+  let i = start;
+  while (i < text.length && isWordCode(text.charCodeAt(i))) i++;
+  return i;
+}
+function scanArg(text, start) {
+  let depth = 0;
+  let quote = "";
+  for (let i = start; i < text.length; i++) {
+    const c = text.charAt(i);
+    if (quote !== "") {
+      if (c === "\\") i++;
+      else if (c === quote) quote = "";
+      continue;
+    }
+    if (c === "'" || c === '"' || c === "`") quote = c;
+    else if (c === "(" || c === "[" || c === "{") depth++;
+    else if (c === ")" || c === "]" || c === "}") {
+      if (depth > 0) depth--;
+      else if (c === ")") return { text: text.slice(start, i).trim(), end: i, terminator: ")" };
+    } else if (c === "," && depth === 0) return { text: text.slice(start, i).trim(), end: i, terminator: "," };
+  }
+  return { text: text.slice(start).trim(), end: text.length, terminator: "" };
+}
+function stringContent(arg, prefixes) {
+  let i = 0;
+  if (prefixes) while (i < 2 && i < arg.length && "rRbBuUfF".includes(arg.charAt(i))) i++;
+  const quote = arg.charAt(i);
+  if (quote !== "'" && quote !== '"' && quote !== "`") return null;
+  for (let j = i + 1; j < arg.length; j++) {
+    const c = arg.charAt(j);
+    if (c === "\\") j++;
+    else if (c === quote) return arg.slice(j + 1).trim() === "" ? arg.slice(i + 1, j) : null;
+  }
+  return null;
+}
+function argName(arg, python = false) {
+  return (stringContent(arg, python) ?? arg).slice(0, MAX_NAME);
+}
+var JS_HEADS = /* @__PURE__ */ new Set(["it", "test", "describe", "context", "specify"]);
+var JS_SKIP_HEADS = /* @__PURE__ */ new Set(["xit", "xtest", "xdescribe", "xcontext", "xspecify"]);
+var JS_ONLY_HEADS = /* @__PURE__ */ new Set(["fit", "fdescribe"]);
+function tokenOf(word) {
+  switch (word) {
+    case "skip":
+    case "only":
+    case "todo":
+    case "fails":
+    case "skipIf":
+    case "runIf":
+      return word;
+    default:
+      return "none";
+  }
+}
+function parseJsTestCall(text) {
+  const line = text.trimStart();
+  const headEnd = wordEnd(line, 0);
+  if (headEnd === 0) return null;
+  const head = line.slice(0, headEnd);
+  let i = headEnd;
+  if (head === "this") {
+    if (!line.startsWith(".skip", i)) return null;
+    i += ".skip".length;
+    while (isSpace3(line.charAt(i))) i++;
+    if (line.charAt(i) !== "(") return null;
+    const arg = scanArg(line, i + 1).text;
+    return { kind: "this-skip", token: "skip", arg, named: false, name: argName(arg), condition: "" };
+  }
+  const skipHead = JS_SKIP_HEADS.has(head);
+  const onlyHead = JS_ONLY_HEADS.has(head);
+  if (!(JS_HEADS.has(head) || skipHead || onlyHead)) return null;
+  let token = skipHead ? "skip" : onlyHead ? "only" : "none";
+  while (line.charAt(i) === ".") {
+    const end = wordEnd(line, i + 1);
+    if (end === i + 1) return null;
+    if (token === "none") token = tokenOf(line.slice(i + 1, end));
+    i = end;
+  }
+  while (isSpace3(line.charAt(i))) i++;
+  if (line.charAt(i) !== "(") return null;
+  const first = scanArg(line, i + 1);
+  if ((token === "skipIf" || token === "runIf") && first.terminator === ")") {
+    let j = first.end + 1;
+    while (isSpace3(line.charAt(j))) j++;
+    const arg = line.charAt(j) === "(" ? scanArg(line, j + 1).text : "";
+    return {
+      kind: "call",
+      token,
+      arg,
+      named: stringContent(arg, false) !== null,
+      name: argName(arg),
+      condition: first.text
+    };
+  }
+  return {
+    kind: "call",
+    token,
+    arg: first.text,
+    named: stringContent(first.text, false) !== null,
+    name: argName(first.text),
+    condition: ""
+  };
+}
+var PYTHON_DECORATORS = /* @__PURE__ */ new Map([
+  ["pytest.mark.skip", "never"],
+  ["pytest.mark.skipif", "always"],
+  ["pytest.mark.xfail", "by-argument"],
+  ["unittest.skip", "never"],
+  ["unittest.skipIf", "always"],
+  ["unittest.skipUnless", "always"],
+  ["unittest.expectedFailure", "never"]
+]);
+var PYTHON_CALLS = /* @__PURE__ */ new Set(["pytest.skip", "pytest.xfail"]);
+var PYTEST_MARKS = /* @__PURE__ */ new Set(["pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail"]);
+var PYTESTMARK = "pytestmark";
+function canonicalPython(written, table, aliases) {
+  if (table.has(written)) return written;
+  if (aliases === void 0) return null;
+  const resolved = resolvePythonName(written, aliases);
+  return resolved !== null && table.has(resolved) ? resolved : null;
+}
+function dottedEnd(text, start) {
+  let i = start;
+  while (i < text.length && (isWordCode(text.charCodeAt(i)) || text.charAt(i) === ".")) i++;
+  return i;
+}
+function isKeywordArg(arg) {
+  const end = wordEnd(arg, 0);
+  if (end === 0) return false;
+  let i = end;
+  while (isSpace3(arg.charAt(i))) i++;
+  return arg.charAt(i) === "=" && arg.charAt(i + 1) !== "=";
+}
+function isConditional(rule2, arg) {
+  return rule2 === "always" || rule2 === "by-argument" && arg !== "" && stringContent(arg, true) === null && !isKeywordArg(arg);
+}
+function parsePytestmark(line, aliases) {
+  let i = PYTESTMARK.length;
+  if (i < line.length && isWordCode(line.charCodeAt(i))) return null;
+  while (isSpace3(line.charAt(i))) i++;
+  if (line.charAt(i) !== "=" || line.charAt(i + 1) === "=") return null;
+  i++;
+  while (isSpace3(line.charAt(i))) i++;
+  if (line.charAt(i) === "[" || line.charAt(i) === "(") {
+    i++;
+    while (isSpace3(line.charAt(i))) i++;
+  }
+  const end = dottedEnd(line, i);
+  if (end === i) return null;
+  const token = canonicalPython(line.slice(i, end), PYTEST_MARKS, aliases);
+  const rule2 = token === null ? void 0 : PYTHON_DECORATORS.get(token);
+  if (token === null || rule2 === void 0) return null;
+  let j = end;
+  while (isSpace3(line.charAt(j))) j++;
+  const arg = line.charAt(j) === "(" ? scanArg(line, j + 1).text : "";
+  return { kind: "mark", token, name: argName(arg, true), conditional: isConditional(rule2, arg) };
+}
+function parsePythonSkip(text, aliases) {
+  const line = text.trimStart();
+  if (line.startsWith("@")) {
+    const end = dottedEnd(line, 1);
+    const token = canonicalPython(line.slice(1, end), PYTHON_DECORATORS, aliases);
+    if (token === null) return null;
+    const rule2 = PYTHON_DECORATORS.get(token);
+    if (rule2 === void 0) return null;
+    let i2 = end;
+    while (isSpace3(line.charAt(i2))) i2++;
+    const arg = line.charAt(i2) === "(" ? scanArg(line, i2 + 1).text : "";
+    return { kind: "decorator", token, name: argName(arg, true), conditional: isConditional(rule2, arg) };
+  }
+  if (line.startsWith(PYTESTMARK)) return parsePytestmark(line, aliases);
+  const callEnd = dottedEnd(line, 0);
+  const call = canonicalPython(line.slice(0, callEnd), PYTHON_CALLS, aliases);
+  if (call === null) return null;
+  let i = callEnd;
+  while (isSpace3(line.charAt(i))) i++;
+  if (line.charAt(i) !== "(") return null;
+  return { kind: "call", token: call, name: argName(scanArg(line, i + 1).text, true), conditional: false };
+}
+var GO_SKIPS = /* @__PURE__ */ new Set(["t.Skip", "t.Skipf", "t.SkipNow"]);
+function parseGoSkip(text) {
+  const line = text.trimStart();
+  const end = dottedEnd(line, 0);
+  const token = line.slice(0, end);
+  if (!GO_SKIPS.has(token)) return null;
+  let i = end;
+  while (isSpace3(line.charAt(i))) i++;
+  if (line.charAt(i) !== "(") return null;
+  return { token, name: argName(scanArg(line, i + 1).text) };
+}
+function opensPythonTest(text) {
+  const line = text.trimStart();
+  return line.startsWith("def test_") || line.startsWith("async def test_") || line.startsWith("class Test");
+}
+
+// ../core/src/signals/signalFiles.ts
+var WORKFLOWS_DIR3 = ".github/workflows/";
+function isWorkflowFile(path) {
+  if (!path.startsWith(WORKFLOWS_DIR3)) return false;
+  const name = path.slice(WORKFLOWS_DIR3.length);
+  return name !== "" && !name.includes("/") && (name.endsWith(".yml") || name.endsWith(".yaml"));
+}
+var PYTEST_CONFIG_NAMES = /* @__PURE__ */ new Set(["pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini"]);
+function isPytestConfigFile(path) {
+  return PYTEST_CONFIG_NAMES.has(path.slice(path.lastIndexOf("/") + 1));
+}
+function isSnapshotFile(path) {
+  const segments = path.split("/");
+  const basename = segments[segments.length - 1] ?? "";
+  if (basename.endsWith(".snap") || basename.endsWith(".ambr")) return true;
+  return segments.slice(0, -1).includes("__snapshots__");
+}
+var JS_TS_EXTENSION_SET = new Set(JS_TS_EXTENSIONS);
+function isPackageJsonFile(path) {
+  return path.slice(path.lastIndexOf("/") + 1) === "package.json";
+}
+function coverageSourceLanguage(path) {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  const dot = basename.lastIndexOf(".");
+  if (dot <= 0) return null;
+  const extension = basename.slice(dot + 1);
+  if (extension === "py") return "python";
+  return JS_TS_EXTENSION_SET.has(extension) ? "jsts" : null;
+}
+function keepSignalFileText(configPath, repoRoot) {
+  const config = configRepoPath(configPath, repoRoot);
+  return (file) => keepTestFileText(file) || isWorkflowFile(file.path) || isWorkflowFile(file.oldPath) || isPackageJsonFile(file.path) || isPackageJsonFile(file.oldPath) || isPytestConfigFile(file.path) || isPytestConfigFile(file.oldPath) || coverageSourceLanguage(file.path) !== null || coverageSourceLanguage(file.oldPath) !== null || config !== null && (file.path === config || file.oldPath === config);
+}
+function textCutSignalFiles(diff, configPath, repoRoot) {
+  const config = configRepoPath(configPath, repoRoot);
+  const cut = /* @__PURE__ */ new Set();
+  for (const file of diff) {
+    if (file.textTruncated !== true || file.status === "deleted" || file.binary === true) continue;
+    const { path } = file;
+    const test = isTestFile(path);
+    const read = test && testLanguage(path) !== null || isWorkflowFile(path) || isPackageJsonFile(path) && file.status !== "added" || isPytestConfigFile(path) || !test && coverageSourceLanguage(path) !== null || config !== null && path === config;
+    if (read) cut.add(path);
+  }
+  return [...cut].sort(byCodeUnit);
+}
+
+// ../core/src/policy/selfmod/paths.ts
+var CODEOWNERS_PATHS = /* @__PURE__ */ new Set(["CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS"]);
+function selfModificationClass(path) {
+  if (isPolicySettingsPath(path)) return "settings";
+  if (isPolicyMcpPath(path)) return "mcp";
+  if (isWorkflowFile(path)) return "workflow";
+  if (CODEOWNERS_PATHS.has(path)) return "codeowners";
+  return null;
+}
+function selectSelfModificationPaths(diff) {
+  const base = /* @__PURE__ */ new Set();
+  const head = /* @__PURE__ */ new Set();
+  for (const file of diff) {
+    if (file.status !== "added" && selfModificationClass(file.oldPath) !== null) base.add(file.oldPath);
+    if (file.status !== "deleted" && selfModificationClass(file.path) !== null) head.add(file.path);
+  }
+  return { base: [...base].sort(byCodeUnit), head: [...head].sort(byCodeUnit) };
+}
+
+// ../core/src/policy/selfmod/workflows.ts
+var WORKFLOW_WIDENINGS = [
+  "secrets referenced grew",
+  "permissions widened",
+  "permissions block removed",
+  "pull_request_target trigger added"
+];
+var SCOPES = [
+  "actions",
+  "attestations",
+  "checks",
+  "contents",
+  "deployments",
+  "discussions",
+  "id-token",
+  "issues",
+  "models",
+  "packages",
+  "pages",
+  "pull-requests",
+  "repository-projects",
+  "security-events",
+  "statuses"
+];
+var LEVELS = { none: 0, read: 1, write: 2 };
+function withoutComment(line) {
+  const { start } = findComment(line);
+  return start === -1 ? line : line.slice(0, start);
+}
+function pairOf(line) {
+  const text = withoutComment(line).trim();
+  const match = /^(-\s+)?([A-Za-z0-9_.<-]+|"[^"]*"|'[^']*')\s*:(?:\s+(.*))?$/.exec(text);
+  if (match === null) return null;
+  const rawKey = match[2];
+  return {
+    key: rawKey.startsWith('"') || rawKey.startsWith("'") ? rawKey.slice(1, -1) : rawKey,
+    value: (match[3] ?? "").trim(),
+    indent: indentOf(line) + (match[1] === void 0 ? 0 : match[1].length)
+  };
+}
+function flowScopes(value) {
+  if (!value.startsWith("{") || !value.endsWith("}")) return null;
+  const scopes = /* @__PURE__ */ new Map();
+  const inner = value.slice(1, -1).trim();
+  if (inner === "") return scopes;
+  for (const part of inner.split(",")) {
+    const at = part.indexOf(":");
+    if (at === -1) return null;
+    scopes.set(unquote2(part.slice(0, at)), unquote2(part.slice(at + 1)));
+  }
+  return scopes;
+}
+var SECRET_NAME = /(?<![\w-])secrets\s*\.\s*([A-Za-z0-9_-]+)/gi;
+var SECRET_INDEX = /(?<![\w-])secrets\s*\[\s*(['"])([^'"\r\n]*)\1\s*\]/gi;
+var SECRET_CONTEXT = /(?<![\w.-])secrets(?!\s*[.[\w-])/i;
+var PULL_REQUEST_TARGET = /(?<![\w-])pull_request_target(?![\w-])/;
+function workflowFacts(text) {
+  const facts = {
+    secrets: /* @__PURE__ */ new Set(),
+    permissions: /* @__PURE__ */ new Map(),
+    jobs: /* @__PURE__ */ new Set(),
+    pullRequestTarget: false
+  };
+  for (const match of text.matchAll(SECRET_NAME)) facts.secrets.add(match[1].toUpperCase());
+  for (const match of text.matchAll(SECRET_INDEX)) facts.secrets.add(match[2].toUpperCase());
+  for (let at = text.indexOf("${{"); at !== -1; ) {
+    const end = text.indexOf("}}", at + 3);
+    if (end === -1) break;
+    if (SECRET_CONTEXT.test(text.slice(at + 3, end))) facts.secrets.add("\0context");
+    at = text.indexOf("${{", end + 2);
+  }
+  const lines = text.split(/\r\n|\n|\r/);
+  const stack = [];
+  let blockScalar = null;
+  let content = false;
+  let open3 = null;
+  for (const line of lines) {
+    if (blockScalar !== null) {
+      if (line.trim() === "" || indentOf(line) > blockScalar) continue;
+      blockScalar = null;
+    }
+    const bare = withoutComment(line);
+    if (bare.trim() === "") continue;
+    if (/^[ ]*\t/.test(line)) return null;
+    const trimmed = bare.trim();
+    if (trimmed === "---" || trimmed === "...") {
+      if (content) return null;
+      continue;
+    }
+    if (PULL_REQUEST_TARGET.test(bare)) facts.pullRequestTarget = true;
+    const pair = pairOf(line);
+    if (pair === null) {
+      if (!content && indentOf(line) === 0) return null;
+      if (/^-\s+[&*!]/.test(trimmed)) return null;
+      if (/^-\s+[|>][-+0-9]*$/.test(trimmed)) blockScalar = indentOf(line);
+      continue;
+    }
+    content = true;
+    if (pair.key === "<<" || /^[&*!]/.test(pair.value)) return null;
+    while (stack.length > 0 && stack[stack.length - 1].indent >= pair.indent) stack.pop();
+    if (open3 !== null && pair.indent <= open3.indent) open3 = null;
+    const path = [...stack.map((entry) => entry.key), pair.key];
+    if (open3 !== null && path.length >= 2 && path[path.length - 2] === "permissions") {
+      open3.block.scopes.set(pair.key, unquote2(pair.value));
+      continue;
+    }
+    if (pair.key === "secrets" && unquote2(pair.value) === "inherit") facts.secrets.add("\0inherit");
+    if (pair.key === "if" && SECRET_CONTEXT.test(pair.value) && !pair.value.includes("${{")) {
+      facts.secrets.add("\0context");
+    }
+    const atJob = path.length === 3 && path[0] === "jobs";
+    if (path.length === 2 && path[0] === "jobs") facts.jobs.add(pair.key);
+    const flow = pair.value.startsWith("{") || pair.value.startsWith("[");
+    if (flow && (path.length === 1 && pair.key === "jobs" || path.length === 2 && path[0] === "jobs")) return null;
+    if (pair.key === "permissions" && pair.value.startsWith("{") && !pair.value.endsWith("}")) return null;
+    if (pair.key === "permissions" && (path.length === 1 || atJob)) {
+      const location = path.length === 1 ? "" : `jobs/${path[1]}`;
+      const block = { all: null, scopes: /* @__PURE__ */ new Map() };
+      facts.permissions.set(location, block);
+      if (pair.value === "") {
+        open3 = { location, block, indent: pair.indent };
+      } else {
+        const scopes = flowScopes(pair.value);
+        if (scopes === null) block.all = unquote2(pair.value);
+        else block.scopes = scopes;
+      }
+    }
+    if (/^[|>][-+0-9]*$/.test(pair.value)) blockScalar = pair.indent;
+    else if (pair.value === "") stack.push({ indent: pair.indent, key: pair.key });
+  }
+  return facts;
+}
+function scopeValue(block, scope) {
+  const own = block.scopes.get(scope);
+  if (own !== void 0) return own;
+  if (block.all === "read-all") return "read";
+  if (block.all === "write-all") return "write";
+  if (block.all !== null) return block.all;
+  return "none";
+}
+function widens(base, head) {
+  if (base === null) {
+    if (head.all !== null) return true;
+    return [...head.scopes.values()].some((value) => (LEVELS[value] ?? 2) >= 2);
+  }
+  const scopes = /* @__PURE__ */ new Set([...base.scopes.keys(), ...head.scopes.keys()]);
+  if (base.all !== null || head.all !== null) for (const scope of SCOPES) scopes.add(scope);
+  for (const scope of scopes) {
+    const before = scopeValue(base, scope);
+    const after = scopeValue(head, scope);
+    if (before === after) continue;
+    if ((LEVELS[after] ?? 2) > (LEVELS[before] ?? 0)) return true;
+  }
+  return false;
+}
+function workflowWidenings(base, head) {
+  const b = base === null ? null : workflowFacts(base);
+  const h = head === null ? null : workflowFacts(head);
+  if (base !== null && b === null || head !== null && h === null) return null;
+  const found = /* @__PURE__ */ new Set();
+  if (h !== null) {
+    const before = b?.secrets ?? /* @__PURE__ */ new Set();
+    if ([...h.secrets].some((name) => !before.has(name))) found.add("secrets referenced grew");
+    const baseTop = b?.permissions.get("") ?? null;
+    const headTop = h.permissions.get("") ?? null;
+    if (baseTop !== null && headTop === null) found.add("permissions block removed");
+    if (headTop !== null && widens(baseTop, headTop)) found.add("permissions widened");
+    for (const job of h.jobs) {
+      const location = `jobs/${job}`;
+      const baseJob = b?.permissions.get(location) ?? null;
+      const headJob = h.permissions.get(location) ?? null;
+      if (baseJob !== null && headJob === null) found.add("permissions block removed");
+      if (headJob !== null && widens(baseJob ?? baseTop, headJob)) found.add("permissions widened");
+    }
+    if (h.pullRequestTarget && b?.pullRequestTarget !== true) found.add("pull_request_target trigger added");
+  }
+  return WORKFLOW_WIDENINGS.filter((word) => found.has(word));
+}
+
+// ../core/src/policy/rules/p13.ts
+var P13_DIFF_UNAVAILABLE_DETAIL = "diff unavailable; agent settings, MCP configs, workflows and CODEOWNERS could not be checked";
+var P13_UNCOMPARED_DETAIL = "agent PR changes this file and it could not be read or parsed at the merge base and at HEAD, so it could not be compared";
+var PREFIX = {
+  settings: "agent PR widens its agent settings: ",
+  mcp: "agent PR widens its MCP servers: ",
+  workflow: "agent PR widens a workflow: ",
+  codeowners: "agent PR loosens CODEOWNERS: "
+};
+function textOn(side, path) {
+  if (side === null) return null;
+  if ("unavailable" in side) return void 0;
+  const file = side.files.find((entry) => entry.path === path);
+  return file === void 0 ? void 0 : file.text;
+}
+function wideningsOf(cls, path, base, head) {
+  if (cls === "workflow") return workflowWidenings(base, head);
+  if (cls === "codeowners") return codeownersWidenings(base, head);
+  const jsonc = cls === "mcp" && isJsoncMcpPath(path);
+  const b = parseSide(base, jsonc);
+  const h = parseSide(head, jsonc);
+  if (b === void 0 || h === void 0) return null;
+  return cls === "settings" ? settingsWidenings(b, h) : mcpWidenings(path, b, h);
+}
+function detectP13(input) {
+  const { policy, agentPr, selfModification } = input;
+  if (policy.source !== "app" && policy.source !== "file" || policy.document === null) return [];
+  if (agentPr?.isAgentPr !== true) return [];
+  if (selfModification === void 0) return [];
+  if (resolveSeverity(policy, "P13", "block").severity === null) return [];
+  if (input.diff === null) {
+    return [{ id: "P13", fallback: "block", path: null, line: null, detail: P13_DIFF_UNAVAILABLE_DETAIL }];
+  }
+  const compared2 = /* @__PURE__ */ new Map();
+  const compare = (path, cls, base, head) => {
+    if (compared2.has(path)) return;
+    const before = textOn(base, path);
+    const after = textOn(head, path);
+    const words = before === void 0 || after === void 0 ? null : wideningsOf(cls, path, before, after);
+    if (words !== null && words.length === 0) return;
+    const detail = words === null ? P13_UNCOMPARED_DETAIL : `${PREFIX[cls]}${words.join(", ")}`;
+    compared2.set(path, { id: "P13", fallback: "block", path, line: null, detail });
+  };
+  for (const entry of input.diff) {
+    const oldClass = selfModificationClass(entry.oldPath);
+    const newClass = selfModificationClass(entry.path);
+    if (entry.status === "added" && newClass !== null) compare(entry.path, newClass, null, selfModification.head);
+    else if (entry.status === "modified" && newClass !== null) {
+      compare(entry.path, newClass, selfModification.base, selfModification.head);
+    } else if (entry.status === "deleted" && oldClass !== null) {
+      compare(entry.oldPath, oldClass, selfModification.base, null);
+    } else if (entry.status === "renamed") {
+      if (oldClass !== null) compare(entry.oldPath, oldClass, selfModification.base, null);
+      if (newClass !== null) compare(entry.path, newClass, null, selfModification.head);
+    }
+  }
+  return [...compared2.values()];
+}
+
 // ../core/src/policy/rules/problems.ts
 function settingsProblemLevel(problem, setup2) {
   const deny = (setup2?.required_permissions_deny?.length ?? 0) > 0;
@@ -29961,7 +30887,8 @@ function evaluatePolicyRules(input) {
     ...settingsFindings,
     ...detectP07(input, consistency?.severity ?? null),
     ...detectP10(input),
-    ...detectP11(input)
+    ...detectP11(input),
+    ...detectP13(input)
   ]);
   if (view !== null) {
     for (const violation of first) {
@@ -30061,6 +30988,26 @@ var RULE_MESSAGES = {
     const incomplete = evaluation.agentPr?.incomplete ?? null;
     if (incomplete !== null) words.push(`evidence it could not read (${codeSpan(incomplete)})`);
     sentences.push(`It counts as an agent PR by: ${words.join("; ")}.`);
+    return sentences.join(" ");
+  },
+  P13: (violations, omitted, evaluation) => {
+    const sentences = [];
+    const kept = pathsOf(violations);
+    const total = kept.length + omitted;
+    if (total > 0) {
+      sentences.push(
+        `This agent pull request widens what an agent may do, or changes a file that governs it in a way pharn-ci could not compare, in ${counted(total, "file", "files")}: ${listOf(kept, total)}. What each one widens is in the report's policy violations.`
+      );
+    }
+    if (violations.some((violation) => violation.detail === P13_DIFF_UNAVAILABLE_DETAIL)) {
+      sentences.push(
+        "This agent pull request could not be checked for changes to agent settings, MCP configs, workflows and CODEOWNERS, because the diff is unavailable."
+      );
+    }
+    const words = (evaluation.agentPr?.evidence ?? []).map((kind) => EVIDENCE_WORDS[kind]);
+    const incomplete = evaluation.agentPr?.incomplete ?? null;
+    if (incomplete !== null) words.push(`evidence it could not read (${codeSpan(incomplete)})`);
+    if (words.length > 0) sentences.push(`It counts as an agent PR by: ${words.join("; ")}.`);
     return sentences.join(" ");
   },
   P02: (violations, omitted) => `P02 forbidden permission allowed: ${counted(violations.length + omitted, "finding", "findings")} at ${locsOf(violations, omitted)}. Each is an allow rule equal to, broader than or inside a permission the org policy forbids, a defaultMode of bypassPermissions or auto, or additionalDirectories.`,
@@ -30241,7 +31188,7 @@ function shannonEntropy(text) {
   return bits;
 }
 var isKeyChar = (c) => c !== void 0 && (isUpper(c) || isLower(c) || isDigit(c) || c === "_" || c === "." || c === "-");
-var isBlank = (c) => c === " " || c === "	";
+var isBlank2 = (c) => c === " " || c === "	";
 var isQuote2 = (c) => c === '"' || c === "'";
 var isLineBreak = (c) => c === "\n" || c === "\r";
 var BARE_STOPS = /* @__PURE__ */ new Set([" ", "	", ",", ";", "#", "}", '"', "'"]);
@@ -30272,10 +31219,10 @@ function readValue(text, from) {
   if (end === from) return null;
   return { value: text.slice(from, end), start: from, end, quoted: false };
 }
-function skipBlanks(text, from) {
+function skipBlanks2(text, from) {
   let i = from;
   const limit = Math.min(text.length, from + MAX_GAP_CHARS);
-  while (i < limit && isBlank(text[i])) i++;
+  while (i < limit && isBlank2(text[i])) i++;
   return i;
 }
 var isKeyCode = (c) => c >= 97 && c <= 122 || c >= 65 && c <= 90 || c >= 48 && c <= 57 || c === 95 || c === 46 || c === 45;
@@ -30308,7 +31255,7 @@ function secretKeyValues(text) {
     if (code2 !== 45) {
       const key = readKeyBefore(text, i);
       if (key === null || !isSecretKey(key.key)) continue;
-      const value = readValue(text, skipBlanks(text, i + 1));
+      const value = readValue(text, skipBlanks2(text, i + 1));
       if (value === null) continue;
       found.push({
         key: key.key,
@@ -30334,7 +31281,7 @@ function secretKeyValues(text) {
         separated = true;
         p++;
       }
-      const afterBlanks = skipBlanks(text, p);
+      const afterBlanks = skipBlanks2(text, p);
       if (afterBlanks > p) separated = true;
       p = afterBlanks;
       if (!separated || text[p] === "=" || text[p] === ":") continue;
@@ -30711,515 +31658,6 @@ function applySignalOverrides(signals, omitted, overrides, mode) {
     omitted: omitted.filter((entry) => !dropped.has(entry.id)),
     lowered: [...lowered].sort()
   };
-}
-
-// ../core/src/jsTsExtensions.ts
-var JS_TS_EXTENSIONS = Object.freeze(["js", "jsx", "ts", "tsx", "mjs", "cjs", "mts", "cts"]);
-function isJsTsExtension(ext) {
-  return JS_TS_EXTENSIONS.includes(ext);
-}
-var FLAVOR = Object.freeze({
-  js: "js",
-  jsx: "js",
-  ts: "ts",
-  tsx: "ts",
-  mjs: "js",
-  cjs: "js",
-  mts: "ts",
-  cts: "ts"
-});
-function jsTsFlavor(ext) {
-  return FLAVOR[ext];
-}
-
-// ../core/src/testFiles.ts
-var TEST_DIRECTORIES = /* @__PURE__ */ new Set(["test", "tests", "__tests__"]);
-var TEST_BASENAME = [
-  new RegExp(`\\.(?:test|spec)\\.(?:${JS_TS_EXTENSIONS.join("|")})$`),
-  /\.(?:e2e|pw)\.ts$/,
-  /^test_.+\.py$/,
-  /_test\.py$/,
-  /_test\.go$/
-];
-function isTestFile(path) {
-  const segments = path.split("/");
-  const basename = segments[segments.length - 1] ?? "";
-  if (TEST_BASENAME.some((pattern) => pattern.test(basename))) return true;
-  return segments.slice(0, -1).some((segment) => TEST_DIRECTORIES.has(segment));
-}
-function isSnapFile(path) {
-  const basename = path.slice(path.lastIndexOf("/") + 1);
-  return basename.length > ".snap".length && basename.endsWith(".snap");
-}
-function keepTestFileText(file) {
-  return isTestFile(file.path) || isTestFile(file.oldPath);
-}
-function testStem(path) {
-  const basename = path.slice(path.lastIndexOf("/") + 1);
-  const dot = basename.lastIndexOf(".");
-  let stem = dot > 0 ? basename.slice(0, dot) : basename;
-  stem = stem.replace(/\.(?:test|spec|e2e|pw)$/, "");
-  if (stem.startsWith("test_") && stem.length > "test_".length) stem = stem.slice("test_".length);
-  if (stem.endsWith("_test") && stem.length > "_test".length) stem = stem.slice(0, -"_test".length);
-  return stem;
-}
-function testPackageDir(path) {
-  const directories = path.split("/").slice(0, -1);
-  let nearest = -1;
-  for (let i = directories.length - 1; i >= 0; i--) {
-    if (TEST_DIRECTORIES.has(directories[i])) {
-      nearest = i;
-      break;
-    }
-  }
-  return (nearest === -1 ? directories : directories.slice(0, nearest)).join("/");
-}
-var DEFINES_TEST = /^(?:(?:it|test|describe|context|specify)(?:\.[A-Za-z]+)*\s*[(`]|(?:async\s+)?def\s+test_|func\s+Test)/;
-function definesTests(text) {
-  return DEFINES_TEST.test(text.slice(0, 400).trimStart());
-}
-function deletedTestFiles(diff) {
-  const found = /* @__PURE__ */ new Set();
-  for (const file of diff) {
-    if (file.status === "deleted" && isTestFile(file.path)) found.add(file.path);
-    else if (file.status === "renamed" && isTestFile(file.oldPath) && !isTestFile(file.path)) found.add(file.oldPath);
-  }
-  return [...found].sort(byCodeUnit);
-}
-
-// ../core/src/signals/pythonAliases.ts
-var isIdentStart = (code2) => code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122 || code2 === 95;
-var isIdentChar = (code2) => isIdentStart(code2) || code2 >= 48 && code2 <= 57;
-function identEnd(text, start) {
-  if (start >= text.length || !isIdentStart(text.charCodeAt(start))) return start;
-  let i = start + 1;
-  while (i < text.length && isIdentChar(text.charCodeAt(i))) i++;
-  return i;
-}
-var isBlank2 = (c) => c === " " || c === "	";
-function skipBlanks2(text, start) {
-  let i = start;
-  while (i < text.length && isBlank2(text.charAt(i))) i++;
-  return i;
-}
-function closeTriple(line, from, quote) {
-  for (let i = from; i < line.length; i++) {
-    const c = line.charAt(i);
-    if (c === "\\") i++;
-    else if (c === quote && line.charAt(i + 1) === quote && line.charAt(i + 2) === quote) return i;
-  }
-  return -1;
-}
-function scanCode(line, from) {
-  for (let i = from; i < line.length; i++) {
-    const c = line.charAt(i);
-    if (c === "#") return "";
-    if (c !== '"' && c !== "'") continue;
-    if (line.charAt(i + 1) === c && line.charAt(i + 2) === c) {
-      const end = closeTriple(line, i + 3, c);
-      if (end < 0) return c + c + c;
-      i = end + 2;
-      continue;
-    }
-    let j = i + 1;
-    while (j < line.length && line.charAt(j) !== c) j += line.charAt(j) === "\\" ? 2 : 1;
-    i = j;
-  }
-  return "";
-}
-var isStatementEnd = (code2) => code2 === 59 || code2 === 35 || code2 === 34 || code2 === 39;
-function startsStatement(line) {
-  if (line.startsWith("import") && isBlank2(line.charAt(6))) return true;
-  return line.startsWith("from") && isBlank2(line.charAt(4));
-}
-function fromItem(piece) {
-  const nameEnd = identEnd(piece, 0);
-  if (nameEnd === 0) return null;
-  const name = piece.slice(0, nameEnd);
-  if (nameEnd === piece.length) return [name, name];
-  const asAt = skipBlanks2(piece, nameEnd);
-  if (asAt === nameEnd || !piece.startsWith("as", asAt)) return null;
-  const localAt = skipBlanks2(piece, asAt + 2);
-  if (localAt === asAt + 2) return null;
-  const localEnd = identEnd(piece, localAt);
-  if (localEnd === localAt || localEnd !== piece.length) return null;
-  return [name, piece.slice(localAt, localEnd)];
-}
-function importItem(piece) {
-  let end = identEnd(piece, 0);
-  if (end === 0) return null;
-  const first = piece.slice(0, end);
-  while (piece.charAt(end) === ".") {
-    const next = identEnd(piece, end + 1);
-    if (next === end + 1) return null;
-    end = next;
-  }
-  const dotted = piece.slice(0, end);
-  if (end === piece.length) return [first, first];
-  const asAt = skipBlanks2(piece, end);
-  if (asAt === end || !piece.startsWith("as", asAt)) return null;
-  const localAt = skipBlanks2(piece, asAt + 2);
-  if (localAt === asAt + 2) return null;
-  const localEnd = identEnd(piece, localAt);
-  if (localEnd === localAt || localEnd !== piece.length) return null;
-  return [piece.slice(localAt, localEnd), dotted];
-}
-function pieces(segment) {
-  const out = [];
-  for (const piece of segment.split(",")) {
-    const trimmed = piece.trim();
-    if (trimmed !== "") out.push(trimmed);
-  }
-  return out;
-}
-var fromTarget = (module, name) => `${module}.${name}`;
-function pythonImportAliases(text) {
-  const aliases = /* @__PURE__ */ new Map();
-  const lines = text.split("\n");
-  const state = { triple: "", group: null };
-  const readGroup = (line, from) => {
-    const open3 = state.group;
-    let stop = from;
-    while (stop < line.length) {
-      const code2 = line.charCodeAt(stop);
-      if (code2 === 41 || isStatementEnd(code2)) break;
-      stop++;
-    }
-    for (const piece of pieces(line.slice(from, stop))) {
-      const item = fromItem(piece);
-      if (item !== null) open3.pending.push([item[1], fromTarget(open3.module, item[0])]);
-    }
-    const c = line.charAt(stop);
-    if (c === ")") {
-      for (const [local, target] of open3.pending) aliases.set(local, target);
-      state.group = null;
-      state.triple = scanCode(line, stop + 1);
-    } else if (c === "#" || stop >= line.length) {
-    } else {
-      state.group = null;
-      state.triple = scanCode(line, stop);
-    }
-  };
-  const readStatement = (line) => {
-    let end = 0;
-    while (end < line.length && !isStatementEnd(line.charCodeAt(end))) end++;
-    const body = end === line.length ? line : line.slice(0, end);
-    if (body.startsWith("import")) {
-      for (const piece of pieces(body.slice(6))) {
-        const item = importItem(piece);
-        if (item !== null) aliases.set(item[0], item[1]);
-      }
-    } else {
-      const moduleAt = skipBlanks2(body, 4);
-      let moduleEnd = moduleAt;
-      while (moduleEnd < body.length && (body.charAt(moduleEnd) === "." || isIdentChar(body.charCodeAt(moduleEnd)))) {
-        moduleEnd++;
-      }
-      const module = body.slice(moduleAt, moduleEnd);
-      const importAt = skipBlanks2(body, moduleEnd);
-      const listAt = importAt + 6;
-      if (module !== "" && importAt > moduleEnd && body.startsWith("import", importAt) && isBlank2(body.charAt(listAt))) {
-        const rest = skipBlanks2(body, listAt);
-        if (body.charAt(rest) === "(") {
-          state.group = { module, pending: [] };
-          readGroup(line, rest + 1);
-          return;
-        }
-        for (const piece of pieces(body.slice(rest))) {
-          const item = fromItem(piece);
-          if (item !== null) aliases.set(item[1], fromTarget(module, item[0]));
-        }
-      }
-    }
-    state.triple = line.charAt(end) === ";" ? scanCode(line, end + 1) : scanCode(line, end);
-  };
-  for (let n = 0; n < lines.length; n++) {
-    let line = lines[n];
-    if (n === 0 && line.charCodeAt(0) === 65279) line = line.slice(1);
-    if (line.endsWith("\r")) line = line.slice(0, -1);
-    if (state.triple !== "") {
-      const close = closeTriple(line, 0, state.triple.charAt(0));
-      if (close < 0) continue;
-      state.triple = scanCode(line, close + 3);
-      continue;
-    }
-    if (state.group !== null) {
-      if (!startsStatement(line)) {
-        readGroup(line, 0);
-        continue;
-      }
-      state.group = null;
-    }
-    if (startsStatement(line)) readStatement(line);
-    else state.triple = scanCode(line, 0);
-  }
-  return aliases;
-}
-function resolvePythonName(name, aliases) {
-  const dot = name.indexOf(".");
-  const head = dot < 0 ? name : name.slice(0, dot);
-  const target = aliases.get(head);
-  if (target === void 0) return null;
-  return dot < 0 ? target : target + name.slice(dot);
-}
-
-// ../core/src/signals/testLines.ts
-var JS_EXTENSIONS = JS_TS_EXTENSIONS.map((extension) => `.${extension}`);
-function testLanguage(path) {
-  if (path.endsWith("_test.go")) return "go";
-  if (path.endsWith(".py")) return "python";
-  for (const extension of JS_EXTENSIONS) if (path.endsWith(extension)) return "jsts";
-  return null;
-}
-var MAX_NAME = 120;
-var isSpace3 = (c) => c === " " || c === "	";
-function isWordCode(code2) {
-  return code2 >= 48 && code2 <= 57 || // 0-9
-  code2 >= 65 && code2 <= 90 || // A-Z
-  code2 >= 97 && code2 <= 122 || // a-z
-  code2 === 95 || // _
-  code2 === 36;
-}
-function wordEnd(text, start) {
-  let i = start;
-  while (i < text.length && isWordCode(text.charCodeAt(i))) i++;
-  return i;
-}
-function scanArg(text, start) {
-  let depth = 0;
-  let quote = "";
-  for (let i = start; i < text.length; i++) {
-    const c = text.charAt(i);
-    if (quote !== "") {
-      if (c === "\\") i++;
-      else if (c === quote) quote = "";
-      continue;
-    }
-    if (c === "'" || c === '"' || c === "`") quote = c;
-    else if (c === "(" || c === "[" || c === "{") depth++;
-    else if (c === ")" || c === "]" || c === "}") {
-      if (depth > 0) depth--;
-      else if (c === ")") return { text: text.slice(start, i).trim(), end: i, terminator: ")" };
-    } else if (c === "," && depth === 0) return { text: text.slice(start, i).trim(), end: i, terminator: "," };
-  }
-  return { text: text.slice(start).trim(), end: text.length, terminator: "" };
-}
-function stringContent(arg, prefixes) {
-  let i = 0;
-  if (prefixes) while (i < 2 && i < arg.length && "rRbBuUfF".includes(arg.charAt(i))) i++;
-  const quote = arg.charAt(i);
-  if (quote !== "'" && quote !== '"' && quote !== "`") return null;
-  for (let j = i + 1; j < arg.length; j++) {
-    const c = arg.charAt(j);
-    if (c === "\\") j++;
-    else if (c === quote) return arg.slice(j + 1).trim() === "" ? arg.slice(i + 1, j) : null;
-  }
-  return null;
-}
-function argName(arg, python = false) {
-  return (stringContent(arg, python) ?? arg).slice(0, MAX_NAME);
-}
-var JS_HEADS = /* @__PURE__ */ new Set(["it", "test", "describe", "context", "specify"]);
-var JS_SKIP_HEADS = /* @__PURE__ */ new Set(["xit", "xtest", "xdescribe", "xcontext", "xspecify"]);
-var JS_ONLY_HEADS = /* @__PURE__ */ new Set(["fit", "fdescribe"]);
-function tokenOf(word) {
-  switch (word) {
-    case "skip":
-    case "only":
-    case "todo":
-    case "fails":
-    case "skipIf":
-    case "runIf":
-      return word;
-    default:
-      return "none";
-  }
-}
-function parseJsTestCall(text) {
-  const line = text.trimStart();
-  const headEnd = wordEnd(line, 0);
-  if (headEnd === 0) return null;
-  const head = line.slice(0, headEnd);
-  let i = headEnd;
-  if (head === "this") {
-    if (!line.startsWith(".skip", i)) return null;
-    i += ".skip".length;
-    while (isSpace3(line.charAt(i))) i++;
-    if (line.charAt(i) !== "(") return null;
-    const arg = scanArg(line, i + 1).text;
-    return { kind: "this-skip", token: "skip", arg, named: false, name: argName(arg), condition: "" };
-  }
-  const skipHead = JS_SKIP_HEADS.has(head);
-  const onlyHead = JS_ONLY_HEADS.has(head);
-  if (!(JS_HEADS.has(head) || skipHead || onlyHead)) return null;
-  let token = skipHead ? "skip" : onlyHead ? "only" : "none";
-  while (line.charAt(i) === ".") {
-    const end = wordEnd(line, i + 1);
-    if (end === i + 1) return null;
-    if (token === "none") token = tokenOf(line.slice(i + 1, end));
-    i = end;
-  }
-  while (isSpace3(line.charAt(i))) i++;
-  if (line.charAt(i) !== "(") return null;
-  const first = scanArg(line, i + 1);
-  if ((token === "skipIf" || token === "runIf") && first.terminator === ")") {
-    let j = first.end + 1;
-    while (isSpace3(line.charAt(j))) j++;
-    const arg = line.charAt(j) === "(" ? scanArg(line, j + 1).text : "";
-    return {
-      kind: "call",
-      token,
-      arg,
-      named: stringContent(arg, false) !== null,
-      name: argName(arg),
-      condition: first.text
-    };
-  }
-  return {
-    kind: "call",
-    token,
-    arg: first.text,
-    named: stringContent(first.text, false) !== null,
-    name: argName(first.text),
-    condition: ""
-  };
-}
-var PYTHON_DECORATORS = /* @__PURE__ */ new Map([
-  ["pytest.mark.skip", "never"],
-  ["pytest.mark.skipif", "always"],
-  ["pytest.mark.xfail", "by-argument"],
-  ["unittest.skip", "never"],
-  ["unittest.skipIf", "always"],
-  ["unittest.skipUnless", "always"],
-  ["unittest.expectedFailure", "never"]
-]);
-var PYTHON_CALLS = /* @__PURE__ */ new Set(["pytest.skip", "pytest.xfail"]);
-var PYTEST_MARKS = /* @__PURE__ */ new Set(["pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail"]);
-var PYTESTMARK = "pytestmark";
-function canonicalPython(written, table, aliases) {
-  if (table.has(written)) return written;
-  if (aliases === void 0) return null;
-  const resolved = resolvePythonName(written, aliases);
-  return resolved !== null && table.has(resolved) ? resolved : null;
-}
-function dottedEnd(text, start) {
-  let i = start;
-  while (i < text.length && (isWordCode(text.charCodeAt(i)) || text.charAt(i) === ".")) i++;
-  return i;
-}
-function isKeywordArg(arg) {
-  const end = wordEnd(arg, 0);
-  if (end === 0) return false;
-  let i = end;
-  while (isSpace3(arg.charAt(i))) i++;
-  return arg.charAt(i) === "=" && arg.charAt(i + 1) !== "=";
-}
-function isConditional(rule2, arg) {
-  return rule2 === "always" || rule2 === "by-argument" && arg !== "" && stringContent(arg, true) === null && !isKeywordArg(arg);
-}
-function parsePytestmark(line, aliases) {
-  let i = PYTESTMARK.length;
-  if (i < line.length && isWordCode(line.charCodeAt(i))) return null;
-  while (isSpace3(line.charAt(i))) i++;
-  if (line.charAt(i) !== "=" || line.charAt(i + 1) === "=") return null;
-  i++;
-  while (isSpace3(line.charAt(i))) i++;
-  if (line.charAt(i) === "[" || line.charAt(i) === "(") {
-    i++;
-    while (isSpace3(line.charAt(i))) i++;
-  }
-  const end = dottedEnd(line, i);
-  if (end === i) return null;
-  const token = canonicalPython(line.slice(i, end), PYTEST_MARKS, aliases);
-  const rule2 = token === null ? void 0 : PYTHON_DECORATORS.get(token);
-  if (token === null || rule2 === void 0) return null;
-  let j = end;
-  while (isSpace3(line.charAt(j))) j++;
-  const arg = line.charAt(j) === "(" ? scanArg(line, j + 1).text : "";
-  return { kind: "mark", token, name: argName(arg, true), conditional: isConditional(rule2, arg) };
-}
-function parsePythonSkip(text, aliases) {
-  const line = text.trimStart();
-  if (line.startsWith("@")) {
-    const end = dottedEnd(line, 1);
-    const token = canonicalPython(line.slice(1, end), PYTHON_DECORATORS, aliases);
-    if (token === null) return null;
-    const rule2 = PYTHON_DECORATORS.get(token);
-    if (rule2 === void 0) return null;
-    let i2 = end;
-    while (isSpace3(line.charAt(i2))) i2++;
-    const arg = line.charAt(i2) === "(" ? scanArg(line, i2 + 1).text : "";
-    return { kind: "decorator", token, name: argName(arg, true), conditional: isConditional(rule2, arg) };
-  }
-  if (line.startsWith(PYTESTMARK)) return parsePytestmark(line, aliases);
-  const callEnd = dottedEnd(line, 0);
-  const call = canonicalPython(line.slice(0, callEnd), PYTHON_CALLS, aliases);
-  if (call === null) return null;
-  let i = callEnd;
-  while (isSpace3(line.charAt(i))) i++;
-  if (line.charAt(i) !== "(") return null;
-  return { kind: "call", token: call, name: argName(scanArg(line, i + 1).text, true), conditional: false };
-}
-var GO_SKIPS = /* @__PURE__ */ new Set(["t.Skip", "t.Skipf", "t.SkipNow"]);
-function parseGoSkip(text) {
-  const line = text.trimStart();
-  const end = dottedEnd(line, 0);
-  const token = line.slice(0, end);
-  if (!GO_SKIPS.has(token)) return null;
-  let i = end;
-  while (isSpace3(line.charAt(i))) i++;
-  if (line.charAt(i) !== "(") return null;
-  return { token, name: argName(scanArg(line, i + 1).text) };
-}
-function opensPythonTest(text) {
-  const line = text.trimStart();
-  return line.startsWith("def test_") || line.startsWith("async def test_") || line.startsWith("class Test");
-}
-
-// ../core/src/signals/signalFiles.ts
-var WORKFLOWS_DIR3 = ".github/workflows/";
-function isWorkflowFile(path) {
-  if (!path.startsWith(WORKFLOWS_DIR3)) return false;
-  const name = path.slice(WORKFLOWS_DIR3.length);
-  return name !== "" && !name.includes("/") && (name.endsWith(".yml") || name.endsWith(".yaml"));
-}
-var PYTEST_CONFIG_NAMES = /* @__PURE__ */ new Set(["pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini"]);
-function isPytestConfigFile(path) {
-  return PYTEST_CONFIG_NAMES.has(path.slice(path.lastIndexOf("/") + 1));
-}
-function isSnapshotFile(path) {
-  const segments = path.split("/");
-  const basename = segments[segments.length - 1] ?? "";
-  if (basename.endsWith(".snap") || basename.endsWith(".ambr")) return true;
-  return segments.slice(0, -1).includes("__snapshots__");
-}
-var JS_TS_EXTENSION_SET = new Set(JS_TS_EXTENSIONS);
-function isPackageJsonFile(path) {
-  return path.slice(path.lastIndexOf("/") + 1) === "package.json";
-}
-function coverageSourceLanguage(path) {
-  const basename = path.slice(path.lastIndexOf("/") + 1);
-  const dot = basename.lastIndexOf(".");
-  if (dot <= 0) return null;
-  const extension = basename.slice(dot + 1);
-  if (extension === "py") return "python";
-  return JS_TS_EXTENSION_SET.has(extension) ? "jsts" : null;
-}
-function keepSignalFileText(configPath, repoRoot) {
-  const config = configRepoPath(configPath, repoRoot);
-  return (file) => keepTestFileText(file) || isWorkflowFile(file.path) || isWorkflowFile(file.oldPath) || isPackageJsonFile(file.path) || isPackageJsonFile(file.oldPath) || isPytestConfigFile(file.path) || isPytestConfigFile(file.oldPath) || coverageSourceLanguage(file.path) !== null || coverageSourceLanguage(file.oldPath) !== null || config !== null && (file.path === config || file.oldPath === config);
-}
-function textCutSignalFiles(diff, configPath, repoRoot) {
-  const config = configRepoPath(configPath, repoRoot);
-  const cut = /* @__PURE__ */ new Set();
-  for (const file of diff) {
-    if (file.textTruncated !== true || file.status === "deleted" || file.binary === true) continue;
-    const { path } = file;
-    const test = isTestFile(path);
-    const read = test && testLanguage(path) !== null || isWorkflowFile(path) || isPackageJsonFile(path) && file.status !== "added" || isPytestConfigFile(path) || !test && coverageSourceLanguage(path) !== null || config !== null && path === config;
-    if (read) cut.add(path);
-  }
-  return [...cut].sort(byCodeUnit);
 }
 
 // ../core/src/signals/testName.ts
@@ -36550,7 +36988,7 @@ var SENTENCES = {
   condition: "An if: condition was added in a workflow that disables a step or job, or skips pull requests.",
   timeout: "A timeout of 0 or 1 minutes was added in a workflow, so a test run may be cut off."
 };
-function pairOf(line) {
+function pairOf2(line) {
   const kv = keyValue(line);
   return kv === null ? null : `${kv.key}:${kv.value}`;
 }
@@ -36595,10 +37033,10 @@ function detectTI11(diff, mode) {
       return flow !== null && before !== void 0 && flow.items.size < before.size;
     });
     if (shrunk !== void 0) emit("warn", shrunk.line, SENTENCES.matrix);
-    const removedPairs = new Set(removed.map((entry) => pairOf(entry.text)));
+    const removedPairs = new Set(removed.map((entry) => pairOf2(entry.text)));
     const newPair = (entry, key) => {
       const kv = keyValue(entry.text);
-      if (kv === null || kv.key !== key || removedPairs.has(pairOf(entry.text))) return null;
+      if (kv === null || kv.key !== key || removedPairs.has(pairOf2(entry.text))) return null;
       return { value: kv.value };
     };
     const lenient = added.find((entry) => newPair(entry, "continue-on-error")?.value === "true");
@@ -37504,7 +37942,8 @@ function check(input) {
     ignored: input.policyIgnored ?? [],
     ...detection === void 0 || agentPolicy === void 0 ? {} : { agentPr: detection, agentPolicy },
     ...input.policySettingsSources === void 0 ? {} : { settingsSources: input.policySettingsSources },
-    ...input.agentInstructionSources === void 0 ? {} : { agentInstructions: input.agentInstructionSources }
+    ...input.agentInstructionSources === void 0 ? {} : { agentInstructions: input.agentInstructionSources },
+    ...input.selfModificationSources === void 0 ? {} : { selfModification: input.selfModificationSources }
   });
   const policyIgnored = [
     ...input.policyIgnored ?? [],
@@ -38712,6 +39151,7 @@ var MESSAGE_HINTS = {
   POLICY_P09: "Revert the edit, or ask the policy owner to make it; a pull request cannot loosen the check it is graded by.",
   POLICY_P11: "Agent PRs may not change these paths under the org policy. Move the change to a pull request by a person, or ask the policy owner to change `agents.protected_paths`.",
   POLICY_P07: "Make the instruction files in one directory name the same package manager and test runner, or move a file into the package it describes; an agent follows whichever file it reads first.",
+  POLICY_P13: "An agent PR may not widen its own or another agent's powers. Move the change to a pull request by a person, or ask the policy owner to change `policy.rules.P13`.",
   AGENT_PR_DETECTION_INCOMPLETE: "Re-run the job if the GitHub API failed. A pull request with more than 250 commits, an author GitHub does not name, or an edited policy file whose base cannot be read always counts as an agent PR.",
   // E3 item 23 (policy settings): the hints of P02 to P06 and of the settings problems.
   POLICY_P02: "Narrow or remove the allow rule (or the defaultMode or additionalDirectories key) in the settings file, or ask the policy owner to change setup.forbidden_permissions.",
@@ -40889,7 +41329,7 @@ async function readTestSources(deps, options) {
     const baseOid = await resolveRevision(deps, options.base, "base");
     const headOid = await resolveRevision(deps, options.head ?? "HEAD", "head");
     const mergeBase = await mergeBaseOf(deps, baseOid, headOid);
-    const selected = selectTestSourcePaths(options.diff);
+    const selected = (options.select ?? selectTestSourcePaths)(options.diff);
     const requests = [
       ...selected.base.filter((path) => !isUnsafeTestSourcePath(path)).map((path) => ({ oid: mergeBase, path })),
       ...selected.head.filter((path) => !isUnsafeTestSourcePath(path)).map((path) => ({ oid: headOid, path }))
@@ -41889,6 +42329,7 @@ async function runUnsafe(deps) {
   const agentConfigSources = await gatherAgentConfigSources(deps, { repoFiles, diff, target });
   const policySettingsSources = await gatherPolicySettingsSources(deps, { repoFiles, diff, target, policy, lsTree });
   const agentInstructionSources = await gatherAgentInstructionSources(deps, { repoFiles, diff, target, policy });
+  const selfModificationSources = await gatherSelfModificationSources(deps, { diff, localBase, target, policy });
   const pythonTestIndex = testSources === void 0 ? void 0 : await indexPythonTestSources(testSources, deps.indexPython ?? indexPythonTests);
   if (pythonTestIndex !== void 0 && !pythonTestIndex.available) {
     deps.info(
@@ -41929,7 +42370,8 @@ async function runUnsafe(deps) {
     ...application === void 0 || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored },
     ...application?.signalOverrides === void 0 ? {} : { signalOverrides: application.signalOverrides },
     agentPrFacts,
-    ...policyFileBase === void 0 ? {} : { policyFileBase }
+    ...policyFileBase === void 0 ? {} : { policyFileBase },
+    ...selfModificationSources === void 0 ? {} : { selfModificationSources }
   };
   const runMetaBase = runMeta(deps.context, { baseRef: baseRefInput, ...target === void 0 ? {} : { target } });
   if (runMetaBase === void 0) deps.info("run metadata is incomplete, so report.json carries no meta");
@@ -42053,6 +42495,31 @@ async function gatherTestSources(deps, from) {
   if ("unavailable" in sources.base) {
     deps.info(
       `pharn-ci: could not read the test and test-config files from git, so they are not compared: ${sources.base.unavailable}`
+    );
+  }
+  return sources;
+}
+async function gatherSelfModificationSources(deps, from) {
+  const { policy, diff, localBase } = from;
+  if (deps.gitBatch === void 0) return void 0;
+  if (policy === void 0 || policy.source !== "app" && policy.source !== "file" || policy.document === null) {
+    return void 0;
+  }
+  if (from.target) return unavailableTestSources("pr-number mode: the diff came from the GitHub API");
+  if ("text" in diff) return unavailableTestSources("the diff came from the GitHub compare API");
+  if ("unavailable" in diff) return unavailableTestSources("the diff is unavailable");
+  if (localBase === void 0) return unavailableTestSources("reading git objects is not available");
+  const selected = selectSelfModificationPaths(diff.parsed);
+  if (selected.base.length === 0 && selected.head.length === 0) {
+    return { base: { files: [], dropped: [] }, head: { files: [], dropped: [] } };
+  }
+  const sources = await readTestSources(
+    { git: (args) => deps.git(args), gitBatch: deps.gitBatch },
+    { base: localBase, head: "HEAD", diff: diff.parsed, select: selectSelfModificationPaths }
+  );
+  if ("unavailable" in sources.base) {
+    deps.info(
+      `pharn-ci: could not read the agent settings, MCP, workflow and CODEOWNERS files from git, so rule P13 could not compare them: ${sources.base.unavailable}`
     );
   }
   return sources;

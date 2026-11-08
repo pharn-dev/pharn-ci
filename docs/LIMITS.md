@@ -1008,7 +1008,7 @@ applied once per run. What it does not do:
   (THREAT-MODEL, items 22 and 24).
 - **Only some keys are applied.** The `setup` lists are applied: `forbidden_files` feeds P08, `forbidden_permissions`,
   `required_permissions_deny`, `allowed_mcp_servers`, `forbidden_mcp_servers` and `required_hooks` feed P02 to P06,
-  and `setup.consistency` feeds P07. `policy.rules` applies to P01 to P09 and P11 (P10 cannot be overridden). Of
+  and `setup.consistency` feeds P07. `policy.rules` applies to P01 to P09, P11 and P13 (P10 cannot be overridden). Of
   `agents`, only `agents.labels`, `agents.extra_logins`, `agents.protected_paths` and `agents.protected_paths_mode` are
   applied (the first two add to the detection, the other two feed P11); `dependencies`, `flaky` and the other `agents`
   keys are validated and carried in the document, not applied yet.
@@ -1120,6 +1120,44 @@ review of the instructions. What it misses:
   pull request head, so nothing is read and one `info` violation says so.
 - **P07 runs only under a policy.** With no policy, `policy: never`, an unavailable policy or P07 switched off, no
   instruction file is read. A `file:` policy never lowers it below `warn`.
+
+### What P13 misses
+
+P13 compares the structure of four kinds of file between the merge base and HEAD for an agent pull request. It is a
+text guard on what the files declare, not a sandbox. What it misses:
+
+- **Only agent PRs that identify themselves.** As for P11 (§9): an agent that commits through a person's account with
+  no trailer, label or known login is judged as a person's, and a person's pull request is never subject to P13.
+- **Powers widened through code a file calls.** A hook that runs `node .claude/hooks/guard.cjs` keeps its command when
+  the script is rewritten to do nothing; an MCP server whose `command` stays the same runs whatever the package or
+  script it starts now does; a workflow step that runs a repository script keeps its line. Protect those scripts with
+  P11's `agents.protected_paths` or CODEOWNERS.
+- **Settings the repository does not track.** An untracked `.claude/settings.local.json`, user-level
+  `~/.claude/settings.json`, managed settings and other tools' settings formats are never read.
+- **Only the named keys.** A settings change to `env`, `apiKeyHelper`, `model`, `permissions.ask` or any key not listed
+  in the README, and an MCP change to `env` or `headers`, is not a widening. An MCP server's name is its identity: a
+  server renamed is one added.
+- **Workflows are read line by line, not as YAML.** The reader follows block mappings; a file with an anchor, alias,
+  merge key or tag, tab indentation, a second document, or `jobs` or a job written as a flow mapping cannot be compared
+  and is one violation (fail closed). A multi-line flow list or quoted scalar that spells a key is read as written.
+  Secret references are counted anywhere in the text, comments and run scripts included, and a `pull_request_target`
+  outside comments and block scalars counts as the trigger, so a mention can count (the cost falls on agent PRs only).
+- **What a workflow does elsewhere.** A reusable workflow called from another repository, a composite action, an
+  environment's protection rules and its secrets, repository and organization settings (the default token permissions
+  among them) and other triggers that run with secrets (`workflow_run`, `issue_comment`) are outside it. A workflow with
+  no `permissions:` block gets the default token permissions; a block added there counts only when it grants `write`, a
+  scalar such as `read-all`, or a value that is not a level.
+- **Deleted workflows.** A deleted workflow, and a deleted job, widens nothing: it no longer runs.
+- **CODEOWNERS adds are allowed.** Owners added to an unchanged rule line pass, even the agent's own account; every
+  other change, an added and a deleted CODEOWNERS included, counts. Branch protection and rulesets, which decide
+  whether code owners must approve, are outside it.
+- **Renames are a deletion and an addition.** A renamed settings file loses its deny rules and hooks at the old path and
+  gains its allow rules at the new one, so a pure rename counts.
+- **The Action reads only with a local diff.** PR-number mode and a compare-API diff leave every touched file
+  uncompared (one violation each), and a file dropped past the caps of the test sources (200 files, 512 KiB each, 16
+  MiB in all), as binary or missing on a side it should exist on is uncompared too.
+- **The CLI has no pull request.** It gathers no agent PR facts, so P13 never runs there.
+- **At most 50 violations are listed.** The rest are counted in the `POLICY_P13` text, which names up to 20 paths.
 
 ## Upload to pharn.dev
 

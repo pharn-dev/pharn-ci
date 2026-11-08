@@ -4,6 +4,7 @@ import { byCodeUnit, replaceUnsafeChars } from "../../text.js";
 import type { PolicyRuleId } from "../types.js";
 import { P07_PACKAGE_MANAGER_PREFIX, P07_TEST_RUNNER_PREFIX, P07_UNREAD_DETAIL } from "./p07.js";
 import { P11_BASE_UNREADABLE_DETAIL, P11_DIFF_UNAVAILABLE_DETAIL } from "./p11.js";
+import { P13_DIFF_UNAVAILABLE_DETAIL } from "./p13.js";
 import { levelOf, strongest } from "./severity.js";
 import type { PolicyEvaluation, PolicyViolation } from "./types.js";
 
@@ -92,6 +93,26 @@ const RULE_MESSAGES: Partial<
     const incomplete = evaluation.agentPr?.incomplete ?? null;
     if (incomplete !== null) words.push(`evidence it could not read (${codeSpan(incomplete)})`);
     sentences.push(`It counts as an agent PR by: ${words.join("; ")}.`);
+    return sentences.join(" ");
+  },
+  P13: (violations, omitted, evaluation) => {
+    const sentences: string[] = [];
+    const kept = pathsOf(violations);
+    const total = kept.length + omitted;
+    if (total > 0) {
+      sentences.push(
+        `This agent pull request widens what an agent may do, or changes a file that governs it in a way pharn-ci could not compare, in ${counted(total, "file", "files")}: ${listOf(kept, total)}. What each one widens is in the report's policy violations.`,
+      );
+    }
+    if (violations.some((violation) => violation.detail === P13_DIFF_UNAVAILABLE_DETAIL)) {
+      sentences.push(
+        "This agent pull request could not be checked for changes to agent settings, MCP configs, workflows and CODEOWNERS, because the diff is unavailable.",
+      );
+    }
+    const words = (evaluation.agentPr?.evidence ?? []).map((kind) => EVIDENCE_WORDS[kind]);
+    const incomplete = evaluation.agentPr?.incomplete ?? null;
+    if (incomplete !== null) words.push(`evidence it could not read (${codeSpan(incomplete)})`);
+    if (words.length > 0) sentences.push(`It counts as an agent PR by: ${words.join("; ")}.`);
     return sentences.join(" ");
   },
   P02: (violations, omitted) =>

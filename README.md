@@ -501,7 +501,8 @@ message that never names the path. What the policy does not cover is in [`docs/L
 
 **Rules.** A policy also runs rules. P01, P08, P09, P10 and P11 read what the check already has (the agent setup
 inventory, the tracked files, the diff, the pull request's metadata and the policy itself). P02 to P06 read the agent
-settings and MCP files, and P07 reads the inline code and shell blocks of the agent instruction files, only in
+settings and MCP files, P07 reads the inline code and shell blocks of the agent instruction files, and P13 reads the
+agent settings, MCP, workflow and CODEOWNERS files an agent pull request touches, at the merge base and at HEAD, only in
 [policy mode](#policy-mode): the agent setup inventory never reads a setup file. Each finding is in the report's
 `policy.violations` and in the comment's Policy section. `policy.rules` sets a rule's severity (`block`, `warn`,
 `info` or `off`); a `file:` policy can only raise it.
@@ -517,6 +518,7 @@ settings and MCP files, and P07 reads the inline code and shell blocks of the ag
 - **P09**, the pull request loosens the policy it is graded by: it edits the policy file, the config or a workflow that sets a value looser than the policy, or an agent settings or MCP file the policy checks (`POLICY_P09`; `error` when the file fails P02 to P06 or could not be checked, `warn` when it only warns or supplies a required deny rule or hook, `info` when it complies, and `warn` when the files were not read).
 - **P10**, policy unavailable: the policy could not be read (`POLICY_UNAVAILABLE`).
 - **P11**, agent PR changes a protected path: an agent pull request changes a path that `agents.protected_paths` lists (`POLICY_P11`, `error`).
+- **P13**, agent self-modification: an agent pull request widens its own or another agent's powers in an agent settings file, an MCP config, a workflow or CODEOWNERS (`POLICY_P13`, `error`). See [P13](#p13-agent-self-modification).
 
 **P11.** `agents.protected_paths` is a list of globs (the syntax of `coverage.exclude`) of the paths an agent pull
 request may not change, and `agents.protected_paths_mode` (`block` or `warn`, default `block`) sets the severity; the
@@ -541,12 +543,42 @@ file is also read at the merge base so that editing it removes nothing. Dependab
 protecting `package.json` or a lockfile blocks them: do not protect files those bots must update. At most 50 violations
 are listed (the rest are counted in the message). The accept label never touches P11.
 
+#### P13, agent self-modification
+
+P13 needs no setting: under any app or file policy it compares, for an agent pull request, each file of these four
+kinds that the diff adds, modifies, renames or deletes, between the merge base and HEAD (an added file against nothing,
+a deleted one against nothing, a rename as the old path deleted and the new path added). It reads JSON and YAML
+structure, never what a command does. One violation per file names what widened, in fixed words:
+
+- **Agent settings** (`.claude/settings.json`, `.claude/settings.local.json`, at any depth): an `allow` rule added, a
+  `deny` rule removed, `defaultMode` set or changed, an `additionalDirectories` entry added, any change to `hooks` other
+  than reordering (a rewritten hook can be a neutered hook), `disableAllHooks` or `enableAllProjectMcpServers` turned
+  on, a name added to `enabledMcpjsonServers` or removed from `disabledMcpjsonServers`.
+- **MCP configs** (`.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`, at any depth): a server added, or a server's
+  `command`, `args`, `url` or `type` changed.
+- **Workflows** (`.github/workflows/*.yml|yaml`): a secret referenced that was not before (`secrets: inherit` and the
+  whole `secrets` context count), a permission scope raised at the workflow or job level (none < read < write; a job
+  without a block inherits the workflow's), `read-all` or `write-all` newly appearing, a `permissions:` block removed
+  from a workflow or job that is still there, or a `pull_request_target` trigger added.
+- **CODEOWNERS** (`CODEOWNERS`, `.github/CODEOWNERS`, `docs/CODEOWNERS`): any change but owners added to an unchanged
+  rule line (comments and blank lines aside); an added or deleted CODEOWNERS counts.
+
+Narrowing changes give nothing, and a person's pull request is never subject to P13. It fails closed: a missing diff is
+one violation, and a file that could not be read or parsed on a side it exists on (a YAML anchor, alias or flow-mapped
+job included) is one violation that says it could not be compared. The default is `block`; a `file:` policy cannot
+lower it (`POLICY_OVERRIDE_IGNORED`), an app policy can set `policy.rules.P13`. A violation never carries a permission
+rule, server name, secret name, owner or hook command. The Action reads the files from committed objects (`git
+cat-file`) only when the diff came from the local checkout, with the caps of the test sources (200 files, 512 KiB each,
+16 MiB in all); PR-number mode and a compare-API diff leave every touched file uncompared. The CLI has no agent PR
+detection, so it never runs P13. What it misses is in [`docs/LIMITS.md`](docs/LIMITS.md).
+
 ### Policy mode
 
 With a policy in force, pharn-ci reads the tracked `.claude/settings.json` and `.claude/settings.local.json` files
 (at the root and in nested directories) and, when the policy lists MCP servers, `.mcp.json`, `.cursor/mcp.json` and
 `.vscode/mcp.json` (these too at the root and in nested directories; the last two are a cross-tool scan), all as
-committed at HEAD. For P02 to P06 it reads JSON only;
+committed at HEAD. For an agent pull request, P13 also reads the agent settings, MCP, workflow and CODEOWNERS files
+the diff touches, at the merge base and at HEAD ([P13](#p13-agent-self-modification)). For P02 to P06 it reads JSON only;
 P07's read of the Markdown instruction files is described in
 [Policy mode: agent instruction files](#policy-mode-agent-instruction-files).
 A tracked symbolic link is never followed.
@@ -949,6 +981,7 @@ message `code`s, not on text:
 | `POLICY_P09` | The change edits a file the org policy guards: the policy file, the config or a workflow while it sets a value looser than the policy, or an agent settings or MCP file (`error` when the file fails P02 to P06 or could not be checked, `warn` when it only warns or supplies a required deny rule or hook or when the files were not read, `info` when it complies). The text names up to 20 paths; each reason is in `policy.violations` |
 | `POLICY_P11` | An agent pull request changes a path that the org policy's `agents.protected_paths` lists, or could not be checked because the diff, or the policy file at the merge base, could not be read (`error`; `warn` when the policy sets the mode or the rule to `warn`). The text names up to 20 paths and the evidence as fixed words, never a pattern, label or login |
 | `POLICY_P07` | Agent instruction files in the same directory name different package managers or JavaScript test runners, or some of them could not be compared (`warn` by default; `error` when the policy sets `setup.consistency` or the rule to `block`; `info` when it sets `info` or the files could not be read). The text names up to 20 files; each violation has a path, a line and the tools as fixed words, never the file's text |
+| `POLICY_P13` | An agent pull request widens what an agent may do in an agent settings file, an MCP config, a workflow or CODEOWNERS, changes one that could not be read or parsed at the merge base and at HEAD, or could not be checked because the diff is unavailable (`error`, or the level an app policy sets for P13). The text names up to 20 paths and the evidence as fixed words; each violation names the kinds of widening as fixed words, never a rule, server, secret, owner or command |
 | `AGENT_PR_DETECTION_INCOMPLETE` | The pull request counts as an agent PR because its evidence could not be read in full, and the org policy protects paths (`warn`). The text names the reason as one fixed word |
 | `POLICY_P02` | The committed agent settings break org policy rule P02: an allow rule overlaps a forbidden permission, `defaultMode` is `bypassPermissions` or `auto`, or `additionalDirectories` is set (`error`; `warn` for `additionalDirectories`, or the level the policy sets). The text names up to 20 locations as path and line, and the count |
 | `POLICY_P03` | A settings directory lacks a deny rule the org policy requires (`error`, or the level the policy sets for P03). The text names up to 20 locations and the count |
@@ -1053,6 +1086,9 @@ inclusive threshold (79.995% fails at 80); which known agent setup files are tra
   are left out of the measurement ([Excluding files](#excluding-files)).
 - **P11 guards paths, not authors.** It sees only agent PRs that identify themselves (by author, commits, trailers or
   labels) and matches paths, not content: an agent PR that does not identify itself is judged as a person's.
+- **P13 compares structure, not behaviour.** It sees only agent PRs that identify themselves, and only the four kinds
+  of file it names: a power widened through a script a hook calls, untracked or user-level settings, or a reusable
+  workflow in another repository is outside it ([`docs/LIMITS.md`](docs/LIMITS.md)).
 
 ### Policy mode: agent instruction files
 

@@ -47,6 +47,9 @@ const SECRET_CODES = [
   // E3 item 24 (P07): the appended schema text and report.ts also gain this rule code; this only adds to what the pin
   // allows.
   "POLICY_P07",
+  // policy-p13 (Horizon 2 item H1): the appended " Codes added in v0.6.0:" text and report.ts also gain this rule code;
+  // this only adds to what the pin allows.
+  "POLICY_P13",
 ];
 
 const git = (...args: string[]) =>

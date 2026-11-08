@@ -1,0 +1,7 @@
+{
+  "servers": {
+    /* Same two servers, keys and members in another order. */
+    "search": { "url": "https://search.example.com/mcp", "type": "http" },
+    "docs": { "args": ["-y", "docs-mcp@1.2.0"], "command": "npx" }
+  }
+}

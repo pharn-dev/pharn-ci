@@ -1,0 +1,4 @@
+{
+  "permissions": {
+    "allow": ["Bash(pnpm test:*)", "Bash(SENTINEL-ALLOW-7f3a:*)",],
+  }

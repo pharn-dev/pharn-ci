@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "docs": { "command": "npx", "args": ["-y", "docs-mcp@1.2.0"], "env": { "LOG": "debug" } }
+  }
+}

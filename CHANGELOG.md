@@ -9,6 +9,17 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- Org-policy rule P13, agent self-modification (`POLICY_P13`, default `block`): under an app or `file:` policy, an
+  agent pull request that widens its own or another agent's powers is blocked. The Action compares each agent settings
+  file, MCP config, workflow and CODEOWNERS file the diff touches between the merge base and HEAD (read from committed
+  objects with the caps of the test sources): an allow rule added, a deny rule removed, `defaultMode` changed, a hook
+  removed or rewritten, `disableAllHooks` or `enableAllProjectMcpServers` turned on, an MCP server added or changed, a
+  secret newly referenced, a workflow permission widened or its block removed, `pull_request_target` added, or a
+  CODEOWNERS change other than owners added. One violation per file names the widening in fixed words, never file
+  text. A missing diff, or a file that cannot be read or parsed, fails closed. A person's pull request is never
+  subject to it, a `file:` policy cannot lower it, and the CLI never runs it. New message code in schema v2, no new
+  input, no new dependency, no network call.
+
 ### Changed
 
 - `.pharn/ci.yml` may now only tighten the coverage threshold and the agent setup requirement, as it already did the

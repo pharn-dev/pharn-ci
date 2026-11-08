@@ -27,6 +27,11 @@ export interface ReadTestSourcesOptions {
   head?: string;
   /** The parsed diff of the change under review. */
   diff: readonly DiffFile[];
+  /**
+   * Which paths to read on each side. Default `selectTestSourcePaths` (the test and test-config files); rule P13 passes
+   * `selectSelfModificationPaths`. The same caps, safety checks and decoding apply to any selection.
+   */
+  select?: (diff: readonly DiffFile[]) => { base: string[]; head: string[] };
 }
 
 async function resolveRevision(deps: TestSourceGitDeps, revision: string, label: string): Promise<string> {
@@ -66,7 +71,7 @@ export async function readTestSources(deps: TestSourceGitDeps, options: ReadTest
     const headOid = await resolveRevision(deps, options.head ?? "HEAD", "head");
     const mergeBase = await mergeBaseOf(deps, baseOid, headOid);
 
-    const selected = selectTestSourcePaths(options.diff);
+    const selected = (options.select ?? selectTestSourcePaths)(options.diff);
     // A path with a control character or a path-resolution segment never reaches git's stdin.
     const requests = [
       ...selected.base.filter((path) => !isUnsafeTestSourcePath(path)).map((path) => ({ oid: mergeBase, path })),

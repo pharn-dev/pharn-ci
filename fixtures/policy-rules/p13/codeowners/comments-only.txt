@@ -1,0 +1,9 @@
+# Owners of this repository. The last matching line wins.
+
+# Everything else.
+*                   @acme/maintainers
+/.github/           @acme/platform
+/.claude/           @acme/platform @acme/security
+
+# Payments code.
+/src/payments/      @acme/payments

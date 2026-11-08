@@ -1,0 +1,21 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          echo "permissions: write-all"
+          pnpm test
+        env:
+          TOKEN: ${{ secrets.NPM_TOKEN }}
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - run: pnpm lint # pull_request_target is only named in this comment

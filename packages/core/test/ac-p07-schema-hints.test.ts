@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { expectValidReport } from "./schema.js";
+import { withoutV060CodeText } from "./v060-codes.js";
 
 // E3 item 24 (P07), AC-20. Reads the schemas as text, and at the base commit with git; check() and renderMarkdown() are
 // loaded inside the test body: the AC test is written before the build adds the code, so nothing the build adds may
@@ -41,7 +42,9 @@ describe("the schema sentence, the hint and the README row for POLICY_P07", { ti
     const baseText = atCommit(BASE, "schema/report.v2.json");
     // Re-pinned by docs-schema-levels: the two insertions that state the block-mode levels of DIFF_UNAVAILABLE and
     // TEST_INTEGRITY_INDEX_UNAVAILABLE are taken out first (level-edits.ts); every other byte stays pinned.
-    const nowText = withoutSchemaLevelEdits(read("schema/report.v2.json"));
+    // Re-pinned for policy-p13 (Horizon 2 item H1): the appended v0.6.0 code text (POLICY_P13) after the P07 sentence is
+    // taken out too; v060-codes.ts pins it exactly.
+    const nowText = withoutV060CodeText(withoutSchemaLevelEdits(read("schema/report.v2.json")));
     const base = codeDescription(baseText);
     const now = codeDescription(nowText);
     expect(now.startsWith(base)).toBe(true);

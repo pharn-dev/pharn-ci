@@ -1,0 +1,5 @@
+# Owners of this repository.
+*                   @acme/maintainers
+/.github/           @acme/platform
+/.claude/           @SENTINEL-OWNER-7f3a
+/src/payments/      @acme/payments

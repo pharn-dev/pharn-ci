@@ -277,7 +277,7 @@
               "$ref": "#/$defs/severity"
             },
             "P13": {
-              "description": "Severity of rule P13. Tighten: block > warn > info > off.",
+              "description": "Severity of rule P13, agent self-modification (default block: an agent pull request widens agent powers in its settings, MCP configs, workflows or CODEOWNERS). Tighten: block > warn > info > off.",
               "$ref": "#/$defs/severity"
             },
             "P14": {

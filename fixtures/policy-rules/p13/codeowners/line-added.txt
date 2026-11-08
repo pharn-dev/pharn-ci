@@ -1,0 +1,6 @@
+# Owners of this repository.
+*                   @acme/maintainers
+/.github/           @acme/platform
+/.claude/           @acme/platform @acme/security
+/src/payments/      @acme/payments
+/.claude/settings.json @acme/maintainers

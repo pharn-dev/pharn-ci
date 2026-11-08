@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
+import { V060_CODE_TEXT, V060_CODES } from "./v060-codes.js";
 
 // The schemas, report.ts and fixtures/upload/bundle-golden/meta.json are read inside each test body: the build writes
 // or changes them after this test. The base is main at f563d7d, read with git.
@@ -151,8 +152,10 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
     const baseDescription = strings(JSON.parse(v2Base)).find((s) => s.includes(" Codes added in v0.4.0:"));
     expect(baseDescription, "control: the base has the v0.4.0 text").toBeDefined();
     const description = strings(JSON.parse(v2)).find((s) => s.includes(" Codes added in v0.4.0:"));
+    // Re-pinned for policy-p13 (Horizon 2 item H1): the v0.6.0 code text (POLICY_P13, v060-codes.ts) follows P07_TEXT,
+    // and POLICY_P13 joins the added code words of the schema and report.ts below.
     expect(description).toBe(
-      `${baseDescription}${SENTENCE}${POLICY_RULES_TEXT}${P11_TEXT}${POLICY_SETTINGS_TEXT}${P07_TEXT}`,
+      `${baseDescription}${SENTENCE}${POLICY_RULES_TEXT}${P11_TEXT}${POLICY_SETTINGS_TEXT}${P07_TEXT}${V060_CODE_TEXT}`,
     );
     expect(v2.split(" Codes added in v0.4.0:").length - 1).toBe(1);
 
@@ -168,13 +171,27 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
     expect(swap(v2, description as string, "X")).toEqual(swap(v2Base, baseDescription as string, "X"));
 
     expect(added(codeWords(v2), codeWords(v2Base))).toEqual(
-      [...POLICY_RULE_CODES, ...P11_CODES, ...POLICY_SETTINGS_CODES, "POLICY_P07", "UPLOAD_TOO_LARGE"].sort(),
+      [
+        ...POLICY_RULE_CODES,
+        ...P11_CODES,
+        ...POLICY_SETTINGS_CODES,
+        "POLICY_P07",
+        ...V060_CODES,
+        "UPLOAD_TOO_LARGE",
+      ].sort(),
     );
 
     const reportTsBase = atBase("packages/core/src/report.ts");
     const reportTs = read("packages/core/src/report.ts");
     expect(added(upperWords(reportTs), upperWords(reportTsBase))).toEqual(
-      [...POLICY_RULE_CODES, ...P11_CODES, ...POLICY_SETTINGS_CODES, "POLICY_P07", "UPLOAD_TOO_LARGE"].sort(),
+      [
+        ...POLICY_RULE_CODES,
+        ...P11_CODES,
+        ...POLICY_SETTINGS_CODES,
+        "POLICY_P07",
+        ...V060_CODES,
+        "UPLOAD_TOO_LARGE",
+      ].sort(),
     );
     const declaration = reportTs.slice(reportTs.indexOf("type MessageCode"));
     const union = declaration.slice(0, declaration.indexOf(";"));

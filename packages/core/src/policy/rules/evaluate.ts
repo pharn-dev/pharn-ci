@@ -14,6 +14,7 @@ import { detectP08 } from "./p08.js";
 import { detectP09, type SettingsView } from "./p09.js";
 import { detectP10 } from "./p10.js";
 import { detectP11 } from "./p11.js";
+import { detectP13 } from "./p13.js";
 import { reportedProblems } from "./problems.js";
 import { boundDetail, resolveSeverity, strongest } from "./severity.js";
 import type { PolicyEvaluation, PolicyRuleInput, PolicyViolation, RuleFinding } from "./types.js";
@@ -134,6 +135,7 @@ export function evaluatePolicyRules(input: PolicyRuleInput): PolicyEvaluation {
     ...detectP07(input, consistency?.severity ?? null),
     ...detectP10(input),
     ...detectP11(input),
+    ...detectP13(input),
   ]);
   if (view !== null) {
     for (const violation of first) {

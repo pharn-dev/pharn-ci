@@ -1,0 +1,21 @@
+{
+  "disabledMcpjsonServers": ["shell"],
+  "enabledMcpjsonServers": ["docs"],
+  "hooks": {
+    "Stop": [{ "hooks": [{ "command": "node .claude/hooks/stop.cjs", "type": "command" }] }],
+    "PreToolUse": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node .claude/hooks/log.cjs" },
+          { "type": "command", "command": "node .claude/hooks/guard.cjs" }
+        ],
+        "matcher": "Bash"
+      }
+    ]
+  },
+  "permissions": {
+    "defaultMode": "default",
+    "deny": ["Read(./.env)", "Bash(curl:*)"],
+    "allow": ["Read(./src/**)", "Bash(pnpm test:*)"]
+  }
+}
