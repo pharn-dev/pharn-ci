@@ -1,0 +1,24 @@
+diff --git a/src/a.ts b/src/a.ts
+index 1111111..2222222 100644
+--- a/src/a.ts
++++ b/src/a.ts
+@@ -1,0 +2 @@
++export const a = 1;
+diff --git a/src/b.ts b/src/b.ts
+index 1111111..2222222 100644
+--- a/src/b.ts
++++ b/src/b.ts
+@@ -1,0 +2 @@
++export const b = 1;
+diff --git a/docs/guide.md b/docs/guide.md
+index 1111111..2222222 100644
+--- a/docs/guide.md
++++ b/docs/guide.md
+@@ -3,0 +4 @@
++A new line of the guide.
+diff --git a/README.md b/README.md
+index 1111111..2222222 100644
+--- a/README.md
++++ b/README.md
+@@ -1,0 +2 @@
++A new line of the readme.

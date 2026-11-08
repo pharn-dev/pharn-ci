@@ -161,6 +161,8 @@ export const MESSAGE_HINTS: Readonly<Record<MessageCode, Hint>> = {
     "Add a command hook for the event whose matcher covers the required one (`*` or the same tool names), without an if condition.",
   POLICY_SETTINGS_INVALID:
     "Keep agent settings files valid JSON and regular files under 512 KiB, and run on a checkout of the pull request head, so the org policy can check them.",
+  POLICY_P14:
+    "Split the agent pull request into smaller ones, one per area named, or ask the policy owner to change `agents.max_files` or `agents.max_changed_lines`. Lockfiles, snapshots and `*.generated.*` files do not count.",
 };
 
 /** The hint text for a message code, or undefined when it has none. `label` is the report's accept label. */

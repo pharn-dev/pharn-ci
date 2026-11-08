@@ -4,6 +4,7 @@ import { byCodeUnit, replaceUnsafeChars } from "../../text.js";
 import type { PolicyRuleId } from "../types.js";
 import { P07_PACKAGE_MANAGER_PREFIX, P07_TEST_RUNNER_PREFIX, P07_UNREAD_DETAIL } from "./p07.js";
 import { P11_BASE_UNREADABLE_DETAIL, P11_DIFF_UNAVAILABLE_DETAIL } from "./p11.js";
+import { P14_BASE_UNREADABLE_DETAIL, P14_DIFF_UNAVAILABLE_DETAIL } from "./p14.js";
 import { levelOf, strongest } from "./severity.js";
 import type { PolicyEvaluation, PolicyViolation } from "./types.js";
 
@@ -54,6 +55,9 @@ function locsOf(violations: readonly PolicyViolation[], omitted: number): string
   const named = locations.slice(0, MAX_LISTED).join(", ");
   return more > 0 ? `${named} and ${more} more` : named;
 }
+
+/** P14's size detail (`detectP14`): the count, `files` or `lines`, the cap and the areas. */
+const P14_SIZE_DETAIL = /^agent PR changes (\d+) (files|lines) \(cap (\d+)\); split it by area: (.*)$/s;
 
 /** `1 thing` or `n things`. */
 const counted = (n: number, singular: string, plural: string): string => (n === 1 ? `1 ${singular}` : `${n} ${plural}`);
@@ -159,6 +163,40 @@ const RULE_MESSAGES: Partial<
         ? "This change edits 1 file that the org policy guards"
         : `This change edits ${total} files that the org policy guards`;
     return `${head}: ${listOf(paths, total)}. The reason for each is in the report's policy violations.`;
+  },
+  P14: (violations, _omitted, evaluation) => {
+    const sentences: string[] = [];
+    // The size details are P14's own fixed template: `agent PR changes N files|lines (cap M); split it by area: …`.
+    const counts: Partial<Record<string, string>> = {};
+    let areas = "";
+    for (const violation of violations) {
+      const match = P14_SIZE_DETAIL.exec(violation.detail);
+      if (match === null) continue;
+      counts[match[2] as string] = `${match[1]} ${match[2]} (cap ${match[3]})`;
+      areas = match[4] as string;
+    }
+    // Files before lines, whatever order the violations sorted in.
+    const sizes = [counts.files, counts.lines].filter((size): size is string => size !== undefined);
+    if (sizes.length > 0) {
+      sentences.push(
+        `This agent pull request changes ${sizes.join(" and ")}, more than the org policy allows; split it by area: ${areas}. Lockfiles, snapshots and *.generated.* files are not counted, nor are coverage.exclude paths unless the pull request edits the config or a workflow.`,
+      );
+    }
+    if (violations.some((violation) => violation.detail === P14_DIFF_UNAVAILABLE_DETAIL)) {
+      sentences.push(
+        "This agent pull request could not be checked against the org policy's size caps, because the diff is unavailable.",
+      );
+    }
+    if (violations.some((violation) => violation.detail === P14_BASE_UNREADABLE_DETAIL)) {
+      sentences.push(
+        "This agent pull request edits the policy file, and its version at the merge base could not be read, so the size caps that version sets could not be checked.",
+      );
+    }
+    const words = (evaluation.agentPr?.evidence ?? []).map((kind) => EVIDENCE_WORDS[kind]);
+    const incomplete = evaluation.agentPr?.incomplete ?? null;
+    if (incomplete !== null) words.push(`evidence it could not read (${codeSpan(incomplete)})`);
+    sentences.push(`It counts as an agent PR by: ${words.join("; ")}.`);
+    return sentences.join(" ");
   },
 };
 

@@ -456,8 +456,8 @@ A policy sets one gate for every repository of an organization, so a pull reques
 document ([`schema/policy.v1.json`](schema/policy.v1.json)) that the pharn.dev app serves, or that a pull request
 carries in a file. This release applies the coverage, setup (including the lists that P02 to P06 check, and
 `setup.consistency` for P07) and test-integrity keys, and `agents.labels`, `agents.extra_logins`,
-`agents.protected_paths` and `agents.protected_paths_mode`; the other `agents` keys, `dependencies` and `flaky` are
-validated but not applied yet.
+`agents.protected_paths`, `agents.protected_paths_mode`, `agents.max_files` and `agents.max_changed_lines`; the other
+`agents` keys, `dependencies` and `flaky` are validated but not applied yet.
 
 **What is sent.** With `policy: auto` (the default) or `required`, and only when the job grants `id-token: write`, the
 Action makes one `GET` of `/api/v1/policy?repo=<owner>/<name>` on the pharn.dev app. Only the OIDC token and the repository name
@@ -499,7 +499,7 @@ allowed from a file, and a value lower than the workflow inputs give is ignored;
 symbolic link and names a regular file of at most 1 MiB; anything else fails the step (the CLI exits `2`) with a fixed
 message that never names the path. What the policy does not cover is in [`docs/LIMITS.md`](docs/LIMITS.md).
 
-**Rules.** A policy also runs rules. P01, P08, P09, P10 and P11 read what the check already has (the agent setup
+**Rules.** A policy also runs rules. P01, P08, P09, P10, P11 and P14 read what the check already has (the agent setup
 inventory, the tracked files, the diff, the pull request's metadata and the policy itself). P02 to P06 read the agent
 settings and MCP files, and P07 reads the inline code and shell blocks of the agent instruction files, only in
 [policy mode](#policy-mode): the agent setup inventory never reads a setup file. Each finding is in the report's
@@ -517,6 +517,7 @@ settings and MCP files, and P07 reads the inline code and shell blocks of the ag
 - **P09**, the pull request loosens the policy it is graded by: it edits the policy file, the config or a workflow that sets a value looser than the policy, or an agent settings or MCP file the policy checks (`POLICY_P09`; `error` when the file fails P02 to P06 or could not be checked, `warn` when it only warns or supplies a required deny rule or hook, `info` when it complies, and `warn` when the files were not read).
 - **P10**, policy unavailable: the policy could not be read (`POLICY_UNAVAILABLE`).
 - **P11**, agent PR changes a protected path: an agent pull request changes a path that `agents.protected_paths` lists (`POLICY_P11`, `error`).
+- **P14**, agent PR too large: an agent pull request changes more files than `agents.max_files` or more lines than `agents.max_changed_lines` (`POLICY_P14`, `error`). Off until the policy sets a cap; lockfiles, snapshots and generated files do not count.
 
 **P11.** `agents.protected_paths` is a list of globs (the syntax of `coverage.exclude`) of the paths an agent pull
 request may not change, and `agents.protected_paths_mode` (`block` or `warn`, default `block`) sets the severity; the
@@ -540,6 +541,37 @@ pull request whose diff is unavailable gets one violation that says so. A `file:
 file is also read at the merge base so that editing it removes nothing. Dependabot and Renovate count as agent PRs, so
 protecting `package.json` or a lockfile blocks them: do not protect files those bots must update. At most 50 violations
 are listed (the rest are counted in the message). The accept label never touches P11.
+
+**P14.** Review capacity is what large agent pull requests break, and a cap is the deterministic form of "split large
+PRs". P14 is opt-in: set `agents.max_files` / `agents.max_changed_lines` to turn it on. There is no default cap, so a
+repository whose policy sets neither sees no change. Each cap is checked only when it is set; a pull request at the cap
+passes, and one over it fails.
+
+```json
+{
+  "version": 1,
+  "agents": { "max_files": 25, "max_changed_lines": 800 }
+}
+```
+
+A file is a diff entry (a rename counts once); its lines are the added plus the removed lines the diff shows (a binary
+file counts as a file with no lines). Generated files do not count: lockfiles (`package-lock.json`,
+`npm-shrinkwrap.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, `bun.lockb`, `Cargo.lock`, `poetry.lock`, `uv.lock`,
+`Pipfile.lock`, `composer.lock`, `Gemfile.lock`, `go.sum`, in any directory), snapshots (anything under
+`__snapshots__/`, and `*.snap`) and `*.generated.*` files, nor do paths the run's `coverage.exclude` matches. A pull
+request that edits the config in use or a workflow could exclude its own files, so then `coverage.exclude` is not used
+and every such file counts, unless the exclusions are the app policy's (which a pull request cannot change).
+
+Each exceeded cap is one path-less violation, for example `agent PR changes 31 files (cap 25); split it by area:
+docs, packages`. The areas are the top-level directories of the counted files (`.` for a file at the root), at most 10
+and then a count; nothing of a file's text is named. One `POLICY_P14` message carries the counts, the areas and the
+evidence that made the pull request an agent PR, as fixed words. A person's pull request is never subject to P14. A
+missing diff fails closed with one violation that says so. The severity is `block`; an app policy may set
+`policy.rules.P14` to `warn`, `info` or `off`, and a `file:` policy can only raise it (a lower value is named in
+`POLICY_OVERRIDE_IGNORED`). A `file:` policy can lower a cap but never raise or remove one: when the pull request edits
+the file, each cap is the smaller of its value at the merge base and at head (a cap set on one side only applies), and
+an edited file that cannot be read at the merge base fails closed. What P14 misses is in
+[`docs/LIMITS.md`](docs/LIMITS.md).
 
 ### Policy mode
 
@@ -956,6 +988,7 @@ message `code`s, not on text:
 | `POLICY_P05` | An MCP server matches an entry the org policy forbids, by name, command or URL (`error`, or the level the policy sets for P05). The text names up to 20 locations and the count |
 | `POLICY_P06` | A settings directory lacks a command hook the org policy requires, or `disableAllHooks` is set (`error`, or the level the policy sets for P06). The text names up to 20 locations and the count |
 | `POLICY_SETTINGS_INVALID` | P02 to P06 could not fully use an agent settings or MCP file, or did not run: the files were not read, a file was dropped, unparseable or has an entry the grammar does not know (`warn`; `error` for a file pharn-ci could not read, a problem a required list depends on, or settings not read at all under a required app policy or a policy that lists `required_permissions_deny` or `required_hooks` at block). The text names up to 20 problems as path, line and reason, never file text |
+| `POLICY_P14` | An agent pull request changes more files or lines than the org policy's `agents.max_files` or `agents.max_changed_lines` allow, not counting lockfiles, snapshots, `*.generated.*` files and `coverage.exclude` paths, or could not be checked because the diff, or the policy file at the merge base, could not be read (`error`, or the level the policy sets for P14). The text names the counts, the caps, up to 10 top-level directories and the evidence as fixed words, never file text |
 
 ### Agent PRs
 
@@ -1053,6 +1086,8 @@ inclusive threshold (79.995% fails at 80); which known agent setup files are tra
   are left out of the measurement ([Excluding files](#excluding-files)).
 - **P11 guards paths, not authors.** It sees only agent PRs that identify themselves (by author, commits, trailers or
   labels) and matches paths, not content: an agent PR that does not identify itself is judged as a person's.
+- **P14 caps one pull request, not the work.** It counts diff lines, not how hard a change is to review, and an agent
+  can split one change across many pull requests; like P11, it sees only agent PRs that identify themselves.
 
 ### Policy mode: agent instruction files
 

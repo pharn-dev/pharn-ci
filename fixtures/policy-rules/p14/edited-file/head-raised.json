@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "agents": {
+    "max_files": 50,
+    "max_changed_lines": 1000
+  }
+}

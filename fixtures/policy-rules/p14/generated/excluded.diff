@@ -1,0 +1,30 @@
+diff --git a/src/a.ts b/src/a.ts
+index 1111111..2222222 100644
+--- a/src/a.ts
++++ b/src/a.ts
+@@ -1,0 +2,2 @@
++export const a1 = 1;
++export const a2 = 2;
+diff --git a/src/b.ts b/src/b.ts
+index 1111111..2222222 100644
+--- a/src/b.ts
++++ b/src/b.ts
+@@ -1,0 +2,2 @@
++export const b1 = 1;
++export const b2 = 2;
+diff --git a/vendor/lib.js b/vendor/lib.js
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/vendor/lib.js
+@@ -0,0 +1,10 @@
++(function () {
++  var lib = {};
++  lib.one = 1;
++  lib.two = 2;
++  lib.three = 3;
++  lib.four = 4;
++  lib.five = 5;
++  lib.six = 6;
++  this.lib = lib;
++})();

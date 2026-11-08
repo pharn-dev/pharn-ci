@@ -51,7 +51,11 @@ const AGENT_PR_CODES = ["POLICY_P11", "AGENT_PR_DETECTION_INCOMPLETE"];
 // E3 item 24 (P07) adds one more, POLICY_P07, to the same appended text and to report.ts. It joins every exact code-word
 // comparison below; nothing is removed.
 const P07_CODES = ["POLICY_P07"];
-const ADDED_CODES = [...CODES, ...POLICY_CODES, ...UPLOAD_CODES, ...AGENT_PR_CODES, ...P07_CODES];
+// Re-pinned for policy rule P14 (agent PR size cap): it adds one more, POLICY_P14, in a " Codes added in v0.6.0:" text
+// at the end of the same appended text, and to report.ts. It joins every exact code-word comparison below; nothing is
+// removed.
+const P14_CODES = ["POLICY_P14"];
+const ADDED_CODES = [...CODES, ...POLICY_CODES, ...UPLOAD_CODES, ...AGENT_PR_CODES, ...P07_CODES, ...P14_CODES];
 
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 const atCommit = (commit: string, path: string) =>

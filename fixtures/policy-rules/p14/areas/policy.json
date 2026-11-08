@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "agents": {
+    "max_files": 1
+  }
+}

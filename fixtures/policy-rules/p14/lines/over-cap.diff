@@ -1,0 +1,21 @@
+diff --git a/src/a.ts b/src/a.ts
+index 1111111..2222222 100644
+--- a/src/a.ts
++++ b/src/a.ts
+@@ -1,4 +1,6 @@
+-export const one = 1;
+-export const two = 2;
+-export const three = 3;
+-export const four = 4;
++export const one = 10;
++export const two = 20;
++export const three = 30;
++export const four = 40;
++export const five = 50;
++export const six = 60;
+diff --git a/lib/b.ts b/lib/b.ts
+index 1111111..2222222 100644
+--- a/lib/b.ts
++++ b/lib/b.ts
+@@ -1,0 +2 @@
++export const b = 1;

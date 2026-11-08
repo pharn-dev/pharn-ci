@@ -51,6 +51,11 @@ export interface PolicyRuleInput {
    * not asked to compare them and adds nothing.
    */
   agentInstructions?: AgentConfigSources | null;
+  /**
+   * The run's resolved `coverage.exclude` patterns (validated, as `check()` uses them), for rule P14: a path they match
+   * is not counted. Absent: none.
+   */
+  coverageExclude?: readonly string[];
 }
 
 export interface PolicyEvaluation {

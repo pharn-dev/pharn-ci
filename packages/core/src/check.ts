@@ -216,7 +216,8 @@ function sortSignals(signals: TestIntegritySignal[]): TestIntegritySignal[] {
 /** The whole pharn-ci check as one pure function: raw inputs in, Report v2 out. */
 export function check(input: CheckInput): Report {
   // Validate before any early return, so a bad pattern is an error even when nothing else is computed.
-  const matchers = [...new Set((input.exclude ?? []).map((p) => parseExcludePattern(p)))].map(compileGlob);
+  const excludePatterns = [...new Set((input.exclude ?? []).map((p) => parseExcludePattern(p)))];
+  const matchers = excludePatterns.map(compileGlob);
   const isExcluded = (path: string) => matchers.some((matches) => matches(path));
   const expectedAgentTools = parseAgentToolNames(input.expectAgentSetup ?? [], "expected agent tool");
   const coverageRoot =
@@ -418,6 +419,7 @@ export function check(input: CheckInput): Report {
           diff: parsedDiff,
           configPath: configRepoPath(input.configPath, input.repoRoot),
           ignored: input.policyIgnored ?? [],
+          coverageExclude: excludePatterns,
           ...(detection === undefined || agentPolicy === undefined ? {} : { agentPr: detection, agentPolicy }),
           ...(input.policySettingsSources === undefined ? {} : { settingsSources: input.policySettingsSources }),
           ...(input.agentInstructionSources === undefined ? {} : { agentInstructions: input.agentInstructionSources }),

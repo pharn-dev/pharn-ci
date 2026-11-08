@@ -1086,8 +1086,31 @@ P08 matches the tracked paths of the repository against `setup.forbidden_files`.
   agent PR (`policy-lists-unreadable`).
 - **Dependabot and Renovate count as agent PRs.** Protecting `package.json` or a lockfile blocks their updates: do not
   protect files those bots must update.
-- **Other `agents` keys are not applied.** `require_human_approval`, `max_files` and `max_changed_lines` (rules P12 and
-  P14) are validated and carried, not applied by this release.
+- **Other `agents` keys are not applied.** `require_human_approval` (rule P12) is validated and carried, not applied by
+  this release. `max_files` and `max_changed_lines` feed P14 (below).
+
+### What P14 misses
+
+P14 caps the size of one agent pull request. It is opt-in (no cap is set by default) and counts the diff, not the work.
+What it misses:
+
+- **An agent can split the work across many pull requests.** Each is judged alone; nothing adds up the pull requests
+  of one task, one agent or one day.
+- **Lines are counted from the diff, not by semantic size.** Added plus removed lines, as `git diff` shows them: a
+  reformat or a moved block counts in full, a one-line change that is hard to review counts as one line, and a binary
+  file counts as a file with no lines. A rename counts once, by its edited lines only.
+- **Only the fixed list of generated files is left out.** Lockfiles of the managers the README names, snapshots
+  (`__snapshots__/`, `*.snap`) and `*.generated.*` files. Any other generated file (a protobuf stub, a vendored
+  bundle, a migration a tool wrote) counts unless `coverage.exclude` matches it.
+- **`coverage.exclude` is not used when the pull request edits the config in use or a workflow,** unless the app policy
+  sets the exclusions; then every file those patterns would have left out counts, and a pull request that only
+  reformats its config can go over the cap. Without such an edit, exclusions the workflow inputs or `.pharn/ci.yml` set
+  apply, and a repository whose config already excludes wide paths counts less.
+- **Only agent PRs that identify themselves.** As for P11 (§9): an agent that commits through a person's account with
+  no trailer, label or known login is judged as a person's, and the CLI, which has no pull request, never runs P14.
+- **An unreadable merge base fails closed only while the file still sets a cap.** When the merge-base `file:` policy
+  cannot be read (PR-number mode, a compare-API diff), a pull request that edits the file and removes every cap is not
+  checked, the same gap P11 has for removed protected paths; the pull request still counts as an agent PR.
 
 ### What P07 misses
 

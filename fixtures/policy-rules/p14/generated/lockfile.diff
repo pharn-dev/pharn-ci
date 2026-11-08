@@ -1,0 +1,44 @@
+diff --git a/src/a.ts b/src/a.ts
+index 1111111..2222222 100644
+--- a/src/a.ts
++++ b/src/a.ts
+@@ -1,0 +2,2 @@
++export const a1 = 1;
++export const a2 = 2;
+diff --git a/src/b.ts b/src/b.ts
+index 1111111..2222222 100644
+--- a/src/b.ts
++++ b/src/b.ts
+@@ -1,0 +2,2 @@
++export const b1 = 1;
++export const b2 = 2;
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index 1111111..2222222 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -10,2 +10,12 @@
+-  left-pad@1.0.0:
+-    resolution: {integrity: sha512-old}
++  left-pad@1.3.0:
++    resolution: {integrity: sha512-new}
++  right-pad@1.0.0:
++    resolution: {integrity: sha512-r}
++  up-pad@1.0.0:
++    resolution: {integrity: sha512-u}
++  down-pad@1.0.0:
++    resolution: {integrity: sha512-d}
++  mid-pad@1.0.0:
++    resolution: {integrity: sha512-m}
+diff --git a/packages/web/package-lock.json b/packages/web/package-lock.json
+index 1111111..2222222 100644
+--- a/packages/web/package-lock.json
++++ b/packages/web/package-lock.json
+@@ -1,0 +2,8 @@
++  "lockfileVersion": 3,
++  "requires": true,
++  "packages": {
++    "": {
++      "name": "web"
++    }
++  },
++  "name": "web"

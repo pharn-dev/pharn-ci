@@ -1,0 +1,16 @@
+diff --git a/assets/logo.png b/assets/logo.png
+index 1111111..2222222 100644
+Binary files a/assets/logo.png and b/assets/logo.png differ
+diff --git a/assets/icon.png b/assets/icon.png
+new file mode 100644
+index 0000000..2222222
+Binary files /dev/null and b/assets/icon.png differ
+diff --git a/src/a.ts b/src/a.ts
+index 1111111..2222222 100644
+--- a/src/a.ts
++++ b/src/a.ts
+@@ -1,0 +2,4 @@
++export const a1 = 1;
++export const a2 = 2;
++export const a3 = 3;
++export const a4 = 4;

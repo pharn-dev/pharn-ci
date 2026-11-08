@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import { parseUnifiedDiff, unquote } from "../src/diff/unified.js";
 import { fixture } from "./helpers.js";
 
+// Policy rule P14 (agent PR size cap): an entry with removed lines now also carries `removedCount`, so the four
+// expectations below that see removed lines gained that key on purpose; the added lines and paths are unchanged.
 describe("parseUnifiedDiff", () => {
   it("collects added lines across multiple hunks, ignoring removals", () => {
     expect(parseUnifiedDiff(fixture("diff/modified-multi-hunk.diff"))).toEqual([
-      { path: "src/math.ts", oldPath: "src/math.ts", status: "modified", addedLines: [3, 4, 5, 10] },
+      { path: "src/math.ts", oldPath: "src/math.ts", status: "modified", addedLines: [3, 4, 5, 10], removedCount: 3 },
     ]);
   });
 
@@ -17,13 +19,19 @@ describe("parseUnifiedDiff", () => {
 
   it("reports deleted files with no added lines", () => {
     expect(parseUnifiedDiff(fixture("diff/deleted-file.diff"))).toEqual([
-      { path: "src/legacy.ts", oldPath: "src/legacy.ts", status: "deleted", addedLines: [] },
+      { path: "src/legacy.ts", oldPath: "src/legacy.ts", status: "deleted", addedLines: [], removedCount: 3 },
     ]);
   });
 
   it("uses the new path for renames, including pure renames", () => {
     expect(parseUnifiedDiff(fixture("diff/renamed.diff"))).toEqual([
-      { path: "src/utils/new-name.ts", oldPath: "src/old-name.ts", status: "renamed", addedLines: [2] },
+      {
+        path: "src/utils/new-name.ts",
+        oldPath: "src/old-name.ts",
+        status: "renamed",
+        addedLines: [2],
+        removedCount: 1,
+      },
       { path: "docs/b.md", oldPath: "docs/a.md", status: "renamed", addedLines: [] },
     ]);
   });
@@ -35,10 +43,10 @@ describe("parseUnifiedDiff", () => {
 
   it("handles header-like content lines, quoted paths, binary files and context lines", () => {
     expect(parseUnifiedDiff(fixture("diff/tricky.diff"))).toEqual([
-      { path: "src/dashes.ts", oldPath: "src/dashes.ts", status: "modified", addedLines: [4, 5] },
+      { path: "src/dashes.ts", oldPath: "src/dashes.ts", status: "modified", addedLines: [4, 5], removedCount: 1 },
       { path: "src/café file.ts", oldPath: "src/café file.ts", status: "modified", addedLines: [1] },
       { path: "assets/logo.png", oldPath: "assets/logo.png", status: "modified", addedLines: [], binary: true },
-      { path: "src/context.ts", oldPath: "src/context.ts", status: "modified", addedLines: [11, 12] },
+      { path: "src/context.ts", oldPath: "src/context.ts", status: "modified", addedLines: [11, 12], removedCount: 1 },
     ]);
   });
 

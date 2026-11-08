@@ -14,6 +14,7 @@ import { detectP08 } from "./p08.js";
 import { detectP09, type SettingsView } from "./p09.js";
 import { detectP10 } from "./p10.js";
 import { detectP11 } from "./p11.js";
+import { detectP14 } from "./p14.js";
 import { reportedProblems } from "./problems.js";
 import { boundDetail, resolveSeverity, strongest } from "./severity.js";
 import type { PolicyEvaluation, PolicyRuleInput, PolicyViolation, RuleFinding } from "./types.js";
@@ -27,7 +28,7 @@ const SETTINGS_READERS = ["P02", "P03", "P04", "P05", "P06"] as const satisfies 
 const SETTINGS_RULES: readonly string[] = SETTINGS_READERS;
 
 /**
- * Run the org-policy rules (P01 to P11) over what the check already has, apply the policy's rule severities, sort,
+ * Run the org-policy rules (P01 to P11, and P14) over what the check already has, apply the policy's rule severities, sort,
  * and cap every rule id at 50. Pure and deterministic; the input is never mutated.
  */
 export function evaluatePolicyRules(input: PolicyRuleInput): PolicyEvaluation {
@@ -134,6 +135,7 @@ export function evaluatePolicyRules(input: PolicyRuleInput): PolicyEvaluation {
     ...detectP07(input, consistency?.severity ?? null),
     ...detectP10(input),
     ...detectP11(input),
+    ...detectP14(input),
   ]);
   if (view !== null) {
     for (const violation of first) {

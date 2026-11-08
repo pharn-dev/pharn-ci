@@ -14,6 +14,11 @@ export interface DiffFile {
    */
   binary?: true;
   /**
+   * How many lines the diff removes from the file (the `-` lines of its hunks; every line of a deleted file). Present
+   * only when it is at least 1, so an entry with no removed line has no such key. Org-policy rule P14 counts it.
+   */
+  removedCount?: number;
+  /**
    * The text of the added and removed lines, one entry per hunk. Present only when the caller selected this file with
    * the `keepText` option; then it is always an array, empty when the diff shows no hunk for the file (an empty file
    * deleted, a rename without edits). Absent when the text was not kept.
@@ -59,6 +64,7 @@ interface Entry {
   addedLines: number[];
   sawHunk: boolean;
   binary: boolean;
+  removed: number;
   /** Decided at the first hunk (or at the end), once the paths are known; undefined until then. */
   keep: boolean | undefined;
   hunks: DiffHunk[];
@@ -121,6 +127,7 @@ export function createUnifiedDiffReader(options: UnifiedDiffOptions = {}): {
       addedLines: [],
       sawHunk: false,
       binary: false,
+      removed: 0,
       keep: undefined,
       hunks: [],
       keptLines: 0,
@@ -165,6 +172,7 @@ export function createUnifiedDiffReader(options: UnifiedDiffOptions = {}): {
       }
       if (marker === "-") {
         if (current.keep) keepLine(current, "removed", oldCursor, line.slice(1));
+        current.removed++;
         oldCursor++;
         oldRemaining--;
         return;
@@ -249,6 +257,7 @@ export function createUnifiedDiffReader(options: UnifiedDiffOptions = {}): {
         status: e.status === "deleted" ? "deleted" : e.status,
         addedLines: e.status === "deleted" ? [] : [...new Set(e.addedLines)].sort((a, b) => a - b),
         ...(e.binary ? { binary: true as const } : {}),
+        ...(e.removed > 0 ? { removedCount: e.removed } : {}),
         ...(decideKeep(e) ? { hunks: e.hunks } : {}),
         ...(e.truncated ? { textTruncated: true as const } : {}),
       });

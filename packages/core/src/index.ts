@@ -118,6 +118,7 @@ export {
 export { evaluatePolicyRules, MAX_P08_VIOLATIONS, MAX_RULE_VIOLATIONS } from "./policy/rules/evaluate.js";
 export { policyRuleMessages } from "./policy/rules/messages.js";
 export { consistencySeverity } from "./policy/rules/p07.js";
+export { type AgentPrSize, agentPrSize, P14_GENERATED_FILES } from "./policy/rules/p14.js";
 export type { PolicyEvaluation, PolicyRuleInput, PolicyViolation } from "./policy/rules/types.js";
 export { isCountingHandler, matcherCovers } from "./policy/settings/hooks.js";
 export { type JsonMember, type JsonValue, parseSettingsJson, type SettingsJsonResult } from "./policy/settings/json.js";

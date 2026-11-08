@@ -20,6 +20,10 @@ const atCommit = (commit: string, path: string) =>
 const P07_HINT =
   "Make the instruction files in one directory name the same package manager and test runner, or move a file into the package it describes; an agent follows whichever file it reads first.";
 
+/** The text policy rule P14 (agent PR size cap) appends after the P07 sentence. */
+const P14_TEXT =
+  " Codes added in v0.6.0: POLICY_P14 (error, or the level the org policy sets for P14: an agent pull request changes more files or lines than the org policy's agents.max_files or agents.max_changed_lines allow, not counting lockfiles, snapshots, *.generated.* files and coverage.exclude paths, or could not be checked because the diff, or the policy file at the merge base, could not be read; the message names the counts, the caps, up to 10 top-level directories and the evidence as fixed words, never file text).";
+
 /** The upper-case code words of a text (as the pyparity2 pin collects them). */
 const words = (text: string) =>
   [...new Set([...text.matchAll(/\b(?:TI\d\d|[A-Z][A-Z0-9]*_[A-Z0-9_]+)\b/g)].map((m) => m[0]))].sort();
@@ -41,7 +45,11 @@ describe("the schema sentence, the hint and the README row for POLICY_P07", { ti
     const baseText = atCommit(BASE, "schema/report.v2.json");
     // Re-pinned by docs-schema-levels: the two insertions that state the block-mode levels of DIFF_UNAVAILABLE and
     // TEST_INTEGRITY_INDEX_UNAVAILABLE are taken out first (level-edits.ts); every other byte stays pinned.
-    const nowText = withoutSchemaLevelEdits(read("schema/report.v2.json"));
+    // Re-pinned for policy rule P14 (agent PR size cap): its v0.6.0 text follows the P07 sentence at the end of the
+    // description; it appears once and is taken out first, so the P07 sentence is still judged as the last one.
+    const withP14 = withoutSchemaLevelEdits(read("schema/report.v2.json"));
+    expect(withP14.split(P14_TEXT).length - 1, "the P14 text appears once").toBe(1);
+    const nowText = withP14.replace(P14_TEXT, "");
     const base = codeDescription(baseText);
     const now = codeDescription(nowText);
     expect(now.startsWith(base)).toBe(true);

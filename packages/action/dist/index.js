@@ -25739,6 +25739,7 @@ function createUnifiedDiffReader(options = {}) {
       addedLines: [],
       sawHunk: false,
       binary: false,
+      removed: 0,
       keep: void 0,
       hunks: [],
       keptLines: 0,
@@ -25777,6 +25778,7 @@ function createUnifiedDiffReader(options = {}) {
       }
       if (marker === "-") {
         if (current.keep) keepLine(current, "removed", oldCursor, line.slice(1));
+        current.removed++;
         oldCursor++;
         oldRemaining--;
         return;
@@ -25856,6 +25858,7 @@ function createUnifiedDiffReader(options = {}) {
         status: e.status === "deleted" ? "deleted" : e.status,
         addedLines: e.status === "deleted" ? [] : [...new Set(e.addedLines)].sort((a, b) => a - b),
         ...e.binary ? { binary: true } : {},
+        ...e.removed > 0 ? { removedCount: e.removed } : {},
         ...decideKeep(e) ? { hunks: e.hunks } : {},
         ...e.truncated ? { textTruncated: true } : {}
       });
@@ -27908,6 +27911,11 @@ function boundDetail(text) {
 }
 
 // ../core/src/policy/agents.ts
+function smallestCap(...values) {
+  let cap = null;
+  for (const value of values) if (typeof value === "number" && (cap === null || value < cap)) cap = value;
+  return cap;
+}
 function tidy(...lists) {
   const out = /* @__PURE__ */ new Set();
   for (const list of lists) {
@@ -27925,7 +27933,9 @@ function agentPolicyOf(policy, from) {
     listsIncomplete: false,
     policyFileEdited: false,
     ignored: [],
-    lowered: false
+    lowered: false,
+    maxFiles: null,
+    maxChangedLines: null
   };
   if (policy === void 0 || policy.source === "none" || policy.document === null || policy.document === void 0) {
     return empty;
@@ -27945,8 +27955,10 @@ function agentPolicyOf(policy, from) {
   const labels = tidy(head?.labels, baseAgents?.labels);
   const extraLogins = tidy(head?.extra_logins, baseAgents?.extra_logins);
   const protectedPaths = tidy(head?.protected_paths, baseAgents?.protected_paths);
+  const maxFiles = smallestCap(head?.max_files, baseAgents?.max_files);
+  const maxChangedLines = smallestCap(head?.max_changed_lines, baseAgents?.max_changed_lines);
   if (protectedPaths.length === 0) {
-    return { ...empty, labels, extraLogins, listsIncomplete, policyFileEdited };
+    return { ...empty, labels, extraLogins, listsIncomplete, policyFileEdited, maxFiles, maxChangedLines };
   }
   const resolved = resolveKeyedSeverity(policy, "P11", {
     featureValue: head?.protected_paths_mode,
@@ -27961,7 +27973,9 @@ function agentPolicyOf(policy, from) {
     listsIncomplete,
     policyFileEdited,
     ignored: resolved.ignored,
-    lowered: resolved.lowered
+    lowered: resolved.lowered,
+    maxFiles,
+    maxChangedLines
   };
 }
 
@@ -29839,6 +29853,86 @@ function detectP11(input) {
   return findings;
 }
 
+// ../core/src/policy/rules/p14.ts
+var P14_GENERATED_FILES = Object.freeze([
+  "**/package-lock.json",
+  "**/npm-shrinkwrap.json",
+  "**/pnpm-lock.yaml",
+  "**/yarn.lock",
+  "**/bun.lock",
+  "**/bun.lockb",
+  "**/Cargo.lock",
+  "**/poetry.lock",
+  "**/uv.lock",
+  "**/Pipfile.lock",
+  "**/composer.lock",
+  "**/Gemfile.lock",
+  "**/go.sum",
+  "**/__snapshots__/**",
+  "**/*.snap",
+  "**/*.generated.*"
+]);
+var P14_MAX_AREAS = 10;
+var P14_SIZE_PREFIX = "agent PR changes ";
+var P14_DIFF_UNAVAILABLE_DETAIL = "diff unavailable; the size of the agent PR could not be checked";
+var P14_BASE_UNREADABLE_DETAIL = "policy file edited and unreadable at the merge base; the size caps could not be checked";
+var WORKFLOWS_DIR3 = ".github/workflows/";
+var areaOf = (path) => {
+  const slash = path.indexOf("/");
+  return slash === -1 ? "." : path.slice(0, slash);
+};
+function agentPrSize(diff, excluded) {
+  const generated = P14_GENERATED_FILES.map((glob) => compileGlob(glob));
+  const skipped = (path) => generated.some((matches) => matches(path)) || excluded(path);
+  let files = 0;
+  let lines = 0;
+  const areas = /* @__PURE__ */ new Set();
+  for (const entry of diff) {
+    if (skipped(entry.path) && (entry.oldPath === entry.path || skipped(entry.oldPath))) continue;
+    files++;
+    lines += entry.addedLines.length + (entry.removedCount ?? 0);
+    areas.add(areaOf(entry.path));
+    if (entry.oldPath !== entry.path) areas.add(areaOf(entry.oldPath));
+  }
+  return { files, lines, areas: [...areas].sort(byCodeUnit) };
+}
+function areaList(areas) {
+  const named = areas.slice(0, P14_MAX_AREAS).map((area) => replaceUnsafeChars(area, "\uFFFD")).join(", ");
+  return areas.length > P14_MAX_AREAS ? `${named} and ${areas.length - P14_MAX_AREAS} more` : named;
+}
+function detectP14(input) {
+  const { policy, agentPolicy, agentPr } = input;
+  const document2 = policy.document;
+  if (policy.source !== "app" && policy.source !== "file" || document2 === null || document2 === void 0) return [];
+  if (agentPolicy === void 0) return [];
+  const { maxFiles, maxChangedLines } = agentPolicy;
+  if (maxFiles === null && maxChangedLines === null) return [];
+  if (agentPr?.isAgentPr !== true) return [];
+  if (resolveSeverity(policy, "P14", "block").severity === null) return [];
+  const finding2 = (detail) => ({ id: "P14", fallback: "block", path: null, line: null, detail });
+  if (input.diff === null) return [finding2(P14_DIFF_UNAVAILABLE_DETAIL)];
+  const gradeInputEdited = (path) => input.configPath !== null && path === input.configPath || path.startsWith(WORKFLOWS_DIR3);
+  const editsGradeInputs = input.diff.some((entry) => gradeInputEdited(entry.path) || gradeInputEdited(entry.oldPath));
+  const appExclusions = policy.source === "app" && document2.coverage?.exclude !== void 0;
+  const patterns = editsGradeInputs && !appExclusions ? [] : input.coverageExclude ?? [];
+  const matchers = patterns.map((pattern) => compileGlob(pattern));
+  const size = agentPrSize(input.diff, (path) => matchers.some((matches) => matches(path)));
+  const findings = [];
+  const areas = areaList(size.areas);
+  if (maxFiles !== null && size.files > maxFiles) {
+    findings.push(finding2(`${P14_SIZE_PREFIX}${size.files} files (cap ${maxFiles}); split it by area: ${areas}`));
+  }
+  if (maxChangedLines !== null && size.lines > maxChangedLines) {
+    findings.push(
+      finding2(`${P14_SIZE_PREFIX}${size.lines} lines (cap ${maxChangedLines}); split it by area: ${areas}`)
+    );
+  }
+  if (agentPolicy.listsIncomplete && agentPolicy.policyFileEdited === true) {
+    findings.push(finding2(P14_BASE_UNREADABLE_DETAIL));
+  }
+  return findings;
+}
+
 // ../core/src/policy/rules/problems.ts
 function settingsProblemLevel(problem, setup2) {
   const deny = (setup2?.required_permissions_deny?.length ?? 0) > 0;
@@ -29961,7 +30055,8 @@ function evaluatePolicyRules(input) {
     ...settingsFindings,
     ...detectP07(input, consistency?.severity ?? null),
     ...detectP10(input),
-    ...detectP11(input)
+    ...detectP11(input),
+    ...detectP14(input)
   ]);
   if (view !== null) {
     for (const violation of first) {
@@ -30036,6 +30131,7 @@ function locsOf(violations, omitted) {
   const named = locations2.slice(0, MAX_LISTED).join(", ");
   return more > 0 ? `${named} and ${more} more` : named;
 }
+var P14_SIZE_DETAIL = /^agent PR changes (\d+) (files|lines) \(cap (\d+)\); split it by area: (.*)$/s;
 var counted = (n, singular, plural) => n === 1 ? `1 ${singular}` : `${n} ${plural}`;
 var RULE_MESSAGES = {
   P11: (violations, omitted, evaluation) => {
@@ -30111,6 +30207,38 @@ var RULE_MESSAGES = {
     const total = paths.length + omitted;
     const head = total === 1 ? "This change edits 1 file that the org policy guards" : `This change edits ${total} files that the org policy guards`;
     return `${head}: ${listOf(paths, total)}. The reason for each is in the report's policy violations.`;
+  },
+  P14: (violations, _omitted, evaluation) => {
+    const sentences = [];
+    const counts2 = {};
+    let areas = "";
+    for (const violation of violations) {
+      const match = P14_SIZE_DETAIL.exec(violation.detail);
+      if (match === null) continue;
+      counts2[match[2]] = `${match[1]} ${match[2]} (cap ${match[3]})`;
+      areas = match[4];
+    }
+    const sizes = [counts2.files, counts2.lines].filter((size) => size !== void 0);
+    if (sizes.length > 0) {
+      sentences.push(
+        `This agent pull request changes ${sizes.join(" and ")}, more than the org policy allows; split it by area: ${areas}. Lockfiles, snapshots and *.generated.* files are not counted, nor are coverage.exclude paths unless the pull request edits the config or a workflow.`
+      );
+    }
+    if (violations.some((violation) => violation.detail === P14_DIFF_UNAVAILABLE_DETAIL)) {
+      sentences.push(
+        "This agent pull request could not be checked against the org policy's size caps, because the diff is unavailable."
+      );
+    }
+    if (violations.some((violation) => violation.detail === P14_BASE_UNREADABLE_DETAIL)) {
+      sentences.push(
+        "This agent pull request edits the policy file, and its version at the merge base could not be read, so the size caps that version sets could not be checked."
+      );
+    }
+    const words = (evaluation.agentPr?.evidence ?? []).map((kind) => EVIDENCE_WORDS[kind]);
+    const incomplete = evaluation.agentPr?.incomplete ?? null;
+    if (incomplete !== null) words.push(`evidence it could not read (${codeSpan(incomplete)})`);
+    sentences.push(`It counts as an agent PR by: ${words.join("; ")}.`);
+    return sentences.join(" ");
   }
 };
 function settingsInvalidMessage(settings2) {
@@ -31177,10 +31305,10 @@ function opensPythonTest(text) {
 }
 
 // ../core/src/signals/signalFiles.ts
-var WORKFLOWS_DIR3 = ".github/workflows/";
+var WORKFLOWS_DIR4 = ".github/workflows/";
 function isWorkflowFile(path) {
-  if (!path.startsWith(WORKFLOWS_DIR3)) return false;
-  const name = path.slice(WORKFLOWS_DIR3.length);
+  if (!path.startsWith(WORKFLOWS_DIR4)) return false;
+  const name = path.slice(WORKFLOWS_DIR4.length);
   return name !== "" && !name.includes("/") && (name.endsWith(".yml") || name.endsWith(".yaml"));
 }
 var PYTEST_CONFIG_NAMES = /* @__PURE__ */ new Set(["pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini"]);
@@ -37370,7 +37498,8 @@ function sortSignals(signals) {
   );
 }
 function check(input) {
-  const matchers = [...new Set((input.exclude ?? []).map((p) => parseExcludePattern(p)))].map(compileGlob);
+  const excludePatterns = [...new Set((input.exclude ?? []).map((p) => parseExcludePattern(p)))];
+  const matchers = excludePatterns.map(compileGlob);
   const isExcluded = (path) => matchers.some((matches) => matches(path));
   const expectedAgentTools = parseAgentToolNames(input.expectAgentSetup ?? [], "expected agent tool");
   const coverageRoot = input.coverageRoot === void 0 ? void 0 : parseCoverageRoot(input.coverageRoot, "coverage root");
@@ -37502,6 +37631,7 @@ function check(input) {
     diff: parsedDiff,
     configPath: configRepoPath(input.configPath, input.repoRoot),
     ignored: input.policyIgnored ?? [],
+    coverageExclude: excludePatterns,
     ...detection === void 0 || agentPolicy === void 0 ? {} : { agentPr: detection, agentPolicy },
     ...input.policySettingsSources === void 0 ? {} : { settingsSources: input.policySettingsSources },
     ...input.agentInstructionSources === void 0 ? {} : { agentInstructions: input.agentInstructionSources }
@@ -38719,7 +38849,8 @@ var MESSAGE_HINTS = {
   POLICY_P04: "Remove the server, or ask the policy owner to add it to setup.allowed_mcp_servers.",
   POLICY_P05: "Remove the server from the MCP file.",
   POLICY_P06: "Add a command hook for the event whose matcher covers the required one (`*` or the same tool names), without an if condition.",
-  POLICY_SETTINGS_INVALID: "Keep agent settings files valid JSON and regular files under 512 KiB, and run on a checkout of the pull request head, so the org policy can check them."
+  POLICY_SETTINGS_INVALID: "Keep agent settings files valid JSON and regular files under 512 KiB, and run on a checkout of the pull request head, so the org policy can check them.",
+  POLICY_P14: "Split the agent pull request into smaller ones, one per area named, or ask the policy owner to change `agents.max_files` or `agents.max_changed_lines`. Lockfiles, snapshots and `*.generated.*` files do not count."
 };
 function hintFor(code2, label) {
   if (!Object.hasOwn(MESSAGE_HINTS, code2)) return void 0;

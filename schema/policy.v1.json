@@ -321,13 +321,13 @@
           "type": "boolean"
         },
         "max_files": {
-          "description": "Most files an agent pull request may change, an integer 1-100000; feeds P14. Tighten: a cap, so the smaller limit wins (POLICY-SPEC's numbers rule, max wins, would loosen it); item 20 decides.",
+          "description": "Most files an agent pull request may change, an integer 1-100000; feeds P14, which runs only when this or max_changed_lines is set (there is no default cap). A rename counts once; lockfiles, snapshots, *.generated.* files and coverage.exclude paths do not count (coverage.exclude paths do when the pull request edits the config or a workflow, unless the app policy sets the exclusions). Tighten: a cap, so the smaller limit wins: a policy file the pull request edits applies the smaller of its merge-base and head values, so it can lower the cap but never raise or remove it.",
           "type": "integer",
           "minimum": 1,
           "maximum": 100000
         },
         "max_changed_lines": {
-          "description": "Most changed lines an agent pull request may have, an integer 1-10000000; feeds P14. Tighten: a cap, so the smaller limit wins (POLICY-SPEC's numbers rule, max wins, would loosen it); item 20 decides.",
+          "description": "Most changed lines (added plus removed, as the diff shows them; a binary file has none) an agent pull request may have, an integer 1-10000000; feeds P14, which runs only when this or max_files is set (there is no default cap). The lines of lockfiles, snapshots, *.generated.* files and coverage.exclude paths do not count (coverage.exclude paths do when the pull request edits the config or a workflow, unless the app policy sets the exclusions). Tighten: a cap, so the smaller limit wins: a policy file the pull request edits applies the smaller of its merge-base and head values, so it can lower the cap but never raise or remove it.",
           "type": "integer",
           "minimum": 1,
           "maximum": 10000000

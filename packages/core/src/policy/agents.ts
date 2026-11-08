@@ -32,6 +32,20 @@ export interface AgentPolicy {
   ignored: IgnoredSetting[];
   /** True when a policy file's `policy.rules.P11` asked for less than block and was not applied. */
   lowered: boolean;
+  /**
+   * The size caps of rule P14 (`agents.max_files`, `agents.max_changed_lines`), each null when no policy sets it. An
+   * app policy's value as given; a `file:` policy's is the smaller of its head and merge-base values, so a pull request
+   * that edits the file can lower a cap but never raise or remove it.
+   */
+  maxFiles: number | null;
+  maxChangedLines: number | null;
+}
+
+/** The smaller of the numbers that are set, or null when none is. */
+function smallestCap(...values: (number | undefined)[]): number | null {
+  let cap: number | null = null;
+  for (const value of values) if (typeof value === "number" && (cap === null || value < cap)) cap = value;
+  return cap;
 }
 
 /** The strings of a list, distinct and sorted by code unit. */
@@ -48,7 +62,8 @@ function tidy(...lists: (readonly unknown[] | undefined)[]): string[] {
  * The effective agent policy of a run: the labels, logins and protected paths of the org policy, and the severity of
  * rule P11. An app policy's lists are its own. A `file:` policy's lists are its head lists united with the ones the
  * merge base has (`from.base`), whether or not the pull request edits the file, so an edit cannot remove an entry; a
- * base that cannot be read, with an edited or unknown policy file, makes the lists incomplete. Pure: nothing is read
+ * base that cannot be read, with an edited or unknown policy file, makes the lists incomplete. P14's caps follow the
+ * same base: the smaller of the head and base value of each, a cap set on either side applying. Pure: nothing is read
  * but the arguments.
  */
 export function agentPolicyOf(
@@ -64,6 +79,8 @@ export function agentPolicyOf(
     policyFileEdited: false,
     ignored: [],
     lowered: false,
+    maxFiles: null,
+    maxChangedLines: null,
   };
   if (policy === undefined || policy.source === "none" || policy.document === null || policy.document === undefined) {
     return empty;
@@ -83,8 +100,11 @@ export function agentPolicyOf(
   const labels = tidy(head?.labels, baseAgents?.labels);
   const extraLogins = tidy(head?.extra_logins, baseAgents?.extra_logins);
   const protectedPaths = tidy(head?.protected_paths, baseAgents?.protected_paths);
+  // P14's caps: `baseAgents` is only ever set for a `file:` policy, so an app policy's values apply as given.
+  const maxFiles = smallestCap(head?.max_files, baseAgents?.max_files);
+  const maxChangedLines = smallestCap(head?.max_changed_lines, baseAgents?.max_changed_lines);
   if (protectedPaths.length === 0) {
-    return { ...empty, labels, extraLogins, listsIncomplete, policyFileEdited };
+    return { ...empty, labels, extraLogins, listsIncomplete, policyFileEdited, maxFiles, maxChangedLines };
   }
   const resolved = resolveKeyedSeverity(policy, "P11", {
     featureValue: head?.protected_paths_mode,
@@ -100,5 +120,7 @@ export function agentPolicyOf(
     policyFileEdited,
     ignored: resolved.ignored,
     lowered: resolved.lowered,
+    maxFiles,
+    maxChangedLines,
   };
 }
