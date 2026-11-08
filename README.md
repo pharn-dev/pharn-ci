@@ -44,6 +44,7 @@ behave. AI-agnostic, no telemetry, and stateless unless you opt in to the upload
 - [Test integrity](#test-integrity)
 - [Secrets in agent configs](#secrets-in-agent-configs)
 - [Stale agent instructions](#stale-agent-instructions)
+- [Prompt-injection scan](#prompt-injection-scan)
 - [Org policy](#org-policy)
 - [Upload to pharn.dev (optional)](#upload-to-pharndev-optional)
 - [Action reference](#action-reference)
@@ -502,6 +503,50 @@ and absolute paths, `node_modules` and build output, flags, versions, scoped pac
 files are never read as paths. Nothing read leaves the job except the paths, line numbers and the command or path the
 report names. The Action reads the files only when the diff came from the local checkout. What the check misses is in
 [docs/LIMITS.md](./docs/LIMITS.md#stale-agent-instructions).
+
+---
+
+## Prompt-injection scan
+
+Agents read repositories, so a pull request can plant text aimed at the next agent that works there. The
+prompt-injection scan (H4) reads the **added lines of the diff** and nothing else: no file is opened, and the CLI and
+the Action run it on every diff, with or without an org policy, in every test-integrity mode. It is text-only and
+deterministic: code point checks, `indexOf` and run-length counts, never a model and never a regex over a line.
+
+| Signal | What it finds | Where | Default |
+| ------ | ------------- | ----- | ------- |
+| PI01 | Invisible or bidirectional Unicode: zero-width space, word joiner, invisible operators, a byte order mark past the start of a file, bidi embeddings, overrides and isolates (Trojan Source), the soft hyphen, the Mongolian vowel separator, tag characters (except in an emoji subdivision flag), ZWJ and ZWNJ (except between letters of a non-Latin script or inside an emoji sequence), and the directional marks U+200E, U+200F and U+061C on a line with no right-to-left letter | Added lines of any text file | `block` |
+| PI02 | Hidden Markdown that addresses an agent: an HTML comment (one spanning added lines included), a reference definition such as `[//]: # (...)` or a link title holding a phrase of the list | Markdown files and agent instruction files | `warn` |
+| PI03 | A known injection phrase of the versioned list (case-insensitive, white space folded, word boundaries) | Added lines of any text file | `warn` |
+| PI04 | A base64 or hex run of more than 200 characters with letters and digits | Agent instruction files (the inventory's instruction kinds, skills, agents, commands, prompts and Claude Code settings) | `warn` |
+| PI05 | An agent instruction file added inside `node_modules/`, `vendor/`, `third_party/`, `.venv/`, `dist/` or `bower_components/` | Added or renamed-in paths | `warn` |
+
+The phrase list lives in `packages/core/src/injection/phrases.ts` with stable ids `PH01` to `PH32`
+(`INJECTION_PHRASES_VERSION` is 1): instructions to drop earlier instructions, persona switches, secrecy towards the
+user, chat-template tokens, a role marker at the start of a prose line, and, for PI02 only, phrases that address an AI
+agent. A finding names the phrase id, never the line.
+
+**Exemptions.** Every signal skips `fixtures/**`, `**/__fixtures__/**`, `**/testdata/**`, `**/*.test.*` and
+`**/*.spec.*`; PI03 also skips `**/test/**` and locale files (`**/{locales,messages,i18n,lang}/**`, `*.po`, `*.arb`),
+where PI01 also accepts the directional marks and the soft hyphen. An app policy can add exemptions
+(`injection.exempt`), add phrases (`injection.phrases`, reported as `PX01`, `PX02`, ...) and set each signal's
+severity (`injection.signals`, `off` included). A `file:` policy is carried by the pull request, so it can only
+tighten: its phrases apply, its severities only raise, and its exemptions are never applied (`POLICY_OVERRIDE_IGNORED`
+says so). No workflow input and no `.pharn/ci.yml` key changes the scan.
+
+**How a block fails the check.** Each signal adds one `INJECTION_PI01` to `INJECTION_PI05` message whose level follows
+its findings' severity, the way the agent config secret check does: `block` is an `error` and the verdict is `fail`,
+`warn` a warning. Neither the test-integrity mode nor the accept label lowers it. The findings go into the report's
+optional `injection.signals` (id, severity, path, line, detail; present only when there is one) and into the
+comment's 🧬 Content section, each with a hint. A message names up to 5 paths and lines; a detail is a character's
+fixed name and code point (`right-to-left override U+202E`), a phrase id, a run length or a kind and directory, never
+file text.
+
+**Caps.** The scan keeps the first 50,000 added lines of a file and 8,000,000 characters of added text in the whole
+diff, lists 20 findings per signal and file and 200 in all (the messages count the rest), and matches at most 100
+policy phrases. A file it could not read in full is named in `INJECTION_TEXT_TRUNCATED` (`warn`). What it misses
+(encodings, homoglyphs, instructions split across lines, images, unchanged lines) is in
+[docs/LIMITS.md](./docs/LIMITS.md#prompt-injection-scan).
 
 ---
 
@@ -1084,6 +1129,12 @@ message `code`s, not on text:
 | `POLICY_P06` | A settings directory lacks a command hook the org policy requires, or `disableAllHooks` is set (`error`, or the level the policy sets for P06). The text names up to 20 locations and the count |
 | `POLICY_SETTINGS_INVALID` | P02 to P06 could not fully use an agent settings or MCP file, or did not run: the files were not read, a file was dropped, unparseable or has an entry the grammar does not know (`warn`; `error` for a file pharn-ci could not read, a problem a required list depends on, or settings not read at all under a required app policy or a policy that lists `required_permissions_deny` or `required_hooks` at block). The text names up to 20 problems as path, line and reason, never file text |
 | `POLICY_P14` | An agent pull request changes more files or lines than the org policy's `agents.max_files` or `agents.max_changed_lines` allow, not counting lockfiles, snapshots, `*.generated.*` files and `coverage.exclude` paths, or could not be checked because the diff, or the policy file at the merge base, could not be read (`error`, or the level the policy sets for P14). The text names the counts, the caps, up to 10 top-level directories and the evidence as fixed words, never file text |
+| `INJECTION_PI01` | An added line carries an invisible or bidirectional Unicode character ([Prompt-injection scan](#prompt-injection-scan)) (`error`, which fails the check; or the level an app policy sets). The text names up to 5 paths and lines; each signal names the character and its code point, never file text |
+| `INJECTION_PI02` | An HTML comment, reference definition or link title added to a Markdown or agent instruction file holds a phrase that addresses an agent (`warn`, or the level the policy sets). Each signal names the phrase id and the kind of hidden text |
+| `INJECTION_PI03` | An added line holds a known prompt-injection phrase, or one of the org policy's `injection.phrases` (`warn`, or the level the policy sets). Each signal names the phrase id |
+| `INJECTION_PI04` | A line added to an agent instruction file holds a base64 or hex run of more than 200 characters (`warn`, or the level the policy sets). Each signal names the run's kind and length |
+| `INJECTION_PI05` | An agent instruction file is added inside a vendored directory (`warn`, or the level the policy sets). Each signal names the file's kind and the directory |
+| `INJECTION_TEXT_TRUNCATED` | A file had more added text than the scan reads (50,000 lines, or 8,000,000 characters across the diff), so a finding past the cut is not seen (`warn`). The text names up to 5 files |
 
 ### Agent PRs
 
@@ -1189,6 +1240,10 @@ inclusive threshold (79.995% fails at 80); which known agent setup files are tra
   workflow in another repository is outside it ([`docs/LIMITS.md`](docs/LIMITS.md)).
 - **P14 caps one pull request, not the work.** It counts diff lines, not how hard a change is to review, and an agent
   can split one change across many pull requests; like P11, it sees only agent PRs that identify themselves.
+- **The prompt-injection scan reads text, not meaning.** It finds hidden characters, known phrases, hidden Markdown,
+  blobs and vendored instruction files in the lines a change adds; a reworded instruction, one split across lines, one
+  in an image or an encoding it does not decode, or one already in the repository passes it
+  ([`docs/LIMITS.md`](docs/LIMITS.md#prompt-injection-scan)).
 
 ### Policy mode: agent instruction files
 

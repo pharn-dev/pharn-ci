@@ -1,4 +1,5 @@
 import type {
+  InjectionSignalId,
   PolicyProtectedPathsMode,
   PolicyRegistry,
   PolicyRuleId,
@@ -78,6 +79,15 @@ export const POLICY_RULE_IDS = [
   "P13",
   "P14",
 ] as const satisfies readonly PolicyRuleId[];
+
+/** The prompt-injection signal ids an `injection.signals` map may name. */
+export const POLICY_INJECTION_SIGNAL_IDS = [
+  "PI01",
+  "PI02",
+  "PI03",
+  "PI04",
+  "PI05",
+] as const satisfies readonly InjectionSignalId[];
 
 export const POLICY_REGISTRIES = ["npm", "pypi"] as const satisfies readonly PolicyRegistry[];
 

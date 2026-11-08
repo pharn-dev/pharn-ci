@@ -15,7 +15,10 @@ describe("stale instructions: schema, hints and documents", () => {
     const schema = read("schema/report.v2.json");
     expect(schema.split(V070_SETUP_SCHEMA_TEXT)).toHaveLength(2);
     expect(schema.split(V070_CODE_TEXT)).toHaveLength(2);
-    expect(V070_CODE_TEXT.startsWith(` Codes added in v0.7.0: ${V070_SETUP_TEXT}, `)).toBe(true);
+    // Re-pinned for H4 (prompt-injection scan): its INJECTION_ codes sort before SETUP_STALE_ in code-unit order, so they
+    // open the one v0.7.0 sentence and the setup part follows them.
+    expect(V070_CODE_TEXT.startsWith(" Codes added in v0.7.0: INJECTION_PI01 (")).toBe(true);
+    expect(V070_CODE_TEXT).toContain(`, ${V070_SETUP_TEXT}, `);
     const parsed = JSON.parse(schema) as { properties: Record<string, unknown>; required: string[] };
     expect(Object.keys(parsed.properties)).toContain("setupHealth");
     expect(parsed.required).not.toContain("setupHealth");

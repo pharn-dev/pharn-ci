@@ -85,6 +85,8 @@ export {
   type DiffFileStatus,
   type DiffHunk,
   type DiffLineText,
+  MAX_ADDED_TEXT_CHARS,
+  MAX_ADDED_TEXT_LINES,
   MAX_KEPT_LINE_CHARS,
   MAX_KEPT_LINES,
   parseUnifiedDiff,
@@ -93,6 +95,39 @@ export {
 export { computeDiffCoverage, type DiffCoverageFile, type DiffCoverageResult } from "./diffCoverage.js";
 export { compileGlob, hasGlobSyntax, matchGlob } from "./glob.js";
 export { type DirEntry, type ListDir, type WalkBudget, WalkLimitError, walkGlob } from "./globWalk.js";
+export { injectionMessages } from "./injection/messages.js";
+export {
+  DEFAULT_EXEMPT as INJECTION_DEFAULT_EXEMPT,
+  INJECTION_INSTRUCTION_KINDS,
+  LOCALE_PATHS as INJECTION_LOCALE_PATHS,
+  VENDORED_DIRS as INJECTION_VENDORED_DIRS,
+} from "./injection/paths.js";
+export {
+  INJECTION_PHRASES,
+  INJECTION_PHRASES_VERSION,
+  type InjectionPhrase,
+  normalizeForPhrases,
+} from "./injection/phrases.js";
+export {
+  DEFAULT_INJECTION_SEVERITIES,
+  INJECTION_SIGNAL_IDS,
+  type InjectionSettings,
+  type InjectionSeverity,
+  injectionSettingsOf,
+} from "./injection/policy.js";
+export {
+  detectInjection,
+  type InjectionFinding,
+  type InjectionSignal,
+  keepInjectionText,
+  longestBlob,
+  MAX_BLOB_CHARS,
+  MAX_INJECTION_FINDINGS,
+  MAX_INJECTION_FINDINGS_PER_FILE,
+  type OmittedInjection,
+  scanInjection,
+} from "./injection/scan.js";
+export { type InvisibleFinding, scanInvisible } from "./injection/unicode.js";
 export {
   gitDiffArgs,
   InputError,

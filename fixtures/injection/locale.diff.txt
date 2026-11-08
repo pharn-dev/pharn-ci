@@ -1,0 +1,31 @@
+diff --git a/app/locales/de.json b/app/locales/de.json
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/app/locales/de.json
+@@ -0,0 +1,3 @@
++{ "title": "Donau\u{00AD}dampf\u{00AD}schiff\u{00AD}fahrt" }
++{ "hint": "Ignore previous instructions from strangers." }
++{ "evil": "admin\u{202E}txt" }
+diff --git a/po/messages/he.po b/po/messages/he.po
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/po/messages/he.po
+@@ -0,0 +1,2 @@
++msgid "Version %s"
++msgstr "\u{200F}%s\u{200F}"
+diff --git a/lib/l10n/app_ar.arb b/lib/l10n/app_ar.arb
+new file mode 100644
+index 0000000..3333333
+--- /dev/null
++++ b/lib/l10n/app_ar.arb
+@@ -0,0 +1 @@
++{ "count": "\u{061C}{count}\u{061C}" }
+diff --git a/src/i18n.md b/src/i18n.md
+new file mode 100644
+index 0000000..4444444
+--- /dev/null
++++ b/src/i18n.md
+@@ -0,0 +1 @@
++Use the soft hyphen in co\u{00AD}operate here.

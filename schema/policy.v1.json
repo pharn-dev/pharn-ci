@@ -358,6 +358,56 @@
           "maximum": 1000000000
         }
       }
+    },
+    "injection": {
+      "description": "Prompt-injection surface scan settings (PI01-PI05): the scan of the lines a pull request adds runs without this key, with PI01 at block and the others at warn.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "exempt": {
+          "description": "GLOB patterns of files no PI signal reads, added to the built-in exemptions (fixtures, test data, test files). Applied from an app policy only: a policy file is carried by the pull request, so its exemptions are not-allowed and never applied. Tighten: not merged; the app policy's list applies.",
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "$ref": "#/$defs/glob"
+          }
+        },
+        "phrases": {
+          "description": "Extra phrases (NAMEs, matched case-insensitively with white space normalized) that PI03 reports in added lines and PI02 in hidden Markdown, added to the built-in phrase list; a finding names a PX id, never the phrase. Tighten: union (a policy file's list is united with its merge-base list).",
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "$ref": "#/$defs/name"
+          }
+        },
+        "signals": {
+          "description": "Per-signal severity overrides, keyed by signal id PI01-PI05; any other key is an error. An app policy replaces the default (PI01 block, PI02-PI05 warn; off switches a signal off); a policy file can only raise it. Tighten: per-signal severities, block > warn > info > off.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "PI01": {
+              "description": "Severity of signal PI01, invisible or bidirectional Unicode (default block). Tighten: block > warn > info > off.",
+              "$ref": "#/$defs/severity"
+            },
+            "PI02": {
+              "description": "Severity of signal PI02, hidden Markdown that addresses an agent (default warn). Tighten: block > warn > info > off.",
+              "$ref": "#/$defs/severity"
+            },
+            "PI03": {
+              "description": "Severity of signal PI03, known prompt-injection phrases (default warn). Tighten: block > warn > info > off.",
+              "$ref": "#/$defs/severity"
+            },
+            "PI04": {
+              "description": "Severity of signal PI04, a long base64 or hex blob in an agent instruction file (default warn). Tighten: block > warn > info > off.",
+              "$ref": "#/$defs/severity"
+            },
+            "PI05": {
+              "description": "Severity of signal PI05, an agent instruction file added inside a vendored directory (default warn). Tighten: block > warn > info > off.",
+              "$ref": "#/$defs/severity"
+            }
+          }
+        }
+      }
     }
   },
   "$defs": {

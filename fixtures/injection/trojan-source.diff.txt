@@ -1,0 +1,23 @@
+diff --git a/src/access.js b/src/access.js
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/src/access.js
+@@ -0,0 +1,6 @@
++#!/usr/bin/env node
++
++var accessLevel = "user";
++if (accessLevel != "user\u{202E} \u{2066}// Check if admin\u{2069} \u{2066}") {
++    console.log("You are an admin.");
++}
+diff --git a/src/commenting-out.js b/src/commenting-out.js
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/src/commenting-out.js
+@@ -0,0 +1,5 @@
++#!/usr/bin/env node
++
++var isAdmin = false;
++/*\u{202E} } \u{2066}if (isAdmin)\u{2069} \u{2066} begin admins only */
++    console.log("You are an admin.");

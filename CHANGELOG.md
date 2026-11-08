@@ -28,6 +28,19 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   changed more than 90 days before HEAD's commit that names a file the change edits (SI04, `info`). Report v2 gains the
   optional `setupHealth.stale` list and the four codes; the PR comment gains a **📄 Instructions** section. No finding
   fails the check, and without a diff nothing is checked.
+- Prompt-injection surface scan (H4), signals PI01 to PI05: the lines a pull request adds are scanned for content aimed
+  at the next agent that reads the repository. PI01 (default `block`, so it fails the check) flags invisible and
+  bidirectional Unicode (zero-width characters, bidi overrides and isolates as in Trojan Source, tag characters, a
+  stray byte order mark), with right-to-left marks, Persian and Indic joiners, emoji sequences and locale files left
+  alone; PI02 hidden Markdown (HTML comments, reference definitions, link titles) that addresses an agent; PI03 known
+  injection phrases from a versioned list (`PH01` to `PH32`); PI04 a base64 or hex blob over 200 characters in an agent
+  instruction file; PI05 an instruction file added under `node_modules/`, `vendor/`, `dist/` and similar (PI02 to PI05
+  `warn`). Test files, `fixtures/`, `__fixtures__/` and `testdata/` are exempt. Findings go into the new optional
+  `injection` object of the report and the comment's 🧬 Content section, as fixed words, phrase ids and code points,
+  never file text. New message codes `INJECTION_PI01` to `INJECTION_PI05` and `INJECTION_TEXT_TRUNCATED` (a file too
+  large to scan in full), and a new `injection` policy key (`exempt`, `phrases`, `signals`): an app policy can exempt
+  paths, add phrases and set severities; a `file:` policy can only add phrases and raise severities. Diff-only: no file
+  read, no new input, no new dependency, no network call.
 
 ### Changed
 

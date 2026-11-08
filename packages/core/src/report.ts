@@ -29,6 +29,8 @@ export interface Report {
   policy?: ReportPolicy;
   /** Stale agent instructions (SI01 to SI04); present only when there is at least one finding. */
   setupHealth?: ReportSetupHealth;
+  /** The prompt-injection scan's findings; present only when there is at least one. */
+  injection?: ReportInjection;
   /** Run metadata; present only when the caller (the Action) gave it. */
   meta?: ReportMeta;
 }
@@ -49,6 +51,23 @@ export interface ReportStaleInstruction {
 /** The `setupHealth` object of the report. */
 export interface ReportSetupHealth {
   stale: ReportStaleInstruction[];
+}
+
+/** One finding of the prompt-injection scan: what the pull request adds that targets the next agent reading the repo. */
+export interface ReportInjectionSignal {
+  /** One of the five prompt-injection signal ids. */
+  id: string;
+  severity: "block" | "warn" | "info";
+  path: string;
+  /** 1-based line in the head file, or null for a file-level finding (an instruction file in vendored code). */
+  line: number | null;
+  /** Fixed words, a character name and code point, or a phrase id; never file text. */
+  detail: string;
+}
+
+/** The `injection` object of the report. */
+export interface ReportInjection {
+  signals: ReportInjectionSignal[];
 }
 
 /** One finding of an org-policy rule, as the report carries it. */
@@ -269,7 +288,13 @@ export type MessageCode =
   | "SETUP_STALE_SI01"
   | "SETUP_STALE_SI02"
   | "SETUP_STALE_SI03"
-  | "SETUP_STALE_SI04";
+  | "SETUP_STALE_SI04"
+  | "INJECTION_PI01"
+  | "INJECTION_PI02"
+  | "INJECTION_PI03"
+  | "INJECTION_PI04"
+  | "INJECTION_PI05"
+  | "INJECTION_TEXT_TRUNCATED";
 
 export interface Message {
   level: MessageLevel;
@@ -393,6 +418,13 @@ export interface BuildReportInput {
    * messages as given. They name a shape id, paths and line numbers, never a value. Absent or empty adds nothing.
    */
   agentConfigSecretMessages?: readonly Message[];
+  /**
+   * The messages of the prompt-injection scan (see `injectionMessages`), appended after the agent config secret
+   * messages as given. They name signal ids, paths and line numbers, never file text. Absent or empty adds nothing.
+   */
+  injectionMessages?: readonly Message[];
+  /** The prompt-injection scan's findings, copied into the report as `injection.signals`; absent or empty adds no key. */
+  injectionSignals?: readonly ReportInjectionSignal[];
   /**
    * The messages of the org policy (the unavailable message, the per-rule messages and the ignored-settings message,
    * in that order), appended after the agent config secret messages as given, so they follow every other
@@ -780,7 +812,9 @@ export function buildReport(input: BuildReportInput): Report {
 
   messages.push(...(input.staleInstructionMessages ?? []));
   messages.push(...(input.agentConfigSecretMessages ?? []));
+  messages.push(...(input.injectionMessages ?? []));
   messages.push(...(input.policyMessages ?? []));
+  const injectionSignals = input.injectionSignals ?? [];
 
   return {
     schemaVersion: 2,
@@ -823,6 +857,19 @@ export function buildReport(input: BuildReportInput): Report {
     ...(input.staleInstructions === undefined || input.staleInstructions.length === 0
       ? {}
       : { setupHealth: { stale: [...input.staleInstructions] } }),
+    ...(injectionSignals.length === 0
+      ? {}
+      : {
+          injection: {
+            signals: injectionSignals.map(({ id, severity, path, line, detail }) => ({
+              id,
+              severity,
+              path,
+              line,
+              detail,
+            })),
+          },
+        }),
     ...(input.meta === undefined ? {} : { meta: input.meta }),
   };
 }

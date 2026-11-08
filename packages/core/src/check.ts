@@ -10,6 +10,9 @@ import { type DiffFile, parseUnifiedDiff } from "./diff/unified.js";
 import { computeDiffCoverage } from "./diffCoverage.js";
 import { binaryCoveredPaths, changedConfigPaths, configRepoPath, trackedCoverageFile } from "./gateInputs.js";
 import { compileGlob } from "./glob.js";
+import { injectionMessages } from "./injection/messages.js";
+import { injectionSettingsOf } from "./injection/policy.js";
+import { detectInjection, keepInjectionText } from "./injection/scan.js";
 import { agentPolicyOf, type PolicyFileBase } from "./policy/agents.js";
 import { agentPrIncompleteMessage, policyOverrideIgnoredMessage, policyUnavailableMessage } from "./policy/messages.js";
 import type { IgnoredSetting, ResolvedPolicy, SignalOverrides } from "./policy/resolved.js";
@@ -244,7 +247,10 @@ export function check(input: CheckInput): Report {
   // findings (gate inputs and deleted test files) ride on every report path where the diff is available.
   const parsedDiff =
     "text" in input.diff
-      ? parseUnifiedDiff(input.diff.text, { keepText: keepSignalFileText(input.configPath, input.repoRoot) })
+      ? parseUnifiedDiff(input.diff.text, {
+          keepText: keepSignalFileText(input.configPath, input.repoRoot),
+          keepAddedText: keepInjectionText,
+        })
       : "parsed" in input.diff
         ? input.diff.parsed
         : null;
@@ -452,10 +458,17 @@ export function check(input: CheckInput): Report {
           ...(input.agentInstructionSources === undefined ? {} : { agentInstructions: input.agentInstructionSources }),
           ...(input.selfModificationSources === undefined ? {} : { selfModification: input.selfModificationSources }),
         });
+  // The prompt-injection scan reads the added lines of the diff (any mode, with or without a policy); the org policy can
+  // add exemptions and phrases and change severities, a policy file only tighten.
+  const injectionSettings = injectionSettingsOf(input.policy, input.policyFileBase);
+  const injection = parsedDiff === null ? null : detectInjection(parsedDiff, injectionSettings);
+  const injectionMessageList =
+    injection === null ? [] : injectionMessages(injection.signals, injection.omitted, injection.cut);
   // The settings a policy beat, and the policy-file severities that were lower than the computed ones (signals and
   // rules), as one message.
   const policyIgnored: IgnoredSetting[] = [
     ...(input.policyIgnored ?? []),
+    ...injectionSettings.ignored,
     ...(overridden?.lowered ?? []).map(
       (id): IgnoredSetting => ({ setting: `test_integrity.signals.${id}`, layer: "policy-file", reason: "looser" }),
     ),
@@ -570,6 +583,8 @@ export function check(input: CheckInput): Report {
     ...(stale === null || stale.findings.length === 0 ? {} : { staleInstructions: stale.findings }),
     ...(staleMessages.length === 0 ? {} : { staleInstructionMessages: staleMessages }),
     ...(agentConfigMessages.length === 0 ? {} : { agentConfigSecretMessages: agentConfigMessages }),
+    ...(injectionMessageList.length === 0 ? {} : { injectionMessages: injectionMessageList }),
+    ...(injection === null || injection.signals.length === 0 ? {} : { injectionSignals: injection.signals }),
     ...(policyMessages.length === 0 ? {} : { policyMessages }),
   };
 

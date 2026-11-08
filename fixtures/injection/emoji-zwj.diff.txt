@@ -1,0 +1,13 @@
+diff --git a/docs/team.md b/docs/team.md
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/docs/team.md
+@@ -0,0 +1,7 @@
++# The team
++
++- Family day: 👨\u{200D}👩\u{200D}👧\u{200D}👦
++- On call this week: 👩🏽\u{200D}💻 and 🧑\u{200D}🚒
++- Pride month: 🏳\u{FE0F}\u{200D}🌈 and ❤\u{FE0F}\u{200D}🔥
++- Offices: 🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F} London, 🏴\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F} Glasgow
++- Medics: 👩\u{200D}⚕\u{FE0F} and 🧑🏿\u{200D}🤝\u{200D}🧑🏻

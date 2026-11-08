@@ -186,8 +186,29 @@ describe("report.json drops the invisible and bidirectional characters the comme
     expect(ti09).toHaveLength(1);
     expect(JSON.stringify(ti09[0])).toContain(`src/${REPLACEMENTS}/**/*.test.ts`);
 
-    // Control: a value that already had U+FFFD there gives the same report, byte for byte.
-    expect(JSON.stringify(configReport(`src/${REPLACEMENTS}/**/*.test.ts`))).toBe(JSON.stringify(report));
+    // Re-pinned for H4 (prompt-injection scan, PI01): the added line of vitest.config.ts now also carries a PI01
+    // finding for the invisible characters (an INJECTION_PI01 message and the injection object), which the U+FFFD
+    // control has not. The finding names the first character and a count, never the value; with it taken out the two
+    // reports are still equal byte for byte.
+    expect(report.injection?.signals).toEqual([
+      {
+        id: "PI01",
+        severity: "block",
+        path: "vitest.config.ts",
+        line: 5,
+        detail: "zero-width space U+200B and 14 more",
+      },
+    ]);
+    const withoutPi01 = (r: typeof report) => ({
+      ...r,
+      messages: r.messages.filter((m) => m.code !== "INJECTION_PI01"),
+      injection: undefined,
+    });
+    const control = configReport(`src/${REPLACEMENTS}/**/*.test.ts`);
+    expect(control.injection).toBeUndefined();
+
+    // Control: a value that already had U+FFFD there gives the same report, byte for byte (the PI01 finding aside).
+    expect(JSON.stringify(control)).toBe(JSON.stringify(withoutPi01(report)));
   });
 
   it("each site replaces one code unit for one, so the cuts fall where they did", () => {

@@ -12,14 +12,55 @@ export const V070_EXERCISE_TEXT =
 export const V070_SETUP_TEXT =
   "SETUP_STALE_SI01, SETUP_STALE_SI02 and SETUP_STALE_SI03 (warn: an agent instruction file names a package-manager script or make target that the root package.json or Makefile does not define (SI01), a path in an inline code span that is not tracked (SI02), or a file it tells the agent to read, by a Markdown link or an @path import, that is not tracked (SI03), and the change touches that instruction file or removes the path, file, script or target it names; each finding is in setupHealth.stale; the message names up to 5 locations as path and line and the count, never the instruction's text) and SETUP_STALE_SI04 (info: an agent instruction file whose last commit is more than 90 days older than HEAD's commit names a file this change edits)";
 
+/** H4 (prompt-injection surface scan, PI01 to PI05)'s part of the v0.7.0 text: the six INJECTION_ codes. */
+export const V070_INJECTION_TEXT =
+  "INJECTION_PI01 (error by default, or the level the org policy's injection.signals sets: an added line carries an invisible or bidirectional Unicode character, such as a zero-width space, a word joiner, an invisible operator, a byte order mark past the start of a file, a bidirectional embedding, override or isolate, a soft hyphen or directional mark outside a locale file or right-to-left text, a tag character outside an emoji flag sequence, or a zero-width joiner or non-joiner outside a non-Latin script or an emoji sequence), INJECTION_PI02 (warn by default: an HTML comment, link title or reference definition added to a Markdown or agent instruction file holds a phrase that addresses an agent), INJECTION_PI03 (warn by default: an added line holds a known prompt-injection phrase of the versioned phrase list or of the org policy's injection.phrases), INJECTION_PI04 (warn by default: a line added to an agent instruction file holds a base64 or hex run of more than 200 characters), INJECTION_PI05 (warn by default: an agent instruction file is added inside a vendored directory such as node_modules, vendor or dist), INJECTION_TEXT_TRUNCATED (warn: some files were too large to scan in full, and the message names up to 5 of them; each of INJECTION_PI01 to INJECTION_PI05 names up to 5 locations as paths and line numbers, and each injection signal a character name and code point, a phrase id or a run length, never file text)";
+
 /** The text appended to the message-code description (no character in it is escaped by JSON). */
-export const V070_CODE_TEXT = ` Codes added in v0.7.0: ${V070_SETUP_TEXT}, ${V070_EXERCISE_TEXT}.`;
+export const V070_CODE_TEXT = ` Codes added in v0.7.0: ${V070_INJECTION_TEXT}, ${V070_SETUP_TEXT}, ${V070_EXERCISE_TEXT}.`;
+
+/** The prompt-injection scan's message codes. */
+export const V070_INJECTION_CODES = [
+  "INJECTION_PI01",
+  "INJECTION_PI02",
+  "INJECTION_PI03",
+  "INJECTION_PI04",
+  "INJECTION_PI05",
+  "INJECTION_TEXT_TRUNCATED",
+];
 
 /** Stale instructions' message codes. */
 export const V070_SETUP_CODES = ["SETUP_STALE_SI01", "SETUP_STALE_SI02", "SETUP_STALE_SI03", "SETUP_STALE_SI04"];
 
 /** The message codes the v0.7.0 text names, in code-unit order. */
-export const V070_CODES = [...V070_SETUP_CODES, "TESTS_NOT_EXERCISING_CHANGES"];
+export const V070_CODES = [...V070_INJECTION_CODES, ...V070_SETUP_CODES, "TESTS_NOT_EXERCISING_CHANGES"];
+
+/** The prompt-injection scan's new top-level report property, after `setupHealth` (with the line break before it). */
+export const V070_INJECTION_SCHEMA = `
+    "injection": {
+      "description": "The prompt-injection surface scan (PI01-PI05): what the lines the change adds carry that targets the next agent reading the repository. Present only when there is at least one finding; a missing object means nothing was found or there was no diff to read.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signals"],
+      "properties": {
+        "signals": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "severity", "path", "line", "detail"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^PI[0-9]{2}$" },
+              "severity": { "enum": ["block", "warn", "info"] },
+              "path": { "type": "string" },
+              "line": { "type": ["integer", "null"], "minimum": 1 },
+              "detail": { "type": "string", "minLength": 1, "maxLength": 300 }
+            }
+          }
+        }
+      }
+    },`;
 
 /**
  * A8 step 1's insertion into the `testIntegrity` properties of report.v2.json: the optional `exercise` object, right
@@ -111,15 +152,23 @@ export function withoutV070SetupSchema(text: string): string {
   return withoutOnce(text, V070_SETUP_SCHEMA_TEXT, "setupHealth schema text");
 }
 
-/**
- * report.v2.json with every v0.7.0 property insertion taken out (the `exercise` and `setupHealth` properties) while the
- * code text stays; for the pins that cut the appended code texts themselves.
- */
-export function withoutV070Properties(text: string): string {
-  return withoutV070SetupSchema(withoutV070ExerciseSchema(text));
+/** report.v2.json with the top-level `injection` property taken out; throws unless it appears once. */
+export function withoutV070InjectionSchema(text: string): string {
+  return withoutOnce(text, V070_INJECTION_SCHEMA, "injection schema text");
 }
 
-/** report.v2.json with every v0.7.0 insertion taken out: the code text and the `exercise` and `setupHealth` properties. */
+/**
+ * report.v2.json with every v0.7.0 property insertion taken out (the `exercise`, `setupHealth` and `injection`
+ * properties) while the code text stays; for the pins that cut the appended code texts themselves.
+ */
+export function withoutV070Properties(text: string): string {
+  return withoutV070InjectionSchema(withoutV070SetupSchema(withoutV070ExerciseSchema(text)));
+}
+
+/**
+ * report.v2.json with every v0.7.0 insertion taken out: the code text and the `exercise`, `setupHealth` and `injection`
+ * properties.
+ */
 export function withoutV070SchemaEdits(text: string): string {
   return withoutV070Properties(withoutV070CodeText(text));
 }

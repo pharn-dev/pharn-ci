@@ -1,0 +1,12 @@
+diff --git a/docs/ar/README.md b/docs/ar/README.md
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/docs/ar/README.md
+@@ -0,0 +1,6 @@
++# دليل البدء
++
++لتثبيت الحزمة، شغّل الأمر \u{200F}npm install\u{200F} في مجلد المشروع.
++يدعم البرنامج اللغة العربية والإنجليزية \u{061C}(English)\u{061C} في الواجهة نفسها.
++
++راجع ملف CONTRIBUTING.md قبل إرسال أي تغيير.

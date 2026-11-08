@@ -124,8 +124,10 @@ describe("TI08, TI15 and TI16: schemas and documents", () => {
     // Re-pinned for stale instructions (Horizon 2 item H3), which adds the optional top-level setupHealth object: set
     // aside on both sides the same way.
     const setupHealth = ["properties", "setupHealth"];
-    expect(setAside(now, [...paths, languages, changes, isAgentPr, exercise, setupHealth])).toEqual(
-      setAside(before, [...paths, languages, changes, isAgentPr, exercise, setupHealth]),
+    // Re-pinned for H4 (prompt-injection scan), which adds the optional top-level injection object: set aside too.
+    const injection = ["properties", "injection"];
+    expect(setAside(now, [...paths, languages, changes, isAgentPr, exercise, setupHealth, injection])).toEqual(
+      setAside(before, [...paths, languages, changes, isAgentPr, exercise, setupHealth, injection]),
     );
     const [path] = paths as [string[]];
     const beforeText = getAt(before, path) as string;

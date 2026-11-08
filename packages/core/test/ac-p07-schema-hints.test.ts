@@ -48,6 +48,8 @@ describe("the schema sentence, the hint and the README row for POLICY_P07", { ti
     // still judged as the last one; v060-codes.ts pins it exactly.
     // Re-pinned for A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): the v0.7.0 code text after it and the optional
     // testIntegrity.exercise property are taken out first; v070-codes.ts pins both exactly.
+    // Re-pinned for H4 (prompt-injection scan): withoutV070SchemaEdits also takes out its `injection` object, and its
+    // codes are in the same v0.7.0 code text.
     const nowText = withoutV060CodeText(withoutSchemaLevelEdits(withoutV070SchemaEdits(read("schema/report.v2.json"))));
     const base = codeDescription(baseText);
     const now = codeDescription(nowText);

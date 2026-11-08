@@ -3,6 +3,7 @@ import { TEST_INTEGRITY_MODES } from "../testIntegrityMode.js";
 import { ErrorCollector, enumMessage, MESSAGES, maxCharsMessage, rangeMessage } from "./errors.js";
 import { codePointLength, GRAMMARS, type Grammar } from "./grammar.js";
 import {
+  POLICY_INJECTION_SIGNAL_IDS,
   POLICY_MAX_CHANGED_LINES_MAX,
   POLICY_MAX_CHANGED_LINES_MIN,
   POLICY_MAX_FILES_MAX,
@@ -238,6 +239,14 @@ const dependencies = objectOf(
   ]),
 );
 
+const injection = objectOf(
+  known([
+    ["exempt", listOf(stringOf(GRAMMARS.glob))],
+    ["phrases", listOf(stringOf(GRAMMARS.name))],
+    ["signals", objectOf(known(POLICY_INJECTION_SIGNAL_IDS.map((id) => [id, severity] as const)))],
+  ]),
+);
+
 const document = objectOf(
   known([
     ["version", version],
@@ -248,6 +257,7 @@ const document = objectOf(
     ["policy", policySettings],
     ["agents", agents],
     ["dependencies", dependencies],
+    ["injection", injection],
   ]),
   ["version"],
 );

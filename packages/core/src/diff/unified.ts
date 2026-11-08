@@ -1,3 +1,5 @@
+import { cutCodeUnits } from "../text.js";
+
 export type DiffFileStatus = "added" | "modified" | "renamed" | "deleted";
 
 export interface DiffFile {
@@ -29,6 +31,18 @@ export interface DiffFile {
    * start of it. Absent otherwise.
    */
   textTruncated?: true;
+  /**
+   * The full text of every added line, in order, for the content scan (the prompt-injection signals PI01 to PI04).
+   * Present only when the caller selected this file with the `keepAddedText` option; then it is always an array. It is
+   * kept apart from `hunks`, which only the test-integrity signals read, and is bounded per file
+   * (`MAX_ADDED_TEXT_LINES`) and per diff (`MAX_ADDED_TEXT_CHARS`).
+   */
+  addedText?: DiffLineText[];
+  /**
+   * Set (to `true`) only on a file whose added text was kept and ran past a bound (`MAX_ADDED_TEXT_LINES`, or the
+   * diff-wide `MAX_ADDED_TEXT_CHARS`), so `addedText` holds the start of it. Absent otherwise.
+   */
+  addedTextCut?: true;
 }
 
 /** One line of a hunk: its 1-based number (in the new file for added lines, the old file for removed lines) and its text. */
@@ -50,12 +64,21 @@ export interface UnifiedDiffOptions {
    * text for any file, so memory holds the changed paths and added line numbers only.
    */
   keepText?: (file: { path: string; oldPath: string }) => boolean;
+  /**
+   * Which files keep the full text of their added lines in `addedText` (the content scan), judged by their new and old
+   * path. Absent keeps no added text for any file.
+   */
+  keepAddedText?: (file: { path: string; oldPath: string }) => boolean;
 }
 
 /** Most lines (added plus removed) whose text is kept for one file, and the most hunks kept for it. */
 export const MAX_KEPT_LINES = 5000;
 /** Most characters of one line that are kept. */
 export const MAX_KEPT_LINE_CHARS = 400;
+/** Most added lines whose full text `addedText` keeps for one file. */
+export const MAX_ADDED_TEXT_LINES = 50000;
+/** Most UTF-16 code units of added text kept across the whole diff; the line that crosses it is cut there. */
+export const MAX_ADDED_TEXT_CHARS = 8_000_000;
 
 interface Entry {
   oldPath: string | null;
@@ -70,6 +93,10 @@ interface Entry {
   hunks: DiffHunk[];
   keptLines: number;
   truncated: boolean;
+  /** Decided with `keep`, by `keepAddedText`; undefined until then. */
+  keepAdded: boolean | undefined;
+  addedText: DiffLineText[];
+  addedCut: boolean;
 }
 
 const HUNK_HEADER = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
@@ -112,6 +139,9 @@ export function createUnifiedDiffReader(options: UnifiedDiffOptions = {}): {
 } {
   const entries: Entry[] = [];
   const keepText = options.keepText;
+  const keepAddedText = options.keepAddedText;
+  /** Code units of added text still allowed across the diff. */
+  let addedBudget = MAX_ADDED_TEXT_CHARS;
   let current: Entry | undefined;
   let oldRemaining = 0;
   let newRemaining = 0;
@@ -132,6 +162,9 @@ export function createUnifiedDiffReader(options: UnifiedDiffOptions = {}): {
       hunks: [],
       keptLines: 0,
       truncated: false,
+      keepAdded: undefined,
+      addedText: [],
+      addedCut: false,
     };
     entries.push(current);
     return current;
@@ -151,6 +184,31 @@ export function createUnifiedDiffReader(options: UnifiedDiffOptions = {}): {
     return e.keep;
   };
 
+  const decideKeepAdded = (e: Entry): boolean => {
+    if (e.keepAdded === undefined) {
+      const paths = pathsOf(e);
+      e.keepAdded = keepAddedText !== undefined && paths !== null && keepAddedText(paths);
+    }
+    return e.keepAdded;
+  };
+
+  /** Record the full text of one added line, within the per-file and diff-wide bounds. */
+  const keepAddedLine = (e: Entry, line: number, text: string): void => {
+    if (e.addedCut) return;
+    if (e.addedText.length >= MAX_ADDED_TEXT_LINES || addedBudget <= 0) {
+      e.addedCut = true;
+      return;
+    }
+    if (text.length > addedBudget) {
+      e.addedCut = true;
+      e.addedText.push({ line, text: cutCodeUnits(text, addedBudget, { marker: false }) });
+      addedBudget = 0;
+      return;
+    }
+    addedBudget -= text.length;
+    e.addedText.push({ line, text });
+  };
+
   /** Record one line of the current hunk, within the bounds. */
   const keepLine = (e: Entry, kind: "added" | "removed", line: number, text: string): void => {
     if (hunk === undefined || e.keptLines >= MAX_KEPT_LINES) {
@@ -166,6 +224,7 @@ export function createUnifiedDiffReader(options: UnifiedDiffOptions = {}): {
       const marker = line[0];
       if (marker === "+") {
         if (current.keep) keepLine(current, "added", cursor, line.slice(1));
+        if (current.keepAdded) keepAddedLine(current, cursor, line.slice(1));
         current.addedLines.push(cursor++);
         newRemaining--;
         return;
@@ -235,6 +294,7 @@ export function createUnifiedDiffReader(options: UnifiedDiffOptions = {}): {
       oldCursor = Math.max(Number(match[1]), oldRemaining > 0 ? 1 : 0);
       cursor = Math.max(Number(match[3]), newRemaining > 0 ? 1 : 0);
       hunk = undefined;
+      decideKeepAdded(current);
       if (decideKeep(current)) {
         if (current.hunks.length >= MAX_KEPT_LINES) {
           current.truncated = true;
@@ -260,6 +320,8 @@ export function createUnifiedDiffReader(options: UnifiedDiffOptions = {}): {
         ...(e.removed > 0 ? { removedCount: e.removed } : {}),
         ...(decideKeep(e) ? { hunks: e.hunks } : {}),
         ...(e.truncated ? { textTruncated: true as const } : {}),
+        ...(e.status !== "deleted" && decideKeepAdded(e) ? { addedText: e.addedText } : {}),
+        ...(e.addedCut ? { addedTextCut: true as const } : {}),
       });
     }
     return files;

@@ -3,6 +3,7 @@ import { parseCoverageCounted } from "./coverage/index.js";
 import { createLcovReader } from "./coverage/lcov.js";
 import type { CoverageFormatSelection, CoverageMap, ParseCoverageOptions } from "./coverage/types.js";
 import { createUnifiedDiffReader, type DiffFile } from "./diff/unified.js";
+import { keepInjectionText } from "./injection/scan.js";
 import { createLineSplitter } from "./lines.js";
 import { keepSignalFileText } from "./signals/signalFiles.js";
 
@@ -86,14 +87,18 @@ export interface ReadDiffOptions {
  * use, workflow files, every `package.json`, the pytest config files (`pytest.ini`, `pyproject.toml`, `setup.cfg`,
  * `tox.ini`) and the JavaScript, TypeScript and Python source files only (bounded per
  * file, see `MAX_KEPT_LINES`), as `check()` keeps it when it parses a diff
- * text, so both paths give the same files.
+ * text, so both paths give the same files. The full text of the added lines of every file outside the default
+ * prompt-injection exemptions is kept too (`addedText`, bounded per file and per diff), for the content scan.
  */
 export async function readDiffChunks(
   chunks: AsyncIterable<string>,
   options: ReadDiffOptions = {},
 ): Promise<DiffFile[]> {
   const splitter = createLineSplitter();
-  const reader = createUnifiedDiffReader({ keepText: keepSignalFileText(options.configPath, options.repoRoot) });
+  const reader = createUnifiedDiffReader({
+    keepText: keepSignalFileText(options.configPath, options.repoRoot),
+    keepAddedText: keepInjectionText,
+  });
   for await (const chunk of chunks) {
     for (const line of splitter.push(chunk)) reader.push(line);
   }

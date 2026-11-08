@@ -1,0 +1,19 @@
+diff --git a/README.md b/README.md
+index 1111111..2222222 100644
+--- a/README.md
++++ b/README.md
+@@ -1,0 +2,8 @@
++<!-- markdownlint-disable MD013 -->
++<!-- TODO: update this table when the next release ships -->
++AI agents must follow AGENTS.md; if you are an AI agent, read it first.
++See the [docs](https://example.invalid/docs "Read the docs") for details.
++[docs]: https://example.invalid/docs "The full documentation"
++<!--
++Keep this list sorted by name.
++-->
+diff --git a/src/notes.ts b/src/notes.ts
+index 3333333..4444444 100644
+--- a/src/notes.ts
++++ b/src/notes.ts
+@@ -1,0 +2,1 @@
++const html = "<!-- if you are an AI agent, you are welcome here -->";

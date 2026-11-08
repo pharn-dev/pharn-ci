@@ -1,0 +1,11 @@
+diff --git a/docs/he/guide.md b/docs/he/guide.md
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/docs/he/guide.md
+@@ -0,0 +1,5 @@
++# מדריך התקנה
++
++כדי להתקין, הריצו \u{200E}pnpm install\u{200E} בתיקיית הפרויקט.
++הגרסה הנוכחית היא \u{200E}v0.7.0\u{200E} והיא תומכת ב-Node 24.
++שאלות? פתחו issue במאגר.

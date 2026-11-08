@@ -73,7 +73,8 @@ export function parseYamlSubset(text: string): YamlMap {
   // The block list currently being read (only ever the value of coverage.exclude, coverage.file or setup.expect).
   let list: { indent: number; items: Scalar[] } | null = null;
 
-  const lines = text.replace(/^﻿/, "").split(/\r?\n/);
+  // A leading byte order mark (U+FEFF) is dropped; checked by code point, so no invisible character sits in the source.
+  const lines = (text.charCodeAt(0) === 0xfeff ? text.slice(1) : text).split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
     const lineNo = i + 1;
     // trimEnd, not /\s+$/: the regex is quadratic on a long run of inner whitespace, and the

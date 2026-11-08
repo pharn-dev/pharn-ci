@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
-import { withoutV070Properties } from "./v070-codes.js";
+import { V070_INJECTION_CODES, withoutV070Properties } from "./v070-codes.js";
 
 // precision-v030: the only schema change is the TEST_INTEGRITY_TI15 part of the report v2 message-code description,
 // which now states the level `info` in modes block and warn. report.v1.json and every other byte of report.v2.json
@@ -51,6 +51,9 @@ const SECRET_CODES = [
   // Re-pinned for A8 step 1: the appended text then has a " Codes added in v0.7.0:" text that names this code. This
   // only states more (toContain).
   "TESTS_NOT_EXERCISING_CHANGES",
+  // Re-pinned for H4 (prompt-injection scan): the same v0.7.0 text also names the six INJECTION_ codes. This only states
+  // more (toContain); its `injection` object is cut by withoutV070Properties.
+  ...V070_INJECTION_CODES,
 ];
 
 // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property: the four lines it inserts after the

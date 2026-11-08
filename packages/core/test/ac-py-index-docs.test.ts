@@ -121,10 +121,14 @@ describe("python-test-index: THREAT-MODEL, fixture layout, schemas and purity", 
         testIntegrity: { properties: { languages: { description?: string }; changes?: unknown; exercise?: unknown } };
         meta: { properties: { isAgentPr?: unknown } };
         setupHealth?: unknown;
+        injection?: unknown;
       };
     };
     // Re-pinned for stale instructions (Horizon 2 item H3), which adds the optional top-level setupHealth object.
     delete v2.properties.setupHealth;
+    // Re-pinned for H4 (prompt-injection scan), which adds the optional top-level injection object.
+    expect(v2.properties.injection, "the injection object H4 adds").toBeDefined();
+    delete v2.properties.injection;
     delete v2.$defs.message.properties.code.description;
     // A8 step 1 (TESTS_NOT_EXERCISING_CHANGES) adds the optional testIntegrity.exercise property.
     delete v2.properties.testIntegrity.properties.exercise;

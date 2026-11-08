@@ -1,0 +1,25 @@
+diff --git a/README.md b/README.md
+index 1111111..2222222 100644
+--- a/README.md
++++ b/README.md
+@@ -3,0 +4,3 @@
++Run the tests with pnpm\u{200B}test before you push.
++This line hides a word joiner\u{2060} and a soft hyphen in co\u{00AD}operate.
++A plain line with nothing hidden.
+diff --git a/docs/setup.md b/docs/setup.md
+new file mode 100644
+index 0000000..3333333
+--- /dev/null
++++ b/docs/setup.md
+@@ -0,0 +1,4 @@
++\u{FEFF}# Setup
++Install the tools\u{202E}txt.exe
++Hidden ASCII: ok\u{E0049}\u{E0067}\u{E006E}\u{E006F}\u{E0072}\u{E0065}
++Middle mark\u{FEFF} and a stray joiner a\u{200D}b and a mark \u{200F}without RTL text.
+diff --git a/src/math.ts b/src/math.ts
+index 4444444..5555555 100644
+--- a/src/math.ts
++++ b/src/math.ts
+@@ -10,0 +11,2 @@
++export const total = price\u{2062}count;
++export const vowel = "a\u{180E}b";

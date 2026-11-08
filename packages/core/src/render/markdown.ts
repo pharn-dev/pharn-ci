@@ -6,6 +6,7 @@ import {
   type Message,
   type MessageCode,
   type Report,
+  type ReportInjectionSignal,
   type ReportPolicyViolation,
   type ReportStaleInstruction,
 } from "../report.js";
@@ -181,6 +182,16 @@ export const MESSAGE_HINTS: Readonly<Record<MessageCode, Hint>> = {
   SETUP_STALE_SI03: "Point the link or `@` import at a file that exists, or remove it.",
   SETUP_STALE_SI04:
     "Read the instruction file next to the files this change edits, and update it where it no longer matches.",
+  // H4 (prompt-injection scan): the hints of PI01 to PI05 and of the cut scan.
+  INJECTION_PI01:
+    "Remove the invisible or bidirectional character, or write it as an escape (such as `\\u202E`) where the code needs it.",
+  INJECTION_PI02: "Remove the hidden text, or move what it says into visible text a reviewer can read.",
+  INJECTION_PI03:
+    "Remove the phrase. If the file documents prompt injection on purpose, keep such samples in test files or under `fixtures/`.",
+  INJECTION_PI04: "Remove the blob from the instruction file; point to a reviewed file in the repository instead.",
+  INJECTION_PI05:
+    "Remove the instruction file from the vendored directory, or keep vendored code out of the repository.",
+  INJECTION_TEXT_TRUNCATED: "Split the change into smaller pull requests, so every added line is scanned.",
 };
 
 /** The hint text for a message code, or undefined when it has none. `label` is the report's accept label. */
@@ -581,6 +592,61 @@ function staleLines(report: Report, maxRows: number): string[] {
   return lines;
 }
 
+/** The prompt-injection findings of a report; a hand-built report is untrusted, so anything but an array is none. */
+function injectionSignalsOf(report: Report): ReportInjectionSignal[] {
+  const signals: unknown = report.injection?.signals;
+  return Array.isArray(signals) ? (signals as ReportInjectionSignal[]) : [];
+}
+
+/** The findings the Content section lists: blocks first, cut at MAX_FINDINGS (the Messages filter uses the same list). */
+function listedInjection(report: Report): ReportInjectionSignal[] {
+  return bySeverity(injectionSignalsOf(report)).slice(0, MAX_FINDINGS);
+}
+
+/** An `INJECTION_<id>` message of a signal: its findings and hints are in the Content section. */
+const INJECTION_MESSAGE_CODE = /^INJECTION_PI\d\d$/;
+
+/**
+ * The Content section (prompt-injection scan): one line per finding, blocks first, with its hint, folded after 10 and
+ * cut at 20. Only when the report has findings. The id, path and detail pass through the same escaping as every other
+ * finding line.
+ */
+function injectionLines(report: Report): string[] {
+  const signals = injectionSignalsOf(report);
+  if (signals.length === 0) return [];
+  const label = acceptLabelOf(report);
+  const lines: string[] = ["### 🧬 Content", ""];
+  const listed = listedInjection(report);
+  const findingLines = (signal: ReportInjectionSignal) => {
+    const icon = SEVERITY_ICON[signal.severity as keyof typeof SEVERITY_ICON] ?? LEVEL_ICON.info;
+    const id = inlineText(String(signal.id));
+    const location =
+      typeof signal.line === "number" ? code(`${signal.path}:${signal.line}`) : code(String(signal.path));
+    const out = [`- ${icon} **${id}** ${location} — ${inlineText(String(signal.detail))}`];
+    const hint = /^PI\d\d$/.test(String(signal.id)) ? hintFor(`INJECTION_${signal.id}`, label) : undefined;
+    if (hint !== undefined) out.push(`  - Hint: ${hint}`);
+    return out;
+  };
+  for (const signal of listed.slice(0, OPEN_FINDINGS)) lines.push(...findingLines(signal));
+  const folded = listed.slice(OPEN_FINDINGS);
+  if (folded.length > 0) {
+    lines.push(
+      "",
+      `<details><summary>${countOf(folded.length, "more finding", "more findings")}</summary>`,
+      "",
+      ...folded.flatMap(findingLines),
+      "",
+      "</details>",
+      "",
+    );
+  }
+  if (signals.length > listed.length) {
+    lines.push(`- _…and ${signals.length - listed.length} more findings in report.json._`);
+  }
+  lines.push("");
+  return lines;
+}
+
 /** Render a Report as GitHub-flavored markdown (PR comment, job summary, CLI). */
 export function renderMarkdown(report: Report, options: RenderMarkdownOptions = {}): string {
   const maxRows = options.maxRows ?? 50;
@@ -639,6 +705,7 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
     ...exerciseLines(report, maxRows),
     ...testChangesLines(report, maxRows),
   );
+  out.push(...injectionLines(report));
   if (hasPolicy(report)) out.push(...policyLines(report, maxRows));
   const stale = staleLines(report, maxRows);
   out.push(...stale);
@@ -659,9 +726,12 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
       code === "POLICY_OVERRIDE_IGNORED" ||
       code === "POLICY_SETTINGS_INVALID" ||
       (policyListsP01 && (code === "NO_AGENT_SETUP_FILES" || code === "AGENT_SETUP_EXPECTED_MISSING")));
+  // The same for the prompt-injection signals the Content section lists.
+  const listedInjectionIds = new Set(listedInjection(report).map((s) => `INJECTION_${s.id}`));
   const messages = report.messages.filter(
     (m) =>
       !(SIGNAL_MESSAGE_CODE.test(m.code) && listedIds.has(m.code)) &&
+      !(INJECTION_MESSAGE_CODE.test(m.code) && listedInjectionIds.has(m.code)) &&
       !inPolicySection(m.code) &&
       !(stale.length > 0 && m.code.startsWith("SETUP_STALE_")) &&
       !(m.code === "TEST_INTEGRITY_ACCEPTED" && acceptedShown(report)) &&
@@ -742,10 +812,22 @@ function overviewLine(report: Report): string {
   const setup =
     n === 0 ? "no agent setup files found." : n === 1 ? "1 agent setup file found." : `${n} agent setup files found.`;
   const findings = report.testIntegrity.signals;
-  if (findings.length === 0) return `${first}; ${setup}`;
-  const blocking = findings.filter((s) => s.severity === "block").length;
-  const integrity = `${countOf(findings.length, "test-integrity finding", "test-integrity findings")}${blocking > 0 ? `, ${blocking} blocking` : ""}`;
-  return `${first}; ${integrity}; ${setup}`;
+  const parts = [first];
+  if (findings.length > 0) {
+    const blocking = findings.filter((s) => s.severity === "block").length;
+    parts.push(
+      `${countOf(findings.length, "test-integrity finding", "test-integrity findings")}${blocking > 0 ? `, ${blocking} blocking` : ""}`,
+    );
+  }
+  const content = injectionSignalsOf(report);
+  if (content.length > 0) {
+    const blocking = content.filter((s) => s.severity === "block").length;
+    parts.push(
+      `${countOf(content.length, "content finding", "content findings")}${blocking > 0 ? `, ${blocking} blocking` : ""}`,
+    );
+  }
+  parts.push(setup);
+  return parts.join("; ");
 }
 
 /** `1 finding`, `3 findings`: a count with the word for it. */

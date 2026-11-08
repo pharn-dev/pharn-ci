@@ -58,6 +58,8 @@ describe("docs-schema-levels", () => {
     // Re-pinned for A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): the v0.7.0 code text and the optional
     // testIntegrity.exercise property are taken out first (v070-codes.ts pins both exactly), so every other byte stays
     // pinned.
+    // Re-pinned for H4 (prompt-injection scan): withoutV070SchemaEdits also takes out its `injection` object, and its
+    // codes are in the same v0.7.0 code text.
     expect(
       withoutV060CodeText(withoutSchemaLevelEdits(withoutV070SchemaEdits(now))),
       "report.v2.json without the two insertions",

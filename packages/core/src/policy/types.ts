@@ -98,6 +98,16 @@ export interface PolicyDependencies {
   min_weekly_downloads?: number;
 }
 
+/** A prompt-injection signal id. */
+export type InjectionSignalId = "PI01" | "PI02" | "PI03" | "PI04" | "PI05";
+
+/** The `injection` key: the prompt-injection scan's exemptions, extra phrases and per-signal severities. */
+export interface PolicyInjection {
+  exempt?: string[];
+  phrases?: string[];
+  signals?: Partial<Record<InjectionSignalId, PolicySeverity>>;
+}
+
 /** A validated policy document, version 1: exactly the keys and values of the input, in fresh objects. */
 export interface PolicyDocument {
   version: 1;
@@ -108,6 +118,7 @@ export interface PolicyDocument {
   policy?: PolicySettings;
   agents?: PolicyAgents;
   dependencies?: PolicyDependencies;
+  injection?: PolicyInjection;
 }
 
 /** One problem: an RFC 6901 JSON Pointer and a fixed message that never repeats a value from the document. */

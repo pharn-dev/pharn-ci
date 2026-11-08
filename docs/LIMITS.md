@@ -1075,6 +1075,49 @@ instructions, and they never fail the check. What they miss:
 - **The org policy does not set these levels yet.** `test_integrity.signals` and the policy rules do not name SI01 to
   SI04, so a policy cannot raise them to `error`.
 
+## Prompt-injection scan
+
+The prompt-injection scan (PI01 to PI05, `INJECTION_*`) reads the added lines of the diff and the changed paths. It is
+a text filter for content aimed at the next agent, not a judgement of what a text means. What it misses:
+
+- **Only added lines.** Text already in the repository, in a removed line or in an unchanged line next to a change is
+  not read. An HTML comment opened in an unchanged line is not seen as a comment (PI03 still reads the added lines in
+  it); one opened in an added line is followed only across consecutive added lines.
+- **One line at a time.** An instruction split across two lines, two files or two pull requests, and a phrase broken
+  by punctuation or markup (`ignore *previous* instructions`), is not matched. Zero-width characters inside a phrase
+  are dropped before matching (and are PI01 findings themselves).
+- **A short, fixed phrase list.** PH01 to PH32 are well-known wordings. A paraphrase, another language, a synonym or a
+  new jailbreak is missed until the list (or an app policy's `injection.phrases`) names it. PH13 and PH14 (the persona
+  switch: *you are now* followed by *a* or *an*) also match an ordinary sentence that tells a reader their new role,
+  which is a `warn` to dismiss.
+- **No decoding.** Text in base64, hex, ROT13, URL encoding, HTML entities (`&#x202E;`), JSON escapes (`‮`) or
+  any other encoding is not decoded; PI04 only flags a long base64 or hex run, and only in agent instruction files.
+- **No homoglyphs or confusables.** A Cyrillic `а` in place of a Latin `a`, full-width letters, or mixed-script names
+  are not flagged; only the listed invisible and bidirectional characters are.
+- **Not every invisible character.** The Hangul fillers, U+034F combining grapheme joiner, the variation selectors
+  outside emoji, U+2028 and U+2029, and other default-ignorable code points are not on PI01's list. ZWJ and ZWNJ pass
+  between two letters or marks of any non-Latin script and between emoji parts, so one hidden there is missed;
+  directional marks pass on any line that holds a right-to-left letter.
+- **Images, binaries and generated files.** Text inside an image, a PDF, an archive, a notebook's output or a file the
+  diff shows as binary is not read.
+- **Hidden Markdown is a short list.** PI02 reads HTML comments, reference definitions and quoted link titles. Image alt
+  text, `<details>` blocks, HTML attributes, CSS that hides text, white-on-white text, zero-size fonts and footnotes
+  are not treated as hidden; their text is still read by PI03.
+- **Exempt paths are not read.** Test files (`*.test.*`, `*.spec.*`), `fixtures/`, `__fixtures__/` and `testdata/` are
+  never read, `test/` directories and locale files are not read for phrases, and an app policy can exempt more. A
+  pull request can put content in an exempt path; an agent that reads it is not warned.
+- **Vendored directories by name.** PI05 knows six directory names and the inventory's instruction kinds; an
+  instruction file under another vendoring layout (`external/`, `deps/`, a git submodule) is not flagged, and a modified
+  one in a vendored directory is not either (only added or renamed-in files).
+- **Caps.** The scan keeps the first 50,000 added lines of a file and 8,000,000 characters of added text across the
+  diff, in diff order: a file past either cap is named in `INJECTION_TEXT_TRUNCATED` (`warn`) and a finding past the
+  cut is not seen. At most 20 findings per signal and file and 200 in all are listed; the messages count the rest.
+  At most 100 of an app policy's phrases are matched.
+- **A pre-parsed diff must carry the text.** A program that calls `check()` with a diff it parsed itself gets no
+  findings unless it parsed with `readDiffChunks` or the reader's `keepAddedText` option.
+- **A finding is not a removal.** An instruction that already reached an agent's context, a cache or a fork stays
+  there after the line is removed.
+
 ## Org policy
 
 The org policy (`policy: auto`, `required` or `file:<path>`; see the README, Org policy) is fetched, validated and
@@ -1441,7 +1484,9 @@ limited by git, Node or GitHub alone.
   seen. When a signal reads the cut file (a test file in JS/TS, Python or Go, a workflow, a modified `package.json`, a
   pytest config file, a source file or the pharn-ci config) and the file is not deleted, the report adds `TEST_INTEGRITY_TEXT_TRUNCATED`
   (`warn`) naming it, so a change cannot pass in silence by padding a file past the cut. A deleted file is not named:
-  TI01 already counts a cut test file. The 120 s git
+  TI01 already counts a cut test file. For the prompt-injection scan it also keeps the full text of the added lines
+  of every file outside the scan's default exemptions, apart from that: at most 50,000 lines per file and 8,000,000
+  characters across the diff (`addedTextCut` marks a file cut there, and `INJECTION_TEXT_TRUNCATED` names it). The 120 s git
   timeout still applies. From the GitHub compare API (the
   Action's fallback, and PR-number mode) it is limited by GitHub's own compare limit; past it the
   diff is unavailable and the report says `DIFF_UNAVAILABLE`.

@@ -55,6 +55,7 @@ describe("test sources: documentation and schema", () => {
         testIntegrity: { properties: { languages: { description?: string }; changes?: unknown; exercise?: unknown } };
         meta: { properties: { isAgentPr?: unknown } };
         setupHealth?: unknown;
+        injection?: unknown;
       };
     }) => {
       const copy = structuredClone(schema);
@@ -67,6 +68,8 @@ describe("test sources: documentation and schema", () => {
       delete copy.properties.meta.properties.isAgentPr;
       // Re-pinned for stale instructions (Horizon 2 item H3), which adds the optional top-level setupHealth object.
       delete copy.properties.setupHealth;
+      // Re-pinned for H4 (prompt-injection scan), which adds the optional top-level injection object.
+      delete copy.properties.injection;
       return copy;
     };
     const v2 = "schema/report.v2.json";

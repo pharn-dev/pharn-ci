@@ -129,6 +129,8 @@ describe("schema/report.v2.json: testIntegrity.changes and TEST_INTEGRITY_TI07",
       delete (((copy.properties as Obj).testIntegrity as Obj).properties as Obj).exercise;
       // Re-pinned for stale instructions (Horizon 2 item H3), which adds the optional top-level setupHealth object.
       delete (copy.properties as Obj).setupHealth;
+      // Re-pinned for H4 (prompt-injection scan), which adds the optional top-level injection object.
+      delete (copy.properties as Obj).injection;
       return copy;
     };
     expect(strip(head)).toEqual(strip(base));

@@ -1,0 +1,18 @@
+diff --git a/docs/fa/README.md b/docs/fa/README.md
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/docs/fa/README.md
+@@ -0,0 +1,4 @@
++# راهنما
++
++من می\u{200C}خواهم این کتابخانه را نصب کنم و نامه\u{200C}ها را بخوانم.
++کتاب\u{200C}های راهنما در پوشه\u{200C}ی docs هستند.
+diff --git a/docs/hi/README.md b/docs/hi/README.md
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/docs/hi/README.md
+@@ -0,0 +1,2 @@
++# मार्गदर्शिका
++क्\u{200D}ष और क्\u{200C}ष दोनों रूप सही हैं।
