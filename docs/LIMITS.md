@@ -1204,6 +1204,26 @@ comes from and how new it is, not what it does. What it misses:
 - **No per-signal severities.** D01, D04 and D05 always block and D02 and D03 always warn; the org policy cannot change
   a dependency signal's severity yet (it can turn the whole check on, and raise the minimums).
 
+## Fix hints
+
+Every message and finding of the report carries an optional `fix` object (README, Fix hints). What it does not do:
+
+- **Hints are generic.** There is one kind and one sentence per message code and one per signal id, from two fixed
+  tables. A hint never looks at the code, the diff, the test or the package, so it cannot tell a finding that is a
+  real problem from one that is meant; it says only what kind of change fixes the finding when it is real.
+- **A hint never proves that the fix was made or was right.** Never prove: the report names no change a pull request
+  made in answer to a hint, and the next run's report is the only check of the fix.
+- **Only the finding's own path or `path:line` is in `target`.** The finding already names it. A message has no
+  `target`, so a message that names several files points at none.
+- **D04 asks for a review, not a revert.** A lockfile that drifts from its manifest may be a real change, so D04 is
+  `request-review`; the hint also says to regenerate the lockfile with the package manager.
+- **`none` is a kind, not a gap.** The operational messages (a coverage file that is missing, a policy that could not be
+  fetched, a JUnit file that was refused) and the signals no code change fixes (SI01 to SI04 and the policy rules P01,
+  P07 and P10) have kind `none`; the hint still says what to check.
+- **P12 has no hint.** The schema allows the id, but core produces no P12 finding, so there is no entry for it.
+- **A report that did not go through `check()` has fewer hints.** The accept label and the upload outcome add `fix` to the
+  messages they create or rebuild and leave the others as they were.
+
 ## Org policy
 
 The org policy (`policy: auto`, `required` or `file:<path>`; see the README, Org policy) is fetched, validated and

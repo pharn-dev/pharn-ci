@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { VERSION } from "../../core/src/version.js";
+import { withoutFixJson } from "../../core/test/v090-codes.js";
 import { harness } from "./harness.js";
 
 // run() is loaded inside the test body: the AC tests are written before the accept label exists, so nothing the build
@@ -30,7 +31,13 @@ async function goldenRun(inputs: Record<string, string>) {
 describe("a default Action run's report is the golden report", () => {
   it("AC-13: with accept-label unset the report has no acceptLabel and equals fixtures/golden/report.json", async () => {
     const golden = readFileSync(new URL("fixtures/golden/report.json", ROOT));
-    expect(createHash("sha256").update(golden).digest("hex")).toBe(GOLDEN_AT_BASE);
+    // fix-hints (H6): the committed golden now carries a `fix` on each message; its digest is taken without them, so the
+    // base commit's bytes stay pinned.
+    expect(
+      createHash("sha256")
+        .update(withoutFixJson(golden.toString("utf8")))
+        .digest("hex"),
+    ).toBe(GOLDEN_AT_BASE);
     // The Action reports the package VERSION; the golden file keeps the "0.1.0" its core tests pass to check().
     const parsed = JSON.parse(golden.toString("utf8"));
     const atVersion = { ...parsed, tool: { ...parsed.tool, version: VERSION } };

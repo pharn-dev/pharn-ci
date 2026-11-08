@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
+import { withoutFix } from "../../core/test/v090-codes.js";
 import { fixture, harness } from "./harness.js";
 
 // run(), runUpload(), APP_MAX_BODY_BYTES and the fixtures under fixtures/upload/responses/ are loaded inside each test
@@ -287,7 +288,8 @@ describe("upload-url failures", { timeout: 120_000 }, () => {
         expect(body.replace(`${HINT}\n\n`, ""), `${name}: today's comment plus the hint`).toBe(today.h.posted[0]);
       } else if (name === "413") {
         expect(body, name).not.toContain(HINT);
-        expect(withCode(r.report, "UPLOAD_TOO_LARGE"), name).toEqual([
+        // fix-hints (H6): the message now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+        expect(withoutFix(withCode(r.report, "UPLOAD_TOO_LARGE")), name).toEqual([
           { level: "warn", code: "UPLOAD_TOO_LARGE", text: TOO_LARGE_TEXT },
         ]);
         expect(r.report.verdict, name).toBe("warn");
@@ -381,7 +383,8 @@ describe("upload-url failures", { timeout: 120_000 }, () => {
     expect(ofKind(r.calls, "put")).toEqual([]);
     expect(ofKind(r.calls, "runs")).toEqual([]);
     expect(r.report.meta?.upload).toEqual({ status: "too_large" });
-    expect(withCode(r.report, "UPLOAD_TOO_LARGE")).toEqual([
+    // fix-hints (H6): the message now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+    expect(withoutFix(withCode(r.report, "UPLOAD_TOO_LARGE"))).toEqual([
       { level: "warn", code: "UPLOAD_TOO_LARGE", text: tooLargeText(1) },
     ]);
     expect(r.report.verdict).toBe("warn");
@@ -403,7 +406,8 @@ describe("upload-url failures", { timeout: 120_000 }, () => {
     expect(r.tokenCalls.length, "the run reached the token request").toBeGreaterThan(0);
     expect(r.calls).toEqual([]);
     expect(r.report.meta?.upload).toEqual({ status: "too_large" });
-    expect(withCode(r.report, "UPLOAD_TOO_LARGE")).toEqual([
+    // fix-hints (H6): the message now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+    expect(withoutFix(withCode(r.report, "UPLOAD_TOO_LARGE"))).toEqual([
       { level: "warn", code: "UPLOAD_TOO_LARGE", text: tooLargeText(5242880) },
     ]);
   });

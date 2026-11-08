@@ -9,6 +9,7 @@ import { expectValidReport } from "./schema.js";
 import { withoutV060CodeText } from "./v060-codes.js";
 import { withoutV070SchemaEdits } from "./v070-codes.js";
 import { withoutV080SchemaEdits } from "./v080-codes.js";
+import { withoutV090SchemaEdits } from "./v090-codes.js";
 
 // E3 item 24 (P07), AC-20. Reads the schemas as text, and at the base commit with git; check() and renderMarkdown() are
 // loaded inside the test body: the AC test is written before the build adds the code, so nothing the build adds may
@@ -54,8 +55,12 @@ describe("the schema sentence, the hint and the README row for POLICY_P07", { ti
     // Re-pinned for flaky tests (A6, v0.8.0): its code text and the flaky description are taken out first (v080-codes.ts).
     // Re-pinned for dependency safety (A13, v0.8.0): its part of the v0.8.0 code text and its top-level `dependencies`
     // object are taken out the same way (v080-codes.ts pins both exactly).
+    // Re-pinned for fix-hints (H6): the `$defs.fix` object and the six `fix` properties are taken out first
+    // (v090-codes.ts pins them exactly).
     const nowText = withoutV060CodeText(
-      withoutSchemaLevelEdits(withoutV070SchemaEdits(withoutV080SchemaEdits(read("schema/report.v2.json")))),
+      withoutSchemaLevelEdits(
+        withoutV070SchemaEdits(withoutV080SchemaEdits(withoutV090SchemaEdits(read("schema/report.v2.json")))),
+      ),
     );
     const base = codeDescription(baseText);
     const now = codeDescription(nowText);

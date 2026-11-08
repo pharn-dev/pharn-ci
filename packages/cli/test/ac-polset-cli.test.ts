@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
+import { withoutFix } from "../../core/test/v090-codes.js";
 
 // E3 item 23 (policy settings), AC-27. main() and nodeDeps() are loaded inside the test body: the AC test is written
 // before the CLI reads the agent settings files, so nothing that depends on that may run while this file loads. It
@@ -124,7 +125,8 @@ describe("pharn-ci check: policy mode reads the committed agent settings files",
 
     const withPolicy = await runCli(dir, true);
     const violations = withPolicy.report.policy?.violations ?? [];
-    expect(violations.filter((v) => v.id === "P02")).toEqual([
+    // fix-hints (H6): every finding now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+    expect(withoutFix(violations.filter((v) => v.id === "P02"))).toEqual([
       {
         id: "P02",
         severity: "block",
@@ -158,7 +160,7 @@ describe("pharn-ci check: policy mode reads the committed agent settings files",
     expect(emptyWith.calls.length, "no more git calls than without a policy").toBeLessThanOrEqual(
       emptyWithout.calls.length,
     );
-    expect((emptyWith.report.policy?.violations ?? []).filter((v) => v.id === "P03")).toEqual([
+    expect(withoutFix((emptyWith.report.policy?.violations ?? []).filter((v) => v.id === "P03"))).toEqual([
       {
         id: "P03",
         severity: "block",
@@ -175,7 +177,7 @@ describe("pharn-ci check: policy mode reads the committed agent settings files",
     );
     // The policy requires a deny rule (P03 at block), and a requirement that cannot be checked is not met, so the
     // unread files are an error (review HIGH 4, 2026-11-01; it was a warning, which let a block pass unchecked).
-    expect(failed.report.messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID")).toEqual([
+    expect(withoutFix(failed.report.messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID"))).toEqual([
       {
         level: "error",
         code: "POLICY_SETTINGS_INVALID",

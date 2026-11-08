@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // E3 item 22 (policy rules), AC-11. check() is loaded inside the test body and fixtures/policy-rules/ is read there
 // too: the AC test is written before the build adds the rules and the fixtures, so nothing the build adds may run
@@ -33,7 +34,8 @@ describe("org policy rule P10: policy unavailable", { timeout: 60_000 }, () => {
     expect(resolved.unavailable).toEqual({ reason: "timeout", required: true });
 
     const required = await run(resolved);
-    expect(required.policy?.violations).toEqual([
+    // fix-hints (H6): every finding now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+    expect(withoutFix(required.policy?.violations)).toEqual([
       { id: "P10", severity: "block", path: null, line: null, detail: "org policy could not be read (timeout)" },
     ]);
     const unavailable = required.messages.filter((m) => m.code === "POLICY_UNAVAILABLE");
@@ -43,7 +45,7 @@ describe("org policy rule P10: policy unavailable", { timeout: 60_000 }, () => {
     expect(required.verdict).toBe("fail");
 
     const optional = await run({ ...resolved, unavailable: { reason: "timeout", required: false } });
-    expect(optional.policy?.violations).toEqual([
+    expect(withoutFix(optional.policy?.violations)).toEqual([
       { id: "P10", severity: "warn", path: null, line: null, detail: "org policy could not be read (timeout)" },
     ]);
     expect(optional.messages.filter((m) => m.code === "POLICY_UNAVAILABLE").map((m) => m.level)).toEqual(["warn"]);

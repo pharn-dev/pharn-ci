@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { agentPolicyOf, parseUnifiedDiff } from "../src/index.js";
 import { fixture } from "./helpers.js";
-import { filePolicy, HUMAN_FACTS, p14, p14Messages, policyFixture, runP14 } from "./p14-run.js";
+import { filePolicy, HUMAN_FACTS, p14Messages, p14 as p14WithFix, policyFixture, runP14 } from "./p14-run.js";
+import { withoutFix } from "./v090-codes.js";
+
+// fix-hints (H6): every finding now carries a `fix`; the pinned literals are unchanged, so p14 reads without it.
+const p14 = (report: Parameters<typeof p14WithFix>[0]) => withoutFix(p14WithFix(report));
 
 // Policy rule P14 (agent PR size cap): a `file:` policy is carried by the pull request, so it may only lower a cap.
 // When the PR edits the file, each cap is the smaller of the merge-base and head values; a cap set on one side only

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // check() is loaded inside the test body: the AC tests are written before TI03 and TI04 exist, so nothing the build
 // adds may run while the file loads.
@@ -141,7 +142,12 @@ describe("TI03 and TI04 leave the earlier signals and fixtures alone", () => {
       expect(ours(report), name).toEqual([]);
       records.push({ fixture: name, signals: earlierSignals(report), messages: earlierMessages(report) });
     }
-    expect(createHash("sha256").update(JSON.stringify(records)).digest("hex")).toBe(BEFORE_DIGEST);
+    // fix-hints (H6): the signals and messages now carry a `fix`; it is taken out, so the digest still pins the base outputs.
+    expect(
+      createHash("sha256")
+        .update(JSON.stringify(withoutFix(records)))
+        .digest("hex"),
+    ).toBe(BEFORE_DIGEST);
 
     // The golden diff adds no skip or narrowing marker to a test file.
     const golden = await run(fixture("golden/pr.diff"), [], "golden/files.txt");

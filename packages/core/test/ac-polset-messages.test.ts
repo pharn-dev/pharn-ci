@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // E3 item 23 (policy settings), AC-17. check(), evaluatePolicyRules() and renderMarkdown() are loaded inside the test
 // body: the AC test is written before the build adds the settings rules, so nothing the build adds may run while this
@@ -42,7 +43,8 @@ async function run(document: unknown, files: Record<string, string>): Promise<Re
 const messageOf = (report: Report, code: string): Message => {
   const found = report.messages.filter((m) => m.code === code);
   expect(found, code).toHaveLength(1);
-  return found[0] as Message;
+  // fix-hints (H6): every message now carries a `fix`; the pinned literals are unchanged, so the message is read without it.
+  return withoutFix(found[0] as Message);
 };
 
 const S = "`.claude/settings.json`";

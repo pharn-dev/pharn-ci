@@ -3,6 +3,8 @@ import { coverageNotDiscoveredText } from "./coverageDiscovery.js";
 import type { ReportDependencies } from "./dependencies/check.js";
 import { MAX_KEPT_LINES } from "./diff/unified.js";
 import type { DiffCoverageFile, DiffCoverageResult } from "./diffCoverage.js";
+import { withFixHints } from "./fix/attach.js";
+import type { FixHint } from "./fix/table.js";
 import type { AgentSetupFile, AgentSetupInventory } from "./setup/scan.js";
 import { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
 import type { ResolvedTestIntegrityMode } from "./testIntegrityMode.js";
@@ -51,6 +53,8 @@ export interface ReportStaleInstruction {
   line: number;
   kind: "command" | "path" | "file";
   token?: string;
+  /** How to fix it (since 0.9.0); set by `buildReport`. */
+  fix?: FixHint;
 }
 
 /** The `setupHealth` object of the report. */
@@ -68,6 +72,8 @@ export interface ReportInjectionSignal {
   line: number | null;
   /** Fixed words, a character name and code point, or a phrase id; never file text. */
   detail: string;
+  /** How to fix it (since 0.9.0); set by `buildReport`. */
+  fix?: FixHint;
 }
 
 /** The `injection` object of the report. */
@@ -96,6 +102,8 @@ export interface ReportPolicyViolation {
   path: string | null;
   line: number | null;
   detail: string;
+  /** How to fix it (since 0.9.0); set by `buildReport`. */
+  fix?: FixHint;
 }
 
 /** The `policy` object of the report: where the policy came from and what the rules found. */
@@ -119,6 +127,8 @@ export interface TestIntegritySignal {
   detail: string;
   base?: string;
   head?: string;
+  /** How to fix it (since 0.9.0); set by `buildReport`. */
+  fix?: FixHint;
 }
 
 export interface ReportTestIntegrity {
@@ -330,6 +340,8 @@ export interface Message {
   level: MessageLevel;
   code: MessageCode;
   text: string;
+  /** How to fix it (since 0.9.0): one kind and one fixed sentence per code, never a `target`. */
+  fix?: FixHint;
 }
 
 /**
@@ -860,7 +872,7 @@ export function buildReport(input: BuildReportInput): Report {
   messages.push(...(input.flakyMessages ?? []));
   const injectionSignals = input.injectionSignals ?? [];
 
-  return {
+  return withFixHints({
     schemaVersion: 2,
     tool: { name: "pharn-ci", version: input.version },
     verdict: verdictOf(messages),
@@ -917,7 +929,7 @@ export function buildReport(input: BuildReportInput): Report {
     ...(input.flaky === undefined ? {} : { flaky: { ...input.flaky, quarantined: [...input.flaky.quarantined] } }),
     ...(input.dependencies === undefined ? {} : { dependencies: input.dependencies.report }),
     ...(input.meta === undefined ? {} : { meta: input.meta }),
-  };
+  });
 }
 
 /** The most paths `testIntegrity.exercise.notExercised` holds (camel case: report.ts names only message codes in capitals). */

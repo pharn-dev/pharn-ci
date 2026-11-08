@@ -6,6 +6,7 @@ import type { PolicyDocument } from "../src/policy/types.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { injectionFixture } from "./injection-fixture.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // The `injection` policy key (schema/policy.v1.json, validatePolicy) and how each policy source applies it. Settings
 // the pull request carries can never loosen the scan: a `file:` policy's exemptions are not-allowed, its severities
@@ -121,7 +122,8 @@ describe("the injection policy through check()", () => {
 
   it("an app policy's phrases add PX findings", () => {
     const report = run("pi02-clean.diff.txt", app({ version: 1, injection: { phrases: ["keep this list sorted"] } }));
-    expect(report.injection?.signals).toEqual([
+    // fix-hints (H6): every finding now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+    expect(withoutFix(report.injection?.signals)).toEqual([
       { id: "PI02", severity: "warn", path: "README.md", line: 8, detail: "phrase PX01 in an HTML comment" },
     ]);
   });

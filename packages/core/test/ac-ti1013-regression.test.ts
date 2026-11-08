@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // check() is loaded inside the test body: the AC tests are written before TI10 and TI13 exist, so nothing the build
 // adds may run while the file loads.
@@ -193,7 +194,8 @@ describe("TI10 and TI13 leave the earlier signals and fixtures alone", () => {
     }
     expect(
       createHash("sha256")
-        .update(asBefore(JSON.stringify(records)))
+        // fix-hints (H6): the signals and messages now carry a `fix`; it is taken out, so the digest still pins the base outputs.
+        .update(asBefore(JSON.stringify(withoutFix(records))))
         .digest("hex"),
     ).toBe(BEFORE_DIGEST);
 

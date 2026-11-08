@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { fixture, foldCallout, foldCoverageBar, foldIntegrityColumn } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 /** Remove the Test integrity section: its heading, an empty line, one fixed line and an empty line. */
 function foldTestIntegrity(markdown: string): string {
@@ -136,7 +137,8 @@ describe("check(): some coverage paths are not tracked files", () => {
       expect(messages[0]?.text, dir).toMatch(/(?<!\d)1(?!\d)/);
 
       // Everything else is the report as it was before this change, in its Report v1 form (the hashes predate v2).
-      const without = { ...report, messages: report.messages.filter((message) => message.code !== CODE) };
+      // fix-hints (H6): the messages now carry a `fix`; it is taken out, so the hashes still pin the base bytes.
+      const without = withoutFix({ ...report, messages: report.messages.filter((message) => message.code !== CODE) });
       expect(sha256(asFile(toV1(without))), `${dir} report.json without the message`).toBe(jsonSha);
       // test-integrity-mode added the "🔍 Test integrity" section on purpose: its four lines are folded out too.
       // The comment-layout change added the summary table's Test integrity column on purpose: it is folded out too.

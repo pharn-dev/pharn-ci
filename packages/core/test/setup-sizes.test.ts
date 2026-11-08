@@ -4,6 +4,7 @@ import { renderMarkdown } from "../src/render/markdown.js";
 import { parseLsTreeSizes } from "../src/setup/sizes.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 const BLOB = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391";
 const record = (size: string, path: string, type = "blob") =>
@@ -63,8 +64,9 @@ function runCheck(repoFiles: string[], repoFileBytes?: Map<string, number>, requ
   });
 }
 
+// fix-hints (H6): every message now carries a `fix`; the pinned literals are unchanged, so they are read without it.
 const emptyMessages = (report: { messages: { code: string; level: string; text: string }[] }) =>
-  report.messages.filter((message) => message.code === "AGENT_SETUP_FILE_EMPTY");
+  withoutFix(report.messages.filter((message) => message.code === "AGENT_SETUP_FILE_EMPTY"));
 
 const tracked = () => fixture("golden/files.txt").trim().split("\n");
 

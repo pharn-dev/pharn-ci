@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { fixture, foldCoverageBar, foldIntegrityColumn } from "./helpers.js";
+import { withoutFix } from "./v090-codes.js";
 
 // check() and renderMarkdown() are loaded inside each test body: these tests are written before CheckInput has
 // `testIntegrityMode` and before the section exists, so nothing that depends on them may run while the file loads.
@@ -61,7 +62,8 @@ describe("renderMarkdown: the Test integrity section", () => {
 
   it("AC-8: with no testIntegrityMode the report JSON is the golden one and the markdown differs by only the section", async () => {
     const { report, markdown } = await render();
-    expect(`${JSON.stringify(report, null, 2)}\n`).toBe(gitShow("fixtures/golden/report.json"));
+    // fix-hints (H6): the report now carries a `fix` on each message; it is taken out, so the base golden stays pinned.
+    expect(`${JSON.stringify(withoutFix(report), null, 2)}\n`).toBe(gitShow("fixtures/golden/report.json"));
 
     const lines = markdown.split("\n");
     const at = lines.indexOf(HEADING);

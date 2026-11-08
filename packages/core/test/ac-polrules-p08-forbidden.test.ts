@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // E3 item 22 (policy rules), AC-5. check() is loaded inside the test body and fixtures/policy-rules/ is read there
 // too: the AC test is written before the build adds the rules and the fixtures, so nothing the build adds may run
@@ -35,7 +36,8 @@ async function run(filesFixture: string): Promise<Report> {
 describe("org policy rule P08: forbidden file tracked", { timeout: 60_000 }, () => {
   it("AC-5: a tracked CLAUDE.local.md matching setup.forbidden_files gives a P08 block violation, a POLICY_P08 error naming it and a failing verdict; untracked gives none", async () => {
     const report = await run("policy-rules/p08-violates/files.txt");
-    expect(report.policy?.violations.filter((v) => v.id === "P08")).toEqual([
+    // fix-hints (H6): every finding now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+    expect(withoutFix(report.policy?.violations.filter((v) => v.id === "P08"))).toEqual([
       {
         id: "P08",
         severity: "block",

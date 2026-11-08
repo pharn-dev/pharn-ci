@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
+import { withoutFix } from "../../core/test/v090-codes.js";
 
 // matchTests, indexTouchedTestFiles, the diff parser, the Python index and check() are loaded inside each test body:
 // the AC tests are written before matchTests returns `moved`, so nothing the build changes may run while the file
@@ -284,7 +285,8 @@ describe("matchTests gains `moved`, and TI02 and TI05 keep their results", () =>
         expect(keptMessages.map((m) => `${m.code} ${m.level}`)).toEqual(messages);
         expect(
           createHash("sha256")
-            .update(JSON.stringify({ signals: kept, messages: keptMessages }))
+            // fix-hints (H6): the signals and messages now carry a `fix`; it is taken out, so the digest still pins them.
+            .update(JSON.stringify(withoutFix({ signals: kept, messages: keptMessages })))
             .digest("hex"),
           "the full signals and messages are those of the base commit",
         ).toBe(digest);

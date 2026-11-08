@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // E3 item 23 (policy settings), AC-22. check() is loaded inside the test body, and item 22's gates.diff is read there:
 // the AC test is written before the build gives P09 class 4 its final levels, so nothing the build adds may run while
@@ -69,7 +70,8 @@ async function run(input: {
   return report as unknown as Report;
 }
 
-const p09 = (report: Report) => (report.policy?.violations ?? []).filter((v) => v.id === "P09");
+// fix-hints (H6): every finding now carries a `fix`; the pinned literals are unchanged, so this reads without it.
+const p09 = (report: Report) => withoutFix((report.policy?.violations ?? []).filter((v) => v.id === "P09"));
 const finding = (severity: string, path: string, detail: string): Violation => ({
   id: "P09",
   severity,

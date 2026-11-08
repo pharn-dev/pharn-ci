@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { foldCoverageBar } from "./helpers.js";
+import { withoutFixJson } from "./v090-codes.js";
 
 // E3 item 24 (P07), AC-23. Reads the tree with git against the base commit and runs the named whole-report tests, the
 // render goldens and every ac-p11-* and ac-polrules-* test in a child vitest; nothing the build adds is loaded here.
@@ -62,6 +63,17 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       const barred = /^M\t(fixtures\/golden(?:-cobertura|-exclusions|-multi)?\/report\.md)$/.exec(line);
       if (barred !== null) {
         expect(foldCoverageBar(read(barred[1] as string)), line).toBe(git("show", `${BASE}:${barred[1]}`));
+        continue;
+      }
+      // Re-pinned for fix-hints (H6): the five committed report JSON goldens that carry a message gained a `fix` on
+      // each message on purpose. Each must be modified, never added or deleted, and with its `fix` objects taken out it
+      // is its content at the base byte for byte.
+      const fixed =
+        /^M\t(fixtures\/(?:golden|golden-cobertura|golden-multi|coverage-paths\/package-relative)\/report(?:-warn)?\.json)$/.exec(
+          line,
+        );
+      if (fixed !== null) {
+        expect(withoutFixJson(read(fixed[1] as string)), line).toBe(git("show", `${BASE}:${fixed[1]}`));
         continue;
       }
       // Re-pinned for markdown-byte-compare (review SPEC finding 29): markdown.test.ts's two snapshots moved, unchanged,

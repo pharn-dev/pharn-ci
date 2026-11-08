@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // E3 item 22 (policy rules), AC-2. check() is loaded inside the test body: the AC test is written before the build
 // adds the rules, so nothing the build adds may run while this file loads. expectAgentSetup carries the policy's
@@ -32,7 +33,8 @@ async function run(repoFiles: string[]): Promise<Report> {
 describe("org policy rule P01: setup.expect", { timeout: 60_000 }, () => {
   it("AC-2: an app policy expecting cursor with only CLAUDE.md tracked gives a P01 block violation and AGENT_SETUP_EXPECTED_MISSING at error; a cursor rules file gives none", async () => {
     const report = await run(["CLAUDE.md"]);
-    expect(report.policy?.violations.filter((v) => v.id === "P01")).toEqual([
+    // fix-hints (H6): every finding now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+    expect(withoutFix(report.policy?.violations.filter((v) => v.id === "P01"))).toEqual([
       { id: "P01", severity: "block", path: null, line: null, detail: "no setup file for cursor" },
     ]);
     const missing = report.messages.filter((m) => m.code === "AGENT_SETUP_EXPECTED_MISSING");

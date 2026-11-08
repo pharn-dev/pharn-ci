@@ -1,0 +1,329 @@
+{
+  "feature": "fix-hints",
+  "gates": {
+    "build": 0,
+    "instruction-growth": 0,
+    "lint": 0,
+    "reconcile": 0,
+    "test": 1
+  },
+  "verdict": "FAIL",
+  "failing_gates": [
+    "ac-delivery",
+    "test"
+  ],
+  "gate_run": {
+    "stamp_sha256": "5bc6aa377e7db4efbaf098390b341ee36e56ef8048fabc5a3049ad3abd0845e9",
+    "source": "discover",
+    "fingerprint": {
+      "algo": "worktree-fingerprint/3+sha256",
+      "final": "27690328a3d8e5cfaefdd3c2d58b209452047e7b8ef5e37c07c0d5750d1ebb29"
+    }
+  },
+  "ac_gate": {
+    "mode": "test-first",
+    "verdict": "FAIL",
+    "reason": null,
+    "evidence": [],
+    "acs": [
+      {
+        "id": "AC-1",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-fix-hints-kinds.test.ts::fix hints: the closed list of kinds › AC-1: the core's FIX_KINDS and the schema's fix.kind enum are exactly the eight kinds, in order"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-2",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-fix-hints-table.test.ts::fix hints: a table entry for every documented code and signal id › AC-2: every message code the schema documents has an entry with a closed kind and a non-empty hint of at most 200 characters",
+          "packages/core/test/ac-fix-hints-table.test.ts::fix hints: a table entry for every documented code and signal id › AC-2: every signal id the schema documents (TI01-TI16, the P ids core produces, SI01-SI04, PI01-PI05, D01-D05) has an entry with a closed kind and a non-empty hint of at most 200 characters"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-3",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-fix-hints-words.test.ts::fix hints: the words a hint may use › AC-3: no hint contains a placeholder: the path, line and id of a finding go only into target",
+          "packages/core/test/ac-fix-hints-words.test.ts::fix hints: the words a hint may use › AC-3: no hint contains exclude, excluding, exclusion, lower, skip, threshold, ignore, disable, exempt or exemption (case-insensitive, word boundaries)"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-4",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-fix-hints-mapping.test.ts::fix hints: the kind of every code and signal id › AC-4: every message code has the kind of the SPEC's Data mapping, each signal-family message the kind of its signal, and the table has no other code",
+          "packages/core/test/ac-fix-hints-mapping.test.ts::fix hints: the kind of every code and signal id › AC-4: every signal id has the kind of the SPEC's Data mapping, and the table has no other id",
+          "packages/core/test/ac-fix-hints-mapping.test.ts::fix hints: the kind of every code and signal id › AC-4: the named cases of the criterion"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-5",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-fix-hints-findings.test.ts::fix hints on every finding of a report › AC-5: dependency signals D04 and D05 carry the table's kind and hint and path:line as target",
+          "packages/core/test/ac-fix-hints-findings.test.ts::fix hints on every finding of a report › AC-5: prompt-injection signals carry the table's kind and hint and path:line as target",
+          "packages/core/test/ac-fix-hints-findings.test.ts::fix hints on every finding of a report › AC-5: stale-instruction findings carry the table's kind and hint and path:line as target",
+          "packages/core/test/ac-fix-hints-findings.test.ts::fix hints on every finding of a report › AC-5: test-integrity signals (TI01, TI05, TI14, TI11) carry the table's kind and hint and their path or path:line as target; the reports validate",
+          "packages/core/test/ac-fix-hints-findings.test.ts::fix hints on every finding of a report › AC-5: the P11 and P14 violations of an agent pull request carry the table's kind and hint, and their path or path:line as target"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-6",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-fix-hints-messages.test.ts::fix hints on every message of a report › AC-6: a message whose code has no honest action still carries a none fix with a non-empty hint",
+          "packages/core/test/ac-fix-hints-messages.test.ts::fix hints on every message of a report › AC-6: every message carries fix with the table's kind and hint for its code and no target",
+          "packages/core/test/ac-fix-hints-messages.test.ts::fix hints on every message of a report › AC-6: the TEST_INTEGRITY_<id> message of each signal id present carries fix with its signal's kind"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-7",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-fix-hints-no-leak.test.ts::fix hints never carry file text, diff text, test names or package names › AC-7: a test name and an added line holding a unique token and a secret-shaped string never reach fix.hint or fix.target; two TI03 findings differ in fix only by target",
+          "packages/core/test/ac-fix-hints-no-leak.test.ts::fix hints never carry file text, diff text, test names or package names › AC-7: the names of the packages a change adds never reach fix.hint or fix.target; three D05 findings differ in fix only by target"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-8",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-fix-hints-schema.test.ts::schema/report.v2.json: the optional fix object › AC-8: every required list is unchanged from the base commit, a report without fix still validates, and schema/report.v1.json is byte-identical to the base commit",
+          "packages/core/test/ac-fix-hints-schema.test.ts::schema/report.v2.json: the optional fix object › AC-8: the message definition and the five finding item schemas each carry an optional, closed fix object with required kind and hint, optional target, kind the closed enum and hint at most 200 characters, each described as never lowering a gate"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-9",
+        "level": "integration",
+        "tests": [
+          "packages/cli/test/ac-fix-hints-golden.test.ts::the goldens with fix hints › AC-9: pharn-ci check --format json on each golden fixture equals its regenerated report.json, every message carries fix, and every golden markdown is byte-identical to the base commit"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-10",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-fix-hints-upload.test.ts::the upload bundle keeps fix hints › AC-10: the bundle's report.json carries every fix unchanged in kind, target and hint, through redaction and the byte caps, and validates"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-11",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-fix-hints-action.test.ts::the Action and the CLI write fix hints › AC-11: the Action on a streamed local diff and lcov, and the CLI on the same inputs, both equal the regenerated golden report, carry fix on every message, and make no compare API call"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-12",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-fix-hints-pins.test.ts::existing tests are re-pinned through one shared helper, never weakened › AC-12: no existing test file is deleted, none gains a skip, focus or todo marker, every edited one names fix-hints (H6), the helper is shared, and every edited test passes in a child run",
+          "packages/core/test/ac-fix-hints-pins.test.ts::existing tests are re-pinned through one shared helper, never weakened › AC-12: withoutV090SchemaEdits takes out exactly the fix additions, giving the base commit's schema byte for byte, and withoutFix takes the fix objects out of a report"
+        ],
+        "status": "failed",
+        "reason": "ac-not-passed",
+        "detail": "1 of 2 matched result(s) failed"
+      },
+      {
+        "id": "AC-13",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-fix-hints-docs.test.ts::documentation of fix hints › AC-13: docs/LIMITS.md has a section on fix hints saying they are generic, per code or id, and never prove that the fix was made or was right",
+          "packages/core/test/ac-fix-hints-docs.test.ts::documentation of fix hints › AC-13: the CHANGELOG Unreleased section names the fix object",
+          "packages/core/test/ac-fix-hints-docs.test.ts::documentation of fix hints › AC-13: the README has a section headed \"Fix hints\" that lists the eight kinds, says what an agent may do with a hint and states that no hint lowers a gate",
+          "packages/core/test/ac-fix-hints-docs.test.ts::documentation of fix hints › AC-13: the schema's descriptions of fix, kind, target and hint say what each holds and never holds"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      }
+    ],
+    "unmapped_anomalies": [],
+    "note": "an AC is delivered = a locked, once-red test titled AC-<n>:, in a file mapped to AC-<n>, passed on this head run. PHARN does not judge whether that test fully captures the AC's intent."
+  },
+  "completeness": {
+    "plan": "pharn/features/fix-hints/PLAN.md",
+    "repoDir": ".",
+    "declared": [
+      "packages/core/src/fix/table.ts",
+      "packages/core/src/fix/attach.ts",
+      "packages/core/src/report.ts",
+      "packages/core/src/dependencies/types.ts",
+      "packages/core/src/acceptLabel.ts",
+      "packages/core/src/upload/outcome.ts",
+      "packages/core/src/index.ts",
+      "schema/report.v2.json",
+      "README.md",
+      "CHANGELOG.md",
+      "docs/LIMITS.md",
+      "fixtures/golden/report.json",
+      "fixtures/golden-cobertura/report.json",
+      "fixtures/golden-multi/report.json",
+      "fixtures/coverage-paths/package-relative/report.json",
+      "fixtures/coverage-paths/package-relative/report-warn.json",
+      "packages/action/dist/index.js",
+      "packages/core/test/v090-codes.ts",
+      "packages/action/test/ac-accept-signoff-default-golden.test.ts",
+      "packages/action/test/ac-accept-signoff-regression.test.ts",
+      "packages/action/test/ac-policy3-outcomes.test.ts",
+      "packages/action/test/ac-polset-action.test.ts",
+      "packages/action/test/ac-pyparity2-unchanged.test.ts",
+      "packages/action/test/ac-upload-url-failures.test.ts",
+      "packages/action/test/setup-sizes.test.ts",
+      "packages/action/test/stale-instructions-action.test.ts",
+      "packages/cli/test/ac-inventory-empty.test.ts",
+      "packages/cli/test/ac-polset-cli.test.ts",
+      "packages/cli/test/stale-instructions-cli.test.ts",
+      "packages/core/test/ac-comment-bold-data.test.ts",
+      "packages/core/test/ac-format-golden.test.ts",
+      "packages/core/test/ac-globs-check.test.ts",
+      "packages/core/test/ac-header-logo-data.test.ts",
+      "packages/core/test/ac-name-only-suite.test.ts",
+      "packages/core/test/ac-p07-schema-hints.test.ts",
+      "packages/core/test/ac-p07-unchanged.test.ts",
+      "packages/core/test/ac-p11-agent-vs-human.test.ts",
+      "packages/core/test/ac-p11-diff-kinds.test.ts",
+      "packages/core/test/ac-p11-diff-unavailable.test.ts",
+      "packages/core/test/ac-p11-incomplete.test.ts",
+      "packages/core/test/ac-p11-policy-file-base.test.ts",
+      "packages/core/test/ac-p11-schema-hints.test.ts",
+      "packages/core/test/ac-p11-unchanged.test.ts",
+      "packages/core/test/ac-p14-caps.test.ts",
+      "packages/core/test/ac-p14-policy-file.test.ts",
+      "packages/core/test/ac-paths-partial.test.ts",
+      "packages/core/test/ac-policy3-unchanged.test.ts",
+      "packages/core/test/ac-polrules-p01-expect.test.ts",
+      "packages/core/test/ac-polrules-p01-require.test.ts",
+      "packages/core/test/ac-polrules-p08-forbidden.test.ts",
+      "packages/core/test/ac-polrules-p09-config.test.ts",
+      "packages/core/test/ac-polrules-p09-policy-file.test.ts",
+      "packages/core/test/ac-polrules-p09-settings.test.ts",
+      "packages/core/test/ac-polrules-p09-workflow.test.ts",
+      "packages/core/test/ac-polrules-p10.test.ts",
+      "packages/core/test/ac-polrules-report.test.ts",
+      "packages/core/test/ac-polset-absent.test.ts",
+      "packages/core/test/ac-polset-budget.test.ts",
+      "packages/core/test/ac-polset-duplicate-deny.test.ts",
+      "packages/core/test/ac-polset-messages.test.ts",
+      "packages/core/test/ac-polset-p02-allow.test.ts",
+      "packages/core/test/ac-polset-p02-fixed.test.ts",
+      "packages/core/test/ac-polset-p03.test.ts",
+      "packages/core/test/ac-polset-p04.test.ts",
+      "packages/core/test/ac-polset-p05.test.ts",
+      "packages/core/test/ac-polset-p06.test.ts",
+      "packages/core/test/ac-polset-p09.test.ts",
+      "packages/core/test/ac-polset-pins.test.ts",
+      "packages/core/test/ac-polset-unavailable.test.ts",
+      "packages/core/test/ac-precision-v030-schema.test.ts",
+      "packages/core/test/ac-py-index-docs.test.ts",
+      "packages/core/test/ac-pyparity2-ti09-headers.test.ts",
+      "packages/core/test/ac-report-v2-check.test.ts",
+      "packages/core/test/ac-secrets-repin.test.ts",
+      "packages/core/test/ac-test-integrity-mode-render.test.ts",
+      "packages/core/test/ac-test-sources-docs.test.ts",
+      "packages/core/test/ac-ti01-unparsed.test.ts",
+      "packages/core/test/ac-ti0102-regression.test.ts",
+      "packages/core/test/ac-ti0205-regression.test.ts",
+      "packages/core/test/ac-ti0304-regression.test.ts",
+      "packages/core/test/ac-ti06-ti12-unchanged.test.ts",
+      "packages/core/test/ac-ti07-schema.test.ts",
+      "packages/core/test/ac-ti081516-docs.test.ts",
+      "packages/core/test/ac-ti09-opaque-head.test.ts",
+      "packages/core/test/ac-ti1013-regression.test.ts",
+      "packages/core/test/ac-unparseable-cases.test.ts",
+      "packages/core/test/ac-unread-added.test.ts",
+      "packages/core/test/ac-upload-outcome.test.ts",
+      "packages/core/test/ac-upload-schema.test.ts",
+      "packages/core/test/ac-verdict-callout-data.test.ts",
+      "packages/core/test/dependencies-check.test.ts",
+      "packages/core/test/dependencies-registry.test.ts",
+      "packages/core/test/docs-schema-levels.test.ts",
+      "packages/core/test/golden.test.ts",
+      "packages/core/test/injection-check.test.ts",
+      "packages/core/test/injection-policy.test.ts",
+      "packages/core/test/injection-schema.test.ts",
+      "packages/core/test/report-unsafe-chars.test.ts",
+      "packages/core/test/report.test.ts",
+      "packages/core/test/setup-sizes.test.ts",
+      "packages/core/test/stale-check.test.ts",
+      "packages/core/test/stale-docs.test.ts",
+      "packages/core/test/threshold-semantics.test.ts",
+      "packages/node-io/test/ac-ti07-moved.test.ts"
+    ],
+    "skipped": [],
+    "missing": [],
+    "deletions": [],
+    "undeleted": [],
+    "complete": true,
+    "verdict": "complete"
+  },
+  "verifiers": {
+    "registered": 0,
+    "findings": []
+  },
+  "gate_reuse": {
+    "reused": [
+      {
+        "id": "build",
+        "stage": "regress",
+        "side": "head",
+        "seq": 1
+      }
+    ]
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "reconcile_detail": {
+    "state": "parsed",
+    "exit": 0,
+    "verdict": "CLEAN",
+    "escapes": [],
+    "escapes_total": 0,
+    "merged_count": 0
+  }
+}

@@ -3,6 +3,7 @@ import { check } from "../src/check.js";
 import { renderMarkdown } from "../src/render/markdown.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // F-31: an ungated measurement says so, threshold 0 is explicit, and the gate compares exactly.
 // The golden fixtures cover 5 of 7 added lines: 71.428...%, shown as 71.43%.
@@ -32,7 +33,8 @@ describe("DIFF_COVERAGE_UNGATED", () => {
     expectValidReport(report);
     expect(report.verdict).toBe("pass");
     expect(report.diffCoverage).toMatchObject({ percent: 71.43, threshold: null });
-    expect(report.messages).toEqual([
+    // fix-hints (H6): every message now carries a `fix`; the pinned literals are unchanged, so they are read without it.
+    expect(withoutFix(report.messages)).toEqual([
       { level: "info", code: "DIFF_COVERAGE_UNGATED", text: "Diff coverage 71.43% is not gated: no threshold is set." },
       PARTIAL,
     ]);
@@ -44,7 +46,7 @@ describe("DIFF_COVERAGE_UNGATED", () => {
     expectValidReport(report);
     expect(report.verdict).toBe("pass");
     expect(report.diffCoverage?.threshold).toBe(0);
-    expect(report.messages).toEqual([
+    expect(withoutFix(report.messages)).toEqual([
       {
         level: "info",
         code: "DIFF_COVERAGE_UNGATED",
@@ -95,7 +97,7 @@ describe("exact threshold comparison", () => {
     expectValidReport(report);
     expect(report.verdict).toBe("fail");
     expect(report.diffCoverage?.percent).toBe(71.42);
-    expect(report.messages).toEqual([
+    expect(withoutFix(report.messages)).toEqual([
       {
         level: "error",
         code: "DIFF_COVERAGE_BELOW_THRESHOLD",
@@ -111,6 +113,6 @@ describe("exact threshold comparison", () => {
     expectValidReport(report);
     expect(report.verdict).toBe("pass");
     expect(report.diffCoverage?.percent).toBe(71.43);
-    expect(report.messages).toEqual([PARTIAL]);
+    expect(withoutFix(report.messages)).toEqual([PARTIAL]);
   });
 });

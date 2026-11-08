@@ -7,6 +7,7 @@ import { fixture } from "./helpers.js";
 import { injectionFixture } from "./injection-fixture.js";
 import { validateReport } from "./schema.js";
 import { V070_CODE_TEXT, V070_INJECTION_CODES, V070_INJECTION_SCHEMA } from "./v070-codes.js";
+import { withoutV090SchemaEdits } from "./v090-codes.js";
 
 // H4's schema and documents: report.v2.json carries the v0.7.0 code text and the optional `injection` object exactly
 // once (v070-codes.ts), the object is closed and validates the reports check() makes, report.ts names the six codes,
@@ -28,7 +29,9 @@ function report(): Report {
 
 describe("schema/report.v2.json for the prompt-injection scan", () => {
   it("carries the v0.7.0 code text and the injection object exactly once", () => {
-    const schema = read("schema/report.v2.json");
+    // Re-pinned for fix-hints (H6): the `fix` property of the injection items is part of the injection object's text, so
+    // the fix additions are taken out first (v090-codes.ts pins them exactly).
+    const schema = withoutV090SchemaEdits(read("schema/report.v2.json"));
     expect(schema.split(V070_CODE_TEXT).length - 1).toBe(1);
     expect(schema.split(V070_INJECTION_SCHEMA).length - 1).toBe(1);
     const parsed = JSON.parse(schema);

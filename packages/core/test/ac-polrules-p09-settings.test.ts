@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // E3 item 22 (policy rules), AC-10. check() is loaded inside the test body and fixtures/policy-rules/ is read there
 // too: the AC test is written before the build adds the rules and the fixtures, so nothing the build adds may run
@@ -35,8 +36,9 @@ const app = (document: unknown) => ({
   fetchedAt: "2026-10-26T12:00:00.000Z",
   document,
 });
-const p09 = (report: Report) => (report.policy?.violations ?? []).filter((v) => v.id === "P09");
-const p09Messages = (report: Report) => report.messages.filter((m) => m.code === "POLICY_P09");
+// fix-hints (H6): every message and finding now carries a `fix`; the pinned literals are unchanged, so these read without it.
+const p09 = (report: Report) => withoutFix((report.policy?.violations ?? []).filter((v) => v.id === "P09"));
+const p09Messages = (report: Report) => withoutFix(report.messages.filter((m) => m.code === "POLICY_P09"));
 
 describe("org policy rule P09: a file the policy will read", { timeout: 60_000 }, () => {
   it("AC-10: editing three agent-settings files under a policy with an agent-settings list gives three P09 warn violations and a POLICY_P09 warning; empty lists, no lists, app off and an unavailable policy give none; a file block raises them", async () => {

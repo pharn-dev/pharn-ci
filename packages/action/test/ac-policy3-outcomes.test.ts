@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
+import { withoutFix } from "../../core/test/v090-codes.js";
 import { harness, PR_CONTEXT, WORKSPACE } from "./harness.js";
 
 // run(), fetchPolicy() and the fixtures under fixtures/policy-api/ are loaded inside each test body: the AC tests are
@@ -390,7 +391,8 @@ describe("the org policy fetch outcomes", () => {
       // E3 item 22 (policy rules): the report now also carries the `policy` object with its one P10 warn violation; it
       // is asserted here, and the rest of the report is still the policy: never report.
       const { policy, ...rest } = report;
-      expect(policy, c.name).toEqual({
+      // fix-hints (H6): the violation now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+      expect(withoutFix(policy), c.name).toEqual({
         source: "none",
         version: null,
         violations: [

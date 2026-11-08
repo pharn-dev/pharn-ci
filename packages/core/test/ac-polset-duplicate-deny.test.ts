@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // E3 item 23 (policy settings), AC-15. check() is loaded inside the test body: the AC test is written before the build
 // adds the settings rules, so nothing the build adds may run while this file loads.
@@ -42,7 +43,8 @@ describe("a repeated deny key: the last one counts", { timeout: 60_000 }, () => 
     } as never) as unknown as Report;
     expectValidReport(report);
 
-    expect((report.policy?.violations ?? []).filter((v) => v.id === "P03")).toEqual([
+    // fix-hints (H6): every finding now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+    expect(withoutFix((report.policy?.violations ?? []).filter((v) => v.id === "P03"))).toEqual([
       {
         id: "P03",
         severity: "block",
@@ -51,7 +53,7 @@ describe("a repeated deny key: the last one counts", { timeout: 60_000 }, () => 
         detail: "required deny rule Bash(rm -rf:*) is missing",
       },
     ]);
-    expect(report.messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID")).toEqual([
+    expect(withoutFix(report.messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID"))).toEqual([
       {
         level: "warn",
         code: "POLICY_SETTINGS_INVALID",

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // check() is loaded inside the test body: the AC test is written before TI09 reads the native [tool.pytest] table, so
 // nothing the build adds may run while the file loads. The new case directories are written by the build, so the test
@@ -106,7 +107,8 @@ async function run(c: Case): Promise<Signal[]> {
     testSources: { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } },
   } as unknown as Parameters<typeof check>[0]);
   expectValidReport(report);
-  return (report as unknown as Report).testIntegrity.signals.filter((s) => String(s.id) === "TI09");
+  // fix-hints (H6): every finding now carries a `fix`; the pinned literals are unchanged, so they are read without it.
+  return withoutFix((report as unknown as Report).testIntegrity.signals.filter((s) => String(s.id) === "TI09"));
 }
 
 const NARROWED = { base: '["tests"]', head: '["tests/unit"]' };

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
+import { withoutFix } from "../../core/test/v090-codes.js";
 import { runGitBatch } from "../../node-io/src/io.js";
 import { harness, PR_CONTEXT } from "./harness.js";
 
@@ -76,7 +77,8 @@ describe("action: stale instructions", { timeout: 120_000 }, () => {
   it("a local-diff run reads AGENTS.md and reports the paths the change removed, though AGENTS.md is untouched", async () => {
     const { report, batchCalls, h } = await actionRun();
     expect(batchCalls.filter((input) => input.includes("HEAD:AGENTS.md"))).toHaveLength(1);
-    expect(report.setupHealth?.stale).toEqual([
+    // fix-hints (H6): every finding now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+    expect(withoutFix(report.setupHealth?.stale)).toEqual([
       { id: "SI02", path: "AGENTS.md", line: 3, kind: "path", token: "src/legacy.ts" },
       { id: "SI03", path: "AGENTS.md", line: 3, kind: "file", token: "src/old-name.ts" },
     ]);

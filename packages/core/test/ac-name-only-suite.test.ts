@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { byCodeUnit } from "../src/text.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix, withoutFixJson } from "./v090-codes.js";
 
 // git, check() and the fixtures run inside the test body: the AC test is written before the build changes TI01's
 // same-stem rule and TI02's phase-2 leaf pick. git reads this increment's own change: from the base commit 8302706 to
@@ -351,7 +352,9 @@ describe("name-only moves change exactly four existing results", () => {
         const full = { ...COMMON, ...input };
         const after = head.check(full);
         expectValidReport(after);
-        return { before: base.check(full), after };
+        // Re-pinned for fix-hints (H6): the base side has no `fix` on its messages and findings, so the head side is
+        // compared without it.
+        return { before: base.check(full), after: withoutFix(after) };
       };
 
       // Every existing case: the same report on both sides, except exactly the four.
@@ -488,8 +491,13 @@ describe("name-only moves change exactly four existing results", () => {
         const before = base.check(input);
         const after = head.check(input);
         expectValidReport(after);
-        expect(`${JSON.stringify(after, null, 2)}\n`, `${dir}: the committed report.json`).toBe(committed);
-        expect(`${JSON.stringify(before, null, 2)}\n`, `${dir}: as at the base`).toBe(committed);
+        // Re-pinned for fix-hints (H6): the committed report.json gained a `fix` on each message, which both sides lack
+        // (the head side is the commit that added this test once it is committed), so both are compared with the `fix`
+        // objects taken out of the committed file.
+        expect(`${JSON.stringify(withoutFix(after), null, 2)}\n`, `${dir}: the committed report.json`).toBe(
+          withoutFixJson(committed),
+        );
+        expect(`${JSON.stringify(before, null, 2)}\n`, `${dir}: as at the base`).toBe(withoutFixJson(committed));
       }
 
       // The Skylos benchmark: still 7 of 9, with deleted-test (TI01) and replaced-test (TI02) still blocking, for

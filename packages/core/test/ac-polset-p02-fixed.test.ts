@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // E3 item 23 (policy settings), AC-8. check() is loaded inside the test body: the AC test is written before the build
 // adds the settings rules, so nothing the build adds may run while this file loads.
@@ -67,7 +68,8 @@ describe("org policy rule P02: the fixed checks", { timeout: 60_000 }, () => {
       "e/.claude/settings.json": '{ "permissions": { "additionalDirectories": [] } }\n',
     };
     const report = await run({ version: 1 }, files);
-    const p02 = (report.policy?.violations ?? []).filter((v) => v.id === "P02");
+    // fix-hints (H6): every finding now carries a `fix`; the pinned literals are unchanged, so they are read without it.
+    const p02 = withoutFix((report.policy?.violations ?? []).filter((v) => v.id === "P02"));
     expect(p02).toEqual([
       {
         id: "P02",

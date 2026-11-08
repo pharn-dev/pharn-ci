@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // pr-comment-verdict-callout AC-5. check() and the renderer are loaded inside the test body: the AC tests are written
 // before the build, so nothing the build changes may run while the file loads.
@@ -18,7 +19,9 @@ const GOLDEN_JSON_SHA256 = "37d7101a203ba54c38b9636631edc8c7bc03e82ff6deaaa0de84
  * it only by setting schemaVersion to 2 and appending the empty testIntegrity block, both asserted below.
  */
 function asV1File(json: string): string {
-  const parsed = JSON.parse(json);
+  // fix-hints (H6): the committed golden now carries a `fix` on each message; it is taken out, so the hash still pins
+  // the bytes it was taken from.
+  const parsed = withoutFix(JSON.parse(json));
   expect(parsed.schemaVersion).toBe(2);
   expect(parsed.testIntegrity).toEqual({
     mode: "warn",

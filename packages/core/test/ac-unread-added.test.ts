@@ -5,6 +5,7 @@ import { check } from "../src/check.js";
 import { indexTestFile } from "../src/testIndex/indexTestFile.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // fix/unparsed-added-test-file: an added test file whose head side cannot be indexed (refused by the test index, dropped,
 // missing, no Python index) used to be dropped with no trace, so nothing that reads the added files checked its tests
@@ -65,7 +66,8 @@ function run(input: { diff: string; base: Side; head: Side; mode: Mode; index?: 
     ...(input.index === undefined ? {} : { pythonTestIndex: input.index }),
   } as Parameters<typeof check>[0]);
   expectValidReport(report);
-  return { report, messages: report.messages.filter((message) => message.code === CODE) };
+  // fix-hints (H6): every message now carries a `fix`; the pinned literals are unchanged, so they are read without it.
+  return { report, messages: withoutFix(report.messages.filter((message) => message.code === CODE)) };
 }
 
 const ADDED = (named: string) =>

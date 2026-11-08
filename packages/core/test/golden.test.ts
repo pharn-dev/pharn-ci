@@ -3,6 +3,7 @@ import { check } from "../src/check.js";
 import { renderMarkdown } from "../src/render/markdown.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 const repoFiles = fixture("golden/files.txt").trim().split("\n");
 
@@ -65,7 +66,8 @@ describe("golden: fixture diff + lcov -> Report v2", () => {
       expectValidReport(report);
       expect(report.verdict).toBe(verdict);
       expect(report.diffCoverage).toBeNull();
-      expect(report.messages).toEqual([
+      // fix-hints (H6): every message now carries a `fix`; the pinned literal is unchanged, so it is read without it.
+      expect(withoutFix(report.messages)).toEqual([
         {
           level,
           code: "COVERAGE_FILE_EMPTY",

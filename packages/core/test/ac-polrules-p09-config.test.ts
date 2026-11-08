@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // E3 item 22 (policy rules), AC-8. check() is loaded inside the test body and fixtures/policy-rules/ is read there
 // too: the AC test is written before the build adds the rules and the fixtures, so nothing the build adds may run
@@ -29,8 +30,10 @@ async function run(extra: Record<string, unknown>): Promise<Report> {
   return report as unknown as Report;
 }
 
-const p09 = (report: Report) => (report.policy?.violations ?? []).filter((v) => v.id === "P09");
-const configChanged = (report: Report) => report.messages.filter((m) => m.code === "CONFIG_CHANGED_IN_DIFF");
+// fix-hints (H6): every message and finding now carries a `fix`; the pinned literals are unchanged, so these read without it.
+const p09 = (report: Report) => withoutFix((report.policy?.violations ?? []).filter((v) => v.id === "P09"));
+const configChanged = (report: Report) =>
+  withoutFix(report.messages.filter((m) => m.code === "CONFIG_CHANGED_IN_DIFF"));
 
 describe("org policy rule P09: the config in use", { timeout: 60_000 }, () => {
   it("AC-8: a diff editing .pharn/ci.yml while a config-layer setting is ignored gives a P09 block violation naming the setting; input-layer records alone give no class-2 violation; CONFIG_CHANGED_IN_DIFF is unchanged", async () => {

@@ -3,12 +3,15 @@ import type { CheckInput } from "../src/check.js";
 import type { Report } from "../src/report.js";
 import { dependencyCase, run } from "./dependencies-helpers.js";
 import { fixture } from "./helpers.js";
+import { withoutFix } from "./v090-codes.js";
 
 // A13 (dependency safety), D04 and D05 through check(), on the fixture cases under fixtures/dependencies/ (see
 // dependencies-helpers.ts). d04-* and d05-* must trigger; clean-bump (a Dependabot bump of this repository, #119),
 // lockfile-refresh (a transitive refresh) and workspace must not.
 
-const dependencyMessages = (report: Report) => report.messages.filter((m) => m.code.startsWith("DEPENDENCY_"));
+// fix-hints (H6): every message now carries a `fix`; the pinned literals are unchanged, so they are read without it.
+const dependencyMessages = (report: Report) =>
+  withoutFix(report.messages.filter((m) => m.code.startsWith("DEPENDENCY_")));
 const brief = (report: Report) =>
   (report.dependencies?.signals ?? []).map((s) => [
     s.id,

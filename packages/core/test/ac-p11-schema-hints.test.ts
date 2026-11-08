@@ -8,6 +8,7 @@ import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { expectValidReport } from "./schema.js";
 import { withoutV070Properties } from "./v070-codes.js";
 import { withoutV080Properties } from "./v080-codes.js";
+import { withoutV090SchemaEdits } from "./v090-codes.js";
 
 // E3 item 24a part B (P11), AC-22. Reads the schemas as text, and at the base commit with git; check() and
 // renderMarkdown() are loaded inside the test body: the AC test is written before the build adds the two codes, so
@@ -53,8 +54,10 @@ describe("the schema sentence and the hints for POLICY_P11 and AGENT_PR_DETECTIO
     // Re-pinned for flaky tests (A6, v0.8.0): the flaky description is taken out the same way (v080-codes.ts).
     // Re-pinned for dependency safety (A13, v0.8.0): withoutV080Properties also takes out its top-level `dependencies`
     // object (v080-codes.ts pins it exactly).
+    // Re-pinned for fix-hints (H6): the `$defs.fix` object and the six `fix` properties are taken out first
+    // (v090-codes.ts pins them exactly).
     const nowText = withoutSchemaLevelEdits(
-      withoutV080Properties(withoutV070Properties(read("schema/report.v2.json"))),
+      withoutV080Properties(withoutV070Properties(withoutV090SchemaEdits(read("schema/report.v2.json")))),
     );
     const base = codeDescription(baseText);
     const now = codeDescription(nowText);

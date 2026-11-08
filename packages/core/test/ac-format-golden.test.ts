@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { fixture, foldCallout, foldCoverageBar, foldIntegrityColumn } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 /** Remove the Test integrity section: its heading, an empty line, one fixed line and an empty line. */
 function foldTestIntegrity(markdown: string): string {
@@ -126,8 +127,9 @@ describe("golden reports and the coverage format", () => {
     expect(partialMessages).toHaveLength(1);
     expect(partialMessages[0].level).toBe("info");
     const { format: _format, ...previousDiffCoverage } = committed.diffCoverage;
-    const messagesWithoutPartial = committed.messages.filter(
-      (message: { code: string }) => message.code !== partialCode,
+    // fix-hints (H6): the committed messages now carry a `fix`; it is taken out, so the hash still pins the base bytes.
+    const messagesWithoutPartial = withoutFix(
+      committed.messages.filter((message: { code: string }) => message.code !== partialCode),
     );
     // The pinned hash predates Report v2: map the committed v2 report back to its v1 shape (schemaVersion "1", no
     // testIntegrity), which is the whole of what v2 changed in it.

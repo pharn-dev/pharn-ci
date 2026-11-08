@@ -19,7 +19,42 @@
           "type": "string",
           "pattern": "^[A-Z][A-Z0-9_]*$"
         },
-        "text": { "type": "string", "minLength": 1, "description": "Human-readable explanation; wording may change." }
+        "text": { "type": "string", "minLength": 1, "description": "Human-readable explanation; wording may change." },
+        "fix": {
+          "description": "How to fix this message (since 0.9.0): one kind and one fixed sentence for its code; no kind lowers a gate. See $defs/fix.",
+          "$ref": "#/$defs/fix"
+        }
+      }
+    },
+    "fix": {
+      "description": "How to fix this message or finding honestly (since 0.9.0): one kind from a closed list and one fixed English sentence per code or signal id, never written by a model. No kind lowers a gate: none lowers a threshold, adds an exclusion, turns a test off, adds an exemption or edits a policy.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "hint"],
+      "properties": {
+        "kind": {
+          "description": "What the fix asks for. add-test: add tests that run the changed code. restore-test: restore a test that was deleted, removed or turned off. restore-assertion: restore the assertions or expected values a test had. revert-config: revert the change to a config, script, workflow or settings file. remove-dependency: remove the dependency the change adds. request-review: a person should look at the change and confirm it, which an agent cannot decide. split-pr: split the change into smaller pull requests. none: no code change fixes this; the hint says what to check.",
+          "enum": [
+            "add-test",
+            "restore-test",
+            "restore-assertion",
+            "revert-config",
+            "remove-dependency",
+            "request-review",
+            "split-pr",
+            "none"
+          ]
+        },
+        "target": {
+          "description": "The path, or path:line, the finding already names; never present on a message, never file text.",
+          "type": "string"
+        },
+        "hint": {
+          "description": "One fixed sentence for the code or signal id, at most 200 characters; never file text, diff text, a test name, a package name or a secret.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
       }
     }
   },
@@ -70,7 +105,11 @@
               "line": { "type": ["integer", "null"], "minimum": 1 },
               "detail": { "type": "string", "minLength": 1, "maxLength": 300 },
               "base": { "type": "string", "maxLength": 120 },
-              "head": { "type": "string", "maxLength": 120 }
+              "head": { "type": "string", "maxLength": 120 },
+              "fix": {
+                "description": "How to fix this test-integrity signal (since 0.9.0): one kind and one fixed sentence for its id, and its path or path:line as target; no kind lowers a gate. See $defs/fix.",
+                "$ref": "#/$defs/fix"
+              }
             }
           }
         },
@@ -298,7 +337,11 @@
               "severity": { "enum": ["block", "warn", "info", "pending"] },
               "path": { "type": ["string", "null"] },
               "line": { "type": ["integer", "null"], "minimum": 1 },
-              "detail": { "type": "string", "minLength": 1, "maxLength": 300 }
+              "detail": { "type": "string", "minLength": 1, "maxLength": 300 },
+              "fix": {
+                "description": "How to fix this policy violation (since 0.9.0): one kind and one fixed sentence for its rule id, and its path or path:line as target when it names a file; no kind lowers a gate. See $defs/fix.",
+                "$ref": "#/$defs/fix"
+              }
             }
           }
         }
@@ -332,6 +375,10 @@
                 "minLength": 1,
                 "maxLength": 220,
                 "pattern": "^[A-Za-z0-9._/+:@ -]+$"
+              },
+              "fix": {
+                "description": "How to fix this stale-instruction finding (since 0.9.0): one kind and one fixed sentence for its id, and path:line as target; no kind lowers a gate. See $defs/fix.",
+                "$ref": "#/$defs/fix"
               }
             }
           }
@@ -356,7 +403,11 @@
               "severity": { "enum": ["block", "warn", "info"] },
               "path": { "type": "string" },
               "line": { "type": ["integer", "null"], "minimum": 1 },
-              "detail": { "type": "string", "minLength": 1, "maxLength": 300 }
+              "detail": { "type": "string", "minLength": 1, "maxLength": 300 },
+              "fix": {
+                "description": "How to fix this prompt-injection signal (since 0.9.0): one kind and one fixed sentence for its id, and its path or path:line as target; no kind lowers a gate. See $defs/fix.",
+                "$ref": "#/$defs/fix"
+              }
             }
           }
         }
@@ -429,6 +480,10 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 300
+              },
+              "fix": {
+                "description": "How to fix this dependency signal (since 0.9.0): one kind and one fixed sentence for its id, and its path or path:line as target; no kind lowers a gate. See $defs/fix.",
+                "$ref": "#/$defs/fix"
               }
             }
           }

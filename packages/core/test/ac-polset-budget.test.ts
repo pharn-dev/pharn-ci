@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // E3 item 23 (policy settings), AC-16. check() is loaded inside the test body: the AC test is written before the build
 // adds the settings rules, so nothing the build adds may run while this file loads.
@@ -47,7 +48,8 @@ async function run(forbidden: string[], allow: string[]): Promise<Report> {
 }
 
 const ids = (report: Report) => new Set((report.policy?.violations ?? []).map((v) => v.id));
-const invalid = (report: Report) => report.messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID");
+// fix-hints (H6): every message now carries a `fix`; the pinned literals are unchanged, so this reads without it.
+const invalid = (report: Report) => withoutFix(report.messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID"));
 
 describe("the compare budget", { timeout: 120_000 }, () => {
   it("AC-16: over 2^26 pair units P02, P03 and P05 compare nothing and one compare-budget error is reported, while P04 and P06 still run; under it the rules run as normal", async () => {

@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { withoutV090SchemaEdits } from "./v090-codes.js";
 
 // The documents are read inside the test body, so the file loads whatever they say.
 
@@ -79,8 +80,10 @@ describe("test sources: documentation and schema", () => {
       return copy;
     };
     const v2 = "schema/report.v2.json";
+    // Re-pinned for fix-hints (H6): the `$defs.fix` object and the six `fix` properties are taken out first
+    // (v090-codes.ts pins them exactly).
     expect(
-      withoutEditedDescriptions(JSON.parse(readFileSync(new URL(v2, ROOT), "utf8"))),
+      withoutEditedDescriptions(JSON.parse(withoutV090SchemaEdits(readFileSync(new URL(v2, ROOT), "utf8")))),
       `${v2} differs from ${BASE_COMMIT} only in the message-code and languages descriptions`,
     ).toEqual(withoutEditedDescriptions(JSON.parse(atBase(v2).toString("utf8"))));
   });

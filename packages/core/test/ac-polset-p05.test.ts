@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // E3 item 23 (policy settings), AC-11. check() is loaded inside the test body: the AC test is written before the build
 // adds the settings rules, so nothing the build adds may run while this file loads.
@@ -74,7 +75,8 @@ describe("org policy rule P05: forbidden MCP server", { timeout: 60_000 }, () =>
       line,
       detail: PREFIX + entry,
     });
-    const p05 = (report.policy?.violations ?? []).filter((v) => v.id === "P05");
+    // fix-hints (H6): every finding now carries a `fix`; the pinned literals are unchanged, so they are read without it.
+    const p05 = withoutFix((report.policy?.violations ?? []).filter((v) => v.id === "P05"));
     expect(p05).toEqual([
       block(".claude/settings.json", settings.at('"evil",'), "evil"),
       block(".mcp.json", mcp.at('"evil"'), "evil and 2 more"),

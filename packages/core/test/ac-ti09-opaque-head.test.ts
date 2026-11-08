@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { check } from "../src/check.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { withoutFix } from "./v090-codes.js";
 
 // Review finding 22 (v0.4.0): a modified or renamed test-runner config whose settings were read at the merge base, and
 // that is not found (an opaque wrapper) or not read (padded past a cap, nested too deep) at HEAD, gives one TI09 for
@@ -55,8 +56,9 @@ function run(diff: string, base: Side, head: Side, mode: "block" | "warn" | "off
   expectValidReport(report);
   return {
     report,
-    signals: report.testIntegrity.signals.filter((signal) => signal.id === "TI09"),
-    unavailable: report.messages.filter((message) => message.code === "TEST_INTEGRITY_INDEX_UNAVAILABLE"),
+    // fix-hints (H6): every message and finding now carries a `fix`; the pinned literals are unchanged, so these read without it.
+    signals: withoutFix(report.testIntegrity.signals.filter((signal) => signal.id === "TI09")),
+    unavailable: withoutFix(report.messages.filter((message) => message.code === "TEST_INTEGRITY_INDEX_UNAVAILABLE")),
   };
 }
 
