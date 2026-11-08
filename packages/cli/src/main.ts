@@ -9,6 +9,7 @@ import {
   ConfigError,
   check,
   consistencySeverity,
+  DEPENDENCY_SOURCE_LIMITS,
   type DiffFile,
   type DirEntry,
   gitDiffArgs,
@@ -26,10 +27,12 @@ import {
   type RawInputs,
   readDiffChunks,
   renderMarkdown,
+  resolveDependencySettings,
   resolveInputs,
   resolveTestIntegrityMode,
   type StaleInstructionSources,
   scanAgentSetup,
+  selectDependencyPaths,
   type TestSources,
   unavailableTestSources,
   VERSION,
@@ -124,6 +127,7 @@ Options:
   --require-agent-setup  Fail when the repo has no agent setup files. Default: setup.require, then off
   --expect-agent-setup <tool>  Report this agent tool when no setup file configures it (repeatable; adds to setup.expect)
   --test-integrity <m>  Test-integrity mode: block, warn or off. Default: warn; test_integrity.mode in the config can only tighten it
+  --dependencies <m>   Dependency safety: auto (lockfile drift D04, off-registry sources D05), lookup or never. Default: auto. The CLI never looks packages up in a registry, so lookup runs as auto
   --config <path>      Config file. Default: <repo>/.pharn/ci.yml if present
   --policy-file <path> Org policy document to apply, relative to the repo root. It can only tighten; the CLI never fetches a policy
   --no-policy          Apply no org policy (the default; cannot be combined with --policy-file)
@@ -210,6 +214,7 @@ function parseOptions(argv: string[]) {
       "require-agent-setup": { type: "boolean" },
       "expect-agent-setup": { type: "string", multiple: true },
       "test-integrity": { type: "string" },
+      dependencies: { type: "string" },
       "policy-file": { type: "string" },
       "no-policy": { type: "boolean" },
       junit: { type: "string", multiple: true },
@@ -232,6 +237,7 @@ const FLAG_ERRORS: InputErrorText = {
   coverageRoot: "--coverage-root",
   expectAgentSetup: "--expect-agent-setup",
   testIntegrity: "--test-integrity",
+  dependencies: "--dependencies",
   noCoverageFile: "no coverage file: pass --coverage <file> or set coverage.file in .pharn/ci.yml",
 };
 
@@ -248,6 +254,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     requireAgentSetup: values["require-agent-setup"],
     expectAgentSetup: values["expect-agent-setup"],
     testIntegrity: values["test-integrity"],
+    dependencies: values.dependencies,
   };
   // Malformed --coverage-format, --coverage, --exclude, --coverage-root, --expect-agent-setup and --test-integrity flags are reported before any git
   // call: they need no config.
@@ -269,6 +276,8 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   if (expectError) throw expectError;
   const testIntegrityError = flagError("testIntegrity");
   if (testIntegrityError) throw testIntegrityError;
+  const dependenciesError = flagError("dependencies");
+  if (dependenciesError) throw dependenciesError;
   // A --junit pattern outside the working directory, or one the matcher does not support, is refused before any git call.
   const junitPatterns = values.junit ?? [];
   for (const pattern of junitPatterns) parseExcludePattern(pattern, "--junit");
@@ -302,6 +311,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     requireAgentSetup,
     expectAgentSetup,
     testIntegrityMode,
+    dependencies: dependencySettings,
   } = effective;
 
   // Say which format was read and why, on stderr so stdout stays the report alone.
@@ -429,6 +439,29 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     }
   }
 
+  // Dependency safety (A13): the manifests and lockfiles the change touches, at the merge base and at HEAD. Only D04 and
+  // D05 run: the CLI never makes a network call (AGENTS.md rule 5), so registry lookups are reported as off.
+  let dependencySources: TestSources | undefined;
+  const dependencyMode = resolveDependencySettings(dependencySettings).mode;
+  if (dependencyMode !== "never" && deps.gitBatch !== undefined && "parsed" in diff) {
+    const select = (files: readonly DiffFile[]) => selectDependencyPaths(files, repoFiles);
+    const selected = select(diff.parsed);
+    if (selected.base.length > 0 || selected.head.length > 0) {
+      dependencySources = await readTestSources(
+        { git: (args) => deps.git(args), gitBatch: deps.gitBatch },
+        { base, head: "HEAD", diff: diff.parsed, select, limits: DEPENDENCY_SOURCE_LIMITS },
+      );
+      if ("unavailable" in dependencySources.base) {
+        deps.stderr(
+          `pharn-ci: could not read the manifests and lockfiles from git, so dependency safety could not compare them: ${dependencySources.base.unavailable}\n`,
+        );
+      }
+      if (dependencyMode === "lookup") {
+        deps.stderr("pharn-ci: the CLI makes no network call, so dependency registry lookups (D01 to D03) are off\n");
+      }
+    }
+  }
+
   // File sizes in HEAD, so an empty agent setup file can be reported. Optional: without them the check still runs. The
   // raw text is kept: policy mode tells the tracked symbolic links from it.
   let repoFileBytes: Map<string, number> | undefined;
@@ -481,6 +514,8 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     ...(agentConfigSources === undefined ? {} : { agentConfigSources }),
     ...(agentInstructionSources === undefined ? {} : { agentInstructionSources }),
     ...(staleInstructionSources === undefined ? {} : { staleInstructionSources }),
+    ...(dependencySettings === undefined ? {} : { dependencySettings }),
+    ...(dependencySources === undefined ? {} : { dependencySources }),
     exclude,
     requireAgentSetup,
     ...(expectAgentSetup === undefined ? {} : { expectAgentSetup }),

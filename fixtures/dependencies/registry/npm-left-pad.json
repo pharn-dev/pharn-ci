@@ -1,0 +1,16 @@
+{
+  "url": "https://registry.npmjs.org/left-pad",
+  "status": 200,
+  "body": {
+    "_id": "left-pad",
+    "name": "left-pad",
+    "dist-tags": { "latest": "1.3.0" },
+    "versions": { "1.3.0": { "name": "left-pad", "version": "1.3.0" } },
+    "time": {
+      "modified": "2022-06-19T11:37:05.442Z",
+      "created": "2014-03-19T00:28:13.474Z",
+      "0.0.0": "2014-03-19T00:28:13.474Z",
+      "1.3.0": "2018-04-09T13:47:34.217Z"
+    }
+  }
+}

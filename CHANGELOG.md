@@ -21,10 +21,33 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   [--dry-run] -- <command>` runs a test command without a shell and exits 0 when it failed only because of quarantined
   tests, otherwise with the command's own code. A test id is `<classname>::<name>` (README, Flaky tests and JUnit
   results).
+- Dependency safety (A13), signals D01 to D05, for the dependencies a pull request adds or changes in npm manifests and
+  lockfiles (`package.json`, `package-lock.json`, `npm-shrinkwrap.json`, `pnpm-lock.yaml`, `yarn.lock`) and Python
+  ones (requirements files, `pyproject.toml`, `poetry.lock`, `uv.lock`). Offline and on by default (new input
+  `dependencies`, default `auto`; CLI flag `--dependencies`): D04 lockfile drift (`block`: a manifest's dependencies
+  changed while its lockfile did not or does not record them, or a lockfile gives the same version a new hash) and D05
+  a source outside the npm and PyPI registries (`block`: git, another host, a local file, or a new package index).
+  Opt-in with `dependencies: lookup` (or `dependencies.lookup: true` in `.pharn/ci.yml`, or the org policy's new
+  `dependencies.lookup` key in `schema/policy.v1.json`): the Action looks each added unscoped package up in
+  `registry.npmjs.org`, `api.npmjs.org` and `pypi.org`, sending only the package name in a `GET`, for D01 package does
+  not exist (`block`), D02 first published fewer than `min_age_days` (30) days before the head commit (`warn`) and D03
+  fewer than `min_weekly_downloads` (100) npm downloads last week (`warn`); lookups fail open to
+  `DEPENDENCY_LOOKUP_UNAVAILABLE` (warn). `.pharn/ci.yml` may only tighten (`lookup: true` never overrules a `never`
+  input; the minimums only rise); an app policy with a `dependencies` key requires the check. Report v2 gains the
+  optional `dependencies` object (`checked`, `lookups`, `signals`, `truncated`, `unread`) and the codes
+  `DEPENDENCY_D01` to `DEPENDENCY_D05`, `DEPENDENCY_LOOKUP_UNAVAILABLE` and `DEPENDENCY_CHECK_INCOMPLETE`; the PR comment
+  gains a **📦 Dependencies** section. A block finding fails the verdict like an agent config secret. A Dependabot bump
+  and a lockfile-only refresh give no finding. Limits in docs/LIMITS.md, Dependency safety.
 
 ### Changed
 
 ### Security
+
+- The CLI and the Action now read the committed text of the manifests and lockfiles a change touches (at most 5 MiB
+  each) at the merge base and at HEAD, unless `dependencies: never`; a finding names a path, a line, fixed words and
+  only allow-listed package names and version specs (`docs/THREAT-MODEL.md` row C9). With `dependencies: lookup` the
+  Action sends the names of added unscoped packages to `registry.npmjs.org`, `api.npmjs.org` and `pypi.org`, the first
+  requests to hosts other than GitHub and pharn.dev (`SECURITY.md`, Data handling; row D8, residual 43).
 
 ## [0.7.0] - 2026-11-08
 

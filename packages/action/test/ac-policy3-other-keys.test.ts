@@ -122,10 +122,26 @@ describe("policy keys this item does not apply", () => {
     expect(autoPolicy).toEqual({ source: "app", version: 7, fetchedAt: NOW.toISOString(), violations: [] });
     expect(autoRest).toEqual(never.report);
 
+    // Re-pinned for dependency safety (A13, v0.8.0): `dependencies` is no longer only carried. It is applied into the
+    // dependency settings (`resolveDependencySettings` reads them), and a policy file's `registries` would narrow what
+    // is looked up, so it is not allowed; every other carried key is still carried, not applied.
     for (const policy of [app(CARRIED), file(CARRIED)]) {
       const first = core.applyPolicy(layers, policy);
-      expect(first.ignored, policy.source).toEqual([]);
-      expect(first.inputs, policy.source).toEqual(resolved.inputs);
+      const isApp = policy.source === "app";
+      expect(first.ignored, policy.source).toEqual(
+        isApp ? [] : [{ setting: "dependencies.registries", layer: "policy-file", reason: "not-allowed" }],
+      );
+      expect(first.inputs, policy.source).toEqual({
+        ...resolved.inputs,
+        dependencies: {
+          policy: {
+            kind: isApp ? "app" : "file",
+            minAgeDays: 30,
+            minWeeklyDownloads: 100,
+            ...(isApp ? { registries: ["npm", "pypi"] } : {}),
+          },
+        },
+      });
       expect(first.acceptLabel, policy.source).toBeUndefined();
       // Pure: the same arguments give deep-equal results, and the arguments are not changed.
       expect(core.applyPolicy(layers, policy), policy.source).toEqual(first);

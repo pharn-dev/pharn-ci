@@ -1,0 +1,38 @@
+lockfileVersion: '6.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+dependencies:
+  '@babel/core':
+    specifier: ^7.24.0
+    version: 7.24.0
+  from-tarball:
+    specifier: https://example.com/from-tarball-1.0.0.tgz
+    version: '@example.com/from-tarball-1.0.0.tgz'
+
+devDependencies:
+  typescript:
+    specifier: ^5.4.0
+    version: 5.4.5
+
+packages:
+
+  /@babel/core@7.24.0(supports-color@8.1.1):
+    resolution: {integrity: sha512-fQfkg0Gjkza3nf0c7/w6Xf34BW4YvzNfACRLmmb7XRLa6XHdR+K9AlJlxneFfWYf6uhOzuzZVTjF/8KfndZANw==}
+    engines: {node: '>=6.9.0'}
+    dev: false
+
+  '@example.com/from-tarball-1.0.0.tgz':
+    resolution: {tarball: https://example.com/from-tarball-1.0.0.tgz}
+    name: from-tarball
+    version: 1.0.0
+    dev: false
+
+  /typescript@5.4.5:
+    resolution:
+      integrity: sha512-vcI4UpRgg81oIRUFwR0WSIHKt11nJ7SAVlYNIu+QpqeyXP+gpQJy/Z4+F0aGxSE4MqwjyXvW/TzgkLAx2AGHwQ==
+    engines: {node: '>=14.17'}
+    hasBin: true
+    dev: true

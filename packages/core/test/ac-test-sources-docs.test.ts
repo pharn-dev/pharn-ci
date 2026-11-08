@@ -57,6 +57,7 @@ describe("test sources: documentation and schema", () => {
         setupHealth?: unknown;
         injection?: unknown;
         flaky: { description?: string };
+        dependencies?: unknown;
       };
     }) => {
       const copy = structuredClone(schema);
@@ -73,6 +74,8 @@ describe("test sources: documentation and schema", () => {
       delete copy.properties.injection;
       // Re-pinned for flaky tests (A6), which gives the flaky object a description.
       delete copy.properties.flaky.description;
+      // Re-pinned for dependency safety (A13, v0.8.0), which adds the optional top-level dependencies object.
+      delete copy.properties.dependencies;
       return copy;
     };
     const v2 = "schema/report.v2.json";

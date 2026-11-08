@@ -1,0 +1,12 @@
+{
+  "name": "demo",
+  "version": "1.0.0",
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "chalk-alias": "npm:chalk@^5.3.0",
+    "from-git": "github:someone/from-git#v1.0.0",
+    "from-tarball": "https://example.com/pkgs/from-tarball-1.0.0.tgz",
+    "from-disk": "file:../vendor/from-disk",
+    "workspace-lib": "workspace:*"
+  }
+}

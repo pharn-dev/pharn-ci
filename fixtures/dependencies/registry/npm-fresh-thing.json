@@ -1,0 +1,15 @@
+{
+  "url": "https://registry.npmjs.org/fresh-thing",
+  "status": 200,
+  "body": {
+    "_id": "fresh-thing",
+    "name": "fresh-thing",
+    "dist-tags": { "latest": "0.1.0" },
+    "versions": { "0.1.0": { "name": "fresh-thing", "version": "0.1.0" } },
+    "time": {
+      "modified": "2026-11-02T09:00:00.000Z",
+      "created": "2026-11-02T08:59:58.120Z",
+      "0.1.0": "2026-11-02T08:59:58.120Z"
+    }
+  }
+}

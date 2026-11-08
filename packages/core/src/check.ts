@@ -6,6 +6,9 @@ import { matchCoveragePaths } from "./coverage/match.js";
 import { mergeCoverageMaps } from "./coverage/merge.js";
 import type { CoverageFormat, CoverageFormatSelection, CoverageMap } from "./coverage/types.js";
 import type { CoverageDiscoveryNotFound } from "./coverageDiscovery.js";
+import { checkDependencies } from "./dependencies/check.js";
+import type { DependencyLookups } from "./dependencies/lookup.js";
+import { type DependencySettingsLayers, resolveDependencySettings } from "./dependencies/settings.js";
 import { type DiffFile, parseUnifiedDiff } from "./diff/unified.js";
 import { computeDiffCoverage } from "./diffCoverage.js";
 import { binaryCoveredPaths, changedConfigPaths, configRepoPath, trackedCoverageFile } from "./gateInputs.js";
@@ -234,6 +237,22 @@ export interface CheckInput {
    * unless the org policy sets `flaky.quarantine: false`. Absent quarantines nothing.
    */
   quarantine?: readonly string[];
+  /**
+   * The layers of the dependency safety settings (the `dependencies` input, `.pharn/ci.yml` and the org policy; see
+   * `resolveDependencySettings`). Absent means the defaults: mode `auto`.
+   */
+  dependencySettings?: DependencySettingsLayers;
+  /**
+   * The text of the manifests and lockfiles the change touches, at the merge base and at HEAD
+   * (`selectDependencyPaths`), gathered by the CLI and the Action unless the mode is `never`. Absent means dependency
+   * safety adds nothing and the report is the one it was.
+   */
+  dependencySources?: TestSources;
+  /**
+   * The registry lookups the Action made for the packages `planDependencyLookups` named, with the HEAD commit time. Only
+   * read in mode `lookup`; absent there (the CLI never looks up) leaves `dependencies.lookups` at `off`.
+   */
+  dependencyLookups?: DependencyLookups;
 }
 
 /** Signals sorted by id, then path, then line (none first), then detail, in code-unit order. */
@@ -566,6 +585,18 @@ export function check(input: CheckInput): Report {
   const quarantineOn = input.policy?.document?.flaky?.quarantine !== false;
   const junit =
     input.junit === undefined ? null : junitReport(input.junit, quarantineOn ? input.quarantine : undefined);
+  // Dependency safety (A13) needs the diff and the sources; mode never computes nothing.
+  const dependencySettings = resolveDependencySettings(input.dependencySettings);
+  const dependencyResult =
+    parsedDiff === null || input.dependencySources === undefined || dependencySettings.mode === "never"
+      ? undefined
+      : checkDependencies({
+          diff: parsedDiff,
+          sources: input.dependencySources,
+          repoFiles: input.repoFiles,
+          settings: dependencySettings,
+          ...(input.dependencyLookups === undefined ? {} : { lookups: input.dependencyLookups }),
+        });
   const base = {
     version: input.version,
     threshold: input.threshold,
@@ -603,6 +634,7 @@ export function check(input: CheckInput): Report {
     ...(agentConfigMessages.length === 0 ? {} : { agentConfigSecretMessages: agentConfigMessages }),
     ...(injectionMessageList.length === 0 ? {} : { injectionMessages: injectionMessageList }),
     ...(injection === null || injection.signals.length === 0 ? {} : { injectionSignals: injection.signals }),
+    ...(dependencyResult === undefined ? {} : { dependencies: dependencyResult }),
     ...(policyMessages.length === 0 ? {} : { policyMessages }),
     ...(junit?.flaky === undefined ? {} : { flaky: junit.flaky }),
     ...(junit === null || junit.messages.length === 0 ? {} : { flakyMessages: junit.messages }),

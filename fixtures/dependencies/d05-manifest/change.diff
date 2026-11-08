@@ -1,0 +1,10 @@
+diff --git a/package.json b/package.json
+index 1111111..2222222 100644
+--- a/package.json
++++ b/package.json
+@@ -5,0 +6,5 @@
++    "chalk-alias": "npm:chalk@^5.3.0",
++    "from-git": "github:someone/from-git#v1.0.0",
++    "from-tarball": "https://example.com/pkgs/from-tarball-1.0.0.tgz",
++    "from-disk": "file:../vendor/from-disk",
++    "workspace-lib": "workspace:*"

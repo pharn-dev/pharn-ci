@@ -233,6 +233,7 @@ const agents = objectOf(
 
 const dependencies = objectOf(
   known([
+    ["lookup", bool],
     ["registries", listOf(enumOf(POLICY_REGISTRIES))],
     ["min_age_days", integerIn(POLICY_MIN_AGE_DAYS_MIN, POLICY_MIN_AGE_DAYS_MAX)],
     ["min_weekly_downloads", integerIn(POLICY_MIN_WEEKLY_DOWNLOADS_MIN, POLICY_MIN_WEEKLY_DOWNLOADS_MAX)],

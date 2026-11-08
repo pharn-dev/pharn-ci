@@ -101,6 +101,8 @@ describe("schema: only the TI15 level sentence changes", () => {
     // Re-pinned for A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): the optional testIntegrity.exercise property is taken out
     // too (v070-codes.ts pins it exactly); the v0.7.0 code text is part of the appended text.
     // Re-pinned for stale instructions (Horizon 2 item H3): its top-level setupHealth property is taken out the same way.
+    // Re-pinned for dependency safety (A13, v0.8.0): its top-level `dependencies` object is taken out the same way
+    // (withoutV080Properties; v080-codes.ts pins it exactly); its part of the v0.8.0 code text is in the appended text.
     const withIsAgentPr = withoutSchemaLevelEdits(
       // Re-pinned for flaky tests (A6, v0.8.0): the flaky description is taken out the same way (v080-codes.ts).
       withoutV080Properties(withoutV070Properties(readNow("schema/report.v2.json").toString("utf8"))),

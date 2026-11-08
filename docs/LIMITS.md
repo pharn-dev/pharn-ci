@@ -1157,6 +1157,53 @@ What they miss:
   signal's exit code is `128 + n` as the shell reports it. `junit-include-output` is not shipped: no output is ever read
   or sent.
 
+## Dependency safety
+
+Dependency safety (D01 to D05, `DEPENDENCY_*`) reads the manifests and lockfiles a change touches, at the merge base
+and at HEAD, and with lookups on asks the public registries about the packages the change adds. It checks where code
+comes from and how new it is, not what it does. What it misses:
+
+- **Only npm and Python.** `package.json`, `package-lock.json`, `npm-shrinkwrap.json`, `pnpm-lock.yaml` (lockfile
+  versions 5 to 9), `yarn.lock` (classic and berry), requirements files, `pyproject.toml`, `poetry.lock` and `uv.lock`.
+  Go (`go.mod`, `go.sum`), Cargo, Bundler, Composer, Maven, Gradle, NuGet, `Pipfile.lock`, `setup.py`, `setup.cfg`,
+  `environment.yml` and `bun.lockb` are not read.
+- **Only what is added or changed.** A dependency already in the base is never judged again, however old its risk; a
+  version change of an existing package is not looked up (the package was there before). Removed dependencies are only
+  counted for D04's "the lockfile did not change" case.
+- **Declared sources only.** A registry set outside the lockfile (`.npmrc`, `.yarnrc.yml`, pip configuration,
+  `PIP_INDEX_URL`) is not seen. pnpm records no registry host for a registry package, so a private registry configured
+  in `.npmrc` is invisible to D05 there; a yarn berry `npm:` resolution is trusted as the configured registry. A
+  private registry or mirror that a lockfile does record (Artifactory, Verdaccio, GitHub Packages, a private PyPI
+  index) is reported as off the registry (D05): private registries are not supported unless they are on the allowed
+  list (a later version may take a policy list with a token).
+- **Allowed hosts are exact.** `registry.npmjs.org`, `registry.yarnpkg.com`, `pypi.org` and `files.pythonhosted.org`,
+  https only, no user name, password or port. `http://registry.npmjs.org`, a CDN mirror or a regional registry is D05.
+- **D04 compares, it does not resolve.** It needs the lockfile to record the manifest's spec as written
+  (package-lock.json v2+ and pnpm importers, yarn headers) or, for poetry and uv, the package name. package-lock.json
+  v1 records no specifiers, so only "the lockfile did not change" is judged there. A lockfile in an ancestor directory
+  counts only when it lists the manifest's directory as an importer (package-lock.json v2+, pnpm) or workspace (yarn
+  berry); a classic `yarn.lock` at a workspace root is not matched to a member's `package.json`. For Python, only a
+  `poetry.lock` or `uv.lock` beside the `pyproject.toml` counts; requirements files have no lockfile. A lockfile-only
+  change fires D04 only when an entry keeps its key and version but its hash of the same algorithm changes (a
+  Dependabot-style refresh changes versions and passes); a direct dependency moved to a version outside its declared
+  range is not detected (no semver resolution). Python lockfile hashes are not compared.
+- **Requirements files.** `-r` and `-c` includes are not followed; environment variables in a line are not expanded; a
+  local directory (`-e .`, `./pkg`) is not a dependency, only a local archive (`.whl`, `.tar.gz`, `.zip`) is.
+- **Caps.** A manifest or lockfile over 5 MiB, past 100 files or 32 MiB a side is not read and is named in
+  `dependencies.unread` (`DEPENDENCY_CHECK_INCOMPLETE`, warn), never guessed; a TOML syntax error makes the whole file
+  unread. At most 200 findings are listed (`truncated` counts the rest).
+- **Lookups (D01 to D03) are opt-in, Action-only and fail-open.** Scoped npm names (`@scope/x`) are never looked up, so
+  a slopsquatted scoped name is not caught; nor are `workspace:`, git, URL and path specs, or names a touched lockfile
+  resolves off the registries. At most 50 packages, 4 at once, 5 s each and 60 s per run; a timeout, an error status, a
+  redirect, a body that is not JSON or the cap leaves the package unchecked (`DEPENDENCY_LOOKUP_UNAVAILABLE`). A registry
+  document over 2 MiB counts as an established package (only long histories are that large), so D02 is not judged for
+  it. D02 compares the first publish with the head commit's time, which a commit can set; with no readable commit time
+  D02 is not judged. D03 is npm only (PyPI has no first-party download count), and a package with no download count yet
+  (a 404 from the downloads API) is not judged. A malicious version of an established, popular package passes D01 to
+  D03. The CLI never looks up.
+- **No per-signal severities.** D01, D04 and D05 always block and D02 and D03 always warn; the org policy cannot change
+  a dependency signal's severity yet (it can turn the whole check on, and raise the minimums).
+
 ## Org policy
 
 The org policy (`policy: auto`, `required` or `file:<path>`; see the README, Org policy) is fetched, validated and

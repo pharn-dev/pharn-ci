@@ -202,6 +202,21 @@ export const MESSAGE_HINTS: Readonly<Record<MessageCode, Hint>> = {
     "Narrow `junit-paths` to the files of this job, or merge the reports; the results past the limits are not counted or uploaded.",
   FLAKY_QUARANTINED_FAILURES:
     "Nothing to fix in the pull request; the org's quarantine list on pharn.dev says which tests are known to be flaky.",
+  // Dependency safety (A13): the dependency is what to fix, never the check.
+  DEPENDENCY_D01:
+    "Check the package name against the registry: an agent may have invented it, and anyone can publish a package under an invented name. Use the real package, or remove the dependency.",
+  DEPENDENCY_D02:
+    "Check who publishes the package and why it is new before you merge; prefer an established package. This is a warning only.",
+  DEPENDENCY_D03:
+    "Check that this is the package you meant (a typo of a popular name is a common trap) and who publishes it. This is a warning only.",
+  DEPENDENCY_D04:
+    "Run the package manager's install so the lockfile matches the manifest, and commit both; a lockfile that changes a hash for the same version needs an explanation.",
+  DEPENDENCY_D05:
+    "Depend on a published registry version instead, or have a person review where the code comes from; a git, URL or local source is not covered by the registry's checks.",
+  DEPENDENCY_LOOKUP_UNAVAILABLE:
+    "Re-run the job; the registry lookups fail open, so D01 to D03 were not checked for the packages counted.",
+  DEPENDENCY_CHECK_INCOMPLETE:
+    "Keep manifests and lockfiles valid and under 5 MiB, and run on a checkout of the pull request head with fetch-depth: 0, so they can be compared.",
 };
 
 /** The hint text for a message code, or undefined when it has none. `label` is the report's accept label. */
@@ -694,6 +709,96 @@ function flakyLines(report: Report, maxRows: number): string[] {
   return lines;
 }
 
+/** The signal messages of dependency safety (`DEPENDENCY_D01` to `DEPENDENCY_D05`). */
+const DEPENDENCY_MESSAGE_CODE = /^DEPENDENCY_D0[1-5]$/;
+/** Most findings listed in the Dependencies section; the rest are counted. */
+const MAX_DEPENDENCY_FINDINGS = 20;
+/** Fixed words for `dependencies.lookups`; another value renders as off. */
+const LOOKUP_WORDS = {
+  off: "registry lookups off",
+  done: "registry lookups done",
+  unavailable: "registry lookups incomplete",
+} as const;
+
+type ShownDependencySignal = {
+  id: string;
+  severity: string;
+  path: string;
+  line: number | null;
+  detail: string;
+  name?: string;
+  version?: string;
+};
+
+/** The signals of a report's dependencies object; a hand-built report is untrusted, so anything but an array is none. */
+function dependencySignalsOf(report: Report): ShownDependencySignal[] {
+  const signals: unknown = report.dependencies?.signals;
+  return Array.isArray(signals) ? (signals as ShownDependencySignal[]) : [];
+}
+
+/** Whether the report gets a Dependencies section: a dependencies object with something added, changed or found. */
+function hasDependencySection(report: Report): boolean {
+  const deps = report.dependencies;
+  if (typeof deps !== "object" || deps === null) return false;
+  return (
+    (typeof deps.checked === "number" && deps.checked > 0) ||
+    dependencySignalsOf(report).length > 0 ||
+    report.messages.some((m) => m.code === "DEPENDENCY_CHECK_INCOMPLETE" || m.code === "DEPENDENCY_LOOKUP_UNAVAILABLE")
+  );
+}
+
+/** The dependency signal findings the section lists: blocks first, cut at the cap. */
+function listedDependencySignals(report: Report, maxRows: number): ShownDependencySignal[] {
+  return bySeverity(dependencySignalsOf(report)).slice(0, Math.min(MAX_DEPENDENCY_FINDINGS, Math.max(maxRows, 1)));
+}
+
+/**
+ * The Dependencies section (A13): how many added or changed dependencies were checked and whether the registry was
+ * looked up, then each finding (blocks first) with its package name and version when the report carries them, the hint
+ * of each signal id once, and the lookup and unread lines.
+ */
+function dependencyLines(report: Report, maxRows: number): string[] {
+  const label = acceptLabelOf(report);
+  const deps = report.dependencies;
+  const checked = typeof deps?.checked === "number" ? deps.checked : 0;
+  const lookups = LOOKUP_WORDS[deps?.lookups as keyof typeof LOOKUP_WORDS] ?? LOOKUP_WORDS.off;
+  const lines: string[] = [
+    "### 📦 Dependencies",
+    "",
+    `${countOf(checked, "added or changed dependency", "added or changed dependencies")} checked · ${lookups}`,
+    "",
+  ];
+  const signals = dependencySignalsOf(report);
+  const listed = listedDependencySignals(report, maxRows);
+  if (signals.length === 0) lines.push("No dependency findings.", "");
+  const hinted = new Set<string>();
+  for (const signal of listed) {
+    const icon = SEVERITY_ICON[signal.severity as keyof typeof SEVERITY_ICON] ?? LEVEL_ICON.info;
+    const id = inlineText(String(signal.id));
+    const where = typeof signal.line === "number" ? code(`${signal.path}:${signal.line}`) : code(String(signal.path));
+    const name = typeof signal.name === "string" ? ` ${code(signal.name)}` : "";
+    const version = typeof signal.version === "string" ? ` ${code(signal.version)}` : "";
+    lines.push(`- ${icon} **${id}** ${where}${name}${version} — ${inlineText(String(signal.detail))}`);
+    if (!hinted.has(id) && /^D0[1-5]$/.test(id)) {
+      hinted.add(id);
+      const hint = hintFor(`DEPENDENCY_${id}`, label);
+      if (hint !== undefined) lines.push(`  - Hint: ${hint}`);
+    }
+  }
+  const more = signals.length - listed.length + (typeof deps?.truncated === "number" ? deps.truncated : 0);
+  if (more > 0) lines.push(`- _…and ${countOf(more, "more finding", "more findings")} in report.json._`);
+  for (const [codeName, word] of [
+    ["DEPENDENCY_LOOKUP_UNAVAILABLE", "Lookups"],
+    ["DEPENDENCY_CHECK_INCOMPLETE", "Not checked"],
+  ] as const) {
+    const message = report.messages.find((m) => m.code === codeName);
+    if (message !== undefined)
+      lines.push(`- ⚠️ ${word}: ${inlineText(message.text)}`, `  - Hint: ${hintFor(codeName, label)}`);
+  }
+  if (lines[lines.length - 1] !== "") lines.push("");
+  return lines;
+}
+
 /** Render a Report as GitHub-flavored markdown (PR comment, job summary, CLI). */
 export function renderMarkdown(report: Report, options: RenderMarkdownOptions = {}): string {
   const maxRows = options.maxRows ?? 50;
@@ -756,6 +861,8 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
   if (hasPolicy(report)) out.push(...policyLines(report, maxRows));
   const stale = staleLines(report, maxRows);
   out.push(...stale);
+  const dependencySection = hasDependencySection(report);
+  if (dependencySection) out.push(...dependencyLines(report, maxRows));
   const flaky = flakyLines(report, maxRows);
   out.push(...flaky);
 
@@ -777,10 +884,20 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
       (policyListsP01 && (code === "NO_AGENT_SETUP_FILES" || code === "AGENT_SETUP_EXPECTED_MISSING")));
   // The same for the prompt-injection signals the Content section lists.
   const listedInjectionIds = new Set(listedInjection(report).map((s) => `INJECTION_${s.id}`));
+  // The Dependencies section lists its findings and its lookup and unread lines the same way.
+  const listedDependencyCodes = new Set(
+    dependencySection ? listedDependencySignals(report, maxRows).map((s) => `DEPENDENCY_${String(s.id)}`) : [],
+  );
+  const inDependencySection = (code: string): boolean =>
+    dependencySection &&
+    ((DEPENDENCY_MESSAGE_CODE.test(code) && listedDependencyCodes.has(code)) ||
+      code === "DEPENDENCY_LOOKUP_UNAVAILABLE" ||
+      code === "DEPENDENCY_CHECK_INCOMPLETE");
   const messages = report.messages.filter(
     (m) =>
       !(SIGNAL_MESSAGE_CODE.test(m.code) && listedIds.has(m.code)) &&
       !(INJECTION_MESSAGE_CODE.test(m.code) && listedInjectionIds.has(m.code)) &&
+      !inDependencySection(m.code) &&
       !inPolicySection(m.code) &&
       !(stale.length > 0 && m.code.startsWith("SETUP_STALE_")) &&
       !(flaky.length > 0 && m.code === "FLAKY_QUARANTINED_FAILURES") &&

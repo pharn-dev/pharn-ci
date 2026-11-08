@@ -1,0 +1,10 @@
+{
+  "url": "https://pypi.org/pypi/fresh-flask/json",
+  "status": 200,
+  "body": {
+    "info": { "name": "fresh-flask", "version": "0.0.1" },
+    "releases": {
+      "0.0.1": [{ "upload_time": "2026-11-05T12:00:00", "upload_time_iso_8601": "2026-11-05T12:00:00.000000Z" }]
+    }
+  }
+}

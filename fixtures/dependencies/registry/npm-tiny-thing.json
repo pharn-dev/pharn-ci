@@ -1,0 +1,15 @@
+{
+  "url": "https://registry.npmjs.org/tiny-thing",
+  "status": 200,
+  "body": {
+    "_id": "tiny-thing",
+    "name": "tiny-thing",
+    "dist-tags": { "latest": "2.0.0" },
+    "versions": { "2.0.0": { "name": "tiny-thing", "version": "2.0.0" } },
+    "time": {
+      "modified": "2021-01-04T10:00:00.000Z",
+      "created": "2019-05-01T12:00:00.000Z",
+      "2.0.0": "2021-01-04T10:00:00.000Z"
+    }
+  }
+}

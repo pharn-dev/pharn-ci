@@ -1,0 +1,8 @@
+{
+  "name": "demo",
+  "version": "1.0.0",
+  "workspaces": ["packages/*"],
+  "dependencies": {
+    "chalk": "^5.3.0"
+  }
+}

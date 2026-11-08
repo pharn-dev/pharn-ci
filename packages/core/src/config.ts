@@ -37,6 +37,15 @@ export interface PharnConfig {
      */
     mode?: TestIntegrityMode;
   };
+  /**
+   * Dependency safety (A13). The pull request carries this file, so each key may only tighten: `lookup: true` turns the
+   * registry lookups on over the default `auto` (never over the `never` input), and the minimums only raise the defaults.
+   */
+  dependencies?: {
+    lookup?: boolean;
+    minAgeDays?: number;
+    minWeeklyDownloads?: number;
+  };
 }
 
 export class ConfigError extends Error {
@@ -291,10 +300,12 @@ function unsupportedFix(first: string): string {
 function validateConfig(doc: YamlMap): PharnConfig {
   const config: PharnConfig = {};
   for (const key of Object.keys(doc)) {
-    if (key !== "coverage" && key !== "setup" && key !== "test_integrity") {
+    if (key !== "coverage" && key !== "setup" && key !== "test_integrity" && key !== "dependencies") {
       throw new ConfigError(`unknown top-level key "${key}"`);
     }
   }
+  const dependencies = validateDependencies(doc.dependencies);
+  if (dependencies !== undefined) config.dependencies = dependencies;
   const coverage = validateCoverage(doc.coverage);
   if (coverage !== undefined) config.coverage = coverage;
   const setup = validateSetup(doc.setup);
@@ -302,6 +313,51 @@ function validateConfig(doc: YamlMap): PharnConfig {
   const testIntegrity = validateTestIntegrity(doc.test_integrity);
   if (testIntegrity !== undefined) config.testIntegrity = testIntegrity;
   return config;
+}
+
+/** A whole number in `min`..`max` from a plain number the reader parsed; `1e2` and `30.0` are refused. */
+function integerSetting(
+  map: YamlMap,
+  key: string,
+  value: Scalar | Scalar[] | YamlMap,
+  label: string,
+  max: number,
+): number {
+  const text = typeof value === "number" ? NUMBER_TEXT.get(map)?.get(key) : undefined;
+  if (typeof value !== "number" || text === undefined || !/^\d+$/.test(text) || value > max) {
+    throw new ConfigError(`${label} must be a whole number between 0 and ${max}`);
+  }
+  return value;
+}
+
+function validateDependencies(value: YamlMap[string] | undefined): PharnConfig["dependencies"] | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "object" || Array.isArray(value)) throw new ConfigError(`"dependencies" must be a mapping`);
+  const dependencies: NonNullable<PharnConfig["dependencies"]> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (entry === null) continue;
+    switch (key) {
+      case "lookup":
+        if (typeof entry !== "boolean") throw new ConfigError(`"dependencies.lookup" must be true or false`);
+        dependencies.lookup = entry;
+        break;
+      case "min_age_days":
+        dependencies.minAgeDays = integerSetting(value, key, entry, '"dependencies.min_age_days"', 3650);
+        break;
+      case "min_weekly_downloads":
+        dependencies.minWeeklyDownloads = integerSetting(
+          value,
+          key,
+          entry,
+          '"dependencies.min_weekly_downloads"',
+          1_000_000_000,
+        );
+        break;
+      default:
+        throw new ConfigError(`unknown key "dependencies.${key}"`);
+    }
+  }
+  return dependencies;
 }
 
 function validateTestIntegrity(value: YamlMap[string] | undefined): PharnConfig["testIntegrity"] | undefined {

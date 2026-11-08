@@ -93,6 +93,8 @@ export interface PolicyAgents {
 }
 
 export interface PolicyDependencies {
+  /** Whether the Action looks up added packages in the public registries (D01 to D03). */
+  lookup?: boolean;
   registries?: PolicyRegistry[];
   min_age_days?: number;
   min_weekly_downloads?: number;

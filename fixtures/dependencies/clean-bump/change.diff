@@ -1,0 +1,18 @@
+diff --git a/package.json b/package.json
+index 6f9b47b..8a428e6 100644
+--- a/package.json
++++ b/package.json
+@@ -19,2 +19,2 @@
+-    "@biomejs/biome": "2.5.15",
+-    "@types/node": "^26.6.5",
++    "@biomejs/biome": "2.6.4",
++    "@types/node": "^26.6.6",
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index 40fcbb4..561aaa5 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -12,2 +12,2 @@ importers:
+-        specifier: 2.5.15
+-        version: 2.5.15
++        specifier: 2.6.4
++        version: 2.6.4

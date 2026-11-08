@@ -52,6 +52,30 @@ export const MAX_TEST_SOURCE_FILE_BYTES = 524288;
 /** At most this many bytes are read per side, counting the files that turn out to be binary. */
 export const MAX_TEST_SOURCE_TOTAL_BYTES = 16777216;
 
+/** The caps of one read plan: files per side, bytes per file and bytes per side. */
+export interface TestSourceReadLimits {
+  files: number;
+  fileBytes: number;
+  totalBytes: number;
+}
+
+/** The caps of the test sources (and of the P13 sources, which use the same reader). */
+export const TEST_SOURCE_LIMITS: TestSourceReadLimits = {
+  files: MAX_TEST_SOURCE_FILES,
+  fileBytes: MAX_TEST_SOURCE_FILE_BYTES,
+  totalBytes: MAX_TEST_SOURCE_TOTAL_BYTES,
+};
+
+/**
+ * The caps of the dependency sources (A13): lockfiles are large, so a file may be up to 5 MiB, at most 100 files and
+ * 32 MiB per side. A larger file is not read and is named in `dependencies.unread`.
+ */
+export const DEPENDENCY_SOURCE_LIMITS: TestSourceReadLimits = {
+  files: 100,
+  fileBytes: 5_242_880,
+  totalBytes: 33_554_432,
+};
+
 const TEST_CONFIG_PREFIXES: readonly string[] = [
   "vitest.config.",
   "vite.config.",
@@ -142,6 +166,7 @@ export interface TestSourceObject {
 export function planTestSourceReads(
   paths: readonly string[],
   objects: ReadonlyMap<string, TestSourceObject | null>,
+  limits: TestSourceReadLimits = TEST_SOURCE_LIMITS,
 ): { read: string[]; dropped: TestSourceDrop[] } {
   const read: string[] = [];
   const dropped: TestSourceDrop[] = [];
@@ -155,11 +180,11 @@ export function planTestSourceReads(
     const object = objects.get(path);
     if (object === undefined || object === null || object.type !== "blob") {
       dropped.push({ path, reason: "missing" });
-    } else if (object.size > MAX_TEST_SOURCE_FILE_BYTES) {
+    } else if (object.size > limits.fileBytes) {
       dropped.push({ path, reason: "too-large" });
-    } else if (read.length >= MAX_TEST_SOURCE_FILES) {
+    } else if (read.length >= limits.files) {
       dropped.push({ path, reason: "over-file-cap" });
-    } else if (tripped || total + object.size > MAX_TEST_SOURCE_TOTAL_BYTES) {
+    } else if (tripped || total + object.size > limits.totalBytes) {
       tripped = true;
       dropped.push({ path, reason: "over-total-cap" });
     } else {

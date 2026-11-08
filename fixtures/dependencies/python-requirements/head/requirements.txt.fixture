@@ -1,0 +1,8 @@
+# runtime
+--index-url https://pypi.org/simple
+--extra-index-url https://pkgs.example.com/simple
+-e .
+requests==2.32.3 \
+    --hash=sha256:70761cfe03c773ceb22aa2f671b4757976145175cdfca038c02654d061d6dcc6
+mypkg @ git+https://github.com/someone/mypkg.git@v1.0
+flask>=3.0 ; python_version >= "3.9"

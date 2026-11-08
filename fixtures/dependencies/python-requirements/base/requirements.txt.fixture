@@ -1,0 +1,4 @@
+# runtime
+--index-url https://pypi.org/simple
+-e .
+requests==2.31.0

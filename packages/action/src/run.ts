@@ -6,6 +6,9 @@ import {
   type CheckInput,
   check,
   consistencySeverity,
+  DEPENDENCY_SOURCE_LIMITS,
+  type DependencyLookups,
+  type DependencySettingsLayers,
   type DiffFile,
   type DirEntry,
   detectAgentPr,
@@ -22,16 +25,20 @@ import {
   parseJunitSources,
   parseLsTreeSizes,
   parseLsTreeSymlinks,
+  planDependencyLookups,
   policySettingsPaths,
   type RawInputs,
+  REGISTRY_LOOKUP_HOSTS,
   type Report,
   type ResolvedPolicy,
   readDiffChunks,
   renderMarkdown,
+  resolveDependencySettings,
   resolveInputs,
   resolveTestIntegrityMode,
   type StaleInstructionSources,
   scanAgentSetup,
+  selectDependencyPaths,
   selectSelfModificationPaths,
   type TestIntegrityModeSettings,
   type TestSources,
@@ -60,6 +67,7 @@ import { parseAppUrl } from "./app-client.js";
 import { parsePolicyInput } from "./policy-input.js";
 import { obtainPolicy } from "./policy-source.js";
 import { COMMIT_SHA, type PrNumberTarget, parsePrNumberInputs, resolvePrNumberTarget } from "./pr-number.js";
+import { lookupDependencies } from "./registry-lookup.js";
 import { resolveBase, runMeta } from "./run-meta.js";
 import { runUpload } from "./upload.js";
 import { parseUploadInput } from "./upload-input.js";
@@ -210,6 +218,11 @@ export interface ActionDeps {
   hasOidcEnv?: boolean | undefined;
   now?: (() => Date) | undefined;
   timeoutMs?: number | undefined;
+  /**
+   * The timeout of one registry lookup in milliseconds (registry-lookup.ts, mode `lookup` only); `REGISTRY_TIMEOUT_MS`
+   * when absent. The lookups use `fetch` and `now` too.
+   */
+  registryTimeoutMs?: number | undefined;
   /** The upload's overall deadline in milliseconds, read with `now`; `UPLOAD_DEADLINE_MS` (upload.ts) when absent. */
   uploadDeadlineMs?: number | undefined;
   sleep?: ((ms: number) => Promise<void>) | undefined;
@@ -234,6 +247,7 @@ const INPUT_ERRORS: InputErrorText = {
   coverageRoot: "coverage-root",
   expectAgentSetup: "expect-agent-setup",
   testIntegrity: "test-integrity",
+  dependencies: "dependencies",
   noCoverageFile: "no coverage file: set the coverage-file input or coverage.file in .pharn/ci.yml",
 };
 
@@ -325,6 +339,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     requireAgentSetup: parseBool(input("require-agent-setup"), "require-agent-setup"),
     expectAgentSetup: splitPatternList(input("expect-agent-setup")),
     testIntegrity: input("test-integrity") || undefined,
+    dependencies: input("dependencies") || undefined,
   };
   const resolved = resolveInputs(
     config,
@@ -349,6 +364,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     requireAgentSetup,
     expectAgentSetup,
     testIntegrityMode,
+    dependencies: dependencySettings,
   } = effective;
   const failOnVerdict = parseBool(input("fail-on-verdict"), failOnVerdictName(deps)) ?? true;
   const comment = parseBool(input("comment"), "comment") ?? true;
@@ -405,6 +421,23 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const selfModificationSources = await gatherSelfModificationSources(deps, { diff, localBase, target, policy });
   // Stale instructions (SI01 to SI04): the committed instruction files, the root manifests and SI04's commit times.
   const staleInstructionSources = await gatherStaleInstructionSources(deps, { repoFiles, diff, localBase, target });
+  // Dependency safety (A13): the touched manifests and lockfiles, and, only in mode lookup, the registry lookups.
+  const dependencySources = await gatherDependencySources(deps, {
+    diff,
+    localBase,
+    target,
+    repoFiles,
+    dependencySettings,
+  });
+  const dependencyLookups =
+    dependencySources === undefined || !("parsed" in diff)
+      ? undefined
+      : await gatherDependencyLookups(deps, {
+          diff: diff.parsed,
+          sources: dependencySources,
+          repoFiles,
+          dependencySettings,
+        });
   // The Python test files of the sources, indexed by one interpreter run; nothing runs for JS/TS-only changes.
   const pythonTestIndex =
     testSources === undefined
@@ -469,6 +502,9 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     ...(junit === undefined ? {} : { junit }),
     // Only the app's own answer carries a quarantine list; a pull request has no way to add one.
     ...(junit === undefined || quarantine === undefined ? {} : { quarantine }),
+    ...(dependencySettings === undefined ? {} : { dependencySettings }),
+    ...(dependencySources === undefined ? {} : { dependencySources }),
+    ...(dependencyLookups === undefined ? {} : { dependencyLookups }),
   };
   const runMetaBase = runMeta(deps.context, { baseRef: baseRefInput, ...(target === undefined ? {} : { target }) });
   if (runMetaBase === undefined) deps.info("run metadata is incomplete, so report.json carries no meta");
@@ -703,6 +739,86 @@ async function gatherSelfModificationSources(
     );
   }
   return sources;
+}
+
+/**
+ * The merge-base and head text of the manifests and lockfiles the change touches, for dependency safety (A13), with the
+ * dependency caps (5 MiB a file); undefined when the effective mode is `never` or the deps carry no batch git runner.
+ * Only a diff parsed from local git can be read from committed objects: PR-number mode, the compare API and a missing
+ * diff give an unavailable marker (check() then names any touched manifest as unread), and no GitHub API call is made.
+ * A diff that touches no manifest or lockfile makes no git call.
+ */
+async function gatherDependencySources(
+  deps: ActionDeps,
+  from: {
+    diff: CheckInput["diff"];
+    localBase: string | undefined;
+    target: PrNumberTarget | undefined;
+    repoFiles: readonly string[];
+    dependencySettings: DependencySettingsLayers | undefined;
+  },
+): Promise<TestSources | undefined> {
+  if (resolveDependencySettings(from.dependencySettings).mode === "never") return undefined;
+  if (deps.gitBatch === undefined) return undefined;
+  const { diff, localBase } = from;
+  if (from.target) return unavailableTestSources("pr-number mode: the diff came from the GitHub API");
+  if ("text" in diff) return unavailableTestSources("the diff came from the GitHub compare API");
+  if ("unavailable" in diff) return unavailableTestSources("the diff is unavailable");
+  if (localBase === undefined) return unavailableTestSources("reading git objects is not available");
+  const select = (files: readonly DiffFile[]) => selectDependencyPaths(files, from.repoFiles);
+  const selected = select(diff.parsed);
+  if (selected.base.length === 0 && selected.head.length === 0) {
+    return { base: { files: [], dropped: [] }, head: { files: [], dropped: [] } };
+  }
+  const sources = await readTestSources(
+    { git: (args) => deps.git(args), gitBatch: deps.gitBatch },
+    { base: localBase, head: "HEAD", diff: diff.parsed, select, limits: DEPENDENCY_SOURCE_LIMITS },
+  );
+  if ("unavailable" in sources.base) {
+    deps.info(
+      `pharn-ci: could not read the manifests and lockfiles from git, so dependency safety could not compare them: ${sources.base.unavailable}`,
+    );
+  }
+  return sources;
+}
+
+/**
+ * The registry lookups of dependency safety (D01 to D03), only in mode `lookup` and only for the packages
+ * `planDependencyLookups` names (added, unscoped, on a registry): see registry-lookup.ts for what is sent. The HEAD commit
+ * time comes from git (`%ct`), never the clock; a failed read leaves it null and D02 is not judged. Undefined when the
+ * mode is not `lookup` or the diff touches no manifest or lockfile.
+ */
+async function gatherDependencyLookups(
+  deps: ActionDeps,
+  from: {
+    diff: readonly DiffFile[];
+    sources: TestSources;
+    repoFiles: readonly string[];
+    dependencySettings: DependencySettingsLayers | undefined;
+  },
+): Promise<DependencyLookups | undefined> {
+  const settings = resolveDependencySettings(from.dependencySettings);
+  if (settings.mode !== "lookup") return undefined;
+  const plan = planDependencyLookups(from.diff, from.sources, from.repoFiles, settings);
+  if (plan === null) return undefined;
+  let headTime: number | null = null;
+  try {
+    const seconds = Number((await deps.git(["log", "-1", "--format=%ct", "HEAD"])).trim());
+    headTime = Number.isSafeInteger(seconds) && seconds > 0 ? seconds * 1000 : null;
+  } catch {
+    headTime = null;
+  }
+  if (plan.planned.length > 0) {
+    deps.info(
+      `pharn-ci: looking up ${plan.planned.length} added ${plan.planned.length === 1 ? "package" : "packages"} in the public registries (${REGISTRY_LOOKUP_HOSTS.join(", ")}); only package names are sent`,
+    );
+  }
+  const results = await lookupDependencies(
+    { fetch: deps.fetch, now: deps.now, registryTimeoutMs: deps.registryTimeoutMs },
+    plan.planned,
+    settings.minWeeklyDownloads,
+  );
+  return { headTime, results };
 }
 
 /**

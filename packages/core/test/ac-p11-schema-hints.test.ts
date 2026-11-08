@@ -51,6 +51,8 @@ describe("the schema sentence and the hints for POLICY_P11 and AGENT_PR_DETECTIO
     // first (v070-codes.ts pins it exactly); its code text joins the description set aside below.
     // Re-pinned for stale instructions (Horizon 2 item H3): its top-level setupHealth property is taken out the same way.
     // Re-pinned for flaky tests (A6, v0.8.0): the flaky description is taken out the same way (v080-codes.ts).
+    // Re-pinned for dependency safety (A13, v0.8.0): withoutV080Properties also takes out its top-level `dependencies`
+    // object (v080-codes.ts pins it exactly).
     const nowText = withoutSchemaLevelEdits(
       withoutV080Properties(withoutV070Properties(read("schema/report.v2.json"))),
     );

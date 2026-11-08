@@ -1,0 +1,5 @@
+{
+  "url": "https://api.npmjs.org/downloads/point/last-week/left-pad",
+  "status": 200,
+  "body": { "downloads": 3215022, "start": "2026-10-31", "end": "2026-11-06", "package": "left-pad" }
+}

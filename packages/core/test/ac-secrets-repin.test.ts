@@ -71,7 +71,8 @@ const ADDED_CODES = [
   // report.ts. It joins every exact code-word comparison below; nothing is removed.
   ...V070_CODES,
   // Re-pinned for flaky tests (A6): its four codes in the " Codes added in v0.8.0:" text (v080-codes.ts) and in
-  // report.ts join the same way.
+  // report.ts join the same way. Re-pinned for dependency safety (A13, v0.8.0): V080_CODES also holds its seven
+  // DEPENDENCY_ codes, in the same v0.8.0 text and in report.ts.
   ...V080_CODES,
 ];
 
@@ -123,6 +124,8 @@ describe("the v0.4.0 codes are the only schema and report.ts additions, and the 
     // Re-pinned for stale instructions (Horizon 2 item H3): its top-level setupHealth property is taken out the same
     // way, and its four SETUP_STALE_ codes join V070_CODES.
     // Re-pinned for flaky tests (A6, v0.8.0): the flaky description is taken out the same way (v080-codes.ts).
+    // Re-pinned for dependency safety (A13, v0.8.0): withoutV080Properties also takes out its top-level `dependencies`
+    // object (v080-codes.ts pins it exactly).
     const schemaWithIsAgentPr = withoutSchemaLevelEdits(
       withoutV080Properties(withoutV070Properties(read("schema/report.v2.json"))),
     );

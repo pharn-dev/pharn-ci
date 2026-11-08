@@ -1,0 +1,13 @@
+diff --git a/yarn.lock b/yarn.lock
+index 5555555..6666666 100644
+--- a/yarn.lock
++++ b/yarn.lock
+@@ -7 +7 @@ chalk@^5.3.0:
+-  resolved "https://registry.yarnpkg.com/chalk/-/chalk-5.3.0.tgz#67c20a7ebef70e7f3970a01f90fa210cb6860385"
++  resolved "https://registry.npmjs.org/chalk/-/chalk-5.3.0.tgz#67c20a7ebef70e7f3970a01f90fa210cb6860385"
+@@ -13 +13 @@ lodash@^4.17.21:
+-  integrity sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==
++  integrity sha512-Zz9kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==
+@@ -18 +18 @@ minimist@^1.2.0:
+-  integrity sha1-o1AIsg9BOD7sH7kU9M1d95omQoQ=
++  integrity sha512-3JGFYYG9ARzI9JkHuJ1tsKGUK+7BKt1r2ciZXEz/1ROwXQhRzO4S25HM4NX2sMhkn5HF6I/aaigedBGl6eFnQqA==

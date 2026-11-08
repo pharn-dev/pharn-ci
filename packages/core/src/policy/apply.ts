@@ -54,7 +54,8 @@ function normalizedRoot(root: string): string {
  *   stricter mode, more `setup.expect` and higher signal severities. Exclusions, a root, an accept label and
  *   `policy.required` are `not-allowed`; a lower value than the layers already give is `looser`. Both are recorded and
  *   not applied.
- * - `setup.expect` is the union of every layer. Every other key is carried in the document, not applied.
+ * - `setup.expect` is the union of every layer. `dependencies` goes into the dependency settings layers (see
+ *   `applyDependencies`). Every other key is carried in the document, not applied.
  */
 export function applyPolicy(layers: PolicyLayers, policy: ResolvedPolicy): PolicyApplication {
   const document = policy.document;
@@ -68,6 +69,7 @@ export function applyPolicy(layers: PolicyLayers, policy: ResolvedPolicy): Polic
   applySetup(layers, document, app, inputs, ignored);
   const modeSettings = applyMode(layers, document, app, ignored);
   if (modeSettings !== undefined) inputs.testIntegrityMode = modeSettings;
+  applyDependencies(layers, document, app, inputs, ignored);
 
   const integrity = document.test_integrity;
   const result: PolicyApplication = { inputs, ignored: [] };
@@ -208,6 +210,37 @@ function applySetup(
     const union = [...new Set([...(resolved.expectAgentSetup ?? []), ...setup.expect])];
     if (union.length > 0) inputs.expectAgentSetup = union;
   }
+}
+
+/**
+ * The policy's `dependencies` added to the dependency settings (A13; `resolveDependencySettings` applies them). An app
+ * policy with the key requires the check, so a `never` input is beaten and recorded `looser`. A policy file may only
+ * tighten: its `registries` would narrow what is looked up, so they are `not-allowed`.
+ */
+function applyDependencies(
+  layers: PolicyLayers,
+  document: PolicyDocument,
+  app: boolean,
+  inputs: ResolvedInputs,
+  ignored: IgnoredSetting[],
+): void {
+  const deps = document.dependencies;
+  if (deps === undefined) return;
+  const given = layers.resolved.dependencies;
+  if (app && given?.input === "never") ignored.push({ setting: "dependencies", layer: "input", reason: "looser" });
+  if (!app && deps.registries !== undefined) {
+    ignored.push({ setting: "dependencies.registries", layer: "policy-file", reason: "not-allowed" });
+  }
+  inputs.dependencies = {
+    ...given,
+    policy: {
+      kind: app ? "app" : "file",
+      ...(deps.lookup === undefined ? {} : { lookup: deps.lookup }),
+      ...(deps.min_age_days === undefined ? {} : { minAgeDays: deps.min_age_days }),
+      ...(deps.min_weekly_downloads === undefined ? {} : { minWeeklyDownloads: deps.min_weekly_downloads }),
+      ...(app && deps.registries !== undefined ? { registries: [...deps.registries] } : {}),
+    },
+  };
 }
 
 /**

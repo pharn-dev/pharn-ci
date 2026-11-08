@@ -1,5 +1,6 @@
 import type { CoverageFormat } from "./coverage/types.js";
 import { coverageNotDiscoveredText } from "./coverageDiscovery.js";
+import type { ReportDependencies } from "./dependencies/check.js";
 import { MAX_KEPT_LINES } from "./diff/unified.js";
 import type { DiffCoverageFile, DiffCoverageResult } from "./diffCoverage.js";
 import type { AgentSetupFile, AgentSetupInventory } from "./setup/scan.js";
@@ -33,6 +34,8 @@ export interface Report {
   injection?: ReportInjection;
   /** The run's JUnit results; present only when at least one JUnit XML file was parsed. */
   flaky?: ReportFlaky;
+  /** Dependency safety (since 0.8.0); present only when the change touched a manifest or lockfile it read. */
+  dependencies?: ReportDependencies;
   /** Run metadata; present only when the caller (the Action) gave it. */
   meta?: ReportMeta;
 }
@@ -314,7 +317,14 @@ export type MessageCode =
   | "JUNIT_NOT_FOUND"
   | "JUNIT_INVALID"
   | "JUNIT_TOO_LARGE"
-  | "FLAKY_QUARANTINED_FAILURES";
+  | "FLAKY_QUARANTINED_FAILURES"
+  | "DEPENDENCY_D01"
+  | "DEPENDENCY_D02"
+  | "DEPENDENCY_D03"
+  | "DEPENDENCY_D04"
+  | "DEPENDENCY_D05"
+  | "DEPENDENCY_LOOKUP_UNAVAILABLE"
+  | "DEPENDENCY_CHECK_INCOMPLETE";
 
 export interface Message {
   level: MessageLevel;
@@ -445,6 +455,11 @@ export interface BuildReportInput {
   injectionMessages?: readonly Message[];
   /** The prompt-injection scan's findings, copied into the report as `injection.signals`; absent or empty adds no key. */
   injectionSignals?: readonly ReportInjectionSignal[];
+  /**
+   * Dependency safety (see `checkDependencies`): the report's `dependencies` object, copied as given, and its messages,
+   * appended after the agent config secret messages and before the org policy messages. Absent adds nothing.
+   */
+  dependencies?: { report: ReportDependencies; messages: readonly Message[] };
   /**
    * The messages of the org policy (the unavailable message, the per-rule messages and the ignored-settings message,
    * in that order), appended after the agent config secret messages as given, so they follow every other
@@ -840,6 +855,7 @@ export function buildReport(input: BuildReportInput): Report {
   messages.push(...(input.staleInstructionMessages ?? []));
   messages.push(...(input.agentConfigSecretMessages ?? []));
   messages.push(...(input.injectionMessages ?? []));
+  messages.push(...(input.dependencies?.messages ?? []));
   messages.push(...(input.policyMessages ?? []));
   messages.push(...(input.flakyMessages ?? []));
   const injectionSignals = input.injectionSignals ?? [];
@@ -899,6 +915,7 @@ export function buildReport(input: BuildReportInput): Report {
           },
         }),
     ...(input.flaky === undefined ? {} : { flaky: { ...input.flaky, quarantined: [...input.flaky.quarantined] } }),
+    ...(input.dependencies === undefined ? {} : { dependencies: input.dependencies.report }),
     ...(input.meta === undefined ? {} : { meta: input.meta }),
   };
 }

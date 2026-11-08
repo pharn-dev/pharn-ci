@@ -61,6 +61,8 @@ describe("docs-schema-levels", () => {
     // pinned.
     // Re-pinned for H4 (prompt-injection scan): withoutV070SchemaEdits also takes out its `injection` object, and its
     // codes are in the same v0.7.0 code text.
+    // Re-pinned for dependency safety (A13, v0.8.0): its part of the v0.8.0 code text and its top-level `dependencies`
+    // object are taken out first (v080-codes.ts pins both exactly).
     expect(
       // Re-pinned for flaky tests (A6, v0.8.0): its code text and the flaky description are taken out the same way
       // (v080-codes.ts).

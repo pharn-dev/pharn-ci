@@ -69,6 +69,9 @@ const SECRET_CODES = [
   ...V070_INJECTION_CODES,
   // Re-pinned for flaky tests (A6): the " Codes added in v0.8.0:" text and report.ts also gain these four codes
   // (V080_CODES); this only adds to what the pin allows.
+  // Re-pinned for dependency safety (A13, v0.8.0): the same v0.8.0 text and report.ts gain its seven DEPENDENCY_ codes
+  // (also in V080_CODES); this only adds to what the pin allows. Its `dependencies` object is cut by
+  // withoutV080Properties.
   ...V080_CODES,
 ];
 
@@ -184,6 +187,8 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
       // Re-pinned for stale instructions (Horizon 2 item H3): its top-level setupHealth property is taken out the same
       // way.
       // Re-pinned for flaky tests (A6, v0.8.0): the flaky description is taken out the same way (v080-codes.ts).
+      // Re-pinned for dependency safety (A13, v0.8.0): withoutV080Properties also takes out its top-level
+      // `dependencies` object (v080-codes.ts pins it exactly); its part of the v0.8.0 code text is in the appended text.
       const withIsAgentPr = withoutSchemaLevelEdits(
         withoutV080Properties(withoutV070Properties(read(`schema/${name}`))),
       );

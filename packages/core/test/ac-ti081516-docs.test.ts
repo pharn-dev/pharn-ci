@@ -128,8 +128,11 @@ describe("TI08, TI15 and TI16: schemas and documents", () => {
     const injection = ["properties", "injection"];
     // Re-pinned for flaky tests (A6), which gives the flaky object a description: set aside the same way.
     const flaky = ["properties", "flaky", "description"];
-    expect(setAside(now, [...paths, languages, changes, isAgentPr, exercise, setupHealth, injection, flaky])).toEqual(
-      setAside(before, [...paths, languages, changes, isAgentPr, exercise, setupHealth, injection, flaky]),
+    // Re-pinned for dependency safety (A13, v0.8.0), which adds the optional top-level dependencies object: set aside too.
+    const dependencies = ["properties", "dependencies"];
+    const v080 = [flaky, dependencies];
+    expect(setAside(now, [...paths, languages, changes, isAgentPr, exercise, setupHealth, injection, ...v080])).toEqual(
+      setAside(before, [...paths, languages, changes, isAgentPr, exercise, setupHealth, injection, ...v080]),
     );
     const [path] = paths as [string[]];
     const beforeText = getAt(before, path) as string;
@@ -176,8 +179,9 @@ describe("TI08, TI15 and TI16: schemas and documents", () => {
     // `app-url` inputs: both must be declared, and with them set aside the inputs are the base's, in order.
     // Re-pinned again for the run upload (E3 item 21), which adds exactly the `upload` input to the same set-aside, and
     // for the rename of `fail-on-threshold` to `fail-on-verdict` (review 2026-11-01, finding 27), which adds that one.
-    // Re-pinned for flaky tests (A6), which adds exactly the `junit-paths` input to the same set-aside.
-    const POLICY_INPUTS = ["policy", "app-url", "upload", "fail-on-verdict", "junit-paths"];
+    // Re-pinned for flaky tests (A6), which adds exactly the `junit-paths` input to the same set-aside, and for
+    // dependency safety (A13, v0.8.0), which adds exactly the `dependencies` input.
+    const POLICY_INPUTS = ["policy", "app-url", "upload", "fail-on-verdict", "junit-paths", "dependencies"];
     const inputsNow = actionInputs(read("action.yml"));
     for (const name of POLICY_INPUTS) expect(inputsNow, `action.yml declares ${name}`).toContain(name);
     expect(inputsNow.filter((name) => !POLICY_INPUTS.includes(name))).toEqual(

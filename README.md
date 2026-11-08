@@ -46,6 +46,7 @@ behave. AI-agnostic, no telemetry, and stateless unless you opt in to the upload
 - [Stale agent instructions](#stale-agent-instructions)
 - [Prompt-injection scan](#prompt-injection-scan)
 - [Flaky tests and JUnit results](#flaky-tests-and-junit-results)
+- [Dependency safety](#dependency-safety)
 - [Org policy](#org-policy)
 - [Upload to pharn.dev (optional)](#upload-to-pharndev-optional)
 - [Action reference](#action-reference)
@@ -607,6 +608,57 @@ can edit lets the pull request quarantine its own failures, so keep it where the
 ([`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md), residual 42). What the reader misses is in
 [`docs/LIMITS.md`](docs/LIMITS.md#flaky-tests-and-junit-results).
 
+## Dependency safety
+
+An agent that adds a dependency can add one that does not exist yet (an invented name anyone can then publish), one
+published last week, or one fetched from a git repository or an arbitrary URL. Dependency safety (A13) checks only the
+dependencies a pull request **adds or changes**, never the whole tree, in npm manifests and lockfiles (`package.json`,
+`package-lock.json`, `npm-shrinkwrap.json`, `pnpm-lock.yaml`, `yarn.lock` classic and berry) and Python ones
+(`requirements*.txt` and `requirements/*.txt`, `pyproject.toml` with PEP 621, dependency groups, poetry and
+`[tool.uv.sources]`, `poetry.lock`, `uv.lock`). It reads the touched files at the merge base and at HEAD from committed
+git objects, in the CLI and the Action, with or without an org policy.
+
+| Signal | What it finds | Needs | Default |
+| ------ | ------------- | ----- | ------- |
+| D01 | An added package the registry does not know (404): a slopsquatting target | lookups | `block` |
+| D02 | An added package first published fewer than `min_age_days` (30) days before the head commit | lookups | `warn` |
+| D03 | An added unscoped npm package downloaded fewer than `min_weekly_downloads` (100) times last week (npm only: PyPI has no first-party download count) | lookups | `warn` |
+| D04 | Lockfile drift: a manifest's dependencies changed while the lockfile that governs it (beside it, or a workspace root lockfile that lists it as an importer) did not change or does not record the new spec; or a lockfile gives a version the same hash algorithm but a different hash than the merge base did | nothing | `block` |
+| D05 | An added or changed dependency or lockfile entry from a git repository, a URL off `registry.npmjs.org`, `registry.yarnpkg.com`, `pypi.org` and `files.pythonhosted.org` (https only, no credentials or port), or a local file; or a requirements file that adds a package index off them | nothing | `block` |
+
+**Lookups are opt-in.** A lookup sends a package name to a third party, and an unscoped private package name would leak,
+so the default `dependencies: auto` makes no network call. With `dependencies: lookup` (or `dependencies.lookup: true`
+in `.pharn/ci.yml`, or an org policy's `dependencies.lookup: true`) the Action looks up each package the pull request
+added: one `GET https://registry.npmjs.org/<name>` (the full document: the abbreviated one has no publish times) and
+one `GET https://api.npmjs.org/downloads/point/last-week/<name>` per npm package, one
+`GET https://pypi.org/pypi/<name>/json` per PyPI package. Only the name is sent: no token, no repository name, no
+query, `User-Agent: pharn-ci`, no redirect, 5 s per request, at most 50 packages and 60 s per run. Scoped npm names
+(`@org/x`), `workspace:` packages, git, URL and path specs and names a touched lockfile resolves off the registries are
+never looked up, and a version change of a package already there is not looked up either. A lookup that fails is
+fail-open: `DEPENDENCY_LOOKUP_UNAVAILABLE` (warn) counts what was not checked and `dependencies.lookups` says
+`unavailable`. D02 compares with the head commit's time from git, never the clock. The CLI never makes a network call,
+so it runs D04 and D05 only and reports `lookups: off`.
+
+**Who decides.** The `dependencies` input is the base. `.pharn/ci.yml` is carried by the pull request, so it may only
+tighten: `lookup: true` turns lookups on over `auto` but never over the workflow's `never` (a file the pull request
+carries must not make the job send names to a registry the workflow owner refused), and `min_age_days` and
+`min_weekly_downloads` only raise the defaults. An app policy with a `dependencies` key requires the check (`never`
+becomes `auto`, recorded in `POLICY_OVERRIDE_IGNORED`), its `lookup: true` turns lookups on, its minimums replace the
+defaults (lower layers can still raise them) and its `registries` narrow the ecosystems looked up. A `file:` policy is
+treated like `.pharn/ci.yml`: its `registries` are not allowed.
+
+**How a block fails the check.** Each signal id adds one `DEPENDENCY_D01` to `DEPENDENCY_D05` message whose level follows
+its findings' severity, the way the agent config secret check and the prompt-injection scan do: `block` is an `error`
+and the verdict is `fail`, `warn` a warning. The test-integrity mode and the accept label do not lower it. The report's
+optional `dependencies` object (present only when the change touched a manifest or lockfile) holds `checked` (how many
+dependencies and lockfile entries were added or changed), `lookups` (`off`, `done` or `unavailable`) and `signals`
+(id, severity, ecosystem, path, line, detail, and the package name and version spec only when they pass a strict
+allow-list; at most 200, `truncated` counts the rest). A manifest or lockfile that could not be read (over 5 MiB,
+not valid, or a diff not from local git) is listed in `dependencies.unread` with one `DEPENDENCY_CHECK_INCOMPLETE`
+warning. The comment shows a **📦 Dependencies** section when something was added or changed. Messages name counts and
+`path:line` only. A Dependabot bump that changes the manifest and the lockfile together, and a lockfile-only refresh
+of transitive versions, give no finding. What it misses is in [docs/LIMITS.md](./docs/LIMITS.md#dependency-safety).
+
 ---
 
 ## Org policy
@@ -616,8 +668,9 @@ document ([`schema/policy.v1.json`](schema/policy.v1.json)) that the pharn.dev a
 carries in a file. This release applies the coverage, setup (including the lists that P02 to P06 check, and
 `setup.consistency` for P07) and test-integrity keys, and `agents.labels`, `agents.extra_logins`,
 `agents.protected_paths`, `agents.protected_paths_mode`, `agents.max_files` and `agents.max_changed_lines`, and
-`flaky.quarantine` (whether the app's quarantine list applies to the [JUnit results](#flaky-tests-and-junit-results));
-the other `agents` keys and `dependencies` are validated but not applied yet.
+`flaky.quarantine` (whether the app's quarantine list applies to the [JUnit results](#flaky-tests-and-junit-results)),
+and the `dependencies` keys ([Dependency safety](#dependency-safety)); the other `agents` keys are validated but not
+applied yet.
 
 **What is sent.** With `policy: auto` (the default) or `required`, and only when the job grants `id-token: write`, the
 Action makes one `GET` of `/api/v1/policy?repo=<owner>/<name>` on the pharn.dev app. Only the OIDC token and the repository name
@@ -851,6 +904,7 @@ of the App never both appear for one upload.
 | `require-agent-setup` | `setup.require`, then `false` | Fail when the repo has no agent setup files; the step fails through `fail-on-verdict`. `false` does not turn off a `setup.require: true` in `.pharn/ci.yml` |
 | `expect-agent-setup` | `setup.expect`, then none  | Agent tools that must have a setup file, comma or newline separated; added to `setup.expect`; a missing one is `AGENT_SETUP_EXPECTED_MISSING` |
 | `test-integrity`    | `warn`                      | How strictly to treat weakened tests: `block`, `warn` or `off`. `test_integrity.mode` in `.pharn/ci.yml` can only make it stricter, never looser (a looser value is ignored with `TEST_INTEGRITY_MODE_IGNORED`). In `block` a block-level finding fails the check, in `warn` it warns, in `off` nothing is checked. The signals so far are TI01 (a test file deleted), TI02 (a test removed from a test file that stays), TI03 (a skip added to a test), TI04 (a `.only`, `fit` or `fdescribe` added), TI05 (a test emptied of its assertions, or with fewer), TI06 (a test weakened), TI07 (an expected value of a test edited to match the source), TI08 (snapshots regenerated or updated in bulk), TI09 (a test-runner setting loosened), TI10 (a test script in `package.json` weakened), TI11 (CI stopped running tests), TI12 (a module under test mocked), TI13 (a coverage-ignore comment added to source), TI14 (a lower coverage threshold or a wider exclusion in the config), TI15 (a source condition that compares with a value the tests add) and TI16 (a lint or type suppression comment added to a test file) |
+| `dependencies`      | `auto`                      | [Dependency safety](#dependency-safety) for the packages a change adds or changes: `auto` runs the offline checks D04 (lockfile drift) and D05 (a source outside the npm and PyPI registries); `lookup` also looks each added unscoped package up in `registry.npmjs.org`, `api.npmjs.org` and `pypi.org` (D01 to D03; only the package name is sent); `never` runs nothing. `dependencies.lookup: true` in `.pharn/ci.yml` turns lookups on over `auto`, never over `never`. Any other value fails the step |
 | `accept-label`      | `pharn/accepted`            | Name of the pull request label a reviewer who is not the PR author applies to sign off `test-integrity: block` findings, at most 50 characters. Read only from this input, never from `.pharn/ci.yml`. See [Accept label](#accept-label) |
 | `policy`            | `auto`                      | Where the [org policy](#org-policy) comes from: `auto` fetches it from the pharn.dev app when the job grants `id-token: write` (only the OIDC token and the repo name are sent; no policy or no token is silent), `never` uses none, `required` fails the check when no policy can be fetched, `file:<path>` reads a policy document from the workspace (the pull request can change it, so it can only tighten; nothing is fetched). Any other value fails the step |
 | `app-url`           | `https://pharn.dev`         | Origin of the pharn.dev app the policy is fetched from. `https` only, with no credentials, path, query or fragment; the OIDC audience stays `pharn.dev` whatever it is |
@@ -1007,8 +1061,8 @@ node packages/cli/dist/index.js check --coverage coverage/lcov.info --threshold 
 pharn-ci check [--coverage <file|glob>]... [--coverage-format lcov|cobertura|auto] [--coverage-root <dir>]
                [--base <ref>] [--threshold <n>] [--format md|json] [--config <path>]
                [--exclude <glob>]... [--require-agent-setup] [--expect-agent-setup <tool>]...
-               [--test-integrity block|warn|off] [--policy-file <path>] [--no-policy]
-               [--junit <file|glob>]... [--quarantine-file <path>] [-h|--help] [-v|--version]
+               [--test-integrity block|warn|off] [--dependencies auto|lookup|never] [--policy-file <path>]
+               [--no-policy] [--junit <file|glob>]... [--quarantine-file <path>] [-h|--help] [-v|--version]
 pharn-ci test [--junit <file|glob>]... [--quarantine-file <path>] [--dry-run] -- <command> [args...]
 ```
 
@@ -1042,6 +1096,8 @@ pharn-ci test [--junit <file|glob>]... [--quarantine-file <path>] [--dry-run] --
   (`claude-code`, `cursor`, `copilot`, `codex`, `gemini`, ...); an unknown one exits `2`.
 - `--test-integrity <mode>` sets the test-integrity mode (`block`, `warn` or `off`; default `warn`). The
   `test_integrity.mode` config key can only make it stricter than the flag; an invalid value exits `2`.
+- `--dependencies <mode>` sets [dependency safety](#dependency-safety) (`auto`, `lookup` or `never`; default `auto`).
+  The CLI makes no network call, so it runs D04 and D05 only and `lookup` runs as `auto`; an invalid value exits `2`.
 - `--policy-file <path>` applies an [org policy](#org-policy) document, relative to the repo root, over the flags and
   the config. It can only tighten them; a path that is empty, absolute, outside the repo, through a symbolic link,
   missing, over 1 MiB or not a valid policy exits `2`. `--no-policy` applies none and is the same as no flag; giving
@@ -1076,6 +1132,10 @@ setup:
   # expect: [claude-code, cursor] # agent tools that must have a setup file
 # test_integrity:
 #   mode: block # block, warn or off; can only tighten the test-integrity input (default warn), never loosen it
+# dependencies:
+#   lookup: true # look added packages up in the public registries (D01-D03); never over the input's `never`
+#   min_age_days: 30 # D02; can only be raised
+#   min_weekly_downloads: 100 # D03; can only be raised
 ```
 
 ### Coverage files and globs

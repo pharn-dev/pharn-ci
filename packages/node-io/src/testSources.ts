@@ -8,6 +8,7 @@ import {
   type TestSourceDrop,
   type TestSourceFile,
   type TestSourceObject,
+  type TestSourceReadLimits,
   type TestSourceSide,
   type TestSources,
   unavailableTestSources,
@@ -32,6 +33,8 @@ export interface ReadTestSourcesOptions {
    * `selectSelfModificationPaths`. The same caps, safety checks and decoding apply to any selection.
    */
   select?: (diff: readonly DiffFile[]) => { base: string[]; head: string[] };
+  /** The read plan's caps. Default the test sources' (`TEST_SOURCE_LIMITS`); dependency safety passes `DEPENDENCY_SOURCE_LIMITS`. */
+  limits?: TestSourceReadLimits;
 }
 
 async function resolveRevision(deps: TestSourceGitDeps, revision: string, label: string): Promise<string> {
@@ -91,7 +94,7 @@ export async function readTestSources(deps: TestSourceGitDeps, options: ReadTest
       if (result !== null) side?.blobs.set(request.path, result.oid);
     });
 
-    const plans = sides.map((side) => planTestSourceReads(side.paths, side.objects));
+    const plans = sides.map((side) => planTestSourceReads(side.paths, side.objects, options.limits));
     const wanted = new Set<string>();
     plans.forEach((plan, i) => {
       for (const path of plan.read) wanted.add(sides[i]?.blobs.get(path) as string);

@@ -80,6 +80,40 @@ export {
   parseCoverageEntries,
 } from "./coverageEntries.js";
 export {
+  checkDependencies,
+  type DependencyUnreadReason,
+  MAX_DEPENDENCY_SIGNALS,
+  planDependencyLookups,
+  type ReportDependencies,
+} from "./dependencies/check.js";
+export {
+  type DependencyLookupResult,
+  type DependencyLookups,
+  MAX_LOOKUPS,
+  type PlannedLookup,
+} from "./dependencies/lookup.js";
+export { classifyDependencyFile, selectDependencyPaths } from "./dependencies/paths.js";
+export {
+  type PackageFacts,
+  packageFacts,
+  REGISTRY_LOOKUP_HOSTS,
+  REGISTRY_MAX_BODY_BYTES,
+  type RegistryAnswer,
+  registryLookupUrls,
+  weeklyDownloads,
+} from "./dependencies/registry.js";
+export {
+  DEFAULT_MIN_AGE_DAYS,
+  DEFAULT_MIN_WEEKLY_DOWNLOADS,
+  DEPENDENCY_MODES,
+  type DependencyMode,
+  type DependencySettingsLayers,
+  isDependencyMode,
+  type ResolvedDependencySettings,
+  resolveDependencySettings,
+} from "./dependencies/settings.js";
+export type { DependencyEcosystem, DependencySignal, DependencySignalId } from "./dependencies/types.js";
+export {
   createUnifiedDiffReader,
   type DiffFile,
   type DiffFileStatus,
@@ -411,6 +445,7 @@ export {
   testIntegrityModeError,
 } from "./testIntegrityMode.js";
 export {
+  DEPENDENCY_SOURCE_LIMITS,
   isTestConfigFile,
   isUnsafeTestSourcePath,
   MAX_TEST_SOURCE_FILE_BYTES,
@@ -419,10 +454,12 @@ export {
   planTestSourceReads,
   selectTestSourcePaths,
   TEST_SOURCE_DROP_REASONS,
+  TEST_SOURCE_LIMITS,
   type TestSourceDrop,
   type TestSourceDropReason,
   type TestSourceFile,
   type TestSourceObject,
+  type TestSourceReadLimits,
   type TestSourceSide,
   type TestSources,
   unavailableTestSources,

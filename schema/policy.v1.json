@@ -339,6 +339,10 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "lookup": {
+          "description": "Whether the Action looks up newly added packages in the public npm and PyPI registries (D01-D03, since 0.8.0); true requires the lookups whatever the dependencies input says. Tighten: booleans, true wins.",
+          "type": "boolean"
+        },
         "registries": {
           "description": "Package ecosystems whose new dependencies are checked; each maps to a fixed host list in the Action, so a policy never names a host. Tighten: dependencies.registries, intersection.",
           "type": "array",

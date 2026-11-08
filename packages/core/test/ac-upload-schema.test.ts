@@ -156,6 +156,8 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
     // way; its codes join V070_CODES and report.ts also gains the SI ids below.
     // Re-pinned for flaky tests (A6, v0.8.0): the flaky description is taken out the same way, and the v0.8.0 code text
     // (v080-codes.ts) joins the description and its codes the added words.
+    // Re-pinned for dependency safety (A13, v0.8.0): withoutV080Properties also takes out its top-level `dependencies`
+    // object, and its part of the v0.8.0 code text and its codes (in V080_CODES) join the same way.
     const v2 = withoutSchemaLevelEdits(withoutV080Properties(withoutV070Properties(read("schema/report.v2.json"))));
     const baseDescription = strings(JSON.parse(v2Base)).find((s) => s.includes(" Codes added in v0.4.0:"));
     expect(baseDescription, "control: the base has the v0.4.0 text").toBeDefined();

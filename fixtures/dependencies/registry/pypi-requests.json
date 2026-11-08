@@ -1,0 +1,15 @@
+{
+  "url": "https://pypi.org/pypi/requests/json",
+  "status": 200,
+  "body": {
+    "info": { "name": "requests", "version": "2.32.3" },
+    "releases": {
+      "0.2.0": [{ "upload_time": "2011-02-14T21:25:39", "upload_time_iso_8601": "2011-02-14T21:25:39.513735Z" }],
+      "0.0.1": [],
+      "2.32.3": [
+        { "upload_time": "2024-05-29T15:37:47", "upload_time_iso_8601": "2024-05-29T15:37:47.027801Z" },
+        { "upload_time": "2024-05-29T15:37:49", "upload_time_iso_8601": "2024-05-29T15:37:49.120311Z" }
+      ]
+    }
+  }
+}

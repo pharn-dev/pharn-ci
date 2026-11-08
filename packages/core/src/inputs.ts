@@ -9,6 +9,7 @@ import {
 } from "./config.js";
 import type { CoverageFormatSelection } from "./coverage/types.js";
 import { coverageEntryList, parseCoverageEntries } from "./coverageEntries.js";
+import { type DependencySettingsLayers, dependencyModeError, isDependencyMode } from "./dependencies/settings.js";
 import type { AgentTool } from "./setup/summary.js";
 import { isTestIntegrityMode, type TestIntegrityModeSettings, testIntegrityModeError } from "./testIntegrityMode.js";
 
@@ -29,6 +30,8 @@ export interface RawInputs {
   expectAgentSetup?: readonly string[] | undefined;
   /** The test-integrity mode as given (block, warn or off); trimmed here, and empty counts as not given. */
   testIntegrity?: string | undefined;
+  /** The dependency safety mode as given (auto, lookup or never); trimmed here, and empty counts as not given. */
+  dependencies?: string | undefined;
 }
 
 /** How an adapter names its flags or inputs in error messages. */
@@ -47,6 +50,8 @@ export interface InputErrorText {
   expectAgentSetup?: string;
   /** Label for a test-integrity mode that is not block, warn or off. Defaults to "test-integrity". */
   testIntegrity?: string;
+  /** Label for a dependencies mode that is not auto, lookup or never. Defaults to "dependencies". */
+  dependencies?: string;
   /** The error when neither the input nor the config names a coverage file. */
   noCoverageFile: string;
 }
@@ -82,6 +87,11 @@ export interface ResolvedInputs {
    * base and the config may only tighten it.
    */
   testIntegrityMode?: TestIntegrityModeSettings;
+  /**
+   * The dependency safety settings, each layer absent when not given; absent when neither the input nor the config
+   * names any, so settings without them resolve exactly as before. `resolveDependencySettings` applies the precedence.
+   */
+  dependencies?: DependencySettingsLayers;
 }
 
 /** An invalid setting, naming the raw input it came from (the coverage file one: neither input nor config). */
@@ -177,8 +187,21 @@ export function resolveInputs(
     return givenMode;
   });
 
+  const givenDependencies = raw.dependencies?.trim();
+  const dependencyInput = attempt("dependencies", () => {
+    if (givenDependencies === undefined || givenDependencies === "") return undefined;
+    if (!isDependencyMode(givenDependencies)) {
+      throw new ConfigError(dependencyModeError(text.dependencies ?? "dependencies", givenDependencies));
+    }
+    return givenDependencies;
+  });
+
   const [first, ...rest] = errors;
   if (first !== undefined) return { ok: false, errors: [first, ...rest] };
+  const dependencyLayers: DependencySettingsLayers = {
+    ...(dependencyInput === undefined ? {} : { input: dependencyInput }),
+    ...(config.dependencies === undefined ? {} : { config: { ...config.dependencies } }),
+  };
   const modeSettings: TestIntegrityModeSettings = {
     ...(testIntegrityInput === undefined ? {} : { input: testIntegrityInput }),
     ...(config.testIntegrity?.mode === undefined ? {} : { config: config.testIntegrity.mode }),
@@ -201,6 +224,7 @@ export function resolveInputs(
       ...(modeSettings.input === undefined && modeSettings.config === undefined
         ? {}
         : { testIntegrityMode: modeSettings }),
+      ...(Object.keys(dependencyLayers).length === 0 ? {} : { dependencies: dependencyLayers }),
     },
   };
 }

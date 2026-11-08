@@ -49,6 +49,8 @@ const SHIPPED_INPUTS = [
   "fail-on-verdict",
   // Added by A6 (flaky tests: JUnit results).
   "junit-paths",
+  // Added by A13 (dependency safety).
+  "dependencies",
 ];
 // "run-url" was added by E3 item 21 (the run upload).
 const SHIPPED_OUTPUTS = ["report-path", "verdict", "diff-coverage", "run-url"];

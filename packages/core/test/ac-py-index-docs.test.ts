@@ -123,6 +123,7 @@ describe("python-test-index: THREAT-MODEL, fixture layout, schemas and purity", 
         setupHealth?: unknown;
         injection?: unknown;
         flaky: { description?: string };
+        dependencies?: unknown;
       };
     };
     // Re-pinned for flaky tests (A6), which gives the flaky object a description.
@@ -132,6 +133,9 @@ describe("python-test-index: THREAT-MODEL, fixture layout, schemas and purity", 
     // Re-pinned for H4 (prompt-injection scan), which adds the optional top-level injection object.
     expect(v2.properties.injection, "the injection object H4 adds").toBeDefined();
     delete v2.properties.injection;
+    // Re-pinned for dependency safety (A13, v0.8.0), which adds the optional top-level dependencies object.
+    expect(v2.properties.dependencies, "the dependencies object A13 adds").toBeDefined();
+    delete v2.properties.dependencies;
     delete v2.$defs.message.properties.code.description;
     // A8 step 1 (TESTS_NOT_EXERCISING_CHANGES) adds the optional testIntegrity.exercise property.
     delete v2.properties.testIntegrity.properties.exercise;

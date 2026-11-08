@@ -1,0 +1,8 @@
+{
+  "name": "@demo/app",
+  "version": "0.1.0",
+  "dependencies": {
+    "@demo/core": "workspace:*",
+    "zod": "^3.23.8"
+  }
+}

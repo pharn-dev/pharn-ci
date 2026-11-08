@@ -1,0 +1,9 @@
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index 561aaa5..77aa001 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -25,2 +25,2 @@ packages:
+-  undici-types@8.9.0:
+-    resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
++  undici-types@8.10.0:
++    resolution: {integrity: sha512-Ab3yRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}

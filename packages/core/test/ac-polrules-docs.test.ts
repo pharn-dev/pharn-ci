@@ -86,8 +86,8 @@ describe("docs, schema and sources for the policy rules", { timeout: 60_000 }, (
     expect(now.startsWith(base)).toBe(true);
     // Re-pinned for A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): the v0.7.0 code text follows the v0.6.0 one;
     // v070-codes.ts pins it exactly, and its code joins the words below. It only adds.
-    // Re-pinned for flaky tests (A6): the v0.8.0 code text follows the v0.7.0 one; v080-codes.ts pins it exactly, and
-    // its codes join the words below. It only adds.
+    // Re-pinned for flaky tests (A6) and dependency safety (A13): the v0.8.0 code text follows the v0.7.0 one;
+    // v080-codes.ts pins it exactly, and its codes join the words below. It only adds.
     expect(now.slice(base.length)).toBe(
       APPENDED + P11_TEXT + POLICY_SETTINGS_TEXT + P07_TEXT + V060_CODE_TEXT + V070_CODE_TEXT + V080_CODE_TEXT,
     );

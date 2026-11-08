@@ -1,0 +1,34 @@
+# A pyproject that uses every section dependency safety reads.
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "demo"
+version = "0.1.0"
+description = '''Multi-line
+literal'''
+dependencies = [
+    "requests[socks]>=2.31,<3 ; python_version >= '3.9'",  # comment
+    "my-lib @ git+https://github.com/someone/my-lib.git@v1",
+    "wheel-dep @ https://files.pythonhosted.org/packages/aa/wheel_dep-1.0-py3-none-any.whl",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff==0.5.0"]
+
+[dependency-groups]
+lint = ["mypy>=1.10", { include-group = "dev" }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+httpx = "^0.27"
+from-git = { git = "https://github.com/someone/from-git.git", tag = "v1" }
+local-dir = { path = "../local-dir", develop = true }
+pinned = { version = "1.2.3", optional = true }
+
+[tool.poetry.group.test.dependencies]
+hypothesis = "^6.100"
+
+[tool.uv.sources]
+my-lib = { git = "https://github.com/someone/my-lib.git", tag = "v1" }
