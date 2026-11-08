@@ -9,6 +9,24 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+### Changed
+
+### Security
+
+## [0.6.0] - 2026-11-08
+
+Two org-policy rules for agent pull requests, and a `.pharn/ci.yml` that may only tighten. P13, agent
+self-modification (`POLICY_P13`), blocks an agent pull request that widens its own or another agent's powers in an
+agent settings file, an MCP config, a workflow or CODEOWNERS. P14, the agent PR size cap (`POLICY_P14`), fails an agent
+pull request that changes more files or lines than the org policy's `agents.max_files` / `agents.max_changed_lines`;
+it is opt-in, so a policy that sets neither sees no change. A behaviour change: a stricter `coverage.threshold` or
+`setup.require: true` in `.pharn/ci.yml` now applies over a looser `threshold` input (or `--threshold`) or
+`require-agent-setup: false`; to get the looser value back, lower it in `.pharn/ci.yml` itself. An added test file
+pharn-ci cannot read is now named in the `TEST_INTEGRITY_INDEX_UNAVAILABLE` warning instead of dropped. Report v2 gains
+the two message codes; no field, input or code was removed or renamed.
+
+### Added
+
 - Org-policy rule P13, agent self-modification (`POLICY_P13`, default `block`): under an app or `file:` policy, an
   agent pull request that widens its own or another agent's powers is blocked. The Action compares each agent settings
   file, MCP config, workflow and CODEOWNERS file the diff touches between the merge base and HEAD (read from committed
@@ -47,8 +65,6 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   given in mode `off`, and is unchanged when no added file is unread. No new message code and no schema change.
 - TI01's detail for a deleted test file with a same-stem test file added now says the base text "could not be parsed"
   when it was read but the test index refused it, instead of saying it was not available. The severity is unchanged.
-
-### Security
 
 ## [0.5.0] - 2026-11-03
 
