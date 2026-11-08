@@ -2,8 +2,8 @@ name: pharn-ci
 description: Check whether AI coding agents can safely work in your repo — diff coverage, test integrity, agent setup and policy.
 author: pharn-dev
 branding:
-  icon: shield
-  color: green
+  icon: box
+  color: blue
 
 inputs:
   coverage-file:

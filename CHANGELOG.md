@@ -11,6 +11,9 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- The Marketplace icon is now a cube (`box`) on blue, closer to the pharn logo, instead of a green shield
+  (`branding` in `action.yml`). It shows on the Marketplace from the next release on.
+
 ### Security
 
 ## [0.9.1] - 2026-11-08
