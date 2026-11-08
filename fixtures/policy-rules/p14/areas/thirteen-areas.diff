@@ -1,0 +1,78 @@
+diff --git a/README.md b/README.md
+index 1111111..2222222 100644
+--- a/README.md
++++ b/README.md
+@@ -1,0 +2 @@
++x
+diff --git a/lima/f.ts b/lima/f.ts
+index 1111111..2222222 100644
+--- a/lima/f.ts
++++ b/lima/f.ts
+@@ -1,0 +2 @@
++x
+diff --git a/kilo/f.ts b/kilo/f.ts
+index 1111111..2222222 100644
+--- a/kilo/f.ts
++++ b/kilo/f.ts
+@@ -1,0 +2 @@
++x
+diff --git a/juliet/f.ts b/juliet/f.ts
+index 1111111..2222222 100644
+--- a/juliet/f.ts
++++ b/juliet/f.ts
+@@ -1,0 +2 @@
++x
+diff --git a/india/f.ts b/india/f.ts
+index 1111111..2222222 100644
+--- a/india/f.ts
++++ b/india/f.ts
+@@ -1,0 +2 @@
++x
+diff --git a/hotel/f.ts b/hotel/f.ts
+index 1111111..2222222 100644
+--- a/hotel/f.ts
++++ b/hotel/f.ts
+@@ -1,0 +2 @@
++x
+diff --git a/golf/f.ts b/golf/f.ts
+index 1111111..2222222 100644
+--- a/golf/f.ts
++++ b/golf/f.ts
+@@ -1,0 +2 @@
++x
+diff --git a/foxtrot/f.ts b/foxtrot/f.ts
+index 1111111..2222222 100644
+--- a/foxtrot/f.ts
++++ b/foxtrot/f.ts
+@@ -1,0 +2 @@
++x
+diff --git a/echo/f.ts b/echo/f.ts
+index 1111111..2222222 100644
+--- a/echo/f.ts
++++ b/echo/f.ts
+@@ -1,0 +2 @@
++x
+diff --git a/delta/f.ts b/delta/f.ts
+index 1111111..2222222 100644
+--- a/delta/f.ts
++++ b/delta/f.ts
+@@ -1,0 +2 @@
++x
+diff --git a/charlie/f.ts b/charlie/f.ts
+index 1111111..2222222 100644
+--- a/charlie/f.ts
++++ b/charlie/f.ts
+@@ -1,0 +2 @@
++x
+diff --git a/bravo/f.ts b/bravo/f.ts
+index 1111111..2222222 100644
+--- a/bravo/f.ts
++++ b/bravo/f.ts
+@@ -1,0 +2 @@
++x
+diff --git a/alpha/f.ts b/alpha/f.ts
+index 1111111..2222222 100644
+--- a/alpha/f.ts
++++ b/alpha/f.ts
+@@ -1,0 +2 @@
++x

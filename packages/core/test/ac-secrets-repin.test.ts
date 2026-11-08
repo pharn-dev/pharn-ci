@@ -54,7 +54,18 @@ const P07_CODES = ["POLICY_P07"];
 // policy-p13 (Horizon 2 item H1) adds one more, POLICY_P13, in the " Codes added in v0.6.0:" text that follows the same
 // appended text, and to report.ts. It joins every exact code-word comparison below; nothing is removed.
 const P13_CODES = ["POLICY_P13"];
-const ADDED_CODES = [...CODES, ...POLICY_CODES, ...UPLOAD_CODES, ...AGENT_PR_CODES, ...P07_CODES, ...P13_CODES];
+// Re-pinned for policy rule P14 (agent PR size cap): it adds one more, POLICY_P14, in the same " Codes added in v0.6.0:"
+// text (after POLICY_P13), and to report.ts. It joins every exact code-word comparison below; nothing is removed.
+const P14_CODES = ["POLICY_P14"];
+const ADDED_CODES = [
+  ...CODES,
+  ...POLICY_CODES,
+  ...UPLOAD_CODES,
+  ...AGENT_PR_CODES,
+  ...P07_CODES,
+  ...P13_CODES,
+  ...P14_CODES,
+];
 
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 const atCommit = (commit: string, path: string) =>

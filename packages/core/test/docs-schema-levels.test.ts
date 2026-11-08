@@ -51,7 +51,9 @@ describe("docs-schema-levels", () => {
     expect(now).toContain(
       "TEST_INTEGRITY_INDEX_UNAVAILABLE (warn, or error in mode block when TI02 and TI05, or TI09, did not run at all: touched",
     );
-    // Re-pinned for policy-p13 (Horizon 2 item H1): the appended v0.6.0 code text (POLICY_P13) is taken out too.
+    // Re-pinned for policy-p13 (Horizon 2 item H1) and policy rule P14 (agent PR size cap): the code description also
+    // gains exactly the v0.6.0 code text (POLICY_P13, POLICY_P14) at its end; withoutV060CodeText requires it once and
+    // takes it out too, so every other byte stays pinned.
     expect(withoutV060CodeText(withoutSchemaLevelEdits(now)), "report.v2.json without the two insertions").toBe(
       atBase("schema/report.v2.json"),
     );

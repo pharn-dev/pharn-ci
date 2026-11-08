@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "agents": {
+    "max_files": 3
+  },
+  "policy": {
+    "rules": {
+      "P14": "off"
+    }
+  }
+}

@@ -152,8 +152,9 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
     const baseDescription = strings(JSON.parse(v2Base)).find((s) => s.includes(" Codes added in v0.4.0:"));
     expect(baseDescription, "control: the base has the v0.4.0 text").toBeDefined();
     const description = strings(JSON.parse(v2)).find((s) => s.includes(" Codes added in v0.4.0:"));
-    // Re-pinned for policy-p13 (Horizon 2 item H1): the v0.6.0 code text (POLICY_P13, v060-codes.ts) follows P07_TEXT,
-    // and POLICY_P13 joins the added code words of the schema and report.ts below.
+    // Re-pinned for policy-p13 (Horizon 2 item H1) and policy rule P14 (agent PR size cap): the one v0.6.0 code text
+    // (POLICY_P13, POLICY_P14, v060-codes.ts) follows P07_TEXT, and both codes join the added code words of the schema
+    // and report.ts below.
     expect(description).toBe(
       `${baseDescription}${SENTENCE}${POLICY_RULES_TEXT}${P11_TEXT}${POLICY_SETTINGS_TEXT}${P07_TEXT}${V060_CODE_TEXT}`,
     );

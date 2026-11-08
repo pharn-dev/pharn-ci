@@ -68,6 +68,8 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       // into these two new committed files.
       if (/^A\tfixtures\/markdown\/(?:missing|no-coverable)\.md$/.test(line)) continue;
       // Re-pinned on the rebase onto E3 item 23 (policy settings): its fixtures under fixtures/policy-settings/ are new too.
+      // Re-pinned for policy rule P14 (agent PR size cap): its new case directories under fixtures/policy-rules/p14/ are
+      // added too (and untracked until committed), so both patterns also accept p14; no existing fixture changes.
       // Re-pinned for the 2026-11-01 review fixes: their new TI10 and TI14 fixture files are added too.
       // Re-pinned for ti03-skip-evasion (review B1): its new case directories under fixtures/test-integrity/TI03/ are
       // added too; an existing TI03 fixture that changed would still show as modified, not added.
@@ -78,7 +80,7 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       // fixtures/test-integrity/TI01/, TI04/ and TI13/ are added too (the TI03 one is covered above).
       // Re-pinned for policy-p13 (Horizon 2 item H1): its new fixtures under fixtures/policy-rules/p13/ are added too.
       expect(line, "a fixture change").toMatch(
-        /^A\tfixtures\/policy-rules\/(?:p07|p13)\/[^/]+\/[^/]+$|^A\tfixtures\/policy-settings\/[^\t]+$|^A\tfixtures\/test-integrity\/TI03\/[^\t]+$|^A\tfixtures\/test-integrity\/(?:TI10\/(?:block-colon-only|block-true-only|block-true-or-run|pass-true-then-run)|TI14\/block-threshold-(?:emptied|lowered-nbsp-comment|padded-past-cap))\.diff$|^A\tfixtures\/test-integrity\/(?:TI01\/(?:block-test-mts-deleted|block-spec-cts-deleted)|TI04\/block-test-mts-it-only|TI13\/pass-test-mts-istanbul)\/[^\t]+$|^A\tfixtures\/test-integrity\/TI09\/(?:block-opaque-head|block-too-deep-head|pass-added-opaque-config|pass-opaque-base-and-head)\/[^\t]+$|^A\tfixtures\/test-integrity\/(?:index-unavailable\/(?:added-broken|added-parseable|added-python|added-six-broken|mixed|mixed-python)|TI01\/block-same-stem-(?:unparsed|dropped))\/[^\t]+$/,
+        /^A\tfixtures\/policy-rules\/(?:p07|p13|p14)\/[^/]+\/[^/]+$|^A\tfixtures\/policy-settings\/[^\t]+$|^A\tfixtures\/test-integrity\/TI03\/[^\t]+$|^A\tfixtures\/test-integrity\/(?:TI10\/(?:block-colon-only|block-true-only|block-true-or-run|pass-true-then-run)|TI14\/block-threshold-(?:emptied|lowered-nbsp-comment|padded-past-cap))\.diff$|^A\tfixtures\/test-integrity\/(?:TI01\/(?:block-test-mts-deleted|block-spec-cts-deleted)|TI04\/block-test-mts-it-only|TI13\/pass-test-mts-istanbul)\/[^\t]+$|^A\tfixtures\/test-integrity\/TI09\/(?:block-opaque-head|block-too-deep-head|pass-added-opaque-config|pass-opaque-base-and-head)\/[^\t]+$|^A\tfixtures\/test-integrity\/(?:index-unavailable\/(?:added-broken|added-parseable|added-python|added-six-broken|mixed|mixed-python)|TI01\/block-same-stem-(?:unparsed|dropped))\/[^\t]+$/,
       );
     }
     for (const path of nonEmpty(git("ls-files", "--others", "--exclude-standard", "--", "fixtures/"))) {
@@ -92,7 +94,7 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       // Re-pinned for policy-p13 (Horizon 2 item H1): its fixtures under fixtures/policy-rules/p13/ are untracked until
       // committed.
       expect(path, "a new fixture").toMatch(
-        /^fixtures\/policy-rules\/(?:p07|p13)\/[^/]+\/[^/]+$|^fixtures\/test-integrity\/TI03\/[^\t]+$|^fixtures\/test-integrity\/(?:TI10\/(?:block-colon-only|block-true-only|block-true-or-run|pass-true-then-run)|TI14\/block-threshold-(?:emptied|lowered-nbsp-comment|padded-past-cap))\.diff$|^fixtures\/policy-settings\/unparseable\/[^\t]+$|^fixtures\/test-integrity\/(?:TI01\/(?:block-test-mts-deleted|block-spec-cts-deleted)|TI04\/block-test-mts-it-only|TI13\/pass-test-mts-istanbul)\/[^\t]+$|^fixtures\/test-integrity\/TI09\/(?:block-opaque-head|block-too-deep-head|pass-added-opaque-config|pass-opaque-base-and-head)\/[^\t]+$|^fixtures\/test-integrity\/(?:index-unavailable\/(?:added-broken|added-parseable|added-python|added-six-broken|mixed|mixed-python)|TI01\/block-same-stem-(?:unparsed|dropped))\/[^\t]+$/,
+        /^fixtures\/policy-rules\/(?:p07|p13|p14)\/[^/]+\/[^/]+$|^fixtures\/test-integrity\/TI03\/[^\t]+$|^fixtures\/test-integrity\/(?:TI10\/(?:block-colon-only|block-true-only|block-true-or-run|pass-true-then-run)|TI14\/block-threshold-(?:emptied|lowered-nbsp-comment|padded-past-cap))\.diff$|^fixtures\/policy-settings\/unparseable\/[^\t]+$|^fixtures\/test-integrity\/(?:TI01\/(?:block-test-mts-deleted|block-spec-cts-deleted)|TI04\/block-test-mts-it-only|TI13\/pass-test-mts-istanbul)\/[^\t]+$|^fixtures\/test-integrity\/TI09\/(?:block-opaque-head|block-too-deep-head|pass-added-opaque-config|pass-opaque-base-and-head)\/[^\t]+$|^fixtures\/test-integrity\/(?:index-unavailable\/(?:added-broken|added-parseable|added-python|added-six-broken|mixed|mixed-python)|TI01\/block-same-stem-(?:unparsed|dropped))\/[^\t]+$/,
       );
     }
 

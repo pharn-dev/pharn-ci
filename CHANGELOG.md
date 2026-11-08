@@ -19,6 +19,15 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   text. A missing diff, or a file that cannot be read or parsed, fails closed. A person's pull request is never
   subject to it, a `file:` policy cannot lower it, and the CLI never runs it. New message code in schema v2, no new
   input, no new dependency, no network call.
+- Org-policy rule P14, agent PR size cap, with the new message code `POLICY_P14`: an agent pull request that changes
+  more files than `agents.max_files` or more lines (added plus removed) than `agents.max_changed_lines` fails, with one
+  path-less violation per exceeded cap that names the count, the cap and the top-level directories touched ("split it
+  by area: …"). It is opt-in: set `agents.max_files` / `agents.max_changed_lines` to turn it on. There is no default
+  cap, so a policy that sets neither sees no change. Lockfiles, snapshots, `*.generated.*` files and `coverage.exclude`
+  paths do not count (`coverage.exclude` is not used when the pull request edits the config in use or a workflow,
+  unless the app policy sets the exclusions). A person's pull request is never subject to it, a missing diff fails
+  closed, the severity is `block` and a `file:` policy can lower a cap but never raise or remove one. Report v2 gains
+  the code only; no field changes.
 
 ### Changed
 

@@ -119,6 +119,7 @@ export { evaluatePolicyRules, MAX_P08_VIOLATIONS, MAX_RULE_VIOLATIONS } from "./
 export { policyRuleMessages } from "./policy/rules/messages.js";
 export { consistencySeverity } from "./policy/rules/p07.js";
 export { P13_DIFF_UNAVAILABLE_DETAIL, P13_UNCOMPARED_DETAIL } from "./policy/rules/p13.js";
+export { type AgentPrSize, agentPrSize, P14_GENERATED_FILES } from "./policy/rules/p14.js";
 export type { PolicyEvaluation, PolicyRuleInput, PolicyViolation } from "./policy/rules/types.js";
 export {
   type SelfModificationClass,

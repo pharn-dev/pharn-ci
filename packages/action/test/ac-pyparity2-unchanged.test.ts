@@ -50,6 +50,9 @@ const SECRET_CODES = [
   // policy-p13 (Horizon 2 item H1): the appended " Codes added in v0.6.0:" text and report.ts also gain this rule code;
   // this only adds to what the pin allows.
   "POLICY_P13",
+  // Re-pinned for policy rule P14 (agent PR size cap): the schema's message-code description (in a " Codes added in
+  // v0.6.0:" text) and report.ts also gain this rule code; this only adds to what the pin allows.
+  "POLICY_P14",
 ];
 
 const git = (...args: string[]) =>

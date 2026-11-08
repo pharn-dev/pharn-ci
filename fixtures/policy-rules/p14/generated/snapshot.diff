@@ -1,0 +1,40 @@
+diff --git a/src/a.ts b/src/a.ts
+index 1111111..2222222 100644
+--- a/src/a.ts
++++ b/src/a.ts
+@@ -1,0 +2,2 @@
++export const a1 = 1;
++export const a2 = 2;
+diff --git a/src/b.ts b/src/b.ts
+index 1111111..2222222 100644
+--- a/src/b.ts
++++ b/src/b.ts
+@@ -1,0 +2,2 @@
++export const b1 = 1;
++export const b2 = 2;
+diff --git a/src/__snapshots__/a.test.ts.snap b/src/__snapshots__/a.test.ts.snap
+index 1111111..2222222 100644
+--- a/src/__snapshots__/a.test.ts.snap
++++ b/src/__snapshots__/a.test.ts.snap
+@@ -1,0 +2,8 @@
++exports[`a 1`] = `
++{
++  "a1": 1,
++  "a2": 2,
++  "a3": 3,
++  "a4": 4,
++}
++`;
+diff --git a/test/b.snap b/test/b.snap
+index 1111111..2222222 100644
+--- a/test/b.snap
++++ b/test/b.snap
+@@ -1,0 +2,8 @@
++exports[`b 1`] = `
++{
++  "b1": 1,
++  "b2": 2,
++  "b3": 3,
++  "b4": 4,
++}
++`;

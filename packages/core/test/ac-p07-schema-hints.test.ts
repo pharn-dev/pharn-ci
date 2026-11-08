@@ -42,8 +42,9 @@ describe("the schema sentence, the hint and the README row for POLICY_P07", { ti
     const baseText = atCommit(BASE, "schema/report.v2.json");
     // Re-pinned by docs-schema-levels: the two insertions that state the block-mode levels of DIFF_UNAVAILABLE and
     // TEST_INTEGRITY_INDEX_UNAVAILABLE are taken out first (level-edits.ts); every other byte stays pinned.
-    // Re-pinned for policy-p13 (Horizon 2 item H1): the appended v0.6.0 code text (POLICY_P13) after the P07 sentence is
-    // taken out too; v060-codes.ts pins it exactly.
+    // Re-pinned for policy-p13 (Horizon 2 item H1) and policy rule P14 (agent PR size cap): the appended v0.6.0 code
+    // text (POLICY_P13, POLICY_P14) after the P07 sentence appears once and is taken out too, so the P07 sentence is
+    // still judged as the last one; v060-codes.ts pins it exactly.
     const nowText = withoutV060CodeText(withoutSchemaLevelEdits(read("schema/report.v2.json")));
     const base = codeDescription(baseText);
     const now = codeDescription(nowText);

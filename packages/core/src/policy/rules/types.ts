@@ -57,6 +57,11 @@ export interface PolicyRuleInput {
    * (`selectSelfModificationPaths`). Absent: P13 was not asked and adds nothing.
    */
   selfModification?: TestSources;
+  /**
+   * The run's resolved `coverage.exclude` patterns (validated, as `check()` uses them), for rule P14: a path they match
+   * is not counted. Absent: none.
+   */
+  coverageExclude?: readonly string[];
 }
 
 export interface PolicyEvaluation {
