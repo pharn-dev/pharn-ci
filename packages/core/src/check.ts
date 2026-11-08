@@ -13,6 +13,8 @@ import { compileGlob } from "./glob.js";
 import { injectionMessages } from "./injection/messages.js";
 import { injectionSettingsOf } from "./injection/policy.js";
 import { detectInjection, keepInjectionText } from "./injection/scan.js";
+import { junitReport } from "./junit/flaky.js";
+import type { JunitResults } from "./junit/results.js";
 import { agentPolicyOf, type PolicyFileBase } from "./policy/agents.js";
 import { agentPrIncompleteMessage, policyOverrideIgnoredMessage, policyUnavailableMessage } from "./policy/messages.js";
 import type { IgnoredSetting, ResolvedPolicy, SignalOverrides } from "./policy/resolved.js";
@@ -220,6 +222,18 @@ export interface CheckInput {
    * instruction file or removes what it names. Absent means the signals add nothing and the report is the one it was.
    */
   staleInstructionSources?: StaleInstructionSources;
+  /**
+   * The run's JUnit results (`parseJunitSources` of what the CLI or the Action read for the JUnit paths). They fill the
+   * report's `flaky` object when at least one file was parsed and add the JUnit messages (`junitReport`); none of them
+   * is an error, so test results never change a passing verdict into a failing one. Absent (no JUnit paths) adds
+   * nothing and the report is the one it was.
+   */
+  junit?: JunitResults;
+  /**
+   * The test ids the org quarantines (the app's policy response, or the CLI's `--quarantine-file`). Applied to `junit`
+   * unless the org policy sets `flaky.quarantine: false`. Absent quarantines nothing.
+   */
+  quarantine?: readonly string[];
 }
 
 /** Signals sorted by id, then path, then line (none first), then detail, in code-unit order. */
@@ -548,6 +562,10 @@ export function check(input: CheckInput): Report {
           agentSetup,
         });
   const staleMessages = stale === null ? [] : staleInstructionMessages(stale.findings, stale.omitted);
+  // The JUnit results ride on every report path; the org policy can turn its quarantine list off.
+  const quarantineOn = input.policy?.document?.flaky?.quarantine !== false;
+  const junit =
+    input.junit === undefined ? null : junitReport(input.junit, quarantineOn ? input.quarantine : undefined);
   const base = {
     version: input.version,
     threshold: input.threshold,
@@ -586,6 +604,8 @@ export function check(input: CheckInput): Report {
     ...(injectionMessageList.length === 0 ? {} : { injectionMessages: injectionMessageList }),
     ...(injection === null || injection.signals.length === 0 ? {} : { injectionSignals: injection.signals }),
     ...(policyMessages.length === 0 ? {} : { policyMessages }),
+    ...(junit?.flaky === undefined ? {} : { flaky: junit.flaky }),
+    ...(junit === null || junit.messages.length === 0 ? {} : { flakyMessages: junit.messages }),
   };
 
   if ("kind" in coverageInput) {

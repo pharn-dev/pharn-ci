@@ -11,6 +11,8 @@ export interface UploadBundle {
 export interface UploadBundleOptions {
   /** The byte budget of each message text and signal detail; never more than the default 2048. At least 32. */
   messageMaxBytes?: number;
+  /** True when the archive also holds `junit/results.xml`: the report's `flaky.uploaded` then says true. */
+  junit?: boolean;
 }
 
 type Container = Record<string, unknown> | unknown[];
@@ -50,7 +52,8 @@ function capField(items: unknown, key: string, cap: number): void {
 /**
  * The text of a run as it leaves the job: a copy of the report and of its upload metadata in which every string is
  * redacted, every message text and test-integrity signal detail is cut to the byte budget, the signals carry no
- * `base` or `head` excerpt, and `meta.upload` says `ok` (the upload this text is for). The inputs are not changed and
+ * `base` or `head` excerpt, `meta.upload` says `ok` (the upload this text is for), and with `junit` the report's
+ * `flaky.uploaded` says true (the archive holds the results it is about). The inputs are not changed and
  * key order is kept. Throws a RangeError when `messageMaxBytes` is not a safe integer of at least 32.
  */
 export function buildUploadBundle(report: Report, meta: UploadMeta, options?: UploadBundleOptions): UploadBundle {
@@ -78,6 +81,8 @@ export function buildUploadBundle(report: Report, meta: UploadMeta, options?: Up
   }
   const runMeta = reportCopy.meta;
   if (isContainer(runMeta) && !Array.isArray(runMeta)) runMeta.upload = { status: "ok" };
+  const flaky = reportCopy.flaky;
+  if (options?.junit === true && isContainer(flaky) && !Array.isArray(flaky)) flaky.uploaded = true;
 
   return {
     reportJson: `${JSON.stringify(reportCopy, null, 2)}\n`,

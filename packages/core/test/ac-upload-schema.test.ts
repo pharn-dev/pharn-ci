@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { V060_CODE_TEXT, V060_CODES } from "./v060-codes.js";
 import { V070_CODE_TEXT, V070_CODES, withoutV070Properties } from "./v070-codes.js";
+import { V080_CODE_TEXT, V080_CODES, withoutV080Properties } from "./v080-codes.js";
 
 // The schemas, report.ts and fixtures/upload/bundle-golden/meta.json are read inside each test body: the build writes
 // or changes them after this test. The base is main at f563d7d, read with git.
@@ -153,7 +154,9 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
     // too (v070-codes.ts pins it exactly), and the v0.7.0 code text joins the description and its code the added words.
     // Re-pinned for stale instructions (Horizon 2 item H3): its top-level setupHealth property is taken out the same
     // way; its codes join V070_CODES and report.ts also gains the SI ids below.
-    const v2 = withoutSchemaLevelEdits(withoutV070Properties(read("schema/report.v2.json")));
+    // Re-pinned for flaky tests (A6, v0.8.0): the flaky description is taken out the same way, and the v0.8.0 code text
+    // (v080-codes.ts) joins the description and its codes the added words.
+    const v2 = withoutSchemaLevelEdits(withoutV080Properties(withoutV070Properties(read("schema/report.v2.json"))));
     const baseDescription = strings(JSON.parse(v2Base)).find((s) => s.includes(" Codes added in v0.4.0:"));
     expect(baseDescription, "control: the base has the v0.4.0 text").toBeDefined();
     const description = strings(JSON.parse(v2)).find((s) => s.includes(" Codes added in v0.4.0:"));
@@ -161,7 +164,7 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
     // (POLICY_P13, POLICY_P14, v060-codes.ts) follows P07_TEXT, and both codes join the added code words of the schema
     // and report.ts below.
     expect(description).toBe(
-      `${baseDescription}${SENTENCE}${POLICY_RULES_TEXT}${P11_TEXT}${POLICY_SETTINGS_TEXT}${P07_TEXT}${V060_CODE_TEXT}${V070_CODE_TEXT}`,
+      `${baseDescription}${SENTENCE}${POLICY_RULES_TEXT}${P11_TEXT}${POLICY_SETTINGS_TEXT}${P07_TEXT}${V060_CODE_TEXT}${V070_CODE_TEXT}${V080_CODE_TEXT}`,
     );
     expect(v2.split(" Codes added in v0.4.0:").length - 1).toBe(1);
 
@@ -184,6 +187,7 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
         "POLICY_P07",
         ...V060_CODES,
         ...V070_CODES,
+        ...V080_CODES,
         "UPLOAD_TOO_LARGE",
       ].sort(),
     );
@@ -198,6 +202,7 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
         "POLICY_P07",
         ...V060_CODES,
         ...V070_CODES,
+        ...V080_CODES,
         "SI01",
         "SI02",
         "SI03",

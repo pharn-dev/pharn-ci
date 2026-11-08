@@ -4,8 +4,10 @@ import { validatePolicy } from "./validate.js";
 
 /** The most items `quarantine` may hold. */
 export const RESPONSE_MAX_QUARANTINE_ITEMS = 10_000;
-/** The longest quarantine item or etag, in UTF-16 code units. */
-const MAX_ITEM_UNITS = 1024;
+/** The longest quarantine item, in UTF-16 code units. */
+export const QUARANTINE_ITEM_MAX_UNITS = 1024;
+const MAX_ITEM_UNITS = QUARANTINE_ITEM_MAX_UNITS;
+/** The longest etag, in UTF-16 code units. */
 const MAX_ETAG_UNITS = 200;
 /** The range `settings.messageMaxBytes` may take, inclusive. */
 const MESSAGE_MAX_BYTES_MIN = 256;

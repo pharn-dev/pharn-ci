@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { V070_CODES, withoutV070Properties } from "./v070-codes.js";
+import { V080_CODES, withoutV080Properties } from "./v080-codes.js";
 
 // Reads the repository and two fixed commits with git; nothing the build adds is loaded. b31de0c is the commit the
 // precision-v030 pin compares schema/report.v2.json with; e13765681e… is the one the pyparity2 pin compares the schema
@@ -69,6 +70,9 @@ const ADDED_CODES = [
   // Re-pinned for A8 step 1: TESTS_NOT_EXERCISING_CHANGES in the " Codes added in v0.7.0:" text (v070-codes.ts) and in
   // report.ts. It joins every exact code-word comparison below; nothing is removed.
   ...V070_CODES,
+  // Re-pinned for flaky tests (A6): its four codes in the " Codes added in v0.8.0:" text (v080-codes.ts) and in
+  // report.ts join the same way.
+  ...V080_CODES,
 ];
 
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
@@ -118,7 +122,10 @@ describe("the v0.4.0 codes are the only schema and report.ts additions, and the 
     // Re-pinned for A8 step 1: the optional testIntegrity.exercise property is taken out too (v070-codes.ts pins it).
     // Re-pinned for stale instructions (Horizon 2 item H3): its top-level setupHealth property is taken out the same
     // way, and its four SETUP_STALE_ codes join V070_CODES.
-    const schemaWithIsAgentPr = withoutSchemaLevelEdits(withoutV070Properties(read("schema/report.v2.json")));
+    // Re-pinned for flaky tests (A6, v0.8.0): the flaky description is taken out the same way (v080-codes.ts).
+    const schemaWithIsAgentPr = withoutSchemaLevelEdits(
+      withoutV080Properties(withoutV070Properties(read("schema/report.v2.json"))),
+    );
     expect(schemaWithIsAgentPr.split(isAgentPrLines).length - 1, "the four isAgentPr lines appear once").toBe(1);
     const schema = schemaWithIsAgentPr.replace(isAgentPrLines, "");
 

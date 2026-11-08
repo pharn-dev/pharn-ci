@@ -1,9 +1,13 @@
 import { gzipSync } from "node:zlib";
 import {
+  buildJunitResultsXml,
   buildUploadBundle,
   buildUploadMeta,
   buildUploadTar,
+  type JunitResults,
   type Report,
+  UPLOAD_JUNIT_MAX_BYTES,
+  UPLOAD_JUNIT_NAME,
   UPLOAD_REPORT_MAX_BYTES,
   type UploadOutcome,
   VERSION,
@@ -70,6 +74,11 @@ export interface UploadInput {
   prHeadShaExpected?: string;
   /** Finds this run's own pull request comment, when the run may have one. A rejection means no comment link. */
   findOwnComment?: () => Promise<IssueComment | undefined>;
+  /**
+   * The run's JUnit results, when at least one file was parsed and the org's `settings.uploadJunit` is not false: the
+   * archive then also holds `junit/results.xml`, rebuilt from them (`buildJunitResultsXml`), never the files themselves.
+   */
+  junit?: JunitResults;
 }
 
 /** An outcome with the request id of the app answer that decided it, for the log line. */
@@ -151,21 +160,34 @@ async function uploadSteps(deps: UploadDeps, input: UploadInput, remainingMs: ()
   const createdAt = (deps.now?.() ?? new Date()).toISOString();
   const meta = buildUploadMeta(input.report, { version: VERSION, createdAt, commentUrl });
   if (meta === null) return { outcome: { status: "skipped", reason: "no-meta" } };
-  const { reportJson, metaJson } = buildUploadBundle(
-    input.report,
-    meta,
-    input.messageMaxBytes === undefined ? undefined : { messageMaxBytes: input.messageMaxBytes },
-  );
+  const junit = input.junit !== undefined && input.junit.parsed > 0 ? input.junit : undefined;
+  const { reportJson, metaJson } = buildUploadBundle(input.report, meta, {
+    ...(input.messageMaxBytes === undefined ? {} : { messageMaxBytes: input.messageMaxBytes }),
+    ...(junit === undefined ? {} : { junit: true }),
+  });
   if (Buffer.byteLength(reportJson, "utf8") > UPLOAD_REPORT_MAX_BYTES) {
     return { outcome: { status: "too_large", maxBytes: UPLOAD_REPORT_MAX_BYTES } };
+  }
+  const junitXml =
+    junit === undefined
+      ? undefined
+      : buildJunitResultsXml(
+          junit,
+          input.messageMaxBytes === undefined ? undefined : { messageMaxBytes: input.messageMaxBytes },
+        );
+  if (junitXml !== undefined && Buffer.byteLength(junitXml, "utf8") > UPLOAD_JUNIT_MAX_BYTES) {
+    return { outcome: { status: "too_large", maxBytes: UPLOAD_JUNIT_MAX_BYTES } };
   }
   const gz = gzipSync(
     buildUploadTar([
       { name: "report.json", text: reportJson },
       { name: "meta.json", text: metaJson },
+      ...(junitXml === undefined ? [] : [{ name: UPLOAD_JUNIT_NAME, text: junitXml }]),
     ]),
     { level: 9 },
   );
+  // The JUnit share of the archive, as the app's size check reads it: the results compressed on their own.
+  const junitBytes = junitXml === undefined ? 0 : gzipSync(junitXml, { level: 9 }).byteLength;
   // The redacted metadata is what the app is told, so nothing the bundle redacted is sent beside it.
   const m = JSON.parse(metaJson) as Record<string, unknown>;
 
@@ -183,7 +205,7 @@ async function uploadSteps(deps: UploadDeps, input: UploadInput, remainingMs: ()
       runId: m.runId,
       runAttempt: m.runAttempt,
       scope: m.scope,
-      sizes: { report: gz.byteLength, junit: 0 },
+      sizes: { report: gz.byteLength, junit: junitBytes },
     }),
   });
   const urlId = requestIdOf(urlResult);
@@ -238,7 +260,7 @@ async function uploadSteps(deps: UploadDeps, input: UploadInput, remainingMs: ()
   }
   const runUrl = readRunsAnswer(runsResult, input.appOrigin);
   if (runUrl === null) return failed("runs:malformed", runsId);
-  return { outcome: { status: "ok", runUrl }, ...runsId };
+  return { outcome: { status: "ok", runUrl, ...(junitXml === undefined ? {} : { junit: true }) }, ...runsId };
 }
 
 const failed = (reason: string, id: { requestId?: string }): Step => ({ outcome: { status: "failed", reason }, ...id });

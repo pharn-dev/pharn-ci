@@ -20,6 +20,20 @@ export interface AppPolicyResult {
    * because `ResolvedPolicy` stays the shape the report projects.
    */
   messageMaxBytes?: number;
+  /**
+   * The org's quarantine list (test ids, validated), set only on the same 200 path as `messageMaxBytes`. `check()` applies
+   * it to the run's JUnit results unless the org policy sets `flaky.quarantine: false`.
+   */
+  quarantine?: string[];
+  /** The org's `settings.uploadJunit`, set only on the same 200 path: false keeps the JUnit results out of the upload. */
+  uploadJunit?: boolean;
+}
+
+/** The app settings of a valid 200 answer that the Action uses beside the policy. */
+interface AppSettingsUsed {
+  messageMaxBytes: number;
+  quarantine: string[];
+  uploadJunit: boolean;
 }
 
 /**
@@ -43,18 +57,20 @@ export async function fetchAppPolicy(
   deps: PolicyFetchDeps,
   options: { mode: "auto" | "required"; origin: URL; repository: string },
 ): Promise<AppPolicyResult> {
-  let messageMaxBytes: number | undefined;
+  let settings: AppSettingsUsed | undefined;
   const policy = await requestPolicy(deps, options, (value) => {
-    messageMaxBytes = value;
+    settings = value;
   });
-  return messageMaxBytes === undefined ? { policy } : { policy, messageMaxBytes };
+  // A closure assigned it: read it through a widened view.
+  const used = settings as AppSettingsUsed | undefined;
+  return used === undefined ? { policy } : { policy, ...used };
 }
 
-/** The request and its answer; `onSettings` is called with the validated `messageMaxBytes` on the one 200 path only. */
+/** The request and its answer; `onSettings` is called with the validated settings on the one 200 path only. */
 async function requestPolicy(
   deps: PolicyFetchDeps,
   options: { mode: "auto" | "required"; origin: URL; repository: string },
-  onSettings: (messageMaxBytes: number) => void,
+  onSettings: (settings: AppSettingsUsed) => void,
 ): Promise<ResolvedPolicy> {
   const required = options.mode === "required";
   const unavailable = (
@@ -123,7 +139,11 @@ async function requestPolicy(
   }
   const validated = validatePolicyResponse(parsed);
   if (!validated.ok) return unavailable("invalid-response", { status, ...id });
-  onSettings(validated.response.settings.messageMaxBytes);
+  onSettings({
+    messageMaxBytes: validated.response.settings.messageMaxBytes,
+    quarantine: validated.response.quarantine,
+    uploadJunit: validated.response.settings.uploadJunit,
+  });
   return {
     source: "app",
     version: validated.response.version,

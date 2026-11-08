@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="api">
+    <testcase classname="api.users" name="lists users" time="0.1"/>
+    <testcase classname="api.users" name="creates a user" time="0.4">
+      <failure message="timeout after 5000 ms"/>
+    </testcase>
+    <testcase classname="api.orders" name="cancels an order" time="0.2">
+      <failure message="connection reset"/>
+    </testcase>
+  </testsuite>
+</testsuites>

@@ -5,7 +5,8 @@ export const UPLOAD_REPORT_MAX_BYTES = 5_242_880;
 
 /** How the upload of a run ended. `reason` is for the log; the report carries only the status (and the URL). */
 export type UploadOutcome =
-  | { status: "ok"; runUrl: string }
+  /** `junit` is true when the stored archive held the run's normalised JUnit results. */
+  | { status: "ok"; runUrl: string; junit?: boolean }
   | { status: "skipped"; reason: "input-never" | "pull-request-target" | "no-meta" | "no-oidc" | "no-installation" }
   | { status: "failed"; reason: string }
   | { status: "too_large"; maxBytes: number | null };
@@ -21,13 +22,17 @@ function tooLargeText(maxBytes: number | null): string {
 /**
  * The report with `meta.upload` set to the outcome's status (and `runUrl` for `ok`). A report without run metadata is
  * returned as it is. `too_large` also adds one `UPLOAD_TOO_LARGE` warning, which can move a passing verdict to warn;
- * no other status touches the messages or the verdict. The input is not changed.
+ * no other status touches the messages or the verdict. An `ok` outcome whose archive held the JUnit results sets
+ * `flaky.uploaded` to true. The input is not changed.
  */
 export function withUploadOutcome(report: Report, outcome: UploadOutcome): Report {
   if (report.meta === undefined) return report;
   const upload =
     outcome.status === "ok" ? { status: "ok" as const, runUrl: outcome.runUrl } : { status: outcome.status };
   const meta = { ...report.meta, upload };
+  if (outcome.status === "ok" && outcome.junit === true && report.flaky !== undefined) {
+    return { ...report, flaky: { ...report.flaky, uploaded: true }, meta };
+  }
   if (outcome.status !== "too_large") return { ...report, meta };
   const message: Message = { level: "warn", code: "UPLOAD_TOO_LARGE", text: tooLargeText(outcome.maxBytes) };
   const messages = [...report.messages, message];

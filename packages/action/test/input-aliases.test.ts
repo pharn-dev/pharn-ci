@@ -47,6 +47,8 @@ const SHIPPED_INPUTS = [
   "upload",
   // The current name of fail-on-threshold (review 2026-11-01, finding 27).
   "fail-on-verdict",
+  // Added by A6 (flaky tests: JUnit results).
+  "junit-paths",
 ];
 // "run-url" was added by E3 item 21 (the run upload).
 const SHIPPED_OUTPUTS = ["report-path", "verdict", "diff-coverage", "run-url"];

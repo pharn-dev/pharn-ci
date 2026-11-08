@@ -6,6 +6,7 @@ import {
   type Message,
   type MessageCode,
   type Report,
+  type ReportFlaky,
   type ReportInjectionSignal,
   type ReportPolicyViolation,
   type ReportStaleInstruction,
@@ -192,6 +193,15 @@ export const MESSAGE_HINTS: Readonly<Record<MessageCode, Hint>> = {
   INJECTION_PI05:
     "Remove the instruction file from the vendored directory, or keep vendored code out of the repository.",
   INJECTION_TEXT_TRUNCATED: "Split the change into smaller pull requests, so every added line is scanned.",
+  // Flaky tests (A6): the JUnit paths and the test step are what to fix; test results never change the verdict.
+  JUNIT_NOT_FOUND:
+    "Point `junit-paths` (or `--junit`) at the files the test step writes, run pharn-ci after the test step, and keep the test step from stopping the job first (`if: always()` on the pharn-ci step).",
+  JUNIT_INVALID:
+    "Have the test runner write plain JUnit XML: one `testsuites` or `testsuite` root, no DOCTYPE, every element closed.",
+  JUNIT_TOO_LARGE:
+    "Narrow `junit-paths` to the files of this job, or merge the reports; the results past the limits are not counted or uploaded.",
+  FLAKY_QUARANTINED_FAILURES:
+    "Nothing to fix in the pull request; the org's quarantine list on pharn.dev says which tests are known to be flaky.",
 };
 
 /** The hint text for a message code, or undefined when it has none. `label` is the report's accept label. */
@@ -647,6 +657,43 @@ function injectionLines(report: Report): string[] {
   return lines;
 }
 
+/** The report's `flaky` object when it is well formed; a hand-built report is untrusted. */
+function flakyOf(report: Report): ReportFlaky | null {
+  const flaky: unknown = report.flaky;
+  if (typeof flaky !== "object" || flaky === null) return null;
+  const f = flaky as ReportFlaky;
+  const counts = [f.testCount, f.failed, f.quarantinedFailures, f.unquarantinedFailures];
+  if (!counts.every((n) => Number.isSafeInteger(n) && n >= 0)) return null;
+  if (!Array.isArray(f.quarantined) || !f.quarantined.every((id) => typeof id === "string")) return null;
+  return f;
+}
+
+/**
+ * The Flaky section: the test and failure counts, how many failures the org's quarantine list covers, and the
+ * quarantined ids that failed, collapsed. Test ids are untrusted text, so each is one code span.
+ */
+function flakyLines(report: Report, maxRows: number): string[] {
+  const flaky = flakyOf(report);
+  if (flaky === null) return [];
+  const tests = countOf(flaky.testCount, "test", "tests");
+  const failed =
+    flaky.failed === 0
+      ? "none failed"
+      : `${flaky.failed} failed · ${flaky.quarantinedFailures} of ${countOf(flaky.failed, "failure", "failures")} quarantined`;
+  const lines: string[] = ["### 🧫 Flaky", "", `${tests} · ${failed}`, ""];
+  const ids = flaky.quarantined;
+  if (ids.length > 0) {
+    lines.push(`<details><summary>Quarantined failures (${ids.length})</summary>`, "");
+    for (const id of ids.slice(0, maxRows)) lines.push(`- ${code(id)}`);
+    if (ids.length > maxRows) lines.push(`- _…and ${ids.length - maxRows} more in report.json._`);
+    lines.push("", "</details>", "");
+  }
+  if (flaky.failed > 0) {
+    lines.push("_Test results never change the verdict: the test step fails the job for a failed test._", "");
+  }
+  return lines;
+}
+
 /** Render a Report as GitHub-flavored markdown (PR comment, job summary, CLI). */
 export function renderMarkdown(report: Report, options: RenderMarkdownOptions = {}): string {
   const maxRows = options.maxRows ?? 50;
@@ -709,6 +756,8 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
   if (hasPolicy(report)) out.push(...policyLines(report, maxRows));
   const stale = staleLines(report, maxRows);
   out.push(...stale);
+  const flaky = flakyLines(report, maxRows);
+  out.push(...flaky);
 
   // Before the agent setup inventory: when the Action has to drop rows to fit a size limit, the
   // reason for the verdict is never what goes.
@@ -734,6 +783,7 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
       !(INJECTION_MESSAGE_CODE.test(m.code) && listedInjectionIds.has(m.code)) &&
       !inPolicySection(m.code) &&
       !(stale.length > 0 && m.code.startsWith("SETUP_STALE_")) &&
+      !(flaky.length > 0 && m.code === "FLAKY_QUARANTINED_FAILURES") &&
       !(m.code === "TEST_INTEGRITY_ACCEPTED" && acceptedShown(report)) &&
       !(m.code === "TESTS_NOT_EXERCISING_CHANGES" && exercisePaths(report) !== null),
   );

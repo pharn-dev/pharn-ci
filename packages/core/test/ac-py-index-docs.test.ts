@@ -122,8 +122,11 @@ describe("python-test-index: THREAT-MODEL, fixture layout, schemas and purity", 
         meta: { properties: { isAgentPr?: unknown } };
         setupHealth?: unknown;
         injection?: unknown;
+        flaky: { description?: string };
       };
     };
+    // Re-pinned for flaky tests (A6), which gives the flaky object a description.
+    delete v2.properties.flaky.description;
     // Re-pinned for stale instructions (Horizon 2 item H3), which adds the optional top-level setupHealth object.
     delete v2.properties.setupHealth;
     // Re-pinned for H4 (prompt-injection scan), which adds the optional top-level injection object.

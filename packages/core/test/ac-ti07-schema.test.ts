@@ -131,6 +131,8 @@ describe("schema/report.v2.json: testIntegrity.changes and TEST_INTEGRITY_TI07",
       delete (copy.properties as Obj).setupHealth;
       // Re-pinned for H4 (prompt-injection scan), which adds the optional top-level injection object.
       delete (copy.properties as Obj).injection;
+      // Re-pinned for flaky tests (A6), which gives the flaky object a description.
+      delete ((copy.properties as Obj).flaky as Obj).description;
       return copy;
     };
     expect(strip(head)).toEqual(strip(base));

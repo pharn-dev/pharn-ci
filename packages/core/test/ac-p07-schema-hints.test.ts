@@ -8,6 +8,7 @@ import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { expectValidReport } from "./schema.js";
 import { withoutV060CodeText } from "./v060-codes.js";
 import { withoutV070SchemaEdits } from "./v070-codes.js";
+import { withoutV080SchemaEdits } from "./v080-codes.js";
 
 // E3 item 24 (P07), AC-20. Reads the schemas as text, and at the base commit with git; check() and renderMarkdown() are
 // loaded inside the test body: the AC test is written before the build adds the code, so nothing the build adds may
@@ -50,7 +51,10 @@ describe("the schema sentence, the hint and the README row for POLICY_P07", { ti
     // testIntegrity.exercise property are taken out first; v070-codes.ts pins both exactly.
     // Re-pinned for H4 (prompt-injection scan): withoutV070SchemaEdits also takes out its `injection` object, and its
     // codes are in the same v0.7.0 code text.
-    const nowText = withoutV060CodeText(withoutSchemaLevelEdits(withoutV070SchemaEdits(read("schema/report.v2.json"))));
+    // Re-pinned for flaky tests (A6, v0.8.0): its code text and the flaky description are taken out first (v080-codes.ts).
+    const nowText = withoutV060CodeText(
+      withoutSchemaLevelEdits(withoutV070SchemaEdits(withoutV080SchemaEdits(read("schema/report.v2.json")))),
+    );
     const base = codeDescription(baseText);
     const now = codeDescription(nowText);
     expect(now.startsWith(base)).toBe(true);

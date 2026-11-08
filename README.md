@@ -45,6 +45,7 @@ behave. AI-agnostic, no telemetry, and stateless unless you opt in to the upload
 - [Secrets in agent configs](#secrets-in-agent-configs)
 - [Stale agent instructions](#stale-agent-instructions)
 - [Prompt-injection scan](#prompt-injection-scan)
+- [Flaky tests and JUnit results](#flaky-tests-and-junit-results)
 - [Org policy](#org-policy)
 - [Upload to pharn.dev (optional)](#upload-to-pharndev-optional)
 - [Action reference](#action-reference)
@@ -550,14 +551,73 @@ policy phrases. A file it could not read in full is named in `INJECTION_TEXT_TRU
 
 ---
 
+## Flaky tests and JUnit results
+
+pharn-ci reads the JUnit XML your test step writes, reports what failed in a **🧫 Flaky** section, and applies the
+organization's quarantine list from pharn.dev. It never fails a check because a test failed: the test step does that.
+What it adds is a view of which failures are known to be flaky, and, with an upload, the results for the app's history.
+
+```yaml
+      - run: npm test -- --reporters=default --reporters=jest-junit   # writes junit.xml
+      - name: pharn-ci            # the pharn-ci step of the Quick start, with:
+        if: ${{ !cancelled() }}   # also after a failed test step
+        with:
+          junit-paths: junit.xml
+```
+
+**What is read.** The `junit-paths` input (CLI: `--junit`, repeatable) takes paths or globs (`*`, `**`, `?`) relative to
+the workspace, separated by newlines or commas. A path outside the workspace (`..`, a leading `/`) fails the step; a
+symbolic link is never followed. At most 50 files, 25 MiB and 20,000 test cases are read in one run; the rest is left
+out with a `JUNIT_TOO_LARGE` warning. The reader is hand-written and linear in its input: `<testsuites>`, `<testsuite>`
+(nested too) and `<testcase>` with a `<failure>`, `<error>` or `<skipped>` child. Entities are the five XML ones and
+numeric references only; a file with a DOCTYPE or any other `<!` declaration is refused whole, so no entity is ever
+expanded. A refused file (`doctype`, `malformed`, `not-junit`, `too-deep`) is a `JUNIT_INVALID` warning; no file at all
+is `JUNIT_NOT_FOUND`. `<system-out>` and `<system-err>` are never kept.
+
+**Test id.** A test is named `<classname>::<name>`. The class name falls back to the `file` attribute, then to the
+name of the enclosing `<testsuite>`; when all three are empty the id is the name alone. Whitespace and control
+characters are collapsed to one space. An id longer than 500 UTF-16 code units is cut to 491 and ends in `~` and the 8
+hex digits of the 32-bit FNV-1a hash of the whole id. The app's quarantine list holds ids in this form.
+
+**Quarantine.** With an app policy, the policy response's `quarantine` list is applied unless the policy sets
+`flaky.quarantine: false`: a failed test on the list counts in `flaky.quarantinedFailures` and is listed in the
+section, any other in `flaky.unquarantinedFailures`, and one `FLAKY_QUARANTINED_FAILURES` info message gives the
+counts. Only the app's own answer carries the list; a pull request cannot add one, and no input or `.pharn/ci.yml` key
+names one. The report's `flaky` object holds the counts and up to 200 quarantined ids that failed.
+
+**Upload.** When the run is [uploaded](#upload-to-pharndev-optional), the archive also holds `junit/results.xml`: a
+minimal JUnit document pharn-ci rebuilds from what it read (suite, class name, name, id, time, status, and for a failure
+its message redacted and cut to 2 KB), never the file itself, never `system-out` or `system-err`. The org's
+`settings.uploadJunit: false` keeps it out; then, and without an upload, `flaky.uploaded` is `false`.
+`junit-include-output` is not shipped.
+
+**`pharn-ci test`.** The CLI can wrap the test command, so a failure that only quarantined tests caused does not fail
+the job:
+
+```bash
+pharn-ci test --junit 'reports/*.xml' --quarantine-file quarantine.json -- npx vitest run
+```
+
+It runs the command without a shell (each argument is passed as it is), with the terminal's input and output, then reads
+the JUnit files and prints a short summary on stderr. It exits `0` when the command failed and the results show at
+least one failed test, every failed test on the `--quarantine-file` list (a JSON array of ids), and every matched file
+read whole; otherwise it exits with the command's own code (`128 + n` when signal `n` stopped it). `--dry-run` prints
+what would run and be read without running anything. It never makes a network call. A quarantine file the pull request
+can edit lets the pull request quarantine its own failures, so keep it where the pull request cannot change it
+([`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md), residual 42). What the reader misses is in
+[`docs/LIMITS.md`](docs/LIMITS.md#flaky-tests-and-junit-results).
+
+---
+
 ## Org policy
 
 A policy sets one gate for every repository of an organization, so a pull request cannot loosen it. It is a JSON
 document ([`schema/policy.v1.json`](schema/policy.v1.json)) that the pharn.dev app serves, or that a pull request
 carries in a file. This release applies the coverage, setup (including the lists that P02 to P06 check, and
 `setup.consistency` for P07) and test-integrity keys, and `agents.labels`, `agents.extra_logins`,
-`agents.protected_paths`, `agents.protected_paths_mode`, `agents.max_files` and `agents.max_changed_lines`; the other
-`agents` keys, `dependencies` and `flaky` are validated but not applied yet.
+`agents.protected_paths`, `agents.protected_paths_mode`, `agents.max_files` and `agents.max_changed_lines`, and
+`flaky.quarantine` (whether the app's quarantine list applies to the [JUnit results](#flaky-tests-and-junit-results));
+the other `agents` keys and `dependencies` are validated but not applied yet.
 
 **What is sent.** With `policy: auto` (the default) or `required`, and only when the job grants `id-token: write`, the
 Action makes one `GET` of `/api/v1/policy?repo=<owner>/<name>` on the pharn.dev app. Only the OIDC token and the repository name
@@ -746,8 +806,12 @@ the app for a signed storage URL, one `PUT` of the archive to that URL, and one 
 token (to the app, never to storage) and these two files leave the job. `report.json` is the report with every string
 redacted by the [secret shapes](#secrets-in-agent-configs), every message and signal text cut to 2048 bytes, and the
 test-integrity excerpts (`base` and `head`) dropped. `meta.json` is the run metadata ([`schema/upload-meta.v1.json`](schema/upload-meta.v1.json)).
-Never file contents, diffs, coverage files or logs. The archive is limited to 5 MiB of `report.json` and to the size
-the app names; a larger report is not uploaded and adds one `UPLOAD_TOO_LARGE` warning (the check ran in full).
+Never file contents, diffs, coverage files or logs. With [`junit-paths`](#flaky-tests-and-junit-results) the archive
+also holds `junit/results.xml`, a minimal JUnit document rebuilt from the parsed test cases (names, status, time, and
+failure messages redacted and cut to 2048 bytes), never the runner's own file or its output; the org's
+`settings.uploadJunit: false` leaves it out. The archive is limited to 5 MiB of `report.json`, 25 MiB of
+`junit/results.xml` and the size the app names; a larger report is not uploaded and adds one `UPLOAD_TOO_LARGE`
+warning (the check ran in full).
 
 **What the job sees.** The signed URL and the token are masked and never logged. An upload that succeeds sets the
 `run-url` output and logs one line without a URL. The App then comments on the pull request, so `pharn-ci` posts no
@@ -791,6 +855,7 @@ of the App never both appear for one upload.
 | `policy`            | `auto`                      | Where the [org policy](#org-policy) comes from: `auto` fetches it from the pharn.dev app when the job grants `id-token: write` (only the OIDC token and the repo name are sent; no policy or no token is silent), `never` uses none, `required` fails the check when no policy can be fetched, `file:<path>` reads a policy document from the workspace (the pull request can change it, so it can only tighten; nothing is fetched). Any other value fails the step |
 | `app-url`           | `https://pharn.dev`         | Origin of the pharn.dev app the policy is fetched from. `https` only, with no credentials, path, query or fragment; the OIDC audience stays `pharn.dev` whatever it is |
 | `upload`            | `auto`                      | Whether to [upload the run to pharn.dev](#upload-to-pharndev-optional): `auto` uploads `report.json` and `meta.json` (redacted) when the job grants `id-token: write` and the organization installed the Pharn GitHub App, `never` turns it off. A failed upload never fails the check. Not read from `.pharn/ci.yml`. Any other value fails the step |
+| `junit-paths`       | none                        | JUnit XML files the test step wrote, as paths or globs (`*`, `**`, `?`) relative to the workspace, newline or comma separated; a path outside the workspace fails the step. Fills the [Flaky](#flaky-tests-and-junit-results) section and `flaky`, applies the app's quarantine list, and adds the normalised results to an upload. Test results never change the verdict. Not read from `.pharn/ci.yml` |
 | `comment`           | `true`                      | Post/update one sticky PR comment per workflow and job |
 | `fail-on-verdict`   | `true`                      | Fail the step when the verdict is `fail`, whatever made it fail: diff coverage, a test-integrity block, or an org policy violation or error (a required policy included). With `false` the step reports and never gates |
 | `fail-on-threshold` | none                        | Deprecated old name of `fail-on-verdict`, still read with a warning when `fail-on-verdict` is not set; ignored (with a warning) when both are |
@@ -942,7 +1007,9 @@ node packages/cli/dist/index.js check --coverage coverage/lcov.info --threshold 
 pharn-ci check [--coverage <file|glob>]... [--coverage-format lcov|cobertura|auto] [--coverage-root <dir>]
                [--base <ref>] [--threshold <n>] [--format md|json] [--config <path>]
                [--exclude <glob>]... [--require-agent-setup] [--expect-agent-setup <tool>]...
-               [--test-integrity block|warn|off] [--policy-file <path>] [--no-policy] [-h|--help] [-v|--version]
+               [--test-integrity block|warn|off] [--policy-file <path>] [--no-policy]
+               [--junit <file|glob>]... [--quarantine-file <path>] [-h|--help] [-v|--version]
+pharn-ci test [--junit <file|glob>]... [--quarantine-file <path>] [--dry-run] -- <command> [args...]
 ```
 
 - `--coverage <file|glob>` is repeatable. A glob (`*`, `**`, `?`) is relative to the current
@@ -979,6 +1046,11 @@ pharn-ci check [--coverage <file|glob>]... [--coverage-format lcov|cobertura|aut
   the config. It can only tighten them; a path that is empty, absolute, outside the repo, through a symbolic link,
   missing, over 1 MiB or not a valid policy exits `2`. `--no-policy` applies none and is the same as no flag; giving
   both exits `2`. The CLI never fetches a policy.
+- `--junit <file|glob>` is repeatable and reads JUnit XML relative to the current directory into the report's `flaky`
+  object and the Flaky section; `--quarantine-file <path>` names a JSON array of test ids treated as quarantined. A
+  pattern outside the current directory, or a quarantine file that is missing, over 1 MiB or not such an array, exits
+  `2`. `pharn-ci test` wraps a test command with the same two flags; see
+  [Flaky tests and JUnit results](#flaky-tests-and-junit-results).
 - `--format json` prints only the report to stdout, for agents and scripts.
 - Exit codes: `0` pass or warn, `1` fail, `2` usage or runtime error.
 
@@ -1135,6 +1207,13 @@ message `code`s, not on text:
 | `INJECTION_PI04` | A line added to an agent instruction file holds a base64 or hex run of more than 200 characters (`warn`, or the level the policy sets). Each signal names the run's kind and length |
 | `INJECTION_PI05` | An agent instruction file is added inside a vendored directory (`warn`, or the level the policy sets). Each signal names the file's kind and the directory |
 | `INJECTION_TEXT_TRUNCATED` | A file had more added text than the scan reads (50,000 lines, or 8,000,000 characters across the diff), so a finding past the cut is not seen (`warn`). The text names up to 5 files |
+| `FLAKY_QUARANTINED_FAILURES` | Failed tests of the JUnit results are on the org's quarantine list ([Flaky tests and JUnit results](#flaky-tests-and-junit-results)) (`info`). The text gives the counts, never a test name; the ids are in `flaky.quarantined` |
+| `JUNIT_INVALID` | A JUnit XML file was refused whole: a DOCTYPE or other `<!` declaration (`doctype`), broken nesting (`malformed`), no `testsuites` or `testsuite` root (`not-junit`) or nesting deeper than 256 (`too-deep`) (`warn`). The text names up to 10 paths with the reason |
+| `JUNIT_NOT_FOUND` | JUnit paths were set and no file matched them (`warn`) |
+| `JUNIT_TOO_LARGE` | The JUnit results went over the limits of one run (50 files, 25 MiB, 20,000 test cases) or the file search stopped at its limit; what is over is left out (`warn`) |
+
+The optional `flaky` object (since 0.8.0) holds `uploaded`, `testCount`, `failed`, `quarantined` (up to 200 ids),
+`quarantinedFailures` and `unquarantinedFailures`; it is present when at least one JUnit file was parsed.
 
 ### Agent PRs
 
@@ -1328,7 +1407,8 @@ PR with an 80% diff-coverage threshold, so every change here passes the same gat
 ## Roadmap
 
 - More coverage formats (Clover, JaCoCo native XML)
-- Flaky test detection
+- Flaky test detection across runs on pharn.dev (the Action already sends the JUnit results and applies the app's
+  quarantine list; see [Flaky tests and JUnit results](#flaky-tests-and-junit-results))
 - Test-integrity signals for the cases still missed, such as a custom matcher that always passes (see
   [Test integrity](#test-integrity))
 

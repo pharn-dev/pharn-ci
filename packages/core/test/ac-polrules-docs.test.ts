@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { V060_CODE_TEXT } from "./v060-codes.js";
 import { V070_CODE_TEXT, V070_CODES } from "./v070-codes.js";
+import { V080_CODE_TEXT, V080_CODES } from "./v080-codes.js";
 
 // E3 item 22 (policy rules), AC-18. Reads the repository's docs, schema and sources as text, and the schema at the
 // base commit with git; nothing the build adds is loaded. The base is c8fdc65 (E3 item 21, which appended
@@ -85,8 +86,10 @@ describe("docs, schema and sources for the policy rules", { timeout: 60_000 }, (
     expect(now.startsWith(base)).toBe(true);
     // Re-pinned for A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): the v0.7.0 code text follows the v0.6.0 one;
     // v070-codes.ts pins it exactly, and its code joins the words below. It only adds.
+    // Re-pinned for flaky tests (A6): the v0.8.0 code text follows the v0.7.0 one; v080-codes.ts pins it exactly, and
+    // its codes join the words below. It only adds.
     expect(now.slice(base.length)).toBe(
-      APPENDED + P11_TEXT + POLICY_SETTINGS_TEXT + P07_TEXT + V060_CODE_TEXT + V070_CODE_TEXT,
+      APPENDED + P11_TEXT + POLICY_SETTINGS_TEXT + P07_TEXT + V060_CODE_TEXT + V070_CODE_TEXT + V080_CODE_TEXT,
     );
     expect(words(now.slice(base.length))).toEqual(
       [
@@ -104,6 +107,7 @@ describe("docs, schema and sources for the policy rules", { timeout: 60_000 }, (
         "POLICY_P14",
         "POLICY_SETTINGS_INVALID",
         ...V070_CODES,
+        ...V080_CODES,
       ].sort(),
     );
 

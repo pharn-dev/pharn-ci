@@ -138,6 +138,33 @@ export {
   resolveInputs,
 } from "./inputs.js";
 export { JS_TS_EXTENSIONS, type JsTsExtension } from "./jsTsExtensions.js";
+export {
+  FLAKY_QUARANTINED_CAP,
+  type FlakyTally,
+  failuresAllQuarantined,
+  junitReport,
+  tallyJunit,
+} from "./junit/flaky.js";
+export {
+  JUNIT_MAX_DEPTH,
+  JUNIT_MESSAGE_READ_UNITS,
+  type JunitCase,
+  type JunitInvalidReason,
+  type JunitParse,
+  type JunitStatus,
+  parseJunitXml,
+} from "./junit/parse.js";
+export { parseQuarantineList, QUARANTINE_FILE_MAX_BYTES } from "./junit/quarantine.js";
+export {
+  JUNIT_MAX_CASES,
+  JUNIT_MAX_FILES,
+  JUNIT_MAX_TOTAL_BYTES,
+  type JunitDropReason,
+  type JunitResults,
+  type JunitSources,
+  parseJunitSources,
+} from "./junit/results.js";
+export { collapseWhitespace, junitTestId, TEST_ID_MAX_UNITS, type TestIdParts } from "./junit/testId.js";
 export { createLineSplitter, splitLines, splitLinesAsync } from "./lines.js";
 export { normalizePath } from "./paths.js";
 export { type AgentPolicy, agentPolicyOf, type PolicyFileBase } from "./policy/agents.js";
@@ -148,6 +175,8 @@ export type { IgnoredSetting, PolicyUnavailableReason, ResolvedPolicy, SignalOve
 export {
   type PolicyResponse,
   type PolicyResponseValidation,
+  QUARANTINE_ITEM_MAX_UNITS,
+  RESPONSE_MAX_QUARANTINE_ITEMS,
   validatePolicyResponse,
 } from "./policy/response.js";
 export { evaluatePolicyRules, MAX_P08_VIOLATIONS, MAX_RULE_VIOLATIONS } from "./policy/rules/evaluate.js";
@@ -223,6 +252,7 @@ export {
   type OmittedSignals,
   type Report,
   type ReportDiffCoverage,
+  type ReportFlaky,
   type ReportMeta,
   type ReportMetaEvent,
   type ReportPolicy,
@@ -400,6 +430,7 @@ export {
 export { decodeTestSourceText } from "./testSourceText.js";
 export { byCodeUnit, utf8ByteLength } from "./text.js";
 export { buildUploadBundle } from "./upload/bundle.js";
+export { buildJunitResultsXml, UPLOAD_JUNIT_MAX_BYTES, UPLOAD_JUNIT_NAME, xmlAttribute } from "./upload/junit.js";
 export { buildUploadMeta, type UploadMeta } from "./upload/meta.js";
 export { UPLOAD_REPORT_MAX_BYTES, type UploadOutcome, withUploadOutcome } from "./upload/outcome.js";
 export { buildUploadTar } from "./upload/tar.js";

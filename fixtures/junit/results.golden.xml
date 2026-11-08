@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="7" failures="2" errors="1" skipped="1">
+  <testsuite name="math">
+    <testcase id="math.add::adds two numbers" classname="math.add" name="adds two numbers" time="0.012"/>
+    <testcase id="math.add::adds &lt;negative&gt; numbers &amp; zero" classname="math.add" name="adds &lt;negative&gt; numbers &amp; zero" time="0.004">
+      <failure message="expected 3 to be 4"/>
+    </testcase>
+    <testcase id="math.div::divides" classname="math.div" name="divides">
+      <skipped/>
+    </testcase>
+    <testcase id="math.div::divides by zero" classname="math.div" name="divides by zero" time="0.001"/>
+  </testsuite>
+  <testsuite name="io">
+    <testcase id="io.read::reads a file" classname="io.read" name="reads a file" time="0.2">
+      <error message="ENOENT: no such file"/>
+    </testcase>
+    <testcase id="io.read::reads a stream" classname="io.read" name="reads a stream" time="0.3">
+      <failure message="stream ended early"/>
+    </testcase>
+    <testcase id="io.write::writes" classname="io.write" name="writes" time="0.25"/>
+  </testsuite>
+</testsuites>

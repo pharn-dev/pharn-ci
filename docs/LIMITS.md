@@ -1118,6 +1118,45 @@ a text filter for content aimed at the next agent, not a judgement of what a tex
 - **A finding is not a removal.** An instruction that already reached an agent's context, a cache or a fork stays
   there after the line is removed.
 
+## Flaky tests and JUnit results
+
+The JUnit reader (`junit-paths`, `--junit`) and the quarantine (the app's list, the CLI's `--quarantine-file`) report
+what the test runner wrote. They do not detect flakiness themselves; that needs the history of many runs on pharn.dev.
+What they miss:
+
+- **The files are the pull request's.** Its own tests write them, so they say what the tests chose to write: a test
+  reported as passed, a renamed test, a file not written. pharn-ci never fails or passes a check on test results, so
+  this changes only the Flaky section, the uploaded history and the exit code of `pharn-ci test` (THREAT-MODEL residual
+  42).
+- **A subset of JUnit.** `<testsuites>`, `<testsuite>` (nested) and `<testcase>` with `<failure>`, `<error>` and
+  `<skipped>`. Surefire's `<flakyFailure>` and `<rerunFailure>` are ignored, so a test that passed on a rerun counts as
+  passed and its earlier failures are not counted; a test listed once per retry (some runners write each attempt) counts
+  once per entry. `<properties>`, `<system-out>`, `<system-err>`, attachments and the `tests`/`failures` attributes of a
+  suite are not read; the counts come from the test cases.
+- **Strict about structure.** A file with a DOCTYPE or any other `<!` declaration, an element left open (a runner that
+  crashed mid-write), an end tag that closes the wrong element, a second root, a root other than `testsuites` or
+  `testsuite`, or nesting deeper than 256 is refused whole (`JUNIT_INVALID`), even when most of it would read. An
+  undefined entity such as `&nbsp;` is kept as written, not refused.
+- **Caps.** The first 50 files in pattern order (each pattern's matches sorted), 25 MiB of text in all, and 20,000 test
+  cases; the file that crosses 25 MiB and every later file are left out, and a failure message is kept to 8192 UTF-16
+  code units while reading. Over a cap the results are partial and `JUNIT_TOO_LARGE` says so. The glob walk shares the
+  coverage walk's limits; past them the search stops and some files may not be found.
+- **Ids are exact.** A quarantine id matches only a test id spelled exactly the same (see the README, Test id): a test
+  renamed, moved to another class or file, parameterized with a new value, or cut past 500 code units with another hash
+  does not match. Two tests with the same class name and name are one id. Unicode is compared as written, without
+  normalization; zero-width and bidirectional characters stay in an id.
+- **No message in the report.** Failure messages go only into the upload's `junit/results.xml`, redacted and cut; a
+  secret of a shape the redaction does not know goes with it (Upload to pharn.dev). The 8192-unit read cut comes before
+  redaction, so a secret that starts within the kept text and runs past it is cut, not redacted; the 2 KB cut after
+  redaction keeps only the first 2048 bytes, so this needs a message whose earlier text redaction shortened by more than
+  6000 units.
+- **The CLI wrapper.** `pharn-ci test` runs the command without a shell, so `npm test && x`, shell globs and variables
+  are not expanded (wrap them in `sh -c '…'` yourself); on Windows a `.cmd` shim such as `npm` must be named as
+  `npm.cmd`. It exits `0` only when every matched file was read whole and every failed test is quarantined; a failure
+  outside the tests (a build error with no JUnit, a crash before the report was written) keeps the command's code. A
+  signal's exit code is `128 + n` as the shell reports it. `junit-include-output` is not shipped: no output is ever read
+  or sent.
+
 ## Org policy
 
 The org policy (`policy: auto`, `required` or `file:<path>`; see the README, Org policy) is fetched, validated and
@@ -1147,8 +1186,8 @@ applied once per run. What it does not do:
   and `setup.consistency` feeds P07. `policy.rules` applies to P01 to P09, P11, P13 and P14 (P10 cannot be overridden).
   Of `agents`, only `agents.labels`, `agents.extra_logins`, `agents.protected_paths`, `agents.protected_paths_mode`,
   `agents.max_files` and `agents.max_changed_lines` are applied (the first two add to the detection, the next two feed
-  P11, the last two P14); `dependencies`, `flaky` and the other `agents` keys are validated and carried in the
-  document, not applied yet.
+  P11, the last two P14); `flaky.quarantine` decides whether the app's quarantine list applies to the JUnit results;
+  `dependencies` and the other `agents` keys are validated and carried in the document, not applied yet.
 - **What P09 sees, and what it misses.** P09 sees four kinds of edit in the diff: (1) the `file:` policy file itself,
   edited or renamed away; (2) the config in use, while `.pharn/ci.yml` holds a setting looser than the policy; (3) a
   file under `.github/workflows/`, while a workflow input is looser than the policy; (4) `.claude/settings.json` or
@@ -1355,9 +1394,13 @@ run. What it does not do:
   sent as they are. The cap is the smaller of 2048 bytes and the org's `settings.messageMaxBytes` from the same run's
   policy response, used only when that response was a `200` that validated whole (never under `policy: never` or a
   `file:` policy, never from a refused or missing response); the app can lower the cap, never raise it.
-- **The app's other settings are validated and not applied.** `settings.uploadJunit` and `settings.redactMessages`, and
-  the response's `quarantine` list, are checked as part of the envelope and then ignored: the Action sends no JUnit,
-  never turns redaction off, and applies no quarantine.
+- **`settings.redactMessages` is validated and not applied.** The Action never turns redaction off.
+  `settings.uploadJunit: false` keeps the JUnit results out of the upload; the response's `quarantine` list is applied
+  to the JUnit results (see Flaky tests and JUnit results).
+- **The JUnit results are rebuilt, not sent.** With JUnit results, the archive also holds `junit/results.xml`, rebuilt
+  from the parsed cases; a failure message is redacted like a report message and cut to the same cap, other strings to
+  4096 bytes. `sizes.junit` is the size of that file compressed on its own, an estimate of its share of the archive;
+  `sizes.report` stays the size of the whole archive. A `junit/results.xml` over 25 MiB is `UPLOAD_TOO_LARGE`.
 - **`meta.mergeBase` is the fork point of the pull request's head, and `null` means "not known to the Action".** When
   the run has a local diff, the Action records the merge base of the resolved base and the run's head commit
   `meta.headSha` (the pull request's head, not GitHub's merge commit that `pull_request` checks out, so on that event it

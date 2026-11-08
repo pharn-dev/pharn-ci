@@ -26333,6 +26333,7 @@ function buildReport(input) {
   messages.push(...input.agentConfigSecretMessages ?? []);
   messages.push(...input.injectionMessages ?? []);
   messages.push(...input.policyMessages ?? []);
+  messages.push(...input.flakyMessages ?? []);
   const injectionSignals = input.injectionSignals ?? [];
   return {
     schemaVersion: 2,
@@ -26375,6 +26376,7 @@ function buildReport(input) {
         }))
       }
     },
+    ...input.flaky === void 0 ? {} : { flaky: { ...input.flaky, quarantined: [...input.flaky.quarantined] } },
     ...input.meta === void 0 ? {} : { meta: input.meta }
   };
 }
@@ -27468,7 +27470,7 @@ function findTagEnd(text, start) {
   }
   return -1;
 }
-function scanXml(text, onEvent) {
+function scanXml(text, onEvent, options = {}) {
   const length = text.length;
   let pos = text.charCodeAt(0) === 65279 ? 1 : 0;
   while (pos < length) {
@@ -27486,12 +27488,14 @@ function scanXml(text, onEvent) {
     } else if (next === "!" && text.startsWith("<![CDATA[", lt)) {
       const close = text.indexOf("]]>", lt + 9);
       if (close === -1) return;
+      if (options.cdataText === true && close > lt + 9) onEvent({ type: "text", text: text.slice(lt + 9, close) });
       pos = close + 3;
     } else if (next === "?") {
       const close = text.indexOf("?>", lt + 2);
       if (close === -1) return;
       pos = close + 2;
     } else if (next === "!") {
+      options.onDeclaration?.();
       const close = findDeclarationEnd(text, lt + 2);
       if (close === -1) return;
       pos = close + 1;
@@ -29076,6 +29080,87 @@ function detectInjection(diff, settings2) {
     kept.push({ ...finding2, severity: severity2 });
   }
   return { signals: kept, omitted: [...omitted.values()], cut: scan.cut };
+}
+
+// ../core/src/junit/flaky.ts
+var formatCount = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+var FLAKY_QUARANTINED_CAP = 200;
+var NAMED_PATHS = 10;
+function tallyJunit(results, quarantine) {
+  const listed2 = new Set(quarantine ?? []);
+  const quarantinedIds = /* @__PURE__ */ new Set();
+  let failed2 = 0;
+  let quarantinedFailures = 0;
+  for (const testCase of results.cases) {
+    if (testCase.status !== "failed" && testCase.status !== "error") continue;
+    failed2++;
+    if (listed2.has(testCase.id)) {
+      quarantinedFailures++;
+      quarantinedIds.add(testCase.id);
+    }
+  }
+  return {
+    testCount: results.cases.length,
+    failed: failed2,
+    quarantinedFailures,
+    unquarantinedFailures: failed2 - quarantinedFailures,
+    quarantinedIds: [...quarantinedIds].sort(byCodeUnit)
+  };
+}
+function namedPaths(paths) {
+  const named = paths.slice(0, NAMED_PATHS).join(", ");
+  return paths.length > NAMED_PATHS ? `${named}, +${paths.length - NAMED_PATHS} more` : named;
+}
+function junitReport(results, quarantine) {
+  const messages = [];
+  if (results.notFound) {
+    messages.push({
+      level: "warn",
+      code: "JUNIT_NOT_FOUND",
+      text: "No JUnit XML file matched the JUnit paths, so the test results are not reported. Check that the test step writes its JUnit report where the paths point, and that it ran before pharn-ci."
+    });
+  }
+  if (results.invalid.length > 0) {
+    const n = results.invalid.length;
+    const listed2 = results.invalid.map((file) => `${codeSpan(file.path)} (${file.reason})`);
+    messages.push({
+      level: "warn",
+      code: "JUNIT_INVALID",
+      text: `${formatCount(n, "JUnit XML file was", "JUnit XML files were")} not used: ${namedPaths(listed2)}. A file with a DOCTYPE or another <! declaration (doctype), broken nesting (malformed), no testsuites or testsuite root (not-junit) or nesting deeper than 256 (too-deep) is refused whole.`
+    });
+  }
+  if (results.dropped.length > 0 || results.droppedCases > 0 || results.walkLimit) {
+    const parts = [];
+    if (results.dropped.length > 0) parts.push(formatCount(results.dropped.length, "file", "files"));
+    if (results.droppedCases > 0) parts.push(formatCount(results.droppedCases, "test case", "test cases"));
+    const left = parts.length === 0 ? "" : ` ${parts.join(" and ")} left out`;
+    const walk = results.walkLimit ? " The search for JUnit files stopped at its limit, so some may not have been found." : "";
+    messages.push({
+      level: "warn",
+      code: "JUNIT_TOO_LARGE",
+      text: `The JUnit results are over the limits of one run (50 files, 25 MiB, 20,000 test cases)${left === "" ? "" : `:${left}`}.${walk}`
+    });
+  }
+  if (results.parsed === 0) return { messages };
+  const tally = tallyJunit(results, quarantine);
+  if (tally.quarantinedFailures > 0) {
+    messages.push({
+      level: "info",
+      code: "FLAKY_QUARANTINED_FAILURES",
+      text: `${tally.quarantinedFailures} of ${formatCount(tally.failed, "failed test is", "failed tests are")} on the org's quarantine list. pharn-ci never fails a check because a test failed; the test step decides.`
+    });
+  }
+  return {
+    flaky: {
+      uploaded: false,
+      testCount: tally.testCount,
+      failed: tally.failed,
+      quarantined: tally.quarantinedIds.slice(0, FLAKY_QUARANTINED_CAP),
+      quarantinedFailures: tally.quarantinedFailures,
+      unquarantinedFailures: tally.unquarantinedFailures
+    },
+    messages
+  };
 }
 
 // ../core/src/policy/rules/severity.ts
@@ -37570,7 +37655,7 @@ var MAX_SNAPSHOT_FILES = 10;
 var MIN_INLINE_REWRITES = 10;
 var MAX_FLAG_SIGNALS_PER_FILE = 20;
 var MAX_DETAIL5 = 300;
-var NAMED_PATHS = 3;
+var NAMED_PATHS2 = 3;
 var DASH = "-";
 var UPDATE_FLAGS = /* @__PURE__ */ new Set([
   `${DASH}u`,
@@ -37592,7 +37677,7 @@ function countsAsChangedSnapshot(file) {
 function massChangeDetail(count2, firstPaths) {
   const tail = "; check that each new snapshot was reviewed rather than regenerated.";
   const head = `${count2} snapshot files were changed in this change`;
-  const named = firstPaths.slice(0, NAMED_PATHS).map((path) => `"${escapeDetailText(path)}"`);
+  const named = firstPaths.slice(0, NAMED_PATHS2).map((path) => `"${escapeDetailText(path)}"`);
   while (named.length > 0) {
     const detail = `${head}, among them ${named.join(", ")}${tail}`;
     if (detail.length <= MAX_DETAIL5) return detail;
@@ -40108,6 +40193,8 @@ function check(input) {
     agentSetup
   });
   const staleMessages = stale === null ? [] : staleInstructionMessages(stale.findings, stale.omitted);
+  const quarantineOn = input.policy?.document?.flaky?.quarantine !== false;
+  const junit = input.junit === void 0 ? null : junitReport(input.junit, quarantineOn ? input.quarantine : void 0);
   const base = {
     version: input.version,
     threshold: input.threshold,
@@ -40138,7 +40225,9 @@ function check(input) {
     ...agentConfigMessages.length === 0 ? {} : { agentConfigSecretMessages: agentConfigMessages },
     ...injectionMessageList.length === 0 ? {} : { injectionMessages: injectionMessageList },
     ...injection2 === null || injection2.signals.length === 0 ? {} : { injectionSignals: injection2.signals },
-    ...policyMessages.length === 0 ? {} : { policyMessages }
+    ...policyMessages.length === 0 ? {} : { policyMessages },
+    ...junit?.flaky === void 0 ? {} : { flaky: junit.flaky },
+    ...junit === null || junit.messages.length === 0 ? {} : { flakyMessages: junit.messages }
   };
   if ("kind" in coverageInput) {
     return buildReport({ ...base, diffCoverage: null, missing: { reason: "coverage-not-discovered" } });
@@ -40499,155 +40588,175 @@ function gitDiffArgs(base, head = "HEAD") {
   ];
 }
 
-// ../core/src/policy/apply.ts
-var STRICTNESS2 = { off: 0, warn: 1, block: 2 };
-function rootKey(root) {
-  return root === void 0 || root === null ? "." : root;
+// ../core/src/junit/testId.ts
+var TEST_ID_MAX_UNITS = 500;
+var HASH_SUFFIX_UNITS = 9;
+function isCollapsed(code2) {
+  return code2 <= 32 || code2 >= 127 && code2 <= 159 || code2 === 8232 || code2 === 8233;
 }
-function normalizedRoot(root) {
-  return parseCoverageRoot(root, "the org policy's coverage.root");
-}
-function applyPolicy(layers, policy) {
-  const document2 = policy.document;
-  if (policy.source === "none" || document2 === null) return { inputs: layers.resolved, ignored: [] };
-  const app = policy.source === "app";
-  const policyLayer = "policy-file";
-  const ignored = [];
-  const inputs = { ...layers.resolved };
-  applyCoverage(layers, document2, app, inputs, ignored);
-  applySetup(layers, document2, app, inputs, ignored);
-  const modeSettings = applyMode(layers, document2, app, ignored);
-  if (modeSettings !== void 0) inputs.testIntegrityMode = modeSettings;
-  const integrity = document2.test_integrity;
-  const result = { inputs, ignored: [] };
-  if (integrity?.signals !== void 0 && Object.keys(integrity.signals).length > 0) {
-    result.signalOverrides = { kind: app ? "replace" : "raise", severities: { ...integrity.signals } };
-  }
-  if (integrity?.accept_label !== void 0) {
-    if (app) result.acceptLabel = integrity.accept_label;
-    else ignored.push({ setting: "test_integrity.accept_label", layer: policyLayer, reason: "not-allowed" });
-  }
-  if (!app && document2.policy?.required !== void 0) {
-    ignored.push({ setting: "policy.required", layer: policyLayer, reason: "not-allowed" });
-  }
-  const seen = /* @__PURE__ */ new Set();
-  result.ignored = ignored.filter((record) => {
-    const key = `${record.setting}\0${record.layer}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).sort((a, b) => byCodeUnit(a.setting, b.setting) || byCodeUnit(a.layer, b.layer));
-  return result;
-}
-function applyCoverage(layers, document2, app, inputs, ignored) {
-  const { config, raw, resolved } = layers;
-  const coverage2 = document2.coverage;
-  if (coverage2 === void 0) return;
-  if (coverage2.threshold !== void 0) {
-    const theirs = coverage2.threshold;
-    const inForce = resolved.threshold;
-    if (inForce === null) {
-      inputs.threshold = theirs;
-    } else {
-      if (app && inForce < theirs) {
-        const inputValue = raw.threshold === void 0 ? void 0 : Number(raw.threshold.trim());
-        const inputInForce = inputValue !== void 0 && !(inputValue < inForce);
-        ignored.push({
-          setting: "coverage.threshold",
-          layer: inputInForce ? "input" : "config",
-          reason: "looser",
-          given: inForce,
-          applied: theirs
-        });
-      } else if (!app && theirs < inForce) {
-        ignored.push({
-          setting: "coverage.threshold",
-          layer: "policy-file",
-          reason: "looser",
-          given: theirs,
-          applied: inForce
-        });
-      }
-      inputs.threshold = Math.max(theirs, inForce);
+function collapseWhitespace2(text) {
+  let out = "";
+  let pendingSpace = false;
+  let from = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (!isCollapsed(text.charCodeAt(i))) continue;
+    if (i > from) {
+      out += (pendingSpace && out !== "" ? " " : "") + text.slice(from, i);
+      pendingSpace = false;
     }
+    pendingSpace = true;
+    from = i + 1;
   }
-  if (coverage2.exclude !== void 0) {
-    if (app) {
-      const theirs = coverage2.exclude;
-      const configCount = (config.coverage?.exclude ?? []).length;
-      const fromConfig = resolved.exclude.slice(0, configCount);
-      const fromInput = resolved.exclude.slice(configCount);
-      for (const [layer, patterns] of [
-        ["config", fromConfig],
-        ["input", fromInput]
-      ]) {
-        if (patterns.some((pattern) => !theirs.includes(pattern))) {
-          ignored.push({ setting: "coverage.exclude", layer, reason: "looser" });
+  if (text.length > from) out += (pendingSpace && out !== "" ? " " : "") + text.slice(from);
+  return out;
+}
+function junitTestId(parts) {
+  const name = collapseWhitespace2(parts.name);
+  let owner = collapseWhitespace2(parts.classname);
+  if (owner === "") owner = collapseWhitespace2(parts.file);
+  if (owner === "") owner = collapseWhitespace2(parts.suite);
+  const id = owner === "" ? name : `${owner}::${name}`;
+  if (id.length <= TEST_ID_MAX_UNITS) return id;
+  return `${cutCodeUnits(id, TEST_ID_MAX_UNITS - HASH_SUFFIX_UNITS, { marker: false })}~${fnv1a32Hex(id)}`;
+}
+
+// ../core/src/junit/parse.ts
+var JUNIT_MAX_DEPTH = 256;
+var JUNIT_MESSAGE_READ_UNITS = 8192;
+var STATUS_RANK = { passed: 0, skipped: 1, failed: 2, error: 3 };
+function readTime(value) {
+  if (value === void 0) return null;
+  const trimmed = value.trim();
+  if (trimmed === "" || trimmed.length > 32) return null;
+  const n = Number(trimmed);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+function parseJunitXml(text, maxCases) {
+  const stack = [];
+  const suites = [];
+  const cases = [];
+  let dropped = 0;
+  let declaration = false;
+  let failure = null;
+  let rootSeen = false;
+  let rootClosed = false;
+  let open3 = null;
+  const closeCase = (current) => {
+    if (cases.length >= maxCases) {
+      dropped++;
+      return;
+    }
+    const message = current.status === "failed" || current.status === "error" ? current.message ?? (current.text === "" ? void 0 : current.text) : void 0;
+    cases.push({
+      id: junitTestId(current),
+      suite: current.suite,
+      classname: current.classname !== "" ? current.classname : current.file,
+      name: current.name,
+      time: current.time,
+      status: current.status,
+      ...message === void 0 ? {} : { message }
+    });
+  };
+  const onStart = (event) => {
+    if (!rootSeen) {
+      if (event.name !== "testsuites" && event.name !== "testsuite") {
+        failure = "not-junit";
+        return;
+      }
+      rootSeen = true;
+    } else if (rootClosed) {
+      failure = "malformed";
+      return;
+    }
+    const { name, attrs } = event;
+    if (name === "testsuite" && open3 === null) suites.push(attrs.get("name") ?? "");
+    if (name === "testcase" && open3 === null) {
+      open3 = {
+        suite: suites.length === 0 ? "" : suites[suites.length - 1],
+        classname: attrs.get("classname") ?? "",
+        file: attrs.get("file") ?? "",
+        name: attrs.get("name") ?? "",
+        time: readTime(attrs.get("time")),
+        status: "passed",
+        message: void 0,
+        collectDepth: -1,
+        text: ""
+      };
+      if (event.selfClosing) {
+        closeCase(open3);
+        open3 = null;
+        if (stack.length === 0) rootClosed = true;
+        return;
+      }
+      if (stack.length >= JUNIT_MAX_DEPTH) {
+        failure = "too-deep";
+        return;
+      }
+      stack.push(name);
+      return;
+    }
+    if (open3 !== null && open3.collectDepth === -1) {
+      const status = name === "failure" ? "failed" : name === "error" ? "error" : name === "skipped" ? "skipped" : null;
+      if (status !== null && stack[stack.length - 1] === "testcase") {
+        if (STATUS_RANK[status] > STATUS_RANK[open3.status]) {
+          open3.status = status;
+          if (status !== "skipped") {
+            const message = attrs.get("message");
+            open3.message = message === void 0 ? void 0 : message.slice(0, JUNIT_MESSAGE_READ_UNITS);
+            open3.text = "";
+            if (!event.selfClosing) open3.collectDepth = stack.length + 1;
+          }
         }
       }
-      inputs.exclude = [...theirs];
-    } else if (coverage2.exclude.length > 0) {
-      ignored.push({ setting: "coverage.exclude", layer: "policy-file", reason: "not-allowed" });
     }
-  }
-  if (coverage2.root !== void 0) {
-    if (app) {
-      const theirs = coverage2.root === null ? "." : normalizedRoot(coverage2.root);
-      const inputGiven = raw.coverageRoot !== void 0;
-      const configGiven = config.coverage?.root !== void 0;
-      if (inputGiven || configGiven) {
-        const today = inputGiven ? rootKey(resolved.coverageRoot) : rootKey(config.coverage?.root);
-        if (today !== theirs) {
-          ignored.push({ setting: "coverage.root", layer: inputGiven ? "input" : "config", reason: "looser" });
-        }
+    if (event.selfClosing) {
+      if (name === "testsuite" && open3 === null) suites.pop();
+      if (stack.length === 0) rootClosed = true;
+      return;
+    }
+    if (stack.length >= JUNIT_MAX_DEPTH) {
+      failure = "too-deep";
+      return;
+    }
+    stack.push(name);
+  };
+  const onEnd = (name) => {
+    if (stack.length === 0 || stack[stack.length - 1] !== name) {
+      failure = "malformed";
+      return;
+    }
+    if (open3 !== null && open3.collectDepth === stack.length) open3.collectDepth = -1;
+    stack.pop();
+    if (name === "testcase" && open3 !== null && !stack.includes("testcase")) {
+      closeCase(open3);
+      open3 = null;
+    } else if (name === "testsuite" && open3 === null) {
+      suites.pop();
+    }
+    if (stack.length === 0) rootClosed = true;
+  };
+  scanXml(
+    text,
+    (event) => {
+      if (failure !== null || declaration) return;
+      if (event.type === "start") onStart(event);
+      else if (event.type === "end") onEnd(event.name);
+      else if (open3 !== null && open3.collectDepth !== -1 && open3.text.length < JUNIT_MESSAGE_READ_UNITS) {
+        open3.text = (open3.text + event.text).slice(0, JUNIT_MESSAGE_READ_UNITS);
       }
-      inputs.coverageRoot = theirs === "." ? void 0 : theirs;
-    } else {
-      ignored.push({ setting: "coverage.root", layer: "policy-file", reason: "not-allowed" });
-    }
-  }
-}
-function applySetup(layers, document2, app, inputs, ignored) {
-  const { config, raw, resolved } = layers;
-  const setup2 = document2.setup;
-  if (setup2 === void 0) return;
-  if (setup2.require !== void 0) {
-    if (setup2.require) {
-      if (app && !resolved.requireAgentSetup) {
-        const layer = raw.requireAgentSetup === false ? "input" : config.setup?.require === false ? "config" : void 0;
-        if (layer !== void 0) ignored.push({ setting: "setup.require", layer, reason: "looser" });
-      }
-      inputs.requireAgentSetup = true;
-    } else if (!app && resolved.requireAgentSetup) {
-      ignored.push({ setting: "setup.require", layer: "policy-file", reason: "looser" });
-    }
-  }
-  if (setup2.expect !== void 0) {
-    const union = [.../* @__PURE__ */ new Set([...resolved.expectAgentSetup ?? [], ...setup2.expect])];
-    if (union.length > 0) inputs.expectAgentSetup = union;
-  }
-}
-function applyMode(layers, document2, app, ignored) {
-  const given = layers.resolved.testIntegrityMode;
-  const mode = document2.test_integrity?.mode;
-  if (mode === void 0) return given;
-  if (app) {
-    for (const [layer, value] of [
-      ["config", given?.config],
-      ["input", given?.input]
-    ]) {
-      if (value !== void 0 && STRICTNESS2[value] < STRICTNESS2[mode]) {
-        ignored.push({ setting: "test_integrity.mode", layer, reason: "looser" });
+    },
+    {
+      cdataText: true,
+      onDeclaration: () => {
+        declaration = true;
       }
     }
-  } else {
-    const inForce = given?.input ?? "warn";
-    const today = given?.config !== void 0 && STRICTNESS2[given.config] > STRICTNESS2[inForce] ? given.config : inForce;
-    if (STRICTNESS2[mode] < STRICTNESS2[today]) {
-      ignored.push({ setting: "test_integrity.mode", layer: "policy-file", reason: "looser" });
-    }
-  }
-  return { ...given, policy: { mode, kind: app ? "app" : "file" } };
+  );
+  if (declaration) return { ok: false, reason: "doctype" };
+  if (failure !== null) return { ok: false, reason: failure };
+  if (!rootSeen) return { ok: false, reason: "not-junit" };
+  if (stack.length > 0) return { ok: false, reason: "malformed" };
+  return { ok: true, cases, dropped };
 }
 
 // ../core/src/policy/limits.ts
@@ -41055,26 +41164,10 @@ function validatePolicy(value) {
   return { ok: false, errors: errors.finish() };
 }
 
-// ../core/src/policy/parse.ts
-function fail(message) {
-  return { ok: false, errors: [{ path: "", message }] };
-}
-function parsePolicyJson(text) {
-  if (typeof text !== "string") return fail(MESSAGES.textNotString);
-  const body = text.charCodeAt(0) === 65279 ? text.slice(1) : text;
-  if (body.length > POLICY_MAX_CHARS) return fail(textTooLongMessage(POLICY_MAX_CHARS));
-  let parsed;
-  try {
-    parsed = JSON.parse(body);
-  } catch {
-    return fail(MESSAGES.textNotJson);
-  }
-  return validatePolicy(parsed);
-}
-
 // ../core/src/policy/response.ts
 var RESPONSE_MAX_QUARANTINE_ITEMS = 1e4;
-var MAX_ITEM_UNITS = 1024;
+var QUARANTINE_ITEM_MAX_UNITS = 1024;
+var MAX_ITEM_UNITS = QUARANTINE_ITEM_MAX_UNITS;
 var MAX_ETAG_UNITS = 200;
 var MESSAGE_MAX_BYTES_MIN = 256;
 var MESSAGE_MAX_BYTES_MAX = 65536;
@@ -41219,6 +41312,218 @@ function validatePolicyResponse(value) {
   return { ok: true, response: { version: version2, etag, updatedAt, policy, quarantine, settings: settings2 } };
 }
 
+// ../core/src/junit/results.ts
+var JUNIT_MAX_FILES = 50;
+var JUNIT_MAX_TOTAL_BYTES = 26214400;
+var JUNIT_MAX_CASES = 2e4;
+function parseJunitSources(sources) {
+  const cases = [];
+  const invalid = [];
+  const dropped = [];
+  let parsed = 0;
+  let droppedCases = 0;
+  let bytes = 0;
+  let overBytes = false;
+  sources.files.forEach((file, index) => {
+    if ("dropped" in file || index >= JUNIT_MAX_FILES || overBytes) {
+      if ("dropped" in file && file.dropped === "byte-cap") overBytes = true;
+      dropped.push(file.path);
+      return;
+    }
+    bytes += utf8ByteLength(file.text);
+    if (bytes > JUNIT_MAX_TOTAL_BYTES) {
+      overBytes = true;
+      dropped.push(file.path);
+      return;
+    }
+    const result = parseJunitXml(file.text, JUNIT_MAX_CASES - cases.length);
+    if (!result.ok) {
+      invalid.push({ path: file.path, reason: result.reason });
+      return;
+    }
+    parsed++;
+    cases.push(...result.cases);
+    droppedCases += result.dropped;
+  });
+  return {
+    parsed,
+    cases,
+    invalid: invalid.sort((a, b) => byCodeUnit(a.path, b.path)),
+    dropped: dropped.sort(byCodeUnit),
+    droppedCases,
+    walkLimit: sources.walkLimit === true,
+    notFound: sources.files.length === 0 && sources.walkLimit !== true
+  };
+}
+
+// ../core/src/policy/apply.ts
+var STRICTNESS2 = { off: 0, warn: 1, block: 2 };
+function rootKey(root) {
+  return root === void 0 || root === null ? "." : root;
+}
+function normalizedRoot(root) {
+  return parseCoverageRoot(root, "the org policy's coverage.root");
+}
+function applyPolicy(layers, policy) {
+  const document2 = policy.document;
+  if (policy.source === "none" || document2 === null) return { inputs: layers.resolved, ignored: [] };
+  const app = policy.source === "app";
+  const policyLayer = "policy-file";
+  const ignored = [];
+  const inputs = { ...layers.resolved };
+  applyCoverage(layers, document2, app, inputs, ignored);
+  applySetup(layers, document2, app, inputs, ignored);
+  const modeSettings = applyMode(layers, document2, app, ignored);
+  if (modeSettings !== void 0) inputs.testIntegrityMode = modeSettings;
+  const integrity = document2.test_integrity;
+  const result = { inputs, ignored: [] };
+  if (integrity?.signals !== void 0 && Object.keys(integrity.signals).length > 0) {
+    result.signalOverrides = { kind: app ? "replace" : "raise", severities: { ...integrity.signals } };
+  }
+  if (integrity?.accept_label !== void 0) {
+    if (app) result.acceptLabel = integrity.accept_label;
+    else ignored.push({ setting: "test_integrity.accept_label", layer: policyLayer, reason: "not-allowed" });
+  }
+  if (!app && document2.policy?.required !== void 0) {
+    ignored.push({ setting: "policy.required", layer: policyLayer, reason: "not-allowed" });
+  }
+  const seen = /* @__PURE__ */ new Set();
+  result.ignored = ignored.filter((record) => {
+    const key = `${record.setting}\0${record.layer}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a, b) => byCodeUnit(a.setting, b.setting) || byCodeUnit(a.layer, b.layer));
+  return result;
+}
+function applyCoverage(layers, document2, app, inputs, ignored) {
+  const { config, raw, resolved } = layers;
+  const coverage2 = document2.coverage;
+  if (coverage2 === void 0) return;
+  if (coverage2.threshold !== void 0) {
+    const theirs = coverage2.threshold;
+    const inForce = resolved.threshold;
+    if (inForce === null) {
+      inputs.threshold = theirs;
+    } else {
+      if (app && inForce < theirs) {
+        const inputValue = raw.threshold === void 0 ? void 0 : Number(raw.threshold.trim());
+        const inputInForce = inputValue !== void 0 && !(inputValue < inForce);
+        ignored.push({
+          setting: "coverage.threshold",
+          layer: inputInForce ? "input" : "config",
+          reason: "looser",
+          given: inForce,
+          applied: theirs
+        });
+      } else if (!app && theirs < inForce) {
+        ignored.push({
+          setting: "coverage.threshold",
+          layer: "policy-file",
+          reason: "looser",
+          given: theirs,
+          applied: inForce
+        });
+      }
+      inputs.threshold = Math.max(theirs, inForce);
+    }
+  }
+  if (coverage2.exclude !== void 0) {
+    if (app) {
+      const theirs = coverage2.exclude;
+      const configCount = (config.coverage?.exclude ?? []).length;
+      const fromConfig = resolved.exclude.slice(0, configCount);
+      const fromInput = resolved.exclude.slice(configCount);
+      for (const [layer, patterns] of [
+        ["config", fromConfig],
+        ["input", fromInput]
+      ]) {
+        if (patterns.some((pattern) => !theirs.includes(pattern))) {
+          ignored.push({ setting: "coverage.exclude", layer, reason: "looser" });
+        }
+      }
+      inputs.exclude = [...theirs];
+    } else if (coverage2.exclude.length > 0) {
+      ignored.push({ setting: "coverage.exclude", layer: "policy-file", reason: "not-allowed" });
+    }
+  }
+  if (coverage2.root !== void 0) {
+    if (app) {
+      const theirs = coverage2.root === null ? "." : normalizedRoot(coverage2.root);
+      const inputGiven = raw.coverageRoot !== void 0;
+      const configGiven = config.coverage?.root !== void 0;
+      if (inputGiven || configGiven) {
+        const today = inputGiven ? rootKey(resolved.coverageRoot) : rootKey(config.coverage?.root);
+        if (today !== theirs) {
+          ignored.push({ setting: "coverage.root", layer: inputGiven ? "input" : "config", reason: "looser" });
+        }
+      }
+      inputs.coverageRoot = theirs === "." ? void 0 : theirs;
+    } else {
+      ignored.push({ setting: "coverage.root", layer: "policy-file", reason: "not-allowed" });
+    }
+  }
+}
+function applySetup(layers, document2, app, inputs, ignored) {
+  const { config, raw, resolved } = layers;
+  const setup2 = document2.setup;
+  if (setup2 === void 0) return;
+  if (setup2.require !== void 0) {
+    if (setup2.require) {
+      if (app && !resolved.requireAgentSetup) {
+        const layer = raw.requireAgentSetup === false ? "input" : config.setup?.require === false ? "config" : void 0;
+        if (layer !== void 0) ignored.push({ setting: "setup.require", layer, reason: "looser" });
+      }
+      inputs.requireAgentSetup = true;
+    } else if (!app && resolved.requireAgentSetup) {
+      ignored.push({ setting: "setup.require", layer: "policy-file", reason: "looser" });
+    }
+  }
+  if (setup2.expect !== void 0) {
+    const union = [.../* @__PURE__ */ new Set([...resolved.expectAgentSetup ?? [], ...setup2.expect])];
+    if (union.length > 0) inputs.expectAgentSetup = union;
+  }
+}
+function applyMode(layers, document2, app, ignored) {
+  const given = layers.resolved.testIntegrityMode;
+  const mode = document2.test_integrity?.mode;
+  if (mode === void 0) return given;
+  if (app) {
+    for (const [layer, value] of [
+      ["config", given?.config],
+      ["input", given?.input]
+    ]) {
+      if (value !== void 0 && STRICTNESS2[value] < STRICTNESS2[mode]) {
+        ignored.push({ setting: "test_integrity.mode", layer, reason: "looser" });
+      }
+    }
+  } else {
+    const inForce = given?.input ?? "warn";
+    const today = given?.config !== void 0 && STRICTNESS2[given.config] > STRICTNESS2[inForce] ? given.config : inForce;
+    if (STRICTNESS2[mode] < STRICTNESS2[today]) {
+      ignored.push({ setting: "test_integrity.mode", layer: "policy-file", reason: "looser" });
+    }
+  }
+  return { ...given, policy: { mode, kind: app ? "app" : "file" } };
+}
+
+// ../core/src/policy/parse.ts
+function fail(message) {
+  return { ok: false, errors: [{ path: "", message }] };
+}
+function parsePolicyJson(text) {
+  if (typeof text !== "string") return fail(MESSAGES.textNotString);
+  const body = text.charCodeAt(0) === 65279 ? text.slice(1) : text;
+  if (body.length > POLICY_MAX_CHARS) return fail(textTooLongMessage(POLICY_MAX_CHARS));
+  let parsed;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return fail(MESSAGES.textNotJson);
+  }
+  return validatePolicy(parsed);
+}
+
 // ../core/src/render/logo.ts
 var LOGO_MARKUP = '<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/main/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">';
 function logoMarkup() {
@@ -41320,7 +41625,12 @@ var MESSAGE_HINTS = {
   INJECTION_PI03: "Remove the phrase. If the file documents prompt injection on purpose, keep such samples in test files or under `fixtures/`.",
   INJECTION_PI04: "Remove the blob from the instruction file; point to a reviewed file in the repository instead.",
   INJECTION_PI05: "Remove the instruction file from the vendored directory, or keep vendored code out of the repository.",
-  INJECTION_TEXT_TRUNCATED: "Split the change into smaller pull requests, so every added line is scanned."
+  INJECTION_TEXT_TRUNCATED: "Split the change into smaller pull requests, so every added line is scanned.",
+  // Flaky tests (A6): the JUnit paths and the test step are what to fix; test results never change the verdict.
+  JUNIT_NOT_FOUND: "Point `junit-paths` (or `--junit`) at the files the test step writes, run pharn-ci after the test step, and keep the test step from stopping the job first (`if: always()` on the pharn-ci step).",
+  JUNIT_INVALID: "Have the test runner write plain JUnit XML: one `testsuites` or `testsuite` root, no DOCTYPE, every element closed.",
+  JUNIT_TOO_LARGE: "Narrow `junit-paths` to the files of this job, or merge the reports; the results past the limits are not counted or uploaded.",
+  FLAKY_QUARANTINED_FAILURES: "Nothing to fix in the pull request; the org's quarantine list on pharn.dev says which tests are known to be flaky."
 };
 function hintFor(code2, label) {
   if (!Object.hasOwn(MESSAGE_HINTS, code2)) return void 0;
@@ -41655,6 +41965,33 @@ function injectionLines(report) {
   lines.push("");
   return lines;
 }
+function flakyOf(report) {
+  const flaky2 = report.flaky;
+  if (typeof flaky2 !== "object" || flaky2 === null) return null;
+  const f = flaky2;
+  const counts2 = [f.testCount, f.failed, f.quarantinedFailures, f.unquarantinedFailures];
+  if (!counts2.every((n) => Number.isSafeInteger(n) && n >= 0)) return null;
+  if (!Array.isArray(f.quarantined) || !f.quarantined.every((id) => typeof id === "string")) return null;
+  return f;
+}
+function flakyLines(report, maxRows) {
+  const flaky2 = flakyOf(report);
+  if (flaky2 === null) return [];
+  const tests = countOf(flaky2.testCount, "test", "tests");
+  const failed2 = flaky2.failed === 0 ? "none failed" : `${flaky2.failed} failed \xB7 ${flaky2.quarantinedFailures} of ${countOf(flaky2.failed, "failure", "failures")} quarantined`;
+  const lines = ["### \u{1F9EB} Flaky", "", `${tests} \xB7 ${failed2}`, ""];
+  const ids = flaky2.quarantined;
+  if (ids.length > 0) {
+    lines.push(`<details><summary>Quarantined failures (${ids.length})</summary>`, "");
+    for (const id of ids.slice(0, maxRows)) lines.push(`- ${code(id)}`);
+    if (ids.length > maxRows) lines.push(`- _\u2026and ${ids.length - maxRows} more in report.json._`);
+    lines.push("", "</details>", "");
+  }
+  if (flaky2.failed > 0) {
+    lines.push("_Test results never change the verdict: the test step fails the job for a failed test._", "");
+  }
+  return lines;
+}
 function renderMarkdown(report, options = {}) {
   const maxRows = options.maxRows ?? 50;
   const out = [];
@@ -41710,12 +42047,14 @@ function renderMarkdown(report, options = {}) {
   if (hasPolicy(report)) out.push(...policyLines(report, maxRows));
   const stale = staleLines(report, maxRows);
   out.push(...stale);
+  const flaky2 = flakyLines(report, maxRows);
+  out.push(...flaky2);
   const listedIds = new Set(listedSignals(report).map((s) => `TEST_INTEGRITY_${s.id}`));
   const policyListsP01 = hasPolicy(report) && policyViolationsOf(report).some((v) => v.id === "P01");
   const inPolicySection = (code2) => hasPolicy(report) && (POLICY_RULE_MESSAGE_CODE.test(code2) || code2 === "POLICY_UNAVAILABLE" || code2 === "POLICY_OVERRIDE_IGNORED" || code2 === "POLICY_SETTINGS_INVALID" || policyListsP01 && (code2 === "NO_AGENT_SETUP_FILES" || code2 === "AGENT_SETUP_EXPECTED_MISSING"));
   const listedInjectionIds = new Set(listedInjection(report).map((s) => `INJECTION_${s.id}`));
   const messages = report.messages.filter(
-    (m) => !(SIGNAL_MESSAGE_CODE.test(m.code) && listedIds.has(m.code)) && !(INJECTION_MESSAGE_CODE.test(m.code) && listedInjectionIds.has(m.code)) && !inPolicySection(m.code) && !(stale.length > 0 && m.code.startsWith("SETUP_STALE_")) && !(m.code === "TEST_INTEGRITY_ACCEPTED" && acceptedShown(report)) && !(m.code === "TESTS_NOT_EXERCISING_CHANGES" && exercisePaths(report) !== null)
+    (m) => !(SIGNAL_MESSAGE_CODE.test(m.code) && listedIds.has(m.code)) && !(INJECTION_MESSAGE_CODE.test(m.code) && listedInjectionIds.has(m.code)) && !inPolicySection(m.code) && !(stale.length > 0 && m.code.startsWith("SETUP_STALE_")) && !(flaky2.length > 0 && m.code === "FLAKY_QUARANTINED_FAILURES") && !(m.code === "TEST_INTEGRITY_ACCEPTED" && acceptedShown(report)) && !(m.code === "TESTS_NOT_EXERCISING_CHANGES" && exercisePaths(report) !== null)
   );
   if (messages.length > 0) {
     out.push(`### \u{1F4AC} Messages (${messages.length})`, "");
@@ -41909,6 +42248,9 @@ function truncateUtf8(text, maxBytes) {
     keepUnits = i;
   }
   return `${text.slice(0, keepUnits)}\u2026[+${total - keepBytes} bytes]`;
+}
+function redactMessage(text, maxBytes = MESSAGE_MAX_BYTES) {
+  return truncateUtf8(redactSecrets(text), maxBytes);
 }
 
 // ../core/src/setup/sizes.ts
@@ -42303,12 +42645,93 @@ function buildUploadBundle(report, meta, options) {
   }
   const runMeta2 = reportCopy.meta;
   if (isContainer(runMeta2) && !Array.isArray(runMeta2)) runMeta2.upload = { status: "ok" };
+  const flaky2 = reportCopy.flaky;
+  if (options?.junit === true && isContainer(flaky2) && !Array.isArray(flaky2)) flaky2.uploaded = true;
   return {
     reportJson: `${JSON.stringify(reportCopy, null, 2)}
 `,
     metaJson: `${JSON.stringify(metaCopy, null, 2)}
 `
   };
+}
+
+// ../core/src/upload/junit.ts
+var UPLOAD_JUNIT_MAX_BYTES = 26214400;
+var UPLOAD_JUNIT_NAME = "junit/results.xml";
+function isXmlForbidden(text, i) {
+  const code2 = text.charCodeAt(i);
+  if (code2 < 32) return code2 !== 9 && code2 !== 10 && code2 !== 13;
+  if (code2 === 65534 || code2 === 65535) return true;
+  if (code2 >= 55296 && code2 <= 56319) {
+    const next = text.charCodeAt(i + 1);
+    return !(next >= 56320 && next <= 57343);
+  }
+  if (code2 >= 56320 && code2 <= 57343) {
+    const prev = text.charCodeAt(i - 1);
+    return !(prev >= 55296 && prev <= 56319);
+  }
+  return false;
+}
+function xmlAttribute(text) {
+  let out = "";
+  for (let i = 0; i < text.length; i++) {
+    const char = text.charAt(i);
+    if (isXmlForbidden(text, i)) out += "\uFFFD";
+    else if (char === "&") out += "&amp;";
+    else if (char === "<") out += "&lt;";
+    else if (char === ">") out += "&gt;";
+    else if (char === '"') out += "&quot;";
+    else if (char === "	") out += "&#9;";
+    else if (char === "\n") out += "&#10;";
+    else if (char === "\r") out += "&#13;";
+    else out += char;
+  }
+  return out;
+}
+function redactedName(text) {
+  return truncateUtf8(redactSecrets(text), 4096);
+}
+function caseElement(testCase, cap) {
+  const time = testCase.time === null ? "" : ` time="${String(testCase.time)}"`;
+  const head = `    <testcase id="${xmlAttribute(redactedName(testCase.id))}" classname="${xmlAttribute(redactedName(testCase.classname))}" name="${xmlAttribute(redactedName(testCase.name))}"${time}`;
+  if (testCase.status === "passed") return `${head}/>`;
+  if (testCase.status === "skipped") return `${head}>
+      <skipped/>
+    </testcase>`;
+  const tag = testCase.status === "failed" ? "failure" : "error";
+  const message = testCase.message === void 0 ? "" : ` message="${xmlAttribute(redactMessage(testCase.message, cap))}"`;
+  return `${head}>
+      <${tag}${message}/>
+    </testcase>`;
+}
+function buildJunitResultsXml(results, options) {
+  const cap = Math.min(options?.messageMaxBytes ?? MESSAGE_MAX_BYTES, MESSAGE_MAX_BYTES);
+  truncateUtf8("", cap);
+  let failures = 0;
+  let errors = 0;
+  let skipped = 0;
+  for (const testCase of results.cases) {
+    if (testCase.status === "failed") failures++;
+    else if (testCase.status === "error") errors++;
+    else if (testCase.status === "skipped") skipped++;
+  }
+  const lines = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    `<testsuites tests="${results.cases.length}" failures="${failures}" errors="${errors}" skipped="${skipped}">`
+  ];
+  let suite = null;
+  for (const testCase of results.cases) {
+    if (testCase.suite !== suite) {
+      if (suite !== null) lines.push("  </testsuite>");
+      suite = testCase.suite;
+      lines.push(`  <testsuite name="${xmlAttribute(redactedName(suite))}">`);
+    }
+    lines.push(caseElement(testCase, cap));
+  }
+  if (suite !== null) lines.push("  </testsuite>");
+  lines.push("</testsuites>");
+  return `${lines.join("\n")}
+`;
 }
 
 // ../core/src/upload/meta.ts
@@ -42351,6 +42774,9 @@ function withUploadOutcome(report, outcome) {
   if (report.meta === void 0) return report;
   const upload = outcome.status === "ok" ? { status: "ok", runUrl: outcome.runUrl } : { status: outcome.status };
   const meta = { ...report.meta, upload };
+  if (outcome.status === "ok" && outcome.junit === true && report.flaky !== void 0) {
+    return { ...report, flaky: { ...report.flaky, uploaded: true }, meta };
+  }
   if (outcome.status !== "too_large") return { ...report, meta };
   const message = { level: "warn", code: "UPLOAD_TOO_LARGE", text: tooLargeText(outcome.maxBytes) };
   const messages = [...report.messages, message];
@@ -42772,6 +43198,60 @@ async function listDir(path) {
     if (code2 === "ENOENT" || code2 === "ENOTDIR") return null;
     throw err;
   }
+}
+
+// ../node-io/src/junit.ts
+var MAX_JUNIT_GLOB_FILES = 1e3;
+var MAX_JUNIT_WALK_ENTRIES = 1e5;
+async function readJunitFiles(deps, options) {
+  const patterns = options.patterns.map((pattern) => parseExcludePattern(pattern, options.label));
+  const budget = { files: 0, entries: 0 };
+  const limits = { files: MAX_JUNIT_GLOB_FILES, entries: MAX_JUNIT_WALK_ENTRIES };
+  const listDir2 = (dir) => deps.listDir(deps.resolvePath(options.baseDir, dir));
+  const paths = [];
+  const seen = /* @__PURE__ */ new Set();
+  let walkLimit = false;
+  for (const pattern of patterns) {
+    let found;
+    try {
+      found = await walkGlob(pattern, listDir2, budget, limits);
+    } catch (err) {
+      if (!(err instanceof WalkLimitError)) throw err;
+      walkLimit = true;
+      break;
+    }
+    for (const path of found) {
+      if (seen.has(path)) continue;
+      seen.add(path);
+      paths.push(path);
+    }
+  }
+  const files = [];
+  let bytes = 0;
+  let overBytes = false;
+  for (const [index, path] of paths.entries()) {
+    if (index >= JUNIT_MAX_FILES) {
+      files.push({ path, dropped: "file-cap" });
+      continue;
+    }
+    if (overBytes) {
+      files.push({ path, dropped: "byte-cap" });
+      continue;
+    }
+    const chunks = await fileChunks(deps, deps.resolvePath(options.baseDir, path));
+    if (chunks === null) continue;
+    const parts = [];
+    for await (const chunk of chunks) {
+      bytes += utf8ByteLength(chunk);
+      if (bytes > JUNIT_MAX_TOTAL_BYTES) {
+        overBytes = true;
+        break;
+      }
+      parts.push(chunk);
+    }
+    files.push(overBytes ? { path, dropped: "byte-cap" } : { path, text: parts.join("") });
+  }
+  return walkLimit ? { files, walkLimit } : { files };
 }
 
 // ../node-io/src/policyFile.ts
@@ -44128,11 +44608,12 @@ function parsePolicyInput(value) {
 var REPOSITORY = /^[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}$/;
 var JSON_CONTENT_TYPE = /^application\/json\s*(?:;|$)/i;
 async function fetchAppPolicy(deps, options) {
-  let messageMaxBytes;
+  let settings2;
   const policy = await requestPolicy(deps, options, (value) => {
-    messageMaxBytes = value;
+    settings2 = value;
   });
-  return messageMaxBytes === void 0 ? { policy } : { policy, messageMaxBytes };
+  const used = settings2;
+  return used === void 0 ? { policy } : { policy, ...used };
 }
 async function requestPolicy(deps, options, onSettings) {
   const required = options.mode === "required";
@@ -44192,7 +44673,11 @@ async function requestPolicy(deps, options, onSettings) {
   }
   const validated = validatePolicyResponse(parsed);
   if (!validated.ok) return unavailable2("invalid-response", { status, ...id });
-  onSettings(validated.response.settings.messageMaxBytes);
+  onSettings({
+    messageMaxBytes: validated.response.settings.messageMaxBytes,
+    quarantine: validated.response.quarantine,
+    uploadJunit: validated.response.settings.uploadJunit
+  });
   return {
     source: "app",
     version: validated.response.version,
@@ -44213,12 +44698,17 @@ async function obtainPolicy(deps, choice, origin) {
     };
   }
   const repository = deps.context.payload.repository?.full_name;
-  const { policy, messageMaxBytes } = await fetchAppPolicy(deps, {
+  const { policy, messageMaxBytes, quarantine, uploadJunit } = await fetchAppPolicy(deps, {
     mode: choice.kind,
     origin,
     repository: typeof repository === "string" ? repository : ""
   });
-  return messageMaxBytes === void 0 ? { policy } : { policy, uploadMessageMaxBytes: messageMaxBytes };
+  return {
+    policy,
+    ...messageMaxBytes === void 0 ? {} : { uploadMessageMaxBytes: messageMaxBytes },
+    ...quarantine === void 0 ? {} : { quarantine },
+    ...uploadJunit === void 0 ? {} : { uploadJunit }
+  };
 }
 
 // src/pr-number.ts
@@ -44387,21 +44877,30 @@ async function uploadSteps(deps, input, remainingMs) {
   const createdAt = (deps.now?.() ?? /* @__PURE__ */ new Date()).toISOString();
   const meta = buildUploadMeta(input.report, { version: VERSION7, createdAt, commentUrl });
   if (meta === null) return { outcome: { status: "skipped", reason: "no-meta" } };
-  const { reportJson, metaJson } = buildUploadBundle(
-    input.report,
-    meta,
-    input.messageMaxBytes === void 0 ? void 0 : { messageMaxBytes: input.messageMaxBytes }
-  );
+  const junit = input.junit !== void 0 && input.junit.parsed > 0 ? input.junit : void 0;
+  const { reportJson, metaJson } = buildUploadBundle(input.report, meta, {
+    ...input.messageMaxBytes === void 0 ? {} : { messageMaxBytes: input.messageMaxBytes },
+    ...junit === void 0 ? {} : { junit: true }
+  });
   if (Buffer.byteLength(reportJson, "utf8") > UPLOAD_REPORT_MAX_BYTES) {
     return { outcome: { status: "too_large", maxBytes: UPLOAD_REPORT_MAX_BYTES } };
+  }
+  const junitXml = junit === void 0 ? void 0 : buildJunitResultsXml(
+    junit,
+    input.messageMaxBytes === void 0 ? void 0 : { messageMaxBytes: input.messageMaxBytes }
+  );
+  if (junitXml !== void 0 && Buffer.byteLength(junitXml, "utf8") > UPLOAD_JUNIT_MAX_BYTES) {
+    return { outcome: { status: "too_large", maxBytes: UPLOAD_JUNIT_MAX_BYTES } };
   }
   const gz = gzipSync(
     buildUploadTar([
       { name: "report.json", text: reportJson },
-      { name: "meta.json", text: metaJson }
+      { name: "meta.json", text: metaJson },
+      ...junitXml === void 0 ? [] : [{ name: UPLOAD_JUNIT_NAME, text: junitXml }]
     ]),
     { level: 9 }
   );
+  const junitBytes = junitXml === void 0 ? 0 : gzipSync(junitXml, { level: 9 }).byteLength;
   const m = JSON.parse(metaJson);
   if (remainingMs() <= 0) return failed("upload-url:deadline", {});
   const urlResult = await appRequest(deps, {
@@ -44416,7 +44915,7 @@ async function uploadSteps(deps, input, remainingMs) {
       runId: m.runId,
       runAttempt: m.runAttempt,
       scope: m.scope,
-      sizes: { report: gz.byteLength, junit: 0 }
+      sizes: { report: gz.byteLength, junit: junitBytes }
     })
   });
   const urlId = requestIdOf(urlResult);
@@ -44465,7 +44964,7 @@ async function uploadSteps(deps, input, remainingMs) {
   }
   const runUrl = readRunsAnswer(runsResult, input.appOrigin);
   if (runUrl === null) return failed("runs:malformed", runsId);
-  return { outcome: { status: "ok", runUrl }, ...runsId };
+  return { outcome: { status: "ok", runUrl, ...junitXml === void 0 ? {} : { junit: true } }, ...runsId };
 }
 var failed = (reason, id) => ({ outcome: { status: "failed", reason }, ...id });
 function requestIdOf(result) {
@@ -44633,6 +45132,8 @@ async function runUnsafe(deps) {
   const policyChoice = parsePolicyInput(input("policy"));
   const appOrigin = parseAppUrl(input("app-url"));
   const uploadChoice = parseUploadInput(input("upload"));
+  const junitPatterns = splitPatternList(input("junit-paths"));
+  for (const pattern of junitPatterns) parseExcludePattern(pattern, "junit-paths");
   const configInput = input("config");
   const baseRefInput = input("base-ref");
   const config = await loadConfig(configInput || void 0, deps);
@@ -44654,7 +45155,7 @@ async function runUnsafe(deps) {
     { discoverCoverage: true }
   );
   if (!resolved.ok) throw resolved.errors[0];
-  const { policy, uploadMessageMaxBytes } = await obtainPolicy(deps, policyChoice, appOrigin);
+  const { policy, uploadMessageMaxBytes, quarantine, uploadJunit } = await obtainPolicy(deps, policyChoice, appOrigin);
   const application = policy === void 0 ? void 0 : applyPolicy({ config, raw: rawInputs, resolved: resolved.inputs }, policy);
   const effective2 = application?.inputs ?? resolved.inputs;
   const {
@@ -44723,6 +45224,7 @@ async function runUnsafe(deps) {
   if (policy?.source === "file") {
     policyFileBase = localBase !== void 0 && deps.gitBatch !== void 0 && policy.path !== void 0 ? await readPolicyFileAt({ gitBatch: deps.gitBatch }, { rev: localBase, path: policy.path }) : { kind: "unreadable" };
   }
+  const junit = junitPatterns.length === 0 ? void 0 : await gatherJunit(deps, junitPatterns);
   const checkInput = {
     version: VERSION7,
     coverage: coverage2,
@@ -44748,7 +45250,10 @@ async function runUnsafe(deps) {
     agentPrFacts,
     ...policyFileBase === void 0 ? {} : { policyFileBase },
     ...selfModificationSources === void 0 ? {} : { selfModificationSources },
-    ...staleInstructionSources === void 0 ? {} : { staleInstructionSources }
+    ...staleInstructionSources === void 0 ? {} : { staleInstructionSources },
+    ...junit === void 0 ? {} : { junit },
+    // Only the app's own answer carries a quarantine list; a pull request has no way to add one.
+    ...junit === void 0 || quarantine === void 0 ? {} : { quarantine }
   };
   const runMetaBase = runMeta(deps.context, { baseRef: baseRefInput, ...target === void 0 ? {} : { target } });
   if (runMetaBase === void 0) deps.info("run metadata is incomplete, so report.json carries no meta");
@@ -44785,7 +45290,9 @@ async function runUnsafe(deps) {
     appOrigin,
     ...uploadMessageMaxBytes === void 0 ? {} : { messageMaxBytes: uploadMessageMaxBytes },
     ...target !== void 0 && headSha !== void 0 ? { prHeadShaExpected: headSha } : {},
-    ...commentNumber === void 0 ? {} : { findOwnComment: () => findOwn(commentNumber) }
+    ...commentNumber === void 0 ? {} : { findOwnComment: () => findOwn(commentNumber) },
+    // The org can keep the JUnit results out of the upload (`settings.uploadJunit: false`); it cannot add them.
+    ...junit === void 0 || junit.parsed === 0 || uploadJunit === false ? {} : { junit }
   });
   report = withUploadOutcome(report, outcome);
   const notInstalled = policy?.noInstallation === true || outcome.status === "skipped" && outcome.reason === "no-installation";
@@ -44855,6 +45362,14 @@ async function trackedFiles(target, deps) {
     );
   }
   return tree.paths;
+}
+async function gatherJunit(deps, patterns) {
+  const sources = await readJunitFiles(deps, { patterns, label: "junit-paths", baseDir: deps.workspace });
+  const results = parseJunitSources(sources);
+  deps.info(
+    `pharn-ci: read ${results.parsed} JUnit XML file(s) with ${results.cases.length} test case(s)` + (results.invalid.length > 0 ? `; ${results.invalid.length} file(s) refused` : "") + (results.dropped.length > 0 ? `; ${results.dropped.length} file(s) over the limits` : "")
+  );
+  return results;
 }
 async function gatherTestSources(deps, from) {
   if (resolveTestIntegrityMode(from.testIntegrityMode).mode === "off") return void 0;

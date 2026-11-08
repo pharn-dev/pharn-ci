@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import { foldCoverageBar } from "../../core/test/helpers.js";
 import { withoutSchemaLevelEdits } from "../../core/test/level-edits.js";
 import { V070_INJECTION_CODES, withoutV070Properties } from "../../core/test/v070-codes.js";
+import { V080_CODES, withoutV080Properties } from "../../core/test/v080-codes.js";
 
 // Reads the repository and the base commit with git; nothing the build adds is loaded. The base is the commit this
 // increment starts from. The committed action dist must be a fresh bundle that carries the alias reader, so this test
@@ -66,6 +67,9 @@ const SECRET_CODES = [
   // Re-pinned for H4 (prompt-injection scan): the same v0.7.0 text and report.ts also gain the six INJECTION_ codes;
   // this only adds to what the pin allows. Its `injection` object is cut by withoutV070Properties.
   ...V070_INJECTION_CODES,
+  // Re-pinned for flaky tests (A6): the " Codes added in v0.8.0:" text and report.ts also gain these four codes
+  // (V080_CODES); this only adds to what the pin allows.
+  ...V080_CODES,
 ];
 
 const git = (...args: string[]) =>
@@ -179,7 +183,10 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
       // out too (v070-codes.ts pins it exactly); its code is in the appended text cut out below.
       // Re-pinned for stale instructions (Horizon 2 item H3): its top-level setupHealth property is taken out the same
       // way.
-      const withIsAgentPr = withoutSchemaLevelEdits(withoutV070Properties(read(`schema/${name}`)));
+      // Re-pinned for flaky tests (A6, v0.8.0): the flaky description is taken out the same way (v080-codes.ts).
+      const withIsAgentPr = withoutSchemaLevelEdits(
+        withoutV080Properties(withoutV070Properties(read(`schema/${name}`))),
+      );
       expect(withIsAgentPr.split(isAgentPrLines).length - 1, "the four isAgentPr lines appear once").toBe(1);
       const currentText = withIsAgentPr.replace(isAgentPrLines, "");
       const sentenceEnd = currentText.indexOf(FINAL_SENTENCE) + FINAL_SENTENCE.length;

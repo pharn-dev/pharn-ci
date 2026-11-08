@@ -31,6 +31,8 @@ export interface Report {
   setupHealth?: ReportSetupHealth;
   /** The prompt-injection scan's findings; present only when there is at least one. */
   injection?: ReportInjection;
+  /** The run's JUnit results; present only when at least one JUnit XML file was parsed. */
+  flaky?: ReportFlaky;
   /** Run metadata; present only when the caller (the Action) gave it. */
   meta?: ReportMeta;
 }
@@ -68,6 +70,20 @@ export interface ReportInjectionSignal {
 /** The `injection` object of the report. */
 export interface ReportInjection {
   signals: ReportInjectionSignal[];
+}
+
+/**
+ * The `flaky` object of the report: the run's JUnit results under the org's quarantine list. `quarantined` holds the
+ * distinct ids of the quarantined tests that failed in this run, sorted in code-unit order, at most 200; `uploaded` is
+ * true only when the normalised results were stored on pharn.dev.
+ */
+export interface ReportFlaky {
+  uploaded: boolean;
+  testCount: number;
+  failed: number;
+  quarantined: string[];
+  quarantinedFailures: number;
+  unquarantinedFailures: number;
 }
 
 /** One finding of an org-policy rule, as the report carries it. */
@@ -294,7 +310,11 @@ export type MessageCode =
   | "INJECTION_PI03"
   | "INJECTION_PI04"
   | "INJECTION_PI05"
-  | "INJECTION_TEXT_TRUNCATED";
+  | "INJECTION_TEXT_TRUNCATED"
+  | "JUNIT_NOT_FOUND"
+  | "JUNIT_INVALID"
+  | "JUNIT_TOO_LARGE"
+  | "FLAKY_QUARANTINED_FAILURES";
 
 export interface Message {
   level: MessageLevel;
@@ -438,6 +458,13 @@ export interface BuildReportInput {
   agentSetupLevels?: { noFiles?: MessageLevel; expectedMissing?: MessageLevel };
   /** The org policy object, copied into the report as given; absent adds no key. */
   policy?: ReportPolicy;
+  /** The JUnit results of the run (see `junitReport`), copied into the report's `flaky` as given; absent adds no key. */
+  flaky?: ReportFlaky;
+  /**
+   * The JUnit messages (see `junitReport`), appended after the org policy's messages as given. Absent or empty adds
+   * nothing.
+   */
+  flakyMessages?: readonly Message[];
 }
 
 /**
@@ -814,6 +841,7 @@ export function buildReport(input: BuildReportInput): Report {
   messages.push(...(input.agentConfigSecretMessages ?? []));
   messages.push(...(input.injectionMessages ?? []));
   messages.push(...(input.policyMessages ?? []));
+  messages.push(...(input.flakyMessages ?? []));
   const injectionSignals = input.injectionSignals ?? [];
 
   return {
@@ -870,6 +898,7 @@ export function buildReport(input: BuildReportInput): Report {
             })),
           },
         }),
+    ...(input.flaky === undefined ? {} : { flaky: { ...input.flaky, quarantined: [...input.flaky.quarantined] } }),
     ...(input.meta === undefined ? {} : { meta: input.meta }),
   };
 }

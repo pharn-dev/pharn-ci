@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<!DOCTYPE testsuites [
+  <!ENTITY lol "lol">
+  <!ENTITY lol2 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">
+]>
+<testsuites>
+  <testsuite name="expanded">
+    <testcase classname="x" name="&lol2;"/>
+  </testsuite>
+</testsuites>

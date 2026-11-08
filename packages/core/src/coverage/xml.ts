@@ -180,7 +180,15 @@ function findTagEnd(text: string, start: number): number {
   return -1;
 }
 
-export function scanXml(text: string, onEvent: (event: XmlEvent) => void): void {
+/** What a caller may change about the scan; the defaults are the behaviour described at the top of this file. */
+export interface ScanXmlOptions {
+  /** Report the content of a CDATA section as one text event, as it is (not entity-decoded). Default: skipped. */
+  cdataText?: boolean;
+  /** Called once for each `<!` declaration (DOCTYPE, ENTITY and the like; not a comment or CDATA) that is skipped. */
+  onDeclaration?: () => void;
+}
+
+export function scanXml(text: string, onEvent: (event: XmlEvent) => void, options: ScanXmlOptions = {}): void {
   const length = text.length;
   // A leading byte order mark (U+FEFF) is skipped.
   let pos = text.charCodeAt(0) === 0xfeff ? 1 : 0;
@@ -202,12 +210,14 @@ export function scanXml(text: string, onEvent: (event: XmlEvent) => void): void 
     } else if (next === "!" && text.startsWith("<![CDATA[", lt)) {
       const close = text.indexOf("]]>", lt + 9);
       if (close === -1) return;
+      if (options.cdataText === true && close > lt + 9) onEvent({ type: "text", text: text.slice(lt + 9, close) });
       pos = close + 3;
     } else if (next === "?") {
       const close = text.indexOf("?>", lt + 2);
       if (close === -1) return;
       pos = close + 2;
     } else if (next === "!") {
+      options.onDeclaration?.();
       const close = findDeclarationEnd(text, lt + 2);
       if (close === -1) return;
       pos = close + 1;

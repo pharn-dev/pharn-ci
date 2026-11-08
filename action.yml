@@ -55,6 +55,9 @@ inputs:
     description: 'Whether to upload the run (report.json and meta.json, redacted, never file contents, diffs, coverage files or logs) to pharn.dev: "auto" uploads when the job grants id-token: write and the org installed the Pharn GitHub App, and "never" turns the upload off. An upload that fails never fails the check. Not read from .pharn/ci.yml, so a pull request cannot change it; see the README, Upload to pharn.dev.'
     required: false
     default: auto
+  junit-paths:
+    description: "JUnit XML files the test step wrote, as paths or globs (*, **, ?) relative to the workspace, separated by newlines or commas; a path outside the workspace is refused. At most 50 files, 25 MiB and 20,000 test cases are read. The results fill the Flaky section of the comment and report.json's flaky object, the org's quarantine list from pharn.dev is applied to them, and with an upload a normalised copy (test names, status, time and failure messages redacted and cut to 2 KB, never system-out or system-err) goes with it. Test results never change the verdict. Not read from .pharn/ci.yml. Empty means no JUnit."
+    required: false
   comment:
     description: Post or update one sticky PR comment with the report.
     required: false

@@ -9,6 +9,19 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- Flaky tests (A6): the new `junit-paths` input (CLI: `--junit`, repeatable) reads the JUnit XML the test step wrote,
+  with a hand-written, linear reader that refuses any DOCTYPE and expands no entity, capped at 50 files, 25 MiB and
+  20,000 test cases. Report v2 fills its optional `flaky` object (counts, and up to 200 quarantined test ids that
+  failed), the comment gains a **🧫 Flaky** section, and four codes are added: `JUNIT_NOT_FOUND`, `JUNIT_INVALID`,
+  `JUNIT_TOO_LARGE` (`warn`) and `FLAKY_QUARANTINED_FAILURES` (`info`). The app's quarantine list from the policy
+  response is now applied unless the org policy sets `flaky.quarantine: false`; test results never change the
+  verdict. A run upload also carries `junit/results.xml`, rebuilt from the parsed cases with failure messages redacted
+  and cut to 2 KB (never the file, never `system-out` or `system-err`), unless the org sets `settings.uploadJunit:
+  false`; `sizes.junit` is no longer always 0. The new `pharn-ci test [--junit <glob>]... [--quarantine-file <path>]
+  [--dry-run] -- <command>` runs a test command without a shell and exits 0 when it failed only because of quarantined
+  tests, otherwise with the command's own code. A test id is `<classname>::<name>` (README, Flaky tests and JUnit
+  results).
+
 ### Changed
 
 ### Security

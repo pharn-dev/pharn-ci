@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<testsuite name="outer">
+  <testsuite name="  inner
+    suite  ">
+    <testcase name="no classname, falls back to the suite"/>
+    <testcase file="tests/test_api.py" name="test_get&#9;ok"/>
+  </testsuite>
+  <testcase classname="  pkg.Mod  " name="  spaced
+     name  ">
+    <skipped message="later"/>
+    <failure message="fails after the skip"/>
+  </testcase>
+  <testcase classname="" name="back in outer"/>
+  <testcase classname="pkg.Err" name="error beats failure">
+    <failure message="first"/>
+    <error message="second"/>
+  </testcase>
+  <testcase classname="pkg.Flaky" name="passed on rerun">
+    <flakyFailure message="failed once"/>
+  </testcase>
+</testsuite>

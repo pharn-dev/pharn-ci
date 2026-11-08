@@ -19,6 +19,7 @@ import {
   type PythonSourceFile,
   type PythonTestIndex,
   parseConfig,
+  parseExcludePattern,
   parseLsTreeSizes,
   parseLsTreeSymlinks,
   policySettingsPaths,
@@ -47,6 +48,7 @@ import {
   readStaleInstructionSources,
   readTestSources,
 } from "@pharn-ci/node-io";
+import { readJunit, readQuarantineFile, runTestCommand } from "./testCommand.js";
 
 /** Everything the CLI touches outside itself; injected so tests can fake it. */
 export interface CliDeps {
@@ -90,6 +92,12 @@ export interface CliDeps {
    * `--policy-file`. Absent: node-io's `lstatPath`.
    */
   lstat?(path: string): Promise<PathStat | null>;
+  /**
+   * Runs a command in `cwd` without a shell, with the CLI's own stdin, stdout and stderr, and resolves how it ended: its
+   * exit code, or the name of the signal that stopped it. Rejects when it cannot be started. Only `pharn-ci test` calls
+   * it. Absent: `pharn-ci test` cannot run a command.
+   */
+  runCommand?(command: string, args: readonly string[]): Promise<{ code: number | null; signal: string | null }>;
   stdout(text: string): void;
   stderr(text: string): void;
 }
@@ -102,6 +110,8 @@ const HELP = `pharn-ci ${VERSION} — can AI coding agents safely work in this r
 
 Usage:
   pharn-ci check [options]
+  pharn-ci test [--junit <glob>]... [--quarantine-file <path>] [--dry-run] -- <command> [args...]
+                       Run a test command; see pharn-ci test --help
 
 Options:
   --coverage <file|glob>  Coverage report path or glob (repeatable). Default: coverage.file from config, then auto-discovery
@@ -117,6 +127,8 @@ Options:
   --config <path>      Config file. Default: <repo>/.pharn/ci.yml if present
   --policy-file <path> Org policy document to apply, relative to the repo root. It can only tighten; the CLI never fetches a policy
   --no-policy          Apply no org policy (the default; cannot be combined with --policy-file)
+  --junit <file|glob>  JUnit XML to report in the Flaky section, relative to where you run the CLI (repeatable)
+  --quarantine-file <path>  A JSON array of test ids to treat as quarantined in the JUnit results
   -h, --help           Show this help
   -v, --version        Show the version
 
@@ -124,6 +136,8 @@ Exit codes: 0 pass or warn, 1 fail, 2 usage or runtime error.
 `;
 
 export async function main(argv: string[], deps: CliDeps): Promise<number> {
+  // `test` has options of its own and a command after `--`, so it is parsed apart.
+  if (argv[0] === "test") return runTestCommand(argv.slice(1), deps);
   let parsed: ReturnType<typeof parse>;
   try {
     parsed = parse(argv);
@@ -198,6 +212,8 @@ function parseOptions(argv: string[]) {
       "test-integrity": { type: "string" },
       "policy-file": { type: "string" },
       "no-policy": { type: "boolean" },
+      junit: { type: "string", multiple: true },
+      "quarantine-file": { type: "string" },
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
     },
@@ -253,6 +269,11 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   if (expectError) throw expectError;
   const testIntegrityError = flagError("testIntegrity");
   if (testIntegrityError) throw testIntegrityError;
+  // A --junit pattern outside the working directory, or one the matcher does not support, is refused before any git call.
+  const junitPatterns = values.junit ?? [];
+  for (const pattern of junitPatterns) parseExcludePattern(pattern, "--junit");
+  const quarantineFile = values["quarantine-file"];
+  const quarantine = quarantineFile === undefined ? undefined : await readQuarantineFile(deps, quarantineFile);
 
   const repoRoot = (await git(deps, ["rev-parse", "--show-toplevel"], "not inside a git repository")).trim();
   const config = await loadConfig(values.config, repoRoot, deps);
@@ -446,6 +467,9 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     }
   }
 
+  // The JUnit results, read only with --junit; nothing read is printed but counts and paths.
+  const junit = junitPatterns.length === 0 ? undefined : await readJunit(deps, junitPatterns);
+
   const input: CheckInput = {
     version: VERSION,
     coverage,
@@ -470,6 +494,8 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     ...(policySettingsSources === undefined ? {} : { policySettingsSources }),
     ...(application === undefined || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored }),
     ...(application?.signalOverrides === undefined ? {} : { signalOverrides: application.signalOverrides }),
+    ...(junit === undefined ? {} : { junit }),
+    ...(junit === undefined || quarantine === undefined ? {} : { quarantine }),
   };
   const report = check(input);
 

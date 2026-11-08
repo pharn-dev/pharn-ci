@@ -56,6 +56,7 @@ describe("test sources: documentation and schema", () => {
         meta: { properties: { isAgentPr?: unknown } };
         setupHealth?: unknown;
         injection?: unknown;
+        flaky: { description?: string };
       };
     }) => {
       const copy = structuredClone(schema);
@@ -70,6 +71,8 @@ describe("test sources: documentation and schema", () => {
       delete copy.properties.setupHealth;
       // Re-pinned for H4 (prompt-injection scan), which adds the optional top-level injection object.
       delete copy.properties.injection;
+      // Re-pinned for flaky tests (A6), which gives the flaky object a description.
+      delete copy.properties.flaky.description;
       return copy;
     };
     const v2 = "schema/report.v2.json";

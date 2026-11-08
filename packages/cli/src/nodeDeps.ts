@@ -6,6 +6,7 @@ import {
   oneChunk,
   readFile,
   readFileStream,
+  runCommand,
   runGit,
   runGitBatch,
   streamGit,
@@ -40,6 +41,8 @@ export function nodeDeps(
     listDir,
     lstat: lstatPath,
     resolvePath: (...segments) => resolve(...segments),
+    // `pharn-ci test`: the command runs without a shell, so no argument is ever read as shell syntax.
+    runCommand: (command, args) => runCommand(cwd, command, args),
     stdout: (text) => process.stdout.write(text),
     stderr: (text) => process.stderr.write(text),
   };

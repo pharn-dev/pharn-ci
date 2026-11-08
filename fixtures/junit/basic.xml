@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A jest-junit style report: two suites, every status, output that is never kept. -->
+<testsuites name="jest tests" tests="7" failures="2" errors="1" time="1.25">
+  <testsuite name="math" tests="4" failures="1" errors="0" skipped="1" time="0.5">
+    <properties>
+      <property name="ci" value="true"/>
+    </properties>
+    <testcase classname="math.add" name="adds two numbers" time="0.012"/>
+    <testcase classname="math.add" name="adds &lt;negative&gt; numbers &amp; zero" time="0.004">
+      <failure message="expected 3 to be 4" type="AssertionError">AssertionError: expected 3 to be 4
+    at Object.&lt;anonymous&gt; (math.test.ts:12:5)</failure>
+    </testcase>
+    <testcase classname="math.div" name="divides" time="not-a-number">
+      <skipped/>
+    </testcase>
+    <testcase classname="math.div" name="divides by zero" time="0.001"></testcase>
+    <system-out>console.log output that must never be kept</system-out>
+  </testsuite>
+  <testsuite name="io" tests="3" failures="1" errors="1" time="0.75">
+    <testcase classname="io.read" name="reads a file" time="0.2">
+      <error message="ENOENT: no such file" type="Error"/>
+    </testcase>
+    <testcase classname="io.read" name="reads a stream" time="0.3">
+      <failure>stream ended early</failure>
+    </testcase>
+    <testcase classname="io.write" name="writes" time="0.25">
+      <system-err>stderr output that must never be kept</system-err>
+    </testcase>
+  </testsuite>
+</testsuites>

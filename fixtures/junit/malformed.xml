@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<testsuites>
+  <testsuite name="broken">
+    <testcase classname="a" name="b">
+  </testsuite>
+</testsuites>

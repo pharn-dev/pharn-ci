@@ -11,12 +11,15 @@ import {
   detectAgentPr,
   gitDiffArgs,
   type InputErrorText,
+  type JunitResults,
   type PharnConfig,
   type PolicyFileBase,
   type PolicySettingsSources,
   type PythonIndexRun,
   type PythonSourceFile,
   parseConfig,
+  parseExcludePattern,
+  parseJunitSources,
   parseLsTreeSizes,
   parseLsTreeSymlinks,
   policySettingsPaths,
@@ -45,6 +48,7 @@ import {
   readAgentConfigSources,
   readCoverageFiles,
   readDiscoveredCoverage,
+  readJunitFiles,
   readPolicyFileAt,
   readPolicySettingsSources,
   readStaleInstructionSources,
@@ -303,6 +307,9 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const policyChoice = parsePolicyInput(input("policy"));
   const appOrigin = parseAppUrl(input("app-url"));
   const uploadChoice = parseUploadInput(input("upload"));
+  // The JUnit paths are the workflow's alone (never .pharn/ci.yml); a bad pattern fails here, before anything is read.
+  const junitPatterns = splitPatternList(input("junit-paths"));
+  for (const pattern of junitPatterns) parseExcludePattern(pattern, "junit-paths");
   // Read once: the config, the diff reader and check() all name the same file.
   const configInput = input("config");
   const baseRefInput = input("base-ref");
@@ -329,7 +336,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   if (!resolved.ok) throw resolved.errors[0];
   // The org policy is obtained after the config and before anything is read or measured, and applied over the layers.
   // A `file:` problem throws here; an unavailable app policy never does: the check then runs with the inputs and the config.
-  const { policy, uploadMessageMaxBytes } = await obtainPolicy(deps, policyChoice, appOrigin);
+  const { policy, uploadMessageMaxBytes, quarantine, uploadJunit } = await obtainPolicy(deps, policyChoice, appOrigin);
   const application =
     policy === undefined ? undefined : applyPolicy({ config, raw: rawInputs, resolved: resolved.inputs }, policy);
   const effective = application?.inputs ?? resolved.inputs;
@@ -430,6 +437,9 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
         : { kind: "unreadable" };
   }
 
+  // The JUnit results the test step wrote: read from the workspace, never through a symbolic link, under the run's caps.
+  const junit = junitPatterns.length === 0 ? undefined : await gatherJunit(deps, junitPatterns);
+
   const checkInput: CheckInput = {
     version: VERSION,
     coverage,
@@ -456,6 +466,9 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     ...(policyFileBase === undefined ? {} : { policyFileBase }),
     ...(selfModificationSources === undefined ? {} : { selfModificationSources }),
     ...(staleInstructionSources === undefined ? {} : { staleInstructionSources }),
+    ...(junit === undefined ? {} : { junit }),
+    // Only the app's own answer carries a quarantine list; a pull request has no way to add one.
+    ...(junit === undefined || quarantine === undefined ? {} : { quarantine }),
   };
   const runMetaBase = runMeta(deps.context, { baseRef: baseRefInput, ...(target === undefined ? {} : { target }) });
   if (runMetaBase === undefined) deps.info("run metadata is incomplete, so report.json carries no meta");
@@ -513,6 +526,8 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     ...(uploadMessageMaxBytes === undefined ? {} : { messageMaxBytes: uploadMessageMaxBytes }),
     ...(target !== undefined && headSha !== undefined ? { prHeadShaExpected: headSha } : {}),
     ...(commentNumber === undefined ? {} : { findOwnComment: () => findOwn(commentNumber) }),
+    // The org can keep the JUnit results out of the upload (`settings.uploadJunit: false`); it cannot add them.
+    ...(junit === undefined || junit.parsed === 0 || uploadJunit === false ? {} : { junit }),
   });
   report = withUploadOutcome(report, outcome);
   // Only a run that found the org has not installed the app gets the install hint: the policy request or the upload
@@ -598,6 +613,21 @@ async function trackedFiles(target: PrNumberTarget | undefined, deps: ActionDeps
     );
   }
   return tree.paths;
+}
+
+/**
+ * The JUnit results of the `junit-paths` patterns, read from the workspace (`readJunitFiles`) and parsed under the run's
+ * caps, with one log line of counts. Only counts and fixed words reach the log; never a test name or file text.
+ */
+async function gatherJunit(deps: ActionDeps, patterns: readonly string[]): Promise<JunitResults> {
+  const sources = await readJunitFiles(deps, { patterns, label: "junit-paths", baseDir: deps.workspace });
+  const results = parseJunitSources(sources);
+  deps.info(
+    `pharn-ci: read ${results.parsed} JUnit XML file(s) with ${results.cases.length} test case(s)` +
+      (results.invalid.length > 0 ? `; ${results.invalid.length} file(s) refused` : "") +
+      (results.dropped.length > 0 ? `; ${results.dropped.length} file(s) over the limits` : ""),
+  );
+  return results;
 }
 
 /**

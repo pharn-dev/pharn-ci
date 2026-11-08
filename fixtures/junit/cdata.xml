@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="surefire">
+    <testcase classname="com.acme.FooTest" name="bar" time="0.1">
+      <failure type="java.lang.AssertionError"><![CDATA[expected:<1> but was:<2>
+	at com.acme.FooTest.bar(FooTest.java:10)]]></failure>
+      <system-out><![CDATA[never kept]]></system-out>
+    </testcase>
+  </testsuite>
+</testsuites>

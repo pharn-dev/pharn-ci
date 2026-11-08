@@ -126,8 +126,10 @@ describe("TI08, TI15 and TI16: schemas and documents", () => {
     const setupHealth = ["properties", "setupHealth"];
     // Re-pinned for H4 (prompt-injection scan), which adds the optional top-level injection object: set aside too.
     const injection = ["properties", "injection"];
-    expect(setAside(now, [...paths, languages, changes, isAgentPr, exercise, setupHealth, injection])).toEqual(
-      setAside(before, [...paths, languages, changes, isAgentPr, exercise, setupHealth, injection]),
+    // Re-pinned for flaky tests (A6), which gives the flaky object a description: set aside the same way.
+    const flaky = ["properties", "flaky", "description"];
+    expect(setAside(now, [...paths, languages, changes, isAgentPr, exercise, setupHealth, injection, flaky])).toEqual(
+      setAside(before, [...paths, languages, changes, isAgentPr, exercise, setupHealth, injection, flaky]),
     );
     const [path] = paths as [string[]];
     const beforeText = getAt(before, path) as string;
@@ -174,7 +176,8 @@ describe("TI08, TI15 and TI16: schemas and documents", () => {
     // `app-url` inputs: both must be declared, and with them set aside the inputs are the base's, in order.
     // Re-pinned again for the run upload (E3 item 21), which adds exactly the `upload` input to the same set-aside, and
     // for the rename of `fail-on-threshold` to `fail-on-verdict` (review 2026-11-01, finding 27), which adds that one.
-    const POLICY_INPUTS = ["policy", "app-url", "upload", "fail-on-verdict"];
+    // Re-pinned for flaky tests (A6), which adds exactly the `junit-paths` input to the same set-aside.
+    const POLICY_INPUTS = ["policy", "app-url", "upload", "fail-on-verdict", "junit-paths"];
     const inputsNow = actionInputs(read("action.yml"));
     for (const name of POLICY_INPUTS) expect(inputsNow, `action.yml declares ${name}`).toContain(name);
     expect(inputsNow.filter((name) => !POLICY_INPUTS.includes(name))).toEqual(

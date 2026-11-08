@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { V070_INJECTION_CODES, withoutV070Properties } from "./v070-codes.js";
+import { withoutV080Properties } from "./v080-codes.js";
 
 // precision-v030: the only schema change is the TEST_INTEGRITY_TI15 part of the report v2 message-code description,
 // which now states the level `info` in modes block and warn. report.v1.json and every other byte of report.v2.json
@@ -101,7 +102,8 @@ describe("schema: only the TI15 level sentence changes", () => {
     // too (v070-codes.ts pins it exactly); the v0.7.0 code text is part of the appended text.
     // Re-pinned for stale instructions (Horizon 2 item H3): its top-level setupHealth property is taken out the same way.
     const withIsAgentPr = withoutSchemaLevelEdits(
-      withoutV070Properties(readNow("schema/report.v2.json").toString("utf8")),
+      // Re-pinned for flaky tests (A6, v0.8.0): the flaky description is taken out the same way (v080-codes.ts).
+      withoutV080Properties(withoutV070Properties(readNow("schema/report.v2.json").toString("utf8"))),
     );
     expect(withIsAgentPr.split(IS_AGENT_PR_LINES).length - 1, "the four isAgentPr lines appear once").toBe(1);
     const current = withIsAgentPr.replace(IS_AGENT_PR_LINES, "");
