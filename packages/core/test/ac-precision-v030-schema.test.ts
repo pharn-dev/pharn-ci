@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
+import { withoutV070ExerciseSchema } from "./v070-codes.js";
 
 // precision-v030: the only schema change is the TEST_INTEGRITY_TI15 part of the report v2 message-code description,
 // which now states the level `info` in modes block and warn. report.v1.json and every other byte of report.v2.json
@@ -47,6 +48,9 @@ const SECRET_CODES = [
   // with a " Codes added in v0.6.0:" text that names these two rule codes. This only states more (toContain).
   "POLICY_P13",
   "POLICY_P14",
+  // Re-pinned for A8 step 1: the appended text then has a " Codes added in v0.7.0:" text that names this code. This
+  // only states more (toContain).
+  "TESTS_NOT_EXERCISING_CHANGES",
 ];
 
 // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property: the four lines it inserts after the
@@ -90,7 +94,11 @@ describe("schema: only the TI15 level sentence changes", () => {
     // Its four inserted lines appear once in the current schema and are cut out before the comparison with the base.
     // Re-pinned by docs-schema-levels: the two insertions that state the block-mode levels of DIFF_UNAVAILABLE and
     // TEST_INTEGRITY_INDEX_UNAVAILABLE are taken out first (level-edits.ts); every other byte stays pinned.
-    const withIsAgentPr = withoutSchemaLevelEdits(readNow("schema/report.v2.json").toString("utf8"));
+    // Re-pinned for A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): the optional testIntegrity.exercise property is taken out
+    // too (v070-codes.ts pins it exactly); the v0.7.0 code text is part of the appended text.
+    const withIsAgentPr = withoutSchemaLevelEdits(
+      withoutV070ExerciseSchema(readNow("schema/report.v2.json").toString("utf8")),
+    );
     expect(withIsAgentPr.split(IS_AGENT_PR_LINES).length - 1, "the four isAgentPr lines appear once").toBe(1);
     const current = withIsAgentPr.replace(IS_AGENT_PR_LINES, "");
     const { cut: now, appended } = cutAppended(current);

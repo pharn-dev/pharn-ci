@@ -1,0 +1,14 @@
+.eslintrc.cjs
+README.md
+dist/index.js
+scripts/build.py
+src/api.generated.ts
+src/app.min.js
+src/excluded.ts
+src/logo.ts
+src/new.ts
+src/trimmed.ts
+src/types.d.ts
+src/util/__tests__/helpers.ts
+vendor/lib.js
+vite.config.ts

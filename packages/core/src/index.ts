@@ -195,6 +195,7 @@ export {
   type ReportTestChange,
   type ReportTestChanges,
   type ReportTestChangesFile,
+  type ReportTestExercise,
   type ReportTestIntegrity,
   type TestConfigUnavailable,
   type TestIndexUnavailable,
@@ -233,6 +234,12 @@ export {
 export { parseLsTreeSizes, parseLsTreeSymlinks } from "./setup/sizes.js";
 export { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
 export {
+  detectUnexercisedChanges,
+  EXERCISE_SKIPPED_FILES,
+  type ExerciseResult,
+  exerciseCandidates,
+} from "./signals/exercise.js";
+export {
   coverageSourceLanguage,
   isPackageJsonFile,
   isPytestConfigFile,
@@ -270,7 +277,7 @@ export {
   testPackageDir,
   testStem,
 } from "./testFiles.js";
-export { indexTestFile } from "./testIndex/indexTestFile.js";
+export { indexTestFile, indexTestFileWithImports } from "./testIndex/indexTestFile.js";
 export { oneLineDetail, pythonRunOutcome } from "./testIndex/pythonOutcome.js";
 export { type PythonIndexPlan, planPythonIndex, pythonIndexStdin } from "./testIndex/pythonPlan.js";
 export { pythonIndexFromRaw } from "./testIndex/pythonRaw.js";

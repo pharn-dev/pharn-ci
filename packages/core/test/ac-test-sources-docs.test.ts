@@ -52,11 +52,13 @@ describe("test sources: documentation and schema", () => {
     const withoutEditedDescriptions = (schema: {
       $defs: { message: { properties: { code: { description?: string } } } };
       properties: {
-        testIntegrity: { properties: { languages: { description?: string }; changes?: unknown } };
+        testIntegrity: { properties: { languages: { description?: string }; changes?: unknown; exercise?: unknown } };
         meta: { properties: { isAgentPr?: unknown } };
       };
     }) => {
       const copy = structuredClone(schema);
+      // A8 step 1 (TESTS_NOT_EXERCISING_CHANGES) adds the optional testIntegrity.exercise property.
+      delete copy.properties.testIntegrity.properties.exercise;
       delete copy.$defs.message.properties.code.description;
       delete copy.properties.testIntegrity.properties.languages.description;
       delete copy.properties.testIntegrity.properties.changes;

@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { foldCoverageBar } from "../../core/test/helpers.js";
 import { withoutSchemaLevelEdits } from "../../core/test/level-edits.js";
+import { withoutV070ExerciseSchema } from "../../core/test/v070-codes.js";
 
 // Reads the repository and the base commit with git; nothing the build adds is loaded. The base is the commit this
 // increment starts from. The committed action dist must be a fresh bundle that carries the alias reader, so this test
@@ -53,6 +54,9 @@ const SECRET_CODES = [
   // Re-pinned for policy rule P14 (agent PR size cap): the schema's message-code description (in a " Codes added in
   // v0.6.0:" text) and report.ts also gain this rule code; this only adds to what the pin allows.
   "POLICY_P14",
+  // Re-pinned for A8 step 1: the schema's message-code description (in a " Codes added in v0.7.0:" text) and report.ts
+  // also gain this code; this only adds to what the pin allows.
+  "TESTS_NOT_EXERCISING_CHANGES",
 ];
 
 const git = (...args: string[]) =>
@@ -83,7 +87,10 @@ const PINNED = [
 const NAME_ONLY_REPINNED: Record<string, string> = {
   "packages/action/test/ac-accept-signoff-regression.test.ts":
     "cf611d3c9bb955ec82b2acf8dab562e77921d012f653a61067fc0c34e4806eef",
-  "packages/core/test/ac-ti0205-regression.test.ts": "79db683306a83595cefac76da0df8fda2d80afa6d55cc28264672f0e9adf9405",
+  // Re-pinned again by A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): ac-ti0205-regression takes the tests-exercise message
+  // and testIntegrity.exercise out of the golden reports made with sources before comparing (exercise-repin.ts); this
+  // is the digest of the edited file.
+  "packages/core/test/ac-ti0205-regression.test.ts": "fc539d32fd9fd3f12dea5f0883d2c6d0f6dd3307d9bde6603ca2433675a08aff",
 };
 /** The digests of ac-ti06-ti12-unchanged.test.ts the name-only-moves change re-pins; every other one is as at the base. */
 const NAME_ONLY_DIGESTS: Record<string, string> = {
@@ -159,7 +166,9 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
       ].join("\n");
       // Re-pinned by docs-schema-levels: the two insertions that state the block-mode levels of DIFF_UNAVAILABLE and
       // TEST_INTEGRITY_INDEX_UNAVAILABLE are taken out first (level-edits.ts); every other byte stays pinned.
-      const withIsAgentPr = withoutSchemaLevelEdits(read(`schema/${name}`));
+      // Re-pinned for A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): the optional testIntegrity.exercise property is taken
+      // out too (v070-codes.ts pins it exactly); its code is in the appended text cut out below.
+      const withIsAgentPr = withoutSchemaLevelEdits(withoutV070ExerciseSchema(read(`schema/${name}`)));
       expect(withIsAgentPr.split(isAgentPrLines).length - 1, "the four isAgentPr lines appear once").toBe(1);
       const currentText = withIsAgentPr.replace(isAgentPrLines, "");
       const sentenceEnd = currentText.indexOf(FINAL_SENTENCE) + FINAL_SENTENCE.length;

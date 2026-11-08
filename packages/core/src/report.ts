@@ -80,6 +80,20 @@ export interface ReportTestIntegrity {
   languages: ("ts" | "js" | "py" | "go")[];
   /** The tests the touched test files add, remove, modify or rename; present only when at least one test changed. */
   changes?: ReportTestChanges;
+  /**
+   * The changed JavaScript and TypeScript source files no test file of the change imports (the tests-exercise check); present only when at
+   * least one is not exercised.
+   */
+  exercise?: ReportTestExercise;
+}
+
+/** The tests-exercise check: how many changed source files it checked, and those no changed test imports. */
+export interface ReportTestExercise {
+  checked: number;
+  /** Sorted in code-unit order, at most 200. */
+  notExercised: string[];
+  /** How many paths the 200-entry cap left out of `notExercised`; absent when none were. */
+  truncated?: number;
 }
 
 /** One test in the tests-changed summary. `name` is the full name, cut to 120 characters. */
@@ -230,7 +244,8 @@ export type MessageCode =
   | "POLICY_SETTINGS_INVALID"
   | "POLICY_P07"
   | "POLICY_P13"
-  | "POLICY_P14";
+  | "POLICY_P14"
+  | "TESTS_NOT_EXERCISING_CHANGES";
 
 export interface Message {
   level: MessageLevel;
@@ -327,6 +342,12 @@ export interface BuildReportInput {
   testIndexUnavailable?: TestIndexUnavailable;
   /** The tests-changed summary (see `summarizeTestChanges`); fills `testIntegrity.changes`. Absent adds nothing. */
   testChanges?: ReportTestChanges;
+  /**
+   * What the tests-exercise check found (see `detectUnexercisedChanges`), with every path not exercised, sorted. With at
+   * least one such path and a mode that is not off, it fills `testIntegrity.exercise` (at most 200 paths) and adds one
+   * `TESTS_NOT_EXERCISING_CHANGES` warn message. Absent, or none not exercised, adds nothing.
+   */
+  testExercise?: { checked: number; notExercised: readonly string[] };
   /**
    * Touched test-config files TI09 could not read, or why it did not run. Adds one TI09 sentence to the one
    * `TEST_INTEGRITY_INDEX_UNAVAILABLE` message, after the TI02 and TI05 sentence when there is one. The `{ notRun }`
@@ -678,6 +699,13 @@ export function buildReport(input: BuildReportInput): Report {
       text: `This change is too large to check in full in ${pathList(cut)}: test integrity reads the first ${MAX_KEPT_LINES} changed lines of a file, so a weakened test past them is not seen.`,
     });
   }
+  const exercise =
+    testIntegrity?.mode === "off" || input.testExercise === undefined || input.testExercise.notExercised.length === 0
+      ? undefined
+      : input.testExercise;
+  if (exercise !== undefined) {
+    messages.push({ level: "warn", code: "TESTS_NOT_EXERCISING_CHANGES", text: exerciseText(exercise) });
+  }
 
   if (input.agentSetup.files.length === 0) {
     const required = input.requireAgentSetup === true;
@@ -754,10 +782,39 @@ export function buildReport(input: BuildReportInput): Report {
       signals,
       languages: [...(input.testIntegrityLanguages ?? [])],
       ...(input.testChanges === undefined ? {} : { changes: input.testChanges }),
+      ...(exercise === undefined ? {} : { exercise: reportExercise(exercise) }),
     },
     ...(input.policy === undefined ? {} : { policy: input.policy }),
     ...(input.meta === undefined ? {} : { meta: input.meta }),
   };
+}
+
+/** The most paths `testIntegrity.exercise.notExercised` holds (camel case: report.ts names only message codes in capitals). */
+const exercisePathCap = 200;
+/** The most paths the tests-exercise message names. */
+const exerciseNamedCap = 10;
+
+/** `testIntegrity.exercise`: the count checked, the first 200 paths, and how many the cap left out. */
+function reportExercise(exercise: { checked: number; notExercised: readonly string[] }): ReportTestExercise {
+  const truncated = exercise.notExercised.length - exercisePathCap;
+  return {
+    checked: exercise.checked,
+    notExercised: exercise.notExercised.slice(0, exercisePathCap),
+    ...(truncated > 0 ? { truncated } : {}),
+  };
+}
+
+/**
+ * The text of the tests-exercise message: how many of the checked source files no changed test imports, the first 10
+ * of them as code spans, then `+N more`, and the rule in fixed words. Counts and paths only.
+ */
+function exerciseText(exercise: { checked: number; notExercised: readonly string[] }): string {
+  const n = exercise.notExercised.length;
+  const named = exercise.notExercised.slice(0, exerciseNamedCap).map(codeSpan).join(", ");
+  const more = n - exerciseNamedCap;
+  const verb = n === 1 ? "is" : "are";
+  const noun = exercise.checked === 1 ? "file" : "files";
+  return `${n} of ${exercise.checked} changed source ${noun} ${verb} not imported by a test file this change adds or modifies: ${named}${more > 0 ? `, +${more} more` : ""}. A changed source file counts as exercised when a test file the change adds or modifies imports it directly (a relative import) and keeps or raises its assertion count.`;
 }
 
 /** The most characters of a sources reason a message quotes. */

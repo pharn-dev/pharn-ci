@@ -1,7 +1,7 @@
 import type { DiffFile } from "../diff/unified.js";
 import { JS_TS_EXTENSIONS, jsTsFlavor } from "../jsTsExtensions.js";
 import { isTestFile } from "../testFiles.js";
-import { indexTestFile } from "../testIndex/indexTestFile.js";
+import { indexTestFileWithImports } from "../testIndex/indexTestFile.js";
 import type { PythonTestIndex } from "../testIndex/pythonSides.js";
 import type { PythonIndexFile } from "../testIndex/pythonTypes.js";
 import type { TestBlock, TestIndexResult, TestModuleMock } from "../testIndex/types.js";
@@ -38,6 +38,11 @@ export interface ComparedTestFile {
   /** The describe blocks (kind `describe`) at the base path and at the head path, for TI03's pair pass. */
   baseGroups?: TestBlock[];
   headGroups?: TestBlock[];
+  /**
+   * The module specifiers a JavaScript or TypeScript file loads at head (`indexTestFileWithImports`), for the
+   * tests-exercise check; absent for a Python file.
+   */
+  headImports?: string[];
 }
 
 /** A test file the change adds: the tests and the module mocks it holds at head. */
@@ -47,6 +52,8 @@ export interface AddedTestFile {
   headMocks: TestModuleMock[];
   /** The describe blocks (kind `describe`) it holds at head, for TI03's pair pass. */
   headGroups?: TestBlock[];
+  /** The module specifiers a JavaScript or TypeScript file loads at head; absent for a Python file. */
+  headImports?: string[];
 }
 
 /**
@@ -79,7 +86,7 @@ export interface TouchedTests {
 }
 
 type SideIndex =
-  | { ok: true; tests: TestBlock[]; groups: TestBlock[]; mocks: TestModuleMock[] }
+  | { ok: true; tests: TestBlock[]; groups: TestBlock[]; mocks: TestModuleMock[]; imports: string[] | undefined }
   | { ok: false; reason: string };
 
 interface SideLookup {
@@ -97,13 +104,14 @@ function lookupOf(side: TestSourceSide): SideLookup {
   return { texts, dropped };
 }
 
-function testsOf(result: TestIndexResult): SideIndex {
+function testsOf(result: TestIndexResult, imports: string[] | undefined): SideIndex {
   return result.parsed
     ? {
         ok: true,
         tests: result.tests.filter((block) => block.kind === "test"),
         groups: result.tests.filter((block) => block.kind === "describe"),
         mocks: result.mocks,
+        imports,
       }
     : { ok: false, reason: result.reason };
 }
@@ -129,7 +137,8 @@ function pythonLookupOf(index: PythonTestIndex | undefined): PythonLookup {
  * has a JavaScript or TypeScript extension or ends in `.py`; it is read at its old path on the base side and its new
  * path on the head side. An added test file of those languages is indexed on the head side only; one that does not
  * index goes to `unreadAdded` with its reason, so it is reported, not dropped. A deleted file is not indexed (TI01 owns
- * it). JavaScript and TypeScript text goes to `indexTestFile`; Python results come from `python`. When a side of the
+ * it). JavaScript and TypeScript text goes to `indexTestFileWithImports`, which also gives the head side's
+ * `headImports`; Python results come from `python`. When a side of the
  * sources is unavailable and a compared file exists, nothing is indexed and `notRun` says why; when the head side is
  * unavailable and no compared file exists, nothing is indexed or named.
  */
@@ -171,15 +180,18 @@ export function indexTouchedTestFiles(
     const text = lookup.texts.get(path);
     if (text === undefined) return { ok: false, reason: lookup.dropped.get(path) ?? "missing" };
     let result: TestIndexResult;
+    let imports: string[] | undefined;
     if (language === "py") {
       if (pythonSide.unavailable !== null) return { ok: false, reason: pythonSide.unavailable };
       const found = pythonSide[side].get(path);
       if (found === undefined) return { ok: false, reason: "missing" };
       result = found;
     } else {
-      result = indexTestFile(path, text);
+      const indexed = indexTestFileWithImports(path, text);
+      result = indexed.result;
+      imports = indexed.imports;
     }
-    const indexed = testsOf(result);
+    const indexed = testsOf(result, imports);
     if (indexed.ok) languages.add(language);
     return indexed;
   };
@@ -202,6 +214,7 @@ export function indexTouchedTestFiles(
         headMocks: head.mocks,
         baseGroups: base.groups,
         headGroups: head.groups,
+        ...(head.imports === undefined ? {} : { headImports: head.imports }),
       });
     } else {
       const reason = base.ok ? (head as { reason: string }).reason : base.reason;
@@ -214,8 +227,17 @@ export function indexTouchedTestFiles(
   const unreadAdded: UncomparedTestFile[] = [];
   for (const [headPath, language] of [...addedPaths].sort((a, b) => byCodeUnit(a[0], b[0]))) {
     const head = indexSide("head", headPath, language);
-    if (head.ok) added.push({ headPath, head: head.tests, headMocks: head.mocks, headGroups: head.groups });
-    else unreadAdded.push({ path: headPath, reason: head.reason });
+    if (head.ok) {
+      added.push({
+        headPath,
+        head: head.tests,
+        headMocks: head.mocks,
+        headGroups: head.groups,
+        ...(head.imports === undefined ? {} : { headImports: head.imports }),
+      });
+    } else {
+      unreadAdded.push({ path: headPath, reason: head.reason });
+    }
   }
   return {
     pairs,

@@ -1,0 +1,15 @@
+diff --git a/src/cart.ts b/src/cart.ts
+index 3333333..4444444 100644
+--- a/src/cart.ts
++++ b/src/cart.ts
+@@ -1,0 +2 @@ export const total = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
++export const count = (xs: number[]) => xs.length;
+diff --git a/src/tax.test.ts b/src/tax.test.ts
+index 1111111..2222222 100644
+--- a/src/tax.test.ts
++++ b/src/tax.test.ts
+@@ -7,0 +8,4 @@ describe("tax", () => {
++
++  it("taxes zero as zero", () => {
++    expect(tax(0)).toBe(0);
++  });

@@ -77,6 +77,29 @@ function jsCandidates(path: string): string[] {
   return candidates;
 }
 
+/**
+ * A JavaScript or TypeScript module specifier starting `./` or `../`, joined to the directory of `fromPath`, resolved to
+ * the first candidate `lookup` knows: the path itself, then, for a path with a JavaScript extension, its TypeScript twin
+ * (`./a.js` names `a.ts`); for a path with no JS/TS extension, the path with each extension (TypeScript first), then
+ * `/index` with each. `lookup` maps a candidate to the path to return (or undefined). Bare and alias specifiers, and a
+ * specifier that climbs out of the repository root, resolve to null. Text only: no file is read.
+ */
+export function resolveRelativeModule(
+  fromPath: string,
+  specifier: string,
+  lookup: (candidate: string) => string | undefined,
+): string | null {
+  if (!specifier.startsWith("./") && !specifier.startsWith("../")) return null;
+  const dir = fromPath.slice(0, Math.max(0, fromPath.lastIndexOf("/")));
+  const path = joinRelative(dir, specifier);
+  if (path === null) return null;
+  for (const candidate of jsCandidates(path)) {
+    const target = lookup(candidate);
+    if (target !== undefined) return target;
+  }
+  return null;
+}
+
 function isIdentifier(part: string): boolean {
   if (part === "") return false;
   for (let i = 0; i < part.length; i++) {
@@ -109,15 +132,7 @@ export function resolveMock(
   const specifier = mock.specifier;
   if (specifier === null) return null;
   if (JS_CALLEES.has(mock.callee)) {
-    if (!specifier.startsWith("./") && !specifier.startsWith("../")) return null;
-    const dir = testPath.slice(0, Math.max(0, testPath.lastIndexOf("/")));
-    const path = joinRelative(dir, specifier);
-    if (path === null) return null;
-    for (const candidate of jsCandidates(path)) {
-      const target = changed.get(candidate);
-      if (target !== undefined) return target;
-    }
-    return null;
+    return resolveRelativeModule(testPath, specifier, (candidate) => changed.get(candidate));
   }
   if (PYTHON_CALLEES.has(mock.callee)) {
     const parts = dottedParts(specifier);

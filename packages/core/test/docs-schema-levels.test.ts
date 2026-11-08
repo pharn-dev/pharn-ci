@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { withoutV060CodeText } from "./v060-codes.js";
+import { withoutV070SchemaEdits } from "./v070-codes.js";
 
 // docs-schema-levels: report.v2.json states the block-mode levels #126 shipped, and THREAT-MODEL §3 renders the
 // residual numbers that the docs and tests cite. The base is main at 88ecc5e (#126 merged), read with git.
@@ -54,9 +55,13 @@ describe("docs-schema-levels", () => {
     // Re-pinned for policy-p13 (Horizon 2 item H1) and policy rule P14 (agent PR size cap): the code description also
     // gains exactly the v0.6.0 code text (POLICY_P13, POLICY_P14) at its end; withoutV060CodeText requires it once and
     // takes it out too, so every other byte stays pinned.
-    expect(withoutV060CodeText(withoutSchemaLevelEdits(now)), "report.v2.json without the two insertions").toBe(
-      atBase("schema/report.v2.json"),
-    );
+    // Re-pinned for A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): the v0.7.0 code text and the optional
+    // testIntegrity.exercise property are taken out first (v070-codes.ts pins both exactly), so every other byte stays
+    // pinned.
+    expect(
+      withoutV060CodeText(withoutSchemaLevelEdits(withoutV070SchemaEdits(now))),
+      "report.v2.json without the two insertions",
+    ).toBe(atBase("schema/report.v2.json"));
     expect(read("schema/report.v1.json"), "report.v1.json").toBe(atBase("schema/report.v1.json"));
   });
 

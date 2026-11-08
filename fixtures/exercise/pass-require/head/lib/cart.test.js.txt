@@ -1,0 +1,6 @@
+const assert = require("node:assert");
+const { total } = require("./cart");
+
+test("adds the prices", () => {
+  expect(total([2, 3])).toBe(5);
+});

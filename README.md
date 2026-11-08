@@ -393,6 +393,19 @@ found at HEAD (an opaque wrapper, a file padded past the size cap) is a finding 
 holds a collapsed "Tests changed" table with the counts per test file; the test names are in `report.json` only. A
 reviewer who is not the author can sign off block findings with the accept label: see [Accept label](#accept-label).
 
+**Tests exercise the changes.** Next to the signals, the check asks whether the tests of the change touch the code it
+changes. A changed JavaScript or TypeScript source file (one with at least one added line; test files, `.d.ts` files,
+config files such as `vite.config.ts` or `.eslintrc.cjs`, `dist/`, `vendor/`, `node_modules/`, minified, `*.generated.*`
+and `coverage.exclude` files are not asked) counts as exercised when a JS/TS test file the change adds or modifies
+imports it directly with a relative import (`./cart`, `../src/cart.js`, a directory's `index`) and keeps or raises its
+assertion count. When at least one changed source file is not exercised, the report carries one
+`TESTS_NOT_EXERCISING_CHANGES` warning with the counts and up to 10 paths, `testIntegrity.exercise` lists up to 200
+paths, and the comment shows one line under "Test integrity" with a collapsed list. It is a warning in every mode and
+never fails the check; many pull requests that change code without a test will see it, on purpose. It reads only the
+test files the change touches, whose text the signals above already read, and runs no test. Import aliases, workspace
+packages, re-exports through another source file and per-test coverage are not followed: see
+[docs/LIMITS.md](./docs/LIMITS.md#what-the-tests-exercise-check-misses).
+
 Python test files are parsed with the runner's own `python3` (or `python`), 3.8 or newer, and only when the change
 modifies one. Without it, those files are named in `TEST_INTEGRITY_INDEX_UNAVAILABLE` (warn), the signals that compare
 test text skip them, and the diff-only signals still run. When TI02 and TI05, or TI09, did not run at all because the
@@ -991,6 +1004,7 @@ message `code`s, not on text:
 | `TEST_INTEGRITY_TI15`           | TI15: the change adds a condition in JS/TS or Python source that compares with a string or number a test file in the same change also adds, so the code may special-case the test (`info` in modes `block` and `warn`; it never blocks or warns). Every finding up to at most 10 per change is in `testIntegrity.signals`, and the message says how many more there are |
 | `TEST_INTEGRITY_TI16`           | TI16: the change adds a comment that switches off a linter or type checker in a JS/TS or Python test file (`info`; it never blocks and leaves the verdict at `pass`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TEXT_TRUNCATED` | A file a test-integrity signal reads has more than 5000 changed lines, so the signals read only the first 5000 and a finding past them is not seen (`warn`; not in mode `off`). The text names the files |
+| `TESTS_NOT_EXERCISING_CHANGES` | Changed JS/TS source files that no JS/TS test file the change adds or modifies imports directly with a relative import while keeping or raising its assertion count (`warn` in every mode, never an error; not in mode `off`, without a diff, or when the touched test files were not read). The text names the count checked, the count not exercised and up to 10 paths; `testIntegrity.exercise` lists up to 200 |
 | `TEST_INTEGRITY_ACCEPTED`       | A reviewer who is not the PR author applied the [accept label](#accept-label), so every block signal was downgraded to `warn` (`info`; Action only). `testIntegrity.accepted` names the label and the reviewer |
 | `TEST_INTEGRITY_ACCEPT_IGNORED` | The accept label was looked at and does not count: the PR author applied it, a non-user account applied it, no labeling event was found, or the pull request or its events could not be read (`warn`; Action only). The block signals stand |
 | `NO_AGENT_SETUP_FILES`          | The repo has none of the agent setup files pharn-ci looks for  |

@@ -118,11 +118,13 @@ describe("python-test-index: THREAT-MODEL, fixture layout, schemas and purity", 
     const v2 = JSON.parse(read("schema/report.v2.json")) as {
       $defs: { message: { properties: { code: { description?: string } } } };
       properties: {
-        testIntegrity: { properties: { languages: { description?: string }; changes?: unknown } };
+        testIntegrity: { properties: { languages: { description?: string }; changes?: unknown; exercise?: unknown } };
         meta: { properties: { isAgentPr?: unknown } };
       };
     };
     delete v2.$defs.message.properties.code.description;
+    // A8 step 1 (TESTS_NOT_EXERCISING_CHANGES) adds the optional testIntegrity.exercise property.
+    delete v2.properties.testIntegrity.properties.exercise;
     delete v2.properties.testIntegrity.properties.languages.description;
     // ti07-tests-changed adds the optional testIntegrity.changes summary.
     delete v2.properties.testIntegrity.properties.changes;

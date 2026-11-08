@@ -1,6 +1,7 @@
 import ts from "typescript5";
 import { assertionChain, guardCall } from "./assertions.js";
 import { blockCall } from "./blocks.js";
+import { importSpecifier, MAX_TEST_IMPORTS } from "./imports.js";
 import { mockCall } from "./mocks.js";
 import type { LiteralRange } from "./text.js";
 import {
@@ -34,6 +35,8 @@ export interface WalkResult {
   drafts: BlockDraft[];
   mocks: TestModuleMock[];
   ranges: LiteralRange[];
+  /** The distinct module specifiers the file loads at run time (see `importSpecifier`), in source order, at most 1000. */
+  imports: string[];
 }
 
 /** The `return` statements seen so far in one function: the smallest end offset. */
@@ -61,13 +64,14 @@ function isChainTop(node: ts.Node): boolean {
 
 /**
  * Walks the tree without recursion, in pre-order and source order, collecting blocks, their assertions and guards,
- * module mocks, and the literal ranges the body normalizer needs. Returns `"too-deep"` as soon as a node is deeper
+ * module mocks, the module specifiers the file loads, and the literal ranges the body normalizer needs. Returns `"too-deep"` as soon as a node is deeper
  * than the cap.
  */
 export function walkTestFile(sourceFile: ts.SourceFile): WalkResult | "too-deep" {
   const drafts: BlockDraft[] = [];
   const mocks: TestModuleMock[] = [];
   const ranges: LiteralRange[] = [];
+  const imports = new Set<string>();
   const lineOf = (position: number): number => sourceFile.getLineAndCharacterOfPosition(position).line + 1;
 
   const stack: Entry[] = [{ node: sourceFile, depth: 0, owner: null, fn: null, inTry: false }];
@@ -105,6 +109,10 @@ export function walkTestFile(sourceFile: ts.SourceFile): WalkResult | "too-deep"
         break;
     }
     if (ts.isFunctionLike(node)) fn = { firstReturnEnd: Number.POSITIVE_INFINITY };
+    if (imports.size < MAX_TEST_IMPORTS) {
+      const specifier = importSpecifier(node);
+      if (specifier !== null) imports.add(specifier);
+    }
 
     if (ts.isCallExpression(node)) {
       const parent = node.parent;
@@ -185,5 +193,5 @@ export function walkTestFile(sourceFile: ts.SourceFile): WalkResult | "too-deep"
       });
     }
   }
-  return { drafts, mocks, ranges };
+  return { drafts, mocks, ranges, imports: [...imports] };
 }

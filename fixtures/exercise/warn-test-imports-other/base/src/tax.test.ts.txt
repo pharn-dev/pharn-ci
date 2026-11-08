@@ -1,0 +1,8 @@
+import { describe, expect, it } from "vitest";
+import { tax } from "./tax.js";
+
+describe("tax", () => {
+  it("adds the rate", () => {
+    expect(tax(100)).toBe(120);
+  });
+});

@@ -9,6 +9,18 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- Tests exercise the changed lines (A8 step 1, `TESTS_NOT_EXERCISING_CHANGES`, `warn`): a changed JavaScript or
+  TypeScript source file counts as exercised when a JS/TS test file the pull request adds or modifies imports it
+  directly with a relative import and keeps or raises its assertion count. When at least one changed source file is not
+  exercised, the report carries one warning with the counts and up to 10 paths, the new optional
+  `testIntegrity.exercise` lists up to 200 paths, and the comment shows one line under "Test integrity" with a collapsed
+  list. It is a warning in every test-integrity mode and never fails the check, so a pull request that changes code
+  without a test now gets a `warn` verdict where it got `pass`. Test files, declaration and config files, build output,
+  vendored, minified and generated files and `coverage.exclude` paths are not asked; import aliases, workspace packages,
+  re-exports and per-test coverage are not followed (docs/LIMITS.md). It reads only the touched test files' text the
+  signals already read, and is silent in mode `off`, without a diff and without that text. Report v2 gains the message
+  code and the optional field; nothing was removed or renamed.
+
 ### Changed
 
 ### Security

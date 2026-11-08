@@ -1,0 +1,8 @@
+import { describe, it } from "vitest";
+import { total } from "./cart.js";
+
+describe("cart", () => {
+  it("adds the prices", () => {
+    total([2, 3]);
+  });
+});

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { exerciseMessages, withoutExerciseCheck } from "./exercise-repin.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -88,7 +89,16 @@ describe("check() and the test-source input", () => {
       ];
       for (const [i, report] of reports.entries()) {
         expectValidReport(report);
-        expect(asFile(report), `${dir}: report ${i} equals the committed report.json`).toBe(committed);
+        // Re-pinned for A8 step 1 (exercise-repin.ts): with readable sources (report 1) the tests-exercise check runs and
+        // may add its one warn message and testIntegrity.exercise; with those taken out the report is the golden byte
+        // for byte. Without sources (0) and with unavailable sources (2) it does not run, so nothing is taken out.
+        expect(exerciseMessages(report).length, `${dir}: report ${i} tests-exercise messages`).toBe(
+          i === 1 ? exerciseMessages(report).length : 0,
+        );
+        expect(exerciseMessages(report).length).toBeLessThanOrEqual(1);
+        expect(asFile(withoutExerciseCheck(report)), `${dir}: report ${i} equals the committed report.json`).toBe(
+          committed,
+        );
       }
     }
   });

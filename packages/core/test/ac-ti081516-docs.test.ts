@@ -119,8 +119,10 @@ describe("TI08, TI15 and TI16: schemas and documents", () => {
     // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property: the base has none, and setAside puts
     // the marker in its place on both sides, so only that property differs.
     const isAgentPr = ["properties", "meta", "properties", "isAgentPr"];
-    expect(setAside(now, [...paths, languages, changes, isAgentPr])).toEqual(
-      setAside(before, [...paths, languages, changes, isAgentPr]),
+    // A8 step 1 (TESTS_NOT_EXERCISING_CHANGES) adds the optional testIntegrity.exercise property: set aside the same way.
+    const exercise = ["properties", "testIntegrity", "properties", "exercise"];
+    expect(setAside(now, [...paths, languages, changes, isAgentPr, exercise])).toEqual(
+      setAside(before, [...paths, languages, changes, isAgentPr, exercise]),
     );
     const [path] = paths as [string[]];
     const beforeText = getAt(before, path) as string;

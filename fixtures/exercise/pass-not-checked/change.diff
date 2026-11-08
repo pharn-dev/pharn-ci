@@ -1,0 +1,87 @@
+diff --git a/.eslintrc.cjs b/.eslintrc.cjs
+index 1111111..2222222 100644
+--- a/.eslintrc.cjs
++++ b/.eslintrc.cjs
+@@ -1,0 +2 @@ module.exports = {
++  root: true,
+diff --git a/README.md b/README.md
+index 1111111..2222222 100644
+--- a/README.md
++++ b/README.md
+@@ -1,0 +2 @@ # Demo
++More words.
+diff --git a/dist/index.js b/dist/index.js
+index 1111111..2222222 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -1,0 +2 @@ "use strict";
++exports.total = (xs) => xs.length;
+diff --git a/scripts/build.py b/scripts/build.py
+index 1111111..2222222 100644
+--- a/scripts/build.py
++++ b/scripts/build.py
+@@ -1,0 +2 @@ import sys
++print(sys.argv)
+diff --git a/src/api.generated.ts b/src/api.generated.ts
+index 1111111..2222222 100644
+--- a/src/api.generated.ts
++++ b/src/api.generated.ts
+@@ -1,0 +2 @@ export type A = string;
++export type B = number;
+diff --git a/src/app.min.js b/src/app.min.js
+index 1111111..2222222 100644
+--- a/src/app.min.js
++++ b/src/app.min.js
+@@ -1 +1 @@
+-var a=1;
++var a=2;
+diff --git a/src/excluded.ts b/src/excluded.ts
+index 1111111..2222222 100644
+--- a/src/excluded.ts
++++ b/src/excluded.ts
+@@ -1,0 +2 @@ export const a = 1;
++export const b = 2;
+diff --git a/src/logo.ts b/src/logo.ts
+index 1111111..2222222 100644
+Binary files a/src/logo.ts and b/src/logo.ts differ
+diff --git a/src/old.ts b/src/new.ts
+similarity index 100%
+rename from src/old.ts
+rename to src/new.ts
+diff --git a/src/removed.ts b/src/removed.ts
+deleted file mode 100644
+index 1111111..0000000
+--- a/src/removed.ts
++++ /dev/null
+@@ -1 +0,0 @@
+-export const gone = 1;
+diff --git a/src/trimmed.ts b/src/trimmed.ts
+index 1111111..2222222 100644
+--- a/src/trimmed.ts
++++ b/src/trimmed.ts
+@@ -2 +1,0 @@ export const a = 1;
+-export const b = 2;
+diff --git a/src/types.d.ts b/src/types.d.ts
+index 1111111..2222222 100644
+--- a/src/types.d.ts
++++ b/src/types.d.ts
+@@ -1,0 +2 @@ declare const a: number;
++declare const b: number;
+diff --git a/src/util/__tests__/helpers.ts b/src/util/__tests__/helpers.ts
+index 1111111..2222222 100644
+--- a/src/util/__tests__/helpers.ts
++++ b/src/util/__tests__/helpers.ts
+@@ -1,0 +2 @@ export const one = 1;
++export const two = 2;
+diff --git a/vendor/lib.js b/vendor/lib.js
+index 1111111..2222222 100644
+--- a/vendor/lib.js
++++ b/vendor/lib.js
+@@ -1,0 +2 @@ var a = 1;
++var b = 2;
+diff --git a/vite.config.ts b/vite.config.ts
+index 1111111..2222222 100644
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -1,0 +2 @@ export default {};
++export const x = 1;

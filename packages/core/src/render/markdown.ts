@@ -165,6 +165,8 @@ export const MESSAGE_HINTS: Readonly<Record<MessageCode, Hint>> = {
     "Keep agent settings files valid JSON and regular files under 512 KiB, and run on a checkout of the pull request head, so the org policy can check them.",
   POLICY_P14:
     "Split the agent pull request into smaller ones, one per area named, or ask the policy owner to change `agents.max_files` or `agents.max_changed_lines`. Lockfiles, snapshots and `*.generated.*` files do not count.",
+  TESTS_NOT_EXERCISING_CHANGES:
+    "Add or update a test that imports each listed file and asserts on the changed behaviour, or say in the PR why no test changes. This is a warning only.",
 };
 
 /** The hint text for a message code, or undefined when it has none. `label` is the report's accept label. */
@@ -326,6 +328,43 @@ function testChangesLines(report: Report, maxRows: number): string[] {
     );
   }
   if (changes.files.length > maxRows) lines.push(`| _…and ${changes.files.length - maxRows} more files_ | | | | |`);
+  lines.push("", "</details>", "");
+  return lines;
+}
+
+/** The not-exercised paths of a report's `testIntegrity.exercise`, or null when it has none to show (or the mode is off). */
+function exercisePaths(report: Report): string[] | null {
+  if (report.testIntegrity.mode === "off") return null;
+  const exercise: unknown = report.testIntegrity.exercise;
+  if (typeof exercise !== "object" || exercise === null) return null;
+  const paths: unknown = (exercise as { notExercised?: unknown }).notExercised;
+  if (!Array.isArray(paths)) return null;
+  const strings = paths.filter((path): path is string => typeof path === "string");
+  return strings.length === 0 ? null : strings;
+}
+
+/**
+ * The tests-exercise lines under the Test integrity section: one warn line with the counts and the hint, then a
+ * collapsed list of the changed source files no changed test imports, at most `maxRows`, then the number left out.
+ * Nothing when the report has no such file or the mode is off. Paths go through `code`; the rest is fixed words and
+ * numbers.
+ */
+function exerciseLines(report: Report, maxRows: number): string[] {
+  const paths = exercisePaths(report);
+  const exercise = report.testIntegrity.exercise;
+  if (paths === null || exercise === undefined) return [];
+  const total = paths.length + count(exercise.truncated);
+  const checked = Math.max(count(exercise.checked), total);
+  const lines = [
+    `- ${LEVEL_ICON.warn} **Tests exercise changes** — ${total} of ${checked} changed source ${checked === 1 ? "file" : "files"} ${total === 1 ? "is" : "are"} not imported by a test file this change adds or modifies.`,
+  ];
+  const hint = hintFor("TESTS_NOT_EXERCISING_CHANGES", acceptLabelOf(report));
+  if (hint !== undefined) lines.push(`  - Hint: ${hint}`);
+  lines.push("", `<details><summary>Not exercised: ${countOf(total, "file", "files")}</summary>`, "");
+  for (const path of paths.slice(0, maxRows)) lines.push(`- ${code(path)}`);
+  if (total > Math.min(paths.length, maxRows)) {
+    lines.push(`- _…and ${total - Math.min(paths.length, maxRows)} more files in report.json._`);
+  }
   lines.push("", "</details>", "");
   return lines;
 }
@@ -512,7 +551,14 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
     out.push("", "</details>", "");
   }
 
-  out.push("### 🔍 Test integrity", "", ...testIntegrityLines(report), "", ...testChangesLines(report, maxRows));
+  out.push(
+    "### 🔍 Test integrity",
+    "",
+    ...testIntegrityLines(report),
+    "",
+    ...exerciseLines(report, maxRows),
+    ...testChangesLines(report, maxRows),
+  );
   if (hasPolicy(report)) out.push(...policyLines(report, maxRows));
 
   // Before the agent setup inventory: when the Action has to drop rows to fit a size limit, the
@@ -535,7 +581,8 @@ export function renderMarkdown(report: Report, options: RenderMarkdownOptions = 
     (m) =>
       !(SIGNAL_MESSAGE_CODE.test(m.code) && listedIds.has(m.code)) &&
       !inPolicySection(m.code) &&
-      !(m.code === "TEST_INTEGRITY_ACCEPTED" && acceptedShown(report)),
+      !(m.code === "TEST_INTEGRITY_ACCEPTED" && acceptedShown(report)) &&
+      !(m.code === "TESTS_NOT_EXERCISING_CHANGES" && exercisePaths(report) !== null),
   );
   if (messages.length > 0) {
     out.push(`### 💬 Messages (${messages.length})`, "");

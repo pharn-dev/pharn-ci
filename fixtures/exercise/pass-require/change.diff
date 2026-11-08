@@ -1,0 +1,19 @@
+diff --git a/lib/cart.js b/lib/cart.js
+index 3333333..4444444 100644
+--- a/lib/cart.js
++++ b/lib/cart.js
+@@ -1 +1 @@
+-exports.total = (xs) => xs.reduce((a, b) => a + b, 0);
++exports.total = (xs) => xs.reduce((sum, x) => sum + x, 0);
+diff --git a/lib/cart.test.js b/lib/cart.test.js
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/lib/cart.test.js
+@@ -0,0 +1,6 @@
++const assert = require("node:assert");
++const { total } = require("./cart");
++
++test("adds the prices", () => {
++  expect(total([2, 3])).toBe(5);
++});

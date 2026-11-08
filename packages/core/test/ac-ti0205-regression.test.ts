@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { exerciseMessages, withoutExerciseCheck } from "./exercise-repin.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -131,7 +132,10 @@ describe("TI02 and TI05 change the earlier outputs only where they mean to", () 
       ] as const) {
         const report = check({ ...input, ...extra } as unknown as Input);
         expectValidReport(report);
-        expect(asFile(report), `${dir} ${label}: the committed report.json`).toBe(committed);
+        // Re-pinned for A8 step 1 (exercise-repin.ts): with readable sources the tests-exercise check may add its one
+        // warn message and testIntegrity.exercise; with those taken out the report is the golden byte for byte.
+        if (label !== "with sources") expect(exerciseMessages(report), `${dir} ${label}`).toEqual([]);
+        expect(asFile(withoutExerciseCheck(report)), `${dir} ${label}: the committed report.json`).toBe(committed);
       }
     }
 

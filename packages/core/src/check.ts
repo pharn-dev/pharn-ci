@@ -34,6 +34,7 @@ import { agentConfigSecretMessages } from "./secrets/messages.js";
 import { type AgentConfigSources, agentConfigSecretPaths } from "./secrets/scan.js";
 import { scanAgentSetup } from "./setup/scan.js";
 import { summarizeAgentSetup } from "./setup/summary.js";
+import { detectUnexercisedChanges } from "./signals/exercise.js";
 import { capFindings } from "./signals/findingCap.js";
 import { applySignalOverrides } from "./signals/overrides.js";
 import { keepSignalFileText, textCutSignalFiles } from "./signals/signalFiles.js";
@@ -141,7 +142,9 @@ export interface CheckInput {
    * test-runner config files. TI01 indexes the base text of a deleted test file to find its tests again in a new test
    * of this change (`movedTestFiles`), which makes the deletion `info`. TI03 judges the compared test pairs, and reads the top-level imports of
    * the Python test files in it to resolve `import pytest as pt` style aliases; without them it reads the literal
-   * spellings only. Without it, or in mode off,
+   * spellings only. The tests-exercise check reads the imports of the added and modified JS/TS test files at HEAD
+   * (`detectUnexercisedChanges`) and adds one `TESTS_NOT_EXERCISING_CHANGES` warn message for the changed source files
+   * none of them imports. Without it, or in mode off,
    * nothing is compared and the report is the one it was before: no signal, no message, no language. With a side
    * unavailable and a modified test file, the report carries one `TEST_INTEGRITY_INDEX_UNAVAILABLE` message; the same
    * message names a modified test file that could not be compared and an added test file whose tests could not be
@@ -351,6 +354,16 @@ export function check(input: CheckInput): Report {
     testIntegritySignals.push(...detectTI03(parsedDiff, testIntegrity.mode, input.testSources, ti03Pairs));
     sortSignals(testIntegritySignals);
   }
+  // The tests-exercise check (A8 step 1) reads the imports of the touched test files: only when they were indexed, so
+  // with the sources' head side readable, a diff and a mode that is not off; otherwise it is silent.
+  const testExercise =
+    parsedDiff !== null &&
+    touched !== null &&
+    touched.notRun === null &&
+    input.testSources !== undefined &&
+    !("unavailable" in input.testSources.head)
+      ? (detectUnexercisedChanges(parsedDiff, touched, input.repoFiles, isExcluded) ?? undefined)
+      : undefined;
   // A file whose kept text was cut can hide a finding past the cut; the report names it rather than stay silent.
   const textTruncatedFiles =
     parsedDiff === null || testIntegrity.mode === "off"
@@ -533,6 +546,7 @@ export function check(input: CheckInput): Report {
     ...(omittedSignals.length === 0 ? {} : { omittedSignals }),
     ...(comparison?.unavailable === undefined ? {} : { testIndexUnavailable: comparison.unavailable }),
     ...(testChanges === undefined ? {} : { testChanges }),
+    ...(testExercise === undefined ? {} : { testExercise }),
     ...(comparison?.configUnavailable === undefined ? {} : { testConfigUnavailable: comparison.configUnavailable }),
     ...(agentConfigMessages.length === 0 ? {} : { agentConfigSecretMessages: agentConfigMessages }),
     ...(policyMessages.length === 0 ? {} : { policyMessages }),

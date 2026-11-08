@@ -1,0 +1,11 @@
+import { describe, expect, it } from "vitest";
+import type { Cart } from "./cart.js";
+import { type Item } from "./cart";
+export type { Cart as Basket } from "./cart.js";
+
+describe("cart", () => {
+  it("has a shape", () => {
+    const cart: Cart = { items: [] as Item[] };
+    expect(cart.items).toEqual([]);
+  });
+});

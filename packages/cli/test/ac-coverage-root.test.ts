@@ -112,7 +112,14 @@ describe("pharn-ci check --coverage-root against a real git repo", () => {
             expect(measured(report), label).toEqual([
               { path: "packages/core/src/a.ts", coveredLines: 4, coverableLines: 5 },
             ]);
-            expect(report.verdict, label).toBe("pass");
+            // Re-pinned for A8 step 1: the feature branch adds packages/core/src/a.ts and no test, so the report also
+            // carries the TESTS_NOT_EXERCISING_CHANGES warn message, which turns the verdict to warn; the exit code
+            // stays 0, and no other message warns or fails.
+            expect(
+              report.messages.filter((message) => message.level !== "info").map((message) => message.code),
+              label,
+            ).toEqual(["TESTS_NOT_EXERCISING_CHANGES"]);
+            expect(report.verdict, label).toBe("warn");
             expect(run.code, label).toBe(EXIT_OK);
           } else {
             expect(codes(report), label).toContain("COVERAGE_PATHS_UNMATCHED");

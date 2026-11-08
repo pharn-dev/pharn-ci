@@ -21694,7 +21694,7 @@ function expand(template, context3) {
   var operators = ["+", "#", ".", "/", ";", "?", "&"];
   template = template.replace(
     /\{([^\{\}]+)\}|([^\{\}]+)/g,
-    function(_, expression, literal) {
+    function(_, expression, literal2) {
       if (expression) {
         let operator = "";
         const values = [];
@@ -21718,7 +21718,7 @@ function expand(template, context3) {
           return values.join(",");
         }
       } else {
-        return encodeReserved(literal);
+        return encodeReserved(literal2);
       }
     }
   );
@@ -26261,6 +26261,10 @@ function buildReport(input) {
       text: `This change is too large to check in full in ${pathList(cut)}: test integrity reads the first ${MAX_KEPT_LINES} changed lines of a file, so a weakened test past them is not seen.`
     });
   }
+  const exercise = testIntegrity2?.mode === "off" || input.testExercise === void 0 || input.testExercise.notExercised.length === 0 ? void 0 : input.testExercise;
+  if (exercise !== void 0) {
+    messages.push({ level: "warn", code: "TESTS_NOT_EXERCISING_CHANGES", text: exerciseText(exercise) });
+  }
   if (input.agentSetup.files.length === 0) {
     const required = input.requireAgentSetup === true;
     const found = "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found";
@@ -26319,11 +26323,30 @@ function buildReport(input) {
       verdict: signals.some((s) => s.severity === "block") ? "fail" : signals.some((s) => s.severity === "warn") ? "warn" : "pass",
       signals,
       languages: [...input.testIntegrityLanguages ?? []],
-      ...input.testChanges === void 0 ? {} : { changes: input.testChanges }
+      ...input.testChanges === void 0 ? {} : { changes: input.testChanges },
+      ...exercise === void 0 ? {} : { exercise: reportExercise(exercise) }
     },
     ...input.policy === void 0 ? {} : { policy: input.policy },
     ...input.meta === void 0 ? {} : { meta: input.meta }
   };
+}
+var exercisePathCap = 200;
+var exerciseNamedCap = 10;
+function reportExercise(exercise) {
+  const truncated = exercise.notExercised.length - exercisePathCap;
+  return {
+    checked: exercise.checked,
+    notExercised: exercise.notExercised.slice(0, exercisePathCap),
+    ...truncated > 0 ? { truncated } : {}
+  };
+}
+function exerciseText(exercise) {
+  const n = exercise.notExercised.length;
+  const named = exercise.notExercised.slice(0, exerciseNamedCap).map(codeSpan).join(", ");
+  const more = n - exerciseNamedCap;
+  const verb = n === 1 ? "is" : "are";
+  const noun2 = exercise.checked === 1 ? "file" : "files";
+  return `${n} of ${exercise.checked} changed source ${noun2} ${verb} not imported by a test file this change adds or modifies: ${named}${more > 0 ? `, +${more} more` : ""}. A changed source file counts as exercised when a test file the change adds or modifies imports it directly (a relative import) and keeps or raises its assertion count.`;
 }
 var MAX_REASON_CHARS = 200;
 function oneLine(text) {
@@ -31751,126 +31774,192 @@ function agentConfigSecretMessages(sources, selected) {
   return messages;
 }
 
-// ../core/src/signals/findingCap.ts
-var MAX_FINDINGS_PER_FILE = 20;
-var RANK2 = { block: 0, warn: 1, info: 2 };
-function capFindings(signals, limit = MAX_FINDINGS_PER_FILE) {
-  const groups = /* @__PURE__ */ new Map();
-  for (const signal of signals) {
-    const key = `${signal.id}\0${signal.path}`;
-    const group = groups.get(key);
-    if (group === void 0) groups.set(key, [signal]);
-    else group.push(signal);
+// ../core/src/testSources.ts
+var MAX_TEST_SOURCE_FILES = 200;
+var MAX_TEST_SOURCE_FILE_BYTES = 524288;
+var MAX_TEST_SOURCE_TOTAL_BYTES = 16777216;
+var TEST_CONFIG_PREFIXES = [
+  "vitest.config.",
+  "vite.config.",
+  "vitest.workspace.",
+  "jest.config.",
+  "playwright.config."
+];
+var TEST_CONFIG_NAMES = /* @__PURE__ */ new Set([
+  "pytest.ini",
+  "pyproject.toml",
+  "setup.cfg",
+  "tox.ini",
+  "conftest.py",
+  "package.json"
+]);
+function isTestConfigFile(path) {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  if (TEST_CONFIG_NAMES.has(basename)) return true;
+  if (basename.startsWith(".mocharc")) return true;
+  return TEST_CONFIG_PREFIXES.some((prefix) => basename.length > prefix.length && basename.startsWith(prefix));
+}
+var isTestSource = (path) => !isSnapFile(path) && (isTestFile(path) || isTestConfigFile(path));
+function selectTestSourcePaths(diff) {
+  const base = /* @__PURE__ */ new Set();
+  const head = /* @__PURE__ */ new Set();
+  for (const file of diff) {
+    if ((file.status === "modified" || file.status === "deleted" || file.status === "renamed") && isTestSource(file.oldPath)) {
+      base.add(file.oldPath);
+    }
+    if ((file.status === "added" || file.status === "modified" || file.status === "renamed") && isTestSource(file.path)) {
+      head.add(file.path);
+    }
   }
-  const dropped = /* @__PURE__ */ new Set();
-  const omitted = [];
-  for (const group of groups.values()) {
-    if (group.length <= limit) continue;
-    const ranked = group.map((signal, index) => ({ signal, index })).sort(
-      (a, b) => RANK2[a.signal.severity] - RANK2[b.signal.severity] || (a.signal.line ?? Number.POSITIVE_INFINITY) - (b.signal.line ?? Number.POSITIVE_INFINITY) || a.index - b.index
-    );
-    for (const { signal } of ranked.slice(limit)) dropped.add(signal);
-    const first = group[0];
-    omitted.push({ id: first.id, path: first.path, count: group.length - limit });
+  return { base: [...base].sort(byCodeUnit), head: [...head].sort(byCodeUnit) };
+}
+function isUnsafeTestSourcePath(path) {
+  if (path === "" || path.startsWith("/")) return true;
+  for (let i = 0; i < path.length; i++) {
+    const code2 = path.charCodeAt(i);
+    if (code2 <= 31 || code2 >= 127 && code2 <= 159) return true;
   }
-  return { kept: signals.filter((signal) => !dropped.has(signal)), omitted };
+  return path.split("/").some((segment) => segment === "" || segment === "." || segment === "..");
+}
+function planTestSourceReads(paths, objects) {
+  const read = [];
+  const dropped = [];
+  let total = 0;
+  let tripped = false;
+  for (const path of [...new Set(paths)].sort(byCodeUnit)) {
+    if (isUnsafeTestSourcePath(path)) {
+      dropped.push({ path, reason: "unsafe-path" });
+      continue;
+    }
+    const object = objects.get(path);
+    if (object === void 0 || object === null || object.type !== "blob") {
+      dropped.push({ path, reason: "missing" });
+    } else if (object.size > MAX_TEST_SOURCE_FILE_BYTES) {
+      dropped.push({ path, reason: "too-large" });
+    } else if (read.length >= MAX_TEST_SOURCE_FILES) {
+      dropped.push({ path, reason: "over-file-cap" });
+    } else if (tripped || total + object.size > MAX_TEST_SOURCE_TOTAL_BYTES) {
+      tripped = true;
+      dropped.push({ path, reason: "over-total-cap" });
+    } else {
+      total += object.size;
+      read.push(path);
+    }
+  }
+  return { read, dropped };
+}
+function unavailableTestSources(reason) {
+  return { base: { unavailable: reason }, head: { unavailable: reason } };
 }
 
-// ../core/src/signals/overrides.ts
-var RANK3 = { off: 0, info: 1, warn: 2, block: 3 };
-function applySignalOverrides(signals, omitted, overrides, mode) {
-  const severities = overrides.severities;
-  const dropped = new Set(
-    overrides.kind === "replace" ? Object.keys(severities).filter((id) => severities[id] === "off") : []
-  );
-  const lowered = /* @__PURE__ */ new Set();
-  const kept = [];
-  for (const signal of signals) {
-    if (dropped.has(signal.id)) continue;
-    const wanted = Object.hasOwn(severities, signal.id) ? severities[signal.id] : void 0;
-    let severity2 = signal.severity;
-    if (wanted !== void 0) {
-      if (overrides.kind === "replace") {
-        severity2 = wanted;
-      } else if (RANK3[wanted] > RANK3[severity2]) {
-        severity2 = wanted;
-      } else if (RANK3[wanted] < RANK3[severity2]) {
-        lowered.add(signal.id);
+// ../core/src/signals/mockTargets.ts
+var JS_CALLEES = /* @__PURE__ */ new Set(["vi.mock", "vi.doMock", "jest.mock", "jest.doMock"]);
+var PYTHON_CALLEES = /* @__PURE__ */ new Set([
+  "patch",
+  "mock.patch",
+  "unittest.mock.patch",
+  "mocker.patch",
+  "monkeypatch.setattr"
+]);
+var EXTENSIONS = [
+  ...JS_TS_EXTENSIONS.filter((extension) => jsTsFlavor(extension) === "ts"),
+  ...JS_TS_EXTENSIONS.filter((extension) => jsTsFlavor(extension) === "js")
+];
+var TS_TWIN = Object.fromEntries(
+  JS_TS_EXTENSIONS.filter((extension) => jsTsFlavor(extension) === "js").map((extension) => [
+    extension,
+    extension.replace("j", "t")
+  ])
+);
+function changedSources(diff) {
+  const sources = /* @__PURE__ */ new Map();
+  for (const file of diff) {
+    if (file.status === "deleted" || isTestFile(file.path)) continue;
+    sources.set(file.path, file.path);
+    if (file.status === "renamed") sources.set(file.oldPath, file.path);
+  }
+  return sources;
+}
+function joinRelative(dir, specifier) {
+  const parts = dir === "" ? [] : dir.split("/").filter((s) => s !== "" && s !== ".");
+  const resolved = [];
+  for (const part of [...parts, ...specifier.split("/")]) {
+    if (part === "" || part === ".") continue;
+    if (part === "..") {
+      if (resolved.length === 0) return null;
+      resolved.pop();
+    } else {
+      resolved.push(part);
+    }
+  }
+  return resolved.length === 0 ? null : resolved.join("/");
+}
+function extensionOf(path) {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  const dot = basename.lastIndexOf(".");
+  if (dot <= 0) return null;
+  const extension = basename.slice(dot + 1);
+  return EXTENSIONS.includes(extension) ? extension : null;
+}
+function jsCandidates(path) {
+  const extension = extensionOf(path);
+  const candidates = [path];
+  if (extension !== null) {
+    const twin = TS_TWIN[extension];
+    if (twin !== void 0) candidates.push(`${path.slice(0, -extension.length)}${twin}`);
+    return candidates;
+  }
+  for (const ext of EXTENSIONS) candidates.push(`${path}.${ext}`);
+  for (const ext of EXTENSIONS) candidates.push(`${path}/index.${ext}`);
+  return candidates;
+}
+function resolveRelativeModule(fromPath, specifier, lookup2) {
+  if (!specifier.startsWith("./") && !specifier.startsWith("../")) return null;
+  const dir = fromPath.slice(0, Math.max(0, fromPath.lastIndexOf("/")));
+  const path = joinRelative(dir, specifier);
+  if (path === null) return null;
+  for (const candidate of jsCandidates(path)) {
+    const target = lookup2(candidate);
+    if (target !== void 0) return target;
+  }
+  return null;
+}
+function isIdentifier(part) {
+  if (part === "") return false;
+  for (let i = 0; i < part.length; i++) {
+    const code2 = part.charCodeAt(i);
+    const letter = code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122 || code2 === 95;
+    if (!(letter || i > 0 && code2 >= 48 && code2 <= 57)) return false;
+  }
+  return true;
+}
+function dottedParts(specifier) {
+  const parts = specifier.split(".");
+  return parts.length >= 2 && parts.every(isIdentifier) ? parts : null;
+}
+function resolveMock(testPath, mock, changed) {
+  const specifier = mock.specifier;
+  if (specifier === null) return null;
+  if (JS_CALLEES.has(mock.callee)) {
+    return resolveRelativeModule(testPath, specifier, (candidate) => changed.get(candidate));
+  }
+  if (PYTHON_CALLEES.has(mock.callee)) {
+    const parts = dottedParts(specifier);
+    if (parts === null) return null;
+    for (let k = parts.length - 1; k >= 1; k--) {
+      const prefix = parts.slice(0, k).join("/");
+      for (const candidate of [
+        `${prefix}.py`,
+        `${prefix}/__init__.py`,
+        `src/${prefix}.py`,
+        `src/${prefix}/__init__.py`
+      ]) {
+        const target = changed.get(candidate);
+        if (target !== void 0) return target;
       }
     }
-    if (mode === "warn" && severity2 === "block") severity2 = "warn";
-    kept.push(
-      severity2 === signal.severity ? signal : { ...signal, severity: severity2 }
-    );
   }
-  return {
-    signals: kept,
-    omitted: omitted.filter((entry) => !dropped.has(entry.id)),
-    lowered: [...lowered].sort()
-  };
-}
-
-// ../core/src/signals/testName.ts
-var NAME_SEPARATOR = " \u203A ";
-var MAX_DETAIL2 = 300;
-function withoutControls(text) {
-  return replaceUnsafeChars(text, " ");
-}
-function fullTestName(block) {
-  return block.path.join(NAME_SEPARATOR);
-}
-function detailWithName(before, name, after) {
-  const clean = withoutControls(name);
-  const room = MAX_DETAIL2 - before.length - after.length;
-  if (clean.length <= room) return `${before}${clean}${after}`;
-  return `${before}${cutCodeUnits(clean, room)}${after}`;
-}
-function removedTestDetail(name, line) {
-  return detailWithName(
-    'The test "',
-    name,
-    `" at line ${line} of the base is gone at head, and no test with the same name or a similar body takes its place.`
-  );
-}
-function removedDynamicTestDetail(name, line) {
-  return detailWithName(
-    'The test "',
-    name,
-    `", whose name is computed, at line ${line} of the base is gone at head, and no test with a similar body takes its place.`
-  );
-}
-function emptiedTestDetail(name, baseCount) {
-  return detailWithName(
-    'The test "',
-    name,
-    `" had ${baseCount} assertions at base and has none at head, and it calls no assertion helper.`
-  );
-}
-function helperTestDetail(name, baseCount) {
-  return detailWithName(
-    'The test "',
-    name,
-    `" had ${baseCount} assertions at base and has none at head; it calls a function whose name suggests an assertion helper.`
-  );
-}
-function expectedValueEditedDetail(name, matcher) {
-  return detailWithName(
-    'The test "',
-    name,
-    `" changed only an expected value of its ${matcher} assertion, in a change that also edits source files.`
-  );
-}
-var MAX_SUMMARY_NAME = 120;
-function summaryTestName(name) {
-  const clean = withoutControls(name);
-  return cutCodeUnits(clean, MAX_SUMMARY_NAME);
-}
-function droppedAssertionsDetail(name, baseCount, headCount) {
-  return detailWithName(
-    'The test "',
-    name,
-    `" had ${baseCount} assertions at base and has ${headCount} at head, with the rest of its body unchanged.`
-  );
+  return null;
 }
 
 // ../core/src/testIndex/hash.ts
@@ -32347,6 +32436,53 @@ function mockCall(call) {
   return { callee: `${object}.${method}`, specifier };
 }
 
+// ../core/src/testIndex/imports.ts
+var MAX_TEST_IMPORTS = 1e3;
+function literal(node) {
+  return node !== void 0 && ts.isStringLiteralLike(node) ? node.text : null;
+}
+function typeOnlyClause(clause) {
+  if (clause === void 0) return false;
+  if (clause.isTypeOnly) return true;
+  if (clause.name !== void 0) return false;
+  const bindings = clause.namedBindings;
+  return bindings !== void 0 && ts.isNamedImports(bindings) && bindings.elements.length > 0 && bindings.elements.every((element) => element.isTypeOnly);
+}
+function importSpecifier(node) {
+  switch (node.kind) {
+    case ts.SyntaxKind.ImportDeclaration: {
+      const declaration = node;
+      return typeOnlyClause(declaration.importClause) ? null : literal(declaration.moduleSpecifier);
+    }
+    case ts.SyntaxKind.ExportDeclaration: {
+      const declaration = node;
+      return declaration.isTypeOnly ? null : literal(declaration.moduleSpecifier);
+    }
+    case ts.SyntaxKind.ImportEqualsDeclaration: {
+      const declaration = node;
+      const reference = declaration.moduleReference;
+      return declaration.isTypeOnly || !ts.isExternalModuleReference(reference) ? null : literal(reference.expression);
+    }
+    case ts.SyntaxKind.CallExpression: {
+      const call = node;
+      const callee = call.expression;
+      if (callee.kind === ts.SyntaxKind.ImportKeyword) {
+        const parent = call.parent;
+        if (parent !== void 0 && ts.isCallExpression(parent) && parent.arguments[0] === call && mockCall(parent)) {
+          return null;
+        }
+        return literal(call.arguments[0]);
+      }
+      if (ts.isIdentifier(callee) && callee.text === "require" && call.arguments.length === 1) {
+        return literal(call.arguments[0]);
+      }
+      return null;
+    }
+    default:
+      return null;
+  }
+}
+
 // ../core/src/testIndex/walk.ts
 function isChainTop(node) {
   const parent = node.parent;
@@ -32359,6 +32495,7 @@ function walkTestFile(sourceFile) {
   const drafts = [];
   const mocks = [];
   const ranges = [];
+  const imports = /* @__PURE__ */ new Set();
   const lineOf3 = (position) => sourceFile.getLineAndCharacterOfPosition(position).line + 1;
   const stack = [{ node: sourceFile, depth: 0, owner: null, fn: null, inTry: false }];
   const children = [];
@@ -32393,6 +32530,10 @@ function walkTestFile(sourceFile) {
         break;
     }
     if (ts.isFunctionLike(node)) fn = { firstReturnEnd: Number.POSITIVE_INFINITY };
+    if (imports.size < MAX_TEST_IMPORTS) {
+      const specifier = importSpecifier(node);
+      if (specifier !== null) imports.add(specifier);
+    }
     if (ts.isCallExpression(node)) {
       const parent = node.parent;
       const calleeOfCall = parent !== void 0 && ts.isCallExpression(parent) && parent.expression === node;
@@ -32466,7 +32607,7 @@ function walkTestFile(sourceFile) {
       });
     }
   }
-  return { drafts, mocks, ranges };
+  return { drafts, mocks, ranges, imports: [...imports] };
 }
 
 // ../core/src/testIndex/indexTestFile.ts
@@ -32498,15 +32639,21 @@ function buildBlocks(text, walked) {
   });
 }
 function indexTestFile(path, text) {
-  if (typeof path !== "string" || typeof text !== "string") return refuse("parser-threw");
-  if (text.length > MAX_TEST_INDEX_CHARS) return refuse("too-large");
+  return indexTestFileWithImports(path, text).result;
+}
+function indexTestFileWithImports(path, text) {
+  if (typeof path !== "string" || typeof text !== "string") return { result: refuse("parser-threw"), imports: [] };
+  if (text.length > MAX_TEST_INDEX_CHARS) return { result: refuse("too-large"), imports: [] };
   const parsed = parseTestFile(scriptKindOf(path), text);
-  if (!parsed.ok) return refuse(isStackOverflow(parsed.threw) ? "too-deep" : "parser-threw");
+  if (!parsed.ok) return { result: refuse(isStackOverflow(parsed.threw) ? "too-deep" : "parser-threw"), imports: [] };
   const { sourceFile, syntaxErrors } = parsed;
-  if (syntaxErrors > MAX_TEST_INDEX_SYNTAX_ERRORS) return refuse("syntax-error-heavy");
+  if (syntaxErrors > MAX_TEST_INDEX_SYNTAX_ERRORS) return { result: refuse("syntax-error-heavy"), imports: [] };
   const walked = walkTestFile(sourceFile);
-  if (walked === "too-deep") return refuse("too-deep");
-  return { parsed: true, syntaxErrors, tests: buildBlocks(text, walked), mocks: walked.mocks };
+  if (walked === "too-deep") return { result: refuse("too-deep"), imports: [] };
+  return {
+    result: { parsed: true, syntaxErrors, tests: buildBlocks(text, walked), mocks: walked.mocks },
+    imports: walked.imports
+  };
 }
 
 // ../core/src/signals/testPairs.ts
@@ -32529,12 +32676,13 @@ function lookupOf(side) {
   }
   return { texts, dropped };
 }
-function testsOf(result) {
+function testsOf(result, imports) {
   return result.parsed ? {
     ok: true,
     tests: result.tests.filter((block) => block.kind === "test"),
     groups: result.tests.filter((block) => block.kind === "describe"),
-    mocks: result.mocks
+    mocks: result.mocks,
+    imports
   } : { ok: false, reason: result.reason };
 }
 function pythonLookupOf(index) {
@@ -32574,15 +32722,18 @@ function indexTouchedTestFiles(diff, sources, python) {
     const text = lookup2.texts.get(path);
     if (text === void 0) return { ok: false, reason: lookup2.dropped.get(path) ?? "missing" };
     let result;
+    let imports;
     if (language === "py") {
       if (pythonSide.unavailable !== null) return { ok: false, reason: pythonSide.unavailable };
       const found = pythonSide[side].get(path);
       if (found === void 0) return { ok: false, reason: "missing" };
       result = found;
     } else {
-      result = indexTestFile(path, text);
+      const indexed2 = indexTestFileWithImports(path, text);
+      result = indexed2.result;
+      imports = indexed2.imports;
     }
-    const indexed = testsOf(result);
+    const indexed = testsOf(result, imports);
     if (indexed.ok) languages.add(language);
     return indexed;
   };
@@ -32603,7 +32754,8 @@ function indexTouchedTestFiles(diff, sources, python) {
         baseMocks: base.mocks,
         headMocks: head.mocks,
         baseGroups: base.groups,
-        headGroups: head.groups
+        headGroups: head.groups,
+        ...head.imports === void 0 ? {} : { headImports: head.imports }
       });
     } else {
       const reason = base.ok ? head.reason : base.reason;
@@ -32615,8 +32767,17 @@ function indexTouchedTestFiles(diff, sources, python) {
   const unreadAdded = [];
   for (const [headPath, language] of [...addedPaths].sort((a, b) => byCodeUnit(a[0], b[0]))) {
     const head = indexSide("head", headPath, language);
-    if (head.ok) added.push({ headPath, head: head.tests, headMocks: head.mocks, headGroups: head.groups });
-    else unreadAdded.push({ path: headPath, reason: head.reason });
+    if (head.ok) {
+      added.push({
+        headPath,
+        head: head.tests,
+        headMocks: head.mocks,
+        headGroups: head.groups,
+        ...head.imports === void 0 ? {} : { headImports: head.imports }
+      });
+    } else {
+      unreadAdded.push({ path: headPath, reason: head.reason });
+    }
   }
   return {
     pairs,
@@ -32626,6 +32787,194 @@ function indexTouchedTestFiles(diff, sources, python) {
     notRun: null,
     languages: [...languages].sort(byCodeUnit)
   };
+}
+
+// ../core/src/signals/exercise.ts
+var EXERCISE_SKIPPED_FILES = Object.freeze([
+  ...P14_GENERATED_FILES,
+  "**/dist/**",
+  "**/node_modules/**",
+  "**/vendor/**",
+  "**/*.min.*"
+]);
+var DECLARATION_SUFFIXES = [".d.ts", ".d.mts", ".d.cts"];
+function isConfigFile(path) {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  return basename.startsWith(".") || basename.includes(".config.") || isTestConfigFile(path);
+}
+function exerciseCandidates(diff, excluded) {
+  const skipped = EXERCISE_SKIPPED_FILES.map((glob) => compileGlob(glob));
+  const paths = /* @__PURE__ */ new Set();
+  for (const file of diff) {
+    if (file.status === "deleted" || file.binary === true || file.addedLines.length === 0) continue;
+    const path = file.path;
+    if (languageOf(path) === null || languageOf(path) === "py") continue;
+    if (isTestFile(path) || DECLARATION_SUFFIXES.some((suffix) => path.endsWith(suffix)) || isConfigFile(path)) {
+      continue;
+    }
+    if (skipped.some((matches) => matches(path)) || excluded(path)) continue;
+    paths.add(path);
+  }
+  return [...paths].sort(byCodeUnit);
+}
+function assertionsOf(tests) {
+  let total = 0;
+  for (const test of tests) total += test.assertionCount;
+  return total;
+}
+function detectUnexercisedChanges(diff, touched, repoFiles, excluded) {
+  const candidates = exerciseCandidates(diff, excluded);
+  if (candidates.length === 0) return null;
+  const known2 = new Set(repoFiles);
+  const edited = /* @__PURE__ */ new Set();
+  for (const file of diff) {
+    if (file.status === "deleted") continue;
+    known2.add(file.path);
+    if (file.addedLines.length > 0 || (file.removedCount ?? 0) > 0) edited.add(file.path);
+  }
+  const lookup2 = (candidate) => known2.has(candidate) ? candidate : void 0;
+  const evidence = [];
+  for (const file of touched.added) {
+    if (file.headImports !== void 0 && assertionsOf(file.head) > 0) {
+      evidence.push({ path: file.headPath, imports: file.headImports });
+    }
+  }
+  for (const file of touched.pairs) {
+    if (file.headImports === void 0 || !edited.has(file.headPath)) continue;
+    const head = assertionsOf(file.head);
+    if (head > 0 && head >= assertionsOf(file.base)) evidence.push({ path: file.headPath, imports: file.headImports });
+  }
+  const wanted = new Set(candidates);
+  const exercised = /* @__PURE__ */ new Set();
+  for (const { path, imports } of evidence) {
+    for (const specifier of imports) {
+      const target = resolveRelativeModule(path, specifier, lookup2);
+      if (target !== null && wanted.has(target)) exercised.add(target);
+    }
+  }
+  return { checked: candidates.length, notExercised: candidates.filter((path) => !exercised.has(path)) };
+}
+
+// ../core/src/signals/findingCap.ts
+var MAX_FINDINGS_PER_FILE = 20;
+var RANK2 = { block: 0, warn: 1, info: 2 };
+function capFindings(signals, limit = MAX_FINDINGS_PER_FILE) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const signal of signals) {
+    const key = `${signal.id}\0${signal.path}`;
+    const group = groups.get(key);
+    if (group === void 0) groups.set(key, [signal]);
+    else group.push(signal);
+  }
+  const dropped = /* @__PURE__ */ new Set();
+  const omitted = [];
+  for (const group of groups.values()) {
+    if (group.length <= limit) continue;
+    const ranked = group.map((signal, index) => ({ signal, index })).sort(
+      (a, b) => RANK2[a.signal.severity] - RANK2[b.signal.severity] || (a.signal.line ?? Number.POSITIVE_INFINITY) - (b.signal.line ?? Number.POSITIVE_INFINITY) || a.index - b.index
+    );
+    for (const { signal } of ranked.slice(limit)) dropped.add(signal);
+    const first = group[0];
+    omitted.push({ id: first.id, path: first.path, count: group.length - limit });
+  }
+  return { kept: signals.filter((signal) => !dropped.has(signal)), omitted };
+}
+
+// ../core/src/signals/overrides.ts
+var RANK3 = { off: 0, info: 1, warn: 2, block: 3 };
+function applySignalOverrides(signals, omitted, overrides, mode) {
+  const severities = overrides.severities;
+  const dropped = new Set(
+    overrides.kind === "replace" ? Object.keys(severities).filter((id) => severities[id] === "off") : []
+  );
+  const lowered = /* @__PURE__ */ new Set();
+  const kept = [];
+  for (const signal of signals) {
+    if (dropped.has(signal.id)) continue;
+    const wanted = Object.hasOwn(severities, signal.id) ? severities[signal.id] : void 0;
+    let severity2 = signal.severity;
+    if (wanted !== void 0) {
+      if (overrides.kind === "replace") {
+        severity2 = wanted;
+      } else if (RANK3[wanted] > RANK3[severity2]) {
+        severity2 = wanted;
+      } else if (RANK3[wanted] < RANK3[severity2]) {
+        lowered.add(signal.id);
+      }
+    }
+    if (mode === "warn" && severity2 === "block") severity2 = "warn";
+    kept.push(
+      severity2 === signal.severity ? signal : { ...signal, severity: severity2 }
+    );
+  }
+  return {
+    signals: kept,
+    omitted: omitted.filter((entry) => !dropped.has(entry.id)),
+    lowered: [...lowered].sort()
+  };
+}
+
+// ../core/src/signals/testName.ts
+var NAME_SEPARATOR = " \u203A ";
+var MAX_DETAIL2 = 300;
+function withoutControls(text) {
+  return replaceUnsafeChars(text, " ");
+}
+function fullTestName(block) {
+  return block.path.join(NAME_SEPARATOR);
+}
+function detailWithName(before, name, after) {
+  const clean = withoutControls(name);
+  const room = MAX_DETAIL2 - before.length - after.length;
+  if (clean.length <= room) return `${before}${clean}${after}`;
+  return `${before}${cutCodeUnits(clean, room)}${after}`;
+}
+function removedTestDetail(name, line) {
+  return detailWithName(
+    'The test "',
+    name,
+    `" at line ${line} of the base is gone at head, and no test with the same name or a similar body takes its place.`
+  );
+}
+function removedDynamicTestDetail(name, line) {
+  return detailWithName(
+    'The test "',
+    name,
+    `", whose name is computed, at line ${line} of the base is gone at head, and no test with a similar body takes its place.`
+  );
+}
+function emptiedTestDetail(name, baseCount) {
+  return detailWithName(
+    'The test "',
+    name,
+    `" had ${baseCount} assertions at base and has none at head, and it calls no assertion helper.`
+  );
+}
+function helperTestDetail(name, baseCount) {
+  return detailWithName(
+    'The test "',
+    name,
+    `" had ${baseCount} assertions at base and has none at head; it calls a function whose name suggests an assertion helper.`
+  );
+}
+function expectedValueEditedDetail(name, matcher) {
+  return detailWithName(
+    'The test "',
+    name,
+    `" changed only an expected value of its ${matcher} assertion, in a change that also edits source files.`
+  );
+}
+var MAX_SUMMARY_NAME = 120;
+function summaryTestName(name) {
+  const clean = withoutControls(name);
+  return cutCodeUnits(clean, MAX_SUMMARY_NAME);
+}
+function droppedAssertionsDetail(name, baseCount, headCount) {
+  return detailWithName(
+    'The test "',
+    name,
+    `" had ${baseCount} assertions at base and has ${headCount} at head, with the rest of its body unchanged.`
+  );
 }
 
 // ../core/src/signals/testChanges.ts
@@ -33704,8 +34053,8 @@ function detectTI03Pairs(input) {
     return aliasMaps.get(path);
   };
   const readPython = (path, text) => {
-    const literal = parsePythonSkip(text);
-    if (literal !== null) return literal;
+    const literal2 = parsePythonSkip(text);
+    if (literal2 !== null) return literal2;
     const aliases = aliasesOf2(path);
     return aliases === void 0 ? null : parsePythonSkip(text, aliases);
   };
@@ -34639,84 +34988,6 @@ function detectTI06(match) {
     found.push({ id: "TI06", severity: "warn", path: headPath, line: head.line, detail: detailOf(reasons) });
   }
   return found;
-}
-
-// ../core/src/testSources.ts
-var MAX_TEST_SOURCE_FILES = 200;
-var MAX_TEST_SOURCE_FILE_BYTES = 524288;
-var MAX_TEST_SOURCE_TOTAL_BYTES = 16777216;
-var TEST_CONFIG_PREFIXES = [
-  "vitest.config.",
-  "vite.config.",
-  "vitest.workspace.",
-  "jest.config.",
-  "playwright.config."
-];
-var TEST_CONFIG_NAMES = /* @__PURE__ */ new Set([
-  "pytest.ini",
-  "pyproject.toml",
-  "setup.cfg",
-  "tox.ini",
-  "conftest.py",
-  "package.json"
-]);
-function isTestConfigFile(path) {
-  const basename = path.slice(path.lastIndexOf("/") + 1);
-  if (TEST_CONFIG_NAMES.has(basename)) return true;
-  if (basename.startsWith(".mocharc")) return true;
-  return TEST_CONFIG_PREFIXES.some((prefix) => basename.length > prefix.length && basename.startsWith(prefix));
-}
-var isTestSource = (path) => !isSnapFile(path) && (isTestFile(path) || isTestConfigFile(path));
-function selectTestSourcePaths(diff) {
-  const base = /* @__PURE__ */ new Set();
-  const head = /* @__PURE__ */ new Set();
-  for (const file of diff) {
-    if ((file.status === "modified" || file.status === "deleted" || file.status === "renamed") && isTestSource(file.oldPath)) {
-      base.add(file.oldPath);
-    }
-    if ((file.status === "added" || file.status === "modified" || file.status === "renamed") && isTestSource(file.path)) {
-      head.add(file.path);
-    }
-  }
-  return { base: [...base].sort(byCodeUnit), head: [...head].sort(byCodeUnit) };
-}
-function isUnsafeTestSourcePath(path) {
-  if (path === "" || path.startsWith("/")) return true;
-  for (let i = 0; i < path.length; i++) {
-    const code2 = path.charCodeAt(i);
-    if (code2 <= 31 || code2 >= 127 && code2 <= 159) return true;
-  }
-  return path.split("/").some((segment) => segment === "" || segment === "." || segment === "..");
-}
-function planTestSourceReads(paths, objects) {
-  const read = [];
-  const dropped = [];
-  let total = 0;
-  let tripped = false;
-  for (const path of [...new Set(paths)].sort(byCodeUnit)) {
-    if (isUnsafeTestSourcePath(path)) {
-      dropped.push({ path, reason: "unsafe-path" });
-      continue;
-    }
-    const object = objects.get(path);
-    if (object === void 0 || object === null || object.type !== "blob") {
-      dropped.push({ path, reason: "missing" });
-    } else if (object.size > MAX_TEST_SOURCE_FILE_BYTES) {
-      dropped.push({ path, reason: "too-large" });
-    } else if (read.length >= MAX_TEST_SOURCE_FILES) {
-      dropped.push({ path, reason: "over-file-cap" });
-    } else if (tripped || total + object.size > MAX_TEST_SOURCE_TOTAL_BYTES) {
-      tripped = true;
-      dropped.push({ path, reason: "over-total-cap" });
-    } else {
-      total += object.size;
-      read.push(path);
-    }
-  }
-  return { read, dropped };
-}
-function unavailableTestSources(reason) {
-  return { base: { unavailable: reason }, head: { unavailable: reason } };
 }
 
 // ../core/src/signals/ti07.ts
@@ -37207,113 +37478,6 @@ function detectTI11(diff, mode) {
   );
 }
 
-// ../core/src/signals/mockTargets.ts
-var JS_CALLEES = /* @__PURE__ */ new Set(["vi.mock", "vi.doMock", "jest.mock", "jest.doMock"]);
-var PYTHON_CALLEES = /* @__PURE__ */ new Set([
-  "patch",
-  "mock.patch",
-  "unittest.mock.patch",
-  "mocker.patch",
-  "monkeypatch.setattr"
-]);
-var EXTENSIONS = [
-  ...JS_TS_EXTENSIONS.filter((extension) => jsTsFlavor(extension) === "ts"),
-  ...JS_TS_EXTENSIONS.filter((extension) => jsTsFlavor(extension) === "js")
-];
-var TS_TWIN = Object.fromEntries(
-  JS_TS_EXTENSIONS.filter((extension) => jsTsFlavor(extension) === "js").map((extension) => [
-    extension,
-    extension.replace("j", "t")
-  ])
-);
-function changedSources(diff) {
-  const sources = /* @__PURE__ */ new Map();
-  for (const file of diff) {
-    if (file.status === "deleted" || isTestFile(file.path)) continue;
-    sources.set(file.path, file.path);
-    if (file.status === "renamed") sources.set(file.oldPath, file.path);
-  }
-  return sources;
-}
-function joinRelative(dir, specifier) {
-  const parts = dir === "" ? [] : dir.split("/").filter((s) => s !== "" && s !== ".");
-  const resolved = [];
-  for (const part of [...parts, ...specifier.split("/")]) {
-    if (part === "" || part === ".") continue;
-    if (part === "..") {
-      if (resolved.length === 0) return null;
-      resolved.pop();
-    } else {
-      resolved.push(part);
-    }
-  }
-  return resolved.length === 0 ? null : resolved.join("/");
-}
-function extensionOf(path) {
-  const basename = path.slice(path.lastIndexOf("/") + 1);
-  const dot = basename.lastIndexOf(".");
-  if (dot <= 0) return null;
-  const extension = basename.slice(dot + 1);
-  return EXTENSIONS.includes(extension) ? extension : null;
-}
-function jsCandidates(path) {
-  const extension = extensionOf(path);
-  const candidates = [path];
-  if (extension !== null) {
-    const twin = TS_TWIN[extension];
-    if (twin !== void 0) candidates.push(`${path.slice(0, -extension.length)}${twin}`);
-    return candidates;
-  }
-  for (const ext of EXTENSIONS) candidates.push(`${path}.${ext}`);
-  for (const ext of EXTENSIONS) candidates.push(`${path}/index.${ext}`);
-  return candidates;
-}
-function isIdentifier(part) {
-  if (part === "") return false;
-  for (let i = 0; i < part.length; i++) {
-    const code2 = part.charCodeAt(i);
-    const letter = code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122 || code2 === 95;
-    if (!(letter || i > 0 && code2 >= 48 && code2 <= 57)) return false;
-  }
-  return true;
-}
-function dottedParts(specifier) {
-  const parts = specifier.split(".");
-  return parts.length >= 2 && parts.every(isIdentifier) ? parts : null;
-}
-function resolveMock(testPath, mock, changed) {
-  const specifier = mock.specifier;
-  if (specifier === null) return null;
-  if (JS_CALLEES.has(mock.callee)) {
-    if (!specifier.startsWith("./") && !specifier.startsWith("../")) return null;
-    const dir = testPath.slice(0, Math.max(0, testPath.lastIndexOf("/")));
-    const path = joinRelative(dir, specifier);
-    if (path === null) return null;
-    for (const candidate of jsCandidates(path)) {
-      const target = changed.get(candidate);
-      if (target !== void 0) return target;
-    }
-    return null;
-  }
-  if (PYTHON_CALLEES.has(mock.callee)) {
-    const parts = dottedParts(specifier);
-    if (parts === null) return null;
-    for (let k = parts.length - 1; k >= 1; k--) {
-      const prefix = parts.slice(0, k).join("/");
-      for (const candidate of [
-        `${prefix}.py`,
-        `${prefix}/__init__.py`,
-        `src/${prefix}.py`,
-        `src/${prefix}/__init__.py`
-      ]) {
-        const target = changed.get(candidate);
-        if (target !== void 0) return target;
-      }
-    }
-  }
-  return null;
-}
-
 // ../core/src/signals/ti12.ts
 var MAX_SPECIFIER = 120;
 function shownSpecifier(specifier) {
@@ -37663,11 +37827,11 @@ function significantDigits(value) {
   if (!hasPoint) digits = digits.replace(/0+$/, "");
   return digits.length;
 }
-function isEligible(literal) {
-  if (literal.kind === "number") return significantDigits(literal.value) >= MIN_SIGNIFICANT_DIGITS;
-  return literal.value.length >= MIN_STRING_LENGTH && !STOP_LIST.has(literal.value.toLowerCase());
+function isEligible(literal2) {
+  if (literal2.kind === "number") return significantDigits(literal2.value) >= MIN_SIGNIFICANT_DIGITS;
+  return literal2.value.length >= MIN_STRING_LENGTH && !STOP_LIST.has(literal2.value.toLowerCase());
 }
-var keyOf3 = (literal) => `${literal.kind === "string" ? "s" : "n"}${literal.value}`;
+var keyOf3 = (literal2) => `${literal2.kind === "string" ? "s" : "n"}${literal2.value}`;
 var isOperatorChar = (c) => c === "=" || c === "!" || c === "<" || c === ">";
 function operatorBefore(text, at) {
   let end = at;
@@ -37684,12 +37848,12 @@ function operatorAfter(text, at) {
   return text.slice(start, end);
 }
 var EQUALITY = /* @__PURE__ */ new Set(["===", "!==", "==", "!="]);
-function isCaseLabel(trimmed, offset, literal) {
+function isCaseLabel(trimmed, offset, literal2) {
   if (!trimmed.startsWith("case") || !isBlank5(trimmed.charAt(4))) return false;
   let i = 4;
   while (isBlank5(trimmed.charAt(i))) i++;
-  if (literal.start - offset !== i) return false;
-  let j = literal.end - offset;
+  if (literal2.start - offset !== i) return false;
+  let j = literal2.end - offset;
   while (isBlank5(trimmed.charAt(j))) j++;
   return trimmed.charAt(j) === ":";
 }
@@ -37732,12 +37896,12 @@ function conditionLiterals(text, language) {
   const offset = text.length - trimmed.length;
   const forLoop = trimmed.startsWith("for ") || trimmed.startsWith("async for ");
   const groups = language === "python" && !forLoop ? inGroups(text, literals) : [];
-  return literals.filter((literal) => {
-    if (!isEligible(literal)) return false;
-    if (EQUALITY.has(operatorBefore(text, literal.start))) return true;
-    if (EQUALITY.has(operatorAfter(text, literal.end))) return true;
-    if (isCaseLabel(trimmed, offset, literal)) return true;
-    return groups.some(([open3, close]) => literal.start > open3 && literal.end <= close);
+  return literals.filter((literal2) => {
+    if (!isEligible(literal2)) return false;
+    if (EQUALITY.has(operatorBefore(text, literal2.start))) return true;
+    if (EQUALITY.has(operatorAfter(text, literal2.end))) return true;
+    if (isCaseLabel(trimmed, offset, literal2)) return true;
+    return groups.some(([open3, close]) => literal2.start > open3 && literal2.end <= close);
   });
 }
 function testLiterals(diff, manifests) {
@@ -37750,9 +37914,9 @@ function testLiterals(diff, manifests) {
     const root = packageRoot(file.path, manifests);
     for (const hunk of file.hunks) {
       for (const entry of hunk.added) {
-        for (const literal of scanLiterals(entry.text)) {
-          if (!isEligible(literal)) continue;
-          const key = keyOf3(literal);
+        for (const literal2 of scanLiterals(entry.text)) {
+          if (!isEligible(literal2)) continue;
+          const key = keyOf3(literal2);
           const roots = found.get(key) ?? /* @__PURE__ */ new Map();
           const first = roots.get(root);
           if (first === void 0 || byCodeUnit(file.path, first) < 0) roots.set(root, file.path);
@@ -37763,8 +37927,8 @@ function testLiterals(diff, manifests) {
   }
   return found;
 }
-function detailOf3(literal, sourcePath, line, testPath) {
-  const what = `a ${literal.value.length}-character ${literal.kind} literal`;
+function detailOf3(literal2, sourcePath, line, testPath) {
+  const what = `a ${literal2.value.length}-character ${literal2.kind} literal`;
   const tail = "so the code may special-case the test's input.";
   const at = `The condition at "${escapeDetailText(`${sourcePath}:${line}`)}" compares with ${what}`;
   const full = `${at} that the test file "${escapeDetailText(testPath)}" also adds, ${tail}`;
@@ -37786,13 +37950,13 @@ function detectTI15(diff, options) {
     const root = packageRoot(file.path, manifests);
     const removed = /* @__PURE__ */ new Set();
     for (const hunk of file.hunks) {
-      for (const entry of hunk.removed) for (const literal of scanLiterals(entry.text)) removed.add(keyOf3(literal));
+      for (const entry of hunk.removed) for (const literal2 of scanLiterals(entry.text)) removed.add(keyOf3(literal2));
     }
     for (const hunk of file.hunks) {
       for (const entry of hunk.added) {
         const seen = /* @__PURE__ */ new Set();
-        for (const literal of conditionLiterals(entry.text, language)) {
-          const key = keyOf3(literal);
+        for (const literal2 of conditionLiterals(entry.text, language)) {
+          const key = keyOf3(literal2);
           if (seen.has(key)) continue;
           seen.add(key);
           if (removed.has(key)) continue;
@@ -37801,7 +37965,7 @@ function detectTI15(diff, options) {
           findings.push({
             path: file.path,
             line: entry.line,
-            detail: detailOf3(literal, file.path, entry.line, testPath)
+            detail: detailOf3(literal2, file.path, entry.line, testPath)
           });
         }
       }
@@ -38044,6 +38208,7 @@ function check(input) {
     testIntegritySignals.push(...detectTI03(parsedDiff, testIntegrity2.mode, input.testSources, ti03Pairs));
     sortSignals(testIntegritySignals);
   }
+  const testExercise = parsedDiff !== null && touched !== null && touched.notRun === null && input.testSources !== void 0 && !("unavailable" in input.testSources.head) ? detectUnexercisedChanges(parsedDiff, touched, input.repoFiles, isExcluded) ?? void 0 : void 0;
   const textTruncatedFiles = parsedDiff === null || testIntegrity2.mode === "off" ? [] : textCutSignalFiles(parsedDiff, input.configPath, input.repoRoot);
   const coverageInput = input.coverage;
   let files;
@@ -38159,6 +38324,7 @@ function check(input) {
     ...omittedSignals.length === 0 ? {} : { omittedSignals },
     ...comparison?.unavailable === void 0 ? {} : { testIndexUnavailable: comparison.unavailable },
     ...testChanges === void 0 ? {} : { testChanges },
+    ...testExercise === void 0 ? {} : { testExercise },
     ...comparison?.configUnavailable === void 0 ? {} : { testConfigUnavailable: comparison.configUnavailable },
     ...agentConfigMessages.length === 0 ? {} : { agentConfigSecretMessages: agentConfigMessages },
     ...policyMessages.length === 0 ? {} : { policyMessages }
@@ -39312,7 +39478,8 @@ var MESSAGE_HINTS = {
   POLICY_P05: "Remove the server from the MCP file.",
   POLICY_P06: "Add a command hook for the event whose matcher covers the required one (`*` or the same tool names), without an if condition.",
   POLICY_SETTINGS_INVALID: "Keep agent settings files valid JSON and regular files under 512 KiB, and run on a checkout of the pull request head, so the org policy can check them.",
-  POLICY_P14: "Split the agent pull request into smaller ones, one per area named, or ask the policy owner to change `agents.max_files` or `agents.max_changed_lines`. Lockfiles, snapshots and `*.generated.*` files do not count."
+  POLICY_P14: "Split the agent pull request into smaller ones, one per area named, or ask the policy owner to change `agents.max_files` or `agents.max_changed_lines`. Lockfiles, snapshots and `*.generated.*` files do not count.",
+  TESTS_NOT_EXERCISING_CHANGES: "Add or update a test that imports each listed file and asserts on the changed behaviour, or say in the PR why no test changes. This is a warning only."
 };
 function hintFor(code2, label) {
   if (!Object.hasOwn(MESSAGE_HINTS, code2)) return void 0;
@@ -39424,6 +39591,34 @@ function testChangesLines(report, maxRows) {
     );
   }
   if (changes.files.length > maxRows) lines.push(`| _\u2026and ${changes.files.length - maxRows} more files_ | | | | |`);
+  lines.push("", "</details>", "");
+  return lines;
+}
+function exercisePaths(report) {
+  if (report.testIntegrity.mode === "off") return null;
+  const exercise = report.testIntegrity.exercise;
+  if (typeof exercise !== "object" || exercise === null) return null;
+  const paths = exercise.notExercised;
+  if (!Array.isArray(paths)) return null;
+  const strings2 = paths.filter((path) => typeof path === "string");
+  return strings2.length === 0 ? null : strings2;
+}
+function exerciseLines(report, maxRows) {
+  const paths = exercisePaths(report);
+  const exercise = report.testIntegrity.exercise;
+  if (paths === null || exercise === void 0) return [];
+  const total = paths.length + count(exercise.truncated);
+  const checked = Math.max(count(exercise.checked), total);
+  const lines = [
+    `- ${LEVEL_ICON.warn} **Tests exercise changes** \u2014 ${total} of ${checked} changed source ${checked === 1 ? "file" : "files"} ${total === 1 ? "is" : "are"} not imported by a test file this change adds or modifies.`
+  ];
+  const hint = hintFor("TESTS_NOT_EXERCISING_CHANGES", acceptLabelOf(report));
+  if (hint !== void 0) lines.push(`  - Hint: ${hint}`);
+  lines.push("", `<details><summary>Not exercised: ${countOf(total, "file", "files")}</summary>`, "");
+  for (const path of paths.slice(0, maxRows)) lines.push(`- ${code(path)}`);
+  if (total > Math.min(paths.length, maxRows)) {
+    lines.push(`- _\u2026and ${total - Math.min(paths.length, maxRows)} more files in report.json._`);
+  }
   lines.push("", "</details>", "");
   return lines;
 }
@@ -39573,13 +39768,20 @@ function renderMarkdown(report, options = {}) {
     if (excluded.length > maxRows) out.push(`- _\u2026and ${excluded.length - maxRows} more files_`);
     out.push("", "</details>", "");
   }
-  out.push("### \u{1F50D} Test integrity", "", ...testIntegrityLines(report), "", ...testChangesLines(report, maxRows));
+  out.push(
+    "### \u{1F50D} Test integrity",
+    "",
+    ...testIntegrityLines(report),
+    "",
+    ...exerciseLines(report, maxRows),
+    ...testChangesLines(report, maxRows)
+  );
   if (hasPolicy(report)) out.push(...policyLines(report, maxRows));
   const listedIds = new Set(listedSignals(report).map((s) => `TEST_INTEGRITY_${s.id}`));
   const policyListsP01 = hasPolicy(report) && policyViolationsOf(report).some((v) => v.id === "P01");
   const inPolicySection = (code2) => hasPolicy(report) && (POLICY_RULE_MESSAGE_CODE.test(code2) || code2 === "POLICY_UNAVAILABLE" || code2 === "POLICY_OVERRIDE_IGNORED" || code2 === "POLICY_SETTINGS_INVALID" || policyListsP01 && (code2 === "NO_AGENT_SETUP_FILES" || code2 === "AGENT_SETUP_EXPECTED_MISSING"));
   const messages = report.messages.filter(
-    (m) => !(SIGNAL_MESSAGE_CODE.test(m.code) && listedIds.has(m.code)) && !inPolicySection(m.code) && !(m.code === "TEST_INTEGRITY_ACCEPTED" && acceptedShown(report))
+    (m) => !(SIGNAL_MESSAGE_CODE.test(m.code) && listedIds.has(m.code)) && !inPolicySection(m.code) && !(m.code === "TEST_INTEGRITY_ACCEPTED" && acceptedShown(report)) && !(m.code === "TESTS_NOT_EXERCISING_CHANGES" && exercisePaths(report) !== null)
   );
   if (messages.length > 0) {
     out.push(`### \u{1F4AC} Messages (${messages.length})`, "");

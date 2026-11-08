@@ -125,6 +125,8 @@ describe("schema/report.v2.json: testIntegrity.changes and TEST_INTEGRITY_TI07",
       delete (((copy.properties as Obj).testIntegrity as Obj).properties as Obj).changes;
       // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property
       delete (((copy.properties as Obj).meta as Obj).properties as Obj).isAgentPr;
+      // A8 step 1 (TESTS_NOT_EXERCISING_CHANGES) adds the optional testIntegrity.exercise property
+      delete (((copy.properties as Obj).testIntegrity as Obj).properties as Obj).exercise;
       return copy;
     };
     expect(strip(head)).toEqual(strip(base));

@@ -27,8 +27,11 @@ const DIST_BOUND = 12_000_000;
 // whole-run unavailable message is an error in block, was a warn), so this is the digest of the edited file.
 // Re-pinned again by comment-coverage-bar: ac-accept-signoff-regression folds the new diff-coverage bar line out of
 // fixtures/golden/report.md before hashing it (its golden digest is unchanged); this is the digest of the edited file.
+// Re-pinned again by A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): ac-ti0205-regression takes the tests-exercise message
+// and testIntegrity.exercise out of the golden reports made with sources before comparing (exercise-repin.ts); this is
+// the digest of the edited file.
 const PINNED: Record<string, string> = {
-  "packages/core/test/ac-ti0205-regression.test.ts": "79db683306a83595cefac76da0df8fda2d80afa6d55cc28264672f0e9adf9405",
+  "packages/core/test/ac-ti0205-regression.test.ts": "fc539d32fd9fd3f12dea5f0883d2c6d0f6dd3307d9bde6603ca2433675a08aff",
   "packages/action/test/ac-accept-signoff-regression.test.ts":
     "cf611d3c9bb955ec82b2acf8dab562e77921d012f653a61067fc0c34e4806eef",
 };

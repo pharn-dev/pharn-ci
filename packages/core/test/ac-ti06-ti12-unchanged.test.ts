@@ -4,6 +4,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { exerciseMessages, withoutExerciseCheck } from "./exercise-repin.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -229,7 +230,10 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
       ] as const) {
         const report = check({ ...input, ...extra } as unknown as Input);
         expectValidReport(report);
-        expect(asFile(report), `${dir} ${label}: the committed report.json`).toBe(committed);
+        // Re-pinned for A8 step 1 (exercise-repin.ts): with sources the tests-exercise check may add its one warn
+        // message and testIntegrity.exercise; with those taken out the report is the golden byte for byte.
+        if (label === "without sources") expect(exerciseMessages(report), `${dir} ${label}`).toEqual([]);
+        expect(asFile(withoutExerciseCheck(report)), `${dir} ${label}: the committed report.json`).toBe(committed);
       }
     }
 
@@ -295,7 +299,14 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
         } as unknown as Input) as unknown as Report;
         expectValidReport(report);
         expectNoNewSignal(report, `${dir}/${name}`);
-        pairs.push({ fixture: `${dir}/${name}`, signals: report.testIntegrity.signals, messages: report.messages });
+        // Re-pinned for A8 step 1 (exercise-repin.ts): a case whose change edits a source file no changed test imports
+        // also gets the tests-exercise warn message; it is taken out before hashing, so PAIR_DIGEST is unchanged.
+        expect(exerciseMessages(report).length, `${dir}/${name}`).toBeLessThanOrEqual(1);
+        pairs.push({
+          fixture: `${dir}/${name}`,
+          signals: report.testIntegrity.signals,
+          messages: withoutExerciseCheck(report).messages,
+        });
       }
     }
     expect(pairs.length).toBeGreaterThan(30);

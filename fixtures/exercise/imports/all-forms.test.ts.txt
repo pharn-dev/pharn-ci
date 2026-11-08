@@ -1,0 +1,31 @@
+import { describe, expect, it, vi } from "vitest";
+import defaultThing from "./default";
+import * as everything from "./namespace.js";
+import "./side-effect";
+import { type Mixed, value } from "./mixed";
+import type { OnlyType } from "./type-only";
+import { type A, type B } from "./all-named-types";
+import equals = require("./import-equals");
+import type typeEquals = require("./import-equals-type");
+export { thing } from "./export-from";
+export * from "./export-star";
+export type { T } from "./export-type";
+
+const required = require("./required");
+const computed = require(`./template-literal`);
+const notLiteral = require(someName);
+const twoArgs = require("./two-args", 2);
+
+vi.mock("./mocked");
+vi.doMock("./do-mocked");
+vi.mock(import("./mocked-import"));
+jest.mock("./jest-mocked");
+
+describe("all forms", () => {
+  it("imports dynamically", async () => {
+    const dynamic = await import("./dynamic.js");
+    const again = await import("./dynamic.js");
+    const computedDynamic = await import(someName);
+    expect(dynamic).toBe(again);
+  });
+});

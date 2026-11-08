@@ -1,0 +1,23 @@
+diff --git a/src/cart.test.ts b/src/cart.test.ts
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/src/cart.test.ts
+@@ -0,0 +1,10 @@
++import { describe, expect, it, vi } from "vitest";
++
++vi.mock("./cart.js");
++vi.mock(import("./cart"));
++
++describe("cart", () => {
++  it("is mocked", () => {
++    expect(vi.isMockFunction(vi.fn())).toBe(true);
++  });
++});
+diff --git a/src/cart.ts b/src/cart.ts
+index 3333333..4444444 100644
+--- a/src/cart.ts
++++ b/src/cart.ts
+@@ -1 +1 @@
+-export const total = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
++export const total = (xs: number[]) => xs.reduce((sum, x) => sum + x, 0);

@@ -680,6 +680,49 @@ findings. It is the Action's alone; the CLI never honours it.
 - **Only the newest event decides.** An earlier sign-off by another reviewer does not count once the author or a bot has
   applied the label again.
 
+### What the tests-exercise check misses
+
+The tests-exercise check (`TESTS_NOT_EXERCISING_CHANGES`, A8 step 1) asks, for each changed JavaScript or TypeScript
+source file, whether a JS/TS test file the change adds or modifies imports it directly and keeps or raises its
+assertion count. It reads only the touched test files' text that the signals above already read; it reads no source
+file and runs no test. It is a warning in every mode and never fails the check.
+
+- **No per-test coverage.** lcov and Cobertura give coverage summed over every test, so the check cannot say which test
+  ran, or asserted on, a changed line. It judges by imports alone: a test that imports the file but never calls the
+  changed function counts as exercising it, and a test that reaches the changed code through other files does not.
+  Per-test coverage (A8 step 2) is a separate, report-only experiment and is not used.
+- **Direct imports only.** A source file counts only when a changed test file imports it itself. A file reached
+  through another source file (a re-export from an `index.ts`, a helper that imports it) is not followed, because the
+  check does not read source files.
+- **Relative specifiers only.** `./` and `../` specifiers are resolved against the tracked files and the diff's new
+  paths: the path itself, its TypeScript twin for a `.js`, `.jsx`, `.mjs` or `.cjs` spelling, then the path with each
+  of the eight JS/TS extensions (TypeScript first), then its `/index` file. Bare specifiers, tsconfig `paths` aliases
+  (`@/cart`, `~/cart`), `#` subpath imports, workspace packages (`@scope/pkg`) and absolute paths are not resolved, so a
+  test that imports its subject through one of them does not count; a monorepo whose tests import their package by
+  name sees the warning for every changed file.
+- **Which imports count.** Static imports (side-effect imports included), `export … from`, `import x = require(…)`,
+  `require` with one string literal and dynamic `import` of a string literal count. Type-only imports and exports
+  (`import type`, or named bindings that are all `type`) do not, nor does a mock path (`vi.mock`, `vi.doMock`,
+  `jest.mock`, `jest.doMock`, or a dynamic import passed straight to one), nor a computed specifier. At most 1000
+  distinct specifiers are kept per test file.
+- **Which changes are asked.** Only added, modified or renamed JS/TS files with at least one added line. Not asked:
+  test files (by the test globs of TI01), declaration files (`.d.ts`, `.d.mts`, `.d.cts`), config files (a dotfile, a
+  basename with `.config.` in it, or a test-runner config), lockfiles, snapshots, `*.generated.*`, files under `dist/`,
+  `vendor/` or `node_modules/`, minified files (`*.min.*`), files matched by `coverage.exclude`, binary entries, deleted
+  files, renames without edits and changes that only remove lines. Python, Go and every other language are not
+  checked. A source file that is really a test helper outside a test directory is asked like any other.
+- **Which tests count.** An added JS/TS test file with at least one assertion at head, or a modified test file (or one
+  renamed between test paths) whose diff adds or removes a line and whose head has at least one assertion and no fewer
+  than its base, counting the assertions of its tests (an assertion in a hook does not count). A test file the test
+  index refused, or that was not read (a drop reason of section 8, the 200-file cap included), gives no evidence, so its
+  sources are reported as not exercised; the file itself is named in `TEST_INTEGRITY_INDEX_UNAVAILABLE`. A Python test
+  file gives no evidence.
+- **When it is silent.** In mode `off`, without a diff, without test sources (a GitHub compare API diff, PR-number
+  mode), when the head side of the sources could not be read, or when the touched test files were not compared
+  because a side could not be read.
+- **Caps.** The message names the first 10 paths in code-unit order, then `+N more`; `testIntegrity.exercise` lists at
+  most 200 paths and counts the rest in `truncated`; the comment lists at most 50 (`maxRows`).
+
 ## What test integrity does not catch
 
 The test-integrity signals that ship today (TI01, TI02, TI03, TI04, TI05, TI06, TI07, TI08, TI09, TI10, TI11, TI12,

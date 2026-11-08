@@ -53,13 +53,25 @@ function buildBlocks(text: string, walked: WalkResult): TestBlock[] {
  * only when pharn-ci's own code fails, so a bug of ours is never reported as a refusal of the file.
  */
 export function indexTestFile(path: string, text: string): TestIndexResult {
-  if (typeof path !== "string" || typeof text !== "string") return refuse("parser-threw");
-  if (text.length > MAX_TEST_INDEX_CHARS) return refuse("too-large");
+  return indexTestFileWithImports(path, text).result;
+}
+
+/**
+ * `indexTestFile`, plus the distinct module specifiers the file loads at run time when it was indexed (see
+ * `importSpecifier`: static and dynamic imports, `export … from` and `require` of a string literal, never a type-only
+ * import or a mock path), in source order and at most 1000; empty when it was refused. One parse gives both.
+ */
+export function indexTestFileWithImports(path: string, text: string): { result: TestIndexResult; imports: string[] } {
+  if (typeof path !== "string" || typeof text !== "string") return { result: refuse("parser-threw"), imports: [] };
+  if (text.length > MAX_TEST_INDEX_CHARS) return { result: refuse("too-large"), imports: [] };
   const parsed = parseTestFile(scriptKindOf(path), text);
-  if (!parsed.ok) return refuse(isStackOverflow(parsed.threw) ? "too-deep" : "parser-threw");
+  if (!parsed.ok) return { result: refuse(isStackOverflow(parsed.threw) ? "too-deep" : "parser-threw"), imports: [] };
   const { sourceFile, syntaxErrors } = parsed;
-  if (syntaxErrors > MAX_TEST_INDEX_SYNTAX_ERRORS) return refuse("syntax-error-heavy");
+  if (syntaxErrors > MAX_TEST_INDEX_SYNTAX_ERRORS) return { result: refuse("syntax-error-heavy"), imports: [] };
   const walked = walkTestFile(sourceFile);
-  if (walked === "too-deep") return refuse("too-deep");
-  return { parsed: true, syntaxErrors, tests: buildBlocks(text, walked), mocks: walked.mocks };
+  if (walked === "too-deep") return { result: refuse("too-deep"), imports: [] };
+  return {
+    result: { parsed: true, syntaxErrors, tests: buildBlocks(text, walked), mocks: walked.mocks },
+    imports: walked.imports,
+  };
 }

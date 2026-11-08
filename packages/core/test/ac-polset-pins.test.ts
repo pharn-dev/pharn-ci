@@ -40,9 +40,13 @@ const UNCHANGED = [
   "packages/core/test/exclusions-golden.test.ts",
   "packages/core/test/ac-globs-golden.test.ts",
   "packages/core/test/ac-report-v2-golden.test.ts",
-  "packages/core/test/ac-test-sources-golden.test.ts",
   "packages/action/test/ac-accept-signoff-default-golden.test.ts",
 ];
+// Re-pinned by A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): with readable test sources check() also runs the tests-exercise
+// check, so ac-test-sources-golden takes its one warn message and testIntegrity.exercise out of the report made with
+// sources before comparing it with the golden (exercise-repin.ts). It is no longer byte-identical to the base; it must
+// carry the marker, and it still runs in the child vitest below.
+const EDITED_BY_EXERCISE = ["packages/core/test/ac-test-sources-golden.test.ts"];
 // Re-pinned by comment-coverage-bar (the diff-coverage bar in the PR comment): the three golden hash tests below fold the
 // new bar line back out before hashing, on purpose. They are no longer byte-identical to the base; each must carry the
 // marker, and all three still run in the child vitest below.
@@ -74,6 +78,7 @@ const RUN = [
   ...EDITED_BY_BLOCK_FAILS_CLOSED,
   ...EDITED_BY_REVIEW_LOW,
   ...EDITED_BY_COVERAGE_BAR,
+  ...EDITED_BY_EXERCISE,
   ...UNCHANGED,
 ];
 const MANIFESTS = [
@@ -121,6 +126,11 @@ describe("the pins of E3 item 23", () => {
       const text = read(file);
       expect(text === git("show", `${BASE}:${file}`), `${file} carries its deliberate edit`).toBe(false);
       expect(text, `${file}: the new comment names the change`).toContain("comment-coverage-bar");
+    }
+    for (const file of EDITED_BY_EXERCISE) {
+      const text = read(file);
+      expect(text === git("show", `${BASE}:${file}`), `${file} carries its deliberate edit`).toBe(false);
+      expect(text, `${file}: the new comment names the change`).toContain("A8 step 1");
     }
     for (const file of UNCHANGED) {
       expect(read(file) === git("show", `${BASE}:${file}`), `${file} is unchanged`).toBe(true);
