@@ -9,6 +9,30 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+### Changed
+
+### Security
+
+## [0.7.0] - 2026-11-08
+
+Three checks on what the next agent will read and on whether the change is tested. The prompt-injection scan, signals
+PI01 to PI05 (`INJECTION_PI01` to `INJECTION_PI05`, the report's `injection` object), flags content a pull request adds
+that is aimed at an agent: invisible or bidirectional Unicode, hidden Markdown that addresses an agent, known injection
+phrases, long encoded blobs in an instruction file and an instruction file added in a vendored directory. Stale agent
+instructions, signals SI01 to SI04 (`SETUP_STALE_SI01` to `SETUP_STALE_SI04`, `setupHealth.stale`), flag an instruction
+file that names a script, make target, path or file that does not exist, or that is old and names a file the change
+edits. `TESTS_NOT_EXERCISING_CHANGES` warns when no test file the pull request adds or modifies imports a changed JS/TS
+source file. A behaviour change: PI01 is an error by default, so a pull request that adds a zero-width character, a
+bidi override or isolate, a tag character or a stray byte order mark now fails the check where it passed; test files,
+`fixtures/`, `__fixtures__/` and `testdata/` are exempt, and an app policy can exempt paths (`injection.exempt`) or set
+PI01's level (`injection.signals`). A pull request that changes JS/TS source without a test importing it now gets a
+`warn` verdict where it got `pass`; it never fails the check. The CLI and the Action now read the committed text of the
+agent instruction files, the root `package.json` and `Makefile` on every run with a local diff, with or without an org
+policy, for the stale-instruction signals (Security below). Report v2 gains the optional `injection`, `setupHealth` and
+`testIntegrity.exercise` fields and the new message codes; no field, input or code was removed or renamed.
+
+### Added
+
 - Tests exercise the changed lines (A8 step 1, `TESTS_NOT_EXERCISING_CHANGES`, `warn`): a changed JavaScript or
   TypeScript source file counts as exercised when a JS/TS test file the pull request adds or modifies imports it
   directly with a relative import and keeps or raises its assertion count. When at least one changed source file is not
@@ -41,8 +65,6 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   large to scan in full), and a new `injection` policy key (`exempt`, `phrases`, `signals`): an app policy can exempt
   paths, add phrases and set severities; a `file:` policy can only add phrases and raise severities. Diff-only: no file
   read, no new input, no new dependency, no network call.
-
-### Changed
 
 ### Security
 

@@ -68,6 +68,7 @@ describe("CHANGELOG.md records TI15 to info and the official precision results",
     const [unreleasedHeading, ...released] = headings(base);
     expect(headings(now)).toEqual([
       unreleasedHeading,
+      "## [0.7.0] - 2026-11-08",
       "## [0.6.0] - 2026-11-08",
       "## [0.5.0] - 2026-11-03",
       "## [0.4.0] - 2026-10-27",

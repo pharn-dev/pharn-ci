@@ -39,7 +39,10 @@ describe("stale instructions: schema, hints and documents", () => {
     expect(threat).toMatch(/^\| C8 {2}\| Agent instruction text, the root `package.json` and `Makefile`/m);
     expect(threat).toContain("40. **The stale-instruction signals read instruction text on every run");
     expect(read("SECURITY.md")).toContain("(stale instructions SI01 to SI04)");
-    const unreleased = read("CHANGELOG.md").split("## [0.6.0]")[0] as string;
+    // Shipped in 0.7.0: the release PR moved the Unreleased entries under `## [0.7.0] - 2026-11-08`.
+    const changelog = read("CHANGELOG.md");
+    expect(changelog, "the 0.7.0 section").toContain("## [0.7.0] - 2026-11-08");
+    const unreleased = changelog.split("## [0.7.0] - 2026-11-08")[1]?.split("## [0.6.0]")[0] as string;
     expect(unreleased).toContain("Stale agent instructions, signals SI01 to SI04");
   });
 });

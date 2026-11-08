@@ -86,7 +86,10 @@ describe("the documents for the prompt-injection scan", () => {
     expect(threat).toMatch(/^\| A8 {2}\| Added diff lines, read for the prompt-injection scan/m);
     expect(threat).toMatch(/^41\. \*\*The prompt-injection scan is a text filter\.\*\*/m);
     const changelog = read("CHANGELOG.md");
-    const unreleased = changelog.slice(changelog.indexOf("## [Unreleased]"), changelog.indexOf("## [0.6.0]"));
+    // Shipped in 0.7.0: the release PR moved the Unreleased entries under `## [0.7.0] - 2026-11-08`.
+    const start = changelog.indexOf("## [0.7.0] - 2026-11-08");
+    expect(start, "the 0.7.0 section").toBeGreaterThanOrEqual(0);
+    const unreleased = changelog.slice(start, changelog.indexOf("## [0.6.0]"));
     expect(unreleased).toContain("INJECTION_PI01");
     expect(unreleased).toContain("INJECTION_TEXT_TRUNCATED");
   });

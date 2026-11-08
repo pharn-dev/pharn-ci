@@ -20,6 +20,7 @@ const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
 const RELEASE_HEADING = "## [0.2.0] - 2026-10-25";
 /** The release headings added above the 0.2.0 one since, newest first. */
 const LATER_RELEASES = [
+  "## [0.7.0] - 2026-11-08",
   "## [0.6.0] - 2026-11-08",
   "## [0.5.0] - 2026-11-03",
   "## [0.4.0] - 2026-10-27",
