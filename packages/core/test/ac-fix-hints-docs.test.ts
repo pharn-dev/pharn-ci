@@ -38,7 +38,8 @@ describe("documentation of fix hints", () => {
   });
 
   it("AC-13: the CHANGELOG Unreleased section names the fix object", () => {
-    const text = section(read("CHANGELOG.md"), /^## \[?Unreleased\]?/i);
+    // Shipped in 0.9.0: the release PR moved the Unreleased entries under `## [0.9.0] - 2026-11-08`.
+    const text = section(read("CHANGELOG.md"), /^## \[0\.9\.0\] - 2026-11-08$/);
     expect(text).toMatch(/`fix`/);
   });
 

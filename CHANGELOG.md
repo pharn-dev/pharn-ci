@@ -9,13 +9,23 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
-- Fix hints: every message and every finding of Report v2 carries an optional `fix` object (`kind`, `hint` and, on a
-  finding, `target`), one of eight kinds and one fixed sentence per message code or signal id, so an agent can tell what
-  kind of change would fix a finding. No kind lowers a gate; the PR comment is unchanged.
-
 ### Changed
 
 ### Security
+
+## [0.9.0] - 2026-11-08
+
+Fix hints an agent can act on. Every message and every finding of Report v2 now carries an optional `fix` object that
+says what kind of change would fix it (one of eight kinds, such as `add-test` or `revert-config`), with a fixed
+sentence per message code or signal id and, on a finding, the path or path:line it already names. The hints are
+generic and never lower a gate: verdicts, inputs and the PR comment are unchanged. Report v2 gains only the optional
+`fix` field; no field, input or code was removed or renamed.
+
+### Added
+
+- Fix hints: every message and every finding of Report v2 carries an optional `fix` object (`kind`, `hint` and, on a
+  finding, `target`), one of eight kinds and one fixed sentence per message code or signal id, so an agent can tell what
+  kind of change would fix a finding. No kind lowers a gate; the PR comment is unchanged.
 
 ## [0.8.0] - 2026-11-08
 
