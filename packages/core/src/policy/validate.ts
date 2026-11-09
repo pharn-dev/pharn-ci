@@ -1,9 +1,10 @@
 import { AGENT_TOOLS } from "../setup/summary.js";
 import { TEST_INTEGRITY_MODES } from "../testIntegrityMode.js";
-import { ErrorCollector, enumMessage, MESSAGES, maxCharsMessage, rangeMessage } from "./errors.js";
+import { ErrorCollector, enumMessage, MESSAGES, maxCharsMessage, maxItemsMessage, rangeMessage } from "./errors.js";
 import { codePointLength, GRAMMARS, type Grammar } from "./grammar.js";
 import {
   POLICY_INJECTION_SIGNAL_IDS,
+  POLICY_MAX_ALLOWED_HOSTS,
   POLICY_MAX_CHANGED_LINES_MAX,
   POLICY_MAX_CHANGED_LINES_MIN,
   POLICY_MAX_FILES_MAX,
@@ -61,15 +62,16 @@ function objectOf(keys: Known, required: readonly string[] = []): Handler {
   };
 }
 
-/** A list of at most 1000 items; the length is checked before any item is read. */
-function listOf(item: Handler): Handler {
+/** A list of at most `max` items (default 1000); the length is checked before any item is read. */
+function listOf(item: Handler, max: number = POLICY_MAX_LIST_ITEMS): Handler {
+  const tooMany = max === POLICY_MAX_LIST_ITEMS ? MESSAGES.tooManyItems : maxItemsMessage(max);
   return (value, path, errors) => {
     if (!Array.isArray(value)) {
       errors.add(path, MESSAGES.list);
       return undefined;
     }
-    if (value.length > POLICY_MAX_LIST_ITEMS) {
-      errors.add(path, MESSAGES.tooManyItems);
+    if (value.length > max) {
+      errors.add(path, tooMany);
       return undefined;
     }
     const out: unknown[] = [];
@@ -237,6 +239,7 @@ const dependencies = objectOf(
     ["registries", listOf(enumOf(POLICY_REGISTRIES))],
     ["min_age_days", integerIn(POLICY_MIN_AGE_DAYS_MIN, POLICY_MIN_AGE_DAYS_MAX)],
     ["min_weekly_downloads", integerIn(POLICY_MIN_WEEKLY_DOWNLOADS_MIN, POLICY_MIN_WEEKLY_DOWNLOADS_MAX)],
+    ["allowed_hosts", listOf(stringOf(GRAMMARS.host), POLICY_MAX_ALLOWED_HOSTS)],
   ]),
 );
 

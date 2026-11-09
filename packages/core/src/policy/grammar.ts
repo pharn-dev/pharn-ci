@@ -2,6 +2,7 @@ import { MESSAGES } from "./errors.js";
 import {
   POLICY_MAX_EVENT,
   POLICY_MAX_GLOB,
+  POLICY_MAX_HOST,
   POLICY_MAX_LABEL,
   POLICY_MAX_LOGIN,
   POLICY_MAX_MATCHER,
@@ -29,6 +30,8 @@ export const POLICY_PATTERNS = {
   LOGIN: String.raw`^[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?$`,
   /** A hook event name. */
   EVENT: "^[A-Za-z]+$",
+  /** A registry host name: ASCII letters, digits, `.` and `-`. */
+  HOST: "^[A-Za-z0-9.-]+$",
 } as const;
 
 const PLAIN = new RegExp(POLICY_PATTERNS.PLAIN, "u");
@@ -37,6 +40,7 @@ const ROOT = new RegExp(POLICY_PATTERNS.ROOT, "u");
 const PERM = new RegExp(POLICY_PATTERNS.PERM, "u");
 const LOGIN = new RegExp(POLICY_PATTERNS.LOGIN, "u");
 const EVENT = new RegExp(POLICY_PATTERNS.EVENT, "u");
+const HOST = new RegExp(POLICY_PATTERNS.HOST, "u");
 
 /** A string grammar: its longest length in code points, its regex and the message when the regex fails. */
 export interface Grammar {
@@ -55,6 +59,7 @@ export const GRAMMARS = {
   login: { max: POLICY_MAX_LOGIN, regex: LOGIN, message: MESSAGES.login },
   event: { max: POLICY_MAX_EVENT, regex: EVENT, message: MESSAGES.event },
   matcher: { max: POLICY_MAX_MATCHER, regex: PLAIN, message: MESSAGES.plain },
+  host: { max: POLICY_MAX_HOST, regex: HOST, message: MESSAGES.host },
 } as const satisfies Record<string, Grammar>;
 
 /**

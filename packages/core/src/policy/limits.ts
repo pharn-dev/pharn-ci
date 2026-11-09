@@ -26,6 +26,11 @@ export const POLICY_MAX_LABEL = 50;
 export const POLICY_MAX_LOGIN = 44;
 export const POLICY_MAX_EVENT = 64;
 export const POLICY_MAX_MATCHER = 512;
+/** The longest registry host name, in characters (a DNS name is at most 253). */
+export const POLICY_MAX_HOST = 253;
+
+/** The most host names `dependencies.allowed_hosts` (and the `dependency-allowed-hosts` input) may hold. */
+export const POLICY_MAX_ALLOWED_HOSTS = 50;
 
 /** Numeric ranges, inclusive. */
 export const POLICY_THRESHOLD_MIN = 0;

@@ -1,0 +1,39 @@
+diff --git a/package.json b/package.json
+index 1111111..2222222 100644
+--- a/package.json
++++ b/package.json
+@@ -5 +5,4 @@
+-    "chalk": "^5.3.0"
++    "chalk": "^5.3.0",
++    "corp-url": "https://npm.corp.example/api/npm/npm/corp-url/-/corp-url-1.0.0.tgz",
++    "corp-utils": "^1.0.0",
++    "from-git": "github:someone/from-git#v1.0.0"
+diff --git a/package-lock.json b/package-lock.json
+index 3333333..4444444 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -10 +10,4 @@
+-        "chalk": "^5.3.0"
++        "chalk": "^5.3.0",
++        "corp-url": "https://npm.corp.example/api/npm/npm/corp-url/-/corp-url-1.0.0.tgz",
++        "corp-utils": "^1.0.0",
++        "from-git": "github:someone/from-git#v1.0.0"
+@@ -17,0 +20,12 @@
++    "node_modules/corp-url": {
++      "version": "1.0.0",
++      "resolved": "https://npm.corp.example/api/npm/npm/corp-url/-/corp-url-1.0.0.tgz"
++    },
++    "node_modules/corp-utils": {
++      "version": "1.0.0",
++      "resolved": "https://npm.corp.example/api/npm/npm/corp-utils/-/corp-utils-1.0.0.tgz"
++    },
++    "node_modules/from-git": {
++      "version": "1.0.0",
++      "resolved": "git+ssh://git@github.com/someone/from-git.git#0123456789abcdef0123456789abcdef01234567"
++    }
+diff --git a/requirements.txt b/requirements.txt
+index 5555555..6666666 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -0,0 +1 @@
++--index-url https://npm.corp.example/api/pypi/simple

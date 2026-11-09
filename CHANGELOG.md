@@ -9,6 +9,16 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- Private registry allow-list for dependency safety (D05): a team that runs its own npm or PyPI registry (Artifactory,
+  Nexus, a private index) names its host in the new `dependency-allowed-hosts` input (comma or newline separated), the
+  CLI's repeatable `--dependency-allowed-host` flag or an app policy's new `dependencies.allowed_hosts`, and D05 stops
+  flagging https URLs on it in manifests, lockfiles and requirements index options. Each entry is an exact host name (no
+  scheme, path, port, user name or wildcard, at most 50); a URL on it still has to be https with no user name, password
+  or port. An app policy's list replaces the input's (an input host it leaves out is named, by setting and layer only,
+  in `POLICY_OVERRIDE_IGNORED`), a `file:` policy may not set it, and `.pharn/ci.yml` refuses it. A package resolved from
+  an allowed host is never looked up in a public registry, and the Action never calls an allowed host. The default is
+  unchanged: no hosts, and the four public registry hosts only. The `DEPENDENCY_D05` hint now names the input.
+
 ### Changed
 
 ### Security

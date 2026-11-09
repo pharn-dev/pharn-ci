@@ -46,6 +46,8 @@ export interface ManifestDependency {
   kind: SourceKind;
   /** For kind `url`: whether the URL is https on an allowed registry host. */
   allowedUrl?: boolean;
+  /** For kind `url`: the URL as written, so a host the run allows can be applied to it later. */
+  url?: string;
 }
 
 /** An index or find-links option of a requirements file (`--index-url`, `-i`, `--extra-index-url`, `-f`). */

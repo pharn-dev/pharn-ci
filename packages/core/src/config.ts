@@ -198,6 +198,9 @@ const LISTS_ONLY_FOR_EXCLUDE =
 /** Whether `key` in `map` may hold a list: `coverage.exclude`, `coverage.file` or `setup.expect`. */
 function listAllowed(root: YamlMap, map: YamlMap, key: string): boolean {
   if (map === root.coverage) return LIST_KEYS.has(key);
+  // `dependencies.allowed_hosts` is read as a list only so that `validateDependencies` can refuse it by name, with the
+  // reason; the reader's generic "lists are not supported" would not say where the setting belongs.
+  if (map === root.dependencies) return key === "allowed_hosts";
   return map === root.setup && key === "expect";
 }
 const USE_BLOCK_LIST = 'use a block list, one "- item" line per pattern';
@@ -335,6 +338,13 @@ function validateDependencies(value: YamlMap[string] | undefined): PharnConfig["
   if (typeof value !== "object" || Array.isArray(value)) throw new ConfigError(`"dependencies" must be a mapping`);
   const dependencies: NonNullable<PharnConfig["dependencies"]> = {};
   for (const [key, entry] of Object.entries(value)) {
+    // Checked before the null skip, like `test_integrity.accept_label`: whatever its value, the key is refused. A pull
+    // request edits this file, so a private registry host can only come from the workflow input or the org policy.
+    if (key === "allowed_hosts") {
+      throw new ConfigError(
+        `"dependencies.allowed_hosts" is not a setting: the allowed registry hosts cannot be set in this file, because the change under review can edit it; set the dependency-allowed-hosts input in the workflow (or the --dependency-allowed-host flag of the CLI) instead`,
+      );
+    }
     if (entry === null) continue;
     switch (key) {
       case "lookup":

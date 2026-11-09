@@ -128,6 +128,7 @@ Options:
   --expect-agent-setup <tool>  Report this agent tool when no setup file configures it (repeatable; adds to setup.expect)
   --test-integrity <m>  Test-integrity mode: block, warn or off. Default: warn; test_integrity.mode in the config can only tighten it
   --dependencies <m>   Dependency safety: auto (lockfile drift D04, off-registry sources D05), lookup or never. Default: auto. The CLI never looks packages up in a registry, so lookup runs as auto
+  --dependency-allowed-host <host>  A registry host your team runs (Artifactory, Nexus, a private PyPI index) whose https URLs D05 accepts (repeatable; a host name only, at most 50)
   --config <path>      Config file. Default: <repo>/.pharn/ci.yml if present
   --policy-file <path> Org policy document to apply, relative to the repo root. It can only tighten; the CLI never fetches a policy
   --no-policy          Apply no org policy (the default; cannot be combined with --policy-file)
@@ -215,6 +216,7 @@ function parseOptions(argv: string[]) {
       "expect-agent-setup": { type: "string", multiple: true },
       "test-integrity": { type: "string" },
       dependencies: { type: "string" },
+      "dependency-allowed-host": { type: "string", multiple: true },
       "policy-file": { type: "string" },
       "no-policy": { type: "boolean" },
       junit: { type: "string", multiple: true },
@@ -238,6 +240,7 @@ const FLAG_ERRORS: InputErrorText = {
   expectAgentSetup: "--expect-agent-setup",
   testIntegrity: "--test-integrity",
   dependencies: "--dependencies",
+  dependencyAllowedHosts: "--dependency-allowed-host",
   noCoverageFile: "no coverage file: pass --coverage <file> or set coverage.file in .pharn/ci.yml",
 };
 
@@ -255,8 +258,10 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     expectAgentSetup: values["expect-agent-setup"],
     testIntegrity: values["test-integrity"],
     dependencies: values.dependencies,
+    dependencyAllowedHosts: values["dependency-allowed-host"],
   };
-  // Malformed --coverage-format, --coverage, --exclude, --coverage-root, --expect-agent-setup and --test-integrity flags are reported before any git
+  // Malformed --coverage-format, --coverage, --exclude, --coverage-root, --expect-agent-setup, --test-integrity,
+  // --dependencies and --dependency-allowed-host flags are reported before any git
   // call: they need no config.
   const flagsAlone = resolveInputs({}, raw, FLAG_ERRORS);
   const flagError = (input: keyof RawInputs) =>
@@ -278,6 +283,8 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   if (testIntegrityError) throw testIntegrityError;
   const dependenciesError = flagError("dependencies");
   if (dependenciesError) throw dependenciesError;
+  const dependencyAllowedHostsError = flagError("dependencyAllowedHosts");
+  if (dependencyAllowedHostsError) throw dependencyAllowedHostsError;
   // A --junit pattern outside the working directory, or one the matcher does not support, is refused before any git call.
   const junitPatterns = values.junit ?? [];
   for (const pattern of junitPatterns) parseExcludePattern(pattern, "--junit");

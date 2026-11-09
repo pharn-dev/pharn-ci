@@ -71,6 +71,32 @@ describe("schema/policy.v1.json and the validator's grammars", () => {
       ["root 512", doc("coverage", "root", "r".repeat(512)), true],
       ["root 513", doc("coverage", "root", "r".repeat(513)), false],
       ["lone surrogate", doc("setup", "allowed_mcp_servers", ["a\ud800b"]), true],
+      ["host 253", doc("dependencies", "allowed_hosts", ["h".repeat(253)]), true],
+      ["host 254", doc("dependencies", "allowed_hosts", ["h".repeat(254)]), false],
+      ["host with a dot, digit and dash", doc("dependencies", "allowed_hosts", ["npm-1.Corp.example"]), true],
+      ["host with a scheme", doc("dependencies", "allowed_hosts", ["https://npm.corp.example"]), false],
+      ["host with a port", doc("dependencies", "allowed_hosts", ["npm.corp.example:8443"]), false],
+      ["host with a wildcard", doc("dependencies", "allowed_hosts", ["*.corp.example"]), false],
+      ["host with an underscore", doc("dependencies", "allowed_hosts", ["npm_corp.example"]), false],
+      ["host empty", doc("dependencies", "allowed_hosts", [""]), false],
+      [
+        "allowed_hosts 50 items",
+        doc(
+          "dependencies",
+          "allowed_hosts",
+          Array.from({ length: 50 }, (_, i) => `h${String(i)}.example`),
+        ),
+        true,
+      ],
+      [
+        "allowed_hosts 51 items",
+        doc(
+          "dependencies",
+          "allowed_hosts",
+          Array.from({ length: 51 }, (_, i) => `h${String(i)}.example`),
+        ),
+        false,
+      ],
     ];
     for (const [name, value, expected] of cases) {
       expect(validate(value) === true, `Ajv: ${name}`).toBe(expected);

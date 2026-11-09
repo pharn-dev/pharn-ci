@@ -27438,6 +27438,7 @@ var LIST_KEYS = /* @__PURE__ */ new Set(["exclude", "file"]);
 var LISTS_ONLY_FOR_EXCLUDE = "lists are not supported in .pharn/ci.yml except as the value of coverage.exclude, coverage.file or setup.expect";
 function listAllowed(root, map, key) {
   if (map === root.coverage) return LIST_KEYS.has(key);
+  if (map === root.dependencies) return key === "allowed_hosts";
   return map === root.setup && key === "expect";
 }
 var USE_BLOCK_LIST = 'use a block list, one "- item" line per pattern';
@@ -27548,6 +27549,11 @@ function validateDependencies(value) {
   if (typeof value !== "object" || Array.isArray(value)) throw new ConfigError(`"dependencies" must be a mapping`);
   const dependencies2 = {};
   for (const [key, entry] of Object.entries(value)) {
+    if (key === "allowed_hosts") {
+      throw new ConfigError(
+        `"dependencies.allowed_hosts" is not a setting: the allowed registry hosts cannot be set in this file, because the change under review can edit it; set the dependency-allowed-hosts input in the workflow (or the --dependency-allowed-host flag of the CLI) instead`
+      );
+    }
     if (entry === null) continue;
     switch (key) {
       case "lookup":
@@ -28846,7 +28852,8 @@ function parseNpmManifest(text) {
         section,
         line: member.keyLine,
         kind: kind.kind,
-        ...kind.allowedUrl === void 0 ? {} : { allowedUrl: kind.allowedUrl }
+        ...kind.allowedUrl === void 0 ? {} : { allowedUrl: kind.allowedUrl },
+        ...kind.kind === "url" ? { url: spec.trim() } : {}
       });
     }
   }
@@ -29386,7 +29393,7 @@ function parseRequirement(text, line, section) {
       section,
       line,
       kind: kind.kind,
-      ...kind.kind === "url" ? { allowedUrl: kind.allowedUrl === true } : {}
+      ...kind.kind === "url" ? { allowedUrl: kind.allowedUrl === true, url: t } : {}
     };
   }
   let at = 0;
@@ -29410,7 +29417,7 @@ function parseRequirement(text, line, section) {
       section,
       line,
       kind: kind.kind,
-      ...kind.kind === "url" ? { allowedUrl: kind.allowedUrl === true } : {}
+      ...kind.kind === "url" ? { allowedUrl: kind.allowedUrl === true, url } : {}
     };
   }
   const spec = body.startsWith("(") && body.endsWith(")") ? body.slice(1, -1).trim() : body;
@@ -29489,7 +29496,7 @@ function tableDependency(name, value, section) {
       section,
       line: value.line,
       kind: kind.kind,
-      ...kind.kind === "url" ? { allowedUrl: kind.allowedUrl === true } : {}
+      ...kind.kind === "url" ? { allowedUrl: kind.allowedUrl === true, url } : {}
     };
   }
   const path = text("path") ?? text("file");
@@ -29659,7 +29666,7 @@ function signal(id, ecosystem, path, line, detail, names = {}) {
 function manifestNames(ecosystem, dep) {
   return nameFields(ecosystem, dep.named ? dep.name : null, dep.spec);
 }
-function analyze(diff, sources, repoFiles) {
+function analyze(diff, sources, repoFiles, allowedHosts) {
   const files = diff.filter(
     (file) => classifyDependencyFile(file.path) !== null || classifyDependencyFile(file.oldPath) !== null
   );
@@ -29672,6 +29679,7 @@ function analyze(diff, sources, repoFiles) {
     head: /* @__PURE__ */ new Map()
   };
   const analysis = { checked: 0, signals: [], unread: /* @__PURE__ */ new Map(), added: [], offRegistry: /* @__PURE__ */ new Set() };
+  const onAllowedHost = (url) => url !== void 0 && allowedHosts.length > 0 && isAllowedRegistryUrl(url, allowedHosts);
   const read = (side, path, kind) => {
     let got = cache[side].get(path);
     if (got === void 0) {
@@ -29715,7 +29723,7 @@ function analyze(diff, sources, repoFiles) {
     const changes = manifestChanges(base, head);
     analysis.checked += changes.added.length + changes.changed.length;
     for (const dep of [...changes.added, ...changes.changed]) {
-      if (dep.kind !== "registry" && isOffRegistry(dep.kind, dep.allowedUrl)) {
+      if (dep.kind !== "registry" && isOffRegistry(dep.kind, dep.allowedUrl === true || onAllowedHost(dep.url))) {
         analysis.signals.push(
           signal("D05", eco, path, dep.line, `declared from ${KIND_WORDS[dep.kind]}`, manifestNames(eco, dep))
         );
@@ -29723,7 +29731,7 @@ function analyze(diff, sources, repoFiles) {
     }
     const baseIndexes = new Set((base?.indexes ?? []).map((option) => option.url));
     for (const option of head.indexes) {
-      if (!option.allowed && !baseIndexes.has(option.url)) {
+      if (!option.allowed && !onAllowedHost(option.url) && !baseIndexes.has(option.url)) {
         analysis.signals.push(
           signal("D05", eco, path, option.line, "adds a package index outside the allowed registries")
         );
@@ -29776,6 +29784,11 @@ function analyze(diff, sources, repoFiles) {
     analysis.checked += changes.added.length + changes.changed.length;
     for (const entry of changes.sourceNew) {
       const source = entry.source;
+      if (source.kind === "url" && !source.allowed && onAllowedHost(source.text)) {
+        if (entry.name !== null)
+          analysis.offRegistry.add(`${eco}:${eco === "pypi" ? normalizePypiName(entry.name) : entry.name}`);
+        continue;
+      }
       const off = source.kind === "url" && !source.allowed || source.kind === "git" || source.kind === "file" ? source.kind : null;
       if (off === null) continue;
       analysis.signals.push(
@@ -29803,7 +29816,7 @@ function entryNames(ecosystem, entry) {
 }
 function planDependencyLookups(diff, sources, repoFiles, settings2) {
   if (settings2.mode !== "lookup") return { planned: [], overCap: 0 };
-  const analysis = analyze(diff, sources, repoFiles);
+  const analysis = analyze(diff, sources, repoFiles, settings2.allowedHosts ?? []);
   if (analysis === null) return null;
   return planLookups(analysis.added, analysis.offRegistry, settings2.registries);
 }
@@ -29813,9 +29826,9 @@ function sortSignals(signals) {
   );
 }
 function checkDependencies(input) {
-  const analysis = analyze(input.diff, input.sources, input.repoFiles);
-  if (analysis === null) return void 0;
   const { settings: settings2 } = input;
+  const analysis = analyze(input.diff, input.sources, input.repoFiles, settings2.allowedHosts ?? []);
+  if (analysis === null) return void 0;
   const signals = [...analysis.signals];
   let lookups = "off";
   let unavailable2 = null;
@@ -29909,6 +29922,7 @@ function resolveDependencySettings(layers = {}) {
   const app = policy?.kind === "app" ? policy : void 0;
   const file = policy?.kind === "file" ? policy : void 0;
   const largest = (start, ...values) => values.reduce((max, value) => value !== void 0 && value > max ? value : max, start);
+  const hosts = [...new Set((app?.allowedHosts ?? layers.allowedHosts ?? []).map((host) => host.toLowerCase()))];
   return {
     mode,
     minAgeDays: largest(app?.minAgeDays ?? DEFAULT_MIN_AGE_DAYS, layers.config?.minAgeDays, file?.minAgeDays),
@@ -29917,7 +29931,8 @@ function resolveDependencySettings(layers = {}) {
       layers.config?.minWeeklyDownloads,
       file?.minWeeklyDownloads
     ),
-    registries: app?.registries === void 0 ? ["npm", "pypi"] : ["npm", "pypi"].filter((r) => app.registries?.includes(r))
+    registries: app?.registries === void 0 ? ["npm", "pypi"] : ["npm", "pypi"].filter((r) => app.registries?.includes(r)),
+    ...hosts.length === 0 ? {} : { allowedHosts: hosts }
   };
 }
 
@@ -42511,6 +42526,235 @@ function weeklyDownloads(answer) {
   return typeof count2 === "number" && Number.isSafeInteger(count2) && count2 >= 0 ? count2 : "unavailable";
 }
 
+// ../core/src/policy/limits.ts
+var POLICY_MAX_CHARS = 262144;
+var POLICY_MAX_ERRORS = 50;
+var POLICY_MAX_LIST_ITEMS = 1e3;
+var POLICY_MAX_GLOB = 512;
+var POLICY_MAX_ROOT = 512;
+var POLICY_MAX_PERM = 512;
+var POLICY_MAX_NAME = 128;
+var POLICY_MAX_NAME_OR_GLOB = 512;
+var POLICY_MAX_LABEL = 50;
+var POLICY_MAX_LOGIN = 44;
+var POLICY_MAX_EVENT = 64;
+var POLICY_MAX_MATCHER = 512;
+var POLICY_MAX_HOST = 253;
+var POLICY_MAX_ALLOWED_HOSTS = 50;
+var POLICY_THRESHOLD_MIN = 0;
+var POLICY_THRESHOLD_MAX = 100;
+var POLICY_MAX_FILES_MIN = 1;
+var POLICY_MAX_FILES_MAX = 1e5;
+var POLICY_MAX_CHANGED_LINES_MIN = 1;
+var POLICY_MAX_CHANGED_LINES_MAX = 1e7;
+var POLICY_MIN_AGE_DAYS_MIN = 0;
+var POLICY_MIN_AGE_DAYS_MAX = 3650;
+var POLICY_MIN_WEEKLY_DOWNLOADS_MIN = 0;
+var POLICY_MIN_WEEKLY_DOWNLOADS_MAX = 1e9;
+var POLICY_SEVERITIES = ["block", "warn", "info", "off"];
+var POLICY_SIGNAL_IDS = [
+  "TI01",
+  "TI02",
+  "TI03",
+  "TI04",
+  "TI05",
+  "TI06",
+  "TI07",
+  "TI08",
+  "TI09",
+  "TI10",
+  "TI11",
+  "TI12",
+  "TI13",
+  "TI14",
+  "TI15",
+  "TI16"
+];
+var POLICY_RULE_IDS = [
+  "P01",
+  "P02",
+  "P03",
+  "P04",
+  "P05",
+  "P06",
+  "P07",
+  "P08",
+  "P09",
+  "P10",
+  "P11",
+  "P12",
+  "P13",
+  "P14"
+];
+var POLICY_INJECTION_SIGNAL_IDS = [
+  "PI01",
+  "PI02",
+  "PI03",
+  "PI04",
+  "PI05"
+];
+var POLICY_REGISTRIES = ["npm", "pypi"];
+var POLICY_PROTECTED_PATHS_MODES = ["block", "warn"];
+
+// ../core/src/policy/errors.ts
+var MESSAGES = {
+  object: "must be an object",
+  required: "is required",
+  unknownKey: "is not a known key",
+  list: "must be a list",
+  tooManyItems: "must have at most 1000 items",
+  string: "must be a string",
+  empty: "must not be empty",
+  version: "must be 1",
+  number: "must be a number",
+  integer: "must be an integer",
+  boolean: "must be true or false",
+  stringOrNull: "must be a string or null",
+  plain: "must not contain a control character or start or end with white space",
+  glob: "is not a supported glob pattern",
+  root: "is not a repo-relative directory",
+  perm: "is not a permission rule such as Tool or Tool(pattern)",
+  login: "is not a GitHub login",
+  event: "must contain only the letters A-Z and a-z",
+  host: "is not a host name: use only the letters A-Z and a-z, digits, . and -, with no scheme, path, port, user name or wildcard",
+  textNotString: "policy text must be a string",
+  textNotJson: "policy text is not valid JSON"
+};
+function maxItemsMessage(max) {
+  return `must have at most ${String(max)} items`;
+}
+function maxCharsMessage(max) {
+  return `must be at most ${String(max)} characters`;
+}
+function rangeMessage(min, max) {
+  return `must be between ${String(min)} and ${String(max)}`;
+}
+function enumMessage(members) {
+  return `must be one of: ${members.join(", ")}`;
+}
+function textTooLongMessage(max) {
+  return `policy text must be at most ${String(max)} characters`;
+}
+var MAX_SEGMENT_CODE_POINTS = 64;
+function pointerSegment(key) {
+  let kept = "";
+  let count2 = 0;
+  let cut = false;
+  for (const ch of key) {
+    if (count2 === MAX_SEGMENT_CODE_POINTS) {
+      cut = true;
+      break;
+    }
+    const code2 = ch.charCodeAt(0);
+    kept += ch.length === 1 && (code2 <= 31 || code2 === 127) ? "?" : ch;
+    count2++;
+  }
+  if (cut) kept += "\u2026";
+  return kept.replace(/~/g, "~0").replace(/\//g, "~1");
+}
+var ErrorCollector = class {
+  stored = [];
+  count = 0;
+  /** The number of errors added so far. */
+  get total() {
+    return this.count;
+  }
+  add(path, message) {
+    this.count++;
+    if (this.stored.length < POLICY_MAX_ERRORS) this.stored.push({ path, message });
+  }
+  /** An unknown key under `parent`; the key's segment is built only when the error is kept. */
+  addUnknownKey(parent, key) {
+    this.count++;
+    if (this.stored.length < POLICY_MAX_ERRORS) {
+      this.stored.push({ path: `${parent}/${pointerSegment(key)}`, message: MESSAGES.unknownKey });
+    }
+  }
+  /** All errors when there are at most `POLICY_MAX_ERRORS`; else the first 49 and a line counting the rest. */
+  finish() {
+    if (this.count <= POLICY_MAX_ERRORS) return this.stored.slice();
+    const listed2 = this.stored.slice(0, POLICY_MAX_ERRORS - 1);
+    listed2.push({ path: "", message: `${String(this.count - (POLICY_MAX_ERRORS - 1))} more errors not listed` });
+    return listed2;
+  }
+};
+
+// ../core/src/policy/grammar.ts
+var POLICY_PATTERNS = {
+  /** No control character; no leading or trailing white space (ECMAScript `\s`). */
+  PLAIN: String.raw`^(?!\s)(?![\s\S]*\s$)[^\u0000-\u001F\u007F]*$`,
+  /** A glob: not starting with `./`, `/` or `!`; not ending with `/`; no `//`; no `..` segment; none of `\{}[]`. */
+  GLOB: String.raw`^(?!\s)(?![\s\S]*\s$)(?!\./)(?![/!])(?![\s\S]*/$)(?![\s\S]*//)(?!(?:[\s\S]*/)?\.\.(?:/|$))[^\u0000-\u001F\u007F\\{}\[\]]*$`,
+  /** A normalized repo-relative directory. */
+  ROOT: String.raw`^(?!\s)(?![\s\S]*\s$)(?![/-])(?![A-Za-z]:)(?!\./)(?![\s\S]*/$)(?![\s\S]*//)(?!(?:[\s\S]*/)?\.\.(?:/|$))[^\u0000-\u001F\u007F\\]*$`,
+  /** `Tool` or `Tool(pattern)`. */
+  PERM: String.raw`^(?![\s\S]*[\u0000-\u001F\u007F])[A-Za-z][A-Za-z0-9_-]*(\(.+\))?$`,
+  /** A GitHub login, optionally followed by `[bot]`. */
+  LOGIN: String.raw`^[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?$`,
+  /** A hook event name. */
+  EVENT: "^[A-Za-z]+$",
+  /** A registry host name: ASCII letters, digits, `.` and `-`. */
+  HOST: "^[A-Za-z0-9.-]+$"
+};
+var PLAIN = new RegExp(POLICY_PATTERNS.PLAIN, "u");
+var GLOB = new RegExp(POLICY_PATTERNS.GLOB, "u");
+var ROOT = new RegExp(POLICY_PATTERNS.ROOT, "u");
+var PERM = new RegExp(POLICY_PATTERNS.PERM, "u");
+var LOGIN = new RegExp(POLICY_PATTERNS.LOGIN, "u");
+var EVENT = new RegExp(POLICY_PATTERNS.EVENT, "u");
+var HOST2 = new RegExp(POLICY_PATTERNS.HOST, "u");
+var GRAMMARS = {
+  glob: { max: POLICY_MAX_GLOB, regex: GLOB, message: MESSAGES.glob },
+  root: { max: POLICY_MAX_ROOT, regex: ROOT, message: MESSAGES.root },
+  perm: { max: POLICY_MAX_PERM, regex: PERM, message: MESSAGES.perm },
+  name: { max: POLICY_MAX_NAME, regex: PLAIN, message: MESSAGES.plain },
+  nameOrGlob: { max: POLICY_MAX_NAME_OR_GLOB, regex: PLAIN, message: MESSAGES.plain },
+  label: { max: POLICY_MAX_LABEL, regex: PLAIN, message: MESSAGES.plain },
+  login: { max: POLICY_MAX_LOGIN, regex: LOGIN, message: MESSAGES.login },
+  event: { max: POLICY_MAX_EVENT, regex: EVENT, message: MESSAGES.event },
+  matcher: { max: POLICY_MAX_MATCHER, regex: PLAIN, message: MESSAGES.plain },
+  host: { max: POLICY_MAX_HOST, regex: HOST2, message: MESSAGES.host }
+};
+function codePointLength(s, max) {
+  if (s.length <= max) return s.length;
+  if (s.length > 2 * max) return max + 1;
+  let count2 = 0;
+  for (let i = 0; i < s.length; i++) {
+    count2++;
+    if (count2 > max) return count2;
+    const unit = s.charCodeAt(i);
+    if (unit >= 55296 && unit <= 56319 && i + 1 < s.length) {
+      const next = s.charCodeAt(i + 1);
+      if (next >= 56320 && next <= 57343) i++;
+    }
+  }
+  return count2;
+}
+
+// ../core/src/dependencies/hosts.ts
+var HOST3 = new RegExp(POLICY_PATTERNS.HOST, "u");
+function isRegistryHostName(text) {
+  return text.length >= 1 && text.length <= POLICY_MAX_HOST && HOST3.test(text);
+}
+function parseAllowedHosts(entries, label) {
+  const hosts = [];
+  entries.forEach((entry, index) => {
+    const host = entry.trim();
+    if (host === "") return;
+    if (!isRegistryHostName(host)) {
+      throw new ConfigError(
+        `${label}: entry ${String(index + 1)} is not a host name; give each registry host by name only (${String(POLICY_MAX_HOST)} characters at most: the letters A-Z and a-z, digits, . and -), with no scheme, path, port, user name or wildcard`
+      );
+    }
+    hosts.push(host.toLowerCase());
+  });
+  const unique = [...new Set(hosts)];
+  if (hosts.length > POLICY_MAX_ALLOWED_HOSTS) {
+    throw new ConfigError(`${label}: at most ${String(POLICY_MAX_ALLOWED_HOSTS)} host names may be given`);
+  }
+  return unique;
+}
+
 // ../core/src/inputs.ts
 var InputError = class extends ConfigError {
   constructor(input, message) {
@@ -42568,10 +42812,15 @@ function resolveInputs(config, raw, text, options = {}) {
     }
     return givenDependencies;
   });
+  const allowedHosts = attempt2(
+    "dependencyAllowedHosts",
+    () => parseAllowedHosts(raw.dependencyAllowedHosts ?? [], text.dependencyAllowedHosts ?? "dependency-allowed-hosts")
+  );
   const [first, ...rest] = errors;
   if (first !== void 0) return { ok: false, errors: [first, ...rest] };
   const dependencyLayers = {
     ...dependencyInput === void 0 ? {} : { input: dependencyInput },
+    ...allowedHosts === void 0 || allowedHosts.length === 0 ? {} : { allowedHosts },
     ...config.dependencies === void 0 ? {} : { config: { ...config.dependencies } }
   };
   const modeSettings = {
@@ -42781,201 +43030,6 @@ function parseJunitXml(text, maxCases) {
   return { ok: true, cases, dropped };
 }
 
-// ../core/src/policy/limits.ts
-var POLICY_MAX_CHARS = 262144;
-var POLICY_MAX_ERRORS = 50;
-var POLICY_MAX_LIST_ITEMS = 1e3;
-var POLICY_MAX_GLOB = 512;
-var POLICY_MAX_ROOT = 512;
-var POLICY_MAX_PERM = 512;
-var POLICY_MAX_NAME = 128;
-var POLICY_MAX_NAME_OR_GLOB = 512;
-var POLICY_MAX_LABEL = 50;
-var POLICY_MAX_LOGIN = 44;
-var POLICY_MAX_EVENT = 64;
-var POLICY_MAX_MATCHER = 512;
-var POLICY_THRESHOLD_MIN = 0;
-var POLICY_THRESHOLD_MAX = 100;
-var POLICY_MAX_FILES_MIN = 1;
-var POLICY_MAX_FILES_MAX = 1e5;
-var POLICY_MAX_CHANGED_LINES_MIN = 1;
-var POLICY_MAX_CHANGED_LINES_MAX = 1e7;
-var POLICY_MIN_AGE_DAYS_MIN = 0;
-var POLICY_MIN_AGE_DAYS_MAX = 3650;
-var POLICY_MIN_WEEKLY_DOWNLOADS_MIN = 0;
-var POLICY_MIN_WEEKLY_DOWNLOADS_MAX = 1e9;
-var POLICY_SEVERITIES = ["block", "warn", "info", "off"];
-var POLICY_SIGNAL_IDS = [
-  "TI01",
-  "TI02",
-  "TI03",
-  "TI04",
-  "TI05",
-  "TI06",
-  "TI07",
-  "TI08",
-  "TI09",
-  "TI10",
-  "TI11",
-  "TI12",
-  "TI13",
-  "TI14",
-  "TI15",
-  "TI16"
-];
-var POLICY_RULE_IDS = [
-  "P01",
-  "P02",
-  "P03",
-  "P04",
-  "P05",
-  "P06",
-  "P07",
-  "P08",
-  "P09",
-  "P10",
-  "P11",
-  "P12",
-  "P13",
-  "P14"
-];
-var POLICY_INJECTION_SIGNAL_IDS = [
-  "PI01",
-  "PI02",
-  "PI03",
-  "PI04",
-  "PI05"
-];
-var POLICY_REGISTRIES = ["npm", "pypi"];
-var POLICY_PROTECTED_PATHS_MODES = ["block", "warn"];
-
-// ../core/src/policy/errors.ts
-var MESSAGES = {
-  object: "must be an object",
-  required: "is required",
-  unknownKey: "is not a known key",
-  list: "must be a list",
-  tooManyItems: "must have at most 1000 items",
-  string: "must be a string",
-  empty: "must not be empty",
-  version: "must be 1",
-  number: "must be a number",
-  integer: "must be an integer",
-  boolean: "must be true or false",
-  stringOrNull: "must be a string or null",
-  plain: "must not contain a control character or start or end with white space",
-  glob: "is not a supported glob pattern",
-  root: "is not a repo-relative directory",
-  perm: "is not a permission rule such as Tool or Tool(pattern)",
-  login: "is not a GitHub login",
-  event: "must contain only the letters A-Z and a-z",
-  textNotString: "policy text must be a string",
-  textNotJson: "policy text is not valid JSON"
-};
-function maxCharsMessage(max) {
-  return `must be at most ${String(max)} characters`;
-}
-function rangeMessage(min, max) {
-  return `must be between ${String(min)} and ${String(max)}`;
-}
-function enumMessage(members) {
-  return `must be one of: ${members.join(", ")}`;
-}
-function textTooLongMessage(max) {
-  return `policy text must be at most ${String(max)} characters`;
-}
-var MAX_SEGMENT_CODE_POINTS = 64;
-function pointerSegment(key) {
-  let kept = "";
-  let count2 = 0;
-  let cut = false;
-  for (const ch of key) {
-    if (count2 === MAX_SEGMENT_CODE_POINTS) {
-      cut = true;
-      break;
-    }
-    const code2 = ch.charCodeAt(0);
-    kept += ch.length === 1 && (code2 <= 31 || code2 === 127) ? "?" : ch;
-    count2++;
-  }
-  if (cut) kept += "\u2026";
-  return kept.replace(/~/g, "~0").replace(/\//g, "~1");
-}
-var ErrorCollector = class {
-  stored = [];
-  count = 0;
-  /** The number of errors added so far. */
-  get total() {
-    return this.count;
-  }
-  add(path, message) {
-    this.count++;
-    if (this.stored.length < POLICY_MAX_ERRORS) this.stored.push({ path, message });
-  }
-  /** An unknown key under `parent`; the key's segment is built only when the error is kept. */
-  addUnknownKey(parent, key) {
-    this.count++;
-    if (this.stored.length < POLICY_MAX_ERRORS) {
-      this.stored.push({ path: `${parent}/${pointerSegment(key)}`, message: MESSAGES.unknownKey });
-    }
-  }
-  /** All errors when there are at most `POLICY_MAX_ERRORS`; else the first 49 and a line counting the rest. */
-  finish() {
-    if (this.count <= POLICY_MAX_ERRORS) return this.stored.slice();
-    const listed2 = this.stored.slice(0, POLICY_MAX_ERRORS - 1);
-    listed2.push({ path: "", message: `${String(this.count - (POLICY_MAX_ERRORS - 1))} more errors not listed` });
-    return listed2;
-  }
-};
-
-// ../core/src/policy/grammar.ts
-var POLICY_PATTERNS = {
-  /** No control character; no leading or trailing white space (ECMAScript `\s`). */
-  PLAIN: String.raw`^(?!\s)(?![\s\S]*\s$)[^\u0000-\u001F\u007F]*$`,
-  /** A glob: not starting with `./`, `/` or `!`; not ending with `/`; no `//`; no `..` segment; none of `\{}[]`. */
-  GLOB: String.raw`^(?!\s)(?![\s\S]*\s$)(?!\./)(?![/!])(?![\s\S]*/$)(?![\s\S]*//)(?!(?:[\s\S]*/)?\.\.(?:/|$))[^\u0000-\u001F\u007F\\{}\[\]]*$`,
-  /** A normalized repo-relative directory. */
-  ROOT: String.raw`^(?!\s)(?![\s\S]*\s$)(?![/-])(?![A-Za-z]:)(?!\./)(?![\s\S]*/$)(?![\s\S]*//)(?!(?:[\s\S]*/)?\.\.(?:/|$))[^\u0000-\u001F\u007F\\]*$`,
-  /** `Tool` or `Tool(pattern)`. */
-  PERM: String.raw`^(?![\s\S]*[\u0000-\u001F\u007F])[A-Za-z][A-Za-z0-9_-]*(\(.+\))?$`,
-  /** A GitHub login, optionally followed by `[bot]`. */
-  LOGIN: String.raw`^[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?$`,
-  /** A hook event name. */
-  EVENT: "^[A-Za-z]+$"
-};
-var PLAIN = new RegExp(POLICY_PATTERNS.PLAIN, "u");
-var GLOB = new RegExp(POLICY_PATTERNS.GLOB, "u");
-var ROOT = new RegExp(POLICY_PATTERNS.ROOT, "u");
-var PERM = new RegExp(POLICY_PATTERNS.PERM, "u");
-var LOGIN = new RegExp(POLICY_PATTERNS.LOGIN, "u");
-var EVENT = new RegExp(POLICY_PATTERNS.EVENT, "u");
-var GRAMMARS = {
-  glob: { max: POLICY_MAX_GLOB, regex: GLOB, message: MESSAGES.glob },
-  root: { max: POLICY_MAX_ROOT, regex: ROOT, message: MESSAGES.root },
-  perm: { max: POLICY_MAX_PERM, regex: PERM, message: MESSAGES.perm },
-  name: { max: POLICY_MAX_NAME, regex: PLAIN, message: MESSAGES.plain },
-  nameOrGlob: { max: POLICY_MAX_NAME_OR_GLOB, regex: PLAIN, message: MESSAGES.plain },
-  label: { max: POLICY_MAX_LABEL, regex: PLAIN, message: MESSAGES.plain },
-  login: { max: POLICY_MAX_LOGIN, regex: LOGIN, message: MESSAGES.login },
-  event: { max: POLICY_MAX_EVENT, regex: EVENT, message: MESSAGES.event },
-  matcher: { max: POLICY_MAX_MATCHER, regex: PLAIN, message: MESSAGES.plain }
-};
-function codePointLength(s, max) {
-  if (s.length <= max) return s.length;
-  if (s.length > 2 * max) return max + 1;
-  let count2 = 0;
-  for (let i = 0; i < s.length; i++) {
-    count2++;
-    if (count2 > max) return count2;
-    const unit = s.charCodeAt(i);
-    if (unit >= 55296 && unit <= 56319 && i + 1 < s.length) {
-      const next = s.charCodeAt(i + 1);
-      if (next >= 56320 && next <= 57343) i++;
-    }
-  }
-  return count2;
-}
-
 // ../core/src/policy/validate.ts
 function known(entries) {
   return new Map(entries);
@@ -43003,14 +43057,15 @@ function objectOf(keys, required = []) {
     return out;
   };
 }
-function listOf3(item) {
+function listOf3(item, max = POLICY_MAX_LIST_ITEMS) {
+  const tooMany = max === POLICY_MAX_LIST_ITEMS ? MESSAGES.tooManyItems : maxItemsMessage(max);
   return (value, path, errors) => {
     if (!Array.isArray(value)) {
       errors.add(path, MESSAGES.list);
       return void 0;
     }
-    if (value.length > POLICY_MAX_LIST_ITEMS) {
-      errors.add(path, MESSAGES.tooManyItems);
+    if (value.length > max) {
+      errors.add(path, tooMany);
       return void 0;
     }
     const out = [];
@@ -43156,7 +43211,8 @@ var dependencies = objectOf(
     ["lookup", bool],
     ["registries", listOf3(enumOf(POLICY_REGISTRIES))],
     ["min_age_days", integerIn(POLICY_MIN_AGE_DAYS_MIN, POLICY_MIN_AGE_DAYS_MAX)],
-    ["min_weekly_downloads", integerIn(POLICY_MIN_WEEKLY_DOWNLOADS_MIN, POLICY_MIN_WEEKLY_DOWNLOADS_MAX)]
+    ["min_weekly_downloads", integerIn(POLICY_MIN_WEEKLY_DOWNLOADS_MIN, POLICY_MIN_WEEKLY_DOWNLOADS_MAX)],
+    ["allowed_hosts", listOf3(stringOf2(GRAMMARS.host), POLICY_MAX_ALLOWED_HOSTS)]
   ])
 );
 var injection = objectOf(
@@ -43516,6 +43572,16 @@ function applyDependencies(layers, document2, app, inputs, ignored) {
   if (!app && deps.registries !== void 0) {
     ignored.push({ setting: "dependencies.registries", layer: "policy-file", reason: "not-allowed" });
   }
+  if (deps.allowed_hosts !== void 0) {
+    if (app) {
+      const named = deps.allowed_hosts.map((host) => host.toLowerCase());
+      if ((given?.allowedHosts ?? []).some((host) => !named.includes(host))) {
+        ignored.push({ setting: "dependencies.allowed_hosts", layer: "input", reason: "looser" });
+      }
+    } else if (deps.allowed_hosts.length > 0) {
+      ignored.push({ setting: "dependencies.allowed_hosts", layer: "policy-file", reason: "not-allowed" });
+    }
+  }
   inputs.dependencies = {
     ...given,
     policy: {
@@ -43523,7 +43589,8 @@ function applyDependencies(layers, document2, app, inputs, ignored) {
       ...deps.lookup === void 0 ? {} : { lookup: deps.lookup },
       ...deps.min_age_days === void 0 ? {} : { minAgeDays: deps.min_age_days },
       ...deps.min_weekly_downloads === void 0 ? {} : { minWeeklyDownloads: deps.min_weekly_downloads },
-      ...app && deps.registries !== void 0 ? { registries: [...deps.registries] } : {}
+      ...app && deps.registries !== void 0 ? { registries: [...deps.registries] } : {},
+      ...app && deps.allowed_hosts !== void 0 ? { allowedHosts: [...deps.allowed_hosts] } : {}
     }
   };
 }
@@ -43679,7 +43746,7 @@ var MESSAGE_HINTS = {
   DEPENDENCY_D02: "Check who publishes the package and why it is new before you merge; prefer an established package. This is a warning only.",
   DEPENDENCY_D03: "Check that this is the package you meant (a typo of a popular name is a common trap) and who publishes it. This is a warning only.",
   DEPENDENCY_D04: "Run the package manager's install so the lockfile matches the manifest, and commit both; a lockfile that changes a hash for the same version needs an explanation.",
-  DEPENDENCY_D05: "Depend on a published registry version instead, or have a person review where the code comes from; a git, URL or local source is not covered by the registry's checks.",
+  DEPENDENCY_D05: "Depend on a published registry version instead, or have a person review where the code comes from; a git, URL or local source is not covered by the registry's checks. For a registry your team runs (Artifactory, Nexus, a private PyPI index), name its host in the dependency-allowed-hosts input or the org policy's dependencies.allowed_hosts.",
   DEPENDENCY_LOOKUP_UNAVAILABLE: "Re-run the job; the registry lookups fail open, so D01 to D03 were not checked for the packages counted.",
   DEPENDENCY_CHECK_INCOMPLETE: "Keep manifests and lockfiles valid and under 5 MiB, and run on a checkout of the pull request head with fetch-depth: 0, so they can be compared."
 };
@@ -47308,6 +47375,7 @@ var INPUT_ERRORS = {
   expectAgentSetup: "expect-agent-setup",
   testIntegrity: "test-integrity",
   dependencies: "dependencies",
+  dependencyAllowedHosts: "dependency-allowed-hosts",
   noCoverageFile: "no coverage file: set the coverage-file input or coverage.file in .pharn/ci.yml"
 };
 var MAX_COMMENT_LENGTH = 65e3;
@@ -47367,7 +47435,8 @@ async function runUnsafe(deps) {
     requireAgentSetup: parseBool(input("require-agent-setup"), "require-agent-setup"),
     expectAgentSetup: splitPatternList(input("expect-agent-setup")),
     testIntegrity: input("test-integrity") || void 0,
-    dependencies: input("dependencies") || void 0
+    dependencies: input("dependencies") || void 0,
+    dependencyAllowedHosts: splitPatternList(input("dependency-allowed-hosts"))
   };
   const resolved = resolveInputs(
     config,

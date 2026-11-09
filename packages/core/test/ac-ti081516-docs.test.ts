@@ -183,8 +183,17 @@ describe("TI08, TI15 and TI16: schemas and documents", () => {
     // Re-pinned again for the run upload (E3 item 21), which adds exactly the `upload` input to the same set-aside, and
     // for the rename of `fail-on-threshold` to `fail-on-verdict` (review 2026-11-01, finding 27), which adds that one.
     // Re-pinned for flaky tests (A6), which adds exactly the `junit-paths` input to the same set-aside, and for
-    // dependency safety (A13, v0.8.0), which adds exactly the `dependencies` input.
-    const POLICY_INPUTS = ["policy", "app-url", "upload", "fail-on-verdict", "junit-paths", "dependencies"];
+    // dependency safety (A13, v0.8.0), which adds exactly the `dependencies` input, and for the private registry
+    // allow-list (d05-private-registry-allowlist), which adds exactly the `dependency-allowed-hosts` input.
+    const POLICY_INPUTS = [
+      "policy",
+      "app-url",
+      "upload",
+      "fail-on-verdict",
+      "junit-paths",
+      "dependencies",
+      "dependency-allowed-hosts",
+    ];
     const inputsNow = actionInputs(read("action.yml"));
     for (const name of POLICY_INPUTS) expect(inputsNow, `action.yml declares ${name}`).toContain(name);
     expect(inputsNow.filter((name) => !POLICY_INPUTS.includes(name))).toEqual(

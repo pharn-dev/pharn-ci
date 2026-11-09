@@ -344,7 +344,7 @@
           "type": "boolean"
         },
         "registries": {
-          "description": "Package ecosystems whose new dependencies are checked; each maps to a fixed host list in the Action, so a policy never names a host. Tighten: dependencies.registries, intersection.",
+          "description": "Package ecosystems whose new dependencies are checked; each maps to a fixed host list in the Action, so this key never names a host (dependencies.allowed_hosts names the private registries a team runs). Tighten: dependencies.registries, intersection.",
           "type": "array",
           "maxItems": 1000,
           "items": { "type": "string", "enum": ["npm", "pypi"] }
@@ -360,6 +360,12 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 1000000000
+        },
+        "allowed_hosts": {
+          "description": "Registry hosts a team runs (Artifactory, Nexus, a private PyPI index), besides the four public ones, whose URLs D05 accepts: exact host names matched case-insensitively, at most 50, each 1-253 characters of the letters A-Z and a-z, digits, . and -, with no scheme, path, port, user name or wildcard. A URL still has to be https with no user name, password or port. Tighten: an app policy's list replaces the dependency-allowed-hosts workflow input's, so an input host the list leaves out is ignored; a policy file may not set it (it is recorded and not applied), and .pharn/ci.yml may not set it either. The Action never calls an allowed host, and never looks up a package name resolved from one.",
+          "type": "array",
+          "maxItems": 50,
+          "items": { "$ref": "#/$defs/host" }
         }
       }
     },
@@ -468,6 +474,13 @@
       "minLength": 1,
       "maxLength": 44,
       "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}(\\[bot\\])?$"
+    },
+    "host": {
+      "description": "HOST: a registry host name, 1-253 characters of the letters A-Z and a-z, digits, . and -; no scheme, path, port, user name or wildcard.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 253,
+      "pattern": "^[A-Za-z0-9.-]+$"
     },
     "requiredHook": {
       "description": "A hook that must exist: an event and an optional matcher.",

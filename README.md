@@ -624,7 +624,24 @@ git objects, in the CLI and the Action, with or without an org policy.
 | D02 | An added package first published fewer than `min_age_days` (30) days before the head commit | lookups | `warn` |
 | D03 | An added unscoped npm package downloaded fewer than `min_weekly_downloads` (100) times last week (npm only: PyPI has no first-party download count) | lookups | `warn` |
 | D04 | Lockfile drift: a manifest's dependencies changed while the lockfile that governs it (beside it, or a workspace root lockfile that lists it as an importer) did not change or does not record the new spec; or a lockfile gives a version the same hash algorithm but a different hash than the merge base did | nothing | `block` |
-| D05 | An added or changed dependency or lockfile entry from a git repository, a URL off `registry.npmjs.org`, `registry.yarnpkg.com`, `pypi.org` and `files.pythonhosted.org` (https only, no credentials or port), or a local file; or a requirements file that adds a package index off them | nothing | `block` |
+| D05 | An added or changed dependency or lockfile entry from a git repository, a URL off `registry.npmjs.org`, `registry.yarnpkg.com`, `pypi.org` and `files.pythonhosted.org` (https only, no credentials or port) or off the private registry hosts you allow (see Private registries below), or a local file; or a requirements file that adds a package index off them | nothing | `block` |
+
+**Private registries.** A team that runs its own npm or PyPI registry (Artifactory, Nexus, a private index) names its host
+once, and D05 stops flagging URLs on it. Give the host in the `dependency-allowed-hosts` input (comma or newline
+separated), the CLI's repeatable `--dependency-allowed-host` flag, or an app policy's `dependencies.allowed_hosts`. Each
+entry is an exact host name, matched case-insensitively: the letters A-Z and a-z, digits, `.` and `-`, 1 to 253
+characters, with no scheme, path, port, user name or wildcard (`npm.corp.example`, not `https://npm.corp.example/` or
+`*.corp.example`), and at most 50 entries; an entry that is not a host name fails the step (exit `2` in the CLI). The four
+public hosts stay allowed, and allowing a host does not relax the URL rule: a URL on it still has to be `https` with no
+user name, password or port, and a sibling such as `evil.npm.corp.example` is not the host. A package resolved from an
+allowed host is never looked up in a public registry (the lookups skip it, as they skip every off-registry source), and
+the Action never calls the allowed host. `.pharn/ci.yml` cannot set the list (the change under review can edit that
+file): a `dependencies.allowed_hosts` key there is refused with an error that names the input. An app policy's list
+**replaces** the input's, so an input host the policy does not name is ignored and named, by setting and layer only, in
+`POLICY_OVERRIDE_IGNORED`; a `file:` policy may not allow a host (its list is recorded and not applied). An app policy
+whose `dependencies` key holds only `allowed_hosts` still requires the check, like any `dependencies` key. A workflow
+edit in the pull request changes the input like every other input; the app policy is the control that a pull request
+cannot move (docs/THREAT-MODEL.md, row D8 and residual 43).
 
 **Lookups are opt-in.** A lookup sends a package name to a third party, and an unscoped private package name would leak,
 so the default `dependencies: auto` makes no network call. With `dependencies: lookup` (or `dependencies.lookup: true`
@@ -645,7 +662,7 @@ carries must not make the job send names to a registry the workflow owner refuse
 `min_weekly_downloads` only raise the defaults. An app policy with a `dependencies` key requires the check (`never`
 becomes `auto`, recorded in `POLICY_OVERRIDE_IGNORED`), its `lookup: true` turns lookups on, its minimums replace the
 defaults (lower layers can still raise them) and its `registries` narrow the ecosystems looked up. A `file:` policy is
-treated like `.pharn/ci.yml`: its `registries` are not allowed.
+treated like `.pharn/ci.yml`: its `registries` and its `allowed_hosts` are not allowed.
 
 **How a block fails the check.** Each signal id adds one `DEPENDENCY_D01` to `DEPENDENCY_D05` message whose level follows
 its findings' severity, the way the agent config secret check and the prompt-injection scan do: `block` is an `error`
@@ -694,7 +711,7 @@ threshold you rely on with the `threshold` input or a policy (docs/THREAT-MODEL.
 - adds its `setup.expect` tools to the others.
 
 A setting of the workflow inputs or `.pharn/ci.yml` that the policy beat is named in one `POLICY_OVERRIDE_IGNORED`
-warning (a threshold with both numbers; never a pattern, root or label).
+warning (a threshold with both numbers; never a pattern, root, label or registry host).
 
 **No policy, or no way to read it.** A repository with no policy (`204` or `404`) is silent under `auto` and its report is the
 same as with `policy: never`; after a `404` (the Pharn GitHub App is not installed) the PR comment and the job summary
@@ -905,6 +922,7 @@ of the App never both appear for one upload.
 | `expect-agent-setup` | `setup.expect`, then none  | Agent tools that must have a setup file, comma or newline separated; added to `setup.expect`; a missing one is `AGENT_SETUP_EXPECTED_MISSING` |
 | `test-integrity`    | `warn`                      | How strictly to treat weakened tests: `block`, `warn` or `off`. `test_integrity.mode` in `.pharn/ci.yml` can only make it stricter, never looser (a looser value is ignored with `TEST_INTEGRITY_MODE_IGNORED`). In `block` a block-level finding fails the check, in `warn` it warns, in `off` nothing is checked. The signals so far are TI01 (a test file deleted), TI02 (a test removed from a test file that stays), TI03 (a skip added to a test), TI04 (a `.only`, `fit` or `fdescribe` added), TI05 (a test emptied of its assertions, or with fewer), TI06 (a test weakened), TI07 (an expected value of a test edited to match the source), TI08 (snapshots regenerated or updated in bulk), TI09 (a test-runner setting loosened), TI10 (a test script in `package.json` weakened), TI11 (CI stopped running tests), TI12 (a module under test mocked), TI13 (a coverage-ignore comment added to source), TI14 (a lower coverage threshold or a wider exclusion in the config), TI15 (a source condition that compares with a value the tests add) and TI16 (a lint or type suppression comment added to a test file) |
 | `dependencies`      | `auto`                      | [Dependency safety](#dependency-safety) for the packages a change adds or changes: `auto` runs the offline checks D04 (lockfile drift) and D05 (a source outside the npm and PyPI registries); `lookup` also looks each added unscoped package up in `registry.npmjs.org`, `api.npmjs.org` and `pypi.org` (D01 to D03; only the package name is sent); `never` runs nothing. `dependencies.lookup: true` in `.pharn/ci.yml` turns lookups on over `auto`, never over `never`. Any other value fails the step |
+| `dependency-allowed-hosts` | none               | Registry hosts your team runs (Artifactory, Nexus, a private PyPI index) whose URLs [D05](#dependency-safety) accepts besides the four public ones, comma or newline separated. Each is an exact host name matched case-insensitively (the letters A-Z and a-z, digits, `.` and `-`; no scheme, path, port, user name or wildcard), at most 50, and a URL on it still has to be `https` with no user name, password or port. An app policy's `dependencies.allowed_hosts` replaces the list; `.pharn/ci.yml` cannot set it. An entry that is not a host name fails the step |
 | `accept-label`      | `pharn/accepted`            | Name of the pull request label a reviewer who is not the PR author applies to sign off `test-integrity: block` findings, at most 50 characters. Read only from this input, never from `.pharn/ci.yml`. See [Accept label](#accept-label) |
 | `policy`            | `auto`                      | Where the [org policy](#org-policy) comes from: `auto` fetches it from the pharn.dev app when the job grants `id-token: write` (only the OIDC token and the repo name are sent; no policy or no token is silent), `never` uses none, `required` fails the check when no policy can be fetched, `file:<path>` reads a policy document from the workspace (the pull request can change it, so it can only tighten; nothing is fetched). Any other value fails the step |
 | `app-url`           | `https://pharn.dev`         | Origin of the pharn.dev app the policy is fetched from. `https` only, with no credentials, path, query or fragment; the OIDC audience stays `pharn.dev` whatever it is |
@@ -1061,7 +1079,8 @@ node packages/cli/dist/index.js check --coverage coverage/lcov.info --threshold 
 pharn-ci check [--coverage <file|glob>]... [--coverage-format lcov|cobertura|auto] [--coverage-root <dir>]
                [--base <ref>] [--threshold <n>] [--format md|json] [--config <path>]
                [--exclude <glob>]... [--require-agent-setup] [--expect-agent-setup <tool>]...
-               [--test-integrity block|warn|off] [--dependencies auto|lookup|never] [--policy-file <path>]
+               [--test-integrity block|warn|off] [--dependencies auto|lookup|never]
+               [--dependency-allowed-host <host>]... [--policy-file <path>]
                [--no-policy] [--junit <file|glob>]... [--quarantine-file <path>] [-h|--help] [-v|--version]
 pharn-ci test [--junit <file|glob>]... [--quarantine-file <path>] [--dry-run] -- <command> [args...]
 ```
@@ -1098,6 +1117,11 @@ pharn-ci test [--junit <file|glob>]... [--quarantine-file <path>] [--dry-run] --
   `test_integrity.mode` config key can only make it stricter than the flag; an invalid value exits `2`.
 - `--dependencies <mode>` sets [dependency safety](#dependency-safety) (`auto`, `lookup` or `never`; default `auto`).
   The CLI makes no network call, so it runs D04 and D05 only and `lookup` runs as `auto`; an invalid value exits `2`.
+- `--dependency-allowed-host <host>` is repeatable and names a registry host your team runs, so
+  [D05](#dependency-safety) accepts its URLs besides the four public hosts. Each value is an exact host name matched
+  case-insensitively: no scheme, path, port, user name or wildcard, at most 50 in all, and a URL on it still has to be
+  `https` with no user name, password or port. A value that is not a host name exits `2` before any git call. An app
+  policy's list replaces it, and the CLI never fetches a policy.
 - `--policy-file <path>` applies an [org policy](#org-policy) document, relative to the repo root, over the flags and
   the config. It can only tighten them; a path that is empty, absolute, outside the repo, through a symbolic link,
   missing, over 1 MiB or not a valid policy exits `2`. `--no-policy` applies none and is the same as no flag; giving

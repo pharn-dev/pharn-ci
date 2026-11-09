@@ -35,6 +35,7 @@ export function parseNpmManifest(text: string): ParsedManifest | null {
         line: member.keyLine,
         kind: kind.kind,
         ...(kind.allowedUrl === undefined ? {} : { allowedUrl: kind.allowedUrl }),
+        ...(kind.kind === "url" ? { url: spec.trim() } : {}),
       });
     }
   }

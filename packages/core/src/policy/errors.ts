@@ -25,9 +25,15 @@ export const MESSAGES = {
   perm: "is not a permission rule such as Tool or Tool(pattern)",
   login: "is not a GitHub login",
   event: "must contain only the letters A-Z and a-z",
+  host: "is not a host name: use only the letters A-Z and a-z, digits, . and -, with no scheme, path, port, user name or wildcard",
   textNotString: "policy text must be a string",
   textNotJson: "policy text is not valid JSON",
 } as const;
+
+/** `must have at most <max> items`, for a list with a cap below the general 1000. */
+export function maxItemsMessage(max: number): string {
+  return `must have at most ${String(max)} items`;
+}
 
 /** `must be at most <max> characters`. */
 export function maxCharsMessage(max: number): string {

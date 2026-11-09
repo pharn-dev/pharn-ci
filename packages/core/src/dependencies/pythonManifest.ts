@@ -53,7 +53,7 @@ export function parseRequirement(text: string, line: number, section: string): M
       section,
       line,
       kind: kind.kind,
-      ...(kind.kind === "url" ? { allowedUrl: kind.allowedUrl === true } : {}),
+      ...(kind.kind === "url" ? { allowedUrl: kind.allowedUrl === true, url: t } : {}),
     };
   }
   let at = 0;
@@ -77,7 +77,7 @@ export function parseRequirement(text: string, line: number, section: string): M
       section,
       line,
       kind: kind.kind,
-      ...(kind.kind === "url" ? { allowedUrl: kind.allowedUrl === true } : {}),
+      ...(kind.kind === "url" ? { allowedUrl: kind.allowedUrl === true, url } : {}),
     };
   }
   const spec = body.startsWith("(") && body.endsWith(")") ? body.slice(1, -1).trim() : body;
@@ -172,7 +172,7 @@ function tableDependency(name: string, value: TomlValue, section: string): Manif
       section,
       line: value.line,
       kind: kind.kind,
-      ...(kind.kind === "url" ? { allowedUrl: kind.allowedUrl === true } : {}),
+      ...(kind.kind === "url" ? { allowedUrl: kind.allowedUrl === true, url } : {}),
     };
   }
   const path = text("path") ?? text("file");
