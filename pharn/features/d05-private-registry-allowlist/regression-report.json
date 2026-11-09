@@ -1,0 +1,125 @@
+{
+  "base": "1304e8f6c8c68ea12e7ceb9fe12d953264af409a",
+  "inside": [
+    "CHANGELOG.md",
+    "README.md",
+    "action.yml",
+    "docs/LIMITS.md",
+    "docs/THREAT-MODEL.md",
+    "packages/action/dist/index.js",
+    "packages/action/src/run.ts",
+    "packages/cli/src/main.ts",
+    "packages/core/src/config.ts",
+    "packages/core/src/dependencies/check.ts",
+    "packages/core/src/dependencies/npmManifest.ts",
+    "packages/core/src/dependencies/pythonManifest.ts",
+    "packages/core/src/dependencies/settings.ts",
+    "packages/core/src/dependencies/types.ts",
+    "packages/core/src/inputs.ts",
+    "packages/core/src/policy/apply.ts",
+    "packages/core/src/policy/errors.ts",
+    "packages/core/src/policy/grammar.ts",
+    "packages/core/src/policy/limits.ts",
+    "packages/core/src/policy/types.ts",
+    "packages/core/src/policy/validate.ts",
+    "packages/core/src/render/markdown.ts",
+    "packages/core/test/ac-ti081516-docs.test.ts",
+    "packages/core/test/dependencies-render.test.ts",
+    "packages/core/test/dependencies-settings.test.ts",
+    "packages/core/test/policy-schema.test.ts",
+    "pharn.config.json",
+    "schema/policy.v1.json",
+    "fixtures/dependencies/d05-private-host/base/package-lock.json.txt",
+    "fixtures/dependencies/d05-private-host/base/package.json.txt",
+    "fixtures/dependencies/d05-private-host/base/requirements.txt.fixture",
+    "fixtures/dependencies/d05-private-host/change.diff",
+    "fixtures/dependencies/d05-private-host/files.txt",
+    "fixtures/dependencies/d05-private-host/head/package-lock.json.txt",
+    "fixtures/dependencies/d05-private-host/head/package.json.txt",
+    "fixtures/dependencies/d05-private-host/head/requirements.txt.fixture",
+    "packages/action/test/ac-d05-allow-adapters.test.ts",
+    "packages/cli/test/ac-d05-allow-input.test.ts",
+    "packages/core/src/dependencies/hosts.ts",
+    "packages/core/test/ac-d05-allow-advice.test.ts",
+    "packages/core/test/ac-d05-allow-app-policy.test.ts",
+    "packages/core/test/ac-d05-allow-app-replaces.test.ts",
+    "packages/core/test/ac-d05-allow-app-subset.test.ts",
+    "packages/core/test/ac-d05-allow-config.test.ts",
+    "packages/core/test/ac-d05-allow-default.test.ts",
+    "packages/core/test/ac-d05-allow-docs.test.ts",
+    "packages/core/test/ac-d05-allow-file-policy.test.ts",
+    "packages/core/test/ac-d05-allow-lookups.test.ts",
+    "packages/core/test/ac-d05-allow-manifests.test.ts",
+    "packages/core/test/ac-d05-allow-policy-schema.test.ts",
+    "packages/core/test/ac-d05-allow-url-rules.test.ts",
+    "packages/core/test/dependencies-allowed-hosts.test.ts",
+    "pharn/features/d05-private-registry-allowlist/AC-TESTS.lock.json",
+    "pharn/features/d05-private-registry-allowlist/AC-TESTS.md",
+    "pharn/features/d05-private-registry-allowlist/BUILD.md",
+    "pharn/features/d05-private-registry-allowlist/GRILL.md",
+    "pharn/features/d05-private-registry-allowlist/PLAN.md",
+    "pharn/features/d05-private-registry-allowlist/SPEC.md",
+    "pharn/features/d05-private-registry-allowlist/VERIFY.md",
+    "pharn/features/d05-private-registry-allowlist/verify-report.json"
+  ],
+  "outside_gates": {
+    "build": {
+      "base": 0,
+      "head": 0
+    },
+    "test": {
+      "base": 1,
+      "head": 1
+    }
+  },
+  "regressions": [],
+  "pre_existing": [
+    "test"
+  ],
+  "verdict": "no-regressions",
+  "gate_run": {
+    "base": {
+      "stamp_sha256": "c3630d08405bbdc930a565b8cfbaf965ea57fe1809c7fc0488284a1cf9f985bc",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/3+sha256",
+        "final": "31c1deae9395565cf2211fdd1e9277e5acadc01e99c33e9368eec688e0770591"
+      }
+    },
+    "head": {
+      "stamp_sha256": "1e0db031a85c5817f04b4510e213c8847862ac81963ebe9936dc9d159441f3b1",
+      "source": "discover",
+      "fingerprint": {
+        "algo": "worktree-fingerprint/3+sha256",
+        "final": "be8c4219fb96ca834e62c7eee13fa38955d65268d79c9f8d01828a22d4448955"
+      }
+    }
+  },
+  "base_evidence": {
+    "reused": true,
+    "miss": null,
+    "requirement_sha256": "ff9670bcb119c63a4c9d379bb035bbbf0d4b8d323dbc5a263b6eb4d4ee830bdd",
+    "recorded": true,
+    "source": "reused",
+    "entry": null
+  },
+  "pre_run_snapshot": {
+    "status": "applied",
+    "unchanged": [
+      "pharn.config.json"
+    ]
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "base_source": "explicit"
+}

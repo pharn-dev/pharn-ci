@@ -12,7 +12,7 @@
         "effort": "high"
       },
       "spec": {
-        "model": "opus",
+        "model": "fable",
         "effort": "high"
       },
       "plan": {
@@ -20,8 +20,8 @@
         "effort": "high"
       },
       "grill": {
-        "model": "opus",
-        "effort": "high"
+        "model": "fable",
+        "effort": "medium"
       },
       "build": {
         "model": "sonnet",
@@ -44,7 +44,7 @@
         "effort": "high"
       },
       "review": {
-        "model": "opus",
+        "model": "fable",
         "effort": "high"
       },
       "memory-promote": {

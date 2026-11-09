@@ -1,0 +1,213 @@
+{
+  "schema": "ac-tests-lock/6",
+  "feature": "d05-private-registry-allowlist",
+  "mode": "test-first",
+  "spec": {
+    "spec_id": "d05-private-registry-allowlist",
+    "spec_content_hash": "66035f0c79f039f2d402134fe29d24cd2d4a63be2271585b1a963ec329830920"
+  },
+  "mapping": {
+    "path": "pharn/features/d05-private-registry-allowlist/AC-TESTS.md",
+    "sha256": "407ebcab44513a157afa44de7f7ec4d8fdd6b588a6c3fef71cf39cb4e9ef962f"
+  },
+  "files": [
+    {
+      "path": "packages/action/test/ac-d05-allow-adapters.test.ts",
+      "sha256": "2b41d580abe5b8af205814274257d2db537f88f46cbdf477450eac151c25ec6f"
+    },
+    {
+      "path": "packages/cli/test/ac-d05-allow-input.test.ts",
+      "sha256": "e7fed399daa6d7c02a649d6eea038be8e38fd5b82a7e8864f5b39b7fbd6942a0"
+    },
+    {
+      "path": "packages/core/test/ac-d05-allow-advice.test.ts",
+      "sha256": "1038cab3c527bd21d9c95401ec6cdc9c093702c9df2cb0e1ed2f18d8c5a6b00f"
+    },
+    {
+      "path": "packages/core/test/ac-d05-allow-app-policy.test.ts",
+      "sha256": "167e620f7677c49dbfe15d4412b2d89a4dcc093403c30486161766e3d547547f"
+    },
+    {
+      "path": "packages/core/test/ac-d05-allow-app-replaces.test.ts",
+      "sha256": "e41e8374ce287735e6a6ec69e93a2afec6af2942cc3d8b2a411f9d201fe08840"
+    },
+    {
+      "path": "packages/core/test/ac-d05-allow-app-subset.test.ts",
+      "sha256": "72f5fea11d85aaedc7711d61b9f8360b684ecd082629a08ac71731751f546009"
+    },
+    {
+      "path": "packages/core/test/ac-d05-allow-config.test.ts",
+      "sha256": "086943becb1def128a670b005e73fa026ce79a3ca13f69cf9a0c92fe3ac35451"
+    },
+    {
+      "path": "packages/core/test/ac-d05-allow-default.test.ts",
+      "sha256": "1134988b2f2ff8d3e030e15632afbbd4fe115275339a3e42f791a1553c320e82"
+    },
+    {
+      "path": "packages/core/test/ac-d05-allow-docs.test.ts",
+      "sha256": "d15d03b76bef078f040dd19c3ef2a0238af6cf4cf91988467698044281b7e84b"
+    },
+    {
+      "path": "packages/core/test/ac-d05-allow-file-policy.test.ts",
+      "sha256": "d117c3f33651fc456db798f496fbde9b0649c664d0f5e2c8c2f04f0ffc6d9c1c"
+    },
+    {
+      "path": "packages/core/test/ac-d05-allow-lookups.test.ts",
+      "sha256": "332a66d73a903ff2785ad77fd968a2037865e85e9a87a3e0f485237f59ceed72"
+    },
+    {
+      "path": "packages/core/test/ac-d05-allow-manifests.test.ts",
+      "sha256": "cba26c42789cabc098f77e7342ed529a23977be497d2dd34c73dc7ee1202974c"
+    },
+    {
+      "path": "packages/core/test/ac-d05-allow-policy-schema.test.ts",
+      "sha256": "0415fde5dbd72e2b1db435b012032324ea742f03b512d702e5c7772a5fe16680"
+    },
+    {
+      "path": "packages/core/test/ac-d05-allow-url-rules.test.ts",
+      "sha256": "054268364b7694db353535dfd1f78ab89783719f99a8d717af0d394ddd716caf"
+    }
+  ],
+  "bootstrap": null,
+  "red_run": {
+    "stamp_sha256": "86fe0485d3cd116fcbb73d55924f137f2959b6bbd25a9e211e6e9ed6fd8b55a6",
+    "files_sha256": "e596662baaeb2992209de67a3edc2688c2ca9ffc060fdfa30b18db233ce70f53",
+    "gates": [
+      {
+        "gate": "test",
+        "results_sha256": "759ea596520df6a22aedc067ff317373e97ebfa691a19bd80ace06c8d0a5561d"
+      }
+    ],
+    "acs": [
+      {
+        "id": "AC-1",
+        "tests": [
+          "packages/action/test/ac-d05-allow-adapters.test.ts::an allowed private registry host through the adapters › AC-1: one CLI --dependency-allowed-host flag lets the same entry pass, and the JSON report never names the host",
+          "packages/action/test/ac-d05-allow-adapters.test.ts::an allowed private registry host through the adapters › AC-1: the Action input dependency-allowed-hosts lets a lockfile entry from that host pass, and the report never names the host"
+        ]
+      },
+      {
+        "id": "AC-2",
+        "tests": [
+          "packages/core/test/ac-d05-allow-default.test.ts::no allowed-hosts setting › AC-2: the private-host lockfile entry is a D05 block with a DEPENDENCY_D05 error, exactly as 0.9.1 reports it, and only because no host is allowed"
+        ]
+      },
+      {
+        "id": "AC-3",
+        "tests": [
+          "packages/core/test/ac-d05-allow-url-rules.test.ts::allowed hosts keep the URL rules › AC-3: http, user info, a port or a longer host name on the allowed host is a D05 block; plain https on it is not"
+        ]
+      },
+      {
+        "id": "AC-4",
+        "tests": [
+          "packages/core/test/ac-d05-allow-manifests.test.ts::an allowed host in manifests and requirements files › AC-4: a pyproject `name @ url`, a requirements --index-url and a package.json URL on the allowed host are not D05; on another host each is"
+        ]
+      },
+      {
+        "id": "AC-5",
+        "tests": [
+          "packages/cli/test/ac-d05-allow-input.test.ts::the allowed-hosts input › AC-5: an empty entry between two hosts is skipped, not an error, and the two hosts are allowed",
+          "packages/cli/test/ac-d05-allow-input.test.ts::the allowed-hosts input › AC-5: an entry that is not a host name, or 51 entries, is an input error naming the input or flag and saying what a host name is",
+          "packages/cli/test/ac-d05-allow-input.test.ts::the allowed-hosts input › AC-5: the CLI exits 2 on a --dependency-allowed-host that is not a host name, says what a host name is, and writes no report"
+        ]
+      },
+      {
+        "id": "AC-6",
+        "tests": [
+          "packages/core/test/ac-d05-allow-config.test.ts::.pharn/ci.yml and the allowed hosts › AC-6: dependencies.allowed_hosts with any value is a ConfigError saying the change under review can edit the file, naming the dependency-allowed-hosts input"
+        ]
+      },
+      {
+        "id": "AC-7",
+        "tests": [
+          "packages/core/test/ac-d05-allow-app-policy.test.ts::an app policy's allowed hosts › AC-7: with no input, the app policy's dependencies.allowed_hosts allows the host: no D05, no POLICY_OVERRIDE_IGNORED, policy source app"
+        ]
+      },
+      {
+        "id": "AC-8",
+        "tests": [
+          "packages/core/test/ac-d05-allow-app-replaces.test.ts::the app policy replaces the input's allowed hosts › AC-8: an input host the app list does not name is D05 block, with one POLICY_OVERRIDE_IGNORED warning naming dependencies.allowed_hosts (input) and no host, and the verdict is not pass"
+        ]
+      },
+      {
+        "id": "AC-9",
+        "tests": [
+          "packages/core/test/ac-d05-allow-app-subset.test.ts::an input host the app policy also names › AC-9: nothing is recorded as ignored, the host stays allowed, and no POLICY_OVERRIDE_IGNORED message is in the report"
+        ]
+      },
+      {
+        "id": "AC-10",
+        "tests": [
+          "packages/core/test/ac-d05-allow-file-policy.test.ts::a policy file's allowed hosts › AC-10: a file: policy's dependencies.allowed_hosts allows nothing (the entry is D05) and POLICY_OVERRIDE_IGNORED names dependencies.allowed_hosts (policy-file)"
+        ]
+      },
+      {
+        "id": "AC-11",
+        "tests": [
+          "packages/core/test/ac-d05-allow-lookups.test.ts::lookups and allowed private hosts › AC-11: with lookups on, corp-utils from an allowed private host is not planned, exactly as when the host is not allowed, and it is no D05 finding"
+        ]
+      },
+      {
+        "id": "AC-12",
+        "tests": [
+          "packages/core/test/ac-d05-allow-advice.test.ts::the DEPENDENCY_D05 advice › AC-12: the hint under the D05 finding names dependency-allowed-hosts for a registry the team runs"
+        ]
+      },
+      {
+        "id": "AC-13",
+        "tests": [
+          "packages/core/test/ac-d05-allow-policy-schema.test.ts::dependencies.allowed_hosts in the org policy › AC-13: schema/policy.v1.json accepts host names and refuses a URL, a non-string or 51 entries under /dependencies/allowed_hosts, repeating no value",
+          "packages/core/test/ac-d05-allow-policy-schema.test.ts::dependencies.allowed_hosts in the org policy › AC-13: validatePolicy accepts host names and refuses a URL, a non-string or 51 entries under /dependencies/allowed_hosts, repeating no value"
+        ]
+      },
+      {
+        "id": "AC-14",
+        "tests": [
+          "packages/core/test/ac-d05-allow-docs.test.ts::the allowed hosts in the documentation › AC-14: README documents dependency-allowed-hosts, --dependency-allowed-host and dependencies.allowed_hosts, each with the host-name rules",
+          "packages/core/test/ac-d05-allow-docs.test.ts::the allowed hosts in the documentation › AC-14: schema/policy.v1.json describes dependencies.allowed_hosts with its tighten rule"
+        ]
+      }
+    ]
+  },
+  "test_infra": {
+    "levels": [
+      "integration",
+      "unit"
+    ],
+    "gates": [
+      {
+        "id": "test",
+        "script": "vitest run",
+        "pre": null,
+        "post": null,
+        "results": "vitest-json"
+      }
+    ],
+    "chained": [],
+    "configs": [
+      {
+        "path": "vitest.config.ts",
+        "sha256": "84fef4870fed6a1d5156f5260cd8fcc9b6d1dcca7cc76e8de3c86a978b336fec"
+      }
+    ],
+    "script_files": [],
+    "jest": null,
+    "exclude": [],
+    "other_gates": [
+      {
+        "id": "build",
+        "script": "pnpm -r build",
+        "pre": null,
+        "post": null
+      },
+      {
+        "id": "lint",
+        "script": "biome check . && pnpm -r typecheck",
+        "pre": null,
+        "post": null
+      }
+    ],
+    "other_chained": []
+  }
+}

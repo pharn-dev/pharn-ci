@@ -1,0 +1,260 @@
+{
+  "feature": "d05-private-registry-allowlist",
+  "gates": {
+    "build": 0,
+    "instruction-growth": 0,
+    "lint": 0,
+    "reconcile": 0,
+    "test": 1
+  },
+  "verdict": "FAIL",
+  "failing_gates": [
+    "test"
+  ],
+  "gate_run": {
+    "stamp_sha256": "3f4f344b1a7eb359b26e6e1be47c5fedb7faf652331a6f4d54677c8841e6d513",
+    "source": "discover",
+    "fingerprint": {
+      "algo": "worktree-fingerprint/3+sha256",
+      "final": "be8c4219fb96ca834e62c7eee13fa38955d65268d79c9f8d01828a22d4448955"
+    }
+  },
+  "ac_gate": {
+    "mode": "test-first",
+    "verdict": "PASS",
+    "reason": null,
+    "evidence": [],
+    "acs": [
+      {
+        "id": "AC-1",
+        "level": "integration",
+        "tests": [
+          "packages/action/test/ac-d05-allow-adapters.test.ts::an allowed private registry host through the adapters › AC-1: one CLI --dependency-allowed-host flag lets the same entry pass, and the JSON report never names the host",
+          "packages/action/test/ac-d05-allow-adapters.test.ts::an allowed private registry host through the adapters › AC-1: the Action input dependency-allowed-hosts lets a lockfile entry from that host pass, and the report never names the host"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-2",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-d05-allow-default.test.ts::no allowed-hosts setting › AC-2: the private-host lockfile entry is a D05 block with a DEPENDENCY_D05 error, exactly as 0.9.1 reports it, and only because no host is allowed"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-3",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-d05-allow-url-rules.test.ts::allowed hosts keep the URL rules › AC-3: http, user info, a port or a longer host name on the allowed host is a D05 block; plain https on it is not"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-4",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-d05-allow-manifests.test.ts::an allowed host in manifests and requirements files › AC-4: a pyproject `name @ url`, a requirements --index-url and a package.json URL on the allowed host are not D05; on another host each is"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-5",
+        "level": "unit",
+        "tests": [
+          "packages/cli/test/ac-d05-allow-input.test.ts::the allowed-hosts input › AC-5: an empty entry between two hosts is skipped, not an error, and the two hosts are allowed",
+          "packages/cli/test/ac-d05-allow-input.test.ts::the allowed-hosts input › AC-5: an entry that is not a host name, or 51 entries, is an input error naming the input or flag and saying what a host name is",
+          "packages/cli/test/ac-d05-allow-input.test.ts::the allowed-hosts input › AC-5: the CLI exits 2 on a --dependency-allowed-host that is not a host name, says what a host name is, and writes no report"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-6",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-d05-allow-config.test.ts::.pharn/ci.yml and the allowed hosts › AC-6: dependencies.allowed_hosts with any value is a ConfigError saying the change under review can edit the file, naming the dependency-allowed-hosts input"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-7",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-d05-allow-app-policy.test.ts::an app policy's allowed hosts › AC-7: with no input, the app policy's dependencies.allowed_hosts allows the host: no D05, no POLICY_OVERRIDE_IGNORED, policy source app"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-8",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-d05-allow-app-replaces.test.ts::the app policy replaces the input's allowed hosts › AC-8: an input host the app list does not name is D05 block, with one POLICY_OVERRIDE_IGNORED warning naming dependencies.allowed_hosts (input) and no host, and the verdict is not pass"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-9",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-d05-allow-app-subset.test.ts::an input host the app policy also names › AC-9: nothing is recorded as ignored, the host stays allowed, and no POLICY_OVERRIDE_IGNORED message is in the report"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-10",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-d05-allow-file-policy.test.ts::a policy file's allowed hosts › AC-10: a file: policy's dependencies.allowed_hosts allows nothing (the entry is D05) and POLICY_OVERRIDE_IGNORED names dependencies.allowed_hosts (policy-file)"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-11",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-d05-allow-lookups.test.ts::lookups and allowed private hosts › AC-11: with lookups on, corp-utils from an allowed private host is not planned, exactly as when the host is not allowed, and it is no D05 finding"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-12",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-d05-allow-advice.test.ts::the DEPENDENCY_D05 advice › AC-12: the hint under the D05 finding names dependency-allowed-hosts for a registry the team runs"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-13",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-d05-allow-policy-schema.test.ts::dependencies.allowed_hosts in the org policy › AC-13: schema/policy.v1.json accepts host names and refuses a URL, a non-string or 51 entries under /dependencies/allowed_hosts, repeating no value",
+          "packages/core/test/ac-d05-allow-policy-schema.test.ts::dependencies.allowed_hosts in the org policy › AC-13: validatePolicy accepts host names and refuses a URL, a non-string or 51 entries under /dependencies/allowed_hosts, repeating no value"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-14",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-d05-allow-docs.test.ts::the allowed hosts in the documentation › AC-14: README documents dependency-allowed-hosts, --dependency-allowed-host and dependencies.allowed_hosts, each with the host-name rules",
+          "packages/core/test/ac-d05-allow-docs.test.ts::the allowed hosts in the documentation › AC-14: schema/policy.v1.json describes dependencies.allowed_hosts with its tighten rule"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      }
+    ],
+    "unmapped_anomalies": [],
+    "note": "an AC is delivered = a locked, once-red test titled AC-<n>:, in a file mapped to AC-<n>, passed on this head run. PHARN does not judge whether that test fully captures the AC's intent."
+  },
+  "completeness": {
+    "plan": "pharn/features/d05-private-registry-allowlist/PLAN.md",
+    "repoDir": ".",
+    "declared": [
+      "packages/core/src/dependencies/hosts.ts",
+      "packages/core/src/dependencies/settings.ts",
+      "packages/core/src/dependencies/types.ts",
+      "packages/core/src/dependencies/npmManifest.ts",
+      "packages/core/src/dependencies/pythonManifest.ts",
+      "packages/core/src/dependencies/check.ts",
+      "packages/core/src/inputs.ts",
+      "packages/core/src/config.ts",
+      "packages/core/src/policy/limits.ts",
+      "packages/core/src/policy/grammar.ts",
+      "packages/core/src/policy/errors.ts",
+      "packages/core/src/policy/validate.ts",
+      "packages/core/src/policy/types.ts",
+      "packages/core/src/policy/apply.ts",
+      "packages/core/src/render/markdown.ts",
+      "packages/cli/src/main.ts",
+      "packages/action/src/run.ts",
+      "action.yml",
+      "schema/policy.v1.json",
+      "packages/action/dist/index.js",
+      "README.md",
+      "docs/LIMITS.md",
+      "docs/THREAT-MODEL.md",
+      "CHANGELOG.md",
+      "fixtures/dependencies/d05-private-host/change.diff",
+      "fixtures/dependencies/d05-private-host/files.txt",
+      "fixtures/dependencies/d05-private-host/base/package.json.txt",
+      "fixtures/dependencies/d05-private-host/base/package-lock.json.txt",
+      "fixtures/dependencies/d05-private-host/base/requirements.txt.fixture",
+      "fixtures/dependencies/d05-private-host/head/package.json.txt",
+      "fixtures/dependencies/d05-private-host/head/package-lock.json.txt",
+      "fixtures/dependencies/d05-private-host/head/requirements.txt.fixture",
+      "packages/core/test/dependencies-allowed-hosts.test.ts",
+      "packages/core/test/dependencies-settings.test.ts",
+      "packages/core/test/policy-schema.test.ts",
+      "packages/core/test/dependencies-render.test.ts",
+      "packages/core/test/ac-ti081516-docs.test.ts"
+    ],
+    "skipped": [],
+    "missing": [],
+    "deletions": [],
+    "undeleted": [],
+    "complete": true,
+    "verdict": "complete"
+  },
+  "verifiers": {
+    "registered": 0,
+    "findings": []
+  },
+  "gate_reuse": {
+    "reused": [
+      {
+        "id": "build",
+        "stage": "regress",
+        "side": "head",
+        "seq": 1
+      }
+    ]
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "reconcile_detail": {
+    "state": "parsed",
+    "exit": 0,
+    "verdict": "CLEAN",
+    "escapes": [],
+    "escapes_total": 0,
+    "merged_count": 0
+  }
+}
