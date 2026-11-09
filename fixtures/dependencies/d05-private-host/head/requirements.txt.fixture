@@ -1,0 +1,2 @@
+--index-url https://npm.corp.example/api/pypi/simple
+requests==2.31.0

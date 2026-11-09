@@ -212,7 +212,7 @@ export const MESSAGE_HINTS: Readonly<Record<MessageCode, Hint>> = {
   DEPENDENCY_D04:
     "Run the package manager's install so the lockfile matches the manifest, and commit both; a lockfile that changes a hash for the same version needs an explanation.",
   DEPENDENCY_D05:
-    "Depend on a published registry version instead, or have a person review where the code comes from; a git, URL or local source is not covered by the registry's checks.",
+    "Depend on a published registry version instead, or have a person review where the code comes from; a git, URL or local source is not covered by the registry's checks. For a registry your team runs (Artifactory, Nexus, a private PyPI index), name its host in the dependency-allowed-hosts input or the org policy's dependencies.allowed_hosts.",
   DEPENDENCY_LOOKUP_UNAVAILABLE:
     "Re-run the job; the registry lookups fail open, so D01 to D03 were not checked for the packages counted.",
   DEPENDENCY_CHECK_INCOMPLETE:

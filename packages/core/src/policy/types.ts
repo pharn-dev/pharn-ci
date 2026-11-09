@@ -98,6 +98,11 @@ export interface PolicyDependencies {
   registries?: PolicyRegistry[];
   min_age_days?: number;
   min_weekly_downloads?: number;
+  /**
+   * Registry hosts, besides the four public ones, whose https URLs D05 accepts (a private npm or PyPI registry the team
+   * runs). From an app policy it replaces the workflow input's list; a policy file may not set it.
+   */
+  allowed_hosts?: string[];
 }
 
 /** A prompt-injection signal id. */

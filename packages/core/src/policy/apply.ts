@@ -55,7 +55,8 @@ function normalizedRoot(root: string): string {
  *   `policy.required` are `not-allowed`; a lower value than the layers already give is `looser`. Both are recorded and
  *   not applied.
  * - `setup.expect` is the union of every layer. `dependencies` goes into the dependency settings layers (see
- *   `applyDependencies`). Every other key is carried in the document, not applied.
+ *   `applyDependencies`; an app policy's `allowed_hosts` replaces the input's, a file's is `not-allowed`). Every other
+ *   key is carried in the document, not applied.
  */
 export function applyPolicy(layers: PolicyLayers, policy: ResolvedPolicy): PolicyApplication {
   const document = policy.document;
@@ -215,7 +216,9 @@ function applySetup(
 /**
  * The policy's `dependencies` added to the dependency settings (A13; `resolveDependencySettings` applies them). An app
  * policy with the key requires the check, so a `never` input is beaten and recorded `looser`. A policy file may only
- * tighten: its `registries` would narrow what is looked up, so they are `not-allowed`.
+ * tighten: its `registries` would narrow what is looked up, and its `allowed_hosts` would loosen D05, so both are
+ * `not-allowed`. An app policy's `allowed_hosts` replaces the input's list (see `resolveDependencySettings`); each input
+ * host it does not name is one `looser` record, `dependencies.allowed_hosts` of layer `input`.
  */
 function applyDependencies(
   layers: PolicyLayers,
@@ -231,6 +234,18 @@ function applyDependencies(
   if (!app && deps.registries !== undefined) {
     ignored.push({ setting: "dependencies.registries", layer: "policy-file", reason: "not-allowed" });
   }
+  // Allowed registry hosts: an app policy's list replaces the input's (an input host it leaves out is `looser`, named by
+  // setting and layer only, never by host); a policy file may allow no host, so a non-empty list is `not-allowed`.
+  if (deps.allowed_hosts !== undefined) {
+    if (app) {
+      const named = deps.allowed_hosts.map((host) => host.toLowerCase());
+      if ((given?.allowedHosts ?? []).some((host) => !named.includes(host))) {
+        ignored.push({ setting: "dependencies.allowed_hosts", layer: "input", reason: "looser" });
+      }
+    } else if (deps.allowed_hosts.length > 0) {
+      ignored.push({ setting: "dependencies.allowed_hosts", layer: "policy-file", reason: "not-allowed" });
+    }
+  }
   inputs.dependencies = {
     ...given,
     policy: {
@@ -239,6 +254,7 @@ function applyDependencies(
       ...(deps.min_age_days === undefined ? {} : { minAgeDays: deps.min_age_days }),
       ...(deps.min_weekly_downloads === undefined ? {} : { minWeeklyDownloads: deps.min_weekly_downloads }),
       ...(app && deps.registries !== undefined ? { registries: [...deps.registries] } : {}),
+      ...(app && deps.allowed_hosts !== undefined ? { allowedHosts: [...deps.allowed_hosts] } : {}),
     },
   };
 }

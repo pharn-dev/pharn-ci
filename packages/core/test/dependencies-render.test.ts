@@ -24,7 +24,7 @@ describe("the Dependencies section", () => {
         "5 added or changed dependencies checked · registry lookups off",
         "",
         "- ❌ **D05** `package.json:7` `from-git` — declared from a git repository",
-        "  - Hint: Depend on a published registry version instead, or have a person review where the code comes from; a git, URL or local source is not covered by the registry's checks.",
+        "  - Hint: Depend on a published registry version instead, or have a person review where the code comes from; a git, URL or local source is not covered by the registry's checks. For a registry your team runs (Artifactory, Nexus, a private PyPI index), name its host in the dependency-allowed-hosts input or the org policy's dependencies.allowed_hosts.",
         "- ❌ **D05** `package.json:8` `from-tarball` — declared from a URL outside the allowed registries",
         "- ❌ **D05** `package.json:9` `from-disk` — declared from a local file",
         "",

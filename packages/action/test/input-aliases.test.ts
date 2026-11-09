@@ -51,6 +51,8 @@ const SHIPPED_INPUTS = [
   "junit-paths",
   // Added by A13 (dependency safety).
   "dependencies",
+  // Added by the D05 private-registry allow-list.
+  "dependency-allowed-hosts",
 ];
 // "run-url" was added by E3 item 21 (the run upload).
 const SHIPPED_OUTPUTS = ["report-path", "verdict", "diff-coverage", "run-url"];

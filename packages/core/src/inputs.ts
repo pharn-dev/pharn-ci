@@ -9,6 +9,7 @@ import {
 } from "./config.js";
 import type { CoverageFormatSelection } from "./coverage/types.js";
 import { coverageEntryList, parseCoverageEntries } from "./coverageEntries.js";
+import { parseAllowedHosts } from "./dependencies/hosts.js";
 import { type DependencySettingsLayers, dependencyModeError, isDependencyMode } from "./dependencies/settings.js";
 import type { AgentTool } from "./setup/summary.js";
 import { isTestIntegrityMode, type TestIntegrityModeSettings, testIntegrityModeError } from "./testIntegrityMode.js";
@@ -32,6 +33,11 @@ export interface RawInputs {
   testIntegrity?: string | undefined;
   /** The dependency safety mode as given (auto, lookup or never); trimmed here, and empty counts as not given. */
   dependencies?: string | undefined;
+  /**
+   * Registry hosts, besides the four public ones, whose https URLs dependency safety (D05) accepts: each entry
+   * trimmed, empty entries skipped, then validated as a host name (at most 50 entries) and lower-cased.
+   */
+  dependencyAllowedHosts?: readonly string[] | undefined;
 }
 
 /** How an adapter names its flags or inputs in error messages. */
@@ -52,6 +58,8 @@ export interface InputErrorText {
   testIntegrity?: string;
   /** Label for a dependencies mode that is not auto, lookup or never. Defaults to "dependencies". */
   dependencies?: string;
+  /** Label for an allowed registry host that is not a host name. Defaults to "dependency-allowed-hosts". */
+  dependencyAllowedHosts?: string;
   /** The error when neither the input nor the config names a coverage file. */
   noCoverageFile: string;
 }
@@ -111,7 +119,7 @@ export type ResolveInputsResult =
 /**
  * Merge the CLI flags or Action inputs with a parsed `.pharn/ci.yml`. Pure. Every invalid setting
  * yields one error, in the order coverage format, threshold, coverage file, exclusion patterns,
- * coverage root, expected agent tools, test-integrity mode. With `options.discoverCoverage`, no coverage file given anywhere is not
+ * coverage root, expected agent tools, test-integrity mode, dependencies mode, allowed registry hosts. With `options.discoverCoverage`, no coverage file given anywhere is not
  * an error: `coverageFile` resolves to `{ discover: true }` and the adapter looks for the report.
  */
 export function resolveInputs(
@@ -196,10 +204,15 @@ export function resolveInputs(
     return givenDependencies;
   });
 
+  const allowedHosts = attempt("dependencyAllowedHosts", () =>
+    parseAllowedHosts(raw.dependencyAllowedHosts ?? [], text.dependencyAllowedHosts ?? "dependency-allowed-hosts"),
+  );
+
   const [first, ...rest] = errors;
   if (first !== undefined) return { ok: false, errors: [first, ...rest] };
   const dependencyLayers: DependencySettingsLayers = {
     ...(dependencyInput === undefined ? {} : { input: dependencyInput }),
+    ...(allowedHosts === undefined || allowedHosts.length === 0 ? {} : { allowedHosts }),
     ...(config.dependencies === undefined ? {} : { config: { ...config.dependencies } }),
   };
   const modeSettings: TestIntegrityModeSettings = {

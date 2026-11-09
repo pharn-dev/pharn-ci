@@ -24,6 +24,7 @@ import type {
   ParsedManifest,
   SourceKind,
 } from "./types.js";
+import { isAllowedRegistryUrl } from "./urls.js";
 import { parseYarnLock } from "./yarnLock.js";
 
 /** The most signals `dependencies.signals` holds; `truncated` counts the rest. */
@@ -133,9 +134,16 @@ function manifestNames(ecosystem: DependencyEcosystem, dep: ManifestDependency) 
 /**
  * The offline part of dependency safety over the manifests and lockfiles the diff touches, or null when it touches
  * none. Each touched file is read on the side(s) it exists on and parsed; a file that could not be read or parsed is
- * named in `unread` and judged no further.
+ * named in `unread` and judged no further. `allowedHosts` are the private registry hosts the run allows besides the four
+ * public ones: a URL on one (https, no user name, password or port) is no D05 signal, and a lockfile entry resolved from
+ * one stays in `offRegistry`, so its name is never looked up in a public registry.
  */
-function analyze(diff: readonly DiffFile[], sources: TestSources, repoFiles: readonly string[]): Analysis | null {
+function analyze(
+  diff: readonly DiffFile[],
+  sources: TestSources,
+  repoFiles: readonly string[],
+  allowedHosts: readonly string[],
+): Analysis | null {
   const files = diff.filter(
     (file) => classifyDependencyFile(file.path) !== null || classifyDependencyFile(file.oldPath) !== null,
   );
@@ -148,6 +156,8 @@ function analyze(diff: readonly DiffFile[], sources: TestSources, repoFiles: rea
     head: new Map<string, Parsed | DependencyUnreadReason>(),
   };
   const analysis: Analysis = { checked: 0, signals: [], unread: new Map(), added: [], offRegistry: new Set() };
+  const onAllowedHost = (url: string | undefined): boolean =>
+    url !== undefined && allowedHosts.length > 0 && isAllowedRegistryUrl(url, allowedHosts);
   const read = (side: "base" | "head", path: string, kind: DependencyFileKind): Parsed | null => {
     let got = cache[side].get(path);
     if (got === undefined) {
@@ -193,7 +203,7 @@ function analyze(diff: readonly DiffFile[], sources: TestSources, repoFiles: rea
     const changes = manifestChanges(base, head);
     analysis.checked += changes.added.length + changes.changed.length;
     for (const dep of [...changes.added, ...changes.changed]) {
-      if (dep.kind !== "registry" && isOffRegistry(dep.kind, dep.allowedUrl)) {
+      if (dep.kind !== "registry" && isOffRegistry(dep.kind, dep.allowedUrl === true || onAllowedHost(dep.url))) {
         analysis.signals.push(
           signal("D05", eco, path, dep.line, `declared from ${KIND_WORDS[dep.kind]}`, manifestNames(eco, dep)),
         );
@@ -201,7 +211,7 @@ function analyze(diff: readonly DiffFile[], sources: TestSources, repoFiles: rea
     }
     const baseIndexes = new Set((base?.indexes ?? []).map((option) => option.url));
     for (const option of head.indexes) {
-      if (!option.allowed && !baseIndexes.has(option.url)) {
+      if (!option.allowed && !onAllowedHost(option.url) && !baseIndexes.has(option.url)) {
         analysis.signals.push(
           signal("D05", eco, path, option.line, "adds a package index outside the allowed registries"),
         );
@@ -256,6 +266,11 @@ function analyze(diff: readonly DiffFile[], sources: TestSources, repoFiles: rea
     analysis.checked += changes.added.length + changes.changed.length;
     for (const entry of changes.sourceNew) {
       const source = entry.source;
+      if (source.kind === "url" && !source.allowed && onAllowedHost(source.text)) {
+        if (entry.name !== null)
+          analysis.offRegistry.add(`${eco}:${eco === "pypi" ? normalizePypiName(entry.name) : entry.name}`);
+        continue;
+      }
       const off =
         (source.kind === "url" && !source.allowed) || source.kind === "git" || source.kind === "file"
           ? (source.kind as "url" | "git" | "file")
@@ -297,7 +312,7 @@ export function planDependencyLookups(
   settings: ResolvedDependencySettings,
 ): { planned: PlannedLookup[]; overCap: number } | null {
   if (settings.mode !== "lookup") return { planned: [], overCap: 0 };
-  const analysis = analyze(diff, sources, repoFiles);
+  const analysis = analyze(diff, sources, repoFiles, settings.allowedHosts ?? []);
   if (analysis === null) return null;
   return planLookups(analysis.added, analysis.offRegistry, settings.registries);
 }
@@ -325,9 +340,9 @@ export function checkDependencies(input: {
   settings: ResolvedDependencySettings;
   lookups?: DependencyLookups;
 }): { report: ReportDependencies; messages: Message[] } | undefined {
-  const analysis = analyze(input.diff, input.sources, input.repoFiles);
-  if (analysis === null) return undefined;
   const { settings } = input;
+  const analysis = analyze(input.diff, input.sources, input.repoFiles, settings.allowedHosts ?? []);
+  if (analysis === null) return undefined;
   const signals = [...analysis.signals];
   let lookups: ReportDependencies["lookups"] = "off";
   let unavailable: Message | null = null;

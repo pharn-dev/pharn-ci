@@ -25,10 +25,12 @@ export function dependencyModeError(label: string, value: string): string {
 /**
  * The raw settings of dependency safety, each layer absent when not given: the input (or flag), `dependencies` in
  * `.pharn/ci.yml` (which the pull request carries, so it may only tighten), and the org policy's `dependencies`
- * (`app`: authoritative; `file`: carried by the pull request, so it may only tighten too).
+ * (`app`: authoritative; `file`: carried by the pull request, so it may only tighten too). `allowedHosts` is the
+ * input's list of private registry hosts D05 accepts (validated by `parseAllowedHosts`); `.pharn/ci.yml` cannot set it.
  */
 export interface DependencySettingsLayers {
   input?: DependencyMode;
+  allowedHosts?: string[];
   config?: { lookup?: boolean; minAgeDays?: number; minWeeklyDownloads?: number };
   policy?: {
     kind: "app" | "file";
@@ -36,15 +38,22 @@ export interface DependencySettingsLayers {
     minAgeDays?: number;
     minWeeklyDownloads?: number;
     registries?: PolicyRegistry[];
+    /** Only an app policy's list is read; a file policy's is never applied. */
+    allowedHosts?: string[];
   };
 }
 
-/** The settings a run uses. `registries` are the ecosystems whose added packages are looked up. */
+/**
+ * The settings a run uses. `registries` are the ecosystems whose added packages are looked up. `allowedHosts` are the
+ * private registry hosts, lower-cased and de-duplicated, whose https URLs D05 accepts besides the four public ones;
+ * absent when there are none.
+ */
 export interface ResolvedDependencySettings {
   mode: DependencyMode;
   minAgeDays: number;
   minWeeklyDownloads: number;
   registries: PolicyRegistry[];
+  allowedHosts?: string[];
 }
 
 /**
@@ -53,7 +62,8 @@ export interface ResolvedDependencySettings {
  * job sends no package name to a registry, and a file the pull request carries cannot overrule it. An app policy that
  * has a `dependencies` key requires the check: `never` from the input becomes `auto`, and its `lookup: true` turns
  * lookups on whatever the input says. The minimums take the largest value of every layer (an app policy's value
- * replaces the default first); only an app policy narrows the registries looked up.
+ * replaces the default first); only an app policy narrows the registries looked up. The allowed hosts are the input's
+ * list, replaced by an app policy's list when it has one; a policy file's list is never read, and the config has none.
  */
 export function resolveDependencySettings(layers: DependencySettingsLayers = {}): ResolvedDependencySettings {
   let mode: DependencyMode = layers.input ?? "auto";
@@ -71,6 +81,7 @@ export function resolveDependencySettings(layers: DependencySettingsLayers = {})
   const file = policy?.kind === "file" ? policy : undefined;
   const largest = (start: number, ...values: Array<number | undefined>) =>
     values.reduce<number>((max, value) => (value !== undefined && value > max ? value : max), start);
+  const hosts = [...new Set((app?.allowedHosts ?? layers.allowedHosts ?? []).map((host) => host.toLowerCase()))];
   return {
     mode,
     minAgeDays: largest(app?.minAgeDays ?? DEFAULT_MIN_AGE_DAYS, layers.config?.minAgeDays, file?.minAgeDays),
@@ -83,5 +94,6 @@ export function resolveDependencySettings(layers: DependencySettingsLayers = {})
       app?.registries === undefined
         ? ["npm", "pypi"]
         : (["npm", "pypi"] as const).filter((r) => app.registries?.includes(r)),
+    ...(hosts.length === 0 ? {} : { allowedHosts: hosts }),
   };
 }

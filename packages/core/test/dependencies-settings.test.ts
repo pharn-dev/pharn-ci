@@ -139,3 +139,84 @@ describe("the org policy", () => {
     expect(resolveDependencySettings(file.inputs.dependencies).mode).toBe("never");
   });
 });
+
+describe("the allowed registry hosts", () => {
+  const layersWith = (hosts: string[]) => ({
+    config: {},
+    raw: { coverageFile: "c", dependencyAllowedHosts: hosts },
+    resolved: {
+      coverageFile: { path: "c", fromConfig: false },
+      coverageFormat: "auto" as const,
+      threshold: null,
+      exclude: [],
+      coverageRoot: undefined,
+      requireAgentSetup: false,
+      dependencies: { allowedHosts: hosts },
+    },
+  });
+
+  it("is absent from the resolved settings unless a host is given, lower-cased and de-duplicated", () => {
+    expect(resolveDependencySettings()).not.toHaveProperty("allowedHosts");
+    expect(resolveDependencySettings({ allowedHosts: [] })).not.toHaveProperty("allowedHosts");
+    expect(resolveDependencySettings({ allowedHosts: ["A.example", "a.example", "b.example"] }).allowedHosts).toEqual([
+      "a.example",
+      "b.example",
+    ]);
+  });
+
+  it("lets an app policy's list replace the input's, and never reads a policy file's", () => {
+    const input = ["a.example", "b.example"];
+    expect(
+      resolveDependencySettings({ allowedHosts: input, policy: { kind: "app", allowedHosts: ["c.example"] } })
+        .allowedHosts,
+    ).toEqual(["c.example"]);
+    expect(
+      resolveDependencySettings({ allowedHosts: input, policy: { kind: "app", allowedHosts: [] } }),
+    ).not.toHaveProperty("allowedHosts");
+    expect(resolveDependencySettings({ allowedHosts: input, policy: { kind: "app" } }).allowedHosts).toEqual(input);
+    expect(
+      resolveDependencySettings({ allowedHosts: input, policy: { kind: "file", allowedHosts: ["c.example"] } })
+        .allowedHosts,
+    ).toEqual(input);
+    expect(resolveDependencySettings({ policy: { kind: "file", allowedHosts: ["c.example"] } })).not.toHaveProperty(
+      "allowedHosts",
+    );
+  });
+
+  it("records the input hosts an app policy leaves out, and a policy file's list, by setting and layer only", () => {
+    const layers = layersWith(["a.example", "b.example"]);
+    const app = applyPolicy(layers, appPolicy({ allowed_hosts: ["A.example", "b.EXAMPLE", "c.example"] }));
+    expect(app.ignored).toEqual([]);
+    expect(app.inputs.dependencies).toEqual({
+      allowedHosts: ["a.example", "b.example"],
+      policy: { kind: "app", allowedHosts: ["A.example", "b.EXAMPLE", "c.example"] },
+    });
+    const narrower = applyPolicy(layers, appPolicy({ allowed_hosts: ["a.example"] }));
+    expect(narrower.ignored).toEqual([{ setting: "dependencies.allowed_hosts", layer: "input", reason: "looser" }]);
+    expect(resolveDependencySettings(narrower.inputs.dependencies).allowedHosts).toEqual(["a.example"]);
+    const file = applyPolicy(layers, filePolicy({ allowed_hosts: ["c.example"] }));
+    expect(file.ignored).toEqual([
+      { setting: "dependencies.allowed_hosts", layer: "policy-file", reason: "not-allowed" },
+    ]);
+    expect(resolveDependencySettings(file.inputs.dependencies).allowedHosts).toEqual(["a.example", "b.example"]);
+    expect(applyPolicy(layers, filePolicy({ allowed_hosts: [] })).ignored).toEqual([]);
+  });
+
+  it("refuses dependencies.allowed_hosts in .pharn/ci.yml and a bad input entry, naming the input", () => {
+    expect(() => parseConfig("dependencies:\n  allowed_hosts: [a.example]\n")).toThrow(/dependency-allowed-hosts/);
+    expect(() => parseConfig("dependencies:\n  allowed_hosts:\n")).toThrow(ConfigError);
+    const bad = resolveInputs(
+      {},
+      { coverageFile: "c", dependencyAllowedHosts: ["a.example", "https://b.example/x"] },
+      { ...TEXT, dependencyAllowedHosts: "dependency-allowed-hosts" },
+    );
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) {
+      expect(bad.errors[0].input).toBe("dependencyAllowedHosts");
+      expect(bad.errors[0].message).toContain("entry 2");
+      expect(bad.errors[0].message).not.toContain("b.example");
+    }
+    const ok = resolveInputs({}, { coverageFile: "c", dependencyAllowedHosts: [" A.example ", ""] }, TEXT);
+    expect(ok.ok && ok.inputs.dependencies).toEqual({ allowedHosts: ["a.example"] });
+  });
+});

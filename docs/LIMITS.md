@@ -1174,10 +1174,18 @@ comes from and how new it is, not what it does. What it misses:
   `PIP_INDEX_URL`) is not seen. pnpm records no registry host for a registry package, so a private registry configured
   in `.npmrc` is invisible to D05 there; a yarn berry `npm:` resolution is trusted as the configured registry. A
   private registry or mirror that a lockfile does record (Artifactory, Verdaccio, GitHub Packages, a private PyPI
-  index) is reported as off the registry (D05): private registries are not supported unless they are on the allowed
-  list (a later version may take a policy list with a token).
+  index) is reported as off the registry (D05) unless its host is on the allowed list: the `dependency-allowed-hosts`
+  input, the CLI's `--dependency-allowed-host` flag or an app policy's `dependencies.allowed_hosts` (README,
+  Dependency safety). The list is host names only, so a registry that is allowed is trusted as a whole: D05 does not look
+  at a path, a port or a token, and a package on an allowed host is not looked up, so D01 to D03 never judge it.
 - **Allowed hosts are exact.** `registry.npmjs.org`, `registry.yarnpkg.com`, `pypi.org` and `files.pythonhosted.org`,
-  https only, no user name, password or port. `http://registry.npmjs.org`, a CDN mirror or a regional registry is D05.
+  and the hosts a run allows, https only, no user name, password or port. `http://registry.npmjs.org`, a CDN mirror or a
+  regional registry is D05 unless its own host is allowed. An allowed host matches by its full name, case-insensitively:
+  `npm.corp.example` does not allow `evil.npm.corp.example`, a subdomain or a wildcard (`*.corp.example` is refused), and a
+  host given with a scheme, path, port or user name is refused as an input error. At most 50 hosts, 253 characters each;
+  an entry such as `.` or `a..b` passes the grammar but equals no URL host, so it allows nothing. The workflow input is
+  carried by the pull request when the pull request edits the workflow file, like every input; `.pharn/ci.yml` cannot set
+  the list, and an app policy's list replaces the input's, which is the control a pull request cannot move.
 - **D04 compares, it does not resolve.** It needs the lockfile to record the manifest's spec as written
   (package-lock.json v2+ and pnpm importers, yarn headers) or, for poetry and uv, the package name. package-lock.json
   v1 records no specifiers, so only "the lockfile did not change" is judged there. A lockfile in an ancestor directory

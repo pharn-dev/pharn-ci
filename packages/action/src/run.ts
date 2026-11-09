@@ -248,6 +248,7 @@ const INPUT_ERRORS: InputErrorText = {
   expectAgentSetup: "expect-agent-setup",
   testIntegrity: "test-integrity",
   dependencies: "dependencies",
+  dependencyAllowedHosts: "dependency-allowed-hosts",
   noCoverageFile: "no coverage file: set the coverage-file input or coverage.file in .pharn/ci.yml",
 };
 
@@ -340,6 +341,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     expectAgentSetup: splitPatternList(input("expect-agent-setup")),
     testIntegrity: input("test-integrity") || undefined,
     dependencies: input("dependencies") || undefined,
+    dependencyAllowedHosts: splitPatternList(input("dependency-allowed-hosts")),
   };
   const resolved = resolveInputs(
     config,
