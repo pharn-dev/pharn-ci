@@ -34,6 +34,7 @@ describe("release-030: CHANGELOG.md shape", () => {
     const headings = all.filter((line) => line.startsWith("## ["));
     expect(headings).toEqual([
       "## [Unreleased]",
+      "## [0.10.0] - 2026-11-09",
       "## [0.9.1] - 2026-11-08",
       "## [0.9.0] - 2026-11-08",
       "## [0.8.0] - 2026-11-08",

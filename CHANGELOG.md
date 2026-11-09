@@ -9,6 +9,14 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+### Changed
+
+### Security
+
+## [0.10.0] - 2026-11-09
+
+### Added
+
 - Private registry allow-list for dependency safety (D05): a team that runs its own npm or PyPI registry (Artifactory,
   Nexus, a private index) names its host in the new `dependency-allowed-hosts` input (comma or newline separated), the
   CLI's repeatable `--dependency-allowed-host` flag or an app policy's new `dependencies.allowed_hosts`, and D05 stops
