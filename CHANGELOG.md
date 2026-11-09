@@ -13,6 +13,9 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Security
 
+- The `.pharn/ci.yml` key/value pattern no longer backtracks quadratically on a long run of whitespace after a key
+  (CodeQL js/polynomial-redos); parsed values are unchanged.
+
 ## [0.9.1] - 2026-11-08
 
 A release-process fix so pharn-ci can be listed on the GitHub Marketplace. The Action is unchanged from 0.9.0 apart from its version number.

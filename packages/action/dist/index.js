@@ -27390,12 +27390,12 @@ function parseYamlSubset(text) {
     while (stack.length > 1 && indent < stack[stack.length - 1].indent) stack.pop();
     const top = stack[stack.length - 1];
     if (indent !== top.indent) throw new ConfigError(`line ${lineNo}: unexpected indentation`);
-    const match = /^([A-Za-z0-9_-]+|"[^"]*"|'[^']*')\s*:(?:\s+(.*))?$/.exec(content);
+    const match = /^([A-Za-z0-9_-]+|"[^"]*"|'[^']*')\s*:(?:\s(.*))?$/.exec(content);
     if (!match) throw new ConfigError(`line ${lineNo}: expected "key: value"`);
     const key = unquoteScalarKey(match[1]);
     if (key === "__proto__") throw new ConfigError(`line ${lineNo}: the key "__proto__" is not allowed`);
     if (Object.hasOwn(top.map, key)) throw new ConfigError(`line ${lineNo}: duplicate key "${key}"`);
-    const value = match[2];
+    const value = match[2]?.trimStart();
     if (value === void 0 || value === "") {
       pendingKey = { map: top.map, key, indent, line: lineNo };
     } else if (value.startsWith("[")) {

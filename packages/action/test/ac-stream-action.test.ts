@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { VERSION } from "../../core/src/version.js";
-import { expectValidReport } from "../../core/test/schema.js";
 
 // run() is loaded inside each test body: the AC tests are written before the Action streams its local diff and
 // coverage files, so nothing that depends on that may run while the file loads. The Action runs against in-memory

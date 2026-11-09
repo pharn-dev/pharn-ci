@@ -129,14 +129,16 @@ export function parseYamlSubset(text: string): YamlMap {
     const top = stack[stack.length - 1] as { indent: number; map: YamlMap };
     if (indent !== top.indent) throw new ConfigError(`line ${lineNo}: unexpected indentation`);
 
-    const match = /^([A-Za-z0-9_-]+|"[^"]*"|'[^']*')\s*:(?:\s+(.*))?$/.exec(content);
+    const match = /^([A-Za-z0-9_-]+|"[^"]*"|'[^']*')\s*:(?:\s(.*))?$/.exec(content);
     if (!match) throw new ConfigError(`line ${lineNo}: expected "key: value"`);
     const key = unquoteScalarKey(match[1] as string);
     // The maps are plain objects: `__proto__` would set the prototype (so `__proto__:\n  coverage:` would supply a
     // `coverage` no key check sees) instead of a key.
     if (key === "__proto__") throw new ConfigError(`line ${lineNo}: the key "__proto__" is not allowed`);
     if (Object.hasOwn(top.map, key)) throw new ConfigError(`line ${lineNo}: duplicate key "${key}"`);
-    const value = match[2];
+    // One `\s` then `(.*)`, not `\s+(.*)`: the two overlap on whitespace, so a long run of it backtracks
+    // quadratically (CodeQL js/polynomial-redos). Trimming the leading whitespace afterwards reads the same value.
+    const value = match[2]?.trimStart();
     if (value === undefined || value === "") {
       pendingKey = { map: top.map, key, indent, line: lineNo };
     } else if (value.startsWith("[")) {
