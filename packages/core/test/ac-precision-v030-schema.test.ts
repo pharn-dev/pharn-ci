@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
+import { withoutTi17SchemaEdits } from "./ti17-schema.js";
 import { V070_INJECTION_CODES, withoutV070Properties } from "./v070-codes.js";
 import { withoutV080Properties } from "./v080-codes.js";
 import { withoutV090SchemaEdits } from "./v090-codes.js";
@@ -106,10 +107,13 @@ describe("schema: only the TI15 level sentence changes", () => {
     // (withoutV080Properties; v080-codes.ts pins it exactly); its part of the v0.8.0 code text is in the appended text.
     // Re-pinned for fix-hints (H6): the `$defs.fix` object and the six `fix` properties are taken out first
     // (v090-codes.ts pins them exactly).
+    // Re-pinned for ti17-always-true-matcher-2: the TI17 id pattern and code text are taken out first (ti17-schema.ts).
     const withIsAgentPr = withoutSchemaLevelEdits(
       // Re-pinned for flaky tests (A6, v0.8.0): the flaky description is taken out the same way (v080-codes.ts).
       withoutV080Properties(
-        withoutV070Properties(withoutV090SchemaEdits(readNow("schema/report.v2.json").toString("utf8"))),
+        withoutV070Properties(
+          withoutV090SchemaEdits(withoutTi17SchemaEdits(readNow("schema/report.v2.json").toString("utf8"))),
+        ),
       ),
     );
     expect(withIsAgentPr.split(IS_AGENT_PR_LINES).length - 1, "the four isAgentPr lines appear once").toBe(1);

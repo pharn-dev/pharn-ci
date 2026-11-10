@@ -68,6 +68,7 @@ import { detectTI13 } from "./signals/ti13.js";
 import { detectTI14 } from "./signals/ti14.js";
 import { detectTI15 } from "./signals/ti15.js";
 import { detectTI16 } from "./signals/ti16.js";
+import { detectTI17 } from "./signals/ti17.js";
 import { deletedTestFiles } from "./testFiles.js";
 import type { PythonTestIndex } from "./testIndex/pythonSides.js";
 import { resolveTestIntegrityMode, type TestIntegrityModeSettings } from "./testIntegrityMode.js";
@@ -323,6 +324,7 @@ export function check(input: CheckInput): Report {
           }),
           ...sourceMatches.signals,
           ...detectTI16(parsedDiff),
+          ...detectTI17(parsedDiff),
         ]);
   // The base-and-head signals: the touched test files are compared between the merge base and HEAD. Only with the
   // sources, a diff and a mode that is not off; otherwise nothing runs and the report is the one it was.

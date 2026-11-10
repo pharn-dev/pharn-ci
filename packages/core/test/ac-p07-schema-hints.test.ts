@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { expectValidReport } from "./schema.js";
+import { withoutTi17SchemaEdits } from "./ti17-schema.js";
 import { withoutV060CodeText } from "./v060-codes.js";
 import { withoutV070SchemaEdits } from "./v070-codes.js";
 import { withoutV080SchemaEdits } from "./v080-codes.js";
@@ -57,9 +58,12 @@ describe("the schema sentence, the hint and the README row for POLICY_P07", { ti
     // object are taken out the same way (v080-codes.ts pins both exactly).
     // Re-pinned for fix-hints (H6): the `$defs.fix` object and the six `fix` properties are taken out first
     // (v090-codes.ts pins them exactly).
+    // Re-pinned for ti17-always-true-matcher-2: the TI17 id pattern and code text are taken out first (ti17-schema.ts).
     const nowText = withoutV060CodeText(
       withoutSchemaLevelEdits(
-        withoutV070SchemaEdits(withoutV080SchemaEdits(withoutV090SchemaEdits(read("schema/report.v2.json")))),
+        withoutV070SchemaEdits(
+          withoutV080SchemaEdits(withoutV090SchemaEdits(withoutTi17SchemaEdits(read("schema/report.v2.json")))),
+        ),
       ),
     );
     const base = codeDescription(baseText);

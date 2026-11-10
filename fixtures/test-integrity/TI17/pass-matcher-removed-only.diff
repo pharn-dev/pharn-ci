@@ -1,0 +1,8 @@
+diff --git a/src/cart.test.ts b/src/cart.test.ts
+index 1111111..2222222 100644
+--- a/src/cart.test.ts
++++ b/src/cart.test.ts
+@@ -4 +3,0 @@ import { total } from "./cart.js";
+-expect.extend({ toBeTotal: () => ({ pass: true, message: () => "" }) });
+@@ -9 +7,0 @@ describe("cart", () => {
+-    expect(total([2, 3])).toBeTotal();

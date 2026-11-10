@@ -1,0 +1,7 @@
+diff --git a/tests/test_cart.py b/tests/test_cart.py
+index 1111111..2222222 100644
+--- a/tests/test_cart.py
++++ b/tests/test_cart.py
+@@ -9 +9 @@ def test_total():
+-    m.assert_called_once_with(2)
++    m.assert_called_once_with(mock.ANY)

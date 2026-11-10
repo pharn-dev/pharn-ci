@@ -65,6 +65,7 @@ export const POLICY_SIGNAL_IDS = [
   "TI14",
   "TI15",
   "TI16",
+  "TI17",
 ] as const satisfies readonly PolicySignalId[];
 
 /** The rule ids a `policy.rules` map may name. */

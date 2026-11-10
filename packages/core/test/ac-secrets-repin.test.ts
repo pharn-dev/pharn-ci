@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
+import { withoutTi17SchemaEdits } from "./ti17-schema.js";
 import { V070_CODES, withoutV070Properties } from "./v070-codes.js";
 import { V080_CODES, withoutV080Properties } from "./v080-codes.js";
 import { withoutV090SchemaEdits } from "./v090-codes.js";
@@ -129,8 +130,11 @@ describe("the v0.4.0 codes are the only schema and report.ts additions, and the 
     // object (v080-codes.ts pins it exactly).
     // Re-pinned for fix-hints (H6): the `$defs.fix` object and the six `fix` properties are taken out first
     // (v090-codes.ts pins them exactly).
+    // Re-pinned for ti17-always-true-matcher-2: the TI17 id pattern and code text are taken out first (ti17-schema.ts).
     const schemaWithIsAgentPr = withoutSchemaLevelEdits(
-      withoutV080Properties(withoutV070Properties(withoutV090SchemaEdits(read("schema/report.v2.json")))),
+      withoutV080Properties(
+        withoutV070Properties(withoutV090SchemaEdits(withoutTi17SchemaEdits(read("schema/report.v2.json")))),
+      ),
     );
     expect(schemaWithIsAgentPr.split(isAgentPrLines).length - 1, "the four isAgentPr lines appear once").toBe(1);
     const schema = schemaWithIsAgentPr.replace(isAgentPrLines, "");
@@ -165,13 +169,18 @@ describe("the v0.4.0 codes are the only schema and report.ts additions, and the 
     expect(words(schema), "schema code words").toEqual(withCodes(schemaBase));
     const reportTs = read("packages/core/src/report.ts");
     const reportBase = quotedCodes(atCommit(PYPARITY_BASE, "packages/core/src/report.ts"));
-    expect(quotedCodes(reportTs), "report.ts quoted codes").toEqual(withCodes(reportBase));
+    // Re-pinned for ti17-always-true-matcher-2: report.ts also gains the TI17 signal id and its message code; the schema
+    // part is taken out above, so these two join the report.ts comparisons only.
+    const TI17_CODES = ["TI17", "TEST_INTEGRITY_TI17"];
+    expect(quotedCodes(reportTs), "report.ts quoted codes").toEqual(
+      [...new Set([...withCodes(reportBase), ...TI17_CODES])].sort(),
+    );
     expect(
       words(reportTs)
         .filter((w) => !words(atCommit(PYPARITY_BASE, "packages/core/src/report.ts")).includes(w))
         .sort(),
       "report.ts code words",
-    ).toEqual([...ADDED_CODES].sort());
+    ).toEqual([...ADDED_CODES, ...TI17_CODES].sort());
 
     // Each re-pinned test carries a comment naming the agent-config secrets change.
     for (const path of REPINNED) {

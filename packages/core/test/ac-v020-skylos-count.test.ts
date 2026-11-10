@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
-// release-readiness-v020: the figure docs/LIMITS.md states (now 7 of 9) must match what check() does today. The caught
+// release-readiness-v020: the figure docs/LIMITS.md states (now 8 of 9) must match what check() does today. The caught
 // and missed cases are parsed from the LIMITS section, then each of the nine Skylos cases runs through check() with the
 // inputs the Skylos AC tests use, plus the base and head text of the test file or config for the five cases that need
 // it (fixtures/skylos-nine-sources/). check() and the docs are loaded inside the test body.
@@ -78,8 +78,9 @@ describe("release-readiness-v020: the LIMITS 2-of-9 figure matches check()", () 
   it("AC-3: exactly the two cases LIMITS lists as caught give a signal (only their named id), the seven it lists as missed give none, so the live count is 2 of 9", async () => {
     const { check } = await import("../src/check.js");
     const { caught, missed } = parseLimits(readFileSync(`${ROOT}docs/LIMITS.md`, "utf8"));
-    expect(caught.size).toBe(7);
-    expect(missed.size).toBe(2);
+    // ti17-always-true-matcher-2: always-true-matcher moved from the missed list to the caught list (7 and 2 became 8 and 1).
+    expect(caught.size).toBe(8);
+    expect(missed.size).toBe(1);
     const names = [...caught.keys(), ...missed.keys()];
     expect(new Set(names).size).toBe(9);
 
@@ -118,6 +119,6 @@ describe("release-readiness-v020: the LIMITS 2-of-9 figure matches check()", () 
     for (const name of missed.keys()) expect(live.get(name), name).toEqual([]);
 
     const liveCaught = [...live].filter(([, ids]) => ids.length > 0).length;
-    expect(`${liveCaught} of ${live.size}`).toBe("7 of 9");
+    expect(`${liveCaught} of ${live.size}`).toBe("8 of 9");
   });
 });

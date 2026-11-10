@@ -358,7 +358,7 @@ tests weaker? The `test-integrity` input takes `block`, `warn` or `off`, and the
 
 `test_integrity.mode` in `.pharn/ci.yml` can only make the mode stricter, never looser, so a pull request cannot loosen
 its own gate by editing the config. The signals so far are TI01, TI02, TI03, TI04, TI05, TI06, TI07, TI08, TI09, TI10,
-TI11, TI12, TI13, TI14, TI15 and TI16:
+TI11, TI12, TI13, TI14, TI15, TI16 and TI17:
 
 | Signal | What it reports | Severity in mode `block` | JS/TS | Python |
 | --- | --- | --- | --- | --- |
@@ -378,9 +378,10 @@ TI11, TI12, TI13, TI14, TI15 and TI16:
 | TI14 | a lower coverage threshold or a wider exclusion in the pharn-ci config | block | yes | not applicable |
 | TI15 | a source condition that compares with a value the tests add | `info` | yes | yes |
 | TI16 | a lint or type suppression comment added to a test file | `info` | yes | yes |
+| TI17 | an assertion that always passes: a custom matcher whose pass is always true, a Python helper that always returns True, or a wildcard in place of an expected value | `warn` | yes | yes |
 
-In mode `warn` every `block` above is a `warn`. TI06, TI07, TI08 and TI12 warn and TI15 and TI16 give an `info` finding
-in both `block` and `warn`, so those six never fail the check. Each reads the diff, and TI02, TI05, TI06, TI07 and TI12
+In mode `warn` every `block` above is a `warn`. TI06, TI07, TI08, TI12 and TI17 warn and TI15 and TI16 give an `info`
+finding in both `block` and `warn`, so those seven never fail the check. Each reads the diff, and TI02, TI05, TI06, TI07 and TI12
 also read the text of the JS/TS and Python test files the change modifies at the merge base and at HEAD, parsed without
 running them: a test counts as removed only when no test of the same name or a similar body is left in the touched test
 files (a test of the same name in another touched file counts only when it holds the removed test's body), and
@@ -429,10 +430,10 @@ This is the "Test integrity" section of the report for a change that turns `it(`
 >   - Hint: Remove the skip so the test runs again, or say in the PR why it must stay, for example a test that fails in CI; a reviewer who is not the PR author can record that sign-off by applying the accept label `pharn/accepted`.
 
 The benchmark for this is Skylos's list of nine ways to hide a failing test. The nine cases are reproduced in vitest
-under `fixtures/skylos-nine/` and pinned by tests: the signals of this release catch **7 of 9** (`deleted-test` by TI01,
+under `fixtures/skylos-nine/` and pinned by tests: the signals of this release catch **8 of 9** (`deleted-test` by TI01,
 `added-skip` by TI03, `emptied-assertion` by TI05, `deselect-setting` by TI09, `replaced-test` by TI02,
-`loosened-assertion` by TI06 and `edited-expected-value` by TI07). The other two are missed: TI15 exists and misses
-`hard-coded-answer`, and `always-true-matcher` has only a proposal (TI17). What each signal misses is in [docs/LIMITS.md](./docs/LIMITS.md#what-test-integrity-does-not-catch).
+`loosened-assertion` by TI06, `edited-expected-value` by TI07 and `always-true-matcher` by TI17). The other one is
+missed: TI15 exists and misses `hard-coded-answer`. What each signal misses is in [docs/LIMITS.md](./docs/LIMITS.md#what-test-integrity-does-not-catch).
 
 The same nine are reproduced for pytest under `fixtures/skylos-nine-pytest/`, where the signals catch **8 of 9**; the
 case-by-case table is in [docs/PRECISION.md](./docs/PRECISION.md#3-skylos-nine-what-pharn-ci-catches).
@@ -1246,6 +1247,7 @@ message `code`s, not on text:
 | `TEST_INTEGRITY_TI08`           | TI08: the change regenerates or updates snapshots in bulk: more than 10 snapshot files modified, deleted or renamed with edits, 10 or more inline snapshots rewritten in a JS/TS test file, or a snapshot-update flag added to a test script or a pytest config file (`warn` in modes `block` and `warn`; it never blocks). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI15`           | TI15: the change adds a condition in JS/TS or Python source that compares with a string or number a test file in the same change also adds, so the code may special-case the test (`info` in modes `block` and `warn`; it never blocks or warns). Every finding up to at most 10 per change is in `testIntegrity.signals`, and the message says how many more there are |
 | `TEST_INTEGRITY_TI16`           | TI16: the change adds a comment that switches off a linter or type checker in a JS/TS or Python test file (`info`; it never blocks and leaves the verdict at `pass`). Every finding is in `testIntegrity.signals` |
+| `TEST_INTEGRITY_TI17`           | TI17: the change adds an assertion that always passes to a JS/TS or Python test file: a custom matcher whose pass is always true, a helper that always returns True, or a wildcard in place of an expected value (`warn` in modes `block` and `warn`; it never blocks unless an org policy sets it). One finding per test file, in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TEXT_TRUNCATED` | A file a test-integrity signal reads has more than 5000 changed lines, so the signals read only the first 5000 and a finding past them is not seen (`warn`; not in mode `off`). The text names the files |
 | `TESTS_NOT_EXERCISING_CHANGES` | Changed JS/TS source files that no JS/TS test file the change adds or modifies imports directly with a relative import while keeping or raising its assertion count (`warn` in every mode, never an error; not in mode `off`, without a diff, or when the touched test files were not read). The text names the count checked, the count not exercised and up to 10 paths; `testIntegrity.exercise` lists up to 200 |
 | `TEST_INTEGRITY_ACCEPTED`       | A reviewer who is not the PR author applied the [accept label](#accept-label), so every block signal was downgraded to `warn` (`info`; Action only). `testIntegrity.accepted` names the label and the reviewer |
@@ -1519,7 +1521,7 @@ PR with an 80% diff-coverage threshold, so every change here passes the same gat
 - More coverage formats (Clover, JaCoCo native XML)
 - Flaky test detection across runs on pharn.dev (the Action already sends the JUnit results and applies the app's
   quarantine list; see [Flaky tests and JUnit results](#flaky-tests-and-junit-results))
-- Test-integrity signals for the cases still missed, such as a custom matcher that always passes (see
+- Test-integrity signals for the cases still missed, such as a hard-coded answer in source (see
   [Test integrity](#test-integrity))
 
 ---

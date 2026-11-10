@@ -83,7 +83,7 @@ export function keepSignalFileText(
 /**
  * The files whose kept text was cut at the bound (`textTruncated`) where a signal reads the added lines, so a finding
  * past the cut is not seen: a test file in a language TI03 reads (TI03, TI04; this covers the JavaScript and
- * TypeScript test files TI08, TI15 and TI16 read), a workflow file (TI11), a modified or renamed `package.json` (TI10),
+ * TypeScript test files TI08, TI15, TI16 and TI17 read), a workflow file (TI11), a modified or renamed `package.json` (TI10),
  * a pytest config file (TI08), a JavaScript, TypeScript or Python file that is not a test file (TI13, and TI15's source
  * side) and the pharn-ci config in use (TI14). A deleted file has no added lines and TI01 already counts a cut test
  * file, so deleted files are left out; so are files no signal reads past the cut (a large fixture or snapshot under a

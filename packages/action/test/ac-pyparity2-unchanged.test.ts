@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { foldCoverageBar } from "../../core/test/helpers.js";
 import { withoutSchemaLevelEdits } from "../../core/test/level-edits.js";
+import { withoutTi17SchemaEdits } from "../../core/test/ti17-schema.js";
 import { V070_INJECTION_CODES, withoutV070Properties } from "../../core/test/v070-codes.js";
 import { V080_CODES, withoutV080Properties } from "../../core/test/v080-codes.js";
 import { withoutFixJson, withoutV090SchemaEdits } from "../../core/test/v090-codes.js";
@@ -74,6 +75,10 @@ const SECRET_CODES = [
   // (also in V080_CODES); this only adds to what the pin allows. Its `dependencies` object is cut by
   // withoutV080Properties.
   ...V080_CODES,
+  // Re-pinned for ti17-always-true-matcher-2: the schema's message-code description (the TI17 passage after the TI16 one)
+  // and report.ts also gain this signal id and its message code; this only adds to what the pin allows.
+  "TI17",
+  "TEST_INTEGRITY_TI17",
 ];
 
 const git = (...args: string[]) =>
@@ -104,13 +109,18 @@ const PINNED = [
 // Re-pinned again by fix-hints (H6): ac-accept-signoff-regression and ac-ti0205-regression take the `fix` objects out of
 // the reports and goldens before hashing them (their output digests are unchanged); these are the digests of the edited
 // files.
+// Re-pinned again by ti17-always-true-matcher-2: the walker's ADDED_AFTER_BASE gains the 35 TI17 fixtures (its count and
+// output digest are unchanged); this is the digest of the edited file.
 const NAME_ONLY_REPINNED: Record<string, string> = {
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "638b8bae1e0c8efcd4df8f922e1ce4684a836610635064ed177ede565c15b9a3",
+    "92e68fd78f2900f831408a629e229a07693b8c7f322ad59d25b949b6452cadb1",
   // Re-pinned again by A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): ac-ti0205-regression takes the tests-exercise message
   // and testIntegrity.exercise out of the golden reports made with sources before comparing (exercise-repin.ts); this
   // is the digest of the edited file.
   "packages/core/test/ac-ti0205-regression.test.ts": "7583e11f397f59d04123ebdb7afea818d37f5a4b3522e32d3badd26fe104369b",
+  // Re-pinned again by ti17-always-true-matcher-2: ac-skylos-nine-table moves always-true-matcher to caught by TI17 (the
+  // Skylos count reads 8 of 9 now, 7 of 9 before); this is the digest of the edited file.
+  "packages/core/test/ac-skylos-nine-table.test.ts": "68f84a33ecf1e4b4e94fc13c2c6c9065339a46e6d0d69b925905a1e39ac13976",
 };
 /** The digests of ac-ti06-ti12-unchanged.test.ts the name-only-moves change re-pins; every other one is as at the base. */
 const NAME_ONLY_DIGESTS: Record<string, string> = {
@@ -147,7 +157,7 @@ const codes = (text: string) =>
   [...new Set([...text.matchAll(/"((?:TI\d\d)|(?:[A-Z][A-Z0-9]*_[A-Z0-9_]+))"/g)].map((m) => m[1] as string))].sort();
 
 describe("pytest parity changes no schema, code, id, pinned output or dist freshness", () => {
-  it("AC-20: schema/ is byte-identical to the base, the message codes and signal ids are unchanged, the pinned regression tests and digests are as at the base, only the new TI02 and TI05 cases join the ADDED_AFTER_BASE sets, no existing fixture changes, the Skylos table still reads 7 of 9, and the committed dist is a fresh bundle", () => {
+  it("AC-20: schema/ is byte-identical to the base, the message codes and signal ids are unchanged, the pinned regression tests and digests are as at the base, only the new TI02 and TI05 cases join the ADDED_AFTER_BASE sets, no existing fixture changes, the Skylos table reads 8 of 9, and the committed dist is a fresh bundle", () => {
     // schema/ is byte-identical: the same files with the same bytes.
     const schemaNow = readdirSync(join(ROOT, "schema")).sort();
     const schemaBase = git("ls-tree", "--name-only", `${BASE}:schema`)
@@ -195,8 +205,11 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
       // `dependencies` object (v080-codes.ts pins it exactly); its part of the v0.8.0 code text is in the appended text.
       // Re-pinned for fix-hints (H6): the `$defs.fix` object and the six `fix` properties are taken out first
       // (v090-codes.ts pins them exactly).
+      // Re-pinned for ti17-always-true-matcher-2: the TI17 id pattern and code text are taken out first (ti17-schema.ts).
       const withIsAgentPr = withoutSchemaLevelEdits(
-        withoutV080Properties(withoutV070Properties(withoutV090SchemaEdits(read(`schema/${name}`)))),
+        withoutV080Properties(
+          withoutV070Properties(withoutV090SchemaEdits(withoutTi17SchemaEdits(read(`schema/${name}`)))),
+        ),
       );
       expect(withIsAgentPr.split(isAgentPrLines).length - 1, "the four isAgentPr lines appear once").toBe(1);
       const currentText = withIsAgentPr.replace(isAgentPrLines, "");
@@ -291,16 +304,25 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
       const fixedPath = fixed.exec(line)?.[1];
       if (fixedPath !== undefined) expect(withoutFixJson(read(fixedPath)), line).toBe(atBase(fixedPath));
     }
+    // Re-pinned for ti17-always-true-matcher-2: the two unknown-signal-key policy fixtures name TI18 instead of TI17 now
+    // that TI17 is a signal. Each is modified, never added or deleted, and with TI18 turned back into TI17 it is its
+    // content at the base byte for byte.
+    const unknownTi = /^M\t(fixtures\/policy\/invalid\/unknown-ti\.(?:json|paths))$/;
+    for (const line of statuses) {
+      const unknownPath = unknownTi.exec(line)?.[1];
+      if (unknownPath !== undefined)
+        expect(read(unknownPath).split("TI18").join("TI17"), line).toBe(atBase(unknownPath));
+    }
     expect(
-      statuses.filter((l) => !l.startsWith("A\t") && !barred.test(l) && !fixed.test(l)),
+      statuses.filter((l) => !l.startsWith("A\t") && !barred.test(l) && !fixed.test(l) && !unknownTi.test(l)),
       "no fixture of the base is modified or deleted",
     ).toEqual([]);
 
-    // The Skylos count: still 7 of 9.
+    // The Skylos count: 8 of 9 since ti17-always-true-matcher-2 (it was 7 of 9).
     const limits = read("docs/LIMITS.md");
-    expect(limits, "docs/LIMITS.md still says 7 of 9").toContain("catch **7 of 9**");
-    expect(read("packages/core/test/ac-skylos-nine-table.test.ts"), "the Skylos table test reads 7/9").toContain(
-      '"7/9"',
+    expect(limits, "docs/LIMITS.md says 8 of 9").toContain("catch **8 of 9**");
+    expect(read("packages/core/test/ac-skylos-nine-table.test.ts"), "the Skylos table test reads 8/9").toContain(
+      '"8/9"',
     );
 
     // The committed dist is a fresh bundle of packages/action/src and carries the alias reader.

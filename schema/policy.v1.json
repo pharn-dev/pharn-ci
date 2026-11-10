@@ -117,7 +117,7 @@
       }
     },
     "test_integrity": {
-      "description": "Test-integrity signal settings (TI01-TI16).",
+      "description": "Test-integrity signal settings (TI01-TI17).",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -127,7 +127,7 @@
           "enum": ["block", "warn", "off"]
         },
         "signals": {
-          "description": "Per-signal severity overrides, keyed by signal id TI01-TI16; any other key (TI17 included) is an error; feeds the TI signals. Tighten: per-signal severities, block > warn > info > off.",
+          "description": "Per-signal severity overrides, keyed by signal id TI01-TI17; any other key (TI18 included) is an error; feeds the TI signals. Tighten: per-signal severities, block > warn > info > off.",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -193,6 +193,10 @@
             },
             "TI16": {
               "description": "Severity of signal TI16. Tighten: block > warn > info > off.",
+              "$ref": "#/$defs/severity"
+            },
+            "TI17": {
+              "description": "Severity of signal TI17. Tighten: block > warn > info > off.",
               "$ref": "#/$defs/severity"
             }
           }

@@ -72,7 +72,8 @@ const EXPECTED: ReadonlyArray<{ name: string; vitest: string; pytest: string }> 
   { name: "emptied-assertion", vitest: "TI05 block", pytest: "TI05 block" },
   { name: "deselect-setting", vitest: "TI09 block", pytest: "TI09 block" },
   { name: "hard-coded-answer", vitest: "missed", pytest: "missed" },
-  { name: "always-true-matcher", vitest: "missed", pytest: "TI06 warn" },
+  // ti17-always-true-matcher-2: TI17 reads the matcher (vitest) and the helper (pytest); pytest keeps its TI06 too.
+  { name: "always-true-matcher", vitest: "TI17 warn", pytest: "TI06 warn, TI17 warn" },
   { name: "replaced-test", vitest: "TI02 block", pytest: "TI02 block" },
   { name: "loosened-assertion", vitest: "TI06 warn", pytest: "TI06 warn" },
   { name: "edited-expected-value", vitest: "TI07 warn", pytest: "TI07 warn" },
@@ -174,7 +175,7 @@ async function runPytest(name: string): Promise<Signal[]> {
 
 describe("docs/PRECISION.md section 3: the Skylos nine table matches check()", () => {
   it(
-    "AC-8: the last ## section is ## 3. Skylos nine: what pharn-ci catches, its four-column table has the nine cases in order, every vitest and pytest cell equals what check() returns (and the expected cells), and the totals read vitest 7 of 9, pytest 8 of 9",
+    "AC-8: the last ## section is ## 3. Skylos nine: what pharn-ci catches, its four-column table has the nine cases in order, every vitest and pytest cell equals what check() returns (and the expected cells), and the totals read vitest 8 of 9, pytest 8 of 9",
     async () => {
       requirePython();
       const section = lastH2(read("docs/PRECISION.md"));
@@ -192,7 +193,8 @@ describe("docs/PRECISION.md section 3: the Skylos nine table matches check()", (
         "the case cells, in order",
       ).toEqual(EXPECTED.map((e) => e.name));
 
-      const CELL = /^(?:TI\d\d (?:block|warn|info)|missed)$/;
+      // A cell holds one or more `<id> <severity>` pairs (a case can give two signals: ti17-always-true-matcher-2).
+      const CELL = /^(?:TI\d\d (?:block|warn|info)(?:, TI\d\d (?:block|warn|info))*|missed)$/;
       for (const [index, row] of rows.entries()) {
         const expected = EXPECTED[index] as (typeof EXPECTED)[number];
         const [, vitestCell, pytestCell] = row as [string, string, string, string];
@@ -208,7 +210,7 @@ describe("docs/PRECISION.md section 3: the Skylos nine table matches check()", (
       }
 
       const text = section.join("\n").replace(/\s+/g, " ");
-      expect(text, "the totals sentence").toContain("vitest 7 of 9, pytest 8 of 9");
+      expect(text, "the totals sentence").toContain("vitest 8 of 9, pytest 8 of 9");
       const totals = /vitest (\d+) of 9, pytest (\d+) of 9/.exec(text);
       const caught = (column: number) => rows.filter((row) => row[column] !== "missed").length;
       expect([Number(totals?.[1]), Number(totals?.[2])], "the totals equal the table's counts").toEqual([

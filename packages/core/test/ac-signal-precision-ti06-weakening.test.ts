@@ -232,11 +232,12 @@ describe("TI06: a real weakening still warns", () => {
       "the earlier TI06 case dirs give their base-commit signals",
     ).toBe(EARLIER_DIGEST);
 
-    // The Skylos nine: 7 of 9 caught, loosened-assertion by a warn TI06.
+    // The Skylos nine: 8 of 9 caught (ti17-always-true-matcher-2 moved always-true-matcher to caught), loosened-assertion
+    // by a warn TI06.
     const nine = await runNine();
     expect(nine.size).toBe(9);
     const caught = [...nine].filter(([, signals]) => signals.length > 0).map(([name]) => name);
-    expect(caught, "7 of 9 caught").toHaveLength(7);
+    expect(caught, "8 of 9 caught").toHaveLength(8);
     expect(caught).toContain("loosened-assertion");
     expect(nine.get("loosened-assertion"), "loosened-assertion: one warn TI06").toEqual([
       { id: "TI06", severity: "warn" },

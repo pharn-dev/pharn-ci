@@ -411,10 +411,10 @@ cases have a must-not-trigger pair, so neither edit loosened a detector. A `warn
 | `emptied-assertion` | TI05 block | TI05 block | The assertion becomes a bare call, so the test asserts nothing. |
 | `deselect-setting` | TI09 block | TI09 block | The runner's setting is narrowed: `testpaths` for pytest, `test.include` for vitest. TI09 does not read `collect_ignore` in `conftest.py`, `PYTEST_ADDOPTS` or a `-c` flag. |
 | `hard-coded-answer` | missed | missed | TI15 exists and misses it: the change adds no test line to match against and its numbers are one digit. |
-| `always-true-matcher` | missed | TI06 warn | Vitest misses the `expect.extend` matcher (planned TI17). For pytest, TI06 catches the `==` to truthiness change and does not catch the helper's constant `True`; the `mock.ANY` variant is missed. |
+| `always-true-matcher` | TI17 warn | TI06 warn, TI17 warn | TI17 reads the `expect.extend` matcher whose `pass` is constant true and the assertion that calls it. For pytest, TI06 catches the `==` to truthiness change and TI17 the helper's constant `True` and its `assert`; the `mock.ANY` variant is caught by TI17. |
 | `replaced-test` | TI02 block | TI02 block | A test is replaced by one with another name and a different body. |
 | `loosened-assertion` | TI06 warn | TI06 warn | The strong matcher becomes a weak one; TI06 warns and never blocks. |
 | `edited-expected-value` | TI07 warn | TI07 warn | The expected value is edited in a change that also edits the source; TI07 warns and never blocks. |
 
-In total: vitest 7 of 9, pytest 8 of 9. What each signal misses is in
+In total: vitest 8 of 9, pytest 8 of 9. What each signal misses is in
 [LIMITS.md](./LIMITS.md#what-test-integrity-does-not-catch).

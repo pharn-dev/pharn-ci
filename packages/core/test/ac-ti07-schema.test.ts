@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport, validateReport } from "./schema.js";
+import { withoutTi17SchemaEdits } from "./ti17-schema.js";
 import { withoutV090SchemaEdits } from "./v090-codes.js";
 
 // The schema files are read inside each test body and compared with the base commit d73684d through git (CI checks
@@ -112,7 +113,8 @@ describe("schema/report.v2.json: testIntegrity.changes and TEST_INTEGRITY_TI07",
   it("AC-13: the message-code description names TEST_INTEGRITY_TI07 with its level warn, every other v2 text is unchanged, and v1 is byte-identical to the base commit", () => {
     // Re-pinned for fix-hints (H6): the `$defs.fix` object and the six `fix` properties are taken out first
     // (v090-codes.ts pins them exactly).
-    const head = JSON.parse(withoutV090SchemaEdits(live("schema/report.v2.json"))) as Obj;
+    // Re-pinned for ti17-always-true-matcher-2: the TI17 id pattern and code text are taken out first (ti17-schema.ts).
+    const head = JSON.parse(withoutV090SchemaEdits(withoutTi17SchemaEdits(live("schema/report.v2.json")))) as Obj;
     const base = JSON.parse(atBase("schema/report.v2.json")) as Obj;
     const code = (s: Obj) => ((((s.$defs as Obj).message as Obj).properties as Obj).code as Obj).description as string;
 

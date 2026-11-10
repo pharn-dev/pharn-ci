@@ -1,18 +1,20 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-// release-030: the README's `## Test integrity` section is current for 0.3.0. It holds one signal table, TI01 to TI16
-// in order and nothing else (TI17 is a proposal), whose levels are the ones the signals give and whose JS/TS and Python
+// release-030: the README's `## Test integrity` section is current for 0.3.0. It holds one signal table, TI01 to TI17
+// in order and nothing else, whose levels are the ones the signals give and whose JS/TS and Python
 // columns follow the Python parity table of docs/LIMITS.md; a note on the python3 the Python test index needs; a
 // precision line linking docs/PRECISION.md with the block signals' false-block rate on the 600-PR corpus; and the
-// Skylos 7 of 9 (vitest) and 8 of 9 (pytest) sentences. Files are read inside the test body.
+// Skylos 8 of 9 (vitest) and 8 of 9 (pytest) sentences. Files are read inside the test body.
+// Re-pinned for ti17-always-true-matcher-2: TI17 joins the table (it warns, so it never blocks), and vitest moves from
+// 7 of 9 to 8 of 9.
 
 const read = (path: string) => readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8");
 const lines = (text: string) => text.split("\n").map((line) => line.replace(/\r$/, ""));
 const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
 
 const HEADER = "| Signal | What it reports | Severity in mode `block` | JS/TS | Python |";
-const IDS = Array.from({ length: 16 }, (_, i) => `TI${String(i + 1).padStart(2, "0")}`);
+const IDS = Array.from({ length: 17 }, (_, i) => `TI${String(i + 1).padStart(2, "0")}`);
 /** The signals that never block: their level in both modes. */
 const NEVER_BLOCK: Record<string, string> = {
   TI06: "warn",
@@ -21,6 +23,7 @@ const NEVER_BLOCK: Record<string, string> = {
   TI12: "warn",
   TI15: "info",
   TI16: "info",
+  TI17: "warn",
 };
 
 /** A `## ` section's lines after its exact heading line, up to the next `## ` heading. */
@@ -47,7 +50,7 @@ function parity(cell: string): string {
 }
 
 describe("release-030: README.md Test integrity section", () => {
-  it("AC-5: one signal table lists TI01 to TI16 with their levels and LIMITS' JS/TS and Python parity, the section names python3 and 3.8, links docs/PRECISION.md with the 600-PR false-block rate of TI01, TI02 and TI11, and keeps 7 of 9 and 8 of 9", () => {
+  it("AC-5: one signal table lists TI01 to TI17 with their levels and LIMITS' JS/TS and Python parity, the section names python3 and 3.8, links docs/PRECISION.md with the 600-PR false-block rate of TI01, TI02 and TI11, and keeps 8 of 9 for vitest and for pytest", () => {
     const section = h2Section(lines(read("README.md")), "## Test integrity");
 
     expect(
@@ -65,9 +68,9 @@ describe("release-030: README.md Test integrity section", () => {
     const rows = (end === -1 ? rest : rest.slice(0, end)).map(cells);
     expect(
       rows.map((row) => row[0]),
-      "TI01 to TI16, in order",
+      "TI01 to TI17, in order",
     ).toEqual(IDS);
-    expect(normalize(section.join("\n")), "no TI17 row").not.toMatch(/\|\s*TI17\s*\|/);
+    expect(normalize(section.join("\n")), "no TI18 row").not.toMatch(/\|\s*TI18\s*\|/);
 
     const limits = lines(read("docs/LIMITS.md"));
     for (const row of rows) {
@@ -108,7 +111,6 @@ describe("release-030: README.md Test integrity section", () => {
       "a paragraph links docs/PRECISION.md and names 600, 1 of 600, TI01, TI02 and TI11",
     ).toBe(true);
 
-    expect(text).toContain("catch **7 of 9**");
-    expect(text).toContain("catch **8 of 9**");
+    expect(text.split("catch **8 of 9**").length - 1, "8 of 9 for vitest and for pytest").toBe(2);
   });
 });

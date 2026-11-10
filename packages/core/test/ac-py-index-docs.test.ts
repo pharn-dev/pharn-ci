@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { withoutTi17SchemaEdits } from "./ti17-schema.js";
 import { withoutV090SchemaEdits } from "./v090-codes.js";
 
 // purityViolations is loaded inside the test body, like the other AC tests: nothing the build changes runs while the
@@ -118,7 +119,8 @@ describe("python-test-index: THREAT-MODEL, fixture layout, schemas and purity", 
     expect(sha256(readFileSync(join(ROOT, "schema/report.v1.json"))), "schema/report.v1.json").toBe(V1_AT_BASE);
     // Re-pinned for fix-hints (H6): the `$defs.fix` object and the six `fix` properties are taken out first
     // (v090-codes.ts pins them exactly).
-    const v2 = JSON.parse(withoutV090SchemaEdits(read("schema/report.v2.json"))) as {
+    // Re-pinned for ti17-always-true-matcher-2: the TI17 id pattern and code text are taken out first (ti17-schema.ts).
+    const v2 = JSON.parse(withoutV090SchemaEdits(withoutTi17SchemaEdits(read("schema/report.v2.json")))) as {
       $defs: { message: { properties: { code: { description?: string } } } };
       properties: {
         testIntegrity: { properties: { languages: { description?: string }; changes?: unknown; exercise?: unknown } };

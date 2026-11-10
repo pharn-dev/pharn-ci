@@ -9,7 +9,20 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+- Test-integrity signal TI17, an assertion that always passes, and its message code `TEST_INTEGRITY_TI17`. In a JS/TS
+  or Python test file it reads the added lines of the diff alone (no test source, no Python index) for three forms: a
+  call to a custom matcher added to `expect` whose every `pass` is the constant true, an `assert` or
+  `self.assertTrue` that is exactly a call to a Python helper the change adds whose every `return` is `True`, and
+  `expect.anything()` or `ANY` in place of an expected value the same hunk removes. It gives one `warn` finding per test
+  file, never blocks by default, can be set per signal in an org policy (`test_integrity.signals.TI17`), and carries a
+  fix hint of kind `restore-assertion`. With it the Skylos benchmark in vitest is caught 8 of 9, the pytest result stays
+  8 of 9, and only `hard-coded-answer` is missed (`docs/LIMITS.md`, "What TI17 misses").
+
 ### Changed
+
+- A pull request that adds an assertion which always passes can now go from `pass` to `warn`. Report consumers see the
+  new signal id `TI17` in `schema/report.v2.json` (the signal id pattern and the known message codes) and org policies
+  can set the new `TI17` key in `schema/policy.v1.json`; both are additive within their versions.
 
 ### Security
 

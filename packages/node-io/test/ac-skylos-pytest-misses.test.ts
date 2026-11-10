@@ -67,6 +67,10 @@ function section(markdown: string): string[] {
 }
 
 const MISSES = ["hard-coded-answer", "always-true-matcher-any"] as const;
+// ti17-always-true-matcher-2: the mock.ANY variant is caught by TI17 now, so its miss assertion below is a catch assertion.
+const CAUGHT_BY: Readonly<Record<string, string>> = {
+  "always-true-matcher-any": "TI17 warn tests/test_cart.py:10",
+};
 
 describe("Skylos nine for pytest: the two misses run cleanly and give no signal", () => {
   for (const name of MISSES) {
@@ -107,6 +111,15 @@ describe("Skylos nine for pytest: the two misses run cleanly and give no signal"
         }).not.toThrow();
         if (report === undefined) throw new Error("check() returned nothing");
         expectValidReport(report);
+        const caught = CAUGHT_BY[name];
+        if (caught !== undefined) {
+          expect(report.testIntegrity.signals.map((s) => `${s.id} ${s.severity} ${s.path}:${s.line}`)).toEqual([
+            caught,
+          ]);
+          const rendered = renderMarkdown(report as NonNullable<typeof report>);
+          expect(section(rendered).join("\n"), `${name}: a rendered TI17 line`).toContain("**TI17**");
+          return;
+        }
         expect(report.testIntegrity.signals).toEqual([]);
 
         let markdown = "";

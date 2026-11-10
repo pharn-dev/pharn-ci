@@ -104,6 +104,10 @@ const WARN_CASES: ReadonlyArray<[string, string]> = [
   ["always-true-matcher", "TI06"],
 ];
 
+// ti17-always-true-matcher-2: the pytest always-true-matcher case also gives a warn TI17 (the helper that always returns
+// True, and the assert on it), beside the TI06 it gave before.
+const ALSO: Readonly<Record<string, string>> = { "always-true-matcher": "TI17" };
+
 describe("Skylos nine for pytest: the warn cases through check() with the real Python index", () => {
   for (const [name, id] of WARN_CASES) {
     it(
@@ -113,15 +117,26 @@ describe("Skylos nine for pytest: the warn cases through check() with the real P
         const { report, markdown } = await runCase(name);
         const signals = report.testIntegrity.signals;
         expect(signals.length, `${name}: at least one signal`).toBeGreaterThan(0);
+        const also = ALSO[name];
         for (const signal of signals) {
-          expect([String(signal.id), signal.severity], `${name}: ${signal.detail}`).toEqual([id, "warn"]);
+          const allowed = [id, ...(also === undefined ? [] : [also])];
+          expect(allowed, `${name}: ${signal.detail}`).toContain(String(signal.id));
+          expect(signal.severity, `${name}: ${signal.detail}`).toBe("warn");
+        }
+        if (also !== undefined) {
+          expect(
+            signals.some((s) => String(s.id) === also),
+            `${name}: a ${also} signal`,
+          ).toBe(true);
         }
         expect(
           section(markdown).some((line) => line.includes(`**${id}**`)),
           `${name}: a rendered line with **${id}**`,
         ).toBe(true);
         if (name === "always-true-matcher") {
-          for (const signal of signals) expect(signal.detail, "the TI06 detail").toContain("truthy");
+          for (const signal of signals.filter((s) => String(s.id) === "TI06")) {
+            expect(signal.detail, "the TI06 detail").toContain("truthy");
+          }
         }
       },
       SLOW,

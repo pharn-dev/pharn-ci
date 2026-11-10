@@ -62,14 +62,17 @@ describe("docs/PRECISION.md section 3: the notes column", () => {
 
     const matcher = byCase.get("always-true-matcher") ?? "";
     expect(matcher, "always-true-matcher: names mock.ANY").toContain("mock.ANY");
-    expect(matcher, "always-true-matcher: says mock.ANY is missed").toMatch(
-      /mock\.ANY[^|]*\bmiss|\bmiss[^|]*mock\.ANY/i,
+    // Re-pinned for ti17-always-true-matcher-2: the mock.ANY variant and the helper's constant True are caught by TI17 now
+    // (the note said they were missed and that TI06 does not catch the constant True).
+    expect(matcher, "always-true-matcher: says mock.ANY is caught by TI17").toMatch(
+      /mock\.ANY[^|]*\bTI17\b|\bTI17\b[^|]*mock\.ANY/,
     );
+    expect(matcher, "always-true-matcher: no longer says mock.ANY is missed").not.toMatch(/mock\.ANY[^|]*\bmiss/i);
     expect(matcher, "always-true-matcher: names TI06").toMatch(/\bTI06\b/);
     expect(matcher, "always-true-matcher: names the == change").toContain("==");
     expect(matcher, "always-true-matcher: names the truthiness check").toMatch(/truth/i);
     expect(matcher, "always-true-matcher: names the helper's constant True").toContain("True");
-    expect(matcher, "always-true-matcher: says TI06 does not catch the constant True").toMatch(/\bnot\b/i);
+    expect(matcher, "always-true-matcher: names TI17 for the constant True").toMatch(/\bTI17\b[^|]*\bTrue\b/);
 
     const text = section.join("\n");
     for (const figure of ["2 of 9", "4 of 9", "5 of 9"]) expect(text, figure).not.toContain(figure);

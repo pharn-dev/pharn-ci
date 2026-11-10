@@ -17,7 +17,8 @@ const ids = (list: string) => list.split(" ");
 /** The kind of every signal id, from the SPEC's Data section. */
 const SIGNAL_KINDS: Record<string, string> = Object.fromEntries([
   ...ids("TI01 TI02 TI03 TI04").map((id) => [id, "restore-test"]),
-  ...ids("TI05 TI06 TI07").map((id) => [id, "restore-assertion"]),
+  // ti17-always-true-matcher-2: TI17 asks for the assertion that can fail back, so it joins TI05 to TI07.
+  ...ids("TI05 TI06 TI07 TI17").map((id) => [id, "restore-assertion"]),
   ...ids("TI09 TI10 TI11 TI13 TI14 P09 P13").map((id) => [id, "revert-config"]),
   ...ids("TI08 TI12 TI15 TI16 P02 P03 P04 P05 P06 P08 P11 D04").map((id) => [id, "request-review"]),
   ...range("PI", 1, 5).map((id) => [id, "request-review"]),
@@ -110,7 +111,7 @@ describe("fix hints: the kind of every code and signal id", () => {
       for (const key of keys) expect(kindOf(key), key).toBe(kind);
     };
     expectKind([...ids("TI01 TI02 TI03 TI04"), "TEST_FILES_DELETED"], "restore-test");
-    expectKind(ids("TI05 TI06 TI07"), "restore-assertion");
+    expectKind(ids("TI05 TI06 TI07 TI17"), "restore-assertion");
     expectKind(ids("TI09 TI10 TI11 TI13 TI14 P09 P13"), "revert-config");
     expectKind(
       [

@@ -401,6 +401,7 @@ export { detectTI13 } from "./signals/ti13.js";
 export { detectTI14, type TI14Options } from "./signals/ti14.js";
 export { detectTI15, type TI15Options, type TI15Result } from "./signals/ti15.js";
 export { detectTI16 } from "./signals/ti16.js";
+export { detectTI17 } from "./signals/ti17.js";
 export { type TestConfigKind, testConfigKind } from "./testConfig/kinds.js";
 export {
   definesTests,

@@ -1,0 +1,8 @@
+diff --git a/tests/test_cart.py b/tests/test_cart.py
+index 1111111..2222222 100644
+--- a/tests/test_cart.py
++++ b/tests/test_cart.py
+@@ -9,0 +10,3 @@ def test_total():
++
++def test_make():
++    assert make() == ANY

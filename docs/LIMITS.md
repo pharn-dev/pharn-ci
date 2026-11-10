@@ -726,7 +726,7 @@ file and runs no test. It is a warning in every mode and never fails the check.
 ## What test integrity does not catch
 
 The test-integrity signals that ship today (TI01, TI02, TI03, TI04, TI05, TI06, TI07, TI08, TI09, TI10, TI11, TI12,
-TI13, TI14, TI15 and TI16) read the added and removed lines of the diff, in files they recognise by name; TI02, TI05,
+TI13, TI14, TI15, TI16 and TI17) read the added and removed lines of the diff, in files they recognise by name; TI02, TI05,
 TI06, TI07 and TI12 also read the text of the JavaScript, TypeScript and Python test files the change modifies, and TI09
 the text of the test-runner config files it touches, at the merge base and at `HEAD`. They do not run tests or read a file that the diff does not touch, and they judge the strength of an
 assertion only from a fixed table of matchers (TI06). The accept label records that a reviewer who is not the author
@@ -736,7 +736,7 @@ label misses". A file whose changed lines run past 5000 is read only up to that 
 report names it with `TEST_INTEGRITY_TEXT_TRUNCATED` (section 8).
 
 The benchmark for what is not seen is Skylos's list of nine ways to hide a failing test. The nine cases are reproduced
-in vitest under `fixtures/skylos-nine/` and pinned by tests. The signals of this release catch **7 of 9**.
+in vitest under `fixtures/skylos-nine/` and pinned by tests. The signals of this release catch **8 of 9**.
 
 The same nine are reproduced for pytest under `fixtures/skylos-nine-pytest/`, where the signals catch **8 of 9**; the
 case-by-case table is in [PRECISION.md](./PRECISION.md#3-skylos-nine-what-pharn-ci-catches). The lists below are the
@@ -757,14 +757,13 @@ Caught:
 - `edited-expected-value` — caught by TI07: `toBe(5)` becomes `toBe(6)` in the same test, in a change that also edits a
   source file, so the test agrees with the code. TI07 warns and never blocks; it does not say that the new value is
   wrong.
+- `always-true-matcher` — caught by TI17: a custom matcher whose `pass` is the constant true replaces `toBe(5)`, and
+  the change adds an assertion that calls it. TI17 warns and never blocks by default; see "What TI17 misses" below.
 
-Not caught. Each of these names the signal meant for it: TI15 exists and misses its case, and TI17 is only a
-proposal:
+Not caught. This one names the signal meant for it, and that signal exists and misses its case:
 
 - `hard-coded-answer` — missed; planned: TI15. The source returns the expected value for the test's input. TI15 now
   exists and still misses it, because the change adds no test line to match against and its numbers are one digit.
-- `always-true-matcher` — missed; planned: TI17, which is a proposal and not a signal in the test-integrity spec yet.
-  A custom matcher that always passes replaces `toBe(5)`. See "TI17 proposal" below.
 
 Other ways a change can weaken tests without being seen:
 
@@ -775,25 +774,34 @@ Other ways a change can weaken tests without being seen:
 - A **mock** introduced in a **setup file** that the diff does not show as a test file, so a test passes against a
   stand-in.
 
-### TI17 proposal (not implemented)
+### What TI17 misses
 
-TI17 is a proposal for the always-true matcher, which no signal is built for (TI06 sees only a changed matcher, not a
-matcher that always passes). It is not implemented, it is not in the
-report schema, and nothing in the Action or the CLI produces it. It would detect three things:
+TI17 reads the added and removed lines of JS/TS and Python test files, from the diff alone (no test source, no Python
+index), and finds three things: an `expect.extend` matcher added in the diff whose every `pass` is the constant true,
+and an added assertion that calls it; a Python helper added in the diff whose every `return` is `True`, and an added
+`assert` or `self.assertTrue` that is exactly a call to it; and `expect.anything()` (`toBe`, `toEqual`, `toStrictEqual`)
+or `ANY`, `mock.ANY` and `unittest.mock.ANY` (`assert … ==`, `assertEqual`) in place of an expected value the same hunk
+removes. It gives one finding per test file, at the lowest such line, and a count in a fixed detail. It warns and never
+blocks by default, because each of these can be deliberate: a team that wants it to block sets `TI17` to `block` in an
+org policy, and a pull request cannot loosen that. It misses:
 
-1. An `expect.extend` matcher defined in the diff whose `pass` is constant true.
-2. A Python helper defined in the diff that returns a constant `True` and is used in an `assert`.
-3. `expect.anything()` or `mock.ANY` replacing a concrete expected value.
-
-The planned severity is `warn`: each of these can be deliberate, so TI17 would ask for a look and never block.
-
-The cases it would ship with: must-trigger: the vitest `always-true-matcher` (a matcher whose `pass` is constant true
-replaces `toBe(5)`) and the pytest `always-true-matcher-any` (`== 5` becomes `== ANY`). must-not-trigger: a matcher
-whose `pass` compares its argument, and `expect.anything()` in the argument list of a call matcher such as
-`toHaveBeenCalledWith`, where it stands for one argument the test does not care about.
-
-It would miss a matcher or helper defined outside the diff, and a constant computed indirectly, for example through a
-variable or a function call.
+- A matcher or helper defined outside the diff, on lines the change did not add, or in another file: only a definition
+  written on consecutive added lines is read, so a matcher added to a setup file and called from a test is not seen.
+- A constant computed indirectly: a `pass` or a `return` that reads a variable, a call, a lambda or a conditional, a
+  helper with a nested `def`, `class`, `lambda` or `yield`, and every always-true form the signal does not name (a
+  `toBeTruthy` on a constant, `assert True`, an assertion in a branch that never runs).
+- Anything not on added lines: a test whose assertion is already there and whose helper changes underneath it.
+- A wildcard that replaces nothing the change removes: a new test that asserts against `expect.anything()` or `ANY`,
+  or a wildcard whose replaced line is in another hunk, is not reported; neither is a wildcard nested in an object or
+  an argument list (`toHaveBeenCalledWith`, `assert_called_with`), where it stands for a value the test does not care
+  about, and a re-indented or moved wildcard line.
+- The mirrored order (`ANY == total(x)`) and aliased imports (`from unittest.mock import ANY as anything`): the
+  wildcard is matched by name, with no import check. The reverse also holds: a test file's own constant named `ANY` is
+  reported too.
+- A helper whose body ends where the added lines end: the helper is read as complete at the first line the change did
+  not add, so an added `def` and `return True` above existing indented lines is read as the whole helper.
+- The text past the kept-text caps: a file's changed lines are read up to 5000 lines of at most 400 characters each,
+  and a file cut there is named by `TEST_INTEGRITY_TEXT_TRUNCATED`.
 
 ## Python parity
 
@@ -819,6 +827,7 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
 | TI14 pharn-ci config loosened | caught — the config file | not applicable — it reads the pharn-ci config, not test code |
 | TI15 test value hard-coded | caught — JS/TS test and source files | caught — Python test and source files |
 | TI16 suppression added | caught — ESLint, TypeScript and Biome comments | caught — `noqa`, `type`, `pylint` and `pyright` comments |
+| TI17 always-true assertion | caught — `warn-matcher-arrow` | caught — `warn-helper-pytest` and `warn-wildcard-python-any` |
 
 **Python misses.** What the Python column does not see:
 

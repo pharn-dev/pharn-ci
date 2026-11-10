@@ -15,7 +15,8 @@ describe("README.md: TI15 is an info signal", () => {
     const flat = normalize(text);
 
     expect(flat).not.toContain("TI12 and TI15 warn");
-    expect(flat).toContain("TI06, TI07, TI08 and TI12 warn");
+    // Re-pinned for ti17-always-true-matcher-2: TI17 warns too, so it joins the sentence.
+    expect(flat).toContain("TI06, TI07, TI08, TI12 and TI17 warn");
     const sentences = flat.split(/(?<=\.)\s+(?=[A-Z`*[(])/);
     expect(
       sentences.some((s) => s.includes("TI15") && s.includes("TI16") && s.includes("`info` finding")),

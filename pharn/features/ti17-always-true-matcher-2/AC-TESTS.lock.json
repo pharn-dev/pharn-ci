@@ -1,0 +1,323 @@
+{
+  "schema": "ac-tests-lock/6",
+  "feature": "ti17-always-true-matcher-2",
+  "mode": "test-first",
+  "spec": {
+    "spec_id": "ti17-always-true-matcher-2",
+    "spec_content_hash": "a097ee5856fed13f08a42431b7792538fc45e2d963ea81ce321ceb5fd1867320"
+  },
+  "mapping": {
+    "path": "pharn/features/ti17-always-true-matcher-2/AC-TESTS.md",
+    "sha256": "0676d6bc7f53c5bf161c9e4cd868a5c853daeb96b884d4de566298b4892ce3de"
+  },
+  "files": [
+    {
+      "path": "packages/core/test/ac-ti17-benchmark-vitest.test.ts",
+      "sha256": "5ba6d86dc59cfbc2ec4ddcf6bed5fd7daf02b76f66ef11fae79137ec658da074"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-changelog-threat.test.ts",
+      "sha256": "efa98d497d7f85d981e8b0807662649259b96819b2fdcfb53c4bb3594ac85cee"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-fix-hints.test.ts",
+      "sha256": "c02fd177384d036f882e6e5c733c8b4c4e7e1e35b2f9df2daaf17159fd158027"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-fixtures.test.ts",
+      "sha256": "6ac9d37c9129c07eeff275fd57007b7c9e39a24d657cba6865eca6556eec966d"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-growth.test.ts",
+      "sha256": "6c4401aa79aab806326a048c4973c8b6cb972b3ce461231229882fdfab114cd8"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-helper-pass.test.ts",
+      "sha256": "1d164be90439305aa2302e914aba03b755f89ea6b48889eb131356f8a38659b4"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-helper-warn.test.ts",
+      "sha256": "c5e06574fe38ba3d12fb8fbc9162d6d9d53989adc3fe311ed1b7a9d07b22d19e"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-limits-readme.test.ts",
+      "sha256": "b59ff36f50c02b6c5db9923aa4822460db057e8ed1ecc242b8961901598fae4c"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-matcher-method.test.ts",
+      "sha256": "92ea1fbf7d3f0f22893a9fdc0db3092ecce5a8b319fdb0f879ca1fb7c806f854"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-matcher-pass.test.ts",
+      "sha256": "34291d07b1680a54dabce6ad7bcf05e4d0a86a0f52e74994a9f4a6b07b3b7e16"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-modes.test.ts",
+      "sha256": "7d618f140deee02ef0c4ec872f2b7f09b6f7db13de3ee087a2f995e2a431bb72"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-not-test-files.test.ts",
+      "sha256": "2d9d20c7b4cd70cea450a04d6db73423986a5e205544755c207e58ab89441ca7"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-one-per-file.test.ts",
+      "sha256": "27d6eae6665b5f6cd38548336763018da4966cd0cdd324614ee14e0edcf480d5"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-policy-key.test.ts",
+      "sha256": "67cda2d5a0dca29080691b895a6caa5b0985747346e9602f68903620ca3e481d"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-policy-severity.test.ts",
+      "sha256": "546a4adf33ad7aca7f6670dd2ec875346b8673b09763b5e170678543be38f447"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-render.test.ts",
+      "sha256": "4ce8ceae89d1931d265953eed7ef7867a2e4ae6e64f935fec061885aa6adf898"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-schemas.test.ts",
+      "sha256": "95541625815b66e6e588715d1bb1fd43ba7a75ed28d5da0e4693712c5cc735dd"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-signoff-pins.test.ts",
+      "sha256": "edcc18ecb05187e36aeca608d86bb75d7f4c151c3421feb5c7873486c5c03c2a"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-wildcard-js-pass.test.ts",
+      "sha256": "6f54fde08f4bdf849441612133048c4a83f3a1ac25f2dc7145af8127faa165b0"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-wildcard-js-warn.test.ts",
+      "sha256": "a894e9f90a518b6bfadc9cf09fa695e0e12b0fb72d304303909bc2a56538bfd4"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-wildcard-py-pass.test.ts",
+      "sha256": "ea19788fc233add5a9446453e6163e63a24f9ed1226c52137c8a9c8e051793ef"
+    },
+    {
+      "path": "packages/core/test/ac-ti17-wildcard-py-warn.test.ts",
+      "sha256": "aabfd9fd6eaf6213029ac13e67fe2322c0b2a6d66ee3e968be46289a02b031bb"
+    },
+    {
+      "path": "packages/node-io/test/ac-ti17-benchmark-pytest-any.test.ts",
+      "sha256": "f377825223122499d721623d72ad73b274ab81cdcc26ba916af7bec459a3c0d7"
+    },
+    {
+      "path": "packages/node-io/test/ac-ti17-benchmark-pytest-helper.test.ts",
+      "sha256": "f999dd90332d64c33b26334c7dad07a805d36ae94fa67fbd2cf8bd4642bc802a"
+    },
+    {
+      "path": "packages/node-io/test/ac-ti17-skylos-count.test.ts",
+      "sha256": "0920d126c46fb6b78e3651920f71c502d5c9ff4e09e2b256564fb8c1a738f41c"
+    }
+  ],
+  "bootstrap": null,
+  "red_run": {
+    "stamp_sha256": "accb6851a41dba37fa3021ea266447b350c1b0e6edf2f126745b365a9f80f5bf",
+    "files_sha256": "36c2c7bbdba5b4cd35c4ed4dcd0aed389647c2fbfe801bfc0668b1b488f1372b",
+    "gates": [
+      {
+        "gate": "test",
+        "results_sha256": "4217669a2464cfffd5dcde6612c7f0bb0dc23342f2957e245acd0854057b9495"
+      }
+    ],
+    "acs": [
+      {
+        "id": "AC-1",
+        "tests": [
+          "packages/core/test/ac-ti17-benchmark-vitest.test.ts::TI17 on the vitest Skylos case always-true-matcher › AC-1: the unchanged benchmark diff in mode block gives a schema-valid report with exactly one TI17 warn signal at src/cart.test.ts:9 and one TEST_INTEGRITY_TI17 warn message"
+        ]
+      },
+      {
+        "id": "AC-2",
+        "tests": [
+          "packages/node-io/test/ac-ti17-benchmark-pytest-any.test.ts::TI17 on the pytest Skylos variant always-true-matcher-any › AC-2: with the real Python index and from the diff alone, the report holds exactly one test-integrity signal, TI17 warn at tests/test_cart.py:10"
+        ]
+      },
+      {
+        "id": "AC-3",
+        "tests": [
+          "packages/node-io/test/ac-ti17-benchmark-pytest-helper.test.ts::TI17 on the pytest Skylos case always-true-matcher › AC-3: with the real Python index the report holds the TI06 warn signal of the base commit, unchanged, and one more signal, TI17 warn at tests/test_cart.py:13"
+        ]
+      },
+      {
+        "id": "AC-4",
+        "tests": [
+          "packages/core/test/ac-ti17-matcher-method.test.ts::TI17: an always-true matcher written as a method › AC-4: a jest .test.js and a vitest .test.ts that each add a multi-line method matcher whose only pass is true, and a call to it, give one TI17 warn signal per file at the line of the added assertion"
+        ]
+      },
+      {
+        "id": "AC-5",
+        "tests": [
+          "packages/core/test/ac-ti17-matcher-pass.test.ts::TI17: matchers that are not always true, or not used › AC-5: a compared pass, a mixed pass, an uncalled matcher, a call to an undefined matcher and a pass read from a variable give no TI17 signal and no TEST_INTEGRITY_TI17 message"
+        ]
+      },
+      {
+        "id": "AC-6",
+        "tests": [
+          "packages/core/test/ac-ti17-helper-warn.test.ts::TI17: a Python helper that always returns True, asserted on › AC-6: a pytest assert and a unittest assertTrue on a helper whose every return is True give one TI17 warn signal per file at the line of the first such added assertion, from the diff alone"
+        ]
+      },
+      {
+        "id": "AC-7",
+        "tests": [
+          "packages/core/test/ac-ti17-helper-pass.test.ts::TI17: Python helpers that are not always True, or not the whole assertion › AC-7: a compared return, a mixed return, an unused helper, an assert on an undefined helper and a helper inside a larger condition give no TI17 signal"
+        ]
+      },
+      {
+        "id": "AC-8",
+        "tests": [
+          "packages/core/test/ac-ti17-wildcard-js-warn.test.ts::TI17: a wildcard in place of a concrete expected value (JS/TS) › AC-8: toBe(5) replaced by toBe(expect.anything()) in the same hunk gives one TI17 warn signal at the added line, from the diff alone",
+          "packages/core/test/ac-ti17-wildcard-js-warn.test.ts::TI17: a wildcard in place of a concrete expected value (JS/TS) › AC-8: toEqual(5) replaced by toEqual(expect.anything()) in the same hunk gives one TI17 warn signal at the added line, from the diff alone",
+          "packages/core/test/ac-ti17-wildcard-js-warn.test.ts::TI17: a wildcard in place of a concrete expected value (JS/TS) › AC-8: toStrictEqual(5) replaced by toStrictEqual(expect.anything()) in the same hunk gives one TI17 warn signal at the added line, from the diff alone"
+        ]
+      },
+      {
+        "id": "AC-9",
+        "tests": [
+          "packages/core/test/ac-ti17-wildcard-js-pass.test.ts::TI17: wildcards that replace no concrete expected value (JS/TS) › AC-9: a wildcard argument of a call matcher, a nested wildcard, a wildcard in a new test and a re-indented wildcard line give no TI17 signal"
+        ]
+      },
+      {
+        "id": "AC-10",
+        "tests": [
+          "packages/core/test/ac-ti17-wildcard-py-warn.test.ts::TI17: a wildcard in place of a concrete expected value (Python) › AC-10: == ANY in place of 5, in the same hunk, gives one TI17 warn signal at the added line, from the diff alone",
+          "packages/core/test/ac-ti17-wildcard-py-warn.test.ts::TI17: a wildcard in place of a concrete expected value (Python) › AC-10: == mock.ANY in place of 5, in the same hunk, gives one TI17 warn signal at the added line, from the diff alone",
+          "packages/core/test/ac-ti17-wildcard-py-warn.test.ts::TI17: a wildcard in place of a concrete expected value (Python) › AC-10: == unittest.mock.ANY in place of 5, in the same hunk, gives one TI17 warn signal at the added line, from the diff alone",
+          "packages/core/test/ac-ti17-wildcard-py-warn.test.ts::TI17: a wildcard in place of a concrete expected value (Python) › AC-10: assertEqual(..., ANY) in a unittest.TestCase method in place of 5, in the same hunk, gives one TI17 warn signal at the added line, from the diff alone"
+        ]
+      },
+      {
+        "id": "AC-11",
+        "tests": [
+          "packages/core/test/ac-ti17-wildcard-py-pass.test.ts::TI17: wildcards that replace no concrete expected value (Python) › AC-11: ANY in a call assertion's arguments, a nested ANY, == ANY in a new test and a re-indented == ANY line give no TI17 signal"
+        ]
+      },
+      {
+        "id": "AC-12",
+        "tests": [
+          "packages/core/test/ac-ti17-not-test-files.test.ts::TI17: lines outside JS/TS and Python test files, and removed lines › AC-12: the always-true lines in non-test files, the wildcard lines in a Go test file and a diff that only removes an always-true matcher give no TI17 signal"
+        ]
+      },
+      {
+        "id": "AC-13",
+        "tests": [
+          "packages/core/test/ac-ti17-one-per-file.test.ts::TI17: one finding per test file › AC-13: four always-true assertions in one test file and one in another give exactly one TI17 signal per file, at the lowest such line, ordered by path, with a short fixed detail that counts them and holds no text of the diff; the one TEST_INTEGRITY_TI17 message names both paths"
+        ]
+      },
+      {
+        "id": "AC-14",
+        "tests": [
+          "packages/core/test/ac-ti17-modes.test.ts::TI17 in the test-integrity modes › AC-14: in modes block and warn the TI17 signal and its message are warn and the verdict is warn; in mode off there is no TI17 signal, no TEST_INTEGRITY_TI17 message and the verdict is pass"
+        ]
+      },
+      {
+        "id": "AC-15",
+        "tests": [
+          "packages/core/test/ac-ti17-policy-severity.test.ts::TI17 severity from an org policy › AC-15: an app policy TI17 block fails the check and off drops the finding; a policy file's info is ignored with POLICY_OVERRIDE_IGNORED naming test_integrity.signals.TI17; mode warn caps an app block at warn"
+        ]
+      },
+      {
+        "id": "AC-16",
+        "tests": [
+          "packages/core/test/ac-ti17-policy-key.test.ts::the TI17 key of an org policy › AC-16: a policy with test_integrity.signals.TI17 is valid for core and the schema, one with TI18 is invalid with an error at its path that repeats no value, and the unknown-ti fixture names TI18"
+        ]
+      },
+      {
+        "id": "AC-17",
+        "tests": [
+          "packages/core/test/ac-ti17-schemas.test.ts::schema/report.v2.json and schema/policy.v1.json accept TI17 and change nothing else › AC-17: a TI17 signal is valid and TI18 is not, the known codes name TEST_INTEGRITY_TI17, the policy has a TI17 severity key and no longer calls TI17 an error, and with those edits out both files equal the base commit byte for byte"
+        ]
+      },
+      {
+        "id": "AC-18",
+        "tests": [
+          "packages/core/test/ac-ti17-fix-hints.test.ts::fix hints for TI17 › AC-18: the TI17 signal and the TEST_INTEGRITY_TI17 message each carry a restore-assertion fix with one fixed sentence of at most 200 characters, the signal's target is its path:line, and the fix kinds are the same eight"
+        ]
+      },
+      {
+        "id": "AC-19",
+        "tests": [
+          "packages/core/test/ac-ti17-render.test.ts::renderMarkdown(): TI17 in the Test integrity section › AC-19: the comment lists TI17 with src/cart.test.ts:9 and its detail and a hint to restore the assertion that can fail or say in the PR why the test checks less now, and a TI17 line follows a TI16 line of the same severity"
+        ]
+      },
+      {
+        "id": "AC-20",
+        "tests": [
+          "packages/core/test/ac-ti17-growth.test.ts::TI17: a bounded scan of hostile test-file lines › AC-20: 5000 hostile lines of 400 characters in a .test.ts and in a test_*.py file give a schema-valid report in under 5 seconds, with at most one TI17 signal per file"
+        ]
+      },
+      {
+        "id": "AC-21",
+        "tests": [
+          "packages/node-io/test/ac-ti17-skylos-count.test.ts::Skylos nine with TI17: vitest 8 of 9 and pytest 8 of 9, and the documents say so › AC-21: the nine vitest and nine pytest cases (with the -any and -aliased variants) through check() catch 8 of 9 each, the only miss of each is hard-coded-answer, and README, PRECISION and LIMITS state exactly those results"
+        ]
+      },
+      {
+        "id": "AC-22",
+        "tests": [
+          "packages/core/test/ac-ti17-limits-readme.test.ts::docs/LIMITS.md and README.md describe TI17 › AC-22: LIMITS has a What TI17 misses subsection in place of the proposal that says TI17 warns and never blocks by default and names each miss; the parity and signal tables have a TI17 row; the message-code table has TEST_INTEGRITY_TI17; the Roadmap links #test-integrity and no longer names the always-passing matcher"
+        ]
+      },
+      {
+        "id": "AC-23",
+        "tests": [
+          "packages/core/test/ac-ti17-changelog-threat.test.ts::CHANGELOG.md and docs/THREAT-MODEL.md record TI17 › AC-23: Unreleased names TI17 and TEST_INTEGRITY_TI17 under Added and, under Changed, the pass to warn move and the new schema id and policy key, with no new version heading; the threat model names TI17's scan of added test-file lines with linear time and the kept-text caps"
+        ]
+      },
+      {
+        "id": "AC-24",
+        "tests": [
+          "packages/core/test/ac-ti17-fixtures.test.ts::the TI17 fixtures, and the benchmark left as it was › AC-24: every file under the Skylos benchmark is byte-identical to the base commit, there are no always-true-matcher sources, and fixtures/test-integrity/TI17/ holds a warn and a pass case per detection, each giving a TI17 signal for warn cases only"
+        ]
+      },
+      {
+        "id": "AC-25",
+        "tests": [
+          "packages/core/test/ac-ti17-signoff-pins.test.ts::the fixture walker accepts the TI17 fixtures and keeps every earlier pin › AC-25: the walker's ADDED_AFTER_BASE holds every TI17 fixture and every base entry, BEFORE_COUNT (216) and BEFORE_DIGEST keep their base literals, and both sha256 pins of the walker equal its sha256 at HEAD"
+        ]
+      }
+    ]
+  },
+  "test_infra": {
+    "levels": [
+      "integration",
+      "unit"
+    ],
+    "gates": [
+      {
+        "id": "test",
+        "script": "vitest run",
+        "pre": null,
+        "post": null,
+        "results": "vitest-json"
+      }
+    ],
+    "chained": [],
+    "configs": [
+      {
+        "path": "vitest.config.ts",
+        "sha256": "84fef4870fed6a1d5156f5260cd8fcc9b6d1dcca7cc76e8de3c86a978b336fec"
+      }
+    ],
+    "script_files": [],
+    "jest": null,
+    "exclude": [],
+    "other_gates": [
+      {
+        "id": "build",
+        "script": "pnpm -r build",
+        "pre": null,
+        "post": null
+      },
+      {
+        "id": "lint",
+        "script": "biome check . && pnpm -r typecheck",
+        "pre": null,
+        "post": null
+      }
+    ],
+    "other_chained": []
+  }
+}

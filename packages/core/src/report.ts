@@ -118,7 +118,7 @@ export interface ReportPolicy {
 export type TestIntegrityMode = "block" | "warn" | "off";
 
 export interface TestIntegritySignal {
-  /** TI01–TI16. */
+  /** TI01–TI17. */
   id: string;
   severity: "block" | "warn" | "info";
   path: string;
@@ -281,6 +281,7 @@ export type MessageCode =
   | "TEST_INTEGRITY_TI14"
   | "TEST_INTEGRITY_TI15"
   | "TEST_INTEGRITY_TI16"
+  | "TEST_INTEGRITY_TI17"
   | "TEST_INTEGRITY_INDEX_UNAVAILABLE"
   | "TEST_INTEGRITY_TEXT_TRUNCATED"
   | "TEST_INTEGRITY_ACCEPTED"
@@ -412,7 +413,7 @@ export interface BuildReportInput {
   /**
    * The test-integrity signals the detectors found, each with its effective severity (sorted by the caller). They fill
    * `testIntegrity.signals` and `testIntegrity.verdict`; each signal id also adds one `TEST_INTEGRITY_<id>` message
-   * (TI01, TI03, TI04, TI08, TI10, TI11, TI13, TI14, TI15, TI16).
+   * (TI01, TI03, TI04, TI08, TI10, TI11, TI13, TI14, TI15, TI16, TI17).
    * Absent or empty adds nothing.
    */
   testIntegritySignals?: readonly TestIntegritySignal[];
@@ -609,6 +610,12 @@ const SIGNAL_MESSAGES: ReadonlyArray<{
     code: "TEST_INTEGRITY_TI16",
     text: (_top, paths) =>
       `This change adds comments that switch off a linter or type checker in test files: ${paths}.`,
+  },
+  {
+    id: "TI17",
+    code: "TEST_INTEGRITY_TI17",
+    text: (_top, paths) =>
+      `This change adds assertions that always pass to test files: ${paths}. Check that each test still compares a value that can fail.`,
   },
 ];
 

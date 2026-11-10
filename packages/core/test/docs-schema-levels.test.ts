@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
+import { withoutTi17SchemaEdits } from "./ti17-schema.js";
 import { withoutV060CodeText } from "./v060-codes.js";
 import { withoutV070SchemaEdits } from "./v070-codes.js";
 import { withoutV080SchemaEdits } from "./v080-codes.js";
@@ -69,8 +70,11 @@ describe("docs-schema-levels", () => {
       // (v080-codes.ts).
       // Re-pinned for fix-hints (H6): the `$defs.fix` object and the six `fix` properties are taken out first
       // (v090-codes.ts pins them exactly).
+      // Re-pinned for ti17-always-true-matcher-2: the TI17 id pattern and code text are taken out first (ti17-schema.ts).
       withoutV060CodeText(
-        withoutSchemaLevelEdits(withoutV070SchemaEdits(withoutV080SchemaEdits(withoutV090SchemaEdits(now)))),
+        withoutSchemaLevelEdits(
+          withoutV070SchemaEdits(withoutV080SchemaEdits(withoutV090SchemaEdits(withoutTi17SchemaEdits(now)))),
+        ),
       ),
       "report.v2.json without the two insertions",
     ).toBe(atBase("schema/report.v2.json"));

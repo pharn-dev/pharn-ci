@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
+import { withoutTi17SchemaEdits } from "./ti17-schema.js";
 import { V060_CODE_TEXT, V060_CODES } from "./v060-codes.js";
 import { V070_CODE_TEXT, V070_CODES, withoutV070Properties } from "./v070-codes.js";
 import { V080_CODE_TEXT, V080_CODES, withoutV080Properties } from "./v080-codes.js";
@@ -161,8 +162,11 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
     // object, and its part of the v0.8.0 code text and its codes (in V080_CODES) join the same way.
     // Re-pinned for fix-hints (H6): the `$defs.fix` object and the six `fix` properties are taken out first
     // (v090-codes.ts pins them exactly).
+    // Re-pinned for ti17-always-true-matcher-2: the TI17 id pattern and code text are taken out first (ti17-schema.ts).
     const v2 = withoutSchemaLevelEdits(
-      withoutV080Properties(withoutV070Properties(withoutV090SchemaEdits(read("schema/report.v2.json")))),
+      withoutV080Properties(
+        withoutV070Properties(withoutV090SchemaEdits(withoutTi17SchemaEdits(read("schema/report.v2.json")))),
+      ),
     );
     const baseDescription = strings(JSON.parse(v2Base)).find((s) => s.includes(" Codes added in v0.4.0:"));
     expect(baseDescription, "control: the base has the v0.4.0 text").toBeDefined();
@@ -214,6 +218,10 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
         "SI02",
         "SI03",
         "SI04",
+        // Re-pinned for ti17-always-true-matcher-2: report.ts gains the TI17 signal id and its message code (the schema
+        // part is taken out above, so it does not join the schema comparison).
+        "TI17",
+        "TEST_INTEGRITY_TI17",
         "UPLOAD_TOO_LARGE",
       ].sort(),
     );

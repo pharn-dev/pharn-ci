@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { withoutTi17SchemaEdits } from "./ti17-schema.js";
 import { withoutV090SchemaEdits } from "./v090-codes.js";
 
 // The documents are read inside the test body, so the file loads whatever they say.
@@ -82,8 +83,11 @@ describe("test sources: documentation and schema", () => {
     const v2 = "schema/report.v2.json";
     // Re-pinned for fix-hints (H6): the `$defs.fix` object and the six `fix` properties are taken out first
     // (v090-codes.ts pins them exactly).
+    // Re-pinned for ti17-always-true-matcher-2: the TI17 id pattern and code text are taken out first (ti17-schema.ts).
     expect(
-      withoutEditedDescriptions(JSON.parse(withoutV090SchemaEdits(readFileSync(new URL(v2, ROOT), "utf8")))),
+      withoutEditedDescriptions(
+        JSON.parse(withoutV090SchemaEdits(withoutTi17SchemaEdits(readFileSync(new URL(v2, ROOT), "utf8")))),
+      ),
       `${v2} differs from ${BASE_COMMIT} only in the message-code and languages descriptions`,
     ).toEqual(withoutEditedDescriptions(JSON.parse(atBase(v2).toString("utf8"))));
   });

@@ -34,7 +34,7 @@ export interface FixHint {
 }
 
 /**
- * Every signal id core produces: TI01 to TI16, the P ids with a rule file (there is no P12), SI01 to SI04, PI01 to PI05
+ * Every signal id core produces: TI01 to TI17, the P ids with a rule file (there is no P12), SI01 to SI04, PI01 to PI05
  * and D01 to D05.
  */
 export type FixSignalId =
@@ -54,6 +54,7 @@ export type FixSignalId =
   | "TI14"
   | "TI15"
   | "TI16"
+  | "TI17"
   | "P01"
   | "P02"
   | "P03"
@@ -141,6 +142,10 @@ export const SIGNAL_FIXES: Readonly<Record<FixSignalId, FixEntry>> = {
   TI16: {
     kind: "request-review",
     hint: "Ask a reviewer to confirm the lint or type suppression added to the test file is needed.",
+  },
+  TI17: {
+    kind: "restore-assertion",
+    hint: "Restore an assertion that can fail in place of the one that always passes.",
   },
   P01: { kind: "none", hint: "A maintainer should add the agent setup files the org policy requires." },
   P02: { kind: "request-review", hint: REVIEW_POLICY },
@@ -302,6 +307,7 @@ export const MESSAGE_FIXES: Readonly<Record<MessageCode, FixEntry>> = {
   TEST_INTEGRITY_TI14: S.TI14,
   TEST_INTEGRITY_TI15: S.TI15,
   TEST_INTEGRITY_TI16: S.TI16,
+  TEST_INTEGRITY_TI17: S.TI17,
   TEST_INTEGRITY_INDEX_UNAVAILABLE: {
     kind: "none",
     hint: "Check that the touched test files can be read, so removed tests and assertions are compared.",

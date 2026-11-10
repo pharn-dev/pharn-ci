@@ -25587,6 +25587,10 @@ var SIGNAL_FIXES = {
     kind: "request-review",
     hint: "Ask a reviewer to confirm the lint or type suppression added to the test file is needed."
   },
+  TI17: {
+    kind: "restore-assertion",
+    hint: "Restore an assertion that can fail in place of the one that always passes."
+  },
   P01: { kind: "none", hint: "A maintainer should add the agent setup files the org policy requires." },
   P02: { kind: "request-review", hint: REVIEW_POLICY },
   P03: { kind: "request-review", hint: REVIEW_POLICY },
@@ -25743,6 +25747,7 @@ var MESSAGE_FIXES = {
   TEST_INTEGRITY_TI14: S.TI14,
   TEST_INTEGRITY_TI15: S.TI15,
   TEST_INTEGRITY_TI16: S.TI16,
+  TEST_INTEGRITY_TI17: S.TI17,
   TEST_INTEGRITY_INDEX_UNAVAILABLE: {
     kind: "none",
     hint: "Check that the touched test files can be read, so removed tests and assertions are compared."
@@ -26494,6 +26499,11 @@ var SIGNAL_MESSAGES = [
     id: "TI16",
     code: "TEST_INTEGRITY_TI16",
     text: (_top, paths) => `This change adds comments that switch off a linter or type checker in test files: ${paths}.`
+  },
+  {
+    id: "TI17",
+    code: "TEST_INTEGRITY_TI17",
+    text: (_top, paths) => `This change adds assertions that always pass to test files: ${paths}. Check that each test still compares a value that can fail.`
   }
 ];
 function testIntegritySignalMessages(signals, options = {}) {
@@ -41913,6 +41923,530 @@ function detectTI16(diff) {
   return signals.sort((a, b) => byCodeUnit(a.path, b.path));
 }
 
+// ../core/src/signals/alwaysTrue.ts
+var MAX_ALWAYS_TRUE_NAMES = 50;
+var isBlank7 = (c) => c === " " || c === "	";
+var isWordChar3 = (c) => c >= "0" && c <= "9" || c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_" || c === "$";
+var isWordStart = (c) => isWordChar3(c) && !(c >= "0" && c <= "9");
+function skipBlanks4(text, from) {
+  let i = from;
+  while (i < text.length && isBlank7(text.charAt(i))) i++;
+  return i;
+}
+function wordEnd2(text, from) {
+  let i = from;
+  while (i < text.length && isWordChar3(text.charAt(i))) i++;
+  return i;
+}
+function addedLinesOf(file) {
+  const lines = [];
+  for (const hunk of file.hunks ?? []) for (const entry of hunk.added) lines.push(entry);
+  return lines.sort((a, b) => a.line - b.line);
+}
+function matchingClose(text, open3) {
+  let depth = 0;
+  let quote = "";
+  for (let i = open3; i < text.length; i++) {
+    const c = text.charAt(i);
+    if (quote !== "") {
+      if (c === "\\") i++;
+      else if (c === quote) quote = "";
+      continue;
+    }
+    if (c === '"' || c === "'") quote = c;
+    else if (c === "(" || c === "[" || c === "{") depth++;
+    else if (c === ")" || c === "]" || c === "}") {
+      depth--;
+      if (depth === 0) return i + 1;
+      if (depth < 0) return -1;
+    }
+  }
+  return -1;
+}
+var EXTEND_CALL = ["expect", "extend("].join(".");
+function isTrueValue(text, at) {
+  if (!text.startsWith("true", at)) return false;
+  const after = at + 4;
+  if (after < text.length && isWordChar3(text.charAt(after))) return false;
+  const next = skipBlanks4(text, after);
+  if (next >= text.length) return true;
+  const c = text.charAt(next);
+  return c === "," || c === "}" || c === ")" || c === "]" || c === ";" || c === "/";
+}
+function readLine(text, from, state, found) {
+  let i = from;
+  while (i < text.length) {
+    const c = text.charAt(i);
+    if (state.inBlock) {
+      if (c === "*" && text.charAt(i + 1) === "/") {
+        state.inBlock = false;
+        i += 2;
+      } else i++;
+      continue;
+    }
+    if (state.quote !== "") {
+      if (c === "\\") i += 2;
+      else {
+        if (c === state.quote) state.quote = "";
+        i++;
+      }
+      continue;
+    }
+    if (c === "/" && text.charAt(i + 1) === "/") return -1;
+    if (c === "/" && text.charAt(i + 1) === "*") {
+      state.inBlock = true;
+      i += 2;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      state.quote = c;
+      state.expectKey = false;
+      i++;
+      continue;
+    }
+    if (isBlank7(c)) {
+      i++;
+      continue;
+    }
+    if (isWordChar3(c)) {
+      const end = wordEnd2(text, i);
+      const word = text.slice(i, end);
+      const afterDot = i > 0 && text.charAt(i - 1) === ".";
+      i = end;
+      if (state.inObject && state.depth === 1 && state.expectKey && isWordStart(c)) {
+        let name = word;
+        if (word === "async") {
+          const next = skipBlanks4(text, i);
+          if (next < text.length && isWordStart(text.charAt(next))) {
+            const nextEnd = wordEnd2(text, next);
+            name = text.slice(next, nextEnd);
+            i = nextEnd;
+          }
+        }
+        const after = skipBlanks4(text, i);
+        state.expectKey = false;
+        const sep2 = text.charAt(after);
+        state.current = null;
+        if (sep2 === ":" || sep2 === "(") {
+          if (found.has(name) || found.size < MAX_ALWAYS_TRUE_NAMES) {
+            state.current = { name, passes: 0, trues: 0 };
+            if (!found.has(name)) found.set(name, true);
+          }
+        }
+        continue;
+      }
+      if (state.current !== null && word === "pass" && !afterDot) {
+        state.current.passes++;
+        const colon = skipBlanks4(text, i);
+        if (text.charAt(colon) === ":" && text.charAt(colon + 1) !== ":") {
+          if (isTrueValue(text, skipBlanks4(text, colon + 1))) state.current.trues++;
+        }
+      }
+      continue;
+    }
+    if (c === "(" || c === "[" || c === "{") {
+      if (c === "{" && state.depth === 0 && !state.inObject) {
+        state.inObject = true;
+        state.expectKey = true;
+      } else if (state.expectKey && state.depth === 1) state.expectKey = false;
+      state.depth++;
+      i++;
+      continue;
+    }
+    if (c === ")" || c === "]" || c === "}") {
+      state.depth--;
+      i++;
+      if (state.inObject && state.depth === 0) {
+        endSpan(state, found);
+        return i;
+      }
+      if (state.depth < 0) {
+        endSpan(state, found);
+        return i;
+      }
+      continue;
+    }
+    if (c === "," && state.inObject && state.depth === 1) {
+      endSpan(state, found);
+      state.expectKey = true;
+      i++;
+      continue;
+    }
+    if (c !== "." && state.expectKey && state.depth === 1) state.expectKey = false;
+    i++;
+  }
+  return -1;
+}
+function endSpan(state, found) {
+  const current = state.current;
+  state.current = null;
+  if (current === null) return;
+  const alwaysTrue = current.passes > 0 && current.trues === current.passes;
+  if (!alwaysTrue) found.set(current.name, false);
+}
+function scanMatchers(lines) {
+  const names = /* @__PURE__ */ new Map();
+  const spans = [];
+  let i = 0;
+  let col = 0;
+  while (i < lines.length) {
+    const entry = lines[i];
+    const open3 = entry.text.indexOf(EXTEND_CALL, col);
+    if (open3 === -1) {
+      i++;
+      col = 0;
+      continue;
+    }
+    const state = {
+      depth: 0,
+      inObject: false,
+      expectKey: false,
+      quote: "",
+      inBlock: false,
+      current: null
+    };
+    const found = /* @__PURE__ */ new Map();
+    let at = i;
+    let from = open3 + EXTEND_CALL.length;
+    let closedAt = -1;
+    for (; ; ) {
+      const line = lines[at];
+      closedAt = readLine(line.text, from, state, found);
+      if (closedAt !== -1) break;
+      state.quote = state.quote === "`" ? "`" : "";
+      const next = lines[at + 1];
+      if (next === void 0 || next.line !== line.line + 1) break;
+      at++;
+      from = 0;
+    }
+    spans.push([entry.line, lines[at].line]);
+    if (closedAt === -1) {
+      i = at + 1;
+      col = 0;
+      continue;
+    }
+    for (const [name, value] of found) {
+      const earlier = names.get(name);
+      if (names.size < MAX_ALWAYS_TRUE_NAMES || earlier !== void 0)
+        names.set(name, earlier === void 0 ? value : earlier && value);
+    }
+    i = at;
+    col = closedAt;
+  }
+  return { names, spans };
+}
+function callsAnyOf(text, names) {
+  for (let i = text.indexOf("."); i !== -1; i = text.indexOf(".", i + 1)) {
+    const start = i + 1;
+    if (start >= text.length || !isWordStart(text.charAt(start))) continue;
+    const end = wordEnd2(text, start);
+    if (names.get(text.slice(start, end)) !== true) continue;
+    if (text.charAt(skipBlanks4(text, end)) === "(") return true;
+  }
+  return false;
+}
+function alwaysTrueMatcherLines(file) {
+  const lines = addedLinesOf(file);
+  const { names, spans } = scanMatchers(lines);
+  let any = false;
+  for (const value of names.values()) if (value) any = true;
+  if (!any) return [];
+  const out = [];
+  let span2 = 0;
+  for (const entry of lines) {
+    while (span2 < spans.length && spans[span2][1] < entry.line) span2++;
+    const here = spans[span2];
+    if (here !== void 0 && entry.line >= here[0] && entry.line <= here[1]) continue;
+    if (callsAnyOf(entry.text, names)) out.push(entry.line);
+  }
+  return out;
+}
+function indentOf3(text) {
+  let width = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charAt(i);
+    if (c === " ") width++;
+    else if (c === "	") width += 8 - width % 8;
+    else break;
+  }
+  return width;
+}
+var isEmptyLine = (text) => skipBlanks4(text, 0) >= text.length;
+function hasWord(text, word) {
+  for (let i = text.indexOf(word); i !== -1; i = text.indexOf(word, i + 1)) {
+    const before = i === 0 ? "" : text.charAt(i - 1);
+    const after = text.charAt(i + word.length);
+    if ((before === "" || !isWordChar3(before)) && (after === "" || !isWordChar3(after))) return true;
+  }
+  return false;
+}
+function afterKeyword(text, word) {
+  const start = skipBlanks4(text, 0);
+  if (!text.startsWith(word, start)) return -1;
+  const end = start + word.length;
+  if (end < text.length && isWordChar3(text.charAt(end))) return -1;
+  return end;
+}
+function defName(text) {
+  const end = afterKeyword(text, "def");
+  if (end === -1 || end >= text.length || !isBlank7(text.charAt(end))) return null;
+  const start = skipBlanks4(text, end);
+  const nameEnd = wordEnd2(text, start);
+  if (nameEnd === start || !isWordStart(text.charAt(start))) return null;
+  return text.charAt(skipBlanks4(text, nameEnd)) === "(" ? text.slice(start, nameEnd) : null;
+}
+function bodyIsAlwaysTrue(body) {
+  let returns = 0;
+  let trues = 0;
+  for (const entry of body) {
+    const text = entry.text;
+    if (defName(text) !== null || afterKeyword(text, "def") !== -1 || afterKeyword(text, "async") !== -1) return false;
+    if (afterKeyword(text, "class") !== -1 || hasWord(text, "lambda") || hasWord(text, "yield")) return false;
+    const end = afterKeyword(text, "return");
+    if (end === -1) continue;
+    returns++;
+    let value = text.slice(end);
+    const hash = value.indexOf("#");
+    if (hash !== -1) value = value.slice(0, hash);
+    if (value.trim() === "True") trues++;
+  }
+  return returns > 0 && trues === returns;
+}
+function scanHelpers(lines) {
+  const helpers = /* @__PURE__ */ new Map();
+  let i = 0;
+  while (i < lines.length) {
+    const entry = lines[i];
+    const name = defName(entry.text);
+    if (name === null) {
+      i++;
+      continue;
+    }
+    const indent = indentOf3(entry.text);
+    let j = i + 1;
+    while (j < lines.length) {
+      const line = lines[j];
+      const before = lines[j - 1];
+      if (line.line !== before.line + 1) break;
+      if (!isEmptyLine(line.text) && indentOf3(line.text) <= indent) break;
+      j++;
+    }
+    const value = bodyIsAlwaysTrue(lines.slice(i + 1, j));
+    const earlier = helpers.get(name);
+    if (earlier !== void 0 || helpers.size < MAX_ALWAYS_TRUE_NAMES)
+      helpers.set(name, earlier === void 0 ? value : earlier && value);
+    i = j;
+  }
+  const out = /* @__PURE__ */ new Set();
+  for (const [name, value] of helpers) if (value) out.add(name);
+  return out;
+}
+function endsCondition(rest) {
+  const next = skipBlanks4(rest, 0);
+  if (next >= rest.length) return true;
+  const c = rest.charAt(next);
+  return c === "," || c === "#";
+}
+function helperCall(text, at, helpers) {
+  const start = skipBlanks4(text, at);
+  if (start >= text.length || !isWordStart(text.charAt(start))) return -1;
+  const end = wordEnd2(text, start);
+  if (!helpers.has(text.slice(start, end))) return -1;
+  const open3 = skipBlanks4(text, end);
+  if (text.charAt(open3) !== "(") return -1;
+  return matchingClose(text, open3);
+}
+function alwaysTrueHelperLines(file) {
+  const lines = addedLinesOf(file);
+  const helpers = scanHelpers(lines);
+  if (helpers.size === 0) return [];
+  const out = [];
+  for (const entry of lines) {
+    const text = entry.text;
+    const assertEnd = afterKeyword(text, "assert");
+    if (assertEnd !== -1 && assertEnd < text.length && isBlank7(text.charAt(assertEnd))) {
+      const closed2 = helperCall(text, assertEnd, helpers);
+      if (closed2 !== -1 && endsCondition(text.slice(closed2))) out.push(entry.line);
+      continue;
+    }
+    const start = skipBlanks4(text, 0);
+    const form = "self.assertTrue(";
+    if (!text.startsWith(form, start)) continue;
+    const closed = helperCall(text, start + form.length, helpers);
+    if (closed === -1) continue;
+    const next = skipBlanks4(text, closed);
+    const c = text.charAt(next);
+    if (c === ")" || c === ",") out.push(entry.line);
+  }
+  return out;
+}
+
+// ../core/src/signals/wildcardExpected.ts
+var MAX_LINE3 = 400;
+var JS_OPENERS = [".toBe(", ".toEqual(", ".toStrictEqual("];
+var JS_WILDCARD = ["expect", "anything()"].join(".");
+var PY_WILDCARDS = /* @__PURE__ */ new Set(["ANY", "mock.ANY", "unittest.mock.ANY"]);
+function jsEquality(text) {
+  let at = -1;
+  let width = 0;
+  for (const opener of JS_OPENERS) {
+    const found = text.indexOf(opener);
+    if (found !== -1 && (at === -1 || found < at)) {
+      at = found;
+      width = opener.length;
+    }
+  }
+  if (at === -1) return null;
+  let i = skipBlanks4(text, at + width);
+  if (!text.startsWith(JS_WILDCARD, i)) return { wildcard: false };
+  i = skipBlanks4(text, i + JS_WILDCARD.length);
+  return { wildcard: text.charAt(i) === ")" };
+}
+function operandFrom(text, from, closeStops) {
+  let depth = 0;
+  let quote = "";
+  let end = text.length;
+  for (let i = from; i < text.length; i++) {
+    const c = text.charAt(i);
+    if (quote !== "") {
+      if (c === "\\") i++;
+      else if (c === quote) quote = "";
+      continue;
+    }
+    if (c === '"' || c === "'") quote = c;
+    else if (c === "(" || c === "[" || c === "{") depth++;
+    else if (c === ")" || c === "]" || c === "}") {
+      if (depth === 0 && closeStops) {
+        end = i;
+        break;
+      }
+      depth--;
+    } else if (depth === 0 && (c === "," || c === "#")) {
+      end = i;
+      break;
+    }
+  }
+  return text.slice(from, end).trim();
+}
+function topLevelEquals(text, from) {
+  let depth = 0;
+  let quote = "";
+  for (let i = from; i < text.length; i++) {
+    const c = text.charAt(i);
+    if (quote !== "") {
+      if (c === "\\") i++;
+      else if (c === quote) quote = "";
+      continue;
+    }
+    if (c === '"' || c === "'") quote = c;
+    else if (c === "(" || c === "[" || c === "{") depth++;
+    else if (c === ")" || c === "]" || c === "}") depth--;
+    else if (c === "#" && depth <= 0) return -1;
+    else if (c === "=" && depth === 0 && text.charAt(i + 1) === "=") {
+      const before = i === 0 ? "" : text.charAt(i - 1);
+      if (before !== "!" && before !== "<" && before !== ">" && before !== "=") return i;
+      i++;
+    }
+  }
+  return -1;
+}
+function secondArgument(text, open3) {
+  let depth = 0;
+  let quote = "";
+  for (let i = open3 + 1; i < text.length; i++) {
+    const c = text.charAt(i);
+    if (quote !== "") {
+      if (c === "\\") i++;
+      else if (c === quote) quote = "";
+      continue;
+    }
+    if (c === '"' || c === "'") quote = c;
+    else if (c === "(" || c === "[" || c === "{") depth++;
+    else if (c === ")" || c === "]" || c === "}") {
+      if (depth === 0) return -1;
+      depth--;
+    } else if (c === "," && depth === 0) return i + 1;
+  }
+  return -1;
+}
+function pyEquality(text) {
+  const start = skipBlanks4(text, 0);
+  if (text.startsWith("assert", start) && isBlank7(text.charAt(start + 6))) {
+    const equals = topLevelEquals(text, start + 6);
+    if (equals === -1) return null;
+    return { wildcard: PY_WILDCARDS.has(operandFrom(text, equals + 2, false)) };
+  }
+  const form = "assertEqual(";
+  const at = text.indexOf(form);
+  if (at === -1) return null;
+  const second = secondArgument(text, at + form.length - 1);
+  if (second === -1) return null;
+  return { wildcard: PY_WILDCARDS.has(operandFrom(text, second, true)) };
+}
+var normalize3 = (text) => text.replace(/\s+/g, " ").trim();
+function equalityOf(entry, language) {
+  const text = entry.text.length > MAX_LINE3 ? entry.text.slice(0, MAX_LINE3) : entry.text;
+  return language === "jsts" ? jsEquality(text) : pyEquality(text);
+}
+function hunkFindings(hunk, language, out) {
+  const wildcards = [];
+  for (const entry of hunk.added) if (equalityOf(entry, language)?.wildcard === true) wildcards.push(entry);
+  if (wildcards.length === 0) return;
+  const removedWildcards = /* @__PURE__ */ new Map();
+  let replaceable = 0;
+  for (const entry of hunk.removed) {
+    const equality = equalityOf(entry, language);
+    if (equality === null) continue;
+    if (equality.wildcard) {
+      const key = normalize3(entry.text);
+      removedWildcards.set(key, (removedWildcards.get(key) ?? 0) + 1);
+    } else replaceable++;
+  }
+  for (const entry of wildcards) {
+    const key = normalize3(entry.text);
+    const left = removedWildcards.get(key) ?? 0;
+    if (left > 0) {
+      removedWildcards.set(key, left - 1);
+      continue;
+    }
+    if (replaceable > 0) {
+      replaceable--;
+      out.push(entry.line);
+    }
+  }
+}
+function wildcardReplacementLines(file, language) {
+  const out = [];
+  for (const hunk of file.hunks ?? []) hunkFindings(hunk, language, out);
+  return out.sort((a, b) => a - b);
+}
+
+// ../core/src/signals/ti17.ts
+function detectTI17(diff) {
+  const signals = [];
+  for (const file of diff) {
+    if (file.hunks === void 0 || file.binary === true || !isTestFile(file.path)) continue;
+    const language = testLanguage(file.path);
+    if (language !== "jsts" && language !== "python") continue;
+    const lines = /* @__PURE__ */ new Set([
+      ...language === "jsts" ? alwaysTrueMatcherLines(file) : alwaysTrueHelperLines(file),
+      ...wildcardReplacementLines(file, language)
+    ]);
+    if (lines.size === 0) continue;
+    let first = Number.POSITIVE_INFINITY;
+    for (const line of lines) if (line < first) first = line;
+    const count2 = lines.size === 1 ? "1 assertion that always passes" : `${lines.size} assertions that always pass`;
+    signals.push({
+      id: "TI17",
+      severity: "warn",
+      path: file.path,
+      line: first,
+      detail: `This test file adds ${count2}: a custom matcher or helper that is always true, or a wildcard in place of an expected value, so it no longer checks a value.`
+    });
+  }
+  return signals.sort((a, b) => byCodeUnit(a.path, b.path));
+}
+
 // ../core/src/check.ts
 function sortSignals2(signals) {
   return signals.sort(
@@ -41950,7 +42484,8 @@ function check(input) {
       mode: testIntegrity2.mode
     }),
     ...sourceMatches.signals,
-    ...detectTI16(parsedDiff)
+    ...detectTI16(parsedDiff),
+    ...detectTI17(parsedDiff)
   ]);
   let comparison = null;
   const comparedMode = testIntegrity2.mode;
@@ -42568,7 +43103,8 @@ var POLICY_SIGNAL_IDS = [
   "TI13",
   "TI14",
   "TI15",
-  "TI16"
+  "TI16",
+  "TI17"
 ];
 var POLICY_RULE_IDS = [
   "P01",
@@ -43690,6 +44226,7 @@ var MESSAGE_HINTS = {
   TEST_INTEGRITY_TI14: "Restore the threshold or the exclusions, or say in the PR why they change so a reviewer can confirm it.",
   TEST_INTEGRITY_TI15: "Check that the code handles the general case and not only the test's value, and add a test with another input.",
   TEST_INTEGRITY_TI16: "Fix the lint or type error the comment hides, or say in the PR why the test needs it.",
+  TEST_INTEGRITY_TI17: (label) => `Restore the assertion that can fail, or say in the PR why the test checks less now; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_INDEX_UNAVAILABLE: "Review the named test files by hand for removed tests and weakened assertions. A file over 512 KiB, one with many syntax errors, a missing Python 3.8 or newer for `.py` files, or git objects that could not be read stop the comparison.",
   TEST_INTEGRITY_TEXT_TRUNCATED: "Review the named files by hand for skipped, focused or weakened tests, or split the change so each file stays under the limit.",
   TEST_INTEGRITY_ACCEPTED: "A reviewer other than the PR author signed off, so the block findings are warnings. The sign-off belongs to the pull request, not to a commit: remove the label if a later push should be judged again.",
@@ -43778,7 +44315,8 @@ var SIGNAL_HINT_IDS = /* @__PURE__ */ new Set([
   "TI13",
   "TI14",
   "TI15",
-  "TI16"
+  "TI16",
+  "TI17"
 ]);
 function signalHint(id, label) {
   return SIGNAL_HINT_IDS.has(id) ? hintFor(`TEST_INTEGRITY_${id}`, label) : void 0;

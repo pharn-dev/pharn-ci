@@ -79,6 +79,20 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
         expect(withoutFixJson(read(fixed[1] as string)), line).toBe(git("show", `${BASE}:${fixed[1]}`));
         continue;
       }
+      // Re-pinned for ti17-always-true-matcher-2: the two unknown-signal-key policy fixtures name TI18 instead of TI17
+      // now that TI17 is a signal. Each must be modified, never added or deleted, and with TI18 turned back into TI17 it
+      // is its content at the base byte for byte. Its new case files under fixtures/test-integrity/TI17/ are added too
+      // (allowed below), and an existing fixture that changed would still show as modified.
+      const unknownTi = /^M\t(fixtures\/policy\/invalid\/unknown-ti\.(?:json|paths))$/.exec(line);
+      if (unknownTi !== null) {
+        expect(
+          read(unknownTi[1] as string)
+            .split("TI18")
+            .join("TI17"),
+          line,
+        ).toBe(git("show", `${BASE}:${unknownTi[1]}`));
+        continue;
+      }
       // Re-pinned for markdown-byte-compare (review SPEC finding 29): markdown.test.ts's two snapshots moved, unchanged,
       // into these two new committed files.
       if (/^A\tfixtures\/markdown\/(?:missing|no-coverable)\.md$/.test(line)) continue;
@@ -101,7 +115,7 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
         // Re-pinned for H4 (prompt-injection scan): its fixtures under fixtures/injection/ are added too.
         // Re-pinned for flaky tests (A6): its new fixtures under fixtures/junit/ are added too.
         // Re-pinned for dependency safety (A13, v0.8.0): its fixtures under fixtures/dependencies/ are added too.
-        /^A\tfixtures\/junit\/[^/]+$|^A\tfixtures\/stale-instructions\/[^/]+$|^A\tfixtures\/(?:dependencies|exercise|injection)\/[^\t]+$|^A\tfixtures\/policy-rules\/(?:p11|p07|p13|p14)\/[^/]+\/[^/]+$|^A\tfixtures\/policy-settings\/[^\t]+$|^A\tfixtures\/test-integrity\/TI03\/[^\t]+$|^A\tfixtures\/test-integrity\/(?:TI10\/(?:block-colon-only|block-true-only|block-true-or-run|pass-true-then-run)|TI14\/block-threshold-(?:emptied|lowered-nbsp-comment|padded-past-cap))\.diff$|^A\tfixtures\/test-integrity\/(?:TI01\/(?:block-test-mts-deleted|block-spec-cts-deleted)|TI04\/block-test-mts-it-only|TI13\/pass-test-mts-istanbul)\/[^\t]+$|^A\tfixtures\/test-integrity\/TI09\/(?:block-opaque-head|block-too-deep-head|pass-added-opaque-config|pass-opaque-base-and-head)\/[^\t]+$|^A\tfixtures\/test-integrity\/(?:index-unavailable\/(?:added-broken|added-parseable|added-python|added-six-broken|mixed|mixed-python)|TI01\/block-same-stem-(?:unparsed|dropped))\/[^\t]+$/,
+        /^A\tfixtures\/junit\/[^/]+$|^A\tfixtures\/stale-instructions\/[^/]+$|^A\tfixtures\/(?:dependencies|exercise|injection)\/[^\t]+$|^A\tfixtures\/policy-rules\/(?:p11|p07|p13|p14)\/[^/]+\/[^/]+$|^A\tfixtures\/policy-settings\/[^\t]+$|^A\tfixtures\/test-integrity\/TI03\/[^\t]+$|^A\tfixtures\/test-integrity\/TI17\/[^\t]+$|^A\tfixtures\/test-integrity\/(?:TI10\/(?:block-colon-only|block-true-only|block-true-or-run|pass-true-then-run)|TI14\/block-threshold-(?:emptied|lowered-nbsp-comment|padded-past-cap))\.diff$|^A\tfixtures\/test-integrity\/(?:TI01\/(?:block-test-mts-deleted|block-spec-cts-deleted)|TI04\/block-test-mts-it-only|TI13\/pass-test-mts-istanbul)\/[^\t]+$|^A\tfixtures\/test-integrity\/TI09\/(?:block-opaque-head|block-too-deep-head|pass-added-opaque-config|pass-opaque-base-and-head)\/[^\t]+$|^A\tfixtures\/test-integrity\/(?:index-unavailable\/(?:added-broken|added-parseable|added-python|added-six-broken|mixed|mixed-python)|TI01\/block-same-stem-(?:unparsed|dropped))\/[^\t]+$/,
       );
     }
     const untracked = git("ls-files", "--others", "--exclude-standard", "--", "fixtures/")
@@ -122,7 +136,7 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       expect(path, "a new fixture").toMatch(
         // Re-pinned for H4 (prompt-injection scan): its fixtures under fixtures/injection/ are untracked until committed.
         // Re-pinned for flaky tests (A6): its fixtures under fixtures/junit/ are untracked until committed.
-        /^fixtures\/junit\/[^/]+$|^fixtures\/stale-instructions\/[^/]+$|^fixtures\/(?:dependencies|exercise|injection)\/[^\t]+$|^fixtures\/policy-rules\/(?:p11|p07|p13|p14)\/[^/]+\/[^/]+$|^fixtures\/test-integrity\/TI03\/[^\t]+$|^fixtures\/test-integrity\/(?:TI10\/(?:block-colon-only|block-true-only|block-true-or-run|pass-true-then-run)|TI14\/block-threshold-(?:emptied|lowered-nbsp-comment|padded-past-cap))\.diff$|^fixtures\/policy-settings\/unparseable\/[^\t]+$|^fixtures\/test-integrity\/(?:TI01\/(?:block-test-mts-deleted|block-spec-cts-deleted)|TI04\/block-test-mts-it-only|TI13\/pass-test-mts-istanbul)\/[^\t]+$|^fixtures\/test-integrity\/TI09\/(?:block-opaque-head|block-too-deep-head|pass-added-opaque-config|pass-opaque-base-and-head)\/[^\t]+$|^fixtures\/test-integrity\/(?:index-unavailable\/(?:added-broken|added-parseable|added-python|added-six-broken|mixed|mixed-python)|TI01\/block-same-stem-(?:unparsed|dropped))\/[^\t]+$/,
+        /^fixtures\/junit\/[^/]+$|^fixtures\/stale-instructions\/[^/]+$|^fixtures\/(?:dependencies|exercise|injection)\/[^\t]+$|^fixtures\/policy-rules\/(?:p11|p07|p13|p14)\/[^/]+\/[^/]+$|^fixtures\/test-integrity\/TI03\/[^\t]+$|^fixtures\/test-integrity\/TI17\/[^\t]+$|^fixtures\/test-integrity\/(?:TI10\/(?:block-colon-only|block-true-only|block-true-or-run|pass-true-then-run)|TI14\/block-threshold-(?:emptied|lowered-nbsp-comment|padded-past-cap))\.diff$|^fixtures\/policy-settings\/unparseable\/[^\t]+$|^fixtures\/test-integrity\/(?:TI01\/(?:block-test-mts-deleted|block-spec-cts-deleted)|TI04\/block-test-mts-it-only|TI13\/pass-test-mts-istanbul)\/[^\t]+$|^fixtures\/test-integrity\/TI09\/(?:block-opaque-head|block-too-deep-head|pass-added-opaque-config|pass-opaque-base-and-head)\/[^\t]+$|^fixtures\/test-integrity\/(?:index-unavailable\/(?:added-broken|added-parseable|added-python|added-six-broken|mixed|mixed-python)|TI01\/block-same-stem-(?:unparsed|dropped))\/[^\t]+$/,
       );
     }
 

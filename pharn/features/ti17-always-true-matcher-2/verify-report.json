@@ -1,0 +1,433 @@
+{
+  "feature": "ti17-always-true-matcher-2",
+  "gates": {
+    "build": 0,
+    "instruction-growth": 0,
+    "lint": 0,
+    "reconcile": 0,
+    "test": 0
+  },
+  "verdict": "PASS",
+  "failing_gates": [],
+  "gate_run": {
+    "stamp_sha256": "249f8bfb5e5052a60d1b328fc045bd759475e4f35165e3056280daef60c8f79f",
+    "source": "discover",
+    "fingerprint": {
+      "algo": "worktree-fingerprint/3+sha256",
+      "final": "aef636075c7bf0524b3a600ec32a56b9ece0ce3f34a7ee0ddf157b22afa51ec1"
+    }
+  },
+  "ac_gate": {
+    "mode": "test-first",
+    "verdict": "PASS",
+    "reason": null,
+    "evidence": [],
+    "acs": [
+      {
+        "id": "AC-1",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti17-benchmark-vitest.test.ts::TI17 on the vitest Skylos case always-true-matcher › AC-1: the unchanged benchmark diff in mode block gives a schema-valid report with exactly one TI17 warn signal at src/cart.test.ts:9 and one TEST_INTEGRITY_TI17 warn message"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-2",
+        "level": "integration",
+        "tests": [
+          "packages/node-io/test/ac-ti17-benchmark-pytest-any.test.ts::TI17 on the pytest Skylos variant always-true-matcher-any › AC-2: with the real Python index and from the diff alone, the report holds exactly one test-integrity signal, TI17 warn at tests/test_cart.py:10"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-3",
+        "level": "integration",
+        "tests": [
+          "packages/node-io/test/ac-ti17-benchmark-pytest-helper.test.ts::TI17 on the pytest Skylos case always-true-matcher › AC-3: with the real Python index the report holds the TI06 warn signal of the base commit, unchanged, and one more signal, TI17 warn at tests/test_cart.py:13"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-4",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti17-matcher-method.test.ts::TI17: an always-true matcher written as a method › AC-4: a jest .test.js and a vitest .test.ts that each add a multi-line method matcher whose only pass is true, and a call to it, give one TI17 warn signal per file at the line of the added assertion"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-5",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti17-matcher-pass.test.ts::TI17: matchers that are not always true, or not used › AC-5: a compared pass, a mixed pass, an uncalled matcher, a call to an undefined matcher and a pass read from a variable give no TI17 signal and no TEST_INTEGRITY_TI17 message"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-6",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti17-helper-warn.test.ts::TI17: a Python helper that always returns True, asserted on › AC-6: a pytest assert and a unittest assertTrue on a helper whose every return is True give one TI17 warn signal per file at the line of the first such added assertion, from the diff alone"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-7",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti17-helper-pass.test.ts::TI17: Python helpers that are not always True, or not the whole assertion › AC-7: a compared return, a mixed return, an unused helper, an assert on an undefined helper and a helper inside a larger condition give no TI17 signal"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-8",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti17-wildcard-js-warn.test.ts::TI17: a wildcard in place of a concrete expected value (JS/TS) › AC-8: toBe(5) replaced by toBe(expect.anything()) in the same hunk gives one TI17 warn signal at the added line, from the diff alone",
+          "packages/core/test/ac-ti17-wildcard-js-warn.test.ts::TI17: a wildcard in place of a concrete expected value (JS/TS) › AC-8: toEqual(5) replaced by toEqual(expect.anything()) in the same hunk gives one TI17 warn signal at the added line, from the diff alone",
+          "packages/core/test/ac-ti17-wildcard-js-warn.test.ts::TI17: a wildcard in place of a concrete expected value (JS/TS) › AC-8: toStrictEqual(5) replaced by toStrictEqual(expect.anything()) in the same hunk gives one TI17 warn signal at the added line, from the diff alone"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-9",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti17-wildcard-js-pass.test.ts::TI17: wildcards that replace no concrete expected value (JS/TS) › AC-9: a wildcard argument of a call matcher, a nested wildcard, a wildcard in a new test and a re-indented wildcard line give no TI17 signal"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-10",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti17-wildcard-py-warn.test.ts::TI17: a wildcard in place of a concrete expected value (Python) › AC-10: == ANY in place of 5, in the same hunk, gives one TI17 warn signal at the added line, from the diff alone",
+          "packages/core/test/ac-ti17-wildcard-py-warn.test.ts::TI17: a wildcard in place of a concrete expected value (Python) › AC-10: == mock.ANY in place of 5, in the same hunk, gives one TI17 warn signal at the added line, from the diff alone",
+          "packages/core/test/ac-ti17-wildcard-py-warn.test.ts::TI17: a wildcard in place of a concrete expected value (Python) › AC-10: == unittest.mock.ANY in place of 5, in the same hunk, gives one TI17 warn signal at the added line, from the diff alone",
+          "packages/core/test/ac-ti17-wildcard-py-warn.test.ts::TI17: a wildcard in place of a concrete expected value (Python) › AC-10: assertEqual(..., ANY) in a unittest.TestCase method in place of 5, in the same hunk, gives one TI17 warn signal at the added line, from the diff alone"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-11",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti17-wildcard-py-pass.test.ts::TI17: wildcards that replace no concrete expected value (Python) › AC-11: ANY in a call assertion's arguments, a nested ANY, == ANY in a new test and a re-indented == ANY line give no TI17 signal"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-12",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti17-not-test-files.test.ts::TI17: lines outside JS/TS and Python test files, and removed lines › AC-12: the always-true lines in non-test files, the wildcard lines in a Go test file and a diff that only removes an always-true matcher give no TI17 signal"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-13",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti17-one-per-file.test.ts::TI17: one finding per test file › AC-13: four always-true assertions in one test file and one in another give exactly one TI17 signal per file, at the lowest such line, ordered by path, with a short fixed detail that counts them and holds no text of the diff; the one TEST_INTEGRITY_TI17 message names both paths"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-14",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti17-modes.test.ts::TI17 in the test-integrity modes › AC-14: in modes block and warn the TI17 signal and its message are warn and the verdict is warn; in mode off there is no TI17 signal, no TEST_INTEGRITY_TI17 message and the verdict is pass"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-15",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti17-policy-severity.test.ts::TI17 severity from an org policy › AC-15: an app policy TI17 block fails the check and off drops the finding; a policy file's info is ignored with POLICY_OVERRIDE_IGNORED naming test_integrity.signals.TI17; mode warn caps an app block at warn"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-16",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-ti17-policy-key.test.ts::the TI17 key of an org policy › AC-16: a policy with test_integrity.signals.TI17 is valid for core and the schema, one with TI18 is invalid with an error at its path that repeats no value, and the unknown-ti fixture names TI18"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-17",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-ti17-schemas.test.ts::schema/report.v2.json and schema/policy.v1.json accept TI17 and change nothing else › AC-17: a TI17 signal is valid and TI18 is not, the known codes name TEST_INTEGRITY_TI17, the policy has a TI17 severity key and no longer calls TI17 an error, and with those edits out both files equal the base commit byte for byte"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-18",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-ti17-fix-hints.test.ts::fix hints for TI17 › AC-18: the TI17 signal and the TEST_INTEGRITY_TI17 message each carry a restore-assertion fix with one fixed sentence of at most 200 characters, the signal's target is its path:line, and the fix kinds are the same eight"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-19",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-ti17-render.test.ts::renderMarkdown(): TI17 in the Test integrity section › AC-19: the comment lists TI17 with src/cart.test.ts:9 and its detail and a hint to restore the assertion that can fail or say in the PR why the test checks less now, and a TI17 line follows a TI16 line of the same severity"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-20",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-ti17-growth.test.ts::TI17: a bounded scan of hostile test-file lines › AC-20: 5000 hostile lines of 400 characters in a .test.ts and in a test_*.py file give a schema-valid report in under 5 seconds, with at most one TI17 signal per file"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-21",
+        "level": "integration",
+        "tests": [
+          "packages/node-io/test/ac-ti17-skylos-count.test.ts::Skylos nine with TI17: vitest 8 of 9 and pytest 8 of 9, and the documents say so › AC-21: the nine vitest and nine pytest cases (with the -any and -aliased variants) through check() catch 8 of 9 each, the only miss of each is hard-coded-answer, and README, PRECISION and LIMITS state exactly those results"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-22",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-ti17-limits-readme.test.ts::docs/LIMITS.md and README.md describe TI17 › AC-22: LIMITS has a What TI17 misses subsection in place of the proposal that says TI17 warns and never blocks by default and names each miss; the parity and signal tables have a TI17 row; the message-code table has TEST_INTEGRITY_TI17; the Roadmap links #test-integrity and no longer names the always-passing matcher"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-23",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-ti17-changelog-threat.test.ts::CHANGELOG.md and docs/THREAT-MODEL.md record TI17 › AC-23: Unreleased names TI17 and TEST_INTEGRITY_TI17 under Added and, under Changed, the pass to warn move and the new schema id and policy key, with no new version heading; the threat model names TI17's scan of added test-file lines with linear time and the kept-text caps"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-24",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-ti17-fixtures.test.ts::the TI17 fixtures, and the benchmark left as it was › AC-24: every file under the Skylos benchmark is byte-identical to the base commit, there are no always-true-matcher sources, and fixtures/test-integrity/TI17/ holds a warn and a pass case per detection, each giving a TI17 signal for warn cases only"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-25",
+        "level": "unit",
+        "tests": [
+          "packages/core/test/ac-ti17-signoff-pins.test.ts::the fixture walker accepts the TI17 fixtures and keeps every earlier pin › AC-25: the walker's ADDED_AFTER_BASE holds every TI17 fixture and every base entry, BEFORE_COUNT (216) and BEFORE_DIGEST keep their base literals, and both sha256 pins of the walker equal its sha256 at HEAD"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      }
+    ],
+    "unmapped_anomalies": [],
+    "note": "an AC is delivered = a locked, once-red test titled AC-<n>:, in a file mapped to AC-<n>, passed on this head run. PHARN does not judge whether that test fully captures the AC's intent."
+  },
+  "completeness": {
+    "plan": "pharn/features/ti17-always-true-matcher-2/PLAN.md",
+    "repoDir": ".",
+    "declared": [
+      "packages/core/src/signals/ti17.ts",
+      "packages/core/src/signals/alwaysTrue.ts",
+      "packages/core/src/signals/wildcardExpected.ts",
+      "packages/core/src/check.ts",
+      "packages/core/src/report.ts",
+      "packages/core/src/fix/table.ts",
+      "packages/core/src/render/markdown.ts",
+      "packages/core/src/policy/types.ts",
+      "packages/core/src/policy/limits.ts",
+      "packages/core/src/signals/signalFiles.ts",
+      "packages/core/src/index.ts",
+      "schema/report.v2.json",
+      "schema/policy.v1.json",
+      "packages/core/test/ti17-schema.ts",
+      "fixtures/test-integrity/TI17/warn-matcher-arrow.diff",
+      "fixtures/test-integrity/TI17/warn-matcher-method-ts.diff",
+      "fixtures/test-integrity/TI17/warn-matcher-method-js.diff",
+      "fixtures/test-integrity/TI17/pass-matcher-compares.diff",
+      "fixtures/test-integrity/TI17/pass-matcher-mixed.diff",
+      "fixtures/test-integrity/TI17/pass-matcher-not-called.diff",
+      "fixtures/test-integrity/TI17/pass-matcher-undefined.diff",
+      "fixtures/test-integrity/TI17/pass-matcher-variable.diff",
+      "fixtures/test-integrity/TI17/pass-matcher-source-file.diff",
+      "fixtures/test-integrity/TI17/pass-matcher-removed-only.diff",
+      "fixtures/test-integrity/TI17/warn-helper-pytest.diff",
+      "fixtures/test-integrity/TI17/warn-helper-unittest.diff",
+      "fixtures/test-integrity/TI17/pass-helper-compares.diff",
+      "fixtures/test-integrity/TI17/pass-helper-mixed.diff",
+      "fixtures/test-integrity/TI17/pass-helper-unused.diff",
+      "fixtures/test-integrity/TI17/pass-helper-undefined.diff",
+      "fixtures/test-integrity/TI17/pass-helper-in-condition.diff",
+      "fixtures/test-integrity/TI17/pass-helper-source-file.diff",
+      "fixtures/test-integrity/TI17/warn-wildcard-tobe.diff",
+      "fixtures/test-integrity/TI17/warn-wildcard-toequal.diff",
+      "fixtures/test-integrity/TI17/warn-wildcard-tostrictequal.diff",
+      "fixtures/test-integrity/TI17/warn-wildcard-python-any.diff",
+      "fixtures/test-integrity/TI17/warn-wildcard-mock-any.diff",
+      "fixtures/test-integrity/TI17/warn-wildcard-unittest-mock-any.diff",
+      "fixtures/test-integrity/TI17/warn-wildcard-assertequal.diff",
+      "fixtures/test-integrity/TI17/pass-wildcard-called-with.diff",
+      "fixtures/test-integrity/TI17/pass-wildcard-nested.diff",
+      "fixtures/test-integrity/TI17/pass-wildcard-new-test.diff",
+      "fixtures/test-integrity/TI17/pass-wildcard-reindented.diff",
+      "fixtures/test-integrity/TI17/pass-wildcard-python-called-with.diff",
+      "fixtures/test-integrity/TI17/pass-wildcard-python-called-once-with.diff",
+      "fixtures/test-integrity/TI17/pass-wildcard-python-nested.diff",
+      "fixtures/test-integrity/TI17/pass-wildcard-python-new-test.diff",
+      "fixtures/test-integrity/TI17/pass-wildcard-python-reindented.diff",
+      "fixtures/test-integrity/TI17/pass-wildcard-go-test.diff",
+      "fixtures/policy/invalid/unknown-ti.json",
+      "fixtures/policy/invalid/unknown-ti.paths",
+      "packages/action/test/ac-accept-signoff-regression.test.ts",
+      "packages/core/test/ac-ti09y-regression.test.ts",
+      "packages/action/test/ac-pyparity2-unchanged.test.ts",
+      "packages/core/test/ac-fix-hints-pins.test.ts",
+      "packages/core/test/ac-skylos-nine-table.test.ts",
+      "packages/core/test/ac-skylos-nine-misses.test.ts",
+      "packages/core/test/ac-ti0205-skylos.test.ts",
+      "packages/core/test/ac-ti06-ti12-skylos.test.ts",
+      "packages/core/test/ac-ti07-skylos.test.ts",
+      "packages/core/test/ac-ti09y-skylos.test.ts",
+      "packages/core/test/ac-v020-skylos-count.test.ts",
+      "packages/core/test/ac-v020-limits.test.ts",
+      "packages/core/test/ac-v020-readme.test.ts",
+      "packages/core/test/ac-ti06-ti12-docs.test.ts",
+      "packages/core/test/ac-signal-precision-ti06-weakening.test.ts",
+      "packages/core/test/ac-name-only-suite.test.ts",
+      "packages/core/test/ac-name-only-docs.test.ts",
+      "packages/core/test/ac-skylos-pytest-ti17.test.ts",
+      "packages/core/test/ac-skylos-pytest-limits.test.ts",
+      "packages/core/test/ac-skylos-pytest-readme-changelog.test.ts",
+      "packages/core/test/ac-skylos-pytest-notes.test.ts",
+      "packages/core/test/ac-release030-readme-signals.test.ts",
+      "packages/core/test/ac-pyparity2-limits.test.ts",
+      "packages/core/test/ac-precision-v030-readme.test.ts",
+      "packages/core/test/ac-report-v2-schema.test.ts",
+      "packages/core/test/ac-fix-hints-mapping.test.ts",
+      "packages/core/test/ac-p07-schema-hints.test.ts",
+      "packages/core/test/ac-p11-schema-hints.test.ts",
+      "packages/core/test/ac-precision-v030-schema.test.ts",
+      "packages/core/test/ac-py-index-docs.test.ts",
+      "packages/core/test/ac-secrets-repin.test.ts",
+      "packages/core/test/ac-test-sources-docs.test.ts",
+      "packages/core/test/ac-ti07-schema.test.ts",
+      "packages/core/test/ac-ti081516-docs.test.ts",
+      "packages/core/test/ac-upload-schema.test.ts",
+      "packages/core/test/docs-schema-levels.test.ts",
+      "packages/core/test/injection-schema.test.ts",
+      "packages/core/test/stale-docs.test.ts",
+      "packages/core/test/ac-polrules-docs.test.ts",
+      "packages/core/test/ac-ti06-ti12-unchanged.test.ts",
+      "packages/core/test/ac-p07-unchanged.test.ts",
+      "packages/core/test/ac-p11-unchanged.test.ts",
+      "packages/node-io/test/ac-skylos-pytest-warn.test.ts",
+      "packages/node-io/test/ac-skylos-pytest-misses.test.ts",
+      "packages/node-io/test/ac-skylos-pytest-table.test.ts",
+      "README.md",
+      "docs/LIMITS.md",
+      "docs/PRECISION.md",
+      "docs/THREAT-MODEL.md",
+      "CHANGELOG.md",
+      "packages/action/dist/index.js"
+    ],
+    "skipped": [],
+    "missing": [],
+    "deletions": [],
+    "undeleted": [],
+    "complete": true,
+    "verdict": "complete"
+  },
+  "verifiers": {
+    "registered": 0,
+    "findings": []
+  },
+  "gate_reuse": {
+    "reused": [
+      {
+        "id": "build",
+        "stage": "regress",
+        "side": "head",
+        "seq": 1
+      }
+    ]
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "reconcile_detail": {
+    "state": "parsed",
+    "exit": 0,
+    "verdict": "CLEAN",
+    "escapes": [],
+    "escapes_total": 0,
+    "merged_count": 0
+  }
+}

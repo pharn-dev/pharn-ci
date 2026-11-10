@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
+import { withoutTi17SchemaEdits } from "./ti17-schema.js";
 import { V060_CODE_TEXT } from "./v060-codes.js";
 import { V070_CODE_TEXT, V070_CODES } from "./v070-codes.js";
 import { V080_CODE_TEXT, V080_CODES } from "./v080-codes.js";
@@ -81,7 +82,8 @@ describe("docs, schema and sources for the policy rules", { timeout: 60_000 }, (
     // Re-pinned for policy-p13 (Horizon 2 item H1) and policy rule P14 (agent PR size cap): the one appended v0.6.0
     // code text (POLICY_P13, then POLICY_P14) follows P07_TEXT; v060-codes.ts pins it exactly. It is an exact
     // appended-text pin, so it only adds.
-    const now = codeDescription(withoutSchemaLevelEdits(read("schema/report.v2.json")));
+    // Re-pinned for ti17-always-true-matcher-2: the TI17 id pattern and code text are taken out first (ti17-schema.ts).
+    const now = codeDescription(withoutSchemaLevelEdits(withoutTi17SchemaEdits(read("schema/report.v2.json"))));
     expect(base.endsWith("the check ran in full).")).toBe(true);
     expect(now.startsWith(base)).toBe(true);
     // Re-pinned for A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): the v0.7.0 code text follows the v0.6.0 one;

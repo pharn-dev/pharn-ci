@@ -500,15 +500,13 @@ describe("name-only moves change exactly four existing results", () => {
         expect(`${JSON.stringify(before, null, 2)}\n`, `${dir}: as at the base`).toBe(withoutFixJson(committed));
       }
 
-      // The Skylos benchmark: still 7 of 9, with deleted-test (TI01) and replaced-test (TI02) still blocking, for
-      // vitest and for pytest.
-      expect(readFileSync(`${ROOT}docs/LIMITS.md`, "utf8"), "docs/LIMITS.md still says 7 of 9").toContain(
-        "catch **7 of 9**",
-      );
+      // The Skylos benchmark: 8 of 9 since ti17-always-true-matcher-2 (it read 7 of 9 before), with deleted-test (TI01)
+      // and replaced-test (TI02) still blocking, for vitest and for pytest.
+      expect(readFileSync(`${ROOT}docs/LIMITS.md`, "utf8"), "docs/LIMITS.md says 8 of 9").toContain("catch **8 of 9**");
       expect(
         readFileSync(`${ROOT}packages/core/test/ac-skylos-nine-table.test.ts`, "utf8"),
-        "the Skylos table test reads 7/9",
-      ).toContain('"7/9"');
+        "the Skylos table test reads 8/9",
+      ).toContain('"8/9"');
       for (const [name, id] of [
         ["skylos-nine/deleted-test", "TI01"],
         ["skylos-nine/replaced-test", "TI02"],

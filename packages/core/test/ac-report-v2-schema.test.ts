@@ -42,7 +42,8 @@ describe("schema/report.v2.json", () => {
     expect(v1Digest, "schema/report.v1.json is unchanged").toBe(V1_SCHEMA_SHA256);
   });
 
-  it("AC-4: accepts check()'s v2 report and rejects a string or v1 schemaVersion, an unknown testIntegrity key and TI17", async () => {
+  it("AC-4: accepts check()'s v2 report and rejects a string or v1 schemaVersion, an unknown testIntegrity key and TI18", async () => {
+    // ti17-always-true-matcher-2: TI17 is a known signal id now, so the rejected id is the next one, TI18.
     const { validate } = v2Validator();
     const report = await goldenReport();
     expect(validate(report), JSON.stringify(validate.errors)).toBe(true);
@@ -56,10 +57,10 @@ describe("schema/report.v2.json", () => {
         ...report,
         testIntegrity: {
           ...testIntegrity,
-          signals: [{ id: "TI17", severity: "warn", path: "a.test.ts", line: 1, detail: "x" }],
+          signals: [{ id: "TI18", severity: "warn", path: "a.test.ts", line: 1, detail: "x" }],
         },
       }),
-      "signal id TI17",
+      "signal id TI18",
     ).toBe(false);
   });
 });

@@ -21,7 +21,8 @@ export type PolicySignalId =
   | "TI13"
   | "TI14"
   | "TI15"
-  | "TI16";
+  | "TI16"
+  | "TI17";
 
 /** A policy rule id. */
 export type PolicyRuleId =

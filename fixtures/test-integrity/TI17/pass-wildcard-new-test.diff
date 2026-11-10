@@ -1,0 +1,8 @@
+diff --git a/src/cart.test.ts b/src/cart.test.ts
+index 1111111..2222222 100644
+--- a/src/cart.test.ts
++++ b/src/cart.test.ts
+@@ -9,0 +10,3 @@ describe("cart", () => {
++  it("makes something", () => {
++    expect(make()).toEqual(expect.anything());
++  });

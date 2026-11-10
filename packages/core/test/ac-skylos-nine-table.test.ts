@@ -6,8 +6,9 @@ import { expectValidReport } from "./schema.js";
 
 // Skylos nine: the benchmark's nine ways an agent hides a failing test, each mapped to the pharn-ci signal that
 // catches it today or is planned to catch it (TEST-INTEGRITY-SPEC "Definition of done", item 2). The signals of this
-// release catch 7 of 9: the diff-only TI01 and TI03, and TI05, TI02, TI06, TI07 and TI09, which also read the base and
-// head text of the test file or test config (fixtures/skylos-nine-sources/<case>/, for the five cases that need it).
+// release catch 8 of 9: the diff-only TI01, TI03 and TI17, and TI05, TI02, TI06, TI07 and TI09, which also read the base
+// and head text of the test file or test config (fixtures/skylos-nine-sources/<case>/, for the five cases that need it).
+// ti17-always-true-matcher-2 moved always-true-matcher from missed to caught by TI17 (7 of 9 became 8 of 9).
 //
 // When the planned signal of a miss case ships, set that case's `caught` to true here and replace its miss assertion
 // in ac-skylos-nine-misses.test.ts with a catch assertion, so the benchmark result only moves forward on purpose.
@@ -41,7 +42,7 @@ const CASES: ReadonlyArray<{ name: string; signal: string | null; caught: boolea
   { name: "emptied-assertion", signal: "TI05", caught: true },
   { name: "deselect-setting", signal: "TI09", caught: true },
   { name: "hard-coded-answer", signal: "TI15", caught: false },
-  { name: "always-true-matcher", signal: null, caught: false },
+  { name: "always-true-matcher", signal: "TI17", caught: true },
   { name: "replaced-test", signal: "TI02", caught: true },
   { name: "loosened-assertion", signal: "TI06", caught: true },
   { name: "edited-expected-value", signal: "TI07", caught: true },
@@ -80,14 +81,14 @@ async function runAll(): Promise<Map<string, string[]>> {
 }
 
 describe("Skylos nine: the case table and the headline", () => {
-  it("AC-4: the table maps the nine cases to TI01, TI03, TI05, TI09, TI15, none, TI02, TI06 and TI07, one entry per fixture directory", () => {
+  it("AC-4: the table maps the nine cases to TI01, TI03, TI05, TI09, TI15, TI17, TI02, TI06 and TI07, one entry per fixture directory", () => {
     expect(CASES.map((c) => [c.name, c.signal])).toEqual([
       ["deleted-test", "TI01"],
       ["added-skip", "TI03"],
       ["emptied-assertion", "TI05"],
       ["deselect-setting", "TI09"],
       ["hard-coded-answer", "TI15"],
-      ["always-true-matcher", null],
+      ["always-true-matcher", "TI17"],
       ["replaced-test", "TI02"],
       ["loosened-assertion", "TI06"],
       ["edited-expected-value", "TI07"],
@@ -99,7 +100,7 @@ describe("Skylos nine: the case table and the headline", () => {
     expect(directories).toEqual(CASES.map((c) => c.name).sort());
   });
 
-  it("AC-4: exactly the seven caught cases give a signal, each only its table id, and the other two give none", async () => {
+  it("AC-4: exactly the eight caught cases give a signal, each only its table id, and the other one gives none", async () => {
     const results = await runAll();
     for (const { name, signal, caught } of CASES) {
       const ids = results.get(name);
@@ -116,13 +117,14 @@ describe("Skylos nine: the case table and the headline", () => {
       "added-skip",
       "emptied-assertion",
       "deselect-setting",
+      "always-true-matcher",
       "replaced-test",
       "loosened-assertion",
       "edited-expected-value",
     ]);
   });
 
-  it("AC-4: the headline — nine cases, 7 caught, 2 expected misses", async () => {
+  it("AC-4: the headline — nine cases, 8 caught, 1 expected miss", async () => {
     const results = await runAll();
     const caught = [...results].filter(([, ids]) => ids.length > 0).map(([name]) => name);
     const missed = [...results].filter(([, ids]) => ids.length === 0).map(([name]) => name);
@@ -132,11 +134,12 @@ describe("Skylos nine: the case table and the headline", () => {
       "added-skip",
       "emptied-assertion",
       "deselect-setting",
+      "always-true-matcher",
       "replaced-test",
       "loosened-assertion",
       "edited-expected-value",
     ]);
-    expect(missed).toHaveLength(2);
-    expect(`${caught.length}/${results.size}`).toBe("7/9");
+    expect(missed).toHaveLength(1);
+    expect(`${caught.length}/${results.size}`).toBe("8/9");
   });
 });

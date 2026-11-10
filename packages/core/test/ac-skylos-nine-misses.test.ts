@@ -15,6 +15,8 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const HEADING = "### 🔍 Test integrity";
 
 const MISSES = ["hard-coded-answer", "always-true-matcher"] as const;
+// ti17-always-true-matcher-2: always-true-matcher is caught by TI17 now, so its miss assertion below is a catch assertion.
+const CAUGHT_BY: Readonly<Record<string, string>> = { "always-true-matcher": "TI17 warn src/cart.test.ts:9" };
 
 /** The lines of the Test integrity section: from its heading to the line before the next `### ` heading. */
 function section(markdown: string): string[] {
@@ -47,16 +49,25 @@ describe("Skylos nine: the four expected misses run cleanly and give no signal",
       }).not.toThrow();
       if (report === undefined) throw new Error("check() returned nothing");
       expectValidReport(report);
-      expect(report.testIntegrity.signals).toEqual([]);
+      const caught = CAUGHT_BY[name];
+      if (caught !== undefined) {
+        expect(report.testIntegrity.signals.map((s) => `${s.id} ${s.severity} ${s.path}:${s.line}`)).toEqual([caught]);
+      } else {
+        expect(report.testIntegrity.signals).toEqual([]);
+      }
 
       let markdown = "";
       expect(() => {
         markdown = renderMarkdown(report as NonNullable<typeof report>);
       }).not.toThrow();
-      expect(section(markdown).filter((line) => line.trim() !== "")).toEqual([
-        HEADING,
-        "No test-integrity findings (mode: block).",
-      ]);
+      if (caught !== undefined) {
+        expect(section(markdown).join("\n")).toContain("**TI17**");
+      } else {
+        expect(section(markdown).filter((line) => line.trim() !== "")).toEqual([
+          HEADING,
+          "No test-integrity findings (mode: block).",
+        ]);
+      }
     });
   }
 });

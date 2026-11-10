@@ -32,19 +32,24 @@ const DIST_BOUND = 12_000_000;
 // the digest of the edited file.
 // Re-pinned again by fix-hints (H6): both files compare reports through withoutFix (v090-codes.ts), so the optional
 // fix object every message and finding now carries is left out; these are the digests of the edited files.
+// Re-pinned again by ti17-always-true-matcher-2: the walker's ADDED_AFTER_BASE gains the 35 TI17 fixtures (its count and
+// output digest are unchanged); this is the digest of the edited file.
 const PINNED: Record<string, string> = {
   "packages/core/test/ac-ti0205-regression.test.ts": "7583e11f397f59d04123ebdb7afea818d37f5a4b3522e32d3badd26fe104369b",
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "638b8bae1e0c8efcd4df8f922e1ce4684a836610635064ed177ede565c15b9a3",
+    "92e68fd78f2900f831408a629e229a07693b8c7f322ad59d25b949b6452cadb1",
 };
 
-/** The Skylos-count tests that record the move, and the count literal each one asserts. */
+/**
+ * The Skylos-count tests that record the move, and the count literal each one asserts. Re-pinned for
+ * ti17-always-true-matcher-2: always-true-matcher moved to caught by TI17, so the count is 8 of 9 (it was 7 of 9).
+ */
 const COUNT_TESTS: Record<string, string> = {
-  "packages/core/test/ac-skylos-nine-table.test.ts": '"7/9"',
-  "packages/core/test/ac-v020-skylos-count.test.ts": '"7 of 9"',
-  "packages/core/test/ac-v020-limits.test.ts": '"7 of 9"',
-  "packages/core/test/ac-v020-readme.test.ts": '"7 of 9"',
-  "packages/core/test/ac-ti0205-skylos.test.ts": '"7 of 9"',
+  "packages/core/test/ac-skylos-nine-table.test.ts": '"8/9"',
+  "packages/core/test/ac-v020-skylos-count.test.ts": '"8 of 9"',
+  "packages/core/test/ac-v020-limits.test.ts": '"8 of 9"',
+  "packages/core/test/ac-v020-readme.test.ts": '"8 of 9"',
+  "packages/core/test/ac-ti0205-skylos.test.ts": '"8 of 9"',
 };
 const MISSES_TEST = "packages/core/test/ac-skylos-nine-misses.test.ts";
 

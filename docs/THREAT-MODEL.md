@@ -430,6 +430,19 @@ and the tests cite them.
     the app policy. **Residual:** treat D01 to D05 as checks of where code comes from and how new it is, keep dependency
     review and the package manager's own audit for what it does, scope private packages (`@org/x`) so they are never
     looked up, and keep the allow-list to the registries the team runs.
+44. **TI17 scans the added lines of test files for an assertion that always passes.** (see residual 16) For each JS/TS or
+    Python test file the diff reader kept text for, TI17 reads only the added and removed lines it already holds: at
+    most 5000 lines per file and 400 characters per line (a file cut there is named by
+    `TEST_INTEGRITY_TEXT_TRUNCATED`). Every scan is hand-written, left to right and linear in that text, with no
+    backtracking and no regular expression with a nested quantifier; at most one definition is open at a time, at most 50
+    matcher or helper names are kept per file, and a definition that is unclosed at a gap or the end of the file is
+    dropped (`ac-ti17-growth.test.ts`: 10000 hostile lines of 400 characters in under 5 seconds). It adds no new input,
+    reads no file the diff does not touch and makes no call. A file gives at most one finding, whose detail is fixed
+    words and a count and never a matcher name, helper name or line of the diff (`ac-ti17-one-per-file.test.ts`), and
+    the signal is a `warn` that a pull request cannot use to lower its gate: an org policy replaces its severity and a
+    policy file can only raise it. **Residual:** TI17 sees a matcher or helper only when the change adds it on
+    consecutive lines of the same test file, so a definition elsewhere, a constant computed indirectly and any other
+    always-true form pass (`docs/LIMITS.md`, "What TI17 misses"); keep review on assertions a change weakens.
 
 ## 4. Keeping this document honest
 

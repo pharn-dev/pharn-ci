@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 // `## ` heading: its table, then the Python misses after it.
 
 const limits = () => readFileSync(new URL("../../../docs/LIMITS.md", import.meta.url), "utf8");
-const SIGNALS = Array.from({ length: 16 }, (_, i) => `TI${String(i + 1).padStart(2, "0")}`);
+// Re-pinned for ti17-always-true-matcher-2: the parity table gains a TI17 row, so the rows are TI01 to TI17.
+const SIGNALS = Array.from({ length: 17 }, (_, i) => `TI${String(i + 1).padStart(2, "0")}`);
 const CAUGHT_IN_PYTHON = ["TI01", "TI02", "TI03", "TI05", "TI06", "TI09", "TI13"];
 const VERDICT = /^(caught|not applicable|missed)\b\s*(?:—|-|:)\s*\S/;
 
@@ -28,7 +29,7 @@ const cells = (row: string) =>
     .map((c) => c.trim());
 
 describe("docs/LIMITS.md says, per signal and language, what pytest parity catches and misses", () => {
-  it("AC-18: a parity table with one row per signal TI01..TI16 in order and the columns JS/TS and Python, each cell caught, not applicable or missed with a reason; TI04 Python not applicable for want of .only; the seven parity signals caught in Python; and a list of the Python misses", () => {
+  it("AC-18: a parity table with one row per signal TI01..TI17 in order and the columns JS/TS and Python, each cell caught, not applicable or missed with a reason; TI04 Python not applicable for want of .only; the seven parity signals caught in Python; and a list of the Python misses", () => {
     const text = section(limits());
     const lines = text.split("\n");
     const header = lines.findIndex((l) => /^\|\s*Signal\s*\|\s*JS\/TS\s*\|\s*Python\s*\|\s*$/.test(l));
@@ -40,7 +41,7 @@ describe("docs/LIMITS.md says, per signal and language, what pytest parity catch
     const table = rows.map(cells);
     expect(
       table.map((r) => (/TI\d\d/.exec(r[0] ?? "") ?? [""])[0]),
-      "one row per signal, TI01..TI16 in order",
+      "one row per signal, TI01..TI17 in order",
     ).toEqual(SIGNALS);
     for (const r of table) {
       expect(r, `${r[0]}: three cells`).toHaveLength(3);

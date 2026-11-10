@@ -15,6 +15,12 @@ const BASE = "f1b252eb1183caff8699301c992bb8e4c81454a7";
 const SKYLOS_OLD = "The other two are planned signals that do not exist\nyet (TI15 exists and misses its case).";
 const SKYLOS_NEW =
   "The other two are missed: TI15 exists and misses\n`hard-coded-answer`, and `always-true-matcher` has only a proposal (TI17).";
+// ti17-always-true-matcher-2: TI17 is built, so the paragraph is rewritten again on purpose: 8 of 9, with
+// always-true-matcher caught by TI17 and only hard-coded-answer missed. The rest of the paragraph is kept as it was.
+const TI17_OLD =
+  "catch **7 of 9** (`deleted-test` by TI01,\n`added-skip` by TI03, `emptied-assertion` by TI05, `deselect-setting` by TI09, `replaced-test` by TI02,\n`loosened-assertion` by TI06 and `edited-expected-value` by TI07). The other two are missed: TI15 exists and misses\n`hard-coded-answer`, and `always-true-matcher` has only a proposal (TI17).";
+const TI17_NEW =
+  "catch **8 of 9** (`deleted-test` by TI01,\n`added-skip` by TI03, `emptied-assertion` by TI05, `deselect-setting` by TI09, `replaced-test` by TI02,\n`loosened-assertion` by TI06, `edited-expected-value` by TI07 and `always-true-matcher` by TI17). The other one is\nmissed: TI15 exists and misses `hard-coded-answer`.";
 
 const read = (path: string) => readFileSync(`${ROOT}${path}`, "utf8");
 const readBase = (path: string) => execFileSync("git", ["show", `${BASE}:${path}`], { cwd: ROOT, encoding: "utf8" });
@@ -73,7 +79,7 @@ function unreleasedAdded(text: string, heading = /^## \[Unreleased\]/): string[]
 }
 
 describe("README.md and CHANGELOG.md name the pytest Skylos result", () => {
-  it("AC-12: the README keeps its catch **7 of 9** paragraph and adds a pytest **8 of 9** sentence linking docs/PRECISION.md with no new 2, 4 or 5 of 9, and the 0.3.0 › Added list holds one new line naming fixtures/skylos-nine-pytest, 8 of 9 and docs/PRECISION.md", () => {
+  it("AC-12: the README keeps its catch **8 of 9** paragraph and adds a pytest **8 of 9** sentence linking docs/PRECISION.md with no new 2, 4 or 5 of 9, and the 0.3.0 › Added list holds one new line naming fixtures/skylos-nine-pytest, 8 of 9 and docs/PRECISION.md", () => {
     const now = h2Section(read("README.md"), "## Test integrity");
     const base = h2Section(readBase("README.md"), "## Test integrity");
 
@@ -83,11 +89,13 @@ describe("README.md and CHANGELOG.md name the pytest Skylos result", () => {
     // planned signals that do not exist yet, while TI15 exists and misses its case; the rest is kept as it was.
     const based = (skylos[0] as string[]).join("\n");
     expect(based, "the base paragraph holds the sentence being corrected").toContain(SKYLOS_OLD);
-    const kept = based.replace(SKYLOS_OLD, SKYLOS_NEW).split("\n");
-    expect(containsBlock(now, kept), "the Skylos paragraph is kept as it was, with its one corrected sentence").toBe(
-      true,
+    const corrected = based.replace(SKYLOS_OLD, SKYLOS_NEW);
+    expect(corrected, "the corrected paragraph holds the sentence ti17-always-true-matcher-2 rewrites").toContain(
+      TI17_OLD,
     );
-    expect(normalize(now.join("\n")), "catch **7 of 9**").toContain("catch **7 of 9**");
+    const kept = corrected.replace(TI17_OLD, TI17_NEW).split("\n");
+    expect(containsBlock(now, kept), "the Skylos paragraph is kept as it was, with its rewritten sentences").toBe(true);
+    expect(normalize(now.join("\n")), "catch **8 of 9**").toContain("catch **8 of 9**");
 
     const baseLines = new Set(base);
     const added = now.filter((line) => !baseLines.has(line));

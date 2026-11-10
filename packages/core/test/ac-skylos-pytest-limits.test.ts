@@ -3,9 +3,10 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-// Skylos nine, part 2: docs/LIMITS.md, section "What test integrity does not catch", keeps the vitest 7 of 9 sentence
-// and its seven caught and two missed items, gains a pytest 8 of 9 sentence linking PRECISION.md, and points the
-// always-true-matcher item at the TI17 proposal. The section is compared with its copy at the commit this increment
+// Skylos nine, part 2: docs/LIMITS.md, section "What test integrity does not catch", keeps the vitest sentence and its
+// seven caught items and gains a pytest 8 of 9 sentence linking PRECISION.md. Re-pinned for ti17-always-true-matcher-2:
+// the vitest sentence reads 8 of 9, always-true-matcher joins the caught items (caught by TI17) and leaves the missed
+// items, so hard-coded-answer is the one missed item. The section is compared with its copy at the commit this increment
 // starts from, read with git show. The document is read inside the test body.
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
@@ -75,30 +76,31 @@ function paragraphsOf(section: string[]): string[] {
 }
 
 describe("docs/LIMITS.md: the Skylos statements name pytest", () => {
-  it("AC-10: the section keeps The signals of this release catch **7 of 9**. and exactly its seven caught and two missed items, adds a pytest **8 of 9** sentence linking PRECISION.md, points always-true-matcher at the TI17 proposal, and its new text holds no 2, 4 or 5 of 9", () => {
+  it("AC-10: the section says The signals of this release catch **8 of 9**., keeps the seven caught items of the base and adds always-true-matcher caught by TI17, keeps hard-coded-answer as the one missed item, adds a pytest **8 of 9** sentence linking PRECISION.md, and its new text holds no 2, 4 or 5 of 9", () => {
     const now = sectionOf(read("docs/LIMITS.md"));
     const base = sectionOf(readBase("docs/LIMITS.md"));
 
-    expect(normalize(now.join("\n")), "the vitest sentence").toContain("The signals of this release catch **7 of 9**.");
+    expect(normalize(now.join("\n")), "the vitest sentence").toContain("The signals of this release catch **8 of 9**.");
 
     const caughtNow = itemsOf(now).filter((item) => CAUGHT.test(item));
     const caughtBase = itemsOf(base).filter((item) => CAUGHT.test(item));
     expect(caughtBase, "the base held seven caught items").toHaveLength(7);
-    expect(caughtNow, "exactly the seven caught items of the base").toEqual(caughtBase);
+    for (const item of caughtBase) expect(caughtNow, "a caught item of the base is kept").toContain(item);
+    const matcher = caughtNow.filter((item) => item.startsWith("- `always-true-matcher` — caught by TI17"));
+    expect(matcher, "always-true-matcher joins the caught items, by TI17").toHaveLength(1);
+    expect(caughtNow, "the seven of the base and always-true-matcher").toHaveLength(8);
+    expect(matcher[0], "the item names the What TI17 misses subsection").toContain("What TI17 misses");
 
     const missedNow = itemsOf(now).filter((item) => MISSED.test(item));
     const missedBase = itemsOf(base).filter((item) => MISSED.test(item));
     expect(missedBase, "the base held two missed items").toHaveLength(2);
     const pair = (item: string) => (MISSED.exec(item) as RegExpExecArray).slice(1, 3);
-    expect(missedNow.map(pair), "exactly the two missed cases of the base, with their planned ids").toEqual(
-      missedBase.map(pair),
-    );
-    for (const item of missedBase.filter((i) => !i.startsWith("- `always-true-matcher`"))) {
-      expect(missedNow, "the other missed item is unchanged").toContain(item);
+    expect(missedNow.map(pair), "only hard-coded-answer, with its planned id, is missed").toEqual([
+      ["hard-coded-answer", "TI15"],
+    ]);
+    for (const item of missedBase.filter((i) => i.startsWith("- `hard-coded-answer`"))) {
+      expect(missedNow, "the hard-coded-answer item is unchanged").toContain(item);
     }
-    const matcher = missedNow.filter((item) => item.startsWith("- `always-true-matcher` — missed; planned: TI17"));
-    expect(matcher, "the always-true-matcher item keeps its opening").toHaveLength(1);
-    expect(matcher[0], "the always-true-matcher item names the TI17 proposal subsection").toContain("TI17 proposal");
 
     const PRECISION_LINK = /\]\((?:\.\/)?PRECISION\.md(?:#[^)]*)?\)/;
     expect(normalize(base.join("\n")), "the base had no 8 of 9").not.toContain("8 of 9");
