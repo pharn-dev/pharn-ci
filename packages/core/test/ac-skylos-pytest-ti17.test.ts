@@ -70,6 +70,20 @@ describe("docs/LIMITS.md: what TI17 misses", () => {
 
     expect(body, "the severity is warn").toMatch(/\bwarns?\b/i);
     expect(body, "and never blocks by default").toMatch(/never blocks? by default/);
+
+    // must-trigger and must-not-trigger, each followed by at least one case.
+    const trigger = body.search(/must-trigger/);
+    const notTrigger = body.search(/must-not-trigger/);
+    expect(trigger, "names must-trigger").toBeGreaterThan(-1);
+    expect(notTrigger, "names must-not-trigger").toBeGreaterThan(-1);
+    const after = (from: number, keyword: string) => {
+      const start = from + keyword.length;
+      const stops = [trigger, notTrigger].filter((i) => i > from);
+      return body.slice(start, stops.length > 0 ? Math.min(...stops) : undefined);
+    };
+    expect(after(trigger, "must-trigger"), "a case after must-trigger").toMatch(/`[^`]+`/);
+    expect(after(notTrigger, "must-not-trigger"), "a case after must-not-trigger").toMatch(/`[^`]+`/);
+
     expect(body, "says what TI17 misses").toMatch(/\bmisses\b/i);
 
     const items = itemsOf(sub);

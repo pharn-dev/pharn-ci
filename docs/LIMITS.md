@@ -783,7 +783,10 @@ and an added assertion that calls it; a Python helper added in the diff whose ev
 or `ANY`, `mock.ANY` and `unittest.mock.ANY` (`assert … ==`, `assertEqual`) in place of an expected value the same hunk
 removes. It gives one finding per test file, at the lowest such line, and a count in a fixed detail. It warns and never
 blocks by default, because each of these can be deliberate: a team that wants it to block sets `TI17` to `block` in an
-org policy, and a pull request cannot loosen that. It misses:
+org policy, and a pull request cannot loosen that. Its cases: must-trigger: the Skylos vitest `always-true-matcher` and
+pytest `always-true-matcher-any`, and the `warn-*` fixtures in `fixtures/test-integrity/TI17/`; must-not-trigger: the
+`pass-*` fixtures there, such as `pass-matcher-compares` (a matcher whose `pass` compares its argument) and
+`pass-wildcard-called-with` (`expect.anything()` inside `toHaveBeenCalledWith`). It misses:
 
 - A matcher or helper defined outside the diff, on lines the change did not add, or in another file: only a definition
   written on consecutive added lines is read, so a matcher added to a setup file and called from a test is not seen.
