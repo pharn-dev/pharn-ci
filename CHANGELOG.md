@@ -42,6 +42,8 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- Refreshed the SVG logo assets used in the documentation.
+
 ### Security
 
 - The `.pharn/ci.yml` key/value pattern no longer backtracks quadratically on a long run of whitespace after a key
