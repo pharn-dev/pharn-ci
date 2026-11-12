@@ -2,7 +2,7 @@
 
 <img alt="pharn-ci" src="./docs/assets/pharn-ci-logo.svg" width="110" />
 
-# pharn-ci
+# Pharn CI
 
 **Know whether AI coding agents can safely work in your repo.**
 
