@@ -42744,6 +42744,13 @@ function check(input) {
     ...junit?.flaky === void 0 ? {} : { flaky: junit.flaky },
     ...junit === null || junit.messages.length === 0 ? {} : { flakyMessages: junit.messages }
   };
+  if ("unavailable" in input.diff) {
+    return buildReport({
+      ...base,
+      diffCoverage: null,
+      missing: { reason: "diff-unavailable", detail: input.diff.unavailable }
+    });
+  }
   if ("kind" in coverageInput) {
     return buildReport({ ...base, diffCoverage: null, missing: { reason: "coverage-not-discovered" } });
   }
@@ -42755,13 +42762,6 @@ function check(input) {
         missing: { reason: "coverage-file-missing", coverageFile: file.missingFile }
       });
     }
-  }
-  if ("unavailable" in input.diff) {
-    return buildReport({
-      ...base,
-      diffCoverage: null,
-      missing: { reason: "diff-unavailable", detail: input.diff.unavailable }
-    });
   }
   const maps = [];
   const formats = /* @__PURE__ */ new Set();
@@ -44387,12 +44387,18 @@ function listedSignals(report) {
 }
 var SIGNAL_MESSAGE_CODE = /^TEST_INTEGRITY_TI\d\d$/;
 var SEVERITY_ICON = { block: LEVEL_ICON.error, warn: LEVEL_ICON.warn, info: LEVEL_ICON.info };
+var DIFF_NOT_CHECKED = "Not checked: the diff is unavailable";
+function diffUnavailable(report) {
+  return report.messages.some((m) => m.code === "DIFF_UNAVAILABLE");
+}
 function testIntegrityLines(report) {
   const { mode, signals } = report.testIntegrity;
   const label = acceptLabelOf(report);
   const lines = [];
   if (signals.length === 0) {
-    lines.push(mode === "off" ? "Test integrity is off for this run." : `No test-integrity findings (mode: ${mode}).`);
+    lines.push(
+      mode === "off" ? "Test integrity is off for this run." : diffUnavailable(report) ? `${DIFF_NOT_CHECKED}.` : `No test-integrity findings (mode: ${mode}).`
+    );
   } else {
     const listed2 = listedSignals(report);
     const findingLines = (signal2) => {
@@ -44911,7 +44917,7 @@ function countOf(n, one, many) {
 function integrityCell(report) {
   const { mode, signals } = report.testIntegrity;
   if (mode === "off") return "off";
-  if (signals.length === 0) return `none (${mode})`;
+  if (signals.length === 0) return diffUnavailable(report) ? DIFF_NOT_CHECKED : `none (${mode})`;
   const blocking = signals.filter((s) => s.severity === "block").length;
   const icon = blocking > 0 ? LEVEL_ICON.error : signals.some((s) => s.severity === "warn") ? LEVEL_ICON.warn : LEVEL_ICON.info;
   return `${icon} ${countOf(signals.length, "finding", "findings")}${blocking > 0 ? `, ${blocking} blocking` : ""}`;

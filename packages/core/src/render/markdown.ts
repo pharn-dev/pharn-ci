@@ -297,6 +297,14 @@ const SIGNAL_MESSAGE_CODE = /^TEST_INTEGRITY_TI\d\d$/;
 
 const SEVERITY_ICON = { block: LEVEL_ICON.error, warn: LEVEL_ICON.warn, info: LEVEL_ICON.info } as const;
 
+/** What the Test integrity section and summary cell say when no diff was read: nothing was checked, so nothing was found. */
+const DIFF_NOT_CHECKED = "Not checked: the diff is unavailable";
+
+/** Whether the report says the diff was unavailable (its DIFF_UNAVAILABLE message), so no signal could run on it. */
+function diffUnavailable(report: Report): boolean {
+  return report.messages.some((m) => m.code === "DIFF_UNAVAILABLE");
+}
+
 /**
  * The lines of the Test integrity section after its heading: one finding per signal with a hint line, or the one
  * fixed line when there is none. The fixed line has nothing from the pull request in it.
@@ -306,7 +314,13 @@ function testIntegrityLines(report: Report): string[] {
   const label = acceptLabelOf(report);
   const lines: string[] = [];
   if (signals.length === 0) {
-    lines.push(mode === "off" ? "Test integrity is off for this run." : `No test-integrity findings (mode: ${mode}).`);
+    lines.push(
+      mode === "off"
+        ? "Test integrity is off for this run."
+        : diffUnavailable(report)
+          ? `${DIFF_NOT_CHECKED}.`
+          : `No test-integrity findings (mode: ${mode}).`,
+    );
   } else {
     // Blocks first, so the findings that decide the verdict are never the ones collapsed or cut.
     const listed = listedSignals(report);
@@ -1005,11 +1019,14 @@ function countOf(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-/** The Test integrity cell of the summary table: `off`, `none (warn)` or a count of findings. Fixed words and numbers. */
+/**
+ * The Test integrity cell of the summary table: `off`, `none (warn)`, the not-checked words when the diff was unavailable,
+ * or a count of findings. Fixed words and numbers.
+ */
 function integrityCell(report: Report): string {
   const { mode, signals } = report.testIntegrity;
   if (mode === "off") return "off";
-  if (signals.length === 0) return `none (${mode})`;
+  if (signals.length === 0) return diffUnavailable(report) ? DIFF_NOT_CHECKED : `none (${mode})`;
   const blocking = signals.filter((s) => s.severity === "block").length;
   const icon =
     blocking > 0 ? LEVEL_ICON.error : signals.some((s) => s.severity === "warn") ? LEVEL_ICON.warn : LEVEL_ICON.info;

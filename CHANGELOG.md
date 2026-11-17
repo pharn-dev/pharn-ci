@@ -32,6 +32,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 - An exclusion glob longer than 1,024 characters (`coverage.exclude`, `--exclude`, the Action's `exclude` input, a
   coverage-file glob or a `--junit` glob) is now a config error that names the limit: a config, flag or input with a
   longer pattern, which was accepted before, now fails the run (exit 2 on the CLI) (`docs/LIMITS.md`).
+- An unavailable diff is always reported. A run with no diff and a missing or undiscovered coverage file now names the
+  diff first (`DIFF_UNAVAILABLE`, an error in `test-integrity: block` or under a threshold), so block no longer passes a
+  change nothing was checked against; the coverage problem shows on the next run, once the diff is available. Whenever
+  the diff is unavailable, the comment's Test integrity section and summary cell say "Not checked: the diff is
+  unavailable" instead of "No test-integrity findings" and `none (<mode>)`.
 
 ### Security
 

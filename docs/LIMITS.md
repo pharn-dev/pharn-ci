@@ -863,7 +863,8 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
   `COVERAGE_FORMAT_UNSUPPORTED`, `COVERAGE_PATHS_UNMATCHED` and `DIFF_UNAVAILABLE` are errors, and the verdict is `fail`, when a
   threshold is set (0 included): a gate that cannot measure fails closed. Without a threshold they
   are warnings. `DIFF_UNAVAILABLE` is also an error in `test-integrity: block`, threshold or not: block
-  asked for a test-integrity gate, and a gate that cannot see the change fails closed.
+  asked for a test-integrity gate, and a gate that cannot see the change fails closed. A run with no diff and no
+  coverage file reports `DIFF_UNAVAILABLE` only; the coverage problem shows on the next run, once the diff is available.
 - **`DIFF_UNAVAILABLE` has several causes.** It is reported when there is no base to diff against (a
   push without a previous commit, or no `base-ref` outside a pull request or merge queue), when
   neither local git nor the GitHub API can produce the diff (for example a shallow checkout and an
@@ -882,8 +883,7 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
   `TEST_INTEGRITY_INDEX_UNAVAILABLE` is an error in mode `block` only when TI02 and TI05, or TI09, did
   not run at all (the test text could not be read and a test file or a test-runner config is
   modified). The per-file form, where some touched files could not be compared or some added test
-  files could not be read, stays a warning in block. With no coverage file and no diff, block reports the coverage problem (a warning without a
-  threshold). A7 and P02–P07 need a local diff (`fetch-depth: 0`). Their "did not run" message is
+  files could not be read, stays a warning in block. A7 and P02–P07 need a local diff (`fetch-depth: 0`). Their "did not run" message is
   a warning, except that `POLICY_SETTINGS_INVALID` for unread settings is an error under a required
   app policy or a policy that sets one of the lists `forbidden_permissions`, `required_permissions_deny`,
   `allowed_mcp_servers`, `forbidden_mcp_servers` or `required_hooks` with its rule (P02 to P06) at

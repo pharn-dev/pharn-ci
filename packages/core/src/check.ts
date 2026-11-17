@@ -642,6 +642,16 @@ export function check(input: CheckInput): Report {
     ...(junit === null || junit.messages.length === 0 ? {} : { flakyMessages: junit.messages }),
   };
 
+  // The unavailable diff first: DIFF_UNAVAILABLE is the reason that fails closed under test-integrity block, and a
+  // coverage reason in its place would let block pass a change nothing was checked against (CORE-91). The coverage
+  // problem shows on the next run, once the diff is available.
+  if ("unavailable" in input.diff) {
+    return buildReport({
+      ...base,
+      diffCoverage: null,
+      missing: { reason: "diff-unavailable", detail: input.diff.unavailable },
+    });
+  }
   if ("kind" in coverageInput) {
     return buildReport({ ...base, diffCoverage: null, missing: { reason: "coverage-not-discovered" } });
   }
@@ -653,13 +663,6 @@ export function check(input: CheckInput): Report {
         missing: { reason: "coverage-file-missing", coverageFile: file.missingFile },
       });
     }
-  }
-  if ("unavailable" in input.diff) {
-    return buildReport({
-      ...base,
-      diffCoverage: null,
-      missing: { reason: "diff-unavailable", detail: input.diff.unavailable },
-    });
   }
 
   // Each file in order, with its own format under `auto`; the first bad one is the one reported.
