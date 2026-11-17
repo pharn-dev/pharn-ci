@@ -13,10 +13,10 @@ npm yet.
   ([`.github/rulesets/release-tags.json`](../.github/rulesets/release-tags.json)) forbids updating,
   force-pushing or deleting any `v*` tag, with no bypass. A broken release is fixed by releasing a
   new patch version.
-- **Only the release job creates tags.** The `release-tag-creation` ruleset
-  ([`.github/rulesets/release-tag-creation.json`](../.github/rulesets/release-tag-creation.json))
-  rejects the creation of a `v*` tag by anyone but the GitHub Actions app, the token the
-  `Release publish` job uses. A maintainer cannot push a release tag by hand.
+- **Tag creation is not restricted.** Anyone with write access can create a `v*` tag by hand, and it
+  is then permanent. Create release tags only through `release.yml`. No ruleset limits creation to
+  the release job: GitHub does not accept the GitHub Actions integration as a bypass actor
+  ([`SECURITY.md`](../SECURITY.md), Release integrity).
 - **Tags are not signed.** Release tags are created by the `Release publish` job through the GitHub
   REST API (`git/refs`), so they are lightweight and not signed: there is no tag signature to
   verify. The `main` ruleset's signed-commits rule covers commits, not tags. The integrity control
