@@ -111,17 +111,17 @@ const PINNED = [
 // files.
 // Re-pinned again by ti17-always-true-matcher-2: the walker's ADDED_AFTER_BASE gains the 35 TI17 fixtures (its count and
 // output digest are unchanged); this is the digest of the edited file.
-// Re-pinned again by CORE-71 (R2.8): the walker's ADDED_AFTER_BASE gains the 15 new TI11 and TI13 fixtures (its count
+// Re-pinned again by CORE-71 (R2.8): the walker's ADDED_AFTER_BASE gains the 19 new TI11 and TI13 fixtures (its count
 // and output digest are unchanged); this is the digest of the edited file.
 const NAME_ONLY_REPINNED: Record<string, string> = {
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "e5f25620aa22dc22e16fcfd5a7aa0a62e102eb8a9556b9958dd6c76e83a46f39",
+    "481fbd3cdefe47fbc0e572ecc719a97c0d591c4e182922020bd86daff9fa9b93",
   // Re-pinned again by A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): ac-ti0205-regression takes the tests-exercise message
   // and testIntegrity.exercise out of the golden reports made with sources before comparing (exercise-repin.ts); this
   // is the digest of the edited file.
   // Re-pinned again by CORE-71 (R2.8): ac-ti0205-regression leaves the new TI11 and TI13 fixtures out of its loop over
   // the earlier directories (its BEFORE_DIGEST is unchanged); this is the digest of the edited file.
-  "packages/core/test/ac-ti0205-regression.test.ts": "d145511a0917653a06138db30b2392fa3b55aa34a85e5a6ea5fe0d981701407f",
+  "packages/core/test/ac-ti0205-regression.test.ts": "54ec7c5a00511cece0197d567bdf243e4aafca228274e13f62908da83f2259bc",
   // Re-pinned again by ti17-always-true-matcher-2: ac-skylos-nine-table moves always-true-matcher to caught by TI17 (the
   // Skylos count reads 8 of 9 now, 7 of 9 before); this is the digest of the edited file.
   "packages/core/test/ac-skylos-nine-table.test.ts": "68f84a33ecf1e4b4e94fc13c2c6c9065339a46e6d0d69b925905a1e39ac13976",

@@ -134,10 +134,45 @@ function keyOf(part: string): string {
 }
 
 /**
- * Flags that change how a test run reports, never which tests it runs: a token that starts with one of these prefixes
- * (`--coverage`, `--coverage.reporter=xml`, `--cov=src`, `--cov-report=xml`, `--reporter=junit`, `--junitxml=out.xml`).
+ * Report flags spelled exactly: they turn coverage or CI output on and never narrow which tests run or what coverage
+ * measures. `--cov=<value>` is read beside them.
  */
-const REPORT_FLAG_PREFIXES: readonly string[] = ["--coverage", "--cov", "--reporter", "--junitxml"];
+const REPORT_FLAGS: ReadonlySet<string> = new Set([
+  "--coverage",
+  "--coverage=true",
+  "--coverage.enabled",
+  "--coverage.enabled=true",
+  "--cov",
+  "--cov-branch",
+  "--ci",
+]);
+/**
+ * Report flags that carry a value: the name alone or the name, `=` and a value (`--coverage.reporter=xml`,
+ * `--cov-report=xml`, `--reporter=junit`, `--junitxml=out.xml`). An allow-list, not a prefix match: a flag that narrows
+ * what coverage measures (`--coverage.exclude=...`, `--coveragePathIgnorePatterns=...`, `--collectCoverageFrom=...`,
+ * `--cov-config=...`) or turns it off (`--coverage=false`, `--no-cov`) is not on it, so adding one is a lost step.
+ */
+const REPORT_VALUE_NAMES: readonly string[] = [
+  "--coverage.reporter",
+  "--coverage.provider",
+  "--coverage.reportsDirectory",
+  "--coverageReporters",
+  "--coverageProvider",
+  "--coverageDirectory",
+  "--cov-report",
+  "--reporter",
+  "--reporters",
+  "--junitxml",
+];
+
+/** Whether a plain token is a report flag of the allow-list. */
+function isReportFlag(token: string): boolean {
+  if (REPORT_FLAGS.has(token)) return true;
+  if (token.startsWith("--cov=") && token.length > "--cov=".length) return true;
+  return REPORT_VALUE_NAMES.some(
+    (name) => token === name || (token.startsWith(`${name}=`) && token.length > name.length + 1),
+  );
+}
 /** Report flags whose value may be the next token (`--cov-report xml`): each requires a value, so always takes one. */
 const REPORT_VALUE_FLAGS: ReadonlySet<string> = new Set(["--cov-report", "--junitxml", "--reporter", "--reporters"]);
 /**
@@ -171,10 +206,7 @@ function splitFlags(key: string): { base: string; flags: string[] } {
     const token = tokens[i] as string;
     if (verbosity && (token === "-v" || token === "-q")) {
       flags.push(token);
-    } else if (
-      PLAIN_TOKEN.test(token) &&
-      (token === "--ci" || REPORT_FLAG_PREFIXES.some((prefix) => token.startsWith(prefix)))
-    ) {
+    } else if (PLAIN_TOKEN.test(token) && isReportFlag(token)) {
       const value = tokens[i + 1];
       if (REPORT_VALUE_FLAGS.has(token) && value !== undefined && !value.startsWith("-") && PLAIN_TOKEN.test(value)) {
         flags.push(`${token} ${value}`);
@@ -269,8 +301,9 @@ function flowOf(line: string): { key: string; items: Set<string> } | null {
  * compared by a key per test part of a `&&` or `;` chain: a package-manager script run keys on the script with its
  * workspace flags and arguments, a runner on its command without the launcher, so `npm run test` and `pnpm test` are
  * one command. A removed key is also kept by an added key that equals it plus flags that change only how the run
- * reports (`--coverage*`, `--cov*`, `--reporter*`, `--junitxml*`, `--ci`, and `-v` or `-q` for pytest, unittest, tox
- * and `go test`); anything else added (a path, `-k`, `|| true`, another flag) is still a lost step. A test job removed
+ * reports (the allow-list of `REPORT_FLAGS` and `REPORT_VALUE_NAMES`, and `-v` or `-q` for pytest, unittest, tox and
+ * `go test`); anything else added (a path, `-k`, `|| true`, a flag that narrows coverage, another flag) is still a lost
+ * step. A test job removed
  * from a workflow is a removal even when the change moves its tests elsewhere: the diff cannot show that another
  * workflow runs them, and nothing the pull request carries may loosen this block. The warn rules (a flow-list matrix that shrinks, an added `continue-on-error: true`, an added `if:` that is a literal false or
  * an event-name test leaving pull requests out, an added `timeout-minutes` of 0 or 1) stay `warn` in every mode, because

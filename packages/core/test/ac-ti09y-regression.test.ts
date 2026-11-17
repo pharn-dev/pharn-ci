@@ -34,13 +34,13 @@ const DIST_BOUND = 12_000_000;
 // fix object every message and finding now carries is left out; these are the digests of the edited files.
 // Re-pinned again by ti17-always-true-matcher-2: the walker's ADDED_AFTER_BASE gains the 35 TI17 fixtures (its count and
 // output digest are unchanged); this is the digest of the edited file.
-// Re-pinned again by CORE-71 (R2.8): the walker's ADDED_AFTER_BASE gains the 15 new TI11 and TI13 fixtures, and
+// Re-pinned again by CORE-71 (R2.8): the walker's ADDED_AFTER_BASE gains the 19 new TI11 and TI13 fixtures, and
 // ac-ti0205-regression leaves them out of its loop (both output digests are unchanged); these are the digests of the
 // edited files.
 const PINNED: Record<string, string> = {
-  "packages/core/test/ac-ti0205-regression.test.ts": "d145511a0917653a06138db30b2392fa3b55aa34a85e5a6ea5fe0d981701407f",
+  "packages/core/test/ac-ti0205-regression.test.ts": "54ec7c5a00511cece0197d567bdf243e4aafca228274e13f62908da83f2259bc",
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "e5f25620aa22dc22e16fcfd5a7aa0a62e102eb8a9556b9958dd6c76e83a46f39",
+    "481fbd3cdefe47fbc0e572ecc719a97c0d591c4e182922020bd86daff9fa9b93",
 };
 
 /**

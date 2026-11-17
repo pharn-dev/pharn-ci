@@ -150,10 +150,17 @@ TI11 reads the added and removed lines of workflow files (`.github/workflows/*.y
   launcher (`npx vitest run`, `pnpm exec vitest run` and `vitest run` are one key). A swap of package manager
   therefore passes, and a narrowed run is still a removal. Bare `bun test` starts bun's own runner, not a script, so it
   keeps its text as its key.
-- **Report flags added to a test command.** A removed command is kept by an added one that equals it plus flags from a
-  short list: a token that starts with `--coverage`, `--cov`, `--reporter` or `--junitxml`, the token `--ci`, and `-v`
+- **Report flags added to a test command.** A removed command is kept by an added one that equals it plus flags from an
+  allow-list of flags that only turn reports on: exactly `--coverage`, `--coverage=true`, `--coverage.enabled`,
+  `--coverage.enabled=true`, `--cov`, `--cov=<value>`, `--cov-branch` and `--ci`; the name alone or the name with
+  `=<value>` of `--coverage.reporter`, `--coverage.provider`, `--coverage.reportsDirectory`, `--coverageReporters`,
+  `--coverageProvider`, `--coverageDirectory`, `--cov-report`, `--reporter`, `--reporters` and `--junitxml`; and `-v`
   or `-q` only where the runner reads them as verbosity (pytest, `python -m pytest`, `python -m unittest` and tox,
-  directly or through an environment wrapper, and `go test`). So `pytest` to `pytest --cov=src --cov-report=xml`,
+  directly or through an environment wrapper, and `go test`). It is a list, not a prefix match: a flag that narrows
+  what coverage measures or turns it off (`--coverage.exclude=...`, `--coverage.include=...`,
+  `--coveragePathIgnorePatterns=...`, `--collectCoverageFrom=...`, `--cov-config=...`, a threshold such as
+  `--cov-fail-under=0`, `--coverage=false`, `--coverage.enabled=false`, `--no-cov`) is not on it, so adding one is a
+  removal. So `pytest` to `pytest --cov=src --cov-report=xml`,
   `vitest run` to `vitest run --coverage` and `jest` to `jest --ci --coverage` give nothing. The flags may sit anywhere
   after the runner, every flag the removed command had must still be there (dropping one is a removal), and the other
   tokens must be the same, in order. A separate value counts only after `--cov-report`, `--junitxml`, `--reporter` or
@@ -162,9 +169,9 @@ TI11 reads the added and removed lines of workflow files (`.github/workflows/*.y
   operator, a quote, a glob or a `$` in it is no flag (`--cov=src||true` is `--cov=src || true` to the shell). For
   vitest, jest, mocha, Playwright, `node --test` and package-manager scripts, `-v` prints the version and runs no test,
   so it is a removal there. Anything else the command gains (a path, `-k`, `|| true`, `--passWithNoTests`,
-  `--exclude`, any other flag) is a removal. The prefixes also admit flags that narrow what coverage measures
-  (`--coverage.exclude=...`, `--coveragePathIgnorePatterns=...`, `--cov-fail-under=0`): TI11 judges whether the tests
-  still run, not what the coverage file holds. One removed command is compared with at most 16 added commands that
+  `--exclude`, any other flag) is a removal. `--cov=<value>` names what pytest-cov measures, so a value that leaves
+  the changed source out (`--cov=tests`) passes TI11; the changed lines then have no coverage data for the diff
+  coverage gate to grade. One removed command is compared with at most 16 added commands that
   differ from it only in such flags; past that it is a removal.
 - **A test job moved to another workflow file still blocks.** Other workflows are not read: a test command that an
   unchanged line of another workflow runs is not seen (the diff holds no such line), so a job whose tests moved to

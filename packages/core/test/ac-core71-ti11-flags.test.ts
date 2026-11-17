@@ -39,6 +39,36 @@ const KEPT: Array<[string, string]> = [
   ["pytest --cov=src", "pytest --cov=src --cov-report=term-missing"],
   ["pnpm build && vitest run", "pnpm build && vitest run --coverage.enabled=true"],
   ["uv run pytest -q", "uv run pytest -q --cov=pkg"],
+  [
+    "vitest run",
+    "vitest run --coverage=true --coverage.enabled --coverage.provider=v8 --coverage.reportsDirectory=out",
+  ],
+  [
+    "jest",
+    "jest --coverage --coverageReporters=lcov --coverageProvider=v8 --coverageDirectory=out --reporters=default",
+  ],
+  ["pytest", "pytest --cov --cov-branch --cov-report=lcov:out/lcov.info"],
+];
+
+/**
+ * Flags that narrow what coverage measures or turn it off: not report flags, so adding one is a lost step (the review
+ * of CORE-71: a pull request must not take its own files out of the coverage file without a finding).
+ */
+const NARROWING: Array<[string, string]> = [
+  ["vitest run", "vitest run --coverage --coverage.exclude=src/billing/**"],
+  ["vitest run", "vitest run --coverage --coverage.exclude=src/billing"],
+  ["vitest run", "vitest run --coverage --coverage.include=src/core"],
+  ["vitest run", "vitest run --coverage=false"],
+  ["vitest run", "vitest run --coverage.enabled=false"],
+  ["vitest run", "vitest run --coverage --coverage.thresholds.lines=0"],
+  ["jest", "jest --coverage --coveragePathIgnorePatterns=src/billing"],
+  ["jest", "jest --coverage --collectCoverageFrom=src/core/index.ts"],
+  ["jest", "jest --coverage --coverageThreshold={}"],
+  ["pytest", "pytest --cov=src --cov-config=.cov.ini"],
+  ["pytest", "pytest --cov=src --cov-fail-under=0"],
+  ["pytest", "pytest --no-cov"],
+  ["pytest", "pytest --cov="],
+  ["jest", "jest --reporter="],
 ];
 
 /** Edits that add anything else, drop a flag or remove the step: one TI11 test-step signal at the mode's level. */
@@ -79,6 +109,16 @@ describe("TI11: a test command that gains report flags is the same step (CORE-71
     }
   }, 120_000);
 
+  it("must trigger: a flag that narrows what coverage measures or turns it off is not a report flag", async () => {
+    for (const mode of ["block", "warn"] as const) {
+      for (const [from, to] of NARROWING) {
+        expect(await ti11(change(from, to), mode), `${mode}: ${from} → ${to}`).toEqual([
+          { severity: mode, line: 14, detail: TEST_STEP },
+        ]);
+      }
+    }
+  }, 120_000);
+
   it("the fixtures: the pass- ones give no TI11, the block- ones give one test-step signal at the mode's level", async () => {
     const pass = [
       "pass-pytest-cov-flags.diff",
@@ -94,6 +134,10 @@ describe("TI11: a test command that gains report flags is the same step (CORE-71
       "block-exclude-added.diff",
       "block-jest-version-flag.diff",
       "block-cov-separate-value.diff",
+      "block-coverage-exclude-added.diff",
+      "block-coverage-path-ignore-added.diff",
+      "block-cov-config-added.diff",
+      "block-coverage-false.diff",
     ];
     for (const mode of ["block", "warn"] as const) {
       for (const name of pass) expect(await fixtureTi11(name, mode), `${mode}: ${name}`).toEqual([]);

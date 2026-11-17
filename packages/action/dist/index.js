@@ -41243,7 +41243,34 @@ function keyOf2(part) {
   if (tokens2[i] === "--") i += 1;
   return ["run", ...flags, script, ...tokens2.slice(i)].join(" ");
 }
-var REPORT_FLAG_PREFIXES = ["--coverage", "--cov", "--reporter", "--junitxml"];
+var REPORT_FLAGS = /* @__PURE__ */ new Set([
+  "--coverage",
+  "--coverage=true",
+  "--coverage.enabled",
+  "--coverage.enabled=true",
+  "--cov",
+  "--cov-branch",
+  "--ci"
+]);
+var REPORT_VALUE_NAMES = [
+  "--coverage.reporter",
+  "--coverage.provider",
+  "--coverage.reportsDirectory",
+  "--coverageReporters",
+  "--coverageProvider",
+  "--coverageDirectory",
+  "--cov-report",
+  "--reporter",
+  "--reporters",
+  "--junitxml"
+];
+function isReportFlag(token) {
+  if (REPORT_FLAGS.has(token)) return true;
+  if (token.startsWith("--cov=") && token.length > "--cov=".length) return true;
+  return REPORT_VALUE_NAMES.some(
+    (name) => token === name || token.startsWith(`${name}=`) && token.length > name.length + 1
+  );
+}
 var REPORT_VALUE_FLAGS = /* @__PURE__ */ new Set(["--cov-report", "--junitxml", "--reporter", "--reporters"]);
 var VERBOSITY_RUNNER = new RegExp(
   `^${PY_WRAPPER}(?:(?:python3?\\s+-m\\s+)?pytest|python3?\\s+-m\\s+unittest|tox|go\\s+test)(?:\\s|$)`
@@ -41259,7 +41286,7 @@ function splitFlags(key) {
     const token = tokens2[i];
     if (verbosity && (token === "-v" || token === "-q")) {
       flags.push(token);
-    } else if (PLAIN_TOKEN.test(token) && (token === "--ci" || REPORT_FLAG_PREFIXES.some((prefix) => token.startsWith(prefix)))) {
+    } else if (PLAIN_TOKEN.test(token) && isReportFlag(token)) {
       const value = tokens2[i + 1];
       if (REPORT_VALUE_FLAGS.has(token) && value !== void 0 && !value.startsWith("-") && PLAIN_TOKEN.test(value)) {
         flags.push(`${token} ${value}`);

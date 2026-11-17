@@ -22,7 +22,7 @@ const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 const nonEmpty = (text: string) => text.split("\n").filter((l) => l.length > 0);
 /** CORE-71 (R2.8): the new TI11 flag fixtures and TI13 new-file fixtures, added or untracked until committed. */
 const CORE71_FIXTURES =
-  /fixtures\/test-integrity\/(?:TI11\/(?:pass-(?:pytest-cov-flags|vitest-coverage|jest-ci-coverage|cov-report-value)|block-(?:pytest-path-added|pytest-k-added|pytest-cov-or-true|pass-with-no-tests-added|exclude-added|jest-version-flag|cov-separate-value))|TI13\/(?:warn-pragma-new-file|warn-istanbul-next-new-file|block-c8-file-new-file|block-v8-start-new-file))\.diff$/;
+  /fixtures\/test-integrity\/(?:TI11\/(?:pass-(?:pytest-cov-flags|vitest-coverage|jest-ci-coverage|cov-report-value)|block-(?:pytest-path-added|pytest-k-added|pytest-cov-or-true|pass-with-no-tests-added|exclude-added|jest-version-flag|cov-separate-value|coverage-exclude-added|coverage-path-ignore-added|cov-config-added|coverage-false))|TI13\/(?:warn-pragma-new-file|warn-istanbul-next-new-file|block-c8-file-new-file|block-v8-start-new-file))\.diff$/;
 
 /** The tests PLAN.md step 9 lists as deliberately re-pinned; each must carry a comment naming this item. */
 const DELIBERATE = [

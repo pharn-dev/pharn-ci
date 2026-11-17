@@ -1,0 +1,7 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 5555555..6666666 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -27 +27 @@ jobs:
+-        run: npx jest
++        run: npx jest --coverage --coveragePathIgnorePatterns=src/billing
