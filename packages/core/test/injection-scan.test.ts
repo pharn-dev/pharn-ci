@@ -64,6 +64,27 @@ describe("PI01: invisible and bidirectional Unicode", () => {
     expect(findings("emoji-zwj.diff.txt")).toEqual([]);
   });
 
+  it("flags tag characters after a flag unless they are a well-formed subdivision flag (CORE-41)", () => {
+    const list = findings("pi01-flag-trigger.diff.txt");
+    expect(list).toEqual([
+      // 40 tag characters spelling a sentence, then the cancel tag: 41 tag characters flagged.
+      { id: "PI01", path: "AGENTS.md", line: 3, detail: "tag character U+E0000-U+E007F and 40 more" },
+      { id: "PI01", path: "docs/flags.md", line: 1, detail: "tag character U+E0000-U+E007F and 7 more" },
+      { id: "PI01", path: "docs/flags.md", line: 2, detail: "tag character U+E0000-U+E007F and 6 more" },
+      { id: "PI01", path: "docs/flags.md", line: 3, detail: "tag character U+E0000-U+E007F and 5 more" },
+      { id: "PI01", path: "docs/flags.md", line: 4, detail: "tag character U+E0000-U+E007F and 2 more" },
+      { id: "PI01", path: "docs/flags.md", line: 5, detail: "tag character U+E0000-U+E007F and 4 more" },
+      { id: "PI01", path: "docs/flags.md", line: 6, detail: "tag character U+E0000-U+E007F and 1 more" },
+    ]);
+    expectFixedDetails(list);
+    // No detail carries a tag character or the flag.
+    for (const finding of list) expect(finding.detail).not.toMatch(/[\u{E0000}-\u{E007F}\u{1F3F4}]/u);
+  });
+
+  it("accepts the England, Scotland and Wales flags and other 3 to 6 character subdivision flags (CORE-41)", () => {
+    expect(findings("pi01-flag-clean.diff.txt")).toEqual([]);
+  });
+
   it("accepts the directional marks and soft hyphens of locale files, but not an override there", () => {
     expect(findings("locale.diff.txt")).toEqual([
       { id: "PI01", path: "app/locales/de.json", line: 3, detail: "right-to-left override U+202E" },

@@ -30907,6 +30907,11 @@ var TAG_FIRST = 917504;
 var TAG_LAST = 917631;
 var TAG_CANCEL = 917631;
 var WAVING_BLACK_FLAG = 127988;
+var SUBDIVISION_MIN = 3;
+var SUBDIVISION_MAX = 6;
+function isSubdivisionTag(cp) {
+  return cp !== void 0 && (cp >= 917601 && cp <= 917626 || cp >= 917552 && cp <= 917561);
+}
 var LETTER = new RegExp("^\\p{L}$", "u");
 var LETTER_OR_MARK = /^[\p{L}\p{M}]$/u;
 var LATIN = new RegExp("^\\p{Script=Latin}$", "u");
@@ -30957,8 +30962,8 @@ function scanInvisible(text, options) {
     const cp = cps[i];
     if (cp === WAVING_BLACK_FLAG) {
       let j = i + 1;
-      while (j < cps.length && cps[j] >= 917536 && cps[j] <= 917630) j++;
-      if (j > i + 1 && cps[j] === TAG_CANCEL) i = j;
+      while (j < cps.length && j - i <= SUBDIVISION_MAX && isSubdivisionTag(cps[j])) j++;
+      if (j - i - 1 >= SUBDIVISION_MIN && cps[j] === TAG_CANCEL) i = j;
       continue;
     }
     if (cp >= TAG_FIRST && cp <= TAG_LAST) {

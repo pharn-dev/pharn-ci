@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { check, MAX_ADDED_TEXT_CHARS, MAX_ADDED_TEXT_LINES, type Report, readDiffChunks } from "../src/index.js";
+import { DEFAULT_INJECTION_SEVERITIES } from "../src/injection/policy.js";
 import { fixture } from "./helpers.js";
 import { addedFileDiff, injectionFixture } from "./injection-fixture.js";
 import { expectValidReport } from "./schema.js";
@@ -84,6 +85,27 @@ describe("the prompt-injection scan in check()", { timeout: 120_000 }, () => {
     for (const word of ["pwned", "hate humans", "French"]) expect(json).not.toContain(word);
   });
 
+  it("blocks a sentence of tag characters hidden after a flag in AGENTS.md: one PI01 at its default level (CORE-41)", () => {
+    const report = run({ text: injectionFixture("pi01-flag-trigger.diff.txt") });
+    expect(report.verdict).toBe("fail");
+    const inAgents = withoutFix(report.injection?.signals.filter((s) => s.path === "AGENTS.md"));
+    expect(inAgents).toEqual([
+      {
+        id: "PI01",
+        severity: DEFAULT_INJECTION_SEVERITIES.PI01,
+        path: "AGENTS.md",
+        line: 3,
+        detail: "tag character U+E0000-U+E007F and 40 more",
+      },
+    ]);
+    expect(DEFAULT_INJECTION_SEVERITIES.PI01).toBe("block");
+    const message = report.messages.find((m) => m.code === "INJECTION_PI01");
+    expect(message?.level).toBe("error");
+    expect(message?.text).toContain("`AGENTS.md` line 3");
+    // No hidden character reaches the report: not the tag characters, not the flag.
+    expect(JSON.stringify(report)).not.toMatch(/[\u{E0000}-\u{E007F}\u{1F3F4}]/u);
+  });
+
   it("names PI05 files without a line", () => {
     const report = run({ text: injectionFixture("pi05-trigger.diff.txt") });
     const message = report.messages.find((m) => m.code === "INJECTION_PI05");
@@ -102,6 +124,7 @@ describe("the prompt-injection scan in check()", { timeout: 120_000 }, () => {
       "pi03-clean.diff.txt",
       "pi04-clean.diff.txt",
       "pi05-clean.diff.txt",
+      "pi01-flag-clean.diff.txt",
     ]) {
       const report = run({ text: injectionFixture(name) });
       expect(Object.keys(report), name).not.toContain("injection");

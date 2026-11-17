@@ -1110,6 +1110,12 @@ a text filter for content aimed at the next agent, not a judgement of what a tex
   outside emoji, U+2028 and U+2029, and other default-ignorable code points are not on PI01's list. ZWJ and ZWNJ pass
   between two letters or marks of any non-Latin script and between emoji parts, so one hidden there is missed;
   directional marks pass on any line that holds a right-to-left letter.
+- **Subdivision flags pass.** Tag characters (U+E0000 to U+E007F) are skipped in one shape only: the waving black flag
+  U+1F3F4, then 3 to 6 tag lower-case letters (U+E0061 to U+E007A) or tag digits (U+E0030 to U+E0039), then the cancel
+  tag U+E007F. That covers the England (`gbeng`), Scotland (`gbsct`) and Wales (`gbwls`) flags and any other id of that
+  shape (`usca`), so up to six hidden letters or digits per flag are missed; each such sequence shows as a flag. Any
+  other run after the flag is flagged: longer or shorter, with a tag space, capital, punctuation or control tag, or with
+  no cancel tag. A seven-character subdivision id (a three-digit region code and a four-character suffix) is flagged.
 - **Images, binaries and generated files.** Text inside an image, a PDF, an archive, a notebook's output or a file the
   diff shows as binary is not read.
 - **Hidden Markdown is a short list.** PI02 reads HTML comments, reference definitions and quoted link titles. Image alt

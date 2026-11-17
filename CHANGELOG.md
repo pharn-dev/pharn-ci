@@ -26,6 +26,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Security
 
+- The invisible-Unicode scan (PI01) no longer skips a hidden instruction written in tag characters after a flag emoji.
+  After U+1F3F4 it now skips only a well-formed subdivision flag, 3 to 6 tag lower-case letters or tag digits closed by
+  the cancel tag (England, Scotland, Wales, `usca`); before, any run of tag characters closed by the cancel tag was
+  skipped, whatever its length or content. Any other run is a PI01 finding (`block` by default), so a change that hid
+  text that way now fails the check (`docs/LIMITS.md`, "Subdivision flags pass").
+
 ## [0.10.0] - 2026-11-09
 
 ### Added

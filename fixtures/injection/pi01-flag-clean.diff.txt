@@ -1,0 +1,11 @@
+diff --git a/AGENTS.md b/AGENTS.md
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/AGENTS.md
+@@ -0,0 +1,5 @@
++# Offices
++
++- London \u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}, Glasgow \u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}, Cardiff \u{1F3F4}\u{E0067}\u{E0062}\u{E0077}\u{E006C}\u{E0073}\u{E007F}
++- Sacramento \u{1F3F4}\u{E0075}\u{E0073}\u{E0063}\u{E0061}\u{E007F} and Tokyo \u{1F3F4}\u{E006A}\u{E0070}\u{E0031}\u{E0033}\u{E007F}
++- A plain black flag: \u{1F3F4}

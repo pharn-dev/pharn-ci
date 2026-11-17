@@ -35,6 +35,14 @@ const TAG_FIRST = 0xe0000;
 const TAG_LAST = 0xe007f;
 const TAG_CANCEL = 0xe007f;
 const WAVING_BLACK_FLAG = 0x1f3f4;
+/** A subdivision flag's tag run (`gbeng`, `gbsct`, `gbwls`, `usca`, ...) is 3 to 6 tag letters or digits long. */
+const SUBDIVISION_MIN = 3;
+const SUBDIVISION_MAX = 6;
+
+/** A tag lower-case letter (U+E0061 to U+E007A) or a tag digit (U+E0030 to U+E0039): the only tags of a subdivision. */
+function isSubdivisionTag(cp: number | undefined): boolean {
+  return cp !== undefined && ((cp >= 0xe0061 && cp <= 0xe007a) || (cp >= 0xe0030 && cp <= 0xe0039));
+}
 
 const LETTER = /^\p{L}$/u;
 const LETTER_OR_MARK = /^[\p{L}\p{M}]$/u;
@@ -124,10 +132,12 @@ export function scanInvisible(text: string, options: InvisibleOptions): Invisibl
   for (let i = 0; i < cps.length; i++) {
     const cp = cps[i] as number;
     if (cp === WAVING_BLACK_FLAG) {
-      // A subdivision flag: U+1F3F4, tag characters U+E0020 to U+E007E, then the cancel tag U+E007F.
+      // A subdivision flag: U+1F3F4, 3 to 6 tag lower-case letters or tag digits, then the cancel tag U+E007F. Any
+      // other run after the flag (longer, shorter, with a tag space, capital or punctuation, or with no cancel tag) is
+      // not skipped: its tag characters are flagged by the branch below.
       let j = i + 1;
-      while (j < cps.length && (cps[j] as number) >= 0xe0020 && (cps[j] as number) <= 0xe007e) j++;
-      if (j > i + 1 && cps[j] === TAG_CANCEL) i = j;
+      while (j < cps.length && j - i <= SUBDIVISION_MAX && isSubdivisionTag(cps[j])) j++;
+      if (j - i - 1 >= SUBDIVISION_MIN && cps[j] === TAG_CANCEL) i = j;
       continue;
     }
     if (cp >= TAG_FIRST && cp <= TAG_LAST) {
