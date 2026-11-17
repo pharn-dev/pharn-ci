@@ -13,10 +13,13 @@ npm yet.
   ([`.github/rulesets/release-tags.json`](../.github/rulesets/release-tags.json)) forbids updating,
   force-pushing or deleting any `v*` tag, with no bypass. A broken release is fixed by releasing a
   new patch version.
-- **Tag creation is not restricted.** Anyone with write access can create a `v*` tag by hand, and it
-  is then permanent. Create release tags only through `release.yml`. No ruleset limits creation to
-  the release job: GitHub does not accept the GitHub Actions integration as a bypass actor
-  ([`SECURITY.md`](../SECURITY.md), Release integrity).
+- **Only the release job creates tags.** The `release-tag-creation` ruleset
+  ([`.github/rulesets/release-tag-creation.json`](../.github/rulesets/release-tag-creation.json))
+  rejects the creation of a `v*` tag by anyone but the pharn-dev release app, whose token only the
+  `Release publish` job can mint ([One-time setup](#one-time-setup)). A maintainer cannot push a
+  release tag by hand, and neither can a workflow's `GITHUB_TOKEN`. It is a separate ruleset from
+  `release-tags` on purpose: a bypass skips every rule of its ruleset, so the app must not be able to
+  move or delete tags ([`SECURITY.md`](../SECURITY.md), Release integrity).
 - **Tags are not signed.** Release tags are created by the `Release publish` job through the GitHub
   REST API (`git/refs`), so they are lightweight and not signed: there is no tag signature to
   verify. The `main` ruleset's signed-commits rule covers commits, not tags. The integrity control
@@ -99,7 +102,10 @@ that worked on the previous release. Before 1.0 the rules are:
    their own release; see [`SECURITY.md`](../SECURITY.md#maintainer-model-one-person-today)), then
    creates the tag `vX.Y.Z`
    at exactly the commit that was verified and a **draft** GitHub Release with the changelog section as
-   its notes. The publishing job has `contents: write` and checks out and installs nothing.
+   its notes. The publishing job has `contents: write` and checks out and installs nothing. It creates the
+   tag with a token of the release app that it mints itself and revokes at the end of the step; if the
+   secrets are missing or the app is not installed, the job fails before it creates anything, and the
+   same version can be released again once that is fixed.
    - **Release smoke.** After `Release publish`, the `Release smoke` job checks out the new tag and runs
      `node scripts/smoke-release.mjs .`. It builds a throwaway repository from `fixtures/smoke/`, runs the tagged
      bundle with no token and no event, and checks the exit code, the `verdict` output, the job summary and the
@@ -146,4 +152,36 @@ These repository settings are already applied by an admin and must stay on; see
 - the `release` environment with a required reviewer, deployable from `main` only (one reviewer,
   self-review allowed until a second maintainer exists);
 - immutable releases, so a published release's tag and assets cannot be changed;
-- the `release-tags` ruleset.
+- the `release-tags` ruleset;
+- the release app and the `release-tag-creation` ruleset, below.
+
+### The release app
+
+`Release publish` creates the tag with a token of a GitHub App owned by pharn-dev, the only bypass
+actor of the `release-tag-creation` ruleset. GitHub does not accept the built-in GitHub Actions
+integration (`GITHUB_TOKEN`) as a bypass actor, so the app is what lets the release job, and nothing
+else, create a `v*` tag. An organization owner sets it up once:
+
+1. **Create the app** at Organization settings → Developer settings → GitHub Apps → New GitHub App:
+   - a name such as `pharn-release` and the repository URL as its homepage;
+   - **Webhook**: untick **Active**;
+   - **Repository permissions**: **Contents: Read and write**, nothing else (Metadata stays
+     read-only); no organization or account permissions;
+   - **Where can this GitHub App be installed?**: **Only on this account**.
+
+   Note the **App ID** on the app's page (a number, not the Client ID), then under **Private keys**
+   choose **Generate a private key**.
+2. **Install it** (Install App → pharn-dev) with **Only select repositories** → `pharn-ci`.
+3. **Store its id and key as secrets of the `release` environment**, not of the repository, so
+   that only a job in that environment can read them:
+
+   ```bash
+   gh secret set RELEASE_APP_ID --repo pharn-dev/pharn-ci --env release --body "<app id>"
+   gh secret set RELEASE_APP_PRIVATE_KEY --repo pharn-dev/pharn-ci --env release < <downloaded .pem>
+   gh api repos/pharn-dev/pharn-ci/environments/release/secrets --jq '[.secrets[].name]'
+   ```
+
+   Then delete the downloaded `.pem`. A lost or leaked key is replaced by generating a new one on
+   the app's page (and deleting the old one), then setting the secret again.
+4. **Create the ruleset** with the app id as its bypass actor; the steps and the checks are in
+   [`.github/rulesets/README.md`](../.github/rulesets/README.md#apply-a-change).
