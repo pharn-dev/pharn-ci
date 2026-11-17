@@ -476,7 +476,7 @@ export {
   unavailableTestSources,
 } from "./testSources.js";
 export { decodeTestSourceText } from "./testSourceText.js";
-export { byCodeUnit, utf8ByteLength } from "./text.js";
+export { byCodeUnit, escapeLogLine, escapeLogText, utf8ByteLength } from "./text.js";
 export { buildUploadBundle } from "./upload/bundle.js";
 export { buildJunitResultsXml, UPLOAD_JUNIT_MAX_BYTES, UPLOAD_JUNIT_NAME, xmlAttribute } from "./upload/junit.js";
 export { buildUploadMeta, type UploadMeta } from "./upload/meta.js";

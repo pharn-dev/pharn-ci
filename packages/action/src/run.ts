@@ -12,6 +12,7 @@ import {
   type DiffFile,
   type DirEntry,
   detectAgentPr,
+  escapeLogLine,
   gitDiffArgs,
   type InputErrorText,
   type JunitResults,
@@ -262,7 +263,10 @@ const SUMMARY_TRUNCATED_NOTE = "\n\n_Truncated: the full report is in report.jso
 /** Table rows to try, most first, when the full render does not fit. 0 is the minimal render. */
 const FALLBACK_ROWS = [25, 12, 6, 3, 1, 0];
 
-export async function run(deps: ActionDeps): Promise<Report | undefined> {
+export async function run(actionDeps: ActionDeps): Promise<Report | undefined> {
+  // Every message run() logs is escaped as one line, whichever `info` it is given (index.ts escapes `core.info` too): a
+  // file name in it cannot start a workflow command in the job log. Escaping twice changes nothing.
+  const deps: ActionDeps = { ...actionDeps, info: (message) => actionDeps.info(escapeLogLine(message)) };
   try {
     return await runUnsafe(deps);
   } catch (err) {

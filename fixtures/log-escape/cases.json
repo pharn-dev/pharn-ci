@@ -1,0 +1,74 @@
+[
+  {
+    "name": "a plain line is unchanged",
+    "input": "coverage: coverage.xml (auto-discovered)",
+    "line": "coverage: coverage.xml (auto-discovered)",
+    "text": "coverage: coverage.xml (auto-discovered)"
+  },
+  {
+    "name": "a newline path with ::stop-commands::",
+    "input": "coverage: pkg\n::stop-commands::tok\n/coverage.cobertura.xml (auto-discovered)",
+    "line": "coverage: pkg�::stop-commands::tok�/coverage.cobertura.xml (auto-discovered)",
+    "text": "coverage: pkg\n\\::stop-commands::tok\n/coverage.cobertura.xml (auto-discovered)"
+  },
+  {
+    "name": "a CRLF path with the older ##[add-mask] spelling",
+    "input": "coverage: pkg\r\n##[add-mask]x/coverage.cobertura.xml (auto-discovered)",
+    "line": "coverage: pkg��##\\[add-mask]x/coverage.cobertura.xml (auto-discovered)",
+    "text": "coverage: pkg\n##\\[add-mask]x/coverage.cobertura.xml (auto-discovered)"
+  },
+  {
+    "name": "a line that starts with ::",
+    "input": "::add-mask::value",
+    "line": "\\::add-mask::value",
+    "text": "\\::add-mask::value"
+  },
+  {
+    "name": "a line that starts with no-break space and ::",
+    "input": "  ::stop-commands::tok",
+    "line": "  \\::stop-commands::tok",
+    "text": "  \\::stop-commands::tok"
+  },
+  {
+    "name": "a tab before :: is replaced, so the line no longer starts with whitespace",
+    "input": "\t::stop-commands::tok",
+    "line": "�::stop-commands::tok",
+    "text": "�::stop-commands::tok"
+  },
+  {
+    "name": "##[ in the middle of a line",
+    "input": "coverage: a ##[stop-commands]tok/coverage.cobertura.xml",
+    "line": "coverage: a ##\\[stop-commands]tok/coverage.cobertura.xml",
+    "text": "coverage: a ##\\[stop-commands]tok/coverage.cobertura.xml"
+  },
+  {
+    "name": "three hashes before [",
+    "input": "###[group]x",
+    "line": "###\\[group]x",
+    "text": "###\\[group]x"
+  },
+  {
+    "name": "a lone carriage return is replaced, never a line break",
+    "input": "a\r::set-output name=verdict::pass",
+    "line": "a�::set-output name=verdict::pass",
+    "text": "a�::set-output name=verdict::pass"
+  },
+  {
+    "name": "bidirectional and zero-width characters",
+    "input": "src/‮evil​.ts",
+    "line": "src/�evil�.ts",
+    "text": "src/�evil�.ts"
+  },
+  {
+    "name": "a single colon at line start is not a command",
+    "input": ":not-a-command",
+    "line": ":not-a-command",
+    "text": ":not-a-command"
+  },
+  {
+    "name": "the empty string",
+    "input": "",
+    "line": "",
+    "text": ""
+  }
+]

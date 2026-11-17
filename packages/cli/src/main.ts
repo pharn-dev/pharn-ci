@@ -12,6 +12,8 @@ import {
   DEPENDENCY_SOURCE_LIMITS,
   type DiffFile,
   type DirEntry,
+  escapeLogLine,
+  escapeLogText,
   gitDiffArgs,
   type InputErrorText,
   type PharnConfig,
@@ -140,7 +142,11 @@ Options:
 Exit codes: 0 pass or warn, 1 fail, 2 usage or runtime error.
 `;
 
-export async function main(argv: string[], deps: CliDeps): Promise<number> {
+export async function main(argv: string[], cliDeps: CliDeps): Promise<number> {
+  // Every line written to stderr is escaped, at the sink: in a CI job stderr is the job log, whose lines the runner
+  // reads for workflow commands, and a file name or a git message with a newline must not start `::stop-commands::` or
+  // carry `##[...]`. stdout, the report, is left as it is.
+  const deps: CliDeps = { ...cliDeps, stderr: (text) => cliDeps.stderr(escapeLogText(text)) };
   // `test` has options of its own and a command after `--`, so it is parsed apart.
   if (argv[0] === "test") return runTestCommand(argv.slice(1), deps);
   let parsed: ReturnType<typeof parse>;
@@ -321,8 +327,9 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     dependencies: dependencySettings,
   } = effective;
 
-  // Say which format was read and why, on stderr so stdout stays the report alone.
-  const log = (line: string) => deps.stderr(`${line}\n`);
+  // Say which format was read and why, on stderr so stdout stays the report alone. Each log line is one line: a newline
+  // in a file name it names is replaced, so the name stays on its line (stderr escapes the rest, see main()).
+  const log = (line: string) => deps.stderr(`${escapeLogLine(line)}\n`);
   let coverage: CheckInput["coverage"];
   if ("discover" in coverageFile) {
     // Discovered from the repo root, wherever the CLI runs; an ambiguity is a ConfigError, so exit 2.

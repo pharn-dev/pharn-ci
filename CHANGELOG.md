@@ -50,6 +50,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   `actions/checkout` default) or uses `pr-number` mode: the step now fails, and the message, which now ends with how to
   fix it, says to check out the pull request head with `fetch-depth: 0`. A policy with none of the five lists still
   gets a warning.
+- A file name can no longer write a GitHub Actions workflow command into the job log. A tracked directory whose name
+  held a newline and `::stop-commands::<token>` (or `##[...]`, the older spelling) reached the log through coverage
+  auto-discovery, and could stop the runner from honouring the `::add-mask::` that hides the upload's OIDC token and
+  signed URL. The Action now writes every `core.info` message as one line, with control characters replaced by U+FFFD,
+  `##[` written `##\[` and a `\` before a leading `::`; the CLI escapes its stderr the same way
+  (`docs/THREAT-MODEL.md`, row B4).
 
 ## [0.10.0] - 2026-11-09
 

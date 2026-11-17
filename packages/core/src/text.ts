@@ -37,6 +37,32 @@ export function replaceUnsafeChars(text: string, replacement: string): string {
 }
 
 /**
+ * One job-log line that cannot carry a GitHub Actions workflow command, for a sink such as `core.info` or the CLI's
+ * stderr, whose text the runner reads line by line and scans for commands.
+ *
+ * - Every control, invisible or bidirectional character (`UNSAFE_RANGES`, newlines and carriage returns included) is
+ *   replaced by U+FFFD, so the text stays one line and a file name in it stays recognisable.
+ * - Every `##[` becomes `##\[`: the runner honours the older command spelling `##[command]data` anywhere in a line.
+ * - A line whose first non-whitespace characters are `::` gets a `\` before them: the runner honours `::command::data`
+ *   when the line starts with `::` after its leading whitespace.
+ *
+ * Idempotent: an escaped line comes back unchanged.
+ */
+export function escapeLogLine(text: string): string {
+  const line = replaceUnsafeChars(text, "�").replaceAll("##[", "##\\[");
+  const lead = line.length - line.trimStart().length;
+  return line.startsWith("::", lead) ? `${line.slice(0, lead)}\\${line.slice(lead)}` : line;
+}
+
+/**
+ * Text of one or more lines for a job-log sink: split at each `\n` (a `\r\n` counts as one), each line escaped with
+ * `escapeLogLine`, joined with `\n`. A lone `\r` is replaced, so it cannot start a line the runner reads apart.
+ */
+export function escapeLogText(text: string): string {
+  return text.split(/\r?\n/).map(escapeLogLine).join("\n");
+}
+
+/**
  * Orders two strings by UTF-16 code unit, the order `Array.prototype.sort` uses without a comparator, as a three-way
  * comparator for `sort`. Never locale-aware, so the order is the same on every machine.
  */

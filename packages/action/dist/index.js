@@ -19540,12 +19540,12 @@ var require_lib = __commonJS({
             throw new Error("Client has already been disposed.");
           }
           const parsedUrl = new URL(requestUrl);
-          let info2 = this._prepareRequest(verb, parsedUrl, headers);
+          let info3 = this._prepareRequest(verb, parsedUrl, headers);
           const maxTries = this._allowRetries && RetryableHttpVerbs2.includes(verb) ? this._maxRetries + 1 : 1;
           let numTries = 0;
           let response;
           do {
-            response = yield this.requestRaw(info2, data);
+            response = yield this.requestRaw(info3, data);
             if (response && response.message && response.message.statusCode === HttpCodes2.Unauthorized) {
               let authenticationHandler;
               for (const handler2 of this.handlers) {
@@ -19555,7 +19555,7 @@ var require_lib = __commonJS({
                 }
               }
               if (authenticationHandler) {
-                return authenticationHandler.handleAuthentication(this, info2, data);
+                return authenticationHandler.handleAuthentication(this, info3, data);
               } else {
                 return response;
               }
@@ -19578,8 +19578,8 @@ var require_lib = __commonJS({
                   }
                 }
               }
-              info2 = this._prepareRequest(verb, parsedRedirectUrl, headers);
-              response = yield this.requestRaw(info2, data);
+              info3 = this._prepareRequest(verb, parsedRedirectUrl, headers);
+              response = yield this.requestRaw(info3, data);
               redirectsRemaining--;
             }
             if (!response.message.statusCode || !HttpResponseRetryCodes2.includes(response.message.statusCode)) {
@@ -19608,7 +19608,7 @@ var require_lib = __commonJS({
        * @param info
        * @param data
        */
-      requestRaw(info2, data) {
+      requestRaw(info3, data) {
         return __awaiter7(this, void 0, void 0, function* () {
           return new Promise((resolve2, reject) => {
             function callbackForResult(err, res) {
@@ -19620,7 +19620,7 @@ var require_lib = __commonJS({
                 resolve2(res);
               }
             }
-            this.requestRawWithCallback(info2, data, callbackForResult);
+            this.requestRawWithCallback(info3, data, callbackForResult);
           });
         });
       }
@@ -19630,12 +19630,12 @@ var require_lib = __commonJS({
        * @param data
        * @param onResult
        */
-      requestRawWithCallback(info2, data, onResult) {
+      requestRawWithCallback(info3, data, onResult) {
         if (typeof data === "string") {
-          if (!info2.options.headers) {
-            info2.options.headers = {};
+          if (!info3.options.headers) {
+            info3.options.headers = {};
           }
-          info2.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
+          info3.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
         }
         let callbackCalled = false;
         function handleResult(err, res) {
@@ -19644,7 +19644,7 @@ var require_lib = __commonJS({
             onResult(err, res);
           }
         }
-        const req = info2.httpModule.request(info2.options, (msg) => {
+        const req = info3.httpModule.request(info3.options, (msg) => {
           const res = new HttpClientResponse2(msg);
           handleResult(void 0, res);
         });
@@ -19656,7 +19656,7 @@ var require_lib = __commonJS({
           if (socket) {
             socket.end();
           }
-          handleResult(new Error(`Request timeout: ${info2.options.path}`));
+          handleResult(new Error(`Request timeout: ${info3.options.path}`));
         });
         req.on("error", function(err) {
           handleResult(err);
@@ -19692,27 +19692,27 @@ var require_lib = __commonJS({
         return this._getProxyAgentDispatcher(parsedUrl, proxyUrl);
       }
       _prepareRequest(method, requestUrl, headers) {
-        const info2 = {};
-        info2.parsedUrl = requestUrl;
-        const usingSsl = info2.parsedUrl.protocol === "https:";
-        info2.httpModule = usingSsl ? https2 : http2;
+        const info3 = {};
+        info3.parsedUrl = requestUrl;
+        const usingSsl = info3.parsedUrl.protocol === "https:";
+        info3.httpModule = usingSsl ? https2 : http2;
         const defaultPort = usingSsl ? 443 : 80;
-        info2.options = {};
-        info2.options.host = info2.parsedUrl.hostname;
-        info2.options.port = info2.parsedUrl.port ? parseInt(info2.parsedUrl.port) : defaultPort;
-        info2.options.path = (info2.parsedUrl.pathname || "") + (info2.parsedUrl.search || "");
-        info2.options.method = method;
-        info2.options.headers = this._mergeHeaders(headers);
+        info3.options = {};
+        info3.options.host = info3.parsedUrl.hostname;
+        info3.options.port = info3.parsedUrl.port ? parseInt(info3.parsedUrl.port) : defaultPort;
+        info3.options.path = (info3.parsedUrl.pathname || "") + (info3.parsedUrl.search || "");
+        info3.options.method = method;
+        info3.options.headers = this._mergeHeaders(headers);
         if (this.userAgent != null) {
-          info2.options.headers["user-agent"] = this.userAgent;
+          info3.options.headers["user-agent"] = this.userAgent;
         }
-        info2.options.agent = this._getAgent(info2.parsedUrl);
+        info3.options.agent = this._getAgent(info3.parsedUrl);
         if (this.handlers) {
           for (const handler2 of this.handlers) {
-            handler2.prepareRequest(info2.options);
+            handler2.prepareRequest(info3.options);
           }
         }
-        return info2;
+        return info3;
       }
       _mergeHeaders(headers) {
         if (this.requestOptions && this.requestOptions.headers) {
@@ -20356,12 +20356,12 @@ var HttpClient = class {
         throw new Error("Client has already been disposed.");
       }
       const parsedUrl = new URL(requestUrl);
-      let info2 = this._prepareRequest(verb, parsedUrl, headers);
+      let info3 = this._prepareRequest(verb, parsedUrl, headers);
       const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb) ? this._maxRetries + 1 : 1;
       let numTries = 0;
       let response;
       do {
-        response = yield this.requestRaw(info2, data);
+        response = yield this.requestRaw(info3, data);
         if (response && response.message && response.message.statusCode === HttpCodes.Unauthorized) {
           let authenticationHandler;
           for (const handler2 of this.handlers) {
@@ -20371,7 +20371,7 @@ var HttpClient = class {
             }
           }
           if (authenticationHandler) {
-            return authenticationHandler.handleAuthentication(this, info2, data);
+            return authenticationHandler.handleAuthentication(this, info3, data);
           } else {
             return response;
           }
@@ -20394,8 +20394,8 @@ var HttpClient = class {
               }
             }
           }
-          info2 = this._prepareRequest(verb, parsedRedirectUrl, headers);
-          response = yield this.requestRaw(info2, data);
+          info3 = this._prepareRequest(verb, parsedRedirectUrl, headers);
+          response = yield this.requestRaw(info3, data);
           redirectsRemaining--;
         }
         if (!response.message.statusCode || !HttpResponseRetryCodes.includes(response.message.statusCode)) {
@@ -20424,7 +20424,7 @@ var HttpClient = class {
    * @param info
    * @param data
    */
-  requestRaw(info2, data) {
+  requestRaw(info3, data) {
     return __awaiter(this, void 0, void 0, function* () {
       return new Promise((resolve2, reject) => {
         function callbackForResult(err, res) {
@@ -20436,7 +20436,7 @@ var HttpClient = class {
             resolve2(res);
           }
         }
-        this.requestRawWithCallback(info2, data, callbackForResult);
+        this.requestRawWithCallback(info3, data, callbackForResult);
       });
     });
   }
@@ -20446,12 +20446,12 @@ var HttpClient = class {
    * @param data
    * @param onResult
    */
-  requestRawWithCallback(info2, data, onResult) {
+  requestRawWithCallback(info3, data, onResult) {
     if (typeof data === "string") {
-      if (!info2.options.headers) {
-        info2.options.headers = {};
+      if (!info3.options.headers) {
+        info3.options.headers = {};
       }
-      info2.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
+      info3.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
     }
     let callbackCalled = false;
     function handleResult(err, res) {
@@ -20460,7 +20460,7 @@ var HttpClient = class {
         onResult(err, res);
       }
     }
-    const req = info2.httpModule.request(info2.options, (msg) => {
+    const req = info3.httpModule.request(info3.options, (msg) => {
       const res = new HttpClientResponse(msg);
       handleResult(void 0, res);
     });
@@ -20472,7 +20472,7 @@ var HttpClient = class {
       if (socket) {
         socket.end();
       }
-      handleResult(new Error(`Request timeout: ${info2.options.path}`));
+      handleResult(new Error(`Request timeout: ${info3.options.path}`));
     });
     req.on("error", function(err) {
       handleResult(err);
@@ -20508,27 +20508,27 @@ var HttpClient = class {
     return this._getProxyAgentDispatcher(parsedUrl, proxyUrl);
   }
   _prepareRequest(method, requestUrl, headers) {
-    const info2 = {};
-    info2.parsedUrl = requestUrl;
-    const usingSsl = info2.parsedUrl.protocol === "https:";
-    info2.httpModule = usingSsl ? https : http;
+    const info3 = {};
+    info3.parsedUrl = requestUrl;
+    const usingSsl = info3.parsedUrl.protocol === "https:";
+    info3.httpModule = usingSsl ? https : http;
     const defaultPort = usingSsl ? 443 : 80;
-    info2.options = {};
-    info2.options.host = info2.parsedUrl.hostname;
-    info2.options.port = info2.parsedUrl.port ? parseInt(info2.parsedUrl.port) : defaultPort;
-    info2.options.path = (info2.parsedUrl.pathname || "") + (info2.parsedUrl.search || "");
-    info2.options.method = method;
-    info2.options.headers = this._mergeHeaders(headers);
+    info3.options = {};
+    info3.options.host = info3.parsedUrl.hostname;
+    info3.options.port = info3.parsedUrl.port ? parseInt(info3.parsedUrl.port) : defaultPort;
+    info3.options.path = (info3.parsedUrl.pathname || "") + (info3.parsedUrl.search || "");
+    info3.options.method = method;
+    info3.options.headers = this._mergeHeaders(headers);
     if (this.userAgent != null) {
-      info2.options.headers["user-agent"] = this.userAgent;
+      info3.options.headers["user-agent"] = this.userAgent;
     }
-    info2.options.agent = this._getAgent(info2.parsedUrl);
+    info3.options.agent = this._getAgent(info3.parsedUrl);
     if (this.handlers) {
       for (const handler2 of this.handlers) {
-        handler2.prepareRequest(info2.options);
+        handler2.prepareRequest(info3.options);
       }
     }
-    return info2;
+    return info3;
   }
   _mergeHeaders(headers) {
     if (this.requestOptions && this.requestOptions.headers) {
@@ -25420,114 +25420,6 @@ function getOctokit(token, options, ...additionalPlugins) {
   return new GitHubWithPlugins(getOctokitOptions(token, options));
 }
 
-// src/api.ts
-function diffText(data) {
-  if (typeof data === "string") return data;
-  if (data instanceof ArrayBuffer) return new TextDecoder().decode(data);
-  if (data instanceof Uint8Array) return new TextDecoder().decode(data);
-  const got = data === null ? "null" : data === void 0 ? "no body" : Array.isArray(data) ? "an array" : typeof data === "object" ? "an object" : `a ${typeof data}`;
-  throw new Error(`the compare API returned ${got} instead of diff text`);
-}
-function createGitHubApi(opts) {
-  let client;
-  const connect = () => {
-    if (!client) {
-      if (opts.token === "") throw new Error("the github-token input is empty");
-      client = { octokit: opts.getOctokit(opts.token), ...opts.repo() };
-    }
-    return client;
-  };
-  const pulls = /* @__PURE__ */ new Map();
-  const getPull = (pullNumber) => {
-    let pending = pulls.get(pullNumber);
-    if (pending === void 0) {
-      pending = (async () => {
-        const { octokit, owner, repo } = connect();
-        return (await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber })).data;
-      })();
-      pulls.set(pullNumber, pending);
-      pending.catch(() => pulls.delete(pullNumber));
-    }
-    return pending;
-  };
-  return {
-    async compareDiff(basehead) {
-      const { octokit, owner, repo } = connect();
-      const res = await octokit.rest.repos.compareCommitsWithBasehead({
-        owner,
-        repo,
-        basehead,
-        mediaType: { format: "diff" }
-      });
-      return diffText(res.data);
-    },
-    async getPullRequest(pullNumber) {
-      const data = await getPull(pullNumber);
-      return { baseSha: data.base.sha, headSha: data.head.sha };
-    },
-    async getPullRequestSignoff(pullNumber) {
-      const data = await getPull(pullNumber);
-      return { author: data.user, labels: data.labels, commits: data.commits };
-    },
-    async listPullRequestCommits(pullNumber, page) {
-      const { octokit, owner, repo } = connect();
-      const res = await octokit.rest.pulls.listCommits({ owner, repo, pull_number: pullNumber, per_page: 100, page });
-      return { commits: res.data, hasNext: /\brel="next"/.test(String(res.headers.link ?? "")) };
-    },
-    async listIssueEvents(issueNumber, page) {
-      const { octokit, owner, repo } = connect();
-      const res = await octokit.rest.issues.listEvents({
-        owner,
-        repo,
-        issue_number: issueNumber,
-        per_page: 100,
-        page
-      });
-      return { events: res.data, hasNext: /\brel="next"/.test(String(res.headers.link ?? "")) };
-    },
-    async listTree(sha) {
-      const { octokit, owner, repo } = connect();
-      const { data } = await octokit.rest.git.getTree({ owner, repo, tree_sha: sha, recursive: "1" });
-      const paths = data.tree.flatMap((entry) => entry.type === "blob" && entry.path ? [entry.path] : []);
-      return { paths, truncated: data.truncated === true };
-    },
-    async viewerLogin() {
-      const { octokit } = connect();
-      try {
-        return (await octokit.rest.users.getAuthenticated()).data.login;
-      } catch {
-        return null;
-      }
-    },
-    async listComments(issueNumber) {
-      const { octokit, owner, repo } = connect();
-      return octokit.paginate(octokit.rest.issues.listComments, {
-        owner,
-        repo,
-        issue_number: issueNumber,
-        per_page: 100
-      });
-    },
-    async createComment(issueNumber, body) {
-      const { octokit, owner, repo } = connect();
-      const created = await octokit.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body });
-      return created.data.user?.login ?? null;
-    },
-    async updateComment(commentId, body) {
-      const { octokit, owner, repo } = connect();
-      await octokit.rest.issues.updateComment({ owner, repo, comment_id: commentId, body });
-    },
-    async deleteComment(commentId) {
-      const { octokit, owner, repo } = connect();
-      await octokit.rest.issues.deleteComment({ owner, repo, comment_id: commentId });
-    }
-  };
-}
-
-// src/node-io.ts
-import { mkdir as mkdir2, writeFile as writeFile2 } from "node:fs/promises";
-import { dirname as dirname2, resolve } from "node:path";
-
 // ../core/src/fix/table.ts
 var REVIEW_POLICY = "Ask a maintainer or the policy owner to review the committed agent settings this rule names.";
 var REVIEW_INJECTION = "Ask a reviewer to look at the added text that addresses an AI agent before merging.";
@@ -25996,6 +25888,11 @@ function hasUnsafeChar(text) {
 }
 function replaceUnsafeChars(text, replacement) {
   return text.replace(UNSAFE_PATTERN, replacement);
+}
+function escapeLogLine(text) {
+  const line = replaceUnsafeChars(text, "\uFFFD").replaceAll("##[", "##\\[");
+  const lead = line.length - line.trimStart().length;
+  return line.startsWith("::", lead) ? `${line.slice(0, lead)}\\${line.slice(lead)}` : line;
 }
 function byCodeUnit(a, b) {
   return a < b ? -1 : a > b ? 1 : 0;
@@ -30542,10 +30439,10 @@ function instructionDeclarations(text) {
       let run2 = 0;
       while (line[at + run2] === char) run2++;
       if (run2 >= 3) {
-        const info2 = line.slice(at + run2).trim();
+        const info3 = line.slice(at + run2).trim();
         let end = 0;
-        while (end < info2.length && !isSpaceCode(info2.charCodeAt(end))) end++;
-        const word = info2.slice(0, end).toLowerCase();
+        while (end < info3.length && !isSpaceCode(info3.charCodeAt(end))) end++;
+        const word = info3.slice(0, end).toLowerCase();
         fence = { char, length: run2, counted: SHELL_INFO.has(word), session: SESSION_INFO.has(word) };
         previousBlank = false;
         previousIndented = false;
@@ -35432,10 +35329,10 @@ function scanInstructionTokens(text) {
       let run2 = 0;
       while (line[at + run2] === char) run2++;
       if (run2 >= 3) {
-        const info2 = line.slice(at + run2).trim();
+        const info3 = line.slice(at + run2).trim();
         let end = 0;
-        while (end < info2.length && !isSpaceCode3(info2.charCodeAt(end)) && info2[end] !== "{") end++;
-        const word = info2.slice(0, end).toLowerCase();
+        while (end < info3.length && !isSpaceCode3(info3.charCodeAt(end)) && info3[end] !== "{") end++;
+        const word = info3.slice(0, end).toLowerCase();
         fence = { char, length: run2, shell: SHELL_INFO2.has(word), session: SESSION_INFO2.has(word) };
         previousBlank = false;
         previousIndented = false;
@@ -45604,6 +45501,114 @@ function buildUploadTar(entries) {
 // ../core/src/version.ts
 var VERSION7 = "0.10.0";
 
+// src/api.ts
+function diffText(data) {
+  if (typeof data === "string") return data;
+  if (data instanceof ArrayBuffer) return new TextDecoder().decode(data);
+  if (data instanceof Uint8Array) return new TextDecoder().decode(data);
+  const got = data === null ? "null" : data === void 0 ? "no body" : Array.isArray(data) ? "an array" : typeof data === "object" ? "an object" : `a ${typeof data}`;
+  throw new Error(`the compare API returned ${got} instead of diff text`);
+}
+function createGitHubApi(opts) {
+  let client;
+  const connect = () => {
+    if (!client) {
+      if (opts.token === "") throw new Error("the github-token input is empty");
+      client = { octokit: opts.getOctokit(opts.token), ...opts.repo() };
+    }
+    return client;
+  };
+  const pulls = /* @__PURE__ */ new Map();
+  const getPull = (pullNumber) => {
+    let pending = pulls.get(pullNumber);
+    if (pending === void 0) {
+      pending = (async () => {
+        const { octokit, owner, repo } = connect();
+        return (await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber })).data;
+      })();
+      pulls.set(pullNumber, pending);
+      pending.catch(() => pulls.delete(pullNumber));
+    }
+    return pending;
+  };
+  return {
+    async compareDiff(basehead) {
+      const { octokit, owner, repo } = connect();
+      const res = await octokit.rest.repos.compareCommitsWithBasehead({
+        owner,
+        repo,
+        basehead,
+        mediaType: { format: "diff" }
+      });
+      return diffText(res.data);
+    },
+    async getPullRequest(pullNumber) {
+      const data = await getPull(pullNumber);
+      return { baseSha: data.base.sha, headSha: data.head.sha };
+    },
+    async getPullRequestSignoff(pullNumber) {
+      const data = await getPull(pullNumber);
+      return { author: data.user, labels: data.labels, commits: data.commits };
+    },
+    async listPullRequestCommits(pullNumber, page) {
+      const { octokit, owner, repo } = connect();
+      const res = await octokit.rest.pulls.listCommits({ owner, repo, pull_number: pullNumber, per_page: 100, page });
+      return { commits: res.data, hasNext: /\brel="next"/.test(String(res.headers.link ?? "")) };
+    },
+    async listIssueEvents(issueNumber, page) {
+      const { octokit, owner, repo } = connect();
+      const res = await octokit.rest.issues.listEvents({
+        owner,
+        repo,
+        issue_number: issueNumber,
+        per_page: 100,
+        page
+      });
+      return { events: res.data, hasNext: /\brel="next"/.test(String(res.headers.link ?? "")) };
+    },
+    async listTree(sha) {
+      const { octokit, owner, repo } = connect();
+      const { data } = await octokit.rest.git.getTree({ owner, repo, tree_sha: sha, recursive: "1" });
+      const paths = data.tree.flatMap((entry) => entry.type === "blob" && entry.path ? [entry.path] : []);
+      return { paths, truncated: data.truncated === true };
+    },
+    async viewerLogin() {
+      const { octokit } = connect();
+      try {
+        return (await octokit.rest.users.getAuthenticated()).data.login;
+      } catch {
+        return null;
+      }
+    },
+    async listComments(issueNumber) {
+      const { octokit, owner, repo } = connect();
+      return octokit.paginate(octokit.rest.issues.listComments, {
+        owner,
+        repo,
+        issue_number: issueNumber,
+        per_page: 100
+      });
+    },
+    async createComment(issueNumber, body) {
+      const { octokit, owner, repo } = connect();
+      const created = await octokit.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body });
+      return created.data.user?.login ?? null;
+    },
+    async updateComment(commentId, body) {
+      const { octokit, owner, repo } = connect();
+      await octokit.rest.issues.updateComment({ owner, repo, comment_id: commentId, body });
+    },
+    async deleteComment(commentId) {
+      const { octokit, owner, repo } = connect();
+      await octokit.rest.issues.deleteComment({ owner, repo, comment_id: commentId });
+    }
+  };
+}
+
+// src/node-io.ts
+import { mkdir as mkdir2, writeFile as writeFile2 } from "node:fs/promises";
+import { dirname as dirname2, resolve } from "node:path";
+
 // ../node-io/src/gitBlobs.ts
 var OBJECT_ID = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 var OBJECT_LINE = /^([0-9a-f]{40}(?:[0-9a-f]{24})?) (\S+) (\d+)$/;
@@ -47937,7 +47942,8 @@ var TRUNCATED_NOTE = "\n\n_Truncated: the full report is in the job summary and 
 var MAX_SUMMARY_BYTES = 1e6;
 var SUMMARY_TRUNCATED_NOTE = "\n\n_Truncated: the full report is in report.json._\n";
 var FALLBACK_ROWS = [25, 12, 6, 3, 1, 0];
-async function run(deps) {
+async function run(actionDeps) {
+  const deps = { ...actionDeps, info: (message) => actionDeps.info(escapeLogLine(message)) };
   try {
     return await runUnsafe(deps);
   } catch (err) {
@@ -48681,11 +48687,12 @@ function parseBool(value, name) {
 
 // src/index.ts
 var workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
+var info2 = (message) => info(escapeLogLine(message));
 var api = createGitHubApi({
   token: getInput("github-token"),
   repo: () => context2.repo,
   // Every request gets a 30 s timeout and at most one retry (request-policy.ts).
-  getOctokit: withRequestPolicy((token) => getOctokit(token), { log: info })
+  getOctokit: withRequestPolicy((token) => getOctokit(token), { log: info2 })
 });
 await run({
   getInput: (name) => getInput(name),
@@ -48694,7 +48701,7 @@ await run({
   tempDir: process.env.RUNNER_TEMP ?? tmpdir2(),
   api,
   ...createNodeIo(workspace),
-  info,
+  info: info2,
   warning,
   setOutput,
   setFailed,

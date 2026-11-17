@@ -1,6 +1,7 @@
 import { tmpdir } from "node:os";
 import * as core from "@actions/core";
 import * as github from "@actions/github";
+import { escapeLogLine } from "@pharn-ci/core";
 import { createGitHubApi } from "./api.js";
 import { createNodeIo } from "./node-io.js";
 import { withRequestPolicy } from "./request-policy.js";
@@ -8,12 +9,16 @@ import { run } from "./run.js";
 import { vendoredTypeScriptFailure } from "./vendored-typescript.js";
 
 const workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
+// The job log. `core.info` writes its text as it is, and the runner reads each line of it for workflow commands, so
+// each message is escaped here, at the sink, as one line: a file name with a newline cannot start `::stop-commands::`
+// or carry `##[...]`. `core.warning` and `core.setFailed` escape their own text.
+const info = (message: string) => core.info(escapeLogLine(message));
 // Built lazily: a run that needs no API call (comment: false, local diff) needs no token.
 const api = createGitHubApi({
   token: core.getInput("github-token"),
   repo: () => github.context.repo,
   // Every request gets a 30 s timeout and at most one retry (request-policy.ts).
-  getOctokit: withRequestPolicy((token) => github.getOctokit(token), { log: core.info }),
+  getOctokit: withRequestPolicy((token) => github.getOctokit(token), { log: info }),
 });
 
 await run({
@@ -23,7 +28,7 @@ await run({
   tempDir: process.env.RUNNER_TEMP ?? tmpdir(),
   api,
   ...createNodeIo(workspace),
-  info: core.info,
+  info,
   warning: core.warning,
   setOutput: core.setOutput,
   setFailed: core.setFailed,
