@@ -10,7 +10,11 @@ const MAX_DETAIL = 300;
 /** How many labels one side of the matcher reason names before ` and N more`. */
 const MAX_LABELS = 5;
 
-const MODIFIERS_THAT_EXCUSE = ["skip", "todo", "skipIf", "runIf"] as const;
+/**
+ * The modifiers that excuse a head test: it never runs, and TI03 reports the skip. `skipIf` and `runIf` do not excuse
+ * it, since their condition can let the test run.
+ */
+const MODIFIERS_THAT_EXCUSE = ["skip", "todo"] as const;
 
 const TAUTOLOGY_REASON = "an assertion that compares a literal with itself was added";
 const TRY_REASON = "an assertion moved into a try block that has a catch";
@@ -116,7 +120,7 @@ function detailOf(reasons: ReadonlyArray<(cut: number) => string>): string {
 
 /**
  * TI06, a test that was weakened. Reads the matched pairs (the same-file name pairs and body pairs). A pair counts
- * unless the head test is marked `skip`, `todo`, `skipIf` or `runIf`. Five reasons, joined in this order when they hold:
+ * unless the head test is marked `skip` or `todo` (a `skipIf` or `runIf` test is judged). Five reasons, joined in this order when they hold:
  * a strong matcher became a weak one, an assertion guard was lowered or removed, an assertion that compares a literal
  * with itself was added, an assertion moved into a try block that has a catch, an assertion moved after an early return.
  * One `warn` finding per pair, at the head path and the head line; the detail is fixed text and matcher labels from a

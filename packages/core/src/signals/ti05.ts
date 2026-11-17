@@ -18,7 +18,11 @@ function callsHelper(body: string): boolean {
   return false;
 }
 
-const MODIFIERS_THAT_EXCUSE = ["skip", "todo", "skipIf", "runIf"] as const;
+/**
+ * The modifiers that excuse a head test: it never runs, and TI03 reports the skip. `skipIf` and `runIf` do not excuse
+ * it, since their condition can let the test run.
+ */
+const MODIFIERS_THAT_EXCUSE = ["skip", "todo"] as const;
 
 const ASSERTION_ROOT = /^assert\w*$/;
 const isAssertionRoot = (token: string) => token === "expect" || token === "should" || ASSERTION_ROOT.test(token);
@@ -72,7 +76,7 @@ function restUnchanged(base: TestBlock, head: TestBlock): boolean {
 
 /**
  * TI05, a test whose assertions were emptied or dropped. Reads the matched pairs. A pair counts when the base test had
- * assertions and the head test is not marked `skip`, `todo`, `skipIf` or `runIf`:
+ * assertions and the head test is not marked `skip` or `todo` (a `skipIf` or `runIf` test is judged):
  * - no assertions at head and no call to an assertion helper in the head body: severity is the mode;
  * - no assertions at head and a helper call: `warn`;
  * - fewer than at base but at least one, with the rest of the body unchanged: `warn`.

@@ -38210,7 +38210,7 @@ function callsHelper(body) {
   }
   return false;
 }
-var MODIFIERS_THAT_EXCUSE = ["skip", "todo", "skipIf", "runIf"];
+var MODIFIERS_THAT_EXCUSE = ["skip", "todo"];
 var ASSERTION_ROOT = /^assert\w*$/;
 var isAssertionRoot = (token) => token === "expect" || token === "should" || ASSERTION_ROOT.test(token);
 function align(base, head, fromLeft) {
@@ -38926,7 +38926,7 @@ function countTautologies(body, language) {
 // ../core/src/signals/ti06.ts
 var MAX_DETAIL4 = 300;
 var MAX_LABELS = 5;
-var MODIFIERS_THAT_EXCUSE2 = ["skip", "todo", "skipIf", "runIf"];
+var MODIFIERS_THAT_EXCUSE2 = ["skip", "todo"];
 var TAUTOLOGY_REASON = "an assertion that compares a literal with itself was added";
 var TRY_REASON = "an assertion moved into a try block that has a catch";
 var RETURN_REASON = "an assertion moved after an early return";

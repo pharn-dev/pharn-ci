@@ -33,6 +33,14 @@ const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
   "TI05/block-pytest-alias-raises-removed-literal",
   "TI05/pass-pytest-alias-emptied-skipped",
   "TI05/pass-pytest-alias-emptied-skipped-literal",
+  // CORE-54 (skipIf and runIf no longer excuse TI05 and TI06) adds these cases after the base; the digests below never
+  // covered them, and ac-ti0506-conditional-skip and ac-ti0506-python-conditional-skip assert them.
+  "TI05/block-pytest-skipif-emptied",
+  "TI05/block-runif-true-emptied",
+  "TI05/block-skipif-false-emptied",
+  "TI05/pass-pytest-skip-emptied",
+  "TI05/pass-pytest-skipif-unchanged",
+  "TI05/pass-skipif-unchanged",
 ]);
 
 /** [fixture, TI02/TI05 signals as "id severity path:line", their messages as "code level", digest] at d73684d. */

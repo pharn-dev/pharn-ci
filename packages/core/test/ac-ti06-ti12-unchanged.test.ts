@@ -54,6 +54,14 @@ const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
   "TI05/block-pytest-alias-raises-removed-literal",
   "TI05/pass-pytest-alias-emptied-skipped",
   "TI05/pass-pytest-alias-emptied-skipped-literal",
+  // CORE-54 (skipIf and runIf no longer excuse TI05 and TI06) adds these cases after the base; the digest below never
+  // covered them, and ac-ti0506-conditional-skip and ac-ti0506-python-conditional-skip assert them.
+  "TI05/block-pytest-skipif-emptied",
+  "TI05/block-runif-true-emptied",
+  "TI05/block-skipif-false-emptied",
+  "TI05/pass-pytest-skip-emptied",
+  "TI05/pass-pytest-skipif-unchanged",
+  "TI05/pass-skipif-unchanged",
 ]);
 /** The digest ac-ti0205-regression.test.ts pins for the earlier fixtures without sources. */
 // Re-pinned by the name-only-moves change, with ac-ti0205-regression.test.ts: the two TI01 migration records changed.

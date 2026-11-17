@@ -1,0 +1,15 @@
+import { describe, expect, it } from "vitest";
+import { total } from "./cart.js";
+
+const isWindows = process.platform === "win32";
+
+describe("cart", () => {
+  it("adds the prices", () => {
+    expect(total([2, 3])).toBe(5);
+  });
+
+  it.skipIf(isWindows)("totals an empty cart", () => {
+    expect(total([])).toBe(0);
+    expect(total([0])).toBe(0);
+  });
+});

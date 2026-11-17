@@ -325,7 +325,10 @@ merge base and at `HEAD`, in JavaScript, TypeScript and Python test files the ch
   compared, and a fewer-but-stronger rewrite is excused when the rest of the body changes too.
 - **Assertions dropped together with a rewrite.** TI05 reports fewer assertions only when the rest of the body is
   the base's with assertion statements taken out; a change that drops an assertion and edits anything else passes.
-- **Skipped, todo and conditional tests** (`skip`, `todo`, `skipIf`, `runIf`) are not checked; TI03 reports skips added.
+- **Skipped and todo tests** (`skip`, `todo` at head, including `x`-prefixed heads and Python's `@pytest.mark.skip`,
+  `@unittest.skip` and an unconditional `pytest.skip()` or `self.skipTest()`) are not checked; TI03 reports skips added.
+  Only these excuse a test: one under `skipIf` or `runIf` (`@pytest.mark.skipif`, `@unittest.skipIf`,
+  `@unittest.skipUnless`, a conditional `pytest.skip()`) can run, so it is checked like any other.
 - **Go test files** and every other language are not read; the Python count is the interpreter's own reading of
   `assert` statements and the unittest assert methods.
 - **Caps.** At most 20 findings per file.
@@ -429,8 +432,9 @@ always gives `warn`, never `block`, and it reads the normalized text of the test
 - **A test matched only to a test in another file.** Only name pairs and same-file body pairs are compared. A test
   that leaves one file and reappears weaker in another file is taken for a move (TI02) and TI06 does not compare the
   two.
-- **Skipped, todo and conditional tests** (`skip`, `todo`, `skipIf`, `runIf`) at head are not checked; TI03 reports
-  skips added.
+- **Skipped and todo tests** (`skip`, `todo` at head, the same forms TI05 excuses) are not checked; TI03 reports skips
+  added. Only these excuse a test: one under `skipIf` or `runIf` (`@pytest.mark.skipif` and the other conditional
+  forms) can run, so its weakening is reported.
 - **Guards of unknown size.** An `expect.assertions(n)` whose argument is not a numeric literal makes the guard of
   that side unknown, and no guard reason is given. Python tests carry no guard.
 - **Tautologies are literal.** Only a number, a string of at most 200 characters, `true`, `false`, `null` or
