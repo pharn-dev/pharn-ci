@@ -1,0 +1,7 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 5555555..6666666 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -31 +31 @@ jobs:
+-        run: uv run pytest -q tests
++        run: uv run pytest -q --cov=src --cov-report xml --junitxml junit.xml tests

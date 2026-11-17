@@ -19,6 +19,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   let it run, so emptying or weakening it is reported. Only `skip` and `todo` still excuse a test, since TI03 reports
   those (`docs/LIMITS.md`). This can add findings on repositories that keep platform tests under `skipIf` and change
   them.
+- Fixed: two honest edits no longer fail in mode `block`. TI11 treats a workflow test command that only gains report flags
+  (`--coverage*`, `--cov*`, `--reporter*`, `--junitxml*`, `--ci`, and `-v` or `-q` for pytest, `python -m unittest`, tox
+  and `go test`) as the same step, so `pytest` to `pytest --cov=src --cov-report=xml`, the edit the README asks a Python
+  user to make, is no longer a lost test step; a path, `-k`, `|| true` or any other flag added still is. TI13 gives
+  `warn` for a coverage hint that marks one line or branch (`# pragma: no cover`, an Istanbul, V8 or C8 `ignore next`,
+  `ignore if` or `ignore else`) in a file the change adds; a whole-file or range hint in a new file, and any hint added
+  to an existing file, still blocks (`docs/LIMITS.md`, "What TI11 misses" and "What TI13 misses").
 
 ### Security
 

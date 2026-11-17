@@ -150,6 +150,22 @@ TI11 reads the added and removed lines of workflow files (`.github/workflows/*.y
   launcher (`npx vitest run`, `pnpm exec vitest run` and `vitest run` are one key). A swap of package manager
   therefore passes, and a narrowed run is still a removal. Bare `bun test` starts bun's own runner, not a script, so it
   keeps its text as its key.
+- **Report flags added to a test command.** A removed command is kept by an added one that equals it plus flags from a
+  short list: a token that starts with `--coverage`, `--cov`, `--reporter` or `--junitxml`, the token `--ci`, and `-v`
+  or `-q` only where the runner reads them as verbosity (pytest, `python -m pytest`, `python -m unittest` and tox,
+  directly or through an environment wrapper, and `go test`). So `pytest` to `pytest --cov=src --cov-report=xml`,
+  `vitest run` to `vitest run --coverage` and `jest` to `jest --ci --coverage` give nothing. The flags may sit anywhere
+  after the runner, every flag the removed command had must still be there (dropping one is a removal), and the other
+  tokens must be the same, in order. A separate value counts only after `--cov-report`, `--junitxml`, `--reporter` or
+  `--reporters`, which always take one, and only when it does not start with `-`: `pytest --cov src` and
+  `vitest run --coverage src/billing` are removals, because `src` may be a test path. A flag or value with a shell
+  operator, a quote, a glob or a `$` in it is no flag (`--cov=src||true` is `--cov=src || true` to the shell). For
+  vitest, jest, mocha, Playwright, `node --test` and package-manager scripts, `-v` prints the version and runs no test,
+  so it is a removal there. Anything else the command gains (a path, `-k`, `|| true`, `--passWithNoTests`,
+  `--exclude`, any other flag) is a removal. The prefixes also admit flags that narrow what coverage measures
+  (`--coverage.exclude=...`, `--coveragePathIgnorePatterns=...`, `--cov-fail-under=0`): TI11 judges whether the tests
+  still run, not what the coverage file holds. One removed command is compared with at most 16 added commands that
+  differ from it only in such flags; past that it is a removal.
 - **A test job moved to another workflow file still blocks.** Other workflows are not read: a test command that an
   unchanged line of another workflow runs is not seen (the diff holds no such line), so a job whose tests moved to
   another workflow file, and now run there under another script (`test:lambda` replaced by `test:adapters`), is a
@@ -581,6 +597,14 @@ TI13 reads the added and removed lines of JS/TS and Python source files that are
 - **Moves and one-to-one matching.** A removed marker of the same text accounts for one added marker of the same file; a
   marker moved to another file reads as added. The text is compared after lower-casing and collapsing white space
   (for the Python pragma, after removing white space and the colon, so `no cover` and `nocover` are one marker).
+- **A line-level hint in a new file is `warn`.** In a file the change adds (the diff shows it as new, not as a rename), a
+  marker that reaches one line or one branch is `warn` in every mode: the Python pragma (coverage.py has no whole-file
+  form), and an Istanbul, V8 or C8 hint whose word after `ignore` is `next` without a count, `if` or `else`. The code
+  it marks never had coverage to lose. A whole-file hint (`ignore file`), a range (`ignore start`, `ignore stop`,
+  `ignore next` with a count) and a hint with no such word keep the mode's level in a new file too, and any marker
+  added to an existing file keeps the mode's level. A pragma on a line that opens a block (`def`, `class`, `if`)
+  leaves the whole block out of coverage, and `ignore next` before a function leaves the function out; in a new file
+  that is still `warn`.
 - **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8); at most 20 signals are
   given per file. A diff that reaches `check()` already parsed without kept text yields no TI13.
 

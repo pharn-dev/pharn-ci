@@ -133,6 +133,85 @@ function keyOf(part: string): string {
   return ["run", ...flags, script, ...tokens.slice(i)].join(" ");
 }
 
+/**
+ * Flags that change how a test run reports, never which tests it runs: a token that starts with one of these prefixes
+ * (`--coverage`, `--coverage.reporter=xml`, `--cov=src`, `--cov-report=xml`, `--reporter=junit`, `--junitxml=out.xml`).
+ */
+const REPORT_FLAG_PREFIXES: readonly string[] = ["--coverage", "--cov", "--reporter", "--junitxml"];
+/** Report flags whose value may be the next token (`--cov-report xml`): each requires a value, so always takes one. */
+const REPORT_VALUE_FLAGS: ReadonlySet<string> = new Set(["--cov-report", "--junitxml", "--reporter", "--reporters"]);
+/**
+ * A key whose runner reads `-v` and `-q` as verbosity: pytest, `python -m unittest`, tox and `go test`. A JS runner or
+ * a package manager reads `-v` as `--version`, which prints a version and runs no test, so there they are not flags.
+ */
+const VERBOSITY_RUNNER = new RegExp(
+  `^${PY_WRAPPER}(?:(?:python3?\\s+-m\\s+)?pytest|python3?\\s+-m\\s+unittest|tox|go\\s+test)(?:\\s|$)`,
+);
+
+/** How many added keys of the same base one removed key is compared with; past it the removed key is not kept. */
+const MAX_FLAG_CANDIDATES = 16;
+
+/**
+ * The characters a flag or its value may hold. A shell operator, a quote, a glob or a substitution (`--cov=src||true`
+ * is `--cov=src || true` to the shell) makes the token no flag, so the command keeps today's comparison.
+ */
+const PLAIN_TOKEN = /^[\w.,:=/@+-]+$/;
+
+/**
+ * A test key split into its base (every token that is not a report or verbosity flag, in order) and its flags (the
+ * flag tokens, a value flag joined to its separate value). A separate value is taken only after a flag of
+ * `REPORT_VALUE_FLAGS` and only when it does not start with `-`.
+ */
+function splitFlags(key: string): { base: string; flags: string[] } {
+  const tokens = key.split(" ");
+  const verbosity = VERBOSITY_RUNNER.test(key);
+  const base: string[] = [];
+  const flags: string[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i] as string;
+    if (verbosity && (token === "-v" || token === "-q")) {
+      flags.push(token);
+    } else if (
+      PLAIN_TOKEN.test(token) &&
+      (token === "--ci" || REPORT_FLAG_PREFIXES.some((prefix) => token.startsWith(prefix)))
+    ) {
+      const value = tokens[i + 1];
+      if (REPORT_VALUE_FLAGS.has(token) && value !== undefined && !value.startsWith("-") && PLAIN_TOKEN.test(value)) {
+        flags.push(`${token} ${value}`);
+        i += 1;
+      } else {
+        flags.push(token);
+      }
+    } else {
+      base.push(token);
+    }
+  }
+  return { base: base.join(" "), flags };
+}
+
+/** Whether every flag of `removed` is among `added`, counted (a flag the removed command had twice needs two). */
+function carriesFlags(added: readonly string[], removed: readonly string[]): boolean {
+  const left = new Map<string, number>();
+  for (const flag of added) left.set(flag, (left.get(flag) ?? 0) + 1);
+  for (const flag of removed) {
+    const count = left.get(flag) ?? 0;
+    if (count === 0) return false;
+    left.set(flag, count - 1);
+  }
+  return true;
+}
+
+/**
+ * Whether a removed test key is still run by an added one: the same key, or a key that equals it plus report or
+ * verbosity flags (the same base, and every flag the removed key had).
+ */
+function keptBy(key: string, addedKeys: ReadonlySet<string>, addedByBase: ReadonlyMap<string, string[][]>): boolean {
+  if (addedKeys.has(key)) return true;
+  const { base, flags } = splitFlags(key);
+  const candidates = addedByBase.get(base) ?? [];
+  return candidates.slice(0, MAX_FLAG_CANDIDATES).some((added) => carriesFlags(added, flags));
+}
+
 /** The keys of the test parts of a line that runs tests (a `&&` or `;` chain counts part by part), empty when none does. */
 function testKeysOf(line: string): string[] {
   const text = commandText(line);
@@ -189,9 +268,11 @@ function flowOf(line: string): { key: string; items: Set<string> } | null {
  * removed `pull_request` or `pull_request_target` trigger that the same file does not carry again. A test command is
  * compared by a key per test part of a `&&` or `;` chain: a package-manager script run keys on the script with its
  * workspace flags and arguments, a runner on its command without the launcher, so `npm run test` and `pnpm test` are
- * one command. A test job removed from a workflow is a removal even when the change moves its tests elsewhere: the diff
- * cannot show that another workflow runs them, and nothing the pull request carries may loosen this block. The warn
- * rules (a flow-list matrix that shrinks, an added `continue-on-error: true`, an added `if:` that is a literal false or
+ * one command. A removed key is also kept by an added key that equals it plus flags that change only how the run
+ * reports (`--coverage*`, `--cov*`, `--reporter*`, `--junitxml*`, `--ci`, and `-v` or `-q` for pytest, unittest, tox
+ * and `go test`); anything else added (a path, `-k`, `|| true`, another flag) is still a lost step. A test job removed
+ * from a workflow is a removal even when the change moves its tests elsewhere: the diff cannot show that another
+ * workflow runs them, and nothing the pull request carries may loosen this block. The warn rules (a flow-list matrix that shrinks, an added `continue-on-error: true`, an added `if:` that is a literal false or
  * an event-name test leaving pull requests out, an added `timeout-minutes` of 0 or 1) stay `warn` in every mode, because
  * without context lines the line cannot be tied to a test step. One signal per rule per file, on its first matching
  * line; the detail is a fixed sentence.
@@ -209,6 +290,13 @@ export function detectTI11(diff: readonly DiffFile[], mode: "block" | "warn"): T
       }
     }
   }
+  const addedByBase = new Map<string, string[][]>();
+  for (const key of addedKeys) {
+    const { base, flags } = splitFlags(key);
+    const list = addedByBase.get(base);
+    if (list === undefined) addedByBase.set(base, [flags]);
+    else list.push(flags);
+  }
 
   const signals: TestIntegritySignal[] = [];
   for (const file of files) {
@@ -218,7 +306,9 @@ export function detectTI11(diff: readonly DiffFile[], mode: "block" | "warn"): T
     const emit = (severity: "block" | "warn" | "info", line: number, detail: string) =>
       signals.push({ id: "TI11", severity, path, line, detail });
 
-    const lostCommand = removed.find((entry) => testKeysOf(entry.text).some((key) => !addedKeys.has(key)));
+    const lostCommand = removed.find((entry) =>
+      testKeysOf(entry.text).some((key) => !keptBy(key, addedKeys, addedByBase)),
+    );
     if (lostCommand !== undefined) emit(mode, lostCommand.line, SENTENCES.testStep);
 
     const lostTrigger = removed.find((entry) => carriesPullRequestTrigger(entry.text));

@@ -41,6 +41,24 @@ const NEW_TI11 = new Set([
   "block-swap-drops-test.diff",
   "block-job-removed-script-kept.diff",
 ]);
+/** CORE-71 (R2.8): the TI11 and TI13 fixtures it adds; the digest below predates them, so the loop leaves them out. */
+const CORE71_ADDED: ReadonlySet<string> = new Set([
+  "TI11/pass-pytest-cov-flags.diff",
+  "TI11/pass-vitest-coverage.diff",
+  "TI11/pass-jest-ci-coverage.diff",
+  "TI11/pass-cov-report-value.diff",
+  "TI11/block-pytest-path-added.diff",
+  "TI11/block-pytest-k-added.diff",
+  "TI11/block-pytest-cov-or-true.diff",
+  "TI11/block-pass-with-no-tests-added.diff",
+  "TI11/block-exclude-added.diff",
+  "TI11/block-jest-version-flag.diff",
+  "TI11/block-cov-separate-value.diff",
+  "TI13/warn-pragma-new-file.diff",
+  "TI13/warn-istanbul-next-new-file.diff",
+  "TI13/block-c8-file-new-file.diff",
+  "TI13/block-v8-start-new-file.diff",
+]);
 /**
  * The TI02 and TI05 case directories added after the base commit (the Python alias cases of py-parity-2). They need the
  * Python index, which this file runs without, and the digest below never covered them; the node-io tests run them.
@@ -260,7 +278,8 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
           (name) =>
             name.endsWith(".diff") &&
             !(dir === "TI11" && NEW_TI11.has(name)) &&
-            !REVIEW_1101_ADDED.has(`${dir}/${name}`),
+            !REVIEW_1101_ADDED.has(`${dir}/${name}`) &&
+            !CORE71_ADDED.has(`${dir}/${name}`),
         )
         .sort();
       for (const file of names) {

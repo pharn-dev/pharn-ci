@@ -37,6 +37,27 @@ const NEW_TI11 = new Set([
   "block-swap-drops-test.diff",
   "block-job-removed-script-kept.diff",
 ]);
+/**
+ * CORE-71 (R2.8): the TI11 flag fixtures and the TI13 new-file fixtures it adds, asserted by ac-core71-ti11-flags and
+ * ac-core71-ti13-new-file; left out of the loops over EARLIER_DIRS, so the old fixtures still hash to the digest.
+ */
+const CORE71_ADDED: ReadonlySet<string> = new Set([
+  "TI11/pass-pytest-cov-flags.diff",
+  "TI11/pass-vitest-coverage.diff",
+  "TI11/pass-jest-ci-coverage.diff",
+  "TI11/pass-cov-report-value.diff",
+  "TI11/block-pytest-path-added.diff",
+  "TI11/block-pytest-k-added.diff",
+  "TI11/block-pytest-cov-or-true.diff",
+  "TI11/block-pass-with-no-tests-added.diff",
+  "TI11/block-exclude-added.diff",
+  "TI11/block-jest-version-flag.diff",
+  "TI11/block-cov-separate-value.diff",
+  "TI13/warn-pragma-new-file.diff",
+  "TI13/warn-istanbul-next-new-file.diff",
+  "TI13/block-c8-file-new-file.diff",
+  "TI13/block-v8-start-new-file.diff",
+]);
 const JS_TS_PY = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs|py)$/;
 const UNAVAILABLE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 /**
@@ -149,7 +170,8 @@ describe("TI02 and TI05 change the earlier outputs only where they mean to", () 
           (name) =>
             name.endsWith(".diff") &&
             !(dir === "TI11" && NEW_TI11.has(name)) &&
-            !REVIEW_1101_ADDED.has(`${dir}/${name}`),
+            !REVIEW_1101_ADDED.has(`${dir}/${name}`) &&
+            !CORE71_ADDED.has(`${dir}/${name}`),
         )
         .sort();
       for (const file of names) {

@@ -32,8 +32,40 @@ const JS_MARKER = new RegExp(`${BLOCK_OR_LINE_START}${SPACES}(istanbul|v8|c8)[ \
  */
 const PY_MARKER = new RegExp(`#${SPACES}pragma:?${SPACES}no${SPACES}cover${WORD_END}`, "i");
 
-/** The marker a line carries for the file's language, as its family and its normalized text, else null. */
-function markerOf(text: string, language: "jsts" | "python"): { family: Family; marker: string } | null {
+/** The index of the first character at or after `from` that is not a space or a tab. */
+function skipBlanks(text: string, from: number): number {
+  let i = from;
+  while (text[i] === " " || text[i] === "\t") i++;
+  return i;
+}
+
+/**
+ * Whether a JavaScript hint marks one line or one branch: `next` without a count, `if` or `else`. A whole-file hint
+ * (`file`), a range (`start`, `stop`, `next` with a count) and a hint whose reach is not one of these words are not.
+ * Read from where the marker match ends, one character at a time (no backtracking pattern).
+ */
+function lineLevelJs(text: string, end: number): boolean {
+  const start = skipBlanks(text, end);
+  if (start === end) return false;
+  let stop = start;
+  while (stop < text.length && /[A-Za-z]/.test(text[stop] as string)) stop++;
+  if (stop === start || /[0-9_]/.test(text[stop] ?? "")) return false;
+  const word = text.slice(start, stop).toLowerCase();
+  if (word === "next") {
+    const after = skipBlanks(text, stop);
+    return !(after > stop && /[0-9]/.test(text[after] ?? ""));
+  }
+  return word === "if" || word === "else";
+}
+
+/**
+ * The marker a line carries for the file's language, as its family, its normalized text and whether it marks one line
+ * (every Python pragma does: coverage.py has no whole-file form), else null.
+ */
+function markerOf(
+  text: string,
+  language: "jsts" | "python",
+): { family: Family; marker: string; lineLevel: boolean } | null {
   const match = (language === "jsts" ? JS_MARKER : PY_MARKER).exec(text);
   if (match === null) return null;
   // Python spellings that coverage.py reads alike (`no cover`, `nocover`, with or without the colon) are one marker.
@@ -42,13 +74,16 @@ function markerOf(text: string, language: "jsts" | "python"): { family: Family; 
       ? match[0].toLowerCase().replace(/[ \t:]+/g, "")
       : match[0].toLowerCase().replace(/[ \t]+/g, " ");
   const family = language === "python" ? "pragma" : ((match[1] as string).toLowerCase() as Family);
-  return { family, marker };
+  const lineLevel = language === "python" || lineLevelJs(text, match.index + match[0].length);
+  return { family, marker, lineLevel };
 }
 
 /**
  * TI13, a coverage-ignore comment added to source. In a JavaScript, TypeScript or Python file that is not a test file
  * (an added file counts), an added line that carries the Istanbul, V8 or C8 ignore hint in a comment, or the Python
- * no-cover pragma, is one signal at its line in the new file, with the mode as its severity. A marker is matched by its
+ * no-cover pragma, is one signal at its line in the new file, with the mode as its severity. In a file the change adds,
+ * a marker that reaches one line or one branch (the Python pragma, a JavaScript hint whose reach is `next` without a
+ * count, `if` or `else`) is `warn` instead; a whole-file or range hint there keeps the mode. A marker is matched by its
  * normalized text (lower case, white space collapsed): a removed line of the same file with the same marker accounts
  * for one added marker (an edit or a move), and each removed marker is used once, in line order. At most 20 signals per
  * file, on the lowest line numbers. No comment text reaches a signal: every detail is one fixed sentence.
@@ -68,7 +103,7 @@ export function detectTI13(diff: readonly DiffFile[], mode: "block" | "warn"): T
       }
     }
 
-    const added: Array<{ line: number; family: Family; marker: string }> = [];
+    const added: Array<{ line: number; family: Family; marker: string; lineLevel: boolean }> = [];
     for (const hunk of file.hunks) {
       for (const entry of hunk.added) {
         const found = markerOf(entry.text, language);
@@ -77,14 +112,17 @@ export function detectTI13(diff: readonly DiffFile[], mode: "block" | "warn"): T
     }
     added.sort((a, b) => a.line - b.line);
 
-    const fresh: Array<{ line: number; family: Family }> = [];
+    const fresh: Array<{ line: number; family: Family; lineLevel: boolean }> = [];
     for (const entry of added) {
       const left = removed.get(entry.marker) ?? 0;
       if (left > 0) removed.set(entry.marker, left - 1);
       else fresh.push(entry);
     }
-    for (const { line, family } of fresh.slice(0, MAX_PER_FILE)) {
-      signals.push({ id: "TI13", severity: mode, path: file.path, line, detail: DETAILS[family] });
+    // A hint on one line of a file the change adds marks code that never had coverage to lose: warn, not block.
+    const newFile = file.status === "added";
+    for (const { line, family, lineLevel } of fresh.slice(0, MAX_PER_FILE)) {
+      const severity = newFile && lineLevel ? "warn" : mode;
+      signals.push({ id: "TI13", severity, path: file.path, line, detail: DETAILS[family] });
     }
   }
   return signals.sort(

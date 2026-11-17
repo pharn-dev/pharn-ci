@@ -20,6 +20,9 @@ const git = (...args: string[]) =>
   execFileSync("git", args, { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 const nonEmpty = (text: string) => text.split("\n").filter((l) => l.length > 0);
+/** CORE-71 (R2.8): the new TI11 flag fixtures and TI13 new-file fixtures, added or untracked until committed. */
+const CORE71_FIXTURES =
+  /fixtures\/test-integrity\/(?:TI11\/(?:pass-(?:pytest-cov-flags|vitest-coverage|jest-ci-coverage|cov-report-value)|block-(?:pytest-path-added|pytest-k-added|pytest-cov-or-true|pass-with-no-tests-added|exclude-added|jest-version-flag|cov-separate-value))|TI13\/(?:warn-pragma-new-file|warn-istanbul-next-new-file|block-c8-file-new-file|block-v8-start-new-file))\.diff$/;
 
 /** The tests PLAN.md step 9 lists as deliberately re-pinned; each must carry a comment naming this item. */
 const DELIBERATE = [
@@ -100,6 +103,19 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
         );
         continue;
       }
+      // Re-pinned for CORE-71 (R2.8): a line-level hint in a file the change adds is warn now, so the TI13 new-file
+      // fixture that must block carries the whole-file hint (which keeps the mode) instead of the next-line one; with
+      // `file` turned back into `next` it is its content at the base byte for byte. Its line-level case moved, unchanged,
+      // into the new warn-istanbul-next-new-file.diff. Its new TI11 and TI13 fixture files are added (allowed below).
+      if (line === "M\tfixtures/test-integrity/TI13/block-new-file.diff") {
+        expect(
+          read("fixtures/test-integrity/TI13/block-new-file.diff").replace("ignore file", "ignore next"),
+          line,
+        ).toBe(git("show", `${BASE}:fixtures/test-integrity/TI13/block-new-file.diff`));
+        continue;
+      }
+      if (/^A\tfixtures\/test-integrity\/(?:TI11|TI13)\/[^/]+\.diff$/.test(line) && CORE71_FIXTURES.test(line))
+        continue;
       if (
         /^A\tfixtures\/(?:emu-logins\/[^/]+|policy\/valid\/emu-logins\.json|policy\/invalid\/login-emu-grammar\.(?:json|paths))$/.test(
           line,
@@ -142,6 +158,8 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       // its new index-unavailable and TI01 case directories. Re-pinned for markdown-byte-compare (review
       // SPEC finding 29): so are the two files markdown.test.ts's snapshots moved into.
       if (/^fixtures\/markdown\/(?:missing|no-coverable)\.md$/.test(path)) continue;
+      // Re-pinned for CORE-71 (R2.8): so are its new TI11 and TI13 fixture files.
+      if (/^fixtures\/test-integrity\/(?:TI11|TI13)\/[^/]+\.diff$/.test(path) && CORE71_FIXTURES.test(path)) continue;
       // Re-pinned for policy-p13 (Horizon 2 item H1): its fixtures under fixtures/policy-rules/p13/ are untracked until
       // committed.
       // Re-pinned for stale instructions (Horizon 2 item H3): its fixtures under fixtures/stale-instructions/ are

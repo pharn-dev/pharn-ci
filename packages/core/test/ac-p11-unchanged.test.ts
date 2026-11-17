@@ -19,6 +19,9 @@ const MARK = "E3 item 24a part B (P11)";
 const git = (...args: string[]) =>
   execFileSync("git", args, { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
+/** CORE-71 (R2.8): the new TI11 flag fixtures and TI13 new-file fixtures, added or untracked until committed. */
+const CORE71_FIXTURES =
+  /(?:^|\t)fixtures\/test-integrity\/(?:TI11\/(?:pass-(?:pytest-cov-flags|vitest-coverage|jest-ci-coverage|cov-report-value)|block-(?:pytest-path-added|pytest-k-added|pytest-cov-or-true|pass-with-no-tests-added|exclude-added|jest-version-flag|cov-separate-value))|TI13\/(?:warn-pragma-new-file|warn-istanbul-next-new-file|block-c8-file-new-file|block-v8-start-new-file))\.diff$/;
 
 /** The tests the PLAN lists as deliberately updated; each must carry a comment naming this item. */
 const DELIBERATE = [
@@ -112,6 +115,17 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       // Re-pinned for markdown-byte-compare (review SPEC finding 29): markdown.test.ts's two snapshots moved, unchanged,
       // into these two new committed files.
       if (/^A\tfixtures\/markdown\/(?:missing|no-coverable)\.md$/.test(line)) continue;
+      // Re-pinned for CORE-71 (R2.8): the TI13 new-file fixture that must block carries the whole-file hint now (a
+      // line-level hint in a new file is warn); with `file` turned back into `next` it is its content at the base byte
+      // for byte. Its new TI11 and TI13 fixture files are added.
+      if (line === "M\tfixtures/test-integrity/TI13/block-new-file.diff") {
+        expect(
+          read("fixtures/test-integrity/TI13/block-new-file.diff").replace("ignore file", "ignore next"),
+          line,
+        ).toBe(git("show", `${BASE}:fixtures/test-integrity/TI13/block-new-file.diff`));
+        continue;
+      }
+      if (CORE71_FIXTURES.test(line) && line.startsWith("A\t")) continue;
       // Re-pinned for E3 item 23 (policy settings) and E3 item 24 (P07): their new fixtures under
       // fixtures/policy-settings/ and fixtures/policy-rules/p07/ are added too.
       // Re-pinned for the 2026-11-01 review fixes: their new TI10 and TI14 fixture files are added too.
@@ -147,6 +161,8 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       // its new index-unavailable and TI01 case directories. Re-pinned for markdown-byte-compare (review
       // SPEC finding 29): so are the two files markdown.test.ts's snapshots moved into.
       if (/^fixtures\/markdown\/(?:missing|no-coverable)\.md$/.test(path)) continue;
+      // Re-pinned for CORE-71 (R2.8): so are its new TI11 and TI13 fixture files.
+      if (CORE71_FIXTURES.test(path) && path.startsWith("fixtures/")) continue;
       // Re-pinned for policy-p13 (Horizon 2 item H1): its fixtures under fixtures/policy-rules/p13/ are untracked until
       // committed.
       // Re-pinned for stale instructions (Horizon 2 item H3): its fixtures under fixtures/stale-instructions/ are

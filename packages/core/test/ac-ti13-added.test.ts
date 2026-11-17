@@ -73,7 +73,8 @@ const ADDED: Array<[path: string, line: string]> = [
   ["tools/run.py", "#pragma:no cover"],
 ];
 
-type Case = { label: string; diff: string; path: string; line: number };
+/** `severity` set: the severity in every mode, else the mode's. */
+type Case = { label: string; diff: string; path: string; line: number; severity?: "warn" };
 
 const CASES: Case[] = [
   ...ADDED.map(([path, line]) => ({
@@ -82,9 +83,19 @@ const CASES: Case[] = [
     path,
     line: 12,
   })),
+  // Re-pinned for CORE-71 (R2.8): a hint that reaches one line of a file the change adds is warn in every mode, so this
+  // case, which used to carry the mode's severity, is warn; an added file still counts, and a whole-file hint in it
+  // keeps the mode (the case below).
   {
     label: "src/new.ts added with the istanbul hint",
     diff: addFile("src/new.ts", ["/* istanbul ignore next */", "export function f() {", "  return 1;", "}"]),
+    path: "src/new.ts",
+    line: 1,
+    severity: "warn",
+  },
+  {
+    label: "src/new.ts added with the whole-file istanbul hint",
+    diff: addFile("src/new.ts", ["/* istanbul ignore file */", "export function f() {", "  return 1;", "}"]),
     path: "src/new.ts",
     line: 1,
   },
@@ -99,7 +110,7 @@ describe("TI13: a coverage-ignore comment added to source", () => {
         expect(
           ti13.map((s) => ({ path: s.path, line: s.line, severity: s.severity })),
           `${mode}: ${c.label}`,
-        ).toEqual([{ path: c.path, line: c.line, severity: mode }]);
+        ).toEqual([{ path: c.path, line: c.line, severity: c.severity ?? mode }]);
       }
     }
   });

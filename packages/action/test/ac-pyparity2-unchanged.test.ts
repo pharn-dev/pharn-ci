@@ -111,13 +111,17 @@ const PINNED = [
 // files.
 // Re-pinned again by ti17-always-true-matcher-2: the walker's ADDED_AFTER_BASE gains the 35 TI17 fixtures (its count and
 // output digest are unchanged); this is the digest of the edited file.
+// Re-pinned again by CORE-71 (R2.8): the walker's ADDED_AFTER_BASE gains the 15 new TI11 and TI13 fixtures (its count
+// and output digest are unchanged); this is the digest of the edited file.
 const NAME_ONLY_REPINNED: Record<string, string> = {
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "92e68fd78f2900f831408a629e229a07693b8c7f322ad59d25b949b6452cadb1",
+    "e5f25620aa22dc22e16fcfd5a7aa0a62e102eb8a9556b9958dd6c76e83a46f39",
   // Re-pinned again by A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): ac-ti0205-regression takes the tests-exercise message
   // and testIntegrity.exercise out of the golden reports made with sources before comparing (exercise-repin.ts); this
   // is the digest of the edited file.
-  "packages/core/test/ac-ti0205-regression.test.ts": "7583e11f397f59d04123ebdb7afea818d37f5a4b3522e32d3badd26fe104369b",
+  // Re-pinned again by CORE-71 (R2.8): ac-ti0205-regression leaves the new TI11 and TI13 fixtures out of its loop over
+  // the earlier directories (its BEFORE_DIGEST is unchanged); this is the digest of the edited file.
+  "packages/core/test/ac-ti0205-regression.test.ts": "d145511a0917653a06138db30b2392fa3b55aa34a85e5a6ea5fe0d981701407f",
   // Re-pinned again by ti17-always-true-matcher-2: ac-skylos-nine-table moves always-true-matcher to caught by TI17 (the
   // Skylos count reads 8 of 9 now, 7 of 9 before); this is the digest of the edited file.
   "packages/core/test/ac-skylos-nine-table.test.ts": "68f84a33ecf1e4b4e94fc13c2c6c9065339a46e6d0d69b925905a1e39ac13976",
@@ -313,8 +317,20 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
       if (unknownPath !== undefined)
         expect(read(unknownPath).split("TI18").join("TI17"), line).toBe(atBase(unknownPath));
     }
+    // Re-pinned for CORE-71 (R2.8): the TI13 new-file fixture that must block carries the whole-file hint now (a
+    // line-level hint in a new file is warn); with `file` turned back into `next` it is its content at the base byte for
+    // byte. Its line-level case moved, unchanged, into the new warn-istanbul-next-new-file.diff.
+    const newFile = "M\tfixtures/test-integrity/TI13/block-new-file.diff";
+    for (const line of statuses) {
+      if (line === newFile) {
+        const path = "fixtures/test-integrity/TI13/block-new-file.diff";
+        expect(read(path).replace("ignore file", "ignore next"), line).toBe(atBase(path));
+      }
+    }
     expect(
-      statuses.filter((l) => !l.startsWith("A\t") && !barred.test(l) && !fixed.test(l) && !unknownTi.test(l)),
+      statuses.filter(
+        (l) => !l.startsWith("A\t") && !barred.test(l) && !fixed.test(l) && !unknownTi.test(l) && l !== newFile,
+      ),
       "no fixture of the base is modified or deleted",
     ).toEqual([]);
 

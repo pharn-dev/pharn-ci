@@ -106,6 +106,23 @@ const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
   "TI15/pass-benchmark-dir.diff",
   "TI15/pass-short-status-code.diff",
   "TI15/warn-same-package.diff",
+  // CORE-71 (R2.8): the TI11 flag fixtures and the TI13 new-file fixtures, asserted by ac-core71-ti11-flags and
+  // ac-core71-ti13-new-file.
+  "TI11/pass-pytest-cov-flags.diff",
+  "TI11/pass-vitest-coverage.diff",
+  "TI11/pass-jest-ci-coverage.diff",
+  "TI11/pass-cov-report-value.diff",
+  "TI11/block-pytest-path-added.diff",
+  "TI11/block-pytest-k-added.diff",
+  "TI11/block-pytest-cov-or-true.diff",
+  "TI11/block-pass-with-no-tests-added.diff",
+  "TI11/block-exclude-added.diff",
+  "TI11/block-jest-version-flag.diff",
+  "TI11/block-cov-separate-value.diff",
+  "TI13/warn-pragma-new-file.diff",
+  "TI13/warn-istanbul-next-new-file.diff",
+  "TI13/block-c8-file-new-file.diff",
+  "TI13/block-v8-start-new-file.diff",
   // ti17-always-true-matcher-2: the TI17 fixtures, asserted by ac-ti17-fixtures (one warn or pass case per detection).
   "TI17/pass-helper-compares.diff",
   "TI17/pass-helper-in-condition.diff",

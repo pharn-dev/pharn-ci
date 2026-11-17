@@ -1,0 +1,16 @@
+diff --git a/tools/cli.py b/tools/cli.py
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/tools/cli.py
+@@ -0,0 +1,10 @@
++import sys
++
++
++def main(argv: list[str]) -> int:
++    print(" ".join(argv))
++    return 0
++
++
++if __name__ == "__main__":  # pragma: no cover
++    sys.exit(main(sys.argv[1:]))

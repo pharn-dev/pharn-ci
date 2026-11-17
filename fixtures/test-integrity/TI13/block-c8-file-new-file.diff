@@ -1,0 +1,11 @@
+diff --git a/src/report.js b/src/report.js
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/src/report.js
+@@ -0,0 +1,5 @@
++/* c8 ignore file */
++export function report(rows) {
++  if (rows.length === 0) return "none";
++  return rows.join("\n");
++}
