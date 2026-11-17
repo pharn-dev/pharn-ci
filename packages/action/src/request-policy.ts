@@ -1,4 +1,5 @@
 import type { getOctokit } from "@actions/github";
+import { escapeLogLine } from "@pharn-ci/core";
 
 type Octokit = ReturnType<typeof getOctokit>;
 
@@ -99,9 +100,13 @@ export function withRequestPolicy(
   build: (token: string) => Octokit,
   opts: RequestPolicyOptions = {},
 ): (token: string) => Octokit {
+  // The retry line goes to the job log (`core.info`) and carries the request URL and the error text: each message is
+  // escaped as one line, so it cannot start a workflow command (`escapeLogLine`, CORE-39).
+  const log = opts.log;
+  const policy = log === undefined ? opts : { ...opts, log: (message: string) => log(escapeLogLine(message)) };
   return (token) => {
     const octokit = build(token);
-    applyRequestPolicy(octokit, opts);
+    applyRequestPolicy(octokit, policy);
     return octokit;
   };
 }

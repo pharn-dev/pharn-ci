@@ -1,6 +1,9 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { getOctokit } from "@actions/github";
 import { describe, expect, it } from "vitest";
+import { createGitHubApi } from "../src/api.js";
+import { withRequestPolicy } from "../src/request-policy.js";
 import { run } from "../src/run.js";
 
 // CORE-39: a tracked directory whose name holds a newline puts its coverage report's path into the job log through
@@ -122,5 +125,42 @@ describe("action: a tracked path that holds a workflow command after a newline",
     });
     await run(action.deps as never);
     expect(action.info.some((message) => message.includes("\n") || message.includes("\r"))).toBe(false);
+  });
+});
+
+describe("withRequestPolicy: the retry line it logs", () => {
+  it("is escaped as one line when the error text holds a workflow command after a newline", async () => {
+    // The real Octokit from @actions/github with only fetch mocked: a 502 whose message carries both spellings, then
+    // a 201. The retry line names the error text, so it is untrusted text on its way to `core.info`.
+    const logged: string[] = [];
+    const answers = [
+      { status: 502, body: JSON.stringify({ message: "Bad gateway\n::stop-commands::tok\r\n##[add-mask]x" }) },
+      { status: 201, body: '{"id":1,"user":{"login":"me"}}' },
+    ];
+    const fetch = async () => {
+      const answer = answers.shift();
+      if (answer === undefined) throw new Error("no answer left");
+      return new Response(answer.body, {
+        status: answer.status,
+        headers: { "content-type": "application/json; charset=utf-8" },
+      });
+    };
+    const api = createGitHubApi({
+      token: "t0ken",
+      repo: () => ({ owner: "acme", repo: "demo" }),
+      getOctokit: withRequestPolicy((token) => getOctokit(token, { request: { fetch } }), {
+        sleep: async () => {},
+        log: (message) => logged.push(message),
+      }),
+    });
+    expect(await api.createComment(7, "body")).toBe("me");
+    expect(logged).toHaveLength(1);
+    const lines = runnerLines(logged);
+    expect(lines).toHaveLength(1);
+    for (const line of lines) {
+      expect(line.trimStart().startsWith("::"), line).toBe(false);
+      expect(line.includes("##["), line).toBe(false);
+    }
+    expect(logged[0]).toContain("Bad gateway�::stop-commands::tok��##\\[add-mask]x");
   });
 });
