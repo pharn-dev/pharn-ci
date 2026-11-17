@@ -20,9 +20,16 @@ admin applies a change after it merges, from an up-to-date `main` checkout. The
     required checks still apply. Remove the bypass once a second code owner exists
     ([`SECURITY.md`](../../SECURITY.md#maintainer-model-one-person-today)).
 - [`release-tags.json`](release-tags.json) (ruleset ID `24927486`) makes every `v*` tag immutable:
-  no update, no force-push, no deletion, and no bypass for anyone. Tags can be created (that is how
-  [`release.yml`](../workflows/release.yml) cuts a release), never moved. See
+  no update, no force-push, no deletion, and no bypass for anyone. See
   [`docs/RELEASING.md`](../../docs/RELEASING.md).
+- [`release-tag-creation.json`](release-tag-creation.json) (ruleset ID: not applied yet; record it
+  here once created) lets only the GitHub Actions app (integration ID `15368`) create a `v*` tag.
+  That is the `GITHUB_TOKEN` the `Release publish` job of [`release.yml`](../workflows/release.yml)
+  uses to cut a release; a `git push` of a `v*` tag by anyone else is rejected. It is a separate
+  ruleset on purpose: a bypass skips every rule of its ruleset, so the Actions bypass must not sit on
+  `release-tags`, where it would also let the token move or delete tags. Residual: any workflow
+  granted `contents: write` runs as the same app and could create a tag; only someone with write
+  access can add one ([`SECURITY.md`](../../SECURITY.md)).
 
 The check names are a contract with the workflows: the job ids `ci` and `gitleaks`, the job name
 `Action pins` and the CodeQL job name `Analyze (${{ matrix.language }})`. Renaming a job blocks
@@ -41,6 +48,9 @@ diff <(jq -S . .github/rulesets/main.json) \
 diff <(jq -S . .github/rulesets/release-tags.json) \
   <(gh api repos/pharn-dev/pharn-ci/rulesets/24927486 \
     | jq -S '{name, target, enforcement, conditions, bypass_actors, rules}')
+diff <(jq -S . .github/rulesets/release-tag-creation.json) \
+  <(gh api repos/pharn-dev/pharn-ci/rulesets/<release-tag-creation ID> \
+    | jq -S '{name, target, enforcement, conditions, bypass_actors, rules}')
 ```
 
 No output means they match.
@@ -56,6 +66,18 @@ gh api --method PUT repos/pharn-dev/pharn-ci/rulesets/24927484 --input .github/r
 ```
 
 Use ID `24927486` and `release-tags.json` for the tag ruleset. Run the drift check afterwards.
+
+A new file has no live ruleset yet. Create it once, record the returned ID in this README, then
+apply later changes with `PUT` as above:
+
+```bash
+gh api --method POST repos/pharn-dev/pharn-ci/rulesets \
+  --input .github/rulesets/release-tag-creation.json --jq .id
+```
+
+After creating `release-tag-creation`, check it from a machine outside the bypass list: `git tag
+v0.0.0-test && git push origin v0.0.0-test` must be rejected (then `git tag -d v0.0.0-test`). The
+next release's `Release publish` job must still create its tag.
 
 ## Release settings
 
