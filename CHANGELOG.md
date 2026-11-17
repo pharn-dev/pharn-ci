@@ -11,6 +11,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- The comment hints for TI06, TI12 and TI17 no longer tell a reviewer to apply the accept label: these signals are
+  `warn`, and the label is read only when a finding blocks, so applying it changed nothing. A finding an org policy
+  raises to `block` still names the label in its hint. The hints of TI02, TI03, TI05, TI09, TI10 and TI13 are unchanged.
+
 ### Security
 
 ## [0.11.0] - 2026-11-17

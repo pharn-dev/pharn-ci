@@ -44269,18 +44269,18 @@ var MESSAGE_HINTS = {
   TEST_INTEGRITY_TI03: (label) => `Remove the skip so the test runs again, or say in the PR why it must stay, for example a test that fails in CI; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI04: "Remove the marker so the whole suite runs, or say in the PR why only the marked tests should run.",
   TEST_INTEGRITY_TI05: (label) => `Restore the assertions the test had, or say in the PR why it checks less now; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
-  TEST_INTEGRITY_TI06: (label) => `Restore the stronger matcher, guard or placement of the assertion, or say in the PR why the test checks less now; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
+  TEST_INTEGRITY_TI06: "Restore the stronger matcher, guard or placement of the assertion, or say in the PR why the test checks less now.",
   TEST_INTEGRITY_TI07: "Check each new expected value against what the code should do, not what it now returns; if the behaviour change is meant, say so in the PR so a reviewer can confirm it.",
   TEST_INTEGRITY_TI08: "Review the snapshot changes, or regenerate them in a separate change, and keep snapshot-update flags out of the test command.",
   TEST_INTEGRITY_TI09: (label) => `Restore the setting, or say in the PR why it changes; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}. A raised retry count or timeout is a warning only.`,
-  TEST_INTEGRITY_TI12: (label) => `Mock a collaborator of the code under test instead of the code itself, or say in the PR why this module is mocked; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
+  TEST_INTEGRITY_TI12: "Mock a collaborator of the code under test instead of the code itself, or say in the PR why this module is mocked.",
   TEST_INTEGRITY_TI10: (label) => `Restore the test script, or say in the PR why it changes so a reviewer can confirm it; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI13: (label) => `Write a test for the code in place of the ignore comment, or say in the PR why it cannot be tested; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
   TEST_INTEGRITY_TI11: "Restore the test step or trigger, or say in the PR why CI stops running these tests so a reviewer can confirm it.",
   TEST_INTEGRITY_TI14: "Restore the threshold or the exclusions, or say in the PR why they change so a reviewer can confirm it.",
   TEST_INTEGRITY_TI15: "Check that the code handles the general case and not only the test's value, and add a test with another input.",
   TEST_INTEGRITY_TI16: "Fix the lint or type error the comment hides, or say in the PR why the test needs it.",
-  TEST_INTEGRITY_TI17: (label) => `Restore the assertion that can fail, or say in the PR why the test checks less now; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
+  TEST_INTEGRITY_TI17: "Restore the assertion that can fail, or say in the PR why the test checks less now.",
   TEST_INTEGRITY_INDEX_UNAVAILABLE: "Review the named test files by hand for removed tests and weakened assertions. A file over 512 KiB, one with many syntax errors, a missing Python 3.8 or newer for `.py` files, or git objects that could not be read stop the comparison.",
   TEST_INTEGRITY_TEXT_TRUNCATED: "Review the named files by hand for skipped, focused or weakened tests, or split the change so each file stays under the limit.",
   TEST_INTEGRITY_ACCEPTED: "A reviewer other than the PR author signed off, so the block findings are warnings. The sign-off belongs to the pull request, not to a commit: remove the label if a later push should be judged again.",
@@ -44341,10 +44341,17 @@ var MESSAGE_HINTS = {
   DEPENDENCY_LOOKUP_UNAVAILABLE: "Re-run the job; the registry lookups fail open, so D01 to D03 were not checked for the packages counted.",
   DEPENDENCY_CHECK_INCOMPLETE: "Keep manifests and lockfiles valid and under 5 MiB, and run on a checkout of the pull request head with fetch-depth: 0, so they can be compared."
 };
-function hintFor(code2, label) {
+var BLOCK_ONLY_ACCEPT_CLAUSE = /* @__PURE__ */ new Set([
+  "TEST_INTEGRITY_TI06",
+  "TEST_INTEGRITY_TI12",
+  "TEST_INTEGRITY_TI17"
+]);
+function hintFor(code2, label, blocks = false) {
   if (!Object.hasOwn(MESSAGE_HINTS, code2)) return void 0;
   const hint = MESSAGE_HINTS[code2];
-  return typeof hint === "function" ? hint(labelSpan(label)) : hint;
+  if (typeof hint === "function") return hint(labelSpan(label));
+  if (!blocks || !BLOCK_ONLY_ACCEPT_CLAUSE.has(code2)) return hint;
+  return `${hint.slice(0, -1)}; a reviewer who is not the PR author can record that sign-off by applying the accept label ${labelSpan(label)}.`;
 }
 function labelSpan(text) {
   const safe = replaceUnsafeChars(text, "\uFFFD");
@@ -44372,8 +44379,8 @@ var SIGNAL_HINT_IDS = /* @__PURE__ */ new Set([
   "TI16",
   "TI17"
 ]);
-function signalHint(id, label) {
-  return SIGNAL_HINT_IDS.has(id) ? hintFor(`TEST_INTEGRITY_${id}`, label) : void 0;
+function signalHint(id, label, blocks) {
+  return SIGNAL_HINT_IDS.has(id) ? hintFor(`TEST_INTEGRITY_${id}`, label, blocks) : void 0;
 }
 var MAX_FINDINGS = 20;
 var OPEN_FINDINGS = 10;
@@ -44406,7 +44413,7 @@ function testIntegrityLines(report) {
       const out = [
         `- ${SEVERITY_ICON[signal2.severity] ?? LEVEL_ICON.info} **${inlineText(signal2.id)}** ${location} \u2014 ${inlineText(signal2.detail)}`
       ];
-      const hint = signalHint(signal2.id, label);
+      const hint = signalHint(signal2.id, label, signal2.severity === "block");
       if (hint !== void 0) out.push(`  - Hint: ${hint}`);
       return out;
     };
@@ -44957,7 +44964,7 @@ function policyCell(report) {
 }
 function renderMessage(m, report) {
   const line = `- ${LEVEL_ICON[m.level]} \`${m.code}\` ${inlineText(m.text)}`;
-  const hint = hintFor(m.code, acceptLabelOf(report));
+  const hint = hintFor(m.code, acceptLabelOf(report), m.level === "error");
   return hint === void 0 ? line : `${line}
   - Hint: ${hint}`;
 }

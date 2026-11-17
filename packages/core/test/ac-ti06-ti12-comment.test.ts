@@ -87,7 +87,7 @@ function outsideCode(line: string): string {
 const FINDING = /^- \S+ \*\*(TI\d\d)\*\* `([^`]+)`/;
 
 describe("renderMarkdown(): TI06 and TI12 in the Test integrity section", () => {
-  it("AC-14: the TI02 block finding comes before the TI06 and TI12 warn findings, each with the id in bold, path:line in a code span and the detail; the TI06 and TI12 hints name the accept label; a hostile detail stays on one line, inert", async () => {
+  it("AC-14: the TI02 block finding comes before the TI06 and TI12 warn findings, each with the id in bold, path:line in a code span and the detail; the TI06 and TI12 warn hints do not offer the accept label; a hostile detail stays on one line, inert", async () => {
     const { check } = await import("../src/check.js");
     const { testIntegritySignalMessages, verdictOf } = (await import("../src/report.js")) as unknown as {
       testIntegritySignalMessages(signals: Signal[]): { code: string; level: string; text: string }[];
@@ -146,12 +146,13 @@ describe("renderMarkdown(): TI06 and TI12 in the Test integrity section", () => 
       expect(line?.replace(/\\(.)/g, "$1"), "the finding line holds the detail").toContain(signal.detail);
     }
 
-    // The TI06 and TI12 hints sit under their first finding and name the accept label.
+    // The TI06 and TI12 hints sit under their first finding. Superseded (CORE-73): they named the accept label, but
+    // the label is read only when a finding blocks and these findings are warn, so a warn hint no longer offers it.
     for (const id of ["TI06", "TI12"]) {
       const first = listed.find((f) => f.id === id) as { at: number };
       const hint = lines[first.at + 1] ?? "";
       expect(hint.startsWith("  - Hint: "), `${id} has a hint`).toBe(true);
-      expect(hint, `${id} hint names the accept label`).toContain("`pharn/accepted`");
+      expect(hint, `${id} warn hint does not offer the accept label`).not.toContain("`pharn/accepted`");
     }
 
     // The hostile detail: one line, no raw <img, no @octocat mention, no link.
