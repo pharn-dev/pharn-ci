@@ -500,10 +500,16 @@ function validateCoverageFile(value: YamlMap[string]): string | string[] {
   return one(value);
 }
 
+/** The most characters an exclusion glob may have after trimming; the matcher's cost grows with the pattern. */
+export const MAX_EXCLUDE_PATTERN_CHARS = 1024;
+/** How much of an over-long pattern its error quotes. */
+const QUOTED_PATTERN_CHARS = 40;
+
 /**
  * Validate and normalize one exclusion glob (config item, CLI flag or Action input entry): trims it,
- * removes leading `./` and rejects anything outside the matcher's subset. Idempotent. The raw pattern
- * is quoted in the error so the user can find it.
+ * removes leading `./` and rejects anything outside the matcher's subset or longer than
+ * `MAX_EXCLUDE_PATTERN_CHARS`. Idempotent. The raw pattern is quoted in the error so the user can find it
+ * (only its start, for one over the length limit).
  */
 export function parseExcludePattern(pattern: string, label = "exclude pattern"): string {
   let start = 0;
@@ -511,6 +517,12 @@ export function parseExcludePattern(pattern: string, label = "exclude pattern"):
   while (trimmed.startsWith("./", start)) start += 2;
   const p = trimmed.slice(start);
 
+  if (p.length > MAX_EXCLUDE_PATTERN_CHARS) {
+    throw new ConfigError(
+      `${label} "${p.slice(0, QUOTED_PATTERN_CHARS)}..." is ${p.length} characters long; ` +
+        `the limit is ${MAX_EXCLUDE_PATTERN_CHARS} characters`,
+    );
+  }
   const reject = (reason: string): never => {
     throw new ConfigError(`${label} "${pattern}" ${reason}`);
   };

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { vendoredInstruction } from "../src/injection/paths.js";
 import { injectionSettingsOf } from "../src/injection/policy.js";
 import { detectInjection } from "../src/injection/scan.js";
 import { measureGrowth, threadCpuMs } from "./growth.js";
@@ -23,6 +24,8 @@ const SHAPES: [string, string, (size: number) => string, string[]][] = [
   ["comment openers repeated", "docs/b.md", (n) => repeat("<!--", n), []],
   // Link-title starts with no closing parenthesis.
   ["link starts repeated", "docs/c.md", (n) => repeat('](x "', n), []],
+  // Link starts with one closing parenthesis at the very end (CORE-43): each `](` must not read on to that `)`.
+  ["link starts with one far closing parenthesis", "docs/f.md", (n) => `${repeat("](x ", n - 1)})`, []],
   // Alternating blob characters and breaks, in an instruction file (PI04).
   ["short blob runs", "CLAUDE.md", (n) => repeat("a1b2c3d4e5f6 ", n), []],
   // Joiners between Latin letters: every one is checked against its neighbours (PI01).
@@ -50,4 +53,24 @@ describe("the prompt-injection scan reads a line in linear time", { timeout: 300
       expect(growth.ratio, `${label}: ${growth.detail}`).toBeLessThan(8);
     });
   }
+
+  // PI05 classifies at most the last 8 segments below the vendored directory (CORE-43), so a path of many segments is
+  // read in linear time: 20,000 segments must take under 8 times as long as 5,000.
+  it("a vendored path of 20,000 segments takes under 8 times as long as one of 5,000 (PI05)", async () => {
+    const path = (segments: number) => `node_modules/${"d/".repeat(segments - 2)}CLAUDE.md`;
+    const small = path(5_000);
+    const large = path(20_000);
+    for (const p of [small, large]) {
+      expect(vendoredInstruction(p), p.slice(0, 40)).toEqual({ dir: "node_modules", kind: "claude-md" });
+    }
+    let slowest = 0;
+    const timed = (p: string) => () => {
+      const start = threadCpuMs();
+      vendoredInstruction(p);
+      slowest = Math.max(slowest, threadCpuMs() - start);
+    };
+    const growth = await measureGrowth(timed(small), timed(large));
+    expect(slowest, "PI05: the slowest call finishes within 15 s of CPU time").toBeLessThan(15_000);
+    expect(growth.ratio, `PI05: ${growth.detail}`).toBeLessThan(8);
+  });
 });

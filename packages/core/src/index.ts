@@ -33,6 +33,7 @@ export { type ReadDiffOptions, readCoverageChunks, readDiffChunks } from "./chun
 export {
   ConfigError,
   isCoverageFormatSelection,
+  MAX_EXCLUDE_PATTERN_CHARS,
   type PharnConfig,
   parseConfig,
   parseCoverageRoot,
@@ -144,6 +145,7 @@ export {
   DEFAULT_EXEMPT as INJECTION_DEFAULT_EXEMPT,
   INJECTION_INSTRUCTION_KINDS,
   LOCALE_PATHS as INJECTION_LOCALE_PATHS,
+  MAX_VENDORED_TAIL_SEGMENTS,
   VENDORED_DIRS as INJECTION_VENDORED_DIRS,
 } from "./injection/paths.js";
 export {
@@ -325,7 +327,7 @@ export {
   SECRET_SCAN_KINDS,
   scanAgentConfigSecrets,
 } from "./secrets/scan.js";
-export { findSecretSpans, type SecretId, type SecretSpan } from "./secrets/spans.js";
+export { findSecretSpans, MAX_TOKEN_BODY_CHARS, type SecretId, type SecretSpan } from "./secrets/spans.js";
 export {
   agentInstructionPaths,
   INSTRUCTION_KINDS,

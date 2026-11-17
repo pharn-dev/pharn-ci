@@ -80,6 +80,9 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   than matched literally: braces, `[...]` classes, negation (`!`), backslashes, unanchored
   gitignore-style patterns (`foo/` or `*.ts` matching in subdirectories: use `**/*.ts`), `..`
   segments, and case-insensitive matching.
+- **A pattern has at most 1,024 characters.** An exclusion glob (from `coverage.exclude`, `--exclude`, the Action's
+  `exclude` input, a coverage-file glob or a `--junit` glob) longer than 1,024 characters after trimming is a config
+  error (exit 2 on the CLI) that names the limit and quotes only the pattern's first 40 characters.
 - **Coverage paths must be relative to the repository root.** `SF:` paths are matched exactly
   (case-sensitive) against repo-relative diff paths. Absolute paths under the repo root are
   relativized. In a monorepo, a coverage file whose paths are relative to a package directory
@@ -1023,6 +1026,9 @@ for ten shapes of secret by prefix and position. It is a heuristic, not a secret
 - **Shapes, not provider checks.** A key is recognized by its prefix and length, or by a secret-named key with a long,
   high-entropy value. Nothing asks the provider whether a key is live (no network call), so a revoked or made-up key is
   reported, and a key of a provider or format not in the ten shapes is missed.
+- **A token's body is matched 512 characters at a time.** The prefixed shapes (S01, S02, S03, S06, S07) read at most
+  512 characters after the prefix in one match, so a long line costs linear time. A match that reaches 512 is read on
+  to the end of its run, so a longer token is still one span, reported and redacted whole.
 - **Low-entropy passwords are missed.** S10 needs 20 characters and 3.5 bits of entropy per character; `hunter2` is
   not reported by S10 (S11 may name it when the file also loads other secrets from the environment).
 - **Encoded or split values are missed.** A base64-wrapped value, a secret split across two strings or lines, a value
@@ -1129,6 +1135,10 @@ a text filter for content aimed at the next agent, not a judgement of what a tex
 - **Vendored directories by name.** PI05 knows six directory names and the inventory's instruction kinds; an
   instruction file under another vendoring layout (`external/`, `deps/`, a git submodule) is not flagged, and a modified
   one in a vendored directory is not either (only added or renamed-in files).
+- **Only the last 8 segments below a vendored directory.** PI05 classifies at most the last 8 path segments under the
+  last vendored directory, so a path of thousands of segments is read in linear time. An instruction file whose kind
+  needs more of the path is missed: `node_modules/x/.cursor/rules/a/b/c/d/e/f/r.mdc` (9 segments from `.cursor`) is
+  not flagged, while `node_modules/x/CLAUDE.md` at any depth is.
 - **Caps.** The scan keeps the first 50,000 added lines of a file and 8,000,000 characters of added text across the
   diff, in diff order: a file past either cap is named in `INJECTION_TEXT_TRUNCATED` (`warn`) and a finding past the
   cut is not seen. At most 20 findings per signal and file and 200 in all are listed; the messages count the rest.

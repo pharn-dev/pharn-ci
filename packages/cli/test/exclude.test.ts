@@ -101,4 +101,28 @@ describe("pharn-ci check --exclude", () => {
     expect(fromConfig.err).toContain("../secret/**");
     expect(fromConfig.out).toBe("");
   });
+
+  it("CORE-43: exits 2 on an exclude pattern of 1,025 characters, naming the 1,024 limit; 1,024 is accepted", async () => {
+    const { main, EXIT_ERROR, EXIT_OK } = await import("../src/main.js");
+    const atLimit = `src/${"a".repeat(1017)}/**`;
+    const over = `src/${"a".repeat(1018)}/**`;
+    expect([atLimit.length, over.length]).toEqual([1024, 1025]);
+
+    const fromFlag = fakeDeps(COVERAGE);
+    expect(await main(["check", "--coverage", "lcov.info", "--exclude", over], fromFlag)).toBe(EXIT_ERROR);
+    expect(fromFlag.err).toContain("is 1025 characters long; the limit is 1024 characters");
+    expect(fromFlag.out).toBe("");
+
+    const fromConfig = fakeDeps({ ...COVERAGE, [CONFIG]: `coverage:\n  exclude:\n    - "${over}"\n` });
+    expect(await main(["check", "--coverage", "lcov.info"], fromConfig)).toBe(EXIT_ERROR);
+    expect(fromConfig.err).toContain("the limit is 1024 characters");
+    expect(fromConfig.out).toBe("");
+
+    const accepted = fakeDeps(COVERAGE);
+    const args = ["check", "--coverage", "lcov.info", "--format", "json", "--exclude", atLimit];
+    expect(await main(args, accepted)).toBe(EXIT_OK);
+    expect(accepted.err).toBe("coverage: lcov (auto-detected)\n");
+    // The pattern matches no changed file, so nothing is excluded and the report lists no exclusions.
+    expect(JSON.parse(accepted.out).diffCoverage).not.toHaveProperty("excludedFiles");
+  });
 });

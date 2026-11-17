@@ -32,20 +32,66 @@ function prefixed(text: string, source: RegExp, accept?: (match: string) => bool
   return found;
 }
 
+/**
+ * The most characters of a token's body (the class run after its prefix) one regular-expression match reads. A match
+ * that reaches it is read on to the end of the run by a sticky class pattern, so a longer token is still one whole span.
+ */
+export const MAX_TOKEN_BODY_CHARS = 512;
+
+/**
+ * The tokens `prefix` then at least `min` characters of `cls` (a character class every character of which is a key
+ * character), each read to the end of its run, minus those preceded by a key character or refused by `accept`. Linear:
+ * a match reads at most `MAX_TOKEN_BODY_CHARS` body characters, and only a match preceded by a non-key character reads
+ * on to the end of its run; such runs never overlap, because every character of a run is a key character.
+ */
+function prefixedToken(
+  text: string,
+  prefix: string,
+  cls: string,
+  min: number,
+  accept?: (match: string) => boolean,
+): Range[] {
+  const re = new RegExp(`${prefix}${cls}{${min},${MAX_TOKEN_BODY_CHARS}}`, "g");
+  const tail = new RegExp(`${cls}*`, "y");
+  const found: Range[] = [];
+  for (let m = re.exec(text); m !== null; m = re.exec(text)) {
+    const start = m.index;
+    if (start > 0 && isKeyCharCode(text.charCodeAt(start - 1))) {
+      re.lastIndex = start + 1;
+      continue;
+    }
+    tail.lastIndex = start + m[0].length;
+    const end = tail.lastIndex + (tail.exec(text)?.[0].length ?? 0);
+    if (accept !== undefined && !accept(text.slice(start, end))) {
+      re.lastIndex = start + 1;
+      continue;
+    }
+    found.push([start, end]);
+    re.lastIndex = end;
+  }
+  return found;
+}
+
+const byStart = (a: Range, b: Range): number => a[0] - b[0];
+
 // S01 a GitHub token, S02 an Anthropic API key, S03 an OpenAI API key, S04 a Google API key, S05 an AWS access key id,
 // S06 a Slack token, S07 a Stripe live key. Each starts with a literal prefix and reads a bounded class after it.
-const findS01 = (text: string): Range[] => prefixed(text, /gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{50,}/);
-const findS02 = (text: string): Range[] => prefixed(text, /sk-ant-[A-Za-z0-9_-]{20,}/);
+const findS01 = (text: string): Range[] =>
+  [
+    ...prefixedToken(text, "gh[pousr]_", "[A-Za-z0-9]", 36),
+    ...prefixedToken(text, "github_pat_", "[A-Za-z0-9_]", 50),
+  ].sort(byStart);
+const findS02 = (text: string): Range[] => prefixedToken(text, "sk-ant-", "[A-Za-z0-9_-]", 20);
 const findS03 = (text: string): Range[] =>
   [
-    ...prefixed(text, /sk-proj-[A-Za-z0-9_-]{20,}/),
-    ...prefixed(text, /sk-[A-Za-z0-9_-]{40,}/, (match) => /[0-9]/.test(match)),
-  ].sort((a, b) => a[0] - b[0]);
+    ...prefixedToken(text, "sk-proj-", "[A-Za-z0-9_-]", 20),
+    ...prefixedToken(text, "sk-", "[A-Za-z0-9_-]", 40, (match) => /[0-9]/.test(match)),
+  ].sort(byStart);
 const findS04 = (text: string): Range[] => prefixed(text, /AIza[A-Za-z0-9_-]{35}(?![A-Za-z0-9_-])/);
 const findS05 = (text: string): Range[] =>
   prefixed(text, /A[KS]IA[A-Z0-9]{16}(?![A-Za-z0-9])/, (match) => !match.endsWith("EXAMPLE"));
-const findS06 = (text: string): Range[] => prefixed(text, /xox[baprs]-[A-Za-z0-9-]{10,}/);
-const findS07 = (text: string): Range[] => prefixed(text, /[sr]k_live_[A-Za-z0-9]{16,}/);
+const findS06 = (text: string): Range[] => prefixedToken(text, "xox[baprs]-", "[A-Za-z0-9-]", 10);
+const findS07 = (text: string): Range[] => prefixedToken(text, "[sr]k_live_", "[A-Za-z0-9]", 16);
 
 const PRIVATE_KEY_BEGIN = /-----BEGIN (?:(?:RSA|EC|DSA|OPENSSH|ENCRYPTED|PGP) )?PRIVATE KEY(?: BLOCK)?-----/g;
 const PRIVATE_KEY_END = /-----END (?:[A-Z]+ )?PRIVATE KEY(?: BLOCK)?-----/g;

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { MAX_VENDORED_TAIL_SEGMENTS, vendoredInstruction } from "../src/injection/paths.js";
 import { DEFAULT_INJECTION_SEVERITIES, injectionSettingsOf } from "../src/injection/policy.js";
 import {
   detectInjection,
@@ -111,6 +112,17 @@ describe("PI02: hidden Markdown that addresses an agent", () => {
     expect(findings("pi02-clean.diff.txt")).toEqual([]);
   });
 
+  it("reads a title nested in a link, a second link's title and an unclosed link's title (CORE-43)", () => {
+    // The search goes on past each link's `)` (linear time); a nested `](` ends at the same `)`, so no title is lost.
+    const list = findings("pi02-links.diff.txt");
+    expect(list).toEqual([
+      { id: "PI02", path: "docs/links.md", line: 1, detail: "phrase PH01 in a link title" },
+      { id: "PI02", path: "docs/links.md", line: 2, detail: "phrase PH03 in a link title" },
+      { id: "PI02", path: "docs/links.md", line: 3, detail: "phrase PH02 in a link title" },
+    ]);
+    expectFixedDetails(list);
+  });
+
   it("does not carry an open comment across a gap in the line numbers", () => {
     const diff = [
       "diff --git a/a.md b/a.md",
@@ -214,6 +226,23 @@ describe("PI05: instruction files added inside vendored code", () => {
 
   it("leaves modified, deleted and non-instruction vendored files and look-alike directories alone", () => {
     expect(findings("pi05-clean.diff.txt")).toEqual([]);
+  });
+
+  it("classifies at most the last 8 segments below the vendored directory (CORE-43)", () => {
+    expect(MAX_VENDORED_TAIL_SEGMENTS).toBe(8);
+    const below = (depth: number, tail: string) => `node_modules/${"d/".repeat(depth)}${tail}`;
+    // A Cursor rules file whose `.cursor` is the 8th segment from the end is found; one level deeper it is not.
+    const rules = ".cursor/rules/a/b/c/d/e/x.mdc";
+    expect(rules.split("/").length).toBe(8);
+    expect(vendoredInstruction(below(3, rules))).toEqual({ dir: "node_modules", kind: "cursor-rules" });
+    expect(vendoredInstruction(below(3, ".cursor/rules/a/b/c/d/e/f/x.mdc"))).toBeNull();
+    expect(vendoredInstruction(`node_modules/${rules}`)).toEqual({ dir: "node_modules", kind: "cursor-rules" });
+    // A 5,000-segment path below node_modules/ still gives its instruction file, as a finding of the scan.
+    const deep = below(4_998, "CLAUDE.md");
+    expect(deep.split("/").length).toBe(5_000);
+    expect(vendoredInstruction(deep)).toEqual({ dir: "node_modules", kind: "claude-md" });
+    const scanned = scanInjection(parseForInjection(addedFileDiff(deep, ["# Notes"]))).findings;
+    expect(scanned).toEqual([{ id: "PI05", path: deep, line: null, detail: "claude-md file under node_modules/" }]);
   });
 });
 

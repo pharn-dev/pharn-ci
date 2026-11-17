@@ -78,21 +78,24 @@ function isReferenceDefinition(text: string): boolean {
   return close > i;
 }
 
-/** The title of each inline link or image on the line: the quoted part inside `](...)`. */
+/**
+ * The title of each inline link or image on the line: the quoted part inside `](...)`. After a link the search goes on
+ * past its `)`, so each character is read a bounded number of times however many `](` the line holds. No title is
+ * lost: a `](` inside a link's parentheses ends at the same `)`, and its title is a tail of the enclosing one.
+ */
 function linkTitles(text: string): string[] {
   const titles: string[] = [];
-  for (let at = text.indexOf("]("); at !== -1; at = text.indexOf("](", at + 2)) {
+  for (let at = text.indexOf("]("); at !== -1; ) {
     const end = text.indexOf(")", at + 2);
-    const inner = end === -1 ? text.slice(at + 2) : text.slice(at + 2, end);
-    let quote = -1;
-    for (let i = 0; i < inner.length; i++) {
-      if (inner[i] === '"' || inner[i] === "'") {
-        quote = i;
+    const stop = end === -1 ? text.length : end;
+    for (let i = at + 2; i < stop; i++) {
+      if (text[i] === '"' || text[i] === "'") {
+        titles.push(text.slice(i + 1, stop));
         break;
       }
     }
-    if (quote !== -1) titles.push(inner.slice(quote + 1));
     if (end === -1) break;
+    at = text.indexOf("](", end + 1);
   }
   return titles;
 }

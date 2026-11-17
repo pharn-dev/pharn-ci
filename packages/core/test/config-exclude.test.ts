@@ -68,8 +68,10 @@ describe("parseConfig: coverage.exclude", () => {
     }
   });
 
-  it("AC-7: parses 100,000 items and a 100,000-character pattern in linear time", async () => {
-    const { parseConfig } = await import("../src/config.js");
+  // CORE-43: a pattern over 1,024 characters is a config error since R1.5, so the 100,000-character pattern is now read
+  // in linear time and rejected; before, it was accepted.
+  it("AC-7: parses 100,000 items in linear time, and reads and rejects a 100,000-character pattern in linear time", async () => {
+    const { ConfigError, parseConfig } = await import("../src/config.js");
 
     const items = Array.from({ length: 100_000 }, (_, i) => `src/f${i}/**`);
     const many = `coverage:\n  exclude:\n${items.map((item) => `    - ${item}\n`).join("")}`;
@@ -81,9 +83,48 @@ describe("parseConfig: coverage.exclude", () => {
     const long = `${"a/".repeat(49_999)}bb`;
     expect(long.length).toBe(100_000);
     start = performance.now();
-    const longConfig = parseConfig(`coverage:\n  exclude:\n    - ${long}\n`);
+    let error: unknown;
+    try {
+      parseConfig(`coverage:\n  exclude:\n    - ${long}\n`);
+    } catch (e) {
+      error = e;
+    }
     expect(performance.now() - start).toBeLessThan(1000);
-    expect(longConfig.coverage?.exclude).toEqual([long]);
+    expect(error).toBeInstanceOf(ConfigError);
+    expect((error as Error).message).toContain("the limit is 1024 characters");
+  });
+
+  it("CORE-43: accepts an exclude pattern of 1,024 characters and rejects one of 1,025, naming the limit", async () => {
+    const { ConfigError, MAX_EXCLUDE_PATTERN_CHARS, parseConfig, parseExcludePattern } = await import(
+      "../src/config.js"
+    );
+    expect(MAX_EXCLUDE_PATTERN_CHARS).toBe(1024);
+    const atLimit = `src/${"a".repeat(1017)}/**`;
+    expect(atLimit.length).toBe(1024);
+    expect(parseExcludePattern(atLimit)).toBe(atLimit);
+    // Trimming and a leading `./` come off before the length is counted.
+    expect(parseExcludePattern(`  ./${atLimit} `)).toBe(atLimit);
+    expect(parseConfig(`coverage:\n  exclude:\n    - "${atLimit}"\n`).coverage?.exclude).toEqual([atLimit]);
+
+    const over = `src/${"a".repeat(1018)}/**`;
+    expect(over.length).toBe(1025);
+    for (const run of [
+      () => parseExcludePattern(over, "--exclude"),
+      () => parseConfig(`coverage:\n  exclude:\n    - "${over}"\n`),
+    ]) {
+      let error: unknown;
+      try {
+        run();
+      } catch (e) {
+        error = e;
+      }
+      expect(error).toBeInstanceOf(ConfigError);
+      const message = (error as Error).message;
+      expect(message).toContain("is 1025 characters long; the limit is 1024 characters");
+      // The error quotes only the pattern's start, so a huge pattern does not flood the log.
+      expect(message).toContain(`"src/${"a".repeat(36)}..."`);
+      expect(message.length).toBeLessThan(200);
+    }
   });
 
   it("AC-F32-1: reads coverage.exclude as a one-line flow list of quoted and plain strings", async () => {

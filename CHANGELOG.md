@@ -29,6 +29,9 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   `agents.extra_logins` was invalid, and a policy request for a repository an EMU user owns stopped with
   `no-repository`. The form is GitHub's: the handle, one `_` and a shortcode of 3 to 8 letters or digits, at most 39
   characters, never with `[bot]`. The `login` pattern of `schema/policy.v1.json` accepts it (additive, still v1).
+- An exclusion glob longer than 1,024 characters (`coverage.exclude`, `--exclude`, the Action's `exclude` input, a
+  coverage-file glob or a `--junit` glob) is now a config error that names the limit: a config, flag or input with a
+  longer pattern, which was accepted before, now fails the run (exit 2 on the CLI) (`docs/LIMITS.md`).
 
 ### Security
 
@@ -56,6 +59,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   signed URL. The Action now writes every `core.info` message as one line, with control characters replaced by U+FFFD,
   `##[` written `##\[` and a `\` before a leading `::`; the CLI escapes its stderr the same way
   (`docs/THREAT-MODEL.md`, row B4).
+- One long line in a pull request no longer makes the prompt-injection scan or the agent-config secret scan run for
+  many seconds. PI02 reads link titles in linear time (one Markdown line of 120 KB took 24 s), the prefixed secret
+  shapes S01, S02, S03, S06 and S07 match at most 512 body characters at a time and read a longer token on to its end,
+  so findings and redaction are unchanged (a 127 KiB run of `xoxb-` took 3.2 s), and PI05 classifies at most the last
+  8 segments below a vendored directory (`docs/LIMITS.md`).
 
 ## [0.10.0] - 2026-11-09
 

@@ -79,10 +79,14 @@ export function instructionKindOf(path: string): AgentSetupKind | null {
   return kind !== null && INSTRUCTION_KIND_SET.has(kind) ? kind : null;
 }
 
+/** The most trailing segments below the last vendored directory that PI05 classifies, so the walk stays linear. */
+export const MAX_VENDORED_TAIL_SEGMENTS = 8;
+
 /**
  * The vendored directory and instruction kind of a path that is an instruction file inside vendored code, or null.
- * The part after the last vendored directory segment is classified from each of its segment starts, so
- * `node_modules/pkg/CLAUDE.md` and `vendor/x/.cursor/rules/a.mdc` count as `claude-md` and `cursor-rules`.
+ * The last `MAX_VENDORED_TAIL_SEGMENTS` segments after the last vendored directory segment are classified from each of
+ * their segment starts, so `node_modules/pkg/CLAUDE.md` and `vendor/x/.cursor/rules/a.mdc` count as `claude-md` and
+ * `cursor-rules`.
  */
 export function vendoredInstruction(path: string): { dir: string; kind: AgentSetupKind } | null {
   const segments = path.split("/");
@@ -91,7 +95,7 @@ export function vendoredInstruction(path: string): { dir: string; kind: AgentSet
     if (VENDORED_DIRS.includes(segments[i] as string)) last = i;
   }
   if (last === -1) return null;
-  const rest = segments.slice(last + 1);
+  const rest = segments.slice(Math.max(last + 1, segments.length - MAX_VENDORED_TAIL_SEGMENTS));
   for (let start = 0; start < rest.length; start++) {
     const kind = instructionKindOf(rest.slice(start).join("/"));
     if (kind !== null) return { dir: segments[last] as string, kind };

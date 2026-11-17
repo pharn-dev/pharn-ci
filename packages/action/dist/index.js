@@ -27707,11 +27707,18 @@ function validateCoverageFile(value) {
   }
   return one(value);
 }
+var MAX_EXCLUDE_PATTERN_CHARS = 1024;
+var QUOTED_PATTERN_CHARS = 40;
 function parseExcludePattern(pattern, label = "exclude pattern") {
   let start = 0;
   const trimmed = pattern.trim();
   while (trimmed.startsWith("./", start)) start += 2;
   const p = trimmed.slice(start);
+  if (p.length > MAX_EXCLUDE_PATTERN_CHARS) {
+    throw new ConfigError(
+      `${label} "${p.slice(0, QUOTED_PATTERN_CHARS)}..." is ${p.length} characters long; the limit is ${MAX_EXCLUDE_PATTERN_CHARS} characters`
+    );
+  }
   const reject = (reason) => {
     throw new ConfigError(`${label} "${pattern}" ${reason}`);
   };
@@ -30737,6 +30744,7 @@ function instructionKindOf(path) {
   const kind = classifySetupPath(path);
   return kind !== null && INSTRUCTION_KIND_SET2.has(kind) ? kind : null;
 }
+var MAX_VENDORED_TAIL_SEGMENTS = 8;
 function vendoredInstruction(path) {
   const segments = path.split("/");
   let last = -1;
@@ -30744,7 +30752,7 @@ function vendoredInstruction(path) {
     if (VENDORED_DIRS.includes(segments[i])) last = i;
   }
   if (last === -1) return null;
-  const rest = segments.slice(last + 1);
+  const rest = segments.slice(Math.max(last + 1, segments.length - MAX_VENDORED_TAIL_SEGMENTS));
   for (let start = 0; start < rest.length; start++) {
     const kind = instructionKindOf(rest.slice(start).join("/"));
     if (kind !== null) return { dir: segments[last], kind };
@@ -31006,18 +31014,17 @@ function isReferenceDefinition(text) {
 }
 function linkTitles(text) {
   const titles = [];
-  for (let at = text.indexOf("]("); at !== -1; at = text.indexOf("](", at + 2)) {
+  for (let at = text.indexOf("]("); at !== -1; ) {
     const end = text.indexOf(")", at + 2);
-    const inner = end === -1 ? text.slice(at + 2) : text.slice(at + 2, end);
-    let quote = -1;
-    for (let i = 0; i < inner.length; i++) {
-      if (inner[i] === '"' || inner[i] === "'") {
-        quote = i;
+    const stop = end === -1 ? text.length : end;
+    for (let i = at + 2; i < stop; i++) {
+      if (text[i] === '"' || text[i] === "'") {
+        titles.push(text.slice(i + 1, stop));
         break;
       }
     }
-    if (quote !== -1) titles.push(inner.slice(quote + 1));
     if (end === -1) break;
+    at = text.indexOf("](", end + 1);
   }
   return titles;
 }
@@ -34170,16 +34177,42 @@ function prefixed(text, source, accept) {
   }
   return found;
 }
-var findS01 = (text) => prefixed(text, /gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{50,}/);
-var findS02 = (text) => prefixed(text, /sk-ant-[A-Za-z0-9_-]{20,}/);
+var MAX_TOKEN_BODY_CHARS = 512;
+function prefixedToken(text, prefix, cls, min, accept) {
+  const re = new RegExp(`${prefix}${cls}{${min},${MAX_TOKEN_BODY_CHARS}}`, "g");
+  const tail = new RegExp(`${cls}*`, "y");
+  const found = [];
+  for (let m = re.exec(text); m !== null; m = re.exec(text)) {
+    const start = m.index;
+    if (start > 0 && isKeyCharCode(text.charCodeAt(start - 1))) {
+      re.lastIndex = start + 1;
+      continue;
+    }
+    tail.lastIndex = start + m[0].length;
+    const end = tail.lastIndex + (tail.exec(text)?.[0].length ?? 0);
+    if (accept !== void 0 && !accept(text.slice(start, end))) {
+      re.lastIndex = start + 1;
+      continue;
+    }
+    found.push([start, end]);
+    re.lastIndex = end;
+  }
+  return found;
+}
+var byStart = (a, b) => a[0] - b[0];
+var findS01 = (text) => [
+  ...prefixedToken(text, "gh[pousr]_", "[A-Za-z0-9]", 36),
+  ...prefixedToken(text, "github_pat_", "[A-Za-z0-9_]", 50)
+].sort(byStart);
+var findS02 = (text) => prefixedToken(text, "sk-ant-", "[A-Za-z0-9_-]", 20);
 var findS03 = (text) => [
-  ...prefixed(text, /sk-proj-[A-Za-z0-9_-]{20,}/),
-  ...prefixed(text, /sk-[A-Za-z0-9_-]{40,}/, (match) => /[0-9]/.test(match))
-].sort((a, b) => a[0] - b[0]);
+  ...prefixedToken(text, "sk-proj-", "[A-Za-z0-9_-]", 20),
+  ...prefixedToken(text, "sk-", "[A-Za-z0-9_-]", 40, (match) => /[0-9]/.test(match))
+].sort(byStart);
 var findS04 = (text) => prefixed(text, /AIza[A-Za-z0-9_-]{35}(?![A-Za-z0-9_-])/);
 var findS05 = (text) => prefixed(text, /A[KS]IA[A-Z0-9]{16}(?![A-Za-z0-9])/, (match) => !match.endsWith("EXAMPLE"));
-var findS06 = (text) => prefixed(text, /xox[baprs]-[A-Za-z0-9-]{10,}/);
-var findS07 = (text) => prefixed(text, /[sr]k_live_[A-Za-z0-9]{16,}/);
+var findS06 = (text) => prefixedToken(text, "xox[baprs]-", "[A-Za-z0-9-]", 10);
+var findS07 = (text) => prefixedToken(text, "[sr]k_live_", "[A-Za-z0-9]", 16);
 var PRIVATE_KEY_BEGIN = /-----BEGIN (?:(?:RSA|EC|DSA|OPENSSH|ENCRYPTED|PGP) )?PRIVATE KEY(?: BLOCK)?-----/g;
 var PRIVATE_KEY_END = /-----END (?:[A-Z]+ )?PRIVATE KEY(?: BLOCK)?-----/g;
 function findS08(text) {
