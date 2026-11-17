@@ -105,10 +105,12 @@ describe("org policy rule P09: class 4 at its final level", { timeout: 60_000 },
       },
       dropped: [{ path: "c/.claude/settings.json", reason: "too-large" }],
     });
+    // R1.1 (CORE-35): within a rule the violations are listed block first, then warn, then info, and by path within
+    // a severity (the per-rule cap keeps them in that order), so c's block now comes before b's warn.
     expect(p09(first)).toEqual([
       finding("block", "a/.claude/settings.json", `${FAILS}P02`),
-      finding("warn", "b/.claude/settings.json", `${FAILS}P02`),
       finding("block", "c/.claude/settings.json", UNCHECKED),
+      finding("warn", "b/.claude/settings.json", `${FAILS}P02`),
       finding("info", "d/.claude/settings.json", COMPLIES),
       finding("info", "pkg/.mcp.json", COMPLIES),
     ]);

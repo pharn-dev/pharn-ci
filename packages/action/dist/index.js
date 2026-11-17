@@ -33609,6 +33609,7 @@ function reportedProblems(problems, setup2, inForce) {
 var MAX_RULE_VIOLATIONS = 50;
 var SETTINGS_READERS = ["P02", "P03", "P04", "P05", "P06"];
 var SETTINGS_RULES = SETTINGS_READERS;
+var SEVERITY_RANK = { block: 0, warn: 1, info: 2 };
 function evaluatePolicyRules(input) {
   const { policy } = input;
   const document2 = policy.document;
@@ -33649,20 +33650,26 @@ function evaluatePolicyRules(input) {
   const supplying = /* @__PURE__ */ new Set();
   const sources = input.settingsSources;
   if (inForce && sources !== void 0) {
+    const setup2 = document2.setup;
+    const listed2 = {
+      P02: (setup2?.forbidden_permissions?.length ?? 0) > 0,
+      P03: (setup2?.required_permissions_deny?.length ?? 0) > 0,
+      P04: (setup2?.allowed_mcp_servers?.length ?? 0) > 0,
+      P05: (setup2?.forbidden_mcp_servers?.length ?? 0) > 0,
+      P06: (setup2?.required_hooks?.length ?? 0) > 0
+    };
     if ("unavailable" in sources) {
-      const setup2 = document2.setup;
-      const demands = (id, listed2) => listed2 && resolveSeverity(policy, id, "block").severity === "block";
-      const required = policy.source === "app" && document2.policy?.required === true || demands("P03", (setup2?.required_permissions_deny?.length ?? 0) > 0) || demands("P06", (setup2?.required_hooks?.length ?? 0) > 0);
+      const required = policy.source === "app" && document2.policy?.required === true || SETTINGS_READERS.some((id) => listed2[id] && resolveSeverity(policy, id, "block").severity === "block");
       settings2 = { unavailable: { reason: sources.unavailable, level: required ? "error" : "warn" }, problems: [] };
     } else {
-      const setup2 = document2.setup;
-      const on = (id, listed2) => listed2 && resolveSeverity(policy, id, "block").severity !== null;
+      const on = (id, listed3) => listed3 && resolveSeverity(policy, id, "block").severity !== null;
       const active = {
+        // P02 also runs with no list: its fixed checks of defaultMode and additionalDirectories need none.
         P02: on("P02", true),
-        P03: on("P03", (setup2?.required_permissions_deny?.length ?? 0) > 0),
-        P04: on("P04", (setup2?.allowed_mcp_servers?.length ?? 0) > 0),
-        P05: on("P05", (setup2?.forbidden_mcp_servers?.length ?? 0) > 0),
-        P06: on("P06", (setup2?.required_hooks?.length ?? 0) > 0)
+        P03: on("P03", listed2.P03),
+        P04: on("P04", listed2.P04),
+        P05: on("P05", listed2.P05),
+        P06: on("P06", listed2.P06)
       };
       const model = readSettingsModel(sources, document2);
       const over = compareUnits(model, setup2, { p02: active.P02, p03: active.P03, p05: active.P05 }) > COMPARE_BUDGET;
@@ -33712,7 +33719,7 @@ function evaluatePolicyRules(input) {
   }
   let violations = [...first, ...resolve2(detectP09(input, view))];
   violations.sort(
-    (a, b) => byCodeUnit(a.id, b.id) || (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : byCodeUnit(a.path, b.path)) || (a.line === b.line ? 0 : a.line === null ? -1 : b.line === null ? 1 : a.line - b.line) || byCodeUnit(a.detail, b.detail)
+    (a, b) => byCodeUnit(a.id, b.id) || SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] || (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : byCodeUnit(a.path, b.path)) || (a.line === b.line ? 0 : a.line === null ? -1 : b.line === null ? 1 : a.line - b.line) || byCodeUnit(a.detail, b.detail)
   );
   const omitted = {};
   const seen = /* @__PURE__ */ new Map();
@@ -33902,13 +33909,14 @@ var RULE_MESSAGES = {
     return sentences.join(" ");
   }
 };
+var SETTINGS_UNREAD_FIX = "Run the check on a checkout of the pull request head with full history (`actions/checkout` with `fetch-depth: 0`) so they can be read.";
 function settingsInvalidMessage(settings2) {
   if (settings2.unavailable !== null) {
     return {
       level: settings2.unavailable.level,
       code: "POLICY_SETTINGS_INVALID",
       // The reason can carry git text: control, invisible and bidirectional characters become spaces (see text.ts).
-      text: `The agent settings files were not read (${replaceUnsafeChars(settings2.unavailable.reason, " ")}), so P02\u2013P06 did not run.`
+      text: `The agent settings files were not read (${replaceUnsafeChars(settings2.unavailable.reason, " ")}), so P02\u2013P06 did not run. ${SETTINGS_UNREAD_FIX}`
     };
   }
   if (settings2.problems.length === 0) return null;
@@ -44328,9 +44336,9 @@ function signalHint(id, label) {
 }
 var MAX_FINDINGS = 20;
 var OPEN_FINDINGS = 10;
-var SEVERITY_RANK = { block: 0, warn: 1, info: 2 };
+var SEVERITY_RANK2 = { block: 0, warn: 1, info: 2 };
 function bySeverity(signals) {
-  const rank = (s) => SEVERITY_RANK[s.severity] ?? 3;
+  const rank = (s) => SEVERITY_RANK2[s.severity] ?? 3;
   return signals.map((signal2, index) => ({ signal: signal2, index })).sort((a, b) => rank(a.signal) - rank(b.signal) || a.index - b.index).map(({ signal: signal2 }) => signal2);
 }
 function listedSignals(report) {

@@ -882,9 +882,11 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
   files could not be read, stays a warning in block. With no coverage file and no diff, block reports the coverage problem (a warning without a
   threshold). A7 and P02–P07 need a local diff (`fetch-depth: 0`). Their "did not run" message is
   a warning, except that `POLICY_SETTINGS_INVALID` for unread settings is an error under a required
-  app policy or a policy that lists `required_permissions_deny` or `required_hooks` at block (P03,
-  P06): a demand that cannot be checked is not met, so a shallow checkout or `pr-number` mode fails
-  the step there. In `pr-number` mode the test text is never available, so block fails there when a
+  app policy or a policy that sets one of the lists `forbidden_permissions`, `required_permissions_deny`,
+  `allowed_mcp_servers`, `forbidden_mcp_servers` or `required_hooks` with its rule (P02 to P06) at
+  block: a demand that cannot be checked is not met, so a shallow checkout or `pr-number` mode fails
+  the step there, and the message says to check out with `fetch-depth: 0`. P02's fixed checks
+  (`defaultMode`, `additionalDirectories`) need no list and do not make it an error on their own. In `pr-number` mode the test text is never available, so block fails there when a
   test file or a test-runner config is modified; use `test-integrity: warn` for that flow.
 - **`fail-on-verdict: false` makes the step report, not gate.** As its old name `fail-on-threshold` did not say,
   it covers every cause of a `fail` verdict: diff coverage, test-integrity blocks and org policy violations and

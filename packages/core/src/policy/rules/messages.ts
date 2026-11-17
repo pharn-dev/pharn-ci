@@ -221,6 +221,10 @@ const RULE_MESSAGES: Partial<
   },
 };
 
+/** How to make the agent settings files readable: the second sentence of the "not read" message. */
+const SETTINGS_UNREAD_FIX =
+  "Run the check on a checkout of the pull request head with full history (`actions/checkout` with `fetch-depth: 0`) so they can be read.";
+
 /** The POLICY_SETTINGS_INVALID message: the files were not read, or the problems that stopped a rule fully using one. */
 function settingsInvalidMessage(settings: NonNullable<PolicyEvaluation["settings"]>): Message | null {
   if (settings.unavailable !== null) {
@@ -228,7 +232,7 @@ function settingsInvalidMessage(settings: NonNullable<PolicyEvaluation["settings
       level: settings.unavailable.level,
       code: "POLICY_SETTINGS_INVALID",
       // The reason can carry git text: control, invisible and bidirectional characters become spaces (see text.ts).
-      text: `The agent settings files were not read (${replaceUnsafeChars(settings.unavailable.reason, " ")}), so P02–P06 did not run.`,
+      text: `The agent settings files were not read (${replaceUnsafeChars(settings.unavailable.reason, " ")}), so P02–P06 did not run. ${SETTINGS_UNREAD_FIX}`,
     };
   }
   if (settings.problems.length === 0) return null;

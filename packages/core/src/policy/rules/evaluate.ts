@@ -27,6 +27,8 @@ export const MAX_P08_VIOLATIONS = MAX_RULE_VIOLATIONS;
 
 const SETTINGS_READERS = ["P02", "P03", "P04", "P05", "P06"] as const satisfies readonly SettingsReader[];
 const SETTINGS_RULES: readonly string[] = SETTINGS_READERS;
+/** The cap's order of severities: block first, then warn, then info. */
+const SEVERITY_RANK: Record<PolicyViolation["severity"], number> = { block: 0, warn: 1, info: 2 };
 
 /**
  * Run the org-policy rules (P01 to P11, and P14) over what the check already has, apply the policy's rule severities, sort,
@@ -81,27 +83,35 @@ export function evaluatePolicyRules(input: PolicyRuleInput): PolicyEvaluation {
   const sources = input.settingsSources;
 
   if (inForce && sources !== undefined) {
+    const setup = document.setup;
+    // The policy list each settings rule reads, as the policy writes it: both branches below decide from this when a
+    // rule is in force, so a rule the readable case would check is the same rule the unreadable case cannot check.
+    const listed = {
+      P02: (setup?.forbidden_permissions?.length ?? 0) > 0,
+      P03: (setup?.required_permissions_deny?.length ?? 0) > 0,
+      P04: (setup?.allowed_mcp_servers?.length ?? 0) > 0,
+      P05: (setup?.forbidden_mcp_servers?.length ?? 0) > 0,
+      P06: (setup?.required_hooks?.length ?? 0) > 0,
+    } satisfies Record<SettingsReader, boolean>;
     if ("unavailable" in sources) {
-      // An error when the policy is required, or when it demands a deny rule or a hook (P03, P06) at block: a
+      // An error when the policy is required, or when a rule whose list the policy sets (P02 to P06) is at block: a
       // demand that cannot be checked is not met, so a default shallow checkout must not turn the block into a warn.
-      const setup = document.setup;
-      const demands = (id: PolicyRuleId, listed: boolean) =>
-        listed && resolveSeverity(policy, id, "block").severity === "block";
+      // P02's fixed checks (defaultMode, additionalDirectories) need no list and do not count here, so a policy with
+      // none of the five lists keeps the warn.
       const required =
         (policy.source === "app" && document.policy?.required === true) ||
-        demands("P03", (setup?.required_permissions_deny?.length ?? 0) > 0) ||
-        demands("P06", (setup?.required_hooks?.length ?? 0) > 0);
+        SETTINGS_READERS.some((id) => listed[id] && resolveSeverity(policy, id, "block").severity === "block");
       settings = { unavailable: { reason: sources.unavailable, level: required ? "error" : "warn" }, problems: [] };
     } else {
-      const setup = document.setup;
       const on = (id: PolicyRuleId, listed: boolean) =>
         listed && resolveSeverity(policy, id, "block").severity !== null;
       const active = {
+        // P02 also runs with no list: its fixed checks of defaultMode and additionalDirectories need none.
         P02: on("P02", true),
-        P03: on("P03", (setup?.required_permissions_deny?.length ?? 0) > 0),
-        P04: on("P04", (setup?.allowed_mcp_servers?.length ?? 0) > 0),
-        P05: on("P05", (setup?.forbidden_mcp_servers?.length ?? 0) > 0),
-        P06: on("P06", (setup?.required_hooks?.length ?? 0) > 0),
+        P03: on("P03", listed.P03),
+        P04: on("P04", listed.P04),
+        P05: on("P05", listed.P05),
+        P06: on("P06", listed.P06),
       };
       const model = readSettingsModel(sources, document);
       const over = compareUnits(model, setup, { p02: active.P02, p03: active.P03, p05: active.P05 }) > COMPARE_BUDGET;
@@ -152,15 +162,19 @@ export function evaluatePolicyRules(input: PolicyRuleInput): PolicyEvaluation {
   }
   let violations = [...first, ...resolve(detectP09(input, view))];
 
+  // Severity ranks right after the rule id (block, warn, info; the order of signals/findingCap.ts), so the cap below
+  // never drops a blocking violation for a weaker one of the same rule: 50 decoy files whose paths sort first cannot
+  // turn a block into a warn.
   violations.sort(
     (a, b) =>
       byCodeUnit(a.id, b.id) ||
+      SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] ||
       (a.path === b.path ? 0 : a.path === null ? -1 : b.path === null ? 1 : byCodeUnit(a.path, b.path)) ||
       (a.line === b.line ? 0 : a.line === null ? -1 : b.line === null ? 1 : a.line - b.line) ||
       byCodeUnit(a.detail, b.detail),
   );
-  // Keep the first 50 of each rule id in sorted order and count the rest. Path-less violations sort first, so they are
-  // always kept.
+  // Keep the first 50 of each rule id in sorted order and count the rest. Within one severity, path-less violations
+  // sort first, so they are kept before any violation of that severity with a path.
   const omitted: PolicyEvaluation["omitted"] = {};
   const seen = new Map<PolicyRuleId, number>();
   violations = violations.filter((violation) => {

@@ -46,14 +46,23 @@ async function run(policy: unknown): Promise<Report> {
 const app = (document: unknown) => ({ source: "app", version: 3, fetchedAt: "2026-10-26T12:00:00.000Z", document });
 
 describe("POLICY_SETTINGS_INVALID: the files were not read", { timeout: 60_000 }, () => {
-  it("AC-14: unavailable sources give no P02–P06 violation, one message naming the reason (warn; error for a required app policy or a required deny rule or hook at block), and P09 keeps item 22's warn", async () => {
+  it("AC-14: unavailable sources give no P02–P06 violation, one message naming the reason (warn; error for a required app policy or a rule P02–P06 whose list the policy sets at block), and P09 keeps item 22's warn", async () => {
+    // R1.2 (CORE-37): a forbidden_permissions list with P02 at block is a demand too, so FORBID_ONLY and SETUP (which
+    // holds it) are now an error when the files were not read; these rows said warn, which let a shallow checkout pass
+    // a blocking P02 unchecked. The rows that turn P06 down keep their point with P02 turned down as well. A policy
+    // with no list keeps the warn (policy-settings-unavailable-lists.test.ts; it has no P09 row to give here).
     const cases: [label: string, policy: unknown, level: string][] = [
       [
         "file policy",
         { source: "file", version: null, path: "policy/org.json", document: { version: 1, setup: FORBID_ONLY } },
+        "error",
+      ],
+      ["app policy", app({ version: 1, setup: FORBID_ONLY }), "error"],
+      [
+        "app policy with P02 at warn",
+        app({ version: 1, setup: FORBID_ONLY, policy: { rules: { P02: "warn" } } }),
         "warn",
       ],
-      ["app policy", app({ version: 1, setup: FORBID_ONLY }), "warn"],
       ["required app policy", app({ version: 1, setup: FORBID_ONLY, policy: { required: true } }), "error"],
       // A required deny rule or hook that cannot be checked is not met: an error even when the policy is not required.
       ["app policy with required_hooks", app({ version: 1, setup: SETUP }), "error"],
@@ -67,9 +76,23 @@ describe("POLICY_SETTINGS_INVALID: the files were not read", { timeout: 60_000 }
         app({ version: 1, setup: { required_permissions_deny: ["Bash(rm:*)"] } }),
         "error",
       ],
-      // The demand counts only at block: an app policy that turns P06 off or down to warn keeps the warn.
-      ["app policy with P06 off", app({ version: 1, setup: SETUP, policy: { rules: { P06: "off" } } }), "warn"],
-      ["app policy with P06 at warn", app({ version: 1, setup: SETUP, policy: { rules: { P06: "warn" } } }), "warn"],
+      // The demand counts only at block: an app policy that turns P06 off or down to warn keeps the warn, once the
+      // forbidden_permissions list SETUP also holds is turned down too (P02 at block is a demand of its own).
+      [
+        "app policy with P06 off",
+        app({ version: 1, setup: SETUP, policy: { rules: { P02: "warn", P06: "off" } } }),
+        "warn",
+      ],
+      [
+        "app policy with P06 at warn",
+        app({ version: 1, setup: SETUP, policy: { rules: { P02: "warn", P06: "warn" } } }),
+        "warn",
+      ],
+      [
+        "app policy with P06 off and P02 at block",
+        app({ version: 1, setup: SETUP, policy: { rules: { P06: "off" } } }),
+        "error",
+      ],
     ];
     for (const [label, policy, level] of cases) {
       const report = await run(policy);
@@ -84,7 +107,8 @@ describe("POLICY_SETTINGS_INVALID: the files were not read", { timeout: 60_000 }
         {
           level,
           code: "POLICY_SETTINGS_INVALID",
-          text: `The agent settings files were not read (${REASON}), so P02–P06 did not run.`,
+          // R1.2 (CORE-37): the message now says how to make the files readable.
+          text: `The agent settings files were not read (${REASON}), so P02–P06 did not run. Run the check on a checkout of the pull request head with full history (\`actions/checkout\` with \`fetch-depth: 0\`) so they can be read.`,
         },
       ]);
       if (level === "error") expect(report.verdict, `${label}: an error message fails the verdict`).toBe("fail");

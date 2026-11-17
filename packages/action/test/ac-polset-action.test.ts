@@ -178,11 +178,14 @@ async function prNumberRun() {
 
 const naming = (calls: Call[], path: string) => calls.filter((c) => c.args[0] === "cat-file" && c.input.includes(path));
 const newCodes = (report: Report) => report.messages.filter((m) => NEW_CODES.includes(m.code));
+// R1.2 (CORE-37): the policy lists forbidden_permissions with P02 at its default, block, and a demand that cannot be
+// checked is not met, so unread settings are an error (it was a warning, which let a shallow checkout pass a blocking
+// P02 unchecked), and the message says how to make them readable.
 const unread = (reason: string) => [
   {
-    level: "warn",
+    level: "error",
     code: "POLICY_SETTINGS_INVALID",
-    text: `The agent settings files were not read (${reason}), so P02–P06 did not run.`,
+    text: `The agent settings files were not read (${reason}), so P02–P06 did not run. Run the check on a checkout of the pull request head with full history (\`actions/checkout\` with \`fetch-depth: 0\`) so they can be read.`,
   },
 ];
 

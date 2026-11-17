@@ -349,13 +349,16 @@ describe("the other message and detail sites drop them too", () => {
   it("POLICY_SETTINGS_INVALID: the reason the settings files were not read (git text) carries none of them, each a space", () => {
     const report = policyReport("Bash(rm:*)", { unavailable: `git cat-file failed${INVISIBLE}here` });
     expectNoAdded(report, "settings unavailable");
+    // R1.2 (CORE-37): the message now ends with how to make the files readable.
+    const fix =
+      "Run the check on a checkout of the pull request head with full history (`actions/checkout` with `fetch-depth: 0`) so they can be read.";
     expect(textOf(report, "POLICY_SETTINGS_INVALID")).toBe(
-      `The agent settings files were not read (git cat-file failed${SPACES}here), so P02–P06 did not run.`,
+      `The agent settings files were not read (git cat-file failed${SPACES}here), so P02–P06 did not run. ${fix}`,
     );
     // Control: a plain reason is named as it is.
     expect(
       textOf(policyReport("Bash(rm:*)", { unavailable: "git cat-file failed here" }), "POLICY_SETTINGS_INVALID"),
-    ).toBe("The agent settings files were not read (git cat-file failed here), so P02–P06 did not run.");
+    ).toBe(`The agent settings files were not read (git cat-file failed here), so P02–P06 did not run. ${fix}`);
   });
 
   it("a policy violation detail: a pattern from the policy and a tracked path carry none of them, each U+FFFD", () => {

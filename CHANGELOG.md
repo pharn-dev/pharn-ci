@@ -31,6 +31,19 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   the cancel tag (England, Scotland, Wales, `usca`); before, any run of tag characters closed by the cancel tag was
   skipped, whatever its length or content. Any other run is a PI01 finding (`block` by default), so a change that hid
   text that way now fails the check (`docs/LIMITS.md`, "Subdivision flags pass").
+- The per-rule cap of 50 org-policy violations now keeps blocking violations first (block, then warn, then info, then
+  path, line and detail, the order the test-integrity cap already used). A pull request could add 50 decoy agent
+  settings files whose paths sort before the real one (`.a00/.claude/settings.json`), each giving a warning of the same
+  rule, and push a blocking P02 out of the kept set, so the run passed; the same trick turned a P09 block for an edit of
+  the `file:` policy into a warning. `policy.violations` now lists a rule's block violations before its warnings; the
+  counts of omitted violations are unchanged.
+- `POLICY_SETTINGS_INVALID` for agent settings files that were not read is now an error when the org policy sets
+  `forbidden_permissions` (P02), `allowed_mcp_servers` (P04) or `forbidden_mcp_servers` (P05) with that rule at block,
+  as it already was for `required_permissions_deny` (P03) and `required_hooks` (P06): a demand that cannot be checked is
+  not met. This makes a run stricter for a team that blocks on P02, P04 or P05 and checks out shallow (the
+  `actions/checkout` default) or uses `pr-number` mode: the step now fails, and the message, which now ends with how to
+  fix it, says to check out the pull request head with `fetch-depth: 0`. A policy with none of the five lists still
+  gets a warning.
 
 ## [0.10.0] - 2026-11-09
 

@@ -181,7 +181,8 @@ describe("pharn-ci check: policy mode reads the committed agent settings files",
       {
         level: "error",
         code: "POLICY_SETTINGS_INVALID",
-        text: `The agent settings files were not read (${UNREAD}), so P02–P06 did not run.`,
+        // R1.2 (CORE-37): the message now says how to make the files readable.
+        text: `The agent settings files were not read (${UNREAD}), so P02–P06 did not run. Run the check on a checkout of the pull request head with full history (\`actions/checkout\` with \`fetch-depth: 0\`) so they can be read.`,
       },
     ]);
     expect(naming(failed.calls, NESTED), "ls-tree failed: the nested file is not read").toEqual([]);
