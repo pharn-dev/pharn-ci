@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 // ti17-always-true-matcher-2, AC-23. CHANGELOG.md and docs/THREAT-MODEL.md are read inside the test body: the build
-// edits them after this test is written.
+// edits them after this test is written. Shipped in 0.11.0: the release PR moved the Unreleased entries under
+// `## [0.11.0] - 2026-11-17`, where they are looked for now.
 
 const ROOT = new URL("../../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
@@ -46,11 +47,12 @@ describe("CHANGELOG.md and docs/THREAT-MODEL.md record TI17", () => {
     const versionHeadings = changelog.filter((l) => l.startsWith("## ["));
     const latest = versionHeadings.indexOf("## [0.10.0] - 2026-11-09");
     expect(latest, "the 0.10.0 heading").toBeGreaterThan(-1);
-    expect(versionHeadings.slice(0, latest), "no version heading above 0.10.0 but Unreleased").toEqual([
+    expect(versionHeadings.slice(0, latest), "no version heading above 0.10.0 but Unreleased and 0.11.0").toEqual([
       "## [Unreleased]",
+      "## [0.11.0] - 2026-11-17",
     ]);
 
-    const unreleased = sectionOf(changelog, "## [Unreleased]");
+    const unreleased = sectionOf(changelog, "## [0.11.0] - 2026-11-17");
     const added = flat(sectionOf(unreleased, "### Added"));
     expect(added).toContain(ID);
     expect(added).toContain(CODE);

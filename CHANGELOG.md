@@ -9,6 +9,14 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Added
 
+### Changed
+
+### Security
+
+## [0.11.0] - 2026-11-17
+
+### Added
+
 - Test-integrity signal TI17, an assertion that always passes, and its message code `TEST_INTEGRITY_TI17`. In a JS/TS
   or Python test file it reads the added lines of the diff alone (no test source, no Python index) for three forms: a
   call to a custom matcher added to `expect` whose every `pass` is the constant true, an `assert` or
