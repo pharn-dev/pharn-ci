@@ -6,8 +6,13 @@ export interface PolicyFetchDeps extends AppClientDeps {
   now?: (() => Date) | undefined;
 }
 
-/** `owner/name` as GitHub spells it; checked before any token is requested. */
-const REPOSITORY = /^[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}$/;
+/**
+ * `owner/name` as GitHub spells it; checked before any token is requested. The owner is an organization or user name
+ * (letters, digits and `-`, at most 39), or an Enterprise Managed User's `handle_shortcode`, which can own private
+ * repositories in its own namespace (`LOGIN_PATTERN` in core documents the form).
+ */
+const REPOSITORY =
+  /^(?:[A-Za-z0-9-]{1,39}|(?=[A-Za-z0-9_-]{1,39}\/)[A-Za-z0-9][A-Za-z0-9-]*_[A-Za-z0-9]{3,8})\/[A-Za-z0-9._-]{1,100}$/;
 
 const JSON_CONTENT_TYPE = /^application\/json\s*(?:;|$)/i;
 

@@ -26,8 +26,11 @@ export const POLICY_PATTERNS = {
   ROOT: String.raw`^(?!\s)(?![\s\S]*\s$)(?![/-])(?![A-Za-z]:)(?!\./)(?![\s\S]*/$)(?![\s\S]*//)(?!(?:[\s\S]*/)?\.\.(?:/|$))[^\u0000-\u001F\u007F\\]*$`,
   /** `Tool` or `Tool(pattern)`. */
   PERM: String.raw`^(?![\s\S]*[\u0000-\u001F\u007F])[A-Za-z][A-Za-z0-9_-]*(\(.+\))?$`,
-  /** A GitHub login, optionally followed by `[bot]`. */
-  LOGIN: String.raw`^[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?$`,
+  /**
+   * A GitHub login, optionally followed by `[bot]`, or an Enterprise Managed User login `handle_shortcode` of at most
+   * 39 characters (the same regex as `LOGIN_PATTERN` in agents.ts, which documents the two forms).
+   */
+  LOGIN: String.raw`^(?:[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?|(?=[A-Za-z0-9_-]{1,39}$)[A-Za-z0-9][A-Za-z0-9-]*_[A-Za-z0-9]{3,8})$`,
   /** A hook event name. */
   EVENT: "^[A-Za-z]+$",
   /** A registry host name: ASCII letters, digits, `.` and `-`. */

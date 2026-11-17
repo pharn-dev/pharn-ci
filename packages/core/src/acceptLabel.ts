@@ -21,11 +21,13 @@ export const DEFAULT_ACCEPT_LABEL = "pharn/accepted";
 export const MAX_ACCEPT_LABEL_LENGTH = 50;
 
 /**
- * What a GitHub user login looks like: 1 to 39 characters of letters, digits and hyphens, not starting with a hyphen.
- * No `[bot]` suffix on purpose: only a user account other than the author can accept (`LOGIN_PATTERN` in agents.ts
- * is the author pattern, Apps included).
+ * What a GitHub user login looks like: 1 to 39 characters of letters, digits and hyphens, not starting with a hyphen;
+ * or an Enterprise Managed User login, `handle_shortcode` (the handle, one `_` and a shortcode of 3 to 8 letters or
+ * digits), at most 39 characters in all. No `[bot]` suffix on purpose: only a user account other than the author can
+ * accept (`LOGIN_PATTERN` in agents.ts is the author pattern, Apps included, and documents the two forms).
  */
-export const GITHUB_LOGIN = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/;
+export const GITHUB_LOGIN =
+  /^(?:[A-Za-z0-9][A-Za-z0-9-]{0,38}|(?=[A-Za-z0-9_-]{1,39}$)[A-Za-z0-9][A-Za-z0-9-]*_[A-Za-z0-9]{3,8})$/;
 
 const INVALID_LABEL =
   "the accept-label input must be at most 50 characters and must not contain control or invisible formatting characters";

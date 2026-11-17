@@ -24,6 +24,15 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   new signal id `TI17` in `schema/report.v2.json` (the signal id pattern and the known message codes) and org policies
   can set the new `TI17` key in `schema/policy.v1.json`; both are additive within their versions.
 
+### Fixed
+
+- Enterprise Managed User logins (`handle_shortcode`, such as `mona-lisa_acme`) are valid logins. Before, a pull
+  request by such a user read as an unknown author and so counted as an agent PR (P11, P13 and P14 applied to it), the
+  accept label applied by such a reviewer was never honoured, a policy that listed such a login in
+  `agents.extra_logins` was invalid, and a policy request for a repository an EMU user owns stopped with
+  `no-repository`. The form is GitHub's: the handle, one `_` and a shortcode of 3 to 8 letters or digits, at most 39
+  characters, never with `[bot]`. The `login` pattern of `schema/policy.v1.json` accepts it (additive, still v1).
+
 ### Security
 
 - The invisible-Unicode scan (PI01) no longer skips a hidden instruction written in tag characters after a flag emoji.

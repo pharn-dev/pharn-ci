@@ -26854,7 +26854,7 @@ function formatNumber(n) {
 // ../core/src/acceptLabel.ts
 var DEFAULT_ACCEPT_LABEL = "pharn/accepted";
 var MAX_ACCEPT_LABEL_LENGTH = 50;
-var GITHUB_LOGIN = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/;
+var GITHUB_LOGIN = /^(?:[A-Za-z0-9][A-Za-z0-9-]{0,38}|(?=[A-Za-z0-9_-]{1,39}$)[A-Za-z0-9][A-Za-z0-9-]*_[A-Za-z0-9]{3,8})$/;
 var INVALID_LABEL = "the accept-label input must be at most 50 characters and must not contain control or invisible formatting characters";
 function validateAcceptLabel(raw) {
   const label = raw.trim();
@@ -26993,7 +26993,7 @@ var MAX_CO_AUTHORS = 20;
 var MAX_META_LABELS = 100;
 var MAX_META_LABEL_CODE_POINTS = 50;
 var TRAILER_PREFIX = "co-authored-by:";
-var LOGIN_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?$/;
+var LOGIN_PATTERN = /^(?:[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?|(?=[A-Za-z0-9_-]{1,39}$)[A-Za-z0-9][A-Za-z0-9-]*_[A-Za-z0-9]{3,8})$/;
 var NOREPLY_PATTERN = /^(?:[0-9]+\+)?([^@+]+)@users\.noreply\.github\.com$/i;
 function isSpaceUnit(c) {
   return c <= 32 || c === 127 || c === 160 || c === 5760 || c >= 8192 && c <= 8202 || c === 8232 || c === 8233 || c === 8239 || c === 8287 || c === 12288 || c === 65279;
@@ -43230,8 +43230,11 @@ var POLICY_PATTERNS = {
   ROOT: String.raw`^(?!\s)(?![\s\S]*\s$)(?![/-])(?![A-Za-z]:)(?!\./)(?![\s\S]*/$)(?![\s\S]*//)(?!(?:[\s\S]*/)?\.\.(?:/|$))[^\u0000-\u001F\u007F\\]*$`,
   /** `Tool` or `Tool(pattern)`. */
   PERM: String.raw`^(?![\s\S]*[\u0000-\u001F\u007F])[A-Za-z][A-Za-z0-9_-]*(\(.+\))?$`,
-  /** A GitHub login, optionally followed by `[bot]`. */
-  LOGIN: String.raw`^[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?$`,
+  /**
+   * A GitHub login, optionally followed by `[bot]`, or an Enterprise Managed User login `handle_shortcode` of at most
+   * 39 characters (the same regex as `LOGIN_PATTERN` in agents.ts, which documents the two forms).
+   */
+  LOGIN: String.raw`^(?:[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?|(?=[A-Za-z0-9_-]{1,39}$)[A-Za-z0-9][A-Za-z0-9-]*_[A-Za-z0-9]{3,8})$`,
   /** A hook event name. */
   EVENT: "^[A-Za-z]+$",
   /** A registry host name: ASCII letters, digits, `.` and `-`. */
@@ -47336,7 +47339,7 @@ function parsePolicyInput(value) {
 }
 
 // src/policy-fetch.ts
-var REPOSITORY = /^[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}$/;
+var REPOSITORY = /^(?:[A-Za-z0-9-]{1,39}|(?=[A-Za-z0-9_-]{1,39}\/)[A-Za-z0-9][A-Za-z0-9-]*_[A-Za-z0-9]{3,8})\/[A-Za-z0-9._-]{1,100}$/;
 var JSON_CONTENT_TYPE = /^application\/json\s*(?:;|$)/i;
 async function fetchAppPolicy(deps, options) {
   let settings2;

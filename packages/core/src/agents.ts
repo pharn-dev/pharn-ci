@@ -42,8 +42,15 @@ const TRAILER_PREFIX = "co-authored-by:";
 /**
  * A pull request author's login, as GitHub allows it, with the `[bot]` suffix of an App. The one definition: the Action
  * reads authors and commit logins with it too (`GITHUB_LOGIN` in acceptLabel.ts is users only, on purpose).
+ *
+ * Two forms. A login: a letter or digit, then up to 38 letters, digits or `-`, optionally followed by `[bot]`. An
+ * Enterprise Managed User login: `handle_shortcode`, the handle (letters, digits and `-`), one `_` and the enterprise's
+ * shortcode (3 to 8 letters or digits), at most 39 characters in all, never with `[bot]` (an App's slug has no `_`).
+ * GitHub's "Username considerations for external authentication" documents that form and the 39-character limit. The
+ * policy grammar (`POLICY_PATTERNS.LOGIN`) and `schema/policy.v1.json` carry the same regex.
  */
-export const LOGIN_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?$/;
+export const LOGIN_PATTERN =
+  /^(?:[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?|(?=[A-Za-z0-9_-]{1,39}$)[A-Za-z0-9][A-Za-z0-9-]*_[A-Za-z0-9]{3,8})$/;
 /** A GitHub noreply address; the login is group 1. Run only on an e-mail the trailer parser already bounded. */
 const NOREPLY_PATTERN = /^(?:[0-9]+\+)?([^@+]+)@users\.noreply\.github\.com$/i;
 

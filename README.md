@@ -954,7 +954,9 @@ check are unaffected, so a run below its threshold still fails.
   organization) and not the PR author, compared case-insensitively. Otherwise the label is ignored, the blocks stand,
   and `TEST_INTEGRITY_ACCEPT_IGNORED` (`warn`) says why: the author applied it, a non-user account applied it, no
   labeling event was found, or the pull request or its events could not be read. Anything the Action cannot read counts
-  as ignored.
+  as ignored. A login is read as GitHub spells it: a letter or digit, then up to 38 letters, digits or `-`, or an
+  Enterprise Managed User login `handle_shortcode` (such as `reviewer_acme`: the handle, one `_` and a shortcode of 3
+  to 8 letters or digits, at most 39 characters). An actor whose login is neither is unreadable.
 - **Where it is set.** Only the `accept-label` input in the workflow. `test_integrity.accept_label` in `.pharn/ci.yml`
   is refused with an error, because the change under review can edit that file.
 - **When it is looked at.** On `pull_request` runs and `pr-number` runs, in `test-integrity: block`, with at least one
@@ -1349,7 +1351,10 @@ counts as an agent PR (fail closed): an unknown author, commits that cannot be l
 `file:` policy that the pull request edits and that cannot be read at the merge base). Only trailers of known agents are
 recorded, as a hint and an address; a human co-author never is. A run with no pull request records `isAgentPr: false`,
 and the CLI does not set the field. The org policy's `agents.labels` and `agents.extra_logins` add to the defaults (for
-a `file:` policy that the pull request edits, the lists at the merge base and at head both count). Only the org policy
+a `file:` policy that the pull request edits, the lists at the merge base and at head both count). A login in
+`agents.extra_logins`, like the PR author's, is a GitHub login (a letter or digit, then up to 38 letters, digits or
+`-`), optionally followed by `[bot]`, or an Enterprise Managed User login `handle_shortcode` (such as `dev_acme`: one
+`_` and a shortcode of 3 to 8 letters or digits, at most 39 characters, never with `[bot]`). Only the org policy
 adds to the lists; `.pharn/ci.yml` and the inputs cannot change them. See
 [`docs/LIMITS.md`](docs/LIMITS.md) §9 and [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) (A5).
 
