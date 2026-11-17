@@ -26,6 +26,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Security
 
+- Only the release workflow can create a `v*` release tag. A new `release-tag-creation` ruleset rejects a `v*` tag
+  from anyone but a GitHub App owned by pharn-dev, and the `Release publish` job of `release.yml` creates the tag
+  with a short-lived, repository-scoped token of that app, minted from secrets of the `release` environment. A tag
+  pushed by hand, by a workflow's `GITHUB_TOKEN` or by another installed app is rejected (`SECURITY.md`, Release
+  integrity; `docs/RELEASING.md`, The release app).
+
 ## [0.10.0] - 2026-11-09
 
 ### Added

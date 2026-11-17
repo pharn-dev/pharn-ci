@@ -26,14 +26,20 @@ coordinated disclosure of any vulnerability in this repository.
   (enforced by a ruleset), and releases are cut from verified `main` commits
   ([`docs/RELEASING.md`](./docs/RELEASING.md)). Release tags are unsigned lightweight tags, so the
   full commit SHA, not the tag, is what a consumer can verify.
-- **Known gap: who can create a release tag.** Anyone with write access to the repository (today
-  only the maintainer) can create a `v*` tag, not only the `Release publish` job, and once created
-  the tag can never be moved or deleted, not even to remove a wrong one. No ruleset restricts tag
-  creation: GitHub accepts only an app that belongs to the organization as a ruleset bypass actor,
-  and the built-in GitHub Actions integration that the release job's token runs as is not one, so a
-  creation rule would block the release itself. A tag that `release.yml` did not cut has no draft
-  GitHub Release from the `Release publish` job, and immutable releases cover only published
-  releases; pin the commit SHA and check it as [`docs/RELEASING.md`](./docs/RELEASING.md#verify-the-release)
+- **Who can create a release tag.** Only the `Release publish` job. The `release-tag-creation`
+  ruleset rejects the creation of a `v*` tag by anyone except the pharn-dev release app, a GitHub App
+  owned by the organization, installed on this repository only, with `contents: write` and nothing
+  else. Its private key is a secret of the `release` environment, so only a job in that environment
+  (deployable from `main` only, after the required reviewer approves) can mint its token, and
+  `release.yml` mints a token that is limited to this repository and revoked when the step ends. A
+  `git push` of a `v*` tag from a maintainer's machine, a workflow's `GITHUB_TOKEN` and the
+  third-party apps installed on the organization with `contents: write` are all rejected. **Residual:**
+  a repository admin can edit or disable the ruleset, and an organization owner can generate a new
+  private key for the app; today both are the maintainer, and both leave a record in the
+  organization's audit log. A workflow on `main` that names the `release` environment can read the
+  key, but adding one takes a merged pull request and the environment's approval. A tag that
+  `release.yml` did not cut has no draft GitHub Release from the `Release publish` job; pin the
+  commit SHA and check it as [`docs/RELEASING.md`](./docs/RELEASING.md#verify-the-release)
   describes.
 
 ## Maintainer model: one person today
@@ -56,8 +62,8 @@ What still holds without a second person, because GitHub enforces it for the adm
 - the bypass skips the approval only: a pull request cannot merge until all six required checks pass
   (`ci`, with its stale-`dist` check; `Action pins`; `gitleaks`; CodeQL's
   `Analyze (javascript-typescript)`; and the two Socket Security checks);
-- third-party actions pinned to commit SHAs; `v*` tags that nobody can move or delete (anyone with
-  write access can create one; see Release integrity above); immutable
+- third-party actions pinned to commit SHAs; `v*` tags that nobody can move or delete and only the
+  release job's app token can create (see Release integrity above); immutable
   releases, cut only from a verified `main` commit by a job that installs nothing.
 
 **Plan:** when a second maintainer joins, add them to `.github/CODEOWNERS` and as a reviewer of the

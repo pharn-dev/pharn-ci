@@ -5,7 +5,9 @@ name: release
 # true, so a run verifies everything and creates nothing unless you untick it.
 #
 # Tags are exact versions only and never move: the `release-tags` ruleset forbids updating or
-# deleting `v*`. A bad release is fixed with a new patch release, never by retagging.
+# deleting `v*`. A bad release is fixed with a new patch release, never by retagging. Only the
+# pharn-dev release app may create a `v*` tag (the `release-tag-creation` ruleset), and only `publish`
+# can mint its token: the app's private key is a secret of the `release` environment.
 #
 # THREE JOBS, and the split is the point (the same split as phargus's publish.yml):
 #   - `verify` has NO write permission. It refuses anything but main and a strict X.Y.Z that equals
@@ -16,8 +18,9 @@ name: release
 #     release notes to the next job as an artifact.
 #   - `publish` is the ONLY job with `contents: write`, and runs in the `release` environment (give
 #     it a required reviewer). It checks out nothing and installs nothing, so no dependency code runs
-#     while a write token exists. It creates the tag at exactly the commit `verify` checked, and the
-#     GitHub Release as a draft that the maintainer publishes with the Marketplace box ticked.
+#     while a write token exists. It creates the tag at exactly the commit `verify` checked, with a
+#     short-lived token of the release app, and the GitHub Release as a draft that the maintainer
+#     publishes with the Marketplace box ticked.
 #   - `smoke` runs after `publish` with read-only permission. It checks out the released commit, confirms the
 #     tag points at it, and runs scripts/smoke-release.mjs against that checkout's bundle. Red means: do not
 #     publish the draft (docs/RELEASING.md). `verify` runs the same script on the committed bundle, so
@@ -159,26 +162,66 @@ jobs:
     timeout-minutes: 10
     environment: release
     permissions:
-      contents: write # create the tag and the draft GitHub Release. THIS job only.
+      contents: write # the draft GitHub Release. THIS job only. The tag is created with the release app's token.
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: release-notes
           path: ${{ runner.temp }}/notes
 
-      # `gh` ships with the runner image; nothing is installed here. The tag is created at $GITHUB_SHA, the exact
-      # commit `verify` checked out and tested, not the branch, so a push to main in between changes nothing.
+      # `gh`, `curl`, `jq` and `openssl` ship with the runner image; nothing is installed here. The tag is created at
+      # $GITHUB_SHA, the exact commit `verify` checked out and tested, not the branch, so a push to main in between
+      # changes nothing.
+      #
+      # The tag needs the release app's token: the `release-tag-creation` ruleset rejects a `v*` tag from anyone
+      # else, GITHUB_TOKEN included (GitHub does not accept the Actions integration as a bypass actor). The token is
+      # minted here with the REST flow, not a token action, so no third-party code runs while the private key is in
+      # the job: openssl signs a 10-minute app JWT (the key goes in through a pipe and is never written to disk), the
+      # JWT is exchanged for an installation token limited to this repository and `contents: write`, and the token
+      # is revoked when the step ends. Both are masked, and neither leaves this step.
+      #
       # The release is a DRAFT on purpose: immutable releases lock a published release, and the Marketplace
       # checkbox exists only on the form that publishes it, so the maintainer publishes the draft by hand with
-      # the box ticked (docs/RELEASING.md, step 4). A draft creates no tag, hence the explicit tag first.
+      # the box ticked (docs/RELEASING.md, step 4). A draft creates no tag, hence the explicit tag first. The draft
+      # is created with GITHUB_TOKEN, as before; it creates no tag, so it needs no bypass.
       - name: Create tag and draft GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
+          RELEASE_APP_ID: ${{ secrets.RELEASE_APP_ID }}
+          RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
         run: |
           set -euo pipefail
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::version \"$VERSION\" is not X.Y.Z"; exit 1; }
-          gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+          [[ "$RELEASE_APP_ID" =~ ^[0-9]+$ ]] || { echo "::error::the release environment has no numeric RELEASE_APP_ID secret (docs/RELEASING.md, One-time setup)"; exit 1; }
+          [[ "$RELEASE_APP_PRIVATE_KEY" == *"PRIVATE KEY-----"* ]] || { echo "::error::the release environment has no RELEASE_APP_PRIVATE_KEY secret holding a PEM key (docs/RELEASING.md, One-time setup)"; exit 1; }
+
+          b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+          api() { curl -sS --fail-with-body -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "$@"; }
+
+          NOW="$(date +%s)"
+          HEADER="$(printf '{"alg":"RS256","typ":"JWT"}' | b64url)"
+          PAYLOAD="$(printf '{"iat":%d,"exp":%d,"iss":"%s"}' "$((NOW - 60))" "$((NOW + 540))" "$RELEASE_APP_ID" | b64url)"
+          SIGNATURE="$(printf '%s.%s' "$HEADER" "$PAYLOAD" \
+            | openssl dgst -sha256 -binary -sign <(printf '%s\n' "$RELEASE_APP_PRIVATE_KEY") | b64url)"
+          unset RELEASE_APP_PRIVATE_KEY
+          JWT="$HEADER.$PAYLOAD.$SIGNATURE"
+          echo "::add-mask::$JWT"
+
+          INSTALLATION="$(api -H "Authorization: Bearer $JWT" "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/installation" | jq -r .id)" \
+            || { echo "::error::the release app is not installed on $GITHUB_REPOSITORY, or RELEASE_APP_ID and RELEASE_APP_PRIVATE_KEY do not match"; exit 1; }
+          [[ "$INSTALLATION" =~ ^[0-9]+$ ]] || { echo "::error::no installation id for the release app on $GITHUB_REPOSITORY"; exit 1; }
+          TOKEN=""
+          revoke() { [ -z "$TOKEN" ] || api -X DELETE -H "Authorization: Bearer $TOKEN" "$GITHUB_API_URL/installation/token" > /dev/null || true; }
+          trap revoke EXIT
+          TOKEN="$(jq -n --arg repo "${GITHUB_REPOSITORY#*/}" '{repositories: [$repo], permissions: {contents: "write"}}' \
+            | api -X POST -H "Authorization: Bearer $JWT" --data @- \
+              "$GITHUB_API_URL/app/installations/$INSTALLATION/access_tokens" | jq -r .token)" \
+            || { echo "::error::could not mint a release app token with contents: write on $GITHUB_REPOSITORY"; exit 1; }
+          echo "::add-mask::$TOKEN"
+          [[ "$TOKEN" =~ ^ghs_ ]] || { echo "::error::the release app token has an unexpected format"; exit 1; }
+
+          GH_TOKEN="$TOKEN" gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
             -f ref="refs/tags/v$VERSION" \
             -f sha="$GITHUB_SHA" > /dev/null
           gh release create "v$VERSION" \
