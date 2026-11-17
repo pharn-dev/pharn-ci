@@ -9,6 +9,8 @@ const SHA = /^[0-9a-f]{40}$/;
 // Every `uses` key on a line: plain or quoted, at the start of the line, after `-`, or inside a flow mapping such as
 // `- { uses: actions/checkout@v4 }`. A false positive (a quoted string that holds "uses:") is preferred over a miss.
 const USES = /(?:^|[\s{,-])["']?uses["']?\s*:\s*['"]?([^\s'"#,}]+)/g;
+// A `uses` key with no value on its line: the value is on the next line, only a comment follows, or a flow mapping is split after the key.
+const USES_EMPTY = /(?:^|[\s{,-])["']?uses["']?\s*:\s*["']?\s*$/;
 // A line that opens a block scalar (`run: |`, `script: >-`, `- |`): its more-indented lines are text, not keys.
 const BLOCK_SCALAR = /^([ \t]*)((?:-[ \t]+)*)(.*)$/;
 const BLOCK_INDICATOR = /(?:^|:[ \t])[ \t]*[|>][0-9+-]*$/;
@@ -59,6 +61,7 @@ function check(file) {
         const at = ref.lastIndexOf("@");
         if (at === -1 || !SHA.test(ref.slice(at + 1))) bad.push(`${file}:${index + 1}  ${ref}`);
       }
+      if (USES_EMPTY.test(stripped.text)) bad.push(`${file}:${index + 1}  uses: with no value on its line`);
       if (quote === "") {
         const [, indent, dashes, rest] = BLOCK_SCALAR.exec(stripped.text.trimEnd());
         if (BLOCK_INDICATOR.test(rest)) blockKeyColumn = indent.length + dashes.length;

@@ -1,0 +1,100 @@
+{
+  "feature": "action-pins-uses-value-next-line-2",
+  "gates": {
+    "build": 0,
+    "instruction-growth": 0,
+    "lint": 0,
+    "reconcile": 0,
+    "test": 0
+  },
+  "verdict": "PASS",
+  "failing_gates": [],
+  "gate_run": {
+    "stamp_sha256": "5774fe4cf02d18c3a05eab82e74551cb8b152cea8431a2e7da958358a96ceaf8",
+    "source": "discover",
+    "fingerprint": {
+      "algo": "worktree-fingerprint/3+sha256",
+      "final": "47cec5c3987b2f5c0904d1a6695bc9265d1ac6759f63c5bf1f7e3f22bcf67e52"
+    }
+  },
+  "ac_gate": {
+    "mode": "test-first",
+    "verdict": "PASS",
+    "reason": null,
+    "evidence": [],
+    "acs": [
+      {
+        "id": "AC-1",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-action-pins-uses-empty-2.test.ts::CORE-147: Action pins reports a uses key with no value on its line › AC-1: names line 4 for a bare `- uses:` with the ref on the next line, tag or 40-hex SHA alike"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-2",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-action-pins-uses-empty-2.test.ts::CORE-147: Action pins reports a uses key with no value on its line › AC-2: reports `- uses: # note` and still passes block-scalar text that ends in `uses:`"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      },
+      {
+        "id": "AC-3",
+        "level": "integration",
+        "tests": [
+          "packages/core/test/ac-action-pins-uses-empty-2.test.ts::CORE-147: Action pins reports a uses key with no value on its line › AC-3: reports a flow mapping split so that the uses key ends its line"
+        ],
+        "status": "passed",
+        "reason": null,
+        "detail": ""
+      }
+    ],
+    "unmapped_anomalies": [],
+    "note": "an AC is delivered = a locked, once-red test titled AC-<n>:, in a file mapped to AC-<n>, passed on this head run. PHARN does not judge whether that test fully captures the AC's intent."
+  },
+  "completeness": {
+    "plan": "pharn/features/action-pins-uses-value-next-line-2/PLAN.md",
+    "repoDir": ".",
+    "declared": [
+      "scripts/check-action-pins.mjs"
+    ],
+    "skipped": [],
+    "missing": [],
+    "deletions": [],
+    "undeleted": [],
+    "complete": true,
+    "verdict": "complete"
+  },
+  "verifiers": {
+    "registered": 0,
+    "findings": []
+  },
+  "gate_reuse": {
+    "reused": []
+  },
+  "head_install": {
+    "state": "not-checked",
+    "why": "unmeasured-family",
+    "family": "pnpm",
+    "lockfile": null,
+    "counts": {
+      "changed": 0,
+      "missing": 0,
+      "extraneous": 0,
+      "missing_unchecked": 0
+    }
+  },
+  "reconcile_detail": {
+    "state": "parsed",
+    "exit": 0,
+    "verdict": "CLEAN",
+    "escapes": [],
+    "escapes_total": 0,
+    "merged_count": 0
+  }
+}

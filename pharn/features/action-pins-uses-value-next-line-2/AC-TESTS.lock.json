@@ -1,0 +1,89 @@
+{
+  "schema": "ac-tests-lock/6",
+  "feature": "action-pins-uses-value-next-line-2",
+  "mode": "test-first",
+  "spec": {
+    "spec_id": "action-pins-uses-value-next-line-2",
+    "spec_content_hash": "faaf6226f4a2003a64719b2dc02e2882fb87e1c3dfd6ec9e644788984c5b9f8a"
+  },
+  "mapping": {
+    "path": "pharn/features/action-pins-uses-value-next-line-2/AC-TESTS.md",
+    "sha256": "0762a66758c63340687ada5f56a62e8fee6ca8a94714ccb2c628a807405469bb"
+  },
+  "files": [
+    {
+      "path": "packages/core/test/ac-action-pins-uses-empty-2.test.ts",
+      "sha256": "0de587359fb85cd2b6395a5055a893986f08d677f0e9755b2f3a7f92a520183a"
+    }
+  ],
+  "bootstrap": null,
+  "red_run": {
+    "stamp_sha256": "d9cd9938c7ef19ffe96b01b61764cd3faaa73b81d62255fd494f9f92c4836fda",
+    "files_sha256": "c0ba7b249655f7107ec7ee984009c3fe0aa4a213943a276c93a7f898c42de753",
+    "gates": [
+      {
+        "gate": "test",
+        "results_sha256": "62a776cbb6a70f1daa4244bd224683196edfc5962bd86af6c06e7fba54a0897f"
+      }
+    ],
+    "acs": [
+      {
+        "id": "AC-1",
+        "tests": [
+          "packages/core/test/ac-action-pins-uses-empty-2.test.ts::CORE-147: Action pins reports a uses key with no value on its line › AC-1: names line 4 for a bare `- uses:` with the ref on the next line, tag or 40-hex SHA alike"
+        ]
+      },
+      {
+        "id": "AC-2",
+        "tests": [
+          "packages/core/test/ac-action-pins-uses-empty-2.test.ts::CORE-147: Action pins reports a uses key with no value on its line › AC-2: reports `- uses: # note` and still passes block-scalar text that ends in `uses:`"
+        ]
+      },
+      {
+        "id": "AC-3",
+        "tests": [
+          "packages/core/test/ac-action-pins-uses-empty-2.test.ts::CORE-147: Action pins reports a uses key with no value on its line › AC-3: reports a flow mapping split so that the uses key ends its line"
+        ]
+      }
+    ]
+  },
+  "test_infra": {
+    "levels": [
+      "integration"
+    ],
+    "gates": [
+      {
+        "id": "test",
+        "script": "vitest run",
+        "pre": null,
+        "post": null,
+        "results": "vitest-json"
+      }
+    ],
+    "chained": [],
+    "configs": [
+      {
+        "path": "vitest.config.ts",
+        "sha256": "84fef4870fed6a1d5156f5260cd8fcc9b6d1dcca7cc76e8de3c86a978b336fec"
+      }
+    ],
+    "script_files": [],
+    "jest": null,
+    "exclude": [],
+    "other_gates": [
+      {
+        "id": "build",
+        "script": "pnpm -r build",
+        "pre": null,
+        "post": null
+      },
+      {
+        "id": "lint",
+        "script": "biome check . && pnpm -r typecheck",
+        "pre": null,
+        "post": null
+      }
+    ],
+    "other_chained": []
+  }
+}
