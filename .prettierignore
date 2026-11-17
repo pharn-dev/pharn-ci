@@ -8,3 +8,24 @@
 /THREAT-MODEL.md
 /pharn.config.json
 /pharn.records.json
+# Files installed and rewritten by pharn (added by pharn)
+/.claude/agents/pharn-review-lens.md
+/.claude/agents/pharn-stage.md
+/.claude/commands/pharn-build.md
+/.claude/commands/pharn-grill.md
+/.claude/commands/pharn-loop-close.md
+/.claude/commands/pharn-loop-quick.md
+/.claude/commands/pharn-loop.md
+/.claude/commands/pharn-memory-promote.md
+/.claude/commands/pharn-plan.md
+/.claude/commands/pharn-regress.md
+/.claude/commands/pharn-review.md
+/.claude/commands/pharn-ship-close.md
+/.claude/commands/pharn-ship-quick.md
+/.claude/commands/pharn-ship-stages.md
+/.claude/commands/pharn-ship.md
+/.claude/commands/pharn-spec.md
+/.claude/commands/pharn-supervise.md
+/.claude/commands/pharn-test.md
+/.claude/commands/pharn-triage.md
+/.claude/commands/pharn-verify.md

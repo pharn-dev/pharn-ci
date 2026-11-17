@@ -1,9 +1,8 @@
 {
-  "pharnVersion": "0.16.1",
-  "skillsVersion": "7.3.0",
+  "pharnVersion": "0.21.1",
+  "skillsVersion": "7.22.0",
   "repo": "pharn-dev/pharn-oss",
-  "commit": "7a2340dd36e4c1703eb542ba9e8774000cc4ade2",
-  "modules": [],
+  "commit": "9422b97f9bcef022d240822024e75a1a49c6e278",
   "installedAt": "2026-11-04T12:22:02.538Z",
   "models": {
     "stages": {
@@ -12,7 +11,7 @@
         "effort": "high"
       },
       "spec": {
-        "model": "fable",
+        "model": "opus",
         "effort": "high"
       },
       "plan": {
@@ -20,8 +19,8 @@
         "effort": "high"
       },
       "grill": {
-        "model": "fable",
-        "effort": "medium"
+        "model": "opus",
+        "effort": "high"
       },
       "build": {
         "model": "sonnet",
@@ -44,7 +43,7 @@
         "effort": "high"
       },
       "review": {
-        "model": "fable",
+        "model": "opus",
         "effort": "high"
       },
       "memory-promote": {
@@ -217,5 +216,6 @@
   "testResults": {
     "test": "vitest-json"
   },
-  "ref": "latest"
+  "ref": "latest",
+  "updatedAt": "2026-11-17T13:59:06.746Z"
 }
