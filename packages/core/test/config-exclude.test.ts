@@ -68,9 +68,9 @@ describe("parseConfig: coverage.exclude", () => {
     }
   });
 
-  // CORE-43: a pattern over 1,024 characters is a config error since R1.5, so the 100,000-character pattern is now read
+  // CORE-43: a pattern over 1,024 characters is a config error since R1.5, so the 100,000-character pattern is now parsed
   // in linear time and rejected; before, it was accepted.
-  it("AC-7: parses 100,000 items in linear time, and reads and rejects a 100,000-character pattern in linear time", async () => {
+  it("AC-7: parses 100,000 items and a 100,000-character pattern in linear time", async () => {
     const { ConfigError, parseConfig } = await import("../src/config.js");
 
     const items = Array.from({ length: 100_000 }, (_, i) => `src/f${i}/**`);
