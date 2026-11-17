@@ -129,6 +129,22 @@ describe("schema/report.v2.json and schema/policy.v1.json accept TI17 and change
       quoted(base.properties.signals.description),
       "the signals description",
     );
+    // Re-pinned for CORE-44 (Enterprise Managed User logins): the login definition's pattern and description now also
+    // accept handle_shortcode; with those two strings turned back, the file is the base one.
+    type LoginDef = { $defs: { login: { description: string; pattern: string } } };
+    const loginHead = (JSON.parse(policyHead) as LoginDef).$defs.login;
+    const loginBase = (JSON.parse(policyBase) as LoginDef).$defs.login;
+    expect(new RegExp(loginHead.pattern, "u").test("mona-lisa_acme"), "the login pattern accepts an EMU login").toBe(
+      true,
+    );
+    expect(new RegExp(loginBase.pattern, "u").test("mona-lisa_acme"), "the base login pattern did not").toBe(false);
+    policyBack = replaceOnce(policyBack, quoted(loginHead.pattern), quoted(loginBase.pattern), "the login pattern");
+    policyBack = replaceOnce(
+      policyBack,
+      quoted(loginHead.description),
+      quoted(loginBase.description),
+      "the login description",
+    );
     expect(policyBack === policyBase, "policy.v1.json equals the base once the TI17 edits are out").toBe(true);
   });
 });

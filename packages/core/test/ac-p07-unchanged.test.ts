@@ -90,6 +90,22 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
         ).toBe(git("show", `${BASE}:${unknownTi[1]}`));
         continue;
       }
+      // Re-pinned for CORE-44 (Enterprise Managed User logins): login-grammar.json listed octo_cat as an invalid login,
+      // which is now a valid EMU login, so it lists octo_ca (a 2-character shortcode); with octo_ca turned back into
+      // octo_cat it is its content at the base byte for byte. Its new fixtures under fixtures/emu-logins/, the valid
+      // policy fixture emu-logins.json and the invalid login-emu-grammar pair are added.
+      if (line === "M\tfixtures/policy/invalid/login-grammar.json") {
+        expect(read("fixtures/policy/invalid/login-grammar.json").replace('"octo_ca"', '"octo_cat"'), line).toBe(
+          git("show", `${BASE}:fixtures/policy/invalid/login-grammar.json`),
+        );
+        continue;
+      }
+      if (
+        /^A\tfixtures\/(?:emu-logins\/[^/]+|policy\/valid\/emu-logins\.json|policy\/invalid\/login-emu-grammar\.(?:json|paths))$/.test(
+          line,
+        )
+      )
+        continue;
       // Re-pinned for markdown-byte-compare (review SPEC finding 29): markdown.test.ts's two snapshots moved, unchanged,
       // into these two new committed files.
       if (/^A\tfixtures\/markdown\/(?:missing|no-coverable)\.md$/.test(line)) continue;
