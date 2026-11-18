@@ -21,6 +21,10 @@ const TI17_OLD =
   "catch **7 of 9** (`deleted-test` by TI01,\n`added-skip` by TI03, `emptied-assertion` by TI05, `deselect-setting` by TI09, `replaced-test` by TI02,\n`loosened-assertion` by TI06 and `edited-expected-value` by TI07). The other two are missed: TI15 exists and misses\n`hard-coded-answer`, and `always-true-matcher` has only a proposal (TI17).";
 const TI17_NEW =
   "catch **8 of 9** (`deleted-test` by TI01,\n`added-skip` by TI03, `emptied-assertion` by TI05, `deselect-setting` by TI09, `replaced-test` by TI02,\n`loosened-assertion` by TI06, `edited-expected-value` by TI07 and `always-true-matcher` by TI17). The other one is\nmissed: TI15 exists and misses `hard-coded-answer`.";
+// CORE-129 (R6.4): "this release" was read as the release that shipped the paragraph, before TI17 was released; it
+// names the release instead, so the count is pinned to v0.11.0, where TI17 shipped. The rest is kept as it was.
+const RELEASE_OLD = "the signals of this release catch **8 of 9**";
+const RELEASE_NEW = "the signals of v0.11.0 catch **8 of 9**";
 
 const read = (path: string) => readFileSync(`${ROOT}${path}`, "utf8");
 const readBase = (path: string) => execFileSync("git", ["show", `${BASE}:${path}`], { cwd: ROOT, encoding: "utf8" });
@@ -93,7 +97,9 @@ describe("README.md and CHANGELOG.md name the pytest Skylos result", () => {
     expect(corrected, "the corrected paragraph holds the sentence ti17-always-true-matcher-2 rewrites").toContain(
       TI17_OLD,
     );
-    const kept = corrected.replace(TI17_OLD, TI17_NEW).split("\n");
+    const rewritten = corrected.replace(TI17_OLD, TI17_NEW);
+    expect(rewritten, "the rewritten paragraph holds the words CORE-129 corrects").toContain(RELEASE_OLD);
+    const kept = rewritten.replace(RELEASE_OLD, RELEASE_NEW).split("\n");
     expect(containsBlock(now, kept), "the Skylos paragraph is kept as it was, with its rewritten sentences").toBe(true);
     expect(normalize(now.join("\n")), "catch **8 of 9**").toContain("catch **8 of 9**");
 

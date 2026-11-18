@@ -46,7 +46,7 @@ inputs:
     description: "Registry hosts your team runs (Artifactory, Nexus, a private PyPI index) whose URLs dependency safety (D05) accepts, besides the four public ones, separated by commas or newlines. Each is an exact host name matched case-insensitively (the letters A-Z and a-z, digits, . and -; no scheme, path, port, user name or wildcard), at most 50, and a URL on it still has to be https with no user name, password or port. The action never calls these hosts, and never looks up a package resolved from one. An org policy dependencies.allowed_hosts replaces this list; .pharn/ci.yml cannot set it. Empty means none. See the README, Dependency safety."
     required: false
   accept-label:
-    description: Name of the pull request label a reviewer who is not the PR author applies to sign off test-integrity block findings, at most 50 characters. Only used on pull_request runs and pr-number runs with test-integrity block; the CLI and .pharn/ci.yml never set it. Defaults to pharn/accepted.
+    description: Name of the pull request label a reviewer who is not the PR author applies to sign off test-integrity block findings, at most 50 characters. Only used on pull_request runs and pr-number runs with test-integrity block; the CLI and .pharn/ci.yml never set it. An app policy's test_integrity.accept_label replaces it; a policy file's is not applied. Defaults to pharn/accepted.
     required: false
     default: pharn/accepted
   policy:

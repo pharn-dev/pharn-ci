@@ -1,7 +1,7 @@
 {
   "name": "@pharn-ci/core",
   "version": "0.11.0",
-  "description": "Pure functions behind pharn-ci: coverage and diff parsing, diff coverage, agent setup scan, Report v1.",
+  "description": "Pure functions behind pharn-ci: coverage and diff parsing, diff coverage, agent setup scan, Report v2.",
   "license": "Apache-2.0",
   "private": true,
   "type": "module",

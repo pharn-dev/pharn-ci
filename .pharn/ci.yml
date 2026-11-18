@@ -1,4 +1,5 @@
-# pharn-ci config (dogfooding). CLI flags and Action inputs override these values.
+# pharn-ci config (dogfooding). A CLI flag or Action input replaces file and format; for threshold the larger value
+# applies. Each setting's rule is in the README, Config.
 coverage:
   file: coverage/lcov.info # written by `pnpm test:coverage`
   format: lcov
