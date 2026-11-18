@@ -262,6 +262,11 @@ whether a test is still good.
   share less than the rename-in-place or cross-file thresholds above, blocks even when nothing was lost (the corpus dry
   run had one such PR). A person who confirms the rewrite clears it with the accept label. Every probe looks at no more
   than 256 candidates.
+- **Two tests merged into one: a known false block.** A change that folds two tests of a file into one test, keeping
+  both bodies' assertions, leaves one of the two base tests without a counterpart: the merged test answers at most one
+  of them (by name or by body; only an `.each` test answers several), no other new test of the file holds the other
+  one's body, and the rename in place needs as many new tests as removed ones. That test is reported as removed (`block`, `warn`
+  in mode `warn`) although its assertions still run, in the merged test. The accept label clears it.
 - **Names read from the text.** A test whose name is computed (a template literal with a substitution, `.each`, `.for`
   or any other expression) is matched by body only and reported as `warn`; two tests with the same full name are
   compared as a multiset, in line order.
@@ -332,9 +337,12 @@ Both readings give one finding per line, the stronger one kept.
   `if (slow) this.skip()`, a skip written after another statement on the same line and a skip built through a helper
   are missed. A call wrapped over lines is read from its first line only: `it` alone with `.skip(...)` on the next line
   is missed, and `it.skip(` with the name on the next line reads as a skip inside a body (`warn`). Comments and strings are never read as skips.
-- **Runner words that are not named.** `test.fixme`, `test.fail` and any other runner word that stops a test but is not
-  one of the forms above are not seen. `skipIf` and `runIf` are judged by their literal argument only: a
-  condition that is always true under another spelling reads as conditional.
+- **Runner words read only by the pair reading.** Playwright's `test.fixme` and `test.fail` are read by the test index
+  as `skip` and `fails`, so the pair reading reports one put on a test that exists at base as an unconditional skip of
+  an existing test (the mode's level), like `it.skip` and `test.fails`. The line reading does not know these two words,
+  so without the test index, and on a test the change adds, they are not seen. Any other runner word that stops a test
+  but is not one of the forms above is not seen either. `skipIf` and `runIf` are judged by their literal argument
+  only: a condition that is always true under another spelling reads as conditional.
 - **Go receivers other than `t`.** Only `t.Skip(`, `t.Skipf(` and `t.SkipNow(` are read; a receiver named `tb`, `b` or
   anything else is missed.
 - **Python aliases from top-level imports only.** A Python skip is also read through the names the test file binds with
@@ -416,9 +424,12 @@ merge base and at `HEAD`, in JavaScript, TypeScript and Python test files the ch
 - **Assertions dropped together with a rewrite.** TI05 reports fewer assertions only when the rest of the body is
   the base's with assertion statements taken out; a change that drops an assertion and edits anything else passes.
 - **Skipped and todo tests** (`skip`, `todo` at head, including `x`-prefixed heads and Python's `@pytest.mark.skip`,
-  `@unittest.skip` and an unconditional `pytest.skip()` or `self.skipTest()`) are not checked; TI03 reports skips added.
+  `@unittest.skip` and an unconditional `pytest.skip()` or `self.skipTest()`, and the forms the test index reads as
+  `skip` or `todo`: Playwright's `test.fixme`, a `skip` or `todo` option set to a literal `true`, and a Python test that
+  a later statement takes out of collection) are not checked; TI03 reports skips added.
   Only these excuse a test: one under `skipIf` or `runIf` (`@pytest.mark.skipif`, `@unittest.skipIf`,
-  `@unittest.skipUnless`, a conditional `pytest.skip()`) can run, so it is checked like any other.
+  `@unittest.skipUnless`, a conditional `pytest.skip()`, or a `skip`, `todo` or `fails` option set to anything but a
+  literal `true` or `false`) can run, so it is checked like any other.
 - **Go test files** and every other language are not read; the Python count is the interpreter's own reading of
   `assert` statements and the unittest assert methods.
 - **Caps.** At most 20 findings per file.
