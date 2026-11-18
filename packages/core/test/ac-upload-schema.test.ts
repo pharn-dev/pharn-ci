@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
+import { withoutCore50SchemaEdits } from "./core50-schema.js";
 import { withoutCore69SchemaEdits } from "./core69-schema.js";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { withoutTi17SchemaEdits } from "./ti17-schema.js";
@@ -168,7 +169,9 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
       withoutV080Properties(
         // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
         withoutV070Properties(
-          withoutV090SchemaEdits(withoutTi17SchemaEdits(withoutCore69SchemaEdits(read("schema/report.v2.json")))),
+          withoutV090SchemaEdits(
+            withoutTi17SchemaEdits(withoutCore69SchemaEdits(withoutCore50SchemaEdits(read("schema/report.v2.json")))),
+          ),
         ),
       ),
     );

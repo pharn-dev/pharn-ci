@@ -1,0 +1,6 @@
+import { expect, it } from "vitest";
+import { total } from "./cart.js";
+
+it("totals one price", () => {
+  expect(total([4])).toBe(4);
+});

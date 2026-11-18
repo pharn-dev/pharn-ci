@@ -1,0 +1,10 @@
+diff --git a/pkg/a/package.json b/pkg/b/package.json
+similarity index 60%
+rename from pkg/a/package.json
+rename to pkg/b/package.json
+index 1111111..2222222 100644
+--- a/pkg/a/package.json
++++ b/pkg/b/package.json
+@@ -4 +4 @@
+-    "test": "vitest run"
++    "test": "vitest run || true"

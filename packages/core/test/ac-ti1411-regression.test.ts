@@ -15,7 +15,8 @@ const TI01_FIXTURES: Array<[string, "block" | "info" | "none"]> = [
   ["pass-helper.diff", "none"],
   ["pass-init-py.diff", "none"],
   ["pass-fixture-json.diff", "none"],
-  ["pass-binary.diff", "none"],
+  // CORE-50 (binary-diff-not-blind): a deleted binary JS/TS test file now counts on its path alone, so this row is a block.
+  ["pass-binary.diff", "block"],
   ["info-with-source.diff", "info"],
   ["info-package-removed.diff", "info"],
   // Re-pinned by the name-only-moves change: TI01's same-stem rule no longer softens a deleted test file without body

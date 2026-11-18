@@ -25750,7 +25750,7 @@ var MESSAGE_FIXES = {
   TEST_INTEGRITY_TI17: S.TI17,
   TEST_INTEGRITY_INDEX_UNAVAILABLE: {
     kind: "none",
-    hint: "Check that the touched test files can be read, so removed tests and assertions are compared."
+    hint: "Check that the touched test files can be read, so removed tests and assertions are compared; a -diff or binary attribute in .gitattributes, or a NUL byte in the file, can cause this."
   },
   TEST_INTEGRITY_TEXT_TRUNCATED: {
     kind: "none",
@@ -26414,7 +26414,14 @@ function summarizeAgentSetup(files) {
 }
 
 // ../core/src/testIntegrityUnreadable.ts
-var HEAD_UNREADABLE_ERROR_REASONS = ["too-deep", "too-large", "over-file-cap"];
+var HEAD_UNREADABLE_ERROR_REASONS = ["too-deep", "too-large", "over-file-cap", "binary"];
+var BINARY_DIFF_REASON = "binary";
+function hasBinaryReason(entry) {
+  return entry.reason === BINARY_DIFF_REASON;
+}
+function isBinaryUnreadable(entry) {
+  return hasBinaryReason(entry) && entry.changeMadeUnreadable === true;
+}
 function changeMadeUnreadable(base, headReason) {
   if (!HEAD_UNREADABLE_ERROR_REASONS.includes(headReason)) return false;
   return base.ok || base.reason === "over-file-cap";
@@ -26812,14 +26819,21 @@ function indexUnavailableText(unavailable2, configUnavailable) {
         `${ti0205NotRunStart(codeSpan(oneLine(unavailable2.notRun)))}, so removed tests and emptied assertions are not checked.`
       );
     } else {
-      if (unavailable2.files.length > 0) {
+      const uncompared = unavailable2.files.filter((f) => !isBinaryUnreadable(f));
+      const binaryFiles = unavailable2.files.filter(isBinaryUnreadable);
+      if (uncompared.length > 0) {
         parts.push(
-          `TI02 and TI05 could not compare these touched test files, so they are not checked for removed tests or emptied assertions: ${namedFiles(unavailable2.files)}.`
+          `TI02 and TI05 could not compare these touched test files, so they are not checked for removed tests or emptied assertions: ${namedFiles(uncompared)}.`
+        );
+      }
+      if (binaryFiles.length > 0) {
+        parts.push(
+          `These touched test files are binary in the diff or in their text at HEAD, so not every signal could read their changes: ${namedFiles(binaryFiles)}.`
         );
       }
       if (unavailable2.added !== void 0 && unavailable2.added.length > 0) {
         parts.push(
-          `The tests in these added test files could not be read, so they are not checked: ${namedFiles(unavailable2.added)}.`
+          unavailable2.added.some(hasBinaryReason) ? `Not every signal could read the tests in these added test files, so they are not fully checked: ${namedFiles(unavailable2.added)}.` : `The tests in these added test files could not be read, so they are not checked: ${namedFiles(unavailable2.added)}.`
         );
       }
     }
@@ -36781,6 +36795,42 @@ function touchedTestEntries(diff) {
   }
   return { compared: compared2, added };
 }
+function binaryTouchedTestFiles(diff) {
+  const { compared: compared2, added: addedPaths } = touchedTestEntries(diff);
+  const modified = [];
+  const added = [];
+  for (const file of diff) {
+    if (file.binary !== true) continue;
+    if (compared2.has(`${file.oldPath}\0${file.path}`)) {
+      modified.push({ path: file.path, reason: BINARY_DIFF_REASON, changeMadeUnreadable: true });
+    } else if (file.status === "added" && addedPaths.has(file.path)) {
+      added.push({ path: file.path, reason: BINARY_DIFF_REASON });
+    }
+  }
+  const byPath = (a, b) => byCodeUnit(a.path, b.path);
+  return { modified: modified.sort(byPath), added: added.sort(byPath) };
+}
+function mergeEntries(existing, extra) {
+  const merged = /* @__PURE__ */ new Map();
+  for (const entry of [...existing, ...extra]) {
+    const key = `${entry.path}\0${entry.reason}`;
+    const before = merged.get(key);
+    const flagged = before?.changeMadeUnreadable === true || entry.changeMadeUnreadable === true;
+    merged.set(key, {
+      path: entry.path,
+      reason: entry.reason,
+      ...flagged ? { changeMadeUnreadable: true } : {}
+    });
+  }
+  return [...merged.values()].sort((a, b) => byCodeUnit(a.path, b.path) || byCodeUnit(a.reason, b.reason));
+}
+function withBinaryTestFiles(unavailable2, binary) {
+  if (unavailable2 !== void 0 && "notRun" in unavailable2) return unavailable2;
+  if (binary.modified.length === 0 && binary.added.length === 0) return unavailable2;
+  const files = mergeEntries(unavailable2?.files ?? [], binary.modified);
+  const added = mergeEntries(unavailable2?.added ?? [], binary.added);
+  return { files, ...added.length > 0 ? { added } : {} };
+}
 function modifiedTestSourcePaths(diff) {
   const base = /* @__PURE__ */ new Set();
   const head = /* @__PURE__ */ new Set();
@@ -37694,6 +37744,15 @@ function matchTests(touched) {
   return { unmatched, pairs, moved, replaced };
 }
 
+// ../core/src/binaryDetails.ts
+var BINARY_DELETED_DETAIL = "Test file deleted; git shows it as binary, so its text was not read.";
+var BINARY_RENAMED_AWAY_DETAIL = "Test file renamed away; git shows it as binary, so its text was not read.";
+var BINARY_CHANGES_DETAIL = "git shows this file as binary, so its changes could not be read.";
+var BINARY_DETAILS = [BINARY_DELETED_DETAIL, BINARY_RENAMED_AWAY_DETAIL, BINARY_CHANGES_DETAIL];
+function isBinaryDetail(detail) {
+  return BINARY_DETAILS.includes(detail);
+}
+
 // ../core/src/signals/ti01Moved.ts
 var leafOf = (block) => block.path[block.path.length - 1] ?? "";
 function sameStemDeletions(diff) {
@@ -37841,9 +37900,20 @@ function detectTI01(diff, mode, moved = /* @__PURE__ */ new Set(), compared2 = /
   for (const file of diff) {
     const renamedAway = isRenamedAwayTest(file);
     const deleted = file.status === "deleted" && isTestFile(file.path);
-    if (!(renamedAway || deleted) || file.binary === true) continue;
+    if (!(renamedAway || deleted)) continue;
     const path = renamedAway ? file.oldPath : file.path;
     if (isSnapFile(path) || found.has(path)) continue;
+    if (file.binary === true) {
+      if (testLanguage(path) === null) continue;
+      found.set(path, {
+        id: "TI01",
+        severity: mode,
+        path,
+        line: null,
+        detail: renamedAway ? BINARY_RENAMED_AWAY_DETAIL : BINARY_DELETED_DETAIL
+      });
+      continue;
+    }
     const defined = removedTests(file);
     const cutCode = file.textTruncated === true && (testLanguage(path) !== null || coverageSourceLanguage(path) !== null);
     const counts2 = defined === "yes" || defined === "unknown" || cutCode || renamedAway;
@@ -39768,12 +39838,15 @@ function detectTI10(diff, options) {
   const noTestFiles = options.repoFiles.length > 0 && !options.repoFiles.some((path) => isTestFile(path)) && deletedTestFiles(diff).length === 0;
   const signals = [];
   for (const file of diff) {
-    if (file.binary === true || !isPackageJsonFile(file.path)) continue;
+    if (!isPackageJsonFile(file.path)) continue;
     if (file.status !== "modified" && file.status !== "renamed") continue;
     const found = [];
     const scripts = options.sources === void 0 ? null : scriptsOf(options.sources, file);
     if (scripts !== null) {
       found.push(...scriptsObjectFindings(scripts.base, scripts.head, noTestFiles));
+    } else if (file.binary === true) {
+      signals.push({ id: "TI10", severity: options.mode, path: file.path, line: null, detail: BINARY_CHANGES_DETAIL });
+      continue;
     } else if (file.hunks !== void 0) {
       found.push(...diffLineFindings(file.hunks, noTestFiles));
     } else {
@@ -41472,7 +41545,6 @@ function lookupOf2(side) {
 function candidatesOf2(diff) {
   const found = [];
   for (const file of diff) {
-    if (file.binary === true) continue;
     const kind = testConfigKind(file.path);
     if (kind === null) continue;
     if (file.status === "modified" || file.status === "added") {
@@ -41762,6 +41834,12 @@ function flowOf(line) {
   return items === null ? null : { key: kv.key, items: new Set(items) };
 }
 function detectTI11(diff, mode) {
+  const signals = [];
+  for (const file of diff) {
+    if (file.binary === true && (isWorkflowFile(file.path) || isWorkflowFile(file.oldPath))) {
+      signals.push({ id: "TI11", severity: mode, path: file.path, line: null, detail: BINARY_CHANGES_DETAIL });
+    }
+  }
   const files = diff.filter(
     (file) => (isWorkflowFile(file.path) || isWorkflowFile(file.oldPath)) && file.hunks !== void 0 && file.binary !== true
   );
@@ -41780,7 +41858,6 @@ function detectTI11(diff, mode) {
     if (list === void 0) addedByBase.set(base, [flags]);
     else list.push(flags);
   }
-  const signals = [];
   for (const file of files) {
     const path = file.path;
     const added = (file.hunks ?? []).flatMap((hunk) => hunk.added);
@@ -42023,8 +42100,14 @@ function detectTI14(diff, options) {
   const signals = [];
   for (const file of diff) {
     if (file.path !== config && file.oldPath !== config) continue;
-    if (file.hunks === void 0 || file.binary === true) continue;
     const path = file.path === config ? file.path : file.oldPath;
+    if (file.binary === true) {
+      if (file.status !== "added") {
+        signals.push({ id: "TI14", severity: options.mode, path, line: null, detail: BINARY_CHANGES_DETAIL });
+      }
+      continue;
+    }
+    if (file.hunks === void 0) continue;
     const removedNumbers = [];
     const addedNumbers = [];
     let lastAdded;
@@ -43234,6 +43317,7 @@ function check(input) {
     settings: dependencySettings,
     ...input.dependencyLookups === void 0 ? {} : { lookups: input.dependencyLookups }
   });
+  const testIndexUnavailable = parsedDiff === null || testIntegrity2.mode === "off" ? comparison?.unavailable : withBinaryTestFiles(comparison?.unavailable, binaryTouchedTestFiles(parsedDiff));
   const base = {
     version: input.version,
     threshold: input.threshold,
@@ -43256,7 +43340,7 @@ function check(input) {
     ...textTruncatedTestFiles.length > 0 ? { textTruncatedTestFiles } : {},
     ...comparison === null || comparison.languages.length === 0 ? {} : { testIntegrityLanguages: comparison.languages },
     ...omittedSignals.length === 0 ? {} : { omittedSignals },
-    ...comparison?.unavailable === void 0 ? {} : { testIndexUnavailable: comparison.unavailable },
+    ...testIndexUnavailable === void 0 ? {} : { testIndexUnavailable },
     ...testChanges === void 0 ? {} : { testChanges },
     ...testExercise === void 0 ? {} : { testExercise },
     ...comparison?.configUnavailable === void 0 ? {} : { testConfigUnavailable: comparison.configUnavailable },
@@ -44807,7 +44891,7 @@ var MESSAGE_HINTS = {
   TEST_INTEGRITY_TI15: "Check that the code handles the general case and not only the test's value, and add a test with another input.",
   TEST_INTEGRITY_TI16: "Fix the lint or type error the comment hides, or say in the PR why the test needs it.",
   TEST_INTEGRITY_TI17: "Restore the assertion that can fail, or say in the PR why the test checks less now.",
-  TEST_INTEGRITY_INDEX_UNAVAILABLE: "A file over 512 KiB or nested too deeply, one with many syntax errors, more than 200 touched test files, a missing Python 3.8 or newer for `.py` files, or git objects that could not be read stop the comparison. Review the named test files by hand for removed tests and weakened assertions.",
+  TEST_INTEGRITY_INDEX_UNAVAILABLE: "A file over 512 KiB or nested too deeply, one with many syntax errors, more than 200 touched test files, a missing Python 3.8 or newer for `.py` files, or git objects that could not be read stop the comparison. A test file git shows as binary (a `-diff` or `binary` attribute in `.gitattributes`) hides its changed lines from the signals that read the diff, and non-text content such as a NUL byte also stops the comparison. Review the named test files by hand for removed tests and weakened assertions.",
   TEST_INTEGRITY_TEXT_TRUNCATED: "Review the named files by hand for skipped, focused or weakened tests, or split the change so each file stays under the limit.",
   TEST_INTEGRITY_ACCEPTED: "A reviewer other than the PR author signed off, so the block findings are warnings. The sign-off belongs to the pull request, not to a commit: remove the label if a later push should be judged again.",
   TEST_INTEGRITY_ACCEPT_IGNORED: "The block findings stand. Fix them, or ask a reviewer who is not the PR author to apply the label; it counts only when a user account other than the author applied it last.",
@@ -44907,8 +44991,13 @@ var SIGNAL_HINT_IDS = /* @__PURE__ */ new Set([
   "TI16",
   "TI17"
 ]);
-function signalHint(id, label, blocks) {
-  return SIGNAL_HINT_IDS.has(id) ? hintFor(`TEST_INTEGRITY_${id}`, label, blocks) : void 0;
+var BINARY_HINT_SENTENCE = "Git shows this file as binary: if a `-diff` or `binary` attribute in `.gitattributes` matches it, remove that attribute; if none does, the file holds non-text content such as a NUL byte, so store it as UTF-8 text.";
+var BINARY_FINDING_IDS = /* @__PURE__ */ new Set(["TI01", "TI10", "TI11", "TI14"]);
+function signalHint(id, label, blocks, detail) {
+  if (!SIGNAL_HINT_IDS.has(id)) return void 0;
+  const hint = hintFor(`TEST_INTEGRITY_${id}`, label, blocks);
+  if (hint === void 0 || detail === void 0 || !BINARY_FINDING_IDS.has(id) || !isBinaryDetail(detail)) return hint;
+  return `${hint} ${BINARY_HINT_SENTENCE}`;
 }
 var MAX_FINDINGS = 20;
 var OPEN_FINDINGS = 10;
@@ -44941,7 +45030,7 @@ function testIntegrityLines(report) {
       const out = [
         `- ${SEVERITY_ICON[signal2.severity] ?? LEVEL_ICON.info} **${inlineText(signal2.id)}** ${location} \u2014 ${inlineText(signal2.detail)}`
       ];
-      const hint = signalHint(signal2.id, label, signal2.severity === "block");
+      const hint = signalHint(signal2.id, label, signal2.severity === "block", signal2.detail);
       if (hint !== void 0) out.push(`  - Hint: ${hint}`);
       return out;
     };
@@ -45493,7 +45582,11 @@ function policyCell(report) {
 function renderMessage(m, report) {
   const line = `- ${LEVEL_ICON[m.level]} \`${m.code}\` ${inlineText(m.text)}`;
   const lifted = m.code === "TEST_INTEGRITY_INDEX_UNAVAILABLE" || m.code === "TEST_INTEGRITY_TEXT_TRUNCATED";
-  const hint = hintFor(m.code, acceptLabelOf(report), lifted ? isLiftableUnreadableError(m) : m.level === "error");
+  const base = hintFor(m.code, acceptLabelOf(report), lifted ? isLiftableUnreadableError(m) : m.level === "error");
+  const binary = base !== void 0 && report.testIntegrity.signals.some(
+    (s) => BINARY_FINDING_IDS.has(s.id) && `TEST_INTEGRITY_${s.id}` === m.code && isBinaryDetail(s.detail)
+  );
+  const hint = binary ? `${base} ${BINARY_HINT_SENTENCE}` : base;
   return hint === void 0 ? line : `${line}
   - Hint: ${hint}`;
 }

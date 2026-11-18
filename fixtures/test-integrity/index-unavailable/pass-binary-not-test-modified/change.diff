@@ -1,0 +1,12 @@
+diff --git a/assets/logo.png b/assets/logo.png
+index 1111111..2222222 100644
+Binary files a/assets/logo.png and b/assets/logo.png differ
+diff --git a/src/__snapshots__/cart.test.ts.snap b/src/__snapshots__/cart.test.ts.snap
+index 1111111..2222222 100644
+Binary files a/src/__snapshots__/cart.test.ts.snap and b/src/__snapshots__/cart.test.ts.snap differ
+diff --git a/tests/data.bin b/tests/data.bin
+index 1111111..2222222 100644
+Binary files a/tests/data.bin and b/tests/data.bin differ
+diff --git a/tests/fixtures/cart.png b/tests/fixtures/cart.png
+index 1111111..2222222 100644
+Binary files a/tests/fixtures/cart.png and b/tests/fixtures/cart.png differ

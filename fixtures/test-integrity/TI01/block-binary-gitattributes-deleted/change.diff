@@ -1,0 +1,11 @@
+diff --git a/.gitattributes b/.gitattributes
+new file mode 100644
+index 0000000..4444444
+--- /dev/null
++++ b/.gitattributes
+@@ -0,0 +1 @@
++*.test.ts -diff
+diff --git a/src/cart.test.ts b/src/cart.test.ts
+deleted file mode 100644
+index 5555555..0000000
+Binary files a/src/cart.test.ts and /dev/null differ

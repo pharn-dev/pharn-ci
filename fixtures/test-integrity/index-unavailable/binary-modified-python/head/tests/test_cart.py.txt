@@ -1,0 +1,5 @@
+from cart import total
+
+
+def test_adds():
+    assert total([2, 3]) == 5

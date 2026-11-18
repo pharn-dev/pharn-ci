@@ -11,6 +11,15 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- Fixed: a test file, `package.json`, workflow file or pharn-ci config that git shows as binary (a `-diff` or `binary`
+  attribute in `.gitattributes`, or non-text content) is no longer skipped silently (CORE-50). A deleted or renamed-away
+  JS/TS, Python or Go test file is TI01 at the mode's level, a modified or renamed JS/TS or Python one makes
+  `TEST_INTEGRITY_INDEX_UNAVAILABLE` an error in `block` (an added one is named there as a warning), and a binary
+  `package.json`, workflow or config the change modifies is one TI10, TI11 or TI14 finding; a binary test-runner config
+  is judged by TI09 from its text like a text one, and a `binary` text at HEAD is now an error reason. The hints name
+  `.gitattributes`. This can add block findings: on a deleted binary helper file under a test directory (a
+  `conftest.py`, a `.d.ts`), on a binary test file deleted with its source or its package, and on every PR that
+  touches a file a long-standing `-diff` or `binary` attribute already marks. The accept label clears each of them.
 - CORE-69: in `test-integrity: block` the check now fails when a test file the change modifies cannot be read at HEAD
   (`too-deep`, `too-large`, `over-file-cap`), has more than 5000 changed lines (JS/TS, Python or Go test files), or is
   a `.py` file on a runner with no `python3` or `python` (an older Python still only warns); modified test files are

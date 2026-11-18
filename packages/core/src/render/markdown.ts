@@ -1,4 +1,5 @@
 import { DEFAULT_ACCEPT_LABEL, GITHUB_LOGIN, isLiftableUnreadableError } from "../acceptLabel.js";
+import { isBinaryDetail } from "../binaryDetails.js";
 import type { CoverageFormat } from "../coverage/types.js";
 import type { PolicyUnavailableReason } from "../policy/resolved.js";
 import {
@@ -124,7 +125,7 @@ export const MESSAGE_HINTS: Readonly<Record<MessageCode, Hint>> = {
   TEST_INTEGRITY_TI16: "Fix the lint or type error the comment hides, or say in the PR why the test needs it.",
   TEST_INTEGRITY_TI17: "Restore the assertion that can fail, or say in the PR why the test checks less now.",
   TEST_INTEGRITY_INDEX_UNAVAILABLE:
-    "A file over 512 KiB or nested too deeply, one with many syntax errors, more than 200 touched test files, a missing Python 3.8 or newer for `.py` files, or git objects that could not be read stop the comparison. Review the named test files by hand for removed tests and weakened assertions.",
+    "A file over 512 KiB or nested too deeply, one with many syntax errors, more than 200 touched test files, a missing Python 3.8 or newer for `.py` files, or git objects that could not be read stop the comparison. A test file git shows as binary (a `-diff` or `binary` attribute in `.gitattributes`) hides its changed lines from the signals that read the diff, and non-text content such as a NUL byte also stops the comparison. Review the named test files by hand for removed tests and weakened assertions.",
   TEST_INTEGRITY_TEXT_TRUNCATED:
     "Review the named files by hand for skipped, focused or weakened tests, or split the change so each file stays under the limit.",
   TEST_INTEGRITY_ACCEPTED:
@@ -283,9 +284,26 @@ const SIGNAL_HINT_IDS: ReadonlySet<string> = new Set([
   "TI17",
 ]);
 
-/** Hint under the finding of a test-integrity signal id: the hint of its `TEST_INTEGRITY_<id>` code. */
-function signalHint(id: string, label: string, blocks: boolean): string | undefined {
-  return SIGNAL_HINT_IDS.has(id) ? hintFor(`TEST_INTEGRITY_${id}`, label, blocks) : undefined;
+/**
+ * The sentence added to the hint of a TI01, TI10, TI11 or TI14 finding that git shows as binary (CORE-50). The report
+ * cannot say why git showed the file as binary, so it names both causes and the fix for each, and never claims the
+ * attribute is there.
+ */
+const BINARY_HINT_SENTENCE =
+  "Git shows this file as binary: if a `-diff` or `binary` attribute in `.gitattributes` matches it, remove that attribute; if none does, the file holds non-text content such as a NUL byte, so store it as UTF-8 text.";
+
+/** The signal ids whose findings can be binary findings (`isBinaryDetail`). */
+const BINARY_FINDING_IDS: ReadonlySet<string> = new Set(["TI01", "TI10", "TI11", "TI14"]);
+
+/**
+ * Hint under the finding of a test-integrity signal id: the hint of its `TEST_INTEGRITY_<id>` code, followed by one space
+ * and the binary sentence when the finding's detail is one of the fixed binary sentences.
+ */
+function signalHint(id: string, label: string, blocks: boolean, detail?: string): string | undefined {
+  if (!SIGNAL_HINT_IDS.has(id)) return undefined;
+  const hint = hintFor(`TEST_INTEGRITY_${id}`, label, blocks);
+  if (hint === undefined || detail === undefined || !BINARY_FINDING_IDS.has(id) || !isBinaryDetail(detail)) return hint;
+  return `${hint} ${BINARY_HINT_SENTENCE}`;
 }
 
 /** Most findings listed in the Test integrity section; the rest are counted. */
@@ -349,7 +367,7 @@ function testIntegrityLines(report: Report): string[] {
       const out = [
         `- ${SEVERITY_ICON[signal.severity] ?? LEVEL_ICON.info} **${inlineText(signal.id)}** ${location} — ${inlineText(signal.detail)}`,
       ];
-      const hint = signalHint(signal.id, label, signal.severity === "block");
+      const hint = signalHint(signal.id, label, signal.severity === "block", signal.detail);
       if (hint !== undefined) out.push(`  - Hint: ${hint}`);
       return out;
     };
@@ -1097,7 +1115,15 @@ function policyCell(report: Report): string {
 function renderMessage(m: Message, report: Report): string {
   const line = `- ${LEVEL_ICON[m.level]} \`${m.code}\` ${inlineText(m.text)}`;
   const lifted = m.code === "TEST_INTEGRITY_INDEX_UNAVAILABLE" || m.code === "TEST_INTEGRITY_TEXT_TRUNCATED";
-  const hint = hintFor(m.code, acceptLabelOf(report), lifted ? isLiftableUnreadableError(m) : m.level === "error");
+  const base = hintFor(m.code, acceptLabelOf(report), lifted ? isLiftableUnreadableError(m) : m.level === "error");
+  // A TEST_INTEGRITY_TI01/10/11/14 message shown here (all its findings were cut from the section) gets the binary
+  // sentence when the report holds a binary finding of that id.
+  const binary =
+    base !== undefined &&
+    report.testIntegrity.signals.some(
+      (s) => BINARY_FINDING_IDS.has(s.id) && `TEST_INTEGRITY_${s.id}` === m.code && isBinaryDetail(s.detail),
+    );
+  const hint = binary ? `${base} ${BINARY_HINT_SENTENCE}` : base;
   return hint === undefined ? line : `${line}\n  - Hint: ${hint}`;
 }
 

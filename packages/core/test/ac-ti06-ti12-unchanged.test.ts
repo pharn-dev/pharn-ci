@@ -302,7 +302,21 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
         } as unknown as Input) as unknown as Report;
         expectValidReport(report);
         expectNoNewSignal(report, name);
-        earlier.push({ fixture: name, signals: report.testIntegrity.signals, messages: report.messages });
+        if (name === "TI01/pass-binary.diff") {
+          // CORE-50 (binary-diff-not-blind): this fixture (a deleted binary tests/img.test.ts) now gives one TI01 block,
+          // where the base commit gave nothing. Assert that new record, then take it out, so EARLIER_DIGEST still pins
+          // the base record of this fixture and every other one.
+          const ti01 = report.testIntegrity.signals.filter((s) => (s as { id: string }).id === "TI01");
+          expect(ti01.map((s) => (s as { path: string }).path)).toEqual(["tests/img.test.ts"]);
+          expect(report.messages.filter((m) => m.code === "TEST_INTEGRITY_TI01")).toHaveLength(1);
+          earlier.push({
+            fixture: name,
+            signals: report.testIntegrity.signals.filter((s) => (s as { id: string }).id !== "TI01"),
+            messages: report.messages.filter((m) => m.code !== "TEST_INTEGRITY_TI01"),
+          });
+        } else {
+          earlier.push({ fixture: name, signals: report.testIntegrity.signals, messages: report.messages });
+        }
       }
     }
     expect(earlier.length).toBeGreaterThan(100);

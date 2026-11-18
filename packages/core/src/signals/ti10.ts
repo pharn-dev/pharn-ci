@@ -1,3 +1,4 @@
+import { BINARY_CHANGES_DETAIL } from "../binaryDetails.js";
 import type { DiffFile } from "../diff/unified.js";
 import type { TestIntegritySignal } from "../report.js";
 import { deletedTestFiles, isTestFile } from "../testFiles.js";
@@ -238,6 +239,10 @@ function scanKinds(value: string): Set<Kind> {
  * and the diff needs its kept hunks. `--passWithNoTests` gives nothing when the tracked files hold no test file and the
  * diff deletes none. The severity is the mode; at most 20 per file, on the lowest line numbers. No script key or value
  * reaches a signal: every detail is one fixed sentence.
+ *
+ * A `package.json` that git shows as binary (a `-diff` or `binary` attribute, or non-text content; CORE-50) has no diff
+ * line to read. It is judged from the sources when both texts read as JSON, exactly as a text diff is; otherwise it is
+ * one signal at the mode's severity, with line null and a fixed sentence. Equal `scripts` objects give nothing.
  */
 export function detectTI10(diff: readonly DiffFile[], options: TI10Options): TestIntegritySignal[] {
   const noTestFiles =
@@ -247,13 +252,17 @@ export function detectTI10(diff: readonly DiffFile[], options: TI10Options): Tes
 
   const signals: TestIntegritySignal[] = [];
   for (const file of diff) {
-    if (file.binary === true || !isPackageJsonFile(file.path)) continue;
+    if (!isPackageJsonFile(file.path)) continue;
     if (file.status !== "modified" && file.status !== "renamed") continue;
 
     const found: Array<{ line: number | null; kind: Kind }> = [];
     const scripts = options.sources === undefined ? null : scriptsOf(options.sources, file);
     if (scripts !== null) {
       found.push(...scriptsObjectFindings(scripts.base, scripts.head, noTestFiles));
+    } else if (file.binary === true) {
+      // Git shows the file as binary, so the diff has no line to read: one fixed finding (CORE-50).
+      signals.push({ id: "TI10", severity: options.mode, path: file.path, line: null, detail: BINARY_CHANGES_DETAIL });
+      continue;
     } else if (file.hunks !== undefined) {
       found.push(...diffLineFindings(file.hunks, noTestFiles));
     } else {

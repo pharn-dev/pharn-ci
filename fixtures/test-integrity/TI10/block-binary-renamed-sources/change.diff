@@ -1,0 +1,6 @@
+diff --git a/pkg/a/package.json b/pkg/b/package.json
+similarity index 60%
+rename from pkg/a/package.json
+rename to pkg/b/package.json
+index 1111111..2222222 100644
+Binary files a/pkg/a/package.json and b/pkg/b/package.json differ

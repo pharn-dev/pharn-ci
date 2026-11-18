@@ -38,9 +38,12 @@ const DIST_BOUND = 12_000_000;
 // ac-ti0205-regression leaves them out of its loop (both output digests are unchanged); these are the digests of the
 // edited files.
 const PINNED: Record<string, string> = {
-  "packages/core/test/ac-ti0205-regression.test.ts": "54ec7c5a00511cece0197d567bdf243e4aafca228274e13f62908da83f2259bc",
+  // Re-pinned again by CORE-50 (binary-diff-not-blind): both walkers assert the new TI01 record of the unedited
+  // TI01/pass-binary.diff and take it out before hashing (their output digests are unchanged); these are the digests of
+  // the edited files.
+  "packages/core/test/ac-ti0205-regression.test.ts": "702f084c3213b193d2e63b19c39c39210294b23030674cabdc53abd6852545f2",
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "481fbd3cdefe47fbc0e572ecc719a97c0d591c4e182922020bd86daff9fa9b93",
+    "bff9876506f80d7c5278a38103d818c7b6b27d262d851c12ef15c6997c5eebe5",
 };
 
 /**

@@ -42,11 +42,15 @@ interface Candidate {
   added: boolean;
 }
 
-/** The modified, added and renamed entries whose path is a config kind TI09 reads. A deleted entry is never read. */
+/**
+ * The modified, added and renamed entries whose path is a config kind TI09 reads. A deleted entry is never read. An
+ * entry that git shows as binary is judged like any other (CORE-50): TI09 reads the base and head text of the config
+ * from the test sources, never the diff's lines, so a binary diff changes nothing; a config it cannot read keeps its
+ * existing handling (listed as unavailable, the `(config)` finding, or did-not-run).
+ */
 function candidatesOf(diff: readonly DiffFile[]): Candidate[] {
   const found: Candidate[] = [];
   for (const file of diff) {
-    if (file.binary === true) continue;
     const kind = testConfigKind(file.path);
     if (kind === null) continue;
     if (file.status === "modified" || file.status === "added") {

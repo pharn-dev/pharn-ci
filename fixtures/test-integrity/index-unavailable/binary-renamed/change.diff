@@ -1,0 +1,6 @@
+diff --git a/src/a.test.ts b/src/b.test.ts
+similarity index 60%
+rename from src/a.test.ts
+rename to src/b.test.ts
+index 1111111..2222222 100644
+Binary files a/src/a.test.ts and b/src/b.test.ts differ

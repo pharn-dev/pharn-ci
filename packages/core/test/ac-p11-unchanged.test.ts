@@ -81,6 +81,17 @@ const CORE70_TI10 = [
 const CORE70_PATH = new RegExp(
   `^fixtures/test-integrity/(?:TI09/(?:${CORE70_TI09.join("|")})|TI10/(?:${CORE70_TI10.join("|")}))/[^\\t]+$`,
 );
+// Re-pinned for CORE-50 (binary-diff-not-blind): its new case directories, named one by one, are added too.
+const CORE50_PATH = new RegExp(
+  `^fixtures/test-integrity/(?:${[
+    "TI01/(?:block-binary-gitattributes-deleted|block-binary-spec-mjs-deleted|block-binary-test-cts-deleted|block-binary-py-deleted|block-binary-go-deleted|block-binary-renamed-away|pass-binary-not-test-deleted)",
+    "index-unavailable/(?:binary-modified|binary-modified-python|binary-renamed|binary-added|pass-binary-not-test-modified|head-binary-text-diff|base-binary-text-diff|binary-modified-both-dropped)",
+    "TI09/(?:block-binary-pass-with-no-tests|pass-binary-same-settings)",
+    "TI10/(?:block-binary-no-sources|block-binary-head-dropped|block-binary-or-true-sources|pass-binary-scripts-equal|block-binary-renamed-sources|block-binary-renamed-no-sources)",
+    "TI11/(?:block-binary-workflow-modified|block-binary-workflow-deleted|block-binary-workflow-added|block-binary-workflow-renamed|pass-binary-not-workflow)",
+    "TI14/(?:block-binary-config-modified|block-binary-config-renamed|block-binary-config-deleted|pass-binary-other-yaml|pass-binary-config-added)",
+  ].join("|")})/[^\\t]+$`,
+);
 
 /** The tests the PLAN lists as deliberately updated; each must carry a comment naming this item. */
 const DELIBERATE = [
@@ -136,6 +147,7 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
         continue;
       }
       if (line.startsWith("A\t") && CORE70_PATH.test(line.slice(2))) continue;
+      if (line.startsWith("A\t") && CORE50_PATH.test(line.slice(2))) continue;
       // Re-pinned for comment-coverage-bar (the diff-coverage bar in the PR comment): the four golden report.md files
       // gained the bar line on purpose. Each must be modified, never added or deleted, and folding the bar line (and
       // the empty line under it) back out must give its content at the base byte for byte.
@@ -239,6 +251,8 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       if (CORE71_FIXTURES.test(path) && path.startsWith("fixtures/")) continue;
       // Re-pinned for CORE-70: its new TI09 and TI10 case directories are untracked until committed.
       if (CORE70_PATH.test(path)) continue;
+      // Re-pinned for CORE-50: its new case directories are untracked until committed.
+      if (CORE50_PATH.test(path)) continue;
       // Re-pinned for policy-p13 (Horizon 2 item H1): its fixtures under fixtures/policy-rules/p13/ are untracked until
       // committed.
       // Re-pinned for stale instructions (Horizon 2 item H3): its fixtures under fixtures/stale-instructions/ are

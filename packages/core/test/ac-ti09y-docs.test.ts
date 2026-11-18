@@ -126,6 +126,19 @@ describe("TI09: schema, docs and fixtures", () => {
     expect(pass.length, "at least 6 must-not-trigger cases").toBeGreaterThanOrEqual(6);
 
     const pathOf = (diff: string) => /^\+\+\+ b\/(.+)$/m.exec(diff)?.[1] ?? "";
+    // CORE-50 (binary-diff-not-blind): TI09 judges a config whose diff entry git shows as binary from its base and head
+    // text, so these cases hold git's binary entry as change.diff: a `diff --git` line, an `index` line and
+    // `Binary files a/<path> and b/<path> differ`, with no `---`/`+++` lines. The path is read from that entry instead.
+    // Only the case named with `true` also holds text.diff beside it: the same change as a text diff, which its AC-13
+    // test compares against. Every other case keeps the exact layout checked below.
+    const BINARY_CASES: Readonly<Record<string, boolean>> = {
+      "block-binary-pass-with-no-tests": true,
+      "pass-binary-same-settings": false,
+    };
+    const binaryPathOf = (diff: string) =>
+      /^diff --git a\/(.+) b\/\1\nindex [0-9a-f]+\.\.[0-9a-f]+ \d+\nBinary files a\/\1 and b\/\1 differ\n?$/.exec(
+        diff,
+      )?.[1] ?? "";
     const basename = (path: string) => path.slice(path.lastIndexOf("/") + 1);
     const addedCases: string[] = [];
     for (const name of cases) {
@@ -134,11 +147,21 @@ describe("TI09: schema, docs and fixtures", () => {
       expect(files, `${name} holds change.diff`).toContain("change.diff");
       const diff = readFileSync(join(dir, "change.diff"), "utf8");
       expect(diff.split("\n").length, `${name}: change.diff is under 1000 lines`).toBeLessThan(1000);
-      const path = pathOf(diff);
+      const binary = Object.hasOwn(BINARY_CASES, name);
+      const path = binary ? binaryPathOf(diff) : pathOf(diff);
       expect(path, `${name}: the diff names a file`).not.toBe("");
       const isAdded = /^new file mode /m.test(diff);
       if (isAdded) addedCases.push(name);
-      for (const file of files.filter((f) => f !== "change.diff")) {
+      const withText = BINARY_CASES[name] === true;
+      expect(files.includes("text.diff"), `${name}: text.diff only beside a binary change.diff that names it`).toBe(
+        withText,
+      );
+      if (withText) {
+        expect(pathOf(readFileSync(join(dir, "text.diff"), "utf8")), `${name}: text.diff names the same file`).toBe(
+          path,
+        );
+      }
+      for (const file of files.filter((f) => f !== "change.diff" && !(withText && f === "text.diff"))) {
         expect(file, `${name}: ${file} is a .txt under base/ or head/`).toMatch(/^(base|head)\/.+\.txt$/);
       }
       expect(files, `${name}: head/${path}.txt`).toContain(`head/${path}.txt`);
@@ -153,7 +176,10 @@ describe("TI09: schema, docs and fixtures", () => {
     }
 
     const triggerNames = new Set(
-      trigger.map((name) => basename(pathOf(readFileSync(join(TI09, name, "change.diff"), "utf8")))),
+      trigger.map((name) => {
+        const diff = readFileSync(join(TI09, name, "change.diff"), "utf8");
+        return basename(Object.hasOwn(BINARY_CASES, name) ? binaryPathOf(diff) : pathOf(diff));
+      }),
     );
     for (const config of [
       "vitest.config.ts",

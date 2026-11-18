@@ -1,3 +1,4 @@
+import { BINARY_CHANGES_DETAIL } from "../binaryDetails.js";
 import type { DiffFile, DiffLineText } from "../diff/unified.js";
 import type { TestIntegritySignal } from "../report.js";
 import { byCodeUnit } from "../text.js";
@@ -309,8 +310,18 @@ function flowOf(line: string): { key: string; items: Set<string> } | null {
  * an event-name test leaving pull requests out, an added `timeout-minutes` of 0 or 1) stay `warn` in every mode, because
  * without context lines the line cannot be tied to a test step. One signal per rule per file, on its first matching
  * line; the detail is a fixed sentence.
+ *
+ * A workflow file that git shows as binary (a `-diff` or `binary` attribute, or non-text content; CORE-50) has no line
+ * to read: whatever its status (added, modified, renamed or deleted) it is one signal at the mode's severity, with line
+ * null and a fixed sentence. That pass runs before and outside the text rules below, which skip binary entries.
  */
 export function detectTI11(diff: readonly DiffFile[], mode: "block" | "warn"): TestIntegritySignal[] {
+  const signals: TestIntegritySignal[] = [];
+  for (const file of diff) {
+    if (file.binary === true && (isWorkflowFile(file.path) || isWorkflowFile(file.oldPath))) {
+      signals.push({ id: "TI11", severity: mode, path: file.path, line: null, detail: BINARY_CHANGES_DETAIL });
+    }
+  }
   const files = diff.filter(
     (file) =>
       (isWorkflowFile(file.path) || isWorkflowFile(file.oldPath)) && file.hunks !== undefined && file.binary !== true,
@@ -331,7 +342,6 @@ export function detectTI11(diff: readonly DiffFile[], mode: "block" | "warn"): T
     else list.push(flags);
   }
 
-  const signals: TestIntegritySignal[] = [];
   for (const file of files) {
     const path = file.path;
     const added: DiffLineText[] = (file.hunks ?? []).flatMap((hunk) => hunk.added);

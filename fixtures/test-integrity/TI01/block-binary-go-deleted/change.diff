@@ -1,0 +1,4 @@
+diff --git a/pkg/cart_test.go b/pkg/cart_test.go
+deleted file mode 100644
+index 5555555..0000000
+Binary files a/pkg/cart_test.go and /dev/null differ

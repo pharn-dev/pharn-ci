@@ -49,7 +49,7 @@ import { applySignalOverrides } from "./signals/overrides.js";
 import { keepSignalFileText, textCutModifiedTestFiles, textCutSignalFiles } from "./signals/signalFiles.js";
 import { summarizeTestChanges } from "./signals/testChanges.js";
 import { matchTests } from "./signals/testMatch.js";
-import { indexTouchedTestFiles } from "./signals/testPairs.js";
+import { binaryTouchedTestFiles, indexTouchedTestFiles, withBinaryTestFiles } from "./signals/testPairs.js";
 import { detectTI01 } from "./signals/ti01.js";
 import { movedTestFiles } from "./signals/ti01Moved.js";
 import { detectTI02 } from "./signals/ti02.js";
@@ -159,9 +159,11 @@ export interface CheckInput {
    * unavailable and a modified test file, the report carries one `TEST_INTEGRITY_INDEX_UNAVAILABLE` message; the same
    * message names a modified test file that could not be compared and an added test file whose tests could not be
    * read. In mode `block` that message is an error when TI02 and TI05 did not run, and also when a modified test file
-   * cannot be indexed at HEAD for the reason `too-deep`, `too-large` or `over-file-cap` while it was indexed at the
-   * merge base or dropped there as `over-file-cap`; an added test file, or a file already unreadable at the merge base,
-   * stays a warning.
+   * cannot be indexed at HEAD for the reason `too-deep`, `too-large`, `over-file-cap` or `binary` while it was indexed at
+   * the merge base or dropped there as `over-file-cap`; an added test file, or a file already unreadable at the merge
+   * base, stays a warning. A modified or added JS/TS or Python test file whose diff entry git shows as binary is named
+   * with the reason `binary` even with no sources for it (a modified one is an error in mode `block` whatever the merge
+   * base held, an added one a warning); it is still compared when both its sides index.
    */
   testSources?: TestSources;
   /**
@@ -619,6 +621,12 @@ export function check(input: CheckInput): Report {
           settings: dependencySettings,
           ...(input.dependencyLookups === undefined ? {} : { lookups: input.dependencyLookups }),
         });
+  // A modified or added test file that git shows as binary (CORE-50) is named whether or not the sources hold it: the
+  // diff alone says its text was not read. Only with a diff and a mode that is not off.
+  const testIndexUnavailable =
+    parsedDiff === null || testIntegrity.mode === "off"
+      ? comparison?.unavailable
+      : withBinaryTestFiles(comparison?.unavailable, binaryTouchedTestFiles(parsedDiff));
   const base = {
     version: input.version,
     threshold: input.threshold,
@@ -648,7 +656,7 @@ export function check(input: CheckInput): Report {
       ? {}
       : { testIntegrityLanguages: comparison.languages }),
     ...(omittedSignals.length === 0 ? {} : { omittedSignals }),
-    ...(comparison?.unavailable === undefined ? {} : { testIndexUnavailable: comparison.unavailable }),
+    ...(testIndexUnavailable === undefined ? {} : { testIndexUnavailable }),
     ...(testChanges === undefined ? {} : { testChanges }),
     ...(testExercise === undefined ? {} : { testExercise }),
     ...(comparison?.configUnavailable === undefined ? {} : { testConfigUnavailable: comparison.configUnavailable }),

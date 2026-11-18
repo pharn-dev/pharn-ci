@@ -310,7 +310,7 @@ export const MESSAGE_FIXES: Readonly<Record<MessageCode, FixEntry>> = {
   TEST_INTEGRITY_TI17: S.TI17,
   TEST_INTEGRITY_INDEX_UNAVAILABLE: {
     kind: "none",
-    hint: "Check that the touched test files can be read, so removed tests and assertions are compared.",
+    hint: "Check that the touched test files can be read, so removed tests and assertions are compared; a -diff or binary attribute in .gitattributes, or a NUL byte in the file, can cause this.",
   },
   TEST_INTEGRITY_TEXT_TRUNCATED: {
     kind: "none",

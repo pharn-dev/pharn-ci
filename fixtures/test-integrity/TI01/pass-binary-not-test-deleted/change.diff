@@ -1,0 +1,16 @@
+diff --git a/assets/logo.png b/assets/logo.png
+deleted file mode 100644
+index 5555555..0000000
+Binary files a/assets/logo.png and /dev/null differ
+diff --git a/src/__snapshots__/cart.test.ts.snap b/src/__snapshots__/cart.test.ts.snap
+deleted file mode 100644
+index 5555555..0000000
+Binary files a/src/__snapshots__/cart.test.ts.snap and /dev/null differ
+diff --git a/tests/data.bin b/tests/data.bin
+deleted file mode 100644
+index 5555555..0000000
+Binary files a/tests/data.bin and /dev/null differ
+diff --git a/tests/fixtures/cart.png b/tests/fixtures/cart.png
+deleted file mode 100644
+index 5555555..0000000
+Binary files a/tests/fixtures/cart.png and /dev/null differ

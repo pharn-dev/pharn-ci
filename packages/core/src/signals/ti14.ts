@@ -1,3 +1,4 @@
+import { BINARY_CHANGES_DETAIL } from "../binaryDetails.js";
 import { parseExcludePattern } from "../config.js";
 import type { DiffFile, DiffLineText } from "../diff/unified.js";
 import { configRepoPath } from "../gateInputs.js";
@@ -105,6 +106,11 @@ function removedValues(hunks: ReadonlyArray<{ removed: DiffLineText[] }>): Set<s
  * `exclude: [..]` flow list, block items after an added `exclude:` key, or an added list item that is one of the
  * patterns the check was given) is another. Both take the effective mode as their severity. One signal per rule, on its
  * first matching line; the detail is a fixed sentence plus, for the threshold, the two numbers.
+ *
+ * A config that git shows as binary (a `-diff` or `binary` attribute, or non-text content; CORE-50) and that the change
+ * modifies, renames or deletes has no line to read: it is one signal at the mode's severity, at the config's own path,
+ * with line null and a fixed sentence. An added binary config gives nothing: a text diff of an added config can never
+ * give a finding here either (there is no base threshold or exclusion list to compare).
  */
 export function detectTI14(diff: readonly DiffFile[], options: TI14Options): TestIntegritySignal[] {
   const config = configRepoPath(options.configPath, options.repoRoot);
@@ -114,8 +120,14 @@ export function detectTI14(diff: readonly DiffFile[], options: TI14Options): Tes
 
   for (const file of diff) {
     if (file.path !== config && file.oldPath !== config) continue;
-    if (file.hunks === undefined || file.binary === true) continue;
     const path = file.path === config ? file.path : file.oldPath;
+    if (file.binary === true) {
+      if (file.status !== "added") {
+        signals.push({ id: "TI14", severity: options.mode, path, line: null, detail: BINARY_CHANGES_DETAIL });
+      }
+      continue;
+    }
+    if (file.hunks === undefined) continue;
 
     const removedNumbers: Array<{ value: string; line: number }> = [];
     const addedNumbers: Array<{ value: string; line: number }> = [];

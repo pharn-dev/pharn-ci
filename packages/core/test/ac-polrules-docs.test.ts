@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { withoutCore50SchemaEdits } from "./core50-schema.js";
 import { withoutCore69SchemaEdits } from "./core69-schema.js";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { withoutTi17SchemaEdits } from "./ti17-schema.js";
@@ -86,7 +87,9 @@ describe("docs, schema and sources for the policy rules", { timeout: 60_000 }, (
     // Re-pinned for ti17-always-true-matcher-2: the TI17 id pattern and code text are taken out first (ti17-schema.ts).
     // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
     const now = codeDescription(
-      withoutSchemaLevelEdits(withoutTi17SchemaEdits(withoutCore69SchemaEdits(read("schema/report.v2.json")))),
+      withoutSchemaLevelEdits(
+        withoutTi17SchemaEdits(withoutCore69SchemaEdits(withoutCore50SchemaEdits(read("schema/report.v2.json")))),
+      ),
     );
     expect(base.endsWith("the check ran in full).")).toBe(true);
     expect(now.startsWith(base)).toBe(true);

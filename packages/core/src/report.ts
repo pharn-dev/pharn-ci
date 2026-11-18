@@ -8,7 +8,7 @@ import type { FixHint } from "./fix/table.js";
 import type { AgentSetupFile, AgentSetupInventory } from "./setup/scan.js";
 import { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
 import type { ResolvedTestIntegrityMode } from "./testIntegrityMode.js";
-import { ti09NotRunStart, ti0205NotRunStart } from "./testIntegrityUnreadable.js";
+import { hasBinaryReason, isBinaryUnreadable, ti09NotRunStart, ti0205NotRunStart } from "./testIntegrityUnreadable.js";
 import { cutCodeUnits, replaceUnsafeChars } from "./text.js";
 
 /**
@@ -361,7 +361,8 @@ export interface OmittedSignals {
  * added test files whose tests could not be read (`added`): nothing that reads an added file's tests checked them. A
  * `files` entry with `changeMadeUnreadable` is a modified test file the change made unreadable at HEAD
  * (see `testIntegrityUnreadable.ts`); it makes the message an error in mode `block`. The flag is an input only and
- * never reaches the report.
+ * never reaches the report. A modified test file whose diff entry git shows as binary is a `files` entry with the reason
+ * `binary` and that flag, whatever the merge base held; an added one is an `added` entry with the reason `binary`.
  */
 export type TestIndexUnavailable =
   | {
@@ -444,7 +445,7 @@ export interface BuildReportInput {
   /**
    * Touched test files TI02 and TI05 could not compare, or why they did not run; adds one message: a warn, except an
    * error in mode `block` when they did not run at all (the `{ notRun }` form) or when a `files` entry carries
-   * `changeMadeUnreadable`.
+   * `changeMadeUnreadable` (a modified test file made unreadable at HEAD, or whose diff entry git shows as binary).
    */
   testIndexUnavailable?: TestIndexUnavailable;
   /** The tests-changed summary (see `summarizeTestChanges`); fills `testIntegrity.changes`. Absent adds nothing. */
@@ -998,8 +999,9 @@ export function oneLine(text: string): string {
  * The level of the `TEST_INTEGRITY_INDEX_UNAVAILABLE` message. In mode `block` it is an error when TI02 and TI05, or TI09,
  * did not run at all (the `{ notRun }` form): block asked for a test-integrity gate, and a gate that could not read the
  * touched test text fails closed (pre-sale review item 4). It is also an error when a `{ files }` entry carries
- * `changeMadeUnreadable` (a modified test file the change made unreadable at HEAD). The other per-file entries (its
- * unread added files included: an added file cannot hide a weakened existing test) and every other mode stay a warning.
+ * `changeMadeUnreadable` (a modified test file the change made unreadable at HEAD, or whose diff entry git shows as
+ * binary). The other per-file entries (its unread added files included: an added file cannot hide a weakened existing
+ * test) and every other mode stay a warning.
  */
 function indexUnavailableLevel(
   mode: string | undefined,
@@ -1018,11 +1020,16 @@ function indexUnavailableLevel(
 }
 
 /**
- * The text of the one `TEST_INTEGRITY_INDEX_UNAVAILABLE` message: the TI02 and TI05 sentence, then the added-files
- * sentence, then the TI09 sentence, joined by one space, each only when it has something to say. The TI02 and TI05
- * sentence names the touched test files that could not be compared with a code for each (at most 5, then a count), or
- * says they did not run, with the sources reason as one code span. The added-files sentence names, the same way, the
- * added test files whose tests could not be read. The TI09 sentence does the same for the touched test-config files.
+ * The text of the one `TEST_INTEGRITY_INDEX_UNAVAILABLE` message: the TI02 and TI05 sentence, then the binary sentence,
+ * then the added-files sentence, then the TI09 sentence, joined by one space, each only when it has something to say. The
+ * TI02 and TI05 sentence names the touched test files that could not be compared with a code for each (at most 5, then a
+ * count), or says they did not run, with the sources reason as one code span. The binary sentence names, the same way,
+ * the touched files with the reason `binary` and `changeMadeUnreadable` (a binary diff entry, or a HEAD drop of a text
+ * that indexed at the merge base): it is true for both, so it says only that not every signal could read their
+ * changes; a `binary` entry without the flag (the merge base side was dropped) stays in the TI02 and TI05 sentence. The
+ * added-files sentence names, the same way, the added test files whose tests could not be read; when it holds a
+ * `binary` entry it says the tests are not fully checked, which is true for an added binary file whose text indexed.
+ * The TI09 sentence does the same for the touched test-config files.
  * Neither a Python run's detail nor any file content is in it. Null when there is nothing to say.
  */
 function indexUnavailableText(
@@ -1036,14 +1043,23 @@ function indexUnavailableText(
         `${ti0205NotRunStart(codeSpan(oneLine(unavailable.notRun)))}, so removed tests and emptied assertions are not checked.`,
       );
     } else {
-      if (unavailable.files.length > 0) {
+      const uncompared = unavailable.files.filter((f) => !isBinaryUnreadable(f));
+      const binaryFiles = unavailable.files.filter(isBinaryUnreadable);
+      if (uncompared.length > 0) {
         parts.push(
-          `TI02 and TI05 could not compare these touched test files, so they are not checked for removed tests or emptied assertions: ${namedFiles(unavailable.files)}.`,
+          `TI02 and TI05 could not compare these touched test files, so they are not checked for removed tests or emptied assertions: ${namedFiles(uncompared)}.`,
+        );
+      }
+      if (binaryFiles.length > 0) {
+        parts.push(
+          `These touched test files are binary in the diff or in their text at HEAD, so not every signal could read their changes: ${namedFiles(binaryFiles)}.`,
         );
       }
       if (unavailable.added !== undefined && unavailable.added.length > 0) {
         parts.push(
-          `The tests in these added test files could not be read, so they are not checked: ${namedFiles(unavailable.added)}.`,
+          unavailable.added.some(hasBinaryReason)
+            ? `Not every signal could read the tests in these added test files, so they are not fully checked: ${namedFiles(unavailable.added)}.`
+            : `The tests in these added test files could not be read, so they are not checked: ${namedFiles(unavailable.added)}.`,
         );
       }
     }

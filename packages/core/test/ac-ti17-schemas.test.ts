@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { runDiff } from "./ac-e1-fix-shared.js";
+import { withoutCore50SchemaEdits } from "./core50-schema.js";
 import { withoutCore69SchemaEdits } from "./core69-schema.js";
 import { validateReport } from "./schema.js";
 
@@ -89,7 +90,7 @@ describe("schema/report.v2.json and schema/policy.v1.json accept TI17 and change
 
     // report.v2.json: the code description gains one insertion naming TEST_INTEGRITY_TI17; the pattern accepts TI17.
     // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
-    const reportHead = withoutCore69SchemaEdits(atHead("report.v2.json"));
+    const reportHead = withoutCore69SchemaEdits(withoutCore50SchemaEdits(atHead("report.v2.json")));
     const reportBase = atBase("report.v2.json");
     const headCodes = (JSON.parse(reportHead) as ReportSchema).$defs.message.properties.code.description;
     const baseCodes = (JSON.parse(reportBase) as ReportSchema).$defs.message.properties.code.description;

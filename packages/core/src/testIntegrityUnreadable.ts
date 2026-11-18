@@ -6,11 +6,35 @@
 /**
  * The reasons a modified test file can fail to index at HEAD that make the per-file
  * `TEST_INTEGRITY_INDEX_UNAVAILABLE` message an error in mode `block`: the change itself can cause each of them while
- * the test runner still runs the file. The one list: a new reason that a change can cause (CORE-50 appends `binary`)
- * is added here and nowhere else. Every other reason (`syntax-error`, `syntax-error-heavy`, `parser-threw`,
- * `missing`, `unsafe-path`, `over-total-cap`, the Python index reasons) stays a warning.
+ * the test runner still runs the file. The one list: a new reason that a change can cause is added here and nowhere
+ * else. `binary` (CORE-50) is the sources' drop of a head text that holds a NUL byte or is not UTF-8. Every other
+ * reason (`syntax-error`, `syntax-error-heavy`, `parser-threw`, `missing`, `unsafe-path`, `over-total-cap`, the Python
+ * index reasons) stays a warning.
  */
-export const HEAD_UNREADABLE_ERROR_REASONS: readonly string[] = ["too-deep", "too-large", "over-file-cap"];
+export const HEAD_UNREADABLE_ERROR_REASONS: readonly string[] = ["too-deep", "too-large", "over-file-cap", "binary"];
+
+/**
+ * The reason of a modified or renamed test file whose diff entry git shows as binary (CORE-50): a `-diff` or `binary`
+ * attribute in `.gitattributes`, or non-text content. Such an entry carries `changeMadeUnreadable` with no condition on
+ * the merge base (the signals that read diff text cannot read its change, whether or not its base and head text could
+ * be indexed), while the sources' own `binary` drop at HEAD follows `changeMadeUnreadable(base, headReason)` like the
+ * other listed reasons.
+ */
+export const BINARY_DIFF_REASON = "binary";
+
+/** Whether an entry of the index-unavailable lists has the reason `binary` (a diff entry or a sources drop). */
+export function hasBinaryReason(entry: { reason: string }): boolean {
+  return entry.reason === BINARY_DIFF_REASON;
+}
+
+/**
+ * Whether a touched-file entry is a binary change made unreadable: the reason `binary` with `changeMadeUnreadable`. The
+ * `TEST_INTEGRITY_INDEX_UNAVAILABLE` text names these in a sentence of their own; a `binary` entry without the flag
+ * (the merge-base side was dropped) stays in the TI02 and TI05 sentence.
+ */
+export function isBinaryUnreadable(entry: { reason: string; changeMadeUnreadable?: boolean }): boolean {
+  return hasBinaryReason(entry) && entry.changeMadeUnreadable === true;
+}
 
 /**
  * Whether a modified test file that is not compared because its head side failed with `headReason` is a change made

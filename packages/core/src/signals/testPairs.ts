@@ -1,11 +1,12 @@
 import type { DiffFile } from "../diff/unified.js";
 import { JS_TS_EXTENSIONS, jsTsFlavor } from "../jsTsExtensions.js";
+import type { TestIndexUnavailable } from "../report.js";
 import { isTestFile } from "../testFiles.js";
 import { indexTestFileWithImports } from "../testIndex/indexTestFile.js";
 import type { PythonTestIndex } from "../testIndex/pythonSides.js";
 import type { PythonIndexFile } from "../testIndex/pythonTypes.js";
 import type { TestBlock, TestIndexResult, TestModuleMock } from "../testIndex/types.js";
-import { changeMadeUnreadable } from "../testIntegrityUnreadable.js";
+import { BINARY_DIFF_REASON, changeMadeUnreadable } from "../testIntegrityUnreadable.js";
 import type { TestSourceSide, TestSources } from "../testSources.js";
 import { byCodeUnit } from "../text.js";
 
@@ -164,6 +165,70 @@ function touchedTestEntries(diff: readonly DiffFile[]): {
     }
   }
   return { compared, added };
+}
+
+/**
+ * The touched test files whose diff entry git shows as binary (CORE-50), by the same compared and added sets the index
+ * uses: a modified entry (or a renamed one with a test-file path on both sides) or an added entry whose new path is a
+ * test file with a JS/TS or `.py` extension. A modified one is a change made unreadable whatever the merge base held
+ * (`BINARY_DIFF_REASON`): it carries `changeMadeUnreadable`. Each list is sorted by path. It reads no test source, so it
+ * holds with no sources at all.
+ */
+export function binaryTouchedTestFiles(diff: readonly DiffFile[]): {
+  modified: UncomparedTestFile[];
+  added: UncomparedTestFile[];
+} {
+  const { compared, added: addedPaths } = touchedTestEntries(diff);
+  const modified: UncomparedTestFile[] = [];
+  const added: UncomparedTestFile[] = [];
+  for (const file of diff) {
+    if (file.binary !== true) continue;
+    if (compared.has(`${file.oldPath}\0${file.path}`)) {
+      modified.push({ path: file.path, reason: BINARY_DIFF_REASON, changeMadeUnreadable: true });
+    } else if (file.status === "added" && addedPaths.has(file.path)) {
+      added.push({ path: file.path, reason: BINARY_DIFF_REASON });
+    }
+  }
+  const byPath = (a: UncomparedTestFile, b: UncomparedTestFile) => byCodeUnit(a.path, b.path);
+  return { modified: modified.sort(byPath), added: added.sort(byPath) };
+}
+
+/** Merges the entries of a list that have the same path and reason into one, OR-ing `changeMadeUnreadable`; sorted by path. */
+function mergeEntries(
+  existing: readonly { path: string; reason: string; changeMadeUnreadable?: boolean }[],
+  extra: readonly { path: string; reason: string; changeMadeUnreadable?: boolean }[],
+): { path: string; reason: string; changeMadeUnreadable?: boolean }[] {
+  const merged = new Map<string, { path: string; reason: string; changeMadeUnreadable?: boolean }>();
+  for (const entry of [...existing, ...extra]) {
+    const key = `${entry.path}\0${entry.reason}`;
+    const before = merged.get(key);
+    const flagged = before?.changeMadeUnreadable === true || entry.changeMadeUnreadable === true;
+    merged.set(key, {
+      path: entry.path,
+      reason: entry.reason,
+      ...(flagged ? { changeMadeUnreadable: true as const } : {}),
+    });
+  }
+  return [...merged.values()].sort((a, b) => byCodeUnit(a.path, b.path) || byCodeUnit(a.reason, b.reason));
+}
+
+/**
+ * Adds the binary touched test files (`binaryTouchedTestFiles`) to what the index could not read: its `files` and `added`
+ * lists. Each list is keyed by path plus reason; when the index and the diff both give an entry with the same path and
+ * reason they become one entry whose `changeMadeUnreadable` is the OR of the two, so the flagged entry wins and an
+ * unflagged index entry never hides the diff's block error. An index entry for the same path with another reason stays.
+ * The `{ notRun }` form is returned unchanged: it is already the whole-run error and cannot carry files. Undefined when
+ * there is nothing to say.
+ */
+export function withBinaryTestFiles(
+  unavailable: TestIndexUnavailable | undefined,
+  binary: { modified: readonly UncomparedTestFile[]; added: readonly UncomparedTestFile[] },
+): TestIndexUnavailable | undefined {
+  if (unavailable !== undefined && "notRun" in unavailable) return unavailable;
+  if (binary.modified.length === 0 && binary.added.length === 0) return unavailable;
+  const files = mergeEntries(unavailable?.files ?? [], binary.modified);
+  const added = mergeEntries(unavailable?.added ?? [], binary.added);
+  return { files, ...(added.length > 0 ? { added } : {}) };
 }
 
 /**

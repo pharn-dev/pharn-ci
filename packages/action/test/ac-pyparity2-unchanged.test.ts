@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { withoutCore50SchemaEdits } from "../../core/test/core50-schema.js";
 import { withoutCore69SchemaEdits } from "../../core/test/core69-schema.js";
 import { foldCoverageBar } from "../../core/test/helpers.js";
 import { withoutSchemaLevelEdits } from "../../core/test/level-edits.js";
@@ -114,15 +115,18 @@ const PINNED = [
 // output digest are unchanged); this is the digest of the edited file.
 // Re-pinned again by CORE-71 (R2.8): the walker's ADDED_AFTER_BASE gains the 19 new TI11 and TI13 fixtures (its count
 // and output digest are unchanged); this is the digest of the edited file.
+// Re-pinned again by CORE-50 (binary-diff-not-blind): ac-accept-signoff-regression and ac-ti0205-regression assert the new
+// TI01 record of the unedited TI01/pass-binary.diff and take it out before hashing (their output digests are unchanged);
+// these are the digests of the edited files.
 const NAME_ONLY_REPINNED: Record<string, string> = {
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "481fbd3cdefe47fbc0e572ecc719a97c0d591c4e182922020bd86daff9fa9b93",
+    "bff9876506f80d7c5278a38103d818c7b6b27d262d851c12ef15c6997c5eebe5",
   // Re-pinned again by A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): ac-ti0205-regression takes the tests-exercise message
   // and testIntegrity.exercise out of the golden reports made with sources before comparing (exercise-repin.ts); this
   // is the digest of the edited file.
   // Re-pinned again by CORE-71 (R2.8): ac-ti0205-regression leaves the new TI11 and TI13 fixtures out of its loop over
   // the earlier directories (its BEFORE_DIGEST is unchanged); this is the digest of the edited file.
-  "packages/core/test/ac-ti0205-regression.test.ts": "54ec7c5a00511cece0197d567bdf243e4aafca228274e13f62908da83f2259bc",
+  "packages/core/test/ac-ti0205-regression.test.ts": "702f084c3213b193d2e63b19c39c39210294b23030674cabdc53abd6852545f2",
   // Re-pinned again by ti17-always-true-matcher-2: ac-skylos-nine-table moves always-true-matcher to caught by TI17 (the
   // Skylos count reads 8 of 9 now, 7 of 9 before); this is the digest of the edited file.
   "packages/core/test/ac-skylos-nine-table.test.ts": "68f84a33ecf1e4b4e94fc13c2c6c9065339a46e6d0d69b925905a1e39ac13976",
@@ -215,7 +219,9 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
         withoutV080Properties(
           // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
           withoutV070Properties(
-            withoutV090SchemaEdits(withoutTi17SchemaEdits(withoutCore69SchemaEdits(read(`schema/${name}`)))),
+            withoutV090SchemaEdits(
+              withoutTi17SchemaEdits(withoutCore69SchemaEdits(withoutCore50SchemaEdits(read(`schema/${name}`)))),
+            ),
           ),
         ),
       );

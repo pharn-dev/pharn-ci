@@ -25,7 +25,9 @@ const BEFORE: Record<string, string[]> = {
   "TI01/info-migration-ts.diff": ["TI01 block lib/x.test.js"],
   "TI01/info-package-removed.diff": ["TI01 info packages/a/__tests__/y.test.ts"],
   "TI01/info-with-source.diff": ["TI01 info src/foo.test.ts"],
-  "TI01/pass-binary.diff": [],
+  // CORE-50 (binary-diff-not-blind): a deleted binary test file now gives one TI01 block (it gave nothing at the base
+  // commit). The record is restored below before the digest, so BEFORE_DIGEST still pins the base record.
+  "TI01/pass-binary.diff": ["TI01 block tests/img.test.ts"],
   "TI01/pass-fixture-json.diff": [],
   "TI01/pass-helper.diff": [],
   "TI01/pass-init-py.diff": [],
@@ -190,6 +192,16 @@ describe("TI10 and TI13 leave the earlier signals and fixtures alone", () => {
       const text = fixture(`test-integrity/${name}`);
       const report = await run(text, excludeFor(name, text));
       expect(summary(report), name).toEqual(expected);
+      if (name === "TI01/pass-binary.diff") {
+        // CORE-50: the new TI01 record is asserted above (`summary`) and here; the base record has none.
+        expect(earlierMessages(report).map((m) => m.code)).toEqual(["TEST_INTEGRITY_TI01"]);
+        records.push({
+          fixture: name,
+          signals: earlierSignals(report).filter((s) => String(s.id) !== "TI01"),
+          messages: earlierMessages(report).filter((m) => (m.code as string) !== "TEST_INTEGRITY_TI01"),
+        });
+        continue;
+      }
       records.push({ fixture: name, signals: earlierSignals(report), messages: earlierMessages(report) });
     }
     expect(

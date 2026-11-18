@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { withoutCore50SchemaEdits } from "./core50-schema.js";
 import { withoutCore69SchemaEdits } from "./core69-schema.js";
 import { fixture } from "./helpers.js";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
@@ -65,7 +66,9 @@ describe("the schema sentence, the hint and the README row for POLICY_P07", { ti
         withoutV070SchemaEdits(
           // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
           withoutV080SchemaEdits(
-            withoutV090SchemaEdits(withoutTi17SchemaEdits(withoutCore69SchemaEdits(read("schema/report.v2.json")))),
+            withoutV090SchemaEdits(
+              withoutTi17SchemaEdits(withoutCore69SchemaEdits(withoutCore50SchemaEdits(read("schema/report.v2.json")))),
+            ),
           ),
         ),
       ),

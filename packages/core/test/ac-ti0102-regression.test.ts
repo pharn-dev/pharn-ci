@@ -96,6 +96,22 @@ async function existingOutputs(): Promise<string> {
       ...input,
     } as unknown as Input);
     expectValidReport(report);
+    // CORE-50 (binary-diff-not-blind): TI01/pass-binary.diff (a deleted binary tests/img.test.ts) now gives one TI01
+    // block, where the base commit gave nothing. The test asserts that new record, then takes it out, so the digest
+    // still pins the base record of this fixture and every other one.
+    if (name === "TI01/pass-binary.diff") {
+      const signals = report.testIntegrity.signals.filter((s) => s.id === "TI01");
+      expect(signals.map((s) => [s.path, s.severity, s.detail])).toEqual([
+        ["tests/img.test.ts", "block", "Test file deleted; git shows it as binary, so its text was not read."],
+      ]);
+      expect(report.messages.filter((m) => m.code === "TEST_INTEGRITY_TI01")).toHaveLength(1);
+      out.push({
+        fixture: name,
+        signals: report.testIntegrity.signals.filter((s) => s.id !== "TI01"),
+        messages: report.messages.filter((m) => m.code !== "TEST_INTEGRITY_TI01"),
+      });
+      return;
+    }
     out.push({ fixture: name, signals: report.testIntegrity.signals, messages: report.messages });
   };
   const ti01 = readdirSync(`${FIXTURES}test-integrity/TI01`)

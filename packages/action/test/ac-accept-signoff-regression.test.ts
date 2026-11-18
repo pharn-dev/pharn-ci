@@ -173,6 +173,11 @@ const UNCHANGED_HINTS: Record<string, string> = {
   TI14: "  - Hint: Restore the threshold or the exclusions, or say in the PR why they change so a reviewer can confirm it.",
 };
 
+/** CORE-50: the detail of a deleted test file that git shows as binary, and the sentence its hint gains. */
+const BINARY_DELETED_DETAIL = "Test file deleted; git shows it as binary, so its text was not read.";
+const BINARY_HINT_SENTENCE =
+  "Git shows this file as binary: if a `-diff` or `binary` attribute in `.gitattributes` matches it, remove that attribute; if none does, the file holds non-text content such as a NUL byte, so store it as UTF-8 text.";
+
 /** sha256 of each file under fixtures/golden/ at the base commit a1089fd. */
 const GOLDEN_AT_BASE: Record<string, string> = {
   "coverage.info": "0aa356d8e8aa03dc96e98b7ff2dfc26af0888eeaff2e5558ce98d296806f2c64",
@@ -280,14 +285,34 @@ describe("the accept label leaves the existing signals, hints, golden outputs an
             testIntegrityMode: { input: mode },
           } as Parameters<typeof check>[0]);
           const messages = report.messages.filter((m) => String(m.code).startsWith("TEST_INTEGRITY_"));
-          records.push({ fixture: key, mode, signals: report.testIntegrity.signals, messages });
+          // CORE-50 (binary-diff-not-blind): TI01/pass-binary.diff (a deleted binary tests/img.test.ts) now gives one TI01
+          // finding at the mode's severity with the binary sentence, one TEST_INTEGRITY_TI01 message, and its hint
+          // gains the binary sentence. Those are asserted here, then taken out of the record, so BEFORE_DIGEST still
+          // pins the base record of this fixture and every other one.
+          const binaryNow = key === "TI01/pass-binary.diff";
+          if (binaryNow) {
+            expect(
+              report.testIntegrity.signals.filter((s) => s.id === "TI01").map((s) => [s.path, s.severity, s.detail]),
+              `${key} ${mode}`,
+            ).toEqual([["tests/img.test.ts", mode, BINARY_DELETED_DETAIL]]);
+            expect(messages.filter((m) => m.code === "TEST_INTEGRITY_TI01")).toHaveLength(1);
+          }
+          records.push({
+            fixture: key,
+            mode,
+            signals: binaryNow
+              ? report.testIntegrity.signals.filter((s) => s.id !== "TI01")
+              : report.testIntegrity.signals,
+            messages: binaryNow ? messages.filter((m) => m.code !== "TEST_INTEGRITY_TI01") : messages,
+          });
 
           // The TI01, TI04, TI11 and TI14 hints under each finding and each message are the text they were.
           const lines = renderMarkdown(report).split("\n");
           lines.forEach((line, i) => {
             const id = /^- \S+ \*\*(TI\d\d)\*\* /.exec(line)?.[1] ?? /`TEST_INTEGRITY_(TI\d\d)`/.exec(line)?.[1];
             const hint = id === undefined ? undefined : UNCHANGED_HINTS[id];
-            if (hint !== undefined) expect(lines[i + 1], `${key} ${mode} ${id}`).toBe(hint);
+            const expected = binaryNow && id === "TI01" ? `${hint} ${BINARY_HINT_SENTENCE}` : hint;
+            if (expected !== undefined) expect(lines[i + 1], `${key} ${mode} ${id}`).toBe(expected);
           });
         }
       }

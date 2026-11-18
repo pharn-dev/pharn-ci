@@ -194,7 +194,23 @@ describe("TI02 and TI05 change the earlier outputs only where they mean to", () 
         };
         const without = check(input as unknown as Input) as unknown as Report;
         expectValidReport(without);
-        records.push({ fixture: name, signals: without.testIntegrity.signals, messages: without.messages });
+        if (name === "TI01/pass-binary.diff") {
+          // CORE-50 (binary-diff-not-blind): this fixture (a deleted binary tests/img.test.ts) now gives one TI01 block,
+          // where the base commit gave nothing. Assert that new record, then take it out, so BEFORE_DIGEST still pins
+          // the base record of this fixture and every other one.
+          const ti01 = (without.testIntegrity.signals as Array<{ id: string; path: string; severity: string }>).filter(
+            (s) => s.id === "TI01",
+          );
+          expect(ti01.map((s) => [s.path, s.severity])).toEqual([["tests/img.test.ts", "block"]]);
+          expect(without.messages.filter((m) => m.code === "TEST_INTEGRITY_TI01")).toHaveLength(1);
+          records.push({
+            fixture: name,
+            signals: (without.testIntegrity.signals as Array<{ id: string }>).filter((s) => s.id !== "TI01"),
+            messages: without.messages.filter((m) => m.code !== "TEST_INTEGRITY_TI01"),
+          });
+        } else {
+          records.push({ fixture: name, signals: without.testIntegrity.signals, messages: without.messages });
+        }
         runs.push({ name, text, input, without });
       }
     }

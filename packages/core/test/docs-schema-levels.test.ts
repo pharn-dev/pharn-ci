@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { withoutCore50SchemaEdits } from "./core50-schema.js";
 import { withoutCore69SchemaEdits } from "./core69-schema.js";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { withoutTi17SchemaEdits } from "./ti17-schema.js";
@@ -76,7 +77,9 @@ describe("docs-schema-levels", () => {
         withoutSchemaLevelEdits(
           // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
           withoutV070SchemaEdits(
-            withoutV080SchemaEdits(withoutV090SchemaEdits(withoutTi17SchemaEdits(withoutCore69SchemaEdits(now)))),
+            withoutV080SchemaEdits(
+              withoutV090SchemaEdits(withoutTi17SchemaEdits(withoutCore69SchemaEdits(withoutCore50SchemaEdits(now)))),
+            ),
           ),
         ),
       ),

@@ -67,7 +67,16 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   label. (10) TI01 does not read the test runner's include or exclude settings, so deleting a test file the runner
   never ran (a sample app's own test inside a `fixtures/` directory the vitest config excludes, say) still blocks: a
   known false block seen on the precision corpus ([PRECISION.md](./PRECISION.md#official-results-v030-2026-10-26)),
-  cleared with the accept label.
+  cleared with the accept label. (11) A deleted or renamed-away JS/TS, Python or Go test file that git shows as binary
+  (a `-diff` or `binary` attribute in `.gitattributes`, or non-text content) counts at the mode's level on its path
+  alone, with no `info` softening: the diff shows no removed line, so its text was not read, and a change that hides a
+  test file's text is the evasion this closes. The reason is fail closed, not "no text": a same-name source or the rest
+  of the package deleted alongside, or a moved test, are evidence the same change controls, so they do not lower it. The
+  known false blocks, each cleared with the accept label: a binary helper file under a test directory (`conftest.py`, a
+  `.d.ts` or a helper module, which a text diff would not count), a binary test file deleted with its same-name source
+  or with its whole package, and a test file deleted or renamed away under a `-diff` or `binary` attribute the
+  repository already carried. A binary test file in another language, an image, a `.bin`, a `.json` or a `.snap` file
+  is not counted.
 - **Only lines the coverage report knows count.** An added line with no `DA` entry in the lcov file
   or no class-level `<line>` record in a Cobertura file (a comment, a type, a blank line, a
   declaration the tool does not instrument) is left out of the denominator. What is "coverable" is
@@ -130,6 +139,10 @@ TI14 reads the added and removed lines of the pharn-ci config in use, one line a
   only raise, and which is out of the diff's reach) are not seen. A config renamed with no edits shows no lines. A removed threshold
   whose replacement the line cannot be read as a plain number (an empty value, a value padded past the 400-character
   kept-line cap) is a finding too: TI14 fails closed rather than guess what the config read.
+- **A binary config.** A config that git shows as binary (a `-diff` or `binary` attribute in `.gitattributes`, or
+  non-text content) and that the change modifies, renames or deletes is one finding with a fixed sentence and no line
+  number, because the diff shows no line to read. An added binary config gives nothing: a text diff of an added config
+  can never give a TI14 finding either.
 - **One comment rule.** TI14 and the config reader end a value at the same `#`: one that starts the line or follows a
   space or a tab, as YAML says. A `#` after any other Unicode space (U+00A0, U+3000, U+FEFF, ...) is not a comment
   to YAML, and the config refuses it with an error naming the character, so `threshold: 50<U+00A0># lowered` can no
@@ -147,6 +160,10 @@ TI11 reads the added and removed lines of workflow files (`.github/workflows/*.y
   step or to the job it sits in, which is why those rules are `warn` in every mode but `off`. An `if:` other than a
   literal false or an event-name test, a job-level condition written another way and a timeout of 2 minutes are not
   seen.
+- **A binary workflow.** A workflow file that git shows as binary (a `-diff` or `binary` attribute in
+  `.gitattributes`, or non-text content) has no diff line to read, and TI11 reads only diff lines. Whether the PR adds,
+  changes, renames or deletes it, it is one finding with a fixed sentence and no line number, at the mode's level. A
+  long-standing attribute on a workflow therefore blocks every PR that touches that file; the accept label clears it.
 - **Test commands by name.** A removed command counts only if it is a package-manager test script (`npm test`,
   `npm t`, `pnpm -r test`, `pnpm --filter core test`, `yarn test:unit`, ...), `vitest`, `jest`, `mocha` or
   `playwright test` (directly or through `npx`, `pnpm`, `pnpm exec`, `yarn`, `bunx` or `bun x`), `node --test`,
@@ -623,6 +640,11 @@ and no JSON parser.
 - **No context lines (the diff-line fallback).** The diff is read with `--unified=0`, so on the fallback any line of the
   form `"test…": "…"` is read as a script, even a `test` key outside `scripts` (a config block, a nested object) or one
   the line shows nothing about. With both texts in the sources a `test` key outside `scripts` is not read.
+- **A binary `package.json`.** A `package.json` that git shows as binary (a `-diff` or `binary` attribute in
+  `.gitattributes`, or non-text content) has no diff line to read. When both texts are in the sources and read as JSON
+  it is judged exactly like a text one; otherwise it is one finding with a fixed sentence and no line number. A
+  long-standing attribute on `package.json` therefore blocks every PR that modifies it unless both texts are in the
+  sources and read as JSON; the accept label clears it.
 - **A script split over lines.** On the fallback a script line is one `"key": "value"` pair. A value continued on the
   next line, a multi-line value, a key written over several lines and a script that is not alone on its line (written
   on one line with other keys) are not read. A `package.json` written on one line is read when both texts are in the
@@ -1008,13 +1030,19 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
   `TEST_INTEGRITY_INDEX_UNAVAILABLE` is an error in mode `block` when TI02 and TI05, or TI09, did not run at all
   (the test text could not be read and a test file or a test-runner config is modified, or no `python3` was found and a `.py`
   test file is modified), and when a test file the change modifies cannot be indexed at HEAD for the reason
-  `too-deep`, `too-large` or `over-file-cap` while it was indexed at the merge base or dropped there as `over-file-cap`.
+  `too-deep`, `too-large`, `over-file-cap` or `binary` while it was indexed at the merge base or dropped there as
+  `over-file-cap` (`binary` is a head text with a NUL byte or bytes that are not UTF-8, and holds even when git shows a
+  text diff for the file). A test file the change modifies or renames whose diff entry git shows as binary (a `-diff` or
+  `binary` attribute in `.gitattributes`, or non-text content) is also an error whatever the merge base held, because
+  the signals that read diff text cannot read its change; a modified test file that a long-standing attribute already
+  marks therefore fails `block` on every PR that modifies it, until the attribute is removed or the accept label is
+  applied.
   `TEST_INTEGRITY_TEXT_TRUNCATED` is an error in mode `block` when a JavaScript, TypeScript, Python or Go test file the
   change modifies has more than 5000 changed lines. A reviewer who is not the PR author can lower these per-file errors
   to warnings with the accept label; the did-not-run error stays. These still only warn in block: an added test file
   that cannot be read, a modified test file that could not be read at the merge base either (for a reason other than
   `over-file-cap`), the other reasons at HEAD (`syntax-error`, `syntax-error-heavy`, `parser-threw`, `missing`,
-  `unsafe-path`, `binary`, `over-total-cap`), the Python index reasons other than `python-not-found`, and a cut file
+  `unsafe-path`, `over-total-cap`), the Python index reasons other than `python-not-found`, and a cut file
   that is not a modified test file. The change can cause one of these itself: the test files it modifies are read
   first, so only they fill the 16 MiB cap ahead of one another, and a change that pads the other test files it modifies
   (each under 512 KiB, sorting before the target) past 16 MiB has the target dropped at HEAD as `over-total-cap`. That
@@ -1678,8 +1706,23 @@ run. What it does not do:
   pharn-ci flags these with three warnings, `CONFIG_CHANGED_IN_DIFF` (the diff touches the config in
   use or a file under `.github/workflows/`), `COVERAGE_FILE_TRACKED` (the coverage file is a tracked
   file) and `DIFF_BINARY_COVERED_FILE` (the diff shows a file the coverage report knows as binary).
-  They are warnings only, never a `fail`. pharn-ci does not read the base branch's copies of these
-  files and does not detect changes to `.gitattributes` itself.
+  Those three input warnings are warnings only, never a `fail`. The same attribute also hides the text of a
+  test file, `package.json`, workflow file, test-runner config or pharn-ci config, so these are reported too, at the
+  mode's level (error in mode `block`, warn in mode `warn`): a deleted or renamed-away JS/TS, Python or Go test file
+  that git shows as binary is TI01; a modified or renamed JS/TS or Python test file that git shows as binary makes
+  `TEST_INTEGRITY_INDEX_UNAVAILABLE` an error in `block` (an added one is named there as a warning); a binary
+  `package.json` is judged by TI10 from its base and head text when both are in the test sources and read as JSON,
+  otherwise it is one TI10 finding; a binary workflow file is one TI11 finding; a binary pharn-ci config that the
+  change modifies, renames or deletes is one TI14 finding; a binary test-runner config is judged by TI09 from its
+  base and head text, as a text one is. A finding on a binary file has a fixed sentence and no line number, because
+  no file text reaches it. The accept label lowers each of them. Still missed: TI13 and TI15 in a binary source file,
+  TI08 in a binary `package.json` or pytest config, a modified or added binary test file in a language the index does
+  not read (only JS/TS and Python are indexed), snapshot files, and a deleted or renamed binary file that is not a test
+  file. pharn-ci does not read the base branch's copies of these files and does not detect changes to
+  `.gitattributes` itself. A `-diff` or `binary` attribute that the repository already carries (not added by the PR)
+  on a test file, `package.json` or workflow file now gives a block on every PR that touches that file, until the
+  attribute is removed or the accept label is applied; git also shows a file with no attribute as binary when it holds
+  a NUL byte, so a UTF-16 test file reads the same way.
 - **Coverage and config paths are not confined to the repository.** They are resolved against the
   workspace (Action) or the current directory and repo root (CLI), and may point anywhere the job
   can read, such as `$RUNNER_TEMP`. A literal coverage path is opened as given, so a symbolic link

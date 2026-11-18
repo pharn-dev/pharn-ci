@@ -1,3 +1,4 @@
+import { BINARY_DELETED_DETAIL, BINARY_RENAMED_AWAY_DETAIL } from "../binaryDetails.js";
 import type { DiffFile } from "../diff/unified.js";
 import type { TestIntegritySignal } from "../report.js";
 import { definesTests, isRenamedAwayTest, isSnapFile, isTestFile, testPackageDir, testStem } from "../testFiles.js";
@@ -23,7 +24,7 @@ function removedTests(file: DiffFile): "yes" | "no" | "unknown" {
  * inside a `test`, `tests` or `__tests__` directory (`isRenamedAwayTest`). It counts when its removed lines define
  * tests, when its text is unknown (not kept), when it is a JS/TS, Python or Go file whose text was cut at the bound, or
  * when it is renamed away: a rename shows only the lines it edits, never the tests it keeps, so a renamed-away file
- * counts whatever its removed lines hold. A binary file never counts. A counting file is
+ * counts whatever its removed lines hold. A counting file is
  * `block` (shown as `warn` in mode `warn`), or `info` when the same diff also deletes a source file with the same name,
  * deletes JS/TS or Python source files of the package that holds the test (never the repository root) and no JS/TS or
  * Python file of that package is left in `repoFiles` (the head tracked-file list; empty shows no remaining file), or (for a deleted file in
@@ -33,6 +34,17 @@ function removedTests(file: DiffFile): "yes" | "no" | "unknown" {
  * base text was read but could not be parsed (`unparsed`), or the text was not available. A renamed-away file is never
  * softened by a same-stem file. A snapshot (`.snap`) path is never a candidate: it holds no test, only stored output.
  * One signal per file, sorted by path. No file content reaches a signal.
+ *
+ * A candidate that git shows as binary (a `-diff` or `binary` attribute in `.gitattributes`, or non-text content) counts
+ * on its path alone, when it is a JS/TS, Python or Go test file (`testLanguage`) and not a `.snap` file: the diff shows
+ * no removed line, so its text was not read, and the signal is the mode's severity with a fixed sentence (CORE-50).
+ * Fail closed: no `info` softening applies to it (a same-name source or the rest of the package deleted alongside, a
+ * moved or same-stem test), because the change that hides a test file's text is the evasion this rule closes, and
+ * those softenings rest on path evidence the same change controls. `ti01Moved.ts` skips binary entries, so the moved
+ * and same-stem softenings never hold a binary path either. Known false blocks, cleared by the accept label: a binary
+ * helper file under a test directory (`conftest.py`, a `.d.ts`), a binary test file deleted with its same-name source
+ * or its whole package, and a test file deleted or renamed away under an attribute the repository already carried. A
+ * binary candidate in another language (an image, `.bin`, `.json`) is not counted.
  */
 export function detectTI01(
   diff: readonly DiffFile[],
@@ -62,9 +74,21 @@ export function detectTI01(
   for (const file of diff) {
     const renamedAway = isRenamedAwayTest(file);
     const deleted = file.status === "deleted" && isTestFile(file.path);
-    if (!(renamedAway || deleted) || file.binary === true) continue;
+    if (!(renamedAway || deleted)) continue;
     const path = renamedAway ? file.oldPath : file.path;
     if (isSnapFile(path) || found.has(path)) continue;
+
+    if (file.binary === true) {
+      if (testLanguage(path) === null) continue;
+      found.set(path, {
+        id: "TI01",
+        severity: mode,
+        path,
+        line: null,
+        detail: renamedAway ? BINARY_RENAMED_AWAY_DETAIL : BINARY_DELETED_DETAIL,
+      });
+      continue;
+    }
 
     const defined = removedTests(file);
     // A cut file counts only when it is code that can define tests: a large fixture, snapshot or data file under a test

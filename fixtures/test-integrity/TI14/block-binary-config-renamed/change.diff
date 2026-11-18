@@ -1,0 +1,6 @@
+diff --git a/.pharn/ci.yml b/.pharn/ci.old.yml
+similarity index 70%
+rename from .pharn/ci.yml
+rename to .pharn/ci.old.yml
+index 1111111..2222222 100644
+Binary files a/.pharn/ci.yml and b/.pharn/ci.old.yml differ
