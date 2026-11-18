@@ -100,6 +100,9 @@ const CORE53_PATH = /^fixtures\/test-integrity\/python-switch-off\/[^\t]+$/;
 // fixtures/backslash-paths/ (three cases, each an lcov and a Cobertura report, a diff and a tracked-file list) is added.
 const CORE101_PATH =
   /^fixtures\/backslash-paths\/(?:literal|windows|both)\/(?:coverage\.info|coverage\.xml|pr\.diff|files\.txt)$/;
+// Re-pinned for CORE-92 (a coverage file the PR supplies fails a gated run): its new directory
+// fixtures/tracked-coverage/ (one lcov file, the tracked files and four diffs) is added too.
+const CORE92_PATH = /^fixtures\/tracked-coverage\/[^/\t]+$/;
 
 /** The tests PLAN.md step 9 lists as deliberately re-pinned; each must carry a comment naming this item. */
 const DELIBERATE = [
@@ -154,6 +157,7 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       if (line.startsWith("A\t") && CORE50_PATH.test(line.slice(2))) continue;
       if (line.startsWith("A\t") && CORE53_PATH.test(line.slice(2))) continue;
       if (line.startsWith("A\t") && CORE101_PATH.test(line.slice(2))) continue;
+      if (line.startsWith("A\t") && CORE92_PATH.test(line.slice(2))) continue;
       // Re-pinned for comment-coverage-bar (the diff-coverage bar in the PR comment): the four golden report.md files
       // gained the bar line on purpose. Each must be modified, never added or deleted, and folding the bar line (and
       // the empty line under it) back out must give its content at the base byte for byte.
@@ -263,6 +267,8 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       if (CORE53_PATH.test(path)) continue;
       // Re-pinned for CORE-101: its new backslash-paths directory is untracked until committed.
       if (CORE101_PATH.test(path)) continue;
+      // Re-pinned for CORE-92: its new tracked-coverage directory is untracked until committed.
+      if (CORE92_PATH.test(path)) continue;
       // Re-pinned for policy-p13 (Horizon 2 item H1): its fixtures under fixtures/policy-rules/p13/ are untracked until
       // committed.
       // Re-pinned for stale instructions (Horizon 2 item H3): its fixtures under fixtures/stale-instructions/ are

@@ -402,7 +402,7 @@ export interface BuildReportInput {
   trackedCoverageFile?: string;
   /**
    * True when the diff adds, modifies or renames to `trackedCoverageFile`, so the change under review wrote its own
-   * coverage numbers; with a threshold that makes `COVERAGE_FILE_TRACKED` an error (CORE-92). Absent means false.
+   * coverage numbers; with a threshold that makes `COVERAGE_FILE_TRACKED` an error. Absent means false.
    */
   trackedCoverageChanged?: boolean;
   /** Changed files the diff shows as binary that the coverage report knows; absent or empty adds no message. */
@@ -788,7 +788,7 @@ export function buildReport(input: BuildReportInput): Report {
   }
   if (input.trackedCoverageFile !== undefined) {
     // A gate (a threshold, 0 included) graded by a coverage report the change itself adds or edits is no gate: that is
-    // an error (CORE-92). A tracked report the diff leaves alone, or no threshold, stays a warning.
+    // an error. A tracked report the diff leaves alone, or no threshold, stays a warning.
     const path = input.trackedCoverageFile;
     const supplied = input.trackedCoverageChanged === true && input.threshold !== null;
     messages.push(
