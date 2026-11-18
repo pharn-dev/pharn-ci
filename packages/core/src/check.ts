@@ -2,7 +2,7 @@ import { type AgentPrFacts, agentPrMetaFields, detectAgentPr } from "./agents.js
 import { parseAgentToolNames, parseCoverageRoot, parseExcludePattern } from "./config.js";
 import { chooseCoverageFormat, type DetectedCoverageFormat } from "./coverage/detect.js";
 import { parseCoverageCounted } from "./coverage/index.js";
-import { matchCoveragePaths } from "./coverage/match.js";
+import { matchCoveragePaths, resolveBackslashPaths } from "./coverage/match.js";
 import { mergeCoverageMaps } from "./coverage/merge.js";
 import type { CoverageFormat, CoverageFormatSelection, CoverageMap } from "./coverage/types.js";
 import type { CoverageDiscoveryNotFound } from "./coverageDiscovery.js";
@@ -698,6 +698,8 @@ export function check(input: CheckInput): Report {
   const maps: CoverageMap[] = [];
   const formats = new Set<CoverageFormat>();
   let skippedLines = 0;
+  // A backslash in a coverage path is part of the file name when the path read that way is tracked (CORE-101).
+  const tracked = new Set(input.repoFiles);
   for (const file of files) {
     if ("missingFile" in file) continue;
     const coverageFile = file.file ?? null;
@@ -725,10 +727,13 @@ export function check(input: CheckInput): Report {
       const counted = parseCoverageCounted(file.text, choice.format, {
         ...(input.repoRoot === undefined ? {} : { repoRoot: input.repoRoot }),
         ...(coverageRoot === undefined ? {} : { coverageRoot }),
+        literalBackslashes: true,
       });
       parsed = counted.map;
       skippedLines += counted.skipped;
     }
+    // Merged within the file by the format's own rule, as the parser merges a file it lists twice.
+    parsed = resolveBackslashPaths(parsed, tracked, choice.format === "lcov" ? (a, b) => a + b : Math.max);
     // An empty or unreadable report would otherwise make every change look uncovered-but-untracked
     // and pass as NO_COVERABLE_CHANGES. Say so instead.
     if (parsed.size === 0) {

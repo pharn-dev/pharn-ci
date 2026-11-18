@@ -1177,10 +1177,25 @@ function rangeParts(lines: readonly number[]): string[] {
 // biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point.
 
 function code(path: string): string {
-  // Pipes would break the table; backticks would break the code span. Backslashes are escaped first,
-  // so a name ending in "\" cannot turn the following "\|" into "\\" plus a real cell separator.
-  const safe = replaceUnsafeChars(path, "\uFFFD").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/`/g, "'");
-  return `\`${safe}\``;
+  // Pipes would break the table; backticks would break the code span. A backslash is no escape inside a code span,
+  // so it is kept as written (`src/a\b.js` shows as itself, CORE-101), except a run of backslashes right before a
+  // pipe: it is doubled first, so a name with "\|" cannot turn the escaped "\|" into "\\" plus a real cell separator.
+  return `\`${escapeCellPipes(replaceUnsafeChars(path, "�")).replace(/`/g, "'")}\``;
+}
+
+/** Each `|` as `\|`, with the run of backslashes right before it doubled; every other character as it is. One pass. */
+function escapeCellPipes(text: string): string {
+  let out = "";
+  let run = "";
+  for (const char of text) {
+    if (char === "\\") {
+      run += char;
+      continue;
+    }
+    out += char === "|" ? `${run}${run}\\|` : `${run}${char}`;
+    run = "";
+  }
+  return out + run;
 }
 
 // Message text carries inputs a PR controls (the coverage path from .pharn/ci.yml, the base ref), so

@@ -30,4 +30,12 @@ export interface ParseCoverageOptions {
    * coverage in a monorepo). Never applied to an absolute path. Absent or `.` means the repo root.
    */
   coverageRoot?: string;
+  /**
+   * Keep a backslash that may be part of a file name (CORE-101). When true, a path with a backslash is keyed by its
+   * literal form (the backslash read as an ordinary character, every other step as usual) whenever that form reads
+   * back to the separator form under `normalizePath`; `resolveBackslashPaths` then keeps the literal key only when it
+   * is a tracked file. `check()` and the CLI and Action readers set it. Absent or false: a backslash is always a
+   * separator, as before.
+   */
+  literalBackslashes?: boolean;
 }

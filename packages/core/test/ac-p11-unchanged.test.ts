@@ -95,6 +95,10 @@ const CORE50_PATH = new RegExp(
 // Re-pinned for CORE-53 (the Python index reads how a test is switched off): its new directory
 // fixtures/test-integrity/python-switch-off/ (twelve cases and PYTEST-OUTCOMES.md) is added too.
 const CORE53_PATH = /^fixtures\/test-integrity\/python-switch-off\/[^\t]+$/;
+// Re-pinned for CORE-101 (a backslash in a file name does not hide the file): its new directory
+// fixtures/backslash-paths/ (three cases, each an lcov and a Cobertura report, a diff and a tracked-file list) is added.
+const CORE101_PATH =
+  /^fixtures\/backslash-paths\/(?:literal|windows|both)\/(?:coverage\.info|coverage\.xml|pr\.diff|files\.txt)$/;
 
 /** The tests the PLAN lists as deliberately updated; each must carry a comment naming this item. */
 const DELIBERATE = [
@@ -152,6 +156,7 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       if (line.startsWith("A\t") && CORE70_PATH.test(line.slice(2))) continue;
       if (line.startsWith("A\t") && CORE50_PATH.test(line.slice(2))) continue;
       if (line.startsWith("A\t") && CORE53_PATH.test(line.slice(2))) continue;
+      if (line.startsWith("A\t") && CORE101_PATH.test(line.slice(2))) continue;
       // Re-pinned for comment-coverage-bar (the diff-coverage bar in the PR comment): the four golden report.md files
       // gained the bar line on purpose. Each must be modified, never added or deleted, and folding the bar line (and
       // the empty line under it) back out must give its content at the base byte for byte.
@@ -259,6 +264,8 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       if (CORE50_PATH.test(path)) continue;
       // Re-pinned for CORE-53: its new python-switch-off directory is untracked until committed.
       if (CORE53_PATH.test(path)) continue;
+      // Re-pinned for CORE-101: its new backslash-paths directory is untracked until committed.
+      if (CORE101_PATH.test(path)) continue;
       // Re-pinned for policy-p13 (Horizon 2 item H1): its fixtures under fixtures/policy-rules/p13/ are untracked until
       // committed.
       // Re-pinned for stale instructions (Horizon 2 item H3): its fixtures under fixtures/stale-instructions/ are

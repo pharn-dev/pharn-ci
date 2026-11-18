@@ -57,6 +57,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   file no test imports at 0%, so it counts against diff coverage instead of being left out. The vitest, jest and pytest
   example workflows name the setting and its config file; the cargo and .NET ones say an untested file is already
   reported. `docs/LIMITS.md` links to it.
+- Fixed: a changed file with a backslash in its name is no longer dropped from diff coverage (CORE-101). On Linux
+  and macOS `\` is a legal file-name character, but every coverage path's backslashes were turned into `/`, so lcov
+  `SF:src/a\b.js` matched no tracked file and the file's untested lines passed the gate. A backslash is now part of
+  the name when the path read that way is a tracked file, and a separator (a Windows report) otherwise; with both
+  `src/a\b.js` and `src/a/b.js` tracked, each record goes to the file it names. lcov and Cobertura alike. The PR
+  comment shows such a name with one backslash, not two.
 - Docs: `docs/PRECISION.md` gains a Python precision corpus (CORE-72): 600 merged PRs of `langchain-ai/langchain`,
   `pydantic/pydantic` and `python-poetry/poetry`, frozen in `docs/precision/corpus-python/`, with every block finding
   reviewed by hand. TI02 falsely blocks 6 of 600 Python PRs (1.0 %, tests renamed in place and rewritten); TI01 0.7 %;

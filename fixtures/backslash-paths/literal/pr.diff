@@ -1,0 +1,18 @@
+diff --git "a/src/a\\b.js" "b/src/a\\b.js"
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ "b/src/a\\b.js"
+@@ -0,0 +1,4 @@
++export function sign(n) {
++  if (n > 0) return 1;
++  return -1;
++}
+diff --git a/src/c.js b/src/c.js
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/src/c.js
+@@ -0,0 +1,2 @@
++export const c = 1;
++export const d = 2;

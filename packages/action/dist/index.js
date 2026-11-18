@@ -28035,6 +28035,58 @@ function coverageChoiceLine(choice, file) {
   return `${prefix}${choice.format} (${choice.how})`;
 }
 
+// ../core/src/coverage/match.ts
+var BACKSLASH_STAND_IN = "\0";
+function literalBackslashKey(raw, separated, resolve2) {
+  if (!raw.includes("\\") || raw.includes(BACKSLASH_STAND_IN)) return separated;
+  const literal2 = resolve2(raw.replace(/\\/g, BACKSLASH_STAND_IN)).split(BACKSLASH_STAND_IN).join("\\");
+  return literal2 !== separated && normalizePath(literal2) === separated ? literal2 : separated;
+}
+function resolveBackslashPaths(coverage2, tracked, combine) {
+  const moves = (path) => path.includes("\\") && !tracked.has(path);
+  if (![...coverage2.keys()].some(moves)) return coverage2;
+  const resolved = /* @__PURE__ */ new Map();
+  for (const [path, lines] of coverage2) {
+    const key = moves(path) ? normalizePath(path) : path;
+    const target = resolved.get(key);
+    if (target === void 0) {
+      resolved.set(key, new Map(lines));
+      continue;
+    }
+    for (const [line, hits] of lines) {
+      const before = target.get(line);
+      target.set(line, before === void 0 ? hits : combine(before, hits));
+    }
+  }
+  return resolved;
+}
+function matchCoveragePaths(coverage2, repoFiles, coverageRoot) {
+  const tracked = new Set(repoFiles);
+  const unmatched = [...coverage2.keys()].filter((path) => !tracked.has(path)).sort();
+  const total = coverage2.size;
+  return {
+    total,
+    unmatched,
+    suggestedRoot: unmatched.length === total ? suggestRoot(unmatched, repoFiles, coverageRoot) : null
+  };
+}
+function suggestRoot(unmatched, repoFiles, coverageRoot) {
+  const relative = new Set(unmatched.filter((path) => !isAbsolutePath(path)));
+  if (relative.size === 0) return null;
+  const rootPrefix = coverageRoot === void 0 || coverageRoot === "." ? null : `${coverageRoot}/`;
+  let best = null;
+  for (const file of repoFiles) {
+    for (let i = file.indexOf("/"); i > 0; i = file.indexOf("/", i + 1)) {
+      const suffix = file.slice(i + 1);
+      if (!relative.has(suffix)) continue;
+      const prefix = file.slice(0, i);
+      const candidate = rootPrefix !== null && suffix.startsWith(rootPrefix) ? `${prefix}/${coverageRoot}` : prefix;
+      if (best === null || candidate < best) best = candidate;
+    }
+  }
+  return best;
+}
+
 // ../core/src/coverage/cobertura.ts
 function parseCoberturaCounted(text, options = {}) {
   const sources = [];
@@ -28099,7 +28151,8 @@ function parseCoberturaCounted(text, options = {}) {
   const resolve2 = makeResolver([...new Set(sources)], options.repoRoot, options.coverageRoot);
   const map = /* @__PURE__ */ new Map();
   for (const [filename, lines] of perFile) {
-    const key = resolve2(filename);
+    const separated = resolve2(filename);
+    const key = options.literalBackslashes === true ? literalBackslashKey(filename, separated, resolve2) : separated;
     let target = map.get(key);
     if (!target) {
       target = /* @__PURE__ */ new Map();
@@ -28202,12 +28255,14 @@ function createLcovReader(options = {}) {
   const map = /* @__PURE__ */ new Map();
   let current;
   let skipped = 0;
+  const resolve2 = (raw) => options.coverageRoot !== void 0 && !isAbsolutePath(raw.trim()) ? normalizePath(joinCoverageRoot(raw, options.coverageRoot), options.repoRoot) : normalizePath(raw, options.repoRoot);
   return {
     push(raw) {
       const line = raw.trim();
       if (line.startsWith("SF:")) {
         const raw2 = line.slice(3);
-        const path = options.coverageRoot !== void 0 && !isAbsolutePath(raw2.trim()) ? normalizePath(joinCoverageRoot(raw2, options.coverageRoot), options.repoRoot) : normalizePath(raw2, options.repoRoot);
+        const separated = resolve2(raw2);
+        const path = options.literalBackslashes === true ? literalBackslashKey(raw2, separated, resolve2) : separated;
         current = map.get(path);
         if (!current) {
           current = /* @__PURE__ */ new Map();
@@ -28254,34 +28309,6 @@ function parseCoverageCounted(text, format, options = {}) {
     case "cobertura":
       return parseCoberturaCounted(text, options);
   }
-}
-
-// ../core/src/coverage/match.ts
-function matchCoveragePaths(coverage2, repoFiles, coverageRoot) {
-  const tracked = new Set(repoFiles);
-  const unmatched = [...coverage2.keys()].filter((path) => !tracked.has(path)).sort();
-  const total = coverage2.size;
-  return {
-    total,
-    unmatched,
-    suggestedRoot: unmatched.length === total ? suggestRoot(unmatched, repoFiles, coverageRoot) : null
-  };
-}
-function suggestRoot(unmatched, repoFiles, coverageRoot) {
-  const relative = new Set(unmatched.filter((path) => !isAbsolutePath(path)));
-  if (relative.size === 0) return null;
-  const rootPrefix = coverageRoot === void 0 || coverageRoot === "." ? null : `${coverageRoot}/`;
-  let best = null;
-  for (const file of repoFiles) {
-    for (let i = file.indexOf("/"); i > 0; i = file.indexOf("/", i + 1)) {
-      const suffix = file.slice(i + 1);
-      if (!relative.has(suffix)) continue;
-      const prefix = file.slice(0, i);
-      const candidate = rootPrefix !== null && suffix.startsWith(rootPrefix) ? `${prefix}/${coverageRoot}` : prefix;
-      if (best === null || candidate < best) best = candidate;
-    }
-  }
-  return best;
 }
 
 // ../core/src/coverage/merge.ts
@@ -43541,6 +43568,7 @@ function check(input) {
   const maps = [];
   const formats = /* @__PURE__ */ new Set();
   let skippedLines = 0;
+  const tracked = new Set(input.repoFiles);
   for (const file of files) {
     if ("missingFile" in file) continue;
     const coverageFile = file.file ?? null;
@@ -43567,11 +43595,13 @@ function check(input) {
     } else {
       const counted2 = parseCoverageCounted(file.text, choice.format, {
         ...input.repoRoot === void 0 ? {} : { repoRoot: input.repoRoot },
-        ...coverageRoot === void 0 ? {} : { coverageRoot }
+        ...coverageRoot === void 0 ? {} : { coverageRoot },
+        literalBackslashes: true
       });
       parsed = counted2.map;
       skippedLines += counted2.skipped;
     }
+    parsed = resolveBackslashPaths(parsed, tracked, choice.format === "lcov" ? (a, b) => a + b : Math.max);
     if (parsed.size === 0) {
       return buildReport({
         ...base,
@@ -45787,8 +45817,20 @@ function rangeParts(lines) {
   return parts;
 }
 function code(path) {
-  const safe = replaceUnsafeChars(path, "\uFFFD").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/`/g, "'");
-  return `\`${safe}\``;
+  return `\`${escapeCellPipes(replaceUnsafeChars(path, "\uFFFD")).replace(/`/g, "'")}\``;
+}
+function escapeCellPipes(text) {
+  let out = "";
+  let run2 = "";
+  for (const char of text) {
+    if (char === "\\") {
+      run2 += char;
+      continue;
+    }
+    out += char === "|" ? `${run2}${run2}\\|` : `${run2}${char}`;
+    run2 = "";
+  }
+  return out + run2;
 }
 var MARKDOWN_ACTIVE = /[\\`*_[\]#!|~]/g;
 function inlineText(text) {
@@ -46604,7 +46646,8 @@ async function readCoverageFiles(deps, options) {
     }
     const { choice, parsed, skipped } = await readCoverageChunks(chunks, format, {
       repoRoot,
-      ...coverageRoot === void 0 ? {} : { coverageRoot }
+      ...coverageRoot === void 0 ? {} : { coverageRoot },
+      literalBackslashes: true
     });
     log(coverageChoiceLine(choice, nameFiles ? entry : void 0));
     coverageFiles.push({ parsed, format: choice.format, file: name(entry), ...skipped > 0 ? { skipped } : {} });

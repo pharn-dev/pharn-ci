@@ -1,4 +1,5 @@
 import { isAbsolutePath, joinCoverageRoot, normalizePath } from "../paths.js";
+import { literalBackslashKey } from "./match.js";
 import type { CoverageMap, LineHits, ParseCoverageOptions } from "./types.js";
 
 /**
@@ -47,16 +48,18 @@ export function createLcovReader(options: ParseCoverageOptions = {}): {
   const map: CoverageMap = new Map();
   let current: LineHits | undefined;
   let skipped = 0;
+  const resolve = (raw: string): string =>
+    options.coverageRoot !== undefined && !isAbsolutePath(raw.trim())
+      ? normalizePath(joinCoverageRoot(raw, options.coverageRoot), options.repoRoot)
+      : normalizePath(raw, options.repoRoot);
 
   return {
     push(raw: string): void {
       const line = raw.trim();
       if (line.startsWith("SF:")) {
         const raw = line.slice(3);
-        const path =
-          options.coverageRoot !== undefined && !isAbsolutePath(raw.trim())
-            ? normalizePath(joinCoverageRoot(raw, options.coverageRoot), options.repoRoot)
-            : normalizePath(raw, options.repoRoot);
+        const separated = resolve(raw);
+        const path = options.literalBackslashes === true ? literalBackslashKey(raw, separated, resolve) : separated;
         current = map.get(path);
         if (!current) {
           current = new Map();

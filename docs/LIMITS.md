@@ -1838,6 +1838,16 @@ run. What it does not do:
 - **Paths are matched exactly against `git ls-files`.** After normalization, every path in the
   coverage report is compared with the tracked files, case-sensitively. pharn-ci reads no files,
   so a tracked path is the only evidence a coverage path names a real file.
+- **A backslash is part of the file name only when that names a tracked file.** A Windows report writes
+  `src\a.js` for `src/a.js`, while on Linux and macOS `\` is a legal character in a file name. A coverage path with a
+  backslash is first read with the backslash as part of the name (every other step of normalization as usual); when
+  that path is a tracked file, the record is that file's (lcov `SF:src/a\b.js` covers the tracked `src/a\b.js`).
+  Otherwise each backslash is a separator, as before. With both `src/a\b.js` and `src/a/b.js` tracked, each record
+  goes to the file its literal path names. A path where reading the backslash as part of the name would change what
+  a `..` removes, whether it lies under the repo root, or which Cobertura `<source>` it joins (a `..` next to a
+  backslash, a Windows drive path under a coverage root) is always read with backslashes as separators. With an empty
+  tracked-files list every backslash is a separator. In the PR comment the name is shown in a code span with its
+  backslash as written; only a run of backslashes right before a `|` is doubled, so the name cannot open a table cell.
 - **No path matches: `COVERAGE_PATHS_UNMATCHED`.** Diff coverage is not computed, and the report
   says so instead of passing as `NO_COVERABLE_CHANGES`. It is an error, and the verdict `fail`,
   with a threshold (0 included), and a warning without one. When a tracked file ends in a

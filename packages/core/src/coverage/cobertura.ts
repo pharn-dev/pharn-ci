@@ -6,6 +6,7 @@ import {
   normalizeRoot,
   startsWithPath,
 } from "../paths.js";
+import { literalBackslashKey } from "./match.js";
 import type { CoverageMap, LineHits, ParseCoverageOptions, ParsedCoverage } from "./types.js";
 import { scanXml } from "./xml.js";
 
@@ -47,6 +48,11 @@ import { scanXml } from "./xml.js";
  * itself. An absolute filename, and a filename joined to an absolute source, are
  * never prefixed. The source qualification above is judged on the key without
  * the root.
+ *
+ * Backslashes: with `literalBackslashes`, a filename with a backslash is
+ * resolved a second time with the backslash read as part of the name
+ * (`literalBackslashKey`); `check()` keeps that key only when it is a tracked
+ * file (`resolveBackslashPaths`).
  *
  * The XML is read with a linear, non-recursive scanner (`xml.ts`); malformed or
  * hostile input yields whatever was readable before the damage, never a throw.
@@ -121,7 +127,8 @@ export function parseCoberturaCounted(text: string, options: ParseCoverageOption
   const resolve = makeResolver([...new Set(sources)], options.repoRoot, options.coverageRoot);
   const map: CoverageMap = new Map();
   for (const [filename, lines] of perFile) {
-    const key = resolve(filename);
+    const separated = resolve(filename);
+    const key = options.literalBackslashes === true ? literalBackslashKey(filename, separated, resolve) : separated;
     let target = map.get(key);
     if (!target) {
       target = new Map();

@@ -78,10 +78,12 @@ export async function readCoverageFiles(
       coverageFiles.push({ missingFile: name(entry) });
       continue;
     }
-    // The file is parsed as it is read, with the same repo root and coverage root the check would use.
+    // The file is parsed as it is read, with the same repo root and coverage root the check would use. A path with a
+    // backslash keeps its literal key, which the check settles against the tracked files (CORE-101).
     const { choice, parsed, skipped } = await readCoverageChunks(chunks, format, {
       repoRoot,
       ...(coverageRoot === undefined ? {} : { coverageRoot }),
+      literalBackslashes: true,
     });
     log(coverageChoiceLine(choice, nameFiles ? entry : undefined));
     // The count rides on the entry only when some record was dropped, so every other entry is unchanged.
