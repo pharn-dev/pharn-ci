@@ -1,6 +1,7 @@
 import { MAX_ADDED_TEXT_CHARS, MAX_ADDED_TEXT_LINES } from "../diff/unified.js";
 import type { InjectionSignalId } from "../policy/types.js";
 import { codeSpan, type Message, type MessageCode } from "../report.js";
+import { isPriorityInjectionPath } from "./paths.js";
 import { INJECTION_SIGNAL_IDS } from "./policy.js";
 import type { InjectionSignal, OmittedInjection } from "./scan.js";
 
@@ -40,7 +41,9 @@ function locations(signals: readonly InjectionSignal[]): string {
  * The messages of the prompt-injection scan. One `INJECTION_<id>` message per signal id found, in id order: its level
  * is the highest severity among the findings of the id (error for block, warn, else info), and its text names up to 5
  * locations (path and line) and how many findings the cap left out, never any file text. Then one
- * `INJECTION_TEXT_TRUNCATED` warning when some files were too large to scan in full.
+ * `INJECTION_TEXT_TRUNCATED` message when some files were too large to scan in full: an error when one of them is an
+ * agent instruction or Markdown file (`isPriorityInjectionPath`), else a warning. Its text names up to 5 cut files
+ * and which budget they count against (the one for instruction and Markdown files, the one for other files, or both).
  */
 export function injectionMessages(
   signals: readonly InjectionSignal[],
@@ -63,10 +66,12 @@ export function injectionMessages(
   if (cut.length > 0) {
     const named = cut.slice(0, MAX_CUT_FILES).map(codeSpan).join(", ");
     const more = cut.length - MAX_CUT_FILES;
+    // A cut the pull request can cause in an instruction or Markdown file fails closed (an error).
+    const p = cut.some(isPriorityInjectionPath);
     messages.push({
-      level: "warn",
+      level: p ? "error" : "warn",
       code: "INJECTION_TEXT_TRUNCATED",
-      text: `This change is too large to scan in full for hidden instructions: the content scan reads the first ${MAX_ADDED_TEXT_LINES} added lines of a file and ${MAX_ADDED_TEXT_CHARS} characters of added text in all, so a finding past them is not seen in ${named}${more > 0 ? ` and ${more} more` : ""}.`,
+      text: `This change is too large to scan in full for hidden instructions: the content scan reads the first ${MAX_ADDED_TEXT_LINES} added lines of a file and ${MAX_ADDED_TEXT_CHARS} characters of added text per budget, so a finding past them is not seen in ${named}${more > 0 ? ` and ${more} more` : ""}. The cut files count against ${p && !cut.every(isPriorityInjectionPath) ? "both budgets" : `the budget for ${p ? "instruction and Markdown" : "other"} files`}.`,
     });
   }
   return messages;

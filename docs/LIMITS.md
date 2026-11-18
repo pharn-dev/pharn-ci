@@ -1380,12 +1380,20 @@ a text filter for content aimed at the next agent, not a judgement of what a tex
   last vendored directory, so a path of thousands of segments is read in linear time. An instruction file whose kind
   needs more of the path is missed: `node_modules/x/.cursor/rules/a/b/c/d/e/f/r.mdc` (9 segments from `.cursor`) is
   not flagged, while `node_modules/x/CLAUDE.md` at any depth is.
-- **Caps.** The scan keeps the first 50,000 added lines of a file and 8,000,000 characters of added text across the
-  diff, in diff order: a file past either cap is named in `INJECTION_TEXT_TRUNCATED` (`warn`) and a finding past the
-  cut is not seen. At most 20 findings per signal and file and 200 in all are listed; the messages count the rest.
+- **Caps.** The scan keeps the first 50,000 added lines of a file and two budgets of 8,000,000 characters of added
+  text across the diff, each in diff order: one for agent instruction files and Markdown files (`.md`, `.mdx`,
+  `.markdown`, `.mdc`, in any case), one for every other file. A file counts only against its own budget, so a large
+  generated file cannot use up the one that guards `AGENTS.md`; the reader holds at most 16,000,000 characters of
+  added text. A file past a cap is named in `INJECTION_TEXT_TRUNCATED` and a finding past the cut is not seen: the
+  message is an `error` (verdict `fail`) when an instruction or Markdown file was cut, and a `warn` when only other
+  files were. Many large Markdown files in one change (generated docs, a long changelog past 50,000 lines) fail
+  the check for that reason; split the change. The rarer Markdown extensions (`.mdown`, `.mkd`) and plain text
+  count against the budget for other files, so a cut there only warns. At most 20 findings per signal and file and 200 in
+  all are listed; the messages count the rest.
   At most 100 of an app policy's phrases are matched.
 - **A pre-parsed diff must carry the text.** A program that calls `check()` with a diff it parsed itself gets no
-  findings unless it parsed with `readDiffChunks` or the reader's `keepAddedText` option.
+  findings unless it parsed with `readDiffChunks` or the reader's `keepAddedText` option (and, for the separate
+  budget of instruction and Markdown files, `priorityAddedText: injectionTextPriority`).
 - **A finding is not a removal.** An instruction that already reached an agent's context, a cache or a fork stays
   there after the line is removed.
 
@@ -1785,10 +1793,12 @@ run. What it does not do:
 - **A PR controls the inputs that grade it.** Besides the config and the workflow, it can add a
   committed coverage file or change `.gitattributes`: `*.ts -diff` makes `git diff` print
   `Binary files ... differ` with no line counts, so those files' added lines are never measured.
-  pharn-ci flags these with three warnings, `CONFIG_CHANGED_IN_DIFF` (the diff touches the config in
+  pharn-ci flags these with three messages, `CONFIG_CHANGED_IN_DIFF` (the diff touches the config in
   use or a file under `.github/workflows/`), `COVERAGE_FILE_TRACKED` (the coverage file is a tracked
   file) and `DIFF_BINARY_COVERED_FILE` (the diff shows a file the coverage report knows as binary).
-  Those three input warnings are warnings only, never a `fail`. The same attribute also hides the text of a
+  The first two are warnings only, never a `fail`. `DIFF_BINARY_COVERED_FILE` is an `error` when a diff-coverage
+  threshold is set (0 included), because the gate cannot measure the binary file, and a warning without one. The
+  same attribute also hides the text of a
   test file, `package.json`, workflow file, test-runner config or pharn-ci config, so these are reported too, at the
   mode's level (error in mode `block`, warn in mode `warn`): a deleted or renamed-away JS/TS, Python or Go test file
   that git shows as binary is TI01; a modified or renamed JS/TS or Python test file that git shows as binary makes
@@ -1905,7 +1915,8 @@ limited by git, Node or GitHub alone.
   naming it (`warn`, or `error` in mode `block` for a JS/TS, Python or Go test file the change modifies), so a change cannot pass in silence by padding a file past the cut. A deleted file is not named:
   TI01 already counts a cut test file. For the prompt-injection scan it also keeps the full text of the added lines
   of every file outside the scan's default exemptions, apart from that: at most 50,000 lines per file and 8,000,000
-  characters across the diff (`addedTextCut` marks a file cut there, and `INJECTION_TEXT_TRUNCATED` names it). The 120 s git
+  characters across the diff for agent instruction and Markdown files plus 8,000,000 for all other files
+  (`addedTextCut` marks a file cut there, and `INJECTION_TEXT_TRUNCATED` names it). The 120 s git
   timeout still applies. From the GitHub compare API (the
   Action's fallback, and PR-number mode) it is limited by GitHub's own compare limit; past it the
   diff is unavailable and the report says `DIFF_UNAVAILABLE`.

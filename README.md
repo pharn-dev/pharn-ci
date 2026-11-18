@@ -577,9 +577,12 @@ comment's 🧬 Content section, each with a hint. A message names up to 5 paths 
 fixed name and code point (`right-to-left override U+202E`), a phrase id, a run length or a kind and directory, never
 file text.
 
-**Caps.** The scan keeps the first 50,000 added lines of a file and 8,000,000 characters of added text in the whole
-diff, lists 20 findings per signal and file and 200 in all (the messages count the rest), and matches at most 100
-policy phrases. A file it could not read in full is named in `INJECTION_TEXT_TRUNCATED` (`warn`). What it misses
+**Caps.** The scan keeps the first 50,000 added lines of a file and two budgets of 8,000,000 characters of added text
+in the whole diff: one for agent instruction files and Markdown files (`.md`, `.mdx`, `.markdown`, `.mdc`), one for
+every other file, so a large generated file cannot use up the budget that guards `AGENTS.md`. It lists 20 findings per
+signal and file and 200 in all (the messages count the rest), and matches at most 100 policy phrases. A file it could
+not read in full is named in `INJECTION_TEXT_TRUNCATED`: an `error` (verdict `fail`) when an instruction or Markdown
+file was cut, a `warn` when only other files were (a 9 MB bundle). What it misses
 (encodings, homoglyphs, instructions split across lines, images, unchanged lines) is in
 [docs/LIMITS.md](./docs/LIMITS.md#prompt-injection-scan).
 
@@ -1286,7 +1289,7 @@ message `code`s, not on text:
 | `COVERAGE_LINES_SKIPPED`        | Malformed lcov `DA` records or Cobertura `<line>` elements were skipped; the text gives their number (`info`) |
 | `CONFIG_CHANGED_IN_DIFF`        | The change edits the pharn-ci config in use or a workflow under `.github/workflows/` (`warn`) |
 | `COVERAGE_FILE_TRACKED`         | The coverage file is tracked in the repository, so the change can supply it (`warn`) |
-| `DIFF_BINARY_COVERED_FILE`      | The diff shows a covered source file as binary, so its changes were not measured (`warn`) |
+| `DIFF_BINARY_COVERED_FILE`      | The diff shows a covered source file as binary, so its changes were not measured (`error` with a threshold, `warn` without) |
 | `TEST_FILES_DELETED`            | The change deletes a test file or renames one to a non-test name (`info`) |
 | `TEST_INTEGRITY_MODE_IGNORED`   | `.pharn/ci.yml` sets `test_integrity.mode` looser than the workflow input or the default, so the stricter mode applies (`warn`) |
 | `TEST_INTEGRITY_OFF`            | The effective test-integrity mode is `off`, so no test-integrity signal is checked (`info`) |
@@ -1352,7 +1355,7 @@ message `code`s, not on text:
 | `INJECTION_PI03` | An added line holds a known prompt-injection phrase, or one of the org policy's `injection.phrases` (`warn`, or the level the policy sets). Each signal names the phrase id |
 | `INJECTION_PI04` | A line added to an agent instruction file holds a base64 or hex run of more than 200 characters (`warn`, or the level the policy sets). Each signal names the run's kind and length |
 | `INJECTION_PI05` | An agent instruction file is added inside a vendored directory (`warn`, or the level the policy sets). Each signal names the file's kind and the directory |
-| `INJECTION_TEXT_TRUNCATED` | A file had more added text than the scan reads (50,000 lines, or 8,000,000 characters across the diff), so a finding past the cut is not seen (`warn`). The text names up to 5 files |
+| `INJECTION_TEXT_TRUNCATED` | A file had more added text than the scan reads (50,000 lines, or past its budget of 8,000,000 characters across the diff: one budget for agent instruction and Markdown files, one for all other files), so a finding past the cut is not seen (`error` when an instruction or Markdown file was cut, `warn` otherwise). The text names up to 5 files and which budget they count against |
 | `DEPENDENCY_D01` | An added npm or PyPI package the Action looked up does not exist in the registry ([Dependency safety](#dependency-safety)) (`error`). One message per code; the text names counts, thresholds and up to 10 `path:line` locations, never a package name or file text, and the findings are in `dependencies.signals` |
 | `DEPENDENCY_D02` | An added package was first published fewer than `dependencies.min_age_days` days before the head commit (`warn`) |
 | `DEPENDENCY_D03` | An added unscoped npm package was downloaded fewer than `dependencies.min_weekly_downloads` times last week (`warn`) |

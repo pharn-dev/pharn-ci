@@ -39,12 +39,15 @@ describe("binary diff entries for covered files", () => {
     expect(files.find((file) => file.path === "src/app.ts")?.addedLines).toEqual([2]);
   });
 
-  it("AC-3: check() warns once, naming the covered binary paths and not the uncovered one", async () => {
+  // CORE-100: re-pinned from "warns once" and level warn. runCheck sets threshold 80, and under a threshold the message
+  // is now an error (a source file shown as binary cannot be measured, so the gate fails closed); the warning without
+  // a threshold is pinned in ac-core100-fail-closed.test.ts AC-4.
+  it("AC-3: check() reports once, naming the covered binary paths and not the uncovered one (an error under a threshold)", async () => {
     const report = await runCheck("binary.diff");
     expectValidReport(report);
     const warnings = withCode(report.messages, "DIFF_BINARY_COVERED_FILE");
     expect(warnings).toHaveLength(1);
-    expect(warnings[0]?.level).toBe("warn");
+    expect(warnings[0]?.level).toBe("error");
     expect(warnings[0]?.text).toContain("src/x.ts");
     expect(warnings[0]?.text).toContain("src/y.ts");
     expect(warnings[0]?.text).not.toContain("assets/logo.png");

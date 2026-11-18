@@ -120,6 +120,18 @@ function extensionOf(path: string): string {
 const MARKDOWN_EXTENSIONS: ReadonlySet<string> = new Set(["md", "mdx", "markdown", "mdc", "mdown", "mkd"]);
 const PROSE_EXTENSIONS: ReadonlySet<string> = new Set(["txt", "rst", "adoc", "asciidoc", "org", "text"]);
 
+/** The Markdown extensions whose files count against the scan's priority budget of added text. */
+const PRIORITY_MARKDOWN_EXTENSIONS: ReadonlySet<string> = new Set(["md", "mdx", "markdown", "mdc"]);
+
+/**
+ * Whether the scan keeps the file's added text against the priority budget (`MAX_PRIORITY_ADDED_TEXT_CHARS`) rather
+ * than the budget for every other file: an agent instruction file (`instructionKindOf` not null) or a Markdown file
+ * (`.md`, `.mdx`, `.markdown` or `.mdc`, in any case), by path only. A cut in such a file is an error.
+ */
+export function isPriorityInjectionPath(path: string): boolean {
+  return PRIORITY_MARKDOWN_EXTENSIONS.has(extensionOf(path)) || instructionKindOf(path) !== null;
+}
+
 /** Whether PI02 reads the file as Markdown: a Markdown extension, or an instruction file of any extension. */
 export function isMarkdownPath(path: string): boolean {
   return MARKDOWN_EXTENSIONS.has(extensionOf(path)) || instructionKindOf(path) !== null;

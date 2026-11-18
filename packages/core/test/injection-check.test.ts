@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { check, MAX_ADDED_TEXT_CHARS, MAX_ADDED_TEXT_LINES, type Report, readDiffChunks } from "../src/index.js";
+import {
+  check,
+  MAX_ADDED_TEXT_LINES,
+  MAX_OTHER_ADDED_TEXT_CHARS,
+  MAX_PRIORITY_ADDED_TEXT_CHARS,
+  type Report,
+  readDiffChunks,
+} from "../src/index.js";
 import { DEFAULT_INJECTION_SEVERITIES } from "../src/injection/policy.js";
 import { fixture } from "./helpers.js";
 import { addedFileDiff, injectionFixture } from "./injection-fixture.js";
@@ -166,26 +173,37 @@ describe("the prompt-injection scan in check()", { timeout: 120_000 }, () => {
     expect(pi01).toBeLessThan(policy);
   });
 
-  it("warns when a file has more added lines than the scan reads", () => {
+  // CORE-100: re-pinned. docs/huge.md is a Markdown file, so its cut is now an error (level and verdict), and the text
+  // names the two budgets and which one the cut file counts against.
+  it("reports a file with more added lines than the scan reads; a Markdown file's cut is an error", () => {
     const lines = Array.from({ length: MAX_ADDED_TEXT_LINES + 1 }, (_, i) => `line ${i}`);
     const report = run({ text: addedFileDiff("docs/huge.md", lines) });
     const message = withoutFix(report.messages.find((m) => m.code === "INJECTION_TEXT_TRUNCATED"));
     expect(message).toEqual({
-      level: "warn",
+      level: "error",
       code: "INJECTION_TEXT_TRUNCATED",
-      text: `This change is too large to scan in full for hidden instructions: the content scan reads the first ${MAX_ADDED_TEXT_LINES} added lines of a file and ${MAX_ADDED_TEXT_CHARS} characters of added text in all, so a finding past them is not seen in \`docs/huge.md\`.`,
+      text: `This change is too large to scan in full for hidden instructions: the content scan reads the first ${MAX_ADDED_TEXT_LINES} added lines of a file and ${MAX_PRIORITY_ADDED_TEXT_CHARS} characters of added text per budget, so a finding past them is not seen in \`docs/huge.md\`. The cut files count against the budget for instruction and Markdown files.`,
     });
     expect(report.injection).toBeUndefined();
+    expect(report.verdict).toBe("fail");
   });
 
-  it("warns for every file past the diff-wide character budget, and still finds what came before it", () => {
+  // CORE-100: re-pinned. c.md counts against the budget for agent instruction and Markdown files, which b.txt cannot
+  // use up, so c.md is scanned in full (its finding is reported) and only b.txt is cut, at level warn.
+  it("warns for every file past the character budget for other files, and still finds what came before and after it", () => {
     const zwsp = String.fromCharCode(0x200b);
     const diff =
       addedFileDiff("a.md", [`early${zwsp}`]) +
-      addedFileDiff("b.txt", ["x".repeat(MAX_ADDED_TEXT_CHARS)]) +
+      // a.md no longer counts against this budget, so b.txt needs one code unit more than it to be cut.
+      addedFileDiff("b.txt", ["x".repeat(MAX_OTHER_ADDED_TEXT_CHARS + 1)]) +
+      addedFileDiff("c.txt", ["after the budget"]) +
       addedFileDiff("c.md", [`late${zwsp}`]);
     const report = run({ text: diff });
-    expect(report.injection?.signals.map((s) => s.path)).toEqual(["a.md"]);
-    expect(report.messages.find((m) => m.code === "INJECTION_TEXT_TRUNCATED")?.text).toContain("`b.txt`, `c.md`.");
+    expect(report.injection?.signals.map((s) => s.path)).toEqual(["a.md", "c.md"]);
+    const message = report.messages.find((m) => m.code === "INJECTION_TEXT_TRUNCATED");
+    expect(message?.level).toBe("warn");
+    expect(message?.text).toContain(
+      "not seen in `b.txt`, `c.txt`. The cut files count against the budget for other files.",
+    );
   });
 });

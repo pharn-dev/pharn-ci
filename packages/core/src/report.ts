@@ -789,8 +789,10 @@ export function buildReport(input: BuildReportInput): Report {
     });
   }
   if (input.binaryCoveredPaths !== undefined && input.binaryCoveredPaths.length > 0) {
+    // A source file shown as binary has no added lines to measure: with a threshold (0 included) the gate cannot
+    // measure it, and the pull request can cause that through .gitattributes, so it fails closed.
     messages.push({
-      level: "warn",
+      level: input.threshold === null ? "warn" : "error",
       code: "DIFF_BINARY_COVERED_FILE",
       text: `The diff shows ${pathList(input.binaryCoveredPaths)} as binary, so their added lines were not measured; check .gitattributes for -diff or binary on source files.`,
     });

@@ -26087,6 +26087,8 @@ var MAX_KEPT_LINES = 5e3;
 var MAX_KEPT_LINE_CHARS = 400;
 var MAX_ADDED_TEXT_LINES = 5e4;
 var MAX_ADDED_TEXT_CHARS = 8e6;
+var MAX_PRIORITY_ADDED_TEXT_CHARS = MAX_ADDED_TEXT_CHARS;
+var MAX_OTHER_ADDED_TEXT_CHARS = MAX_ADDED_TEXT_CHARS;
 var HUNK_HEADER = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 function parseUnifiedDiff(text, options = {}) {
   return parseUnifiedDiffLines(text.split(/\r?\n/), options);
@@ -26100,7 +26102,8 @@ function createUnifiedDiffReader(options = {}) {
   const entries = [];
   const keepText = options.keepText;
   const keepAddedText = options.keepAddedText;
-  let addedBudget = MAX_ADDED_TEXT_CHARS;
+  const priorityAddedText = options.priorityAddedText;
+  const budget = { priority: MAX_PRIORITY_ADDED_TEXT_CHARS, other: MAX_OTHER_ADDED_TEXT_CHARS };
   let current;
   let oldRemaining = 0;
   let newRemaining = 0;
@@ -26121,6 +26124,7 @@ function createUnifiedDiffReader(options = {}) {
       keptLines: 0,
       truncated: false,
       keepAdded: void 0,
+      priority: false,
       addedText: [],
       addedCut: false
     };
@@ -26142,22 +26146,25 @@ function createUnifiedDiffReader(options = {}) {
     if (e.keepAdded === void 0) {
       const paths = pathsOf2(e);
       e.keepAdded = keepAddedText !== void 0 && paths !== null && keepAddedText(paths);
+      e.priority = e.keepAdded && priorityAddedText !== void 0 && paths !== null && priorityAddedText(paths);
     }
     return e.keepAdded;
   };
   const keepAddedLine = (e, line, text) => {
     if (e.addedCut) return;
-    if (e.addedText.length >= MAX_ADDED_TEXT_LINES || addedBudget <= 0) {
+    const which2 = e.priority ? "priority" : "other";
+    const left = budget[which2];
+    if (e.addedText.length >= MAX_ADDED_TEXT_LINES || left <= 0) {
       e.addedCut = true;
       return;
     }
-    if (text.length > addedBudget) {
+    if (text.length > left) {
       e.addedCut = true;
-      e.addedText.push({ line, text: cutCodeUnits(text, addedBudget, { marker: false }) });
-      addedBudget = 0;
+      e.addedText.push({ line, text: cutCodeUnits(text, left, { marker: false }) });
+      budget[which2] = 0;
       return;
     }
-    addedBudget -= text.length;
+    budget[which2] = left - text.length;
     e.addedText.push({ line, text });
   };
   const keepLine = (e, kind, line, text) => {
@@ -26646,7 +26653,7 @@ function buildReport(input) {
   }
   if (input.binaryCoveredPaths !== void 0 && input.binaryCoveredPaths.length > 0) {
     messages.push({
-      level: "warn",
+      level: input.threshold === null ? "warn" : "error",
       code: "DIFF_BINARY_COVERED_FILE",
       text: `The diff shows ${pathList(input.binaryCoveredPaths)} as binary, so their added lines were not measured; check .gitattributes for -diff or binary on source files.`
     });
@@ -30338,102 +30345,6 @@ function binaryCoveredPaths(diff, coverage2) {
   return [...found].sort(byCodeUnit);
 }
 
-// ../core/src/injection/policy.ts
-var INJECTION_SIGNAL_IDS = ["PI01", "PI02", "PI03", "PI04", "PI05"];
-var DEFAULT_INJECTION_SEVERITIES = {
-  PI01: "block",
-  PI02: "warn",
-  PI03: "warn",
-  PI04: "warn",
-  PI05: "warn"
-};
-var RANK = { off: 0, info: 1, warn: 2, block: 3 };
-function tidy(...lists) {
-  const out = /* @__PURE__ */ new Set();
-  for (const list of lists) {
-    if (!Array.isArray(list)) continue;
-    for (const value of list) if (typeof value === "string") out.add(value);
-  }
-  return [...out].sort(byCodeUnit);
-}
-function injectionSettingsOf(policy, base) {
-  const severities = { ...DEFAULT_INJECTION_SEVERITIES };
-  const settings2 = { exempt: [], phrases: [], severities, ignored: [] };
-  const document2 = policy?.document;
-  if (policy === void 0 || policy.source === "none" || document2 === null || document2 === void 0) return settings2;
-  const injection2 = document2.injection;
-  if (injection2 === void 0) return settings2;
-  const wanted = injection2.signals ?? {};
-  if (policy.source === "app") {
-    settings2.exempt = tidy(injection2.exempt);
-    settings2.phrases = tidy(injection2.phrases);
-    for (const id of INJECTION_SIGNAL_IDS) {
-      const value = Object.hasOwn(wanted, id) ? wanted[id] : void 0;
-      if (value !== void 0) severities[id] = value === "off" ? null : value;
-    }
-    return settings2;
-  }
-  const basePhrases = base?.kind === "document" ? base.document.injection?.phrases : void 0;
-  settings2.phrases = tidy(injection2.phrases, basePhrases);
-  if (injection2.exempt !== void 0 && injection2.exempt.length > 0) {
-    settings2.ignored.push({ setting: "injection.exempt", layer: "policy-file", reason: "not-allowed" });
-  }
-  for (const id of INJECTION_SIGNAL_IDS) {
-    const value = Object.hasOwn(wanted, id) ? wanted[id] : void 0;
-    if (value === void 0) continue;
-    const fallback = DEFAULT_INJECTION_SEVERITIES[id];
-    if (RANK[value] > RANK[fallback]) severities[id] = value;
-    else if (RANK[value] < RANK[fallback]) {
-      settings2.ignored.push({ setting: `injection.signals.${id}`, layer: "policy-file", reason: "looser" });
-    }
-  }
-  return settings2;
-}
-
-// ../core/src/injection/messages.ts
-var MAX_LOCATIONS = 5;
-var MAX_CUT_FILES = 5;
-var CODES = {
-  PI01: "INJECTION_PI01",
-  PI02: "INJECTION_PI02",
-  PI03: "INJECTION_PI03",
-  PI04: "INJECTION_PI04",
-  PI05: "INJECTION_PI05"
-};
-var SENTENCES = {
-  PI01: "This change adds invisible or bidirectional Unicode characters, which can hide text from a reviewer or reorder what an agent reads (PI01)",
-  PI02: "This change adds hidden Markdown text (an HTML comment, a link title or a reference definition) that addresses an agent (PI02)",
-  PI03: "This change adds known prompt-injection phrases (PI03)",
-  PI04: "This change adds a long base64 or hex blob to an agent instruction file, which an agent may decode and follow (PI04)",
-  PI05: "This change adds agent instruction files inside a vendored directory, where an agent may read them as instructions (PI05)"
-};
-function locations2(signals) {
-  const named = signals.slice(0, MAX_LOCATIONS).map((signal2) => signal2.line === null ? codeSpan(signal2.path) : `${codeSpan(signal2.path)} line ${signal2.line}`).join(", ");
-  const more = signals.length - MAX_LOCATIONS;
-  return more > 0 ? `${named} and ${more} more` : named;
-}
-function injectionMessages(signals, omitted, cut) {
-  const messages = [];
-  for (const id of INJECTION_SIGNAL_IDS) {
-    const own = signals.filter((signal2) => signal2.id === id);
-    if (own.length === 0) continue;
-    const level = own.some((s) => s.severity === "block") ? "error" : own.some((s) => s.severity === "warn") ? "warn" : "info";
-    const left = omitted.filter((entry) => entry.id === id).reduce((sum, entry) => sum + entry.count, 0);
-    const notListed = left > 0 ? ` ${left} more ${left === 1 ? "finding is" : "findings are"} not listed.` : "";
-    messages.push({ level, code: CODES[id], text: `${SENTENCES[id]}: ${locations2(own)}.${notListed}` });
-  }
-  if (cut.length > 0) {
-    const named = cut.slice(0, MAX_CUT_FILES).map(codeSpan).join(", ");
-    const more = cut.length - MAX_CUT_FILES;
-    messages.push({
-      level: "warn",
-      code: "INJECTION_TEXT_TRUNCATED",
-      text: `This change is too large to scan in full for hidden instructions: the content scan reads the first ${MAX_ADDED_TEXT_LINES} added lines of a file and ${MAX_ADDED_TEXT_CHARS} characters of added text in all, so a finding past them is not seen in ${named}${more > 0 ? ` and ${more} more` : ""}.`
-    });
-  }
-  return messages;
-}
-
 // ../core/src/setup/instructions.ts
 var INSTRUCTION_KINDS = [
   "claude-md",
@@ -31043,12 +30954,113 @@ function extensionOf(path) {
 }
 var MARKDOWN_EXTENSIONS = /* @__PURE__ */ new Set(["md", "mdx", "markdown", "mdc", "mdown", "mkd"]);
 var PROSE_EXTENSIONS = /* @__PURE__ */ new Set(["txt", "rst", "adoc", "asciidoc", "org", "text"]);
+var PRIORITY_MARKDOWN_EXTENSIONS = /* @__PURE__ */ new Set(["md", "mdx", "markdown", "mdc"]);
+function isPriorityInjectionPath(path) {
+  return PRIORITY_MARKDOWN_EXTENSIONS.has(extensionOf(path)) || instructionKindOf(path) !== null;
+}
 function isMarkdownPath(path) {
   return MARKDOWN_EXTENSIONS.has(extensionOf(path)) || instructionKindOf(path) !== null;
 }
 function isProsePath(path) {
   const extension = extensionOf(path);
   return extension === "" || PROSE_EXTENSIONS.has(extension) || isMarkdownPath(path);
+}
+
+// ../core/src/injection/policy.ts
+var INJECTION_SIGNAL_IDS = ["PI01", "PI02", "PI03", "PI04", "PI05"];
+var DEFAULT_INJECTION_SEVERITIES = {
+  PI01: "block",
+  PI02: "warn",
+  PI03: "warn",
+  PI04: "warn",
+  PI05: "warn"
+};
+var RANK = { off: 0, info: 1, warn: 2, block: 3 };
+function tidy(...lists) {
+  const out = /* @__PURE__ */ new Set();
+  for (const list of lists) {
+    if (!Array.isArray(list)) continue;
+    for (const value of list) if (typeof value === "string") out.add(value);
+  }
+  return [...out].sort(byCodeUnit);
+}
+function injectionSettingsOf(policy, base) {
+  const severities = { ...DEFAULT_INJECTION_SEVERITIES };
+  const settings2 = { exempt: [], phrases: [], severities, ignored: [] };
+  const document2 = policy?.document;
+  if (policy === void 0 || policy.source === "none" || document2 === null || document2 === void 0) return settings2;
+  const injection2 = document2.injection;
+  if (injection2 === void 0) return settings2;
+  const wanted = injection2.signals ?? {};
+  if (policy.source === "app") {
+    settings2.exempt = tidy(injection2.exempt);
+    settings2.phrases = tidy(injection2.phrases);
+    for (const id of INJECTION_SIGNAL_IDS) {
+      const value = Object.hasOwn(wanted, id) ? wanted[id] : void 0;
+      if (value !== void 0) severities[id] = value === "off" ? null : value;
+    }
+    return settings2;
+  }
+  const basePhrases = base?.kind === "document" ? base.document.injection?.phrases : void 0;
+  settings2.phrases = tidy(injection2.phrases, basePhrases);
+  if (injection2.exempt !== void 0 && injection2.exempt.length > 0) {
+    settings2.ignored.push({ setting: "injection.exempt", layer: "policy-file", reason: "not-allowed" });
+  }
+  for (const id of INJECTION_SIGNAL_IDS) {
+    const value = Object.hasOwn(wanted, id) ? wanted[id] : void 0;
+    if (value === void 0) continue;
+    const fallback = DEFAULT_INJECTION_SEVERITIES[id];
+    if (RANK[value] > RANK[fallback]) severities[id] = value;
+    else if (RANK[value] < RANK[fallback]) {
+      settings2.ignored.push({ setting: `injection.signals.${id}`, layer: "policy-file", reason: "looser" });
+    }
+  }
+  return settings2;
+}
+
+// ../core/src/injection/messages.ts
+var MAX_LOCATIONS = 5;
+var MAX_CUT_FILES = 5;
+var CODES = {
+  PI01: "INJECTION_PI01",
+  PI02: "INJECTION_PI02",
+  PI03: "INJECTION_PI03",
+  PI04: "INJECTION_PI04",
+  PI05: "INJECTION_PI05"
+};
+var SENTENCES = {
+  PI01: "This change adds invisible or bidirectional Unicode characters, which can hide text from a reviewer or reorder what an agent reads (PI01)",
+  PI02: "This change adds hidden Markdown text (an HTML comment, a link title or a reference definition) that addresses an agent (PI02)",
+  PI03: "This change adds known prompt-injection phrases (PI03)",
+  PI04: "This change adds a long base64 or hex blob to an agent instruction file, which an agent may decode and follow (PI04)",
+  PI05: "This change adds agent instruction files inside a vendored directory, where an agent may read them as instructions (PI05)"
+};
+function locations2(signals) {
+  const named = signals.slice(0, MAX_LOCATIONS).map((signal2) => signal2.line === null ? codeSpan(signal2.path) : `${codeSpan(signal2.path)} line ${signal2.line}`).join(", ");
+  const more = signals.length - MAX_LOCATIONS;
+  return more > 0 ? `${named} and ${more} more` : named;
+}
+function injectionMessages(signals, omitted, cut) {
+  const messages = [];
+  for (const id of INJECTION_SIGNAL_IDS) {
+    const own = signals.filter((signal2) => signal2.id === id);
+    if (own.length === 0) continue;
+    const level = own.some((s) => s.severity === "block") ? "error" : own.some((s) => s.severity === "warn") ? "warn" : "info";
+    const left = omitted.filter((entry) => entry.id === id).reduce((sum, entry) => sum + entry.count, 0);
+    const notListed = left > 0 ? ` ${left} more ${left === 1 ? "finding is" : "findings are"} not listed.` : "";
+    messages.push({ level, code: CODES[id], text: `${SENTENCES[id]}: ${locations2(own)}.${notListed}` });
+  }
+  if (cut.length > 0) {
+    const named = cut.slice(0, MAX_CUT_FILES).map(codeSpan).join(", ");
+    const more = cut.length - MAX_CUT_FILES;
+    const p = cut.some(isPriorityInjectionPath);
+    messages.push({
+      level: p ? "error" : "warn",
+      code: "INJECTION_TEXT_TRUNCATED",
+      text: `This change is too large to scan in full for hidden instructions: the content scan reads the first ${MAX_ADDED_TEXT_LINES} added lines of a file and ${MAX_ADDED_TEXT_CHARS} characters of added text per budget, so a finding past them is not seen in ${named}${more > 0 ? ` and ${more} more` : ""}. The cut files count against ${p && !cut.every(isPriorityInjectionPath) ? "both budgets" : `the budget for ${p ? "instruction and Markdown" : "other"} files`}.`
+    });
+  }
+  return messages;
 }
 
 // ../core/src/injection/phrases.ts
@@ -31281,6 +31293,9 @@ var MAX_INJECTION_FINDINGS_PER_FILE = 20;
 var MAX_INJECTION_FINDINGS = 200;
 function keepInjectionText(file) {
   return !isDefaultExemptPath(file.path);
+}
+function injectionTextPriority(file) {
+  return isPriorityInjectionPath(file.path);
 }
 function isReferenceDefinition(text) {
   let i = 0;
@@ -43347,7 +43362,8 @@ function check(input) {
   const agentSetup = scanAgentSetup(input.repoFiles);
   const parsedDiff = "text" in input.diff ? parseUnifiedDiff(input.diff.text, {
     keepText: keepSignalFileText(input.configPath, input.repoRoot),
-    keepAddedText: keepInjectionText
+    keepAddedText: keepInjectionText,
+    priorityAddedText: injectionTextPriority
   }) : "parsed" in input.diff ? input.diff.parsed : null;
   const configPaths = parsedDiff === null ? [] : changedConfigPaths(parsedDiff, input.configPath, input.repoRoot);
   const testPaths = parsedDiff === null ? [] : deletedTestFiles(parsedDiff);
@@ -43776,7 +43792,8 @@ async function readDiffChunks(chunks, options = {}) {
   const splitter = createLineSplitter();
   const reader = createUnifiedDiffReader({
     keepText: keepSignalFileText(options.configPath, options.repoRoot),
-    keepAddedText: keepInjectionText
+    keepAddedText: keepInjectionText,
+    priorityAddedText: injectionTextPriority
   });
   for await (const chunk of chunks) {
     for (const line of splitter.push(chunk)) reader.push(line);

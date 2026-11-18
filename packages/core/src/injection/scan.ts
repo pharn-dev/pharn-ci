@@ -7,6 +7,7 @@ import {
   instructionKindOf,
   isDefaultExemptPath,
   isMarkdownPath,
+  isPriorityInjectionPath,
   isProsePath,
   LOCALE_PATHS,
   vendoredInstruction,
@@ -61,6 +62,15 @@ export const MAX_INJECTION_FINDINGS = 200;
  */
 export function keepInjectionText(file: { path: string; oldPath: string }): boolean {
   return !isDefaultExemptPath(file.path);
+}
+
+/**
+ * The files whose added text counts against the reader's priority budget, apart from every other file: agent
+ * instruction files and Markdown files (`isPriorityInjectionPath`), judged by the new path. A large file of any other
+ * kind cannot use up the budget that guards them.
+ */
+export function injectionTextPriority(file: { path: string; oldPath: string }): boolean {
+  return isPriorityInjectionPath(file.path);
 }
 
 /** The hidden parts of one Markdown line, and whether an HTML comment is still open at its end. */

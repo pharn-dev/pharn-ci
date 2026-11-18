@@ -126,6 +126,8 @@ export {
   MAX_ADDED_TEXT_LINES,
   MAX_KEPT_LINE_CHARS,
   MAX_KEPT_LINES,
+  MAX_OTHER_ADDED_TEXT_CHARS,
+  MAX_PRIORITY_ADDED_TEXT_CHARS,
   parseUnifiedDiff,
   type UnifiedDiffOptions,
 } from "./diff/unified.js";
@@ -167,6 +169,7 @@ export {
   detectInjection,
   type InjectionFinding,
   type InjectionSignal,
+  injectionTextPriority,
   keepInjectionText,
   longestBlob,
   MAX_BLOB_CHARS,

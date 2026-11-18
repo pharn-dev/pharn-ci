@@ -1,5 +1,5 @@
 import { parseUnifiedDiff } from "../src/diff/unified.js";
-import { keepInjectionText } from "../src/injection/scan.js";
+import { injectionTextPriority, keepInjectionText } from "../src/injection/scan.js";
 import { keepSignalFileText } from "../src/signals/signalFiles.js";
 import { fixture } from "./helpers.js";
 
@@ -22,7 +22,11 @@ export function injectionFixture(name: string): string {
 
 /** A diff text parsed the way check() parses one: signal text kept, and the added text the content scan reads. */
 export function parseForInjection(text: string) {
-  return parseUnifiedDiff(text, { keepText: keepSignalFileText(), keepAddedText: keepInjectionText });
+  return parseUnifiedDiff(text, {
+    keepText: keepSignalFileText(),
+    keepAddedText: keepInjectionText,
+    priorityAddedText: injectionTextPriority,
+  });
 }
 
 /** A `--unified=0` diff that adds `lines` to a new file at `path`. */

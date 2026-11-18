@@ -35,12 +35,13 @@ export interface DiffFile {
    * The full text of every added line, in order, for the content scan (the prompt-injection signals PI01 to PI04).
    * Present only when the caller selected this file with the `keepAddedText` option; then it is always an array. It is
    * kept apart from `hunks`, which only the test-integrity signals read, and is bounded per file
-   * (`MAX_ADDED_TEXT_LINES`) and per diff (`MAX_ADDED_TEXT_CHARS`).
+   * (`MAX_ADDED_TEXT_LINES`) and per diff, by the budget the file counts against (`MAX_PRIORITY_ADDED_TEXT_CHARS` for
+   * the files the `priorityAddedText` option selects, `MAX_OTHER_ADDED_TEXT_CHARS` for the rest).
    */
   addedText?: DiffLineText[];
   /**
    * Set (to `true`) only on a file whose added text was kept and ran past a bound (`MAX_ADDED_TEXT_LINES`, or the
-   * diff-wide `MAX_ADDED_TEXT_CHARS`), so `addedText` holds the start of it. Absent otherwise.
+   * diff-wide budget the file counts against), so `addedText` holds the start of it. Absent otherwise.
    */
   addedTextCut?: true;
 }
@@ -69,6 +70,12 @@ export interface UnifiedDiffOptions {
    * path. Absent keeps no added text for any file.
    */
   keepAddedText?: (file: { path: string; oldPath: string }) => boolean;
+  /**
+   * Which of the files `keepAddedText` selects count against the priority budget (`MAX_PRIORITY_ADDED_TEXT_CHARS`)
+   * instead of the budget for every other file (`MAX_OTHER_ADDED_TEXT_CHARS`), judged by their new and old path. The
+   * two budgets are apart, so other files cannot use up the priority one. Absent puts every file in the other budget.
+   */
+  priorityAddedText?: (file: { path: string; oldPath: string }) => boolean;
 }
 
 /** Most lines (added plus removed) whose text is kept for one file, and the most hunks kept for it. */
@@ -77,8 +84,16 @@ export const MAX_KEPT_LINES = 5000;
 export const MAX_KEPT_LINE_CHARS = 400;
 /** Most added lines whose full text `addedText` keeps for one file. */
 export const MAX_ADDED_TEXT_LINES = 50000;
-/** Most UTF-16 code units of added text kept across the whole diff; the line that crosses it is cut there. */
+/**
+ * Most UTF-16 code units of added text one budget keeps across the whole diff; the line that crosses it is cut there.
+ * There are two budgets of this size, `MAX_PRIORITY_ADDED_TEXT_CHARS` and `MAX_OTHER_ADDED_TEXT_CHARS`, so the reader
+ * holds at most twice this much added text.
+ */
 export const MAX_ADDED_TEXT_CHARS = 8_000_000;
+/** The budget of added text for the files `priorityAddedText` selects (the scan's agent instruction and Markdown files). */
+export const MAX_PRIORITY_ADDED_TEXT_CHARS = MAX_ADDED_TEXT_CHARS;
+/** The budget of added text for every other file `keepAddedText` selects. */
+export const MAX_OTHER_ADDED_TEXT_CHARS = MAX_ADDED_TEXT_CHARS;
 
 interface Entry {
   oldPath: string | null;
@@ -95,6 +110,8 @@ interface Entry {
   truncated: boolean;
   /** Decided with `keep`, by `keepAddedText`; undefined until then. */
   keepAdded: boolean | undefined;
+  /** Decided with `keepAdded`, by `priorityAddedText`: whether the file counts against the priority budget. */
+  priority: boolean;
   addedText: DiffLineText[];
   addedCut: boolean;
 }
@@ -140,8 +157,9 @@ export function createUnifiedDiffReader(options: UnifiedDiffOptions = {}): {
   const entries: Entry[] = [];
   const keepText = options.keepText;
   const keepAddedText = options.keepAddedText;
-  /** Code units of added text still allowed across the diff. */
-  let addedBudget = MAX_ADDED_TEXT_CHARS;
+  const priorityAddedText = options.priorityAddedText;
+  /** Code units of added text still allowed across the diff, per budget. */
+  const budget = { priority: MAX_PRIORITY_ADDED_TEXT_CHARS, other: MAX_OTHER_ADDED_TEXT_CHARS };
   let current: Entry | undefined;
   let oldRemaining = 0;
   let newRemaining = 0;
@@ -163,6 +181,7 @@ export function createUnifiedDiffReader(options: UnifiedDiffOptions = {}): {
       keptLines: 0,
       truncated: false,
       keepAdded: undefined,
+      priority: false,
       addedText: [],
       addedCut: false,
     };
@@ -188,24 +207,27 @@ export function createUnifiedDiffReader(options: UnifiedDiffOptions = {}): {
     if (e.keepAdded === undefined) {
       const paths = pathsOf(e);
       e.keepAdded = keepAddedText !== undefined && paths !== null && keepAddedText(paths);
+      e.priority = e.keepAdded && priorityAddedText !== undefined && paths !== null && priorityAddedText(paths);
     }
     return e.keepAdded;
   };
 
-  /** Record the full text of one added line, within the per-file and diff-wide bounds. */
+  /** Record the full text of one added line, within the per-file bound and the diff-wide budget of the file. */
   const keepAddedLine = (e: Entry, line: number, text: string): void => {
     if (e.addedCut) return;
-    if (e.addedText.length >= MAX_ADDED_TEXT_LINES || addedBudget <= 0) {
+    const which = e.priority ? "priority" : "other";
+    const left = budget[which];
+    if (e.addedText.length >= MAX_ADDED_TEXT_LINES || left <= 0) {
       e.addedCut = true;
       return;
     }
-    if (text.length > addedBudget) {
+    if (text.length > left) {
       e.addedCut = true;
-      e.addedText.push({ line, text: cutCodeUnits(text, addedBudget, { marker: false }) });
-      addedBudget = 0;
+      e.addedText.push({ line, text: cutCodeUnits(text, left, { marker: false }) });
+      budget[which] = 0;
       return;
     }
-    addedBudget -= text.length;
+    budget[which] = left - text.length;
     e.addedText.push({ line, text });
   };
 

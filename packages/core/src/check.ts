@@ -15,7 +15,7 @@ import { binaryCoveredPaths, changedConfigPaths, configRepoPath, trackedCoverage
 import { compileGlob } from "./glob.js";
 import { injectionMessages } from "./injection/messages.js";
 import { injectionSettingsOf } from "./injection/policy.js";
-import { detectInjection, keepInjectionText } from "./injection/scan.js";
+import { detectInjection, injectionTextPriority, keepInjectionText } from "./injection/scan.js";
 import { junitReport } from "./junit/flaky.js";
 import type { JunitResults } from "./junit/results.js";
 import { agentPolicyOf, type PolicyFileBase } from "./policy/agents.js";
@@ -291,6 +291,7 @@ export function check(input: CheckInput): Report {
       ? parseUnifiedDiff(input.diff.text, {
           keepText: keepSignalFileText(input.configPath, input.repoRoot),
           keepAddedText: keepInjectionText,
+          priorityAddedText: injectionTextPriority,
         })
       : "parsed" in input.diff
         ? input.diff.parsed

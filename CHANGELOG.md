@@ -11,6 +11,15 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- The prompt-injection scan and binary covered files fail closed (CORE-100, part 1). The diff reader keeps added text
+  against two budgets of 8,000,000 characters, one for agent instruction files and Markdown files (`.md`, `.mdx`,
+  `.markdown`, `.mdc`) and one for every other file, where it kept one budget for the whole diff in diff order: an
+  8.1 MB generated file first in the diff no longer hides a bidi character in a later `AGENTS.md`.
+  `INJECTION_TEXT_TRUNCATED` is now an error (verdict `fail`) when an instruction or Markdown file was cut, and stays
+  a warning when only other files were (a 9 MB bundle); its text says which budget the cut files count against.
+  `DIFF_BINARY_COVERED_FILE` is now an error when a diff-coverage threshold is set (0 included), where it was a
+  warning, since a source file the diff shows as binary has no added lines to measure; it stays a warning without
+  a threshold. No new message code and no schema change.
 - Dependency safety fails closed on a manifest or lockfile it could not read (CORE-100, part 2). A file the pull
   request can make unreadable (not valid, over a cap, binary, missing at its revision or at an unsafe path) now gives
   `DEPENDENCY_CHECK_INCOMPLETE` at level error and fails the check, where it was a warning, so a broken or oversized
