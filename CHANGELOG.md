@@ -25,6 +25,8 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   module name maps to `pkg/billing.py` or `pkg/billing/__init__.py` at the repository root or under `src/`. The Python
   index returns the import names (at most 1000 per file) from the same `ast` pass. Still a warning; no new code or
   report field. Without a usable `python3` for the touched Python test files, Python files are not asked.
+- Docs: `docs/LIMITS.md` names the release whose test-integrity signals catch 8 of the Skylos nine: "the signals of
+  v0.11.0 catch **8 of 9**", as the README does, where it said "the signals of this release" (CORE-129).
 - Docs: the five workflows in `examples/workflows/` no longer say the step never fails without a threshold (CORE-127).
   Their headers name what fails it by default: a secret in an agent config file (S01-S09), invisible Unicode (PI01),
   a dependency from outside the registry (D05), a dependency change the lockfile does not record (D04) and a run

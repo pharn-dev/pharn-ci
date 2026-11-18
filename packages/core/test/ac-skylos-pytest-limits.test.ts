@@ -13,6 +13,12 @@ const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 /** Current main before this increment: the base for the "unchanged" checks. */
 const BASE = "f1b252eb1183caff8699301c992bb8e4c81454a7";
 const TITLE = "What test integrity does not catch";
+// CORE-129 (R6.4): "this release" was read as the release that shipped the sentence, before TI17 was released; it
+// names the release instead, so the count is pinned to v0.11.0, where TI17 shipped, as the README's sentence is. The
+// old words are checked at the commit before that correction. The rest is kept as it was.
+const PRE_CORE129 = "52d3be75ff9287f9162ddf8a2da44aafe7473fb8";
+const RELEASE_OLD = "The signals of this release catch **8 of 9**.";
+const RELEASE_NEW = "The signals of v0.11.0 catch **8 of 9**.";
 
 const read = (path: string) => readFileSync(`${ROOT}${path}`, "utf8");
 const readBase = (path: string) => execFileSync("git", ["show", `${BASE}:${path}`], { cwd: ROOT, encoding: "utf8" });
@@ -76,11 +82,15 @@ function paragraphsOf(section: string[]): string[] {
 }
 
 describe("docs/LIMITS.md: the Skylos statements name pytest", () => {
-  it("AC-10: the section says The signals of this release catch **8 of 9**., keeps the seven caught items of the base and adds always-true-matcher caught by TI17, keeps hard-coded-answer as the one missed item, adds a pytest **8 of 9** sentence linking PRECISION.md, and its new text holds no 2, 4 or 5 of 9", () => {
+  it("AC-10: the section says The signals of v0.11.0 catch **8 of 9**., keeps the seven caught items of the base and adds always-true-matcher caught by TI17, keeps hard-coded-answer as the one missed item, adds a pytest **8 of 9** sentence linking PRECISION.md, and its new text holds no 2, 4 or 5 of 9", () => {
     const now = sectionOf(read("docs/LIMITS.md"));
     const base = sectionOf(readBase("docs/LIMITS.md"));
 
-    expect(normalize(now.join("\n")), "the vitest sentence").toContain("The signals of this release catch **8 of 9**.");
+    const preCore129 = sectionOf(
+      execFileSync("git", ["show", `${PRE_CORE129}:docs/LIMITS.md`], { cwd: ROOT, encoding: "utf8" }),
+    );
+    expect(normalize(preCore129.join("\n")), "the vitest sentence CORE-129 corrects").toContain(RELEASE_OLD);
+    expect(normalize(now.join("\n")), "the vitest sentence").toContain(RELEASE_NEW);
 
     const caughtNow = itemsOf(now).filter((item) => CAUGHT.test(item));
     const caughtBase = itemsOf(base).filter((item) => CAUGHT.test(item));

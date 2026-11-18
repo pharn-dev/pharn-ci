@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,6 +18,12 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const SLOW = 300_000;
 const MISSED = "hard-coded-answer";
 const ID = ["TI", "17"].join("");
+// CORE-129 (R6.4): "this release" was read as the release that shipped the sentence, before TI17 was released; the
+// LIMITS sentence names the release instead, v0.11.0, where TI17 shipped, as the README's sentence does. The old words
+// are checked at the commit before that correction. The rest is kept as it was.
+const PRE_CORE129 = "52d3be75ff9287f9162ddf8a2da44aafe7473fb8";
+const RELEASE_OLD = "The signals of this release catch";
+const RELEASE_NEW = "The signals of v0.11.0 catch";
 
 const NINE = [
   "deleted-test",
@@ -226,7 +232,12 @@ describe("Skylos nine with TI17: vitest 8 of 9 and pytest 8 of 9, and the docume
 
       // LIMITS: the count, the caught list and the missed list of "What test integrity does not catch".
       const limits = sectionOf(readFileSync(`${ROOT}docs/LIMITS.md`, "utf8"), "## What test integrity does not catch");
-      expect(flat(limits)).toContain(`The signals of this release catch **${v}**.`);
+      const preCore129 = sectionOf(
+        execFileSync("git", ["show", `${PRE_CORE129}:docs/LIMITS.md`], { cwd: ROOT, encoding: "utf8" }),
+        "## What test integrity does not catch",
+      );
+      expect(flat(preCore129), "the sentence CORE-129 corrects").toContain(`${RELEASE_OLD} **${v}**.`);
+      expect(flat(limits)).toContain(`${RELEASE_NEW} **${v}**.`);
       const caughtAt = limits.indexOf("Caught:");
       const missedAt = limits.findIndex((l) => l.startsWith("Not caught"));
       const otherAt = limits.findIndex((l) => l.startsWith("Other ways"));

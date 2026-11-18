@@ -955,7 +955,7 @@ label misses". A file whose changed lines run past 5000 is read only up to that 
 report names it with `TEST_INTEGRITY_TEXT_TRUNCATED` (section 8).
 
 The benchmark for what is not seen is Skylos's list of nine ways to hide a failing test. The nine cases are reproduced
-in vitest under `fixtures/skylos-nine/` and pinned by tests. The signals of this release catch **8 of 9**.
+in vitest under `fixtures/skylos-nine/` and pinned by tests. The signals of v0.11.0 catch **8 of 9**.
 
 The same nine are reproduced for pytest under `fixtures/skylos-nine-pytest/`, where the signals catch **8 of 9**; the
 case-by-case table is in [PRECISION.md](./PRECISION.md#3-skylos-nine-what-pharn-ci-catches). The lists below are the
