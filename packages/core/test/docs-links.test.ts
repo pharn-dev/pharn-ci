@@ -41,10 +41,8 @@ function proseLines(markdown: string): string[] {
 
 /** GitHub's heading slug: lower case, punctuation dropped (letters, marks, digits, `_`, `-` and spaces kept). */
 function slug(heading: string): string {
-  // GitHub slugs the rendered text, so HTML tags drop out; angle brackets are punctuation and are dropped below anyway.
+  // HTML tags in headings are not handled (no heading here has one); `<` and `>` are punctuation and drop out below.
   const text = heading
-    .replace(/<\/?[a-z][a-z0-9]*(?:\s[^<>]*)?\/?>/gi, "")
-    .replace(/[<>]/g, "")
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/[`*]/g, "")
     .trim()
