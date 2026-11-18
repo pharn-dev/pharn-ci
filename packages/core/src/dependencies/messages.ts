@@ -1,4 +1,5 @@
 import { codeSpan, type Message, type MessageCode } from "../report.js";
+import { DEPENDENCY_SOURCE_LIMITS } from "../testSources.js";
 import type { DependencySignal, DependencySignalId } from "./types.js";
 
 /** The most locations or paths one dependency message names; the rest are counted. */
@@ -74,16 +75,38 @@ export function lookupUnavailableMessage(counts: { unanswered: number; overCap: 
   };
 }
 
-/** The `DEPENDENCY_CHECK_INCOMPLETE` warning: the manifests and lockfiles that could not be read, with fixed reasons. */
+const mib = (bytes: number) => `${bytes / 1_048_576} MiB`;
+
+/** The cap a file went past, after its reason; empty for a reason that is no cap. */
+function capWords(reason: string): string {
+  switch (reason) {
+    case "too-large":
+      return `: over the ${mib(DEPENDENCY_SOURCE_LIMITS.fileBytes)} cap for one file`;
+    case "over-total-cap":
+      return `: past the ${mib(DEPENDENCY_SOURCE_LIMITS.totalBytes)} cap for one side`;
+    case "over-file-cap":
+      return `: past the ${DEPENDENCY_SOURCE_LIMITS.files}-file cap for one side`;
+    default:
+      return "";
+  }
+}
+
+/**
+ * The `DEPENDENCY_CHECK_INCOMPLETE` message: the manifests and lockfiles that could not be read, each with its fixed
+ * reason and, past a cap, the cap. An error (CORE-100) when any file's reason is one the pull request can cause (it is
+ * unparsable, over a cap, binary, missing at its revision or an unsafe path), so a file the check could not read never
+ * passes where the same file read would block; a warning only when every file is `unavailable` (git could not read
+ * that side at all, which is the runner's doing, not the pull request's).
+ */
 export function checkIncompleteMessage(unread: readonly { path: string; reason: string }[]): Message {
   const n = unread.length;
   const named = unread
     .slice(0, NAMED)
-    .map((file) => `${codeSpan(file.path)} (${file.reason})`)
+    .map((file) => `${codeSpan(file.path)} (${file.reason}${capWords(file.reason)})`)
     .join(", ");
   const more = n - NAMED;
   return {
-    level: "warn",
+    level: unread.every((file) => file.reason === "unavailable") ? "warn" : "error",
     code: "DEPENDENCY_CHECK_INCOMPLETE",
     text: `${n} manifest or lockfile ${plural(n, "file", "files")} could not be read, so dependency safety did not check ${plural(n, "it", "them")}: ${named}${more > 0 ? `, +${more} more` : ""}.`,
   };

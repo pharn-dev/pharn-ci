@@ -219,7 +219,7 @@ export const MESSAGE_HINTS: Readonly<Record<MessageCode, Hint>> = {
   DEPENDENCY_LOOKUP_UNAVAILABLE:
     "Re-run the job; the registry lookups fail open, so D01 to D03 were not checked for the packages counted.",
   DEPENDENCY_CHECK_INCOMPLETE:
-    "Keep manifests and lockfiles valid and under 5 MiB, and run on a checkout of the pull request head with fetch-depth: 0, so they can be compared.",
+    "Keep manifests and lockfiles valid and under 32 MiB, and run on a checkout of the pull request head with fetch-depth: 0, so they can be compared.",
 };
 
 /**
@@ -847,8 +847,11 @@ function dependencyLines(report: Report, maxRows: number): string[] {
     ["DEPENDENCY_CHECK_INCOMPLETE", "Not checked"],
   ] as const) {
     const message = report.messages.find((m) => m.code === codeName);
-    if (message !== undefined)
-      lines.push(`- ⚠️ ${word}: ${inlineText(message.text)}`, `  - Hint: ${hintFor(codeName, label)}`);
+    if (message !== undefined) {
+      // An unread file the pull request can cause is an error (CORE-100): the icon follows the message's level.
+      const icon = message.level === "error" ? LEVEL_ICON.error : LEVEL_ICON.warn;
+      lines.push(`- ${icon} ${word}: ${inlineText(message.text)}`, `  - Hint: ${hintFor(codeName, label)}`);
+    }
   }
   if (lines[lines.length - 1] !== "") lines.push("");
   return lines;

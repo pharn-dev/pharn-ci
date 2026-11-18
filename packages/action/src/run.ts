@@ -753,7 +753,7 @@ async function gatherSelfModificationSources(
 
 /**
  * The merge-base and head text of the manifests and lockfiles the change touches, for dependency safety (A13), with the
- * dependency caps (5 MiB a file); undefined when the effective mode is `never` or the deps carry no batch git runner.
+ * dependency caps (32 MiB a file); undefined when the effective mode is `never` or the deps carry no batch git runner.
  * Only a diff parsed from local git can be read from committed objects: PR-number mode, the compare API and a missing
  * diff give an unavailable marker (check() then names any touched manifest as unread), and no GitHub API call is made.
  * A diff that touches no manifest or lockfile makes no git call.

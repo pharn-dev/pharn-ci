@@ -45,7 +45,17 @@ describe("the Dependencies section", () => {
     expect(text).toContain(
       "- ⚠️ Not checked: 1 manifest or lockfile file could not be read, so dependency safety did not check it: \\`package.json\\` (unavailable).",
     );
-    expect(text).toContain("  - Hint: Keep manifests and lockfiles valid and under 5 MiB");
+    // Re-pinned for CORE-100 part 2: the per-file cap is 32 MiB now, and the hint names it.
+    expect(text).toContain("  - Hint: Keep manifests and lockfiles valid and under 32 MiB");
+  });
+
+  it("CORE-100: shows an unread line the pull request can cause with the error icon", () => {
+    const unread = run(dependencyCase("unparsable"));
+    const text = section(renderMarkdown(unread));
+    expect(text).toContain(
+      "- ❌ Not checked: 3 manifest or lockfile files could not be read, so dependency safety did not check them: \\`package.json\\` (unparsable), \\`pnpm-lock.yaml\\` (unparsable), \\`pyproject.toml\\` (unparsable).",
+    );
+    expect(text).not.toContain("⚠️ Not checked");
   });
 
   it("has no section without a dependencies object, and treats a hand-built one as untrusted", () => {

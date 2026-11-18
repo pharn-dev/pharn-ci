@@ -67,12 +67,13 @@ export const TEST_SOURCE_LIMITS: TestSourceReadLimits = {
 };
 
 /**
- * The caps of the dependency sources (A13): lockfiles are large, so a file may be up to 5 MiB, at most 100 files and
- * 32 MiB per side. A larger file is not read and is named in `dependencies.unread`.
+ * The caps of the dependency sources (A13): lockfiles are large, so one file may be as large as a whole side, 32 MiB,
+ * with at most 100 files and 32 MiB per side. A file past a cap is not read, is named in `dependencies.unread` and makes
+ * `DEPENDENCY_CHECK_INCOMPLETE` an error (CORE-100).
  */
 export const DEPENDENCY_SOURCE_LIMITS: TestSourceReadLimits = {
   files: 100,
-  fileBytes: 5_242_880,
+  fileBytes: 33_554_432,
   totalBytes: 33_554_432,
 };
 

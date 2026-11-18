@@ -11,6 +11,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- Dependency safety fails closed on a manifest or lockfile it could not read (CORE-100, part 2). A file the pull
+  request can make unreadable (not valid, over a cap, binary, missing at its revision or at an unsafe path) now gives
+  `DEPENDENCY_CHECK_INCOMPLETE` at level error and fails the check, where it was a warning, so a broken or oversized
+  lockfile no longer passes where the same lockfile read would block on D05; the message names the cap a file went
+  past. It stays a warning when git could not read a side at all (a diff not from local git, a shallow clone). The cap
+  for one file rises from 5 MiB to 32 MiB, the same as for one side, so an honest large lockfile is read (a generated
+  20 MiB `pnpm-lock.yaml` is read and judged in about 0.2 s). With `dependencies: never` nothing changes.
 - Docs: the five workflows in `examples/workflows/` no longer say the step never fails without a threshold (CORE-127).
   Their headers name what fails it by default: a secret in an agent config file (S01-S09), invisible Unicode (PI01),
   a dependency from outside the registry (D05), a dependency change the lockfile does not record (D04) and a run

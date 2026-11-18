@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { check } from "../src/check.js";
 import { parseNpmLock } from "../src/dependencies/npmLock.js";
 import { parsePnpmLock } from "../src/dependencies/pnpmLock.js";
 import { parsePythonLock } from "../src/dependencies/pythonLock.js";
@@ -104,6 +105,50 @@ describe("dependency readers are linear", { timeout: 120_000 }, () => {
     );
     await linear("continuations", (size) => `a==1 ${sized("\\\n ", size)}`, parseRequirements);
     await linear("spaces", (size) => `a${sized(" \t", size)}--x`, parseRequirements);
+  });
+
+  // CORE-100: a lockfile may now be 32 MiB, so the whole path a large pnpm-lock.yaml takes through check() (both sides
+  // read, the entries compared, the report built) must stay linear too, at megabyte sizes, not only the parser.
+  it("a pnpm-lock.yaml judged end to end through check(), at 1 MiB and 4 MiB a side", async () => {
+    const lock = (size: number) =>
+      `lockfileVersion: '9.0'\n\nimporters:\n\n  .:\n    dependencies: {}\n\npackages:\n\n${entries(
+        size,
+        (i) => `  p${i}@1.0.${i}:\n    resolution: {integrity: sha512-${"B".repeat(86)}==}\n\n`,
+      ).join("")}`;
+    const judged = (size: number) => {
+      const base = lock(size);
+      const head = `${base}  from-git@https://codeload.github.com/o/r/tar.gz/0123456789abcdef0123456789abcdef01234567:\n    resolution: {tarball: https://codeload.github.com/o/r/tar.gz/0123456789abcdef0123456789abcdef01234567}\n`;
+      return () =>
+        check({
+          version: "0.1.0",
+          coverage: { missingFile: "coverage/lcov.info" },
+          diff: {
+            text: "diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml\n--- a/pnpm-lock.yaml\n+++ b/pnpm-lock.yaml\n@@ -1,0 +2 @@\n+x\n",
+          },
+          repoRoot: "/r",
+          threshold: null,
+          repoFiles: ["pnpm-lock.yaml"],
+          dependencySources: {
+            base: { files: [{ path: "pnpm-lock.yaml", text: base }], dropped: [] },
+            head: { files: [{ path: "pnpm-lock.yaml", text: head }], dropped: [] },
+          },
+        });
+    };
+    const small = judged(1_048_576);
+    const large = judged(4_194_304);
+    const warm = large();
+    expect(warm.dependencies?.unread, "control: the lockfile is read").toBeUndefined();
+    expect(warm.dependencies?.signals.map((s) => s.id)).toEqual(["D05"]);
+    small();
+    let slowest = 0;
+    const timed = (run: () => unknown) => () => {
+      const start = threadCpuMs();
+      run();
+      slowest = Math.max(slowest, threadCpuMs() - start);
+    };
+    const growth = await measureGrowth(timed(small), timed(large));
+    expect(slowest, "check(): the slowest call finishes within 15 s of CPU time").toBeLessThan(15_000);
+    expect(growth.ratio, `check() on a pnpm-lock.yaml: ${growth.detail}`).toBeLessThan(8);
   });
 
   it("refuses a long time string before matching it", () => {

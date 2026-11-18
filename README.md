@@ -682,9 +682,13 @@ and the verdict is `fail`, `warn` a warning. The test-integrity mode and the acc
 optional `dependencies` object (present only when the change touched a manifest or lockfile) holds `checked` (how many
 dependencies and lockfile entries were added or changed), `lookups` (`off`, `done` or `unavailable`) and `signals`
 (id, severity, ecosystem, path, line, detail, and the package name and version spec only when they pass a strict
-allow-list; at most 200, `truncated` counts the rest). A manifest or lockfile that could not be read (over 5 MiB,
-not valid, or a diff not from local git) is listed in `dependencies.unread` with one `DEPENDENCY_CHECK_INCOMPLETE`
-warning. The comment shows a **📦 Dependencies** section when something was added or changed. Messages name counts and
+allow-list; at most 200, `truncated` counts the rest). A manifest or lockfile that could not be read is listed in
+`dependencies.unread` with one `DEPENDENCY_CHECK_INCOMPLETE` message. It is an `error`, and the verdict is `fail`, when
+the pull request can be the cause: a file that is not valid, over 32 MiB (the cap for one file, the same as the cap for
+one side), past 100 files or 32 MiB a side, binary, or missing at its revision. The message names each file, its reason
+and the cap it went past. It stays a warning only when git could not read that side at all (a diff not from local git,
+a shallow clone): the runner's doing, not the pull request's. So a lockfile the check could not read never passes where
+the same lockfile read would block. With `dependencies: never` nothing is read and there is no message. The comment shows a **📦 Dependencies** section when something was added or changed. Messages name counts and
 `path:line` only. A Dependabot bump that changes the manifest and the lockfile together, and a lockfile-only refresh
 of transitive versions, give no finding. What it misses is in [docs/LIMITS.md](./docs/LIMITS.md#dependency-safety).
 

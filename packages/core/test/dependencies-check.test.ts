@@ -128,7 +128,9 @@ describe("dependency safety must trigger", () => {
 });
 
 describe("files that could not be read", () => {
-  it("names a dropped or unparsable file in unread with one DEPENDENCY_CHECK_INCOMPLETE warning, and judges it no further", () => {
+  // Re-pinned for CORE-100 part 2: a file the pull request can make unreadable (too-large, unparsable) is now an error,
+  // and a file over the per-file cap names the 32 MiB cap; the files named and their reasons are unchanged.
+  it("names a dropped or unparsable file in unread with one DEPENDENCY_CHECK_INCOMPLETE error, and judges it no further", () => {
     const input = dependencyCase("d04-not-recorded");
     const sources = input.dependencySources as NonNullable<CheckInput["dependencySources"]>;
     const head = sources.head as { files: Array<{ path: string; text: string }>; dropped: [] };
@@ -151,11 +153,12 @@ describe("files that could not be read", () => {
     expect(report.dependencies?.signals).toEqual([]);
     expect(dependencyMessages(report)).toEqual([
       {
-        level: "warn",
+        level: "error",
         code: "DEPENDENCY_CHECK_INCOMPLETE",
-        text: "2 manifest or lockfile files could not be read, so dependency safety did not check them: `package-lock.json` (too-large), `package.json` (unparsable).",
+        text: "2 manifest or lockfile files could not be read, so dependency safety did not check them: `package-lock.json` (too-large: over the 32 MiB cap for one file), `package.json` (unparsable).",
       },
     ]);
+    expect(report.verdict).toBe("fail");
   });
 
   it("names every touched file unavailable when a side could not be read", () => {

@@ -1447,9 +1447,14 @@ comes from and how new it is, not what it does. What it misses:
   range is not detected (no semver resolution). Python lockfile hashes are not compared.
 - **Requirements files.** `-r` and `-c` includes are not followed; environment variables in a line are not expanded; a
   local directory (`-e .`, `./pkg`) is not a dependency, only a local archive (`.whl`, `.tar.gz`, `.zip`) is.
-- **Caps.** A manifest or lockfile over 5 MiB, past 100 files or 32 MiB a side is not read and is named in
-  `dependencies.unread` (`DEPENDENCY_CHECK_INCOMPLETE`, warn), never guessed; a TOML syntax error makes the whole file
-  unread. At most 200 findings are listed (`truncated` counts the rest).
+- **Caps.** A manifest or lockfile over 32 MiB (the cap for one file, the same as the cap for one side), past 100 files
+  or 32 MiB a side is not read and is named in `dependencies.unread`, never guessed; a TOML syntax error makes the whole
+  file unread. `DEPENDENCY_CHECK_INCOMPLETE` is an error (verdict `fail`) when any unread file's reason is one the pull
+  request can cause (`unparsable`, `too-large`, `over-file-cap`, `over-total-cap`, `binary`, `missing`, `unsafe-path`),
+  and its text names the cap a file went past; it is a warning only when every unread file is `unavailable` (git could
+  not read that side at all, such as a diff not from local git). A YAML or TOML feature the hand-written readers do not
+  know makes an honest file `unparsable`, and so an error: the fix is to keep the file in the shape the package manager
+  writes. At most 200 findings are listed (`truncated` counts the rest).
 - **Lookups (D01 to D03) are opt-in, Action-only and fail-open.** Scoped npm names (`@scope/x`) are never looked up, so
   a slopsquatted scoped name is not caught; nor are `workspace:`, git, URL and path specs, or names a touched lockfile
   resolves off the registries. At most 50 packages, 4 at once, 5 s each and 60 s per run; a timeout, an error status, a
