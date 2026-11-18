@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { check } from "../src/check.js";
 import { MESSAGE_HINTS, renderMarkdown } from "../src/render/markdown.js";
@@ -12,13 +11,8 @@ import {
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
-// Review MEDIUM quick batch: findings 10 (a cut signal id keeps its message), 11 (no hint tells the reader to loosen
-// the gate), 17 and 18 (README and SECURITY.md name the token permissions and git commands the job uses). The doc pins
-// read the documents inside each test body: a separate patch edits them.
-
-const ROOT = new URL("../../../", import.meta.url);
-const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
-const lineStarting = (doc: string, start: string) => doc.split("\n").find((line) => line.startsWith(start));
+// Review MEDIUM quick batch: findings 10 (a cut signal id keeps its message) and 11 (no hint tells the reader to loosen
+// the gate). (CORE-133: the README and SECURITY.md wording checks of findings 17 and 18 moved out.)
 
 const base = check({
   version: "0.4.0",
@@ -108,40 +102,5 @@ describe("review finding 11: no hint tells the reader to loosen the gate", () =>
       expect(hint.startsWith("  - Hint: "), `${code} has a hint`).toBe(true);
       for (const phrase of LOOSENING) expect(hint, `${code} hint`).not.toContain(phrase);
     }
-  });
-});
-
-describe("review findings 17 and 18: README and SECURITY.md name what the job uses", () => {
-  it("README: the github-token input row names pulls/{n}/commits and pull-requests: read", () => {
-    const row = lineStarting(read("README.md"), "| `github-token`");
-    expect(row, "the github-token row").toBeDefined();
-    expect(row).toContain("pulls/{n}/commits");
-    expect(row).toContain("pull-requests: read");
-  });
-
-  it("README: the quick-start id-token: write line says it is for the upload", () => {
-    const line = read("README.md")
-      .split("\n")
-      .find((l) => /^\s+id-token: write #/.test(l));
-    expect(line, "the quick-start id-token line").toBeDefined();
-    expect(line).toContain("upload");
-  });
-
-  it("README: the Small token footprint bullet names id-token: write", () => {
-    const line = lineStarting(read("README.md"), "- **Small token footprint.**");
-    expect(line, "the Small token footprint bullet").toBeDefined();
-    expect(line).toContain("`id-token: write`");
-  });
-
-  it("SECURITY.md: the repo owner/name row names /pulls/{n}/commits", () => {
-    const row = lineStarting(read("SECURITY.md"), "| Repo owner/name, PR number");
-    expect(row, "the repo owner/name row").toBeDefined();
-    expect(row).toContain("/pulls/{n}/commits");
-  });
-
-  it("SECURITY.md: the source code row names git cat-file, git merge-base and git rev-parse", () => {
-    const row = lineStarting(read("SECURITY.md"), "| Source code and working tree");
-    expect(row, "the source code row").toBeDefined();
-    for (const command of ["git cat-file", "git merge-base", "git rev-parse"]) expect(row).toContain(command);
   });
 });

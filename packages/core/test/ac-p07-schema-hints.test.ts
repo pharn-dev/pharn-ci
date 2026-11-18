@@ -43,8 +43,8 @@ interface Core {
   renderMarkdown(report: Report): string;
 }
 
-describe("the schema sentence, the hint and the README row for POLICY_P07", { timeout: 60_000 }, () => {
-  it("AC-20: report.v2.json appends exactly one POLICY_P07 sentence and changes no other byte; report.v1.json is unchanged; a report with POLICY_P07 validates; the hint is the fixed text; the README table has a POLICY_P07 row", async () => {
+describe("the schema sentence and the hint for POLICY_P07", { timeout: 60_000 }, () => {
+  it("AC-20: report.v2.json appends exactly one POLICY_P07 sentence and changes no other byte; report.v1.json is unchanged; a report with POLICY_P07 validates; the hint is the fixed text", async () => {
     // report.v2.json: the code description is the base one plus the one appended sentence; nothing else changes.
     const baseText = atCommit(BASE, "schema/report.v2.json");
     // Re-pinned by docs-schema-levels: the two insertions that state the block-mode levels of DIFF_UNAVAILABLE and
@@ -130,8 +130,6 @@ describe("the schema sentence, the hint and the README row for POLICY_P07", { ti
     const entry = source.indexOf("POLICY_P07:", hints);
     expect(entry, "MESSAGE_HINTS.POLICY_P07 in markdown.ts").toBeGreaterThan(hints);
     expect(source.slice(entry, entry + 400)).toContain(JSON.stringify(P07_HINT));
-
-    // The README message-code table.
-    expect(read("README.md")).toMatch(/^\| `POLICY_P07` +\|/m);
+    // CORE-133: the README row check moved to docs-contract.test.ts, which checks a row for every code.
   });
 });

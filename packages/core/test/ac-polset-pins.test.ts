@@ -30,7 +30,8 @@ const EDITED: Record<string, string[]> = {
   "packages/action/test/ac-pyparity2-unchanged.test.ts": CODES,
   "packages/core/test/ac-precision-v030-schema.test.ts": CODES,
   "packages/core/test/ac-secrets-repin.test.ts": CODES,
-  "packages/core/test/ac-upload-docs.test.ts": ["Org policy rules P02–P06"],
+  // Re-pinned for CORE-133: ac-upload-docs.test.ts left this list. Its edit was a CHANGELOG wording check, which
+  // CORE-133 deleted with the rest of that file's document checks.
 };
 /** The pin tests that must pass with no edit. */
 const UNCHANGED = [

@@ -5,13 +5,13 @@ import { describe, expect, it } from "vitest";
 import { withoutTi17SchemaEdits } from "./ti17-schema.js";
 import { withoutV090SchemaEdits } from "./v090-codes.js";
 
-// The documents are read inside the test body, so the file loads whatever they say.
+// The files are read inside the test body, so the file loads whatever they say. (CORE-133: the CHANGELOG, README and
+// LIMITS wording checks moved out; docs-contract.test.ts checks the README code rows.)
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const read = (path: string) => readFileSync(`${ROOT}${path}`, "utf8");
 const atBase = (commit: string, path: string) => execFileSync("git", ["show", `${commit}:${path}`], { cwd: ROOT });
 const lines = (text: string) => text.split("\n").map((line) => line.replace(/\r$/, ""));
-const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
 
 const j = (...parts: string[]) => parts.join("");
 const IDS = [j("TI", "08"), j("TI", "15"), j("TI", "16")];
@@ -55,37 +55,6 @@ function setAside(value: Json, paths: string[][]): Json {
   return copy;
 }
 
-/** The lines under the heading line `heading` up to the next heading of level 2 to 4. */
-function sectionOf(text: string, heading: string): string {
-  const all = lines(text);
-  const start = all.indexOf(heading);
-  if (start === -1) throw new Error(`no "${heading}" heading`);
-  const rest = all.slice(start + 1);
-  const end = rest.findIndex((line) => /^#{2,4} /.test(line));
-  return (end === -1 ? rest : rest.slice(0, end)).join("\n");
-}
-
-const ITEM = /^\s*(?:[-*]|\d+\.)\s+/;
-
-/** List items, each with its continuation lines joined and whitespace normalized (marker kept as `- `). */
-function listItems(text: string): string[] {
-  const items: string[] = [];
-  let current: string[] | null = null;
-  for (const line of lines(text)) {
-    if (ITEM.test(line)) {
-      if (current) items.push(normalize(current.join(" ")));
-      current = [`- ${line.replace(ITEM, "")}`];
-    } else if (line.trim() === "" || line.startsWith("#")) {
-      if (current) items.push(normalize(current.join(" ")));
-      current = null;
-    } else if (current) {
-      current.push(line);
-    }
-  }
-  if (current) items.push(normalize(current.join(" ")));
-  return items;
-}
-
 /** The input names action.yml declares: the two-space keys under `inputs:`. */
 function actionInputs(text: string): string[] {
   const all = lines(text);
@@ -99,8 +68,8 @@ function actionInputs(text: string): string[] {
   });
 }
 
-describe("TI08, TI15 and TI16: schemas and documents", () => {
-  it("AC-16: v1 is byte-identical to the base, v2 differs only in a message-code description that names the three codes with their levels, and the CHANGELOG, README, action.yml and LIMITS say what the SPEC asks", () => {
+describe("TI08, TI15 and TI16: schemas and action.yml", () => {
+  it("AC-16: v1 is byte-identical to the base, v2 differs only in a message-code description that names the three codes with their levels, and action.yml declares no other new input", () => {
     const pin = /const BASE_COMMIT = "([0-9a-f]{40})"/.exec(read("packages/core/test/ac-test-sources-docs.test.ts"));
     expect(pin, "BASE_COMMIT in ac-test-sources-docs.test.ts").not.toBeNull();
     const base = pin?.[1] as string;
@@ -153,33 +122,6 @@ describe("TI08, TI15 and TI16: schemas and documents", () => {
       expect(window, code(id)).toContain(LEVELS[id] as string);
     }
 
-    // CHANGELOG: the 0.3.0 Added section has a line for each id (before that release they sat under Unreleased).
-    const changelog = lines(read("CHANGELOG.md"));
-    const unreleased = changelog.findIndex((line) => line.startsWith("## [0.3.0]"));
-    expect(unreleased, "## [0.3.0]").toBeGreaterThan(-1);
-    const afterUnreleased = changelog.slice(unreleased + 1);
-    const nextRelease = afterUnreleased.findIndex((line) => line.startsWith("## ["));
-    const unreleasedLines = nextRelease === -1 ? afterUnreleased : afterUnreleased.slice(0, nextRelease);
-    const added = unreleasedLines.indexOf("### Added");
-    expect(added, "### Added under 0.3.0").toBeGreaterThan(-1);
-    const afterAdded = unreleasedLines.slice(added + 1);
-    const nextSub = afterAdded.findIndex((line) => line.startsWith("### "));
-    const addedLines = nextSub === -1 ? afterAdded : afterAdded.slice(0, nextSub);
-    for (const id of IDS)
-      expect(
-        addedLines.some((line) => line.includes(id)),
-        `CHANGELOG Added: ${id}`,
-      ).toBe(true);
-
-    // README: the test-integrity input row and the message-code table name the three.
-    const readme = lines(read("README.md"));
-    const inputRow = readme.find((line) => line.startsWith("| `test-integrity`")) ?? "";
-    for (const id of IDS) expect(inputRow, `the test-integrity input row: ${id}`).toContain(id);
-    for (const id of IDS) {
-      const row = readme.find((line) => line.startsWith(`| \`${code(id)}\``));
-      expect(row, `the ${code(id)} message-table row`).toBeDefined();
-    }
-
     // action.yml declares no new input. Re-pinned for the org policy (E3 item 20), which adds exactly the `policy` and
     // `app-url` inputs: both must be declared, and with them set aside the inputs are the base's, in order.
     // Re-pinned again for the run upload (E3 item 21), which adds exactly the `upload` input to the same set-aside, and
@@ -201,27 +143,5 @@ describe("TI08, TI15 and TI16: schemas and documents", () => {
     expect(inputsNow.filter((name) => !POLICY_INPUTS.includes(name))).toEqual(
       actionInputs(atBase(base, "action.yml").toString("utf8")),
     );
-
-    // docs/LIMITS.md: three "What … misses" sections and the hard-coded-answer line.
-    const limits = read("docs/LIMITS.md");
-    const ti08 = normalize(sectionOf(limits, `### What ${IDS[0]} misses`)).toLowerCase();
-    expect(ti08, "the body-only inline rewrite").toContain("inline");
-    expect(ti08, "the body-only inline rewrite").toMatch(/template literal|body/);
-    expect(ti08, "the rename that only removes lines").toMatch(/renam/);
-    expect(ti08, "the rename that only removes lines").toMatch(/remov/);
-    const ti15 = normalize(sectionOf(limits, `### What ${IDS[1]} misses`)).toLowerCase();
-    expect(ti15, "the detail names the literal's kind and length").toMatch(/detail names [^.]*kind[^.]*length/);
-    expect(ti15, "the detail never carries the literal's text").toMatch(/never[^.]*text/);
-    expect(ti15, "no detail quotes the literal").not.toMatch(/quotes up to/);
-    sectionOf(limits, `### What ${IDS[2]} misses`);
-
-    const item = listItems(limits).find((line) => line.startsWith("- `hard-coded-answer` —"));
-    expect(item, "the hard-coded-answer item").toBeDefined();
-    const text = item as string;
-    expect(text.startsWith(`- \`hard-coded-answer\` — missed; planned: ${IDS[1]}`), text).toBe(true);
-    expect(text, "the change adds no test line").toMatch(
-      /no (added )?test line|adds no line to a test|no line in a test/i,
-    );
-    expect(text, "its numbers are one digit").toMatch(/(one|single)[- ]digit/i);
   });
 });

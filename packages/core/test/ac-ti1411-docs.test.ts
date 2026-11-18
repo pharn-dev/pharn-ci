@@ -50,16 +50,6 @@ const TI11 = [
   "pass-non-workflow.diff",
 ];
 
-/** The text of one `## ` or `### ` section of a markdown file, from its heading to the next heading of any level. */
-function sectionOf(markdown: string, heading: string): string {
-  const lines = markdown.split("\n");
-  const start = lines.findIndex((line) => /^#{2,4} /.test(line) && line.includes(heading));
-  if (start === -1) throw new Error(`no section "${heading}"`);
-  const rest = lines.slice(start + 1);
-  const end = rest.findIndex((line) => /^#{2,4} /.test(line));
-  return (end === -1 ? rest : rest.slice(0, end)).join("\n");
-}
-
 async function signalsOf(dir: string, name: string, exclude: string[] = []) {
   const { check } = await import("../src/check.js");
   const report = check({
@@ -76,7 +66,8 @@ async function signalsOf(dir: string, name: string, exclude: string[] = []) {
   return report.testIntegrity.signals.filter((signal) => String(signal.id) === dir);
 }
 
-describe("TI14 and TI11: docs, schema and fixtures", () => {
+// CORE-133: the CHANGELOG, README, LIMITS and THREAT-MODEL wording checks moved out.
+describe("TI14 and TI11: schema and fixtures", () => {
   it("AC-15: the v2 schema names both message codes and the v1 schema is byte-identical to the base commit's", () => {
     const schema = read("schema/report.v2.json");
     expect(schema).toContain("TEST_INTEGRITY_TI14");
@@ -86,29 +77,6 @@ describe("TI14 and TI11: docs, schema and fixtures", () => {
       encoding: "utf8",
     });
     expect(read("schema/report.v1.json")).toBe(before);
-  });
-
-  it("AC-15: the changelog, README, limits and threat model name TI14 and TI11", () => {
-    // Shipped in 0.2.0; before that release its line sat under Unreleased.
-    const shipped =
-      read("CHANGELOG.md")
-        .split(/^## \[/m)
-        .find((p) => p.startsWith("0.2.0]")) ?? "";
-    expect(shipped).toContain("TI14");
-    expect(shipped).toContain("TI11");
-    const readme = read("README.md");
-    for (const word of ["TI14", "TI11", "TEST_INTEGRITY_TI14", "TEST_INTEGRITY_TI11"]) expect(readme).toContain(word);
-
-    const limits = read("docs/LIMITS.md");
-    for (const heading of ["What TI14 misses", "What TI11 misses"]) {
-      const text = sectionOf(limits, heading).toLowerCase();
-      expect(text, heading).toContain("context");
-    }
-    expect(sectionOf(limits, "What TI11 misses")).toContain("E5");
-    expect(limits).toContain("5000");
-    const threat = read("docs/THREAT-MODEL.md");
-    expect(threat).toContain("TI14");
-    expect(threat).toContain("TI11");
   });
 
   it("AC-15: at least five must-trigger and five must-not-trigger diffs exist for each id, and they behave", async () => {

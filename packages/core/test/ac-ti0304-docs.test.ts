@@ -28,16 +28,6 @@ const TI03_PRECISION = [
 /** The PRECISION.md §1 cases TI04 must not fire on. */
 const TI04_PRECISION = ["pass-solver-fit.diff", "pass-python-def-fit.diff"];
 
-/** The text of one `## `, `### ` or `#### ` section of a markdown file, up to the next heading of any of those levels. */
-function sectionOf(markdown: string, heading: string): string {
-  const lines = markdown.split("\n");
-  const start = lines.findIndex((line) => /^#{2,4} /.test(line) && line.includes(heading));
-  if (start === -1) throw new Error(`no section "${heading}"`);
-  const rest = lines.slice(start + 1);
-  const end = rest.findIndex((line) => /^#{2,4} /.test(line));
-  return (end === -1 ? rest : rest.slice(0, end)).join("\n");
-}
-
 async function signalsOf(dir: string, name: string) {
   const { check } = await import("../src/check.js");
   const report = check({
@@ -53,7 +43,8 @@ async function signalsOf(dir: string, name: string) {
   return report.testIntegrity.signals.filter((signal) => String(signal.id) === dir);
 }
 
-describe("TI03 and TI04: docs, schema and fixtures", () => {
+// CORE-133: the CHANGELOG, README, LIMITS and THREAT-MODEL wording checks moved out.
+describe("TI03 and TI04: schema and fixtures", () => {
   it("AC-14: the v2 schema names both message codes and the v1 schema is byte-identical to the base commit's", () => {
     const schema = read("schema/report.v2.json");
     expect(schema).toContain("TEST_INTEGRITY_TI03");
@@ -63,41 +54,6 @@ describe("TI03 and TI04: docs, schema and fixtures", () => {
       encoding: "utf8",
     });
     expect(read("schema/report.v1.json")).toBe(before);
-  });
-
-  it("AC-14: the changelog, README, limits and threat model name TI03 and TI04", () => {
-    // Shipped in 0.2.0; before that release its line sat under Unreleased.
-    const shipped =
-      read("CHANGELOG.md")
-        .split(/^## \[/m)
-        .find((p) => p.startsWith("0.2.0]")) ?? "";
-    expect(shipped).toContain("TI03");
-    expect(shipped).toContain("TI04");
-
-    const readme = read("README.md");
-    for (const word of ["TI03", "TI04", "TEST_INTEGRITY_TI03", "TEST_INTEGRITY_TI04"]) expect(readme).toContain(word);
-
-    const limits = read("docs/LIMITS.md");
-    const ti03 = sectionOf(limits, "What TI03 misses");
-    const ti04 = sectionOf(limits, "What TI04 misses");
-    const both = `${ti03}\n${ti04}`;
-    expect(ti03.toLowerCase(), "missing context lines").toContain("context");
-    expect(both.toLowerCase(), "forms recognised only at the start of a line").toMatch(
-      /(start|beginning) of (a|the) line|line start/,
-    );
-    expect(ti03, "test.fixme").toContain("test.fixme");
-    expect(ti03.toLowerCase(), "Go receivers other than t").toContain("receiver");
-    expect(ti03.toLowerCase(), "a skip moved to another file").toMatch(/(another|other|different) file/);
-    expect(ti04, "TI04 for Python").toContain("Python");
-    expect(ti04, "TI04 for Go").toMatch(/\bGo\b/);
-    expect(both, "the kept-text caps").toMatch(/5[ ,]?000|\b400\b/);
-
-    const threat = read("docs/THREAT-MODEL.md");
-    expect(threat).toContain("TI03");
-    expect(threat).toContain("TI04");
-    const paragraph = threat.split(/\n\s*\n/).find((p) => p.includes("TI03") && p.includes("TI04")) ?? "";
-    expect(paragraph.toLowerCase(), "TI03 and TI04 read the kept text of test files").toMatch(/kept|text/);
-    expect(paragraph.toLowerCase(), "fixed-sentence details").toContain("fixed");
   });
 
   it("AC-14: at least five must-trigger and five must-not-trigger diffs per id, the PRECISION cases among them, and they behave", async () => {

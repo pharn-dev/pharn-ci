@@ -111,7 +111,8 @@ const DELIBERATE = [
   "packages/core/test/ac-secrets-repin.test.ts",
   "packages/core/test/ac-upload-schema.test.ts",
   "packages/core/test/ac-polrules-docs.test.ts",
-  "packages/core/test/ac-upload-docs.test.ts",
+  // Re-pinned for CORE-133: ac-upload-docs.test.ts left this list. Its re-pin comment sat on the CHANGELOG wording
+  // check CORE-133 deleted, so no comment and no re-pinned assertion is left in it.
 ];
 
 /** The whole-report tests that must pass unchanged. */

@@ -4,9 +4,10 @@ import { describe, expect, it } from "vitest";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
-// check(), the fixtures and the docs are read inside each test body: the AC tests are written before TI07, the
-// edited-expected-value sources and the 5-of-9 docs exist, so nothing that depends on them may run while the file
-// loads. A case counts as caught when its report holds a test-integrity signal, as at the base commit (4 of 9).
+// check() and the fixtures are read inside each test body: the AC tests are written before TI07 and the
+// edited-expected-value sources exist, so nothing that depends on them may run while the file loads. A case counts as
+// caught when its report holds a test-integrity signal, as at the base commit (4 of 9). (CORE-133: the check that the
+// README and LIMITS say 8 of 9 moved out.)
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const CASES = [
@@ -77,18 +78,6 @@ async function runCase(name: string): Promise<Report> {
   return report as unknown as Report;
 }
 
-/** The lines of a document section: from its heading line to the next heading of the same or a higher level. */
-function section(text: string, heading: string): string {
-  const lines = text.split("\n");
-  const at = lines.indexOf(heading);
-  if (at === -1) throw new Error(`no heading ${heading}`);
-  const level = (/^#+/.exec(heading)?.[0] ?? "").length;
-  const end = lines.findIndex(
-    (line, i) => i > at && /^#+ /.test(line) && (/^#+/.exec(line)?.[0] ?? "").length <= level,
-  );
-  return lines.slice(at, end === -1 ? lines.length : end).join("\n");
-}
-
 describe("Skylos nine: edited-expected-value is caught by TI07, 8 of 9", () => {
   it("AC-14: edited-expected-value's diff also edits src/cart.ts without a new conditional, with no context lines and no .py path, and has test sources", () => {
     const diff = fixture("skylos-nine/edited-expected-value/change.diff");
@@ -132,29 +121,5 @@ describe("Skylos nine: edited-expected-value is caught by TI07, 8 of 9", () => {
     expect(caught["edited-expected-value"]).toContain("TI07");
     expect(caught["edited-expected-value"]).not.toContain("TI15");
     expect(Object.keys(caught)).toHaveLength(8);
-  });
-
-  it("AC-14: README and docs/LIMITS.md say 8 of 9, with edited-expected-value caught by TI07 and a missed list of 1", () => {
-    const readme = section(readFileSync(`${FIXTURES}../README.md`, "utf8"), "## Test integrity");
-    expect(readme).toContain("**8 of 9**");
-    expect(readme).not.toContain("4 of 9");
-    expect(readme).toMatch(/`edited-expected-value` by TI07/);
-    expect(readme).toMatch(/other one/i);
-
-    const limits = section(
-      readFileSync(`${FIXTURES}../docs/LIMITS.md`, "utf8"),
-      "## What test integrity does not catch",
-    );
-    expect(limits).toContain("**8 of 9**");
-    expect(limits).not.toContain("4 of 9");
-    const caught = [...limits.matchAll(/^- `([a-z-]+)` — caught by (TI\d\d)\b/gm)].map((m) => `${m[1]} ${m[2]}`);
-    expect(caught.sort()).toEqual(
-      Object.entries(CAUGHT)
-        .map(([name, id]) => `${name} ${id}`)
-        .sort(),
-    );
-    const missed = [...limits.matchAll(/^- `([a-z-]+)` — missed\b/gm)].map((m) => m[1]);
-    expect(missed).toHaveLength(1);
-    expect(missed).not.toContain("edited-expected-value");
   });
 });

@@ -5,17 +5,16 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 
-// Skylos nine, part 2: the case → signal → severity table in docs/PRECISION.md cannot drift from check(). Every vitest
-// cell is recomputed from fixtures/skylos-nine/ (with fixtures/skylos-nine-sources/ for the five cases that need the
-// base and head text), exactly as packages/core/test/ac-skylos-nine-table.test.ts runs them, and every pytest cell from
-// fixtures/skylos-nine-pytest/ with the real python3 index. The expected cells are written here too, so a table that
-// agrees with a changed check() still fails until it is changed on purpose. The docs, the fixtures, the index and
-// check() are read inside the test body. With no python3 of 3.8 or newer on PATH the test fails, never skips.
+// Skylos nine, part 2: the case → signal → severity cells cannot drift from check(). Every vitest cell is recomputed
+// from fixtures/skylos-nine/ (with fixtures/skylos-nine-sources/ for the five cases that need the base and head text),
+// exactly as packages/core/test/ac-skylos-nine-table.test.ts runs them, and every pytest cell from
+// fixtures/skylos-nine-pytest/ with the real python3 index, and each must equal the expected cell written here. The
+// fixtures, the index and check() are read inside the test body. With no python3 of 3.8 or newer on PATH the test
+// fails, never skips. (CORE-133: the check that the docs/PRECISION.md §3 table holds the same cells moved out.)
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const FIXTURES = `${ROOT}fixtures/`;
 const REPO_ROOT = "/home/runner/work/demo/demo";
-const SECTION_HEADING = "## 3. Skylos nine: what pharn-ci catches";
 const SLOW = 240_000;
 
 /** The python3 on PATH and whether it is 3.8 or newer, decided once while the file loads (no build code runs). */
@@ -63,7 +62,6 @@ function sideFiles(dir: string): SourceFile[] {
 }
 
 const read = (path: string) => readFileSync(`${ROOT}${path}`, "utf8");
-const lines = (text: string) => text.split("\n").map((line) => line.replace(/\r$/, ""));
 
 /** The table's rows in the order the AC names, with the cells the table must hold for each. */
 const EXPECTED: ReadonlyArray<{ name: string; vitest: string; pytest: string }> = [
@@ -91,33 +89,6 @@ const WITH_SOURCES = new Set([
 function cellOf(signals: Signal[]): string {
   const pairs = [...new Set(signals.map((s) => `${s.id} ${s.severity}`))];
   return pairs.length === 0 ? "missed" : pairs.join(", ");
-}
-
-/** The last `## ` section of a markdown text: its heading line and the lines after it. */
-function lastH2(text: string): string[] {
-  const all = lines(text);
-  const starts = all.flatMap((line, index) => (line.startsWith("## ") ? [index] : []));
-  if (starts.length === 0) throw new Error("no ## section");
-  return all.slice(starts.at(-1) as number);
-}
-
-/** The first markdown table of a section: its header cells and its body rows' cells. */
-function firstTable(section: string[]): { header: string[]; rows: string[][] } {
-  const start = section.findIndex((line) => line.trimStart().startsWith("|"));
-  if (start === -1) throw new Error("the section has no table");
-  const rest = section.slice(start);
-  const end = rest.findIndex((line) => !line.trimStart().startsWith("|"));
-  const block = end === -1 ? rest : rest.slice(0, end);
-  const cells = (line: string) =>
-    line
-      .trim()
-      .replace(/^\|/, "")
-      .replace(/\|$/, "")
-      .split("|")
-      .map((cell) => cell.trim());
-  expect(block.length, "a header, a separator and rows").toBeGreaterThanOrEqual(2);
-  expect(block[1], "the separator row").toMatch(/^\s*\|(\s*:?-{3,}:?\s*\|)+\s*$/);
-  return { header: cells(block[0] as string), rows: block.slice(2).map(cells) };
 }
 
 async function runVitest(name: string): Promise<Signal[]> {
@@ -173,50 +144,21 @@ async function runPytest(name: string): Promise<Signal[]> {
   return report.testIntegrity.signals.map((s) => ({ id: String(s.id), severity: s.severity }));
 }
 
-describe("docs/PRECISION.md section 3: the Skylos nine table matches check()", () => {
+describe("the Skylos nine cells match check()", () => {
   it(
-    "AC-8: the last ## section is ## 3. Skylos nine: what pharn-ci catches, its four-column table has the nine cases in order, every vitest and pytest cell equals what check() returns (and the expected cells), and the totals read vitest 8 of 9, pytest 8 of 9",
+    "AC-8: every vitest and pytest cell of the nine cases equals what check() returns and the expected cell, and the totals are vitest 8 of 9, pytest 8 of 9",
     async () => {
       requirePython();
-      const section = lastH2(read("docs/PRECISION.md"));
-      expect(section[0], "the last ## heading").toBe(SECTION_HEADING);
-
-      const { header, rows } = firstTable(section);
-      expect(
-        header.map((cell) => cell.toLowerCase()),
-        "the four columns",
-      ).toEqual(["case", "vitest", "pytest", "notes"]);
-      expect(rows.length, "nine rows").toBe(9);
-      for (const row of rows) expect(row.length, `row ${row.join(" | ")}: four cells`).toBe(4);
-      expect(
-        rows.map((row) => (row[0] as string).replace(/^`(.*)`$/, "$1")),
-        "the case cells, in order",
-      ).toEqual(EXPECTED.map((e) => e.name));
-
-      // A cell holds one or more `<id> <severity>` pairs (a case can give two signals: ti17-always-true-matcher-2).
-      const CELL = /^(?:TI\d\d (?:block|warn|info)(?:, TI\d\d (?:block|warn|info))*|missed)$/;
-      for (const [index, row] of rows.entries()) {
-        const expected = EXPECTED[index] as (typeof EXPECTED)[number];
-        const [, vitestCell, pytestCell] = row as [string, string, string, string];
-        expect(vitestCell, `${expected.name}: the vitest cell's form`).toMatch(CELL);
-        expect(pytestCell, `${expected.name}: the pytest cell's form`).toMatch(CELL);
-
+      const live: Array<{ vitest: string; pytest: string }> = [];
+      for (const expected of EXPECTED) {
         const liveVitest = cellOf(await runVitest(expected.name));
         const livePytest = cellOf(await runPytest(expected.name));
-        expect(vitestCell, `${expected.name}: the vitest cell equals check()`).toBe(liveVitest);
-        expect(pytestCell, `${expected.name}: the pytest cell equals check()`).toBe(livePytest);
-        expect(vitestCell, `${expected.name}: the expected vitest cell`).toBe(expected.vitest);
-        expect(pytestCell, `${expected.name}: the expected pytest cell`).toBe(expected.pytest);
+        expect(liveVitest, `${expected.name}: the expected vitest cell`).toBe(expected.vitest);
+        expect(livePytest, `${expected.name}: the expected pytest cell`).toBe(expected.pytest);
+        live.push({ vitest: liveVitest, pytest: livePytest });
       }
-
-      const text = section.join("\n").replace(/\s+/g, " ");
-      expect(text, "the totals sentence").toContain("vitest 8 of 9, pytest 8 of 9");
-      const totals = /vitest (\d+) of 9, pytest (\d+) of 9/.exec(text);
-      const caught = (column: number) => rows.filter((row) => row[column] !== "missed").length;
-      expect([Number(totals?.[1]), Number(totals?.[2])], "the totals equal the table's counts").toEqual([
-        caught(1),
-        caught(2),
-      ]);
+      const caught = (column: "vitest" | "pytest") => live.filter((cells) => cells[column] !== "missed").length;
+      expect([caught("vitest"), caught("pytest")], "vitest 8 of 9, pytest 8 of 9").toEqual([8, 8]);
     },
     SLOW,
   );

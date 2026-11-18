@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-// fix-hints (H6), AC-13. Reads README.md, CHANGELOG.md, docs/LIMITS.md and schema/report.v2.json; nothing the build
-// adds is loaded.
+// fix-hints (H6), AC-13. Reads schema/report.v2.json; nothing the build adds is loaded. (CORE-133: the README,
+// CHANGELOG and LIMITS wording checks moved out.)
 
 const ROOT = new URL("../../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
@@ -18,39 +18,7 @@ const KINDS = [
   "none",
 ];
 
-/** The Markdown section under the first heading matching `heading`, up to the next heading of the same or a higher level. */
-function section(text: string, heading: RegExp): string {
-  const lines = text.split("\n");
-  const at = lines.findIndex((l) => /^#{1,6} /.test(l) && heading.test(l));
-  expect(at, `a heading matching ${heading}`).toBeGreaterThanOrEqual(0);
-  const level = /^(#+)/.exec(lines[at] ?? "")?.[1]?.length ?? 1;
-  const end = lines.findIndex((l, i) => i > at && new RegExp(`^#{1,${level}} `).test(l));
-  return lines.slice(at + 1, end === -1 ? lines.length : end).join("\n");
-}
-
-describe("documentation of fix hints", () => {
-  it('AC-13: the README has a section headed "Fix hints" that lists the eight kinds, says what an agent may do with a hint and states that no hint lowers a gate', () => {
-    const text = section(read("README.md"), /^#{1,6} Fix hints\s*$/);
-    for (const kind of KINDS) expect(text, `the README section names \`${kind}\``).toContain(`\`${kind}\``);
-    expect(text, "it says what an agent may do").toMatch(/agent/i);
-    expect(text, "it names fix.kind").toContain("fix.kind");
-    expect(text, "it states that no hint lowers a gate").toMatch(/\b(?:no|never)\b[^.]*\blowers? a gate\b/i);
-  });
-
-  it("AC-13: the CHANGELOG Unreleased section names the fix object", () => {
-    // Shipped in 0.9.0: the release PR moved the Unreleased entries under `## [0.9.0] - 2026-11-08`.
-    const text = section(read("CHANGELOG.md"), /^## \[0\.9\.0\] - 2026-11-08$/);
-    expect(text).toMatch(/`fix`/);
-  });
-
-  it("AC-13: docs/LIMITS.md has a section on fix hints saying they are generic, per code or id, and never prove that the fix was made or was right", () => {
-    const text = section(read("docs/LIMITS.md"), /fix hints/i);
-    expect(text, "generic").toMatch(/\bgeneric\b/i);
-    expect(text, "per code or id").toMatch(/\bcode\b/i);
-    expect(text, "per code or id").toMatch(/\b(?:signal )?id\b/i);
-    expect(text, "never prove").toMatch(/\bnever prove/i);
-  });
-
+describe("the schema of fix hints", () => {
   it("AC-13: the schema's descriptions of fix, kind, target and hint say what each holds and never holds", () => {
     const schema = JSON.parse(read("schema/report.v2.json")) as {
       $defs: Record<string, { description?: string; properties?: Record<string, { description?: string }> }>;

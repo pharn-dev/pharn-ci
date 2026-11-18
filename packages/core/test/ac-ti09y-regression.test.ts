@@ -56,9 +56,9 @@ const PINNED: Record<string, string> = {
 const COUNT_TESTS: Record<string, string> = {
   "packages/core/test/ac-skylos-nine-table.test.ts": '"8/9"',
   "packages/core/test/ac-v020-skylos-count.test.ts": '"8 of 9"',
-  "packages/core/test/ac-v020-limits.test.ts": '"8 of 9"',
-  "packages/core/test/ac-v020-readme.test.ts": '"8 of 9"',
-  "packages/core/test/ac-ti0205-skylos.test.ts": '"8 of 9"',
+  // Re-pinned for CORE-133 (one docs-contract test replaces the doc pins): ac-v020-limits.test.ts and
+  // ac-v020-readme.test.ts are deleted, and ac-ti0205-skylos.test.ts's "8 of 9" sat in the LIMITS and README wording
+  // test CORE-133 removed; that file still maps deselect-setting to TI09 (asserted below).
 };
 const MISSES_TEST = "packages/core/test/ac-skylos-nine-misses.test.ts";
 

@@ -10,9 +10,10 @@ import { validateReport } from "./schema.js";
 import { V070_CODE_TEXT, V070_INJECTION_CODES, V070_INJECTION_SCHEMA } from "./v070-codes.js";
 import { withoutV090SchemaEdits } from "./v090-codes.js";
 
-// H4's schema and documents: report.v2.json carries the v0.7.0 code text and the optional `injection` object exactly
-// once (v070-codes.ts), the object is closed and validates the reports check() makes, report.ts names the six codes,
-// and README, LIMITS, THREAT-MODEL and CHANGELOG say what the scan does and misses.
+// H4's schema: report.v2.json carries the v0.7.0 code text and the optional `injection` object exactly once
+// (v070-codes.ts), the object is closed and validates the reports check() makes, and report.ts names the six codes.
+// (CORE-133: the README, LIMITS, THREAT-MODEL and CHANGELOG wording checks moved out; docs-contract.test.ts checks the
+// README code rows.)
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
@@ -71,32 +72,5 @@ describe("schema/report.v2.json for the prompt-injection scan", () => {
     const reportTs = read("packages/core/src/report.ts");
     const union = /export type MessageCode =([\s\S]*?);/.exec(reportTs)?.[1] ?? "";
     for (const code of V070_INJECTION_CODES) expect(union, code).toContain(`"${code}"`);
-  });
-});
-
-describe("the documents for the prompt-injection scan", () => {
-  it("README has the section, the contents line and a row per code", () => {
-    const readme = read("README.md");
-    expect(readme).toContain("## Prompt-injection scan");
-    expect(readme).toContain("- [Prompt-injection scan](#prompt-injection-scan)");
-    for (const code of V070_INJECTION_CODES) expect(readme, code).toMatch(new RegExp(`^\\| \`${code}\` \\|`, "m"));
-  });
-
-  it("LIMITS says what the scan misses, THREAT-MODEL has its row and residual, CHANGELOG names the codes", () => {
-    const limits = read("docs/LIMITS.md");
-    expect(limits).toContain("## Prompt-injection scan");
-    for (const word of ["homoglyph", "split across", "encoding", "image", "50,000", "8,000,000"]) {
-      expect(limits.toLowerCase(), word).toContain(word.toLowerCase());
-    }
-    const threat = read("docs/THREAT-MODEL.md");
-    expect(threat).toMatch(/^\| A8 {2}\| Added diff lines, read for the prompt-injection scan/m);
-    expect(threat).toMatch(/^41\. \*\*The prompt-injection scan is a text filter\.\*\*/m);
-    const changelog = read("CHANGELOG.md");
-    // Shipped in 0.7.0: the release PR moved the Unreleased entries under `## [0.7.0] - 2026-11-08`.
-    const start = changelog.indexOf("## [0.7.0] - 2026-11-08");
-    expect(start, "the 0.7.0 section").toBeGreaterThanOrEqual(0);
-    const unreleased = changelog.slice(start, changelog.indexOf("## [0.6.0]"));
-    expect(unreleased).toContain("INJECTION_PI01");
-    expect(unreleased).toContain("INJECTION_TEXT_TRUNCATED");
   });
 });

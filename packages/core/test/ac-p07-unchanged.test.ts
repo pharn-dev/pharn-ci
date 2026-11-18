@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { CORE133_DELETED } from "./core133-deleted.js";
 import { foldCoverageBar } from "./helpers.js";
 import { withoutFixJson } from "./v090-codes.js";
 
@@ -112,7 +113,8 @@ const DELIBERATE = [
   "packages/core/test/ac-upload-schema.test.ts",
   "packages/core/test/ac-polrules-docs.test.ts",
   "packages/core/test/ac-p11-schema-hints.test.ts",
-  "packages/core/test/ac-upload-docs.test.ts",
+  // Re-pinned for CORE-133: ac-upload-docs.test.ts left this list. Its re-pin comment sat on the README, THREAT-MODEL
+  // and CHANGELOG wording checks CORE-133 deleted, so no comment and no re-pinned assertion is left in it.
   "packages/core/test/ac-p11-unchanged.test.ts",
 ];
 
@@ -291,8 +293,12 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
     // version pins moved on. Re-pinned for review finding 15: the release commit had dropped --no-renames here.
     // Re-pinned for markdown-byte-compare (review SPEC finding 29): markdown.test.ts's snapshot file goes, its two
     // snapshots moved unchanged into fixtures/markdown/ and compared byte for byte; no test case is dropped.
+    // Re-pinned for CORE-133 (one docs-contract test replaces the doc pins): the doc-wording tests it deletes, listed
+    // in core133-deleted.ts, are set aside; any other deletion still fails here.
     expect(
-      nonEmpty(git("diff", "--name-only", "--no-renames", "--diff-filter=D", BASE, "--", "packages/")).sort(),
+      nonEmpty(git("diff", "--name-only", "--no-renames", "--diff-filter=D", BASE, "--", "packages/"))
+        .filter((path) => !CORE133_DELETED.has(path))
+        .sort(),
     ).toEqual([
       "packages/core/test/__snapshots__/markdown.test.ts.snap",
       "packages/core/test/ac-release030-dist.test.ts",

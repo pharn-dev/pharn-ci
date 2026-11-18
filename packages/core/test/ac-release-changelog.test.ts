@@ -35,7 +35,7 @@ describe("release readiness: CHANGELOG.md passes release.yml", () => {
     expect(firstSection).toBeLessThan(lines.findIndex((line) => line.startsWith(prefix)));
   });
 
-  it("AC-3: the extracted release notes are non-empty, complete and claim no lcov-only reading", () => {
+  it("AC-3: the extracted release notes are non-empty", () => {
     const workflow = read(".github/workflows/release.yml");
     expect(workflow, "release.yml still extracts the notes with this program").toContain(`'${AWK_PROGRAM}'`);
     expect(workflow).toContain('awk -v h="## [$VERSION]"');
@@ -45,47 +45,7 @@ describe("release readiness: CHANGELOG.md passes release.yml", () => {
         encoding: "utf8",
       });
     expect(extract(releaseVersion()), "the extracted section has non-whitespace characters").toMatch(/\S/);
-
-    // The completeness checks below describe what 0.1.0 shipped, so they read the 0.1.0 section only;
-    // a later release's notes list only its own changes.
-    const notes = extract("0.1.0");
-
-    const named: Array<[string, RegExp]> = [
-      ["Cobertura", /Cobertura/],
-      ["coverage-format", /(?<![\w-])coverage-format(?![\w-])/],
-      ["--coverage-format", /--coverage-format(?![\w-])/],
-      ["coverage.format", /(?<![\w.])coverage\.format(?![\w])/],
-      ["auto", /(?<![\w-])auto(?![\w-])/],
-      ["diffCoverage.format", /diffCoverage\.format(?![\w])/],
-      ["agentSetup.summary", /agentSetup\.summary(?![\w])/],
-      ["coverage.exclude", /(?<![\w.])coverage\.exclude(?![\w])/],
-      ["--exclude", /--exclude(?![\w-])/],
-      ["the exclude input", /(?<![\w-])exclude`?\s+input/],
-      ["diffCoverage.excludedFiles", /diffCoverage\.excludedFiles(?![\w])/],
-    ];
-    for (const [name, pattern] of named) {
-      expect(notes, `release notes name ${name}`).toMatch(pattern);
-    }
-
-    const schema = read("schema/report.v1.json");
-    const known = (label: string) => {
-      const match = schema.match(new RegExp(`${label}: ([^.]+)\\.`));
-      expect(match, `schema lists "${label}:"`).not.toBeNull();
-      const items = (match?.[1] ?? "").split(",").map((item) => item.trim());
-      expect(items.length, `${label} entries`).toBeGreaterThan(0);
-      return items;
-    };
-    for (const code of known("Known codes")) {
-      expect(notes, `release notes name message code ${code}`).toMatch(new RegExp(`(?<!\\w)${code}(?!\\w)`));
-    }
-    for (const kind of known("Known kinds")) {
-      expect(notes, `release notes name setup kind ${kind}`).toMatch(
-        new RegExp(`(?<![\\w-])${escapeRegExp(kind)}(?![\\w-])`),
-      );
-    }
-
-    for (const phrase of ["lcov only", "lcov-only", "the lcov report"]) {
-      expect(notes.toLowerCase(), `release notes never say "${phrase}"`).not.toContain(phrase);
-    }
+    // CORE-133: the checks that the 0.1.0 notes name each 0.1.0 feature and never say "lcov only" (CHANGELOG wording)
+    // moved out.
   });
 });

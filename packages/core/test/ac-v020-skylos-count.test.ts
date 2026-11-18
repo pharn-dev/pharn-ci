@@ -1,16 +1,15 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
-// release-readiness-v020: the figure docs/LIMITS.md states (now 8 of 9) must match what check() does today. The caught
-// and missed cases are parsed from the LIMITS section, then each of the nine Skylos cases runs through check() with the
-// inputs the Skylos AC tests use, plus the base and head text of the test file or config for the five cases that need
-// it (fixtures/skylos-nine-sources/). check() and the docs are loaded inside the test body.
+// release-readiness-v020: the Skylos figure (now 8 of 9) must match what check() does today. Each of the nine Skylos
+// cases runs through check() with the inputs the Skylos AC tests use, plus the base and head text of the test file or
+// config for the five cases that need it (fixtures/skylos-nine-sources/). check() is loaded inside the test body.
+// CORE-133: the caught and missed cases were parsed from docs/LIMITS.md; they are written here instead, as LIMITS
+// lists them at this commit, so the figure is still checked against check() without reading the document.
 
-const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const WITH_SOURCES = new Set([
   "emptied-assertion",
@@ -19,6 +18,19 @@ const WITH_SOURCES = new Set([
   "loosened-assertion",
   "edited-expected-value",
 ]);
+/** The caught cases and the signal that catches each. */
+const CAUGHT: ReadonlyMap<string, string> = new Map([
+  ["deleted-test", "TI01"],
+  ["added-skip", "TI03"],
+  ["emptied-assertion", "TI05"],
+  ["deselect-setting", "TI09"],
+  ["replaced-test", "TI02"],
+  ["loosened-assertion", "TI06"],
+  ["edited-expected-value", "TI07"],
+  ["always-true-matcher", "TI17"],
+]);
+/** The missed cases and the signal planned for each. */
+const MISSED: ReadonlyMap<string, string> = new Map([["hard-coded-answer", "TI15"]]);
 
 /** The `<logical path>.txt` files under one side of a case's sources, as test-source files sorted by logical path. */
 function sideFiles(dir: string): { path: string; text: string }[] {
@@ -28,56 +40,13 @@ function sideFiles(dir: string): { path: string; text: string }[] {
     .map((name) => ({ path: name.slice(0, -".txt".length), text: readFileSync(join(dir, name), "utf8") }))
     .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }
-const TITLE = "What test integrity does not catch";
-const ACCEPT_MISSES = "### What the accept label misses";
 
-const lines = (text: string) => text.split("\n").map((line) => line.replace(/\r$/, ""));
-const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
-const ITEM = /^\s*(?:[-*]|\d+\.)\s+/;
-const CAUGHT = /^- `([a-z-]+)` — caught by (TI\d\d)/;
-const MISSED = /^- `([a-z-]+)` — missed; planned: (TI\d\d)/;
-
-/** The caught and missed items of the LIMITS section, list items with their continuation lines joined. */
-function parseLimits(text: string): { caught: Map<string, string>; missed: Map<string, string> } {
-  const all = lines(text);
-  const starts = all.flatMap((line, index) => (line.startsWith("## ") && line.includes(TITLE) ? [index] : []));
-  expect(starts, `one "## …${TITLE}" heading`).toHaveLength(1);
-  const start = starts[0] as number;
-  expect(start).toBeGreaterThan(all.indexOf(ACCEPT_MISSES));
-  const rest = all.slice(start + 1);
-  const end = rest.findIndex((line) => line.startsWith("## "));
-  const section = end === -1 ? rest : rest.slice(0, end);
-
-  const items: string[] = [];
-  let current: string[] | null = null;
-  for (const line of section) {
-    if (ITEM.test(line)) {
-      if (current) items.push(normalize(current.join(" ")));
-      current = [`- ${line.replace(ITEM, "")}`];
-    } else if (line.trim() === "" || line.startsWith("#")) {
-      if (current) items.push(normalize(current.join(" ")));
-      current = null;
-    } else if (current) {
-      current.push(line);
-    }
-  }
-  if (current) items.push(normalize(current.join(" ")));
-
-  const caught = new Map<string, string>();
-  const missed = new Map<string, string>();
-  for (const item of items) {
-    const c = CAUGHT.exec(item);
-    if (c) caught.set(c[1] as string, c[2] as string);
-    const m = MISSED.exec(item);
-    if (m) missed.set(m[1] as string, m[2] as string);
-  }
-  return { caught, missed };
-}
-
+// The titles are kept as they were (ac-ti06-ti12-unchanged.test.ts pins them); the lists are CAUGHT and MISSED above.
 describe("release-readiness-v020: the LIMITS 2-of-9 figure matches check()", () => {
   it("AC-3: exactly the two cases LIMITS lists as caught give a signal (only their named id), the seven it lists as missed give none, so the live count is 2 of 9", async () => {
     const { check } = await import("../src/check.js");
-    const { caught, missed } = parseLimits(readFileSync(`${ROOT}docs/LIMITS.md`, "utf8"));
+    const caught = CAUGHT;
+    const missed = MISSED;
     // ti17-always-true-matcher-2: always-true-matcher moved from the missed list to the caught list (7 and 2 became 8 and 1).
     expect(caught.size).toBe(8);
     expect(missed.size).toBe(1);

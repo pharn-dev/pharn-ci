@@ -4,29 +4,15 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-// The docs, the schemas and the TI09 fixture directory are read inside the test body: the AC test is written before
-// they change. schema/report.v1.json is pinned by the sha256 it has at the base commit 98693cf.
+// The schemas and the TI09 fixture directory are read inside the test body: the AC test is written before they
+// change. schema/report.v1.json is pinned by the sha256 it has at the base commit 98693cf. (CORE-133: the CHANGELOG,
+// README, LIMITS and THREAT-MODEL wording checks moved out; docs-contract.test.ts checks the README code rows.)
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const TI09 = `${ROOT}fixtures/test-integrity/TI09`;
 const V1_SHA256_AT_BASE = "c6cfd5b5afeada776fa89028f5ef29e06427d0e32529420184474e52ca77c731";
 
 const read = (path: string) => readFileSync(`${ROOT}${path}`, "utf8");
-const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
-
-/** The text of the section whose heading line (`#`, `##` or `###`) includes `title`, up to the next heading of its level or higher. */
-function section(text: string, title: string): string {
-  const lines = text.split("\n");
-  const start = lines.findIndex((line) => /^#{1,3} /.test(line) && line.includes(title));
-  expect(start, `the section ${title}`).toBeGreaterThan(-1);
-  const level = (lines[start] as string).indexOf(" ");
-  const rest = lines.slice(start + 1);
-  const end = rest.findIndex((line) => {
-    const m = /^(#{1,6}) /.exec(line);
-    return m !== null && (m[1] as string).length <= level;
-  });
-  return (end === -1 ? rest : rest.slice(0, end)).join("\n");
-}
 
 /** The text from `start` to its balanced closing parenthesis (the first `(` after `start` opens it). */
 function parenthesized(text: string, start: number): string {
@@ -39,13 +25,6 @@ function parenthesized(text: string, start: number): string {
   return text.slice(start);
 }
 
-/** The table row of docs/THREAT-MODEL.md whose first cell is `id`. */
-function row(text: string, id: string): string {
-  const found = text.split("\n").find((line) => new RegExp(`^\\|\\s*${id}\\s*\\|`).test(line));
-  expect(found, `the threat-model row ${id}`).toBeDefined();
-  return found as string;
-}
-
 /** Every file under `dir`, relative to it with forward slashes. */
 function filesUnder(dir: string): string[] {
   return readdirSync(dir, { recursive: true, encoding: "utf8" })
@@ -54,8 +33,8 @@ function filesUnder(dir: string): string[] {
     .sort();
 }
 
-describe("TI09: schema, docs and fixtures", () => {
-  it("AC-19: the v2 schema names TEST_INTEGRITY_TI09 and TI09 in the index-unavailable sentence, v1 is unchanged, CHANGELOG, README, LIMITS and THREAT-MODEL describe TI09, and the TI09 fixtures hold at least 8 must-trigger and 6 must-not-trigger cases of the required kinds and layout", () => {
+describe("TI09: schema and fixtures", () => {
+  it("AC-19: the v2 schema names TEST_INTEGRITY_TI09 and TI09 in the index-unavailable sentence, v1 is unchanged, and the TI09 fixtures hold at least 8 must-trigger and 6 must-not-trigger cases of the required kinds and layout", () => {
     // Schemas.
     const v2 = JSON.parse(read("schema/report.v2.json")) as {
       $defs: { message: { properties: { code: { description: string } } } };
@@ -69,53 +48,6 @@ describe("TI09: schema, docs and fixtures", () => {
       .update(readFileSync(`${ROOT}schema/report.v1.json`))
       .digest("hex");
     expect(v1, "schema/report.v1.json is byte-identical to the base commit").toBe(V1_SHA256_AT_BASE);
-
-    // CHANGELOG: the 0.3.0 section has a TI09 line (before that release it sat under Unreleased).
-    const unreleased = section(read("CHANGELOG.md"), "[0.3.0]");
-    expect(
-      unreleased.split("\n").some((line) => line.includes("TI09")),
-      "a 0.3.0 line names TI09",
-    ).toBe(true);
-
-    // README: TI09 in the signals sentences and its message code in the table.
-    const readme = read("README.md");
-    const flat = normalize(readme);
-    let sentences = 0;
-    for (let i = flat.indexOf("The signals so far are"); i !== -1; i = flat.indexOf("The signals so far are", i + 1)) {
-      sentences++;
-      const end = flat.indexOf(". ", i);
-      expect(flat.slice(i, end === -1 ? undefined : end), "a signals sentence lists TI09").toContain("TI09");
-    }
-    expect(sentences, "the README has its signals sentences").toBeGreaterThan(0);
-    expect(
-      readme.split("\n").some((line) => /^\|\s*`TEST_INTEGRITY_TI09`\s*\|/.test(line)),
-      "a README message-code row for TEST_INTEGRITY_TI09",
-    ).toBe(true);
-
-    // docs/LIMITS.md: What TI09 misses, and vite.config.* among the test-config names of section 8.
-    const limits = read("docs/LIMITS.md");
-    const misses = normalize(section(limits, "What TI09 misses")).toLowerCase();
-    for (const [what, pattern] of [
-      ["computed configs", /comput/],
-      ["shared config packages", /shared config/],
-      ["CLI flags in workflows", /cli flag[\s\S]*workflow|workflow[\s\S]*cli flag/],
-      ["deleted configs", /delet/],
-      ["playwright per-project settings", /per-project/],
-      ["raised retries are warn only", /retr/],
-      ["raised timeouts are warn only", /timeout/],
-      ["the warn-only decision", /warn/],
-    ] as const) {
-      expect(misses, `What TI09 misses names ${what}`).toMatch(pattern);
-    }
-    expect(misses, "What TI09 misses names playwright").toContain("playwright");
-    expect(normalize(section(limits, "8. Size limits")), "section 8 lists vite.config.*").toContain("`vite.config.*`");
-
-    // docs/THREAT-MODEL.md: rows A1 and C2 name the config parsing.
-    const threat = read("docs/THREAT-MODEL.md");
-    const a1 = row(threat, "A1");
-    expect(a1, "A1 names the INI reader").toContain("INI");
-    expect(a1, "A1 names the TOML reader").toContain("TOML");
-    expect(row(threat, "C2"), "C2 says check() reads the config text for TI09").toContain("TI09");
 
     // fixtures/test-integrity/TI09/: the cases and their layout.
     expect(existsSync(TI09), "fixtures/test-integrity/TI09/ exists").toBe(true);

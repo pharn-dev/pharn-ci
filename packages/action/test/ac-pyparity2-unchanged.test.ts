@@ -371,9 +371,8 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
       "no fixture of the base is modified or deleted",
     ).toEqual([]);
 
-    // The Skylos count: 8 of 9 since ti17-always-true-matcher-2 (it was 7 of 9).
-    const limits = read("docs/LIMITS.md");
-    expect(limits, "docs/LIMITS.md says 8 of 9").toContain("catch **8 of 9**");
+    // The Skylos count: 8 of 9 since ti17-always-true-matcher-2 (it was 7 of 9). (CORE-133: the docs/LIMITS.md wording
+    // check moved out.)
     expect(read("packages/core/test/ac-skylos-nine-table.test.ts"), "the Skylos table test reads 8/9").toContain(
       '"8/9"',
     );

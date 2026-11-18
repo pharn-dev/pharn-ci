@@ -1,16 +1,15 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
-// check(), the Skylos sources and the docs are loaded inside each test body: the AC tests are written before TI02,
+// check() and the Skylos sources are loaded inside each test body: the AC tests are written before TI02,
 // TI05 and fixtures/skylos-nine-sources/ exist, so nothing that depends on them may run while the file loads. Each of
 // the nine cases runs through check() as the Skylos AC tests run it, with base and head text for the three cases the
 // base-and-head signals read. The fixture text is checked to hold the case before its result is read.
+// (CORE-133: the check that LIMITS and the README say 8 of 9 moved out.)
 
-const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const PATH = "src/cart.test.ts";
 
@@ -95,45 +94,6 @@ async function runNine(): Promise<Map<string, Signal[]>> {
   return out;
 }
 
-const lines = (text: string) => text.split("\n").map((line) => line.replace(/\r$/, ""));
-const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
-const ITEM = /^\s*(?:[-*]|\d+\.)\s+/;
-const CAUGHT_ITEM = /^- `([a-z-]+)` — caught by (TI\d\d)/;
-const MISSED_ITEM = /^- `([a-z-]+)` — missed; planned: (TI\d\d)/;
-
-/** The caught and missed items of the LIMITS "What test integrity does not catch" section, continuation lines joined. */
-function parseLimits(text: string): { body: string; caught: Map<string, string>; missed: Map<string, string> } {
-  const all = lines(text);
-  const start = all.findIndex((line) => line.startsWith("## ") && line.includes("What test integrity does not catch"));
-  expect(start, "the LIMITS section").toBeGreaterThan(-1);
-  const rest = all.slice(start + 1);
-  const end = rest.findIndex((line) => line.startsWith("## "));
-  const section = end === -1 ? rest : rest.slice(0, end);
-  const items: string[] = [];
-  let current: string[] | null = null;
-  for (const line of section) {
-    if (ITEM.test(line)) {
-      if (current) items.push(normalize(current.join(" ")));
-      current = [`- ${line.replace(ITEM, "")}`];
-    } else if (line.trim() === "" || line.startsWith("#")) {
-      if (current) items.push(normalize(current.join(" ")));
-      current = null;
-    } else if (current) {
-      current.push(line);
-    }
-  }
-  if (current) items.push(normalize(current.join(" ")));
-  const caught = new Map<string, string>();
-  const missed = new Map<string, string>();
-  for (const item of items) {
-    const c = CAUGHT_ITEM.exec(item);
-    if (c) caught.set(c[1] as string, c[2] as string);
-    const m = MISSED_ITEM.exec(item);
-    if (m) missed.set(m[1] as string, m[2] as string);
-  }
-  return { body: normalize(section.join("\n")), caught, missed };
-}
-
 describe("Skylos nine: TI05 and TI02 catch emptied-assertion and replaced-test", () => {
   it("AC-17: emptied-assertion gives a block TI05, replaced-test a block TI02, edited-expected-value a warn TI07, loosened-assertion a warn TI06, deselect-setting a block TI09, deleted-test and added-skip their TI01 and TI03 as before, always-true-matcher a warn TI17, and the other one no signal", async () => {
     // The two sources hold the case their diff shows: the expect on the edited line at base, a bare call at head;
@@ -178,26 +138,5 @@ describe("Skylos nine: TI05 and TI02 catch emptied-assertion and replaced-test",
       "loosened-assertion",
       "edited-expected-value",
     ]);
-  });
-
-  it("AC-17: docs/LIMITS.md and the README state that 8 of 9 are caught and list those eight cases with their signal ids", () => {
-    const limits = parseLimits(readFileSync(`${ROOT}docs/LIMITS.md`, "utf8"));
-    expect(limits.body).toContain("8 of 9");
-    expect(limits.caught).toEqual(new Map(CAUGHT));
-    expect(limits.missed.size).toBe(1);
-    expect(new Set([...limits.caught.keys(), ...limits.missed.keys()])).toEqual(new Set(NINE));
-
-    const readme = lines(readFileSync(`${ROOT}README.md`, "utf8"));
-    const start = readme.indexOf("## Test integrity");
-    expect(start, "the README Test integrity section").toBeGreaterThan(-1);
-    const rest = readme.slice(start + 1);
-    const end = rest.findIndex((line) => line.startsWith("## "));
-    const body = normalize((end === -1 ? rest : rest.slice(0, end)).join("\n"));
-    expect(body).toContain("8 of 9");
-    expect(body).not.toContain("2 of 9");
-    for (const [name, id] of CAUGHT) {
-      expect(body, `the README names ${name}`).toContain(name);
-      expect(body, `the README names ${id}`).toContain(id);
-    }
   });
 });

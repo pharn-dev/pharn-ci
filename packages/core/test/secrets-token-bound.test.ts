@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { findSecretSpans, MAX_TOKEN_BODY_CHARS } from "../src/secrets/spans.js";
 
@@ -43,13 +42,6 @@ describe("prefixed secret shapes read a bounded body per match (CORE-43)", () =>
   it("S03 sk-: a body whose only digit lies past the bound is still a span, as before", () => {
     const token = `sk-${body(MAX_TOKEN_BODY_CHARS + 100, false)}7`;
     expect(findSecretSpans(`"${token}"`)).toEqual([{ id: "S03", start: 1, end: 1 + token.length }]);
-  });
-
-  it("docs/LIMITS.md names the three CORE-43 bounds (512 body characters, 8 segments, 1,024 characters)", () => {
-    const limits = readFileSync(new URL("../../../docs/LIMITS.md", import.meta.url), "utf8").replace(/\s+/g, " ");
-    expect(limits).toContain("A token's body is matched 512 characters at a time.");
-    expect(limits).toContain("Only the last 8 segments below a vendored directory.");
-    expect(limits).toContain("A pattern has at most 1,024 characters.");
   });
 
   it("a long run after a key character is no span, and a token after the run is still found", () => {

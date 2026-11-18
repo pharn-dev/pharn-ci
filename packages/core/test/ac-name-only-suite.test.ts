@@ -509,8 +509,8 @@ describe("name-only moves change exactly four existing results", () => {
       }
 
       // The Skylos benchmark: 8 of 9 since ti17-always-true-matcher-2 (it read 7 of 9 before), with deleted-test (TI01)
-      // and replaced-test (TI02) still blocking, for vitest and for pytest.
-      expect(readFileSync(`${ROOT}docs/LIMITS.md`, "utf8"), "docs/LIMITS.md says 8 of 9").toContain("catch **8 of 9**");
+      // and replaced-test (TI02) still blocking, for vitest and for pytest. (CORE-133: the docs/LIMITS.md wording check
+      // moved out.)
       expect(
         readFileSync(`${ROOT}packages/core/test/ac-skylos-nine-table.test.ts`, "utf8"),
         "the Skylos table test reads 8/9",

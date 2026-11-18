@@ -23,16 +23,6 @@ const TI10_NAMED = [
 ];
 const TI13_NAMED = ["pass-moved.diff", "pass-test-file.diff", "pass-py-istanbul.diff"];
 
-/** The text of one `## `, `### ` or `#### ` section of a markdown file, up to the next heading of any of those levels. */
-function sectionOf(markdown: string, heading: string): string {
-  const lines = markdown.split("\n");
-  const start = lines.findIndex((line) => /^#{2,4} /.test(line) && line.includes(heading));
-  if (start === -1) throw new Error(`no section "${heading}"`);
-  const rest = lines.slice(start + 1);
-  const end = rest.findIndex((line) => /^#{2,4} /.test(line));
-  return (end === -1 ? rest : rest.slice(0, end)).join("\n");
-}
-
 /** The tracked files for a fixture: its sibling `<name>.files.txt` when there is one, else the default list. */
 function filesFor(dir: string, name: string): string[] {
   const sibling = new URL(`fixtures/test-integrity/${dir}/${name.replace(/\.diff$/, ".files.txt")}`, ROOT);
@@ -58,7 +48,8 @@ async function signalsOf(dir: string, name: string, repoFiles = filesFor(dir, na
   return report.testIntegrity.signals.filter((signal) => String(signal.id) === dir);
 }
 
-describe("TI10 and TI13: docs, schema and fixtures", () => {
+// CORE-133: the CHANGELOG, README, LIMITS and THREAT-MODEL wording checks moved out.
+describe("TI10 and TI13: schema and fixtures", () => {
   it("AC-12: the v2 schema names both message codes and the v1 schema is byte-identical to the base commit's", () => {
     const schema = read("schema/report.v2.json");
     expect(schema).toContain("TEST_INTEGRITY_TI10");
@@ -68,63 +59,6 @@ describe("TI10 and TI13: docs, schema and fixtures", () => {
       encoding: "utf8",
     });
     expect(read("schema/report.v1.json")).toBe(before);
-  });
-
-  it("AC-12: the changelog, README, limits and threat model name TI10 and TI13", () => {
-    // Shipped in 0.2.0; before that release its line sat under Unreleased.
-    const shipped =
-      read("CHANGELOG.md")
-        .split(/^## \[/m)
-        .find((p) => p.startsWith("0.2.0]")) ?? "";
-    expect(shipped).toContain("TI10");
-    expect(shipped).toContain("TI13");
-
-    const readme = read("README.md").split("\n");
-    const inputRow = readme.find((line) => line.startsWith("| `test-integrity`")) ?? "";
-    expect(inputRow, "the test-integrity input row").toContain("TI10");
-    expect(inputRow, "the test-integrity input row").toContain("TI13");
-    for (const [code, id] of [
-      ["TEST_INTEGRITY_TI10", "TI10"],
-      ["TEST_INTEGRITY_TI13", "TI13"],
-    ] as const) {
-      const row = readme.find((line) => line.startsWith(`| \`${code}\``)) ?? "";
-      expect(row, `the ${code} message-table row`).toContain(`${id}:`);
-    }
-
-    const limits = read("docs/LIMITS.md");
-    const ti10 = sectionOf(limits, "What TI10 misses");
-    const ti10Lower = ti10.toLowerCase();
-    expect(ti10Lower, "missing context lines").toContain("context");
-    expect(ti10Lower, "a script split over lines or with a multi-line value").toMatch(
-      /multi-line|split|more than one line|several lines/,
-    );
-    expect(ti10, "a test key outside scripts").toMatch(/outside[^.]*`?scripts`?/);
-    expect(ti10Lower, "an added package.json").toContain("added");
-    expect(ti10Lower, "a deleted package.json").toContain("deleted");
-    expect(ti10, "package.json").toContain("package.json");
-    expect(ti10Lower, "the unnamed weakening forms").toMatch(
-      /other (weakening )?(forms|ways)|unnamed|not (named|caught|recogni[sz]ed|detected|listed)|--bail|--silent|--if-present/,
-    );
-    expect(ti10, "the kept-text caps").toMatch(/5[ ,]?000|\b400\b/);
-
-    const ti13 = sectionOf(limits, "What TI13 misses");
-    const ti13Lower = ti13.toLowerCase();
-    expect(ti13, "other tools' markers").toMatch(/node:coverage|no branch|exclude_lines/);
-    expect(ti13Lower, "markers in test files").toContain("test file");
-    expect(ti13, "a test file by name (section 1) gives nothing").toMatch(
-      /test file by name \(section 1\) gives nothing/,
-    );
-    expect(ti13Lower, "a marker inside a string").toContain("string");
-    expect(ti13Lower, "a block comment's later line").toContain("block comment");
-    expect(ti13, "the kept-text caps").toMatch(/5[ ,]?000|\b400\b/);
-
-    const threat = read("docs/THREAT-MODEL.md");
-    const paragraph = threat.split(/\n\s*\n/).find((p) => p.includes("TI10") && p.includes("TI13")) ?? "";
-    expect(paragraph, "a threat-model item names TI10 and TI13").not.toBe("");
-    expect(paragraph.toLowerCase(), "the diff reader keeps the text of source files").toContain("source");
-    expect(paragraph, "the diff reader keeps the text of package.json").toContain("package.json");
-    expect(paragraph.toLowerCase(), "kept line text").toMatch(/kept|text/);
-    expect(paragraph.toLowerCase(), "fixed-sentence details").toContain("fixed");
   });
 
   it("AC-12: at least five must-trigger and five must-not-trigger diffs per id, the named cases among them, and they behave", async () => {

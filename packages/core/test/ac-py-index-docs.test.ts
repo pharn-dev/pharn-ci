@@ -23,23 +23,6 @@ const V1_AT_BASE = "c6cfd5b5afeada776fa89028f5ef29e06427d0e32529420184474e52ca77
  */
 const V2_WITHOUT_EDITED_DESCRIPTIONS = "d7a9ec11cf2212f2ff82cf7fd42f27cfa73896151f69281ad595c4fc933c3737";
 
-/** The numbered entries of THREAT-MODEL.md section 3 (Named residual risks), each with its continuation lines. */
-function residualEntries(doc: string): string[] {
-  const start = doc.indexOf("\n## 3.");
-  const end = doc.indexOf("\n## 4.", start);
-  expect(start, "THREAT-MODEL.md has section 3").toBeGreaterThan(-1);
-  expect(end, "THREAT-MODEL.md has section 4").toBeGreaterThan(start);
-  return doc
-    .slice(start, end)
-    .split(/\n(?=\d+\.\s)/)
-    .filter((entry) => /^\d+\.\s/.test(entry));
-}
-
-/** The rows of the surfaces table: lines that start with `| <letter><digits> |`. */
-function surfaceRows(doc: string): string[] {
-  return doc.split("\n").filter((line) => /^\|\s*[A-Z]\d+\s*\|/.test(line));
-}
-
 /** Every path under `dir`, relative to it, directories marked with a trailing slash. */
 function walk(dir: string, prefix = ""): string[] {
   return readdirSync(join(dir, prefix), { withFileTypes: true }).flatMap((e) => {
@@ -48,49 +31,8 @@ function walk(dir: string, prefix = ""): string[] {
   });
 }
 
-describe("python-test-index: THREAT-MODEL, fixture layout, schemas and purity", () => {
-  it("AC-19: THREAT-MODEL holds an entry for the Python subprocess with its sandbox, caps, timeout and core validation", () => {
-    const doc = read("docs/THREAT-MODEL.md");
-    const candidates = [...surfaceRows(doc), ...residualEntries(doc)];
-    const entry = candidates.find((c) => /-I\s+-S\s+-B/.test(c) && /Python/.test(c));
-    expect(entry, "a THREAT-MODEL entry for the Python subprocess naming -I -S -B").toBeDefined();
-    const text = entry as string;
-    expect(text, "the tmpdir cwd").toMatch(/tmpdir|temporary directory/i);
-    expect(text, "no shell").toMatch(/shell/i);
-    expect(text, "the minimal env").toMatch(/\benv/i);
-    expect(text, "the minimal env keeps PATH").toMatch(/\bPATH\b/);
-    expect(text, "the file count cap").toMatch(/\b200\b/);
-    expect(text, "the per-file cap").toMatch(/512\s*KiB/);
-    expect(text, "the total cap").toMatch(/16\s*MiB/);
-    expect(text, "the output cap").toMatch(/64\s*MiB/);
-    expect(text, "the timeout").toMatch(/timeout/i);
-    expect(text, "the 30 s timeout").toMatch(/30\s*s\b/);
-    expect(text, "output validation").toMatch(/validat/i);
-    expect(text, "output validation in core").toMatch(/core|pythonIndexFromRaw/);
-  });
-
-  it("AC-19: row A1 names CPython's parser and keeps the TypeScript parser", () => {
-    const doc = read("docs/THREAT-MODEL.md");
-    const a1 = doc.split("\n").find((line) => /^\|\s*A1\s*\|/.test(line));
-    expect(a1, "the surface row A1").toBeDefined();
-    expect(a1).toMatch(/CPython/);
-    expect(a1).toMatch(/TypeScript/);
-    expect(a1).toMatch(/not hand-written/i);
-  });
-
-  it("AC-19: residual risk 20 names a hostile python3 earlier on PATH, CPython parser bugs and the runner's Python version", () => {
-    const doc = read("docs/THREAT-MODEL.md");
-    const twenty = residualEntries(doc).find((e) => /^20\.\s/.test(e));
-    expect(twenty, "residual risk 20").toBeDefined();
-    const text = twenty as string;
-    expect(text).toMatch(/python3/);
-    expect(text, "a hostile python3 earlier on PATH").toMatch(/\bPATH\b/);
-    expect(text, "CPython parser bugs").toMatch(/CPython/);
-    expect(text, "CPython parser bugs").toMatch(/\bbugs?\b/i);
-    expect(text, "the runner's Python version").toMatch(/version/i);
-    expect(text, "deciding the grammar").toMatch(/grammar|syntax/i);
-  });
-
+// CORE-133: the THREAT-MODEL wording checks moved out.
+describe("python-test-index: fixture layout, schemas and purity", () => {
   it("AC-19: fixtures/py-index/ holds no directory named test or tests and no .py file", () => {
     const dir = join(ROOT, "fixtures/py-index");
     expect(existsSync(dir), "fixtures/py-index/ exists").toBe(true);

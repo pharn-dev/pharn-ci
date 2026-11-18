@@ -36,13 +36,5 @@ describe("the @pharn-ci/node-io workspace package", () => {
     // The package exists, so the absence above is about core, not about a package that is not there yet.
     expect(readJson("packages/node-io/package.json").name).toBe("@pharn-ci/node-io");
   });
-
-  it("AC-3: AGENTS.md's Layout section names packages/node-io", () => {
-    const agents = read("AGENTS.md");
-    const start = agents.indexOf("\n## Layout\n");
-    expect(start).toBeGreaterThanOrEqual(0);
-    const next = agents.indexOf("\n## ", start + 1);
-    const layout = agents.slice(start, next === -1 ? undefined : next);
-    expect(layout).toContain("packages/node-io");
-  });
+  // CORE-133: the check that AGENTS.md's Layout section names packages/node-io (document wording) moved out.
 });

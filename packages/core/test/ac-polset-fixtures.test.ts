@@ -72,7 +72,10 @@ describe("the fixtures of E3 item 23", () => {
         .filter((name) => /^ac-polset-.*\.test\.ts$/.test(name))
         .map((name) => `${dir}/${name}`),
     );
-    expect(tests.length, "the AC test files").toBe(32);
+    // Re-pinned for CORE-133 (one docs-contract test replaces the doc pins): ac-polset-docs.test.ts and
+    // ac-polset-readme.test.ts, which asserted only on THREAT-MODEL, LIMITS, CHANGELOG and README wording, are deleted,
+    // so 30 of the 32 AC test files are left to scan.
+    expect(tests.length, "the AC test files").toBe(30);
     for (const path of [...walk(FIXTURES), ...tests]) {
       const spans = findSecretSpans(readFileSync(join(ROOT, path), "utf8"));
       expect(

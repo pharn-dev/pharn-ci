@@ -129,6 +129,13 @@ const RENAMED_TITLES: ReadonlyMap<string, string> = new Map([
     '"AC-4: the table maps the nine cases to TI01, TI03, TI05, TI09, TI15, TI17, TI02, TI06 and TI07, one entry per fixture directory"',
   ],
 ]);
+/**
+ * Re-pinned for CORE-133 (one docs-contract test replaces the doc pins): the titles of the document-wording tests it
+ * removed from these files, as they were at TITLES_BASE. They are expected to be gone; every other title stays.
+ */
+const CORE133_REMOVED_TITLES: ReadonlySet<string> = new Set([
+  '"AC-17: docs/LIMITS.md and the README state that 5 of 9 are caught and list those five cases with their signal ids"',
+]);
 const NEW_IDS = ["TI06", "TI12"];
 const NEW_CODES = ["TEST_INTEGRITY_TI06", "TEST_INTEGRITY_TI12"];
 
@@ -198,13 +205,13 @@ function arrayLiteral(text: string, name: string): string {
   throw new Error(`const ${name} is not closed`);
 }
 
+// Re-pinned for CORE-133: ac-v020-limits.test.ts and ac-v020-readme.test.ts, which pinned the count in docs/LIMITS.md
+// and the README, are deleted, so four of the six files are left to check.
 const SIX = [
   "packages/core/test/ac-ti0205-skylos.test.ts",
   "packages/core/test/ac-skylos-nine-table.test.ts",
   "packages/core/test/ac-v020-skylos-count.test.ts",
   "packages/core/test/ac-skylos-nine-misses.test.ts",
-  "packages/core/test/ac-v020-limits.test.ts",
-  "packages/core/test/ac-v020-readme.test.ts",
 ] as const;
 
 describe("TI06 and TI12 change the earlier outputs and tests only where they mean to", () => {
@@ -380,13 +387,16 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
       const now = readFileSync(join(ROOT, path), "utf8");
       const before = execFileSync("git", ["show", `${TITLES_BASE}:${path}`], { cwd: ROOT, encoding: "utf8" });
       expect(titles(before).length, `${path}: titles at the base commit`).toBeGreaterThan(0);
-      const expected = titles(before).map((title) => RENAMED_TITLES.get(title) ?? title);
+      const expected = titles(before)
+        .filter((title) => !CORE133_REMOVED_TITLES.has(title))
+        .map((title) => RENAMED_TITLES.get(title) ?? title);
       expect(titles(now), `${path}: every it( and describe( title byte-identical`).toEqual(expected);
     }
     const file = (path: (typeof SIX)[number]) => readFileSync(join(ROOT, path), "utf8");
 
     const ti0205 = file("packages/core/test/ac-ti0205-skylos.test.ts");
-    expect(ti0205).toContain('"8 of 9"');
+    // Re-pinned for CORE-133: the "8 of 9" literal sat in the LIMITS and README wording test CORE-133 removed; the
+    // file's check() test still pins the eight caught cases through CAUGHT (asserted below and in that test).
     expect(ti0205).not.toContain('"4 of 9"');
     expect(ti0205).toMatch(/\["loosened-assertion",\s*"TI06"\]/);
 
@@ -405,16 +415,5 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
     expect(arrayLiteral(misses, "MISSES"), "loosened-assertion leaves the miss list").not.toContain(
       "loosened-assertion",
     );
-
-    const limits = file("packages/core/test/ac-v020-limits.test.ts");
-    expect(limits).toContain('"8 of 9"');
-    expect(limits).not.toContain('"4 of 9"');
-    expect(arrayLiteral(limits, "MISSED_CASES"), "loosened-assertion leaves the missed cases").not.toContain(
-      "loosened-assertion",
-    );
-
-    const readme = file("packages/core/test/ac-v020-readme.test.ts");
-    expect(readme).toContain('"8 of 9"');
-    expect(readme).not.toContain('"4 of 9"');
   });
 });

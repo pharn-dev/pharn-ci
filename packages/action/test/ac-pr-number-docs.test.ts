@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-// Reads the repository's action.yml and README.md as text, the way GitHub and a reader see them.
+// Reads the repository's action.yml as text, the way GitHub sees it. (CORE-133: the README input-table check moved to
+// packages/core/test/docs-contract.test.ts, which checks a row and its default for every input.)
 
 const repoFile = (path: string) => readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8");
 
@@ -25,28 +26,8 @@ function inputBlock(actionYml: string, name: string): string[] | undefined {
   return block;
 }
 
-/** The input table rows of README.md's `## Action reference` section, keyed by the input name in the first cell. */
-function actionReferenceInputs(readme: string): Map<string, string> {
-  const lines = readme.split(/\r?\n/);
-  const start = lines.findIndex((line) => line.trim() === "## Action reference");
-  const rows = new Map<string, string>();
-  if (start === -1) return rows;
-  const rest = lines.slice(start + 1);
-  const end = rest.findIndex((line) => line.startsWith("## "));
-  const section = end === -1 ? rest : rest.slice(0, end);
-  const header = section.findIndex((line) => /^\|\s*Input\s*\|/.test(line));
-  if (header === -1) return rows;
-  for (const line of section.slice(header + 2)) {
-    if (!line.startsWith("|")) break;
-    const first = line.split("|")[1]?.trim() ?? "";
-    const name = /^`([^`]+)`$/.exec(first)?.[1];
-    if (name) rows.set(name, line);
-  }
-  return rows;
-}
-
-describe("action.yml and README: the pr-number and head-sha inputs", () => {
-  it("AC-10: action.yml declares both inputs optional with no default, and the README input table lists both", () => {
+describe("action.yml: the pr-number and head-sha inputs", () => {
+  it("AC-10: action.yml declares both inputs optional with no default", () => {
     const actionYml = repoFile("action.yml");
     for (const name of ["pr-number", "head-sha"]) {
       const block = inputBlock(actionYml, name);
@@ -63,11 +44,5 @@ describe("action.yml and README: the pr-number and head-sha inputs", () => {
         `${name} has no default`,
       ).toBe(false);
     }
-
-    const rows = actionReferenceInputs(repoFile("README.md"));
-    // The existing rows are found, so the table parse itself is sound.
-    expect(rows.has("base-ref")).toBe(true);
-    expect(rows.has("pr-number")).toBe(true);
-    expect(rows.has("head-sha")).toBe(true);
   });
 });
