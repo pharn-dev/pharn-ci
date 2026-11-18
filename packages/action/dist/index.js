@@ -32766,10 +32766,18 @@ var TEST_BASENAME = [
   /_test\.go$/
 ];
 function isTestFile(path) {
+  if (hasTestBasename(path)) return true;
   const segments = path.split("/");
-  const basename = segments[segments.length - 1] ?? "";
-  if (TEST_BASENAME.some((pattern) => pattern.test(basename))) return true;
   return segments.slice(0, -1).some((segment) => TEST_DIRECTORIES.has(segment));
+}
+function hasTestBasename(path) {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  return TEST_BASENAME.some((pattern) => pattern.test(basename));
+}
+function isRenamedAwayTest(file) {
+  if (file.status !== "renamed") return false;
+  if (isTestFile(file.oldPath) && !isTestFile(file.path)) return true;
+  return hasTestBasename(file.oldPath) && !hasTestBasename(file.path);
 }
 function isSnapFile(path) {
   const basename = path.slice(path.lastIndexOf("/") + 1);
@@ -32806,7 +32814,7 @@ function deletedTestFiles(diff) {
   const found = /* @__PURE__ */ new Set();
   for (const file of diff) {
     if (file.status === "deleted" && isTestFile(file.path)) found.add(file.path);
-    else if (file.status === "renamed" && isTestFile(file.oldPath) && !isTestFile(file.path)) found.add(file.oldPath);
+    else if (isRenamedAwayTest(file)) found.add(file.oldPath);
   }
   return [...found].sort(byCodeUnit);
 }
@@ -37748,13 +37756,23 @@ function removedTests(file) {
   }
   return "no";
 }
-function detectTI01(diff, mode, moved = /* @__PURE__ */ new Set(), compared2 = /* @__PURE__ */ new Set(), unparsed = /* @__PURE__ */ new Set()) {
+function detectTI01(diff, mode, moved = /* @__PURE__ */ new Set(), compared2 = /* @__PURE__ */ new Set(), unparsed = /* @__PURE__ */ new Set(), repoFiles = []) {
   const deletedSources = diff.filter((file) => file.status === "deleted" && !isTestFile(file.path));
   const sourceStems = new Set(deletedSources.map((file) => testStem(file.path)));
+  const deletedCode = deletedSources.filter((file) => coverageSourceLanguage(file.path) !== null);
   const sameStem = sameStemDeletions(diff);
+  const codeRemaining = /* @__PURE__ */ new Map();
+  const hasCodeRemaining = (dir) => {
+    let remaining = codeRemaining.get(dir);
+    if (remaining === void 0) {
+      remaining = repoFiles.some((path) => path.startsWith(`${dir}/`) && coverageSourceLanguage(path) !== null);
+      codeRemaining.set(dir, remaining);
+    }
+    return remaining;
+  };
   const found = /* @__PURE__ */ new Map();
   for (const file of diff) {
-    const renamedAway = file.status === "renamed" && isTestFile(file.oldPath) && !isTestFile(file.path);
+    const renamedAway = isRenamedAwayTest(file);
     const deleted = file.status === "deleted" && isTestFile(file.path);
     if (!(renamedAway || deleted) || file.binary === true) continue;
     const path = renamedAway ? file.oldPath : file.path;
@@ -37765,12 +37783,12 @@ function detectTI01(diff, mode, moved = /* @__PURE__ */ new Set(), compared2 = /
     if (!counts2) continue;
     const stem = testStem(path);
     const dir = testPackageDir(path);
-    let detail = renamedAway ? "Test file renamed to a path that is not a test file, so its tests are no longer found by name." : defined === "yes" ? "Test file deleted; its removed lines defined tests." : "Test file deleted; the diff text was cut or not read, so it cannot be confirmed to hold no tests.";
+    let detail = renamedAway ? isTestFile(file.path) ? "Test file renamed to a name that matches no test file pattern, so its tests are no longer found by name." : "Test file renamed to a path that is not a test file, so its tests are no longer found by name." : defined === "yes" ? "Test file deleted; its removed lines defined tests." : "Test file deleted; the diff text was cut or not read, so it cannot be confirmed to hold no tests.";
     let severity2 = mode;
     if (sourceStems.has(stem)) {
       severity2 = "info";
       detail = "Test file deleted together with a source file of the same name.";
-    } else if (dir !== "" && deletedSources.some((source) => source.path.startsWith(`${dir}/`))) {
+    } else if (dir !== "" && deletedCode.some((source) => source.path.startsWith(`${dir}/`)) && !hasCodeRemaining(dir)) {
       severity2 = "info";
       detail = "Test file deleted together with other files of its package.";
     } else if (deleted && sameStem.has(path)) {
@@ -42625,7 +42643,14 @@ function check(input) {
   const movedTests = touched === null || parsedDiff === null || input.testSources === void 0 ? void 0 : movedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex, touched);
   const sourceMatches = parsedDiff === null || testIntegrity2.mode === "off" ? { signals: [], omitted: [] } : detectTI15(parsedDiff, { repoFiles: input.repoFiles });
   const testIntegritySignals = parsedDiff === null || testIntegrity2.mode === "off" ? [] : sortSignals2([
-    ...detectTI01(parsedDiff, testIntegrity2.mode, movedTests?.files, movedTests?.compared, movedTests?.unparsed),
+    ...detectTI01(
+      parsedDiff,
+      testIntegrity2.mode,
+      movedTests?.files,
+      movedTests?.compared,
+      movedTests?.unparsed,
+      input.repoFiles
+    ),
     ...detectTI04(parsedDiff, testIntegrity2.mode),
     ...detectTI08(parsedDiff),
     ...detectTI10(parsedDiff, { repoFiles: input.repoFiles, mode: testIntegrity2.mode }),

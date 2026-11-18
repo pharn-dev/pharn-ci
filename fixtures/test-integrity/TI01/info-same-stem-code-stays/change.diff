@@ -1,0 +1,16 @@
+diff --git a/src/cart/cart.ts b/src/cart/cart.ts
+deleted file mode 100644
+index 6666666..0000000
+--- a/src/cart/cart.ts
++++ /dev/null
+@@ -1 +0,0 @@
+-export const total = 5;
+diff --git a/src/cart/cart.test.ts b/src/cart/cart.test.ts
+deleted file mode 100644
+index 5555555..0000000
+--- a/src/cart/cart.test.ts
++++ /dev/null
+@@ -1,3 +0,0 @@
+-it("adds the prices", () => {
+-  expect(total).toBe(5);
+-});

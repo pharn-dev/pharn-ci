@@ -25,13 +25,26 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   finding `info`, so an unrelated `foo.ts` deleted beside `foo.test.ts` exempts it. (3) A rename
   shows only the lines it edits, never the tests the file keeps, so a test renamed to a path that is
   not a test file counts on its path alone, edited or not, and a helper renamed out of `tests/`
-  counts too. (4) A test file emptied but not deleted is not TI01; TI02 reports
+  counts too. A test file whose name matched a test basename pattern and is renamed so that its
+  name matches no test basename pattern counts as renamed away even when it stays in a `test`,
+  `tests` or `__tests__` directory (`src/cart.test.ts` to `src/__tests__/cart.test.ts.bak`); a file
+  whose name matched no pattern renamed inside such a directory does not. TI01 decides this by name
+  and does not read the runner's settings, so a runner that still collects the new name keeps
+  running the tests (Jest's default `testMatch` collects every JS/TS file under `__tests__`, so
+  `src/cart.test.ts` renamed to `src/__tests__/cart.ts` still runs): a known false block, cleared
+  with the accept label. (4) A test file emptied but not deleted is not TI01; TI02 reports
   the tests it removed. (5) Text is kept for at most 5000 lines per file and 400 characters per
   line; a deleted JS/TS, Python or Go file cut at that bound with no test-defining line kept still
   counts, so a huge test file is never waved through, while a cut fixture, snapshot or data file
-  under a test directory does not. (6) A package that is the repository root never exempts a deletion.
-  (7) A snapshot file (a basename that ends in `.snap`) is never a TI01 candidate, deleted or renamed away, because it
-  holds stored output and no test; the `TEST_FILES_DELETED` message and `deletedTestFiles` still list it by its old
+  under a test directory does not. (6) Only deleted JS/TS and Python source files of the package make a deleted test
+  file `info` (a deleted `NOTES.md` or data file does not), and only when no JS/TS or Python file remains under the
+  package directory at head, read from the tracked-file list; when that list is empty (`git ls-files` failed) no file
+  is seen to remain. A package in another language deleted whole is therefore a `block` (`warn` in mode `warn`):
+  `pkg/cart/cart_test.go` deleted with `pkg/cart/price.go` blocks, and so does a test file found only by its `test`,
+  `tests` or `__tests__` directory deleted with package files of no JS/TS or Python extension. That is a known false
+  block, cleared with the accept label; a source file of the same name deleted with the test still makes it `info`,
+  see (2). A package that is the repository root never exempts a deletion. (7) A snapshot file (a basename that ends
+  in `.snap`) is never a TI01 candidate, deleted or renamed away, because it holds stored output and no test; the `TEST_FILES_DELETED` message and `deletedTestFiles` still list it by its old
   path, and TI08 owns snapshot churn. A test file that stores tests in a `.snap` file is not read. (8) A deleted JS/TS or
   Python test file is `info`, not `block`, when the change keeps the base text of the file, every test name and every
   group name it held is added, in a test with at least one assertion, in another test file of the change (a test of an

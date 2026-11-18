@@ -1,0 +1,14 @@
+diff --git a/src/cart.test.ts b/src/__tests__/cart.test.ts.bak
+similarity index 82%
+rename from src/cart.test.ts
+rename to src/__tests__/cart.test.ts.bak
+index 1111111..2222222 100644
+--- a/src/cart.test.ts
++++ b/src/__tests__/cart.test.ts.bak
+@@ -1,5 +1,5 @@
+-// Tests for the cart.
++// Tests for the cart (kept for reference).
+ describe("cart", () => {
+   it("adds the prices", () => {
+     expect(total([2, 3])).toBe(5);
+   });

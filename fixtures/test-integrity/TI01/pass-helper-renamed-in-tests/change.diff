@@ -1,0 +1,4 @@
+diff --git a/tests/helpers.ts b/tests/helper.ts
+similarity index 100%
+rename from tests/helpers.ts
+rename to tests/helper.ts

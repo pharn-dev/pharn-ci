@@ -1,0 +1,4 @@
+diff --git a/src/cart.test.ts b/src/__tests__/cart.test.ts
+similarity index 100%
+rename from src/cart.test.ts
+rename to src/__tests__/cart.test.ts

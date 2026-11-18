@@ -1,6 +1,6 @@
 import type { DiffFile } from "../diff/unified.js";
 import type { TestIntegritySignal } from "../report.js";
-import { definesTests, isSnapFile, isTestFile, testPackageDir, testStem } from "../testFiles.js";
+import { definesTests, isRenamedAwayTest, isSnapFile, isTestFile, testPackageDir, testStem } from "../testFiles.js";
 import { byCodeUnit, cutCodeUnits } from "../text.js";
 import { coverageSourceLanguage } from "./signalFiles.js";
 import { testLanguage } from "./testLines.js";
@@ -18,12 +18,15 @@ function removedTests(file: DiffFile): "yes" | "no" | "unknown" {
 }
 
 /**
- * TI01, a test file deleted. A candidate is a test file the diff deletes, or renames to a path that is not a test file
- * (named by its old path). It counts when its removed lines define tests, when its text is unknown (not kept), when it
- * is a JS/TS, Python or Go file whose text was cut at the bound, or when it is renamed away: a rename shows only the lines it edits, never the tests it keeps, so a
- * rename to a non-test path counts whatever its removed lines hold. A binary file never counts. A counting file is
+ * TI01, a test file deleted. A candidate is a test file the diff deletes, or renames away (named by its old path): to a
+ * path that is not a test file, or from a name that matched a test basename pattern to one that matches none, even
+ * inside a `test`, `tests` or `__tests__` directory (`isRenamedAwayTest`). It counts when its removed lines define
+ * tests, when its text is unknown (not kept), when it is a JS/TS, Python or Go file whose text was cut at the bound, or
+ * when it is renamed away: a rename shows only the lines it edits, never the tests it keeps, so a renamed-away file
+ * counts whatever its removed lines hold. A binary file never counts. A counting file is
  * `block` (shown as `warn` in mode `warn`), or `info` when the same diff also deletes a source file with the same name,
- * deletes other files of the package that holds the test (never the repository root), or (for a deleted file in
+ * deletes JS/TS or Python source files of the package that holds the test (never the repository root) and no JS/TS or
+ * Python file of that package is left in `repoFiles` (the head tracked-file list; empty shows no remaining file), or (for a deleted file in
  * `moved`, see `movedTestFiles`) when every test it held is found again, by body, in a new test of this change. A
  * deleted file with a same-stem test file added or renamed to (`sameStemDeletions`) needs no name match, only the body
  * evidence; without it the file stays `block` and the detail says whether its tests were compared (`compared`), its
@@ -37,14 +40,27 @@ export function detectTI01(
   moved: ReadonlySet<string> = new Set(),
   compared: ReadonlySet<string> = new Set(),
   unparsed: ReadonlySet<string> = new Set(),
+  repoFiles: readonly string[] = [],
 ): TestIntegritySignal[] {
   const deletedSources = diff.filter((file) => file.status === "deleted" && !isTestFile(file.path));
   const sourceStems = new Set(deletedSources.map((file) => testStem(file.path)));
+  const deletedCode = deletedSources.filter((file) => coverageSourceLanguage(file.path) !== null);
   const sameStem = sameStemDeletions(diff);
+
+  // Whether a JS/TS or Python file (source or test) of the package is still tracked at head; once per package directory.
+  const codeRemaining = new Map<string, boolean>();
+  const hasCodeRemaining = (dir: string): boolean => {
+    let remaining = codeRemaining.get(dir);
+    if (remaining === undefined) {
+      remaining = repoFiles.some((path) => path.startsWith(`${dir}/`) && coverageSourceLanguage(path) !== null);
+      codeRemaining.set(dir, remaining);
+    }
+    return remaining;
+  };
 
   const found = new Map<string, TestIntegritySignal>();
   for (const file of diff) {
-    const renamedAway = file.status === "renamed" && isTestFile(file.oldPath) && !isTestFile(file.path);
+    const renamedAway = isRenamedAwayTest(file);
     const deleted = file.status === "deleted" && isTestFile(file.path);
     if (!(renamedAway || deleted) || file.binary === true) continue;
     const path = renamedAway ? file.oldPath : file.path;
@@ -61,7 +77,9 @@ export function detectTI01(
     const stem = testStem(path);
     const dir = testPackageDir(path);
     let detail = renamedAway
-      ? "Test file renamed to a path that is not a test file, so its tests are no longer found by name."
+      ? isTestFile(file.path)
+        ? "Test file renamed to a name that matches no test file pattern, so its tests are no longer found by name."
+        : "Test file renamed to a path that is not a test file, so its tests are no longer found by name."
       : defined === "yes"
         ? "Test file deleted; its removed lines defined tests."
         : "Test file deleted; the diff text was cut or not read, so it cannot be confirmed to hold no tests.";
@@ -70,7 +88,11 @@ export function detectTI01(
     if (sourceStems.has(stem)) {
       severity = "info";
       detail = "Test file deleted together with a source file of the same name.";
-    } else if (dir !== "" && deletedSources.some((source) => source.path.startsWith(`${dir}/`))) {
+    } else if (
+      dir !== "" &&
+      deletedCode.some((source) => source.path.startsWith(`${dir}/`)) &&
+      !hasCodeRemaining(dir)
+    ) {
       severity = "info";
       detail = "Test file deleted together with other files of its package.";
     } else if (deleted && sameStem.has(path)) {

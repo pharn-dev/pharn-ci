@@ -28,6 +28,15 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   `warn` for a coverage hint that marks one line or branch (`# pragma: no cover`, an Istanbul, V8 or C8 `ignore next`,
   `ignore if` or `ignore else`) in a file the change adds; a whole-file or range hint in a new file, and any hint added
   to an existing file, still blocks (`docs/LIMITS.md`, "What TI11 misses" and "What TI13 misses").
+- Fixed: TI01 and the `TEST_FILES_DELETED` message count a test file renamed so that its name matches no test file
+  pattern, even when it lands in a `test`, `tests` or `__tests__` directory (`src/cart.test.ts` to
+  `src/__tests__/cart.test.ts.bak`, `tests/test_cart.py` to `tests/test_cart.txt`). The package exemption is narrower:
+  only deleted JS/TS and Python source files of the package make a deleted test file `info`, and only when no JS/TS or
+  Python file of the package is left in the tracked-file list, so a deleted `NOTES.md`, or a package that still holds
+  code, no longer softens the deletion; it is a `block` (`warn` in mode `warn`). A test file deleted with a source file
+  of the same name is still `info`. This can add findings: a deleted Go test file whose package is deleted with it now
+  blocks, and so does a Jest test renamed to a plain name under `__tests__`, which Jest still runs (`docs/LIMITS.md`,
+  "What TI01 misses").
 
 ### Security
 

@@ -20,10 +20,27 @@ const TEST_BASENAME: readonly RegExp[] = [
  * segments only. By name only: it reads no file.
  */
 export function isTestFile(path: string): boolean {
+  if (hasTestBasename(path)) return true;
   const segments = path.split("/");
-  const basename = segments[segments.length - 1] ?? "";
-  if (TEST_BASENAME.some((pattern) => pattern.test(basename))) return true;
   return segments.slice(0, -1).some((segment) => TEST_DIRECTORIES.has(segment));
+}
+
+/** Whether a file's basename matches one of the test basename patterns (TEST_BASENAME), whatever its directory. */
+export function hasTestBasename(path: string): boolean {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  return TEST_BASENAME.some((pattern) => pattern.test(basename));
+}
+
+/**
+ * Whether a diff entry is a test file renamed away: a rename whose old path is a test file and whose new path is not
+ * one, or whose old basename matched a test basename pattern and whose new basename matches none (wherever the new
+ * path sits, a `test`, `tests` or `__tests__` directory included). A rename between two names that both match a
+ * pattern, or inside a test directory from a name that matched none, is not.
+ */
+export function isRenamedAwayTest(file: { status: DiffFile["status"]; path: string; oldPath: string }): boolean {
+  if (file.status !== "renamed") return false;
+  if (isTestFile(file.oldPath) && !isTestFile(file.path)) return true;
+  return hasTestBasename(file.oldPath) && !hasTestBasename(file.path);
 }
 
 /**
@@ -82,14 +99,15 @@ export function definesTests(text: string): boolean {
 }
 
 /**
- * The test files the diff deletes, or renames to a path that is not a test file (reported under their old
- * path). Added, modified and test-to-test renamed files are not named. Distinct, sorted in code-unit order.
+ * The test files the diff deletes, or renames so that it is not a test file or its name matches no test basename
+ * pattern (reported under their old path). Added, modified and test-to-test renamed files are not named. Distinct,
+ * sorted in code-unit order.
  */
 export function deletedTestFiles(diff: readonly DiffFile[]): string[] {
   const found = new Set<string>();
   for (const file of diff) {
     if (file.status === "deleted" && isTestFile(file.path)) found.add(file.path);
-    else if (file.status === "renamed" && isTestFile(file.oldPath) && !isTestFile(file.path)) found.add(file.oldPath);
+    else if (isRenamedAwayTest(file)) found.add(file.oldPath);
   }
   return [...found].sort(byCodeUnit);
 }

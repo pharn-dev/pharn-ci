@@ -1,0 +1,23 @@
+diff --git a/src/cart/price.ts b/src/cart/price.ts
+deleted file mode 100644
+index 6666666..0000000
+--- a/src/cart/price.ts
++++ /dev/null
+@@ -1 +0,0 @@
+-export const price = 2;
+diff --git a/src/cart/util.ts b/src/cart/util.ts
+deleted file mode 100644
+index 7777777..0000000
+--- a/src/cart/util.ts
++++ /dev/null
+@@ -1 +0,0 @@
+-export const unused = 1;
+diff --git a/src/cart/cart.test.ts b/src/cart/cart.test.ts
+deleted file mode 100644
+index 5555555..0000000
+--- a/src/cart/cart.test.ts
++++ /dev/null
+@@ -1,3 +0,0 @@
+-it("adds the prices", () => {
+-  expect(price + 3).toBe(5);
+-});

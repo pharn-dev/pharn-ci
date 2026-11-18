@@ -310,7 +310,14 @@ export function check(input: CheckInput): Report {
     parsedDiff === null || testIntegrity.mode === "off"
       ? []
       : sortSignals([
-          ...detectTI01(parsedDiff, testIntegrity.mode, movedTests?.files, movedTests?.compared, movedTests?.unparsed),
+          ...detectTI01(
+            parsedDiff,
+            testIntegrity.mode,
+            movedTests?.files,
+            movedTests?.compared,
+            movedTests?.unparsed,
+            input.repoFiles,
+          ),
           ...detectTI04(parsedDiff, testIntegrity.mode),
           ...detectTI08(parsedDiff),
           ...detectTI10(parsedDiff, { repoFiles: input.repoFiles, mode: testIntegrity.mode }),
