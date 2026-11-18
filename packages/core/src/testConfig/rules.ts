@@ -1,6 +1,6 @@
-import { deselectionPairs, gainedPairs, pairText, splitAddopts } from "./addopts.js";
+import { gainedPairs, pairText, pathsText, readAddopts, splitAddopts } from "./addopts.js";
 import type { TestConfigKind } from "./kinds.js";
-import { entriesOf, type ListMode, narrowedList, widenedList } from "./listCompare.js";
+import { entriesOf, type ListEntry, type ListMode, narrowedList, widenedList } from "./listCompare.js";
 import { compareProjects, type ProjectsFlavor } from "./projects.js";
 import {
   type ConfigValue,
@@ -48,6 +48,16 @@ interface KeyRule {
   projects?: ProjectsFlavor;
   /** The values of this key are lists written as one string, split on whitespace (pytest). */
   split?: true;
+  /**
+   * A narrowing key: one that limits which test files or tests run. In a config new at head it is judged by being set, at
+   * `warn`. Matched by the rule's full key path, so `coverage.exclude` is not `exclude`.
+   */
+  narrowing?: true;
+  /**
+   * The `narrowed` rule only: the entries a list that is unset at base stands for (jest `roots`, whose default is
+   * `["<rootDir>"]`), used when the config existed at base and the key was unset there.
+   */
+  unsetBase?: readonly string[];
 }
 
 const rule = (path: string, kind: RuleKind, extra: Partial<KeyRule> = {}): KeyRule => ({
@@ -63,8 +73,11 @@ const VITEST_RULES: readonly KeyRule[] = [
   rule("coverage.branches", "lowered"),
   rule("coverage.statements", "lowered"),
   rule("coverage.exclude", "widened", { list: "glob" }),
-  rule("include", "narrowed", { list: "glob" }),
-  rule("exclude", "widened", { list: "glob" }),
+  rule("include", "narrowed", { list: "glob", narrowing: true }),
+  rule("exclude", "widened", { list: "glob", narrowing: true }),
+  rule("dir", "addedOrChanged", { narrowing: true }),
+  rule("testNamePattern", "addedOrChanged", { narrowing: true }),
+  rule("root", "addedOrChanged", { narrowing: true }),
   rule("projects", "projects", { projects: "vitest" }),
   rule("passWithNoTests", "turnedOn"),
   rule("allowOnly", "turnedOn"),
@@ -79,9 +92,11 @@ const WORKSPACE_RULES: readonly KeyRule[] = [rule("projects", "projects", { proj
 const JEST_RULES: readonly KeyRule[] = [
   rule("coverageThreshold", "jestThresholds"),
   rule("coveragePathIgnorePatterns", "widened", { list: "regex" }),
-  rule("testPathIgnorePatterns", "widened", { list: "regex" }),
-  rule("testMatch", "narrowed", { list: "glob" }),
+  rule("testPathIgnorePatterns", "widened", { list: "regex", narrowing: true }),
+  rule("testMatch", "narrowed", { list: "glob", narrowing: true }),
   rule("testRegex", "narrowed", { list: "regex" }),
+  rule("roots", "narrowed", { list: "testpaths", unsetBase: ["<rootDir>"], narrowing: true }),
+  rule("modulePathIgnorePatterns", "widened", { list: "regex", narrowing: true }),
   rule("projects", "projects", { projects: "jest" }),
   rule("passWithNoTests", "turnedOn"),
   rule("bail", "bail"),
@@ -91,7 +106,7 @@ const JEST_RULES: readonly KeyRule[] = [
 const PLAYWRIGHT_RULES: readonly KeyRule[] = [
   rule("retries", "increased", { warn: true }),
   rule("testIgnore", "widened", { list: "glob" }),
-  rule("testMatch", "narrowed", { list: "glob" }),
+  rule("testMatch", "narrowed", { list: "glob", narrowing: true }),
   rule("grep", "addedOrChanged"),
   rule("grepInvert", "addedOrChanged"),
   rule("forbidOnly", "turnedOff"),
@@ -109,7 +124,7 @@ const MOCHA_RULES: readonly KeyRule[] = [
 
 const PYTEST_RULES: readonly KeyRule[] = [
   rule("addopts", "addopts"),
-  rule("testpaths", "narrowed", { list: "testpaths", split: true }),
+  rule("testpaths", "narrowed", { list: "testpaths", split: true, narrowing: true }),
   rule("python_files", "narrowed", { list: "glob", split: true }),
   rule("python_classes", "narrowed", { list: "glob", split: true }),
   rule("python_functions", "narrowed", { list: "glob", split: true }),
@@ -298,7 +313,17 @@ function thresholdFindings(ctx: Context, key: KeyRule, jest: boolean): RuleFindi
   return out;
 }
 
-/** The pytest `addopts` rule: one finding per deselection option gained at head. */
+/** The paths of an `addopts` value as directory entries; no path at all stands for the whole root, `.`. */
+const pathEntries = (paths: readonly string[]): ListEntry[] =>
+  (paths.length === 0 ? ["."] : paths).map((text) => ({ opaque: false, isString: true, text }));
+
+/**
+ * The pytest `addopts` rule: one finding per narrowing option gained at head (`-k`, `--deselect`, `-o python_functions=`
+ * and the others of `readAddopts`), and at most one for the positional paths. The paths are a directory list, compared
+ * like `testpaths`: in a config that existed at base, a base path that no head path holds is `narrowed`, and a side with
+ * no path stands for `.`. In a config new at head the paths are judged by being set, at `warn`, and so is a gained
+ * `-o python_functions=`; a gained deselection option keeps the mode's level.
+ */
 function addoptsFindings(ctx: Context, key: KeyRule, b: Lookup, h: Lookup, keyName: string): RuleFinding[] {
   const headValue = foundValue(h);
   if (headValue === null) return [];
@@ -310,10 +335,43 @@ function addoptsFindings(ctx: Context, key: KeyRule, b: Lookup, h: Lookup, keyNa
       : [];
   }
   if (baseValue !== null && printValue(baseValue) === printValue(headValue)) return [];
-  const before = baseValue === null ? [] : deselectionPairs(splitAddopts(baseValue));
-  return gainedPairs(before, deselectionPairs(splitAddopts(headValue))).map((pair) =>
-    compared(ctx, key, `${keyName} gains ${pairText(pair)}.`, b, h),
-  );
+  const isNew = ctx.base === null;
+  const before = baseValue === null ? { pairs: [], paths: [] } : readAddopts(splitAddopts(baseValue));
+  const after = readAddopts(splitAddopts(headValue));
+  const out = gainedPairs(before.pairs, after.pairs).map((pair) => {
+    const text = `${keyName} gains ${pairText(pair)}.`;
+    return isNew && pair.kind === "narrow"
+      ? finding("warn", lineOf(h), text, foundValue(b), foundValue(h))
+      : compared(ctx, key, text, b, h);
+  });
+  if (isNew) {
+    if (after.paths.length > 0) {
+      out.push(
+        finding(
+          "warn",
+          lineOf(h),
+          `${keyName} paths set in a new config: ${pathsText(after.paths)}.`,
+          foundValue(b),
+          foundValue(h),
+        ),
+      );
+    }
+  } else if (narrowedList(pathEntries(before.paths), pathEntries(after.paths), "testpaths") === "narrowed") {
+    out.push(
+      compared(ctx, key, `${keyName} paths narrowed: ${pathsText(before.paths)} → ${pathsText(after.paths)}.`, b, h),
+    );
+  }
+  return out;
+}
+
+/** A narrowing key set in a config new at head: a `warn`, judged by being set. A fully opaque value gives nothing. */
+function newConfigFindings(key: KeyRule, keyName: string, headValue: ConfigValue, line: number | null): RuleFinding[] {
+  if (headValue.type === "opaque") return [];
+  if (key.rule === "widened" && key.list !== undefined) {
+    // A list whose every entry is a build, dependency or declaration entry skips nothing the project wrote.
+    if (widenedList([], entriesOf(headValue, key.split === true), key.list) !== "widened") return [];
+  }
+  return [finding("warn", line, `${keyName} set in a new config: ${UNSET} → ${shown(headValue)}.`, null, headValue)];
 }
 
 /** The judgement of one settings key; see the rule kinds. */
@@ -334,6 +392,7 @@ function keyFindings(ctx: Context, key: KeyRule): RuleFinding[] {
       : [];
   }
   const headValue = h.found.value;
+  if (ctx.base === null && key.narrowing === true) return newConfigFindings(key, keyName, headValue, h.found.line);
   if (baseValue !== null && printValue(baseValue) === printValue(headValue)) return [];
   const cannot = () => [finding("warn", lineOf(h), cannotOpaque(keyName, headValue), baseValue, headValue)];
   const hit = (verb: string) => [
@@ -352,7 +411,13 @@ function keyFindings(ctx: Context, key: KeyRule): RuleFinding[] {
     if (b === "unknown") return [];
     const split = key.split === true;
     if (key.rule === "narrowed") {
-      if (baseValue === null) return [];
+      if (baseValue === null) {
+        // A key unset at base in a config that existed there runs with its default: jest `roots` is `["<rootDir>"]`.
+        if (b !== "unset" || key.unsetBase === undefined) return [];
+        const defaults: ListEntry[] = key.unsetBase.map((text) => ({ opaque: false, isString: true, text }));
+        const unsetResult = narrowedList(defaults, entriesOf(headValue, split), key.list);
+        return unsetResult === "narrowed" ? hit("narrowed") : unsetResult === "cannot" ? cannot() : [];
+      }
       const result = narrowedList(entriesOf(baseValue, split), entriesOf(headValue, split), key.list);
       return result === "narrowed" ? hit("narrowed") : result === "cannot" ? cannot() : [];
     }
@@ -414,10 +479,12 @@ function keyFindings(ctx: Context, key: KeyRule): RuleFinding[] {
 }
 
 /**
- * Compares the settings of a config at base and at head. `base` is null when the file is new at head or its settings
- * container was absent or not found at base: then only the keys a new config is judged on are read (`passWithNoTests`
- * and `allowOnly` turned on, a nonzero retry count, pytest deselection options). `mode` is the severity of the keys that
- * take the mode; the others are warnings.
+ * Compares the settings of a config at base and at head. `base` is null when the file is new at head, its settings
+ * container was absent at base (a section or key new at head), or the config was not found at base: then only the keys
+ * a new config is judged on are read: `passWithNoTests` and `allowOnly` turned on, a nonzero retry count, the pytest
+ * `addopts` options and paths, and every narrowing key (`include`, `exclude`, `dir`, `testNamePattern`, `root`,
+ * `testMatch`, `testPathIgnorePatterns`, `roots`, `modulePathIgnorePatterns`, `testpaths`), which is judged by being
+ * set, always at `warn`. `mode` is the severity of the keys that take the mode; the others are warnings.
  */
 export function evaluateRules(
   kind: TestConfigKind,
@@ -434,7 +501,10 @@ export function evaluateRules(
   const rules =
     base === null
       ? family.rules.filter(
-          (key) => key.rule === "addopts" || NEW_CONFIG_KEYS.has(key.path[key.path.length - 1] as string),
+          (key) =>
+            key.rule === "addopts" ||
+            key.narrowing === true ||
+            NEW_CONFIG_KEYS.has(key.path[key.path.length - 1] as string),
         )
       : family.rules;
   return rules.flatMap((key) => keyFindings(ctx, key));

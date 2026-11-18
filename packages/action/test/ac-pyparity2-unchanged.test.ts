@@ -331,9 +331,28 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
         expect(read(path).replace("ignore file", "ignore next"), line).toBe(atBase(path));
       }
     }
+    // Re-pinned for CORE-70 (TI09 and TI10 narrowing): `pass-added-vitest-config` is renamed to `warn-added-vitest-config`
+    // with its files byte-identical, so its two files show as deleted. Each is accepted only when the renamed copy is the
+    // base's content byte for byte; no other deletion is.
+    const renamedTi09 =
+      /^D\t(fixtures\/test-integrity\/TI09\/)pass-added-vitest-config(\/(?:change\.diff|head\/vitest\.config\.ts\.txt))$/;
+    for (const line of statuses) {
+      const match = renamedTi09.exec(line);
+      if (match !== null) {
+        expect(read(`${match[1]}warn-added-vitest-config${match[2]}`), line).toBe(
+          atBase(`${match[1]}pass-added-vitest-config${match[2]}`),
+        );
+      }
+    }
     expect(
       statuses.filter(
-        (l) => !l.startsWith("A\t") && !barred.test(l) && !fixed.test(l) && !unknownTi.test(l) && l !== newFile,
+        (l) =>
+          !l.startsWith("A\t") &&
+          !barred.test(l) &&
+          !fixed.test(l) &&
+          !unknownTi.test(l) &&
+          l !== newFile &&
+          !renamedTi09.test(l),
       ),
       "no fixture of the base is modified or deleted",
     ).toEqual([]);

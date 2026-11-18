@@ -325,7 +325,11 @@ export function check(input: CheckInput): Report {
           ),
           ...detectTI04(parsedDiff, testIntegrity.mode),
           ...detectTI08(parsedDiff),
-          ...detectTI10(parsedDiff, { repoFiles: input.repoFiles, mode: testIntegrity.mode }),
+          ...detectTI10(parsedDiff, {
+            repoFiles: input.repoFiles,
+            mode: testIntegrity.mode,
+            ...(input.testSources === undefined ? {} : { sources: input.testSources }),
+          }),
           ...detectTI11(parsedDiff, testIntegrity.mode),
           ...detectTI13(parsedDiff, testIntegrity.mode),
           ...detectTI14(parsedDiff, {

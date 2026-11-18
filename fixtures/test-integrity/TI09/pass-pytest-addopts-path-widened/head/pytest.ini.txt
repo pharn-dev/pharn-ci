@@ -1,0 +1,2 @@
+[pytest]
+addopts = tests/unit tests/integration

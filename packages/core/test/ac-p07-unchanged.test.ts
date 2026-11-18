@@ -24,6 +24,65 @@ const nonEmpty = (text: string) => text.split("\n").filter((l) => l.length > 0);
 const CORE71_FIXTURES =
   /fixtures\/test-integrity\/(?:TI11\/(?:pass-(?:pytest-cov-flags|vitest-coverage|jest-ci-coverage|cov-report-value)|block-(?:pytest-path-added|pytest-k-added|pytest-cov-or-true|pass-with-no-tests-added|exclude-added|jest-version-flag|cov-separate-value|coverage-exclude-added|coverage-path-ignore-added|cov-config-added|coverage-false))|TI13\/(?:warn-pragma-new-file|warn-istanbul-next-new-file|block-c8-file-new-file|block-v8-start-new-file))\.diff$/;
 
+// Re-pinned for CORE-70 (TI09 and TI10 narrowing): its new case directories under fixtures/test-integrity/TI09/ and
+// fixtures/test-integrity/TI10/ are added (and untracked until committed), by name. `pass-added-vitest-config` is renamed
+// to `warn-added-vitest-config` with its files byte-identical, so its two files may show as deleted, and only when the
+// `warn-added-vitest-config` copy holds the base's bytes.
+const CORE70_TI09 = [
+  "warn-added-vitest-config",
+  "warn-added-vitest-exclude",
+  "warn-added-pytest-testpaths",
+  "warn-added-pytest-addopts-path",
+  "warn-added-vitest-retry",
+  "warn-vitest-not-found-at-base",
+  "pass-added-vitest-environment",
+  "pass-added-vitest-exclude-node-modules",
+  "block-vitest-dir-added",
+  "block-vitest-test-name-pattern-added",
+  "block-vitest-root-added",
+  "block-jest-roots-added",
+  "block-jest-module-path-ignore-added",
+  "block-pytest-addopts-path-added",
+  "block-pytest-addopts-path-removed",
+  "block-pytest-addopts-python-functions",
+  "pass-jest-roots-widened",
+  "pass-jest-roots-default",
+  "pass-jest-module-path-ignore-dist",
+  "pass-pytest-addopts-verbose",
+  "pass-pytest-addopts-path-widened",
+  "pass-pytest-addopts-plugin-options",
+  "pass-added-vitest-config-defaults",
+  "warn-added-vitest-config-defaults-spread",
+];
+const CORE70_TI10 = [
+  "block-pipe-tee",
+  "block-background-wait",
+  "block-or-subshell-true",
+  "block-ampersand-redirect",
+  "block-exclude-flag",
+  "block-test-path-ignore-patterns",
+  "block-pipe-after-and-upload",
+  "block-coverage-wrapper-exclude",
+  "pass-banner-before-run",
+  "pass-build-before-run",
+  "pass-lint-after-run",
+  "pass-pipe-already-there",
+  "pass-redirect-stderr",
+  "pass-subshell-after-and",
+  "block-one-line-or-true",
+  "pass-scripts-reflowed",
+  "pass-config-test-key",
+  "block-pretest-removed-object",
+  "block-or-true-head-dropped",
+  "block-newline-true",
+  "block-scripts-proto-keys",
+  "block-background-run",
+  "pass-server-before-run",
+];
+const CORE70_PATH = new RegExp(
+  `^fixtures/test-integrity/(?:TI09/(?:${CORE70_TI09.join("|")})|TI10/(?:${CORE70_TI10.join("|")}))/[^\\t]+$`,
+);
+
 /** The tests PLAN.md step 9 lists as deliberately re-pinned; each must carry a comment naming this item. */
 const DELIBERATE = [
   "packages/action/test/ac-pyparity2-unchanged.test.ts",
@@ -60,6 +119,20 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
   it("AC-23: only new fixtures under fixtures/policy-rules/p07/, no test file deleted, every deliberate re-pin marked, and the whole-report, render-golden, ac-p11-* and ac-polrules-* tests pass", () => {
     // Fixtures: no tracked file under fixtures/ is modified or deleted; anything new is under fixtures/policy-rules/p07/.
     for (const line of nonEmpty(git("diff", "--name-status", "--no-renames", BASE, "--", "fixtures/"))) {
+      // Re-pinned for CORE-70: the rename of pass-added-vitest-config to warn-added-vitest-config shows its two files as
+      // deleted; each is accepted only when the renamed copy is the base's content byte for byte. Its new case
+      // directories are added.
+      const renamed =
+        /^D\t(fixtures\/test-integrity\/TI09\/)pass-added-vitest-config(\/(?:change\.diff|head\/vitest\.config\.ts\.txt))$/.exec(
+          line,
+        );
+      if (renamed !== null) {
+        expect(read(`${renamed[1]}warn-added-vitest-config${renamed[2]}`), line).toBe(
+          git("show", `${BASE}:${renamed[1]}pass-added-vitest-config${renamed[2]}`),
+        );
+        continue;
+      }
+      if (line.startsWith("A\t") && CORE70_PATH.test(line.slice(2))) continue;
       // Re-pinned for comment-coverage-bar (the diff-coverage bar in the PR comment): the four golden report.md files
       // gained the bar line on purpose. Each must be modified, never added or deleted, and folding the bar line (and
       // the empty line under it) back out must give its content at the base byte for byte.
@@ -161,6 +234,8 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       if (/^fixtures\/markdown\/(?:missing|no-coverable)\.md$/.test(path)) continue;
       // Re-pinned for CORE-71 (R2.8): so are its new TI11 and TI13 fixture files.
       if (/^fixtures\/test-integrity\/(?:TI11|TI13)\/[^/]+\.diff$/.test(path) && CORE71_FIXTURES.test(path)) continue;
+      // Re-pinned for CORE-70: its new TI09 and TI10 case directories are untracked until committed.
+      if (CORE70_PATH.test(path)) continue;
       // Re-pinned for policy-p13 (Horizon 2 item H1): its fixtures under fixtures/policy-rules/p13/ are untracked until
       // committed.
       // Re-pinned for stale instructions (Horizon 2 item H3): its fixtures under fixtures/stale-instructions/ are

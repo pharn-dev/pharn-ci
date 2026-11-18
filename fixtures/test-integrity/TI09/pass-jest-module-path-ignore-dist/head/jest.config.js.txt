@@ -1,0 +1,4 @@
+module.exports = {
+  modulePathIgnorePatterns: ["<rootDir>/build", "<rootDir>/dist"],
+  testEnvironment: "node",
+};

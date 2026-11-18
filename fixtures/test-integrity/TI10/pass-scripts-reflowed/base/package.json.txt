@@ -1,0 +1,1 @@
+{"name":"a","scripts":{"test":"vitest run | tee log","pretest":"pnpm lint","build":"tsc"}}

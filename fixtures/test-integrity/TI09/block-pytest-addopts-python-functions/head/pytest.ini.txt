@@ -1,0 +1,3 @@
+[pytest]
+addopts = -ra -o python_functions=test_cart*
+testpaths = tests

@@ -1,0 +1,3 @@
+[pytest]
+addopts = -ra --alluredir allure-results --html report.html --asyncio-mode auto --ds app.settings --log-format "%(message)s" --assert plain
+testpaths = tests

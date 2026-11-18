@@ -39,6 +39,10 @@ const MIGRATIONS = ["test-integrity/TI01/info-migration-mjs.diff", "test-integri
 const MOVED_CASE = "test-integrity/TI02/pass-moved-to-other-file";
 const CROSS_CASE = "test-integrity/TI06/pass-cross-file";
 const CHANGED = [...MIGRATIONS, MOVED_CASE, CROSS_CASE];
+/** Re-pinned for CORE-70: a case directory renamed since, with its files unchanged (old name to new directory). */
+const RENAMED: Record<string, string> = {
+  "test-integrity/TI09/pass-added-vitest-config": "test-integrity/TI09/warn-added-vitest-config",
+};
 /** The existing test files SPEC D7 re-pins, and only these. */
 const REPINNED = [
   "packages/action/test/ac-accept-signoff-regression.test.ts",
@@ -233,8 +237,12 @@ async function casesAt(rev: string, index: PyIndexer): Promise<Case[]> {
     const dir = /^fixtures\/(test-integrity(?:-precision)?\/TI\d\d\/[^/]+)\/change\.diff$/.exec(path);
     if (dir === null) continue;
     const name = dir[1] as string;
+    // Re-pinned for CORE-70: the case TI09/pass-added-vitest-config was renamed, byte for byte, to
+    // TI09/warn-added-vitest-config (a new config with narrowing keys now warns), so its files are read from the new
+    // directory under the case's old name; both sides of this comparison are older code, so its result is unchanged.
+    const at = RENAMED[name] ?? name;
     out.push(
-      await dirCase(name, `${FIXTURES}${name}/`, fixture(`${name}/change.diff`), index, (head) =>
+      await dirCase(name, `${FIXTURES}${at}/`, fixture(`${at}/change.diff`), index, (head) =>
         [...new Set([...head.map((f) => f.path), "src/cart.ts"])].sort(),
       ),
     );

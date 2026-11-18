@@ -1,0 +1,9 @@
+{
+  "name": "a",
+  "scripts": {
+    "__proto__": "echo proto",
+    "constructor": "echo ctor",
+    "toString": "echo str",
+    "test": "vitest run || true"
+  }
+}

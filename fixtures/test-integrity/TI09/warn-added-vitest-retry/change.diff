@@ -1,0 +1,13 @@
+diff --git a/vitest.config.ts b/vitest.config.ts
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/vitest.config.ts
+@@ -0,0 +1,7 @@
++import { defineConfig } from "vitest/config";
++
++export default defineConfig({
++  test: {
++    retry: 2,
++  },
++});

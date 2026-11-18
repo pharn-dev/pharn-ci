@@ -42,6 +42,15 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   of the same name is still `info`. This can add findings: a deleted Go test file whose package is deleted with it now
   blocks, and so does a Jest test renamed to a plain name under `__tests__`, which Jest still runs (`docs/LIMITS.md`,
   "What TI01 misses").
+- Fixed: TI09 and TI10 miss fewer narrowings. TI09 now judges a config new at head (a new file, a section or key new at head,
+  or a config not found at base) on its narrowing keys at `warn`, and a config that existed at base on vitest `dir`,
+  `testNamePattern` and `root`, jest `roots` and `modulePathIgnorePatterns`, and a pytest `addopts` path or
+  `-o python_functions=`. TI10 now reads a single `|`, a single `&` that backgrounds the test run or ends the script
+  (a server started in the background before the run gives nothing), a subshell after `||` or `;`, a line feed in a
+  script, and an added `--exclude` or `--testPathIgnorePatterns`, and compares the `scripts` objects of a `package.json`
+  when both texts are in the test sources, so a `package.json` written on one line is read. A pull request that adds
+  an unfiltered pipe or one of these keys can now go from `pass` to `warn` or `fail`; the rules are in
+  `docs/LIMITS.md`, "What TI09 misses" and "What TI10 misses".
 
 ### Security
 

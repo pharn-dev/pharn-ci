@@ -74,7 +74,9 @@ const lostAtHead = (mode: "block" | "warn", what: "not found" | "could not be re
  * TI09, a test-runner config loosened. Reads the base and head text of the touched config files (vitest, vite, jest,
  * playwright, mocha, `package.json`, pytest settings) and compares the keys of a fixed table; see `evaluateRules`. The
  * path is the head path, the line the head line of the key (null for JSON and for a key gone at head), and severity the
- * mode, or `warn` for a raised retry count or timeout and for a value that cannot be compared. A config that cannot be
+ * mode, or `warn` for a raised retry count or timeout and for a value that cannot be compared. A config new at head (a
+ * new file, a section or key new at head, or a config not found at base) is judged on a few keys only: a narrowing key
+ * (`include`, `exclude`, `testMatch`, `roots`, `testpaths` and the like) that it sets is a `warn`. A config that cannot be
  * read is listed in `unavailable`; it gives no signal, except that a modified or renamed config whose settings were
  * read at base and that is not found or not read at head gives one `(config)` signal at the mode's severity, so that
  * an opaque wrapper or a padded head cannot turn a block into a warn. When a side of the sources is unavailable and a

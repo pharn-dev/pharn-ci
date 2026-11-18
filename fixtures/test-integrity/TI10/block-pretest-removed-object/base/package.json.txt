@@ -1,0 +1,7 @@
+{
+  "name": "a",
+  "scripts": {
+    "pretest": "pnpm lint",
+    "test": "vitest run"
+  }
+}

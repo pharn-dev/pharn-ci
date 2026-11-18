@@ -522,7 +522,43 @@ TI09 compares a fixed list of settings of the test-runner config files the chang
   is not found at all. A modified or renamed config whose settings were read at base and that is not found at head
   (an IIFE or any other opaque wrapper) gives one finding for `(config)` at the mode's level (`block` in mode `block`),
   so a one-line wrapper cannot turn a narrowed setting into a warning; nothing in the head is compared then. An added
-  config that is not found, and a config not found or not read at base, give nothing.
+  config that is not found gives nothing. A config that is not found at base, with a head that is a literal, is judged as
+  a config new at head (next bullet), so a narrowing key it sets is a `warn`; a config that cannot be read at base gives
+  nothing.
+- **A config new at head is judged on its narrowing keys, at `warn`.** A file new at head, a section or key new at head
+  (a `package.json` that gains a `jest` key, a `pyproject.toml` that gains a pytest table) and a config that is not found
+  at base all count as new at head. They have nothing to compare with, so TI09 judges a narrowing key by being set, and
+  always at `warn`, in every mode: vitest `include`, `exclude`, `dir`, `testNamePattern` and `root`; jest `testMatch`,
+  `testPathIgnorePatterns`, `roots` and `modulePathIgnorePatterns`; playwright `testMatch`; pytest `testpaths`, and the
+  `addopts` paths and `-o python_functions=` options. A list whose every entry is a build, dependency or declaration
+  entry gives nothing (`exclude: ["node_modules/**"]`). `passWithNoTests`, `allowOnly`, a raised `retry` or `retries`
+  and the deselection options of `addopts` keep the level they had. Because the key is judged by being set, `roots:
+  ["<rootDir>"]` in a new jest config warns, while the same key added to a config that existed at base gives nothing.
+  Thresholds, timeouts and the rest are not judged in a new config, and a `testRegex` is not a narrowing key there.
+  Neither are the pytest ini keys `python_functions`, `python_files`, `python_classes` and `norecursedirs`, the
+  playwright `testIgnore` or the mocha `spec` and `ignore`: `python_functions = test_cart*` in a new `pytest.ini` gives
+  nothing, while the same filter as `-o python_functions=test_cart*` in its `addopts` is a `warn`. A list that holds
+  an opaque entry (a spread such as `[...configDefaults.exclude]`) is judged on its other entries only, so the spread
+  alone, or with build entries beside it, gives nothing, and a spread that names a shared list of the project's own
+  exclusions is not seen.
+- **Moving a config.** A pull request that deletes a config of one runner and adds another config of the same runner, or
+  moves settings into a `test` section that is new in `vite.config.ts`, is judged as a config new at head: a narrowing
+  key it sets is a `warn`, not the mode's level. TI09 does not match the deleted file with the new one.
+- **The narrowing keys of the table.** Beside the lists above, vitest `test.dir`, `test.testNamePattern` and `test.root`
+  are judged like the playwright `grep` (set where unset, or changed), jest `roots` is narrowed like `testpaths` (an
+  unset `roots` reads as `["<rootDir>"]`, so setting `["<rootDir>"]` gives nothing and `["<rootDir>/src/cart"]` is
+  narrowed) and jest `modulePathIgnorePatterns` is widened like `testPathIgnorePatterns`. Not judged: a top-level `root`
+  outside `test` in a vite or vitest config, jest `rootDir` (it moves every root and default match) and the playwright
+  `testDir`.
+- **`addopts` paths and `-o python_functions`.** The positional paths of `addopts` (`addopts = -ra tests/unit`) are
+  compared as a directory list, like `testpaths`: a base path that no head path holds is narrowed, a path added beside
+  the others is not, and a side with no path stands for the whole root. So a path added where none was gives a finding
+  even when it names the `testpaths` directory. `-o python_functions=…`, written `-o x`, `-ox`, in a short cluster,
+  `--override-ini x` or `--override-ini=x`, is a gained option like `-k`. The other `-o` keys (`testpaths`,
+  `python_files`, `python_classes`, `norecursedirs`) and every token after `--` are not read. A long option that takes a
+  value is read from a list of the pytest core and the common plugins (`--tb`, `--cov-report`, `--html`, `--alluredir`,
+  `--asyncio-mode`, `--ds` and the like); an option that is not on the list, written with a spaced value, reads its
+  value as a path, which is a false `block` in a config that existed at base.
 - **Shared config packages and imports.** An imported base config, a spread (`...shared`) and a
   `mergeConfig(base, …)` argument that is not an object literal are never resolved, so a setting that lives there is not
   seen. A key that an open object (a spread, a shorthand property, a `mergeConfig` result) may set is `warn` when it
@@ -552,7 +588,8 @@ TI09 compares a fixed list of settings of the test-runner config files the chang
   same time is read as removed.
 - **Tool defaults.** A key that is removed, or that is set where it was unset, is not judged against the tool's default
   (an unset list is read as empty only to decide that a gained exclude entry is new). A threshold that is removed is
-  reported as removed; a list that is narrowed from an unset base is not.
+  reported as removed; a list that is narrowed from an unset base is not. The one exception is jest `roots`: an unset
+  `roots` is read as its default, `["<rootDir>"]`.
 - **`.mocharc.jsonc` and `conftest.py`.** They are test-config names for the sources but TI09 reads neither, nor a bare
   `.mocharc`. A pytest option set in `conftest.py`, an environment variable such as `PYTEST_ADDOPTS` or `JEST_*`, and a
   config named by a flag (`--config`, `-c`) are not seen.
@@ -578,13 +615,49 @@ TI09 compares a fixed list of settings of the test-runner config files the chang
 
 ### What TI10 misses
 
-TI10 reads the added and removed lines of a modified or renamed `package.json`, with no context lines and no JSON
-parser.
+TI10 compares the `scripts` objects of a modified or renamed `package.json` when both its text at the merge base and
+its text at `HEAD` are in the test sources and parse as JSON. Otherwise (no test sources, a side unavailable, a text
+dropped as too large, or text that is not JSON) it reads the added and removed lines of the diff, with no context lines
+and no JSON parser.
 
-- **No context lines.** The diff is read with `--unified=0`, so any line of the form `"test…": "…"` is read as a script,
-  even a `test` key outside `scripts` (a config block, a nested object) or one the line shows nothing about.
-- **A script split over lines.** A script line is one `"key": "value"` pair. A value continued on the next line, a
-  multi-line value, a one-line object and a key written over several lines are not read.
+- **No context lines (the diff-line fallback).** The diff is read with `--unified=0`, so on the fallback any line of the
+  form `"test…": "…"` is read as a script, even a `test` key outside `scripts` (a config block, a nested object) or one
+  the line shows nothing about. With both texts in the sources a `test` key outside `scripts` is not read.
+- **A script split over lines.** On the fallback a script line is one `"key": "value"` pair. A value continued on the
+  next line, a multi-line value, a key written over several lines and a script that is not alone on its line (written
+  on one line with other keys) are not read. A `package.json` written on one line is read when both texts are in the
+  sources; on the fallback it is still not read. A diff without kept text still yields TI10 when both texts are in the
+  sources.
+- **Escapes are decoded only on the scripts object.** A JSON escape in a script value (`\n`, `|` for a pipe, `&`
+  for `&`) is decoded when the `scripts` objects are compared, and read as written on the fallback, so on the fallback a
+  command after an escaped line feed, or a `||` written as escapes, is missed. On the scripts object a line feed in a
+  value separates commands like `;`, and a line feed after `&&`, `|` or `;` is a line break; TI10 does not model quotes,
+  so a line feed inside a quoted word is read the same way.
+- **No quote model.** TI10 reads a script value as words and operators and never as shell quoting: a `|`, `&`, `;` or
+  line feed inside single or double quotes is read as an operator, and a quoted word is read with its quotes
+  (`'--exclude'` is not the flag `--exclude`). So a quoted pipe can block an honest script
+  (`vitest run && echo 'ok | done'`), and a flag written in quotes is missed.
+- **Forms that lose the exit status or skip files.** A single `|` anywhere in a test script counts, whether it is quoted,
+  a pipe into `xargs` (`cat list | xargs vitest run`) or a `>|` redirection. A single `&` counts when the command before
+  it runs tests (`vitest run & wait`, `vitest run &>log`: `sh`, which is `dash` on Ubuntu runners, reads the `&` before
+  `>` as a background run) or when it ends the script (`vitest run &`). A command runs tests when a word of it is
+  `vitest`, `jest`, `mocha`, `ava`, `tap`, `uvu`, `jasmine`, `karma`, `playwright`, `cypress` or `pytest` (by its last
+  path segment), when it is `node --test`, or when it is `npm`, `pnpm`, `yarn` or `bun` running a script named `test` or
+  `test:<name>`. A helper started in the background before the run (`start-server & vitest run`) keeps the run's status
+  and does not count. So a backgrounded command that names a runner without running the tests
+  (`npx playwright install & vitest run`) is a false block, and a backgrounded runner TI10 does not know
+  (`node run-tests.js & wait`) is missed unless the `&` ends the script. An
+  `&` directly after `>` or `<` (`2>&1`, `>&2`) is a redirection and does not count. A subshell after `||` or `;`
+  (`|| (true)`, `; (exit 0)`) reads like the command inside it. `--exclude` and `--testPathIgnorePatterns`, alone or
+  with `=`, added to a test script count as skipping test files. All of these are found only when added: an existing
+  pipe or flag is excused by key.
+- **Two false blocks.** Outside the `&` rule, TI10 does not know which command is the test runner, so two honest scripts
+  block when the form is added: a coverage upload after the runner (`vitest run --coverage && cat coverage/lcov.info | coveralls`), and a
+  coverage wrapper's own flag (`c8 --exclude dist vitest run`, `nyc --exclude …`). Two fixtures pin both
+  (`block-pipe-after-and-upload`, `block-coverage-wrapper-exclude`). The accept label is the way through.
+- **Still missed after the subshell reading.** A brace group after `||` (`|| { true; }`) and an absolute-path `true`
+  (`|| /bin/true`) are not read. The kebab-case flags `--test-path-ignore-patterns`, `--test-path-pattern` and
+  `--test-name-pattern` (`node --test`) are not read either.
 - **An added or deleted `package.json` gives nothing.** A new file has no earlier script to compare with, and a deleted
   one has no added line; only a modified or renamed `package.json` is read.
 - **Other weakening forms are not named.** `|| true`, `|| :`, `; true`, `; :`, `echo` or `exit 0` as a command,
@@ -593,15 +666,17 @@ parser.
   command in `pyproject.toml`, a Makefile or tox are not; neither are `node -e "process.exit(0)"` or any other program
   that exits 0 without running the tests, a positional path filter (`vitest run src/one.test.ts`), `--dir` or
   `--project`. A lone `true` or `:` as the whole script, or before `||`, is read as `exit 0`. `exit 0` counts only as a
-  command at the start, after `||` or after `;`. `echo` counts there too, and only when no `&&`, `|`, `&` or `;` follows it, so a banner such as
-  `echo start && vitest run` is not a finding. `-t` is not a name filter in a script that runs `mocha`, where it is
-  `--timeout`.
-- **A weakening that was already there is excused by key.** A removed line of the same key with the same form accounts
-  for the added one, so moving `|| true` to another command of the same script is missed.
+  command at the start, after `||`, after `;` or after a line feed. `echo` counts there too, and only when no `&&`, `|`,
+  `&` or `;` follows it, so a banner such as `echo start && vitest run` is not a finding. `-t` is not a name filter in a script that runs `mocha`, where it is
+  `--timeout`. `&&` keeps the runner's status, so a step before or after the run (`tsc && vitest run`,
+  `vitest run && eslint .`) is not a finding.
+- **A weakening that was already there is excused by key.** The same key with the same form at base (a removed line
+  on the fallback) accounts for the one at head, so moving `|| true` to another command of the same script is missed.
 - **`--passWithNoTests` is excused only when no tracked file is a test file.** An empty list of tracked files (git
   failed) does not excuse it, and a diff that deletes a test file does not either.
 - **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8); at most 20 signals are
-  given per file. A diff that reaches `check()` already parsed without kept text yields no TI10.
+  given per file. A diff that reaches `check()` already parsed without kept text yields no TI10 on the fallback; it
+  still does when both texts are in the sources.
 
 ### What TI13 misses
 
@@ -643,8 +718,9 @@ TI08 reads the status and the added lines of snapshot files, the added and remov
   other extensions are not.
 - **Other inline forms.** `toThrowErrorMatchingInlineSnapshot(` and Python inline snapshots are not read.
 - **Update flags set elsewhere.** A flag passed on the command line, through an environment variable or a wrapper
-  script is not seen, and TI10's limits on script lines apply (one `"key": "value"` pair per line; only keys that start
-  with `test`; a `-u` in a mocha script is not a snapshot flag).
+  script is not seen. TI08 reads the `package.json` script lines one `"key": "value"` pair per line, and only keys that
+  start with `test`; it does not use TI10's comparison of the `scripts` objects. A `-u` in a mocha script is not a
+  snapshot flag.
 - **A pytest config word glued to other text.** The word must stand alone between white space, so a flag inside a quoted
   list or glued to other characters is missed, and a removed line that holds the word anywhere in the file excuses every
   added one.

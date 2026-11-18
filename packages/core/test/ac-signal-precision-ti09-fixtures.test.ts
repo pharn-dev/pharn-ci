@@ -25,7 +25,7 @@ const EARLIER = [
   "block-vite-exclude-widened",
   "block-vitest-include-narrowed",
   "block-vitest-threshold-lowered",
-  "pass-added-vitest-config",
+  "warn-added-vitest-config",
   "pass-exclude-build-dirs",
   "pass-package-json-jest-removed",
   "pass-playwright-project-retries",
@@ -41,8 +41,12 @@ const EARLIER = [
 /**
  * sha256 of the JSON list of { fixture, signals } over EARLIER in that order, where signals are the case's TI09
  * signals as { id, severity, path, line, detail }, as check() gave them at the base commit 5860ba4.
+ *
+ * Re-pinned for CORE-70: `pass-added-vitest-config` is now `warn-added-vitest-config` (its files are byte-identical),
+ * because a config new at head is judged on its narrowing keys at `warn`, so its test.include and test.exclude each give
+ * one warn (14 earlier cases signal, not 13). The other 22 cases give what they gave at the base commit.
  */
-const EARLIER_DIGEST = "1db1e3a944727b8ca43f48b14f6bc950906847feb89f85001ab013f87b1c18f1";
+const EARLIER_DIGEST = "8cc04749d9cf3daa880f92cc1aeb9f12cab2196bdf38974bdd1fe3927e246d58";
 
 interface SourceFile {
   path: string;
@@ -116,7 +120,7 @@ describe("TI09: projects compared by identity, on the case dirs", () => {
     // Every case dir of the base commit gives what it gave there.
     const records: Array<{ fixture: string; signals: unknown[] }> = [];
     for (const name of EARLIER) records.push({ fixture: name, signals: (await run(name)).signals });
-    expect(records.filter((r) => r.signals.length > 0).length, "the earlier block and warn cases signal").toBe(13);
+    expect(records.filter((r) => r.signals.length > 0).length, "the earlier block and warn cases signal").toBe(14);
     expect(
       createHash("sha256").update(JSON.stringify(records)).digest("hex"),
       "the earlier TI09 case dirs give their base-commit signals",
