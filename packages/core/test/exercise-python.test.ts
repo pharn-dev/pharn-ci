@@ -9,9 +9,6 @@ import { pythonIndexFromRaw } from "../src/testIndex/pythonRaw.js";
 // and the evidence rule. The end-to-end cases (real python3, fixtures/exercise/py-*) are in
 // packages/node-io/test/ac-py-exercise.test.ts.
 
-type ModulePaths = (testPath: string, name: string) => string[];
-const modulePaths = (exercise as unknown as { pythonModulePaths?: ModulePaths }).pythonModulePaths;
-
 const none = () => false;
 const HUNK = ["@@ -0,0 +1 @@", "+X = 1"];
 const added = (path: string) => [
@@ -26,8 +23,7 @@ const diffOf = (...entries: string[][]) => parseUnifiedDiff(`${entries.flat().jo
 
 describe("pythonModulePaths: a module name to the paths it can mean", () => {
   it("AC-4: maps an absolute name to the .py file and the package __init__.py at the root and under src/, and a relative name from the test's directory", () => {
-    expect(typeof modulePaths, "pythonModulePaths is exported").toBe("function");
-    const map = modulePaths as ModulePaths;
+    const map = exercise.pythonModulePaths;
     expect(map("tests/test_billing.py", "pkg.billing")).toEqual([
       "pkg/billing.py",
       "pkg/billing/__init__.py",
