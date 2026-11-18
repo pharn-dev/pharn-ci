@@ -49,7 +49,9 @@ policy from pharn.dev and uploads the redacted report there (rule 5).
    `dependencies.lookup: true`, or an org policy), the action also sends one `GET` per added unscoped package to
    `registry.npmjs.org/<name>`, `api.npmjs.org/downloads/point/last-week/<name>` or `pypi.org/pypi/<name>/json`: the
    package name in the path and nothing else (no token, no repository name); `auto` and `never` make none (SECURITY.md,
-   Data handling; THREAT-MODEL row D8). The CLI makes none. No other host is called.
+   Data handling; THREAT-MODEL row D8). The CLI makes none. The OIDC token itself comes from the runner's GitHub token
+   service, and on a partial clone git may fetch missing objects from the remote, in the action and the CLI
+   (SECURITY.md, Data handling). No other host is called.
 6. **Keep dependencies minimal; justify every new one** in the PR. Direct runtime deps
    today: `@actions/core`, `@actions/github` (action only; bundled into `packages/action/dist` with
    their transitive dependencies) and `typescript5` (core; `npm:typescript@5.9.3`, separate from the
