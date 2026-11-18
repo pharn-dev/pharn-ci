@@ -7,6 +7,7 @@ import {
   type CheckInput,
   COVERAGE_FORMAT_SELECTIONS,
   ConfigError,
+  type ConfigSource,
   check,
   consistencySeverity,
   DEPENDENCY_SOURCE_LIMITS,
@@ -40,6 +41,7 @@ import {
   VERSION,
 } from "@pharn-ci/core";
 import {
+  configCopyInUse,
   gitChunks,
   indexPythonTestSources,
   indexPythonTests,
@@ -298,7 +300,38 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   const quarantine = quarantineFile === undefined ? undefined : await readQuarantineFile(deps, quarantineFile);
 
   const repoRoot = (await git(deps, ["rev-parse", "--show-toplevel"], "not inside a git repository")).trim();
-  const config = await loadConfig(values.config, repoRoot, deps);
+
+  // The diff is read before the config (CORE-95): with --base, the paths it changes decide which copy of the config
+  // applies, as in the action.
+  const base = values.base ?? "origin/main";
+  const diffArgs = gitDiffArgs(base);
+  // Absolute: core makes it repo-relative against repoRoot, or finds it outside the repo.
+  const configPath = values.config === undefined ? undefined : deps.resolvePath(deps.cwd, values.config);
+  let diffFiles: DiffFile[];
+  try {
+    diffFiles = await readDiffChunks(gitChunks(deps, diffArgs), { configPath, repoRoot });
+  } catch (err) {
+    throw gitFailure(diffArgs, `could not diff against "${base}" (fetch it, or pass --base <ref>)`, err);
+  }
+  // A base that is HEAD or a descendant of it (--base HEAD) gives an empty diff, which would pass as NO_COVERABLE_CHANGES
+  // and hide every change from the diff-based checks (review finding 13). Only an empty diff can mean that, so git is
+  // asked only then. The diff is of commits only (base...HEAD), never of the working tree, as in the action.
+  let diff: CheckInput["diff"] = { parsed: diffFiles };
+  if (diffFiles.length === 0 && (await headIsInBase(base, deps))) {
+    const named = values.base === undefined ? `the base "${base}"` : `--base "${base}"`;
+    diff = {
+      unavailable:
+        `${named} resolves to HEAD or a descendant of HEAD, so there is no change to measure; ` +
+        "pass --base with the branch or commit the change is based on",
+    };
+  }
+  const { config, configSource, headConfigExclude } = await loadConfigInUse(
+    values.config,
+    repoRoot,
+    deps,
+    // Only a base the caller names decides the copy; without --base the working tree's config is read, as before.
+    values.base === undefined || "unavailable" in diff ? null : { files: diffFiles, base },
+  );
   // With no coverage path set anywhere, the report is looked for at the discovery candidates.
   const resolved = resolveInputs(config, raw, FLAG_ERRORS, { discoverCoverage: true });
   if (!resolved.ok) throw resolved.errors[0];
@@ -359,28 +392,6 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     coverage = { files: coverageFiles, format: coverageFormat };
   }
 
-  const base = values.base ?? "origin/main";
-  const diffArgs = gitDiffArgs(base);
-  let diffFiles: DiffFile[];
-  try {
-    // Absolute: core makes it repo-relative against repoRoot, or finds it outside the repo.
-    const configPath = values.config === undefined ? undefined : deps.resolvePath(deps.cwd, values.config);
-    diffFiles = await readDiffChunks(gitChunks(deps, diffArgs), { configPath, repoRoot });
-  } catch (err) {
-    throw gitFailure(diffArgs, `could not diff against "${base}" (fetch it, or pass --base <ref>)`, err);
-  }
-  // A base that is HEAD or a descendant of it (--base HEAD) gives an empty diff, which would pass as NO_COVERABLE_CHANGES
-  // and hide every change from the diff-based checks (review finding 13). Only an empty diff can mean that, so git is
-  // asked only then. The diff is of commits only (base...HEAD), never of the working tree, as in the action.
-  let diff: CheckInput["diff"] = { parsed: diffFiles };
-  if (diffFiles.length === 0 && (await headIsInBase(base, deps))) {
-    const named = values.base === undefined ? `the base "${base}"` : `--base "${base}"`;
-    diff = {
-      unavailable:
-        `${named} resolves to HEAD or a descendant of HEAD, so there is no change to measure; ` +
-        "pass --base with the branch or commit the change is based on",
-    };
-  }
   // The text of the touched test and test-config files, for the base-and-head signals. Mode off reads nothing.
   let testSources: TestSources | undefined;
   let pythonTestIndex: PythonTestIndex | undefined;
@@ -538,7 +549,9 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     ...(pythonTestIndex === undefined ? {} : { pythonTestIndex }),
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
     // Absolute: core makes it repo-relative against repoRoot, or finds it outside the repo.
-    ...(values.config === undefined ? {} : { configPath: deps.resolvePath(deps.cwd, values.config) }),
+    ...(configPath === undefined ? {} : { configPath }),
+    ...(configSource === undefined ? {} : { configSource }),
+    ...(headConfigExclude === undefined ? {} : { headConfigExclude }),
     ...(policy === undefined ? {} : { policy }),
     ...(policySettingsSources === undefined ? {} : { policySettingsSources }),
     ...(application === undefined || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored }),
@@ -564,6 +577,48 @@ async function loadConfig(explicit: string | undefined, repoRoot: string, deps: 
     return parseConfig(text);
   } catch (err) {
     throw new ConfigError(`${path}: ${errorMessage(err)}`);
+  }
+}
+
+/**
+ * The config the check runs with, and which copy it is (CORE-95), as the action decides it: with `from` (a diff against
+ * the base --base names), a change that edits the config in use is checked with its copy at the merge base, read from
+ * git objects, and one that adds it with none; otherwise the working tree's copy is read as `loadConfig` reads it. A
+ * copy at the merge base that cannot be read runs with none, and core says so; one that does not parse exits 2. When the
+ * check does not run with the working tree's copy, that copy's exclusions are kept for TI14 alone.
+ */
+async function loadConfigInUse(
+  explicit: string | undefined,
+  repoRoot: string,
+  deps: CliDeps,
+  from: { files: readonly DiffFile[]; base: string } | null,
+): Promise<{ config: PharnConfig; configSource?: ConfigSource; headConfigExclude?: string[] }> {
+  const path =
+    explicit !== undefined ? deps.resolvePath(deps.cwd, explicit) : deps.resolvePath(repoRoot, ".pharn/ci.yml");
+  const copy = await configCopyInUse(deps, {
+    diff: from === null ? null : from.files,
+    base: from?.base,
+    configPath: explicit === undefined ? undefined : path,
+    repoRoot,
+  });
+  if (copy.source === "working-tree") return { config: await loadConfig(explicit, repoRoot, deps) };
+  const headConfigExclude = headExclusions(await deps.readFile(path));
+  const head = headConfigExclude === undefined ? {} : { headConfigExclude };
+  if (copy.source !== "merge-base") return { config: {}, configSource: copy.source, ...head };
+  try {
+    return { config: parseConfig(copy.text), configSource: "merge-base", ...head };
+  } catch (err) {
+    throw new ConfigError(`${copy.path} at the merge base: ${errorMessage(err)}`);
+  }
+}
+
+/** The `coverage.exclude` patterns of a config's text, or undefined when there is no text or it does not parse. */
+function headExclusions(text: string | null): string[] | undefined {
+  if (text === null) return undefined;
+  try {
+    return parseConfig(text).coverage?.exclude;
+  } catch {
+    return undefined;
   }
 }
 

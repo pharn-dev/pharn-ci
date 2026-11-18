@@ -1,0 +1,6 @@
+coverage:
+  file: coverage/lcov.info
+  exclude:
+    - "**"
+dependencies:
+  lookup: true

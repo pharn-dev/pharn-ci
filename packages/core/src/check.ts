@@ -13,6 +13,7 @@ import { type DiffFile, parseUnifiedDiff } from "./diff/unified.js";
 import { computeDiffCoverage } from "./diffCoverage.js";
 import {
   binaryCoveredPaths,
+  type ConfigSource,
   changedConfigPaths,
   configRepoPath,
   trackedCoverageFile,
@@ -143,6 +144,21 @@ export interface CheckInput {
    * under review edits it.
    */
   configPath?: string;
+  /**
+   * Where the caller read the config in use from when the change touches it (CORE-95): `merge-base` (its copy at the
+   * merge base: the change modifies or deletes it), `absent` (no config: the change adds it) or `unreadable` (no config:
+   * the copy at the merge base could not be read). Absent: the config was read from the working tree. It changes only
+   * the `CONFIG_CHANGED_IN_DIFF` message, and only when that message names the config in use: its text says which copy
+   * was used, and for `unreadable` under a threshold or in test-integrity mode block its level is error.
+   */
+  configSource?: ConfigSource;
+  /**
+   * The `coverage.exclude` patterns of the copy of the config in use that this change leaves, when the check did not run
+   * with that copy (`configSource` set). TI14 reads them, with `exclude`, only to tell which added list items of the
+   * config are exclusions, so an exclusion the change appends is still reported for the pull requests after it. They
+   * never reach diff coverage or any other gate.
+   */
+  headConfigExclude?: readonly string[];
   /** Run metadata from the caller (the Action), copied into the report as given. Absent adds no `meta`. */
   meta?: ReportMeta;
   /**
@@ -344,7 +360,7 @@ export function check(input: CheckInput): Report {
           ...detectTI14(parsedDiff, {
             configPath: input.configPath,
             repoRoot: input.repoRoot,
-            exclude: input.exclude ?? [],
+            exclude: [...(input.exclude ?? []), ...(input.headConfigExclude ?? [])],
             mode: testIntegrity.mode,
           }),
           ...sourceMatches.signals,
@@ -662,6 +678,7 @@ export function check(input: CheckInput): Report {
     ...(Object.keys(agentSetupLevels).length > 0 ? { agentSetupLevels } : {}),
     ...(reportPolicy === undefined ? {} : { policy: reportPolicy }),
     ...(configPaths.length > 0 ? { changedConfigPaths: configPaths } : {}),
+    ...(configPaths.length > 0 && input.configSource !== undefined ? { configSource: input.configSource } : {}),
     ...(testPaths.length > 0 ? { deletedTestFiles: testPaths } : {}),
     ...(trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage }),
     ...(trackedCoverageChanged ? { trackedCoverageChanged: true } : {}),

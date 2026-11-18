@@ -1210,7 +1210,7 @@ setup:
 #   min_weekly_downloads: 100 # D03; can only be raised
 ```
 
-The pull request carries this file, so a flag or input does not simply override it. Setting by setting:
+A pull request can edit this file, so a flag or input does not simply override it. Setting by setting:
 
 - `coverage.file`, `coverage.format` and `coverage.root`: the flag or input replaces the config's value.
 - `coverage.threshold`: the larger of the flag or input and the config applies; with no flag or input the config's
@@ -1225,6 +1225,25 @@ The pull request carries this file, so a flag or input does not simply override 
   `dependency-allowed-hosts` inputs instead.
 
 An org policy applies over all of these; see [Org policy](#org-policy), **Precedence**.
+
+**A pull request that edits the config is checked with the config as it is at the merge base; the edit applies
+after merge**, as with CODEOWNERS (since 0.12.0). This holds for `.pharn/ci.yml` and for the file the `config` input or
+`--config` names:
+
+- The change does not touch the config: it is read from the checkout.
+- The change modifies or deletes it: its copy at the merge base is read from git objects (never through a symbolic
+  link), so a pull request cannot widen `coverage.exclude`, point `coverage.file` or `coverage.root` elsewhere, lower
+  `coverage.threshold` or turn `dependencies.lookup` on for itself.
+- The change adds it: the check runs as if there were none, on the inputs and the defaults.
+- The copy at the merge base cannot be read (a shallow checkout without the base commit, no common history, a file
+  there that is not a regular file): the check runs with no config. `CONFIG_CHANGED_IN_DIFF` is then an error, and the
+  verdict `fail`, when a threshold is in force or `test-integrity` is `block`, and a warning otherwise. Check out the
+  full history (`fetch-depth: 0`) so it can be read. A copy at the merge base that does not parse fails the step.
+
+`CONFIG_CHANGED_IN_DIFF` says which copy the check used, and TI14 still reports a lowered threshold or an added
+exclusion, because it applies to every later pull request once merged. To change the config and rely on the change,
+merge the config change first. The Action applies this rule on every run with a local diff; the CLI applies it when you
+pass `--base`, and without `--base` it reads the config from the working tree.
 
 ### Coverage files and globs
 
@@ -1261,8 +1280,9 @@ Patterns come from three sources that are **merged** (a union, never an override
 - Only changed files are affected. Excluded files count nowhere in diff coverage; they are listed
   under `diffCoverage.excludedFiles` in the report and in an "Excluded" summary in the comment.
 - The agent setup inventory is not affected by exclusions.
-- Exclusions come from the PR itself, so a PR can exclude its own files. Protect `.pharn/ci.yml` (and
-  your workflow file) with CODEOWNERS.
+- A pull request's own edit to `coverage.exclude` applies after merge, not to itself: the config is read at the merge
+  base when the change edits it (see [Config](#config)). The `exclude` input lives in the workflow file, which the
+  pull request can still edit; protect it with CODEOWNERS.
 
 ---
 
@@ -1287,7 +1307,7 @@ message `code`s, not on text:
 | `COVERAGE_PATHS_UNMATCHED`      | None of the coverage report's file paths is a tracked file, so diff coverage was not computed |
 | `COVERAGE_PATHS_PARTIALLY_UNMATCHED` | Some coverage paths are not tracked files; their coverage is not used (`info`) |
 | `COVERAGE_LINES_SKIPPED`        | Malformed lcov `DA` records or Cobertura `<line>` elements were skipped; the text gives their number (`info`) |
-| `CONFIG_CHANGED_IN_DIFF`        | The change edits the pharn-ci config in use or a workflow under `.github/workflows/` (`warn`) |
+| `CONFIG_CHANGED_IN_DIFF`        | The change edits the pharn-ci config in use or a workflow under `.github/workflows/` (`warn`); it says the config at the merge base was used, and is an `error` when that copy could not be read under a threshold or in `test-integrity: block` |
 | `COVERAGE_FILE_TRACKED`         | The coverage file is tracked in the repository, so the change can supply it (`error` with a threshold when the diff adds or edits it, else `warn`) |
 | `DIFF_BINARY_COVERED_FILE`      | The diff shows a covered source file as binary, so its changes were not measured (`error` with a threshold, `warn` without) |
 | `TEST_FILES_DELETED`            | The change deletes a test file or renames one to a non-test name (`info`) |
@@ -1491,14 +1511,15 @@ inclusive threshold (79.995% fails at 80); which known agent setup files are tra
   informational (`NO_AGENT_SETUP_FILES` is `info`) unless `require-agent-setup` or `setup.require`
   is on, which makes it an `error` and the verdict `fail`. An expected tool counts as present when
   any setup kind it reads exists (`AGENTS.md` covers several tools).
-- **The setup requirement and expectations come from the PR.** The `.pharn/ci.yml` a PR carries can
-  switch `setup.require` off and drop tools from `setup.expect`, so protect it with CODEOWNERS. The
-  `require-agent-setup: true` and `expect-agent-setup` inputs in the workflow are the stronger settings: the config
-  cannot turn the one off or drop tools from the other.
+- **The setup requirement and expectations come from the repository's config.** A PR that edits `.pharn/ci.yml` is
+  checked with its copy at the merge base, so it cannot switch `setup.require` off or drop tools from `setup.expect` for
+  itself; the edit applies after merge, so protect the file with CODEOWNERS. The `require-agent-setup: true` and
+  `expect-agent-setup` inputs in the workflow are the stronger settings: the config cannot turn the one off or drop
+  tools from the other.
 - **pharn-ci trusts the coverage file.** The PR's own tests write it in the same job; a PR that
   alters its test setup can produce a favorable one.
-- **Exclusions come from the PR.** The config and workflow a PR carries decide which of its files
-  are left out of the measurement ([Excluding files](#excluding-files)).
+- **Exclusions come from the workflow and the merge base's config.** A PR's edit to `coverage.exclude` applies after
+  merge, but the `exclude` input lives in the workflow file the PR can edit ([Excluding files](#excluding-files)).
 - **P11 guards paths, not authors.** It sees only agent PRs that identify themselves (by author, commits, trailers or
   labels) and matches paths, not content: an agent PR that does not identify itself is judged as a person's.
 - **P13 compares structure, not behaviour.** It sees only agent PRs that identify themselves, and only the four kinds

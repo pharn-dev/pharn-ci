@@ -1,0 +1,4 @@
+coverage:
+  file: coverage/committed.info
+  exclude:
+    - "src/b.ts"

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
+import { fakeConfigGit } from "./config-git-fake.js";
 
 // check(), main(), run() and the fixtures are loaded inside each test body: the AC tests are written before the
 // config-change warning and fixtures/gate-tamper/ exist, so nothing that depends on them may run while the file loads.
@@ -71,8 +72,18 @@ const INPUT_DEFAULTS: Record<string, string> = {
   config: "",
 };
 
-async function runAction(inputs: Record<string, string>, files: Record<string, string>, diff: string) {
+/**
+ * `base`, when given, is the files at the merge base: git then answers the merge-base config reader (CORE-95) from them,
+ * through a git batch reader. Without it the run has no batch reader, so a config the diff edits cannot be read there.
+ */
+async function runAction(
+  inputs: Record<string, string>,
+  files: Record<string, string>,
+  diff: string,
+  base?: Record<string, string>,
+) {
   const { run } = await import("../../action/src/run.js");
+  const baseGit = base === undefined ? undefined : fakeConfigGit({ files: base }, fakeGit(diff));
   const failed: string[] = [];
   const outputs: Record<string, string> = {};
   const written = new Map<string, string>();
@@ -102,7 +113,8 @@ async function runAction(inputs: Record<string, string>, files: Record<string, s
       createComment: async () => {},
       updateComment: async () => {},
     },
-    git: fakeGit(diff),
+    git: baseGit?.git ?? fakeGit(diff),
+    ...(baseGit === undefined ? {} : { gitBatch: baseGit.gitBatch }),
     readFile: async (path: string) => contents.get(path) ?? null,
     writeFile: async (path: string, text: string) => {
       written.set(path, text);
@@ -183,6 +195,9 @@ describe("CONFIG_CHANGED_IN_DIFF", () => {
         ".pharn/ci.yml": fixture("gate-tamper/ci.yml"),
       },
       fixture("gate-tamper/config-modified.diff"),
+      // CORE-95: the edited config is read at the merge base, so the run needs the base copy; without it (no batch
+      // reader) the base copy is unreadable, which under this threshold is an error, not this warning.
+      { ".pharn/ci.yml": fixture("gate-tamper/ci.yml") },
     );
     const report = action.report();
     expectValidReport(report);
@@ -190,5 +205,6 @@ describe("CONFIG_CHANGED_IN_DIFF", () => {
     expect(warnings).toHaveLength(1);
     expect(warnings[0]?.level).toBe("warn");
     expect(warnings[0]?.text).toContain(".pharn/ci.yml");
+    expect(warnings[0]?.text).toContain("as it is at the merge base");
   });
 });

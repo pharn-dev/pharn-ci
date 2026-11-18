@@ -4,6 +4,7 @@ import {
   agentInstructionPaths,
   applyPolicy,
   type CheckInput,
+  type ConfigSource,
   check,
   consistencySeverity,
   DEPENDENCY_SOURCE_LIMITS,
@@ -26,6 +27,7 @@ import {
   parseJunitSources,
   parseLsTreeSizes,
   parseLsTreeSymlinks,
+  parseUnifiedDiff,
   planDependencyLookups,
   policySettingsPaths,
   pythonNotFoundStopsComparison,
@@ -50,6 +52,7 @@ import {
   withUploadOutcome,
 } from "@pharn-ci/core";
 import {
+  configCopyInUse,
   gitChunks,
   indexPythonTestSources,
   indexPythonTests,
@@ -333,7 +336,12 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   // Read once: the config, the diff reader and check() all name the same file.
   const configInput = input("config");
   const baseRefInput = input("base-ref");
-  const config = await loadConfig(configInput || undefined, deps);
+  // The local diff is gathered before the config is read (CORE-95): the paths it changes decide which copy of the config
+  // applies. PR-number mode gets its diff later, from the API: there the checkout is not the pull request, so its config
+  // holds no edit of the pull request's and is read as it is.
+  const prNumberMode = !pr && prNumber !== undefined;
+  const earlyDiff = prNumberMode ? undefined : await getDiff(baseRefInput, deps, undefined, configInput);
+  const { config, configSource, headConfigExclude } = await loadConfigInUse(configInput || undefined, deps, earlyDiff);
 
   // An empty input is not given: the config, then the default, applies.
   const rawInputs: RawInputs = {
@@ -356,7 +364,8 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     { discoverCoverage: true },
   );
   if (!resolved.ok) throw resolved.errors[0];
-  // The org policy is obtained after the config and before anything is read or measured, and applied over the layers.
+  // The org policy is obtained after the config (and the local diff that decides which copy of it applies) and before
+  // anything else is read or measured, and applied over the layers.
   // A `file:` problem throws here; an unavailable app policy never does: the check then runs with the inputs and the config.
   const { policy, uploadMessageMaxBytes, quarantine, uploadJunit } = await obtainPolicy(deps, policyChoice, appOrigin);
   const application =
@@ -378,7 +387,8 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
 
   // PR-number mode: no pull_request payload, the pr-number input names the PR. Resolved before anything is read or
   // measured, so a stale or forged target fails first.
-  const target = !pr && prNumber !== undefined ? await resolvePrNumberTarget(deps, { prNumber, headSha }) : undefined;
+  const target =
+    prNumberMode && prNumber !== undefined ? await resolvePrNumberTarget(deps, { prNumber, headSha }) : undefined;
 
   let coverage: CheckInput["coverage"];
   if ("discover" in coverageFile) {
@@ -418,7 +428,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
         return null;
       });
 
-  const { diff, localBase } = await getDiff(baseRefInput, deps, target, configInput);
+  const { diff, localBase } = earlyDiff ?? (await getDiff(baseRefInput, deps, target, configInput));
   const testSources = await gatherTestSources(deps, { diff, localBase, target, testIntegrityMode });
   const agentConfigSources = await gatherAgentConfigSources(deps, { repoFiles, diff, target });
   const policySettingsSources = await gatherPolicySettingsSources(deps, { repoFiles, diff, target, policy, lsTree });
@@ -501,6 +511,8 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     ...(pythonTestIndex === undefined ? {} : { pythonTestIndex }),
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
     ...(configInput === "" ? {} : { configPath: configInput }),
+    ...(configSource === undefined ? {} : { configSource }),
+    ...(headConfigExclude === undefined ? {} : { headConfigExclude }),
     ...(policy === undefined ? {} : { policy }),
     ...(policySettingsSources === undefined ? {} : { policySettingsSources }),
     ...(application === undefined || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored }),
@@ -1389,6 +1401,53 @@ async function loadConfig(explicit: string | undefined, deps: ActionDeps): Promi
     return parseConfig(text);
   } catch (err) {
     throw new Error(`${path}: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+/**
+ * The config the check runs with, and which copy it is (CORE-95). A change that edits the config in use is checked with
+ * its copy at the merge base, read from git objects; one that adds it is checked with none; with no local diff (an
+ * unavailable diff, PR-number mode) or a diff that leaves it alone, the working tree's copy is read as `loadConfig`
+ * reads it. A copy at the merge base that cannot be read runs with none, and core says so (an error under a threshold
+ * or in mode block); one that does not parse fails the step. When the check does not run with the working tree's copy,
+ * that copy's exclusions are kept for TI14 alone (`headConfigExclude`); a copy that does not parse gives none.
+ */
+async function loadConfigInUse(
+  explicit: string | undefined,
+  deps: ActionDeps,
+  from: { diff: CheckInput["diff"]; localBase?: string } | undefined,
+): Promise<{ config: PharnConfig; configSource?: ConfigSource; headConfigExclude?: string[] }> {
+  const diff =
+    from === undefined || "unavailable" in from.diff
+      ? null
+      : "parsed" in from.diff
+        ? from.diff.parsed
+        : parseUnifiedDiff(from.diff.text);
+  const copy = await configCopyInUse(deps, {
+    diff,
+    base: from?.localBase,
+    configPath: explicit,
+    repoRoot: deps.workspace,
+  });
+  if (copy.source === "working-tree") return { config: await loadConfig(explicit, deps) };
+  const headText = await deps.readFile(deps.resolvePath(deps.workspace, explicit ?? DEFAULT_CONFIG));
+  const headConfigExclude = headExclusions(headText);
+  const head = headConfigExclude === undefined ? {} : { headConfigExclude };
+  if (copy.source !== "merge-base") return { config: {}, configSource: copy.source, ...head };
+  try {
+    return { config: parseConfig(copy.text), configSource: "merge-base", ...head };
+  } catch (err) {
+    throw new Error(`${copy.path} at the merge base: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+/** The `coverage.exclude` patterns of a config's text, or undefined when there is no text or it does not parse. */
+function headExclusions(text: string | null): string[] | undefined {
+  if (text === null) return undefined;
+  try {
+    return parseConfig(text).coverage?.exclude;
+  } catch {
+    return undefined;
   }
 }
 

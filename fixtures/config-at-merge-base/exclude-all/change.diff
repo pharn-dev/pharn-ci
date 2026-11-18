@@ -1,0 +1,20 @@
+diff --git a/.pharn/ci.yml b/.pharn/ci.yml
+index 3333333..4444444 100644
+--- a/.pharn/ci.yml
++++ b/.pharn/ci.yml
+@@ -4,0 +5 @@
++    - "**"
+diff --git a/src/a.ts b/src/a.ts
+index 1111111..2222222 100644
+--- a/src/a.ts
++++ b/src/a.ts
+@@ -0,0 +1,2 @@
++export const a1 = 1;
++export const a2 = 2;
+diff --git a/src/b.ts b/src/b.ts
+index 1111111..2222222 100644
+--- a/src/b.ts
++++ b/src/b.ts
+@@ -0,0 +1,2 @@
++export const b1 = 1;
++export const b2 = 2;

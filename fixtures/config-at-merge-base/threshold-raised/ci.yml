@@ -1,0 +1,5 @@
+coverage:
+  file: coverage/lcov.info
+  threshold: 90
+  exclude:
+    - "src/b.ts"

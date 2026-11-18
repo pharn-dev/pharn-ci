@@ -131,9 +131,13 @@ TI14 reads the added and removed lines of the pharn-ci config in use, one line a
 
 - **No context lines.** A bare `- item` line added to a list cannot be tied to its key. It counts as an exclusion
   only when it follows an added `exclude:` key line in the same hunk, or when its value is one of the exclusion
-  patterns the check was given (so a pattern also given by the workflow input can make an item added to
-  `coverage.file` read as an exclusion, and an exclusion appended to a list is missed when the check was not given
-  it).
+  patterns the check was given or, when the check ran with the config's copy at the merge base, one of the
+  `coverage.exclude` patterns of the copy the change leaves (CORE-95). So a pattern also given by the workflow input
+  can make an item added to `coverage.file` read as an exclusion, and an exclusion appended to a list is missed when
+  neither names it (a copy the change leaves that does not parse names none).
+- **What it reports applies later.** Since 0.12.0 a change that edits the config is checked with the config at the
+  merge base, so a looser setting TI14 reports does not loosen this pull request's own check; it applies to every pull
+  request after this one merges, which is what the finding asks the reviewer to confirm.
 - **Threshold by line.** Only a plain decimal number on a `threshold:` line counts, read as the config reads it:
   the key and the value may be quoted, a double-quoted value is decoded (`"\u0037\u0030"` is 70), and any number of
   decimals is read. A value moved onto another key, and a threshold set by the workflow input (which the config can
@@ -142,8 +146,8 @@ TI14 reads the added and removed lines of the pharn-ci config in use, one line a
   kept-line cap) is a finding too: TI14 fails closed rather than guess what the config read.
 - **A binary config.** A config that git shows as binary (a `-diff` or `binary` attribute in `.gitattributes`, or
   non-text content) and that the change modifies, renames or deletes is one finding with a fixed sentence and no line
-  number, because the diff shows no line to read. An added binary config gives nothing: a text diff of an added config
-  can never give a TI14 finding either.
+  number, because the diff shows no line to read. An added binary config gives nothing; a text diff of an added config
+  has no base threshold to compare, so only an `exclude:` list it adds is a finding.
 - **One comment rule.** TI14 and the config reader end a value at the same `#`: one that starts the line or follows a
   space or a tab, as YAML says. A `#` after any other Unicode space (U+00A0, U+3000, U+FEFF, ...) is not a comment
   to YAML, and the config refuses it with an error naming the character, so `threshold: 50<U+00A0># lowered` can no
@@ -1785,18 +1789,29 @@ run. What it does not do:
   (control characters, HTML in messages), but the numbers are only as honest as the coverage file
   the PR's own test run produced. pharn-ci cannot detect a test run that was altered to write a
   favorable coverage file.
-- **Exclusions come from the PR.** `coverage.exclude` lives in `.pharn/ci.yml` and the Action's
-  `exclude` input in the workflow file, both of which the change under review can edit. A PR can
-  exclude its own files, ultimately all of them, which passes as `NO_COVERABLE_CHANGES`. The gate
-  is only as honest as the config the PR carries. Protect `.pharn/ci.yml` and the workflow with
-  CODEOWNERS so changes to them need a code owner's review.
+- **Exclusions come from the workflow and the merge base's config.** Since 0.12.0 (CORE-95) a change that edits the
+  config in use is checked with the config as it is at the merge base, so its own `coverage.exclude` edit applies only
+  after merge and cannot exclude its own files. The Action's `exclude` input still lives in the workflow file, which
+  the change under review can edit, and a workflow edit can exclude every file (passing as `NO_COVERABLE_CHANGES`).
+  Protect `.pharn/ci.yml` and the workflow with CODEOWNERS so changes to them need a code owner's review; the config
+  edit still applies to every pull request after this one merges.
+- **The config at the merge base, and what it does not cover.** Which copy of the config a change is checked with
+  is decided by the diff: untouched, the checkout's; modified or deleted (renames included), the copy at the merge
+  base, read from git objects without following a symbolic link (a link there is unreadable); added, none, so the
+  inputs and defaults apply. When the copy at the merge base cannot be read (a shallow checkout without the base
+  commit, no common history, a file there that is not a regular file of at most 1 MiB of UTF-8 text), the check runs
+  with no config: `CONFIG_CHANGED_IN_DIFF` is an error under a threshold or in `test-integrity: block`, otherwise a
+  warning, so in mode `warn` with no `threshold` input a change on a shallow checkout runs on the defaults, without the
+  base config's threshold. With no local diff (an unavailable diff, or PR-number mode, whose checkout is not the pull
+  request) and in the CLI without `--base`, the working tree's config is read as before.
 - **A PR controls the inputs that grade it.** Besides the config and the workflow, it can add a
   committed coverage file or change `.gitattributes`: `*.ts -diff` makes `git diff` print
   `Binary files ... differ` with no line counts, so those files' added lines are never measured.
   pharn-ci flags these with three messages, `CONFIG_CHANGED_IN_DIFF` (the diff touches the config in
-  use or a file under `.github/workflows/`), `COVERAGE_FILE_TRACKED` (the coverage file is a tracked
-  file) and `DIFF_BINARY_COVERED_FILE` (the diff shows a file the coverage report knows as binary).
-  `CONFIG_CHANGED_IN_DIFF` is a warning only, never a `fail`. `DIFF_BINARY_COVERED_FILE` is an `error` when a
+  use or a file under `.github/workflows/`; the config edit itself applies only after merge), `COVERAGE_FILE_TRACKED`
+  (the coverage file is a tracked file) and `DIFF_BINARY_COVERED_FILE` (the diff shows a file the coverage report
+  knows as binary). `CONFIG_CHANGED_IN_DIFF` is a warning, never a `fail`, except when the config's copy at the merge
+  base could not be read under a threshold or in mode `block`, where it is an error. `DIFF_BINARY_COVERED_FILE` is an `error` when a
   diff-coverage threshold is set (0 included), because the gate cannot measure the binary file, and a warning without
   one. `COVERAGE_FILE_TRACKED` is a warning too, with one exception: with a threshold (0 included), a tracked coverage
   file that the diff adds, edits or renames to makes it an error, because the change then wrote the numbers it is
@@ -1840,8 +1855,8 @@ run. What it does not do:
   walk, test-config readers, Python output mapping or policy validator is not caught: it escapes `check()` (or the
   step that runs before it), so the Action step fails and the CLI exits 2, and that run's report, comment and upload
   are lost. That is the accepted trade: a failed run, not a gate that passes or an index reported unavailable because
-  of a bug. One catch-all remains: `readPolicyFileAt` (the merge-base copy of an edited `file:` policy) reads any
-  failure as `unreadable`.
+  of a bug. Two catch-alls remain: `readPolicyFileAt` (the merge-base copy of an edited `file:` policy) and
+  `readConfigFileAt` (the merge-base copy of an edited pharn-ci config, CORE-95) read any failure as `unreadable`.
 - **pharn-ci cannot protect the job from the PR.** On `pull_request`, the PR's own code (its tests)
   runs in the same job before pharn-ci does. pharn-ci's guarantees are about what pharn-ci itself
   does with the token and with the input it reads.
@@ -1892,7 +1907,8 @@ run. What it does not do:
   Action's `coverage-root` input and the CLI's `--coverage-root` flag (the input and the flag win
   over the config) name the repo-relative directory that relative coverage paths start from. It is joined in front of paths that are relative as written, and never in front of an
   absolute one. It is one root for the whole report: a report that mixes packages cannot be mapped
-  with it.
+  with it. A change that edits `coverage.root` (or `coverage.file`) in the config is mapped with the config's value at
+  the merge base; its own value applies after merge (CORE-95, section 5).
 - **Absolute paths from another root are reported, not remapped.** A Docker build's `/app/src/a.ts`
   stays unmatched, and so do paths through a symlinked workspace. Write coverage paths relative to
   the repository, or as absolute paths under the checkout path.

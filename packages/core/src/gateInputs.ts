@@ -38,6 +38,41 @@ export function changedConfigPaths(
 }
 
 /**
+ * How the change under review touches the pharn-ci config in use (CORE-95): `modified` when the file is there before
+ * and after the change, `added` when it is there only after (added, or renamed to the config's path), `deleted` when it
+ * is there only before (deleted, or renamed away), `untouched` when the diff does not name it (a config outside the
+ * repository included).
+ */
+export type ConfigDiffState = "untouched" | "modified" | "added" | "deleted";
+
+/**
+ * Where an adapter read the pharn-ci config in use from, when the change touches it (CORE-95): `merge-base` (its copy
+ * at the merge base, because the change modifies or deletes it), `absent` (no config, because the change adds it) or
+ * `unreadable` (no config, because the copy at the merge base could not be read).
+ */
+export type ConfigSource = "merge-base" | "absent" | "unreadable";
+
+/** How `diff` touches the pharn-ci config in use; see `ConfigDiffState`. */
+export function configDiffState(
+  diff: readonly DiffFile[],
+  configPath: string | undefined,
+  repoRoot: string | undefined,
+): ConfigDiffState {
+  const config = configRepoPath(configPath, repoRoot);
+  if (config === null) return "untouched";
+  let before = false;
+  let after = false;
+  for (const file of diff) {
+    // A deleted entry's `path` is its old path, and an added entry's `oldPath` is its new one.
+    if (file.oldPath === config && file.status !== "added") before = true;
+    if (file.path === config && file.status !== "deleted") after = true;
+  }
+  if (before && after) return "modified";
+  if (before) return "deleted";
+  return after ? "added" : "untouched";
+}
+
+/**
  * The repo-relative path of the coverage file when it is a tracked file (so the change under review can
  * supply its own coverage numbers), else null. A path left absolute or `..`-led is never tracked.
  */

@@ -178,6 +178,9 @@ describe("cli end to end against a real git repo", () => {
     mkdirSync(join(dir, "src"));
     writeFileSync(join(dir, "src/math.ts"), "export const a = 1;\nexport const b = 2;\n");
     writeFileSync(join(dir, "src/old.ts"), "export const old = 1;\nexport const keep = 2;\nexport const x = 3;\n");
+    // The config is committed on the base branch: a config the change itself adds counts as absent (CORE-95).
+    mkdirSync(join(dir, ".pharn"));
+    writeFileSync(join(dir, ".pharn/ci.yml"), "coverage:\n  file: coverage/lcov.info\n  threshold: 75\n");
     sh("add", ".");
     sh("commit", "-q", "-m", "base");
     sh("checkout", "-q", "-b", "feature");
@@ -185,8 +188,6 @@ describe("cli end to end against a real git repo", () => {
     sh("mv", "src/old.ts", "src/renamed.ts");
     writeFileSync(join(dir, "src/renamed.ts"), "export const old = 1;\nexport const keep = 2;\nexport const y = 3;\n");
     writeFileSync(join(dir, "CLAUDE.md"), "@AGENTS.md\n");
-    mkdirSync(join(dir, ".pharn"));
-    writeFileSync(join(dir, ".pharn/ci.yml"), "coverage:\n  file: coverage/lcov.info\n  threshold: 75\n");
     sh("add", ".");
     sh("commit", "-q", "-m", "feature");
     mkdirSync(join(dir, "coverage"));

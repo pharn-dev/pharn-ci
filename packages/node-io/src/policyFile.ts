@@ -111,8 +111,11 @@ export async function readPolicyFile(
   return { source: "file", version: null, path: segments.join("/"), document: parsed.policy };
 }
 
-/** A revision that may be given to git as `<rev>:<path>`: non-empty, no leading `-`, no `:`, whitespace or control character. */
-function isUsableRevision(rev: string): boolean {
+/**
+ * A revision that may be given to git as an argument or as `<rev>:<path>`: non-empty, no leading `-`, no `:`, whitespace
+ * or control character. The merge-base config reader (configFile.ts) uses it too.
+ */
+export function isUsableRevision(rev: string): boolean {
   if (rev === "" || rev.startsWith("-")) return false;
   for (let i = 0; i < rev.length; i++) {
     const code = rev.charCodeAt(i);

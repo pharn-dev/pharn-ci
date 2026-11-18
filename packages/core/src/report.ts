@@ -5,6 +5,7 @@ import { MAX_KEPT_LINES } from "./diff/unified.js";
 import type { DiffCoverageFile, DiffCoverageResult } from "./diffCoverage.js";
 import { withFixHints } from "./fix/attach.js";
 import type { FixHint } from "./fix/table.js";
+import type { ConfigSource } from "./gateInputs.js";
 import type { AgentSetupFile, AgentSetupInventory } from "./setup/scan.js";
 import { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
 import type { ResolvedTestIntegrityMode } from "./testIntegrityMode.js";
@@ -398,6 +399,11 @@ export interface BuildReportInput {
   skippedCoverageLines?: number;
   /** Repo-relative paths the diff edits that configure this check (the config in use, workflows); absent or empty adds no message. */
   changedConfigPaths?: readonly string[];
+  /**
+   * Where the config in use was read from when the change touches it (`CheckInput.configSource`). Only read
+   * when `changedConfigPaths` names the config in use.
+   */
+  configSource?: ConfigSource;
   /** Repo-relative path of the coverage file when it is a tracked file; absent adds no message. */
   trackedCoverageFile?: string;
   /**
@@ -617,7 +623,7 @@ const SIGNAL_MESSAGES: ReadonlyArray<{
     id: "TI14",
     code: "TEST_INTEGRITY_TI14",
     text: (_top, paths) =>
-      `This change lowers the coverage threshold or adds a coverage exclusion in the check config: ${paths}. Check that the looser setting was meant before trusting the result.`,
+      `This change lowers the coverage threshold or adds a coverage exclusion in the check config: ${paths}. Once merged, the looser setting applies to every later pull request; check that it was meant.`,
   },
   {
     id: "TI15",
@@ -780,10 +786,16 @@ export function buildReport(input: BuildReportInput): Report {
   }
 
   if (input.changedConfigPaths !== undefined && input.changedConfigPaths.length > 0) {
+    // Which copy of the config in use the check ran with, when the change touches it. Unreadable under a
+    // threshold or in mode block is an error: the check could not run with the config the repository has.
+    const config = input.configRepoPath === undefined ? ".pharn/ci.yml" : input.configRepoPath;
+    const source = config !== null && input.changedConfigPaths.includes(config) ? input.configSource : undefined;
+    const gated = input.threshold !== null || input.testIntegrity?.mode === "block";
+    const error = source === "unreadable" && gated;
     messages.push({
-      level: "warn",
+      level: error ? "error" : "warn",
       code: "CONFIG_CHANGED_IN_DIFF",
-      text: `This change edits files that configure this check: ${pathList(input.changedConfigPaths)}. Review them before trusting the verdict.`,
+      text: `This change edits files that configure this check: ${pathList(input.changedConfigPaths)}.${configSourceText(source, config, error)} Review them before trusting the verdict.`,
     });
   }
   if (input.trackedCoverageFile !== undefined) {
@@ -1124,6 +1136,25 @@ const MAX_NAMED_PATHS = 5;
 
 /** The first few paths as code spans joined with `, `, then ` and N more` when there are more. */
 /** The config in use as a message names it: `.pharn/ci.yml` as plain text, any other path as a code span. */
+/**
+ * The sentence `CONFIG_CHANGED_IN_DIFF` adds to say which copy of the config in use the check ran with, with a
+ * leading space; empty when the config was read from the working tree. It names the config's path only.
+ */
+function configSourceText(source: ConfigSource | undefined, config: string | null, error: boolean): string {
+  if (source === undefined || config === null) return "";
+  const name = codeSpan(config);
+  if (source === "merge-base") {
+    return ` This check used ${name} as it is at the merge base, not as this change leaves it; the change to it applies after merge.`;
+  }
+  if (source === "absent") {
+    return ` ${name} is new in this change, so this check ran without it, on the inputs and the defaults; it applies after merge.`;
+  }
+  return (
+    ` ${name} could not be read at the merge base (no base commit in the checkout, or no regular file there), so this check ran without it, on the inputs and the defaults; check out the full history (${codeSpan("fetch-depth: 0")} in actions/checkout) so it can be read.` +
+    (error ? " With a threshold or test-integrity mode block in force, this fails the check." : "")
+  );
+}
+
 function configName(path: string | null | undefined): string {
   if (path === undefined || path === ".pharn/ci.yml") return ".pharn/ci.yml";
   return path === null ? "The pharn-ci config" : codeSpan(path);

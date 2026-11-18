@@ -46,8 +46,12 @@ export async function batchCheck(
   });
 }
 
-/** `git cat-file --batch` for blob ids: the bytes of each, by id. */
-export async function batchRead(deps: GitBatchDeps, oids: readonly string[]): Promise<Map<string, Uint8Array>> {
+/** `git cat-file --batch` for object ids of one type (blobs unless `type` says otherwise): the bytes of each, by id. */
+export async function batchRead(
+  deps: GitBatchDeps,
+  oids: readonly string[],
+  type = "blob",
+): Promise<Map<string, Uint8Array>> {
   const contents = new Map<string, Uint8Array>();
   if (oids.length === 0) return contents;
   let out: Uint8Array;
@@ -62,7 +66,7 @@ export async function batchRead(deps: GitBatchDeps, oids: readonly string[]): Pr
     const end = out.indexOf(0x0a, at);
     if (end === -1) throw unreadable();
     const header = OBJECT_LINE.exec(Buffer.from(out.subarray(at, end)).toString("utf8"));
-    if (header === null || header[1] !== oid || header[2] !== "blob") throw unreadable();
+    if (header === null || header[1] !== oid || header[2] !== type) throw unreadable();
     const size = Number(header[3]);
     const start = end + 1;
     if (start + size >= out.length || out[start + size] !== 0x0a) throw unreadable();

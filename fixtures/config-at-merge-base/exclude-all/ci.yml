@@ -1,0 +1,5 @@
+coverage:
+  file: coverage/lcov.info
+  exclude:
+    - "src/b.ts"
+    - "**"

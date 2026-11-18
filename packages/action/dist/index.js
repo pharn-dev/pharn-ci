@@ -26522,7 +26522,7 @@ var SIGNAL_MESSAGES = [
   {
     id: "TI14",
     code: "TEST_INTEGRITY_TI14",
-    text: (_top, paths) => `This change lowers the coverage threshold or adds a coverage exclusion in the check config: ${paths}. Check that the looser setting was meant before trusting the result.`
+    text: (_top, paths) => `This change lowers the coverage threshold or adds a coverage exclusion in the check config: ${paths}. Once merged, the looser setting applies to every later pull request; check that it was meant.`
   },
   {
     id: "TI15",
@@ -26638,10 +26638,14 @@ function buildReport(input) {
     messages.push({ level: "info", code: "COVERAGE_LINES_SKIPPED", text: subject });
   }
   if (input.changedConfigPaths !== void 0 && input.changedConfigPaths.length > 0) {
+    const config = input.configRepoPath === void 0 ? ".pharn/ci.yml" : input.configRepoPath;
+    const source = config !== null && input.changedConfigPaths.includes(config) ? input.configSource : void 0;
+    const gated = input.threshold !== null || input.testIntegrity?.mode === "block";
+    const error2 = source === "unreadable" && gated;
     messages.push({
-      level: "warn",
+      level: error2 ? "error" : "warn",
       code: "CONFIG_CHANGED_IN_DIFF",
-      text: `This change edits files that configure this check: ${pathList(input.changedConfigPaths)}. Review them before trusting the verdict.`
+      text: `This change edits files that configure this check: ${pathList(input.changedConfigPaths)}.${configSourceText(source, config, error2)} Review them before trusting the verdict.`
     });
   }
   if (input.trackedCoverageFile !== void 0) {
@@ -26877,6 +26881,17 @@ function unmatchedText(missing) {
   return `${head} (for example ${codeSpan(missing.example)}), so diff coverage was not measured. ${hint}`;
 }
 var MAX_NAMED_PATHS = 5;
+function configSourceText(source, config, error2) {
+  if (source === void 0 || config === null) return "";
+  const name = codeSpan(config);
+  if (source === "merge-base") {
+    return ` This check used ${name} as it is at the merge base, not as this change leaves it; the change to it applies after merge.`;
+  }
+  if (source === "absent") {
+    return ` ${name} is new in this change, so this check ran without it, on the inputs and the defaults; it applies after merge.`;
+  }
+  return ` ${name} could not be read at the merge base (no base commit in the checkout, or no regular file there), so this check ran without it, on the inputs and the defaults; check out the full history (${codeSpan("fetch-depth: 0")} in actions/checkout) so it can be read.` + (error2 ? " With a threshold or test-integrity mode block in force, this fails the check." : "");
+}
 function configName(path) {
   if (path === void 0 || path === ".pharn/ci.yml") return ".pharn/ci.yml";
   return path === null ? "The pharn-ci config" : codeSpan(path);
@@ -30337,6 +30352,19 @@ function changedConfigPaths(diff, configPath, repoRoot) {
     }
   }
   return [...found].sort(byCodeUnit);
+}
+function configDiffState(diff, configPath, repoRoot) {
+  const config = configRepoPath(configPath, repoRoot);
+  if (config === null) return "untouched";
+  let before = false;
+  let after = false;
+  for (const file of diff) {
+    if (file.oldPath === config && file.status !== "added") before = true;
+    if (file.path === config && file.status !== "deleted") after = true;
+  }
+  if (before && after) return "modified";
+  if (before) return "deleted";
+  return after ? "added" : "untouched";
 }
 function trackedCoverageFile(file, repoRoot, repoFiles) {
   if (file === void 0) return null;
@@ -43403,7 +43431,7 @@ function check(input) {
     ...detectTI14(parsedDiff, {
       configPath: input.configPath,
       repoRoot: input.repoRoot,
-      exclude: input.exclude ?? [],
+      exclude: [...input.exclude ?? [], ...input.headConfigExclude ?? []],
       mode: testIntegrity2.mode
     }),
     ...sourceMatches.signals,
@@ -43602,6 +43630,7 @@ function check(input) {
     ...Object.keys(agentSetupLevels).length > 0 ? { agentSetupLevels } : {},
     ...reportPolicy === void 0 ? {} : { policy: reportPolicy },
     ...configPaths.length > 0 ? { changedConfigPaths: configPaths } : {},
+    ...configPaths.length > 0 && input.configSource !== void 0 ? { configSource: input.configSource } : {},
     ...testPaths.length > 0 ? { deletedTestFiles: testPaths } : {},
     ...trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage },
     ...trackedCoverageChanged ? { trackedCoverageChanged: true } : {},
@@ -46613,7 +46642,7 @@ async function batchCheck(deps, requests) {
     return match === null ? null : { oid: match[1], object: { type: match[2], size: Number(match[3]) } };
   });
 }
-async function batchRead(deps, oids) {
+async function batchRead(deps, oids, type = "blob") {
   const contents = /* @__PURE__ */ new Map();
   if (oids.length === 0) return contents;
   let out;
@@ -46629,7 +46658,7 @@ async function batchRead(deps, oids) {
     const end = out.indexOf(10, at);
     if (end === -1) throw unreadable();
     const header2 = OBJECT_LINE.exec(Buffer.from(out.subarray(at, end)).toString("utf8"));
-    if (header2 === null || header2[1] !== oid || header2[2] !== "blob") throw unreadable();
+    if (header2 === null || header2[1] !== oid || header2[2] !== type) throw unreadable();
     const size = Number(header2[3]);
     const start = end + 1;
     if (start + size >= out.length || out[start + size] !== 10) throw unreadable();
@@ -46698,6 +46727,169 @@ async function fileChunks(deps, path) {
   if (deps.readFileStream) return deps.readFileStream(path);
   const text = await deps.readFile(path);
   return text === null ? null : oneChunk(async () => text);
+}
+
+// ../node-io/src/policyFile.ts
+import { lstat as lstat2 } from "node:fs/promises";
+var POLICY_FILE_MAX_BYTES = 1048576;
+async function lstatPath(path) {
+  try {
+    const stat2 = await lstat2(path);
+    const kind = stat2.isSymbolicLink() ? "symlink" : stat2.isDirectory() ? "directory" : stat2.isFile() ? "file" : "other";
+    return { kind, size: stat2.size };
+  } catch (err) {
+    const code2 = err.code;
+    if (code2 === "ENOENT" || code2 === "ENOTDIR") return null;
+    throw err;
+  }
+}
+var PolicyFileError = class extends Error {
+  name = "PolicyFileError";
+};
+var MAX_LISTED_PROBLEMS = 50;
+async function readPolicyFile(deps, options) {
+  const { label } = options;
+  const fail2 = (reason) => new PolicyFileError(`${label} ${reason}`);
+  const raw = options.path;
+  if (raw.trim() === "") throw fail2("is empty: name a policy file relative to the repository");
+  if (raw.startsWith("/") || raw.startsWith("\\") || /^[A-Za-z]:/.test(raw)) {
+    throw fail2("must be a path relative to the repository, not an absolute path");
+  }
+  const segments = [];
+  for (const segment of raw.replace(/\\/g, "/").split("/")) {
+    if (segment === "" || segment === ".") continue;
+    if (segment === "..") {
+      if (segments.pop() === void 0) throw fail2("must stay inside the repository");
+      continue;
+    }
+    segments.push(segment);
+  }
+  if (segments.length === 0) throw fail2("does not name a file");
+  let size = 0;
+  for (let depth = 1; depth <= segments.length; depth++) {
+    const stat2 = await deps.lstat(deps.resolvePath(options.root, ...segments.slice(0, depth)));
+    if (stat2 === null) throw fail2("names a file that does not exist");
+    if (stat2.kind === "symlink") throw fail2("must not go through a symbolic link");
+    if (depth < segments.length) {
+      if (stat2.kind !== "directory") throw fail2("names a file that does not exist");
+    } else {
+      if (stat2.kind !== "file") throw fail2("must name a regular file");
+      size = stat2.size;
+    }
+  }
+  if (size > POLICY_FILE_MAX_BYTES) throw fail2("names a file that is too large (the limit is 1 MiB)");
+  const text = await deps.readFile(deps.resolvePath(options.root, ...segments));
+  if (text === null) throw fail2("names a file that does not exist");
+  const parsed = parsePolicyJson(text);
+  if (!parsed.ok) {
+    const lines = parsed.errors.slice(0, MAX_LISTED_PROBLEMS).map((error2) => `${error2.path === "" ? "(document)" : error2.path}: ${error2.message}`);
+    throw fail2(`is not a valid policy document:
+${lines.join("\n")}`);
+  }
+  return { source: "file", version: null, path: segments.join("/"), document: parsed.policy };
+}
+function isUsableRevision(rev) {
+  if (rev === "" || rev.startsWith("-")) return false;
+  for (let i = 0; i < rev.length; i++) {
+    const code2 = rev.charCodeAt(i);
+    if (code2 <= 32 || code2 >= 127 && code2 <= 160 || code2 === 58) return false;
+  }
+  return true;
+}
+async function readPolicyFileAt(deps, options) {
+  const unreadable = { kind: "unreadable" };
+  try {
+    const { rev, path } = options;
+    if (typeof rev !== "string" || typeof path !== "string") return unreadable;
+    if (isUnsafeTestSourcePath(path) || !isUsableRevision(rev)) return unreadable;
+    const [root, object] = await batchCheck(deps, [
+      { oid: rev, path: "" },
+      { oid: rev, path }
+    ]);
+    if (root === null || root === void 0) return unreadable;
+    if (object === null || object === void 0) return { kind: "absent" };
+    if (object.object.type !== "blob" || object.object.size > POLICY_FILE_MAX_BYTES) return unreadable;
+    const contents = await batchRead(deps, [object.oid]);
+    const bytes = contents.get(object.oid);
+    if (bytes === void 0) return unreadable;
+    const text = decodeTestSourceText(bytes);
+    if (text === null) return unreadable;
+    const parsed = parsePolicyJson(text);
+    return parsed.ok ? { kind: "document", document: parsed.policy } : unreadable;
+  } catch {
+    return unreadable;
+  }
+}
+
+// ../node-io/src/configFile.ts
+var CONFIG_FILE_MAX_BYTES = 1048576;
+var REGULAR_FILE_MODES = /* @__PURE__ */ new Set(["100644", "100755"]);
+async function commitOf(deps, revision) {
+  const out = await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", `${revision}^{commit}`]);
+  const oid = out.trim();
+  return OBJECT_ID.test(oid) ? oid : null;
+}
+function treeEntry(tree, name, oidBytes) {
+  let at = 0;
+  while (at < tree.length) {
+    const space = tree.indexOf(32, at);
+    const nul = space === -1 ? -1 : tree.indexOf(0, space + 1);
+    if (space === -1 || nul === -1 || nul + 1 + oidBytes > tree.length) return null;
+    const mode = Buffer.from(tree.subarray(at, space)).toString("latin1");
+    const entryName = Buffer.from(tree.subarray(space + 1, nul)).toString("utf8");
+    const oid = Buffer.from(tree.subarray(nul + 1, nul + 1 + oidBytes)).toString("hex");
+    if (entryName === name) return { mode, oid };
+    at = nul + 1 + oidBytes;
+  }
+  return null;
+}
+async function readConfigFileAt(deps, options) {
+  const unreadable = { kind: "unreadable" };
+  try {
+    const { base, path } = options;
+    const head = options.head ?? "HEAD";
+    if (isUnsafeTestSourcePath(path) || !isUsableRevision(base) || !isUsableRevision(head)) return unreadable;
+    const baseOid = await commitOf(deps, base);
+    const headOid = await commitOf(deps, head);
+    if (baseOid === null || headOid === null) return unreadable;
+    const mergeBase = (await deps.git(["merge-base", baseOid, headOid])).trim();
+    if (!OBJECT_ID.test(mergeBase)) return unreadable;
+    const slash = path.lastIndexOf("/");
+    const dir = slash === -1 ? "" : path.slice(0, slash);
+    const name = path.slice(slash + 1);
+    const [root, folder, object] = await batchCheck(deps, [
+      { oid: mergeBase, path: "" },
+      { oid: mergeBase, path: dir },
+      { oid: mergeBase, path }
+    ]);
+    if (root === null || root === void 0 || root.object.type !== "tree") return unreadable;
+    if (folder === null || folder === void 0 || folder.object.type !== "tree") return { kind: "absent" };
+    if (object === null || object === void 0) return { kind: "absent" };
+    if (object.object.type !== "blob" || object.object.size > CONFIG_FILE_MAX_BYTES) return unreadable;
+    const trees = await batchRead(deps, [folder.oid], "tree");
+    const tree = trees.get(folder.oid);
+    if (tree === void 0) return unreadable;
+    const entry = treeEntry(tree, name, folder.oid.length / 2);
+    if (entry === null || !REGULAR_FILE_MODES.has(entry.mode) || entry.oid !== object.oid) return unreadable;
+    const contents = await batchRead(deps, [object.oid]);
+    const bytes = contents.get(object.oid);
+    if (bytes === void 0) return unreadable;
+    const text = decodeTestSourceText(bytes);
+    return text === null ? unreadable : { kind: "text", text };
+  } catch {
+    return unreadable;
+  }
+}
+async function configCopyInUse(deps, options) {
+  if (options.diff === null) return { source: "working-tree" };
+  const state = configDiffState(options.diff, options.configPath, options.repoRoot);
+  if (state === "untouched") return { source: "working-tree" };
+  if (state === "added") return { source: "absent" };
+  const path = configRepoPath(options.configPath, options.repoRoot);
+  const { gitBatch } = deps;
+  if (path === null || options.base === void 0 || gitBatch === void 0) return { source: "unreadable" };
+  const copy = await readConfigFileAt({ git: (args) => deps.git(args), gitBatch }, { base: options.base, path });
+  return copy.kind === "text" ? { source: "merge-base", path, text: copy.text } : { source: "unreadable" };
 }
 
 // ../node-io/src/coverage.ts
@@ -46978,98 +47170,6 @@ async function readJunitFiles(deps, options) {
     files.push(overBytes ? { path, dropped: "byte-cap" } : { path, text: parts.join("") });
   }
   return walkLimit ? { files, walkLimit } : { files };
-}
-
-// ../node-io/src/policyFile.ts
-import { lstat as lstat2 } from "node:fs/promises";
-var POLICY_FILE_MAX_BYTES = 1048576;
-async function lstatPath(path) {
-  try {
-    const stat2 = await lstat2(path);
-    const kind = stat2.isSymbolicLink() ? "symlink" : stat2.isDirectory() ? "directory" : stat2.isFile() ? "file" : "other";
-    return { kind, size: stat2.size };
-  } catch (err) {
-    const code2 = err.code;
-    if (code2 === "ENOENT" || code2 === "ENOTDIR") return null;
-    throw err;
-  }
-}
-var PolicyFileError = class extends Error {
-  name = "PolicyFileError";
-};
-var MAX_LISTED_PROBLEMS = 50;
-async function readPolicyFile(deps, options) {
-  const { label } = options;
-  const fail2 = (reason) => new PolicyFileError(`${label} ${reason}`);
-  const raw = options.path;
-  if (raw.trim() === "") throw fail2("is empty: name a policy file relative to the repository");
-  if (raw.startsWith("/") || raw.startsWith("\\") || /^[A-Za-z]:/.test(raw)) {
-    throw fail2("must be a path relative to the repository, not an absolute path");
-  }
-  const segments = [];
-  for (const segment of raw.replace(/\\/g, "/").split("/")) {
-    if (segment === "" || segment === ".") continue;
-    if (segment === "..") {
-      if (segments.pop() === void 0) throw fail2("must stay inside the repository");
-      continue;
-    }
-    segments.push(segment);
-  }
-  if (segments.length === 0) throw fail2("does not name a file");
-  let size = 0;
-  for (let depth = 1; depth <= segments.length; depth++) {
-    const stat2 = await deps.lstat(deps.resolvePath(options.root, ...segments.slice(0, depth)));
-    if (stat2 === null) throw fail2("names a file that does not exist");
-    if (stat2.kind === "symlink") throw fail2("must not go through a symbolic link");
-    if (depth < segments.length) {
-      if (stat2.kind !== "directory") throw fail2("names a file that does not exist");
-    } else {
-      if (stat2.kind !== "file") throw fail2("must name a regular file");
-      size = stat2.size;
-    }
-  }
-  if (size > POLICY_FILE_MAX_BYTES) throw fail2("names a file that is too large (the limit is 1 MiB)");
-  const text = await deps.readFile(deps.resolvePath(options.root, ...segments));
-  if (text === null) throw fail2("names a file that does not exist");
-  const parsed = parsePolicyJson(text);
-  if (!parsed.ok) {
-    const lines = parsed.errors.slice(0, MAX_LISTED_PROBLEMS).map((error2) => `${error2.path === "" ? "(document)" : error2.path}: ${error2.message}`);
-    throw fail2(`is not a valid policy document:
-${lines.join("\n")}`);
-  }
-  return { source: "file", version: null, path: segments.join("/"), document: parsed.policy };
-}
-function isUsableRevision(rev) {
-  if (rev === "" || rev.startsWith("-")) return false;
-  for (let i = 0; i < rev.length; i++) {
-    const code2 = rev.charCodeAt(i);
-    if (code2 <= 32 || code2 >= 127 && code2 <= 160 || code2 === 58) return false;
-  }
-  return true;
-}
-async function readPolicyFileAt(deps, options) {
-  const unreadable = { kind: "unreadable" };
-  try {
-    const { rev, path } = options;
-    if (typeof rev !== "string" || typeof path !== "string") return unreadable;
-    if (isUnsafeTestSourcePath(path) || !isUsableRevision(rev)) return unreadable;
-    const [root, object] = await batchCheck(deps, [
-      { oid: rev, path: "" },
-      { oid: rev, path }
-    ]);
-    if (root === null || root === void 0) return unreadable;
-    if (object === null || object === void 0) return { kind: "absent" };
-    if (object.object.type !== "blob" || object.object.size > POLICY_FILE_MAX_BYTES) return unreadable;
-    const contents = await batchRead(deps, [object.oid]);
-    const bytes = contents.get(object.oid);
-    if (bytes === void 0) return unreadable;
-    const text = decodeTestSourceText(bytes);
-    if (text === null) return unreadable;
-    const parsed = parsePolicyJson(text);
-    return parsed.ok ? { kind: "document", document: parsed.policy } : unreadable;
-  } catch {
-    return unreadable;
-  }
 }
 
 // ../node-io/src/pythonIndex.ts
@@ -49133,7 +49233,9 @@ async function runUnsafe(deps) {
   for (const pattern of junitPatterns) parseExcludePattern(pattern, "junit-paths");
   const configInput = input("config");
   const baseRefInput = input("base-ref");
-  const config = await loadConfig(configInput || void 0, deps);
+  const prNumberMode = !pr && prNumber !== void 0;
+  const earlyDiff = prNumberMode ? void 0 : await getDiff(baseRefInput, deps, void 0, configInput);
+  const { config, configSource, headConfigExclude } = await loadConfigInUse(configInput || void 0, deps, earlyDiff);
   const rawInputs = {
     coverageFile: splitLines(input("coverage-file")),
     coverageFormat: input("coverage-format") || void 0,
@@ -49170,7 +49272,7 @@ async function runUnsafe(deps) {
   } = effective2;
   const failOnVerdict = parseBool(input("fail-on-verdict"), failOnVerdictName(deps)) ?? true;
   const comment = parseBool(input("comment"), "comment") ?? true;
-  const target = !pr && prNumber !== void 0 ? await resolvePrNumberTarget(deps, { prNumber, headSha }) : void 0;
+  const target = prNumberMode && prNumber !== void 0 ? await resolvePrNumberTarget(deps, { prNumber, headSha }) : void 0;
   let coverage2;
   if ("discover" in coverageFile) {
     coverage2 = await readDiscoveredCoverage(deps, {
@@ -49200,7 +49302,7 @@ async function runUnsafe(deps) {
     deps.warning(`git ls-tree failed, so empty agent setup files are not reported: ${String(err)}`);
     return null;
   });
-  const { diff, localBase } = await getDiff(baseRefInput, deps, target, configInput);
+  const { diff, localBase } = earlyDiff ?? await getDiff(baseRefInput, deps, target, configInput);
   const testSources = await gatherTestSources(deps, { diff, localBase, target, testIntegrityMode });
   const agentConfigSources = await gatherAgentConfigSources(deps, { repoFiles, diff, target });
   const policySettingsSources = await gatherPolicySettingsSources(deps, { repoFiles, diff, target, policy, lsTree });
@@ -49256,6 +49358,8 @@ async function runUnsafe(deps) {
     ...pythonTestIndex === void 0 ? {} : { pythonTestIndex },
     ...coverageRoot === void 0 ? {} : { coverageRoot },
     ...configInput === "" ? {} : { configPath: configInput },
+    ...configSource === void 0 ? {} : { configSource },
+    ...headConfigExclude === void 0 ? {} : { headConfigExclude },
     ...policy === void 0 ? {} : { policy },
     ...policySettingsSources === void 0 ? {} : { policySettingsSources },
     ...application === void 0 || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored },
@@ -49813,6 +49917,33 @@ async function loadConfig(explicit, deps) {
     return parseConfig(text);
   } catch (err) {
     throw new Error(`${path}: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+async function loadConfigInUse(explicit, deps, from) {
+  const diff = from === void 0 || "unavailable" in from.diff ? null : "parsed" in from.diff ? from.diff.parsed : parseUnifiedDiff(from.diff.text);
+  const copy = await configCopyInUse(deps, {
+    diff,
+    base: from?.localBase,
+    configPath: explicit,
+    repoRoot: deps.workspace
+  });
+  if (copy.source === "working-tree") return { config: await loadConfig(explicit, deps) };
+  const headText = await deps.readFile(deps.resolvePath(deps.workspace, explicit ?? DEFAULT_CONFIG));
+  const headConfigExclude = headExclusions(headText);
+  const head = headConfigExclude === void 0 ? {} : { headConfigExclude };
+  if (copy.source !== "merge-base") return { config: {}, configSource: copy.source, ...head };
+  try {
+    return { config: parseConfig(copy.text), configSource: "merge-base", ...head };
+  } catch (err) {
+    throw new Error(`${copy.path} at the merge base: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+function headExclusions(text) {
+  if (text === null) return void 0;
+  try {
+    return parseConfig(text).coverage?.exclude;
+  } catch {
+    return void 0;
   }
 }
 function splitPatternList(value) {

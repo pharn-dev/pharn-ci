@@ -42,6 +42,18 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   (`git rm --cached <path>`) and let the test run write it. A tracked report the diff leaves alone, or a run with no
   threshold, still gets the warning. A repository that commits regenerated coverage in its pull requests must untrack
   the file, or every such pull request now fails under a threshold.
+- **Breaking:** a pull request that edits the pharn-ci config in use is checked with the config as it is at the merge
+  base; the edit applies after merge, as with CODEOWNERS (CORE-95). This holds for `.pharn/ci.yml` and for the file the
+  `config` input or `--config` names. A PR could add `coverage.exclude: ["**"]` to its own config and pass with a
+  threshold in force; now its own edits to `coverage.exclude`, `coverage.file`, `coverage.root`, `coverage.threshold`,
+  `setup`, `test_integrity` and `dependencies` do not apply to it. A modified or deleted config is read from git
+  objects at the merge base (never through a symbolic link); an added one counts as absent, so the defaults and the
+  inputs apply and its `dependencies.lookup: true` turns nothing on. When the base copy cannot be read (a shallow
+  checkout), the check runs with no config and `CONFIG_CHANGED_IN_DIFF` is an error under a threshold or in
+  `test-integrity: block` (its text names `fetch-depth: 0`), a warning otherwise; a base copy that does not parse fails
+  the step. `CONFIG_CHANGED_IN_DIFF` now says which copy was used, and TI14 says its looser setting applies to every
+  later pull request once merged. The CLI does the same with `--base`; without it, it reads the working tree's config
+  as before. Migration: merge a config change before the pull requests that rely on it.
 - Docs: the five workflows in `examples/workflows/` no longer say the step never fails without a threshold (CORE-127).
   Their headers name what fails it by default: a secret in an agent config file (S01-S09), invisible Unicode (PI01),
   a dependency from outside the registry (D05), a dependency change the lockfile does not record (D04) and a run

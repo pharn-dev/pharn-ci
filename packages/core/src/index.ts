@@ -142,6 +142,12 @@ export {
   MESSAGE_FIXES,
   SIGNAL_FIXES,
 } from "./fix/table.js";
+export {
+  type ConfigDiffState,
+  type ConfigSource,
+  configDiffState,
+  configRepoPath,
+} from "./gateInputs.js";
 export { compileGlob, hasGlobSyntax, matchGlob } from "./glob.js";
 export { type DirEntry, type ListDir, type WalkBudget, WalkLimitError, walkGlob } from "./globWalk.js";
 export { injectionMessages } from "./injection/messages.js";

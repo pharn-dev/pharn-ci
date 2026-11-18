@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { withCore95Ti14Before } from "./core95-ti14.js";
 import { exerciseMessages, withoutExerciseCheck } from "./exercise-repin.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -218,7 +219,8 @@ describe("TI02 and TI05 change the earlier outputs only where they mean to", () 
     // fix-hints (H6): the signals and messages now carry a `fix`; it is taken out, so the digest still pins the base outputs.
     expect(
       createHash("sha256")
-        .update(asBefore(JSON.stringify(withoutFix(records))))
+        // Re-pinned for CORE-95: the reworded TI14 sentence is put back first (core95-ti14.ts).
+        .update(withCore95Ti14Before(asBefore(JSON.stringify(withoutFix(records)))))
         .digest("hex"),
       "the earlier fixtures without sources give what they gave at the base commit",
     ).toBe(BEFORE_DIGEST);

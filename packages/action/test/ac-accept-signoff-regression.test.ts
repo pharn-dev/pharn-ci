@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { withCore95Ti14Before } from "../../core/test/core95-ti14.js";
 import { foldCoverageBar } from "../../core/test/helpers.js";
 import { withoutFix, withoutFixJson } from "../../core/test/v090-codes.js";
 
@@ -318,6 +319,7 @@ describe("the accept label leaves the existing signals, hints, golden outputs an
       }
     }
     expect(records).toHaveLength(BEFORE_COUNT);
-    expect(sha256(asBefore(JSON.stringify(withoutFix(records))))).toBe(BEFORE_DIGEST);
+    // Re-pinned for CORE-95: the reworded TI14 sentence is put back first (core95-ti14.ts).
+    expect(sha256(withCore95Ti14Before(asBefore(JSON.stringify(withoutFix(records)))))).toBe(BEFORE_DIGEST);
   }, 120_000);
 });

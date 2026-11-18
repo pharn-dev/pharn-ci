@@ -118,15 +118,18 @@ const PINNED = [
 // Re-pinned again by CORE-50 (binary-diff-not-blind): ac-accept-signoff-regression and ac-ti0205-regression assert the new
 // TI01 record of the unedited TI01/pass-binary.diff and take it out before hashing (their output digests are unchanged);
 // these are the digests of the edited files.
+// Re-pinned again by CORE-95 (config read at the merge base): ac-accept-signoff-regression and ac-ti0205-regression put
+// the earlier TI14 sentence back into their records before hashing (core95-ti14.ts; their output digests are
+// unchanged); these are the digests of the edited files.
 const NAME_ONLY_REPINNED: Record<string, string> = {
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "bff9876506f80d7c5278a38103d818c7b6b27d262d851c12ef15c6997c5eebe5",
+    "f4fe05f19edd74efd6a30a1f3adc32d1e1f2d95a9bc68f7c32c090c488c43f4d",
   // Re-pinned again by A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): ac-ti0205-regression takes the tests-exercise message
   // and testIntegrity.exercise out of the golden reports made with sources before comparing (exercise-repin.ts); this
   // is the digest of the edited file.
   // Re-pinned again by CORE-71 (R2.8): ac-ti0205-regression leaves the new TI11 and TI13 fixtures out of its loop over
   // the earlier directories (its BEFORE_DIGEST is unchanged); this is the digest of the edited file.
-  "packages/core/test/ac-ti0205-regression.test.ts": "702f084c3213b193d2e63b19c39c39210294b23030674cabdc53abd6852545f2",
+  "packages/core/test/ac-ti0205-regression.test.ts": "1df2953978aee69fa343a36dffe2045ebc97468f2b165933254aeb7e44e2fd9f",
   // Re-pinned again by ti17-always-true-matcher-2: ac-skylos-nine-table moves always-true-matcher to caught by TI17 (the
   // Skylos count reads 8 of 9 now, 7 of 9 before); this is the digest of the edited file.
   "packages/core/test/ac-skylos-nine-table.test.ts": "68f84a33ecf1e4b4e94fc13c2c6c9065339a46e6d0d69b925905a1e39ac13976",

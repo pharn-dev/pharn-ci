@@ -75,7 +75,7 @@ inputs:
     description: Deprecated old name of fail-on-verdict, still read (with a warning) when fail-on-verdict is not set.
     required: false
   config:
-    description: Path to the pharn-ci config file, relative to the workspace. Defaults to .pharn/ci.yml, which may be absent; a file named here that does not exist fails the step.
+    description: Path to the pharn-ci config file, relative to the workspace. Defaults to .pharn/ci.yml, which may be absent; a file named here that does not exist fails the step. A pull request that edits the config is checked with its copy at the merge base, and the edit applies after merge; one that adds it is checked with none.
     required: false
   github-token:
     description: Token for the GitHub API, used for the PR comment, the diff fallback and, in pr-number mode, always to read the pull request, its diff and its file tree. Needs contents read, plus pull-requests read in pr-number mode and pull-requests write for the comment. With test-integrity block it also reads the pull request and its issue events (GET /repos/{owner}/{repo}/issues/{issue_number}/events) for the accept label, which needs pull-requests read or issues read. On every pull_request run it lists the pull request's commits for agent-PR detection (pull-requests read); an empty or under-scoped token makes that detection fail closed, so under an org policy every pull request counts as an agent PR. May be empty with comment false and a local diff, outside pr-number mode.
