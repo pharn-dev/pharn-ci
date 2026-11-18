@@ -79,6 +79,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   when both texts are in the test sources, so a `package.json` written on one line is read. A pull request that adds
   an unfiltered pipe or one of these keys can now go from `pass` to `warn` or `fail`; the rules are in
   `docs/LIMITS.md`, "What TI09 misses" and "What TI10 misses".
+- Docs: SECURITY.md "Data handling" now names four requests it left out (CORE-130): the OIDC token request to the
+  runner's GitHub-run token service (audience `pharn.dev`) before the org policy request and the run upload;
+  `GET /pulls/{n}/commits` on `pull_request_target` and PR-number runs too, not only `pull_request`; the comment's logo,
+  which a reader's browser loads from `raw.githubusercontent.com` through GitHub's image proxy; and the objects git
+  itself fetches from the remote on a partial clone (`filter: blob:none`), in the Action and the CLI, with how to avoid
+  it (a full checkout with `fetch-depth: 0` and no `filter:`). No behaviour changes.
 
 ### Security
 
