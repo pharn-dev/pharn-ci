@@ -251,7 +251,8 @@ and the tests cite them.
     Loading `typescript` builds its `sys` object (it requires Node builtins when the module loads), but
     `createSourceFile` reads no file. The index is wired into `check()`, so the parser is bundled into the CLI dist, which
     is about 11 MB, while the Action ships it as the pinned `packages/action/dist/typescript.js` (G1), loaded only when a
-    test file or test config is parsed, and its `index.js` stays under 2 MB (`ac-ts-index-deps-dist.test.ts › AC-14: core depends on typescript5 at
+    test file or test config is parsed; its `index.js` holds none of the parser's own code and stays under 2.5 MB
+    (`ac-bundle-size-dist.test.ts`), and both dists stay within their size limit (`ac-ts-index-deps-dist.test.ts › AC-14: core depends on typescript5 at
     npm:typescript@5.9.3 and both dists carry the parser within the size limit`). Only test names, paths and line numbers from the parsed
     text reach the report. **Residual:** text inside the caps can still cost the parser's time and memory; only the
     limits test holds that, by linear growth and a hang ceiling rather than a wall-clock budget
