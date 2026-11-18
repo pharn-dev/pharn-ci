@@ -18,6 +18,20 @@ function stringEnd(text: string, open: number): number {
   return -1;
 }
 
+/**
+ * Whether the multi-line string delimited by `delimiter` closes on `line`, looking from `from`. A literal string (`'''`)
+ * has no escapes. In a basic string (`"""`) a backslash escapes the character after it, so `\"""` does not close the
+ * string and `\\"""` does; a backslash at the end of the line escapes the line break, and the next line starts afresh.
+ */
+function closesMultiLine(line: string, from: number, delimiter: string): boolean {
+  if (delimiter === "'''") return line.includes(delimiter, from);
+  for (let i = from; i < line.length; i++) {
+    if (line[i] === "\\") i++;
+    else if (line.startsWith(delimiter, i)) return true;
+  }
+  return false;
+}
+
 /** The line without a trailing `#` comment (a `#` outside a string), trimmed. */
 function stripTomlComment(line: string): string {
   for (let i = 0; i < line.length; i++) {
@@ -214,12 +228,12 @@ function readTable(lines: Lines, headerAt: number): Map<string, ConfigEntry> | n
     const multi = rest.startsWith('"""') ? '"""' : rest.startsWith("'''") ? "'''" : null;
     if (multi !== null) {
       // The closing delimiter cannot span a line break, so each line is looked at once.
-      let closed = rest.slice(3).includes(multi);
+      let closed = closesMultiLine(rest, 3, multi);
       while (!closed) {
         i++;
         const more = lines.at(i);
         if (more === undefined) return null;
-        closed = more.includes(multi);
+        closed = closesMultiLine(more, 0, multi);
       }
       entries.set(key, { value: { type: "opaque", text: normalizeOpaque(rest) }, line: first + 1 });
       i++;

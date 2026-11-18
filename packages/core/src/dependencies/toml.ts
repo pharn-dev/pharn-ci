@@ -22,6 +22,9 @@ export interface TomlTable {
 
 const MAX_DEPTH = 32;
 
+/** The one-character escapes of a basic string. */
+const ESCAPES: Record<string, string> = { '"': '"', "\\": "\\", n: "\n", t: "\t", r: "\r", b: "\b", f: "\f" };
+
 class TomlError extends Error {}
 
 const isBare = (c: string) =>
@@ -66,18 +69,60 @@ export function parseToml(text: string): TomlTable[] | null {
     if (src[pos] === "\r") pos++;
     if (pos < end && src[pos] !== "\n") fail();
   };
+  /** The escape sequence whose backslash is at pos, decoded; pos moves past it. An unknown escape fails. */
+  const escapeSequence = (): string => {
+    const next = src[pos + 1];
+    if (next === "u" || next === "U") {
+      const size = next === "u" ? 4 : 8;
+      const hex = src.slice(pos + 2, pos + 2 + size);
+      const code = /^[0-9a-fA-F]+$/.test(hex) && hex.length === size ? Number.parseInt(hex, 16) : Number.NaN;
+      if (!Number.isFinite(code) || code > 0x10ffff) fail();
+      pos += 2 + size;
+      return String.fromCodePoint(code);
+    }
+    const mapped = (next === undefined ? undefined : ESCAPES[next]) ?? fail();
+    pos += 2;
+    return mapped;
+  };
+  /** A multi-line basic string; pos is on its opening `"""`. */
+  const multiLineBasicString = (): string => {
+    pos += 3;
+    // A line break right after the opening delimiter is not part of the string.
+    if (src[pos] === "\n") pos++;
+    else if (src[pos] === "\r" && src[pos + 1] === "\n") pos += 2;
+    let out = "";
+    // Character by character, so a `"""` whose first quote is escaped (`\"""`) does not close the string, while one
+    // after an escaped backslash (`\\"""`) does.
+    while (pos < end) {
+      const ch = src[pos] as string;
+      if (ch === '"' && src.startsWith('"""', pos)) {
+        // A run of more than three quotes closes on its last three: the ones before them belong to the string.
+        let stop = pos;
+        while (src[stop + 3] === '"') stop++;
+        out += src.slice(pos, stop);
+        pos = stop + 3;
+        return out;
+      }
+      if (ch === "\\") {
+        // A backslash that ends a line drops the line break and all the whitespace and line breaks after it.
+        let next = pos + 1;
+        while (src[next] === " " || src[next] === "\t") next++;
+        if (src[next] === "\n" || (src[next] === "\r" && src[next + 1] === "\n")) {
+          pos = next;
+          while (pos < end && " \t\r\n".includes(src[pos] as string)) pos++;
+          continue;
+        }
+        out += escapeSequence();
+        continue;
+      }
+      out += ch;
+      pos++;
+    }
+    return fail();
+  };
   const basicString = (): string => {
     // pos is on the opening quote.
-    if (src.startsWith('"""', pos)) {
-      const close = src.indexOf('"""', pos + 3);
-      if (close === -1) fail();
-      let stop = close;
-      // A run of more than three quotes closes on its last three.
-      while (src[stop + 3] === '"') stop++;
-      const value = src.slice(pos + 3, stop);
-      pos = stop + 3;
-      return value;
-    }
+    if (src.startsWith('"""', pos)) return multiLineBasicString();
     let out = "";
     pos++;
     while (pos < end) {
@@ -88,21 +133,7 @@ export function parseToml(text: string): TomlTable[] | null {
       }
       if (ch === "\n") fail();
       if (ch === "\\") {
-        const next = src[pos + 1];
-        if (next === "u" || next === "U") {
-          const size = next === "u" ? 4 : 8;
-          const hex = src.slice(pos + 2, pos + 2 + size);
-          const code = /^[0-9a-fA-F]+$/.test(hex) && hex.length === size ? Number.parseInt(hex, 16) : Number.NaN;
-          if (!Number.isFinite(code) || code > 0x10ffff) fail();
-          out += String.fromCodePoint(code);
-          pos += 2 + size;
-          continue;
-        }
-        const map: Record<string, string> = { '"': '"', "\\": "\\", n: "\n", t: "\t", r: "\r", b: "\b", f: "\f" };
-        const mapped = next === undefined ? undefined : map[next];
-        if (mapped === undefined) fail();
-        out += mapped;
-        pos += 2;
+        out += escapeSequence();
         continue;
       }
       out += ch;

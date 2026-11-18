@@ -32,6 +32,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   lcov, Cobertura, diff and config parsers are hand-written; JS/TS test and config files go through TypeScript's parser,
   used only to build a syntax tree, and Python test files through the runner's `python3` (`ast.parse`). The Action has
   three direct runtime dependencies, not two: `typescript5` ships as the sha256-pinned `packages/action/dist/typescript.js`.
+- Fixed: a `pyproject.toml` whose multi-line string holds an escaped quote (`"""A \"""quoted\""" word"""`) is read
+  (CORE-94). The TOML readers closed the string at the first `"""`, read the valid file as broken and skipped it with a
+  `DEPENDENCY_CHECK_INCOMPLETE` warning, so a git dependency in it went unreported. Multi-line basic strings are now
+  read character by character with their escapes; the pytest table reader in `pyproject.toml` honours them too.
 - Docs: `docs/PRECISION.md` gains a Python precision corpus (CORE-72): 600 merged PRs of `langchain-ai/langchain`,
   `pydantic/pydantic` and `python-poetry/poetry`, frozen in `docs/precision/corpus-python/`, with every block finding
   reviewed by hand. TI02 falsely blocks 6 of 600 Python PRs (1.0 %, tests renamed in place and rewritten); TI01 0.7 %;

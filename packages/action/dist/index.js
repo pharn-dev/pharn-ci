@@ -29157,6 +29157,7 @@ function parsePnpmLock(text) {
 
 // ../core/src/dependencies/toml.ts
 var MAX_DEPTH2 = 32;
+var ESCAPES2 = { '"': '"', "\\": "\\", n: "\n", t: "	", r: "\r", b: "\b", f: "\f" };
 var TomlError = class extends Error {
 };
 var isBare = (c) => c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c >= "0" && c <= "9" || c === "_" || c === "-";
@@ -29197,16 +29198,52 @@ function parseToml(text) {
     if (src[pos] === "\r") pos++;
     if (pos < end && src[pos] !== "\n") fail2();
   };
-  const basicString = () => {
-    if (src.startsWith('"""', pos)) {
-      const close = src.indexOf('"""', pos + 3);
-      if (close === -1) fail2();
-      let stop = close;
-      while (src[stop + 3] === '"') stop++;
-      const value2 = src.slice(pos + 3, stop);
-      pos = stop + 3;
-      return value2;
+  const escapeSequence = () => {
+    const next = src[pos + 1];
+    if (next === "u" || next === "U") {
+      const size = next === "u" ? 4 : 8;
+      const hex = src.slice(pos + 2, pos + 2 + size);
+      const code2 = /^[0-9a-fA-F]+$/.test(hex) && hex.length === size ? Number.parseInt(hex, 16) : Number.NaN;
+      if (!Number.isFinite(code2) || code2 > 1114111) fail2();
+      pos += 2 + size;
+      return String.fromCodePoint(code2);
     }
+    const mapped = (next === void 0 ? void 0 : ESCAPES2[next]) ?? fail2();
+    pos += 2;
+    return mapped;
+  };
+  const multiLineBasicString = () => {
+    pos += 3;
+    if (src[pos] === "\n") pos++;
+    else if (src[pos] === "\r" && src[pos + 1] === "\n") pos += 2;
+    let out = "";
+    while (pos < end) {
+      const ch = src[pos];
+      if (ch === '"' && src.startsWith('"""', pos)) {
+        let stop = pos;
+        while (src[stop + 3] === '"') stop++;
+        out += src.slice(pos, stop);
+        pos = stop + 3;
+        return out;
+      }
+      if (ch === "\\") {
+        let next = pos + 1;
+        while (src[next] === " " || src[next] === "	") next++;
+        if (src[next] === "\n" || src[next] === "\r" && src[next + 1] === "\n") {
+          pos = next;
+          while (pos < end && " 	\r\n".includes(src[pos])) pos++;
+          continue;
+        }
+        out += escapeSequence();
+        continue;
+      }
+      out += ch;
+      pos++;
+    }
+    return fail2();
+  };
+  const basicString = () => {
+    if (src.startsWith('"""', pos)) return multiLineBasicString();
     let out = "";
     pos++;
     while (pos < end) {
@@ -29217,21 +29254,7 @@ function parseToml(text) {
       }
       if (ch === "\n") fail2();
       if (ch === "\\") {
-        const next = src[pos + 1];
-        if (next === "u" || next === "U") {
-          const size = next === "u" ? 4 : 8;
-          const hex = src.slice(pos + 2, pos + 2 + size);
-          const code2 = /^[0-9a-fA-F]+$/.test(hex) && hex.length === size ? Number.parseInt(hex, 16) : Number.NaN;
-          if (!Number.isFinite(code2) || code2 > 1114111) fail2();
-          out += String.fromCodePoint(code2);
-          pos += 2 + size;
-          continue;
-        }
-        const map = { '"': '"', "\\": "\\", n: "\n", t: "	", r: "\r", b: "\b", f: "\f" };
-        const mapped = next === void 0 ? void 0 : map[next];
-        if (mapped === void 0) fail2();
-        out += mapped;
-        pos += 2;
+        out += escapeSequence();
         continue;
       }
       out += ch;
@@ -40531,6 +40554,14 @@ function stringEnd2(text, open3) {
   }
   return -1;
 }
+function closesMultiLine(line, from, delimiter) {
+  if (delimiter === "'''") return line.includes(delimiter, from);
+  for (let i = from; i < line.length; i++) {
+    if (line[i] === "\\") i++;
+    else if (line.startsWith(delimiter, i)) return true;
+  }
+  return false;
+}
 function stripTomlComment(line) {
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
@@ -40690,12 +40721,12 @@ function readTable(lines, headerAt2) {
     const first = i;
     const multi = rest.startsWith('"""') ? '"""' : rest.startsWith("'''") ? "'''" : null;
     if (multi !== null) {
-      let closed = rest.slice(3).includes(multi);
+      let closed = closesMultiLine(rest, 3, multi);
       while (!closed) {
         i++;
         const more = lines.at(i);
         if (more === void 0) return null;
-        closed = more.includes(multi);
+        closed = closesMultiLine(more, 0, multi);
       }
       entries.set(key, { value: { type: "opaque", text: normalizeOpaque(rest) }, line: first + 1 });
       i++;
