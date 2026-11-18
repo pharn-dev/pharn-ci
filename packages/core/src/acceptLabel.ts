@@ -6,6 +6,7 @@ import {
   testIntegritySignalMessages,
   verdictOf,
 } from "./report.js";
+import { WHOLE_RUN_SENTENCE_LEADS } from "./testIntegrityUnreadable.js";
 import { hasUnsafeChar } from "./text.js";
 
 /**
@@ -148,10 +149,36 @@ function signalsVerdict(signals: readonly TestIntegritySignal[]): "pass" | "warn
 }
 
 /**
+ * Whether a message is an error the accept label lowers to a warning: a `TEST_INTEGRITY_TEXT_TRUNCATED` error, or a
+ * `TEST_INTEGRITY_INDEX_UNAVAILABLE` error whose text holds no whole-run sentence (`WHOLE_RUN_SENTENCE_LEADS`), that is,
+ * a per-file error. A message that holds a per-file error and a whole-run sentence stays an error: the did-not-run error
+ * is never lifted.
+ */
+export function isLiftableUnreadableError(message: Message): boolean {
+  if (message.level !== "error") return false;
+  if (message.code === "TEST_INTEGRITY_TEXT_TRUNCATED") return true;
+  if (message.code !== "TEST_INTEGRITY_INDEX_UNAVAILABLE") return false;
+  return !WHOLE_RUN_SENTENCE_LEADS.some((lead) => message.text.includes(lead));
+}
+
+/**
+ * Whether the accept label is worth looking at for this report: the mode is `block` and the report holds a `block`
+ * signal or a message `isLiftableUnreadableError`. Anything else asks nothing.
+ */
+export function acceptLabelApplies(report: Report): boolean {
+  if (report.testIntegrity.mode !== "block") return false;
+  return (
+    report.testIntegrity.signals.some((s) => s.severity === "block") || report.messages.some(isLiftableUnreadableError)
+  );
+}
+
+/**
  * A reviewer's sign-off: every `block` signal becomes `warn` (same id, path, line, detail), the `TEST_INTEGRITY_TI*`
- * messages are rebuilt from the new severities, one `TEST_INTEGRITY_ACCEPTED` message and `testIntegrity.accepted`
- * record who accepted it, and both verdicts are recomputed. Other messages, such as a diff coverage error, stay.
- * `by` must already be a validated login. Returns a new report; never changes its input.
+ * messages are rebuilt from the new severities, every per-file `TEST_INTEGRITY_INDEX_UNAVAILABLE` error and every
+ * `TEST_INTEGRITY_TEXT_TRUNCATED` error becomes a warning (`isLiftableUnreadableError`; text and fix kept, the
+ * did-not-run error stays), one `TEST_INTEGRITY_ACCEPTED` message and `testIntegrity.accepted` record who accepted it,
+ * and both verdicts are recomputed. Other messages, such as a diff coverage error, stay. `by` must already be a
+ * validated login. Returns a new report; never changes its input.
  */
 export function acceptTestIntegrity(report: Report, accepted: { label: string; by: string }): Report {
   const signals = report.testIntegrity.signals.map((s) =>
@@ -168,7 +195,7 @@ export function acceptTestIntegrity(report: Report, accepted: { label: string; b
   let placed = false;
   for (const message of report.messages) {
     if (!isSignalMessage(message)) {
-      messages.push(message);
+      messages.push(isLiftableUnreadableError(message) ? { ...message, level: "warn" } : message);
       continue;
     }
     if (placed) continue;

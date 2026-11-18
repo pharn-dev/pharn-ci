@@ -1,4 +1,4 @@
-import { DEFAULT_ACCEPT_LABEL, GITHUB_LOGIN } from "../acceptLabel.js";
+import { DEFAULT_ACCEPT_LABEL, GITHUB_LOGIN, isLiftableUnreadableError } from "../acceptLabel.js";
 import type { CoverageFormat } from "../coverage/types.js";
 import type { PolicyUnavailableReason } from "../policy/resolved.js";
 import {
@@ -124,7 +124,7 @@ export const MESSAGE_HINTS: Readonly<Record<MessageCode, Hint>> = {
   TEST_INTEGRITY_TI16: "Fix the lint or type error the comment hides, or say in the PR why the test needs it.",
   TEST_INTEGRITY_TI17: "Restore the assertion that can fail, or say in the PR why the test checks less now.",
   TEST_INTEGRITY_INDEX_UNAVAILABLE:
-    "Review the named test files by hand for removed tests and weakened assertions. A file over 512 KiB, one with many syntax errors, a missing Python 3.8 or newer for `.py` files, or git objects that could not be read stop the comparison.",
+    "A file over 512 KiB or nested too deeply, one with many syntax errors, more than 200 touched test files, a missing Python 3.8 or newer for `.py` files, or git objects that could not be read stop the comparison. Review the named test files by hand for removed tests and weakened assertions.",
   TEST_INTEGRITY_TEXT_TRUNCATED:
     "Review the named files by hand for skipped, focused or weakened tests, or split the change so each file stays under the limit.",
   TEST_INTEGRITY_ACCEPTED:
@@ -222,13 +222,17 @@ export const MESSAGE_HINTS: Readonly<Record<MessageCode, Hint>> = {
 };
 
 /**
- * The codes of the signals that are `warn` unless an org policy raises them. The accept label is read only when a
- * finding blocks, so their hints offer it only on a block finding (or an error-level message), where it counts.
+ * The codes of the signals that are `warn` unless an org policy raises them, and the two messages that are an error
+ * only for a per-file or truncation cause. The accept label is read only when a finding blocks, so their hints offer it
+ * only on a block finding (or an error-level message the label lowers), where it counts. The two message codes are
+ * judged by `isLiftableUnreadableError`, so the clause never appears on the did-not-run error or on a warning.
  */
 const BLOCK_ONLY_ACCEPT_CLAUSE: ReadonlySet<string> = new Set([
   "TEST_INTEGRITY_TI06",
   "TEST_INTEGRITY_TI12",
   "TEST_INTEGRITY_TI17",
+  "TEST_INTEGRITY_INDEX_UNAVAILABLE",
+  "TEST_INTEGRITY_TEXT_TRUNCATED",
 ]);
 
 /**
@@ -1092,7 +1096,8 @@ function policyCell(report: Report): string {
 
 function renderMessage(m: Message, report: Report): string {
   const line = `- ${LEVEL_ICON[m.level]} \`${m.code}\` ${inlineText(m.text)}`;
-  const hint = hintFor(m.code, acceptLabelOf(report), m.level === "error");
+  const lifted = m.code === "TEST_INTEGRITY_INDEX_UNAVAILABLE" || m.code === "TEST_INTEGRITY_TEXT_TRUNCATED";
+  const hint = hintFor(m.code, acceptLabelOf(report), lifted ? isLiftableUnreadableError(m) : m.level === "error");
   return hint === undefined ? line : `${line}\n  - Hint: ${hint}`;
 }
 

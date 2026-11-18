@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
+import { withoutCore69SchemaEdits } from "./core69-schema.js";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { withoutTi17SchemaEdits } from "./ti17-schema.js";
 import { V060_CODE_TEXT, V060_CODES } from "./v060-codes.js";
@@ -165,7 +166,10 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
     // Re-pinned for ti17-always-true-matcher-2: the TI17 id pattern and code text are taken out first (ti17-schema.ts).
     const v2 = withoutSchemaLevelEdits(
       withoutV080Properties(
-        withoutV070Properties(withoutV090SchemaEdits(withoutTi17SchemaEdits(read("schema/report.v2.json")))),
+        // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
+        withoutV070Properties(
+          withoutV090SchemaEdits(withoutTi17SchemaEdits(withoutCore69SchemaEdits(read("schema/report.v2.json")))),
+        ),
       ),
     );
     const baseDescription = strings(JSON.parse(v2Base)).find((s) => s.includes(" Codes added in v0.4.0:"));

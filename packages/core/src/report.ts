@@ -8,6 +8,7 @@ import type { FixHint } from "./fix/table.js";
 import type { AgentSetupFile, AgentSetupInventory } from "./setup/scan.js";
 import { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
 import type { ResolvedTestIntegrityMode } from "./testIntegrityMode.js";
+import { ti09NotRunStart, ti0205NotRunStart } from "./testIntegrityUnreadable.js";
 import { cutCodeUnits, replaceUnsafeChars } from "./text.js";
 
 /**
@@ -357,10 +358,16 @@ export interface OmittedSignals {
 
 /**
  * Test files that TI02 and TI05 could not compare, or why they did not run at all. The `{ files }` form also carries the
- * added test files whose tests could not be read (`added`): nothing that reads an added file's tests checked them.
+ * added test files whose tests could not be read (`added`): nothing that reads an added file's tests checked them. A
+ * `files` entry with `changeMadeUnreadable` is a modified test file the change made unreadable at HEAD
+ * (see `testIntegrityUnreadable.ts`); it makes the message an error in mode `block`. The flag is an input only and
+ * never reaches the report.
  */
 export type TestIndexUnavailable =
-  | { files: readonly { path: string; reason: string }[]; added?: readonly { path: string; reason: string }[] }
+  | {
+      files: readonly { path: string; reason: string; changeMadeUnreadable?: boolean }[];
+      added?: readonly { path: string; reason: string }[];
+    }
   | { notRun: string };
 
 /** Touched test-config files that TI09 could not read, or why it did not run at all. */
@@ -420,16 +427,24 @@ export interface BuildReportInput {
   /**
    * The files whose kept diff text was cut at the bound where a signal reads the added lines (see
    * `textCutSignalFiles`), so a finding past the cut is not seen. Adds one `TEST_INTEGRITY_TEXT_TRUNCATED` warn
-   * message unless the mode is off. Absent or empty adds nothing.
+   * message unless the mode is off (an error in mode `block` when `textTruncatedTestFiles` is not empty). Absent or
+   * empty adds nothing.
    */
   textTruncatedFiles?: readonly string[];
+  /**
+   * The cut files of `textTruncatedFiles` that are test files the change modifies (see `textCutModifiedTestFiles`). With
+   * at least one and mode `block`, the `TEST_INTEGRITY_TEXT_TRUNCATED` message is an error, which the accept label
+   * lowers to a warning. A build input only; it never reaches the report.
+   */
+  textTruncatedTestFiles?: readonly string[];
   /** The sorted languages of the test files the base-and-head signals indexed; fills `testIntegrity.languages`. */
   testIntegrityLanguages?: readonly ("ts" | "js" | "py" | "go")[];
   /** Findings the per-file cap left out of `testIntegrity.signals`; the TI02, TI05, TI06, TI09 and TI12 messages say how many. */
   omittedSignals?: readonly OmittedSignals[];
   /**
    * Touched test files TI02 and TI05 could not compare, or why they did not run; adds one message: a warn, except an
-   * error in mode `block` when they did not run at all (the `{ notRun }` form).
+   * error in mode `block` when they did not run at all (the `{ notRun }` form) or when a `files` entry carries
+   * `changeMadeUnreadable`.
    */
   testIndexUnavailable?: TestIndexUnavailable;
   /** The tests-changed summary (see `summarizeTestChanges`); fills `testIntegrity.changes`. Absent adds nothing. */
@@ -821,7 +836,7 @@ export function buildReport(input: BuildReportInput): Report {
   const cut = input.textTruncatedFiles ?? [];
   if (cut.length > 0 && testIntegrity?.mode !== "off") {
     messages.push({
-      level: "warn",
+      level: testIntegrity?.mode === "block" && (input.textTruncatedTestFiles ?? []).length > 0 ? "error" : "warn",
       code: "TEST_INTEGRITY_TEXT_TRUNCATED",
       text: `This change is too large to check in full in ${pathList(cut)}: test integrity reads the first ${MAX_KEPT_LINES} changed lines of a file, so a weakened test past them is not seen.`,
     });
@@ -982,8 +997,9 @@ export function oneLine(text: string): string {
 /**
  * The level of the `TEST_INTEGRITY_INDEX_UNAVAILABLE` message. In mode `block` it is an error when TI02 and TI05, or TI09,
  * did not run at all (the `{ notRun }` form): block asked for a test-integrity gate, and a gate that could not read the
- * touched test text fails closed (pre-sale review item 4). The per-file `{ files }` form (its unread added files
- * included: an added file cannot hide a weakened existing test) and every other mode stay a warning.
+ * touched test text fails closed (pre-sale review item 4). It is also an error when a `{ files }` entry carries
+ * `changeMadeUnreadable` (a modified test file the change made unreadable at HEAD). The other per-file entries (its
+ * unread added files included: an added file cannot hide a weakened existing test) and every other mode stay a warning.
  */
 function indexUnavailableLevel(
   mode: string | undefined,
@@ -994,7 +1010,11 @@ function indexUnavailableLevel(
   const notRun =
     (unavailable !== undefined && "notRun" in unavailable) ||
     (configUnavailable !== undefined && "notRun" in configUnavailable);
-  return notRun ? "error" : "warn";
+  const unreadable =
+    unavailable !== undefined &&
+    "files" in unavailable &&
+    unavailable.files.some((f) => f.changeMadeUnreadable === true);
+  return notRun || unreadable ? "error" : "warn";
 }
 
 /**
@@ -1013,7 +1033,7 @@ function indexUnavailableText(
   if (unavailable !== undefined) {
     if ("notRun" in unavailable) {
       parts.push(
-        `TI02 and TI05 did not run: the text of the touched test files could not be read (${codeSpan(oneLine(unavailable.notRun))}), so removed tests and emptied assertions are not checked.`,
+        `${ti0205NotRunStart(codeSpan(oneLine(unavailable.notRun)))}, so removed tests and emptied assertions are not checked.`,
       );
     } else {
       if (unavailable.files.length > 0) {
@@ -1031,7 +1051,7 @@ function indexUnavailableText(
   if (configUnavailable !== undefined) {
     if ("notRun" in configUnavailable) {
       parts.push(
-        `TI09 did not run: the text of the touched test-config files could not be read (${codeSpan(oneLine(configUnavailable.notRun))}), so loosened test settings are not checked.`,
+        `${ti09NotRunStart(codeSpan(oneLine(configUnavailable.notRun)))}, so loosened test settings are not checked.`,
       );
     } else if (configUnavailable.files.length > 0) {
       parts.push(

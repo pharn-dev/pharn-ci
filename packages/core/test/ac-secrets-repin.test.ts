@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { withoutCore69SchemaEdits } from "./core69-schema.js";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { withoutTi17SchemaEdits } from "./ti17-schema.js";
 import { V070_CODES, withoutV070Properties } from "./v070-codes.js";
@@ -133,7 +134,10 @@ describe("the v0.4.0 codes are the only schema and report.ts additions, and the 
     // Re-pinned for ti17-always-true-matcher-2: the TI17 id pattern and code text are taken out first (ti17-schema.ts).
     const schemaWithIsAgentPr = withoutSchemaLevelEdits(
       withoutV080Properties(
-        withoutV070Properties(withoutV090SchemaEdits(withoutTi17SchemaEdits(read("schema/report.v2.json")))),
+        // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
+        withoutV070Properties(
+          withoutV090SchemaEdits(withoutTi17SchemaEdits(withoutCore69SchemaEdits(read("schema/report.v2.json")))),
+        ),
       ),
     );
     expect(schemaWithIsAgentPr.split(isAgentPrLines).length - 1, "the four isAgentPr lines appear once").toBe(1);

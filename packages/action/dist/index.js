@@ -26413,6 +26413,22 @@ function summarizeAgentSetup(files) {
   return { byKind, tools: [...tools].sort() };
 }
 
+// ../core/src/testIntegrityUnreadable.ts
+var HEAD_UNREADABLE_ERROR_REASONS = ["too-deep", "too-large", "over-file-cap"];
+function changeMadeUnreadable(base, headReason) {
+  if (!HEAD_UNREADABLE_ERROR_REASONS.includes(headReason)) return false;
+  return base.ok || base.reason === "over-file-cap";
+}
+var TI0205_NOT_RUN_LEAD = "TI02 and TI05 did not run: the text of the touched test files could not be read (";
+var TI09_NOT_RUN_LEAD = "TI09 did not run: the text of the touched test-config files could not be read (";
+function ti0205NotRunStart(reasonSpan) {
+  return `${TI0205_NOT_RUN_LEAD}${reasonSpan})`;
+}
+function ti09NotRunStart(reasonSpan) {
+  return `${TI09_NOT_RUN_LEAD}${reasonSpan})`;
+}
+var WHOLE_RUN_SENTENCE_LEADS = [TI0205_NOT_RUN_LEAD, TI09_NOT_RUN_LEAD];
+
 // ../core/src/report.ts
 function emptyTestIntegrity() {
   return { mode: "warn", source: "default", verdict: "pass", signals: [], languages: [] };
@@ -26666,7 +26682,7 @@ function buildReport(input) {
   const cut = input.textTruncatedFiles ?? [];
   if (cut.length > 0 && testIntegrity2?.mode !== "off") {
     messages.push({
-      level: "warn",
+      level: testIntegrity2?.mode === "block" && (input.textTruncatedTestFiles ?? []).length > 0 ? "error" : "warn",
       code: "TEST_INTEGRITY_TEXT_TRUNCATED",
       text: `This change is too large to check in full in ${pathList(cut)}: test integrity reads the first ${MAX_KEPT_LINES} changed lines of a file, so a weakened test past them is not seen.`
     });
@@ -26785,14 +26801,15 @@ function oneLine(text) {
 function indexUnavailableLevel(mode, unavailable2, configUnavailable) {
   if (mode !== "block") return "warn";
   const notRun = unavailable2 !== void 0 && "notRun" in unavailable2 || configUnavailable !== void 0 && "notRun" in configUnavailable;
-  return notRun ? "error" : "warn";
+  const unreadable = unavailable2 !== void 0 && "files" in unavailable2 && unavailable2.files.some((f) => f.changeMadeUnreadable === true);
+  return notRun || unreadable ? "error" : "warn";
 }
 function indexUnavailableText(unavailable2, configUnavailable) {
   const parts = [];
   if (unavailable2 !== void 0) {
     if ("notRun" in unavailable2) {
       parts.push(
-        `TI02 and TI05 did not run: the text of the touched test files could not be read (${codeSpan(oneLine(unavailable2.notRun))}), so removed tests and emptied assertions are not checked.`
+        `${ti0205NotRunStart(codeSpan(oneLine(unavailable2.notRun)))}, so removed tests and emptied assertions are not checked.`
       );
     } else {
       if (unavailable2.files.length > 0) {
@@ -26810,7 +26827,7 @@ function indexUnavailableText(unavailable2, configUnavailable) {
   if (configUnavailable !== void 0) {
     if ("notRun" in configUnavailable) {
       parts.push(
-        `TI09 did not run: the text of the touched test-config files could not be read (${codeSpan(oneLine(configUnavailable.notRun))}), so loosened test settings are not checked.`
+        `${ti09NotRunStart(codeSpan(oneLine(configUnavailable.notRun)))}, so loosened test settings are not checked.`
       );
     } else if (configUnavailable.files.length > 0) {
       parts.push(
@@ -26930,6 +26947,16 @@ function signalsVerdict(signals) {
   if (signals.some((s) => s.severity === "warn")) return "warn";
   return "pass";
 }
+function isLiftableUnreadableError(message) {
+  if (message.level !== "error") return false;
+  if (message.code === "TEST_INTEGRITY_TEXT_TRUNCATED") return true;
+  if (message.code !== "TEST_INTEGRITY_INDEX_UNAVAILABLE") return false;
+  return !WHOLE_RUN_SENTENCE_LEADS.some((lead) => message.text.includes(lead));
+}
+function acceptLabelApplies(report) {
+  if (report.testIntegrity.mode !== "block") return false;
+  return report.testIntegrity.signals.some((s) => s.severity === "block") || report.messages.some(isLiftableUnreadableError);
+}
 function acceptTestIntegrity(report, accepted) {
   const signals = report.testIntegrity.signals.map(
     (s) => s.severity === "block" ? { ...s, severity: "warn" } : s
@@ -26944,7 +26971,7 @@ function acceptTestIntegrity(report, accepted) {
   let placed = false;
   for (const message of report.messages) {
     if (!isSignalMessage(message)) {
-      messages.push(message);
+      messages.push(isLiftableUnreadableError(message) ? { ...message, level: "warn" } : message);
       continue;
     }
     if (placed) continue;
@@ -33253,6 +33280,15 @@ function textCutSignalFiles(diff, configPath, repoRoot) {
   }
   return [...cut].sort(byCodeUnit);
 }
+function textCutModifiedTestFiles(diff) {
+  const cut = /* @__PURE__ */ new Set();
+  for (const file of diff) {
+    if (file.textTruncated !== true || file.binary === true) continue;
+    if (file.status !== "modified" && !(file.status === "renamed" && isTestFile(file.oldPath))) continue;
+    if (isTestFile(file.path) && testLanguage(file.path) !== null) cut.add(file.path);
+  }
+  return [...cut].sort(byCodeUnit);
+}
 
 // ../core/src/policy/selfmod/paths.ts
 var CODEOWNERS_PATHS = /* @__PURE__ */ new Set(["CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS"]);
@@ -35883,12 +35919,14 @@ function isUnsafeTestSourcePath(path) {
   }
   return path.split("/").some((segment) => segment === "" || segment === "." || segment === "..");
 }
-function planTestSourceReads(paths, objects, limits = TEST_SOURCE_LIMITS) {
+function planTestSourceReads(paths, objects, limits = TEST_SOURCE_LIMITS, first) {
   const read = [];
   const dropped = [];
   let total = 0;
   let tripped = false;
-  for (const path of [...new Set(paths)].sort(byCodeUnit)) {
+  const unique = [...new Set(paths)].sort(byCodeUnit);
+  const ordered = first === void 0 || first.size === 0 ? unique : [...unique.filter((path) => first.has(path)), ...unique.filter((path) => !first.has(path))];
+  for (const path of ordered) {
     if (isUnsafeTestSourcePath(path)) {
       dropped.push({ path, reason: "unsafe-path" });
       continue;
@@ -35907,6 +35945,10 @@ function planTestSourceReads(paths, objects, limits = TEST_SOURCE_LIMITS) {
       total += object.size;
       read.push(path);
     }
+  }
+  if (ordered !== unique) {
+    read.sort(byCodeUnit);
+    dropped.sort((a, b) => byCodeUnit(a.path, b.path));
   }
   return { read, dropped };
 }
@@ -36725,24 +36767,47 @@ function pythonLookupOf(index) {
   if (!index.available) return { unavailable: index.reason, base: /* @__PURE__ */ new Map(), head: /* @__PURE__ */ new Map() };
   return { unavailable: null, base: mapOf(index.base), head: mapOf(index.head) };
 }
-function indexTouchedTestFiles(diff, sources, python) {
-  const comparedPaths = /* @__PURE__ */ new Map();
-  const addedPaths = /* @__PURE__ */ new Map();
+function touchedTestEntries(diff) {
+  const compared2 = /* @__PURE__ */ new Map();
+  const added = /* @__PURE__ */ new Map();
   for (const file of diff) {
     const language = languageOf(file.path);
     if (language === null || !isTestFile(file.path)) continue;
     if (file.status === "modified" || file.status === "renamed" && isTestFile(file.oldPath)) {
-      comparedPaths.set(`${file.oldPath}\0${file.path}`, { basePath: file.oldPath, headPath: file.path, language });
+      compared2.set(`${file.oldPath}\0${file.path}`, { basePath: file.oldPath, headPath: file.path, language });
     } else if (file.status === "added") {
-      addedPaths.set(file.path, language);
+      added.set(file.path, language);
     }
   }
+  return { compared: compared2, added };
+}
+function modifiedTestSourcePaths(diff) {
+  const base = /* @__PURE__ */ new Set();
+  const head = /* @__PURE__ */ new Set();
+  for (const entry of touchedTestEntries(diff).compared.values()) {
+    base.add(entry.basePath);
+    head.add(entry.headPath);
+  }
+  return { base: [...base].sort(byCodeUnit), head: [...head].sort(byCodeUnit) };
+}
+function pythonNotFoundStopsComparison(diff, python) {
+  if (python === void 0 || python.available || python.reason !== "python-not-found") return false;
+  for (const entry of touchedTestEntries(diff).compared.values()) {
+    if (entry.language === "py") return true;
+  }
+  return false;
+}
+function indexTouchedTestFiles(diff, sources, python) {
+  const { compared: comparedPaths, added: addedPaths } = touchedTestEntries(diff);
   if (comparedPaths.size > 0) {
     const why = [
       ...new Set([sources.base, sources.head].flatMap((side) => "unavailable" in side ? [side.unavailable] : []))
     ];
     if (why.length > 0) {
       return { pairs: [], added: [], unavailable: [], unreadAdded: [], notRun: why.join("; "), languages: [] };
+    }
+    if (pythonNotFoundStopsComparison(diff, python)) {
+      return { pairs: [], added: [], unavailable: [], unreadAdded: [], notRun: "python-not-found", languages: [] };
     }
   } else if ("unavailable" in sources.head) {
     return { pairs: [], added: [], unavailable: [], unreadAdded: [], notRun: null, languages: [] };
@@ -36792,8 +36857,10 @@ function indexTouchedTestFiles(diff, sources, python) {
         ...head.imports === void 0 ? {} : { headImports: head.imports }
       });
     } else {
-      const reason = base.ok ? head.reason : base.reason;
-      unavailable2.push({ path: file.headPath, reason });
+      const headReason = head.ok ? null : head.reason;
+      const reason = base.ok ? headReason : base.reason;
+      const unreadable = headReason !== null && changeMadeUnreadable(base, headReason);
+      unavailable2.push({ path: file.headPath, reason, ...unreadable ? { changeMadeUnreadable: true } : {} });
     }
   }
   unavailable2.sort((a, b) => byCodeUnit(a.path, b.path));
@@ -42725,6 +42792,7 @@ function check(input) {
   }
   const testExercise = parsedDiff !== null && touched !== null && touched.notRun === null && input.testSources !== void 0 && !("unavailable" in input.testSources.head) ? detectUnexercisedChanges(parsedDiff, touched, input.repoFiles, isExcluded) ?? void 0 : void 0;
   const textTruncatedFiles = parsedDiff === null || testIntegrity2.mode === "off" ? [] : textCutSignalFiles(parsedDiff, input.configPath, input.repoRoot);
+  const textTruncatedTestFiles = parsedDiff === null || testIntegrity2.mode === "off" ? [] : textCutModifiedTestFiles(parsedDiff);
   const coverageInput = input.coverage;
   let files;
   let selection;
@@ -42856,6 +42924,7 @@ function check(input) {
     testIntegrity: testIntegrity2,
     ...finalSignals.length > 0 ? { testIntegritySignals: finalSignals } : {},
     ...textTruncatedFiles.length > 0 ? { textTruncatedFiles } : {},
+    ...textTruncatedTestFiles.length > 0 ? { textTruncatedTestFiles } : {},
     ...comparison === null || comparison.languages.length === 0 ? {} : { testIntegrityLanguages: comparison.languages },
     ...omittedSignals.length === 0 ? {} : { omittedSignals },
     ...comparison?.unavailable === void 0 ? {} : { testIndexUnavailable: comparison.unavailable },
@@ -44409,7 +44478,7 @@ var MESSAGE_HINTS = {
   TEST_INTEGRITY_TI15: "Check that the code handles the general case and not only the test's value, and add a test with another input.",
   TEST_INTEGRITY_TI16: "Fix the lint or type error the comment hides, or say in the PR why the test needs it.",
   TEST_INTEGRITY_TI17: "Restore the assertion that can fail, or say in the PR why the test checks less now.",
-  TEST_INTEGRITY_INDEX_UNAVAILABLE: "Review the named test files by hand for removed tests and weakened assertions. A file over 512 KiB, one with many syntax errors, a missing Python 3.8 or newer for `.py` files, or git objects that could not be read stop the comparison.",
+  TEST_INTEGRITY_INDEX_UNAVAILABLE: "A file over 512 KiB or nested too deeply, one with many syntax errors, more than 200 touched test files, a missing Python 3.8 or newer for `.py` files, or git objects that could not be read stop the comparison. Review the named test files by hand for removed tests and weakened assertions.",
   TEST_INTEGRITY_TEXT_TRUNCATED: "Review the named files by hand for skipped, focused or weakened tests, or split the change so each file stays under the limit.",
   TEST_INTEGRITY_ACCEPTED: "A reviewer other than the PR author signed off, so the block findings are warnings. The sign-off belongs to the pull request, not to a commit: remove the label if a later push should be judged again.",
   TEST_INTEGRITY_ACCEPT_IGNORED: "The block findings stand. Fix them, or ask a reviewer who is not the PR author to apply the label; it counts only when a user account other than the author applied it last.",
@@ -44472,7 +44541,9 @@ var MESSAGE_HINTS = {
 var BLOCK_ONLY_ACCEPT_CLAUSE = /* @__PURE__ */ new Set([
   "TEST_INTEGRITY_TI06",
   "TEST_INTEGRITY_TI12",
-  "TEST_INTEGRITY_TI17"
+  "TEST_INTEGRITY_TI17",
+  "TEST_INTEGRITY_INDEX_UNAVAILABLE",
+  "TEST_INTEGRITY_TEXT_TRUNCATED"
 ]);
 function hintFor(code2, label, blocks = false) {
   if (!Object.hasOwn(MESSAGE_HINTS, code2)) return void 0;
@@ -45092,7 +45163,8 @@ function policyCell(report) {
 }
 function renderMessage(m, report) {
   const line = `- ${LEVEL_ICON[m.level]} \`${m.code}\` ${inlineText(m.text)}`;
-  const hint = hintFor(m.code, acceptLabelOf(report), m.level === "error");
+  const lifted = m.code === "TEST_INTEGRITY_INDEX_UNAVAILABLE" || m.code === "TEST_INTEGRITY_TEXT_TRUNCATED";
+  const hint = hintFor(m.code, acceptLabelOf(report), lifted ? isLiftableUnreadableError(m) : m.level === "error");
   return hint === void 0 ? line : `${line}
   - Hint: ${hint}`;
 }
@@ -47122,7 +47194,9 @@ async function readTestSources(deps, options) {
       side?.objects.set(request2.path, result === null ? null : result.object);
       if (result !== null) side?.blobs.set(request2.path, result.oid);
     });
-    const plans = sides.map((side) => planTestSourceReads(side.paths, side.objects, options.limits));
+    const modified = options.select === void 0 ? modifiedTestSourcePaths(options.diff) : void 0;
+    const firsts = modified === void 0 ? [void 0, void 0] : [new Set(modified.base), new Set(modified.head)];
+    const plans = sides.map((side, i) => planTestSourceReads(side.paths, side.objects, options.limits, firsts[i]));
     const wanted = /* @__PURE__ */ new Set();
     plans.forEach((plan, i) => {
       for (const path of plan.read) wanted.add(sides[i]?.blobs.get(path));
@@ -47244,8 +47318,7 @@ var MAX_EVENT_PAGES = 10;
 async function applyAcceptLabel(deps, report, label, pullNumber) {
   const labelled = withAcceptLabel(report, label);
   if (pullNumber === void 0) return labelled;
-  const { mode, signals } = labelled.testIntegrity;
-  if (mode !== "block" || !signals.some((s) => s.severity === "block")) return labelled;
+  if (!acceptLabelApplies(labelled)) return labelled;
   const ignored = (reason) => {
     deps.info(`accept label ignored: ${reason}`);
     return ignoreAcceptLabel(labelled, label, reason);
@@ -48251,7 +48324,7 @@ async function runUnsafe(deps) {
   const pythonTestIndex = testSources === void 0 ? void 0 : await indexPythonTestSources(testSources, deps.indexPython ?? indexPythonTests);
   if (pythonTestIndex !== void 0 && !pythonTestIndex.available) {
     deps.info(
-      `pharn-ci: the Python test index is unavailable (${pythonTestIndex.reason}), so .py test files are not compared`
+      "parsed" in diff && pythonNotFoundStopsComparison(diff.parsed, pythonTestIndex) ? "pharn-ci: no Python interpreter was found (python-not-found), so TI02 and TI05 did not run" : `pharn-ci: the Python test index is unavailable (${pythonTestIndex.reason}), so .py test files are not compared`
     );
   }
   const agentPrFacts = await gatherAgentPrFacts(deps, target);

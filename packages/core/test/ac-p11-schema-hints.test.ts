@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { withoutCore69SchemaEdits } from "./core69-schema.js";
 import { fixture } from "./helpers.js";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { expectValidReport } from "./schema.js";
@@ -60,7 +61,10 @@ describe("the schema sentence and the hints for POLICY_P11 and AGENT_PR_DETECTIO
     // Re-pinned for ti17-always-true-matcher-2: the TI17 id pattern and code text are taken out first (ti17-schema.ts).
     const nowText = withoutSchemaLevelEdits(
       withoutV080Properties(
-        withoutV070Properties(withoutV090SchemaEdits(withoutTi17SchemaEdits(read("schema/report.v2.json")))),
+        // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
+        withoutV070Properties(
+          withoutV090SchemaEdits(withoutTi17SchemaEdits(withoutCore69SchemaEdits(read("schema/report.v2.json")))),
+        ),
       ),
     );
     const base = codeDescription(baseText);

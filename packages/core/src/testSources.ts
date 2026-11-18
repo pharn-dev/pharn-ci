@@ -161,18 +161,26 @@ export interface TestSourceObject {
  * applies: `unsafe-path`; `missing` (no entry, null, or not a blob); `too-large`; `over-file-cap` once
  * `MAX_TEST_SOURCE_FILES` files are planned; `over-total-cap` when the running total is tripped or this file would
  * take it past `MAX_TEST_SOURCE_TOTAL_BYTES`, which trips it for every later path. Otherwise the file is read and its
- * size is added to the total. `read` and `dropped` are each in path order.
+ * size is added to the total. Paths are taken in code-unit order, except that the paths in `first` (when given) are
+ * taken before all others, each group in code-unit order, so the other paths cannot use up the caps ahead of them.
+ * `read` and `dropped` are each returned in path order whatever the order they were planned in.
  */
 export function planTestSourceReads(
   paths: readonly string[],
   objects: ReadonlyMap<string, TestSourceObject | null>,
   limits: TestSourceReadLimits = TEST_SOURCE_LIMITS,
+  first?: ReadonlySet<string>,
 ): { read: string[]; dropped: TestSourceDrop[] } {
   const read: string[] = [];
   const dropped: TestSourceDrop[] = [];
   let total = 0;
   let tripped = false;
-  for (const path of [...new Set(paths)].sort(byCodeUnit)) {
+  const unique = [...new Set(paths)].sort(byCodeUnit);
+  const ordered =
+    first === undefined || first.size === 0
+      ? unique
+      : [...unique.filter((path) => first.has(path)), ...unique.filter((path) => !first.has(path))];
+  for (const path of ordered) {
     if (isUnsafeTestSourcePath(path)) {
       dropped.push({ path, reason: "unsafe-path" });
       continue;
@@ -191,6 +199,10 @@ export function planTestSourceReads(
       total += object.size;
       read.push(path);
     }
+  }
+  if (ordered !== unique) {
+    read.sort(byCodeUnit);
+    dropped.sort((a, b) => byCodeUnit(a.path, b.path));
   }
   return { read, dropped };
 }

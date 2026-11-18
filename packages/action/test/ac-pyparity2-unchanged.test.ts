@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { withoutCore69SchemaEdits } from "../../core/test/core69-schema.js";
 import { foldCoverageBar } from "../../core/test/helpers.js";
 import { withoutSchemaLevelEdits } from "../../core/test/level-edits.js";
 import { withoutTi17SchemaEdits } from "../../core/test/ti17-schema.js";
@@ -212,7 +213,10 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
       // Re-pinned for ti17-always-true-matcher-2: the TI17 id pattern and code text are taken out first (ti17-schema.ts).
       const withIsAgentPr = withoutSchemaLevelEdits(
         withoutV080Properties(
-          withoutV070Properties(withoutV090SchemaEdits(withoutTi17SchemaEdits(read(`schema/${name}`)))),
+          // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
+          withoutV070Properties(
+            withoutV090SchemaEdits(withoutTi17SchemaEdits(withoutCore69SchemaEdits(read(`schema/${name}`)))),
+          ),
         ),
       );
       expect(withIsAgentPr.split(isAgentPrLines).length - 1, "the four isAgentPr lines appear once").toBe(1);

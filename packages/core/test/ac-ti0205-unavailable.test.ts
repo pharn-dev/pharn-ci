@@ -101,11 +101,14 @@ const noDetail = (report: Report) => {
   expect(JSON.stringify(report)).not.toContain("SECRET-PYTHON");
 };
 
-/** Assert exactly one warn TEST_INTEGRITY_INDEX_UNAVAILABLE message naming `path` and `reason`, and no finding for it. */
-function expectUnavailable(report: Report, path: string, reason: string) {
+/**
+ * Assert exactly one TEST_INTEGRITY_INDEX_UNAVAILABLE message (level `warn` unless given) naming `path` and `reason`, and
+ * no finding for it.
+ */
+function expectUnavailable(report: Report, path: string, reason: string, level = "warn") {
   const messages = unavailableOf(report);
   expect(messages, `one ${CODE} message`).toHaveLength(1);
-  expect(messages[0]?.level).toBe("warn");
+  expect(messages[0]?.level).toBe(level);
   expect(messages[0]?.text).toContain(path);
   expect(messages[0]?.text).toContain(reason);
   expect(findingsFor(report, path), `no TI02 or TI05 for ${path}`).toEqual([]);
@@ -113,11 +116,13 @@ function expectUnavailable(report: Report, path: string, reason: string) {
 }
 
 describe("TEST_INTEGRITY_INDEX_UNAVAILABLE: a touched test file that could not be compared is named", () => {
-  it("AC-12: a modified src/a.test.ts whose head text was dropped as too-large is named with its reason and gives no finding; the same check in mode off adds no message", async () => {
+  it("AC-12: a modified src/a.test.ts dropped as too-large on both sides is named with its reason and gives no finding; the same check in mode off adds no message", async () => {
+    // CORE-69: a file that was readable at the merge base and is too large at HEAD is an error in block now, so this
+    // case drops the file on both sides: the change did not make it unreadable, and the per-file form stays a warning.
     const input = {
       diff: { text: removal("src/a.test.ts") },
       testSources: {
-        base: { files: [{ path: "src/a.test.ts", text: JS_BASE }], dropped: [] },
+        base: { files: [], dropped: [{ path: "src/a.test.ts", reason: "too-large" }] },
         head: { files: [], dropped: [{ path: "src/a.test.ts", reason: "too-large" }] },
       },
     };
@@ -149,7 +154,7 @@ describe("TEST_INTEGRITY_INDEX_UNAVAILABLE: a touched test file that could not b
     expectUnavailable(report, "src/b.test.ts", "syntax-error-heavy");
   });
 
-  it("AC-12: a modified tests/test_c.py with a Python run unavailable as python-not-found is named with its reason, gives no finding and never shows the run's detail", async () => {
+  it("AC-12: a modified tests/test_c.py with a Python run unavailable as python-not-found is the whole-run error (TI02 and TI05 did not run), names the reason, gives no finding and never shows the run's detail", async () => {
     const report = await run(
       {
         diff: {
@@ -163,7 +168,14 @@ describe("TEST_INTEGRITY_INDEX_UNAVAILABLE: a touched test file that could not b
       },
       "block",
     );
-    expectUnavailable(report, "tests/test_c.py", "python-not-found");
+    // CORE-69: no interpreter with a modified .py test file is the whole-run form: one error, no per-file warning.
+    const messages = unavailableOf(report);
+    expect(messages, `one ${CODE} message`).toHaveLength(1);
+    expect(messages[0]?.level).toBe("error");
+    expect(messages[0]?.text).toContain("TI02 and TI05 did not run");
+    expect(messages[0]?.text).toContain("python-not-found");
+    expect(findingsFor(report, "tests/test_c.py"), "no TI02 or TI05 for tests/test_c.py").toEqual([]);
+    noDetail(report);
   });
 
   it("AC-12: sources unavailable on both sides for a diff that modifies a test file add one message saying TI02 and TI05 did not run and why; for a diff that touches only source files and adds a test file they add none", async () => {

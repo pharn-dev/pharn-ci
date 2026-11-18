@@ -412,10 +412,19 @@ packages, re-exports through another source file and per-test coverage are not f
 [docs/LIMITS.md](./docs/LIMITS.md#what-the-tests-exercise-check-misses).
 
 Python test files are parsed with the runner's own `python3` (or `python`), 3.8 or newer, and only when the change
-modifies one. Without it, those files are named in `TEST_INTEGRITY_INDEX_UNAVAILABLE` (warn), the signals that compare
-test text skip them, and the diff-only signals still run. When TI02 and TI05, or TI09, did not run at all because the
-test text could not be read (a shallow checkout, or `pr-number` mode), that message is an error in `test-integrity:
-block`, so the check fails closed; the per-file form stays a warning.
+modifies one. When neither `python3` nor `python` is found on the runner, TI02 and TI05 do not run for that change
+(`TEST_INTEGRITY_INDEX_UNAVAILABLE`), and the diff-only signals still run; an added `.py` test file alone is only
+named (warn). A Python older than 3.8, or a Python run that fails, does not stop them: the modified `.py` test files
+are named in that message (warn) and the signals that compare test text skip them. When TI02 and TI05, or TI09, did
+not run at all because the test text could not be read (a shallow checkout, or `pr-number` mode), or because no
+Python was found, that message is an error in `test-integrity: block`, so the check fails closed. A test file the
+change modifies that cannot be read at HEAD (nested too deeply, over 512 KiB, pushed past the 200-file cap) is an
+error in `block` too, and so is a JS/TS, Python or Go test file the change modifies that has
+more than 5000 changed lines; the accept label lowers both. An added test file and a file already unreadable at the
+merge base stay a warning. The test files the change modifies are read before the added and deleted ones.
+The Python parser has its own cap of 200 files, shared by the merge base and HEAD: a modified `.py` test file counts once on each side and an added
+or deleted one once, so about 100 modified `.py` test files (fewer when the change also adds or deletes some) can push
+a modified one past it at HEAD, which is also an error in `block`.
 
 The block signals were measured on 600 merged pull requests of three open-source vitest repositories: TI01, TI02 and
 TI11 each falsely block 1 of 600 (0.17 %). The method, the reviewed findings and the warn and info signals' sampled
@@ -947,7 +956,9 @@ of the App never both appear for one upload.
 In `test-integrity: block` a block-level finding fails the check. A reviewer who is not the PR author can sign it off
 by applying the accept label (`pharn/accepted`, or the name in the `accept-label` input) to the pull request. The
 Action then downgrades every block finding to `warn`, adds `TEST_INTEGRITY_ACCEPTED` (`info`) and records who accepted
-it in `testIntegrity.accepted`; the comment says `Accepted via label ... by @login`. Diff coverage and every other
+it in `testIntegrity.accepted`; the comment says `Accepted via label ... by @login`. The label also lowers a per-file
+`TEST_INTEGRITY_INDEX_UNAVAILABLE` error and a `TEST_INTEGRITY_TEXT_TRUNCATED` error to `warn`, but never the error that
+says TI02 and TI05, or TI09, did not run. Diff coverage and every other
 check are unaffected, so a run below its threshold still fails.
 
 - **Who counts.** The newest `labeled` event for the label decides. Its actor must be a user account (not a bot or an
@@ -960,7 +971,7 @@ check are unaffected, so a run below its threshold still fails.
 - **Where it is set.** Only the `accept-label` input in the workflow. `test_integrity.accept_label` in `.pharn/ci.yml`
   is refused with an error, because the change under review can edit that file.
 - **When it is looked at.** On `pull_request` runs and `pr-number` runs, in `test-integrity: block`, with at least one
-  block finding, and only when the pull request carries the label. `merge_group`, `push`, `pull_request_target` and
+  block finding, or one of those two errors, and only when the pull request carries the label. `merge_group`, `push`, `pull_request_target` and
   `workflow_run` runs without `pr-number` never ask, so a block there stays a block. The CLI has no pull request and no
   labels and never honours the label; `--accept-label` is an unknown option.
 - **Triggers.** The label counts on a run that happens after it is applied, so list `labeled` and `unlabeled` next to
@@ -1241,7 +1252,7 @@ message `code`s, not on text:
 | `TEST_INTEGRITY_TI07`           | TI07: a test of a modified JS/TS or Python test file changes only literal expected values of its assertions, in a change that also edits a source file, so the test may have been made to agree with the code (`warn` in modes `block` and `warn`; it never blocks). The text names every file and says how many findings the cap of 20 per file left out; the listed findings are in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI12`           | TI12: a test file newly mocks (`vi.mock`, `vi.doMock`, `jest.mock`, `jest.doMock`, Python `patch` and `monkeypatch.setattr`) a source file the same change adds, modifies or renames, so the test may not run the code under review (`warn` in every mode). One finding per test file and target, at the head path and the line of the first such mock. The text names every file and says how many findings the cap of 20 per file left out; the listed findings are in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI09`           | TI09: the change loosens a test-runner setting so that fewer tests run, a weaker run passes or the coverage gate drops: a lowered or removed coverage threshold, a narrowed test list or widened exclusion, `passWithNoTests`, `allowOnly` or `bail` turned on, a `grep` added, `forbidOnly` turned off, or a pytest `addopts` that gains a deselecting option (`error` in mode `block`, `warn` in mode `warn`). A raised retry count or timeout, and a value that is not a literal, are `warn`; a modified config read at the merge base that cannot be read or found at HEAD is one `(config)` finding at the mode's level. The finding sits at the head path and the head line of the key (no line for JSON). The text names every file and says how many findings the cap of 20 per file left out; the listed findings are in `testIntegrity.signals` |
-| `TEST_INTEGRITY_INDEX_UNAVAILABLE` | A touched JS/TS or Python test file could not be compared at the merge base and at HEAD (too large, dropped, a syntax-error-heavy file, no Python 3.8 or newer), so TI02 and TI05 did not check it; or the tests of an added JS/TS or Python test file could not be read (the same reasons), so no signal checked them; or TI02 and TI05 did not run because the test text could not be read; or a touched test-config file could not be read, so TI09 did not check it, or TI09 did not run (`error` in mode `block` when TI02 and TI05, or TI09, did not run at all, else `warn`; not in mode `off`). The text names the files with a reason code each, or the reason |
+| `TEST_INTEGRITY_INDEX_UNAVAILABLE` | A touched JS/TS or Python test file could not be compared at the merge base and at HEAD (too large, dropped, a syntax-error-heavy file, no Python 3.8 or newer), so TI02 and TI05 did not check it; or the tests of an added JS/TS or Python test file could not be read (the same reasons), so no signal checked them; or TI02 and TI05 did not run because the test text could not be read; or a touched test-config file could not be read, so TI09 did not check it, or TI09 did not run (`error` in mode `block` when TI02 and TI05, or TI09, did not run at all, or when a modified test file cannot be indexed at HEAD for the reason `too-deep`, `too-large` or `over-file-cap` and the accept label lowers that one to `warn`, else `warn`; not in mode `off`). The text names the files with a reason code each, or the reason |
 | `TEST_INTEGRITY_TI10`           | TI10: the change weakens a test script in `package.json` (`\|\| true`, `; true`, `echo` or `exit 0` in place of the run, `--passWithNoTests`, a path or name filter, or a removed `pretest` or `posttest`), so the test run can pass without the tests passing (`error` in mode `block`, `warn` in mode `warn`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI11`           | TI11: a workflow edit may stop CI from running tests: a removed test command or `pull_request` trigger (`error` in mode `block`, `warn` in mode `warn`), or a shrunk matrix, an added `continue-on-error: true`, a disabling `if:` or a `timeout-minutes` of 0 or 1 (`warn`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI13`           | TI13: the change adds a comment that leaves code out of coverage (an Istanbul, V8 or C8 ignore hint in a JS/TS file, or a `# pragma: no cover` in a Python file that is not a test file) (`error` in mode `block`, `warn` in mode `warn`; `warn` in both for a hint that marks one line or branch of a file the change adds). Every finding is in `testIntegrity.signals` |
@@ -1250,9 +1261,9 @@ message `code`s, not on text:
 | `TEST_INTEGRITY_TI15`           | TI15: the change adds a condition in JS/TS or Python source that compares with a string or number a test file in the same change also adds, so the code may special-case the test (`info` in modes `block` and `warn`; it never blocks or warns). Every finding up to at most 10 per change is in `testIntegrity.signals`, and the message says how many more there are |
 | `TEST_INTEGRITY_TI16`           | TI16: the change adds a comment that switches off a linter or type checker in a JS/TS or Python test file (`info`; it never blocks and leaves the verdict at `pass`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI17`           | TI17: the change adds an assertion that always passes to a JS/TS or Python test file: a custom matcher whose pass is always true, a helper that always returns True, or a wildcard in place of an expected value (`warn` in modes `block` and `warn`; it never blocks unless an org policy sets it). One finding per test file, in `testIntegrity.signals` |
-| `TEST_INTEGRITY_TEXT_TRUNCATED` | A file a test-integrity signal reads has more than 5000 changed lines, so the signals read only the first 5000 and a finding past them is not seen (`warn`; not in mode `off`). The text names the files |
+| `TEST_INTEGRITY_TEXT_TRUNCATED` | A file a test-integrity signal reads has more than 5000 changed lines, so the signals read only the first 5000 and a finding past them is not seen (`warn`, or `error` in mode `block` for a JS/TS, Python or Go test file the change modifies, which the accept label lowers to `warn`; not in mode `off`). The text names the files |
 | `TESTS_NOT_EXERCISING_CHANGES` | Changed JS/TS source files that no JS/TS test file the change adds or modifies imports directly with a relative import while keeping or raising its assertion count (`warn` in every mode, never an error; not in mode `off`, without a diff, or when the touched test files were not read). The text names the count checked, the count not exercised and up to 10 paths; `testIntegrity.exercise` lists up to 200 |
-| `TEST_INTEGRITY_ACCEPTED`       | A reviewer who is not the PR author applied the [accept label](#accept-label), so every block signal was downgraded to `warn` (`info`; Action only). `testIntegrity.accepted` names the label and the reviewer |
+| `TEST_INTEGRITY_ACCEPTED`       | A reviewer who is not the PR author applied the [accept label](#accept-label), so every block signal, and every per-file `TEST_INTEGRITY_INDEX_UNAVAILABLE` and `TEST_INTEGRITY_TEXT_TRUNCATED` error, was downgraded to `warn` (`info`; Action only). `testIntegrity.accepted` names the label and the reviewer |
 | `TEST_INTEGRITY_ACCEPT_IGNORED` | The accept label was looked at and does not count: the PR author applied it, a non-user account applied it, no labeling event was found, or the pull request or its events could not be read (`warn`; Action only). The block signals stand |
 | `NO_AGENT_SETUP_FILES`          | The repo has none of the agent setup files pharn-ci looks for  |
 | `AGENT_SETUP_FILE_EMPTY`        | A listed agent setup file is empty in `HEAD` (`warn`)          |

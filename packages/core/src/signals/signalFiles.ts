@@ -107,3 +107,21 @@ export function textCutSignalFiles(diff: readonly DiffFile[], configPath?: strin
   }
   return [...cut].sort(byCodeUnit);
 }
+
+/**
+ * The cut files (`textTruncated`, not binary) that are test files the change modifies: the entry is `modified`, or
+ * `renamed` with a test-file old path, and its new path is a test file in a language `textCutSignalFiles` reads as one
+ * (`isTestFile(path) && testLanguage(path) !== null`: JavaScript, TypeScript, Python and Go). In mode `block` such a file
+ * makes `TEST_INTEGRITY_TEXT_TRUNCATED` an error: a change can pad a modified test file past the bound to hide a weakened
+ * test. It uses the test-file predicate of `textCutSignalFiles`, so every path it returns is also in that function's
+ * list. Not judged against the merge base, and it depends on the diff alone. De-duplicated and sorted by code unit.
+ */
+export function textCutModifiedTestFiles(diff: readonly DiffFile[]): string[] {
+  const cut = new Set<string>();
+  for (const file of diff) {
+    if (file.textTruncated !== true || file.binary === true) continue;
+    if (file.status !== "modified" && !(file.status === "renamed" && isTestFile(file.oldPath))) continue;
+    if (isTestFile(file.path) && testLanguage(file.path) !== null) cut.add(file.path);
+  }
+  return [...cut].sort(byCodeUnit);
+}

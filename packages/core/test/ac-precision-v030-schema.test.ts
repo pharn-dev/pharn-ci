@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { withoutCore69SchemaEdits } from "./core69-schema.js";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
 import { withoutTi17SchemaEdits } from "./ti17-schema.js";
 import { V070_INJECTION_CODES, withoutV070Properties } from "./v070-codes.js";
@@ -112,7 +113,10 @@ describe("schema: only the TI15 level sentence changes", () => {
       // Re-pinned for flaky tests (A6, v0.8.0): the flaky description is taken out the same way (v080-codes.ts).
       withoutV080Properties(
         withoutV070Properties(
-          withoutV090SchemaEdits(withoutTi17SchemaEdits(readNow("schema/report.v2.json").toString("utf8"))),
+          // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
+          withoutV090SchemaEdits(
+            withoutTi17SchemaEdits(withoutCore69SchemaEdits(readNow("schema/report.v2.json").toString("utf8"))),
+          ),
         ),
       ),
     );

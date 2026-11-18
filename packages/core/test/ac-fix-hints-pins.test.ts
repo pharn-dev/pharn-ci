@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { withoutCore69SchemaEdits } from "./core69-schema.js";
 import { fixture } from "./helpers.js";
 import { withoutTi17SchemaEdits } from "./ti17-schema.js";
 
@@ -74,7 +75,10 @@ describe("existing tests are re-pinned through one shared helper, never weakened
     const schema = read("schema/report.v2.json");
     expect(schema, "the schema has the increment").not.toBe(git("show", `${BASE}:schema/report.v2.json`));
     // ti17-always-true-matcher-2: TI17 edits the schema too, so its helper takes those edits out first.
-    expect(withoutV090SchemaEdits(withoutTi17SchemaEdits(schema))).toBe(git("show", `${BASE}:schema/report.v2.json`));
+    // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
+    expect(withoutV090SchemaEdits(withoutTi17SchemaEdits(withoutCore69SchemaEdits(schema)))).toBe(
+      git("show", `${BASE}:schema/report.v2.json`),
+    );
 
     const { check } = (await import("../src/index.js")) as unknown as { check(input: unknown): unknown };
     const report = check({

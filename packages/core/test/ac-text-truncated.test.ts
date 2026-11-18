@@ -5,7 +5,8 @@ import { messagesOf, runDiff, signalsOf } from "./ac-e1-fix-shared.js";
 import { expectValidReport } from "./schema.js";
 
 // The diff reader keeps at most 5000 changed lines of a file. When a signal reads that file, a finding past the cut is
-// not seen, and the report says so with TEST_INTEGRITY_TEXT_TRUNCATED (warn) instead of passing in silence. The diffs
+// not seen, and the report says so with TEST_INTEGRITY_TEXT_TRUNCATED (warn; an error in mode block for a test file the
+// change modifies, CORE-69) instead of passing in silence. The diffs
 // are built here, as in ac-ti01-diff-caps: a 5000-line fixture would make ac-stream-diff (which cuts every fixture at
 // every character) run for minutes.
 
@@ -38,7 +39,7 @@ const ONLY_PAST_CUT = bigDiff("src/big.test.ts", {
 });
 
 describe("TEST_INTEGRITY_TEXT_TRUNCATED", () => {
-  it("a .only past the cut in a test file: no TI04, but a warn message names the file, so the check is not a silent pass", async () => {
+  it("a .only past the cut in a modified test file: no TI04, but an error message in block (a warn in warn) names the file, so the check is not a silent pass", async () => {
     // Control: the same .only inside the cut is a TI04 block.
     const inside = bigDiff("src/big.test.ts", {
       added: [...pad(10, (i) => `// ${i}`), "it.only('creates a user', () => {});"],
@@ -49,7 +50,9 @@ describe("TEST_INTEGRITY_TEXT_TRUNCATED", () => {
     expect(signalsOf(report, "TI04")).toEqual([]);
     const messages = messagesOf(report, CODE);
     expect(messages).toHaveLength(1);
-    expect(messages[0]?.level).toBe("warn");
+    // CORE-69: a cut modified test file is an error in mode block (it was a warn); the same cut in warn stays a warn.
+    expect(messages[0]?.level).toBe("error");
+    expect(messagesOf(await runDiff(ONLY_PAST_CUT, "warn"), CODE)[0]?.level).toBe("warn");
     expect(messages[0]?.text).toBe(
       "This change is too large to check in full in `src/big.test.ts`: test integrity reads the first 5000 changed lines of a file, so a weakened test past them is not seen.",
     );
@@ -76,10 +79,11 @@ describe("TEST_INTEGRITY_TEXT_TRUNCATED", () => {
     expect(messagesOf(await runDiff(ONLY_PAST_CUT, "off"), CODE)).toEqual([]);
   });
 
-  it("stays after an accept-label sign-off, which only downgrades signals", async () => {
+  it("stays after an accept-label sign-off, which lowers its error to a warn and keeps the message", async () => {
     const accepted = acceptTestIntegrity(await runDiff(ONLY_PAST_CUT), { label: "pharn/accepted", by: "Reviewer-1" });
     expectValidReport(accepted);
     expect(messagesOf(accepted, CODE)).toHaveLength(1);
+    expect(messagesOf(accepted, CODE)[0]?.level).toBe("warn");
     expect(accepted.verdict).toBe("warn");
   });
 

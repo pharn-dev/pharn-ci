@@ -1,5 +1,6 @@
 import {
   type AcceptIgnoredReason,
+  acceptLabelApplies,
   acceptTestIntegrity,
   carriesAcceptLabel,
   decideAcceptLabel,
@@ -16,8 +17,9 @@ type Reads = Pick<ActionDeps, "api" | "info">;
 
 /**
  * Apply the accept label to the report `check()` returned. The label is only looked at when the run is for a pull
- * request (`pullNumber` is given), test integrity is in mode block, and at least one signal blocks. Then the pull
- * request is read; nothing more is asked unless it carries the label. Whatever cannot be read, or does not have the
+ * request (`pullNumber` is given), test integrity is in mode block, and at least one signal blocks or a per-file
+ * `TEST_INTEGRITY_INDEX_UNAVAILABLE` or a `TEST_INTEGRITY_TEXT_TRUNCATED` error stands (`acceptLabelApplies`; the
+ * did-not-run error alone asks nothing). Then the pull request is read; nothing more is asked unless it carries the label. Whatever cannot be read, or does not have the
  * expected shape, counts as unreadable: the label is ignored and the blocks stand. The only text taken from the API is a
  * login that matches GitHub's login pattern, and only when the label is honoured; log lines and messages are fixed.
  */
@@ -29,8 +31,7 @@ export async function applyAcceptLabel(
 ): Promise<Report> {
   const labelled = withAcceptLabel(report, label);
   if (pullNumber === undefined) return labelled;
-  const { mode, signals } = labelled.testIntegrity;
-  if (mode !== "block" || !signals.some((s) => s.severity === "block")) return labelled;
+  if (!acceptLabelApplies(labelled)) return labelled;
 
   const ignored = (reason: AcceptIgnoredReason): Report => {
     deps.info(`accept label ignored: ${reason}`);

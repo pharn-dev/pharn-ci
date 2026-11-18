@@ -11,6 +11,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- CORE-69: in `test-integrity: block` the check now fails when a test file the change modifies cannot be read at HEAD
+  (`too-deep`, `too-large`, `over-file-cap`), has more than 5000 changed lines (JS/TS, Python or Go test files), or is
+  a `.py` file on a runner with no `python3` or `python` (an older Python still only warns); modified test files are
+  read first on both sides, and the accept label lowers the per-file errors but not the missing-Python one. Added test
+  files and files already unreadable at the merge base still warn.
 - The comment hints for TI06, TI12 and TI17 no longer tell a reviewer to apply the accept label: these signals are
   `warn`, and the label is read only when a finding blocks, so applying it changed nothing. A finding an org policy
   raises to `block` still names the label in its hint. The hints of TI02, TI03, TI05, TI09, TI10 and TI13 are unchanged.

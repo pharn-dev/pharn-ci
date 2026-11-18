@@ -28,6 +28,7 @@ import {
   parseLsTreeSymlinks,
   planDependencyLookups,
   policySettingsPaths,
+  pythonNotFoundStopsComparison,
   type RawInputs,
   REGISTRY_LOOKUP_HOSTS,
   type Report,
@@ -450,8 +451,11 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
       ? undefined
       : await indexPythonTestSources(testSources, deps.indexPython ?? indexPythonTests);
   if (pythonTestIndex !== undefined && !pythonTestIndex.available) {
+    // With a modified .py test file and no interpreter, TI02 and TI05 did not run at all (an error in mode block).
     deps.info(
-      `pharn-ci: the Python test index is unavailable (${pythonTestIndex.reason}), so .py test files are not compared`,
+      "parsed" in diff && pythonNotFoundStopsComparison(diff.parsed, pythonTestIndex)
+        ? "pharn-ci: no Python interpreter was found (python-not-found), so TI02 and TI05 did not run"
+        : `pharn-ci: the Python test index is unavailable (${pythonTestIndex.reason}), so .py test files are not compared`,
     );
   }
 

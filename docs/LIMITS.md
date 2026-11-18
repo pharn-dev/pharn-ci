@@ -730,6 +730,7 @@ findings. It is the Action's alone; the CLI never honours it.
   stays a block even for a pull request that carries the label.
 - **Only the newest event decides.** An earlier sign-off by another reviewer does not count once the author or a bot has
   applied the label again.
+- **Not the did-not-run error.** The label also lowers a per-file `TEST_INTEGRITY_INDEX_UNAVAILABLE` error and a `TEST_INTEGRITY_TEXT_TRUNCATED` error to warnings, but never the error that says TI02 and TI05, or TI09, did not run.
 
 ### What the tests-exercise check misses
 
@@ -928,10 +929,21 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
   `base-ref` you set that is found neither in the checkout nor through the GitHub API is not
   `DIFF_UNAVAILABLE`: it fails the step, like a bad `--base` in the CLI.
 - **Test integrity in `block` fails closed on an unreadable change, with these limits.**
-  `TEST_INTEGRITY_INDEX_UNAVAILABLE` is an error in mode `block` only when TI02 and TI05, or TI09, did
-  not run at all (the test text could not be read and a test file or a test-runner config is
-  modified). The per-file form, where some touched files could not be compared or some added test
-  files could not be read, stays a warning in block. A7 and P02–P07 need a local diff (`fetch-depth: 0`). Their "did not run" message is
+  `TEST_INTEGRITY_INDEX_UNAVAILABLE` is an error in mode `block` when TI02 and TI05, or TI09, did not run at all
+  (the test text could not be read and a test file or a test-runner config is modified, or no `python3` was found and a `.py`
+  test file is modified), and when a test file the change modifies cannot be indexed at HEAD for the reason
+  `too-deep`, `too-large` or `over-file-cap` while it was indexed at the merge base or dropped there as `over-file-cap`.
+  `TEST_INTEGRITY_TEXT_TRUNCATED` is an error in mode `block` when a JavaScript, TypeScript, Python or Go test file the
+  change modifies has more than 5000 changed lines. A reviewer who is not the PR author can lower these per-file errors
+  to warnings with the accept label; the did-not-run error stays. These still only warn in block: an added test file
+  that cannot be read, a modified test file that could not be read at the merge base either (for a reason other than
+  `over-file-cap`), the other reasons at HEAD (`syntax-error`, `syntax-error-heavy`, `parser-threw`, `missing`,
+  `unsafe-path`, `binary`, `over-total-cap`), the Python index reasons other than `python-not-found`, and a cut file
+  that is not a modified test file. The change can cause one of these itself: the test files it modifies are read
+  first, so only they fill the 16 MiB cap ahead of one another, and a change that pads the other test files it modifies
+  (each under 512 KiB, sorting before the target) past 16 MiB has the target dropped at HEAD as `over-total-cap`. That
+  file then only warns and TI02 and TI05 do not compare it. This check does not close that; the padded files are in
+  the diff for a reviewer to see. A7 and P02–P07 need a local diff (`fetch-depth: 0`). Their "did not run" message is
   a warning, except that `POLICY_SETTINGS_INVALID` for unread settings is an error under a required
   app policy or a policy that sets one of the lists `forbidden_permissions`, `required_permissions_deny`,
   `allowed_mcp_servers`, `forbidden_mcp_servers` or `required_hooks` with its rule (P02 to P06) at
@@ -1679,7 +1691,7 @@ limited by git, Node or GitHub alone.
   (`pytest.ini`, `pyproject.toml`, `setup.cfg` and `tox.ini`) keep their text too, for TI08. A finding past the cut is not
   seen. When a signal reads the cut file (a test file in JS/TS, Python or Go, a workflow, a modified `package.json`, a
   pytest config file, a source file or the pharn-ci config) and the file is not deleted, the report adds `TEST_INTEGRITY_TEXT_TRUNCATED`
-  (`warn`) naming it, so a change cannot pass in silence by padding a file past the cut. A deleted file is not named:
+  naming it (`warn`, or `error` in mode `block` for a JS/TS, Python or Go test file the change modifies), so a change cannot pass in silence by padding a file past the cut. A deleted file is not named:
   TI01 already counts a cut test file. For the prompt-injection scan it also keeps the full text of the added lines
   of every file outside the scan's default exemptions, apart from that: at most 50,000 lines per file and 8,000,000
   characters across the diff (`addedTextCut` marks a file cut there, and `INJECTION_TEXT_TRUNCATED` names it). The 120 s git
@@ -1706,8 +1718,10 @@ limited by git, Node or GitHub alone.
   `setup.cfg`, `tox.ini`, `conftest.py` and `package.json`, by basename at any depth) that the change touches: the
   base side at the merge base, the head side at `HEAD`. Three caps apply to each side, with fixed values that no input,
   flag or config key changes: at most 200 files, at most 524288 bytes (512 KiB) per file, and at most 16777216 bytes
-  (16 MiB) in all. Paths are taken in code-unit order, so which files are read does not depend on the order of the
-  diff. A selected file that is not kept is dropped with one reason, tried in this order: `unsafe-path` (a control
+  (16 MiB) in all. The test files the change modifies (a modified entry, or a rename with a
+  test-file path on both sides) are read first on both sides, then the added and deleted test files and the test-config
+  files, each group in code-unit order, so other files cannot use up the 200-file cap ahead of a modified test file and
+  which files are read does not depend on the order of the diff. A selected file that is not kept is dropped with one reason, tried in this order: `unsafe-path` (a control
   character, a leading `/`, or an empty, `.` or `..` segment in the name), `missing` (absent at that revision, or not
   a blob, such as a submodule), `too-large` (more than 524288 bytes), `over-file-cap` (the 201st file and later),
   `over-total-cap` (the file that would take the side past 16777216 bytes, and every later path of that side that has
@@ -1729,7 +1743,12 @@ limited by git, Node or GitHub alone.
   more than 524288 UTF-16 code units of text (`too-large`), more than ten syntax errors (`syntax-error-heavy`) and a
   syntax tree deeper than 1000 nodes (`too-deep`); the Python index adds the 30 s interpreter timeout, 64 MiB of
   output and its own caps of 200 files, 512 KiB per file and 16 MiB in all, shared by the base and head files of one
-  run, so a large change can have its later Python files refused as `too-large`. A body is compared by its first 4000
+  run, so a large change can have its later Python files refused as `too-large`. The Python index takes the base side's
+  `.py` test files first and then the head side's, each in path order, and the modified-first order above does not apply
+  to its caps: added, modified and deleted `.py` test files all count, a modified one once on each side and an added or
+  deleted one once, so a change that modifies about 100 `.py` test files (fewer when it also adds or deletes some), or
+  whose `.py` test files hold 16 MiB across both sides, can have a modified `.py` test file refused at HEAD while its
+  base was indexed, even when that file is small. That fails `block` (the accept label lowers it). A body is compared by its first 4000
   characters. Matching a test with a similar one probes at most 256 candidates per test, so a file of thousands of
   near-identical bodies can report a renamed test as removed. At most 20 TI02 and 20 TI05 findings are listed per file;
   the messages say how many were left out, and the block findings come first. The action and CLI dists carry the

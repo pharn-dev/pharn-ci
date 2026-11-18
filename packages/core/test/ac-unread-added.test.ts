@@ -11,7 +11,8 @@ import { withoutFix } from "./v090-codes.js";
 // missing, no Python index) used to be dropped with no trace, so nothing that reads the added files checked its tests
 // and the report did not say so. It is now named in the one TEST_INTEGRITY_INDEX_UNAVAILABLE message, in a sentence of
 // its own after the TI02 and TI05 sentence (which is byte-identical to before) and before the TI09 sentence. The message
-// stays a warning in every mode; mode off gives none.
+// stays a warning in every mode; mode off gives none. An added file alone still only warns (CORE-69): the message is an
+// error in block only for a modified file the change made unreadable at HEAD, or for a did-not-run form.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const DIR = `${FIXTURES}test-integrity/index-unavailable`;
@@ -144,16 +145,18 @@ describe("TEST_INTEGRITY_INDEX_UNAVAILABLE names an added test file whose tests 
     const ti09 =
       "TI09 could not read these touched test-config files, so they are not checked for loosened settings: `vitest.config.ts` (`too-large`).";
 
-    // Without the added file, the message is today's: the compared sentence, then the TI09 sentence.
+    // Without the added file, the message is today's: the compared sentence, then the TI09 sentence. CORE-69: its level
+    // is `error` now, because src/a.test.ts is readable at the merge base and dropped too-large at HEAD (the change made
+    // it unreadable); every text is unchanged.
     const without = run({ diff: diffWithout(diffOf("mixed"), ["src/new.test.ts"]), base, head, mode: "block" });
     expect(without.messages.map((message) => [message.level, message.text])).toEqual([
-      ["warn", `${COMPARED("`src/a.test.ts` (`too-large`)")} ${ti09}`],
+      ["error", `${COMPARED("`src/a.test.ts` (`too-large`)")} ${ti09}`],
     ]);
 
     const { messages } = run({ diff: diffOf("mixed"), base, head, mode: "block" });
     expect(messages.map((message) => [message.level, message.text])).toEqual([
       [
-        "warn",
+        "error",
         `${COMPARED("`src/a.test.ts` (`too-large`)")} ${ADDED("`src/new.test.ts` (`syntax-error-heavy`)")} ${ti09}`,
       ],
     ]);

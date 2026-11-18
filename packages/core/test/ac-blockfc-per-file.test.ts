@@ -52,14 +52,24 @@ async function run(testSources: unknown): Promise<Report> {
 const unavailable = (report: Report) => report.messages.filter((m) => m.code === CODE);
 
 describe("block mode: the per-file unavailable form against the whole-run form", () => {
-  it("AC-5: a head side dropped as too large keeps TEST_INTEGRITY_INDEX_UNAVAILABLE at level warn; both sides unavailable makes it level error", async () => {
+  it("AC-5: a readable base with a head dropped as too large is level error (CORE-69), the same file dropped as too large on both sides stays level warn, and both sides unavailable makes it level error", async () => {
+    // CORE-69: the change made the file unreadable at HEAD while it was readable at the merge base, so block fails.
     const perFile = await run({
       base: { files: [{ path: TEST_FILE, text: BASE_TEXT }], dropped: [] },
       head: { files: [], dropped: [{ path: TEST_FILE, reason: "too-large" }] },
     });
     expect(unavailable(perFile), `one ${CODE} message for the per-file form`).toHaveLength(1);
-    expect(unavailable(perFile)[0]?.level).toBe("warn");
+    expect(unavailable(perFile)[0]?.level).toBe("error");
     expect(unavailable(perFile)[0]?.text).toContain(TEST_FILE);
+
+    // The per-file warning is still pinned: a file too large on both sides was not made unreadable by the change.
+    const bothSides = await run({
+      base: { files: [], dropped: [{ path: TEST_FILE, reason: "too-large" }] },
+      head: { files: [], dropped: [{ path: TEST_FILE, reason: "too-large" }] },
+    });
+    expect(unavailable(bothSides), `one ${CODE} message for the both-sides form`).toHaveLength(1);
+    expect(unavailable(bothSides)[0]?.level).toBe("warn");
+    expect(unavailable(bothSides)[0]?.text).toContain(TEST_FILE);
 
     const { unavailableTestSources } = await import("@pharn-ci/core");
     const wholeRun = await run(unavailableTestSources("the base commit is not in the checkout"));

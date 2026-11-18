@@ -3,6 +3,7 @@ import {
   type DiffFile,
   decodeTestSourceText,
   isUnsafeTestSourcePath,
+  modifiedTestSourcePaths,
   planTestSourceReads,
   selectTestSourcePaths,
   type TestSourceDrop,
@@ -30,7 +31,9 @@ export interface ReadTestSourcesOptions {
   diff: readonly DiffFile[];
   /**
    * Which paths to read on each side. Default `selectTestSourcePaths` (the test and test-config files); rule P13 passes
-   * `selectSelfModificationPaths`. The same caps, safety checks and decoding apply to any selection.
+   * `selectSelfModificationPaths`. The same caps, safety checks and decoding apply to any selection. With the default
+   * selection the test files the change modifies are planned first on both sides (`modifiedTestSourcePaths`); a given
+   * selection is planned in code-unit order.
    */
   select?: (diff: readonly DiffFile[]) => { base: string[]; head: string[] };
   /** The read plan's caps. Default the test sources' (`TEST_SOURCE_LIMITS`); dependency safety passes `DEPENDENCY_SOURCE_LIMITS`. */
@@ -94,7 +97,11 @@ export async function readTestSources(deps: TestSourceGitDeps, options: ReadTest
       if (result !== null) side?.blobs.set(request.path, result.oid);
     });
 
-    const plans = sides.map((side) => planTestSourceReads(side.paths, side.objects, options.limits));
+    // The default selection plans the test files the change modifies first on both sides, so added or deleted files
+    // cannot use up the file cap ahead of them; a caller's own selection keeps its order.
+    const modified = options.select === undefined ? modifiedTestSourcePaths(options.diff) : undefined;
+    const firsts = modified === undefined ? [undefined, undefined] : [new Set(modified.base), new Set(modified.head)];
+    const plans = sides.map((side, i) => planTestSourceReads(side.paths, side.objects, options.limits, firsts[i]));
     const wanted = new Set<string>();
     plans.forEach((plan, i) => {
       for (const path of plan.read) wanted.add(sides[i]?.blobs.get(path) as string);

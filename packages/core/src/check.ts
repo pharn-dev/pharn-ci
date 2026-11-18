@@ -46,7 +46,7 @@ import { summarizeAgentSetup } from "./setup/summary.js";
 import { detectUnexercisedChanges } from "./signals/exercise.js";
 import { capFindings } from "./signals/findingCap.js";
 import { applySignalOverrides } from "./signals/overrides.js";
-import { keepSignalFileText, textCutSignalFiles } from "./signals/signalFiles.js";
+import { keepSignalFileText, textCutModifiedTestFiles, textCutSignalFiles } from "./signals/signalFiles.js";
 import { summarizeTestChanges } from "./signals/testChanges.js";
 import { matchTests } from "./signals/testMatch.js";
 import { indexTouchedTestFiles } from "./signals/testPairs.js";
@@ -158,13 +158,18 @@ export interface CheckInput {
    * nothing is compared and the report is the one it was before: no signal, no message, no language. With a side
    * unavailable and a modified test file, the report carries one `TEST_INTEGRITY_INDEX_UNAVAILABLE` message; the same
    * message names a modified test file that could not be compared and an added test file whose tests could not be
-   * read.
+   * read. In mode `block` that message is an error when TI02 and TI05 did not run, and also when a modified test file
+   * cannot be indexed at HEAD for the reason `too-deep`, `too-large` or `over-file-cap` while it was indexed at the
+   * merge base or dropped there as `over-file-cap`; an added test file, or a file already unreadable at the merge base,
+   * stays a warning.
    */
   testSources?: TestSources;
   /**
    * The Python test index of the `.py` test files in `testSources` (see `pythonTestSourceFiles` and
-   * `pythonTestIndexFromRun`), built by the CLI and the Action. Absent while `testSources` holds a modified `.py` test
-   * file means no interpreter was found.
+   * `pythonTestIndexFromRun`), built by the CLI and the Action. Absent means no `.py` text was read or the caller gave
+   * none: the modified `.py` test files are then named per file, as a warning. An index that says `python-not-found`
+   * (the CLI and the Action pass it only after trying to start an interpreter) with a modified `.py` test file means
+   * TI02 and TI05 did not run, which is an error in mode `block`.
    */
   pythonTestIndex?: PythonTestIndex;
   /**
@@ -425,6 +430,10 @@ export function check(input: CheckInput): Report {
     parsedDiff === null || testIntegrity.mode === "off"
       ? []
       : textCutSignalFiles(parsedDiff, input.configPath, input.repoRoot);
+  // In mode block a cut test file the change modifies is an error: a change can pad a test file past the bound to hide
+  // a weakened test. Computed from the diff alone, so it holds without `testSources`.
+  const textTruncatedTestFiles =
+    parsedDiff === null || testIntegrity.mode === "off" ? [] : textCutModifiedTestFiles(parsedDiff);
   // The single-file forms are several files with one entry, so there is one path through the check.
   const coverageInput = input.coverage;
   let files: readonly CoverageFileInput[];
@@ -630,6 +639,7 @@ export function check(input: CheckInput): Report {
     testIntegrity,
     ...(finalSignals.length > 0 ? { testIntegritySignals: finalSignals } : {}),
     ...(textTruncatedFiles.length > 0 ? { textTruncatedFiles } : {}),
+    ...(textTruncatedTestFiles.length > 0 ? { textTruncatedTestFiles } : {}),
     ...(comparison === null || comparison.languages.length === 0
       ? {}
       : { testIntegrityLanguages: comparison.languages }),

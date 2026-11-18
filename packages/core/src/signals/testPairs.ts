@@ -5,6 +5,7 @@ import { indexTestFileWithImports } from "../testIndex/indexTestFile.js";
 import type { PythonTestIndex } from "../testIndex/pythonSides.js";
 import type { PythonIndexFile } from "../testIndex/pythonTypes.js";
 import type { TestBlock, TestIndexResult, TestModuleMock } from "../testIndex/types.js";
+import { changeMadeUnreadable } from "../testIntegrityUnreadable.js";
 import type { TestSourceSide, TestSources } from "../testSources.js";
 import { byCodeUnit } from "../text.js";
 
@@ -63,6 +64,12 @@ export interface AddedTestFile {
 export interface UncomparedTestFile {
   path: string;
   reason: string;
+  /**
+   * Set on a compared file whose head side failed for a reason of `HEAD_UNREADABLE_ERROR_REASONS` while its base side
+   * indexed or was dropped as `over-file-cap`: the change made the file unreadable to this check. In mode `block` it
+   * makes the `TEST_INTEGRITY_INDEX_UNAVAILABLE` message an error. Never set on an added file, and never in the report.
+   */
+  changeMadeUnreadable?: true;
 }
 
 export interface TouchedTests {
@@ -130,6 +137,63 @@ function pythonLookupOf(index: PythonTestIndex | undefined): PythonLookup {
   return { unavailable: null, base: mapOf(index.base), head: mapOf(index.head) };
 }
 
+interface ComparedEntry {
+  basePath: string;
+  headPath: string;
+  language: TestLanguage;
+}
+
+/**
+ * The compared set and the added set of a diff. A compared file is a diff entry that is `modified`, or `renamed` with a
+ * test-file path on both sides, whose new path is a test file with a JavaScript, TypeScript or `.py` extension; an
+ * added file is an `added` entry that is such a test file.
+ */
+function touchedTestEntries(diff: readonly DiffFile[]): {
+  compared: Map<string, ComparedEntry>;
+  added: Map<string, TestLanguage>;
+} {
+  const compared = new Map<string, ComparedEntry>();
+  const added = new Map<string, TestLanguage>();
+  for (const file of diff) {
+    const language = languageOf(file.path);
+    if (language === null || !isTestFile(file.path)) continue;
+    if (file.status === "modified" || (file.status === "renamed" && isTestFile(file.oldPath))) {
+      compared.set(`${file.oldPath}\0${file.path}`, { basePath: file.oldPath, headPath: file.path, language });
+    } else if (file.status === "added") {
+      added.set(file.path, language);
+    }
+  }
+  return { compared, added };
+}
+
+/**
+ * The paths of the compared set (the test files the change modifies, see `indexTouchedTestFiles`): the old paths, read at
+ * the merge base, and the new paths, read at HEAD, each de-duplicated and in code-unit order. The sources reader plans
+ * these first so that other files cannot use up the file cap ahead of them.
+ */
+export function modifiedTestSourcePaths(diff: readonly DiffFile[]): { base: string[]; head: string[] } {
+  const base = new Set<string>();
+  const head = new Set<string>();
+  for (const entry of touchedTestEntries(diff).compared.values()) {
+    base.add(entry.basePath);
+    head.add(entry.headPath);
+  }
+  return { base: [...base].sort(byCodeUnit), head: [...head].sort(byCodeUnit) };
+}
+
+/**
+ * Whether no Python interpreter stops the comparison: `python` is given and says `python-not-found`, and the compared
+ * set holds a `.py` file. An absent index is not that answer: it means no `.py` text was read, or the caller passed no
+ * index, never that `python3` is missing.
+ */
+export function pythonNotFoundStopsComparison(diff: readonly DiffFile[], python: PythonTestIndex | undefined): boolean {
+  if (python === undefined || python.available || python.reason !== "python-not-found") return false;
+  for (const entry of touchedTestEntries(diff).compared.values()) {
+    if (entry.language === "py") return true;
+  }
+  return false;
+}
+
 /**
  * Indexes the test files the diff touches at the merge base and at HEAD, for the base-and-head signals.
  *
@@ -139,25 +203,18 @@ function pythonLookupOf(index: PythonTestIndex | undefined): PythonLookup {
  * index goes to `unreadAdded` with its reason, so it is reported, not dropped. A deleted file is not indexed (TI01 owns
  * it). JavaScript and TypeScript text goes to `indexTestFileWithImports`, which also gives the head side's
  * `headImports`; Python results come from `python`. When a side of the
- * sources is unavailable and a compared file exists, nothing is indexed and `notRun` says why; when the head side is
- * unavailable and no compared file exists, nothing is indexed or named.
+ * sources is unavailable and a compared file exists, nothing is indexed and `notRun` says why; when `python` says
+ * `python-not-found` and a compared `.py` file exists, `notRun` is `python-not-found` (a sources reason wins); when the
+ * head side is unavailable and no compared file exists, nothing is indexed or named. A compared file whose head side
+ * fails for a reason of `HEAD_UNREADABLE_ERROR_REASONS` while its base side indexed (or was dropped as `over-file-cap`)
+ * carries `changeMadeUnreadable` in `unavailable`.
  */
 export function indexTouchedTestFiles(
   diff: readonly DiffFile[],
   sources: TestSources,
   python: PythonTestIndex | undefined,
 ): TouchedTests {
-  const comparedPaths = new Map<string, { basePath: string; headPath: string; language: TestLanguage }>();
-  const addedPaths = new Map<string, TestLanguage>();
-  for (const file of diff) {
-    const language = languageOf(file.path);
-    if (language === null || !isTestFile(file.path)) continue;
-    if (file.status === "modified" || (file.status === "renamed" && isTestFile(file.oldPath))) {
-      comparedPaths.set(`${file.oldPath}\0${file.path}`, { basePath: file.oldPath, headPath: file.path, language });
-    } else if (file.status === "added") {
-      addedPaths.set(file.path, language);
-    }
-  }
+  const { compared: comparedPaths, added: addedPaths } = touchedTestEntries(diff);
 
   if (comparedPaths.size > 0) {
     const why = [
@@ -165,6 +222,9 @@ export function indexTouchedTestFiles(
     ];
     if (why.length > 0) {
       return { pairs: [], added: [], unavailable: [], unreadAdded: [], notRun: why.join("; "), languages: [] };
+    }
+    if (pythonNotFoundStopsComparison(diff, python)) {
+      return { pairs: [], added: [], unavailable: [], unreadAdded: [], notRun: "python-not-found", languages: [] };
     }
   } else if ("unavailable" in sources.head) {
     return { pairs: [], added: [], unavailable: [], unreadAdded: [], notRun: null, languages: [] };
@@ -217,8 +277,11 @@ export function indexTouchedTestFiles(
         ...(head.imports === undefined ? {} : { headImports: head.imports }),
       });
     } else {
-      const reason = base.ok ? (head as { reason: string }).reason : base.reason;
-      unavailable.push({ path: file.headPath, reason });
+      const headReason = head.ok ? null : head.reason;
+      const reason = base.ok ? (headReason as string) : base.reason;
+      // Only a file whose head side failed can be made unreadable; a head that indexed leaves the flag unset.
+      const unreadable = headReason !== null && changeMadeUnreadable(base, headReason);
+      unavailable.push({ path: file.headPath, reason, ...(unreadable ? { changeMadeUnreadable: true as const } : {}) });
     }
   }
   unavailable.sort((a, b) => byCodeUnit(a.path, b.path));

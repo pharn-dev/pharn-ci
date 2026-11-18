@@ -2,6 +2,7 @@ export {
   type AcceptDecision,
   type AcceptIgnoredReason,
   type AcceptLabelValidation,
+  acceptLabelApplies,
   acceptTestIntegrity,
   carriesAcceptLabel,
   DEFAULT_ACCEPT_LABEL,
@@ -9,6 +10,7 @@ export {
   GITHUB_LOGIN,
   ignoreAcceptLabel,
   isDefaultAcceptLabel,
+  isLiftableUnreadableError,
   MAX_ACCEPT_LABEL_LENGTH,
   validateAcceptLabel,
   withAcceptLabel,
@@ -386,6 +388,7 @@ export {
 export { MAX_TEST_CHANGE_ENTRIES, summarizeTestChanges } from "./signals/testChanges.js";
 export { type TestLanguage, testLanguage } from "./signals/testLines.js";
 export { type MatchCandidate, type MatchedPair, matchTests, type TestMatch } from "./signals/testMatch.js";
+export { modifiedTestSourcePaths, pythonNotFoundStopsComparison } from "./signals/testPairs.js";
 export { detectTI01 } from "./signals/ti01.js";
 export { movedTestFiles } from "./signals/ti01Moved.js";
 export { detectTI02 } from "./signals/ti02.js";
@@ -457,6 +460,7 @@ export {
   type TestIntegrityModeSettings,
   testIntegrityModeError,
 } from "./testIntegrityMode.js";
+export { HEAD_UNREADABLE_ERROR_REASONS, WHOLE_RUN_SENTENCE_LEADS } from "./testIntegrityUnreadable.js";
 export {
   DEPENDENCY_SOURCE_LIMITS,
   isTestConfigFile,
