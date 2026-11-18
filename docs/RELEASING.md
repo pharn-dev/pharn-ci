@@ -116,6 +116,9 @@ that worked on the previous release. Before 1.0 the rules are:
    published, and GitHub offers the Marketplace box only on the form that publishes it, so a release
    published without it can never be listed (v0.9.0 could not be). Check that the Marketplace page shows the new
    version.
+5. **The example workflows.** The five files in `examples/workflows/` pin `pharn-dev/pharn-ci` to the release
+   commit's full SHA with a `# vX.Y.Z` comment. The release PR cannot set that SHA, since the commit does not exist
+   before it merges, so a PR after the tag sets it (`git rev-list -n1 vX.Y.Z`) and the docs tests that pin it.
 
 ## Verify the release
 

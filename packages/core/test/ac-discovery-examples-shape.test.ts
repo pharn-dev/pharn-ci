@@ -11,6 +11,8 @@ const EXAMPLES = ["vitest.yml", "jest.yml", "pytest.yml", "dotnet.yml", "cargo.y
 
 const PINNED_USES = /uses:\s*[\w.-]+\/[\w./-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+\s*$/;
 const USES_LINE = /^\s*(?:-\s+)?uses:\s*(.*)$/;
+/** The commit the v0.11.0 tag points at (`git rev-list -n1 v0.11.0`). */
+const V0110_SHA = "bd7b36ea07588884418f5002ae74afc35135c400";
 
 const indentOf = (line: string) => line.length - line.trimStart().length;
 
@@ -61,9 +63,21 @@ describe("examples/workflows/: the shape of each example", () => {
     const group = (groupLine ?? "").trim();
     // The GitHub expression is joined from parts, so it is not read as a JS template placeholder.
     expect(group).toBe(["group: pharn-ci-", "$", "{{ github.event.pull_request.number || github.ref }}"].join(""));
+    const idTokenLine = section(readme, "Quick start").find((line) => line.trim().startsWith("id-token: write #"));
+    expect(idTokenLine, "README Quick start id-token: write line with a comment").toBeDefined();
+    const idToken = (idTokenLine ?? "").trim();
+    expect(idToken, "the id-token comment says what removing it does").toContain("no call to pharn.dev");
 
     for (const name of EXAMPLES) {
       const lines = read(`examples/workflows/${name}`).split("\n");
+
+      // CORE-127: the header names what fails the step without a threshold, and never says the step never fails.
+      const headerEnd = lines.findIndex((line) => !line.startsWith("#"));
+      const header = lines.slice(0, headerEnd).join("\n");
+      for (const id of ["(S01-S09)", "(PI01)", "(D05)", "(D04)", "threshold: 80"]) {
+        expect(header, `${name}: the header names ${id}`).toContain(id);
+      }
+      expect(header, `${name}: the header does not say the step never fails`).not.toMatch(/never fails/);
 
       const checkout = lines.findIndex((line) => /^\s*(?:-\s+)?uses:\s*actions\/checkout@/.test(line));
       expect(checkout, `${name}: an actions/checkout step`).toBeGreaterThanOrEqual(0);
@@ -75,6 +89,8 @@ describe("examples/workflows/: the shape of each example", () => {
       const permissions = topLevelBlock(lines, "permissions").map((line) => line.trim());
       expect(permissions, `${name}: permissions`).toContain("contents: read");
       expect(permissions, `${name}: permissions`).toContain("pull-requests: write");
+      // CORE-127: the README Quick start and every example grant id-token: write with the same one-line comment.
+      expect(permissions, `${name}: the README Quick start's id-token line`).toContain(idToken);
 
       const concurrency = topLevelBlock(lines, "concurrency").map((line) => line.trim());
       expect(concurrency, `${name}: concurrency group`).toContain(group);
@@ -82,8 +98,10 @@ describe("examples/workflows/: the shape of each example", () => {
       const uses = lines
         .map((line, index) => ({ index, match: USES_LINE.exec(line) }))
         .filter((entry): entry is { index: number; match: RegExpExecArray } => entry.match !== null);
-      const pharn = uses.filter(({ match }) => refOf(match[1] ?? "") === "pharn-dev/pharn-ci@v0.11.0");
-      expect(pharn, `${name}: exactly one pharn-dev/pharn-ci@v0.11.0 step`).toHaveLength(1);
+      // CORE-127: the pharn-ci step pins the v0.11.0 tag's commit SHA, like every other action (PINNED_USES below).
+      const pharn = uses.filter(({ match }) => refOf(match[1] ?? "") === `pharn-dev/pharn-ci@${V0110_SHA}`);
+      expect(pharn, `${name}: exactly one pharn-dev/pharn-ci@<v0.11.0 SHA> step`).toHaveLength(1);
+      expect(lines[pharn[0]?.index ?? -1], `${name}: the pharn-ci step's version comment`).toMatch(/ # v0\.11\.0\s*$/);
       const step = stepOf(lines, pharn[0]?.index ?? -1);
       expect(
         step.some((line) => /^\s*(?:-\s+)?timeout-minutes:\s*5\s*$/.test(line)),

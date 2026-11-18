@@ -11,6 +11,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- Docs: the five workflows in `examples/workflows/` no longer say the step never fails without a threshold (CORE-127).
+  Their headers name what fails it by default: a secret in an agent config file (S01-S09), invisible Unicode (PI01),
+  a dependency from outside the registry (D05), a dependency change the lockfile does not record (D04) and a run
+  error, and say that `threshold` adds the diff-coverage gate. They now grant `id-token: write`, as the README quick
+  start does, with the same one-line comment: it lets pharn-ci fetch the org policy and upload the redacted report to
+  pharn.dev, and without it pharn-ci makes no call to pharn.dev. They pin `pharn-dev/pharn-ci` to the full commit SHA
+  of `v0.11.0`, like every other action in them.
 - Docs: `docs/PRECISION.md` gains a Python precision corpus (CORE-72): 600 merged PRs of `langchain-ai/langchain`,
   `pydantic/pydantic` and `python-poetry/poetry`, frozen in `docs/precision/corpus-python/`, with every block finding
   reviewed by hand. TI02 falsely blocks 6 of 600 Python PRs (1.0 %, tests renamed in place and rewritten); TI01 0.7 %;

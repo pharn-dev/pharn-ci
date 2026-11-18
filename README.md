@@ -160,7 +160,7 @@ on: pull_request
 permissions:
   contents: read
   pull-requests: write
-  id-token: write # lets pharn-ci fetch your org policy and, with the default upload: auto, upload the redacted report and run metadata to pharn.dev; leave it out and only GitHub is called
+  id-token: write # pharn-ci fetches your org policy from pharn.dev and, with the default upload: auto, uploads the redacted report and run metadata there; remove it and pharn-ci makes no call to pharn.dev
 
 # One run per PR at a time, so concurrent pushes do not race on the sticky comment. The github.ref
 # fallback gives each merge-queue entry its own group, since merge_group events have no PR number.

@@ -1,12 +1,23 @@
 # .github/workflows/pharn-ci.yml: pharn-ci on a vitest project.
-# No coverage-file is set: pharn-ci finds coverage/lcov.info, which vitest writes below. No threshold is
-# set either, so the step reports and never fails; add `with: threshold: 80` to gate on diff coverage.
+# No coverage-file is set: pharn-ci finds coverage/lcov.info, which vitest writes below.
+# No threshold is set either, so diff coverage is reported but does not fail the step. The step still fails on:
+#   - a secret committed in an agent config file (S01-S09), or an agent config file left unscanned for its size,
+#     count or path;
+#   - invisible Unicode, such as a zero-width or bidi control character, added to any file but a test file, a
+#     fixture or test data (PI01);
+#   - a dependency from outside the registry: a git, file or URL source, or a package index outside the allowed
+#     registries (D05);
+#   - a dependency change the lockfile does not record, or a locked version whose integrity hash changed (D04);
+#   - a run error, such as an invalid input.
+# Add `with: threshold: 80` for the diff-coverage gate: the step then also fails when diff coverage is below 80%
+# or cannot be measured. An org policy, fetched with id-token: write below, can add more failures.
 name: pharn-ci
 on: pull_request
 
 permissions:
   contents: read
   pull-requests: write
+  id-token: write # pharn-ci fetches your org policy from pharn.dev and, with the default upload: auto, uploads the redacted report and run metadata there; remove it and pharn-ci makes no call to pharn.dev
 
 # One run per PR at a time, so concurrent pushes do not race on the sticky comment. The github.ref
 # fallback gives each merge-queue entry its own group, since merge_group events have no PR number.
@@ -28,5 +39,5 @@ jobs:
       # Needed for `vitest run --coverage`; skip this step if @vitest/coverage-v8 is already a dev dependency.
       - run: npm install --no-save @vitest/coverage-v8
       - run: npx vitest run --coverage --coverage.reporter=lcov
-      - uses: pharn-dev/pharn-ci@v0.11.0 # or, better, the tag's full commit SHA
+      - uses: pharn-dev/pharn-ci@bd7b36ea07588884418f5002ae74afc35135c400 # v0.11.0
         timeout-minutes: 5
