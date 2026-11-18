@@ -179,12 +179,14 @@ export async function indexPythonTests(
   }
   if (!outcome.available) return outcome;
   const results: readonly TestIndexResult[] = outcome.results;
+  const imports = outcome.imports;
   return {
     available: true,
     files: plan.entries.map((entry): PythonIndexFile => {
-      const result: TestIndexResult =
-        "refused" in entry ? { parsed: false, reason: entry.refused } : (results[entry.id] as TestIndexResult);
-      return { path: entry.path, result };
+      if ("refused" in entry) return { path: entry.path, result: { parsed: false, reason: entry.refused } };
+      const result = results[entry.id] as TestIndexResult;
+      const names = imports[entry.id];
+      return names === undefined ? { path: entry.path, result } : { path: entry.path, result, imports: names };
     }),
   };
 }

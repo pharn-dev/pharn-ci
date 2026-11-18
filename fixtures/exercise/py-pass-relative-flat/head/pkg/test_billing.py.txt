@@ -1,0 +1,5 @@
+from . import billing
+
+
+def test_total():
+    assert billing.total([2, 3]) == 5

@@ -53,7 +53,7 @@ export function pythonRunOutcome(
   result: PythonSpawnResult,
   count: number,
   command: string,
-): { available: true; results: TestIndexResult[] } | PythonIndexUnavailable {
+): { available: true; results: TestIndexResult[]; imports: (string[] | undefined)[] } | PythonIndexUnavailable {
   if (
     result.errorCode === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER" ||
     result.stdout.length > PYTHON_INDEX_MAX_STDOUT_BYTES ||

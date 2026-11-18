@@ -70,7 +70,7 @@ import { detectTI15 } from "./signals/ti15.js";
 import { detectTI16 } from "./signals/ti16.js";
 import { detectTI17 } from "./signals/ti17.js";
 import { deletedTestFiles } from "./testFiles.js";
-import type { PythonTestIndex } from "./testIndex/pythonSides.js";
+import { type PythonTestIndex, pythonTestSourceFiles } from "./testIndex/pythonSides.js";
 import { resolveTestIntegrityMode, type TestIntegrityModeSettings } from "./testIntegrityMode.js";
 import type { TestSources } from "./testSources.js";
 import { byCodeUnit } from "./text.js";
@@ -422,14 +422,23 @@ export function check(input: CheckInput): Report {
     sortSignals(testIntegritySignals);
   }
   // The tests-exercise check (A8 step 1) reads the imports of the touched test files: only when they were indexed, so
-  // with the sources' head side readable, a diff and a mode that is not off; otherwise it is silent.
+  // with the sources' head side readable, a diff and a mode that is not off; otherwise it is silent. Python source files
+  // are asked unless the run found no usable Python interpreter for the touched Python test files (CORE-104): without
+  // python3 their imports could not be read, and the index-unavailable message already names those files. An absent
+  // index with Python test text to index reads as python-not-found, as the comparison reads it.
+  const pythonIndex = input.pythonTestIndex;
+  const noInterpreter =
+    pythonIndex === undefined
+      ? input.testSources !== undefined && pythonTestSourceFiles(input.testSources).length > 0
+      : !pythonIndex.available &&
+        (pythonIndex.reason === "python-not-found" || pythonIndex.reason === "python-too-old");
   const testExercise =
     parsedDiff !== null &&
     touched !== null &&
     touched.notRun === null &&
     input.testSources !== undefined &&
     !("unavailable" in input.testSources.head)
-      ? (detectUnexercisedChanges(parsedDiff, touched, input.repoFiles, isExcluded) ?? undefined)
+      ? (detectUnexercisedChanges(parsedDiff, touched, input.repoFiles, isExcluded, !noInterpreter) ?? undefined)
       : undefined;
   // A file whose kept text was cut can hide a finding past the cut; the report names it rather than stay silent.
   const textTruncatedFiles =

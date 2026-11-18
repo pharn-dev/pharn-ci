@@ -1,0 +1,19 @@
+diff --git a/src/pkg/billing.py b/src/pkg/billing.py
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/src/pkg/billing.py
+@@ -0,0 +1,2 @@
++def total(prices):
++    return sum(prices)
+diff --git a/tests/test_billing.py b/tests/test_billing.py
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/tests/test_billing.py
+@@ -0,0 +1,5 @@
++import pkg.billing as b
++
++
++def test_total():
++    assert b.total([2, 3]) == 5

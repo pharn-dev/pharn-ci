@@ -421,7 +421,10 @@ changes. A changed JavaScript or TypeScript source file (one with at least one a
 config files such as `vite.config.ts` or `.eslintrc.cjs`, `dist/`, `vendor/`, `node_modules/`, minified, `*.generated.*`
 and `coverage.exclude` files are not asked) counts as exercised when a JS/TS test file the change adds or modifies
 imports it directly with a relative import (`./cart`, `../src/cart.js`, a directory's `index`) and keeps or raises its
-assertion count. When at least one changed source file is not exercised, the report carries one
+assertion count. A changed Python source file counts as exercised when a Python test file the change adds or modifies
+imports it (`import pkg.cart`, `from pkg.cart import total`, `from . import cart`, at the repository root or under
+`src/`) and keeps or raises its assertion count; without a usable `python3` for the touched Python test files, Python
+files are not asked. When at least one changed source file is not exercised, the report carries one
 `TESTS_NOT_EXERCISING_CHANGES` warning with the counts and up to 10 paths, `testIntegrity.exercise` lists up to 200
 paths, and the comment shows one line under "Test integrity" with a collapsed list. It is a warning in every mode and
 never fails the check; many pull requests that change code without a test will see it, on purpose. It reads only the
@@ -1306,7 +1309,7 @@ message `code`s, not on text:
 | `TEST_INTEGRITY_TI16`           | TI16: the change adds a comment that switches off a linter or type checker in a JS/TS or Python test file (`info`; it never blocks and leaves the verdict at `pass`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI17`           | TI17: the change adds an assertion that always passes to a JS/TS or Python test file: a custom matcher whose pass is always true, a helper that always returns True, or a wildcard in place of an expected value (`warn` in modes `block` and `warn`; it never blocks unless an org policy sets it). One finding per test file, in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TEXT_TRUNCATED` | A file a test-integrity signal reads has more than 5000 changed lines, so the signals read only the first 5000 and a finding past them is not seen (`warn`, or `error` in mode `block` for a JS/TS, Python or Go test file the change modifies, which the accept label lowers to `warn`; not in mode `off`). The text names the files |
-| `TESTS_NOT_EXERCISING_CHANGES` | Changed JS/TS source files that no JS/TS test file the change adds or modifies imports directly with a relative import while keeping or raising its assertion count (`warn` in every mode, never an error; not in mode `off`, without a diff, or when the touched test files were not read). The text names the count checked, the count not exercised and up to 10 paths; `testIntegrity.exercise` lists up to 200 |
+| `TESTS_NOT_EXERCISING_CHANGES` | Changed JS/TS source files that no JS/TS test file the change adds or modifies imports directly with a relative import, and changed Python source files that no Python test file the change adds or modifies imports, while keeping or raising its assertion count (`warn` in every mode, never an error; not in mode `off`, without a diff, or when the touched test files were not read). The text names the count checked, the count not exercised and up to 10 paths; `testIntegrity.exercise` lists up to 200 |
 | `TEST_INTEGRITY_ACCEPTED`       | A reviewer who is not the PR author applied the [accept label](#accept-label), so every block signal, and every per-file `TEST_INTEGRITY_INDEX_UNAVAILABLE` and `TEST_INTEGRITY_TEXT_TRUNCATED` error, was downgraded to `warn` (`info`; Action only). `testIntegrity.accepted` names the label and the reviewer |
 | `TEST_INTEGRITY_ACCEPT_IGNORED` | The accept label was looked at and does not count: the PR author applied it, a non-user account applied it, no labeling event was found, or the pull request or its events could not be read (`warn`; Action only). The block signals stand |
 | `NO_AGENT_SETUP_FILES`          | The repo has none of the agent setup files pharn-ci looks for  |

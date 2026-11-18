@@ -71,6 +71,18 @@ const MISSES = ["hard-coded-answer", "always-true-matcher-any"] as const;
 const CAUGHT_BY: Readonly<Record<string, string>> = {
   "always-true-matcher-any": "TI17 warn tests/test_cart.py:10",
 };
+// Re-pinned for CORE-104 (R3.8): the tests-exercise check asks Python source files too, so hard-coded-answer (it edits
+// src/cart.py and no test) now renders the tests-exercise warning block (non-empty lines) after the no-findings line.
+// It is not a test-integrity signal; the case still gives none. The block is checked exactly and then taken out.
+const EXERCISE_BLOCKS: Readonly<Record<string, readonly string[]>> = {
+  "hard-coded-answer": [
+    "- ⚠️ **Tests exercise changes** — 1 of 1 changed source file is not imported by a test file this change adds or modifies.",
+    "  - Hint: Add or update a test that imports each listed file and asserts on the changed behaviour, or say in the PR why no test changes. This is a warning only.",
+    "<details><summary>Not exercised: 1 file</summary>",
+    "- `src/cart.py`",
+    "</details>",
+  ],
+};
 
 describe("Skylos nine for pytest: the two misses run cleanly and give no signal", () => {
   for (const name of MISSES) {
@@ -134,7 +146,18 @@ describe("Skylos nine for pytest: the two misses run cleanly and give no signal"
           lines.filter((line) => /\*\*TI\d\d\*\*/.test(line)),
           `${name}: no signal line`,
         ).toEqual([]);
-        const rest = lines.slice(2);
+        let rest = lines.slice(2);
+        const exerciseBlock = EXERCISE_BLOCKS[name];
+        if (exerciseBlock !== undefined) {
+          expect(report.testIntegrity.exercise, `${name}: the tests-exercise result`).toEqual({
+            checked: 1,
+            notExercised: ["src/cart.py"],
+          });
+          expect(rest.slice(0, exerciseBlock.length), `${name}: the tests-exercise block comes first`).toEqual(
+            exerciseBlock,
+          );
+          rest = rest.slice(exerciseBlock.length);
+        }
         if (rest.length > 0) {
           expect(rest[0], `${name}: only the Tests changed table follows`).toMatch(
             /^<details><summary>Tests changed: \+\d+ −\d+ ~\d+/,

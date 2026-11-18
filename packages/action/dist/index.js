@@ -36913,7 +36913,7 @@ function testsOf(result, imports) {
   } : { ok: false, reason: result.reason };
 }
 function pythonLookupOf(index) {
-  const mapOf = (files) => new Map(files.map((file) => [file.path, file.result]));
+  const mapOf = (files) => new Map(files.map((file) => [file.path, file]));
   if (index === void 0) return { unavailable: "python-not-found", base: /* @__PURE__ */ new Map(), head: /* @__PURE__ */ new Map() };
   if (!index.available) return { unavailable: index.reason, base: /* @__PURE__ */ new Map(), head: /* @__PURE__ */ new Map() };
   return { unavailable: null, base: mapOf(index.base), head: mapOf(index.head) };
@@ -37013,7 +37013,8 @@ function indexTouchedTestFiles(diff, sources, python) {
       if (pythonSide.unavailable !== null) return { ok: false, reason: pythonSide.unavailable };
       const found = pythonSide[side].get(path);
       if (found === void 0) return { ok: false, reason: "missing" };
-      result = found;
+      result = found.result;
+      imports = found.imports ?? [];
     } else {
       const indexed2 = indexTestFileWithImports(path, text);
       result = indexed2.result;
@@ -37090,13 +37091,14 @@ function isConfigFile(path) {
   const basename = path.slice(path.lastIndexOf("/") + 1);
   return basename.startsWith(".") || basename.includes(".config.") || isTestConfigFile(path);
 }
-function exerciseCandidates(diff, excluded) {
+function exerciseCandidates(diff, excluded, python = true) {
   const skipped = EXERCISE_SKIPPED_FILES.map((glob) => compileGlob(glob));
   const paths = /* @__PURE__ */ new Set();
   for (const file of diff) {
     if (file.status === "deleted" || file.binary === true || file.addedLines.length === 0) continue;
     const path = file.path;
-    if (languageOf(path) === null || languageOf(path) === "py") continue;
+    const language = languageOf(path);
+    if (language === null || language === "py" && !python) continue;
     if (isTestFile(path) || DECLARATION_SUFFIXES.some((suffix) => path.endsWith(suffix)) || isConfigFile(path)) {
       continue;
     }
@@ -37110,8 +37112,30 @@ function assertionsOf(tests) {
   for (const test2 of tests) total += test2.assertionCount;
   return total;
 }
-function detectUnexercisedChanges(diff, touched, repoFiles, excluded) {
-  const candidates = exerciseCandidates(diff, excluded);
+function moduleSegmentOk(segment) {
+  return segment !== "" && !segment.includes("/") && !segment.includes("\\");
+}
+function pythonModulePaths(testPath, name) {
+  let dots = 0;
+  while (dots < name.length && name[dots] === ".") dots++;
+  const rest = name.slice(dots);
+  const parts = rest === "" ? [] : rest.split(".");
+  if (!parts.every(moduleSegmentOk)) return [];
+  if (dots === 0) {
+    if (parts.length === 0) return [];
+    const module2 = parts.join("/");
+    return ["", "src/"].flatMap((root) => [`${root}${module2}.py`, `${root}${module2}/__init__.py`]);
+  }
+  const dir = testPath.split("/").slice(0, -1);
+  const up = dots - 1;
+  if (up > dir.length) return [];
+  const base = dir.slice(0, dir.length - up);
+  if (parts.length === 0) return [[...base, "__init__.py"].join("/")];
+  const module = [...base, ...parts].join("/");
+  return [`${module}.py`, `${module}/__init__.py`];
+}
+function detectUnexercisedChanges(diff, touched, repoFiles, excluded, python = true) {
+  const candidates = exerciseCandidates(diff, excluded, python);
   if (candidates.length === 0) return null;
   const known2 = new Set(repoFiles);
   const edited = /* @__PURE__ */ new Set();
@@ -37135,9 +37159,15 @@ function detectUnexercisedChanges(diff, touched, repoFiles, excluded) {
   const wanted = new Set(candidates);
   const exercised = /* @__PURE__ */ new Set();
   for (const { path, imports } of evidence) {
+    if (languageOf(path) === "py") {
+      for (const name of imports) {
+        for (const target of pythonModulePaths(path, name)) if (wanted.has(target)) exercised.add(target);
+      }
+      continue;
+    }
     for (const specifier of imports) {
       const target = resolveRelativeModule(path, specifier, lookup2);
-      if (target !== null && wanted.has(target)) exercised.add(target);
+      if (target !== null && wanted.has(target) && languageOf(target) !== "py") exercised.add(target);
     }
   }
   return { checked: candidates.length, notExercised: candidates.filter((path) => !exercised.has(path)) };
@@ -43259,6 +43289,22 @@ function detectTI17(diff) {
   return signals.sort((a, b) => byCodeUnit(a.path, b.path));
 }
 
+// ../core/src/testIndex/pythonSides.ts
+function sideFiles(side) {
+  if ("unavailable" in side) return [];
+  return side.files.filter((file) => file.path.endsWith(".py") && isTestFile(file.path));
+}
+function pythonTestSourceFiles(sources) {
+  return [...sideFiles(sources.base), ...sideFiles(sources.head)];
+}
+function pythonTestIndexFromRun(sources, run2) {
+  if (!run2.available) return { available: false, reason: run2.reason };
+  const baseCount = sideFiles(sources.base).length;
+  const total = baseCount + sideFiles(sources.head).length;
+  if (run2.files.length !== total) return { available: false, reason: "bad-output" };
+  return { available: true, base: run2.files.slice(0, baseCount), head: run2.files.slice(baseCount) };
+}
+
 // ../core/src/check.ts
 function sortSignals2(signals) {
   return signals.sort(
@@ -43367,7 +43413,9 @@ function check(input) {
     testIntegritySignals.push(...detectTI03(parsedDiff, testIntegrity2.mode, input.testSources, ti03Pairs));
     sortSignals2(testIntegritySignals);
   }
-  const testExercise = parsedDiff !== null && touched !== null && touched.notRun === null && input.testSources !== void 0 && !("unavailable" in input.testSources.head) ? detectUnexercisedChanges(parsedDiff, touched, input.repoFiles, isExcluded) ?? void 0 : void 0;
+  const pythonIndex = input.pythonTestIndex;
+  const noInterpreter = pythonIndex === void 0 ? input.testSources !== void 0 && pythonTestSourceFiles(input.testSources).length > 0 : !pythonIndex.available && (pythonIndex.reason === "python-not-found" || pythonIndex.reason === "python-too-old");
+  const testExercise = parsedDiff !== null && touched !== null && touched.notRun === null && input.testSources !== void 0 && !("unavailable" in input.testSources.head) ? detectUnexercisedChanges(parsedDiff, touched, input.repoFiles, isExcluded, !noInterpreter) ?? void 0 : void 0;
   const textTruncatedFiles = parsedDiff === null || testIntegrity2.mode === "off" ? [] : textCutSignalFiles(parsedDiff, input.configPath, input.repoRoot);
   const textTruncatedTestFiles = parsedDiff === null || testIntegrity2.mode === "off" ? [] : textCutModifiedTestFiles(parsedDiff);
   const coverageInput = input.coverage;
@@ -45876,6 +45924,7 @@ var BLOCK_KINDS = ["describe", "test", "hook"];
 var REFUSAL_REASONS = ["syntax-error", "too-deep", "too-large", "parser-threw"];
 var REFUSED_KEYS = ["id", "parsed", "reason"];
 var PARSED_KEYS = ["id", "parsed", "normalized", "tests", "mocks"];
+var OPTIONAL_PARSED_KEYS = ["imports"];
 var BLOCK_KEYS = [
   "kind",
   "name",
@@ -46000,6 +46049,17 @@ function mapMock(value, where) {
   const specifier = raw.specifier === null ? null : checkString(raw.specifier, where, "mock specifier");
   return { callee, specifier, line: checkInt(raw.line, where, "mock line", 1) };
 }
+function mapImports(raw, where) {
+  if (!Object.hasOwn(raw, "imports")) return void 0;
+  const list = checkArray(raw.imports, where, "imports");
+  if (list.length > MAX_TEST_IMPORTS) return bad(where, `imports is longer than ${MAX_TEST_IMPORTS}`);
+  return list.map((name) => {
+    const text = checkString(name, where, "import");
+    if (text === "") return bad(where, "import is empty");
+    if (text.length > MAX_TEST_NAME_CHARS) return bad(where, `import is longer than ${MAX_TEST_NAME_CHARS}`);
+    return text;
+  });
+}
 function mapEntry(value, index) {
   const where = `entry ${index}`;
   if (!isObject2(value)) return bad(where, "is not an object");
@@ -46008,9 +46068,9 @@ function mapEntry(value, index) {
     if (raw2.id !== index) return bad(where, "id is not its position");
     const reason = checkString(raw2.reason, where, "refusal reason");
     if (!REFUSAL_REASONS.includes(reason)) return bad(where, "refusal reason is unknown");
-    return { parsed: false, reason };
+    return { result: { parsed: false, reason }, imports: void 0 };
   }
-  const raw = checkKeys(value, PARSED_KEYS, where, "a parsed entry");
+  const raw = checkKeys(value, PARSED_KEYS, where, "a parsed entry", OPTIONAL_PARSED_KEYS);
   if (raw.id !== index) return bad(where, "id is not its position");
   if (raw.parsed !== true) return bad(where, "parsed is not a boolean");
   const normalized = checkString(raw.normalized, where, "normalized");
@@ -46018,7 +46078,7 @@ function mapEntry(value, index) {
     (block, i) => mapBlock(block, normalized, `${where} test ${i}`)
   );
   const mocks = checkArray(raw.mocks, where, "mocks").map((mock, i) => mapMock(mock, `${where} mock ${i}`));
-  return { parsed: true, syntaxErrors: 0, tests, mocks };
+  return { result: { parsed: true, syntaxErrors: 0, tests, mocks }, imports: mapImports(raw, where) };
 }
 function pythonIndexFromRaw(stdout, count2) {
   try {
@@ -46030,8 +46090,12 @@ function pythonIndexFromRaw(stdout, count2) {
     }
     const entries = checkArray(parsed, "output", "the top level");
     if (entries.length !== count2) return bad("output", "the number of entries is not the number of files sent");
-    const results = entries.map((entry, index) => mapEntry(entry, index));
-    return { available: true, results };
+    const mapped = entries.map((entry, index) => mapEntry(entry, index));
+    return {
+      available: true,
+      results: mapped.map((entry) => entry.result),
+      imports: mapped.map((entry) => entry.imports)
+    };
   } catch (error2) {
     if (!(error2 instanceof BadOutput)) throw error2;
     return { available: false, reason: "bad-output", detail: error2.detail };
@@ -46115,22 +46179,6 @@ function planPythonIndex(files) {
 }
 function pythonIndexStdin(send) {
   return JSON.stringify(send.map((entry) => ({ id: entry.id, text: entry.text })));
-}
-
-// ../core/src/testIndex/pythonSides.ts
-function sideFiles(side) {
-  if ("unavailable" in side) return [];
-  return side.files.filter((file) => file.path.endsWith(".py") && isTestFile(file.path));
-}
-function pythonTestSourceFiles(sources) {
-  return [...sideFiles(sources.base), ...sideFiles(sources.head)];
-}
-function pythonTestIndexFromRun(sources, run2) {
-  if (!run2.available) return { available: false, reason: run2.reason };
-  const baseCount = sideFiles(sources.base).length;
-  const total = baseCount + sideFiles(sources.head).length;
-  if (run2.files.length !== total) return { available: false, reason: "bad-output" };
-  return { available: true, base: run2.files.slice(0, baseCount), head: run2.files.slice(baseCount) };
 }
 
 // ../core/src/testSourceText.ts
@@ -46997,6 +47045,8 @@ MODULE_SKIPS = ("pytest.importorskip", "pytest.skip")
 SKIP_MODIFIERS = ("skip", "skipIf", "runIf", "fails")
 # The longest name and path entry the index writes, in characters, as core's MAX_TEST_NAME_CHARS.
 MAX_NAME = 500
+# The most distinct module names the index writes per file, as core's MAX_TEST_IMPORTS for the TS index's imports.
+MAX_IMPORTS = 1000
 CLASS_HOOKS = (
     "setup_method", "teardown_method", "setup_class", "teardown_class",
     "setUp", "tearDown", "setUpClass", "tearDownClass", "asyncSetUp", "asyncTearDown",
@@ -47063,6 +47113,34 @@ def import_aliases(tree):
                     target = node.module + "." + item.name
                 aliases[item.asname or item.name] = target
     return aliases
+
+
+def module_imports(tree):
+    """The module names of every import and from-import statement anywhere in the module (ast.walk order), each once,
+    at most MAX_IMPORTS; a name longer than MAX_NAME UTF-16 code units is left out. import a.b gives a.b; from a.b
+    import c gives a.b and a.b.c; a relative import keeps its dots (from . import c gives .c); a star adds nothing."""
+    names = []
+    seen = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            found = [item.name for item in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            prefix = "." * (node.level or 0)
+            members = [item.name for item in node.names if item.name != "*"]
+            if node.module:
+                found = [prefix + node.module] + [prefix + node.module + "." + member for member in members]
+            else:
+                found = [prefix + member for member in members]
+        else:
+            continue
+        for name in found:
+            if name in seen or utf16_length(name) > MAX_NAME:
+                continue
+            if len(names) >= MAX_IMPORTS:
+                return names
+            seen.add(name)
+            names.append(name)
+    return names
 
 
 def canonical(name, table, aliases):
@@ -47591,12 +47669,16 @@ def build(text):
                 for a in block["assertions"]
             ],
         }))
-    return {
+    out = {
         "parsed": True,
         "normalized": normalized,
         "tests": out_blocks,
         "mocks": [{"callee": m[2], "specifier": m[3], "line": m[0]} for m in mocks],
     }
+    imports = module_imports(tree)
+    if imports:
+        out["imports"] = imports
+    return out
 
 
 def switch_off(entry, ctx, removed_at):
@@ -47792,11 +47874,14 @@ async function indexPythonTests(files, deps = {}) {
   }
   if (!outcome.available) return outcome;
   const results = outcome.results;
+  const imports = outcome.imports;
   return {
     available: true,
     files: plan.entries.map((entry) => {
-      const result = "refused" in entry ? { parsed: false, reason: entry.refused } : results[entry.id];
-      return { path: entry.path, result };
+      if ("refused" in entry) return { path: entry.path, result: { parsed: false, reason: entry.refused } };
+      const result = results[entry.id];
+      const names = imports[entry.id];
+      return names === void 0 ? { path: entry.path, result } : { path: entry.path, result, imports: names };
     })
   };
 }

@@ -18,6 +18,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   past. It stays a warning when git could not read a side at all (a diff not from local git, a shallow clone). The cap
   for one file rises from 5 MiB to 32 MiB, the same as for one side, so an honest large lockfile is read (a generated
   20 MiB `pnpm-lock.yaml` is read and judged in about 0.2 s). With `dependencies: never` nothing changes.
+- The tests-exercise warning covers Python (CORE-104). `TESTS_NOT_EXERCISING_CHANGES` now also asks for each changed
+  `.py` source file whether an added or modified Python test file imports it (`import pkg.billing`, `from pkg.billing
+  import total`, `from . import billing`, anywhere in the test file) and keeps or raises its assertion count, so a pull
+  request that adds `src/pkg/billing.py` with no test now gets the warning, as the same change in TypeScript did. A
+  module name maps to `pkg/billing.py` or `pkg/billing/__init__.py` at the repository root or under `src/`. The Python
+  index returns the import names (at most 1000 per file) from the same `ast` pass. Still a warning; no new code or
+  report field. Without a usable `python3` for the touched Python test files, Python files are not asked.
 - Docs: the five workflows in `examples/workflows/` no longer say the step never fails without a threshold (CORE-127).
   Their headers name what fails it by default: a secret in an agent config file (S01-S09), invisible Unicode (PI01),
   a dependency from outside the registry (D05), a dependency change the lockfile does not record (D04) and a run

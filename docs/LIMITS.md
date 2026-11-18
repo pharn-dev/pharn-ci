@@ -881,9 +881,10 @@ findings. It is the Action's alone; the CLI never honours it.
 
 ### What the tests-exercise check misses
 
-The tests-exercise check (`TESTS_NOT_EXERCISING_CHANGES`, A8 step 1) asks, for each changed JavaScript or TypeScript
-source file, whether a JS/TS test file the change adds or modifies imports it directly and keeps or raises its
-assertion count. It reads only the touched test files' text that the signals above already read; it reads no source
+The tests-exercise check (`TESTS_NOT_EXERCISING_CHANGES`, A8 step 1) asks, for each changed JavaScript, TypeScript or
+Python source file, whether a test file of the same language (JS/TS for JS/TS, Python for Python) the change adds or
+modifies imports it directly and keeps or raises its assertion count. It reads only the touched test files' text that
+the signals above already read (a Python test file through the Python index, the same `ast` pass); it reads no source
 file and runs no test. It is a warning in every mode and never fails the check.
 
 - **No per-test coverage.** lcov and Cobertura give coverage summed over every test, so the check cannot say which test
@@ -893,7 +894,7 @@ file and runs no test. It is a warning in every mode and never fails the check.
 - **Direct imports only.** A source file counts only when a changed test file imports it itself. A file reached
   through another source file (a re-export from an `index.ts`, a helper that imports it) is not followed, because the
   check does not read source files.
-- **Relative specifiers only.** `./` and `../` specifiers are resolved against the tracked files and the diff's new
+- **Relative specifiers only (JS/TS).** `./` and `../` specifiers are resolved against the tracked files and the diff's new
   paths: the path itself, its TypeScript twin for a `.js`, `.jsx`, `.mjs` or `.cjs` spelling, then the path with each
   of the eight JS/TS extensions (TypeScript first), then its `/index` file. Bare specifiers, tsconfig `paths` aliases
   (`@/cart`, `~/cart`), `#` subpath imports, workspace packages (`@scope/pkg`) and absolute paths are not resolved, so a
@@ -904,18 +905,37 @@ file and runs no test. It is a warning in every mode and never fails the check.
   (`import type`, or named bindings that are all `type`) do not, nor does a mock path (`vi.mock`, `vi.doMock`,
   `jest.mock`, `jest.doMock`, or a dynamic import passed straight to one), nor a computed specifier. At most 1000
   distinct specifiers are kept per test file.
-- **Which changes are asked.** Only added, modified or renamed JS/TS files with at least one added line. Not asked:
-  test files (by the test globs of TI01), declaration files (`.d.ts`, `.d.mts`, `.d.cts`), config files (a dotfile, a
-  basename with `.config.` in it, or a test-runner config), lockfiles, snapshots, `*.generated.*`, files under `dist/`,
-  `vendor/` or `node_modules/`, minified files (`*.min.*`), files matched by `coverage.exclude`, binary entries, deleted
-  files, renames without edits and changes that only remove lines. Python, Go and every other language are not
-  checked. A source file that is really a test helper outside a test directory is asked like any other.
+- **Python module names (CORE-104).** A Python test file's `import` and `from … import` statements count wherever
+  they are in the file, inside a test function too. `import a.b` (with or without `as`) gives `a.b`; `from a.b import
+  c` gives `a.b` and `a.b.c`; a star import gives the module alone. A name `a.b` means `a/b.py` or `a/b/__init__.py`,
+  at the repository root or under `src/`. A relative import resolves from the test file's directory (one dot is that
+  directory, each further dot one level up), so `from . import billing` beside `billing.py` counts; one that climbs
+  above the root means nothing. At most 1000 distinct module names are kept per Python test file (the same cap as the
+  JS/TS specifiers, core's `MAX_TEST_IMPORTS`), in the order Python's `ast.walk` meets them (the module's own
+  statements first), and a name longer than 500 characters is left out. Not resolved, so a test that reaches its
+  subject only this way does not count: dynamic imports (`importlib.import_module`, `__import__`), namespace packages
+  (a package without `__init__.py` imported by its own name, or one spread over several directories), source roots
+  other than the repository root and `src/` (`lib/`, a monorepo package directory), `sys.path` edits, fixtures defined
+  in `conftest.py` and plugins named in `pytest_plugins`, and an import of the source through another source file.
+  The message's closing sentence still says "(a relative import)", the JS/TS rule; for a Python file this rule applies.
+- **Which changes are asked.** Only added, modified or renamed JS/TS and Python (`.py`) files with at least one added
+  line. Not asked: test files (by the test globs of TI01, `test_*.py` and `*_test.py` included), declaration files
+  (`.d.ts`, `.d.mts`, `.d.cts`, and `.pyi` stubs), config files (a dotfile, a basename with `.config.` in it, or a
+  test-runner config such as `conftest.py`), lockfiles, snapshots, `*.generated.*`, files under `dist/`, `vendor/` or
+  `node_modules/`, minified files (`*.min.*`), files matched by `coverage.exclude`, binary entries, deleted files,
+  renames without edits and changes that only remove lines. Python files are not asked when the run found no usable
+  Python interpreter for the touched Python test files (`python-not-found` or `python-too-old`): their imports could
+  not be read, and `TEST_INTEGRITY_INDEX_UNAVAILABLE` already names those test files. When no Python test file is
+  touched the interpreter is not needed, and Python files are asked. Go and every other language are not checked. A
+  source file that is really a test helper outside a test directory, or a script such as `setup.py`, is asked like any
+  other.
 - **Which tests count.** An added JS/TS test file with at least one assertion at head, or a modified test file (or one
   renamed between test paths) whose diff adds or removes a line and whose head has at least one assertion and no fewer
   than its base, counting the assertions of its tests (an assertion in a hook does not count). A test file the test
   index refused, or that was not read (a drop reason of section 8, the 200-file cap included), gives no evidence, so its
   sources are reported as not exercised; the file itself is named in `TEST_INTEGRITY_INDEX_UNAVAILABLE`. A Python test
-  file gives no evidence.
+  file counts by the same rule, with the assertions the Python index records, and only for Python source files; a
+  JS/TS test file counts only for JS/TS source files.
 - **When it is silent.** In mode `off`, without a diff, without test sources (a GitHub compare API diff, PR-number
   mode), when the head side of the sources could not be read, or when the touched test files were not compared
   because a side could not be read.

@@ -30,6 +30,12 @@ export interface PythonSourceFile {
 export interface PythonIndexFile {
   path: string;
   result: TestIndexResult;
+  /**
+   * The module names of the file's import statements (anywhere in the module), each once, at most `MAX_TEST_IMPORTS`,
+   * for the tests-exercise check: `import a.b` gives `a.b`, `from a.b import c` gives `a.b` and `a.b.c`, a relative
+   * import keeps its dots (`.c`). Present only for a parsed file that imports something.
+   */
+  imports?: string[];
 }
 
 /** A run that gave no index: the reason, and a one-line detail of at most 300 characters. */

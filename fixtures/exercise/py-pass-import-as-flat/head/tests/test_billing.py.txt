@@ -1,0 +1,5 @@
+import pkg.billing as b
+
+
+def test_total():
+    assert b.total([2, 3]) == 5

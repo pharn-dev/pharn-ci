@@ -1,0 +1,17 @@
+diff --git a/src/pkg/billing.py b/src/pkg/billing.py
+index 3333333..4444444 100644
+--- a/src/pkg/billing.py
++++ b/src/pkg/billing.py
+@@ -1,2 +1,2 @@
+ def total(prices):
+-    return sum(prices)
++    return sum(prices, 0)
+diff --git a/tests/test_billing.py b/tests/test_billing.py
+index 1111111..2222222 100644
+--- a/tests/test_billing.py
++++ b/tests/test_billing.py
+@@ -5,0 +6,4 @@ def test_total_empty():
++
++
++def test_total_two():
++    assert total([2, 3]) == 5

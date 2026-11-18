@@ -1,0 +1,29 @@
+import os
+import a.b
+import a.b as c
+from x.y import p, q as r
+from . import billing
+from ..pkg.mod import x
+from .. import up
+from star import *
+from . import *
+import os
+import zz, yy.k
+
+
+def test_inner():
+    from inner.mod import thing
+    import lazy
+
+    assert thing and lazy
+
+
+class TestGroup:
+    def test_method(self):
+        from .sibling import helper
+
+        assert helper
+
+
+if os.environ.get("CI"):
+    import guarded

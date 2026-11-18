@@ -41,8 +41,9 @@ export interface ComparedTestFile {
   baseGroups?: TestBlock[];
   headGroups?: TestBlock[];
   /**
-   * The module specifiers a JavaScript or TypeScript file loads at head (`indexTestFileWithImports`), for the
-   * tests-exercise check; absent for a Python file.
+   * For the tests-exercise check: the module specifiers a JavaScript or TypeScript file loads at head
+   * (`indexTestFileWithImports`), or the module names a Python file imports at head (the Python index's `imports`, empty
+   * when it has none).
    */
   headImports?: string[];
 }
@@ -54,7 +55,7 @@ export interface AddedTestFile {
   headMocks: TestModuleMock[];
   /** The describe blocks (kind `describe`) it holds at head, for TI03's pair pass. */
   headGroups?: TestBlock[];
-  /** The module specifiers a JavaScript or TypeScript file loads at head; absent for a Python file. */
+  /** The module specifiers a JavaScript or TypeScript file loads at head, or the module names a Python file imports. */
   headImports?: string[];
 }
 
@@ -124,15 +125,15 @@ function testsOf(result: TestIndexResult, imports: string[] | undefined): SideIn
     : { ok: false, reason: result.reason };
 }
 
-/** The Python index results of each side by path. */
+/** The Python index files of each side by path. */
 interface PythonLookup {
   unavailable: string | null;
-  base: Map<string, TestIndexResult>;
-  head: Map<string, TestIndexResult>;
+  base: Map<string, PythonIndexFile>;
+  head: Map<string, PythonIndexFile>;
 }
 
 function pythonLookupOf(index: PythonTestIndex | undefined): PythonLookup {
-  const mapOf = (files: readonly PythonIndexFile[]) => new Map(files.map((file) => [file.path, file.result]));
+  const mapOf = (files: readonly PythonIndexFile[]) => new Map(files.map((file) => [file.path, file]));
   if (index === undefined) return { unavailable: "python-not-found", base: new Map(), head: new Map() };
   if (!index.available) return { unavailable: index.reason, base: new Map(), head: new Map() };
   return { unavailable: null, base: mapOf(index.base), head: mapOf(index.head) };
@@ -267,7 +268,7 @@ export function pythonNotFoundStopsComparison(diff: readonly DiffFile[], python:
  * path on the head side. An added test file of those languages is indexed on the head side only; one that does not
  * index goes to `unreadAdded` with its reason, so it is reported, not dropped. A deleted file is not indexed (TI01 owns
  * it). JavaScript and TypeScript text goes to `indexTestFileWithImports`, which also gives the head side's
- * `headImports`; Python results come from `python`. When a side of the
+ * `headImports`; Python results, and a Python file's `headImports`, come from `python`. When a side of the
  * sources is unavailable and a compared file exists, nothing is indexed and `notRun` says why; when `python` says
  * `python-not-found` and a compared `.py` file exists, `notRun` is `python-not-found` (a sources reason wins); when the
  * head side is unavailable and no compared file exists, nothing is indexed or named. A compared file whose head side
@@ -310,7 +311,8 @@ export function indexTouchedTestFiles(
       if (pythonSide.unavailable !== null) return { ok: false, reason: pythonSide.unavailable };
       const found = pythonSide[side].get(path);
       if (found === undefined) return { ok: false, reason: "missing" };
-      result = found;
+      result = found.result;
+      imports = found.imports ?? [];
     } else {
       const indexed = indexTestFileWithImports(path, text);
       result = indexed.result;

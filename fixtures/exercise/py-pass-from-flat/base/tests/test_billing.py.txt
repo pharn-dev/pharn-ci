@@ -1,0 +1,5 @@
+from pkg.billing import total
+
+
+def test_total_empty():
+    assert total([]) == 0

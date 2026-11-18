@@ -49,10 +49,12 @@ const touchedFor = (diff: ReturnType<typeof diffOf>, head: Files, base: Files = 
   indexTouchedTestFiles(diff, { base: side(base), head: side(head) }, undefined);
 
 describe("exerciseCandidates", () => {
-  it("keeps only JS/TS source files with an added line that are not tests, declarations, config, generated, build output or excluded", () => {
+  // Re-pinned for CORE-104 (R3.8): Python source files are asked too (scripts/build.py), unless `python` is false.
+  it("keeps only JS/TS and Python source files with an added line that are not tests, declarations, config, generated, build output or excluded", () => {
     const diff = parseUnifiedDiff(fixture("exercise/pass-not-checked/change.diff"));
-    expect(exerciseCandidates(diff, none)).toEqual(["src/excluded.ts"]);
-    expect(exerciseCandidates(diff, (path) => path === "src/excluded.ts")).toEqual([]);
+    expect(exerciseCandidates(diff, none)).toEqual(["scripts/build.py", "src/excluded.ts"]);
+    expect(exerciseCandidates(diff, none, false)).toEqual(["src/excluded.ts"]);
+    expect(exerciseCandidates(diff, (path) => path === "src/excluded.ts" || path === "scripts/build.py")).toEqual([]);
   });
 });
 

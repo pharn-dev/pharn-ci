@@ -16,7 +16,8 @@ exec(compile(sys.argv[1], "<pharn-ci-python-index>", "exec"), {"__name__": "__ph
 /**
  * The main script, Python 3.8 and later, standard library only (ast, json, sys, warnings). It reads
  * [{"id": n, "text": ...}] from stdin and writes one JSON array to stdout: per file either a refusal or the
- * normalized text with its test blocks and mock calls. It only parses (ast.parse); nothing in a file is run.
+ * normalized text with its test blocks and mock calls, and, when the file has any, the module names it imports
+ * (`imports`, at most 1000). It only parses (ast.parse); nothing in a file is run.
  */
 export const PYTHON_INDEX_SCRIPT = `import ast
 import json
@@ -59,6 +60,8 @@ MODULE_SKIPS = ("pytest.importorskip", "pytest.skip")
 SKIP_MODIFIERS = ("skip", "skipIf", "runIf", "fails")
 # The longest name and path entry the index writes, in characters, as core's MAX_TEST_NAME_CHARS.
 MAX_NAME = 500
+# The most distinct module names the index writes per file, as core's MAX_TEST_IMPORTS for the TS index's imports.
+MAX_IMPORTS = 1000
 CLASS_HOOKS = (
     "setup_method", "teardown_method", "setup_class", "teardown_class",
     "setUp", "tearDown", "setUpClass", "tearDownClass", "asyncSetUp", "asyncTearDown",
@@ -125,6 +128,34 @@ def import_aliases(tree):
                     target = node.module + "." + item.name
                 aliases[item.asname or item.name] = target
     return aliases
+
+
+def module_imports(tree):
+    """The module names of every import and from-import statement anywhere in the module (ast.walk order), each once,
+    at most MAX_IMPORTS; a name longer than MAX_NAME UTF-16 code units is left out. import a.b gives a.b; from a.b
+    import c gives a.b and a.b.c; a relative import keeps its dots (from . import c gives .c); a star adds nothing."""
+    names = []
+    seen = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            found = [item.name for item in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            prefix = "." * (node.level or 0)
+            members = [item.name for item in node.names if item.name != "*"]
+            if node.module:
+                found = [prefix + node.module] + [prefix + node.module + "." + member for member in members]
+            else:
+                found = [prefix + member for member in members]
+        else:
+            continue
+        for name in found:
+            if name in seen or utf16_length(name) > MAX_NAME:
+                continue
+            if len(names) >= MAX_IMPORTS:
+                return names
+            seen.add(name)
+            names.append(name)
+    return names
 
 
 def canonical(name, table, aliases):
@@ -653,12 +684,16 @@ def build(text):
                 for a in block["assertions"]
             ],
         }))
-    return {
+    out = {
         "parsed": True,
         "normalized": normalized,
         "tests": out_blocks,
         "mocks": [{"callee": m[2], "specifier": m[3], "line": m[0]} for m in mocks],
     }
+    imports = module_imports(tree)
+    if imports:
+        out["imports"] = imports
+    return out
 
 
 def switch_off(entry, ctx, removed_at):

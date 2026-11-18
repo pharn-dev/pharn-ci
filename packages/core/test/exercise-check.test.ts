@@ -95,13 +95,18 @@ describe("TESTS_NOT_EXERCISING_CHANGES, must not trigger", () => {
     });
   }
 
-  it("pass-not-checked: build output, vendored, minified, generated, declaration, config, test-directory, Python, Markdown, binary, deleted, rename-only, removal-only and coverage-excluded files are not checked", () => {
-    const report = run(caseInput("pass-not-checked", { exclude: ["src/excluded.ts"] }));
+  // Re-pinned for CORE-104 (R3.8): Python source files are now asked too, so the case's scripts/build.py (no test
+  // imports it) is checked; the case excludes it along with src/excluded.ts, and the control names both.
+  it("pass-not-checked: build output, vendored, minified, generated, declaration, config, test-directory, Markdown, binary, deleted, rename-only, removal-only and coverage-excluded files are not checked", () => {
+    const report = run(caseInput("pass-not-checked", { exclude: ["src/excluded.ts", "scripts/build.py"] }));
     expect(exerciseOf(report)).toEqual([]);
     expect("exercise" in report.testIntegrity).toBe(false);
-    // Control: without the exclusion the excluded file is the one checked, and it is not exercised.
+    // Control: without the exclusions the excluded files are the ones checked, and they are not exercised.
     const control = run(caseInput("pass-not-checked"));
-    expect(control.testIntegrity.exercise).toEqual({ checked: 1, notExercised: ["src/excluded.ts"] });
+    expect(control.testIntegrity.exercise).toEqual({
+      checked: 2,
+      notExercised: ["scripts/build.py", "src/excluded.ts"],
+    });
   });
 });
 
