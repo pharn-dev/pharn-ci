@@ -284,6 +284,10 @@ all PRs in the CSV, PRs that errored included. A signal whose rate is below 1 % 
 reviewed ships as block; otherwise it demotes to warn. Exactly 1 % demotes. The script exits 1 while a
 `block` row has no verdict, and 2 on a missing file, a wrong header or an unknown verdict.
 
+Named exception (decision 2026-11-18): on the Python corpus, TI02 measured exactly 1 % and stays block until the
+rename-in-place fix of epic R3 (CORE-8) lands and the corpus is re-measured. See "What this means" under "Python
+corpus".
+
 The reviewed CSV of the official `v0.3.0` run is `fixtures/corpus/review.csv`; its rates are under Official results
 below.
 
@@ -502,12 +506,13 @@ TI04 and TI10 have no Python path, and TI14 reads the pharn-ci config, not test 
 | TI17 | 0 | 0 | 0 | 0.0 % | warn |
 
 TI01 has 2 `info` findings besides its blocks; TI03 has 44 `warn` findings and TI11 5. TI05's 6 are `warn`: one PR in
-which tests lost some of their assertions but none fell to zero. The block table that `corpus-rate.mjs` prints:
+which tests lost some of their assertions but none fell to zero. The block table that `corpus-rate.mjs` prints, with
+TI02's decision cell replaced by the decision taken on it (the script prints "demote to warn"; see "What this means"):
 
 | Signal | Block rows | Block PRs | TP | FP | Unclear | False-block rate | Decision |
 |---|---:|---:|---:|---:|---:|---:|---|
 | TI01 | 8 | 6 | 2 | 6 | 0 | 0.7 % | ships as block |
-| TI02 | 107 | 11 | 97 | 10 | 0 | 1.0 % | demote to warn |
+| TI02 | 107 | 11 | 97 | 10 | 0 | 1.0 % | at the bar: stays block until the rename-in-place fix (decision 2026-11-18, CORE-8) |
 | TI03 | 3 | 1 | 0 | 3 | 0 | 0.2 % | ships as block |
 | TI11 | 2 | 2 | 1 | 1 | 0 | 0.2 % | ships as block |
 | TI13 | 11 | 2 | 10 | 1 | 0 | 0.2 % | ships as block |
@@ -562,11 +567,12 @@ Each with its one-line reason; the same reason is in the CSV's `note` column.
 
 #### What this means
 
-- **TI02 is at the bar on Python: 6 false-block PRs of 600, 1.0 %.** Under the rule above (exactly 1 % demotes) it
-  would demote to `warn` for Python. Every false block is the rename-in-place pattern above. This ticket changes no
-  signal; the fix or the demotion is a follow-up (tracked in CORE-72 comments): either clear a test whose name changed
-  at the same place in the same file when its body still calls the same code under test, or lower TI02 to `warn` for
-  Python test files.
+- **TI02 is at the bar on Python (6 false-block PRs of 600, 1.0 %) and stays block (decision 2026-11-18).** Every
+  false block comes from one pattern, a test renamed in place and rewritten, and demoting the whole signal would also
+  hide the 6 PRs that really delete tests (one of them, `pydantic/pydantic#14158`, also holds the false row); so the pattern is fixed in epic R3 (CORE-8) and the Python corpus is
+  re-measured after that fix lands. The two options weighed were to clear a test whose name changed at the same place
+  in the same file when its body still calls the same code under test (the fix chosen), or to lower TI02 to `warn` for
+  Python test files. This is a named exception to the rule in "How the run works".
 - **TI01 (0.7 %), TI03, TI11 and TI13 (0.2 % each) stay under 1 %.** Each false block that is a pattern has a follow-up
   (tracked in CORE-72 comments): TI01 should find the deleted code through the deleted test file's own imports (a
   module the test imports that the PR deletes) and match a private `_name.py` to `test_name.py`; TI03 should not read a
@@ -577,8 +583,8 @@ Each with its one-line reason; the same reason is in the CSV's `note` column.
   TypeScript PRs of the re-run above have no TI13 finding at all. A block on a line-level marker in a new file would
   have caught nothing in 1,200 PRs, and the only false TI13 block is the same case (new code) in an existing file. So
   a line-level marker in a new file stays `warn` (CORE-71); a whole-file or range marker, and any marker in an
-  existing file, keep the mode's level. Whether the rule should also cover a marker on code the same change adds to
-  an existing file is a follow-up (tracked in CORE-72 comments).
+  existing file, keep the mode's level. A marker on code the same change adds to an existing file is kept at block
+  (decision 2026-11-18): loosening a block needs more evidence than one PR.
 
 #### Limits of the Python corpus
 
