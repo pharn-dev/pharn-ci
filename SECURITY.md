@@ -14,8 +14,12 @@ coordinated disclosure of any vulnerability in this repository.
   or `required` and the job grants `id-token: write`, one `GET /api/v1/policy` to the `app-url` origin (https only,
   default `https://pharn.dev`) to read the org policy and, unless the `upload` input is `never` and only when the job
   grants `id-token: write`, the upload of the run to pharn.dev: two `POST` requests to the same origin and one `PUT`
-  of the redacted `report.json` and `meta.json` to a signed storage URL it names (`upload: never` turns that off). It
-  has no telemetry.
+  of the redacted `report.json` and `meta.json` to a signed storage URL it names (`upload: never` turns that off) and,
+  only with the `dependencies` mode `lookup` (the input, `dependencies.lookup: true` in `.pharn/ci.yml`, or an org
+  policy), one `GET` per added unscoped package to `registry.npmjs.org/<name>`,
+  `api.npmjs.org/downloads/point/last-week/<name>` or `pypi.org/pypi/<name>/json`: the package name in the path and
+  nothing else (no token, no repository name; row "Registry lookups" in [Data handling](#data-handling)). It calls no
+  other host and has no telemetry. The CLI makes no network calls.
 - **Input parsing** (`packages/core`): lcov, Cobertura XML, unified diffs and the config file are
   untrusted input, parsed by hand-written parsers. A crafted file must not crash, hang or exhaust memory in the
   consumer's CI.

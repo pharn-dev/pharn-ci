@@ -1475,11 +1475,15 @@ the files only when the diff came from the local checkout.
 pharn-ci runs inside other people's CI, on untrusted changes, with their token. It is built for
 that:
 
-- **Stateless.** No backend of its own, no telemetry, no network calls except the GitHub API inside the
-  Action and, only with `policy` set to `auto` or `required` and an OIDC token granted, one `GET` of the
-  pharn.dev policy endpoint that sends the OIDC token and the repository name ([Org policy](#org-policy)), and,
-  with `upload` not set to `never` and an OIDC token granted, the redacted `report.json` and `meta.json` of the run to
-  pharn.dev ([Upload](#upload-to-pharndev-optional)).
+- **Stateless.** No backend of its own, no telemetry, and no network calls except these, all made by the Action (the
+  CLI makes none): the GitHub API; only with `policy` set to `auto` or `required` and an OIDC token granted, one `GET`
+  of the pharn.dev policy endpoint that sends the OIDC token and the repository name ([Org policy](#org-policy)); with
+  `upload` not set to `never` and an OIDC token granted, the redacted `report.json` and `meta.json` of the run to
+  pharn.dev ([Upload](#upload-to-pharndev-optional)); and only with the `dependencies` mode `lookup` (the input,
+  `dependencies.lookup: true` in `.pharn/ci.yml`, or an org policy), one `GET` per added unscoped package to
+  `registry.npmjs.org/<name>`, `api.npmjs.org/downloads/point/last-week/<name>` or `pypi.org/pypi/<name>/json`, which
+  sends the package name in the path and nothing else: no token, no repository name
+  ([Dependency safety](#dependency-safety)). No other host is called.
   What it reads, what it sends to your GitHub and to pharn.dev, and what it stores is listed in
   [Data handling](SECURITY.md#data-handling).
 - **Small token footprint.** `contents: read` plus `pull-requests: write`, and `id-token: write` only for

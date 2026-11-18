@@ -18,6 +18,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   start does, with the same one-line comment: it lets pharn-ci fetch the org policy and upload the redacted report to
   pharn.dev, and without it pharn-ci makes no call to pharn.dev. They pin `pharn-dev/pharn-ci` to the full commit SHA
   of `v0.11.0`, like every other action in them.
+- Docs: the README's Safety model, `SECURITY.md`'s Security surface and `docs/MARKETPLACE.md` (the Marketplace
+  listing text) now name the registry lookups among the Action's network calls (CORE-126): with the `dependencies`
+  mode `lookup` (the input, `dependencies.lookup: true` in `.pharn/ci.yml`, or an org policy), one `GET` per added
+  unscoped package to `registry.npmjs.org`, `api.npmjs.org` or `pypi.org`, sending only the package name. They said
+  pharn-ci calls only GitHub and pharn.dev. No behaviour change.
 - Docs: `docs/PRECISION.md` gains a Python precision corpus (CORE-72): 600 merged PRs of `langchain-ai/langchain`,
   `pydantic/pydantic` and `python-poetry/poetry`, frozen in `docs/precision/corpus-python/`, with every block finding
   reviewed by hand. TI02 falsely blocks 6 of 600 Python PRs (1.0 %, tests renamed in place and rewritten); TI01 0.7 %;
