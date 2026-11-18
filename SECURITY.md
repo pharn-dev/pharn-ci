@@ -18,8 +18,8 @@ coordinated disclosure of any vulnerability in this repository.
   only with the `dependencies` mode `lookup` (the input, `dependencies.lookup: true` in `.pharn/ci.yml`, or an org
   policy), one `GET` per added unscoped package to `registry.npmjs.org/<name>`,
   `api.npmjs.org/downloads/point/last-week/<name>` or `pypi.org/pypi/<name>/json`: the package name in the path and
-  nothing else (no token, no repository name; row "Registry lookups" in [Data handling](#data-handling)). It calls no
-  other host and has no telemetry. The CLI makes no network calls.
+  nothing else (no token, no repository name; row "Registry lookups" in [Data handling](#data-handling)). It makes no
+  other request of its own and has no telemetry. The CLI makes no network calls of its own.
 - **Input parsing** (`packages/core`): lcov, Cobertura XML, unified diffs and the config file are
   untrusted input, parsed by hand-written parsers. A crafted file must not crash, hang or exhaust memory in the
   consumer's CI.
