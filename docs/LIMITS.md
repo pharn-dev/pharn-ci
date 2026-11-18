@@ -84,7 +84,7 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
 - **Files missing from the coverage report are invisible.** A new source file that no test imports
   is often absent from the coverage report entirely, so it adds nothing to the denominator instead
   of counting as 0%. Configure your coverage tool to include all source files if you want untested files to count:
-  [Make untested files count](../README.md#make-untested-files-count) gives the setting for vitest (`coverage.include`;
+  [Make untested files count](coverage.md#make-untested-files-count) gives the setting for vitest (`coverage.include`;
   vitest 4 removed `coverage.all`), jest (`collectCoverageFrom`) and pytest-cov (`[tool.coverage.run] source`).
 - **Deleted and binary files are skipped.** Renamed files are measured under their new path; a
   pure rename adds no lines. Rename detection is git's default similarity (`--find-renames`).
@@ -214,7 +214,7 @@ TI11 reads the added and removed lines of workflow files (`.github/workflows/*.y
   removal and a `block`, even when the same change removes the old script from `package.json` and renames the test
   files. That is a known false block (one PR in the 600 of the precision corpus). It is kept on purpose: removing the
   job, removing its script and renaming a test file are exactly what a change that stops CI from running its tests
-  would do, and nothing the pull request carries may loosen this block. Use the [accept label](../README.md#accept-label)
+  would do, and nothing the pull request carries may loosen this block. Use the [accept label](action.md#accept-label)
   for a real move.
 - **Triggers by token.** A removed `pull_request` or `pull_request_target` is excused when any added line of the same
   file names either. The `on` key may be quoted (`"on":`). Other filters (`branches`, `paths`) are not judged, and a
@@ -1424,7 +1424,7 @@ What they miss:
   cases; the file that crosses 25 MiB and every later file are left out, and a failure message is kept to 8192 UTF-16
   code units while reading. Over a cap the results are partial and `JUNIT_TOO_LARGE` says so. The glob walk shares the
   coverage walk's limits; past them the search stops and some files may not be found.
-- **Ids are exact.** A quarantine id matches only a test id spelled exactly the same (see the README, Test id): a test
+- **Ids are exact.** A quarantine id matches only a test id spelled exactly the same (see [Flaky tests and JUnit results](checks/flaky-tests.md), Test id): a test
   renamed, moved to another class or file, parameterized with a new value, or cut past 500 code units with another hash
   does not match. Two tests with the same class name and name are one id. Unicode is compared as written, without
   normalization; zero-width and bidirectional characters stay in an id.
@@ -1458,8 +1458,8 @@ comes from and how new it is, not what it does. What it misses:
   in `.npmrc` is invisible to D05 there; a yarn berry `npm:` resolution is trusted as the configured registry. A
   private registry or mirror that a lockfile does record (Artifactory, Verdaccio, GitHub Packages, a private PyPI
   index) is reported as off the registry (D05) unless its host is on the allowed list: the `dependency-allowed-hosts`
-  input, the CLI's `--dependency-allowed-host` flag or an app policy's `dependencies.allowed_hosts` (README,
-  Dependency safety). The list is host names only, so a registry that is allowed is trusted as a whole: D05 does not look
+  input, the CLI's `--dependency-allowed-host` flag or an app policy's `dependencies.allowed_hosts` ([Dependency
+  safety](checks/dependencies.md)). The list is host names only, so a registry that is allowed is trusted as a whole: D05 does not look
   at a path, a port or a token, and a package on an allowed host is not looked up, so D01 to D03 never judge it.
 - **Allowed hosts are exact.** `registry.npmjs.org`, `registry.yarnpkg.com`, `pypi.org` and `files.pythonhosted.org`,
   and the hosts a run allows, https only, no user name, password or port. `http://registry.npmjs.org`, a CDN mirror or a
@@ -1502,7 +1502,7 @@ comes from and how new it is, not what it does. What it misses:
 
 ## Fix hints
 
-Every message and finding of the report carries an optional `fix` object (README, Fix hints). What it does not do:
+Every message and finding of the report carries an optional `fix` object ([Report v2](output.md#fix-hints), Fix hints). What it does not do:
 
 - **Hints are generic.** There is one kind and one sentence per message code and one per signal id, from two fixed
   tables. A hint never looks at the code, the diff, the test or the package, so it cannot tell a finding that is a
@@ -1522,7 +1522,7 @@ Every message and finding of the report carries an optional `fix` object (README
 
 ## Org policy
 
-The org policy (`policy: auto`, `required` or `file:<path>`; see the README, Org policy) is fetched, validated and
+The org policy (`policy: auto`, `required` or `file:<path>`; see [Org policy](policy.md)) is fetched, validated and
 applied once per run. What it does not do:
 
 - **No persistent ETag cache.** The app's response carries an ETag, but a GitHub-hosted runner starts empty and the
@@ -1726,7 +1726,7 @@ text guard on what the files declare, not a sandbox. What it misses:
 
 ## Upload to pharn.dev
 
-The upload (`upload: auto`; see the README, Upload to pharn.dev) sends the redacted `report.json` and `meta.json` of a
+The upload (`upload: auto`; see [Upload to pharn.dev](upload.md)) sends the redacted `report.json` and `meta.json` of a
 run. What it does not do:
 
 - **No connect timeout of its own.** Each request has one timeout for the whole exchange, response body included (60 s
@@ -1752,7 +1752,7 @@ run. What it does not do:
   `upload` says and whatever was checked out; the report says `meta.upload.status: skipped`. The org policy request of
   such a run still happens.
 - **Redaction misses what it does not know.** The report is redacted with the ten secret shapes of the agent config
-  scan (README, Secrets in agent configs) and cut to the upload's message cap per message and signal detail; a secret
+  scan ([Secrets in agent configs](checks/secrets.md)) and cut to the upload's message cap per message and signal detail; a secret
   of another shape, split across strings or encoded, is not found. Paths and test names are not secrets to it and are
   sent as they are. The cap is the smaller of 2048 bytes and the org's `settings.messageMaxBytes` from the same run's
   policy response, used only when that response was a `200` that validated whole (never under `policy: never` or a

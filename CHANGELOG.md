@@ -11,6 +11,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- Docs: the README is down from about 1,665 lines to about 250 and doubles as the Marketplace page (CORE-137): what
+  pharn-ci is, a complete workflow checked in a sandbox repository, one paragraph per check, the most-used inputs, and
+  what leaves the job. The reference chapters moved to `docs/` with their text unchanged: the Action reference
+  (`docs/action.md`), the CLI (`docs/cli.md`), the config (`docs/config.md`), Report v2 and the message codes
+  (`docs/output.md`), the org policy (`docs/policy.md`), one page per check under `docs/checks/`, and an index in
+  `docs/README.md`. Links into the old README sections point there now; a test checks that every relative link and
+  anchor in the tracked Markdown files resolves.
 - Docs: the report schema's descriptions state the R3 levels (CORE-8). `schema/report.v2.json` now says that
   `COVERAGE_FILE_TRACKED`, `CONFIG_CHANGED_IN_DIFF` and `DIFF_BINARY_COVERED_FILE` can be errors where report v1 had
   them as warnings, that `DEPENDENCY_CHECK_INCOMPLETE` is an error unless git caused every unread file (with the
@@ -1033,7 +1040,7 @@ Report v2 with two optional fields added.
   (a test file, a workflow, a modified `package.json`, a JavaScript, TypeScript or Python source file, or the pharn-ci
   config) has more than 5000 changed lines, so the signals read only the first 5000. The message names those files,
   so a change cannot pass in silence by padding a file past the cut. Deleted files are not named.
-- README: an [Agent skills](README.md#agent-skills) section on the `pharn-ci` plugin in
+- README: an [Agent skills](docs/agent-skills.md) section on the `pharn-ci` plugin in
   [pharn-dev/skills](https://github.com/pharn-dev/skills) (install, explain a verdict, cover
   uncovered lines), and a pointer to it from the Quick start and the Pharn family table.
 - The Skylos nine benchmark: the nine ways Skylos hides a failing test, reproduced in vitest under

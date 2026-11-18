@@ -183,7 +183,7 @@ unless you ask to remain anonymous.
    routes: run pharn-ci on `pull_request` (fork PRs get the job summary only), or, to get the comment
    on fork PRs too, run your tests on `pull_request`, upload the coverage file and PR number as an
    artifact, and run pharn-ci in a second workflow on `workflow_run` with the `pr-number` and
-   `head-sha` inputs (see the [README](./README.md#fork-prs-comment-from-workflow_run)). That run reads
+   `head-sha` inputs (see the [Action reference](./docs/action.md#fork-prs-comment-from-workflow_run)). That run reads
    the PR through the GitHub API, checks out and runs no PR code, and fails when the artifact does not
    match the tested commit.
 3. **Review the report** before acting on it; it is derived from untrusted PR content.

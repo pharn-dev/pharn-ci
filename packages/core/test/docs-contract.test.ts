@@ -9,10 +9,10 @@ import { describe, expect, it } from "vitest";
 // document by changing its path constant below. Files are read inside the test bodies.
 
 /** The document that holds the inputs table, and the heading the table sits under. */
-const INPUTS_DOC = "README.md";
+const INPUTS_DOC = "docs/action.md";
 const INPUTS_HEADING = "Action reference";
 /** The document that holds the message-code table, and the heading the table sits under. */
-const CODES_DOC = "README.md";
+const CODES_DOC = "docs/output.md";
 const CODES_HEADING = "Report v2";
 /** Documents and examples whose release pins must name the current version (CHANGELOG.md is history, not a pin). */
 const PIN_FILES = ["README.md", "SECURITY.md", "CONTRIBUTING.md", ".github/ISSUE_TEMPLATE/bug_report.yml"];

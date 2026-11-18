@@ -69,9 +69,9 @@ that worked on the previous release. Before 1.0 the rules are:
      not carry it, before running the release workflow. `Release verify` refuses the release unless
      the heading is exactly `## [X.Y.Z] - <date>` with a real date and its notes contain neither
      `YYYY-MM-DD` nor the date note (`scripts/check-release-notes.mjs`).
-   - **Update the README pins and the Status note.** Set all four `uses: pharn-dev/pharn-ci@vX.Y.Z`
-     lines in `README.md` (the snippet at the top, the workflow under Quick start, and the two
-     workflows under "Fork PRs: comment from workflow_run"), and rewrite
+   - **Update the README pins and the Status note.** Set the `uses: pharn-dev/pharn-ci@vX.Y.Z` line
+     of the workflow under Quick start in `README.md`, the two in `docs/action.md` (the workflows under
+     "Fork PRs: comment from workflow_run") and every other pin under `docs/` and `examples/`, and rewrite
      the **Status** note under the badges so it no longer says the release has not been cut. The
      docs tests fail when a pin disagrees with the package version.
    - Run `pnpm build` (the version is compiled into `packages/action/dist`) and commit the result.
