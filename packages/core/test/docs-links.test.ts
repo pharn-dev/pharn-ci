@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 // Every relative link and #anchor in every tracked Markdown file resolves (CORE-137). External http(s) and mailto
@@ -19,10 +19,7 @@ const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8").replace
 /** The tracked Markdown files outside the excluded trees, repo-relative. */
 function markdownFiles(): string[] {
   const out = execFileSync("git", ["ls-files", "-z", "--", "*.md"], { cwd: new URL(".", ROOT), encoding: "utf8" });
-  return out
-    .split("\0")
-    .filter((path) => path !== "" && !EXCLUDED.some((dir) => path.startsWith(dir)))
-    .filter((path) => existsSync(new URL(path, ROOT)));
+  return out.split("\0").filter((path) => path !== "" && !EXCLUDED.some((dir) => path.startsWith(dir)));
 }
 
 /** The lines outside fenced code blocks, with inline code spans blanked so a link inside one is not read. */
@@ -44,8 +41,10 @@ function proseLines(markdown: string): string[] {
 
 /** GitHub's heading slug: lower case, punctuation dropped (letters, marks, digits, `_`, `-` and spaces kept). */
 function slug(heading: string): string {
+  // GitHub slugs the rendered text, so HTML tags drop out; angle brackets are punctuation and are dropped below anyway.
   const text = heading
-    .replace(/<[^>]+>/g, "")
+    .replace(/<\/?[a-z][a-z0-9]*(?:\s[^<>]*)?\/?>/gi, "")
+    .replace(/[<>]/g, "")
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/[`*]/g, "")
     .trim()
@@ -101,15 +100,20 @@ function brokenReason(from: string, target: string, anchorCache: Map<string, Set
   const resolved =
     pathPart === "" ? from : new URL(pathPart.startsWith("/") ? `.${pathPart}` : `${dir}${pathPart}`, ROOT);
   const url = typeof resolved === "string" ? new URL(resolved, ROOT) : resolved;
-  if (!existsSync(url)) return "no such file";
-  if (anchor === undefined || anchor === "") return null;
-  if (statSync(url).isDirectory() || !url.pathname.endsWith(".md")) return null;
   const key = url.href;
   let anchors = anchorCache.get(key);
   if (anchors === undefined) {
-    anchors = anchorsOf(readFileSync(url, "utf8").replace(/\r\n/g, "\n"));
+    // One read decides both questions (no check-then-read): a directory throws EISDIR, a missing path ENOENT.
+    let text = "";
+    try {
+      text = readFileSync(url, "utf8");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EISDIR") return "no such file";
+    }
+    anchors = anchorsOf(text.replace(/\r\n/g, "\n"));
     anchorCache.set(key, anchors);
   }
+  if (anchor === undefined || anchor === "" || !url.pathname.endsWith(".md")) return null;
   return anchors.has(decodeURIComponent(anchor).toLowerCase()) ? null : `no heading #${anchor}`;
 }
 
