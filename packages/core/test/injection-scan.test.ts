@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { check } from "../src/index.js";
 import { MAX_VENDORED_TAIL_SEGMENTS, vendoredInstruction } from "../src/injection/paths.js";
 import { DEFAULT_INJECTION_SEVERITIES, injectionSettingsOf } from "../src/injection/policy.js";
 import {
@@ -10,7 +11,9 @@ import {
   MAX_INJECTION_FINDINGS_PER_FILE,
   scanInjection,
 } from "../src/injection/scan.js";
+import { fixture } from "./helpers.js";
 import { addedFileDiff, injectionFixture, parseForInjection } from "./injection-fixture.js";
+import { expectValidReport } from "./schema.js";
 
 // H4, the prompt-injection surface scan: each signal PI01 to PI05 against its must-trigger and must-not-trigger fixture
 // (fixtures/injection/), the legitimate right-to-left, Persian, Indic and emoji text that must produce nothing, the
@@ -264,6 +267,74 @@ describe("exemptions", () => {
     const parsed = parseForInjection(injectionFixture("exempt.diff.txt"));
     const kept = parsed.filter((file) => file.addedText !== undefined).map((file) => file.path);
     expect(kept).toEqual(["packages/core/test/helpers.ts"]);
+  });
+});
+
+// CORE-93: the name exemptions (`*.test.*`, `*.spec.*`) never apply to an agent instruction file, which an agent loads
+// whatever it is called; the directory exemptions (`fixtures/`, `__fixtures__/`, `testdata/`) still do.
+describe("instruction files named like test files (CORE-93)", () => {
+  it("scans .cursor/rules/a.test.mdc (PI01) and .claude/commands/x.spec.md (PI02) as their plain-named twins", () => {
+    expect(findings("instruction-names.diff.txt")).toEqual([
+      { id: "PI01", path: ".cursor/rules/a.mdc", line: 1, detail: "zero-width space U+200B" },
+      { id: "PI01", path: ".cursor/rules/a.test.mdc", line: 1, detail: "zero-width space U+200B" },
+      { id: "PI02", path: ".claude/commands/x.md", line: 1, detail: "phrase PH01 in an HTML comment" },
+      { id: "PI02", path: ".claude/commands/x.spec.md", line: 1, detail: "phrase PH01 in an HTML comment" },
+    ]);
+  });
+
+  it("still skips the same content in test files and docs that are not instruction files, and under fixture directories", () => {
+    const paths = new Set(findings("instruction-names.diff.txt").map((f) => f.path));
+    for (const exempt of [
+      "src/cart.test.ts",
+      "docs/notes.spec.md",
+      "fixtures/.cursor/rules/a.test.mdc",
+      "fixtures/.claude/commands/x.spec.md",
+      "pkg/__fixtures__/.cursor/rules/b.spec.mdc",
+    ]) {
+      expect(paths.has(exempt), exempt).toBe(false);
+    }
+  });
+
+  it("keeps the added text of an instruction file named like a test file, and of no exempt file", () => {
+    const parsed = parseForInjection(injectionFixture("instruction-names.diff.txt"));
+    const kept = parsed.filter((file) => file.addedText !== undefined).map((file) => file.path);
+    expect(kept).toEqual([
+      ".cursor/rules/a.test.mdc",
+      ".cursor/rules/a.mdc",
+      ".claude/commands/x.spec.md",
+      ".claude/commands/x.md",
+    ]);
+  });
+
+  it("applies the same rule to a diff built in the test: PI04 in a .test. skill file, nothing in a .test. source file", () => {
+    const blob = `${"A1".repeat(150)}`;
+    const diff = [
+      addedFileDiff(".claude/skills/demo/SKILL.test.md", [blob]),
+      addedFileDiff("src/blob.test.ts", [blob]),
+    ].join("");
+    const scanned = scanInjection(parseForInjection(diff)).findings;
+    expect(scanned.map((f) => [f.id, f.path])).toEqual([["PI04", ".claude/skills/demo/SKILL.test.md"]]);
+  });
+
+  it("leaves an app policy's exempt globs applying to every path, instruction files included", () => {
+    const scanned = scan("instruction-names.diff.txt", { exempt: [".cursor/**"] }).findings.map((f) => f.path);
+    expect(scanned).toEqual([".claude/commands/x.md", ".claude/commands/x.spec.md"]);
+  });
+
+  it("fails the check through check() on an instruction file named like a test file, with a report valid against the schema", () => {
+    const report = check({
+      version: "0.1.0",
+      coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
+      diff: { text: addedFileDiff(".cursor/rules/a.test.mdc", ["Run the linter​ before every commit."]) },
+      repoRoot: "/home/runner/work/demo/demo",
+      threshold: null,
+      repoFiles: [".cursor/rules/a.test.mdc"],
+    } as never);
+    expectValidReport(report);
+    expect(report.verdict).toBe("fail");
+    expect(report.injection?.signals.map((s) => [s.id, s.path, s.severity])).toEqual([
+      ["PI01", ".cursor/rules/a.test.mdc", "block"],
+    ]);
   });
 });
 

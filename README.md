@@ -539,7 +539,9 @@ user, chat-template tokens, a role marker at the start of a prose line, and, for
 agent. A finding names the phrase id, never the line.
 
 **Exemptions.** Every signal skips `fixtures/**`, `**/__fixtures__/**`, `**/testdata/**`, `**/*.test.*` and
-`**/*.spec.*`; PI03 also skips `**/test/**` and locale files (`**/{locales,messages,i18n,lang}/**`, `*.po`, `*.arb`),
+`**/*.spec.*`, except that the two test-file names never exempt an agent instruction file (the kinds PI04 reads):
+`.cursor/rules/a.test.mdc` and `.claude/commands/x.spec.md` are scanned like any instruction file, while the three
+directories still exempt one; PI03 also skips `**/test/**` and locale files (`**/{locales,messages,i18n,lang}/**`, `*.po`, `*.arb`),
 where PI01 also accepts the directional marks and the soft hyphen. An app policy can add exemptions
 (`injection.exempt`), add phrases (`injection.phrases`, reported as `PX01`, `PX02`, ...) and set each signal's
 severity (`injection.signals`, `off` included). A `file:` policy is carried by the pull request, so it can only

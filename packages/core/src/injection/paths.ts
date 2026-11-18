@@ -7,14 +7,17 @@ import { type AgentSetupKind, classifySetupPath } from "../setup/scan.js";
  * repo-relative path: nothing is read.
  */
 
-/** Paths no signal reads by default: test fixtures, test data and test files. */
-export const DEFAULT_EXEMPT: readonly string[] = [
-  "fixtures/**",
-  "**/__fixtures__/**",
-  "**/testdata/**",
-  "**/*.test.*",
-  "**/*.spec.*",
-];
+/** The directory exemptions: test fixtures and test data. They apply to every path, instruction files included. */
+export const DEFAULT_EXEMPT_DIRS: readonly string[] = ["fixtures/**", "**/__fixtures__/**", "**/testdata/**"];
+
+/**
+ * The name exemptions: test files. They never apply to an agent instruction file (`instructionKindOf` not null), so
+ * `.cursor/rules/a.test.mdc` and `.claude/commands/x.spec.md`, which an agent loads, are scanned.
+ */
+export const DEFAULT_EXEMPT_NAMES: readonly string[] = ["**/*.test.*", "**/*.spec.*"];
+
+/** Paths no signal reads by default: test fixtures, test data and test files (but see `isDefaultExemptPath`). */
+export const DEFAULT_EXEMPT: readonly string[] = [...DEFAULT_EXEMPT_DIRS, ...DEFAULT_EXEMPT_NAMES];
 
 /** Paths PI03 also leaves out by default: test directories. */
 export const DEFAULT_PI03_EXEMPT: readonly string[] = ["**/test/**"];
@@ -66,11 +69,15 @@ export function anyGlob(patterns: readonly string[]): (path: string) => boolean 
   return (path) => matchers.some((matches) => matches(path));
 }
 
-const isDefaultExempt = anyGlob(DEFAULT_EXEMPT);
+const isExemptDir = anyGlob(DEFAULT_EXEMPT_DIRS);
+const isExemptName = anyGlob(DEFAULT_EXEMPT_NAMES);
 
-/** Whether a path is left out of every signal by default (fixtures, test data, test files). */
+/**
+ * Whether a path is left out of every signal by default: under a fixture or test data directory, or named like a test
+ * file and not an agent instruction file. The diff reader (`keepInjectionText`) and the scan loop both use it.
+ */
 export function isDefaultExemptPath(path: string): boolean {
-  return isDefaultExempt(path);
+  return isExemptDir(path) || (isExemptName(path) && instructionKindOf(path) === null);
 }
 
 /** The instruction kind of a path, or null: the inventory's classification, limited to the instruction kinds. */

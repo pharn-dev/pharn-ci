@@ -1344,9 +1344,14 @@ a text filter for content aimed at the next agent, not a judgement of what a tex
 - **Hidden Markdown is a short list.** PI02 reads HTML comments, reference definitions and quoted link titles. Image alt
   text, `<details>` blocks, HTML attributes, CSS that hides text, white-on-white text, zero-size fonts and footnotes
   are not treated as hidden; their text is still read by PI03.
-- **Exempt paths are not read.** Test files (`*.test.*`, `*.spec.*`), `fixtures/`, `__fixtures__/` and `testdata/` are
+- **Exempt paths are not read.** Test files (`*.test.*`, `*.spec.*`) that are not instruction files, `fixtures/`, `__fixtures__/` and `testdata/` are
   never read, `test/` directories and locale files are not read for phrases, and an app policy can exempt more. A
   pull request can put content in an exempt path; an agent that reads it is not warned.
+- **Which exemptions apply to an agent instruction file.** The test-file names do not: an instruction file (the kinds
+  PI04 reads) called `.cursor/rules/a.test.mdc` or `.claude/commands/x.spec.md` is scanned. The directories do: an
+  instruction file under `fixtures/`, `__fixtures__/` or `testdata/` (an `AGENTS.md` there that an agent working in
+  that directory reads) is not scanned, and neither is one an app policy's `injection.exempt` covers. `test/`
+  directories and locale files still skip PI03 for it.
 - **Vendored directories by name.** PI05 knows six directory names and the inventory's instruction kinds; an
   instruction file under another vendoring layout (`external/`, `deps/`, a git submodule) is not flagged, and a modified
   one in a vendored directory is not either (only added or renamed-in files).

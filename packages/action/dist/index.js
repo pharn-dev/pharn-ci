@@ -30738,13 +30738,9 @@ function scanAgentSetup(paths) {
 }
 
 // ../core/src/injection/paths.ts
-var DEFAULT_EXEMPT = [
-  "fixtures/**",
-  "**/__fixtures__/**",
-  "**/testdata/**",
-  "**/*.test.*",
-  "**/*.spec.*"
-];
+var DEFAULT_EXEMPT_DIRS = ["fixtures/**", "**/__fixtures__/**", "**/testdata/**"];
+var DEFAULT_EXEMPT_NAMES = ["**/*.test.*", "**/*.spec.*"];
+var DEFAULT_EXEMPT = [...DEFAULT_EXEMPT_DIRS, ...DEFAULT_EXEMPT_NAMES];
 var DEFAULT_PI03_EXEMPT = ["**/test/**"];
 var LOCALE_PATHS = [
   "**/locales/**",
@@ -30777,9 +30773,10 @@ function anyGlob(patterns) {
   const matchers = patterns.map(compileGlob);
   return (path) => matchers.some((matches) => matches(path));
 }
-var isDefaultExempt = anyGlob(DEFAULT_EXEMPT);
+var isExemptDir = anyGlob(DEFAULT_EXEMPT_DIRS);
+var isExemptName = anyGlob(DEFAULT_EXEMPT_NAMES);
 function isDefaultExemptPath(path) {
-  return isDefaultExempt(path);
+  return isExemptDir(path) || isExemptName(path) && instructionKindOf(path) === null;
 }
 function instructionKindOf(path) {
   const kind = classifySetupPath(path);
@@ -31151,7 +31148,8 @@ function longestBlob(text) {
   return bestLength === 0 ? null : { length: bestLength, hex: bestHex };
 }
 function pathRules(extraExempt) {
-  const exempt = anyGlob([...DEFAULT_EXEMPT, ...extraExempt]);
+  const policyExempt = anyGlob(extraExempt);
+  const exempt = (path) => isDefaultExemptPath(path) || policyExempt(path);
   const pi03Only = anyGlob(DEFAULT_PI03_EXEMPT);
   const locale = anyGlob(LOCALE_PATHS);
   return { exempt, pi03Exempt: (path) => pi03Only(path) || locale(path), locale };

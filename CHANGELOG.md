@@ -23,6 +23,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   mode `lookup` (the input, `dependencies.lookup: true` in `.pharn/ci.yml`, or an org policy), one `GET` per added
   unscoped package to `registry.npmjs.org`, `api.npmjs.org` or `pypi.org`, sending only the package name. They said
   pharn-ci calls only GitHub and pharn.dev. No behaviour change.
+- Fixed: an agent instruction file named like a test file is scanned for prompt injection (CORE-93). The default
+  name exemptions `**/*.test.*` and `**/*.spec.*` no longer apply to the instruction kinds PI04 reads, so hidden
+  Unicode or a hidden instruction in `.cursor/rules/a.test.mdc` or `.claude/commands/x.spec.md` now gives PI01 to
+  PI04 where it passed. `fixtures/`, `__fixtures__/` and `testdata/`, and an app policy's `injection.exempt`, still
+  exempt every path.
 - Docs: `docs/PRECISION.md` gains a Python precision corpus (CORE-72): 600 merged PRs of `langchain-ai/langchain`,
   `pydantic/pydantic` and `python-poetry/poetry`, frozen in `docs/precision/corpus-python/`, with every block finding
   reviewed by hand. TI02 falsely blocks 6 of 600 Python PRs (1.0 %, tests renamed in place and rewritten); TI01 0.7 %;

@@ -3,7 +3,6 @@ import type { InjectionSignalId } from "../policy/types.js";
 import { byCodeUnit } from "../text.js";
 import {
   anyGlob,
-  DEFAULT_EXEMPT,
   DEFAULT_PI03_EXEMPT,
   instructionKindOf,
   isDefaultExemptPath,
@@ -57,7 +56,8 @@ export const MAX_INJECTION_FINDINGS = 200;
 
 /**
  * The files whose full added text the diff reader keeps for the scan: every file but the default exemptions
- * (`fixtures/**`, `**\/__fixtures__/**`, `**\/testdata/**`, `**\/*.test.*`, `**\/*.spec.*`), judged by the new path.
+ * (`fixtures/**`, `**\/__fixtures__/**`, `**\/testdata/**`, and `**\/*.test.*`, `**\/*.spec.*` unless the path is an
+ * agent instruction file), judged by the new path.
  */
 export function keepInjectionText(file: { path: string; oldPath: string }): boolean {
   return !isDefaultExemptPath(file.path);
@@ -204,7 +204,10 @@ export function longestBlob(text: string): { length: number; hex: boolean } | nu
   return bestLength === 0 ? null : { length: bestLength, hex: bestHex };
 }
 
-/** The effective path checks of a run: the default and policy exemptions. */
+/**
+ * The effective path checks of a run: the default exemptions (`isDefaultExemptPath`, the same predicate the diff
+ * reader uses) and an app policy's exempt globs, which apply to every path as written.
+ */
 interface PathRules {
   exempt: (path: string) => boolean;
   pi03Exempt: (path: string) => boolean;
@@ -212,7 +215,8 @@ interface PathRules {
 }
 
 function pathRules(extraExempt: readonly string[]): PathRules {
-  const exempt = anyGlob([...DEFAULT_EXEMPT, ...extraExempt]);
+  const policyExempt = anyGlob(extraExempt);
+  const exempt = (path: string): boolean => isDefaultExemptPath(path) || policyExempt(path);
   const pi03Only = anyGlob(DEFAULT_PI03_EXEMPT);
   const locale = anyGlob(LOCALE_PATHS);
   return { exempt, pi03Exempt: (path) => pi03Only(path) || locale(path), locale };
