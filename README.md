@@ -217,6 +217,24 @@ carries a `COVERAGE_FILE_MISSING` message. Each file it reads is logged as `cove
 (auto-discovered)`. A complete workflow for each of vitest, jest, pytest, .NET and cargo, with no
 `coverage-file` set, is in [`examples/workflows/`](examples/workflows/).
 
+### Make untested files count
+
+Diff coverage counts only the files your coverage report lists. With the default settings of vitest, jest and
+pytest-cov, a new source file that no test imports is not in the report, so it does not lower diff coverage, even at
+`threshold: 100`; pharn-ci only warns about it (`TESTS_NOT_EXERCISING_CHANGES`, for JavaScript and TypeScript). Tell
+the runner which files are your source, and an untested file is listed at 0%:
+
+| Runner     | Setting                                                         | Where                                   | Checked on                          |
+| ---------- | --------------------------------------------------------------- | --------------------------------------- | ----------------------------------- |
+| vitest     | `test: { coverage: { include: ["src/**/*.{ts,tsx}"] } }`        | `vitest.config.ts`                      | vitest 5.1.1                        |
+| jest       | `collectCoverageFrom: ["src/**/*.{js,ts}"]`                     | `jest.config.js`, or `"jest"` in `package.json` | jest 30.5.2                 |
+| pytest-cov | `source = ["mypackage"]` under `[tool.coverage.run]`            | `pyproject.toml`, or `.coveragerc`      | pytest-cov 7.1.0, coverage.py 7.17.3 |
+
+Use the glob or package that holds your source. vitest 3 did this by default (`coverage.all: true`); vitest 4 removed
+`coverage.all`, and only `coverage.include` brings unloaded files into the report. coverage.py finds unimported files
+only in the source directory itself and in directories with an `__init__.py`. cargo-llvm-cov and coverlet need no
+setting: every file compiled into the crate, or into an assembly the test project references, is in the report.
+
 ### Coverage per ecosystem
 
 Point `coverage-file` at what your test run writes. Each of these tools produces a format pharn-ci

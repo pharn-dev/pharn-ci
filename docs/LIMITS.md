@@ -83,8 +83,9 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   decided by your coverage tool, not by pharn-ci.
 - **Files missing from the coverage report are invisible.** A new source file that no test imports
   is often absent from the coverage report entirely, so it adds nothing to the denominator instead
-  of counting as 0%. Configure your coverage tool to include all source files (for example vitest's
-  `coverage.include` or `all`) if you want untested files to count.
+  of counting as 0%. Configure your coverage tool to include all source files if you want untested files to count:
+  [Make untested files count](../README.md#make-untested-files-count) gives the setting for vitest (`coverage.include`;
+  vitest 4 removed `coverage.all`), jest (`collectCoverageFrom`) and pytest-cov (`[tool.coverage.run] source`).
 - **Deleted and binary files are skipped.** Renamed files are measured under their new path; a
   pure rename adds no lines. Rename detection is git's default similarity (`--find-renames`).
 - **No coverable changes passes.** When none of the added lines are tracked by the coverage report,

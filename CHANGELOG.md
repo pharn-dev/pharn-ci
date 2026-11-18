@@ -45,6 +45,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   0.9.x), the secret redaction helpers are called internal (`@pharn-ci/core` is private), the development table lists
   `packages/node-io`, and the `@pharn-ci/core` package description says Report v2. The `github-token` input row says
   the agent-PR commit list is read on every run that has a pull request, not only on `pull_request` runs.
+- Docs: the README quick start gains "Make untested files count" (CORE-102): the setting that makes vitest
+  (`coverage.include`), jest (`collectCoverageFrom`) and pytest-cov (`[tool.coverage.run] source`) list a new source
+  file no test imports at 0%, so it counts against diff coverage instead of being left out. The vitest, jest and pytest
+  example workflows name the setting and its config file; the cargo and .NET ones say an untested file is already
+  reported. `docs/LIMITS.md` links to it.
 - Docs: `docs/PRECISION.md` gains a Python precision corpus (CORE-72): 600 merged PRs of `langchain-ai/langchain`,
   `pydantic/pydantic` and `python-poetry/poetry`, frozen in `docs/precision/corpus-python/`, with every block finding
   reviewed by hand. TI02 falsely blocks 6 of 600 Python PRs (1.0 %, tests renamed in place and rewritten); TI01 0.7 %;

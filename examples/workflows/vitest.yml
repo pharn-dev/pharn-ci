@@ -38,6 +38,8 @@ jobs:
       - run: npm ci
       # Needed for `vitest run --coverage`; skip this step if @vitest/coverage-v8 is already a dev dependency.
       - run: npm install --no-save @vitest/coverage-v8
+      # A source file no test imports is left out of the report unless vitest.config.ts sets
+      # test.coverage.include to your source, e.g. ["src/**/*.{ts,tsx}"]; then it counts at 0% (vitest 4+).
       - run: npx vitest run --coverage --coverage.reporter=lcov
       - uses: pharn-dev/pharn-ci@bd7b36ea07588884418f5002ae74afc35135c400 # v0.11.0
         timeout-minutes: 5
