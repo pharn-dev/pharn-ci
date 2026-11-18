@@ -52,13 +52,28 @@ function jsConstant(text: string | undefined): SkipState | null {
   return null;
 }
 
+/** A block's own skip state: the stronger of its modifiers' state and what else switches it off. */
+function ownState(block: TestBlock, view: Pick<FileView, "python" | "lines">): SkipState {
+  return stronger(modifierState(block, view), switchOffState(block));
+}
+
 /**
- * A block's own skip state from its modifiers: `skip`, `todo` and `fails` are unconditional, `skipIf` and `runIf`
+ * CORE-52: what the test index says switches a block off besides its modifiers. An empty `.each([])` or `.for([])`
+ * table declares no test, like a literal skip; a guard (an `if`, or a function nothing in the file calls by name, between
+ * the block and its owner) is conditional.
+ */
+function switchOffState(block: TestBlock): SkipState {
+  if (block.emptyTable === true) return UNCONDITIONAL;
+  return block.guarded === undefined ? NONE : CONDITIONAL;
+}
+
+/**
+ * A block's skip state from its modifiers: `skip`, `todo` and `fails` are unconditional, `skipIf` and `runIf`
  * conditional. A JS/TS constant condition on the block's opening line decides it (the block records no condition, so
  * the line is read from the source text); in a Python file `fails` with `skipIf` (a conditional xfail) is conditional,
  * and no Python condition is read as a constant.
  */
-function ownState(block: TestBlock, view: Pick<FileView, "python" | "lines">): SkipState {
+function modifierState(block: TestBlock, view: Pick<FileView, "python" | "lines">): SkipState {
   const modifiers = block.modifiers;
   if (modifiers.includes("skip") || modifiers.includes("todo")) return UNCONDITIONAL;
   if (modifiers.includes("fails") && !(view.python && modifiers.includes("skipIf"))) return UNCONDITIONAL;
@@ -144,7 +159,8 @@ export interface Ti03PairInput {
  * TI03's pair pass. For every judged pair, a head test that is unconditionally skipped while its base test was not is
  * an `existing` finding, and a head test that is conditionally skipped while its base test had no skip at all is a
  * `conditional` one. A test's skip is its own modifiers together with those of every describe block of the same file
- * whose line range holds it (a Python module-level `pytestmark` is already on every block, a class one on the class).
+ * whose line range holds it (a Python module-level `pytestmark` is already on every block, a class one on the class);
+ * an empty table counts as an unconditional skip and a guard as a conditional one (`switchOffState`).
  *
  * A finding is placed at its skip site, so one skip covering many tests is one finding: the lowest added line of the
  * head file that brings the skip in (the opening line of the block that carries it, an added skip decorator above a

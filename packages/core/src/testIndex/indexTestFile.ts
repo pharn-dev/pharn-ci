@@ -41,6 +41,8 @@ function buildBlocks(text: string, walked: WalkResult): TestBlock[] {
       assertionCount: d.assertions.length,
       assertions: d.assertions,
       guards: d.guards,
+      ...(d.guarded === null ? {} : { guarded: d.guarded }),
+      ...(d.emptyTable ? { emptyTable: true as const } : {}),
     };
   });
 }

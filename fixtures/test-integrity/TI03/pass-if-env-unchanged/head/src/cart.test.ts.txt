@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { total } from "./cart";
+
+if (process.env.CI) {
+  it("adds the items", () => {
+    expect(total([1, 2])).toBe(3);
+  });
+}
+
+it("adds one item", () => {
+  expect(total([1])).toBe(1);
+});

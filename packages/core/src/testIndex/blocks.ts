@@ -1,4 +1,5 @@
 import ts from "typescript5";
+import { isEmptyTable, optionModifiers } from "./switchOff.js";
 import { collapseWhitespace, cutName } from "./text.js";
 import { TEST_MODIFIER_ORDER, type TestBlockKind, type TestModifier } from "./types.js";
 
@@ -53,7 +54,7 @@ const CALLABLE_MEMBERS: ReadonlySet<string> = new Set(["each", "for", "skipIf", 
 /** The members after which the callee may be tagged with a template: ``it.each`table`(…)``. */
 const TAGGABLE_MEMBERS: ReadonlySet<string> = new Set(["each", "for"]);
 
-type Link = { type: "prop"; name: string } | { type: "call" } | { type: "template" };
+type Link = { type: "prop"; name: string } | { type: "call"; emptyTable: boolean } | { type: "template" };
 
 export interface BlockCall {
   kind: TestBlockKind;
@@ -62,6 +63,8 @@ export interface BlockCall {
   modifiers: TestModifier[];
   /** The first argument that is a function literal, or `null`. */
   callback: ts.ArrowFunction | ts.FunctionExpression | null;
+  /** The `.each` or `.for` table is an empty array literal. */
+  emptyTable: boolean;
 }
 
 /** The callee as its root identifier and the links after it, or `null` when it is any other shape. */
@@ -73,7 +76,7 @@ function decompose(callee: ts.Expression): { root: string; links: Link[] } | nul
       links.push({ type: "prop", name: current.name.text });
       current = current.expression;
     } else if (ts.isCallExpression(current)) {
-      links.push({ type: "call" });
+      links.push({ type: "call", emptyTable: isEmptyTable(current) });
       current = current.expression;
     } else if (ts.isTaggedTemplateExpression(current)) {
       links.push({ type: "template" });
@@ -120,17 +123,22 @@ function hasBlockArguments(args: readonly ts.Expression[]): boolean {
 function finish(
   kind: TestBlockKind,
   hookWord: string | null,
-  modifiers: ReadonlySet<TestModifier>,
+  modifiers: Set<TestModifier>,
   args: readonly ts.Expression[],
   sourceFile: ts.SourceFile,
+  emptyTable = false,
 ): BlockCall | null {
   if (!hasBlockArguments(args)) return null;
   const callback = args.find(isFunctionLiteral) ?? null;
+  if (hookWord !== null) {
+    const ordered = TEST_MODIFIER_ORDER.filter((m) => modifiers.has(m));
+    return { kind, name: hookWord, nameDynamic: false, modifiers: ordered, callback, emptyTable };
+  }
+  for (const modifier of optionModifiers(args)) modifiers.add(modifier);
   const ordered = TEST_MODIFIER_ORDER.filter((m) => modifiers.has(m));
-  if (hookWord !== null) return { kind, name: hookWord, nameDynamic: false, modifiers: ordered, callback };
   const first = args[0] as ts.Expression;
   const { name, nameDynamic } = nameFromArgument(first, modifiers.has("each"), sourceFile);
-  return { kind, name, nameDynamic, modifiers: ordered, callback };
+  return { kind, name, nameDynamic, modifiers: ordered, callback, emptyTable };
 }
 
 /**
@@ -195,6 +203,7 @@ export function blockCall(
   }
 
   let previous: string | null = null;
+  let emptyTable = false;
   for (let i = from; i < links.length; i++) {
     const link = links[i] as Link;
     if (link.type === "prop") {
@@ -204,11 +213,12 @@ export function blockCall(
       previous = link.name;
     } else if (link.type === "call") {
       if (previous === null || !CALLABLE_MEMBERS.has(previous)) return null;
+      if (link.emptyTable && TAGGABLE_MEMBERS.has(previous)) emptyTable = true;
       previous = null;
     } else {
       if (previous === null || !TAGGABLE_MEMBERS.has(previous)) return null;
       previous = null;
     }
   }
-  return finish(kind, null, modifiers, call.arguments, sourceFile);
+  return finish(kind, null, modifiers, call.arguments, sourceFile, emptyTable);
 }

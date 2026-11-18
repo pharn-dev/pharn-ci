@@ -65,7 +65,18 @@ export interface TestBlock {
   assertionCount: number;
   assertions: TestAssertion[];
   guards: TestAssertionGuard[];
+  /**
+   * Present when something between the block and its owner can keep it from being declared: an `if` statement
+   * (`"if"`), or a function that is not a test callback and that nothing in the file calls by name
+   * (`"uncalled-function"`). A loop, a `describe` callback and a helper the file calls are not guards. Absent otherwise.
+   */
+  guarded?: TestGuard;
+  /** Present, and `true`, when the block's `.each` or `.for` table is an empty array literal: it declares no test. */
+  emptyTable?: true;
 }
+
+/** What sits between a block and its owner and can keep the block from being declared. */
+export type TestGuard = "if" | "uncalled-function";
 
 /** The callees of the Python mock calls the Python test index records. */
 export const PYTHON_MOCK_CALLEES = [

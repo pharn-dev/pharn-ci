@@ -1,0 +1,8 @@
+import { describe, expect, it } from "vitest";
+import { total } from "./cart";
+
+const cases = [[1, 2, 3]];
+
+it.each(cases)("adds %i and %i", (a, b, sum) => {
+  expect(total([a, b])).toBe(sum);
+});

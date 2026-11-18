@@ -1,0 +1,6 @@
+import { describe, expect, it } from "vitest";
+import { total } from "./cart";
+
+it("adds the items", () => {
+  expect(total([1, 2])).toBe(3);
+});

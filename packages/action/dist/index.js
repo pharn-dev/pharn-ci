@@ -36357,6 +36357,55 @@ function guardCall(call) {
   return { kind: "assertions", count: Number.isFinite(count2) ? count2 : null };
 }
 
+// ../core/src/testIndex/switchOff.ts
+var OPTION_MODIFIERS = /* @__PURE__ */ new Map([
+  ["skip", "skip"],
+  ["todo", "todo"],
+  ["fails", "fails"]
+]);
+function staticName(name) {
+  if (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNoSubstitutionTemplateLiteral(name)) return name.text;
+  return null;
+}
+function optionModifiers(args) {
+  const found = [];
+  for (const arg of args.slice(1, 3)) {
+    if (!ts.isObjectLiteralExpression(arg)) continue;
+    for (const property of arg.properties) {
+      if (!ts.isPropertyAssignment(property) && !ts.isShorthandPropertyAssignment(property)) continue;
+      const key = staticName(property.name);
+      const modifier = key === null ? void 0 : OPTION_MODIFIERS.get(key);
+      if (modifier === void 0) continue;
+      const value = ts.isPropertyAssignment(property) ? property.initializer.kind : null;
+      if (value === ts.SyntaxKind.TrueKeyword) found.push(modifier);
+      else if (value !== ts.SyntaxKind.FalseKeyword) found.push("skipIf");
+    }
+  }
+  return found;
+}
+function isEmptyTable(call) {
+  const first = call.arguments[0];
+  return first !== void 0 && ts.isArrayLiteralExpression(first) && first.elements.length === 0;
+}
+function guardName(node) {
+  if (ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)) {
+    return node.name !== void 0 && ts.isIdentifier(node.name) ? node.name.text : null;
+  }
+  if (!ts.isFunctionExpression(node) && !ts.isArrowFunction(node)) return null;
+  let current = node;
+  while (current.parent !== void 0 && ts.isParenthesizedExpression(current.parent)) current = current.parent;
+  const parent = current.parent;
+  if (parent === void 0) return null;
+  let name;
+  if (ts.isVariableDeclaration(parent) && parent.initializer === current) name = parent.name;
+  else if (ts.isPropertyAssignment(parent) && parent.initializer === current) name = parent.name;
+  else if (ts.isPropertyDeclaration(parent) && parent.initializer === current) name = parent.name;
+  else if (ts.isBinaryExpression(parent) && parent.operatorToken.kind === ts.SyntaxKind.EqualsToken && parent.right === current) {
+    name = ts.isPropertyAccessExpression(parent.left) ? parent.left.name : parent.left;
+  }
+  return name !== void 0 && ts.isIdentifier(name) ? name.text : null;
+}
+
 // ../core/src/testIndex/blocks.ts
 var TEST_WORDS = /* @__PURE__ */ new Map([
   ["it", null],
@@ -36406,7 +36455,7 @@ function decompose(callee) {
       links.push({ type: "prop", name: current.name.text });
       current = current.expression;
     } else if (ts.isCallExpression(current)) {
-      links.push({ type: "call" });
+      links.push({ type: "call", emptyTable: isEmptyTable(current) });
       current = current.expression;
     } else if (ts.isTaggedTemplateExpression(current)) {
       links.push({ type: "template" });
@@ -36437,14 +36486,18 @@ function hasBlockArguments(args) {
   const first = args[0];
   return first !== void 0 && (ts.isStringLiteral(first) || ts.isNoSubstitutionTemplateLiteral(first) || ts.isTemplateExpression(first));
 }
-function finish(kind, hookWord, modifiers, args, sourceFile) {
+function finish(kind, hookWord, modifiers, args, sourceFile, emptyTable = false) {
   if (!hasBlockArguments(args)) return null;
   const callback = args.find(isFunctionLiteral) ?? null;
+  if (hookWord !== null) {
+    const ordered2 = TEST_MODIFIER_ORDER.filter((m) => modifiers.has(m));
+    return { kind, name: hookWord, nameDynamic: false, modifiers: ordered2, callback, emptyTable };
+  }
+  for (const modifier of optionModifiers(args)) modifiers.add(modifier);
   const ordered = TEST_MODIFIER_ORDER.filter((m) => modifiers.has(m));
-  if (hookWord !== null) return { kind, name: hookWord, nameDynamic: false, modifiers: ordered, callback };
   const first = args[0];
   const { name, nameDynamic } = nameFromArgument(first, modifiers.has("each"), sourceFile);
-  return { kind, name, nameDynamic, modifiers: ordered, callback };
+  return { kind, name, nameDynamic, modifiers: ordered, callback, emptyTable };
 }
 function blockCall(call, sourceFile, subtestParam) {
   const callee = call.expression;
@@ -36488,6 +36541,7 @@ function blockCall(call, sourceFile, subtestParam) {
     return finish(kind, hookWord, modifiers, call.arguments, sourceFile);
   }
   let previous = null;
+  let emptyTable = false;
   for (let i = from; i < links.length; i++) {
     const link = links[i];
     if (link.type === "prop") {
@@ -36497,13 +36551,14 @@ function blockCall(call, sourceFile, subtestParam) {
       previous = link.name;
     } else if (link.type === "call") {
       if (previous === null || !CALLABLE_MEMBERS.has(previous)) return null;
+      if (link.emptyTable && TAGGABLE_MEMBERS.has(previous)) emptyTable = true;
       previous = null;
     } else {
       if (previous === null || !TAGGABLE_MEMBERS.has(previous)) return null;
       previous = null;
     }
   }
-  return finish(kind, null, modifiers, call.arguments, sourceFile);
+  return finish(kind, null, modifiers, call.arguments, sourceFile, emptyTable);
 }
 
 // ../core/src/testIndex/mocks.ts
@@ -36574,6 +36629,25 @@ function importSpecifier(node) {
 }
 
 // ../core/src/testIndex/walk.ts
+function extend(trail, inIf, name) {
+  const up = trail?.functions ?? null;
+  return { inIf: inIf || trail?.inIf === true, functions: name === null ? up : { name, up } };
+}
+function anyUncalled(link, counts2) {
+  const pending = [];
+  let at = link;
+  while (at !== null && at.uncalled === void 0) {
+    pending.push(at);
+    at = at.up;
+  }
+  let outer = at?.uncalled ?? false;
+  for (let i = pending.length - 1; i >= 0; i--) {
+    const current = pending[i];
+    outer = outer || (counts2.get(current.name) ?? 0) <= 1;
+    current.uncalled = outer;
+  }
+  return link.uncalled;
+}
 function isChainTop(node) {
   const parent = node.parent;
   if (parent === void 0) return true;
@@ -36587,8 +36661,12 @@ function walkTestFile(sourceFile) {
   const ranges = [];
   const imports = /* @__PURE__ */ new Set();
   const lineOf3 = (position) => sourceFile.getLineAndCharacterOfPosition(position).line + 1;
-  const stack = [{ node: sourceFile, depth: 0, owner: null, fn: null, inTry: false }];
+  const stack = [
+    { node: sourceFile, depth: 0, owner: null, fn: null, inTry: false, isCallback: false, trail: null }
+  ];
   const children = [];
+  const identifierCounts = /* @__PURE__ */ new Map();
+  const trails = /* @__PURE__ */ new Map();
   for (let entry = stack.pop(); entry !== void 0; entry = stack.pop()) {
     const { node, depth, owner } = entry;
     if (depth > MAX_TEST_INDEX_DEPTH) return "too-deep";
@@ -36620,6 +36698,13 @@ function walkTestFile(sourceFile) {
         break;
     }
     if (ts.isFunctionLike(node)) fn = { firstReturnEnd: Number.POSITIVE_INFINITY };
+    if (ts.isIdentifier(node)) identifierCounts.set(node.text, (identifierCounts.get(node.text) ?? 0) + 1);
+    let trail = entry.trail;
+    if (!entry.isCallback && ts.isFunctionLike(node)) {
+      const name = guardName(node);
+      if (name !== null) trail = extend(trail, false, name);
+    }
+    const ifStatement = ts.isIfStatement(node) ? node : null;
     if (imports.size < MAX_TEST_IMPORTS) {
       const specifier = importSpecifier(node);
       if (specifier !== null) imports.add(specifier);
@@ -36655,9 +36740,12 @@ function walkTestFile(sourceFile) {
           bodyStart,
           bodyEnd,
           assertions: [],
-          guards: []
+          guards: [],
+          guarded: null,
+          emptyTable: found.emptyTable
         };
         drafts.push(created);
+        if (trail !== null) trails.set(created, trail);
         callback = callbackFunction;
       } else {
         const guard = owner === null ? null : guardCall(node);
@@ -36693,8 +36781,16 @@ function walkTestFile(sourceFile) {
         depth: depth + 1,
         owner: isCallback ? created : owner,
         fn,
-        inTry: isCallback ? false : child === tryBlock ? true : entry.inTry
+        inTry: isCallback ? false : child === tryBlock ? true : entry.inTry,
+        isCallback,
+        trail: isCallback ? null : ifStatement !== null && child !== ifStatement.expression ? extend(trail, true, null) : trail
       });
+    }
+  }
+  for (const [draft, trail] of trails) {
+    if (trail.inIf) draft.guarded = "if";
+    else if (trail.functions !== null && anyUncalled(trail.functions, identifierCounts)) {
+      draft.guarded = "uncalled-function";
     }
   }
   return { drafts, mocks, ranges, imports: [...imports] };
@@ -36724,7 +36820,9 @@ function buildBlocks(text, walked) {
       bodyHash: fnv1a32Hex(body),
       assertionCount: d.assertions.length,
       assertions: d.assertions,
-      guards: d.guards
+      guards: d.guards,
+      ...d.guarded === null ? {} : { guarded: d.guarded },
+      ...d.emptyTable ? { emptyTable: true } : {}
     };
   });
 }
@@ -38149,6 +38247,13 @@ function jsConstant(text) {
   return null;
 }
 function ownState(block, view) {
+  return stronger(modifierState(block, view), switchOffState(block));
+}
+function switchOffState(block) {
+  if (block.emptyTable === true) return UNCONDITIONAL;
+  return block.guarded === void 0 ? NONE : CONDITIONAL;
+}
+function modifierState(block, view) {
   const modifiers = block.modifiers;
   if (modifiers.includes("skip") || modifiers.includes("todo")) return UNCONDITIONAL;
   if (modifiers.includes("fails") && !(view.python && modifiers.includes("skipIf"))) return UNCONDITIONAL;

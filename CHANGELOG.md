@@ -11,6 +11,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- Fixed: TI03 now sees an existing JS/TS test switched off without a `.skip` in its name (CORE-52). The test index
+  reads `skip`, `todo` and `fails` in an options object (`it("t", { skip: true }, fn)`, or as the third argument): a
+  literal `true` blocks like `it.skip`, any other value but `false` is a conditional skip (`warn`). An empty
+  `.each([])` or `.for([])` table blocks like `it.skip`, and a test newly wrapped in an `if`, or moved into a function
+  nothing in the file calls, is a conditional skip (`warn`). A loop, a `describe` callback and a helper the file calls
+  are not guards, and a test that was already guarded or skipped at the merge base gives nothing new. The test index
+  gains two optional fields, `guarded` and `emptyTable`; the report is unchanged.
 - Fixed: a test file, `package.json`, workflow file or pharn-ci config that git shows as binary (a `-diff` or `binary`
   attribute in `.gitattributes`, or non-text content) is no longer skipped silently (CORE-50). A deleted or renamed-away
   JS/TS, Python or Go test file is TI01 at the mode's level, a modified or renamed JS/TS or Python one makes

@@ -3,12 +3,14 @@ import { assertionChain, guardCall } from "./assertions.js";
 import { blockCall } from "./blocks.js";
 import { importSpecifier, MAX_TEST_IMPORTS } from "./imports.js";
 import { mockCall } from "./mocks.js";
+import { guardName } from "./switchOff.js";
 import type { LiteralRange } from "./text.js";
 import {
   MAX_TEST_INDEX_DEPTH,
   type TestAssertion,
   type TestAssertionGuard,
   type TestBlockKind,
+  type TestGuard,
   type TestModifier,
   type TestModuleMock,
 } from "./types.js";
@@ -29,6 +31,23 @@ export interface BlockDraft {
   bodyEnd: number;
   assertions: TestAssertion[];
   guards: TestAssertionGuard[];
+  /** What sits between the block and its owner, worked out once the whole file is walked; `null` for nothing. */
+  guarded: TestGuard | null;
+  emptyTable: boolean;
+}
+
+/** A named function passed between a node and its owner, innermost first; the tail is shared with the outer nodes. */
+interface FunctionLink {
+  name: string;
+  up: FunctionLink | null;
+  /** Whether this function or one outside it is named nowhere else in the file; filled in after the walk. */
+  uncalled?: boolean;
+}
+
+/** The `if` statements and named functions passed between a node and its owner (see `TestBlock.guarded`). */
+interface GuardTrail {
+  inIf: boolean;
+  functions: FunctionLink | null;
 }
 
 export interface WalkResult {
@@ -51,6 +70,32 @@ interface Entry {
   owner: BlockDraft | null;
   fn: FunctionFrame | null;
   inTry: boolean;
+  /** The node is the callback of the block its parent call opens. */
+  isCallback: boolean;
+  trail: GuardTrail | null;
+}
+
+/** The trail a function or `if` adds to; a block's callback starts a new one. */
+function extend(trail: GuardTrail | null, inIf: boolean, name: string | null): GuardTrail {
+  const up = trail?.functions ?? null;
+  return { inIf: inIf || trail?.inIf === true, functions: name === null ? up : { name, up } };
+}
+
+/** Whether any function of the chain is named only once in the file (by its own declaration). Each link is judged once. */
+function anyUncalled(link: FunctionLink, counts: ReadonlyMap<string, number>): boolean {
+  const pending: FunctionLink[] = [];
+  let at: FunctionLink | null = link;
+  while (at !== null && at.uncalled === undefined) {
+    pending.push(at);
+    at = at.up;
+  }
+  let outer = at?.uncalled ?? false;
+  for (let i = pending.length - 1; i >= 0; i--) {
+    const current = pending[i] as FunctionLink;
+    outer = outer || (counts.get(current.name) ?? 0) <= 1;
+    current.uncalled = outer;
+  }
+  return link.uncalled as boolean;
 }
 
 /** Whether a chain node is the top of its chain: its parent neither reads a property of it nor calls it. */
@@ -74,8 +119,13 @@ export function walkTestFile(sourceFile: ts.SourceFile): WalkResult | "too-deep"
   const imports = new Set<string>();
   const lineOf = (position: number): number => sourceFile.getLineAndCharacterOfPosition(position).line + 1;
 
-  const stack: Entry[] = [{ node: sourceFile, depth: 0, owner: null, fn: null, inTry: false }];
+  const stack: Entry[] = [
+    { node: sourceFile, depth: 0, owner: null, fn: null, inTry: false, isCallback: false, trail: null },
+  ];
   const children: ts.Node[] = [];
+  /** How often each identifier appears in the file: a function named only once (its own name) is called by no one. */
+  const identifierCounts = new Map<string, number>();
+  const trails = new Map<BlockDraft, GuardTrail>();
 
   for (let entry = stack.pop(); entry !== undefined; entry = stack.pop()) {
     const { node, depth, owner } = entry;
@@ -109,6 +159,13 @@ export function walkTestFile(sourceFile: ts.SourceFile): WalkResult | "too-deep"
         break;
     }
     if (ts.isFunctionLike(node)) fn = { firstReturnEnd: Number.POSITIVE_INFINITY };
+    if (ts.isIdentifier(node)) identifierCounts.set(node.text, (identifierCounts.get(node.text) ?? 0) + 1);
+    let trail = entry.trail;
+    if (!entry.isCallback && ts.isFunctionLike(node)) {
+      const name = guardName(node);
+      if (name !== null) trail = extend(trail, false, name);
+    }
+    const ifStatement = ts.isIfStatement(node) ? node : null;
     if (imports.size < MAX_TEST_IMPORTS) {
       const specifier = importSpecifier(node);
       if (specifier !== null) imports.add(specifier);
@@ -146,8 +203,11 @@ export function walkTestFile(sourceFile: ts.SourceFile): WalkResult | "too-deep"
           bodyEnd,
           assertions: [],
           guards: [],
+          guarded: null,
+          emptyTable: found.emptyTable,
         };
         drafts.push(created);
+        if (trail !== null) trails.set(created, trail);
         callback = callbackFunction;
       } else {
         const guard = owner === null ? null : guardCall(node);
@@ -190,7 +250,19 @@ export function walkTestFile(sourceFile: ts.SourceFile): WalkResult | "too-deep"
         owner: isCallback ? created : owner,
         fn,
         inTry: isCallback ? false : child === tryBlock ? true : entry.inTry,
+        isCallback,
+        trail: isCallback
+          ? null
+          : ifStatement !== null && child !== ifStatement.expression
+            ? extend(trail, true, null)
+            : trail,
       });
+    }
+  }
+  for (const [draft, trail] of trails) {
+    if (trail.inIf) draft.guarded = "if";
+    else if (trail.functions !== null && anyUncalled(trail.functions, identifierCounts)) {
+      draft.guarded = "uncalled-function";
     }
   }
   return { drafts, mocks, ranges, imports: [...imports] };

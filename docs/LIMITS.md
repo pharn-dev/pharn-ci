@@ -310,6 +310,24 @@ Both readings give one finding per line, the stronger one kept.
   only as `skipIf(true)`, `skipIf(false)`, `runIf(true)` and `runIf(false)` on the block's opening line; a Python
   `skipif(True)` stays conditional. A `describe` is matched to its tests by line range, so two sibling `describe`
   blocks opened on one line read as holding each other's tests.
+- **How a JS/TS test is switched off, as the test index reads it.** Besides the words of the call itself (`it.skip`,
+  `test.todo`, `xit`, …), the pair reading reads an options object written as an object literal in the second or
+  third argument of a test or `describe` call: `skip`, `todo` or `fails` set to a literal `true` is an unconditional
+  skip, read like `it.skip`; set to any other expression (a variable, a call, a reason string such as node:test's
+  `skip: "flaky"`) it is a conditional skip; `false`, other keys (`timeout`, `retry`) and spread properties are
+  nothing. An `.each([])` or `.for([])` whose table is an empty array literal is an unconditional skip. A test is
+  guarded, a conditional skip, when an `if` statement, or a function that is not a test callback and that nothing in
+  the file calls by name, sits between it and the `describe` or test that holds it (or the file); a `for` or
+  `for…of` loop, a `describe` callback, a function passed as an argument or called where it stands, and a helper the
+  file calls are not guards. A `describe` that is guarded, or has an empty table, passes that on to its tests. Only a
+  test that gains one of these between the merge base and HEAD is reported; one it already had at base gives nothing
+  new. Still missed: "a function nobody calls" is judged within the file only, and by name: a function counts as
+  called when its name appears anywhere else in the file (a call, a value passed on, a property or a variable of the
+  same name in another scope), so a helper exported and called only from another file reads as uncalled (a
+  conditional `warn`), and a function returned, stored in an array or exported without a name is never read as a
+  guard. A ternary or `&&` around a test, a `while (false)` loop, a `switch` case, an early `return` before the test,
+  an options object or an empty table held in a variable (`it("t", opts, fn)`, `it.each(none)`), an empty
+  tagged-template table, and `runIf` or `only` keys in an options object are not read.
 - **Forms at the start of a line.** A form is recognised only at the start of a line after white space, so a one-line
   `if (slow) this.skip()`, a skip written after another statement on the same line and a skip built through a helper
   are missed. A call wrapped over lines is read from its first line only: `it` alone with `.skip(...)` on the next line
