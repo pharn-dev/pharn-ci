@@ -174,6 +174,9 @@ sample chosen after seeing detector output could be tuned to it. So the list of 
 in files committed to the repository, and the detector run (`scripts/corpus-run.mjs`), the hand
 review and any false-block rate come afterwards.
 
+The TypeScript corpus below was re-run at the current main on 2026-11-18 (under "Re-run at main"), and a second
+corpus of three Python repositories was frozen and reviewed the same way (under "Python corpus").
+
 An early dry run of the detectors over this corpus, made before the official run, found false hits in four signals.
 The narrower rules for TI11 (commands compared by key), TI09 (projects matched by name),
 TI15 (same package, a 6-character and 4-digit minimum, at most 10 per change) and TI06 (equivalent matcher rewrites)
@@ -378,6 +381,31 @@ The decisions:
 - **D3:** TI12 measured `0 of 1`, one row, too small to judge, so it stays `warn` for the maintainer to decide. TI03 (4
   of 17, 24 %) is above 20 % and keeps `warn`.
 
+### Re-run at main (2026-11-18)
+
+The same 600 frozen PRs, run again with `node scripts/corpus-run.mjs --jobs 4` at pharn-ci commit `9e83307` (main on
+2026-11-18). That commit holds every R2 change so far: CORE-50, 51, 52, 53, 54, 69, 70, 71 and 73, among them the new
+ways TI03 reads a test switched off. 600 PRs ran, with 0 errors and 735 CSV rows. The CSV is
+`docs/precision/review-ts-2026-11-18.csv`; to reproduce its table:
+`node scripts/corpus-rate.mjs docs/precision/review-ts-2026-11-18.csv`.
+
+- **No new block finding.** The 14 `block` rows are the same rows on the same 5 PRs as the official run, with the same
+  detail text, so their verdicts are carried over unchanged. TI01, TI02 and TI11 each still falsely block 1 PR of 600
+  (0.2 %).
+- **TI03: 0 false blocks, 0.0 %.** TI03 gives no `block` row on the TypeScript corpus; its 17 rows are `warn`, the same
+  rows as the official run. The target (under 1 %) holds.
+- **No TI13 finding and no TI17 finding.** No coverage marker was added to a source file in the 600 PRs, in a new file
+  or an existing one.
+- **The only other change is TI15's level.** Its 87 rows are the same findings, now `info` (D2). Every row matches the
+  official run by repository, PR, signal, path and line, and every row but TI15's by severity too; some `warn` and
+  `info` detail sentences are worded differently.
+
+| Signal | Block rows | Block PRs | TP | FP | Unclear | False-block rate | Decision |
+|---|---:|---:|---:|---:|---:|---:|---|
+| TI01 | 5 | 1 | 0 | 5 | 0 | 0.2 % | ships as block |
+| TI02 | 8 | 3 | 2 | 6 | 0 | 0.2 % | ships as block |
+| TI11 | 1 | 1 | 0 | 1 | 0 | 0.2 % | ships as block |
+
 ### Limits
 
 - **Base branch is the default branch today.** A PR whose base was changed after it merged is not
@@ -390,6 +418,178 @@ The decisions:
 - **One reviewer, few block rows.** The verdicts are one AI reviewer's, and the official run has 14 block rows on 5 PRs,
   so one more false-block PR in a signal would move its rate from 0.17 % to 0.33 %. Sampled precisions over 1 to 30 rows
   are rough.
+
+### Python corpus (2026-11-18)
+
+How often the blocking test-integrity signals are wrong on real Python pull requests (CORE-72). It is the method above,
+on three pytest repositories, with the same sample size per repository (200 merged PRs, 600 in all). This part only
+measures; it changes no signal.
+
+#### Repositories
+
+Picked for pytest, an MIT license and a steady flow of merged PRs. One is a monorepo, one is a library, one is an
+application.
+
+| Repository | License | Runner | Layout | Merged PRs, 12 months (all authors) | Excluded bots | Excluded releases | PRs sampled | Merged |
+|---|---|---|---|---:|---:|---:|---|---|
+| `langchain-ai/langchain` | MIT | pytest | monorepo | 2489 | 248 | 0 | #38823 to #41924 | 2026-09-17 to 2026-11-17 |
+| `pydantic/pydantic` | MIT | pytest | library | 665 | 19 | 0 | #12924 to #14299 | 2026-09-07 to 2026-11-17 |
+| `python-poetry/poetry` | MIT | pytest | application | 264 | 9 | 0 | #10715 to #11231 | 2026-02-14 to 2026-11-16 |
+
+The 12-month count is every merged PR from 2025-11-18 to 2026-11-17 (GitHub search, bots included), to show how many
+were available. The excluded counts and the ranges come from the frozen files. A PR range is the lowest and highest PR
+number sampled, not every PR between them.
+
+Why these three:
+
+- **`langchain-ai/langchain`** is the monorepo: `libs/core`, `libs/langchain` and the `libs/partners/*` packages,
+  each with its own pytest suite. It merges the most PRs of the candidates, and many of them change only
+  tests or a partner package.
+- **`pydantic/pydantic`** is a library with dense pytest suites, and its Rust core lives in the same repository under
+  `pydantic-core/` with its own Python tests. The sampled window holds its work towards a major version: removing
+  deprecated APIs and dropping old Python versions, which is where test deletions are legitimate and a false block
+  would show.
+- **`python-poetry/poetry`** is an application (a CLI) with a single pytest suite. It merges fewer PRs, so its 200 PRs
+  cover nine months.
+
+Rejected: `pytest-dev/pytest` (a test runner's own repository, left out for the same reason as in section 1),
+`encode/httpx` and `pallets/flask` (4 and 1 merged PRs in the 30 days before the freeze), and `apache/airflow` (one
+clone per PR of a repository that size is too heavy for this run).
+
+#### How it was frozen and run
+
+The rule of "How the corpus is frozen" above, with a later freeze instant, `2026-11-18T00:00:00Z`. The files are in
+`docs/precision/corpus-python/` (not under `fixtures/`, which holds the inputs of the product's tests) and store, per
+PR, the number, the merge time and the base, head and merge-commit shas only:
+
+```
+node scripts/corpus-freeze.mjs --repo langchain-ai/langchain --frozen-at 2026-11-18T00:00:00Z --count 200 --out docs/precision/corpus-python/langchain-ai__langchain.json --monorepo true
+node scripts/corpus-freeze.mjs --repo pydantic/pydantic --frozen-at 2026-11-18T00:00:00Z --count 200 --out docs/precision/corpus-python/pydantic__pydantic.json --monorepo false
+node scripts/corpus-freeze.mjs --repo python-poetry/poetry --frozen-at 2026-11-18T00:00:00Z --count 200 --out docs/precision/corpus-python/python-poetry__poetry.json --monorepo false
+```
+
+The run: `node scripts/corpus-run.mjs --corpus docs/precision/corpus-python --jobs 4` with the CLI built at pharn-ci
+commit `9e83307` (main on 2026-11-18, with every R2 change up to CORE-53), Python 3.13 as the `python3` that indexes
+the test files. 600 PRs ran, with 0 errors. `scripts/corpus-run.mjs` needed no change for Python.
+
+The reviewed CSV is `docs/precision/corpus-python/review.csv`. Every `block` row was reviewed against the real diff, by one
+reviewer, an AI agent acting as the maintainer's delegate. Its `path`, `line` and `detail` columns are left empty, so
+that nothing from the sampled repositories (file paths, test names) is committed: the CSV holds the repository, the PR
+number, the signal, the severity, the verdict and a one-line reason. To reproduce the block table:
+`node scripts/corpus-rate.mjs docs/precision/corpus-python/review.csv`; to see the paths again, rerun the corpus.
+
+#### Results
+
+One row per signal that reads Python. Findings are CSV rows (one per finding) and, in brackets, the PRs that have one;
+blocks and false blocks likewise. The rate is the PRs with a false `block` row over all 600 PRs, as above.
+TI04 and TI10 have no Python path, and TI14 reads the pharn-ci config, not test code.
+
+| Signal | Findings | Blocks | False blocks | False-block rate | Level in `block` mode |
+|---|---:|---:|---:|---:|---|
+| TI01 | 10 (6) | 8 (6) | 6 (4) | 0.7 % | block |
+| TI02 | 107 (11) | 107 (11) | 10 (6) | 1.0 % | block |
+| TI03 | 47 (28) | 3 (1) | 3 (1) | 0.2 % | block if unconditional, else warn |
+| TI05 | 6 (1) | 0 | 0 | 0.0 % | block when a test's assertions fall to zero, else warn |
+| TI06 | 1 (1) | 0 | 0 | 0.0 % | warn |
+| TI07 | 5 (5) | 0 | 0 | 0.0 % | warn |
+| TI08 | 0 | 0 | 0 | 0.0 % | warn |
+| TI09 | 0 | 0 | 0 | 0.0 % | block |
+| TI11 | 7 (4) | 2 (2) | 1 (1) | 0.2 % | block |
+| TI12 | 3 (3) | 0 | 0 | 0.0 % | warn |
+| TI13 | 11 (2) | 11 (2) | 1 (1) | 0.2 % | block; warn for a line-level marker in a new file |
+| TI15 | 72 (29) | 0 | 0 | 0.0 % | info |
+| TI16 | 64 (40) | 0 | 0 | 0.0 % | info |
+| TI17 | 0 | 0 | 0 | 0.0 % | warn |
+
+TI01 has 2 `info` findings besides its blocks; TI03 has 44 `warn` findings and TI11 5. TI05's 6 are `warn`: one PR in
+which tests lost some of their assertions but none fell to zero. The block table that `corpus-rate.mjs` prints:
+
+| Signal | Block rows | Block PRs | TP | FP | Unclear | False-block rate | Decision |
+|---|---:|---:|---:|---:|---:|---:|---|
+| TI01 | 8 | 6 | 2 | 6 | 0 | 0.7 % | ships as block |
+| TI02 | 107 | 11 | 97 | 10 | 0 | 1.0 % | demote to warn |
+| TI03 | 3 | 1 | 0 | 3 | 0 | 0.2 % | ships as block |
+| TI11 | 2 | 2 | 1 | 1 | 0 | 0.2 % | ships as block |
+| TI13 | 11 | 2 | 10 | 1 | 0 | 0.2 % | ships as block |
+
+#### The false blocks
+
+Each with its one-line reason; the same reason is in the CSV's `note` column.
+
+- **TI02, 6 PRs, one pattern: a test renamed in its place and rewritten.** The test is still there, at the same place
+  in the file, under a new name, with its body changed for the behaviour the PR introduces. TI02 clears a rename only
+  when the body is found again, so these block. This is the pattern of the one TypeScript TI02 false block above
+  (`shadcn-ui/ui#11307`).
+  - `langchain-ai/langchain#41267`: two unittest cases pinning a dropped Python version merged into one renamed case
+    that checks the same packages and jobs with the new versions.
+  - `langchain-ai/langchain#41180`: the tests of a model-name prefix rule the PR replaces, rewritten as profile-based
+    tests over the same models under new names.
+  - `pydantic/pydantic#14135`: a test renamed in place, its assertions changed to the new behaviour.
+  - `pydantic/pydantic#14164`: a test renamed in place, parametrized, and its assertions changed to the new error type.
+  - `pydantic/pydantic#14158`: one row of eleven; a test rewritten in place as a parametrized test of the same four
+    validator forms, now expecting an error instead of a deprecation warning. The other ten rows are true blocks.
+  - `python-poetry/poetry#10821`: a test renamed in place and parametrized over more cases, with its assertion kept.
+- **TI01, 4 PRs.**
+  - `pydantic/pydantic#14139` (3 rows), `#14156` and `#14158`: test files deleted together with the module, package or
+    behaviour they test, which the same PR deletes. TI01 does not block that case, but it finds the deleted code only
+    through a source file of the same name or the test's own package. Here the names differ (a private `_module.py`,
+    a test of a whole `v1` subpackage, a class removed from a larger module, deprecation behaviour removed from
+    the main model module).
+  - `pydantic/pydantic#13912`: a test file moved into a subdirectory under a new name, every test kept under its name,
+    bodies refactored from a model to a `TypeAdapter`. The TypeScript pattern of `shadcn-ui/ui#11247` above.
+- **TI03, 1 PR.** `pydantic/pydantic#14250` (3 rows): a version `skipif` removed from above an `xfail` that was already
+  on the test at base, while dropping old Python versions. Nothing is newly switched off; the test index reads the
+  test as conditionally skipped at base and unconditionally at head.
+- **TI11, 1 PR.** `langchain-ai/langchain#40779`: a deleted workflow that only compared two documentation files (one of
+  them deleted by the same PR) and ran no tests. Removing its `pull_request` trigger counts, as
+  [LIMITS.md](./LIMITS.md#what-ti11-misses) says.
+- **TI13, 1 PR.** `pydantic/pydantic#13782`: a no-cover pragma on the fallback branch of a module `__getattr__` that the
+  same PR adds to an existing file. The marked code is new and had no coverage to lose: the case the new-file rule makes
+  `warn`, but in a file that already existed.
+
+#### The true blocks
+
+- **TI02:** `pydantic/pydantic#14139` (81 rows, at most 20 per file) and `#14158` (10 rows) remove the tests of deprecated APIs together
+  with the APIs; `#14250` (3 rows) removes tests of backport behaviour while dropping Python 3.9 and 3.10; `#13951`
+  reverts a feature with its test; `python-poetry/poetry#10871` removes a helper and its test; `#10929` removes a test
+  of a function the project imports from a dependency. All are honest, and each is what TI02 asks a person to sign off.
+- **TI01:** `langchain-ai/langchain#40910` deletes an integration test file of a class it keeps, with four unit tests
+  added in its place; `pydantic/pydantic#14142` deletes a startup benchmark file and its CI job.
+- **TI11:** `pydantic/pydantic#13924` narrows a downstream project's CI test command with `-k` to deselect a test that
+  now fails, with a comment saying why.
+- **TI13:** `pydantic/pydantic#14202` adds ten no-cover pragmas to the defensive error branches of an existing module
+  instead of testing them.
+
+#### What this means
+
+- **TI02 is at the bar on Python: 6 false-block PRs of 600, 1.0 %.** Under the rule above (exactly 1 % demotes) it
+  would demote to `warn` for Python. Every false block is the rename-in-place pattern above. This ticket changes no
+  signal; the fix or the demotion is a follow-up (tracked in CORE-72 comments): either clear a test whose name changed
+  at the same place in the same file when its body still calls the same code under test, or lower TI02 to `warn` for
+  Python test files.
+- **TI01 (0.7 %), TI03, TI11 and TI13 (0.2 % each) stay under 1 %.** Each false block that is a pattern has a follow-up
+  (tracked in CORE-72 comments): TI01 should find the deleted code through the deleted test file's own imports (a
+  module the test imports that the PR deletes) and match a private `_name.py` to `test_name.py`; TI03 should not read a
+  test whose unconditional `xfail` was already there at base as newly switched off when a `skipif` above it is removed;
+  TI11 should not count a removed `pull_request` trigger of a workflow that runs no test command.
+- **TI13 in a new file: the interim rule stays.** In 600 Python PRs no coverage marker was added to a new file (0
+  findings), and markers in existing files blocked 2 PRs, 1 of them falsely, on code the same PR adds; the 600
+  TypeScript PRs of the re-run above have no TI13 finding at all. A block on a line-level marker in a new file would
+  have caught nothing in 1,200 PRs, and the only false TI13 block is the same case (new code) in an existing file. So
+  a line-level marker in a new file stays `warn` (CORE-71); a whole-file or range marker, and any marker in an
+  existing file, keep the mode's level. Whether the rule should also cover a marker on code the same change adds to
+  an existing file is a follow-up (tracked in CORE-72 comments).
+
+#### Limits of the Python corpus
+
+- **One window per repository.** `pydantic/pydantic`'s window holds a deprecation-removal stretch, so its share of
+  TI01 and TI02 blocks is higher than a calmer window would give. The Python corpus is 600 PRs, so one more false-block
+  PR in a signal moves its rate by 0.17 points.
+- **One reviewer.** The verdicts are one AI reviewer's, with a one-line reason each. A deletion of tests together with
+  the code they cover counts as a true TI02 block (the test is gone; a person should sign off), as in the official
+  run, and a
+  test kept under a new name with a rewritten body counts as a false one.
+- **The CSV is stripped.** Paths and test names are not committed, so a reader checks a verdict by rerunning the PR.
 
 ## 3. Skylos nine: what pharn-ci catches
 

@@ -11,6 +11,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- Docs: `docs/PRECISION.md` gains a Python precision corpus (CORE-72): 600 merged PRs of `langchain-ai/langchain`,
+  `pydantic/pydantic` and `python-poetry/poetry`, frozen in `docs/precision/corpus-python/`, with every block finding
+  reviewed by hand. TI02 falsely blocks 6 of 600 Python PRs (1.0 %, tests renamed in place and rewritten); TI01 0.7 %;
+  TI03, TI11 and TI13 0.2 % each. The TypeScript corpus, re-run at the current main, gives the same 14 block findings
+  as the v0.3.0 run and no TI03 block. No signal changes.
 - Fixed: TI03 now sees an existing JS/TS test switched off without a `.skip` in its name (CORE-52). The test index
   reads `skip`, `todo` and `fails` in an options object (`it("t", { skip: true }, fn)`, or as the third argument): a
   literal `true` blocks like `it.skip`, any other value but `false` is a conditional skip (`warn`). An empty
