@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { withoutCore50SchemaEdits } from "./core50-schema.js";
 import { withoutCore69SchemaEdits } from "./core69-schema.js";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
+import { withoutR3SchemaTextEdits } from "./r3-schema-text.js";
 import { withoutTi17SchemaEdits } from "./ti17-schema.js";
 import { V070_INJECTION_CODES, withoutV070Properties } from "./v070-codes.js";
 import { withoutV080Properties } from "./v080-codes.js";
@@ -117,7 +118,11 @@ describe("schema: only the TI15 level sentence changes", () => {
           // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
           withoutV090SchemaEdits(
             withoutTi17SchemaEdits(
-              withoutCore69SchemaEdits(withoutCore50SchemaEdits(readNow("schema/report.v2.json").toString("utf8"))),
+              // Re-pinned for the R3 schema text follow-up: its six description edits are put back first
+              // (r3-schema-text.ts).
+              withoutCore69SchemaEdits(
+                withoutCore50SchemaEdits(withoutR3SchemaTextEdits(readNow("schema/report.v2.json").toString("utf8"))),
+              ),
             ),
           ),
         ),

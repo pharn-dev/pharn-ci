@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { withoutCore50SchemaEdits } from "./core50-schema.js";
 import { withoutCore69SchemaEdits } from "./core69-schema.js";
 import { fixture } from "./helpers.js";
+import { withoutR3SchemaTextEdits } from "./r3-schema-text.js";
 import { withoutTi17SchemaEdits } from "./ti17-schema.js";
 
 // fix-hints (H6), AC-12. The shared re-pin helper (packages/core/test/v090-codes.ts) and check() are loaded inside
@@ -77,8 +78,11 @@ describe("existing tests are re-pinned through one shared helper, never weakened
     expect(schema, "the schema has the increment").not.toBe(git("show", `${BASE}:schema/report.v2.json`));
     // ti17-always-true-matcher-2: TI17 edits the schema too, so its helper takes those edits out first.
     // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
+    // Re-pinned for the R3 schema text follow-up: its six description edits are put back first (r3-schema-text.ts).
     expect(
-      withoutV090SchemaEdits(withoutTi17SchemaEdits(withoutCore69SchemaEdits(withoutCore50SchemaEdits(schema)))),
+      withoutV090SchemaEdits(
+        withoutTi17SchemaEdits(withoutCore69SchemaEdits(withoutCore50SchemaEdits(withoutR3SchemaTextEdits(schema)))),
+      ),
     ).toBe(git("show", `${BASE}:schema/report.v2.json`));
 
     const { check } = (await import("../src/index.js")) as unknown as { check(input: unknown): unknown };

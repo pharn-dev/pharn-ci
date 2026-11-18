@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { MESSAGE_HINTS } from "../src/render/markdown.js";
+import { withoutR3SchemaTextEdits } from "./r3-schema-text.js";
 import { V070_CODE_TEXT, V070_SETUP_CODES, V070_SETUP_SCHEMA_TEXT, V070_SETUP_TEXT } from "./v070-codes.js";
 import { withoutV090SchemaEdits } from "./v090-codes.js";
 
@@ -15,7 +16,9 @@ describe("stale instructions: schema, hints and documents", () => {
   it("report.v2.json carries the setupHealth property and the v0.7.0 code text once each; the codes are MessageCode members with a hint", () => {
     // Re-pinned for fix-hints (H6): the `fix` property of the stale items is part of the setupHealth object's text, so the
     // fix additions are taken out first (v090-codes.ts pins them exactly).
-    const schema = withoutV090SchemaEdits(read("schema/report.v2.json"));
+    // Re-pinned for the R3 schema text follow-up: its six description edits (two inside the v0.7.0 code text) are put
+    // back first (r3-schema-text.ts pins them exactly).
+    const schema = withoutV090SchemaEdits(withoutR3SchemaTextEdits(read("schema/report.v2.json")));
     expect(schema.split(V070_SETUP_SCHEMA_TEXT)).toHaveLength(2);
     expect(schema.split(V070_CODE_TEXT)).toHaveLength(2);
     // Re-pinned for H4 (prompt-injection scan): its INJECTION_ codes sort before SETUP_STALE_ in code-unit order, so they

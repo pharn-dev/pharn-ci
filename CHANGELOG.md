@@ -11,6 +11,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- Docs: the report schema's descriptions state the R3 levels (CORE-8). `schema/report.v2.json` now says that
+  `COVERAGE_FILE_TRACKED`, `CONFIG_CHANGED_IN_DIFF` and `DIFF_BINARY_COVERED_FILE` can be errors where report v1 had
+  them as warnings, that `DEPENDENCY_CHECK_INCOMPLETE` is an error unless git caused every unread file (with the
+  32 MiB cap for one file), that `INJECTION_TEXT_TRUNCATED` is an error when an instruction or Markdown file is cut
+  (two budgets of 8,000,000 UTF-16 code units), and that `TESTS_NOT_EXERCISING_CHANGES` covers Python. Descriptions
+  only: no field, type, enum or code changes.
 - The prompt-injection scan and binary covered files fail closed (CORE-100, part 1). The diff reader keeps added text
   against two budgets of 8,000,000 characters, one for agent instruction files and Markdown files (`.md`, `.mdx`,
   `.markdown`, `.mdc`) and one for every other file, where it kept one budget for the whole diff in diff order: an

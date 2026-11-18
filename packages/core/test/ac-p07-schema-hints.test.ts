@@ -7,6 +7,7 @@ import { withoutCore50SchemaEdits } from "./core50-schema.js";
 import { withoutCore69SchemaEdits } from "./core69-schema.js";
 import { fixture } from "./helpers.js";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
+import { withoutR3SchemaTextEdits } from "./r3-schema-text.js";
 import { expectValidReport } from "./schema.js";
 import { withoutTi17SchemaEdits } from "./ti17-schema.js";
 import { withoutV060CodeText } from "./v060-codes.js";
@@ -65,9 +66,14 @@ describe("the schema sentence, the hint and the README row for POLICY_P07", { ti
       withoutSchemaLevelEdits(
         withoutV070SchemaEdits(
           // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
+          // Re-pinned for the R3 schema text follow-up: its six description edits are put back first (r3-schema-text.ts).
           withoutV080SchemaEdits(
             withoutV090SchemaEdits(
-              withoutTi17SchemaEdits(withoutCore69SchemaEdits(withoutCore50SchemaEdits(read("schema/report.v2.json")))),
+              withoutTi17SchemaEdits(
+                withoutCore69SchemaEdits(
+                  withoutCore50SchemaEdits(withoutR3SchemaTextEdits(read("schema/report.v2.json"))),
+                ),
+              ),
             ),
           ),
         ),

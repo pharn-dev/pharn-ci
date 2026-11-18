@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { check, type Report } from "../src/index.js";
 import { fixture } from "./helpers.js";
 import { injectionFixture } from "./injection-fixture.js";
+import { withoutR3SchemaTextEdits } from "./r3-schema-text.js";
 import { validateReport } from "./schema.js";
 import { V070_CODE_TEXT, V070_INJECTION_CODES, V070_INJECTION_SCHEMA } from "./v070-codes.js";
 import { withoutV090SchemaEdits } from "./v090-codes.js";
@@ -31,7 +32,9 @@ describe("schema/report.v2.json for the prompt-injection scan", () => {
   it("carries the v0.7.0 code text and the injection object exactly once", () => {
     // Re-pinned for fix-hints (H6): the `fix` property of the injection items is part of the injection object's text, so
     // the fix additions are taken out first (v090-codes.ts pins them exactly).
-    const schema = withoutV090SchemaEdits(read("schema/report.v2.json"));
+    // Re-pinned for the R3 schema text follow-up: its six description edits (two inside the v0.7.0 code text) are put
+    // back first (r3-schema-text.ts pins them exactly).
+    const schema = withoutV090SchemaEdits(withoutR3SchemaTextEdits(read("schema/report.v2.json")));
     expect(schema.split(V070_CODE_TEXT).length - 1).toBe(1);
     expect(schema.split(V070_INJECTION_SCHEMA).length - 1).toBe(1);
     const parsed = JSON.parse(schema);

@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { runDiff } from "./ac-e1-fix-shared.js";
 import { withoutCore50SchemaEdits } from "./core50-schema.js";
 import { withoutCore69SchemaEdits } from "./core69-schema.js";
+import { withoutR3SchemaTextEdits } from "./r3-schema-text.js";
 import { validateReport } from "./schema.js";
 
 // ti17-always-true-matcher-2, AC-17. Both schemas are read inside the test body, at HEAD and at the base commit (git).
@@ -90,7 +91,10 @@ describe("schema/report.v2.json and schema/policy.v1.json accept TI17 and change
 
     // report.v2.json: the code description gains one insertion naming TEST_INTEGRITY_TI17; the pattern accepts TI17.
     // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
-    const reportHead = withoutCore69SchemaEdits(withoutCore50SchemaEdits(atHead("report.v2.json")));
+    // Re-pinned for the R3 schema text follow-up: its six description edits are put back first (r3-schema-text.ts).
+    const reportHead = withoutCore69SchemaEdits(
+      withoutCore50SchemaEdits(withoutR3SchemaTextEdits(atHead("report.v2.json"))),
+    );
     const reportBase = atBase("report.v2.json");
     const headCodes = (JSON.parse(reportHead) as ReportSchema).$defs.message.properties.code.description;
     const baseCodes = (JSON.parse(reportBase) as ReportSchema).$defs.message.properties.code.description;

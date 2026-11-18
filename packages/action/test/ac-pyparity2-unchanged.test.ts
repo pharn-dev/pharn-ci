@@ -9,6 +9,7 @@ import { withoutCore50SchemaEdits } from "../../core/test/core50-schema.js";
 import { withoutCore69SchemaEdits } from "../../core/test/core69-schema.js";
 import { foldCoverageBar } from "../../core/test/helpers.js";
 import { withoutSchemaLevelEdits } from "../../core/test/level-edits.js";
+import { withoutR3SchemaTextEdits } from "../../core/test/r3-schema-text.js";
 import { withoutTi17SchemaEdits } from "../../core/test/ti17-schema.js";
 import { V070_INJECTION_CODES, withoutV070Properties } from "../../core/test/v070-codes.js";
 import { V080_CODES, withoutV080Properties } from "../../core/test/v080-codes.js";
@@ -221,9 +222,13 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
       const withIsAgentPr = withoutSchemaLevelEdits(
         withoutV080Properties(
           // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
+          // Re-pinned for the R3 schema text follow-up: its six description edits are put back first
+          // (r3-schema-text.ts).
           withoutV070Properties(
             withoutV090SchemaEdits(
-              withoutTi17SchemaEdits(withoutCore69SchemaEdits(withoutCore50SchemaEdits(read(`schema/${name}`)))),
+              withoutTi17SchemaEdits(
+                withoutCore69SchemaEdits(withoutCore50SchemaEdits(withoutR3SchemaTextEdits(read(`schema/${name}`)))),
+              ),
             ),
           ),
         ),

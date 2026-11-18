@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { withoutCore50SchemaEdits } from "./core50-schema.js";
 import { withoutCore69SchemaEdits } from "./core69-schema.js";
 import { withoutSchemaLevelEdits } from "./level-edits.js";
+import { withoutR3SchemaTextEdits } from "./r3-schema-text.js";
 import { withoutTi17SchemaEdits } from "./ti17-schema.js";
 import { V060_CODE_TEXT } from "./v060-codes.js";
 import { V070_CODE_TEXT, V070_CODES } from "./v070-codes.js";
@@ -86,9 +87,12 @@ describe("docs, schema and sources for the policy rules", { timeout: 60_000 }, (
     // appended-text pin, so it only adds.
     // Re-pinned for ti17-always-true-matcher-2: the TI17 id pattern and code text are taken out first (ti17-schema.ts).
     // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
+    // Re-pinned for the R3 schema text follow-up: its six description edits are put back first (r3-schema-text.ts).
     const now = codeDescription(
       withoutSchemaLevelEdits(
-        withoutTi17SchemaEdits(withoutCore69SchemaEdits(withoutCore50SchemaEdits(read("schema/report.v2.json")))),
+        withoutTi17SchemaEdits(
+          withoutCore69SchemaEdits(withoutCore50SchemaEdits(withoutR3SchemaTextEdits(read("schema/report.v2.json")))),
+        ),
       ),
     );
     expect(base.endsWith("the check ran in full).")).toBe(true);
