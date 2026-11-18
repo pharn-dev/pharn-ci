@@ -2,7 +2,8 @@
 // wording of a document (README, CHANGELOG, docs/*, SECURITY, CONTRIBUTING, AGENTS.md, examples/). The history pins
 // that check "no test file deleted since <base>" set exactly these aside; any other deletion still fails them.
 // ac-release0110-dist.test.ts is not here: it became dist-version.test.ts, which checks the same compiled VERSION
-// against package.json instead of a literal.
+// against package.json instead of a literal. ac-discovery-examples-runs and -shape are not here either: they check the
+// example workflows as config, so they stay with only their wording and release-literal checks removed.
 
 export const CORE133_DELETED: ReadonlySet<string> = new Set([
   "packages/cli/test/ac-config-at-merge-base-docs.test.ts",
@@ -12,8 +13,6 @@ export const CORE133_DELETED: ReadonlySet<string> = new Set([
   "packages/core/test/ac-corpus-docs.test.ts",
   "packages/core/test/ac-corpus-run-docs.test.ts",
   "packages/core/test/ac-discovery-docs.test.ts",
-  "packages/core/test/ac-discovery-examples-runs.test.ts",
-  "packages/core/test/ac-discovery-examples-shape.test.ts",
   "packages/core/test/ac-globs-docs.test.ts",
   "packages/core/test/ac-jsts-ext-docs.test.ts",
   "packages/core/test/ac-name-only-docs.test.ts",
