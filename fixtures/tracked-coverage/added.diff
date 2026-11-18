@@ -1,0 +1,17 @@
+diff --git a/coverage/lcov.info b/coverage/lcov.info
+new file mode 100644
+index 0000000..4444444
+--- /dev/null
++++ b/coverage/lcov.info
+@@ -0,0 +1,5 @@
++TN:
++SF:src/app.ts
++DA:1,1
++DA:2,1
++end_of_record
+diff --git a/src/app.ts b/src/app.ts
+index 1111111..2222222 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -1,0 +2 @@
++export const b = 2;

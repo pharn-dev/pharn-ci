@@ -52,6 +52,14 @@ export function trackedCoverageFile(
 }
 
 /**
+ * Whether the diff adds, modifies or renames a file to `path` (a repo-relative tracked coverage file), so the change
+ * under review wrote the coverage numbers it is graded by. A deletion or a rename away from `path` does not count.
+ */
+export function trackedCoverageInDiff(path: string, diff: readonly DiffFile[]): boolean {
+  return diff.some((file) => file.status !== "deleted" && file.path === path);
+}
+
+/**
  * Changed files the diff shows as binary although the coverage report knows them (typically `-diff` in
  * `.gitattributes`), so their added lines were not measured. `coverage` is keyed by the paths `parseCoverage`
  * already normalized. Distinct, sorted in code-unit order.

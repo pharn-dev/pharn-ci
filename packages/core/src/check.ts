@@ -11,7 +11,13 @@ import type { DependencyLookups } from "./dependencies/lookup.js";
 import { type DependencySettingsLayers, resolveDependencySettings } from "./dependencies/settings.js";
 import { type DiffFile, parseUnifiedDiff } from "./diff/unified.js";
 import { computeDiffCoverage } from "./diffCoverage.js";
-import { binaryCoveredPaths, changedConfigPaths, configRepoPath, trackedCoverageFile } from "./gateInputs.js";
+import {
+  binaryCoveredPaths,
+  changedConfigPaths,
+  configRepoPath,
+  trackedCoverageFile,
+  trackedCoverageInDiff,
+} from "./gateInputs.js";
 import { compileGlob } from "./glob.js";
 import { injectionMessages } from "./injection/messages.js";
 import { injectionSettingsOf } from "./injection/policy.js";
@@ -473,12 +479,21 @@ export function check(input: CheckInput): Report {
     selection = coverageInput.format;
   }
 
-  // With several files, the first tracked one is named: one is enough for the change to grade itself.
+  // With several files, the first tracked one the diff adds, modifies or renames to is named, else the first tracked
+  // one: one is enough for the change to grade itself. A tracked file the diff writes fails a gated run (CORE-92), so
+  // it is preferred over one the diff leaves alone. An unavailable diff shows no file as written.
   let trackedCoverage: string | null = null;
+  let trackedCoverageChanged = false;
   for (const file of files) {
     if ("missingFile" in file) continue;
-    trackedCoverage = trackedCoverageFile(file.file, input.repoRoot, input.repoFiles);
-    if (trackedCoverage !== null) break;
+    const path = trackedCoverageFile(file.file, input.repoRoot, input.repoFiles);
+    if (path === null) continue;
+    trackedCoverage ??= path;
+    if (parsedDiff !== null && trackedCoverageInDiff(path, parsedDiff)) {
+      trackedCoverage = path;
+      trackedCoverageChanged = true;
+      break;
+    }
   }
   const bytes = input.repoFileBytes;
   const emptyAgentSetupFiles =
@@ -649,6 +664,7 @@ export function check(input: CheckInput): Report {
     ...(configPaths.length > 0 ? { changedConfigPaths: configPaths } : {}),
     ...(testPaths.length > 0 ? { deletedTestFiles: testPaths } : {}),
     ...(trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage }),
+    ...(trackedCoverageChanged ? { trackedCoverageChanged: true } : {}),
     ...(emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {}),
     ...(input.meta === undefined
       ? {}

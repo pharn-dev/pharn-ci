@@ -26645,11 +26645,19 @@ function buildReport(input) {
     });
   }
   if (input.trackedCoverageFile !== void 0) {
-    messages.push({
-      level: "warn",
-      code: "COVERAGE_FILE_TRACKED",
-      text: `The coverage file ${codeSpan(input.trackedCoverageFile)} is tracked in the repository, so the change under review can supply its own coverage numbers.`
-    });
+    const path = input.trackedCoverageFile;
+    const supplied = input.trackedCoverageChanged === true && input.threshold !== null;
+    messages.push(
+      supplied ? {
+        level: "error",
+        code: "COVERAGE_FILE_TRACKED",
+        text: `The coverage file ${codeSpan(path)} is tracked in the repository and this change adds or edits it, so the change supplies the coverage numbers its threshold is checked against. Remove the report from git (${codeSpan(`git rm --cached ${path}`)}) and let the test run write it.`
+      } : {
+        level: "warn",
+        code: "COVERAGE_FILE_TRACKED",
+        text: `The coverage file ${codeSpan(path)} is tracked in the repository, so the change under review can supply its own coverage numbers.`
+      }
+    );
   }
   if (input.binaryCoveredPaths !== void 0 && input.binaryCoveredPaths.length > 0) {
     messages.push({
@@ -30334,6 +30342,9 @@ function trackedCoverageFile(file, repoRoot, repoFiles) {
   if (file === void 0) return null;
   const path = normalizePath(file, repoRoot);
   return repoFiles.includes(path) ? path : null;
+}
+function trackedCoverageInDiff(path, diff) {
+  return diff.some((file) => file.status !== "deleted" && file.path === path);
 }
 function binaryCoveredPaths(diff, coverage2) {
   const found = /* @__PURE__ */ new Set();
@@ -43480,10 +43491,17 @@ function check(input) {
     selection = coverageInput.format;
   }
   let trackedCoverage = null;
+  let trackedCoverageChanged = false;
   for (const file of files) {
     if ("missingFile" in file) continue;
-    trackedCoverage = trackedCoverageFile(file.file, input.repoRoot, input.repoFiles);
-    if (trackedCoverage !== null) break;
+    const path = trackedCoverageFile(file.file, input.repoRoot, input.repoFiles);
+    if (path === null) continue;
+    trackedCoverage ??= path;
+    if (parsedDiff !== null && trackedCoverageInDiff(path, parsedDiff)) {
+      trackedCoverage = path;
+      trackedCoverageChanged = true;
+      break;
+    }
   }
   const bytes = input.repoFileBytes;
   const emptyAgentSetupFiles = bytes === void 0 ? [] : agentSetup.files.filter((file) => bytes.get(file.path) === 0).map((file) => file.path);
@@ -43586,6 +43604,7 @@ function check(input) {
     ...configPaths.length > 0 ? { changedConfigPaths: configPaths } : {},
     ...testPaths.length > 0 ? { deletedTestFiles: testPaths } : {},
     ...trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage },
+    ...trackedCoverageChanged ? { trackedCoverageChanged: true } : {},
     ...emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {},
     ...input.meta === void 0 ? {} : {
       meta: detection === void 0 || agentFacts === void 0 ? input.meta : { ...input.meta, ...agentPrMetaFields(detection, agentFacts) }

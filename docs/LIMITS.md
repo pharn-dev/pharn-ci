@@ -1796,9 +1796,12 @@ run. What it does not do:
   pharn-ci flags these with three messages, `CONFIG_CHANGED_IN_DIFF` (the diff touches the config in
   use or a file under `.github/workflows/`), `COVERAGE_FILE_TRACKED` (the coverage file is a tracked
   file) and `DIFF_BINARY_COVERED_FILE` (the diff shows a file the coverage report knows as binary).
-  The first two are warnings only, never a `fail`. `DIFF_BINARY_COVERED_FILE` is an `error` when a diff-coverage
-  threshold is set (0 included), because the gate cannot measure the binary file, and a warning without one. The
-  same attribute also hides the text of a
+  `CONFIG_CHANGED_IN_DIFF` is a warning only, never a `fail`. `DIFF_BINARY_COVERED_FILE` is an `error` when a
+  diff-coverage threshold is set (0 included), because the gate cannot measure the binary file, and a warning without
+  one. `COVERAGE_FILE_TRACKED` is a warning too, with one exception: with a threshold (0 included), a tracked coverage
+  file that the diff adds, edits or renames to makes it an error, because the change then wrote the numbers it is
+  graded by. A tracked report the diff leaves alone stays a warning, so a report committed before the change, or one
+  that `.pharn/ci.yml` repoints to without the diff writing it, is not blocked. The same attribute also hides the text of a
   test file, `package.json`, workflow file, test-runner config or pharn-ci config, so these are reported too, at the
   mode's level (error in mode `block`, warn in mode `warn`): a deleted or renamed-away JS/TS, Python or Go test file
   that git shows as binary is TI01; a modified or renamed JS/TS or Python test file that git shows as binary makes

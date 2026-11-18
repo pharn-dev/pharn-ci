@@ -36,6 +36,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   report field. Without a usable `python3` for the touched Python test files, Python files are not asked.
 - Docs: `docs/LIMITS.md` names the release whose test-integrity signals catch 8 of the Skylos nine: "the signals of
   v0.11.0 catch **8 of 9**", as the README does, where it said "the signals of this release" (CORE-129).
+- A coverage report the pull request commits fails a gated run (CORE-92). With a threshold (0 included),
+  `COVERAGE_FILE_TRACKED` is now an error, so the verdict is fail and the CLI exits 1, when the diff adds, edits or
+  renames to the tracked coverage file the gate reads; its text names the path and says to remove the report from git
+  (`git rm --cached <path>`) and let the test run write it. A tracked report the diff leaves alone, or a run with no
+  threshold, still gets the warning. A repository that commits regenerated coverage in its pull requests must untrack
+  the file, or every such pull request now fails under a threshold.
 - Docs: the five workflows in `examples/workflows/` no longer say the step never fails without a threshold (CORE-127).
   Their headers name what fails it by default: a secret in an agent config file (S01-S09), invisible Unicode (PI01),
   a dependency from outside the registry (D05), a dependency change the lockfile does not record (D04) and a run

@@ -400,6 +400,11 @@ export interface BuildReportInput {
   changedConfigPaths?: readonly string[];
   /** Repo-relative path of the coverage file when it is a tracked file; absent adds no message. */
   trackedCoverageFile?: string;
+  /**
+   * True when the diff adds, modifies or renames to `trackedCoverageFile`, so the change under review wrote its own
+   * coverage numbers; with a threshold that makes `COVERAGE_FILE_TRACKED` an error (CORE-92). Absent means false.
+   */
+  trackedCoverageChanged?: boolean;
   /** Changed files the diff shows as binary that the coverage report knows; absent or empty adds no message. */
   binaryCoveredPaths?: readonly string[];
   /** Repo-relative test files the diff deletes or renames to a non-test name; absent or empty adds no message. */
@@ -782,11 +787,23 @@ export function buildReport(input: BuildReportInput): Report {
     });
   }
   if (input.trackedCoverageFile !== undefined) {
-    messages.push({
-      level: "warn",
-      code: "COVERAGE_FILE_TRACKED",
-      text: `The coverage file ${codeSpan(input.trackedCoverageFile)} is tracked in the repository, so the change under review can supply its own coverage numbers.`,
-    });
+    // A gate (a threshold, 0 included) graded by a coverage report the change itself adds or edits is no gate: that is
+    // an error (CORE-92). A tracked report the diff leaves alone, or no threshold, stays a warning.
+    const path = input.trackedCoverageFile;
+    const supplied = input.trackedCoverageChanged === true && input.threshold !== null;
+    messages.push(
+      supplied
+        ? {
+            level: "error",
+            code: "COVERAGE_FILE_TRACKED",
+            text: `The coverage file ${codeSpan(path)} is tracked in the repository and this change adds or edits it, so the change supplies the coverage numbers its threshold is checked against. Remove the report from git (${codeSpan(`git rm --cached ${path}`)}) and let the test run write it.`,
+          }
+        : {
+            level: "warn",
+            code: "COVERAGE_FILE_TRACKED",
+            text: `The coverage file ${codeSpan(path)} is tracked in the repository, so the change under review can supply its own coverage numbers.`,
+          },
+    );
   }
   if (input.binaryCoveredPaths !== undefined && input.binaryCoveredPaths.length > 0) {
     // A source file shown as binary has no added lines to measure: with a threshold (0 included) the gate cannot
