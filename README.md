@@ -1496,16 +1496,21 @@ that:
   pull request and its git tree. It updates only a comment its own
   login (or, when the token cannot read its login, a bot) wrote for this workflow and job. It deletes a comment only when concurrent runs left
   duplicates of that own marker comment.
-- **Untrusted input stays data.** Parsers are hand-written, pure and non-recursive. File names
-  render in code spans and message text is escaped, so neither can add links, images, emphasis,
+- **Untrusted input stays data.** The lcov, Cobertura, diff and config parsers are hand-written,
+  pure and non-recursive. JS and TS test files and test-runner config files go through TypeScript's
+  parser (`typescript` 5.9.3, used only through `createSourceFile` to build a syntax tree; nothing
+  in them is compiled, imported or run), and Python test files through the runner's own `python3`,
+  which only parses them (`ast.parse`, in a subprocess). File names render in code spans and message text is escaped, so neither can add links, images, emphasis,
   mentions or HTML to the PR comment. Git runs without a shell, and refs starting with `-` are
   rejected.
 - **Pure core.** `packages/core` cannot do I/O; a test, a lint rule and its tsconfig enforce it.
 - **Reviewable releases.** The committed Action bundle is rebuilt and diffed in CI. Third-party
-  actions are pinned to commit SHAs. The Action has two direct runtime dependencies
-  (`@actions/core`, `@actions/github`), bundled into `packages/action/dist` together with their
-  transitive dependencies. CodeQL, gitleaks and Socket checks run on every PR, and release tags are
-  never moved.
+  actions are pinned to commit SHAs. The Action has three direct runtime dependencies:
+  `@actions/core` and `@actions/github`, bundled into `packages/action/dist/index.js` together with
+  their transitive dependencies, and `typescript5` (`typescript` 5.9.3), shipped as
+  `packages/action/dist/typescript.js` and loaded on the first parse, only if its sha256 matches the
+  pin held in `index.js` ([THREAT-MODEL, row G1](docs/THREAT-MODEL.md#2-surfaces-threats-and-mitigations)).
+  CodeQL, gitleaks and Socket checks run on every PR, and release tags are never moved.
 
 Each claim is mapped to the test or check that enforces it in
 [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md). pharn-ci cannot measure a `pull_request_target`
