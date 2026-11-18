@@ -6,8 +6,11 @@ import { type PythonSkipLine, parseJsTestCall, parsePythonSkip } from "./testLin
 import type { TestMatch } from "./testMatch.js";
 import { languageOf, type TouchedTests } from "./testPairs.js";
 
-/** A TI03 category: `existing` takes the mode as its severity; `conditional`, `cannot-place` and `adds` are `warn`. */
-export type Ti03Category = "existing" | "conditional" | "cannot-place" | "adds";
+/**
+ * A TI03 category: `existing` takes the mode as its severity; `conditional`, `module` (a Python module-level skip,
+ * CORE-53), `cannot-place` and `adds` are `warn`.
+ */
+export type Ti03Category = "existing" | "conditional" | "module" | "cannot-place" | "adds";
 
 /** One TI03 finding before its severity and fixed sentence are given: the head path, a line and a category. */
 export interface Ti03Finding {
@@ -160,11 +163,14 @@ export interface Ti03PairInput {
  * an `existing` finding, and a head test that is conditionally skipped while its base test had no skip at all is a
  * `conditional` one. A test's skip is its own modifiers together with those of every describe block of the same file
  * whose line range holds it (a Python module-level `pytestmark` is already on every block, a class one on the class);
- * an empty table counts as an unconditional skip and a guard as a conditional one (`switchOffState`).
+ * an empty table counts as an unconditional skip and a guard as a conditional one (`switchOffState`), in JS/TS and
+ * Python alike. A Python block a later statement takes out of collection (`removedAt`) carries `skip`, and a head test
+ * that gained a Python module-level skip (`moduleSkip`) is a `module` finding at that skip's line (CORE-53).
  *
  * A finding is placed at its skip site, so one skip covering many tests is one finding: the lowest added line of the
  * head file that brings the skip in (the opening line of the block that carries it, an added skip decorator above a
- * Python block, an added in-body skip call of a Python test, an added `pytestmark` line in a Python class), trying the
+ * Python block, an added in-body skip call of a Python test, an added `pytestmark` line in a Python class, the added
+ * statement that takes a Python block out of collection), trying the
  * test and then each group around it, innermost first; then an added column-0 `pytestmark` line of a Python file; else
  * the head test's own line. Each carrier's site and each file's module mark are worked out once.
  */
@@ -217,6 +223,10 @@ export function detectTI03Pairs(input: Ti03PairInput): Ti03Finding[] {
     const take = (line: number) => {
       if (best === null || line < best) best = line;
     };
+    // CORE-53: the added statement that takes a Python def or class out of collection.
+    if (carrier.removedAt !== undefined && target === UNCONDITIONAL && isAdded(carrier.removedAt)) {
+      take(carrier.removedAt);
+    }
     // The decorators directly above the block: blank and comment lines and deeper continuation lines are passed over.
     const indent = indentOf(text[carrier.line - 1] ?? "");
     for (let k = carrier.line - 1; k >= 1; k--) {
@@ -283,6 +293,10 @@ export function detectTI03Pairs(input: Ti03PairInput): Ti03Finding[] {
 
   const findings: Ti03Finding[] = [];
   for (const pair of [...input.match.pairs, ...input.match.moved, ...input.match.replaced]) {
+    // CORE-53: a Python module-level skip the head test gained is a warn finding at the skip's line, in every mode.
+    if (pair.head.moduleSkip !== undefined && pair.base.moduleSkip === undefined) {
+      findings.push({ path: pair.headPath, line: pair.head.moduleSkip, category: "module" });
+    }
     const headView = view("head", pair.headPath);
     const now = effective(headView, pair.head);
     if (now === NONE) continue;

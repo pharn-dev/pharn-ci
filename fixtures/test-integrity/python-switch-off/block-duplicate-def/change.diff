@@ -1,0 +1,9 @@
+diff --git a/tests/test_user.py b/tests/test_user.py
+index 1111111..2222222 100644
+--- a/tests/test_user.py
++++ b/tests/test_user.py
+@@ -11,0 +12,4 @@
++
++
++def test_full_name():
++    assert full_name("grace", "hopper") == "grace hopper"

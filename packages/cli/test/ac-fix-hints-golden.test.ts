@@ -106,9 +106,15 @@ describe("the goldens with fix hints", { timeout: 120_000 }, () => {
       );
     }
     // No rendered golden anywhere under fixtures/ changed.
+    // Re-pinned for CORE-53: PYTEST-OUTCOMES.md, a hand-written note added (never modified) beside the
+    // python-switch-off cases, is not a rendered golden; every other .md under fixtures/ is still checked.
+    const added = git("diff", "--name-only", "--diff-filter=A", BASE, "--", "fixtures/").split("\n");
     const changed = git("diff", "--name-only", BASE, "--", "fixtures/")
       .split("\n")
-      .filter((path) => path.endsWith(".md"));
+      .filter((path) => path.endsWith(".md"))
+      .filter(
+        (path) => !(path === "fixtures/test-integrity/python-switch-off/PYTEST-OUTCOMES.md" && added.includes(path)),
+      );
     expect(changed).toEqual([]);
 
     // Every message of the CLI's JSON carries the table's fix.

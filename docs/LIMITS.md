@@ -353,6 +353,25 @@ Both readings give one finding per line, the stronger one kept.
   (see "No context lines" above). A skip written through
   `request.node.add_marker(pytest.mark.skip)`, `pytest.mark.skip` assigned to a name and used as `@name`, or a marker
   set in `conftest.py` is not read.
+- **Python switch-off forms.** When the Python index ran, the pair reading also reports a test that has one of these
+  at HEAD and did not have it at the merge base (what pytest does with each is written in
+  `fixtures/test-integrity/python-switch-off/PYTEST-OUTCOMES.md`): a test `def` or test class put under an `if` of its
+  module or test class, in either branch, is a conditional skip (`warn`); a `@pytest.mark.parametrize` whose argument
+  values are an empty list or tuple literal, a later `def` or `class` of the same name in the same block of statements,
+  a `del test_x` or a `test_x.__test__ = False` (any false constant) after it in that block, `__test__ = False` in a
+  test class body, and an unguarded `raise unittest.SkipTest(…)` in a test body are an unconditional skip (the mode's
+  level; a guarded raise is conditional). A module-level `pytest.importorskip(…)` or `pytest.skip(…,
+  allow_module_level=True)` is one `warn` finding at its line in every mode, because honest uses are common. A skip
+  the test already had at the merge base gives nothing. The finding is placed at the added line that brings the form
+  in: the `del`, `__test__` or later `def` line, the raise line, the module skip's line, else the test's `def` line.
+  Still missed: a `def` under `while`, `try`, `with` or `match` (only `if` is read); a `del` or `__test__` assignment
+  inside an `if`, a function or any block of statements other than the one holding the `def`; a test rebound by an
+  assignment (`test_x = None`) or an import; a parametrize table that is a name, a call or a comprehension that turns
+  out empty (only the `[]` and `()` literals are read); `pytest.importorskip` inside a test body or inside a function;
+  a subclass of `unittest.SkipTest`; a module skip in `conftest.py`. A `def` added above an existing test of the same
+  name is the one pytest never collects, but tests of one name are paired in line order, so it is reported as a skip of
+  the existing test, at the added `def`. Without the Python index, the line reading reads `pytest.importorskip(` and
+  `raise unittest.SkipTest(` at the start of a line as a skip inside a body (`warn`), and none of the other forms.
 - **A skip moved to another file** reads as added without the test index, because the removed line is looked for in
   the same file only. A rename that edits the skip is judged against the old file's lines. With the index, a test the
   match finds again in another file is judged by its pair.
@@ -984,7 +1003,7 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
 | --- | --- | --- |
 | TI01 deleted test file | caught — `block-code-stays` | caught — `block-root-tests` and `pass-init-py` |
 | TI02 removed test | caught — `block-removed-it` | caught — `block-pytest-removed`, `block-unittest-method-removed`, and through aliases `block-pytest-alias-marked-removed` |
-| TI03 added skip | caught — `block-it-skip-existing` | caught — `block-pytest-decorator`, the `*-alias-*` cases, `@unittest.expectedFailure` and `pytest.xfail(` |
+| TI03 added skip | caught — `block-it-skip-existing` | caught — `block-pytest-decorator`, the `*-alias-*` cases, `@unittest.expectedFailure`, `pytest.xfail(` and the `python-switch-off/` cases |
 | TI04 focused run | caught — `block-it-only` | not applicable — pytest has no `.only` |
 | TI05 emptied test | caught — `block-emptied` | caught — `block-pytest-emptied`, `block-pytest-alias-raises-removed`, `pass-pytest-alias-emptied-skipped` |
 | TI06 weakened assertion | caught — `warn-assert-ok` | caught — `warn-py-assert-truthy`, `warn-pytest-alias-approx-truthy` |
@@ -1009,7 +1028,10 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
 - `conftest.py` is a test-config name for the sources but nothing in it is read: a marker, a fixture or an option set
   there is not seen, and neither is `PYTEST_ADDOPTS` or a `-c` config flag.
 - `request.node.add_marker(pytest.mark.skip)` and a marker kept in a variable (`sm = pytest.mark.skip`, `@sm`) are not
-  read as skips.
+  read as skips. The switch-off forms the Python index does read, and the ones it still misses, are listed under
+  "What TI03 misses" (Python switch-off forms).
+- A `def` or class name longer than 500 characters is cut to 500 in the index, as the JS/TS index cuts names, so two
+  tests whose names differ only after that are one name.
 - An alias is read only when it is bound by a top-level `import` or `from … import` statement at column 0. One bound
   inside an `if`, a `try` or a function, in a docstring, by a backslash continuation, or by `from pytest import *`
   (`import *` binds nothing) is not. A reassignment after the import (`pt = pytest`) is not followed, and a later

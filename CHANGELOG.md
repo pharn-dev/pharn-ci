@@ -18,6 +18,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   nothing in the file calls, is a conditional skip (`warn`). A loop, a `describe` callback and a helper the file calls
   are not guards, and a test that was already guarded or skipped at the merge base gives nothing new. The test index
   gains two optional fields, `guarded` and `emptyTable`; the report is unchanged.
+- Fixed: the Python test index reads more ways a test is switched off (CORE-53). TI03 now reports a test that gained
+  one at HEAD: a test `def` or class put under an `if` (a conditional skip, `warn`); an empty `parametrize` list or
+  tuple, a later `def` of the same name, `del test_x`, `test_x.__test__ = False` and `raise unittest.SkipTest(…)` in
+  the body (an unconditional skip, the mode's level); a module-level `pytest.importorskip(…)` or `pytest.skip(…,
+  allow_module_level=True)` (one `warn` finding in every mode). Names in the index are cut to 500 characters, so one
+  very long class name no longer pushes the index output past its 64 MiB cap and makes the index unavailable. This can
+  add block findings on Python PRs that switch an existing test off these ways (`docs/LIMITS.md`).
 - Fixed: a test file, `package.json`, workflow file or pharn-ci config that git shows as binary (a `-diff` or `binary`
   attribute in `.gitattributes`, or non-text content) is no longer skipped silently (CORE-50). A deleted or renamed-away
   JS/TS, Python or Go test file is TI01 at the mode's level, a modified or renamed JS/TS or Python one makes

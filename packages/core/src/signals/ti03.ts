@@ -28,13 +28,21 @@ const DETAILS: Readonly<Record<Category, string>> = {
   existing:
     "An unconditional skip was added to a test that the diff shows existed before this change, so that test no longer runs.",
   conditional: "A conditional skip was added; the test is skipped only where its condition holds.",
+  module:
+    "A module-level skip was added (pytest.importorskip, or pytest.skip with allow_module_level=True); every test of the file is skipped wherever it takes effect.",
   "cannot-place":
     "A skip was added inside a test body or hook, where the diff cannot tell which test it stops or whether a condition guards it.",
   adds: "A skip was added to a test that no removed line of this file opens, so the diff shows it as new.",
 };
 
 /** Which category wins when both passes, or two findings, fall on one line. */
-const STRENGTH: Readonly<Record<Category, number>> = { existing: 3, conditional: 2, "cannot-place": 1, adds: 0 };
+const STRENGTH: Readonly<Record<Category, number>> = {
+  existing: 4,
+  conditional: 3,
+  module: 2,
+  "cannot-place": 1,
+  adds: 0,
+};
 
 /**
  * What a skip line is before the file is considered. `named` is a skip of a test the line itself names (JS/TS);

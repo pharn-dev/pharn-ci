@@ -31,6 +31,8 @@ const BLOCK_KEYS: readonly string[] = [
   "bodyEnd",
   "assertions",
 ];
+/** The keys a block may carry besides `BLOCK_KEYS`, each only when it holds (CORE-53). */
+const OPTIONAL_BLOCK_KEYS: readonly string[] = ["guarded", "emptyTable", "removedAt", "moduleSkip"];
 const ASSERTION_KEYS: readonly string[] = ["chain", "line", "awaited", "inTryCatch", "afterEarlyReturn"];
 const MOCK_KEYS: readonly string[] = ["callee", "specifier", "line"];
 
@@ -80,10 +82,36 @@ function checkBool(value: unknown, where: string, field: string): boolean {
   return value;
 }
 
-function checkKeys(value: unknown, keys: readonly string[], where: string, what: string): Raw {
+function checkKeys(
+  value: unknown,
+  keys: readonly string[],
+  where: string,
+  what: string,
+  optional: readonly string[] = [],
+): Raw {
   if (!isObject(value)) return bad(where, `${what} is not an object`);
-  if (!hasExactKeys(value, keys)) return bad(where, `${what} has missing or extra keys`);
+  const present = optional.filter((key) => Object.hasOwn(value, key));
+  if (!hasExactKeys(value, [...keys, ...present])) return bad(where, `${what} has missing or extra keys`);
   return value;
+}
+
+/** The optional switch-off fields of a raw block, checked, only those it carries. */
+function switchOffFields(
+  raw: Raw,
+  where: string,
+): Pick<TestBlock, "guarded" | "emptyTable" | "removedAt" | "moduleSkip"> {
+  const fields: Pick<TestBlock, "guarded" | "emptyTable" | "removedAt" | "moduleSkip"> = {};
+  if (Object.hasOwn(raw, "guarded")) {
+    if (checkString(raw.guarded, where, "block guarded") !== "if") return bad(where, "block guarded is unknown");
+    fields.guarded = "if";
+  }
+  if (Object.hasOwn(raw, "emptyTable")) {
+    if (raw.emptyTable !== true) return bad(where, "block emptyTable is not true");
+    fields.emptyTable = true;
+  }
+  if (Object.hasOwn(raw, "removedAt")) fields.removedAt = checkInt(raw.removedAt, where, "block removedAt", 1);
+  if (Object.hasOwn(raw, "moduleSkip")) fields.moduleSkip = checkInt(raw.moduleSkip, where, "block moduleSkip", 1);
+  return fields;
 }
 
 function mapAssertion(value: unknown, where: string): TestAssertion {
@@ -98,7 +126,7 @@ function mapAssertion(value: unknown, where: string): TestAssertion {
 }
 
 function mapBlock(value: unknown, normalized: string, where: string): TestBlock {
-  const raw = checkKeys(value, BLOCK_KEYS, where, "a block");
+  const raw = checkKeys(value, BLOCK_KEYS, where, "a block", OPTIONAL_BLOCK_KEYS);
   const kind = checkString(raw.kind, where, "block kind");
   if (!BLOCK_KINDS.includes(kind)) return bad(where, "block kind is unknown");
   const name = checkString(raw.name, where, "block name");
@@ -131,6 +159,7 @@ function mapBlock(value: unknown, normalized: string, where: string): TestBlock 
     assertionCount: assertions.length,
     assertions,
     guards: [],
+    ...switchOffFields(raw, where),
   };
 }
 

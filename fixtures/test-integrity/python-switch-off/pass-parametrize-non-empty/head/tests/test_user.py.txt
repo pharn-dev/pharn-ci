@@ -1,0 +1,12 @@
+import pytest
+
+from user import full_name
+
+
+@pytest.mark.parametrize("first", ["ada", "grace"])
+def test_full_name(first):
+    assert full_name("ada", "lovelace") == "ada lovelace"
+
+
+def test_empty_names():
+    assert full_name("", "") == " "

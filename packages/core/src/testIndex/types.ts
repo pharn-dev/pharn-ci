@@ -69,10 +69,22 @@ export interface TestBlock {
    * Present when something between the block and its owner can keep it from being declared: an `if` statement
    * (`"if"`), or a function that is not a test callback and that nothing in the file calls by name
    * (`"uncalled-function"`). A loop, a `describe` callback and a helper the file calls are not guards. Absent otherwise.
+   * The Python index sets only `"if"`: a def or class under an `if` of its module or test class.
    */
   guarded?: TestGuard;
-  /** Present, and `true`, when the block's `.each` or `.for` table is an empty array literal: it declares no test. */
+  /**
+   * Present, and `true`, when the block's `.each` or `.for` table is an empty array literal: it declares no test. The
+   * Python index sets it for a `parametrize` decorator whose argument values are an empty list or tuple literal.
+   */
   emptyTable?: true;
+  /**
+   * Python: the line of a later statement of the same block of statements that takes this def or class out of
+   * collection (a def or class of the same name, `del name`, `name.__test__ = False`, or `__test__ = False` in a class
+   * body). The block then carries the `skip` modifier.
+   */
+  removedAt?: number;
+  /** Python: the line of the first module-level `pytest.importorskip(…)` or `pytest.skip(…, allow_module_level=True)`. */
+  moduleSkip?: number;
 }
 
 /** What sits between a block and its owner and can keep the block from being declared. */

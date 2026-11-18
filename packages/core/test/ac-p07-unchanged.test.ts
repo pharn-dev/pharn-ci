@@ -93,6 +93,9 @@ const CORE50_PATH = new RegExp(
     "TI14/(?:block-binary-config-modified|block-binary-config-renamed|block-binary-config-deleted|pass-binary-other-yaml|pass-binary-config-added)",
   ].join("|")})/[^\\t]+$`,
 );
+// Re-pinned for CORE-53 (the Python index reads how a test is switched off): its new directory
+// fixtures/test-integrity/python-switch-off/ (twelve cases and PYTEST-OUTCOMES.md) is added too.
+const CORE53_PATH = /^fixtures\/test-integrity\/python-switch-off\/[^\t]+$/;
 
 /** The tests PLAN.md step 9 lists as deliberately re-pinned; each must carry a comment naming this item. */
 const DELIBERATE = [
@@ -145,6 +148,7 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       }
       if (line.startsWith("A\t") && CORE70_PATH.test(line.slice(2))) continue;
       if (line.startsWith("A\t") && CORE50_PATH.test(line.slice(2))) continue;
+      if (line.startsWith("A\t") && CORE53_PATH.test(line.slice(2))) continue;
       // Re-pinned for comment-coverage-bar (the diff-coverage bar in the PR comment): the four golden report.md files
       // gained the bar line on purpose. Each must be modified, never added or deleted, and folding the bar line (and
       // the empty line under it) back out must give its content at the base byte for byte.
@@ -250,6 +254,8 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       if (CORE70_PATH.test(path)) continue;
       // Re-pinned for CORE-50: its new case directories are untracked until committed.
       if (CORE50_PATH.test(path)) continue;
+      // Re-pinned for CORE-53: its new python-switch-off directory is untracked until committed.
+      if (CORE53_PATH.test(path)) continue;
       // Re-pinned for policy-p13 (Horizon 2 item H1): its fixtures under fixtures/policy-rules/p13/ are untracked until
       // committed.
       // Re-pinned for stale instructions (Horizon 2 item H3): its fixtures under fixtures/stale-instructions/ are

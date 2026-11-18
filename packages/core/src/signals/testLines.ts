@@ -215,8 +215,14 @@ const PYTHON_DECORATORS: ReadonlyMap<string, "always" | "never" | "by-argument">
   ["unittest.expectedFailure", "never"],
 ]);
 
-/** The Python calls in a test body that stop or fail the test they sit in. */
-const PYTHON_CALLS: ReadonlySet<string> = new Set(["pytest.skip", "pytest.xfail"]);
+/**
+ * The Python calls in a test body that stop or fail the test they sit in, and `pytest.importorskip`, which skips the
+ * test or, at module level, the whole module where the import fails.
+ */
+const PYTHON_CALLS: ReadonlySet<string> = new Set(["pytest.skip", "pytest.xfail", "pytest.importorskip"]);
+/** The exceptions whose `raise X(` in a test body skips the test (CORE-53). */
+const PYTHON_RAISES: ReadonlySet<string> = new Set(["unittest.SkipTest", "unittest.case.SkipTest"]);
+const RAISE = "raise ";
 
 /** The marks a `pytestmark = …` line is read for: the pytest skip decorators, without the `@`. */
 const PYTEST_MARKS: ReadonlySet<string> = new Set(["pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail"]);
@@ -289,8 +295,8 @@ function parsePytestmark(line: string, aliases: ReadonlyMap<string, string> | un
 }
 
 /**
- * Reads a Python skip decorator, a `pytestmark = …` line, or `pytest.skip(` / `pytest.xfail(`, at the start of a line;
- * null for anything else.
+ * Reads a Python skip decorator, a `pytestmark = …` line, `pytest.skip(` / `pytest.xfail(` / `pytest.importorskip(`, or
+ * `raise unittest.SkipTest(`, at the start of a line; null for anything else.
  * With `aliases` (the file's top-level imports, see `pythonImportAliases`) a name that is not in the tables as written
  * is also tried with its first segment replaced (`@pt.mark.skip` under `import pytest as pt`, `sk("r")` under `from
  * pytest import skip as sk`). The `token` returned is the table's name, whatever the spelling.
@@ -309,8 +315,11 @@ export function parsePythonSkip(text: string, aliases?: ReadonlyMap<string, stri
     return { kind: "decorator", token, name: argName(arg, true), conditional: isConditional(rule, arg) };
   }
   if (line.startsWith(PYTESTMARK)) return parsePytestmark(line, aliases);
-  const callEnd = dottedEnd(line, 0);
-  const call = canonicalPython(line.slice(0, callEnd), PYTHON_CALLS, aliases);
+  const raised = line.startsWith(RAISE);
+  let start = raised ? RAISE.length : 0;
+  while (raised && isSpace(line.charAt(start))) start++;
+  const callEnd = dottedEnd(line, start);
+  const call = canonicalPython(line.slice(start, callEnd), raised ? PYTHON_RAISES : PYTHON_CALLS, aliases);
   if (call === null) return null;
   let i = callEnd;
   while (isSpace(line.charAt(i))) i++;

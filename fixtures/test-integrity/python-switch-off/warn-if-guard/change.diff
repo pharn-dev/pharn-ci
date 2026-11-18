@@ -1,0 +1,13 @@
+diff --git a/tests/test_user.py b/tests/test_user.py
+index 1111111..2222222 100644
+--- a/tests/test_user.py
++++ b/tests/test_user.py
+@@ -0,0 +1,2 @@
++import sys
++
+@@ -6,2 +8,3 @@
+-def test_full_name():
+-    assert full_name("ada", "lovelace") == "ada lovelace"
++if sys.platform != "win32":
++    def test_full_name():
++        assert full_name("ada", "lovelace") == "ada lovelace"
