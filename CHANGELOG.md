@@ -22,6 +22,14 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   reopens a table dotted keys defined, and a `package` or `source` that is not a table. In a `pyproject.toml`, a dotted
   key under a dependency table (`evil.git = "https://…"` under `[tool.poetry.dependencies]` or `[tool.uv.sources]`) is
   now that dependency's table, where it was a registry dependency named `evil.git`.
+- Dependency safety reads pnpm-lock.yaml the way pnpm reads it (CORE-110). The reader took `key: value` only with one
+  space after the colon and none before it, so `tarball:<tab>https://…` or `resolution : {tarball: …}` passed D05, and
+  pnpm installs from both; it now reads any spaces or tabs on either side of a key's colon, for the source (D05) and the
+  integrity (D04). A hand-edited pnpm lockfile with a YAML anchor, alias, tag, block scalar or merge key, a value on the
+  line after its key, a flow mapping across lines, a duplicated key, tab indentation, an extra document, or a
+  `tarball`, `type`, `repo` or `directory` that is not a plain string now fails the check as unread
+  (`DEPENDENCY_CHECK_INCOMPLETE`, an error), where it was read on a guess before; pnpm writes none of these. A pnpm 10
+  env document (`---` first) is read as well as the lockfile document, where its keys used to shadow the lockfile's.
 - Dependency safety reads a requirements file's options the way pip reads them (CORE-108). D05 read the index and
   editable options by their full names only, so `--extra-index https://…`, `--index …`, `--find …`, `-ihttps://…`,
   `-egit+https://…` and `--extra-index=…` passed, and pip installs from each. It now resolves a long option by any

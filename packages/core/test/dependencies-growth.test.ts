@@ -68,6 +68,23 @@ describe("dependency readers are linear", { timeout: 120_000 }, () => {
     await linear("pnpm flow", (size) => `lockfileVersion: 9\na: {${sized("k: 'v,', ", size)}}`, parsePnpmLock);
   });
 
+  // CORE-110: the YAML subset pnpm writes is read in one pass per line, on long hostile lines that are read to the end.
+  it("pnpm-lock.yaml: long lines of blanks, list items, flow parts, nesting and plain text", async () => {
+    const read = (text: string) => expect(parsePnpmLock(text)).not.toBeNull();
+    const pnpm = (body: string) => `lockfileVersion: '9.0'\n${body}\n`;
+    await linear("blanks before a colon", (size) => pnpm(`k${sized(" \t", size)}:\t\tv`), read);
+    await linear("blanks after a colon", (size) => pnpm(`k:${sized("\t ", size)}v`), read);
+    await linear("list items on one line", (size) => pnpm(`a:\n  ${sized("- ", size)}x`), read);
+    await linear(
+      "distinct flow keys",
+      (size) => pnpm(`a: {${entries(size, (i) => `k${i} : 'v,#', `).join("")}z: 1}`),
+      read,
+    );
+    await linear("nested flow", (size) => pnpm(`a: ${"[".repeat(size / 2)}${"]".repeat(size / 2)}`), read);
+    await linear("plain text and a comment", (size) => pnpm(`a: ${sized("x:x ", size)}# c: d`), read);
+    await linear("quoted key and blanks", (size) => pnpm(`'${sized("''", size)}' ${sized(" ", size)}: v`), read);
+  });
+
   it("yarn.lock and a header of commas", async () => {
     const make = (size: number) =>
       entries(

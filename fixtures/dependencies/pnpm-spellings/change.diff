@@ -1,0 +1,66 @@
+diff --git a/control/pnpm-lock.yaml b/control/pnpm-lock.yaml
+--- a/control/pnpm-lock.yaml
++++ b/control/pnpm-lock.yaml
+@@ -11 +11 @@
+-      left-pad:
++      evil-pkg:
+diff --git a/tab/pnpm-lock.yaml b/tab/pnpm-lock.yaml
+--- a/tab/pnpm-lock.yaml
++++ b/tab/pnpm-lock.yaml
+@@ -11 +11 @@
+-      left-pad:
++      evil-pkg:
+diff --git a/tab-registry/pnpm-lock.yaml b/tab-registry/pnpm-lock.yaml
+--- a/tab-registry/pnpm-lock.yaml
++++ b/tab-registry/pnpm-lock.yaml
+@@ -11 +11 @@
+-      left-pad:
++      evil-pkg:
+diff --git a/spacekey/pnpm-lock.yaml b/spacekey/pnpm-lock.yaml
+--- a/spacekey/pnpm-lock.yaml
++++ b/spacekey/pnpm-lock.yaml
+@@ -11 +11 @@
+-      left-pad:
++      evil-pkg:
+diff --git a/spacekey-registry/pnpm-lock.yaml b/spacekey-registry/pnpm-lock.yaml
+--- a/spacekey-registry/pnpm-lock.yaml
++++ b/spacekey-registry/pnpm-lock.yaml
+@@ -11 +11 @@
+-      left-pad:
++      evil-pkg:
+diff --git a/alias/pnpm-lock.yaml b/alias/pnpm-lock.yaml
+--- a/alias/pnpm-lock.yaml
++++ b/alias/pnpm-lock.yaml
+@@ -7 +7 @@
+-importers:
++x-anchors:
+diff --git a/quoted-key/pnpm-lock.yaml b/quoted-key/pnpm-lock.yaml
+--- a/quoted-key/pnpm-lock.yaml
++++ b/quoted-key/pnpm-lock.yaml
+@@ -11 +11 @@
+-      left-pad:
++      evil-pkg:
+diff --git a/quoted-registry/pnpm-lock.yaml b/quoted-registry/pnpm-lock.yaml
+--- a/quoted-registry/pnpm-lock.yaml
++++ b/quoted-registry/pnpm-lock.yaml
+@@ -11 +11 @@
+-      left-pad:
++      evil-pkg:
+diff --git a/integrity-tab/pnpm-lock.yaml b/integrity-tab/pnpm-lock.yaml
+--- a/integrity-tab/pnpm-lock.yaml
++++ b/integrity-tab/pnpm-lock.yaml
+@@ -18 +18 @@
+-    resolution: {integrity: sha512-XI5MPzVNApjAyhQzphX8BkmKsKUxD4LdyK24iZeQGinBN9yTQT3bzwGxgkH6C9Q2sVAnbnoaVxmUhbxjHc9Q==}
++    resolution:
+diff --git a/integrity-spacekey/pnpm-lock.yaml b/integrity-spacekey/pnpm-lock.yaml
+--- a/integrity-spacekey/pnpm-lock.yaml
++++ b/integrity-spacekey/pnpm-lock.yaml
+@@ -18 +18 @@
+-    resolution: {integrity: sha512-XI5MPzVNApjAyhQzphX8BkmKsKUxD4LdyK24iZeQGinBN9yTQT3bzwGxgkH6C9Q2sVAnbnoaVxmUhbxjHc9Q==}
++    resolution : {integrity :  sha512-ZZ5MPzVNApjAyhQzphX8BkmKsKUxD4LdyK24iZeQGinBN9yTQT3bzwGxgkH6C9Q2sVAnbnoaVxmUhbxjHc9Q==}
+diff --git a/integrity-same/pnpm-lock.yaml b/integrity-same/pnpm-lock.yaml
+--- a/integrity-same/pnpm-lock.yaml
++++ b/integrity-same/pnpm-lock.yaml
+@@ -18 +18 @@
+-    resolution: {integrity: sha512-XI5MPzVNApjAyhQzphX8BkmKsKUxD4LdyK24iZeQGinBN9yTQT3bzwGxgkH6C9Q2sVAnbnoaVxmUhbxjHc9Q==}
++    resolution :

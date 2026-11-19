@@ -1515,6 +1515,15 @@ comes from and how new it is, not what it does. What it misses:
   records them. Not read: `[tool.pdm]` and `[tool.hatch]` sources and dependencies, a build backend's own settings
   (`[tool.setuptools]`, `[tool.hatch.metadata]`), `[project] dynamic` dependencies a backend computes, and a uv
   workspace member's `pyproject.toml` that the change does not touch.
+- **pnpm-lock.yaml is read as the YAML pnpm writes.** Block mappings, one-line flow mappings and sequences, block
+  sequences, plain and quoted scalars and comments are read, with any spaces or tabs before or after a key's colon, as
+  js-yaml (which pnpm loads the lockfile with) reads them. An anchor, alias, tag, block scalar or `<<` merge key, a
+  value on the line after its key, a flow collection across lines, a key given twice in one mapping, a tab in the
+  indentation, a document marker past pnpm 10's env document, or a `resolution` whose `tarball`, `type`, `repo` or
+  `directory` is not a plain string makes the file unread (`unparsable`), even where pnpm would install from it: pnpm
+  never writes these, so a lockfile that has one was edited by hand. The source is read from `tarball`, `type`, `repo`
+  and `directory` only: a resolution of another type pnpm knows (`binary` or `variations`, for a `runtime:` dependency
+  such as Node.js) is taken as the registry, and its `url` is not judged.
 - **Caps.** A manifest or lockfile over 32 MiB (the cap for one file, the same as the cap for one side), past 100 files
   or 32 MiB a side is not read and is named in `dependencies.unread`, never guessed; a TOML syntax error makes the whole
   file unread. `DEPENDENCY_CHECK_INCOMPLETE` is an error (verdict `fail`) when any unread file's reason is one the pull

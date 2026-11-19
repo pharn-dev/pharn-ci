@@ -29338,72 +29338,218 @@ function closingQuote2(text, open3) {
   }
   return -1;
 }
+var isBlank = (ch) => ch === " " || ch === "	";
 function splitKey(content) {
   if (content.startsWith('"') || content.startsWith("'")) {
     const end = closingQuote2(content, 0);
-    if (end === -1 || content[end + 1] !== ":") return null;
-    return { key: unquoteScalar(content.slice(0, end + 1)), value: content.slice(end + 2).trim() };
+    if (end === -1) return null;
+    let colon = end + 1;
+    while (isBlank(content[colon])) colon++;
+    if (content[colon] !== ":") return null;
+    return { key: unquoteScalar(content.slice(0, end + 1)), value: content.slice(colon + 1).trim() };
   }
-  const at = content.indexOf(": ");
-  if (at !== -1) return { key: content.slice(0, at), value: content.slice(at + 2).trim() };
-  if (content.endsWith(":")) return { key: content.slice(0, -1), value: "" };
+  for (let i = 0; i < content.length; i++) {
+    const ch = content[i];
+    if (ch === "#" && i > 0 && isBlank(content[i - 1])) return null;
+    if (ch === ":" && (i + 1 === content.length || isBlank(content[i + 1]))) {
+      const key = content.slice(0, i).trim();
+      return key === "" ? null : { key, value: content.slice(i + 1).trim() };
+    }
+  }
   return null;
 }
-function flowMap(text, line) {
-  const inner = text.endsWith("}") ? text.slice(1, -1) : text.slice(1);
-  const children = /* @__PURE__ */ new Map();
-  let start = 0;
-  let quote = null;
-  const take = (end) => {
-    const part = inner.slice(start, end).trim();
-    const colon = part.indexOf(":");
-    if (colon > 0) {
-      children.set(unquoteScalar(part.slice(0, colon)), {
-        value: unquoteScalar(part.slice(colon + 1)),
-        line,
-        children: null
-      });
+var NOT_WRITTEN = /* @__PURE__ */ new Set(["*", "&", "!", "|", ">", "%", "@", "`"]);
+function plainKeyAllowed(written, key) {
+  if (written.startsWith("'") || written.startsWith('"')) return true;
+  const first = key[0];
+  return !NOT_WRITTEN.has(first) && first !== "?" && first !== "{" && first !== "[" && key !== "<<";
+}
+function restIsComment(text, from) {
+  let i = from;
+  while (isBlank(text[i])) i++;
+  return i === text.length || i > from && text[i] === "#";
+}
+var CLOSER = { "{": "}", "[": "]" };
+function scanFlow(text, commas) {
+  const open3 = [];
+  let scalarStart = true;
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (isBlank(ch)) continue;
+    if (ch === "#" && isBlank(text[i - 1])) return -1;
+    if (scalarStart && (ch === "'" || ch === '"')) {
+      const end = closingQuote2(text, i);
+      if (end === -1) return -1;
+      i = end;
+      scalarStart = false;
+      quoted = true;
+      continue;
     }
-  };
-  for (let i = 0; i < inner.length; i++) {
-    const ch = inner[i];
-    if (quote !== null) {
-      if (ch === quote) quote = null;
-    } else if (ch === '"' || ch === "'") {
-      quote = ch;
+    if (scalarStart && NOT_WRITTEN.has(ch)) return -1;
+    const wasQuoted = quoted;
+    quoted = false;
+    if (ch === "{" || ch === "[") {
+      open3.push(CLOSER[ch]);
+      scalarStart = true;
+    } else if (ch === "}" || ch === "]") {
+      if (open3.pop() !== ch) return -1;
+      if (open3.length === 0) return i + 1;
+      scalarStart = false;
     } else if (ch === ",") {
-      take(i);
-      start = i + 1;
+      if (open3.length === 1) commas.push(i);
+      scalarStart = true;
+    } else if (ch === ":" && (wasQuoted || i + 1 === text.length || isBlank(text[i + 1]))) {
+      scalarStart = true;
+    } else {
+      scalarStart = false;
     }
   }
-  take(inner.length);
+  return -1;
+}
+function flowScalar(text) {
+  if (text.startsWith("'") || text.startsWith('"')) {
+    return closingQuote2(text, 0) === text.length - 1 ? unquoteScalar(text) : null;
+  }
+  if (text.startsWith("{") || text.startsWith("[")) return text;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === ":" && (i + 1 === text.length || isBlank(text[i + 1]))) return null;
+  }
+  return text;
+}
+function flowMap(text, end, commas, line) {
+  const children = /* @__PURE__ */ new Map();
+  const bounds = [0, ...commas, end - 1];
+  for (let k = 0; k + 1 < bounds.length; k++) {
+    const part = text.slice(bounds[k] + 1, bounds[k + 1]).trim();
+    if (part === "") {
+      if (k + 2 === bounds.length && (k > 0 || commas.length === 0)) continue;
+      return null;
+    }
+    const pair = splitKey(part);
+    if (pair === null || !plainKeyAllowed(part, pair.key) || children.has(pair.key)) return null;
+    const value = flowScalar(pair.value);
+    if (value === null) return null;
+    children.set(pair.key, { value, line, children: null });
+  }
   return children;
 }
-function parseYamlTree(text) {
+function blockValue(text, line) {
+  if (text === "" || text.startsWith("#")) return { value: "", children: null, closed: false };
+  const first = text[0];
+  if (NOT_WRITTEN.has(first)) return null;
+  if (first === "'" || first === '"') {
+    const end2 = closingQuote2(text, 0);
+    if (end2 === -1 || !restIsComment(text, end2 + 1)) return null;
+    return { value: unquoteScalar(text.slice(0, end2 + 1)), children: null, closed: true };
+  }
+  if (first === "{" || first === "[") {
+    const commas = [];
+    const end2 = scanFlow(text, commas);
+    if (end2 === -1 || !restIsComment(text, end2)) return null;
+    if (first === "[") return { value: text.slice(0, end2), children: null, closed: true };
+    const children = flowMap(text, end2, commas, line);
+    return children === null ? null : { value: "", children, closed: true };
+  }
+  let end = text.length;
+  for (let i = 1; i < text.length; i++) {
+    if (text[i] === "#" && isBlank(text[i - 1])) {
+      end = i;
+      break;
+    }
+    if (text[i] === ":" && (i + 1 === text.length || isBlank(text[i + 1]))) return null;
+  }
+  return { value: text.slice(0, end).trimEnd(), children: null, closed: true };
+}
+function parseYamlTree(text, lineOffset = 0) {
   const root = { value: "", line: 0, children: /* @__PURE__ */ new Map() };
-  const stack = [{ indent: -1, node: root }];
+  const stack = [{ indent: -1, node: root, closed: false }];
+  const parentAt = (indent) => {
+    while (stack.length > 1 && stack[stack.length - 1].indent >= indent) stack.pop();
+    const top = stack[stack.length - 1];
+    return top.closed ? null : top.node;
+  };
   const lines = text.split("\n");
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i];
+  let started = false;
+  let explicit = null;
+  for (let n = 0; n < lines.length; n++) {
+    const raw = lines[n];
+    const i = n + lineOffset;
     const line = raw.endsWith("\r") ? raw.slice(0, -1) : raw;
+    if (line.includes("\r")) return null;
     let indent = 0;
     while (indent < line.length && line[indent] === " ") indent++;
     const content = line.slice(indent).trimEnd();
-    if (content === "" || content.startsWith("#") || content === "-" || content.startsWith("- ")) continue;
-    const pair = splitKey(content);
-    if (pair === null) continue;
-    while (stack.length > 1 && stack[stack.length - 1].indent >= indent) stack.pop();
-    const parent = stack[stack.length - 1].node;
+    if (content === "" || content.startsWith("#")) continue;
+    if (content.startsWith("	")) return null;
+    if (indent === 0 && content === "---" && !started) {
+      started = true;
+      continue;
+    }
+    started = true;
+    let at = 0;
+    let itemIndent = indent;
+    while (content[at] === "-" && (at + 1 === content.length || content[at + 1] === " ")) {
+      if (parentAt(itemIndent) === null) return null;
+      stack.push({ indent: itemIndent, node: { value: "", line: i + 1, children: null }, closed: false });
+      let next = at + 1;
+      while (content[next] === " ") next++;
+      itemIndent += next - at;
+      at = next;
+    }
+    if (at === content.length) continue;
+    let rest = at === 0 ? content : content.slice(at);
+    if (rest.startsWith("	") || rest.startsWith("-	")) return null;
+    if (explicit !== null) {
+      if (itemIndent !== explicit.indent || !(rest === ":" || rest.startsWith(": "))) return null;
+      const parent2 = parentAt(itemIndent);
+      if (parent2 === null) return null;
+      if (parent2.children === null) parent2.children = /* @__PURE__ */ new Map();
+      if (parent2.children.has(explicit.key)) return null;
+      const node2 = { value: "", line: explicit.line, children: null };
+      parent2.children.set(explicit.key, node2);
+      explicit = null;
+      let next = 1;
+      while (rest[next] === " ") next++;
+      const after = rest.slice(next);
+      const inner = after === "" ? null : splitKey(after);
+      if (inner === null) {
+        const value2 = blockValue(after, i + 1);
+        if (value2 === null) return null;
+        node2.value = value2.value;
+        node2.children = value2.children;
+        stack.push({ indent: itemIndent, node: node2, closed: value2.closed });
+        continue;
+      }
+      stack.push({ indent: itemIndent, node: node2, closed: false });
+      itemIndent += next;
+      rest = after;
+    } else if (rest === "?" || rest.startsWith("? ")) {
+      const written = rest.slice(1).trim();
+      const key = written.startsWith("[") ? null : blockValue(written, i + 1);
+      if (key === null || !key.closed || key.children !== null) return null;
+      explicit = { key: key.value, indent: itemIndent, line: i + 1 };
+      continue;
+    }
+    const pair = splitKey(rest);
+    if (pair === null) {
+      if (at === 0) return null;
+      if (blockValue(rest, i + 1)?.closed !== true) return null;
+      stack[stack.length - 1].closed = true;
+      continue;
+    }
+    if (!plainKeyAllowed(rest, pair.key)) return null;
+    const parent = parentAt(itemIndent);
+    if (parent === null) return null;
     if (parent.children === null) parent.children = /* @__PURE__ */ new Map();
-    const node = {
-      value: pair.value.startsWith("{") ? "" : unquoteScalar(pair.value),
-      line: i + 1,
-      children: pair.value.startsWith("{") ? flowMap(pair.value, i + 1) : null
-    };
-    if (!parent.children.has(pair.key)) parent.children.set(pair.key, node);
-    stack.push({ indent, node });
+    if (parent.children.has(pair.key)) return null;
+    const value = blockValue(pair.value, i + 1);
+    if (value === null) return null;
+    const node = { value: value.value, line: i + 1, children: value.children };
+    parent.children.set(pair.key, node);
+    stack.push({ indent: itemIndent, node, closed: value.closed });
   }
-  return root;
+  return explicit === null ? root : null;
 }
 function importerSpecs(node) {
   const specs = /* @__PURE__ */ new Map();
@@ -29441,29 +29587,70 @@ function pnpmSource(resolution) {
   if (type === "directory" || directory !== void 0) return { kind: "file", text: directory ?? "" };
   return { kind: "registry" };
 }
-function parsePnpmLock(text) {
-  const root = parseYamlTree(text).children;
-  if (!root.has("lockfileVersion")) return null;
-  const importers = /* @__PURE__ */ new Map();
-  const listed2 = root.get("importers")?.children;
-  if (listed2 !== void 0 && listed2 !== null) {
-    for (const [dir, node] of listed2) importers.set(dir === "." ? "" : dir, importerSpecs(node.children ?? /* @__PURE__ */ new Map()));
-  } else {
-    importers.set("", importerSpecs(root));
+var SOURCE_KEYS = ["tarball", "type", "repo", "directory"];
+function readableResolution(node) {
+  if (node === void 0) return null;
+  if (node.children === null) return void 0;
+  for (const key of SOURCE_KEYS) {
+    const field = node.children.get(key);
+    if (field === void 0) continue;
+    if (field.children !== null || field.value === "" || field.value.startsWith("{") || field.value.startsWith("["))
+      return void 0;
   }
+  return node.children;
+}
+function pnpmDocuments(text) {
+  const body = text.charCodeAt(0) === 65279 ? text.slice(1) : text;
+  if (body.startsWith("---\n")) {
+    const separator = body.indexOf("\n---\n", 4);
+    if (separator !== -1) {
+      const env = body.slice(4, separator + 1);
+      let lines = 0;
+      for (let i = 0; i < env.length; i++) if (env[i] === "\n") lines++;
+      return [
+        { text: env, lineOffset: 1 },
+        { text: body.slice(separator + 5), lineOffset: lines + 2 }
+      ];
+    }
+  }
+  return [{ text: body, lineOffset: 0 }];
+}
+function parsePnpmLock(text) {
+  const documents = [];
+  for (const document2 of pnpmDocuments(text)) {
+    const tree = parseYamlTree(document2.text, document2.lineOffset);
+    if (tree === null) return null;
+    documents.push(tree.children);
+  }
+  if (!documents[documents.length - 1].has("lockfileVersion")) return null;
+  const importers = /* @__PURE__ */ new Map();
+  const addImporter = (dir, specs) => {
+    const known2 = importers.get(dir);
+    if (known2 === void 0) importers.set(dir, specs);
+    else for (const [name, spec] of specs) if (!known2.has(name)) known2.set(name, spec);
+  };
   const entries = [];
-  for (const [key, node] of root.get("packages")?.children ?? /* @__PURE__ */ new Map()) {
-    const fields = node.children;
-    const parts = pnpmKeyParts(key);
-    const resolution = fields?.get("resolution")?.children ?? null;
-    entries.push({
-      key,
-      name: fields?.get("name")?.value ?? parts.name,
-      version: fields?.get("version")?.value ?? parts.version,
-      integrity: resolution?.get("integrity")?.value ?? null,
-      source: pnpmSource(resolution),
-      line: node.line
-    });
+  for (const root of documents) {
+    const listed2 = root.get("importers")?.children;
+    if (listed2 !== void 0 && listed2 !== null) {
+      for (const [dir, node] of listed2) addImporter(dir === "." ? "" : dir, importerSpecs(node.children ?? /* @__PURE__ */ new Map()));
+    } else {
+      addImporter("", importerSpecs(root));
+    }
+    for (const [key, node] of root.get("packages")?.children ?? /* @__PURE__ */ new Map()) {
+      const fields = node.children;
+      const parts = pnpmKeyParts(key);
+      const resolution = readableResolution(fields?.get("resolution"));
+      if (resolution === void 0) return null;
+      entries.push({
+        key,
+        name: fields?.get("name")?.value ?? parts.name,
+        version: fields?.get("version")?.value ?? parts.version,
+        integrity: resolution?.get("integrity")?.value ?? null,
+        source: pnpmSource(resolution),
+        line: node.line
+      });
+    }
   }
   return { ecosystem: "npm", format: "pnpm", entries, importers, specs: null, names: null };
 }
@@ -33428,10 +33615,10 @@ function identEnd(text, start) {
   while (i < text.length && isIdentChar(text.charCodeAt(i))) i++;
   return i;
 }
-var isBlank = (c) => c === " " || c === "	";
+var isBlank2 = (c) => c === " " || c === "	";
 function skipBlanks(text, start) {
   let i = start;
-  while (i < text.length && isBlank(text.charAt(i))) i++;
+  while (i < text.length && isBlank2(text.charAt(i))) i++;
   return i;
 }
 function closeTriple(line, from, quote) {
@@ -33461,8 +33648,8 @@ function scanCode(line, from) {
 }
 var isStatementEnd = (code2) => code2 === 59 || code2 === 35 || code2 === 34 || code2 === 39;
 function startsStatement(line) {
-  if (line.startsWith("import") && isBlank(line.charAt(6))) return true;
-  return line.startsWith("from") && isBlank(line.charAt(4));
+  if (line.startsWith("import") && isBlank2(line.charAt(6))) return true;
+  return line.startsWith("from") && isBlank2(line.charAt(4));
 }
 function fromItem(piece) {
   const nameEnd = identEnd(piece, 0);
@@ -33550,7 +33737,7 @@ function pythonImportAliases(text) {
       const module = body.slice(moduleAt, moduleEnd);
       const importAt = skipBlanks(body, moduleEnd);
       const listAt = importAt + 6;
-      if (module !== "" && importAt > moduleEnd && body.startsWith("import", importAt) && isBlank(body.charAt(listAt))) {
+      if (module !== "" && importAt > moduleEnd && body.startsWith("import", importAt) && isBlank2(body.charAt(listAt))) {
         const rest = skipBlanks(body, listAt);
         if (body.charAt(rest) === "(") {
           state.group = { module, pending: [] };
@@ -34672,7 +34859,7 @@ function shannonEntropy(text) {
   return bits;
 }
 var isKeyChar = (c) => c !== void 0 && (isUpper2(c) || isLower2(c) || isDigit2(c) || c === "_" || c === "." || c === "-");
-var isBlank2 = (c) => c === " " || c === "	";
+var isBlank3 = (c) => c === " " || c === "	";
 var isQuote2 = (c) => c === '"' || c === "'";
 var isLineBreak = (c) => c === "\n" || c === "\r";
 var BARE_STOPS = /* @__PURE__ */ new Set([" ", "	", ",", ";", "#", "}", '"', "'"]);
@@ -34706,7 +34893,7 @@ function readValue(text, from) {
 function skipBlanks2(text, from) {
   let i = from;
   const limit = Math.min(text.length, from + MAX_GAP_CHARS);
-  while (i < limit && isBlank2(text[i])) i++;
+  while (i < limit && isBlank3(text[i])) i++;
   return i;
 }
 var isKeyCode = (c) => c >= 97 && c <= 122 || c >= 65 && c <= 90 || c >= 48 && c <= 57 || c === 95 || c === 46 || c === 45;
@@ -39148,7 +39335,7 @@ var ARGUMENT_CHARS = 200;
 var MAX_TRIM = 64;
 var CLOSERS2 = { ")": "(", "]": "[", "}": "{" };
 var isIdentifierChar = (code2) => code2 >= 48 && code2 <= 57 || code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122 || code2 === 95 || code2 === 36;
-var isBlank3 = (code2) => code2 === 32 || code2 === 9 || code2 === 10 || code2 === 13;
+var isBlank4 = (code2) => code2 === 32 || code2 === 9 || code2 === 10 || code2 === 13;
 function wordBefore(body, at, word) {
   const start = at - word.length;
   if (start < 0 || !body.startsWith(word, start)) return false;
@@ -39186,9 +39373,9 @@ function argumentText(body, start, end) {
 }
 function subjectOf(body, start, end) {
   let from = start;
-  while (from < end && from - start < MAX_TRIM && isBlank3(body.charCodeAt(from))) from++;
+  while (from < end && from - start < MAX_TRIM && isBlank4(body.charCodeAt(from))) from++;
   let to = end;
-  while (to > from && end - to < MAX_TRIM && isBlank3(body.charCodeAt(to - 1))) to--;
+  while (to > from && end - to < MAX_TRIM && isBlank4(body.charCodeAt(to - 1))) to--;
   return {
     head: body.slice(from, Math.min(to, from + SUBJECT_HEAD_CHARS)).trim(),
     tail: body.slice(Math.max(from, to - SUBJECT_TAIL_CHARS), to).trim()
@@ -40328,7 +40515,7 @@ var DETAILS2 = {
   "ignore-filter": "A test script now makes the run skip the test files matching a pattern, so those tests do not run.",
   "hook-removed": "A script that ran before or after the tests was removed, so its checks no longer run with them."
 };
-var isBlank4 = (c) => c === " " || c === "	";
+var isBlank5 = (c) => c === " " || c === "	";
 function readString(text, start) {
   let value = "";
   let i = start + 1;
@@ -40350,7 +40537,7 @@ function readString(text, start) {
 function parseScriptLine(text) {
   let i = 0;
   const skip = () => {
-    while (isBlank4(text[i])) i++;
+    while (isBlank5(text[i])) i++;
   };
   skip();
   if (text[i] !== '"') return null;
@@ -40442,7 +40629,7 @@ function scanKinds(value) {
         endCommand(";");
         operator = ";";
       }
-    } else if (isBlank4(c) || c === "(" || c === ")") {
+    } else if (isBlank5(c) || c === "(" || c === ")") {
       endWord();
     } else {
       word += c;
@@ -42858,7 +43045,7 @@ var STOP_LIST = /* @__PURE__ */ new Set([
 ]);
 var isDigit5 = (c) => c >= "0" && c <= "9";
 var isWordChar = (c) => c >= "0" && c <= "9" || c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_";
-var isBlank5 = (c) => c === " " || c === "	";
+var isBlank6 = (c) => c === " " || c === "	";
 function digitsEnd2(text, start) {
   let i = start;
   while (i < text.length && isDigit5(text.charAt(i))) i++;
@@ -42916,26 +43103,26 @@ var keyOf3 = (literal2) => `${literal2.kind === "string" ? "s" : "n"}${literal2.
 var isOperatorChar = (c) => c === "=" || c === "!" || c === "<" || c === ">";
 function operatorBefore(text, at) {
   let end = at;
-  while (end > 0 && isBlank5(text.charAt(end - 1))) end--;
+  while (end > 0 && isBlank6(text.charAt(end - 1))) end--;
   let start = end;
   while (start > 0 && isOperatorChar(text.charAt(start - 1))) start--;
   return text.slice(start, end);
 }
 function operatorAfter(text, at) {
   let start = at;
-  while (start < text.length && isBlank5(text.charAt(start))) start++;
+  while (start < text.length && isBlank6(text.charAt(start))) start++;
   let end = start;
   while (end < text.length && isOperatorChar(text.charAt(end))) end++;
   return text.slice(start, end);
 }
 var EQUALITY = /* @__PURE__ */ new Set(["===", "!==", "==", "!="]);
 function isCaseLabel(trimmed, offset, literal2) {
-  if (!trimmed.startsWith("case") || !isBlank5(trimmed.charAt(4))) return false;
+  if (!trimmed.startsWith("case") || !isBlank6(trimmed.charAt(4))) return false;
   let i = 4;
-  while (isBlank5(trimmed.charAt(i))) i++;
+  while (isBlank6(trimmed.charAt(i))) i++;
   if (literal2.start - offset !== i) return false;
   let j = literal2.end - offset;
-  while (isBlank5(trimmed.charAt(j))) j++;
+  while (isBlank6(trimmed.charAt(j))) j++;
   return trimmed.charAt(j) === ":";
 }
 var CLOSERS3 = { "(": ")", "[": "]", "{": "}" };
@@ -42959,7 +43146,7 @@ function inGroups(text, literals) {
     while (j < text.length && isWordChar(text.charAt(j))) j++;
     if (text.slice(i, j) === "in") {
       let k = j;
-      while (isBlank5(text.charAt(k))) k++;
+      while (isBlank6(text.charAt(k))) k++;
       const closer = CLOSERS3[text.charAt(k)];
       if (closer !== void 0) {
         const close = text.indexOf(closer, k + 1);
@@ -43093,14 +43280,14 @@ var PYLINT_WORD = ["py", "lint:"].join("");
 var DISABLE_WORD = ["dis", "able"].join("");
 var PYRIGHT_WORD = ["py", "right:"].join("");
 var MAX_LINE2 = 400;
-var isBlank6 = (c) => c === " " || c === "	";
+var isBlank7 = (c) => c === " " || c === "	";
 var isWordChar2 = (c) => c >= "0" && c <= "9" || c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_";
 var isTokenChar = (c) => isWordChar2(c) || c === "@" || c === "-";
 var endsWord = (text, at) => at >= text.length || !isWordChar2(text.charAt(at));
 var normalize2 = (text) => text.replace(/\s+/g, " ").trim();
 function skipBlanks4(text, from) {
   let i = from;
-  while (i < text.length && isBlank6(text.charAt(i))) i++;
+  while (i < text.length && isBlank7(text.charAt(i))) i++;
   return i;
 }
 function jsMarker(text) {
@@ -43198,12 +43385,12 @@ function detectTI16(diff) {
 
 // ../core/src/signals/alwaysTrue.ts
 var MAX_ALWAYS_TRUE_NAMES = 50;
-var isBlank7 = (c) => c === " " || c === "	";
+var isBlank8 = (c) => c === " " || c === "	";
 var isWordChar3 = (c) => c >= "0" && c <= "9" || c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_" || c === "$";
 var isWordStart = (c) => isWordChar3(c) && !(c >= "0" && c <= "9");
 function skipBlanks5(text, from) {
   let i = from;
-  while (i < text.length && isBlank7(text.charAt(i))) i++;
+  while (i < text.length && isBlank8(text.charAt(i))) i++;
   return i;
 }
 function wordEnd2(text, from) {
@@ -43277,7 +43464,7 @@ function readLine(text, from, state, found) {
       i++;
       continue;
     }
-    if (isBlank7(c)) {
+    if (isBlank8(c)) {
       i++;
       continue;
     }
@@ -43462,7 +43649,7 @@ function afterKeyword(text, word) {
 }
 function defName(text) {
   const end = afterKeyword(text, "def");
-  if (end === -1 || end >= text.length || !isBlank7(text.charAt(end))) return null;
+  if (end === -1 || end >= text.length || !isBlank8(text.charAt(end))) return null;
   const start = skipBlanks5(text, end);
   const nameEnd = wordEnd2(text, start);
   if (nameEnd === start || !isWordStart(text.charAt(start))) return null;
@@ -43537,7 +43724,7 @@ function alwaysTrueHelperLines(file) {
   for (const entry of lines) {
     const text = entry.text;
     const assertEnd = afterKeyword(text, "assert");
-    if (assertEnd !== -1 && assertEnd < text.length && isBlank7(text.charAt(assertEnd))) {
+    if (assertEnd !== -1 && assertEnd < text.length && isBlank8(text.charAt(assertEnd))) {
       const closed2 = helperCall(text, assertEnd, helpers);
       if (closed2 !== -1 && endsCondition(text.slice(closed2))) out.push(entry.line);
       continue;
@@ -43644,7 +43831,7 @@ function secondArgument(text, open3) {
 }
 function pyEquality(text) {
   const start = skipBlanks5(text, 0);
-  if (text.startsWith("assert", start) && isBlank7(text.charAt(start + 6))) {
+  if (text.startsWith("assert", start) && isBlank8(text.charAt(start + 6))) {
     const equals = topLevelEquals(text, start + 6);
     if (equals === -1) return null;
     return { wildcard: PY_WILDCARDS.has(operandFrom(text, equals + 2, false)) };

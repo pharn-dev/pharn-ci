@@ -1,0 +1,11 @@
+alias/pnpm-lock.yaml
+control/pnpm-lock.yaml
+integrity-same/pnpm-lock.yaml
+integrity-spacekey/pnpm-lock.yaml
+integrity-tab/pnpm-lock.yaml
+quoted-key/pnpm-lock.yaml
+quoted-registry/pnpm-lock.yaml
+spacekey-registry/pnpm-lock.yaml
+spacekey/pnpm-lock.yaml
+tab-registry/pnpm-lock.yaml
+tab/pnpm-lock.yaml
