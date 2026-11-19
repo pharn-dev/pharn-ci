@@ -39,15 +39,27 @@ export interface ManifestDependency {
   named: boolean;
   /** The version spec as written ("" when none). */
   spec: string;
-  /** The section it is declared in, e.g. `dependencies`, `devDependencies`, `project.dependencies`. */
+  /**
+   * The section it is declared in, e.g. `dependencies`, `devDependencies`, `project.dependencies`, or one of the
+   * package.json override fields `overrides`, `resolutions` and `pnpm.overrides`.
+   */
   section: string;
+  /**
+   * For an override: the selector it is declared under (the key as written for a top-level npm override, a yarn
+   * resolution and a pnpm override; for npm's nested `{"a": {"b": …}}`, a digest of the parent path, `>` and `b`), which
+   * tells two overrides of one package apart. `name` is then the package the override replaces (for a `.` key, the
+   * parent's).
+   */
+  key?: string;
   line: number;
   /** Where the spec points. */
   kind: SourceKind;
   /** For kind `url`: whether the URL is https on an allowed registry host. */
   allowedUrl?: boolean;
-  /** For kind `url`: the URL as written, so a host the run allows can be applied to it later. */
+  /** For kind `url`: the URL as written (for `jsr:`, `https://npm.jsr.io/`), so a host the run allows can be applied to it later. */
   url?: string;
+  /** For a `jsr:` spec: names the registry in the D05 detail. */
+  registry?: "jsr";
 }
 
 /** An index or find-links option of a requirements file (`--index-url`, `-i`, `--extra-index-url`, `-f`). */

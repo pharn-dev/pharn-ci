@@ -155,8 +155,9 @@ organization's quarantine list from pharn.dev. Test results never change the ver
 
 ### Dependency safety
 
-The dependencies a pull request adds or changes in npm and Python manifests and lockfiles are checked for lockfile
-drift (D04) and sources outside the public registries (D05). With `dependencies: lookup` the Action also looks each
+The dependencies a pull request adds or changes in npm and Python manifests and lockfiles, `package.json` overrides
+(`overrides`, `resolutions`, `pnpm.overrides`) included, are checked for lockfile drift (D04) and sources outside the
+public registries (D05). With `dependencies: lookup` the Action also looks each
 added package up for one that does not exist, is days old or is barely downloaded (D01 to D03).
 [Dependency safety](docs/checks/dependencies.md).
 

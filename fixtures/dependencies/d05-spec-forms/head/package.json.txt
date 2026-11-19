@@ -1,0 +1,14 @@
+{
+  "name": "demo",
+  "version": "1.0.0",
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "from-ssh": "ssh://git@git.example/x.git",
+    "from-scp": "user@git.example:x.git",
+    "from-https-colon": "https:evil.example/x",
+    "range": ">=1 <2",
+    "either": "1.x || 2.x",
+    "tag": "latest",
+    "tag-next": "next-11"
+  }
+}

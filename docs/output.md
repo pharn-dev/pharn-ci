@@ -92,7 +92,7 @@ message `code`s, not on text:
 | `DEPENDENCY_D02` | An added package was first published fewer than `dependencies.min_age_days` days before the head commit (`warn`) |
 | `DEPENDENCY_D03` | An added unscoped npm package was downloaded fewer than `dependencies.min_weekly_downloads` times last week (`warn`) |
 | `DEPENDENCY_D04` | Lockfile drift: a manifest's dependencies changed and the lockfile that governs it did not change or does not record them, or a lockfile gives the same version a different integrity hash (`error`) |
-| `DEPENDENCY_D05` | An added or changed dependency or lockfile entry comes from a git repository, a URL outside the allowed registries or a local file, or a requirements file adds a package index outside them (`error`) |
+| `DEPENDENCY_D05` | An added or changed dependency (a `package.json` override included) or lockfile entry comes from a git repository, a URL outside the allowed registries or a local file, or a requirements file adds a package index outside them (`error`) |
 | `DEPENDENCY_LOOKUP_UNAVAILABLE` | Registry lookups did not complete for some added packages (no usable answer, or over the limit of 50 lookups per run), so D01 to D03 were not checked for them (`warn`) |
 | `DEPENDENCY_CHECK_INCOMPLETE` | A manifest or lockfile the change touches could not be read or parsed, so dependency safety did not check it; the files are in `dependencies.unread` (`warn`) |
 | `FLAKY_QUARANTINED_FAILURES` | Failed tests of the JUnit results are on the org's quarantine list ([Flaky tests and JUnit results](checks/flaky-tests.md)) (`info`). The text gives the counts, never a test name; the ids are in `flaky.quarantined` |

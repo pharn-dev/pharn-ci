@@ -1461,6 +1461,21 @@ comes from and how new it is, not what it does. What it misses:
   input, the CLI's `--dependency-allowed-host` flag or an app policy's `dependencies.allowed_hosts` ([Dependency
   safety](checks/dependencies.md)). The list is host names only, so a registry that is allowed is trusted as a whole: D05 does not look
   at a path, a port or a token, and a package on an allowed host is not looked up, so D01 to D03 never judge it.
+- **Override fields.** In `package.json`, npm's `overrides` (walked through nested objects to every string leaf, a `.`
+  key naming its parent), yarn's `resolutions` and `pnpm.overrides` are read like the dependency sections: a git, URL,
+  path or `jsr:` value is D05 (the detail names the field), and an added, changed or removed override with no change to
+  the governing lockfile is D04. Whether the lockfile records the override is not compared (no lockfile lists it as an
+  importer specifier), so an override with a lockfile change passes D04. An npm `$name` value points at a direct
+  dependency, which is judged in its own section, so it is not a source. pnpm 10's `overrides` in `pnpm-workspace.yaml`,
+  yarn berry's `packageExtensions` in `.yarnrc.yml` and an `.npmrc` setting are not read. Like any dependency, an
+  override already at the merge base is not judged again: a git or tarball override a repository already has gets its
+  D05 from the first pull request that adds or changes that override. An override is looked up (D01 to D03) only when its
+  value is an `npm:` alias.
+- **Spec forms.** After the registry protocols (`npm:`, `workspace:`, `catalog:`, `patch:`), any npm spec that holds a
+  `:` or a `/` is off the registry: `ssh://…` and `user@host:x.git` are git, `https:host/x` and any other scheme a URL
+  (never on an allowed host, since it has no `//`), `@scope/x` and a Windows path a local path. A semver range and a
+  dist-tag hold neither. `jsr:` installs from `npm.jsr.io`, so it is D05 unless that host is on the allowed list; the
+  lockfile's `npm.jsr.io` tarball URLs are judged the same way.
 - **Allowed hosts are exact.** `registry.npmjs.org`, `registry.yarnpkg.com`, `pypi.org` and `files.pythonhosted.org`,
   and the hosts a run allows, https only, no user name, password or port. `http://registry.npmjs.org`, a CDN mirror or a
   regional registry is D05 unless its own host is allowed. An allowed host matches by its full name, case-insensitively:

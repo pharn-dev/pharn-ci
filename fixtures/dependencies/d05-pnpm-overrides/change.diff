@@ -1,0 +1,11 @@
+diff --git a/package.json b/package.json
+index 1111111..2222222 100644
+--- a/package.json
++++ b/package.json
+@@ -6,0 +7,6 @@
++  "pnpm": {
++    "overrides": {
++      "x": "file:../x",
++      "foo@1>bar": "^2.0.0"
++    }
++  }

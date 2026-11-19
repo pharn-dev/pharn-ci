@@ -2,8 +2,8 @@ import { normalizePypiName } from "./names.js";
 import { dirOf } from "./paths.js";
 import type { LockEntry, LockSource, ManifestDependency, ParsedLockfile, ParsedManifest } from "./types.js";
 
-/** The key a manifest dependency is compared by: its section and name. */
-const depKey = (dep: ManifestDependency) => `${dep.section}\u0000${dep.name}`;
+/** The key a manifest dependency is compared by: its section and name (for an override, its whole selector). */
+const depKey = (dep: ManifestDependency) => `${dep.section}\u0000${dep.key ?? dep.name}`;
 
 /** What a pull request changed in one manifest: dependencies added, changed (another spec) and removed. */
 export interface ManifestChanges {

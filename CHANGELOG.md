@@ -18,6 +18,15 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   attached to a short option, every option on a line, quotes as `shlex` splits them, and a `\` continuation joined as
   pip joins it. An option line pip refuses (an unknown option, a prefix of several such as `--e` or `--no`, a missing
   value) makes the file unread: `DEPENDENCY_CHECK_INCOMPLETE`, an error, where the line was skipped before.
+- Dependency safety reads `package.json` overrides and three more spec forms (CORE-115). npm's `overrides` (every
+  nested leaf), yarn's `resolutions` and `pnpm.overrides` are now read like the dependency sections: an override that
+  points a package at a git repository, a URL, a local path or `jsr:` is D05 (the detail names the field), and an
+  override added, changed or removed without a lockfile change is D04, where neither was read before. A spec that holds
+  a `:` or a `/` after `npm:`, `workspace:`, `catalog:` and `patch:` is off the registry: `ssh://git@host/x.git`,
+  `user@host:x.git` and `https:host/x` were classed as registry versions and are now D05. `jsr:` is D05 unless
+  `npm.jsr.io` is an allowed host. Stricter: a repository with an existing git or tarball override, or a dependency
+  in one of the three forms, gets a D05 on the next pull request that adds or changes that entry (an entry unchanged
+  since the merge base is not judged again). No new message code and no schema change.
 - Docs: the README is down from about 1,665 lines to about 250 and doubles as the Marketplace page (CORE-137): what
   pharn-ci is, a complete workflow checked in a sandbox repository, one paragraph per check, the most-used inputs, and
   what leaves the job. The reference chapters moved to `docs/` with their text unchanged: the Action reference

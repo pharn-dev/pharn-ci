@@ -13,8 +13,8 @@ git objects, in the CLI and the Action, with or without an org policy.
 | D01 | An added package the registry does not know (404): a slopsquatting target | lookups | `block` |
 | D02 | An added package first published fewer than `min_age_days` (30) days before the head commit | lookups | `warn` |
 | D03 | An added unscoped npm package downloaded fewer than `min_weekly_downloads` (100) times last week (npm only: PyPI has no first-party download count) | lookups | `warn` |
-| D04 | Lockfile drift: a manifest's dependencies changed while the lockfile that governs it (beside it, or a workspace root lockfile that lists it as an importer) did not change or does not record the new spec; or a lockfile gives a version the same hash algorithm but a different hash than the merge base did | nothing | `block` |
-| D05 | An added or changed dependency or lockfile entry from a git repository, a URL off `registry.npmjs.org`, `registry.yarnpkg.com`, `pypi.org` and `files.pythonhosted.org` (https only, no credentials or port) or off the private registry hosts you allow (see Private registries below), or a local file; or a requirements file that adds a package index off them | nothing | `block` |
+| D04 | Lockfile drift: a manifest's dependencies (a `package.json` override field included) changed while the lockfile that governs it (beside it, or a workspace root lockfile that lists it as an importer) did not change or does not record the new spec; or a lockfile gives a version the same hash algorithm but a different hash than the merge base did | nothing | `block` |
+| D05 | An added or changed dependency or lockfile entry from a git repository, a URL off `registry.npmjs.org`, `registry.yarnpkg.com`, `pypi.org` and `files.pythonhosted.org` (https only, no credentials or port) or off the private registry hosts you allow (see Private registries below), or a local file; or a requirements file that adds a package index off them. In `package.json` this covers the three override fields, npm's `overrides` (every nested leaf), yarn's `resolutions` and `pnpm.overrides`, whose finding names the field; any spec holding a `:` or a `/` other than `npm:`, `workspace:`, `catalog:` and `patch:` (`ssh://…`, `user@host:x.git`, `https:host/x`); and `jsr:`, which installs from `npm.jsr.io` and passes only when that host is allowed | nothing | `block` |
 
 **Private registries.** A team that runs its own npm or PyPI registry (Artifactory, Nexus, a private index) names its host
 once, and D05 stops flagging URLs on it. Give the host in the `dependency-allowed-hosts` input (comma or newline
@@ -41,7 +41,9 @@ one `GET https://api.npmjs.org/downloads/point/last-week/<name>` per npm package
 `GET https://pypi.org/pypi/<name>/json` per PyPI package. Only the name is sent: no token, no repository name, no
 query, `User-Agent: pharn-ci`, no redirect, 5 s per request, at most 50 packages and 60 s per run. Scoped npm names
 (`@org/x`), `workspace:` packages, git, URL and path specs and names a touched lockfile resolves off the registries are
-never looked up, and a version change of a package already there is not looked up either. A lookup that fails is
+never looked up, and a version change of a package already there is not looked up either. An added `package.json`
+override names a package already in the tree, so it is looked up only when its value is an `npm:` alias (the alias
+target is new). A lookup that fails is
 fail-open: `DEPENDENCY_LOOKUP_UNAVAILABLE` (warn) counts what was not checked and `dependencies.lookups` says
 `unavailable`. D02 compares with the head commit's time from git, never the clock. The CLI never makes a network call,
 so it runs D04 and D05 only and reports `lookups: off`.

@@ -1,0 +1,27 @@
+{
+  "name": "demo",
+  "version": "1.0.0",
+  "dependencies": {
+    "lodash": "^4.17.20",
+    "ms": "^2.1.3"
+  },
+  "overrides": {
+    "lodash": "^4.17.21",
+    "c": {
+      "lodash": "$lodash"
+    },
+    "debug": "npm:lodash@4",
+    "semver": ">=1 <2"
+  },
+  "resolutions": {
+    "**/ms": "workspace:*",
+    "**/minimist": "1.x || 2.x"
+  },
+  "pnpm": {
+    "overrides": {
+      "y": "catalog:",
+      "z": "latest",
+      "w": "next-11"
+    }
+  }
+}

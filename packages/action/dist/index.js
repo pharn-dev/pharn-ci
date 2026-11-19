@@ -28504,7 +28504,7 @@ function selectDependencyPaths(diff, repoFiles) {
 }
 
 // ../core/src/dependencies/compare.ts
-var depKey = (dep) => `${dep.section}\0${dep.name}`;
+var depKey = (dep) => `${dep.section}\0${dep.key ?? dep.name}`;
 function manifestChanges(base, head) {
   const before = /* @__PURE__ */ new Map();
   for (const dep of base?.deps ?? []) before.set(depKey(dep), dep);
@@ -29103,6 +29103,8 @@ function isAllowedRegistryUrl(url, hosts = ALLOWED_RESOLVE_HOSTS) {
 // ../core/src/dependencies/specs.ts
 var GIT_PREFIXES = ["git+", "git:", "git@", "github:", "gitlab:", "bitbucket:", "gist:"];
 var FILE_PREFIXES = ["file:", "link:", "portal:", "./", "../", "/", "~/", "exec:"];
+var JSR_REGISTRY_URL = "https://npm.jsr.io/";
+var isAsciiLetter2 = (c) => c >= 65 && c <= 90 || c >= 97 && c <= 122;
 function classifyNpmSpec(spec) {
   const text = spec.trim();
   const lower = text.toLowerCase();
@@ -29115,7 +29117,20 @@ function classifyNpmSpec(spec) {
     return { kind: "registry" };
   }
   if (lower.startsWith("patch:")) return { kind: "registry" };
-  if (text.includes("/") && !text.startsWith("@") && !text.includes(":")) return { kind: "git" };
+  if (lower.startsWith("jsr:")) return { kind: "url", allowedUrl: false, url: JSR_REGISTRY_URL, registry: "jsr" };
+  const hash = text.indexOf("#");
+  const colon = (hash === -1 ? text : text.slice(0, hash)).indexOf(":");
+  if (colon !== -1) {
+    if (colon === 1 && isAsciiLetter2(text.charCodeAt(0)) && (text[2] === "\\" || text[2] === "/")) {
+      return { kind: "file" };
+    }
+    if (lower.startsWith("ssh:") || text.slice(0, colon).includes("@")) return { kind: "git" };
+    return { kind: "url", allowedUrl: isAllowedRegistryUrl(text) };
+  }
+  if (text.includes("/")) {
+    return { kind: text.startsWith("@") ? "file" : "git" };
+  }
+  if (text.includes(":")) return { kind: "url", allowedUrl: false };
   if (lower.endsWith(".tgz") || lower.endsWith(".tar.gz")) return { kind: "file" };
   return { kind: "registry" };
 }
@@ -29138,8 +29153,40 @@ function isOffRegistry(kind, allowedUrl) {
 
 // ../core/src/dependencies/npmManifest.ts
 var NPM_SECTIONS = ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"];
+var NPM_OVERRIDE_SECTIONS = ["overrides", "resolutions", "pnpm.overrides"];
+function isOverrideSection(section) {
+  return NPM_OVERRIDE_SECTIONS.includes(section);
+}
 function membersOf(value) {
   return value !== void 0 && value.type === "object" ? value.members : null;
+}
+function withoutVersion(selector) {
+  const at = selector.indexOf("@", 1);
+  return at === -1 ? selector : selector.slice(0, at);
+}
+function pathDigest(text) {
+  let h1 = 3735928559;
+  let h2 = 1103547991;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 2654435761);
+    h2 = Math.imul(h2 ^ c, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ h1 >>> 16, 2246822507) ^ Math.imul(h2 ^ h2 >>> 13, 3266489909);
+  h2 = Math.imul(h2 ^ h2 >>> 16, 2246822507) ^ Math.imul(h1 ^ h1 >>> 13, 3266489909);
+  return `#${(4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36)}`;
+}
+function pnpmTarget(key) {
+  for (let i = key.length - 1; i > 0; i--) {
+    if (key[i] === ">" && key[i - 1] !== "@" && key[i - 1] !== ">") return withoutVersion(key.slice(i + 1));
+  }
+  return withoutVersion(key);
+}
+function yarnTarget(key) {
+  const parts = key.split("/");
+  const last = parts[parts.length - 1];
+  const scope = parts.length > 1 ? parts[parts.length - 2] : "";
+  return withoutVersion(scope.startsWith("@") ? `${scope}/${last}` : last);
 }
 function parseNpmManifest(text) {
   const parsed = parseSettingsJson(text, { jsonc: false });
@@ -29147,24 +29194,44 @@ function parseNpmManifest(text) {
   const root = membersOf(parsed.value);
   if (root === null) return null;
   const deps = [];
+  const add = (name, member, section, key) => {
+    if (member.value.type !== "string") return;
+    const spec = member.value.value;
+    const kind = classifyNpmSpec(spec);
+    deps.push({
+      name,
+      named: name !== "",
+      spec,
+      section,
+      line: member.keyLine,
+      ...key === void 0 ? {} : { key },
+      kind: kind.kind,
+      ...kind.allowedUrl === void 0 ? {} : { allowedUrl: kind.allowedUrl },
+      ...kind.kind === "url" ? { url: kind.url ?? spec.trim() } : {},
+      ...kind.registry === void 0 ? {} : { registry: kind.registry }
+    });
+  };
   for (const section of NPM_SECTIONS) {
     const members = membersOf(root.get(section)?.value);
     if (members === null) continue;
-    for (const [name, member] of members) {
-      if (member.value.type !== "string") continue;
-      const spec = member.value.value;
-      const kind = classifyNpmSpec(spec);
-      deps.push({
-        name,
-        named: true,
-        spec,
-        section,
-        line: member.keyLine,
-        kind: kind.kind,
-        ...kind.allowedUrl === void 0 ? {} : { allowedUrl: kind.allowedUrl },
-        ...kind.kind === "url" ? { url: spec.trim() } : {}
-      });
+    for (const [name, member] of members) add(name, member, section);
+  }
+  const walk = (members, parentId, parentName) => {
+    for (const [key, member] of members) {
+      const name = key === "." ? parentName : withoutVersion(key);
+      const nested2 = membersOf(member.value);
+      if (nested2 === null) add(name, member, "overrides", parentId === "" ? key : `${parentId}>${key}`);
+      else walk(nested2, pathDigest(`${parentId}\0${key}`), name);
     }
+  };
+  const overrides = membersOf(root.get("overrides")?.value);
+  if (overrides !== null) walk(overrides, "", "");
+  for (const [key, member] of membersOf(root.get("resolutions")?.value) ?? []) {
+    add(yarnTarget(key), member, "resolutions", key);
+  }
+  const pnpm = membersOf(root.get("pnpm")?.value);
+  for (const [key, member] of membersOf(pnpm?.get("overrides")?.value) ?? []) {
+    add(pnpmTarget(key), member, "pnpm.overrides", key);
   }
   return { ecosystem: "npm", deps, indexes: [] };
 }
@@ -30112,6 +30179,7 @@ var KIND_WORDS = {
   url: "a URL outside the allowed registries",
   file: "a local file"
 };
+var JSR_WORDS = "the JSR registry, outside the allowed registries";
 function nameFields(ecosystem, name, version2) {
   return {
     ...name !== null && isReportableName(ecosystem, name) ? { name } : {},
@@ -30182,8 +30250,10 @@ function analyze(diff, sources, repoFiles, allowedHosts) {
     analysis.checked += changes.added.length + changes.changed.length;
     for (const dep of [...changes.added, ...changes.changed]) {
       if (dep.kind !== "registry" && isOffRegistry(dep.kind, dep.allowedUrl === true || onAllowedHost(dep.url))) {
+        const from = dep.registry === "jsr" ? JSR_WORDS : KIND_WORDS[dep.kind];
+        const field = isOverrideSection(dep.section) ? ` in ${dep.section}` : "";
         analysis.signals.push(
-          signal("D05", eco, path, dep.line, `declared from ${KIND_WORDS[dep.kind]}`, manifestNames(eco, dep))
+          signal("D05", eco, path, dep.line, `declared from ${from}${field}`, manifestNames(eco, dep))
         );
       }
     }
@@ -30195,7 +30265,10 @@ function analyze(diff, sources, repoFiles, allowedHosts) {
         );
       }
     }
-    for (const dep of changes.added) analysis.added.push({ ecosystem: eco, dep, path });
+    for (const dep of changes.added) {
+      if (isOverrideSection(dep.section) && !dep.spec.trim().toLowerCase().startsWith("npm:")) continue;
+      analysis.added.push({ ecosystem: eco, dep, path });
+    }
     if (kind.format !== "package-json" && kind.format !== "pyproject") return;
     const installed = (deps) => deps.filter((dep) => dep.section !== "peerDependencies");
     const declared = installed([...changes.added, ...changes.changed]);
@@ -30218,7 +30291,7 @@ function analyze(diff, sources, repoFiles, allowedHosts) {
       );
       return;
     }
-    for (const dep of declared) {
+    for (const dep of declared.filter((d) => !isOverrideSection(d.section))) {
       const verdicts = updated.map(
         (entry) => entry.lock === null ? null : recordsDependency(entry.lock, relativeDir(entry.path, path) ?? "", dep)
       );
@@ -30623,12 +30696,12 @@ var RUNNER_SKIPPED = /* @__PURE__ */ new Set(["exec", "dlx", "run", "x", "--"]);
 var GLOBAL_FLAGS = /* @__PURE__ */ new Set(["-g", "--global", "--location=global"]);
 var MAX_PS_PROMPT = 64;
 var isSpaceCode = (code2) => code2 === 32 || code2 >= 9 && code2 <= 13 || code2 === 160;
-var isAsciiLetter2 = (code2) => code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122;
-var isAsciiWordStart = (code2) => isAsciiLetter2(code2) || code2 === 95;
+var isAsciiLetter3 = (code2) => code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122;
+var isAsciiWordStart = (code2) => isAsciiLetter3(code2) || code2 === 95;
 var isAsciiNameChar = (code2) => isAsciiWordStart(code2) || code2 >= 48 && code2 <= 57;
 function isLetter(char) {
   const code2 = char.charCodeAt(0);
-  if (code2 < 128) return isAsciiLetter2(code2);
+  if (code2 < 128) return isAsciiLetter3(code2);
   return new RegExp("\\p{L}", "u").test(char);
 }
 function firstNonSpace(line, from = 0) {
@@ -35487,10 +35560,10 @@ var GENERATED_DIRS = /* @__PURE__ */ new Set([
   ".tmp"
 ]);
 var isSpaceCode3 = (code2) => code2 === 32 || code2 >= 9 && code2 <= 13 || code2 === 160;
-var isAsciiLetter3 = (code2) => code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122;
+var isAsciiLetter4 = (code2) => code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122;
 var isDigit3 = (code2) => code2 >= 48 && code2 <= 57;
 function isPathChar(code2) {
-  return isAsciiLetter3(code2) || isDigit3(code2) || code2 === 46 || code2 === 95 || code2 === 45 || code2 === 43 || code2 === 47;
+  return isAsciiLetter4(code2) || isDigit3(code2) || code2 === 46 || code2 === 95 || code2 === 45 || code2 === 43 || code2 === 47;
 }
 function allChars(text, extra) {
   for (let i = 0; i < text.length; i++) {
@@ -35525,7 +35598,7 @@ function hasCueWord2(text) {
   };
   for (let i = 0; i < text.length; i++) {
     const code2 = text.charCodeAt(i);
-    const inWord = isAsciiLetter3(code2) || code2 === 39 || code2 === 8217 || code2 === 46 && start !== -1;
+    const inWord = isAsciiLetter4(code2) || code2 === 39 || code2 === 8217 || code2 === 46 && start !== -1;
     if (inWord && start === -1) start = i;
     if (!inWord && start !== -1 && flush(i)) return true;
   }
@@ -35547,11 +35620,11 @@ function splitWords2(text) {
 }
 function isAssignment2(word) {
   const first = word.charCodeAt(0);
-  if (!(isAsciiLetter3(first) || first === 95)) return false;
+  if (!(isAsciiLetter4(first) || first === 95)) return false;
   let i = 1;
   while (i < word.length) {
     const code2 = word.charCodeAt(i);
-    if (!(isAsciiLetter3(code2) || isDigit3(code2) || code2 === 95)) break;
+    if (!(isAsciiLetter4(code2) || isDigit3(code2) || code2 === 95)) break;
     i++;
   }
   return i < word.length && word[i] === "=";
