@@ -29474,7 +29474,11 @@ var ESCAPES2 = { '"': '"', "\\": "\\", n: "\n", t: "	", r: "\r", b: "\b", f: "\f
 var TomlError = class extends Error {
 };
 var isBare = (c) => c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c >= "0" && c <= "9" || c === "_" || c === "-";
+var newTable = (line) => ({ type: "table", entries: /* @__PURE__ */ new Map(), line });
 function parseToml(text) {
+  return parseTomlDocument(text)?.tables ?? null;
+}
+function parseTomlDocument(text) {
   const src = text.charCodeAt(0) === 65279 ? text.slice(1) : text;
   const lineStarts2 = [0];
   for (let i = 0; i < src.length; i++) if (src[i] === "\n") lineStarts2.push(i + 1);
@@ -29612,10 +29616,33 @@ function parseToml(text) {
     for (; ; ) {
       skipSpaces2();
       if (src[pos] !== ".") return parts;
+      if (parts.length >= MAX_DEPTH2) fail2();
       pos++;
       skipSpaces2();
       parts.push(keyPart());
     }
+  };
+  const origin = /* @__PURE__ */ new Map();
+  let dotted = [];
+  const assign = (table, parts, value2, line, open3, created) => {
+    let target = table;
+    for (let i = 0; i < parts.length - 1; i++) {
+      const key = parts[i];
+      const next = target.entries.get(key);
+      if (next === void 0) {
+        const child = newTable(line);
+        target.entries.set(key, child);
+        created(child);
+        target = child;
+      } else if (next.type === "table" && open3(next)) {
+        target = next;
+      } else {
+        fail2();
+      }
+    }
+    const last = parts[parts.length - 1];
+    if (target.entries.has(last)) fail2();
+    target.entries.set(last, value2);
   };
   const value = (depth) => {
     if (depth > MAX_DEPTH2) fail2();
@@ -29640,19 +29667,28 @@ function parseToml(text) {
     }
     if (ch === "{") {
       pos++;
-      const entries = /* @__PURE__ */ new Map();
+      const table = newTable(line);
+      const made = /* @__PURE__ */ new Set();
       for (; ; ) {
         skipAll();
         if (src[pos] === "}") {
           pos++;
-          return { type: "table", entries, line };
+          return table;
         }
-        const key = dottedKey().join(".");
+        const keyLine = lineAt(pos);
+        const parts = dottedKey();
         skipSpaces2();
         if (src[pos] !== "=") fail2();
         pos++;
         skipSpaces2();
-        entries.set(key, value(depth + 1));
+        assign(
+          table,
+          parts,
+          value(depth + 1),
+          keyLine,
+          (parent) => made.has(parent),
+          (child) => made.add(child)
+        );
         skipAll();
         if (src[pos] === ",") pos++;
         else if (src[pos] !== "}") fail2();
@@ -29663,7 +29699,53 @@ function parseToml(text) {
     if (src.slice(start, pos).trim() === "") fail2();
     return { type: "other", line };
   };
+  const openHeader = (root2, path, array, line) => {
+    let table = root2;
+    for (let i = 0; i < path.length - 1; i++) {
+      const key = path[i];
+      let next = table.entries.get(key);
+      if (next === void 0) {
+        next = newTable(line);
+        origin.set(next, "implicit");
+        table.entries.set(key, next);
+      } else if (next.type === "array" && origin.get(next) === "array-table") {
+        next = next.items[next.items.length - 1];
+      }
+      if (next === void 0 || next.type !== "table" || origin.get(next) === "frozen") fail2();
+      table = next;
+    }
+    const last = path[path.length - 1];
+    const existing = table.entries.get(last);
+    if (array) {
+      let list = existing;
+      if (list === void 0) {
+        list = { type: "array", items: [], line };
+        origin.set(list, "array-table");
+        table.entries.set(last, list);
+      } else if (list.type !== "array" || origin.get(list) !== "array-table") {
+        fail2();
+      }
+      const element = newTable(line);
+      origin.set(element, "defined");
+      list.items.push(element);
+      return element;
+    }
+    if (existing === void 0) {
+      const created = newTable(line);
+      origin.set(created, "defined");
+      table.entries.set(last, created);
+      return created;
+    }
+    if (existing.type !== "table" || origin.get(existing) !== "implicit") fail2();
+    const defined = existing;
+    origin.set(defined, "defined");
+    defined.line = line;
+    return defined;
+  };
+  const root = newTable(1);
+  origin.set(root, "defined");
   const tables = [{ path: [], array: false, line: 1, entries: /* @__PURE__ */ new Map() }];
+  let current = root;
   try {
     for (; ; ) {
       skipAll();
@@ -29678,26 +29760,58 @@ function parseToml(text) {
         if (array ? !src.startsWith("]]", pos) : src[pos] !== "]") fail2();
         pos += array ? 2 : 1;
         endOfLine();
+        for (const table of dotted) origin.set(table, "defined");
+        dotted = [];
+        current = openHeader(root, path, array, line);
         tables.push({ path, array, line, entries: /* @__PURE__ */ new Map() });
         continue;
       }
-      const key = dottedKey().join(".");
+      const parts = dottedKey();
       skipSpaces2();
       if (src[pos] !== "=") fail2();
       pos++;
       skipSpaces2();
       const parsed = value(0);
       endOfLine();
-      tables[tables.length - 1].entries.set(key, parsed);
+      if (parsed.type === "table" || parsed.type === "array") origin.set(parsed, "frozen");
+      assign(
+        current,
+        parts,
+        parsed,
+        line,
+        (parent) => {
+          const from = origin.get(parent);
+          if (from === "implicit") {
+            origin.set(parent, "dotted");
+            dotted.push(parent);
+          }
+          return from === "implicit" || from === "dotted";
+        },
+        (child) => {
+          origin.set(child, "dotted");
+          dotted.push(child);
+        }
+      );
+      const header2 = tables[tables.length - 1];
+      const first = parts[0];
+      if (!header2.entries.has(first)) header2.entries.set(first, current.entries.get(first));
     }
   } catch (error2) {
     if (error2 instanceof TomlError) return null;
     throw error2;
   }
-  return tables;
+  return { root, tables };
 }
 function isTable(table, path) {
   return table.path.length === path.length && table.path.every((part, i) => part === path[i]);
+}
+function valueAt(table, path) {
+  let value = table;
+  for (const key of path) {
+    if (value?.type !== "table") return void 0;
+    value = value.entries.get(key);
+  }
+  return value;
 }
 
 // ../core/src/dependencies/pythonLock.ts
@@ -29705,9 +29819,7 @@ function stringIn(entries, key) {
   const value = entries?.get(key);
   return value !== void 0 && value.type === "string" ? value.value : null;
 }
-function uvSource(value) {
-  if (value === void 0 || value.type !== "table") return { kind: "registry" };
-  const entries = value.entries;
+function uvSource(entries) {
   const registry = stringIn(entries, "registry");
   if (registry !== null) return { kind: "url", allowed: isAllowedRegistryUrl(registry), text: registry };
   const git = stringIn(entries, "git");
@@ -29727,38 +29839,30 @@ function poetrySource(entries) {
   return sourceOfResolved(url);
 }
 function parsePythonLock(text, format) {
-  const tables = parseToml(text);
-  if (tables === null) return null;
+  const document2 = parseTomlDocument(text);
+  if (document2 === null) return null;
+  const packages = valueAt(document2.root, ["package"]);
+  if (packages !== void 0 && packages.type !== "array") return null;
   const entries = [];
   const names = /* @__PURE__ */ new Set();
-  let current = null;
-  const finish3 = () => {
-    if (current === null || current.name === null) return;
-    const name = normalizePypiName(current.name);
+  for (const item of packages?.items ?? []) {
+    if (item.type !== "table") return null;
+    const source = item.entries.get("source");
+    if (source !== void 0 && source.type !== "table") return null;
+    const rawName = stringIn(item.entries, "name");
+    if (rawName === null) continue;
+    const version2 = stringIn(item.entries, "version");
+    const name = normalizePypiName(rawName);
     names.add(name);
     entries.push({
-      key: `${name}@${current.version ?? ""}`,
-      name: current.name,
-      version: current.version,
+      key: `${name}@${version2 ?? ""}`,
+      name: rawName,
+      version: version2,
       integrity: null,
-      source: current.source,
-      line: current.line
+      source: source === void 0 ? { kind: "registry" } : format === "uv" ? uvSource(source.entries) : poetrySource(source.entries),
+      line: item.line
     });
-  };
-  for (const table of tables) {
-    if (table.array && isTable(table, ["package"])) {
-      finish3();
-      current = {
-        line: table.line,
-        name: stringIn(table.entries, "name"),
-        version: stringIn(table.entries, "version"),
-        source: format === "uv" ? uvSource(table.entries.get("source")) : { kind: "registry" }
-      };
-    } else if (!table.array && isTable(table, ["package", "source"]) && current !== null && format === "poetry") {
-      current.source = poetrySource(table.entries);
-    }
   }
-  finish3();
   return { ecosystem: "pypi", format, entries, importers: null, specs: null, names };
 }
 

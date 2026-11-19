@@ -11,6 +11,17 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- Dependency safety reads a `poetry.lock` or `uv.lock` package's source in every TOML spelling (CORE-114). The poetry
+  reader took the source only from a `[package.source]` sub-table and the uv reader only from an inline
+  `source = { … }`, and the TOML reader kept a dotted key (`source.url = …`) as one flat key, so an off-registry source
+  written the other way passed D05, and poetry and uv install from it. The TOML reader now folds dotted keys, headers
+  and array tables into one nested document, both readers take `source` from it whether it is a sub-table, an inline
+  table or dotted keys, and the packages may also be a static `package = [ … ]` array. What TOML forbids makes the
+  file unread (`DEPENDENCY_CHECK_INCOMPLETE`, an error) where the reader used to keep the last value: a key or table
+  defined twice, a dotted key that redefines a value or extends an inline table or a header's table, a header that
+  reopens a table dotted keys defined, and a `package` or `source` that is not a table. In a `pyproject.toml`, a dotted
+  key under a dependency table (`evil.git = "https://…"` under `[tool.poetry.dependencies]` or `[tool.uv.sources]`) is
+  now that dependency's table, where it was a registry dependency named `evil.git`.
 - Dependency safety reads a requirements file's options the way pip reads them (CORE-108). D05 read the index and
   editable options by their full names only, so `--extra-index https://…`, `--index …`, `--find …`, `-ihttps://…`,
   `-egit+https://…` and `--extra-index=…` passed, and pip installs from each. It now resolves a long option by any

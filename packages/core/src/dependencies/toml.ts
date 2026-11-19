@@ -1,8 +1,16 @@
 /**
  * A small TOML reader for pyproject.toml, poetry.lock and uv.lock (A13): tables, array tables, dotted and quoted keys,
- * basic, literal and multi-line strings, arrays (across lines) and inline tables. Numbers, booleans and dates are kept
- * as `other`. Hand-written, one pass over the characters, nesting capped, so the cost stays linear on hostile input. A
- * syntax error makes the whole file unreadable (null): a half-read manifest would hide a dependency.
+ * basic, literal and multi-line strings, arrays (across lines) and inline tables (also across lines, as TOML 1.1 and
+ * the readers poetry and uv use allow). Numbers, booleans and dates are kept as `other`. Hand-written, one pass over the
+ * characters, nesting capped, so the cost stays linear on hostile input. A syntax error makes the whole file unreadable
+ * (null): a half-read manifest would hide a dependency.
+ *
+ * The model is the TOML document as one nested table (`parseTomlDocument`): a dotted key (`source.url = …`, also inside
+ * an inline table), a `[table]` header and an `[[array table]]` all land in the same tree, so `source` reads the same
+ * whether it was written as a sub-table, an inline table or dotted keys (CORE-114). What TOML forbids makes the file
+ * unreadable, as the spec says: a key defined twice, a dotted key that redefines a value or extends an inline table or a
+ * table a header defined, a table header written twice, a header that reopens an inline table or a table defined with
+ * dotted keys, and an array table over a static array.
  */
 
 export type TomlValue =
@@ -11,13 +19,31 @@ export type TomlValue =
   | { type: "table"; entries: Map<string, TomlValue>; line: number }
   | { type: "other"; line: number };
 
-/** One `[table]` or `[[array table]]` (the first has the empty path: the top-level keys), with its keys in order. */
+export type TomlTableValue = Extract<TomlValue, { type: "table" }>;
+
+/**
+ * One `[table]` or `[[array table]]` header (the first has the empty path: the top-level keys), with the keys written
+ * under it, in order. A dotted key under the header is folded into a nested table, which is the document's own value: a
+ * table reached through a dotted key shows everything the document holds in it. Keys a later header adds (`[a.b]` after
+ * `[a]`) are not in the earlier header's `entries`; they are in the document's tree.
+ */
 export interface TomlTable {
   path: string[];
   array: boolean;
   line: number;
-  /** Dotted keys joined with `.`. */
   entries: Map<string, TomlValue>;
+}
+
+/** A parsed TOML file: the whole document as one nested table, and its headers in file order. */
+export interface TomlDocument {
+  /**
+   * Every key of the file in one tree: a `[a.b]` header is `root → a → b`, an `[[a]]` header appends a table to the
+   * array `root → a`, and a dotted key `x.y = 1` is `x → y` under the table its header opened. A table's `line` is the
+   * line of the header that defined it, or of the first key that created it.
+   */
+  root: TomlTableValue;
+  /** The headers in file order, each with the keys written under it. */
+  tables: TomlTable[];
 }
 
 const MAX_DEPTH = 32;
@@ -30,7 +56,23 @@ class TomlError extends Error {}
 const isBare = (c: string) =>
   (c >= "A" && c <= "Z") || (c >= "a" && c <= "z") || (c >= "0" && c <= "9") || c === "_" || c === "-";
 
+/**
+ * How a table or array came to be, for the rules on defining it again: `implicit` (a parent a header named on its way,
+ * which a later header may still define), `defined` (by a header or as an array table's element), `dotted` (created or
+ * extended by dotted keys under the current header: more dotted keys there may extend it, later headers may not),
+ * `frozen` (an inline table or a static array: nothing may be added), `array-table` (an `[[array table]]`'s array).
+ */
+type Origin = "implicit" | "defined" | "dotted" | "frozen" | "array-table";
+
+const newTable = (line: number): TomlTableValue => ({ type: "table", entries: new Map(), line });
+
+/** The headers of a TOML text, each with the keys written under it, or null when the text is not valid TOML. */
 export function parseToml(text: string): TomlTable[] | null {
+  return parseTomlDocument(text)?.tables ?? null;
+}
+
+/** A TOML text as one nested table (see `TomlDocument`), or null when the text is not valid TOML. */
+export function parseTomlDocument(text: string): TomlDocument | null {
   const src = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
   const lineStarts = [0];
   for (let i = 0; i < src.length; i++) if (src[i] === "\n") lineStarts.push(i + 1);
@@ -173,16 +215,54 @@ export function parseToml(text: string): TomlTable[] | null {
     if (pos === start) fail();
     return src.slice(start, pos);
   };
+  /** A key's parts (`a."b.c".d` is `a`, `b.c`, `d`), at most MAX_DEPTH of them, so the tree's depth stays bounded. */
   const dottedKey = (): string[] => {
     const parts = [keyPart()];
     for (;;) {
       skipSpaces();
       if (src[pos] !== ".") return parts;
+      if (parts.length >= MAX_DEPTH) fail();
       pos++;
       skipSpaces();
       parts.push(keyPart());
     }
   };
+
+  const origin = new Map<TomlValue, Origin>();
+  /** The tables dotted keys created or extended under the current header; a header makes them `defined`. */
+  let dotted: TomlTableValue[] = [];
+  /**
+   * Sets `parts = value` in `table`. A missing parent becomes a table; an existing parent must be a table `open` allows
+   * (else the key redefines a value), and the last part must be new.
+   */
+  const assign = (
+    table: TomlTableValue,
+    parts: string[],
+    value: TomlValue,
+    line: number,
+    open: (parent: TomlTableValue) => boolean,
+    created: (parent: TomlTableValue) => void,
+  ) => {
+    let target = table;
+    for (let i = 0; i < parts.length - 1; i++) {
+      const key = parts[i] as string;
+      const next = target.entries.get(key);
+      if (next === undefined) {
+        const child = newTable(line);
+        target.entries.set(key, child);
+        created(child);
+        target = child;
+      } else if (next.type === "table" && open(next)) {
+        target = next;
+      } else {
+        fail();
+      }
+    }
+    const last = parts[parts.length - 1] as string;
+    if (target.entries.has(last)) fail();
+    target.entries.set(last, value);
+  };
+
   const value = (depth: number): TomlValue => {
     if (depth > MAX_DEPTH) fail();
     const line = lineAt(pos);
@@ -206,19 +286,30 @@ export function parseToml(text: string): TomlTable[] | null {
     }
     if (ch === "{") {
       pos++;
-      const entries = new Map<string, TomlValue>();
+      const table = newTable(line);
+      // Inside one inline table, dotted keys may extend the tables earlier dotted keys of the same inline table made,
+      // never an inline table written as a value.
+      const made = new Set<TomlTableValue>();
       for (;;) {
         skipAll();
         if (src[pos] === "}") {
           pos++;
-          return { type: "table", entries, line };
+          return table;
         }
-        const key = dottedKey().join(".");
+        const keyLine = lineAt(pos);
+        const parts = dottedKey();
         skipSpaces();
         if (src[pos] !== "=") fail();
         pos++;
         skipSpaces();
-        entries.set(key, value(depth + 1));
+        assign(
+          table,
+          parts,
+          value(depth + 1),
+          keyLine,
+          (parent) => made.has(parent),
+          (child) => made.add(child),
+        );
         skipAll();
         if (src[pos] === ",") pos++;
         else if (src[pos] !== "}") fail();
@@ -230,7 +321,56 @@ export function parseToml(text: string): TomlTable[] | null {
     return { type: "other", line };
   };
 
+  /** The table a `[path]` or `[[path]]` header opens, creating, defining or appending as TOML says. */
+  const openHeader = (root: TomlTableValue, path: string[], array: boolean, line: number): TomlTableValue => {
+    let table = root;
+    for (let i = 0; i < path.length - 1; i++) {
+      const key = path[i] as string;
+      let next = table.entries.get(key);
+      if (next === undefined) {
+        next = newTable(line);
+        origin.set(next, "implicit");
+        table.entries.set(key, next);
+      } else if (next.type === "array" && origin.get(next) === "array-table") {
+        // A header under an array table names its last element.
+        next = next.items[next.items.length - 1];
+      }
+      if (next === undefined || next.type !== "table" || origin.get(next) === "frozen") fail();
+      table = next as TomlTableValue;
+    }
+    const last = path[path.length - 1] as string;
+    const existing = table.entries.get(last);
+    if (array) {
+      let list = existing;
+      if (list === undefined) {
+        list = { type: "array", items: [], line };
+        origin.set(list, "array-table");
+        table.entries.set(last, list);
+      } else if (list.type !== "array" || origin.get(list) !== "array-table") {
+        fail();
+      }
+      const element = newTable(line);
+      origin.set(element, "defined");
+      (list as Extract<TomlValue, { type: "array" }>).items.push(element);
+      return element;
+    }
+    if (existing === undefined) {
+      const created = newTable(line);
+      origin.set(created, "defined");
+      table.entries.set(last, created);
+      return created;
+    }
+    if (existing.type !== "table" || origin.get(existing) !== "implicit") fail();
+    const defined = existing as TomlTableValue;
+    origin.set(defined, "defined");
+    defined.line = line;
+    return defined;
+  };
+
+  const root = newTable(1);
+  origin.set(root, "defined");
   const tables: TomlTable[] = [{ path: [], array: false, line: 1, entries: new Map() }];
+  let current = root;
   try {
     for (;;) {
       skipAll();
@@ -245,26 +385,60 @@ export function parseToml(text: string): TomlTable[] | null {
         if (array ? !src.startsWith("]]", pos) : src[pos] !== "]") fail();
         pos += array ? 2 : 1;
         endOfLine();
+        for (const table of dotted) origin.set(table, "defined");
+        dotted = [];
+        current = openHeader(root, path, array, line);
         tables.push({ path, array, line, entries: new Map() });
         continue;
       }
-      const key = dottedKey().join(".");
+      const parts = dottedKey();
       skipSpaces();
       if (src[pos] !== "=") fail();
       pos++;
       skipSpaces();
       const parsed = value(0);
       endOfLine();
-      (tables[tables.length - 1] as TomlTable).entries.set(key, parsed);
+      if (parsed.type === "table" || parsed.type === "array") origin.set(parsed, "frozen");
+      assign(
+        current,
+        parts,
+        parsed,
+        line,
+        (parent) => {
+          const from = origin.get(parent);
+          if (from === "implicit") {
+            origin.set(parent, "dotted");
+            dotted.push(parent);
+          }
+          return from === "implicit" || from === "dotted";
+        },
+        (child) => {
+          origin.set(child, "dotted");
+          dotted.push(child);
+        },
+      );
+      const header = tables[tables.length - 1] as TomlTable;
+      const first = parts[0] as string;
+      if (!header.entries.has(first)) header.entries.set(first, current.entries.get(first) as TomlValue);
     }
   } catch (error) {
     if (error instanceof TomlError) return null;
     throw error;
   }
-  return tables;
+  return { root, tables };
 }
 
 /** Whether a table's path is exactly `path`. */
 export function isTable(table: TomlTable, path: readonly string[]): boolean {
   return table.path.length === path.length && table.path.every((part, i) => part === path[i]);
+}
+
+/** The value at `path` under `table` (`["tool", "poetry"]` is `table → tool → poetry`), through tables only. */
+export function valueAt(table: TomlTableValue, path: readonly string[]): TomlValue | undefined {
+  let value: TomlValue | undefined = table;
+  for (const key of path) {
+    if (value?.type !== "table") return undefined;
+    value = value.entries.get(key);
+  }
+  return value;
 }

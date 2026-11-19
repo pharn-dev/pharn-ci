@@ -1,6 +1,6 @@
 import { normalizePypiName } from "./names.js";
 import { sourceOfResolved } from "./specs.js";
-import { isTable, parseToml, type TomlValue } from "./toml.js";
+import { parseTomlDocument, type TomlValue, valueAt } from "./toml.js";
 import type { LockEntry, LockSource, ParsedLockfile } from "./types.js";
 import { isAllowedRegistryUrl } from "./urls.js";
 
@@ -9,10 +9,8 @@ function stringIn(entries: Map<string, TomlValue> | undefined, key: string): str
   return value !== undefined && value.type === "string" ? value.value : null;
 }
 
-/** uv's `source = { registry | git | url | path | directory | editable | virtual = … }`. */
-function uvSource(value: TomlValue | undefined): LockSource {
-  if (value === undefined || value.type !== "table") return { kind: "registry" };
-  const entries = value.entries;
+/** uv's `source`: `registry`, `git`, `url`, `path`, `directory`, `editable` or `virtual`. */
+function uvSource(entries: Map<string, TomlValue>): LockSource {
   const registry = stringIn(entries, "registry");
   if (registry !== null) return { kind: "url", allowed: isAllowedRegistryUrl(registry), text: registry };
   const git = stringIn(entries, "git");
@@ -25,7 +23,7 @@ function uvSource(value: TomlValue | undefined): LockSource {
   return { kind: "link" };
 }
 
-/** poetry's `[package.source]`: `type` (git, url, file, directory, legacy) and `url`. */
+/** poetry's `source`: `type` (git, url, file, directory, legacy) and `url`. */
 function poetrySource(entries: Map<string, TomlValue>): LockSource {
   const type = stringIn(entries, "type");
   const url = stringIn(entries, "url") ?? "";
@@ -36,42 +34,43 @@ function poetrySource(entries: Map<string, TomlValue>): LockSource {
 }
 
 /**
- * A poetry.lock or uv.lock: one entry per `[[package]]`, keyed by its normalized name and version, with its source
- * (uv's `source` inline table, poetry's `[package.source]` table; none is PyPI). `names` holds every normalized name.
- * Null when the TOML cannot be read. Hashes are not compared (docs/LIMITS.md).
+ * A poetry.lock or uv.lock: one entry per package of the document's `package` array, keyed by its normalized name and
+ * version, with its source (none is PyPI). Both formats read the package's `source` table from the document tree, so
+ * it is the same whether the file writes it as a `[package.source]` sub-table, an inline table or dotted keys
+ * (`source.url = …`), and the packages are the same whether they are `[[package]]` headers or a static array of inline
+ * tables (CORE-114). `names` holds every normalized name. Null when the TOML cannot be read, or when `package` or a
+ * package's `source` is not the table poetry and uv require: a shape the reader does not know is unread, never passed.
+ * Hashes are not compared (docs/LIMITS.md).
  */
 export function parsePythonLock(text: string, format: "poetry" | "uv"): ParsedLockfile | null {
-  const tables = parseToml(text);
-  if (tables === null) return null;
+  const document = parseTomlDocument(text);
+  if (document === null) return null;
+  const packages = valueAt(document.root, ["package"]);
+  if (packages !== undefined && packages.type !== "array") return null;
   const entries: LockEntry[] = [];
   const names = new Set<string>();
-  let current: { line: number; name: string | null; version: string | null; source: LockSource } | null = null;
-  const finish = () => {
-    if (current === null || current.name === null) return;
-    const name = normalizePypiName(current.name);
+  for (const item of packages?.items ?? []) {
+    if (item.type !== "table") return null;
+    const source = item.entries.get("source");
+    if (source !== undefined && source.type !== "table") return null;
+    const rawName = stringIn(item.entries, "name");
+    if (rawName === null) continue;
+    const version = stringIn(item.entries, "version");
+    const name = normalizePypiName(rawName);
     names.add(name);
     entries.push({
-      key: `${name}@${current.version ?? ""}`,
-      name: current.name,
-      version: current.version,
+      key: `${name}@${version ?? ""}`,
+      name: rawName,
+      version,
       integrity: null,
-      source: current.source,
-      line: current.line,
+      source:
+        source === undefined
+          ? { kind: "registry" }
+          : format === "uv"
+            ? uvSource(source.entries)
+            : poetrySource(source.entries),
+      line: item.line,
     });
-  };
-  for (const table of tables) {
-    if (table.array && isTable(table, ["package"])) {
-      finish();
-      current = {
-        line: table.line,
-        name: stringIn(table.entries, "name"),
-        version: stringIn(table.entries, "version"),
-        source: format === "uv" ? uvSource(table.entries.get("source")) : { kind: "registry" },
-      };
-    } else if (!table.array && isTable(table, ["package", "source"]) && current !== null && format === "poetry") {
-      current.source = poetrySource(table.entries);
-    }
   }
-  finish();
   return { ecosystem: "pypi", format, entries, importers: null, specs: null, names };
 }

