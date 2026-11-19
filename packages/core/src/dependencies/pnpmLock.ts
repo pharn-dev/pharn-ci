@@ -1,6 +1,5 @@
 import { INSTALLED_SECTIONS } from "./npmLock.js";
-import { sourceOfResolved } from "./specs.js";
-import type { LockEntry, LockSource, ParsedLockfile } from "./types.js";
+import type { LockEntry, ParsedLockfile } from "./types.js";
 
 /** One key of the block-YAML tree: its scalar value as written (unquoted), its line, and its children. */
 export interface YamlNode {
@@ -143,18 +142,6 @@ export function pnpmKeyParts(key: string): { name: string | null; version: strin
   return { name: text.slice(0, slash), version: underscore === -1 ? version : version.slice(0, underscore) };
 }
 
-function pnpmSource(resolution: Map<string, YamlNode> | null): LockSource {
-  if (resolution === null) return { kind: "registry" };
-  const tarball = resolution.get("tarball")?.value;
-  if (tarball !== undefined) return sourceOfResolved(tarball);
-  const type = resolution.get("type")?.value;
-  const repo = resolution.get("repo")?.value;
-  if (type === "git" || repo !== undefined) return { kind: "git", text: repo ?? "" };
-  const directory = resolution.get("directory")?.value;
-  if (type === "directory" || directory !== undefined) return { kind: "file", text: directory ?? "" };
-  return { kind: "registry" };
-}
-
 /**
  * A pnpm-lock.yaml (lockfile versions 5 to 9). Importers come from `importers` (or, for a single project, the
  * top-level sections); entries from `packages`, keyed by their package key, with the integrity and the source of their
@@ -180,7 +167,8 @@ export function parsePnpmLock(text: string): ParsedLockfile | null {
       name: fields?.get("name")?.value ?? parts.name,
       version: fields?.get("version")?.value ?? parts.version,
       integrity: resolution?.get("integrity")?.value ?? null,
-      source: pnpmSource(resolution),
+      // CORE-106 spike: D05 reads the lockfile's lines (lockLines.ts), not this structure.
+      source: { kind: "registry" },
       line: node.line,
     });
   }

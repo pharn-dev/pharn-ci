@@ -3,6 +3,7 @@ import type { Message } from "../report.js";
 import type { TestSourceDropReason, TestSourceSide, TestSources } from "../testSources.js";
 import { byCodeUnit } from "../text.js";
 import { governs, lockChanges, manifestChanges, recordsDependency, relativeDir } from "./compare.js";
+import { addedLineSources, type LineLockFormat } from "./lockLines.js";
 import { type DependencyLookups, lookupName, type PlannedLookup, planLookups } from "./lookup.js";
 import { checkIncompleteMessage, dependencySignalMessages, lookupUnavailableMessage } from "./messages.js";
 import { isReportableName, isReportableVersion, normalizePypiName } from "./names.js";
@@ -89,6 +90,9 @@ function indexSide(side: TestSourceSide): SideIndex {
   };
 }
 
+/** CORE-106 spike: the lockfile formats whose D05 is read from the added lines. */
+const LINE_FORMATS: ReadonlySet<ParsedLockfile["format"]> = new Set(["pnpm", "yarn-berry", "poetry", "uv"]);
+
 const KIND_WORDS: Readonly<Record<Exclude<SourceKind, "registry">, string>> = {
   git: "a git repository",
   url: "a URL outside the allowed registries",
@@ -158,6 +162,33 @@ function analyze(
   const analysis: Analysis = { checked: 0, signals: [], unread: new Map(), added: [], offRegistry: new Set() };
   const onAllowedHost = (url: string | undefined): boolean =>
     url !== undefined && allowedHosts.length > 0 && isAllowedRegistryUrl(url, allowedHosts);
+  const textOf = (side: "base" | "head", path: string): string | undefined => {
+    const index = sides[side];
+    return "unavailable" in index ? undefined : index.files.get(path);
+  };
+  const offRegistrySignal = (
+    path: string,
+    eco: DependencyEcosystem,
+    source: LockEntry["source"],
+    line: number,
+    name: string | null,
+    version: string | null,
+  ): void => {
+    const offName = name === null ? null : `${eco}:${eco === "pypi" ? normalizePypiName(name) : name}`;
+    if (source.kind === "url" && !source.allowed && onAllowedHost(source.text)) {
+      if (offName !== null) analysis.offRegistry.add(offName);
+      return;
+    }
+    const off =
+      (source.kind === "url" && !source.allowed) || source.kind === "git" || source.kind === "file"
+        ? (source.kind as "url" | "git" | "file")
+        : null;
+    if (off === null) return;
+    analysis.signals.push(
+      signal("D05", eco, path, line, `resolved from ${KIND_WORDS[off]}`, nameFields(eco, name, version)),
+    );
+    if (offName !== null) analysis.offRegistry.add(offName);
+  };
   const read = (side: "base" | "head", path: string, kind: DependencyFileKind): Parsed | null => {
     let got = cache[side].get(path);
     if (got === undefined) {
@@ -193,7 +224,7 @@ function analyze(
     if (kind.role === "manifest") {
       manifest(file.path, kind, base as ParsedManifest | null, head as ParsedManifest);
     } else {
-      lockfile(file.path, kind.ecosystem, base as ParsedLockfile | null, head as ParsedLockfile);
+      lockfile(file, kind.ecosystem, base as ParsedLockfile | null, head as ParsedLockfile);
     }
   }
   return analysis;
@@ -261,26 +292,25 @@ function analyze(
     }
   }
 
-  function lockfile(path: string, eco: DependencyEcosystem, base: ParsedLockfile | null, head: ParsedLockfile): void {
+  function lockfile(file: DiffFile, eco: DependencyEcosystem, base: ParsedLockfile | null, head: ParsedLockfile): void {
+    const path = file.path;
     const changes = lockChanges(base, head);
     analysis.checked += changes.added.length + changes.changed.length;
-    for (const entry of changes.sourceNew) {
-      const source = entry.source;
-      if (source.kind === "url" && !source.allowed && onAllowedHost(source.text)) {
-        if (entry.name !== null)
-          analysis.offRegistry.add(`${eco}:${eco === "pypi" ? normalizePypiName(entry.name) : entry.name}`);
-        continue;
+    if (LINE_FORMATS.has(head.format)) {
+      // CORE-106 spike: D05 from the lockfile's added lines.
+      const headText = textOf("head", path) ?? "";
+      const baseText = base === null ? null : (textOf("base", file.oldPath) ?? null);
+      // Every head line is judged, not only the diff's added lines: a `.gitattributes` the PR carries (`-diff`,
+      // `binary`) makes git show the lockfile as binary with no added line, and the merge-base subtraction already
+      // drops what was there. `new Set(file.addedLines)` here is the added-lines variant the spike measured.
+      const added = "all" as const;
+      for (const found of addedLineSources(head.format as LineLockFormat, headText, added, baseText)) {
+        offRegistrySignal(path, eco, found.source, found.line, found.name, found.version);
       }
-      const off =
-        (source.kind === "url" && !source.allowed) || source.kind === "git" || source.kind === "file"
-          ? (source.kind as "url" | "git" | "file")
-          : null;
-      if (off === null) continue;
-      analysis.signals.push(
-        signal("D05", eco, path, entry.line, `resolved from ${KIND_WORDS[off]}`, entryNames(eco, entry)),
-      );
-      if (entry.name !== null)
-        analysis.offRegistry.add(`${eco}:${eco === "pypi" ? normalizePypiName(entry.name) : entry.name}`);
+    } else {
+      for (const entry of changes.sourceNew) {
+        offRegistrySignal(path, eco, entry.source, entry.line, entry.name, entry.version);
+      }
     }
     for (const entry of changes.integrityChanged) {
       analysis.signals.push(

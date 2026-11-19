@@ -24,21 +24,6 @@ export function nameOfSpec(spec: string): string | null {
   return at <= 0 ? null : spec.slice(0, at);
 }
 
-/** The source of a berry `resolution: "name@protocol:…"`. */
-function berrySource(resolution: string): LockSource {
-  const name = nameOfSpec(resolution);
-  let rest = name === null ? resolution : resolution.slice(name.length + 1);
-  // A virtual package wraps the locator after `#`.
-  if (rest.startsWith("virtual:")) {
-    const hash = rest.indexOf("#");
-    rest = hash === -1 ? rest : rest.slice(hash + 1);
-  }
-  const lower = rest.toLowerCase();
-  if (lower.startsWith("npm:") || lower.startsWith("patch:")) return { kind: "registry" };
-  if (lower.startsWith("workspace:")) return { kind: "link" };
-  return sourceOfResolved(rest);
-}
-
 /**
  * A yarn.lock, classic (v1) or berry (`__metadata`). Each header line at column 0 starts an entry keyed by the header;
  * its two-space fields give the version, the integrity (v1) or checksum (berry) and the source (`resolved` in v1,
@@ -55,19 +40,9 @@ export function parseYarnLock(text: string): ParsedLockfile | null {
     if (current === null || current.key === "__metadata") return;
     const fields = current.fields;
     const firstSpec = headerSpecs(current.key)[0] ?? "";
-    let source: LockSource;
-    if (berry) {
-      const resolution = fields.get("resolution");
-      source =
-        fields.get("linkType") === "soft"
-          ? { kind: "link" }
-          : resolution === undefined
-            ? { kind: "registry" }
-            : berrySource(resolution);
-    } else {
-      const resolved = fields.get("resolved");
-      source = resolved === undefined ? { kind: "registry" } : sourceOfResolved(resolved);
-    }
+    // CORE-106 spike: berry's D05 reads the lockfile's lines (lockLines.ts), not this structure.
+    const resolved = berry ? undefined : fields.get("resolved");
+    const source: LockSource = resolved === undefined ? { kind: "registry" } : sourceOfResolved(resolved);
     entries.push({
       key: current.key,
       name: nameOfSpec(firstSpec),

@@ -28584,289 +28584,6 @@ function recordsDependency(lock, rel, dep) {
   return null;
 }
 
-// ../core/src/dependencies/lookup.ts
-var MAX_LOOKUPS = 50;
-function lookupName(ecosystem, dep) {
-  if (!dep.named || dep.kind !== "registry") return null;
-  if (ecosystem === "pypi") return isReportablePypiName(dep.name) ? normalizePypiName(dep.name) : null;
-  const spec = dep.spec.trim();
-  if (spec.toLowerCase().startsWith("workspace:")) return null;
-  let name = dep.name;
-  if (spec.toLowerCase().startsWith("npm:")) {
-    const target = spec.slice(4);
-    const at = target.indexOf("@", 1);
-    name = at === -1 ? target : target.slice(0, at);
-  }
-  return isReportableNpmName(name) && !isScopedNpmName(name) ? name : null;
-}
-function planLookups(added, offRegistry, registries) {
-  const keys = /* @__PURE__ */ new Map();
-  for (const { ecosystem, dep } of added) {
-    if (!registries.includes(ecosystem)) continue;
-    const name = lookupName(ecosystem, dep);
-    if (name === null) continue;
-    const key = `${ecosystem}:${name}`;
-    if (offRegistry.has(key) || keys.has(key)) continue;
-    keys.set(key, { ecosystem, name });
-  }
-  const all = [...keys.values()].sort((a, b) => byCodeUnit(a.ecosystem, b.ecosystem) || byCodeUnit(a.name, b.name));
-  return { planned: all.slice(0, MAX_LOOKUPS), overCap: Math.max(0, all.length - MAX_LOOKUPS) };
-}
-
-// ../core/src/jsTsExtensions.ts
-var JS_TS_EXTENSIONS = Object.freeze(["js", "jsx", "ts", "tsx", "mjs", "cjs", "mts", "cts"]);
-function isJsTsExtension(ext) {
-  return JS_TS_EXTENSIONS.includes(ext);
-}
-var FLAVOR = Object.freeze({
-  js: "js",
-  jsx: "js",
-  ts: "ts",
-  tsx: "ts",
-  mjs: "js",
-  cjs: "js",
-  mts: "ts",
-  cts: "ts"
-});
-function jsTsFlavor(ext) {
-  return FLAVOR[ext];
-}
-
-// ../core/src/testFiles.ts
-var TEST_DIRECTORIES = /* @__PURE__ */ new Set(["test", "tests", "__tests__"]);
-var TEST_BASENAME = [
-  new RegExp(`\\.(?:test|spec)\\.(?:${JS_TS_EXTENSIONS.join("|")})$`),
-  /\.(?:e2e|pw)\.ts$/,
-  /^test_.+\.py$/,
-  /_test\.py$/,
-  /_test\.go$/
-];
-function isTestFile(path) {
-  if (hasTestBasename(path)) return true;
-  const segments = path.split("/");
-  return segments.slice(0, -1).some((segment) => TEST_DIRECTORIES.has(segment));
-}
-function hasTestBasename(path) {
-  const basename = path.slice(path.lastIndexOf("/") + 1);
-  return TEST_BASENAME.some((pattern) => pattern.test(basename));
-}
-function isRenamedAwayTest(file) {
-  if (file.status !== "renamed") return false;
-  if (isTestFile(file.oldPath) && !isTestFile(file.path)) return true;
-  return hasTestBasename(file.oldPath) && !hasTestBasename(file.path);
-}
-function isSnapFile(path) {
-  const basename = path.slice(path.lastIndexOf("/") + 1);
-  return basename.length > ".snap".length && basename.endsWith(".snap");
-}
-function keepTestFileText(file) {
-  return isTestFile(file.path) || isTestFile(file.oldPath);
-}
-function testStem(path) {
-  const basename = path.slice(path.lastIndexOf("/") + 1);
-  const dot = basename.lastIndexOf(".");
-  let stem = dot > 0 ? basename.slice(0, dot) : basename;
-  stem = stem.replace(/\.(?:test|spec|e2e|pw)$/, "");
-  if (stem.startsWith("test_") && stem.length > "test_".length) stem = stem.slice("test_".length);
-  if (stem.endsWith("_test") && stem.length > "_test".length) stem = stem.slice(0, -"_test".length);
-  return stem;
-}
-function testPackageDir(path) {
-  const directories = path.split("/").slice(0, -1);
-  let nearest = -1;
-  for (let i = directories.length - 1; i >= 0; i--) {
-    if (TEST_DIRECTORIES.has(directories[i])) {
-      nearest = i;
-      break;
-    }
-  }
-  return (nearest === -1 ? directories : directories.slice(0, nearest)).join("/");
-}
-var DEFINES_TEST = /^(?:(?:it|test|describe|context|specify)(?:\.[A-Za-z]+)*\s*[(`]|(?:async\s+)?def\s+test_|func\s+Test)/;
-function definesTests(text) {
-  return DEFINES_TEST.test(text.slice(0, 400).trimStart());
-}
-function deletedTestFiles(diff) {
-  const found = /* @__PURE__ */ new Set();
-  for (const file of diff) {
-    if (file.status === "deleted" && isTestFile(file.path)) found.add(file.path);
-    else if (isRenamedAwayTest(file)) found.add(file.oldPath);
-  }
-  return [...found].sort(byCodeUnit);
-}
-
-// ../core/src/testSources.ts
-var MAX_TEST_SOURCE_FILES = 200;
-var MAX_TEST_SOURCE_FILE_BYTES = 524288;
-var MAX_TEST_SOURCE_TOTAL_BYTES = 16777216;
-var TEST_SOURCE_LIMITS = {
-  files: MAX_TEST_SOURCE_FILES,
-  fileBytes: MAX_TEST_SOURCE_FILE_BYTES,
-  totalBytes: MAX_TEST_SOURCE_TOTAL_BYTES
-};
-var DEPENDENCY_SOURCE_LIMITS = {
-  files: 100,
-  fileBytes: 33554432,
-  totalBytes: 33554432
-};
-var TEST_CONFIG_PREFIXES = [
-  "vitest.config.",
-  "vite.config.",
-  "vitest.workspace.",
-  "jest.config.",
-  "playwright.config."
-];
-var TEST_CONFIG_NAMES = /* @__PURE__ */ new Set([
-  "pytest.ini",
-  "pyproject.toml",
-  "setup.cfg",
-  "tox.ini",
-  "conftest.py",
-  "package.json"
-]);
-function isTestConfigFile(path) {
-  const basename = path.slice(path.lastIndexOf("/") + 1);
-  if (TEST_CONFIG_NAMES.has(basename)) return true;
-  if (basename.startsWith(".mocharc")) return true;
-  return TEST_CONFIG_PREFIXES.some((prefix) => basename.length > prefix.length && basename.startsWith(prefix));
-}
-var isTestSource = (path) => !isSnapFile(path) && (isTestFile(path) || isTestConfigFile(path));
-function selectTestSourcePaths(diff) {
-  const base = /* @__PURE__ */ new Set();
-  const head = /* @__PURE__ */ new Set();
-  for (const file of diff) {
-    if ((file.status === "modified" || file.status === "deleted" || file.status === "renamed") && isTestSource(file.oldPath)) {
-      base.add(file.oldPath);
-    }
-    if ((file.status === "added" || file.status === "modified" || file.status === "renamed") && isTestSource(file.path)) {
-      head.add(file.path);
-    }
-  }
-  return { base: [...base].sort(byCodeUnit), head: [...head].sort(byCodeUnit) };
-}
-function isUnsafeTestSourcePath(path) {
-  if (path === "" || path.startsWith("/")) return true;
-  for (let i = 0; i < path.length; i++) {
-    const code2 = path.charCodeAt(i);
-    if (code2 <= 31 || code2 >= 127 && code2 <= 159) return true;
-  }
-  return path.split("/").some((segment) => segment === "" || segment === "." || segment === "..");
-}
-function planTestSourceReads(paths, objects, limits = TEST_SOURCE_LIMITS, first) {
-  const read = [];
-  const dropped = [];
-  let total = 0;
-  let tripped = false;
-  const unique = [...new Set(paths)].sort(byCodeUnit);
-  const ordered = first === void 0 || first.size === 0 ? unique : [...unique.filter((path) => first.has(path)), ...unique.filter((path) => !first.has(path))];
-  for (const path of ordered) {
-    if (isUnsafeTestSourcePath(path)) {
-      dropped.push({ path, reason: "unsafe-path" });
-      continue;
-    }
-    const object = objects.get(path);
-    if (object === void 0 || object === null || object.type !== "blob") {
-      dropped.push({ path, reason: "missing" });
-    } else if (object.size > limits.fileBytes) {
-      dropped.push({ path, reason: "too-large" });
-    } else if (read.length >= limits.files) {
-      dropped.push({ path, reason: "over-file-cap" });
-    } else if (tripped || total + object.size > limits.totalBytes) {
-      tripped = true;
-      dropped.push({ path, reason: "over-total-cap" });
-    } else {
-      total += object.size;
-      read.push(path);
-    }
-  }
-  if (ordered !== unique) {
-    read.sort(byCodeUnit);
-    dropped.sort((a, b) => byCodeUnit(a.path, b.path));
-  }
-  return { read, dropped };
-}
-function unavailableTestSources(reason) {
-  return { base: { unavailable: reason }, head: { unavailable: reason } };
-}
-
-// ../core/src/dependencies/messages.ts
-var NAMED = 10;
-var plural = (n, one, many) => n === 1 ? one : many;
-function locations(signals) {
-  const named = signals.slice(0, NAMED).map((s) => codeSpan(s.line === null ? s.path : `${s.path}:${s.line}`)).join(", ");
-  const more = signals.length - NAMED;
-  return more > 0 ? `${named}, +${more} more` : named;
-}
-function signalText(id, signals, min) {
-  const n = signals.length;
-  const where = locations(signals);
-  switch (id) {
-    case "D01":
-      return `${n} added ${plural(n, "package does", "packages do")} not exist in the registry, which is how slopsquatting starts: ${where}.`;
-    case "D02":
-      return `${n} added ${plural(n, "package was", "packages were")} first published fewer than ${min} days before the head commit: ${where}.`;
-    case "D03":
-      return `${n} added npm ${plural(n, "package was", "packages were")} downloaded fewer than ${min} times last week: ${where}.`;
-    case "D04":
-      return `${n} lockfile drift ${plural(n, "finding", "findings")}: a manifest's dependencies and its lockfile do not agree, or a lockfile gives a version a different hash than the merge base did: ${where}.`;
-    case "D05":
-      return `${n} ${plural(n, "dependency comes", "dependencies come")} from outside the allowed registries (a git repository, a URL on another host or a local file): ${where}.`;
-  }
-}
-function dependencySignalMessages(signals, thresholds) {
-  const messages = [];
-  for (const id of ["D01", "D02", "D03", "D04", "D05"]) {
-    const ofId = signals.filter((signal2) => signal2.id === id);
-    if (ofId.length === 0) continue;
-    const min = id === "D02" ? thresholds.minAgeDays : thresholds.minWeeklyDownloads;
-    messages.push({
-      level: ofId.some((signal2) => signal2.severity === "block") ? "error" : "warn",
-      code: `DEPENDENCY_${id}`,
-      text: signalText(id, ofId, min)
-    });
-  }
-  return messages;
-}
-function lookupUnavailableMessage(counts2) {
-  const missed = counts2.unanswered + counts2.overCap;
-  const total = counts2.planned + counts2.overCap;
-  const reasons = [];
-  if (counts2.unanswered > 0) {
-    reasons.push(
-      `${counts2.unanswered} got no usable answer from the registry (a timeout, a network error or an error status)`
-    );
-  }
-  if (counts2.overCap > 0) reasons.push(`${counts2.overCap} were over the limit of 50 lookups per run`);
-  return {
-    level: "warn",
-    code: "DEPENDENCY_LOOKUP_UNAVAILABLE",
-    text: `Registry lookups did not complete for ${missed} of ${total} added ${plural(total, "package", "packages")}, so D01 to D03 were not checked for ${plural(missed, "it", "them")}: ${reasons.join("; ")}.`
-  };
-}
-var mib = (bytes) => `${bytes / 1048576} MiB`;
-function capWords(reason) {
-  switch (reason) {
-    case "too-large":
-      return `: over the ${mib(DEPENDENCY_SOURCE_LIMITS.fileBytes)} cap for one file`;
-    case "over-total-cap":
-      return `: past the ${mib(DEPENDENCY_SOURCE_LIMITS.totalBytes)} cap for one side`;
-    case "over-file-cap":
-      return `: past the ${DEPENDENCY_SOURCE_LIMITS.files}-file cap for one side`;
-    default:
-      return "";
-  }
-}
-function checkIncompleteMessage(unread) {
-  const n = unread.length;
-  const named = unread.slice(0, NAMED).map((file) => `${codeSpan(file.path)} (${file.reason}${capWords(file.reason)})`).join(", ");
-  const more = n - NAMED;
-  return {
-    level: unread.every((file) => file.reason === "unavailable") ? "warn" : "error",
-    code: "DEPENDENCY_CHECK_INCOMPLETE",
-    text: `${n} manifest or lockfile ${plural(n, "file", "files")} could not be read, so dependency safety did not check ${plural(n, "it", "them")}: ${named}${more > 0 ? `, +${more} more` : ""}.`
-  };
-}
-
 // ../core/src/policy/settings/json.ts
 var MAX_DEPTH = 64;
 var NUMBER = /-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/y;
@@ -29363,17 +29080,6 @@ function pnpmKeyParts(key) {
   const underscore = version2.indexOf("_");
   return { name: text.slice(0, slash), version: underscore === -1 ? version2 : version2.slice(0, underscore) };
 }
-function pnpmSource(resolution) {
-  if (resolution === null) return { kind: "registry" };
-  const tarball = resolution.get("tarball")?.value;
-  if (tarball !== void 0) return sourceOfResolved(tarball);
-  const type = resolution.get("type")?.value;
-  const repo = resolution.get("repo")?.value;
-  if (type === "git" || repo !== void 0) return { kind: "git", text: repo ?? "" };
-  const directory = resolution.get("directory")?.value;
-  if (type === "directory" || directory !== void 0) return { kind: "file", text: directory ?? "" };
-  return { kind: "registry" };
-}
 function parsePnpmLock(text) {
   const root = parseYamlTree(text).children;
   if (!root.has("lockfileVersion")) return null;
@@ -29394,11 +29100,518 @@ function parsePnpmLock(text) {
       name: fields?.get("name")?.value ?? parts.name,
       version: fields?.get("version")?.value ?? parts.version,
       integrity: resolution?.get("integrity")?.value ?? null,
-      source: pnpmSource(resolution),
+      // CORE-106 spike: D05 reads the lockfile's lines (lockLines.ts), not this structure.
+      source: { kind: "registry" },
       line: node.line
     });
   }
   return { ecosystem: "npm", format: "pnpm", entries, importers, specs: null, names: null };
+}
+
+// ../core/src/dependencies/lockLines.ts
+var KEYS = "tarball|resolution|resolved|url|registry|git|repo|directory|path|source";
+var PAIR = new RegExp(
+  `(?<![^\\s{,\\[.])(["']?)(${KEYS})\\1[ \\t]*[:=][ \\t]*([{\\[]|"""|'''|"(?:[^"\\\\]|\\\\.)*"|'[^']*'|[^\\s,{}\\[\\]]*)`,
+  "g"
+);
+function quoteMask(text) {
+  const mask2 = new Uint8Array(text.length + 1);
+  let quote = null;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quote !== null) {
+      mask2[i] = 1;
+      if (quote === '"' && ch === "\\") {
+        i++;
+        mask2[i] = 1;
+      } else if (ch === quote) quote = null;
+    } else if (ch === '"' || ch === "'") quote = ch;
+  }
+  return mask2;
+}
+var URL_TOKEN = /(?:[a-z][a-z0-9+.-]*:\/\/|git@|github:|gitlab:|bitbucket:)[^\s"'`,}\]]+/gi;
+var BLOCK_SCALAR = /^[|>][+-]?\d*$/;
+function berrySource(resolution) {
+  const at = resolution.indexOf("@", 1);
+  let rest = at <= 0 ? resolution : resolution.slice(at + 1);
+  if (rest.startsWith("virtual:")) {
+    const hash = rest.indexOf("#");
+    rest = hash === -1 ? rest : rest.slice(hash + 1);
+  }
+  const lower = rest.toLowerCase();
+  if (lower.startsWith("npm:") || lower.startsWith("patch:")) return { kind: "registry" };
+  if (lower.startsWith("workspace:") || lower.startsWith("portal:") || lower.startsWith("link:"))
+    return { kind: "link" };
+  return sourceOfResolved(rest);
+}
+function offSource(format, key, value, gitType = false) {
+  if (value.trim() === '"""' || value.trim() === "'''") return null;
+  const text = unquoteScalar(value);
+  if (text === "" || BLOCK_SCALAR.test(text)) return null;
+  if (text.startsWith("{") || text.startsWith("[") || text.startsWith("*") || text.startsWith("&")) return null;
+  let source;
+  switch (key) {
+    case "source":
+      return null;
+    case "path":
+      if (format !== "uv") return null;
+      source = { kind: "file", text };
+      break;
+    case "url":
+      source = gitType ? { kind: "git", text } : sourceOfResolved(text);
+      break;
+    case "resolution":
+      source = format === "yarn-berry" ? berrySource(text) : sourceOfResolved(text);
+      break;
+    case "git":
+    case "repo":
+      source = { kind: "git", text };
+      break;
+    case "directory":
+      source = { kind: "file", text };
+      break;
+    default:
+      source = sourceOfResolved(text);
+  }
+  if (source.kind === "registry" || source.kind === "link") return null;
+  if (source.kind === "url" && source.allowed) return null;
+  return source;
+}
+function bracketDepth(text) {
+  let depth = 0;
+  let quote = null;
+  for (const ch of text) {
+    if (quote !== null) {
+      if (ch === quote) quote = null;
+    } else if (ch === '"' || ch === "'") quote = ch;
+    else if (ch === "{" || ch === "[") depth++;
+    else if (ch === "}" || ch === "]") depth--;
+  }
+  return depth;
+}
+var POETRY_GIT_TYPE = /(?:^|[\s{,.])type\s*=\s*["']git["']/;
+function scan(format, text, judgedLines) {
+  const yaml = format === "pnpm" || format === "yarn-berry";
+  const lines = text.split("\n");
+  const found = [];
+  let section = "";
+  let block = null;
+  let carry = null;
+  const aliasUse = /* @__PURE__ */ new Map();
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const line = raw.endsWith("\r") ? raw.slice(0, -1) : raw;
+    let indent = 0;
+    while (indent < line.length && (line[indent] === " " || line[indent] === "	")) indent++;
+    const content = line.slice(indent).trimEnd();
+    const judged = judgedLines === "all" || judgedLines.has(i + 1);
+    if (carry !== null && content !== "" && yaml && carry.depth <= 0 && indent <= carry.indent) carry = null;
+    if (content === "") continue;
+    if (content.startsWith("#") && (carry === null || carry.quote === null)) continue;
+    if (yaml) {
+      if (indent === 0) {
+        if (format === "pnpm") {
+          section = splitKey(content)?.key ?? "";
+          block = null;
+        } else if (content.startsWith("__metadata")) {
+          block = null;
+        } else {
+          const header2 = (content.endsWith(":") ? content.slice(0, -1) : content).split(",")[0] ?? "";
+          const spec = header2.trim().replace(/^"/, "").replace(/"$/, "").trim();
+          const at = spec.indexOf("@", 1);
+          block = { name: at <= 0 ? null : spec.slice(0, at), version: null };
+        }
+      } else if (format === "pnpm" && indent === 2 && (section === "packages" || section === "snapshots")) {
+        const pair = splitKey(content);
+        if (pair !== null) block = { ...pnpmKeyParts(pair.key) };
+      } else if (block !== null && indent === (format === "pnpm" ? 4 : 2)) {
+        const pair = splitKey(content);
+        if (pair?.key === "name") block.name = unquoteScalar(pair.value);
+        if (pair?.key === "version") block.version = unquoteScalar(pair.value);
+      }
+    } else if (carry === null && content.startsWith("[")) {
+      const table = content.replace(/\s/g, "");
+      if (table === "[[package]]") block = { name: null, version: null };
+      else if (!table.startsWith("[package.")) block = null;
+      section = table;
+    } else if (carry === null && block !== null && section === "[[package]]") {
+      const m = /^(name|version)\s*=\s*("(?:[^"\\]|\\.)*"|'[^']*')/.exec(content);
+      if (m !== null) block[m[1]] = unquoteScalar(m[2]);
+    }
+    const inString = carry?.quote != null;
+    const body = inString ? content : withoutComment(content, yaml);
+    const consumed = [];
+    let lastOpen = null;
+    const mask2 = quoteMask(body);
+    const pairs = [...body.matchAll(PAIR)].filter((m) => mask2[m.index ?? 0] === 0);
+    const onKeyLine = pairs.length > 0;
+    if (format === "poetry" && block !== null && POETRY_GIT_TYPE.test(body)) block.git = true;
+    const gitType = block?.git === true;
+    const inline = yaml ? null : /(?<![^\s{,])name\s*=\s*("(?:[^"\\]|\\.)*"|'[^']*')/.exec(body);
+    const owner = inline !== null && inline.index > 0 ? { name: unquoteScalar(inline[1]), version: null } : block;
+    const anchor = yaml ? /(?<![^\s{,:])&([\w.-]+)/.exec(body)?.[1] ?? null : null;
+    if (yaml && block !== null)
+      for (const m of body.matchAll(/(?<![^\s{,:])\*([\w.-]+)/g)) aliasUse.set(m[1], block);
+    const push2 = (source) => found.push({ line: i + 1, source, block: owner, anchor });
+    for (const m of pairs) {
+      const key = m[2];
+      const value = m[3];
+      const end = (m.index ?? 0) + m[0].length;
+      consumed.push([end - value.length, end]);
+      const source = offSource(format, key, value, gitType);
+      if (source !== null && judged) push2(source);
+      const v = value.trim();
+      if (v === "" || BLOCK_SCALAR.test(v) || v === '"""' || v === "'''" || v.startsWith("{") || v.startsWith("[")) {
+        lastOpen = { key, at: m.index ?? 0, value: v };
+      }
+    }
+    if ((onKeyLine || carry !== null) && judged) {
+      let span2 = 0;
+      for (const m of body.matchAll(URL_TOKEN)) {
+        const token = m[0];
+        const at = m.index ?? 0;
+        while (span2 < consumed.length && consumed[span2][1] <= at) span2++;
+        const inside = consumed[span2];
+        if (inside !== void 0 && inside[0] <= at && at + token.length <= inside[1]) continue;
+        const key = carry?.key ?? "url";
+        const source = offSource(format, key === "source" || key === "resolution" ? "url" : key, token, gitType);
+        if (source !== null) push2(source);
+      }
+    }
+    if (carry !== null) {
+      carry.depth += bracketDepth(body);
+      if (carry.quote !== null && body.includes(carry.quote)) carry.quote = null;
+      if (!yaml && carry.depth <= 0 && carry.quote === null) carry = null;
+    } else if (lastOpen !== null) {
+      const depth = bracketDepth(body.slice(lastOpen.at));
+      const quote = lastOpen.value === '"""' || lastOpen.value === "'''" ? lastOpen.value : null;
+      const empty = lastOpen.value === "" || BLOCK_SCALAR.test(lastOpen.value);
+      if (depth > 0 || quote !== null || yaml && empty) carry = { key: lastOpen.key, indent, depth, quote };
+    }
+  }
+  for (const f of found) if (f.block === null && f.anchor !== null) f.block = aliasUse.get(f.anchor) ?? null;
+  return found;
+}
+function withoutComment(text, yaml) {
+  let quote = null;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quote !== null) {
+      if (quote === '"' && ch === "\\") i++;
+      else if (ch === quote) quote = null;
+    } else if (ch === '"' || ch === "'") quote = ch;
+    else if (ch === "#" && (!yaml || i === 0 || text[i - 1] === " " || text[i - 1] === "	")) {
+      return text.slice(0, i).trimEnd();
+    }
+  }
+  return text;
+}
+var keyOf = (name, source) => `${name ?? ""}\0${source.kind}:${source.text}`;
+function addedLineSources(format, head, added, base) {
+  const atBase = new Set(
+    base === null ? [] : scan(format, base, "all").map((f) => keyOf(f.block?.name ?? null, f.source))
+  );
+  const byName = /* @__PURE__ */ new Map();
+  const out = [];
+  for (const f of scan(format, head, added)) {
+    const name = f.block?.name ?? null;
+    if (atBase.has(keyOf(name, f.source))) continue;
+    const version2 = f.block?.version ?? null;
+    if (name !== null) {
+      const first = byName.get(name);
+      if (first !== void 0) {
+        if (first.version === null) first.version = version2;
+        continue;
+      }
+    }
+    const found = { line: f.line, source: f.source, name, version: version2 };
+    if (name !== null) byName.set(name, found);
+    out.push(found);
+  }
+  return out;
+}
+
+// ../core/src/dependencies/lookup.ts
+var MAX_LOOKUPS = 50;
+function lookupName(ecosystem, dep) {
+  if (!dep.named || dep.kind !== "registry") return null;
+  if (ecosystem === "pypi") return isReportablePypiName(dep.name) ? normalizePypiName(dep.name) : null;
+  const spec = dep.spec.trim();
+  if (spec.toLowerCase().startsWith("workspace:")) return null;
+  let name = dep.name;
+  if (spec.toLowerCase().startsWith("npm:")) {
+    const target = spec.slice(4);
+    const at = target.indexOf("@", 1);
+    name = at === -1 ? target : target.slice(0, at);
+  }
+  return isReportableNpmName(name) && !isScopedNpmName(name) ? name : null;
+}
+function planLookups(added, offRegistry, registries) {
+  const keys = /* @__PURE__ */ new Map();
+  for (const { ecosystem, dep } of added) {
+    if (!registries.includes(ecosystem)) continue;
+    const name = lookupName(ecosystem, dep);
+    if (name === null) continue;
+    const key = `${ecosystem}:${name}`;
+    if (offRegistry.has(key) || keys.has(key)) continue;
+    keys.set(key, { ecosystem, name });
+  }
+  const all = [...keys.values()].sort((a, b) => byCodeUnit(a.ecosystem, b.ecosystem) || byCodeUnit(a.name, b.name));
+  return { planned: all.slice(0, MAX_LOOKUPS), overCap: Math.max(0, all.length - MAX_LOOKUPS) };
+}
+
+// ../core/src/jsTsExtensions.ts
+var JS_TS_EXTENSIONS = Object.freeze(["js", "jsx", "ts", "tsx", "mjs", "cjs", "mts", "cts"]);
+function isJsTsExtension(ext) {
+  return JS_TS_EXTENSIONS.includes(ext);
+}
+var FLAVOR = Object.freeze({
+  js: "js",
+  jsx: "js",
+  ts: "ts",
+  tsx: "ts",
+  mjs: "js",
+  cjs: "js",
+  mts: "ts",
+  cts: "ts"
+});
+function jsTsFlavor(ext) {
+  return FLAVOR[ext];
+}
+
+// ../core/src/testFiles.ts
+var TEST_DIRECTORIES = /* @__PURE__ */ new Set(["test", "tests", "__tests__"]);
+var TEST_BASENAME = [
+  new RegExp(`\\.(?:test|spec)\\.(?:${JS_TS_EXTENSIONS.join("|")})$`),
+  /\.(?:e2e|pw)\.ts$/,
+  /^test_.+\.py$/,
+  /_test\.py$/,
+  /_test\.go$/
+];
+function isTestFile(path) {
+  if (hasTestBasename(path)) return true;
+  const segments = path.split("/");
+  return segments.slice(0, -1).some((segment) => TEST_DIRECTORIES.has(segment));
+}
+function hasTestBasename(path) {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  return TEST_BASENAME.some((pattern) => pattern.test(basename));
+}
+function isRenamedAwayTest(file) {
+  if (file.status !== "renamed") return false;
+  if (isTestFile(file.oldPath) && !isTestFile(file.path)) return true;
+  return hasTestBasename(file.oldPath) && !hasTestBasename(file.path);
+}
+function isSnapFile(path) {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  return basename.length > ".snap".length && basename.endsWith(".snap");
+}
+function keepTestFileText(file) {
+  return isTestFile(file.path) || isTestFile(file.oldPath);
+}
+function testStem(path) {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  const dot = basename.lastIndexOf(".");
+  let stem = dot > 0 ? basename.slice(0, dot) : basename;
+  stem = stem.replace(/\.(?:test|spec|e2e|pw)$/, "");
+  if (stem.startsWith("test_") && stem.length > "test_".length) stem = stem.slice("test_".length);
+  if (stem.endsWith("_test") && stem.length > "_test".length) stem = stem.slice(0, -"_test".length);
+  return stem;
+}
+function testPackageDir(path) {
+  const directories = path.split("/").slice(0, -1);
+  let nearest = -1;
+  for (let i = directories.length - 1; i >= 0; i--) {
+    if (TEST_DIRECTORIES.has(directories[i])) {
+      nearest = i;
+      break;
+    }
+  }
+  return (nearest === -1 ? directories : directories.slice(0, nearest)).join("/");
+}
+var DEFINES_TEST = /^(?:(?:it|test|describe|context|specify)(?:\.[A-Za-z]+)*\s*[(`]|(?:async\s+)?def\s+test_|func\s+Test)/;
+function definesTests(text) {
+  return DEFINES_TEST.test(text.slice(0, 400).trimStart());
+}
+function deletedTestFiles(diff) {
+  const found = /* @__PURE__ */ new Set();
+  for (const file of diff) {
+    if (file.status === "deleted" && isTestFile(file.path)) found.add(file.path);
+    else if (isRenamedAwayTest(file)) found.add(file.oldPath);
+  }
+  return [...found].sort(byCodeUnit);
+}
+
+// ../core/src/testSources.ts
+var MAX_TEST_SOURCE_FILES = 200;
+var MAX_TEST_SOURCE_FILE_BYTES = 524288;
+var MAX_TEST_SOURCE_TOTAL_BYTES = 16777216;
+var TEST_SOURCE_LIMITS = {
+  files: MAX_TEST_SOURCE_FILES,
+  fileBytes: MAX_TEST_SOURCE_FILE_BYTES,
+  totalBytes: MAX_TEST_SOURCE_TOTAL_BYTES
+};
+var DEPENDENCY_SOURCE_LIMITS = {
+  files: 100,
+  fileBytes: 33554432,
+  totalBytes: 33554432
+};
+var TEST_CONFIG_PREFIXES = [
+  "vitest.config.",
+  "vite.config.",
+  "vitest.workspace.",
+  "jest.config.",
+  "playwright.config."
+];
+var TEST_CONFIG_NAMES = /* @__PURE__ */ new Set([
+  "pytest.ini",
+  "pyproject.toml",
+  "setup.cfg",
+  "tox.ini",
+  "conftest.py",
+  "package.json"
+]);
+function isTestConfigFile(path) {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  if (TEST_CONFIG_NAMES.has(basename)) return true;
+  if (basename.startsWith(".mocharc")) return true;
+  return TEST_CONFIG_PREFIXES.some((prefix) => basename.length > prefix.length && basename.startsWith(prefix));
+}
+var isTestSource = (path) => !isSnapFile(path) && (isTestFile(path) || isTestConfigFile(path));
+function selectTestSourcePaths(diff) {
+  const base = /* @__PURE__ */ new Set();
+  const head = /* @__PURE__ */ new Set();
+  for (const file of diff) {
+    if ((file.status === "modified" || file.status === "deleted" || file.status === "renamed") && isTestSource(file.oldPath)) {
+      base.add(file.oldPath);
+    }
+    if ((file.status === "added" || file.status === "modified" || file.status === "renamed") && isTestSource(file.path)) {
+      head.add(file.path);
+    }
+  }
+  return { base: [...base].sort(byCodeUnit), head: [...head].sort(byCodeUnit) };
+}
+function isUnsafeTestSourcePath(path) {
+  if (path === "" || path.startsWith("/")) return true;
+  for (let i = 0; i < path.length; i++) {
+    const code2 = path.charCodeAt(i);
+    if (code2 <= 31 || code2 >= 127 && code2 <= 159) return true;
+  }
+  return path.split("/").some((segment) => segment === "" || segment === "." || segment === "..");
+}
+function planTestSourceReads(paths, objects, limits = TEST_SOURCE_LIMITS, first) {
+  const read = [];
+  const dropped = [];
+  let total = 0;
+  let tripped = false;
+  const unique = [...new Set(paths)].sort(byCodeUnit);
+  const ordered = first === void 0 || first.size === 0 ? unique : [...unique.filter((path) => first.has(path)), ...unique.filter((path) => !first.has(path))];
+  for (const path of ordered) {
+    if (isUnsafeTestSourcePath(path)) {
+      dropped.push({ path, reason: "unsafe-path" });
+      continue;
+    }
+    const object = objects.get(path);
+    if (object === void 0 || object === null || object.type !== "blob") {
+      dropped.push({ path, reason: "missing" });
+    } else if (object.size > limits.fileBytes) {
+      dropped.push({ path, reason: "too-large" });
+    } else if (read.length >= limits.files) {
+      dropped.push({ path, reason: "over-file-cap" });
+    } else if (tripped || total + object.size > limits.totalBytes) {
+      tripped = true;
+      dropped.push({ path, reason: "over-total-cap" });
+    } else {
+      total += object.size;
+      read.push(path);
+    }
+  }
+  if (ordered !== unique) {
+    read.sort(byCodeUnit);
+    dropped.sort((a, b) => byCodeUnit(a.path, b.path));
+  }
+  return { read, dropped };
+}
+function unavailableTestSources(reason) {
+  return { base: { unavailable: reason }, head: { unavailable: reason } };
+}
+
+// ../core/src/dependencies/messages.ts
+var NAMED = 10;
+var plural = (n, one, many) => n === 1 ? one : many;
+function locations(signals) {
+  const named = signals.slice(0, NAMED).map((s) => codeSpan(s.line === null ? s.path : `${s.path}:${s.line}`)).join(", ");
+  const more = signals.length - NAMED;
+  return more > 0 ? `${named}, +${more} more` : named;
+}
+function signalText(id, signals, min) {
+  const n = signals.length;
+  const where = locations(signals);
+  switch (id) {
+    case "D01":
+      return `${n} added ${plural(n, "package does", "packages do")} not exist in the registry, which is how slopsquatting starts: ${where}.`;
+    case "D02":
+      return `${n} added ${plural(n, "package was", "packages were")} first published fewer than ${min} days before the head commit: ${where}.`;
+    case "D03":
+      return `${n} added npm ${plural(n, "package was", "packages were")} downloaded fewer than ${min} times last week: ${where}.`;
+    case "D04":
+      return `${n} lockfile drift ${plural(n, "finding", "findings")}: a manifest's dependencies and its lockfile do not agree, or a lockfile gives a version a different hash than the merge base did: ${where}.`;
+    case "D05":
+      return `${n} ${plural(n, "dependency comes", "dependencies come")} from outside the allowed registries (a git repository, a URL on another host or a local file): ${where}.`;
+  }
+}
+function dependencySignalMessages(signals, thresholds) {
+  const messages = [];
+  for (const id of ["D01", "D02", "D03", "D04", "D05"]) {
+    const ofId = signals.filter((signal2) => signal2.id === id);
+    if (ofId.length === 0) continue;
+    const min = id === "D02" ? thresholds.minAgeDays : thresholds.minWeeklyDownloads;
+    messages.push({
+      level: ofId.some((signal2) => signal2.severity === "block") ? "error" : "warn",
+      code: `DEPENDENCY_${id}`,
+      text: signalText(id, ofId, min)
+    });
+  }
+  return messages;
+}
+function lookupUnavailableMessage(counts2) {
+  const missed = counts2.unanswered + counts2.overCap;
+  const total = counts2.planned + counts2.overCap;
+  const reasons = [];
+  if (counts2.unanswered > 0) {
+    reasons.push(
+      `${counts2.unanswered} got no usable answer from the registry (a timeout, a network error or an error status)`
+    );
+  }
+  if (counts2.overCap > 0) reasons.push(`${counts2.overCap} were over the limit of 50 lookups per run`);
+  return {
+    level: "warn",
+    code: "DEPENDENCY_LOOKUP_UNAVAILABLE",
+    text: `Registry lookups did not complete for ${missed} of ${total} added ${plural(total, "package", "packages")}, so D01 to D03 were not checked for ${plural(missed, "it", "them")}: ${reasons.join("; ")}.`
+  };
+}
+var mib = (bytes) => `${bytes / 1048576} MiB`;
+function capWords(reason) {
+  switch (reason) {
+    case "too-large":
+      return `: over the ${mib(DEPENDENCY_SOURCE_LIMITS.fileBytes)} cap for one file`;
+    case "over-total-cap":
+      return `: past the ${mib(DEPENDENCY_SOURCE_LIMITS.totalBytes)} cap for one side`;
+    case "over-file-cap":
+      return `: past the ${DEPENDENCY_SOURCE_LIMITS.files}-file cap for one side`;
+    default:
+      return "";
+  }
+}
+function checkIncompleteMessage(unread) {
+  const n = unread.length;
+  const named = unread.slice(0, NAMED).map((file) => `${codeSpan(file.path)} (${file.reason}${capWords(file.reason)})`).join(", ");
+  const more = n - NAMED;
+  return {
+    level: unread.every((file) => file.reason === "unavailable") ? "warn" : "error",
+    code: "DEPENDENCY_CHECK_INCOMPLETE",
+    text: `${n} manifest or lockfile ${plural(n, "file", "files")} could not be read, so dependency safety did not check ${plural(n, "it", "them")}: ${named}${more > 0 ? `, +${more} more` : ""}.`
+  };
 }
 
 // ../core/src/dependencies/toml.ts
@@ -29638,27 +29851,6 @@ function stringIn(entries, key) {
   const value = entries?.get(key);
   return value !== void 0 && value.type === "string" ? value.value : null;
 }
-function uvSource(value) {
-  if (value === void 0 || value.type !== "table") return { kind: "registry" };
-  const entries = value.entries;
-  const registry = stringIn(entries, "registry");
-  if (registry !== null) return { kind: "url", allowed: isAllowedRegistryUrl(registry), text: registry };
-  const git = stringIn(entries, "git");
-  if (git !== null) return { kind: "git", text: git };
-  const url = stringIn(entries, "url");
-  if (url !== null) return sourceOfResolved(url);
-  const path = stringIn(entries, "path") ?? stringIn(entries, "directory");
-  if (path !== null) return { kind: "file", text: path };
-  return { kind: "link" };
-}
-function poetrySource(entries) {
-  const type = stringIn(entries, "type");
-  const url = stringIn(entries, "url") ?? "";
-  if (type === "git") return { kind: "git", text: url };
-  if (type === "file" || type === "directory") return { kind: "file", text: url };
-  if (url === "") return { kind: "registry" };
-  return sourceOfResolved(url);
-}
 function parsePythonLock(text, format) {
   const tables = parseToml(text);
   if (tables === null) return null;
@@ -29674,7 +29866,8 @@ function parsePythonLock(text, format) {
       name: current.name,
       version: current.version,
       integrity: null,
-      source: current.source,
+      // CORE-106 spike: D05 reads the lockfile's lines (lockLines.ts), not this structure.
+      source: { kind: "registry" },
       line: current.line
     });
   };
@@ -29684,11 +29877,8 @@ function parsePythonLock(text, format) {
       current = {
         line: table.line,
         name: stringIn(table.entries, "name"),
-        version: stringIn(table.entries, "version"),
-        source: format === "uv" ? uvSource(table.entries.get("source")) : { kind: "registry" }
+        version: stringIn(table.entries, "version")
       };
-    } else if (!table.array && isTable(table, ["package", "source"]) && current !== null && format === "poetry") {
-      current.source = poetrySource(table.entries);
     }
   }
   finish3();
@@ -29886,7 +30076,7 @@ function withoutBackslashes(text) {
   while (end > start && text[end - 1] === "\\") end--;
   return text.slice(start, end);
 }
-function withoutComment(line) {
+function withoutComment2(line) {
   if (line.trimStart().startsWith("#")) return "";
   for (let i = 1; i < line.length; i++) {
     if (line[i] === "#" && (line[i - 1] === " " || line[i - 1] === "	")) return line.slice(0, i);
@@ -29899,7 +30089,7 @@ function parseRequirements(text) {
   const lines = text.split("\n");
   for (let i = 0; i < lines.length; i++) {
     const start = i + 1;
-    let part = withoutComment(lines[i].replace(/\r$/, ""));
+    let part = withoutComment2(lines[i].replace(/\r$/, ""));
     const parts = [];
     while (part.endsWith("\\")) {
       parts.push(withoutBackslashes(part));
@@ -29908,7 +30098,7 @@ function parseRequirements(text) {
         break;
       }
       i++;
-      part = withoutComment(lines[i].replace(/\r$/, ""));
+      part = withoutComment2(lines[i].replace(/\r$/, ""));
     }
     parts.push(part);
     const t = parts.join("").trim();
@@ -30004,18 +30194,6 @@ function nameOfSpec(spec) {
   const at = spec.indexOf("@", 1);
   return at <= 0 ? null : spec.slice(0, at);
 }
-function berrySource(resolution) {
-  const name = nameOfSpec(resolution);
-  let rest = name === null ? resolution : resolution.slice(name.length + 1);
-  if (rest.startsWith("virtual:")) {
-    const hash = rest.indexOf("#");
-    rest = hash === -1 ? rest : rest.slice(hash + 1);
-  }
-  const lower = rest.toLowerCase();
-  if (lower.startsWith("npm:") || lower.startsWith("patch:")) return { kind: "registry" };
-  if (lower.startsWith("workspace:")) return { kind: "link" };
-  return sourceOfResolved(rest);
-}
 function parseYarnLock(text) {
   const lines = text.split("\n");
   const berry = lines.some((line) => line.startsWith("__metadata:"));
@@ -30026,14 +30204,8 @@ function parseYarnLock(text) {
     if (current === null || current.key === "__metadata") return;
     const fields = current.fields;
     const firstSpec = headerSpecs(current.key)[0] ?? "";
-    let source;
-    if (berry) {
-      const resolution = fields.get("resolution");
-      source = fields.get("linkType") === "soft" ? { kind: "link" } : resolution === void 0 ? { kind: "registry" } : berrySource(resolution);
-    } else {
-      const resolved = fields.get("resolved");
-      source = resolved === void 0 ? { kind: "registry" } : sourceOfResolved(resolved);
-    }
+    const resolved = berry ? void 0 : fields.get("resolved");
+    const source = resolved === void 0 ? { kind: "registry" } : sourceOfResolved(resolved);
     entries.push({
       key: current.key,
       name: nameOfSpec(firstSpec),
@@ -30107,6 +30279,7 @@ function indexSide(side) {
     dropped: new Map(side.dropped.map((drop) => [drop.path, drop.reason]))
   };
 }
+var LINE_FORMATS = /* @__PURE__ */ new Set(["pnpm", "yarn-berry", "poetry", "uv"]);
 var KIND_WORDS = {
   git: "a git repository",
   url: "a URL outside the allowed registries",
@@ -30138,6 +30311,23 @@ function analyze(diff, sources, repoFiles, allowedHosts) {
   };
   const analysis = { checked: 0, signals: [], unread: /* @__PURE__ */ new Map(), added: [], offRegistry: /* @__PURE__ */ new Set() };
   const onAllowedHost = (url) => url !== void 0 && allowedHosts.length > 0 && isAllowedRegistryUrl(url, allowedHosts);
+  const textOf2 = (side, path) => {
+    const index = sides[side];
+    return "unavailable" in index ? void 0 : index.files.get(path);
+  };
+  const offRegistrySignal = (path, eco, source, line, name, version2) => {
+    const offName = name === null ? null : `${eco}:${eco === "pypi" ? normalizePypiName(name) : name}`;
+    if (source.kind === "url" && !source.allowed && onAllowedHost(source.text)) {
+      if (offName !== null) analysis.offRegistry.add(offName);
+      return;
+    }
+    const off = source.kind === "url" && !source.allowed || source.kind === "git" || source.kind === "file" ? source.kind : null;
+    if (off === null) return;
+    analysis.signals.push(
+      signal("D05", eco, path, line, `resolved from ${KIND_WORDS[off]}`, nameFields(eco, name, version2))
+    );
+    if (offName !== null) analysis.offRegistry.add(offName);
+  };
   const read = (side, path, kind) => {
     let got = cache[side].get(path);
     if (got === void 0) {
@@ -30172,7 +30362,7 @@ function analyze(diff, sources, repoFiles, allowedHosts) {
     if (kind.role === "manifest") {
       manifest(file.path, kind, base, head);
     } else {
-      lockfile(file.path, kind.ecosystem, base, head);
+      lockfile(file, kind.ecosystem, base, head);
     }
   }
   return analysis;
@@ -30237,23 +30427,21 @@ function analyze(diff, sources, repoFiles, allowedHosts) {
       }
     }
   }
-  function lockfile(path, eco, base, head) {
+  function lockfile(file, eco, base, head) {
+    const path = file.path;
     const changes = lockChanges(base, head);
     analysis.checked += changes.added.length + changes.changed.length;
-    for (const entry of changes.sourceNew) {
-      const source = entry.source;
-      if (source.kind === "url" && !source.allowed && onAllowedHost(source.text)) {
-        if (entry.name !== null)
-          analysis.offRegistry.add(`${eco}:${eco === "pypi" ? normalizePypiName(entry.name) : entry.name}`);
-        continue;
+    if (LINE_FORMATS.has(head.format)) {
+      const headText = textOf2("head", path) ?? "";
+      const baseText = base === null ? null : textOf2("base", file.oldPath) ?? null;
+      const added = "all";
+      for (const found of addedLineSources(head.format, headText, added, baseText)) {
+        offRegistrySignal(path, eco, found.source, found.line, found.name, found.version);
       }
-      const off = source.kind === "url" && !source.allowed || source.kind === "git" || source.kind === "file" ? source.kind : null;
-      if (off === null) continue;
-      analysis.signals.push(
-        signal("D05", eco, path, entry.line, `resolved from ${KIND_WORDS[off]}`, entryNames(eco, entry))
-      );
-      if (entry.name !== null)
-        analysis.offRegistry.add(`${eco}:${eco === "pypi" ? normalizePypiName(entry.name) : entry.name}`);
+    } else {
+      for (const entry of changes.sourceNew) {
+        offRegistrySignal(path, eco, entry.source, entry.line, entry.name, entry.version);
+      }
     }
     for (const entry of changes.integrityChanged) {
       analysis.signals.push(
@@ -31649,7 +31837,7 @@ function sortFindings(findings) {
   return findings.sort((a, b) => byCodeUnit(a.id, b.id) || byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 function detectInjection(diff, settings2) {
-  const scan = scanInjection(diff, { exempt: settings2.exempt, phrases: settings2.phrases });
+  const scan2 = scanInjection(diff, { exempt: settings2.exempt, phrases: settings2.phrases });
   const kept = [];
   const omitted = /* @__PURE__ */ new Map();
   const perFile = /* @__PURE__ */ new Map();
@@ -31659,7 +31847,7 @@ function detectInjection(diff, settings2) {
     if (entry === void 0) omitted.set(key, { id: finding2.id, path: finding2.path, count: 1 });
     else entry.count++;
   };
-  for (const finding2 of scan.findings) {
+  for (const finding2 of scan2.findings) {
     const severity2 = settings2.severities[finding2.id];
     if (severity2 === null) continue;
     const key = `${finding2.id}\0${finding2.path}`;
@@ -31671,7 +31859,7 @@ function detectInjection(diff, settings2) {
     perFile.set(key, seen + 1);
     kept.push({ ...finding2, severity: severity2 });
   }
-  return { signals: kept, omitted: [...omitted.values()], cut: scan.cut };
+  return { signals: kept, omitted: [...omitted.values()], cut: scan2.cut };
 }
 
 // ../core/src/junit/flaky.ts
@@ -33688,12 +33876,12 @@ var SCOPES = [
   "statuses"
 ];
 var LEVELS = { none: 0, read: 1, write: 2 };
-function withoutComment2(line) {
+function withoutComment3(line) {
   const { start } = findComment(line);
   return start === -1 ? line : line.slice(0, start);
 }
 function pairOf(line) {
-  const text = withoutComment2(line).trim();
+  const text = withoutComment3(line).trim();
   const match = /^(-\s+)?([A-Za-z0-9_.<-]+|"[^"]*"|'[^']*')\s*:(?:\s([\s\S]*))?$/.exec(text);
   if (match === null) return null;
   const rawKey = match[2];
@@ -33746,7 +33934,7 @@ function workflowFacts(text) {
       if (line.trim() === "" || indentOf(line) > blockScalar) continue;
       blockScalar = null;
     }
-    const bare = withoutComment2(line);
+    const bare = withoutComment3(line);
     if (bare.trim() === "") continue;
     if (/^[ ]*\t/.test(line)) return null;
     const trimmed = bare.trim();
@@ -37781,10 +37969,10 @@ function holdsBody(before, after, tokensOf) {
   return jaccardAtLeast(old, fresh, FOUR_FIFTHS) || containsAtLeast(old, fresh, FOUR_FIFTHS) && holdsEveryChain(assertionChains(before), assertionChains(after));
 }
 var MAX_EACH_SCAN = 256;
-function groupItems(items, keyOf4) {
+function groupItems(items, keyOf5) {
   const groups = /* @__PURE__ */ new Map();
   for (const item of items) {
-    const key = keyOf4(item);
+    const key = keyOf5(item);
     const list = groups.get(key);
     if (list === void 0) groups.set(key, [item]);
     else list.push(item);
@@ -38055,8 +38243,8 @@ function matchTests(touched) {
     let byLeaf = null;
     if (!candidate.block.nameDynamic) {
       const sameLeaf = leafEntries.get(leafName(candidate.block)) ?? [];
-      const scan = Math.min(sameLeaf.length, MAX_SIMILARITY_PROBES);
-      for (let at = 0; at < scan; at++) {
+      const scan2 = Math.min(sameLeaf.length, MAX_SIMILARITY_PROBES);
+      for (let at = 0; at < scan2; at++) {
         const entry = sameLeaf[at];
         if (!entry.used && entry.fileIndex !== candidate.fileIndex && holdsBody(candidate.block, entry.block, tokensOf)) {
           byLeaf = entry;
@@ -38349,10 +38537,10 @@ var STRENGTH = {
   "cannot-place": 1,
   adds: 0
 };
-var keyOf = (token, name) => `${token}\0${name}`;
+var keyOf2 = (token, name) => `${token}\0${name}`;
 function jsSkip(parsed) {
   const { token, name, condition } = parsed;
-  const key = keyOf(parsed.kind === "this-skip" ? "this.skip" : token, name);
+  const key = keyOf2(parsed.kind === "this-skip" ? "this.skip" : token, name);
   if (parsed.kind === "this-skip") return { key, shape: "in-body", name };
   switch (token) {
     case "skip":
@@ -38379,17 +38567,17 @@ function pythonSkip(text, aliases) {
     if (map !== void 0) parsed = parsePythonSkip(text, map);
   }
   if (parsed === null) return null;
-  if (parsed.kind === "call") return { key: keyOf(parsed.token, parsed.name), shape: "in-body", name: parsed.name };
+  if (parsed.kind === "call") return { key: keyOf2(parsed.token, parsed.name), shape: "in-body", name: parsed.name };
   if (parsed.kind === "mark") {
-    const key2 = keyOf(`pytestmark ${parsed.token}`, parsed.name);
+    const key2 = keyOf2(`pytestmark ${parsed.token}`, parsed.name);
     return { key: key2, shape: parsed.conditional ? "conditional" : "module", name: parsed.name };
   }
-  const key = keyOf(parsed.token, parsed.name);
+  const key = keyOf2(parsed.token, parsed.name);
   return { key, shape: parsed.conditional ? "conditional" : "decorator", name: parsed.name };
 }
 function goSkip(text) {
   const parsed = parseGoSkip(text);
-  return parsed === null ? null : { key: keyOf(parsed.token, parsed.name), shape: "in-body", name: parsed.name };
+  return parsed === null ? null : { key: keyOf2(parsed.token, parsed.name), shape: "in-body", name: parsed.name };
 }
 function readSkip(language, text, aliases) {
   if (language === "python") return pythonSkip(text, aliases);
@@ -40985,16 +41173,16 @@ function readTable(lines, headerAt2) {
     let value;
     if (rest.startsWith("[")) {
       const parts = [rest];
-      let scan = scanBrackets(rest, 0, 0);
-      while (scan !== null && scan.close === -1) {
+      let scan2 = scanBrackets(rest, 0, 0);
+      while (scan2 !== null && scan2.close === -1) {
         i++;
         const next = lines.at(i);
         if (next === void 0 || HEADER_LINE.test(next.trim())) return null;
         const added = stripTomlComment(next);
         parts.push(added);
-        scan = scanBrackets(added, 0, scan.depth);
+        scan2 = scanBrackets(added, 0, scan2.depth);
       }
-      if (scan === null) return null;
+      if (scan2 === null) return null;
       value = arrayValue(parts.join(" "));
     } else {
       value = scalar(rest);
@@ -42090,7 +42278,7 @@ function runnerStart(tokens2) {
   if (RUNNERS.has(runner) || runner === "playwright" && tokens2[start + 1] === "test") return start;
   return -1;
 }
-function keyOf2(part) {
+function keyOf3(part) {
   const tokens2 = part.split(" ");
   const runner = runnerStart(tokens2);
   if (runner >= 0) return tokens2.slice(runner).join(" ");
@@ -42203,7 +42391,7 @@ function keptBy(key, addedKeys, addedByBase) {
 function testKeysOf(line) {
   const text = commandText(line);
   if (text === "") return [];
-  return text.split(/\s*(?:&&|;)\s*/).filter((part) => TEST_COMMAND.test(part)).map(keyOf2);
+  return text.split(/\s*(?:&&|;)\s*/).filter((part) => TEST_COMMAND.test(part)).map(keyOf3);
 }
 function carriesPullRequestTrigger(line) {
   const text = stripComment(line);
@@ -42688,7 +42876,7 @@ function isEligible(literal2) {
   if (literal2.kind === "number") return significantDigits(literal2.value) >= MIN_SIGNIFICANT_DIGITS;
   return literal2.value.length >= MIN_STRING_LENGTH && !STOP_LIST.has(literal2.value.toLowerCase());
 }
-var keyOf3 = (literal2) => `${literal2.kind === "string" ? "s" : "n"}${literal2.value}`;
+var keyOf4 = (literal2) => `${literal2.kind === "string" ? "s" : "n"}${literal2.value}`;
 var isOperatorChar = (c) => c === "=" || c === "!" || c === "<" || c === ">";
 function operatorBefore(text, at) {
   let end = at;
@@ -42773,7 +42961,7 @@ function testLiterals(diff, manifests) {
       for (const entry of hunk.added) {
         for (const literal2 of scanLiterals(entry.text)) {
           if (!isEligible(literal2)) continue;
-          const key = keyOf3(literal2);
+          const key = keyOf4(literal2);
           const roots = found.get(key) ?? /* @__PURE__ */ new Map();
           const first = roots.get(root);
           if (first === void 0 || byCodeUnit(file.path, first) < 0) roots.set(root, file.path);
@@ -42807,13 +42995,13 @@ function detectTI15(diff, options) {
     const root = packageRoot(file.path, manifests);
     const removed = /* @__PURE__ */ new Set();
     for (const hunk of file.hunks) {
-      for (const entry of hunk.removed) for (const literal2 of scanLiterals(entry.text)) removed.add(keyOf3(literal2));
+      for (const entry of hunk.removed) for (const literal2 of scanLiterals(entry.text)) removed.add(keyOf4(literal2));
     }
     for (const hunk of file.hunks) {
       for (const entry of hunk.added) {
         const seen = /* @__PURE__ */ new Set();
         for (const literal2 of conditionLiterals(entry.text, language)) {
-          const key = keyOf3(literal2);
+          const key = keyOf4(literal2);
           if (seen.has(key)) continue;
           seen.add(key);
           if (removed.has(key)) continue;
