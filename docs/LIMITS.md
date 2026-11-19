@@ -1479,7 +1479,14 @@ comes from and how new it is, not what it does. What it misses:
   Dependabot-style refresh changes versions and passes); a direct dependency moved to a version outside its declared
   range is not detected (no semver resolution). Python lockfile hashes are not compared.
 - **Requirements files.** `-r` and `-c` includes are not followed; environment variables in a line are not expanded; a
-  local directory (`-e .`, `./pkg`) is not a dependency, only a local archive (`.whl`, `.tar.gz`, `.zip`) is.
+  local directory (`-e .`, `./pkg`) is not a dependency, only a local archive (`.whl`, `.tar.gz`, `.zip`) is. Options
+  are read as pip 20.3 to 26.3 read them (a long option by any unique prefix, a value attached to `-i`, `-f` or `-e`,
+  several options on a line); an option line no such pip accepts makes the file unread. An option line that carries
+  `-e` is read whole (every editable and every index option on it), where pip installs its first editable and ignores
+  the rest, so D05 can flag an index pip would not use there; options after a
+  requirement on the same line are cut off and not checked (pip ignores an index option there, and refuses the whole
+  file for an unknown one). A pip version outside that range with a new option starting with an existing option's
+  prefix could read a spelling differently.
 - **Caps.** A manifest or lockfile over 32 MiB (the cap for one file, the same as the cap for one side), past 100 files
   or 32 MiB a side is not read and is named in `dependencies.unread`, never guessed; a TOML syntax error makes the whole
   file unread. `DEPENDENCY_CHECK_INCOMPLETE` is an error (verdict `fail`) when any unread file's reason is one the pull

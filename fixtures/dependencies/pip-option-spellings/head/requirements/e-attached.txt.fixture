@@ -1,0 +1,2 @@
+-egit+https://github.com/x/y.git#egg=y
+requests==2.31.0

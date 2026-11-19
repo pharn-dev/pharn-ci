@@ -11,6 +11,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- Dependency safety reads a requirements file's options the way pip reads them (CORE-108). D05 read the index and
+  editable options by their full names only, so `--extra-index https://…`, `--index …`, `--find …`, `-ihttps://…`,
+  `-egit+https://…` and `--extra-index=…` passed, and pip installs from each. It now resolves a long option by any
+  unique prefix of the options pip 20.3 to 26.3 allow in a requirements file (including `--pypi-url`), reads a value
+  attached to a short option, every option on a line, quotes as `shlex` splits them, and a `\` continuation joined as
+  pip joins it. An option line pip refuses (an unknown option, a prefix of several such as `--e` or `--no`, a missing
+  value) makes the file unread: `DEPENDENCY_CHECK_INCOMPLETE`, an error, where the line was skipped before.
 - Docs: the README is down from about 1,665 lines to about 250 and doubles as the Marketplace page (CORE-137): what
   pharn-ci is, a complete workflow checked in a sandbox repository, one paragraph per check, the most-used inputs, and
   what leaves the job. The reference chapters moved to `docs/` with their text unchanged: the Action reference

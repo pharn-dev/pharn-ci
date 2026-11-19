@@ -1,0 +1,8 @@
+--index-url https://pypi.org/simple
+--no-index
+--pre
+-r other.txt
+-c constraints.txt
+--requirement=other.txt
+--constraint constraints.txt
+requests==2.31.0 --hash=sha256:70761cfe03c773ceb22aa2f671b4757976145175cdfca038c02654d061d6dcc6

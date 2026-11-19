@@ -84,16 +84,181 @@ export function parseRequirement(text: string, line: number, section: string): M
   return { name, named: true, spec, section, line, kind: "registry" };
 }
 
-const INDEX_OPTIONS = new Set(["-i", "--index-url", "--extra-index-url", "-f", "--find-links"]);
-const EDITABLE_OPTIONS = new Set(["-e", "--editable"]);
+/**
+ * The pip versions whose requirements-file options differ, as bits: pip 20.3 to 23.0 (`--install-option` and
+ * `--global-option`), 23.3 to 25.0 (`--global-option`, `-C`), 25.3 (`-C`) and 26.3 (`-C`, `--no-require-hashes`,
+ * `--all-releases`, `--only-final`). Each set was read from that version's `req_file.build_parser()`.
+ */
+const PIP_20 = 1;
+const PIP_23 = 2;
+const PIP_25 = 4;
+const PIP_26 = 8;
+const PIP_VERSIONS = [PIP_20, PIP_23, PIP_25, PIP_26];
+const EVERY_PIP = PIP_20 | PIP_23 | PIP_25 | PIP_26;
 
-/** `-x value`, `--xx=value` or `--xx value` of a requirements-file option line. */
-function optionOf(text: string): { option: string; arg: string } {
-  const eq = text.indexOf("=");
-  const space = text.search(/[ \t]/);
-  const cut = eq !== -1 && (space === -1 || eq < space) && text.startsWith("--") ? eq : space;
-  if (cut === -1) return { option: text, arg: "" };
-  return { option: text.slice(0, cut), arg: text.slice(cut + 1).trim() };
+/** One option pip's requirements-file parser knows: its spellings, whether it takes a value, what D05 reads from it. */
+interface PipOption {
+  short: string[];
+  long: string[];
+  value: boolean;
+  role: "index" | "editable" | "other";
+  pip: number;
+}
+
+const pipOption = (
+  names: string[],
+  value: boolean,
+  role: PipOption["role"] = "other",
+  pip: number = EVERY_PIP,
+): PipOption => ({
+  short: names.filter((name) => !name.startsWith("--")),
+  long: names.filter((name) => name.startsWith("--")),
+  value,
+  role,
+  pip,
+});
+
+/** pip's `SUPPORTED_OPTIONS` and `SUPPORTED_OPTIONS_REQ` (pip/_internal/req/req_file.py), pip 20.3 to 26.3. */
+const PIP_OPTIONS: readonly PipOption[] = [
+  pipOption(["-i", "--index-url", "--pypi-url"], true, "index"),
+  pipOption(["--extra-index-url"], true, "index"),
+  pipOption(["--no-index"], false),
+  pipOption(["-c", "--constraint"], true),
+  pipOption(["-r", "--requirement"], true),
+  pipOption(["-e", "--editable"], true, "editable"),
+  pipOption(["-f", "--find-links"], true, "index"),
+  pipOption(["--no-binary"], true),
+  pipOption(["--only-binary"], true),
+  pipOption(["--prefer-binary"], false),
+  pipOption(["--require-hashes"], false),
+  pipOption(["--no-require-hashes"], false, "other", PIP_26),
+  pipOption(["--pre"], false),
+  pipOption(["--all-releases"], true, "other", PIP_26),
+  pipOption(["--only-final"], true, "other", PIP_26),
+  pipOption(["--trusted-host"], true),
+  pipOption(["--use-feature"], true),
+  pipOption(["--install-option"], true, "other", PIP_20),
+  pipOption(["--global-option"], true, "other", PIP_20 | PIP_23),
+  pipOption(["--hash"], true),
+  pipOption(["-C", "--config-settings"], true, "other", PIP_23 | PIP_25 | PIP_26),
+];
+
+/**
+ * The option a long option name means, the way optparse resolves it (an exact name, else the one name it is a prefix
+ * of), in any pip version: a name that one version reads as an index option is read as one. Null when no version
+ * resolves it, or versions resolve it to different options.
+ */
+function longOption(name: string): PipOption | null {
+  const found = new Set<PipOption>();
+  for (const version of PIP_VERSIONS) {
+    const options = PIP_OPTIONS.filter((option) => (option.pip & version) !== 0);
+    const exact = options.find((option) => option.long.includes(name));
+    if (exact !== undefined) {
+      found.add(exact);
+      continue;
+    }
+    const matches = options.flatMap((option) => option.long.filter((long) => long.startsWith(name)).map(() => option));
+    if (matches.length === 1) found.add(matches[0] as PipOption);
+  }
+  return found.size === 1 ? ([...found][0] as PipOption) : null;
+}
+
+const shortOption = (letter: string): PipOption | null =>
+  PIP_OPTIONS.find((option) => option.short.includes(`-${letter}`)) ?? null;
+
+/**
+ * The words of an option line as Python's `shlex.split` makes them (POSIX mode): split at white space, `'…'` literal,
+ * `"…"` with `\"` and `\\` escapes, `\x` outside quotes. Null on an unclosed quote or a trailing `\`, which pip refuses.
+ */
+function shellWords(text: string): string[] | null {
+  const words: string[] = [];
+  let word: string[] = [];
+  let inWord = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i] as string;
+    if (c === " " || c === "\t" || c === "\r" || c === "\n") {
+      if (inWord) words.push(word.join(""));
+      word = [];
+      inWord = false;
+      continue;
+    }
+    inWord = true;
+    if (c === "\\") {
+      if (i + 1 >= text.length) return null;
+      word.push(text[++i] as string);
+    } else if (c === "'") {
+      const close = text.indexOf("'", i + 1);
+      if (close === -1) return null;
+      word.push(text.slice(i + 1, close));
+      i = close;
+    } else if (c === '"') {
+      let j = i + 1;
+      for (; j < text.length && text[j] !== '"'; j++) {
+        if (text[j] === "\\" && (text[j + 1] === '"' || text[j + 1] === "\\")) j++;
+        word.push(text[j] as string);
+      }
+      if (j >= text.length) return null;
+      i = j;
+    } else {
+      word.push(c);
+    }
+  }
+  if (inWord) words.push(word.join(""));
+  return words;
+}
+
+/**
+ * The index URLs and editable requirements of an option line, read the way pip's optparse reads them: several options
+ * on one line, a long option by its unique prefix, `--name=value` or `--name value`, a value attached to a short option
+ * (`-ihttps://…`) or in the next word, `--` ending the options. Null when pip would refuse the line: an option no pip
+ * version knows or one prefix of several options, a missing value, a value given to a flag, or a broken quote.
+ */
+function optionLine(text: string): { indexes: string[]; editables: string[] } | null {
+  const words = shellWords(text);
+  if (words === null) return null;
+  const read = { indexes: [] as string[], editables: [] as string[] };
+  const take = (option: PipOption, value: string) => {
+    if (value === "") return;
+    if (option.role === "index") read.indexes.push(value);
+    else if (option.role === "editable") read.editables.push(value);
+  };
+  for (let k = 0; k < words.length; k++) {
+    const word = words[k] as string;
+    if (word === "--") break;
+    if (word.startsWith("--")) {
+      const eq = word.indexOf("=");
+      const option = longOption(eq === -1 ? word : word.slice(0, eq));
+      if (option === null) return null;
+      if (!option.value) {
+        if (eq !== -1) return null;
+        continue;
+      }
+      if (eq !== -1) take(option, word.slice(eq + 1));
+      else if (k + 1 < words.length) take(option, words[++k] as string);
+      else return null;
+    } else if (word.startsWith("-") && word.length > 1) {
+      for (let c = 1; c < word.length; c++) {
+        const option = shortOption(word[c] as string);
+        if (option === null) return null;
+        if (!option.value) continue;
+        if (c + 1 < word.length) take(option, word.slice(c + 1));
+        else if (k + 1 < words.length) take(option, words[++k] as string);
+        else return null;
+        break;
+      }
+    }
+    // Any other word is a positional argument, which pip drops from an option line.
+  }
+  return read;
+}
+
+/** The text with every `\` at its start and end cut off (Python's `str.strip("\\")`). */
+function withoutBackslashes(text: string): string {
+  let start = 0;
+  let end = text.length;
+  while (start < end && text[start] === "\\") start++;
+  while (end > start && text[end - 1] === "\\") end--;
+  return text.slice(start, end);
 }
 
 /** The text of a requirements-file line before a ` #` comment. */
@@ -107,10 +272,12 @@ function withoutComment(line: string): string {
 
 /**
  * A pip requirements file: one requirement per logical line (a trailing `\` joins the next), `-e` editable
- * requirements, and the index options (`-i`, `--index-url`, `--extra-index-url`, `-f`, `--find-links`). `-r` and `-c`
- * includes are not followed (docs/LIMITS.md); per-requirement options such as `--hash` are cut off.
+ * requirements, and the index options (`-i`, `--index-url`, `--pypi-url`, `--extra-index-url`, `-f`, `--find-links`),
+ * each in every spelling pip accepts (see `optionLine`). `-r` and `-c` includes are not followed (docs/LIMITS.md);
+ * per-requirement options such as `--hash` are cut off. Null when an option line is one pip would refuse, so the file is
+ * named unread rather than judged on the lines around it.
  */
-export function parseRequirements(text: string): ParsedManifest {
+export function parseRequirements(text: string): ParsedManifest | null {
   const deps: ManifestDependency[] = [];
   const indexes: IndexOption[] = [];
   const lines = text.split("\n");
@@ -119,20 +286,26 @@ export function parseRequirements(text: string): ParsedManifest {
     // The parts of one logical line, joined once: concatenating in the loop would copy the line on every continuation.
     let part = withoutComment((lines[i] as string).replace(/\r$/, ""));
     const parts: string[] = [];
-    while (part.endsWith("\\") && i + 1 < lines.length) {
-      parts.push(part.slice(0, -1));
+    // A line that ends in `\` is joined to the next (the last line too) with every `\` at either end cut off, and with
+    // nothing between, as pip joins them: `-\` then `ihttps://…` is the option `-ihttps://…`.
+    while (part.endsWith("\\")) {
+      parts.push(withoutBackslashes(part));
+      if (i + 1 >= lines.length) {
+        part = "";
+        break;
+      }
       i++;
       part = withoutComment((lines[i] as string).replace(/\r$/, ""));
     }
     parts.push(part);
-    const t = parts.join(" ").trim();
+    const t = parts.join("").trim();
     if (t === "") continue;
     if (t.startsWith("-")) {
-      const { option, arg } = optionOf(t);
-      if (INDEX_OPTIONS.has(option) && arg !== "") {
-        indexes.push({ url: arg, line: start, allowed: isAllowedRegistryUrl(arg) });
-      } else if (EDITABLE_OPTIONS.has(option) && arg !== "") {
-        const dep = parseRequirement(arg, start, "requirements");
+      const read = optionLine(t);
+      if (read === null) return null;
+      for (const url of read.indexes) indexes.push({ url, line: start, allowed: isAllowedRegistryUrl(url) });
+      for (const editable of read.editables) {
+        const dep = parseRequirement(editable, start, "requirements");
         if (dep !== null) deps.push(dep);
       }
       continue;

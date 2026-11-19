@@ -105,6 +105,15 @@ describe("dependency readers are linear", { timeout: 120_000 }, () => {
     );
     await linear("continuations", (size) => `a==1 ${sized("\\\n ", size)}`, parseRequirements);
     await linear("spaces", (size) => `a${sized(" \t", size)}--x`, parseRequirements);
+    // CORE-108: option lines are split like shlex and every option resolved like optparse.
+    await linear(
+      "options on one line",
+      (size) => sized("--pre --ex 'https://x/' -ihttps://y/ ", size),
+      parseRequirements,
+    );
+    await linear("one long option", (size) => `--${sized("x", size)}`, parseRequirements);
+    await linear("unclosed quote", (size) => `--index-url "${sized('\\"x', size)}`, parseRequirements);
+    await linear("backslashes", (size) => `${sized("\\", size)}x\\`, parseRequirements);
   });
 
   // CORE-100: a lockfile may now be 32 MiB, so the whole path a large pnpm-lock.yaml takes through check() (both sides

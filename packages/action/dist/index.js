@@ -29755,14 +29755,136 @@ function parseRequirement(text, line, section) {
   const spec = body.startsWith("(") && body.endsWith(")") ? body.slice(1, -1).trim() : body;
   return { name, named: true, spec, section, line, kind: "registry" };
 }
-var INDEX_OPTIONS = /* @__PURE__ */ new Set(["-i", "--index-url", "--extra-index-url", "-f", "--find-links"]);
-var EDITABLE_OPTIONS = /* @__PURE__ */ new Set(["-e", "--editable"]);
-function optionOf(text) {
-  const eq = text.indexOf("=");
-  const space = text.search(/[ \t]/);
-  const cut = eq !== -1 && (space === -1 || eq < space) && text.startsWith("--") ? eq : space;
-  if (cut === -1) return { option: text, arg: "" };
-  return { option: text.slice(0, cut), arg: text.slice(cut + 1).trim() };
+var PIP_20 = 1;
+var PIP_23 = 2;
+var PIP_25 = 4;
+var PIP_26 = 8;
+var PIP_VERSIONS = [PIP_20, PIP_23, PIP_25, PIP_26];
+var EVERY_PIP = PIP_20 | PIP_23 | PIP_25 | PIP_26;
+var pipOption = (names, value, role = "other", pip = EVERY_PIP) => ({
+  short: names.filter((name) => !name.startsWith("--")),
+  long: names.filter((name) => name.startsWith("--")),
+  value,
+  role,
+  pip
+});
+var PIP_OPTIONS = [
+  pipOption(["-i", "--index-url", "--pypi-url"], true, "index"),
+  pipOption(["--extra-index-url"], true, "index"),
+  pipOption(["--no-index"], false),
+  pipOption(["-c", "--constraint"], true),
+  pipOption(["-r", "--requirement"], true),
+  pipOption(["-e", "--editable"], true, "editable"),
+  pipOption(["-f", "--find-links"], true, "index"),
+  pipOption(["--no-binary"], true),
+  pipOption(["--only-binary"], true),
+  pipOption(["--prefer-binary"], false),
+  pipOption(["--require-hashes"], false),
+  pipOption(["--no-require-hashes"], false, "other", PIP_26),
+  pipOption(["--pre"], false),
+  pipOption(["--all-releases"], true, "other", PIP_26),
+  pipOption(["--only-final"], true, "other", PIP_26),
+  pipOption(["--trusted-host"], true),
+  pipOption(["--use-feature"], true),
+  pipOption(["--install-option"], true, "other", PIP_20),
+  pipOption(["--global-option"], true, "other", PIP_20 | PIP_23),
+  pipOption(["--hash"], true),
+  pipOption(["-C", "--config-settings"], true, "other", PIP_23 | PIP_25 | PIP_26)
+];
+function longOption(name) {
+  const found = /* @__PURE__ */ new Set();
+  for (const version2 of PIP_VERSIONS) {
+    const options = PIP_OPTIONS.filter((option) => (option.pip & version2) !== 0);
+    const exact = options.find((option) => option.long.includes(name));
+    if (exact !== void 0) {
+      found.add(exact);
+      continue;
+    }
+    const matches = options.flatMap((option) => option.long.filter((long) => long.startsWith(name)).map(() => option));
+    if (matches.length === 1) found.add(matches[0]);
+  }
+  return found.size === 1 ? [...found][0] : null;
+}
+var shortOption = (letter) => PIP_OPTIONS.find((option) => option.short.includes(`-${letter}`)) ?? null;
+function shellWords(text) {
+  const words = [];
+  let word = [];
+  let inWord = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === " " || c === "	" || c === "\r" || c === "\n") {
+      if (inWord) words.push(word.join(""));
+      word = [];
+      inWord = false;
+      continue;
+    }
+    inWord = true;
+    if (c === "\\") {
+      if (i + 1 >= text.length) return null;
+      word.push(text[++i]);
+    } else if (c === "'") {
+      const close = text.indexOf("'", i + 1);
+      if (close === -1) return null;
+      word.push(text.slice(i + 1, close));
+      i = close;
+    } else if (c === '"') {
+      let j = i + 1;
+      for (; j < text.length && text[j] !== '"'; j++) {
+        if (text[j] === "\\" && (text[j + 1] === '"' || text[j + 1] === "\\")) j++;
+        word.push(text[j]);
+      }
+      if (j >= text.length) return null;
+      i = j;
+    } else {
+      word.push(c);
+    }
+  }
+  if (inWord) words.push(word.join(""));
+  return words;
+}
+function optionLine(text) {
+  const words = shellWords(text);
+  if (words === null) return null;
+  const read = { indexes: [], editables: [] };
+  const take = (option, value) => {
+    if (value === "") return;
+    if (option.role === "index") read.indexes.push(value);
+    else if (option.role === "editable") read.editables.push(value);
+  };
+  for (let k = 0; k < words.length; k++) {
+    const word = words[k];
+    if (word === "--") break;
+    if (word.startsWith("--")) {
+      const eq = word.indexOf("=");
+      const option = longOption(eq === -1 ? word : word.slice(0, eq));
+      if (option === null) return null;
+      if (!option.value) {
+        if (eq !== -1) return null;
+        continue;
+      }
+      if (eq !== -1) take(option, word.slice(eq + 1));
+      else if (k + 1 < words.length) take(option, words[++k]);
+      else return null;
+    } else if (word.startsWith("-") && word.length > 1) {
+      for (let c = 1; c < word.length; c++) {
+        const option = shortOption(word[c]);
+        if (option === null) return null;
+        if (!option.value) continue;
+        if (c + 1 < word.length) take(option, word.slice(c + 1));
+        else if (k + 1 < words.length) take(option, words[++k]);
+        else return null;
+        break;
+      }
+    }
+  }
+  return read;
+}
+function withoutBackslashes(text) {
+  let start = 0;
+  let end = text.length;
+  while (start < end && text[start] === "\\") start++;
+  while (end > start && text[end - 1] === "\\") end--;
+  return text.slice(start, end);
 }
 function withoutComment(line) {
   if (line.trimStart().startsWith("#")) return "";
@@ -29779,20 +29901,24 @@ function parseRequirements(text) {
     const start = i + 1;
     let part = withoutComment(lines[i].replace(/\r$/, ""));
     const parts = [];
-    while (part.endsWith("\\") && i + 1 < lines.length) {
-      parts.push(part.slice(0, -1));
+    while (part.endsWith("\\")) {
+      parts.push(withoutBackslashes(part));
+      if (i + 1 >= lines.length) {
+        part = "";
+        break;
+      }
       i++;
       part = withoutComment(lines[i].replace(/\r$/, ""));
     }
     parts.push(part);
-    const t = parts.join(" ").trim();
+    const t = parts.join("").trim();
     if (t === "") continue;
     if (t.startsWith("-")) {
-      const { option, arg } = optionOf(t);
-      if (INDEX_OPTIONS.has(option) && arg !== "") {
-        indexes.push({ url: arg, line: start, allowed: isAllowedRegistryUrl(arg) });
-      } else if (EDITABLE_OPTIONS.has(option) && arg !== "") {
-        const dep2 = parseRequirement(arg, start, "requirements");
+      const read = optionLine(t);
+      if (read === null) return null;
+      for (const url of read.indexes) indexes.push({ url, line: start, allowed: isAllowedRegistryUrl(url) });
+      for (const editable of read.editables) {
+        const dep2 = parseRequirement(editable, start, "requirements");
         if (dep2 !== null) deps.push(dep2);
       }
       continue;
