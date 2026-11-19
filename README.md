@@ -159,6 +159,7 @@ The dependencies a pull request adds or changes in npm and Python manifests and 
 (`overrides`, `resolutions`, `pnpm.overrides`) included, are checked for lockfile drift (D04) and sources outside the
 public registries (D05). With `dependencies: lookup` the Action also looks each
 added package up for one that does not exist, is days old or is barely downloaded (D01 to D03).
+What D04 and D05 do not read is in [What dependency safety does not read](docs/LIMITS.md#what-dependency-safety-does-not-read).
 [Dependency safety](docs/checks/dependencies.md).
 
 ### Org policy

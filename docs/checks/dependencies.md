@@ -70,4 +70,4 @@ and the cap it went past. It stays a warning only when git could not read that s
 a shallow clone): the runner's doing, not the pull request's. So a lockfile the check could not read never passes where
 the same lockfile read would block. With `dependencies: never` nothing is read and there is no message. The comment shows a **📦 Dependencies** section when something was added or changed. Messages name counts and
 `path:line` only. A Dependabot bump that changes the manifest and the lockfile together, and a lockfile-only refresh
-of transitive versions, give no finding. What it misses is in [docs/LIMITS.md](../LIMITS.md#dependency-safety).
+of transitive versions, give no finding. What D04 and D05 do not read is in [What dependency safety does not read](../LIMITS.md#what-dependency-safety-does-not-read).

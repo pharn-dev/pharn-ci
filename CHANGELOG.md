@@ -11,6 +11,8 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- Docs: `docs/LIMITS.md` lists, in one place, the files and spellings dependency safety (D04 and D05) still does not
+  read (CORE-117). The spellings closed by the lockfile and manifest readers stay described as read.
 - Dependency safety judges a `uv.lock` package's sdist and wheel URLs (CORE-9 R4.8). D05 judged a uv package by its
   `source` alone, so a package that kept `source = { registry = "https://pypi.org/simple" }` and pointed
   `wheels[].url` or `sdist.url` at another host passed, and `uv sync --frozen` downloads from those URLs. Now the
