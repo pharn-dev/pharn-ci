@@ -1,0 +1,14 @@
+app.py
+local/uv.lock
+private/uv.lock
+private-wheel-elsewhere/uv.lock
+pypi/uv.lock
+pypi-dotted/uv.lock
+pypi-tables/uv.lock
+sdist-evil/uv.lock
+sdist-evil-dotted/uv.lock
+sdist-evil-tables/uv.lock
+url-source/uv.lock
+url-source-pypi/uv.lock
+wheel-evil/uv.lock
+wheel-evil-tables/uv.lock

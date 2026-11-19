@@ -1476,6 +1476,16 @@ comes from and how new it is, not what it does. What it misses:
   (never on an allowed host, since it has no `//`), `@scope/x` and a Windows path a local path. A semver range and a
   dist-tag hold neither. `jsr:` installs from `npm.jsr.io`, so it is D05 unless that host is on the allowed list; the
   lockfile's `npm.jsr.io` tarball URLs are judged the same way.
+- **uv.lock file URLs.** A uv package's `sdist` and `wheels` URLs are judged with its source: for a registry package
+  each must be https, with no user name, password or port, on the registry's own host, on a file host D05 knows for
+  that registry (only PyPI's `files.pythonhosted.org`) or on an allowed host. So a PyPI package's wheel on
+  `registry.npmjs.org` is D05 although that host is allowed for npm, and a private registry that serves its files from
+  a second host needs that host allowed too. One finding per package, naming the first URL off those hosts; an
+  off-registry source is that finding already. A `url` source's artifacts are judged by the source URL's host, though
+  uv 0.13.9 downloads from the source URL itself. A git, path, directory, editable or virtual package is judged by its
+  source only (its artifacts must still be the shape uv writes). An artifact URL already at the merge base is not
+  judged again. `poetry.lock` records no file URLs (its `files` hold file names and hashes; poetry downloads from the
+  source or its configured index), so there is nothing more to judge there.
 - **Allowed hosts are exact.** `registry.npmjs.org`, `registry.yarnpkg.com`, `pypi.org` and `files.pythonhosted.org`,
   and the hosts a run allows, https only, no user name, password or port. `http://registry.npmjs.org`, a CDN mirror or a
   regional registry is D05 unless its own host is allowed. An allowed host matches by its full name, case-insensitively:

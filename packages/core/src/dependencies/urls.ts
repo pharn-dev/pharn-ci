@@ -41,3 +41,23 @@ export function isAllowedRegistryUrl(url: string, hosts: readonly string[] = ALL
   if (parts === null) return false;
   return parts.scheme === "https" && !parts.userinfo && !parts.port && hosts.includes(parts.host);
 }
+
+/**
+ * The hosts an allowed registry serves its package files from, by registry host, besides the registry host itself:
+ * PyPI's simple index (`pypi.org`) links every sdist and wheel to `files.pythonhosted.org`. A lockfile that records a
+ * file URL for a package (uv.lock's `sdist` and `wheels`) may point it at these hosts and no other public one.
+ */
+export const REGISTRY_FILE_HOSTS: ReadonlyMap<string, readonly string[]> = new Map([
+  ["pypi.org", ["files.pythonhosted.org"]],
+]);
+
+/**
+ * The hosts a package resolved from `registryUrl` may download its files from: the registry URL's own host and that
+ * registry's file hosts (`REGISTRY_FILE_HOSTS`); empty when the URL names no host. A file URL is judged on these with
+ * `isAllowedRegistryUrl`, so it must still be https with no user name, password or port.
+ */
+export function artifactHosts(registryUrl: string): string[] {
+  const host = urlParts(registryUrl.trim())?.host ?? "";
+  if (host === "") return [];
+  return [host, ...(REGISTRY_FILE_HOSTS.get(host) ?? [])];
+}

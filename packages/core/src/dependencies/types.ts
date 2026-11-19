@@ -90,6 +90,19 @@ export type LockSource =
   | { kind: "file"; text: string }
   | { kind: "link" };
 
+/**
+ * A file URL a lockfile records for a package, which the package manager downloads it from (uv.lock's `sdist` and
+ * `wheels`). `allowed`: https on the host of the package's registry or source URL, or on a file host of that registry
+ * (`REGISTRY_FILE_HOSTS`), with no user name, password or port. A host the run allows is applied in check.ts.
+ */
+export interface LockArtifact {
+  kind: "sdist" | "wheel";
+  url: string;
+  allowed: boolean;
+  /** 1-based line of the URL. */
+  line: number;
+}
+
 /** One resolved package of a lockfile. */
 export interface LockEntry {
   /** The entry's key: its path (package-lock.json), package key (pnpm), header (yarn) or name@version (Python). */
@@ -99,6 +112,11 @@ export interface LockEntry {
   /** The integrity or checksum as written, or null. */
   integrity: string | null;
   source: LockSource;
+  /**
+   * uv.lock only, for a registry or URL source: the `url` of its `sdist` and of each `wheels` item, in file order.
+   * Absent for every other format and source; D05 judges them with the source (CORE-9 R4.8).
+   */
+  artifacts?: LockArtifact[];
   line: number;
 }
 

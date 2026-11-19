@@ -18,6 +18,7 @@ import type {
   DependencyEcosystem,
   DependencySignal,
   DependencySignalId,
+  LockArtifact,
   LockEntry,
   ManifestDependency,
   ParsedLockfile,
@@ -93,6 +94,12 @@ const KIND_WORDS: Readonly<Record<Exclude<SourceKind, "registry">, string>> = {
   git: "a git repository",
   url: "a URL outside the allowed registries",
   file: "a local file",
+};
+
+/** The D05 words of a uv.lock file URL off the registry of a package whose source is on one (CORE-9 R4.8). */
+const ARTIFACT_WORDS: Readonly<Record<LockArtifact["kind"], string>> = {
+  sdist: "an sdist URL outside the allowed registries",
+  wheel: "a wheel URL outside the allowed registries",
 };
 
 /** The D05 words of a `jsr:` spec: JSR is a registry, but not one the run allows unless `npm.jsr.io` is an allowed host. */
@@ -280,18 +287,31 @@ function analyze(
     analysis.checked += changes.added.length + changes.changed.length;
     for (const entry of changes.sourceNew) {
       const source = entry.source;
-      if (source.kind === "url" && !source.allowed && onAllowedHost(source.text)) {
-        if (entry.name !== null)
+      const privateHost = source.kind === "url" && !source.allowed && onAllowedHost(source.text);
+      const off =
+        !privateHost && ((source.kind === "url" && !source.allowed) || source.kind === "git" || source.kind === "file")
+          ? (source.kind as "url" | "git" | "file")
+          : null;
+      // A source on a registry still downloads from the file URLs a uv.lock records: the first one off the registry's
+      // hosts and the allowed hosts is the package's one finding. An off-registry source is that finding already.
+      const artifact =
+        off === null ? entry.artifacts?.find((file) => !file.allowed && !onAllowedHost(file.url)) : undefined;
+      if (off === null && artifact === undefined) {
+        if (privateHost && entry.name !== null)
           analysis.offRegistry.add(`${eco}:${eco === "pypi" ? normalizePypiName(entry.name) : entry.name}`);
         continue;
       }
-      const off =
-        (source.kind === "url" && !source.allowed) || source.kind === "git" || source.kind === "file"
-          ? (source.kind as "url" | "git" | "file")
-          : null;
-      if (off === null) continue;
       analysis.signals.push(
-        signal("D05", eco, path, entry.line, `resolved from ${KIND_WORDS[off]}`, entryNames(eco, entry)),
+        artifact === undefined
+          ? signal("D05", eco, path, entry.line, `resolved from ${KIND_WORDS[off ?? "url"]}`, entryNames(eco, entry))
+          : signal(
+              "D05",
+              eco,
+              path,
+              artifact.line,
+              `resolved from ${ARTIFACT_WORDS[artifact.kind]}`,
+              entryNames(eco, entry),
+            ),
       );
       if (entry.name !== null)
         analysis.offRegistry.add(`${eco}:${eco === "pypi" ? normalizePypiName(entry.name) : entry.name}`);

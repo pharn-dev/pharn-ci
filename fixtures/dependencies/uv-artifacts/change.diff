@@ -1,0 +1,396 @@
+diff --git a/local/uv.lock b/local/uv.lock
+new file mode 100644
+index 0000000..1000001
+--- /dev/null
++++ b/local/uv.lock
+@@ -0,0 +1,22 @@
++version = 1
++revision = 3
++requires-python = ">=3.11"
++
++[manifest]
++members = ["app", "member"]
++
++[[package]]
++name = "app"
++version = "0.1.0"
++source = { editable = "." }
++dependencies = [
++    { name = "member" },
++]
++
++[package.metadata]
++requires-dist = [{ name = "member", editable = "packages/member" }]
++
++[[package]]
++name = "member"
++version = "0.1.0"
++source = { virtual = "packages/member" }
+diff --git a/private/uv.lock b/private/uv.lock
+new file mode 100644
+index 0000000..1000002
+--- /dev/null
++++ b/private/uv.lock
+@@ -0,0 +1,23 @@
++version = 1
++revision = 3
++requires-python = ">=3.11"
++
++[[package]]
++name = "app"
++version = "0.1.0"
++source = { virtual = "." }
++dependencies = [
++    { name = "certifi" },
++]
++
++[package.metadata]
++requires-dist = [{ name = "certifi", specifier = "==2024.7.4" }]
++
++[[package]]
++name = "certifi"
++version = "2024.7.4"
++source = { registry = "https://pypi.internal.example.com/simple" }
++sdist = { url = "https://pypi.internal.example.com/files/certifi-2024.7.4.tar.gz", hash = "sha256:5a1e7645bc0ec61a09e26c36f6106dd4cf40c6db3a1fb6352b0244e7fb057c7b", size = 164065 }
++wheels = [
++    { url = "https://pypi.internal.example.com/files/certifi-2024.7.4-py3-none-any.whl", hash = "sha256:c198e21b1289c2ab85ee4e67bb4b4ef3ead0892059901a8d5b622f24a1101e90", size = 162960 },
++]
+diff --git a/private-wheel-elsewhere/uv.lock b/private-wheel-elsewhere/uv.lock
+new file mode 100644
+index 0000000..1000003
+--- /dev/null
++++ b/private-wheel-elsewhere/uv.lock
+@@ -0,0 +1,23 @@
++version = 1
++revision = 3
++requires-python = ">=3.11"
++
++[[package]]
++name = "app"
++version = "0.1.0"
++source = { virtual = "." }
++dependencies = [
++    { name = "certifi" },
++]
++
++[package.metadata]
++requires-dist = [{ name = "certifi", specifier = "==2024.7.4" }]
++
++[[package]]
++name = "certifi"
++version = "2024.7.4"
++source = { registry = "https://pypi.internal.example.com/simple" }
++sdist = { url = "https://pypi.internal.example.com/files/certifi-2024.7.4.tar.gz", hash = "sha256:5a1e7645bc0ec61a09e26c36f6106dd4cf40c6db3a1fb6352b0244e7fb057c7b", size = 164065 }
++wheels = [
++    { url = "https://files.internal.example.com/certifi-2024.7.4-py3-none-any.whl", hash = "sha256:c198e21b1289c2ab85ee4e67bb4b4ef3ead0892059901a8d5b622f24a1101e90", size = 162960 },
++]
+diff --git a/pypi/uv.lock b/pypi/uv.lock
+new file mode 100644
+index 0000000..1000004
+--- /dev/null
++++ b/pypi/uv.lock
+@@ -0,0 +1,23 @@
++version = 1
++revision = 3
++requires-python = ">=3.11"
++
++[[package]]
++name = "app"
++version = "0.1.0"
++source = { virtual = "." }
++dependencies = [
++    { name = "certifi" },
++]
++
++[package.metadata]
++requires-dist = [{ name = "certifi", specifier = "==2024.7.4" }]
++
++[[package]]
++name = "certifi"
++version = "2024.7.4"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/c2/02/certifi-2024.7.4.tar.gz", hash = "sha256:5a1e7645bc0ec61a09e26c36f6106dd4cf40c6db3a1fb6352b0244e7fb057c7b", size = 164065 }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/1c/d5/certifi-2024.7.4-py3-none-any.whl", hash = "sha256:c198e21b1289c2ab85ee4e67bb4b4ef3ead0892059901a8d5b622f24a1101e90", size = 162960 },
++]
+diff --git a/pypi-dotted/uv.lock b/pypi-dotted/uv.lock
+new file mode 100644
+index 0000000..1000005
+--- /dev/null
++++ b/pypi-dotted/uv.lock
+@@ -0,0 +1,25 @@
++version = 1
++revision = 3
++requires-python = ">=3.11"
++
++[[package]]
++name = "app"
++version = "0.1.0"
++source = { virtual = "." }
++dependencies = [
++    { name = "certifi" },
++]
++
++[package.metadata]
++requires-dist = [{ name = "certifi", specifier = "==2024.7.4" }]
++
++[[package]]
++name = "certifi"
++version = "2024.7.4"
++source = { registry = "https://pypi.org/simple" }
++sdist.url = "https://files.pythonhosted.org/packages/c2/02/certifi-2024.7.4.tar.gz"
++sdist.hash = "sha256:5a1e7645bc0ec61a09e26c36f6106dd4cf40c6db3a1fb6352b0244e7fb057c7b"
++sdist.size = 164065
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/1c/d5/certifi-2024.7.4-py3-none-any.whl", hash = "sha256:c198e21b1289c2ab85ee4e67bb4b4ef3ead0892059901a8d5b622f24a1101e90", size = 162960 },
++]
+diff --git a/pypi-tables/uv.lock b/pypi-tables/uv.lock
+new file mode 100644
+index 0000000..1000006
+--- /dev/null
++++ b/pypi-tables/uv.lock
+@@ -0,0 +1,29 @@
++version = 1
++revision = 3
++requires-python = ">=3.11"
++
++[[package]]
++name = "app"
++version = "0.1.0"
++source = { virtual = "." }
++dependencies = [
++    { name = "certifi" },
++]
++
++[package.metadata]
++requires-dist = [{ name = "certifi", specifier = "==2024.7.4" }]
++
++[[package]]
++name = "certifi"
++version = "2024.7.4"
++source = { registry = "https://pypi.org/simple" }
++
++[package.sdist]
++url = "https://files.pythonhosted.org/packages/c2/02/certifi-2024.7.4.tar.gz"
++hash = "sha256:5a1e7645bc0ec61a09e26c36f6106dd4cf40c6db3a1fb6352b0244e7fb057c7b"
++size = 164065
++
++[[package.wheels]]
++url = "https://files.pythonhosted.org/packages/1c/d5/certifi-2024.7.4-py3-none-any.whl"
++hash = "sha256:c198e21b1289c2ab85ee4e67bb4b4ef3ead0892059901a8d5b622f24a1101e90"
++size = 162960
+diff --git a/sdist-evil/uv.lock b/sdist-evil/uv.lock
+new file mode 100644
+index 0000000..1000007
+--- /dev/null
++++ b/sdist-evil/uv.lock
+@@ -0,0 +1,23 @@
++version = 1
++revision = 3
++requires-python = ">=3.11"
++
++[[package]]
++name = "app"
++version = "0.1.0"
++source = { virtual = "." }
++dependencies = [
++    { name = "certifi" },
++]
++
++[package.metadata]
++requires-dist = [{ name = "certifi", specifier = "==2024.7.4" }]
++
++[[package]]
++name = "certifi"
++version = "2024.7.4"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://evil.example/certifi-2024.7.4.tar.gz", hash = "sha256:5a1e7645bc0ec61a09e26c36f6106dd4cf40c6db3a1fb6352b0244e7fb057c7b", size = 164065 }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/1c/d5/certifi-2024.7.4-py3-none-any.whl", hash = "sha256:c198e21b1289c2ab85ee4e67bb4b4ef3ead0892059901a8d5b622f24a1101e90", size = 162960 },
++]
+diff --git a/sdist-evil-dotted/uv.lock b/sdist-evil-dotted/uv.lock
+new file mode 100644
+index 0000000..1000008
+--- /dev/null
++++ b/sdist-evil-dotted/uv.lock
+@@ -0,0 +1,25 @@
++version = 1
++revision = 3
++requires-python = ">=3.11"
++
++[[package]]
++name = "app"
++version = "0.1.0"
++source = { virtual = "." }
++dependencies = [
++    { name = "certifi" },
++]
++
++[package.metadata]
++requires-dist = [{ name = "certifi", specifier = "==2024.7.4" }]
++
++[[package]]
++name = "certifi"
++version = "2024.7.4"
++source = { registry = "https://pypi.org/simple" }
++sdist.url = "https://evil.example/certifi-2024.7.4.tar.gz"
++sdist.hash = "sha256:5a1e7645bc0ec61a09e26c36f6106dd4cf40c6db3a1fb6352b0244e7fb057c7b"
++sdist.size = 164065
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/1c/d5/certifi-2024.7.4-py3-none-any.whl", hash = "sha256:c198e21b1289c2ab85ee4e67bb4b4ef3ead0892059901a8d5b622f24a1101e90", size = 162960 },
++]
+diff --git a/sdist-evil-tables/uv.lock b/sdist-evil-tables/uv.lock
+new file mode 100644
+index 0000000..1000009
+--- /dev/null
++++ b/sdist-evil-tables/uv.lock
+@@ -0,0 +1,29 @@
++version = 1
++revision = 3
++requires-python = ">=3.11"
++
++[[package]]
++name = "app"
++version = "0.1.0"
++source = { virtual = "." }
++dependencies = [
++    { name = "certifi" },
++]
++
++[package.metadata]
++requires-dist = [{ name = "certifi", specifier = "==2024.7.4" }]
++
++[[package]]
++name = "certifi"
++version = "2024.7.4"
++source = { registry = "https://pypi.org/simple" }
++
++[package.sdist]
++url = "https://evil.example/certifi-2024.7.4.tar.gz"
++hash = "sha256:5a1e7645bc0ec61a09e26c36f6106dd4cf40c6db3a1fb6352b0244e7fb057c7b"
++size = 164065
++
++[[package.wheels]]
++url = "https://files.pythonhosted.org/packages/1c/d5/certifi-2024.7.4-py3-none-any.whl"
++hash = "sha256:c198e21b1289c2ab85ee4e67bb4b4ef3ead0892059901a8d5b622f24a1101e90"
++size = 162960
+diff --git a/url-source/uv.lock b/url-source/uv.lock
+new file mode 100644
+index 0000000..1000010
+--- /dev/null
++++ b/url-source/uv.lock
+@@ -0,0 +1,22 @@
++version = 1
++revision = 3
++requires-python = ">=3.11"
++
++[[package]]
++name = "app"
++version = "0.1.0"
++source = { virtual = "." }
++dependencies = [
++    { name = "certifi" },
++]
++
++[package.metadata]
++requires-dist = [{ name = "certifi", specifier = "==2024.7.4" }]
++
++[[package]]
++name = "certifi"
++version = "2024.7.4"
++source = { url = "https://evil.example/certifi-2024.7.4-py3-none-any.whl" }
++wheels = [
++    { url = "https://evil.example/certifi-2024.7.4-py3-none-any.whl", hash = "sha256:c198e21b1289c2ab85ee4e67bb4b4ef3ead0892059901a8d5b622f24a1101e90" },
++]
+diff --git a/url-source-pypi/uv.lock b/url-source-pypi/uv.lock
+new file mode 100644
+index 0000000..1000011
+--- /dev/null
++++ b/url-source-pypi/uv.lock
+@@ -0,0 +1,22 @@
++version = 1
++revision = 3
++requires-python = ">=3.11"
++
++[[package]]
++name = "app"
++version = "0.1.0"
++source = { virtual = "." }
++dependencies = [
++    { name = "certifi" },
++]
++
++[package.metadata]
++requires-dist = [{ name = "certifi", specifier = "==2024.7.4" }]
++
++[[package]]
++name = "certifi"
++version = "2024.7.4"
++source = { url = "https://files.pythonhosted.org/packages/1c/d5/certifi-2024.7.4-py3-none-any.whl" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/1c/d5/certifi-2024.7.4-py3-none-any.whl", hash = "sha256:c198e21b1289c2ab85ee4e67bb4b4ef3ead0892059901a8d5b622f24a1101e90" },
++]
+diff --git a/wheel-evil/uv.lock b/wheel-evil/uv.lock
+new file mode 100644
+index 0000000..1000012
+--- /dev/null
++++ b/wheel-evil/uv.lock
+@@ -0,0 +1,23 @@
++version = 1
++revision = 3
++requires-python = ">=3.11"
++
++[[package]]
++name = "app"
++version = "0.1.0"
++source = { virtual = "." }
++dependencies = [
++    { name = "certifi" },
++]
++
++[package.metadata]
++requires-dist = [{ name = "certifi", specifier = "==2024.7.4" }]
++
++[[package]]
++name = "certifi"
++version = "2024.7.4"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/c2/02/certifi-2024.7.4.tar.gz", hash = "sha256:5a1e7645bc0ec61a09e26c36f6106dd4cf40c6db3a1fb6352b0244e7fb057c7b", size = 164065 }
++wheels = [
++    { url = "https://evil.example/certifi-2024.7.4-py3-none-any.whl", hash = "sha256:c198e21b1289c2ab85ee4e67bb4b4ef3ead0892059901a8d5b622f24a1101e90", size = 162960 },
++]
+diff --git a/wheel-evil-tables/uv.lock b/wheel-evil-tables/uv.lock
+new file mode 100644
+index 0000000..1000013
+--- /dev/null
++++ b/wheel-evil-tables/uv.lock
+@@ -0,0 +1,29 @@
++version = 1
++revision = 3
++requires-python = ">=3.11"
++
++[[package]]
++name = "app"
++version = "0.1.0"
++source = { virtual = "." }
++dependencies = [
++    { name = "certifi" },
++]
++
++[package.metadata]
++requires-dist = [{ name = "certifi", specifier = "==2024.7.4" }]
++
++[[package]]
++name = "certifi"
++version = "2024.7.4"
++source = { registry = "https://pypi.org/simple" }
++
++[package.sdist]
++url = "https://files.pythonhosted.org/packages/c2/02/certifi-2024.7.4.tar.gz"
++hash = "sha256:5a1e7645bc0ec61a09e26c36f6106dd4cf40c6db3a1fb6352b0244e7fb057c7b"
++size = 164065
++
++[[package.wheels]]
++url = "https://evil.example/certifi-2024.7.4-py3-none-any.whl"
++hash = "sha256:c198e21b1289c2ab85ee4e67bb4b4ef3ead0892059901a8d5b622f24a1101e90"
++size = 162960

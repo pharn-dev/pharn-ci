@@ -28521,7 +28521,13 @@ function manifestChanges(base, head) {
   const removed = [...before.entries()].filter(([key]) => !seen.has(key)).map(([, dep]) => dep);
   return { added, changed, removed };
 }
-var sourceText = (source) => "text" in source ? `${source.kind}:${source.text}` : source.kind;
+var sourceText = (entry) => {
+  const source = entry.source;
+  const text = "text" in source ? `${source.kind}:${source.text}` : source.kind;
+  const artifacts = (entry.artifacts ?? []).map((artifact) => `
+${artifact.kind}:${artifact.url}`).join("");
+  return `${text}${artifacts}`;
+};
 function algorithms(integrity) {
   return integrity.trim().split(/\s+/).map((part) => {
     const dash = part.indexOf("-");
@@ -28542,7 +28548,7 @@ function lockChanges(base, head) {
       out.sourceNew.push(entry);
       continue;
     }
-    const sourceMoved = sourceText(old.source) !== sourceText(entry.source);
+    const sourceMoved = sourceText(old) !== sourceText(entry);
     if (old.version !== entry.version || old.integrity !== entry.integrity || sourceMoved) out.changed.push(entry);
     if (sourceMoved) out.sourceNew.push(entry);
     if (old.version !== null && old.version === entry.version && old.integrity !== null && entry.integrity !== null && old.integrity !== entry.integrity && algorithms(old.integrity) === algorithms(entry.integrity)) {
@@ -29098,6 +29104,14 @@ function isAllowedRegistryUrl(url, hosts = ALLOWED_RESOLVE_HOSTS) {
   const parts = urlParts(url.trim());
   if (parts === null) return false;
   return parts.scheme === "https" && !parts.userinfo && !parts.port && hosts.includes(parts.host);
+}
+var REGISTRY_FILE_HOSTS = /* @__PURE__ */ new Map([
+  ["pypi.org", ["files.pythonhosted.org"]]
+]);
+function artifactHosts(registryUrl) {
+  const host = urlParts(registryUrl.trim())?.host ?? "";
+  if (host === "") return [];
+  return [host, ...REGISTRY_FILE_HOSTS.get(host) ?? []];
 }
 
 // ../core/src/dependencies/specs.ts
@@ -29999,6 +30013,7 @@ function valueAt(table, path) {
 }
 
 // ../core/src/dependencies/pythonLock.ts
+var PYPI_INDEX = "https://pypi.org/simple";
 function stringIn(entries, key) {
   const value = entries?.get(key);
   return value !== void 0 && value.type === "string" ? value.value : null;
@@ -30013,6 +30028,24 @@ function uvSource(entries) {
   const path = stringIn(entries, "path") ?? stringIn(entries, "directory");
   if (path !== null) return { kind: "file", text: path };
   return { kind: "link" };
+}
+function uvArtifacts(entries, hosts) {
+  const artifacts = [];
+  const add = (kind, table) => {
+    if (table.type !== "table") return false;
+    const url = table.entries.get("url");
+    if (url === void 0) return true;
+    if (url.type !== "string") return false;
+    artifacts.push({ kind, url: url.value, allowed: isAllowedRegistryUrl(url.value, hosts), line: url.line });
+    return true;
+  };
+  const sdist = entries.get("sdist");
+  if (sdist !== void 0 && !add("sdist", sdist)) return null;
+  const wheels = entries.get("wheels");
+  if (wheels === void 0) return artifacts;
+  if (wheels.type !== "array") return null;
+  for (const wheel of wheels.items) if (!add("wheel", wheel)) return null;
+  return artifacts;
 }
 function poetrySource(entries) {
   const type = stringIn(entries, "type");
@@ -30033,6 +30066,14 @@ function parsePythonLock(text, format) {
     if (item.type !== "table") return null;
     const source = item.entries.get("source");
     if (source !== void 0 && source.type !== "table") return null;
+    const lockSource = source === void 0 ? { kind: "registry" } : format === "uv" ? uvSource(source.entries) : poetrySource(source.entries);
+    let artifacts;
+    if (format === "uv") {
+      const from = lockSource.kind === "registry" ? PYPI_INDEX : lockSource.kind === "url" ? lockSource.text : null;
+      const read = uvArtifacts(item.entries, from === null ? [] : artifactHosts(from));
+      if (read === null) return null;
+      if (from !== null) artifacts = read;
+    }
     const rawName = stringIn(item.entries, "name");
     if (rawName === null) continue;
     const version2 = stringIn(item.entries, "version");
@@ -30043,7 +30084,8 @@ function parsePythonLock(text, format) {
       name: rawName,
       version: version2,
       integrity: null,
-      source: source === void 0 ? { kind: "registry" } : format === "uv" ? uvSource(source.entries) : poetrySource(source.entries),
+      source: lockSource,
+      ...artifacts === void 0 ? {} : { artifacts },
       line: item.line
     });
   }
@@ -30519,6 +30561,10 @@ var KIND_WORDS = {
   url: "a URL outside the allowed registries",
   file: "a local file"
 };
+var ARTIFACT_WORDS = {
+  sdist: "an sdist URL outside the allowed registries",
+  wheel: "a wheel URL outside the allowed registries"
+};
 var JSR_WORDS = "the JSR registry, outside the allowed registries";
 function nameFields(ecosystem, name, version2) {
   return {
@@ -30656,15 +30702,23 @@ function analyze(diff, sources, repoFiles, allowedHosts) {
     analysis.checked += changes.added.length + changes.changed.length;
     for (const entry of changes.sourceNew) {
       const source = entry.source;
-      if (source.kind === "url" && !source.allowed && onAllowedHost(source.text)) {
-        if (entry.name !== null)
+      const privateHost = source.kind === "url" && !source.allowed && onAllowedHost(source.text);
+      const off = !privateHost && (source.kind === "url" && !source.allowed || source.kind === "git" || source.kind === "file") ? source.kind : null;
+      const artifact = off === null ? entry.artifacts?.find((file) => !file.allowed && !onAllowedHost(file.url)) : void 0;
+      if (off === null && artifact === void 0) {
+        if (privateHost && entry.name !== null)
           analysis.offRegistry.add(`${eco}:${eco === "pypi" ? normalizePypiName(entry.name) : entry.name}`);
         continue;
       }
-      const off = source.kind === "url" && !source.allowed || source.kind === "git" || source.kind === "file" ? source.kind : null;
-      if (off === null) continue;
       analysis.signals.push(
-        signal("D05", eco, path, entry.line, `resolved from ${KIND_WORDS[off]}`, entryNames(eco, entry))
+        artifact === void 0 ? signal("D05", eco, path, entry.line, `resolved from ${KIND_WORDS[off ?? "url"]}`, entryNames(eco, entry)) : signal(
+          "D05",
+          eco,
+          path,
+          artifact.line,
+          `resolved from ${ARTIFACT_WORDS[artifact.kind]}`,
+          entryNames(eco, entry)
+        )
       );
       if (entry.name !== null)
         analysis.offRegistry.add(`${eco}:${eco === "pypi" ? normalizePypiName(entry.name) : entry.name}`);

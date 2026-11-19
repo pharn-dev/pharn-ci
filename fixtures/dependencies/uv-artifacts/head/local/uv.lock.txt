@@ -1,0 +1,22 @@
+version = 1
+revision = 3
+requires-python = ">=3.11"
+
+[manifest]
+members = ["app", "member"]
+
+[[package]]
+name = "app"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "member" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "member", editable = "packages/member" }]
+
+[[package]]
+name = "member"
+version = "0.1.0"
+source = { virtual = "packages/member" }

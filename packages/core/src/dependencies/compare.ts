@@ -30,7 +30,13 @@ export function manifestChanges(base: ParsedManifest | null, head: ParsedManifes
   return { added, changed, removed };
 }
 
-const sourceText = (source: LockSource) => ("text" in source ? `${source.kind}:${source.text}` : source.kind);
+/** Where an entry is downloaded from: its source, and the file URLs a uv.lock records for it (CORE-9 R4.8). */
+const sourceText = (entry: LockEntry) => {
+  const source: LockSource = entry.source;
+  const text = "text" in source ? `${source.kind}:${source.text}` : source.kind;
+  const artifacts = (entry.artifacts ?? []).map((artifact) => `\n${artifact.kind}:${artifact.url}`).join("");
+  return `${text}${artifacts}`;
+};
 
 /** What a pull request changed in one lockfile. */
 export interface LockChanges {
@@ -38,7 +44,7 @@ export interface LockChanges {
   added: LockEntry[];
   /** Entries whose key was there and whose version, integrity or source changed. */
   changed: LockEntry[];
-  /** Entries whose source changed (a subset of `changed`) or that are new: the ones D05 judges. */
+  /** Entries whose source or uv artifact URLs changed (a subset of `changed`) or that are new: the ones D05 judges. */
   sourceNew: LockEntry[];
   /** Entries with the same key and version and an integrity of the same algorithm that differs: D04. */
   integrityChanged: LockEntry[];
@@ -72,7 +78,7 @@ export function lockChanges(base: ParsedLockfile | null, head: ParsedLockfile): 
       out.sourceNew.push(entry);
       continue;
     }
-    const sourceMoved = sourceText(old.source) !== sourceText(entry.source);
+    const sourceMoved = sourceText(old) !== sourceText(entry);
     if (old.version !== entry.version || old.integrity !== entry.integrity || sourceMoved) out.changed.push(entry);
     if (sourceMoved) out.sourceNew.push(entry);
     if (

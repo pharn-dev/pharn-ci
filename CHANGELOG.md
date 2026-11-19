@@ -11,6 +11,14 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- Dependency safety judges a `uv.lock` package's sdist and wheel URLs (CORE-9 R4.8). D05 judged a uv package by its
+  `source` alone, so a package that kept `source = { registry = "https://pypi.org/simple" }` and pointed
+  `wheels[].url` or `sdist.url` at another host passed, and `uv sync --frozen` downloads from those URLs. Now the
+  `url` of `sdist` and of every `wheels` item, in any TOML spelling, must be https on the package's registry host, a
+  file host of that registry (PyPI: `files.pythonhosted.org`) or an allowed host; anything else is D05 for the
+  package, with the detail naming the sdist or wheel URL. A pull request that changes only an artifact URL is judged
+  too. An `sdist` that is not a table, a `wheels` that is not an array of tables, or a `url` that is not a string makes
+  the file unread (`DEPENDENCY_CHECK_INCOMPLETE`, an error). No new message code and no schema change.
 - Dependency safety reads a `poetry.lock` or `uv.lock` package's source in every TOML spelling (CORE-114). The poetry
   reader took the source only from a `[package.source]` sub-table and the uv reader only from an inline
   `source = { … }`, and the TOML reader kept a dotted key (`source.url = …`) as one flat key, so an off-registry source
