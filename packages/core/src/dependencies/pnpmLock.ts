@@ -27,17 +27,32 @@ export function unquoteScalar(text: string): string {
 /** The index of the quote that closes the one at `open`, or -1. */
 function closingQuote(text: string, open: number): number {
   const quote = text[open];
+  if (quote === "'") {
+    let i = text.indexOf("'", open + 1);
+    while (i !== -1 && text[i + 1] === "'") i = text.indexOf("'", i + 2);
+    return i;
+  }
   for (let i = open + 1; i < text.length; i++) {
-    if (quote === '"' && text[i] === "\\") i++;
-    else if (text[i] === quote) {
-      if (quote === "'" && text[i + 1] === "'") i++;
-      else return i;
-    }
+    if (text[i] === "\\") i++;
+    else if (text[i] === quote) return i;
   }
   return -1;
 }
 
 const isBlank = (ch: string | undefined): boolean => ch === " " || ch === "\t";
+
+/** Where a comment starts in `text` (the `#` of the first ` #` or `\t#`), or the text's length when none does. */
+function commentAt(text: string): number {
+  const space = text.indexOf(" #");
+  const tab = text.indexOf("\t#");
+  if (space === -1) return tab === -1 ? text.length : tab + 1;
+  return tab === -1 || space < tab ? space + 1 : tab + 1;
+}
+
+/** Whether `text` holds a colon followed by a space, a tab or its end (a mapping indicator, in a plain scalar). */
+function hasMappingColon(text: string): boolean {
+  return text.includes(": ") || text.includes(":\t") || text.endsWith(":");
+}
 
 /**
  * `key: value` of one line's content (no indent): the key unquoted and trimmed, and the value as written after the colon
@@ -54,10 +69,9 @@ export function splitKey(content: string): { key: string; value: string } | null
     if (content[colon] !== ":") return null;
     return { key: unquoteScalar(content.slice(0, end + 1)), value: content.slice(colon + 1).trim() };
   }
-  for (let i = 0; i < content.length; i++) {
-    const ch = content[i];
-    if (ch === "#" && i > 0 && isBlank(content[i - 1])) return null;
-    if (ch === ":" && (i + 1 === content.length || isBlank(content[i + 1]))) {
+  const comment = commentAt(content);
+  for (let i = content.indexOf(":"); i !== -1 && i < comment; i = content.indexOf(":", i + 1)) {
+    if (i + 1 === content.length || isBlank(content[i + 1])) {
       const key = content.slice(0, i).trim();
       return key === "" ? null : { key, value: content.slice(i + 1).trim() };
     }
@@ -100,7 +114,7 @@ function scanFlow(text: string, commas: number[]): number {
   let quoted = false;
   for (let i = 0; i < text.length; i++) {
     const ch = text[i] as string;
-    if (isBlank(ch)) continue;
+    if (ch === " " || ch === "\t") continue;
     if (ch === "#" && isBlank(text[i - 1])) return -1;
     if (scalarStart && (ch === "'" || ch === '"')) {
       const end = closingQuote(text, i);
@@ -126,11 +140,18 @@ function scanFlow(text: string, commas: number[]): number {
     } else if (ch === ":" && (wasQuoted || i + 1 === text.length || isBlank(text[i + 1]))) {
       scalarStart = true;
     } else {
+      // Skip the rest of a run of characters with no meaning here in one native step (one character class: no
+      // backtracking).
+      PLAIN_RUN.lastIndex = i + 1;
+      if (PLAIN_RUN.test(text)) i = PLAIN_RUN.lastIndex - 1;
       scalarStart = false;
     }
   }
   return -1;
 }
+
+/** A run of characters that are not blanks, quotes, comment, flow or mapping indicators. */
+const PLAIN_RUN = /[^ \t#'"{}[\],:]+/y;
 
 /** One scalar value as written in a flow mapping (already scanned): unquoted, or a nested collection kept as text. */
 function flowScalar(text: string): string | null {
@@ -138,10 +159,7 @@ function flowScalar(text: string): string | null {
     return closingQuote(text, 0) === text.length - 1 ? unquoteScalar(text) : null;
   }
   if (text.startsWith("{") || text.startsWith("[")) return text;
-  for (let i = 0; i < text.length; i++) {
-    if (text[i] === ":" && (i + 1 === text.length || isBlank(text[i + 1]))) return null;
-  }
-  return text;
+  return hasMappingColon(text) ? null : text;
 }
 
 /** The parts of a one-line flow mapping (already scanned, `end` past its `}`) as children; null for any part that is not `key: value` or a key given twice. */
@@ -189,15 +207,8 @@ function blockValue(text: string, line: number): BlockValue | null {
     const children = flowMap(text, end, commas, line);
     return children === null ? null : { value: "", children, closed: true };
   }
-  let end = text.length;
-  for (let i = 1; i < text.length; i++) {
-    if (text[i] === "#" && isBlank(text[i - 1])) {
-      end = i;
-      break;
-    }
-    if (text[i] === ":" && (i + 1 === text.length || isBlank(text[i + 1]))) return null;
-  }
-  return { value: text.slice(0, end).trimEnd(), children: null, closed: true };
+  const value = text.slice(0, commentAt(text)).trimEnd();
+  return hasMappingColon(value) ? null : { value, children: null, closed: true };
 }
 
 /**

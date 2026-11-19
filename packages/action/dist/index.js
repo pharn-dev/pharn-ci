@@ -29329,16 +29329,27 @@ function unquoteScalar(text) {
 }
 function closingQuote2(text, open3) {
   const quote = text[open3];
+  if (quote === "'") {
+    let i = text.indexOf("'", open3 + 1);
+    while (i !== -1 && text[i + 1] === "'") i = text.indexOf("'", i + 2);
+    return i;
+  }
   for (let i = open3 + 1; i < text.length; i++) {
-    if (quote === '"' && text[i] === "\\") i++;
-    else if (text[i] === quote) {
-      if (quote === "'" && text[i + 1] === "'") i++;
-      else return i;
-    }
+    if (text[i] === "\\") i++;
+    else if (text[i] === quote) return i;
   }
   return -1;
 }
 var isBlank = (ch) => ch === " " || ch === "	";
+function commentAt(text) {
+  const space = text.indexOf(" #");
+  const tab = text.indexOf("	#");
+  if (space === -1) return tab === -1 ? text.length : tab + 1;
+  return tab === -1 || space < tab ? space + 1 : tab + 1;
+}
+function hasMappingColon(text) {
+  return text.includes(": ") || text.includes(":	") || text.endsWith(":");
+}
 function splitKey(content) {
   if (content.startsWith('"') || content.startsWith("'")) {
     const end = closingQuote2(content, 0);
@@ -29348,10 +29359,9 @@ function splitKey(content) {
     if (content[colon] !== ":") return null;
     return { key: unquoteScalar(content.slice(0, end + 1)), value: content.slice(colon + 1).trim() };
   }
-  for (let i = 0; i < content.length; i++) {
-    const ch = content[i];
-    if (ch === "#" && i > 0 && isBlank(content[i - 1])) return null;
-    if (ch === ":" && (i + 1 === content.length || isBlank(content[i + 1]))) {
+  const comment = commentAt(content);
+  for (let i = content.indexOf(":"); i !== -1 && i < comment; i = content.indexOf(":", i + 1)) {
+    if (i + 1 === content.length || isBlank(content[i + 1])) {
       const key = content.slice(0, i).trim();
       return key === "" ? null : { key, value: content.slice(i + 1).trim() };
     }
@@ -29376,7 +29386,7 @@ function scanFlow(text, commas) {
   let quoted = false;
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
-    if (isBlank(ch)) continue;
+    if (ch === " " || ch === "	") continue;
     if (ch === "#" && isBlank(text[i - 1])) return -1;
     if (scalarStart && (ch === "'" || ch === '"')) {
       const end = closingQuote2(text, i);
@@ -29402,20 +29412,20 @@ function scanFlow(text, commas) {
     } else if (ch === ":" && (wasQuoted || i + 1 === text.length || isBlank(text[i + 1]))) {
       scalarStart = true;
     } else {
+      PLAIN_RUN.lastIndex = i + 1;
+      if (PLAIN_RUN.test(text)) i = PLAIN_RUN.lastIndex - 1;
       scalarStart = false;
     }
   }
   return -1;
 }
+var PLAIN_RUN = /[^ \t#'"{}[\],:]+/y;
 function flowScalar(text) {
   if (text.startsWith("'") || text.startsWith('"')) {
     return closingQuote2(text, 0) === text.length - 1 ? unquoteScalar(text) : null;
   }
   if (text.startsWith("{") || text.startsWith("[")) return text;
-  for (let i = 0; i < text.length; i++) {
-    if (text[i] === ":" && (i + 1 === text.length || isBlank(text[i + 1]))) return null;
-  }
-  return text;
+  return hasMappingColon(text) ? null : text;
 }
 function flowMap(text, end, commas, line) {
   const children = /* @__PURE__ */ new Map();
@@ -29439,27 +29449,20 @@ function blockValue(text, line) {
   const first = text[0];
   if (NOT_WRITTEN.has(first)) return null;
   if (first === "'" || first === '"') {
-    const end2 = closingQuote2(text, 0);
-    if (end2 === -1 || !restIsComment(text, end2 + 1)) return null;
-    return { value: unquoteScalar(text.slice(0, end2 + 1)), children: null, closed: true };
+    const end = closingQuote2(text, 0);
+    if (end === -1 || !restIsComment(text, end + 1)) return null;
+    return { value: unquoteScalar(text.slice(0, end + 1)), children: null, closed: true };
   }
   if (first === "{" || first === "[") {
     const commas = [];
-    const end2 = scanFlow(text, commas);
-    if (end2 === -1 || !restIsComment(text, end2)) return null;
-    if (first === "[") return { value: text.slice(0, end2), children: null, closed: true };
-    const children = flowMap(text, end2, commas, line);
+    const end = scanFlow(text, commas);
+    if (end === -1 || !restIsComment(text, end)) return null;
+    if (first === "[") return { value: text.slice(0, end), children: null, closed: true };
+    const children = flowMap(text, end, commas, line);
     return children === null ? null : { value: "", children, closed: true };
   }
-  let end = text.length;
-  for (let i = 1; i < text.length; i++) {
-    if (text[i] === "#" && isBlank(text[i - 1])) {
-      end = i;
-      break;
-    }
-    if (text[i] === ":" && (i + 1 === text.length || isBlank(text[i + 1]))) return null;
-  }
-  return { value: text.slice(0, end).trimEnd(), children: null, closed: true };
+  const value = text.slice(0, commentAt(text)).trimEnd();
+  return hasMappingColon(value) ? null : { value, children: null, closed: true };
 }
 function parseYamlTree(text, lineOffset = 0) {
   const root = { value: "", line: 0, children: /* @__PURE__ */ new Map() };
