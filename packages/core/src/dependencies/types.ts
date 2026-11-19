@@ -48,7 +48,8 @@ export interface ManifestDependency {
    * For an override: the selector it is declared under (the key as written for a top-level npm override, a yarn
    * resolution and a pnpm override; for npm's nested `{"a": {"b": …}}`, a digest of the parent path, `>` and `b`), which
    * tells two overrides of one package apart. `name` is then the package the override replaces (for a `.` key, the
-   * parent's).
+   * parent's). For the second and later items of a pyproject.toml array of sources (uv's multiple sources, poetry's
+   * multiple constraints): the name, a NUL and the item's position, which tells the items of one dependency apart.
    */
   key?: string;
   line: number;
@@ -62,11 +63,16 @@ export interface ManifestDependency {
   registry?: "jsr";
 }
 
-/** An index or find-links option of a requirements file (`--index-url`, `-i`, `--extra-index-url`, `-f`). */
+/**
+ * A package index a manifest adds: an index or find-links option of a requirements file (`--index-url`, `-i`,
+ * `--extra-index-url`, `-f`), or the url of a pyproject.toml poetry source, uv index or uv index key.
+ */
 export interface IndexOption {
   url: string;
   line: number;
   allowed: boolean;
+  /** For pyproject.toml: the table or key it is declared in (`tool.poetry.source`, `tool.uv.index`, `tool.uv.index-url`, …), named in the D05 detail. */
+  table?: string;
 }
 
 /** A parsed manifest. `peer` sections are declared but never installed, so the lockfile checks skip them. */

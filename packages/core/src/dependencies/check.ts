@@ -11,7 +11,7 @@ import { isOverrideSection, parseNpmManifest } from "./npmManifest.js";
 import { candidateLockfiles, classifyDependencyFile, type DependencyFileKind, touchedPaths } from "./paths.js";
 import { parsePnpmLock } from "./pnpmLock.js";
 import { parsePythonLock } from "./pythonLock.js";
-import { parsePyproject, parseRequirements } from "./pythonManifest.js";
+import { BUILD_REQUIRES_SECTION, parsePyproject, parseRequirements } from "./pythonManifest.js";
 import type { ResolvedDependencySettings } from "./settings.js";
 import { isOffRegistry } from "./specs.js";
 import type {
@@ -217,8 +217,9 @@ function analyze(
     const baseIndexes = new Set((base?.indexes ?? []).map((option) => option.url));
     for (const option of head.indexes) {
       if (!option.allowed && !onAllowedHost(option.url) && !baseIndexes.has(option.url)) {
+        const where = option.table === undefined ? "" : ` in ${option.table}`;
         analysis.signals.push(
-          signal("D05", eco, path, option.line, "adds a package index outside the allowed registries"),
+          signal("D05", eco, path, option.line, `adds a package index outside the allowed registries${where}`),
         );
       }
     }
@@ -229,7 +230,10 @@ function analyze(
     }
 
     if (kind.format !== "package-json" && kind.format !== "pyproject") return;
-    const installed = (deps: ManifestDependency[]) => deps.filter((dep) => dep.section !== "peerDependencies");
+    // Peer dependencies are never installed; build requirements are installed at build time, but no lockfile records
+    // them, so neither is lockfile drift.
+    const installed = (deps: ManifestDependency[]) =>
+      deps.filter((dep) => dep.section !== "peerDependencies" && dep.section !== BUILD_REQUIRES_SECTION);
     const declared = installed([...changes.added, ...changes.changed]);
     if (declared.length === 0 && installed(changes.removed).length === 0) return;
     const governing: Array<{ path: string; lock: ParsedLockfile | null }> = [];

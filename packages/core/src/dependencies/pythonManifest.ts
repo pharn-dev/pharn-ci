@@ -1,5 +1,5 @@
 import { normalizePypiName } from "./names.js";
-import { isTable, parseToml, type TomlValue } from "./toml.js";
+import { parseTomlDocument, type TomlTableValue, type TomlValue, valueAt } from "./toml.js";
 import type { IndexOption, ManifestDependency, ParsedManifest, SourceKind } from "./types.js";
 import { isAllowedRegistryUrl } from "./urls.js";
 
@@ -323,11 +323,32 @@ function requirementStrings(value: TomlValue | undefined): Array<{ text: string;
   return value.items.flatMap((item) => (item.type === "string" ? [{ text: item.value, line: item.line }] : []));
 }
 
-/** A poetry dependency (`name = "^1.0"` or `name = { version = …, git = … }`) or a uv source (`name = { git = … }`). */
+/**
+ * A poetry dependency (`name = "^1.0"`, or a table: `name = { version = …, git = … }`, the sub-table
+ * `[….dependencies.name]` or dotted keys, which are one table in the document) or a uv source (`name = { git = … }`).
+ * An array of tables (uv's multiple sources, poetry's multiple constraints) is one dependency per item, each at its own
+ * line; the second and later items carry a `key` so the items of one name stay apart. An array with no table in it is
+ * one dependency with no spec.
+ */
+function tableDependencies(name: string, value: TomlValue, section: string): ManifestDependency[] {
+  if (value.type !== "array") {
+    const dep = tableDependency(name, value, section);
+    return dep === null ? [] : [dep];
+  }
+  if (!value.items.some((item) => item.type === "table")) {
+    return [{ name, named: true, spec: "", section, line: value.line, kind: "registry" }];
+  }
+  return value.items.flatMap((item, i) => {
+    const dep = item.type === "table" ? tableDependency(name, item, section) : null;
+    if (dep === null) return [];
+    return [i === 0 ? dep : { ...dep, key: `${name}\u0000${i}` }];
+  });
+}
+
+/** One poetry dependency or uv source that is a string or a table (see `tableDependencies`). */
 function tableDependency(name: string, value: TomlValue, section: string): ManifestDependency | null {
   if (value.type === "string")
     return { name, named: true, spec: value.value, section, line: value.line, kind: "registry" };
-  if (value.type === "array") return { name, named: true, spec: "", section, line: value.line, kind: "registry" };
   if (value.type !== "table") return null;
   const text = (key: string): string | null => {
     const entry = value.entries.get(key);
@@ -357,47 +378,89 @@ function tableDependency(name: string, value: TomlValue, section: string): Manif
   return { name, named: true, spec: text("version") ?? "", section, line: value.line, kind: "registry" };
 }
 
+/** The value at `path` when it is a table. */
+function tableAt(root: TomlTableValue, path: readonly string[]): TomlTableValue | null {
+  const value = valueAt(root, path);
+  return value?.type === "table" ? value : null;
+}
+
+/** The section of the build requirements: installed and run at build time, recorded by no lockfile (so D04 skips it). */
+export const BUILD_REQUIRES_SECTION = "build-system.requires";
+
 /**
- * The dependencies of a pyproject.toml: `[project] dependencies`, `[project.optional-dependencies]`,
- * `[dependency-groups]`, poetry's `[tool.poetry.dependencies]`, `[tool.poetry.dev-dependencies]` and
- * `[tool.poetry.group.<name>.dependencies]` (not `python`), and uv's `[tool.uv.sources]`. Null when the TOML cannot be
- * read.
+ * The dependencies and package indexes of a pyproject.toml, read from the nested TOML document, so a table written as a
+ * `[header]`, an inline table or dotted keys is the same table (a poetry dependency in its own sub-table
+ * `[tool.poetry.dependencies.name]` is the inline table it equals). Dependencies: `[build-system] requires`,
+ * `[project] dependencies`, `[project.optional-dependencies]`, `[dependency-groups]`, poetry's
+ * `[tool.poetry.dependencies]`, `[tool.poetry.dev-dependencies]` and `[tool.poetry.group.<name>.dependencies]` (not
+ * `python`), and uv's `[tool.uv.sources]`, in file order. Indexes: the `url` of each `[[tool.poetry.source]]` and
+ * `[[tool.uv.index]]` (whatever their `priority`, `explicit` or `default`), and uv's `index-url`, `extra-index-url` and
+ * `find-links` in `[tool.uv]` and `[tool.uv.pip]`. Null when the TOML cannot be read.
  */
 export function parsePyproject(text: string): ParsedManifest | null {
-  const tables = parseToml(text);
-  if (tables === null) return null;
+  const doc = parseTomlDocument(text);
+  if (doc === null) return null;
+  const { root } = doc;
   const deps: ManifestDependency[] = [];
-  const add = (dep: ManifestDependency | null) => {
-    if (dep !== null) deps.push(dep);
+  const requirements = (value: TomlValue | undefined, section: string) => {
+    for (const item of requirementStrings(value)) {
+      const dep = parseRequirement(item.text, item.line, section);
+      if (dep !== null) deps.push(dep);
+    }
   };
-  for (const table of tables) {
-    if (isTable(table, ["project"])) {
-      for (const item of requirementStrings(table.entries.get("dependencies"))) {
-        add(parseRequirement(item.text, item.line, "project.dependencies"));
-      }
-    } else if (isTable(table, ["project", "optional-dependencies"]) || isTable(table, ["dependency-groups"])) {
-      for (const [group, value] of table.entries) {
-        for (const item of requirementStrings(value)) {
-          add(parseRequirement(item.text, item.line, `${table.path.join(".")}.${group}`));
-        }
-      }
-    } else if (
-      isTable(table, ["tool", "poetry", "dependencies"]) ||
-      isTable(table, ["tool", "poetry", "dev-dependencies"]) ||
-      (table.path.length === 5 &&
-        table.path[0] === "tool" &&
-        table.path[1] === "poetry" &&
-        table.path[2] === "group" &&
-        table.path[4] === "dependencies") ||
-      isTable(table, ["tool", "uv", "sources"])
-    ) {
-      for (const [name, value] of table.entries) {
-        if (name === "python" && table.path[1] === "poetry") continue;
-        add(tableDependency(name, value, table.path.join(".")));
-      }
+  const dependencyTable = (path: readonly string[]) => {
+    const table = tableAt(root, path);
+    if (table === null) return;
+    const section = path.join(".");
+    for (const [name, value] of table.entries) {
+      if (name === "python" && path[1] === "poetry") continue;
+      deps.push(...tableDependencies(name, value, section));
+    }
+  };
+
+  requirements(valueAt(root, ["build-system", "requires"]), BUILD_REQUIRES_SECTION);
+  requirements(valueAt(root, ["project", "dependencies"]), "project.dependencies");
+  for (const path of [["project", "optional-dependencies"], ["dependency-groups"]]) {
+    for (const [group, value] of tableAt(root, path)?.entries ?? []) requirements(value, `${path.join(".")}.${group}`);
+  }
+  dependencyTable(["tool", "poetry", "dependencies"]);
+  dependencyTable(["tool", "poetry", "dev-dependencies"]);
+  for (const group of tableAt(root, ["tool", "poetry", "group"])?.entries.keys() ?? []) {
+    dependencyTable(["tool", "poetry", "group", group, "dependencies"]);
+  }
+  dependencyTable(["tool", "uv", "sources"]);
+
+  const indexes: IndexOption[] = [];
+  const index = (value: TomlValue | undefined, table: string) => {
+    if (value?.type !== "string") return;
+    indexes.push({ url: value.value, line: value.line, allowed: isAllowedRegistryUrl(value.value), table });
+  };
+  for (const path of [
+    ["tool", "poetry", "source"],
+    ["tool", "uv", "index"],
+  ]) {
+    const value = valueAt(root, path);
+    const entries = value?.type === "array" ? value.items : value === undefined ? [] : [value];
+    for (const entry of entries) if (entry.type === "table") index(entry.entries.get("url"), path.join("."));
+  }
+  for (const path of [
+    ["tool", "uv"],
+    ["tool", "uv", "pip"],
+  ]) {
+    const table = tableAt(root, path);
+    if (table === null) continue;
+    const prefix = path.join(".");
+    index(table.entries.get("index-url"), `${prefix}.index-url`);
+    for (const key of ["extra-index-url", "find-links"]) {
+      const value = table.entries.get(key);
+      for (const item of value?.type === "array" ? value.items : [value]) index(item, `${prefix}.${key}`);
     }
   }
-  return { ecosystem: "pypi", deps, indexes: [] };
+
+  // Stable sorts: entries of one line keep the order they were read in.
+  deps.sort((a, b) => a.line - b.line);
+  indexes.sort((a, b) => a.line - b.line);
+  return { ecosystem: "pypi", deps, indexes };
 }
 
 /** The normalized name of a Python dependency, for comparing a manifest with a lockfile. */

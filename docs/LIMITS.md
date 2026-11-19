@@ -1502,6 +1502,19 @@ comes from and how new it is, not what it does. What it misses:
   requirement on the same line are cut off and not checked (pip ignores an index option there, and refuses the whole
   file for an unknown one). A pip version outside that range with a new option starting with an existing option's
   prefix could read a spelling differently.
+- **`pyproject.toml`.** Read from the nested TOML document, so a table is the same whether it is written as a
+  `[header]`, an inline table or dotted keys (a poetry dependency in its own sub-table, `[tool.poetry.dependencies.x]`,
+  is the inline table it equals). Dependencies: `[build-system] requires`, `[project]` dependencies,
+  `[project.optional-dependencies]`, `[dependency-groups]` (an `include-group` entry is not followed: the group it
+  names is read on its own), poetry's `[tool.poetry.dependencies]`, `[tool.poetry.dev-dependencies]` and
+  `[tool.poetry.group.<name>.dependencies]` (not `python`) and uv's `[tool.uv.sources]`; an array of sources for one
+  dependency is read item by item. Indexes: the `url` of each `[[tool.poetry.source]]` and `[[tool.uv.index]]`,
+  whatever its `priority`, `explicit` or `default` (an index a dependency may never use is still judged), and uv's
+  `index-url`, `extra-index-url` and `find-links` in `[tool.uv]` and `[tool.uv.pip]`; a source with no `url` (poetry's
+  `PyPI`) is the public index. Build requirements are judged for D05 and the lookups but never for D04: no lockfile
+  records them. Not read: `[tool.pdm]` and `[tool.hatch]` sources and dependencies, a build backend's own settings
+  (`[tool.setuptools]`, `[tool.hatch.metadata]`), `[project] dynamic` dependencies a backend computes, and a uv
+  workspace member's `pyproject.toml` that the change does not touch.
 - **Caps.** A manifest or lockfile over 32 MiB (the cap for one file, the same as the cap for one side), past 100 files
   or 32 MiB a side is not read and is named in `dependencies.unread`, never guessed; a TOML syntax error makes the whole
   file unread. `DEPENDENCY_CHECK_INCOMPLETE` is an error (verdict `fail`) when any unread file's reason is one the pull

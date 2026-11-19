@@ -1,0 +1,16 @@
+[project]
+name = "app"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["requests"]
+
+[tool.uv.sources]
+requests = [
+    { index = "pypi-simple", marker = "sys_platform != 'linux'" },
+    { index = "pypi-simple", marker = "sys_platform == 'linux'" },
+]
+
+[[tool.uv.index]]
+name = "pypi-simple"
+url = "https://pypi.org/simple/"
+explicit = true

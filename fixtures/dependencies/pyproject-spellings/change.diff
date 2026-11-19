@@ -1,0 +1,351 @@
+diff --git a/build-system-registry/pyproject.toml b/build-system-registry/pyproject.toml
+new file mode 100644
+index 0000000..1000001
+--- /dev/null
++++ b/build-system-registry/pyproject.toml
+@@ -0,0 +1,8 @@
++[build-system]
++requires = ["setuptools>=68"]
++build-backend = "setuptools.build_meta"
++
++[project]
++name = "app"
++version = "0.1.0"
++requires-python = ">=3.11"
+diff --git a/build-system/pyproject.toml b/build-system/pyproject.toml
+new file mode 100644
+index 0000000..1000002
+--- /dev/null
++++ b/build-system/pyproject.toml
+@@ -0,0 +1,11 @@
++[build-system]
++requires = [
++    "setuptools>=68",
++    "evil @ git+https://github.com/someone/evil.git",
++]
++build-backend = "setuptools.build_meta"
++
++[project]
++name = "app"
++version = "0.1.0"
++requires-python = ">=3.11"
+diff --git a/poetry-constraints-array-registry/pyproject.toml b/poetry-constraints-array-registry/pyproject.toml
+new file mode 100644
+index 0000000..1000003
+--- /dev/null
++++ b/poetry-constraints-array-registry/pyproject.toml
+@@ -0,0 +1,15 @@
++[project]
++name = "app"
++version = "0.1.0"
++requires-python = ">=3.11"
++dynamic = ["dependencies"]
++
++[tool.poetry]
++package-mode = false
++
++[tool.poetry.dependencies]
++python = "^3.11"
++requests = [
++    { version = "^2.30", python = "<3.12" },
++    { version = "^2.31", python = ">=3.12" },
++]
+diff --git a/poetry-constraints-array/pyproject.toml b/poetry-constraints-array/pyproject.toml
+new file mode 100644
+index 0000000..1000004
+--- /dev/null
++++ b/poetry-constraints-array/pyproject.toml
+@@ -0,0 +1,15 @@
++[project]
++name = "app"
++version = "0.1.0"
++requires-python = ">=3.11"
++dynamic = ["dependencies"]
++
++[tool.poetry]
++package-mode = false
++
++[tool.poetry.dependencies]
++python = "^3.11"
++evil-pkg = [
++    { version = "^1.0", python = "<3.12" },
++    { git = "https://github.com/someone/evil-pkg.git", python = ">=3.12" },
++]
+diff --git a/poetry-group-subtable-registry/pyproject.toml b/poetry-group-subtable-registry/pyproject.toml
+new file mode 100644
+index 0000000..1000005
+--- /dev/null
++++ b/poetry-group-subtable-registry/pyproject.toml
+@@ -0,0 +1,11 @@
++[project]
++name = "app"
++version = "0.1.0"
++requires-python = ">=3.11"
++dynamic = ["dependencies"]
++
++[tool.poetry]
++package-mode = false
++
++[tool.poetry.group.dev.dependencies.pytest]
++version = "^8.0"
+diff --git a/poetry-group-subtable/pyproject.toml b/poetry-group-subtable/pyproject.toml
+new file mode 100644
+index 0000000..1000006
+--- /dev/null
++++ b/poetry-group-subtable/pyproject.toml
+@@ -0,0 +1,12 @@
++[project]
++name = "app"
++version = "0.1.0"
++requires-python = ">=3.11"
++dynamic = ["dependencies"]
++
++[tool.poetry]
++package-mode = false
++
++[tool.poetry.group.dev.dependencies.evil-pkg]
++git = "https://github.com/someone/evil-pkg.git"
++branch = "main"
+diff --git a/poetry-source-allowed-host/pyproject.toml b/poetry-source-allowed-host/pyproject.toml
+new file mode 100644
+index 0000000..1000007
+--- /dev/null
++++ b/poetry-source-allowed-host/pyproject.toml
+@@ -0,0 +1,13 @@
++[project]
++name = "app"
++version = "0.1.0"
++requires-python = ">=3.11"
++dependencies = ["requests>=2.31"]
++
++[tool.poetry]
++package-mode = false
++
++[[tool.poetry.source]]
++name = "corp"
++url = "https://pypi.corp.example/simple/"
++priority = "primary"
+diff --git a/poetry-source-registry/pyproject.toml b/poetry-source-registry/pyproject.toml
+new file mode 100644
+index 0000000..1000008
+--- /dev/null
++++ b/poetry-source-registry/pyproject.toml
+@@ -0,0 +1,16 @@
++[project]
++name = "app"
++version = "0.1.0"
++requires-python = ">=3.11"
++dynamic = ["dependencies"]
++
++[tool.poetry]
++package-mode = false
++
++[tool.poetry.dependencies]
++requests = { version = "^2.31", source = "mirror" }
++
++[[tool.poetry.source]]
++name = "mirror"
++url = "https://pypi.org/simple/"
++priority = "explicit"
+diff --git a/poetry-source/pyproject.toml b/poetry-source/pyproject.toml
+new file mode 100644
+index 0000000..1000009
+--- /dev/null
++++ b/poetry-source/pyproject.toml
+@@ -0,0 +1,16 @@
++[project]
++name = "app"
++version = "0.1.0"
++requires-python = ">=3.11"
++dynamic = ["dependencies"]
++
++[tool.poetry]
++package-mode = false
++
++[tool.poetry.dependencies]
++requests = { version = "^2.31", source = "mirror" }
++
++[[tool.poetry.source]]
++name = "mirror"
++url = "https://pypi.evil.example/simple/"
++priority = "explicit"
+diff --git a/poetry-subtable-registry/pyproject.toml b/poetry-subtable-registry/pyproject.toml
+new file mode 100644
+index 0000000..1000010
+--- /dev/null
++++ b/poetry-subtable-registry/pyproject.toml
+@@ -0,0 +1,14 @@
++[project]
++name = "app"
++version = "0.1.0"
++requires-python = ">=3.11"
++dynamic = ["dependencies"]
++
++[tool.poetry]
++package-mode = false
++
++[tool.poetry.dependencies]
++python = "^3.11"
++
++[tool.poetry.dependencies.requests]
++version = "^2.31"
+diff --git a/poetry-subtable/pyproject.toml b/poetry-subtable/pyproject.toml
+new file mode 100644
+index 0000000..1000011
+--- /dev/null
++++ b/poetry-subtable/pyproject.toml
+@@ -0,0 +1,15 @@
++[project]
++name = "app"
++version = "0.1.0"
++requires-python = ">=3.11"
++dynamic = ["dependencies"]
++
++[tool.poetry]
++package-mode = false
++
++[tool.poetry.dependencies]
++python = "^3.11"
++
++[tool.poetry.dependencies.evil-pkg]
++git = "https://github.com/someone/evil-pkg.git"
++tag = "v1.0.0"
+diff --git a/uv-index-allowed-host/pyproject.toml b/uv-index-allowed-host/pyproject.toml
+new file mode 100644
+index 0000000..1000012
+--- /dev/null
++++ b/uv-index-allowed-host/pyproject.toml
+@@ -0,0 +1,9 @@
++[project]
++name = "app"
++version = "0.1.0"
++requires-python = ">=3.11"
++dependencies = ["requests>=2.31"]
++
++[[tool.uv.index]]
++name = "corp"
++url = "https://pypi.corp.example/simple/"
+diff --git a/uv-index-registry/pyproject.toml b/uv-index-registry/pyproject.toml
+new file mode 100644
+index 0000000..1000013
+--- /dev/null
++++ b/uv-index-registry/pyproject.toml
+@@ -0,0 +1,18 @@
++[project]
++name = "app"
++version = "0.1.0"
++requires-python = ">=3.11"
++dependencies = ["requests>=2.31", "torch>=2.4"]
++
++[[tool.uv.index]]
++name = "pypi-simple"
++url = "https://pypi.org/simple/"
++explicit = true
++
++[[tool.uv.index]]
++name = "pypi-default"
++url = "https://pypi.org/simple"
++default = true
++
++[tool.uv.sources]
++torch = { index = "pypi-simple" }
+diff --git a/uv-index/pyproject.toml b/uv-index/pyproject.toml
+new file mode 100644
+index 0000000..1000014
+--- /dev/null
++++ b/uv-index/pyproject.toml
+@@ -0,0 +1,18 @@
++[project]
++name = "app"
++version = "0.1.0"
++requires-python = ">=3.11"
++dependencies = ["requests>=2.31", "torch>=2.4"]
++
++[[tool.uv.index]]
++name = "evil"
++url = "https://pypi.evil.example/simple/"
++explicit = true
++
++[[tool.uv.index]]
++name = "evil-default"
++url = "https://mirror.evil.example/simple/"
++default = true
++
++[tool.uv.sources]
++torch = { index = "evil" }
+diff --git a/uv-legacy-keys-registry/pyproject.toml b/uv-legacy-keys-registry/pyproject.toml
+new file mode 100644
+index 0000000..1000015
+--- /dev/null
++++ b/uv-legacy-keys-registry/pyproject.toml
+@@ -0,0 +1,10 @@
++[project]
++name = "app"
++version = "0.1.0"
++requires-python = ">=3.11"
++dependencies = ["requests>=2.31"]
++
++[tool.uv]
++index-url = "https://pypi.org/simple/"
++extra-index-url = ["https://pypi.org/simple"]
++find-links = ["https://pypi.org/simple/requests/"]
+diff --git a/uv-legacy-keys/pyproject.toml b/uv-legacy-keys/pyproject.toml
+new file mode 100644
+index 0000000..1000016
+--- /dev/null
++++ b/uv-legacy-keys/pyproject.toml
+@@ -0,0 +1,10 @@
++[project]
++name = "app"
++version = "0.1.0"
++requires-python = ">=3.11"
++dependencies = ["requests>=2.31"]
++
++[tool.uv]
++index-url = "https://pypi.evil.example/simple/"
++extra-index-url = ["https://extra.evil.example/simple/"]
++find-links = ["https://links.evil.example/wheels/"]
+diff --git a/uv-sources-array-registry/pyproject.toml b/uv-sources-array-registry/pyproject.toml
+new file mode 100644
+index 0000000..1000017
+--- /dev/null
++++ b/uv-sources-array-registry/pyproject.toml
+@@ -0,0 +1,16 @@
++[project]
++name = "app"
++version = "0.1.0"
++requires-python = ">=3.11"
++dependencies = ["requests"]
++
++[tool.uv.sources]
++requests = [
++    { index = "pypi-simple", marker = "sys_platform != 'linux'" },
++    { index = "pypi-simple", marker = "sys_platform == 'linux'" },
++]
++
++[[tool.uv.index]]
++name = "pypi-simple"
++url = "https://pypi.org/simple/"
++explicit = true
+diff --git a/uv-sources-array/pyproject.toml b/uv-sources-array/pyproject.toml
+new file mode 100644
+index 0000000..1000018
+--- /dev/null
++++ b/uv-sources-array/pyproject.toml
+@@ -0,0 +1,16 @@
++[project]
++name = "app"
++version = "0.1.0"
++requires-python = ">=3.11"
++dependencies = ["evil-pkg"]
++
++[tool.uv.sources]
++evil-pkg = [
++    { index = "pypi-simple", marker = "sys_platform != 'linux'" },
++    { git = "https://github.com/someone/evil-pkg.git", marker = "sys_platform == 'linux'" },
++]
++
++[[tool.uv.index]]
++name = "pypi-simple"
++url = "https://pypi.org/simple/"
++explicit = true

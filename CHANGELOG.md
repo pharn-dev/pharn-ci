@@ -38,6 +38,18 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   `npm.jsr.io` is an allowed host. Stricter: a repository with an existing git or tarball override, or a dependency
   in one of the three forms, gets a D05 on the next pull request that adds or changes that entry (an entry unchanged
   since the merge base is not judged again). No new message code and no schema change.
+- Dependency safety reads `pyproject.toml` in every spelling and the places beside the dependency tables that name a
+  package source (CORE-116). A poetry dependency written as its own sub-table (`[tool.poetry.dependencies.evil-pkg]`
+  with `git = "https://…"`, also under a poetry group) was not seen at all, honest or not; it is now the inline table it
+  equals, for D05 and D04, because the reader takes every table from the nested TOML document whether it is a header,
+  an inline table or dotted keys. Newly read: `[build-system] requires` (installed and run at build time: D05 and the
+  lookups, never D04, since no lockfile records it), the `url` of each `[[tool.poetry.source]]` and `[[tool.uv.index]]`
+  (whatever its priority, `explicit` or `default`) and uv's `index-url`, `extra-index-url` and `find-links` in
+  `[tool.uv]` and `[tool.uv.pip]`: an index the change adds off the allowed registries is D05, as an index option in a
+  requirements file is, and the detail names the table. An array of sources for one dependency (uv's multiple sources,
+  poetry's multiple constraints) is read item by item, where it was one registry dependency, so a git item in it is
+  D05. Stricter: a repository that adds such a source or index gets a D05 on that pull request. No new message code and
+  no schema change.
 - Docs: the README is down from about 1,665 lines to about 250 and doubles as the Marketplace page (CORE-137): what
   pharn-ci is, a complete workflow checked in a sandbox repository, one paragraph per check, the most-used inputs, and
   what leaves the job. The reference chapters moved to `docs/` with their text unchanged: the Action reference

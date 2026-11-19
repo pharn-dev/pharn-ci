@@ -1,0 +1,9 @@
+app.py
+build-only/poetry.lock
+build-only/pyproject.toml
+inline/poetry.lock
+inline/pyproject.toml
+subtable-locked/poetry.lock
+subtable-locked/pyproject.toml
+subtable/poetry.lock
+subtable/pyproject.toml

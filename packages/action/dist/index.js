@@ -29475,9 +29475,6 @@ var TomlError = class extends Error {
 };
 var isBare = (c) => c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c >= "0" && c <= "9" || c === "_" || c === "-";
 var newTable = (line) => ({ type: "table", entries: /* @__PURE__ */ new Map(), line });
-function parseToml(text) {
-  return parseTomlDocument(text)?.tables ?? null;
-}
 function parseTomlDocument(text) {
   const src = text.charCodeAt(0) === 65279 ? text.slice(1) : text;
   const lineStarts2 = [0];
@@ -29802,9 +29799,6 @@ function parseTomlDocument(text) {
   }
   return { root, tables };
 }
-function isTable(table, path) {
-  return table.path.length === path.length && table.path.every((part, i) => part === path[i]);
-}
 function valueAt(table, path) {
   let value = table;
   for (const key of path) {
@@ -30104,10 +30098,23 @@ function requirementStrings(value) {
   if (value === void 0 || value.type !== "array") return [];
   return value.items.flatMap((item) => item.type === "string" ? [{ text: item.value, line: item.line }] : []);
 }
+function tableDependencies(name, value, section) {
+  if (value.type !== "array") {
+    const dep = tableDependency(name, value, section);
+    return dep === null ? [] : [dep];
+  }
+  if (!value.items.some((item) => item.type === "table")) {
+    return [{ name, named: true, spec: "", section, line: value.line, kind: "registry" }];
+  }
+  return value.items.flatMap((item, i) => {
+    const dep = item.type === "table" ? tableDependency(name, item, section) : null;
+    if (dep === null) return [];
+    return [i === 0 ? dep : { ...dep, key: `${name}\0${i}` }];
+  });
+}
 function tableDependency(name, value, section) {
   if (value.type === "string")
     return { name, named: true, spec: value.value, section, line: value.line, kind: "registry" };
-  if (value.type === "array") return { name, named: true, spec: "", section, line: value.line, kind: "registry" };
   if (value.type !== "table") return null;
   const text = (key) => {
     const entry = value.entries.get(key);
@@ -30134,32 +30141,71 @@ function tableDependency(name, value, section) {
   }
   return { name, named: true, spec: text("version") ?? "", section, line: value.line, kind: "registry" };
 }
+function tableAt(root, path) {
+  const value = valueAt(root, path);
+  return value?.type === "table" ? value : null;
+}
+var BUILD_REQUIRES_SECTION = "build-system.requires";
 function parsePyproject(text) {
-  const tables = parseToml(text);
-  if (tables === null) return null;
+  const doc = parseTomlDocument(text);
+  if (doc === null) return null;
+  const { root } = doc;
   const deps = [];
-  const add = (dep) => {
-    if (dep !== null) deps.push(dep);
+  const requirements = (value, section) => {
+    for (const item of requirementStrings(value)) {
+      const dep = parseRequirement(item.text, item.line, section);
+      if (dep !== null) deps.push(dep);
+    }
   };
-  for (const table of tables) {
-    if (isTable(table, ["project"])) {
-      for (const item of requirementStrings(table.entries.get("dependencies"))) {
-        add(parseRequirement(item.text, item.line, "project.dependencies"));
-      }
-    } else if (isTable(table, ["project", "optional-dependencies"]) || isTable(table, ["dependency-groups"])) {
-      for (const [group, value] of table.entries) {
-        for (const item of requirementStrings(value)) {
-          add(parseRequirement(item.text, item.line, `${table.path.join(".")}.${group}`));
-        }
-      }
-    } else if (isTable(table, ["tool", "poetry", "dependencies"]) || isTable(table, ["tool", "poetry", "dev-dependencies"]) || table.path.length === 5 && table.path[0] === "tool" && table.path[1] === "poetry" && table.path[2] === "group" && table.path[4] === "dependencies" || isTable(table, ["tool", "uv", "sources"])) {
-      for (const [name, value] of table.entries) {
-        if (name === "python" && table.path[1] === "poetry") continue;
-        add(tableDependency(name, value, table.path.join(".")));
-      }
+  const dependencyTable = (path) => {
+    const table = tableAt(root, path);
+    if (table === null) return;
+    const section = path.join(".");
+    for (const [name, value] of table.entries) {
+      if (name === "python" && path[1] === "poetry") continue;
+      deps.push(...tableDependencies(name, value, section));
+    }
+  };
+  requirements(valueAt(root, ["build-system", "requires"]), BUILD_REQUIRES_SECTION);
+  requirements(valueAt(root, ["project", "dependencies"]), "project.dependencies");
+  for (const path of [["project", "optional-dependencies"], ["dependency-groups"]]) {
+    for (const [group, value] of tableAt(root, path)?.entries ?? []) requirements(value, `${path.join(".")}.${group}`);
+  }
+  dependencyTable(["tool", "poetry", "dependencies"]);
+  dependencyTable(["tool", "poetry", "dev-dependencies"]);
+  for (const group of tableAt(root, ["tool", "poetry", "group"])?.entries.keys() ?? []) {
+    dependencyTable(["tool", "poetry", "group", group, "dependencies"]);
+  }
+  dependencyTable(["tool", "uv", "sources"]);
+  const indexes = [];
+  const index = (value, table) => {
+    if (value?.type !== "string") return;
+    indexes.push({ url: value.value, line: value.line, allowed: isAllowedRegistryUrl(value.value), table });
+  };
+  for (const path of [
+    ["tool", "poetry", "source"],
+    ["tool", "uv", "index"]
+  ]) {
+    const value = valueAt(root, path);
+    const entries = value?.type === "array" ? value.items : value === void 0 ? [] : [value];
+    for (const entry of entries) if (entry.type === "table") index(entry.entries.get("url"), path.join("."));
+  }
+  for (const path of [
+    ["tool", "uv"],
+    ["tool", "uv", "pip"]
+  ]) {
+    const table = tableAt(root, path);
+    if (table === null) continue;
+    const prefix = path.join(".");
+    index(table.entries.get("index-url"), `${prefix}.index-url`);
+    for (const key of ["extra-index-url", "find-links"]) {
+      const value = table.entries.get(key);
+      for (const item of value?.type === "array" ? value.items : [value]) index(item, `${prefix}.${key}`);
     }
   }
-  return { ecosystem: "pypi", deps, indexes: [] };
+  deps.sort((a, b) => a.line - b.line);
+  indexes.sort((a, b) => a.line - b.line);
+  return { ecosystem: "pypi", deps, indexes };
 }
 
 // ../core/src/dependencies/yarnLock.ts
@@ -30364,8 +30410,9 @@ function analyze(diff, sources, repoFiles, allowedHosts) {
     const baseIndexes = new Set((base?.indexes ?? []).map((option) => option.url));
     for (const option of head.indexes) {
       if (!option.allowed && !onAllowedHost(option.url) && !baseIndexes.has(option.url)) {
+        const where = option.table === void 0 ? "" : ` in ${option.table}`;
         analysis.signals.push(
-          signal("D05", eco, path, option.line, "adds a package index outside the allowed registries")
+          signal("D05", eco, path, option.line, `adds a package index outside the allowed registries${where}`)
         );
       }
     }
@@ -30374,7 +30421,7 @@ function analyze(diff, sources, repoFiles, allowedHosts) {
       analysis.added.push({ ecosystem: eco, dep, path });
     }
     if (kind.format !== "package-json" && kind.format !== "pyproject") return;
-    const installed = (deps) => deps.filter((dep) => dep.section !== "peerDependencies");
+    const installed = (deps) => deps.filter((dep) => dep.section !== "peerDependencies" && dep.section !== BUILD_REQUIRES_SECTION);
     const declared = installed([...changes.added, ...changes.changed]);
     if (declared.length === 0 && installed(changes.removed).length === 0) return;
     const governing = [];

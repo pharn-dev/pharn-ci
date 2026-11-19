@@ -172,9 +172,11 @@ describe("manifests", () => {
     ]);
   });
 
-  it("reads pyproject.toml: PEP 621, optional dependencies, dependency groups, poetry and uv sources", () => {
+  it("reads pyproject.toml: build requirements, PEP 621, optional dependencies, dependency groups, poetry and uv sources", () => {
     const parsed = parsePyproject(fixture("dependencies/parse/pyproject.toml.txt"));
     expect(parsed?.deps.map((d) => [d.section, d.name, d.kind, d.line])).toEqual([
+      // Read since CORE-116: build requirements are installed and run at build time.
+      ["build-system.requires", "hatchling", "registry", 3],
       ["project.dependencies", "requests", "registry", 12],
       ["project.dependencies", "my-lib", "git", 13],
       ["project.dependencies", "wheel-dep", "url", 14],

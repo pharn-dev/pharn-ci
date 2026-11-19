@@ -1,0 +1,9 @@
+[project]
+name = "app"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["requests>=2.31"]
+
+[[tool.uv.index]]
+name = "corp"
+url = "https://pypi.corp.example/simple/"

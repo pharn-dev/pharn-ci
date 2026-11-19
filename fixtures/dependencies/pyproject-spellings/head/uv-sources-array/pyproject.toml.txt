@@ -1,0 +1,16 @@
+[project]
+name = "app"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["evil-pkg"]
+
+[tool.uv.sources]
+evil-pkg = [
+    { index = "pypi-simple", marker = "sys_platform != 'linux'" },
+    { git = "https://github.com/someone/evil-pkg.git", marker = "sys_platform == 'linux'" },
+]
+
+[[tool.uv.index]]
+name = "pypi-simple"
+url = "https://pypi.org/simple/"
+explicit = true

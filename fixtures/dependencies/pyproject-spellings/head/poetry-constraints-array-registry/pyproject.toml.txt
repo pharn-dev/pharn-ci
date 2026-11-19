@@ -1,0 +1,15 @@
+[project]
+name = "app"
+version = "0.1.0"
+requires-python = ">=3.11"
+dynamic = ["dependencies"]
+
+[tool.poetry]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+requests = [
+    { version = "^2.30", python = "<3.12" },
+    { version = "^2.31", python = ">=3.12" },
+]
