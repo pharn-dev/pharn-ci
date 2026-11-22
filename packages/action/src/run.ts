@@ -1,5 +1,6 @@
 import {
   type AgentConfigSources,
+  type AgentPrFacts,
   agentConfigSecretPaths,
   agentInstructionPaths,
   applyPolicy,
@@ -574,8 +575,10 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     });
     return listing;
   };
+  // Who wrote the pull request, from the facts the agent PR detection read: their comments are never pharn-ci's own.
+  const writers = prWriterLogins(agentPrFacts);
   const findOwn = (n: number) =>
-    listOnce(n).then(({ comments, viewer }) => ownComments(comments, viewer, scopeLine)[0]);
+    listOnce(n).then(({ comments, viewer }) => ownComments(comments, viewer, scopeLine, writers)[0]);
   const outcome = await runUpload(deps, {
     choice: uploadChoice,
     ...(deps.context.eventName === "pull_request_target" ? { pullRequestTarget: true } : {}),
@@ -623,7 +626,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
       fits: (text) => text.length <= MAX_COMMENT_LENGTH,
       ...render,
     });
-    await upsertComment(deps, issueNumber, body, scopeLine, listOnce(issueNumber));
+    await upsertComment(deps, issueNumber, body, scopeLine, listOnce(issueNumber), writers);
   }
 
   deps.info(`pharn-ci verdict: ${report.verdict}`);
@@ -1236,10 +1239,12 @@ export async function upsertComment(
   scopeLine: string,
   /** The run's one listing of the comments and the login (see run()); read here when absent. */
   listed: Promise<CommentListing> = listCommentsAndViewer(deps, issueNumber),
+  /** The logins that wrote the pull request (see prWriterLogins); null, the default, when they are not all known. */
+  writers: ReadonlySet<string> | null = null,
 ) {
   try {
     const { comments, viewer } = await listed;
-    const [existing, ...rest] = ownComments(comments, viewer, scopeLine);
+    const [existing, ...rest] = ownComments(comments, viewer, scopeLine, writers);
     if (existing) {
       await deps.api.updateComment(existing.id, body);
       deps.info(`updated pharn-ci comment ${existing.id}`);
@@ -1254,7 +1259,11 @@ export async function upsertComment(
     // A response without an author leaves the viewer; with neither, the clean-up cannot tell its comment apart.
     const createdLogin = (await deps.api.createComment(issueNumber, body)) ?? viewer;
     deps.info("created pharn-ci comment");
-    if (createdLogin !== null) await removeRaceDuplicates(deps, issueNumber, createdLogin, body, scopeLine);
+    // With an unknown viewer, the clean-up keeps and edits the oldest comment of the created login: it runs only when
+    // a comment of that login could be adopted, so a login that also wrote the pull request is never edited or deleted.
+    if (createdLogin !== null && (viewer !== null || mayAdopt(createdLogin, "same", null, writers))) {
+      await removeRaceDuplicates(deps, issueNumber, createdLogin, body, scopeLine);
+    }
   } catch (err) {
     // Typical cause: PRs from forks get a read-only token.
     deps.warning(
@@ -1280,21 +1289,63 @@ function commentScope(comment: IssueComment, scopeLine: string): "same" | "other
 /**
  * Anyone can post a comment containing the marker; only some are pharn-ci's, oldest first. A
  * comment of another scope never is. With a known viewer, it is the viewer's own comment of this
- * scope or from before scopes. With an unknown viewer (no readable `GET /user`), it is a bot's
- * comment of this scope (a login ending in `[bot]`, which GitHub does not allow in a user login),
- * or a pre-scope comment of the default GITHUB_TOKEN.
+ * scope or from before scopes. With an unknown viewer (no readable `GET /user`), it is a comment
+ * of the default GITHUB_TOKEN (`github-actions[bot]`), of this scope or from before scopes, or
+ * another bot's comment of this scope (a login ending in `[bot]`, which GitHub does not allow in a
+ * user login) when that bot is known not to have written the pull request (see mayAdopt).
+ * Exported for tests.
  */
-function ownComments(comments: IssueComment[], viewer: string | null, scopeLine: string): IssueComment[] {
+export function ownComments(
+  comments: IssueComment[],
+  viewer: string | null,
+  scopeLine: string,
+  writers: ReadonlySet<string> | null,
+): IssueComment[] {
   return comments
     .filter((c) => {
       if (!c.body?.startsWith(COMMENT_MARKER)) return false;
       const login = c.user?.login;
       const scope = commentScope(c, scopeLine);
       if (login === undefined || scope === "other") return false;
-      if (viewer !== null) return login === viewer;
-      return scope === "same" ? login.endsWith("[bot]") : login === DEFAULT_TOKEN_LOGIN;
+      return mayAdopt(login, scope, viewer, writers);
     })
     .sort((a, b) => a.id - b.id);
+}
+
+/**
+ * Whether a marker comment by `login` may be pharn-ci's own. A known viewer adopts only its own login. With an unknown
+ * viewer, `github-actions[bot]` is always adopted: it is the login pharn-ci comments as on the default token, also when
+ * a workflow opened the pull request or made its commits, and an agent running in Actions with that same token cannot be
+ * told apart (docs/THREAT-MODEL.md, residual 36). Another bot is adopted only for a scoped comment, and only when the
+ * pull request's writers are all known and the bot is not one of them: an agent that wrote the pull request must not be
+ * able to post the comment pharn-ci then fills and the agent can edit.
+ */
+function mayAdopt(
+  login: string,
+  scope: "same" | "legacy",
+  viewer: string | null,
+  writers: ReadonlySet<string> | null,
+): boolean {
+  if (viewer !== null) return login === viewer;
+  if (login === DEFAULT_TOKEN_LOGIN) return true;
+  if (scope !== "same" || !login.endsWith("[bot]")) return false;
+  return writers !== null && !writers.has(login.toLowerCase());
+}
+
+/**
+ * The lower-cased logins that wrote the pull request: its author and every commit's author and committer. Null when
+ * any of them is unknown: no pull request, an unreadable author, commits that could not be read or were cut short.
+ * Exported for tests.
+ */
+export function prWriterLogins(facts: AgentPrFacts): ReadonlySet<string> | null {
+  const pr = facts.pr;
+  if (pr === null || pr.author === null || pr.commits === null || pr.commitsIncomplete === true) return null;
+  const logins = new Set([pr.author.login.toLowerCase()]);
+  for (const commit of pr.commits) {
+    if (commit.authorLogin !== null) logins.add(commit.authorLogin.toLowerCase());
+    if (commit.committerLogin !== null) logins.add(commit.committerLogin.toLowerCase());
+  }
+  return logins;
 }
 
 /** A pull request's comments and the login the token comments as (null when unknown, see GitHubApi.viewerLogin). */

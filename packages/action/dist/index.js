@@ -49998,7 +49998,8 @@ async function runUnsafe(deps) {
     });
     return listing;
   };
-  const findOwn = (n) => listOnce(n).then(({ comments, viewer }) => ownComments(comments, viewer, scopeLine)[0]);
+  const writers = prWriterLogins(agentPrFacts);
+  const findOwn = (n) => listOnce(n).then(({ comments, viewer }) => ownComments(comments, viewer, scopeLine, writers)[0]);
   const outcome = await runUpload(deps, {
     choice: uploadChoice,
     ...deps.context.eventName === "pull_request_target" ? { pullRequestTarget: true } : {},
@@ -50043,7 +50044,7 @@ ${scopeLine}
       fits: (text) => text.length <= MAX_COMMENT_LENGTH,
       ...render
     });
-    await upsertComment(deps, issueNumber, body, scopeLine, listOnce(issueNumber));
+    await upsertComment(deps, issueNumber, body, scopeLine, listOnce(issueNumber), writers);
   }
   deps.info(`pharn-ci verdict: ${report.verdict}`);
   if (report.verdict === "fail" && failOnVerdict) {
@@ -50418,10 +50419,10 @@ function closeOpenDetails(text) {
   const open3 = (text.match(DETAILS_OPEN)?.length ?? 0) - (text.match(DETAILS_CLOSE)?.length ?? 0);
   return open3 > 0 ? text + "\n\n</details>".repeat(open3) : text;
 }
-async function upsertComment(deps, issueNumber, body, scopeLine, listed2 = listCommentsAndViewer(deps, issueNumber)) {
+async function upsertComment(deps, issueNumber, body, scopeLine, listed2 = listCommentsAndViewer(deps, issueNumber), writers = null) {
   try {
     const { comments, viewer } = await listed2;
-    const [existing, ...rest] = ownComments(comments, viewer, scopeLine);
+    const [existing, ...rest] = ownComments(comments, viewer, scopeLine, writers);
     if (existing) {
       await deps.api.updateComment(existing.id, body);
       deps.info(`updated pharn-ci comment ${existing.id}`);
@@ -50434,7 +50435,9 @@ async function upsertComment(deps, issueNumber, body, scopeLine, listed2 = listC
     }
     const createdLogin = await deps.api.createComment(issueNumber, body) ?? viewer;
     deps.info("created pharn-ci comment");
-    if (createdLogin !== null) await removeRaceDuplicates(deps, issueNumber, createdLogin, body, scopeLine);
+    if (createdLogin !== null && (viewer !== null || mayAdopt(createdLogin, "same", null, writers))) {
+      await removeRaceDuplicates(deps, issueNumber, createdLogin, body, scopeLine);
+    }
   } catch (err) {
     deps.warning(
       `could not post the PR comment (${errorText(err)}); the report is in the job summary. Grant \`pull-requests: write\` to enable comments.`
@@ -50446,15 +50449,30 @@ function commentScope(comment, scopeLine) {
   if (second === scopeLine) return "same";
   return second?.startsWith(SCOPE_LINE_PREFIX) ? "other" : "legacy";
 }
-function ownComments(comments, viewer, scopeLine) {
+function ownComments(comments, viewer, scopeLine, writers) {
   return comments.filter((c) => {
     if (!c.body?.startsWith(COMMENT_MARKER)) return false;
     const login = c.user?.login;
     const scope = commentScope(c, scopeLine);
     if (login === void 0 || scope === "other") return false;
-    if (viewer !== null) return login === viewer;
-    return scope === "same" ? login.endsWith("[bot]") : login === DEFAULT_TOKEN_LOGIN;
+    return mayAdopt(login, scope, viewer, writers);
   }).sort((a, b) => a.id - b.id);
+}
+function mayAdopt(login, scope, viewer, writers) {
+  if (viewer !== null) return login === viewer;
+  if (login === DEFAULT_TOKEN_LOGIN) return true;
+  if (scope !== "same" || !login.endsWith("[bot]")) return false;
+  return writers !== null && !writers.has(login.toLowerCase());
+}
+function prWriterLogins(facts) {
+  const pr = facts.pr;
+  if (pr === null || pr.author === null || pr.commits === null || pr.commitsIncomplete === true) return null;
+  const logins = /* @__PURE__ */ new Set([pr.author.login.toLowerCase()]);
+  for (const commit of pr.commits) {
+    if (commit.authorLogin !== null) logins.add(commit.authorLogin.toLowerCase());
+    if (commit.committerLogin !== null) logins.add(commit.committerLogin.toLowerCase());
+  }
+  return logins;
 }
 async function listCommentsAndViewer(deps, issueNumber) {
   const [comments, viewer] = await Promise.all([deps.api.listComments(issueNumber), deps.api.viewerLogin()]);

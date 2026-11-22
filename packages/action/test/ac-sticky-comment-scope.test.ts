@@ -63,12 +63,21 @@ async function runOnce(store: Store, viewer: string | null, createdLogin: string
       job: "pharn",
       repo: { owner: "octo", repo: "demo" },
       issue: { owner: "octo", repo: "demo", number: 7 },
-      payload: { pull_request: { number: 7, base: { sha: "a".repeat(40) }, head: { sha: "b".repeat(40) } } },
+      // A pull request by a person whose commits are all read (CORE-120): no bot here wrote the pull request.
+      payload: {
+        pull_request: {
+          number: 7,
+          user: { login: "octocat", type: "User" },
+          base: { sha: "a".repeat(40) },
+          head: { sha: "b".repeat(40) },
+        },
+      },
     },
     workspace: WORKSPACE,
     tempDir: "/tmp/runner",
     api: {
       compareDiff: async () => fixture("golden/pr.diff"),
+      listPullRequestCommits: async () => ({ commits: [], hasNext: false }),
       viewerLogin: async () => viewer,
       listComments: async () => store.comments.map((c) => ({ ...c, user: { ...c.user } })),
       createComment: async (_issueNumber: number, body: string) => {

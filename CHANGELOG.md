@@ -17,6 +17,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   modification time and sha256 before the command starts; after a non-zero exit, a file with both unchanged is stale,
   the command's own code is kept, and one stderr line names the stale files. A file rewritten with the same bytes (a
   new time) or with new bytes (the old time) is fresh. A command that exits `0` still exits `0`.
+- The Action no longer adopts a marker comment written by a bot that wrote the pull request (CORE-120). With a token
+  whose login is unknown (the default `GITHUB_TOKEN`, an App installation token), any bot's comment with pharn-ci's
+  marker and scope line counted as pharn-ci's own, so a coding agent that opened the pull request could post one and
+  edit the report pharn-ci wrote into it. Now a bot that is the pull request's author, or the author or committer of
+  one of its commits, is never adopted, and when the author or the commits cannot all be read only
+  `github-actions[bot]` is; pharn-ci posts its own comment instead and never edits or deletes the other one.
+  `github-actions[bot]` is still adopted, also on a pull request a workflow opened. A known login is unchanged.
 - Docs: `docs/LIMITS.md` lists, in one place, the files and spellings dependency safety (D04 and D05) still does not
   read (CORE-117). The spellings closed by the lockfile and manifest readers stay described as read.
 - Dependency safety judges a `uv.lock` package's sdist and wheel URLs (CORE-9 R4.8). D05 judged a uv package by its
