@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { runDiff } from "./ac-e1-fix-shared.js";
 import { withoutCore50SchemaEdits } from "./core50-schema.js";
 import { withoutCore69SchemaEdits } from "./core69-schema.js";
+import { withoutCore125PolicySchemaEdits } from "./core125-policy-schema-text.js";
 import { withoutR3SchemaTextEdits } from "./r3-schema-text.js";
 import { validateReport } from "./schema.js";
 
@@ -109,7 +110,9 @@ describe("schema/report.v2.json and schema/policy.v1.json accept TI17 and change
     expect(reportBack === reportBase, "report.v2.json equals the base once the TI17 edits are out").toBe(true);
 
     // policy.v1.json: a TI17 key like TI16, the two range descriptions edited, nothing else.
-    const policyHead = atHead("policy.v1.json");
+    // Re-pinned for CORE-125: its six description edits (what policy.required and P12 apply) are put back first
+    // (core125-policy-schema-text.ts), so every other byte stays pinned.
+    const policyHead = withoutCore125PolicySchemaEdits(atHead("policy.v1.json"));
     const policyBase = atBase("policy.v1.json");
     const head = (JSON.parse(policyHead) as PolicySchema).properties.test_integrity;
     const base = (JSON.parse(policyBase) as PolicySchema).properties.test_integrity;

@@ -135,7 +135,8 @@ In the Action, `meta.isAgentPr` says whether the pull request counts as an agent
 `meta.prAuthor`, `meta.prLabels` and `meta.coAuthors` carry what it was read from. The detection is metadata only: it
 reads the pull request's author, labels and commits (their authors, committers and `Co-authored-by` trailers), never a
 file or the diff. Detection runs on every pull request run. On its own the flag changes no verdict, message, comment or
-exit code; under an org policy with `agents.protected_paths`, rule P11 uses it (see [Org policy](policy.md)). A pull
+exit code; under an org policy, rules P11 (with `agents.protected_paths`), P13 (always) and P14 (with
+`agents.max_files` or `agents.max_changed_lines`) use it (see [Org policy](policy.md)). A pull
 request counts as an agent PR when any of this holds:
 
 - its author is a bot (type `Bot`, or a login ending in `[bot]`, Dependabot included), a known agent or a login you

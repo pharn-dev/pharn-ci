@@ -56,8 +56,8 @@ is not listed, and neither is any path with a `node_modules` directory. A listed
 
 It is **AI-agnostic**: it measures your code, tests and setup files, never which tool wrote the code.
 Claude Code, Cursor, Copilot, Codex and hand-written changes are measured the same way. The one exception is opt-in:
-under an org policy with protected paths, rule P11 applies those paths to pull requests it detects as agent-written
-(see [Agent PRs](output.md#agent-prs)).
+under an org policy, rules P11 (protected paths), P13 (agent self-modification) and P14 (size caps) apply only to pull
+requests it detects as agent-written (see [Agent PRs](output.md#agent-prs)).
 
 The output is one sticky PR comment, the job summary, a pass/warn/fail verdict, and a JSON report
 with a published schema that agents and scripts can read.

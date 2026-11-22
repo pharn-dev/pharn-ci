@@ -211,9 +211,9 @@ export interface CheckInput {
   agentInstructionSources?: AgentConfigSources;
   /**
    * The org policy of the run (see `ResolvedPolicy`), after `applyPolicy` gave the effective settings the other fields
-   * carry. Its document runs the org-policy rules (P01 to P11), its `unavailable` reason adds one
-   * POLICY_UNAVAILABLE message, and the report carries a `policy` object for an app or file policy or an unavailable
-   * one. Absent, or a policy of source `none` with no reason, adds nothing and the report is the one it was.
+   * carry. Its document runs the org-policy rules (P01 to P11, P13 and P14; P12 is validated and not run), its
+   * `unavailable` reason adds one POLICY_UNAVAILABLE message, and the report carries a `policy` object for an app or
+   * file policy or an unavailable one. Absent, or a policy of source `none` with no reason, adds nothing and the report is the one it was.
    */
   policy?: ResolvedPolicy;
   /**
@@ -538,7 +538,7 @@ export function check(input: CheckInput): Report {
           extraLogins: [...(agentFacts.extraLogins ?? []), ...agentPolicy.extraLogins],
           listsIncomplete: agentFacts.listsIncomplete === true || agentPolicy.listsIncomplete,
         });
-  // The org-policy rules (P01 to P11) run once, only when a policy was asked for.
+  // The org-policy rules (P01 to P11, P13 and P14; no P12) run once, only when a policy was asked for.
   const policyEvaluation =
     input.policy === undefined
       ? null

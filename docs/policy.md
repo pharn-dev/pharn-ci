@@ -6,8 +6,8 @@ carries in a file. This release applies the coverage, setup (including the lists
 `setup.consistency` for P07) and test-integrity keys, and `agents.labels`, `agents.extra_logins`,
 `agents.protected_paths`, `agents.protected_paths_mode`, `agents.max_files` and `agents.max_changed_lines`, and
 `flaky.quarantine` (whether the app's quarantine list applies to the [JUnit results](checks/flaky-tests.md)),
-and the `dependencies` keys ([Dependency safety](checks/dependencies.md)); the other `agents` keys are validated but not
-applied yet.
+and the `dependencies` keys ([Dependency safety](checks/dependencies.md)). The one other `agents` key,
+`agents.require_human_approval`, and rule P12 that it is meant for are validated and not applied: they change nothing.
 
 **What is sent.** With `policy: auto` (the default) or `required`, and only when the job grants `id-token: write`, the
 Action makes one `GET` of `/api/v1/policy?repo=<owner>/<name>` on the pharn.dev app. Only the OIDC token and the repository name
@@ -49,6 +49,13 @@ allowed from a file, and a value lower than the workflow inputs give is ignored;
 symbolic link and names a regular file of at most 1 MiB; anything else fails the step (the CLI exits `2`) with a fixed
 message that never names the path. What the policy does not cover is in [`docs/LIMITS.md`](LIMITS.md).
 
+**Changing a `file:` policy.** Every pull request that edits the policy file, or renames it away, gets a P09 violation
+at `block` (a `POLICY_P09` error), whatever the edit does, a tightening included. The file can only raise P09's
+severity, never lower or switch it off, and the accept label does not lift it, so that pull request always fails the
+check. Change the policy in a pull request of its own, have it reviewed, and have an admin merge it past the failing
+check as your branch protection allows. The pull requests after it are checked against the merged file. A policy
+served by the app is changed in the app, where no pull request can edit it.
+
 **Rules.** A policy also runs rules. P01, P08, P09, P10, P11 and P14 read what the check already has (the agent setup
 inventory, the tracked files, the diff, the pull request's metadata and the policy itself). P02 to P06 read the agent
 settings and MCP files, P07 reads the inline code and shell blocks of the agent instruction files, and P13 reads the
@@ -66,7 +73,8 @@ agent settings, MCP, workflow and CODEOWNERS files an agent pull request touches
 - **P07**, agent instruction files disagree: instruction files in one directory name different package managers or JavaScript test runners (`POLICY_P07`, `warn`; `setup.consistency` sets its severity). See [Policy mode](#policy-mode).
 - **P08**, forbidden file tracked: a tracked file matches a `setup.forbidden_files` pattern (`POLICY_P08`, `error`).
 - **P09**, the pull request loosens the policy it is graded by: it edits the policy file, the config or a workflow that sets a value looser than the policy, or an agent settings or MCP file the policy checks (`POLICY_P09`; `error` when the file fails P02 to P06 or could not be checked, `warn` when it only warns or supplies a required deny rule or hook, `info` when it complies, and `warn` when the files were not read).
-- **P10**, policy unavailable: the policy could not be read (`POLICY_UNAVAILABLE`).
+- **P10**, policy unavailable: the policy could not be read (`POLICY_UNAVAILABLE`). It fails the check only under the workflow input `policy: required`: a policy that could not be read cannot ask for that. The policy's own `policy.required` (app policy only) makes agent settings files that could not be read a `POLICY_SETTINGS_INVALID` error instead of a warning.
+- **P12**, agent PR needs a human approval: validated and not applied. `agents.require_human_approval` and `policy.rules.P12` are accepted and change nothing; no P12 finding is produced.
 - **P11**, agent PR changes a protected path: an agent pull request changes a path that `agents.protected_paths` lists (`POLICY_P11`, `error`).
 - **P13**, agent self-modification: an agent pull request widens its own or another agent's powers in an agent settings file, an MCP config, a workflow or CODEOWNERS (`POLICY_P13`, `error`). See [P13](#p13-agent-self-modification).
 - **P14**, agent PR too large: an agent pull request changes more files than `agents.max_files` or more lines than `agents.max_changed_lines` (`POLICY_P14`, `error`). Off until the policy sets a cap; lockfiles, snapshots and generated files do not count.

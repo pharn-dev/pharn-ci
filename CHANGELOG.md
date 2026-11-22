@@ -24,6 +24,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   one of its commits, is never adopted, and when the author or the commits cannot all be read only
   `github-actions[bot]` is; pharn-ci posts its own comment instead and never edits or deletes the other one.
   `github-actions[bot]` is still adopted, also on a pull request a workflow opened. A known login is unchanged.
+- Docs: the policy docs say what each key does today (CORE-125). The `policy.required` description says it makes
+  unreadable agent settings files an error in an app policy, and that only the `policy: required` input makes a policy
+  fetch failure block; `agents.require_human_approval` and P12 are validated and not applied; `docs/policy.md` explains
+  how a `file:` policy is changed (every edit is a P09 block); `docs/LIMITS.md` says the `dependencies` keys are
+  applied; P13 and P14, like P11, use the agent-PR flag.
 - Docs: `docs/LIMITS.md` lists, in one place, the files and spellings dependency safety (D04 and D05) still does not
   read (CORE-117). The spellings closed by the lockfile and manifest readers stay described as read.
 - Dependency safety judges a `uv.lock` package's sdist and wheel URLs (CORE-9 R4.8). D05 judged a uv package by its

@@ -31,8 +31,8 @@ const SETTINGS_RULES: readonly string[] = SETTINGS_READERS;
 const SEVERITY_RANK: Record<PolicyViolation["severity"], number> = { block: 0, warn: 1, info: 2 };
 
 /**
- * Run the org-policy rules (P01 to P11, and P14) over what the check already has, apply the policy's rule severities, sort,
- * and cap every rule id at 50. Pure and deterministic; the input is never mutated.
+ * Run the org-policy rules (P01 to P11, P13 and P14; there is no P12) over what the check already has, apply the policy's
+ * rule severities, sort, and cap every rule id at 50. Pure and deterministic; the input is never mutated.
  */
 export function evaluatePolicyRules(input: PolicyRuleInput): PolicyEvaluation {
   const { policy } = input;

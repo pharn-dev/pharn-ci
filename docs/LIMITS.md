@@ -1623,14 +1623,17 @@ applied once per run. What it does not do:
   app would have named: an app value above a lower layer's is recorded as `looser`, while the same file value above it
   is not, so the two reports then differ by one `POLICY_OVERRIDE_IGNORED` message.
 - **The `policy` and `app-url` inputs are the workflow's.** A pull request that edits the workflow can set them
-  (THREAT-MODEL, items 22 and 24).
+  (THREAT-MODEL, items 24 and 26).
 - **Only some keys are applied.** The `setup` lists are applied: `forbidden_files` feeds P08, `forbidden_permissions`,
   `required_permissions_deny`, `allowed_mcp_servers`, `forbidden_mcp_servers` and `required_hooks` feed P02 to P06,
   and `setup.consistency` feeds P07. `policy.rules` applies to P01 to P09, P11, P13 and P14 (P10 cannot be overridden).
   Of `agents`, only `agents.labels`, `agents.extra_logins`, `agents.protected_paths`, `agents.protected_paths_mode`,
   `agents.max_files` and `agents.max_changed_lines` are applied (the first two add to the detection, the next two feed
   P11, the last two P14); `flaky.quarantine` decides whether the app's quarantine list applies to the JUnit results;
-  `dependencies` and the other `agents` keys are validated and carried in the document, not applied yet.
+  the `dependencies` keys are applied to [dependency safety](checks/dependencies.md) (from a `file:` policy, its
+  registries and allowed hosts are not); `policy.required` (app policy only) makes agent settings files that could not
+  be read an error. `agents.require_human_approval` and `policy.rules.P12` are validated and carried in the document,
+  not applied: no P12 runs.
 - **What P09 sees, and what it misses.** P09 sees four kinds of edit in the diff: (1) the `file:` policy file itself,
   edited or renamed away; (2) the config in use, while `.pharn/ci.yml` holds a setting looser than the policy; (3) a
   file under `.github/workflows/`, while a workflow input is looser than the policy; (4) `.claude/settings.json` or
