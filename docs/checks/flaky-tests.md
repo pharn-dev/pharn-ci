@@ -47,8 +47,21 @@ pharn-ci test --junit 'reports/*.xml' --quarantine-file quarantine.json -- npx v
 
 It runs the command without a shell (each argument is passed as it is), with the terminal's input and output, then reads
 the JUnit files and prints a short summary on stderr. It exits `0` when the command failed and the results show at
-least one failed test, every failed test on the `--quarantine-file` list (a JSON array of ids), and every matched file
-read whole; otherwise it exits with the command's own code (`128 + n` when signal `n` stopped it). `--dry-run` prints
+least one failed test, every failed test on the `--quarantine-file` list (a JSON array of ids), every matched file
+read whole, and every matched file written by this run; otherwise it exits with the command's own code (`128 + n` when
+signal `n` stopped it).
+
+Only a JUnit file this run wrote counts. Before the command starts, `pharn-ci test` records the modification time and
+the sha256 of every file the `--junit` patterns match. After a non-zero exit, a matched file whose time and bytes are
+both unchanged is stale: an earlier run, a cache or a commit left it, so it cannot turn the failure into `0`. Then the
+command's own code is kept and one stderr line names the stale files (up to 10, then a count). A file that was not there
+before is fresh, and so is one the run rewrote: with the same bytes and a new time (a reporter without timestamps) or
+with new bytes and the old time (a tool that keeps it). When the files cannot be recorded before the run (the glob walk
+hits its limit, or a file cannot be read), no file can be shown to be fresh and the command's code is kept too. A
+command that exits `0` exits `0` whatever the files are.
+
+A quarantined failure does not hide an unrelated one: a fresh file with one failed test on the list and one that is
+not still exits with the command's code. `--dry-run` prints
 what would run and be read without running anything. It never makes a network call. A quarantine file the pull request
 can edit lets the pull request quarantine its own failures, so keep it where the pull request cannot change it
 ([`docs/THREAT-MODEL.md`](../THREAT-MODEL.md), residual 42). What the reader misses is in

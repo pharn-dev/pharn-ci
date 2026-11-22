@@ -47716,28 +47716,7 @@ async function listDir(path) {
 var MAX_JUNIT_GLOB_FILES = 1e3;
 var MAX_JUNIT_WALK_ENTRIES = 1e5;
 async function readJunitFiles(deps, options) {
-  const patterns = options.patterns.map((pattern) => parseExcludePattern(pattern, options.label));
-  const budget = { files: 0, entries: 0 };
-  const limits = { files: MAX_JUNIT_GLOB_FILES, entries: MAX_JUNIT_WALK_ENTRIES };
-  const listDir2 = (dir) => deps.listDir(deps.resolvePath(options.baseDir, dir));
-  const paths = [];
-  const seen = /* @__PURE__ */ new Set();
-  let walkLimit = false;
-  for (const pattern of patterns) {
-    let found;
-    try {
-      found = await walkGlob(pattern, listDir2, budget, limits);
-    } catch (err) {
-      if (!(err instanceof WalkLimitError)) throw err;
-      walkLimit = true;
-      break;
-    }
-    for (const path of found) {
-      if (seen.has(path)) continue;
-      seen.add(path);
-      paths.push(path);
-    }
-  }
+  const { paths, walkLimit } = await matchJunitFiles(deps, options);
   const files = [];
   let bytes = 0;
   let overBytes = false;
@@ -47764,6 +47743,29 @@ async function readJunitFiles(deps, options) {
     files.push(overBytes ? { path, dropped: "byte-cap" } : { path, text: parts.join("") });
   }
   return walkLimit ? { files, walkLimit } : { files };
+}
+async function matchJunitFiles(deps, options) {
+  const patterns = options.patterns.map((pattern) => parseExcludePattern(pattern, options.label));
+  const budget = { files: 0, entries: 0 };
+  const limits = { files: MAX_JUNIT_GLOB_FILES, entries: MAX_JUNIT_WALK_ENTRIES };
+  const listDir2 = (dir) => deps.listDir(deps.resolvePath(options.baseDir, dir));
+  const paths = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const pattern of patterns) {
+    let found;
+    try {
+      found = await walkGlob(pattern, listDir2, budget, limits);
+    } catch (err) {
+      if (!(err instanceof WalkLimitError)) throw err;
+      return { paths, walkLimit: true };
+    }
+    for (const path of found) {
+      if (seen.has(path)) continue;
+      seen.add(path);
+      paths.push(path);
+    }
+  }
+  return { paths, walkLimit: false };
 }
 
 // ../node-io/src/pythonIndex.ts

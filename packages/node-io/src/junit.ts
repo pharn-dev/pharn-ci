@@ -43,28 +43,7 @@ export interface ReadJunitFilesOptions {
  * up as soon as the total is over). A walk past its limit stops the search and is reported as `walkLimit`.
  */
 export async function readJunitFiles(deps: JunitReadDeps, options: ReadJunitFilesOptions): Promise<JunitSources> {
-  const patterns = options.patterns.map((pattern) => parseExcludePattern(pattern, options.label));
-  const budget: WalkBudget = { files: 0, entries: 0 };
-  const limits = { files: MAX_JUNIT_GLOB_FILES, entries: MAX_JUNIT_WALK_ENTRIES };
-  const listDir = (dir: string) => deps.listDir(deps.resolvePath(options.baseDir, dir));
-  const paths: string[] = [];
-  const seen = new Set<string>();
-  let walkLimit = false;
-  for (const pattern of patterns) {
-    let found: string[];
-    try {
-      found = await walkGlob(pattern, listDir, budget, limits);
-    } catch (err) {
-      if (!(err instanceof WalkLimitError)) throw err;
-      walkLimit = true;
-      break;
-    }
-    for (const path of found) {
-      if (seen.has(path)) continue;
-      seen.add(path);
-      paths.push(path);
-    }
-  }
+  const { paths, walkLimit } = await matchJunitFiles(deps, options);
   const files: Array<JunitSources["files"][number]> = [];
   let bytes = 0;
   let overBytes = false;
@@ -92,4 +71,43 @@ export async function readJunitFiles(deps: JunitReadDeps, options: ReadJunitFile
     files.push(overBytes ? { path, dropped: "byte-cap" } : { path, text: parts.join("") });
   }
   return walkLimit ? { files, walkLimit } : { files };
+}
+
+/** The files the JUnit patterns match, in the order `readJunitFiles` reads them, and whether the walk hit its limit. */
+export interface JunitMatches {
+  paths: string[];
+  walkLimit: boolean;
+}
+
+/**
+ * The paths (relative to `baseDir`) the patterns match, without reading any file: each pattern checked with the
+ * exclusion rules (a ConfigError otherwise), walked over listings that never follow a symbolic link, the matches taken in
+ * pattern order, each pattern's sorted, each file once. A walk past its limit stops the search (`walkLimit`). This is the
+ * list `readJunitFiles` reads from; `pharn-ci test` also takes it before the command runs, to tell a stale file.
+ */
+export async function matchJunitFiles(
+  deps: Pick<JunitReadDeps, "listDir" | "resolvePath">,
+  options: ReadJunitFilesOptions,
+): Promise<JunitMatches> {
+  const patterns = options.patterns.map((pattern) => parseExcludePattern(pattern, options.label));
+  const budget: WalkBudget = { files: 0, entries: 0 };
+  const limits = { files: MAX_JUNIT_GLOB_FILES, entries: MAX_JUNIT_WALK_ENTRIES };
+  const listDir = (dir: string) => deps.listDir(deps.resolvePath(options.baseDir, dir));
+  const paths: string[] = [];
+  const seen = new Set<string>();
+  for (const pattern of patterns) {
+    let found: string[];
+    try {
+      found = await walkGlob(pattern, listDir, budget, limits);
+    } catch (err) {
+      if (!(err instanceof WalkLimitError)) throw err;
+      return { paths, walkLimit: true };
+    }
+    for (const path of found) {
+      if (seen.has(path)) continue;
+      seen.add(path);
+      paths.push(path);
+    }
+  }
+  return { paths, walkLimit: false };
 }

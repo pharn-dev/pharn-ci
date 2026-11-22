@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import {
+  fileStamp,
   GIT_TIMEOUT_MS,
   listDir,
   lstatPath,
@@ -43,6 +44,7 @@ export function nodeDeps(
     resolvePath: (...segments) => resolve(...segments),
     // `pharn-ci test`: the command runs without a shell, so no argument is ever read as shell syntax.
     runCommand: (command, args) => runCommand(cwd, command, args),
+    fileStamp,
     stdout: (text) => process.stdout.write(text),
     stderr: (text) => process.stderr.write(text),
   };

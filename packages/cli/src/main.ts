@@ -42,6 +42,7 @@ import {
 } from "@pharn-ci/core";
 import {
   configCopyInUse,
+  type FileStamp,
   gitChunks,
   indexPythonTestSources,
   indexPythonTests,
@@ -105,6 +106,13 @@ export interface CliDeps {
    * it. Absent: `pharn-ci test` cannot run a command.
    */
   runCommand?(command: string, args: readonly string[]): Promise<{ code: number | null; signal: string | null }>;
+  /**
+   * The modification time and sha256 of a regular file, without following a symbolic link; the hash is null when the
+   * file is larger than `maxHashBytes`. Null when the path does not exist or is not a regular file. Only `pharn-ci test`
+   * calls it, before and after the command, to tell a JUnit file this run wrote from a stale one. Absent: node-io's
+   * `fileStamp`.
+   */
+  fileStamp?(path: string, maxHashBytes: number): Promise<FileStamp | null>;
   stdout(text: string): void;
   stderr(text: string): void;
 }

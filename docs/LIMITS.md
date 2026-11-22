@@ -1435,9 +1435,18 @@ What they miss:
   6000 units.
 - **The CLI wrapper.** `pharn-ci test` runs the command without a shell, so `npm test && x`, shell globs and variables
   are not expanded (wrap them in `sh -c '…'` yourself); on Windows a `.cmd` shim such as `npm` must be named as
-  `npm.cmd`. It exits `0` only when every matched file was read whole and every failed test is quarantined; a failure
-  outside the tests (a build error with no JUnit, a crash before the report was written) keeps the command's code. A
-  signal's exit code is `128 + n` as the shell reports it. `junit-include-output` is not shipped: no output is ever read
+  `npm.cmd`. It exits `0` only when every matched file was read whole, every failed test is quarantined and no matched
+  file is stale; a failure outside the tests (a build error with no JUnit, a crash before the report was written)
+  keeps the command's code, and so does a quarantined failure next to an unrelated one in the same fresh file. A
+  signal's exit code is `128 + n` as the shell reports it.
+- **Stale files.** A matched file whose modification time and sha256 are both unchanged since before the command
+  started is stale, and keeps the command's code (stderr names it). This tells only whether the run wrote the file,
+  not what wrote it: a command that crashes after a step of its own touched or copied an old report makes that report
+  fresh, and a forged file written during the run is fresh (THREAT-MODEL residual 42). On a file system that keeps
+  modification times coarsely (a second, or two on FAT), a report rewritten with the same bytes within that tick looks
+  unchanged and is called stale, which keeps the command's code. Files are hashed in match order within 25 MiB in all;
+  a file past that budget is compared by its time alone, so the same time means stale. When the files cannot be
+  recorded before the run (the glob walk hits its limit, a file cannot be read), no file is fresh. `junit-include-output` is not shipped: no output is ever read
   or sent.
 
 ## Dependency safety

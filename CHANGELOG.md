@@ -11,6 +11,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- `pharn-ci test` trusts only a JUnit file this run wrote (CORE-121). After a failed command it exited `0` when every
+  failed test in the matched JUnit files was quarantined, also when a file was left by an earlier run, a cache or a
+  commit, so a command that crashed before any test ran could exit `0`. Now it records each matched file's
+  modification time and sha256 before the command starts; after a non-zero exit, a file with both unchanged is stale,
+  the command's own code is kept, and one stderr line names the stale files. A file rewritten with the same bytes (a
+  new time) or with new bytes (the old time) is fresh. A command that exits `0` still exits `0`.
 - Docs: `docs/LIMITS.md` lists, in one place, the files and spellings dependency safety (D04 and D05) still does not
   read (CORE-117). The spellings closed by the lockfile and manifest readers stay described as read.
 - Dependency safety judges a `uv.lock` package's sdist and wheel URLs (CORE-9 R4.8). D05 judged a uv package by its

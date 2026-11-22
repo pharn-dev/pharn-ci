@@ -12,7 +12,13 @@ export {
 export { type CoverageReadDeps, type ReadCoverageFilesOptions, readCoverageFiles } from "./coverage.js";
 export { discoverCoverage, type ReadDiscoveredCoverageOptions, readDiscoveredCoverage } from "./discovery.js";
 export { GIT_TIMEOUT_MS, listDir, readFile, readFileStream, runGit, runGitBatch, streamGit } from "./io.js";
-export { type JunitReadDeps, type ReadJunitFilesOptions, readJunitFiles } from "./junit.js";
+export {
+  type JunitMatches,
+  type JunitReadDeps,
+  matchJunitFiles,
+  type ReadJunitFilesOptions,
+  readJunitFiles,
+} from "./junit.js";
 export {
   lstatPath,
   type PathStat,
@@ -32,4 +38,5 @@ export {
 export { PYTHON_BOOTSTRAP, PYTHON_INDEX_SCRIPT } from "./pythonIndexScript.js";
 export { indexPythonTestSources } from "./pythonSources.js";
 export { readStaleInstructionSources, type StaleInstructionGitDeps } from "./staleInstructions.js";
+export { type FileStamp, fileStamp } from "./stamp.js";
 export { type ReadTestSourcesOptions, readTestSources, type TestSourceGitDeps } from "./testSources.js";

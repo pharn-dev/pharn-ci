@@ -3,6 +3,7 @@ import { parseArgs } from "node:util";
 import {
   ConfigError,
   failuresAllQuarantined,
+  JUNIT_MAX_TOTAL_BYTES,
   type JunitResults,
   junitReport,
   parseExcludePattern,
@@ -12,15 +13,17 @@ import {
   tallyJunit,
   utf8ByteLength,
 } from "@pharn-ci/core";
-import { readJunitFiles } from "@pharn-ci/node-io";
+import { type FileStamp, fileStamp, matchJunitFiles, readJunitFiles } from "@pharn-ci/node-io";
 import type { CliDeps } from "./main.js";
 
 export const TEST_HELP = `Usage:
   pharn-ci test [options] -- <command> [args...]
 
 Runs the test command (without a shell, with this terminal's input and output), then reads its JUnit XML and prints a
-short summary. Exits 0 when the command failed only because of tests on the quarantine list; otherwise exits with the
-command's own code (128 + n when a signal n stopped it). Never makes a network call.
+short summary. Exits 0 when the command failed only because of tests on the quarantine list, in JUnit files this run
+wrote; otherwise exits with the command's own code (128 + n when a signal n stopped it). A matched file whose content
+and modification time are both unchanged since before the command started is stale and keeps the command's code.
+Never makes a network call.
 
 Options:
   --junit <file|glob>      JUnit XML the command writes, relative to here (repeatable)
@@ -53,6 +56,74 @@ export async function readJunit(deps: CliDeps, patterns: readonly string[]): Pro
   return parseJunitSources(await readJunitFiles(deps, { patterns, label: "--junit", baseDir: deps.cwd }));
 }
 
+/** The most stale paths one stderr line names; the rest are counted. */
+const NAMED_STALE_PATHS = 10;
+
+/**
+ * The stamp (modification time and sha256) of every file the `--junit` patterns match before the command starts, by
+ * path relative to the working directory, or null when that could not be recorded in full (the walk hit its limit, or a
+ * file could not be stamped): then no file can be shown to be fresh. Files are hashed in match order within the 25 MiB
+ * the reader reads at most; a file past that budget is stamped with its time alone (`sha256: null`).
+ */
+export async function recordJunitFiles(
+  deps: CliDeps,
+  patterns: readonly string[],
+): Promise<Map<string, FileStamp> | null> {
+  const stamp = deps.fileStamp ?? fileStamp;
+  try {
+    const matches = await matchJunitFiles(deps, { patterns, label: "--junit", baseDir: deps.cwd });
+    if (matches.walkLimit) return null;
+    const stamps = new Map<string, FileStamp>();
+    let budget = JUNIT_MAX_TOTAL_BYTES;
+    for (const path of matches.paths) {
+      const found = await stamp(deps.resolvePath(deps.cwd, path), budget);
+      if (found === null) continue;
+      stamps.set(path, found);
+      if (found.sha256 !== null) budget = Math.max(0, budget - found.size);
+    }
+    return stamps;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The matched `paths` (as read after the command ended) this run did not write: each was there before the command started and still has the
+ * same modification time, and its bytes are the same too (or could not be compared: a file past the hash budget, gone
+ * or unreadable now). A file that was not there before, or whose time or bytes changed, is fresh.
+ */
+export async function staleJunitFiles(
+  deps: CliDeps,
+  before: ReadonlyMap<string, FileStamp>,
+  paths: readonly string[],
+): Promise<string[]> {
+  const stamp = deps.fileStamp ?? fileStamp;
+  const stale: string[] = [];
+  const seen = new Set<string>();
+  for (const path of paths) {
+    if (seen.has(path)) continue;
+    seen.add(path);
+    const old = before.get(path);
+    if (old === undefined) continue;
+    let now: FileStamp | null;
+    try {
+      now = await stamp(deps.resolvePath(deps.cwd, path), old.sha256 === null ? 0 : JUNIT_MAX_TOTAL_BYTES);
+    } catch {
+      now = null;
+    }
+    if (now !== null && now.mtimeNs !== old.mtimeNs) continue;
+    if (now !== null && old.sha256 !== null && now.sha256 !== null && now.sha256 !== old.sha256) continue;
+    stale.push(path);
+  }
+  return stale;
+}
+
+/** Up to 10 paths, then `+N more`. */
+function namedStale(paths: readonly string[]): string {
+  const named = paths.slice(0, NAMED_STALE_PATHS).join(", ");
+  return paths.length > NAMED_STALE_PATHS ? `${named}, +${paths.length - NAMED_STALE_PATHS} more` : named;
+}
+
 /** One argument as the dry run prints it: as it is when it holds only safe characters, else JSON-quoted. */
 function shown(arg: string): string {
   return /^[A-Za-z0-9_./:=@%+,-]+$/.test(arg) ? arg : JSON.stringify(arg);
@@ -82,10 +153,12 @@ function summaryLines(results: JunitResults, quarantine: readonly string[] | und
 }
 
 /**
- * `pharn-ci test [options] -- <command> [args...]`: `argv` is what follows `test`. Runs the command without a shell,
- * reads the `--junit` files once it ended, and decides the exit code: the command's own (0 stays 0; 128 + n for a
- * signal, with no JUnit read), or 0 when it failed and the JUnit results show at least one failed test, every failed test
- * on the `--quarantine-file` list, and every matched file read whole. Usage and file problems exit 2.
+ * `pharn-ci test [options] -- <command> [args...]`: `argv` is what follows `test`. Stamps the files the `--junit`
+ * patterns match, runs the command without a shell, reads the `--junit` files once it ended, and decides the exit code:
+ * the command's own (0 stays 0; 128 + n for a signal, with no JUnit read), or 0 when it failed and the JUnit results show
+ * at least one failed test, every failed test on the `--quarantine-file` list, every matched file read whole, and no
+ * matched file stale (unchanged since before the command started, so this run did not write it). Usage and file
+ * problems exit 2.
  */
 export async function runTestCommand(argv: string[], deps: CliDeps): Promise<number> {
   const at = argv.indexOf("--");
@@ -143,6 +216,8 @@ export async function runTestCommand(argv: string[], deps: CliDeps): Promise<num
     deps.stderr("pharn-ci: running a command is not available here\n");
     return 2;
   }
+  // Before the command starts: what every matched JUnit file looks like now, to tell later which ones it wrote.
+  const before = patterns.length === 0 ? undefined : await recordJunitFiles(deps, patterns);
   let ended: { code: number | null; signal: string | null };
   try {
     ended = await deps.runCommand(program, args);
@@ -159,14 +234,32 @@ export async function runTestCommand(argv: string[], deps: CliDeps): Promise<num
   if (patterns.length === 0) return code;
 
   let results: JunitResults;
+  let matched: string[];
   try {
-    results = await readJunit(deps, patterns);
+    const sources = await readJunitFiles(deps, { patterns, label: "--junit", baseDir: deps.cwd });
+    matched = sources.files.map((file) => file.path);
+    results = parseJunitSources(sources);
   } catch (err) {
     deps.stderr(`pharn-ci: could not read the JUnit files: ${err instanceof Error ? err.message : String(err)}\n`);
     return code;
   }
   for (const line of summaryLines(results, quarantine)) deps.stderr(`${line}\n`);
   if (code === 0) return 0;
+  if (before === null) {
+    deps.stderr(
+      `pharn-ci: could not record the JUnit files before the command ran, so no file can be shown to be this run's; pharn-ci keeps exit ${code}\n`,
+    );
+    return code;
+  }
+  if (before !== undefined) {
+    const stale = await staleJunitFiles(deps, before, matched);
+    if (stale.length > 0) {
+      deps.stderr(
+        `pharn-ci: stale JUnit file(s), unchanged since before the command ran, so this run did not write them: ${namedStale(stale)}; pharn-ci keeps exit ${code}\n`,
+      );
+      return code;
+    }
+  }
   if (failuresAllQuarantined(results, tallyJunit(results, quarantine))) {
     deps.stderr(`pharn-ci: the command exited ${code} and every failed test is quarantined, so pharn-ci exits 0\n`);
     return 0;

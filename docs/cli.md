@@ -59,7 +59,10 @@ pharn-ci test [--junit <file|glob>]... [--quarantine-file <path>] [--dry-run] --
 - `--junit <file|glob>` is repeatable and reads JUnit XML relative to the current directory into the report's `flaky`
   object and the Flaky section; `--quarantine-file <path>` names a JSON array of test ids treated as quarantined. A
   pattern outside the current directory, or a quarantine file that is missing, over 1 MiB or not such an array, exits
-  `2`. `pharn-ci test` wraps a test command with the same two flags; see
+  `2`. `pharn-ci test` wraps a test command with the same two flags. It exits `0` for a failed command only when
+  every failed test is quarantined and every matched JUnit file was written by this run: a file whose modification
+  time and sha256 are both unchanged since before the command started is stale, and keeps the command's code, with
+  one stderr line naming it. A quarantined failure next to an unrelated one keeps the command's code too. See
   [Flaky tests and JUnit results](checks/flaky-tests.md).
 - `--format json` prints only the report to stdout, for agents and scripts.
 - Exit codes: `0` pass or warn, `1` fail, `2` usage or runtime error.
