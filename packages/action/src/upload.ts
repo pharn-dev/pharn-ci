@@ -153,8 +153,11 @@ async function uploadSteps(deps: UploadDeps, input: UploadInput, remainingMs: ()
   if (input.pullRequestTarget === true) return { outcome: { status: "skipped", reason: "pull-request-target" } };
   if (input.report.meta === undefined) return { outcome: { status: "skipped", reason: "no-meta" } };
 
-  const token = await requestAppToken(deps, UPLOAD_NO_TOKEN_LINE);
-  if (token === null) return { outcome: { status: "skipped", reason: "no-oidc" } };
+  // Not offered and offered-but-failed are both `no-oidc`: an upload never fails the check, so a failed token request
+  // stays out of the verdict and the one info line `requestAppToken` logs is all the job says about it.
+  const tokenResult = await requestAppToken(deps, UPLOAD_NO_TOKEN_LINE);
+  if (tokenResult.kind !== "token") return { outcome: { status: "skipped", reason: "no-oidc" } };
+  const { token } = tokenResult;
 
   const commentUrl = await findCommentUrl(deps, input.findOwnComment);
   const createdAt = (deps.now?.() ?? new Date()).toISOString();

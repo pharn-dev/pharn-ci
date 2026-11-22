@@ -49082,25 +49082,33 @@ async function tokenWithin(getIDToken2, ms) {
     clearTimeout(timer);
   }
 }
-async function requestAppToken(deps, noTokenLine = NO_TOKEN_LINE) {
+var ERROR_CLASS = /^[A-Za-z][A-Za-z0-9]{0,63}$/;
+function errorClassOf(error2) {
+  const name = error2 instanceof Error ? error2.name : void 0;
+  return typeof name === "string" && ERROR_CLASS.test(name) ? name : "Error";
+}
+function tokenFailedLine(errorClass) {
+  return `pharn-ci: the job grants \`id-token: write\`, but the OIDC token request for the org policy failed (${errorClass})`;
+}
+async function requestAppToken(deps, noTokenLine) {
   const { getIDToken: getIDToken2, setSecret: setSecret2 } = deps;
   if (!oidcOffered(deps) || getIDToken2 === void 0 || setSecret2 === void 0) {
-    deps.info(noTokenLine);
-    return null;
+    deps.info(noTokenLine ?? NO_TOKEN_LINE);
+    return { kind: "not-offered" };
   }
+  const failed2 = (errorClass) => {
+    deps.info(noTokenLine ?? tokenFailedLine(errorClass));
+    return { kind: "failed", errorClass };
+  };
   let token;
   try {
     token = await tokenWithin(getIDToken2, deps.tokenTimeoutMs ?? APP_TOKEN_TIMEOUT_MS);
-  } catch {
-    deps.info(noTokenLine);
-    return null;
+  } catch (error2) {
+    return failed2(errorClassOf(error2));
   }
-  if (typeof token !== "string" || token === "") {
-    deps.info(noTokenLine);
-    return null;
-  }
+  if (typeof token !== "string" || token === "") return failed2("empty token");
   setSecret2(token);
-  return token;
+  return { kind: "token", token };
 }
 var REQUEST_ID = /^[A-Za-z0-9-]{1,64}$/;
 var defaultSleep = (ms) => new Promise((resolve2) => setTimeout(resolve2, ms));
@@ -49233,8 +49241,10 @@ async function requestPolicy(deps, options, onSettings) {
     ...extra.noInstallation === true ? { noInstallation: true } : {}
   });
   if (oidcOffered(deps) && !REPOSITORY.test(options.repository)) return unavailable2("no-repository");
-  const token = await requestAppToken(deps);
-  if (token === null) return required ? unavailable2("no-oidc-token") : silent();
+  const tokenResult = await requestAppToken(deps);
+  if (tokenResult.kind === "not-offered") return required ? unavailable2("no-oidc-token") : silent();
+  if (tokenResult.kind === "failed") return unavailable2("no-oidc-token");
+  const { token } = tokenResult;
   const url = new URL("/api/v1/policy", options.origin);
   url.searchParams.set("repo", options.repository);
   const result = await appRequest(deps, { url, token });
@@ -49519,11 +49529,11 @@ var UPLOAD_DEADLINE_MS = 9e4;
 var JSON_CONTENT_TYPE2 = /^application\/json\s*(?:;|$)/i;
 var OBJECT_KEY = /^[A-Za-z0-9/_.=-]{1,512}$/;
 var PUT_OK = [200, 201, 204];
-var ERROR_CLASS = /^[A-Za-z_$][A-Za-z0-9_$]{0,63}$/;
-function errorClassOf(err) {
+var ERROR_CLASS2 = /^[A-Za-z_$][A-Za-z0-9_$]{0,63}$/;
+function errorClassOf2(err) {
   if (typeof err !== "object" || err === null) return typeof err;
   const name = err.constructor?.name;
-  return typeof name === "string" && ERROR_CLASS.test(name) ? name : "unknown";
+  return typeof name === "string" && ERROR_CLASS2.test(name) ? name : "unknown";
 }
 async function runUpload(deps, input) {
   let step;
@@ -49533,7 +49543,7 @@ async function runUpload(deps, input) {
     const deadlineAt = clock() + (deps.uploadDeadlineMs ?? UPLOAD_DEADLINE_MS);
     step = await uploadSteps(deps, input, () => deadlineAt - clock());
   } catch (err) {
-    step = { outcome: { status: "failed", reason: "internal" }, errorClass: errorClassOf(err) };
+    step = { outcome: { status: "failed", reason: "internal" }, errorClass: errorClassOf2(err) };
     thrown = { err };
   }
   logOutcome(deps, step);
@@ -49561,8 +49571,9 @@ async function uploadSteps(deps, input, remainingMs) {
   if (input.choice === "never") return { outcome: { status: "skipped", reason: "input-never" } };
   if (input.pullRequestTarget === true) return { outcome: { status: "skipped", reason: "pull-request-target" } };
   if (input.report.meta === void 0) return { outcome: { status: "skipped", reason: "no-meta" } };
-  const token = await requestAppToken(deps, UPLOAD_NO_TOKEN_LINE);
-  if (token === null) return { outcome: { status: "skipped", reason: "no-oidc" } };
+  const tokenResult = await requestAppToken(deps, UPLOAD_NO_TOKEN_LINE);
+  if (tokenResult.kind !== "token") return { outcome: { status: "skipped", reason: "no-oidc" } };
+  const { token } = tokenResult;
   const commentUrl = await findCommentUrl(deps, input.findOwnComment);
   const createdAt = (deps.now?.() ?? /* @__PURE__ */ new Date()).toISOString();
   const meta = buildUploadMeta(input.report, { version: VERSION7, createdAt, commentUrl });

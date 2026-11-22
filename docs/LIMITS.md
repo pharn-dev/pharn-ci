@@ -1614,7 +1614,10 @@ applied once per run. What it does not do:
   full timeout, and with the one retry a failing request can take about 21 s.
 - **Fork pull requests and jobs without `id-token: write` get no policy.** GitHub gives a fork pull request no OIDC
   token, and a job that does not grant `id-token: write` has none. Under `policy: auto` that is silent apart from one
-  info line, and the check runs without the policy; `policy: required` makes it a failing check. The OIDC token is also
+  info line, and the check runs without the policy; `policy: required` makes it a failing check. A job that grants
+  `id-token: write` and whose token request fails or times out is not silent: it gets a `POLICY_UNAVAILABLE` warning
+  (`no-oidc-token`), but pharn-ci cannot tell a runner outage from a step that broke the token service, and it runs
+  without the policy all the same. The OIDC token is also
   the only identity the app sees, so a repository the app does not know gets no policy (`204` or `404`).
 - **A `file:` policy can only tighten.** The pull request carries the file, so pharn-ci applies a threshold, mode,
   `setup.require`, `setup.expect` and signal severities only upwards, and never its exclusions, root, accept label or

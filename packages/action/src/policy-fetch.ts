@@ -53,8 +53,9 @@ export async function fetchPolicy(
 
 /**
  * Fetches the org policy of a repository: one GET of `/api/v1/policy?repo=<owner/name>` on the app origin, with the
- * OIDC token. Under `auto` a missing token or policy is silent (source `none`); under `required` every reason there is
- * no policy is `unavailable`, which `check()` turns into an error. Whatever the app answers is untrusted: only a
+ * OIDC token. Under `auto` a runner that offers no token, or an app that has no policy, is silent (source `none`), and a
+ * token request that was offered and failed is `unavailable` (a warning); under `required` every reason there is no
+ * policy is `unavailable`, which `check()` turns into an error. Whatever the app answers is untrusted: only a
  * response that passes `validatePolicyResponse` whole is used, and nothing of a failing response is quoted. A request
  * id the app sent is logged once and carried in `unavailable.requestId` when it is a sane one.
  */
@@ -109,8 +110,12 @@ async function requestPolicy(
   // With no OIDC offered at all there is nothing to send and nothing to ask for: that is the no-token answer below,
   // whatever the repository is. With OIDC, a repository name that is not `owner/name` stops the run before a token is asked for.
   if (oidcOffered(deps) && !REPOSITORY.test(options.repository)) return unavailable("no-repository");
-  const token = await requestAppToken(deps);
-  if (token === null) return required ? unavailable("no-oidc-token") : silent();
+  const tokenResult = await requestAppToken(deps);
+  // Not offered: the job did not ask for a policy, so `auto` is silent. Offered and failed: the job asked for one by
+  // granting `id-token: write`, so the report says the policy was not used, under `auto` too.
+  if (tokenResult.kind === "not-offered") return required ? unavailable("no-oidc-token") : silent();
+  if (tokenResult.kind === "failed") return unavailable("no-oidc-token");
+  const { token } = tokenResult;
 
   const url = new URL("/api/v1/policy", options.origin);
   url.searchParams.set("repo", options.repository);

@@ -27,9 +27,10 @@ verdict, except that `UPLOAD_TOO_LARGE` can turn a pass into a warn. The whole u
 each request and the `PUT` is cut off at the time left, and running out is one more failed upload (a reason ending
 in `:deadline`).
 
-**When nothing is uploaded.** With `upload: never`, without `id-token: write` (a fork pull request never gets it), or
-on a `pull_request_target` run (its default checkout is the base branch, which pharn-ci refuses to measure),
-nothing is sent and the report says `meta.upload.status: skipped`. A report without a `meta` block (no run metadata)
+**When nothing is uploaded.** With `upload: never`, without `id-token: write` (a fork pull request never gets it), when
+the OIDC token request fails or times out, or on a `pull_request_target` run (its default checkout is the base branch,
+which pharn-ci refuses to measure), nothing is sent and the report says `meta.upload.status: skipped`. A failed token
+request is one info line in the job log and never a message or a verdict change: the upload never fails the check. A report without a `meta` block (no run metadata)
 is never sent and carries no upload status. When the app answers the policy request or the upload with `404`
 (the organization has not installed the Pharn GitHub App for the repository), the PR comment and the job summary
 end with a one-line hint to install it, once, and nothing else changes.

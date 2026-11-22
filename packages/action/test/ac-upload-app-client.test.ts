@@ -54,7 +54,10 @@ interface AppClient {
     deps: unknown,
     request: { url: URL; token: string; method?: "GET" | "POST"; body?: string; timeoutMs?: number },
   ): Promise<unknown>;
-  requestAppToken(deps: unknown, noTokenLine?: string): Promise<string | null>;
+  requestAppToken(
+    deps: unknown,
+    noTokenLine?: string,
+  ): Promise<{ kind: "token"; token: string } | { kind: "not-offered" } | { kind: "failed"; errorClass: string }>;
 }
 
 const load = async () => (await import("../src/app-client.js")) as unknown as AppClient;
@@ -144,10 +147,10 @@ describe("the app client's POST, per-request timeout and no-token line", { timeo
     // requestAppToken logs the given line instead of item 20's fixed one when no token is available.
     const line = "pharn-ci: a caller-chosen no-token line";
     const noToken = clientDeps(ok, { hasOidcEnv: false });
-    expect(await requestAppToken(noToken.deps, line)).toBeNull();
+    expect(await requestAppToken(noToken.deps, line)).toEqual({ kind: "not-offered" });
     expect(noToken.infos).toEqual([line]);
     const fixed = clientDeps(ok, { hasOidcEnv: false });
-    expect(await requestAppToken(fixed.deps)).toBeNull();
+    expect(await requestAppToken(fixed.deps)).toEqual({ kind: "not-offered" });
     expect(fixed.infos).toHaveLength(1);
     expect(fixed.infos[0]).not.toBe(line);
     expect(fixed.infos[0]).toContain("id-token: write");

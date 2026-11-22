@@ -13,7 +13,10 @@ and the `dependencies` keys ([Dependency safety](checks/dependencies.md)). The o
 Action makes one `GET` of `/api/v1/policy?repo=<owner>/<name>` on the pharn.dev app. Only the OIDC token and the repository name
 leave the job: no file content, diff, coverage file or log. The token is for the audience `pharn.dev` and is masked in
 the log. Without `id-token: write` (a fork pull request never gets it) nothing is sent, one info line says why, and the
-check runs with the workflow inputs and `.pharn/ci.yml`. The `policy` and `app-url` inputs are in the
+check runs with the workflow inputs and `.pharn/ci.yml`. When the job grants `id-token: write` but the token request
+fails, times out (30 s) or returns no token, nothing is sent either, and the report says so: one `POLICY_UNAVAILABLE`
+warning with the reason `no-oidc-token` (an error with `policy: required`), and one info line that names the error's
+class and nothing else of it. The `policy` and `app-url` inputs are in the
 [Action reference](action.md). `app-url` takes an `https` origin only: no credentials, path, query or fragment.
 The CLI never fetches a policy.
 
@@ -36,7 +39,7 @@ warning (a threshold with both numbers; never a pattern, root, label or registry
 **No policy, or no way to read it.** A repository with no policy (`204` or `404`) is silent under `auto` and its report is the
 same as with `policy: never`; after a `404` (the Pharn GitHub App is not installed) the PR comment and the job summary
 end with the install hint. Any other failure (a network error, a timeout, a `429`, a `5xx`, a response over 1 MiB, one that does
-not validate) is one `POLICY_UNAVAILABLE` warning, last in the report, and the check runs with the workflow inputs and
+not validate, a failed token request) is one `POLICY_UNAVAILABLE` warning, last in the report, and the check runs with the workflow inputs and
 `.pharn/ci.yml`. With `policy: required` every one of these, and a missing token, is a `POLICY_UNAVAILABLE` error and
 the check fails. A request is retried once after a network error or a `5xx`; it never follows a redirect, and nothing the
 app answers is quoted in the report.

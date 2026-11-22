@@ -313,8 +313,10 @@ and the tests cite them.
     the checkout now fails the step in every mode, instead of degrading to a compare-API diff and a warning.
 25. **A run with no token has no policy.** A fork pull request and a job without `id-token: write` get no OIDC
     token, so under `policy: auto` the check runs with the workflow inputs and `.pharn/ci.yml` alone, with one
-    info line and no message. Only `policy: required` turns a missing token, and every other reason no policy could
-    be used, into a failing check.
+    info line and no message. A job that grants `id-token: write` and whose token request then fails, times out or
+    returns no token is not silent: it gets a `POLICY_UNAVAILABLE` warning (`no-oidc-token`) that names no token, URL
+    or error text (`ac-oidc-token-failed.test.ts`). Only `policy: required` turns a missing token, and every other
+    reason no policy could be used, into a failing check.
 26. **The app is trusted for the policy, and `app-url` can name another host.** A served policy is validated for
     shape, not for sense: an app that serves a threshold of 0 or an exclusion of `**` loosens every repository it
     serves, and the app's policy replaces what the PR gave. The `app-url` input lives in the workflow file (item 24),

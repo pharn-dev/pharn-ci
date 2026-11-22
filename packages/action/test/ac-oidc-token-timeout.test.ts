@@ -45,7 +45,7 @@ describe("AC-21: the OIDC token request has a deadline", () => {
   it("a getIDToken that never settles yields no token and the one fixed info line within the timer", async () => {
     const d = deps(neverSettles, 20);
     const started = Date.now();
-    expect(await requestAppToken(d)).toBeNull();
+    expect(await requestAppToken(d)).toEqual({ kind: "failed", errorClass: "Error" });
     expect(Date.now() - started).toBeLessThan(5_000);
     expect(d.infos).toHaveLength(1);
     expect(d.infos[0]).toContain(NO_TOKEN);
@@ -56,34 +56,42 @@ describe("AC-21: the OIDC token request has a deadline", () => {
   it("the timeout outcome is the same as a rejecting getIDToken, line included", async () => {
     const timedOut = deps(neverSettles, 20);
     const rejected = deps(() => Promise.reject(new Error("boom-detail")), 20);
-    expect(await requestAppToken(timedOut)).toBeNull();
-    expect(await requestAppToken(rejected)).toBeNull();
+    expect(await requestAppToken(timedOut)).toEqual({ kind: "failed", errorClass: "Error" });
+    expect(await requestAppToken(rejected)).toEqual({ kind: "failed", errorClass: "Error" });
     expect(timedOut.infos).toEqual(rejected.infos);
   });
 
   it("the caller's own no-token line is the one logged on a timeout", async () => {
     const d = deps(neverSettles, 20);
-    expect(await requestAppToken(d, "upload: no token")).toBeNull();
+    expect(await requestAppToken(d, "upload: no token")).toEqual({ kind: "failed", errorClass: "Error" });
     expect(d.infos).toEqual(["upload: no token"]);
   });
 
   it("a token that arrives before the deadline is used and masked", async () => {
     const d = deps(async () => "tok-fast", 1_000);
-    expect(await requestAppToken(d)).toBe("tok-fast");
+    expect(await requestAppToken(d)).toEqual({ kind: "token", token: "tok-fast" });
     expect(d.secrets).toEqual(["tok-fast"]);
     expect(d.infos).toEqual([]);
   });
 
-  it("under policy required a timed-out token request is no-oidc-token and fetches nothing; under auto it is silent", async () => {
+  // CORE-122: under auto a timed-out request used to be silent, as if no token were offered. The job granted
+  // `id-token: write`, so it asked for the policy: the timeout is now no-oidc-token under auto too (required: false).
+  it("a timed-out token request is no-oidc-token and fetches nothing, under policy required and under auto", async () => {
     const origin = new URL("https://pharn.dev");
     const required = deps(neverSettles, 20);
     const policy = await fetchPolicy(required, { mode: "required", origin, repository: "acme/widgets" });
     expect(policy.unavailable?.reason).toBe("no-oidc-token");
+    expect(policy.unavailable?.required).toBe(true);
     expect(required.fetched).toEqual([]);
 
     const auto = deps(neverSettles, 20);
-    const silent = await fetchPolicy(auto, { mode: "auto", origin, repository: "acme/widgets" });
-    expect(silent).toEqual({ source: "none", version: null, document: null });
+    const unavailable = await fetchPolicy(auto, { mode: "auto", origin, repository: "acme/widgets" });
+    expect(unavailable).toEqual({
+      source: "none",
+      version: null,
+      document: null,
+      unavailable: { reason: "no-oidc-token", required: false },
+    });
     expect(auto.fetched).toEqual([]);
   });
 });

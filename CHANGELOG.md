@@ -29,6 +29,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   fetch failure block; `agents.require_human_approval` and P12 are validated and not applied; `docs/policy.md` explains
   how a `file:` policy is changed (every edit is a P09 block); `docs/LIMITS.md` says the `dependencies` keys are
   applied; P13 and P14, like P11, use the agent-PR flag.
+- A failed OIDC token request is reported (CORE-122). When the job granted `id-token: write` and the token request
+  threw, timed out or returned no token, `policy: auto` skipped the org policy with no message, so the team believed
+  its policy applied. That is now a `POLICY_UNAVAILABLE` warning with the reason `no-oidc-token` (an error under
+  `policy: required`, as before); a job that does not grant `id-token: write` stays silent. The message names no token,
+  URL or error text, and the one job-log line names the error class only. The upload still skips such a run with one
+  info line and no message. No new message code and no schema change.
 - Docs: `docs/LIMITS.md` lists, in one place, the files and spellings dependency safety (D04 and D05) still does not
   read (CORE-117). The spellings closed by the lockfile and manifest readers stay described as read.
 - Dependency safety judges a `uv.lock` package's sdist and wheel URLs (CORE-9 R4.8). D05 judged a uv package by its
