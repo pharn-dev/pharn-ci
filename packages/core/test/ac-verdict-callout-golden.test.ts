@@ -11,13 +11,15 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 /**
  * sha256 of each golden markdown file as committed before this increment. The build regenerates the files, so the
  * test pins the earlier content by hash: folding the callout back into the bare overview line must give it back.
+ * CORE-124 updated every hash on purpose: each is the same earlier file with the logo line's raw URL naming a commit
+ * SHA instead of `main`, and nothing else changed.
  */
 const BEFORE_SHA256 = {
-  golden: "d0b78ab8646489dcc38cbe54790eb29d599a318cb1888a46e23648579ffee184",
-  "golden-multi": "d0b78ab8646489dcc38cbe54790eb29d599a318cb1888a46e23648579ffee184",
-  "golden-cobertura": "457bad3073d1f78261cdc0e5f5511fc4c63fe903f6a3056f49a1c9ec04da9bd7",
-  "golden-exclusions": "d470c10cfb7ca3d50ba370fccae4176615db8036f96168cc5c61063925562ce7",
-  "coverage-paths/package-relative": "4c6c42ea20d6b16186891978429e1bb5d7775d135787c8e9fe0af8e83e616224",
+  golden: "0d77ffaef143ab97ff456d78688a11f63308217ae20932f0e7b1f6deef3454dc",
+  "golden-multi": "0d77ffaef143ab97ff456d78688a11f63308217ae20932f0e7b1f6deef3454dc",
+  "golden-cobertura": "fa083a7379c04242b897aa038b2c99818aeaeda74117d01be7ff90f81295a0e0",
+  "golden-exclusions": "ef238821e9357aa7fa96c678a67e5e44949c46d68bf54cb8a11357922ddf774f",
+  "coverage-paths/package-relative": "d3f9d4874927a0b4a37309188e5fd73669bcffed1277a9fde9e4b74309a30c4c",
 } as const;
 
 type Golden = keyof typeof BEFORE_SHA256;

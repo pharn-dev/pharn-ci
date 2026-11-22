@@ -44,9 +44,11 @@ const PINNED: Record<string, string> = {
   // Re-pinned again by CORE-95 (config read at the merge base): both walkers put the earlier TI14 sentence back into
   // their records before hashing (core95-ti14.ts), so their output digests are unchanged; these are the digests of the
   // edited files.
+  // Re-pinned again by CORE-124: ac-accept-signoff-regression folds the pinned logo URL in fixtures/golden/report.md
+  // back to the `main` one before hashing it (its golden digest is unchanged); this is the digest of the edited file.
   "packages/core/test/ac-ti0205-regression.test.ts": "1df2953978aee69fa343a36dffe2045ebc97468f2b165933254aeb7e44e2fd9f",
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "f4fe05f19edd74efd6a30a1f3adc32d1e1f2d95a9bc68f7c32c090c488c43f4d",
+    "c984776f0c7d0d4a3a023249cecb8347590bc9912e8917dd8b7d46c63691f724",
 };
 
 /**

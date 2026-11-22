@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { fixture, foldCoverageBar, foldIntegrityColumn } from "./helpers.js";
+import { fixture, foldCoverageBar, foldIntegrityColumn, foldLogoPin } from "./helpers.js";
 import { withoutFix } from "./v090-codes.js";
 
 // check() and renderMarkdown() are loaded inside each test body: these tests are written before CheckInput has
@@ -72,6 +72,9 @@ describe("renderMarkdown: the Test integrity section", () => {
     lines.splice(at, 4);
     // The comment-layout change added the summary table's Test integrity column on purpose: it is folded out too.
     // The comment-coverage-bar change added the diff-coverage bar line on purpose: it is folded out too.
-    expect(foldCoverageBar(foldIntegrityColumn(lines.join("\n")))).toBe(gitShow("fixtures/golden/report.md"));
+    // CORE-124 pinned the logo line's raw URL to a commit SHA instead of `main` on purpose: it is folded back too.
+    expect(foldCoverageBar(foldIntegrityColumn(foldLogoPin(lines.join("\n"))))).toBe(
+      gitShow("fixtures/golden/report.md"),
+    );
   });
 });

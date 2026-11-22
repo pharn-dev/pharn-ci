@@ -133,7 +133,8 @@ describe("renderMarkdown", () => {
     expect(message).toBe(
       "- ❌ `DIFF_UNAVAILABLE` Diff coverage was not computed: could not get the diff for main " +
         "\\[verify your account\\](https:\\/\\/evil.example) @\u200Boctocat \\*\\*urgent\\*\\* \\~\\~x\\~\\~ " +
-        "\\!\\[i\\](www\\.evil.example/i.png) \\_em\\_ \\`t\\` \\#1 \\\\...HEAD (use actions/checkout with fetch-depth: 0)",
+        // "#1" gets a zero-width space before the number so GitHub does not link the issue (CORE-124).
+        "\\!\\[i\\](www\\.evil.example/i.png) \\_em\\_ \\`t\\` \\#\u200B1 \\\\...HEAD (use actions/checkout with fetch-depth: 0)",
     );
     expectInert(message);
   });

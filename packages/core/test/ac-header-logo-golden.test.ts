@@ -8,7 +8,7 @@ import { expectValidReport } from "./schema.js";
 
 /** The one fixed logo line, written here so the test does not reuse the renderer's own constant. */
 const LOGO =
-  '<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/main/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">';
+  '<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/515998146a22a1886341d94236e4138e1777c13a/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">';
 
 /** U+1F6E1 U+FE0F, the brand mark, and U+00B7, the separator, as the SPEC writes them. */
 const HEADING = "## \u{1F6E1}\u{FE0F} pharn-ci · ❌ Fail";

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { foldCoverageBar } from "./helpers.js";
+import { foldCoverageBar, foldLogoPin } from "./helpers.js";
 import { withoutFixJson } from "./v090-codes.js";
 
 // E3 item 23 (policy settings), AC-31. The pin test files are read inside the test body, and a child vitest runs the
@@ -174,8 +174,12 @@ describe("the pins of E3 item 23", () => {
       goldens.trim().split("\n").sort(),
       "only the barred goldens and the goldens with fix under fixtures/golden* changed",
     ).toEqual([...BARRED_GOLDENS, ...GOLDENS_WITH_FIX].sort());
+    // Re-pinned by CORE-124: the logo line's raw URL names a commit SHA instead of `main` on purpose; it is folded back
+    // to the `main` URL before the comparison.
     for (const file of BARRED_GOLDENS) {
-      expect(foldCoverageBar(read(file)), `${file}: only the bar line added`).toBe(git("show", `${BASE}:${file}`));
+      expect(foldCoverageBar(foldLogoPin(read(file))), `${file}: only the bar line added`).toBe(
+        git("show", `${BASE}:${file}`),
+      );
     }
     for (const file of GOLDENS_WITH_FIX) {
       expect(withoutFixJson(read(file)), `${file}: only the fix objects added`).toBe(git("show", `${BASE}:${file}`));

@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { withCore95Ti14Before } from "../../core/test/core95-ti14.js";
-import { foldCoverageBar } from "../../core/test/helpers.js";
+import { foldCoverageBar, foldLogoPin } from "../../core/test/helpers.js";
 import { withoutFix, withoutFixJson } from "../../core/test/v090-codes.js";
 
 // check() and renderMarkdown() are loaded inside the test body: the AC tests are written before the accept label
@@ -255,9 +255,10 @@ describe("the accept label leaves the existing signals, hints, golden outputs an
       // report.md before the hash, so every other byte is still the base commit's. The comment-coverage-bar change
       // added the diff-coverage bar line on purpose: it is folded out too.
       // fix-hints (H6): report.json now carries a `fix` on each message; it is taken out too, so its base bytes stay pinned.
+      // CORE-124 pinned the logo line's raw URL to a commit SHA instead of `main` on purpose: it is folded back too.
       const asAtBase =
         name === "report.md"
-          ? foldIntegrityColumn(foldCoverageBar(bytes.toString("utf8")))
+          ? foldIntegrityColumn(foldCoverageBar(foldLogoPin(bytes.toString("utf8"))))
           : name === "report.json"
             ? withoutFixJson(bytes.toString("utf8"))
             : bytes;

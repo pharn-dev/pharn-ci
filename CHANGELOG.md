@@ -42,6 +42,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   `null`, a missing field (an older app) or any other value means it posts or updates its comment as a run without an
   upload does. The value is never logged or written to the report, the comment or an output; `comment: false` still
   posts nothing.
+- The PR comment no longer turns issue references in message text into links, and its logo is pinned to a commit
+  (CORE-124). GitHub linked `#1`, `org/repo#1`, `GH-1` and `org/repo/issues/1` (also `/pull/`, `/discussions/`) in
+  message text after the backslash escapes, and a link to another repository's issue adds a "mentioned this" entry
+  there; each now gets a zero-width space before the number, as `@` gets one after it. Text in code spans is
+  unchanged. The logo URL named `main`, so a change to the file changed the image in every comment ever posted; it
+  now names a 40-character commit SHA.
 - Docs: `docs/LIMITS.md` lists, in one place, the files and spellings dependency safety (D04 and D05) still does not
   read (CORE-117). The spellings closed by the lockfile and manifest readers stay described as read.
 - Dependency safety judges a `uv.lock` package's sdist and wheel URLs (CORE-9 R4.8). D05 judged a uv package by its

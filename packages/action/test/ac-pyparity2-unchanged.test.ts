@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { withoutCore50SchemaEdits } from "../../core/test/core50-schema.js";
 import { withoutCore69SchemaEdits } from "../../core/test/core69-schema.js";
-import { foldCoverageBar } from "../../core/test/helpers.js";
+import { foldCoverageBar, foldLogoPin } from "../../core/test/helpers.js";
 import { withoutSchemaLevelEdits } from "../../core/test/level-edits.js";
 import { withoutR3SchemaTextEdits } from "../../core/test/r3-schema-text.js";
 import { withoutTi17SchemaEdits } from "../../core/test/ti17-schema.js";
@@ -122,9 +122,11 @@ const PINNED = [
 // Re-pinned again by CORE-95 (config read at the merge base): ac-accept-signoff-regression and ac-ti0205-regression put
 // the earlier TI14 sentence back into their records before hashing (core95-ti14.ts; their output digests are
 // unchanged); these are the digests of the edited files.
+// Re-pinned again by CORE-124: ac-accept-signoff-regression folds the pinned logo URL in fixtures/golden/report.md back
+// to the `main` one before hashing it (its golden digest is unchanged); this is the digest of the edited file.
 const NAME_ONLY_REPINNED: Record<string, string> = {
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "f4fe05f19edd74efd6a30a1f3adc32d1e1f2d95a9bc68f7c32c090c488c43f4d",
+    "c984776f0c7d0d4a3a023249cecb8347590bc9912e8917dd8b7d46c63691f724",
   // Re-pinned again by A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): ac-ti0205-regression takes the tests-exercise message
   // and testIntegrity.exercise out of the golden reports made with sources before comparing (exercise-repin.ts); this
   // is the digest of the edited file.
@@ -320,9 +322,17 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
     // its content at the base byte for byte.
     const fixed =
       /^M\t(fixtures\/(?:golden|golden-cobertura|golden-multi|coverage-paths\/package-relative)\/report(?:-warn)?\.json)$/;
+    // Re-pinned for CORE-124: the logo line's raw URL names a commit SHA instead of `main` on purpose, so each golden
+    // report.md (and any other rendered .md, modified for that alone) is its content at the base once the pinned URL
+    // is folded back to the `main` one.
+    const logoPinned = /^M\t(fixtures\/(?!golden(?:-cobertura|-exclusions|-multi)?\/report\.md$)[^\t]+\.md)$/;
+    for (const line of statuses) {
+      const pinnedPath = logoPinned.exec(line)?.[1];
+      if (pinnedPath !== undefined) expect(foldLogoPin(read(pinnedPath)), line).toBe(atBase(pinnedPath));
+    }
     for (const line of statuses) {
       const path = barred.exec(line)?.[1];
-      if (path !== undefined) expect(foldCoverageBar(read(path)), line).toBe(atBase(path));
+      if (path !== undefined) expect(foldCoverageBar(foldLogoPin(read(path))), line).toBe(atBase(path));
       const fixedPath = fixed.exec(line)?.[1];
       if (fixedPath !== undefined) expect(withoutFixJson(read(fixedPath)), line).toBe(atBase(fixedPath));
     }
@@ -363,6 +373,7 @@ describe("pytest parity changes no schema, code, id, pinned output or dist fresh
         (l) =>
           !l.startsWith("A\t") &&
           !barred.test(l) &&
+          !logoPinned.test(l) &&
           !fixed.test(l) &&
           !unknownTi.test(l) &&
           l !== newFile &&

@@ -5,9 +5,10 @@ import { describe, expect, it } from "vitest";
 
 /** The one fixed logo line, written here so the test does not reuse the renderer's own constant. */
 const LOGO =
-  '<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/main/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">';
+  '<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/515998146a22a1886341d94236e4138e1777c13a/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">';
 
 describe("logoMarkup(): the fixed pharn logo line", () => {
+  // The raw URL is pinned to a commit since CORE-124 (it named `main` before); the line is otherwise unchanged.
   it("AC-1: returns exactly the fixed <img> line for the pharn logo on the raw main URL", async () => {
     const { logoMarkup } = await import("../src/render/logo.js");
     expect(logoMarkup()).toBe(LOGO);

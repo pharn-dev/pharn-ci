@@ -34,10 +34,12 @@ const CODE = "COVERAGE_PATHS_PARTIALLY_UNMATCHED";
 // and golden-cobertura markdown hashes now differ only by the footer's coverage format; the JSON reports did not change.
 // The pr-comment-logo-2 feature then updated the three markdown hashes in this block on purpose: the render gained the
 // fixed logo line and an empty line above the heading; the JSON reports, and so their hashes, did not change.
+// CORE-124 then updated the three markdown hashes in this block on purpose: the logo line's raw URL names a commit SHA
+// instead of `main`; nothing else in the markdown changed, and the JSON reports did not change.
 const GOLDEN_JSON_SHA256 = "549b58c8b5f0dbe0e5fdb95ac115d53ce7ecbd1a8c7a20e6c60a9227de5ec537";
-const GOLDEN_MD_SHA256 = "a55ed107a7e2f29761b965f4a8a993dfc069807cea5e7fcc19944da3b01fa6fc";
+const GOLDEN_MD_SHA256 = "fcc60e1e74d69799902997a2afc4b607110bb446a781cf3b3329b6c26c06458a";
 const GOLDEN_COBERTURA_JSON_SHA256 = "09f152cdc9119f7ee3de83a9912bf62dbcceeeb2d59a144765039b33a806feb1";
-const GOLDEN_COBERTURA_MD_SHA256 = "54e560874b3950e8624986d021d621cefdfcf2f3ea46686d346532565f7ae2cb";
+const GOLDEN_COBERTURA_MD_SHA256 = "7bbe74768f09a458f3362f7881c812bbdcf073c7a4e8039e59600b9dab0099f1";
 // fixtures/golden-exclusions/report.{json,md} as committed before this change (the markdown as F-32 committed
 // it, both as F-11 changed them above); the partial-mismatch change must not change them. The markdown hash was
 // updated on purpose by pr-comment-redesign-2 (the summary table under the verdict heading); the JSON did not change.
@@ -48,7 +50,8 @@ const EXCLUSIONS_JSON_SHA256 = "5773d3ef5a254c8c35f803665f70e69b881252e941c94e00
 // heading); the JSON did not change.
 // pr-comment-verdict-callout turned the overview line into a callout on purpose; every markdown hash in this file is
 // taken after folding the callout back into the bare sentence, so each constant is unchanged.
-const EXCLUSIONS_MD_SHA256 = "d470c10cfb7ca3d50ba370fccae4176615db8036f96168cc5c61063925562ce7";
+// CORE-124 updated the markdown hash on purpose (the logo line's raw URL names a commit SHA instead of `main`).
+const EXCLUSIONS_MD_SHA256 = "ef238821e9357aa7fa96c678a67e5e44949c46d68bf54cb8a11357922ddf774f";
 
 type Message = { level: string; code: string; text: string };
 

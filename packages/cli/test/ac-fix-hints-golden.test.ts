@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { VERSION } from "../../core/src/version.js";
+import { foldLogoPin } from "../../core/test/helpers.js";
 import { expectValidReport } from "../../core/test/schema.js";
 
 // fix-hints (H6), AC-9. main(), the renderer and the core's fix table are loaded inside the test body: the AC test is
@@ -99,9 +100,11 @@ describe("the goldens with fix hints", { timeout: 120_000 }, () => {
       for (const message of report.messages) messages.push([dir, message]);
 
       // The comment is unchanged: the rendered report equals the golden markdown at the base commit, byte for byte.
+      // Re-pinned for CORE-124: the logo line's raw URL names a commit SHA instead of `main` on purpose; it is folded
+      // back to the `main` URL, so every other byte is still compared with the base.
       const rendered = core.renderMarkdown({ ...report, tool: { ...report.tool, version: "0.1.0" } });
-      expect(rendered, `${dir}/report.md`).toBe(git("show", `${BASE}:fixtures/${dir}/report.md`));
-      expect(fixture(`${dir}/report.md`), `${dir}/report.md on disk`).toBe(
+      expect(foldLogoPin(rendered), `${dir}/report.md`).toBe(git("show", `${BASE}:fixtures/${dir}/report.md`));
+      expect(foldLogoPin(fixture(`${dir}/report.md`)), `${dir}/report.md on disk`).toBe(
         git("show", `${BASE}:fixtures/${dir}/report.md`),
       );
     }
@@ -114,7 +117,15 @@ describe("the goldens with fix hints", { timeout: 120_000 }, () => {
       .filter((path) => path.endsWith(".md"))
       .filter(
         (path) => !(path === "fixtures/test-integrity/python-switch-off/PYTEST-OUTCOMES.md" && added.includes(path)),
+      )
+      // Re-pinned for CORE-124: a rendered golden modified only by the pinned logo URL is its content at the base once
+      // the URL is folded back to the `main` one.
+      .filter(
+        (path) =>
+          added.includes(path) ||
+          foldLogoPin(readFileSync(resolve(ROOT, path), "utf8")) !== git("show", `${BASE}:${path}`),
       );
+    // (An added .md still fails: it is kept by the filter above, as it was before CORE-124.)
     expect(changed).toEqual([]);
 
     // Every message of the CLI's JSON carries the table's fix.

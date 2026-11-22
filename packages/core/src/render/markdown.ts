@@ -1202,8 +1202,12 @@ function escapeCellPipes(text: string): string {
 // the characters that open links, images, emphasis, strikethrough, code spans, headings and tables
 // are backslash-escaped. GitHub resolves @mentions after markdown, where a backslash no longer counts,
 // so "@" gets a zero-width space after it instead (as Dependabot does). "://" and "www." are escaped
-// so a bare URL is not autolinked.
+// so a bare URL is not autolinked. Issue references resolve after markdown too (CORE-124): "#1",
+// "org/repo#1", "GH-1" (any case) and "org/repo/issues/1" (also "pull", "discussions") each link, and a
+// link to another repository's issue adds a "mentioned this" entry there. A zero-width space goes
+// before the number, which GitHub's reference matcher does not skip.
 const MARKDOWN_ACTIVE = /[\\`*_[\]#!|~]/g;
+const ISSUE_REFERENCE = /(#|gh-|\/(?:issues|pulls?|discussions)\/)(?=\d)/gi;
 
 /** Message text on one line, with HTML, markdown, mentions and autolinks neutralized. */
 function inlineText(text: string): string {
@@ -1213,6 +1217,7 @@ function inlineText(text: string): string {
     .replace(/>/g, "&gt;")
     .replace(MARKDOWN_ACTIVE, "\\$&")
     .replace(/@/g, "@\u200B")
+    .replace(ISSUE_REFERENCE, "$1\u200B")
     .replace(/:\/\//g, ":\\/\\/")
     .replace(/(www)\./gi, "$1\\.");
 }

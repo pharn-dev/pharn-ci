@@ -10,7 +10,7 @@ const DOT = "·";
 const HEADING_PREFIX = `## ${SHIELD} pharn-ci ${DOT} `;
 /** The fixed logo line (pr-comment-logo-2) that opens the rendering, then an empty line, then the heading. */
 const LOGO =
-  '<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/main/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">';
+  '<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/515998146a22a1886341d94236e4138e1777c13a/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">';
 
 /** 50 agent setup files with 2,000-character paths: their table rows push the render past the comment limit. */
 const LONG_SETUP_FILES = Array.from(

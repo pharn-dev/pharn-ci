@@ -14,7 +14,7 @@ describe("PR comment look: compact footer and no image (pr-comment-redesign-2)",
 
     // The one place the header's logo markup comes from renders the fixed pharn logo line (pr-comment-logo-2).
     const LOGO =
-      '<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/main/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">';
+      '<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/515998146a22a1886341d94236e4138e1777c13a/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">';
     expect(logoMarkup()).toBe(LOGO);
 
     const agents = [{ path: "AGENTS.md", kind: "agents-md" }] as never;

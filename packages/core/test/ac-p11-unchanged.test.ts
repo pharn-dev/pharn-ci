@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { foldCoverageBar } from "./helpers.js";
+import { foldCoverageBar, foldLogoPin } from "./helpers.js";
 import { withoutFixJson } from "./v090-codes.js";
 
 // E3 item 24a part B (P11), AC-25. Reads the tree with git against the base commit and runs four existing whole-report
@@ -102,6 +102,9 @@ const CORE101_PATH =
 // Re-pinned for CORE-92 (a coverage file the PR supplies fails a gated run): its new directory
 // fixtures/tracked-coverage/ (one lcov file, the tracked files and four diffs) is added too.
 const CORE92_PATH = /^fixtures\/tracked-coverage\/[^/\t]+$/;
+// Re-pinned for CORE-124 (message text cannot link issues): its new fixture fixtures/comment-refs/references.txt is
+// added too.
+const CORE124_PATH = /^fixtures\/comment-refs\/references\.txt$/;
 
 /** The tests the PLAN lists as deliberately updated; each must carry a comment naming this item. */
 const DELIBERATE = [
@@ -162,12 +165,21 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       if (line.startsWith("A\t") && CORE53_PATH.test(line.slice(2))) continue;
       if (line.startsWith("A\t") && CORE101_PATH.test(line.slice(2))) continue;
       if (line.startsWith("A\t") && CORE92_PATH.test(line.slice(2))) continue;
+      if (line.startsWith("A\t") && CORE124_PATH.test(line.slice(2))) continue;
       // Re-pinned for comment-coverage-bar (the diff-coverage bar in the PR comment): the four golden report.md files
       // gained the bar line on purpose. Each must be modified, never added or deleted, and folding the bar line (and
       // the empty line under it) back out must give its content at the base byte for byte.
       const barred = /^M\t(fixtures\/golden(?:-cobertura|-exclusions|-multi)?\/report\.md)$/.exec(line);
+      // Re-pinned for CORE-124: the logo line's raw URL names a commit SHA instead of `main` on purpose. The golden
+      // report.md files fold it back before the bar; any other rendered .md modified for that alone must be its content
+      // at the base once it is folded back.
       if (barred !== null) {
-        expect(foldCoverageBar(read(barred[1] as string)), line).toBe(git("show", `${BASE}:${barred[1]}`));
+        expect(foldCoverageBar(foldLogoPin(read(barred[1] as string))), line).toBe(git("show", `${BASE}:${barred[1]}`));
+        continue;
+      }
+      const logoPinned = /^M\t(fixtures\/[^\t]+\.md)$/.exec(line);
+      if (logoPinned !== null) {
+        expect(foldLogoPin(read(logoPinned[1] as string)), line).toBe(git("show", `${BASE}:${logoPinned[1]}`));
         continue;
       }
       // Re-pinned for fix-hints (H6): the five committed report JSON goldens that carry a message gained a `fix` on
@@ -274,6 +286,8 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       if (CORE101_PATH.test(path)) continue;
       // Re-pinned for CORE-92: its new tracked-coverage directory is untracked until committed.
       if (CORE92_PATH.test(path)) continue;
+      // Re-pinned for CORE-124: its new comment-refs fixture is untracked until committed.
+      if (CORE124_PATH.test(path)) continue;
       // Re-pinned for policy-p13 (Horizon 2 item H1): its fixtures under fixtures/policy-rules/p13/ are untracked until
       // committed.
       // Re-pinned for stale instructions (Horizon 2 item H3): its fixtures under fixtures/stale-instructions/ are

@@ -45737,7 +45737,8 @@ function parsePolicyJson(text) {
 }
 
 // ../core/src/render/logo.ts
-var LOGO_MARKUP = '<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/main/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">';
+var LOGO_COMMIT = "515998146a22a1886341d94236e4138e1777c13a";
+var LOGO_MARKUP = `<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/${LOGO_COMMIT}/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">`;
 function logoMarkup() {
   return LOGO_MARKUP;
 }
@@ -46540,8 +46541,9 @@ function escapeCellPipes(text) {
   return out + run2;
 }
 var MARKDOWN_ACTIVE = /[\\`*_[\]#!|~]/g;
+var ISSUE_REFERENCE = /(#|gh-|\/(?:issues|pulls?|discussions)\/)(?=\d)/gi;
 function inlineText(text) {
-  return replaceUnsafeChars(text, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(MARKDOWN_ACTIVE, "\\$&").replace(/@/g, "@\u200B").replace(/:\/\//g, ":\\/\\/").replace(/(www)\./gi, "$1\\.");
+  return replaceUnsafeChars(text, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(MARKDOWN_ACTIVE, "\\$&").replace(/@/g, "@\u200B").replace(ISSUE_REFERENCE, "$1\u200B").replace(/:\/\//g, ":\\/\\/").replace(/(www)\./gi, "$1\\.");
 }
 
 // ../core/src/secrets/redact.ts

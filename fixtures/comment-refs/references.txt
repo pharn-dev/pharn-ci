@@ -1,0 +1,6 @@
+issue in another repository: org/repo#1 and pharn-dev/pharn-ci#12
+issue in this repository: #1, (#2) and #345
+GitHub's own prefix: GH-1, gh-2 and Gh-3
+issue paths: org/repo/issues/1, github.com/org/repo/pull/2, https://github.com/org/repo/discussions/3 and org/repo/ISSUES/4
+commit in another repository: org/repo@a63a7f55c74b39a44634cf72501d8ea73f87bb23
+not references: #abc, GH-abc, C# and issues/ alone

@@ -33,7 +33,9 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 // report, and so its hash, did not change.
 // pr-comment-verdict-callout turned the overview line into a callout on purpose; the markdown hash below is taken
 // after folding the callout back into the bare sentence, so it is unchanged.
-const GOLDEN_MD_SHA256 = "a55ed107a7e2f29761b965f4a8a993dfc069807cea5e7fcc19944da3b01fa6fc";
+// CORE-124 then updated the markdown hash on purpose: the logo line's raw URL names a commit SHA instead of `main`;
+// nothing else in the markdown changed, and the JSON report, and so its hash, did not change.
+const GOLDEN_MD_SHA256 = "fcc60e1e74d69799902997a2afc4b607110bb446a781cf3b3329b6c26c06458a";
 const GOLDEN_JSON_SHA256 = "a455705f65d678d9c059231ba36bed7241155cd5063744d2effd8df8d8116c24";
 
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");

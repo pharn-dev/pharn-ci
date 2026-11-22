@@ -27,7 +27,7 @@ that:
   parser (`typescript` 5.9.3, used only through `createSourceFile` to build a syntax tree; nothing
   in them is compiled, imported or run), and Python test files through the runner's own `python3`,
   which only parses them (`ast.parse`, in a subprocess). File names render in code spans and message text is escaped, so neither can add links, images, emphasis,
-  mentions or HTML to the PR comment. Git runs without a shell, and refs starting with `-` are
+  mentions, issue references or HTML to the PR comment. Git runs without a shell, and refs starting with `-` are
   rejected.
 - **Pure core.** `packages/core` cannot do I/O; a test, a lint rule and its tsconfig enforce it.
 - **Reviewable releases.** The committed Action bundle is rebuilt and diffed in CI. Third-party

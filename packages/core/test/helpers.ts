@@ -42,6 +42,23 @@ export function foldCoverageBar(markdown: string): string {
   return lines.join("\n");
 }
 
+/** The logo line's raw URL before CORE-124 (it followed `main`) and after (pinned to a commit). */
+const LOGO_URL_MAIN = "https://raw.githubusercontent.com/pharn-dev/pharn-ci/main/docs/assets/pharn-logo.svg";
+const LOGO_URL_PINNED =
+  "https://raw.githubusercontent.com/pharn-dev/pharn-ci/515998146a22a1886341d94236e4138e1777c13a/docs/assets/pharn-logo.svg";
+
+/**
+ * Fold the CORE-124 logo pin back out: the pinned logo URL becomes the `main` URL it was. Throws unless the markdown
+ * holds the pinned URL exactly once and no `main` URL, so output compared after folding still means "the output
+ * before the pin" and proves the URL is the only change.
+ */
+export function foldLogoPin(markdown: string): string {
+  const parts = markdown.split(LOGO_URL_PINNED);
+  if (parts.length !== 2) throw new Error(`foldLogoPin: the pinned logo URL appears ${parts.length - 1} times`);
+  if (markdown.includes(LOGO_URL_MAIN)) throw new Error("foldLogoPin: the main logo URL is still there");
+  return parts.join(LOGO_URL_MAIN);
+}
+
 /** The summary table header and separator the comment-layout change gave the PR comment. */
 const INTEGRITY_HEADER = "| Verdict | Diff coverage | Test integrity | Agent setup |";
 const INTEGRITY_SEPARATOR = "| --- | --- | --- | --- |";

@@ -52,6 +52,8 @@ that worked on the previous release. Before 1.0 the rules are:
   `CHANGELOG.md`, with the old behaviour named and how to get it back (usually by setting the input).
 - **The comment and summary layout may change** in any release; tools should read `report.json`
   (the `report-path` output), not the markdown.
+- **The logo is pinned to a commit.** When `docs/assets/pharn-logo.svg` changes, a PR after it merges sets `LOGO_COMMIT` in `packages/core/src/render/logo.ts` to that merge commit's full SHA,
+  so comments already posted keep their image.
 
 ## Cutting a release
 

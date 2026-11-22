@@ -5,7 +5,7 @@ import { BOT, fixture, type Harness, harness, PR_CONTEXT, SCOPE, WORKSPACE } fro
 
 /** The fixed logo line (pr-comment-logo-2) that opens the rendering; core's logoMarkup() is not exported. */
 const LOGO =
-  '<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/main/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">';
+  '<img src="https://raw.githubusercontent.com/pharn-dev/pharn-ci/515998146a22a1886341d94236e4138e1777c13a/docs/assets/pharn-logo.svg" alt="pharn" width="48" height="48">';
 
 /** The verdict heading the renderer writes, from a fixed map so the test does not reuse the renderer's own code. */
 const HEADING: Record<string, string> = { pass: "✅ Pass", warn: "⚠️ Warn", fail: "❌ Fail" };
