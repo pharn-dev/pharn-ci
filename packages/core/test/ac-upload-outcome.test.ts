@@ -60,6 +60,8 @@ function report(verdict: "pass" | "warn" | "fail", withMeta = true): Json {
 
 const OUTCOMES = [
   { status: "ok", runUrl: "https://pharn.dev/acme/widgets/runs/9-1" },
+  // CORE-119: whether the App commented is for the Action only; meta.upload stays the status and the runUrl.
+  { status: "ok", runUrl: "https://pharn.dev/acme/widgets/runs/9-1", appCommented: true },
   { status: "skipped", reason: "input-never" },
   { status: "skipped", reason: "no-meta" },
   { status: "skipped", reason: "no-oidc" },

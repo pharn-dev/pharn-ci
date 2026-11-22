@@ -35,6 +35,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   `policy: required`, as before); a job that does not grant `id-token: write` stays silent. The message names no token,
   URL or error text, and the one job-log line names the error class only. The upload still skips such a run with one
   info line and no message. No new message code and no schema change.
+- An uploaded run keeps the Action's own pull request comment unless the Pharn GitHub App says it commented
+  (CORE-119). After every successful upload the Action posted nothing and turned its earlier comment into a pointer,
+  so when the App's comment failed the pull request had no comment at all. The Action now reads `commentUrl` from the
+  answer to `POST /api/v1/runs` and skips its comment only when it is an `https` URL of at most 2,048 characters;
+  `null`, a missing field (an older app) or any other value means it posts or updates its comment as a run without an
+  upload does. The value is never logged or written to the report, the comment or an output; `comment: false` still
+  posts nothing.
 - Docs: `docs/LIMITS.md` lists, in one place, the files and spellings dependency safety (D04 and D05) still does not
   read (CORE-117). The spellings closed by the lockfile and manifest readers stay described as read.
 - Dependency safety judges a `uv.lock` package's sdist and wheel URLs (CORE-9 R4.8). D05 judged a uv package by its

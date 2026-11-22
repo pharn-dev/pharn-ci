@@ -23,6 +23,7 @@ const TOKEN = ["oidc", "MED", "c0de", "7788"].join("-");
 const START = new Date("2026-11-03T09:00:00.000Z").getTime();
 const SIGNED = `https://${["bkt-m7", "blob-store", "example"].join(".")}/o/acme/m7-run.tgz?X-Sig=Zq8w2Lp0`;
 const RUN_URL = `${APP}/acme/widgets/runs/9-1`;
+const APP_COMMENT = "https://github.com/acme/widgets/pull/7#issuecomment-77";
 const UPLOAD_URL_OK = {
   uploadUrl: SIGNED,
   objectKey: "runs/acme/widgets/9-1.tar.gz",
@@ -90,7 +91,10 @@ function recorder(behaviours: Partial<Record<Exclude<Kind, "other">, readonly Be
   const lists: Record<Exclude<Kind, "other">, readonly Behaviour[]> = {
     "upload-url": behaviours["upload-url"] ?? [{ kind: "answer", status: 200, body: UPLOAD_URL_OK, after: 0 }],
     put: behaviours.put ?? [{ kind: "answer", status: 200, after: 0 }],
-    runs: behaviours.runs ?? [{ kind: "answer", status: 201, body: { url: RUN_URL }, after: 0 }],
+    // The app answers with the comment it posted, so an ok upload means the App commented (CORE-119).
+    runs: behaviours.runs ?? [
+      { kind: "answer", status: 201, body: { url: RUN_URL, commentUrl: APP_COMMENT }, after: 0 },
+    ],
   };
   const counts = { "upload-url": 0, put: 0, runs: 0 };
   const r: Recorder = {

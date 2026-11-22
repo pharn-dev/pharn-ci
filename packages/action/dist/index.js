@@ -49663,9 +49663,17 @@ async function uploadSteps(deps, input, remainingMs) {
   if (runsResult.kind !== "response" || ![200, 201, 202].includes(runsResult.status)) {
     return failed(failReason("runs", runsResult, remainingMs()), runsId);
   }
-  const runUrl = readRunsAnswer(runsResult, input.appOrigin);
-  if (runUrl === null) return failed("runs:malformed", runsId);
-  return { outcome: { status: "ok", runUrl, ...junitXml === void 0 ? {} : { junit: true } }, ...runsId };
+  const runs = readRunsAnswer(runsResult, input.appOrigin);
+  if (runs === null) return failed("runs:malformed", runsId);
+  return {
+    outcome: {
+      status: "ok",
+      runUrl: runs.runUrl,
+      ...junitXml === void 0 ? {} : { junit: true },
+      ...runs.appCommented ? { appCommented: true } : {}
+    },
+    ...runsId
+  };
 }
 var failed = (reason, id) => ({ outcome: { status: "failed", reason }, ...id });
 function requestIdOf(result) {
@@ -49728,7 +49736,12 @@ function readRunsAnswer(result, origin) {
   const answer = jsonObject(result);
   if (answer === null || typeof answer.url !== "string") return null;
   const url = httpsUrl(answer.url, 2048);
-  return url !== null && url.origin === origin.origin ? url.href : null;
+  if (url === null || url.origin !== origin.origin) return null;
+  const { commentUrl } = answer;
+  return {
+    runUrl: url.href,
+    appCommented: typeof commentUrl === "string" && httpsUrl(commentUrl, 2048, true) !== null
+  };
 }
 async function putBundle(deps, url, bytes, remainingMs) {
   if (deps.fetch === void 0) return "put:network";
@@ -50039,7 +50052,7 @@ async function runUnsafe(deps) {
   deps.setOutput("diff-coverage", report.diffCoverage?.percent?.toString() ?? "");
   if (outcome.status === "ok") deps.setOutput("run-url", outcome.runUrl);
   await deps.writeSummary(summary2).catch((err) => deps.warning(`could not write job summary: ${String(err)}`));
-  if (outcome.status === "ok") {
+  if (outcome.status === "ok" && outcome.appCommented === true) {
     deps.info("pharn-ci: the Pharn GitHub App comments on the pull request for this run, so pharn-ci posts no comment");
     if (commentNumber !== void 0) {
       await pointOwnComment(deps, findOwn(commentNumber), `${COMMENT_MARKER}
@@ -50047,6 +50060,9 @@ ${scopeLine}
 `, outcome.runUrl);
     }
   } else if (comment && issueNumber !== void 0) {
+    if (outcome.status === "ok") {
+      deps.info("pharn-ci: the Pharn GitHub App did not comment on the pull request for this run, so pharn-ci does");
+    }
     const body = fitMarkdown(report, {
       prefix: `${COMMENT_MARKER}
 ${scopeLine}

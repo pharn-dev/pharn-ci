@@ -6,8 +6,12 @@ export const UPLOAD_REPORT_MAX_BYTES = 5_242_880;
 
 /** How the upload of a run ended. `reason` is for the log; the report carries only the status (and the URL). */
 export type UploadOutcome =
-  /** `junit` is true when the stored archive held the run's normalised JUnit results. */
-  | { status: "ok"; runUrl: string; junit?: boolean }
+  /**
+   * `junit` is true when the stored archive held the run's normalised JUnit results. `appCommented` is true when the
+   * app's answer carried a usable `commentUrl` (the App posted or edited the pull request comment before answering);
+   * only the Action reads it, to skip its own comment, and the report never carries it.
+   */
+  | { status: "ok"; runUrl: string; junit?: boolean; appCommented?: boolean }
   | { status: "skipped"; reason: "input-never" | "pull-request-target" | "no-meta" | "no-oidc" | "no-installation" }
   | { status: "failed"; reason: string }
   | { status: "too_large"; maxBytes: number | null };

@@ -612,14 +612,19 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
 
   await deps.writeSummary(summary).catch((err: unknown) => deps.warning(`could not write job summary: ${String(err)}`));
 
-  if (outcome.status === "ok") {
-    // The app comments on the pull request for an uploaded run; a second comment would only repeat it.
+  // The App commented on the pull request for this uploaded run exactly when its answer carried a usable comment URL
+  // (CORE-119); a second comment would only repeat it. Without one (null, absent, malformed) the run comments as a run
+  // without an upload does, so the pull request is never left without a comment.
+  if (outcome.status === "ok" && outcome.appCommented === true) {
     deps.info("pharn-ci: the Pharn GitHub App comments on the pull request for this run, so pharn-ci posts no comment");
     // An own comment an earlier run left would still show its old verdict beside the app's: it becomes a pointer.
     if (commentNumber !== undefined) {
       await pointOwnComment(deps, findOwn(commentNumber), `${COMMENT_MARKER}\n${scopeLine}\n`, outcome.runUrl);
     }
   } else if (comment && issueNumber !== undefined) {
+    if (outcome.status === "ok") {
+      deps.info("pharn-ci: the Pharn GitHub App did not comment on the pull request for this run, so pharn-ci does");
+    }
     const body = fitMarkdown(report, {
       prefix: `${COMMENT_MARKER}\n${scopeLine}\n`,
       note: TRUNCATED_NOTE,

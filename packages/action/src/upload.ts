@@ -261,9 +261,17 @@ async function uploadSteps(deps: UploadDeps, input: UploadInput, remainingMs: ()
   if (runsResult.kind !== "response" || ![200, 201, 202].includes(runsResult.status)) {
     return failed(failReason("runs", runsResult, remainingMs()), runsId);
   }
-  const runUrl = readRunsAnswer(runsResult, input.appOrigin);
-  if (runUrl === null) return failed("runs:malformed", runsId);
-  return { outcome: { status: "ok", runUrl, ...(junitXml === undefined ? {} : { junit: true }) }, ...runsId };
+  const runs = readRunsAnswer(runsResult, input.appOrigin);
+  if (runs === null) return failed("runs:malformed", runsId);
+  return {
+    outcome: {
+      status: "ok",
+      runUrl: runs.runUrl,
+      ...(junitXml === undefined ? {} : { junit: true }),
+      ...(runs.appCommented ? { appCommented: true } : {}),
+    },
+    ...runsId,
+  };
 }
 
 const failed = (reason: string, id: { requestId?: string }): Step => ({ outcome: { status: "failed", reason }, ...id });
@@ -348,12 +356,29 @@ function readUploadUrlAnswer(result: Extract<AppResult, { kind: "response" }>): 
   return { uploadUrl, objectKey, maxBytes };
 }
 
-/** The run's page URL of a runs answer: an https URL on the app's own origin, as the URL class writes it, or null. */
-function readRunsAnswer(result: Extract<AppResult, { kind: "response" }>, origin: URL): string | null {
+interface RunsAnswer {
+  runUrl: string;
+  /** The answer's `commentUrl` is a usable URL: the App posted or edited the pull request comment before answering. */
+  appCommented: boolean;
+}
+
+/**
+ * The run's page URL of a runs answer (an https URL on the app's own origin, as the URL class writes it), or null when
+ * there is none, and whether the App commented. `commentUrl` counts only as a string that is an https URL of at most
+ * 2048 characters (`httpsUrl`, a fragment allowed); null, absent (an older app), another type, `http:` or a longer
+ * string all read as "the App did not comment", so the Action comments itself. Only that yes or no is kept: the value
+ * never reaches a log line, the report, the comment or an output.
+ */
+function readRunsAnswer(result: Extract<AppResult, { kind: "response" }>, origin: URL): RunsAnswer | null {
   const answer = jsonObject(result);
   if (answer === null || typeof answer.url !== "string") return null;
   const url = httpsUrl(answer.url, 2048);
-  return url !== null && url.origin === origin.origin ? url.href : null;
+  if (url === null || url.origin !== origin.origin) return null;
+  const { commentUrl } = answer;
+  return {
+    runUrl: url.href,
+    appCommented: typeof commentUrl === "string" && httpsUrl(commentUrl, 2048, true) !== null,
+  };
 }
 
 /**

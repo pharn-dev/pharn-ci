@@ -18,9 +18,14 @@ failure messages redacted and cut to 2048 bytes), never the runner's own file or
 warning (the check ran in full).
 
 **What the job sees.** The signed URL and the token are masked and never logged. An upload that succeeds sets the
-`run-url` output and logs one line without a URL. The App then comments on the pull request, so `pharn-ci` posts no
-comment of its own; a comment an earlier run of the same workflow and job left is updated to one line that points to
-the run on pharn.dev, so the pull request never shows that run's verdict beside the App's comment. The job summary
+`run-url` output and logs one line without a URL. The App's answer to `POST /api/v1/runs` says whether it commented:
+only when its `commentUrl` is an `https` URL of at most 2,048 characters (the App posted or edited its comment before
+answering) does `pharn-ci` post no comment of its own, and a comment an earlier run of the same workflow and job left
+is updated to one line that points to the run on pharn.dev, so the pull request never shows that run's verdict beside
+the App's comment. When `commentUrl` is `null`, missing (an older app) or anything else, `pharn-ci` posts or updates
+its own comment exactly as a run without an upload does, so the pull request is never left without a comment. The
+value is only checked, never written to the log, the report, the comment or an output. With `comment: false` nothing
+is posted either way. The job summary
 and `report.json` still carry the report. An upload fails open: whatever goes wrong (a timeout, a non-2xx answer, an
 unexpected answer, an exception) ends in one warning that names a reason, never fails the check and never changes its
 verdict, except that `UPLOAD_TOO_LARGE` can turn a pass into a warn. The whole upload ends within 90 s of its start:
@@ -37,4 +42,4 @@ end with a one-line hint to install it, once, and nothing else changes.
 
 What this does not cover is in [`docs/LIMITS.md`](LIMITS.md), and the trust boundaries are in
 [`docs/THREAT-MODEL.md`](THREAT-MODEL.md). The app comments as `pharn[bot]`; the comment of the Action and the one
-of the App never both appear for one upload.
+of the App never both appear for one upload, and the Action's comment is skipped only when the App says it commented.
