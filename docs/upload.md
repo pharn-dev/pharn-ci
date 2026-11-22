@@ -23,7 +23,8 @@ only when its `commentUrl` is an `https` URL of at most 2,048 characters (the Ap
 answering) does `pharn-ci` post no comment of its own, and a comment an earlier run of the same workflow and job left
 is updated to one line that points to the run on pharn.dev, so the pull request never shows that run's verdict beside
 the App's comment. When `commentUrl` is `null`, missing (an older app) or anything else, `pharn-ci` posts or updates
-its own comment exactly as a run without an upload does, so the pull request is never left without a comment. The
+its own comment exactly as a run without an upload does, so a missing App comment no longer leaves the pull request
+without one (if GitHub refuses that comment too, the run logs one warning, as without an upload). The
 value is only checked, never written to the log, the report, the comment or an output. With `comment: false` nothing
 is posted either way. The job summary
 and `report.json` still carry the report. An upload fails open: whatever goes wrong (a timeout, a non-2xx answer, an
@@ -41,5 +42,6 @@ is never sent and carries no upload status. When the app answers the policy requ
 end with a one-line hint to install it, once, and nothing else changes.
 
 What this does not cover is in [`docs/LIMITS.md`](LIMITS.md), and the trust boundaries are in
-[`docs/THREAT-MODEL.md`](THREAT-MODEL.md). The app comments as `pharn[bot]`; the comment of the Action and the one
-of the App never both appear for one upload, and the Action's comment is skipped only when the App says it commented.
+[`docs/THREAT-MODEL.md`](THREAT-MODEL.md). The app comments as `pharn[bot]`; for one upload the
+Action's verdict and the App's never both appear: the Action posts no verdict only when the App says it commented, and
+then an earlier Action comment stays only as the one-line pointer to the run.
