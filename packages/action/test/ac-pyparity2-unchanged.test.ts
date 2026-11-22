@@ -82,6 +82,9 @@ const SECRET_CODES = [
   // and report.ts also gain this signal id and its message code; this only adds to what the pin allows.
   "TI17",
   "TEST_INTEGRITY_TI17",
+  // Re-pinned for CORE-118 (R5.1): the schema's message-code description (a " Codes added in v0.12.0:" text) and
+  // report.ts also gain this code; this only adds to what the pin allows.
+  "POLICY_KEYS_UNKNOWN",
 ];
 
 const git = (...args: string[]) =>

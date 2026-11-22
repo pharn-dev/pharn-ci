@@ -44,6 +44,17 @@ not validate, a failed token request) is one `POLICY_UNAVAILABLE` warning, last 
 the check fails. A request is retried once after a network error or a `5xx`; it never follows a redirect, and nothing the
 app answers is quoted in the report.
 
+**A policy newer than the pinned Action.** The app serves one policy to every version of the Action, and a repository
+pinned to an older commit may meet keys that version does not know: a newer signal id in `test_integrity.signals`, a
+newer rule in `policy.rules`, a new key anywhere in the policy or in the response around it, or a new tool in
+`setup.expect`. That version skips them and applies the rest of the policy (the threshold, the mode, the protected
+paths and every other key it knows), and one `POLICY_KEYS_UNKNOWN` warning names what it skipped: up to 20 dotted
+paths such as `policy.test_integrity.signals.TI18` or `policy.setup.expect[new-tool]`, sorted, each cut to 64
+characters, and a count of the rest. A skipped key is not enforced until the pin is updated. A key it knows with a value
+it cannot use (a threshold that is a string, a mode it has no name for) still makes the response invalid: that is a
+`POLICY_UNAVAILABLE` warning, or an error under `policy: required`. `updatedAt` may carry `Z` or a numeric offset
+(`+00:00`). A `file:` policy is not lenient: an unknown key there fails the step, as before.
+
 **`policy: file:<path>`.** A policy document read from the workspace (in the CLI, `--policy-file <path>`). The pull
 request carries the file, so it can only tighten: a higher threshold, `setup.require: true`, a stricter mode, more
 `setup.expect` tools and higher signal severities. Exclusions, a root, an accept label and `policy.required` are not

@@ -1,6 +1,6 @@
-import { ErrorCollector, MESSAGES, maxCharsMessage, rangeMessage } from "./errors.js";
+import { ErrorCollector, MESSAGES, maxCharsMessage, rangeMessage, type UnknownNames } from "./errors.js";
 import type { PolicyDocument, PolicyError } from "./types.js";
-import { validatePolicy } from "./validate.js";
+import { validatePolicyInto } from "./validate.js";
 
 /** The most items `quarantine` may hold. */
 export const RESPONSE_MAX_QUARANTINE_ITEMS = 10_000;
@@ -30,17 +30,24 @@ export interface PolicyResponse {
   settings: PolicyResponseSettings;
 }
 
-export type PolicyResponseValidation = { ok: true; response: PolicyResponse } | { ok: false; errors: PolicyError[] };
+/**
+ * A valid envelope, and the unknown keys and ids it carried: a newer app may serve keys this build does not know, and
+ * they are left out (with the rest applied) instead of voiding the policy. `unknown.total` is 0 when there were none.
+ */
+export type PolicyResponseValidation =
+  | { ok: true; response: PolicyResponse; unknown: UnknownNames }
+  | { ok: false; errors: PolicyError[] };
 
 const MESSAGE_TEXT = {
   versionMin: "must be an integer of at least 1",
   etag: "must be 1 to 200 printable ASCII characters",
-  updatedAt: "must be a UTC time such as 2026-01-31T09:30:00Z",
+  updatedAt: "must be an RFC 3339 time such as 2026-01-31T09:30:00Z or 2026-01-31T09:30:00+00:00",
   quarantineItem: "must not contain a control character",
   quarantineTooMany: "must have at most 10000 items",
 } as const;
 
-const UPDATED_AT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?Z$/;
+/** RFC 3339 `date-time` with an upper-case `T`, and `Z` or a numeric offset (`+00:00`, `-05:30`). */
+const UPDATED_AT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|[+-](\d{2}):(\d{2}))$/;
 
 function validUpdatedAt(value: string): boolean {
   const m = UPDATED_AT.exec(value);
@@ -54,6 +61,8 @@ function validUpdatedAt(value: string): boolean {
     number,
   ];
   if (month < 1 || month > 12 || hour > 23 || minute > 59 || second > 59) return false;
+  // A numeric offset is at most 23:59 either way (RFC 3339 `time-numoffset`).
+  if (m[7] !== undefined && (Number(m[7]) > 23 || Number(m[8]) > 59)) return false;
   const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1] as number;
   return day >= 1 && day <= days;
@@ -78,14 +87,18 @@ function isPrintableAscii(text: string): boolean {
 }
 
 /**
- * Validates the envelope the app serves. A closed six-key object, every key required: `version` (an integer of at
- * least 1), `etag`, `updatedAt` (a UTC time), `policy` (a policy document, validated by `validatePolicy`), `quarantine`
- * (at most 10,000 items of 1 to 1,024 code units without a control character) and `settings`. Every problem is one
- * RFC 6901 pointer and a fixed message that never repeats a value; a policy problem is re-rooted under `/policy`. At
- * most `POLICY_MAX_ERRORS` problems are kept. Success returns fresh copies; the response is never used in part.
+ * Validates the envelope the app serves. Six keys, every one required: `version` (an integer of at least 1), `etag`,
+ * `updatedAt` (an RFC 3339 time, `Z` or a numeric offset), `policy` (a policy document, walked as `validatePolicy` walks
+ * it), `quarantine` (at most 10,000 items of 1 to 1,024 code units without a control character) and `settings`. Every
+ * problem is one RFC 6901 pointer and a fixed message that never repeats a value; a policy problem is under `/policy`.
+ * At most `POLICY_MAX_ERRORS` problems are kept. A known key with a bad value voids the whole response, which is never
+ * used in part. A key or id this build does not know (in the envelope, in `settings` or anywhere in the policy) and a
+ * tool `setup.expect` names that this build does not know are not problems: they are left out, never read, copied or
+ * descended into, and named in `unknown` (the app is newer than the pinned build; CORE-118). Success returns fresh
+ * copies.
  */
 export function validatePolicyResponse(value: unknown): PolicyResponseValidation {
-  const errors = new ErrorCollector();
+  const errors = new ErrorCollector(true);
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     errors.add("", MESSAGES.object);
     return { ok: false, errors: errors.finish() };
@@ -127,9 +140,9 @@ export function validatePolicyResponse(value: unknown): PolicyResponseValidation
 
   let policy: PolicyDocument | undefined;
   if (Object.hasOwn(input, "policy")) {
-    const checked = validatePolicy(input.policy);
-    if (checked.ok) policy = checked.policy;
-    else for (const e of checked.errors) errors.add(e.path === "" ? "/policy" : `/policy${e.path}`, e.message);
+    const before = errors.total;
+    const checked = validatePolicyInto(input.policy, errors, "/policy");
+    if (errors.total === before) policy = checked;
   }
 
   let quarantine: string[] | undefined;
@@ -206,5 +219,9 @@ export function validatePolicyResponse(value: unknown): PolicyResponseValidation
   ) {
     return { ok: false, errors: errors.finish() };
   }
-  return { ok: true, response: { version, etag, updatedAt, policy, quarantine, settings } };
+  return {
+    ok: true,
+    response: { version, etag, updatedAt, policy, quarantine, settings },
+    unknown: errors.unknown(),
+  };
 }

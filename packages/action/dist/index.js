@@ -25846,6 +25846,10 @@ var MESSAGE_FIXES = {
   DEPENDENCY_CHECK_INCOMPLETE: {
     kind: "none",
     hint: "Check that the manifest or lockfile the report names can be read and parsed."
+  },
+  POLICY_KEYS_UNKNOWN: {
+    kind: "none",
+    hint: "Update the pharn-ci pin in the workflow to a release that knows the org policy's newer keys."
   }
 };
 
@@ -32348,6 +32352,193 @@ function agentPolicyOf(policy, from) {
   };
 }
 
+// ../core/src/policy/limits.ts
+var POLICY_MAX_CHARS = 262144;
+var POLICY_MAX_ERRORS = 50;
+var POLICY_MAX_LIST_ITEMS = 1e3;
+var POLICY_MAX_GLOB = 512;
+var POLICY_MAX_ROOT = 512;
+var POLICY_MAX_PERM = 512;
+var POLICY_MAX_NAME = 128;
+var POLICY_MAX_NAME_OR_GLOB = 512;
+var POLICY_MAX_LABEL = 50;
+var POLICY_MAX_LOGIN = 44;
+var POLICY_MAX_EVENT = 64;
+var POLICY_MAX_MATCHER = 512;
+var POLICY_MAX_HOST = 253;
+var POLICY_MAX_ALLOWED_HOSTS = 50;
+var POLICY_THRESHOLD_MIN = 0;
+var POLICY_THRESHOLD_MAX = 100;
+var POLICY_MAX_FILES_MIN = 1;
+var POLICY_MAX_FILES_MAX = 1e5;
+var POLICY_MAX_CHANGED_LINES_MIN = 1;
+var POLICY_MAX_CHANGED_LINES_MAX = 1e7;
+var POLICY_MIN_AGE_DAYS_MIN = 0;
+var POLICY_MIN_AGE_DAYS_MAX = 3650;
+var POLICY_MIN_WEEKLY_DOWNLOADS_MIN = 0;
+var POLICY_MIN_WEEKLY_DOWNLOADS_MAX = 1e9;
+var POLICY_SEVERITIES = ["block", "warn", "info", "off"];
+var POLICY_SIGNAL_IDS = [
+  "TI01",
+  "TI02",
+  "TI03",
+  "TI04",
+  "TI05",
+  "TI06",
+  "TI07",
+  "TI08",
+  "TI09",
+  "TI10",
+  "TI11",
+  "TI12",
+  "TI13",
+  "TI14",
+  "TI15",
+  "TI16",
+  "TI17"
+];
+var POLICY_RULE_IDS = [
+  "P01",
+  "P02",
+  "P03",
+  "P04",
+  "P05",
+  "P06",
+  "P07",
+  "P08",
+  "P09",
+  "P10",
+  "P11",
+  "P12",
+  "P13",
+  "P14"
+];
+var POLICY_INJECTION_SIGNAL_IDS = [
+  "PI01",
+  "PI02",
+  "PI03",
+  "PI04",
+  "PI05"
+];
+var POLICY_REGISTRIES = ["npm", "pypi"];
+var POLICY_PROTECTED_PATHS_MODES = ["block", "warn"];
+
+// ../core/src/policy/errors.ts
+var MESSAGES = {
+  object: "must be an object",
+  required: "is required",
+  unknownKey: "is not a known key",
+  list: "must be a list",
+  tooManyItems: "must have at most 1000 items",
+  string: "must be a string",
+  empty: "must not be empty",
+  version: "must be 1",
+  number: "must be a number",
+  integer: "must be an integer",
+  boolean: "must be true or false",
+  stringOrNull: "must be a string or null",
+  plain: "must not contain a control character or start or end with white space",
+  glob: "is not a supported glob pattern",
+  root: "is not a repo-relative directory",
+  perm: "is not a permission rule such as Tool or Tool(pattern)",
+  login: "is not a GitHub login",
+  event: "must contain only the letters A-Z and a-z",
+  host: "is not a host name: use only the letters A-Z and a-z, digits, . and -, with no scheme, path, port, user name or wildcard",
+  textNotString: "policy text must be a string",
+  textNotJson: "policy text is not valid JSON"
+};
+function maxItemsMessage(max) {
+  return `must have at most ${String(max)} items`;
+}
+function maxCharsMessage(max) {
+  return `must be at most ${String(max)} characters`;
+}
+function rangeMessage(min, max) {
+  return `must be between ${String(min)} and ${String(max)}`;
+}
+function enumMessage(members) {
+  return `must be one of: ${members.join(", ")}`;
+}
+function textTooLongMessage(max) {
+  return `policy text must be at most ${String(max)} characters`;
+}
+var MAX_SEGMENT_CODE_POINTS = 64;
+function pointerSegment(key) {
+  let kept = "";
+  let count2 = 0;
+  let cut = false;
+  for (const ch of key) {
+    if (count2 === MAX_SEGMENT_CODE_POINTS) {
+      cut = true;
+      break;
+    }
+    const code2 = ch.charCodeAt(0);
+    kept += ch.length === 1 && (code2 <= 31 || code2 === 127) ? "?" : ch;
+    count2++;
+  }
+  if (cut) kept += "\u2026";
+  return kept.replace(/~/g, "~0").replace(/\//g, "~1");
+}
+var UNKNOWN_NAME_MAX_UNITS = 64;
+var UNKNOWN_NAMES_KEPT = 20;
+function unknownName(parent, key) {
+  const head = dottedPath(parent);
+  const shortKey = cutCodeUnits(key, UNKNOWN_NAME_MAX_UNITS + 1, { marker: false });
+  return cutCodeUnits(head === "" ? shortKey : `${head}.${shortKey}`, UNKNOWN_NAME_MAX_UNITS);
+}
+function unknownItemName(path, value) {
+  const list = dottedPath(path.slice(0, path.lastIndexOf("/")));
+  const shortValue = cutCodeUnits(value, UNKNOWN_NAME_MAX_UNITS + 1, { marker: false });
+  return cutCodeUnits(`${list}[${shortValue}]`, UNKNOWN_NAME_MAX_UNITS);
+}
+function dottedPath(pointer) {
+  return pointer.split("/").slice(1).map((segment) => /^\d+$/.test(segment) ? "[]" : `.${segment}`).join("").replace(/^\./, "");
+}
+var ErrorCollector = class {
+  constructor(skipUnknown = false) {
+    this.skipUnknown = skipUnknown;
+  }
+  skipUnknown;
+  stored = [];
+  count = 0;
+  skipped = /* @__PURE__ */ new Set();
+  /** The number of errors added so far. */
+  get total() {
+    return this.count;
+  }
+  add(path, message) {
+    this.count++;
+    if (this.stored.length < POLICY_MAX_ERRORS) this.stored.push({ path, message });
+  }
+  /** An unknown key under `parent`; the key's segment is built only when the error is kept. */
+  addUnknownKey(parent, key) {
+    if (this.skipUnknown) {
+      this.skipped.add(unknownName(parent, key));
+      return;
+    }
+    this.count++;
+    if (this.stored.length < POLICY_MAX_ERRORS) {
+      this.stored.push({ path: `${parent}/${pointerSegment(key)}`, message: MESSAGES.unknownKey });
+    }
+  }
+  /** A value this build does not know, by its name (`unknownItemName`); called only with `skipUnknown`. */
+  addUnknownName(name) {
+    this.skipped.add(cutCodeUnits(name, UNKNOWN_NAME_MAX_UNITS));
+  }
+  /** The unknown names skipped: the first `UNKNOWN_NAMES_KEPT` in code-unit order, and the count. */
+  unknown() {
+    const sorted = [...this.skipped].sort(byCodeUnit);
+    return { names: sorted.slice(0, UNKNOWN_NAMES_KEPT), total: sorted.length };
+  }
+  /** All errors when there are at most `POLICY_MAX_ERRORS`; else the first 49 and a line counting the rest. */
+  finish() {
+    if (this.count <= POLICY_MAX_ERRORS) return this.stored.slice();
+    const listed2 = this.stored.slice(0, POLICY_MAX_ERRORS - 1);
+    listed2.push({ path: "", message: `${String(this.count - (POLICY_MAX_ERRORS - 1))} more errors not listed` });
+    return listed2;
+  }
+};
+
 // ../core/src/policy/messages.ts
 var MAX_NAMED_SETTINGS = 20;
 function policyUnavailableMessage(unavailable2) {
@@ -32356,6 +32547,17 @@ function policyUnavailableMessage(unavailable2) {
   const head = `The org policy could not be used (${unavailable2.reason}${status}${requestId}).`;
   const text = unavailable2.required ? `${head} The workflow requires a policy (policy: required), so this check fails. It ran with the workflow inputs and .pharn/ci.yml.` : `${head} The check ran with the workflow inputs and .pharn/ci.yml.`;
   return { level: unavailable2.required ? "error" : "warn", code: "POLICY_UNAVAILABLE", text };
+}
+function policyKeysUnknownMessage(unknown) {
+  const unique = [...new Set(unknown.names.map((name) => cutCodeUnits(name, UNKNOWN_NAME_MAX_UNITS)))].sort(byCodeUnit);
+  const named = unique.slice(0, UNKNOWN_NAMES_KEPT).map(codeSpan);
+  const more = Math.max(unknown.total, unique.length) - named.length;
+  const list = more > 0 ? `${named.join(", ")}, and ${String(more)} more` : named.join(", ");
+  return {
+    level: "warn",
+    code: "POLICY_KEYS_UNKNOWN",
+    text: `The org policy holds keys this version of pharn-ci does not know, so they were skipped and the rest of the policy applies: ${list}. Update the pharn-ci pin to apply them.`
+  };
 }
 function agentPrIncompleteMessage(reason) {
   return {
@@ -44170,6 +44372,8 @@ function check(input) {
   const incompleteMessage = agentFacts?.pr !== null && agentFacts?.pr !== void 0 && detection?.incomplete !== null && detection?.incomplete !== void 0 && agentPolicy !== void 0 && agentPolicy.severity !== null && agentPolicy.protectedPaths.length > 0 ? [agentPrIncompleteMessage(detection.incomplete)] : [];
   const policyMessages = [
     ...input.policy?.unavailable === void 0 ? [] : [policyUnavailableMessage(input.policy.unavailable)],
+    // Only an app policy can carry keys this build skipped: a file: policy with an unknown key never validates.
+    ...input.policy?.source === "app" && input.policy.unknownKeys !== void 0 && input.policy.unknownKeys.total > 0 ? [policyKeysUnknownMessage(input.policy.unknownKeys)] : [],
     ...policyEvaluation === null ? [] : policyRuleMessages(policyEvaluation),
     ...incompleteMessage,
     ...policyIgnored.length === 0 ? [] : [policyOverrideIgnoredMessage(policyIgnored)]
@@ -44623,160 +44827,6 @@ function weeklyDownloads(answer) {
   const count2 = doc.downloads;
   return typeof count2 === "number" && Number.isSafeInteger(count2) && count2 >= 0 ? count2 : "unavailable";
 }
-
-// ../core/src/policy/limits.ts
-var POLICY_MAX_CHARS = 262144;
-var POLICY_MAX_ERRORS = 50;
-var POLICY_MAX_LIST_ITEMS = 1e3;
-var POLICY_MAX_GLOB = 512;
-var POLICY_MAX_ROOT = 512;
-var POLICY_MAX_PERM = 512;
-var POLICY_MAX_NAME = 128;
-var POLICY_MAX_NAME_OR_GLOB = 512;
-var POLICY_MAX_LABEL = 50;
-var POLICY_MAX_LOGIN = 44;
-var POLICY_MAX_EVENT = 64;
-var POLICY_MAX_MATCHER = 512;
-var POLICY_MAX_HOST = 253;
-var POLICY_MAX_ALLOWED_HOSTS = 50;
-var POLICY_THRESHOLD_MIN = 0;
-var POLICY_THRESHOLD_MAX = 100;
-var POLICY_MAX_FILES_MIN = 1;
-var POLICY_MAX_FILES_MAX = 1e5;
-var POLICY_MAX_CHANGED_LINES_MIN = 1;
-var POLICY_MAX_CHANGED_LINES_MAX = 1e7;
-var POLICY_MIN_AGE_DAYS_MIN = 0;
-var POLICY_MIN_AGE_DAYS_MAX = 3650;
-var POLICY_MIN_WEEKLY_DOWNLOADS_MIN = 0;
-var POLICY_MIN_WEEKLY_DOWNLOADS_MAX = 1e9;
-var POLICY_SEVERITIES = ["block", "warn", "info", "off"];
-var POLICY_SIGNAL_IDS = [
-  "TI01",
-  "TI02",
-  "TI03",
-  "TI04",
-  "TI05",
-  "TI06",
-  "TI07",
-  "TI08",
-  "TI09",
-  "TI10",
-  "TI11",
-  "TI12",
-  "TI13",
-  "TI14",
-  "TI15",
-  "TI16",
-  "TI17"
-];
-var POLICY_RULE_IDS = [
-  "P01",
-  "P02",
-  "P03",
-  "P04",
-  "P05",
-  "P06",
-  "P07",
-  "P08",
-  "P09",
-  "P10",
-  "P11",
-  "P12",
-  "P13",
-  "P14"
-];
-var POLICY_INJECTION_SIGNAL_IDS = [
-  "PI01",
-  "PI02",
-  "PI03",
-  "PI04",
-  "PI05"
-];
-var POLICY_REGISTRIES = ["npm", "pypi"];
-var POLICY_PROTECTED_PATHS_MODES = ["block", "warn"];
-
-// ../core/src/policy/errors.ts
-var MESSAGES = {
-  object: "must be an object",
-  required: "is required",
-  unknownKey: "is not a known key",
-  list: "must be a list",
-  tooManyItems: "must have at most 1000 items",
-  string: "must be a string",
-  empty: "must not be empty",
-  version: "must be 1",
-  number: "must be a number",
-  integer: "must be an integer",
-  boolean: "must be true or false",
-  stringOrNull: "must be a string or null",
-  plain: "must not contain a control character or start or end with white space",
-  glob: "is not a supported glob pattern",
-  root: "is not a repo-relative directory",
-  perm: "is not a permission rule such as Tool or Tool(pattern)",
-  login: "is not a GitHub login",
-  event: "must contain only the letters A-Z and a-z",
-  host: "is not a host name: use only the letters A-Z and a-z, digits, . and -, with no scheme, path, port, user name or wildcard",
-  textNotString: "policy text must be a string",
-  textNotJson: "policy text is not valid JSON"
-};
-function maxItemsMessage(max) {
-  return `must have at most ${String(max)} items`;
-}
-function maxCharsMessage(max) {
-  return `must be at most ${String(max)} characters`;
-}
-function rangeMessage(min, max) {
-  return `must be between ${String(min)} and ${String(max)}`;
-}
-function enumMessage(members) {
-  return `must be one of: ${members.join(", ")}`;
-}
-function textTooLongMessage(max) {
-  return `policy text must be at most ${String(max)} characters`;
-}
-var MAX_SEGMENT_CODE_POINTS = 64;
-function pointerSegment(key) {
-  let kept = "";
-  let count2 = 0;
-  let cut = false;
-  for (const ch of key) {
-    if (count2 === MAX_SEGMENT_CODE_POINTS) {
-      cut = true;
-      break;
-    }
-    const code2 = ch.charCodeAt(0);
-    kept += ch.length === 1 && (code2 <= 31 || code2 === 127) ? "?" : ch;
-    count2++;
-  }
-  if (cut) kept += "\u2026";
-  return kept.replace(/~/g, "~0").replace(/\//g, "~1");
-}
-var ErrorCollector = class {
-  stored = [];
-  count = 0;
-  /** The number of errors added so far. */
-  get total() {
-    return this.count;
-  }
-  add(path, message) {
-    this.count++;
-    if (this.stored.length < POLICY_MAX_ERRORS) this.stored.push({ path, message });
-  }
-  /** An unknown key under `parent`; the key's segment is built only when the error is kept. */
-  addUnknownKey(parent, key) {
-    this.count++;
-    if (this.stored.length < POLICY_MAX_ERRORS) {
-      this.stored.push({ path: `${parent}/${pointerSegment(key)}`, message: MESSAGES.unknownKey });
-    }
-  }
-  /** All errors when there are at most `POLICY_MAX_ERRORS`; else the first 49 and a line counting the rest. */
-  finish() {
-    if (this.count <= POLICY_MAX_ERRORS) return this.stored.slice();
-    const listed2 = this.stored.slice(0, POLICY_MAX_ERRORS - 1);
-    listed2.push({ path: "", message: `${String(this.count - (POLICY_MAX_ERRORS - 1))} more errors not listed` });
-    return listed2;
-  }
-};
 
 // ../core/src/policy/grammar.ts
 var POLICY_PATTERNS = {
@@ -45247,6 +45297,14 @@ var version = (value, path, errors) => {
   return void 0;
 };
 var severity = enumOf(POLICY_SEVERITIES);
+var agentToolEnum = enumOf(AGENT_TOOLS);
+var agentTool = (value, path, errors) => {
+  if (errors.skipUnknown && typeof value === "string" && value !== "" && !AGENT_TOOLS.some((tool) => tool === value)) {
+    errors.addUnknownName(unknownItemName(path, value));
+    return void 0;
+  }
+  return agentToolEnum(value, path, errors);
+};
 var rootString = stringOf2(GRAMMARS.root);
 var rootOrNull = (value, path, errors) => {
   if (value === null) return null;
@@ -45273,7 +45331,7 @@ var requiredHook = objectOf(
 var setup = objectOf(
   known([
     ["require", bool],
-    ["expect", listOf3(enumOf(AGENT_TOOLS))],
+    ["expect", listOf3(agentTool)],
     ["consistency", severity],
     ["forbidden_permissions", listOf3(stringOf2(GRAMMARS.perm))],
     ["required_permissions_deny", listOf3(stringOf2(GRAMMARS.perm))],
@@ -45340,9 +45398,12 @@ var document = objectOf(
 );
 function validatePolicy(value) {
   const errors = new ErrorCollector();
-  const out = document(value, "", errors);
+  const out = validatePolicyInto(value, errors);
   if (errors.total === 0) return { ok: true, policy: out };
   return { ok: false, errors: errors.finish() };
+}
+function validatePolicyInto(value, errors, root = "") {
+  return document(value, root, errors);
 }
 
 // ../core/src/policy/response.ts
@@ -45355,16 +45416,17 @@ var MESSAGE_MAX_BYTES_MAX = 65536;
 var MESSAGE_TEXT = {
   versionMin: "must be an integer of at least 1",
   etag: "must be 1 to 200 printable ASCII characters",
-  updatedAt: "must be a UTC time such as 2026-01-31T09:30:00Z",
+  updatedAt: "must be an RFC 3339 time such as 2026-01-31T09:30:00Z or 2026-01-31T09:30:00+00:00",
   quarantineItem: "must not contain a control character",
   quarantineTooMany: "must have at most 10000 items"
 };
-var UPDATED_AT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?Z$/;
+var UPDATED_AT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|[+-](\d{2}):(\d{2}))$/;
 function validUpdatedAt(value) {
   const m = UPDATED_AT.exec(value);
   if (m === null) return false;
   const [year, month, day, hour, minute, second] = m.slice(1, 7).map(Number);
   if (month < 1 || month > 12 || hour > 23 || minute > 59 || second > 59) return false;
+  if (m[7] !== void 0 && (Number(m[7]) > 23 || Number(m[8]) > 59)) return false;
   const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
   return day >= 1 && day <= days;
@@ -45384,7 +45446,7 @@ function isPrintableAscii(text) {
   return true;
 }
 function validatePolicyResponse(value) {
-  const errors = new ErrorCollector();
+  const errors = new ErrorCollector(true);
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     errors.add("", MESSAGES.object);
     return { ok: false, errors: errors.finish() };
@@ -45422,9 +45484,9 @@ function validatePolicyResponse(value) {
   }
   let policy;
   if (Object.hasOwn(input, "policy")) {
-    const checked = validatePolicy(input.policy);
-    if (checked.ok) policy = checked.policy;
-    else for (const e of checked.errors) errors.add(e.path === "" ? "/policy" : `/policy${e.path}`, e.message);
+    const before = errors.total;
+    const checked = validatePolicyInto(input.policy, errors, "/policy");
+    if (errors.total === before) policy = checked;
   }
   let quarantine;
   if (Object.hasOwn(input, "quarantine")) {
@@ -45490,7 +45552,11 @@ function validatePolicyResponse(value) {
   if (errors.total > 0 || version2 === void 0 || etag === void 0 || updatedAt === void 0 || policy === void 0 || quarantine === void 0 || settings2 === void 0) {
     return { ok: false, errors: errors.finish() };
   }
-  return { ok: true, response: { version: version2, etag, updatedAt, policy, quarantine, settings: settings2 } };
+  return {
+    ok: true,
+    response: { version: version2, etag, updatedAt, policy, quarantine, settings: settings2 },
+    unknown: errors.unknown()
+  };
 }
 
 // ../core/src/junit/results.ts
@@ -45852,7 +45918,8 @@ var MESSAGE_HINTS = {
   DEPENDENCY_D04: "Run the package manager's install so the lockfile matches the manifest, and commit both; a lockfile that changes a hash for the same version needs an explanation.",
   DEPENDENCY_D05: "Depend on a published registry version instead, or have a person review where the code comes from; a git, URL or local source is not covered by the registry's checks. For a registry your team runs (Artifactory, Nexus, a private PyPI index), name its host in the dependency-allowed-hosts input or the org policy's dependencies.allowed_hosts.",
   DEPENDENCY_LOOKUP_UNAVAILABLE: "Re-run the job; the registry lookups fail open, so D01 to D03 were not checked for the packages counted.",
-  DEPENDENCY_CHECK_INCOMPLETE: "Keep manifests and lockfiles valid and under 32 MiB, and run on a checkout of the pull request head with fetch-depth: 0, so they can be compared."
+  DEPENDENCY_CHECK_INCOMPLETE: "Keep manifests and lockfiles valid and under 32 MiB, and run on a checkout of the pull request head with fetch-depth: 0, so they can be compared.",
+  POLICY_KEYS_UNKNOWN: "Update the pharn-dev/pharn-ci pin in the workflow to a release that knows these keys; until then the rest of the org policy applies without them."
 };
 var BLOCK_ONLY_ACCEPT_CLAUSE = /* @__PURE__ */ new Set([
   "TEST_INTEGRITY_TI06",
@@ -49281,11 +49348,13 @@ async function requestPolicy(deps, options, onSettings) {
     quarantine: validated.response.quarantine,
     uploadJunit: validated.response.settings.uploadJunit
   });
+  const { unknown } = validated;
   return {
     source: "app",
     version: validated.response.version,
     fetchedAt: (deps.now?.() ?? /* @__PURE__ */ new Date()).toISOString(),
-    document: validated.response.policy
+    document: validated.response.policy,
+    ...unknown.total > 0 ? { unknownKeys: unknown } : {}
   };
 }
 

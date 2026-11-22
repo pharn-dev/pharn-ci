@@ -1,6 +1,14 @@
 import { AGENT_TOOLS } from "../setup/summary.js";
 import { TEST_INTEGRITY_MODES } from "../testIntegrityMode.js";
-import { ErrorCollector, enumMessage, MESSAGES, maxCharsMessage, maxItemsMessage, rangeMessage } from "./errors.js";
+import {
+  ErrorCollector,
+  enumMessage,
+  MESSAGES,
+  maxCharsMessage,
+  maxItemsMessage,
+  rangeMessage,
+  unknownItemName,
+} from "./errors.js";
 import { codePointLength, GRAMMARS, type Grammar } from "./grammar.js";
 import {
   POLICY_INJECTION_SIGNAL_IDS,
@@ -163,6 +171,20 @@ const version: Handler = (value, path, errors) => {
 
 const severity = enumOf(POLICY_SEVERITIES);
 
+/**
+ * A tool of `setup.expect`. A string that is not on this build's tool list is an error in a `file:` policy; in a policy
+ * the app serves (`skipUnknown`) it is a tool a newer build knows: it is left out of the list and its name is recorded,
+ * so the other tools still apply. A value that is not a non-empty string is an error either way.
+ */
+const agentToolEnum = enumOf(AGENT_TOOLS);
+const agentTool: Handler = (value, path, errors) => {
+  if (errors.skipUnknown && typeof value === "string" && value !== "" && !AGENT_TOOLS.some((tool) => tool === value)) {
+    errors.addUnknownName(unknownItemName(path, value));
+    return undefined;
+  }
+  return agentToolEnum(value, path, errors);
+};
+
 /** `coverage.root`: `null` for none, else a ROOT string. */
 const rootString = stringOf(GRAMMARS.root);
 const rootOrNull: Handler = (value, path, errors) => {
@@ -193,7 +215,7 @@ const requiredHook = objectOf(
 const setup = objectOf(
   known([
     ["require", bool],
-    ["expect", listOf(enumOf(AGENT_TOOLS))],
+    ["expect", listOf(agentTool)],
     ["consistency", severity],
     ["forbidden_permissions", listOf(stringOf(GRAMMARS.perm))],
     ["required_permissions_deny", listOf(stringOf(GRAMMARS.perm))],
@@ -276,7 +298,18 @@ const document = objectOf(
  */
 export function validatePolicy(value: unknown): PolicyValidation {
   const errors = new ErrorCollector();
-  const out = document(value, "", errors);
+  const out = validatePolicyInto(value, errors);
   if (errors.total === 0) return { ok: true, policy: out as PolicyDocument };
   return { ok: false, errors: errors.finish() };
+}
+
+/**
+ * Walks a policy document into `errors` and returns the validated copy, which counts only when `errors` gained no
+ * error. With a collector made with `skipUnknown` (the app's policy, `validatePolicyResponse`), an unknown key or id at
+ * any depth, and an unknown tool in `setup.expect`, is left out of the copy and recorded by name instead of failing the
+ * document; a known key with a bad value is still an error. `root` is the document's JSON Pointer inside a larger value
+ * (`/policy` in the envelope), so every error path and unknown name starts there. Not part of the package index.
+ */
+export function validatePolicyInto(value: unknown, errors: ErrorCollector, root = ""): PolicyDocument | undefined {
+  return document(value, root, errors) as PolicyDocument | undefined;
 }

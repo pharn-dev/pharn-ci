@@ -26,7 +26,12 @@ import { detectInjection, injectionTextPriority, keepInjectionText } from "./inj
 import { junitReport } from "./junit/flaky.js";
 import type { JunitResults } from "./junit/results.js";
 import { agentPolicyOf, type PolicyFileBase } from "./policy/agents.js";
-import { agentPrIncompleteMessage, policyOverrideIgnoredMessage, policyUnavailableMessage } from "./policy/messages.js";
+import {
+  agentPrIncompleteMessage,
+  policyKeysUnknownMessage,
+  policyOverrideIgnoredMessage,
+  policyUnavailableMessage,
+} from "./policy/messages.js";
 import type { IgnoredSetting, ResolvedPolicy, SignalOverrides } from "./policy/resolved.js";
 import { evaluatePolicyRules } from "./policy/rules/evaluate.js";
 import { policyRuleMessages } from "./policy/rules/messages.js";
@@ -212,8 +217,9 @@ export interface CheckInput {
   /**
    * The org policy of the run (see `ResolvedPolicy`), after `applyPolicy` gave the effective settings the other fields
    * carry. Its document runs the org-policy rules (P01 to P11, P13 and P14; P12 is validated and not run), its
-   * `unavailable` reason adds one POLICY_UNAVAILABLE message, and the report carries a `policy` object for an app or
-   * file policy or an unavailable one. Absent, or a policy of source `none` with no reason, adds nothing and the report is the one it was.
+   * `unavailable` reason adds one POLICY_UNAVAILABLE message, the unknown keys of an app policy add one
+   * POLICY_KEYS_UNKNOWN message, and the report carries a `policy` object for an app or file policy or an unavailable
+   * one. Absent, or a policy of source `none` with no reason, adds nothing and the report is the one it was.
    */
   policy?: ResolvedPolicy;
   /**
@@ -589,6 +595,10 @@ export function check(input: CheckInput): Report {
       : [];
   const policyMessages: Message[] = [
     ...(input.policy?.unavailable === undefined ? [] : [policyUnavailableMessage(input.policy.unavailable)]),
+    // Only an app policy can carry keys this build skipped: a file: policy with an unknown key never validates.
+    ...(input.policy?.source === "app" && input.policy.unknownKeys !== undefined && input.policy.unknownKeys.total > 0
+      ? [policyKeysUnknownMessage(input.policy.unknownKeys)]
+      : []),
     ...(policyEvaluation === null ? [] : policyRuleMessages(policyEvaluation)),
     ...incompleteMessage,
     ...(policyIgnored.length === 0 ? [] : [policyOverrideIgnoredMessage(policyIgnored)]),

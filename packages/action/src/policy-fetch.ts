@@ -56,7 +56,8 @@ export async function fetchPolicy(
  * OIDC token. Under `auto` a runner that offers no token, or an app that has no policy, is silent (source `none`), and a
  * token request that was offered and failed is `unavailable` (a warning); under `required` every reason there is no
  * policy is `unavailable`, which `check()` turns into an error. Whatever the app answers is untrusted: only a
- * response that passes `validatePolicyResponse` whole is used, and nothing of a failing response is quoted. A request
+ * response that passes `validatePolicyResponse` whole is used, and nothing of a failing response is quoted; keys and ids
+ * this build does not know are left out and named in `unknownKeys`, never a reason to drop the policy. A request
  * id the app sent is logged once and carried in `unavailable.requestId` when it is a sane one.
  */
 export async function fetchAppPolicy(
@@ -154,10 +155,14 @@ async function requestPolicy(
     quarantine: validated.response.quarantine,
     uploadJunit: validated.response.settings.uploadJunit,
   });
+  // Keys and ids a newer app serves that this build does not know were left out of the document: the rest applies,
+  // and check() names them in one POLICY_KEYS_UNKNOWN warning (CORE-118).
+  const { unknown } = validated;
   return {
     source: "app",
     version: validated.response.version,
     fetchedAt: (deps.now?.() ?? new Date()).toISOString(),
     document: validated.response.policy,
+    ...(unknown.total > 0 ? { unknownKeys: unknown } : {}),
   };
 }

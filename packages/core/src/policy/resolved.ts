@@ -1,3 +1,4 @@
+import type { UnknownNames } from "./errors.js";
 import type { PolicyDocument, PolicySeverity, PolicySignalId } from "./types.js";
 
 /**
@@ -39,6 +40,12 @@ export interface ResolvedPolicy {
    * policy yet) never sets it. The Action shows the install hint for it; the report never carries it.
    */
   noInstallation?: boolean;
+  /**
+   * For an app policy only: the keys and ids the app served that this build does not know, left out of `document`
+   * (`validatePolicyResponse`'s `unknown`). Absent, or a `total` of 0, when there were none. They add one
+   * POLICY_KEYS_UNKNOWN warning; the report carries nothing else of them.
+   */
+  unknownKeys?: UnknownNames;
   /** Set when no policy could be used. `required` is whether the workflow demanded one. */
   unavailable?: { reason: PolicyUnavailableReason; status?: number; requestId?: string; required: boolean };
 }

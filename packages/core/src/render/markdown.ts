@@ -220,6 +220,8 @@ export const MESSAGE_HINTS: Readonly<Record<MessageCode, Hint>> = {
     "Re-run the job; the registry lookups fail open, so D01 to D03 were not checked for the packages counted.",
   DEPENDENCY_CHECK_INCOMPLETE:
     "Keep manifests and lockfiles valid and under 32 MiB, and run on a checkout of the pull request head with fetch-depth: 0, so they can be compared.",
+  POLICY_KEYS_UNKNOWN:
+    "Update the pharn-dev/pharn-ci pin in the workflow to a release that knows these keys; until then the rest of the org policy applies without them.",
 };
 
 /**

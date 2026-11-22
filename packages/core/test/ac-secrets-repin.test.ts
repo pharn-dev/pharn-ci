@@ -184,16 +184,19 @@ describe("the v0.4.0 codes are the only schema and report.ts additions, and the 
     const reportBase = quotedCodes(atCommit(PYPARITY_BASE, "packages/core/src/report.ts"));
     // Re-pinned for ti17-always-true-matcher-2: report.ts also gains the TI17 signal id and its message code; the schema
     // part is taken out above, so these two join the report.ts comparisons only.
+    // Re-pinned for CORE-118 (R5.1): report.ts gains the POLICY_KEYS_UNKNOWN message code the same way; its schema
+    // sentence is taken out with the R3 passages (r3-schema-text.ts).
     const TI17_CODES = ["TI17", "TEST_INTEGRITY_TI17"];
+    const CORE118_CODES = ["POLICY_KEYS_UNKNOWN"];
     expect(quotedCodes(reportTs), "report.ts quoted codes").toEqual(
-      [...new Set([...withCodes(reportBase), ...TI17_CODES])].sort(),
+      [...new Set([...withCodes(reportBase), ...TI17_CODES, ...CORE118_CODES])].sort(),
     );
     expect(
       words(reportTs)
         .filter((w) => !words(atCommit(PYPARITY_BASE, "packages/core/src/report.ts")).includes(w))
         .sort(),
       "report.ts code words",
-    ).toEqual([...ADDED_CODES, ...TI17_CODES].sort());
+    ).toEqual([...ADDED_CODES, ...TI17_CODES, ...CORE118_CODES].sort());
 
     // Each re-pinned test carries a comment naming the agent-config secrets change.
     for (const path of REPINNED) {

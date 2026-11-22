@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "coverage": { "threshold": 85 },
+  "test_integrity": { "mode": "block", "signals": { "TI01": "block", "TI18": "block" } }
+}

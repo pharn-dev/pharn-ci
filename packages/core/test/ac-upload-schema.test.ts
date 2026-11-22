@@ -235,6 +235,9 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
         // part is taken out above, so it does not join the schema comparison).
         "TI17",
         "TEST_INTEGRITY_TI17",
+        // Re-pinned for CORE-118 (R5.1): report.ts gains the POLICY_KEYS_UNKNOWN message code; its schema sentence is
+        // taken out with the R3 passages above (r3-schema-text.ts).
+        "POLICY_KEYS_UNKNOWN",
         "UPLOAD_TOO_LARGE",
       ].sort(),
     );

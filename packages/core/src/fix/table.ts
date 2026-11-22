@@ -407,4 +407,8 @@ export const MESSAGE_FIXES: Readonly<Record<MessageCode, FixEntry>> = {
     kind: "none",
     hint: "Check that the manifest or lockfile the report names can be read and parsed.",
   },
+  POLICY_KEYS_UNKNOWN: {
+    kind: "none",
+    hint: "Update the pharn-ci pin in the workflow to a release that knows the org policy's newer keys.",
+  },
 };

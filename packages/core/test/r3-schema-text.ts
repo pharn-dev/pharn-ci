@@ -38,6 +38,13 @@ export const R3_SCHEMA_TEXT_EDITS: readonly (readonly [string, string])[] = [
     "each with a fixed reason; they come with one DEPENDENCY_CHECK_INCOMPLETE warn message. Absent when every touched file was read.",
     "each with a fixed reason; they come with one DEPENDENCY_CHECK_INCOMPLETE message, an error unless every reason is unavailable (git could not read that side at all), then a warn. A file is not read past 32 MiB, nor a side past 32 MiB or 100 files. Absent when every touched file was read.",
   ],
+  // CORE-118 (R5.1, epic CORE-10): one sentence after the v0.8.0 codes names POLICY_KEYS_UNKNOWN, the one code that
+  // ticket adds. It rides this list so every pin that already puts the R3 passages back takes it out too, and every
+  // other byte stays pinned; the pins that read report.ts or the docs name the code where they list added codes.
+  [
+    "what is over is left out).",
+    "what is over is left out). Codes added in v0.12.0: POLICY_KEYS_UNKNOWN (warn, at most once per report and only for a policy the app serves: the policy held keys or ids this version of pharn-ci does not know, such as a newer test-integrity signal, policy rule, response key or agent tool, so they were skipped and the rest of the policy applies; the message names up to 20 of them as code spans, sorted, each cut to 64 characters, and counts the rest; a policy file with an unknown key still fails the run).",
+  ],
 ];
 
 /** `text` (report.v2.json or a description in it) with each R3 text edit put back; throws unless each appears once. */

@@ -226,6 +226,7 @@ export { createLineSplitter, splitLines, splitLinesAsync } from "./lines.js";
 export { normalizePath } from "./paths.js";
 export { type AgentPolicy, agentPolicyOf, type PolicyFileBase } from "./policy/agents.js";
 export { applyPolicy, type PolicyApplication, type PolicyLayers } from "./policy/apply.js";
+export type { UnknownNames } from "./policy/errors.js";
 export { POLICY_MAX_CHARS, POLICY_MAX_ERRORS } from "./policy/limits.js";
 export { parsePolicyJson } from "./policy/parse.js";
 export type { IgnoredSetting, PolicyUnavailableReason, ResolvedPolicy, SignalOverrides } from "./policy/resolved.js";

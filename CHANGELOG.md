@@ -48,6 +48,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   there; each now gets a zero-width space before the number, as `@` gets one after it. Text in code spans is
   unchanged. The logo URL named `main`, so a change to the file changed the image in every comment ever posted; it
   now names a 40-character commit SHA.
+- A policy the app serves with keys this version does not know is no longer dropped whole (CORE-118): a newer signal
+  id, rule, response key or `setup.expect` tool is skipped, the rest of the policy (threshold, mode, protected paths)
+  applies, and one new `POLICY_KEYS_UNKNOWN` warning names up to 20 skipped keys. A known key with a bad value still
+  makes the policy unavailable, a `file:` policy with an unknown key still fails the step, and `updatedAt` may carry a
+  numeric offset such as `+00:00`.
 - Docs: `docs/LIMITS.md` lists, in one place, the files and spellings dependency safety (D04 and D05) still does not
   read (CORE-117). The spellings closed by the lockfile and manifest readers stay described as read.
 - Dependency safety judges a `uv.lock` package's sdist and wheel URLs (CORE-9 R4.8). D05 judged a uv package by its

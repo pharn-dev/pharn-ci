@@ -1625,6 +1625,11 @@ applied once per run. What it does not do:
   effective settings only when it is a tightening-only document and no lower layer holds a value above it that the
   app would have named: an app value above a lower layer's is recorded as `looser`, while the same file value above it
   is not, so the two reports then differ by one `POLICY_OVERRIDE_IGNORED` message.
+- **An older build skips what a newer policy adds.** A key, id or agent tool the app serves that this version does
+  not know is left out, the rest of the policy applies, and `POLICY_KEYS_UNKNOWN` names it (up to 20 names). Until the
+  Action pin is updated, a skipped signal, rule or tool is not checked, and a new key that would qualify a known setting
+  is not seen, so the known setting applies as this version reads it (THREAT-MODEL, item 45). A known key with a bad
+  value still voids the policy (`POLICY_UNAVAILABLE`), and a `file:` policy with an unknown key still fails the step.
 - **The `policy` and `app-url` inputs are the workflow's.** A pull request that edits the workflow can set them
   (THREAT-MODEL, items 24 and 26).
 - **Only some keys are applied.** The `setup` lists are applied: `forbidden_files` feeds P08, `forbidden_permissions`,
@@ -1655,7 +1660,8 @@ applied once per run. What it does not do:
 - **Presence, not content.** A file counts when the inventory lists it: tracked in `HEAD`, by path. An empty file
   counts (it gets `AGENT_SETUP_FILE_EMPTY`), and what a file says is never read.
 - **Unknown names are skipped.** A tool name in `setup.expect` that is not on the fixed agent tool list gives no
-  finding (the policy validator rejects one in a served or `file:` policy first).
+  finding: a served policy leaves it out of the list and names it in `POLICY_KEYS_UNKNOWN`, and a `file:` policy that
+  holds one is refused.
 - **Tracked files only.** A file that is not committed, or that `git ls-files` could not list, is not seen.
 
 ### What P02–P06 miss

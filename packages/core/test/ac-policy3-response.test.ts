@@ -12,9 +12,16 @@ type Validation = { ok: true; response: Record<string, unknown> } | { ok: false;
 /** RFC 6901: "" or a sequence of `/`-prefixed reference tokens, `~` only as `~0` or `~1`. */
 const POINTER = /^(\/([^~/]|~[01])*)*$/;
 
+// CORE-118 (R5.1): a key the envelope (or its settings) does not know no longer voids it: a newer app may serve one to a
+// pinned build. Those two cases of invalid.json are accepted with the key left out and named (SKIPPED_CASES below);
+// every other case still fails as before.
+const SKIPPED_CASES: Record<string, string> = {
+  "unknown-key": "zzz-unknown",
+  "settings-extra-key": "settings.zzz-extra",
+};
+
 const SMALL_CASES = [
   "missing-key",
-  "unknown-key",
   "version-0",
   "version-1.5",
   "version-string",
@@ -30,7 +37,6 @@ const SMALL_CASES = [
   "quarantine-empty-item",
   "quarantine-u0085",
   "settings-missing-redact",
-  "settings-extra-key",
   "max-bytes-255",
   "max-bytes-65537",
   "max-bytes-300.5",
@@ -88,7 +94,15 @@ describe("the policy response envelope", () => {
     }
 
     const invalid = JSON.parse(fixture("policy-response/invalid.json")) as Record<string, unknown>;
-    expect(Object.keys(invalid).sort()).toEqual([...SMALL_CASES].sort());
+    expect(Object.keys(invalid).sort()).toEqual([...SMALL_CASES, ...Object.keys(SKIPPED_CASES)].sort());
+    for (const [name, unknownName] of Object.entries(SKIPPED_CASES)) {
+      const skipped = validatePolicyResponse(invalid[name]) as Validation & { unknown?: unknown };
+      expect(skipped.ok, name).toBe(true);
+      if (skipped.ok) {
+        expect(skipped.response, `${name}: the unknown key is left out`).toEqual(valid);
+        expect(skipped.unknown, name).toEqual({ names: [unknownName], total: 1 });
+      }
+    }
     for (const name of SMALL_CASES) {
       const errors = expectFixedErrors(
         validatePolicyResponse(invalid[name]),

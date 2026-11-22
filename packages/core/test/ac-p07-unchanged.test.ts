@@ -107,6 +107,10 @@ const CORE92_PATH = /^fixtures\/tracked-coverage\/[^/\t]+$/;
 // Re-pinned for CORE-124 (message text cannot link issues): its new fixture fixtures/comment-refs/references.txt is
 // added too.
 const CORE124_PATH = /^fixtures\/comment-refs\/references\.txt$/;
+// Re-pinned for CORE-118 (a newer policy does not void an older pin): its new envelope fixture
+// fixtures/policy-api/envelope-bad-value.json and its eight named cases under fixtures/policy-api/newer/ are added.
+const CORE118_PATH =
+  /^fixtures\/policy-api\/(?:envelope-bad-value|newer\/(?:bad-value|baseline|envelope-key|expect-tool|file-policy-ti18|rule-p15|signal-ti18|updated-at-offset))\.json$/;
 
 /** The tests PLAN.md step 9 lists as deliberately re-pinned; each must carry a comment naming this item. */
 const DELIBERATE = [
@@ -164,6 +168,8 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       if (line.startsWith("A\t") && CORE101_PATH.test(line.slice(2))) continue;
       if (line.startsWith("A\t") && CORE92_PATH.test(line.slice(2))) continue;
       if (line.startsWith("A\t") && CORE124_PATH.test(line.slice(2))) continue;
+      // CORE-118: its nine new policy-api fixtures are added (allowed by name only).
+      if (line.startsWith("A\t") && CORE118_PATH.test(line.slice(2))) continue;
       // Re-pinned for comment-coverage-bar (the diff-coverage bar in the PR comment): the four golden report.md files
       // gained the bar line on purpose. Each must be modified, never added or deleted, and folding the bar line (and
       // the empty line under it) back out must give its content at the base byte for byte.
@@ -286,6 +292,8 @@ describe("existing tests, fixtures and goldens stay as they are", () => {
       if (CORE92_PATH.test(path)) continue;
       // Re-pinned for CORE-124: its new comment-refs fixture is untracked until committed.
       if (CORE124_PATH.test(path)) continue;
+      // Re-pinned for CORE-118: its nine new policy-api fixtures are untracked until committed.
+      if (CORE118_PATH.test(path)) continue;
       // Re-pinned for policy-p13 (Horizon 2 item H1): its fixtures under fixtures/policy-rules/p13/ are untracked until
       // committed.
       // Re-pinned for stale instructions (Horizon 2 item H3): its fixtures under fixtures/stale-instructions/ are

@@ -337,7 +337,8 @@ export type MessageCode =
   | "DEPENDENCY_D04"
   | "DEPENDENCY_D05"
   | "DEPENDENCY_LOOKUP_UNAVAILABLE"
-  | "DEPENDENCY_CHECK_INCOMPLETE";
+  | "DEPENDENCY_CHECK_INCOMPLETE"
+  | "POLICY_KEYS_UNKNOWN";
 
 export interface Message {
   level: MessageLevel;

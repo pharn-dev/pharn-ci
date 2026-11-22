@@ -288,9 +288,12 @@ const FAILURES: FailureCase[] = [
     reason: "invalid-response",
     body: BODY_MARKER,
   },
+  // CORE-118 (R5.1): an unknown envelope key no longer voids the policy (envelope-unknown-key.json is now applied with
+  // one POLICY_KEYS_UNKNOWN warning, policy-keys-unknown.test.ts); a known envelope key with a value of the wrong type
+  // still does, so that is the failing case here.
   {
-    name: "unknown key",
-    answers: () => [respond(200, apiFixture("envelope-unknown-key.json"))],
+    name: "known key, wrong type",
+    answers: () => [respond(200, apiFixture("envelope-bad-value.json"))],
     reason: "invalid-response",
   },
   {
