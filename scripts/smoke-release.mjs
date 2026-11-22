@@ -6,13 +6,15 @@
 //   verdict  the `verdict` output is `pass`
 //   summary  every line of fixtures/smoke/expected-summary.txt is a whole line of the job summary
 //   footer   the summary footer names `pharn-ci <version>`, the version in <action-dir>/packages/action/package.json
-//   offline  a second run of the same bundle in the same repository, with the network forbidden, ends the same: the
-//            OIDC request variables are set (the token URL is a closed 127.0.0.1 port), a run context (a synthetic
-//            event file with a repository name, a run id and the head SHA) lets the org policy and the upload reach
-//            their token request, and a preload makes the global fetch throw. It must exit as the first run did, with
-//            the same `verdict`, log that the upload found no OIDC token, and write a report.json equal to the first
-//            run's except `meta`: only this run has a run context, so only its report has `meta`, and `meta.upload`
-//            must be `skipped`.
+//   offline  a second run of the same bundle in the same repository, with the network forbidden, ends the same but
+//            for the failed token: the OIDC request variables are set (the token URL is a closed 127.0.0.1 port), a
+//            run context (a synthetic event file with a repository name, a run id and the head SHA) lets the org
+//            policy and the upload reach their token request, and a preload makes the global fetch throw. It must
+//            exit as the first run did, with the verdict `warn` (an offered token request that fails is one
+//            POLICY_UNAVAILABLE warning, CORE-122), log the policy's failed-token line and that the upload found no
+//            OIDC token, and write a report.json equal to the first run's except `meta` (only this run has a run
+//            context, and `meta.upload` must be `skipped`), the verdict, the `policy` object (source none, version
+//            null; the first run has none) and exactly one POLICY_UNAVAILABLE warning naming no-oidc-token.
 // Node built-ins only, no network. Needs git on PATH. The temporary directory (under TMPDIR) is removed on every exit.
 // Run from the repo root:
 //   node scripts/smoke-release.mjs <action-dir>
@@ -31,6 +33,9 @@ const NO_FETCH_PRELOAD =
   "data:text/javascript,globalThis.fetch = async () => { throw new TypeError('smoke: the network is forbidden'); };";
 /** The line the upload logs when it asked for an OIDC token and got none. */
 const UPLOAD_NO_TOKEN_LINE = "pharn-ci: the run is not uploaded to pharn.dev: no OIDC token is available";
+/** The start of the line the org policy logs when the runner offered an OIDC token and the request failed. */
+const POLICY_TOKEN_FAILED_LINE =
+  "pharn-ci: the job grants `id-token: write`, but the OIDC token request for the org policy failed (";
 const GIT_TIMEOUT_MS = 30_000;
 const FIXTURES = fileURLToPath(new URL("../fixtures/smoke/", import.meta.url));
 
@@ -231,8 +236,16 @@ function offlineCheck(repo, dir, first) {
   if (run.status !== first.status) return fail(`${exitText(run)}, expected ${exitText(first)} as the first run`);
   const verdict = run.verdict();
   const firstVerdict = first.verdict();
-  if (verdict !== firstVerdict) return fail(`verdict "${verdict ?? ""}", expected "${firstVerdict}" as the first run`);
-  if (!run.output.split("\n").some((line) => line.replace(/\r$/, "") === UPLOAD_NO_TOKEN_LINE)) {
+  // The first run is a pass (checked before); the policy's one warning makes this run a warn, never a fail.
+  const expectedVerdict = firstVerdict === "pass" ? "warn" : firstVerdict;
+  if (verdict !== expectedVerdict) {
+    return fail(`verdict "${verdict ?? ""}", expected "${expectedVerdict}" (the first run's plus the policy warning)`);
+  }
+  const lines = run.output.split("\n").map((line) => line.replace(/\r$/, ""));
+  if (!lines.some((line) => line.startsWith(POLICY_TOKEN_FAILED_LINE))) {
+    return fail(`no line starting "${POLICY_TOKEN_FAILED_LINE}": the policy did not report its failed token request`);
+  }
+  if (!lines.includes(UPLOAD_NO_TOKEN_LINE)) {
     return fail(`no line "${UPLOAD_NO_TOKEN_LINE}": the upload did not reach its token request`);
   }
   const report = run.report();
@@ -240,12 +253,31 @@ function offlineCheck(repo, dir, first) {
   if (report === null || firstReport === null) return fail("a run wrote no readable report.json");
   if (report.meta?.upload?.status !== "skipped") return fail("report.json meta.upload is not skipped");
   if ("meta" in firstReport) return fail("the first run's report.json has meta, expected none");
-  const { meta: _meta, ...rest } = report;
-  if (!isDeepStrictEqual(rest, firstReport)) {
-    const keys = [...new Set([...Object.keys(rest), ...Object.keys(firstReport)])].filter(
-      (key) => !isDeepStrictEqual(rest[key], firstReport[key]),
+  const messages = Array.isArray(report.messages) ? report.messages : [];
+  const unavailable = messages.filter((message) => message?.code === "POLICY_UNAVAILABLE");
+  if (
+    unavailable.length !== 1 ||
+    unavailable[0].level !== "warn" ||
+    typeof unavailable[0].text !== "string" ||
+    !unavailable[0].text.includes("(no-oidc-token)")
+  ) {
+    return fail("report.json does not hold exactly one POLICY_UNAVAILABLE warning naming no-oidc-token");
+  }
+  if ("policy" in firstReport) return fail("the first run's report.json has a policy, expected none");
+  if (report.policy?.source !== "none" || report.policy?.version !== null) {
+    return fail("report.json policy is not source none with version null");
+  }
+  const { meta: _meta, verdict: _verdict, policy: _policy, ...rest } = report;
+  rest.messages = messages.filter((message) => message?.code !== "POLICY_UNAVAILABLE");
+  const { verdict: _firstVerdict, ...firstRest } = firstReport;
+  if (report.verdict !== expectedVerdict || firstReport.verdict !== firstVerdict) {
+    return fail("report.json verdicts do not match the verdict outputs");
+  }
+  if (!isDeepStrictEqual(rest, firstRest)) {
+    const keys = [...new Set([...Object.keys(rest), ...Object.keys(firstRest)])].filter(
+      (key) => !isDeepStrictEqual(rest[key], firstRest[key]),
     );
-    return fail(`report.json differs from the first run's beyond meta, in: ${keys.join(", ")}`);
+    return fail(`report.json differs from the first run's beyond meta, verdict and the policy, in: ${keys.join(", ")}`);
   }
   return null;
 }
