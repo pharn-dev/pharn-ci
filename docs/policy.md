@@ -72,6 +72,34 @@ check. Change the policy in a pull request of its own, have it reviewed, and hav
 check as your branch protection allows. The pull requests after it are checked against the merged file. A policy
 served by the app is changed in the app, where no pull request can edit it.
 
+The Action and the CLI also read the file as the merge base has it, and unite that copy with the pull request's, key by
+key, before anything is applied, so a pull request that edits the file cannot loosen any setting the file may carry. The
+stricter of the two copies applies:
+
+- Lists are unions (the pull request's entries, then the base's the pull request lacks): `setup.expect`,
+  `setup.forbidden_permissions`, `setup.required_permissions_deny`, `setup.forbidden_mcp_servers`,
+  `setup.required_hooks` (an entry is its event and matcher), `setup.forbidden_files`, `agents.labels`,
+  `agents.extra_logins`, `agents.protected_paths` and `injection.phrases`.
+- `setup.allowed_mcp_servers` is the servers both copies name; when they share none it is the base's list, and when
+  only one copy sets it, that copy's.
+- Numbers: `coverage.threshold`, `dependencies.min_age_days` and `dependencies.min_weekly_downloads` take the higher
+  value; `agents.max_files` and `agents.max_changed_lines` the smaller.
+- Switches: `setup.require`, `dependencies.lookup` and `agents.require_human_approval` are on when either copy says
+  `true`; `flaky.quarantine` is off when either says `false`.
+- Severities take the stricter value: `setup.consistency`, `test_integrity.mode`, `test_integrity.signals.<id>`,
+  `policy.rules.<id>`, `agents.protected_paths_mode` and `injection.signals.<id>`.
+- Head copy only, because a file may not set them: `coverage.exclude`, `coverage.root`, `test_integrity.accept_label`,
+  `policy.required`, `dependencies.registries`, `dependencies.allowed_hosts` and `injection.exempt`. The base's value
+  of these is neither applied nor named.
+
+A setting the pull request's copy has looser than the merge base's (a lower value, a deleted key or object, a list that
+lost an entry, a wider allowlist) is named in `POLICY_OVERRIDE_IGNORED` and not applied. Looser is judged on what
+applies, the default included: a base value equal to the setting's default that the pull request deletes is not named.
+`agents.protected_paths_mode` is the one exception: a base `block` the pull request deletes or lowers is named, though
+`block` is the default. Where the merge-base copy is `absent` (a pull request that adds the file), cannot be read, or
+there is no local diff to name the base (the Action in PR-number mode, a compare-API diff), only the pull request's copy
+applies, as before.
+
 **Rules.** A policy also runs rules. P01, P08, P09, P10, P11 and P14 read what the check already has (the agent setup
 inventory, the tracked files, the diff, the pull request's metadata and the policy itself). P02 to P06 read the agent
 settings and MCP files, P07 reads the inline code and shell blocks of the agent instruction files, and P13 reads the

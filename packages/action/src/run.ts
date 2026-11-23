@@ -32,6 +32,7 @@ import {
 } from "@pharn-ci/core";
 import {
   diffEnds,
+  gatherPolicyFileBase,
   gatherSources,
   type HeadCheckout,
   headIsInBase,
@@ -358,8 +359,21 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   // anything else is read or measured, and applied over the layers.
   // A `file:` problem throws here; an unavailable app policy never does: the check then runs with the inputs and the config.
   const { policy, uploadMessageMaxBytes, quarantine, uploadJunit } = await obtainPolicy(deps, policyChoice, appOrigin);
+  // The merge-base copy of a `file:` policy is read before the policy is applied, so `applyPolicy` can unite it with the
+  // head copy for every key a file may set. It comes from the early local diff; in PR-number mode, where there is none,
+  // it is `unreadable` (`gatherPolicyFileBase`). Undefined for any other policy.
+  const policyFileBase = await gatherPolicyFileBase(
+    deps,
+    earlyDiff === undefined
+      ? { policy, diff: { unavailable: "pr-number mode" }, checkout: "pr-number", revisions: undefined }
+      : { policy, diff: earlyDiff.diff, checkout: earlyDiff.checkout, revisions: earlyDiff.revisions },
+  );
   const application =
-    policy === undefined ? undefined : applyPolicy({ config, raw: rawInputs, resolved: resolved.inputs }, policy);
+    policy === undefined
+      ? undefined
+      : applyPolicy({ config, raw: rawInputs, resolved: resolved.inputs }, policy, policyFileBase);
+  // The policy the rest of the run uses: the united one for a `file:` policy with a base copy.
+  const appliedPolicy = application?.policy ?? policy;
   const effective = application?.inputs ?? resolved.inputs;
   const {
     coverageFile,
@@ -421,7 +435,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     repoFiles,
     testIntegrityMode,
     dependencySettings,
-    policy,
+    policy: appliedPolicy,
     log: (line) => deps.info(line),
     warn: (line) => deps.warning(line),
   });
@@ -465,7 +479,8 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     configPath: configInput || undefined,
     configSource,
     headConfigExclude,
-    policy,
+    policy: appliedPolicy,
+    policyFileBase,
     policyIgnored: application?.ignored,
     signalOverrides: application?.signalOverrides,
     agentPrFacts,

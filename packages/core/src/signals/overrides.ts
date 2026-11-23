@@ -16,7 +16,10 @@ export interface AppliedOverrides {
  * Per-signal severities from a policy, applied to the findings the detectors computed. `replace` (an app policy) sets
  * the severity of every finding of an id; `off` drops the findings and their omitted-count entries, so their message
  * goes too. `raise` (a policy file) can only raise: a severity lower than the computed one is not applied, and its id
- * is returned once in `lowered` when at least one finding of that id exists. Mode `warn` then caps `block` to `warn`.
+ * is returned once in `lowered` when at least one finding of that id exists. With `copies` (a policy file united with
+ * its merge-base copy, `severities` the strictest of the two), the id is also `lowered` when the head copy's effective
+ * value, `max(computed, head)`, is below the base copy's: a base value equal to the computed severity that the head
+ * deletes is not. Mode `warn` then caps `block` to `warn`.
  * Mode `off` never reaches this function: it has no findings. Pure; the order of the findings is kept.
  */
 export function applySignalOverrides(
@@ -39,10 +42,27 @@ export function applySignalOverrides(
     if (wanted !== undefined) {
       if (overrides.kind === "replace") {
         severity = wanted;
-      } else if (RANK[wanted] > RANK[severity]) {
-        severity = wanted;
-      } else if (RANK[wanted] < RANK[severity]) {
-        lowered.add(signal.id as PolicySignalId);
+      } else {
+        if (RANK[wanted] > RANK[severity]) severity = wanted;
+        const copies = overrides.copies;
+        if (copies === undefined) {
+          if (RANK[wanted] < RANK[signal.severity]) lowered.add(signal.id as PolicySignalId);
+        } else {
+          // United with the merge-base copy: `wanted` is the strictest of the two copies. The head copy's value is
+          // looser when it is below the computed severity, or when its effective value is below the base's.
+          const head = copies.head as Readonly<Record<string, PolicySeverity | undefined>>;
+          const base = copies.base as Readonly<Record<string, PolicySeverity | undefined>>;
+          const headValue = Object.hasOwn(head, signal.id) ? head[signal.id] : undefined;
+          const baseValue = Object.hasOwn(base, signal.id) ? base[signal.id] : undefined;
+          const effective = (value: PolicySeverity | undefined) =>
+            Math.max(RANK[signal.severity], value === undefined ? -1 : RANK[value]);
+          if (
+            (headValue !== undefined && RANK[headValue] < RANK[signal.severity]) ||
+            effective(headValue) < effective(baseValue)
+          ) {
+            lowered.add(signal.id as PolicySignalId);
+          }
+        }
       }
     }
     if (mode === "warn" && severity === "block") severity = "warn";

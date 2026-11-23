@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "coverage": { "threshold": 50, "exclude": ["tests/**"], "root": "packages/head" },
+  "setup": {
+    "require": false,
+    "expect": ["claude-code"],
+    "consistency": "off",
+    "forbidden_permissions": ["Bash(curl:*)"],
+    "allowed_mcp_servers": ["docs", "extra"],
+    "required_hooks": [{ "event": "PreToolUse", "matcher": "Edit" }]
+  },
+  "test_integrity": {
+    "mode": "warn",
+    "signals": { "TI01": "warn" },
+    "accept_label": "head-label"
+  },
+  "flaky": { "quarantine": true },
+  "policy": { "required": false, "rules": { "P02": "warn" } },
+  "agents": {
+    "labels": ["other"],
+    "protected_paths": ["migrations/**"],
+    "protected_paths_mode": "warn",
+    "max_files": 50
+  },
+  "dependencies": {
+    "lookup": false,
+    "registries": ["pypi"],
+    "min_age_days": 5,
+    "allowed_hosts": ["npm.head.example"]
+  },
+  "injection": {
+    "exempt": ["generated/**"],
+    "phrases": ["something new"],
+    "signals": { "PI02": "warn" }
+  }
+}

@@ -208,7 +208,9 @@ export interface CheckInput {
   agentInstructionSources?: AgentConfigSources | undefined;
   /**
    * The org policy of the run (see `ResolvedPolicy`), after `applyPolicy` gave the effective settings the other fields
-   * carry. Its document runs the org-policy rules (P01 to P11, P13 and P14; P12 is validated and not run), its
+   * carry; the adapters pass `PolicyApplication.policy`, which for a `file:` policy is united with its merge-base copy.
+   * `check()` itself does not unite: a head-only policy with `policyFileBase` gets the base's lists and phrases only.
+   * Its document runs the org-policy rules (P01 to P11, P13 and P14; P12 is validated and not run), its
    * `unavailable` reason adds one POLICY_UNAVAILABLE message, the unknown keys of an app policy add one
    * POLICY_KEYS_UNKNOWN message, and the report carries a `policy` object for an app or file policy or an unavailable
    * one. Absent, or a policy of source `none` with no reason, adds nothing and the report is the one it was.
@@ -225,7 +227,11 @@ export interface CheckInput {
    * and P09 class 4 is item 22's warn.
    */
   policySettingsSources?: PolicySettingsSources | undefined;
-  /** Per-signal severities from the policy (`PolicyApplication.signalOverrides`), applied to the signals found. */
+  /**
+   * Per-signal severities from the policy (`PolicyApplication.signalOverrides`), applied to the signals found. For a
+   * `file:` policy united with its merge-base copy they carry the two copies, so a head value looser than the base's is
+   * named in POLICY_OVERRIDE_IGNORED.
+   */
   signalOverrides?: SignalOverrides | undefined;
   /**
    * What the Action read of the pull request (see `AgentPrFacts`). Absent means no facts were gathered: no agent PR
@@ -236,8 +242,10 @@ export interface CheckInput {
   agentPrFacts?: AgentPrFacts | undefined;
   /**
    * The `file:` policy as the base commit of the local diff has it (see `PolicyFileBase`), read from committed objects by
-   * the CLI and the Action (node-io `gatherSources`). Its lists and injection phrases are united with the head copy's; an
-   * unreadable one with an edited policy file makes the pull request an agent PR. Absent means it was not read.
+   * the CLI and the Action (node-io `gatherPolicyFileBase`) before `applyPolicy`, which unites it with the head copy for
+   * every key a file may set. Here its lists, caps and injection phrases are united again with the policy's document
+   * (idempotent on a united one); an unreadable one with an edited policy file makes the pull request an agent PR. Absent
+   * means it was not read.
    */
   policyFileBase?: PolicyFileBase | undefined;
   /**

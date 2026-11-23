@@ -11,6 +11,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- A `file:` policy a pull request edits can no longer loosen any setting the file may carry (CORE-348): the Action and
+  the CLI read the file at the merge base before applying it and unite the two copies key by key, so the stricter
+  value applies for the threshold, the mode, `setup.require`, `setup.expect`, `setup.consistency`, the signal and rule
+  severities, the agent-settings and file lists, the MCP allowlist, `flaky.quarantine`, `agents.protected_paths_mode`
+  and the other `agents` and `dependencies` keys. Until now only the agent lists, the P14 caps and the injection
+  settings were united. A value the pull request has looser than the base is named in `POLICY_OVERRIDE_IGNORED`; the
+  keys a file may not set stay as they were. See [`docs/policy.md`](./docs/policy.md).
 - A `file:` policy a pull request edits can no longer drop the injection phrases its copy at the merge base names by
   removing the whole `injection` key (CORE-14 follow-up): the base's phrases were united with the head's only when the
   head copy still had the key, in the Action and the CLI. The base's raised `injection.signals` severities now apply

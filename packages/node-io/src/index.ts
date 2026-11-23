@@ -19,6 +19,7 @@ export {
   type GatheredSources,
   type GatherSourcesDeps,
   type GatherSourcesOptions,
+  gatherPolicyFileBase,
   gatherSources,
   type HeadCheckout,
   headIsInBase,

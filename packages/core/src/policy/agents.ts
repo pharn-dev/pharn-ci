@@ -63,7 +63,9 @@ function tidy(...lists: (readonly unknown[] | undefined)[]): string[] {
  * rule P11. An app policy's lists are its own. A `file:` policy's lists are its head lists united with the ones the
  * merge base has (`from.base`), whether or not the pull request edits the file, so an edit cannot remove an entry; a
  * base that cannot be read, with an edited or unknown policy file, makes the lists incomplete. P14's caps follow the
- * same base: the smaller of the head and base value of each, a cap set on either side applying. Pure: nothing is read
+ * same base: the smaller of the head and base value of each, a cap set on either side applying. A policy that
+ * `applyPolicy` already united with the base copy (`policy.copies`) holds those unions in its document, so reading the
+ * base again here gives the same lists and caps; the P11 mode and rule records read the head copy. Pure: nothing is read
  * but the arguments.
  */
 export function agentPolicyOf(
@@ -107,7 +109,7 @@ export function agentPolicyOf(
     return { ...empty, labels, extraLogins, listsIncomplete, policyFileEdited, maxFiles, maxChangedLines };
   }
   const resolved = resolveKeyedSeverity(policy, "P11", {
-    featureValue: head?.protected_paths_mode,
+    feature: (document) => document.agents?.protected_paths_mode,
     featureSetting: "agents.protected_paths_mode",
     fallback: "block",
   });

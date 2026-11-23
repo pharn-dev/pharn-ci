@@ -24,6 +24,7 @@ import {
 import {
   diffEnds,
   type FileStamp,
+  gatherPolicyFileBase,
   gatherSources,
   headIsInBase,
   loadConfigInUse,
@@ -339,8 +340,13 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
           { readFile: deps.readFile, resolvePath: deps.resolvePath, lstat: deps.lstat },
           { root: repoRoot, path: policyFile, label: "--policy-file" },
         );
+  // The merge-base copy of a `file:` policy is read before the policy is applied, so `applyPolicy` can unite it with the
+  // head copy for every key a file may set (a `file:` policy only; undefined otherwise).
+  const policyFileBase = await gatherPolicyFileBase(deps, { policy, diff, checkout: "head", revisions });
   const application =
-    policy === undefined ? undefined : applyPolicy({ config, raw, resolved: resolved.inputs }, policy);
+    policy === undefined ? undefined : applyPolicy({ config, raw, resolved: resolved.inputs }, policy, policyFileBase);
+  // The policy the rest of the run uses: the united one for a `file:` policy with a base copy.
+  const appliedPolicy = application?.policy ?? policy;
   const effective = application?.inputs ?? resolved.inputs;
   const {
     coverageFile,
@@ -400,7 +406,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     repoFiles,
     testIntegrityMode,
     dependencySettings,
-    policy,
+    policy: appliedPolicy,
     log,
     warn: log,
   });
@@ -430,7 +436,8 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     configPath,
     configSource,
     headConfigExclude,
-    policy,
+    policy: appliedPolicy,
+    policyFileBase,
     policyIgnored: application?.ignored,
     signalOverrides: application?.signalOverrides,
     junit,

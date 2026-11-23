@@ -77,6 +77,10 @@ export function injectionSettingsOf(policy: ResolvedPolicy | undefined, base?: P
   }
   const wanted = injection?.signals ?? {};
   const baseWanted = baseInjection?.signals ?? {};
+  // A policy united with its merge-base copy (`policy.copies`) holds the strictest of the two copies in `wanted` (and the
+  // union of the phrases, which the base union above leaves as it is); then a record is made for the head copy's own
+  // value below the default, and `uniteFilePolicy` names a head value below the base's.
+  const headWanted = policy.copies === undefined ? wanted : (policy.copies.head.injection?.signals ?? {});
   for (const id of INJECTION_SIGNAL_IDS) {
     const fallback = DEFAULT_INJECTION_SEVERITIES[id];
     // The merge base's value only raises, like the head's; a lower one is not applied and not recorded again here.
@@ -87,7 +91,9 @@ export function injectionSettingsOf(policy: ResolvedPolicy | undefined, base?: P
     // Below the default or below the merge base's raised value: not applied, recorded as `looser`.
     const current = severities[id] as InjectionSeverity;
     if (RANK[value] > RANK[current]) severities[id] = value as InjectionSeverity;
-    else if (RANK[value] < RANK[current]) {
+    const headValue = Object.hasOwn(headWanted, id) ? headWanted[id] : undefined;
+    const below = policy.copies === undefined ? value : headValue;
+    if (below !== undefined && RANK[below] < RANK[policy.copies === undefined ? current : fallback]) {
       settings.ignored.push({ setting: `injection.signals.${id}`, reason: "looser" });
     }
   }

@@ -42,7 +42,7 @@ export function consistencySeverity(policy: ResolvedPolicy): {
     return { severity: null, ignored: [], lowered: false };
   }
   return resolveKeyedSeverity(policy, "P07", {
-    featureValue: policy.document.setup?.consistency,
+    feature: (document) => document.setup?.consistency,
     featureSetting: "setup.consistency",
     fallback: "warn",
   });

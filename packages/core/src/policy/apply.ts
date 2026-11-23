@@ -3,8 +3,10 @@ import type { RawInputs, ResolvedInputs } from "../inputs.js";
 import type { TestIntegrityMode } from "../report.js";
 import type { TestIntegrityModeSettings } from "../testIntegrityMode.js";
 import { byCodeUnit } from "../text.js";
+import type { PolicyFileBase } from "./agents.js";
 import type { IgnoredSetting, ResolvedPolicy, SignalOverrides } from "./resolved.js";
 import type { PolicyDocument } from "./types.js";
+import { uniteFilePolicy } from "./unite.js";
 
 /**
  * The layers a policy is applied to, as the adapters build them: the parsed `.pharn/ci.yml`, the raw inputs as the
@@ -26,6 +28,13 @@ export interface PolicyApplication {
   signalOverrides?: SignalOverrides;
   /** The accept label an app policy sets; never set from a policy file. */
   acceptLabel?: string;
+  /**
+   * The policy the run uses from here on, for `gatherSources` and `check()`: for a `file:` policy whose merge-base copy
+   * was read as a document, the united policy (`uniteFilePolicy`); the input policy, unchanged, for every other.
+   * `applyPolicy` always sets it; it is optional only so that a caller that builds the type by hand (a run with no
+   * policy) need not.
+   */
+  policy?: ResolvedPolicy;
 }
 
 const STRICTNESS: Readonly<Record<TestIntegrityMode, number>> = { off: 0, warn: 1, block: 2 };
@@ -52,24 +61,46 @@ function normalizedRoot(root: string): string {
  * - `setup.expect` is the union of every layer. `dependencies` goes into the dependency settings layers (see
  *   `applyDependencies`; an app policy's `allowed_hosts` replaces the input's, a file's is `not-allowed`). Every other
  *   key is carried in the document, not applied.
+ *
+ * With `base`, the merge-base copy of a `file:` policy as the caller read it, the head copy is first united with it
+ * (`uniteFilePolicy`) and the united document is what is applied and what `PolicyApplication.policy` carries, so a pull
+ * request that edits the file cannot loosen any setting the file may carry. The records of a head value that is looser
+ * than the layers or the default are made from the head copy; the united document adds a `looser` record for each
+ * setting whose head value is looser than the base's. Without a document `base`, an app policy or no policy, nothing is
+ * united and the result is the one `applyPolicy(layers, policy)` gives.
  */
-export function applyPolicy(layers: PolicyLayers, policy: ResolvedPolicy): PolicyApplication {
-  const document = policy.document;
-  if (policy.source === "none" || document === null) return { inputs: layers.resolved, ignored: [] };
-  const app = policy.source === "app";
+export function applyPolicy(layers: PolicyLayers, policy: ResolvedPolicy, base?: PolicyFileBase): PolicyApplication {
+  const united = uniteFilePolicy(policy, base);
+  const applied = united.policy;
+  const document = applied.document;
+  if (applied.source === "none" || document === null) return { inputs: layers.resolved, ignored: [], policy: applied };
+  const app = applied.source === "app";
+  // What the head copy carries: the records of a value looser than the layers or the default read it, not the united one.
+  const head = applied.copies?.head ?? document;
   const ignored: IgnoredSetting[] = [];
   const inputs: ResolvedInputs = { ...layers.resolved };
 
-  applyCoverage(layers, document, app, inputs, ignored);
-  applySetup(layers, document, app, inputs, ignored);
-  const modeSettings = applyMode(layers, document, app, ignored);
+  applyCoverage(layers, document, head, app, inputs, ignored);
+  applySetup(layers, document, head, app, inputs, ignored);
+  const modeSettings = applyMode(layers, document, head, app, ignored);
   if (modeSettings !== undefined) inputs.testIntegrityMode = modeSettings;
   applyDependencies(layers, document, app, inputs, ignored);
 
   const integrity = document.test_integrity;
-  const result: PolicyApplication = { inputs, ignored: [] };
+  const result: PolicyApplication = { inputs, ignored: [], policy: applied };
   if (integrity?.signals !== undefined && Object.keys(integrity.signals).length > 0) {
-    result.signalOverrides = { kind: app ? "replace" : "raise", severities: { ...integrity.signals } };
+    result.signalOverrides = {
+      kind: app ? "replace" : "raise",
+      severities: { ...integrity.signals },
+      ...(applied.copies === undefined
+        ? {}
+        : {
+            copies: {
+              head: { ...applied.copies.head.test_integrity?.signals },
+              base: { ...applied.copies.base.test_integrity?.signals },
+            },
+          }),
+    };
   }
   if (integrity?.accept_label !== undefined) {
     if (app) result.acceptLabel = integrity.accept_label;
@@ -79,6 +110,8 @@ export function applyPolicy(layers: PolicyLayers, policy: ResolvedPolicy): Polic
     ignored.push({ setting: "policy.required", reason: "not-allowed" });
   }
 
+  // The head-vs-base records come last, so a record with numbers (a threshold) wins over the united one without.
+  ignored.push(...united.ignored);
   const seen = new Set<string>();
   result.ignored = ignored
     .filter((record) => {
@@ -94,6 +127,7 @@ export function applyPolicy(layers: PolicyLayers, policy: ResolvedPolicy): Polic
 function applyCoverage(
   layers: PolicyLayers,
   document: PolicyDocument,
+  headDocument: PolicyDocument,
   app: boolean,
   inputs: ResolvedInputs,
   ignored: IgnoredSetting[],
@@ -103,21 +137,23 @@ function applyCoverage(
   if (coverage === undefined) return;
 
   // Threshold: the largest of the policy's and the value in force (the larger of the input and the config). The
-  // smaller of the two is recorded when it is the one the policy beat (app) or the one the file carried (file).
+  // smaller of the two is recorded when it is the one the policy beat (app) or the one the file carried (file: the head
+  // copy's value, which the merge-base copy's may have raised in `theirs`).
   if (coverage.threshold !== undefined) {
     const theirs = coverage.threshold;
     const inForce = resolved.threshold;
+    const headValue = app ? theirs : headDocument.coverage?.threshold;
     if (inForce === null) {
       inputs.threshold = theirs;
     } else {
-      if (app ? inForce < theirs : theirs < inForce) {
+      if (app ? inForce < theirs : headValue !== undefined && headValue < inForce) {
         // The layer an app policy beat: the input's, unless the config's was larger (a tie names the input).
         const inputInForce = raw.threshold !== undefined && !(Number(raw.threshold.trim()) < inForce);
         ignored.push({
           setting: "coverage.threshold",
           reason: "looser",
           ...(app ? { layer: inputInForce ? "input" : "config" } : {}),
-          given: Math.min(theirs, inForce),
+          given: Math.min(headValue ?? theirs, inForce),
           applied: Math.max(theirs, inForce),
         });
       }
@@ -166,6 +202,7 @@ function applyCoverage(
 function applySetup(
   layers: PolicyLayers,
   document: PolicyDocument,
+  headDocument: PolicyDocument,
   app: boolean,
   inputs: ResolvedInputs,
   ignored: IgnoredSetting[],
@@ -184,9 +221,12 @@ function applySetup(
         ignored.push({ setting: "setup.require", reason: "looser", layer });
       }
       inputs.requireAgentSetup = true;
-    } else if (!app && resolved.requireAgentSetup) {
-      ignored.push({ setting: "setup.require", reason: "looser" });
     }
+  }
+  // A file's `false` over a requirement the layers give is `looser`, whether or not the merge-base copy's `true` made the
+  // united value true: the record reads the head copy.
+  if (!app && headDocument.setup?.require === false && resolved.requireAgentSetup) {
+    ignored.push({ setting: "setup.require", reason: "looser" });
   }
 
   // setup.expect: the union of every layer, the lower ones first, each once; absent when empty.
@@ -249,6 +289,7 @@ function applyDependencies(
 function applyMode(
   layers: PolicyLayers,
   document: PolicyDocument,
+  headDocument: PolicyDocument,
   app: boolean,
   ignored: IgnoredSetting[],
 ): TestIntegrityModeSettings | undefined {
@@ -268,7 +309,9 @@ function applyMode(
     const inForce = given?.input ?? "warn";
     const today =
       given?.config !== undefined && STRICTNESS[given.config] > STRICTNESS[inForce] ? given.config : inForce;
-    if (STRICTNESS[mode] < STRICTNESS[today]) {
+    // The head copy's mode: the united one may be the merge base's, which is never looser than the layers.
+    const headMode = headDocument.test_integrity?.mode;
+    if (headMode !== undefined && STRICTNESS[headMode] < STRICTNESS[today]) {
       ignored.push({ setting: "test_integrity.mode", reason: "looser" });
     }
   }

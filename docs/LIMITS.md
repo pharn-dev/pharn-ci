@@ -1599,6 +1599,13 @@ applied once per run. What it does not do:
   effective settings only when it is a tightening-only document and no lower layer holds a value above it that the
   app would have named: an app value above a lower layer's is recorded as `looser`, while the same file value above it
   is not, so the two reports then differ by one `POLICY_OVERRIDE_IGNORED` message.
+- **A `file:` policy is united with its merge-base copy only when that copy can be read.** The Action and the CLI read
+  the file at the merge base and apply each setting a file may carry as the stricter of that copy and the pull
+  request's (the per-key rules are in [Changing a `file:` policy](policy.md)). The copy is read only from a local diff:
+  in PR-number mode, with a compare-API diff, or when the file is new, unreadable or not a valid policy at the merge
+  base, every setting comes from the pull request's copy alone, and no message says the union did not happen; P09 still
+  reports the edit. A deleted base value equal to its default is not named (`agents.protected_paths_mode` is the one
+  exception), and a united list is not held to the 1000-entry input cap (at most twice that).
 - **An older build skips what a newer policy adds.** A key, id or agent tool the app serves that this version does
   not know is left out, the rest of the policy applies, and `POLICY_KEYS_UNKNOWN` names it (up to 20 names). Until the
   Action pin is updated, a skipped signal, rule or tool is not checked, and a new key that would qualify a known setting
@@ -1688,7 +1695,8 @@ P08 matches the tracked paths of the repository against `setup.forbidden_files`.
 - **At most 50 violations are listed.** The rest are counted in the `POLICY_P11` text, which names up to 20 paths.
 - **The merge-base read needs a local diff.** The `file:` policy is read at the merge base only for a diff from the
   local checkout. PR-number mode and the compare API fail closed: an edited policy file then makes the pull request an
-  agent PR (`policy-lists-unreadable`).
+  agent PR (`policy-lists-unreadable`). The protected paths and `protected_paths_mode` then come from the pull
+  request's copy alone (see [Org policy](#org-policy)).
 - **Dependabot and Renovate count as agent PRs.** Protecting `package.json` or a lockfile blocks their updates: do not
   protect files those bots must update.
 - **Other `agents` keys are not applied.** `require_human_approval` (rule P12) is validated and carried, not applied by

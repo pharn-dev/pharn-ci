@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "coverage": { "threshold": 90, "exclude": ["vendor/**"], "root": "packages/base" },
+  "setup": {
+    "require": true,
+    "expect": ["claude-code", "cursor"],
+    "consistency": "block",
+    "forbidden_permissions": ["Bash(curl:*)", "Bash(rm:*)"],
+    "required_permissions_deny": ["Read(.env)"],
+    "allowed_mcp_servers": ["docs", "search"],
+    "forbidden_mcp_servers": ["shell"],
+    "required_hooks": [{ "event": "PreToolUse", "matcher": "Bash" }],
+    "forbidden_files": ["*.pem"]
+  },
+  "test_integrity": {
+    "mode": "block",
+    "signals": { "TI01": "block", "TI02": "block" },
+    "accept_label": "base-label"
+  },
+  "flaky": { "quarantine": false },
+  "policy": { "required": true, "rules": { "P02": "block", "P05": "block" } },
+  "agents": {
+    "labels": ["bot"],
+    "extra_logins": ["helper[bot]"],
+    "protected_paths": ["migrations/**", "infra/**"],
+    "protected_paths_mode": "block",
+    "require_human_approval": true,
+    "max_files": 20,
+    "max_changed_lines": 400
+  },
+  "dependencies": {
+    "lookup": true,
+    "registries": ["npm"],
+    "min_age_days": 60,
+    "min_weekly_downloads": 500,
+    "allowed_hosts": ["npm.base.example"]
+  },
+  "injection": {
+    "exempt": ["docs/**"],
+    "phrases": ["ignore previous instructions"],
+    "signals": { "PI02": "block", "PI03": "block" }
+  }
+}

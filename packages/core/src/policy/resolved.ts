@@ -31,8 +31,18 @@ export interface ResolvedPolicy {
   fetchedAt?: string;
   /** The forward-slash path a file policy was read from, relative to the repository. Absent otherwise. */
   path?: string;
-  /** The validated document; null when the source is none. */
+  /**
+   * The validated document; null when the source is none. For a `file:` policy that `uniteFilePolicy` united with its
+   * merge-base copy (`copies` is then set) it is the united document: each setting a file may carry at its strictest of
+   * the two copies.
+   */
   document: PolicyDocument | null;
+  /**
+   * The two copies of a `file:` policy that `document` united: the head copy the pull request carries and the merge
+   * base's. Set only by `uniteFilePolicy`, when the base copy was read as a document. The records of a head value that
+   * is looser than the default or than the layers are made from the head copy, never from the united value.
+   */
+  copies?: { head: PolicyDocument; base: PolicyDocument };
   /** True when the app answered that there is no policy for this repository (204 or 404). */
   noApp?: boolean;
   /**
@@ -56,7 +66,8 @@ export interface IgnoredSetting {
   setting: string;
   /**
    * `looser`: a value looser than the policy's (a workflow input or `.pharn/ci.yml` value an app policy beat, or a
-   * policy file's value looser than what the run already gives); `not-allowed`: a key a policy file may not set.
+   * policy file's value looser than what the run already gives, or looser than the same setting in the merge-base copy
+   * of the file); `not-allowed`: a key a policy file may not set.
    */
   reason: "looser" | "not-allowed";
   /**
@@ -72,9 +83,15 @@ export interface IgnoredSetting {
 
 /**
  * Per-signal severities from a policy. `replace` (the app) sets the severity; `raise` (a policy file) only raises it
- * on `off < info < warn < block`.
+ * on `off < info < warn < block`. A policy file united with its merge-base copy carries the two copies' severities in
+ * `copies` (`severities` is then the strictest of the two per id), so a head value that is looser than the base's is
+ * recorded.
  */
 export interface SignalOverrides {
   kind: "replace" | "raise";
   severities: Partial<Record<PolicySignalId, PolicySeverity>>;
+  copies?: {
+    head: Partial<Record<PolicySignalId, PolicySeverity>>;
+    base: Partial<Record<PolicySignalId, PolicySeverity>>;
+  };
 }
