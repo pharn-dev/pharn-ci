@@ -987,7 +987,6 @@ function rangeParts(lines: readonly number[]): string[] {
 // item and inject their own markdown into the PR comment, so control characters never get through.
 // Control characters, line and paragraph separators, and the invisible format characters that reorder or hide text
 // (zero-width marks, bidirectional overrides and isolates, the byte order mark): each becomes U+FFFD.
-// biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point.
 
 function code(path: string): string {
   // Pipes would break the table; backticks would break the code span. A backslash is no escape inside a code span,
