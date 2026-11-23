@@ -60,7 +60,7 @@ const DIFF = [
 describe("readCoverageFiles + check(): skipped records summed across streamed files", () => {
   it("AC-3: two files read as parsed entries give one info COVERAGE_LINES_SKIPPED message with the count 3", async () => {
     const { readCoverageFiles } = await import("../src/coverage.js");
-    const { listDir, readFile, readFileStream } = await import("../src/io.js");
+    const { listDir, readFileStream } = await import("../src/io.js");
     const { check } = await import("../../core/src/check.js");
 
     const dir = mkdtempSync(join(tmpdir(), "pharn-ci-lines-skipped-"));
@@ -70,7 +70,7 @@ describe("readCoverageFiles + check(): skipped records summed across streamed fi
       writeFileSync(join(dir, "coverage", "coverage.xml"), COBERTURA);
 
       const files = await readCoverageFiles(
-        { listDir, readFile, readFileStream, resolvePath: (...segments: string[]) => resolve(...segments) },
+        { listDir, readFileStream, resolvePath: (...segments: string[]) => resolve(...segments) },
         {
           entries: ["coverage/lcov.info", "coverage/coverage.xml"],
           label: "coverage-file",
@@ -91,7 +91,7 @@ describe("readCoverageFiles + check(): skipped records summed across streamed fi
 
       const report = check({
         version: "0.1.0",
-        coverage: { files, format: "auto" },
+        coverage: { files },
         diff: { text: DIFF },
         repoFiles: ["src/a.ts", "src/b.py"],
         threshold: null,

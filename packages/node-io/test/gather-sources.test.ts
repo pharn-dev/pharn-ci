@@ -184,7 +184,7 @@ describe("loadConfig and loadConfigInUse", () => {
 
   it("with no diff the working tree's copy is used, with no source", async () => {
     const inUse = await loadConfigInUse(
-      { git: refusingDeps.git, readFile },
+      { gitBatch: refusingDeps.gitBatch, readFile },
       {
         ...at("/repo/.pharn/ci.yml", ".pharn/ci.yml", false),
         configPath: undefined,
