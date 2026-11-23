@@ -16,7 +16,8 @@ async function helper(): Promise<Helper> {
   return loaded as Helper;
 }
 
-describe("the shared withoutFix helper", () => {
+// Core's index loads cold, which can take seconds on a loaded host.
+describe("the shared withoutFix helper", { timeout: 60_000 }, () => {
   it("AC-12: withoutFix takes the fix objects out of a report and leaves its input as it was", async () => {
     const { withoutFix } = await helper();
 
@@ -31,7 +32,25 @@ describe("the shared withoutFix helper", () => {
     });
     const text = JSON.stringify(report);
     expect(text, "the golden report carries fix").toContain('"fix"');
-    expect(JSON.stringify(withoutFix(report)), "no fix object is left").not.toContain('"fix"');
+
+    // The expected result, built without the helper: the same report with the `fix` of each message and each finding
+    // deleted, and every other field kept.
+    type Item = Record<string, unknown>;
+    const expected = JSON.parse(text) as Record<string, unknown> & { messages: Item[] };
+    const findings = (key: string, list: string) =>
+      ((expected[key] as Record<string, unknown> | undefined)?.[list] as Item[] | undefined) ?? [];
+    for (const item of [
+      ...expected.messages,
+      ...findings("testIntegrity", "signals"),
+      ...findings("policy", "violations"),
+      ...findings("setupHealth", "stale"),
+      ...findings("injection", "signals"),
+      ...findings("dependencies", "signals"),
+    ]) {
+      delete item.fix;
+    }
+    expect(JSON.stringify(expected), "the control has no fix left").not.toContain('"fix"');
+    expect(withoutFix(report), "only the fix objects are taken out").toEqual(expected);
     expect(JSON.stringify(report), "withoutFix leaves its input as it was").toBe(text);
 
     // Only a fix object (string kind and hint) is taken out; any other value under a fix key stays.
