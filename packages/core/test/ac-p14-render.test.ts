@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { type Report as CoreReport, detectAgentPr, parseUnifiedDiff, renderMarkdown } from "../src/index.js";
+import { detectAgentPr, parseUnifiedDiff, renderMarkdown } from "../src/index.js";
 import { agentPolicyOf } from "../src/policy/agents.js";
 import { evaluatePolicyRules } from "../src/policy/rules/evaluate.js";
 import { codeRow } from "./codeTable.js";
@@ -27,7 +27,7 @@ function section(md: string, heading: string): string[] {
 describe("org policy rule P14 in the PR comment, the schema and the docs", () => {
   it("the Policy section lists each path-less P14 violation with the POLICY_P14 hint; the message is not repeated in Messages", () => {
     const report = runP14({ diff: "both/over-both.diff", policy: appPolicy(policyFixture("both/policy.json")) });
-    const markdown = renderMarkdown(report as unknown as CoreReport);
+    const markdown = renderMarkdown(report);
     const policy = section(markdown, "### 📜 Policy");
     const filesLine = policy.findIndex((l) => l.startsWith("- ❌ **P14** — agent PR changes 4 files (cap 3)"));
     expect(filesLine, "the files violation").toBeGreaterThanOrEqual(0);

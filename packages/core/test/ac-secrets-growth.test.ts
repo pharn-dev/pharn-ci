@@ -6,12 +6,6 @@ import { measureGrowth, threadCpuMs } from "./growth.js";
 // Growth is measured on this thread's CPU time with measureGrowth (growth.ts), after a warm-up call of each input; the
 // slowest single call must finish within 15 s of CPU time.
 
-type Span = { id: string; start: number; end: number };
-interface Scanner {
-  findSecretSpans(text: string): Span[];
-  scanAgentConfigSecrets(files: readonly { path: string; text: string }[]): unknown[];
-}
-
 const COLON_SLASHES = ":" + "//";
 
 /**
@@ -60,7 +54,7 @@ describe("A7 pattern matching grows close to linearly", () => {
     const { findSecretSpans, scanAgentConfigSecrets } = {
       ...(await import("../src/secrets/scan.js")),
       ...(await import("../src/secrets/spans.js")),
-    } as unknown as Scanner;
+    };
     const small = oneLine(128 * 1024);
     const large = oneLine(512 * 1024);
     expect(findSecretSpans(small), "control: the near-miss text holds no span").toEqual([]);

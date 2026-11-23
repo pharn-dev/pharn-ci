@@ -23,10 +23,6 @@ function deletionOf(lines: number): string[] {
   return out;
 }
 
-type Options = { keepText: (file: { path: string; oldPath: string }) => boolean };
-type ParseFn = (text: string, options?: Options) => Parsed[];
-type ReaderFn = (options?: Options) => { push(line: string): void; finish(): Parsed[] };
-
 const keepText = (file: { path: string; oldPath: string }) => file.path.startsWith("tests/");
 
 const keptLines = (file: Parsed) =>
@@ -39,8 +35,8 @@ describe("unified diff parser: bounds on the kept text", () => {
     const { parseUnifiedDiff, createUnifiedDiffReader } = await import("../src/diff/unified.js");
     const lines = deletionOf(6000);
     const started = performance.now();
-    const viaText = (parseUnifiedDiff as unknown as ParseFn)(lines.join("\n"), { keepText });
-    const reader = (createUnifiedDiffReader as unknown as ReaderFn)({ keepText });
+    const viaText = parseUnifiedDiff(lines.join("\n"), { keepText });
+    const reader = createUnifiedDiffReader({ keepText });
     for (const line of lines) reader.push(line);
     const viaReader = reader.finish();
     const elapsed = performance.now() - started;
@@ -60,7 +56,7 @@ describe("unified diff parser: bounds on the kept text", () => {
 
   it("AC-3: a 100-line deletion of the same shape is kept whole and is not marked truncated", async () => {
     const { parseUnifiedDiff } = await import("../src/diff/unified.js");
-    const files = (parseUnifiedDiff as unknown as ParseFn)(deletionOf(100).join("\n"), { keepText });
+    const files = parseUnifiedDiff(deletionOf(100).join("\n"), { keepText });
     const file = files.find((f) => f.path === "tests/big.test.ts");
     expect(file).toBeDefined();
     if (file === undefined) return;

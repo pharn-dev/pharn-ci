@@ -13,7 +13,8 @@ type Env = Record<string, string>;
 type Run = { cleanEnv: (base: Env) => Env };
 
 const load = async (): Promise<Run> =>
-  (await import(pathToFileURL(join(ROOT, "scripts/corpus-run.mjs")).href)) as unknown as Run;
+  // scripts/corpus-run.mjs is untyped JavaScript: Run names what this test calls.
+  (await import(pathToFileURL(join(ROOT, "scripts/corpus-run.mjs")).href)) as Run;
 
 describe("corpus-run cleanEnv", () => {
   it("AC-6: appends core.hooksPath, gc.auto and maintenance.auto after existing pairs without changing the base", async () => {

@@ -27,7 +27,8 @@ type Lib = {
 };
 
 const load = async (): Promise<Lib> =>
-  (await import(pathToFileURL(join(ROOT, "scripts/corpus-lib.mjs")).href)) as unknown as Lib;
+  // scripts/corpus-lib.mjs is untyped JavaScript: Lib names what this test calls.
+  (await import(pathToFileURL(join(ROOT, "scripts/corpus-lib.mjs")).href)) as Lib;
 
 describe("aggregate over fixtures/corpus/review.csv", () => {
   it("AC-2: returns 600 PRs, 0 errors, 0 unreviewed block rows, and TI01, TI02, TI11 in that order with their counts, each shipping as block", async () => {

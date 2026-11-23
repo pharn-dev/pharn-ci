@@ -13,7 +13,8 @@ const KEPT = /^[\x20-\x7e\xa0-￿]*$/;
 type Run = { stderrCause: (text: string) => string | undefined };
 
 const load = async (): Promise<Run> =>
-  (await import(pathToFileURL(join(ROOT, "scripts/corpus-run.mjs")).href)) as unknown as Run;
+  // scripts/corpus-run.mjs is untyped JavaScript: Run names what this test calls.
+  (await import(pathToFileURL(join(ROOT, "scripts/corpus-run.mjs")).href)) as Run;
 
 describe("corpus-run stderrCause", () => {
   it("AC-1: returns the last fatal: or error: line of a git step's stderr", async () => {

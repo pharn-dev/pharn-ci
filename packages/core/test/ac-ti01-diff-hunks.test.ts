@@ -43,12 +43,10 @@ type Hunk = {
 type WithHunks = { path: string; addedLines: number[]; hunks?: Hunk[] };
 
 type Options = { keepText: typeof keepText };
-type ParseFn = (text: string, options?: Options) => WithHunks[];
-type ReaderFn = (options?: Options) => { push(line: string): void; finish(): WithHunks[] };
 
 async function parse(options?: Options) {
   const { parseUnifiedDiff } = await import("../src/diff/unified.js");
-  return (parseUnifiedDiff as unknown as ParseFn)(DIFF, options);
+  return parseUnifiedDiff(DIFF, options);
 }
 
 function expectKept(files: WithHunks[], label: string) {
@@ -94,7 +92,7 @@ describe("unified diff parser: line text per hunk", () => {
 
   it("AC-2: the line-by-line reader gives the same result", async () => {
     const { createUnifiedDiffReader } = await import("../src/diff/unified.js");
-    const reader = (createUnifiedDiffReader as unknown as ReaderFn)({ keepText });
+    const reader = createUnifiedDiffReader({ keepText });
     for (const line of DIFF.split("\n")) reader.push(line);
     expectKept(reader.finish(), "createUnifiedDiffReader");
   });

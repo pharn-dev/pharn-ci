@@ -25,7 +25,8 @@ type Row = {
 type Lib = { serializeCsv: (rows: Row[]) => string; parseCsv: (text: string) => Row[] };
 
 const load = async (): Promise<Lib> =>
-  (await import(pathToFileURL(join(ROOT, "scripts/corpus-lib.mjs")).href)) as unknown as Lib;
+  // scripts/corpus-lib.mjs is untyped JavaScript: Lib names what this test calls.
+  (await import(pathToFileURL(join(ROOT, "scripts/corpus-lib.mjs")).href)) as Lib;
 
 const row = (pr: string, fields: Partial<Row>): Row => ({
   repo: "local/upstream",

@@ -41,7 +41,8 @@ type Run = {
 };
 
 const load = async (): Promise<Run> =>
-  (await import(pathToFileURL(join(ROOT, "scripts/corpus-run.mjs")).href)) as unknown as Run;
+  // scripts/corpus-run.mjs is untyped JavaScript: Run names what this test calls.
+  (await import(pathToFileURL(join(ROOT, "scripts/corpus-run.mjs")).href)) as Run;
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 

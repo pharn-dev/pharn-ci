@@ -6,7 +6,6 @@ import { describe, expect, it } from "vitest";
 type Line = { line: number; text: string };
 type Parsed = { path: string; hunks?: Array<{ added: Line[]; removed: Line[] }>; textTruncated?: boolean };
 type KeepText = (file: { path: string; oldPath: string }) => boolean;
-type ParseFn = (text: string, options?: { keepText?: KeepText }) => Parsed[];
 type SelectorFactory = (configPath?: string, repoRoot?: string) => KeepText;
 
 /** A modified file whose one hunk removes `removed` at line `at` and adds `added` in its place. */
@@ -67,7 +66,7 @@ describe("the diff reader keeps the text of package.json and source files", () =
     const factory = core.keepSignalFileText as SelectorFactory;
     expect(typeof factory).toBe("function");
     const { parseUnifiedDiff } = await import("../src/diff/unified.js");
-    const parse = parseUnifiedDiff as unknown as ParseFn;
+    const parse = parseUnifiedDiff;
     const keepText = factory();
 
     const lines = FILES.flatMap(([path, removed, added]) => edit(path, 7, [removed], [added]));
