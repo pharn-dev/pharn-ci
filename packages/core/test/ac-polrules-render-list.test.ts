@@ -1,18 +1,10 @@
 import { describe, expect, it } from "vitest";
+import type { Message, Report, ReportPolicyViolation as Violation } from "../src/report.js";
 import { expectValidReport } from "./schema.js";
 
 // E3 item 22 (policy rules), AC-16. buildReport() and renderMarkdown() are loaded inside the test body: the AC test
 // is written before the build adds the Policy section, so nothing the build adds may run while this file loads. The
 // report is hand-built: a buildReport() report given a policy object and a POLICY_OVERRIDE_IGNORED message.
-
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = Record<string, unknown> & { messages: Message[] };
-
-interface Core {
-  buildReport(input: unknown): Report;
-  renderMarkdown(report: Report, options?: { maxRows?: number }): string;
-}
 
 const HEADING = "### 📜 Policy";
 const HOSTILE = "x|y`z\n<script>alert(1)</script> @user/CLAUDE.local.md";
@@ -68,7 +60,7 @@ describe("the Policy section's violation list", { timeout: 60_000 }, () => {
     const core = {
       ...(await import("../src/render/markdown.js")),
       ...(await import("../src/report.js")),
-    } as unknown as Core;
+    };
     const base = core.buildReport({
       version: "0.1.0",
       threshold: null,

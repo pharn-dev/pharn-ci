@@ -1,35 +1,17 @@
 import { describe, expect, it } from "vitest";
+import type { AgentPrFacts } from "../src/agents.js";
 
 // detectAgentPr is loaded inside each test body: the AC tests are written before the build adds it, so nothing the
 // build adds may run while this file loads. Each agent case of AC-3 to AC-6 is run again with human evidence added;
 // the governing rule is that evidence the PR controls can only add the agent flag, never remove it.
 
-type Commit = { authorLogin: string | null; committerLogin: string | null; message: string };
-type Facts = {
-  pr: {
-    author: { login: string; type: string } | null;
-    labels: string[];
-    commits: Commit[] | null;
-    commitsIncomplete?: boolean;
-  };
-  labels?: string[];
-  extraLogins?: string[];
-};
-type Detection = {
-  isAgentPr: boolean;
-  agentHint: string | null;
-  evidence: string[];
-  incomplete: string | null;
-  coAuthors: string[];
-};
+/** AgentPrFacts with a pull request: every case here has one. */
+type Facts = AgentPrFacts & { pr: NonNullable<AgentPrFacts["pr"]> };
+type Commit = NonNullable<Facts["pr"]["commits"]>[number];
 
-interface DetectModule {
-  detectAgentPr(facts: Facts): Detection;
-}
+const load = async () => await import("../src/index.js");
 
-const load = async () => (await import("../src/index.js")) as unknown as DetectModule;
-
-const HUMAN_AUTHOR = { login: "octocat", type: "User" };
+const HUMAN_AUTHOR = { login: "octocat", type: "User" } as const;
 const human = (message: string): Commit => ({ authorLogin: "octocat", committerLogin: "octocat", message });
 const HUMAN_COMMITS: Commit[] = [human("Fix the parser\n")];
 

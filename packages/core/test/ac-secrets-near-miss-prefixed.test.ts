@@ -21,10 +21,8 @@ const ANTHROPIC = "sk-" + "ant-";
 const SLACK_BOT = "xo" + "xb-";
 const STRIPE_LIVE = "sk" + "_live_";
 
-type Span = { id: string; start: number; end: number };
-
 async function load() {
-  const core = (await import("../src/secrets/spans.js")) as unknown as { findSecretSpans(text: string): Span[] };
+  const core = await import("../src/secrets/spans.js");
   return (text: string) => core.findSecretSpans(text).map(({ id, start, end }) => ({ id, start, end }));
 }
 

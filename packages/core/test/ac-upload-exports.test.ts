@@ -12,8 +12,8 @@ const UPLOAD_DIR = fileURLToPath(new URL("../src/upload/", import.meta.url));
 // Core's index loads cold, which can take seconds on a loaded host.
 describe("the upload module's exports and purity", { timeout: 60_000 }, () => {
   it("AC-9: @pharn-ci/core exports the upload names, and every file in packages/core/src/upload/ is pure", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Record<string, unknown>;
-    for (const name of ["buildUploadMeta", "buildUploadBundle", "buildUploadTar", "withUploadOutcome"]) {
+    const core = await import("@pharn-ci/core");
+    for (const name of ["buildUploadMeta", "buildUploadBundle", "buildUploadTar", "withUploadOutcome"] as const) {
       expect(typeof core[name], name).toBe("function");
     }
     expect(core.UPLOAD_REPORT_MAX_BYTES).toBe(5242880);

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { Message, Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // CORE-69. check(), unavailableTestSources() and acceptTestIntegrity() are loaded inside the test body: the AC test is
 // written before the accept label lowers the per-file and truncation errors, so nothing the build changes may run while
@@ -12,16 +14,6 @@ const UNAVAILABLE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 const TRUNCATED = "TEST_INTEGRITY_TEXT_TRUNCATED";
 const ACCEPTED = "TEST_INTEGRITY_ACCEPTED";
 const ACCEPT = { label: "pharn/accepted", by: "Reviewer-1" };
-
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-}
-interface Report {
-  verdict: string;
-  messages: Message[];
-}
 
 const BASE = [
   'import { expect, it } from "vitest";',
@@ -49,7 +41,10 @@ const readable = (path: string, base: string, head: string) => ({
   head: { files: [{ path, text: head }], dropped: [] },
 });
 
-async function run(input: Record<string, unknown>): Promise<Report> {
+/** The check() fields a case sets: the diff, and any field it overrides. */
+type CheckFields = Pick<TextCheckInput, "diff"> & Partial<TextCheckInput>;
+
+async function run(input: CheckFields): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -66,9 +61,9 @@ async function run(input: Record<string, unknown>): Promise<Report> {
     ],
     testIntegrityMode: { input: "block" },
     ...input,
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 const one = (report: Report, code: string, name: string): Message => {
@@ -80,12 +75,10 @@ const one = (report: Report, code: string, name: string): Message => {
 describe("CORE-69: the accept label lowers the per-file and truncation errors, never a whole-run one", () => {
   it("AC-16: acceptTestIntegrity lowers the AC-1 and AC-5 errors to warn and adds TEST_INTEGRITY_ACCEPTED; every whole-run TEST_INTEGRITY_INDEX_UNAVAILABLE stays an error and its verdict stays fail", async () => {
     const { acceptTestIntegrity } = await import("../src/acceptLabel.js");
-    const { unavailableTestSources } = (await import("@pharn-ci/core")) as unknown as {
-      unavailableTestSources(reason: string): unknown;
-    };
+    const { unavailableTestSources } = await import("@pharn-ci/core");
     // Each report is accepted as a copy, so a lowered level can never leak into a report a later case reads.
     const accept = (report: Report) => {
-      const accepted = acceptTestIntegrity(structuredClone(report) as never, ACCEPT) as unknown as Report;
+      const accepted = acceptTestIntegrity(structuredClone(report) as never, ACCEPT);
       expectValidReport(accepted);
       return accepted;
     };

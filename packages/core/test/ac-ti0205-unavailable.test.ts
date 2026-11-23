@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
+import type { PythonTestIndex } from "../src/testIndex/pythonSides.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // check(), the test index and the core helpers are loaded inside each test body: the AC tests are written before
 // TI02, TI05 and TEST_INTEGRITY_INDEX_UNAVAILABLE exist, so nothing that depends on them may run while the file loads.
@@ -12,22 +15,6 @@ const CODE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 const PYTHON_DETAIL = "python3 said: SECRET-PYTHON-DETAIL-7f3a";
 
 type Mode = "block" | "warn" | "off";
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-}
-interface Report {
-  testIntegrity: { signals: Signal[]; languages: string[] };
-  messages: Message[];
-}
 
 /** One hunk of a `--unified=0` diff: the first old and new line of the change, the removed and the added lines. */
 type Hunk = [oldStart: number, newStart: number, removed: string[], added: string[]];
@@ -78,7 +65,10 @@ const PY_BASE =
   "from cart import total\n\n\ndef test_adds():\n    assert total([2, 3]) == 5\n\n\ndef test_empty():\n    assert total([]) == 0\n";
 const PY_HEAD = "from cart import total\n\n\ndef test_adds():\n    assert total([2, 3]) == 5\n";
 
-async function run(input: Record<string, unknown>, mode: Mode): Promise<Report> {
+/** The check() fields a case sets: the diff, and any field it overrides. */
+type CheckFields = Pick<TextCheckInput, "diff"> & Partial<TextCheckInput>;
+
+async function run(input: CheckFields, mode: Mode): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -88,9 +78,9 @@ async function run(input: Record<string, unknown>, mode: Mode): Promise<Report> 
     repoFiles: ["src/a.test.ts", "src/b.test.ts", "src/cart.ts", "tests/test_c.py"],
     testIntegrityMode: { input: mode },
     ...input,
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 const unavailableOf = (report: Report) => report.messages.filter((m) => String(m.code) === CODE);
@@ -119,7 +109,7 @@ describe("TEST_INTEGRITY_INDEX_UNAVAILABLE: a touched test file that could not b
   it("AC-12: a modified src/a.test.ts dropped as too-large on both sides is named with its reason and gives no finding; the same check in mode off adds no message", async () => {
     // CORE-69: a file that was readable at the merge base and is too large at HEAD is an error in block now, so this
     // case drops the file on both sides: the change did not make it unreadable, and the per-file form stays a warning.
-    const input = {
+    const input: CheckFields = {
       diff: { text: removal("src/a.test.ts") },
       testSources: {
         base: { files: [], dropped: [{ path: "src/a.test.ts", reason: "too-large" }] },
@@ -134,9 +124,7 @@ describe("TEST_INTEGRITY_INDEX_UNAVAILABLE: a touched test file that could not b
   });
 
   it("AC-12: a modified src/b.test.ts whose head text the index refuses as syntax-error-heavy is named with its reason and gives no finding", async () => {
-    const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
-      indexTestFile(path: string, text: string): { parsed: boolean; reason?: string };
-    };
+    const core = await import("../src/testIndex/indexTestFile.js");
     expect(core.indexTestFile("src/b.test.ts", BROKEN), "the head text is refused").toEqual({
       parsed: false,
       reason: "syntax-error-heavy",
@@ -164,7 +152,8 @@ describe("TEST_INTEGRITY_INDEX_UNAVAILABLE: a touched test file that could not b
           base: { files: [{ path: "tests/test_c.py", text: PY_BASE }], dropped: [] },
           head: { files: [{ path: "tests/test_c.py", text: PY_HEAD }], dropped: [] },
         },
-        pythonTestIndex: { available: false, reason: "python-not-found", detail: PYTHON_DETAIL },
+        // PythonTestIndex has no detail: it is passed anyway, on purpose, so noDetail() shows an extra field never leaks.
+        pythonTestIndex: { available: false, reason: "python-not-found", detail: PYTHON_DETAIL } as PythonTestIndex,
       },
       "block",
     );
@@ -179,7 +168,7 @@ describe("TEST_INTEGRITY_INDEX_UNAVAILABLE: a touched test file that could not b
   });
 
   it("AC-12: sources unavailable on both sides for a diff that modifies a test file add one message saying TI02 and TI05 did not run and why; for a diff that touches only source files and adds a test file they add none", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as { unavailableTestSources(reason: string): unknown };
+    const core = await import("@pharn-ci/core");
     const testSources = core.unavailableTestSources("git cat-file failed");
 
     const modified = await run({ diff: { text: removal("src/a.test.ts") }, testSources }, "block");

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report, ReportPolicyViolation as Violation } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { withoutFix } from "./v090-codes.js";
@@ -8,9 +9,6 @@ import { withoutFix } from "./v090-codes.js";
 // edits); the test builds one "modify" hunk per edited path. check() and every fixture are loaded inside the test body,
 // the test-first convention.
 
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; policy?: { violations: Violation[] } };
 type Drop = { path: string; reason: string };
 type Case = {
   document: unknown;
@@ -61,14 +59,14 @@ async function run(c: Case, files: { path: string; text: string }[], dropped: Dr
     policySettingsSources: { files, dropped },
   } as never);
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 const textFiles = (c: Case) => Object.entries(c.map).map(([path, from]) => ({ path, text: c.read(from) }));
 // fix-hints (H6): every message and finding now carries a `fix`; the pinned literals are unchanged, so these read without it.
 const p09 = (report: Report) => withoutFix((report.policy?.violations ?? []).filter((v) => v.id === "P09"));
 const invalid = (report: Report) => withoutFix(report.messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID"));
-const finding = (severity: string, path: string, detail: string): Violation => ({
+const finding = (severity: Violation["severity"], path: string, detail: string): Violation => ({
   id: "P09",
   severity,
   path,

@@ -45,13 +45,14 @@ function glob(pattern: string, text: string, question: boolean): boolean {
   for (const p of pattern) {
     const next = new Array<boolean>(text.length + 1).fill(false);
     if (p === "*") {
-      for (let j = 0; j <= text.length; j++) next[j] = prev[j] || (j > 0 && next[j - 1]);
+      for (let j = 0; j <= text.length; j++) next[j] = (prev[j] || (j > 0 && next[j - 1])) as boolean;
     } else {
-      for (let j = 1; j <= text.length; j++) next[j] = prev[j - 1] && ((question && p === "?") || p === text[j - 1]);
+      for (let j = 1; j <= text.length; j++)
+        next[j] = (prev[j - 1] && ((question && p === "?") || p === text[j - 1])) as boolean;
     }
     prev = next;
   }
-  return prev[text.length];
+  return prev[text.length] as boolean;
 }
 
 // ---- Bash ----
@@ -115,13 +116,14 @@ function segmentsMatch(pattern: readonly string[], path: readonly string[]): boo
   for (const seg of pattern) {
     const next = new Array<boolean>(path.length + 1).fill(false);
     if (seg === "**") {
-      for (let j = 0; j <= path.length; j++) next[j] = prev[j] || (j > 0 && next[j - 1]);
+      for (let j = 0; j <= path.length; j++) next[j] = (prev[j] || (j > 0 && next[j - 1])) as boolean;
     } else {
-      for (let j = 1; j <= path.length; j++) next[j] = prev[j - 1] && glob(seg, path[j - 1] as string, true);
+      for (let j = 1; j <= path.length; j++)
+        next[j] = (prev[j - 1] && glob(seg, path[j - 1] as string, true)) as boolean;
     }
     prev = next;
   }
-  return prev[path.length];
+  return prev[path.length] as boolean;
 }
 
 function pathMatches(text: string, broad: boolean, path: readonly string[]): boolean {

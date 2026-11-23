@@ -14,22 +14,6 @@ const CONFIG = ".pharn/ci.yml";
 const UNAVAILABLE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 const ACCEPT = { label: "pharn/accepted", by: "Reviewer-1" };
 
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-}
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-}
-interface Report {
-  verdict: string;
-  messages: Message[];
-  testIntegrity: { signals: Signal[] };
-}
-
 const caseDiff = (dir: string) => {
   const text = readFileSync(`${FIXTURES}test-integrity/${dir}/change.diff`, "utf8");
   return text.endsWith("\n") ? text : `${text}\n`;
@@ -71,7 +55,7 @@ describe("CORE-50: the accept label lowers every binary finding", () => {
       repoFiles: [".gitattributes", workflowAt, CONFIG, "package.json", "src/basket.test.ts", "src/cart.ts"],
       testIntegrityMode: { input: "block" },
       configPath: CONFIG,
-    } as unknown as Parameters<typeof check>[0]) as unknown as Report;
+    });
     expectValidReport(report);
 
     // Before acceptance: each binary case is there and blocks.
@@ -87,7 +71,7 @@ describe("CORE-50: the accept label lowers every binary finding", () => {
     expect(before[0]?.text, "names the AC-5 file with the reason binary").toContain("`src/basket.test.ts` (`binary`)");
     expect(report.verdict).toBe("fail");
 
-    const accepted = acceptTestIntegrity(structuredClone(report) as never, ACCEPT) as unknown as Report;
+    const accepted = acceptTestIntegrity(structuredClone(report) as never, ACCEPT);
     expectValidReport(accepted);
     const lowered = accepted.testIntegrity.signals.filter((s) => ["TI01", "TI10", "TI11", "TI14"].includes(s.id));
     expect(lowered.length, "the binary signals are kept").toBeGreaterThanOrEqual(4);

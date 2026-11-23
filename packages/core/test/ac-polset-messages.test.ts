@@ -1,5 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
+import type { PolicyDocument } from "../src/policy/types.js";
+import type { Message, Report, ReportPolicyViolation as Violation } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { withoutFix } from "./v090-codes.js";
@@ -8,27 +11,23 @@ import { withoutFix } from "./v090-codes.js";
 // body: the AC test is written before the build adds the settings rules, so nothing the build adds may run while this
 // file loads.
 
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; policy?: { violations: Violation[] } };
-interface Core {
-  check(input: unknown): Report;
-  evaluatePolicyRules(input: unknown): { violations: Violation[]; omitted: Record<string, number>; lowered: string[] };
-  renderMarkdown(report: unknown): string;
-}
-
 const REPO_ROOT = "/home/runner/work/demo/demo";
-const FILE = (document: unknown) => ({ source: "file", version: null, path: "policy/org.json", document });
+const FILE = (document: PolicyDocument): ResolvedPolicy => ({
+  source: "file",
+  version: null,
+  path: "policy/org.json",
+  document,
+});
 const sourcesOf = (files: Record<string, string>) => ({
   files: Object.entries(files).map(([path, text]) => ({ path, text })),
   dropped: [],
 });
 
-async function run(document: unknown, files: Record<string, string>): Promise<Report> {
+async function run(document: PolicyDocument, files: Record<string, string>): Promise<Report> {
   const core = {
     ...(await import("@pharn-ci/core")),
     check: (await import("./text-coverage.js")).check,
-  } as unknown as Core;
+  };
   const report = core.check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
@@ -76,7 +75,7 @@ const HINTS: Record<string, string> = {
 
 describe("the P02–P06 and POLICY_SETTINGS_INVALID messages", { timeout: 60_000 }, () => {
   it("AC-17: each template with singular and plural, {locs} capped at 20 with the cap's omissions counted, 50 violations kept per rule, the strongest level, 20 problems then and N more, and the six hints", async () => {
-    const forbid = { version: 1, setup: { forbidden_permissions: ["Bash(curl:*)"] } };
+    const forbid: PolicyDocument = { version: 1, setup: { forbidden_permissions: ["Bash(curl:*)"] } };
 
     // P02: allow entries start on line 4.
     expect(
@@ -121,7 +120,7 @@ describe("the P02–P06 and POLICY_SETTINGS_INVALID messages", { timeout: 60_000
 
     // P04 and P05: servers start on line 3.
     const P04_TAIL = " not on the org policy's allowlist, or enableAllProjectMcpServers set while the policy has one.";
-    const allowed = { version: 1, setup: { allowed_mcp_servers: ["github"] } };
+    const allowed: PolicyDocument = { version: 1, setup: { allowed_mcp_servers: ["github"] } };
     expect(messageOf(await run(allowed, { ".mcp.json": mcpFile(["notes"]) }), "POLICY_P04")).toEqual({
       level: "error",
       code: "POLICY_P04",
@@ -130,7 +129,7 @@ describe("the P02–P06 and POLICY_SETTINGS_INVALID messages", { timeout: 60_000
     expect(messageOf(await run(allowed, { ".mcp.json": mcpFile(["notes", "tasks"]) }), "POLICY_P04").text).toBe(
       `P04 MCP server not allowlisted: 2 MCP servers at ${M} line 3, ${M} line 4${P04_TAIL}`,
     );
-    const forbiddenMcp = { version: 1, setup: { forbidden_mcp_servers: ["evil*"] } };
+    const forbiddenMcp: PolicyDocument = { version: 1, setup: { forbidden_mcp_servers: ["evil*"] } };
     expect(messageOf(await run(forbiddenMcp, { ".mcp.json": mcpFile(["evil"]) }), "POLICY_P05")).toEqual({
       level: "error",
       code: "POLICY_P05",
@@ -175,7 +174,7 @@ describe("the P02–P06 and POLICY_SETTINGS_INVALID messages", { timeout: 60_000
       ...(await import("./text-coverage.js")),
       ...(await import("../src/policy/rules/evaluate.js")),
       ...(await import("../src/render/markdown.js")),
-    } as unknown as Core;
+    };
     const evaluation = core.evaluatePolicyRules({
       policy: FILE(forbid),
       agentSetupFileCount: 1,

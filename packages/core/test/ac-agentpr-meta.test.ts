@@ -1,43 +1,21 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import type { AgentPrFacts as Facts } from "../src/agents.js";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 // The agents module and check() are loaded inside each test body, and fixtures/agent-pr/ is read there too: the AC
 // tests are written before the build adds them, so nothing the build adds may run while this file loads.
 
-type Commit = { authorLogin: string | null; committerLogin: string | null; message: string };
-type Facts = {
-  pr: {
-    author: { login: string; type: string } | null;
-    labels: string[];
-    commits: Commit[] | null;
-    commitsIncomplete?: boolean;
-  } | null;
-  labels?: string[];
-  extraLogins?: string[];
-};
-type Detection = {
-  isAgentPr: boolean;
-  agentHint: string | null;
-  evidence: string[];
-  incomplete: string | null;
-  coAuthors: string[];
-};
-type Report = Record<string, unknown> & { meta?: Record<string, unknown> };
+type Commit = NonNullable<NonNullable<Facts["pr"]>["commits"]>[number];
 
-interface MetaModule {
-  detectAgentPr(facts: Facts): Detection;
-  agentPrMetaFields(detection: Detection, facts: Facts): Record<string, unknown>;
-  withAgentPrMeta(report: Report, detection: Detection, facts: Facts): Report;
-}
-
-const load = async () => (await import("../src/agents.js")) as unknown as MetaModule;
+const load = async () => await import("../src/agents.js");
 
 const ROOT = new URL("../../../", import.meta.url);
 const agentPrFixture = (name: string) => readFileSync(new URL(`fixtures/agent-pr/${name}`, ROOT), "utf8");
 
-const HUMAN_AUTHOR = { login: "octocat", type: "User" };
+const HUMAN_AUTHOR = { login: "octocat", type: "User" } as const;
 const human = (message: string): Commit => ({ authorLogin: "octocat", committerLogin: "octocat", message });
 const humanPr = (commits: Commit[], extra: Partial<Facts> = {}): Facts => ({
   pr: { author: HUMAN_AUTHOR, labels: [], commits },
@@ -69,7 +47,7 @@ async function goldenReport(extra: Record<string, unknown> = {}): Promise<Report
     repoFiles: fixture("golden/files.txt").trim().split("\n"),
     ...extra,
   };
-  return check(input as Parameters<typeof check>[0]) as unknown as Report;
+  return check(input as Parameters<typeof check>[0]);
 }
 
 // The first test of a file loads core's index cold, which can take seconds on a loaded host.

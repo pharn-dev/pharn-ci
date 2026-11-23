@@ -15,7 +15,6 @@ const HOST = "npm.corp.example";
 const PATH = "/api/npm/npm/left-pad/-/left-pad-1.3.0.tgz";
 
 type Side = { files: Array<{ path: string; text: string }>; dropped: [] };
-type Signal = { id: string; severity: string; name?: string; path: string };
 
 function lockfileFrom(text: string, url: string): string {
   const out = text
@@ -29,19 +28,22 @@ function lockfileFrom(text: string, url: string): string {
   return out;
 }
 
+/** Any finding of any section (dependency, test-integrity, policy): only the fields this test reads. */
+type Finding = { id: string; severity: string; name?: string; path: string };
+
 /** Every finding (an object with an id and a severity) anywhere in the result. */
-function signalsIn(value: unknown, found: Signal[] = []): Signal[] {
+function signalsIn(value: unknown, found: Finding[] = []): Finding[] {
   if (Array.isArray(value)) {
     for (const item of value) signalsIn(item, found);
   } else if (value !== null && typeof value === "object") {
     const record = value as Record<string, unknown>;
-    if (typeof record.id === "string" && typeof record.severity === "string") found.push(record as unknown as Signal);
+    if (typeof record.id === "string" && typeof record.severity === "string") found.push(record as Finding);
     else for (const child of Object.values(record)) signalsIn(child, found);
   }
   return found;
 }
 
-function d05For(url: string): Signal[] {
+function d05For(url: string): Finding[] {
   const input = dependencyCase("d05-lockfile");
   const sources = input.dependencySources as { base: Side; head: Side };
   const head = {

@@ -1,14 +1,11 @@
 import { describe, expect, it } from "vitest";
+import type { ReportPolicyViolation as Violation } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { withoutFix } from "./v090-codes.js";
 
 // E3 item 23 (policy settings), AC-10. check() is loaded inside the test body: the AC test is written before the build
 // adds the settings rules, so nothing the build adds may run while this file loads.
-
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; policy?: { violations: Violation[] } };
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
@@ -26,7 +23,7 @@ async function p04Of(document: unknown, files: Record<string, string>): Promise<
   } as never);
   expectValidReport(report);
   // fix-hints (H6): every finding now carries a `fix`; the pinned literals are unchanged, so they are read without it.
-  return withoutFix(((report as unknown as Report).policy?.violations ?? []).filter((v) => v.id === "P04"));
+  return withoutFix((report.policy?.violations ?? []).filter((v) => v.id === "P04"));
 }
 
 function doc(lines: string[]) {

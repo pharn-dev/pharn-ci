@@ -8,16 +8,6 @@ import { expectValidReport } from "./schema.js";
 const CODE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 const PATH = "src/a.test.ts";
 
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-}
-interface Report {
-  verdict: string;
-  messages: Message[];
-}
-
 const BASE = [
   'import { expect, it } from "vitest";',
   'import { total } from "./cart.js";',
@@ -56,9 +46,9 @@ describe("CORE-69: a modified test file dropped at HEAD by the read cap", () => 
         base: { files: [{ path: PATH, text: BASE }], dropped: [] },
         head: { files: [], dropped: [{ path: PATH, reason: "over-file-cap" }] },
       },
-    } as unknown as Parameters<typeof check>[0]);
+    });
     expectValidReport(report);
-    const r = report as unknown as Report;
+    const r = report;
 
     const messages = r.messages.filter((m) => m.code === CODE);
     expect(messages, `one ${CODE} message`).toHaveLength(1);

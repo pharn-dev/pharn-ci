@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -15,24 +17,10 @@ const ADDS = "A skip was added to a test that no removed line of this file opens
 const EXISTING =
   "An unconditional skip was added to a test that the diff shows existed before this change, so that test no longer runs.";
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
 interface Case {
   diff: string;
   base: SourceFile[];
   head: SourceFile[];
-}
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Report {
-  testIntegrity: { signals: Signal[] };
 }
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
@@ -76,9 +64,9 @@ async function runCase(c: Case, withSources: boolean): Promise<Report> {
       ? { testSources: { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } } }
       : {}),
     testIntegrityMode: { input: "block" },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 function textOf(files: SourceFile[], path: string): string {

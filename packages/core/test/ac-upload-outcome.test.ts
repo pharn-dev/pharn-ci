@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import type { Message, Report, ReportMeta } from "../src/report.js";
 import { expectValidReport } from "./schema.js";
 import { withoutFix } from "./v090-codes.js";
 
@@ -9,22 +10,14 @@ import { withoutFix } from "./v090-codes.js";
 const ROOT = new URL("../../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
 
-type Json = Record<string, unknown>;
-type Message = { level: string; code: string; text: string };
-
-interface UploadCore {
-  withUploadOutcome(report: unknown, outcome: unknown): Json;
-  UPLOAD_REPORT_MAX_BYTES: number;
-}
-
-const load = async () => (await import("@pharn-ci/core")) as unknown as UploadCore;
+const load = async () => await import("@pharn-ci/core");
 
 const TOO_LARGE_TEXT =
   "The run was not uploaded to pharn.dev: the report is larger than the upload limit. The check ran in full; only the history on pharn.dev misses this run.";
 const tooLargeText = (n: number) =>
   `The run was not uploaded to pharn.dev: the report is larger than the upload limit (${n} bytes). The check ran in full; only the history on pharn.dev misses this run.`;
 
-const META = {
+const META: ReportMeta = {
   event: "pull_request",
   repository: "acme/widgets",
   repositoryId: 42,
@@ -51,8 +44,8 @@ const ERROR: Message = {
 };
 
 /** fixtures/golden/report.json with the verdict and messages given, with or without meta. */
-function report(verdict: "pass" | "warn" | "fail", withMeta = true): Json {
-  const golden = JSON.parse(read("fixtures/golden/report.json")) as Json;
+function report(verdict: "pass" | "warn" | "fail", withMeta = true): Report {
+  const golden = JSON.parse(read("fixtures/golden/report.json")) as Report;
   const messages = verdict === "pass" ? [INFO] : verdict === "warn" ? [INFO, WARN] : [ERROR, INFO];
   const base = { ...golden, verdict, messages };
   return withMeta ? { ...base, meta: structuredClone(META) } : base;
@@ -87,7 +80,7 @@ describe("the upload outcome in the report", { timeout: 60_000 }, () => {
         expect(input, `${label}: the input is not mutated`).toEqual(before);
         expectValidReport(result);
 
-        const upload = (result.meta as Json).upload;
+        const upload = (result.meta as ReportMeta).upload;
         if (outcome.status === "ok") expect(upload, label).toEqual({ status: "ok", runUrl: outcome.runUrl });
         else expect(upload, label).toEqual({ status: outcome.status });
 
@@ -110,8 +103,8 @@ describe("the upload outcome in the report", { timeout: 60_000 }, () => {
           messages: [],
           verdict: "",
         });
-        const { upload: _u1, ...resultMetaRest } = resultMeta as Json;
-        const { upload: _u2, ...inputMetaRest } = inputMeta as Json;
+        const { upload: _u1, ...resultMetaRest } = resultMeta as ReportMeta;
+        const { upload: _u2, ...inputMetaRest } = inputMeta as ReportMeta;
         expect(resultMetaRest, `${label}: the rest of meta is kept`).toEqual(inputMetaRest);
       }
     }

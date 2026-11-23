@@ -9,16 +9,6 @@ import { expectValidReport } from "./schema.js";
 const CODE = "TEST_INTEGRITY_TEXT_TRUNCATED";
 const PATH = "src/long.test.ts";
 
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-}
-interface Report {
-  verdict: string;
-  messages: Message[];
-}
-
 const BASE = [
   'import { expect, it } from "vitest";',
   'import { total } from "./cart.js";',
@@ -59,9 +49,9 @@ describe("CORE-69: a modified test file whose diff is cut at 5000 changed lines"
         base: { files: [{ path: PATH, text: BASE }], dropped: [] },
         head: { files: [{ path: PATH, text: head }], dropped: [] },
       },
-    } as unknown as Parameters<typeof check>[0]);
+    });
     expectValidReport(report);
-    const r = report as unknown as Report;
+    const r = report;
 
     expect(
       r.messages.filter((m) => m.code === "TEST_INTEGRITY_INDEX_UNAVAILABLE"),

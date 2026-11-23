@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fixture } from "./helpers.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // check() is loaded inside the test body: the AC test is written before the build narrows the JS config reader's
 // catch, so nothing the build changes may run while the file loads. The fault is injected into a helper the JS config
@@ -45,7 +46,7 @@ function diffOf(path: string, base: string, head: string): string {
 describe("check(): an exception from our own JS config reader", () => {
   it("AC-2: an Error and a RangeError thrown by the JS config reader for a touched vitest.config.ts each escape check() in mode block, and no report is returned", async () => {
     const { check } = await import("./text-coverage.js");
-    const input = {
+    const input: TextCheckInput = {
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
       diff: { text: diffOf(PATH, BASE, HEAD) },
@@ -57,7 +58,7 @@ describe("check(): an exception from our own JS config reader", () => {
         base: { files: [{ path: PATH, text: BASE }], dropped: [] },
         head: { files: [{ path: PATH, text: HEAD }], dropped: [] },
       },
-    } as unknown as Parameters<typeof check>[0];
+    };
 
     const injected = [
       new Error("AC-2 injected fault in the JS config reader"),

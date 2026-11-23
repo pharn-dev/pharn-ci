@@ -1,14 +1,9 @@
 import { describe, expect, it } from "vitest";
+import type { PolicyDocument } from "../src/policy/types.js";
 import { byCodeUnit } from "../src/text.js";
 
 // E3 item 23 (policy settings), AC-3. The path predicates are loaded inside the test body: the AC test is written
 // before the build adds them, so nothing the build adds may run while this file loads.
-
-interface Paths {
-  isPolicySettingsPath(path: string): boolean;
-  isPolicyMcpPath(path: string): boolean;
-  policySettingsPaths(repoFiles: readonly string[], document: unknown): string[];
-}
 
 const SETTINGS = [".claude/settings.json", ".claude/settings.local.json", "pkg/a/.claude/settings.json"];
 const MCP = [".mcp.json", "pkg/.mcp.json", ".cursor/mcp.json", "pkg/.vscode/mcp.json"];
@@ -23,7 +18,7 @@ const NEITHER = [
 
 describe("policy settings paths", () => {
   it("AC-3: exactly the settings and MCP paths of the two regexes are selected, MCP paths only when an MCP list is non-empty, sorted in code-unit order", async () => {
-    const core = (await import("../src/policy/settings/paths.js")) as unknown as Paths;
+    const core = await import("../src/policy/settings/paths.js");
     for (const name of ["isPolicySettingsPath", "isPolicyMcpPath", "policySettingsPaths"] as const) {
       expect(typeof core[name], `${name} is exported`).toBe("function");
     }
@@ -55,14 +50,14 @@ describe("policy settings paths", () => {
       { version: 1 },
       { version: 1, setup: {} },
       { version: 1, setup: { allowed_mcp_servers: [], forbidden_mcp_servers: [], forbidden_permissions: ["Bash"] } },
-    ]) {
+    ] as PolicyDocument[]) {
       expect(core.policySettingsPaths(repoFiles as string[], document), JSON.stringify(document)).toEqual(settingsOnly);
     }
     for (const document of [
       { version: 1, setup: { allowed_mcp_servers: ["github"] } },
       { version: 1, setup: { forbidden_mcp_servers: ["evil"] } },
       { version: 1, setup: { allowed_mcp_servers: [], forbidden_mcp_servers: ["evil"] } },
-    ]) {
+    ] as PolicyDocument[]) {
       expect(core.policySettingsPaths(repoFiles as string[], document), JSON.stringify(document)).toEqual(both);
     }
     expect(core.policySettingsPaths([], { version: 1, setup: { allowed_mcp_servers: ["github"] } })).toEqual([]);

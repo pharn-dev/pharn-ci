@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
+import type { Message } from "../src/report.js";
 import { expectValidReport } from "./schema.js";
 
 // check() is imported inside the test body: this AC test is written before the skipped-records message exists,
 // so nothing that depends on it may run while the file loads.
 
 const CODE = "COVERAGE_LINES_SKIPPED";
-
-type Message = { level: string; code: string; text: string };
 
 // A diff that adds lines 3 to 5 of src/math.ts.
 const DIFF = [

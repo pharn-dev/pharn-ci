@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+import type { TestSources } from "../src/testSources.js";
 import { exerciseMessages, withoutExerciseCheck } from "./exercise-repin.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // check(), the config parser and the test-source helpers are loaded inside the test body: the test is written before
 // the test-source input exists, so nothing that depends on it may run while the file loads. The inputs of each golden
@@ -16,17 +18,13 @@ const lines = (path: string) => fixture(path).trim().split("\n");
 async function load() {
   const { check } = await import("./text-coverage.js");
   const { parseConfig } = await import("../src/config.js");
-  const core = (await import("../src/testSources.js")) as unknown as {
-    TEST_SOURCE_DROP_REASONS: readonly string[];
-    unavailableTestSources(reason: string): unknown;
-  };
+  const core = await import("../src/testSources.js");
   return { check, parseConfig, core };
 }
 
 describe("check() and the test-source input", () => {
   it("AC-15: every golden report is byte-identical without sources, with sources and with unavailable sources", async () => {
     const { check, parseConfig, core } = await load();
-    type Input = Parameters<typeof check>[0];
 
     const exclusionsConfig = parseConfig(fixture("golden-exclusions/ci.yml")) as {
       coverage?: { exclude?: string[]; threshold?: number };
@@ -38,7 +36,7 @@ describe("check() and the test-source input", () => {
       threshold: 80,
       repoFiles: lines(`${dir}/files.txt`),
     });
-    const sets: Array<[string, Record<string, unknown>]> = [
+    const sets: Array<[string, TextCheckInput]> = [
       ["golden", { ...base("golden"), coverage: { text: fixture("golden/coverage.info"), format: "lcov" } }],
       [
         "golden-cobertura",
@@ -71,7 +69,7 @@ describe("check() and the test-source input", () => {
     // Sources holding text and a dropped file for every one of the six reasons, and sources marked unavailable,
     // built with the helpers the CLI and the Action use.
     expect(core.TEST_SOURCE_DROP_REASONS).toHaveLength(6);
-    const withText = {
+    const withText: TestSources = {
       base: {
         files: [{ path: "a.test.ts", text: "x" }],
         dropped: core.TEST_SOURCE_DROP_REASONS.map((reason, i) => ({ path: `d${i}.test.ts`, reason })),
@@ -83,9 +81,9 @@ describe("check() and the test-source input", () => {
     for (const [dir, input] of sets) {
       const committed = fixture(`${dir}/report.json`);
       const reports = [
-        check(input as unknown as Input),
-        check({ ...input, testSources: withText } as unknown as Input),
-        check({ ...input, testSources: unavailable } as unknown as Input),
+        check(input),
+        check({ ...input, testSources: withText }),
+        check({ ...input, testSources: unavailable }),
       ];
       for (const [i, report] of reports.entries()) {
         expectValidReport(report);

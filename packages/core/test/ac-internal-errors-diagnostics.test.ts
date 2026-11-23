@@ -26,9 +26,7 @@ const TEXT = 'import { expect, it } from "vitest";\n\nit("adds", () => {\n  expe
 
 describe("indexTestFile: a broken parse-diagnostics invariant", () => {
   it("AC-5: when the TypeScript build exposes no parseDiagnostics array, indexing a test file throws and is never reported as parser-threw", async () => {
-    const { indexTestFile } = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
-      indexTestFile: (path: string, text: string) => unknown;
-    };
+    const { indexTestFile } = await import("../src/testIndex/indexTestFile.js");
 
     let result: unknown;
     let thrown: unknown = null;

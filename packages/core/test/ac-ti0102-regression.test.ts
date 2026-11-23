@@ -3,9 +3,11 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { byCodeUnit } from "../src/text.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 import { withoutFix } from "./v090-codes.js";
 
 // check() and the fixtures run inside the test body: the AC test is written before the new TI01 and TI02 rules and the
@@ -37,11 +39,6 @@ const MOVED =
 
 const sha256 = (text: string | Buffer) => createHash("sha256").update(text).digest("hex");
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
-
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
 function sideFiles(dir: string): SourceFile[] {
@@ -61,9 +58,8 @@ function sideFiles(dir: string): SourceFile[] {
 
 async function existingOutputs(): Promise<string> {
   const { check } = await import("./text-coverage.js");
-  type Input = Parameters<typeof check>[0];
   const out: Array<{ fixture: string; signals: unknown; messages: unknown }> = [];
-  const run = (name: string, input: Record<string, unknown>) => {
+  const run = (name: string, input: Pick<TextCheckInput, "diff" | "repoFiles"> & Partial<TextCheckInput>) => {
     const report = check({
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
@@ -71,7 +67,7 @@ async function existingOutputs(): Promise<string> {
       threshold: 80,
       testIntegrityMode: { input: "block" },
       ...input,
-    } as unknown as Input);
+    });
     expectValidReport(report);
     // CORE-50 (binary-diff-not-blind): TI01/pass-binary.diff (a deleted binary tests/img.test.ts) now gives one TI01
     // block, where the base commit gave nothing. The test asserts that new record, then takes it out, so the digest

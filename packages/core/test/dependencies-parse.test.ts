@@ -14,7 +14,7 @@ import { parsePythonLock } from "../src/dependencies/pythonLock.js";
 import { parsePyproject, parseRequirements } from "../src/dependencies/pythonManifest.js";
 import { classifyNpmSpec } from "../src/dependencies/specs.js";
 import { parseToml } from "../src/dependencies/toml.js";
-import type { ParsedLockfile } from "../src/dependencies/types.js";
+import type { ParsedLockfile, ParsedManifest } from "../src/dependencies/types.js";
 import { isAllowedRegistryUrl, urlParts } from "../src/dependencies/urls.js";
 import { parseYarnLock } from "../src/dependencies/yarnLock.js";
 import { parseUnifiedDiff } from "../src/diff/unified.js";
@@ -153,19 +153,19 @@ describe("manifests", () => {
 
   it("reads requirements files: continuations, comments, hashes, editables, direct references and index options", () => {
     const parsed = parseRequirements(fixture("dependencies/python-requirements/head/requirements.txt.fixture"));
-    expect(parsed.deps.map((d) => [d.name, d.spec, d.line, d.kind])).toEqual([
+    expect((parsed as ParsedManifest).deps.map((d) => [d.name, d.spec, d.line, d.kind])).toEqual([
       ["requests", "==2.32.3", 5, "registry"],
       ["mypkg", "git+https://github.com/someone/mypkg.git@v1.0", 7, "git"],
       ["flask", ">=3.0", 8, "registry"],
     ]);
-    expect(parsed.indexes).toEqual([
+    expect((parsed as ParsedManifest).indexes).toEqual([
       { url: "https://pypi.org/simple", line: 2, allowed: true },
       { url: "https://pkgs.example.com/simple", line: 3, allowed: false },
     ]);
     const urls = parseRequirements(
       "https://example.com/x-1.0.tar.gz#egg=x\n./vendor/y-1.0.whl\n-e git+https://h/z.git#egg=z\n",
     );
-    expect(urls.deps.map((d) => [d.name, d.named, d.kind, d.allowedUrl])).toEqual([
+    expect((urls as ParsedManifest).deps.map((d) => [d.name, d.named, d.kind, d.allowedUrl])).toEqual([
       ["x", true, "url", false],
       ["./vendor/y-1.0.whl", false, "file", undefined],
       ["z", true, "git", undefined],

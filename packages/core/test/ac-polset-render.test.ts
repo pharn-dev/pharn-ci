@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Message, MessageCode, ReportPolicyViolation as Violation } from "../src/report.js";
 import { fixture } from "./helpers.js";
 
 // E3 item 23 (policy settings), AC-24. check() and renderMarkdown() are loaded inside the test body, and the golden
@@ -6,16 +7,8 @@ import { fixture } from "./helpers.js";
 // the Settings line, the hints and the golden. The structural lines are asserted here as well, so the golden alone
 // cannot satisfy the test.
 
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = Record<string, unknown> & { messages: Message[] };
-interface Core {
-  check(input: unknown): Report;
-  renderMarkdown(report: unknown): string;
-}
-
 const HOSTILE = "x`y|<b>z</b>*w*/.claude/settings.json";
-const v = (id: string, severity: string, path: string, line: number, detail: string): Violation => ({
+const v = (id: string, severity: Violation["severity"], path: string, line: number, detail: string): Violation => ({
   id,
   severity,
   path,
@@ -91,7 +84,7 @@ describe("the Policy section with P02–P06 and the Settings line", { timeout: 6
     const core = {
       ...(await import("@pharn-ci/core")),
       check: (await import("./text-coverage.js")).check,
-    } as unknown as Core;
+    };
     const base = core.check({
       version: "0.1.0",
       coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
@@ -106,7 +99,7 @@ describe("the Policy section with P02–P06 and the Settings line", { timeout: 6
 
     const report = {
       ...base,
-      policy: { source: "input", version: null, violations: V },
+      policy: { source: "input" as const, version: null, violations: V },
       messages: [...base.messages, SETTINGS, IGNORED],
     };
     const markdown = core.renderMarkdown(report);
@@ -152,8 +145,8 @@ describe("the Policy section with P02–P06 and the Settings line", { timeout: 6
       messages: [
         ...report.messages,
         ...["P02", "P03", "P04", "P05", "P06"].map((id) => ({
-          level: "error",
-          code: `POLICY_${id}`,
+          level: "error" as const,
+          code: `POLICY_${id}` as MessageCode,
           text: `${id} rule message marker text.`,
         })),
       ],

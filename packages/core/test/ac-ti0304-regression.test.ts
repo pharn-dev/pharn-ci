@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { withCore95Ti14Before } from "./core95-ti14.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -95,8 +96,6 @@ async function run(diff: string, exclude: string[] = [], files = "test-files-del
   expectValidReport(report);
   return report;
 }
-
-type Report = Awaited<ReturnType<typeof run>>;
 
 const earlierSignals = (report: Report) =>
   report.testIntegrity.signals.filter((signal) => EARLIER.includes(String(signal.id)));

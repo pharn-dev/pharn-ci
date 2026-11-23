@@ -1,17 +1,12 @@
 import { describe, expect, it } from "vitest";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
+import type { PolicyDocument, PolicySeverity } from "../src/policy/types.js";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 // E3 item 23 (policy settings), AC-18. check() and evaluatePolicyRules() are loaded inside the test body: the AC test
 // is written before the build adds the settings rules, so nothing the build adds may run while this file loads.
-
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; policy?: { violations: Violation[] } };
-interface Core {
-  check(input: unknown): Report;
-  evaluatePolicyRules(input: unknown): { violations: Violation[]; omitted: Record<string, number>; lowered: string[] };
-}
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const LINES = [
@@ -28,24 +23,29 @@ const LINES = [
 ];
 const at = (needle: string) => LINES.findIndex((l) => l.includes(needle)) + 1;
 const SOURCES = { files: [{ path: ".claude/settings.json", text: `${LINES.join("\n")}\n` }], dropped: [] };
-const documentWith = (P02: string) => ({
+const documentWith = (P02: PolicySeverity): PolicyDocument => ({
   version: 1,
   setup: { forbidden_permissions: ["Bash(curl:*)"] },
   policy: { rules: { P02 } },
 });
-const app = (P02: string) => ({
+const app = (P02: PolicySeverity): ResolvedPolicy => ({
   source: "app",
   version: 3,
   fetchedAt: "2026-10-26T12:00:00.000Z",
   document: documentWith(P02),
 });
-const file = (P02: string) => ({ source: "file", version: null, path: "policy/org.json", document: documentWith(P02) });
+const file = (P02: PolicySeverity): ResolvedPolicy => ({
+  source: "file",
+  version: null,
+  path: "policy/org.json",
+  document: documentWith(P02),
+});
 
-async function run(policy: unknown): Promise<Report> {
+async function run(policy: ResolvedPolicy): Promise<Report> {
   const core = {
     ...(await import("@pharn-ci/core")),
     check: (await import("./text-coverage.js")).check,
-  } as unknown as Core;
+  };
   const report = core.check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
@@ -105,7 +105,7 @@ describe("org policy rule P02: severity from policy.rules", { timeout: 60_000 },
     // CORE-123: the setting and no layer (it was "policy.rules.P02 (policy-file)").
     expect(ignored[0]?.text).toContain("applies: policy.rules.P02.");
 
-    const core = (await import("../src/policy/rules/evaluate.js")) as unknown as Core;
+    const core = await import("../src/policy/rules/evaluate.js");
     const evaluation = core.evaluatePolicyRules({
       policy: file("warn"),
       agentSetupFileCount: 1,

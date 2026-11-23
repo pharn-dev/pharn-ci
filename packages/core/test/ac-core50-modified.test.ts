@@ -1,6 +1,8 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Message, Report } from "../src/report.js";
+import type { TestSourceFile as SourceFile, TestSourceDrop, TestSourceDropReason } from "../src/testSources.js";
 import { FIXTURES } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -14,22 +16,9 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const CODE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 const ACCEPT = { label: "pharn/accepted", by: "Reviewer-1" };
 
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-}
-interface Report {
-  verdict: string;
-  messages: Message[];
-}
-interface SourceFile {
-  path: string;
-  text: string;
-}
 interface Side {
   files: SourceFile[];
-  dropped: { path: string; reason: string }[];
+  dropped: TestSourceDrop[];
 }
 interface Sources {
   base: Side;
@@ -48,7 +37,7 @@ function readSide(dir: string): Side | null {
     const text = readFileSync(join(dir, name), "utf8");
     if (name.endsWith(".txt")) side.files.push({ path: name.slice(0, -".txt".length), text });
     else if (name.endsWith(".dropped"))
-      side.dropped.push({ path: name.slice(0, -".dropped".length), reason: text.trim() });
+      side.dropped.push({ path: name.slice(0, -".dropped".length), reason: text.trim() as TestSourceDropReason });
   }
   side.files.sort(byPath);
   side.dropped.sort(byPath);
@@ -75,9 +64,9 @@ async function run(diff: string, mode: "block" | "warn" | "off", extra: Record<s
     repoFiles: ["src/b.test.ts", "src/cart.test.ts", "src/cart.ts", "tests/test_cart.py"],
     testIntegrityMode: { input: mode },
     ...extra,
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 const unavailable = (report: Report) => report.messages.filter((m) => m.code === CODE);
@@ -162,7 +151,7 @@ describe("CORE-50: a modified test file that git shows as binary is a change mad
 
     const block = await run(diff, "block", { testSources: sources });
     expect(one(block, "block before acceptance").level).toBe("error");
-    const accepted = acceptTestIntegrity(structuredClone(block) as never, ACCEPT) as unknown as Report;
+    const accepted = acceptTestIntegrity(structuredClone(block) as never, ACCEPT);
     expectValidReport(accepted);
     expect(one(accepted, "after acceptance").level).toBe("warn");
     expect(

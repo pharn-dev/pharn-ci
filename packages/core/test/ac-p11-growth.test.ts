@@ -1,18 +1,9 @@
 import { describe, expect, it } from "vitest";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
 import { measureGrowth } from "./growth.js";
 
 // E3 item 24a part B (P11), AC-20. detectP11(), agentPolicyOf() and detectAgentPr() are loaded inside the test body:
 // the AC test is written before the build adds rule P11, so nothing the build adds may run while this file loads.
-
-type Finding = { id: string; path: string | null };
-interface P11Module {
-  detectP11(input: unknown): Finding[];
-}
-interface Core {
-  detectAgentPr(facts: unknown): unknown;
-  agentPolicyOf(policy: unknown, from: { base: unknown; diff: readonly unknown[] | null }): unknown;
-  parseUnifiedDiff(text: string): unknown[];
-}
 
 /** 20 protected globs: ten directories, then nine extensions and one exact path. */
 const GLOBS = [
@@ -41,9 +32,9 @@ describe("org policy rule P11: linear time", { timeout: 180_000 }, () => {
       ...(await import("../src/agents.js")),
       ...(await import("../src/diff/unified.js")),
       ...(await import("../src/policy/agents.js")),
-    } as unknown as Core;
-    const { detectP11 } = (await import("../src/policy/rules/p11.js")) as unknown as P11Module;
-    const policy = {
+    };
+    const { detectP11 } = await import("../src/policy/rules/p11.js");
+    const policy: ResolvedPolicy = {
       source: "app",
       version: 3,
       fetchedAt: "2026-10-26T12:00:00.000Z",

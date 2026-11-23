@@ -1,6 +1,8 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Report, TestIntegritySignal as Signal } from "../src/report.js";
+import type { TestSourceDrop, TestSourceDropReason } from "../src/testSources.js";
 import { FIXTURES } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -19,27 +21,9 @@ const BINARY = "git shows this file as binary, so its changes could not be read.
 const FIXED = [DELETED, RENAMED, BINARY];
 const IDS = ["TI01", "TI10", "TI11", "TI14"];
 
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-  fix?: { hint?: string };
-}
-interface Report {
-  verdict: string;
-  messages: Message[];
-  testIntegrity: { signals: Signal[] };
-}
 interface Side {
   files: { path: string; text: string }[];
-  dropped: { path: string; reason: string }[];
+  dropped: TestSourceDrop[];
 }
 interface Sources {
   base: Side;
@@ -58,7 +42,7 @@ function readSide(dir: string): Side | null {
     const text = readFileSync(join(dir, name), "utf8");
     if (name.endsWith(".txt")) side.files.push({ path: name.slice(0, -".txt".length), text });
     else if (name.endsWith(".dropped"))
-      side.dropped.push({ path: name.slice(0, -".dropped".length), reason: text.trim() });
+      side.dropped.push({ path: name.slice(0, -".dropped".length), reason: text.trim() as TestSourceDropReason });
   }
   side.files.sort(byPath);
   side.dropped.sort(byPath);
@@ -96,9 +80,9 @@ async function run(diff: string, sources?: Sources, extra: Record<string, unknow
     configPath: CONFIG,
     ...(sources === undefined ? {} : { testSources: sources }),
     ...extra,
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 /** The `  - Hint:` line under the finding line of signal `id` at `path` in the rendered comment. */
@@ -154,9 +138,9 @@ async function textReport(diff: string): Promise<Report> {
     threshold: 80,
     repoFiles: readFileSync(`${FIXTURES}test-files-deleted/files.txt`, "utf8").trim().split("\n"),
     testIntegrityMode: { input: "block" },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 /** Every binary case of AC-1 to AC-14; `noText` marks a case whose binary entries no signal can read text for. */

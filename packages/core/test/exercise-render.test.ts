@@ -83,6 +83,7 @@ describe("the tests-exercise lines of the comment", () => {
     const hostile = {
       ...base,
       testIntegrity: { ...base.testIntegrity, exercise: { checked: "x", notExercised: "src/cart.ts" } },
+      // Invalid on purpose: the renderer must treat a hand-built exercise object as untrusted.
     } as unknown as Report;
     const markdown = renderMarkdown(hostile);
     expect(section(markdown).join("\n")).not.toContain("Tests exercise changes");

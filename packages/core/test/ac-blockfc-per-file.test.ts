@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
+import type { TestSources } from "../src/testSources.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -9,16 +11,6 @@ import { expectValidReport } from "./schema.js";
 
 const CODE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 const TEST_FILE = "src/app.test.ts";
-
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-}
-interface Report {
-  verdict: string;
-  messages: Message[];
-}
 
 const BASE_TEXT =
   'import { expect, it } from "vitest";\nimport { add } from "./app.js";\n\nit("adds", () => {\n  expect(add(1, 2)).toBe(3);\n});\n';
@@ -33,7 +25,7 @@ const MODIFIES_TEST = `${[
   "+  expect(add(2, 2)).toBe(4);",
 ].join("\n")}\n`;
 
-async function run(testSources: unknown): Promise<Report> {
+async function run(testSources: TestSources): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -44,9 +36,9 @@ async function run(testSources: unknown): Promise<Report> {
     repoFiles: [TEST_FILE, "src/app.ts"],
     testIntegrityMode: { input: "block" },
     testSources,
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 const unavailable = (report: Report) => report.messages.filter((m) => m.code === CODE);

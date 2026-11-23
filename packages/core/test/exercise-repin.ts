@@ -1,3 +1,4 @@
+import type { Message } from "../src/report.js";
 // A8 step 1 (tests exercise the changed lines) re-pins the tests that compare a report made WITH test sources to a
 // committed golden made without them: with sources, check() now also runs the tests-exercise check, so a golden whose
 // diff changes a JS/TS source file that no changed test imports gains exactly one TESTS_NOT_EXERCISING_CHANGES warn
@@ -7,7 +8,6 @@
 /** The code the tests-exercise check adds. */
 export const EXERCISE_CODE = "TESTS_NOT_EXERCISING_CHANGES";
 
-type Message = { level: string; code: string };
 type ReportLike = { verdict: string; messages: Message[]; testIntegrity?: Record<string, unknown> };
 
 /** The `TESTS_NOT_EXERCISING_CHANGES` messages of a report. */

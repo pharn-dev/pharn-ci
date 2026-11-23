@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { FIXTURES } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -11,21 +12,6 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const BINARY = "git shows this file as binary, so its changes could not be read.";
 const CONFIG = ".pharn/ci.yml";
 
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Message {
-  code: string;
-  level: string;
-}
-interface Report {
-  messages: Message[];
-  testIntegrity: { signals: Signal[] };
-}
 interface Entry {
   oldPath: string;
   path: string;
@@ -59,9 +45,9 @@ async function run(diff: string, mode: "block" | "warn"): Promise<Report> {
     repoFiles: [".github/workflows/ci.yml", CONFIG, "src/cart.test.ts", "src/cart.ts"],
     testIntegrityMode: { input: mode },
     configPath: CONFIG,
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 const signalsOf = (report: Report, id: string) => report.testIntegrity.signals.filter((s) => s.id === id);

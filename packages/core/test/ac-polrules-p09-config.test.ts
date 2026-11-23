@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { withoutFix } from "./v090-codes.js";
@@ -6,10 +7,6 @@ import { withoutFix } from "./v090-codes.js";
 // E3 item 22 (policy rules), AC-8. check() is loaded inside the test body and fixtures/policy-rules/ is read there
 // too: the AC test is written before the build adds the rules and the fixtures, so nothing the build adds may run
 // while this file loads.
-
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; policy?: { violations: Violation[] } };
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const APP = { source: "app", version: 3, fetchedAt: "2026-10-26T12:00:00.000Z", document: { version: 1 } };
@@ -27,7 +24,7 @@ async function run(extra: Record<string, unknown>): Promise<Report> {
     ...extra,
   } as never);
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 // fix-hints (H6): every message and finding now carries a `fix`; the pinned literals are unchanged, so these read without it.

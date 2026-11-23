@@ -36,7 +36,7 @@ async function baseReport(mode: Mode): Promise<{ testIntegrity: Record<string, u
     threshold: 80,
     repoFiles: fixture("golden/files.txt").trim().split("\n"),
     testIntegrityMode: { input: mode },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   return structuredClone(report) as unknown as { testIntegrity: Record<string, unknown> };
 }
 

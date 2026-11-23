@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
+import type { Message, Report } from "../src/report.js";
+import type { AgentConfigSources as Sources } from "../src/secrets/scan.js";
+import type { TestSourceFile as SourceFile, TestSourceDrop } from "../src/testSources.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // check(), renderMarkdown() and acceptTestIntegrity() are loaded inside each test body: the AC tests are written before
 // check A7 exists, so nothing the build adds may run while the file loads. The inputs are built as
@@ -26,23 +30,15 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const GOLDEN_FILES = fixture("golden/files.txt").trim().split("\n");
 const SOURCE_FILES = ["README.md", "src/math.ts", "src/new.ts", "src/utils/new-name.ts"];
 
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[] } & Record<string, unknown>;
-type SourceFile = { path: string; text: string };
-type Sources = { unavailable: string } | { files: SourceFile[]; dropped: { path: string; reason: string }[] };
-
-interface Core {
-  check(input: unknown): Report;
-  renderMarkdown(report: Report): string;
-  acceptTestIntegrity(report: Report, accepted: { label: string; by: string }): Report;
-}
+/** Core's index with the check() that takes coverage as text. */
+type Core = Omit<typeof import("../src/index.js"), "check"> & { check: typeof import("./text-coverage.js")["check"] };
 
 async function load(): Promise<Core> {
-  return { ...(await import("../src/index.js")), check: (await import("./text-coverage.js")).check } as unknown as Core;
+  return { ...(await import("../src/index.js")), check: (await import("./text-coverage.js")).check };
 }
 
 /** The fixtures/golden check input, with the repo files, threshold and extra fields given. */
-function goldenInput(extra: Record<string, unknown> = {}) {
+function goldenInput(extra: Partial<TextCheckInput> = {}): TextCheckInput {
   return {
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
@@ -267,7 +263,7 @@ describe("check A7: agent config secrets in the report", () => {
       return found[0] as Message;
     };
 
-    const dropped = [
+    const dropped: TestSourceDrop[] = [
       { path: ".claude/settings.json", reason: "too-large" },
       { path: ".cursor/mcp.json", reason: "over-file-cap" },
       { path: ".vscode/mcp.json", reason: "over-total-cap" },
@@ -286,7 +282,7 @@ describe("check A7: agent config secrets in the report", () => {
     }
     expect(allMessage.text, `names ${notRead}`).toContain(`\`${notRead}\``);
 
-    for (const reason of ["too-large", "over-file-cap", "over-total-cap", "unsafe-path"]) {
+    for (const reason of ["too-large", "over-file-cap", "over-total-cap", "unsafe-path"] as const) {
       const one = { path: ".claude/settings.json", reason };
       const report = check(passingInput([clean.path, one.path], { files: [clean], dropped: [one] }));
       const message = unscanned(report);
@@ -294,7 +290,7 @@ describe("check A7: agent config secrets in the report", () => {
       expect(report.verdict, `${reason}: verdict`).toBe("fail");
     }
 
-    const softDrops = [
+    const softDrops: TestSourceDrop[] = [
       { path: ".gemini/settings.json", reason: "binary" },
       { path: "opencode.json", reason: "missing" },
     ];

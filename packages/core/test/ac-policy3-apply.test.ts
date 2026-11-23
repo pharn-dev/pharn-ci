@@ -1,4 +1,11 @@
 import { describe, expect, it } from "vitest";
+import type { PharnConfig } from "../src/config.js";
+import type { RawInputs } from "../src/inputs.js";
+import type { PolicyApplication, PolicyLayers } from "../src/policy/apply.js";
+import type { IgnoredSetting, ResolvedPolicy } from "../src/policy/resolved.js";
+import type { PolicyDocument } from "../src/policy/types.js";
+import type { Message } from "../src/report.js";
+import type { AgentTool } from "../src/setup/summary.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -9,23 +16,7 @@ import { expectValidReport } from "./schema.js";
 
 // CORE-123 (R5.6): POLICY_OVERRIDE_IGNORED names the setting and no layer. An app policy's looser record keeps the
 // layer it beat (input or config), which P09 reads; a policy file's record has none.
-type Ignored = {
-  setting: string;
-  layer?: "input" | "config";
-  reason: "looser" | "not-allowed";
-  given?: number;
-  applied?: number;
-};
 const LAYER_WORD = /\((?:input|config|policy-file)\)/;
-type Inputs = {
-  threshold: number | null;
-  exclude: string[];
-  coverageRoot: string | undefined;
-  requireAgentSetup: boolean;
-  expectAgentSetup?: string[];
-};
-type Application = { inputs: Inputs; ignored: Ignored[] };
-type Message = { level: string; code: string; text: string };
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const TEXT = {
@@ -36,33 +27,32 @@ const TEXT = {
   noCoverageFile: "no coverage file",
 };
 
-type Document = Record<string, unknown>;
-const app = (document: Document) => ({
+type Document = Omit<PolicyDocument, "version">;
+const app = (document: Document): ResolvedPolicy => ({
   source: "app",
   version: 3,
   fetchedAt: "2026-10-26T12:00:00.000Z",
   document: { version: 1, ...document },
 });
-const file = (document: Document) => ({
+const file = (document: Document): ResolvedPolicy => ({
   source: "file",
   version: null,
   path: "policy/org.json",
   document: { version: 1, ...document },
 });
-type Policy = ReturnType<typeof app> | ReturnType<typeof file>;
+type Policy = ResolvedPolicy;
+type Application = PolicyApplication;
 
-async function layersFor(config: Record<string, unknown>, raw: Record<string, unknown>) {
+async function layersFor(config: PharnConfig, raw: Partial<RawInputs>): Promise<PolicyLayers> {
   const { resolveInputs } = await import("@pharn-ci/core");
   const fullRaw = { coverageFile: "coverage/lcov.info", ...raw };
-  const result = resolveInputs(config as never, fullRaw as never, TEXT as never);
+  const result = resolveInputs(config, fullRaw, TEXT);
   if (!result.ok) throw new Error(`the layers do not resolve: ${result.errors.map((e) => e.message).join("; ")}`);
-  return { config, raw: fullRaw, resolved: result.inputs as unknown as Inputs };
+  return { config, raw: fullRaw, resolved: result.inputs };
 }
 
-async function apply(layers: Awaited<ReturnType<typeof layersFor>>, policy: Policy): Promise<Application> {
-  const { applyPolicy } = (await import("@pharn-ci/core")) as unknown as {
-    applyPolicy: (layers: unknown, policy: unknown) => Application;
-  };
+async function apply(layers: PolicyLayers, policy: Policy): Promise<Application> {
+  const { applyPolicy } = await import("@pharn-ci/core");
   return applyPolicy(layers, policy);
 }
 
@@ -81,7 +71,7 @@ async function checkWith(application: Application, policy: Policy) {
     policyIgnored: application.ignored,
   } as never);
   expectValidReport(report);
-  return report as unknown as { messages: Message[] };
+  return report;
 }
 
 const overrideMessages = (report: { messages: Message[] }) =>
@@ -89,39 +79,38 @@ const overrideMessages = (report: { messages: Message[] }) =>
 
 describe("applyPolicy: the coverage and setup keys", () => {
   it("AC-17: coverage.threshold is the max of the policy and the given values; an app value above a given one, or a file value below today's, is recorded with both numbers", async () => {
-    const cases: Array<[string, Record<string, unknown>, Record<string, unknown>, Policy, number, Ignored[], string?]> =
+    const cases: Array<[string, PharnConfig, Partial<RawInputs>, Policy, number, IgnoredSetting[], string?]> = [
       [
-        [
-          "app 80 over input 70",
-          {},
-          { threshold: "70" },
-          app({ coverage: { threshold: 80 } }),
-          80,
-          [{ setting: "coverage.threshold", layer: "input", reason: "looser", given: 70, applied: 80 }],
-          "coverage.threshold 70 → 80",
-        ],
-        [
-          "app 80 over config 70, no input",
-          { coverage: { threshold: 70 } },
-          {},
-          app({ coverage: { threshold: 80 } }),
-          80,
-          [{ setting: "coverage.threshold", layer: "config", reason: "looser", given: 70, applied: 80 }],
-          "coverage.threshold 70 → 80",
-        ],
-        ["app 60 under input 70", {}, { threshold: "70" }, app({ coverage: { threshold: 60 } }), 70, []],
-        ["app 80, nothing given", {}, {}, app({ coverage: { threshold: 80 } }), 80, []],
-        ["file 80 over input 70", {}, { threshold: "70" }, file({ coverage: { threshold: 80 } }), 80, []],
-        [
-          "file 60 under input 70",
-          {},
-          { threshold: "70" },
-          file({ coverage: { threshold: 60 } }),
-          70,
-          [{ setting: "coverage.threshold", reason: "looser", given: 60, applied: 70 }],
-          "coverage.threshold 60 → 70",
-        ],
-      ];
+        "app 80 over input 70",
+        {},
+        { threshold: "70" },
+        app({ coverage: { threshold: 80 } }),
+        80,
+        [{ setting: "coverage.threshold", layer: "input", reason: "looser", given: 70, applied: 80 }],
+        "coverage.threshold 70 → 80",
+      ],
+      [
+        "app 80 over config 70, no input",
+        { coverage: { threshold: 70 } },
+        {},
+        app({ coverage: { threshold: 80 } }),
+        80,
+        [{ setting: "coverage.threshold", layer: "config", reason: "looser", given: 70, applied: 80 }],
+        "coverage.threshold 70 → 80",
+      ],
+      ["app 60 under input 70", {}, { threshold: "70" }, app({ coverage: { threshold: 60 } }), 70, []],
+      ["app 80, nothing given", {}, {}, app({ coverage: { threshold: 80 } }), 80, []],
+      ["file 80 over input 70", {}, { threshold: "70" }, file({ coverage: { threshold: 80 } }), 80, []],
+      [
+        "file 60 under input 70",
+        {},
+        { threshold: "70" },
+        file({ coverage: { threshold: 60 } }),
+        70,
+        [{ setting: "coverage.threshold", reason: "looser", given: 60, applied: 70 }],
+        "coverage.threshold 60 → 70",
+      ],
+    ];
     for (const [name, config, raw, policy, threshold, ignored, text] of cases) {
       const application = await apply(await layersFor(config, raw), policy);
       expect(application.inputs.threshold, name).toBe(threshold);
@@ -139,9 +128,7 @@ describe("applyPolicy: the coverage and setup keys", () => {
 
   it("AC-18: coverage.exclude from the app replaces every lower layer's; a file can never add exclusions; no record carries numbers and no message quotes a pattern", async () => {
     const config = { coverage: { exclude: ["docs/**"] } };
-    const cases: Array<
-      [string, Record<string, unknown>, Record<string, unknown>, Policy, string[] | "today", Ignored[]]
-    > = [
+    const cases: Array<[string, PharnConfig, Partial<RawInputs>, Policy, string[] | "today", IgnoredSetting[]]> = [
       [
         "app gen/** over input src/** and config docs/**",
         config,
@@ -198,35 +185,34 @@ describe("applyPolicy: the coverage and setup keys", () => {
   });
 
   it("AC-19: coverage.root from the app is authoritative (null is the repo root); a file root is never applied; no message quotes a root", async () => {
-    const cases: Array<
-      [string, Record<string, unknown>, Record<string, unknown>, Policy, string | "repo" | "today", Ignored[]]
-    > = [
+    const cases: Array<[string, PharnConfig, Partial<RawInputs>, Policy, string | "repo" | "today", IgnoredSetting[]]> =
       [
-        "app pkg over input other",
-        {},
-        { coverageRoot: "other" },
-        app({ coverage: { root: "pkg" } }),
-        "pkg",
-        [{ setting: "coverage.root", layer: "input", reason: "looser" }],
-      ],
-      [
-        "app null over config pkg",
-        { coverage: { root: "pkg" } },
-        {},
-        app({ coverage: { root: null } }),
-        "repo",
-        [{ setting: "coverage.root", layer: "config", reason: "looser" }],
-      ],
-      ["app pkg with input pkg", {}, { coverageRoot: "pkg" }, app({ coverage: { root: "pkg" } }), "pkg", []],
-      [
-        "file pkg",
-        {},
-        { coverageRoot: "other" },
-        file({ coverage: { root: "pkg" } }),
-        "today",
-        [{ setting: "coverage.root", reason: "not-allowed" }],
-      ],
-    ];
+        [
+          "app pkg over input other",
+          {},
+          { coverageRoot: "other" },
+          app({ coverage: { root: "pkg" } }),
+          "pkg",
+          [{ setting: "coverage.root", layer: "input", reason: "looser" }],
+        ],
+        [
+          "app null over config pkg",
+          { coverage: { root: "pkg" } },
+          {},
+          app({ coverage: { root: null } }),
+          "repo",
+          [{ setting: "coverage.root", layer: "config", reason: "looser" }],
+        ],
+        ["app pkg with input pkg", {}, { coverageRoot: "pkg" }, app({ coverage: { root: "pkg" } }), "pkg", []],
+        [
+          "file pkg",
+          {},
+          { coverageRoot: "other" },
+          file({ coverage: { root: "pkg" } }),
+          "today",
+          [{ setting: "coverage.root", reason: "not-allowed" }],
+        ],
+      ];
     for (const [name, cfg, raw, policy, root, ignored] of cases) {
       const layers = await layersFor(cfg, raw);
       const application = await apply(layers, policy);
@@ -245,7 +231,7 @@ describe("applyPolicy: the coverage and setup keys", () => {
   });
 
   it("AC-20: setup.require true wins over any lower false; setup.expect is the union of every layer, lower layers first", async () => {
-    const requireCases: Array<[string, Record<string, unknown>, Record<string, unknown>, Policy, Ignored[]]> = [
+    const requireCases: Array<[string, PharnConfig, Partial<RawInputs>, Policy, IgnoredSetting[]]> = [
       [
         "app true over an explicit input false",
         {},
@@ -279,14 +265,16 @@ describe("applyPolicy: the coverage and setup keys", () => {
 
     // `claude` is not a tool name resolveInputs accepts; applyPolicy unions names as given, so the layers are set
     // here by hand: the config's tools first, then the input's, as resolveInputs orders them.
+    // Not an AgentTool on purpose (see above): the cast lets the hand-set layers carry it.
+    const CLAUDE = "claude" as unknown as AgentTool;
     const lower = await layersFor({}, {});
     const appExpect = await apply(
       {
-        config: { setup: { expect: ["claude"] } },
+        config: { setup: { expect: [CLAUDE] } },
         raw: { ...lower.raw, expectAgentSetup: ["cursor"] },
-        resolved: { ...lower.resolved, expectAgentSetup: ["claude", "cursor"] },
+        resolved: { ...lower.resolved, expectAgentSetup: [CLAUDE, "cursor"] },
       },
-      app({ setup: { expect: ["claude", "copilot"] } }),
+      app({ setup: { expect: [CLAUDE, "copilot"] } }),
     );
     expect(appExpect.inputs.expectAgentSetup).toEqual(["claude", "cursor", "copilot"]);
     expect(appExpect.ignored).toEqual([]);

@@ -8,10 +8,6 @@ import { expectValidReport } from "./schema.js";
 // adds the settings rules, so nothing the build adds may run while this file loads. (CORE-132: the report.v1.json
 // comparison with an old commit was a history pin and is removed.)
 
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; policy?: { violations: Violation[] } };
-
 const ROOT = new URL("../../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
 const CODES = ["POLICY_P02", "POLICY_P03", "POLICY_P04", "POLICY_P05", "POLICY_P06", "POLICY_SETTINGS_INVALID"];
@@ -51,7 +47,7 @@ describe("report v2 with the P02–P06 violations and the six codes", { timeout:
         repoFiles: [...fixture("golden/files.txt").trim().split("\n"), ".claude/settings.json", ".mcp.json"],
         policy: { source: "app", version: 3, fetchedAt: "2026-10-26T12:00:00.000Z", document: DOCUMENT },
         policySettingsSources: sources,
-      } as never) as unknown as Report;
+      } as never);
       expectValidReport(report);
       return report;
     };

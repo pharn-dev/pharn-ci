@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // CORE-69. check(), unavailableTestSources() and WHOLE_RUN_SENTENCE_LEADS are loaded inside the test body: the AC test
 // is written before the exported list exists, so nothing the build adds may run while the file loads. The accept label
@@ -11,15 +13,6 @@ import { expectValidReport } from "./schema.js";
 const CODE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 /** Reasons without a full stop, so a sentence split on ". " cannot cut one. */
 const REASON = "the base commit is not in the checkout";
-
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-}
-interface Report {
-  messages: Message[];
-}
 
 const BASE = [
   'import { expect, it } from "vitest";',
@@ -42,8 +35,11 @@ function modified(path: string, header: string, lines: string[]): string {
 const JS_DIFF = modified("src/a.test.ts", "@@ -5,0 +6 @@", ["+  expect(total([1])).toBe(1);"]);
 const side = (path: string, text: string) => ({ files: [{ path, text }], dropped: [] });
 
-async function run(input: Record<string, unknown>): Promise<Report> {
-  const { check } = (await import("./text-coverage.js")) as unknown as { check(input: unknown): unknown };
+/** The check() fields a case sets: the diff, and any field it overrides. */
+type CheckFields = Pick<TextCheckInput, "diff"> & Partial<TextCheckInput>;
+
+async function run(input: CheckFields): Promise<Report> {
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
@@ -69,9 +65,6 @@ describe("CORE-69: the exported list of whole-run sentences matches what check()
     const core = {
       ...(await import("../src/testIntegrityUnreadable.js")),
       ...(await import("../src/testSources.js")),
-    } as unknown as {
-      WHOLE_RUN_SENTENCE_LEADS?: unknown;
-      unavailableTestSources(reason: string): { base: unknown; head: unknown };
     };
     const leads = core.WHOLE_RUN_SENTENCE_LEADS;
     expect(Array.isArray(leads), "WHOLE_RUN_SENTENCE_LEADS is an array").toBe(true);
@@ -84,7 +77,7 @@ describe("CORE-69: the exported list of whole-run sentences matches what check()
 
     const both = core.unavailableTestSources(REASON);
     expect(Object.keys(both).sort(), "unavailable sources have a base and a head side").toEqual(["base", "head"]);
-    const inputs: [string, Record<string, unknown>][] = [
+    const inputs: [string, CheckFields][] = [
       ["TI02 and TI05, sources unavailable on both sides", { diff: { text: JS_DIFF }, testSources: both }],
       [
         "TI02 and TI05, the base side unavailable",

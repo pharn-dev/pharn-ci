@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { ReportDependencies } from "../src/dependencies/check.js";
 import { renderMarkdown } from "../src/render/markdown.js";
-import type { Report } from "../src/report.js";
 import { dependencyCase, run } from "./dependencies-helpers.js";
 
 // A13 (dependency safety): the "📦 Dependencies" section of the comment. It appears only when the change added or changed
@@ -64,7 +64,11 @@ describe("the Dependencies section", () => {
   it("has no section without a dependencies object, and treats a hand-built one as untrusted", () => {
     const report = run(dependencyCase("d05-manifest", { dependencySettings: { input: "never" } }));
     expect(renderMarkdown(report)).not.toContain("📦");
-    const odd = { ...report, dependencies: { checked: 2, lookups: "weird", signals: "nope" } } as unknown as Report;
+    // Not a ReportDependencies on purpose: the renderer must treat a hand-built object as untrusted.
+    const odd = {
+      ...report,
+      dependencies: { checked: 2, lookups: "weird", signals: "nope" } as unknown as ReportDependencies,
+    };
     expect(section(renderMarkdown(odd))).toBe(
       "### 📦 Dependencies\n\n2 added or changed dependencies checked · registry lookups off\n\nNo dependency findings.\n",
     );

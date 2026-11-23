@@ -16,7 +16,7 @@ describe("the new core modules are pure and exported", { timeout: 60_000 }, () =
       expect(purityViolations(text), module).toEqual([]);
     }
 
-    const core = (await import("../src/policy/agents.js")) as unknown as Record<string, unknown>;
+    const core = await import("../src/policy/agents.js");
     expect(typeof core.agentPolicyOf).toBe("function");
 
     // Types leave no trace at run time; the agent-policy module's export declarations name them. (CORE-141: core's

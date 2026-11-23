@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // CORE-69. check() is loaded inside the test body: the AC test is written before the inputs of AC-1, AC-2, AC-3, AC-4,
 // AC-5 and AC-8 fail block, so nothing the build changes may run while the file loads. Every input is built here the
@@ -8,19 +10,10 @@ import { expectValidReport } from "./schema.js";
 // warn run must keep the same message at level warn.
 
 type Mode = "block" | "warn" | "off";
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-}
-interface Report {
-  verdict: string;
-  messages: Message[];
-}
 interface Case {
   name: string;
   code: string;
-  input: Record<string, unknown>;
+  input: CheckFields;
 }
 
 const BASE = [
@@ -137,7 +130,10 @@ const REPO_FILES = [
   "tests/test_c.py",
 ];
 
-async function run(input: Record<string, unknown>, mode: Mode): Promise<Report> {
+/** The check() fields a case sets: the diff, and any field it overrides. */
+type CheckFields = Pick<TextCheckInput, "diff"> & Partial<TextCheckInput>;
+
+async function run(input: CheckFields, mode: Mode): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -147,9 +143,9 @@ async function run(input: Record<string, unknown>, mode: Mode): Promise<Report> 
     repoFiles: REPO_FILES,
     testIntegrityMode: { input: mode },
     ...input,
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 describe("CORE-69: mode warn keeps the new errors as warnings", () => {

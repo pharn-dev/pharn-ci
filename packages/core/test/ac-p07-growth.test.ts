@@ -5,12 +5,6 @@ import { measureGrowth } from "./growth.js";
 // build adds the extractor, so nothing the build adds may run while this file loads. The hostile texts are generated
 // here, at 100,000 and 400,000 characters.
 
-type Tools = { tools: string[]; line: number | null };
-type Declarations = { patternScoped: boolean; packageManagers: Tools; testRunners: Tools };
-interface Core {
-  instructionDeclarations(text: string): Declarations;
-}
-
 const SMALL = 100_000;
 const LARGE = 400_000;
 
@@ -46,7 +40,7 @@ const SHAPES: [string, (size: number) => string][] = [
 
 describe("org policy rule P07: the extractor is linear", { timeout: 300_000 }, () => {
   it("AC-14: on four hostile shapes, instructionDeclarations on 400,000 characters takes under 8 times as long as on 100,000", async () => {
-    const core = (await import("../src/setup/instructions.js")) as unknown as Core;
+    const core = await import("../src/setup/instructions.js");
     expect(typeof core.instructionDeclarations).toBe("function");
 
     for (const [label, make] of SHAPES) {

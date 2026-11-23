@@ -7,6 +7,7 @@ import { literalBackslashKey, resolveBackslashPaths } from "../src/coverage/matc
 import { parseUnifiedDiff } from "../src/diff/unified.js";
 import { normalizePath } from "../src/paths.js";
 import { renderMarkdown } from "../src/render/markdown.js";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { check } from "./text-coverage.js";
@@ -21,7 +22,6 @@ const FORMATS = [
 ] as const;
 
 type Format = (typeof FORMATS)[number]["format"];
-type Report = ReturnType<typeof check>;
 
 const lines = (path: string) => fixture(path).trim().split("\n");
 const codes = (report: Report) => report.messages.map((message) => message.code);

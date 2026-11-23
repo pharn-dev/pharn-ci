@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { TestBlock as Block } from "../src/testIndex/types.js";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -15,37 +17,6 @@ import { expectValidReport } from "./schema.js";
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const A = "src/a.test.ts";
 const B = "test/checkout/b.test.ts";
-
-interface SourceFile {
-  path: string;
-  text: string;
-}
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Block {
-  kind: string;
-  name: string;
-  path: string[];
-  line: number;
-  body: string;
-  bodyHash: string;
-  assertionCount: number;
-  assertions: { chain: string }[];
-}
-interface Pair {
-  basePath: string;
-  headPath: string;
-  base: Block;
-  head: Block;
-}
-interface Report {
-  testIntegrity: { signals: Signal[]; languages: string[] };
-}
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
@@ -68,9 +39,7 @@ function sideFiles(dir: string): SourceFile[] {
 async function testsOf(files: SourceFile[], path: string): Promise<Block[]> {
   const file = files.find((f) => f.path === path);
   if (file === undefined) throw new Error(`the fixture has no text for ${path}`);
-  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
-    indexTestFile(path: string, text: string): { parsed: boolean; tests?: Block[] };
-  };
+  const core = await import("../src/testIndex/indexTestFile.js");
   const result = core.indexTestFile(file.path, file.text);
   if (!result.parsed) throw new Error(`the fixture ${file.path} does not parse: ${JSON.stringify(result)}`);
   return (result.tests ?? []).filter((b) => b.kind === "test");
@@ -96,24 +65,9 @@ describe("TI02 phase 2: a same-leaf move whose body is held is still cleared", (
     expect(diffSection(diff, A), `${A} is modified`).not.toMatch(/^(new|deleted) file mode/m);
     expect(diff, `${B} is touched`).toContain(`+++ b/${B}`);
 
-    const tokens = (await import("../src/signals/bodyTokens.js")) as unknown as {
-      bodyTokenSet(body: string): Set<string>;
-      jaccardAtLeast(a: ReadonlySet<string>, b: ReadonlySet<string>, ratio?: { num: number; den: number }): boolean;
-      containsAtLeast(
-        old: ReadonlySet<string>,
-        fresh: ReadonlySet<string>,
-        ratio: { num: number; den: number },
-      ): boolean;
-      FOUR_FIFTHS: { num: number; den: number };
-      HALF: { num: number; den: number };
-    };
-    const subjects = (await import("../src/signals/testSubjects.js")) as unknown as {
-      assertionChains(block: Block): Set<string>;
-      holdsEveryChain(base: ReadonlySet<string>, head: ReadonlySet<string>): boolean;
-    };
-    const words = (await import("../src/signals/nameWords.js")) as unknown as {
-      fullNameWords(block: Block): Set<string>;
-    };
+    const tokens = await import("../src/signals/bodyTokens.js");
+    const subjects = await import("../src/signals/testSubjects.js");
+    const words = await import("../src/signals/nameWords.js");
 
     const aBase = await testsOf(base, A);
     const aHead = await testsOf(head, A);
@@ -156,18 +110,14 @@ describe("TI02 phase 2: a same-leaf move whose body is held is still cleared", (
       repoFiles: [...new Set([...head.map((f) => f.path), "src/cart.ts"])].sort(),
       testSources: sources,
       testIntegrityMode: { input: "block" },
-    } as unknown as Parameters<typeof check>[0]) as unknown as Report;
+    });
     expectValidReport(report);
     expect(report.testIntegrity.signals.filter((s) => String(s.id) === "TI02")).toEqual([]);
     expect(report.testIntegrity.languages, "the files were compared").toEqual(["ts"]);
 
-    const core = (await import("@pharn-ci/core")) as unknown as { parseUnifiedDiff(text: string): unknown[] };
-    const pairs = (await import("../src/signals/testPairs.js")) as unknown as {
-      indexTouchedTestFiles(diff: unknown[], sources: unknown, pyIndex: unknown): unknown;
-    };
-    const match = (await import("../src/signals/testMatch.js")) as unknown as {
-      matchTests(touched: unknown): { moved?: Pair[] };
-    };
+    const core = await import("@pharn-ci/core");
+    const pairs = await import("../src/signals/testPairs.js");
+    const match = await import("../src/signals/testMatch.js");
     const touched = pairs.indexTouchedTestFiles(core.parseUnifiedDiff(diff), sources, undefined);
     const moved = match.matchTests(touched).moved ?? [];
     expect(

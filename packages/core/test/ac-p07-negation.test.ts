@@ -1,26 +1,23 @@
 import { describe, expect, it } from "vitest";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 // E3 item 24 (P07), AC-4. check() and instructionDeclarations() are loaded inside the test body: the AC test is written
 // before the build adds rule P07 and the extractor, so nothing the build adds may run while this file loads.
 
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; policy?: { violations: Violation[] } };
 type Source = { path: string; text: string };
-type Declarations = {
-  patternScoped: boolean;
-  packageManagers: { tools: string[]; line: number | null };
-  testRunners: { tools: string[]; line: number | null };
-};
-interface Core {
-  check(input: unknown): unknown;
-  instructionDeclarations(text: string): Declarations;
-}
+/** check() (coverage as text) and the instructions module, as the test body builds them. */
+type Core = typeof import("./text-coverage.js") & typeof import("../src/setup/instructions.js");
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
-const APP = { source: "app", version: 3, fetchedAt: "2026-10-26T12:00:00.000Z", document: { version: 1 } };
+const APP: ResolvedPolicy = {
+  source: "app",
+  version: 3,
+  fetchedAt: "2026-10-26T12:00:00.000Z",
+  document: { version: 1 },
+};
 const AGENTS = "# Agents\n\nRun `pnpm install`.\n";
 
 /** The five CLAUDE.md texts of the SPEC, in order. */
@@ -54,7 +51,7 @@ describe("org policy rule P07: negated mentions", { timeout: 60_000 }, () => {
     const core = {
       ...(await import("./text-coverage.js")),
       ...(await import("../src/setup/instructions.js")),
-    } as unknown as Core;
+    };
     expect(typeof core.instructionDeclarations).toBe("function");
 
     for (const [i, claude] of CLAUDE_TEXTS.entries()) {

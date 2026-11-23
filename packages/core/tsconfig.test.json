@@ -1,0 +1,10 @@
+{
+  // Typechecks the tests with the source they import (CORE-135). `pnpm lint` runs it through the package's
+  // `typecheck` script. It extends the base config, not ./tsconfig.json: the tests use Node (fs, child_process), so
+  // they need `"types": ["node"]`, while ./tsconfig.json keeps `"types": []` and checks src alone (core is pure).
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["src", "test"]
+}

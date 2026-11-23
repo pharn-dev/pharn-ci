@@ -67,6 +67,6 @@ describe("an app policy's allowed hosts", () => {
     expect(report.dependencies?.signals.filter((s) => s.id === "D05")).toEqual([]);
     expect(report.messages.filter((m) => m.code === "DEPENDENCY_D05")).toEqual([]);
     expect(report.messages.filter((m) => m.code === "POLICY_OVERRIDE_IGNORED")).toEqual([]);
-    expect((report as unknown as { policy?: { source?: string } }).policy?.source).toBe("app");
+    expect(report.policy?.source).toBe("app");
   });
 });

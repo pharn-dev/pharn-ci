@@ -1,6 +1,8 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -35,14 +37,6 @@ const CAUGHT: Record<string, string> = {
   "always-true-matcher": "TI17",
 };
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
-interface Report {
-  testIntegrity: { signals: { id: string }[] };
-}
-
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
 function sideFiles(dir: string): SourceFile[] {
@@ -73,9 +67,9 @@ async function runCase(name: string): Promise<Report> {
         }
       : {}),
     testIntegrityMode: { input: "block" },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 describe("Skylos nine: edited-expected-value is caught by TI07, 8 of 9", () => {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report, TestIntegritySignal } from "../src/report.js";
 import { measureGrowth } from "./growth.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -65,18 +66,16 @@ const DIFF = `${[
   "+@pt.mark.skip",
 ].join("\n")}\n`;
 
-type Signal = { id: string; severity: string; path: string; line: number | null };
-
 /** The check() input for one head and base text, built before any timing so the timed span is check() alone. */
 function inputOf(head: string, base: string) {
   return {
     version: "0.1.0",
-    coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
+    coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" as const },
     diff: { text: DIFF },
     repoRoot: REPO_ROOT,
     threshold: 80,
     repoFiles: [PATH, "src/cart.ts"],
-    testIntegrityMode: { input: "block" },
+    testIntegrityMode: { input: "block" as const },
     testSources: {
       base: { files: [{ path: PATH, text: base }], dropped: [] },
       head: { files: [{ path: PATH, text: head }], dropped: [] },
@@ -85,8 +84,11 @@ function inputOf(head: string, base: string) {
 }
 
 /** The report's TI03 signals, in the shape the assertion compares. */
+/** A signal as the assertion compares it: the id as a plain string. */
+type Signal = Pick<TestIntegritySignal, "severity" | "path" | "line"> & { id: string };
+
 function ti03Of(report: unknown): Signal[] {
-  return (report as { testIntegrity: { signals: Signal[] } }).testIntegrity.signals
+  return (report as Report).testIntegrity.signals
     .filter((s) => String(s.id) === "TI03")
     .map((s) => ({ id: String(s.id), severity: s.severity, path: s.path, line: s.line }));
 }
@@ -95,7 +97,7 @@ describe("TI03's alias reader on hostile text near the test-source size cap", ()
   it(
     "AC-7: a hostile Python test file just under MAX_TEST_SOURCE_FILE_BYTES returns without throwing, validates, gives the block TI03 of its resolvable alias, and takes less than 8 times a quarter-size one (median of three)",
     async () => {
-      const core = (await import("../src/testSources.js")) as unknown as { MAX_TEST_SOURCE_FILE_BYTES: number };
+      const core = await import("../src/testSources.js");
       const cap = core.MAX_TEST_SOURCE_FILE_BYTES;
       expect(cap).toBe(524288);
 
@@ -113,9 +115,8 @@ describe("TI03's alias reader on hostile text near the test-source size cap", ()
       ).toBeGreaterThan(1000);
 
       const { check } = await import("./text-coverage.js");
-      type Input = Parameters<typeof check>[0];
-      const fullInput = inputOf(full.head, full.base) as unknown as Input;
-      const quarterInput = inputOf(quarter.head, quarter.base) as unknown as Input;
+      const fullInput = inputOf(full.head, full.base);
+      const quarterInput = inputOf(quarter.head, quarter.base);
       const expected = [{ id: "TI03", severity: "block", path: PATH, line: DECORATOR_LINE }];
       for (const [label, input] of [
         ["full", fullInput],

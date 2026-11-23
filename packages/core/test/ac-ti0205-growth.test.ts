@@ -56,7 +56,7 @@ function input(bytes: number) {
   return {
     data: {
       version: "0.1.0",
-      coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
+      coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" as const },
       diff: { text: diff },
       repoRoot: REPO_ROOT,
       threshold: 80,
@@ -65,7 +65,7 @@ function input(bytes: number) {
         base: { files: [{ path: PATH, text: base.text }], dropped: [] },
         head: { files: [{ path: PATH, text: head.text }], dropped: [] },
       },
-      testIntegrityMode: { input: "block" },
+      testIntegrityMode: { input: "block" as const },
     },
     sizes: { base: base.text.length, head: head.text.length, tests: base.count, headTests: head.count },
   };
@@ -74,7 +74,6 @@ function input(bytes: number) {
 describe("TI02 and TI05: the comparison of one file finishes within 15 s at the cap and grows less than eightfold", () => {
   it("AC-18: 512 KiB base and head files are compared within 15 s, and 256 KiB ones take less than 8 times the median of 64 KiB ones, each run within 15 s", async () => {
     const { check } = await import("./text-coverage.js");
-    type Input = Parameters<typeof check>[0];
     const cap = input(CAP);
     const full = input(FULL);
     const quarter = input(QUARTER);
@@ -92,9 +91,7 @@ describe("TI02 and TI05: the comparison of one file finishes within 15 s at the 
     const all: number[] = [];
     const time = (run: ReturnType<typeof input>) => {
       const started = threadCpuMs();
-      const report = check(run.data as unknown as Input) as unknown as {
-        testIntegrity: { signals: { id: string }[]; languages: string[] };
-      };
+      const report = check(run.data);
       const ms = threadCpuMs() - started;
       all.push(ms);
       return { ms, report };

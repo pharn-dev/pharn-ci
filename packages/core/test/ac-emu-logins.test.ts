@@ -6,6 +6,7 @@ import { agentPrMetaFields } from "../src/agents.js";
 import { decideAcceptLabel, detectAgentPr, LOGIN_PATTERN, validatePolicyResponse } from "../src/index.js";
 import { POLICY_PATTERNS } from "../src/policy/grammar.js";
 import { validatePolicy } from "../src/policy/validate.js";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { check } from "./text-coverage.js";
@@ -16,13 +17,6 @@ import { check } from "./text-coverage.js";
 // grammar, validatePolicy, the app's envelope and schema/policy.v1.json).
 
 type Case = { name: string; login: string; user: boolean; author: boolean };
-type Violation = { id: string };
-type Report = {
-  verdict: string;
-  messages: Array<{ code: string }>;
-  meta?: Record<string, unknown>;
-  policy?: { violations: Violation[] };
-};
 
 const CASES = (JSON.parse(fixture("emu-logins/logins.json")) as { cases: Case[] }).cases;
 const POLICY = JSON.parse(fixture("emu-logins/policy.json")) as Record<string, unknown>;
@@ -72,7 +66,7 @@ function run(policy: unknown, agentPrFacts: unknown): Report {
     agentPrFacts,
   } as never);
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 const ruleIds = (report: Report) => (report.policy?.violations ?? []).map((v) => v.id);

@@ -9,16 +9,6 @@ import { expectValidReport } from "./schema.js";
 const CODE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 const PATH = "src/big.test.ts";
 
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-}
-interface Report {
-  verdict: string;
-  messages: Message[];
-}
-
 const BASE = [
   'import { expect, it } from "vitest";',
   'import { total } from "./cart.js";',
@@ -37,9 +27,7 @@ describe("CORE-69: a modified test file padded past the size cap at HEAD", () =>
   it("AC-2: a modified src/big.test.ts whose head adds a comment of about 530 KB gives one TEST_INTEGRITY_INDEX_UNAVAILABLE error naming it with too-large, and the verdict is fail", async () => {
     const head = `${BASE}/* ${"x".repeat(530_000)} */\n`;
     expect(head.length, "the head text is over the test index's 524288-character cap").toBeGreaterThan(524_288);
-    const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
-      indexTestFile(path: string, text: string): { parsed: boolean; reason?: string };
-    };
+    const core = await import("../src/testIndex/indexTestFile.js");
     expect(core.indexTestFile(PATH, BASE).parsed, "the base text indexes").toBe(true);
     expect(core.indexTestFile(PATH, head), "the head text is refused as too large").toEqual({
       parsed: false,
@@ -68,9 +56,9 @@ describe("CORE-69: a modified test file padded past the size cap at HEAD", () =>
         base: { files: [{ path: PATH, text: BASE }], dropped: [] },
         head: { files: [{ path: PATH, text: head }], dropped: [] },
       },
-    } as unknown as Parameters<typeof check>[0]);
+    });
     expectValidReport(report);
-    const r = report as unknown as Report;
+    const r = report;
 
     const messages = r.messages.filter((m) => m.code === CODE);
     expect(messages, `one ${CODE} message`).toHaveLength(1);

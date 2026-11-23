@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import type { Report, ReportMeta } from "../src/report.js";
+import type { UploadMeta } from "../src/upload/meta.js";
 
 // buildUploadMeta() is loaded from @pharn-ci/core inside each test body: the AC tests are written before the upload
 // module exists, so nothing the build adds may run while this file loads.
@@ -9,14 +11,7 @@ const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
 
 type Json = Record<string, unknown>;
 
-interface UploadCore {
-  buildUploadMeta(
-    report: unknown,
-    extra: { version: string; createdAt: string; commentUrl: string | null },
-  ): Record<string, unknown> | null;
-}
-
-const load = async () => (await import("@pharn-ci/core")) as unknown as UploadCore;
+const load = async () => await import("@pharn-ci/core");
 
 const EXTRA = {
   version: "9.8.7-test",
@@ -25,13 +20,13 @@ const EXTRA = {
 };
 
 /** fixtures/golden/report.json (a Report v2 with no meta), with the given meta when one is passed. */
-function reportWith(meta?: Json): Json {
-  const golden = JSON.parse(read("fixtures/golden/report.json")) as Json;
+function reportWith(meta?: ReportMeta): Report {
+  const golden = JSON.parse(read("fixtures/golden/report.json")) as Report;
   return meta === undefined ? golden : { ...golden, meta };
 }
 
 /** A meta with every optional field, its keys deliberately NOT in the upload order. */
-const FULL_META: Json = {
+const FULL_META: ReportMeta = {
   upload: { status: "skipped" },
   isAgentPr: true,
   agentHint: "claude-code",
@@ -52,7 +47,7 @@ const FULL_META: Json = {
 };
 
 /** A meta with only the fields every meta carries: no prNumber, baseSha or mergeBase, no optional field. */
-const MINIMAL_META: Json = {
+const MINIMAL_META: ReportMeta = {
   event: "push",
   repository: "acme/widgets",
   headSha: "d".repeat(40),
@@ -68,7 +63,7 @@ describe("upload metadata", { timeout: 60_000 }, () => {
     const { buildUploadMeta } = await load();
     const meta = buildUploadMeta(reportWith(FULL_META), EXTRA);
     expect(meta).not.toBeNull();
-    const m = meta as Json;
+    const m = meta as UploadMeta;
     expect(Object.keys(m)).toEqual([
       "schemaVersion",
       "tool",
@@ -113,7 +108,7 @@ describe("upload metadata", { timeout: 60_000 }, () => {
       "coAuthors",
       "agentHint",
       "isAgentPr",
-    ]) {
+    ] as const) {
       expect(m[key], key).toEqual(FULL_META[key]);
       expect(typeof m[key], key).toBe(typeof FULL_META[key]);
     }
@@ -124,7 +119,7 @@ describe("upload metadata", { timeout: 60_000 }, () => {
     const { buildUploadMeta } = await load();
     const meta = buildUploadMeta(reportWith(MINIMAL_META), { ...EXTRA, commentUrl: null });
     expect(meta).not.toBeNull();
-    const m = meta as Json;
+    const m = meta as UploadMeta;
     expect(Object.keys(m)).toEqual([
       "schemaVersion",
       "tool",
@@ -157,7 +152,7 @@ describe("upload metadata", { timeout: 60_000 }, () => {
     const meta = buildUploadMeta(
       reportWith({ ...MINIMAL_META, prAuthor: null, agentHint: null, isAgentPr: false, prLabels: [], coAuthors: [] }),
       EXTRA,
-    ) as Json;
+    ) as UploadMeta;
     expect(meta).not.toBeNull();
     expect(meta.prAuthor).toBeNull();
     expect(meta.agentHint).toBeNull();

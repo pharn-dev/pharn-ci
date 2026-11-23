@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -17,8 +18,6 @@ function agentSetupSection(markdown: string): string[] {
   const end = rest.findIndex((line) => line.startsWith("#"));
   return end === -1 ? rest : rest.slice(0, end);
 }
-
-type Report = { agentSetup: { files: unknown[]; missing?: unknown } };
 
 describe("renderMarkdown: agentSetup.missing", () => {
   it("AC-7: renders the Missing line after the setup summary, or in place of the generic line with zero files; goldens are unchanged", async () => {

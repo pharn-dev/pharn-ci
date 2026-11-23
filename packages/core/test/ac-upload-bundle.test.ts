@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
+import type { UploadMeta } from "../src/upload/meta.js";
 import { expectValidReport } from "./schema.js";
 
 // buildUploadBundle() and buildUploadMeta() are loaded from @pharn-ci/core, and the fixtures under fixtures/upload/
@@ -10,21 +12,6 @@ const ROOT = new URL("../../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
 
 type Json = Record<string, unknown>;
-
-interface UploadCore {
-  buildUploadMeta(
-    report: unknown,
-    extra: { version: string; createdAt: string; commentUrl: string | null },
-  ): Json | null;
-  buildUploadBundle(
-    report: unknown,
-    meta: unknown,
-    options?: { messageMaxBytes?: number },
-  ): {
-    reportJson: string;
-    metaJson: string;
-  };
-}
 
 const META_ORDER = [
   "schemaVersion",
@@ -68,8 +55,8 @@ const isExcerpt = (path: string) => /^\$\.testIntegrity\.signals\[\d+\]\.(base|h
 // Core's index loads cold, which can take seconds on a loaded host.
 describe("the upload bundle", { timeout: 60_000 }, () => {
   it("AC-2: the bundle of the fixed report and clock equals the goldens byte for byte and validates", async () => {
-    const { buildUploadBundle, buildUploadMeta } = (await import("@pharn-ci/core")) as unknown as UploadCore;
-    const report = JSON.parse(read("fixtures/upload/report.json")) as Json;
+    const { buildUploadBundle, buildUploadMeta } = await import("@pharn-ci/core");
+    const report = JSON.parse(read("fixtures/upload/report.json")) as Report;
     const extra = JSON.parse(read("fixtures/upload/extra.json")) as {
       version: string;
       createdAt: string;
@@ -78,7 +65,7 @@ describe("the upload bundle", { timeout: 60_000 }, () => {
     const meta = buildUploadMeta(report, extra);
     expect(meta).not.toBeNull();
 
-    const { reportJson, metaJson } = buildUploadBundle(report, meta);
+    const { reportJson, metaJson } = buildUploadBundle(report, meta as UploadMeta);
     expect(reportJson).toBe(read("fixtures/upload/bundle-golden/report.json"));
     expect(metaJson).toBe(read("fixtures/upload/bundle-golden/meta.json"));
 
@@ -96,7 +83,7 @@ describe("the upload bundle", { timeout: 60_000 }, () => {
 
     // The fixture exercises what the bundle changes: a meta with every optional field and a signal excerpt.
     for (const key of META_ORDER) expect(Object.hasOwn(uploadedMeta, key), `meta.json has ${key}`).toBe(true);
-    const inputSignals = (report.testIntegrity as { signals: Json[] }).signals;
+    const inputSignals = report.testIntegrity.signals;
     expect(
       inputSignals.some((s) => "base" in s || "head" in s),
       "control: the fixture has an excerpt",

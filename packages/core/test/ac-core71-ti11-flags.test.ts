@@ -149,7 +149,6 @@ describe("TI11: a test command that gains report flags is the same step (CORE-71
 
   it("the comparison stays linear when many added commands share a base with different flags", async () => {
     const { check } = await import("./text-coverage.js");
-    type Input = Parameters<typeof check>[0];
     // n removed `pytest --cov-report=rK` lines and n added `pytest --cov=aK` lines: every key has the base `pytest`,
     // and no added key carries a removed key's flag, so every removed key is compared with added candidates.
     const diffFor = (n: number) => {
@@ -162,16 +161,15 @@ describe("TI11: a test command that gains report flags is the same step (CORE-71
       const head = [`diff --git a/${CI} b/${CI}`, "index 1111111..2222222 100644", `--- a/${CI}`, `+++ b/${CI}`];
       return `${[...head, `@@ -10,${n} +10,${n} @@`, ...removed, ...added].join("\n")}\n`;
     };
-    const inputFor = (n: number) =>
-      ({
-        version: "0.1.0",
-        coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
-        diff: { text: diffFor(n) },
-        repoRoot: "/home/runner/work/demo/demo",
-        threshold: 80,
-        repoFiles: fixture("test-files-deleted/files.txt").trim().split("\n"),
-        testIntegrityMode: { input: "block" },
-      }) as unknown as Input;
+    const inputFor = (n: number) => ({
+      version: "0.1.0",
+      coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" as const },
+      diff: { text: diffFor(n) },
+      repoRoot: "/home/runner/work/demo/demo",
+      threshold: 80,
+      repoFiles: fixture("test-files-deleted/files.txt").trim().split("\n"),
+      testIntegrityMode: { input: "block" as const },
+    });
     const small = inputFor(2000);
     const large = inputFor(8000);
     for (const input of [small, large]) {

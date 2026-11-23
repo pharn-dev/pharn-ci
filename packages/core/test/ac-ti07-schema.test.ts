@@ -72,7 +72,7 @@ describe("schema/report.v2.json: testIntegrity.changes and TEST_INTEGRITY_TI07",
         threshold: 80,
         repoFiles: fixture("golden/files.txt").trim().split("\n"),
         testIntegrityMode: { input: "warn" },
-      } as unknown as Parameters<typeof check>[0]),
+      }),
     ) as unknown as { testIntegrity: Record<string, unknown> };
     const entry = { path: "src/a.test.ts", name: "a › new one", line: 4 };
     const good = {

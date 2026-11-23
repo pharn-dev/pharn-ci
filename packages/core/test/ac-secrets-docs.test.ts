@@ -34,9 +34,7 @@ const TEST_FILES = [
 // the README code rows.
 describe("A7 schema and fixtures", () => {
   it("AC-22: the schema documents A7, and no committed fixture or test holds a secret", async () => {
-    const { findSecretSpans } = (await import("../src/secrets/spans.js")) as unknown as {
-      findSecretSpans(text: string): { id: string; start: number; end: number }[];
-    };
+    const { findSecretSpans } = await import("../src/secrets/spans.js");
 
     // The code table names the 12 codes with their levels (CORE-140: the schema's code description is one sentence and
     // a link to that table, so the codes are documented there).

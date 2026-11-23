@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { TestIntegritySignal as Signal } from "../src/report.js";
+import type { TestSourceFile as SourceFile, TestSourceDrop } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -17,28 +19,14 @@ const OTHER = {
   text: "import pytest as pt\nfrom pytest import mark\nfrom pytest import mark as m\n",
 };
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
 interface Side {
   files: SourceFile[];
-  dropped: { path: string; reason: string }[];
+  dropped: TestSourceDrop[];
 }
 interface Case {
   diff: string;
   base: SourceFile[];
   head: SourceFile[];
-}
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Report {
-  testIntegrity: { signals: Signal[] };
 }
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
@@ -102,9 +90,9 @@ async function run(
     repoFiles: [...new Set([...paths, "src/cart.ts"])].sort(),
     testIntegrityMode: { input: "block" },
     ...(testSources === undefined ? {} : { testSources }),
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return (report as unknown as Report).testIntegrity.signals
+  return report.testIntegrity.signals
     .filter((s) => String(s.id) === "TI03")
     .map((s) => ({ id: String(s.id), severity: s.severity, path: s.path, line: s.line, detail: s.detail }));
 }

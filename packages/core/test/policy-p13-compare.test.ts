@@ -404,7 +404,8 @@ describe("P13 over evaluatePolicyRules", () => {
 
   it("no policy, no sources and an app policy that switches P13 off give no finding; an app policy may set warn", () => {
     expect(findings({ policy: { source: "none", document: null } as never })).toEqual([]);
-    expect(findings({ selfModification: undefined })).toEqual([]);
+    // An explicit undefined on purpose (no sources at all), which Partial<PolicyRuleInput> does not spell.
+    expect(findings({ selfModification: undefined } as unknown as Partial<PolicyRuleInput>)).toEqual([]);
     const app = (value: string) =>
       ({ source: "app", version: 1, document: { version: 1, policy: { rules: { P13: value } } } }) as never;
     expect(findings({ policy: app("off") })).toEqual([]);

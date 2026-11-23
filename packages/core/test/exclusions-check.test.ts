@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // check() is imported inside each test body, and every input is built there: these tests are written before
 // exclusions exist, so nothing that depends on them may run while the file loads.
@@ -54,12 +55,9 @@ const LCOV = [
   "",
 ].join("\n");
 
-type CheckModule = typeof import("../src/check.js");
-type CheckInput = Parameters<CheckModule["check"]>[0];
-
-async function run(overrides: Partial<CheckInput> & { exclude?: readonly string[] }) {
+async function run(overrides: Partial<TextCheckInput>) {
   const { check } = await import("./text-coverage.js");
-  const input = {
+  const input: TextCheckInput = {
     version: "0.1.0",
     coverage: { text: LCOV, format: "lcov" },
     diff: { text: DIFF },
@@ -67,7 +65,7 @@ async function run(overrides: Partial<CheckInput> & { exclude?: readonly string[
     threshold: 80,
     repoFiles: ["AGENTS.md", "src/app.ts", "src/gen/alpha.ts", "src/gen/zeta.ts"],
     ...overrides,
-  } as CheckInput;
+  };
   return check(input);
 }
 
@@ -145,7 +143,7 @@ describe("check(): exclusions", () => {
       // The tracked files of this scenario. The default list lacks gen/a.ts and src/b.ts, which the lcov names,
       // so with it no coverage path would match a tracked file. gen/deleted.ts is gone from the repo.
       repoFiles: ["AGENTS.md", "gen/a.ts", "gen/unknown.ts", "src/b.ts"],
-    } as Partial<CheckInput>);
+    });
     expectValidReport(report);
     const dc = report.diffCoverage as ({ excludedFiles?: string[] } & NonNullable<typeof report.diffCoverage>) | null;
     expect(dc?.excludedFiles).toEqual(["gen/a.ts", "gen/unknown.ts"]);
@@ -187,16 +185,16 @@ describe("check(): exclusions", () => {
   it("AC-12: never changes the agent setup inventory, even when ** excludes every changed file", async () => {
     const { check } = await import("./text-coverage.js");
     const repoFiles = fixture("golden/files.txt").trim().split("\n");
-    const base = {
+    const base: TextCheckInput = {
       version: "0.1.0",
       coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
       diff: { text: fixture("golden/pr.diff") },
       repoRoot: "/home/runner/work/demo/demo",
       threshold: 80,
       repoFiles,
-    } as CheckInput;
+    };
     const without = check(base);
-    const withAll = check({ ...base, exclude: ["**"] } as CheckInput);
+    const withAll = check({ ...base, exclude: ["**"] });
     expectValidReport(without);
     expectValidReport(withAll);
     expect(withAll.agentSetup.files).toEqual(without.agentSetup.files);

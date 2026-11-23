@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { TestIntegritySignal as Signal } from "../src/report.js";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -34,18 +36,6 @@ const CAUGHT: ReadonlyMap<string, string> = new Map([
   ["loosened-assertion", "TI06"],
   ["edited-expected-value", "TI07"],
 ]);
-
-interface SourceFile {
-  path: string;
-  text: string;
-}
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
@@ -84,9 +74,9 @@ async function run(diff: string, repoFiles: string[], extra: Record<string, unkn
     repoFiles,
     testIntegrityMode: { input: "block" },
     ...extra,
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report.testIntegrity.signals as unknown as Signal[];
+  return report.testIntegrity.signals;
 }
 
 const skylos = (name: string) =>

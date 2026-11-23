@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
+import type { PolicyDocument } from "../src/policy/types.js";
+import type { ReportMeta, ReportPolicyViolation as Violation } from "../src/report.js";
 import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -8,23 +11,9 @@ import { withoutFix } from "./v090-codes.js";
 // test body and fixtures/policy-rules/ is read there too: the AC test is written before the build adds the rules and
 // the fixtures, so nothing the build adds may run while this file loads.
 
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type ReportPolicy = { source: string; version: number | null; fetchedAt?: string; violations: Violation[] };
-type Report = Record<string, unknown> & { verdict: string; messages: Message[]; policy?: ReportPolicy };
-type Evaluation = { violations: Violation[]; omitted: Record<string, number>; lowered: string[] };
-
-interface Core {
-  check(input: unknown): Report;
-  evaluatePolicyRules(input: unknown): Evaluation;
-  parseUnifiedDiff(text: string): unknown[];
-  scanAgentSetup(paths: readonly string[]): { files: unknown[] };
-  summarizeAgentSetup(files: readonly unknown[]): { tools: string[] };
-}
-
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const FETCHED_AT = "2026-10-26T12:00:00.000Z";
-const META = {
+const META: ReportMeta = {
   event: "pull_request",
   repository: "pharn-dev/pharn-ci",
   prNumber: 68,
@@ -50,17 +39,17 @@ describe("the report's policy object", { timeout: 60_000 }, () => {
       ...(await import("../src/policy/rules/evaluate.js")),
       ...(await import("../src/setup/scan.js")),
       ...(await import("../src/setup/summary.js")),
-    } as unknown as Core;
+    };
     const repoFiles = fixture("policy-rules/p08-violates/files.txt").trim().split("\n");
     const diffText = fixture("policy-rules/p09-violates/pr.diff");
     const p08 = JSON.parse(fixture("policy-rules/p08-violates/policy.json"));
     const p09 = JSON.parse(fixture("policy-rules/p09-violates/policy.json"));
-    const document = { version: 1, setup: { ...p08.setup, ...p09.setup } };
+    const document: PolicyDocument = { version: 1, setup: { ...p08.setup, ...p09.setup } };
 
-    const run = (policy: unknown) => {
+    const run = (policy: ResolvedPolicy) => {
       const report = core.check({
         version: "0.1.0",
-        coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
+        coverage: { text: fixture("golden/coverage.info"), format: "lcov" as const },
         diff: { text: diffText },
         repoRoot: REPO_ROOT,
         threshold: null,
@@ -72,7 +61,7 @@ describe("the report's policy object", { timeout: 60_000 }, () => {
       return report;
     };
 
-    const APP = { source: "app", version: 3, fetchedAt: FETCHED_AT, document };
+    const APP: ResolvedPolicy = { source: "app", version: 3, fetchedAt: FETCHED_AT, document };
     const app = run(APP);
     expect(Object.keys(app.policy ?? {})).toEqual(["source", "version", "fetchedAt", "violations"]);
     expect(app.policy?.source).toBe("app");

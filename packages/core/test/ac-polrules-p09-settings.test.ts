@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { withoutFix } from "./v090-codes.js";
@@ -6,10 +7,6 @@ import { withoutFix } from "./v090-codes.js";
 // E3 item 22 (policy rules), AC-10. check() is loaded inside the test body and fixtures/policy-rules/ is read there
 // too: the AC test is written before the build adds the rules and the fixtures, so nothing the build adds may run
 // while this file loads.
-
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; policy?: { violations: Violation[] } };
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const DETAIL = "this change edits a file the policy checks; its direction is not judged yet";
@@ -27,7 +24,7 @@ async function run(policy: unknown): Promise<Report> {
     policy,
   } as never);
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 const app = (document: unknown) => ({

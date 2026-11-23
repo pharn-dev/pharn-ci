@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
+import type { PythonTestIndex } from "../src/testIndex/pythonSides.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // CORE-69. check() is loaded inside the test body: the AC test is written before a reported python-not-found index
 // with a modified `.py` test file becomes the whole-run form, so nothing the build changes may run while the file
@@ -10,16 +13,6 @@ import { expectValidReport } from "./schema.js";
 const CODE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 const JS_PATH = "src/cart.test.ts";
 const PY_PATH = "tests/test_c.py";
-
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-}
-interface Report {
-  verdict: string;
-  messages: Message[];
-}
 
 const JS_BASE = [
   'import { expect, it } from "vitest";',
@@ -63,9 +56,12 @@ const PY_DIFF = `${[
   "-def test_empty():",
   "-    assert total([]) == 0",
 ].join("\n")}\n`;
-const NOT_FOUND = { available: false, reason: "python-not-found" };
+const NOT_FOUND: PythonTestIndex = { available: false, reason: "python-not-found" };
 
-async function run(input: Record<string, unknown>): Promise<Report> {
+/** The check() fields a case sets: the diff, and any field it overrides. */
+type CheckFields = Pick<TextCheckInput, "diff"> & Partial<TextCheckInput>;
+
+async function run(input: CheckFields): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -75,9 +71,9 @@ async function run(input: Record<string, unknown>): Promise<Report> {
     repoFiles: [JS_PATH, "src/cart.ts", PY_PATH],
     testIntegrityMode: { input: "block" },
     ...input,
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 describe("CORE-69: a JS-only change on a runner without python3 keeps today's report", () => {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -8,9 +9,6 @@ import { expectValidReport } from "./schema.js";
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
 const lines = (path: string) => fixture(path).trim().split("\n");
-
-type Message = { level: string; code: string; text: string };
-type Report = { agentSetup: Record<string, unknown> & { missing?: unknown }; messages: Message[] };
 
 async function runCheck(repoFiles: string[], expectAgentSetup?: string[]): Promise<Report> {
   const { check } = await import("./text-coverage.js");
@@ -23,7 +21,7 @@ async function runCheck(repoFiles: string[], expectAgentSetup?: string[]): Promi
     repoFiles,
     ...(expectAgentSetup === undefined ? {} : { expectAgentSetup }),
   };
-  return check(input as Parameters<typeof check>[0]) as unknown as Report;
+  return check(input as Parameters<typeof check>[0]);
 }
 
 const expectedMissing = (report: Report) =>

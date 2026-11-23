@@ -66,9 +66,7 @@ describe("text helpers: one source", () => {
       .flatMap((s) => OWN_CUT.filter(({ pattern }) => pattern.test(s.text)).map(({ label }) => `${s.path}: ${label}`));
     expect(ownCuts, "no file but core's text.ts defines a surrogate-safe cut").toEqual([]);
 
-    const { byCodeUnit } = (await import("../src/text.js")) as unknown as {
-      byCodeUnit: (a: string, b: string) => number;
-    };
+    const { byCodeUnit } = await import("../src/text.js");
     expect(typeof byCodeUnit, "text.ts exports byCodeUnit").toBe("function");
     expect(byCodeUnit("a", "b")).toBe(-1);
     expect(byCodeUnit("b", "a")).toBe(1);

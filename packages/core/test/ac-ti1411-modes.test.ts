@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -50,8 +51,6 @@ async function run(mode: "block" | "warn" | "off") {
   expectValidReport(report);
   return report;
 }
-
-type Report = Awaited<ReturnType<typeof run>>;
 
 const summary = (report: Report) =>
   report.testIntegrity.signals.map((s) => `${s.id} ${s.severity} ${s.path}${s.line === null ? "" : `:${s.line}`}`);

@@ -1,16 +1,14 @@
 import { describe, expect, it } from "vitest";
+import type { TestBlock as Block } from "../src/testIndex/types.js";
 import { fixture } from "./helpers.js";
 
 // indexTestFile is loaded inside each test body: the AC tests are written before the test index exists, so nothing
 // the build adds may run while the file loads.
 
-type Block = { kind: string; name: string; path: string[] };
 type Result = { parsed: true; tests: Block[] } | { parsed: false; reason: string };
 
 async function indexTestFile(path: string, text: string): Promise<Result> {
-  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
-    indexTestFile: (p: unknown, t: unknown) => unknown;
-  };
+  const core = await import("../src/testIndex/indexTestFile.js");
   return core.indexTestFile(path, text) as Result;
 }
 

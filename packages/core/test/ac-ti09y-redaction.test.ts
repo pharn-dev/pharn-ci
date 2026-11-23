@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { TestIntegritySignal as Signal } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -13,16 +14,6 @@ import { expectValidReport } from "./schema.js";
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const PATH = "vitest.config.ts";
 const SECRET = "SECRET-VALUE-123";
-
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-  base?: string;
-  head?: string;
-}
 
 const linesOf = (text: string) => text.replace(/\n$/, "").split("\n");
 
@@ -121,10 +112,10 @@ describe("TI09: what a finding carries from the config text", () => {
         base: { files: [{ path: PATH, text: base }], dropped: [] },
         head: { files: [{ path: PATH, text: head }], dropped: [] },
       },
-    } as unknown as Parameters<typeof check>[0]);
+    });
     expectValidReport(report);
 
-    const signals = (report.testIntegrity.signals as unknown as Signal[]).filter((s) => String(s.id) === "TI09");
+    const signals = report.testIntegrity.signals.filter((s) => String(s.id) === "TI09");
     expect(signals, "one TI09 signal").toHaveLength(1);
     const signal = signals[0] as Signal;
     expect(signal.detail).toContain("test.include");

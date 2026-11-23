@@ -4,9 +4,6 @@ import { fixture } from "./helpers.js";
 // AC test for ai-agnostic-inventory (AC-9): rule reachability and overlap over the per-kind fixture. The target
 // is imported inside the test body so the file loads before the build.
 
-type Rule = { kind: string; matches(path: string): boolean };
-type Inventory = { files: { path: string; kind: string }[] };
-
 // The 21 kinds that existed before this change plus the 13 it adds, sorted.
 const ALL_KINDS = [
   "agents-md",
@@ -47,10 +44,7 @@ const ALL_KINDS = [
 
 describe("agent setup rules over the per-kind fixture (ai-agnostic-inventory)", () => {
   it("AC-9: each fixture path matches exactly one rule, every rule is reachable, and the scan finds all 34 kinds", async () => {
-    const { SETUP_RULES, scanAgentSetup } = (await import("../src/setup/scan.js")) as unknown as {
-      SETUP_RULES: readonly Rule[];
-      scanAgentSetup: (paths: readonly string[]) => Inventory;
-    };
+    const { SETUP_RULES, scanAgentSetup } = await import("../src/setup/scan.js");
     const paths = fixture("setup/all-kinds.txt")
       .split("\n")
       .map((line) => line.trim())

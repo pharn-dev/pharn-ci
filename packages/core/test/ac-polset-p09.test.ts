@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report, ReportPolicyViolation as Violation } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { withoutFix } from "./v090-codes.js";
@@ -7,9 +8,6 @@ import { withoutFix } from "./v090-codes.js";
 // the AC test is written before the build gives P09 class 4 its final levels, so nothing the build adds may run while
 // this file loads.
 
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; policy?: { violations: Violation[] } };
 type Drop = { path: string; reason: string };
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
@@ -67,12 +65,12 @@ async function run(input: {
         }),
   } as never);
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 // fix-hints (H6): every finding now carries a `fix`; the pinned literals are unchanged, so this reads without it.
 const p09 = (report: Report) => withoutFix((report.policy?.violations ?? []).filter((v) => v.id === "P09"));
-const finding = (severity: string, path: string, detail: string): Violation => ({
+const finding = (severity: Violation["severity"], path: string, detail: string): Violation => ({
   id: "P09",
   severity,
   path,

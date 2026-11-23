@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { evaluatePolicyRules } from "../src/policy/rules/evaluate.js";
 import { policyRuleMessages } from "../src/policy/rules/messages.js";
 import type { PolicyRuleInput } from "../src/policy/rules/types.js";
+import type { Message } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { check } from "./text-coverage.js";
@@ -12,8 +13,6 @@ import { withoutFix } from "./v090-codes.js";
 // `fetch-depth: 0` gives), POLICY_SETTINGS_INVALID is an error exactly when a rule whose list the policy sets (P02 to
 // P06) resolves to block: a demand that cannot be checked is not met. P02, P04 and P05 now fail closed as P03 and P06
 // already did; a policy with none of the five lists keeps the warning.
-
-type Message = { level: string; code: string; text: string };
 
 const REASON = "the diff came from the GitHub compare API, so the checkout may not be the pull request head";
 const TEXT = `The agent settings files were not read (${REASON}), so P02–P06 did not run. Run the check on a checkout of the pull request head with full history (\`actions/checkout\` with \`fetch-depth: 0\`) so they can be read.`;

@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-
+import type { TestSourceFile as SourceFile, TestSourceDrop } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { check } from "./text-coverage.js";
@@ -20,13 +20,9 @@ const NOT_FOUND = "(config) could no longer be compared at head: the config was 
 const NOT_READ =
   "(config) could no longer be compared at head: the config was read at base but could not be read at head.";
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
 interface Side {
   files: SourceFile[];
-  dropped: { path: string; reason: string }[];
+  dropped: TestSourceDrop[];
 }
 
 /** The `<logical path>.txt` files under one side of a fixture case. */
@@ -123,7 +119,7 @@ describe("TI09: a config read at base that cannot be compared at head", () => {
     expect(large.signals).toEqual([{ id: "TI09", severity: "block", path: PATH, line: null, detail: NOT_READ }]);
     expect(large.unavailable[0]?.text).toContain("too-large");
 
-    for (const reason of ["too-large", "over-file-cap", "over-total-cap"]) {
+    for (const reason of ["too-large", "over-file-cap", "over-total-cap"] as const) {
       const dropped = run(diff, one(PATH, BASE), { files: [], dropped: [{ path: PATH, reason }] });
       expect(dropped.signals, reason).toEqual([
         { id: "TI09", severity: "block", path: PATH, line: null, detail: NOT_READ },

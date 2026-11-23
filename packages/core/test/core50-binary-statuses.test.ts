@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { TestSourceDrop, TestSourceDropReason } from "../src/testSources.js";
 
 import { FIXTURES } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -17,7 +18,7 @@ const BINARY = "git shows this file as binary, so its changes could not be read.
 
 interface Side {
   files: { path: string; text: string }[];
-  dropped: { path: string; reason: string }[];
+  dropped: TestSourceDrop[];
 }
 
 const byPath = (a: { path: string }, b: { path: string }) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
@@ -32,7 +33,7 @@ function readSide(dir: string): Side {
     const text = readFileSync(join(dir, name), "utf8");
     if (name.endsWith(".txt")) side.files.push({ path: name.slice(0, -".txt".length), text });
     else if (name.endsWith(".dropped"))
-      side.dropped.push({ path: name.slice(0, -".dropped".length), reason: text.trim() });
+      side.dropped.push({ path: name.slice(0, -".dropped".length), reason: text.trim() as TestSourceDropReason });
   }
   side.files.sort(byPath);
   side.dropped.sort(byPath);

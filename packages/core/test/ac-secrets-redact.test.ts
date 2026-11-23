@@ -30,7 +30,7 @@ interface Redaction {
 }
 
 async function load(): Promise<Redaction> {
-  return (await import("../src/secrets/redact.js")) as unknown as Redaction;
+  return await import("../src/secrets/redact.js");
 }
 
 /** UTF-8 length counted by code point; a lone surrogate counts 3 bytes (what U+FFFD replacement writes). */

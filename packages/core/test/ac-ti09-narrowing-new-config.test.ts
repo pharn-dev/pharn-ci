@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -12,11 +13,6 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const TI09 = `${FIXTURES}test-integrity/TI09`;
 
 type Mode = "block" | "warn";
-
-interface SourceFile {
-  path: string;
-  text: string;
-}
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 

@@ -3,12 +3,7 @@ import { describe, expect, it } from "vitest";
 // The agents module is loaded inside each test body: the AC tests are written before the build adds it, so nothing
 // the build adds may run while this file loads.
 
-interface ListsModule {
-  KNOWN_AGENTS: unknown;
-  DEFAULT_AGENT_LABELS: unknown;
-}
-
-const load = async () => (await import("../src/agents.js")) as unknown as ListsModule;
+const load = async () => await import("../src/agents.js");
 
 /** The seven verified known agents, in the SPEC's order. */
 const EXPECTED_AGENTS = [

@@ -1,34 +1,14 @@
 import { describe, expect, it } from "vitest";
+import type { AgentPrFacts as Facts } from "../src/agents.js";
 
 // detectAgentPr is loaded inside each test body: the AC tests are written before the build adds it, so nothing the
 // build adds may run while this file loads. The pull request's author is held human; only the commits vary.
 
-type Commit = { authorLogin: string | null; committerLogin: string | null; message: string };
-type Facts = {
-  pr: {
-    author: { login: string; type: string } | null;
-    labels: string[];
-    commits: Commit[] | null;
-    commitsIncomplete?: boolean;
-  } | null;
-  labels?: string[];
-  extraLogins?: string[];
-};
-type Detection = {
-  isAgentPr: boolean;
-  agentHint: string | null;
-  evidence: string[];
-  incomplete: string | null;
-  coAuthors: string[];
-};
+type Commit = NonNullable<NonNullable<Facts["pr"]>["commits"]>[number];
 
-interface DetectModule {
-  detectAgentPr(facts: Facts): Detection;
-}
+const load = async () => await import("../src/index.js");
 
-const load = async () => (await import("../src/index.js")) as unknown as DetectModule;
-
-const HUMAN_AUTHOR = { login: "octocat", type: "User" };
+const HUMAN_AUTHOR = { login: "octocat", type: "User" } as const;
 const human = (message: string): Commit => ({ authorLogin: "octocat", committerLogin: "octocat", message });
 
 const withCommits = (commits: Commit[], extra: Partial<Facts> = {}): Facts => ({

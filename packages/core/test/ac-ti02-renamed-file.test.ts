@@ -1,6 +1,9 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
+import type { TestBlock as Block } from "../src/testIndex/types.js";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -12,32 +15,10 @@ import { expectValidReport } from "./schema.js";
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const CART = "src/cart.test.ts";
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
 interface Case {
   diff: string;
   base: SourceFile[];
   head: SourceFile[];
-}
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Block {
-  kind: string;
-  name: string;
-  path: string[];
-  line: number;
-  body: string;
-  bodyHash: string;
-}
-interface Report {
-  testIntegrity: { signals: Signal[]; languages: string[] };
 }
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
@@ -78,17 +59,15 @@ async function runCase(c: Case): Promise<Report> {
     repoFiles: [...new Set([...c.head.map((f) => f.path), "src/cart.ts"])].sort(),
     testSources: { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } },
     testIntegrityMode: { input: "block" },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 /** The test blocks of one fixture file, through the existing JS/TS test index. */
 async function testsOf(file: SourceFile | undefined): Promise<Block[]> {
   if (file === undefined) throw new Error("the fixture file is missing");
-  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
-    indexTestFile(path: string, text: string): { parsed: boolean; tests?: Block[] };
-  };
+  const core = await import("../src/testIndex/indexTestFile.js");
   const result = core.indexTestFile(file.path, file.text);
   if (!result.parsed) throw new Error(`the fixture ${file.path} does not parse: ${JSON.stringify(result)}`);
   return (result.tests ?? []).filter((b) => b.kind === "test");

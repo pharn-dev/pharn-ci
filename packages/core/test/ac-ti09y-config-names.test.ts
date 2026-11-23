@@ -3,12 +3,6 @@ import { describe, expect, it } from "vitest";
 // The core entry point is loaded inside the test body: the AC test is written before `vite.config.*` joins the
 // test-config names, so nothing that depends on the change may run while the file loads.
 
-interface Core {
-  isTestConfigFile(path: string): boolean;
-  selectTestSourcePaths(diff: readonly unknown[]): { base: string[]; head: string[] };
-  parseUnifiedDiff(text: string): unknown[];
-}
-
 const MODIFIED_VITE = [
   "diff --git a/web/vite.config.ts b/web/vite.config.ts",
   "index 1111111..2222222 100644",
@@ -25,7 +19,7 @@ describe("test sources: vite.config.* is a test-config name", () => {
     const core = {
       ...(await import("../src/diff/unified.js")),
       ...(await import("../src/testSources.js")),
-    } as unknown as Core;
+    };
 
     for (const path of [
       "vite.config.ts",

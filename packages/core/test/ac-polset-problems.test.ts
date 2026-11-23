@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Message } from "../src/report.js";
 import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -6,8 +7,6 @@ import { expectValidReport } from "./schema.js";
 // E3 item 23 (policy settings), AC-13. check() is loaded inside the test body: the AC test is written before the build
 // adds the settings rules, so nothing the build adds may run while this file loads.
 
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[] };
 type Problem = { path: string | null; line: number | null; reason: string };
 type Drop = { path: string; reason: string };
 
@@ -37,7 +36,7 @@ async function invalidOf(document: unknown, files: Record<string, string>, dropp
     policySettingsSources: { files: Object.entries(files).map(([path, text]) => ({ path, text })), dropped },
   } as never);
   expectValidReport(report);
-  return (report as unknown as Report).messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID");
+  return report.messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID");
 }
 
 const byProblem = (a: Problem, b: Problem) =>

@@ -1,20 +1,15 @@
 import { describe, expect, it } from "vitest";
+import type { AgentSetupKind } from "../src/setup/scan.js";
 
 // AC tests for ai-agnostic-inventory (AC-10, AC-11): the tools credited per kind and the fixed tool list. The
 // target is imported inside each test body so the file loads before the build; one `it` per AC.
 
-type Summary = { byKind: Record<string, number>; tools: string[] };
-type Summarize = (files: readonly { path: string; kind: string }[]) => Summary;
-
 async function load() {
-  return (await import("../src/setup/summary.js")) as unknown as {
-    summarizeAgentSetup: Summarize;
-    AGENT_TOOLS: readonly string[];
-  };
+  return await import("../src/setup/summary.js");
 }
 
 // One representative path per kind, with the tools a single file of that kind must credit.
-const CASES: readonly [kind: string, path: string, tools: string[]][] = [
+const CASES: readonly [kind: AgentSetupKind, path: string, tools: string[]][] = [
   // The 13 new kinds.
   ["claude-rule", ".claude/rules/style.md", ["claude-code"]],
   ["aider-config", ".aider.conf.yml", ["aider"]],

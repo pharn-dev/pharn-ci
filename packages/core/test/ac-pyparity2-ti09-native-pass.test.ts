@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -15,18 +17,10 @@ const TI09 = `${FIXTURES}test-integrity/TI09/`;
 const PATH = "pyproject.toml";
 const UNAVAILABLE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
 interface Case {
   diff: string;
   base: SourceFile[];
   head: SourceFile[];
-}
-interface Report {
-  testIntegrity: { signals: { id: string; severity: string; path: string; line: number | null }[] };
-  messages: { code: string; text: string }[];
 }
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
@@ -98,9 +92,9 @@ async function run(c: Case): Promise<Report> {
     repoFiles: [...new Set([...c.head.map((f) => f.path), "src/cart.ts"])].sort(),
     testIntegrityMode: { input: "block" },
     testSources: { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 const ti09 = (r: Report) => r.testIntegrity.signals.filter((s) => String(s.id) === "TI09");

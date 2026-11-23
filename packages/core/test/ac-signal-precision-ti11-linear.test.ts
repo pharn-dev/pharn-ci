@@ -40,17 +40,15 @@ function movedJobs(jobs: number): string {
 describe("TI11: the keyed comparison is linear", () => {
   it("AC-4: 5000 and 20000 removed jobs with their scripts and a renamed test file each give one block TI11 test-step finding, and the larger input takes less than eight times as long", async () => {
     const { check } = await import("./text-coverage.js");
-    type Input = Parameters<typeof check>[0];
-    const inputFor = (jobs: number) =>
-      ({
-        version: "0.1.0",
-        coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
-        diff: { text: movedJobs(jobs) },
-        repoRoot: REPO_ROOT,
-        threshold: 80,
-        repoFiles: fixture("test-files-deleted/files.txt").trim().split("\n"),
-        testIntegrityMode: { input: "block" },
-      }) as unknown as Input;
+    const inputFor = (jobs: number) => ({
+      version: "0.1.0",
+      coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" as const },
+      diff: { text: movedJobs(jobs) },
+      repoRoot: REPO_ROOT,
+      threshold: 80,
+      repoFiles: fixture("test-files-deleted/files.txt").trim().split("\n"),
+      testIntegrityMode: { input: "block" as const },
+    });
     const small = inputFor(SMALL);
     const large = inputFor(LARGE);
 

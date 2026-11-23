@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { dependencyCase } from "./dependencies-helpers.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { injectionFixture } from "./injection-fixture.js";
@@ -12,9 +13,6 @@ import { expectValidReport } from "./schema.js";
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
-type Fix = { kind: string; target?: string; hint: string };
-type Message = { level: string; code: string; text: string; fix?: Fix };
-type Report = { messages: Message[]; testIntegrity: { signals: { id: string }[] } };
 type Entry = { kind: string; hint: string };
 
 /** The `<logical path>.txt` files under one side of a case directory. */

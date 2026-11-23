@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 type Cut = (text: string, limit: number, options?: { marker?: boolean }) => string;
 
 async function load(): Promise<Cut> {
-  const { cutCodeUnits } = (await import("../src/text.js")) as unknown as { cutCodeUnits: Cut };
+  const { cutCodeUnits } = await import("../src/text.js");
   return cutCodeUnits;
 }
 

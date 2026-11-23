@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { TestIntegritySignal as Signal } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -21,14 +22,6 @@ const TEST_LINES = [
   "  });",
   "});",
 ];
-
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
 
 /** A file the diff deletes (status deleted), with every line of its base text removed. */
 function deleteFile(path: string, lines: string[]): string {
@@ -54,7 +47,7 @@ async function ti01(path: string): Promise<Signal[]> {
     testIntegrityMode: { input: "block" },
   } as Parameters<typeof check>[0]);
   expectValidReport(report);
-  return (report.testIntegrity.signals as unknown as Signal[]).filter((s) => String(s.id) === "TI01");
+  return report.testIntegrity.signals.filter((s) => String(s.id) === "TI01");
 }
 
 /** The signal with its path folded to a placeholder, so two deletions can be compared field by field. */

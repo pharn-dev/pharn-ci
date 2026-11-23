@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { TestBlock as Block, TestModifier } from "../src/testIndex/types.js";
 import { fixture } from "./helpers.js";
 
 // indexTestFile is loaded inside the test body: the AC tests are written before the test index exists, so nothing the
@@ -6,33 +7,15 @@ import { fixture } from "./helpers.js";
 // checks that the fixture holds every form AC-4 lists and pins the rules inline: a golden fitted to the output cannot
 // pass on its own.
 
-type Assertion = { chain: string; line: number; awaited: boolean; inTryCatch: boolean; afterEarlyReturn: boolean };
-type Guard = { kind: string; count: number | null; line: number };
-type Block = {
-  kind: string;
-  name: string;
-  nameDynamic: boolean;
-  path: string[];
-  line: number;
-  endLine: number;
-  modifiers: string[];
-  body: string;
-  bodyHash: string;
-  assertionCount: number;
-  assertions: Assertion[];
-  guards: Guard[];
-};
 type Mock = { callee: string; specifier: string | null; line: number };
 type Index = { parsed: true; syntaxErrors: number; tests: Block[]; mocks: Mock[] };
 type Result = Index | { parsed: false; reason: string };
 
-const MODIFIERS = ["skip", "only", "todo", "fails", "concurrent", "each", "skipIf", "runIf"];
+const MODIFIERS: TestModifier[] = ["skip", "only", "todo", "fails", "concurrent", "each", "skipIf", "runIf"];
 const HOOK_WORDS = ["beforeEach", "afterEach", "beforeAll", "afterAll", "before", "after"];
 
 async function indexTestFile(path: string, text: string): Promise<Result> {
-  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
-    indexTestFile: (p: unknown, t: unknown) => unknown;
-  };
+  const core = await import("../src/testIndex/indexTestFile.js");
   return core.indexTestFile(path, text) as Result;
 }
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -12,10 +13,6 @@ const JS = "src/b.test.js";
 const PY = "tests/test_c.py";
 
 type Mode = "block" | "warn" | "off";
-interface Report {
-  testIntegrity: { signals: { id: string }[]; languages: string[] };
-  messages: { code: string; level: string; text: string }[];
-}
 
 function edit(path: string, removed: string, addedLine: string): string {
   return [
@@ -100,9 +97,9 @@ async function run(input: Record<string, unknown>, mode: Mode = "block"): Promis
     repoFiles: [JS, TS, "src/cart.ts", PY],
     testIntegrityMode: { input: mode },
     ...input,
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 describe("testIntegrity.languages names the languages indexed in the run", () => {
@@ -113,9 +110,7 @@ describe("testIntegrity.languages names the languages indexed in the run", () =>
     const noPython = await run({ testSources: SOURCES });
     expect(noPython.testIntegrity.languages).toEqual(["js", "ts"]);
 
-    const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
-      indexTestFile(path: string, text: string): { parsed: boolean; reason?: string };
-    };
+    const core = await import("../src/testIndex/indexTestFile.js");
     for (const [path, text] of [
       [TS, broken("adds")],
       [JS, broken("adds up")],
@@ -163,7 +158,7 @@ describe("testIntegrity.languages names the languages indexed in the run", () =>
       repoRoot: REPO_ROOT,
       threshold: 80,
       repoFiles: fixture("golden/files.txt").trim().split("\n"),
-    } as unknown as Parameters<typeof check>[0]);
+    });
     expect(`${JSON.stringify(golden, null, 2)}\n`).toBe(fixture("golden/report.json"));
   });
 });

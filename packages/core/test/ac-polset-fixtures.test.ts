@@ -44,9 +44,7 @@ describe("the fixtures of E3 item 23", () => {
     }
 
     // No secret-shaped value in a new fixture or in this increment's AC tests.
-    const { findSecretSpans } = (await import("../src/secrets/spans.js")) as unknown as {
-      findSecretSpans(text: string): { id: string; start: number; end: number }[];
-    };
+    const { findSecretSpans } = await import("../src/secrets/spans.js");
     const tests = ["packages/core/test", "packages/cli/test", "packages/action/test"].flatMap((dir) =>
       readdirSync(join(ROOT, dir))
         .filter((name) => /^ac-polset-.*\.test\.ts$/.test(name))

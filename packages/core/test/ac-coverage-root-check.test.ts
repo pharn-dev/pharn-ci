@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Message } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -6,8 +7,6 @@ import { expectValidReport } from "./schema.js";
 // fixtures/coverage-paths/ exist, so nothing that depends on them may run while the file loads.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
-
-type Message = { code: string };
 
 async function runCheck(coverage: { text: string; format: "lcov" | "cobertura" }, diffPath: string) {
   const { check } = await import("./text-coverage.js");

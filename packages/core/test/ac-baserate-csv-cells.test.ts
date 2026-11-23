@@ -164,7 +164,7 @@ describe("agent-pr-baserate hits.csv cells", () => {
     expect(run.status, run.stderr).toBe(0);
     const python = records(run.csv).filter((r) => r.signal === "TI03" && r.path === "tests/test_api.py");
     expect(python).toHaveLength(1);
-    expect(python[0]?.excerpt.startsWith("'@pytest.mark.skip")).toBe(true);
+    expect(python[0]?.excerpt?.startsWith("'@pytest.mark.skip")).toBe(true);
   }, 120_000);
 
   it("AC-4: the ordinary it.skip( row is byte for byte the row written before, in the same run as a changed row", () => {

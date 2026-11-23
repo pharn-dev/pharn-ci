@@ -1,10 +1,13 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
+import type { TestSources } from "../src/testSources.js";
 import { withCore95Ti14Before } from "./core95-ti14.js";
 import { exerciseMessages, withoutExerciseCheck } from "./exercise-repin.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 import { withoutFix } from "./v090-codes.js";
 
 // check(), the config parser, the diff parser and the core helpers are loaded inside the test body: the AC test is
@@ -82,11 +85,6 @@ const asBefore = (json: string) => json.split(TI03_ADDS_NOW).join(TI03_ADDS_BEFO
 const asFile = (report: unknown) => `${JSON.stringify(report, null, 2)}\n`;
 const lines = (path: string) => fixture(path).trim().split("\n");
 
-interface Report {
-  testIntegrity: { signals: unknown[] };
-  messages: { code: string; level: string; text: string }[];
-}
-
 /** The exclusion patterns the TI14 fixture that appends an item is judged against: the items it appends. */
 function excludeFor(name: string, text: string): string[] {
   if (name !== "TI14/block-exclude-appended.diff") return [];
@@ -102,8 +100,7 @@ describe("TI02 and TI05 change the earlier outputs only where they mean to", () 
     const { parseConfig } = await import("../src/config.js");
     const { parseUnifiedDiff } = await import("../src/diff/unified.js");
     const { isTestFile } = await import("../src/testFiles.js");
-    const core = (await import("../src/index.js")) as unknown as { unavailableTestSources(reason: string): unknown };
-    type Input = Parameters<typeof check>[0];
+    const core = await import("../src/index.js");
     const unavailable = core.unavailableTestSources("git cat-file failed");
 
     // The goldens, built as the test that owns each report.json builds them.
@@ -117,8 +114,8 @@ describe("TI02 and TI05 change the earlier outputs only where they mean to", () 
       threshold: 80,
       repoFiles: lines(`${dir}/files.txt`),
     });
-    const sets: Array<[string, Record<string, unknown>]> = [
-      ["golden", { ...golden("golden"), coverage: { text: fixture("golden/coverage.info"), format: "lcov" } }],
+    const sets: Array<[string, TextCheckInput]> = [
+      ["golden", { ...golden("golden"), coverage: { text: fixture("golden/coverage.info"), format: "lcov" as const } }],
       [
         "golden-cobertura",
         { ...golden("golden-cobertura"), coverage: { text: fixture("golden-cobertura/coverage.xml"), format: "auto" } },
@@ -127,7 +124,7 @@ describe("TI02 and TI05 change the earlier outputs only where they mean to", () 
         "golden-exclusions",
         {
           ...golden("golden-exclusions"),
-          coverage: { text: fixture("golden-exclusions/coverage.info"), format: "lcov" },
+          coverage: { text: fixture("golden-exclusions/coverage.info"), format: "lcov" as const },
           threshold: exclusionsConfig.coverage?.threshold ?? null,
           exclude: exclusionsConfig.coverage?.exclude ?? [],
         },
@@ -146,7 +143,7 @@ describe("TI02 and TI05 change the earlier outputs only where they mean to", () 
         },
       ],
     ];
-    const withText = {
+    const withText: TestSources = {
       base: { files: [{ path: "a.test.ts", text: 'it("a", () => { expect(1).toBe(1); });\n' }], dropped: [] },
       head: { files: [], dropped: [{ path: "c.test.ts", reason: "binary" }] },
     };
@@ -157,7 +154,7 @@ describe("TI02 and TI05 change the earlier outputs only where they mean to", () 
         ["with sources", { testSources: withText }],
         ["with unavailable sources", { testSources: unavailable }],
       ] as const) {
-        const report = check({ ...input, ...extra } as unknown as Input);
+        const report = check({ ...input, ...extra });
         expectValidReport(report);
         // Re-pinned for A8 step 1 (exercise-repin.ts): with readable sources the tests-exercise check may add its one
         // warn message and testIntegrity.exercise; with those taken out the report is the golden byte for byte.
@@ -168,7 +165,7 @@ describe("TI02 and TI05 change the earlier outputs only where they mean to", () 
 
     // The earlier signal fixtures, first without sources: what they gave at the base commit.
     const records: Array<{ fixture: string; signals: unknown[]; messages: unknown[] }> = [];
-    const runs: Array<{ name: string; text: string; input: Record<string, unknown>; without: Report }> = [];
+    const runs: Array<{ name: string; text: string; input: TextCheckInput; without: Report }> = [];
     for (const dir of EARLIER_DIRS) {
       const names = readdirSync(`${FIXTURES}test-integrity/${dir}`)
         .filter(
@@ -185,15 +182,15 @@ describe("TI02 and TI05 change the earlier outputs only where they mean to", () 
         const files = `test-integrity/${name.replace(/\.diff$/, ".files.txt")}`;
         const input = {
           version: "0.1.0",
-          coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
+          coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" as const },
           diff: { text },
           repoRoot: REPO_ROOT,
           threshold: 80,
           repoFiles: lines(existsSync(`${FIXTURES}${files}`) ? files : "test-files-deleted/files.txt"),
           exclude: excludeFor(name, text),
-          testIntegrityMode: { input: "block" },
+          testIntegrityMode: { input: "block" as const },
         };
-        const without = check(input as unknown as Input) as unknown as Report;
+        const without = check(input);
         expectValidReport(without);
         if (name === "TI01/pass-binary.diff") {
           // CORE-50 (binary-diff-not-blind): this fixture (a deleted binary tests/img.test.ts) now gives one TI01 block,
@@ -229,7 +226,7 @@ describe("TI02 and TI05 change the earlier outputs only where they mean to", () 
     // file, and nothing else changes in the signals or the other messages.
     let modifying = 0;
     for (const { name, text, input, without } of runs) {
-      const withUnavailable = check({ ...input, testSources: unavailable } as unknown as Input) as unknown as Report;
+      const withUnavailable = check({ ...input, testSources: unavailable });
       expectValidReport(withUnavailable);
       expect(withUnavailable.testIntegrity.signals, `${name}: the same signals`).toEqual(without.testIntegrity.signals);
       const compared = parseUnifiedDiff(text).some(

@@ -20,7 +20,7 @@ const KINDS = [
 
 describe("fix hints: the closed list of kinds", () => {
   it("AC-1: the core's FIX_KINDS and the schema's fix.kind enum are exactly the eight kinds, in order", async () => {
-    const core = (await import("../src/fix/table.js")) as unknown as { FIX_KINDS?: readonly string[] };
+    const core = await import("../src/fix/table.js");
     expect(Array.isArray(core.FIX_KINDS), "FIX_KINDS is exported as a list").toBe(true);
     expect([...(core.FIX_KINDS ?? [])]).toEqual(KINDS);
 

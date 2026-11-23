@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // CORE-69. check() is loaded inside the test body: the AC test is written before a reported python-not-found index
 // with a modified `.py` test file becomes the whole-run form, so nothing the build changes may run while the file
@@ -9,16 +11,6 @@ import { expectValidReport } from "./schema.js";
 
 const CODE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 const PATH = "tests/test_c.py";
-
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-}
-interface Report {
-  verdict: string;
-  messages: Message[];
-}
 
 const PY_BASE =
   "from cart import total\n\n\ndef test_adds():\n    assert total([2, 3]) == 5\n\n\ndef test_empty():\n    assert total([]) == 0\n";
@@ -40,7 +32,7 @@ const READABLE = {
   head: { files: [{ path: PATH, text: PY_HEAD }], dropped: [] },
 };
 
-async function run(input: Record<string, unknown>): Promise<Report> {
+async function run(input: Partial<TextCheckInput>): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -51,9 +43,9 @@ async function run(input: Record<string, unknown>): Promise<Report> {
     repoFiles: [PATH, "src/cart.ts"],
     testIntegrityMode: { input: "block" },
     ...input,
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 describe("CORE-69: a modified Python test file keeps the per-file warning unless python3 was reported missing", () => {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Message } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -18,7 +19,6 @@ const SEVEN = [
   "tests/six.py",
 ];
 
-type Message = { level: string; code: string; text: string };
 type Coverage =
   | { text: string; format: "lcov" }
   | {

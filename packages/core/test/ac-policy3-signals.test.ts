@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -7,13 +8,6 @@ import { expectValidReport } from "./schema.js";
 // may run while the file loads. The fixture is written by the build, so the test first checks that, in mode block and
 // with no policy, it gives TI01 at block and TI06 at warn (and, since CORE-144, no TI15: it is no longer emitted).
 
-type Signal = { id: string; severity: string; path: string; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = {
-  verdict: string;
-  messages: Message[];
-  testIntegrity: { mode: string; verdict: string; signals: Signal[]; accepted?: unknown };
-};
 type Application = {
   inputs: { threshold: number | null; testIntegrityMode?: unknown };
   signalOverrides?: unknown;
@@ -136,9 +130,7 @@ describe("per-signal severities from a policy", () => {
     expect(off.testIntegrity.signals).toEqual([]);
 
     // Mode block and the accept label honoured: the label downgrades the raised block last.
-    const { acceptTestIntegrity } = (await import("@pharn-ci/core")) as unknown as {
-      acceptTestIntegrity: (report: Report, accepted: { label: string; by: string }) => Report;
-    };
+    const { acceptTestIntegrity } = await import("@pharn-ci/core");
     const blocked = await signalsRun(app({ mode: "block", signals: { TI06: "block" } }), undefined);
     expect(severities(blocked, "TI06")).toEqual(Array(ti06Count).fill("block"));
     const accepted = acceptTestIntegrity(blocked, { label: "pharn/accepted", by: "Reviewer-1" });

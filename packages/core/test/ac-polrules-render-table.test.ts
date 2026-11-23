@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -8,15 +9,6 @@ import { expectValidReport } from "./schema.js";
 // fixtures, so nothing the build adds may run while this file loads. The golden inputs are passed as
 // packages/core/test/golden.test.ts passes them, and the no-policy comment is compared byte for byte with the
 // committed golden, never through a file snapshot.
-
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = Record<string, unknown> & { messages: Message[]; policy?: { violations: Violation[] } };
-
-interface Core {
-  check(input: unknown): Report;
-  renderMarkdown(report: Report, options?: { maxRows?: number }): string;
-}
 
 const ROOT = new URL("../../../", import.meta.url);
 const REPO_ROOT = "/home/runner/work/demo/demo";
@@ -41,7 +33,7 @@ describe("the summary table and the Messages section with a policy", { timeout: 
     const core = {
       ...(await import("@pharn-ci/core")),
       check: (await import("./text-coverage.js")).check,
-    } as unknown as Core;
+    };
     const goldenFiles = fixture("golden/files.txt").trim().split("\n");
     const run = (extra: Record<string, unknown>) => {
       const report = core.check({

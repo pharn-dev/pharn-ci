@@ -1,5 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import type { DiffFile } from "../src/diff/unified.js";
+import type { Report, ReportMeta } from "../src/report.js";
+import type { UploadMeta } from "../src/upload/meta.js";
 import { dependencyCase } from "./dependencies-helpers.js";
 import { fixture } from "./helpers.js";
 import { injectionFixture } from "./injection-fixture.js";
@@ -14,21 +17,11 @@ const ROOT = new URL("../../../", import.meta.url);
 
 type Fix = { kind: string; target?: string; hint: string };
 type Json = Record<string, unknown>;
-type Report = Json & {
-  messages: { code: string; text: string; fix?: Fix }[];
-  testIntegrity: { signals: { fix?: Fix }[] };
-};
 
-interface Core {
-  check(input: unknown): Report;
-  buildUploadMeta(
-    report: unknown,
-    extra: { version: string; createdAt: string; commentUrl: string | null },
-  ): Json | null;
-  buildUploadBundle(report: unknown, meta: unknown, options?: { messageMaxBytes?: number }): { reportJson: string };
-}
+/** Core's index with the check() that takes coverage as text, as the test body builds it. */
+type Core = Omit<typeof import("../src/index.js"), "check"> & { check: typeof import("./text-coverage.js")["check"] };
 
-const META = {
+const META: ReportMeta = {
   event: "pull_request",
   repository: "pharn-dev/pharn-ci",
   repositoryId: 123,
@@ -52,8 +45,8 @@ const GROUPS = [
   ["dependencies", "signals"],
 ] as const;
 
-function findings(report: Json, group: string, key: string): Array<{ fix?: Fix }> {
-  return ((report[group] as Json | undefined)?.[key] as Array<{ fix?: Fix }> | undefined) ?? [];
+function findings(report: object, group: string, key: string): Array<{ fix?: Fix }> {
+  return (((report as Json)[group] as Json | undefined)?.[key] as Array<{ fix?: Fix }> | undefined) ?? [];
 }
 
 /** One report with fix on messages and on findings of every kind: the policy run, joined with the other runs' findings. */
@@ -79,7 +72,7 @@ function joinedReport(core: Core): Report {
     },
     testIntegrityMode: { input: "block" },
   });
-  const modified = (path: string) => ({ path, oldPath: path, status: "modified", addedLines: [1] });
+  const modified = (path: string): DiffFile => ({ path, oldPath: path, status: "modified", addedLines: [1] });
   const stale = core.check({
     version: "0.1.0",
     coverage: { text: "SF:src/index.ts\nDA:1,1\nend_of_record\n", format: "lcov" },
@@ -120,7 +113,7 @@ describe("the upload bundle keeps fix hints", { timeout: 120_000 }, () => {
     const core = {
       ...(await import("../src/index.js")),
       check: (await import("./text-coverage.js")).check,
-    } as unknown as Core;
+    };
     const report = joinedReport(core);
     const extra = JSON.parse(readFileSync(new URL("fixtures/upload/extra.json", ROOT), "utf8")) as {
       version: string;
@@ -141,7 +134,7 @@ describe("the upload bundle keeps fix hints", { timeout: 120_000 }, () => {
 
     for (const options of [undefined, { messageMaxBytes: 100 }]) {
       const label = options === undefined ? "default caps" : "messageMaxBytes 100";
-      const uploaded = JSON.parse(core.buildUploadBundle(report, meta, options).reportJson) as Report;
+      const uploaded = JSON.parse(core.buildUploadBundle(report, meta as UploadMeta, options).reportJson) as Report;
       expectValidReport(uploaded);
       expect(
         uploaded.messages.map((m) => [m.code, m.fix]),

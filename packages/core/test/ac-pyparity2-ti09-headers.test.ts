@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { TestIntegritySignal as Signal } from "../src/report.js";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { withoutFix } from "./v090-codes.js";
@@ -29,23 +31,10 @@ const INI_OPTIONS_TODAY = [
   },
 ];
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
 interface Case {
   diff: string;
   base: SourceFile[];
   head: SourceFile[];
-}
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-}
-interface Report {
-  testIntegrity: { signals: Signal[] };
 }
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
@@ -105,10 +94,10 @@ async function run(c: Case): Promise<Signal[]> {
     repoFiles: [...new Set([...c.head.map((f) => f.path), "src/cart.ts"])].sort(),
     testIntegrityMode: { input: "block" },
     testSources: { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   // fix-hints (H6): every finding now carries a `fix`; the pinned literals are unchanged, so they are read without it.
-  return withoutFix((report as unknown as Report).testIntegrity.signals.filter((s) => String(s.id) === "TI09"));
+  return withoutFix(report.testIntegrity.signals.filter((s) => String(s.id) === "TI09"));
 }
 
 const NARROWED = { base: '["tests"]', head: '["tests/unit"]' };

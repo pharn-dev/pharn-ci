@@ -1,6 +1,9 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Report, TestIntegritySignal as Signal } from "../src/report.js";
+import type { TestBlock as Block } from "../src/testIndex/types.js";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -14,37 +17,10 @@ const PATH = "src/cart.test.ts";
 const REMOVED = "cart › rejects a negative price";
 
 type Mode = "block" | "warn";
-interface SourceFile {
-  path: string;
-  text: string;
-}
 interface Case {
   diff: string;
   base: SourceFile[];
   head: SourceFile[];
-}
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Block {
-  kind: string;
-  name: string;
-  nameDynamic: boolean;
-  path: string[];
-  line: number;
-  modifiers: string[];
-  body: string;
-  bodyHash: string;
-  assertionCount: number;
-  guards: unknown[];
-}
-interface Report {
-  testIntegrity: { signals: Signal[]; languages: string[] };
-  messages: { code: string; level: string; text: string }[];
 }
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
@@ -85,9 +61,9 @@ async function runCase(c: Case, mode: Mode): Promise<Report> {
     repoFiles: [...new Set([...c.head.map((f) => f.path), "src/cart.ts"])].sort(),
     testSources: { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } },
     testIntegrityMode: { input: mode },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 const signalsOf = (report: Report, id: string) => report.testIntegrity.signals.filter((s) => String(s.id) === id);
@@ -95,9 +71,7 @@ const signalsOf = (report: Report, id: string) => report.testIntegrity.signals.f
 /** The test blocks of one fixture file, through the existing JS/TS test index. */
 async function testsOf(file: SourceFile | undefined): Promise<Block[]> {
   if (file === undefined) throw new Error("the fixture file is missing");
-  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
-    indexTestFile(path: string, text: string): { parsed: boolean; tests?: Block[] };
-  };
+  const core = await import("../src/testIndex/indexTestFile.js");
   const result = core.indexTestFile(file.path, file.text);
   if (!result.parsed) throw new Error(`the fixture ${file.path} does not parse: ${JSON.stringify(result)}`);
   return (result.tests ?? []).filter((b) => b.kind === "test");

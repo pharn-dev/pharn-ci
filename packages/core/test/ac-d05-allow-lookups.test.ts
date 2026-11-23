@@ -79,15 +79,16 @@ const DIFF = parseUnifiedDiff(
 const SOURCES = { base: side(BASE), head: side(HEAD) };
 const REPO_FILES = ["package-lock.json", "package.json"];
 
-type Signal = { id: string; name?: string };
+/** Any finding of any section (dependency, test-integrity, policy): only the fields this test reads. */
+type Finding = { id: string; name?: string };
 
 /** Every finding (an object with an id and a severity) anywhere in the result. */
-function signalsIn(value: unknown, found: Signal[] = []): Signal[] {
+function signalsIn(value: unknown, found: Finding[] = []): Finding[] {
   if (Array.isArray(value)) {
     for (const item of value) signalsIn(item, found);
   } else if (value !== null && typeof value === "object") {
     const record = value as Record<string, unknown>;
-    if (typeof record.id === "string" && typeof record.severity === "string") found.push(record as unknown as Signal);
+    if (typeof record.id === "string" && typeof record.severity === "string") found.push(record as Finding);
     else for (const child of Object.values(record)) signalsIn(child, found);
   }
   return found;

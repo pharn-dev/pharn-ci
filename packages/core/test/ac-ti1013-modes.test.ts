@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -37,8 +38,6 @@ async function run(diff: string, mode: "block" | "warn" | "off") {
   expectValidReport(report);
   return report;
 }
-
-type Report = Awaited<ReturnType<typeof run>>;
 
 /** `|| true` added to the existing test script (listed first), and the istanbul hint added to a source file. */
 const DIFF =

@@ -1,5 +1,6 @@
 import { readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { runDiff, signalsOf } from "./ac-e1-fix-shared.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -21,7 +22,6 @@ function add(path: string, lines: string[]): string {
   return `${[...head, `@@ -11,0 +12,${lines.length} @@`, ...lines.map((l) => `+${l}`)].join("\n")}\n`;
 }
 
-type Report = Awaited<ReturnType<typeof runDiff>>;
 const none = (report: Report, label: string) => {
   for (const id of NEW_IDS) expect(signalsOf(report, id), `${label}: ${id}`).toEqual([]);
   const codes = report.messages.map((m) => String(m.code)).filter((c) => NEW_CODES.includes(c));

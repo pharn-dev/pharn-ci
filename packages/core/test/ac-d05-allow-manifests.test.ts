@@ -7,8 +7,6 @@ import { REPO_ROOT, run } from "./dependencies-helpers.js";
 // to requirements.txt and a URL dependency to package.json; no lockfile is tracked, so nothing but D05 judges them.
 // On a host that is not allowed each line is a D05 finding; with that host allowed, none is.
 
-type Signal = { id: string; path: string; line: number | null };
-
 function changeOn(host: string): CheckInput {
   const pyBase = '[project]\nname = "demo"\nversion = "1.0.0"\ndependencies = [\n  "requests>=2",\n]\n';
   const pyHead = `[project]\nname = "demo"\nversion = "1.0.0"\ndependencies = [\n  "requests>=2",\n  "pkg @ https://${host}/packages/pkg-1.0.tar.gz",\n]\n`;
@@ -68,7 +66,7 @@ function changeOn(host: string): CheckInput {
 }
 
 const d05 = (input: CheckInput) =>
-  ((run(input).dependencies?.signals ?? []) as Signal[])
+  (run(input).dependencies?.signals ?? [])
     .filter((s) => s.id === "D05")
     .map((s) => [s.path, s.line])
     .sort();

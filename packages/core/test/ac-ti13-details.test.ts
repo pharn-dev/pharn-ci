@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -49,7 +50,6 @@ async function run(diff: string) {
   return report;
 }
 
-type Report = Awaited<ReturnType<typeof run>>;
 const ti13 = (report: Report) => report.testIntegrity.signals.filter((signal) => String(signal.id) === "TI13");
 const ti13Messages = (report: Report) => report.messages.filter((m) => (m.code as string) === "TEST_INTEGRITY_TI13");
 

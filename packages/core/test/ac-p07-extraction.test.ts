@@ -4,17 +4,13 @@ import { describe, expect, it } from "vitest";
 // build adds the extractor, so nothing the build adds may run while this file loads.
 
 type Tools = { tools: string[]; line: number | null };
-type Declarations = { patternScoped: boolean; packageManagers: Tools; testRunners: Tools };
-interface Core {
-  instructionDeclarations(text: string): Declarations;
-}
 
 const NONE: Tools = { tools: [], line: null };
 const at = (line: number, ...tools: string[]): Tools => ({ tools, line });
 
 describe("org policy rule P07: the extraction rules", { timeout: 60_000 }, () => {
   it("AC-7: instructionDeclarations follows the BOM, CRLF, frontmatter, pattern-scope, shell, command-line, fence, indented-code, backtick-run and line-number rules", async () => {
-    const core = (await import("../src/setup/instructions.js")) as unknown as Core;
+    const core = await import("../src/setup/instructions.js");
     expect(typeof core.instructionDeclarations).toBe("function");
     const decl = (text: string) => core.instructionDeclarations(text);
     const pm = (text: string) => decl(text).packageManagers;

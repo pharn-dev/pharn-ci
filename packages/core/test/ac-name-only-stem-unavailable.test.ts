@@ -1,8 +1,11 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // check() and the fixtures are loaded inside each test body: the AC tests are written before the build writes
 // fixtures/test-integrity-precision/TI01/block-stem-hollow and info-stem-moved and before TI01's same-stem rule asks
@@ -16,20 +19,6 @@ const DELETED = "test/pricing.test.ts";
 const NOT_AVAILABLE =
   "Test file deleted; a test file of the same name was added, but the text to compare their tests was not available.";
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Report {
-  testIntegrity: { signals: Signal[] };
-}
 type Mode = "block" | "warn";
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
@@ -50,7 +39,10 @@ function sideFiles(dir: string): SourceFile[] {
     .sort(byPath);
 }
 
-async function run(input: Record<string, unknown>, mode: Mode): Promise<Report> {
+/** The check() fields a case sets: the diff and the repo files, and any field it overrides. */
+type CheckFields = Pick<TextCheckInput, "diff" | "repoFiles"> & Partial<TextCheckInput>;
+
+async function run(input: CheckFields, mode: Mode): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -59,9 +51,9 @@ async function run(input: Record<string, unknown>, mode: Mode): Promise<Report> 
     threshold: 80,
     testIntegrityMode: { input: mode },
     ...input,
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 function expectNotAvailable(report: Report, path: string, mode: Mode, label: string): void {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { TestIntegritySignal as Signal } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -6,18 +7,6 @@ import { expectValidReport } from "./schema.js";
 // may run while the file loads. The controls run in the same test as the cases that trigger.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
-
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Report {
-  testIntegrity: { signals: Signal[] };
-  messages: { code: string; level: string; text: string }[];
-}
 
 const linesOf = (text: string) => text.replace(/\n$/, "").split("\n");
 
@@ -45,9 +34,9 @@ async function run(path: string, base: string, head: string): Promise<Signal[]> 
       base: { files: [{ path, text: base }], dropped: [] },
       head: { files: [{ path, text: head }], dropped: [] },
     },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return (report as unknown as Report).testIntegrity.signals.filter((s) => String(s.id) === "TI09");
+  return report.testIntegrity.signals.filter((s) => String(s.id) === "TI09");
 }
 
 const PROJECT = '[project]\nname = "demo"\nversion = "1.0.0"\n';

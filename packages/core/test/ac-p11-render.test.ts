@@ -1,18 +1,11 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 // E3 item 24a part B (P11), AC-21. renderMarkdown() is loaded inside the test body and fixtures/policy-rules/p11/render/
 // is read there too: the AC test is written before the build adds rule P11 and its golden, so nothing the build adds
 // may run while this file loads.
-
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = Record<string, unknown> & { messages: Message[]; policy?: { violations: Violation[] } };
-
-interface Core {
-  renderMarkdown(report: Report): string;
-}
 
 const HOSTILE = "src/we`ird<!--|x.ts";
 // CORE-140: the hints are each code's fix.hint.
@@ -34,7 +27,7 @@ const live = (line: string) => line.replace(/(`+)[\s\S]*?\1/g, "").replace(/\\[\
 
 describe("the P11 violations and messages in the PR comment", { timeout: 60_000 }, () => {
   it("AC-21: the rendered report equals the golden; the Policy section lists the P11 path line and a path-less P11 line with the POLICY_P11 hint; Messages holds the incomplete message and hint but no POLICY_P11 text; the hostile path stays in one code span", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = await import("@pharn-ci/core");
     const report = JSON.parse(fixture("policy-rules/p11/render/report.json")) as Report;
     expectValidReport(report);
 

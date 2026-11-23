@@ -64,7 +64,7 @@ function documentedCodes(): string[] {
 }
 
 async function tables(): Promise<Required<Tables>> {
-  const { MESSAGE_FIXES, SIGNAL_FIXES } = (await import("../src/fix/table.js")) as unknown as Tables;
+  const { MESSAGE_FIXES, SIGNAL_FIXES } = await import("../src/fix/table.js");
   expect(MESSAGE_FIXES, "MESSAGE_FIXES is exported").toBeDefined();
   expect(SIGNAL_FIXES, "SIGNAL_FIXES is exported").toBeDefined();
   return { MESSAGE_FIXES: MESSAGE_FIXES ?? {}, SIGNAL_FIXES: SIGNAL_FIXES ?? {} };

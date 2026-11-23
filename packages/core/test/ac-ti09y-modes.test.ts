@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -9,17 +10,6 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const PATH = "vitest.config.ts";
 
 type Mode = "block" | "warn" | "off";
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Report {
-  testIntegrity: { signals: Signal[] };
-  messages: { code: string; level: string; text: string }[];
-}
 
 const linesOf = (text: string) => text.replace(/\n$/, "").split("\n");
 
@@ -69,9 +59,9 @@ async function run(mode: Mode, withSources: boolean): Promise<Report> {
           },
         }
       : {}),
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 const ti09 = (report: Report) => report.testIntegrity.signals.filter((s) => String(s.id) === "TI09");

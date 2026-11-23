@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { FIXTURES } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -13,16 +14,6 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const CODE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 const PATH = "src/new.test.ts";
 
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-}
-interface Report {
-  verdict: string;
-  messages: Message[];
-}
-
 async function run(diff: string, extra: Record<string, unknown>): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
@@ -34,9 +25,9 @@ async function run(diff: string, extra: Record<string, unknown>): Promise<Report
     repoFiles: [PATH, "src/cart.ts"],
     testIntegrityMode: { input: "block" },
     ...extra,
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 describe("CORE-50: an added test file that git shows as binary is named as a warning", () => {

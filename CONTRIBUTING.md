@@ -81,12 +81,13 @@ Example: a new `@pytest.mark` form the Python test index must read is one more c
 
 ### Typed tests
 
-`pnpm lint` typechecks tests: a package's `typecheck` script also runs its `tsconfig.test.json`, which extends the
-package's `tsconfig.json` and includes `test/` (node-io today; core, cli and action follow). Core's own
-`tsconfig.json` keeps `"types": []`, so `packages/core/src` stays pure; its test config is separate. In a test:
+`pnpm lint` typechecks tests: each package's `typecheck` script also runs its `tsconfig.test.json`, which includes
+`src/` and `test/` (all four packages: core, cli, action and node-io). The cli, action and node-io test configs extend
+the package's `tsconfig.json`. Core's extends `tsconfig.base.json` instead, since its tests use Node: core's own
+`tsconfig.json` keeps `"types": []`, so `packages/core/src` stays pure. In a test:
 
 - import report and input types from `@pharn-ci/core`, or from `../../core/src/<module>.js` for one it does not
-  export; never copy a type into the test;
+  export (core's own tests import from `../src/<module>.js`); never copy a type into the test;
 - no `as unknown as`: a dynamic `await import(...)` is typed already. Keep a cast only where the test builds a
   deliberately invalid or partial value, with a comment that says so.
 

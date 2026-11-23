@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { AgentSetupKind } from "../src/setup/scan.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport, validateReport } from "./schema.js";
 
@@ -53,10 +54,8 @@ describe("agent setup summary (agent-setup-inventory)", () => {
   });
 
   it("AC-9: maps each kind to its agent tools", async () => {
-    const mod = (await import("../src/setup/summary.js")) as unknown as {
-      summarizeAgentSetup(files: readonly { path: string; kind: string }[]): Summary;
-    };
-    const expected: Record<string, string[]> = {
+    const mod = await import("../src/setup/summary.js");
+    const expected: Partial<Record<AgentSetupKind, string[]>> = {
       "claude-md": ["claude-code"],
       "claude-local-md": ["claude-code"],
       "claude-settings": ["claude-code"],
@@ -80,7 +79,10 @@ describe("agent setup summary (agent-setup-inventory)", () => {
       "mcp-config": ["mcp"],
     };
     const actual = Object.fromEntries(
-      Object.keys(expected).map((kind) => [kind, mod.summarizeAgentSetup([{ path: "x", kind }]).tools]),
+      (Object.keys(expected) as AgentSetupKind[]).map((kind) => [
+        kind,
+        mod.summarizeAgentSetup([{ path: "x", kind }]).tools,
+      ]),
     );
     expect(actual).toEqual(expected);
   });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { MessageCode, Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { withoutFix } from "./v090-codes.js";
@@ -6,15 +7,6 @@ import { withoutFix } from "./v090-codes.js";
 // E3 item 24a part B (P11), AC-13. check() is loaded inside the test body and fixtures/policy-rules/p11/ is read there
 // too: the AC test is written before the build adds rule P11 and its fixtures, so nothing the build adds may run while
 // this file loads.
-
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = {
-  verdict: string;
-  messages: Message[];
-  policy?: { violations: Violation[] };
-  meta?: Record<string, unknown>;
-};
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const FETCHED_AT = "2026-10-26T12:00:00.000Z";
@@ -50,7 +42,7 @@ async function run(policy: unknown, agentPrFacts: unknown): Promise<Report> {
     agentPrFacts,
   } as never);
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 // fix-hints (H6): every message and finding now carries a `fix`; the pinned literals are unchanged, so these read without it.
@@ -86,7 +78,7 @@ describe("the AGENT_PR_DETECTION_INCOMPLETE message", { timeout: 60_000 }, () =>
       FACTS,
     );
     const codes = file.messages.map((m) => m.code);
-    const order = ["POLICY_P11", "AGENT_PR_DETECTION_INCOMPLETE", "POLICY_OVERRIDE_IGNORED"];
+    const order: MessageCode[] = ["POLICY_P11", "AGENT_PR_DETECTION_INCOMPLETE", "POLICY_OVERRIDE_IGNORED"];
     for (const code of order)
       expect(
         codes.filter((c) => c === code),

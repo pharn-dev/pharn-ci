@@ -8,16 +8,6 @@ import { expectValidReport } from "./schema.js";
 
 const CODE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-}
-interface Report {
-  verdict: string;
-  messages: Message[];
-}
-
 /** A `--unified=0` diff that adds one assertion to the existing test file `src/app.test.ts`. */
 const MODIFIES_TEST = `${[
   "diff --git a/src/app.test.ts b/src/app.test.ts",
@@ -41,7 +31,7 @@ describe("block mode with test sources unavailable on both sides", () => {
       repoFiles: ["src/app.test.ts", "src/app.ts"],
       testIntegrityMode: { input: "block" },
       testSources: unavailableTestSources("the base commit is not in the checkout"),
-    } as unknown as Parameters<typeof check>[0]) as unknown as Report;
+    });
     expectValidReport(report);
 
     const unavailable = report.messages.filter((m) => m.code === CODE);

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import type { Message } from "../src/report.js";
 import { codeRow } from "./codeTable.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -19,13 +20,6 @@ const P11_HINT =
   "Ask a person to review or make the change to the paths the org policy protects from agent pull requests.";
 const INCOMPLETE_HINT = "Check that the token can read the pull request, its labels and its commits.";
 
-type Message = { level: string; code: string; text: string };
-type Report = Record<string, unknown> & { messages: Message[] };
-interface Core {
-  check(input: unknown): Report;
-  renderMarkdown(report: Report): string;
-}
-
 describe("the schema sentence and the hints for POLICY_P11 and AGENT_PR_DETECTION_INCOMPLETE", {
   timeout: 60_000,
 }, () => {
@@ -37,7 +31,7 @@ describe("the schema sentence and the hints for POLICY_P11 and AGENT_PR_DETECTIO
     const core = {
       ...(await import("@pharn-ci/core")),
       check: (await import("./text-coverage.js")).check,
-    } as unknown as Core;
+    };
     const report = core.check({
       version: "0.1.0",
       coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

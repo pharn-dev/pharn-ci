@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Message } from "../src/report.js";
 import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -11,7 +12,6 @@ import { expectValidReport } from "./schema.js";
 // once. The records here carry no layer, which only P09 reads.
 
 type Ignored = { setting: string; reason: "looser" | "not-allowed" };
-type Message = { level: string; code: string; text: string };
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
@@ -56,7 +56,7 @@ async function checkWith(extra: Record<string, unknown>) {
     ...extra,
   } as never);
   expectValidReport(report);
-  return report as unknown as { messages: Message[] };
+  return report;
 }
 
 const APP = { source: "app", version: 3, fetchedAt: "2026-10-26T12:00:00.000Z", document: { version: 1 } };

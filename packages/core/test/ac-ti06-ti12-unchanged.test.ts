@@ -2,10 +2,13 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
+import type { TestSourceFile as SourceFile, TestSources } from "../src/testSources.js";
 import { withCore95Ti14Before } from "./core95-ti14.js";
 import { exerciseMessages, withoutExerciseCheck } from "./exercise-repin.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 import { withoutFix } from "./v090-codes.js";
 
 // check() and the core entry point are loaded inside each test body: the AC tests are written before TI06 and TI12
@@ -103,15 +106,6 @@ const NEW_CODES = ["TEST_INTEGRITY_TI06", "TEST_INTEGRITY_TI12"];
 const asFile = (report: unknown) => `${JSON.stringify(report, null, 2)}\n`;
 const fixtureLines = (path: string) => fixture(path).trim().split("\n");
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
-interface Report {
-  testIntegrity: { signals: { id: string }[] };
-  messages: { code: string; level: string; text: string }[];
-}
-
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
 /** The `<logical path>.txt` files under one side of a case, as test-source files sorted by logical path. */
@@ -154,7 +148,6 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
     expect(typeof core.detectTI12, "TI12 exists, so its absence below is the inputs' doing").toBe("function");
     const { check } = await import("./text-coverage.js");
     const { parseConfig } = await import("../src/config.js");
-    type Input = Parameters<typeof check>[0];
 
     // The goldens, built as the test that owns each report.json builds them.
     const exclusionsConfig = parseConfig(fixture("golden-exclusions/ci.yml")) as {
@@ -167,7 +160,7 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
       threshold: 80,
       repoFiles: fixtureLines(`${dir}/files.txt`),
     });
-    const sets: Array<[string, Record<string, unknown>]> = [
+    const sets: Array<[string, TextCheckInput]> = [
       ["golden", { ...golden("golden"), coverage: { text: fixture("golden/coverage.info"), format: "lcov" } }],
       [
         "golden-cobertura",
@@ -196,7 +189,7 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
         },
       ],
     ];
-    const withText = {
+    const withText: TestSources = {
       base: { files: [{ path: "a.test.ts", text: 'it("a", () => { expect(1).toBe(1); });\n' }], dropped: [] },
       head: { files: [], dropped: [{ path: "c.test.ts", reason: "binary" }] },
     };
@@ -206,7 +199,7 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
         ["without sources", {}],
         ["with sources", { testSources: withText }],
       ] as const) {
-        const report = check({ ...input, ...extra } as unknown as Input);
+        const report = check({ ...input, ...extra });
         expectValidReport(report);
         // Re-pinned for A8 step 1 (exercise-repin.ts): with sources the tests-exercise check may add its one warn
         // message and testIntegrity.exercise; with those taken out the report is the golden byte for byte.
@@ -240,7 +233,7 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
           repoFiles: fixtureLines(existsSync(`${FIXTURES}${files}`) ? files : "test-files-deleted/files.txt"),
           exclude: excludeFor(name, text),
           testIntegrityMode: { input: "block" },
-        } as unknown as Input) as unknown as Report;
+        });
         expectValidReport(report);
         expectNoNewSignal(report, name);
         if (name === "TI01/pass-binary.diff") {
@@ -291,7 +284,7 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
           repoFiles: [...new Set([...head.map((f) => f.path), "src/cart.ts"])].sort(),
           testSources: { base: { files: base, dropped: [] }, head: { files: head, dropped: [] } },
           testIntegrityMode: { input: "block" },
-        } as unknown as Input) as unknown as Report;
+        });
         expectValidReport(report);
         expectNoNewSignal(report, `${dir}/${name}`);
         // Re-pinned for A8 step 1 (exercise-repin.ts): a case whose change edits a source file no changed test imports

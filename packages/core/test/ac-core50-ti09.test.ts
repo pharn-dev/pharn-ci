@@ -1,6 +1,8 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { TestIntegritySignal as Signal } from "../src/report.js";
+import type { TestSourceDrop, TestSourceDropReason } from "../src/testSources.js";
 import { FIXTURES } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -13,19 +15,9 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const PATH = "vitest.config.ts";
 const BINARY_LINE = `Binary files a/${PATH} and b/${PATH} differ`;
 
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Report {
-  testIntegrity: { signals: Signal[] };
-}
 interface Side {
   files: { path: string; text: string }[];
-  dropped: { path: string; reason: string }[];
+  dropped: TestSourceDrop[];
 }
 
 const byPath = (a: { path: string }, b: { path: string }) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
@@ -40,7 +32,7 @@ function readSide(dir: string): Side {
     const text = readFileSync(join(dir, name), "utf8");
     if (name.endsWith(".txt")) side.files.push({ path: name.slice(0, -".txt".length), text });
     else if (name.endsWith(".dropped"))
-      side.dropped.push({ path: name.slice(0, -".dropped".length), reason: text.trim() });
+      side.dropped.push({ path: name.slice(0, -".dropped".length), reason: text.trim() as TestSourceDropReason });
   }
   side.files.sort(byPath);
   side.dropped.sort(byPath);
@@ -67,9 +59,9 @@ async function ti09(diff: string, sources: { base: Side; head: Side }): Promise<
     repoFiles: ["src/cart.ts", ...sources.head.files.map((file) => file.path)].sort(),
     testIntegrityMode: { input: "block" },
     testSources: sources,
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return (report as unknown as Report).testIntegrity.signals.filter((s) => s.id === "TI09");
+  return report.testIntegrity.signals.filter((s) => s.id === "TI09");
 }
 
 const textOf = (side: Side, path: string) => side.files.find((f) => f.path === path)?.text;

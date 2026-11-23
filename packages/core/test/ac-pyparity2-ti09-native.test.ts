@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { TestIntegritySignal } from "../src/report.js";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -13,23 +15,10 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const TI09 = `${FIXTURES}test-integrity/TI09/`;
 const PATH = "pyproject.toml";
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
 interface Case {
   diff: string;
   base: SourceFile[];
   head: SourceFile[];
-}
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-}
-interface Report {
-  testIntegrity: { signals: Signal[] };
 }
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
@@ -93,6 +82,9 @@ function nativeValue(text: string, key: string): { line: number; value: string }
   return { line: (table[at] as { line: number }).line, value: value.trim() };
 }
 
+/** A signal as the assertion compares it: the id as a plain string. */
+type Signal = Pick<TestIntegritySignal, "severity" | "path" | "line"> & { id: string };
+
 async function run(c: Case): Promise<Signal[]> {
   const { check } = await import("./text-coverage.js");
   const report = check({
@@ -104,9 +96,9 @@ async function run(c: Case): Promise<Signal[]> {
     repoFiles: [...new Set([...c.head.map((f) => f.path), "src/cart.ts"])].sort(),
     testIntegrityMode: { input: "block" },
     testSources: { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return (report as unknown as Report).testIntegrity.signals
+  return report.testIntegrity.signals
     .filter((s) => String(s.id) === "TI09")
     .map((s) => ({ id: String(s.id), severity: s.severity, path: s.path, line: s.line }));
 }

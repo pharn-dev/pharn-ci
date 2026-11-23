@@ -1,15 +1,14 @@
 import { describe, expect, it } from "vitest";
-
 import { readCoverageChunks } from "../src/chunkInputs.js";
 import { parseCoverage, parseCoverageCounted } from "../src/coverage/index.js";
 import { renderMarkdown } from "../src/render/markdown.js";
+import type { Message } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 import { check } from "./text-coverage.js";
 
 const CODE = "COVERAGE_LINES_SKIPPED";
-
-type Message = { level: string; code: string; text: string };
 
 const skippedMessages = (report: { messages: readonly Message[] }) => report.messages.filter((m) => m.code === CODE);
 
@@ -25,14 +24,14 @@ const DIFF = [
   "",
 ].join("\n");
 
-const run = (coverage: unknown) =>
+const run = (coverage: TextCheckInput["coverage"]) =>
   check({
     version: "0.1.0",
     coverage,
     diff: { text: DIFF },
     repoFiles: ["src/math.ts"],
     threshold: null,
-  } as unknown as Parameters<typeof check>[0]);
+  });
 
 /** The text cut into chunks of `size` characters, as a stream. */
 async function* chunked(text: string, size: number): AsyncIterable<string> {
@@ -70,17 +69,17 @@ describe("counted parsers", () => {
 });
 
 describe("readCoverageChunks: skipped count", () => {
-  it.each([...LCOV_CASES.map(([p]) => [p, "lcov"]), ...COBERTURA_CASES.map(([p]) => [p, "cobertura"])] as const)(
-    "%s streamed in small chunks counts the same as parseCoverageCounted",
-    async (path, format) => {
-      const text = fixture(path);
-      const expected = parseCoverageCounted(text, format).skipped;
-      for (const size of [7, 64, 100_000]) {
-        const read = await readCoverageChunks(chunked(text, size), "auto");
-        expect(read.skipped, `${path} in chunks of ${size}`).toBe(expected);
-      }
-    },
-  );
+  it.each([
+    ...LCOV_CASES.map(([p]) => [p, "lcov"] as const),
+    ...COBERTURA_CASES.map(([p]) => [p, "cobertura"] as const),
+  ])("%s streamed in small chunks counts the same as parseCoverageCounted", async (path, format) => {
+    const text = fixture(path);
+    const expected = parseCoverageCounted(text, format).skipped;
+    for (const size of [7, 64, 100_000]) {
+      const read = await readCoverageChunks(chunked(text, size), "auto");
+      expect(read.skipped, `${path} in chunks of ${size}`).toBe(expected);
+    }
+  });
 
   it("reports 0 for an empty file", async () => {
     const read = await readCoverageChunks(chunked("", 8), "auto");

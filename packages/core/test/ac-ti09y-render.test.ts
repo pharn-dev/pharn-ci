@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -13,17 +14,6 @@ const DEFAULT_LABEL = "pharn/accepted";
 const CUSTOM_LABEL = "qa-approved";
 const FINDING = /^- \S+ \*\*(TI\d\d)\*\* `([^`]+)`/;
 
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Report {
-  testIntegrity: { signals: Signal[] };
-  messages: { code: string; level: string; text: string }[];
-}
 interface Pair {
   path: string;
   base: string;
@@ -66,9 +56,9 @@ async function buildReport(): Promise<Report> {
     repoFiles: [...PAIRS.map((p) => p.path), "src/cart.ts"].sort(),
     testIntegrityMode: { input: "block" },
     testSources: { base: { files: side("base"), dropped: [] }, head: { files: side("head"), dropped: [] } },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 /** The lines of the Test integrity section: from its heading to the line before the next `### ` heading. */

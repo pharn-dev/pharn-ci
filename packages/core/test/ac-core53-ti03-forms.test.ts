@@ -2,6 +2,8 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import type { pythonIndexFromRaw } from "../src/testIndex/pythonRaw.js";
+import type { TestIndex, TestIndexResult } from "../src/testIndex/types.js";
 import { expectValidReport } from "./schema.js";
 
 // CORE-53 (R2.4), the core side: the raw Python index output may carry the four optional block fields, the line pass
@@ -17,7 +19,7 @@ const CONDITIONAL = "A conditional skip was added; the test is skipped only wher
 const MODULE =
   "A module-level skip was added (pytest.importorskip, or pytest.skip with allow_module_level=True); every test of the file is skipped wherever it takes effect.";
 
-type Mapped = { available: true; results: unknown[] } | { available: false; reason: string; detail: string };
+type Mapped = ReturnType<typeof pythonIndexFromRaw>;
 
 interface RawBlock {
   kind: string;
@@ -54,7 +56,7 @@ async function fromRaw(tests: RawBlock[][]): Promise<Mapped> {
   return pythonIndexFromRaw(
     JSON.stringify(tests.map((list, id) => ({ id, parsed: true, normalized: "", tests: list, mocks: [] }))),
     tests.length,
-  ) as Mapped;
+  );
 }
 
 function sideFiles(dir: string): { path: string; text: string }[] {
@@ -69,7 +71,8 @@ async function ti03Of(name: string, base: RawBlock[], head: RawBlock[]) {
   const root = `${FIXTURES}test-integrity/python-switch-off/${name}/`;
   const mapped = await fromRaw([base, head]);
   if (!mapped.available) throw new Error(mapped.detail);
-  const [baseResult, headResult] = mapped.results;
+  // Two files in, two results out.
+  const [baseResult, headResult] = mapped.results as [TestIndexResult, TestIndexResult];
   const testSources = {
     base: { files: sideFiles(`${root}base`), dropped: [] },
     head: { files: sideFiles(`${root}head`), dropped: [] },
@@ -89,13 +92,11 @@ async function ti03Of(name: string, base: RawBlock[], head: RawBlock[]) {
       head: [{ path: PY, result: headResult }],
     },
     testIntegrityMode: { input: "block" },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return (
-    report as unknown as { testIntegrity: { signals: { id: string; severity: string; line: number }[] } }
-  ).testIntegrity.signals
+  return report.testIntegrity.signals
     .filter((s) => s.id === "TI03")
-    .map((s) => ({ severity: s.severity, line: s.line, detail: (s as unknown as { detail: string }).detail }));
+    .map((s) => ({ severity: s.severity, line: s.line, detail: s.detail }));
 }
 
 /** The base index of the shared base file: two tests, unskipped. */
@@ -107,7 +108,8 @@ describe("CORE-53: the raw Python index output may carry the optional switch-off
       [raw("test_a", 1, 2, { guarded: "if", emptyTable: true, removedAt: 7, moduleSkip: 3 }), raw("test_b", 4, 5)],
     ]);
     expect(mapped.available).toBe(true);
-    const [result] = (mapped as { results: { tests: Record<string, unknown>[] }[] }).results;
+    // Asserted available above; a parsed file has `tests`.
+    const [result] = (mapped as { results: TestIndex[] }).results;
     const [a, b] = result?.tests ?? [];
     expect(a).toMatchObject({ name: "test_a", guarded: "if", emptyTable: true, removedAt: 7, moduleSkip: 3 });
     expect(Object.keys(b ?? {})).not.toContain("guarded");

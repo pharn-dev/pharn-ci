@@ -11,18 +11,6 @@ const CART = "src/cart.test.ts";
 const TOTALS = "src/totals.test.ts";
 const HEADER = ['import { describe, expect, it } from "vitest";', 'import { total } from "./cart.js";', ""];
 
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Report {
-  testIntegrity: { signals: Signal[]; languages: string[] };
-  messages: { code: string; level: string; text: string }[];
-}
-
 /** A `--unified=0` diff of `path` that removes the base lines whose index `removed` holds (0-based). */
 function deletionDiff(path: string, baseLines: readonly string[], removed: ReadonlySet<number>): string {
   const out = [`diff --git a/${path} b/${path}`, "index 1111111..2222222 100644", `--- a/${path}`, `+++ b/${path}`];
@@ -107,7 +95,7 @@ describe("TI02 and TI05: at most 20 findings per file per signal", () => {
         },
       },
       testIntegrityMode: { input: "block" },
-    } as unknown as Parameters<typeof check>[0]) as unknown as Report;
+    });
     expectValidReport(report);
 
     const ti02 = report.testIntegrity.signals.filter((s) => String(s.id) === "TI02");

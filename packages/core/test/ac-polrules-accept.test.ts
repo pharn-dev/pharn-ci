@@ -1,24 +1,11 @@
 import { describe, expect, it } from "vitest";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 // E3 item 22 (policy rules), AC-14. check() and acceptTestIntegrity() are loaded inside the test body and
 // fixtures/policy-rules/ is read there too: the AC test is written before the build adds the rules and the fixtures,
 // so nothing the build adds may run while this file loads.
-
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = {
-  verdict: string;
-  messages: Message[];
-  testIntegrity: { verdict: string; signals: Array<{ severity: string }> };
-  policy?: { violations: Violation[] };
-};
-
-interface Core {
-  check(input: unknown): Report;
-  acceptTestIntegrity(report: Report, accepted: { label: string; by: string }): Report;
-}
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const ACCEPTED = { label: "pharn/accepted", by: "Reviewer-1" };
@@ -28,8 +15,8 @@ describe("the accept label and policy violations", { timeout: 60_000 }, () => {
     const core = {
       ...(await import("@pharn-ci/core")),
       check: (await import("./text-coverage.js")).check,
-    } as unknown as Core;
-    const run = (policy: unknown) => {
+    };
+    const run = (policy: ResolvedPolicy | undefined) => {
       const report = core.check({
         version: "0.1.0",
         coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

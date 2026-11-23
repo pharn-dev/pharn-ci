@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -6,14 +7,6 @@ import { expectValidReport } from "./schema.js";
 // fixtures/policy-rules/ is read there too: the AC test is written before the build adds the Policy section and the
 // fixtures, so nothing the build adds may run while this file loads. The reports use the golden inputs, so the
 // comment has a Test integrity section and a Messages section around the Policy section.
-
-type Message = { level: string; code: string; text: string };
-type Report = Record<string, unknown> & { messages: Message[] };
-
-interface Core {
-  check(input: unknown): Report;
-  renderMarkdown(report: Report, options?: { maxRows?: number }): string;
-}
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const HEADING = "### 📜 Policy";
@@ -44,8 +37,8 @@ describe("the Policy section header", { timeout: 60_000 }, () => {
     const core = {
       ...(await import("@pharn-ci/core")),
       check: (await import("./text-coverage.js")).check,
-    } as unknown as Core;
-    const run = (policy?: unknown) => {
+    };
+    const run = (policy?: ResolvedPolicy) => {
       const report = core.check({
         version: "0.1.0",
         coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
@@ -89,7 +82,7 @@ describe("the Policy section header", { timeout: 60_000 }, () => {
     expectPlacement(unavailableMd);
 
     const plain = run();
-    const handBuilt = { ...plain, policy: { source: "none", version: null, violations: [] } };
+    const handBuilt = { ...plain, policy: { source: "none" as const, version: null, violations: [] } };
     expectValidReport(handBuilt);
     const noneMd = core.renderMarkdown(handBuilt);
     expect(policySection(noneMd).slice(0, 3)).toEqual([HEADING, "", "No org policy"]);

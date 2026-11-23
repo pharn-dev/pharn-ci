@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Report, TestIntegritySignal as Signal } from "../src/report.js";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -14,30 +16,15 @@ const PATH = "src/cart.test.ts";
 const SOURCE = "src/cart.ts";
 
 type Mode = "block" | "warn" | "off";
-interface SourceFile {
-  path: string;
-  text: string;
-}
 interface Case {
   diff: string;
   base: SourceFile[];
   head: SourceFile[];
 }
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
 interface Mock {
   callee: string;
   specifier: string | null;
   line: number;
-}
-interface Report {
-  testIntegrity: { signals: Signal[] };
-  messages: { code: string; level: string; text: string }[];
 }
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
@@ -80,17 +67,15 @@ async function runCase(c: Case, mode: Mode): Promise<Report> {
     repoFiles: [...new Set([...c.head.map((f) => f.path), ...diffPaths(c.diff)])].sort(),
     testSources: { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } },
     testIntegrityMode: { input: mode },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 /** The file-level mocks of one fixture file, through the existing JS/TS test index. */
 async function mocksOf(file: SourceFile | undefined): Promise<Mock[]> {
   if (file === undefined) throw new Error("the fixture file is missing");
-  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
-    indexTestFile(path: string, text: string): { parsed: boolean; mocks?: Mock[] };
-  };
+  const core = await import("../src/testIndex/indexTestFile.js");
   const result = core.indexTestFile(file.path, file.text);
   if (!result.parsed) throw new Error(`the fixture ${file.path} does not parse: ${JSON.stringify(result)}`);
   return result.mocks ?? [];
@@ -134,7 +119,7 @@ describe("TI12: a mock of the module the change edits, in each mode", () => {
   }
 
   it("AC-8: in mode off the same change gives no TI12 signal and no TEST_INTEGRITY_TI12 message", async () => {
-    const core = (await import("../src/signals/ti12.js")) as unknown as Record<string, unknown>;
+    const core = await import("../src/signals/ti12.js");
     expect(typeof core.detectTI12, "TI12 exists, so its absence in mode off is the mode's doing").toBe("function");
     const { c } = await theCase();
     const report = await runCase(c, "off");

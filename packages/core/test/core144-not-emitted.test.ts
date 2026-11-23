@@ -2,12 +2,13 @@ import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import type { DiffFile } from "../src/diff/unified.js";
-import { type CheckInput, renderMarkdown, type StaleInstructionSources } from "../src/index.js";
+import { renderMarkdown, type StaleInstructionSources } from "../src/index.js";
+import type { Report } from "../src/report.js";
 import { runDiff, signalsOf } from "./ac-e1-fix-shared.js";
 import { codeRow } from "./codeTable.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
-import { check } from "./text-coverage.js";
+import { check, type TextCheckInput } from "./text-coverage.js";
 
 // CORE-144 (R7.11, decision Q6): TI15 and SI04 are no longer emitted. Their message codes stay in the schema, so an
 // older report that holds them still validates, and a policy that names TI15 still validates and is applied to the
@@ -58,7 +59,7 @@ describe("CORE-144: TI15 and SI04 are not emitted", () => {
       // The commit times SI04 read, as a caller before CORE-144 passed them: they are no longer part of the input.
       commitTimes: { head: 2_000_000_000, files: [{ path: "AGENTS.md", time: 1_000_000_000 }] },
     } as unknown as StaleInstructionSources;
-    const input: CheckInput = {
+    const input: TextCheckInput = {
       version: "0.12.0",
       coverage: { text: "SF:src/index.ts\nDA:1,1\nend_of_record\n", format: "lcov" },
       diff: { parsed: diff },
@@ -73,10 +74,8 @@ describe("CORE-144: TI15 and SI04 are not emitted", () => {
   });
 
   it("an older report that holds TI15 and SI04 still validates, and both codes are still documented", () => {
-    const older = JSON.parse(fixture("removed-signals/report-with-ti15-si04.json")) as {
-      messages: { code: string }[];
-      testIntegrity: { signals: { id: string }[] };
-      setupHealth: { stale: { id: string }[] };
+    const older = JSON.parse(fixture("removed-signals/report-with-ti15-si04.json")) as Report & {
+      setupHealth: NonNullable<Report["setupHealth"]>;
     };
     expectValidReport(older);
     expect(older.messages.map((m) => m.code)).toEqual(["TEST_INTEGRITY_TI15", "SETUP_STALE_SI04"]);
@@ -90,7 +89,7 @@ describe("CORE-144: TI15 and SI04 are not emitted", () => {
     expect(read("schema/report.v2.json")).toContain('"enum": ["SI01", "SI02", "SI03", "SI04"]');
 
     // The renderer does not throw on it; it lists no SI04 finding, since core emits none.
-    const markdown = renderMarkdown(older as unknown as Parameters<typeof renderMarkdown>[0]);
+    const markdown = renderMarkdown(older);
     expect(markdown).not.toContain("**SI04**");
   });
 

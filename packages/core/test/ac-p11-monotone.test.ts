@@ -1,26 +1,20 @@
 import { describe, expect, it } from "vitest";
+import type { AgentPrFacts } from "../src/agents.js";
+import type { PolicyFileBase } from "../src/policy/agents.js";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
+import type { PolicyAgents, PolicyDocument } from "../src/policy/types.js";
+import type { ReportMeta } from "../src/report.js";
 import { fixture } from "./helpers.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // E3 item 24a part B (P11), AC-12. detectAgentPr() and check() are loaded inside the test body: the AC test is written
 // before the build adds the listsIncomplete fact and the policy lists, so nothing the build adds may run while this
 // file loads. The inputs are generated from a fixed seed, so every run checks the same cases. Part A's monotone test
 // (ac-agentpr-monotone.test.ts) is a separate file and stays as it is.
 
-type Commit = { authorLogin: string | null; committerLogin: string | null; message: string };
-type Pr = {
-  author: { login: string; type: string } | null;
-  labels: string[];
-  commits: Commit[] | null;
-  commitsIncomplete?: boolean;
-};
-type Facts = { pr: Pr | null; labels?: string[]; extraLogins?: string[]; listsIncomplete?: boolean };
-type Detection = { isAgentPr: boolean; evidence: string[]; incomplete: string | null };
-type Report = { meta?: Record<string, unknown> };
-
-interface Core {
-  detectAgentPr(facts: Facts): Detection;
-  check(input: unknown): Report;
-}
+type Facts = AgentPrFacts;
+type Pr = NonNullable<Facts["pr"]>;
+type Commit = NonNullable<Pr["commits"]>[number];
 
 const SEED = 0x24ab_0011;
 const CASES = 400;
@@ -42,7 +36,7 @@ function generator(seed: number) {
   return { next, chance, pick, subset };
 }
 
-const AUTHORS = [
+const AUTHORS: NonNullable<Pr["author"]>[] = [
   { login: "octocat", type: "User" },
   { login: "someone", type: "User" },
   { login: "acme-agent", type: "User" },
@@ -116,7 +110,7 @@ const modification = (path: string) =>
     "@@ -2,0 +3 @@",
     "+x",
   ].join("\n");
-const META = {
+const META: ReportMeta = {
   event: "pull_request",
   repository: "pharn-dev/pharn-ci",
   repositoryId: 123,
@@ -130,7 +124,7 @@ const META = {
   upload: { status: "skipped" },
 };
 
-function genAgents(g: Gen): Record<string, unknown> {
+function genAgents(g: Gen): PolicyAgents {
   return {
     ...(g.chance(0.7) ? { labels: g.subset(LIST_LABELS) } : {}),
     ...(g.chance(0.7) ? { extra_logins: g.subset(LIST_LOGINS) } : {}),
@@ -139,15 +133,15 @@ function genAgents(g: Gen): Record<string, unknown> {
 }
 
 /** A generated policy and base: app or file, with lists, and for a file a base document, absent, unreadable or none. */
-function genPolicy(g: Gen): { policy: unknown; policyFileBase?: unknown; editsPolicy: boolean } {
-  const document = { version: 1, agents: genAgents(g) };
+function genPolicy(g: Gen): { policy: ResolvedPolicy; policyFileBase?: PolicyFileBase; editsPolicy: boolean } {
+  const document: PolicyDocument = { version: 1, agents: genAgents(g) };
   if (g.chance(0.5)) {
     return {
       policy: { source: "app", version: 3, fetchedAt: "2026-10-26T12:00:00.000Z", document },
       editsPolicy: false,
     };
   }
-  const bases = [
+  const bases: (PolicyFileBase | undefined)[] = [
     { kind: "document", document: { version: 1, agents: genAgents(g) } },
     { kind: "absent" },
     { kind: "unreadable" },
@@ -166,7 +160,7 @@ describe("agent PR detection with the policy lists: evidence only adds", { timeo
     const core = {
       ...(await import("@pharn-ci/core")),
       check: (await import("./text-coverage.js")).check,
-    } as unknown as Core;
+    };
     const g = generator(SEED);
 
     let agentCases = 0;
@@ -199,9 +193,9 @@ describe("agent PR detection with the policy lists: evidence only adds", { timeo
       while (facts.pr === null) facts = genFacts(g);
       const generated = genPolicy(g);
       const diffPaths = generated.editsPolicy ? [POLICY_PATH, "src/a.ts"] : ["src/a.ts"];
-      const input = {
+      const input: TextCheckInput = {
         version: "0.1.0",
-        coverage: { text: coverage, format: "lcov" },
+        coverage: { text: coverage, format: "lcov" as const },
         diff: { text: `${diffPaths.map(modification).join("\n")}\n` },
         repoRoot: "/home/runner/work/demo/demo",
         threshold: null,

@@ -15,18 +15,6 @@ const HEADER = ['import { describe, expect, it, vi } from "vitest";', 'import { 
 const NAMES = Array.from({ length: 22 }, (_, i) => String.fromCharCode(97 + i));
 const SOURCES = NAMES.map((n) => `src/part-${n}.ts`);
 
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Report {
-  testIntegrity: { signals: Signal[] };
-  messages: { code: string; level: string; text: string }[];
-}
-
 /** A `--unified=0` diff of `path` that replaces base line i (0-based) with head line i wherever they differ. */
 function replaceDiff(path: string, base: readonly string[], head: readonly string[]): string {
   const out = [`diff --git a/${path} b/${path}`, "index 1111111..2222222 100644", `--- a/${path}`, `+++ b/${path}`];
@@ -106,7 +94,7 @@ describe("TI06 and TI12: at most 20 findings per file per signal", () => {
         },
       },
       testIntegrityMode: { input: "block" },
-    } as unknown as Parameters<typeof check>[0]) as unknown as Report;
+    });
     expectValidReport(report);
 
     const ti06 = report.testIntegrity.signals.filter((s) => String(s.id) === "TI06");

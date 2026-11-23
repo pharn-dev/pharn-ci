@@ -9,16 +9,6 @@ import { expectValidReport } from "./schema.js";
 const CODE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 const PATH = "src/deep.test.ts";
 
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-}
-interface Report {
-  verdict: string;
-  messages: Message[];
-}
-
 const BASE = [
   'import { expect, it } from "vitest";',
   'import { total } from "./cart.js";',
@@ -37,9 +27,7 @@ describe("CORE-69: a modified test file nested too deeply at HEAD", () => {
   it("AC-1: a modified src/deep.test.ts whose head adds an array literal nested deeper than the test index walks gives one TEST_INTEGRITY_INDEX_UNAVAILABLE error naming it with too-deep, and the verdict is fail", async () => {
     const deepLine = `const deep = ${"[".repeat(2000)}${"]".repeat(2000)};`;
     const head = `${BASE}${deepLine}\n`;
-    const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
-      indexTestFile(path: string, text: string): { parsed: boolean; reason?: string };
-    };
+    const core = await import("../src/testIndex/indexTestFile.js");
     expect(core.indexTestFile(PATH, BASE).parsed, "the base text indexes").toBe(true);
     expect(core.indexTestFile(PATH, head), "the head text is refused as too deep").toEqual({
       parsed: false,
@@ -68,9 +56,9 @@ describe("CORE-69: a modified test file nested too deeply at HEAD", () => {
         base: { files: [{ path: PATH, text: BASE }], dropped: [] },
         head: { files: [{ path: PATH, text: head }], dropped: [] },
       },
-    } as unknown as Parameters<typeof check>[0]);
+    });
     expectValidReport(report);
-    const r = report as unknown as Report;
+    const r = report;
 
     const messages = r.messages.filter((m) => m.code === CODE);
     expect(messages, `one ${CODE} message`).toHaveLength(1);

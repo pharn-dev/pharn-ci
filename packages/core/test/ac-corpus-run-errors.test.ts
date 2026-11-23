@@ -146,7 +146,14 @@ const fixture = (): Fixture => {
 
 const runCorpus = (
   fx: Fixture,
-  opts: { corpus: string; cache?: string; out: string; cli?: string; extra?: string[]; envCache?: string },
+  opts: {
+    corpus: string;
+    cache?: string;
+    out: string;
+    cli?: string | undefined;
+    extra?: string[] | undefined;
+    envCache?: string;
+  },
 ) =>
   spawnSync(
     process.execPath,

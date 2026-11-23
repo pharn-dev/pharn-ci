@@ -4,10 +4,9 @@ import { describe, expect, it } from "vitest";
 // file loads before the build; one `it` per AC.
 
 type Classify = (path: string) => string | null;
-type Rule = { kind: string; matches(path: string): boolean };
 
 async function classifier(): Promise<Classify> {
-  const mod = (await import("../src/setup/scan.js")) as unknown as { classifySetupPath: Classify };
+  const mod = await import("../src/setup/scan.js");
   return mod.classifySetupPath;
 }
 
@@ -112,10 +111,7 @@ describe("agent setup classification (agent-setup-inventory)", () => {
   });
 
   it("AC-5: keeps every previous match and non-match, decided by the first matching rule", async () => {
-    const mod = (await import("../src/setup/scan.js")) as unknown as {
-      classifySetupPath: Classify;
-      SETUP_RULES: readonly Rule[];
-    };
+    const mod = await import("../src/setup/scan.js");
     const previous: Record<string, string> = {
       "CLAUDE.md": "claude-md",
       "packages/web/CLAUDE.md": "claude-md",

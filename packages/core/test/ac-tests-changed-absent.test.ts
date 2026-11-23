@@ -1,9 +1,12 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
+import type { TestSourceFile as SourceFile, TestSources } from "../src/testSources.js";
 import { exerciseMessages, withoutExerciseCheck } from "./exercise-repin.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // check(), the config parser and the fixtures are loaded inside each test body: the AC tests are written before the
 // tests-changed summary exists, so nothing that depends on it may run while the file loads. Each test first shows a
@@ -15,13 +18,6 @@ const CART = "src/cart.test.ts";
 const OLD = "src/old.test.ts";
 
 type Mode = "block" | "warn" | "off";
-interface SourceFile {
-  path: string;
-  text: string;
-}
-interface Report {
-  testIntegrity: { changes?: unknown };
-}
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 const asFile = (report: unknown) => `${JSON.stringify(report, null, 2)}\n`;
@@ -61,9 +57,9 @@ async function run(input: {
       ? {}
       : { testSources: { base: { files: input.base, dropped: [] }, head: { files: input.head, dropped: [] } } }),
     testIntegrityMode: { input: input.mode },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 const BASE_CART = [
@@ -158,7 +154,6 @@ describe("testIntegrity.changes is absent unless a test changed", () => {
     // Every whole-report golden, built as the test that owns each report.json builds it, with and without sources.
     const { check } = await import("./text-coverage.js");
     const { parseConfig } = await import("../src/config.js");
-    type Input = Parameters<typeof check>[0];
     const exclusionsConfig = parseConfig(fixture("golden-exclusions/ci.yml")) as {
       coverage?: { exclude?: string[]; threshold?: number };
     };
@@ -169,7 +164,7 @@ describe("testIntegrity.changes is absent unless a test changed", () => {
       threshold: 80,
       repoFiles: lines(`${dir}/files.txt`),
     });
-    const sets: Array<[string, Record<string, unknown>]> = [
+    const sets: Array<[string, TextCheckInput]> = [
       ["golden", { ...golden("golden"), coverage: { text: fixture("golden/coverage.info"), format: "lcov" } }],
       [
         "golden-cobertura",
@@ -212,7 +207,7 @@ describe("testIntegrity.changes is absent unless a test changed", () => {
       sets.map(([dir]) => dir),
       "every fixtures/golden*/report.json is checked",
     ).toEqual(withGoldens);
-    const withText = {
+    const withText: TestSources = {
       base: { files: [{ path: "a.test.ts", text: 'it("a", () => { expect(1).toBe(1); });\n' }], dropped: [] },
       head: { files: [], dropped: [{ path: "c.test.ts", reason: "binary" }] },
     };
@@ -222,9 +217,9 @@ describe("testIntegrity.changes is absent unless a test changed", () => {
         ["without sources", {}],
         ["with sources", { testSources: withText }],
       ] as const) {
-        const report = check({ ...input, ...extra } as unknown as Input);
+        const report = check({ ...input, ...extra });
         expectValidReport(report);
-        expect("changes" in (report as unknown as Report).testIntegrity, `${dir} ${label}`).toBe(false);
+        expect("changes" in report.testIntegrity, `${dir} ${label}`).toBe(false);
         // Re-pinned for A8 step 1 (exercise-repin.ts): with sources the tests-exercise check may add its one warn
         // message and testIntegrity.exercise; with those taken out the report is the golden byte for byte.
         if (label === "without sources") expect(exerciseMessages(report), `${dir} ${label}`).toEqual([]);

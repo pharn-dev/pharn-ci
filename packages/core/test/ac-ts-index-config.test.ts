@@ -6,9 +6,7 @@ import { fixture } from "./helpers.js";
 // each holds the shape AC-7 names.
 
 async function indexTestFile(path: string, text: string): Promise<unknown> {
-  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
-    indexTestFile: (p: unknown, t: unknown) => unknown;
-  };
+  const core = await import("../src/testIndex/indexTestFile.js");
   return core.indexTestFile(path, text);
 }
 

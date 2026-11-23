@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { TestBlock as Block } from "../src/testIndex/types.js";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -11,29 +13,6 @@ import { expectValidReport } from "./schema.js";
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const PATH = "src/queue.test.ts";
-
-interface SourceFile {
-  path: string;
-  text: string;
-}
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Block {
-  kind: string;
-  path: string[];
-  line: number;
-  bodyHash: string;
-}
-interface Report {
-  verdict: string;
-  testIntegrity: { verdict: string; signals: Signal[]; languages: string[] };
-  messages: { code: string; level: string; text: string }[];
-}
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
@@ -56,9 +35,7 @@ function sideFiles(dir: string): SourceFile[] {
 async function testsOf(files: SourceFile[], path: string): Promise<Block[]> {
   const file = files.find((f) => f.path === path);
   if (file === undefined) throw new Error(`the fixture has no text for ${path}`);
-  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
-    indexTestFile(path: string, text: string): { parsed: boolean; tests?: Block[] };
-  };
+  const core = await import("../src/testIndex/indexTestFile.js");
   const result = core.indexTestFile(file.path, file.text);
   if (!result.parsed) throw new Error(`the fixture ${file.path} does not parse: ${JSON.stringify(result)}`);
   return (result.tests ?? []).filter((b) => b.kind === "test");
@@ -102,7 +79,7 @@ describe("TI02 precision: a suite rewritten under reworded names still blocks", 
       repoFiles: [...new Set([...head.map((f) => f.path), "src/queue.ts"])].sort(),
       testSources: { base: { files: base, dropped: [] }, head: { files: head, dropped: [] } },
       testIntegrityMode: { input: "block" },
-    } as unknown as Parameters<typeof check>[0]) as unknown as Report;
+    });
     expectValidReport(report);
 
     const ti02 = report.testIntegrity.signals.filter((s) => String(s.id) === "TI02");

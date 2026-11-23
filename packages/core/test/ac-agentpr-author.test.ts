@@ -1,28 +1,13 @@
 import { describe, expect, it } from "vitest";
+import type { AgentPrFacts as Facts } from "../src/agents.js";
 
 // detectAgentPr is loaded inside each test body: the AC tests are written before the build adds it, so nothing the
 // build adds may run while this file loads. The commits are held human; only the pull request's author varies.
 
-type Author = { login: string; type: string } | null;
-type Commit = { authorLogin: string | null; committerLogin: string | null; message: string };
-type Facts = {
-  pr: { author: Author; labels: string[]; commits: Commit[] | null; commitsIncomplete?: boolean } | null;
-  labels?: string[];
-  extraLogins?: string[];
-};
-type Detection = {
-  isAgentPr: boolean;
-  agentHint: string | null;
-  evidence: string[];
-  incomplete: string | null;
-  coAuthors: string[];
-};
+type Author = NonNullable<Facts["pr"]>["author"];
+type Commit = NonNullable<NonNullable<Facts["pr"]>["commits"]>[number];
 
-interface DetectModule {
-  detectAgentPr(facts: Facts): Detection;
-}
-
-const load = async () => (await import("../src/index.js")) as unknown as DetectModule;
+const load = async () => await import("../src/index.js");
 
 const HUMAN_COMMITS: Commit[] = [
   { authorLogin: "octocat", committerLogin: "octocat", message: "Fix the parser\n" },
@@ -42,7 +27,7 @@ describe("agent-pr-detection: the pull request's author", { timeout: 60_000 }, (
       { login: "some-app", type: "Bot" },
       { login: "dependabot[bot]", type: "Bot" },
       { login: "renovate[bot]", type: "User" },
-    ]) {
+    ] as const) {
       const detection = detectAgentPr(withAuthor(author));
       expect(detection.isAgentPr, author.login).toBe(true);
       expect(detection.evidence, author.login).toEqual(["author-bot"]);

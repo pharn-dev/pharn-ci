@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { TestIntegritySignal as Signal } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -7,14 +8,6 @@ import { expectValidReport } from "./schema.js";
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const REPO_FILES = ["package.json", "src/cart.ts", "src/cart.cts", "src/cart.test.ts", "src/cart.spec.cts"];
-
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
 
 /** One hunk of a `--unified=0` diff: the first old and new line of the change, the removed and the added lines. */
 type Hunk = [oldStart: number, newStart: number, removed: string[], added: string[]];
@@ -46,7 +39,7 @@ async function ti03(path: string): Promise<Signal[]> {
     testIntegrityMode: { input: "block" },
   } as Parameters<typeof check>[0]);
   expectValidReport(report);
-  return (report.testIntegrity.signals as unknown as Signal[]).filter((s) => String(s.id) === "TI03");
+  return report.testIntegrity.signals.filter((s) => String(s.id) === "TI03");
 }
 
 describe("check(): TI03 in a .spec.cts test file", () => {

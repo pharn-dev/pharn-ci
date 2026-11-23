@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // CORE-69. check(), renderMarkdown() and withAcceptLabel() are loaded inside the test body: the AC test is written
 // before the comment hint names the accept label on the new per-file and truncation errors, so nothing the build
@@ -10,17 +12,6 @@ import { expectValidReport } from "./schema.js";
 const MARKER = "CORE69-MARKER-7f3a";
 const UNAVAILABLE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 const TRUNCATED = "TEST_INTEGRITY_TEXT_TRUNCATED";
-
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-  fix?: { hint?: string };
-}
-interface Report {
-  verdict: string;
-  messages: Message[];
-}
 
 const BASE = [
   'import { expect, it } from "vitest";',
@@ -49,7 +40,10 @@ const readable = (path: string, base: string, head: string) => ({
   head: { files: [{ path, text: head }], dropped: [] },
 });
 
-async function run(input: Record<string, unknown>): Promise<Report> {
+/** The check() fields a case sets: the diff, and any field it overrides. */
+type CheckFields = Pick<TextCheckInput, "diff"> & Partial<TextCheckInput>;
+
+async function run(input: CheckFields): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -66,9 +60,9 @@ async function run(input: Record<string, unknown>): Promise<Report> {
     ],
     testIntegrityMode: { input: "block" },
     ...input,
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 /** The `  - Hint:` line under the message line that names `code` in the rendered comment. */
@@ -125,7 +119,7 @@ describe("CORE-69: the new errors leak no file text, carry a fix hint, and offer
         head: { files: [], dropped: [{ path: "src/a.test.ts", reason: "too-large" }] },
       },
     });
-    const relabelled = withAcceptLabel(structuredClone(ac1) as never, "team/ok") as unknown as Report;
+    const relabelled = withAcceptLabel(structuredClone(ac1) as never, "team/ok");
     expectValidReport(relabelled);
 
     const cases = [

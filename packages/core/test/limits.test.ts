@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
+import type { TestBlock as Block } from "../src/testIndex/types.js";
 import { MAX_TEST_SOURCE_FILE_BYTES } from "../src/testSources.js";
 import { measureGrowth, threadCpuMs } from "./growth.js";
 
 // indexTestFile is loaded inside each test body: the AC tests are written before the test index exists, so nothing
 // the build adds may run while the file loads. All timing and heap measurement lives here, never in packages/core/src.
 
-type Block = { kind: string; assertionCount: number };
 type Result = { parsed: true; tests: Block[] } | { parsed: false; reason: string };
-type IndexFn = (path: unknown, text: unknown) => unknown;
+type IndexFn = typeof import("../src/testIndex/indexTestFile.js")["indexTestFile"];
 
 async function loadIndexTestFile(): Promise<IndexFn> {
-  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as { indexTestFile: IndexFn };
+  const core = await import("../src/testIndex/indexTestFile.js");
   if (typeof core.indexTestFile !== "function") throw new Error("indexTestFile is not exported from @pharn-ci/core");
   return core.indexTestFile;
 }

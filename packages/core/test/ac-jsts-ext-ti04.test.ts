@@ -9,14 +9,6 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const PATH = "src/cart.test.mts";
 const REPO_FILES = ["package.json", "src/cart.mts", PATH];
 
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-
 /** One hunk of a `--unified=0` diff: the first old and new line of the change, the removed and the added lines. */
 type Hunk = [oldStart: number, newStart: number, removed: string[], added: string[]];
 
@@ -45,7 +37,7 @@ describe("check(): TI04 in a .test.mts test file", () => {
     } as Parameters<typeof check>[0]);
     expectValidReport(report);
 
-    const signals = (report.testIntegrity.signals as unknown as Signal[]).filter((s) => String(s.id) === "TI04");
+    const signals = report.testIntegrity.signals.filter((s) => String(s.id) === "TI04");
     expect(signals).toHaveLength(1);
     expect(signals[0]?.severity).toBe("block");
     expect(signals[0]?.path).toBe(PATH);

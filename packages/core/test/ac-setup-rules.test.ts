@@ -4,8 +4,6 @@ import { fixture } from "./helpers.js";
 // AC test for agent-setup-inventory (AC-7). The target and the fixture are read inside the test body
 // so the file loads before the build.
 
-type Rule = { kind: string; matches(path: string): boolean };
-
 const ALL_KINDS = [
   "agents-md",
   "aider-config",
@@ -45,10 +43,7 @@ const ALL_KINDS = [
 
 describe("agent setup rule table (agent-setup-inventory)", () => {
   it("AC-7: matches every fixture path with exactly one rule and scans all 34 kinds", async () => {
-    const mod = (await import("../src/setup/scan.js")) as unknown as {
-      SETUP_RULES: readonly Rule[];
-      scanAgentSetup(paths: readonly string[]): { files: { path: string; kind: string }[] };
-    };
+    const mod = await import("../src/setup/scan.js");
     const paths = fixture("setup/all-kinds.txt").trim().split("\n");
     expect(paths.length).toBeGreaterThanOrEqual(ALL_KINDS.length);
 

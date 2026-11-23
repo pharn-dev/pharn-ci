@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { runDiff } from "./ac-e1-fix-shared.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -50,8 +51,6 @@ const DIFF =
   add("src/discount.test.ts", [`  expect(price("${SUMMER}")).toBe(0);`]) +
   add("src/discount.ts", [`  if (code === "${SUMMER}") return 0;`]) +
   TI16_ONLY;
-
-type Report = Awaited<ReturnType<typeof runDiff>>;
 
 const severities = (report: Report, id: string) => [
   ...new Set(report.testIntegrity.signals.filter((s) => String(s.id) === id).map((s) => String(s.severity))),

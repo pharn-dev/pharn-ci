@@ -1,18 +1,13 @@
 import { describe, expect, it } from "vitest";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
+import type { PolicyDocument } from "../src/policy/types.js";
+import type { ReportPolicyViolation as Violation } from "../src/report.js";
 import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
 
 // E3 item 23 (policy settings), AC-20. evaluatePolicyRules() and the cap constants are loaded inside the test body,
 // and item 22's fixtures/policy-rules/ are read there too: the AC test is written before the build extends the rules,
 // so nothing the build adds may run while this file loads.
-
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Evaluation = { violations: Violation[]; omitted: Record<string, number>; lowered: string[] };
-interface Core {
-  evaluatePolicyRules(input: unknown): Evaluation;
-  parseUnifiedDiff(text: string): unknown[];
-  MAX_RULE_VIOLATIONS: number;
-}
 
 /** By id, then path (null first), then line (null first, ascending), then detail, in code-unit order. */
 const order = (a: Violation, b: Violation) =>
@@ -21,7 +16,12 @@ const order = (a: Violation, b: Violation) =>
   (a.line === b.line ? 0 : a.line === null ? -1 : b.line === null ? 1 : a.line - b.line) ||
   byCodeUnit(a.detail, b.detail);
 
-const FILE = (document: unknown) => ({ source: "file", version: null, path: "policy/org.json", document });
+const FILE = (document: PolicyDocument): ResolvedPolicy => ({
+  source: "file",
+  version: null,
+  path: "policy/org.json",
+  document,
+});
 const allowFile = (rules: string[]) =>
   `{\n  "permissions": {\n    "allow": [\n${rules.map((r) => `      ${JSON.stringify(r)}`).join(",\n")}\n    ]\n  }\n}\n`;
 
@@ -30,7 +30,7 @@ describe("evaluatePolicyRules: lines, order and the per-rule cap", { timeout: 60
     const core = {
       ...(await import("../src/diff/unified.js")),
       ...(await import("../src/policy/rules/evaluate.js")),
-    } as unknown as Core;
+    };
     expect(core.MAX_RULE_VIOLATIONS).toBe(50);
     // CORE-123 (R5.6): the MAX_P08_VIOLATIONS alias of the same cap is gone; P08 is capped by MAX_RULE_VIOLATIONS.
     expect(Object.hasOwn(core, "MAX_P08_VIOLATIONS")).toBe(false);
@@ -44,7 +44,7 @@ describe("evaluatePolicyRules: lines, order and the per-rule cap", { timeout: 60
 
     // P01, P08, P09 and P02/P03 together. The root file's two P02 violations differ in line and in detail, in
     // opposite orders: the line decides.
-    const document = {
+    const document: PolicyDocument = {
       version: 1,
       setup: {
         ...JSON.parse(fixture("policy-rules/p01-violates/policy.json")).setup,

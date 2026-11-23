@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { PolicySeverity } from "../src/policy/types.js";
 import {
   AGENT_FACTS,
   appPolicy,
@@ -108,7 +109,7 @@ describe("org policy rule P14: where it applies", () => {
 describe("org policy rule P14: severity", () => {
   it("block by default; an app policy may set warn, info or off", () => {
     const document = policyFixture("files/policy.json");
-    const withRule = (rule: string) => appPolicy({ ...document, policy: { rules: { P14: rule } } });
+    const withRule = (rule: PolicySeverity) => appPolicy({ ...document, policy: { rules: { P14: rule } } });
 
     const warned = runP14({ diff: "files/over-cap.diff", policy: withRule("warn") });
     expect(p14(warned).map((v) => v.severity)).toEqual(["warn"]);
@@ -136,7 +137,7 @@ describe("org policy rule P14: severity", () => {
   });
 
   it("a policy file cannot set warn either: the rule stays at block", () => {
-    const document = { ...policyFixture("files/policy.json"), policy: { rules: { P14: "warn" } } };
+    const document = { ...policyFixture("files/policy.json"), policy: { rules: { P14: "warn" as const } } };
     const report = runP14({ diff: "files/over-cap.diff", policy: filePolicy(document) });
     expect(p14(report).map((v) => v.severity)).toEqual(["block"]);
   });

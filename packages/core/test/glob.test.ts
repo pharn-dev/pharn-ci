@@ -8,7 +8,7 @@ type Match = (pattern: string, path: string) => boolean;
 
 async function loadMatchGlob(): Promise<Match> {
   const core = await import("../src/glob.js");
-  return (core as unknown as { matchGlob: Match }).matchGlob;
+  return core.matchGlob;
 }
 
 describe("matchGlob", () => {
@@ -39,9 +39,7 @@ describe("matchGlob", () => {
   });
 
   it("AC-2: accepts ./src/** as src/** and rejects unsupported patterns with a ConfigError naming them", async () => {
-    const core = (await import("../src/index.js")) as unknown as {
-      parseExcludePattern: (pattern: string, label?: string) => string;
-    };
+    const core = await import("../src/index.js");
     const { ConfigError } = await import("../src/config.js");
     const matchGlob = await loadMatchGlob();
     const { parseExcludePattern } = core;

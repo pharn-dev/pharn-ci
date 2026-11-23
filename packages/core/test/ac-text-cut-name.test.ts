@@ -11,9 +11,7 @@ describe("test index: the 500-unit name cut", () => {
     expect(name.length, "the name is 501 code units").toBe(501);
     expect(name.codePointAt(499), "units 499 and 500 are one surrogate pair").toBe(0x1f600);
 
-    const { cutName } = (await import("../src/testIndex/text.js")) as unknown as {
-      cutName: (name: string) => string;
-    };
+    const { cutName } = await import("../src/testIndex/text.js");
     const kept = cutName(name);
     expect(LONE_SURROGATE.test(kept), "the kept name holds no lone surrogate").toBe(false);
     expect(kept.length, "the kept name is 499 code units").toBe(499);

@@ -47,7 +47,7 @@ function run(dir: string) {
     repoFiles: [...new Set([...head.map((f) => f.path), "src/cart.ts"])].sort(),
     testSources: { base: { files: base, dropped: [] }, head: { files: head, dropped: [] } },
     testIntegrityMode: { input: "block" },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report;
 }

@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 // imported inside each test body so the file loads before the build; one `it` per AC.
 
 type Classify = (path: string) => string | null;
-type Rule = { kind: string; matches(path: string): boolean };
 
 const NEW_KINDS = [
   "claude-rule",
@@ -23,7 +22,7 @@ const NEW_KINDS = [
 ] as const;
 
 async function classifier(): Promise<Classify> {
-  const mod = (await import("../src/setup/scan.js")) as unknown as { classifySetupPath: Classify };
+  const mod = await import("../src/setup/scan.js");
   return mod.classifySetupPath;
 }
 
@@ -147,10 +146,7 @@ describe("agent setup classification (ai-agnostic-inventory)", () => {
   });
 
   it("AC-8: keeps every previous match and non-match in the rule table that now carries the 13 new kinds", async () => {
-    const mod = (await import("../src/setup/scan.js")) as unknown as {
-      classifySetupPath: Classify;
-      SETUP_RULES: readonly Rule[];
-    };
+    const mod = await import("../src/setup/scan.js");
 
     // "After this change": the rule table carries every new kind.
     expect(Array.isArray(mod.SETUP_RULES)).toBe(true);

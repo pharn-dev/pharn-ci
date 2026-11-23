@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { FIXTURES } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -11,24 +12,6 @@ import { expectValidReport } from "./schema.js";
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const DELETED = "Test file deleted; git shows it as binary, so its text was not read.";
 const RENAMED = "Test file renamed away; git shows it as binary, so its text was not read.";
-
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-}
-interface Report {
-  verdict: string;
-  messages: Message[];
-  testIntegrity: { signals: Signal[] };
-}
 
 interface Entry {
   oldPath: string;
@@ -62,9 +45,9 @@ async function run(diff: string, mode: "block" | "warn" | "off", repoFiles: stri
     threshold: null,
     repoFiles,
     testIntegrityMode: { input: mode },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 const ti01 = (report: Report) => report.testIntegrity.signals.filter((s) => s.id === "TI01");

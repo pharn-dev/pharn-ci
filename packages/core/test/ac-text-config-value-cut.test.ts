@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { TestIntegritySignal as Signal } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -10,15 +11,6 @@ import { expectValidReport } from "./schema.js";
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const PATH = "vitest.config.ts";
 const LIMIT = 80;
-
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  detail: string;
-  base?: string;
-  head?: string;
-}
 
 /** A high surrogate not followed by a low one, or a low surrogate not preceded by a high one. */
 const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
@@ -67,9 +59,9 @@ async function run(baseInclude: string[], headInclude: string[]): Promise<Signal
       base: { files: [{ path: PATH, text: base }], dropped: [] },
       head: { files: [{ path: PATH, text: head }], dropped: [] },
     },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return (report.testIntegrity.signals as unknown as Signal[]).filter((s) => String(s.id) === "TI09");
+  return report.testIntegrity.signals.filter((s) => String(s.id) === "TI09");
 }
 
 function expectCutValue(value: string | undefined, label: string) {

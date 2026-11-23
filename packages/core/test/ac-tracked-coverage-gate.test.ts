@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -10,9 +11,6 @@ import { expectValidReport } from "./schema.js";
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const COVERAGE = "coverage/lcov.info";
 const repoFiles = fixture("tracked-coverage/files.txt").trim().split("\n");
-
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[] };
 
 const tracked = (report: Report) => report.messages.filter((message) => message.code === "COVERAGE_FILE_TRACKED");
 
@@ -38,7 +36,7 @@ async function run(options: {
     repoRoot: REPO_ROOT,
     threshold: options.threshold,
     repoFiles,
-  } as Parameters<typeof check>[0]) as unknown as Report;
+  } as Parameters<typeof check>[0]);
   expectValidReport(report);
   return report;
 }
@@ -128,7 +126,7 @@ describe("COVERAGE_FILE_TRACKED under a threshold (CORE-92)", () => {
       repoRoot: REPO_ROOT,
       threshold: 80,
       repoFiles,
-    }) as unknown as Report;
+    });
     expectValidReport(report);
     const messages = tracked(report);
     expect(messages).toHaveLength(1);

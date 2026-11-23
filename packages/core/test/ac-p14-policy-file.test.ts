@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseUnifiedDiff } from "../src/index.js";
+import type { PolicyFileBase } from "../src/policy/agents.js";
 import { agentPolicyOf } from "../src/policy/agents.js";
 import { fixture } from "./helpers.js";
 import { filePolicy, HUMAN_FACTS, p14Messages, p14 as p14WithFix, policyFixture, runP14 } from "./p14-run.js";
@@ -12,8 +13,8 @@ const p14 = (report: Parameters<typeof p14WithFix>[0]) => withoutFix(p14WithFix(
 // When the PR edits the file, each cap is the smaller of the merge-base and head values; a cap set on one side only
 // applies. A base that cannot be read fails closed. Every report is validated against schema/report.v2.json.
 
-const base = { kind: "document", document: policyFixture("edited-file/base.json") };
-const detailsOf = (head: string, policyFileBase: unknown, diff = "edited-file/edit.diff") =>
+const base: PolicyFileBase = { kind: "document", document: policyFixture("edited-file/base.json") };
+const detailsOf = (head: string, policyFileBase: PolicyFileBase, diff = "edited-file/edit.diff") =>
   p14(runP14({ diff, policy: filePolicy(policyFixture(head)), base: policyFileBase })).map((v) => v.detail);
 
 describe("org policy rule P14: a policy file the PR edits can lower a cap, never raise or remove it", () => {

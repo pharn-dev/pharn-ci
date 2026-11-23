@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { PolicyDocument } from "../src/policy/types.js";
+import type { Report } from "../src/report.js";
 import { measureGrowth, threadCpuMs } from "./growth.js";
 import { fixture } from "./helpers.js";
 
@@ -6,13 +8,6 @@ import { fixture } from "./helpers.js";
 // written before the build adds them, so nothing the build adds may run while this file loads. Growth is measured on
 // this thread's CPU time with measureGrowth (growth.ts), after a warm-up call of each input; the slowest single call
 // must finish within 15 s of CPU time. No wall-clock assertion.
-
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Report = { policy?: { violations: Violation[] } };
-interface Core {
-  parseSettingsJson(text: string, options: { jsonc: boolean }): { ok: boolean };
-  check(input: unknown): Report;
-}
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
@@ -46,7 +41,7 @@ describe("policy settings grow close to linearly", { timeout: 300_000 }, () => {
     const core = {
       ...(await import("./text-coverage.js")),
       ...(await import("../src/policy/settings/json.js")),
-    } as unknown as Core;
+    };
     expect(typeof core.parseSettingsJson, "parseSettingsJson is exported").toBe("function");
 
     // The parser.
@@ -61,7 +56,7 @@ describe("policy settings grow close to linearly", { timeout: 300_000 }, () => {
 
     const coverage = fixture("golden/coverage.info");
     const diff = fixture("diff/empty.diff");
-    const checkWith = (document: unknown, path: string, text: string) => () =>
+    const checkWith = (document: PolicyDocument, path: string, text: string) => () =>
       core.check({
         version: "0.1.0",
         coverage: { text: coverage, format: "lcov" },
@@ -79,7 +74,7 @@ describe("policy settings grow close to linearly", { timeout: 300_000 }, () => {
       ).toBe(true);
 
     // P02 against a fixed forbidden list.
-    const forbidden = {
+    const forbidden: PolicyDocument = {
       version: 1,
       setup: { forbidden_permissions: ["Bash(curl:*)", "Bash(rm -rf:*)", "WebFetch", "Read(.env)", "Edit(//etc/**)"] },
     };
@@ -90,7 +85,7 @@ describe("policy settings grow close to linearly", { timeout: 300_000 }, () => {
     await growthOf("P02", p02Small, p02Large);
 
     // P05 against a fixed forbidden list.
-    const forbiddenMcp = {
+    const forbiddenMcp: PolicyDocument = {
       version: 1,
       setup: { forbidden_mcp_servers: ["*/curl", "npx -y bad*", "evil", "https://bad.*"] },
     };

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { scanAgentSetup } from "../src/index.js";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { byCodeUnit } from "../src/text.js";
 import { FIXTURES } from "./helpers.js";
 
@@ -57,7 +58,6 @@ function secretFor(id: string, seed: number): string {
 }
 
 type Finding = { id: string; path: string; line: number };
-type SourceFile = { path: string; text: string };
 
 interface Scanner {
   SECRET_SCAN_KINDS: readonly string[];
@@ -66,7 +66,7 @@ interface Scanner {
 }
 
 async function load(): Promise<Scanner> {
-  return (await import("../src/secrets/scan.js")) as unknown as Scanner;
+  return await import("../src/secrets/scan.js");
 }
 
 const byFinding = (a: Finding, b: Finding) => byCodeUnit(a.id, b.id) || byCodeUnit(a.path, b.path) || a.line - b.line;

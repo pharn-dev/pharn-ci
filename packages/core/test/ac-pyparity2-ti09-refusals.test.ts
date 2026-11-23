@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { measureGrowth } from "./growth.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // check() is loaded inside the test body: the AC test is written before TI09 reads the native [tool.pytest] table, so
 // nothing the build adds may run while the file loads. Every text is generated here. A native table that cannot be
@@ -13,11 +15,6 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const PATH = "pyproject.toml";
 const CODE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 const CAP = 524288;
-
-interface Report {
-  testIntegrity: { signals: { id: string; path: string; severity: string; detail: string }[] };
-  messages: { code: string; level: string; text: string }[];
-}
 
 const linesOf = (text: string) => text.replace(/\n$/, "").split("\n");
 
@@ -31,7 +28,7 @@ function diffOf(base: string, head: string): string {
 }
 
 /** The check() input for one base and head text, diff included, built before any timing. */
-function inputOf(base: string, head: string) {
+function inputOf(base: string, head: string): TextCheckInput {
   return {
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
@@ -49,9 +46,9 @@ function inputOf(base: string, head: string) {
 
 async function run(base: string, head: string): Promise<{ report: Report }> {
   const { check } = await import("./text-coverage.js");
-  const report = check(inputOf(base, head) as unknown as Parameters<typeof check>[0]);
+  const report = check(inputOf(base, head));
   expectValidReport(report);
-  return { report: report as unknown as Report };
+  return { report: report };
 }
 
 const BASE = '[project]\nname = "demo"\n\n[tool.pytest]\naddopts = ["-ra"]\ntestpaths = ["tests"]\n';
@@ -122,9 +119,8 @@ describe("TI09 refuses a native [tool.pytest] table it cannot read, in linear ti
       "thousands of look-alikes",
     ).toBeGreaterThan(5000);
     const { check } = await import("./text-coverage.js");
-    type Input = Parameters<typeof check>[0];
-    const fullInput = inputOf(BASE, full) as unknown as Input;
-    const quarterInput = inputOf(BASE, quarter) as unknown as Input;
+    const fullInput = inputOf(BASE, full);
+    const quarterInput = inputOf(BASE, quarter);
     for (const input of [fullInput, quarterInput]) expectValidReport(check(input));
     const growth = await measureGrowth(
       () => check(quarterInput),

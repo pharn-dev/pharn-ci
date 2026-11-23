@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
+import type { TestSourceFile as SourceFile, TestSources } from "../src/testSources.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -8,27 +10,6 @@ import { expectValidReport } from "./schema.js";
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const CODE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
-
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-}
-interface Report {
-  testIntegrity: { signals: Signal[] };
-  messages: Message[];
-}
-interface SourceFile {
-  path: string;
-  text: string;
-}
 
 const linesOf = (text: string) => text.replace(/\n$/, "").split("\n");
 
@@ -47,7 +28,7 @@ const oneLine = (path: string, line: number, before: string, after: string) =>
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
-async function run(diff: string, testSources: unknown, paths: string[]): Promise<Report> {
+async function run(diff: string, testSources: TestSources, paths: string[]): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -58,9 +39,9 @@ async function run(diff: string, testSources: unknown, paths: string[]): Promise
     repoFiles: [...paths, "src/cart.ts"].sort(),
     testIntegrityMode: { input: "block" },
     testSources,
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 const ti09 = (report: Report) => report.testIntegrity.signals.filter((s) => String(s.id) === "TI09");
@@ -145,9 +126,7 @@ describe("TI09: touched config files whose text cannot be read", () => {
     }
 
     // 2. A modified playwright.config.ts with its head side unavailable.
-    const core = (await import("@pharn-ci/core")) as unknown as {
-      unavailableTestSources(reason: string): { base: unknown; head: unknown };
-    };
+    const core = await import("@pharn-ci/core");
     const second = await run(
       diffOf("playwright.config.ts", PLAYWRIGHT_BASE, PLAYWRIGHT_HEAD),
       {

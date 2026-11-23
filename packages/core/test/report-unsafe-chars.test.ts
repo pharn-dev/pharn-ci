@@ -69,7 +69,7 @@ function removedTestReport(name: string) {
       base: { files: [{ path: TEST_PATH, text: base }], dropped: [] },
       head: { files: [{ path: TEST_PATH, text: head }], dropped: [] },
     },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report;
 }
@@ -103,7 +103,7 @@ function configReport(include: string) {
       base: { files: [{ path: CONFIG_PATH, text: base }], dropped: [] },
       head: { files: [{ path: CONFIG_PATH, text: head }], dropped: [] },
     },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report;
 }
@@ -123,7 +123,7 @@ function unreadableReport(reason: string) {
       base: { unavailable: reason },
       head: { files: [{ path: TEST_PATH, text }], dropped: [] },
     },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report;
 }

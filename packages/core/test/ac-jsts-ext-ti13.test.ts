@@ -11,14 +11,6 @@ const SOURCE_PATH = "src/cart.mts";
 const REPO_FILES = ["package.json", SOURCE_PATH, TEST_PATH];
 const HINT = "/* istanbul ignore next */";
 
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-
 /** A modified file with one line added at line 12 (a `--unified=0` hunk). */
 function addLine(path: string, line: string): string {
   return `${[
@@ -47,7 +39,7 @@ async function run(path: string) {
 }
 
 const ti13 = (report: Awaited<ReturnType<typeof run>>) =>
-  (report.testIntegrity.signals as unknown as Signal[]).filter((s) => String(s.id) === "TI13");
+  report.testIntegrity.signals.filter((s) => String(s.id) === "TI13");
 
 describe("check(): TI13 and a .test.mts test file", () => {
   it("AC-4: an Istanbul hint added to src/cart.test.mts gives no TI13, while the same line added to src/cart.mts gives TI13 at block", async () => {

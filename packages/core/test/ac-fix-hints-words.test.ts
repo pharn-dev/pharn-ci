@@ -4,9 +4,6 @@ import { describe, expect, it } from "vitest";
 // adds them. No hint may tell the reader to lower a gate, and a hint is one fixed sentence: no placeholder at all, so
 // nothing but the finding's own path, line or id (which go in `target`) can ever be put into it.
 
-type Entry = { kind: string; hint: string };
-type Tables = { MESSAGE_FIXES?: Record<string, Entry>; SIGNAL_FIXES?: Record<string, Entry> };
-
 const BANNED = [
   "exclude",
   "excluding",
@@ -23,7 +20,7 @@ const BANNED_WORD = new RegExp(`\\b(?:${BANNED.join("|")})\\b`, "i");
 const PLACEHOLDER = /[{}<>$]|%[sd]/;
 
 async function hints(): Promise<Array<[string, string]>> {
-  const { MESSAGE_FIXES, SIGNAL_FIXES } = (await import("../src/fix/table.js")) as unknown as Tables;
+  const { MESSAGE_FIXES, SIGNAL_FIXES } = await import("../src/fix/table.js");
   expect(MESSAGE_FIXES, "MESSAGE_FIXES is exported").toBeDefined();
   expect(SIGNAL_FIXES, "SIGNAL_FIXES is exported").toBeDefined();
   const all: Array<[string, string]> = [

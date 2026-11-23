@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -72,10 +73,6 @@ const WITH_SOURCES = new Set([
   "edited-expected-value",
 ]);
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
 interface Case {
   diff: string;
   base: SourceFile[];
@@ -120,7 +117,7 @@ async function ti06(c: Case) {
     repoFiles: [...new Set([...c.head.map((f) => f.path), ...diffPaths(c.diff)])].sort(),
     testSources: { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } },
     testIntegrityMode: { input: "block" },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report.testIntegrity.signals
     .filter((s) => String(s.id) === "TI06")
@@ -186,7 +183,7 @@ async function runNine(): Promise<Map<string, Array<{ id: string; severity: stri
       repoFiles: fixture(`skylos-nine/${name}/files.txt`).trim().split("\n"),
       testIntegrityMode: { input: "block" },
       ...sources,
-    } as unknown as Parameters<typeof check>[0]);
+    });
     expectValidReport(report);
     out.set(
       name,

@@ -138,7 +138,8 @@ describe("renderMarkdown(): the logo line opens every rendering, and is the only
     expect(pass.messages).toHaveLength(0);
 
     const warn = await build({
-      diffCoverage: { ...met, threshold: null, meetsThreshold: null },
+      // meetsThreshold null is not a DiffCoverageResult value (it is never null): kept as written, the cast says so.
+      diffCoverage: { ...met, threshold: null, meetsThreshold: null as unknown as boolean },
       threshold: null,
       changedConfigPaths: [".pharn/ci.yml"],
     });

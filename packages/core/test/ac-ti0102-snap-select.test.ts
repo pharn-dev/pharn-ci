@@ -4,8 +4,6 @@ import { describe, expect, it } from "vitest";
 // isSnapFile exists and before the read plan drops snapshot paths, so nothing that depends on them may run while the
 // file loads. The diff is written here, in `git diff` shape, so every status is known.
 
-type Select = (diff: readonly unknown[]) => { base: string[]; head: string[] };
-
 const DIFF = [
   "diff --git a/test/__snapshots__/m.test.ts.snap b/test/__snapshots__/m.test.ts.snap",
   "index 1111111..2222222 100644",
@@ -54,11 +52,8 @@ describe("test sources: snapshot files are not read", () => {
     const core = {
       ...(await import("../src/testFiles.js")),
       ...(await import("../src/testSources.js")),
-    } as unknown as {
-      selectTestSourcePaths: Select;
-      isSnapFile: (path: string) => boolean;
     };
-    const diff = parseUnifiedDiff(DIFF) as unknown as Array<{ path: string; oldPath: string; status: string }>;
+    const diff = parseUnifiedDiff(DIFF);
     expect(diff.map((f) => f.status).sort(), "the diff holds every status").toEqual([
       "added",
       "deleted",

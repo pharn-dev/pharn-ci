@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseUnifiedDiff } from "../src/index.js";
 import { evaluatePolicyRules, MAX_RULE_VIOLATIONS } from "../src/policy/rules/evaluate.js";
 import type { PolicyRuleInput } from "../src/policy/rules/types.js";
+import type { Report } from "../src/report.js";
 import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -12,10 +13,6 @@ import { withoutFix } from "./v090-codes.js";
 // sort before the real one (`.aNN/.claude/settings.json` < `.claude/settings.json`, and < `policy/org.json`), each
 // giving a weaker violation of the same rule, must not push the blocking violation out of the kept set and turn the
 // rule's message from an error into a warning.
-
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; policy?: { violations: Violation[] } };
 
 const DIR = "policy-settings/cap-severity/";
 const REPO_ROOT = "/home/runner/work/demo/demo";
@@ -71,7 +68,7 @@ function run(input: { diff: string; files: { path: string; text: string }[]; rep
     policySettingsSources: { files: input.files, dropped: [] },
   } as never);
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 const policyMessage = (report: Report, code: string) => withoutFix(report.messages.filter((m) => m.code === code));

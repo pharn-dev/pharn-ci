@@ -1,6 +1,9 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
+import type { TestBlock as Block } from "../src/testIndex/types.js";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -15,31 +18,10 @@ const MODIFIED = "src/core.test.ts";
 const ADDED = ["src/text/text-ops.test.ts", "src/io/io-ops.test.ts"];
 const TODAY = "Test file deleted; its removed lines defined tests.";
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
 interface Case {
   diff: string;
   base: SourceFile[];
   head: SourceFile[];
-}
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Block {
-  kind: string;
-  path: string[];
-  line: number;
-  assertionCount: number;
-}
-interface Report {
-  testIntegrity: { verdict: string; signals: Signal[] };
-  messages: { code: string; level: string; text: string }[];
 }
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
@@ -72,9 +54,7 @@ function loadCase(name: string): Case {
 async function testsOf(files: SourceFile[], path: string): Promise<Block[]> {
   const file = files.find((f) => f.path === path);
   if (file === undefined) throw new Error(`the fixture has no text for ${path}`);
-  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
-    indexTestFile(path: string, text: string): { parsed: boolean; tests?: Block[] };
-  };
+  const core = await import("../src/testIndex/indexTestFile.js");
   const result = core.indexTestFile(file.path, file.text);
   if (!result.parsed) throw new Error(`the fixture ${file.path} does not parse: ${JSON.stringify(result)}`);
   return (result.tests ?? []).filter((b) => b.kind === "test");
@@ -115,7 +95,7 @@ async function run(c: Case, extra: Record<string, unknown>): Promise<Report> {
     repoFiles: [...new Set([...ADDED, MODIFIED, "src/core.ts"])].sort(),
     testIntegrityMode: { input: "block" },
     ...extra,
-  } as unknown as Parameters<typeof check>[0]) as unknown as Report;
+  });
   expectValidReport(report);
   return report;
 }

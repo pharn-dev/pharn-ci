@@ -6,10 +6,6 @@ import { withoutFix } from "./v090-codes.js";
 // E3 item 23 (policy settings), AC-15. check() is loaded inside the test body: the AC test is written before the build
 // adds the settings rules, so nothing the build adds may run while this file loads.
 
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; policy?: { violations: Violation[] } };
-
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
 describe("a repeated deny key: the last one counts", { timeout: 60_000 }, () => {
@@ -40,7 +36,7 @@ describe("a repeated deny key: the last one counts", { timeout: 60_000 }, () => 
         document: { version: 1, setup: { required_permissions_deny: ["Bash(rm -rf:*)"] } },
       },
       policySettingsSources: { files: [{ path: ".claude/settings.json", text: `${lines.join("\n")}\n` }], dropped: [] },
-    } as never) as unknown as Report;
+    } as never);
     expectValidReport(report);
 
     // fix-hints (H6): every finding now carries a `fix`; the pinned literal is unchanged, so it is read without it.

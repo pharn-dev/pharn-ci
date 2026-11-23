@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -31,8 +32,6 @@ async function runCase(caseDir: string, mode: Mode) {
   expectValidReport(report);
   return report;
 }
-
-type Report = Awaited<ReturnType<typeof runCase>>;
 
 const ti01 = (report: Report) => report.testIntegrity.signals.filter((s) => s.id === "TI01");
 const deletedMessages = (report: Report) => report.messages.filter((m) => (m.code as string) === CODE);

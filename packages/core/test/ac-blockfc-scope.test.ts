@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -7,16 +8,6 @@ import { expectValidReport } from "./schema.js";
 // loads. The first run (no compared test file) is the control; the second, in the same test, must give the error.
 
 const CODE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
-
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-}
-interface Report {
-  verdict: string;
-  messages: Message[];
-}
 
 /** A `--unified=0` diff that changes one line of the source file `src/app.ts`. */
 const SOURCE_EDIT = `${[
@@ -67,9 +58,9 @@ async function run(diff: string): Promise<Report> {
     repoFiles: ["src/app.test.ts", "src/app.ts", "src/old.test.ts"],
     testIntegrityMode: { input: "block" },
     testSources: unavailableTestSources("the base commit is not in the checkout"),
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 const unavailable = (report: Report) => report.messages.filter((m) => m.code === CODE);

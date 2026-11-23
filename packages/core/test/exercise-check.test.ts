@@ -1,11 +1,11 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { CheckInput } from "../src/check.js";
+
 import { buildReport, type Report } from "../src/report.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
-import { check } from "./text-coverage.js";
+import { type TextCheckInput as CheckInput, check } from "./text-coverage.js";
 
 // A8 step 1 (tests exercise the changed lines), TESTS_NOT_EXERCISING_CHANGES through check(). Each case under
 // fixtures/exercise/ is a diff (change.diff), the tracked files at HEAD (files.txt) and the touched test files' text at

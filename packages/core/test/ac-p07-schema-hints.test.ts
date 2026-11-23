@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import type { Message } from "../src/report.js";
 import { codeRow } from "./codeTable.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -16,13 +17,6 @@ const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 const P07_HINT =
   "A maintainer should make the agent instruction files agree on one package manager and one test runner.";
 
-type Message = { level: string; code: string; text: string };
-type Report = Record<string, unknown> & { messages: Message[] };
-interface Core {
-  check(input: unknown): Report;
-  renderMarkdown(report: Report): string;
-}
-
 describe("the schema sentence and the hint for POLICY_P07", { timeout: 60_000 }, () => {
   it("AC-20: the code table documents POLICY_P07; a report with POLICY_P07 validates; the hint is the fixed text", async () => {
     // CORE-132: the comparison of the code description and of report.v1.json with an old commit was a history pin and
@@ -33,7 +27,7 @@ describe("the schema sentence and the hint for POLICY_P07", { timeout: 60_000 },
     const core = {
       ...(await import("@pharn-ci/core")),
       check: (await import("./text-coverage.js")).check,
-    } as unknown as Core;
+    };
     const report = core.check({
       version: "0.1.0",
       coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

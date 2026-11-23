@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Message } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -7,8 +8,6 @@ import { expectValidReport } from "./schema.js";
 // run while the file loads.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
-
-type Message = { level: string; code: string; text: string };
 
 const lines = (path: string) => fixture(path).trim().split("\n");
 const withCode = (messages: readonly Message[], code: string) => messages.filter((message) => message.code === code);

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { dependencyCase } from "./dependencies-helpers.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // fix-hints (H6), AC-7. check() is loaded inside the test body: the AC test is written before the build adds the `fix`
 // objects. The test-integrity diff is an existing fixture rewritten in memory, so no file is added under fixtures/.
@@ -12,15 +14,9 @@ const UNIQUE_NAME = "zqxFixHintLeak7731";
 const SECRET = ["gh", "p_", "Z9y8X7w6".repeat(4), "Q1r2"].join("");
 
 type Fix = { kind: string; target?: string; hint: string };
-type Finding = { id: string; path: string | null; line: number | null; detail?: string; name?: string; fix?: Fix };
-type Report = {
-  messages: { code: string; text: string; fix?: Fix }[];
-  testIntegrity: { signals: Finding[] };
-  dependencies?: { signals: Finding[] };
-};
 
-async function run(input: unknown): Promise<Report> {
-  const { check } = (await import("./text-coverage.js")) as unknown as { check(input: unknown): Report };
+async function run(input: TextCheckInput): Promise<Report> {
+  const { check } = await import("./text-coverage.js");
   const report = check(input);
   expectValidReport(report);
   return report;

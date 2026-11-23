@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -6,9 +7,6 @@ import { expectValidReport } from "./schema.js";
 // AC test is written before the build adds rule P07 and its fixtures, so nothing the build adds may run while this
 // file loads.
 
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; policy?: { violations: Violation[] } };
 type Sources =
   | { files: { path: string; text: string }[]; dropped: { path: string; reason: string }[] }
   | { unavailable: string };
@@ -45,7 +43,7 @@ async function run(policy: PolicyName, sources: Sources): Promise<Report> {
     agentInstructionSources: sources,
   } as never);
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 const p07 = (report: Report) => (report.policy?.violations ?? []).filter((v) => v.id === "P07");

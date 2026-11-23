@@ -5,11 +5,7 @@ import { describe, expect, it } from "vitest";
 // ustar parser, and the expected contents are Node's own UTF-8 encoding of each text (Buffer.from), which writes a
 // lone surrogate as U+FFFD (EF BF BD).
 
-interface UploadCore {
-  buildUploadTar(entries: readonly { name: string; text: string }[]): Uint8Array;
-}
-
-const load = async () => (await import("@pharn-ci/core")) as unknown as UploadCore;
+const load = async () => await import("@pharn-ci/core");
 
 const LONE_SURROGATE = "\uD800";
 const ENTRIES = [

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Message, Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -8,9 +9,6 @@ import { expectValidReport } from "./schema.js";
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
 const lines = (path: string) => fixture(path).trim().split("\n");
-
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; agentSetup: { missing?: unknown }; messages: Message[] };
 
 type Path = "normal" | "coverage missing" | "diff unavailable";
 
@@ -32,7 +30,7 @@ async function runCheck(path: Path, requireAgentSetup: boolean): Promise<Report>
     requireAgentSetup,
     expectAgentSetup: ["cursor", "claude-code"],
   };
-  return check(input as Parameters<typeof check>[0]) as unknown as Report;
+  return check(input as Parameters<typeof check>[0]);
 }
 
 const SETUP_CODES = new Set(["NO_AGENT_SETUP_FILES", "AGENT_SETUP_EXPECTED_MISSING"]);

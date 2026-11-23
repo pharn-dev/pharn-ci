@@ -1,6 +1,8 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
+import type { TestSourceDrop, TestSourceDropReason } from "../src/testSources.js";
 import { FIXTURES } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -13,24 +15,9 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const BINARY = "git shows this file as binary, so its changes could not be read.";
 const BINARY_LINE = "Binary files a/package.json and b/package.json differ";
 
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Message {
-  code: string;
-  level: string;
-}
-interface Report {
-  messages: Message[];
-  testIntegrity: { signals: Signal[] };
-}
 interface Side {
   files: { path: string; text: string }[];
-  dropped: { path: string; reason: string }[];
+  dropped: TestSourceDrop[];
 }
 interface Sources {
   base: Side;
@@ -49,7 +36,7 @@ function readSide(dir: string): Side | null {
     const text = readFileSync(join(dir, name), "utf8");
     if (name.endsWith(".txt")) side.files.push({ path: name.slice(0, -".txt".length), text });
     else if (name.endsWith(".dropped"))
-      side.dropped.push({ path: name.slice(0, -".dropped".length), reason: text.trim() });
+      side.dropped.push({ path: name.slice(0, -".dropped".length), reason: text.trim() as TestSourceDropReason });
   }
   side.files.sort(byPath);
   side.dropped.sort(byPath);
@@ -79,9 +66,9 @@ async function run(diff: string, mode: "block" | "warn", sources: Sources | unde
     repoFiles: ["package.json", "src/a.test.ts", "src/a.ts"],
     testIntegrityMode: { input: mode },
     ...(sources === undefined ? {} : { testSources: sources }),
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 const ti10 = (report: Report) => report.testIntegrity.signals.filter((s) => s.id === "TI10");

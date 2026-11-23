@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -27,10 +28,6 @@ interface Changes {
   modified: Entry[];
   renamed: Entry[];
   truncated?: number;
-}
-interface SourceFile {
-  path: string;
-  text: string;
 }
 interface Generated {
   diff: string;
@@ -137,9 +134,7 @@ async function summarize(gen: Generated): Promise<Changes | null> {
   const { parseUnifiedDiff } = await import("../src/diff/unified.js");
   const { indexTouchedTestFiles } = await import("../src/signals/testPairs.js");
   const { matchTests } = await import("../src/signals/testMatch.js");
-  const { summarizeTestChanges } = (await import("../src/signals/testChanges.js")) as unknown as {
-    summarizeTestChanges(touched: unknown, match: unknown): Changes | null;
-  };
+  const { summarizeTestChanges } = await import("../src/signals/testChanges.js");
   const sources = { base: { files: gen.base, dropped: [] }, head: { files: gen.head, dropped: [] } };
   const touched = indexTouchedTestFiles(parseUnifiedDiff(gen.diff), sources as never, undefined);
   return summarizeTestChanges(touched, matchTests(touched));
@@ -156,9 +151,9 @@ async function checkReport(gen: Generated): Promise<{ testIntegrity: { changes?:
     repoFiles: [...new Set([...gen.head.map((f) => f.path), "src/cart.ts"])].sort(),
     testSources: { base: { files: gen.base, dropped: [] }, head: { files: gen.head, dropped: [] } },
     testIntegrityMode: { input: "warn" },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as { testIntegrity: { changes?: Changes } };
+  return report;
 }
 
 const isSorted = (list: Entry[]) => list.every((e, i) => i === 0 || byPathThenLine(list[i - 1] as Entry, e) <= 0);

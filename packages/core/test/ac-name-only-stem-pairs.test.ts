@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { TestBlock as Block } from "../src/testIndex/types.js";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -15,29 +17,6 @@ import { expectValidReport } from "./schema.js";
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const DELETED = "test/pricing.test.ts";
 const ADDED = "src/pricing.test.ts";
-
-interface SourceFile {
-  path: string;
-  text: string;
-}
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Block {
-  kind: string;
-  path: string[];
-  line: number;
-  body: string;
-  assertionCount: number;
-  assertions: { chain: string }[];
-}
-interface Report {
-  testIntegrity: { signals: Signal[] };
-}
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
@@ -60,9 +39,7 @@ function sideFiles(dir: string): SourceFile[] {
 async function testsOf(files: SourceFile[], path: string): Promise<Block[]> {
   const file = files.find((f) => f.path === path);
   if (file === undefined) throw new Error(`the fixture has no text for ${path}`);
-  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
-    indexTestFile(path: string, text: string): { parsed: boolean; tests?: Block[] };
-  };
+  const core = await import("../src/testIndex/indexTestFile.js");
   const result = core.indexTestFile(file.path, file.text);
   if (!result.parsed) throw new Error(`the fixture ${file.path} does not parse: ${JSON.stringify(result)}`);
   return (result.tests ?? []).filter((b) => b.kind === "test");
@@ -88,10 +65,7 @@ describe("TI01 same stem: the replacement's matches are judged as pairs", () => 
     expect(diffSection(diff, DELETED), `${DELETED} is deleted`).toMatch(/^deleted file mode/m);
     expect(diffSection(diff, ADDED), `${ADDED} is added`).toMatch(/^new file mode/m);
 
-    const tokens = (await import("../src/signals/bodyTokens.js")) as unknown as {
-      bodyTokenSet(body: string): Set<string>;
-      jaccardAtLeast(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean;
-    };
+    const tokens = await import("../src/signals/bodyTokens.js");
     const was = await testsOf(base, DELETED);
     const now = await testsOf(head, ADDED);
     expect(was.length, "the deleted file held tests").toBeGreaterThan(0);
@@ -123,7 +97,7 @@ describe("TI01 same stem: the replacement's matches are judged as pairs", () => 
       repoFiles: [...new Set([...head.map((f) => f.path), "src/pricing.ts"])].sort(),
       testSources: { base: { files: base, dropped: [] }, head: { files: head, dropped: [] } },
       testIntegrityMode: { input: "block" },
-    } as unknown as Parameters<typeof check>[0]) as unknown as Report;
+    });
     expectValidReport(report);
 
     const signals = report.testIntegrity.signals;

@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { ResolveInputsResult } from "../src/inputs.js";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
+import type { PolicyDocument } from "../src/policy/types.js";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -19,41 +23,32 @@ const TEXT = {
   noCoverageFile: "no coverage file",
 };
 
-type Signal = { id: string; severity: string };
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; testIntegrity: { signals: Signal[] } };
-type Application = {
-  inputs: { threshold: number | null; testIntegrityMode?: unknown };
-  signalOverrides?: unknown;
-  ignored: unknown[];
-};
-
-const app = (signals: Record<string, string>) => ({
+// The signal id is built at run time, so `signals` is keyed by string; the casts say it is a policy document.
+const app = (signals: Record<string, string>): ResolvedPolicy => ({
   source: "app",
   version: 3,
   fetchedAt: "2026-11-09T12:00:00.000Z",
-  document: { version: 1, test_integrity: { signals } },
+  document: { version: 1, test_integrity: { signals } } as PolicyDocument,
 });
-const file = (signals: Record<string, string>) => ({
+const file = (signals: Record<string, string>): ResolvedPolicy => ({
   source: "file",
   version: null,
   path: "policy/org.json",
-  document: { version: 1, test_integrity: { signals } },
+  document: { version: 1, test_integrity: { signals } } as PolicyDocument,
 });
 
 /** check() on the AC-14 change, with the input mode given and the policy applied through applyPolicy(). */
-async function run(policy: unknown, inputMode: "block" | "warn"): Promise<Report> {
-  const { resolveInputs } = (await import("../src/inputs.js")) as unknown as {
-    resolveInputs: (config: unknown, raw: unknown, text: unknown) => { ok: boolean; inputs: Record<string, unknown> };
-  };
-  const { applyPolicy } = (await import("../src/policy/apply.js")) as unknown as {
-    applyPolicy: (layers: unknown, policy: unknown) => Application;
-  };
-  const { check } = (await import("./text-coverage.js")) as unknown as { check: (input: unknown) => Report };
+async function run(policy: ResolvedPolicy, inputMode: "block" | "warn"): Promise<Report> {
+  const { resolveInputs } = await import("../src/inputs.js");
+  const { applyPolicy } = await import("../src/policy/apply.js");
+  const { check } = await import("./text-coverage.js");
   const raw = { coverageFile: "coverage/lcov.info", testIntegrity: inputMode };
   const resolved = resolveInputs({}, raw, TEXT);
   expect(resolved.ok).toBe(true);
-  const application = applyPolicy({ config: {}, raw, resolved: resolved.inputs }, policy);
+  const application = applyPolicy(
+    { config: {}, raw, resolved: (resolved as Extract<ResolveInputsResult, { ok: true }>).inputs },
+    policy,
+  );
   const report = check({
     version: "0.1.0",
     coverage: { text: PASSING_LCOV, format: "lcov" },

@@ -1,19 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { type Report, renderMarkdown, scanAgentSetup } from "../src/index.js";
-import type { ReportStaleInstruction } from "../src/report.js";
 import { buildReport } from "../src/report.js";
-import { staleInstructionMessages } from "../src/setup/stale.js";
+import { type StaleFinding, staleInstructionMessages } from "../src/setup/stale.js";
 
 // Stale instructions (Horizon 2 item H3): the "📄 Instructions" section of the PR comment.
 
-const STALE: ReportStaleInstruction[] = [
+const STALE: StaleFinding[] = [
   { id: "SI01", path: "CLAUDE.md", line: 4, kind: "command", token: "pnpm run format" },
   { id: "SI02", path: "CLAUDE.md", line: 11, kind: "path", token: "scripts/changelog.sh" },
   { id: "SI03", path: "CLAUDE.md", line: 15, kind: "file" },
 ];
 // CORE-144: the SI04 entry (and its line and hint below) left with SI04, which is no longer emitted.
 
-function reportWith(stale: ReportStaleInstruction[]): Report {
+function reportWith(stale: StaleFinding[]): Report {
   return buildReport({
     version: "0.7.0",
     diffCoverage: null,
@@ -55,7 +54,7 @@ describe("the Instructions section", () => {
   });
 
   it("folds findings past the first 10 and counts those past 20; a hand-built report's malformed entries and markdown in a token are neutralized", () => {
-    const many: ReportStaleInstruction[] = Array.from({ length: 23 }, (_, i) => ({
+    const many: StaleFinding[] = Array.from({ length: 23 }, (_, i) => ({
       id: "SI02",
       path: "CLAUDE.md",
       line: i + 1,
@@ -67,6 +66,7 @@ describe("the Instructions section", () => {
     expect(markdown).toContain("- _…and 3 more in report.json._");
 
     const report = reportWith(STALE);
+    // Invalid on purpose: an unknown id, an unknown kind and a number as a path must not break the rendering.
     const hostile = {
       ...report,
       setupHealth: {

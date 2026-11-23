@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { messagesOf, runDiff, signalsOf } from "./ac-e1-fix-shared.js";
 import { fixture } from "./helpers.js";
 
@@ -65,7 +66,6 @@ function renameOnly(from: string, to: string): string {
   )}\n`;
 }
 
-type Report = Awaited<ReturnType<typeof runDiff>>;
 const ti11 = (report: Report) =>
   signalsOf(report, "TI11").map((s) => ({
     id: String(s.id),

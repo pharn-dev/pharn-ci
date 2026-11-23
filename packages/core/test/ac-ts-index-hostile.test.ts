@@ -1,18 +1,17 @@
 import { describe, expect, it } from "vitest";
+import type { TestBlock as Block } from "../src/testIndex/types.js";
 
 // indexTestFile is loaded inside each test body: the AC tests are written before the test index exists, so nothing
 // the build adds may run while the file loads.
 
-type Block = { name: string; path: string[] };
 type Result = { parsed: true; tests: Block[] } | { parsed: false; reason: string };
 
 const REASONS = ["syntax-error-heavy", "too-large", "too-deep", "parser-threw"];
 
 async function indexTestFile(path: unknown, text: unknown): Promise<unknown> {
-  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
-    indexTestFile: (p: unknown, t: unknown) => unknown;
-  };
-  return core.indexTestFile(path, text);
+  const core = await import("../src/testIndex/indexTestFile.js");
+  // Hostile on purpose: the cases pass null, undefined and numbers as the path and the text.
+  return core.indexTestFile(path as string, text as string);
 }
 
 const LONG_NAME = "n".repeat(10_000);

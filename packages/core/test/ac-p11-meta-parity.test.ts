@@ -1,26 +1,17 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import type { AgentPrFacts } from "../src/agents.js";
+import type { ReportMeta } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // E3 item 24a part B (P11), AC-14. check(), detectAgentPr() and withAgentPrMeta() are loaded inside the test body: the
 // AC test is written before check() takes agentPrFacts, so nothing the build adds may run while this file loads.
 // fixtures/agent-pr/ is part A's and is only read.
 
-type Commit = { authorLogin: string | null; committerLogin: string | null; message: string };
-type Facts = { pr: { author: { login: string; type: string } | null; labels: string[]; commits: Commit[] | null } };
-type Detection = { isAgentPr: boolean };
-type Message = { level: string; code: string; text: string };
-type Report = Record<string, unknown> & { messages: Message[]; meta?: Record<string, unknown> };
-
-interface Core {
-  check(input: unknown): Report;
-  detectAgentPr(facts: Facts): Detection;
-  withAgentPrMeta(report: Report, detection: Detection, facts: Facts): Report;
-}
-
 const AGENT_PR_DIR = new URL("../../../fixtures/agent-pr/", import.meta.url);
-const META = {
+const META: ReportMeta = {
   event: "pull_request",
   repository: "pharn-dev/pharn-ci",
   repositoryId: 123,
@@ -36,15 +27,15 @@ const META = {
 
 describe("check() with agent facts: the same meta as withAgentPrMeta", { timeout: 60_000 }, () => {
   it("AC-14: for every part A agent-pr fixture, check() with agentPrFacts and no policy serializes byte for byte like withAgentPrMeta over the report without facts, with no policy section and no new message", async () => {
-    const core = { ...(await import("../src/agents.js")), ...(await import("./text-coverage.js")) } as unknown as Core;
+    const core = { ...(await import("../src/agents.js")), ...(await import("./text-coverage.js")) };
     const names = readdirSync(AGENT_PR_DIR)
       .filter((n) => n.endsWith(".txt"))
       .sort();
     expect(names.length).toBeGreaterThanOrEqual(5);
 
-    const input = {
+    const input: TextCheckInput = {
       version: "0.1.0",
-      coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
+      coverage: { text: fixture("golden/coverage.info"), format: "lcov" as const },
       diff: { text: fixture("golden/pr.diff") },
       repoRoot: "/home/runner/work/demo/demo",
       threshold: 80,
@@ -60,8 +51,8 @@ describe("check() with agent facts: the same meta as withAgentPrMeta", { timeout
       for (const author of [
         { login: "octocat", type: "User" },
         { login: "claude[bot]", type: "Bot" },
-      ]) {
-        const facts: Facts = {
+      ] as const) {
+        const facts: AgentPrFacts = {
           pr: { author, labels: [], commits: [{ authorLogin: author.login, committerLogin: author.login, message }] },
         };
         const label = `${name} by ${author.login}`;

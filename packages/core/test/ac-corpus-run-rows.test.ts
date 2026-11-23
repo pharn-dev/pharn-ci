@@ -17,7 +17,10 @@ const COLUMNS = HEADER.split(",");
 const TIMEOUT = 600_000;
 const REPO = "local/upstream";
 
-type Row = Record<string, string>;
+type Row = Record<
+  "repo" | "pr" | "signal" | "severity" | "path" | "line" | "code" | "detail" | "verdict" | "note",
+  string
+>;
 type Pr = { number: number; mergedAt: string; baseSha: string; headSha: string; mergeCommitSha: string };
 type Fixture = {
   dir: string;
@@ -223,7 +226,7 @@ const rowsOf = (text: string): Row[] => {
   expect(header).toEqual(COLUMNS);
   return data.map((fields) => {
     expect(fields, `record ${JSON.stringify(fields)} has ten fields`).toHaveLength(10);
-    return Object.fromEntries(COLUMNS.map((column, index) => [column, fields[index] ?? ""]));
+    return Object.fromEntries(COLUMNS.map((column, index) => [column, fields[index] ?? ""])) as Row;
   });
 };
 

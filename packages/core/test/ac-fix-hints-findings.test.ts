@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { dependencyCase } from "./dependencies-helpers.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { injectionFixture } from "./injection-fixture.js";
@@ -14,14 +15,6 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 
 type Fix = { kind: string; target?: string; hint: string };
 type Finding = { id: string; path: string | null; line: number | null; fix?: Fix };
-type Report = {
-  messages: { level: string; code: string; text: string; fix?: Fix }[];
-  testIntegrity: { signals: Finding[] };
-  policy?: { violations: Finding[] };
-  setupHealth?: { stale: Finding[] };
-  injection?: { signals: Finding[] };
-  dependencies?: { signals: Finding[] };
-};
 type Entry = { kind: string; hint: string };
 
 /** The kinds the SPEC's Data section gives the ids these fixtures produce. */

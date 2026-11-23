@@ -1,8 +1,9 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-
 import { indexTestFile } from "../src/testIndex/indexTestFile.js";
+import type { PythonTestIndex } from "../src/testIndex/pythonSides.js";
+import type { TestSourceSide as Side, TestSourceFile as SourceFile, TestSourceDropReason } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { check } from "./text-coverage.js";
@@ -20,11 +21,6 @@ const DIR = `${FIXTURES}test-integrity/index-unavailable`;
 const CODE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 
 type Mode = "block" | "warn" | "off";
-interface SourceFile {
-  path: string;
-  text: string;
-}
-type Side = { files: SourceFile[]; dropped: { path: string; reason: string }[] } | { unavailable: string };
 
 /** The `<logical path>.txt` files under one side of a fixture case. */
 function sideFiles(dir: string): SourceFile[] {
@@ -42,7 +38,7 @@ function sideFiles(dir: string): SourceFile[] {
 
 const diffOf = (name: string) => readFileSync(join(DIR, name, "change.diff"), "utf8");
 /** The kept files of one side of a case, less the paths given (they are dropped in the test). */
-const side = (name: string, which: "base" | "head", drop: Record<string, string> = {}): Side => ({
+const side = (name: string, which: "base" | "head", drop: Record<string, TestSourceDropReason> = {}): Side => ({
   files: sideFiles(join(DIR, name, which)).filter((file) => drop[file.path] === undefined),
   dropped: Object.entries(drop)
     .map(([path, reason]) => ({ path, reason }))
@@ -55,7 +51,14 @@ const diffWithout = (text: string, without: string[]) =>
     .filter((section) => !without.some((path) => section.startsWith(`diff --git a/${path} b/${path}\n`)))
     .join("");
 
-function run(input: { diff: string; base: Side; head: Side; mode: Mode; index?: unknown; repoFiles?: string[] }) {
+function run(input: {
+  diff: string;
+  base: Side;
+  head: Side;
+  mode: Mode;
+  index?: PythonTestIndex | undefined;
+  repoFiles?: string[];
+}) {
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
@@ -66,7 +69,7 @@ function run(input: { diff: string; base: Side; head: Side; mode: Mode; index?: 
     testIntegrityMode: { input: input.mode },
     testSources: { base: input.base, head: input.head },
     ...(input.index === undefined ? {} : { pythonTestIndex: input.index }),
-  } as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   // fix-hints (H6): every message now carries a `fix`; the pinned literals are unchanged, so they are read without it.
   return { report, messages: withoutFix(report.messages.filter((message) => message.code === CODE)) };

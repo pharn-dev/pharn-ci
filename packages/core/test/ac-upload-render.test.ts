@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 
 // renderMarkdown() is loaded from @pharn-ci/core inside the test body: the AC test is written before the appHint
 // option and the UPLOAD_TOO_LARGE hint exist, so nothing the build adds may run while this file loads.
@@ -9,18 +10,12 @@ const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
 
 const HINT = "Install the Pharn GitHub App for org policy, history and flaky detection.";
 
-type Json = Record<string, unknown>;
-
-interface RenderCore {
-  renderMarkdown(report: unknown, options?: { maxRows?: number; appHint?: boolean }): string;
-}
-
-const golden = () => JSON.parse(read("fixtures/golden/report.json")) as Json;
+const golden = () => JSON.parse(read("fixtures/golden/report.json")) as Report;
 
 // Core's index loads cold, which can take seconds on a loaded host.
 describe("the app hint and the UPLOAD_TOO_LARGE hint in the rendering", { timeout: 60_000 }, () => {
   it("AC-8: appHint true puts the install line and an empty line last before the footer's ---, absent or false is byte-identical, and UPLOAD_TOO_LARGE renders its hint", async () => {
-    const { renderMarkdown } = (await import("@pharn-ci/core")) as unknown as RenderCore;
+    const { renderMarkdown } = await import("@pharn-ci/core");
     const report = golden();
     const plain = renderMarkdown(report);
 
@@ -42,12 +37,12 @@ describe("the app hint and the UPLOAD_TOO_LARGE hint in the rendering", { timeou
     // A report carrying UPLOAD_TOO_LARGE renders a hint of at least 10 characters under the message.
     const tooLarge = {
       ...report,
-      verdict: "fail",
+      verdict: "fail" as const,
       messages: [
-        ...(report.messages as Json[]),
+        ...report.messages,
         {
-          level: "warn",
-          code: "UPLOAD_TOO_LARGE",
+          level: "warn" as const,
+          code: "UPLOAD_TOO_LARGE" as const,
           text: "The run was not uploaded to pharn.dev: the report is larger than the upload limit. The check ran in full; only the history on pharn.dev misses this run.",
         },
       ],

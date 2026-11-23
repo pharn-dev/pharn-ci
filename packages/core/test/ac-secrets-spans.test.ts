@@ -47,9 +47,6 @@ async function load() {
   const core = {
     ...(await import("../src/secrets/redact.js")),
     ...(await import("../src/secrets/spans.js")),
-  } as unknown as {
-    findSecretSpans(text: string): Span[];
-    redactSecrets(text: string): string;
   };
   const spans = (text: string) => core.findSecretSpans(text).map(({ id, start, end }) => ({ id, start, end }));
   return { spans, redactSecrets: (text: string) => core.redactSecrets(text) };

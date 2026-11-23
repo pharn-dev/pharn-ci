@@ -1,19 +1,11 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 // E3 item 24a part B (P11), AC-11. check() is loaded inside the test body and fixtures/policy-rules/p11/ is read there
 // too: the AC test is written before the build adds rule P11 and its fixtures, so nothing the build adds may run while
 // this file loads.
-
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = {
-  verdict: string;
-  messages: Message[];
-  policy?: { violations: Violation[] };
-  meta?: Record<string, unknown>;
-};
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const FETCHED_AT = "2026-10-26T12:00:00.000Z";
@@ -52,7 +44,7 @@ async function run(policy: unknown, agentPrFacts: unknown, policyFileBase?: unkn
     ...(policyFileBase === undefined ? {} : { policyFileBase }),
   } as never);
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 describe("org policy rule P11: the policy's agent lists add to the defaults", { timeout: 60_000 }, () => {

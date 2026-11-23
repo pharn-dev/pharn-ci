@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Message } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -7,8 +8,7 @@ import { expectValidReport } from "./schema.js";
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
-type Message = { level: string; code: string; text: string };
-type CheckOptions = { threshold: number | null; repoFiles?: string[]; coverageRoot?: string };
+type CheckOptions = { threshold: number | null; repoFiles?: string[]; coverageRoot?: string | undefined };
 
 const lines = (path: string) => fixture(path).trim().split("\n");
 const asFile = (report: unknown) => `${JSON.stringify(report, null, 2)}\n`;

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import type { Message } from "../src/report.js";
 import { fixture, foldCallout, foldCoverageBar, foldIntegrityColumn } from "./helpers.js";
 import { foldHintsToBase } from "./hints-at-base.js";
 import { expectValidReport } from "./schema.js";
@@ -53,8 +54,6 @@ const EXCLUSIONS_JSON_SHA256 = "5773d3ef5a254c8c35f803665f70e69b881252e941c94e00
 // taken after folding the callout back into the bare sentence, so each constant is unchanged.
 // CORE-124 updated the markdown hash on purpose (the logo line's raw URL names a commit SHA instead of `main`).
 const EXCLUSIONS_MD_SHA256 = "ef238821e9357aa7fa96c678a67e5e44949c46d68bf54cb8a11357922ddf774f";
-
-type Message = { level: string; code: string; text: string };
 
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
 const asFile = (report: unknown) => `${JSON.stringify(report, null, 2)}\n`;

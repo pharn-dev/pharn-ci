@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
+import type { Message } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
+
+/** check() input less the version and the repo root, which run() sets. */
+type RunInput = Omit<TextCheckInput, "version" | "repoRoot">;
 
 // check(), the parsers, the format chooser and the renderer are loaded inside each test body: the AC tests are
 // written before check() accepts parsed coverage files and parsed diffs, so nothing that depends on them may run
@@ -10,7 +15,6 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 
 type Selection = "lcov" | "cobertura" | "auto";
 type Options = { repoRoot?: string; coverageRoot?: string };
-type Message = { level: string; code: string; text: string };
 
 const asFile = (report: unknown) => `${JSON.stringify(report, null, 2)}\n`;
 const lines = (path: string) => fixture(path).trim().split("\n");
@@ -24,9 +28,7 @@ async function load() {
   const { parseConfig } = await import("../src/config.js");
   const { renderMarkdown } = await import("../src/render/markdown.js");
 
-  type Input = Parameters<typeof check>[0];
-  const run = (input: Record<string, unknown>) =>
-    check({ version: "0.1.0", repoRoot: REPO_ROOT, ...input } as unknown as Input);
+  const run = (input: RunInput) => check({ version: "0.1.0", repoRoot: REPO_ROOT, ...input });
 
   /** A coverage file as an adapter hands it to check(): parsed, with the format chosen on its start. */
   const parsedFile = (text: string, selection: Selection, options: Options, file?: string) => {
@@ -59,7 +61,7 @@ describe("check(): parsed coverage files and parsed diffs", () => {
       dir: string;
       files: { name: string; file?: string }[];
       format: Selection;
-      extra?: Record<string, unknown>;
+      extra?: Partial<TextCheckInput>;
     }[] = [
       { dir: "golden", files: [{ name: "coverage.info" }], format: "lcov" },
       { dir: "golden-cobertura", files: [{ name: "coverage.xml" }], format: "auto" },
@@ -118,8 +120,7 @@ describe("check(): parsed coverage files and parsed diffs", () => {
     const goldenDiff = fixture("golden/pr.diff");
     const goldenFiles = lines("golden/files.txt");
 
-    const cases: { label: string; text: Record<string, unknown>; parsed: Record<string, unknown>; code?: string }[] =
-      [];
+    const cases: { label: string; text: RunInput; parsed: RunInput; code?: string }[] = [];
 
     // The absolute-path lcov fixture with a repo root.
     {

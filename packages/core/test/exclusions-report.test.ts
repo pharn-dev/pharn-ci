@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
+import type { BuildReportInput } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 // The schema validator, buildReport and renderMarkdown are loaded inside each test body, and every report is
 // built there: these tests are written before excludedFiles exists, so nothing that depends on it may run
 // while the file loads.
-
-type BuildReport = typeof import("../src/report.js").buildReport;
-type BuildReportInput = Parameters<BuildReport>[0];
 
 /** A report with one measured file, the given excluded paths (if any) and one agent setup file. */
 async function reportWith(excludedFiles: string[] | undefined, opts: { noCoverableLines?: boolean } = {}) {

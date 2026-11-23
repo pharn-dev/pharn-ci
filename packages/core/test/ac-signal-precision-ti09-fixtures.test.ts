@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -48,11 +49,6 @@ const EARLIER = [
  */
 const EARLIER_DIGEST = "8cc04749d9cf3daa880f92cc1aeb9f12cab2196bdf38974bdd1fe3927e246d58";
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
-
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
 /** The `<logical path>.txt` files under one side of a case, as test-source files sorted by logical path. */
@@ -84,7 +80,7 @@ async function run(name: string) {
     repoFiles: ["src/cart.ts", ...head.map((file) => file.path)].sort(),
     testIntegrityMode: { input: "block" },
     testSources: { base: { files: base, dropped: [] }, head: { files: head, dropped: [] } },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   const signals = report.testIntegrity.signals
     .filter((s) => String(s.id) === "TI09")

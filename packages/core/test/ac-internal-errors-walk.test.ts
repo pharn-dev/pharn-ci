@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fixture } from "./helpers.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // check() is loaded inside the test body: the AC test is written before the build narrows the test index's catch,
 // so nothing the build changes may run while the file loads. The fault is injected into our own test-file walk
@@ -45,7 +46,7 @@ function diffOf(path: string, base: string, head: string): string {
 describe("check(): an exception from our own test-file walk", () => {
   it("AC-1: a TypeError thrown by walkTestFile for a modified test file escapes check() in mode block, and no report is returned", async () => {
     const { check } = await import("./text-coverage.js");
-    const input = {
+    const input: TextCheckInput = {
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
       diff: { text: diffOf(PATH, BASE, HEAD) },
@@ -57,7 +58,7 @@ describe("check(): an exception from our own test-file walk", () => {
         base: { files: [{ path: PATH, text: BASE }], dropped: [] },
         head: { files: [{ path: PATH, text: HEAD }], dropped: [] },
       },
-    } as unknown as Parameters<typeof check>[0];
+    };
 
     let report: unknown;
     let thrown: unknown = null;

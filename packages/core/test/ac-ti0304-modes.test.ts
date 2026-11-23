@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -38,8 +39,6 @@ async function run(diff: string, mode: "block" | "warn" | "off") {
   expectValidReport(report);
   return report;
 }
-
-type Report = Awaited<ReturnType<typeof run>>;
 
 const CONDITIONAL = edit(E2E, [7, 7, [], ['  test.skip(isMobile, "x")']]);
 

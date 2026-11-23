@@ -11,7 +11,7 @@ interface Helper {
 }
 
 async function helper(): Promise<Helper> {
-  const loaded = (await import("./v090-codes.js")) as unknown as Partial<Helper>;
+  const loaded = await import("./v090-codes.js");
   expect(typeof loaded.withoutFix, "withoutFix is exported").toBe("function");
   return loaded as Helper;
 }
@@ -21,7 +21,7 @@ describe("the shared withoutFix helper", { timeout: 60_000 }, () => {
   it("AC-12: withoutFix takes the fix objects out of a report and leaves its input as it was", async () => {
     const { withoutFix } = await helper();
 
-    const { check } = (await import("./text-coverage.js")) as unknown as { check(input: unknown): unknown };
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -13,22 +15,6 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const RENAMED_FROM = "test/__snapshots__/a.test.ts.snap";
 const RENAMED_TO = "src/__snapshots__/a.test.ts.snap";
 const DELETED = "test/__snapshots__/b.test.ts.snap";
-
-interface SourceFile {
-  path: string;
-  text: string;
-}
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Report {
-  testIntegrity: { signals: Signal[] };
-  messages: { code: string; level: string; text: string }[];
-}
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
@@ -63,7 +49,7 @@ async function runCase(name: string): Promise<{ diff: string; report: Report }> 
     repoFiles: [...new Set([...head.map((f) => f.path), "src/b.ts"])].sort(),
     testSources: { base: { files: base, dropped: [] }, head: { files: head, dropped: [] } },
     testIntegrityMode: { input: "block" },
-  } as unknown as Parameters<typeof check>[0]) as unknown as Report;
+  });
   expectValidReport(report);
   return { diff, report };
 }

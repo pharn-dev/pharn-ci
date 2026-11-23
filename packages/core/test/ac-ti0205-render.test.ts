@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -15,18 +16,6 @@ const DROPPED = "src/c.test.ts";
 const HEADER = ['import { describe, expect, it } from "vitest";', 'import { total } from "./cart.js";', ""];
 /** The test's name in the source: a backtick, a mention, raw HTML, an escaped newline and a markdown link. */
 const HOSTILE_LINE = 'it("hostile ` @octocat <img src=x>\\n[x](https://example.com)", () => {';
-
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Report {
-  testIntegrity: { signals: Signal[] };
-  messages: { code: string; level: string; text: string }[];
-}
 
 /** A `--unified=0` diff of `path` that removes the base lines whose index `removed` holds (0-based). */
 function deletionDiff(path: string, baseLines: readonly string[], removed: ReadonlySet<number>): string {
@@ -177,9 +166,9 @@ async function buildReport(): Promise<Report> {
       },
     },
     testIntegrityMode: { input: "block" },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 describe("renderMarkdown(): TI02 and TI05 in the Test integrity section", () => {

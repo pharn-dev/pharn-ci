@@ -1,23 +1,15 @@
 import { describe, expect, it } from "vitest";
+import type { AgentSetupFile as SetupFile } from "../src/setup/scan.js";
 
 // E3 item 24 (P07), AC-8. The core index is loaded inside the test body: the AC test is written before the build adds
 // the instruction module, so nothing the build adds may run while this file loads.
-
-type SetupFile = { path: string; kind: string };
-type Inventory = { files: SetupFile[] };
-interface Core {
-  INSTRUCTION_KINDS: readonly string[];
-  instructionScope(file: SetupFile): string;
-  agentInstructionPaths(inventory: Inventory): string[];
-  scanAgentSetup(paths: readonly string[]): Inventory;
-}
 
 describe("org policy rule P07: instruction kinds, scopes and the paths it reads", { timeout: 60_000 }, () => {
   it("AC-8: INSTRUCTION_KINDS is the fixed list, instructionScope gives the root or the package directory, and agentInstructionPaths keeps the instruction files of scopes holding two or more, sorted", async () => {
     const core = {
       ...(await import("../src/setup/instructions.js")),
       ...(await import("../src/setup/scan.js")),
-    } as unknown as Core;
+    };
 
     expect([...core.INSTRUCTION_KINDS]).toEqual([
       "claude-md",

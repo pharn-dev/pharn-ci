@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
+import type { PolicyError } from "../src/policy/types.js";
 import { FIXTURES } from "./helpers.js";
 
 // ti17-always-true-matcher-2, AC-16. The validator, schema/policy.v1.json and the unknown-ti fixture are read inside
@@ -14,20 +15,18 @@ const doc = (key: string) => ({ version: 1, test_integrity: { signals: { [key]: 
 
 describe("the TI17 key of an org policy", () => {
   it("AC-16: a policy with test_integrity.signals.TI17 is valid for core and the schema, one with TI18 is invalid with an error at its path that repeats no value, and the unknown-ti fixture names TI18", async () => {
-    const { validatePolicy } = (await import("../src/policy/validate.js")) as unknown as {
-      validatePolicy(value: unknown): { ok: boolean; errors?: Array<{ path: string; message: string }> };
-    };
+    const { validatePolicy } = await import("../src/policy/validate.js");
     const ajv = new Ajv2020({ strict: true, allErrors: true }).compile(
       JSON.parse(readFileSync(SCHEMA_URL, "utf8")) as object,
     );
 
     const valid = validatePolicy(doc(ID));
-    expect(valid.ok, `core: ${JSON.stringify(valid.errors)}`).toBe(true);
+    expect(valid.ok, `core: ${JSON.stringify((valid as { errors?: PolicyError[] }).errors)}`).toBe(true);
     expect(ajv(doc(ID)), `schema: ${JSON.stringify(ajv.errors)}`).toBe(true);
 
     const invalid = validatePolicy(doc(NEXT));
     expect(invalid.ok).toBe(false);
-    const errors = invalid.errors ?? [];
+    const errors = (invalid as { errors?: PolicyError[] }).errors ?? [];
     const atKey = errors.filter((e) => e.path === `/test_integrity/signals/${NEXT}`);
     expect(atKey, "an error at the TI18 path").toHaveLength(1);
     for (const error of errors) expect(error.message, "no document value in a message").not.toContain("warn");

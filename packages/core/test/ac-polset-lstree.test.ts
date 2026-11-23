@@ -3,14 +3,12 @@ import { describe, expect, it } from "vitest";
 // E3 item 23 (policy settings), AC-6. parseLsTreeSymlinks() is loaded inside the test body: the AC test is written
 // before the build adds it, so nothing the build adds may run while this file loads.
 
-type Parse = (text: string) => Set<string>;
-
 const OID = "e".repeat(40);
 const record = (mode: string, type: string, size: string, path: string) => `${mode} ${type} ${OID} ${size}\t${path}\0`;
 
 describe("parseLsTreeSymlinks", () => {
   it("AC-6: returns exactly the symlink paths of git ls-tree -r -l -z output, verbatim, skipping a malformed record without throwing", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as { parseLsTreeSymlinks: Parse };
+    const core = await import("@pharn-ci/core");
     expect(typeof core.parseLsTreeSymlinks, "parseLsTreeSymlinks is exported").toBe("function");
 
     const text = [

@@ -4,6 +4,7 @@ import { parseConfig } from "../src/config.js";
 import { type InputErrorText, type RawInputs, resolveInputs } from "../src/inputs.js";
 import { applyPolicy } from "../src/policy/apply.js";
 import type { ResolvedPolicy } from "../src/policy/resolved.js";
+import type { ReportPolicyViolation as Violation } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { check } from "./text-coverage.js";
@@ -48,8 +49,6 @@ const section = (path: string): string => {
 };
 const WORKFLOW_ONLY = section(".github/workflows/ci.yml");
 const CONFIG_ONLY = section(".pharn/ci.yml");
-
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
 
 function p09(diff: string, ignored: ReturnType<typeof ignoredFor>) {
   const report = check({

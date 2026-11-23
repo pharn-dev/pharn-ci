@@ -1,6 +1,9 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
+import type { TestBlock as Block } from "../src/testIndex/types.js";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -11,38 +14,6 @@ import { expectValidReport } from "./schema.js";
 // name, which today's exact leaf-name and body-hash pass does not match.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
-
-interface SourceFile {
-  path: string;
-  text: string;
-}
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Entry {
-  path: string;
-  name: string;
-  line: number;
-}
-interface Block {
-  kind: string;
-  path: string[];
-  line: number;
-  body: string;
-  bodyHash: string;
-  assertions: { chain: string }[];
-}
-interface Report {
-  testIntegrity: {
-    signals: Signal[];
-    languages: string[];
-    changes?: { added: Entry[]; removed: Entry[]; modified: Entry[]; renamed: Entry[] };
-  };
-}
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
@@ -65,9 +36,7 @@ function sideFiles(dir: string): SourceFile[] {
 async function testsOf(files: SourceFile[], path: string): Promise<Block[]> {
   const file = files.find((f) => f.path === path);
   if (file === undefined) throw new Error(`the fixture has no text for ${path}`);
-  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
-    indexTestFile(path: string, text: string): { parsed: boolean; tests?: Block[] };
-  };
+  const core = await import("../src/testIndex/indexTestFile.js");
   const result = core.indexTestFile(file.path, file.text);
   if (!result.parsed) throw new Error(`the fixture ${file.path} does not parse: ${JSON.stringify(result)}`);
   return (result.tests ?? []).filter((b) => b.kind === "test");
@@ -139,7 +108,7 @@ async function runMoved(m: Moved): Promise<Report> {
     repoFiles: [...new Set([...m.head.map((f) => f.path), "src/cart.ts"])].sort(),
     testSources: { base: { files: m.base, dropped: [] }, head: { files: m.head, dropped: [] } },
     testIntegrityMode: { input: "block" },
-  } as unknown as Parameters<typeof check>[0]) as unknown as Report;
+  });
   expectValidReport(report);
   return report;
 }

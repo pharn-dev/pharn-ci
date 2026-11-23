@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
+import type { TestSources } from "../src/testSources.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -10,16 +12,6 @@ import { expectValidReport } from "./schema.js";
 const CODE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 const PATH = "src/new.test.ts";
 
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-}
-interface Report {
-  verdict: string;
-  messages: Message[];
-}
-
 const BASE = [
   'import { expect, it } from "vitest";',
   'import { total } from "./cart.js";',
@@ -30,7 +22,7 @@ const BASE = [
   "",
 ].join("\n");
 
-async function run(diff: string, testSources: unknown): Promise<Report> {
+async function run(diff: string, testSources: TestSources): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -41,9 +33,9 @@ async function run(diff: string, testSources: unknown): Promise<Report> {
     repoFiles: [PATH, "src/cart.ts"],
     testIntegrityMode: { input: "block" },
     testSources,
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 describe("CORE-69: an added test file that cannot be read keeps warning", () => {

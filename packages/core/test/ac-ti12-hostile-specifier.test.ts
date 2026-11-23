@@ -1,6 +1,9 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { TestIntegritySignal as Signal } from "../src/report.js";
+import type { TestBlock as Block } from "../src/testIndex/types.js";
+import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -17,36 +20,15 @@ const GRIN = "\u{1F600}";
 const SPECIFIER = `./\u0001a${GRIN.repeat(60)}/../cart`;
 const SECRET = "SECRET-TEST-NAME";
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
 interface Case {
   diff: string;
   base: SourceFile[];
   head: SourceFile[];
 }
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
 interface Mock {
   callee: string;
   specifier: string | null;
   line: number;
-}
-interface Block {
-  kind: string;
-  name: string;
-  path: string[];
-  line: number;
-  endLine: number;
-}
-interface Report {
-  testIntegrity: { signals: Signal[] };
 }
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
@@ -71,9 +53,7 @@ const diffPaths = (diff: string) => [...diff.matchAll(/^\+\+\+ b\/(.+)$/gm)].map
 
 async function indexOf(file: SourceFile | undefined): Promise<{ tests: Block[]; mocks: Mock[] }> {
   if (file === undefined) throw new Error("the fixture file is missing");
-  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
-    indexTestFile(path: string, text: string): { parsed: boolean; tests?: Block[]; mocks?: Mock[] };
-  };
+  const core = await import("../src/testIndex/indexTestFile.js");
   const result = core.indexTestFile(file.path, file.text);
   if (!result.parsed) throw new Error(`the fixture ${file.path} does not parse: ${JSON.stringify(result)}`);
   return { tests: result.tests ?? [], mocks: result.mocks ?? [] };
@@ -132,10 +112,10 @@ describe("TI12: a hostile mock specifier is sanitized and cut before it reaches 
       repoFiles: [...new Set([...c.head.map((f) => f.path), ...diffPaths(c.diff)])].sort(),
       testSources: { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } },
       testIntegrityMode: { input: "block" },
-    } as unknown as Parameters<typeof check>[0]);
+    });
     expectValidReport(report);
 
-    const ti12 = (report as unknown as Report).testIntegrity.signals.filter((s) => String(s.id) === "TI12");
+    const ti12 = report.testIntegrity.signals.filter((s) => String(s.id) === "TI12");
     expect(ti12).toHaveLength(1);
     const detail = (ti12[0] as Signal).detail;
     expect(detail).toContain(SOURCE);

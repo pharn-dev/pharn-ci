@@ -11,10 +11,6 @@ describe("@pharn-ci/core: JS_TS_EXTENSIONS", () => {
       ...(await import("../src/jsTsExtensions.js")),
       ...(await import("../src/signals/testLines.js")),
       ...(await import("../src/testFiles.js")),
-    } as unknown as {
-      JS_TS_EXTENSIONS: readonly string[];
-      isTestFile(path: string): boolean;
-      testLanguage(path: string): "jsts" | "python" | "go" | null;
     };
 
     expect(Array.isArray(core.JS_TS_EXTENSIONS), "JS_TS_EXTENSIONS is an exported list").toBe(true);

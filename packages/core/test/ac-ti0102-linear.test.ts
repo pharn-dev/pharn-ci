@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { TestIndex } from "../src/testIndex/types.js";
 import { measureGrowth, threadCpuMs } from "./growth.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -89,7 +90,7 @@ function generate(bytes: number) {
   return {
     data: {
       version: "0.1.0",
-      coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
+      coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" as const },
       diff: { text: diff },
       repoRoot: REPO_ROOT,
       threshold: 80,
@@ -98,7 +99,7 @@ function generate(bytes: number) {
         base: { files: files.map((f) => ({ path: f.path, text: f.base })), dropped: [] },
         head: { files: files.map((f) => ({ path: f.path, text: f.head })), dropped: [] },
       },
-      testIntegrityMode: { input: "block" },
+      testIntegrityMode: { input: "block" as const },
     },
     sizes: { base: base.text.length, head: head.text.length, removed: base.count, added: head.count },
     files,
@@ -108,7 +109,6 @@ function generate(bytes: number) {
 describe("TI02 precision: the new rules stay linear", () => {
   it("AC-13: a test file removing thousands of tests and adding thousands of .each tests, with other touched files of similarly named tests, gives TI02 signals and finishes within 15 s at the 512 KiB cap, and at 256 KiB takes less than 8 times the median of the 64 KiB input, each run within 15 s", async () => {
     const { check } = await import("./text-coverage.js");
-    type Input = Parameters<typeof check>[0];
     const cap = generate(CAP);
     const full = generate(FULL);
     const quarter = generate(QUARTER);
@@ -125,15 +125,13 @@ describe("TI02 precision: the new rules stay linear", () => {
       expect(run.sizes.added, "and adds thousands of .each tests").toBeGreaterThan(least[bytes] as number);
     }
     // The generated files are valid TypeScript: the existing test index parses them with no syntax error.
-    const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
-      indexTestFile(path: string, text: string): { parsed: boolean; syntaxErrors?: number };
-    };
+    const core = await import("../src/testIndex/indexTestFile.js");
     for (const run of [full, quarter]) {
       for (const f of run.files) {
         for (const text of [f.base, f.head]) {
           const result = core.indexTestFile(f.path, text);
           expect(result.parsed, `${f.path}: ${JSON.stringify(result)}`).toBe(true);
-          expect(result.syntaxErrors).toBe(0);
+          expect((result as TestIndex).syntaxErrors).toBe(0);
         }
       }
     }
@@ -141,9 +139,7 @@ describe("TI02 precision: the new rules stay linear", () => {
     const all: number[] = [];
     const time = (run: ReturnType<typeof generate>) => {
       const started = threadCpuMs();
-      const report = check(run.data as unknown as Input) as unknown as {
-        testIntegrity: { signals: { id: string; path: string }[]; languages: string[] };
-      };
+      const report = check(run.data);
       const ms = threadCpuMs() - started;
       all.push(ms);
       const ti02 = report.testIntegrity.signals.filter((s) => String(s.id) === "TI02");
