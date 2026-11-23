@@ -12,10 +12,11 @@ import { measureGrowth, threadCpuMs } from "./growth.js";
 // A13 (dependency safety): the manifest and lockfile readers take time linear in their input, on realistic shapes and on
 // shapes that would make a backtracking pattern or a nested loop quadratic. Growth is measured on this thread's CPU time
 // with measureGrowth (growth.ts), after a warm-up call: 4 times the input must take under 8 times as long (near 4 is
-// linear, near 16 quadratic), and the slowest call must finish within 15 s.
+// linear, near 16 quadratic), and the slowest call must finish within 15 s. The sizes are half what they were before
+// CORE-134: a temporarily quadratic reader still fails the limit of 8 at these sizes.
 
-const SMALL = 50_000;
-const LARGE = 200_000;
+const SMALL = 25_000;
+const LARGE = 100_000;
 
 const sized = (unit: string, size: number) => unit.repeat(Math.ceil(size / unit.length)).slice(0, size);
 const entries = (size: number, entry: (i: number) => string) => {
@@ -159,8 +160,8 @@ describe("dependency readers are linear", { timeout: 120_000 }, () => {
   });
 
   // CORE-100: a lockfile may now be 32 MiB, so the whole path a large pnpm-lock.yaml takes through check() (both sides
-  // read, the entries compared, the report built) must stay linear too, at megabyte sizes, not only the parser.
-  it("a pnpm-lock.yaml judged end to end through check(), at 1 MiB and 4 MiB a side", async () => {
+  // read, the entries compared, the report built) must stay linear too, at a size of megabytes, not only the parser.
+  it("a pnpm-lock.yaml judged end to end through check(), at 512 KiB and 2 MiB a side", async () => {
     const lock = (size: number) =>
       `lockfileVersion: '9.0'\n\nimporters:\n\n  .:\n    dependencies: {}\n\npackages:\n\n${entries(
         size,
@@ -185,8 +186,8 @@ describe("dependency readers are linear", { timeout: 120_000 }, () => {
           },
         });
     };
-    const small = judged(1_048_576);
-    const large = judged(4_194_304);
+    const small = judged(524_288);
+    const large = judged(2_097_152);
     const warm = large();
     expect(warm.dependencies?.unread, "control: the lockfile is read").toBeUndefined();
     expect(warm.dependencies?.signals.map((s) => s.id)).toEqual(["D05"]);

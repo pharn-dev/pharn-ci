@@ -2,17 +2,21 @@
 // small input of the same shape. Wall time on a busy host measures the host: one preemption turns a 3 ms run into
 // 30 ms, and a long sample is preempted more often than a short one, so a ratio of wall times drifts up under load
 // even when the code is linear. So by default the clock is this thread's CPU time (process.threadCpuUsage), which a
-// preempted thread does not accrue. A sample is `reps` back-to-back runs, `reps` doubled per input until every sample
-// lasts at least MIN_SAMPLE_MS, so timer resolution and scheduling cannot decide a run of a few milliseconds. Samples
-// alternate small and large, and each input keeps its fastest sample: load only ever adds time. A run whose work is
+// preempted thread does not accrue. A sample is `reps` back-to-back runs, `reps` set per input from timed runs so a
+// sample lasts about a fifth over MIN_SAMPLE_MS and never less, so timer resolution and scheduling cannot decide a run
+// of a few milliseconds. Samples alternate small and large, and each input keeps its fastest sample: load only ever
+// adds time. A run whose work is
 // in another process (a spawned interpreter) is not on this thread's clock; it uses the wall clock, and its small
 // samples are made at least three quarters as long as its large ones, so both are exposed to the same preemption.
 // The limit a caller asserts is unchanged: linear work gives a ratio near 4 at four times the size, quadratic near 16.
 
 /** The shortest a sample may last, in milliseconds of the clock in use. */
 export const MIN_SAMPLE_MS = 50;
-/** Samples per input, taken alternately. */
-export const SAMPLES = 5;
+/**
+ * Samples per input, taken alternately (the first may be the one calibration ended on). Three, five before CORE-134:
+ * load only ever adds time, and temporarily quadratic code still failed the callers' limit of 8 with three.
+ */
+export const SAMPLES = 3;
 /** The most runs one sample may hold, so a run too fast to measure cannot loop for long. */
 export const MAX_REPS = 1024;
 
@@ -66,12 +70,18 @@ export async function measureGrowth(
     for (let i = 0; i < reps; i++) await run();
     return now() - started;
   };
-  /** The fewest runs, a power of two, whose sample lasts at least `floor`, and that sample's duration. */
+  /**
+   * Runs per sample so a sample lasts at least `floor`, and that sample's duration: estimated from one run to last a
+   * fifth over `floor`, then doubled while a sample still falls short. A slow first run only makes the estimate low,
+   * which the doubling corrects; reps never exceed MAX_REPS.
+   */
   const calibrate = async (run: Run, floor: number): Promise<[number, number]> => {
-    let reps = 1;
+    const once = await sample(run, 1);
+    if (once >= floor) return [1, once];
+    let reps = Math.min(MAX_REPS, Math.max(2, Math.ceil((1.2 * floor) / Math.max(once, 0.001))));
     let ms = await sample(run, reps);
     while (ms < floor && reps < MAX_REPS) {
-      reps *= 2;
+      reps = Math.min(MAX_REPS, reps * 2);
       ms = await sample(run, reps);
     }
     return [reps, ms];
@@ -80,9 +90,13 @@ export async function measureGrowth(
   const [firstReps, largeFirst] = await calibrate(large, MIN_SAMPLE_MS);
   let largeReps = firstReps;
   const smallFloor = clock === "wall" ? Math.max(MIN_SAMPLE_MS, 0.75 * largeFirst) : MIN_SAMPLE_MS;
-  let [smallReps] = await calibrate(small, smallFloor);
-  let smalls: number[] = [];
-  let larges: number[] = [];
+  let [smallReps, smallFirst] = await calibrate(small, smallFloor);
+  // A calibration that ended on a sample of many runs gives that input its first sample. One that ended on a single run
+  // does not: that run may be the first of a few slow ones (a pause, a compile), and only a later clean run that falls
+  // short of the floor exposes them, so the samples kept after it must not all come from that slow start.
+  const reuse = smallReps > 1 && largeReps > 1;
+  let smalls: number[] = reuse ? [smallFirst] : [];
+  let larges: number[] = reuse ? [largeFirst] : [];
   while (smalls.length < samples) {
     const s = await sample(small, smallReps);
     const l = await sample(large, largeReps);
@@ -90,8 +104,8 @@ export async function measureGrowth(
     const shortLarge = l < MIN_SAMPLE_MS && largeReps < MAX_REPS;
     if (shortSmall || shortLarge) {
       // A calibration ran slow under load: longer samples, and the samples so far no longer compare.
-      if (shortSmall) smallReps *= 2;
-      if (shortLarge) largeReps *= 2;
+      if (shortSmall) smallReps = Math.min(MAX_REPS, smallReps * 2);
+      if (shortLarge) largeReps = Math.min(MAX_REPS, largeReps * 2);
       smalls = [];
       larges = [];
       continue;

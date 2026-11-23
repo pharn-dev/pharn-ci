@@ -12,7 +12,10 @@ import { expectValidReport } from "./schema.js";
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const PATH = "src/big.test.ts";
-const FULL = 524_288;
+// The 512 KiB cap: one run at it holds the 15 s ceiling. The growth is measured at half of it (CORE-134, half the
+// cost), from a quarter of that.
+const CAP = 524_288;
+const FULL = CAP / 2;
 const QUARTER = FULL / 4;
 const CEILING_MS = 15_000;
 const HEADER = 'import { expect, it } from "vitest";\n\n';
@@ -68,13 +71,15 @@ function input(bytes: number) {
   };
 }
 
-describe("TI02 and TI05: the comparison of one file grows less than eightfold from a quarter of the cap", () => {
-  it("AC-18: 512 KiB base and head files take less than 8 times the median of 128 KiB ones, each run within 15 s", async () => {
+describe("TI02 and TI05: the comparison of one file finishes within 15 s at the cap and grows less than eightfold", () => {
+  it("AC-18: 512 KiB base and head files are compared within 15 s, and 256 KiB ones take less than 8 times the median of 64 KiB ones, each run within 15 s", async () => {
     const { check } = await import("./text-coverage.js");
     type Input = Parameters<typeof check>[0];
+    const cap = input(CAP);
     const full = input(FULL);
     const quarter = input(QUARTER);
     for (const [run, bytes] of [
+      [cap, CAP],
       [full, FULL],
       [quarter, QUARTER],
     ] as const) {
@@ -95,7 +100,7 @@ describe("TI02 and TI05: the comparison of one file grows less than eightfold fr
       return { ms, report };
     };
 
-    for (const run of [full, quarter]) {
+    for (const run of [cap, full, quarter]) {
       const warm = time(run);
       expectValidReport(warm.report);
       // The comparison ran: the removed base tests are TI02 findings and the file was indexed.

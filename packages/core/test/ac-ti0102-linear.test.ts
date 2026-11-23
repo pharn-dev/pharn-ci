@@ -18,7 +18,10 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const BIG = "src/big.test.ts";
 const CONTROL = "src/control.test.ts";
 const OTHERS = [0, 1, 2, 3].map((k) => `src/other-${k}.test.ts`);
-const FULL = 524_288;
+// The cap: one run at it holds the 15 s ceiling. The growth is measured at half of it (CORE-134, half the cost): a
+// temporarily quadratic TI02 pass still fails the limit of 8 there.
+const CAP = 524_288;
+const FULL = CAP / 2;
 const QUARTER = FULL / 4;
 const CEILING_MS = 15_000;
 const IMPORTS = 'import { describe, expect, it } from "vitest";\n\n';
@@ -103,20 +106,23 @@ function generate(bytes: number) {
 }
 
 describe("TI02 precision: the new rules stay linear", () => {
-  it("AC-13: a 512 KiB test file removing thousands of tests and adding thousands of .each tests, with other touched files of similarly named tests, takes less than 8 times the median of the 128 KiB input, each run within 15 s, with TI02 signals", async () => {
+  it("AC-13: a test file removing thousands of tests and adding thousands of .each tests, with other touched files of similarly named tests, gives TI02 signals and finishes within 15 s at the 512 KiB cap, and at 256 KiB takes less than 8 times the median of the 64 KiB input, each run within 15 s", async () => {
     const { check } = await import("./text-coverage.js");
     type Input = Parameters<typeof check>[0];
+    const cap = generate(CAP);
     const full = generate(FULL);
     const quarter = generate(QUARTER);
+    const least: Record<number, number> = { [CAP]: 3000, [FULL]: 1500, [QUARTER]: 350 };
     for (const [run, bytes] of [
+      [cap, CAP],
       [full, FULL],
       [quarter, QUARTER],
     ] as const) {
       expect(run.sizes.base).toBeLessThanOrEqual(bytes);
       expect(run.sizes.head).toBeLessThanOrEqual(bytes);
       expect(run.sizes.base, "the base file fills the size").toBeGreaterThan(bytes - 200);
-      expect(run.sizes.removed, "it removes thousands of tests").toBeGreaterThan(bytes === FULL ? 3000 : 700);
-      expect(run.sizes.added, "and adds thousands of .each tests").toBeGreaterThan(bytes === FULL ? 3000 : 700);
+      expect(run.sizes.removed, "it removes thousands of tests").toBeGreaterThan(least[bytes] as number);
+      expect(run.sizes.added, "and adds thousands of .each tests").toBeGreaterThan(least[bytes] as number);
     }
     // The generated files are valid TypeScript: the existing test index parses them with no syntax error.
     const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
@@ -152,6 +158,8 @@ describe("TI02 precision: the new rules stay linear", () => {
       return { ms, report };
     };
 
+    // The cap run: TI02 signals and the 15 s ceiling (every timed run's CPU time is checked against it at the end).
+    expectValidReport(time(cap).report);
     for (const run of [full, quarter]) {
       const warm = time(run);
       expectValidReport(warm.report);
