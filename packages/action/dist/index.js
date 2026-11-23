@@ -31340,28 +31340,33 @@ function injectionSettingsOf(policy, base) {
   const document2 = policy?.document;
   if (policy === void 0 || policy.source === "none" || document2 === null || document2 === void 0) return settings2;
   const injection2 = document2.injection;
-  if (injection2 === void 0) return settings2;
-  const wanted = injection2.signals ?? {};
   if (policy.source === "app") {
+    if (injection2 === void 0) return settings2;
+    const wanted2 = injection2.signals ?? {};
     settings2.exempt = tidy(injection2.exempt);
     settings2.phrases = tidy(injection2.phrases);
     for (const id of INJECTION_SIGNAL_IDS) {
-      const value = Object.hasOwn(wanted, id) ? wanted[id] : void 0;
+      const value = Object.hasOwn(wanted2, id) ? wanted2[id] : void 0;
       if (value !== void 0) severities[id] = value === "off" ? null : value;
     }
     return settings2;
   }
-  const basePhrases = base?.kind === "document" ? base.document.injection?.phrases : void 0;
-  settings2.phrases = tidy(injection2.phrases, basePhrases);
-  if (injection2.exempt !== void 0 && injection2.exempt.length > 0) {
+  const baseInjection = base?.kind === "document" ? base.document.injection : void 0;
+  settings2.phrases = tidy(injection2?.phrases, baseInjection?.phrases);
+  if (injection2?.exempt !== void 0 && injection2.exempt.length > 0) {
     settings2.ignored.push({ setting: "injection.exempt", reason: "not-allowed" });
   }
+  const wanted = injection2?.signals ?? {};
+  const baseWanted = baseInjection?.signals ?? {};
   for (const id of INJECTION_SIGNAL_IDS) {
+    const fallback = DEFAULT_INJECTION_SEVERITIES[id];
+    const baseValue = Object.hasOwn(baseWanted, id) ? baseWanted[id] : void 0;
+    if (baseValue !== void 0 && RANK[baseValue] > RANK[fallback]) severities[id] = baseValue;
     const value = Object.hasOwn(wanted, id) ? wanted[id] : void 0;
     if (value === void 0) continue;
-    const fallback = DEFAULT_INJECTION_SEVERITIES[id];
-    if (RANK[value] > RANK[fallback]) severities[id] = value;
-    else if (RANK[value] < RANK[fallback]) {
+    const current = severities[id];
+    if (RANK[value] > RANK[current]) severities[id] = value;
+    else if (RANK[value] < RANK[current]) {
       settings2.ignored.push({ setting: `injection.signals.${id}`, reason: "looser" });
     }
   }

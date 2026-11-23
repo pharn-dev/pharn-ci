@@ -11,6 +11,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- A `file:` policy a pull request edits can no longer drop the injection phrases its copy at the merge base names by
+  removing the whole `injection` key (CORE-14 follow-up): the base's phrases were united with the head's only when the
+  head copy still had the key, in the Action and the CLI. The base's raised `injection.signals` severities now apply
+  the same way, whether or not the head has the key, and a head value below one is listed as not applied. A base that
+  cannot be read or has no policy file changes nothing, as before.
 - P07 and the stale-instruction check (SI01 to SI03) read instruction files with one set of line helpers (CORE-142),
   so the two no longer differ on the same line. The stale check now reads PowerShell, `pwsh`, `ps1`, `cmd` and `bat`
   fences and a PowerShell `PS …> ` prompt in a console block, as P07 did, and no longer takes "no" out of "Noël" as a
