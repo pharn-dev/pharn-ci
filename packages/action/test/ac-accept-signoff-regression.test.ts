@@ -33,8 +33,8 @@ const BEFORE_COUNT = 216;
 /**
  * Fixtures added after the digest above was taken. They are left out of it, so it keeps pinning every earlier fixture
  * to the signals and messages it gave at the base commit; each of them is asserted by its own AC test (the E1 gate
- * fixes: ac-ti01-rename-edited, ac-ti03-cap, ac-ti14-config-forms and ac-e1-precision; the TI08, TI15 and TI16
- * fixtures: ac-ti081516-fixtures).
+ * fixes: ac-ti01-rename-edited, ac-ti03-cap, ac-ti14-config-forms and ac-e1-precision; the TI08 and TI16 fixtures:
+ * ac-ti081516-fixtures). The TI15 fixtures were deleted with TI15 (CORE-144).
  */
 const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
   // Review 2026-11-01 (TI10 no-op script, TI14 comment rule): asserted by ac-ti1013-docs and ac-ti14-comment-rule.
@@ -81,16 +81,6 @@ const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
   "TI08/warn-pytest-snapshot-update.diff",
   "TI08/warn-script-update-flag.diff",
   "TI08/warn-snapshot-files-modified.diff",
-  "TI15/pass-go-source.diff",
-  "TI15/pass-moved-case.diff",
-  "TI15/pass-no-comparison.diff",
-  "TI15/pass-short-literal.diff",
-  "TI15/pass-stop-list.diff",
-  "TI15/pass-typeof.diff",
-  "TI15/warn-js-equality.diff",
-  "TI15/warn-js-switch-case.diff",
-  "TI15/warn-number.diff",
-  "TI15/warn-python-in-tuple.diff",
   "TI16/info-eslint-disable.diff",
   "TI16/info-python-suppressions.diff",
   "TI16/info-ts-expect-error.diff",
@@ -98,16 +88,11 @@ const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
   "TI16/pass-moved.diff",
   "TI16/pass-source-file.diff",
   "TI16/pass-string-marker.diff",
-  // The signal-precision fixtures (ac-signal-precision-ti11-*, ac-signal-precision-ti15-*).
+  // The signal-precision fixtures (ac-signal-precision-ti11-*).
   "TI11/pass-package-manager-swap.diff",
   "TI11/block-job-moved-with-tests.diff",
   "TI11/block-swap-drops-test.diff",
   "TI11/block-job-removed-script-kept.diff",
-  "TI15/pass-other-package.diff",
-  "TI15/pass-examples-dir.diff",
-  "TI15/pass-benchmark-dir.diff",
-  "TI15/pass-short-status-code.diff",
-  "TI15/warn-same-package.diff",
   // CORE-71 (R2.8): the TI11 flag fixtures and the TI13 new-file fixtures, asserted by ac-core71-ti11-flags and
   // ac-core71-ti13-new-file.
   "TI11/pass-pytest-cov-flags.diff",
