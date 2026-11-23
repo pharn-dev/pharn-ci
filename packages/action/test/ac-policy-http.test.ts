@@ -4,8 +4,11 @@ import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
 import { VERSION } from "../../core/src/version.js";
 import { APP_MAX_BODY_BYTES, type AppClientDeps, appRequest } from "../src/app-client.js";
-import { fetchPolicy } from "../src/policy-fetch.js";
+import { fetchAppPolicy } from "../src/policy-fetch.js";
 import { runUpload } from "../src/upload.js";
+
+/** The policy fetchAppPolicy returns. CORE-123: the Action's own fetchPolicy wrapper was removed as unused. */
+const fetchPolicy = async (...args: Parameters<typeof fetchAppPolicy>) => (await fetchAppPolicy(...args)).policy;
 
 // The HTTP contract of the pharn.dev client against Node's real fetch (undici), not a fake one. Every case starts
 // node:http servers on 127.0.0.1 (port 0) and hands the client the global fetch; nothing leaves the loopback address.

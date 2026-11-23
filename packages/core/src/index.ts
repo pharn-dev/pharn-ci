@@ -237,7 +237,7 @@ export {
   RESPONSE_MAX_QUARANTINE_ITEMS,
   validatePolicyResponse,
 } from "./policy/response.js";
-export { evaluatePolicyRules, MAX_P08_VIOLATIONS, MAX_RULE_VIOLATIONS } from "./policy/rules/evaluate.js";
+export { evaluatePolicyRules, MAX_RULE_VIOLATIONS } from "./policy/rules/evaluate.js";
 export { policyRuleMessages } from "./policy/rules/messages.js";
 export { consistencySeverity } from "./policy/rules/p07.js";
 export { P13_DIFF_UNAVAILABLE_DETAIL, P13_UNCOMPARED_DETAIL } from "./policy/rules/p13.js";
@@ -264,10 +264,8 @@ export {
   settingsUnitAnchor,
 } from "./policy/settings/paths.js";
 export {
-  covers,
   type NormalizedPolicyRule,
   normalizePolicyRule,
-  overlapsForbidden,
   type ParsedSettingsRule,
   type PermissionRule,
   parsePermissionRule,

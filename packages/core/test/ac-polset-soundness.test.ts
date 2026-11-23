@@ -160,9 +160,9 @@ function counterexample(sub: boolean[], sup: boolean[]): number {
 
 describe("covers is reflexive and sound", { timeout: 120_000 }, () => {
   it("AC-5: against brute-force enumeration in both readings and both argument orders, plus the fixed two-direction rows", async () => {
-    const rules = (await import("@pharn-ci/core")) as unknown as Rules;
-    expect(typeof rules.covers, "covers is exported").toBe("function");
-    expect(typeof rules.overlapsForbidden, "overlapsForbidden is exported").toBe("function");
+    // CORE-123 (R5.6): `covers` and `overlapsForbidden` left core, where nothing called them; they are the test
+    // wrappers over `coversPrepared` and `overlapsPrepared`, the comparisons P02 and P03 run (./permission-rules.ts).
+    const rules: Rules = await import("./permission-rules.js");
 
     // The fixed rows (C1): an allow entry inside a forbidden one triggers; a partial overlap neither direction can
     // prove does not, in either order.

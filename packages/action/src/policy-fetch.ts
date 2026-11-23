@@ -1,7 +1,7 @@
 import { type PolicyUnavailableReason, type ResolvedPolicy, validatePolicyResponse } from "@pharn-ci/core";
 import { type AppClientDeps, appRequest, oidcOffered, requestAppToken } from "./app-client.js";
 
-/** What `fetchPolicy` and `fetchAppPolicy` read from the Action's deps: the app client's, and the clock. */
+/** What `fetchAppPolicy` reads from the Action's deps: the app client's, and the clock. */
 export interface PolicyFetchDeps extends AppClientDeps {
   now?: (() => Date) | undefined;
 }
@@ -34,23 +34,6 @@ export interface AppPolicyResult {
   uploadJunit?: boolean;
 }
 
-/** The app settings of a valid 200 answer that the Action uses beside the policy. */
-interface AppSettingsUsed {
-  messageMaxBytes: number;
-  quarantine: string[];
-  uploadJunit: boolean;
-}
-
-/**
- * Fetches the org policy of a repository: `fetchAppPolicy`'s policy, for a caller that needs nothing else.
- */
-export async function fetchPolicy(
-  deps: PolicyFetchDeps,
-  options: { mode: "auto" | "required"; origin: URL; repository: string },
-): Promise<ResolvedPolicy> {
-  return (await fetchAppPolicy(deps, options)).policy;
-}
-
 /**
  * Fetches the org policy of a repository: one GET of `/api/v1/policy?repo=<owner/name>` on the app origin, with the
  * OIDC token. Under `auto` a runner that offers no token, or an app that has no policy, is silent (source `none`), and a
@@ -64,29 +47,14 @@ export async function fetchAppPolicy(
   deps: PolicyFetchDeps,
   options: { mode: "auto" | "required"; origin: URL; repository: string },
 ): Promise<AppPolicyResult> {
-  let settings: AppSettingsUsed | undefined;
-  const policy = await requestPolicy(deps, options, (value) => {
-    settings = value;
-  });
-  // A closure assigned it: read it through a widened view.
-  const used = settings as AppSettingsUsed | undefined;
-  return used === undefined ? { policy } : { policy, ...used };
-}
-
-/** The request and its answer; `onSettings` is called with the validated settings on the one 200 path only. */
-async function requestPolicy(
-  deps: PolicyFetchDeps,
-  options: { mode: "auto" | "required"; origin: URL; repository: string },
-  onSettings: (settings: AppSettingsUsed) => void,
-): Promise<ResolvedPolicy> {
   const required = options.mode === "required";
   const unavailable = (
     reason: PolicyUnavailableReason,
     extra: { status?: number; requestId?: string; noApp?: boolean; noInstallation?: boolean } = {},
-  ): ResolvedPolicy => {
+  ): AppPolicyResult => {
     if (extra.requestId !== undefined)
       deps.info(`pharn-ci: the org policy request failed (request id ${extra.requestId})`);
-    return {
+    const policy: ResolvedPolicy = {
       source: "none",
       version: null,
       document: null,
@@ -99,13 +67,16 @@ async function requestPolicy(
         required,
       },
     };
+    return { policy };
   };
-  const silent = (extra: { noApp?: boolean; noInstallation?: boolean } = {}): ResolvedPolicy => ({
-    source: "none",
-    version: null,
-    document: null,
-    ...(extra.noApp === true ? { noApp: true } : {}),
-    ...(extra.noInstallation === true ? { noInstallation: true } : {}),
+  const silent = (extra: { noApp?: boolean; noInstallation?: boolean } = {}): AppPolicyResult => ({
+    policy: {
+      source: "none",
+      version: null,
+      document: null,
+      ...(extra.noApp === true ? { noApp: true } : {}),
+      ...(extra.noInstallation === true ? { noInstallation: true } : {}),
+    },
   });
 
   // With no OIDC offered at all there is nothing to send and nothing to ask for: that is the no-token answer below,
@@ -150,19 +121,19 @@ async function requestPolicy(
   }
   const validated = validatePolicyResponse(parsed);
   if (!validated.ok) return unavailable("invalid-response", { status, ...id });
-  onSettings({
-    messageMaxBytes: validated.response.settings.messageMaxBytes,
-    quarantine: validated.response.quarantine,
-    uploadJunit: validated.response.settings.uploadJunit,
-  });
   // Keys and ids a newer app serves that this build does not know were left out of the document: the rest applies,
   // and check() names them in one POLICY_KEYS_UNKNOWN warning (CORE-118).
-  const { unknown } = validated;
+  const { response, unknown } = validated;
   return {
-    source: "app",
-    version: validated.response.version,
-    fetchedAt: (deps.now?.() ?? new Date()).toISOString(),
-    document: validated.response.policy,
-    ...(unknown.total > 0 ? { unknownKeys: unknown } : {}),
+    policy: {
+      source: "app",
+      version: response.version,
+      fetchedAt: (deps.now?.() ?? new Date()).toISOString(),
+      document: response.policy,
+      ...(unknown.total > 0 ? { unknownKeys: unknown } : {}),
+    },
+    messageMaxBytes: response.settings.messageMaxBytes,
+    quarantine: response.quarantine,
+    uploadJunit: response.settings.uploadJunit,
   };
 }

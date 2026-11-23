@@ -351,7 +351,7 @@ describe("review finding 8: the upload has one overall deadline", { timeout: 120
   });
 
   it("the policy fetch, which passes no deadline, keeps its retry and its per-attempt timeout", async () => {
-    const { fetchPolicy } = await import("../src/policy-fetch.js");
+    const { fetchAppPolicy } = await import("../src/policy-fetch.js");
     const { appRequest } = await import("../src/app-client.js");
     const app = recorder();
     let policyCalls = 0;
@@ -373,7 +373,7 @@ describe("review finding 8: the upload has one overall deadline", { timeout: 120
       warning: () => {},
       timeoutMs: undefined,
     };
-    const policy = await fetchPolicy(deps as never, {
+    const { policy } = await fetchAppPolicy(deps as never, {
       mode: "auto",
       origin: new URL(APP),
       repository: "acme/widgets",

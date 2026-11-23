@@ -324,28 +324,24 @@ export function preparePolicyEntry(text: string): PreparedPolicyEntry {
   return { text, normalized: normalizePolicyRule(text) };
 }
 
-/** `covers` over entries that are already parsed, so a pair costs one comparison. */
+/**
+ * The settings entry `a` (read broad for p02, narrow for p03) against the policy entry `f`, over entries that are
+ * already parsed, so a pair costs one comparison.
+ */
 export function coversPrepared(a: PreparedEntry, f: PreparedPolicyEntry, reading: "p02" | "p03"): boolean {
   if (f.normalized.kind === "rejected") return a.text === f.text;
   if (a.parsed.kind !== "rule") return false;
   return coversRule(a.parsed.rule, f.normalized.rule, reading === "p02" ? "broad" : "narrow");
 }
 
-/** `overlapsForbidden` over entries that are already parsed. */
+/**
+ * C1, over entries that are already parsed: the allow entry is equal to or broader than the forbidden one, or the
+ * forbidden one is broader than it.
+ */
 export function overlapsPrepared(allow: PreparedEntry, forbidden: PreparedPolicyEntry): boolean {
   if (coversPrepared(allow, forbidden, "p02")) return true;
   if (forbidden.normalized.kind !== "rule" || allow.parsed.kind !== "rule") return false;
   return coversRule(forbidden.normalized.rule, allow.parsed.rule, "broad");
-}
-
-/** The settings entry `a` (read broad for p02, narrow for p03) against the policy entry `f`. */
-export function covers(a: string, f: string, reading: "p02" | "p03"): boolean {
-  return coversPrepared(prepareEntry(a, reading === "p02" ? "allow" : "deny"), preparePolicyEntry(f), reading);
-}
-
-/** C1: the allow entry is equal to or broader than the forbidden one, or the forbidden one is broader than it. */
-export function overlapsForbidden(allow: string, forbidden: string): boolean {
-  return overlapsPrepared(prepareEntry(allow, "allow"), preparePolicyEntry(forbidden));
 }
 
 /** The compare-budget family key: rules of different families are never compared. */

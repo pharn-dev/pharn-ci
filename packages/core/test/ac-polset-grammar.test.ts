@@ -90,9 +90,12 @@ describe("the permission-rule grammar", () => {
       ROWS,
     );
 
-    const g = (await import("@pharn-ci/core")) as unknown as Grammar;
-    for (const name of ["covers", "normalizePolicyRule", "parsePermissionRule"] as const) {
-      expect(typeof g[name], `${name} is exported`).toBe("function");
+    // CORE-123 (R5.6): `covers` left core (nothing there called it); it is the test wrapper over `coversPrepared`, the
+    // comparison P02 and P03 run (./permission-rules.ts).
+    const core = (await import("@pharn-ci/core")) as unknown as Omit<Grammar, "covers">;
+    const g: Grammar = { ...core, covers: (await import("./permission-rules.js")).covers };
+    for (const name of ["normalizePolicyRule", "parsePermissionRule"] as const) {
+      expect(typeof core[name], `${name} is exported`).toBe("function");
     }
 
     for (const row of ROWS) {

@@ -5,7 +5,7 @@ import { gunzipSync } from "node:zlib";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { afterAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
-import { fetchAppPolicy, fetchPolicy } from "../src/policy-fetch.js";
+import { fetchAppPolicy } from "../src/policy-fetch.js";
 import { harness } from "./harness.js";
 
 // Regression tests for the app-settings and merge-base change (not mapped to an AC; the two AC tests are
@@ -257,12 +257,12 @@ describe("fetchAppPolicy returns messageMaxBytes only for a valid 200", () => {
     };
   };
 
-  it("sets it for an envelope accepted whole, and fetchPolicy returns the same policy without it", async () => {
+  // CORE-123 (R5.6): fetchPolicy, the wrapper that returned this policy without the settings, was removed as unused;
+  // its half of this test went with it.
+  it("sets it for an envelope accepted whole", async () => {
     const result = await fetchAppPolicy(depsFor(() => json(200, envelope(4096))).deps, options);
     expect(result.messageMaxBytes).toBe(4096);
     expect(result.policy.source).toBe("app");
-    const policy = await fetchPolicy(depsFor(() => json(200, envelope(4096))).deps, options);
-    expect(policy).toEqual(result.policy);
   });
 
   it.each([

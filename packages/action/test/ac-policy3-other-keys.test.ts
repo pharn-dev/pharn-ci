@@ -6,9 +6,9 @@ import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { harness, PR_CONTEXT } from "./harness.js";
 
-// applyPolicy(), fetchPolicy(), readPolicyFile(), run() and the fixtures under fixtures/policy-api/ are loaded inside
+// applyPolicy(), fetchAppPolicy(), readPolicyFile(), run() and the fixtures under fixtures/policy-api/ are loaded inside
 // the test body: the AC test is written before the org policy exists, so nothing the build adds may run while the
-// file loads. fetchPolicy() and run() get a fake fetch serving one envelope; readPolicyFile() reads a real temporary
+// file loads. fetchAppPolicy() and run() get a fake fetch serving one envelope; readPolicyFile() reads a real temporary
 // file.
 
 const ROOT = new URL("../../../", import.meta.url);
@@ -149,14 +149,16 @@ describe("policy keys this item does not apply", () => {
     expect(layers.resolved).toEqual(core.resolveInputs(config, raw, TEXT).inputs);
 
     // The carried keys stay in the document the fetch and the file reader return.
-    const { fetchPolicy } = await import("../src/policy-fetch.js");
+    const { fetchAppPolicy } = await import("../src/policy-fetch.js");
     const h = harness({ context: prContext() as never });
     withPolicyDeps(h, envelopeFor(CARRIED));
-    const fetched = (await fetchPolicy(h.deps as never, {
-      mode: "auto",
-      origin: new URL("https://pharn.dev"),
-      repository: "acme/widgets",
-    })) as { source: string; document: unknown };
+    const fetched = (
+      await fetchAppPolicy(h.deps as never, {
+        mode: "auto",
+        origin: new URL("https://pharn.dev"),
+        repository: "acme/widgets",
+      })
+    ).policy as { source: string; document: unknown };
     expect(fetched.source).toBe("app");
     expect(fetched.document).toEqual(CARRIED);
 

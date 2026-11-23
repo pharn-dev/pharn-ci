@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { APP_TOKEN_TIMEOUT_MS, type AppClientDeps, requestAppToken } from "../src/app-client.js";
-import { fetchPolicy } from "../src/policy-fetch.js";
+import { fetchAppPolicy } from "../src/policy-fetch.js";
 
 // Review finding 21: the OIDC token request had no deadline (`@actions/core` retries ten times, each with a
 // three-minute socket timeout). It is now raced against a timer: a getIDToken that never answers ends exactly like
@@ -79,13 +79,13 @@ describe("AC-21: the OIDC token request has a deadline", () => {
   it("a timed-out token request is no-oidc-token and fetches nothing, under policy required and under auto", async () => {
     const origin = new URL("https://pharn.dev");
     const required = deps(neverSettles, 20);
-    const policy = await fetchPolicy(required, { mode: "required", origin, repository: "acme/widgets" });
+    const { policy } = await fetchAppPolicy(required, { mode: "required", origin, repository: "acme/widgets" });
     expect(policy.unavailable?.reason).toBe("no-oidc-token");
     expect(policy.unavailable?.required).toBe(true);
     expect(required.fetched).toEqual([]);
 
     const auto = deps(neverSettles, 20);
-    const unavailable = await fetchPolicy(auto, { mode: "auto", origin, repository: "acme/widgets" });
+    const { policy: unavailable } = await fetchAppPolicy(auto, { mode: "auto", origin, repository: "acme/widgets" });
     expect(unavailable).toEqual({
       source: "none",
       version: null,

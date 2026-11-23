@@ -1,7 +1,8 @@
-import { check, overlapsForbidden, parsePermissionRule } from "@pharn-ci/core";
+import { check, parsePermissionRule } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { asciiTrim } from "../src/policy/settings/permissionRule.js";
 import { fixture } from "./helpers.js";
+import { overlapsForbidden } from "./permission-rules.js";
 import { expectValidReport } from "./schema.js";
 
 // The allow side trims ASCII whitespace before it parses an entry. It used a `^[ \t…]+|[ \t…]+$` regular expression,
