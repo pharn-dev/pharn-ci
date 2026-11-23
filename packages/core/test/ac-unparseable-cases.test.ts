@@ -152,13 +152,13 @@ describe("unparseable agent settings and MCP files fail closed under an org poli
     expect(p09(report).filter((v) => v.path === SETTINGS)).toEqual([]);
   });
 
-  it("AC-6: complies — unpadded compliant settings and MCP files raise no settings problem, and P09 says both edits comply", async () => {
+  // CORE-123 (R5.6): an edit of a compliant file was a P09 `info` entry ("it complies"); it is no entry now.
+  it("AC-6: complies — unpadded compliant settings and MCP files raise no settings problem, and P09 gives no entry for either edit", async () => {
     const c = loadCase("complies");
     expect(new Set(c.edits)).toEqual(new Set([SETTINGS, MCP]));
     const report = await run(c, textFiles(c));
     expect(invalid(report)).toEqual([]);
-    const found = p09(report);
-    expect(found).toContainEqual(finding("info", SETTINGS, COMPLIES));
-    expect(found).toContainEqual(finding("info", MCP, COMPLIES));
+    expect(report.policy).toBeDefined();
+    expect(p09(report)).toEqual([]);
   });
 });

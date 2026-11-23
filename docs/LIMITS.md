@@ -1649,8 +1649,8 @@ applied once per run. What it does not do:
   cannot see a pull request that edits the workflow to `policy: never`, removes the pharn-ci step or changes
   `app-url`: the Action then does not run or does not ask for the policy, so nothing is checked against it. TI11 and
   `CONFIG_CHANGED_IN_DIFF` flag such a workflow edit. Class 4 is judged when the files were read: a block when the
-  edited file fails P02 to P06 or could not be checked, a warn when it only warns or supplies a required deny rule or
-  hook, info when it complies; it stays a warn (direction not judged) when they were not read.
+  edited file fails P02 to P06 or could not be checked, a warn when it only warns, and no entry when it complies or
+  supplies a required deny rule or hook; it stays a warn (direction not judged) when they were not read.
 
 ### What P01 misses
 

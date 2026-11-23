@@ -28,21 +28,20 @@ function settings(ignored: readonly IgnoredSetting[], layer: IgnoredSetting["lay
 
 /**
  * What P02 to P06 and the settings reader found, as P09 class 4 reads it: the paths that fail a rule (with the
- * strongest severity and the rule ids), the paths a reported error-level problem sits on, and the paths that supply a
- * required deny rule or hook.
+ * strongest severity and the rule ids) and the paths a reported error-level problem sits on.
  */
 export interface SettingsView {
   failing: Map<string, { ids: PolicyRuleId[]; severity: PolicyViolationSeverity }>;
   uncheckable: Set<string>;
-  supplying: Set<string>;
 }
 
 /**
  * P09, the pull request loosens the policy it is graded by. Four classes of edit in the diff: the policy file itself,
  * the config in use while a config setting is looser than the policy, a workflow while a workflow input is looser than
- * the policy, and a settings or MCP file the agent-settings rules read. Class 4 is a block, warn or info by what P02
- * to P06 found at HEAD (`view`), and item 22's warn (its direction is not judged) when the files were not read
- * (`view` null). A diff that is unavailable gives nothing.
+ * the policy, and a settings or MCP file the agent-settings rules read. Class 4 is a violation only when P02 to P06
+ * found the file failing a rule at HEAD (that rule's severity) or could not check it (a block); an edited file that
+ * complies gives nothing (CORE-123). When the files were not read (`view` null) it is item 22's warn (its direction is
+ * not judged). A diff that is unavailable gives nothing.
  */
 export function detectP09(input: PolicyRuleInput, view: SettingsView | null): RuleFinding[] {
   const { policy, diff } = input;
@@ -129,17 +128,6 @@ export function detectP09(input: PolicyRuleInput, view: SettingsView | null): Ru
         path,
         line: null,
         detail: "this change edits a file the policy could not check",
-      });
-    } else if (guarded) {
-      const supplies = view.supplying.has(path);
-      findings.push({
-        id: "P09",
-        fallback: supplies ? "warn" : "info",
-        path,
-        line: null,
-        detail: supplies
-          ? "this change edits a file that supplies a required deny rule or hook; a reviewer should confirm it"
-          : "this change edits a file the policy checks; it complies",
       });
     }
   }

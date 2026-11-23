@@ -7,23 +7,17 @@ import type { RuleFinding } from "./types.js";
 /**
  * P06, required hook missing, per settings unit (the root unit always). A requirement is satisfied by a group under the
  * exact event key whose matcher covers the required one and that holds a counting command handler. `disableAllHooks:
- * true` in a unit is one finding in place of that unit's missing-hook findings. `supplying` is the paths of the groups
- * that satisfy at least one requirement.
+ * true` in a unit is one finding in place of that unit's missing-hook findings.
  */
-export function detectP06(
-  model: SettingsModel,
-  required: readonly PolicyRequiredHook[],
-): { findings: RuleFinding[]; supplying: string[] } {
+export function detectP06(model: SettingsModel, required: readonly PolicyRequiredHook[]): RuleFinding[] {
   const findings: RuleFinding[] = [];
-  const supplying = new Set<string>();
   for (const unit of model.units) {
     const missing: RuleFinding[] = [];
     for (const need of required) {
-      const hits = unit.hookGroups.filter(
+      const met = unit.hookGroups.some(
         (group) => group.counting && group.event === need.event && matcherCovers(group.matcher, need.matcher),
       );
-      for (const hit of hits) supplying.add(hit.path);
-      if (hits.length > 0) continue;
+      if (met) continue;
       const any = need.matcher === undefined || need.matcher === "" || need.matcher === "*";
       missing.push({
         id: "P06",
@@ -44,5 +38,5 @@ export function detectP06(
       });
     } else findings.push(...missing);
   }
-  return { findings, supplying: [...supplying] };
+  return findings;
 }
