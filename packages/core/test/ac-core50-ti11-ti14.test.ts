@@ -49,7 +49,7 @@ const caseDiff = (dir: string) => readFileSync(`${FIXTURES}test-integrity/${dir}
 const isBinary = (entry: Entry) => entry.lines.some((l) => /^Binary files .* differ$/.test(l));
 
 async function run(diff: string, mode: "block" | "warn"): Promise<Report> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: readFileSync(`${FIXTURES}test-files-deleted/coverage.info`, "utf8"), format: "lcov" },

@@ -48,7 +48,7 @@ function inputOf(base: string, head: string) {
 }
 
 async function run(base: string, head: string): Promise<{ report: Report }> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const report = check(inputOf(base, head) as unknown as Parameters<typeof check>[0]);
   expectValidReport(report);
   return { report: report as unknown as Report };
@@ -121,7 +121,7 @@ describe("TI09 refuses a native [tool.pytest] table it cannot read, in linear ti
       full.split("\n").filter((l) => l.startsWith("[tool.pytest")).length,
       "thousands of look-alikes",
     ).toBeGreaterThan(5000);
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     type Input = Parameters<typeof check>[0];
     const fullInput = inputOf(BASE, full) as unknown as Input;
     const quarterInput = inputOf(BASE, quarter) as unknown as Input;

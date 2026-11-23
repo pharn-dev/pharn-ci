@@ -52,7 +52,7 @@ const withCode = (report: Report, code: string) => report.messages.filter((m) =>
 describe("org policy rule P11: when it is not in effect", { timeout: 60_000 }, () => {
   it("AC-8: empty protected_paths, no agents section, no policy and no agentPrFacts give no P11 finding and no message; meta gains no isAgentPr without facts; evaluatePolicyRules with no agent fields returns no P11 and an empty ignored list", async () => {
     const core = {
-      ...(await import("../src/check.js")),
+      ...(await import("./text-coverage.js")),
       ...(await import("../src/diff/unified.js")),
       ...(await import("../src/policy/rules/evaluate.js")),
     } as unknown as Core;

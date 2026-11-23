@@ -23,7 +23,7 @@ const SENTENCE =
   "This agent pull request could not be checked against the paths the org policy protects, because the diff is unavailable.";
 
 async function run(agentPrFacts: unknown): Promise<Report> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

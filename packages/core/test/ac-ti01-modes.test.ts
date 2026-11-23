@@ -9,7 +9,7 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const PATH = "src/__tests__/b.test.ts";
 
 async function runCheck(testIntegrityMode?: { input: "block" | "warn" | "off" }) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const input = {
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" as const },

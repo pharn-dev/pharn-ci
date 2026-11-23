@@ -42,7 +42,10 @@ const app = (P02: string) => ({
 const file = (P02: string) => ({ source: "file", version: null, path: "policy/org.json", document: documentWith(P02) });
 
 async function run(policy: unknown): Promise<Report> {
-  const core = (await import("@pharn-ci/core")) as unknown as Core;
+  const core = {
+    ...(await import("@pharn-ci/core")),
+    check: (await import("./text-coverage.js")).check,
+  } as unknown as Core;
   const report = core.check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

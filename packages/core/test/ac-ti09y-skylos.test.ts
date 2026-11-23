@@ -51,7 +51,7 @@ describe("Skylos nine: TI09 catches deselect-setting", () => {
     expect(base[0]?.text.split("\n")[4]).toContain('include: ["src/**/*.test.ts"]');
     expect(head[0]?.text.split("\n")[4]).toContain('include: ["src/**/*.fast.test.ts"]');
 
-    const { check } = await import("@pharn-ci/core");
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

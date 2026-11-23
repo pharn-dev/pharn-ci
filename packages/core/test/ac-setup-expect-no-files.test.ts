@@ -15,7 +15,7 @@ type Report = { verdict: string; agentSetup: { missing?: unknown }; messages: Me
 type Path = "normal" | "coverage missing" | "diff unavailable";
 
 async function runCheck(path: Path, requireAgentSetup: boolean): Promise<Report> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const input = {
     version: "0.1.0",
     coverage:

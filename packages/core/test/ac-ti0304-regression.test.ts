@@ -81,7 +81,7 @@ const BEFORE: Record<string, string[]> = {
 const BEFORE_DIGEST = "fdc37bb7a6e2cd78c6a3af66a48371da5805a01b53d19a83df5099c2b4f6277c";
 
 async function run(diff: string, exclude: string[] = [], files = "test-files-deleted/files.txt") {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

@@ -16,7 +16,7 @@ const asFile = (report: unknown) => `${JSON.stringify(report, null, 2)}\n`;
 const lines = (path: string) => fixture(path).trim().split("\n");
 
 async function load() {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const { parseCoverage } = await import("../src/coverage/index.js");
   const { chooseCoverageFormat } = await import("../src/coverage/detect.js");
   const { parseUnifiedDiff } = await import("../src/diff/unified.js");

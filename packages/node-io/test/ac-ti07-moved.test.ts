@@ -248,7 +248,7 @@ async function runFixture(name: string): Promise<{ match: Match; report: Report 
   const touched = pairsModule.indexTouchedTestFiles(core.parseUnifiedDiff(diffText), sources, pythonTestIndex);
   const match = matchModule.matchTests(touched);
 
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("../../core/test/text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: readFileSync(`${FIXTURES}test-files-deleted/coverage.info`, "utf8"), format: "lcov" },

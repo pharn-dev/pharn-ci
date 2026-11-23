@@ -30,7 +30,7 @@ const modification = (path: string) =>
   ].join("\n");
 
 async function run(count: number): Promise<{ report: Report; paths: string[] }> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const paths = Array.from({ length: count }, (_, i) => name(i));
   const report = check({
     version: "0.1.0",

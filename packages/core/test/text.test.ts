@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { check } from "../src/check.js";
+
 import { renderMarkdown } from "../src/render/markdown.js";
 import { byCodeUnit, cutCodeUnits, isUnsafeCode, replaceUnsafeChars, utf8ByteLength } from "../src/text.js";
 import { buildUploadTar } from "../src/upload/tar.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 /** The set text.ts names, written out here as inclusive ranges so a change to it shows up as a failing test. */
 const EXPECTED_RANGES: readonly (readonly [number, number])[] = [

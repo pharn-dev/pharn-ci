@@ -10,7 +10,7 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 type Diff = { text: string } | { parsed: unknown[] };
 
 async function runCheck(diff: Diff) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const input = {
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" as const },

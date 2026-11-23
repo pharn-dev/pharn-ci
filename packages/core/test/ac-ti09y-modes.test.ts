@@ -52,7 +52,7 @@ const HEAD = config(70);
 const HEAD_LINE = linesOf(HEAD).findIndex((line) => line.trim().startsWith("lines:")) + 1;
 
 async function run(mode: Mode, withSources: boolean): Promise<Report> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

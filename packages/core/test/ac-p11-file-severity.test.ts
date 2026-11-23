@@ -20,7 +20,7 @@ const AGENT_FACTS = {
 };
 
 async function run(extra: { mode?: string; rule?: string }): Promise<Report> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const base = JSON.parse(fixture("policy-rules/p11/workflows/policy.json"));
   const document = {
     ...base,

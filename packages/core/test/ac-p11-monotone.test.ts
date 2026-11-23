@@ -163,7 +163,10 @@ function genPolicy(g: Gen): { policy: unknown; policyFileBase?: unknown; editsPo
 
 describe("agent PR detection with the policy lists: evidence only adds", { timeout: 120_000 }, () => {
   it("AC-12: over seeded generated facts, lists, bases and listsIncomplete, no addition turns an agent PR into a human one; listsIncomplete gives policy-lists-unreadable after the three earlier reasons and is ignored without a PR; check() with a policy and base never clears an agent flag", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = {
+      ...(await import("@pharn-ci/core")),
+      check: (await import("./text-coverage.js")).check,
+    } as unknown as Core;
     const g = generator(SEED);
 
     let agentCases = 0;

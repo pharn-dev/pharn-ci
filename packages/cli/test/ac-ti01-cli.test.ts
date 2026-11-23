@@ -65,7 +65,8 @@ describe("TI01 through the CLI and the streaming diff reader", () => {
   });
 
   it("AC-10: the streamed diff and the whole text give the same testIntegrity block and messages", async () => {
-    const { readDiffChunks, check } = await import("@pharn-ci/core");
+    const { readDiffChunks } = await import("@pharn-ci/core");
+    const { check } = await import("../../core/test/text-coverage.js");
     const text = fixture("test-integrity/TI01/block-code-stays.diff");
     const base = {
       version: "0.1.0",

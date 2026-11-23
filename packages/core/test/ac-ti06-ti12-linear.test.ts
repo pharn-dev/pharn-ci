@@ -86,7 +86,7 @@ function input(bytes: number) {
 
 describe("TI06: the comparison of one file grows less than eightfold from a quarter of the cap", () => {
   it("AC-17: 512 KiB base and head files full of unbalanced toThrow( openings, unterminated quotes and deep nesting give TI06 findings, take less than 8 times the median of 128 KiB ones, and finish each run within 15 s", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     type Input = Parameters<typeof check>[0];
     const full = input(FULL);
     const quarter = input(QUARTER);

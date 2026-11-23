@@ -41,7 +41,10 @@ function expectPlacement(md: string): void {
 
 describe("the Policy section header", { timeout: 60_000 }, () => {
   it("AC-15: app v12, file, unavailable (timeout) and a hand-built source-none policy render their header lines, between Test integrity and Messages", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = {
+      ...(await import("@pharn-ci/core")),
+      check: (await import("./text-coverage.js")).check,
+    } as unknown as Core;
     const run = (policy?: unknown) => {
       const report = core.check({
         version: "0.1.0",

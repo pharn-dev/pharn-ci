@@ -43,7 +43,7 @@ const sha256 = (text: string) => createHash("sha256").update(text).digest("hex")
 const asFile = (report: unknown) => `${JSON.stringify(report, null, 2)}\n`;
 
 async function load() {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const { renderMarkdown } = await import("../src/render/markdown.js");
   return { check, renderMarkdown };
 }

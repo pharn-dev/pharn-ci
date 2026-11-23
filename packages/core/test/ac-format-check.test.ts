@@ -11,7 +11,7 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 type Selection = "lcov" | "cobertura" | "auto";
 
 async function runCheck(text: string, format: Selection, threshold: number | null, file = "coverage.xml") {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   return check({
     version: "0.1.0",
     coverage: { text, format, file },

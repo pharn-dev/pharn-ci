@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { check } from "../src/check.js";
+
 import { MESSAGE_FIXES } from "../src/fix/table.js";
 import { renderMarkdown } from "../src/render/markdown.js";
 import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // A8 step 1: the comment shows the tests-exercise check under "🔍 Test integrity" as one warn line with its hint and a
 // collapsed list of paths, and leaves the message out of "💬 Messages" there. A report from elsewhere is untrusted: an

@@ -82,7 +82,7 @@ describe("TI02 and TI05: at most 20 findings per file per signal", () => {
     const totalsHead = totalsBase.filter((_, i) => !totalsRemoved.has(i));
 
     const text = (lines: string[]) => lines.join("\n");
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

@@ -13,7 +13,7 @@ type Report = { verdict: string; messages: Message[]; policy?: { violations: Vio
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
 async function p04Of(document: unknown, files: Record<string, string>): Promise<Violation[]> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

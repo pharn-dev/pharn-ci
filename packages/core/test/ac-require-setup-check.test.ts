@@ -10,7 +10,7 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const lines = (path: string) => fixture(path).trim().split("\n");
 
 async function runCheck(repoFiles: string[], requireAgentSetup?: boolean) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   return check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov", file: "coverage/lcov.info" },

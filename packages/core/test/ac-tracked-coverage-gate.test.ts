@@ -22,7 +22,7 @@ async function run(options: {
   file?: string;
   files?: readonly { text: string; file: string }[];
 }): Promise<Report> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const text = fixture("tracked-coverage/coverage.info");
   const coverage =
     options.files === undefined
@@ -114,7 +114,7 @@ describe("COVERAGE_FILE_TRACKED under a threshold (CORE-92)", () => {
 
   it("with several coverage files, a tracked one the diff changes is named and fails, even after an untouched one", async () => {
     const text = fixture("tracked-coverage/coverage.info");
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: {

@@ -42,7 +42,7 @@ const BASE_UNREADABLE_SENTENCE =
   "This agent pull request edits the policy file, and its version at the merge base could not be read, so the paths that version protects could not be checked.";
 
 async function run(agentPrFacts: unknown, policyFileBase: unknown, diffName: string): Promise<Report> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

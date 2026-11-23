@@ -11,7 +11,7 @@ const DIFF_TABLE_HEADER = "| File | Coverage | Covered | Uncovered lines |";
 const SETUP_TABLE_HEADER = "| Path | Kind |";
 
 async function goldenReport(): Promise<Report> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

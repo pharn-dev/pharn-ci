@@ -95,7 +95,7 @@ function casesOf(id: string): { name: string; diff: string; dir: string | null }
 }
 
 async function runCase(id: string, c: { name: string; diff: string; dir: string | null }): Promise<Report> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("../../core/test/text-coverage.js");
   const coverage = { text: readFileSync(`${FIXTURES}test-files-deleted/coverage.info`, "utf8"), format: "lcov" };
   let input: Record<string, unknown>;
   if (c.dir === null) {

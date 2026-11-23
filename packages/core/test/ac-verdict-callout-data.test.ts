@@ -36,7 +36,7 @@ function asV1File(json: string): string {
 
 describe("check(): report data unchanged by the verdict callout", () => {
   it("AC-5: the golden report equals the committed report.json and validates against the schema", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const { renderMarkdown } = await import("../src/render/markdown.js");
 
     const committed = fixture("golden/report.json");

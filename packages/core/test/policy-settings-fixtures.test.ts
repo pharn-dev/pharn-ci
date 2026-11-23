@@ -2,10 +2,11 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { check } from "../src/index.js";
+
 import type { PolicyDocument } from "../src/policy/types.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // E3 item 23 (policy settings): every case directory under fixtures/policy-settings/p0*/ runs through check() with the
 // golden coverage and diff. A `violates-*` case gives at least one violation of its rule id, a `complies-*` case none.

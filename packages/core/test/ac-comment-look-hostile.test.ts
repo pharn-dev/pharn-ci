@@ -65,7 +65,7 @@ function expectInert(line: string): void {
 
 describe("PR comment look: hostile paths and message text stay inert (pr-comment-redesign-2)", () => {
   it("AC-5: keeps the summary block fixed, tables aligned, no live <img and inert message lines", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const { renderMarkdown } = await import("../src/render/markdown.js");
     const hostile = JSON.parse(fixture("render/hostile-paths.json")) as Hostile;
 

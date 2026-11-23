@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { check } from "../src/check.js";
+
 import { renderMarkdown } from "../src/render/markdown.js";
 import { buildReport } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // CORE-124 (R5.7) part A. GitHub turns issue references into links after it renders markdown, where a backslash no
 // longer counts: `org/repo#1`, `#1`, `GH-1` (any case) and `org/repo/issues/1` (also `pull`, `discussions`) each

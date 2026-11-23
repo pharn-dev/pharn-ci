@@ -27884,229 +27884,6 @@ function parseThreshold(value, label = "threshold") {
   return n;
 }
 
-// ../core/src/coverage/xml.ts
-var NO_ATTRS = /* @__PURE__ */ new Map();
-var ENTITY_WINDOW = 10;
-var NAMED_ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
-function isSpace(char) {
-  return char === " " || char === "	" || char === "\n" || char === "\r";
-}
-function isQuote(char) {
-  return char === '"' || char === "'";
-}
-function decodeEntities(text) {
-  let amp = text.indexOf("&");
-  if (amp === -1) return text;
-  let out = "";
-  let from = 0;
-  while (amp !== -1) {
-    const decoded = decodeReference(text, amp);
-    if (decoded === void 0) {
-      amp = text.indexOf("&", amp + 1);
-      continue;
-    }
-    out += text.slice(from, amp) + decoded.value;
-    from = decoded.end;
-    amp = text.indexOf("&", from);
-  }
-  return out + text.slice(from);
-}
-function decodeReference(text, amp) {
-  const limit = Math.min(text.length, amp + 1 + ENTITY_WINDOW);
-  let semi = -1;
-  for (let i = amp + 1; i < limit; i++) {
-    if (text.charAt(i) === ";") {
-      semi = i;
-      break;
-    }
-  }
-  if (semi === -1) return void 0;
-  const body = text.slice(amp + 1, semi);
-  const named = Object.hasOwn(NAMED_ENTITIES, body) ? NAMED_ENTITIES[body] : void 0;
-  if (named !== void 0) return { value: named, end: semi + 1 };
-  if (body.charAt(0) !== "#") return void 0;
-  const hex = body.charAt(1) === "x";
-  const digits = body.slice(hex ? 2 : 1);
-  if (digits === "") return void 0;
-  let code2 = 0;
-  for (let i = 0; i < digits.length; i++) {
-    const digit = Number.parseInt(digits.charAt(i), hex ? 16 : 10);
-    if (Number.isNaN(digit)) return void 0;
-    code2 = code2 * (hex ? 16 : 10) + digit;
-  }
-  if (code2 < 1 || code2 > 1114111 || code2 >= 55296 && code2 <= 57343) return void 0;
-  return { value: String.fromCodePoint(code2), end: semi + 1 };
-}
-function parseTag(body) {
-  if (body.charAt(0) === "/") {
-    const name2 = readName(body, 1);
-    return name2 === "" ? void 0 : { type: "end", name: name2 };
-  }
-  let end = body.length;
-  while (end > 0 && isSpace(body.charAt(end - 1))) end--;
-  const selfClosing = end > 0 && body.charAt(end - 1) === "/";
-  if (selfClosing) end--;
-  const name = readName(body, 0);
-  if (name === "") return void 0;
-  return { type: "start", name, attrs: parseAttributes(body, name.length, end), selfClosing };
-}
-function readName(body, from) {
-  let i = from;
-  while (i < body.length && !isSpace(body.charAt(i)) && body.charAt(i) !== "/") i++;
-  return body.slice(from, i);
-}
-function parseAttributes(body, from, end) {
-  let attrs;
-  let i = from;
-  while (i < end) {
-    while (i < end && isSpace(body.charAt(i))) i++;
-    const nameStart = i;
-    while (i < end && !isSpace(body.charAt(i)) && body.charAt(i) !== "=") i++;
-    const name = body.slice(nameStart, i);
-    while (i < end && isSpace(body.charAt(i))) i++;
-    if (body.charAt(i) !== "=" || i >= end) {
-      continue;
-    }
-    i++;
-    while (i < end && isSpace(body.charAt(i))) i++;
-    const quote = body.charAt(i);
-    if (!isQuote(quote) || i >= end) {
-      while (i < end && !isSpace(body.charAt(i))) i++;
-      continue;
-    }
-    const close = body.indexOf(quote, i + 1);
-    if (close === -1 || close >= end) break;
-    if (name !== "") {
-      attrs ??= /* @__PURE__ */ new Map();
-      if (!attrs.has(name)) attrs.set(name, decodeEntities(body.slice(i + 1, close)));
-    }
-    i = close + 1;
-  }
-  return attrs ?? NO_ATTRS;
-}
-function findDeclarationEnd(text, from) {
-  let quote = "";
-  for (let i = from; i < text.length; i++) {
-    const char = text.charAt(i);
-    if (quote !== "") {
-      if (char === quote) quote = "";
-    } else if (isQuote(char)) {
-      quote = char;
-    } else if (char === ">") {
-      return i;
-    }
-  }
-  return -1;
-}
-function findTagEnd(text, start) {
-  let quote = "";
-  for (let i = start + 1; i < text.length; i++) {
-    const char = text.charAt(i);
-    if (char === "<") return -i - 2;
-    if (quote !== "") {
-      if (char === quote) quote = "";
-    } else if (isQuote(char)) {
-      quote = char;
-    } else if (char === ">") {
-      return i;
-    }
-  }
-  return -1;
-}
-function scanXml(text, onEvent, options = {}) {
-  const length = text.length;
-  let pos = text.charCodeAt(0) === 65279 ? 1 : 0;
-  while (pos < length) {
-    const lt = text.indexOf("<", pos);
-    const textEnd = lt === -1 ? length : lt;
-    if (textEnd > pos) onEvent({ type: "text", text: decodeEntities(text.slice(pos, textEnd)) });
-    if (lt === -1) return;
-    const next = text.charAt(lt + 1);
-    if (next === "<") {
-      pos = lt + 1;
-    } else if (next === "!" && text.startsWith("<!--", lt)) {
-      const close = text.indexOf("-->", lt + 4);
-      if (close === -1) return;
-      pos = close + 3;
-    } else if (next === "!" && text.startsWith("<![CDATA[", lt)) {
-      const close = text.indexOf("]]>", lt + 9);
-      if (close === -1) return;
-      if (options.cdataText === true && close > lt + 9) onEvent({ type: "text", text: text.slice(lt + 9, close) });
-      pos = close + 3;
-    } else if (next === "?") {
-      const close = text.indexOf("?>", lt + 2);
-      if (close === -1) return;
-      pos = close + 2;
-    } else if (next === "!") {
-      options.onDeclaration?.();
-      const close = findDeclarationEnd(text, lt + 2);
-      if (close === -1) return;
-      pos = close + 1;
-    } else {
-      const close = findTagEnd(text, lt);
-      if (close === -1) return;
-      if (close < -1) {
-        pos = -close - 2;
-        continue;
-      }
-      const event = parseTag(text.slice(lt + 1, close));
-      if (event !== void 0) onEvent(event);
-      pos = close + 1;
-    }
-  }
-}
-
-// ../core/src/coverage/detect.ts
-var DETECTION_WINDOW = 1024;
-var DETECTION_PREFIX = 1 + DETECTION_WINDOW + 1;
-function isSpace2(char) {
-  return char === " " || char === "	" || char === "\n" || char === "\r";
-}
-function detectCoverageFormat(text) {
-  const start = text.charCodeAt(0) === 65279 ? 1 : 0;
-  const end = start + DETECTION_WINDOW;
-  const window = text.slice(start, end);
-  let first = 0;
-  while (first < window.length && isSpace2(window.charAt(first))) first++;
-  if (first === window.length) return end >= text.length ? "empty" : "unknown";
-  if (window.startsWith("TN:", first) || window.startsWith("SF:", first)) return "lcov";
-  if (window.charAt(first) !== "<") return "unknown";
-  return detectXml(window.slice(first));
-}
-function detectXml(window) {
-  let decided;
-  let seenRoot = false;
-  scanXml(window, (event) => {
-    if (decided !== void 0) return;
-    if (!seenRoot) {
-      if (event.type === "text") {
-        if (event.text.trim() !== "") decided = "unknown";
-      } else if (event.type === "end") {
-        decided = "unknown";
-      } else if (event.name !== "coverage" || event.attrs.has("clover")) {
-        decided = "unknown";
-      } else if (event.selfClosing) {
-        decided = "cobertura";
-      } else {
-        seenRoot = true;
-      }
-      return;
-    }
-    if (event.type === "text") return;
-    decided = event.type === "start" && event.name === "project" ? "unknown" : "cobertura";
-  });
-  if (decided !== void 0) return decided;
-  return seenRoot ? "cobertura" : "unknown";
-}
-function chooseCoverageFormat(text, selection) {
-  if (selection === "auto") return { format: detectCoverageFormat(text), how: "auto-detected" };
-  return { format: selection, how: "configured" };
-}
-function coverageChoiceLine(choice, file) {
-  const prefix = file === void 0 ? "coverage: " : `coverage: ${file}: `;
-  return `${prefix}${choice.format} (${choice.how})`;
-}
-
 // ../core/src/coverage/match.ts
 var BACKSLASH_STAND_IN = "\0";
 function literalBackslashKey(raw, separated, resolve2) {
@@ -28157,230 +27934,6 @@ function suggestRoot(unmatched, repoFiles, coverageRoot) {
     }
   }
   return best;
-}
-
-// ../core/src/coverage/cobertura.ts
-function parseCoberturaCounted(text, options = {}) {
-  const sources = [];
-  let skipped = 0;
-  const perFile = /* @__PURE__ */ new Map();
-  let inSources = false;
-  let sourceText2;
-  let currentFile;
-  let methodDepth = 0;
-  scanXml(text, (event) => {
-    if (event.type === "text") {
-      if (sourceText2 !== void 0) sourceText2 += event.text;
-      return;
-    }
-    if (event.type === "end") {
-      switch (event.name) {
-        case "sources":
-          inSources = false;
-          sourceText2 = void 0;
-          break;
-        case "source": {
-          const source = sourceText2?.trim();
-          if (source) sources.push(source);
-          sourceText2 = void 0;
-          break;
-        }
-        case "class":
-          currentFile = void 0;
-          methodDepth = 0;
-          break;
-        case "methods":
-        case "method":
-          if (methodDepth > 0) methodDepth--;
-          break;
-      }
-      return;
-    }
-    switch (event.name) {
-      case "sources":
-        inSources = !event.selfClosing;
-        break;
-      case "source":
-        if (inSources && !event.selfClosing) sourceText2 = "";
-        break;
-      case "class": {
-        const filename = event.selfClosing ? "" : (event.attrs.get("filename") ?? "").trim();
-        currentFile = filename === "" ? void 0 : filename;
-        methodDepth = 0;
-        break;
-      }
-      case "methods":
-      case "method":
-        if (currentFile !== void 0 && !event.selfClosing) methodDepth++;
-        break;
-      case "line":
-        if (currentFile !== void 0 && methodDepth === 0) {
-          if (!addLine(perFile, currentFile, event.attrs.get("number"), event.attrs.get("hits"))) skipped++;
-        }
-        break;
-    }
-  });
-  const resolve2 = makeResolver([...new Set(sources)], options.repoRoot, options.coverageRoot);
-  const map = /* @__PURE__ */ new Map();
-  for (const [filename, lines] of perFile) {
-    const separated = resolve2(filename);
-    const key = options.literalBackslashes === true ? literalBackslashKey(filename, separated, resolve2) : separated;
-    let target = map.get(key);
-    if (!target) {
-      target = /* @__PURE__ */ new Map();
-      map.set(key, target);
-    }
-    for (const [lineNo, hits] of lines) {
-      target.set(lineNo, Math.max(target.get(lineNo) ?? 0, hits));
-    }
-  }
-  return { map, skipped };
-}
-function addLine(perFile, filename, number, hits) {
-  if (number === void 0) return false;
-  const lineNo = Number(number);
-  if (!Number.isInteger(lineNo) || lineNo < 1) return false;
-  let count2 = 0;
-  if (hits !== void 0) {
-    if (hits.trim() === "") return false;
-    count2 = Number(hits);
-    if (!Number.isFinite(count2) || count2 < 0) return false;
-  }
-  let lines = perFile.get(filename);
-  if (!lines) {
-    lines = /* @__PURE__ */ new Map();
-    perFile.set(filename, lines);
-  }
-  lines.set(lineNo, Math.max(lines.get(lineNo) ?? 0, count2));
-  return true;
-}
-var MAX_CLIMBING_JOIN_SOURCES = 16;
-function makeResolver(sources, repoRoot, coverageRoot) {
-  const direct = directSources(sources, repoRoot);
-  const climbing = sources.slice(0, MAX_CLIMBING_JOIN_SOURCES);
-  return (filename) => {
-    if (isAbsolutePath(filename)) return normalizePath(filename, repoRoot);
-    return resolvePath(filename, climbs(normalizePath(filename)) ? climbing : direct, repoRoot, coverageRoot);
-  };
-}
-function directSources(sources, repoRoot) {
-  const root = normalizeRoot(repoRoot);
-  const foldedRoot = foldForRoot(root, root);
-  const kept = [];
-  const seen = /* @__PURE__ */ new Set();
-  const keep = (source, key) => {
-    if (seen.has(key)) return;
-    seen.add(key);
-    kept.push(source);
-  };
-  for (const source of sources) {
-    const path = normalizePath(source);
-    if (!isAbsolutePath(source)) {
-      if (climbs(path)) continue;
-      if (path !== "") {
-        kept.push(source);
-        break;
-      }
-      keep(source, "relative:");
-      continue;
-    }
-    if (root === "") continue;
-    if (startsWithPath(path, root)) {
-      const rest = path.slice(root.length + 1);
-      if (rest !== "" && !isAbsolutePath(`${rest}/`)) {
-        kept.push(source);
-        break;
-      }
-      if (rest.length < 3) keep(source, `under:${rest}`);
-    } else if (path.length === root.length) {
-      if (startsWithPath(`${path}/`, root)) keep(source, "root:");
-    } else if (path.length < root.length) {
-      const folded = foldForRoot(path, root);
-      if (foldedRoot.startsWith(path.endsWith("/") ? folded : `${folded}/`)) {
-        keep(source, `ancestor:${path.length}:${folded}`);
-      }
-    }
-  }
-  return kept;
-}
-function resolvePath(filename, sources, repoRoot, coverageRoot) {
-  for (const source of sources) {
-    const joined = `${source}/${filename}`;
-    if (isAbsolutePath(source)) {
-      if (repoRoot === void 0) continue;
-      const key2 = normalizePath(joined, repoRoot);
-      if (!isAbsolutePath(key2) && !climbs(key2)) return key2;
-    } else {
-      const key2 = normalizePath(joined);
-      if (key2 !== "" && !climbs(key2)) return joinCoverageRoot(key2, coverageRoot);
-    }
-  }
-  const key = normalizePath(filename, repoRoot);
-  return isAbsolutePath(key) ? key : joinCoverageRoot(key, coverageRoot);
-}
-function climbs(path) {
-  return path === ".." || path.startsWith("../");
-}
-
-// ../core/src/coverage/lcov.ts
-function createLcovReader(options = {}) {
-  const map = /* @__PURE__ */ new Map();
-  let current;
-  let skipped = 0;
-  const resolve2 = (raw) => options.coverageRoot !== void 0 && !isAbsolutePath(raw.trim()) ? normalizePath(joinCoverageRoot(raw, options.coverageRoot), options.repoRoot) : normalizePath(raw, options.repoRoot);
-  return {
-    push(raw) {
-      const line = raw.trim();
-      if (line.startsWith("SF:")) {
-        const raw2 = line.slice(3);
-        const separated = resolve2(raw2);
-        const path = options.literalBackslashes === true ? literalBackslashKey(raw2, separated, resolve2) : separated;
-        current = map.get(path);
-        if (!current) {
-          current = /* @__PURE__ */ new Map();
-          map.set(path, current);
-        }
-      } else if (line.startsWith("DA:")) {
-        if (!current) {
-          skipped++;
-          return;
-        }
-        const [lineNo, hits] = line.slice(3).split(",");
-        const n = Number(lineNo);
-        const h = Number(hits);
-        if (!Number.isInteger(n) || n < 1 || !Number.isFinite(h) || h < 0) {
-          skipped++;
-          return;
-        }
-        current.set(n, (current.get(n) ?? 0) + h);
-      } else if (line === "end_of_record") {
-        current = void 0;
-      }
-    },
-    skipped() {
-      return skipped;
-    },
-    finish() {
-      for (const [path, hits] of map) {
-        if (hits.size === 0) map.delete(path);
-      }
-      return map;
-    }
-  };
-}
-
-// ../core/src/coverage/index.ts
-function parseCoverageCounted(text, format, options = {}) {
-  switch (format) {
-    case "lcov": {
-      const reader = createLcovReader(options);
-      for (const line of text.split(/\r?\n/)) reader.push(line);
-      const map = reader.finish();
-      return { map, skipped: reader.skipped() };
-    }
-    case "cobertura":
-      return parseCoberturaCounted(text, options);
-  }
 }
 
 // ../core/src/coverage/merge.ts
@@ -31808,7 +31361,7 @@ var MAX_POLICY_PHRASES = 100;
 function isDropped(code2) {
   return code2 === 173 || code2 >= 8203 && code2 <= 8205 || code2 === 8288 || code2 === 65279;
 }
-function isSpace3(code2) {
+function isSpace(code2) {
   return code2 >= 9 && code2 <= 13 || code2 === 32 || code2 === 133 || code2 === 160 || code2 === 5760 || code2 >= 8192 && code2 <= 8202 || code2 === 8232 || code2 === 8233 || code2 === 8239 || code2 === 8287 || code2 === 12288;
 }
 function normalizeForPhrases(text) {
@@ -31817,7 +31370,7 @@ function normalizeForPhrases(text) {
   for (let i = 0; i < text.length; i++) {
     const code2 = text.charCodeAt(i);
     if (isDropped(code2)) continue;
-    if (isSpace3(code2)) {
+    if (isSpace(code2)) {
       pendingSpace = out.length > 0;
       continue;
     }
@@ -34091,7 +33644,7 @@ function testLanguage(path) {
   return language === null ? null : language === "py" ? "python" : "jsts";
 }
 var MAX_NAME = 120;
-var isSpace4 = (c) => c === " " || c === "	";
+var isSpace2 = (c) => c === " " || c === "	";
 function isWordCode(code2) {
   return code2 >= 48 && code2 <= 57 || // 0-9
   code2 >= 65 && code2 <= 90 || // A-Z
@@ -34163,7 +33716,7 @@ function parseJsTestCall(text) {
   if (head === "this") {
     if (!line.startsWith(".skip", i)) return null;
     i += ".skip".length;
-    while (isSpace4(line.charAt(i))) i++;
+    while (isSpace2(line.charAt(i))) i++;
     if (line.charAt(i) !== "(") return null;
     const arg = scanArg(line, i + 1).text;
     return { kind: "this-skip", token: "skip", arg, named: false, name: argName(arg), condition: "" };
@@ -34178,12 +33731,12 @@ function parseJsTestCall(text) {
     if (token === "none") token = tokenOf(line.slice(i + 1, end));
     i = end;
   }
-  while (isSpace4(line.charAt(i))) i++;
+  while (isSpace2(line.charAt(i))) i++;
   if (line.charAt(i) !== "(") return null;
   const first = scanArg(line, i + 1);
   if ((token === "skipIf" || token === "runIf") && first.terminator === ")") {
     let j = first.end + 1;
-    while (isSpace4(line.charAt(j))) j++;
+    while (isSpace2(line.charAt(j))) j++;
     const arg = line.charAt(j) === "(" ? scanArg(line, j + 1).text : "";
     return {
       kind: "call",
@@ -34232,7 +33785,7 @@ function isKeywordArg(arg) {
   const end = wordEnd(arg, 0);
   if (end === 0) return false;
   let i = end;
-  while (isSpace4(arg.charAt(i))) i++;
+  while (isSpace2(arg.charAt(i))) i++;
   return arg.charAt(i) === "=" && arg.charAt(i + 1) !== "=";
 }
 function isConditional(rule2, arg) {
@@ -34241,13 +33794,13 @@ function isConditional(rule2, arg) {
 function parsePytestmark(line, aliases) {
   let i = PYTESTMARK.length;
   if (i < line.length && isWordCode(line.charCodeAt(i))) return null;
-  while (isSpace4(line.charAt(i))) i++;
+  while (isSpace2(line.charAt(i))) i++;
   if (line.charAt(i) !== "=" || line.charAt(i + 1) === "=") return null;
   i++;
-  while (isSpace4(line.charAt(i))) i++;
+  while (isSpace2(line.charAt(i))) i++;
   if (line.charAt(i) === "[" || line.charAt(i) === "(") {
     i++;
-    while (isSpace4(line.charAt(i))) i++;
+    while (isSpace2(line.charAt(i))) i++;
   }
   const end = dottedEnd(line, i);
   if (end === i) return null;
@@ -34255,7 +33808,7 @@ function parsePytestmark(line, aliases) {
   const rule2 = token === null ? void 0 : PYTHON_DECORATORS.get(token);
   if (token === null || rule2 === void 0) return null;
   let j = end;
-  while (isSpace4(line.charAt(j))) j++;
+  while (isSpace2(line.charAt(j))) j++;
   const arg = line.charAt(j) === "(" ? scanArg(line, j + 1).text : "";
   return { kind: "mark", token, name: argName(arg, true), conditional: isConditional(rule2, arg) };
 }
@@ -34268,19 +33821,19 @@ function parsePythonSkip(text, aliases) {
     const rule2 = PYTHON_DECORATORS.get(token);
     if (rule2 === void 0) return null;
     let i2 = end;
-    while (isSpace4(line.charAt(i2))) i2++;
+    while (isSpace2(line.charAt(i2))) i2++;
     const arg = line.charAt(i2) === "(" ? scanArg(line, i2 + 1).text : "";
     return { kind: "decorator", token, name: argName(arg, true), conditional: isConditional(rule2, arg) };
   }
   if (line.startsWith(PYTESTMARK)) return parsePytestmark(line, aliases);
   const raised = line.startsWith(RAISE);
   let start = raised ? RAISE.length : 0;
-  while (raised && isSpace4(line.charAt(start))) start++;
+  while (raised && isSpace2(line.charAt(start))) start++;
   const callEnd = dottedEnd(line, start);
   const call = canonicalPython(line.slice(start, callEnd), raised ? PYTHON_RAISES : PYTHON_CALLS, aliases);
   if (call === null) return null;
   let i = callEnd;
-  while (isSpace4(line.charAt(i))) i++;
+  while (isSpace2(line.charAt(i))) i++;
   if (line.charAt(i) !== "(") return null;
   return { kind: "call", token: call, name: argName(scanArg(line, i + 1).text, true), conditional: false };
 }
@@ -34291,7 +33844,7 @@ function parseGoSkip(text) {
   const token = line.slice(0, end);
   if (!GO_SKIPS.has(token)) return null;
   let i = end;
-  while (isSpace4(line.charAt(i))) i++;
+  while (isSpace2(line.charAt(i))) i++;
   if (line.charAt(i) !== "(") return null;
   return { token, name: argName(scanArg(line, i + 1).text) };
 }
@@ -35146,13 +34699,13 @@ function shannonEntropy(text) {
 }
 var isKeyChar = (c) => c !== void 0 && (isUpper2(c) || isLower2(c) || isDigit2(c) || c === "_" || c === "." || c === "-");
 var isBlank3 = (c) => c === " " || c === "	";
-var isQuote2 = (c) => c === '"' || c === "'";
+var isQuote = (c) => c === '"' || c === "'";
 var isLineBreak = (c) => c === "\n" || c === "\r";
 var BARE_STOPS = /* @__PURE__ */ new Set([" ", "	", ",", ";", "#", "}", '"', "'"]);
 function readValue(text, from) {
   const first = text[from];
   if (first === void 0 || isLineBreak(first)) return null;
-  if (isQuote2(first)) {
+  if (isQuote(first)) {
     const limit2 = Math.min(text.length, from + 1 + MAX_VALUE_CHARS);
     for (let i = from + 1; i < limit2; i++) {
       const c = text[i];
@@ -35232,7 +34785,7 @@ function secretKeyValues(text) {
       const key = text.slice(i, nameEnd);
       if (!isSecretKey(key)) continue;
       let p = nameEnd;
-      if (isQuote2(text[p])) p++;
+      if (isQuote(text[p])) p++;
       let separated = false;
       if (text[p] === ",") {
         separated = true;
@@ -39750,10 +39303,10 @@ function labelledAssertions(block, language) {
 var MAX_LITERAL = 200;
 var isWord = (code2) => code2 >= 48 && code2 <= 57 || code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122 || code2 === 95 || code2 === 36;
 var isDigit4 = (code2) => code2 >= 48 && code2 <= 57;
-var isSpace5 = (code2) => code2 === 32 || code2 === 9 || code2 === 10 || code2 === 13;
+var isSpace3 = (code2) => code2 === 32 || code2 === 9 || code2 === 10 || code2 === 13;
 function skipSpaces(text, at) {
   let i = at;
-  while (i < text.length && isSpace5(text.charCodeAt(i))) i++;
+  while (i < text.length && isSpace3(text.charCodeAt(i))) i++;
   return i;
 }
 function digitsEnd(text, at) {
@@ -39886,7 +39439,7 @@ function endsAssert(text, at) {
 }
 function pyAssert(text, p) {
   const after = p + "assert".length;
-  if (after >= text.length || !isSpace5(text.charCodeAt(after))) return false;
+  if (after >= text.length || !isSpace3(text.charCodeAt(after))) return false;
   const start = skipSpaces(text, after);
   const firstEnd = literalEnd(text, start, "py");
   if (firstEnd === -1) return false;
@@ -43696,23 +43249,7 @@ function check(input) {
   const textTruncatedFiles = parsedDiff === null || testIntegrity2.mode === "off" ? [] : textCutSignalFiles(parsedDiff, input.configPath, input.repoRoot);
   const textTruncatedTestFiles = parsedDiff === null || testIntegrity2.mode === "off" ? [] : textCutModifiedTestFiles(parsedDiff);
   const coverageInput = input.coverage;
-  let files;
-  let selection;
-  if ("files" in coverageInput) {
-    files = coverageInput.files;
-    selection = coverageInput.format;
-  } else if ("missingFile" in coverageInput) {
-    files = [coverageInput];
-    selection = "auto";
-  } else if ("kind" in coverageInput) {
-    files = [];
-    selection = "auto";
-  } else {
-    files = [
-      coverageInput.file === void 0 ? { text: coverageInput.text } : { text: coverageInput.text, file: coverageInput.file }
-    ];
-    selection = coverageInput.format;
-  }
+  const files = "files" in coverageInput ? coverageInput.files : "missingFile" in coverageInput ? [coverageInput] : [];
   let trackedCoverage = null;
   let trackedCoverageChanged = false;
   for (const file of files) {
@@ -43881,36 +43418,24 @@ function check(input) {
   for (const file of files) {
     if ("missingFile" in file) continue;
     const coverageFile = file.file ?? null;
-    const choice = "parsed" in file ? { format: file.format } : chooseCoverageFormat(file.text, selection);
-    if (choice.format === "empty") {
+    const { format } = file;
+    if (format === "empty") {
       return buildReport({
         ...base,
         diffCoverage: null,
         missing: { reason: "coverage-file-empty", coverageFile }
       });
     }
-    if (choice.format === "unknown") {
+    if (format === "unknown") {
       return buildReport({
         ...base,
         diffCoverage: null,
         missing: { reason: "coverage-format-unsupported", coverageFile }
       });
     }
-    let parsed;
-    if ("parsed" in file) {
-      parsed = file.parsed;
-      const count2 = file.skipped;
-      if (count2 !== void 0 && Number.isSafeInteger(count2) && count2 > 0) skippedLines += count2;
-    } else {
-      const counted2 = parseCoverageCounted(file.text, choice.format, {
-        ...input.repoRoot === void 0 ? {} : { repoRoot: input.repoRoot },
-        ...coverageRoot === void 0 ? {} : { coverageRoot },
-        literalBackslashes: true
-      });
-      parsed = counted2.map;
-      skippedLines += counted2.skipped;
-    }
-    parsed = resolveBackslashPaths(parsed, tracked, choice.format === "lcov" ? (a, b) => a + b : Math.max);
+    const count2 = file.skipped;
+    if (count2 !== void 0 && Number.isSafeInteger(count2) && count2 > 0) skippedLines += count2;
+    const parsed = resolveBackslashPaths(file.parsed, tracked, format === "lcov" ? (a, b) => a + b : Math.max);
     if (parsed.size === 0) {
       return buildReport({
         ...base,
@@ -43918,7 +43443,7 @@ function check(input) {
         missing: { reason: "coverage-file-empty", coverageFile }
       });
     }
-    formats.add(choice.format);
+    formats.add(format);
     maps.push(parsed);
   }
   if (maps.length === 0) {
@@ -43959,6 +43484,453 @@ function check(input) {
     skippedCoverageLines: skippedLines,
     binaryCoveredPaths: binaryPaths
   });
+}
+
+// ../core/src/coverage/xml.ts
+var NO_ATTRS = /* @__PURE__ */ new Map();
+var ENTITY_WINDOW = 10;
+var NAMED_ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
+function isSpace4(char) {
+  return char === " " || char === "	" || char === "\n" || char === "\r";
+}
+function isQuote2(char) {
+  return char === '"' || char === "'";
+}
+function decodeEntities(text) {
+  let amp = text.indexOf("&");
+  if (amp === -1) return text;
+  let out = "";
+  let from = 0;
+  while (amp !== -1) {
+    const decoded = decodeReference(text, amp);
+    if (decoded === void 0) {
+      amp = text.indexOf("&", amp + 1);
+      continue;
+    }
+    out += text.slice(from, amp) + decoded.value;
+    from = decoded.end;
+    amp = text.indexOf("&", from);
+  }
+  return out + text.slice(from);
+}
+function decodeReference(text, amp) {
+  const limit = Math.min(text.length, amp + 1 + ENTITY_WINDOW);
+  let semi = -1;
+  for (let i = amp + 1; i < limit; i++) {
+    if (text.charAt(i) === ";") {
+      semi = i;
+      break;
+    }
+  }
+  if (semi === -1) return void 0;
+  const body = text.slice(amp + 1, semi);
+  const named = Object.hasOwn(NAMED_ENTITIES, body) ? NAMED_ENTITIES[body] : void 0;
+  if (named !== void 0) return { value: named, end: semi + 1 };
+  if (body.charAt(0) !== "#") return void 0;
+  const hex = body.charAt(1) === "x";
+  const digits = body.slice(hex ? 2 : 1);
+  if (digits === "") return void 0;
+  let code2 = 0;
+  for (let i = 0; i < digits.length; i++) {
+    const digit = Number.parseInt(digits.charAt(i), hex ? 16 : 10);
+    if (Number.isNaN(digit)) return void 0;
+    code2 = code2 * (hex ? 16 : 10) + digit;
+  }
+  if (code2 < 1 || code2 > 1114111 || code2 >= 55296 && code2 <= 57343) return void 0;
+  return { value: String.fromCodePoint(code2), end: semi + 1 };
+}
+function parseTag(body) {
+  if (body.charAt(0) === "/") {
+    const name2 = readName(body, 1);
+    return name2 === "" ? void 0 : { type: "end", name: name2 };
+  }
+  let end = body.length;
+  while (end > 0 && isSpace4(body.charAt(end - 1))) end--;
+  const selfClosing = end > 0 && body.charAt(end - 1) === "/";
+  if (selfClosing) end--;
+  const name = readName(body, 0);
+  if (name === "") return void 0;
+  return { type: "start", name, attrs: parseAttributes(body, name.length, end), selfClosing };
+}
+function readName(body, from) {
+  let i = from;
+  while (i < body.length && !isSpace4(body.charAt(i)) && body.charAt(i) !== "/") i++;
+  return body.slice(from, i);
+}
+function parseAttributes(body, from, end) {
+  let attrs;
+  let i = from;
+  while (i < end) {
+    while (i < end && isSpace4(body.charAt(i))) i++;
+    const nameStart = i;
+    while (i < end && !isSpace4(body.charAt(i)) && body.charAt(i) !== "=") i++;
+    const name = body.slice(nameStart, i);
+    while (i < end && isSpace4(body.charAt(i))) i++;
+    if (body.charAt(i) !== "=" || i >= end) {
+      continue;
+    }
+    i++;
+    while (i < end && isSpace4(body.charAt(i))) i++;
+    const quote = body.charAt(i);
+    if (!isQuote2(quote) || i >= end) {
+      while (i < end && !isSpace4(body.charAt(i))) i++;
+      continue;
+    }
+    const close = body.indexOf(quote, i + 1);
+    if (close === -1 || close >= end) break;
+    if (name !== "") {
+      attrs ??= /* @__PURE__ */ new Map();
+      if (!attrs.has(name)) attrs.set(name, decodeEntities(body.slice(i + 1, close)));
+    }
+    i = close + 1;
+  }
+  return attrs ?? NO_ATTRS;
+}
+function findDeclarationEnd(text, from) {
+  let quote = "";
+  for (let i = from; i < text.length; i++) {
+    const char = text.charAt(i);
+    if (quote !== "") {
+      if (char === quote) quote = "";
+    } else if (isQuote2(char)) {
+      quote = char;
+    } else if (char === ">") {
+      return i;
+    }
+  }
+  return -1;
+}
+function findTagEnd(text, start) {
+  let quote = "";
+  for (let i = start + 1; i < text.length; i++) {
+    const char = text.charAt(i);
+    if (char === "<") return -i - 2;
+    if (quote !== "") {
+      if (char === quote) quote = "";
+    } else if (isQuote2(char)) {
+      quote = char;
+    } else if (char === ">") {
+      return i;
+    }
+  }
+  return -1;
+}
+function scanXml(text, onEvent, options = {}) {
+  const length = text.length;
+  let pos = text.charCodeAt(0) === 65279 ? 1 : 0;
+  while (pos < length) {
+    const lt = text.indexOf("<", pos);
+    const textEnd = lt === -1 ? length : lt;
+    if (textEnd > pos) onEvent({ type: "text", text: decodeEntities(text.slice(pos, textEnd)) });
+    if (lt === -1) return;
+    const next = text.charAt(lt + 1);
+    if (next === "<") {
+      pos = lt + 1;
+    } else if (next === "!" && text.startsWith("<!--", lt)) {
+      const close = text.indexOf("-->", lt + 4);
+      if (close === -1) return;
+      pos = close + 3;
+    } else if (next === "!" && text.startsWith("<![CDATA[", lt)) {
+      const close = text.indexOf("]]>", lt + 9);
+      if (close === -1) return;
+      if (options.cdataText === true && close > lt + 9) onEvent({ type: "text", text: text.slice(lt + 9, close) });
+      pos = close + 3;
+    } else if (next === "?") {
+      const close = text.indexOf("?>", lt + 2);
+      if (close === -1) return;
+      pos = close + 2;
+    } else if (next === "!") {
+      options.onDeclaration?.();
+      const close = findDeclarationEnd(text, lt + 2);
+      if (close === -1) return;
+      pos = close + 1;
+    } else {
+      const close = findTagEnd(text, lt);
+      if (close === -1) return;
+      if (close < -1) {
+        pos = -close - 2;
+        continue;
+      }
+      const event = parseTag(text.slice(lt + 1, close));
+      if (event !== void 0) onEvent(event);
+      pos = close + 1;
+    }
+  }
+}
+
+// ../core/src/coverage/detect.ts
+var DETECTION_WINDOW = 1024;
+var DETECTION_PREFIX = 1 + DETECTION_WINDOW + 1;
+function isSpace5(char) {
+  return char === " " || char === "	" || char === "\n" || char === "\r";
+}
+function detectCoverageFormat(text) {
+  const start = text.charCodeAt(0) === 65279 ? 1 : 0;
+  const end = start + DETECTION_WINDOW;
+  const window = text.slice(start, end);
+  let first = 0;
+  while (first < window.length && isSpace5(window.charAt(first))) first++;
+  if (first === window.length) return end >= text.length ? "empty" : "unknown";
+  if (window.startsWith("TN:", first) || window.startsWith("SF:", first)) return "lcov";
+  if (window.charAt(first) !== "<") return "unknown";
+  return detectXml(window.slice(first));
+}
+function detectXml(window) {
+  let decided;
+  let seenRoot = false;
+  scanXml(window, (event) => {
+    if (decided !== void 0) return;
+    if (!seenRoot) {
+      if (event.type === "text") {
+        if (event.text.trim() !== "") decided = "unknown";
+      } else if (event.type === "end") {
+        decided = "unknown";
+      } else if (event.name !== "coverage" || event.attrs.has("clover")) {
+        decided = "unknown";
+      } else if (event.selfClosing) {
+        decided = "cobertura";
+      } else {
+        seenRoot = true;
+      }
+      return;
+    }
+    if (event.type === "text") return;
+    decided = event.type === "start" && event.name === "project" ? "unknown" : "cobertura";
+  });
+  if (decided !== void 0) return decided;
+  return seenRoot ? "cobertura" : "unknown";
+}
+function chooseCoverageFormat(text, selection) {
+  if (selection === "auto") return { format: detectCoverageFormat(text), how: "auto-detected" };
+  return { format: selection, how: "configured" };
+}
+function coverageChoiceLine(choice, file) {
+  const prefix = file === void 0 ? "coverage: " : `coverage: ${file}: `;
+  return `${prefix}${choice.format} (${choice.how})`;
+}
+
+// ../core/src/coverage/cobertura.ts
+function parseCoberturaCounted(text, options = {}) {
+  const sources = [];
+  let skipped = 0;
+  const perFile = /* @__PURE__ */ new Map();
+  let inSources = false;
+  let sourceText2;
+  let currentFile;
+  let methodDepth = 0;
+  scanXml(text, (event) => {
+    if (event.type === "text") {
+      if (sourceText2 !== void 0) sourceText2 += event.text;
+      return;
+    }
+    if (event.type === "end") {
+      switch (event.name) {
+        case "sources":
+          inSources = false;
+          sourceText2 = void 0;
+          break;
+        case "source": {
+          const source = sourceText2?.trim();
+          if (source) sources.push(source);
+          sourceText2 = void 0;
+          break;
+        }
+        case "class":
+          currentFile = void 0;
+          methodDepth = 0;
+          break;
+        case "methods":
+        case "method":
+          if (methodDepth > 0) methodDepth--;
+          break;
+      }
+      return;
+    }
+    switch (event.name) {
+      case "sources":
+        inSources = !event.selfClosing;
+        break;
+      case "source":
+        if (inSources && !event.selfClosing) sourceText2 = "";
+        break;
+      case "class": {
+        const filename = event.selfClosing ? "" : (event.attrs.get("filename") ?? "").trim();
+        currentFile = filename === "" ? void 0 : filename;
+        methodDepth = 0;
+        break;
+      }
+      case "methods":
+      case "method":
+        if (currentFile !== void 0 && !event.selfClosing) methodDepth++;
+        break;
+      case "line":
+        if (currentFile !== void 0 && methodDepth === 0) {
+          if (!addLine(perFile, currentFile, event.attrs.get("number"), event.attrs.get("hits"))) skipped++;
+        }
+        break;
+    }
+  });
+  const resolve2 = makeResolver([...new Set(sources)], options.repoRoot, options.coverageRoot);
+  const map = /* @__PURE__ */ new Map();
+  for (const [filename, lines] of perFile) {
+    const separated = resolve2(filename);
+    const key = options.literalBackslashes === true ? literalBackslashKey(filename, separated, resolve2) : separated;
+    let target = map.get(key);
+    if (!target) {
+      target = /* @__PURE__ */ new Map();
+      map.set(key, target);
+    }
+    for (const [lineNo, hits] of lines) {
+      target.set(lineNo, Math.max(target.get(lineNo) ?? 0, hits));
+    }
+  }
+  return { map, skipped };
+}
+function addLine(perFile, filename, number, hits) {
+  if (number === void 0) return false;
+  const lineNo = Number(number);
+  if (!Number.isInteger(lineNo) || lineNo < 1) return false;
+  let count2 = 0;
+  if (hits !== void 0) {
+    if (hits.trim() === "") return false;
+    count2 = Number(hits);
+    if (!Number.isFinite(count2) || count2 < 0) return false;
+  }
+  let lines = perFile.get(filename);
+  if (!lines) {
+    lines = /* @__PURE__ */ new Map();
+    perFile.set(filename, lines);
+  }
+  lines.set(lineNo, Math.max(lines.get(lineNo) ?? 0, count2));
+  return true;
+}
+var MAX_CLIMBING_JOIN_SOURCES = 16;
+function makeResolver(sources, repoRoot, coverageRoot) {
+  const direct = directSources(sources, repoRoot);
+  const climbing = sources.slice(0, MAX_CLIMBING_JOIN_SOURCES);
+  return (filename) => {
+    if (isAbsolutePath(filename)) return normalizePath(filename, repoRoot);
+    return resolvePath(filename, climbs(normalizePath(filename)) ? climbing : direct, repoRoot, coverageRoot);
+  };
+}
+function directSources(sources, repoRoot) {
+  const root = normalizeRoot(repoRoot);
+  const foldedRoot = foldForRoot(root, root);
+  const kept = [];
+  const seen = /* @__PURE__ */ new Set();
+  const keep = (source, key) => {
+    if (seen.has(key)) return;
+    seen.add(key);
+    kept.push(source);
+  };
+  for (const source of sources) {
+    const path = normalizePath(source);
+    if (!isAbsolutePath(source)) {
+      if (climbs(path)) continue;
+      if (path !== "") {
+        kept.push(source);
+        break;
+      }
+      keep(source, "relative:");
+      continue;
+    }
+    if (root === "") continue;
+    if (startsWithPath(path, root)) {
+      const rest = path.slice(root.length + 1);
+      if (rest !== "" && !isAbsolutePath(`${rest}/`)) {
+        kept.push(source);
+        break;
+      }
+      if (rest.length < 3) keep(source, `under:${rest}`);
+    } else if (path.length === root.length) {
+      if (startsWithPath(`${path}/`, root)) keep(source, "root:");
+    } else if (path.length < root.length) {
+      const folded = foldForRoot(path, root);
+      if (foldedRoot.startsWith(path.endsWith("/") ? folded : `${folded}/`)) {
+        keep(source, `ancestor:${path.length}:${folded}`);
+      }
+    }
+  }
+  return kept;
+}
+function resolvePath(filename, sources, repoRoot, coverageRoot) {
+  for (const source of sources) {
+    const joined = `${source}/${filename}`;
+    if (isAbsolutePath(source)) {
+      if (repoRoot === void 0) continue;
+      const key2 = normalizePath(joined, repoRoot);
+      if (!isAbsolutePath(key2) && !climbs(key2)) return key2;
+    } else {
+      const key2 = normalizePath(joined);
+      if (key2 !== "" && !climbs(key2)) return joinCoverageRoot(key2, coverageRoot);
+    }
+  }
+  const key = normalizePath(filename, repoRoot);
+  return isAbsolutePath(key) ? key : joinCoverageRoot(key, coverageRoot);
+}
+function climbs(path) {
+  return path === ".." || path.startsWith("../");
+}
+
+// ../core/src/coverage/lcov.ts
+function createLcovReader(options = {}) {
+  const map = /* @__PURE__ */ new Map();
+  let current;
+  let skipped = 0;
+  const resolve2 = (raw) => options.coverageRoot !== void 0 && !isAbsolutePath(raw.trim()) ? normalizePath(joinCoverageRoot(raw, options.coverageRoot), options.repoRoot) : normalizePath(raw, options.repoRoot);
+  return {
+    push(raw) {
+      const line = raw.trim();
+      if (line.startsWith("SF:")) {
+        const raw2 = line.slice(3);
+        const separated = resolve2(raw2);
+        const path = options.literalBackslashes === true ? literalBackslashKey(raw2, separated, resolve2) : separated;
+        current = map.get(path);
+        if (!current) {
+          current = /* @__PURE__ */ new Map();
+          map.set(path, current);
+        }
+      } else if (line.startsWith("DA:")) {
+        if (!current) {
+          skipped++;
+          return;
+        }
+        const [lineNo, hits] = line.slice(3).split(",");
+        const n = Number(lineNo);
+        const h = Number(hits);
+        if (!Number.isInteger(n) || n < 1 || !Number.isFinite(h) || h < 0) {
+          skipped++;
+          return;
+        }
+        current.set(n, (current.get(n) ?? 0) + h);
+      } else if (line === "end_of_record") {
+        current = void 0;
+      }
+    },
+    skipped() {
+      return skipped;
+    },
+    finish() {
+      for (const [path, hits] of map) {
+        if (hits.size === 0) map.delete(path);
+      }
+      return map;
+    }
+  };
+}
+
+// ../core/src/coverage/index.ts
+function parseCoverageCounted(text, format, options = {}) {
+  switch (format) {
+    case "lcov": {
+      const reader = createLcovReader(options);
+      for (const line of text.split(/\r?\n/)) reader.push(line);
+      const map = reader.finish();
+      return { map, skipped: reader.skipped() };
+    }
+    case "cobertura":
+      return parseCoberturaCounted(text, options);
+  }
 }
 
 // ../core/src/lines.ts
@@ -46864,7 +46836,7 @@ async function readDiscoveredCoverage(deps, options) {
     log,
     literal: true
   });
-  return { files, format };
+  return { files };
 }
 
 // ../node-io/src/pythonIndex.ts
@@ -49372,7 +49344,7 @@ async function runUnsafe(deps) {
       name: (entry) => entry,
       log: (line) => deps.info(line)
     });
-    coverage2 = { files: coverageFiles, format };
+    coverage2 = { files: coverageFiles };
   }
   const repoFiles = await trackedFiles(target, deps);
   const { diff, revisions, checkout } = earlyDiff ?? await getDiff(baseRefInput, deps, target, configInput);

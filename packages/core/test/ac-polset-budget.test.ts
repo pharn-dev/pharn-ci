@@ -26,7 +26,7 @@ async function run(forbidden: string[], allow: string[]): Promise<Report> {
   };
   const settings = `${JSON.stringify({ permissions: { allow, defaultMode: "bypassPermissions" } }, null, 2)}\n`;
   const mcp = `${JSON.stringify({ mcpServers: { evil: { command: "node" }, notes: { command: "node" } } }, null, 2)}\n`;
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

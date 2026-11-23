@@ -90,7 +90,7 @@ const PYTHON_INDEX = {
 };
 
 async function run(input: Record<string, unknown>, mode: Mode = "block"): Promise<Report> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
@@ -155,7 +155,7 @@ describe("testIntegrity.languages names the languages indexed in the run", () =>
     expect(off.testIntegrity.languages).toEqual([]);
 
     // A check input without sources gives the report it gave before this increment: the committed golden report.
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const golden = check({
       version: "0.1.0",
       coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

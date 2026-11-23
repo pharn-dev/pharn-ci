@@ -34,7 +34,10 @@ describe("the schema sentence and the hints for POLICY_P11 and AGENT_PR_DETECTIO
     expect(codeRow("AGENT_PR_DETECTION_INCOMPLETE")).toContain("(`warn`)");
 
     // A report carrying both codes validates, and renders both hints.
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = {
+      ...(await import("@pharn-ci/core")),
+      check: (await import("./text-coverage.js")).check,
+    } as unknown as Core;
     const report = core.check({
       version: "0.1.0",
       coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

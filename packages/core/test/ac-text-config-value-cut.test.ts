@@ -54,7 +54,7 @@ const config = (include: string[]) =>
 async function run(baseInclude: string[], headInclude: string[]): Promise<Signal[]> {
   const base = config(baseInclude);
   const head = config(headInclude);
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

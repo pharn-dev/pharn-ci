@@ -22,7 +22,7 @@ type Report = { verdict: string; messages: Message[] };
 const withCode = (report: Report, code: string) => report.messages.filter((message) => message.code === code);
 
 async function runCheck(file: string | undefined, tracked: string): Promise<Report> {
-  const { check } = await import("../../core/src/check.js");
+  const { check } = await import("../../core/test/text-coverage.js");
   const input = {
     version: "0.1.0",
     coverage: {

@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { check, type ResolvedPolicy, renderMarkdown, validatePolicyResponse } from "../src/index.js";
+import { type ResolvedPolicy, renderMarkdown, validatePolicyResponse } from "../src/index.js";
 import { policyKeysUnknownMessage } from "../src/policy/messages.js";
 import { validatePolicy } from "../src/policy/validate.js";
 import { hasUnsafeChar } from "../src/text.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // CORE-118 (R5.1): keys and ids a newer app serves are skipped and named, the rest of the policy applies. The inputs
 // start from fixtures/policy-api/newer/baseline.json (an envelope with nothing unknown in it); the hostile keys are added

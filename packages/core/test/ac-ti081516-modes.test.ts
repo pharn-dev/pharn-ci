@@ -93,7 +93,8 @@ describe("TI08, TI15 and TI16 in the three modes and through the streaming reade
     }
 
     // The same diff through the streaming reader in chunks of 7 characters gives the same signals and messages.
-    const { check, readDiffChunks } = await import("@pharn-ci/core");
+    const { readDiffChunks } = await import("@pharn-ci/core");
+    const { check } = await import("./text-coverage.js");
     const base = {
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" as const },

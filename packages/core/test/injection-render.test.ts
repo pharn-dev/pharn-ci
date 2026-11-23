@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { MESSAGE_FIXES } from "../src/fix/table.js";
-import { check, type Report, renderMarkdown } from "../src/index.js";
+import { type Report, renderMarkdown } from "../src/index.js";
 import { fixture } from "./helpers.js";
 import { addedFileDiff, injectionFixture } from "./injection-fixture.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // The 🧬 Content section of the PR comment: one line per finding with its hint, blocks first, folded after 10 and cut
 // at 20; its messages left out of 💬 Messages while listed; nothing of the section on a clean report; hostile paths

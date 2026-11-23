@@ -82,7 +82,8 @@ function fakeRepo(diff: string) {
 
 describe("TI03 and TI04 in the PR comment, the streaming reader and the CLI", () => {
   it("AC-12: the section lists each signal with a hint, both message hints exist, streamed equals whole text, the CLI JSON holds TI03", async () => {
-    const { check, renderMarkdown, readDiffChunks } = await import("@pharn-ci/core");
+    const { renderMarkdown, readDiffChunks } = await import("@pharn-ci/core");
+    const { check } = await import("../../core/test/text-coverage.js");
 
     const base = {
       version: "0.1.0",

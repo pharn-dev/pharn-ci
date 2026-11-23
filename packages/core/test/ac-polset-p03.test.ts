@@ -14,7 +14,7 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const DOCUMENT = { version: 1, setup: { required_permissions_deny: ["Bash(rm -rf:*)", "Read(.env)"] } };
 
 async function p03Of(files: Record<string, string>): Promise<Violation[]> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

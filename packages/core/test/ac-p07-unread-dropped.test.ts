@@ -33,7 +33,7 @@ const DROP_SENTENCE =
   " 1 agent instruction file was not compared: binary, too large, past the read caps, an unsafe path or not a file at HEAD.";
 
 async function run(policy: PolicyName, sources: Sources): Promise<Report> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

@@ -8,7 +8,7 @@ import { expectValidReport } from "./schema.js";
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
 async function runCheck(diffPath: string) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const input = {
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" as const },

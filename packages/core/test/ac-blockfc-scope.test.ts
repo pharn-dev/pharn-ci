@@ -56,7 +56,8 @@ const MODIFIES_TEST = `${[
 ].join("\n")}\n`;
 
 async function run(diff: string): Promise<Report> {
-  const { check, unavailableTestSources } = await import("@pharn-ci/core");
+  const { unavailableTestSources } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

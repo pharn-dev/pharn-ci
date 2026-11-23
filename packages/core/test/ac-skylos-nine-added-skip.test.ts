@@ -25,7 +25,7 @@ const OPENING = /^\s*(it|test)(\.skip)?\(\s*(['"`])(.*?)\3/;
 
 describe("Skylos nine: the added-skip case is caught by TI03", () => {
   it("AC-2: turning an existing it( into it.skip( with the same name gives one TI03 block signal, a fail verdict and a rendered **TI03** line with path:line", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const { renderMarkdown } = await import("../src/render/markdown.js");
     const diff = fixture(`skylos-nine/${CASE}/change.diff`);
     const repoFiles = fixture(`skylos-nine/${CASE}/files.txt`).trim().split("\n");

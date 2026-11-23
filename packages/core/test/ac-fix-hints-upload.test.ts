@@ -117,7 +117,10 @@ function joinedReport(core: Core): Report {
 
 describe("the upload bundle keeps fix hints", { timeout: 120_000 }, () => {
   it("AC-10: the bundle's report.json carries every fix unchanged in kind, target and hint, through redaction and the byte caps, and validates", async () => {
-    const core = (await import("../src/index.js")) as unknown as Core;
+    const core = {
+      ...(await import("../src/index.js")),
+      check: (await import("./text-coverage.js")).check,
+    } as unknown as Core;
     const report = joinedReport(core);
     const extra = JSON.parse(readFileSync(new URL("fixtures/upload/extra.json", ROOT), "utf8")) as {
       version: string;

@@ -38,7 +38,7 @@ interface Core {
 }
 
 async function load(): Promise<Core> {
-  return (await import("../src/index.js")) as unknown as Core;
+  return { ...(await import("../src/index.js")), check: (await import("./text-coverage.js")).check } as unknown as Core;
 }
 
 /** The fixtures/golden check input, with the repo files, threshold and extra fields given. */

@@ -1,9 +1,9 @@
-import { check } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { asciiTrim, parsePermissionRule } from "../src/policy/settings/permissionRule.js";
 import { fixture } from "./helpers.js";
 import { overlapsForbidden } from "./permission-rules.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // The allow side trims ASCII whitespace before it parses an entry. It used a `^[ \t…]+|[ \t…]+$` regular expression,
 // which is quadratic on a long run of whitespace that is not at the end (CodeQL js/polynomial-redos on PR #116). The

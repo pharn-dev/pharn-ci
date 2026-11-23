@@ -3,11 +3,12 @@ import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import { GITHUB_LOGIN } from "../src/acceptLabel.js";
 import { agentPrMetaFields } from "../src/agents.js";
-import { check, decideAcceptLabel, detectAgentPr, LOGIN_PATTERN, validatePolicyResponse } from "../src/index.js";
+import { decideAcceptLabel, detectAgentPr, LOGIN_PATTERN, validatePolicyResponse } from "../src/index.js";
 import { POLICY_PATTERNS } from "../src/policy/grammar.js";
 import { validatePolicy } from "../src/policy/validate.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // CORE-44 (R1.6): Enterprise Managed User logins (`handle_shortcode`) are valid logins. The table in
 // fixtures/emu-logins/logins.json is run through every place that reads a login: the PR author (LOGIN_PATTERN and the

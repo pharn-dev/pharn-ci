@@ -25,7 +25,7 @@ describe("a repeated deny key: the last one counts", { timeout: 60_000 }, () => 
     const secondDeny = 4;
     expect(lines[secondDeny - 1]).toContain('"deny": ["Read(.env)"]');
 
-    const { check } = await import("@pharn-ci/core");
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

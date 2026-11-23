@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { validateAcceptLabel } from "../src/acceptLabel.js";
-import { check } from "../src/check.js";
+
 import { shownPattern } from "../src/policy/rules/shown.js";
 import { codeSpan, oneLine } from "../src/report.js";
 import { removedTestDetail, summaryTestName } from "../src/signals/testName.js";
 import { cutDetail, cutValue, keyText } from "../src/testConfig/value.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 import { withoutFix } from "./v090-codes.js";
 
 // report.json used to drop only the control characters; it now also drops the invisible and bidirectional characters

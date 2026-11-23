@@ -59,7 +59,7 @@ const META = {
 };
 
 async function goldenReport(extra: Record<string, unknown> = {}): Promise<Report> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const input = {
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

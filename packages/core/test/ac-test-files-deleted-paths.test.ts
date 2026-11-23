@@ -46,7 +46,7 @@ const coverageOf = (mode: string): Coverage => {
 };
 
 async function runCheck(coverage: Coverage, diff: Diff) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const input = {
     version: "0.1.0",
     coverage,

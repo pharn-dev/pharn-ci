@@ -107,7 +107,10 @@ describe("P07 never echoes instruction file text", { timeout: 180_000 }, () => {
     }
 
     // check() and renderMarkdown().
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = {
+      ...(await import("@pharn-ci/core")),
+      check: (await import("../../core/test/text-coverage.js")).check,
+    } as unknown as Core;
     const report = core.check({
       version: "0.1.0",
       coverage: { text: read("fixtures/golden/coverage.info"), format: "lcov" },

@@ -1,9 +1,10 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { check } from "../src/check.js";
+
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // The two evasions review named: a name is what a change controls, so a name alone must never loosen a gate. (1) A real
 // test deleted and a hollow test with a similar name added in its place (the file keeps its test count) is a TI02 block.

@@ -122,7 +122,7 @@ function parseDiff(text: string): FileDiff[] {
 }
 
 async function runCase(c: Case, mode: Mode): Promise<Report> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

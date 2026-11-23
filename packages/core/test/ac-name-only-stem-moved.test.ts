@@ -118,7 +118,7 @@ describe("TI01 same stem: a replacement that holds every body is info", () => {
       "one test keeps its name with a small edit",
     ).toBe(true);
 
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

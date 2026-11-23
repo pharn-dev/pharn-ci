@@ -31,7 +31,7 @@ describe("golden and fixture reports are Report v2", () => {
       expect(validate(report), `${path}: ${JSON.stringify(validate.errors)}`).toBe(true);
     }
 
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const { renderMarkdown } = await import("../src/render/markdown.js");
     const report = check({
       version: "0.1.0",

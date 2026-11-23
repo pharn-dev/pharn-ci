@@ -1,10 +1,9 @@
 import { type AgentPrFacts, agentPrMetaFields, detectAgentPr } from "./agents.js";
 import { parseAgentToolNames, parseCoverageRoot, parseExcludePattern } from "./config.js";
-import { chooseCoverageFormat, type DetectedCoverageFormat } from "./coverage/detect.js";
-import { parseCoverageCounted } from "./coverage/index.js";
+import type { DetectedCoverageFormat } from "./coverage/detect.js";
 import { matchCoveragePaths, resolveBackslashPaths } from "./coverage/match.js";
 import { mergeCoverageMaps } from "./coverage/merge.js";
-import type { CoverageFormat, CoverageFormatSelection, CoverageMap } from "./coverage/types.js";
+import type { CoverageFormat, CoverageMap } from "./coverage/types.js";
 import type { CoverageDiscoveryNotFound } from "./coverageDiscovery.js";
 import { checkDependencies } from "./dependencies/check.js";
 import type { DependencyLookups } from "./dependencies/lookup.js";
@@ -88,34 +87,26 @@ import type { TestSources } from "./testSources.js";
 import { byCodeUnit } from "./text.js";
 
 /**
- * One coverage file of a multi-file input: its contents (and the path it came from, for messages); or the map an
- * adapter already parsed from it, with the format that was chosen on the start of that file (`empty` and `unknown`
- * included, with an empty map); or the path that was not found. The `format` of the enclosing input applies to text
- * entries only; a parsed entry carries its own. A parsed entry may also carry `skipped`, the number of malformed
- * records the adapter dropped while parsing it (from `readCoverageChunks`); absent means 0.
+ * One coverage file of a multi-file input: the map an adapter parsed from it (`readCoverageFiles`, through
+ * `readCoverageChunks`), with the format that was chosen on the start of that file (`empty` and `unknown` included,
+ * with an empty map) and the path it came from, for messages; or the path that was not found. A parsed entry may also
+ * carry `skipped`, the number of malformed records the adapter dropped while parsing it; absent means 0.
  */
 export type CoverageFileInput =
-  | { text: string; file?: string }
-  | { parsed: CoverageMap; format: DetectedCoverageFormat; file?: string; skipped?: number }
+  | { parsed: CoverageMap; format: DetectedCoverageFormat; file?: string | undefined; skipped?: number | undefined }
   | { missingFile: string };
 
 export interface CheckInput {
   version: string;
   /**
-   * Coverage report contents (and, optionally, the path it was read from, for messages), or the
-   * path that was looked for when it is missing; or several of them in the order they were read, which
-   * are merged with hit counts summed. `format` applies to every file (`auto` detects it per file). Or the
-   * not-found outcome of coverage auto-discovery (`chooseDiscoveredCoverage`), which reports that no report was
-   * found at any of the candidate paths.
+   * The coverage files as the adapter parsed them, in the order they were read, which are merged with hit counts
+   * summed; or the path that was looked for when it is missing; or the not-found outcome of coverage auto-discovery
+   * (`chooseDiscoveredCoverage`), which reports that no report was found at any of the candidate paths.
    */
-  coverage:
-    | { text: string; format: CoverageFormatSelection; file?: string }
-    | { missingFile: string }
-    | CoverageDiscoveryNotFound
-    | { files: readonly CoverageFileInput[]; format: CoverageFormatSelection };
+  coverage: { files: readonly CoverageFileInput[] } | { missingFile: string } | CoverageDiscoveryNotFound;
   /** Unified diff text, or the files an adapter already parsed from it, or why no diff is available. */
   diff: { text: string } | { parsed: readonly DiffFile[] } | { unavailable: string };
-  /** Absolute repo root, used to relativize absolute coverage paths. */
+  /** Absolute repo root, used to relativize an absolute config path and coverage file path. */
   repoRoot?: string | undefined;
   threshold: number | null;
   /** Repo-relative tracked paths (e.g. `git ls-files`). */
@@ -140,7 +131,8 @@ export interface CheckInput {
   expectAgentSetup?: readonly string[] | undefined;
   /**
    * Repo-relative directory that relative coverage paths start from (package-relative coverage in a
-   * monorepo). Validated here; an invalid value throws a ConfigError. Absent means the repo root.
+   * monorepo), as the adapter parsed the coverage with it; here it suggests the root a report whose paths match no
+   * tracked file needs. Validated here; an invalid value throws a ConfigError. Absent means the repo root.
    */
   coverageRoot?: string | undefined;
   /**
@@ -473,28 +465,11 @@ export function check(input: CheckInput): Report {
   // a weakened test. Computed from the diff alone, so it holds without `testSources`.
   const textTruncatedTestFiles =
     parsedDiff === null || testIntegrity.mode === "off" ? [] : textCutModifiedTestFiles(parsedDiff);
-  // The single-file forms are several files with one entry, so there is one path through the check.
+  // A missing single file is several files with one entry, so there is one path through the check; discovery that found
+  // no report has no file to read or name.
   const coverageInput = input.coverage;
-  let files: readonly CoverageFileInput[];
-  let selection: CoverageFormatSelection;
-  if ("files" in coverageInput) {
-    files = coverageInput.files;
-    selection = coverageInput.format;
-  } else if ("missingFile" in coverageInput) {
-    files = [coverageInput];
-    selection = "auto";
-  } else if ("kind" in coverageInput) {
-    // Discovery found no report: there is no file to read or name.
-    files = [];
-    selection = "auto";
-  } else {
-    files = [
-      coverageInput.file === undefined
-        ? { text: coverageInput.text }
-        : { text: coverageInput.text, file: coverageInput.file },
-    ];
-    selection = coverageInput.format;
-  }
+  const files: readonly CoverageFileInput[] =
+    "files" in coverageInput ? coverageInput.files : "missingFile" in coverageInput ? [coverageInput] : [];
 
   // With several files, the first tracked one the diff adds, modifies or renames to is named, else the first tracked
   // one: one is enough for the change to grade itself. A tracked file the diff writes fails a gated run (CORE-92), so
@@ -740,7 +715,7 @@ export function check(input: CheckInput): Report {
     }
   }
 
-  // Each file in order, with its own format under `auto`; the first bad one is the one reported.
+  // Each file in order, with the format chosen on its start; the first bad one is the one reported.
   const maps: CoverageMap[] = [];
   const formats = new Set<CoverageFormat>();
   let skippedLines = 0;
@@ -749,37 +724,25 @@ export function check(input: CheckInput): Report {
   for (const file of files) {
     if ("missingFile" in file) continue;
     const coverageFile = file.file ?? null;
-    const choice = "parsed" in file ? { format: file.format } : chooseCoverageFormat(file.text, selection);
-    if (choice.format === "empty") {
+    const { format } = file;
+    if (format === "empty") {
       return buildReport({
         ...base,
         diffCoverage: null,
         missing: { reason: "coverage-file-empty", coverageFile },
       });
     }
-    if (choice.format === "unknown") {
+    if (format === "unknown") {
       return buildReport({
         ...base,
         diffCoverage: null,
         missing: { reason: "coverage-format-unsupported", coverageFile },
       });
     }
-    let parsed: CoverageMap;
-    if ("parsed" in file) {
-      parsed = file.parsed;
-      const count = file.skipped;
-      if (count !== undefined && Number.isSafeInteger(count) && count > 0) skippedLines += count;
-    } else {
-      const counted = parseCoverageCounted(file.text, choice.format, {
-        ...(input.repoRoot === undefined ? {} : { repoRoot: input.repoRoot }),
-        ...(coverageRoot === undefined ? {} : { coverageRoot }),
-        literalBackslashes: true,
-      });
-      parsed = counted.map;
-      skippedLines += counted.skipped;
-    }
+    const count = file.skipped;
+    if (count !== undefined && Number.isSafeInteger(count) && count > 0) skippedLines += count;
     // Merged within the file by the format's own rule, as the parser merges a file it lists twice.
-    parsed = resolveBackslashPaths(parsed, tracked, choice.format === "lcov" ? (a, b) => a + b : Math.max);
+    const parsed = resolveBackslashPaths(file.parsed, tracked, format === "lcov" ? (a, b) => a + b : Math.max);
     // An empty or unreadable report would otherwise make every change look uncovered-but-untracked
     // and pass as NO_COVERABLE_CHANGES. Say so instead.
     if (parsed.size === 0) {
@@ -789,7 +752,7 @@ export function check(input: CheckInput): Report {
         missing: { reason: "coverage-file-empty", coverageFile },
       });
     }
-    formats.add(choice.format);
+    formats.add(format);
     maps.push(parsed);
   }
   // No file at all cannot be told from an unreadable one: fail closed.

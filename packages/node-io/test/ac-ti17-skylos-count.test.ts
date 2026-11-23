@@ -95,7 +95,7 @@ async function signalsOf(caseDir: string, sourcesDir: string, python: boolean): 
     }
     extra = { ...extra, pythonTestIndex };
   }
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("../../core/test/text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: readFileSync(`${FIXTURES}test-files-deleted/coverage.info`, "utf8"), format: "lcov" },

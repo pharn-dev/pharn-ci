@@ -36,7 +36,7 @@ const FILE_ROW = /^\| `.*` \| claude-skill \|$/;
 
 describe("agent setup rendering (agent-setup-inventory)", () => {
   it("AC-11: shows the summary line above the agent setup table for the golden inputs", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const { renderMarkdown } = await import("../src/render/markdown.js");
     const md = renderMarkdown(
       check({

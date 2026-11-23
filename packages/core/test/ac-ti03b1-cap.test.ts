@@ -74,7 +74,7 @@ describe("TI03 keeps the existing-test findings first under the per-file cap", (
     const lastFresh = Math.max(...fresh.map((line) => headLines.indexOf(line)));
     expect(lastFresh, "the new skipped tests come first, on lower lines").toBeLessThan(firstMoved);
 
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

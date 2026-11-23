@@ -33,7 +33,7 @@ function edit(path: string, ...hunks: Hunk[]): string {
 
 describe("check(): TI04 in a .test.mts test file", () => {
   it("AC-2: turning it( into it.only( on an existing test of src/cart.test.mts gives a TI04 block signal naming that file and line", async () => {
-    const { check } = await import("@pharn-ci/core");
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

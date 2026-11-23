@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { check } from "../src/check.js";
+
 import {
   TEST_SOURCE_DROP_REASONS,
   type TestSourceDrop,
@@ -10,6 +10,7 @@ import {
 } from "../src/testSources.js";
 import { FIXTURES } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // Every case directory of fixtures/test-integrity/TI10/ runs through check() in mode block. A case holds change.diff
 // and, optionally, base/ and head/ with `<path>.txt` (the text of a test source file) and `<path>.dropped` (a one-line

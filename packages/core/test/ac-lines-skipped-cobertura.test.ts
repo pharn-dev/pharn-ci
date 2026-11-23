@@ -46,7 +46,7 @@ const cobertura = (lines: readonly string[]) =>
 
 describe("check(): malformed Cobertura lines are counted", () => {
   it("AC-2: reports one info COVERAGE_LINES_SKIPPED message with the count 3 and leaves the verdict unchanged", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const run = (text: string) =>
       check({
         version: "0.1.0",

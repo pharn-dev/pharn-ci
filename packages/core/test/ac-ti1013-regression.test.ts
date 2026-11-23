@@ -122,7 +122,7 @@ const TI03_ADDS_BEFORE = "A skip was added to a test that this change adds, so n
 const asBefore = (json: string) => json.split(TI03_ADDS_NOW).join(TI03_ADDS_BEFORE);
 
 async function run(diff: string, exclude: string[] = [], files = "test-files-deleted/files.txt") {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

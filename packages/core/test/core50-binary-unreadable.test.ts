@@ -2,9 +2,10 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { acceptTestIntegrity } from "../src/acceptLabel.js";
-import { check } from "../src/check.js";
+
 import { FIXTURES } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // CORE-50 (binary-diff-not-blind), not an AC test: the three ways the reason `binary` reaches the
 // TEST_INTEGRITY_INDEX_UNAVAILABLE message, and how the message tells them apart.

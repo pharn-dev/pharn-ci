@@ -8,7 +8,7 @@ import { expectValidReport } from "./schema.js";
 
 describe("PR comment look: report data unchanged (pr-comment-redesign-2)", () => {
   it("AC-7: check() on the golden inputs deep-equals the committed report.json, and the new look shows its values", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const { renderMarkdown } = await import("../src/render/markdown.js");
 
     const report = check({

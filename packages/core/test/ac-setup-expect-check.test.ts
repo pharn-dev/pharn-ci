@@ -13,7 +13,7 @@ type Message = { level: string; code: string; text: string };
 type Report = { agentSetup: Record<string, unknown> & { missing?: unknown }; messages: Message[] };
 
 async function runCheck(repoFiles: string[], expectAgentSetup?: string[]): Promise<Report> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const input = {
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov", file: "coverage/lcov.info" },

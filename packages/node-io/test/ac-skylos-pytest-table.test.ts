@@ -92,7 +92,7 @@ function cellOf(signals: Signal[]): string {
 }
 
 async function runVitest(name: string): Promise<Signal[]> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("../../core/test/text-coverage.js");
   const sources = WITH_SOURCES.has(name)
     ? {
         testSources: {
@@ -128,7 +128,7 @@ async function runPytest(name: string): Promise<Signal[]> {
   if ([...sources.base.files, ...sources.head.files].some((f) => f.path.endsWith(".py"))) {
     expect(pythonTestIndex?.available, `${name}: the Python index ran`).toBe(true);
   }
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("../../core/test/text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: read("fixtures/test-files-deleted/coverage.info"), format: "lcov" },

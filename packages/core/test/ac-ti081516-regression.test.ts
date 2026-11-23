@@ -41,7 +41,7 @@ describe("TI08, TI15 and TI16 leave the earlier outputs alone", () => {
     expect(signalsOf(ti08Control, NEW_IDS[0] as string).length).toBeGreaterThan(0);
 
     // The golden report, byte for byte as fixtures/golden/report.json holds it.
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const golden = check({
       version: "0.1.0",
       coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

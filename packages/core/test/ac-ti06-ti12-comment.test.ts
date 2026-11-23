@@ -88,7 +88,7 @@ const FINDING = /^- \S+ \*\*(TI\d\d)\*\* `([^`]+)`/;
 
 describe("renderMarkdown(): TI06 and TI12 in the Test integrity section", () => {
   it("AC-14: the TI02 block finding comes before the TI06 and TI12 warn findings, each with the id in bold, path:line in a code span and the detail; the TI06 and TI12 warn hints do not offer the accept label; a hostile detail stays on one line, inert", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const { testIntegritySignalMessages, verdictOf } = (await import("../src/report.js")) as unknown as {
       testIntegritySignalMessages(signals: Signal[]): { code: string; level: string; text: string }[];
       verdictOf(messages: unknown[]): string;

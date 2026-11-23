@@ -30,7 +30,10 @@ describe("the schema sentence and the hint for POLICY_P07", { timeout: 60_000 },
     expect(codeRow("POLICY_P07")).toContain("(`warn` by default;");
 
     // A report carrying POLICY_P07 validates and renders the hint.
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = {
+      ...(await import("@pharn-ci/core")),
+      check: (await import("./text-coverage.js")).check,
+    } as unknown as Core;
     const report = core.check({
       version: "0.1.0",
       coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

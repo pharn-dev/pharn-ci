@@ -47,7 +47,7 @@ function sideFiles(dir: string): SourceFile[] {
 }
 
 async function run(withIndex: boolean) {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("../../core/test/text-coverage.js");
   let extra: Record<string, unknown> = {};
   if (withIndex) {
     const sources = {

@@ -1,10 +1,11 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { check } from "../src/check.js";
+
 import { indexTestFile } from "../src/testIndex/indexTestFile.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 import { withoutFix } from "./v090-codes.js";
 
 // fix/unparsed-added-test-file: an added test file whose head side cannot be indexed (refused by the test index, dropped,

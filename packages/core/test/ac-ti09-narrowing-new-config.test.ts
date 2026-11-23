@@ -36,7 +36,7 @@ function sideFiles(dir: string): SourceFile[] {
 
 /** The TI09 signals of one case directory run through check() in `mode`; the report is schema-validated. */
 async function ti09Of(name: string, mode: Mode) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const dir = join(TI09, name);
   const diff = readFileSync(join(dir, "change.diff"), "utf8");
   const head = sideFiles(join(dir, "head"));
@@ -135,7 +135,7 @@ describe("CORE-70: TI09 on a config new at head", () => {
     ).toEqual([]);
 
     // The spread alone: the same config without the two build entries.
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const text = readFileSync(join(TI09, "pass-added-vitest-config-defaults", "head", "vitest.config.ts.txt"), "utf8")
       .split(', "dist/**", "**/node_modules/**"')
       .join("");

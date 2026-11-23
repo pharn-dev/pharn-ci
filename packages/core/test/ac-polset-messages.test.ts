@@ -25,7 +25,10 @@ const sourcesOf = (files: Record<string, string>) => ({
 });
 
 async function run(document: unknown, files: Record<string, string>): Promise<Report> {
-  const core = (await import("@pharn-ci/core")) as unknown as Core;
+  const core = {
+    ...(await import("@pharn-ci/core")),
+    check: (await import("./text-coverage.js")).check,
+  } as unknown as Core;
   const report = core.check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
@@ -169,7 +172,7 @@ describe("the P02–P06 and POLICY_SETTINGS_INVALID messages", { timeout: 60_000
       `P02 forbidden permission allowed: 60 findings at ${locs} and 40 more${P02_TAIL}`,
     );
     const core = {
-      ...(await import("../src/check.js")),
+      ...(await import("./text-coverage.js")),
       ...(await import("../src/policy/rules/evaluate.js")),
       ...(await import("../src/render/markdown.js")),
     } as unknown as Core;

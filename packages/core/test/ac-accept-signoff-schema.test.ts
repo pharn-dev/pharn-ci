@@ -39,7 +39,8 @@ const UNCOVERED = "TN:\nSF:src/a.ts\nDA:12,0\nend_of_record\n";
 
 describe("Report v2 with the accept label", () => {
   it("AC-11: the accepted, ignored and labelled reports validate, a numeric acceptLabel does not, v2 documents the additions and v1 is unchanged", async () => {
-    const { check, acceptTestIntegrity, ignoreAcceptLabel, withAcceptLabel } = await import("@pharn-ci/core");
+    const { acceptTestIntegrity, ignoreAcceptLabel, withAcceptLabel } = await import("@pharn-ci/core");
+    const { check } = await import("./text-coverage.js");
     const checkWith = (coverage: string) =>
       check({
         version: "0.1.0",

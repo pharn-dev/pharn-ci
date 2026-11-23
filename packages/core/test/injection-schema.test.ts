@@ -2,10 +2,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { check, type Report } from "../src/index.js";
+import type { Report } from "../src/index.js";
 import { fixture } from "./helpers.js";
 import { injectionFixture } from "./injection-fixture.js";
 import { validateReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // H4's schema: report.v2.json carries the optional `injection` object, the object is closed and validates the reports
 // check() makes, and report.ts names the six codes.

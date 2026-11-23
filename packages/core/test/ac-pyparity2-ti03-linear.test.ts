@@ -112,7 +112,7 @@ describe("TI03's alias reader on hostile text near the test-source size cap", ()
         "unclosed groups",
       ).toBeGreaterThan(1000);
 
-      const { check } = await import("../src/check.js");
+      const { check } = await import("./text-coverage.js");
       type Input = Parameters<typeof check>[0];
       const fullInput = inputOf(full.head, full.base) as unknown as Input;
       const quarterInput = inputOf(quarter.head, quarter.base) as unknown as Input;

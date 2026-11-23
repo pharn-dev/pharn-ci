@@ -14,7 +14,7 @@ const HEADING = "### 🔍 Test integrity";
 const FINDING = /^- \S+ \*\*(TI\d\d)\*\* `([^`]+)`/;
 
 async function report(diff: string) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const result = check({
     version: "0.1.0",
     coverage: { text: "SF:src/cart.ts\nDA:1,1\nend_of_record\n", format: "lcov" },

@@ -13,7 +13,7 @@ const PASSING_LCOV = "SF:src/cart.ts\nDA:1,1\nend_of_record\n";
 
 describe("TI17 on the vitest Skylos case always-true-matcher", () => {
   it("AC-1: the unchanged benchmark diff in mode block gives a schema-valid report with exactly one TI17 warn signal at src/cart.test.ts:9 and one TEST_INTEGRITY_TI17 warn message", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: { text: PASSING_LCOV, format: "lcov" },

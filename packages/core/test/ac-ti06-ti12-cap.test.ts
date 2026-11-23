@@ -81,7 +81,7 @@ describe("TI06 and TI12: at most 20 findings per file per signal", () => {
     const text = (lines: string[]) => lines.join("\n");
     const diff =
       replaceDiff(CART, cartBase, cartHead) + insertDiff(MOCKS, 2, mockLines) + SOURCES.map(sourceDiff).join("");
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

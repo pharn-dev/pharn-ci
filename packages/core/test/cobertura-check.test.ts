@@ -7,7 +7,7 @@ import { expectValidReport } from "./schema.js";
 
 describe("check(): empty Cobertura reports", () => {
   it("AC-14: reports empty and line-less Cobertura files as COVERAGE_FILE_EMPTY with no diff coverage", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const repoFiles = fixture("golden/files.txt").trim().split("\n");
     for (const name of ["empty.xml", "no-lines.xml"]) {
       const report = check({

@@ -53,7 +53,7 @@ const p11 = (report: Report) => (report.policy?.violations ?? []).filter((v) => 
 describe("the CLI never sets the agent flag", { timeout: 60_000 }, () => {
   it("AC-18: check --policy-file with protected paths, an agent label and login gives no P11 violation, no POLICY_P11 or incomplete message and no isAgentPr, while the same policy blocks an agent PR in check()", async () => {
     // Control: the policy protects src/a.ts for an agent PR.
-    const { check } = await import("@pharn-ci/core");
+    const { check } = await import("../../core/test/text-coverage.js");
     const control = check({
       version: "0.1.0",
       coverage: { text: read("fixtures/golden/coverage.info"), format: "lcov" },

@@ -49,7 +49,7 @@ async function run(policy: unknown, inputMode: "block" | "warn"): Promise<Report
   const { applyPolicy } = (await import("../src/policy/apply.js")) as unknown as {
     applyPolicy: (layers: unknown, policy: unknown) => Application;
   };
-  const { check } = (await import("../src/check.js")) as unknown as { check: (input: unknown) => Report };
+  const { check } = (await import("./text-coverage.js")) as unknown as { check: (input: unknown) => Report };
   const raw = { coverageFile: "coverage/lcov.info", testIntegrity: inputMode };
   const resolved = resolveInputs({}, raw, TEXT);
   expect(resolved.ok).toBe(true);

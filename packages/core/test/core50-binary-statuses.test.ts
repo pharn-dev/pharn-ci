@@ -1,9 +1,10 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { check } from "../src/check.js";
+
 import { FIXTURES } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // CORE-50 (binary-diff-not-blind), not an AC test: the statuses the acceptance criteria do not name, each pinned by a
 // fixture. A renamed binary package.json (judged from the sources when both texts read as JSON, else one fixed

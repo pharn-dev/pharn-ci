@@ -40,7 +40,7 @@ function deletedFiles(diff: string): Array<{ path: string; removed: string[] }> 
 
 describe("Skylos nine: the deleted-test case is caught by TI01", () => {
   it("AC-1: deleting a vitest test file while its source stays gives one TI01 block signal, a fail verdict and a rendered **TI01** line with the path", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const { renderMarkdown } = await import("../src/render/markdown.js");
     const diff = fixture(`skylos-nine/${CASE}/change.diff`);
     const repoFiles = fixture(`skylos-nine/${CASE}/files.txt`).trim().split("\n");

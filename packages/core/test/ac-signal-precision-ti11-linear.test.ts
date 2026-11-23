@@ -39,7 +39,7 @@ function movedJobs(jobs: number): string {
 
 describe("TI11: the keyed comparison is linear", () => {
   it("AC-4: 5000 and 20000 removed jobs with their scripts and a renamed test file each give one block TI11 test-step finding, and the larger input takes less than eight times as long", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     type Input = Parameters<typeof check>[0];
     const inputFor = (jobs: number) =>
       ({

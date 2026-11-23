@@ -65,7 +65,8 @@ function goldenInputs(dir: string): Record<string, unknown> {
 
 describe("reports with no policy, or a policy of source none", () => {
   it("AC-26: are byte-identical to the base goldens; a timeout policy appends one POLICY_UNAVAILABLE warning last", async () => {
-    const { check, parseConfig } = await import("@pharn-ci/core");
+    const { parseConfig } = await import("@pharn-ci/core");
+    const { check } = await import("./text-coverage.js");
     const config = parseConfig(fixture("golden-exclusions/ci.yml")) as { coverage?: { exclude?: string[] } };
     expect(config.coverage?.exclude).toEqual(["src/generated/**", "*.gen.ts"]);
 

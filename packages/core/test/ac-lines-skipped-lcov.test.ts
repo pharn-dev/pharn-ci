@@ -43,7 +43,7 @@ const MALFORMED = [
 
 describe("check(): malformed lcov records are counted", () => {
   it("AC-1: reports one info COVERAGE_LINES_SKIPPED message with the count 5 and leaves verdict and percent unchanged", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const run = (text: string) =>
       check({
         version: "0.1.0",

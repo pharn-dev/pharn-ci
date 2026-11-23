@@ -37,7 +37,7 @@ const DIFF = `${[
 
 describe("CORE-69: no python3 while a Python test file is modified", () => {
   it("AC-4: a modified tests/test_c.py with readable text and a Python index reported unavailable as python-not-found gives one TEST_INTEGRITY_INDEX_UNAVAILABLE error saying TI02 and TI05 did not run, and the verdict is fail", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

@@ -269,7 +269,8 @@ describe("the accept label leaves the existing signals, hints, golden outputs an
     }
 
     // Every test-integrity fixture gives the signals and messages it gave, with the same TI01/TI04/TI11/TI14 hints.
-    const { check, renderMarkdown } = await import("@pharn-ci/core");
+    const { renderMarkdown } = await import("@pharn-ci/core");
+    const { check } = await import("../../core/test/text-coverage.js");
     const records: unknown[] = [];
     for (const dir of readdirSync(new URL("fixtures/test-integrity/", ROOT)).sort()) {
       const names = readdirSync(new URL(`fixtures/test-integrity/${dir}/`, ROOT))

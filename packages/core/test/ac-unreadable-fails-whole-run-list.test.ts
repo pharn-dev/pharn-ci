@@ -43,7 +43,7 @@ const JS_DIFF = modified("src/a.test.ts", "@@ -5,0 +6 @@", ["+  expect(total([1]
 const side = (path: string, text: string) => ({ files: [{ path, text }], dropped: [] });
 
 async function run(input: Record<string, unknown>): Promise<Report> {
-  const { check } = (await import("../src/index.js")) as unknown as { check(input: unknown): unknown };
+  const { check } = (await import("./text-coverage.js")) as unknown as { check(input: unknown): unknown };
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

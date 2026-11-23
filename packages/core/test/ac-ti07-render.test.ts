@@ -63,7 +63,7 @@ describe("renderMarkdown(): TI07 in the Test integrity section", () => {
     const base = sideFiles(`${root}base`);
     const head = sideFiles(`${root}head`);
     expect(head.length, "the case has head test text").toBeGreaterThan(0);
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

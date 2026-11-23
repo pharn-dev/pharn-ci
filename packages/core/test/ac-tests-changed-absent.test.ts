@@ -49,7 +49,7 @@ async function run(input: {
   mode: Mode;
   repoFiles: string[];
 }): Promise<Report> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
@@ -156,7 +156,7 @@ describe("testIntegrity.changes is absent unless a test changed", () => {
     expect("changes" in without.testIntegrity, "no test sources").toBe(false);
 
     // Every whole-report golden, built as the test that owns each report.json builds it, with and without sources.
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const { parseConfig } = await import("../src/config.js");
     type Input = Parameters<typeof check>[0];
     const exclusionsConfig = parseConfig(fixture("golden-exclusions/ci.yml")) as {

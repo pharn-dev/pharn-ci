@@ -82,7 +82,7 @@ function generate(bytes: number) {
 
 describe("TI02 phase 2: the body-checked leaf pick stays linear", () => {
   it("AC-8: thousands of removed `works` tests beside thousands of hollow `works` tests in another touched file give TI02 blocks within the finding cap at full and quarter size, and the full run takes less than 8 times the quarter run", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const { MAX_FINDINGS_PER_FILE } = (await import("../src/signals/findingCap.js")) as unknown as {
       MAX_FINDINGS_PER_FILE: number;
     };

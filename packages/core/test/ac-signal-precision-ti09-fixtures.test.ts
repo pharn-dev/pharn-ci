@@ -70,7 +70,7 @@ function sideFiles(dir: string): SourceFile[] {
 }
 
 async function run(name: string) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const dir = join(TI09, name);
   const diff = readFileSync(join(dir, "change.diff"), "utf8");
   const base = sideFiles(join(dir, "base"));

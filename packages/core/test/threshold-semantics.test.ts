@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { check } from "../src/check.js";
+
 import { renderMarkdown } from "../src/render/markdown.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 import { withoutFix } from "./v090-codes.js";
 
 // F-31: an ungated measurement says so, threshold 0 is explicit, and the gate compares exactly.

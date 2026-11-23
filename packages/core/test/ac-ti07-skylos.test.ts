@@ -56,7 +56,7 @@ function sideFiles(dir: string): SourceFile[] {
 
 async function runCase(name: string): Promise<Report> {
   const sourcesDir = `${FIXTURES}skylos-nine-sources/${name}`;
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

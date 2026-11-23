@@ -18,7 +18,7 @@ const DIFFS = [
 ];
 
 async function runCheck(diff: string, mode?: "off") {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const input = {
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" as const },

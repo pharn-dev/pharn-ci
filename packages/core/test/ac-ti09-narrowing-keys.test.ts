@@ -37,7 +37,7 @@ function sideFiles(dir: string): SourceFile[] {
 
 /** The TI09 signals of one case directory run through check() in `mode`; the report is schema-validated. */
 async function ti09Of(name: string, mode: Mode) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const dir = join(TI09, name);
   const diff = readFileSync(join(dir, "change.diff"), "utf8");
   const head = sideFiles(join(dir, "head"));

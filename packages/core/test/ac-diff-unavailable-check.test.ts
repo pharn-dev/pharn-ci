@@ -5,7 +5,7 @@ import { expectValidReport } from "./schema.js";
 // check() is loaded inside the test body, like the other AC tests: they are written before the build.
 
 async function unavailableDiffReport(threshold: number | null) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   return check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov", file: "coverage/lcov.info" },

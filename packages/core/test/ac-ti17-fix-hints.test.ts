@@ -34,7 +34,7 @@ function expectOneSentence(hint: string, label: string): void {
 
 describe("fix hints for TI17", () => {
   it("AC-18: the TI17 signal and the TEST_INTEGRITY_TI17 message each carry a restore-assertion fix with one fixed sentence of at most 200 characters, the signal's target is its path:line, and the fix kinds are the same eight", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const core = { ...(await import("../src/fix/attach.js")), ...(await import("../src/fix/table.js")) } as unknown as {
       withFixHints(report: unknown): unknown;
       FIX_KINDS: readonly string[];

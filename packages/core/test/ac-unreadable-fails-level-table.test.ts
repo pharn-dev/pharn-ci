@@ -166,7 +166,7 @@ function rows(): Row[] {
 }
 
 async function run(row: Row, mode: Mode): Promise<Report> {
-  const { check } = (await import("../src/index.js")) as unknown as { check(input: unknown): unknown };
+  const { check } = (await import("./text-coverage.js")) as unknown as { check(input: unknown): unknown };
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

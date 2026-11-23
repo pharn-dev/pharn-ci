@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { check } from "../src/check.js";
+
 import { withFixHints } from "../src/fix/attach.js";
 import { MESSAGE_FIXES, SIGNAL_FIXES } from "../src/fix/table.js";
 import { POLICY_SIGNAL_IDS } from "../src/policy/limits.js";
@@ -13,6 +13,7 @@ import { TEST_INTEGRITY_SIGNAL_IDS, TEST_INTEGRITY_SIGNALS } from "../src/signal
 import { codeTable } from "./codeTable.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport, validateReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // CORE-140: one registry of the test-integrity signals. The ids are written once, in packages/core/src/signals/
 // registry.ts; the policy's ids, the message codes, their fix entries, the report messages and the comment's hints

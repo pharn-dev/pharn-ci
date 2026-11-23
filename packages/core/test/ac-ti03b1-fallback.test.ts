@@ -64,7 +64,7 @@ function loadCase(name: string): Case {
 
 /** check() in mode block with or without the case's test sources, and never with a Python test index. */
 async function runCase(c: Case, withSources: boolean): Promise<Report> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

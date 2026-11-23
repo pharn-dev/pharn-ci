@@ -94,7 +94,7 @@ async function runPython(c: Case, mode: "block" | "warn"): Promise<Run> {
   const pythonTestIndex = await io.indexPythonTestSources(sources);
   if (pythonTestIndex === undefined || !pythonTestIndex.available) throw new Error("the Python index did not run");
 
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("../../core/test/text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: readFileSync(`${FIXTURES}test-files-deleted/coverage.info`, "utf8"), format: "lcov" },

@@ -37,7 +37,7 @@ const INCOMPLETE_TEXT =
   "This pull request counts as an agent PR because pharn-ci could not read all of its evidence (`commits-unreadable`), so the org policy's protected paths apply to it.";
 
 async function run(policy: unknown, agentPrFacts: unknown): Promise<Report> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

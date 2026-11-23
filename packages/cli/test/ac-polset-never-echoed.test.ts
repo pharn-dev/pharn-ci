@@ -152,7 +152,10 @@ async function runCli(dir: string, format: string[]) {
 
 describe("policy mode never echoes file text", () => {
   it("AC-19: no marker word of the settings, MCP or hook text reaches the report JSON, the comment or the CLI output, while the policy's own pattern text does", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as {
+    const core = {
+      ...(await import("@pharn-ci/core")),
+      check: (await import("../../core/test/text-coverage.js")).check,
+    } as unknown as {
       check(input: unknown): Report;
       renderMarkdown(report: unknown): string;
     };

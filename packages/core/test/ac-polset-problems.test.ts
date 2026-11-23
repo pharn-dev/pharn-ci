@@ -25,7 +25,7 @@ const FULL = {
 const P02_ONLY = { version: 1, setup: { forbidden_permissions: ["Bash(curl:*)"] } };
 
 async function invalidOf(document: unknown, files: Record<string, string>, dropped: Drop[] = []): Promise<Message[]> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

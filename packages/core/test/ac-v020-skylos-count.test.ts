@@ -44,7 +44,7 @@ function sideFiles(dir: string): { path: string; text: string }[] {
 // The titles are kept as they were (ac-ti06-ti12-unchanged.test.ts pins them); the lists are CAUGHT and MISSED above.
 describe("release-readiness-v020: the LIMITS 2-of-9 figure matches check()", () => {
   it("AC-3: exactly the two cases LIMITS lists as caught give a signal (only their named id), the seven it lists as missed give none, so the live count is 2 of 9", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const caught = CAUGHT;
     const missed = MISSED;
     // ti17-always-true-matcher-2: always-true-matcher moved from the missed list to the caught list (7 and 2 became 8 and 1).

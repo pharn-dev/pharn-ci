@@ -10,7 +10,7 @@ export function runFixture(diff: string, mode: "block" | "warn" | "off" = "block
 
 /** check() on a diff text, in the given mode, validated against the v2 schema. */
 export async function runDiff(text: string, mode: "block" | "warn" | "off" = "block") {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

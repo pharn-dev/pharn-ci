@@ -28,7 +28,7 @@ function foldTestIntegrity(markdown: string): string {
 
 describe("renderMarkdown(): the golden report opens with the logo line", () => {
   it("AC-2: the golden rendering is the logo line, an empty line, then the committed report.md unchanged", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const { renderMarkdown } = await import("../src/render/markdown.js");
 
     const report = check({

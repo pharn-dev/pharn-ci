@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { check } from "../src/check.js";
+
 import { parseConfig } from "../src/config.js";
 import { type InputErrorText, type RawInputs, resolveInputs } from "../src/inputs.js";
 import { applyPolicy } from "../src/policy/apply.js";
 import type { ResolvedPolicy } from "../src/policy/resolved.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 import { withoutFix } from "./v090-codes.js";
 
 // CORE-123 (R5.6) keeps the layer an app policy beat on each `looser` record, so P09 classes 2 and 3 give main's

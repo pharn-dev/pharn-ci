@@ -3,7 +3,6 @@ import {
   buildJunitResultsXml,
   buildUploadBundle,
   buildUploadMeta,
-  check,
   parseJunitSources,
   type Report,
   withUploadOutcome,
@@ -12,6 +11,7 @@ import { parseJunitXml } from "../src/junit/parse.js";
 import { xmlAttribute } from "../src/upload/junit.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // Flaky tests (A6): the normalised junit/results.xml the upload carries, rebuilt from the parsed cases (never the file
 // itself), redacted and cut; and flaky.uploaded, true only for a stored archive that held it.

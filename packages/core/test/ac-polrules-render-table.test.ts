@@ -38,7 +38,10 @@ const codes = (report: Report) => report.messages.map((m) => m.code);
 
 describe("the summary table and the Messages section with a policy", { timeout: 60_000 }, () => {
   it("AC-17: without a policy the comment is the golden byte for byte; with one the table gains a Policy column and Messages leaves out the policy codes, and the P01 codes when a P01 is listed", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = {
+      ...(await import("@pharn-ci/core")),
+      check: (await import("./text-coverage.js")).check,
+    } as unknown as Core;
     const goldenFiles = fixture("golden/files.txt").trim().split("\n");
     const run = (extra: Record<string, unknown>) => {
       const report = core.check({

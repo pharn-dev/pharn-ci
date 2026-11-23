@@ -379,7 +379,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
       name: (entry) => deps.resolvePath(coverageBase, entry),
       log,
     });
-    coverage = { files: coverageFiles, format: coverageFormat };
+    coverage = { files: coverageFiles };
   }
 
   // `--full-name -- :/` lists the whole repository relative to its root wherever the CLI runs, so coverage

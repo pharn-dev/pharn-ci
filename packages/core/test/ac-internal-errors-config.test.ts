@@ -44,7 +44,7 @@ function diffOf(path: string, base: string, head: string): string {
 
 describe("check(): an exception from our own JS config reader", () => {
   it("AC-2: an Error and a RangeError thrown by the JS config reader for a touched vitest.config.ts each escape check() in mode block, and no report is returned", async () => {
-    const { check } = await import("@pharn-ci/core");
+    const { check } = await import("./text-coverage.js");
     const input = {
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

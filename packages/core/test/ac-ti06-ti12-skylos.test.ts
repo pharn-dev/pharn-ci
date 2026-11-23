@@ -67,7 +67,7 @@ function sideFiles(dir: string): SourceFile[] {
 }
 
 async function runNine(): Promise<Map<string, Signal[]>> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const out = new Map<string, Signal[]>();
   for (const name of NINE) {
     const sources = WITH_SOURCES.has(name)

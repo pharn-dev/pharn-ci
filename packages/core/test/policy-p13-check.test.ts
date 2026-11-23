@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { check, type Report, renderMarkdown, type TestSources } from "../src/index.js";
+import { type Report, renderMarkdown, type TestSources } from "../src/index.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // Org-policy rule P13 through check(): the report validates against schema/report.v2.json, the POLICY_P13 message and
 // the Policy section carry fixed words and paths only, and the sentinel strings planted in the fixtures never reach the

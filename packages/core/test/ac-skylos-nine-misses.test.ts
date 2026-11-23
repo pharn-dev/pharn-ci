@@ -31,7 +31,7 @@ function section(markdown: string): string[] {
 describe("Skylos nine: the four expected misses run cleanly and give no signal", () => {
   for (const name of MISSES) {
     it(`AC-3: ${name} — check() and the renderer do not throw, the report is valid and has no test-integrity signal`, async () => {
-      const { check } = await import("../src/check.js");
+      const { check } = await import("./text-coverage.js");
       const { renderMarkdown } = await import("../src/render/markdown.js");
       const input = {
         version: "0.1.0",

@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { check } from "../src/check.js";
+
 import { parseConfig } from "../src/config.js";
 import { type InputErrorText, type RawInputs, resolveInputs } from "../src/inputs.js";
 import { applyPolicy } from "../src/policy/apply.js";
 import type { ResolvedPolicy } from "../src/policy/resolved.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // The product rule "workflow inputs beat .pharn/ci.yml, and ci.yml may only tighten", for coverage.threshold and
 // setup.require: the PR-carried config can raise the input's threshold and turn the setup requirement on, never lower

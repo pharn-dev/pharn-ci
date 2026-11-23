@@ -31,7 +31,7 @@ function diffOf(path: string, base: string, head: string): string {
 
 /** check() in mode block over a modified config with this base and head text; its TI09 signals. */
 async function run(path: string, base: string, head: string): Promise<Signal[]> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { check } from "../src/check.js";
+
 import { readCoverageChunks } from "../src/chunkInputs.js";
 import { parseCoverage, parseCoverageCounted } from "../src/coverage/index.js";
 import { renderMarkdown } from "../src/render/markdown.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 const CODE = "COVERAGE_LINES_SKIPPED";
 

@@ -2,11 +2,12 @@ import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import type { DiffFile } from "../src/diff/unified.js";
-import { type CheckInput, check, renderMarkdown, type StaleInstructionSources } from "../src/index.js";
+import { type CheckInput, renderMarkdown, type StaleInstructionSources } from "../src/index.js";
 import { runDiff, signalsOf } from "./ac-e1-fix-shared.js";
 import { codeRow } from "./codeTable.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // CORE-144 (R7.11, decision Q6): TI15 and SI04 are no longer emitted. Their message codes stay in the schema, so an
 // older report that holds them still validates, and a policy that names TI15 still validates and is applied to the
@@ -94,7 +95,7 @@ describe("CORE-144: TI15 and SI04 are not emitted", () => {
 
   it("a policy that sets a severity for TI15 still validates and is applied to the other signals", async () => {
     const core = {
-      ...(await import("../src/check.js")),
+      ...(await import("./text-coverage.js")),
       ...(await import("../src/inputs.js")),
       ...(await import("../src/policy/apply.js")),
       ...(await import("../src/policy/validate.js")),

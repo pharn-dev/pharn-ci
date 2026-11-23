@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { check, type DiffFile, parseUnifiedDiff, type Report } from "../src/index.js";
+import { type DiffFile, parseUnifiedDiff, type Report } from "../src/index.js";
 import { fixture } from "./helpers.js";
 import { addedFileDiff } from "./injection-fixture.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // CORE-100 part 1 (R3.2, decision Q2: a cut the pull request can cause is an error where the check can block).
 // The diff reader keeps added text against two budgets of 8,000,000 code units: one for agent instruction and Markdown

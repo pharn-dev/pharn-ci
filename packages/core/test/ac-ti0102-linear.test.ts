@@ -104,7 +104,7 @@ function generate(bytes: number) {
 
 describe("TI02 precision: the new rules stay linear", () => {
   it("AC-13: a 512 KiB test file removing thousands of tests and adding thousands of .each tests, with other touched files of similarly named tests, takes less than 8 times the median of the 128 KiB input, each run within 15 s, with TI02 signals", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     type Input = Parameters<typeof check>[0];
     const full = generate(FULL);
     const quarter = generate(QUARTER);

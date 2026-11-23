@@ -44,7 +44,7 @@ const EXPECTED_KIND: Record<string, string> = {
 };
 
 async function load() {
-  const core = { ...(await import("../src/check.js")), ...(await import("../src/fix/table.js")) } as unknown as {
+  const core = { ...(await import("./text-coverage.js")), ...(await import("../src/fix/table.js")) } as unknown as {
     check(input: unknown): Report;
     SIGNAL_FIXES?: Record<string, Entry>;
   };

@@ -44,7 +44,7 @@ function diffOf(path: string, base: string, head: string): string {
 
 describe("check(): an exception from our own test-file walk", () => {
   it("AC-1: a TypeError thrown by walkTestFile for a modified test file escapes check() in mode block, and no report is returned", async () => {
-    const { check } = await import("@pharn-ci/core");
+    const { check } = await import("./text-coverage.js");
     const input = {
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

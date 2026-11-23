@@ -22,7 +22,7 @@ describe("schema/report.v1.json: the coverage path message codes", () => {
     }
     expect(after, "the appended text opens no second Known codes list").not.toContain("Known codes:");
 
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const { expectValidReport } = await import("./schema.js");
     const run = (dir: string, threshold: number) =>
       check({

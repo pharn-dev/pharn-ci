@@ -122,7 +122,7 @@ describe("TI02 precision: hand-written tests replaced by an it.each table", () =
       "with the same matcher",
     ).toBe(true);
 
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

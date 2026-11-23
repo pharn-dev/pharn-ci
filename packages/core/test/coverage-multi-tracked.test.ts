@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { check } from "../src/check.js";
+
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // F-09 meets F-22: with several coverage files, a tracked one still means the change can grade itself.
 

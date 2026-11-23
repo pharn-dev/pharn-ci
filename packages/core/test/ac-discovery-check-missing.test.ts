@@ -13,7 +13,7 @@ const CANDIDATES = [
 ];
 
 async function notDiscoveredReport(threshold: number | null) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const { chooseDiscoveredCoverage } = await import("../src/coverageDiscovery.js");
   const notFound = chooseDiscoveredCoverage([]);
   return check({

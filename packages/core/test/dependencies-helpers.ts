@@ -1,9 +1,10 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { type CheckInput, check } from "../src/check.js";
+import type { CheckInput } from "../src/check.js";
 import type { Report } from "../src/report.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // A13 (dependency safety): the fixture cases under fixtures/dependencies/. Each is a diff (change.diff), the tracked
 // files at HEAD (files.txt) and the touched manifests and lockfiles at the merge base and at HEAD (base/ and head/, each

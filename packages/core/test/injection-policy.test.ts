@@ -1,13 +1,14 @@
 import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
-import { check, type Report } from "../src/index.js";
+import type { Report } from "../src/index.js";
 import { injectionSettingsOf } from "../src/injection/policy.js";
 import type { PolicyDocument } from "../src/policy/types.js";
 import { validatePolicy } from "../src/policy/validate.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { injectionFixture } from "./injection-fixture.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 import { withoutFix } from "./v090-codes.js";
 
 // The `injection` policy key (schema/policy.v1.json, validatePolicy) and how each policy source applies it. Settings

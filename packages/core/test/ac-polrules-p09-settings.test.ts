@@ -16,7 +16,7 @@ const DETAIL = "this change edits a file the policy checks; its direction is not
 const PATHS = [".claude/settings.json", ".mcp.json", "packages/a/.claude/settings.local.json"];
 
 async function run(policy: unknown): Promise<Report> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

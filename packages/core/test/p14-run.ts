@@ -1,6 +1,7 @@
-import { type CheckInput, check } from "../src/index.js";
+import type { CheckInput } from "../src/index.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // Policy rule P14 (agent PR size cap): one check() run with a policy and the facts of a pull request, its report
 // validated against schema/report.v2.json. Shared by the ac-p14-* tests.

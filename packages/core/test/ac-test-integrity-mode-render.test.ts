@@ -7,7 +7,7 @@ import { fixture } from "./helpers.js";
 const HEADING = "### 🔍 Test integrity";
 
 async function render(mode?: "block" | "warn" | "off") {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const { renderMarkdown } = await import("../src/render/markdown.js");
   const report = check({
     version: "0.1.0",

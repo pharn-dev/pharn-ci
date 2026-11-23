@@ -42,7 +42,7 @@ function diffOf({ path, base, head }: Pair): string {
 const byPath = (a: { path: string }, b: { path: string }) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
 async function run(pairs: Pair[]): Promise<Report> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const side = (key: "base" | "head") => pairs.map((p) => ({ path: p.path, text: p[key] })).sort(byPath);
   const report = check({
     version: "0.1.0",

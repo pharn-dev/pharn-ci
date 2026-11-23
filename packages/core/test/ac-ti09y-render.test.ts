@@ -55,7 +55,7 @@ const PAIRS: Pair[] = [
 ];
 
 async function buildReport(): Promise<Report> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const side = (key: "base" | "head") => PAIRS.map((p) => ({ path: p.path, text: p[key] }));
   const report = check({
     version: "0.1.0",

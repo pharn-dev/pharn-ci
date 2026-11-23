@@ -34,7 +34,7 @@ const file = (mode: string) => ({
 });
 
 async function golden(extra: Record<string, unknown>): Promise<Report> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

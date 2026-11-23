@@ -148,7 +148,7 @@ describe("TI11: a test command that gains report flags is the same step (CORE-71
   }, 120_000);
 
   it("the comparison stays linear when many added commands share a base with different flags", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     type Input = Parameters<typeof check>[0];
     // n removed `pytest --cov-report=rK` lines and n added `pytest --cov=aK` lines: every key has the base `pytest`,
     // and no added key carries a removed key's flag, so every removed key is compared with added candidates.

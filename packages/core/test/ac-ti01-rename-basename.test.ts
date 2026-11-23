@@ -14,7 +14,7 @@ const CODE = "TEST_FILES_DELETED";
 type Mode = "block" | "warn";
 
 async function runCase(caseDir: string, mode: Mode) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const input = {
     version: "0.1.0",
     repoRoot: REPO_ROOT,

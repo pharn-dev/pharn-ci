@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { check } from "../src/check.js";
+
 import { parseUnifiedDiff } from "../src/diff/unified.js";
 import { configDiffState } from "../src/gateInputs.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // CORE-95 in core: how a diff touches the config in use (configDiffState), the one CONFIG_CHANGED_IN_DIFF message that
 // says which copy of the config the check ran with (configSource), and TI14 reading the exclusions of the copy the

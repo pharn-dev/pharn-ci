@@ -14,7 +14,7 @@ const asFile = (report: unknown) => `${JSON.stringify(report, null, 2)}\n`;
 const lines = (path: string) => fixture(path).trim().split("\n");
 
 async function load() {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const { parseConfig } = await import("../src/config.js");
   const core = (await import("../src/testSources.js")) as unknown as {
     TEST_SOURCE_DROP_REASONS: readonly string[];

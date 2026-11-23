@@ -25,7 +25,10 @@ const ACCEPTED = { label: "pharn/accepted", by: "Reviewer-1" };
 
 describe("the accept label and policy violations", { timeout: 60_000 }, () => {
   it("AC-14: accepting a report with a P08 block violation and a test-integrity block finding leaves the verdict fail, POLICY_P08 an error and report.policy unchanged", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = {
+      ...(await import("@pharn-ci/core")),
+      check: (await import("./text-coverage.js")).check,
+    } as unknown as Core;
     const run = (policy: unknown) => {
       const report = core.check({
         version: "0.1.0",

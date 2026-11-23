@@ -26,7 +26,7 @@ const benign: Hostile = {
 
 /** The two reports the criterion names: a missing coverage file, and an unavailable diff. */
 async function reports(input: Hostile): Promise<Report[]> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const missingCoverage = check({
     version: "0.1.0",
     coverage: { missingFile: input.coverageFile },

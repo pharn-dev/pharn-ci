@@ -7,7 +7,7 @@ import { expectValidReport } from "./schema.js";
 
 describe("PR comment look: compact footer and no image (pr-comment-redesign-2)", () => {
   it("AC-4: ends with the <sub> footer and carries no image or URL, with only the fixed logo line", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const { buildReport } = await import("../src/report.js");
     const { renderMarkdown } = await import("../src/render/markdown.js");
     const { logoMarkup } = await import("../src/render/logo.js");

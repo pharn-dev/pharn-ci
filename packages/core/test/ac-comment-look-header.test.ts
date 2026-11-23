@@ -7,7 +7,7 @@ import { expectValidReport } from "./schema.js";
 
 describe("PR comment look: verdict header and summary block (pr-comment-redesign-2)", () => {
   it("AC-1: opens with the verdict header and a summary block before the diff coverage section", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const { renderMarkdown } = await import("../src/render/markdown.js");
 
     const report = check({

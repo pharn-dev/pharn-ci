@@ -70,7 +70,7 @@ function input(bytes: number) {
 
 describe("TI02 and TI05: the comparison of one file grows less than eightfold from a quarter of the cap", () => {
   it("AC-18: 512 KiB base and head files take less than 8 times the median of 128 KiB ones, each run within 15 s", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     type Input = Parameters<typeof check>[0];
     const full = input(FULL);
     const quarter = input(QUARTER);

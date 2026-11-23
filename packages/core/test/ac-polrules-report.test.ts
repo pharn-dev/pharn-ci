@@ -45,7 +45,7 @@ const order = (a: Violation, b: Violation) =>
 describe("the report's policy object", { timeout: 60_000 }, () => {
   it("AC-12: app, file and unavailable policies write source, version, fetchedAt and sorted violations right before meta, and evaluatePolicyRules returns the same violations", async () => {
     const core = {
-      ...(await import("../src/check.js")),
+      ...(await import("./text-coverage.js")),
       ...(await import("../src/diff/unified.js")),
       ...(await import("../src/policy/rules/evaluate.js")),
       ...(await import("../src/setup/scan.js")),

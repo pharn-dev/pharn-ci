@@ -4,11 +4,12 @@ import {
   MAX_OTHER_ADDED_TEXT_CHARS,
   MAX_PRIORITY_ADDED_TEXT_CHARS,
 } from "../src/diff/unified.js";
-import { check, type Report, readDiffChunks } from "../src/index.js";
+import { type Report, readDiffChunks } from "../src/index.js";
 import { DEFAULT_INJECTION_SEVERITIES } from "../src/injection/policy.js";
 import { fixture } from "./helpers.js";
 import { addedFileDiff, injectionFixture } from "./injection-fixture.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 import { withoutFix } from "./v090-codes.js";
 
 // H4 through check(): the optional `injection` object and the INJECTION_ messages, PI01's block failing the verdict,

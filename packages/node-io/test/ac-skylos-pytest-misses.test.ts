@@ -105,7 +105,8 @@ describe("Skylos nine for pytest: the two misses run cleanly and give no signal"
           expect(pythonTestIndex?.available, `${name}: the Python index ran`).toBe(true);
         }
 
-        const { check, renderMarkdown } = await import("@pharn-ci/core");
+        const { renderMarkdown } = await import("@pharn-ci/core");
+        const { check } = await import("../../core/test/text-coverage.js");
         const input = {
           version: "0.1.0",
           coverage: { text: readFileSync(`${FIXTURES}test-files-deleted/coverage.info`, "utf8"), format: "lcov" },

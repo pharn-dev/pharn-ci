@@ -33,7 +33,8 @@ const ids = (report: { testIntegrity: { signals: Array<{ id: string }> } }, id: 
 
 describe("TI14 and TI11 through the streaming diff reader", () => {
   it("AC-2: the streamed and the whole-text diff give the same testIntegrity block and messages, given the config path", async () => {
-    const { check, readDiffChunks } = await import("@pharn-ci/core");
+    const { readDiffChunks } = await import("@pharn-ci/core");
+    const { check } = await import("../../core/test/text-coverage.js");
     const base = {
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" as const },

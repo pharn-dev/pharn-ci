@@ -88,7 +88,10 @@ const lineOf = (x: Violation) =>
 
 describe("the Policy section with P02–P06 and the Settings line", { timeout: 60_000 }, () => {
   it("AC-24: each violation as path:line with its hint, past 10 folded, the Settings line and hint before Ignored, the new codes out of Messages, the hostile path escaped, equal to the golden; no policy renders as before", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = {
+      ...(await import("@pharn-ci/core")),
+      check: (await import("./text-coverage.js")).check,
+    } as unknown as Core;
     const base = core.check({
       version: "0.1.0",
       coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

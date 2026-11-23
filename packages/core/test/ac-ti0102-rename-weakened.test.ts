@@ -98,7 +98,7 @@ describe("TI02 precision: a rename in place that weakens the assertion is judged
     expect(now.body, "the head test asserts with a weak matcher").toMatch(WEAK);
     expect(now.body, "and the strong one is gone").not.toMatch(STRONG);
 
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

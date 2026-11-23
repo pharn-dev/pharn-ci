@@ -110,7 +110,7 @@ function loadCase(name: string): Case {
 const diffPaths = (diff: string) => [...diff.matchAll(/^\+\+\+ b\/(.+)$/gm)].map((m) => m[1] as string);
 
 async function ti06(c: Case) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
@@ -166,7 +166,7 @@ function inline(from: string, to: string): Case {
 }
 
 async function runNine(): Promise<Map<string, Array<{ id: string; severity: string }>>> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const out = new Map<string, Array<{ id: string; severity: string }>>();
   for (const name of NINE) {
     const sources = WITH_SOURCES.has(name)

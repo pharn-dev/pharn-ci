@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { check } from "../src/check.js";
+
 import { readCoverageChunks } from "../src/chunkInputs.js";
 import { parseCobertura } from "../src/coverage/cobertura.js";
 import { parseLcov } from "../src/coverage/lcov.js";
@@ -9,6 +9,7 @@ import { normalizePath } from "../src/paths.js";
 import { renderMarkdown } from "../src/render/markdown.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // CORE-101: on Linux and macOS a backslash is a legal file-name character. A coverage path with one is read with the
 // backslash as part of the name when that names a tracked file, and as a separator (a Windows report) otherwise.

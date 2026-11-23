@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { check } from "../src/check.js";
+
 import { MESSAGE_FIXES } from "../src/fix/table.js";
 import { renderMarkdown } from "../src/render/markdown.js";
 import {
@@ -11,6 +11,7 @@ import {
 } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // Review MEDIUM quick batch: findings 10 (a cut signal id keeps its message) and 11 (no hint tells the reader to loosen
 // the gate). (CORE-133: the README and SECURITY.md wording checks of findings 17 and 18 moved out.)

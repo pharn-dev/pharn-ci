@@ -53,7 +53,10 @@ afterEach(() => {
 
 describe("check(): an exception from our own JSON value conversion", () => {
   it("AC-6: a TypeError thrown while converting a parsed jest.config.json escapes check() in mode block and is never reported as invalid-json; a jest.config.json that is not JSON is still refused as invalid-json", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as { check: (input: unknown) => unknown };
+    const core = {
+      ...(await import("@pharn-ci/core")),
+      check: (await import("./text-coverage.js")).check,
+    } as unknown as { check: (input: unknown) => unknown };
     expect(() => JSON.parse(HEAD), "the head config is valid JSON").not.toThrow();
 
     const injected = new TypeError("AC-6 injected fault in the JSON value conversion");

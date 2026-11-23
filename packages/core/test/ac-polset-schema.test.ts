@@ -40,7 +40,7 @@ const MCP = '{\n  "mcpServers": {\n    "notes": { "command": "node" },\n    "evi
 
 describe("report v2 with the P02–P06 violations and the six codes", { timeout: 60_000 }, () => {
   it("AC-25: a report with P02–P06 violations on lines and each new code validates against schema/report.v2.json, and the codes are MessageCode members", async () => {
-    const { check } = await import("@pharn-ci/core");
+    const { check } = await import("./text-coverage.js");
     const run = (sources: unknown) => {
       const report = check({
         version: "0.1.0",

@@ -98,7 +98,7 @@ function excludeFor(name: string, text: string): string[] {
 
 describe("TI02 and TI05 change the earlier outputs only where they mean to", () => {
   it("AC-21: the goldens stay byte-identical with and without sources, the earlier fixtures give their base-commit signals and messages without sources, and unavailable sources add exactly one INDEX_UNAVAILABLE message where a test file is modified", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const { parseConfig } = await import("../src/config.js");
     const { parseUnifiedDiff } = await import("../src/diff/unified.js");
     const { isTestFile } = await import("../src/testFiles.js");

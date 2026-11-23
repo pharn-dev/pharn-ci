@@ -15,7 +15,7 @@ const APP = { source: "app", version: 3, fetchedAt: "2026-10-26T12:00:00.000Z", 
 const AGENTS = { path: "AGENTS.md", text: "# Agents\n\nRun `pnpm vitest run`.\n" };
 
 async function run(files: Source[]): Promise<Report> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

@@ -4,16 +4,11 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { DiffFile } from "../src/diff/unified.js";
-import {
-  type CheckInput,
-  check,
-  type StaleInstructionSources,
-  scanAgentSetup,
-  staleInstructionPaths,
-} from "../src/index.js";
+import { type CheckInput, type StaleInstructionSources, scanAgentSetup, staleInstructionPaths } from "../src/index.js";
 import { detectStaleInstructions } from "../src/setup/stale.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // Stale instructions (Horizon 2 item H3) through check(): the report's setupHealth object and SETUP_STALE_* messages,
 // validated against schema/report.v2.json; nothing without a diff or without the sources.

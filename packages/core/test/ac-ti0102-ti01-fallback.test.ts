@@ -105,7 +105,7 @@ async function freshTests(c: Case): Promise<Block[]> {
 }
 
 async function run(c: Case, extra: Record<string, unknown>): Promise<Report> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

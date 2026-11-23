@@ -77,7 +77,7 @@ function loadCase(name: string): { diff: string; sources: Sources | undefined } 
 }
 
 async function run(diff: string, sources?: Sources, extra: Record<string, unknown> = {}): Promise<Report> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: readFileSync(`${FIXTURES}test-files-deleted/coverage.info`, "utf8"), format: "lcov" },
@@ -145,7 +145,7 @@ const textEdit = (path: string, header: string, removed: string, added: string) 
 
 /** The base-commit inputs of BASE_HINTS: one text finding per id, with the inputs the literals were recorded with. */
 async function textReport(diff: string): Promise<Report> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: readFileSync(`${FIXTURES}test-files-deleted/coverage.info`, "utf8"), format: "lcov" },

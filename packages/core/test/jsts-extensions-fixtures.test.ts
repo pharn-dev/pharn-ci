@@ -1,9 +1,10 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { check } from "@pharn-ci/core";
+
 import { describe, expect, it } from "vitest";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // The five case directories js-ts-extensions adds, each run through check() in block mode with its diff and its
 // base/head sources. The AC tests drive check() with their own inline inputs; this file runs the fixtures themselves.

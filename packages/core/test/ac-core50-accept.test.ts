@@ -47,7 +47,7 @@ function workflowPath(diff: string): string {
 
 describe("CORE-50: the accept label lowers every binary finding", () => {
   it("AC-14: one change with the binary cases of AC-1, AC-5, AC-9, AC-11 and AC-12 fails block; after the accept label every TI01, TI10, TI11 and TI14 is warn, the TEST_INTEGRITY_INDEX_UNAVAILABLE message is warn, and the verdict is not fail", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const { acceptTestIntegrity } = await import("../src/acceptLabel.js");
 
     const modified = caseDiff("index-unavailable/binary-modified");

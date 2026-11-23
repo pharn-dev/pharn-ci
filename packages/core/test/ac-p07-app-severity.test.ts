@@ -52,7 +52,10 @@ const withCode = (report: Report, code: string) => report.messages.filter((m) =>
 
 describe("org policy rule P07: severity under an app policy", { timeout: 60_000 }, () => {
   it("AC-9: setup.consistency block blocks, P07 off or consistency off removes the rule, the stricter of the two applies, and P07 info alone gives info; no POLICY_OVERRIDE_IGNORED", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = {
+      ...(await import("@pharn-ci/core")),
+      check: (await import("./text-coverage.js")).check,
+    } as unknown as Core;
     expect(typeof core.consistencySeverity).toBe("function");
 
     const cases: [string | undefined, string | undefined, "block" | "off" | "info"][] = [

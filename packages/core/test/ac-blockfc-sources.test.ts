@@ -30,7 +30,8 @@ const MODIFIES_TEST = `${[
 
 describe("block mode with test sources unavailable on both sides", () => {
   it("AC-1: a diff that modifies an existing JS/TS test file gives TEST_INTEGRITY_INDEX_UNAVAILABLE at level error and verdict fail", async () => {
-    const { check, unavailableTestSources } = await import("@pharn-ci/core");
+    const { unavailableTestSources } = await import("@pharn-ci/core");
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

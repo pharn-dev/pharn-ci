@@ -100,7 +100,7 @@ async function runCase(name: string) {
   };
   const pythonTestIndex = await io.indexPythonTestSources(testSources);
   expect(pythonTestIndex?.available, `${name}: the Python index ran`).toBe(true);
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("../../core/test/text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: readFileSync(`${FIXTURES}test-files-deleted/coverage.info`, "utf8"), format: "lcov" },

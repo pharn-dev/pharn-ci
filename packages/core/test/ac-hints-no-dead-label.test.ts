@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { check } from "../src/check.js";
+
 import { withFixHints } from "../src/fix/attach.js";
 import { renderMarkdown } from "../src/render/markdown.js";
 import { type Report, type TestIntegritySignal, testIntegritySignalMessages, verdictOf } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // CORE-73 (R2.10). The accept label is read only when a test-integrity finding blocks. TI06, TI12 and TI17 are always
 // `warn` unless an org policy raises them, so their hints no longer offer the label in the comment or in `fix.hint`;

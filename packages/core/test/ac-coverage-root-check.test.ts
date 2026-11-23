@@ -10,7 +10,7 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 type Message = { code: string };
 
 async function runCheck(coverage: { text: string; format: "lcov" | "cobertura" }, diffPath: string) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const input = {
     version: "0.1.0",
     coverage,

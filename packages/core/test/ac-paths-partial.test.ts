@@ -82,7 +82,7 @@ function footerToV1(markdown: string): string {
 }
 
 async function load() {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const { parseConfig } = await import("../src/config.js");
   const { renderMarkdown } = await import("../src/render/markdown.js");
   return { check, parseConfig, renderMarkdown };

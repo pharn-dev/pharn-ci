@@ -29,7 +29,7 @@ const AGENT_TOOLS = [
 
 describe("check(): an unknown expected agent tool", () => {
   it("AC-5: throws a ConfigError that quotes the unknown name and lists every valid tool name", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const { ConfigError } = await import("../src/config.js");
     const input = {
       version: "0.1.0",

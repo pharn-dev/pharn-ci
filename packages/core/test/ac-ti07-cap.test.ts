@@ -66,7 +66,7 @@ function diffOf(base: string[], head: string[], changed: number[]): string {
 describe("TI07: at most 20 findings per file", () => {
   it("AC-5: 25 tests of one file that each change only an expected value, with a source file changed, give 20 TI07 signals for that file, a message naming it that ends with the cap's Not listed sentence giving 5, and no TI02 or TI05", async () => {
     const { base, head, changed, testLines } = texts();
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

@@ -46,7 +46,7 @@ describe("CORE-69: a modified test file whose diff is cut at 5000 changed lines"
       ...added.map((l) => `+${l}`),
     ].join("\n")}\n`;
 
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

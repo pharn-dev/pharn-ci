@@ -15,7 +15,7 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const DOCUMENT = { version: 1, setup: { expect: ["cursor"] } };
 
 async function run(repoFiles: string[]): Promise<Report> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

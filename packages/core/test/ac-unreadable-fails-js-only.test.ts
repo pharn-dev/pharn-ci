@@ -66,7 +66,7 @@ const PY_DIFF = `${[
 const NOT_FOUND = { available: false, reason: "python-not-found", detail: "python3: command not found" };
 
 async function run(input: Record<string, unknown>): Promise<Report> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

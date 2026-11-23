@@ -15,7 +15,7 @@ type Options = { threshold?: number | null; dir?: string; coverageRoot?: string 
 const lines = (path: string) => fixture(path).trim().split("\n");
 
 async function runCheck(files: FileInput[], format: Selection, options: Options = {}) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const dir = options.dir ?? "golden";
   const input = {
     version: "0.1.0",

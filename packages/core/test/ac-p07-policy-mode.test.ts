@@ -54,7 +54,10 @@ const p07Messages = (report: Report) => report.messages.filter((m) => m.code ===
 
 describe("org policy rule P07: policy mode only", { timeout: 60_000 }, () => {
   it("AC-11: with no policy, a none policy or an unavailable one, instruction sources change no byte of the report; an app policy with no sources adds nothing; consistencySeverity is null for none and unavailable", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = {
+      ...(await import("@pharn-ci/core")),
+      check: (await import("./text-coverage.js")).check,
+    } as unknown as Core;
 
     expect(core.consistencySeverity(NONE).severity, "none").toBeNull();
     expect(core.consistencySeverity(UNAVAILABLE).severity, "unavailable").toBeNull();

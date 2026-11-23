@@ -152,7 +152,7 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
     } as unknown as Record<string, unknown>;
     expect(typeof core.detectTI06, "TI06 exists, so its absence below is the inputs' doing").toBe("function");
     expect(typeof core.detectTI12, "TI12 exists, so its absence below is the inputs' doing").toBe("function");
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const { parseConfig } = await import("../src/config.js");
     type Input = Parameters<typeof check>[0];
 

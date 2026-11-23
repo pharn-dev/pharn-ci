@@ -16,7 +16,7 @@ const NEW_CODES = ["POLICY_P02", "POLICY_P03", "POLICY_P04", "POLICY_P05", "POLI
 const ITEM_22_DETAIL = "this change edits a file the policy checks; its direction is not judged yet";
 
 async function run(input: { policy?: unknown; repoFiles: string[]; diff: string; sources?: unknown }): Promise<Report> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

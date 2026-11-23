@@ -14,7 +14,7 @@ const lines = (path: string) => fixture(path).trim().split("\n");
 const withCode = (messages: readonly Message[], code: string) => messages.filter((message) => message.code === code);
 
 async function runCheck(diff: string) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const input = {
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" as const },

@@ -14,7 +14,7 @@ const lines = (path: string) => fixture(path).trim().split("\n");
 const asFile = (report: unknown) => `${JSON.stringify(report, null, 2)}\n`;
 
 async function runCheck(dir: string, options: CheckOptions) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const input = {
     version: "0.1.0",
     coverage: { text: fixture(`coverage-paths/${dir}/coverage.info`), format: "lcov" as const },

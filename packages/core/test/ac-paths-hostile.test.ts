@@ -32,7 +32,7 @@ function rawPath(coverageText: string): string {
 }
 
 async function render(coverageText: string) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const { renderMarkdown } = await import("../src/render/markdown.js");
   const report = check({
     version: "0.1.0",

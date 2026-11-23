@@ -52,7 +52,7 @@ interface Hostile {
 
 /** Reports built by check() from the PR-controlled inputs of fixtures/render/hostile-paths.json. */
 async function hostileReports(): Promise<Report[]> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const hostile = JSON.parse(fixture("render/hostile-paths.json")) as Hostile;
   const reports = [
     // A missing coverage file whose path is hostile, with hostile tracked paths.

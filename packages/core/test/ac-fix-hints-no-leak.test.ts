@@ -20,7 +20,7 @@ type Report = {
 };
 
 async function run(input: unknown): Promise<Report> {
-  const { check } = (await import("../src/index.js")) as unknown as { check(input: unknown): Report };
+  const { check } = (await import("./text-coverage.js")) as unknown as { check(input: unknown): Report };
   const report = check(input);
   expectValidReport(report);
   return report;

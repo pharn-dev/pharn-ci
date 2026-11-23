@@ -10,7 +10,7 @@ const HEADING = "### 🔍 Test integrity";
 
 /** A report with warn TI10 and TI13 signals and their warn messages, and the given `testIntegrity.accepted`. */
 async function reportWith(accepted: { label: string; by: string } | null) {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const base = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

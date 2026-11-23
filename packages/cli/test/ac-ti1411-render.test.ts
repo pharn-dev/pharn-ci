@@ -64,7 +64,8 @@ function fakeRepo(diff: string) {
 
 describe("TI14 and TI11 in the PR comment and the CLI", () => {
   it("AC-13: the section lists each signal with path:line, a hint per id, the empty state stays, and the CLI JSON holds the signal", async () => {
-    const { check, renderMarkdown } = await import("@pharn-ci/core");
+    const { renderMarkdown } = await import("@pharn-ci/core");
+    const { check } = await import("../../core/test/text-coverage.js");
 
     const base = check({
       version: "0.1.0",

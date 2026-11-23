@@ -50,7 +50,7 @@ const CASES: ReadonlyArray<{ name: string; signal: string | null; caught: boolea
 
 /** Run every case through check() in mode block; return the signal ids each case's report carries. */
 async function runAll(): Promise<Map<string, string[]>> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const out = new Map<string, string[]>();
   for (const { name } of CASES) {
     const sources = WITH_SOURCES.has(name)

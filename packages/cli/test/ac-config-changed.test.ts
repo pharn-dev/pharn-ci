@@ -23,7 +23,7 @@ type Report = { verdict: string; messages: Message[] };
 const withCode = (report: Report, code: string) => report.messages.filter((message) => message.code === code);
 
 async function runCheck(diff: string, configPath?: string): Promise<Report> {
-  const { check } = await import("../../core/src/check.js");
+  const { check } = await import("../../core/test/text-coverage.js");
   const input = {
     version: "0.1.0",
     coverage: { text: fixture("gate-tamper/coverage.info"), format: "lcov" as const },

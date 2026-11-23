@@ -92,7 +92,7 @@ describe("TI02 precision: a suite rewritten under reworded names still blocks", 
     const gone = baseTests.filter((b) => !headNames.has(fullName(b)) && !headBodies.has(b.bodyHash));
     expect(gone.length, "several base tests are gone by name and by exact body").toBeGreaterThanOrEqual(2);
 
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

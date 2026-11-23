@@ -145,7 +145,7 @@ describe("TI02 phase 2: a same-leaf move whose body is held is still cleared", (
       "the full-name words Jaccard is below 1/2",
     ).toBe(false);
 
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const sources = { base: { files: base, dropped: [] }, head: { files: head, dropped: [] } };
     const report = check({
       version: "0.1.0",

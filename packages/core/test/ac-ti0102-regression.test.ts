@@ -60,7 +60,7 @@ function sideFiles(dir: string): SourceFile[] {
 }
 
 async function existingOutputs(): Promise<string> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   type Input = Parameters<typeof check>[0];
   const out: Array<{ fixture: string; signals: unknown; messages: unknown }> = [];
   const run = (name: string, input: Record<string, unknown>) => {

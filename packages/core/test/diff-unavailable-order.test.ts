@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { chooseDiscoveredCoverage } from "../src/coverageDiscovery.js";
-import { check, renderMarkdown } from "../src/index.js";
+import { renderMarkdown } from "../src/index.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 // CORE-91: an unavailable diff is always reported. check() used to return a missing or undiscovered coverage file
 // before it looked at the diff, so with no coverage file and no diff, test-integrity block passed a change nothing was

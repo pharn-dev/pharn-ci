@@ -35,7 +35,7 @@ const skipExisting = (path: string) =>
   edit(path, [12, 12, ["  it('adds an item', () => {"], ["  it.skip('adds an item', () => {"]]);
 
 async function ti03(path: string): Promise<Signal[]> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

@@ -11,7 +11,7 @@ const CODE: string = "TEST_FILES_DELETED";
 describe("renderMarkdown(): the deleted-test-file message", () => {
   it("AC-3: renders the TEST_FILES_DELETED text with a hint line, and the golden rendering is unchanged", async () => {
     const { buildReport } = await import("../src/report.js");
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const { renderMarkdown } = await import("../src/render/markdown.js");
 
     const input = {

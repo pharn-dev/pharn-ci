@@ -49,9 +49,12 @@ const PINNED: Record<string, string> = {
   // Re-pinned again by CORE-140: ac-accept-signoff-regression folds the golden hint lines back to their earlier text
   // before hashing (its golden digest is unchanged) and pins the TI01/TI04/TI11/TI14 hints as each code's fix.hint;
   // this is the digest of the edited file.
-  "packages/core/test/ac-ti0205-regression.test.ts": "1df2953978aee69fa343a36dffe2045ebc97468f2b165933254aeb7e44e2fd9f",
+  // Re-pinned again by CORE-143 (check() takes parsed coverage only): both files take `check` from
+  // packages/core/test/text-coverage.ts, which parses their coverage text first (their output digests are unchanged);
+  // these are the digests of the edited files.
+  "packages/core/test/ac-ti0205-regression.test.ts": "1c3517b2fc5b68ad3f541508a882f13f5131ce38bc009854223f3d89c712d161",
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "5bff6701db0ff0c77c58b193100b37634ec2e87a0fbb484478849363857185af",
+    "d54e895bdd61718623b4017616f9f7adc1ae5f2c7975550c14ac364d32fb3e47",
 };
 
 /**

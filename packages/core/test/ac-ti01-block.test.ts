@@ -11,7 +11,7 @@ const PATH = "src/__tests__/b.test.ts";
 type Mode = "block" | "warn" | "off";
 
 async function runCheck(diff: string, mode?: Mode) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const input = {
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" as const },

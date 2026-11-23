@@ -58,7 +58,7 @@ type CheckModule = typeof import("../src/check.js");
 type CheckInput = Parameters<CheckModule["check"]>[0];
 
 async function run(overrides: Partial<CheckInput> & { exclude?: readonly string[] }) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const input = {
     version: "0.1.0",
     coverage: { text: LCOV, format: "lcov" },
@@ -185,7 +185,7 @@ describe("check(): exclusions", () => {
   });
 
   it("AC-12: never changes the agent setup inventory, even when ** excludes every changed file", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const repoFiles = fixture("golden/files.txt").trim().split("\n");
     const base = {
       version: "0.1.0",

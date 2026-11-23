@@ -79,5 +79,5 @@ export async function readDiscoveredCoverage(
     log,
     literal: true,
   });
-  return { files, format };
+  return { files };
 }

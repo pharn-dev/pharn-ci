@@ -82,7 +82,7 @@ function input(bodyChars: number) {
 
 describe("TI06: the expect-subject reader is linear", () => {
   it("AC-12: a 100,000-character test body full of unclosed brackets, unterminated quotes and expect( calls, ending in a typeof chain with a subject over 200 code units rewritten to toBeTypeOf, gives no TI06, nor does the same body four times as long, which takes less than eight times as long", async () => {
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     type Input = Parameters<typeof check>[0];
     expect(SUBJECT.length).toBeGreaterThan(200);
 

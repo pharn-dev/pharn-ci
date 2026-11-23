@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { check } from "../src/index.js";
+
 import { evaluatePolicyRules } from "../src/policy/rules/evaluate.js";
 import { policyRuleMessages } from "../src/policy/rules/messages.js";
 import type { PolicyRuleInput } from "../src/policy/rules/types.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import { check } from "./text-coverage.js";
 import { withoutFix } from "./v090-codes.js";
 
 // R1.2 (CORE-37): when the agent settings files cannot be read (no local diff, which a checkout without

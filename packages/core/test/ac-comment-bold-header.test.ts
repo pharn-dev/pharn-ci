@@ -10,7 +10,7 @@ const SHIELD = "\u{1F6E1}️";
 const DOT = "·";
 
 async function goldenReport() {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

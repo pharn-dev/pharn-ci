@@ -94,7 +94,8 @@ function fakeRepo(diff: string) {
 
 describe("TI08, TI15 and TI16 in the PR comment and the CLI", () => {
   it("AC-13: the section lists each signal with its location, detail and a hint, the three message hints exist without an accept label, the empty report keeps its line, the CLI JSON holds TI16, and every report is valid", async () => {
-    const { check, renderMarkdown } = await import("@pharn-ci/core");
+    const { renderMarkdown } = await import("@pharn-ci/core");
+    const { check } = await import("../../core/test/text-coverage.js");
     const base = {
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" as const },

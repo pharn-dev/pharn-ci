@@ -45,7 +45,10 @@ const file = (testIntegrity: Record<string, unknown>) => ({
 
 /** check() on the signals fixture, with the input mode given and the policy applied through applyPolicy(). */
 async function signalsRun(policy: unknown, inputMode: string | undefined): Promise<Report> {
-  const core = (await import("@pharn-ci/core")) as unknown as {
+  const core = {
+    ...(await import("@pharn-ci/core")),
+    check: (await import("./text-coverage.js")).check,
+  } as unknown as {
     resolveInputs: (config: unknown, raw: unknown, text: unknown) => { ok: boolean; inputs: Record<string, unknown> };
     applyPolicy: (layers: unknown, policy: unknown) => Application;
     check: (input: unknown) => Report;

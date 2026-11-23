@@ -104,7 +104,7 @@ async function runTestsChanged(): Promise<{ report: Report; base: SourceFile[]; 
   const sources = { base: { files: base, dropped: [] }, head: { files: head, dropped: [] } };
   const pythonTestIndex = await io.indexPythonTestSources(sources);
   expect(pythonTestIndex?.available, "the Python index ran with the real interpreter").toBe(true);
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("../../core/test/text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: readFileSync(`${FIXTURES}test-files-deleted/coverage.info`, "utf8"), format: "lcov" },

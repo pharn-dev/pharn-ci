@@ -29,7 +29,7 @@ const KEPT_WORDS: Record<string, RegExp[]> = {
 
 /** A report with one block signal and one error message for each of the seven ids, and `acceptLabel` when given. */
 async function reportWith(acceptLabel: string | undefined) {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const base = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

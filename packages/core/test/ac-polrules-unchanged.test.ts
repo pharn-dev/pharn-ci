@@ -14,7 +14,7 @@ const asFile = (report: unknown) => `${JSON.stringify(report, null, 2)}\n`;
 
 describe("reports without a policy in force", { timeout: 60_000 }, () => {
   it("AC-13: no policy, a source-none policy and a source-none noApp policy write no policy key and match the golden byte for byte; an app policy writes one", async () => {
-    const { check } = await import("@pharn-ci/core");
+    const { check } = await import("./text-coverage.js");
     const golden = readFileSync(new URL("fixtures/golden/report.json", ROOT), "utf8");
     const inputs = {
       version: "0.1.0",

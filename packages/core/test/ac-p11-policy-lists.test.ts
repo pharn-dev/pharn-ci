@@ -38,7 +38,7 @@ const lists = (name: string) => JSON.parse(fixture(`policy-rules/p11/lists/${nam
 const app = (document: unknown) => ({ source: "app", version: 3, fetchedAt: FETCHED_AT, document });
 
 async function run(policy: unknown, agentPrFacts: unknown, policyFileBase?: unknown): Promise<Report> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

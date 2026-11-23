@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { check } from "../src/check.js";
+
 import { MESSAGE_FIXES } from "../src/fix/table.js";
 import { logoMarkup } from "../src/render/logo.js";
 import { formatRanges, renderMarkdown } from "../src/render/markdown.js";
 import { buildReport } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport, validateReportV1 } from "./schema.js";
+import { check } from "./text-coverage.js";
 
 describe("formatRanges", () => {
   it("collapses consecutive lines", () => {

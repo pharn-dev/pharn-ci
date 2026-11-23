@@ -9,7 +9,7 @@ import { expectValidReport } from "./schema.js";
 type Mode = "block" | "warn";
 
 async function run(diff: string, mode: Mode) {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

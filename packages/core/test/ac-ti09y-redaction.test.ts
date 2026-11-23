@@ -108,7 +108,7 @@ describe("TI09: what a finding carries from the config text", () => {
 
     const base = config('"src/**/*.test.ts"');
     const head = config(source);
-    const { check } = await import("@pharn-ci/core");
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

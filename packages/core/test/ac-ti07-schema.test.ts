@@ -62,7 +62,7 @@ describe("schema/report.v2.json: testIntegrity.changes and TEST_INTEGRITY_TI07",
     }
 
     // A report carrying a well-formed changes object validates; an extra key anywhere in it does not.
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const report = structuredClone(
       check({
         version: "0.1.0",

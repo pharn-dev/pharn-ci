@@ -113,7 +113,7 @@ describe("TI01 same stem: the replacement's matches are judged as pairs", () => 
     expect(weakened, "exactly one kept test loosens toBe(…) to toBeTruthy()").toHaveLength(1);
     const now06 = (weakened[0] as [Block, Block])[1];
 
-    const { check } = await import("../src/check.js");
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },

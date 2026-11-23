@@ -66,7 +66,7 @@ async function runCase(c: Case, index?: Index): Promise<Report> {
   const sources = { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } };
   const pythonTestIndex = await io.indexPythonTestSources(sources, index);
   if (index === undefined) expect(pythonTestIndex?.available, "the real python3 indexed the tests").toBe(true);
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("../../core/test/text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { missingFile: "coverage/lcov.info" },

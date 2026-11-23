@@ -12,7 +12,7 @@ const AGENTS: AgentSetupFile = { path: "AGENTS.md", kind: "agents-md" };
 const CLAUDE: AgentSetupFile = { path: "CLAUDE.md", kind: "claude-md" };
 
 async function goldenReport(): Promise<Report> {
-  const { check } = await import("../src/check.js");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

@@ -16,7 +16,7 @@ const ORG_TEXT =
   "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found, and agent setup is required by the org policy.";
 
 async function run(repoFiles: string[], document: unknown): Promise<Report> {
-  const { check } = await import("@pharn-ci/core");
+  const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

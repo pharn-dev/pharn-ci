@@ -406,7 +406,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
       name: (entry) => entry,
       log: (line) => deps.info(line),
     });
-    coverage = { files: coverageFiles, format };
+    coverage = { files: coverageFiles };
   }
 
   const repoFiles = await trackedFiles(target, deps);

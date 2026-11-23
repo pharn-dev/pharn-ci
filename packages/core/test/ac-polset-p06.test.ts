@@ -70,7 +70,7 @@ describe("org policy rule P06: required hook missing", { timeout: 60_000 }, () =
     const disabledLine = disabledText.split("\n").findIndex((l) => l.includes('"disableAllHooks"')) + 1;
     expect(disabledLine).toBeGreaterThan(0);
 
-    const { check } = await import("@pharn-ci/core");
+    const { check } = await import("./text-coverage.js");
     const report = check({
       version: "0.1.0",
       coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

@@ -107,7 +107,10 @@ function checkInput(configText: string) {
 
 describe("P07's instruction text never reaches check A7's secret scan", { timeout: 180_000 }, () => {
   it("AC-17: with A7 and P07 both active, no AGENT_CONFIG_SECRET_* message names CLAUDE.md, the scan's input holds only agentConfigSecretPaths, and the instruction text is never read with the agent config sources", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = {
+      ...(await import("@pharn-ci/core")),
+      check: (await import("../../core/test/text-coverage.js")).check,
+    } as unknown as Core;
     const selected = core.agentConfigSecretPaths(core.scanAgentSetup(TRACKED));
     expect(selected).toEqual([".mcp.json"]);
 
