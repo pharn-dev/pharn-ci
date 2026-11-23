@@ -47459,6 +47459,46 @@ async function configCopyInUse(deps, options) {
   const copy = await readConfigFileAt({ git: (args) => deps.git(args), gitBatch }, { base: options.base, path });
   return copy.kind === "text" ? { source: "merge-base", path, text: copy.text } : { source: "unreadable" };
 }
+async function loadConfig(deps, location) {
+  const text = await deps.readFile(location.path);
+  if (text === null) {
+    if (location.explicit) throw new ConfigError(`config file not found: ${location.name}`);
+    return {};
+  }
+  try {
+    return parseConfig(text);
+  } catch (err) {
+    throw new ConfigError(`${location.name}: ${errorText(err)}`);
+  }
+}
+async function loadConfigInUse(deps, location) {
+  const copy = await configCopyInUse(deps, {
+    diff: location.diff,
+    base: location.base,
+    configPath: location.configPath,
+    repoRoot: location.repoRoot
+  });
+  if (copy.source === "working-tree") return { config: await loadConfig(deps, location) };
+  const headConfigExclude = headExclusions(await deps.readFile(location.path));
+  const head = headConfigExclude === void 0 ? {} : { headConfigExclude };
+  if (copy.source !== "merge-base") return { config: {}, configSource: copy.source, ...head };
+  try {
+    return { config: parseConfig(copy.text), configSource: "merge-base", ...head };
+  } catch (err) {
+    throw new ConfigError(`${copy.path} at the merge base: ${errorText(err)}`);
+  }
+}
+function headExclusions(text) {
+  if (text === null) return void 0;
+  try {
+    return parseConfig(text).coverage?.exclude;
+  } catch {
+    return void 0;
+  }
+}
+function errorText(err) {
+  return err instanceof Error ? err.message : String(err);
+}
 
 // ../node-io/src/coverage.ts
 async function readCoverageFiles(deps, options) {
@@ -47537,213 +47577,8 @@ async function readDiscoveredCoverage(deps, options) {
   return { files, format };
 }
 
-// ../node-io/src/io.ts
-import { execFile, spawn } from "node:child_process";
-import { open as open2, readdir as readdir2, readFile as readFileText } from "node:fs/promises";
-var GIT_TIMEOUT_MS = 12e4;
-var LOCAL_GIT_SUBCOMMANDS = [
-  "cat-file",
-  "diff",
-  "hash-object",
-  "log",
-  "ls-files",
-  "ls-tree",
-  "merge-base",
-  "rev-parse"
-];
-var REFUSED_OPTION_PREFIXES = ["--upload-pack", "--receive-pack", "--exec", "--output", "--ext-diff"];
-function localGitArgs(args) {
-  const subcommand = LOCAL_GIT_SUBCOMMANDS.find((name) => name === args[0]);
-  if (subcommand === void 0) {
-    throw new Error(
-      `git ${args[0] ?? ""} is not allowed: pharn-ci runs only these git subcommands: ${LOCAL_GIT_SUBCOMMANDS.join(", ")}`
-    );
-  }
-  const safe = [subcommand];
-  let options = true;
-  for (const arg of args.slice(1)) {
-    if (options && (arg === "--end-of-options" || arg === "--")) {
-      options = false;
-    } else if (options && (REFUSED_OPTION_PREFIXES.some((prefix) => arg.startsWith(prefix)) || subcommand === "hash-object" && arg === "-w" || subcommand === "cat-file" && (arg.startsWith("--textconv") || arg.startsWith("--filters")))) {
-      throw new Error(`git ${subcommand}: the option "${arg}" is not allowed`);
-    }
-    safe.push(`${arg}`);
-  }
-  return safe;
-}
-async function* streamGit(cwd, gitArgs, timeoutMs = GIT_TIMEOUT_MS) {
-  const args = localGitArgs(gitArgs);
-  const child = spawn("git", args, { cwd, stdio: ["pipe", "pipe", "pipe"] });
-  let stderr = "";
-  let timedOut = false;
-  child.stdin.on("error", () => {
-  });
-  child.stderr.setEncoding("utf8");
-  child.stderr.on("data", (chunk) => {
-    stderr += chunk;
-  });
-  const closed = new Promise((done) => {
-    child.on("error", (error2) => done({ code: null, error: error2 }));
-    child.on("close", (code2) => done({ code: code2 }));
-  });
-  const timer = setTimeout(() => {
-    timedOut = true;
-    child.kill();
-  }, timeoutMs);
-  try {
-    child.stdout.setEncoding("utf8");
-    for await (const chunk of child.stdout) yield chunk;
-    const { code: code2, error: error2 } = await closed;
-    if (timedOut) throw new Error(`git ${args[0] ?? ""} timed out after ${timeoutMs / 1e3} s`);
-    if (error2) throw error2;
-    if (code2 !== 0) throw new Error(stderr || `Command failed: git ${args.join(" ")}`);
-  } finally {
-    clearTimeout(timer);
-    if (child.exitCode === null && child.signalCode === null) child.kill();
-  }
-}
-function runGit(cwd, gitArgs, timeoutMs = GIT_TIMEOUT_MS) {
-  let args;
-  try {
-    args = localGitArgs(gitArgs);
-  } catch (err) {
-    return Promise.reject(err);
-  }
-  return new Promise((ok, fail2) => {
-    execFile(
-      "git",
-      args,
-      { cwd, maxBuffer: 256 * 1024 * 1024, encoding: "utf8", timeout: timeoutMs },
-      (err, stdout, stderr) => {
-        if (err?.killed) fail2(new Error(`git ${args[0] ?? ""} timed out after ${timeoutMs / 1e3} s`));
-        else if (err) fail2(new Error(stderr || err.message));
-        else ok(stdout);
-      }
-    );
-  });
-}
-var GIT_BATCH_MAX_BUFFER = 64 * 1024 * 1024;
-function runGitBatch(cwd, gitArgs, input, timeoutMs = GIT_TIMEOUT_MS) {
-  let args;
-  try {
-    args = localGitArgs(gitArgs);
-  } catch (err) {
-    return Promise.reject(err);
-  }
-  return new Promise((ok, fail2) => {
-    const child = execFile(
-      "git",
-      args,
-      {
-        cwd,
-        maxBuffer: GIT_BATCH_MAX_BUFFER,
-        encoding: "buffer",
-        timeout: timeoutMs,
-        env: { ...process.env, GIT_NO_LAZY_FETCH: "1" }
-      },
-      (err, stdout, stderr) => {
-        if (err?.killed) fail2(new Error(`git ${args[0] ?? ""} timed out after ${timeoutMs / 1e3} s`));
-        else if (err) fail2(new Error(stderr.toString("utf8") || err.message));
-        else ok(stdout);
-      }
-    );
-    child.stdin?.on("error", () => {
-    });
-    child.stdin?.end(input);
-  });
-}
-async function readFile(path) {
-  try {
-    return await readFileText(path, "utf8");
-  } catch (err) {
-    if (err.code === "ENOENT") return null;
-    throw err;
-  }
-}
-async function readFileStream(path) {
-  let handle;
-  try {
-    handle = await open2(path, "r");
-  } catch (err) {
-    if (err.code === "ENOENT") return null;
-    throw err;
-  }
-  return handle.createReadStream({ encoding: "utf8" });
-}
-async function listDir(path) {
-  try {
-    const entries = await readdir2(path, { withFileTypes: true });
-    return entries.map(
-      (entry) => ({
-        name: entry.name,
-        kind: entry.isSymbolicLink() ? "symlink" : entry.isDirectory() ? "directory" : entry.isFile() ? "file" : "other"
-      })
-    );
-  } catch (err) {
-    const code2 = err.code;
-    if (code2 === "ENOENT" || code2 === "ENOTDIR") return null;
-    throw err;
-  }
-}
-
-// ../node-io/src/junit.ts
-var MAX_JUNIT_GLOB_FILES = 1e3;
-var MAX_JUNIT_WALK_ENTRIES = 1e5;
-async function readJunitFiles(deps, options) {
-  const { paths, walkLimit } = await matchJunitFiles(deps, options);
-  const files = [];
-  let bytes = 0;
-  let overBytes = false;
-  for (const [index, path] of paths.entries()) {
-    if (index >= JUNIT_MAX_FILES) {
-      files.push({ path, dropped: "file-cap" });
-      continue;
-    }
-    if (overBytes) {
-      files.push({ path, dropped: "byte-cap" });
-      continue;
-    }
-    const chunks = await fileChunks(deps, deps.resolvePath(options.baseDir, path));
-    if (chunks === null) continue;
-    const parts = [];
-    for await (const chunk of chunks) {
-      bytes += utf8ByteLength(chunk);
-      if (bytes > JUNIT_MAX_TOTAL_BYTES) {
-        overBytes = true;
-        break;
-      }
-      parts.push(chunk);
-    }
-    files.push(overBytes ? { path, dropped: "byte-cap" } : { path, text: parts.join("") });
-  }
-  return walkLimit ? { files, walkLimit } : { files };
-}
-async function matchJunitFiles(deps, options) {
-  const patterns = options.patterns.map((pattern) => parseExcludePattern(pattern, options.label));
-  const budget = { files: 0, entries: 0 };
-  const limits = { files: MAX_JUNIT_GLOB_FILES, entries: MAX_JUNIT_WALK_ENTRIES };
-  const listDir2 = (dir) => deps.listDir(deps.resolvePath(options.baseDir, dir));
-  const paths = [];
-  const seen = /* @__PURE__ */ new Set();
-  for (const pattern of patterns) {
-    let found;
-    try {
-      found = await walkGlob(pattern, listDir2, budget, limits);
-    } catch (err) {
-      if (!(err instanceof WalkLimitError)) throw err;
-      return { paths, walkLimit: true };
-    }
-    for (const path of found) {
-      if (seen.has(path)) continue;
-      seen.add(path);
-      paths.push(path);
-    }
-  }
-  return { paths, walkLimit: false };
-}
-
 // ../node-io/src/pythonIndex.ts
-import { execFile as execFile2 } from "node:child_process";
+import { execFile } from "node:child_process";
 import { tmpdir } from "node:os";
 
 // ../node-io/src/pythonIndexScript.ts
@@ -48525,7 +48360,7 @@ function decodeStrict(data) {
 }
 var spawnPython = (command, args, options, stdin) => new Promise((resolve2) => {
   try {
-    const child = execFile2(
+    const child = execFile(
       command,
       [...args],
       { ...options, encoding: "buffer" },
@@ -48793,6 +48628,434 @@ async function readTestSources(deps, options) {
   } catch (err) {
     return unavailableTestSources(err instanceof StepFailed ? err.message : `git could not be read: ${firstLine(err)}`);
   }
+}
+
+// ../node-io/src/gatherSources.ts
+async function gatherSources(deps, options) {
+  const out = {};
+  const lsTree = options.checkout === "pr-number" ? null : await readHeadTree(deps, options.warn);
+  if (lsTree !== null) out.repoFileBytes = parseLsTreeSizes(lsTree);
+  const testSources = await gatherTestSources(deps, options);
+  if (testSources !== void 0) {
+    out.testSources = testSources;
+    const pythonTestIndex = await indexPythonTestSources(testSources, deps.indexPython ?? indexPythonTests);
+    if (pythonTestIndex !== void 0) {
+      out.pythonTestIndex = pythonTestIndex;
+      if (!pythonTestIndex.available) {
+        options.log(
+          "parsed" in options.diff && pythonNotFoundStopsComparison(options.diff.parsed, pythonTestIndex) ? "pharn-ci: no Python interpreter was found (python-not-found), so TI02 and TI05 did not run" : `pharn-ci: the Python test index is unavailable (${pythonTestIndex.reason}), so .py test files are not compared`
+        );
+      }
+    }
+  }
+  const agentConfigSources = await gatherAgentConfigSources(deps, options);
+  if (agentConfigSources !== void 0) out.agentConfigSources = agentConfigSources;
+  const agentInstructionSources = await gatherAgentInstructionSources(deps, options);
+  if (agentInstructionSources !== void 0) out.agentInstructionSources = agentInstructionSources;
+  const policySettingsSources = await gatherPolicySettingsSources(deps, options, lsTree);
+  if (policySettingsSources !== void 0) out.policySettingsSources = policySettingsSources;
+  const selfModificationSources = await gatherSelfModificationSources(deps, options);
+  if (selfModificationSources !== void 0) out.selfModificationSources = selfModificationSources;
+  const staleInstructionSources = await gatherStaleInstructionSources(deps, options);
+  if (staleInstructionSources !== void 0) out.staleInstructionSources = staleInstructionSources;
+  const dependencySources = await gatherDependencySources(deps, options);
+  if (dependencySources !== void 0) out.dependencySources = dependencySources;
+  return out;
+}
+async function headIsInBase(deps, base) {
+  try {
+    const mergeBase = (await deps.git(["merge-base", "--end-of-options", base, "HEAD"])).trim();
+    const head = (await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", "HEAD^{commit}"])).trim();
+    return OBJECT_ID.test(mergeBase) && mergeBase === head;
+  } catch {
+    return false;
+  }
+}
+async function readHeadTree(deps, warn) {
+  try {
+    return await deps.git(["ls-tree", "-r", "-l", "-z", "--full-tree", "HEAD"]);
+  } catch (err) {
+    warn(`pharn-ci: git ls-tree failed, so empty agent setup files are not reported: ${firstLine(err)}`);
+    return null;
+  }
+}
+function baseAndHeadUnread(options, gitBatch) {
+  if (options.checkout === "pr-number") return "pr-number mode: the diff came from the GitHub API";
+  if ("text" in options.diff) return "the diff came from the GitHub compare API";
+  if ("unavailable" in options.diff) return "the diff is unavailable";
+  if (gitBatch === void 0 || options.base === void 0) return "reading git objects is not available";
+  return null;
+}
+function headUnread(options, what) {
+  if (options.checkout === "head") return null;
+  if (options.checkout === "pr-number") {
+    return `pr-number mode: the checkout is not the pull request head, so its committed ${what} were not read`;
+  }
+  return "text" in options.diff ? "the diff came from the GitHub compare API, so the checkout may not be the pull request head" : "the diff is unavailable, so the checkout may not be the pull request head";
+}
+function policyDocumentInForce(policy) {
+  return policy !== void 0 && (policy.source === "app" || policy.source === "file") && policy.document !== null;
+}
+var emptySources = () => ({ base: { files: [], dropped: [] }, head: { files: [], dropped: [] } });
+async function gatherTestSources(deps, options) {
+  if (resolveTestIntegrityMode(options.testIntegrityMode).mode === "off") return void 0;
+  const { diff, base } = options;
+  const { gitBatch } = deps;
+  const unread = baseAndHeadUnread(options, gitBatch);
+  if (unread !== null || gitBatch === void 0 || base === void 0 || !("parsed" in diff)) {
+    return unavailableTestSources(unread ?? "reading git objects is not available");
+  }
+  const sources = await readTestSources(
+    { git: (args) => deps.git(args), gitBatch },
+    { base, head: "HEAD", diff: diff.parsed }
+  );
+  if ("unavailable" in sources.base) {
+    options.log(
+      `pharn-ci: could not read the test and test-config files from git, so they are not compared: ${sources.base.unavailable}`
+    );
+  }
+  return sources;
+}
+async function gatherAgentConfigSources(deps, options) {
+  const { gitBatch } = deps;
+  if (gitBatch === void 0) return void 0;
+  const paths = agentConfigSecretPaths(scanAgentSetup(options.repoFiles));
+  if (paths.length === 0) return void 0;
+  const unread = headUnread(options, "agent config files");
+  if (unread !== null) return { unavailable: unread };
+  const sources = await readAgentConfigSources({ gitBatch }, paths);
+  if ("unavailable" in sources) {
+    options.log(
+      `pharn-ci: could not read the agent config files from git, so they are not scanned for secrets: ${sources.unavailable}`
+    );
+  }
+  return sources;
+}
+async function gatherAgentInstructionSources(deps, options) {
+  const { gitBatch } = deps;
+  if (gitBatch === void 0) return void 0;
+  if (options.policy === void 0 || consistencySeverity(options.policy).severity === null) return void 0;
+  const paths = agentInstructionPaths(scanAgentSetup(options.repoFiles));
+  if (paths.length === 0) return void 0;
+  const unread = headUnread(options, "agent instruction files");
+  if (unread !== null) return { unavailable: unread };
+  const sources = await readAgentConfigSources({ gitBatch }, paths);
+  if ("unavailable" in sources) {
+    options.log(
+      `pharn-ci: could not read the agent instruction files from git, so P07 did not compare them: ${sources.unavailable}`
+    );
+  }
+  return sources;
+}
+async function gatherPolicySettingsSources(deps, options, lsTree) {
+  const { gitBatch } = deps;
+  const { policy } = options;
+  if (gitBatch === void 0 || policy === void 0 || policy.document === null) return void 0;
+  if (!policyDocumentInForce(policy)) return void 0;
+  const unread = headUnread(options, "agent settings files");
+  if (unread !== null) return { unavailable: unread };
+  const paths = policySettingsPaths(options.repoFiles, policy.document);
+  if (paths.length === 0) return { files: [], dropped: [] };
+  const sources = await readPolicySettingsSources(
+    { gitBatch },
+    paths,
+    lsTree === null ? null : parseLsTreeSymlinks(lsTree)
+  );
+  if ("unavailable" in sources) {
+    options.log(
+      `pharn-ci: could not read the agent settings files from git, so they are not checked against the org policy: ${sources.unavailable}`
+    );
+  }
+  return sources;
+}
+async function gatherSelfModificationSources(deps, options) {
+  const { gitBatch } = deps;
+  if (gitBatch === void 0 || !policyDocumentInForce(options.policy)) return void 0;
+  return readChangedSources(deps, options, {
+    select: selectSelfModificationPaths,
+    what: "the agent settings, MCP, workflow and CODEOWNERS files",
+    effect: "rule P13 could not compare them"
+  });
+}
+async function gatherDependencySources(deps, options) {
+  if (resolveDependencySettings(options.dependencySettings).mode === "never") return void 0;
+  if (deps.gitBatch === void 0) return void 0;
+  return readChangedSources(deps, options, {
+    select: (files) => selectDependencyPaths(files, options.repoFiles),
+    what: "the manifests and lockfiles",
+    effect: "dependency safety could not compare them",
+    limits: DEPENDENCY_SOURCE_LIMITS
+  });
+}
+async function readChangedSources(deps, options, read) {
+  const { diff, base } = options;
+  const { gitBatch } = deps;
+  const unread = baseAndHeadUnread(options, gitBatch);
+  if (unread !== null || gitBatch === void 0 || base === void 0 || !("parsed" in diff)) {
+    return unavailableTestSources(unread ?? "reading git objects is not available");
+  }
+  const selected = read.select(diff.parsed);
+  if (selected.base.length === 0 && selected.head.length === 0) return emptySources();
+  const sources = await readTestSources(
+    { git: (args) => deps.git(args), gitBatch },
+    {
+      base,
+      head: "HEAD",
+      diff: diff.parsed,
+      select: read.select,
+      ...read.limits === void 0 ? {} : { limits: read.limits }
+    }
+  );
+  if ("unavailable" in sources.base) {
+    options.log(`pharn-ci: could not read ${read.what} from git, so ${read.effect}: ${sources.base.unavailable}`);
+  }
+  return sources;
+}
+async function gatherStaleInstructionSources(deps, options) {
+  const { gitBatch } = deps;
+  const { diff, base } = options;
+  if (gitBatch === void 0 || options.checkout === "pr-number" || !("parsed" in diff)) return void 0;
+  const sources = await readStaleInstructionSources(
+    { gitBatch, git: (args) => deps.git(args) },
+    { repoFiles: options.repoFiles, diff: diff.parsed, ...base === void 0 ? {} : { base } }
+  );
+  if (sources !== void 0 && "unavailable" in sources.instructions) {
+    options.log(
+      `pharn-ci: could not read the agent instruction files from git, so stale instructions are not checked: ${sources.instructions.unavailable}`
+    );
+  }
+  return sources;
+}
+
+// ../node-io/src/httpBody.ts
+async function readCapped(response, maxBytes) {
+  if (response.body === null) return "";
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  for (; ; ) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel().catch(() => {
+      });
+      return null;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let at = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, at);
+    at += chunk.byteLength;
+  }
+  return new TextDecoder("utf-8").decode(bytes);
+}
+
+// ../node-io/src/io.ts
+import { execFile as execFile2, spawn } from "node:child_process";
+import { open as open2, readdir as readdir2, readFile as readFileText } from "node:fs/promises";
+var GIT_TIMEOUT_MS = 12e4;
+var LOCAL_GIT_SUBCOMMANDS = [
+  "cat-file",
+  "diff",
+  "hash-object",
+  "log",
+  "ls-files",
+  "ls-tree",
+  "merge-base",
+  "rev-parse"
+];
+var REFUSED_OPTION_PREFIXES = ["--upload-pack", "--receive-pack", "--exec", "--output", "--ext-diff"];
+function localGitArgs(args) {
+  const subcommand = LOCAL_GIT_SUBCOMMANDS.find((name) => name === args[0]);
+  if (subcommand === void 0) {
+    throw new Error(
+      `git ${args[0] ?? ""} is not allowed: pharn-ci runs only these git subcommands: ${LOCAL_GIT_SUBCOMMANDS.join(", ")}`
+    );
+  }
+  const safe = [subcommand];
+  let options = true;
+  for (const arg of args.slice(1)) {
+    if (options && (arg === "--end-of-options" || arg === "--")) {
+      options = false;
+    } else if (options && (REFUSED_OPTION_PREFIXES.some((prefix) => arg.startsWith(prefix)) || subcommand === "hash-object" && arg === "-w" || subcommand === "cat-file" && (arg.startsWith("--textconv") || arg.startsWith("--filters")))) {
+      throw new Error(`git ${subcommand}: the option "${arg}" is not allowed`);
+    }
+    safe.push(`${arg}`);
+  }
+  return safe;
+}
+async function* streamGit(cwd, gitArgs, timeoutMs = GIT_TIMEOUT_MS) {
+  const args = localGitArgs(gitArgs);
+  const child = spawn("git", args, { cwd, stdio: ["pipe", "pipe", "pipe"] });
+  let stderr = "";
+  let timedOut = false;
+  child.stdin.on("error", () => {
+  });
+  child.stderr.setEncoding("utf8");
+  child.stderr.on("data", (chunk) => {
+    stderr += chunk;
+  });
+  const closed = new Promise((done) => {
+    child.on("error", (error2) => done({ code: null, error: error2 }));
+    child.on("close", (code2) => done({ code: code2 }));
+  });
+  const timer = setTimeout(() => {
+    timedOut = true;
+    child.kill();
+  }, timeoutMs);
+  try {
+    child.stdout.setEncoding("utf8");
+    for await (const chunk of child.stdout) yield chunk;
+    const { code: code2, error: error2 } = await closed;
+    if (timedOut) throw new Error(`git ${args[0] ?? ""} timed out after ${timeoutMs / 1e3} s`);
+    if (error2) throw error2;
+    if (code2 !== 0) throw new Error(stderr || `Command failed: git ${args.join(" ")}`);
+  } finally {
+    clearTimeout(timer);
+    if (child.exitCode === null && child.signalCode === null) child.kill();
+  }
+}
+function runGit(cwd, gitArgs, timeoutMs = GIT_TIMEOUT_MS) {
+  let args;
+  try {
+    args = localGitArgs(gitArgs);
+  } catch (err) {
+    return Promise.reject(err);
+  }
+  return new Promise((ok, fail2) => {
+    execFile2(
+      "git",
+      args,
+      { cwd, maxBuffer: 256 * 1024 * 1024, encoding: "utf8", timeout: timeoutMs },
+      (err, stdout, stderr) => {
+        if (err?.killed) fail2(new Error(`git ${args[0] ?? ""} timed out after ${timeoutMs / 1e3} s`));
+        else if (err) fail2(new Error(stderr || err.message));
+        else ok(stdout);
+      }
+    );
+  });
+}
+var GIT_BATCH_MAX_BUFFER = 64 * 1024 * 1024;
+function runGitBatch(cwd, gitArgs, input, timeoutMs = GIT_TIMEOUT_MS) {
+  let args;
+  try {
+    args = localGitArgs(gitArgs);
+  } catch (err) {
+    return Promise.reject(err);
+  }
+  return new Promise((ok, fail2) => {
+    const child = execFile2(
+      "git",
+      args,
+      {
+        cwd,
+        maxBuffer: GIT_BATCH_MAX_BUFFER,
+        encoding: "buffer",
+        timeout: timeoutMs,
+        env: { ...process.env, GIT_NO_LAZY_FETCH: "1" }
+      },
+      (err, stdout, stderr) => {
+        if (err?.killed) fail2(new Error(`git ${args[0] ?? ""} timed out after ${timeoutMs / 1e3} s`));
+        else if (err) fail2(new Error(stderr.toString("utf8") || err.message));
+        else ok(stdout);
+      }
+    );
+    child.stdin?.on("error", () => {
+    });
+    child.stdin?.end(input);
+  });
+}
+async function readFile(path) {
+  try {
+    return await readFileText(path, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") return null;
+    throw err;
+  }
+}
+async function readFileStream(path) {
+  let handle;
+  try {
+    handle = await open2(path, "r");
+  } catch (err) {
+    if (err.code === "ENOENT") return null;
+    throw err;
+  }
+  return handle.createReadStream({ encoding: "utf8" });
+}
+async function listDir(path) {
+  try {
+    const entries = await readdir2(path, { withFileTypes: true });
+    return entries.map(
+      (entry) => ({
+        name: entry.name,
+        kind: entry.isSymbolicLink() ? "symlink" : entry.isDirectory() ? "directory" : entry.isFile() ? "file" : "other"
+      })
+    );
+  } catch (err) {
+    const code2 = err.code;
+    if (code2 === "ENOENT" || code2 === "ENOTDIR") return null;
+    throw err;
+  }
+}
+
+// ../node-io/src/junit.ts
+var MAX_JUNIT_GLOB_FILES = 1e3;
+var MAX_JUNIT_WALK_ENTRIES = 1e5;
+async function readJunitFiles(deps, options) {
+  const { paths, walkLimit } = await matchJunitFiles(deps, options);
+  const files = [];
+  let bytes = 0;
+  let overBytes = false;
+  for (const [index, path] of paths.entries()) {
+    if (index >= JUNIT_MAX_FILES) {
+      files.push({ path, dropped: "file-cap" });
+      continue;
+    }
+    if (overBytes) {
+      files.push({ path, dropped: "byte-cap" });
+      continue;
+    }
+    const chunks = await fileChunks(deps, deps.resolvePath(options.baseDir, path));
+    if (chunks === null) continue;
+    const parts = [];
+    for await (const chunk of chunks) {
+      bytes += utf8ByteLength(chunk);
+      if (bytes > JUNIT_MAX_TOTAL_BYTES) {
+        overBytes = true;
+        break;
+      }
+      parts.push(chunk);
+    }
+    files.push(overBytes ? { path, dropped: "byte-cap" } : { path, text: parts.join("") });
+  }
+  return walkLimit ? { files, walkLimit } : { files };
+}
+async function matchJunitFiles(deps, options) {
+  const patterns = options.patterns.map((pattern) => parseExcludePattern(pattern, options.label));
+  const budget = { files: 0, entries: 0 };
+  const limits = { files: MAX_JUNIT_GLOB_FILES, entries: MAX_JUNIT_WALK_ENTRIES };
+  const listDir2 = (dir) => deps.listDir(deps.resolvePath(options.baseDir, dir));
+  const paths = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const pattern of patterns) {
+    let found;
+    try {
+      found = await walkGlob(pattern, listDir2, budget, limits);
+    } catch (err) {
+      if (!(err instanceof WalkLimitError)) throw err;
+      return { paths, walkLimit: true };
+    }
+    for (const path of found) {
+      if (seen.has(path)) continue;
+      seen.add(path);
+      paths.push(path);
+    }
+  }
+  return { paths, walkLimit: false };
 }
 
 // src/node-io.ts
@@ -49135,35 +49398,11 @@ async function attempt(deps, request2) {
     return answer;
   }
   try {
-    const read = await readCapped(response);
+    const read = await readCapped(response, APP_MAX_BODY_BYTES);
     return read === null ? { ...answer, tooLarge: true } : { ...answer, body: read };
   } catch {
     return signal2.aborted ? { kind: "timeout" } : { kind: "network" };
   }
-}
-async function readCapped(response) {
-  if (response.body === null) return "";
-  const reader = response.body.getReader();
-  const chunks = [];
-  let total = 0;
-  for (; ; ) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > APP_MAX_BODY_BYTES) {
-      await reader.cancel().catch(() => {
-      });
-      return null;
-    }
-    chunks.push(value);
-  }
-  const bytes = new Uint8Array(total);
-  let at = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, at);
-    at += chunk.byteLength;
-  }
-  return new TextDecoder("utf-8").decode(bytes);
 }
 
 // src/policy-input.ts
@@ -49343,30 +49582,6 @@ function allowedLookupUrl(url) {
   }
   return parsed.protocol === "https:" && parsed.port === "" && parsed.username === "" && parsed.password === "" && parsed.search === "" && parsed.hash === "" && REGISTRY_LOOKUP_HOSTS.includes(parsed.hostname);
 }
-async function readCapped2(response) {
-  if (response.body === null) return "";
-  const reader = response.body.getReader();
-  const chunks = [];
-  let total = 0;
-  for (; ; ) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > REGISTRY_MAX_BODY_BYTES) {
-      await reader.cancel().catch(() => {
-      });
-      return null;
-    }
-    chunks.push(value);
-  }
-  const bytes = new Uint8Array(total);
-  let at = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, at);
-    at += chunk.byteLength;
-  }
-  return new TextDecoder("utf-8").decode(bytes);
-}
 async function registryGet(deps, url) {
   const doFetch = deps.fetch;
   if (doFetch === void 0 || !allowedLookupUrl(url)) return { kind: "network" };
@@ -49388,7 +49603,7 @@ async function registryGet(deps, url) {
     return { kind: "response", status: response.status };
   }
   try {
-    const body = await readCapped2(response);
+    const body = await readCapped(response, REGISTRY_MAX_BODY_BYTES);
     return body === null ? { kind: "response", status: 200, tooLarge: true } : { kind: "response", status: 200, body };
   } catch {
     return signal2.aborted ? { kind: "timeout" } : { kind: "network" };
@@ -49817,7 +50032,16 @@ async function runUnsafe(deps) {
   const baseRefInput = input("base-ref");
   const prNumberMode = !pr && prNumber !== void 0;
   const earlyDiff = prNumberMode ? void 0 : await getDiff(baseRefInput, deps, void 0, configInput);
-  const { config, configSource, headConfigExclude } = await loadConfigInUse(configInput || void 0, deps, earlyDiff);
+  const configName2 = configInput || DEFAULT_CONFIG;
+  const { config, configSource, headConfigExclude } = await loadConfigInUse(deps, {
+    path: deps.resolvePath(deps.workspace, configName2),
+    name: configName2,
+    explicit: configInput !== "",
+    configPath: configInput || void 0,
+    repoRoot: deps.workspace,
+    diff: earlyDiff === void 0 || "unavailable" in earlyDiff.diff ? null : "parsed" in earlyDiff.diff ? earlyDiff.diff.parsed : parseUnifiedDiff(earlyDiff.diff.text),
+    base: earlyDiff?.localBase
+  });
   const rawInputs = {
     coverageFile: splitLines(input("coverage-file")),
     coverageFormat: input("coverage-format") || void 0,
@@ -49880,36 +50104,24 @@ async function runUnsafe(deps) {
     coverage2 = { files: coverageFiles, format };
   }
   const repoFiles = await trackedFiles(target, deps);
-  const lsTree = target ? null : await deps.git(["ls-tree", "-r", "-l", "-z", "--full-tree", "HEAD"]).catch((err) => {
-    deps.warning(`git ls-tree failed, so empty agent setup files are not reported: ${String(err)}`);
-    return null;
-  });
-  const { diff, localBase } = earlyDiff ?? await getDiff(baseRefInput, deps, target, configInput);
-  const testSources = await gatherTestSources(deps, { diff, localBase, target, testIntegrityMode });
-  const agentConfigSources = await gatherAgentConfigSources(deps, { repoFiles, diff, target });
-  const policySettingsSources = await gatherPolicySettingsSources(deps, { repoFiles, diff, target, policy, lsTree });
-  const agentInstructionSources = await gatherAgentInstructionSources(deps, { repoFiles, diff, target, policy });
-  const selfModificationSources = await gatherSelfModificationSources(deps, { diff, localBase, target, policy });
-  const staleInstructionSources = await gatherStaleInstructionSources(deps, { repoFiles, diff, localBase, target });
-  const dependencySources = await gatherDependencySources(deps, {
+  const { diff, localBase, checkout } = earlyDiff ?? await getDiff(baseRefInput, deps, target, configInput);
+  const gathered = await gatherSources(deps, {
     diff,
-    localBase,
-    target,
+    base: localBase,
+    checkout,
     repoFiles,
-    dependencySettings
+    testIntegrityMode,
+    dependencySettings,
+    policy,
+    log: (line) => deps.info(line),
+    warn: (line) => deps.warning(line)
   });
-  const dependencyLookups = dependencySources === void 0 || !("parsed" in diff) ? void 0 : await gatherDependencyLookups(deps, {
+  const dependencyLookups = gathered.dependencySources === void 0 || !("parsed" in diff) ? void 0 : await gatherDependencyLookups(deps, {
     diff: diff.parsed,
-    sources: dependencySources,
+    sources: gathered.dependencySources,
     repoFiles,
     dependencySettings
   });
-  const pythonTestIndex = testSources === void 0 ? void 0 : await indexPythonTestSources(testSources, deps.indexPython ?? indexPythonTests);
-  if (pythonTestIndex !== void 0 && !pythonTestIndex.available) {
-    deps.info(
-      "parsed" in diff && pythonNotFoundStopsComparison(diff.parsed, pythonTestIndex) ? "pharn-ci: no Python interpreter was found (python-not-found), so TI02 and TI05 did not run" : `pharn-ci: the Python test index is unavailable (${pythonTestIndex.reason}), so .py test files are not compared`
-    );
-  }
   const agentPrFacts = await gatherAgentPrFacts(deps, target);
   const defaultDetection = detectAgentPr(agentPrFacts);
   if (defaultDetection.incomplete !== null) {
@@ -49929,32 +50141,24 @@ async function runUnsafe(deps) {
     repoRoot: deps.workspace,
     threshold,
     repoFiles,
-    ...lsTree === null ? {} : { repoFileBytes: parseLsTreeSizes(lsTree) },
+    ...gathered,
     exclude,
     requireAgentSetup,
     ...expectAgentSetup === void 0 ? {} : { expectAgentSetup },
     ...testIntegrityMode === void 0 ? {} : { testIntegrityMode },
-    ...testSources === void 0 ? {} : { testSources },
-    ...agentConfigSources === void 0 ? {} : { agentConfigSources },
-    ...agentInstructionSources === void 0 ? {} : { agentInstructionSources },
-    ...pythonTestIndex === void 0 ? {} : { pythonTestIndex },
     ...coverageRoot === void 0 ? {} : { coverageRoot },
     ...configInput === "" ? {} : { configPath: configInput },
     ...configSource === void 0 ? {} : { configSource },
     ...headConfigExclude === void 0 ? {} : { headConfigExclude },
     ...policy === void 0 ? {} : { policy },
-    ...policySettingsSources === void 0 ? {} : { policySettingsSources },
     ...application === void 0 || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored },
     ...application?.signalOverrides === void 0 ? {} : { signalOverrides: application.signalOverrides },
     agentPrFacts,
     ...policyFileBase === void 0 ? {} : { policyFileBase },
-    ...selfModificationSources === void 0 ? {} : { selfModificationSources },
-    ...staleInstructionSources === void 0 ? {} : { staleInstructionSources },
     ...junit === void 0 ? {} : { junit },
     // Only the app's own answer carries a quarantine list; a pull request has no way to add one.
     ...junit === void 0 || quarantine === void 0 ? {} : { quarantine },
     ...dependencySettings === void 0 ? {} : { dependencySettings },
-    ...dependencySources === void 0 ? {} : { dependencySources },
     ...dependencyLookups === void 0 ? {} : { dependencyLookups }
   };
   const runMetaBase = runMeta(deps.context, { baseRef: baseRefInput, ...target === void 0 ? {} : { target } });
@@ -50077,75 +50281,6 @@ async function gatherJunit(deps, patterns) {
   );
   return results;
 }
-async function gatherTestSources(deps, from) {
-  if (resolveTestIntegrityMode(from.testIntegrityMode).mode === "off") return void 0;
-  const { diff, localBase } = from;
-  if (from.target) return unavailableTestSources("pr-number mode: the diff came from the GitHub API");
-  if ("text" in diff) return unavailableTestSources("the diff came from the GitHub compare API");
-  if ("unavailable" in diff) return unavailableTestSources("the diff is unavailable");
-  if (deps.gitBatch === void 0 || localBase === void 0) {
-    return unavailableTestSources("reading git objects is not available");
-  }
-  const sources = await readTestSources(
-    { git: (args) => deps.git(args), gitBatch: deps.gitBatch },
-    { base: localBase, head: "HEAD", diff: diff.parsed }
-  );
-  if ("unavailable" in sources.base) {
-    deps.info(
-      `pharn-ci: could not read the test and test-config files from git, so they are not compared: ${sources.base.unavailable}`
-    );
-  }
-  return sources;
-}
-async function gatherSelfModificationSources(deps, from) {
-  const { policy, diff, localBase } = from;
-  if (deps.gitBatch === void 0) return void 0;
-  if (policy === void 0 || policy.source !== "app" && policy.source !== "file" || policy.document === null) {
-    return void 0;
-  }
-  if (from.target) return unavailableTestSources("pr-number mode: the diff came from the GitHub API");
-  if ("text" in diff) return unavailableTestSources("the diff came from the GitHub compare API");
-  if ("unavailable" in diff) return unavailableTestSources("the diff is unavailable");
-  if (localBase === void 0) return unavailableTestSources("reading git objects is not available");
-  const selected = selectSelfModificationPaths(diff.parsed);
-  if (selected.base.length === 0 && selected.head.length === 0) {
-    return { base: { files: [], dropped: [] }, head: { files: [], dropped: [] } };
-  }
-  const sources = await readTestSources(
-    { git: (args) => deps.git(args), gitBatch: deps.gitBatch },
-    { base: localBase, head: "HEAD", diff: diff.parsed, select: selectSelfModificationPaths }
-  );
-  if ("unavailable" in sources.base) {
-    deps.info(
-      `pharn-ci: could not read the agent settings, MCP, workflow and CODEOWNERS files from git, so rule P13 could not compare them: ${sources.base.unavailable}`
-    );
-  }
-  return sources;
-}
-async function gatherDependencySources(deps, from) {
-  if (resolveDependencySettings(from.dependencySettings).mode === "never") return void 0;
-  if (deps.gitBatch === void 0) return void 0;
-  const { diff, localBase } = from;
-  if (from.target) return unavailableTestSources("pr-number mode: the diff came from the GitHub API");
-  if ("text" in diff) return unavailableTestSources("the diff came from the GitHub compare API");
-  if ("unavailable" in diff) return unavailableTestSources("the diff is unavailable");
-  if (localBase === void 0) return unavailableTestSources("reading git objects is not available");
-  const select = (files) => selectDependencyPaths(files, from.repoFiles);
-  const selected = select(diff.parsed);
-  if (selected.base.length === 0 && selected.head.length === 0) {
-    return { base: { files: [], dropped: [] }, head: { files: [], dropped: [] } };
-  }
-  const sources = await readTestSources(
-    { git: (args) => deps.git(args), gitBatch: deps.gitBatch },
-    { base: localBase, head: "HEAD", diff: diff.parsed, select, limits: DEPENDENCY_SOURCE_LIMITS }
-  );
-  if ("unavailable" in sources.base) {
-    deps.info(
-      `pharn-ci: could not read the manifests and lockfiles from git, so dependency safety could not compare them: ${sources.base.unavailable}`
-    );
-  }
-  return sources;
-}
 async function gatherDependencyLookups(deps, from) {
   const settings2 = resolveDependencySettings(from.dependencySettings);
   if (settings2.mode !== "lookup") return void 0;
@@ -50170,115 +50305,19 @@ async function gatherDependencyLookups(deps, from) {
   );
   return { headTime, results };
 }
-async function gatherAgentConfigSources(deps, from) {
-  if (deps.gitBatch === void 0) return void 0;
-  const paths = agentConfigSecretPaths(scanAgentSetup(from.repoFiles));
-  if (paths.length === 0) return void 0;
-  if (from.target) {
-    return {
-      unavailable: "pr-number mode: the checkout is not the pull request head, so its committed agent config files were not read"
-    };
-  }
-  if ("text" in from.diff) {
-    return {
-      unavailable: "the diff came from the GitHub compare API, so the checkout may not be the pull request head"
-    };
-  }
-  if ("unavailable" in from.diff) {
-    return { unavailable: "the diff is unavailable, so the checkout may not be the pull request head" };
-  }
-  const sources = await readAgentConfigSources({ gitBatch: deps.gitBatch }, paths);
-  if ("unavailable" in sources) {
-    deps.info(
-      `pharn-ci: could not read the agent config files from git, so they are not scanned for secrets: ${sources.unavailable}`
-    );
-  }
-  return sources;
-}
-async function gatherPolicySettingsSources(deps, from) {
-  const { policy } = from;
-  if (deps.gitBatch === void 0) return void 0;
-  if (policy === void 0 || policy.source !== "app" && policy.source !== "file" || policy.document === null) {
-    return void 0;
-  }
-  if (from.target) {
-    return {
-      unavailable: "pr-number mode: the checkout is not the pull request head, so its committed agent settings files were not read"
-    };
-  }
-  if ("text" in from.diff) {
-    return {
-      unavailable: "the diff came from the GitHub compare API, so the checkout may not be the pull request head"
-    };
-  }
-  if ("unavailable" in from.diff) {
-    return { unavailable: "the diff is unavailable, so the checkout may not be the pull request head" };
-  }
-  const paths = policySettingsPaths(from.repoFiles, policy.document);
-  if (paths.length === 0) return { files: [], dropped: [] };
-  const sources = await readPolicySettingsSources(
-    { gitBatch: deps.gitBatch },
-    paths,
-    from.lsTree === null ? null : parseLsTreeSymlinks(from.lsTree)
-  );
-  if ("unavailable" in sources) {
-    deps.info(
-      `pharn-ci: could not read the agent settings files from git, so they are not checked against the org policy: ${sources.unavailable}`
-    );
-  }
-  return sources;
-}
-async function gatherAgentInstructionSources(deps, from) {
-  if (deps.gitBatch === void 0) return void 0;
-  if (from.policy === void 0 || consistencySeverity(from.policy).severity === null) return void 0;
-  const paths = agentInstructionPaths(scanAgentSetup(from.repoFiles));
-  if (paths.length === 0) return void 0;
-  if (from.target) {
-    return {
-      unavailable: "pr-number mode: the checkout is not the pull request head, so its committed agent instruction files were not read"
-    };
-  }
-  if ("text" in from.diff) {
-    return {
-      unavailable: "the diff came from the GitHub compare API, so the checkout may not be the pull request head"
-    };
-  }
-  if ("unavailable" in from.diff) {
-    return { unavailable: "the diff is unavailable, so the checkout may not be the pull request head" };
-  }
-  const sources = await readAgentConfigSources({ gitBatch: deps.gitBatch }, paths);
-  if ("unavailable" in sources) {
-    deps.info(
-      `pharn-ci: could not read the agent instruction files from git, so P07 did not compare them: ${sources.unavailable}`
-    );
-  }
-  return sources;
-}
-async function gatherStaleInstructionSources(deps, from) {
-  if (deps.gitBatch === void 0 || from.target || !("parsed" in from.diff)) return void 0;
-  const sources = await readStaleInstructionSources(
-    { gitBatch: deps.gitBatch, git: (args) => deps.git(args) },
-    {
-      repoFiles: from.repoFiles,
-      diff: from.diff.parsed,
-      ...from.localBase === void 0 ? {} : { base: from.localBase }
-    }
-  );
-  if (sources !== void 0 && "unavailable" in sources.instructions) {
-    deps.info(
-      `pharn-ci: could not read the agent instruction files from git, so stale instructions are not checked: ${sources.instructions.unavailable}`
-    );
-  }
-  return sources;
-}
 async function getDiff(baseRefInput, deps, target, configInput = "") {
   if (baseRefInput.startsWith("-")) throw new Error(`base-ref "${baseRefInput}" must not start with "-"`);
-  if (target) return { diff: await getTargetDiff(baseRefInput, target, deps) };
+  if (target) return { diff: await getTargetDiff(baseRefInput, target, deps), checkout: "pr-number" };
   const { context: context3 } = deps;
   const pr = context3.payload.pull_request;
   const mergeGroup = context3.payload.merge_group;
   const base = resolveBase(context3, { baseRef: baseRefInput }).ref;
-  if (!base) return { diff: { unavailable: "no base to diff against (not a pull request; set the base-ref input)" } };
+  if (!base) {
+    return {
+      diff: { unavailable: "no base to diff against (not a pull request; set the base-ref input)" },
+      checkout: "head"
+    };
+  }
   const head = context3.eventName === "pull_request_target" && pr ? pr.head.sha : mergeGroup?.head_sha || context3.sha;
   if (context3.eventName === "pull_request_target" && pr) {
     const localHead = await deps.git(["rev-parse", "HEAD"]).then(
@@ -50289,7 +50328,8 @@ async function getDiff(baseRefInput, deps, target, configInput = "") {
       return {
         diff: {
           unavailable: "pull_request_target cannot be measured safely: run pharn-ci on pull_request (fork PRs get the job summary only); see SECURITY.md"
-        }
+        },
+        checkout: "unknown"
       };
     }
   }
@@ -50304,18 +50344,20 @@ async function getDiff(baseRefInput, deps, target, configInput = "") {
         `the local git diff against "${base}" failed (${String(err)}); check out full history with actions/checkout and fetch-depth: 0`
       );
     }
-    if (parsed.length === 0 && await headIsInBase(localBase, deps)) {
+    if (parsed.length === 0 && await headIsInBase(deps, localBase)) {
       const named = baseRefInput ? `base-ref "${baseRefInput}"` : `the base ${base}`;
       return {
         diff: {
           unavailable: `${named} resolves to HEAD or a descendant of HEAD, so there is no change to measure` + (baseRefInput ? "; set base-ref to the branch or commit the change is based on" : "")
-        }
+        },
+        // The base is HEAD or after it, but HEAD is still the head under review: its committed files are read.
+        checkout: "head"
       };
     }
-    return { diff: { parsed }, localBase };
+    return { diff: { parsed }, localBase, checkout: "head" };
   }
   try {
-    return { diff: { text: await deps.api.compareDiff(`${base}...${head}`) } };
+    return { diff: { text: await deps.api.compareDiff(`${base}...${head}`) }, checkout: "unknown" };
   } catch (err) {
     if (baseRefInput) {
       throw new Error(
@@ -50326,7 +50368,8 @@ async function getDiff(baseRefInput, deps, target, configInput = "") {
     return {
       diff: {
         unavailable: `could not get the diff for ${base}...${head} (use actions/checkout with fetch-depth: 0)`
-      }
+      },
+      checkout: "unknown"
     };
   }
 }
@@ -50344,20 +50387,10 @@ async function getTargetDiff(baseRefInput, target, deps) {
     return { unavailable: `could not get the diff for ${base}...${target.headSha} from the GitHub API` };
   }
 }
-var OBJECT_ID2 = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
-async function headIsInBase(base, deps) {
-  try {
-    const mergeBase = (await deps.git(["merge-base", "--end-of-options", base, "HEAD"])).trim();
-    const head = (await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", "HEAD^{commit}"])).trim();
-    return OBJECT_ID2.test(mergeBase) && mergeBase === head;
-  } catch {
-    return false;
-  }
-}
 async function forkPoint(base, head, deps) {
   try {
     const mergeBase = (await deps.git(["merge-base", "--end-of-options", base, head])).trim();
-    return OBJECT_ID2.test(mergeBase) ? mergeBase : null;
+    return OBJECT_ID.test(mergeBase) ? mergeBase : null;
   } catch {
     return null;
   }
@@ -50429,7 +50462,7 @@ async function upsertComment(deps, issueNumber, body, scopeLine, listed2 = listC
     }
   } catch (err) {
     deps.warning(
-      `could not post the PR comment (${errorText(err)}); the report is in the job summary. Grant \`pull-requests: write\` to enable comments.`
+      `could not post the PR comment (${errorText2(err)}); the report is in the job summary. Grant \`pull-requests: write\` to enable comments.`
     );
   }
 }
@@ -50477,7 +50510,7 @@ async function pointOwnComment(deps, lookup2, prefix, runUrl) {
     deps.info(`updated pharn-ci comment ${existing.id} to point to the run on pharn.dev`);
   } catch (err) {
     deps.warning(
-      `could not update the earlier pharn-ci comment (${errorText(err)}); it may still show an earlier run's verdict`
+      `could not update the earlier pharn-ci comment (${errorText2(err)}); it may still show an earlier run's verdict`
     );
   }
 }
@@ -50493,7 +50526,7 @@ async function removeRaceDuplicates(deps, issueNumber, createdLogin, body, scope
       deps.info(`updated pharn-ci comment ${keep.id}`);
     }
   } catch (err) {
-    deps.warning(`could not remove duplicate pharn-ci comments: ${errorText(err)}`);
+    deps.warning(`could not remove duplicate pharn-ci comments: ${errorText2(err)}`);
   }
 }
 async function deleteDuplicates(deps, duplicates) {
@@ -50502,52 +50535,12 @@ async function deleteDuplicates(deps, duplicates) {
       await deps.api.deleteComment(dup.id);
       deps.info(`deleted duplicate pharn-ci comment ${dup.id}`);
     } catch (err) {
-      deps.warning(`could not delete duplicate pharn-ci comment ${dup.id}: ${errorText(err)}`);
+      deps.warning(`could not delete duplicate pharn-ci comment ${dup.id}: ${errorText2(err)}`);
     }
   }
 }
-function errorText(err) {
+function errorText2(err) {
   return err instanceof Error ? err.message : String(err);
-}
-async function loadConfig(explicit, deps) {
-  const path = explicit ?? DEFAULT_CONFIG;
-  const text = await deps.readFile(deps.resolvePath(deps.workspace, path));
-  if (text === null) {
-    if (explicit !== void 0) throw new Error(`config file not found: ${path}`);
-    return {};
-  }
-  try {
-    return parseConfig(text);
-  } catch (err) {
-    throw new Error(`${path}: ${err instanceof Error ? err.message : String(err)}`);
-  }
-}
-async function loadConfigInUse(explicit, deps, from) {
-  const diff = from === void 0 || "unavailable" in from.diff ? null : "parsed" in from.diff ? from.diff.parsed : parseUnifiedDiff(from.diff.text);
-  const copy = await configCopyInUse(deps, {
-    diff,
-    base: from?.localBase,
-    configPath: explicit,
-    repoRoot: deps.workspace
-  });
-  if (copy.source === "working-tree") return { config: await loadConfig(explicit, deps) };
-  const headText = await deps.readFile(deps.resolvePath(deps.workspace, explicit ?? DEFAULT_CONFIG));
-  const headConfigExclude = headExclusions(headText);
-  const head = headConfigExclude === void 0 ? {} : { headConfigExclude };
-  if (copy.source !== "merge-base") return { config: {}, configSource: copy.source, ...head };
-  try {
-    return { config: parseConfig(copy.text), configSource: "merge-base", ...head };
-  } catch (err) {
-    throw new Error(`${copy.path} at the merge base: ${err instanceof Error ? err.message : String(err)}`);
-  }
-}
-function headExclusions(text) {
-  if (text === null) return void 0;
-  try {
-    return parseConfig(text).coverage?.exclude;
-  } catch {
-    return void 0;
-  }
 }
 function splitPatternList(value) {
   return value.split(",").flatMap((part) => part.split("\n")).map((entry) => entry.trim()).filter((entry) => entry !== "");

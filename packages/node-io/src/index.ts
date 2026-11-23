@@ -6,11 +6,25 @@ export {
   type ConfigCopy,
   type ConfigFileBase,
   type ConfigFileGitDeps,
+  type ConfigFileLocation,
+  type ConfigInUse,
   configCopyInUse,
+  loadConfig,
+  loadConfigInUse,
   readConfigFileAt,
 } from "./configFile.js";
 export { type CoverageReadDeps, type ReadCoverageFilesOptions, readCoverageFiles } from "./coverage.js";
 export { discoverCoverage, type ReadDiscoveredCoverageOptions, readDiscoveredCoverage } from "./discovery.js";
+export {
+  type GatheredSources,
+  type GatherSourcesDeps,
+  type GatherSourcesOptions,
+  gatherSources,
+  type HeadCheckout,
+  headIsInBase,
+} from "./gatherSources.js";
+export { OBJECT_ID } from "./gitBlobs.js";
+export { readCapped } from "./httpBody.js";
 export { GIT_TIMEOUT_MS, listDir, readFile, readFileStream, runGit, runGitBatch, streamGit } from "./io.js";
 export {
   type JunitMatches,

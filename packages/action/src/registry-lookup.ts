@@ -18,6 +18,7 @@ import {
   registryLookupUrls,
   weeklyDownloads,
 } from "@pharn-ci/core";
+import { readCapped } from "@pharn-ci/node-io";
 
 /** One request is cut off after this long, body included. */
 export const REGISTRY_TIMEOUT_MS = 5000;
@@ -54,31 +55,6 @@ function allowedLookupUrl(url: string): boolean {
   );
 }
 
-/** The body as UTF-8 text, or null when it is longer than the cap (the stream is cancelled at once). */
-async function readCapped(response: Response): Promise<string | null> {
-  if (response.body === null) return "";
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > REGISTRY_MAX_BODY_BYTES) {
-      await reader.cancel().catch(() => {});
-      return null;
-    }
-    chunks.push(value);
-  }
-  const bytes = new Uint8Array(total);
-  let at = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, at);
-    at += chunk.byteLength;
-  }
-  return new TextDecoder("utf-8").decode(bytes);
-}
-
 /** One GET of a registry URL. A URL off the lookup hosts is never fetched (a network error). */
 export async function registryGet(deps: RegistryDeps, url: string): Promise<RegistryAnswer> {
   const doFetch = deps.fetch;
@@ -100,7 +76,7 @@ export async function registryGet(deps: RegistryDeps, url: string): Promise<Regi
     return { kind: "response", status: response.status };
   }
   try {
-    const body = await readCapped(response);
+    const body = await readCapped(response, REGISTRY_MAX_BODY_BYTES);
     return body === null ? { kind: "response", status: 200, tooLarge: true } : { kind: "response", status: 200, body };
   } catch {
     return signal.aborted ? { kind: "timeout" } : { kind: "network" };

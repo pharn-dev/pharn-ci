@@ -15,6 +15,7 @@
  * come back besides the body, and the callers decide what to say.
  */
 import { VERSION } from "@pharn-ci/core";
+import { readCapped } from "@pharn-ci/node-io";
 
 /** The audience of the OIDC token. Fixed: the `app-url` input never changes it. */
 export const APP_AUDIENCE = "pharn.dev";
@@ -252,34 +253,9 @@ async function attempt(deps: AppClientDeps, request: AppRequest): Promise<AppRes
     return answer;
   }
   try {
-    const read = await readCapped(response);
+    const read = await readCapped(response, APP_MAX_BODY_BYTES);
     return read === null ? { ...answer, tooLarge: true as const } : { ...answer, body: read };
   } catch {
     return signal.aborted ? { kind: "timeout" } : { kind: "network" };
   }
-}
-
-/** The body as UTF-8 text, or null when it is longer than the cap (the stream is cancelled at once). */
-async function readCapped(response: Response): Promise<string | null> {
-  if (response.body === null) return "";
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > APP_MAX_BODY_BYTES) {
-      await reader.cancel().catch(() => {});
-      return null;
-    }
-    chunks.push(value);
-  }
-  const bytes = new Uint8Array(total);
-  let at = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, at);
-    at += chunk.byteLength;
-  }
-  return new TextDecoder("utf-8").decode(bytes);
 }

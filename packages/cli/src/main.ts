@@ -1,60 +1,37 @@
 import { parseArgs } from "node:util";
 import {
-  type AgentConfigSources,
-  agentConfigSecretPaths,
-  agentInstructionPaths,
   applyPolicy,
   type CheckInput,
   COVERAGE_FORMAT_SELECTIONS,
   ConfigError,
-  type ConfigSource,
   check,
-  consistencySeverity,
-  DEPENDENCY_SOURCE_LIMITS,
   type DiffFile,
   type DirEntry,
   escapeLogLine,
   escapeLogText,
   gitDiffArgs,
   type InputErrorText,
-  type PharnConfig,
-  type PolicySettingsSources,
   type PythonIndexRun,
   type PythonSourceFile,
-  type PythonTestIndex,
-  parseConfig,
   parseExcludePattern,
-  parseLsTreeSizes,
-  parseLsTreeSymlinks,
-  policySettingsPaths,
   type RawInputs,
   readDiffChunks,
   renderMarkdown,
   resolveDependencySettings,
   resolveInputs,
-  resolveTestIntegrityMode,
-  type StaleInstructionSources,
-  scanAgentSetup,
-  selectDependencyPaths,
-  type TestSources,
-  unavailableTestSources,
   VERSION,
 } from "@pharn-ci/core";
 import {
-  configCopyInUse,
   type FileStamp,
+  gatherSources,
   gitChunks,
-  indexPythonTestSources,
-  indexPythonTests,
+  headIsInBase,
+  loadConfigInUse,
   lstatPath,
   type PathStat,
-  readAgentConfigSources,
   readCoverageFiles,
   readDiscoveredCoverage,
   readPolicyFile,
-  readPolicySettingsSources,
-  readStaleInstructionSources,
-  readTestSources,
 } from "@pharn-ci/node-io";
 import { readJunit, readQuarantineFile, runTestCommand } from "./testCommand.js";
 
@@ -325,7 +302,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   // and hide every change from the diff-based checks (review finding 13). Only an empty diff can mean that, so git is
   // asked only then. The diff is of commits only (base...HEAD), never of the working tree, as in the action.
   let diff: CheckInput["diff"] = { parsed: diffFiles };
-  if (diffFiles.length === 0 && (await headIsInBase(base, deps))) {
+  if (diffFiles.length === 0 && (await headIsInBase(deps, base))) {
     const named = values.base === undefined ? `the base "${base}"` : `--base "${base}"`;
     diff = {
       unavailable:
@@ -333,13 +310,19 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
         "pass --base with the branch or commit the change is based on",
     };
   }
-  const { config, configSource, headConfigExclude } = await loadConfigInUse(
-    values.config,
+  // The config the check runs with, and which copy it is (CORE-95), as the action decides it. An explicit --config is
+  // relative to where you run the CLI, the default to the repo root; errors name the absolute path.
+  const configFile = configPath ?? deps.resolvePath(repoRoot, ".pharn/ci.yml");
+  const { config, configSource, headConfigExclude } = await loadConfigInUse(deps, {
+    path: configFile,
+    name: configFile,
+    explicit: configPath !== undefined,
+    configPath,
     repoRoot,
-    deps,
     // Only a base the caller names decides the copy; without --base the working tree's config is read, as before.
-    values.base === undefined || "unavailable" in diff ? null : { files: diffFiles, base },
-  );
+    diff: values.base === undefined || "unavailable" in diff ? null : diffFiles,
+    base,
+  });
   // With no coverage path set anywhere, the report is looked for at the discovery candidates.
   const resolved = resolveInputs(config, raw, FLAG_ERRORS, { discoverCoverage: true });
   if (!resolved.ok) throw resolved.errors[0];
@@ -400,137 +383,27 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     coverage = { files: coverageFiles, format: coverageFormat };
   }
 
-  // The text of the touched test and test-config files, for the base-and-head signals. Mode off reads nothing.
-  let testSources: TestSources | undefined;
-  let pythonTestIndex: PythonTestIndex | undefined;
-  if (resolveTestIntegrityMode(testIntegrityMode).mode !== "off") {
-    if ("unavailable" in diff) {
-      testSources = unavailableTestSources("the diff is unavailable");
-    } else if (deps.gitBatch === undefined) {
-      testSources = unavailableTestSources("reading git objects is not available");
-    } else {
-      testSources = await readTestSources(
-        { git: (args) => deps.git(args), gitBatch: deps.gitBatch },
-        { base, head: "HEAD", diff: diffFiles },
-      );
-      if ("unavailable" in testSources.base) {
-        deps.stderr(
-          `pharn-ci: could not read the test and test-config files from git, so they are not compared: ${testSources.base.unavailable}\n`,
-        );
-      }
-      // The Python test files of the sources, indexed by one interpreter run; nothing runs for JS/TS-only changes.
-      pythonTestIndex = await indexPythonTestSources(testSources, deps.indexPython ?? indexPythonTests);
-    }
-  }
   // `--full-name -- :/` lists the whole repository relative to its root wherever the CLI runs, so coverage
   // paths are compared with the same names from a subdirectory.
   const lsFiles = await git(deps, ["ls-files", "-z", "--full-name", "--", ":/"], "git ls-files failed");
   const repoFiles = lsFiles.split("\0").filter((p) => p !== "");
 
-  // The committed text of the agent config files, for the secret scan (check A7), always at HEAD. Nothing is read
-  // without a batch git runner or when no tracked path is a scannable agent config file.
-  let agentConfigSources: AgentConfigSources | undefined;
-  if (deps.gitBatch !== undefined) {
-    const agentConfigPaths = agentConfigSecretPaths(scanAgentSetup(repoFiles));
-    if (agentConfigPaths.length > 0) {
-      agentConfigSources = await readAgentConfigSources({ gitBatch: deps.gitBatch }, agentConfigPaths);
-      if ("unavailable" in agentConfigSources) {
-        deps.stderr(
-          `pharn-ci: could not read the agent config files from git, so they are not scanned for secrets: ${agentConfigSources.unavailable}\n`,
-        );
-      }
-    }
-  }
-
-  // The committed text of the agent instruction files, for org-policy rule P07, always at HEAD and in a call of its own.
-  // Only under a policy with P07 in effect (--policy-file) and with a directory that holds two instruction files.
-  let agentInstructionSources: AgentConfigSources | undefined;
-  if (deps.gitBatch !== undefined && policy !== undefined && consistencySeverity(policy).severity !== null) {
-    const instructionPaths = agentInstructionPaths(scanAgentSetup(repoFiles));
-    if (instructionPaths.length > 0) {
-      agentInstructionSources = await readAgentConfigSources({ gitBatch: deps.gitBatch }, instructionPaths);
-      if ("unavailable" in agentInstructionSources) {
-        deps.stderr(
-          `pharn-ci: could not read the agent instruction files from git, so P07 did not compare them: ${agentInstructionSources.unavailable}\n`,
-        );
-      }
-    }
-  }
-
-  // Stale instructions (SI01 to SI04): the committed instruction files, the root package.json and Makefile, and SI04's
-  // commit times, in calls of their own. Only with a batch git runner and a diff; nothing read is printed.
-  let staleInstructionSources: StaleInstructionSources | undefined;
-  if (deps.gitBatch !== undefined && "parsed" in diff) {
-    staleInstructionSources = await readStaleInstructionSources(
-      { gitBatch: deps.gitBatch, git: (args) => deps.git(args) },
-      { repoFiles, diff: diff.parsed, base },
-    );
-    if (staleInstructionSources !== undefined && "unavailable" in staleInstructionSources.instructions) {
-      deps.stderr(
-        `pharn-ci: could not read the agent instruction files from git, so stale instructions are not checked: ${staleInstructionSources.instructions.unavailable}\n`,
-      );
-    }
-  }
-
-  // Dependency safety (A13): the manifests and lockfiles the change touches, at the merge base and at HEAD. Only D04 and
-  // D05 run: the CLI never makes a network call (AGENTS.md rule 5), so registry lookups are reported as off.
-  let dependencySources: TestSources | undefined;
-  const dependencyMode = resolveDependencySettings(dependencySettings).mode;
-  if (dependencyMode !== "never" && deps.gitBatch !== undefined && "parsed" in diff) {
-    const select = (files: readonly DiffFile[]) => selectDependencyPaths(files, repoFiles);
-    const selected = select(diff.parsed);
-    if (selected.base.length > 0 || selected.head.length > 0) {
-      dependencySources = await readTestSources(
-        { git: (args) => deps.git(args), gitBatch: deps.gitBatch },
-        { base, head: "HEAD", diff: diff.parsed, select, limits: DEPENDENCY_SOURCE_LIMITS },
-      );
-      if ("unavailable" in dependencySources.base) {
-        deps.stderr(
-          `pharn-ci: could not read the manifests and lockfiles from git, so dependency safety could not compare them: ${dependencySources.base.unavailable}\n`,
-        );
-      }
-      if (dependencyMode === "lookup") {
-        deps.stderr("pharn-ci: the CLI makes no network call, so dependency registry lookups (D01 to D03) are off\n");
-      }
-    }
-  }
-
-  // File sizes in HEAD, so an empty agent setup file can be reported. Optional: without them the check still runs. The
-  // raw text is kept: policy mode tells the tracked symbolic links from it.
-  let repoFileBytes: Map<string, number> | undefined;
-  let lsTreeText: string | null = null;
-  try {
-    lsTreeText = await deps.git(["ls-tree", "-r", "-l", "-z", "--full-tree", "HEAD"]);
-    repoFileBytes = parseLsTreeSizes(lsTreeText);
-  } catch (err) {
-    lsTreeText = null;
-    const firstLine = errorMessage(err).trim().split("\n")[0] ?? "";
-    deps.stderr(`pharn-ci: git ls-tree failed, so empty agent setup files are not reported: ${firstLine}\n`);
-  }
-
-  // E3 item 23 (policy settings): with a policy in force, the committed agent settings and MCP files, always at HEAD,
-  // for the rules P02 to P06. Nothing is read without a policy or a batch git runner.
-  let policySettingsSources: PolicySettingsSources | undefined;
-  if (
-    deps.gitBatch !== undefined &&
-    policy !== undefined &&
-    (policy.source === "app" || policy.source === "file") &&
-    policy.document !== null
-  ) {
-    const paths = policySettingsPaths(repoFiles, policy.document);
-    policySettingsSources =
-      paths.length === 0
-        ? { files: [], dropped: [] }
-        : await readPolicySettingsSources(
-            { gitBatch: deps.gitBatch },
-            paths,
-            lsTreeText === null ? null : parseLsTreeSymlinks(lsTreeText),
-          );
-    if ("unavailable" in policySettingsSources) {
-      deps.stderr(
-        `pharn-ci: could not read the agent settings files from git, so they are not checked against the org policy: ${policySettingsSources.unavailable}\n`,
-      );
-    }
+  // The sources the checks read from committed git objects, decided as in the action (CORE-136). The working tree is
+  // the head under review, so the files at HEAD are read whether or not the diff is available; nothing read is printed.
+  const gathered = await gatherSources(deps, {
+    diff,
+    base,
+    checkout: "head",
+    repoFiles,
+    testIntegrityMode,
+    dependencySettings,
+    policy,
+    log,
+    warn: log,
+  });
+  // Dependency safety runs D04 and D05 only: the CLI never makes a network call (AGENTS.md rule 5).
+  if (resolveDependencySettings(dependencySettings).mode === "lookup") {
+    log("pharn-ci: the CLI makes no network call, so dependency registry lookups (D01 to D03) are off");
   }
 
   // The JUnit results, read only with --junit; nothing read is printed but counts and paths.
@@ -543,25 +416,18 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     repoRoot,
     threshold,
     repoFiles,
-    ...(repoFileBytes === undefined ? {} : { repoFileBytes }),
-    ...(agentConfigSources === undefined ? {} : { agentConfigSources }),
-    ...(agentInstructionSources === undefined ? {} : { agentInstructionSources }),
-    ...(staleInstructionSources === undefined ? {} : { staleInstructionSources }),
+    ...gathered,
     ...(dependencySettings === undefined ? {} : { dependencySettings }),
-    ...(dependencySources === undefined ? {} : { dependencySources }),
     exclude,
     requireAgentSetup,
     ...(expectAgentSetup === undefined ? {} : { expectAgentSetup }),
     ...(testIntegrityMode === undefined ? {} : { testIntegrityMode }),
-    ...(testSources === undefined ? {} : { testSources }),
-    ...(pythonTestIndex === undefined ? {} : { pythonTestIndex }),
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
     // Absolute: core makes it repo-relative against repoRoot, or finds it outside the repo.
     ...(configPath === undefined ? {} : { configPath }),
     ...(configSource === undefined ? {} : { configSource }),
     ...(headConfigExclude === undefined ? {} : { headConfigExclude }),
     ...(policy === undefined ? {} : { policy }),
-    ...(policySettingsSources === undefined ? {} : { policySettingsSources }),
     ...(application === undefined || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored }),
     ...(application?.signalOverrides === undefined ? {} : { signalOverrides: application.signalOverrides }),
     ...(junit === undefined ? {} : { junit }),
@@ -573,87 +439,11 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   return report.verdict === "fail" ? EXIT_FAIL : EXIT_OK;
 }
 
-async function loadConfig(explicit: string | undefined, repoRoot: string, deps: CliDeps): Promise<PharnConfig> {
-  const path =
-    explicit !== undefined ? deps.resolvePath(deps.cwd, explicit) : deps.resolvePath(repoRoot, ".pharn/ci.yml");
-  const text = await deps.readFile(path);
-  if (text === null) {
-    if (explicit !== undefined) throw new ConfigError(`config file not found: ${path}`);
-    return {};
-  }
-  try {
-    return parseConfig(text);
-  } catch (err) {
-    throw new ConfigError(`${path}: ${errorMessage(err)}`);
-  }
-}
-
-/**
- * The config the check runs with, and which copy it is (CORE-95), as the action decides it: with `from` (a diff against
- * the base --base names), a change that edits the config in use is checked with its copy at the merge base, read from
- * git objects, and one that adds it with none; otherwise the working tree's copy is read as `loadConfig` reads it. A
- * copy at the merge base that cannot be read runs with none, and core says so; one that does not parse exits 2. When the
- * check does not run with the working tree's copy, that copy's exclusions are kept for TI14 alone.
- */
-async function loadConfigInUse(
-  explicit: string | undefined,
-  repoRoot: string,
-  deps: CliDeps,
-  from: { files: readonly DiffFile[]; base: string } | null,
-): Promise<{ config: PharnConfig; configSource?: ConfigSource; headConfigExclude?: string[] }> {
-  const path =
-    explicit !== undefined ? deps.resolvePath(deps.cwd, explicit) : deps.resolvePath(repoRoot, ".pharn/ci.yml");
-  const copy = await configCopyInUse(deps, {
-    diff: from === null ? null : from.files,
-    base: from?.base,
-    configPath: explicit === undefined ? undefined : path,
-    repoRoot,
-  });
-  if (copy.source === "working-tree") return { config: await loadConfig(explicit, repoRoot, deps) };
-  const headConfigExclude = headExclusions(await deps.readFile(path));
-  const head = headConfigExclude === undefined ? {} : { headConfigExclude };
-  if (copy.source !== "merge-base") return { config: {}, configSource: copy.source, ...head };
-  try {
-    return { config: parseConfig(copy.text), configSource: "merge-base", ...head };
-  } catch (err) {
-    throw new ConfigError(`${copy.path} at the merge base: ${errorMessage(err)}`);
-  }
-}
-
-/** The `coverage.exclude` patterns of a config's text, or undefined when there is no text or it does not parse. */
-function headExclusions(text: string | null): string[] | undefined {
-  if (text === null) return undefined;
-  try {
-    return parseConfig(text).coverage?.exclude;
-  } catch {
-    return undefined;
-  }
-}
-
 async function git(deps: CliDeps, args: string[], context: string): Promise<string> {
   try {
     return await deps.git(args);
   } catch (err) {
     throw gitFailure(args, context, err);
-  }
-}
-
-/** A full git object id (SHA-1 or SHA-256), as git prints it. */
-const OBJECT_ID = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
-
-/**
- * True only when git says HEAD has no commit the base lacks: the merge base of the base and HEAD is HEAD itself, so
- * the base is HEAD or a descendant of it. Asked with `merge-base` and `rev-parse`, which the shared git runner allows
- * (it refuses `rev-list`). Only two printed commit ids that are equal count; any other answer, or a failed call, is
- * unknown and false: the diff is then used as it is.
- */
-async function headIsInBase(base: string, deps: CliDeps): Promise<boolean> {
-  try {
-    const mergeBase = (await deps.git(["merge-base", "--end-of-options", base, "HEAD"])).trim();
-    const head = (await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", "HEAD^{commit}"])).trim();
-    return OBJECT_ID.test(mergeBase) && mergeBase === head;
-  } catch {
-    return false;
   }
 }
 

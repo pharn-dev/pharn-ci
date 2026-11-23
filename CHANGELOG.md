@@ -11,6 +11,15 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- The CLI and the Action gather what the checks read with one shared function (CORE-136), so they no longer differ on
+  the same repository. The Action now scans the agent config files for secrets (A7), and reads the agent instruction
+  (P07) and settings files (P02 to P06), at `HEAD` also when there is no diff to measure because the checkout is still
+  the head under review: a `base-ref` that resolves to `HEAD` or after it, or a run with no base (a push without
+  `base-ref`). Before, it reported `AGENT_CONFIG_SECRET_UNSCANNED` there; the CLI already scanned. PR-number mode, a
+  compare-API diff and a `pull_request_target` checkout of the base still read nothing and say so. The CLI now logs a
+  missing Python interpreter (or another unavailable Python test index) on stderr, as the Action logs it; it was
+  silent. Under `--policy-file` the CLI also reads the files rule P13 compares, which it does not run without a pull
+  request, and `--dependencies lookup` always says on stderr that the CLI makes no registry lookups.
 - Policy findings and messages are simpler (CORE-123). P09 no longer reports an edited agent settings or MCP file that
   complies (`info`) or that supplies a required deny rule or hook (`warn`); its block and warn entries for a file that
   fails P02 to P06 or could not be checked are unchanged. `POLICY_OVERRIDE_IGNORED` names each setting and no longer

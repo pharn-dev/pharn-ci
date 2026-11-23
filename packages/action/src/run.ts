@@ -1,14 +1,8 @@
 import {
-  type AgentConfigSources,
   type AgentPrFacts,
-  agentConfigSecretPaths,
-  agentInstructionPaths,
   applyPolicy,
   type CheckInput,
-  type ConfigSource,
   check,
-  consistencySeverity,
-  DEPENDENCY_SOURCE_LIMITS,
   type DependencyLookups,
   type DependencySettingsLayers,
   type DiffFile,
@@ -18,54 +12,37 @@ import {
   gitDiffArgs,
   type InputErrorText,
   type JunitResults,
-  type PharnConfig,
   type PolicyFileBase,
-  type PolicySettingsSources,
   type PythonIndexRun,
   type PythonSourceFile,
-  parseConfig,
   parseExcludePattern,
   parseJunitSources,
-  parseLsTreeSizes,
-  parseLsTreeSymlinks,
   parseUnifiedDiff,
   planDependencyLookups,
-  policySettingsPaths,
-  pythonNotFoundStopsComparison,
   type RawInputs,
   REGISTRY_LOOKUP_HOSTS,
   type Report,
-  type ResolvedPolicy,
   readDiffChunks,
   renderMarkdown,
   resolveDependencySettings,
   resolveInputs,
-  resolveTestIntegrityMode,
-  type StaleInstructionSources,
-  scanAgentSetup,
-  selectDependencyPaths,
-  selectSelfModificationPaths,
-  type TestIntegrityModeSettings,
   type TestSources,
-  unavailableTestSources,
   VERSION,
   validateAcceptLabel,
   withUploadOutcome,
 } from "@pharn-ci/core";
 import {
-  configCopyInUse,
+  gatherSources,
   gitChunks,
-  indexPythonTestSources,
-  indexPythonTests,
+  type HeadCheckout,
+  headIsInBase,
+  loadConfigInUse,
+  OBJECT_ID,
   type PathStat,
-  readAgentConfigSources,
   readCoverageFiles,
   readDiscoveredCoverage,
   readJunitFiles,
   readPolicyFileAt,
-  readPolicySettingsSources,
-  readStaleInstructionSources,
-  readTestSources,
 } from "@pharn-ci/node-io";
 import { applyAcceptLabel } from "./accept-label.js";
 import { gatherAgentPrFacts } from "./agent-pr.js";
@@ -340,7 +317,23 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   // holds no edit of the pull request's and is read as it is.
   const prNumberMode = !pr && prNumber !== undefined;
   const earlyDiff = prNumberMode ? undefined : await getDiff(baseRefInput, deps, undefined, configInput);
-  const { config, configSource, headConfigExclude } = await loadConfigInUse(configInput || undefined, deps, earlyDiff);
+  // With no local diff (an unavailable diff, PR-number mode) or a diff that leaves it alone, the working tree's copy is
+  // read; a missing file the input names fails the step (like the CLI's --config), so a typo cannot drop a threshold.
+  const configName = configInput || DEFAULT_CONFIG;
+  const { config, configSource, headConfigExclude } = await loadConfigInUse(deps, {
+    path: deps.resolvePath(deps.workspace, configName),
+    name: configName,
+    explicit: configInput !== "",
+    configPath: configInput || undefined,
+    repoRoot: deps.workspace,
+    diff:
+      earlyDiff === undefined || "unavailable" in earlyDiff.diff
+        ? null
+        : "parsed" in earlyDiff.diff
+          ? earlyDiff.diff.parsed
+          : parseUnifiedDiff(earlyDiff.diff.text),
+    base: earlyDiff?.localBase,
+  });
 
   // An empty input is not given: the config, then the default, applies.
   const rawInputs: RawInputs = {
@@ -418,55 +411,30 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   }
 
   const repoFiles = await trackedFiles(target, deps);
-  // File sizes in HEAD, so an empty agent setup file can be reported. Optional: without them the check still runs.
-  // PR-number mode skips them: the checkout is not the PR, so its HEAD sizes would describe other files.
-  const lsTree = target
-    ? null
-    : await deps.git(["ls-tree", "-r", "-l", "-z", "--full-tree", "HEAD"]).catch((err: unknown) => {
-        deps.warning(`git ls-tree failed, so empty agent setup files are not reported: ${String(err)}`);
-        return null;
-      });
-
-  const { diff, localBase } = earlyDiff ?? (await getDiff(baseRefInput, deps, target, configInput));
-  const testSources = await gatherTestSources(deps, { diff, localBase, target, testIntegrityMode });
-  const agentConfigSources = await gatherAgentConfigSources(deps, { repoFiles, diff, target });
-  const policySettingsSources = await gatherPolicySettingsSources(deps, { repoFiles, diff, target, policy, lsTree });
-  // The agent instruction files (rule P07), in batch calls of their own, so check A7 never sees Markdown.
-  const agentInstructionSources = await gatherAgentInstructionSources(deps, { repoFiles, diff, target, policy });
-  // The merge-base and head text of the agent settings, MCP, workflow and CODEOWNERS files the change touches (rule P13).
-  const selfModificationSources = await gatherSelfModificationSources(deps, { diff, localBase, target, policy });
-  // Stale instructions (SI01 to SI04): the committed instruction files, the root manifests and SI04's commit times.
-  const staleInstructionSources = await gatherStaleInstructionSources(deps, { repoFiles, diff, localBase, target });
-  // Dependency safety (A13): the touched manifests and lockfiles, and, only in mode lookup, the registry lookups.
-  const dependencySources = await gatherDependencySources(deps, {
+  const { diff, localBase, checkout } = earlyDiff ?? (await getDiff(baseRefInput, deps, target, configInput));
+  // The sources the checks read from committed git objects, decided as in the CLI (CORE-136). In PR-number mode the
+  // checkout is not the PR, so nothing at its HEAD is read (not even the file sizes); nothing read is logged.
+  const gathered = await gatherSources(deps, {
     diff,
-    localBase,
-    target,
+    base: localBase,
+    checkout,
     repoFiles,
+    testIntegrityMode,
     dependencySettings,
+    policy,
+    log: (line) => deps.info(line),
+    warn: (line) => deps.warning(line),
   });
+  // Dependency safety (A13): only in mode lookup, the registry lookups of the touched manifests and lockfiles.
   const dependencyLookups =
-    dependencySources === undefined || !("parsed" in diff)
+    gathered.dependencySources === undefined || !("parsed" in diff)
       ? undefined
       : await gatherDependencyLookups(deps, {
           diff: diff.parsed,
-          sources: dependencySources,
+          sources: gathered.dependencySources,
           repoFiles,
           dependencySettings,
         });
-  // The Python test files of the sources, indexed by one interpreter run; nothing runs for JS/TS-only changes.
-  const pythonTestIndex =
-    testSources === undefined
-      ? undefined
-      : await indexPythonTestSources(testSources, deps.indexPython ?? indexPythonTests);
-  if (pythonTestIndex !== undefined && !pythonTestIndex.available) {
-    // With a modified .py test file and no interpreter, TI02 and TI05 did not run at all (an error in mode block).
-    deps.info(
-      "parsed" in diff && pythonNotFoundStopsComparison(diff.parsed, pythonTestIndex)
-        ? "pharn-ci: no Python interpreter was found (python-not-found), so TI02 and TI05 did not run"
-        : `pharn-ci: the Python test index is unavailable (${pythonTestIndex.reason}), so .py test files are not compared`,
-    );
-  }
 
   // The agent PR facts are gathered on every run, before check(): with them check() detects an agent PR once and uses it
   // for the agent fields of `meta` and for the org policy's protected paths (rule P11). The org policy's lists add to
@@ -499,32 +467,24 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     repoRoot: deps.workspace,
     threshold,
     repoFiles,
-    ...(lsTree === null ? {} : { repoFileBytes: parseLsTreeSizes(lsTree) }),
+    ...gathered,
     exclude,
     requireAgentSetup,
     ...(expectAgentSetup === undefined ? {} : { expectAgentSetup }),
     ...(testIntegrityMode === undefined ? {} : { testIntegrityMode }),
-    ...(testSources === undefined ? {} : { testSources }),
-    ...(agentConfigSources === undefined ? {} : { agentConfigSources }),
-    ...(agentInstructionSources === undefined ? {} : { agentInstructionSources }),
-    ...(pythonTestIndex === undefined ? {} : { pythonTestIndex }),
     ...(coverageRoot === undefined ? {} : { coverageRoot }),
     ...(configInput === "" ? {} : { configPath: configInput }),
     ...(configSource === undefined ? {} : { configSource }),
     ...(headConfigExclude === undefined ? {} : { headConfigExclude }),
     ...(policy === undefined ? {} : { policy }),
-    ...(policySettingsSources === undefined ? {} : { policySettingsSources }),
     ...(application === undefined || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored }),
     ...(application?.signalOverrides === undefined ? {} : { signalOverrides: application.signalOverrides }),
     agentPrFacts,
     ...(policyFileBase === undefined ? {} : { policyFileBase }),
-    ...(selfModificationSources === undefined ? {} : { selfModificationSources }),
-    ...(staleInstructionSources === undefined ? {} : { staleInstructionSources }),
     ...(junit === undefined ? {} : { junit }),
     // Only the app's own answer carries a quarantine list; a pull request has no way to add one.
     ...(junit === undefined || quarantine === undefined ? {} : { quarantine }),
     ...(dependencySettings === undefined ? {} : { dependencySettings }),
-    ...(dependencySources === undefined ? {} : { dependencySources }),
     ...(dependencyLookups === undefined ? {} : { dependencyLookups }),
   };
   const runMetaBase = runMeta(deps.context, { baseRef: baseRefInput, ...(target === undefined ? {} : { target }) });
@@ -695,122 +655,6 @@ async function gatherJunit(deps: ActionDeps, patterns: readonly string[]): Promi
 }
 
 /**
- * The text of the test and test-config files the change touches, for the base-and-head signals; undefined when the
- * effective test-integrity mode is off (nothing is gathered). Only a diff parsed from local git can be read from
- * committed git objects: the compare API and PR-number mode give an unavailable marker, and no GitHub API call is made.
- */
-async function gatherTestSources(
-  deps: ActionDeps,
-  from: {
-    diff: CheckInput["diff"];
-    localBase: string | undefined;
-    target: PrNumberTarget | undefined;
-    testIntegrityMode: TestIntegrityModeSettings | undefined;
-  },
-): Promise<TestSources | undefined> {
-  if (resolveTestIntegrityMode(from.testIntegrityMode).mode === "off") return undefined;
-  const { diff, localBase } = from;
-  if (from.target) return unavailableTestSources("pr-number mode: the diff came from the GitHub API");
-  if ("text" in diff) return unavailableTestSources("the diff came from the GitHub compare API");
-  if ("unavailable" in diff) return unavailableTestSources("the diff is unavailable");
-  if (deps.gitBatch === undefined || localBase === undefined) {
-    return unavailableTestSources("reading git objects is not available");
-  }
-  const sources = await readTestSources(
-    { git: (args) => deps.git(args), gitBatch: deps.gitBatch },
-    { base: localBase, head: "HEAD", diff: diff.parsed },
-  );
-  if ("unavailable" in sources.base) {
-    deps.info(
-      `pharn-ci: could not read the test and test-config files from git, so they are not compared: ${sources.base.unavailable}`,
-    );
-  }
-  return sources;
-}
-
-/**
- * The merge-base and head text of the agent settings, MCP, workflow and CODEOWNERS files the change touches, for
- * org-policy rule P13; undefined when the deps carry no batch git runner or no policy is in force (P13 is not asked).
- * Like the test sources, only a diff parsed from local git can be read from committed objects: PR-number mode, the
- * compare API and a missing diff give an unavailable marker (P13 then fails closed), and no GitHub API call is made. A
- * diff that touches none of those files makes no git call.
- */
-async function gatherSelfModificationSources(
-  deps: ActionDeps,
-  from: {
-    diff: CheckInput["diff"];
-    localBase: string | undefined;
-    target: PrNumberTarget | undefined;
-    policy: ResolvedPolicy | undefined;
-  },
-): Promise<TestSources | undefined> {
-  const { policy, diff, localBase } = from;
-  if (deps.gitBatch === undefined) return undefined;
-  if (policy === undefined || (policy.source !== "app" && policy.source !== "file") || policy.document === null) {
-    return undefined;
-  }
-  if (from.target) return unavailableTestSources("pr-number mode: the diff came from the GitHub API");
-  if ("text" in diff) return unavailableTestSources("the diff came from the GitHub compare API");
-  if ("unavailable" in diff) return unavailableTestSources("the diff is unavailable");
-  if (localBase === undefined) return unavailableTestSources("reading git objects is not available");
-  const selected = selectSelfModificationPaths(diff.parsed);
-  if (selected.base.length === 0 && selected.head.length === 0) {
-    return { base: { files: [], dropped: [] }, head: { files: [], dropped: [] } };
-  }
-  const sources = await readTestSources(
-    { git: (args) => deps.git(args), gitBatch: deps.gitBatch },
-    { base: localBase, head: "HEAD", diff: diff.parsed, select: selectSelfModificationPaths },
-  );
-  if ("unavailable" in sources.base) {
-    deps.info(
-      `pharn-ci: could not read the agent settings, MCP, workflow and CODEOWNERS files from git, so rule P13 could not compare them: ${sources.base.unavailable}`,
-    );
-  }
-  return sources;
-}
-
-/**
- * The merge-base and head text of the manifests and lockfiles the change touches, for dependency safety (A13), with the
- * dependency caps (32 MiB a file); undefined when the effective mode is `never` or the deps carry no batch git runner.
- * Only a diff parsed from local git can be read from committed objects: PR-number mode, the compare API and a missing
- * diff give an unavailable marker (check() then names any touched manifest as unread), and no GitHub API call is made.
- * A diff that touches no manifest or lockfile makes no git call.
- */
-async function gatherDependencySources(
-  deps: ActionDeps,
-  from: {
-    diff: CheckInput["diff"];
-    localBase: string | undefined;
-    target: PrNumberTarget | undefined;
-    repoFiles: readonly string[];
-    dependencySettings: DependencySettingsLayers | undefined;
-  },
-): Promise<TestSources | undefined> {
-  if (resolveDependencySettings(from.dependencySettings).mode === "never") return undefined;
-  if (deps.gitBatch === undefined) return undefined;
-  const { diff, localBase } = from;
-  if (from.target) return unavailableTestSources("pr-number mode: the diff came from the GitHub API");
-  if ("text" in diff) return unavailableTestSources("the diff came from the GitHub compare API");
-  if ("unavailable" in diff) return unavailableTestSources("the diff is unavailable");
-  if (localBase === undefined) return unavailableTestSources("reading git objects is not available");
-  const select = (files: readonly DiffFile[]) => selectDependencyPaths(files, from.repoFiles);
-  const selected = select(diff.parsed);
-  if (selected.base.length === 0 && selected.head.length === 0) {
-    return { base: { files: [], dropped: [] }, head: { files: [], dropped: [] } };
-  }
-  const sources = await readTestSources(
-    { git: (args) => deps.git(args), gitBatch: deps.gitBatch },
-    { base: localBase, head: "HEAD", diff: diff.parsed, select, limits: DEPENDENCY_SOURCE_LIMITS },
-  );
-  if ("unavailable" in sources.base) {
-    deps.info(
-      `pharn-ci: could not read the manifests and lockfiles from git, so dependency safety could not compare them: ${sources.base.unavailable}`,
-    );
-  }
-  return sources;
-}
-
-/**
  * The registry lookups of dependency safety (D01 to D03), only in mode `lookup` and only for the packages
  * `planDependencyLookups` names (added, unscoped, on a registry): see registry-lookup.ts for what is sent. The HEAD commit
  * time comes from git (`%ct`), never the clock; a failed read leaves it null and D02 is not judged. Undefined when the
@@ -850,185 +694,34 @@ async function gatherDependencyLookups(
 }
 
 /**
- * The committed text of the agent config files, for the secret scan (check A7); undefined when the deps carry no batch
- * git runner or no tracked path is a scannable agent config file (nothing is read, nothing is said). Only a diff parsed
- * from local git means the checkout is the pull request head, so only then are the files read, at HEAD. Otherwise the
- * sources are unavailable with a fixed sentence, and no git call and no GitHub API call is made.
- */
-async function gatherAgentConfigSources(
-  deps: ActionDeps,
-  from: { repoFiles: readonly string[]; diff: CheckInput["diff"]; target: PrNumberTarget | undefined },
-): Promise<AgentConfigSources | undefined> {
-  if (deps.gitBatch === undefined) return undefined;
-  const paths = agentConfigSecretPaths(scanAgentSetup(from.repoFiles));
-  if (paths.length === 0) return undefined;
-  if (from.target) {
-    return {
-      unavailable:
-        "pr-number mode: the checkout is not the pull request head, so its committed agent config files were not read",
-    };
-  }
-  if ("text" in from.diff) {
-    return {
-      unavailable: "the diff came from the GitHub compare API, so the checkout may not be the pull request head",
-    };
-  }
-  if ("unavailable" in from.diff) {
-    return { unavailable: "the diff is unavailable, so the checkout may not be the pull request head" };
-  }
-  const sources = await readAgentConfigSources({ gitBatch: deps.gitBatch }, paths);
-  if ("unavailable" in sources) {
-    deps.info(
-      `pharn-ci: could not read the agent config files from git, so they are not scanned for secrets: ${sources.unavailable}`,
-    );
-  }
-  return sources;
-}
-
-/**
- * The committed agent settings and MCP files for policy mode (E3 item 23, policy settings), read only when a policy is in
- * force and, as for the secret scan, only when the checkout is the pull request head: a diff taken from local git. Item
- * 26's three guards come first and make no git call; each leaves the sources unavailable with a fixed sentence.
- */
-async function gatherPolicySettingsSources(
-  deps: ActionDeps,
-  from: {
-    repoFiles: readonly string[];
-    diff: CheckInput["diff"];
-    target: PrNumberTarget | undefined;
-    policy: ResolvedPolicy | undefined;
-    lsTree: string | null;
-  },
-): Promise<PolicySettingsSources | undefined> {
-  const { policy } = from;
-  if (deps.gitBatch === undefined) return undefined;
-  if (policy === undefined || (policy.source !== "app" && policy.source !== "file") || policy.document === null) {
-    return undefined;
-  }
-  if (from.target) {
-    return {
-      unavailable:
-        "pr-number mode: the checkout is not the pull request head, so its committed agent settings files were not read",
-    };
-  }
-  if ("text" in from.diff) {
-    return {
-      unavailable: "the diff came from the GitHub compare API, so the checkout may not be the pull request head",
-    };
-  }
-  if ("unavailable" in from.diff) {
-    return { unavailable: "the diff is unavailable, so the checkout may not be the pull request head" };
-  }
-  const paths = policySettingsPaths(from.repoFiles, policy.document);
-  if (paths.length === 0) return { files: [], dropped: [] };
-  const sources = await readPolicySettingsSources(
-    { gitBatch: deps.gitBatch },
-    paths,
-    from.lsTree === null ? null : parseLsTreeSymlinks(from.lsTree),
-  );
-  if ("unavailable" in sources) {
-    deps.info(
-      `pharn-ci: could not read the agent settings files from git, so they are not checked against the org policy: ${sources.unavailable}`,
-    );
-  }
-  return sources;
-}
-
-/**
- * The committed text of the agent instruction files, for org-policy rule P07; undefined when nothing is to be compared:
- * no batch git runner, no policy with P07 in effect, or no directory with two instruction files. Like the agent config
- * files, they are read at HEAD only from a diff parsed from local git; otherwise the sources are unavailable with a fixed
- * sentence, and no git call, no GitHub API call and no log line is made. The paths go in batch calls of their own, and
- * nothing read is logged.
- */
-async function gatherAgentInstructionSources(
-  deps: ActionDeps,
-  from: {
-    repoFiles: readonly string[];
-    diff: CheckInput["diff"];
-    target: PrNumberTarget | undefined;
-    policy: ResolvedPolicy | undefined;
-  },
-): Promise<AgentConfigSources | undefined> {
-  if (deps.gitBatch === undefined) return undefined;
-  if (from.policy === undefined || consistencySeverity(from.policy).severity === null) return undefined;
-  const paths = agentInstructionPaths(scanAgentSetup(from.repoFiles));
-  if (paths.length === 0) return undefined;
-  if (from.target) {
-    return {
-      unavailable:
-        "pr-number mode: the checkout is not the pull request head, so its committed agent instruction files were not read",
-    };
-  }
-  if ("text" in from.diff) {
-    return {
-      unavailable: "the diff came from the GitHub compare API, so the checkout may not be the pull request head",
-    };
-  }
-  if ("unavailable" in from.diff) {
-    return { unavailable: "the diff is unavailable, so the checkout may not be the pull request head" };
-  }
-  const sources = await readAgentConfigSources({ gitBatch: deps.gitBatch }, paths);
-  if ("unavailable" in sources) {
-    deps.info(
-      `pharn-ci: could not read the agent instruction files from git, so P07 did not compare them: ${sources.unavailable}`,
-    );
-  }
-  return sources;
-}
-
-/**
- * What the stale-instruction signals (SI01 to SI04) read; undefined when they do not run: no batch git runner, PR-number
- * mode, or a diff that did not come from the local checkout (the compare API, or none), since the checkout may then not
- * be the pull request head. The reads are of committed objects in calls of their own, and nothing read is logged.
- */
-async function gatherStaleInstructionSources(
-  deps: ActionDeps,
-  from: {
-    repoFiles: readonly string[];
-    diff: CheckInput["diff"];
-    localBase: string | undefined;
-    target: PrNumberTarget | undefined;
-  },
-): Promise<StaleInstructionSources | undefined> {
-  if (deps.gitBatch === undefined || from.target || !("parsed" in from.diff)) return undefined;
-  const sources = await readStaleInstructionSources(
-    { gitBatch: deps.gitBatch, git: (args) => deps.git(args) },
-    {
-      repoFiles: from.repoFiles,
-      diff: from.diff.parsed,
-      ...(from.localBase === undefined ? {} : { base: from.localBase }),
-    },
-  );
-  if (sources !== undefined && "unavailable" in sources.instructions) {
-    deps.info(
-      `pharn-ci: could not read the agent instruction files from git, so stale instructions are not checked: ${sources.instructions.unavailable}`,
-    );
-  }
-  return sources;
-}
-
-/**
  * Diff of the change under test: base...HEAD from local git; the GitHub compare API is used only for a base that does
  * not resolve locally (a shallow checkout) or in PR-number mode. A base that resolves but whose local diff fails fails
  * the step. `localBase` is the revision the local git diff was taken against; set only when the diff was parsed from
- * local git.
+ * local git. `checkout` says whether the checkout's HEAD is the head under review (see `HeadCheckout`): it is whenever
+ * the base resolved in the checkout or there is no base; it may not be with a compare-API diff (or a failed compare) or a
+ * `pull_request_target` checkout of the base; it is not in PR-number mode.
  */
 async function getDiff(
   baseRefInput: string,
   deps: ActionDeps,
   target?: PrNumberTarget,
   configInput = "",
-): Promise<{ diff: CheckInput["diff"]; localBase?: string }> {
+): Promise<{ diff: CheckInput["diff"]; localBase?: string; checkout: HeadCheckout }> {
   // A leading "-" would reach git as an option (e.g. --output=<file>), not a revision.
   if (baseRefInput.startsWith("-")) throw new Error(`base-ref "${baseRefInput}" must not start with "-"`);
   // PR-number mode: the checkout is not the PR, so only the GitHub API can give the diff.
-  if (target) return { diff: await getTargetDiff(baseRefInput, target, deps) };
+  if (target) return { diff: await getTargetDiff(baseRefInput, target, deps), checkout: "pr-number" };
   const { context } = deps;
   const pr = context.payload.pull_request;
   const mergeGroup = context.payload.merge_group;
   const base = resolveBase(context, { baseRef: baseRefInput }).ref;
-  if (!base) return { diff: { unavailable: "no base to diff against (not a pull request; set the base-ref input)" } };
+  if (!base) {
+    // The checkout is the commit the event ran on, so its committed files are still the head's.
+    return {
+      diff: { unavailable: "no base to diff against (not a pull request; set the base-ref input)" },
+      checkout: "head",
+    };
+  }
 
   // pull_request checks out the merge commit (context.sha); pull_request_target checks out the base;
   // merge_group checks out the merge queue's temporary commit (merge_group.head_sha).
@@ -1049,6 +742,7 @@ async function getDiff(
             "pull_request_target cannot be measured safely: run pharn-ci on pull_request " +
             "(fork PRs get the job summary only); see SECURITY.md",
         },
+        checkout: "unknown",
       };
     }
   }
@@ -1072,7 +766,7 @@ async function getDiff(
     // A base that is HEAD or a descendant of it (base-ref: HEAD, or ${{ github.sha }}) gives an empty diff, which would
     // pass as NO_COVERABLE_CHANGES and hide every change from the diff-based checks (review finding 13). Only an empty
     // diff can mean that, so git is asked only then.
-    if (parsed.length === 0 && (await headIsInBase(localBase, deps))) {
+    if (parsed.length === 0 && (await headIsInBase(deps, localBase))) {
       const named = baseRefInput ? `base-ref "${baseRefInput}"` : `the base ${base}`;
       return {
         diff: {
@@ -1080,13 +774,15 @@ async function getDiff(
             `${named} resolves to HEAD or a descendant of HEAD, so there is no change to measure` +
             (baseRefInput ? "; set base-ref to the branch or commit the change is based on" : ""),
         },
+        // The base is HEAD or after it, but HEAD is still the head under review: its committed files are read.
+        checkout: "head",
       };
     }
-    return { diff: { parsed }, localBase };
+    return { diff: { parsed }, localBase, checkout: "head" };
   }
   // Reached only for a base that does not resolve locally (a shallow checkout).
   try {
-    return { diff: { text: await deps.api.compareDiff(`${base}...${head}`) } };
+    return { diff: { text: await deps.api.compareDiff(`${base}...${head}`) }, checkout: "unknown" };
   } catch (err) {
     // An explicit base-ref found neither locally nor by the API is most likely a typo: fail the
     // step like the CLI does, instead of reporting DIFF_UNAVAILABLE (a warning without a threshold).
@@ -1101,6 +797,7 @@ async function getDiff(
       diff: {
         unavailable: `could not get the diff for ${base}...${head} (use actions/checkout with fetch-depth: 0)`,
       },
+      checkout: "unknown",
     };
   }
 }
@@ -1122,25 +819,6 @@ async function getTargetDiff(
     }
     deps.warning(`could not fetch the diff from the GitHub API: ${String(err)}`);
     return { unavailable: `could not get the diff for ${base}...${target.headSha} from the GitHub API` };
-  }
-}
-
-/** A full git object id (SHA-1 or SHA-256), as git prints it. */
-const OBJECT_ID = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
-
-/**
- * True only when git says HEAD has no commit the base lacks: the merge base of the base and HEAD is HEAD itself, so
- * the base is HEAD or a descendant of it. Asked with `merge-base` and `rev-parse`, which the shared git runner allows
- * (it refuses `rev-list`). Only two printed commit ids that are equal count; any other answer, or a failed call, is
- * unknown and false: the diff is then used as it is.
- */
-async function headIsInBase(base: string, deps: ActionDeps): Promise<boolean> {
-  try {
-    const mergeBase = (await deps.git(["merge-base", "--end-of-options", base, "HEAD"])).trim();
-    const head = (await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", "HEAD^{commit}"])).trim();
-    return OBJECT_ID.test(mergeBase) && mergeBase === head;
-  } catch {
-    return false;
   }
 }
 
@@ -1437,72 +1115,6 @@ async function deleteDuplicates(deps: Pick<ActionDeps, "api" | "info" | "warning
 
 function errorText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
-}
-
-/**
- * The config input, or `.pharn/ci.yml` when it is empty. A missing default file is no config; a
- * missing file the input names fails the step (like the CLI's --config), so a typo cannot drop a
- * threshold held only in the config.
- */
-async function loadConfig(explicit: string | undefined, deps: ActionDeps): Promise<PharnConfig> {
-  const path = explicit ?? DEFAULT_CONFIG;
-  const text = await deps.readFile(deps.resolvePath(deps.workspace, path));
-  if (text === null) {
-    if (explicit !== undefined) throw new Error(`config file not found: ${path}`);
-    return {};
-  }
-  try {
-    return parseConfig(text);
-  } catch (err) {
-    throw new Error(`${path}: ${err instanceof Error ? err.message : String(err)}`);
-  }
-}
-
-/**
- * The config the check runs with, and which copy it is (CORE-95). A change that edits the config in use is checked with
- * its copy at the merge base, read from git objects; one that adds it is checked with none; with no local diff (an
- * unavailable diff, PR-number mode) or a diff that leaves it alone, the working tree's copy is read as `loadConfig`
- * reads it. A copy at the merge base that cannot be read runs with none, and core says so (an error under a threshold
- * or in mode block); one that does not parse fails the step. When the check does not run with the working tree's copy,
- * that copy's exclusions are kept for TI14 alone (`headConfigExclude`); a copy that does not parse gives none.
- */
-async function loadConfigInUse(
-  explicit: string | undefined,
-  deps: ActionDeps,
-  from: { diff: CheckInput["diff"]; localBase?: string } | undefined,
-): Promise<{ config: PharnConfig; configSource?: ConfigSource; headConfigExclude?: string[] }> {
-  const diff =
-    from === undefined || "unavailable" in from.diff
-      ? null
-      : "parsed" in from.diff
-        ? from.diff.parsed
-        : parseUnifiedDiff(from.diff.text);
-  const copy = await configCopyInUse(deps, {
-    diff,
-    base: from?.localBase,
-    configPath: explicit,
-    repoRoot: deps.workspace,
-  });
-  if (copy.source === "working-tree") return { config: await loadConfig(explicit, deps) };
-  const headText = await deps.readFile(deps.resolvePath(deps.workspace, explicit ?? DEFAULT_CONFIG));
-  const headConfigExclude = headExclusions(headText);
-  const head = headConfigExclude === undefined ? {} : { headConfigExclude };
-  if (copy.source !== "merge-base") return { config: {}, configSource: copy.source, ...head };
-  try {
-    return { config: parseConfig(copy.text), configSource: "merge-base", ...head };
-  } catch (err) {
-    throw new Error(`${copy.path} at the merge base: ${err instanceof Error ? err.message : String(err)}`);
-  }
-}
-
-/** The `coverage.exclude` patterns of a config's text, or undefined when there is no text or it does not parse. */
-function headExclusions(text: string | null): string[] | undefined {
-  if (text === null) return undefined;
-  try {
-    return parseConfig(text).coverage?.exclude;
-  } catch {
-    return undefined;
-  }
 }
 
 /** Entries of a list input separated by commas or newlines; surrounding spaces and blank entries are dropped. */

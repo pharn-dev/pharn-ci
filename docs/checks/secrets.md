@@ -17,9 +17,10 @@ secret-named key in a file whose other secrets are loaded from the environment (
 
 A message names the shape id and up to 5 locations (`path` and line), never the value, the key or any other file text.
 A file that could not be scanned is named in `AGENT_CONFIG_SECRET_UNSCANNED`: a file over 512 KiB, one over the caps, or a
-path git cannot read safely is an `error` (it may hide a secret), a binary or missing file a `warn`. The Action reads the
-files only when the diff came from the local checkout; in PR-number mode and with a compare-API diff the checkout may not
-be the pull request head, so the message says so and nothing is read. What the scan misses is in
+path git cannot read safely is an `error` (it may hide a secret), a binary or missing file a `warn`. The CLI and the Action
+read the files at `HEAD`, also when there is no diff to measure; in PR-number mode, with a compare-API diff and with a
+`pull_request_target` checkout of the base the Action's checkout may not be the pull request head, so the message says so
+and nothing is read. What the scan misses is in
 [docs/LIMITS.md](../LIMITS.md#secrets-in-agent-configs).
 
 The shapes and the redaction helpers (`findSecretSpans`, `redactSecrets`, `truncateUtf8`, `redactMessage`,

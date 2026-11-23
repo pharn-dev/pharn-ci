@@ -1,9 +1,13 @@
 import {
+  ConfigError,
+  type ConfigSource,
   configDiffState,
   configRepoPath,
   type DiffFile,
   decodeTestSourceText,
   isUnsafeTestSourcePath,
+  type PharnConfig,
+  parseConfig,
 } from "@pharn-ci/core";
 import { batchCheck, batchRead, type GitBatchDeps, OBJECT_ID } from "./gitBlobs.js";
 import { isUsableRevision } from "./policyFile.js";
@@ -142,4 +146,94 @@ export async function configCopyInUse(
   if (path === null || options.base === undefined || gitBatch === undefined) return { source: "unreadable" };
   const copy = await readConfigFileAt({ git: (args) => deps.git(args), gitBatch }, { base: options.base, path });
   return copy.kind === "text" ? { source: "merge-base", path, text: copy.text } : { source: "unreadable" };
+}
+
+/** Where the config in use is and how errors name it; the same for the CLI and the Action. */
+export interface ConfigFileLocation {
+  /** The absolute path of the config file. */
+  path: string;
+  /** How an error names the file (the CLI: the absolute path; the Action: the path as the input or the default writes it). */
+  name: string;
+  /** Named by a flag or an input: a missing file is then an error, so a typo cannot drop a threshold held only there. */
+  explicit: boolean;
+}
+
+/** The config a check runs with, which copy it is when not the working tree's, and that copy's exclusions for TI14. */
+export interface ConfigInUse {
+  config: PharnConfig;
+  configSource?: ConfigSource;
+  headConfigExclude?: string[];
+}
+
+/**
+ * The working tree's config: a missing default file is no config; a missing file a flag or an input names, or one that
+ * does not parse, is a `ConfigError`.
+ */
+export async function loadConfig(
+  deps: { readFile(path: string): Promise<string | null> },
+  location: ConfigFileLocation,
+): Promise<PharnConfig> {
+  const text = await deps.readFile(location.path);
+  if (text === null) {
+    if (location.explicit) throw new ConfigError(`config file not found: ${location.name}`);
+    return {};
+  }
+  try {
+    return parseConfig(text);
+  } catch (err) {
+    throw new ConfigError(`${location.name}: ${errorText(err)}`);
+  }
+}
+
+/**
+ * The config the check runs with, and which copy it is (CORE-95), the same for the CLI and the Action: a change that
+ * edits the config in use is checked with its copy at the merge base (`configCopyInUse`), one that adds it with none;
+ * with no diff, or a diff that leaves it alone, the working tree's copy is read as `loadConfig` reads it. A copy at the
+ * merge base that cannot be read runs with none, and core says so; one that does not parse is a `ConfigError`. When the
+ * check does not run with the working tree's copy, that copy's exclusions are kept for TI14 alone (`headConfigExclude`);
+ * a copy that does not parse gives none.
+ */
+export async function loadConfigInUse(
+  deps: {
+    git(args: string[]): Promise<string>;
+    gitBatch?: GitBatchDeps["gitBatch"] | undefined;
+    readFile(path: string): Promise<string | null>;
+  },
+  location: ConfigFileLocation & {
+    /** The config path as check() is given it (`CheckInput.configPath`); undefined for the default file. */
+    configPath: string | undefined;
+    repoRoot: string;
+    diff: readonly DiffFile[] | null;
+    base: string | undefined;
+  },
+): Promise<ConfigInUse> {
+  const copy = await configCopyInUse(deps, {
+    diff: location.diff,
+    base: location.base,
+    configPath: location.configPath,
+    repoRoot: location.repoRoot,
+  });
+  if (copy.source === "working-tree") return { config: await loadConfig(deps, location) };
+  const headConfigExclude = headExclusions(await deps.readFile(location.path));
+  const head = headConfigExclude === undefined ? {} : { headConfigExclude };
+  if (copy.source !== "merge-base") return { config: {}, configSource: copy.source, ...head };
+  try {
+    return { config: parseConfig(copy.text), configSource: "merge-base", ...head };
+  } catch (err) {
+    throw new ConfigError(`${copy.path} at the merge base: ${errorText(err)}`);
+  }
+}
+
+/** The `coverage.exclude` patterns of a config's text, or undefined when there is no text or it does not parse. */
+function headExclusions(text: string | null): string[] | undefined {
+  if (text === null) return undefined;
+  try {
+    return parseConfig(text).coverage?.exclude;
+  } catch {
+    return undefined;
+  }
+}
+
+function errorText(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }

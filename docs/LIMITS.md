@@ -1278,8 +1278,9 @@ for ten shapes of secret by prefix and position. It is a heuristic, not a secret
   `Bearer`; quote it, or the scheme word hides the value from S10.
 - **The files must be committed text.** A file over 512 KiB, a binary file, a path git cannot read safely, or one past the
   caps (200 files, 16 MiB) is named in `AGENT_CONFIG_SECRET_UNSCANNED` and not read.
-- **The Action reads the checkout's `HEAD`.** With a diff from the local checkout that is the pull request head; in
-  PR-number mode or with a compare-API diff it may not be, so nothing is read and the report says so.
+- **The Action reads the checkout's `HEAD`.** With a diff from the local checkout, or with no diff to measure (a base
+  that is `HEAD` or after it, no base), that is the head under review; in PR-number mode, with a compare-API diff or a
+  `pull_request_target` checkout of the base it may not be, so nothing is read and the report says so.
 - **An embedding with no batch git runner scans nothing.** The CLI and the Action gather the sources only when their
   deps carry a batch git runner (`gitBatch`); a program that calls `check()` itself passes `agentConfigSources` or gets
   no A7 message.
@@ -1770,8 +1771,9 @@ review of the instructions. What it misses:
   large or at an unsafe path is one path-less violation at P07's severity, because a pull request can cause it; a path
   that is not a file at `HEAD` is `info`. At most 50 violations are listed (the rest are counted), and the message names
   up to 20 files.
-- **The Action reads only with a local diff.** In PR-number mode and with a compare-API diff the checkout may not be the
-  pull request head, so nothing is read and one `info` violation says so.
+- **The Action reads only from the head under review.** In PR-number mode, with a compare-API diff and with a
+  `pull_request_target` checkout of the base the checkout may not be the pull request head, so nothing is read and one
+  `info` violation says so.
 - **P07 runs only under a policy.** With no policy, `policy: never`, an unavailable policy or P07 switched off, no
   instruction file is read. A `file:` policy never lowers it below `warn`.
 
