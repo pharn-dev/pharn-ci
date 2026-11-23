@@ -137,7 +137,7 @@ describe("CORE-69: the accept label lowers the per-file and truncation errors, n
         ]),
       },
       testSources: readable("tests/test_c.py", PY_BASE, PY_HEAD),
-      pythonTestIndex: { available: false, reason: "python-not-found", detail: "python3: command not found" },
+      pythonTestIndex: { available: false, reason: "python-not-found" },
     });
     const bothSides = await run({
       diff: { text: modified("src/a.test.ts", "@@ -5,0 +6 @@", ["+  expect(total([1])).toBe(1);"]) },

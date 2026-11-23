@@ -106,7 +106,7 @@ describe("CORE-69: the exported list of whole-run sentences matches what check()
             ]),
           },
           testSources: { base: side("tests/test_c.py", PY_BASE), head: side("tests/test_c.py", PY_HEAD) },
-          pythonTestIndex: { available: false, reason: "python-not-found", detail: "python3: command not found" },
+          pythonTestIndex: { available: false, reason: "python-not-found" },
         },
       ],
       [

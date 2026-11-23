@@ -96,7 +96,7 @@ function cases(): Case[] {
           ]),
         },
         testSources: readable("tests/test_c.py", PY_BASE, PY_HEAD),
-        pythonTestIndex: { available: false, reason: "python-not-found", detail: "python3: command not found" },
+        pythonTestIndex: { available: false, reason: "python-not-found" },
       },
     },
     {

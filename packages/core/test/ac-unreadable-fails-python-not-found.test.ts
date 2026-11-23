@@ -50,7 +50,7 @@ describe("CORE-69: no python3 while a Python test file is modified", () => {
         base: { files: [{ path: PATH, text: PY_BASE }], dropped: [] },
         head: { files: [{ path: PATH, text: PY_HEAD }], dropped: [] },
       },
-      pythonTestIndex: { available: false, reason: "python-not-found", detail: "python3: command not found" },
+      pythonTestIndex: { available: false, reason: "python-not-found" },
     } as unknown as Parameters<typeof check>[0]);
     expectValidReport(report);
     const r = report as unknown as Report;

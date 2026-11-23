@@ -61,7 +61,7 @@ describe("CORE-69: a modified Python test file keeps the per-file warning unless
     // Control: readable text with a python-not-found index is the whole-run error.
     const control = await run({
       testSources: READABLE,
-      pythonTestIndex: { available: false, reason: "python-not-found", detail: "python3: command not found" },
+      pythonTestIndex: { available: false, reason: "python-not-found" },
     });
     const controlMessages = control.messages.filter((m) => m.code === CODE);
     expect(controlMessages, "the control has one message").toHaveLength(1);
@@ -83,7 +83,7 @@ describe("CORE-69: a modified Python test file keeps the per-file warning unless
         "python-too-old index",
         {
           testSources: READABLE,
-          pythonTestIndex: { available: false, reason: "python-too-old", detail: "Python 3.6.9" },
+          pythonTestIndex: { available: false, reason: "python-too-old" },
         },
       ],
     ];

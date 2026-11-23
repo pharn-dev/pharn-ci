@@ -116,7 +116,7 @@ describe("CORE-69: the new errors leak no file text, carry a fix hint, and offer
         ]),
       },
       testSources: readable("tests/test_c.py", PY_BASE, PY_HEAD),
-      pythonTestIndex: { available: false, reason: "python-not-found", detail: "python3: command not found" },
+      pythonTestIndex: { available: false, reason: "python-not-found" },
     });
     const ac12 = await run({
       diff: { text: addOne("src/a.test.ts") },

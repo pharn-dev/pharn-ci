@@ -63,7 +63,7 @@ const PY_DIFF = `${[
   "-def test_empty():",
   "-    assert total([]) == 0",
 ].join("\n")}\n`;
-const NOT_FOUND = { available: false, reason: "python-not-found", detail: "python3: command not found" };
+const NOT_FOUND = { available: false, reason: "python-not-found" };
 
 async function run(input: Record<string, unknown>): Promise<Report> {
   const { check } = await import("./text-coverage.js");

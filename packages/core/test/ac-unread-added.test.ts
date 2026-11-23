@@ -262,7 +262,9 @@ describe("TEST_INTEGRITY_INDEX_UNAVAILABLE names an added test file whose tests 
           mode,
         });
         expect(messages, `${name} ${mode}`).toEqual([]);
-        expect(report.status).not.toBe("fail");
+        // The report verdict is fail here for a reason of its own (the shared coverage fixture names no tracked file:
+        // COVERAGE_PATHS_UNMATCHED); the unreadable sides add no test-integrity failure.
+        expect(report.testIntegrity.verdict, `${name} ${mode}`).not.toBe("fail");
       }
     }
   });

@@ -45,7 +45,8 @@ describe("CORE-144: TI15 and SI04 are not emitted", () => {
           report.messages.filter((m) => String(m.code) === "TEST_INTEGRITY_TI15"),
           mode,
         ).toEqual([]);
-        expect(report.testIntegrity.omitted ?? []).toEqual([]);
+        // The omitted counts are a buildReport() input (omittedSignals), never a report field.
+        expect(report.testIntegrity).not.toHaveProperty("omitted");
       }
     }
   });

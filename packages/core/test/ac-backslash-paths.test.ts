@@ -96,7 +96,8 @@ describe.each(FORMATS)("CORE-101 with a $format report", ({ format }) => {
     expect(codes(report)).toContain("DIFF_COVERAGE_BELOW_THRESHOLD");
     // The record matched a tracked file, so nothing is left over as an untracked coverage path.
     expect(codes(report)).not.toContain("COVERAGE_PATHS_PARTIALLY_UNMATCHED");
-    expect(report.untrackedCoveragePaths).toBeUndefined();
+    // untrackedCoveragePaths is a buildReport() input, never a report field: the message check above is the real one.
+    expect(report).not.toHaveProperty("untrackedCoveragePaths");
 
     // A threshold at or below the result passes.
     expect(runCheck("literal", format, { threshold: 60 }).verdict).toBe("pass");
