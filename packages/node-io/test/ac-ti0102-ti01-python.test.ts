@@ -114,7 +114,6 @@ describe("TI01 precision on Python test files, through the Python test index", (
       const unavailable = await run(diff, base, head, {
         available: false,
         reason: "python-not-found",
-        detail: "no python3 found on PATH",
       });
       for (const [report, severity, detail] of [
         [moved, "info", MOVED_DETAIL],
