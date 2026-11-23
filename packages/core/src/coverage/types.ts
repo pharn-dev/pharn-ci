@@ -15,8 +15,6 @@ export interface ParsedCoverage {
 
 export type CoverageFormat = "lcov" | "cobertura";
 
-export const COVERAGE_FORMATS: readonly CoverageFormat[] = ["lcov", "cobertura"];
-
 /** What the user may ask for: one of the formats, or `auto` to detect it from the start of the file. */
 export type CoverageFormatSelection = CoverageFormat | "auto";
 

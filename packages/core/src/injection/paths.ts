@@ -16,9 +16,6 @@ export const DEFAULT_EXEMPT_DIRS: readonly string[] = ["fixtures/**", "**/__fixt
  */
 export const DEFAULT_EXEMPT_NAMES: readonly string[] = ["**/*.test.*", "**/*.spec.*"];
 
-/** Paths no signal reads by default: test fixtures, test data and test files (but see `isDefaultExemptPath`). */
-export const DEFAULT_EXEMPT: readonly string[] = [...DEFAULT_EXEMPT_DIRS, ...DEFAULT_EXEMPT_NAMES];
-
 /** Paths PI03 also leaves out by default: test directories. */
 export const DEFAULT_PI03_EXEMPT: readonly string[] = ["**/test/**"];
 

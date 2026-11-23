@@ -31518,7 +31518,6 @@ function scanAgentSetup(paths) {
 // ../core/src/injection/paths.ts
 var DEFAULT_EXEMPT_DIRS = ["fixtures/**", "**/__fixtures__/**", "**/testdata/**"];
 var DEFAULT_EXEMPT_NAMES = ["**/*.test.*", "**/*.spec.*"];
-var DEFAULT_EXEMPT = [...DEFAULT_EXEMPT_DIRS, ...DEFAULT_EXEMPT_NAMES];
 var DEFAULT_PI03_EXEMPT = ["**/test/**"];
 var LOCALE_PATHS = [
   "**/locales/**",
