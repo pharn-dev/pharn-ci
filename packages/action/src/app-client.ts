@@ -120,7 +120,8 @@ export type AppToken =
 /** An error's class name when it is a plain identifier; anything else is `Error`. The message is never read. */
 const ERROR_CLASS = /^[A-Za-z][A-Za-z0-9]{0,63}$/;
 
-function errorClassOf(error: unknown): string {
+/** The class name of a thrown value as a log line may carry it (`ERROR_CLASS`); never its message. */
+export function errorClassOf(error: unknown): string {
   const name: unknown = error instanceof Error ? error.name : undefined;
   return typeof name === "string" && ERROR_CLASS.test(name) ? name : "Error";
 }

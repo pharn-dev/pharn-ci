@@ -237,7 +237,10 @@ describe("review 48: the tree-truncation warning names P08", () => {
 describe("review 28: an internal upload error", () => {
   const SECRET_TEXT = "clock exploded near the signed URL";
 
-  async function brokenClockRun(debug: boolean | undefined) {
+  async function brokenClockRun(
+    debug: boolean | undefined,
+    thrown: () => unknown = () => new RangeError(SECRET_TEXT),
+  ) {
     const h = harness({ inputs: { threshold: "50", policy: "never" }, context: META_CONTEXT });
     h.deps.api = {
       ...h.deps.api,
@@ -249,7 +252,7 @@ describe("review 28: an internal upload error", () => {
       setSecret: () => {},
       hasOidcEnv: true,
       now: () => {
-        throw new RangeError(SECRET_TEXT);
+        throw thrown();
       },
       sleep: async () => {},
       ...(debug === undefined ? {} : { debug }),
@@ -258,8 +261,10 @@ describe("review 28: an internal upload error", () => {
     return { h, report };
   }
 
+  // CORE-123 (R5.6): under debug logging (RUNNER_DEBUG=1, the `debug` the harness passed) the error was logged and then
+  // rethrown, failing the step; it is now logged the same way and the check is not affected there either.
   it("is logged once with its class, never its message, and the check is not affected", async () => {
-    for (const debug of [undefined, false]) {
+    for (const debug of [undefined, false, true]) {
       const { h, report } = await brokenClockRun(debug);
       expect(report?.meta?.upload).toEqual({ status: "failed" });
       expect(h.failed).toEqual([]);
@@ -271,10 +276,30 @@ describe("review 28: an internal upload error", () => {
     }
   });
 
-  it("under debug logging is logged the same way and then fails the step with its message", async () => {
+  it("under debug logging is logged the same way and does not fail the step", async () => {
     const { h, report } = await brokenClockRun(true);
-    expect(report).toBeUndefined();
+    expect(report?.verdict).toBe("pass");
+    expect(report?.meta?.upload).toEqual({ status: "failed" });
     expect(h.warnings.filter((w) => w.includes("(failed: internal, RangeError)"))).toHaveLength(1);
-    expect(h.failed).toEqual([`pharn-ci: ${SECRET_TEXT}`]);
+    expect(h.failed).toEqual([]);
+    for (const line of [...h.warnings, ...h.infos, ...h.failed]) expect(line).not.toContain(SECRET_TEXT);
+  });
+
+  // CORE-123: the class goes through the same sanitizing as the OIDC token line (app-client.ts errorClassOf): a value
+  // that is not an Error, or an Error whose name is not a plain identifier, is named `Error`.
+  it("names a thrown non-Error, or an Error with a hostile name, as Error", async () => {
+    const hostile = Object.assign(new Error(SECRET_TEXT), { name: "Bad\nName ::stop-commands::x" });
+    for (const thrown of [() => SECRET_TEXT, () => ({ toString: () => SECRET_TEXT }), () => hostile]) {
+      const { h, report } = await brokenClockRun(true, thrown);
+      expect(report?.meta?.upload).toEqual({ status: "failed" });
+      expect(h.failed).toEqual([]);
+      expect(h.warnings.filter((w) => w.includes("was not uploaded"))).toEqual([
+        "pharn-ci: the run was not uploaded to pharn.dev (failed: internal, Error); the check is not affected",
+      ]);
+      for (const line of [...h.warnings, ...h.infos]) {
+        expect(line).not.toContain(SECRET_TEXT);
+        expect(line).not.toContain("stop-commands");
+      }
+    }
   });
 });

@@ -232,8 +232,6 @@ export interface ActionDeps {
   /** The upload's overall deadline in milliseconds, read with `now`; `UPLOAD_DEADLINE_MS` (upload.ts) when absent. */
   uploadDeadlineMs?: number | undefined;
   sleep?: ((ms: number) => Promise<void>) | undefined;
-  /** The runner has debug logging on (`RUNNER_DEBUG=1`): an internal upload error then fails the step (upload.ts). */
-  debug?: boolean | undefined;
   /**
    * The error text of a failed load of the vendored TypeScript parser, or undefined (index.ts wires
    * `vendoredTypeScriptFailure`). Absent: no parser is vendored.
@@ -559,8 +557,8 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   // The agent PR detection ran inside check() (see the facts above): its agent fields are already in `meta`.
   let report = labelled;
   // The upload is the last thing that reads the report before it is rendered and written: its outcome is part of it.
-  // It never throws and never changes the step's pass or fail (a too-large report only adds a warning), except under
-  // debug logging, where an internal error of the upload fails the step so it can be found.
+  // It never throws and never changes the step's pass or fail (a too-large report only adds a warning), under debug
+  // logging too (CORE-123).
   const issueNumber = pr?.number ?? target?.number;
   const scopeLine = commentScopeLine(deps.context.workflow ?? "", deps.context.job ?? "");
   const commentNumber = comment ? issueNumber : undefined;
