@@ -159,7 +159,7 @@ flowchart LR
 >
 > ---
 >
-> <sub>pharn-ci 0.11.0 · report schema v2 · coverage format lcov</sub>
+> <sub>pharn-ci X.Y.Z · report schema v2 · coverage format lcov</sub>
 
 On PRs from forks the token cannot comment; pharn-ci then warns and uses the job summary only.
 

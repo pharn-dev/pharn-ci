@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 // The docs contract: the mechanical facts the documents must agree with, and nothing about their wording.
 // 1. Every input in action.yml has a row in the inputs table, with its default.
 // 2. Every message code in schema/report.v2.json has a row in the message-code table.
-// 3. Every version pin in the docs and examples equals the version in the root package.json.
+// 3. Every version pin in the docs and examples equals the version in the root package.json (a SHA pin may lag one
+//    release, until the PR after the tag), and so does the newest release heading of CHANGELOG.md.
 // The tables are found by their heading text (any heading level), then parsed, so a table can move to another
 // document by changing its path constant below. Files are read inside the test bodies.
 
@@ -98,6 +99,12 @@ const PINS = [
   /latest release(?: is|:) `v(\d+\.\d+\.\d+)`/g,
   /<sub>pharn-ci (\d+\.\d+\.\d+) ·/g,
 ];
+/** The pattern of PINS that matches a SHA pin's version comment. */
+const SHA_PIN = PINS[1];
+
+/** The versions of CHANGELOG.md's release headings (`## [X.Y.Z] - <date>`), newest first. */
+const changelogReleases = () =>
+  [...read("CHANGELOG.md").matchAll(/^## \[(\d+\.\d+\.\d+)\] - /gm)].map((m) => m[1] as string);
 
 describe("docs contract", () => {
   it("every action.yml input has a row in the inputs table with its default, and every row is an input", () => {
@@ -135,14 +142,34 @@ describe("docs contract", () => {
       read(path)
         .split("\n")
         .flatMap((line, index) =>
-          PINS.flatMap((pattern) => [...line.matchAll(pattern)].map((m) => ({ at: `${path}:${index + 1}`, v: m[1] }))),
+          PINS.flatMap((pattern) =>
+            [...line.matchAll(pattern)].map((m) => ({ at: `${path}:${index + 1}`, v: m[1], sha: pattern === SHA_PIN })),
+          ),
         ),
     );
     expect(
       pins.some((pin) => pin.at.startsWith("README.md:")),
       "README.md pins a release",
     ).toBe(true);
-    const stale = pins.filter((pin) => pin.v !== version).map((pin) => `${pin.at} pins ${pin.v}`);
+    // A SHA pin cannot name the release commit before that commit exists: the release PR leaves SHA pins on the
+    // previous release, and a PR after the tag moves them (docs/RELEASING.md). So a SHA pin may also name the release
+    // right below the newest CHANGELOG heading, and only while that newest heading is the root version.
+    const releases = changelogReleases();
+    const shaVersions = releases[0] === version && releases[1] !== undefined ? [version, releases[1]] : [version];
+    const stale = pins
+      .filter((pin) => (pin.sha ? !shaVersions.includes(pin.v as string) : pin.v !== version))
+      .map((pin) => `${pin.at} pins ${pin.v}`);
     expect(stale, `pins that are not ${version}`).toEqual([]);
+  });
+
+  it("the newest release heading of CHANGELOG.md names the root package.json version", () => {
+    const version: string = JSON.parse(read("package.json")).version;
+    const headings = read("CHANGELOG.md")
+      .split("\n")
+      .filter((line) => line.startsWith("## "));
+    expect(headings[0], "CHANGELOG.md starts with the Unreleased section").toBe("## [Unreleased]");
+    expect(headings[1], "the release heading under Unreleased").toMatch(
+      new RegExp(`^## \\[${version.replace(/\./g, "\\.")}\\] - (\\d{4}-\\d{2}-\\d{2}|YYYY-MM-DD)$`),
+    );
   });
 });

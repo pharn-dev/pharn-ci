@@ -48,6 +48,13 @@ function readPharnBundle(entryPath) {
 
 const pharnBundle = readPharnBundle(entry);
 
+// The one source of the version: the root package.json. packages/core/src/version.ts reads it as __PHARN_VERSION__.
+const version = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
+if (typeof version !== "string" || !/^\d+\.\d+\.\d+$/.test(version)) {
+  console.error(`bundle.mjs: the root package.json version must be X.Y.Z; got ${JSON.stringify(version)}`);
+  process.exit(2);
+}
+
 const banner = [
   flags.includes("--shebang") ? "#!/usr/bin/env node" : "",
   // Some bundled CommonJS dependencies call require() on Node builtins.
@@ -70,6 +77,7 @@ await build({
   // Resolve workspace packages to their TypeScript sources.
   conditions: ["source"],
   ...(pharnBundle ? { alias: { typescript5: pharnBundle.typescript5 } } : {}),
+  define: { __PHARN_VERSION__: JSON.stringify(version) },
   banner: { js: banner },
   legalComments: "eof",
   logLevel: "warning",

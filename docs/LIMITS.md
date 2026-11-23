@@ -1,6 +1,6 @@
 # pharn-ci — Limits
 
-What pharn-ci does **not** guarantee, stated plainly. pharn-ci is pre-1.0 (latest release: `v0.11.0`).
+What pharn-ci does **not** guarantee, stated plainly. pharn-ci is pre-1.0 (releases: [`CHANGELOG.md`](../CHANGELOG.md)).
 These are the design's inherent limits and the known gaps in what is built. For the security design
 see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
 

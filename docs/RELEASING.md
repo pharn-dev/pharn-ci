@@ -57,12 +57,24 @@ that worked on the previous release. Before 1.0 the rules are:
 
 ## Cutting a release
 
-1. **Prepare a PR** titled `chore: release X.Y.Z`:
-   - Set `"version": "X.Y.Z"` in the root `package.json`, `packages/core/package.json`,
-     `packages/cli/package.json`, `packages/action/package.json` and `packages/node-io/package.json`, `VERSION` in
-     `packages/core/src/version.ts`, and the version in the `uses: pharn-dev/pharn-ci@vX.Y.Z` line of
-     the quick start in `docs/MARKETPLACE.md`. `version.test.ts` and the docs tests fail when they
-     disagree.
+1. **Prepare a PR** titled `chore: release X.Y.Z`. The version bump edits exactly these files, and no other
+   file holds the version:
+
+   | File | What changes |
+   | --- | --- |
+   | `package.json` (root) | `"version": "X.Y.Z"`: **the one source**. `scripts/bundle.mjs` and `vitest.config.ts` compile it into `VERSION` (`packages/core/src/version.ts`, which holds no literal), so the report's `tool.version`, the upload's `meta.json`, the pharn.dev User-Agent, `pharn-ci --version` and the comment footer follow it. |
+   | `packages/core/package.json`, `packages/cli/package.json`, `packages/action/package.json`, `packages/node-io/package.json` | `"version": "X.Y.Z"`, equal to the root (`version.test.ts`). `release.yml` reads the action's. |
+   | `CHANGELOG.md` | the new `## [X.Y.Z] - YYYY-MM-DD` heading (below). |
+   | `README.md` | the `uses: pharn-dev/pharn-ci@vX.Y.Z` line of the workflow under Quick start, and the **Status** note under the badges. |
+   | `docs/action.md` | the two `uses: pharn-dev/pharn-ci@vX.Y.Z` lines (the workflows under "Fork PRs: comment from workflow_run"). |
+   | `docs/MARKETPLACE.md` | the `uses: pharn-dev/pharn-ci@vX.Y.Z` line of the quick start. |
+   | `packages/action/dist/index.js` | derived: rebuilt by `pnpm build`. |
+
+   The docs-contract test (`packages/core/test/docs-contract.test.ts`) fails when a release pin under `README.md`,
+   `SECURITY.md`, `CONTRIBUTING.md`, `.github/ISSUE_TEMPLATE/bug_report.yml`, `docs/` or `examples/`, or the newest
+   release heading of `CHANGELOG.md`, names another version than the root `package.json`. A SHA pin may name the
+   previous release until the PR after the tag (step 5). No test file carries a version in its name, so a release
+   renames none.
    - In `CHANGELOG.md`, move the `[Unreleased]` entries under a new `## [X.Y.Z] - YYYY-MM-DD`
      heading, with the one-line date note beneath it, and leave an empty `## [Unreleased]` with
      `### Added`, `### Changed` and `### Security` above it.
@@ -71,11 +83,8 @@ that worked on the previous release. Before 1.0 the rules are:
      not carry it, before running the release workflow. `Release verify` refuses the release unless
      the heading is exactly `## [X.Y.Z] - <date>` with a real date and its notes contain neither
      `YYYY-MM-DD` nor the date note (`scripts/check-release-notes.mjs`).
-   - **Update the README pins and the Status note.** Set the `uses: pharn-dev/pharn-ci@vX.Y.Z` line
-     of the workflow under Quick start in `README.md`, the two in `docs/action.md` (the workflows under
-     "Fork PRs: comment from workflow_run") and every other pin under `docs/` and `examples/`, and rewrite
-     the **Status** note under the badges so it no longer says the release has not been cut. The
-     docs tests fail when a pin disagrees with the package version.
+   - **Update the pins and the Status note** in `README.md`, `docs/action.md` and `docs/MARKETPLACE.md` as the
+     table says, and rewrite the README's **Status** note so it names the new release.
    - **Append the new message codes.** Add every Report v2 message code this release adds to
      `fixtures/release/codes.txt`, under a `# vX.Y.Z` line, and never remove or reorder an earlier line.
      `packages/core/test/report-v2-compat.test.ts` fails when `report.ts` or `schema/report.v2.json` stops naming a
@@ -124,7 +133,10 @@ that worked on the previous release. Before 1.0 the rules are:
    version.
 5. **The example workflows.** The five files in `examples/workflows/` pin `pharn-dev/pharn-ci` to the release
    commit's full SHA with a `# vX.Y.Z` comment. The release PR cannot set that SHA, since the commit does not exist
-   before it merges, so a PR after the tag sets it (`git rev-list -n1 vX.Y.Z`) and the docs tests that pin it.
+   before it merges, so the release PR leaves them on the previous release and a PR after the tag sets the SHA
+   (`git rev-list -n1 vX.Y.Z`) and the comment in all five. The docs-contract test accepts the previous release in a
+   SHA pin only while the newest `CHANGELOG.md` heading is the package version, so the next release PR fails until
+   this PR has merged.
 
 ## Verify the release
 

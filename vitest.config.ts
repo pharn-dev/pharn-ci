@@ -1,7 +1,12 @@
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
+/** The one source of the version, as scripts/bundle.mjs reads it: packages/core/src/version.ts uses it. */
+const version: string = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version;
+
 export default defineConfig({
+  define: { __PHARN_VERSION__: JSON.stringify(version) },
   resolve: {
     // Test workspace packages from source, no build needed.
     alias: {
