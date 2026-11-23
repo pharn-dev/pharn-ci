@@ -7,7 +7,7 @@ import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { check } from "./text-coverage.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // R1.1 (CORE-35): the per-rule cap of 50 keeps blocking violations first. 50 or more decoy settings files whose paths
 // sort before the real one (`.aNN/.claude/settings.json` < `.claude/settings.json`, and < `policy/org.json`), each

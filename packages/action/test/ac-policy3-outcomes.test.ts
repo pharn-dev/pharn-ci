@@ -3,7 +3,7 @@ import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import type { Message } from "../../core/src/report.js";
 import { expectValidReport } from "../../core/test/schema.js";
-import { withoutFix } from "../../core/test/v090-codes.js";
+import { withoutFix } from "../../core/test/without-fix.js";
 import { harness, PR_CONTEXT, WORKSPACE } from "./harness.js";
 
 // run(), fetchAppPolicy() and the fixtures under fixtures/policy-api/ are loaded inside each test body: the AC tests are

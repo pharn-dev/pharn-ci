@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 
-// fix-hints (H6), AC-12. The shared helper (packages/core/test/v090-codes.ts) and check() are loaded inside the test
+// fix-hints (H6), AC-12. The shared helper (packages/core/test/without-fix.ts) and check() are loaded inside the test
 // body. (CORE-132: the schema comparison with an old commit, and the test that read the increment's edits with git and
 // re-ran the edited tests in a child vitest, were history pins and are removed. What stays is the check that
 // withoutFix, which the whole-report tests still use, takes out the fix objects and nothing else.)
@@ -11,7 +11,7 @@ interface Helper {
 }
 
 async function helper(): Promise<Helper> {
-  const loaded = await import("./v090-codes.js");
+  const loaded = await import("./without-fix.js");
   expect(typeof loaded.withoutFix, "withoutFix is exported").toBe("function");
   return loaded as Helper;
 }

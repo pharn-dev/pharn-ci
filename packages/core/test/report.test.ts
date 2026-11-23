@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DiffCoverageResult } from "../src/diffCoverage.js";
 import { buildReport, formatNumber, verdictOf } from "../src/report.js";
 import { expectValidReport, validateReport } from "./schema.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 const dc = (overrides: Partial<DiffCoverageResult> = {}): DiffCoverageResult => ({
   percent: 90,

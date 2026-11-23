@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Report, ReportPolicyViolation as Violation } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // settings-unparseable-fails-closed (review A3-F2), AC-2 to AC-6. Each case under fixtures/policy-settings/unparseable/
 // holds policy.json, files.json (repo path → text file in the case directory) and edits.json (the repo paths the change

@@ -1,7 +1,7 @@
 // v0.9.0 fix hints (H6): every message and every finding of Report v2 carries an optional `fix` object. Tests that
 // compare a report, or a golden report.json, with a value written before the fix objects existed compute it over
 // `withoutFix(...)` or `withoutFixJson(...)`. (CORE-132 removed the schema-text helpers that only the history pins
-// used; the file name stays so the tests that import these two helpers are left as they are.)
+// used; the file was v090-codes.ts until it held only these two helpers.)
 
 /**
  * A deep copy of `value` with every own `fix` property removed whose value is an object with a string `kind` and a

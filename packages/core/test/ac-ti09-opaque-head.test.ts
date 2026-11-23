@@ -5,7 +5,7 @@ import type { TestSourceFile as SourceFile, TestSourceDrop } from "../src/testSo
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { check } from "./text-coverage.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // Review finding 22 (v0.4.0): a modified or renamed test-runner config whose settings were read at the merge base, and
 // that is not found (an opaque wrapper) or not read (padded past a cap, nested too deep) at HEAD, gives one TI09 for

@@ -6,7 +6,7 @@ import type { Report } from "../src/report.js";
 import { dependencyCase, REPO_ROOT, run } from "./dependencies-helpers.js";
 import { CASES, type PnpmCase, URL_OUT } from "./dependencies-pnpm-spellings-cases.js";
 import { fixture } from "./helpers.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // CORE-110 (R4.3): pnpm-lock.yaml is read the way pnpm reads it (js-yaml): a key may have spaces or tabs before its
 // colon and a run of spaces or tabs after it, so a tarball written that way is judged (D05) and an integrity written that

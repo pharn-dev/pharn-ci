@@ -4,7 +4,7 @@ import { renderMarkdown } from "../src/render/markdown.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { check } from "./text-coverage.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 const repoFiles = fixture("golden/files.txt").trim().split("\n");
 

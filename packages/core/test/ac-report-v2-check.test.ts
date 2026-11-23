@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 const ROOT = new URL("../../../", import.meta.url);
 const readRoot = (path: string) => readFileSync(new URL(path, ROOT), "utf8");

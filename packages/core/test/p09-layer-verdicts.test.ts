@@ -8,7 +8,7 @@ import type { ReportPolicyViolation as Violation } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { check } from "./text-coverage.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // CORE-123 (R5.6) keeps the layer an app policy beat on each `looser` record, so P09 classes 2 and 3 give main's
 // verdicts: class 2 (the PR edits the config) fires only while a .pharn/ci.yml setting is looser than the app policy,

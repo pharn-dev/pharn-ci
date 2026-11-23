@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { Message, Report, ReportMeta } from "../src/report.js";
 import { expectValidReport } from "./schema.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // withUploadOutcome() and UPLOAD_REPORT_MAX_BYTES are loaded from @pharn-ci/core inside each test body: the AC tests
 // are written before the upload module exists, so nothing the build adds may run while this file loads.

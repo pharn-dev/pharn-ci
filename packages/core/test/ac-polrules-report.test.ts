@@ -5,7 +5,7 @@ import type { ReportMeta, ReportPolicyViolation as Violation } from "../src/repo
 import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // E3 item 22 (policy rules), AC-12. check(), evaluatePolicyRules() and the helpers they share are loaded inside the
 // test body and fixtures/policy-rules/ is read there too: the AC test is written before the build adds the rules and

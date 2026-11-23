@@ -5,7 +5,7 @@ import type { TestIntegritySignal as Signal } from "../src/report.js";
 import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // check() is loaded inside the test body: the AC test is written before TI09 reads the native [tool.pytest] table, so
 // nothing the build adds may run while the file loads. The new case directories are written by the build, so the test

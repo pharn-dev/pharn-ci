@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Report, ReportPolicyViolation as Violation } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // E3 item 23 (policy settings), AC-22. check() is loaded inside the test body, and item 22's gates.diff is read there:
 // the AC test is written before the build gives P09 class 4 its final levels, so nothing the build adds may run while

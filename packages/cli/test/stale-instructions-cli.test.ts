@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type { Report } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
-import { withoutFix } from "../../core/test/v090-codes.js";
+import { withoutFix } from "../../core/test/without-fix.js";
 
 // Stale instructions (Horizon 2 item H3) in the CLI: `pharn-ci check` with its real Node deps on a temporary repository
 // whose feature branch edits CLAUDE.md. Without a policy the instruction files are read and the stale tokens reported;

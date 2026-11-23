@@ -6,7 +6,7 @@ import { dirname, join, resolve } from "node:path";
 import type { Report } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
-import { withoutFix } from "../../core/test/v090-codes.js";
+import { withoutFix } from "../../core/test/without-fix.js";
 import { runGitBatch } from "../../node-io/src/io.js";
 import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 import { harness } from "./harness.js";

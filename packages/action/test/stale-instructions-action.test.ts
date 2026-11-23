@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type { Report } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
-import { withoutFix } from "../../core/test/v090-codes.js";
+import { withoutFix } from "../../core/test/without-fix.js";
 import { runGitBatch } from "../../node-io/src/io.js";
 import { harness, PR_CONTEXT } from "./harness.js";
 

@@ -4,7 +4,7 @@ import type { Message } from "../src/report.js";
 import { fixture, foldCallout, foldCoverageBar, foldIntegrityColumn } from "./helpers.js";
 import { foldHintsToBase } from "./hints-at-base.js";
 import { expectValidReport } from "./schema.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 /** Remove the Test integrity section: its heading, an empty line, one fixed line and an empty line. */
 function foldTestIntegrity(markdown: string): string {

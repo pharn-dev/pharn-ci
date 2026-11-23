@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { withCore95Ti14Before } from "../../core/test/core95-ti14.js";
 import { foldCoverageBar, foldLogoPin } from "../../core/test/helpers.js";
 import { foldHintsToBase } from "../../core/test/hints-at-base.js";
-import { withoutFix, withoutFixJson } from "../../core/test/v090-codes.js";
+import { withoutFix, withoutFixJson } from "../../core/test/without-fix.js";
 
 // check() and renderMarkdown() are loaded inside the test body: the AC tests are written before the accept label
 // exists, so nothing the build adds may run while the file loads. The committed dist must hold the accept label, so

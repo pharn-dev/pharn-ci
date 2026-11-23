@@ -7,7 +7,7 @@ import type { TestSourceSide as Side, TestSourceFile as SourceFile, TestSourceDr
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { check } from "./text-coverage.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // fix/unparsed-added-test-file: an added test file whose head side cannot be indexed (refused by the test index, dropped,
 // missing, no Python index) used to be dropped with no trace, so nothing that reads the added files checked its tests

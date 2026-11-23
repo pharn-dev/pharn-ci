@@ -4,7 +4,7 @@ import { renderMarkdown } from "../src/render/markdown.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { check } from "./text-coverage.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // F-31: an ungated measurement says so, threshold 0 is explicit, and the gate compares exactly.
 // The golden fixtures cover 5 of 7 added lines: 71.428...%, shown as 71.43%.

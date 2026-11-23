@@ -3,7 +3,7 @@ import type { CheckInput } from "../src/check.js";
 import type { Report } from "../src/report.js";
 import { dependencyCase, run } from "./dependencies-helpers.js";
 import { fixture } from "./helpers.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // A13 (dependency safety), D04 and D05 through check(), on the fixture cases under fixtures/dependencies/ (see
 // dependencies-helpers.ts). d04-* and d05-* must trigger; clean-bump (a Dependabot bump of this repository, #119),

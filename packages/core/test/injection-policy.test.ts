@@ -9,7 +9,7 @@ import { FIXTURES, fixture } from "./helpers.js";
 import { injectionFixture } from "./injection-fixture.js";
 import { expectValidReport } from "./schema.js";
 import { check } from "./text-coverage.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // The `injection` policy key (schema/policy.v1.json, validatePolicy) and how each policy source applies it. Settings
 // the pull request carries can never loosen the scan: a `file:` policy's exemptions are not-allowed, its severities

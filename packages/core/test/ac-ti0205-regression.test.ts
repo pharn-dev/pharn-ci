@@ -8,7 +8,7 @@ import { exerciseMessages, withoutExerciseCheck } from "./exercise-repin.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import type { TextCheckInput } from "./text-coverage.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // check(), the config parser, the diff parser and the core helpers are loaded inside the test body: the AC test is
 // written before check() compares test files, so nothing that depends on that may run while the file loads.

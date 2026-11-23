@@ -10,7 +10,7 @@ import {
   policyFixture,
   runP14,
 } from "./p14-run.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // fix-hints (H6): every finding now carries a `fix`; the pinned literals are unchanged, so p14 reads without it.
 const p14 = (report: Parameters<typeof p14WithFix>[0]) => withoutFix(p14WithFix(report));

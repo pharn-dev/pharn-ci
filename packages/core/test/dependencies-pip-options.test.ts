@@ -3,7 +3,7 @@ import { parseRequirements } from "../src/dependencies/pythonManifest.js";
 import type { ParsedManifest } from "../src/dependencies/types.js";
 import type { Report } from "../src/report.js";
 import { dependencyCase, run } from "./dependencies-helpers.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // CORE-108 (R4.2): a requirements file's options are read the way pip reads them: a long option by any unique prefix
 // (in any pip version from 20.3 to 26.3), a value attached to a short option, several options on one line. An option

@@ -8,7 +8,7 @@ import { cutDetail, cutValue, keyText } from "../src/testConfig/value.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { check } from "./text-coverage.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // report.json used to drop only the control characters; it now also drops the invisible and bidirectional characters
 // the PR comment drops (text.ts). Each site keeps its own replacement: a space for one-line text and test names, U+FFFD

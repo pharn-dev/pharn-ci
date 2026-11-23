@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // check() and the fixtures are loaded inside each test body: the AC tests are written before the multi-file coverage
 // input and fixtures/coverage-multi/ exist, so nothing that depends on them may run while the file loads.

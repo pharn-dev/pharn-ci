@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // pr-comment-bold-look AC-7. check() and the renderer are loaded inside the test body: the AC tests are written before
 // the build, so nothing the build changes may run while the file loads.

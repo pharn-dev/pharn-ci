@@ -7,7 +7,7 @@ import type { Message } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { check } from "./text-coverage.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // R1.2 (CORE-37): when the agent settings files cannot be read (no local diff, which a checkout without
 // `fetch-depth: 0` gives), POLICY_SETTINGS_INVALID is an error exactly when a rule whose list the policy sets (P02 to

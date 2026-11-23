@@ -12,7 +12,7 @@ import { resolveDependencySettings } from "../src/dependencies/settings.js";
 import { parseUnifiedDiff } from "../src/diff/unified.js";
 import { dependencyCase, run } from "./dependencies-helpers.js";
 import { fixture } from "./helpers.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // A13 (dependency safety), D01 to D03: the registry answers are recorded fixtures (fixtures/dependencies/registry/), never
 // the live network. The Action makes the requests; core plans them and judges the answers.

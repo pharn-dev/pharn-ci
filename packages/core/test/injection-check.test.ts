@@ -10,7 +10,7 @@ import { fixture } from "./helpers.js";
 import { addedFileDiff, injectionFixture } from "./injection-fixture.js";
 import { expectValidReport } from "./schema.js";
 import { check } from "./text-coverage.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // H4 through check(): the optional `injection` object and the INJECTION_ messages, PI01's block failing the verdict,
 // the streamed and whole-text diff giving the same result, the cut-scan warning, and no trace of the scan on a clean

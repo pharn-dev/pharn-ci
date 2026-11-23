@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
-import { withoutFix, withoutFixJson } from "./v090-codes.js";
+import { withoutFix, withoutFixJson } from "./without-fix.js";
 
 // check() is loaded inside the test body: the AC test is written before CheckInput has `policy`, so nothing the
 // build adds may run while the file loads. The golden inputs are passed as the existing golden tests pass them

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import type { UploadOutcome as Outcome, Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
-import { withoutFix } from "../../core/test/v090-codes.js";
+import { withoutFix } from "../../core/test/without-fix.js";
 import { fixture, harness } from "./harness.js";
 
 // run(), runUpload(), APP_MAX_BODY_BYTES and the fixtures under fixtures/upload/responses/ are loaded inside each test

@@ -6,7 +6,7 @@ import type { Report, TestSourceFile as SourceFile } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import type { TestMatch as Match, MatchedPair as Pair } from "../../core/src/signals/testMatch.js";
 import { expectValidReport } from "../../core/test/schema.js";
-import { withoutFix } from "../../core/test/v090-codes.js";
+import { withoutFix } from "../../core/test/without-fix.js";
 
 // matchTests, indexTouchedTestFiles, the diff parser, the Python index and check() are loaded inside each test body:
 // the AC tests are written before matchTests returns `moved`, so nothing the build changes may run while the file

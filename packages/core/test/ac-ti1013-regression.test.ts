@@ -4,7 +4,7 @@ import type { Report } from "../src/report.js";
 import { withCore95Ti14Before } from "./core95-ti14.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // check() is loaded inside the test body: the AC tests are written before TI10 and TI13 exist, so nothing the build
 // adds may run while the file loads.

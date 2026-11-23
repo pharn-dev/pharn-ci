@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
-import { withoutFix } from "../../core/test/v090-codes.js";
+import { withoutFix } from "../../core/test/without-fix.js";
 import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // F-10, inventory quality: an empty agent setup file. main() is loaded inside each test body: the AC tests are written

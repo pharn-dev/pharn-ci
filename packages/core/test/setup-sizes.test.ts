@@ -5,7 +5,7 @@ import { parseLsTreeSizes } from "../src/setup/sizes.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { check } from "./text-coverage.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 const BLOB = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391";
 const record = (size: string, path: string, type = "blob") =>

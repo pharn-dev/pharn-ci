@@ -8,7 +8,7 @@ import { byCodeUnit } from "../src/text.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import type { TextCheckInput } from "./text-coverage.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // check() and the fixtures run inside the test body: the AC test is written before the new TI01 and TI02 rules and the
 // rebuilt dist exist.

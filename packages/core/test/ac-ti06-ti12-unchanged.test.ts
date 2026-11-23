@@ -9,7 +9,7 @@ import { exerciseMessages, withoutExerciseCheck } from "./exercise-repin.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import type { TextCheckInput } from "./text-coverage.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // check() and the core entry point are loaded inside each test body: the AC tests are written before TI06 and TI12
 // exist, so nothing that depends on them may run while the file loads.

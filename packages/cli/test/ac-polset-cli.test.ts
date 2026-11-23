@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import type { Report } from "@pharn-ci/core";
 import { afterAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
-import { withoutFix } from "../../core/test/v090-codes.js";
+import { withoutFix } from "../../core/test/without-fix.js";
 
 // E3 item 23 (policy settings), AC-27. main() and nodeDeps() are loaded inside the test body: the AC test is written
 // before the CLI reads the agent settings files, so nothing that depends on that may run while this file loads. It

@@ -6,7 +6,7 @@ import type { TestSourceFile as SourceFile, TestSourceDrop } from "../src/testSo
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { check } from "./text-coverage.js";
-import { withoutFix } from "./v090-codes.js";
+import { withoutFix } from "./without-fix.js";
 
 // fix/unparsed-added-test-file, part 2: a deleted test file with a same-stem test file added keeps TI01 at the mode's
 // level when its tests cannot be compared by body. When the base text was read but the test index refused it, the
