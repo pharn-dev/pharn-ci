@@ -45,7 +45,10 @@ const workflowViolation = (settings: string) => ({
 });
 
 describe("org policy rule P09: a workflow", { timeout: 60_000 }, () => {
-  it("AC-9: a diff editing a workflow while a setting is looser than an app policy gives a P09 block violation naming the setting, whichever layer gave it; with no record there is none", async () => {
+  // The title is AC-9's as item 22 wrote it. Since CORE-123 a record carries no layer: "an input-layer setting" is a
+  // workflow input's looser value, and "no input-layer record" is no record at all (a config record now counts too,
+  // in the test below).
+  it("AC-9: a diff editing a workflow while an input-layer setting is ignored gives a P09 block violation naming the setting; with no input-layer record there is none", async () => {
     const report = await run({
       policyIgnored: [{ setting: "test_integrity.mode", reason: "looser" }],
     });
@@ -53,15 +56,17 @@ describe("org policy rule P09: a workflow", { timeout: 60_000 }, () => {
       workflowViolation("test_integrity.mode"),
     ]);
 
+    const none = await run({});
+    expect(none.policy).toBeDefined();
+    expect(p09(none)).toEqual([]);
+  });
+
+  it("a config setting looser than an app policy makes a workflow edit a P09 block too (CORE-123)", async () => {
     const fromConfig = await run({
       policyIgnored: [{ setting: "coverage.threshold", reason: "looser" }],
     });
     expect(p09(fromConfig).filter((v) => v.path === ".github/workflows/ci.yml")).toEqual([
       workflowViolation("coverage.threshold"),
     ]);
-
-    const none = await run({});
-    expect(none.policy).toBeDefined();
-    expect(p09(none)).toEqual([]);
   });
 });

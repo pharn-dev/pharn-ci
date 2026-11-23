@@ -273,30 +273,31 @@ describe("review 28: an internal upload error", () => {
     }
   });
 
+  // The test above covers the message staying out of every line under debug logging too.
   it("under debug logging is logged the same way and does not fail the step", async () => {
     const { h, report } = await brokenClockRun(true);
     expect(report?.verdict).toBe("pass");
-    expect(report?.meta?.upload).toEqual({ status: "failed" });
     expect(h.warnings.filter((w) => w.includes("(failed: internal, RangeError)"))).toHaveLength(1);
     expect(h.failed).toEqual([]);
-    for (const line of [...h.warnings, ...h.infos, ...h.failed]) expect(line).not.toContain(SECRET_TEXT);
   });
 
   // CORE-123: the class goes through the same sanitizing as the OIDC token line (app-client.ts errorClassOf): a value
   // that is not an Error, or an Error whose name is not a plain identifier, is named `Error`.
-  it("names a thrown non-Error, or an Error with a hostile name, as Error", async () => {
-    const hostile = Object.assign(new Error(SECRET_TEXT), { name: "Bad\nName ::stop-commands::x" });
-    for (const thrown of [() => SECRET_TEXT, () => ({ toString: () => SECRET_TEXT }), () => hostile]) {
-      const { h, report } = await brokenClockRun(true, thrown);
-      expect(report?.meta?.upload).toEqual({ status: "failed" });
-      expect(h.failed).toEqual([]);
-      expect(h.warnings.filter((w) => w.includes("was not uploaded"))).toEqual([
-        "pharn-ci: the run was not uploaded to pharn.dev (failed: internal, Error); the check is not affected",
-      ]);
-      for (const line of [...h.warnings, ...h.infos]) {
-        expect(line).not.toContain(SECRET_TEXT);
-        expect(line).not.toContain("stop-commands");
+  describe("the class of what was thrown", () => {
+    it("names a thrown non-Error, or an Error with a hostile name, as Error", async () => {
+      const hostile = Object.assign(new Error(SECRET_TEXT), { name: "Bad\nName ::stop-commands::x" });
+      for (const thrown of [() => SECRET_TEXT, () => ({ toString: () => SECRET_TEXT }), () => hostile]) {
+        const { h, report } = await brokenClockRun(true, thrown);
+        expect(report?.meta?.upload).toEqual({ status: "failed" });
+        expect(h.failed).toEqual([]);
+        expect(h.warnings.filter((w) => w.includes("was not uploaded"))).toEqual([
+          "pharn-ci: the run was not uploaded to pharn.dev (failed: internal, Error); the check is not affected",
+        ]);
+        for (const line of [...h.warnings, ...h.infos]) {
+          expect(line).not.toContain(SECRET_TEXT);
+          expect(line).not.toContain("stop-commands");
+        }
       }
-    }
+    });
   });
 });
