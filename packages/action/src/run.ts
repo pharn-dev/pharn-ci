@@ -470,22 +470,22 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     ...gathered,
     exclude,
     requireAgentSetup,
-    ...(expectAgentSetup === undefined ? {} : { expectAgentSetup }),
-    ...(testIntegrityMode === undefined ? {} : { testIntegrityMode }),
-    ...(coverageRoot === undefined ? {} : { coverageRoot }),
-    ...(configInput === "" ? {} : { configPath: configInput }),
-    ...(configSource === undefined ? {} : { configSource }),
-    ...(headConfigExclude === undefined ? {} : { headConfigExclude }),
-    ...(policy === undefined ? {} : { policy }),
-    ...(application === undefined || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored }),
-    ...(application?.signalOverrides === undefined ? {} : { signalOverrides: application.signalOverrides }),
+    expectAgentSetup,
+    testIntegrityMode,
+    coverageRoot,
+    configPath: configInput || undefined,
+    configSource,
+    headConfigExclude,
+    policy,
+    policyIgnored: application?.ignored,
+    signalOverrides: application?.signalOverrides,
     agentPrFacts,
-    ...(policyFileBase === undefined ? {} : { policyFileBase }),
-    ...(junit === undefined ? {} : { junit }),
+    policyFileBase,
+    junit,
     // Only the app's own answer carries a quarantine list; a pull request has no way to add one.
-    ...(junit === undefined || quarantine === undefined ? {} : { quarantine }),
-    ...(dependencySettings === undefined ? {} : { dependencySettings }),
-    ...(dependencyLookups === undefined ? {} : { dependencyLookups }),
+    quarantine,
+    dependencySettings,
+    dependencyLookups,
   };
   const runMetaBase = runMeta(deps.context, { baseRef: baseRefInput, ...(target === undefined ? {} : { target }) });
   if (runMetaBase === undefined) deps.info("run metadata is incomplete, so report.json carries no meta");
@@ -496,7 +496,7 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
   const mergeBase =
     runMetaBase === undefined || localBase === undefined ? null : await forkPoint(localBase, runMetaBase.headSha, deps);
   const meta = runMetaBase === undefined || mergeBase === null ? runMetaBase : { ...runMetaBase, mergeBase };
-  const checked = check(meta === undefined ? checkInput : { ...checkInput, meta });
+  const checked = check({ ...checkInput, meta });
   // The backstop of the escape path: the first read of the parser sits outside the `try` of its parse, so a load failure
   // normally throws out of check() by itself. Wherever that read ends up, a failed load must fail the step before
   // anything is written, never be refused by the test index as an ordinary parser throw (docs/THREAT-MODEL.md, G1).

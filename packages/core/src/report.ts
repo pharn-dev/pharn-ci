@@ -387,9 +387,9 @@ export interface BuildReportInput {
   /** Threshold that applies even when diff coverage could not be computed. */
   threshold: number | null;
   /** The pharn-ci config in use, as a repo path (null outside the repo); absent means `.pharn/ci.yml`. */
-  configRepoPath?: string | null;
+  configRepoPath?: string | null | undefined;
   /** The format the coverage file was read as; carried into `diffCoverage.format` when given. */
-  coverageFormat?: CoverageFormat;
+  coverageFormat?: CoverageFormat | undefined;
   /** Why diff coverage is missing, when it is. */
   missing?:
     | { reason: "coverage-file-missing"; coverageFile: string }
@@ -397,134 +397,135 @@ export interface BuildReportInput {
     | { reason: "coverage-file-empty"; coverageFile: string | null }
     | { reason: "coverage-format-unsupported"; coverageFile: string | null }
     | { reason: "diff-unavailable"; detail: string }
-    | { reason: "coverage-paths-unmatched"; total: number; example: string; suggestedRoot: string | null };
+    | { reason: "coverage-paths-unmatched"; total: number; example: string; suggestedRoot: string | null }
+    | undefined;
   /** Count of distinct coverage paths that are not tracked files, when some but not all are; absent or 0 adds no message. */
-  untrackedCoveragePaths?: number;
+  untrackedCoveragePaths?: number | undefined;
   /** Count of malformed coverage records the parsers skipped; absent or 0 adds no message. Only set when diff coverage was computed. */
-  skippedCoverageLines?: number;
+  skippedCoverageLines?: number | undefined;
   /** Repo-relative paths the diff edits that configure this check (the config in use, workflows); absent or empty adds no message. */
-  changedConfigPaths?: readonly string[];
+  changedConfigPaths?: readonly string[] | undefined;
   /**
    * Where the config in use was read from when the change touches it (`CheckInput.configSource`). Only read
    * when `changedConfigPaths` names the config in use.
    */
-  configSource?: ConfigSource;
+  configSource?: ConfigSource | undefined;
   /** Repo-relative path of the coverage file when it is a tracked file; absent adds no message. */
-  trackedCoverageFile?: string;
+  trackedCoverageFile?: string | undefined;
   /**
    * True when the diff adds, modifies or renames to `trackedCoverageFile`, so the change under review wrote its own
    * coverage numbers; with a threshold that makes `COVERAGE_FILE_TRACKED` an error. Absent means false.
    */
-  trackedCoverageChanged?: boolean;
+  trackedCoverageChanged?: boolean | undefined;
   /** Changed files the diff shows as binary that the coverage report knows; absent or empty adds no message. */
-  binaryCoveredPaths?: readonly string[];
+  binaryCoveredPaths?: readonly string[] | undefined;
   /** Repo-relative test files the diff deletes or renames to a non-test name; absent or empty adds no message. */
-  deletedTestFiles?: readonly string[];
+  deletedTestFiles?: readonly string[] | undefined;
   agentSetup: AgentSetupInventory;
   /** Sorted paths of inventoried agent setup files whose size in HEAD is 0; absent or empty adds no message. */
-  emptyAgentSetupFiles?: readonly string[];
+  emptyAgentSetupFiles?: readonly string[] | undefined;
   /** When true, a repo with no agent setup files is an error instead of info. Off when absent. */
-  requireAgentSetup?: boolean;
+  requireAgentSetup?: boolean | undefined;
   /**
    * Agent tools the report names when no setup file configures them. Only names from the fixed tool list
    * reach the report; absent or empty adds no field and no message.
    */
-  expectedAgentTools?: readonly AgentTool[];
+  expectedAgentTools?: readonly AgentTool[] | undefined;
   /** Run metadata copied into the report as given; absent adds no field. */
-  meta?: ReportMeta;
+  meta?: ReportMeta | undefined;
   /** The effective test-integrity mode (see `resolveTestIntegrityMode`). Absent means the default `warn`. */
-  testIntegrity?: ResolvedTestIntegrityMode;
+  testIntegrity?: ResolvedTestIntegrityMode | undefined;
   /**
    * The test-integrity signals the detectors found, each with its effective severity (sorted by the caller). They fill
    * `testIntegrity.signals` and `testIntegrity.verdict`; each signal id also adds one `TEST_INTEGRITY_<id>` message
    * (TI01, TI03, TI04, TI08, TI10, TI11, TI13, TI14, TI16, TI17).
    * Absent or empty adds nothing.
    */
-  testIntegritySignals?: readonly TestIntegritySignal[];
+  testIntegritySignals?: readonly TestIntegritySignal[] | undefined;
   /**
    * The files whose kept diff text was cut at the bound where a signal reads the added lines (see
    * `textCutSignalFiles`), so a finding past the cut is not seen. Adds one `TEST_INTEGRITY_TEXT_TRUNCATED` warn
    * message unless the mode is off (an error in mode `block` when `textTruncatedTestFiles` is not empty). Absent or
    * empty adds nothing.
    */
-  textTruncatedFiles?: readonly string[];
+  textTruncatedFiles?: readonly string[] | undefined;
   /**
    * The cut files of `textTruncatedFiles` that are test files the change modifies (see `textCutModifiedTestFiles`). With
    * at least one and mode `block`, the `TEST_INTEGRITY_TEXT_TRUNCATED` message is an error, which the accept label
    * lowers to a warning. A build input only; it never reaches the report.
    */
-  textTruncatedTestFiles?: readonly string[];
+  textTruncatedTestFiles?: readonly string[] | undefined;
   /** The sorted languages of the test files the base-and-head signals indexed; fills `testIntegrity.languages`. */
-  testIntegrityLanguages?: readonly ("ts" | "js" | "py" | "go")[];
+  testIntegrityLanguages?: readonly ("ts" | "js" | "py" | "go")[] | undefined;
   /** Findings the per-file cap left out of `testIntegrity.signals`; the TI02, TI05, TI06, TI09 and TI12 messages say how many. */
-  omittedSignals?: readonly OmittedSignals[];
+  omittedSignals?: readonly OmittedSignals[] | undefined;
   /**
    * Touched test files TI02 and TI05 could not compare, or why they did not run; adds one message: a warn, except an
    * error in mode `block` when they did not run at all (the `{ notRun }` form) or when a `files` entry carries
    * `changeMadeUnreadable` (a modified test file made unreadable at HEAD, or whose diff entry git shows as binary).
    */
-  testIndexUnavailable?: TestIndexUnavailable;
+  testIndexUnavailable?: TestIndexUnavailable | undefined;
   /** The tests-changed summary (see `summarizeTestChanges`); fills `testIntegrity.changes`. Absent adds nothing. */
-  testChanges?: ReportTestChanges;
+  testChanges?: ReportTestChanges | undefined;
   /**
    * What the tests-exercise check found (see `detectUnexercisedChanges`), with every path not exercised, sorted. With at
    * least one such path and a mode that is not off, it fills `testIntegrity.exercise` (at most 200 paths) and adds one
    * `TESTS_NOT_EXERCISING_CHANGES` warn message. Absent, or none not exercised, adds nothing.
    */
-  testExercise?: { checked: number; notExercised: readonly string[] };
+  testExercise?: { checked: number; notExercised: readonly string[] } | undefined;
   /**
    * Touched test-config files TI09 could not read, or why it did not run. Adds one TI09 sentence to the one
    * `TEST_INTEGRITY_INDEX_UNAVAILABLE` message, after the TI02 and TI05 sentence when there is one. The `{ notRun }`
    * form makes that message an error in mode `block`.
    */
-  testConfigUnavailable?: TestConfigUnavailable;
+  testConfigUnavailable?: TestConfigUnavailable | undefined;
   /**
    * The stale-instruction findings (see `detectStaleInstructions`), copied into `setupHealth.stale`; absent or empty adds
    * no key.
    */
-  staleInstructions?: readonly ReportStaleInstruction[];
+  staleInstructions?: readonly ReportStaleInstruction[] | undefined;
   /**
    * The stale-instruction messages (see `staleInstructionMessages`), appended after the agent setup messages and before
    * the agent config secret messages, as given. Absent or empty adds nothing.
    */
-  staleInstructionMessages?: readonly Message[];
+  staleInstructionMessages?: readonly Message[] | undefined;
   /**
    * The messages of the agent config secret check (see `agentConfigSecretMessages`), appended after the agent setup
    * messages as given. They name a shape id, paths and line numbers, never a value. Absent or empty adds nothing.
    */
-  agentConfigSecretMessages?: readonly Message[];
+  agentConfigSecretMessages?: readonly Message[] | undefined;
   /**
    * The messages of the prompt-injection scan (see `injectionMessages`), appended after the agent config secret
    * messages as given. They name signal ids, paths and line numbers, never file text. Absent or empty adds nothing.
    */
-  injectionMessages?: readonly Message[];
+  injectionMessages?: readonly Message[] | undefined;
   /** The prompt-injection scan's findings, copied into the report as `injection.signals`; absent or empty adds no key. */
-  injectionSignals?: readonly ReportInjectionSignal[];
+  injectionSignals?: readonly ReportInjectionSignal[] | undefined;
   /**
    * Dependency safety (see `checkDependencies`): the report's `dependencies` object, copied as given, and its messages,
    * appended after the agent config secret messages and before the org policy messages. Absent adds nothing.
    */
-  dependencies?: { report: ReportDependencies; messages: readonly Message[] };
+  dependencies?: { report: ReportDependencies; messages: readonly Message[] } | undefined;
   /**
    * The messages of the org policy (the unavailable message, the per-rule messages and the ignored-settings message,
    * in that order), appended after the agent config secret messages as given, so they follow every other
    * message. Absent or empty adds nothing.
    */
-  policyMessages?: readonly Message[];
+  policyMessages?: readonly Message[] | undefined;
   /**
    * The levels the org policy's agent setup rule sets: `noFiles` for the no-agent-setup-files message (which then also says the org
    * policy requires setup), `expectedMissing` for the expected-tools message. Absent keeps today's levels and texts.
    */
-  agentSetupLevels?: { noFiles?: MessageLevel; expectedMissing?: MessageLevel };
+  agentSetupLevels?: { noFiles?: MessageLevel | undefined; expectedMissing?: MessageLevel | undefined } | undefined;
   /** The org policy object, copied into the report as given; absent adds no key. */
-  policy?: ReportPolicy;
+  policy?: ReportPolicy | undefined;
   /** The JUnit results of the run (see `junitReport`), copied into the report's `flaky` as given; absent adds no key. */
-  flaky?: ReportFlaky;
+  flaky?: ReportFlaky | undefined;
   /**
    * The JUnit messages (see `junitReport`), appended after the org policy's messages as given. Absent or empty adds
    * nothing.
    */
-  flakyMessages?: readonly Message[];
+  flakyMessages?: readonly Message[] | undefined;
 }
 
 /**

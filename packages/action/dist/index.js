@@ -44032,8 +44032,8 @@ function check(input) {
   const noFilesViolation = p01.find((violation) => violation.detail === NO_SETUP_DETAIL);
   const expectedViolations = p01.filter((violation) => violation.detail !== NO_SETUP_DETAIL);
   const agentSetupLevels = {
-    ...noFilesViolation === void 0 ? {} : { noFiles: levelOf(noFilesViolation.severity) },
-    ...expectedViolations.length === 0 ? {} : { expectedMissing: levelOf(strongest(expectedViolations.map((violation) => violation.severity))) }
+    noFiles: noFilesViolation === void 0 ? void 0 : levelOf(noFilesViolation.severity),
+    expectedMissing: expectedViolations.length === 0 ? void 0 : levelOf(strongest(expectedViolations.map((violation) => violation.severity)))
   };
   const reportedTools = agentSetupLevels.expectedMissing === void 0 ? expectedAgentTools : [.../* @__PURE__ */ new Set([...expectedAgentTools, ...input.policy?.document?.setup?.expect ?? []])];
   const policySource = input.policy?.source;
@@ -44070,41 +44070,41 @@ function check(input) {
   const testIndexUnavailable = parsedDiff === null || testIntegrity2.mode === "off" ? comparison?.unavailable : withBinaryTestFiles(comparison?.unavailable, binaryTouchedTestFiles(parsedDiff));
   const base = {
     version: input.version,
+    diffCoverage: null,
     threshold: input.threshold,
-    ...input.configPath === void 0 ? {} : { configRepoPath: configRepoPath(input.configPath, input.repoRoot) },
+    configRepoPath: input.configPath === void 0 ? void 0 : configRepoPath(input.configPath, input.repoRoot),
     agentSetup,
     requireAgentSetup: input.requireAgentSetup === true,
-    ...reportedTools.length > 0 ? { expectedAgentTools: reportedTools } : {},
-    ...Object.keys(agentSetupLevels).length > 0 ? { agentSetupLevels } : {},
-    ...reportPolicy === void 0 ? {} : { policy: reportPolicy },
-    ...configPaths.length > 0 ? { changedConfigPaths: configPaths } : {},
-    ...configPaths.length > 0 && input.configSource !== void 0 ? { configSource: input.configSource } : {},
-    ...testPaths.length > 0 ? { deletedTestFiles: testPaths } : {},
-    ...trackedCoverage === null ? {} : { trackedCoverageFile: trackedCoverage },
-    ...trackedCoverageChanged ? { trackedCoverageChanged: true } : {},
-    ...emptyAgentSetupFiles.length > 0 ? { emptyAgentSetupFiles } : {},
-    ...input.meta === void 0 ? {} : {
-      meta: detection === void 0 || agentFacts === void 0 ? input.meta : { ...input.meta, ...agentPrMetaFields(detection, agentFacts) }
-    },
+    expectedAgentTools: reportedTools,
+    agentSetupLevels,
+    policy: reportPolicy,
+    changedConfigPaths: configPaths,
+    // Only read when the change touches the config in use.
+    configSource: input.configSource,
+    deletedTestFiles: testPaths,
+    trackedCoverageFile: trackedCoverage ?? void 0,
+    trackedCoverageChanged,
+    emptyAgentSetupFiles,
+    meta: input.meta === void 0 || detection === void 0 || agentFacts === void 0 ? input.meta : { ...input.meta, ...agentPrMetaFields(detection, agentFacts) },
     testIntegrity: testIntegrity2,
-    ...finalSignals.length > 0 ? { testIntegritySignals: finalSignals } : {},
-    ...textTruncatedFiles.length > 0 ? { textTruncatedFiles } : {},
-    ...textTruncatedTestFiles.length > 0 ? { textTruncatedTestFiles } : {},
-    ...comparison === null || comparison.languages.length === 0 ? {} : { testIntegrityLanguages: comparison.languages },
-    ...omittedSignals.length === 0 ? {} : { omittedSignals },
-    ...testIndexUnavailable === void 0 ? {} : { testIndexUnavailable },
-    ...testChanges === void 0 ? {} : { testChanges },
-    ...testExercise === void 0 ? {} : { testExercise },
-    ...comparison?.configUnavailable === void 0 ? {} : { testConfigUnavailable: comparison.configUnavailable },
-    ...stale === null || stale.findings.length === 0 ? {} : { staleInstructions: stale.findings },
-    ...staleMessages.length === 0 ? {} : { staleInstructionMessages: staleMessages },
-    ...agentConfigMessages.length === 0 ? {} : { agentConfigSecretMessages: agentConfigMessages },
-    ...injectionMessageList.length === 0 ? {} : { injectionMessages: injectionMessageList },
-    ...injection2 === null || injection2.signals.length === 0 ? {} : { injectionSignals: injection2.signals },
-    ...dependencyResult === void 0 ? {} : { dependencies: dependencyResult },
-    ...policyMessages.length === 0 ? {} : { policyMessages },
-    ...junit?.flaky === void 0 ? {} : { flaky: junit.flaky },
-    ...junit === null || junit.messages.length === 0 ? {} : { flakyMessages: junit.messages }
+    testIntegritySignals: finalSignals,
+    textTruncatedFiles,
+    textTruncatedTestFiles,
+    testIntegrityLanguages: comparison?.languages,
+    omittedSignals,
+    testIndexUnavailable,
+    testChanges,
+    testExercise,
+    testConfigUnavailable: comparison?.configUnavailable,
+    staleInstructions: stale?.findings,
+    staleInstructionMessages: staleMessages,
+    agentConfigSecretMessages: agentConfigMessages,
+    injectionMessages: injectionMessageList,
+    injectionSignals: injection2?.signals,
+    dependencies: dependencyResult,
+    policyMessages,
+    flaky: junit?.flaky,
+    flakyMessages: junit?.messages
   };
   if ("unavailable" in input.diff) {
     return buildReport({
@@ -44197,18 +44197,18 @@ function check(input) {
           example: match.unmatched[0] ?? "",
           suggestedRoot: match.suggestedRoot
         },
-        ...binaryPaths.length > 0 ? { binaryCoveredPaths: binaryPaths } : {}
+        binaryCoveredPaths: binaryPaths
       });
     }
     untrackedCoveragePaths = match.unmatched.length;
   }
   return buildReport({
     ...base,
-    ...coverageFormat === void 0 ? {} : { coverageFormat },
+    coverageFormat,
     diffCoverage: computeDiffCoverage(diff, coverage2, input.threshold, isExcluded),
-    ...untrackedCoveragePaths > 0 ? { untrackedCoveragePaths } : {},
-    ...skippedLines > 0 ? { skippedCoverageLines: skippedLines } : {},
-    ...binaryPaths.length > 0 ? { binaryCoveredPaths: binaryPaths } : {}
+    untrackedCoveragePaths,
+    skippedCoverageLines: skippedLines,
+    binaryCoveredPaths: binaryPaths
   });
 }
 
@@ -49804,28 +49804,28 @@ async function runUnsafe(deps) {
     ...gathered,
     exclude,
     requireAgentSetup,
-    ...expectAgentSetup === void 0 ? {} : { expectAgentSetup },
-    ...testIntegrityMode === void 0 ? {} : { testIntegrityMode },
-    ...coverageRoot === void 0 ? {} : { coverageRoot },
-    ...configInput === "" ? {} : { configPath: configInput },
-    ...configSource === void 0 ? {} : { configSource },
-    ...headConfigExclude === void 0 ? {} : { headConfigExclude },
-    ...policy === void 0 ? {} : { policy },
-    ...application === void 0 || application.ignored.length === 0 ? {} : { policyIgnored: application.ignored },
-    ...application?.signalOverrides === void 0 ? {} : { signalOverrides: application.signalOverrides },
+    expectAgentSetup,
+    testIntegrityMode,
+    coverageRoot,
+    configPath: configInput || void 0,
+    configSource,
+    headConfigExclude,
+    policy,
+    policyIgnored: application?.ignored,
+    signalOverrides: application?.signalOverrides,
     agentPrFacts,
-    ...policyFileBase === void 0 ? {} : { policyFileBase },
-    ...junit === void 0 ? {} : { junit },
+    policyFileBase,
+    junit,
     // Only the app's own answer carries a quarantine list; a pull request has no way to add one.
-    ...junit === void 0 || quarantine === void 0 ? {} : { quarantine },
-    ...dependencySettings === void 0 ? {} : { dependencySettings },
-    ...dependencyLookups === void 0 ? {} : { dependencyLookups }
+    quarantine,
+    dependencySettings,
+    dependencyLookups
   };
   const runMetaBase = runMeta(deps.context, { baseRef: baseRefInput, ...target === void 0 ? {} : { target } });
   if (runMetaBase === void 0) deps.info("run metadata is incomplete, so report.json carries no meta");
   const mergeBase = runMetaBase === void 0 || localBase === void 0 ? null : await forkPoint(localBase, runMetaBase.headSha, deps);
   const meta = runMetaBase === void 0 || mergeBase === null ? runMetaBase : { ...runMetaBase, mergeBase };
-  const checked = check(meta === void 0 ? checkInput : { ...checkInput, meta });
+  const checked = check({ ...checkInput, meta });
   const parserFailure = deps.parserLoadFailure?.();
   if (parserFailure !== void 0) throw new Error(parserFailure);
   const signoffNumber = deps.context.eventName === "pull_request" && pr ? pr.number : target?.number;
