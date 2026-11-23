@@ -132,10 +132,13 @@ const parseCsv = (text: string): string[][] => {
   return rows;
 };
 
+/** A hits.csv row keyed by the header row; the header names an excerpt column. */
+type CsvRow = Record<string, string> & { excerpt: string };
+
 /** The parsed rows of hits.csv as objects keyed by the header row. */
-const records = (csv: string): Record<string, string>[] => {
+const records = (csv: string): CsvRow[] => {
   const [header, ...rows] = parseCsv(csv);
-  return rows.map((cells) => Object.fromEntries((header ?? []).map((name, i) => [name, cells[i] ?? ""])));
+  return rows.map((cells) => Object.fromEntries((header ?? []).map((name, i) => [name, cells[i] ?? ""])) as CsvRow);
 };
 
 describe("agent-pr-baserate hits.csv cells", () => {
@@ -164,7 +167,7 @@ describe("agent-pr-baserate hits.csv cells", () => {
     expect(run.status, run.stderr).toBe(0);
     const python = records(run.csv).filter((r) => r.signal === "TI03" && r.path === "tests/test_api.py");
     expect(python).toHaveLength(1);
-    expect(python[0]?.excerpt?.startsWith("'@pytest.mark.skip")).toBe(true);
+    expect(python[0]?.excerpt.startsWith("'@pytest.mark.skip")).toBe(true);
   }, 120_000);
 
   it("AC-4: the ordinary it.skip( row is byte for byte the row written before, in the same run as a changed row", () => {
