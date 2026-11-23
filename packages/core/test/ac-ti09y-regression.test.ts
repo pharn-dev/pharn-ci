@@ -52,7 +52,10 @@ const PINNED: Record<string, string> = {
   // Re-pinned again by CORE-143 (check() takes parsed coverage only): both files take `check` from
   // packages/core/test/text-coverage.ts, which parses their coverage text first (their output digests are unchanged);
   // these are the digests of the edited files.
-  "packages/core/test/ac-ti0205-regression.test.ts": "1c3517b2fc5b68ad3f541508a882f13f5131ce38bc009854223f3d89c712d161",
+  // Re-pinned again by CORE-135 (typed tests): ac-ti0205-regression gains type annotations, `as const` and an import,
+  // and loses its `as unknown as` casts (no runtime change; its output digest is unchanged); this is the digest of the
+  // edited file.
+  "packages/core/test/ac-ti0205-regression.test.ts": "4d218504d0f4fac1189007b49b05ae5f6c67dfd0d817199fa27fff100655b963",
   "packages/action/test/ac-accept-signoff-regression.test.ts":
     "d54e895bdd61718623b4017616f9f7adc1ae5f2c7975550c14ac364d32fb3e47",
 };
